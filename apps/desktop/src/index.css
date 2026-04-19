@@ -3,6 +3,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Custom Tooltip (data-tip) ── */
+[data-tip] { position: relative; }
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+  padding: 4px 8px; border-radius: 4px; white-space: nowrap;
+  font-size: 11px; font-weight: 400; line-height: 1.3;
+  background: var(--t1, #18181b); color: var(--bg, #fff);
+  pointer-events: none; opacity: 0; transition: opacity .12s;
+  z-index: 9999; margin-bottom: 4px;
+}
+[data-tip]:hover::after { opacity: 1; }
+/* All button tooltips: show below */
+.sb-action-btn[data-tip]::after,
+.ft-act-btn[data-tip]::after,
+.sb-settings-btn[data-tip]::after,
+.resizer-toggle-btn[data-tip]::after { bottom: auto; top: 100%; margin-bottom: 0; margin-top: 4px; }
+
 /* ── Theme Tokens ── */
 :root {
   --font-ui: 'Sora', sans-serif;
@@ -127,19 +145,34 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
 .sb-expand-btn:hover { background: var(--hov); color: var(--t1); }
 
 .vault-sel {
-  display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+  display: inline-flex; align-items: center; gap: 4px; padding: 6px 8px;
   border-radius: 5px; cursor: pointer; transition: background .14s;
   font-size: calc(var(--ui-font-size) - 2px); font-weight: 600;
-  min-width: 0; overflow: hidden; flex-shrink: 1;
+  min-width: 60px; max-width: 100%; overflow: hidden; flex-shrink: 1;
 }
 .vault-sel:hover { background: var(--hov); }
-.vs-icon { font-size: 14px; }
-.vs-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vs-arrow { color: var(--t3); font-size: 10px; }
+.vs-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-arrow { color: var(--t3); font-size: 10px; flex-shrink: 0; }
 
 .sb-actions {
   display: flex; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0;
+  position: relative;
 }
+.sb-actions-menu {
+  position: absolute; top: 100%; right: 0; z-index: 100;
+  min-width: 150px; padding: 4px;
+  background: var(--panel); border: 1px solid var(--brd);
+  border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,.15);
+}
+.sb-menu-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 6px 10px; border: none; border-radius: 4px;
+  background: transparent; color: var(--t1); font-size: 12px;
+  cursor: pointer; transition: background .12s; white-space: nowrap;
+  font-family: var(--font-ui);
+}
+.sb-menu-item:hover { background: var(--hov); }
+.sb-menu-item svg { flex-shrink: 0; color: var(--t2); }
 .sb-action-btn {
   display: flex; align-items: center; justify-content: center;
   width: 28px; height: 24px; border-radius: 4px; font-size: 11px;
@@ -219,7 +252,7 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
 .ft-item {
   display: flex; align-items: center; gap: 5px; padding: 4px 12px;
   cursor: pointer; font-size: calc(var(--ui-font-size) - 2px); color: var(--t2); transition: all .12s;
-  border-radius: 0; user-select: none; position: relative;
+  border-radius: 0; user-select: none; position: relative; overflow: visible;
 }
 .ft-item:hover { background: var(--hov); color: var(--t1); }
 .ft-item.on { background: var(--accdim); color: var(--acc); }

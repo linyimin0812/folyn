@@ -28,11 +28,26 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
   const vaultRenameFile = useVaultStore((state) => state.renameFile);
 
   const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
+  const isCompact = width < 260;
   const [collapsed, setCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [resizerHovered, setResizerHovered] = useState(false);
   const hasAutoExpanded = useRef(false);
+
+  // Close actions menu when clicking outside
+  useEffect(() => {
+    if (!actionsMenuOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
+        setActionsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [actionsMenuOpen]);
 
   // Auto-expand first 2 levels when fileTree is loaded
   useEffect(() => {
@@ -315,21 +330,22 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
                     }}
                     onBlur={confirmRename}
                     onClick={(e) => e.stopPropagation()}
+                    autoCapitalize="off"
                   />
                 ) : (
                   <span className="ft-name">{item.name}</span>
                 )}
                 <div className="ft-actions">
-                  <button className="ft-act-btn" title="新建文件" onClick={(e) => { e.stopPropagation(); startNewItem('file', item.path); }}>
+                  <button className="ft-act-btn" data-tip="新建文件" onClick={(e) => { e.stopPropagation(); startNewItem('file', item.path); }}>
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M9.5 1.1l3.4 3.5.1.4v2h-1V6H8.5L8 5.5V2H3.5l-.5.5v11l.5.5H7v1H3.5l-1.5-1.5v-11l1.5-1.5h5.7l.3.1zM9 2v3h2.9L9 2zm4 12h-1v-3H9v-1h3V7h1v3h3v1h-3v3z"/></svg>
                   </button>
-                  <button className="ft-act-btn" title="新建文件夹" onClick={(e) => { e.stopPropagation(); startNewItem('dir', item.path); }}>
+                  <button className="ft-act-btn" data-tip="新建文件夹" onClick={(e) => { e.stopPropagation(); startNewItem('dir', item.path); }}>
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4H9.618l-1-2H2a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1V5a1 1 0 00-1-1zm0 9H2V3h6.382l1 2H14v8zM8 7v2H6v1h2v2h1V10h2V9H9V7H8z"/></svg>
                   </button>
-                  <button className="ft-act-btn" title="重命名" onClick={(e) => { e.stopPropagation(); startRename(item.path, item.name); }}>
+                  <button className="ft-act-btn" data-tip="重命名" onClick={(e) => { e.stopPropagation(); startRename(item.path, item.name); }}>
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M13.23 1h-1.46L3.52 9.25l-.16.22L1 13.59 2.41 15l4.12-2.36.22-.16L15 4.23V2.77L13.23 1zM2.41 13.59l1.51-3 1.45 1.45-2.96 1.55zm3.83-2.06L4.47 9.76l8-8 1.77 1.77-8 8z"/></svg>
                   </button>
-                  <button className="ft-act-btn" title="删除" onClick={(e) => { e.stopPropagation(); deleteItem(item.path, 'dir'); }}>
+                  <button className="ft-act-btn" data-tip="删除" onClick={(e) => { e.stopPropagation(); deleteItem(item.path, 'dir'); }}>
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M10 3h3v1h-1v9l-1 1H5l-1-1V4H3V3h3V2a1 1 0 011-1h2a1 1 0 011 1v1zM9 2H7v1h2V2zM5 4v9h6V4H5zm2 2h1v5H7V6zm2 0h1v5H9V6z"/></svg>
                   </button>
                 </div>
@@ -348,6 +364,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
                       if (e.key === 'Escape') cancelNewItem();
                     }}
                     onBlur={confirmNewItem}
+                    autoCapitalize="off"
                   />
                 </div>
               )}
@@ -383,10 +400,10 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
               <span className="ft-name">{item.name}</span>
             )}
             <div className="ft-actions">
-              <button className="ft-act-btn" title="重命名" onClick={(e) => { e.stopPropagation(); startRename(item.path, item.name); }}>
+              <button className="ft-act-btn" data-tip="重命名" onClick={(e) => { e.stopPropagation(); startRename(item.path, item.name); }}>
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M13.23 1h-1.46L3.52 9.25l-.16.22L1 13.59 2.41 15l4.12-2.36.22-.16L15 4.23V2.77L13.23 1zM2.41 13.59l1.51-3 1.45 1.45-2.96 1.55zm3.83-2.06L4.47 9.76l8-8 1.77 1.77-8 8z"/></svg>
               </button>
-              <button className="ft-act-btn" title="删除" onClick={(e) => { e.stopPropagation(); deleteItem(item.path, 'file'); }}>
+              <button className="ft-act-btn" data-tip="删除" onClick={(e) => { e.stopPropagation(); deleteItem(item.path, 'file'); }}>
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M10 3h3v1h-1v9l-1 1H5l-1-1V4H3V3h3V2a1 1 0 011-1h2a1 1 0 011 1v1zM9 2H7v1h2V2zM5 4v9h6V4H5zm2 2h1v5H7V6zm2 0h1v5H9V6z"/></svg>
               </button>
             </div>
@@ -402,38 +419,71 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
         <div className="sb-header">
           <div className="sb-header-row">
           <div className="vault-sel" onClick={() => setCurrentPage('vault')}>
-            <span className="vs-icon">📁</span>
             <span className="vs-name">{vaultName}</span>
             <span className="vs-arrow">▾</span>
           </div>
 
-          {/* Actions: new file / new folder / locate */}
-          <div className="sb-actions">
-            <button className="sb-action-btn" onClick={() => startNewItem('file')} title="新建文件">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M9.5 1.1l3.4 3.5.1.4v2h-1V6H8.5L8 5.5V2H3.5l-.5.5v11l.5.5H7v1H3.5l-1.5-1.5v-11l1.5-1.5h5.7l.3.1zM9 2v3h2.9L9 2zm4 12h-1v-3H9v-1h3V7h1v3h3v1h-3v3z"/></svg>
-            </button>
-            <button className="sb-action-btn" onClick={() => startNewItem('dir')} title="新建文件夹">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4H9.618l-1-2H2a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1V5a1 1 0 00-1-1zm0 9H2V3h6.382l1 2H14v8zM8 7v2H6v1h2v2h1V10h2V9H9V7H8z"/></svg>
-            </button>
-            <button className="sb-action-btn" onClick={locateActiveFile} title="定位当前文件">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="1.5" x2="8" y2="6.5"/><line x1="8" y1="9.5" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="6.5" y2="8"/><line x1="9.5" y1="8" x2="14.5" y2="8"/></svg>
-            </button>
-            <button className="sb-action-btn" onClick={() => useVaultStore.getState().refreshFileTree()} title="刷新文件树">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M13.5 8a5.5 5.5 0 01-9.8 3.4M2.5 8a5.5 5.5 0 019.8-3.4"/><polyline points="13.5,3 13.5,6.5 10,6.5"/><polyline points="2.5,13 2.5,9.5 6,9.5"/></svg>
-            </button>
-            <button className="sb-action-btn" onClick={expandAllDirs} title="展开全部文件夹">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-                <polyline points="4,5 8,9 12,5" />
-                <polyline points="4,9 8,13 12,9" />
-              </svg>
-            </button>
-            <button className="sb-action-btn" onClick={collapseAllDirs} title="折叠全部文件夹">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-                <polyline points="4,9 8,5 12,9" />
-                <polyline points="4,13 8,9 12,13" />
-              </svg>
-            </button>
-          </div>
+          {/* Actions: new file / new folder / locate / refresh / expand / collapse */}
+          {isCompact ? (
+            <div className="sb-actions" ref={actionsMenuRef}>
+              <button className="sb-action-btn" onClick={locateActiveFile} data-tip="定位当前文件">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="1.5" x2="8" y2="6.5"/><line x1="8" y1="9.5" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="6.5" y2="8"/><line x1="9.5" y1="8" x2="14.5" y2="8"/></svg>
+              </button>
+              <button className="sb-action-btn" onClick={() => useVaultStore.getState().refreshFileTree()} data-tip="刷新文件树">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M13.5 8a5.5 5.5 0 01-9.8 3.4M2.5 8a5.5 5.5 0 019.8-3.4"/><polyline points="13.5,3 13.5,6.5 10,6.5"/><polyline points="2.5,13 2.5,9.5 6,9.5"/></svg>
+              </button>
+              <button className="sb-action-btn sb-more-btn" onClick={() => setActionsMenuOpen((v) => !v)} data-tip="更多操作">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13" r="1.5"/></svg>
+              </button>
+              {actionsMenuOpen && (
+                <div className="sb-actions-menu">
+                  <button className="sb-menu-item" onClick={() => { startNewItem('file'); setActionsMenuOpen(false); }}>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M9.5 1.1l3.4 3.5.1.4v2h-1V6H8.5L8 5.5V2H3.5l-.5.5v11l.5.5H7v1H3.5l-1.5-1.5v-11l1.5-1.5h5.7l.3.1zM9 2v3h2.9L9 2zm4 12h-1v-3H9v-1h3V7h1v3h3v1h-3v3z"/></svg>
+                    <span>新建文件</span>
+                  </button>
+                  <button className="sb-menu-item" onClick={() => { startNewItem('dir'); setActionsMenuOpen(false); }}>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4H9.618l-1-2H2a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1V5a1 1 0 00-1-1zm0 9H2V3h6.382l1 2H14v8zM8 7v2H6v1h2v2h1V10h2V9H9V7H8z"/></svg>
+                    <span>新建文件夹</span>
+                  </button>
+                  <button className="sb-menu-item" onClick={() => { expandAllDirs(); setActionsMenuOpen(false); }}>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><polyline points="4,5 8,9 12,5" /><polyline points="4,9 8,13 12,9" /></svg>
+                    <span>展开全部</span>
+                  </button>
+                  <button className="sb-menu-item" onClick={() => { collapseAllDirs(); setActionsMenuOpen(false); }}>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><polyline points="4,9 8,5 12,9" /><polyline points="4,13 8,9 12,13" /></svg>
+                    <span>折叠全部</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="sb-actions">
+              <button className="sb-action-btn" onClick={() => startNewItem('file')} data-tip="新建文件">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M9.5 1.1l3.4 3.5.1.4v2h-1V6H8.5L8 5.5V2H3.5l-.5.5v11l.5.5H7v1H3.5l-1.5-1.5v-11l1.5-1.5h5.7l.3.1zM9 2v3h2.9L9 2zm4 12h-1v-3H9v-1h3V7h1v3h3v1h-3v3z"/></svg>
+              </button>
+              <button className="sb-action-btn" onClick={() => startNewItem('dir')} data-tip="新建文件夹">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4H9.618l-1-2H2a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1V5a1 1 0 00-1-1zm0 9H2V3h6.382l1 2H14v8zM8 7v2H6v1h2v2h1V10h2V9H9V7H8z"/></svg>
+              </button>
+              <button className="sb-action-btn" onClick={locateActiveFile} data-tip="定位当前文件">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="1.5" x2="8" y2="6.5"/><line x1="8" y1="9.5" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="6.5" y2="8"/><line x1="9.5" y1="8" x2="14.5" y2="8"/></svg>
+              </button>
+              <button className="sb-action-btn" onClick={() => useVaultStore.getState().refreshFileTree()} data-tip="刷新文件树">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M13.5 8a5.5 5.5 0 01-9.8 3.4M2.5 8a5.5 5.5 0 019.8-3.4"/><polyline points="13.5,3 13.5,6.5 10,6.5"/><polyline points="2.5,13 2.5,9.5 6,9.5"/></svg>
+              </button>
+              <button className="sb-action-btn" onClick={expandAllDirs} data-tip="展开全部文件夹">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+                  <polyline points="4,5 8,9 12,5" />
+                  <polyline points="4,9 8,13 12,9" />
+                </svg>
+              </button>
+              <button className="sb-action-btn" onClick={collapseAllDirs} data-tip="折叠全部文件夹">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+                  <polyline points="4,9 8,5 12,9" />
+                  <polyline points="4,13 8,9 12,13" />
+                </svg>
+              </button>
+            </div>
+          )}
           </div>
 
           {/* Search */}
@@ -443,6 +493,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
               placeholder="搜索文件..."
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
+              autoCapitalize="off"
             />
           </div>
         </div>
@@ -471,7 +522,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
 
         {/* Settings button at bottom */}
         <div className="sb-footer">
-          <button className="sb-settings-btn" onClick={() => setCurrentPage('settings')} title="设置">
+          <button className="sb-settings-btn" onClick={() => setCurrentPage('settings')} data-tip="设置">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <line x1="2" y1="4" x2="14" y2="4" />
               <line x1="2" y1="8" x2="14" y2="8" />
@@ -513,7 +564,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
           <button
             className="resizer-toggle-btn"
             onClick={() => setCollapsed((prev) => !prev)}
-            title={collapsed ? '展开文件栏' : '关闭文件栏'}
+            data-tip={collapsed ? '展开文件栏' : '关闭文件栏'}
           >
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
               {collapsed ? (

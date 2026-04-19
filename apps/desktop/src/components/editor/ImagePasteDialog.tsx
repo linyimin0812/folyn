@@ -188,6 +188,7 @@ export function ImagePasteDialog({
               }
             }}
             placeholder="输入图片名称"
+            autoCapitalize="off"
           />
         </div>
 
@@ -202,6 +203,7 @@ export function ImagePasteDialog({
                 value={directory}
                 onChange={(event) => setDirectory(event.target.value)}
                 placeholder="相对于 Vault 根目录的路径"
+                autoCapitalize="off"
               />
               {vaultRoot && (
                 <div className="img-paste-vault-hint">

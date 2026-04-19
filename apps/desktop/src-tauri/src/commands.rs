@@ -241,8 +241,8 @@ pub async fn hide_all_webviews(app: tauri::AppHandle) -> Result<(), String> {
     for wv in app.webview_windows().values() {
         let label = wv.label();
         if label.starts_with("wv-") {
-            let _ = wv.as_ref().webview().set_position(LogicalPosition::new(-10000.0, -10000.0));
-            let _ = wv.as_ref().webview().set_size(LogicalSize::new(1.0, 1.0));
+            let _ = wv.as_ref().set_position(LogicalPosition::new(-10000.0, -10000.0));
+            let _ = wv.as_ref().set_size(LogicalSize::new(1.0, 1.0));
         }
     }
     Ok(())

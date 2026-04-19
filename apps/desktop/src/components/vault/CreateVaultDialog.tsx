@@ -69,6 +69,7 @@ export function CreateVaultDialog({ onClose }: CreateVaultDialogProps) {
             onChange={(e) => setName(e.target.value)}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+            autoCapitalize="off"
           />
 
           {/* Provider Type */}
@@ -93,6 +94,7 @@ export function CreateVaultDialog({ onClose }: CreateVaultDialogProps) {
             placeholder="如：~/quill/my-notes"
             value={basePath}
             onChange={(e) => setBasePath(e.target.value)}
+            autoCapitalize="off"
           />
 
           {error && <div className="dlg-error">{error}</div>}

@@ -30,6 +30,7 @@ import {
 } from '@codemirror/autocomplete';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { lintKeymap, linter, lintGutter, type Diagnostic } from '@codemirror/lint';
+import { indentationMarkers } from '@replit/codemirror-indentation-markers';
 import { useEditorStore } from '@/store/editorStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import {
@@ -235,6 +236,7 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
         crosshairCursor(),
         highlightActiveLine(),
         highlightSelectionMatches(),
+        indentationMarkers(),
         keymap.of([
           { key: 'Mod-a', run: selectAll },
           ...closeBracketsKeymap,

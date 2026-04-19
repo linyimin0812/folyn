@@ -83,6 +83,7 @@ export function LockScreen({ onUnlock, apiBase }: LockScreenProps) {
             onKeyDown={handleKeyDown}
             disabled={loading}
             autoComplete="current-password"
+            autoCapitalize="off"
           />
           <button
             className="lock-btn"

@@ -453,7 +453,7 @@ export function SettingsPage() {
 
             {store.llmProvider === 'local' && (
               <>
-                <div className="fr"><div className="fl">Ollama 服务地址</div><input className="fi2" value={store.ollamaUrl} onChange={(e) => updateSettings({ ollamaUrl: e.target.value })} /></div>
+                <div className="fr"><div className="fl">Ollama 服务地址</div><input className="fi2" value={store.ollamaUrl} onChange={(e) => updateSettings({ ollamaUrl: e.target.value })} autoCapitalize="off" /></div>
                 <div className="fr">
                   <div className="fl">已下载的本地模型</div>
                   <div className="ml">
@@ -509,7 +509,7 @@ export function SettingsPage() {
           <div className="ss-sec">
             <div className="ss-title">提示词配置</div>
             <div className="ss-desc">自定义 AI 助手的行为与写作风格</div>
-            <div className="fr"><div className="fl">系统提示词</div><textarea className="fi2" rows={5} value={store.systemPrompt} onChange={(e) => updateSettings({ systemPrompt: e.target.value })} /><div className="fh">此提示词附加到每次 AI 请求的开头</div></div>
+            <div className="fr"><div className="fl">系统提示词</div><textarea className="fi2" rows={5} value={store.systemPrompt} onChange={(e) => updateSettings({ systemPrompt: e.target.value })} autoCapitalize="off" /><div className="fh">此提示词附加到每次 AI 请求的开头</div></div>
             <div className="fr"><div className="fl">写作风格</div><select className="fsel" value={store.writingStyle} onChange={(e) => updateSettings({ writingStyle: e.target.value })}><option>技术文档</option><option>学术论文</option><option>博客文章</option></select></div>
             <div className="tr"><div className="tr-info"><h4>保留对话上下文</h4><p>AI 对话在同一文档内保持记忆</p></div><Toggle value={store.keepContext} onChange={(v) => updateSettings({ keepContext: v })} /></div>
             <div className="tr"><div className="tr-info"><h4>自动发送文档内容</h4><p>每次对话自动附带当前文档全文</p></div><Toggle value={store.autoSendDoc} onChange={(v) => updateSettings({ autoSendDoc: v })} /></div>
@@ -561,6 +561,7 @@ export function SettingsPage() {
                     placeholder="输入新密码"
                     value={authPassword}
                     onChange={(event) => setAuthPassword(event.target.value)}
+                    autoCapitalize="off"
                   />
                   <button className="auth-eye-btn" onClick={() => setShowAuthPassword((v) => !v)} title={showAuthPassword ? '隐藏密码' : '显示密码'}>
                     {showAuthPassword ? (
@@ -591,6 +592,7 @@ export function SettingsPage() {
                     placeholder="再次输入密码"
                     value={authConfirm}
                     onChange={(event) => setAuthConfirm(event.target.value)}
+                    autoCapitalize="off"
                   />
                   {authConfirm && authPassword === authConfirm && (
                     <span className="auth-match-icon">✓</span>

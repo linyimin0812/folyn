@@ -23,6 +23,7 @@
     "@codemirror/view": "^6.35.0",
     "@quill/container-plugins": "workspace:*",
     "@quill/vault-provider": "workspace:*",
+    "@replit/codemirror-indentation-markers": "^6.5.3",
     "@tauri-apps/api": "^2.2.0",
     "@tauri-apps/plugin-dialog": "^2.2.0",
     "@tauri-apps/plugin-fs": "^2.2.0",

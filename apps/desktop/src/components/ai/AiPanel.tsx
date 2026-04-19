@@ -154,6 +154,7 @@ export function AiPanel() {
           onKeyDown={handleKeyDown}
           rows={2}
           disabled={isStreaming}
+          autoCapitalize="off"
         />
         <button
           className="ai-send"
