@@ -4,6 +4,7 @@ use std::path::Path;
 use std::process::Command;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tauri::Manager;
+use tauri::menu::{MenuBuilder, SubmenuBuilder};
 
 /// Try to find `node` on the current PATH.
 fn which_node_from_path() -> Option<String> {
@@ -59,6 +60,38 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
+            // Build a custom menu without the default Edit menu (Undo/Redo/Cut/Copy/Paste).
+            // The default macOS Edit menu intercepts Cmd+Z/Cmd+Shift+Z and triggers
+            // native WebView undo/redo, which conflicts with CodeMirror's history plugin.
+            // By providing a minimal menu, all keyboard shortcuts are passed directly
+            // to the WebView and handled by CodeMirror.
+            let app_menu = SubmenuBuilder::new(app, "Quill")
+                .about(None)
+                .separator()
+                .services()
+                .separator()
+                .hide()
+                .hide_others()
+                .show_all()
+                .separator()
+                .quit()
+                .build()?;
+
+            let window_menu = SubmenuBuilder::new(app, "Window")
+                .minimize()
+                .maximize()
+                .close_window()
+                .separator()
+                .fullscreen()
+                .build()?;
+
+            let menu = MenuBuilder::new(app)
+                .item(&app_menu)
+                .item(&window_menu)
+                .build()?;
+
+            app.set_menu(menu)?;
+
             // Open DevTools for debugging
             if let Some(window) = app.get_webview_window("main") {
                 window.open_devtools();
