@@ -60,11 +60,11 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
-            // Build a custom menu without the default Edit menu (Undo/Redo/Cut/Copy/Paste).
+            // Build a custom menu that omits Undo/Redo from the Edit menu.
             // The default macOS Edit menu intercepts Cmd+Z/Cmd+Shift+Z and triggers
             // native WebView undo/redo, which conflicts with CodeMirror's history plugin.
-            // By providing a minimal menu, all keyboard shortcuts are passed directly
-            // to the WebView and handled by CodeMirror.
+            // We still need an Edit menu with Cut/Copy/Paste/Select All so that macOS
+            // correctly routes those keyboard shortcuts (Cmd+A, Cmd+C, etc.) to the WebView.
             let app_menu = SubmenuBuilder::new(app, "Quill")
                 .about(None)
                 .separator()
@@ -77,6 +77,17 @@ pub fn run() {
                 .quit()
                 .build()?;
 
+            // Edit menu without Undo/Redo (conflicts with CodeMirror history) and
+            // without Select All (the native select-all action is handled at the macOS
+            // level before JS keydown fires, selecting the entire page DOM instead of
+            // just the editor content). By omitting it, Cmd+A falls through to the
+            // WebView where CodeMirror's own Mod-a keymap handles it correctly.
+            let edit_menu = SubmenuBuilder::new(app, "Edit")
+                .cut()
+                .copy()
+                .paste()
+                .build()?;
+
             let window_menu = SubmenuBuilder::new(app, "Window")
                 .minimize()
                 .maximize()
@@ -87,6 +98,7 @@ pub fn run() {
 
             let menu = MenuBuilder::new(app)
                 .item(&app_menu)
+                .item(&edit_menu)
                 .item(&window_menu)
                 .build()?;
 
