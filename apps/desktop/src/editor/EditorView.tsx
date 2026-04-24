@@ -142,6 +142,10 @@ export interface QuillEditorHandle {
 interface QuillEditorProps {
   initialContent?: string;
   filePath?: string;
+  /** Initial cursor line (1-based) to restore on mount */
+  initialCursorLine?: number;
+  /** Initial cursor column (1-based) to restore on mount */
+  initialCursorCol?: number;
   onChange?: (content: string) => void;
   onSlashMenuChange?: (state: SlashMenuState) => void;
   onCodeBlockMenuChange?: (state: CodeBlockMenuState) => void;
@@ -150,7 +154,7 @@ interface QuillEditorProps {
 }
 
 export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
-  function QuillEditor({ initialContent = '', filePath = '', onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste }, ref) {
+  function QuillEditor({ initialContent = '', filePath = '', initialCursorLine, initialCursorCol, onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste }, ref) {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const tabSizeCompartment = useRef(new Compartment());
@@ -292,6 +296,19 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
       });
 
       viewRef.current = view;
+
+      // Restore cursor position if provided
+      if (initialCursorLine && initialCursorLine > 0) {
+        const lineCount = view.state.doc.lines;
+        const targetLine = Math.min(initialCursorLine, lineCount);
+        const lineInfo = view.state.doc.line(targetLine);
+        const col = Math.min((initialCursorCol ?? 1) - 1, lineInfo.length);
+        const cursorPos = lineInfo.from + col;
+        view.dispatch({
+          selection: { anchor: cursorPos },
+          scrollIntoView: true,
+        });
+      }
 
       // For code files, dynamically load the matching language support
       if (!isMarkdown && filePath) {

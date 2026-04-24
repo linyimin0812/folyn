@@ -522,7 +522,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
 
         {/* Settings button at bottom */}
         <div className="sb-footer">
-          <button className="sb-settings-btn" onClick={() => setCurrentPage('settings')} data-tip="设置">
+          <button className="sb-settings-btn" onClick={() => setCurrentPage('settings')}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <line x1="2" y1="4" x2="14" y2="4" />
               <line x1="2" y1="8" x2="14" y2="8" />

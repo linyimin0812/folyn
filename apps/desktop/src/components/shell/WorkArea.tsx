@@ -530,6 +530,8 @@ export function WorkArea() {
               ref={editorRef}
               filePath={activeTab?.path ?? ''}
               initialContent={activeTab?.content ?? ''}
+              initialCursorLine={activeTab?.cursorLine}
+              initialCursorCol={activeTab?.cursorCol}
               onChange={(content) => {
                 if (activeTab) updateTabContent(activeTab.id, content);
               }}

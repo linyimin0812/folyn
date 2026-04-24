@@ -356,6 +356,7 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
 .ed-tb {
   display: flex; align-items: center; gap: 2px; padding: 4px 10px;
   background: var(--panel); border-bottom: 1px solid var(--brd); flex-shrink: 0;
+  overflow: visible; position: relative; z-index: 10;
 }
 .etb-btn {
   width: 28px; height: 26px; display: flex; align-items: center; justify-content: center;
@@ -364,18 +365,12 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
 }
 .etb-btn:hover { background: var(--hov); color: var(--t1); }
 .etb-icon { font-size: 14px; }
-.etb-btn::after {
-  content: attr(data-tip); position: absolute; top: calc(100% + 4px); left: 50%;
-  transform: translateX(-50%); padding: 3px 8px; border-radius: 4px;
-  font-size: 11px; font-family: var(--font-ui); white-space: nowrap;
-  background: var(--t1); color: var(--bg); pointer-events: none;
-  opacity: 0; transition: opacity .1s; z-index: 100;
-}
-.etb-btn:hover::after { opacity: 1; }
+.etb-btn[data-tip]::after { display: none; }
 .etb-div { width: 1px; height: 16px; background: var(--brd); margin: 0 3px; }
 
 .ed-body {
   flex: 1; overflow: hidden; display: flex; flex-direction: column; background: var(--surf);
+  min-height: 0;
 }
 .ed-code {
   font-family: var(--font-mono); font-size: 13px; line-height: 1.7;
@@ -657,6 +652,40 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
 .ai-send:hover { opacity: .85; }
 .ai-send:disabled { opacity: .4; cursor: not-allowed; }
 
+/* ── SKILL Meta Card ── */
+.skill-meta-card {
+  background: linear-gradient(135deg, var(--surf) 0%, color-mix(in srgb, var(--acc) 6%, var(--surf)) 100%);
+  border: 1px solid color-mix(in srgb, var(--acc) 20%, var(--brd));
+  border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;
+}
+.skill-meta-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+}
+.skill-meta-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase;
+  background: var(--acc); color: #fff; line-height: 1.6;
+}
+.skill-meta-name {
+  font-size: 16px; font-weight: 700; color: var(--t1);
+}
+.skill-meta-description {
+  font-size: 13px; line-height: 1.65; color: var(--t2); margin: 4px 0 0;
+}
+.skill-meta-field {
+  display: flex; align-items: baseline; gap: 8px; margin-top: 6px;
+  font-size: 12px;
+}
+.skill-meta-key {
+  flex-shrink: 0; color: var(--t3); font-weight: 600;
+  font-family: var(--font-mono); padding: 1px 5px;
+  background: var(--surf2); border-radius: 3px;
+}
+.skill-meta-value {
+  color: var(--t2); word-break: break-word;
+}
+
 /* ── Markdown Preview ── */
 .md-preview {
   font-family: var(--font-ui); font-size: 14px; line-height: 1.8;
@@ -678,30 +707,50 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
   background: var(--surf); padding: 2px 5px; border-radius: 3px;
   border: 1px solid var(--brd);
 }
-.md-preview pre {
-  background: var(--surf); border: 1px solid var(--brd); border-radius: 6px;
-  padding: 0; overflow-x: auto; margin: 12px 0; position: relative;
+.md-preview pre code,
+.code-block-wrapper pre code {
+  background: none; border: none; padding: 12px 16px;
+  border-radius: 0;
 }
-.md-preview pre.code-block-enhanced {
-  display: flex; align-items: stretch;
+/* Code block wrapper — outer shell handles border, radius, max-height, scrolling */
+.code-block-wrapper {
+  border: 1px solid var(--brd); border-radius: 6px;
+  margin: 12px 0; position: relative;
+  max-height: 420px; overflow: hidden;
 }
-.md-preview pre code {
-  background: none; border: none; padding: 12px 16px; font-size: 12px;
-  line-height: 1.6; color: var(--t1); flex: 1; overflow-x: auto;
+/* Inner scrollable area — grid layout keeps line-numbers and code side by side */
+.code-block-inner {
+  display: grid; grid-template-columns: auto 1fr;
+  max-height: 420px; overflow: auto;
 }
-.md-preview pre code br { display: none; }
-
-/* Code block line numbers */
-.code-line-numbers {
-  display: flex; flex-direction: column; flex-shrink: 0;
+/* Line numbers column — sticky so it stays visible on horizontal scroll */
+.code-block-inner .code-line-numbers {
+  position: sticky; left: 0; z-index: 1;
   padding: 12px 0; border-right: 1px solid var(--brd);
-  background: var(--surf2); border-radius: 6px 0 0 6px;
-  user-select: none;
+  background: var(--surf2); user-select: none;
+  white-space: nowrap;
 }
-.code-ln {
+.code-block-inner .code-ln {
   display: block; padding: 0 10px; text-align: right;
   font-family: var(--font-mono); font-size: 12px; line-height: 1.6;
   color: var(--t3); min-width: 32px;
+}
+/* Code content area */
+.code-block-inner pre {
+  margin: 0; border: none; border-radius: 0;
+  background: var(--surf); padding: 0; overflow: visible;
+}
+.code-block-inner pre code {
+  display: block; padding: 12px 16px; font-size: 12px;
+  line-height: 1.6; color: var(--t1);
+  background: none; border: none; white-space: pre;
+}
+.code-block-inner pre code br { display: none; }
+
+/* Standalone pre without wrapper (fallback) */
+.md-preview > pre {
+  background: var(--surf); border: 1px solid var(--brd); border-radius: 6px;
+  padding: 12px 16px; margin: 12px 0; max-height: 420px; overflow: auto;
 }
 
 /* Code block copy button */
@@ -711,9 +760,9 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
   border-radius: 3px; line-height: 1;
   color: var(--t3); background: none; border: none;
   cursor: pointer; opacity: 0; transition: opacity .15s, color .12s, background .12s;
-  z-index: 1;
+  z-index: 3;
 }
-.md-preview pre:hover .code-copy-btn { opacity: .7; }
+.code-block-wrapper:hover .code-copy-btn { opacity: .7; }
 .code-copy-btn:hover { opacity: 1 !important; color: var(--t1); background: var(--hov); }
 .code-copy-btn.copied { opacity: 1 !important; color: var(--green); }
 

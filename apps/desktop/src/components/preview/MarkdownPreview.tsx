@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useCallback, createElement, Fragment } from 'react';
+import { useMemo, useRef, useEffect, useCallback, useState, createElement, Fragment } from 'react';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
@@ -69,6 +69,65 @@ function buildComponentMap(): Record<string, React.ComponentType<any>> {
   return componentMap;
 }
 
+/** Parse YAML frontmatter from markdown content */
+interface FrontmatterMeta {
+  name?: string;
+  description?: string;
+  [key: string]: string | undefined;
+}
+
+function parseFrontmatter(content: string): { meta: FrontmatterMeta | null; body: string } {
+  const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n?/;
+  const match = content.match(frontmatterRegex);
+  if (!match) return { meta: null, body: content };
+
+  const yamlBlock = match[1];
+  const meta: FrontmatterMeta = {};
+  let currentKey = '';
+  let currentValue = '';
+
+  for (const line of yamlBlock.split('\n')) {
+    const keyValueMatch = line.match(/^(\w[\w-]*)\s*:\s*(.*)/);
+    if (keyValueMatch) {
+      if (currentKey) {
+        meta[currentKey] = currentValue.trim();
+      }
+      currentKey = keyValueMatch[1];
+      currentValue = keyValueMatch[2];
+    } else if (currentKey && (line.startsWith('  ') || line.startsWith('\t'))) {
+      currentValue += ' ' + line.trim();
+    }
+  }
+  if (currentKey) {
+    meta[currentKey] = currentValue.trim();
+  }
+
+  return { meta: Object.keys(meta).length > 0 ? meta : null, body: content.slice(match[0].length) };
+}
+
+/** Render SKILL frontmatter meta as a styled card */
+function SkillMetaCard({ meta }: { meta: FrontmatterMeta }) {
+  return (
+    <div className="skill-meta-card">
+      <div className="skill-meta-header">
+        <span className="skill-meta-badge">SKILL</span>
+        {meta.name && <span className="skill-meta-name">{meta.name}</span>}
+      </div>
+      {meta.description && (
+        <p className="skill-meta-description">{meta.description}</p>
+      )}
+      {Object.entries(meta)
+        .filter(([key]) => key !== 'name' && key !== 'description')
+        .map(([key, value]) => (
+          <div className="skill-meta-field" key={key}>
+            <span className="skill-meta-key">{key}</span>
+            <span className="skill-meta-value">{value}</span>
+          </div>
+        ))}
+    </div>
+  );
+}
+
 /** Recursively extract plain text from React children */
 function extractTextContent(children: any): string {
   if (typeof children === 'string') return children;
@@ -76,6 +135,61 @@ function extractTextContent(children: any): string {
   if (Array.isArray(children)) return children.map(extractTextContent).join('');
   if (children?.props?.children) return extractTextContent(children.props.children);
   return '';
+}
+
+/** Copy button SVG icons */
+const COPY_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const CHECK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+/** Code block wrapper component — renders line numbers + copy button via React */
+function CodeBlockWrapper({ children, node, ...rest }: any) {
+  const preRef = useRef<HTMLPreElement>(null);
+  const copyBtnRef = useRef<HTMLButtonElement>(null);
+  const [lineCount, setLineCount] = useState(0);
+
+  useEffect(() => {
+    if (!preRef.current) return;
+    const codeEl = preRef.current.querySelector('code');
+    const text = codeEl?.textContent ?? preRef.current.textContent ?? '';
+    const lines = text.split('\n');
+    while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
+    setLineCount(lines.length);
+  }, [children]);
+
+  const handleCopy = useCallback(() => {
+    const codeEl = preRef.current?.querySelector('code');
+    const text = codeEl?.textContent ?? preRef.current?.textContent ?? '';
+    const btn = copyBtnRef.current;
+    if (!btn) return;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.innerHTML = CHECK_SVG;
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.innerHTML = COPY_SVG;
+        btn.classList.remove('copied');
+      }, 1500);
+    });
+  }, []);
+
+  return (
+    <div className="code-block-wrapper">
+      <div className="code-block-inner">
+        <div className="code-line-numbers" aria-hidden="true">
+          {Array.from({ length: lineCount }, (_, i) => (
+            <span className="code-ln" key={i}>{i + 1}</span>
+          ))}
+        </div>
+        <pre ref={preRef} {...rest}>{children}</pre>
+      </div>
+      <button
+        ref={copyBtnRef}
+        className="code-copy-btn"
+        type="button"
+        onClick={handleCopy}
+        dangerouslySetInnerHTML={{ __html: COPY_SVG }}
+      />
+    </div>
+  );
 }
 
 interface MarkdownPreviewProps {
@@ -146,8 +260,13 @@ export function MarkdownPreview({ content, currentFilePath, vaultRoot }: Markdow
       return createElement('img', { src: imageUrl, alt, loading: 'lazy', ...rest });
     };
 
+    // Custom pre component: wrap code blocks with line numbers + copy button via React
+    map['pre'] = CodeBlockWrapper;
+
     return map;
   }, [currentFilePath, vaultRoot]);
+
+  const { meta, body } = useMemo(() => parseFrontmatter(content), [content]);
 
   const reactContent = useMemo(() => {
     try {
@@ -167,72 +286,18 @@ export function MarkdownPreview({ content, currentFilePath, vaultRoot }: Markdow
           Fragment,
           components: componentMap,
         } as any)
-        .processSync(content);
+        .processSync(body);
 
       return result.result as React.ReactElement;
     } catch (error) {
       console.error('[MarkdownPreview] render error:', error);
       return createElement('p', null, '渲染错误');
     }
-  }, [content, componentMap]);
-
-  const handleCopyClick = useCallback((event: MouseEvent) => {
-    const button = (event.target as HTMLElement).closest('.code-copy-btn');
-    if (!button) return;
-    const pre = button.closest('pre');
-    if (!pre) return;
-    const codeElement = pre.querySelector('code');
-    const text = codeElement?.textContent ?? pre.textContent ?? '';
-    const copySvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-    const checkSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-    navigator.clipboard.writeText(text).then(() => {
-      button.innerHTML = checkSvg;
-      button.classList.add('copied');
-      setTimeout(() => {
-        button.innerHTML = copySvg;
-        button.classList.remove('copied');
-      }, 1500);
-    });
-  }, []);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const preBlocks = container.querySelectorAll('pre');
-    preBlocks.forEach((pre) => {
-      if (pre.querySelector('.code-copy-btn')) return;
-
-      pre.classList.add('code-block-enhanced');
-
-      const copyButton = document.createElement('button');
-      copyButton.className = 'code-copy-btn';
-      copyButton.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-      copyButton.type = 'button';
-      pre.appendChild(copyButton);
-
-      const codeElement = pre.querySelector('code');
-      if (codeElement) {
-        const lines = codeElement.textContent?.split('\n') ?? [];
-        if (lines.length > 0 && lines[lines.length - 1] === '') {
-          lines.pop();
-        }
-        const lineNumbersContainer = document.createElement('span');
-        lineNumbersContainer.className = 'code-line-numbers';
-        lineNumbersContainer.setAttribute('aria-hidden', 'true');
-        lineNumbersContainer.innerHTML = lines
-          .map((_, index) => `<span class="code-ln">${index + 1}</span>`)
-          .join('');
-        pre.insertBefore(lineNumbersContainer, codeElement);
-      }
-    });
-
-    container.addEventListener('click', handleCopyClick);
-    return () => container.removeEventListener('click', handleCopyClick);
-  }, [reactContent, handleCopyClick]);
+  }, [body, componentMap]);
 
   return (
     <div className="md-preview" ref={containerRef}>
+      {meta && <SkillMetaCard meta={meta} />}
       {reactContent}
     </div>
   );

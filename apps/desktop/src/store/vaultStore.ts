@@ -14,6 +14,25 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
+/** Convert a glob-like pattern to a RegExp for matching file/folder names */
+function patternToRegExp(pattern: string): RegExp {
+  const escaped = pattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '.*')
+    .replace(/\?/g, '.');
+  return new RegExp(`^${escaped}$`);
+}
+
+/** Check if a file/folder name matches any of the exclude patterns */
+function matchesAnyPattern(name: string, patterns: string[]): boolean {
+  return patterns.some((pattern) => {
+    if (pattern.includes('*') || pattern.includes('?')) {
+      return patternToRegExp(pattern).test(name);
+    }
+    return name === pattern;
+  });
+}
+
 interface VaultState {
   /** The vault manager instance (singleton) */
   manager: VaultManager;
@@ -220,7 +239,26 @@ export const useVaultStore = create<VaultState>()(
           try {
             const showHidden = useSettingsStore.getState().showHiddenFiles;
             const entries = await get().manager.listFiles('', true, showHidden);
-            set({ fileTree: entries, error: null });
+
+            const excludeRaw = useSettingsStore.getState().excludePatterns || '';
+            const patterns = excludeRaw
+              .split('\n')
+              .map((line) => line.trim())
+              .filter((line) => line.length > 0 && !line.startsWith('#'));
+
+            const filterEntries = (items: VaultEntry[]): VaultEntry[] => {
+              if (patterns.length === 0) return items;
+              return items
+                .filter((entry) => !matchesAnyPattern(entry.name, patterns))
+                .map((entry) => {
+                  if (entry.type === 'dir' && entry.children) {
+                    return { ...entry, children: filterEntries(entry.children) };
+                  }
+                  return entry;
+                });
+            };
+
+            set({ fileTree: filterEntries(entries), error: null });
           } catch (err) {
             const message = err instanceof Error ? err.message : 'Failed to load file tree';
             set({ error: message });

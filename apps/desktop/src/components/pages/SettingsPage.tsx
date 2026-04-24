@@ -332,6 +332,19 @@ export function SettingsPage() {
             <div className="tr"><div className="tr-info"><h4>默认显示 AI 面板</h4><p>打开编辑器时自动展开 AI 对话面板</p></div><Toggle value={store.showAiPanel} onChange={(v) => updateSettings({ showAiPanel: v })} /></div>
             <div className="tr"><div className="tr-info"><h4>状态栏</h4><p>底部显示字数、光标位置等信息</p></div><Toggle value={store.showStatusBar} onChange={(v) => updateSettings({ showStatusBar: v })} /></div>
             <div className="tr"><div className="tr-info"><h4>显示隐藏文件</h4><p>在文件树中显示以 . 开头的隐藏文件和文件夹</p></div><Toggle value={store.showHiddenFiles} onChange={(v) => { updateSettings({ showHiddenFiles: v }); import('@/store/vaultStore').then(m => m.useVaultStore.getState().refreshFileTree()); }} /></div>
+            <div className="fr" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+              <div className="fl">过滤文件/文件夹</div>
+              <p style={{ fontSize: 11, color: 'var(--t3)', margin: 0 }}>每行一个规则，匹配的文件或文件夹将在文件树中隐藏。支持 * 和 ? 通配符，# 开头为注释。</p>
+              <textarea
+                className="fsel"
+                rows={6}
+                style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12, resize: 'vertical', lineHeight: 1.6, padding: '8px 10px' }}
+                value={store.excludePatterns}
+                onChange={(e) => updateSettings({ excludePatterns: e.target.value })}
+                onBlur={() => import('@/store/vaultStore').then(m => m.useVaultStore.getState().refreshFileTree())}
+                placeholder={'node_modules\n.git\n.DS_Store\n*.log'}
+              />
+            </div>
           </div>
         )}
 

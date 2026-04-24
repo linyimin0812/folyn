@@ -29,6 +29,10 @@ export interface FileTab {
   content: string;
   isDirty: boolean;
   fileType: FileType;
+  /** Saved cursor line (1-based) for this tab */
+  cursorLine?: number;
+  /** Saved cursor column (1-based) for this tab */
+  cursorCol?: number;
 }
 
 interface EditorState {
@@ -85,6 +89,8 @@ interface PersistedTabInfo {
   path: string;
   name: string;
   fileType?: FileType;
+  cursorLine?: number;
+  cursorCol?: number;
 }
 
 interface PersistedOpenTabs {
@@ -99,7 +105,7 @@ function persistOpenTabs(vaultId: string, tabs: FileTab[], activeTabId: string |
   persistTabsTimer = setTimeout(() => {
     const activeTab = tabs.find((t) => t.id === activeTabId);
     const data: PersistedOpenTabs = {
-      tabs: tabs.map((t) => ({ path: t.path, name: t.name, fileType: t.fileType })),
+      tabs: tabs.map((t) => ({ path: t.path, name: t.name, fileType: t.fileType, cursorLine: t.cursorLine, cursorCol: t.cursorCol })),
       activeTabPath: activeTab?.path ?? null,
     };
     storageClient.set(openTabsStorageKey(vaultId), data);
@@ -176,7 +182,18 @@ export const useEditorStore = create<EditorState>()(
 
       toggleOutline: () => set((state) => ({ outlineVisible: !state.outlineVisible })),
       toggleAiPanel: () => set((state) => ({ aiPanelVisible: !state.aiPanelVisible })),
-      setCursorPosition: (line, col) => set({ cursorLine: line, cursorCol: col }),
+      setCursorPosition: (line, col) => {
+        const activeTabId = get().activeTabId;
+        set((state) => ({
+          cursorLine: line,
+          cursorCol: col,
+          tabs: activeTabId
+            ? state.tabs.map((t) =>
+                t.id === activeTabId ? { ...t, cursorLine: line, cursorCol: col } : t,
+              )
+            : state.tabs,
+        }));
+      },
       setWordCount: (count) => set({ wordCount: count }),
 
       updateWebTabUrl: (tabId, url, title) => {
@@ -284,6 +301,8 @@ export const useEditorStore = create<EditorState>()(
                 content,
                 isDirty: false,
                 fileType,
+                cursorLine: tabInfo.cursorLine,
+                cursorCol: tabInfo.cursorCol,
               };
               set((state) => ({
                 tabs: [...state.tabs, newTab],
