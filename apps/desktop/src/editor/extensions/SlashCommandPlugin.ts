@@ -53,9 +53,11 @@ export const slashCommandPlugin = ViewPlugin.fromClass(
 
       if (slashIdx !== -1) {
         const afterSlash = textBefore.slice(slashIdx + 1);
-        // Only trigger if '/' is at line start or preceded by whitespace
+        // Only trigger if '/' is at line start or preceded by whitespace,
+        // and not part of a self-closing HTML tag (e.g. "/>")
         const charBeforeSlash = slashIdx > 0 ? textBefore[slashIdx - 1] : ' ';
-        if (charBeforeSlash === ' ' || charBeforeSlash === '\t' || slashIdx === 0) {
+        const charAfterSlash = afterSlash.length > 0 ? afterSlash[0] : '';
+        if ((charBeforeSlash === ' ' || charBeforeSlash === '\t' || slashIdx === 0) && charAfterSlash !== '>') {
           if (afterSlash.length === 0 && !menuState.visible) {
             // Just typed '/', show menu
             const viewRef = update.view;

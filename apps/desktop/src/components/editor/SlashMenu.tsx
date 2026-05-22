@@ -74,7 +74,7 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (!visible) return;
+      if (!visible || flatList.length === 0) return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         e.stopPropagation();
