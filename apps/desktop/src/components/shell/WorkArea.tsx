@@ -36,28 +36,6 @@ function extractHeadings(content: string): HeadingItem[] {
   return headings;
 }
 
-/** Insert text wrapping the current selection (e.g. **bold**) */
-function wrapSelection(view: EditorView, before: string, after: string) {
-  const { from, to } = view.state.selection.main;
-  const selected = view.state.sliceDoc(from, to);
-  const replacement = `${before}${selected || '文本'}${after}`;
-  view.dispatch({
-    changes: { from, to, insert: replacement },
-    selection: { anchor: from + before.length, head: from + replacement.length - after.length },
-  });
-  view.focus();
-}
-
-/** Insert a line prefix (e.g. # heading) and place cursor after it */
-function insertLinePrefix(view: EditorView, prefix: string) {
-  const pos = view.state.selection.main.head;
-  const line = view.state.doc.lineAt(pos);
-  view.dispatch({
-    changes: { from: line.from, to: line.from, insert: prefix },
-    selection: { anchor: line.from + prefix.length },
-  });
-  view.focus();
-}
 
 export function WorkArea() {
   const viewMode = useEditorStore((state) => state.viewMode);
@@ -324,6 +302,114 @@ export function WorkArea() {
     };
   }, []);
 
+  // ── Synchronized scrolling between editor and preview (split mode) ──
+  const scrollSourceRef = useRef<'editor' | 'preview' | null>(null);
+  const scrollResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (viewMode !== 'split' || activeTab?.fileType !== 'text') return;
+
+    const scrollDOM = editorRef.current?.getScrollDOM();
+    const previewDOM = prevBodyRef.current;
+    if (!scrollDOM || !previewDOM) return;
+
+    function resetScrollSource() {
+      if (scrollResetTimer.current) clearTimeout(scrollResetTimer.current);
+      scrollResetTimer.current = setTimeout(() => {
+        scrollSourceRef.current = null;
+      }, 150);
+    }
+
+    function handleEditorScroll() {
+      if (scrollSourceRef.current === 'preview') return;
+      scrollSourceRef.current = 'editor';
+      resetScrollSource();
+
+      const view = editorRef.current?.getView();
+      if (!view || !previewDOM) return;
+
+      const topBlock = view.lineBlockAtHeight(scrollDOM!.scrollTop);
+      const topLine = view.state.doc.lineAt(topBlock.from).number;
+
+      const anchors = previewDOM.querySelectorAll<HTMLElement>('[data-source-line]');
+      if (anchors.length === 0) return;
+
+      let lo = 0, hi = anchors.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (parseInt(anchors[mid].dataset.sourceLine!) <= topLine) lo = mid;
+        else hi = mid - 1;
+      }
+
+      const anchorEl = anchors[lo];
+      const anchorLine = parseInt(anchorEl.dataset.sourceLine!);
+
+      if (lo + 1 < anchors.length) {
+        const nextEl = anchors[lo + 1];
+        const nextLine = parseInt(nextEl.dataset.sourceLine!);
+        const progress = nextLine > anchorLine
+          ? (topLine - anchorLine) / (nextLine - anchorLine)
+          : 0;
+        const anchorTop = anchorEl.offsetTop;
+        const nextTop = nextEl.offsetTop;
+        previewDOM.scrollTop = anchorTop + (nextTop - anchorTop) * progress;
+      } else {
+        previewDOM.scrollTop = anchorEl.offsetTop;
+      }
+    }
+
+    function handlePreviewScroll() {
+      if (scrollSourceRef.current === 'editor') return;
+      scrollSourceRef.current = 'preview';
+      resetScrollSource();
+
+      const view = editorRef.current?.getView();
+      if (!view || !previewDOM) return;
+
+      const scrollTop = previewDOM.scrollTop;
+      const anchors = previewDOM.querySelectorAll<HTMLElement>('[data-source-line]');
+      if (anchors.length === 0) return;
+
+      let target: HTMLElement | null = null;
+      for (const anchor of anchors) {
+        if (anchor.offsetTop <= scrollTop + 10) target = anchor;
+        else break;
+      }
+      if (!target) target = anchors[0];
+
+      const targetLine = parseInt(target.dataset.sourceLine!);
+      const lineCount = view.state.doc.lines;
+      if (targetLine < 1 || targetLine > lineCount) return;
+
+      const lineInfo = view.state.doc.line(targetLine);
+      const block = view.lineBlockAt(lineInfo.from);
+      scrollDOM!.scrollTop = block.top;
+    }
+
+    let editorRaf = 0;
+    let previewRaf = 0;
+
+    const onEditorScroll = () => {
+      cancelAnimationFrame(editorRaf);
+      editorRaf = requestAnimationFrame(handleEditorScroll);
+    };
+    const onPreviewScroll = () => {
+      cancelAnimationFrame(previewRaf);
+      previewRaf = requestAnimationFrame(handlePreviewScroll);
+    };
+
+    scrollDOM.addEventListener('scroll', onEditorScroll, { passive: true });
+    previewDOM.addEventListener('scroll', onPreviewScroll, { passive: true });
+
+    return () => {
+      scrollDOM.removeEventListener('scroll', onEditorScroll);
+      previewDOM.removeEventListener('scroll', onPreviewScroll);
+      cancelAnimationFrame(editorRaf);
+      cancelAnimationFrame(previewRaf);
+      if (scrollResetTimer.current) clearTimeout(scrollResetTimer.current);
+    };
+  }, [viewMode, activeTab?.fileType, activeTabId]);
+
   const scrollToHeading = useCallback((headingText: string) => {
     // Scroll preview pane to the heading
     const container = prevBodyRef.current;
@@ -407,59 +493,6 @@ export function WorkArea() {
     if (view) hideSlashMenu(view);
   }, [getView]);
 
-  // Toolbar actions
-  const toolbarAction = useCallback((action: string) => {
-    const view = getView();
-    if (!view) return;
-
-    switch (action) {
-      case 'h1': insertLinePrefix(view, '# '); break;
-      case 'h2': insertLinePrefix(view, '## '); break;
-      case 'h3': insertLinePrefix(view, '### '); break;
-      case 'bold': wrapSelection(view, '**', '**'); break;
-      case 'italic': wrapSelection(view, '*', '*'); break;
-      case 'strike': wrapSelection(view, '~~', '~~'); break;
-      case 'link': wrapSelection(view, '[', '](url)'); break;
-      case 'image': insertLinePrefix(view, '![alt](url)'); break;
-      case 'code': wrapSelection(view, '`', '`'); break;
-      case 'quote': insertLinePrefix(view, '> '); break;
-      case 'ul': insertLinePrefix(view, '- '); break;
-      case 'ol': insertLinePrefix(view, '1. '); break;
-      case 'task': insertLinePrefix(view, '- [ ] '); break;
-      case 'hr': {
-        const pos = view.state.selection.main.head;
-        const line = view.state.doc.lineAt(pos);
-        view.dispatch({
-          changes: { from: line.from, to: line.from, insert: '---\n' },
-          selection: { anchor: line.from + 4 },
-        });
-        view.focus();
-        break;
-      }
-      case 'codeblock': {
-        const pos = view.state.selection.main.head;
-        const line = view.state.doc.lineAt(pos);
-        const block = '```\n\n```';
-        view.dispatch({
-          changes: { from: line.from, to: line.to, insert: block },
-          selection: { anchor: line.from + 4 },
-        });
-        view.focus();
-        break;
-      }
-      case 'table': {
-        const pos = view.state.selection.main.head;
-        const line = view.state.doc.lineAt(pos);
-        const table = '| 列1 | 列2 | 列3 |\n| --- | --- | --- |\n| 内容 | 内容 | 内容 |';
-        view.dispatch({
-          changes: { from: line.from, to: line.to, insert: table },
-          selection: { anchor: line.from + 2 },
-        });
-        view.focus();
-        break;
-      }
-    }
-  }, [getView]);
 
   return (
     <div className="work-area" ref={splitContainerRef}>
@@ -492,33 +525,9 @@ export function WorkArea() {
       {/* Content area: editor + resizer + preview / image viewer */}
       <div className="work-area-content">
 
-      {/* Editor pane */}
+      {/* Editor pane (CodeMirror) */}
       {activeTab?.fileType !== 'image' && activeTab?.fileType !== 'web' && (activeTab?.fileType === 'code' || viewMode === 'split' || viewMode === 'edit') && (
         <div className="pane-src" style={activeTab?.fileType === 'text' && viewMode === 'split' ? { flex: editorFlex } : undefined}>
-          {/* Markdown toolbar — only for markdown files */}
-          {activeTab?.fileType === 'text' && (
-          <div className="ed-tb">
-            <button className="etb-btn" onClick={() => toolbarAction('h1')} data-tip="一级标题">H1</button>
-            <button className="etb-btn" onClick={() => toolbarAction('h2')} data-tip="二级标题">H2</button>
-            <button className="etb-btn" onClick={() => toolbarAction('h3')} data-tip="三级标题">H3</button>
-            <span className="etb-div" />
-            <button className="etb-btn" onClick={() => toolbarAction('bold')} data-tip="加粗"><b>B</b></button>
-            <button className="etb-btn" onClick={() => toolbarAction('italic')} data-tip="斜体"><i>I</i></button>
-            <button className="etb-btn" onClick={() => toolbarAction('strike')} data-tip="删除线"><s>S</s></button>
-            <span className="etb-div" />
-            <button className="etb-btn" onClick={() => toolbarAction('quote')} data-tip="引用">❝</button>
-            <button className="etb-btn" onClick={() => toolbarAction('ul')} data-tip="无序列表">⁃</button>
-            <button className="etb-btn" onClick={() => toolbarAction('ol')} data-tip="有序列表">1.</button>
-            <button className="etb-btn etb-icon" onClick={() => toolbarAction('task')} data-tip="任务列表">☑</button>
-            <span className="etb-div" />
-            <button className="etb-btn" onClick={() => toolbarAction('link')} data-tip="链接">🔗</button>
-            <button className="etb-btn" onClick={() => toolbarAction('image')} data-tip="图片">🖼</button>
-            <button className="etb-btn" onClick={() => toolbarAction('code')} data-tip="行内代码">{'</>'}</button>
-            <button className="etb-btn" onClick={() => toolbarAction('codeblock')} data-tip="代码块">{'{ }'}</button>
-            <button className="etb-btn etb-icon" onClick={() => toolbarAction('table')} data-tip="表格">▦</button>
-            <button className="etb-btn" onClick={() => toolbarAction('hr')} data-tip="分割线">―</button>
-          </div>
-          )}
           <div className="ed-body">
             {isFileLoading && (
               <div className="ed-loading-overlay">

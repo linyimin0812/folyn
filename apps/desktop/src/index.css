@@ -475,9 +475,9 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
 .cm-wrapper .cm-gutters { background: var(--surf); border-right: none !important; color: var(--t3); }
 .cm-wrapper .cm-lineNumbers .cm-gutterElement { padding: 0 2px 0 8px !important; }
 .cm-wrapper .cm-activeLineGutter { background: var(--surf2) !important; }
-.cm-wrapper .cm-activeLine { background: var(--surf2) !important; }
-.cm-wrapper .cm-content ::selection { background: rgba(58,110,240,.3) !important; color: inherit; }
-[data-theme="light"] .cm-wrapper .cm-content ::selection { background: rgba(58,110,240,.25) !important; color: inherit; }
+.cm-wrapper .cm-activeLine { background: transparent !important; }
+.cm-wrapper .cm-selectionBackground { background: #b3d4fc !important; }
+[data-theme="dark"] .cm-wrapper .cm-selectionBackground { background: #3a5da8 !important; }
 .cm-wrapper .cm-cursor { border-left-color: var(--acc); }
 .cm-wrapper .cm-foldGutter { width: 12px; }
 .cm-wrapper .cm-foldGutter .cm-gutterElement { padding: 0 !important; }
@@ -1581,3 +1581,4 @@ textarea.fi2 { resize: vertical; line-height: 1.5; }
 .auth-msg.error {
   background: rgba(217,64,64,.08); color: var(--red);
 }
+

@@ -10,6 +10,7 @@ import rehypeRaw from 'rehype-raw';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
+import { rehypeSourceLine } from './rehypeSourceLine';
 import { ContainerRegistry, registerBuiltinPlugins } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
 import { getSidecarOrigin, isTauri } from '@/utils/platform';
@@ -280,6 +281,7 @@ export function MarkdownPreview({ content, currentFilePath, vaultRoot }: Markdow
         .use(rehypeRaw)
         .use(rehypeHighlight, { ignoreMissing: true } as any)
         .use(rehypeRemoveCodeBreaks)
+        .use(rehypeSourceLine)
         .use(rehypeReact, {
           jsx,
           jsxs,

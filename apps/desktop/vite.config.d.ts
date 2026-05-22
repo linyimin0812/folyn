@@ -1,3 +1,3 @@
-declare const _default: import("vite").UserConfig & Promise<import("vite").UserConfig> & import("vite").UserConfigFnObject & import("vite").UserConfigFnPromise & import("vite").UserConfigFn;
+declare const _default: import("vite").UserConfigFnObject;
 export default _default;
 //# sourceMappingURL=vite.config.d.ts.map

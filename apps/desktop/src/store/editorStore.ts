@@ -345,8 +345,9 @@ export const useEditorStore = create<EditorState>()(
 );
 
 /** Load persisted viewMode from backend on startup */
-storageClient.get<ViewMode>(EDITOR_STORAGE_KEY).then((saved) => {
-  if (saved) {
-    useEditorStore.setState({ viewMode: saved });
+const VALID_VIEW_MODES: ViewMode[] = ['split', 'edit', 'preview'];
+storageClient.get<string>(EDITOR_STORAGE_KEY).then((saved) => {
+  if (saved && VALID_VIEW_MODES.includes(saved as ViewMode)) {
+    useEditorStore.setState({ viewMode: saved as ViewMode });
   }
 });
