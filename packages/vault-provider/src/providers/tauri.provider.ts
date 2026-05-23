@@ -30,7 +30,12 @@ export class TauriVaultProvider extends BaseVaultProvider {
 
   async connect(config: VaultConfig): Promise<void> {
     await super.connect(config);
-    this.basePath = config.basePath.replace(/^~/, await this.getHome());
+    let base = config.basePath;
+    if (base.startsWith('~')) {
+      const home = (await this.getHome()).replace(/\/+$/, '');
+      base = home + base.slice(1);
+    }
+    this.basePath = base.replace(/\/+$/, '');
 
     const dirExists = await exists(this.basePath);
     if (!dirExists) {
