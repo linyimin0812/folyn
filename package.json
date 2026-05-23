@@ -5,17 +5,12 @@
   "description": "Quill — AI-enhanced local-first Markdown editor",
   "scripts": {
     "dev": "pnpm --filter @quill/desktop dev",
-    "dev:api": "pnpm --filter @quill/api dev",
-    "dev:all": "concurrently \"pnpm dev:api\" \"pnpm dev\"",
     "build": "pnpm --filter @quill/desktop build",
-    "build:api": "pnpm --filter @quill/api build",
-    "build:sidecar": "bash apps/api/scripts/build-sidecar.sh",
-    "build:app": "pnpm build:sidecar && cd apps/desktop && pnpm tauri build && bash ../../apps/api/scripts/inject-sidecar.sh",
+    "build:app": "cd apps/desktop && pnpm tauri build",
     "lint": "pnpm -r lint",
     "clean": "pnpm -r clean"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0",
     "typescript": "^5.7.0"
   },
   "engines": {

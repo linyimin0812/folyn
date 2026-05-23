@@ -4,20 +4,16 @@ import { Sidebar } from './components/sidebar/Sidebar';
 import { WorkArea } from './components/shell/WorkArea';
 import { StatusBar } from './components/shell/StatusBar';
 import { AiPanel } from './components/ai/AiPanel';
-import { LockScreen } from './components/auth/LockScreen';
 
 import { SettingsPage } from './components/pages/SettingsPage';
 import { VaultPage } from './components/pages/VaultPage';
 import { useTheme } from './hooks/useTheme';
-import { useSidecar } from './hooks/useSidecar';
 import { useSettingsStore } from './store/settingsStore';
 import { useVaultStore } from './store/vaultStore';
 import { useEditorStore } from './store/editorStore';
 import { registerBuiltinPlugins } from '@quill/container-plugins';
-import { checkAuthStatus, getAuthToken, setAuthToken, getApiRoot } from './utils/authToken';
 import { isTauri } from './utils/platform';
 
-// Register all built-in container plugins at app startup
 registerBuiltinPlugins();
 
 /** Hook to detect mobile viewport */
@@ -37,7 +33,6 @@ function useIsMobile(breakpoint = 768) {
 
 export default function App() {
   useTheme();
-  useSidecar();
 
   const isMobile = useIsMobile();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -55,67 +50,18 @@ export default function App() {
   const showStatusBar = useSettingsStore((state) => state.showStatusBar);
   const fontSize = useSettingsStore((state) => state.fontSize);
 
-  // ── Auth: check if password protection is enabled ──
-  const [authState, setAuthState] = useState<'checking' | 'locked' | 'unlocked'>('checking');
-  const locked = authState === 'locked';
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function checkAuth() {
-      try {
-        const status = await checkAuthStatus();
-        if (cancelled) return;
-
-        if (!status.enabled || !status.hasToken) {
-          setAuthState('unlocked');
-          return;
-        }
-
-        const existingToken = getAuthToken();
-        if (!existingToken) {
-          setAuthState('locked');
-          return;
-        }
-
-        const response = await fetch(`${getApiRoot()}/auth/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: existingToken }),
-        });
-
-        if (!cancelled) {
-          setAuthState(response.ok ? 'unlocked' : 'locked');
-        }
-      } catch {
-        if (!cancelled) setAuthState('locked');
-      }
-    }
-
-    checkAuth();
-    return () => { cancelled = true; };
-  }, []);
-
-  const handleUnlock = useCallback((token: string) => {
-    setAuthToken(token);
-    setAuthState('unlocked');
-  }, []);
-
-  // ── Vault initialization: wait until auth is resolved ──
+  // ── Vault initialization ──
   const vaultInitialized = useRef(false);
 
   useEffect(() => {
-    if (authState !== 'unlocked') return;
     if (vaultInitialized.current) return;
     vaultInitialized.current = true;
 
     const initializeVault = async () => {
       await useVaultStore.getState().initVault();
 
-      // Restore previously opened tabs from last session
       await useEditorStore.getState().restoreOpenTabs();
 
-      // If no tabs were restored, open the first file as fallback
       const { fileTree } = useVaultStore.getState();
       const { tabs } = useEditorStore.getState();
       if (tabs.length === 0 && fileTree.length > 0) {
@@ -126,7 +72,7 @@ export default function App() {
       }
     };
     initializeVault();
-  }, [authState]);
+  }, []);
 
   // ── Hide all native webviews when leaving the editor page ──
   useEffect(() => {
@@ -153,18 +99,11 @@ export default function App() {
   }, []);
 
   return (
-    <div className={`shell ${locked ? 'locked' : ''}`} style={{ '--ui-font-size': `${fontSize}px` } as any}>
-      {locked && (
-        <LockScreen
-          apiBase={getApiRoot()}
-          onUnlock={handleUnlock}
-        />
-      )}
+    <div className="shell" style={{ '--ui-font-size': `${fontSize}px` } as any}>
       <Topbar isMobile={isMobile} onToggleSidebar={toggleMobileSidebar} />
 
       {currentPage === 'editor' && (
         <div className="body-row">
-          {/* Mobile: overlay sidebar drawer */}
           {isMobile && mobileSidebarOpen && (
             <div className="mobile-sidebar-overlay" onClick={closeMobileSidebar} />
           )}

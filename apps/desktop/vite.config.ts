@@ -42,12 +42,7 @@ export default defineConfig(() => {
       hmr: host
         ? { protocol: 'ws', host, port: 1421 }
         : undefined,
-      proxy: {
-        '/quill/api': {
-          target: 'http://localhost:3001',
-          changeOrigin: true,
-        },
-      },
+      proxy: {},
       watch: {
         ignored: ['**/src-tauri/**'],
       },

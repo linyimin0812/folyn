@@ -19,9 +19,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "binaries/quill-api-bundle/**/*"
-    ]
+    "resources": []
   },
   "app": {
     "windows": [
@@ -36,7 +34,14 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": {
+          "allow": ["$HOME/**", "$APPDATA/**"],
+          "deny": []
+        }
+      }
     }
   },
   "plugins": {

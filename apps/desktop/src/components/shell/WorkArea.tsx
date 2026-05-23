@@ -10,13 +10,30 @@ import { ImagePasteDialog, type ImageSaveConfig } from '../editor/ImagePasteDial
 import { hideSlashMenu, type SlashMenuState } from '@/editor/extensions/SlashCommandPlugin';
 import { type CodeBlockMenuState } from '@/editor/extensions/CodeBlockExtension';
 import { getStrategy, fileToBase64, convertImageFormat } from '@/utils/imageUploader';
-import { getSidecarOrigin, isTauri } from '@/utils/platform';
+import { isTauri } from '@/utils/platform';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import type { ContainerPlugin } from '@quill/container-plugins';
 import { EditorView } from '@codemirror/view';
 
 type WebviewErrorCode = 'dns' | 'refused' | 'timeout' | 'http' | 'invalid_url' | 'blocked' | 'unknown';
 type WebviewError = { code: WebviewErrorCode; status?: number };
 type WebviewTabStatus = 'loading' | 'ready' | { error: WebviewError };
+
+function ImageFromVault({ path, vaultRoot, alt }: { path: string; vaultRoot: string; alt: string }) {
+  const [src, setSrc] = useState('');
+  useEffect(() => {
+    import('@tauri-apps/api/path').then(({ homeDir, join }) => {
+      const resolvedRoot = vaultRoot.startsWith('~')
+        ? homeDir().then((h) => join(h, vaultRoot.slice(2)))
+        : Promise.resolve(vaultRoot);
+      resolvedRoot.then((root) => join(root, path)).then((absPath) => {
+        setSrc(convertFileSrc(absPath));
+      });
+    });
+  }, [path, vaultRoot]);
+  if (!src) return null;
+  return <img src={src} alt={alt} />;
+}
 
 interface HeadingItem {
   level: number;
@@ -637,16 +654,7 @@ export function WorkArea() {
       {activeTab?.fileType === 'image' && (
         <div className="image-viewer">
           <div className="image-viewer-inner">
-            <img
-              src={(() => {
-                const imagePath = activeTab.path;
-                const apiBase = getSidecarOrigin();
-                let url = `${apiBase}/quill/api/vault/image?path=${encodeURIComponent(imagePath)}`;
-                if (vaultRoot) url += `&root=${encodeURIComponent(vaultRoot)}`;
-                return url;
-              })()}
-              alt={activeTab.name}
-            />
+            <ImageFromVault path={activeTab.path} vaultRoot={vaultRoot} alt={activeTab.name} />
             <div className="image-viewer-info">
               <span>📄 {activeTab.path}</span>
             </div>

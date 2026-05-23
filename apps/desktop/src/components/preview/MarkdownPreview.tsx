@@ -13,7 +13,8 @@ import { jsx, jsxs } from 'react/jsx-runtime';
 import { rehypeSourceLine } from './rehypeSourceLine';
 import { ContainerRegistry, registerBuiltinPlugins } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
-import { getSidecarOrigin, isTauri } from '@/utils/platform';
+import { isTauri } from '@/utils/platform';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useEditorStore } from '@/store/editorStore';
 /**
@@ -201,6 +202,18 @@ interface MarkdownPreviewProps {
 
 export function MarkdownPreview({ content, currentFilePath, vaultRoot }: MarkdownPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [resolvedVaultRoot, setResolvedVaultRoot] = useState('');
+
+  useEffect(() => {
+    if (!vaultRoot) return;
+    import('@tauri-apps/api/path').then(({ homeDir, join }) => {
+      if (vaultRoot.startsWith('~')) {
+        homeDir().then((h) => join(h, vaultRoot.slice(2))).then(setResolvedVaultRoot);
+      } else {
+        setResolvedVaultRoot(vaultRoot);
+      }
+    });
+  }, [vaultRoot]);
 
   const componentMap = useMemo(() => {
     const map = buildComponentMap();
@@ -242,30 +255,34 @@ export function MarkdownPreview({ content, currentFilePath, vaultRoot }: Markdow
       return createElement('a', { href, ...rest }, children);
     };
 
-    // Custom img component: resolve vault-relative paths to backend API URLs
+    // Custom img component: resolve paths relative to the current document's directory
     map['img'] = function VaultImage(props: any) {
       const { src, alt, node, ...rest } = props;
-      // External URLs and data URIs pass through unchanged
       if (!src || src.startsWith('http') || src.startsWith('data:')) {
         return createElement('img', { src, alt, ...rest });
       }
-      // Strip leading ./ — the path is already relative to vault root
-      // Decode first in case the path is already URL-encoded (e.g. from HTML img tags)
       const rawPath = src.replace(/^\.\//, '');
       const imagePath = decodeURIComponent(rawPath);
-      const apiBase = getSidecarOrigin();
-      let imageUrl = `${apiBase}/quill/api/vault/image?path=${encodeURIComponent(imagePath)}`;
-      if (vaultRoot) {
-        imageUrl += `&root=${encodeURIComponent(vaultRoot)}`;
+      if (resolvedVaultRoot) {
+        // Resolve relative to the current file's directory, not vault root
+        const fileDir = currentFilePath
+          ? currentFilePath.substring(0, currentFilePath.lastIndexOf('/'))
+          : '';
+        const basePath = fileDir
+          ? resolvedVaultRoot + '/' + fileDir
+          : resolvedVaultRoot;
+        const absPath = basePath + '/' + imagePath;
+        const imageUrl = convertFileSrc(absPath);
+        return createElement('img', { src: imageUrl, alt, loading: 'lazy', ...rest });
       }
-      return createElement('img', { src: imageUrl, alt, loading: 'lazy', ...rest });
+      return createElement('img', { src, alt, loading: 'lazy', ...rest });
     };
 
     // Custom pre component: wrap code blocks with line numbers + copy button via React
     map['pre'] = CodeBlockWrapper;
 
     return map;
-  }, [currentFilePath, vaultRoot]);
+  }, [currentFilePath, vaultRoot, resolvedVaultRoot]);
 
   const { meta, body } = useMemo(() => parseFrontmatter(content), [content]);
 

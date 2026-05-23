@@ -3,7 +3,7 @@ import { storageClient } from '@/utils/storageClient';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type AppPage = 'editor' | 'vault' | 'settings';
-export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'llm' | 'prompt' | 'security' | 'about';
+export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'llm' | 'prompt' | 'about';
 export type LlmProvider = 'anthropic' | 'openai' | 'google' | 'xai' | 'mistral' | 'groq' | 'openrouter' | 'local';
 export type LinkOpenMode = 'external' | 'internal';
 
@@ -26,7 +26,6 @@ interface SettingsState {
   theme: Theme;
   currentPage: AppPage;
   settingsTab: SettingsTab;
-  sidecarReady: boolean;
   vaultName: string;
 
   // Appearance
@@ -90,7 +89,6 @@ interface SettingsState {
   setSettingsTab: (tab: SettingsTab) => void;
   setFontSize: (size: number) => void;
   setLineHeight: (height: number) => void;
-  setSidecarReady: (ready: boolean) => void;
   setVaultName: (name: string) => void;
   updateSettings: (partial: Partial<SettingsState>) => void;
   updateShortcut: (id: string, keys: string[]) => void;
@@ -128,7 +126,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   theme: 'light',
   currentPage: 'editor',
   settingsTab: 'appearance',
-  sidecarReady: false,
   vaultName: 'my-vault',
 
   // Appearance
@@ -213,7 +210,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ lineHeight: height });
     debouncedPersist(useSettingsStore.getState());
   },
-  setSidecarReady: (ready) => set({ sidecarReady: ready }),
   setVaultName: (name) => {
     set({ vaultName: name });
     debouncedPersist(useSettingsStore.getState());

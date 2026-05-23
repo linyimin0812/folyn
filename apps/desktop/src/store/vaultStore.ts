@@ -7,7 +7,6 @@ import {
 } from '@quill/vault-provider';
 import { useSettingsStore } from './settingsStore';
 import { storageClient } from '@/utils/storageClient';
-import { getSidecarOrigin } from '@/utils/platform';
 
 /** Generate a short unique ID */
 function generateId(): string {
@@ -101,25 +100,7 @@ export const useVaultStore = create<VaultState>()(
         error: null,
 
         initVault: async () => {
-          // Wait for backend API to be ready (sidecar may take a few seconds to start)
-          const apiBase = getSidecarOrigin();
-          const maxRetries = 15;
-          for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-              const response = await fetch(`${apiBase}/quill/api/storage/health`, { method: 'GET' });
-              if (response.ok || response.status === 404) break; // 404 is fine — endpoint exists, server is up
-            } catch {
-              // Server not ready yet
-            }
-            if (attempt === maxRetries) {
-              console.warn('[VaultStore] Backend API not reachable after retries. Continuing anyway.');
-              break;
-            }
-            console.info(`[VaultStore] Waiting for backend API... (attempt ${attempt}/${maxRetries})`);
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-          }
-
-          // Load vault configs from backend DB
+          // Load vault configs from local storage
           const saved = await storageClient.get<{ vaults: VaultConfig[]; activeVaultId: string | null }>(STORAGE_KEY);
           if (saved && saved.vaults.length > 0) {
             set({ vaults: saved.vaults, activeVaultId: saved.activeVaultId });
@@ -150,7 +131,7 @@ export const useVaultStore = create<VaultState>()(
           try {
             await get().addVault({
               name: 'default',
-              providerType: 'server',
+              providerType: 'tauri',
               basePath: '~/quill/default_vault',
             });
           } catch (err) {

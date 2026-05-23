@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSettingsStore, type SettingsTab, type LlmProvider } from '@/store/settingsStore';
-import { getApiRoot, authHeaders } from '@/utils/authToken';
 
 const MODELS: Record<string, { name: string; sub: string; tag: string; cls: string }[]> = {
   anthropic: [
@@ -121,9 +120,6 @@ const NAV_GROUPS = [
     { id: 'llm' as SettingsTab, icon: '✦', name: 'LLM 配置' },
     { id: 'prompt' as SettingsTab, icon: '💬', name: '提示词' },
   ]},
-  { label: '安全', items: [
-    { id: 'security' as SettingsTab, icon: '🔒', name: '访问密码' },
-  ]},
   { label: '关于', items: [
     { id: 'about' as SettingsTab, icon: 'ℹ️', name: '关于 Quill' },
   ]},
@@ -195,77 +191,6 @@ export function SettingsPage() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [testStatus, setTestStatus] = useState<{ testing: boolean; result?: { success: boolean; message: string } }>({ testing: false });
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
-
-  // Security tab state
-  const [authEnabled, setAuthEnabled] = useState(false);
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authPassword, setAuthPassword] = useState('');
-  const [authConfirm, setAuthConfirm] = useState('');
-  const [authMessage, setAuthMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [showAuthPassword, setShowAuthPassword] = useState(false);
-  const authFetched = useRef(false);
-
-  useEffect(() => {
-    if (authFetched.current) return;
-    authFetched.current = true;
-    fetch(`${getApiRoot()}/auth/status`)
-      .then((response) => response.json())
-      .then((data: { enabled: boolean }) => setAuthEnabled(data.enabled))
-      .catch(() => {});
-  }, []);
-
-  const handleSavePassword = useCallback(async () => {
-    if (!authPassword.trim()) {
-      setAuthMessage({ type: 'error', text: '密码不能为空' });
-      return;
-    }
-    if (authPassword !== authConfirm) {
-      setAuthMessage({ type: 'error', text: '两次输入的密码不一致' });
-      return;
-    }
-    setAuthLoading(true);
-    setAuthMessage(null);
-    try {
-      const response = await fetch(`${getApiRoot()}/auth/set-token`, {
-        method: 'POST',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ token: authPassword, enabled: true }),
-      });
-      if (response.ok) {
-        setAuthEnabled(true);
-        setAuthPassword('');
-        setAuthConfirm('');
-        setAuthMessage({ type: 'success', text: '访问密码已设置，下次打开时需要输入密码' });
-      } else {
-        setAuthMessage({ type: 'error', text: '设置失败，请重试' });
-      }
-    } catch {
-      setAuthMessage({ type: 'error', text: '无法连接到服务器' });
-    } finally {
-      setAuthLoading(false);
-    }
-  }, [authPassword, authConfirm]);
-
-  const handleDisableAuth = useCallback(async () => {
-    setAuthLoading(true);
-    setAuthMessage(null);
-    try {
-      const response = await fetch(`${getApiRoot()}/auth/disable`, {
-        method: 'POST',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
-      });
-      if (response.ok) {
-        setAuthEnabled(false);
-        setAuthMessage({ type: 'success', text: '访问密码已关闭' });
-      } else {
-        setAuthMessage({ type: 'error', text: '操作失败，请重试' });
-      }
-    } catch {
-      setAuthMessage({ type: 'error', text: '无法连接到服务器' });
-    } finally {
-      setAuthLoading(false);
-    }
-  }, []);
 
   return (
     <div className="settings-page">
@@ -527,118 +452,6 @@ export function SettingsPage() {
             <div className="tr"><div className="tr-info"><h4>保留对话上下文</h4><p>AI 对话在同一文档内保持记忆</p></div><Toggle value={store.keepContext} onChange={(v) => updateSettings({ keepContext: v })} /></div>
             <div className="tr"><div className="tr-info"><h4>自动发送文档内容</h4><p>每次对话自动附带当前文档全文</p></div><Toggle value={store.autoSendDoc} onChange={(v) => updateSettings({ autoSendDoc: v })} /></div>
             <button className="btn btn-p btn-sm" style={{ marginTop: 10 }}>保存提示词</button>
-          </div>
-        )}
-
-        {/* ── 安全 ── */}
-        {settingsTab === 'security' && (
-          <div className="ss-sec">
-            <div className="ss-title">访问密码</div>
-            <div className="ss-desc">设置访问密码后，打开应用时需要输入密码才能查看文档内容</div>
-
-            <div className="tr" style={{ marginBottom: 16 }}>
-              <div className="tr-info">
-                <h4>启用密码保护</h4>
-                <p>{authEnabled ? '已启用 — 打开应用时需要输入密码' : '未启用 — 任何人都可以查看文档'}</p>
-              </div>
-              <div
-                className={`sw2 ${authEnabled ? 'on' : ''}`}
-                style={{ opacity: authLoading ? 0.5 : 1, cursor: authLoading ? 'not-allowed' : 'pointer' }}
-                onClick={() => {
-                  if (authLoading) return;
-                  if (authEnabled) {
-                    handleDisableAuth();
-                  } else {
-                    // Turning on requires setting a password first — just focus the password input
-                    setAuthMessage({ type: 'error', text: '请先设置密码后再启用' });
-                  }
-                }}
-              >
-                <div className="sw2-t" />
-              </div>
-            </div>
-
-            <div className="auth-form-card">
-              <div className="auth-form-title">{authEnabled ? '修改密码' : '设置密码'}</div>
-
-              <div className="auth-field">
-                <label className="auth-label">新密码</label>
-                <div className="auth-input-wrap">
-                  <svg className="auth-input-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                  <input
-                    type={showAuthPassword ? 'text' : 'password'}
-                    className="auth-input"
-                    placeholder="输入新密码"
-                    value={authPassword}
-                    onChange={(event) => setAuthPassword(event.target.value)}
-                    autoCapitalize="off"
-                  />
-                  <button className="auth-eye-btn" onClick={() => setShowAuthPassword((v) => !v)} title={showAuthPassword ? '隐藏密码' : '显示密码'}>
-                    {showAuthPassword ? (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-                        <line x1="1" y1="1" x2="23" y2="23" />
-                      </svg>
-                    ) : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="auth-field">
-                <label className="auth-label">确认密码</label>
-                <div className="auth-input-wrap">
-                  <svg className="auth-input-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  <input
-                    type={showAuthPassword ? 'text' : 'password'}
-                    className="auth-input"
-                    placeholder="再次输入密码"
-                    value={authConfirm}
-                    onChange={(event) => setAuthConfirm(event.target.value)}
-                    autoCapitalize="off"
-                  />
-                  {authConfirm && authPassword === authConfirm && (
-                    <span className="auth-match-icon">✓</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="auth-actions">
-                <button
-                  className="btn btn-p btn-sm"
-                  onClick={handleSavePassword}
-                  disabled={authLoading || !authPassword.trim()}
-                >
-                  {authLoading ? '保存中...' : (authEnabled ? '更新密码' : '设置并启用')}
-                </button>
-                {authEnabled && (
-                  <button
-                    className="btn btn-g btn-sm"
-                    onClick={handleDisableAuth}
-                    disabled={authLoading}
-                    style={{ color: 'var(--red)' }}
-                  >
-                    关闭密码保护
-                  </button>
-                )}
-              </div>
-
-              {authMessage && (
-                <div className={`auth-msg ${authMessage.type}`}>
-                  {authMessage.type === 'success' ? '✓ ' : '✕ '}{authMessage.text}
-                </div>
-              )}
-            </div>
           </div>
         )}
 

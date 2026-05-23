@@ -1,5 +1,5 @@
 /** Provider type identifier */
-export type ProviderType = 'server' | 'github' | 'webdav' | 's3' | 'custom';
+export type ProviderType = 'tauri' | 'github' | 'webdav' | 's3' | 'custom';
 
 /** Brand type to prevent path misuse across providers */
 export type VaultPath<T extends ProviderType = ProviderType> = string & { __brand: T };

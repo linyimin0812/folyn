@@ -47,47 +47,37 @@ export interface ImageUploadStrategy {
 
 // ─── Helpers ────────────────────────────────────────────
 
-import { getSidecarOrigin } from './platform';
-
-function getApiBase(): string {
-  return getSidecarOrigin();
-}
+import { writeFile, mkdir } from '@tauri-apps/plugin-fs';
+import { convertFileSrc } from '@tauri-apps/api/core';
 
 // ─── Local Server Strategy ──────────────────────────────
 
-class LocalServerStrategy implements ImageUploadStrategy {
+class LocalFileStrategy implements ImageUploadStrategy {
   readonly name: UploadTarget = 'local';
-  readonly label = '本地服务器';
+  readonly label = '本地文件';
   readonly icon = '📁';
   readonly enabled = true;
 
   async upload(imageBase64: string, config: ImageUploadConfig, vaultRoot: string): Promise<ImageUploadResult> {
     const localConfig = config as LocalUploadConfig;
-    const fullPath = `${localConfig.directory}/${localConfig.fileName}.${localConfig.format}`;
-    const apiBase = getApiBase();
+    const relativePath = `${localConfig.directory}/${localConfig.fileName}.${localConfig.format}`;
 
-    const response = await fetch(`${apiBase}/quill/api/vault/upload`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-vault-root': vaultRoot,
-      },
-      body: JSON.stringify({
-        path: fullPath,
-        base64: imageBase64,
-        mimeType: `image/${localConfig.format}`,
-      }),
-    });
+    const { homeDir, join } = await import('@tauri-apps/api/path');
+    const resolvedRoot = vaultRoot.startsWith('~')
+      ? await join(await homeDir(), vaultRoot.slice(2))
+      : vaultRoot;
+    const absPath = await join(resolvedRoot, relativePath);
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`上传失败: ${errorBody}`);
-    }
+    const parentDir = absPath.substring(0, absPath.lastIndexOf('/'));
+    await mkdir(parentDir, { recursive: true });
+
+    const bytes = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
+    await writeFile(absPath, bytes);
 
     return {
-      markdownUrl: `./${fullPath}`,
-      previewUrl: `${apiBase}/quill/api/vault/image?path=${encodeURIComponent(fullPath)}&root=${encodeURIComponent(vaultRoot)}`,
-      fileSize: Math.ceil(imageBase64.length * 0.75),
+      markdownUrl: `./${relativePath}`,
+      previewUrl: convertFileSrc(absPath),
+      fileSize: bytes.length,
     };
   }
 }
@@ -121,7 +111,7 @@ class CdnStrategy implements ImageUploadStrategy {
 // ─── Registry ───────────────────────────────────────────
 
 const uploadStrategies: ImageUploadStrategy[] = [
-  new LocalServerStrategy(),
+  new LocalFileStrategy(),
   new OssStrategy(),
   new CdnStrategy(),
 ];

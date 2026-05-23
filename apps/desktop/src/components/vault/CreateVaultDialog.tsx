@@ -7,13 +7,13 @@ interface CreateVaultDialogProps {
 }
 
 const PROVIDER_OPTIONS: { value: VaultConfig['providerType']; label: string; desc: string }[] = [
-  { value: 'server', label: '🖥 服务器存储', desc: '通过 API 读写服务器端文件' },
+  { value: 'tauri', label: '📂 本地文件', desc: '直接操作本地文件系统' },
 ];
 
 export function CreateVaultDialog({ onClose }: CreateVaultDialogProps) {
   const addVault = useVaultStore((s) => s.addVault);
   const [name, setName] = useState('');
-  const [providerType, setProviderType] = useState<VaultConfig['providerType']>('server');
+  const [providerType, setProviderType] = useState<VaultConfig['providerType']>('tauri');
   const [basePath, setBasePath] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');

@@ -12,15 +12,12 @@ export function StatusBar() {
   const cursorLine = useEditorStore((state) => state.cursorLine);
   const cursorCol = useEditorStore((state) => state.cursorCol);
   const wordCount = useEditorStore((state) => state.wordCount);
-  const sidecarReady = useSettingsStore((state) => state.sidecarReady);
   const vaultName = useSettingsStore((state) => state.vaultName);
 
   return (
     <footer className="status-bar">
       <div className="sb-left">
-        <span className="sb-ai">
-          ✦ {sidecarReady ? 'AI 就绪' : 'AI 连接中...'}
-        </span>
+        <span className="sb-ai">✦ AI 就绪</span>
         <span className="sb-vault">{vaultName}</span>
       </div>
       <div className="sb-right">

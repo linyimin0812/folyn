@@ -16,7 +16,7 @@ import { jsx, jsxs } from 'react/jsx-runtime';
 import { ContainerRegistry, registerBuiltinPlugins } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
 import html2pdf from 'html2pdf.js';
-import { getSidecarOrigin } from '@/utils/platform';
+import { readFile } from '@tauri-apps/plugin-fs';
 
 // Ensure built-in plugins are registered once
 registerBuiltinPlugins();
@@ -31,9 +31,12 @@ export function hasContainerSyntax(content: string): boolean {
   return CONTAINER_SYNTAX_REGEX.test(content);
 }
 
-/** Build the API base URL for image references */
-function getImageApiBase(): string {
-  return getSidecarOrigin();
+/** Resolve vault root path (expand ~) */
+async function resolveVaultRoot(vaultRoot: string): Promise<string> {
+  if (!vaultRoot.startsWith('~')) return vaultRoot;
+  const { homeDir, join } = await import('@tauri-apps/api/path');
+  const home = await homeDir();
+  return await join(home, vaultRoot.slice(2));
 }
 
 /**
@@ -41,7 +44,7 @@ function getImageApiBase(): string {
  * This is the same approach used in MarkdownPreview.tsx so that export
  * output is identical to the in-app preview.
  */
-function buildExportComponentMap(vaultRoot: string): Record<string, React.ComponentType<any>> {
+function buildExportComponentMap(): Record<string, React.ComponentType<any>> {
   const registry = ContainerRegistry.getInstance();
   const componentMap: Record<string, React.ComponentType<any>> = {};
 
@@ -60,7 +63,7 @@ function buildExportComponentMap(vaultRoot: string): Record<string, React.Compon
     };
   }
 
-  // Custom img component: resolve vault-relative paths to backend API URLs
+  // Custom img component: use a vault-file:// marker that inlineImages will resolve
   componentMap['img'] = function ExportImage(props: any) {
     const { src, alt, node, ...rest } = props;
     if (!src || src.startsWith('http') || src.startsWith('data:')) {
@@ -68,9 +71,7 @@ function buildExportComponentMap(vaultRoot: string): Record<string, React.Compon
     }
     const rawPath = src.replace(/^\.\//, '');
     const imagePath = decodeURIComponent(rawPath);
-    const apiBase = getImageApiBase();
-    let imageUrl = `${apiBase}/quill/api/vault/image?path=${encodeURIComponent(imagePath)}`;
-    if (vaultRoot) imageUrl += `&root=${encodeURIComponent(vaultRoot)}`;
+    const imageUrl = `vault-file://${imagePath}`;
     return createElement('img', { src: imageUrl, alt, ...rest });
   };
 
@@ -78,8 +79,8 @@ function buildExportComponentMap(vaultRoot: string): Record<string, React.Compon
 }
 
 /** Render markdown to HTML string via unified pipeline + React SSR */
-function renderMarkdownToHtml(markdown: string, vaultRoot: string): string {
-  const componentMap = buildExportComponentMap(vaultRoot);
+function renderMarkdownToHtml(markdown: string, _vaultRoot?: string): string {
+  const componentMap = buildExportComponentMap();
 
   const result = unified()
     .use(remarkParse)
@@ -104,59 +105,55 @@ function renderMarkdownToHtml(markdown: string, vaultRoot: string): string {
 }
 
 /**
- * Fetch an image from a URL and return it as a base64 data URL.
- * Returns the original URL if the fetch fails.
+ * Read a local image file and return it as a base64 data URL.
  */
-async function fetchImageAsDataUrl(imageUrl: string): Promise<string> {
+async function readImageAsDataUrl(filePath: string): Promise<string> {
   try {
-    const response = await fetch(imageUrl);
-    if (!response.ok) return imageUrl;
-    const blob = await response.blob();
-    return new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(imageUrl);
-      reader.readAsDataURL(blob);
-    });
+    const bytes = await readFile(filePath);
+    const ext = filePath.split('.').pop()?.toLowerCase() ?? 'png';
+    const mimeMap: Record<string, string> = {
+      png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+      gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp',
+    };
+    const mime = mimeMap[ext] || 'image/png';
+    const binary = Array.from(bytes).map((b) => String.fromCharCode(b)).join('');
+    const base64 = btoa(binary);
+    return `data:${mime};base64,${base64}`;
   } catch {
-    return imageUrl;
+    return '';
   }
 }
 
 /**
- * Replace all image src attributes that point to the vault API
- * with base64 data URLs so the exported HTML is fully self-contained.
- *
- * Handles both absolute URLs (http://localhost:3001/quill/api/vault/image?...)
- * and relative paths (/quill/api/vault/image?...).
- * Also handles &amp; escaping from renderToStaticMarkup.
+ * Replace all vault-file:// image references with base64 data URLs
+ * so the exported HTML is fully self-contained.
+ * Image paths are resolved relative to the current document's directory.
  */
-async function inlineImages(html: string): Promise<string> {
-  // Match src values pointing to vault image API (absolute or relative)
-  const imgRegex = /<img\s[^>]*?src="((?:http:\/\/localhost:\d+)?\/quill\/api\/vault\/image\?[^"]+?)"[^>]*?\/?>/gi;
+async function inlineImages(html: string, vaultRoot: string, currentFilePath?: string): Promise<string> {
+  const imgRegex = /<img\s[^>]*?src="vault-file:\/\/([^"]+?)"[^>]*?\/?>/gi;
   const matches = [...html.matchAll(imgRegex)];
   if (matches.length === 0) return html;
 
-  // Deduplicate URLs (same image may appear multiple times)
-  const uniqueUrls = [...new Set(matches.map((m) => m[1]))];
-  const apiBase = getImageApiBase();
+  const resolvedRoot = await resolveVaultRoot(vaultRoot);
+  const fileDir = currentFilePath
+    ? currentFilePath.substring(0, currentFilePath.lastIndexOf('/'))
+    : '';
+  const uniquePaths = [...new Set(matches.map((m) => m[1]))];
 
+  const { join } = await import('@tauri-apps/api/path');
   const replacements = await Promise.all(
-    uniqueUrls.map(async (escapedUrl) => {
-      // Unescape &amp; → & for the actual fetch request
-      let fetchUrl = escapedUrl.replace(/&amp;/g, '&');
-      // If it's a relative path, prepend the API base (or current origin)
-      if (fetchUrl.startsWith('/')) {
-        fetchUrl = apiBase ? `${apiBase}${fetchUrl}` : `${window.location.origin}${fetchUrl}`;
-      }
-      const dataUrl = await fetchImageAsDataUrl(fetchUrl);
-      return { original: escapedUrl, dataUrl };
+    uniquePaths.map(async (relativePath) => {
+      const decoded = decodeURIComponent(relativePath.replace(/&amp;/g, '&'));
+      const basePath = fileDir ? await join(resolvedRoot, fileDir) : resolvedRoot;
+      const absPath = await join(basePath, decoded);
+      const dataUrl = await readImageAsDataUrl(absPath);
+      return { original: `vault-file://${relativePath}`, dataUrl };
     }),
   );
 
   let result = html;
   for (const { original, dataUrl } of replacements) {
-    result = result.replaceAll(original, dataUrl);
+    if (dataUrl) result = result.replaceAll(original, dataUrl);
   }
   return result;
 }
@@ -276,7 +273,7 @@ export function useExport() {
 
   const getActiveContent = useCallback(() => {
     const tab = tabs.find((t) => t.id === activeTabId);
-    return { name: tab?.name ?? 'untitled.md', content: tab?.content ?? '' };
+    return { name: tab?.name ?? 'untitled.md', content: tab?.content ?? '', path: tab?.path ?? '' };
   }, [tabs, activeTabId]);
 
   const exportMarkdown = useCallback(() => {
@@ -286,9 +283,9 @@ export function useExport() {
   }, [getActiveContent]);
 
   const exportHtml = useCallback(async () => {
-    const { name, content } = getActiveContent();
-    const renderedBody = renderMarkdownToHtml(content, vaultRoot);
-    const inlinedBody = await inlineImages(renderedBody);
+    const { name, content, path } = getActiveContent();
+    const renderedBody = renderMarkdownToHtml(content);
+    const inlinedBody = await inlineImages(renderedBody, vaultRoot, path);
     const htmlContent = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -306,8 +303,8 @@ ${inlinedBody}
   }, [getActiveContent, vaultRoot]);
 
   const exportPdf = useCallback(async () => {
-    const { name, content } = getActiveContent();
-    const renderedBody = await inlineImages(renderMarkdownToHtml(content, vaultRoot));
+    const { name, content, path } = getActiveContent();
+    const renderedBody = await inlineImages(renderMarkdownToHtml(content), vaultRoot, path);
     const pdfTitle = name.replace(/\.md$/, '');
 
     // Create an off-screen container that reuses the same HTML_STYLES as

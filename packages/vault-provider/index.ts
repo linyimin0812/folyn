@@ -16,4 +16,4 @@ export { VaultError } from './src/types';
 export { VaultProviderRegistry } from './src/registry';
 export type { VaultProviderDescriptor } from './src/registry';
 export { VaultManager } from './src/vault.manager';
-export { ServerVaultProvider } from './src/providers/server.provider';
+export { TauriVaultProvider } from './src/providers/tauri.provider';

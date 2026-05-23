@@ -1,6 +1,6 @@
 import type { VaultProvider } from './provider.interface';
 import type { ProviderType, VaultConfig } from './types';
-import { ServerVaultProvider } from './providers/server.provider';
+import { TauriVaultProvider } from './providers/tauri.provider';
 
 /** Descriptor for registering a provider factory */
 export interface VaultProviderDescriptor {
@@ -57,11 +57,12 @@ export class VaultProviderRegistry {
   /** Register built-in providers */
   private registerBuiltins(): void {
     this.register({
-      type: 'server',
-      displayName: '服务器存储',
-      icon: '🖥',
-      description: '通过 API 读写服务器端文件系统',
-      factory: () => new ServerVaultProvider(),
+      type: 'tauri',
+      displayName: '本地文件',
+      icon: '📂',
+      description: '直接操作本地文件系统',
+      factory: () => new TauriVaultProvider(),
     });
+
   }
 }
