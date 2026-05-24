@@ -87,10 +87,9 @@ export class TauriVaultProvider extends BaseVaultProvider {
 
   async listFiles(path: string, recursive?: boolean, showHidden?: boolean): Promise<VaultEntry[]> {
     const fullPath = await this.resolve(path);
-    const dirExists = await exists(fullPath);
-    if (!dirExists) return [];
-
     try {
+      const dirExists = await exists(fullPath);
+      if (!dirExists) return [];
       const entries = await readDir(fullPath);
       const result: VaultEntry[] = [];
 
@@ -107,7 +106,11 @@ export class TauriVaultProvider extends BaseVaultProvider {
             type: 'dir',
           };
           if (recursive) {
-            dirEntry.children = await this.listFiles(entryPath, true, showHidden);
+            try {
+              dirEntry.children = await this.listFiles(entryPath, true, showHidden);
+            } catch {
+              dirEntry.children = [];
+            }
           }
           result.push(dirEntry);
         } else if (entry.isFile) {
@@ -137,7 +140,7 @@ export class TauriVaultProvider extends BaseVaultProvider {
 
       return result;
     } catch (err) {
-      throw new VaultError('NOT_FOUND', `Cannot list: ${path}`);
+      throw new VaultError('NOT_FOUND', `Cannot list: ${path} (${err})`);
     }
   }
 

@@ -1,5 +1,21 @@
-import { useState } from 'react';
+import { useState, Component, type ReactNode } from 'react';
 import type { ToolCallInfo } from '@quill/cli-adapter';
+
+class ToolCallErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) return <pre className="tc-code">[渲染出错]</pre>;
+    return this.props.children;
+  }
+}
+
+function safeText(str: unknown, maxLen: number): string {
+  if (!str) return '';
+  const s = typeof str === 'string' ? str : JSON.stringify(str);
+  const safe = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+  return safe.length > maxLen ? safe.slice(0, maxLen) + '\n...(已截断)' : safe;
+}
 
 function getToolSummary(tc: ToolCallInfo): string {
   if (!tc.input) return '';
@@ -36,20 +52,26 @@ function ToolCallItem({ tc }: { tc: ToolCallInfo }) {
         </span>
       </div>
       {expanded && (
-        <div className="tc-details">
-          {tc.input && (
-            <div className="tc-section">
-              <div className="tc-section-label">Input</div>
-              <pre className="tc-code">{JSON.stringify(tc.input, null, 2)}</pre>
-            </div>
-          )}
-          {tc.output && (
-            <div className="tc-section">
-              <div className="tc-section-label">Output</div>
-              <pre className="tc-code">{tc.output.length > 2000 ? tc.output.slice(0, 2000) + '\n...' : tc.output}</pre>
-            </div>
-          )}
-        </div>
+        <ToolCallErrorBoundary>
+          <div className="tc-details">
+            {tc.input && (
+              <div className="tc-section">
+                <div className="tc-section-label">Input</div>
+                <pre className="tc-code">{(() => {
+                  try {
+                    return safeText(JSON.stringify(tc.input, null, 2), 1000);
+                  } catch { return '[无法显示]'; }
+                })()}</pre>
+              </div>
+            )}
+            {tc.output && (
+              <div className="tc-section">
+                <div className="tc-section-label">Output</div>
+                <pre className="tc-code">{safeText(tc.output, 500)}</pre>
+              </div>
+            )}
+          </div>
+        </ToolCallErrorBoundary>
       )}
     </div>
   );

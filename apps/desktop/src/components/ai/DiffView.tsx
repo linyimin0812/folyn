@@ -112,11 +112,11 @@ function DiffCard({ change, onAccept, onReject }: {
         </div>
         {isPending && (
           <div className="diff-actions">
-            <button className="diff-btn diff-btn-accept" onClick={(e) => { e.stopPropagation(); onAccept(); }} title="接受修改">
-              ✓
+            <button className="diff-btn diff-btn-reject" onClick={(e) => { e.stopPropagation(); onReject(); }} title="撤销修改">
+              Undo
             </button>
-            <button className="diff-btn diff-btn-reject" onClick={(e) => { e.stopPropagation(); onReject(); }} title="拒绝修改">
-              ✗
+            <button className="diff-btn diff-btn-accept" onClick={(e) => { e.stopPropagation(); onAccept(); }} title="保留修改">
+              Keep
             </button>
           </div>
         )}
@@ -155,11 +155,11 @@ export function DiffView({ changes, onAccept, onReject, onAcceptAll, onRejectAll
     <div className="diff-view">
       {pendingChanges.length > 1 && (
         <div className="diff-bulk-actions">
-          <button className="diff-btn diff-btn-accept-all" onClick={onAcceptAll}>
-            ✓ 全部接受
-          </button>
           <button className="diff-btn diff-btn-reject-all" onClick={onRejectAll}>
-            ✗ 全部拒绝
+            Undo All
+          </button>
+          <button className="diff-btn diff-btn-accept-all" onClick={onAcceptAll}>
+            Keep All
           </button>
           <span className="diff-pending-count">{pendingChanges.length} 个文件待审查</span>
         </div>

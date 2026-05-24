@@ -1,11 +1,11 @@
 import { create } from 'zustand';
-import type { CliMessage, FileChange, ToolCallInfo } from '@quill/cli-adapter';
+import type { CliMessage, FileChange, ToolCallInfo, MessageAttachment } from '@quill/cli-adapter';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { useVaultStore } from './vaultStore';
 import { useEditorStore } from './editorStore';
 import { storageClient } from '@/utils/storageClient';
 
-export type { CliMessage, FileChange, ToolCallInfo };
+export type { CliMessage, FileChange, ToolCallInfo, MessageAttachment };
 
 export interface AiSession {
   id: string;
@@ -28,7 +28,7 @@ interface AiState {
   deleteSession: (id: string) => void;
 
   // Session-scoped message actions (target specific session, not just active)
-  addMessage: (role: 'user' | 'assistant', content: string, sessionId?: string) => void;
+  addMessage: (role: 'user' | 'assistant', content: string, sessionId?: string, attachments?: MessageAttachment[]) => void;
   appendToLastMessage: (token: string, sessionId?: string) => void;
   appendThinking: (token: string, sessionId?: string) => void;
   addToolCall: (id: string, name: string, input?: Record<string, unknown>, sessionId?: string) => void;
@@ -104,10 +104,10 @@ export const useAiStore = create<AiState>((set, get) => ({
     persistAiState();
   },
 
-  addMessage: (role, content, sessionId?) => {
+  addMessage: (role, content, sessionId?, attachments?) => {
     const targetId = sessionId || get().activeSessionId;
     if (!targetId) return;
-    const msg: CliMessage = { id: generateId(), role, content, timestamp: Date.now() };
+    const msg: CliMessage = { id: generateId(), role, content, timestamp: Date.now(), ...(attachments?.length ? { attachments } : {}) };
     set((state) => ({
       sessions: updateSession(state.sessions, targetId, (s) => {
         const updated = { ...s, messages: [...s.messages, msg], updatedAt: Date.now() };
@@ -170,6 +170,7 @@ export const useAiStore = create<AiState>((set, get) => ({
   completeToolCall: (id, output, sessionId?) => {
     const targetId = sessionId || get().activeSessionId;
     if (!targetId) return;
+    const safeOutput = output && output.length > 5000 ? output.slice(0, 5000) + '\n...(输出已截断)' : output;
     set((state) => ({
       sessions: updateSession(state.sessions, targetId, (s) => {
         const msgs = [...s.messages];
@@ -178,7 +179,7 @@ export const useAiStore = create<AiState>((set, get) => ({
           msgs[msgs.length - 1] = {
             ...last,
             toolCalls: (last.toolCalls || []).map((tc) =>
-              tc.id === id ? { ...tc, status: 'done' as const, output } : tc,
+              tc.id === id ? { ...tc, status: 'done' as const, output: safeOutput } : tc,
             ),
           };
         }

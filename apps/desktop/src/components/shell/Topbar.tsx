@@ -99,8 +99,8 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
 
         <div className="top-div" />
 
-        <button className="tb-btn" onClick={toggleAiPanel} title="AI 面板">
-          ✦
+        <button className="tb-btn tb-ai-btn" onClick={toggleAiPanel} title="AI 面板">
+          AI
         </button>
         <ExportMenu />
         <button className="tb-btn" onClick={toggleTheme} title="切换主题">

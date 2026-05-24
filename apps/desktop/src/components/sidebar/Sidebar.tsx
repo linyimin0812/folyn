@@ -21,6 +21,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
   const tabs = useEditorStore((state) => state.tabs);
 
   const fileTree = useVaultStore((state) => state.fileTree);
+  const vaultError = useVaultStore((state) => state.error);
   const vaultCreateFile = useVaultStore((state) => state.createFile);
   const vaultCreateDir = useVaultStore((state) => state.createDir);
   const vaultDeleteFile = useVaultStore((state) => state.deleteFile);
@@ -193,6 +194,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
 
   const closeTab = useEditorStore((state) => state.closeTab);
 
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; type: 'file' | 'dir' } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ path: string; type: 'file' | 'dir'; name: string } | null>(null);
 
   const confirmDelete = useCallback(async () => {
@@ -221,6 +223,25 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
     const itemName = itemPath.includes('/') ? itemPath.substring(itemPath.lastIndexOf('/') + 1) : itemPath;
     setDeleteConfirm({ path: itemPath, type: itemType, name: itemName });
   }, []);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, path: string, name: string, type: 'file' | 'dir') => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, path, name, type });
+  }, []);
+
+  const copyToClipboard = useCallback((text: string) => {
+    navigator.clipboard.writeText(text);
+    setContextMenu(null);
+  }, []);
+
+  // Close context menu on click outside
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [contextMenu]);
 
   // Drag resize
   const handleMouseDown = useCallback(() => {
@@ -316,6 +337,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
                 className="ft-item ft-dir"
                 style={{ paddingLeft: `${12 + depth * 14}px` }}
                 onClick={() => handleToggleDir(item.path)}
+                onContextMenu={(e) => handleContextMenu(e, item.path, item.name, 'dir')}
               >
                 <span className="ft-icon">{isExpanded ? '▾' : '▸'}</span>
                 {isRenaming ? (
@@ -381,6 +403,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
             className={`ft-item ft-file ${isActive ? 'on' : ''}`}
             style={{ paddingLeft: `${12 + depth * 14}px` }}
             onClick={() => !isRenaming && handleFileClick(item.path, item.name)}
+            onContextMenu={(e) => handleContextMenu(e, item.path, item.name, 'file')}
           >
             <span className="ft-icon">📄</span>
             {isRenaming ? (
@@ -518,7 +541,17 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
         )}
 
         {/* File tree */}
-        <div className="sb-body" ref={fileTreeRef}>{renderFileTree(fileTree)}</div>
+        <div className="sb-body" ref={fileTreeRef}>
+          {renderFileTree(fileTree)}
+          {fileTree.length === 0 && !newItemType && (
+            <div className="sb-empty">
+              {vaultError
+                ? <span className="sb-empty-err">{vaultError}</span>
+                : <span className="sb-empty-hint">暂无文件</span>
+              }
+            </div>
+          )}
+        </div>
 
         {/* Settings button at bottom */}
         <div className="sb-footer">
@@ -549,6 +582,36 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
                 <button className="delete-confirm-btn danger" onClick={confirmDelete}>删除</button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Context menu */}
+        {contextMenu && (
+          <div
+            className="ft-context-menu"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <button className="ft-ctx-item" onClick={() => { copyToClipboard(contextMenu.path); }}>
+              复制相对路径
+            </button>
+            <button className="ft-ctx-item" onClick={() => {
+              const vault = useVaultStore.getState().currentVault;
+              const base = vault?.basePath || '';
+              copyToClipboard(base.startsWith('~') ? `${base}/${contextMenu.path}` : `${base}/${contextMenu.path}`);
+            }}>
+              复制绝对路径
+            </button>
+            <button className="ft-ctx-item" onClick={() => { copyToClipboard(contextMenu.name); }}>
+              复制文件名
+            </button>
+            <div className="ft-ctx-divider" />
+            <button className="ft-ctx-item" onClick={() => { setContextMenu(null); startRename(contextMenu.path, contextMenu.name); }}>
+              重命名
+            </button>
+            <button className="ft-ctx-item ft-ctx-danger" onClick={() => { setContextMenu(null); deleteItem(contextMenu.path, contextMenu.type); }}>
+              删除
+            </button>
           </div>
         )}
       </aside>

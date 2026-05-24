@@ -121,7 +121,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   showAiPanel: true,
   showStatusBar: true,
   showHiddenFiles: true,
-  excludePatterns: 'node_modules\n.git\n.DS_Store\ndist\n.next',
+  excludePatterns: 'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp',
 
   // Editor
   editorFont: 'DM Mono',

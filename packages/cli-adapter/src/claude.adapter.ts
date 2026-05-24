@@ -19,12 +19,14 @@ interface ClaudeStreamMessage {
 export class ClaudeAdapter extends BaseCliAdapter {
   readonly id = 'claude';
   readonly displayName = 'Claude Code';
+  readonly description = 'Anthropic 官方 CLI 工具，支持对话式编辑与多工具调用';
 
   private sessionId: string | null = null;
   private running = false;
   private lineBuffer = '';
   private pendingFileContents = new Map<string, string>();
   private runningToolIds: string[] = [];
+  private childProcess: Awaited<ReturnType<ReturnType<typeof Command.create>['spawn']>> | null = null;
 
   isRunning(): boolean {
     return this.running;
@@ -36,7 +38,10 @@ export class ClaudeAdapter extends BaseCliAdapter {
 
   async stop(): Promise<void> {
     this.running = false;
-    this.sessionId = null;
+    if (this.childProcess) {
+      await this.childProcess.kill();
+      this.childProcess = null;
+    }
   }
 
   async send(prompt: string, options?: CliSendOptions): Promise<void> {
@@ -79,23 +84,23 @@ export class ClaudeAdapter extends BaseCliAdapter {
         this.emit({ type: 'error', content: trimmed });
       });
 
-      const child = await command.spawn();
+      this.childProcess = await command.spawn();
 
       await new Promise<void>((resolve) => {
         command.on('close', () => {
           this.running = false;
+          this.childProcess = null;
           this.emit({ type: 'done' });
           resolve();
         });
         command.on('error', (err: string) => {
           this.running = false;
+          this.childProcess = null;
           this.emit({ type: 'error', content: err });
           this.emit({ type: 'done' });
           resolve();
         });
       });
-
-      void child;
     } catch (err) {
       this.running = false;
       this.emit({ type: 'error', content: String(err) });

@@ -228,18 +228,46 @@ export function SettingsPage() {
           <div className="ss-sec">
             <div className="ss-title">AI 工具</div>
             <div className="ss-desc">配置 AI CLI 工具，用于智能编辑文档</div>
-            <div className="fr">
-              <div className="fl">CLI 适配器</div>
-              <select className="fsel" style={{ maxWidth: 280 }} value={store.cliAdapter} onChange={(e) => updateSettings({ cliAdapter: e.target.value })}>
-                {CliAdapterRegistry.getInstance().getAll().map((a) => (
-                  <option key={a.id} value={a.id}>{a.displayName}</option>
-                ))}
-              </select>
+            <div className="fl" style={{ marginBottom: 8 }}>CLI 适配器</div>
+            <div className="ml">
+              {CliAdapterRegistry.getInstance().getAll().map((a) => (
+                <div
+                  key={a.id}
+                  className={`mi ${store.cliAdapter === a.id ? 'on' : ''}`}
+                  onClick={() => updateSettings({ cliAdapter: a.id })}
+                >
+                  <div className="mi-l">
+                    <div className="mi-dot" />
+                    <div>
+                      <div className="mi-nm">{a.displayName}</div>
+                      <div className="mi-sub">{a.description}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="fr">
+            <div className="fr" style={{ marginTop: 16 }}>
               <div className="fl">CLI 路径</div>
-              <input className="fi2" value={store.cliPath} onChange={(e) => updateSettings({ cliPath: e.target.value })} placeholder="claude" autoCapitalize="off" />
-              <div className="fh">CLI 可执行文件的路径或命令名，如 claude、/usr/local/bin/claude</div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <input className="fi2" style={{ flex: 1 }} value={store.cliPath} onChange={(e) => updateSettings({ cliPath: e.target.value })} placeholder="claude" autoCapitalize="off" />
+                <button
+                  className="btn btn-g btn-sm"
+                  title="自动检测路径"
+                  onClick={async () => {
+                    try {
+                      const { Command } = await import('@tauri-apps/plugin-shell');
+                      const adapterCmd = store.cliAdapter === 'claude' ? 'claude' : store.cliAdapter;
+                      const cmd = Command.create('claude-cli', ['-l', '-c', `which ${adapterCmd}`]);
+                      const output = await cmd.execute();
+                      const detected = output.stdout.trim().split('\n')[0];
+                      if (output.code === 0 && detected) {
+                        updateSettings({ cliPath: detected });
+                      }
+                    } catch {}
+                  }}
+                >检测</button>
+              </div>
+              <div className="fh">CLI 可执行文件的路径或命令名，点击"检测"自动查找</div>
             </div>
             <div style={{ display: 'flex', gap: 7, alignItems: 'center', marginTop: 8 }}>
               <button

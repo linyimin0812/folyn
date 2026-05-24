@@ -3,6 +3,7 @@ import type { CliAdapter, CliAdapterConfig, CliEventHandler, CliSendOptions, Cli
 export abstract class BaseCliAdapter implements CliAdapter {
   abstract readonly id: string;
   abstract readonly displayName: string;
+  abstract readonly description: string;
 
   protected handlers: CliEventHandler[] = [];
   protected config: CliAdapterConfig | null = null;

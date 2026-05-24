@@ -2,9 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useVaultStore } from '@/store/vaultStore';
-import { useAiStore } from '@/store/aiStore';
 import { QuillEditor, type QuillEditorHandle } from '@/editor/EditorView';
-import { setDiffCallbacks, getDiffCallbacks } from '@/editor/extensions/InlineDiffExtension';
 import { MarkdownPreview } from '../preview/MarkdownPreview';
 import { SlashMenu } from '../editor/SlashMenu';
 import { CodeBlockLangMenu } from '../editor/CodeBlockLangMenu';
@@ -96,35 +94,6 @@ export function WorkArea() {
     if (!activeTab || !editorRef.current) return;
     editorRef.current.replaceContent(activeTab.content);
   }, [externalContentVersion]);
-
-  // Dispatch inline diffs to the editor for the active file
-  const aiSessions = useAiStore((s) => s.sessions);
-
-  const pendingDiffs = (() => {
-    if (!activeTab) return [];
-    const result: import('@quill/cli-adapter').FileChange[] = [];
-    for (const session of aiSessions) {
-      for (const fc of session.fileChanges) {
-        if (fc.status === 'pending' && fc.path === activeTab.path) {
-          result.push(fc);
-        }
-      }
-    }
-    return result;
-  })();
-
-  useEffect(() => {
-    if (!editorRef.current || !activeTab) return;
-    editorRef.current.setDiffs(pendingDiffs);
-  }, [aiSessions, activeTab?.path]);
-
-  // Register diff accept/reject callbacks
-  useEffect(() => {
-    setDiffCallbacks({
-      onAccept: (path) => useAiStore.getState().acceptChange(path),
-      onReject: (path) => useAiStore.getState().rejectChange(path),
-    });
-  }, []);
 
   // Web viewer: embedded Tauri Webview management
   const webViewerRef = useRef<HTMLDivElement>(null);
@@ -611,24 +580,6 @@ export function WorkArea() {
                 setImagePasteVisible(true);
               }}
             />
-            {/* Floating diff accept/reject toolbar */}
-            {pendingDiffs.length > 0 && (
-              <div className="ai-diff-float-toolbar">
-                <span className="ai-diff-float-info">{pendingDiffs[0].path}</span>
-                <button
-                  className="ai-diff-float-btn ai-diff-float-accept"
-                  onClick={() => getDiffCallbacks()?.onAccept(pendingDiffs[0].path)}
-                >
-                  ✓ 接受
-                </button>
-                <button
-                  className="ai-diff-float-btn ai-diff-float-reject"
-                  onClick={() => getDiffCallbacks()?.onReject(pendingDiffs[0].path)}
-                >
-                  ✗ 拒绝
-                </button>
-              </div>
-            )}
             {/* Slash command menu */}
             <SlashMenu
               visible={slashMenu.visible}
