@@ -12,6 +12,28 @@
     "core:webview:allow-set-webview-size",
     "core:webview:allow-webview-close",
     "shell:allow-open",
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "claude-cli",
+          "cmd": "/bin/sh",
+          "args": true
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "claude-cli",
+          "cmd": "/bin/sh",
+          "args": true
+        }
+      ]
+    },
+    "shell:allow-stdin-write",
+    "shell:allow-kill",
     "dialog:default",
     "fs:default",
     "fs:allow-read",

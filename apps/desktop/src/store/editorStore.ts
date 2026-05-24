@@ -8,17 +8,19 @@ const AUTO_SAVE_DELAY_MS = 1000;
 
 export type ViewMode = 'split' | 'edit' | 'preview';
 
-export type FileType = 'text' | 'image' | 'pdf' | 'code' | 'web';
+export type FileType = 'text' | 'image' | 'pdf' | 'code' | 'web' | 'html';
 
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico']);
 const PDF_EXTENSIONS = new Set(['pdf']);
 const MARKDOWN_EXTENSIONS = new Set(['md', 'markdown', 'mdx']);
+const HTML_EXTENSIONS = new Set(['html', 'htm']);
 
 export function detectFileType(filePath: string): FileType {
   const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
   if (IMAGE_EXTENSIONS.has(ext)) return 'image';
   if (PDF_EXTENSIONS.has(ext)) return 'pdf';
   if (MARKDOWN_EXTENSIONS.has(ext)) return 'text';
+  if (HTML_EXTENSIONS.has(ext)) return 'html';
   return 'code';
 }
 
@@ -53,6 +55,8 @@ interface EditorState {
   wordCount: number;
   /** Whether a file is currently being loaded */
   isFileLoading: boolean;
+  /** Version counter incremented when content is set externally (not from editor typing) */
+  externalContentVersion: number;
 
   // Actions
   setViewMode: (mode: ViewMode) => void;
@@ -66,6 +70,8 @@ interface EditorState {
   setCursorPosition: (line: number, col: number) => void;
   setWordCount: (count: number) => void;
 
+  /** Set tab content from an external source (triggers editor sync) */
+  setContentExternal: (tabId: string, content: string) => void;
   /** Update a web tab's URL and title after in-page navigation */
   updateWebTabUrl: (tabId: string, url: string, title: string) => void;
   /** Open a web URL in a new tab */
@@ -123,6 +129,7 @@ export const useEditorStore = create<EditorState>()(
       cursorCol: 1,
       wordCount: 0,
       isFileLoading: false,
+      externalContentVersion: 0,
 
       setViewMode: (mode) => {
         set({ viewMode: mode });
@@ -162,6 +169,25 @@ export const useEditorStore = create<EditorState>()(
         }));
 
         // Debounced auto-save
+        const existing = autoSaveTimers.get(tabId);
+        if (existing) clearTimeout(existing);
+        autoSaveTimers.set(
+          tabId,
+          setTimeout(() => {
+            autoSaveTimers.delete(tabId);
+            get().saveFile(tabId);
+          }, AUTO_SAVE_DELAY_MS),
+        );
+      },
+
+      setContentExternal: (tabId, content) => {
+        set((state) => ({
+          tabs: state.tabs.map((t) =>
+            t.id === tabId ? { ...t, content, isDirty: true } : t,
+          ),
+          externalContentVersion: state.externalContentVersion + 1,
+        }));
+
         const existing = autoSaveTimers.get(tabId);
         if (existing) clearTimeout(existing);
         autoSaveTimers.set(
@@ -239,7 +265,7 @@ export const useEditorStore = create<EditorState>()(
         set({ isFileLoading: true });
         try {
           const fileType = detectFileType(filePath);
-          const content = (fileType === 'text' || fileType === 'code') ? await useVaultStore.getState().readFile(filePath) : '';
+          const content = (fileType === 'text' || fileType === 'code' || fileType === 'html') ? await useVaultStore.getState().readFile(filePath) : '';
           const newTab: FileTab = {
             id: tabId,
             name,
@@ -293,7 +319,7 @@ export const useEditorStore = create<EditorState>()(
             if (alreadyOpen) continue;
             try {
               const fileType = detectFileType(tabInfo.path);
-              const content = (fileType === 'text' || fileType === 'code') ? await useVaultStore.getState().readFile(tabInfo.path) : '';
+              const content = (fileType === 'text' || fileType === 'code' || fileType === 'html') ? await useVaultStore.getState().readFile(tabInfo.path) : '';
               const newTab: FileTab = {
                 id: tabId,
                 name: tabInfo.name,

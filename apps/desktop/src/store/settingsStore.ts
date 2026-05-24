@@ -3,8 +3,7 @@ import { storageClient } from '@/utils/storageClient';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type AppPage = 'editor' | 'vault' | 'settings';
-export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'llm' | 'prompt' | 'about';
-export type LlmProvider = 'anthropic' | 'openai' | 'google' | 'xai' | 'mistral' | 'groq' | 'openrouter' | 'local';
+export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'ai' | 'about';
 export type LinkOpenMode = 'external' | 'internal';
 
 export interface ShortcutItem {
@@ -65,22 +64,12 @@ interface SettingsState {
   autoSync: boolean;
   e2eEncrypt: boolean;
 
-  // LLM
-  llmProvider: LlmProvider;
-  llmApiKey: string;
-  llmModel: string;
-  temperature: number;
-  maxTokens: number;
-  ollamaUrl: string;
+  // AI CLI
+  cliAdapter: string;
+  cliPath: string;
 
   // Shortcuts
   shortcuts: ShortcutItem[];
-
-  // Prompt
-  systemPrompt: string;
-  writingStyle: string;
-  keepContext: boolean;
-  autoSendDoc: boolean;
 
   // Actions
   setTheme: (theme: Theme) => void;
@@ -107,17 +96,15 @@ function debouncedPersist(state: Partial<SettingsState>) {
       editorFont, editorFontSize, tabSize, wrapColumn, showLineNumbers,
       syntaxHighlight, autoSave, spellCheck, linkOpenMode, vaultPath, imagePath, docExtension,
       watchFileChanges, trashOnDelete, syncMethod, syncEndpoint, syncAccessKey,
-      syncSecretKey, syncBucket, autoSync, e2eEncrypt, llmProvider, llmApiKey,
-      llmModel, temperature, maxTokens, ollamaUrl, systemPrompt, writingStyle,
-      keepContext, autoSendDoc, vaultName, shortcuts } = state as SettingsState;
+      syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
+      vaultName, shortcuts } = state as SettingsState;
     storageClient.set(SETTINGS_STORAGE_KEY, {
       theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles, excludePatterns,
       editorFont, editorFontSize, tabSize, wrapColumn, showLineNumbers,
       syntaxHighlight, autoSave, spellCheck, linkOpenMode, vaultPath, imagePath, docExtension,
       watchFileChanges, trashOnDelete, syncMethod, syncEndpoint, syncAccessKey,
-      syncSecretKey, syncBucket, autoSync, e2eEncrypt, llmProvider, llmApiKey,
-      llmModel, temperature, maxTokens, ollamaUrl, systemPrompt, writingStyle,
-      keepContext, autoSendDoc, vaultName, shortcuts,
+      syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
+      vaultName, shortcuts,
     });
   }, 300);
 }
@@ -165,22 +152,12 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   autoSync: true,
   e2eEncrypt: false,
 
-  // LLM
-  llmProvider: 'anthropic',
-  llmApiKey: '',
-  llmModel: 'claude-sonnet-4-6',
-  temperature: 0.7,
-  maxTokens: 2048,
-  ollamaUrl: 'http://localhost:11434',
+  // AI CLI
+  cliAdapter: 'claude',
+  cliPath: 'claude',
 
   // Shortcuts
   shortcuts: [...DEFAULT_SHORTCUTS],
-
-  // Prompt
-  systemPrompt: '你是一个专业的技术文档写作助手。帮助用户改进 Markdown 文档的质量，包括语言润色、结构优化和内容扩展。保持专业、简洁的技术写作风格，使用中文回复。',
-  writingStyle: '技术文档',
-  keepContext: true,
-  autoSendDoc: true,
 
   setTheme: (theme) => {
     const actual = theme === 'system'

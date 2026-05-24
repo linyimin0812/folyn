@@ -2,7 +2,9 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useVaultStore } from '@/store/vaultStore';
+import { useAiStore } from '@/store/aiStore';
 import { QuillEditor, type QuillEditorHandle } from '@/editor/EditorView';
+import { setDiffCallbacks, getDiffCallbacks } from '@/editor/extensions/InlineDiffExtension';
 import { MarkdownPreview } from '../preview/MarkdownPreview';
 import { SlashMenu } from '../editor/SlashMenu';
 import { CodeBlockLangMenu } from '../editor/CodeBlockLangMenu';
@@ -63,6 +65,7 @@ export function WorkArea() {
   const updateTabContent = useEditorStore((state) => state.updateTabContent);
   const markTabDirty = useEditorStore((state) => state.markTabDirty);
   const isFileLoading = useEditorStore((state) => state.isFileLoading);
+  const externalContentVersion = useEditorStore((state) => state.externalContentVersion);
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const showLineNumbers = useSettingsStore((s) => s.showLineNumbers);
   const settingsTabSize = useSettingsStore((s) => s.tabSize);
@@ -86,6 +89,42 @@ export function WorkArea() {
   const [imagePasteFile, setImagePasteFile] = useState<File | null>(null);
   const [imagePastePreviewUrl, setImagePastePreviewUrl] = useState('');
   const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
+
+  // Sync external content changes (e.g. AI accept) to the CodeMirror editor
+  useEffect(() => {
+    if (externalContentVersion === 0) return;
+    if (!activeTab || !editorRef.current) return;
+    editorRef.current.replaceContent(activeTab.content);
+  }, [externalContentVersion]);
+
+  // Dispatch inline diffs to the editor for the active file
+  const aiSessions = useAiStore((s) => s.sessions);
+
+  const pendingDiffs = (() => {
+    if (!activeTab) return [];
+    const result: import('@quill/cli-adapter').FileChange[] = [];
+    for (const session of aiSessions) {
+      for (const fc of session.fileChanges) {
+        if (fc.status === 'pending' && fc.path === activeTab.path) {
+          result.push(fc);
+        }
+      }
+    }
+    return result;
+  })();
+
+  useEffect(() => {
+    if (!editorRef.current || !activeTab) return;
+    editorRef.current.setDiffs(pendingDiffs);
+  }, [aiSessions, activeTab?.path]);
+
+  // Register diff accept/reject callbacks
+  useEffect(() => {
+    setDiffCallbacks({
+      onAccept: (path) => useAiStore.getState().acceptChange(path),
+      onReject: (path) => useAiStore.getState().rejectChange(path),
+    });
+  }, []);
 
   // Web viewer: embedded Tauri Webview management
   const webViewerRef = useRef<HTMLDivElement>(null);
@@ -544,7 +583,7 @@ export function WorkArea() {
 
       {/* Editor pane (CodeMirror) */}
       {activeTab?.fileType !== 'image' && activeTab?.fileType !== 'web' && (activeTab?.fileType === 'code' || viewMode === 'split' || viewMode === 'edit') && (
-        <div className="pane-src" style={activeTab?.fileType === 'text' && viewMode === 'split' ? { flex: editorFlex } : undefined}>
+        <div className="pane-src" style={(activeTab?.fileType === 'text' || activeTab?.fileType === 'html') && viewMode === 'split' ? { flex: editorFlex } : undefined}>
           <div className="ed-body">
             {isFileLoading && (
               <div className="ed-loading-overlay">
@@ -572,6 +611,24 @@ export function WorkArea() {
                 setImagePasteVisible(true);
               }}
             />
+            {/* Floating diff accept/reject toolbar */}
+            {pendingDiffs.length > 0 && (
+              <div className="ai-diff-float-toolbar">
+                <span className="ai-diff-float-info">{pendingDiffs[0].path}</span>
+                <button
+                  className="ai-diff-float-btn ai-diff-float-accept"
+                  onClick={() => getDiffCallbacks()?.onAccept(pendingDiffs[0].path)}
+                >
+                  ✓ 接受
+                </button>
+                <button
+                  className="ai-diff-float-btn ai-diff-float-reject"
+                  onClick={() => getDiffCallbacks()?.onReject(pendingDiffs[0].path)}
+                >
+                  ✗ 拒绝
+                </button>
+              </div>
+            )}
             {/* Slash command menu */}
             <SlashMenu
               visible={slashMenu.visible}
@@ -638,8 +695,8 @@ export function WorkArea() {
         </div>
       )}
 
-      {/* Split resizer — only for markdown files */}
-      {activeTab?.fileType === 'text' && viewMode === 'split' && (
+      {/* Split resizer — for markdown and HTML files */}
+      {(activeTab?.fileType === 'text' || activeTab?.fileType === 'html') && viewMode === 'split' && (
         <div
           className="split-resizer"
           onMouseDown={() => {
@@ -805,6 +862,36 @@ export function WorkArea() {
 
         <div ref={webViewerRef} className="web-viewer-body" />
       </div>
+
+      {/* HTML preview pane */}
+      {activeTab?.fileType === 'html' && (viewMode === 'split' || viewMode === 'preview') && (
+        <div className="pane-prev" style={viewMode === 'split' ? { flex: previewFlex } : undefined}>
+          <div className="prev-content-row">
+            <iframe
+              className="html-preview-frame"
+              sandbox="allow-scripts allow-same-origin"
+              srcDoc={activeTab.content}
+              title="HTML Preview"
+              onLoad={(e) => {
+                const iframe = e.currentTarget;
+                const doc = iframe.contentDocument;
+                if (!doc) return;
+                doc.addEventListener('click', (ev) => {
+                  const anchor = (ev.target as HTMLElement).closest('a');
+                  if (!anchor) return;
+                  const href = anchor.getAttribute('href');
+                  if (!href) return;
+                  ev.preventDefault();
+                  if (href.startsWith('#')) {
+                    const target = doc.querySelector(href) || doc.querySelector(`[name="${href.slice(1)}"]`);
+                    target?.scrollIntoView({ behavior: 'smooth' });
+                  }
+                });
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Preview pane — only for markdown files */}
       {activeTab?.fileType === 'text' && (viewMode === 'split' || viewMode === 'preview') && (

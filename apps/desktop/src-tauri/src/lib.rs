@@ -1,5 +1,6 @@
 mod commands;
 
+#[cfg(debug_assertions)]
 use tauri::Manager;
 use tauri::menu::{MenuBuilder, SubmenuBuilder};
 
@@ -44,6 +45,7 @@ pub fn run() {
 
             app.set_menu(menu)?;
 
+            #[cfg(debug_assertions)]
             if let Some(window) = app.get_webview_window("main") {
                 window.open_devtools();
             }

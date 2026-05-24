@@ -1,47 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSettingsStore, type SettingsTab, type LlmProvider } from '@/store/settingsStore';
-
-const MODELS: Record<string, { name: string; sub: string; tag: string; cls: string }[]> = {
-  anthropic: [
-    { name: 'claude-sonnet-4-6', sub: '200k · 推荐', tag: '智能', cls: 'tag-smart' },
-    { name: 'claude-haiku-4-5', sub: '200k · 快速', tag: '快速', cls: 'tag-fast' },
-    { name: 'claude-opus-4-6', sub: '200k · 最强', tag: '最强', cls: 'tag-smart' },
-  ],
-  openai: [
-    { name: 'gpt-4.1', sub: '1M · 推荐', tag: '智能', cls: 'tag-smart' },
-    { name: 'gpt-4.1-mini', sub: '1M · 快速', tag: '快速', cls: 'tag-fast' },
-    { name: 'gpt-4.1-nano', sub: '1M · 极速', tag: '极速', cls: 'tag-fast' },
-    { name: 'o3', sub: '200k · 推理', tag: '推理', cls: 'tag-smart' },
-    { name: 'o4-mini', sub: '200k · 推理', tag: '推理', cls: 'tag-fast' },
-  ],
-  google: [
-    { name: 'gemini-2.5-pro', sub: '1M · 推荐', tag: '智能', cls: 'tag-smart' },
-    { name: 'gemini-2.5-flash', sub: '1M · 快速', tag: '快速', cls: 'tag-fast' },
-    { name: 'gemini-2.0-flash', sub: '1M · 极速', tag: '极速', cls: 'tag-fast' },
-  ],
-  xai: [
-    { name: 'grok-3', sub: '131k · 推荐', tag: '智能', cls: 'tag-smart' },
-    { name: 'grok-3-mini', sub: '131k · 快速', tag: '快速', cls: 'tag-fast' },
-  ],
-  mistral: [
-    { name: 'mistral-large-latest', sub: '128k · 推荐', tag: '智能', cls: 'tag-smart' },
-    { name: 'mistral-medium-latest', sub: '128k · 均衡', tag: '均衡', cls: 'tag-fast' },
-    { name: 'mistral-small-latest', sub: '128k · 快速', tag: '快速', cls: 'tag-fast' },
-    { name: 'codestral-latest', sub: '256k · 代码', tag: '代码', cls: 'tag-smart' },
-  ],
-  groq: [
-    { name: 'llama-3.3-70b-versatile', sub: '128k · 推荐', tag: '快速', cls: 'tag-fast' },
-    { name: 'llama-3.1-8b-instant', sub: '128k · 极速', tag: '极速', cls: 'tag-fast' },
-    { name: 'gemma2-9b-it', sub: '8k · 轻量', tag: '轻量', cls: 'tag-fast' },
-  ],
-  openrouter: [
-    { name: 'anthropic/claude-sonnet-4-6', sub: '200k · 聚合', tag: '智能', cls: 'tag-smart' },
-    { name: 'openai/gpt-4.1', sub: '1M · 聚合', tag: '智能', cls: 'tag-smart' },
-    { name: 'google/gemini-2.5-pro', sub: '1M · 聚合', tag: '智能', cls: 'tag-smart' },
-    { name: 'meta-llama/llama-3.3-70b', sub: '128k · 开源', tag: '开源', cls: 'tag-fast' },
-    { name: 'xiaomi/mimo-v2-omni', sub: '128k · 开源', tag: '开源', cls: 'tag-fast' },
-  ],
-};
+import { useSettingsStore, type SettingsTab } from '@/store/settingsStore';
+import { CliAdapterRegistry } from '@quill/cli-adapter';
 
 /** Map keyboard event key to display symbol */
 function keyToSymbol(key: string): string {
@@ -117,8 +76,7 @@ const NAV_GROUPS = [
     { id: 'shortcuts' as SettingsTab, icon: '⌨️', name: '快捷键' },
   ]},
   { label: 'AI', items: [
-    { id: 'llm' as SettingsTab, icon: '✦', name: 'LLM 配置' },
-    { id: 'prompt' as SettingsTab, icon: '💬', name: '提示词' },
+    { id: 'ai' as SettingsTab, icon: '✦', name: 'AI 工具' },
   ]},
   { label: '关于', items: [
     { id: 'about' as SettingsTab, icon: 'ℹ️', name: '关于 Quill' },
@@ -133,64 +91,11 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
   );
 }
 
-/** Provider API base URLs for connection testing */
-const PROVIDER_TEST_URLS: Record<string, string> = {
-  anthropic: 'https://api.anthropic.com/v1/messages',
-  openai: 'https://api.openai.com/v1/models',
-  google: 'https://generativelanguage.googleapis.com/v1beta/models',
-  xai: 'https://api.x.ai/v1/models',
-  mistral: 'https://api.mistral.ai/v1/models',
-  groq: 'https://api.groq.com/openai/v1/models',
-  openrouter: 'https://openrouter.ai/api/v1/models',
-};
-
-async function testProviderConnection(provider: string, apiKey: string): Promise<{ success: boolean; message: string }> {
-  if (!apiKey.trim()) return { success: false, message: '请先填写 API Key' };
-
-  const url = PROVIDER_TEST_URLS[provider];
-  if (!url) return { success: false, message: '不支持测试该提供商' };
-
-  try {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-
-    if (provider === 'anthropic') {
-      headers['x-api-key'] = apiKey;
-      headers['anthropic-version'] = '2023-06-01';
-      // Anthropic doesn't have a list-models endpoint; send a minimal request
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
-      });
-      if (response.ok || response.status === 200) return { success: true, message: '连接成功 ✓' };
-      if (response.status === 401) return { success: false, message: 'API Key 无效' };
-      return { success: false, message: `请求失败 (${response.status})` };
-    }
-
-    if (provider === 'google') {
-      const response = await fetch(`${url}?key=${apiKey}`);
-      if (response.ok) return { success: true, message: '连接成功 ✓' };
-      if (response.status === 400 || response.status === 403) return { success: false, message: 'API Key 无效' };
-      return { success: false, message: `请求失败 (${response.status})` };
-    }
-
-    // OpenAI-compatible providers (openai, xai, mistral, groq, openrouter)
-    headers['Authorization'] = `Bearer ${apiKey}`;
-    const response = await fetch(url, { headers });
-    if (response.ok) return { success: true, message: '连接成功 ✓' };
-    if (response.status === 401) return { success: false, message: 'API Key 无效' };
-    return { success: false, message: `请求失败 (${response.status})` };
-  } catch {
-    return { success: false, message: '网络错误，无法连接' };
-  }
-}
 
 export function SettingsPage() {
   const store = useSettingsStore();
   const { settingsTab, setSettingsTab, setTheme, updateSettings } = store;
-  const [showApiKey, setShowApiKey] = useState(false);
   const [testStatus, setTestStatus] = useState<{ testing: boolean; result?: { success: boolean; message: string } }>({ testing: false });
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
 
   return (
     <div className="settings-page">
@@ -318,140 +223,60 @@ export function SettingsPage() {
           </div>
         )}
 
-        {/* ── LLM 配置 ── */}
-        {settingsTab === 'llm' && (
+        {/* ── AI 工具 ── */}
+        {settingsTab === 'ai' && (
           <div className="ss-sec">
-            <div className="ss-title">LLM 配置</div>
-            <div className="ss-desc">选择 AI 提供商和模型，配置 API 密钥</div>
+            <div className="ss-title">AI 工具</div>
+            <div className="ss-desc">配置 AI CLI 工具，用于智能编辑文档</div>
             <div className="fr">
-              <div className="fl">AI 提供商</div>
-              <select className="fsel" style={{ maxWidth: 280 }} value={store.llmProvider} onChange={(e) => updateSettings({ llmProvider: e.target.value as LlmProvider })}>
-                <option value="anthropic">⬡ Anthropic（Claude）</option>
-                <option value="openai">◉ OpenAI（GPT）</option>
-                <option value="google">◆ Google（Gemini）</option>
-                <option value="xai">✖ xAI（Grok）</option>
-                <option value="mistral">◈ Mistral</option>
-                <option value="groq">⚡ Groq（极速推理）</option>
-                <option value="openrouter">🔀 OpenRouter（聚合）</option>
-                <option value="local">🖥 本地模型（Ollama）</option>
+              <div className="fl">CLI 适配器</div>
+              <select className="fsel" style={{ maxWidth: 280 }} value={store.cliAdapter} onChange={(e) => updateSettings({ cliAdapter: e.target.value })}>
+                {CliAdapterRegistry.getInstance().getAll().map((a) => (
+                  <option key={a.id} value={a.id}>{a.displayName}</option>
+                ))}
               </select>
             </div>
-
-            {store.llmProvider !== 'local' && (
-              <>
-                <div className="fr">
-                  <div className="fl">API Key <span className="badge">已加密存储</span></div>
-                  <div style={{ display: 'flex', gap: 7 }}>
-                    <input className="fi2" type={showApiKey ? 'text' : 'password'} value={store.llmApiKey} onChange={(e) => updateSettings({ llmApiKey: e.target.value })} style={{ flex: 1 }} />
-                    <button className="btn btn-g btn-sm" onClick={() => setShowApiKey(!showApiKey)}>👁</button>
-                  </div>
-                </div>
-                <div className="fr">
-                  <div className="fl">选择模型</div>
-                  <div className="ml">
-                    {(MODELS[store.llmProvider] || []).map((model) => (
-                      <div key={model.name} className={`mi ${store.llmModel === model.name ? 'on' : ''}`} onClick={() => updateSettings({ llmModel: model.name })}>
-                        <div className="mi-l"><div className="mi-dot" /><div><div className="mi-nm">{model.name}</div><div className="mi-sub">{model.sub}</div></div></div>
-                        <span className={`mi-tag ${model.cls}`}>{model.tag}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="fr2">
-                  <div className="fr"><div className="fl">Temperature</div><input className="fi2" type="number" min={0} max={1} step={0.1} value={store.temperature} onChange={(e) => updateSettings({ temperature: parseFloat(e.target.value) })} /><div className="fh">0 = 确定性 · 1 = 创造性</div></div>
-                  <div className="fr"><div className="fl">Max Tokens</div><input className="fi2" type="number" value={store.maxTokens} onChange={(e) => updateSettings({ maxTokens: parseInt(e.target.value) })} /></div>
-                </div>
-                <div style={{ display: 'flex', gap: 7, alignItems: 'center', marginBottom: 4 }}>
-                  <button
-                    className="btn btn-g btn-sm"
-                    disabled={testStatus.testing}
-                    onClick={async () => {
-                      setTestStatus({ testing: true });
-                      const result = await testProviderConnection(store.llmProvider, store.llmApiKey);
-                      setTestStatus({ testing: false, result });
-                      setTimeout(() => setTestStatus((s) => ({ ...s, result: undefined })), 4000);
-                    }}
-                  >{testStatus.testing ? '⏳ 测试中…' : '🔌 测试连接'}</button>
-                  <button
-                    className="btn btn-p btn-sm"
-                    onClick={() => {
-                      updateSettings({});
-                      setSaveStatus('saved');
-                      setTimeout(() => setSaveStatus('idle'), 2000);
-                    }}
-                  >{saveStatus === 'saved' ? '✓ 已保存' : '保存'}</button>
-                  {testStatus.result && (
-                    <span style={{ fontSize: 11, color: testStatus.result.success ? 'var(--green, #22a863)' : 'var(--red, #f06a6a)' }}>
-                      {testStatus.result.message}
-                    </span>
-                  )}
-                </div>
-              </>
-            )}
-
-            {store.llmProvider === 'local' && (
-              <>
-                <div className="fr"><div className="fl">Ollama 服务地址</div><input className="fi2" value={store.ollamaUrl} onChange={(e) => updateSettings({ ollamaUrl: e.target.value })} autoCapitalize="off" /></div>
-                <div className="fr">
-                  <div className="fl">已下载的本地模型</div>
-                  <div className="ml">
-                    <div className="mi on"><div className="mi-l"><div className="mi-dot" /><div><div className="mi-nm">qwen3:14b</div><div className="mi-sub">8.2 GB · 已下载</div></div></div><span className="mi-tag tag-local">本地</span></div>
-                    <div className="mi"><div className="mi-l"><div className="mi-dot" /><div><div className="mi-nm">llama3.2:3b</div><div className="mi-sub">2.0 GB · 已下载</div></div></div><span className="mi-tag tag-local">本地</span></div>
-                  </div>
-                </div>
-                <div className="fr2">
-                  <div className="fr"><div className="fl">Temperature</div><input className="fi2" type="number" min={0} max={1} step={0.1} value={store.temperature} onChange={(e) => updateSettings({ temperature: parseFloat(e.target.value) })} /></div>
-                  <div className="fr"><div className="fl">Max Tokens</div><input className="fi2" type="number" value={store.maxTokens} onChange={(e) => updateSettings({ maxTokens: parseInt(e.target.value) })} /></div>
-                </div>
-                <div style={{ display: 'flex', gap: 7, alignItems: 'center', marginBottom: 10 }}>
-                  <button
-                    className="btn btn-g btn-sm"
-                    disabled={testStatus.testing}
-                    onClick={async () => {
-                      setTestStatus({ testing: true });
-                      try {
-                        const response = await fetch(`${store.ollamaUrl}/api/tags`);
-                        if (response.ok) {
-                          setTestStatus({ testing: false, result: { success: true, message: 'Ollama 运行中 ✓' } });
-                        } else {
-                          setTestStatus({ testing: false, result: { success: false, message: `Ollama 响应异常 (${response.status})` } });
-                        }
-                      } catch {
-                        setTestStatus({ testing: false, result: { success: false, message: '无法连接 Ollama，请确认服务已启动' } });
-                      }
-                      setTimeout(() => setTestStatus((s) => ({ ...s, result: undefined })), 4000);
-                    }}
-                  >{testStatus.testing ? '⏳ 检测中…' : '🔌 检测 Ollama'}</button>
-                  <button
-                    className="btn btn-p btn-sm"
-                    onClick={() => {
-                      updateSettings({});
-                      setSaveStatus('saved');
-                      setTimeout(() => setSaveStatus('idle'), 2000);
-                    }}
-                  >{saveStatus === 'saved' ? '✓ 已保存' : '保存'}</button>
-                  {testStatus.result && (
-                    <span style={{ fontSize: 11, color: testStatus.result.success ? 'var(--green, #22a863)' : 'var(--red, #f06a6a)' }}>
-                      {testStatus.result.message}
-                    </span>
-                  )}
-                </div>
-                <div className="info-c"><div className="ic-i">💡</div><div className="ic-b"><h4>本地模型</h4><p>请确保 Ollama 已安装并运行，可运行 qwen3:14b、llama3 等本地模型。</p></div></div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ── 提示词 ── */}
-        {settingsTab === 'prompt' && (
-          <div className="ss-sec">
-            <div className="ss-title">提示词配置</div>
-            <div className="ss-desc">自定义 AI 助手的行为与写作风格</div>
-            <div className="fr"><div className="fl">系统提示词</div><textarea className="fi2" rows={5} value={store.systemPrompt} onChange={(e) => updateSettings({ systemPrompt: e.target.value })} autoCapitalize="off" /><div className="fh">此提示词附加到每次 AI 请求的开头</div></div>
-            <div className="fr"><div className="fl">写作风格</div><select className="fsel" value={store.writingStyle} onChange={(e) => updateSettings({ writingStyle: e.target.value })}><option>技术文档</option><option>学术论文</option><option>博客文章</option></select></div>
-            <div className="tr"><div className="tr-info"><h4>保留对话上下文</h4><p>AI 对话在同一文档内保持记忆</p></div><Toggle value={store.keepContext} onChange={(v) => updateSettings({ keepContext: v })} /></div>
-            <div className="tr"><div className="tr-info"><h4>自动发送文档内容</h4><p>每次对话自动附带当前文档全文</p></div><Toggle value={store.autoSendDoc} onChange={(v) => updateSettings({ autoSendDoc: v })} /></div>
-            <button className="btn btn-p btn-sm" style={{ marginTop: 10 }}>保存提示词</button>
+            <div className="fr">
+              <div className="fl">CLI 路径</div>
+              <input className="fi2" value={store.cliPath} onChange={(e) => updateSettings({ cliPath: e.target.value })} placeholder="claude" autoCapitalize="off" />
+              <div className="fh">CLI 可执行文件的路径或命令名，如 claude、/usr/local/bin/claude</div>
+            </div>
+            <div style={{ display: 'flex', gap: 7, alignItems: 'center', marginTop: 8 }}>
+              <button
+                className="btn btn-g btn-sm"
+                disabled={testStatus.testing}
+                onClick={async () => {
+                  setTestStatus({ testing: true });
+                  try {
+                    const { Command } = await import('@tauri-apps/plugin-shell');
+                    const cliPath = store.cliPath || 'claude';
+                    const cmd = Command.create('claude-cli', ['-l', '-c', `${cliPath} --version`]);
+                    const output = await cmd.execute();
+                    if (output.code === 0) {
+                      const version = output.stdout.trim().split('\n')[0];
+                      setTestStatus({ testing: false, result: { success: true, message: version || '连接成功' } });
+                    } else {
+                      setTestStatus({ testing: false, result: { success: false, message: output.stderr.trim() || `退出码 ${output.code}` } });
+                    }
+                  } catch (err) {
+                    setTestStatus({ testing: false, result: { success: false, message: `无法执行 CLI: ${String(err)}` } });
+                  }
+                  setTimeout(() => setTestStatus((s) => ({ ...s, result: undefined })), 6000);
+                }}
+              >{testStatus.testing ? '测试中…' : '测试连接'}</button>
+              {testStatus.result && (
+                <span style={{ fontSize: 11, color: testStatus.result.success ? 'var(--green, #22a863)' : 'var(--red, #f06a6a)' }}>
+                  {testStatus.result.message}
+                </span>
+              )}
+            </div>
+            <div className="info-c" style={{ marginTop: 16 }}>
+              <div className="ic-i">💡</div>
+              <div className="ic-b">
+                <h4>使用说明</h4>
+                <p>AI 工具通过调用本地 CLI（如 Claude Code）来编辑文档。请确保已安装对应的 CLI 工具。修改会以 Diff 形式展示，确认后再应用到文件。</p>
+              </div>
+            </div>
           </div>
         )}
 

@@ -45,7 +45,9 @@ import {
   type CodeBlockMenuState,
 } from './extensions/CodeBlockExtension';
 import { orderedListExtension } from './extensions/OrderedListPlugin';
+import { inlineDiffExtension, dispatchDiffs } from './extensions/InlineDiffExtension';
 import { json as jsonLanguage } from '@codemirror/lang-json';
+import type { FileChange } from '@quill/cli-adapter';
 import type { ShortcutItem } from '@/store/settingsStore';
 
 /** JSON linter: validates JSON syntax and highlights only the error line */
@@ -138,6 +140,8 @@ function buildMarkdownKeymap(
 export interface QuillEditorHandle {
   getView: () => EditorView | null;
   getScrollDOM: () => HTMLElement | null;
+  replaceContent: (content: string) => void;
+  setDiffs: (changes: FileChange[]) => void;
 }
 
 interface QuillEditorProps {
@@ -182,6 +186,20 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
     useImperativeHandle(ref, () => ({
       getView: () => viewRef.current,
       getScrollDOM: () => viewRef.current?.scrollDOM ?? null,
+      replaceContent: (content: string) => {
+        const view = viewRef.current;
+        if (!view) return;
+        const currentContent = view.state.doc.toString();
+        if (currentContent === content) return;
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: content },
+        });
+      },
+      setDiffs: (changes: FileChange[]) => {
+        const view = viewRef.current;
+        if (!view) return;
+        dispatchDiffs(view, changes);
+      },
     }));
 
     const handleUpdate = useCallback(
@@ -255,6 +273,7 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
         ]),
         EditorView.updateListener.of(handleUpdate),
         langCompartment.current.of([]),
+        ...inlineDiffExtension,
       ];
 
       // Markdown-specific extensions
