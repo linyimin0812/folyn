@@ -8,7 +8,7 @@ export abstract class BaseCliAdapter implements CliAdapter {
   protected config: CliAdapterConfig | null = null;
 
   abstract start(config: CliAdapterConfig): Promise<void>;
-  abstract send(prompt: string, options?: CliSendOptions): Promise<void>;x
+  abstract send(prompt: string, options?: CliSendOptions): Promise<void>;
   abstract stop(): Promise<void>;
   abstract isRunning(): boolean;
 
