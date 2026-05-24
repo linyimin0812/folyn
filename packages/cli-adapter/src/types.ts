@@ -1,9 +1,16 @@
+export interface MessageAttachment {
+  name: string;
+  path: string;
+  type: 'image' | 'file';
+}
+
 export interface CliMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   thinking?: string;
   toolCalls?: ToolCallInfo[];
+  attachments?: MessageAttachment[];
   timestamp: number;
 }
 
@@ -58,6 +65,7 @@ export type CliEventHandler = (event: CliStreamEvent) => void;
 export interface CliAdapter {
   readonly id: string;
   readonly displayName: string;
+  readonly description: string;
 
   start(config: CliAdapterConfig): Promise<void>;
   send(prompt: string, options?: CliSendOptions): Promise<void>;
