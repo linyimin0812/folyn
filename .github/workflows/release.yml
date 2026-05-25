@@ -3,6 +3,12 @@ name: Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.1.0). Leave empty for draft build without upload."
+        required: false
+        type: string
 
 jobs:
   build:
@@ -71,9 +77,9 @@ jobs:
           projectPath: apps/desktop
           tauriScript: pnpm tauri
           args: ${{ matrix.args }}
-          tagName: ${{ github.event.release.tag_name }}
-          releaseName: ${{ github.event.release.name }}
-          releaseId: ${{ github.event.release.id }}
+          tagName: ${{ inputs.tag || github.event.release.tag_name }}
+          releaseName: ${{ inputs.tag || github.event.release.name }}
+          releaseId: ${{ github.event.release.id || '' }}
 
   build-macos-universal:
     runs-on: macos-latest
@@ -112,7 +118,7 @@ jobs:
           projectPath: apps/desktop
           tauriScript: pnpm tauri
           args: --target universal-apple-darwin
-          tagName: ${{ github.event.release.tag_name }}
-          releaseName: ${{ github.event.release.name }}
-          releaseId: ${{ github.event.release.id }}
+          tagName: ${{ inputs.tag || github.event.release.tag_name }}
+          releaseName: ${{ inputs.tag || github.event.release.name }}
+          releaseId: ${{ github.event.release.id || '' }}
 
