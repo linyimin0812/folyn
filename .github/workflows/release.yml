@@ -71,6 +71,7 @@ jobs:
         run: pnpm build
 
       - name: Build Tauri app
+        id: tauri-build
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -81,6 +82,7 @@ jobs:
           tagName: ${{ inputs.tag || github.event.release.tag_name }}
           releaseName: ${{ inputs.tag || github.event.release.name }}
           releaseId: ${{ github.event.release.id || '' }}
+          includeUpdaterJson: false
 
   build-macos-universal:
     runs-on: macos-latest
@@ -120,3 +122,4 @@ jobs:
           tagName: ${{ inputs.tag || github.event.release.tag_name }}
           releaseName: ${{ inputs.tag || github.event.release.name }}
           releaseId: ${{ github.event.release.id || '' }}
+          includeUpdaterJson: false
