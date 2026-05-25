@@ -7,6 +7,7 @@ interface DiffViewProps {
   onReject: (path: string) => void;
   onAcceptAll: () => void;
   onRejectAll: () => void;
+  onOpenFile?: (path: string) => void;
 }
 
 interface DiffLine {
@@ -67,10 +68,11 @@ function computeLineDiff(oldText: string, newText: string): DiffLine[] {
   return result;
 }
 
-function DiffCard({ change, onAccept, onReject }: {
+function DiffCard({ change, onAccept, onReject, onOpenFile }: {
   change: FileChange;
   onAccept: () => void;
   onReject: () => void;
+  onOpenFile?: (path: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const isPending = change.status === 'pending';
@@ -104,7 +106,10 @@ function DiffCard({ change, onAccept, onReject }: {
       <div className="diff-card-header" onClick={() => setCollapsed(!collapsed)}>
         <div className="diff-file-info">
           <span className="diff-file-icon">{collapsed ? '▶' : '▼'}</span>
-          <span className="diff-file-name">{change.path}</span>
+          <span
+            className="diff-file-name diff-file-link"
+            onClick={(e) => { e.stopPropagation(); onOpenFile?.(change.path); }}
+          >{change.path}</span>
           <span className="diff-stats">
             {addCount > 0 && <span className="diff-stat-add">+{addCount}</span>}
             {removeCount > 0 && <span className="diff-stat-remove">-{removeCount}</span>}
@@ -146,7 +151,7 @@ function DiffCard({ change, onAccept, onReject }: {
   );
 }
 
-export function DiffView({ changes, onAccept, onReject, onAcceptAll, onRejectAll }: DiffViewProps) {
+export function DiffView({ changes, onAccept, onReject, onAcceptAll, onRejectAll, onOpenFile }: DiffViewProps) {
   const pendingChanges = changes.filter((c) => c.status === 'pending');
 
   if (changes.length === 0) return null;
@@ -170,6 +175,7 @@ export function DiffView({ changes, onAccept, onReject, onAcceptAll, onRejectAll
           change={change}
           onAccept={() => onAccept(change.path)}
           onReject={() => onReject(change.path)}
+          onOpenFile={onOpenFile}
         />
       ))}
     </div>

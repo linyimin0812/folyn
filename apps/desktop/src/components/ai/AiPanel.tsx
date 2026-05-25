@@ -68,6 +68,7 @@ function getAdapterForSession(sessionId: string): CliAdapter {
 export function AiPanel() {
   const aiPanelVisible = useEditorStore((s) => s.aiPanelVisible);
   const toggleAiPanel = useEditorStore((s) => s.toggleAiPanel);
+  const openFile = useEditorStore((s) => s.openFile);
 
   const sessions = useAiStore((s) => s.sessions);
   const activeSessionId = useAiStore((s) => s.activeSessionId);
@@ -101,6 +102,26 @@ export function AiPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const pendingFileAttachments = useAiStore((s) => s.pendingFileAttachments);
+  const consumePendingFiles = useAiStore((s) => s.consumePendingFiles);
+
+  useEffect(() => {
+    if (pendingFileAttachments.length === 0) return;
+    const files = consumePendingFiles();
+    setAttachments((prev) => {
+      const existing = new Set(prev.map((a) => a.path));
+      const newOnes = files
+        .filter((f) => !existing.has(f.path))
+        .map((f) => ({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          name: f.name,
+          type: 'file' as const,
+          path: f.path,
+        }));
+      return [...prev, ...newOnes];
+    });
+  }, [pendingFileAttachments, consumePendingFiles]);
+
   const fileTree = useVaultStore((s) => s.fileTree);
   const allFiles = useMemo(() => flattenFileTree(fileTree), [fileTree]);
   const filteredMentionFiles = useMemo(() => {
@@ -124,7 +145,7 @@ export function AiPanel() {
       if (isDragging.current) {
         isDragging.current = false;
         document.body.style.cursor = '';
-        document.body.style.userSelect = '';
+        document.documentElement.classList.remove('is-resizing');
       }
     };
     document.addEventListener('mousemove', handleMouseMove);
@@ -138,7 +159,7 @@ export function AiPanel() {
   const handleResizeStart = useCallback(() => {
     isDragging.current = true;
     document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
+    document.documentElement.classList.add('is-resizing');
   }, []);
 
   useEffect(() => {
@@ -170,6 +191,16 @@ export function AiPanel() {
     if (!sessionId) {
       sessionId = createSession();
     }
+
+    // Show user message immediately with preview attachments
+    const previewAttachments: MessageAttachment[] = currentAttachments.map((att) => ({
+      name: att.name,
+      path: att.path || '',
+      type: att.type,
+    }));
+    addMessage('user', userText || '(附件)', sessionId, previewAttachments.length > 0 ? previewAttachments : undefined);
+    addMessage('assistant', '', sessionId);
+    setSessionStreaming(sessionId, true);
 
     const settings = useSettingsStore.getState();
     const vault = useVaultStore.getState().currentVault;
@@ -252,10 +283,6 @@ export function AiPanel() {
       const fileInstruction = `请先使用 Read 工具读取以下文件:\n${mentionedFiles.join('\n')}`;
       prompt = `${fileInstruction}\n\n用户消息: ${prompt}`;
     }
-
-    addMessage('user', userText || '(附件)', sessionId, savedAttachments.length > 0 ? savedAttachments : undefined);
-    addMessage('assistant', '', sessionId);
-    setSessionStreaming(sessionId, true);
 
     if (attachSaveError) {
       appendToLastMessage(`[错误] 附件保存失败: ${attachSaveError}`, sessionId);
@@ -519,53 +546,98 @@ export function AiPanel() {
               <div className="ai-empty-hint">AI 会直接修改文件，你可以在 Diff 视图中审查变更</div>
             </div>
           )}
-          {messages.map((msg) => (
-            <div key={msg.id} className={`msg ${msg.role}`}>
-              <div className="msg-from">
-                {msg.role === 'assistant' ? 'AI' : '你'}
-                {msg.role === 'user' && msg.timestamp && (
-                  <span className="msg-time">{new Date(msg.timestamp).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\//g, '-')}</span>
-                )}
-              </div>
+          {(() => {
+            const fileChanges = activeSession?.fileChanges ?? [];
+            type TimelineItem =
+              | { kind: 'msg'; msg: typeof messages[number] }
+              | { kind: 'diff'; changes: typeof fileChanges };
 
-              {msg.thinking && (
-                <details className="msg-thinking" open={isStreaming && messages[messages.length - 1]?.id === msg.id}>
-                  <summary className="msg-thinking-label">Thinking</summary>
-                  <div className="msg-thinking-body">{msg.thinking}</div>
-                </details>
-              )}
+            const timeline: TimelineItem[] = [];
 
-              {msg.toolCalls && msg.toolCalls.length > 0 && (
-                <ToolCallBlock toolCalls={msg.toolCalls} />
-              )}
+            // Group consecutive file changes by their position between messages
+            let changeIdx = 0;
+            for (const msg of messages) {
+              // Insert any file changes that happened before this message
+              const batch: typeof fileChanges = [];
+              while (changeIdx < fileChanges.length && fileChanges[changeIdx].createdAt <= msg.timestamp) {
+                batch.push(fileChanges[changeIdx]);
+                changeIdx++;
+              }
+              if (batch.length > 0) timeline.push({ kind: 'diff', changes: batch });
+              timeline.push({ kind: 'msg', msg });
+            }
+            // Remaining file changes after all messages
+            if (changeIdx < fileChanges.length) {
+              timeline.push({ kind: 'diff', changes: fileChanges.slice(changeIdx) });
+            }
 
-              {msg.attachments && msg.attachments.length > 0 && (
-                <div className="ai-msg-attachments">
-                  {msg.attachments.map((att, i) => (
-                    <div key={i} className="ai-msg-attach-item">
-                      {att.type === 'image' ? (
-                        <FileImage className="ai-msg-attach-img" path={att.path} alt={att.name} />
-                      ) : (
-                        <span className="ai-msg-attach-file">📄 {att.name}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="msg-body">
-                {msg.role === 'assistant' && msg.content ? (
-                  <MessageContent content={msg.content} />
-                ) : (
-                  msg.content
-                )}
-                {msg.role === 'assistant' &&
-                  isStreaming &&
-                  messages[messages.length - 1]?.id === msg.id && (
-                    <span className="cursor-blink">▎</span>
+            return timeline.map((item, idx) => {
+              if (item.kind === 'diff') {
+                return (
+                  <DiffView
+                    key={`diff-${idx}`}
+                    changes={item.changes}
+                    onAccept={(path) => acceptChange(path)}
+                    onReject={(path) => rejectChange(path)}
+                    onAcceptAll={acceptAll}
+                    onRejectAll={rejectAll}
+                    onOpenFile={(path) => {
+                      const name = path.includes('/') ? path.substring(path.lastIndexOf('/') + 1) : path;
+                      openFile(path, name);
+                    }}
+                  />
+                );
+              }
+              const msg = item.msg;
+              return (
+                <div key={msg.id} className={`msg ${msg.role}`}>
+                  <div className="msg-from">
+                    {msg.role === 'assistant' ? 'AI' : '你'}
+                    {msg.role === 'user' && msg.timestamp && (
+                      <span className="msg-time">{new Date(msg.timestamp).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\//g, '-')}</span>
+                    )}
+                  </div>
+
+                  {msg.thinking && (
+                    <details className="msg-thinking" open={isStreaming && messages[messages.length - 1]?.id === msg.id}>
+                      <summary className="msg-thinking-label">Thinking</summary>
+                      <div className="msg-thinking-body">{msg.thinking}</div>
+                    </details>
                   )}
-              </div>
-            </div>
-          ))}
+
+                  {msg.toolCalls && msg.toolCalls.length > 0 && (
+                    <ToolCallBlock toolCalls={msg.toolCalls} />
+                  )}
+
+                  {msg.attachments && msg.attachments.length > 0 && (
+                    <div className="ai-msg-attachments">
+                      {msg.attachments.map((att, i) => (
+                        <div key={i} className="ai-msg-attach-item">
+                          {att.type === 'image' ? (
+                            <FileImage className="ai-msg-attach-img" path={att.path} alt={att.name} />
+                          ) : (
+                            <span className="ai-msg-attach-file">📄 {att.name}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="msg-body">
+                    {msg.role === 'assistant' && msg.content ? (
+                      <MessageContent content={msg.content} />
+                    ) : (
+                      msg.content
+                    )}
+                    {msg.role === 'assistant' &&
+                      isStreaming &&
+                      messages[messages.length - 1]?.id === msg.id && (
+                        <span className="cursor-blink">▎</span>
+                      )}
+                  </div>
+                </div>
+              );
+            });
+          })()}
 
           {isStreaming && (
             <div className="ai-streaming-indicator">
@@ -574,16 +646,6 @@ export function AiPanel() {
               </div>
               <span className="ai-streaming-text">AI 正在处理...</span>
             </div>
-          )}
-
-          {(activeSession?.fileChanges ?? []).length > 0 && (
-            <DiffView
-              changes={activeSession!.fileChanges}
-              onAccept={(path) => acceptChange(path)}
-              onReject={(path) => rejectChange(path)}
-              onAcceptAll={acceptAll}
-              onRejectAll={rejectAll}
-            />
           )}
 
           <div ref={msgsEndRef} />

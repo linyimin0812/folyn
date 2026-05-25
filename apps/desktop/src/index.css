@@ -128,7 +128,11 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
   flex-shrink: 0; height: 100%; overflow: hidden;
   background: var(--panel); border-right: 1px solid var(--brd);
   display: flex; flex-direction: column;
+  transition: width .2s ease, opacity .2s ease;
 }
+.sidebar.resizing { transition: none; }
+html.is-resizing, html.is-resizing * { user-select: none !important; -webkit-user-select: none !important; pointer-events: none !important; }
+html.is-resizing { pointer-events: auto !important; }
 .sb-header { padding: 12px 10px 8px; flex-shrink: 0; }
 .sb-header-row { display: flex; align-items: center; gap: 4px; min-width: 0; }
 
@@ -204,7 +208,13 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
 .sb-search:focus { border-color: var(--acc); }
 .sb-search::placeholder { color: var(--t3); }
 
-.sb-body { flex: 1; overflow-y: auto; padding: 4px 0; }
+.sb-body { flex: 1; overflow-y: auto; padding: 4px 0; transition: background .12s; scrollbar-width: none; }
+.sb-body:hover { scrollbar-width: thin; }
+.sb-body::-webkit-scrollbar { width: 0; }
+.sb-body:hover::-webkit-scrollbar { width: 6px; }
+.sb-body::-webkit-scrollbar-thumb { background: var(--t4); border-radius: 3px; }
+.sb-body::-webkit-scrollbar-track { background: transparent; }
+.sb-body.drag-over { background: var(--accglow); }
 .sb-empty { padding: 16px 12px; text-align: center; font-size: 12px; color: var(--t3); }
 .sb-empty-err { color: #e05252; }
 
@@ -276,6 +286,17 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
 }
 .ft-item:hover { background: var(--hov); color: var(--t1); }
 .ft-item.on { background: var(--accdim); color: var(--acc); }
+.ft-item.selected { background: var(--act); color: var(--t1); }
+.ft-item.selected:hover { background: var(--act); }
+.ft-item.drag-over { background: var(--accdim); box-shadow: inset 0 0 0 1px var(--acc); border-radius: 3px; }
+.ft-item.dragging { opacity: .5; }
+.drag-ghost {
+  position: fixed; z-index: 99999; pointer-events: none;
+  padding: 4px 10px; border-radius: 4px;
+  background: var(--acc); color: #fff;
+  font-size: 12px; font-family: var(--font-ui); white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2); opacity: .9;
+}
 .ft-icon { font-size: 12px; flex-shrink: 0; width: 16px; text-align: center; }
 .ft-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .ft-dir { font-weight: 500; }
@@ -325,8 +346,8 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
   width: 6px; cursor: pointer;
 }
 .resizer {
-  width: 4px; cursor: col-resize; flex-shrink: 0;
-  background: transparent; transition: background .14s; height: 100%;
+  width: 2px; cursor: col-resize; flex-shrink: 0;
+  background: var(--brd); transition: background .14s; height: 100%;
 }
 .resizer-wrapper.collapsed .resizer {
   cursor: default;
@@ -342,7 +363,7 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
   box-shadow: 0 1px 4px rgba(0,0,0,.12);
 }
 .resizer-toggle-btn:hover {
-  background: var(--acc); color: #fff; border-color: var(--acc);
+  background: var(--panel); color: var(--t3); border-color: var(--brd2);
 }
 
 /* ── Work Area ── */
@@ -844,6 +865,8 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
 .diff-file-info { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .diff-file-icon { font-size: 9px; color: var(--t3); flex-shrink: 0; }
 .diff-file-name { font-size: 11px; font-weight: 600; color: var(--t1); font-family: var(--font-mono, monospace); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.diff-file-link { cursor: pointer; text-decoration: underline; text-decoration-color: transparent; transition: text-decoration-color .14s, color .14s; }
+.diff-file-link:hover { color: var(--acc); text-decoration-color: var(--acc); }
 .diff-stats { display: flex; gap: 4px; flex-shrink: 0; }
 .diff-stat-add { font-size: 10px; font-weight: 700; color: var(--green, #22a863); }
 .diff-stat-remove { font-size: 10px; font-weight: 700; color: var(--red, #f06a6a); }

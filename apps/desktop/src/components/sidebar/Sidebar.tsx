@@ -1,14 +1,22 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useEditorStore } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
+import { useAiStore } from '@/store/aiStore';
 import type { VaultEntry } from '@quill/vault-provider';
 
-const MIN_WIDTH = 160;
-const MAX_WIDTH = 380;
-const DEFAULT_WIDTH = 224;
-const COLLAPSE_THRESHOLD = 100;
+function flattenTree(entries: VaultEntry[]): string[] {
+  const result: string[] = [];
+  for (const entry of entries) {
+    result.push(entry.path);
+    if (entry.type === 'dir' && entry.children) {
+      result.push(...flattenTree(entry.children));
+    }
+  }
+  return result;
+}
 
+const DEFAULT_WIDTH = 224;
 interface SidebarProps {
   onFileSelect?: () => void;
 }
@@ -77,7 +85,117 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
   const renameInputRef = useRef<HTMLInputElement>(null);
   const isDragging = useRef(false);
 
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+  const lastClickedPath = useRef<string | null>(null);
+  const [dragOverDir, setDragOverDir] = useState<string | null>(null);
+  const flatPaths = useMemo(() => flattenTree(fileTree), [fileTree]);
+
+  const vaultMoveFiles = useVaultStore((state) => state.moveFiles);
+
   const fileTreeRef = useRef<HTMLDivElement>(null);
+
+  // ── Custom mouse-based drag & drop ──
+  const mouseDragState = useRef<{
+    startX: number;
+    startY: number;
+    paths: string[];
+    active: boolean;
+    ghost: HTMLDivElement | null;
+    dropTarget: string | null;
+  } | null>(null);
+
+  const handleItemMouseDown = useCallback(
+    (e: React.MouseEvent, path: string) => {
+      if (e.button !== 0) return;
+      if ((e.target as HTMLElement).closest('.ft-actions, .ft-rename-input, .ft-act-btn, input, button')) return;
+
+      const paths = selectedPaths.has(path) ? Array.from(selectedPaths) : [path];
+
+      mouseDragState.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        paths,
+        active: false,
+        ghost: null,
+        dropTarget: null,
+      };
+    },
+    [selectedPaths],
+  );
+
+  const vaultMoveFilesRef = useRef(vaultMoveFiles);
+  vaultMoveFilesRef.current = vaultMoveFiles;
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const state = mouseDragState.current;
+      if (!state) return;
+
+      if (!state.active) {
+        const dx = Math.abs(e.clientX - state.startX);
+        const dy = Math.abs(e.clientY - state.startY);
+        if (dx < 5 && dy < 5) return;
+        state.active = true;
+
+        const ghost = document.createElement('div');
+        ghost.className = 'drag-ghost';
+        ghost.textContent = state.paths.length === 1
+          ? (state.paths[0].includes('/') ? state.paths[0].substring(state.paths[0].lastIndexOf('/') + 1) : state.paths[0])
+          : `${state.paths.length} 个项目`;
+        document.body.appendChild(ghost);
+        state.ghost = ghost;
+      }
+
+      if (state.ghost) {
+        state.ghost.style.left = `${e.clientX + 12}px`;
+        state.ghost.style.top = `${e.clientY + 12}px`;
+      }
+
+      if (state.ghost) state.ghost.style.display = 'none';
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      if (state.ghost) state.ghost.style.display = '';
+
+      let newTarget: string | null = null;
+      if (el) {
+        const dirItem = (el as HTMLElement).closest('[data-dirpath]') as HTMLElement | null;
+        if (dirItem) {
+          newTarget = dirItem.getAttribute('data-dirpath')!;
+        } else {
+          const sbBody = (el as HTMLElement).closest('.sb-body') as HTMLElement | null;
+          if (sbBody) {
+            newTarget = '';
+          }
+        }
+      }
+
+      state.dropTarget = newTarget;
+      setDragOverDir(newTarget);
+    };
+
+    const handleMouseUp = async () => {
+      const state = mouseDragState.current;
+      if (!state) return;
+
+      if (state.ghost) {
+        state.ghost.remove();
+      }
+
+      if (state.active && state.paths.length > 0 && state.dropTarget !== null) {
+        await vaultMoveFilesRef.current(state.paths, state.dropTarget);
+        setSelectedPaths(new Set());
+      }
+
+      mouseDragState.current = null;
+      setDragOverDir(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
 
   const handleFileClick = useCallback(
     (filePath: string, fileName: string) => {
@@ -85,6 +203,56 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
       onFileSelect?.();
     },
     [openFile, onFileSelect],
+  );
+
+  const handleToggleDir = useCallback((dirPath: string) => {
+    setExpandedDirs((prev) => {
+      const next = new Set(prev);
+      if (prev.has(dirPath)) {
+        next.delete(dirPath);
+      } else {
+        next.add(dirPath);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleItemSelect = useCallback(
+    (e: React.MouseEvent, path: string, entry: VaultEntry) => {
+      const isMetaKey = e.metaKey || e.ctrlKey;
+      const isShiftKey = e.shiftKey;
+
+      if (isMetaKey) {
+        setSelectedPaths((prev) => {
+          const next = new Set(prev);
+          if (next.has(path)) next.delete(path);
+          else next.add(path);
+          return next;
+        });
+        lastClickedPath.current = path;
+        return;
+      }
+
+      if (isShiftKey && lastClickedPath.current) {
+        const startIdx = flatPaths.indexOf(lastClickedPath.current);
+        const endIdx = flatPaths.indexOf(path);
+        if (startIdx !== -1 && endIdx !== -1) {
+          const from = Math.min(startIdx, endIdx);
+          const to = Math.max(startIdx, endIdx);
+          setSelectedPaths(new Set(flatPaths.slice(from, to + 1)));
+        }
+        return;
+      }
+
+      setSelectedPaths(new Set());
+      lastClickedPath.current = path;
+      if (entry.type === 'file') {
+        handleFileClick(entry.path, entry.name);
+      } else {
+        handleToggleDir(entry.path);
+      }
+    },
+    [flatPaths, handleFileClick, handleToggleDir],
   );
 
   /** Expand all parent directories of the active file and scroll it into view */
@@ -243,29 +411,36 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
     return () => document.removeEventListener('mousedown', close);
   }, [contextMenu]);
 
+  const [isResizing, setIsResizing] = useState(false);
+
   // Drag resize
   const handleMouseDown = useCallback(() => {
     isDragging.current = true;
+    setIsResizing(true);
     document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
+    document.documentElement.classList.add('is-resizing');
   }, []);
+
+  const widthRef = useRef(width);
+  widthRef.current = width;
 
   useEffect(() => {
     const handleMouseMove = (event: MouseEvent) => {
       if (!isDragging.current) return;
-      if (event.clientX < COLLAPSE_THRESHOLD) {
-        setCollapsed(true);
-      } else {
-        setCollapsed(false);
-        const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, event.clientX));
-        setWidth(newWidth);
-      }
+      const newWidth = Math.max(0, event.clientX);
+      setWidth(newWidth);
     };
 
     const handleMouseUp = () => {
+      if (!isDragging.current) return;
       isDragging.current = false;
+      setIsResizing(false);
       document.body.style.cursor = '';
-      document.body.style.userSelect = '';
+      document.documentElement.classList.remove('is-resizing');
+      if (widthRef.current < 60) {
+        setCollapsed(true);
+        setWidth(DEFAULT_WIDTH);
+      }
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -274,18 +449,6 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, []);
-
-  const handleToggleDir = useCallback((dirPath: string) => {
-    setExpandedDirs((prev) => {
-      const next = new Set(prev);
-      if (prev.has(dirPath)) {
-        next.delete(dirPath);
-      } else {
-        next.add(dirPath);
-      }
-      return next;
-    });
   }, []);
 
   /** Collect all directory paths from the file tree */
@@ -331,12 +494,16 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
         if (item.type === 'dir') {
           const isExpanded = searchQuery ? true : expandedDirs.has(item.path);
           const children = item.children || [];
+          const isDirSelected = selectedPaths.has(item.path);
+          const isDragOver = dragOverDir === item.path;
           return (
             <div key={item.path}>
               <div
-                className="ft-item ft-dir"
+                className={`ft-item ft-dir${isDirSelected ? ' selected' : ''}${isDragOver ? ' drag-over' : ''}`}
                 style={{ paddingLeft: `${12 + depth * 14}px` }}
-                onClick={() => handleToggleDir(item.path)}
+                data-dirpath={item.path}
+                onClick={(e) => handleItemSelect(e, item.path, item)}
+                onMouseDown={(e) => handleItemMouseDown(e, item.path)}
                 onContextMenu={(e) => handleContextMenu(e, item.path, item.name, 'dir')}
               >
                 <span className="ft-icon">{isExpanded ? '▾' : '▸'}</span>
@@ -396,13 +563,15 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
         }
 
         const isActive = tabs.find((t) => t.path === item.path)?.id === activeTabId;
+        const isFileSelected = selectedPaths.has(item.path);
         return (
           <div
             key={item.path}
             data-filepath={item.path}
-            className={`ft-item ft-file ${isActive ? 'on' : ''}`}
+            className={`ft-item ft-file${isActive ? ' on' : ''}${isFileSelected ? ' selected' : ''}`}
             style={{ paddingLeft: `${12 + depth * 14}px` }}
-            onClick={() => !isRenaming && handleFileClick(item.path, item.name)}
+            onClick={(e) => !isRenaming && handleItemSelect(e, item.path, item)}
+            onMouseDown={(e) => handleItemMouseDown(e, item.path)}
             onContextMenu={(e) => handleContextMenu(e, item.path, item.name, 'file')}
           >
             <span className="ft-icon">📄</span>
@@ -437,7 +606,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
 
   return (
     <>
-      <aside className="sidebar" style={{ width: collapsed ? '0px' : `${width}px`, display: collapsed ? 'none' : undefined }}>
+      <aside className={`sidebar${isResizing ? ' resizing' : ''}`} style={{ width: collapsed ? '0px' : `${width}px`, display: collapsed ? 'none' : undefined }}>
         {/* Vault selector */}
         <div className="sb-header">
           <div className="sb-header-row">
@@ -541,7 +710,10 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
         )}
 
         {/* File tree */}
-        <div className="sb-body" ref={fileTreeRef}>
+        <div
+          className={`sb-body${dragOverDir === '' ? ' drag-over' : ''}`}
+          ref={fileTreeRef}
+        >
           {renderFileTree(fileTree)}
           {fileTree.length === 0 && !newItemType && (
             <div className="sb-empty">
@@ -605,6 +777,16 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
             <button className="ft-ctx-item" onClick={() => { copyToClipboard(contextMenu.name); }}>
               复制文件名
             </button>
+            {contextMenu.type === 'file' && (
+              <button className="ft-ctx-item" onClick={() => {
+                useAiStore.getState().addFileToChat(contextMenu.name, contextMenu.path);
+                useSettingsStore.getState().updateSettings({ showAiPanel: true });
+                useEditorStore.setState({ aiPanelVisible: true });
+                setContextMenu(null);
+              }}>
+                添加文件到对话
+              </button>
+            )}
             <div className="ft-ctx-divider" />
             <button className="ft-ctx-item" onClick={() => { setContextMenu(null); startRename(contextMenu.path, contextMenu.name); }}>
               重命名
@@ -627,7 +809,6 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
           <button
             className="resizer-toggle-btn"
             onClick={() => setCollapsed((prev) => !prev)}
-            data-tip={collapsed ? '展开文件栏' : '关闭文件栏'}
           >
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
               {collapsed ? (

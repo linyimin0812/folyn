@@ -59,6 +59,9 @@ export interface VaultProvider {
   /** Delete a directory and its contents */
   deleteDir(path: string): Promise<void>;
 
+  /** Rename/move a file or directory */
+  rename?(oldPath: string, newPath: string): Promise<void>;
+
   // ── Advanced (optional based on capabilities) ──
 
   /** Full-text search across vault files */

@@ -112,6 +112,16 @@ export class VaultManager {
     return provider.getMetadata(path);
   }
 
+  async rename(oldPath: string, newPath: string): Promise<void> {
+    const provider = this.getProvider();
+    if (provider.rename) {
+      return provider.rename(oldPath, newPath);
+    }
+    const content = await provider.readFile(oldPath);
+    await provider.writeFile(newPath, content);
+    await provider.deleteFile(oldPath);
+  }
+
   /** Disconnect and clean up */
   async dispose(): Promise<void> {
     if (this.provider) {

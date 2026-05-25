@@ -9,6 +9,7 @@ import {
   readDir,
   exists,
   stat,
+  rename as fsRename,
 } from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
 
@@ -156,5 +157,16 @@ export class TauriVaultProvider extends BaseVaultProvider {
     } catch (err) {
       throw new VaultError('NOT_FOUND', `Cannot delete directory: ${path}`);
     }
+  }
+
+  async rename(oldPath: string, newPath: string): Promise<void> {
+    const fullOld = await this.resolve(oldPath);
+    const fullNew = await this.resolve(newPath);
+    const parentDir = fullNew.substring(0, fullNew.lastIndexOf('/'));
+    const parentExists = await exists(parentDir);
+    if (!parentExists) {
+      await mkdir(parentDir, { recursive: true });
+    }
+    await fsRename(fullOld, fullNew);
   }
 }

@@ -69,6 +69,7 @@ interface VaultState {
   createDir: (path: string) => Promise<void>;
   deleteDir: (path: string) => Promise<void>;
   renameFile: (oldPath: string, newPath: string) => Promise<void>;
+  moveFiles: (paths: string[], targetDir: string) => Promise<void>;
 }
 
 /** Sync vault info to settingsStore */
@@ -276,9 +277,47 @@ export const useVaultStore = create<VaultState>()(
         },
 
         renameFile: async (oldPath, newPath) => {
-          const content = await get().manager.readFile(oldPath);
-          await get().manager.writeFile(newPath, content);
-          await get().manager.deleteFile(oldPath);
+          await get().manager.rename(oldPath, newPath);
+          await get().refreshFileTree();
+        },
+
+        moveFiles: async (paths, targetDir) => {
+          const manager = get().manager;
+
+          const movedMap: [string, string][] = [];
+
+          for (const srcPath of paths) {
+            const basename = srcPath.includes('/') ? srcPath.substring(srcPath.lastIndexOf('/') + 1) : srcPath;
+            const destPath = targetDir ? `${targetDir}/${basename}` : basename;
+
+            const parentDir = srcPath.includes('/') ? srcPath.substring(0, srcPath.lastIndexOf('/')) : '';
+            if (parentDir === targetDir) continue;
+            if (targetDir.startsWith(srcPath + '/') || targetDir === srcPath) continue;
+
+            try {
+              await manager.rename(srcPath, destPath);
+              movedMap.push([srcPath, destPath]);
+            } catch (err) {
+              console.error('[VaultStore] moveFiles rename failed:', srcPath, '→', destPath, err);
+            }
+          }
+
+          if (movedMap.length > 0) {
+            const { useEditorStore } = await import('./editorStore');
+            const { tabs } = useEditorStore.getState();
+            const updatedTabs = tabs.map((tab) => {
+              for (const [oldPrefix, newPrefix] of movedMap) {
+                if (tab.path === oldPrefix || tab.path.startsWith(oldPrefix + '/')) {
+                  const newPath = newPrefix + tab.path.slice(oldPrefix.length);
+                  const newName = newPath.includes('/') ? newPath.substring(newPath.lastIndexOf('/') + 1) : newPath;
+                  return { ...tab, path: newPath, name: newName };
+                }
+              }
+              return tab;
+            });
+            useEditorStore.setState({ tabs: updatedTabs });
+          }
+
           await get().refreshFileTree();
         },
       };

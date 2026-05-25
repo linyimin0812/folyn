@@ -46,6 +46,10 @@ interface AiState {
   setStreaming: (streaming: boolean) => void;
   /** Check if the active session is streaming */
   isStreaming: boolean;
+
+  pendingFileAttachments: { name: string; path: string }[];
+  addFileToChat: (name: string, path: string) => void;
+  consumePendingFiles: () => { name: string; path: string }[];
 }
 
 function generateId(): string {
@@ -317,6 +321,18 @@ export const useAiStore = create<AiState>((set, get) => ({
       })),
     }));
     persistAiState();
+  },
+
+  pendingFileAttachments: [],
+  addFileToChat: (name, path) => {
+    set((state) => ({
+      pendingFileAttachments: [...state.pendingFileAttachments, { name, path }],
+    }));
+  },
+  consumePendingFiles: () => {
+    const files = get().pendingFileAttachments;
+    if (files.length > 0) set({ pendingFileAttachments: [] });
+    return files;
   },
 }));
 
