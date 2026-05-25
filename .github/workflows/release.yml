@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust stable
-        uses: dtolnay/rust-action/setup@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
@@ -90,7 +90,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust stable
-        uses: dtolnay/rust-action/setup@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
@@ -121,4 +121,3 @@ jobs:
           tagName: ${{ inputs.tag || github.event.release.tag_name }}
           releaseName: ${{ inputs.tag || github.event.release.name }}
           releaseId: ${{ github.event.release.id || '' }}
-
