@@ -291,7 +291,7 @@ export function WorkArea() {
       if (splitDragging.current) {
         splitDragging.current = false;
         document.body.style.cursor = '';
-        document.body.style.userSelect = '';
+        document.documentElement.classList.remove('is-resizing');
       }
     };
     document.addEventListener('mousemove', handleMouseMove);
@@ -610,7 +610,7 @@ export function WorkArea() {
                   const base64 = needsConversion
                     ? await convertImageFormat(imagePasteFile, config.format)
                     : await fileToBase64(imagePasteFile);
-                  const result = await strategy.upload(base64, config, vaultRoot);
+                  const result = await strategy.upload(base64, config, vaultRoot, activeTab?.path);
                   // Insert markdown image at cursor
                   const view = editorRef.current?.getView();
                   if (view) {
@@ -653,7 +653,7 @@ export function WorkArea() {
           onMouseDown={() => {
             splitDragging.current = true;
             document.body.style.cursor = 'col-resize';
-            document.body.style.userSelect = 'none';
+            document.documentElement.classList.add('is-resizing');
           }}
         />
       )}

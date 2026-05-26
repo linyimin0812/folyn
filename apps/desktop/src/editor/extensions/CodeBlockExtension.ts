@@ -113,6 +113,12 @@ const codeBlockPlugin = ViewPlugin.fromClass(
         const backtickStart = textBeforeCursor.length - 3;
         const charBefore = backtickStart > 0 ? textBeforeCursor[backtickStart - 1] : ' ';
         if (charBefore === ' ' || charBefore === '\t' || backtickStart === 0) {
+          // Only trigger for opening fences: count ``` fences above this line
+          // If odd number exist above, this is a closing fence — skip
+          const docText = state.doc.sliceString(0, line.from);
+          const fenceCount = (docText.match(/^[ \t]*```/gm) || []).length;
+          if (fenceCount % 2 !== 0) return;
+
           const blockStart = line.from + backtickStart;
           const triggerPos = pos;
           const viewRef = update.view;

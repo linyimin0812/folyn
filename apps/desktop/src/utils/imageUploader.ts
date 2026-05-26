@@ -42,7 +42,7 @@ export interface ImageUploadStrategy {
   readonly icon: string;
   readonly enabled: boolean;
 
-  upload(imageBase64: string, config: ImageUploadConfig, vaultRoot: string): Promise<ImageUploadResult>;
+  upload(imageBase64: string, config: ImageUploadConfig, vaultRoot: string, currentFilePath?: string): Promise<ImageUploadResult>;
 }
 
 // ─── Helpers ────────────────────────────────────────────
@@ -58,7 +58,7 @@ class LocalFileStrategy implements ImageUploadStrategy {
   readonly icon = '📁';
   readonly enabled = true;
 
-  async upload(imageBase64: string, config: ImageUploadConfig, vaultRoot: string): Promise<ImageUploadResult> {
+  async upload(imageBase64: string, config: ImageUploadConfig, vaultRoot: string, currentFilePath?: string): Promise<ImageUploadResult> {
     const localConfig = config as LocalUploadConfig;
     const relativePath = `${localConfig.directory}/${localConfig.fileName}.${localConfig.format}`;
 
@@ -74,8 +74,17 @@ class LocalFileStrategy implements ImageUploadStrategy {
     const bytes = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
     await writeFile(absPath, bytes);
 
+    // Generate markdown URL relative to the current file's directory
+    let markdownUrl = `./${relativePath}`;
+    if (currentFilePath) {
+      const fileDir = currentFilePath.substring(0, currentFilePath.lastIndexOf('/'));
+      if (fileDir && relativePath.startsWith(fileDir + '/')) {
+        markdownUrl = `./${relativePath.slice(fileDir.length + 1)}`;
+      }
+    }
+
     return {
-      markdownUrl: `./${relativePath}`,
+      markdownUrl,
       previewUrl: convertFileSrc(absPath),
       fileSize: bytes.length,
     };

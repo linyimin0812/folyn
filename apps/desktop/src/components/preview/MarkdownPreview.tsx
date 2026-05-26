@@ -264,14 +264,19 @@ export function MarkdownPreview({ content, currentFilePath, vaultRoot }: Markdow
       const rawPath = src.replace(/^\.\//, '');
       const imagePath = decodeURIComponent(rawPath);
       if (resolvedVaultRoot) {
-        // Resolve relative to the current file's directory, not vault root
         const fileDir = currentFilePath
           ? currentFilePath.substring(0, currentFilePath.lastIndexOf('/'))
           : '';
-        const basePath = fileDir
-          ? resolvedVaultRoot + '/' + fileDir
-          : resolvedVaultRoot;
-        const absPath = basePath + '/' + imagePath;
+        let absPath: string;
+        if (fileDir && imagePath.startsWith(fileDir + '/')) {
+          // Path already includes file directory prefix — resolve from vault root
+          absPath = resolvedVaultRoot + '/' + imagePath;
+        } else if (fileDir) {
+          // Relative to current file's directory
+          absPath = resolvedVaultRoot + '/' + fileDir + '/' + imagePath;
+        } else {
+          absPath = resolvedVaultRoot + '/' + imagePath;
+        }
         const imageUrl = convertFileSrc(absPath);
         return createElement('img', { src: imageUrl, alt, loading: 'lazy', ...rest });
       }

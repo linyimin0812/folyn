@@ -193,15 +193,28 @@ export function SettingsPage() {
             </div>
             <div className="tr"><div className="tr-info"><h4>显示行号</h4><p>在编辑区左侧显示行号</p></div><Toggle value={store.showLineNumbers} onChange={(v) => updateSettings({ showLineNumbers: v })} /></div>
             <div className="tr"><div className="tr-info"><h4>自动保存</h4><p>每 30 秒自动保存当前文档</p></div><Toggle value={store.autoSave} onChange={(v) => updateSettings({ autoSave: v })} /></div>
-            <div className="tr">
+            <div className="tr" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
               <div className="tr-info">
                 <h4>链接打开方式</h4>
-                <p>{store.linkOpenMode === 'external' ? '点击链接将在系统默认浏览器中打开' : '点击链接将在应用内嵌窗口中打开'}</p>
               </div>
-              <select className="fsel" style={{ maxWidth: 200 }} value={store.linkOpenMode} onChange={(e) => updateSettings({ linkOpenMode: e.target.value as 'external' | 'internal' })}>
-                <option value="external">🌐 外部浏览器</option>
-                <option value="internal">📌 应用内打开</option>
-              </select>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div
+                  className={`setting-card${store.linkOpenMode === 'external' ? ' active' : ''}`}
+                  onClick={() => updateSettings({ linkOpenMode: 'external' })}
+                >
+                  <span className="setting-card-icon">🌐</span>
+                  <span className="setting-card-label">外部浏览器</span>
+                  <span className="setting-card-desc">在系统默认浏览器中打开</span>
+                </div>
+                <div
+                  className={`setting-card${store.linkOpenMode === 'internal' ? ' active' : ''}`}
+                  onClick={() => updateSettings({ linkOpenMode: 'internal' })}
+                >
+                  <span className="setting-card-icon">📌</span>
+                  <span className="setting-card-label">应用内打开</span>
+                  <span className="setting-card-desc">在应用内嵌窗口中打开</span>
+                </div>
+              </div>
             </div>
           </div>
         )}

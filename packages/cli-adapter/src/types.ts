@@ -2,6 +2,7 @@ export interface MessageAttachment {
   name: string;
   path: string;
   type: 'image' | 'file';
+  previewUrl?: string;
 }
 
 export interface CliMessage {

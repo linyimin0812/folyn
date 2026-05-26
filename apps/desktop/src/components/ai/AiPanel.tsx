@@ -197,6 +197,7 @@ export function AiPanel() {
       name: att.name,
       path: att.path || '',
       type: att.type,
+      previewUrl: att.previewUrl,
     }));
     addMessage('user', userText || '(附件)', sessionId, previewAttachments.length > 0 ? previewAttachments : undefined);
     addMessage('assistant', '', sessionId);
@@ -614,7 +615,11 @@ export function AiPanel() {
                       {msg.attachments.map((att, i) => (
                         <div key={i} className="ai-msg-attach-item">
                           {att.type === 'image' ? (
-                            <FileImage className="ai-msg-attach-img" path={att.path} alt={att.name} />
+                            att.previewUrl
+                              ? <img className="ai-msg-attach-img" src={att.previewUrl} alt={att.name} />
+                              : att.path
+                                ? <FileImage className="ai-msg-attach-img" path={att.path} alt={att.name} />
+                                : <span className="ai-msg-attach-file">🖼 {att.name}</span>
                           ) : (
                             <span className="ai-msg-attach-file">📄 {att.name}</span>
                           )}
