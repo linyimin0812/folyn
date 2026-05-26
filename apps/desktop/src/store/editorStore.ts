@@ -80,6 +80,8 @@ interface EditorState {
   openFile: (path: string, name: string) => Promise<void>;
   /** Save the active tab's content to the vault */
   saveFile: (tabId: string) => Promise<void>;
+  /** Save current open tabs immediately (flush, no debounce) */
+  saveOpenTabs: () => void;
   /** Restore previously open tabs for the current vault */
   restoreOpenTabs: () => Promise<void>;
 }
@@ -284,6 +286,20 @@ export const useEditorStore = create<EditorState>()(
         } finally {
           set({ isFileLoading: false });
         }
+      },
+
+      saveOpenTabs: () => {
+        const vaultId = useVaultStore.getState().activeVaultId;
+        if (!vaultId) return;
+        if (persistTabsTimer) clearTimeout(persistTabsTimer);
+        persistTabsTimer = null;
+        const { tabs, activeTabId } = get();
+        const activeTab = tabs.find((t) => t.id === activeTabId);
+        const data: PersistedOpenTabs = {
+          tabs: tabs.map((t) => ({ path: t.path, name: t.name, fileType: t.fileType, cursorLine: t.cursorLine, cursorCol: t.cursorCol })),
+          activeTabPath: activeTab?.path ?? null,
+        };
+        storageClient.set(openTabsStorageKey(vaultId), data);
       },
 
       restoreOpenTabs: async () => {

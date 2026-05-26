@@ -292,6 +292,7 @@ html.is-resizing::after {
 .ft-item.selected:hover { background: var(--act); }
 .ft-item.drag-over { background: var(--accdim); box-shadow: inset 0 0 0 1px var(--acc); border-radius: 3px; }
 .ft-item.dragging { opacity: .5; }
+.ft-item.pinned .ft-name::before { content: '📌 '; font-size: 10px; }
 .drag-ghost {
   position: fixed; z-index: 99999; pointer-events: none;
   padding: 4px 10px; border-radius: 4px;

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   getFilteredLanguages,
   selectLanguage,
@@ -16,6 +16,25 @@ interface CodeBlockLangMenuProps {
 
 export function CodeBlockLangMenu({ visible, menuState, position, getView }: CodeBlockLangMenuProps) {
   const listRef = useRef<HTMLDivElement>(null);
+  const [adjustedPos, setAdjustedPos] = useState(position);
+
+  useEffect(() => {
+    if (!visible || !listRef.current) {
+      setAdjustedPos(position);
+      return;
+    }
+    requestAnimationFrame(() => {
+      const menu = listRef.current;
+      if (!menu) return;
+      const menuHeight = menu.offsetHeight;
+      const spaceBelow = window.innerHeight - position.top;
+      if (spaceBelow < menuHeight && position.top > menuHeight) {
+        setAdjustedPos({ top: position.top - menuHeight - 8, left: position.left });
+      } else {
+        setAdjustedPos(position);
+      }
+    });
+  }, [visible, position]);
 
   // Scroll the active item into view
   useEffect(() => {
@@ -43,7 +62,7 @@ export function CodeBlockLangMenu({ visible, menuState, position, getView }: Cod
   return (
     <div
       className="cbl-menu"
-      style={{ top: position.top, left: position.left }}
+      style={{ top: adjustedPos.top, left: adjustedPos.left }}
       ref={listRef}
     >
       <div className="cbl-header">Select Language</div>

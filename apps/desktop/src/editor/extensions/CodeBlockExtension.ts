@@ -98,12 +98,18 @@ const codeBlockPlugin = ViewPlugin.fromClass(
           const viewRef = update.view;
           setTimeout(() => hideCodeBlockMenu(viewRef), 0);
         } else {
-          const viewRef = update.view;
-          setTimeout(() => {
-            viewRef.dispatch({
-              effects: setCodeBlockMenu.of({ ...menuState, filter: filterText, selectedIndex: 0 }),
-            });
-          }, 0);
+          const filtered = getFilteredLanguages(filterText);
+          if (filtered.length === 0) {
+            const viewRef = update.view;
+            setTimeout(() => hideCodeBlockMenu(viewRef), 0);
+          } else {
+            const viewRef = update.view;
+            setTimeout(() => {
+              viewRef.dispatch({
+                effects: setCodeBlockMenu.of({ ...menuState, filter: filterText, selectedIndex: 0 }),
+              });
+            }, 0);
+          }
         }
         return;
       }

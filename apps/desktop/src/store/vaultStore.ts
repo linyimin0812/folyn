@@ -59,6 +59,11 @@ interface VaultState {
   /** Switch to a different vault by ID */
   switchVault: (id: string) => Promise<void>;
 
+  // ── Pinning ──
+
+  pinnedPaths: string[];
+  togglePin: (path: string) => void;
+
   // ── File Operations ──
 
   refreshFileTree: () => Promise<void>;
@@ -99,6 +104,7 @@ export const useVaultStore = create<VaultState>()(
         fileTree: [],
         isLoading: false,
         error: null,
+        pinnedPaths: [],
 
         initVault: async () => {
           // Load vault configs from local storage
@@ -162,6 +168,7 @@ export const useVaultStore = create<VaultState>()(
               vaults: newVaults,
               currentVault: config,
               activeVaultId: config.id,
+              pinnedPaths: [],
             });
             syncToSettings(config);
             await persistVaultConfigs(newVaults, config.id);
@@ -200,8 +207,13 @@ export const useVaultStore = create<VaultState>()(
             syncToSettings(config);
             await persistVaultConfigs(get().vaults, config.id);
 
-            // Clear editor tabs immediately before refreshing file tree for the new vault
+            // Load pinned paths for this vault
+            const pinned = await storageClient.get<string[]>(`vault:pinned:${config.id}`);
+            set({ pinnedPaths: pinned || [] });
+
+            // Save current tabs for previous vault, then clear
             const { useEditorStore } = await import('./editorStore');
+            useEditorStore.getState().saveOpenTabs();
             useEditorStore.setState({ tabs: [], activeTabId: null });
 
             await get().refreshFileTree();
@@ -214,6 +226,17 @@ export const useVaultStore = create<VaultState>()(
             console.error('[VaultStore] switchVault failed:', err);
           } finally {
             set({ isLoading: false });
+          }
+        },
+
+        togglePin: async (path) => {
+          const { pinnedPaths, activeVaultId } = get();
+          const newPinned = pinnedPaths.includes(path)
+            ? pinnedPaths.filter((p) => p !== path)
+            : [...pinnedPaths, path];
+          set({ pinnedPaths: newPinned });
+          if (activeVaultId) {
+            await storageClient.set(`vault:pinned:${activeVaultId}`, newPinned);
           }
         },
 
