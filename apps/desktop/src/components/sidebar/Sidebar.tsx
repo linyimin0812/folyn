@@ -35,6 +35,8 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
   const vaultDeleteFile = useVaultStore((state) => state.deleteFile);
   const vaultDeleteDir = useVaultStore((state) => state.deleteDir);
   const vaultRenameFile = useVaultStore((state) => state.renameFile);
+  const pinnedPaths = useVaultStore((state) => state.pinnedPaths);
+  const togglePin = useVaultStore((state) => state.togglePin);
 
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
@@ -486,9 +488,17 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
 
   const renderFileTree = (items: VaultEntry[], depth = 0) => {
     const lowerQuery = searchQuery.toLowerCase();
-    return items
-      .filter((item) => !searchQuery || matchesSearch(item, lowerQuery))
+    const filtered = items.filter((item) => !searchQuery || matchesSearch(item, lowerQuery));
+    const sorted = [...filtered].sort((a, b) => {
+      const aPinned = pinnedPaths.includes(a.path);
+      const bPinned = pinnedPaths.includes(b.path);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      return 0;
+    });
+    return sorted
       .map((item) => {
+        const isPinned = pinnedPaths.includes(item.path);
         const isRenaming = renamingItem === item.path;
 
         if (item.type === 'dir') {
@@ -499,7 +509,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
           return (
             <div key={item.path}>
               <div
-                className={`ft-item ft-dir${isDirSelected ? ' selected' : ''}${isDragOver ? ' drag-over' : ''}`}
+                className={`ft-item ft-dir${isDirSelected ? ' selected' : ''}${isDragOver ? ' drag-over' : ''}${isPinned ? ' pinned' : ''}`}
                 style={{ paddingLeft: `${12 + depth * 14}px` }}
                 data-dirpath={item.path}
                 onClick={(e) => handleItemSelect(e, item.path, item)}
@@ -568,7 +578,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
           <div
             key={item.path}
             data-filepath={item.path}
-            className={`ft-item ft-file${isActive ? ' on' : ''}${isFileSelected ? ' selected' : ''}`}
+            className={`ft-item ft-file${isActive ? ' on' : ''}${isFileSelected ? ' selected' : ''}${isPinned ? ' pinned' : ''}`}
             style={{ paddingLeft: `${12 + depth * 14}px` }}
             onClick={(e) => !isRenaming && handleItemSelect(e, item.path, item)}
             onMouseDown={(e) => handleItemMouseDown(e, item.path)}
@@ -761,6 +771,14 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
         {contextMenu && (
           <div
             className="ft-context-menu"
+            ref={(el) => {
+              if (!el) return;
+              const rect = el.getBoundingClientRect();
+              const maxY = window.innerHeight - rect.height - 8;
+              const maxX = window.innerWidth - rect.width - 8;
+              if (contextMenu.y > maxY) el.style.top = `${maxY}px`;
+              if (contextMenu.x > maxX) el.style.left = `${maxX}px`;
+            }}
             style={{ top: contextMenu.y, left: contextMenu.x }}
             onMouseDown={(e) => e.stopPropagation()}
           >
@@ -776,6 +794,9 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
             </button>
             <button className="ft-ctx-item" onClick={() => { copyToClipboard(contextMenu.name); }}>
               复制文件名
+            </button>
+            <button className="ft-ctx-item" onClick={() => { togglePin(contextMenu.path); setContextMenu(null); }}>
+              {pinnedPaths.includes(contextMenu.path) ? '取消置顶' : '置顶'}
             </button>
             {contextMenu.type === 'file' && (
               <button className="ft-ctx-item" onClick={() => {
