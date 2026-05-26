@@ -211,9 +211,11 @@ export const useVaultStore = create<VaultState>()(
             const pinned = await storageClient.get<string[]>(`vault:pinned:${config.id}`);
             set({ pinnedPaths: pinned || [] });
 
-            // Save current tabs for previous vault, then clear
             const { useEditorStore } = await import('./editorStore');
-            useEditorStore.getState().saveOpenTabs();
+            // Save current tabs for previous vault before clearing (skip on initial startup when tabs are empty)
+            if (useEditorStore.getState().tabs.length > 0) {
+              useEditorStore.getState().saveOpenTabs();
+            }
             useEditorStore.setState({ tabs: [], activeTabId: null });
 
             await get().refreshFileTree();
