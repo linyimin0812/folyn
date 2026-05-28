@@ -202,6 +202,15 @@ export const useVaultStore = create<VaultState>()(
 
           set({ isLoading: true, error: null });
           try {
+            // Save current vault state before switching (skip on initial startup when empty)
+            const { useEditorStore } = await import('./editorStore');
+            const { useAiStore } = await import('./aiStore');
+            if (useEditorStore.getState().tabs.length > 0) {
+              useEditorStore.getState().saveOpenTabs();
+            }
+            // Save AI sessions for current vault before activeVaultId changes
+            await useAiStore.getState().switchVaultSessions(config.id);
+
             await get().manager.switchVault(config);
             set({ currentVault: config, activeVaultId: config.id });
             syncToSettings(config);
@@ -211,11 +220,6 @@ export const useVaultStore = create<VaultState>()(
             const pinned = await storageClient.get<string[]>(`vault:pinned:${config.id}`);
             set({ pinnedPaths: pinned || [] });
 
-            const { useEditorStore } = await import('./editorStore');
-            // Save current tabs for previous vault before clearing (skip on initial startup when tabs are empty)
-            if (useEditorStore.getState().tabs.length > 0) {
-              useEditorStore.getState().saveOpenTabs();
-            }
             useEditorStore.setState({ tabs: [], activeTabId: null });
 
             await get().refreshFileTree();

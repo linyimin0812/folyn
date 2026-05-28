@@ -336,6 +336,7 @@ export function AiPanel() {
     } catch (err) {
       appendToLastMessage(`\n\n[错误] ${String(err)}`, sid);
       setSessionStreaming(sid, false);
+    } finally {
       adapter.offEvent(eventHandler);
     }
   };

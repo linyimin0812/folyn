@@ -11,6 +11,7 @@ import { useTheme } from './hooks/useTheme';
 import { useSettingsStore } from './store/settingsStore';
 import { useVaultStore } from './store/vaultStore';
 import { useEditorStore } from './store/editorStore';
+import { loadAiSessionsForVault } from './store/aiStore';
 import { registerBuiltinPlugins } from '@quill/container-plugins';
 import { isTauri } from './utils/platform';
 
@@ -60,6 +61,7 @@ export default function App() {
     const initializeVault = async () => {
       await useVaultStore.getState().initVault();
 
+      await loadAiSessionsForVault();
       await useEditorStore.getState().restoreOpenTabs();
 
       const { fileTree } = useVaultStore.getState();
