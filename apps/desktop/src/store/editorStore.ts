@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { useVaultStore } from './vaultStore';
 import { storageClient } from '@/utils/storageClient';
+import { getHandlerByExtension, getHandlerById } from '@/file-types/registry';
 
 /** Debounced auto-save timers per tab */
 const autoSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -8,20 +9,12 @@ const AUTO_SAVE_DELAY_MS = 1000;
 
 export type ViewMode = 'split' | 'edit' | 'preview';
 
-export type FileType = 'text' | 'image' | 'pdf' | 'code' | 'web' | 'html';
-
-const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico']);
-const PDF_EXTENSIONS = new Set(['pdf']);
-const MARKDOWN_EXTENSIONS = new Set(['md', 'markdown', 'mdx']);
-const HTML_EXTENSIONS = new Set(['html', 'htm']);
+export type FileType = string;
 
 export function detectFileType(filePath: string): FileType {
   const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
-  if (IMAGE_EXTENSIONS.has(ext)) return 'image';
-  if (PDF_EXTENSIONS.has(ext)) return 'pdf';
-  if (MARKDOWN_EXTENSIONS.has(ext)) return 'text';
-  if (HTML_EXTENSIONS.has(ext)) return 'html';
-  return 'code';
+  const handler = getHandlerByExtension(ext);
+  return handler?.id ?? 'code';
 }
 
 export interface FileTab {
@@ -267,7 +260,12 @@ export const useEditorStore = create<EditorState>()(
         set({ isFileLoading: true });
         try {
           const fileType = detectFileType(filePath);
-          const content = (fileType === 'text' || fileType === 'code' || fileType === 'html') ? await useVaultStore.getState().readFile(filePath) : '';
+          const handler = getHandlerById(fileType);
+          let content = '';
+          if (handler?.needsFileContent) {
+            const raw = await useVaultStore.getState().readFile(filePath);
+            content = handler.deserialize ? handler.deserialize(raw) : raw;
+          }
           const newTab: FileTab = {
             id: tabId,
             name,
@@ -335,7 +333,12 @@ export const useEditorStore = create<EditorState>()(
             if (alreadyOpen) continue;
             try {
               const fileType = detectFileType(tabInfo.path);
-              const content = (fileType === 'text' || fileType === 'code' || fileType === 'html') ? await useVaultStore.getState().readFile(tabInfo.path) : '';
+              const handler = getHandlerById(fileType);
+              let content = '';
+              if (handler?.needsFileContent) {
+                const raw = await useVaultStore.getState().readFile(tabInfo.path);
+                content = handler.deserialize ? handler.deserialize(raw) : raw;
+              }
               const newTab: FileTab = {
                 id: tabId,
                 name: tabInfo.name,
@@ -373,7 +376,9 @@ export const useEditorStore = create<EditorState>()(
         const tab = get().tabs.find((t) => t.id === tabId);
         if (!tab) return;
         try {
-          await useVaultStore.getState().writeFile(tab.path, tab.content);
+          const handler = getHandlerById(tab.fileType);
+          const output = handler?.serialize ? handler.serialize(tab.content) : tab.content;
+          await useVaultStore.getState().writeFile(tab.path, output);
           set((state) => ({
             tabs: state.tabs.map((t) =>
               t.id === tabId ? { ...t, isDirty: false } : t,

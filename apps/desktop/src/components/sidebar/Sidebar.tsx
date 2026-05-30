@@ -315,6 +315,14 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
 
     if (newItemType === 'dir') {
       await vaultCreateDir(fullPath);
+    } else if (finalName.endsWith('.excalidraw')) {
+      const emptyExcalidraw = JSON.stringify({
+        type: 'excalidraw',
+        version: 2,
+        elements: [],
+        appState: { viewBackgroundColor: '#ffffff' },
+      }, null, 2);
+      await vaultCreateFile(fullPath, emptyExcalidraw);
     } else {
       const defaultContent = `# ${finalName.substring(0, finalName.lastIndexOf('.'))}`;
       await vaultCreateFile(fullPath, defaultContent);

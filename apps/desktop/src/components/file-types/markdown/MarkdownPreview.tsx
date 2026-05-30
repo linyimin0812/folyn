@@ -17,6 +17,7 @@ import { isTauri } from '@/utils/platform';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useEditorStore } from '@/store/editorStore';
+import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview';
 /**
  * Rehype plugin: remove <br> nodes inside <code> elements (within <pre> blocks).
  * remark-breaks converts soft line breaks to <br> in paragraphs,
@@ -194,13 +195,7 @@ function CodeBlockWrapper({ children, node, ...rest }: any) {
   );
 }
 
-interface MarkdownPreviewProps {
-  content: string;
-  currentFilePath?: string;
-  vaultRoot?: string;
-}
-
-export function MarkdownPreview({ content, currentFilePath, vaultRoot }: MarkdownPreviewProps) {
+export function MarkdownPreview({ content, filePath, vaultRoot }: import('../types').PreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [resolvedVaultRoot, setResolvedVaultRoot] = useState('');
 
@@ -263,16 +258,23 @@ export function MarkdownPreview({ content, currentFilePath, vaultRoot }: Markdow
       }
       const rawPath = src.replace(/^\.\//, '');
       const imagePath = decodeURIComponent(rawPath);
+
+      if (imagePath.endsWith('.excalidraw')) {
+        const fileDir = filePath
+          ? filePath.substring(0, filePath.lastIndexOf('/'))
+          : '';
+        const vaultPath = fileDir ? `${fileDir}/${imagePath}` : imagePath;
+        return createElement(ExcalidrawPreview, { filePath: vaultPath, alt });
+      }
+
       if (resolvedVaultRoot) {
-        const fileDir = currentFilePath
-          ? currentFilePath.substring(0, currentFilePath.lastIndexOf('/'))
+        const fileDir = filePath
+          ? filePath.substring(0, filePath.lastIndexOf('/'))
           : '';
         let absPath: string;
         if (fileDir && imagePath.startsWith(fileDir + '/')) {
-          // Path already includes file directory prefix — resolve from vault root
           absPath = resolvedVaultRoot + '/' + imagePath;
         } else if (fileDir) {
-          // Relative to current file's directory
           absPath = resolvedVaultRoot + '/' + fileDir + '/' + imagePath;
         } else {
           absPath = resolvedVaultRoot + '/' + imagePath;
@@ -287,7 +289,7 @@ export function MarkdownPreview({ content, currentFilePath, vaultRoot }: Markdow
     map['pre'] = CodeBlockWrapper;
 
     return map;
-  }, [currentFilePath, vaultRoot, resolvedVaultRoot]);
+  }, [filePath, vaultRoot, resolvedVaultRoot]);
 
   const { meta, body } = useMemo(() => parseFrontmatter(content), [content]);
 
