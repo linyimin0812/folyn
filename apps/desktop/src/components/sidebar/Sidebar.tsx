@@ -4,6 +4,8 @@ import { useEditorStore } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useAiStore } from '@/store/aiStore';
 import type { VaultEntry } from '@quill/vault-provider';
+import { getAllHandlers } from '@/components/file-types/registry';
+import { FileIcon } from '@/components/icons/FileIcon';
 
 function flattenTree(entries: VaultEntry[]): string[] {
   const result: string[] = [];
@@ -81,6 +83,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
   const [newItemType, setNewItemType] = useState<'file' | 'dir' | null>(null);
   const [newItemName, setNewItemName] = useState('');
   const [newItemParent, setNewItemParent] = useState<string | null>(null);
+  const [newItemExtension, setNewItemExtension] = useState<string | null>(null);
   const [renamingItem, setRenamingItem] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const newItemInputRef = useRef<HTMLInputElement>(null);
@@ -288,10 +291,11 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
     });
   }, [activeTabId, tabs]);
 
-  const startNewItem = useCallback((type: 'file' | 'dir', parentDir?: string) => {
+  const startNewItem = useCallback((type: 'file' | 'dir', parentDir?: string, ext?: string) => {
     setNewItemType(type);
     setNewItemName('');
     setNewItemParent(parentDir ?? null);
+    setNewItemExtension(ext ?? null);
     if (parentDir) {
       setExpandedDirs((prev) => new Set([...prev, parentDir]));
     }
@@ -304,12 +308,14 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
       setNewItemType(null);
       setNewItemName('');
       setNewItemParent(null);
+      setNewItemExtension(null);
       return;
     }
 
-    const finalName = newItemType === 'file' && !trimmedName.includes('.')
-      ? `${trimmedName}.md`
-      : trimmedName;
+    let finalName = trimmedName;
+    if (newItemType === 'file' && !trimmedName.includes('.')) {
+      finalName = newItemExtension ? `${trimmedName}.${newItemExtension}` : `${trimmedName}.md`;
+    }
 
     const fullPath = newItemParent ? `${newItemParent}/${finalName}` : finalName;
 
@@ -331,6 +337,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
     setNewItemType(null);
     setNewItemName('');
     setNewItemParent(null);
+    setNewItemExtension(null);
 
     if (newItemType === 'file') {
       handleFileClick(fullPath, finalName);
@@ -344,6 +351,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
     setNewItemType(null);
     setNewItemName('');
     setNewItemParent(null);
+    setNewItemExtension(null);
   }, []);
 
   const startRename = useCallback((itemPath: string, itemName: string) => {
@@ -371,6 +379,18 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
   }, [renameValue, renamingItem, vaultRenameFile]);
 
   const closeTab = useEditorStore((state) => state.closeTab);
+
+  const creatableTypes = useMemo(() => {
+    const handlers = getAllHandlers();
+    return handlers.filter((h) => h.supportedViewModes.includes('edit') && h.extensions.length > 0);
+  }, []);
+
+  const fileTypeLabels: Record<string, string> = {
+    markdown: 'Markdown',
+    excalidraw: 'Excalidraw',
+    html: 'HTML',
+    code: '代码文件',
+  };
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; name: string; type: 'file' | 'dir' } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ path: string; type: 'file' | 'dir'; name: string } | null>(null);
@@ -524,7 +544,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
                 onMouseDown={(e) => handleItemMouseDown(e, item.path)}
                 onContextMenu={(e) => handleContextMenu(e, item.path, item.name, 'dir')}
               >
-                <span className="ft-icon">{isExpanded ? '▾' : '▸'}</span>
+                <span className="ft-icon"><FileIcon filename={item.name} isDir isOpen={isExpanded} /></span>
                 {isRenaming ? (
                   <input
                     ref={renameInputRef}
@@ -542,28 +562,14 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
                 ) : (
                   <span className="ft-name">{item.name}</span>
                 )}
-                <div className="ft-actions">
-                  <button className="ft-act-btn" data-tip="新建文件" onClick={(e) => { e.stopPropagation(); startNewItem('file', item.path); }}>
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M9.5 1.1l3.4 3.5.1.4v2h-1V6H8.5L8 5.5V2H3.5l-.5.5v11l.5.5H7v1H3.5l-1.5-1.5v-11l1.5-1.5h5.7l.3.1zM9 2v3h2.9L9 2zm4 12h-1v-3H9v-1h3V7h1v3h3v1h-3v3z"/></svg>
-                  </button>
-                  <button className="ft-act-btn" data-tip="新建文件夹" onClick={(e) => { e.stopPropagation(); startNewItem('dir', item.path); }}>
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4H9.618l-1-2H2a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1V5a1 1 0 00-1-1zm0 9H2V3h6.382l1 2H14v8zM8 7v2H6v1h2v2h1V10h2V9H9V7H8z"/></svg>
-                  </button>
-                  <button className="ft-act-btn" data-tip="重命名" onClick={(e) => { e.stopPropagation(); startRename(item.path, item.name); }}>
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M13.23 1h-1.46L3.52 9.25l-.16.22L1 13.59 2.41 15l4.12-2.36.22-.16L15 4.23V2.77L13.23 1zM2.41 13.59l1.51-3 1.45 1.45-2.96 1.55zm3.83-2.06L4.47 9.76l8-8 1.77 1.77-8 8z"/></svg>
-                  </button>
-                  <button className="ft-act-btn" data-tip="删除" onClick={(e) => { e.stopPropagation(); deleteItem(item.path, 'dir'); }}>
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M10 3h3v1h-1v9l-1 1H5l-1-1V4H3V3h3V2a1 1 0 011-1h2a1 1 0 011 1v1zM9 2H7v1h2V2zM5 4v9h6V4H5zm2 2h1v5H7V6zm2 0h1v5H9V6z"/></svg>
-                  </button>
-                </div>
               </div>
               {isExpanded && newItemType && newItemParent === item.path && (
                 <div className="ft-item" style={{ paddingLeft: `${12 + (depth + 1) * 14}px` }}>
-                  <span className="ft-icon">{newItemType === 'dir' ? '📁' : '📄'}</span>
+                  <span className="ft-icon"><FileIcon filename={newItemType === 'dir' ? '' : (newItemName || 'untitled.md')} isDir={newItemType === 'dir'} /></span>
                   <input
                     ref={newItemInputRef}
                     className="ft-rename-input"
-                    placeholder={newItemType === 'dir' ? '文件夹名称' : '文件名称'}
+                    placeholder={newItemType === 'dir' ? '文件夹名称' : newItemExtension ? `文件名（默认 .${newItemExtension}）` : '文件名（含扩展名）'}
                     value={newItemName}
                     onChange={(e) => setNewItemName(e.target.value)}
                     onKeyDown={(e) => {
@@ -592,7 +598,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
             onMouseDown={(e) => handleItemMouseDown(e, item.path)}
             onContextMenu={(e) => handleContextMenu(e, item.path, item.name, 'file')}
           >
-            <span className="ft-icon">📄</span>
+            <span className="ft-icon"><FileIcon filename={item.name} /></span>
             {isRenaming ? (
               <input
                 ref={renameInputRef}
@@ -609,14 +615,6 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
             ) : (
               <span className="ft-name">{item.name}</span>
             )}
-            <div className="ft-actions">
-              <button className="ft-act-btn" data-tip="重命名" onClick={(e) => { e.stopPropagation(); startRename(item.path, item.name); }}>
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M13.23 1h-1.46L3.52 9.25l-.16.22L1 13.59 2.41 15l4.12-2.36.22-.16L15 4.23V2.77L13.23 1zM2.41 13.59l1.51-3 1.45 1.45-2.96 1.55zm3.83-2.06L4.47 9.76l8-8 1.77 1.77-8 8z"/></svg>
-              </button>
-              <button className="ft-act-btn" data-tip="删除" onClick={(e) => { e.stopPropagation(); deleteItem(item.path, 'file'); }}>
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M10 3h3v1h-1v9l-1 1H5l-1-1V4H3V3h3V2a1 1 0 011-1h2a1 1 0 011 1v1zM9 2H7v1h2V2zM5 4v9h6V4H5zm2 2h1v5H7V6zm2 0h1v5H9V6z"/></svg>
-              </button>
-            </div>
           </div>
         );
       });
@@ -711,7 +709,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
         {/* New item inline input (root level only) */}
         {newItemType && !newItemParent && (
           <div className="ft-item" style={{ paddingLeft: '12px' }}>
-            <span className="ft-icon">{newItemType === 'dir' ? '📁' : '📄'}</span>
+            <span className="ft-icon"><FileIcon filename={newItemType === 'dir' ? '' : (newItemName || 'untitled.md')} isDir={newItemType === 'dir'} /></span>
             <input
               ref={newItemInputRef}
               className="ft-rename-input"
@@ -790,13 +788,51 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
             style={{ top: contextMenu.y, left: contextMenu.x }}
             onMouseDown={(e) => e.stopPropagation()}
           >
+            {contextMenu.type === 'dir' && (
+              <>
+                <div className="ft-ctx-item ft-ctx-submenu-wrap">
+                  <span>新建文件</span>
+                  <span className="ft-ctx-arrow">▸</span>
+                  <div className="ft-ctx-submenu">
+                    {creatableTypes.map((handler) => (
+                      <button
+                        key={handler.id}
+                        className="ft-ctx-item"
+                        onClick={() => {
+                          setContextMenu(null);
+                          startNewItem('file', contextMenu.path, handler.extensions[0]);
+                        }}
+                      >
+                        <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 4 }}>{handler.icon ?? <FileIcon filename={`file.${handler.extensions[0]}`} />}</span>
+                        {fileTypeLabels[handler.id] ?? handler.id} (.{handler.extensions[0]})
+                      </button>
+                    ))}
+                    <div className="ft-ctx-divider" />
+                    <button
+                      className="ft-ctx-item"
+                      onClick={() => {
+                        setContextMenu(null);
+                        startNewItem('file', contextMenu.path);
+                      }}
+                    >
+                      <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 4 }}><FileIcon filename="file.txt" /></span>
+                      其他（自定义扩展名）
+                    </button>
+                  </div>
+                </div>
+                <button className="ft-ctx-item" onClick={() => { setContextMenu(null); startNewItem('dir', contextMenu.path); }}>
+                  新建文件夹
+                </button>
+                <div className="ft-ctx-divider" />
+              </>
+            )}
             <button className="ft-ctx-item" onClick={() => { copyToClipboard(contextMenu.path); }}>
               复制相对路径
             </button>
             <button className="ft-ctx-item" onClick={() => {
               const vault = useVaultStore.getState().currentVault;
               const base = vault?.basePath || '';
-              copyToClipboard(base.startsWith('~') ? `${base}/${contextMenu.path}` : `${base}/${contextMenu.path}`);
+              copyToClipboard(`${base}/${contextMenu.path}`);
             }}>
               复制绝对路径
             </button>

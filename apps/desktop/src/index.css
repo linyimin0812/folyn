@@ -35,6 +35,11 @@
   --acc: #3a6ef0; --acc2: #6a3af0; --accdim: #dce8ff; --accglow: rgba(58,110,240,.08);
   --green: #22a863; --gdim: #dcf5e8; --amber: #d4820a; --red: #d94040;
   --cyan: #0a8ab8; --purple: #8040d0; --card: #fff; --inp: #f4f5f8;
+  --ic-md: #2563eb; --ic-html: #e44d26; --ic-code: #555e6e; --ic-img: #16a34a;
+  --ic-draw: #7c3aed; --ic-web: #0284c7; --ic-folder: #d97706; --ic-default: #8892a8;
+  --ic-ts: #3178c6; --ic-js: #e8b800; --ic-js-fg: #1a1a1a; --ic-json: #a67c2e;
+  --ic-css: #663399; --ic-yaml: #b45309; --ic-py: #3572a5; --ic-sql: #0d7d72;
+  --ic-pdf: #d93030;
 }
 
 [data-theme="dark"] {
@@ -44,6 +49,11 @@
   --acc: #5b8af5; --acc2: #7c5bf5; --accdim: #131d42; --accglow: rgba(91,138,245,.1);
   --green: #3dd68c; --gdim: #0b2418; --amber: #f5a623; --red: #f06a6a;
   --cyan: #5dd8f5; --purple: #b87cf5; --card: #111420; --inp: #0f1219;
+  --ic-md: #60a5fa; --ic-html: #f97316; --ic-code: #8899aa; --ic-img: #4ade80;
+  --ic-draw: #a78bfa; --ic-web: #38bdf8; --ic-folder: #fbbf24; --ic-default: #64748b;
+  --ic-ts: #60a5fa; --ic-js: #facc15; --ic-js-fg: #1a1a1a; --ic-json: #fbbf24;
+  --ic-css: #a78bfa; --ic-yaml: #f59e0b; --ic-py: #60a5fa; --ic-sql: #2dd4bf;
+  --ic-pdf: #f87171;
 }
 
 /* ── Base ── */
@@ -100,7 +110,7 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
 .ftab:hover { color: var(--t2); background: var(--hov); }
 .ftab.on { color: var(--t1); border-color: var(--acc); background: var(--surf); }
 .ftab-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
-.ftab-icon { font-size: 12px; flex-shrink: 0; line-height: 1; }
+.ftab-icon { flex-shrink: 0; display: flex; align-items: center; }
 .ftab-name { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
 .ftab-x {
   opacity: 0; font-size: 10px; flex-shrink: 0; width: 14px; height: 14px;
@@ -279,6 +289,21 @@ html.is-resizing::after {
 .ft-ctx-danger { color: #e05252; }
 .ft-ctx-danger:hover { background: rgba(224,82,82,.08); }
 .ft-ctx-divider { height: 1px; margin: 4px 8px; background: var(--brd); }
+.ft-ctx-submenu-wrap {
+  position: relative; display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 6px 14px; font-size: 12px; cursor: pointer;
+  background: none; border: none; color: var(--t1);
+}
+.ft-ctx-submenu-wrap:hover { background: var(--hov); }
+.ft-ctx-arrow { font-size: 10px; color: var(--t3); margin-left: 8px; }
+.ft-ctx-submenu {
+  display: none; position: absolute; left: 100%; top: 0;
+  min-width: 180px; padding: 4px 0;
+  background: var(--panel); border: 1px solid var(--brd);
+  border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  z-index: 1001;
+}
+.ft-ctx-submenu-wrap:hover > .ft-ctx-submenu { display: block; }
 
 /* File tree items */
 .ft-item {
@@ -300,7 +325,11 @@ html.is-resizing::after {
   font-size: 12px; font-family: var(--font-ui); white-space: nowrap;
   box-shadow: 0 2px 8px rgba(0,0,0,.2); opacity: .9;
 }
-.ft-icon { font-size: 12px; flex-shrink: 0; width: 16px; text-align: center; }
+.ft-icon { flex-shrink: 0; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; }
+
+/* ── File Icons ── */
+.ft-icon svg { display: block; flex-shrink: 0; }
+
 .ft-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .ft-dir { font-weight: 500; }
 .ft-actions {

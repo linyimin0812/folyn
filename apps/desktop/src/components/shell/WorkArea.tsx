@@ -12,6 +12,7 @@ import { getStrategy, fileToBase64, convertImageFormat } from '@/utils/imageUplo
 import type { ContainerPlugin } from '@quill/container-plugins';
 import { EditorView } from '@codemirror/view';
 import { getHandlerById } from '../file-types/registry';
+import { FileIcon } from '@/components/icons/FileIcon';
 
 interface HeadingItem {
   level: number;
@@ -350,7 +351,7 @@ export function WorkArea() {
                 onClick={() => setActiveTab(tab.id)}
               >
                 {tab.isDirty && <span className="ftab-dot" />}
-                {tabHandler?.icon && <span className="ftab-icon">{tabHandler.icon}</span>}
+                <span className="ftab-icon">{tabHandler?.icon ?? <FileIcon filename={tab.name} />}</span>
                 <span className="ftab-name">{tab.name}</span>
                 <span
                   className="ftab-x"
