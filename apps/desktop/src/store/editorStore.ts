@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useVaultStore } from './vaultStore';
 import { storageClient } from '@/utils/storageClient';
-import { getHandlerByExtension, getHandlerById } from '@/file-types/registry';
+import { getHandlerByExtension, getHandlerById } from '@/components/file-types/registry';
 
 /** Debounced auto-save timers per tab */
 const autoSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();

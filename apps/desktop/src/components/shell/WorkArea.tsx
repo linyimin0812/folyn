@@ -11,7 +11,7 @@ import { type CodeBlockMenuState } from '@/editor/extensions/CodeBlockExtension'
 import { getStrategy, fileToBase64, convertImageFormat } from '@/utils/imageUploader';
 import type { ContainerPlugin } from '@quill/container-plugins';
 import { EditorView } from '@codemirror/view';
-import { getHandlerById } from '@/file-types/registry';
+import { getHandlerById } from '../file-types/registry';
 
 interface HeadingItem {
   level: number;
