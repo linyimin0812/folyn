@@ -9,6 +9,7 @@ import type { VaultEntry } from '@quill/vault-provider';
 import { MessageContent } from './MessageContent';
 import { ToolCallBlock } from './ToolCallBlock';
 import { DiffView } from './DiffView';
+import { FileIcon } from '@/components/icons/FileIcon';
 
 interface PendingAttachment {
   id: string;
@@ -373,13 +374,24 @@ export function AiPanel() {
     const cursorPos = textarea?.selectionStart ?? input.length;
     const before = input.slice(0, anchorPos);
     const after = input.slice(cursorPos);
-    const newValue = `${before}@${filePath} ${after}`;
+    const newValue = `${before}${after}`;
     setInput(newValue);
     setMentionMenu({ visible: false, filter: '', anchorPos: 0 });
+
+    const fileName = filePath.split('/').pop() || filePath;
+    setAttachments((prev) => {
+      if (prev.some((a) => a.path === filePath)) return prev;
+      return [...prev, {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: fileName,
+        type: 'file' as const,
+        path: filePath,
+      }];
+    });
+
     setTimeout(() => {
       if (textarea) {
-        const pos = anchorPos + filePath.length + 2;
-        textarea.selectionStart = textarea.selectionEnd = pos;
+        textarea.selectionStart = textarea.selectionEnd = anchorPos;
         textarea.focus();
       }
     }, 0);
@@ -622,7 +634,7 @@ export function AiPanel() {
                                 ? <FileImage className="ai-msg-attach-img" path={att.path} alt={att.name} />
                                 : <span className="ai-msg-attach-file">🖼 {att.name}</span>
                           ) : (
-                            <span className="ai-msg-attach-file">📄 {att.name}</span>
+                            <span className="ai-msg-attach-file"><FileIcon filename={att.name} /> {att.name}</span>
                           )}
                         </div>
                       ))}
@@ -666,7 +678,7 @@ export function AiPanel() {
                 {att.previewUrl ? (
                   <img className="ai-attach-thumb" src={att.previewUrl} alt={att.name} />
                 ) : (
-                  <span className="ai-attach-file-icon">📄</span>
+                  <span className="ai-attach-file-icon"><FileIcon filename={att.name} /></span>
                 )}
                 <span className="ai-attach-name">{att.name}</span>
                 <button className="ai-attach-remove" onClick={() => removeAttachment(att.id)}>×</button>
@@ -683,7 +695,7 @@ export function AiPanel() {
                   className={`ai-mention-item ${i === mentionIndex ? 'active' : ''}`}
                   onMouseDown={(e) => { e.preventDefault(); insertMention(file.path); }}
                 >
-                  <span>📄 {file.name}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><FileIcon filename={file.name} /> {file.name}</span>
                   <span className="ai-mention-item-path">{file.path}</span>
                 </div>
               ))}

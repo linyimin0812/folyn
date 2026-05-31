@@ -6,6 +6,7 @@ import { useAiStore } from '@/store/aiStore';
 import type { VaultEntry } from '@quill/vault-provider';
 import { getAllHandlers } from '@/components/file-types/registry';
 import { FileIcon } from '@/components/icons/FileIcon';
+import { ThemeIcon } from '@/components/icons/ThemeIcon';
 
 function flattenTree(entries: VaultEntry[]): string[] {
   const result: string[] = [];
@@ -544,7 +545,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
                 onMouseDown={(e) => handleItemMouseDown(e, item.path)}
                 onContextMenu={(e) => handleContextMenu(e, item.path, item.name, 'dir')}
               >
-                <span className="ft-icon"><FileIcon filename={item.name} isDir isOpen={isExpanded} /></span>
+                <span className="ft-icon"><FileIcon filename={item.name} isDir /></span>
                 {isRenaming ? (
                   <input
                     ref={renameInputRef}
@@ -562,6 +563,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
                 ) : (
                   <span className="ft-name">{item.name}</span>
                 )}
+                {isPinned && <ThemeIcon name="pin" size={12} className="ft-pin-icon" />}
               </div>
               {isExpanded && newItemType && newItemParent === item.path && (
                 <div className="ft-item" style={{ paddingLeft: `${12 + (depth + 1) * 14}px` }}>
@@ -615,6 +617,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
             ) : (
               <span className="ft-name">{item.name}</span>
             )}
+            {isPinned && <ThemeIcon name="pin" size={12} className="ft-pin-icon" />}
           </div>
         );
       });
@@ -638,7 +641,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="1.5" x2="8" y2="6.5"/><line x1="8" y1="9.5" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="6.5" y2="8"/><line x1="9.5" y1="8" x2="14.5" y2="8"/></svg>
               </button>
               <button className="sb-action-btn" onClick={() => useVaultStore.getState().refreshFileTree()} data-tip="刷新文件树">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M13.5 8a5.5 5.5 0 01-9.8 3.4M2.5 8a5.5 5.5 0 019.8-3.4"/><polyline points="13.5,3 13.5,6.5 10,6.5"/><polyline points="2.5,13 2.5,9.5 6,9.5"/></svg>
+                <ThemeIcon name="updateFolders" size={14} />
               </button>
               <button className="sb-action-btn sb-more-btn" onClick={() => setActionsMenuOpen((v) => !v)} data-tip="更多操作">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13" r="1.5"/></svg>
@@ -646,11 +649,11 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
               {actionsMenuOpen && (
                 <div className="sb-actions-menu">
                   <button className="sb-menu-item" onClick={() => { startNewItem('file'); setActionsMenuOpen(false); }}>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M9.5 1.1l3.4 3.5.1.4v2h-1V6H8.5L8 5.5V2H3.5l-.5.5v11l.5.5H7v1H3.5l-1.5-1.5v-11l1.5-1.5h5.7l.3.1zM9 2v3h2.9L9 2zm4 12h-1v-3H9v-1h3V7h1v3h3v1h-3v3z"/></svg>
+                    <ThemeIcon name="addFile" size={14} />
                     <span>新建文件</span>
                   </button>
                   <button className="sb-menu-item" onClick={() => { startNewItem('dir'); setActionsMenuOpen(false); }}>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4H9.618l-1-2H2a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1V5a1 1 0 00-1-1zm0 9H2V3h6.382l1 2H14v8zM8 7v2H6v1h2v2h1V10h2V9H9V7H8z"/></svg>
+                    <ThemeIcon name="newFolder" size={14} />
                     <span>新建文件夹</span>
                   </button>
                   <button className="sb-menu-item" onClick={() => { expandAllDirs(); setActionsMenuOpen(false); }}>
@@ -667,16 +670,16 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
           ) : (
             <div className="sb-actions">
               <button className="sb-action-btn" onClick={() => startNewItem('file')} data-tip="新建文件">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M9.5 1.1l3.4 3.5.1.4v2h-1V6H8.5L8 5.5V2H3.5l-.5.5v11l.5.5H7v1H3.5l-1.5-1.5v-11l1.5-1.5h5.7l.3.1zM9 2v3h2.9L9 2zm4 12h-1v-3H9v-1h3V7h1v3h3v1h-3v3z"/></svg>
+                <ThemeIcon name="addFile" size={14} />
               </button>
               <button className="sb-action-btn" onClick={() => startNewItem('dir')} data-tip="新建文件夹">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4H9.618l-1-2H2a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1V5a1 1 0 00-1-1zm0 9H2V3h6.382l1 2H14v8zM8 7v2H6v1h2v2h1V10h2V9H9V7H8z"/></svg>
+                <ThemeIcon name="newFolder" size={14} />
               </button>
               <button className="sb-action-btn" onClick={locateActiveFile} data-tip="定位当前文件">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="1.5" x2="8" y2="6.5"/><line x1="8" y1="9.5" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="6.5" y2="8"/><line x1="9.5" y1="8" x2="14.5" y2="8"/></svg>
               </button>
               <button className="sb-action-btn" onClick={() => useVaultStore.getState().refreshFileTree()} data-tip="刷新文件树">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M13.5 8a5.5 5.5 0 01-9.8 3.4M2.5 8a5.5 5.5 0 019.8-3.4"/><polyline points="13.5,3 13.5,6.5 10,6.5"/><polyline points="2.5,13 2.5,9.5 6,9.5"/></svg>
+                <ThemeIcon name="updateFolders" size={14} />
               </button>
               <button className="sb-action-btn" onClick={expandAllDirs} data-tip="展开全部文件夹">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
@@ -791,7 +794,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
             {contextMenu.type === 'dir' && (
               <>
                 <div className="ft-ctx-item ft-ctx-submenu-wrap">
-                  <span>新建文件</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><ThemeIcon name="addFile" size={14} />新建文件</span>
                   <span className="ft-ctx-arrow">▸</span>
                   <div className="ft-ctx-submenu">
                     {creatableTypes.map((handler) => (
@@ -821,26 +824,26 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
                   </div>
                 </div>
                 <button className="ft-ctx-item" onClick={() => { setContextMenu(null); startNewItem('dir', contextMenu.path); }}>
-                  新建文件夹
+                  <ThemeIcon name="newFolder" size={14} /> 新建文件夹
                 </button>
                 <div className="ft-ctx-divider" />
               </>
             )}
             <button className="ft-ctx-item" onClick={() => { copyToClipboard(contextMenu.path); }}>
-              复制相对路径
+              <ThemeIcon name="copyOfFolder" size={14} /> 复制相对路径
             </button>
             <button className="ft-ctx-item" onClick={() => {
               const vault = useVaultStore.getState().currentVault;
               const base = vault?.basePath || '';
               copyToClipboard(`${base}/${contextMenu.path}`);
             }}>
-              复制绝对路径
+              <ThemeIcon name="copyOfFolder" size={14} /> 复制绝对路径
             </button>
             <button className="ft-ctx-item" onClick={() => { copyToClipboard(contextMenu.name); }}>
-              复制文件名
+              <ThemeIcon name="copyOfFolder" size={14} /> 复制文件名
             </button>
             <button className="ft-ctx-item" onClick={() => { togglePin(contextMenu.path); setContextMenu(null); }}>
-              {pinnedPaths.includes(contextMenu.path) ? '取消置顶' : '置顶'}
+              <ThemeIcon name="pin" size={14} /> {pinnedPaths.includes(contextMenu.path) ? '取消置顶' : '置顶'}
             </button>
             {contextMenu.type === 'file' && (
               <button className="ft-ctx-item" onClick={() => {
@@ -849,15 +852,16 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
                 useEditorStore.setState({ aiPanelVisible: true });
                 setContextMenu(null);
               }}>
+                <span className="ft-ctx-ai-icon">AI</span>
                 添加文件到对话
               </button>
             )}
             <div className="ft-ctx-divider" />
             <button className="ft-ctx-item" onClick={() => { setContextMenu(null); startRename(contextMenu.path, contextMenu.name); }}>
-              重命名
+              <ThemeIcon name={contextMenu.type === 'dir' ? 'editFolder' : 'edit'} size={14} /> 重命名
             </button>
             <button className="ft-ctx-item ft-ctx-danger" onClick={() => { setContextMenu(null); deleteItem(contextMenu.path, contextMenu.type); }}>
-              删除
+              <ThemeIcon name="delete" size={14} /> 删除
             </button>
           </div>
         )}

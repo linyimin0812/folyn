@@ -20,7 +20,6 @@ export function getHandlerByExtension(ext: string): FileTypeHandler | undefined 
 
 const idAliases: Record<string, string> = {
   text: 'markdown',
-  pdf: 'code',
 };
 
 export function getHandlerById(id: string): FileTypeHandler | undefined {
