@@ -3,9 +3,11 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
+import { storageClient } from '@/utils/storageClient';
+import { useVaultStore } from '@/store/vaultStore';
 import type { PreviewProps } from '../types';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 interface OutlineItem {
   title: string;
@@ -14,10 +16,19 @@ interface OutlineItem {
   pageNumber?: number;
 }
 
+type PdfScrollData = Record<string, number>;
+
 const OVERSCAN = 5;
 const GAP = 12;
+const PAD_TOP = 16;
+const memCache = new Map<string, number>();
+
+function storageKey(vaultId: string) {
+  return `pdf:scroll:${vaultId}`;
+}
 
 export function PdfViewer({ filePath, vaultRoot }: PreviewProps) {
+  const vaultId = useVaultStore((s) => s.activeVaultId) ?? '';
   const [src, setSrc] = useState('');
   const [numPages, setNumPages] = useState(0);
   const [scale, setScale] = useState(1.2);
@@ -26,6 +37,7 @@ export function PdfViewer({ filePath, vaultRoot }: PreviewProps) {
   const [outlineVisible, setOutlineVisible] = useState(false);
   const [visibleRange, setVisibleRange] = useState<[number, number]>([1, 10]);
   const [activeOutlineTitle, setActiveOutlineTitle] = useState<string | null>(null);
+  const [outlineWidth, setOutlineWidth] = useState(220);
   const containerRef = useRef<HTMLDivElement>(null);
   const pdfDocRef = useRef<unknown>(null);
   const pageDims = useRef({ w: 612, h: 792 });
@@ -35,6 +47,7 @@ export function PdfViewer({ filePath, vaultRoot }: PreviewProps) {
   scaleRef.current = scale;
   const gestureCleanupRef = useRef<HTMLElement | null>(null);
   const prevScaleRef = useRef(0);
+  const pendingScrollRef = useRef(0);
 
   useEffect(() => {
     if (!vaultRoot) return;
@@ -48,42 +61,70 @@ export function PdfViewer({ filePath, vaultRoot }: PreviewProps) {
     });
   }, [filePath, vaultRoot]);
 
-  const resolvePageNumber = useCallback(async (dest: unknown, pdf: any): Promise<number | undefined> => {
+  const resolveDest = useCallback(async (dest: unknown, pdf: any): Promise<{ pageNumber?: number; explicitDest?: unknown[] }> => {
     try {
-      let ref: unknown;
+      let arr: unknown[];
       if (typeof dest === 'string') {
         const resolved = await pdf.getDestination(dest);
-        if (!resolved) return undefined;
-        ref = resolved[0];
+        if (!resolved) return {};
+        arr = resolved;
       } else if (Array.isArray(dest)) {
-        ref = dest[0];
+        arr = dest;
       } else {
-        return undefined;
+        return {};
       }
-      const pageIndex = await pdf.getPageIndex(ref);
-      return pageIndex + 1;
+      const pageIndex = await pdf.getPageIndex(arr[0]);
+      return { pageNumber: pageIndex + 1, explicitDest: arr };
     } catch {
-      return undefined;
+      return {};
     }
   }, []);
 
   const resolveOutline = useCallback(async (items: OutlineItem[], pdf: any): Promise<OutlineItem[]> => {
     const resolved = await Promise.all(items.map(async (item) => {
-      const [pageNumber, children] = await Promise.all([
-        item.dest ? resolvePageNumber(item.dest, pdf) : Promise.resolve(undefined),
+      const [destInfo, children] = await Promise.all([
+        item.dest ? resolveDest(item.dest, pdf) : Promise.resolve({} as { pageNumber?: number; explicitDest?: unknown[] }),
         item.items?.length ? resolveOutline(item.items, pdf) : Promise.resolve(undefined),
       ]);
-      return { ...item, pageNumber, items: children };
+      return { ...item, pageNumber: destInfo.pageNumber, dest: destInfo.explicitDest ?? item.dest, items: children };
     }));
     return resolved;
-  }, [resolvePageNumber]);
+  }, [resolveDest]);
+
+  const currentPageRef = useRef(1);
+  currentPageRef.current = currentPage;
+
+  useEffect(() => {
+    if (!vaultId) return;
+    storageClient.get<PdfScrollData>(storageKey(vaultId)).then((data) => {
+      if (data) {
+        for (const [k, v] of Object.entries(data)) memCache.set(k, v);
+      }
+    });
+  }, [vaultId]);
+
+  useEffect(() => {
+    return () => {
+      memCache.set(filePath, currentPageRef.current);
+      if (vaultId) {
+        const all = Object.fromEntries(memCache.entries());
+        storageClient.set(storageKey(vaultId), all);
+      }
+    };
+  }, [filePath, vaultId]);
 
   const onDocumentLoadSuccess = useCallback(async (result: { numPages: number }) => {
+    const savedPage = memCache.get(filePath) ?? 1;
+    const startPage = Math.min(savedPage, result.numPages);
     setNumPages(result.numPages);
-    setCurrentPage(1);
-    const initialRange: [number, number] = [1, Math.min(10, result.numPages)];
+    setCurrentPage(startPage);
+    const initialRange: [number, number] = [
+      Math.max(1, startPage - OVERSCAN),
+      Math.min(startPage + OVERSCAN + 3, result.numPages),
+    ];
     setVisibleRange(initialRange);
     lastRangeRef.current = initialRange;
+    pendingScrollRef.current = startPage;
 
     const pdf = (result as any)._transport?._pdfDocument ?? (result as any);
     pdfDocRef.current = pdf;
@@ -129,7 +170,7 @@ export function PdfViewer({ filePath, vaultRoot }: PreviewProps) {
     }
 
     const h = pageDims.current.h * scale + GAP;
-    const scrollTop = container.scrollTop;
+    const scrollTop = Math.max(0, container.scrollTop - PAD_TOP);
     const viewHeight = container.clientHeight;
 
     const firstVisible = Math.max(1, Math.floor(scrollTop / h) + 1);
@@ -151,6 +192,17 @@ export function PdfViewer({ filePath, vaultRoot }: PreviewProps) {
       if (containerRef.current) {
         const containerWidth = containerRef.current.clientWidth - 16;
         setScale(containerWidth / pageDims.current.w);
+        const page = pendingScrollRef.current;
+        if (page > 1) {
+          pendingScrollRef.current = 0;
+          requestAnimationFrame(() => {
+            const container = containerRef.current;
+            if (!container) return;
+            const s = containerWidth / pageDims.current.w;
+            const top = PAD_TOP + (page - 1) * (pageDims.current.h * s + GAP);
+            container.scrollTo({ top, behavior: 'instant' });
+          });
+        }
       }
     });
     return () => cancelAnimationFrame(id);
@@ -163,7 +215,7 @@ export function PdfViewer({ filePath, vaultRoot }: PreviewProps) {
       const container = containerRef.current;
       if (!container || numPages === 0) return;
 
-      const scrollTop = container.scrollTop;
+      const scrollTop = Math.max(0, container.scrollTop - PAD_TOP);
       const viewHeight = container.clientHeight;
       const h = pageDims.current.h * scale + GAP;
 
@@ -245,9 +297,28 @@ export function PdfViewer({ filePath, vaultRoot }: PreviewProps) {
     };
   }, [numPages]);
 
-  const scrollToPage = useCallback((page: number) => {
-    if (!containerRef.current) return;
-    const top = (page - 1) * (pageDims.current.h * scale + GAP);
+  const destToYOffset = useCallback((dest: unknown): number => {
+    if (!Array.isArray(dest) || dest.length < 3) return 0;
+    const fitType = dest[1];
+    const typeName = typeof fitType === 'object' && fitType !== null && 'name' in fitType
+      ? (fitType as { name: string }).name
+      : '';
+    const pageH = pageDims.current.h;
+    const s = scaleRef.current;
+    if (typeName === 'XYZ' && typeof dest[3] === 'number') {
+      return (pageH - dest[3]) * s;
+    }
+    if (typeName === 'FitH' && typeof dest[2] === 'number') {
+      return (pageH - dest[2]) * s;
+    }
+    return 0;
+  }, []);
+
+  const scrollToPage = useCallback((page: number, yOffsetPx = 0) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const s = scaleRef.current;
+
     const newRange: [number, number] = [
       Math.max(1, page - OVERSCAN),
       Math.min(numPages, page + OVERSCAN + 3),
@@ -255,46 +326,55 @@ export function PdfViewer({ filePath, vaultRoot }: PreviewProps) {
     lastRangeRef.current = newRange;
     setVisibleRange(newRange);
     setCurrentPage(page);
-    containerRef.current.scrollTo({ top, behavior: 'instant' });
-  }, [numPages, scale]);
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || numPages === 0) return;
-
-    const onClick = async (e: MouseEvent) => {
-      const link = (e.target as HTMLElement).closest('a[href]') as HTMLAnchorElement | null;
-      if (!link) return;
-      const href = link.getAttribute('href') || '';
-      if (!href.startsWith('#')) return;
-      e.preventDefault();
-      e.stopPropagation();
-
-      const dest = decodeURIComponent(href.slice(1));
-      const pdf = pdfDocRef.current as any;
-      if (!pdf) return;
-
-      try {
-        const resolved = await pdf.getDestination(dest);
-        if (!resolved) return;
-        const pageIndex = await pdf.getPageIndex(resolved[0]);
-        scrollToPage(pageIndex + 1);
-      } catch {
-        const pageNum = parseInt(dest, 10);
-        if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= numPages) {
-          scrollToPage(pageNum);
-        }
+    requestAnimationFrame(() => {
+      const wraps = container.querySelectorAll('.pdf-page-wrap');
+      const target = wraps[page - 1] as HTMLElement | undefined;
+      if (target) {
+        const containerRect = container.getBoundingClientRect();
+        const pageRect = target.getBoundingClientRect();
+        const top = pageRect.top - containerRect.top + container.scrollTop + yOffsetPx;
+        container.scrollTo({ top, behavior: 'instant' });
+      } else {
+        const top = PAD_TOP + (page - 1) * (pageDims.current.h * s + GAP) + yOffsetPx;
+        container.scrollTo({ top, behavior: 'instant' });
       }
-    };
+    });
+  }, [numPages]);
 
-    container.addEventListener('click', onClick, true);
-    return () => container.removeEventListener('click', onClick, true);
-  }, [numPages, scrollToPage]);
+  const handleItemClickRef = useRef((_args: { dest?: unknown; pageIndex: number; pageNumber: number }) => {});
+  handleItemClickRef.current = useCallback(({ dest, pageNumber }: { dest?: unknown; pageIndex: number; pageNumber: number }) => {
+    scrollToPage(pageNumber, destToYOffset(dest));
+  }, [scrollToPage, destToYOffset]);
 
-  const handleOutlineNavigate = useCallback((page: number, title: string) => {
+  const stableItemClick = useCallback((args: { dest?: unknown; pageIndex: number; pageNumber: number }) => {
+    handleItemClickRef.current(args);
+  }, []);
+
+  const handleOutlineNavigate = useCallback((page: number, title: string, dest: unknown) => {
     setActiveOutlineTitle(title);
-    scrollToPage(page);
-  }, [scrollToPage]);
+    scrollToPage(page, destToYOffset(dest));
+  }, [scrollToPage, destToYOffset]);
+
+  const onOutlineResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = outlineWidth;
+    const onMove = (ev: MouseEvent) => {
+      const newW = Math.min(Math.max(startW + ev.clientX - startX, 120), 480);
+      setOutlineWidth(newW);
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [outlineWidth]);
 
   const zoomIn = () => setScale((s) => Math.min(s + 0.2, 3));
   const zoomOut = () => setScale((s) => Math.max(s - 0.2, 0.4));
@@ -367,15 +447,16 @@ export function PdfViewer({ filePath, vaultRoot }: PreviewProps) {
       </div>
       <div className="pdf-body">
         {outlineVisible && outline.length > 0 && (
-          <div className="pdf-outline">
+          <div className="pdf-outline" style={{ width: outlineWidth }}>
             <div className="pdf-outline-header">目录</div>
             <div className="pdf-outline-body">
               <OutlineTree items={outline} onNavigate={handleOutlineNavigate} activeTitle={activeOutlineTitle} />
             </div>
+            <div className="pdf-outline-resize" onMouseDown={onOutlineResize} />
           </div>
         )}
         <div className="pdf-pages" ref={containerRef} onScroll={updateVisibleRange}>
-          <Document file={src} className="pdf-doc" onLoadSuccess={onDocumentLoadSuccess} loading={<div className="pdf-loading"><div className="ft-spinner" /> Loading...</div>}>
+          <Document file={src} className="pdf-doc" onLoadSuccess={onDocumentLoadSuccess} onItemClick={stableItemClick} loading={<div className="pdf-loading"><div className="ft-spinner" /> Loading...</div>}>
             {pages}
           </Document>
         </div>
@@ -386,7 +467,7 @@ export function PdfViewer({ filePath, vaultRoot }: PreviewProps) {
 
 function OutlineTree({ items, onNavigate, activeTitle, depth = 0 }: {
   items: OutlineItem[];
-  onNavigate: (page: number, title: string) => void;
+  onNavigate: (page: number, title: string, dest: unknown) => void;
   activeTitle: string | null;
   depth?: number;
 }) {
@@ -397,7 +478,7 @@ function OutlineTree({ items, onNavigate, activeTitle, depth = 0 }: {
           <button
             className={`pdf-outline-item ${item.title === activeTitle ? 'active' : ''}`}
             style={{ paddingLeft: `${12 + depth * 14}px` }}
-            onClick={() => item.pageNumber && onNavigate(item.pageNumber, item.title)}
+            onClick={() => item.pageNumber && onNavigate(item.pageNumber, item.title, item.dest)}
             title={`${item.title} (p.${item.pageNumber ?? '?'})`}
           >
             <span className="pdf-outline-title">{item.title}</span>

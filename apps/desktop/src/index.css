@@ -998,8 +998,16 @@ html.is-resizing::after {
   color: var(--t3); font-size: 13px;
 }
 .pdf-outline {
-  width: 220px; flex-shrink: 0; overflow-y: auto; border-right: 1px solid var(--brd);
-  background: var(--panel); display: flex; flex-direction: column;
+  flex-shrink: 0; overflow-y: auto; border-right: 1px solid var(--brd);
+  background: var(--panel); display: flex; flex-direction: column; position: relative;
+}
+.pdf-outline-resize {
+  position: absolute; top: 0; right: -1px; width: 2px; height: 100%;
+  cursor: col-resize; z-index: 2;
+}
+.pdf-outline-resize:hover,
+.pdf-outline-resize:active {
+  background: var(--acc); opacity: .5;
 }
 .pdf-outline-header {
   font-size: 10px; font-weight: 600; color: var(--t3); text-transform: uppercase;
