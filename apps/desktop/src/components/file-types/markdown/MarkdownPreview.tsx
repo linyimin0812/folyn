@@ -18,6 +18,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useEditorStore } from '@/store/editorStore';
 import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview';
+import { MermaidBlock } from './MermaidBlock';
 /**
  * Rehype plugin: remove <br> nodes inside <code> elements (within <pre> blocks).
  * remark-breaks converts soft line breaks to <br> in paragraphs,
@@ -285,8 +286,16 @@ export function MarkdownPreview({ content, filePath, vaultRoot }: import('../typ
       return createElement('img', { src, alt, loading: 'lazy', ...rest });
     };
 
-    // Custom pre component: wrap code blocks with line numbers + copy button via React
-    map['pre'] = CodeBlockWrapper;
+    map['pre'] = function PreWithMermaid(props: any) {
+      const { children, ...rest } = props;
+      const codeChild = Array.isArray(children)
+        ? children.find((c: any) => c?.props?.className?.includes('language-mermaid'))
+        : children?.props?.className?.includes('language-mermaid') ? children : null;
+      if (codeChild) {
+        return createElement(MermaidBlock, null, codeChild.props.children);
+      }
+      return createElement(CodeBlockWrapper, rest, children);
+    };
 
     return map;
   }, [filePath, vaultRoot, resolvedVaultRoot]);

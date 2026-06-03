@@ -2150,3 +2150,18 @@ textarea.fi2 { resize: vertical; line-height: 1.5; }
 .diff-toolbar-btn.reject { background: #ef4444; color: white; }
 .diff-toolbar-btn.reject:hover { background: #dc2626; }
 
+/* ── Mermaid ── */
+.mermaid-diagram {
+  display: flex; justify-content: center; padding: 16px 0; overflow-x: auto;
+}
+.mermaid-diagram svg { max-width: 100%; height: auto; }
+.mermaid-error {
+  border: 1px solid #ef4444; border-radius: 4px; padding: 12px; margin: 8px 0;
+}
+.mermaid-error-text { color: #ef4444; font-size: 12px; margin: 0 0 8px 0; }
+.mermaid-source {
+  background: var(--surf); padding: 8px; border-radius: 4px;
+  font-size: 12px; overflow-x: auto;
+}
+.mermaid-loading { padding: 16px; text-align: center; color: var(--t3); font-size: 13px; }
+
