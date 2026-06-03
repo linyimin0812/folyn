@@ -97,10 +97,42 @@ button { font-family: var(--font-ui); cursor: pointer; border: none; background:
 /* File tabs */
 .file-tabs {
   display: flex; align-items: stretch; height: 34px; flex-shrink: 0;
-  overflow-x: auto; overflow-y: hidden; gap: 1px; scrollbar-width: none;
   border-bottom: 1px solid var(--brd); background: var(--panel);
 }
-.file-tabs::-webkit-scrollbar { display: none; }
+.file-tabs-scroll {
+  display: flex; align-items: stretch; flex: 1; min-width: 0;
+  overflow-x: auto; overflow-y: hidden; gap: 1px; scrollbar-width: none;
+}
+.file-tabs-scroll::-webkit-scrollbar { display: none; }
+.file-tabs-more {
+  position: relative; display: flex; align-items: center; flex-shrink: 0;
+  border-left: 1px solid var(--brd);
+}
+.file-tabs-more-btn {
+  width: 28px; height: 100%; display: flex; align-items: center; justify-content: center;
+  background: none; border: none; color: var(--t3); cursor: pointer; transition: background .15s;
+}
+.file-tabs-more-btn:hover { background: var(--hov); color: var(--t2); }
+.file-tabs-dropdown {
+  position: absolute; top: 100%; right: 0; z-index: 100;
+  max-height: 300px; overflow-y: auto;
+  background: var(--surf); border: 1px solid var(--brd); border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12); padding: 4px 0;
+}
+.file-tabs-dropdown-item {
+  display: flex; align-items: center; gap: 6px; padding: 6px 12px;
+  font-size: calc(var(--ui-font-size) - 2px); color: var(--t2);
+  cursor: pointer; white-space: nowrap; transition: background .12s;
+}
+.file-tabs-dropdown-item:hover { background: var(--hov); }
+.file-tabs-dropdown-item.active { color: var(--acc); background: var(--hov); }
+.file-tabs-dropdown-name { flex: 1; }
+.file-tabs-dropdown-close {
+  opacity: .4; font-size: 10px; width: 18px; height: 18px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 3px; transition: opacity .1s, background .1s;
+}
+.file-tabs-dropdown-close:hover { opacity: 1; background: var(--hov); color: var(--red); }
 .ftab {
   display: flex; align-items: center; gap: 5px; padding: 0 11px;
   font-family: var(--font-mono); font-size: calc(var(--ui-font-size) - 3px); color: var(--t3);
@@ -1509,11 +1541,9 @@ textarea.fi2 { resize: vertical; line-height: 1.5; }
   .ed-tb::-webkit-scrollbar { display: none; }
 
   /* File tabs: horizontal scroll instead of hidden */
-  .file-tabs {
-    overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+  .file-tabs-scroll {
+    -webkit-overflow-scrolling: touch;
   }
-  .file-tabs::-webkit-scrollbar { display: none; }
   .ftab { flex-shrink: 0; }
 
   /* View mode segment: keep visible but compact */

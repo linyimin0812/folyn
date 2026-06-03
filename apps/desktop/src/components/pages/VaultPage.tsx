@@ -3,6 +3,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
 import { CreateVaultDialog } from '../vault/CreateVaultDialog';
+import { FileIcon } from '@/components/icons/FileIcon';
 import type { VaultEntry } from '@quill/vault-provider';
 
 function ConfirmDialog({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
@@ -136,7 +137,7 @@ export function VaultPage() {
             style={{ cursor: 'pointer', paddingLeft: `${13 + depth * 16}px` }}
           >
             <span className="fe-ri">
-              {entry.type === 'dir' ? (isExpanded ? '📂' : '📁') : '📄'}
+              <FileIcon filename={entry.name} isDir={entry.type === 'dir'} />
             </span>
             <span className="fe-rn">{entry.name}</span>
             <span className="fe-rm">
