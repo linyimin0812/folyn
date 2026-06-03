@@ -6,8 +6,16 @@ import { QuillEditor, type QuillEditorHandle } from '@/editor/EditorView';
 import { SlashMenu } from '../editor/SlashMenu';
 import { CodeBlockLangMenu } from '../editor/CodeBlockLangMenu';
 import { ImagePasteDialog, type ImageSaveConfig } from '../editor/ImagePasteDialog';
+import { DiffToolbar } from '../editor/DiffToolbar';
 import { hideSlashMenu, type SlashMenuState } from '@/editor/extensions/SlashCommandPlugin';
 import { type CodeBlockMenuState } from '@/editor/extensions/CodeBlockExtension';
+import {
+  computeDiffHunks,
+  setDiffHunks,
+  acceptAllHunks,
+  rejectAllHunks,
+  setOnHunksChange,
+} from '@/editor/extensions/InlineDiffExtension';
 import { getStrategy, fileToBase64, convertImageFormat } from '@/utils/imageUploader';
 import type { ContainerPlugin } from '@quill/container-plugins';
 import { EditorView } from '@codemirror/view';
@@ -68,6 +76,13 @@ export function WorkArea() {
   const [imagePastePreviewUrl, setImagePastePreviewUrl] = useState('');
   const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
 
+  // Inline diff review state
+  const diffReviewMode = useEditorStore((s) => s.diffReviewMode);
+  const diffOldContent = useEditorStore((s) => s.diffOldContent);
+  const diffNewContent = useEditorStore((s) => s.diffNewContent);
+  const exitDiffReview = useEditorStore((s) => s.exitDiffReview);
+  const [hunkCount, setHunkCount] = useState(0);
+
   // Get the handler for the active tab
   const handler = activeTab ? getHandlerById(activeTab.fileType) : undefined;
 
@@ -88,6 +103,76 @@ export function WorkArea() {
     if (!activeTab || !editorRef.current) return;
     editorRef.current.replaceContent(activeTab.content);
   }, [externalContentVersion]);
+
+  // Enter diff review mode: compute diff hunks and show merged content in editor
+  useEffect(() => {
+    if (!diffReviewMode || diffOldContent == null || diffNewContent == null) return;
+
+    function applyDiff() {
+      const view = editorRef.current?.getView();
+      if (!view) return false;
+
+      const { hunks, mergedContent } = computeDiffHunks(diffOldContent!, diffNewContent!);
+      setHunkCount(hunks.length);
+
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: mergedContent },
+        effects: setDiffHunks.of(hunks),
+      });
+      return true;
+    }
+
+    if (!applyDiff()) {
+      const timer = setTimeout(applyDiff, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [diffReviewMode, diffOldContent, diffNewContent]);
+
+  // React to hunk count changes via CodeMirror updateListener
+  useEffect(() => {
+    if (!diffReviewMode) {
+      setHunkCount(0);
+      setOnHunksChange(null);
+      return;
+    }
+    setOnHunksChange((count) => {
+      setHunkCount(count);
+      if (count === 0) {
+        const currentView = editorRef.current?.getView();
+        if (currentView && activeTab) {
+          updateTabContent(activeTab.id, currentView.state.doc.toString());
+        }
+        exitDiffReview();
+      }
+    });
+    return () => setOnHunksChange(null);
+  }, [diffReviewMode, activeTab, updateTabContent, exitDiffReview]);
+
+  const handleAcceptAll = useCallback(() => {
+    const view = editorRef.current?.getView();
+    if (!view || diffNewContent == null || !activeTab) return;
+
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: diffNewContent },
+      effects: acceptAllHunks.of(undefined),
+    });
+
+    updateTabContent(activeTab.id, diffNewContent);
+    exitDiffReview();
+  }, [diffNewContent, activeTab, updateTabContent, exitDiffReview]);
+
+  const handleRejectAll = useCallback(() => {
+    const view = editorRef.current?.getView();
+    if (!view || diffOldContent == null || !activeTab) return;
+
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: diffOldContent },
+      effects: rejectAllHunks.of(undefined),
+    });
+
+    updateTabContent(activeTab.id, diffOldContent);
+    exitDiffReview();
+  }, [diffOldContent, activeTab, updateTabContent, exitDiffReview]);
 
   // Pane resize (editor vs preview split ratio)
   const [editorFlex, setEditorFlex] = useState(1);
@@ -374,6 +459,13 @@ export function WorkArea() {
       {/* CodeMirror editor pane */}
       {showCodeMirror && (
         <div className="pane-src" style={handler?.Preview && viewMode === 'split' ? { flex: editorFlex } : undefined}>
+          {diffReviewMode && (
+            <DiffToolbar
+              hunkCount={hunkCount}
+              onAcceptAll={handleAcceptAll}
+              onRejectAll={handleRejectAll}
+            />
+          )}
           <div className="ed-body">
             {isFileLoading && (
               <div className="ed-loading-overlay">

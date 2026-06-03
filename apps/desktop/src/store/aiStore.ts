@@ -5,6 +5,7 @@ import { useVaultStore } from './vaultStore';
 import { useEditorStore } from './editorStore';
 import { storageClient } from '@/utils/storageClient';
 import { sessionStorage } from '@/utils/sessionStorage';
+import { suppressWatcherFor } from '@/utils/fileWatcher';
 
 export type { CliMessage, FileChange, ToolCallInfo, MessageAttachment };
 
@@ -208,6 +209,15 @@ export const useAiStore = create<AiState>((set, get) => ({
         updatedAt: Date.now(),
       })),
     }));
+
+    suppressWatcherFor(change.path);
+
+    const vaultId = useVaultStore.getState().activeVaultId || '';
+    const tabId = `${vaultId}:${change.path}`;
+    const tab = useEditorStore.getState().tabs.find((t) => t.id === tabId);
+    if (tab && change.status === 'pending') {
+      useEditorStore.getState().enterDiffReview(change.path, change.oldContent, change.newContent);
+    }
   },
 
   acceptChange: (path) => {

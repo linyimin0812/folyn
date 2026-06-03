@@ -7,10 +7,31 @@ import {
 } from '@quill/vault-provider';
 import { useSettingsStore } from './settingsStore';
 import { storageClient } from '@/utils/storageClient';
+import { startVaultWatcher, stopVaultWatcher } from '@/utils/fileWatcher';
 
 /** Generate a short unique ID */
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+async function resolveBasePath(basePath: string): Promise<string> {
+  let resolved = basePath;
+  if (resolved.startsWith('~')) {
+    const { homeDir } = await import('@tauri-apps/api/path');
+    const home = (await homeDir()).replace(/\/+$/, '');
+    resolved = home + resolved.slice(1);
+  }
+  return resolved.replace(/\/+$/, '');
+}
+
+async function startWatcherForVault(config: VaultConfig) {
+  if (config.providerType !== 'tauri') return;
+  try {
+    const resolved = await resolveBasePath(config.basePath);
+    await startVaultWatcher(resolved);
+  } catch (err) {
+    console.warn('[VaultStore] Failed to start file watcher:', err);
+  }
 }
 
 /** Convert a glob-like pattern to a RegExp for matching file/folder names */
@@ -172,6 +193,7 @@ export const useVaultStore = create<VaultState>()(
             });
             syncToSettings(config);
             await persistVaultConfigs(newVaults, config.id);
+            await startWatcherForVault(config);
           } catch (err) {
             const message = err instanceof Error ? err.message : 'Failed to connect vault';
             set({ error: message });
@@ -211,6 +233,7 @@ export const useVaultStore = create<VaultState>()(
             // Save AI sessions for current vault before activeVaultId changes
             await useAiStore.getState().switchVaultSessions(config.id);
 
+            await stopVaultWatcher();
             await get().manager.switchVault(config);
             set({ currentVault: config, activeVaultId: config.id });
             syncToSettings(config);
@@ -226,6 +249,8 @@ export const useVaultStore = create<VaultState>()(
 
             // Restore saved tabs for the new vault
             await useEditorStore.getState().restoreOpenTabs();
+
+            await startWatcherForVault(config);
           } catch (err) {
             const message = err instanceof Error ? err.message : 'Failed to switch vault';
             set({ error: message });

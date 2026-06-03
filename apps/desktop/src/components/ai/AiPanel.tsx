@@ -6,9 +6,9 @@ import { useVaultStore } from '@/store/vaultStore';
 import { CliAdapterRegistry } from '@quill/cli-adapter';
 import type { CliAdapter, CliStreamEvent, MessageAttachment } from '@quill/cli-adapter';
 import type { VaultEntry } from '@quill/vault-provider';
+import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';
 import { MessageContent } from './MessageContent';
 import { ToolCallBlock } from './ToolCallBlock';
-import { DiffView } from './DiffView';
 import { FileIcon } from '@/components/icons/FileIcon';
 
 interface PendingAttachment {
@@ -69,7 +69,6 @@ function getAdapterForSession(sessionId: string): CliAdapter {
 export function AiPanel() {
   const aiPanelVisible = useEditorStore((s) => s.aiPanelVisible);
   const toggleAiPanel = useEditorStore((s) => s.toggleAiPanel);
-  const openFile = useEditorStore((s) => s.openFile);
 
   const sessions = useAiStore((s) => s.sessions);
   const activeSessionId = useAiStore((s) => s.activeSessionId);
@@ -82,10 +81,6 @@ export function AiPanel() {
   const addToolCall = useAiStore((s) => s.addToolCall);
   const completeToolCall = useAiStore((s) => s.completeToolCall);
   const addFileChange = useAiStore((s) => s.addFileChange);
-  const acceptChange = useAiStore((s) => s.acceptChange);
-  const rejectChange = useAiStore((s) => s.rejectChange);
-  const acceptAll = useAiStore((s) => s.acceptAll);
-  const rejectAll = useAiStore((s) => s.rejectAll);
   const setSessionStreaming = useAiStore((s) => s.setSessionStreaming);
   const setCliSessionId = useAiStore((s) => s.setCliSessionId);
 
@@ -325,11 +320,15 @@ export function AiPanel() {
           setSessionStreaming(sid, false);
           adapter.offEvent(eventHandler);
           useVaultStore.getState().refreshFileTree();
+          useEditorStore.getState().checkDiskChanges().finally(() => {
+            resumeWatcher();
+          });
           break;
       }
     };
 
     adapter.onEvent(eventHandler);
+    pauseWatcher();
 
     try {
       await adapter.start({ cliPath: settings.cliPath, workingDir });
@@ -337,6 +336,7 @@ export function AiPanel() {
     } catch (err) {
       appendToLastMessage(`\n\n[错误] ${String(err)}`, sid);
       setSessionStreaming(sid, false);
+      resumeWatcher();
     } finally {
       adapter.offEvent(eventHandler);
     }
@@ -348,6 +348,7 @@ export function AiPanel() {
     if (adapter) {
       await adapter.stop();
     }
+    resumeWatcher();
     setSessionStreaming(activeSessionId, false);
   };
 
@@ -557,52 +558,10 @@ export function AiPanel() {
             <div className="ai-empty">
               <div className="ai-empty-icon">✦</div>
               <div className="ai-empty-text">输入指令让 AI 编辑你的文档</div>
-              <div className="ai-empty-hint">AI 会直接修改文件，你可以在 Diff 视图中审查变更</div>
+              <div className="ai-empty-hint">AI 会直接修改文件，变更将在编辑器内以 Diff 形式展示</div>
             </div>
           )}
-          {(() => {
-            const fileChanges = activeSession?.fileChanges ?? [];
-            type TimelineItem =
-              | { kind: 'msg'; msg: typeof messages[number] }
-              | { kind: 'diff'; changes: typeof fileChanges };
-
-            const timeline: TimelineItem[] = [];
-
-            // Group consecutive file changes by their position between messages
-            let changeIdx = 0;
-            for (const msg of messages) {
-              // Insert any file changes that happened before this message
-              const batch: typeof fileChanges = [];
-              while (changeIdx < fileChanges.length && fileChanges[changeIdx].createdAt <= msg.timestamp) {
-                batch.push(fileChanges[changeIdx]);
-                changeIdx++;
-              }
-              if (batch.length > 0) timeline.push({ kind: 'diff', changes: batch });
-              timeline.push({ kind: 'msg', msg });
-            }
-            // Remaining file changes after all messages
-            if (changeIdx < fileChanges.length) {
-              timeline.push({ kind: 'diff', changes: fileChanges.slice(changeIdx) });
-            }
-
-            return timeline.map((item, idx) => {
-              if (item.kind === 'diff') {
-                return (
-                  <DiffView
-                    key={`diff-${idx}`}
-                    changes={item.changes}
-                    onAccept={(path) => acceptChange(path)}
-                    onReject={(path) => rejectChange(path)}
-                    onAcceptAll={acceptAll}
-                    onRejectAll={rejectAll}
-                    onOpenFile={(path) => {
-                      const name = path.includes('/') ? path.substring(path.lastIndexOf('/') + 1) : path;
-                      openFile(path, name);
-                    }}
-                  />
-                );
-              }
-              const msg = item.msg;
+          {messages.map((msg) => {
               return (
                 <div key={msg.id} className={`msg ${msg.role}`}>
                   <div className="msg-from">
@@ -654,8 +613,7 @@ export function AiPanel() {
                   </div>
                 </div>
               );
-            });
-          })()}
+          })}
 
           {isStreaming && (
             <div className="ai-streaming-indicator">

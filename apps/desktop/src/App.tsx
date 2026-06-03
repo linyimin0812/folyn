@@ -4,6 +4,7 @@ import { Sidebar } from './components/sidebar/Sidebar';
 import { WorkArea } from './components/shell/WorkArea';
 import { StatusBar } from './components/shell/StatusBar';
 import { AiPanel } from './components/ai/AiPanel';
+import { GlobalSearchPanel } from './components/search/GlobalSearchPanel';
 
 import { SettingsPage } from './components/pages/SettingsPage';
 import { VaultPage } from './components/pages/VaultPage';
@@ -11,6 +12,7 @@ import { useTheme } from './hooks/useTheme';
 import { useSettingsStore } from './store/settingsStore';
 import { useVaultStore } from './store/vaultStore';
 import { useEditorStore } from './store/editorStore';
+import { useSearchStore } from './store/searchStore';
 import { loadAiSessionsForVault } from './store/aiStore';
 import { registerBuiltinPlugins } from '@quill/container-plugins';
 import { isTauri } from './utils/platform';
@@ -85,7 +87,7 @@ export default function App() {
     }
   }, [currentPage]);
 
-  // ── Global Ctrl+S / Cmd+S ──
+  // ── Global Ctrl+S / Cmd+S and Cmd+Shift+F ──
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -93,6 +95,15 @@ export default function App() {
         const { activeTabId, saveFile } = useEditorStore.getState();
         if (activeTabId) {
           saveFile(activeTabId);
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        const { isOpen, openPanel, closePanel } = useSearchStore.getState();
+        if (isOpen) {
+          closePanel();
+        } else {
+          openPanel();
         }
       }
     };
@@ -136,6 +147,7 @@ export default function App() {
       )}
 
       {showStatusBar && <StatusBar />}
+      <GlobalSearchPanel />
     </div>
   );
 }

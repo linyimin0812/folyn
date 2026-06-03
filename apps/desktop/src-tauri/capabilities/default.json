@@ -44,6 +44,7 @@
     "fs:allow-rename",
     "fs:allow-read-dir",
     "fs:allow-stat",
+    "fs:allow-watch",
     "fs:allow-read-file",
     "fs:allow-read-text-file",
     "fs:allow-write-file",

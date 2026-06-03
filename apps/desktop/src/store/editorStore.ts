@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { useVaultStore } from './vaultStore';
 import { storageClient } from '@/utils/storageClient';
 import { getHandlerByExtension, getHandlerById } from '@/components/file-types/registry';
+import { suppressWatcherFor } from '@/utils/fileWatcher';
 
 /** Debounced auto-save timers per tab */
 const autoSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -51,6 +52,12 @@ interface EditorState {
   /** Version counter incremented when content is set externally (not from editor typing) */
   externalContentVersion: number;
 
+  /** Inline diff review mode state */
+  diffReviewMode: boolean;
+  diffFilePath: string | null;
+  diffOldContent: string | null;
+  diffNewContent: string | null;
+
   // Actions
   setViewMode: (mode: ViewMode) => void;
   addTab: (tab: FileTab) => void;
@@ -62,6 +69,11 @@ interface EditorState {
   toggleAiPanel: () => void;
   setCursorPosition: (line: number, col: number) => void;
   setWordCount: (count: number) => void;
+
+  /** Enter inline diff review mode */
+  enterDiffReview: (filePath: string, oldContent: string, newContent: string) => void;
+  /** Exit inline diff review mode */
+  exitDiffReview: () => void;
 
   /** Set tab content from an external source (triggers editor sync) */
   setContentExternal: (tabId: string, content: string) => void;
@@ -77,6 +89,8 @@ interface EditorState {
   saveOpenTabs: () => void;
   /** Restore previously open tabs for the current vault */
   restoreOpenTabs: () => Promise<void>;
+  /** Check open tabs against disk content and enter diff review if changed */
+  checkDiskChanges: () => Promise<void>;
 }
 
 const EDITOR_STORAGE_KEY = 'editor:viewMode';
@@ -125,6 +139,10 @@ export const useEditorStore = create<EditorState>()(
       wordCount: 0,
       isFileLoading: false,
       externalContentVersion: 0,
+      diffReviewMode: false,
+      diffFilePath: null,
+      diffOldContent: null,
+      diffNewContent: null,
 
       setViewMode: (mode) => {
         set({ viewMode: mode });
@@ -173,6 +191,24 @@ export const useEditorStore = create<EditorState>()(
             get().saveFile(tabId);
           }, AUTO_SAVE_DELAY_MS),
         );
+      },
+
+      enterDiffReview: (filePath, oldContent, newContent) => {
+        set({
+          diffReviewMode: true,
+          diffFilePath: filePath,
+          diffOldContent: oldContent,
+          diffNewContent: newContent,
+        });
+      },
+
+      exitDiffReview: () => {
+        set({
+          diffReviewMode: false,
+          diffFilePath: null,
+          diffOldContent: null,
+          diffNewContent: null,
+        });
       },
 
       setContentExternal: (tabId, content) => {
@@ -376,6 +412,7 @@ export const useEditorStore = create<EditorState>()(
         const tab = get().tabs.find((t) => t.id === tabId);
         if (!tab) return;
         try {
+          suppressWatcherFor(tab.path);
           const handler = getHandlerById(tab.fileType);
           const output = handler?.serialize ? handler.serialize(tab.content) : tab.content;
           await useVaultStore.getState().writeFile(tab.path, output);
@@ -387,6 +424,35 @@ export const useEditorStore = create<EditorState>()(
         } catch (err) {
           console.error('[EditorStore] saveFile failed:', err);
         }
+      },
+
+      checkDiskChanges: async () => {
+        const { tabs, activeTabId, diffReviewMode } = get();
+        if (diffReviewMode) return;
+
+        const candidates = tabs.filter((tab) => {
+          if (tab.fileType === 'web') return false;
+          const handler = getHandlerById(tab.fileType);
+          return !!handler?.needsFileContent;
+        });
+
+        await Promise.allSettled(candidates.map(async (tab) => {
+          const handler = getHandlerById(tab.fileType);
+          const raw = await useVaultStore.getState().readFile(tab.path);
+          const diskContent = handler!.deserialize ? handler!.deserialize(raw) : raw;
+          if (diskContent !== tab.content) {
+            if (tab.id === activeTabId) {
+              get().enterDiffReview(tab.path, tab.content, diskContent);
+            } else {
+              set((state) => ({
+                tabs: state.tabs.map((t) =>
+                  t.id === tab.id ? { ...t, content: diskContent, isDirty: false } : t,
+                ),
+                externalContentVersion: state.externalContentVersion + 1,
+              }));
+            }
+          }
+        }));
       },
     }),
 );

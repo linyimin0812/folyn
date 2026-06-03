@@ -25,6 +25,7 @@ export class ClaudeAdapter extends BaseCliAdapter {
   private running = false;
   private lineBuffer = '';
   private pendingFileContents = new Map<string, string>();
+  private pendingWriteTools = new Map<string, { relativePath: string; absolutePath: string }>();
   private runningToolIds: string[] = [];
   private childProcess: Awaited<ReturnType<ReturnType<typeof Command.create>['spawn']>> | null = null;
 
@@ -38,6 +39,9 @@ export class ClaudeAdapter extends BaseCliAdapter {
 
   async stop(): Promise<void> {
     this.running = false;
+    this.pendingFileContents.clear();
+    this.pendingWriteTools.clear();
+    this.runningToolIds = [];
     if (this.childProcess) {
       await this.childProcess.kill();
       this.childProcess = null;
@@ -161,6 +165,7 @@ export class ClaudeAdapter extends BaseCliAdapter {
           const output = block.content || block.text || '';
           this.runningToolIds = this.runningToolIds.filter((id) => id !== toolId);
           this.emit({ type: 'tool_end', toolId, toolOutput: output });
+          this.handleToolComplete(toolId);
         }
       }
     }
@@ -173,6 +178,7 @@ export class ClaudeAdapter extends BaseCliAdapter {
           const output = block.content || '';
           this.runningToolIds = this.runningToolIds.filter((id) => id !== toolId);
           this.emit({ type: 'tool_end', toolId, toolOutput: output });
+          this.handleToolComplete(toolId);
         }
       }
     }
@@ -184,10 +190,12 @@ export class ClaudeAdapter extends BaseCliAdapter {
       if (toolId) {
         this.runningToolIds = this.runningToolIds.filter((id) => id !== toolId);
         this.emit({ type: 'tool_end', toolId, toolOutput: output });
+        this.handleToolComplete(toolId);
       } else if (this.runningToolIds.length > 0) {
         const lastId = this.runningToolIds[this.runningToolIds.length - 1];
         this.runningToolIds.pop();
         this.emit({ type: 'tool_end', toolId: lastId, toolOutput: output });
+        this.handleToolComplete(lastId);
       }
     }
 
@@ -204,10 +212,12 @@ export class ClaudeAdapter extends BaseCliAdapter {
     toolId: string,
     input: Record<string, unknown>,
   ): void {
-    const isFileWrite = toolName === 'Write' || toolName === 'Edit';
+    const WRITE_TOOL_NAMES = new Set(['write', 'edit', 'write_file', 'edit_file', 'writefile', 'editfile']);
+    const isFileWrite = WRITE_TOOL_NAMES.has(toolName.toLowerCase());
     if (!isFileWrite || !this.config) return;
 
-    const filePath = (input.file_path as string) || (input.path as string) || '';
+    const filePath = (input.file_path as string) || (input.path as string)
+      || (input.filePath as string) || '';
     if (!filePath) return;
 
     const workingDir = this.config.workingDir;
@@ -215,7 +225,30 @@ export class ClaudeAdapter extends BaseCliAdapter {
       ? filePath.slice(workingDir.length).replace(/^\//, '')
       : filePath;
 
+    this.pendingWriteTools.set(toolId, { relativePath, absolutePath: filePath });
     this.snapshotBeforeWrite(relativePath, filePath, toolId);
+  }
+
+  private async handleToolComplete(toolId: string): Promise<void> {
+    const info = this.pendingWriteTools.get(toolId);
+    if (!info) return;
+    this.pendingWriteTools.delete(toolId);
+
+    if (this.pendingFileContents.has(info.relativePath)) return;
+
+    try {
+      const newContent = await readTextFile(info.absolutePath);
+      const fileChange: FileChange = {
+        path: info.relativePath,
+        oldContent: '',
+        newContent,
+        status: 'pending',
+        createdAt: Date.now(),
+      };
+      this.emit({ type: 'file_change', fileChange });
+    } catch {
+      // file may have been deleted
+    }
   }
 
   private async snapshotBeforeWrite(

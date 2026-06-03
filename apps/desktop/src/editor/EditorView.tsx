@@ -45,6 +45,7 @@ import {
   type CodeBlockMenuState,
 } from './extensions/CodeBlockExtension';
 import { orderedListExtension } from './extensions/OrderedListPlugin';
+import { inlineDiffExtension } from './extensions/InlineDiffExtension';
 import { json as jsonLanguage } from '@codemirror/lang-json';
 import type { ShortcutItem } from '@/store/settingsStore';
 
@@ -253,6 +254,7 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
         highlightActiveLine(),
         highlightSelectionMatches(),
         indentationMarkers(),
+        ...inlineDiffExtension,
         keymap.of([
           { key: 'Mod-a', run: selectAll },
           ...closeBracketsKeymap,
