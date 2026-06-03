@@ -59,6 +59,20 @@ export function WorkArea() {
   const editorFont = useSettingsStore((s) => s.editorFont);
   const editorFontSize = useSettingsStore((s) => s.editorFontSize);
 
+  const [tabListOpen, setTabListOpen] = useState(false);
+  const tabListRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!tabListOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (tabListRef.current && !tabListRef.current.contains(e.target as Node)) {
+        setTabListOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [tabListOpen]);
+
   const [outlineVisible, setOutlineVisible] = useState(false);
   const [outlineWidth, setOutlineWidth] = useState(180);
   const outlineDragging = useRef(false);
@@ -427,29 +441,66 @@ export function WorkArea() {
       {/* File tabs */}
       {tabs.length > 0 && (
         <div className="file-tabs">
-          {tabs.map((tab) => {
-            const tabHandler = getHandlerById(tab.fileType);
-            return (
-              <div
-                key={tab.id}
-                className={`ftab ${activeTabId === tab.id ? 'on' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.isDirty && <span className="ftab-dot" />}
-                <span className="ftab-icon">{tabHandler?.icon ?? <FileIcon filename={tab.name} />}</span>
-                <span className="ftab-name">{tab.name}</span>
-                <span
-                  className="ftab-x"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    closeTab(tab.id);
-                  }}
+          <div className="file-tabs-scroll">
+            {tabs.map((tab) => {
+              const tabHandler = getHandlerById(tab.fileType);
+              return (
+                <div
+                  key={tab.id}
+                  className={`ftab ${activeTabId === tab.id ? 'on' : ''}`}
+                  onClick={() => setActiveTab(tab.id)}
                 >
-                  ✕
-                </span>
+                  {tab.isDirty && <span className="ftab-dot" />}
+                  <span className="ftab-icon">{tabHandler?.icon ?? <FileIcon filename={tab.name} />}</span>
+                  <span className="ftab-name">{tab.name}</span>
+                  <span
+                    className="ftab-x"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      closeTab(tab.id);
+                    }}
+                  >
+                    ✕
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="file-tabs-more" ref={tabListRef}>
+            <button
+              className="file-tabs-more-btn"
+              onClick={() => setTabListOpen(!tabListOpen)}
+              title="所有打开的文件"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            {tabListOpen && (
+              <div className="file-tabs-dropdown">
+                {tabs.map((tab) => {
+                  const tabHandler = getHandlerById(tab.fileType);
+                  return (
+                    <div
+                      key={tab.id}
+                      className={`file-tabs-dropdown-item ${activeTabId === tab.id ? 'active' : ''}`}
+                      onClick={() => { setActiveTab(tab.id); setTabListOpen(false); }}
+                    >
+                      <span className="ftab-icon">{tabHandler?.icon ?? <FileIcon filename={tab.name} />}</span>
+                      <span className="file-tabs-dropdown-name">{tab.name}</span>
+                      {tab.isDirty && <span className="ftab-dot" />}
+                      <span
+                        className="file-tabs-dropdown-close"
+                        onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
+                      >
+                        ✕
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            )}
+          </div>
         </div>
       )}
 
