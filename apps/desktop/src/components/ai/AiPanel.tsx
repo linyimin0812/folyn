@@ -328,6 +328,7 @@ export function AiPanel() {
     };
 
     adapter.onEvent(eventHandler);
+    await useEditorStore.getState().flushAutoSaves();
     pauseWatcher();
 
     try {

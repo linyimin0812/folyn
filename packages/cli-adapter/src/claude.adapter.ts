@@ -74,8 +74,8 @@ export class ClaudeAdapter extends BaseCliAdapter {
     const quote = (s: string) => `'${s.replace(/'/g, "'\\''")}'`;
     const cliCmd = [cliPath, ...cliArgs].map(quote).join(' ') + ' < /dev/null';
     const shellCmd = this.config.workingDir
-      ? `cd ${quote(this.config.workingDir)} && ${cliCmd}`
-      : cliCmd;
+      ? `cd ${quote(this.config.workingDir)} && exec ${cliCmd}`
+      : `exec ${cliCmd}`;
 
     try {
       const command = Command.create('claude-cli', ['-l', '-c', shellCmd]);

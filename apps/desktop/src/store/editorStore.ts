@@ -91,6 +91,8 @@ interface EditorState {
   restoreOpenTabs: () => Promise<void>;
   /** Check open tabs against disk content and enter diff review if changed */
   checkDiskChanges: () => Promise<void>;
+  /** Immediately save all tabs with pending auto-save timers */
+  flushAutoSaves: () => Promise<void>;
 }
 
 const EDITOR_STORAGE_KEY = 'editor:viewMode';
@@ -424,6 +426,16 @@ export const useEditorStore = create<EditorState>()(
         } catch (err) {
           console.error('[EditorStore] saveFile failed:', err);
         }
+      },
+
+      flushAutoSaves: async () => {
+        const pending = Array.from(autoSaveTimers.keys());
+        for (const tabId of pending) {
+          const timer = autoSaveTimers.get(tabId);
+          if (timer) clearTimeout(timer);
+          autoSaveTimers.delete(tabId);
+        }
+        await Promise.allSettled(pending.map((tabId) => get().saveFile(tabId)));
       },
 
       checkDiskChanges: async () => {

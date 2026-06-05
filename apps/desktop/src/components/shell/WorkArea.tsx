@@ -92,10 +92,12 @@ export function WorkArea() {
 
   // Inline diff review state
   const diffReviewMode = useEditorStore((s) => s.diffReviewMode);
+  const diffFilePath = useEditorStore((s) => s.diffFilePath);
   const diffOldContent = useEditorStore((s) => s.diffOldContent);
   const diffNewContent = useEditorStore((s) => s.diffNewContent);
   const exitDiffReview = useEditorStore((s) => s.exitDiffReview);
   const [hunkCount, setHunkCount] = useState(0);
+  const isDiffTab = diffReviewMode && activeTab?.path === diffFilePath;
 
   // Get the handler for the active tab
   const handler = activeTab ? getHandlerById(activeTab.fileType) : undefined;
@@ -120,7 +122,7 @@ export function WorkArea() {
 
   // Enter diff review mode: compute diff hunks and show merged content in editor
   useEffect(() => {
-    if (!diffReviewMode || diffOldContent == null || diffNewContent == null) return;
+    if (!isDiffTab || diffOldContent == null || diffNewContent == null) return;
 
     function applyDiff() {
       const view = editorRef.current?.getView();
@@ -140,11 +142,11 @@ export function WorkArea() {
       const timer = setTimeout(applyDiff, 50);
       return () => clearTimeout(timer);
     }
-  }, [diffReviewMode, diffOldContent, diffNewContent]);
+  }, [isDiffTab, diffOldContent, diffNewContent]);
 
   // React to hunk count changes via CodeMirror updateListener
   useEffect(() => {
-    if (!diffReviewMode) {
+    if (!isDiffTab) {
       setHunkCount(0);
       setOnHunksChange(null);
       return;
@@ -160,7 +162,7 @@ export function WorkArea() {
       }
     });
     return () => setOnHunksChange(null);
-  }, [diffReviewMode, activeTab, updateTabContent, exitDiffReview]);
+  }, [isDiffTab, activeTab, updateTabContent, exitDiffReview]);
 
   const handleAcceptAll = useCallback(() => {
     const view = editorRef.current?.getView();
@@ -510,7 +512,7 @@ export function WorkArea() {
       {/* CodeMirror editor pane */}
       {showCodeMirror && (
         <div className="pane-src" style={handler?.Preview && viewMode === 'split' ? { flex: editorFlex } : undefined}>
-          {diffReviewMode && (
+          {isDiffTab && (
             <DiffToolbar
               hunkCount={hunkCount}
               onAcceptAll={handleAcceptAll}
