@@ -11,11 +11,15 @@
     "clean": "pnpm -r clean"
   },
   "devDependencies": {
+    "@types/d3-force": "^3.0.10",
     "typescript": "^5.7.0"
   },
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "packageManager": "pnpm@9.15.0"
+  "packageManager": "pnpm@9.15.0",
+  "dependencies": {
+    "d3-force": "^3.0.0"
+  }
 }

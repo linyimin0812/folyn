@@ -3,6 +3,8 @@ import { useVaultStore } from './vaultStore';
 import { storageClient } from '@/utils/storageClient';
 import { getHandlerByExtension, getHandlerById } from '@/components/file-types/registry';
 import { suppressWatcherFor } from '@/utils/fileWatcher';
+import { wikiProvider } from '@/services/wikiProvider';
+import { WIKI_PREFIX } from '@/types/wiki';
 
 /** Debounced auto-save timers per tab */
 const autoSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -301,7 +303,12 @@ export const useEditorStore = create<EditorState>()(
           const handler = getHandlerById(fileType);
           let content = '';
           if (handler?.needsFileContent) {
-            const raw = await useVaultStore.getState().readFile(filePath);
+            let raw: string;
+            if (filePath.startsWith(WIKI_PREFIX)) {
+              raw = await wikiProvider.readFile(filePath.slice(WIKI_PREFIX.length));
+            } else {
+              raw = await useVaultStore.getState().readFile(filePath);
+            }
             content = handler.deserialize ? handler.deserialize(raw) : raw;
           }
           const newTab: FileTab = {
@@ -316,6 +323,9 @@ export const useEditorStore = create<EditorState>()(
             tabs: [...state.tabs, newTab],
             activeTabId: newTab.id,
           }));
+          if (filePath.startsWith(WIKI_PREFIX)) {
+            set({ viewMode: 'preview' });
+          }
           persistOpenTabs(vaultId, get().tabs, get().activeTabId);
         } catch (err) {
           console.error('[EditorStore] openFile failed:', err);
@@ -417,7 +427,11 @@ export const useEditorStore = create<EditorState>()(
           suppressWatcherFor(tab.path);
           const handler = getHandlerById(tab.fileType);
           const output = handler?.serialize ? handler.serialize(tab.content) : tab.content;
-          await useVaultStore.getState().writeFile(tab.path, output);
+          if (tab.path.startsWith(WIKI_PREFIX)) {
+            await wikiProvider.writeFile(tab.path.slice(WIKI_PREFIX.length), output);
+          } else {
+            await useVaultStore.getState().writeFile(tab.path, output);
+          }
           set((state) => ({
             tabs: state.tabs.map((t) =>
               t.id === tabId ? { ...t, isDirty: false } : t,

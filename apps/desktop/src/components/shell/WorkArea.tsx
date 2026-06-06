@@ -21,6 +21,7 @@ import type { ContainerPlugin } from '@quill/container-plugins';
 import { EditorView } from '@codemirror/view';
 import { getHandlerById } from '../file-types/registry';
 import { FileIcon } from '@/components/icons/FileIcon';
+import { WikiGraphView } from '../graph/WikiGraphView';
 
 interface HeadingItem {
   level: number;
@@ -509,6 +510,10 @@ export function WorkArea() {
       {/* Content area */}
       <div className="work-area-content">
 
+      {activeTab && activeTab.path === 'wiki-graph' ? (
+        <WikiGraphView />
+      ) : (<>
+
       {/* CodeMirror editor pane */}
       {showCodeMirror && (
         <div className="pane-src" style={handler?.Preview && viewMode === 'split' ? { flex: editorFlex } : undefined}>
@@ -698,6 +703,7 @@ export function WorkArea() {
         </div>
       )}
 
+      </>)}
       </div>{/* end .work-area-content */}
     </div>
   );

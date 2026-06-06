@@ -5,6 +5,7 @@ import { WorkArea } from './components/shell/WorkArea';
 import { StatusBar } from './components/shell/StatusBar';
 import { AiPanel } from './components/ai/AiPanel';
 import { GlobalSearchPanel } from './components/search/GlobalSearchPanel';
+import { useWikiStore } from '@/store/wikiStore';
 
 import { SettingsPage } from './components/pages/SettingsPage';
 import { VaultPage } from './components/pages/VaultPage';
@@ -65,6 +66,10 @@ export default function App() {
 
       await loadAiSessionsForVault();
       await useEditorStore.getState().restoreOpenTabs();
+
+      useWikiStore.getState().initWiki().catch((err) => {
+        console.warn('[App] Wiki init failed:', err);
+      });
 
       const { fileTree } = useVaultStore.getState();
       const { tabs } = useEditorStore.getState();

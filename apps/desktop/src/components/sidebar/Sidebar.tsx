@@ -7,6 +7,8 @@ import type { VaultEntry } from '@quill/vault-provider';
 import { getAllHandlers } from '@/components/file-types/registry';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
+import { WikiFileTree } from './WikiFileTree';
+import { runIngest } from '@/services/wikiIngestService';
 
 function flattenTree(entries: VaultEntry[]): string[] {
   const result: string[] = [];
@@ -50,6 +52,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [resizerHovered, setResizerHovered] = useState(false);
   const hasAutoExpanded = useRef(false);
+  const [sidebarTab, setSidebarTab] = useState<'files' | 'wiki'>('files');
 
   // Close actions menu when clicking outside
   useEffect(() => {
@@ -709,40 +712,61 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
           </div>
         </div>
 
-        {/* New item inline input (root level only) */}
-        {newItemType && !newItemParent && (
-          <div className="ft-item" style={{ paddingLeft: '12px' }}>
-            <span className="ft-icon"><FileIcon filename={newItemType === 'dir' ? '' : (newItemName || 'untitled.md')} isDir={newItemType === 'dir'} /></span>
-            <input
-              ref={newItemInputRef}
-              className="ft-rename-input"
-              placeholder={newItemType === 'dir' ? '文件夹名称' : '文件名称（默认 .md）'}
-              value={newItemName}
-              onChange={(event) => setNewItemName(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') confirmNewItem();
-                if (event.key === 'Escape') cancelNewItem();
-              }}
-              onBlur={confirmNewItem}
-            />
-          </div>
-        )}
-
-        {/* File tree */}
-        <div
-          className={`sb-body${dragOverDir === '' ? ' drag-over' : ''}`}
-          ref={fileTreeRef}
-        >
-          {renderFileTree(fileTree)}
-          {fileTree.length === 0 && !newItemType && (
-            <div className="sb-empty">
-              {vaultError
-                ? <span className="sb-empty-err">{vaultError}</span>
-                : <span className="sb-empty-hint">暂无文件</span>
-              }
-            </div>
-          )}
+        <div className="ai-mode-tabs">
+          <button
+            className={`ai-mode-tab ${sidebarTab === 'files' ? 'active' : ''}`}
+            onClick={() => setSidebarTab('files')}
+          >
+            文件
+          </button>
+          <button
+            className={`ai-mode-tab ${sidebarTab === 'wiki' ? 'active' : ''}`}
+            onClick={() => setSidebarTab('wiki')}
+          >
+            Wiki
+          </button>
         </div>
+
+        {sidebarTab === 'wiki' ? (
+          <WikiFileTree />
+        ) : (
+          <>
+            {/* New item inline input (root level only) */}
+            {newItemType && !newItemParent && (
+              <div className="ft-item" style={{ paddingLeft: '12px' }}>
+                <span className="ft-icon"><FileIcon filename={newItemType === 'dir' ? '' : (newItemName || 'untitled.md')} isDir={newItemType === 'dir'} /></span>
+                <input
+                  ref={newItemInputRef}
+                  className="ft-rename-input"
+                  placeholder={newItemType === 'dir' ? '文件夹名称' : '文件名称（默认 .md）'}
+                  value={newItemName}
+                  onChange={(event) => setNewItemName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') confirmNewItem();
+                    if (event.key === 'Escape') cancelNewItem();
+                  }}
+                  onBlur={confirmNewItem}
+                />
+              </div>
+            )}
+
+            {/* File tree */}
+            <div
+              className={`sb-body${dragOverDir === '' ? ' drag-over' : ''}`}
+              ref={fileTreeRef}
+            >
+              {renderFileTree(fileTree)}
+              {fileTree.length === 0 && !newItemType && (
+                <div className="sb-empty">
+                  {vaultError
+                    ? <span className="sb-empty-err">{vaultError}</span>
+                    : <span className="sb-empty-hint">暂无文件</span>
+                  }
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Settings button at bottom */}
         <div className="sb-footer">
@@ -854,6 +878,17 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
               }}>
                 <span className="ft-ctx-ai-icon">AI</span>
                 添加文件到对话
+              </button>
+            )}
+            {contextMenu.path.endsWith('.md') && (
+              <button
+                className="ft-ctx-item"
+                onClick={() => {
+                  runIngest([contextMenu.path]).catch(console.error);
+                  setContextMenu(null);
+                }}
+              >
+                摄入到 Wiki
               </button>
             )}
             <div className="ft-ctx-divider" />

@@ -9,6 +9,8 @@ import { suppressWatcherFor } from '@/utils/fileWatcher';
 
 export type { CliMessage, FileChange, ToolCallInfo, MessageAttachment };
 
+export type AiChatMode = 'chat' | 'wiki';
+
 export interface AiSession {
   id: string;
   title: string;
@@ -48,6 +50,9 @@ interface AiState {
   setStreaming: (streaming: boolean) => void;
   /** Check if the active session is streaming */
   isStreaming: boolean;
+
+  chatMode: AiChatMode;
+  setChatMode: (mode: AiChatMode) => void;
 
   pendingFileAttachments: { name: string; path: string }[];
   addFileToChat: (name: string, path: string) => void;
@@ -338,6 +343,9 @@ export const useAiStore = create<AiState>((set, get) => ({
     }));
     persistAiState();
   },
+
+  chatMode: 'chat' as AiChatMode,
+  setChatMode: (mode) => set({ chatMode: mode }),
 
   pendingFileAttachments: [],
   addFileToChat: (name, path) => {

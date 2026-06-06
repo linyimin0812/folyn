@@ -10,6 +10,15 @@ import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';
 import { MessageContent } from './MessageContent';
 import { ToolCallBlock } from './ToolCallBlock';
 import { FileIcon } from '@/components/icons/FileIcon';
+import { WikiToolbar } from './WikiToolbar';
+import { WikiActivityLog } from './WikiActivityLog';
+import { ReviewItemList } from './ReviewItemList';
+import { IngestDialog } from './IngestDialog';
+import { DeepResearchDialog } from './DeepResearchDialog';
+import { useWikiStore } from '@/store/wikiStore';
+import { runIngest } from '@/services/wikiIngestService';
+import { runWikiLint } from '@/services/wikiLintService';
+import { saveToWiki } from '@/services/wikiQueryService';
 
 interface PendingAttachment {
   id: string;
@@ -87,6 +96,57 @@ export function AiPanel() {
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const isStreaming = activeSession?.isStreaming ?? false;
   const messages = activeSession?.messages ?? [];
+
+  const chatMode = useAiStore((s) => s.chatMode);
+  const setChatMode = useAiStore((s) => s.setChatMode);
+  const [showIngestDialog, setShowIngestDialog] = useState(false);
+  const [showDeepResearch, setShowDeepResearch] = useState(false);
+
+  // Track separate active session per mode (seed chat with current session)
+  const modeSessionRef = useRef<{ chat: string | null; wiki: string | null }>({ chat: activeSessionId, wiki: null });
+
+  const handleModeSwitch = useCallback((mode: 'chat' | 'wiki') => {
+    if (mode === chatMode) return;
+    // Save current session for the old mode
+    modeSessionRef.current[chatMode] = activeSessionId;
+    // Restore or create session for the new mode
+    const savedId = modeSessionRef.current[mode];
+    if (savedId && sessions.some((s) => s.id === savedId)) {
+      switchSession(savedId);
+    } else {
+      const newId = createSession();
+      modeSessionRef.current[mode] = newId;
+    }
+    setChatMode(mode);
+  }, [chatMode, activeSessionId, sessions, switchSession, createSession, setChatMode]);
+
+  const handleIngest = async (filePaths: string[]) => {
+    setShowIngestDialog(false);
+    try {
+      await runIngest(filePaths);
+    } catch (err) {
+      console.error('Ingest failed:', err);
+    }
+  };
+
+  const handleLint = async () => {
+    const store = useWikiStore.getState();
+    store.setLinting(true);
+    store.pushActivity('info', '开始健康检查...');
+    try {
+      const items = await runWikiLint();
+      store.addReviewItems(items);
+      if (items.length > 0) {
+        store.pushActivity('success', `健康检查完成，发现 ${items.length} 个问题`);
+      } else {
+        store.pushActivity('success', '健康检查完成，一切正常');
+      }
+    } catch (err) {
+      store.pushActivity('error', `健康检查失败: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      store.setLinting(false);
+    }
+  };
 
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
@@ -553,6 +613,29 @@ export function AiPanel() {
         </div>
       </div>
 
+      <div className="ai-mode-tabs">
+        <button
+          className={`ai-mode-tab ${chatMode === 'chat' ? 'active' : ''}`}
+          onClick={() => handleModeSwitch('chat')}
+        >
+          Chat
+        </button>
+        <button
+          className={`ai-mode-tab ${chatMode === 'wiki' ? 'active' : ''}`}
+          onClick={() => handleModeSwitch('wiki')}
+        >
+          Wiki
+        </button>
+      </div>
+
+      {chatMode === 'wiki' && (
+        <WikiToolbar
+          onIngest={() => setShowIngestDialog(true)}
+          onLint={handleLint}
+          onDeepResearch={() => setShowDeepResearch(true)}
+        />
+      )}
+
       <div className="ai-body">
         <div className="ai-msgs">
           {messages.length === 0 && (
@@ -612,6 +695,21 @@ export function AiPanel() {
                         <span className="cursor-blink">▎</span>
                       )}
                   </div>
+                  {msg.role === 'assistant' && chatMode === 'wiki' && msg.content && (
+                    <button
+                      className="wiki-save-btn"
+                      onClick={async () => {
+                        const title = msg.content.split('\n')[0]?.replace(/^#+\s*/, '').slice(0, 50) || '综合分析';
+                        const lastUserMsg = messages.filter((m) => m.role === 'user').pop();
+                        const query = lastUserMsg?.content || '';
+                        const path = await saveToWiki(title, msg.content, query);
+                        await useWikiStore.getState().refreshWikiFiles();
+                        alert(`已保存到 wiki://${path}`);
+                      }}
+                    >
+                      保存到 Wiki
+                    </button>
+                  )}
                 </div>
               );
           })}
@@ -628,6 +726,9 @@ export function AiPanel() {
           <div ref={msgsEndRef} />
         </div>
       </div>
+
+      {chatMode === 'wiki' && <WikiActivityLog />}
+      {chatMode === 'wiki' && <ReviewItemList />}
 
       <div className="ai-input-wrap">
         {attachments.length > 0 && (
@@ -708,6 +809,21 @@ export function AiPanel() {
           onChange={handleFileInputChange}
         />
       </div>
+      {showIngestDialog && (
+        <IngestDialog
+          onConfirm={handleIngest}
+          onCancel={() => setShowIngestDialog(false)}
+        />
+      )}
+      {showDeepResearch && (
+        <DeepResearchDialog
+          onConfirm={(topic) => {
+            setShowDeepResearch(false);
+            console.log('Deep research topic:', topic);
+          }}
+          onCancel={() => setShowDeepResearch(false)}
+        />
+      )}
     </div>
   );
 }
