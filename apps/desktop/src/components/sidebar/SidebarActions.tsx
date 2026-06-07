@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { FileIcon } from '@/components/icons/FileIcon';
 
 /* -------------------------------------------------------------------------- */
@@ -67,17 +68,24 @@ export function useSidebarActions({ handleFileClick, setExpandedDirs }: UseSideb
 
     if (newItemType === 'dir') {
       await vaultCreateDir(fullPath);
-    } else if (finalName.endsWith('.excalidraw')) {
-      const emptyExcalidraw = JSON.stringify({
-        type: 'excalidraw',
-        version: 2,
-        elements: [],
-        appState: { viewBackgroundColor: '#ffffff' },
-      }, null, 2);
-      await vaultCreateFile(fullPath, emptyExcalidraw);
     } else {
-      const defaultContent = `# ${finalName.substring(0, finalName.lastIndexOf('.'))}`;
-      await vaultCreateFile(fullPath, defaultContent);
+      const ext = finalName.includes('.') ? finalName.split('.').pop()! : '';
+      const title = finalName.substring(0, finalName.lastIndexOf('.')) || finalName;
+      const templates = useSettingsStore.getState().fileTemplates;
+      const template = templates[ext];
+
+      let content: string;
+      if (template !== undefined) {
+        const now = new Date();
+        content = template
+          .replace(/\{\{title\}\}/g, title)
+          .replace(/\{\{filename\}\}/g, finalName)
+          .replace(/\{\{date\}\}/g, `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`)
+          .replace(/\{\{ext\}\}/g, ext);
+      } else {
+        content = '';
+      }
+      await vaultCreateFile(fullPath, content);
     }
 
     setNewItemType(null);

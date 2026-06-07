@@ -3,7 +3,7 @@ import { storageClient } from '@/utils/storageClient';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type AppPage = 'editor' | 'vault' | 'settings';
-export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'ai' | 'about';
+export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'ai' | 'templates' | 'about';
 export type LinkOpenMode = 'external' | 'internal';
 
 export interface ShortcutItem {
@@ -73,6 +73,9 @@ interface SettingsState {
   dailyNotesDir: string;
   dailyNoteDateFormat: string;
 
+  // File Templates: extension -> template content
+  fileTemplates: Record<string, string>;
+
   // Shortcuts
   shortcuts: ShortcutItem[];
 
@@ -102,14 +105,14 @@ function debouncedPersist(state: Partial<SettingsState>) {
       syntaxHighlight, autoSave, spellCheck, linkOpenMode, vaultPath, imagePath, docExtension,
       watchFileChanges, trashOnDelete, syncMethod, syncEndpoint, syncAccessKey,
       syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
-      vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat } = state as SettingsState;
+      vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates } = state as SettingsState;
     storageClient.set(SETTINGS_STORAGE_KEY, {
       theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles, excludePatterns,
       editorFont, editorFontSize, tabSize, wrapColumn, showLineNumbers,
       syntaxHighlight, autoSave, spellCheck, linkOpenMode, vaultPath, imagePath, docExtension,
       watchFileChanges, trashOnDelete, syncMethod, syncEndpoint, syncAccessKey,
       syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
-      vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat,
+      vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates,
     });
   }, 300);
 }
@@ -164,6 +167,13 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   // Daily Notes
   dailyNotesDir: 'daily',
   dailyNoteDateFormat: 'YYYY-MM-DD',
+
+  // File Templates
+  fileTemplates: {
+    md: '# {{title}}\n\n',
+    html: '<!DOCTYPE html>\n<html lang="zh">\n<head>\n  <meta charset="UTF-8">\n  <title>{{title}}</title>\n</head>\n<body>\n  \n</body>\n</html>',
+    excalidraw: '{"type":"excalidraw","version":2,"elements":[],"appState":{"viewBackgroundColor":"#ffffff"}}',
+  } as Record<string, string>,
 
   // Shortcuts
   shortcuts: [...DEFAULT_SHORTCUTS],

@@ -74,6 +74,7 @@ const NAV_GROUPS = [
     { id: 'appearance' as SettingsTab, icon: '🖥', name: '外观' },
     { id: 'editor' as SettingsTab, icon: '✏️', name: '编辑器' },
     { id: 'shortcuts' as SettingsTab, icon: '⌨️', name: '快捷键' },
+    { id: 'templates' as SettingsTab, icon: '📄', name: '文件模板' },
   ]},
   { label: 'AI', items: [
     { id: 'ai' as SettingsTab, icon: '✦', name: 'AI 工具' },
@@ -91,6 +92,123 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
   );
 }
 
+
+function FileTemplatesSettings() {
+  const { fileTemplates, updateSettings } = useSettingsStore();
+  const [editingExt, setEditingExt] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [newExt, setNewExt] = useState('');
+  const newExtRef = useRef<HTMLInputElement>(null);
+
+  const extensions = Object.keys(fileTemplates).sort();
+
+  const startEdit = useCallback((ext: string) => {
+    setEditingExt(ext);
+    setEditContent(fileTemplates[ext] || '');
+  }, [fileTemplates]);
+
+  const saveEdit = useCallback(() => {
+    if (editingExt === null) return;
+    updateSettings({
+      fileTemplates: { ...fileTemplates, [editingExt]: editContent },
+    });
+    setEditingExt(null);
+    setEditContent('');
+  }, [editingExt, editContent, fileTemplates, updateSettings]);
+
+  const cancelEdit = useCallback(() => {
+    setEditingExt(null);
+    setEditContent('');
+  }, []);
+
+  const addTemplate = useCallback(() => {
+    const ext = newExt.trim().replace(/^\./, '').toLowerCase();
+    if (!ext || fileTemplates[ext] !== undefined) return;
+    updateSettings({
+      fileTemplates: { ...fileTemplates, [ext]: '' },
+    });
+    setNewExt('');
+    startEdit(ext);
+  }, [newExt, fileTemplates, updateSettings, startEdit]);
+
+  const removeTemplate = useCallback((ext: string) => {
+    const next = { ...fileTemplates };
+    delete next[ext];
+    updateSettings({ fileTemplates: next });
+    if (editingExt === ext) cancelEdit();
+  }, [fileTemplates, updateSettings, editingExt, cancelEdit]);
+
+  return (
+    <div className="mb-[26px]">
+      <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">File Templates</div>
+      <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">
+        按文件扩展名配置新建文件时的默认模板内容。支持变量：{'{{title}}'}, {'{{filename}}'}, {'{{date}}'}, {'{{ext}}'}
+      </div>
+
+      {/* Template list */}
+      <div className="flex flex-col gap-1 mb-3">
+        {extensions.map((ext) => (
+          <div
+            key={ext}
+            className={`flex items-center gap-2 py-2 px-2.5 rounded-md border cursor-pointer transition-all duration-100 ${editingExt === ext ? 'border-acc bg-accdim' : 'border-brd hover:border-acc'}`}
+            onClick={() => startEdit(ext)}
+          >
+            <span className="text-xs font-mono font-semibold text-acc shrink-0">.{ext}</span>
+            <span className="text-[11px] text-t3 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono">
+              {fileTemplates[ext] ? fileTemplates[ext].slice(0, 60).replace(/\n/g, '\\n') : '(empty)'}
+            </span>
+            <button
+              className="text-[10px] text-t3 hover:text-[#e53935] shrink-0 bg-transparent border-none cursor-pointer p-1"
+              onClick={(e) => { e.stopPropagation(); removeTemplate(ext); }}
+              title="删除模板"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        {extensions.length === 0 && (
+          <div className="text-xs text-t3 py-2">暂无模板配置</div>
+        )}
+      </div>
+
+      {/* Add new template */}
+      <div className="flex items-center gap-1.5 mb-4">
+        <span className="text-xs text-t2">.</span>
+        <input
+          ref={newExtRef}
+          className="fi2 py-[5px] px-2 rounded-md border border-brd bg-inp text-t1 text-xs outline-none font-mono transition-[border-color] duration-100 focus:border-acc"
+          style={{ width: 100 }}
+          value={newExt}
+          onChange={(e) => setNewExt(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') addTemplate(); }}
+          placeholder="ext"
+          autoCapitalize="off"
+        />
+        <button className="btn btn-p btn-sm" onClick={addTemplate}>添加模板</button>
+      </div>
+
+      {/* Editor */}
+      {editingExt !== null && (
+        <div className="mb-3">
+          <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">
+            编辑模板: <span className="font-mono text-acc">.{editingExt}</span>
+          </div>
+          <textarea
+            className="w-full py-2 px-2.5 rounded-md border border-brd bg-inp text-t1 text-xs outline-none font-mono transition-[border-color] duration-100 focus:border-acc"
+            rows={10}
+            style={{ resize: 'vertical', lineHeight: 1.6, tabSize: 2 }}
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+          />
+          <div className="flex gap-1.5 mt-2">
+            <button className="btn btn-p btn-sm" onClick={saveEdit}>保存</button>
+            <button className="btn btn-g btn-sm" onClick={cancelEdit}>取消</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function SettingsPage() {
   const store = useSettingsStore();
@@ -153,7 +271,7 @@ export function SettingsPage() {
             </div>
             <div className="mb-3.5">
               <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">界面字体大小</div>
-              <select className="fsel py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui w-full" style={{ maxWidth: 180 }} value={`${store.fontSize}px`} onChange={(e) => updateSettings({ fontSize: parseInt(e.target.value) })}>
+              <select className="settings-select" style={{ maxWidth: 180 }} value={`${store.fontSize}px`} onChange={(e) => updateSettings({ fontSize: parseInt(e.target.value) })}>
                 <option value="12px">12px（紧凑）</option>
                 <option value="14px">14px（默认）</option>
                 <option value="16px">16px（舒适）</option>
@@ -183,37 +301,27 @@ export function SettingsPage() {
           <div className="mb-[26px]">
             <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">编辑器</div>
             <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">配置编辑器行为与显示选项</div>
-            <div className="grid grid-cols-2 gap-3.5 mb-3.5">
-              <div className="mb-3.5"><div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">编辑器字体</div><select className="fsel py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui w-full" value={store.editorFont} onChange={(e) => updateSettings({ editorFont: e.target.value })}><option>DM Mono</option><option>JetBrains Mono</option><option>Fira Code</option></select></div>
-              <div className="mb-3.5"><div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">字体大小</div><select className="fsel py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui w-full" value={`${store.editorFontSize}px`} onChange={(e) => updateSettings({ editorFontSize: parseInt(e.target.value) })}><option value="12px">12px</option><option value="13px">13px</option><option value="14px">14px</option><option value="16px">16px</option></select></div>
-            </div>
-            <div className="mb-3.5">
-              <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">Tab 大小</div>
-              <select className="fsel py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui w-full" style={{ maxWidth: 180 }} value={store.tabSize} onChange={(e) => updateSettings({ tabSize: parseInt(e.target.value) })}><option value={2}>2 空格</option><option value={4}>4 空格</option></select>
+            <div className="grid grid-cols-3 gap-3 mb-3.5">
+              <div><div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">编辑器字体</div><select className="settings-select" value={store.editorFont} onChange={(e) => updateSettings({ editorFont: e.target.value })}><option>DM Mono</option><option>JetBrains Mono</option><option>Fira Code</option></select></div>
+              <div><div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">字体大小</div><select className="settings-select" value={`${store.editorFontSize}px`} onChange={(e) => updateSettings({ editorFontSize: parseInt(e.target.value) })}><option value="12px">12px</option><option value="13px">13px</option><option value="14px">14px</option><option value="16px">16px</option></select></div>
+              <div><div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">Tab 大小</div><select className="settings-select" value={store.tabSize} onChange={(e) => updateSettings({ tabSize: parseInt(e.target.value) })}><option value={2}>2 空格</option><option value={4}>4 空格</option></select></div>
             </div>
             <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">显示行号</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">在编辑区左侧显示行号</p></div><Toggle value={store.showLineNumbers} onChange={(v) => updateSettings({ showLineNumbers: v })} /></div>
             <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">自动保存</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">每 30 秒自动保存当前文档</p></div><Toggle value={store.autoSave} onChange={(v) => updateSettings({ autoSave: v })} /></div>
-            <div className="tr flex flex-col items-stretch gap-2 py-2.5 border-b border-brd">
+            <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
               <div className="tr-info">
                 <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">链接打开方式</h4>
+                <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">点击链接时的默认打开方式</p>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <div
-                  className={`setting-card flex-1 flex flex-col items-center gap-1 py-3 px-2 rounded-lg border cursor-pointer transition-all duration-150 ${store.linkOpenMode === 'external' ? 'border-acc bg-accdim' : 'border-brd bg-surf hover:border-brd2 hover:bg-hov'}`}
+              <div className="flex gap-1">
+                <button
+                  className={`py-[5px] px-3 rounded-md text-[11px] font-ui cursor-pointer border transition-all duration-100 ${store.linkOpenMode === 'external' ? 'border-acc bg-accdim text-acc' : 'border-brd bg-surf text-t2 hover:bg-hov hover:text-t1'}`}
                   onClick={() => updateSettings({ linkOpenMode: 'external' })}
-                >
-                  <span className="text-xl">🌐</span>
-                  <span className="text-xs font-semibold text-t1">外部浏览器</span>
-                  <span className="text-[10px] text-t3 text-center">在系统默认浏览器中打开</span>
-                </div>
-                <div
-                  className={`setting-card flex-1 flex flex-col items-center gap-1 py-3 px-2 rounded-lg border cursor-pointer transition-all duration-150 ${store.linkOpenMode === 'internal' ? 'border-acc bg-accdim' : 'border-brd bg-surf hover:border-brd2 hover:bg-hov'}`}
+                >外部浏览器</button>
+                <button
+                  className={`py-[5px] px-3 rounded-md text-[11px] font-ui cursor-pointer border transition-all duration-100 ${store.linkOpenMode === 'internal' ? 'border-acc bg-accdim text-acc' : 'border-brd bg-surf text-t2 hover:bg-hov hover:text-t1'}`}
                   onClick={() => updateSettings({ linkOpenMode: 'internal' })}
-                >
-                  <span className="text-xl">📌</span>
-                  <span className="text-xs font-semibold text-t1">应用内打开</span>
-                  <span className="text-[10px] text-t3 text-center">在应用内嵌窗口中打开</span>
-                </div>
+                >应用内打开</button>
               </div>
             </div>
           </div>
@@ -238,7 +346,7 @@ export function SettingsPage() {
             <div className="mb-3.5">
               <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">日期格式</div>
               <select
-                className="fsel py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui w-full"
+                className="settings-select"
                 style={{ maxWidth: 240 }}
                 value={store.dailyNoteDateFormat}
                 onChange={(e) => updateSettings({ dailyNoteDateFormat: e.target.value })}
@@ -351,6 +459,11 @@ export function SettingsPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* -- 文件模板 -- */}
+        {settingsTab === 'templates' && (
+          <FileTemplatesSettings />
         )}
 
         {/* -- 关于 -- */}
