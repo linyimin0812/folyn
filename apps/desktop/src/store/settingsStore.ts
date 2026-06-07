@@ -19,6 +19,7 @@ export const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   { id: 'strikethrough', name: '删除线', keys: ['⌘', 'Shift', 'S'] },
   { id: 'code', name: '行内代码', keys: ['⌘', 'E'] },
   { id: 'link', name: '插入链接', keys: ['⌘', 'K'] },
+  { id: 'dailyNote', name: '今日笔记', keys: ['⌘', 'D'] },
 ];
 
 interface SettingsState {
@@ -68,6 +69,10 @@ interface SettingsState {
   cliAdapter: string;
   cliPath: string;
 
+  // Daily Notes
+  dailyNotesDir: string;
+  dailyNoteDateFormat: string;
+
   // Shortcuts
   shortcuts: ShortcutItem[];
 
@@ -97,14 +102,14 @@ function debouncedPersist(state: Partial<SettingsState>) {
       syntaxHighlight, autoSave, spellCheck, linkOpenMode, vaultPath, imagePath, docExtension,
       watchFileChanges, trashOnDelete, syncMethod, syncEndpoint, syncAccessKey,
       syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
-      vaultName, shortcuts } = state as SettingsState;
+      vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat } = state as SettingsState;
     storageClient.set(SETTINGS_STORAGE_KEY, {
       theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles, excludePatterns,
       editorFont, editorFontSize, tabSize, wrapColumn, showLineNumbers,
       syntaxHighlight, autoSave, spellCheck, linkOpenMode, vaultPath, imagePath, docExtension,
       watchFileChanges, trashOnDelete, syncMethod, syncEndpoint, syncAccessKey,
       syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
-      vaultName, shortcuts,
+      vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat,
     });
   }, 300);
 }
@@ -155,6 +160,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   // AI CLI
   cliAdapter: 'claude',
   cliPath: 'claude',
+
+  // Daily Notes
+  dailyNotesDir: 'daily',
+  dailyNoteDateFormat: 'YYYY-MM-DD',
 
   // Shortcuts
   shortcuts: [...DEFAULT_SHORTCUTS],

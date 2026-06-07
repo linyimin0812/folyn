@@ -39,6 +39,38 @@ aside button[data-tip]::after { bottom: auto; top: 100%; margin-bottom: 0; margi
   width: 2px; border-radius: 0 2px 2px 0; background: var(--acc);
 }
 
+/* ── Calendar Panel ── */
+.calendar-panel { padding: 8px; }
+.calendar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.calendar-nav { border: none; background: transparent; cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; color: var(--t1); }
+.calendar-nav:hover { background: var(--hov); }
+.calendar-title { font-size: 12px; font-weight: 500; color: var(--t1); }
+.calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; margin-bottom: 4px; }
+.calendar-wd { font-size: 10px; color: var(--t3); padding: 2px; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+.calendar-cell { position: relative; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin: 0 auto; border: none; border-radius: 50%; background: transparent; font-size: 11px; cursor: pointer; color: var(--t1); }
+.calendar-cell.empty { cursor: default; }
+.calendar-cell:not(.empty):hover { background: var(--hov); }
+.calendar-cell.today { background: var(--acc); color: white; font-weight: 600; }
+.calendar-cell.today:hover { opacity: 0.9; }
+.calendar-dot { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--acc); }
+.calendar-cell.today .calendar-dot { background: white; }
+
+/* ── Daily Digest ── */
+.daily-digest { border-top: 1px solid var(--brd); }
+.daily-digest-toggle { display: flex; align-items: center; gap: 6px; width: 100%; padding: 8px 12px; border: none; background: var(--surf); color: var(--t3); font-size: 12px; cursor: pointer; text-align: left; }
+.daily-digest-toggle:hover { background: var(--hov); }
+.daily-digest-icon { font-size: 10px; }
+.daily-digest-body { padding: 12px; }
+.daily-digest-empty { text-align: center; padding: 16px; }
+.daily-digest-generate-btn { padding: 6px 16px; border: 1px solid var(--acc); border-radius: 6px; background: var(--acc); color: white; font-size: 12px; cursor: pointer; }
+.daily-digest-generate-btn:hover { opacity: 0.9; }
+.daily-digest-hint { display: block; margin-top: 6px; font-size: 11px; color: var(--t3); }
+.daily-digest-loading { text-align: center; padding: 16px; color: var(--t3); font-size: 12px; }
+.daily-digest-content { font-size: 13px; }
+.daily-digest-insert-btn { margin-top: 8px; padding: 4px 12px; border: 1px solid var(--brd); border-radius: 4px; background: transparent; color: var(--t3); font-size: 11px; cursor: pointer; }
+.daily-digest-insert-btn:hover { background: var(--hov); }
+
 /* ── Theme Tokens ── */
 :root {
   --font-ui: 'Sora', sans-serif;

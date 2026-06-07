@@ -8,6 +8,16 @@ import { WIKI_PREFIX } from '@/types/wiki';
 import { scheduleAutoSave, flushAllAutoSaves } from './editorAutoSave';
 import { persistOpenTabs, flushPersistOpenTabs, loadPersistedOpenTabs } from './editorPersistence';
 
+function formatDailyDate(date: Date, format: string): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return format
+    .replace('YYYY', String(y))
+    .replace('MM', m)
+    .replace('DD', d);
+}
+
 export type ViewMode = 'split' | 'edit' | 'preview';
 
 export type FileType = string;
@@ -83,6 +93,8 @@ interface EditorState {
   openWebTab: (url: string, title?: string) => void;
   /** Open a file from the vault (reads content via VaultStore) */
   openFile: (path: string, name: string) => Promise<void>;
+  /** Open (or create) today's daily note */
+  openDailyNote: (dateStr?: string) => Promise<void>;
   /** Save the active tab's content to the vault */
   saveFile: (tabId: string) => Promise<void>;
   /** Save current open tabs immediately (flush, no debounce) */
@@ -282,6 +294,52 @@ export const useEditorStore = create<EditorState>()(
         } finally {
           set({ isFileLoading: false });
         }
+      },
+
+      openDailyNote: async (dateStr?) => {
+        const { useSettingsStore } = await import('./settingsStore');
+        const settings = useSettingsStore.getState();
+        const dir = settings.dailyNotesDir || 'daily';
+        const fmt = settings.dailyNoteDateFormat || 'YYYY-MM-DD';
+
+        const date = dateStr ? new Date(dateStr) : new Date();
+        const fileName = formatDailyDate(date, fmt);
+        const filePath = `${dir}/${fileName}.md`;
+        const displayName = `${fileName}.md`;
+
+        const vault = useVaultStore.getState();
+
+        try {
+          await vault.readFile(filePath);
+          await get().openFile(filePath, displayName);
+          return;
+        } catch {
+          // File doesn't exist, create it
+        }
+
+        try {
+          await vault.createDir(dir);
+        } catch {
+          // Directory may already exist
+        }
+
+        let template = '';
+        try {
+          template = await vault.readFile('_templates/daily.md');
+        } catch {
+          template = `---\ntitle: "${fileName}"\ndate: ${fileName}\ntags: [daily]\n---\n\n# ${fileName}\n\n`;
+        }
+
+        const content = template
+          .replace(/\{\{date\}\}/g, fileName)
+          .replace(/\{\{title\}\}/g, fileName)
+          .replace(/\{\{year\}\}/g, String(date.getFullYear()))
+          .replace(/\{\{month\}\}/g, String(date.getMonth() + 1).padStart(2, '0'))
+          .replace(/\{\{day\}\}/g, String(date.getDate()).padStart(2, '0'));
+
+        await vault.writeFile(filePath, content);
+        await vault.refreshFileTree();
+        await get().openFile(filePath, displayName);
       },
 
       saveOpenTabs: () => {

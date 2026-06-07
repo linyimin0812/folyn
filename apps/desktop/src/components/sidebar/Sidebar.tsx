@@ -5,6 +5,7 @@ import { useVaultStore } from '@/store/vaultStore';
 import type { VaultEntry } from '@quill/vault-provider';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 import { WikiFileTree } from './WikiFileTree';
+import { CalendarPanel } from './CalendarPanel';
 import { flattenTree } from '@/utils/treeUtils';
 import { useDragDrop } from './useDragDrop';
 import { FileTreeItem } from './FileTreeItem';
@@ -42,7 +43,7 @@ export function Sidebar({ activePanel = 'files', onFileSelect }: SidebarProps): 
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const hasAutoExpanded = useRef(false);
-  const sidebarTab = activePanel === 'wiki' ? 'wiki' : 'files';
+  const sidebarTab = activePanel === 'wiki' ? 'wiki' : activePanel === 'calendar' ? 'calendar' : 'files';
 
   // Close actions menu when clicking outside
   useEffect(() => {
@@ -396,7 +397,9 @@ export function Sidebar({ activePanel = 'files', onFileSelect }: SidebarProps): 
           </div>
         </div>
 
-        {sidebarTab === 'wiki' ? (
+        {sidebarTab === 'calendar' ? (
+          <CalendarPanel />
+        ) : sidebarTab === 'wiki' ? (
           <WikiFileTree />
         ) : (
           <>

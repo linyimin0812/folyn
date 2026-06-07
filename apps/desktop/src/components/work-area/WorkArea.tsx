@@ -9,6 +9,7 @@ import { WikiGraphView } from '../graph/WikiGraphView';
 import { TabBar } from './TabBar';
 import { EditorPane } from './EditorPane';
 import { PreviewPane } from './PreviewPane';
+import { DailyDigest } from '../editor/DailyDigest';
 
 
 export function WorkArea() {
@@ -287,6 +288,21 @@ export function WorkArea() {
 
       </>)}
       </div>{/* end content area */}
+
+      {activeTab?.fileType === 'markdown' && (
+        <DailyDigest
+          currentFilePath={activeTab.path}
+          onInsertContent={(content) => {
+            const view = editorRef.current?.getView();
+            if (view) {
+              const pos = view.state.doc.length;
+              view.dispatch({
+                changes: { from: pos, insert: content },
+              });
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

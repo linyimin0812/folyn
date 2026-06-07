@@ -3,6 +3,7 @@ import { useWikiStore } from '@/store/wikiStore';
 import { useEditorStore } from '@/store/editorStore';
 import type { WikiEntry } from '@/types/wiki';
 import { WIKI_PREFIX } from '@/types/wiki';
+import { FileIcon } from '@/components/icons/FileIcon';
 
 function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
   const openFile = useEditorStore((s) => s.openFile);
@@ -14,7 +15,7 @@ function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
           className="flex items-center gap-1.5 py-1 px-2 font-medium cursor-default text-[calc(var(--ui-font-size)-2px)] text-t2 rounded mx-1 transition-colors duration-100 hover:bg-hov hover:text-t1"
           style={{ paddingLeft: `${depth * 14 + 8}px` }}
         >
-          <span className="shrink-0 text-xs">📁</span>
+          <span className="shrink-0 text-xs"><FileIcon filename={entry.name} isDir /></span>
           <span className="overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1">{entry.name}</span>
           {entry.children && (
             <span className="shrink-0 text-[10px] text-t3 bg-hov px-[5px] rounded-lg">{entry.children.filter((c) => c.type === 'file').length}</span>
@@ -34,7 +35,7 @@ function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
       onClick={() => openFile(`${WIKI_PREFIX}${entry.path}`, entry.name)}
       title={entry.path}
     >
-      <span className="shrink-0 text-xs">✦</span>
+      <span className="shrink-0 text-xs"><FileIcon filename={entry.name} /></span>
       <span className="overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1">{entry.name.replace('.md', '')}</span>
     </div>
   );

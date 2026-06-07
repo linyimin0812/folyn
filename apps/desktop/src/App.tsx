@@ -113,6 +113,10 @@ export default function App() {
           openPanel();
         }
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        useEditorStore.getState().openDailyNote();
+      }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);

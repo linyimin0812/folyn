@@ -219,6 +219,38 @@ export function SettingsPage() {
           </div>
         )}
 
+        {/* -- 编辑器 -- Daily Notes section (appended below editor settings) */}
+        {settingsTab === 'editor' && (
+          <div className="mb-[26px]">
+            <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">Daily Notes</div>
+            <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">配置每日笔记的存储目录与日期格式</div>
+            <div className="mb-3.5">
+              <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">笔记目录</div>
+              <input
+                className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
+                style={{ maxWidth: 240 }}
+                value={store.dailyNotesDir}
+                onChange={(e) => updateSettings({ dailyNotesDir: e.target.value })}
+                placeholder="daily"
+                autoCapitalize="off"
+              />
+            </div>
+            <div className="mb-3.5">
+              <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">日期格式</div>
+              <select
+                className="fsel py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui w-full"
+                style={{ maxWidth: 240 }}
+                value={store.dailyNoteDateFormat}
+                onChange={(e) => updateSettings({ dailyNoteDateFormat: e.target.value })}
+              >
+                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                <option value="YYYY.MM.DD">YYYY.MM.DD</option>
+                <option value="YYYYMMDD">YYYYMMDD</option>
+              </select>
+            </div>
+          </div>
+        )}
+
         {/* -- 快捷键 -- */}
         {settingsTab === 'shortcuts' && (
           <div className="mb-[26px]">
