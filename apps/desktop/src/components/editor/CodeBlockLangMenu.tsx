@@ -61,27 +61,27 @@ export function CodeBlockLangMenu({ visible, menuState, position, getView }: Cod
 
   return (
     <div
-      className="cbl-menu"
+      className="cbl-menu fixed z-[45] bg-panel border border-brd2 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,.12)] min-w-[200px] max-w-[260px] max-h-[280px] overflow-y-auto p-1 animate-[fadeIn_.12s]"
       style={{ top: adjustedPos.top, left: adjustedPos.left }}
       ref={listRef}
     >
-      <div className="cbl-header">Select Language</div>
+      <div className="text-[9px] font-semibold text-t3 uppercase tracking-[.1em] py-1.5 px-2">Select Language</div>
       {filtered.length === 0 ? (
-        <div className="cbl-empty" onClick={handleSelectPlain}>
+        <div className="py-2 px-2.5 text-[11px] text-t3 cursor-pointer rounded-[5px] hover:bg-hov" onClick={handleSelectPlain}>
           No match — press Enter for plain block
         </div>
       ) : (
         filtered.map((lang, index) => (
           <div
             key={lang.name}
-            className={`cbl-item ${index === menuState.selectedIndex ? 'active' : ''}`}
+            className={`cbl-item flex items-center justify-between py-[5px] px-2 rounded-[5px] cursor-pointer transition-[background] duration-100 ${index === menuState.selectedIndex ? 'active bg-hov' : 'hover:bg-hov'}`}
             onMouseDown={(event) => {
               event.preventDefault();
               handleSelect(lang.name);
             }}
           >
-            <span className="cbl-name">{lang.label}</span>
-            <span className="cbl-alias">{lang.name}</span>
+            <span className="text-xs font-medium text-t1">{lang.label}</span>
+            <span className="text-[10px] text-t3 font-mono">{lang.name}</span>
           </div>
         ))
       )}

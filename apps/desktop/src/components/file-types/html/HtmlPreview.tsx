@@ -3,7 +3,7 @@ import type { PreviewProps } from '../types';
 export function HtmlPreview({ content }: PreviewProps) {
   return (
     <iframe
-      className="html-preview-frame"
+      className="html-preview-frame w-full h-full border-none bg-white"
       sandbox="allow-scripts allow-same-origin"
       srcDoc={content}
       title="HTML Preview"

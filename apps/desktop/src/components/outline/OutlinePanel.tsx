@@ -31,22 +31,22 @@ export function OutlinePanel() {
   const headings = activeTab ? extractHeadings(activeTab.content) : [];
 
   return (
-    <div className={`outline-panel ${collapsed ? 'collapsed' : ''}`}>
-      <div className="ol-header">
-        {!collapsed && <span className="ol-title">大纲</span>}
-        <button className="ol-toggle" onClick={() => setCollapsed(!collapsed)}>
+    <div className={`${collapsed ? 'w-8' : 'w-[200px]'} shrink-0 h-full bg-panel border-l border-brd flex flex-col overflow-hidden transition-[width] duration-200`}>
+      <div className="flex items-center justify-between py-2.5 px-2 shrink-0 border-b border-brd">
+        {!collapsed && <span className="text-[11px] font-semibold text-t2 uppercase tracking-[0.05em]">大纲</span>}
+        <button className="w-[22px] h-[22px] flex items-center justify-center rounded text-[10px] text-t3 cursor-pointer transition-[background] duration-[120ms] hover:bg-hov hover:text-t1" onClick={() => setCollapsed(!collapsed)}>
           {collapsed ? '▸' : '◂'}
         </button>
       </div>
       {!collapsed && (
-        <div className="ol-body">
+        <div className="flex-1 overflow-y-auto py-1.5">
           {headings.length === 0 ? (
-            <p className="ol-empty">暂无标题</p>
+            <p className="text-center text-t3 text-[11px] mt-4">暂无标题</p>
           ) : (
             headings.map((h, i) => (
               <div
                 key={i}
-                className="ol-item"
+                className="py-1 px-2 text-xs text-t2 cursor-pointer rounded-none transition-all duration-[120ms] whitespace-nowrap overflow-hidden text-ellipsis hover:bg-hov hover:text-t1"
                 style={{ paddingLeft: `${8 + (h.level - 1) * 12}px` }}
                 title={`Ln ${h.line}`}
               >

@@ -55,18 +55,19 @@ export function IngestDialog({ onConfirm, onCancel }: IngestDialogProps) {
             onChange={(e) => setSearch(e.target.value)}
             autoFocus
           />
-          <div className="ingest-select-actions">
-            <button onClick={selectAll}>全选</button>
-            <button onClick={deselectAll}>全不选</button>
-            <span className="ingest-count">已选 {selected.size} / {allFiles.length}</span>
+          <div className="flex items-center gap-2 text-[12px]">
+            <button className="bg-transparent border-none text-acc cursor-pointer text-[12px] p-0 hover:underline" onClick={selectAll}>全选</button>
+            <button className="bg-transparent border-none text-acc cursor-pointer text-[12px] p-0 hover:underline" onClick={deselectAll}>全不选</button>
+            <span className="text-t3 text-[11px] ml-auto">已选 {selected.size} / {allFiles.length}</span>
           </div>
-          <div className="ingest-file-list">
+          <div className="max-h-[240px] overflow-y-auto flex flex-col gap-0.5">
             {filtered.map((file) => (
-              <label key={file} className="ingest-file-item">
+              <label key={file} className="flex items-center gap-2 py-1 text-[12px] text-t2 cursor-pointer hover:text-t1">
                 <input
                   type="checkbox"
                   checked={selected.has(file)}
                   onChange={() => toggleFile(file)}
+                  style={{ accentColor: 'var(--acc)' }}
                 />
                 <span>{file}</span>
               </label>

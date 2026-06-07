@@ -1,4 +1,4 @@
-import { BaseCliAdapter } from './base.adapter';
+import { BaseCliAdapter } from './baseAdapter';
 import type { CliAdapterConfig, CliSendOptions, FileChange } from './types';
 import { Command } from '@tauri-apps/plugin-shell';
 import { readTextFile } from '@tauri-apps/plugin-fs';

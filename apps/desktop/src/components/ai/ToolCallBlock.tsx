@@ -5,7 +5,7 @@ class ToolCallErrorBoundary extends Component<{ children: ReactNode }, { hasErro
   state = { hasError: false };
   static getDerivedStateFromError() { return { hasError: true }; }
   render() {
-    if (this.state.hasError) return <pre className="tc-code">[渲染出错]</pre>;
+    if (this.state.hasError) return <pre className="font-mono text-[10px] leading-normal bg-surf2 border border-brd rounded py-1.5 px-2 overflow-x-auto whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto text-t2">[渲染出错]</pre>;
     return this.props.children;
   }
 }
@@ -32,20 +32,20 @@ function ToolCallItem({ tc }: { tc: ToolCallInfo }) {
   const summary = getToolSummary(tc);
 
   return (
-    <div className={`tc-item ${tc.status}`}>
-      <div className="tc-header" onClick={() => setExpanded(!expanded)}>
-        <span className="tc-icon">
+    <div className="rounded border border-brd bg-surf overflow-hidden">
+      <div className="flex items-center gap-1.5 py-[5px] px-2 cursor-pointer text-[11px] transition-[background] duration-100 hover:bg-hov" onClick={() => setExpanded(!expanded)}>
+        <span className="flex items-center justify-center w-4 h-4 shrink-0">
           {tc.status === 'running' ? (
             <span className="tc-spinner" />
           ) : (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg className="text-green" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12" />
             </svg>
           )}
         </span>
-        <span className="tc-name">{tc.name}</span>
-        {summary && <span className="tc-summary">{summary}</span>}
-        <span className={`tc-chevron ${expanded ? 'open' : ''}`}>
+        <span className="font-semibold text-t1 whitespace-nowrap">{tc.name}</span>
+        {summary && <span className="text-t3 font-mono overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1">{summary}</span>}
+        <span className={`ml-auto shrink-0 text-t3 transition-transform duration-150 ${expanded ? 'rotate-180' : ''}`}>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
@@ -53,11 +53,11 @@ function ToolCallItem({ tc }: { tc: ToolCallInfo }) {
       </div>
       {expanded && (
         <ToolCallErrorBoundary>
-          <div className="tc-details">
+          <div className="px-2 pb-2">
             {tc.input && (
-              <div className="tc-section">
-                <div className="tc-section-label">Input</div>
-                <pre className="tc-code">{(() => {
+              <div className="mt-1.5">
+                <div className="text-[9px] font-semibold text-t3 uppercase mb-[3px]">Input</div>
+                <pre className="font-mono text-[10px] leading-normal bg-surf2 border border-brd rounded py-1.5 px-2 overflow-x-auto whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto text-t2">{(() => {
                   try {
                     return safeText(JSON.stringify(tc.input, null, 2), 1000);
                   } catch { return '[无法显示]'; }
@@ -65,9 +65,9 @@ function ToolCallItem({ tc }: { tc: ToolCallInfo }) {
               </div>
             )}
             {tc.output && (
-              <div className="tc-section">
-                <div className="tc-section-label">Output</div>
-                <pre className="tc-code">{safeText(tc.output, 500)}</pre>
+              <div className="mt-1.5">
+                <div className="text-[9px] font-semibold text-t3 uppercase mb-[3px]">Output</div>
+                <pre className="font-mono text-[10px] leading-normal bg-surf2 border border-brd rounded py-1.5 px-2 overflow-x-auto whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto text-t2">{safeText(tc.output, 500)}</pre>
               </div>
             )}
           </div>
@@ -81,7 +81,7 @@ export function ToolCallBlock({ toolCalls }: { toolCalls: ToolCallInfo[] }) {
   if (!toolCalls || toolCalls.length === 0) return null;
 
   return (
-    <div className="tc-block">
+    <div className="flex flex-col gap-0.5 mb-1.5">
       {toolCalls.map((tc) => (
         <ToolCallItem key={tc.id} tc={tc} />
       ))}

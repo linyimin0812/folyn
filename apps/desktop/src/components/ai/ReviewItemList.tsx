@@ -26,23 +26,23 @@ export function ReviewItemList() {
   if (pending.length === 0) return null;
 
   return (
-    <div className="review-list">
-      <div className="review-list-header">
+    <div className="border-t border-brd p-0 shrink-0 max-h-[200px] overflow-y-auto">
+      <div className="flex items-center gap-1.5 py-1.5 px-3 text-[12px] font-semibold text-t2 cursor-pointer select-none hover:bg-hov">
         待审核 ({pending.length})
       </div>
       {pending.map((item) => (
-        <div key={item.id} className="review-item">
-          <div className="review-item-header">
-            <span className="review-item-icon">{TYPE_ICONS[item.type] || '📋'}</span>
-            <span className="review-item-type">{TYPE_LABELS[item.type] || item.type}</span>
-            <span className="review-item-title">{item.title}</span>
+        <div key={item.id} className="py-1.5 px-3 border-b border-brd text-[12px] last:border-b-0">
+          <div className="flex items-center gap-1.5 text-t2">
+            <span>{TYPE_ICONS[item.type] || '📋'}</span>
+            <span className="text-[11px] py-px px-[5px] rounded-[3px] bg-accdim text-acc font-medium">{TYPE_LABELS[item.type] || item.type}</span>
+            <span className="font-medium">{item.title}</span>
           </div>
-          <div className="review-item-desc">{item.description}</div>
-          <div className="review-item-actions">
+          <div className="mt-0.5 text-[11px] text-t3 truncate">{item.description}</div>
+          <div className="flex gap-1 mt-1">
             {item.suggestedActions.map((action, i) => (
               <button
                 key={i}
-                className={`review-item-btn ${action.type}`}
+                className={`py-0.5 px-2 border border-brd rounded bg-transparent text-[11px] cursor-pointer hover:bg-hov hover:text-t1 ${action.type === 'reject' ? 'text-t3' : 'text-t2'}`}
                 onClick={() => {
                   if (action.type === 'reject') {
                     dismissReviewItem(item.id);

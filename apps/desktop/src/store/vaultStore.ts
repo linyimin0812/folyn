@@ -8,21 +8,8 @@ import {
 import { useSettingsStore } from './settingsStore';
 import { storageClient } from '@/utils/storageClient';
 import { startVaultWatcher, stopVaultWatcher } from '@/utils/fileWatcher';
-
-/** Generate a short unique ID */
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-}
-
-async function resolveBasePath(basePath: string): Promise<string> {
-  let resolved = basePath;
-  if (resolved.startsWith('~')) {
-    const { homeDir } = await import('@tauri-apps/api/path');
-    const home = (await homeDir()).replace(/\/+$/, '');
-    resolved = home + resolved.slice(1);
-  }
-  return resolved.replace(/\/+$/, '');
-}
+import { generateShortId as generateId } from '@/utils/idGenerator';
+import { resolveBasePath } from '@/utils/pathResolver';
 
 async function startWatcherForVault(config: VaultConfig) {
   if (config.providerType !== 'tauri') return;

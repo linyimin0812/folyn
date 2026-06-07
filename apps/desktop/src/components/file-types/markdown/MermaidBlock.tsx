@@ -49,9 +49,9 @@ export function MermaidBlock({ children }: MermaidBlockProps) {
 
   if (error) {
     return (
-      <div className="mermaid-error">
-        <pre className="mermaid-error-text">{error}</pre>
-        <pre className="mermaid-source"><code>{source}</code></pre>
+      <div className="border border-[#ef4444] rounded p-3 my-2">
+        <pre className="text-[#ef4444] text-xs m-0 mb-2">{error}</pre>
+        <pre className="bg-[var(--surf)] p-2 rounded text-xs overflow-x-auto"><code>{source}</code></pre>
       </div>
     );
   }
@@ -59,13 +59,13 @@ export function MermaidBlock({ children }: MermaidBlockProps) {
   if (svg) {
     return (
       <div
-        className="mermaid-diagram"
+        className="flex justify-center py-4 overflow-x-auto [&_svg]:max-w-full [&_svg]:h-auto"
         dangerouslySetInnerHTML={{ __html: svg }}
       />
     );
   }
 
-  return <div className="mermaid-loading">渲染图表中...</div>;
+  return <div className="py-4 text-center text-[var(--t3)] text-[13px]">渲染图表中...</div>;
 }
 
 function extractText(children: React.ReactNode): string {

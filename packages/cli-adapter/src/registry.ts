@@ -1,5 +1,5 @@
 import type { CliAdapter } from './types';
-import { ClaudeAdapter } from './claude.adapter';
+import { ClaudeAdapter } from './claudeAdapter';
 
 export class CliAdapterRegistry {
   private static instance: CliAdapterRegistry;

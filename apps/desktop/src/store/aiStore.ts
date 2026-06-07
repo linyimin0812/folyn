@@ -1,11 +1,14 @@
 import { create } from 'zustand';
 import type { CliMessage, FileChange, ToolCallInfo, MessageAttachment } from '@quill/cli-adapter';
-import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { useVaultStore } from './vaultStore';
 import { useEditorStore } from './editorStore';
-import { storageClient } from '@/utils/storageClient';
 import { sessionStorage } from '@/utils/sessionStorage';
 import { suppressWatcherFor } from '@/utils/fileWatcher';
+import { generateId } from '@/utils/idGenerator';
+import { applyAcceptChange, applyRejectChange } from './aiFileChangeActions';
+import { persistAiState, saveAllSessions, loadSessionsFromDisk, setSuppressPersist, setupPersistSubscription } from './aiSessionPersistence';
+
+export { loadAiSessionsForVault } from './aiSessionPersistence';
 
 export type { CliMessage, FileChange, ToolCallInfo, MessageAttachment };
 
@@ -62,11 +65,7 @@ interface AiState {
   switchVaultSessions: (newVaultId: string) => Promise<void>;
 }
 
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function createEmptySession(): AiSession {
+export function createEmptySession(): AiSession {
   const now = Date.now();
   return {
     id: generateId(),
@@ -228,61 +227,29 @@ export const useAiStore = create<AiState>((set, get) => ({
   acceptChange: (path) => {
     const session = get().getActiveSession();
     if (!session) return;
-    const change = session.fileChanges.find((c) => c.path === path && c.status === 'pending');
-    if (!change) return;
-
-    set((state) => ({
-      sessions: updateSession(state.sessions, session.id, (s) => ({
-        ...s,
-        fileChanges: s.fileChanges.map((c) =>
-          c.path === path && c.status === 'pending' ? { ...c, status: 'accepted' as const } : c,
-        ),
-        updatedAt: Date.now(),
-      })),
-    }));
-
-    const vaultId = useVaultStore.getState().activeVaultId || '';
-    const tabId = `${vaultId}:${path}`;
-    const tab = useEditorStore.getState().tabs.find((t) => t.id === tabId);
-    if (tab) {
-      useEditorStore.getState().setContentExternal(tabId, change.newContent);
+    const { updatedFileChanges } = applyAcceptChange(session, path);
+    if (updatedFileChanges !== session.fileChanges) {
+      set((state) => ({
+        sessions: updateSession(state.sessions, session.id, (s) => ({
+          ...s,
+          fileChanges: updatedFileChanges,
+          updatedAt: Date.now(),
+        })),
+      }));
     }
   },
 
   rejectChange: async (path) => {
     const session = get().getActiveSession();
     if (!session) return;
-    const change = session.fileChanges.find((c) => c.path === path && c.status === 'pending');
-    if (!change) return;
-
-    const vaultRoot = useVaultStore.getState().currentVault?.basePath ?? '';
-    if (vaultRoot) {
-      let resolvedRoot = vaultRoot;
-      if (resolvedRoot.startsWith('~')) {
-        const { homeDir } = await import('@tauri-apps/api/path');
-        const home = (await homeDir()).replace(/\/+$/, '');
-        resolvedRoot = home + resolvedRoot.slice(1);
-      }
-      const fullPath = resolvedRoot + '/' + path;
-      await writeTextFile(fullPath, change.oldContent);
-    }
-
+    const updatedFileChanges = await applyRejectChange(session, path);
     set((state) => ({
       sessions: updateSession(state.sessions, session.id, (s) => ({
         ...s,
-        fileChanges: s.fileChanges.map((c) =>
-          c.path === path && c.status === 'pending' ? { ...c, status: 'rejected' as const } : c,
-        ),
+        fileChanges: updatedFileChanges,
         updatedAt: Date.now(),
       })),
     }));
-
-    const vaultId = useVaultStore.getState().activeVaultId || '';
-    const tabId = `${vaultId}:${path}`;
-    const tab = useEditorStore.getState().tabs.find((t) => t.id === tabId);
-    if (tab) {
-      useEditorStore.getState().updateTabContent(tabId, change.oldContent);
-    }
   },
 
   acceptAll: () => {
@@ -367,163 +334,11 @@ export const useAiStore = create<AiState>((set, get) => ({
     }
 
     // Suppress auto-persist while loading new vault's sessions
-    suppressPersist = true;
+    setSuppressPersist(true);
     await loadSessionsFromDisk(newVaultId);
-    suppressPersist = false;
+    setSuppressPersist(false);
   },
 }));
 
-// ── Persistence ──
-
-const AI_LEGACY_KEY = 'ai:session';
-
-interface PersistedAiState {
-  sessions: AiSession[];
-  activeSessionId: string | null;
-}
-
-interface LegacyPersistedState {
-  messages?: CliMessage[];
-  fileChanges?: FileChange[];
-}
-
-/** Save all sessions for a vault to individual files */
-async function saveAllSessions(vaultId: string) {
-  const { sessions, activeSessionId } = useAiStore.getState();
-  await sessionStorage.saveMeta(vaultId, { activeSessionId });
-  for (const session of sessions) {
-    const { isStreaming: _, ...data } = session;
-    await sessionStorage.saveSession(vaultId, session.id, data);
-  }
-}
-
-/** Load all sessions for a vault from disk */
-async function loadSessionsFromDisk(vaultId: string) {
-  let ids = await sessionStorage.listSessionIds(vaultId);
-
-  // Migrate from storageClient if no files on disk yet
-  if (ids.length === 0) {
-    const intermediate = await storageClient.get<PersistedAiState>(`ai:sessions:${vaultId}`);
-    if (intermediate?.sessions && intermediate.sessions.length > 0) {
-      for (const s of intermediate.sessions) {
-        const { isStreaming: _, ...data } = s as AiSession & { isStreaming?: boolean };
-        await sessionStorage.saveSession(vaultId, s.id, data);
-      }
-      await sessionStorage.saveMeta(vaultId, { activeSessionId: intermediate.activeSessionId ?? intermediate.sessions[0].id });
-      await storageClient.remove(`ai:sessions:${vaultId}`);
-      ids = await sessionStorage.listSessionIds(vaultId);
-    }
-  }
-
-  if (ids.length === 0) {
-    const session = createEmptySession();
-    useAiStore.setState({ sessions: [session], activeSessionId: session.id });
-    return;
-  }
-
-  const sessions: AiSession[] = [];
-  for (const id of ids) {
-    const data = await sessionStorage.loadSession<Omit<AiSession, 'isStreaming'>>(vaultId, id);
-    if (data) {
-      sessions.push({ ...data, isStreaming: false });
-    }
-  }
-
-  if (sessions.length === 0) {
-    const session = createEmptySession();
-    useAiStore.setState({ sessions: [session], activeSessionId: session.id });
-    return;
-  }
-
-  sessions.sort((a, b) => b.createdAt - a.createdAt);
-
-  const meta = await sessionStorage.loadMeta(vaultId);
-  const activeId = meta?.activeSessionId && sessions.some((s) => s.id === meta.activeSessionId)
-    ? meta.activeSessionId
-    : sessions[0].id;
-  useAiStore.setState({ sessions, activeSessionId: activeId });
-}
-
-let suppressPersist = false;
-
-function persistAiState() {
-  if (suppressPersist) return;
-  const vaultId = useVaultStore.getState().activeVaultId;
-  if (!vaultId) return;
-  saveAllSessions(vaultId);
-}
-
-let persistTimer: ReturnType<typeof setTimeout> | null = null;
-function debouncedPersist() {
-  if (persistTimer) clearTimeout(persistTimer);
-  persistTimer = setTimeout(persistAiState, 500);
-}
-
-useAiStore.subscribe((state, prev) => {
-  if (state.sessions !== prev.sessions) {
-    const anyStreaming = state.sessions.some((s) => s.isStreaming);
-    if (!anyStreaming) {
-      debouncedPersist();
-    } else {
-      const prevStreaming = prev.sessions.some((s) => s.isStreaming);
-      if (prevStreaming && !anyStreaming) {
-        debouncedPersist();
-      }
-    }
-  }
-});
-
-/** Load AI sessions for the current vault (called after vault init) */
-export async function loadAiSessionsForVault() {
-  const vaultId = useVaultStore.getState().activeVaultId;
-  if (!vaultId) {
-    const session = createEmptySession();
-    useAiStore.setState({ sessions: [session], activeSessionId: session.id });
-    return;
-  }
-
-  // Check if vault dir has sessions already
-  const ids = await sessionStorage.listSessionIds(vaultId);
-  if (ids.length > 0) {
-    await loadSessionsFromDisk(vaultId);
-    return;
-  }
-
-  // Fallback: migrate from legacy storageClient key
-  const legacy = await storageClient.get<PersistedAiState & LegacyPersistedState>(AI_LEGACY_KEY);
-  if (legacy?.sessions && legacy.sessions.length > 0) {
-    for (const s of legacy.sessions) {
-      const { isStreaming: _, ...data } = s as AiSession & { isStreaming?: boolean };
-      await sessionStorage.saveSession(vaultId, s.id, data);
-    }
-    await sessionStorage.saveMeta(vaultId, { activeSessionId: legacy.activeSessionId ?? legacy.sessions[0].id });
-    await storageClient.remove(AI_LEGACY_KEY);
-    await loadSessionsFromDisk(vaultId);
-  } else if (legacy?.messages) {
-    const session: AiSession = {
-      ...createEmptySession(),
-      messages: legacy.messages,
-      fileChanges: legacy.fileChanges || [],
-    };
-    const { isStreaming: _, ...data } = session;
-    await sessionStorage.saveSession(vaultId, session.id, data);
-    await sessionStorage.saveMeta(vaultId, { activeSessionId: session.id });
-    await storageClient.remove(AI_LEGACY_KEY);
-    await loadSessionsFromDisk(vaultId);
-  } else {
-    // Also try the intermediate vault-scoped storageClient key
-    const intermediate = await storageClient.get<PersistedAiState>(`ai:sessions:${vaultId}`);
-    if (intermediate?.sessions && intermediate.sessions.length > 0) {
-      for (const s of intermediate.sessions) {
-        const { isStreaming: _, ...data } = s as AiSession & { isStreaming?: boolean };
-        await sessionStorage.saveSession(vaultId, s.id, data);
-      }
-      await sessionStorage.saveMeta(vaultId, { activeSessionId: intermediate.activeSessionId ?? intermediate.sessions[0].id });
-      await storageClient.remove(`ai:sessions:${vaultId}`);
-      await loadSessionsFromDisk(vaultId);
-    } else {
-      const session = createEmptySession();
-      useAiStore.setState({ sessions: [session], activeSessionId: session.id });
-    }
-  }
-}
+// ── Persistence (see ./aiSessionPersistence.ts) ──
+setupPersistSubscription();

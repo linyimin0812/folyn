@@ -1,6 +1,6 @@
-import type { VaultProvider } from './provider.interface';
+import type { VaultProvider } from './providerInterface';
 import type { ProviderType, VaultConfig } from './types';
-import { TauriVaultProvider } from './providers/tauri.provider';
+import { TauriVaultProvider } from './providers/tauriProvider';
 
 /** Descriptor for registering a provider factory */
 export interface VaultProviderDescriptor {

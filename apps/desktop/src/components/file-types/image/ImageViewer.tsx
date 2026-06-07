@@ -131,15 +131,14 @@ export function ImageViewer({ filePath, vaultRoot }: PreviewProps) {
       e.preventDefault();
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
       const t1 = e.touches[0], t2 = e.touches[1];
       const dist = getTouchDist(t1, t2);
       if (dist < 1) return;
       pinchState.current = {
         dist,
         zoom: zoomRef.current,
-        midX: (t1.clientX + t2.clientX) / 2 - rect.left,
-        midY: (t1.clientY + t2.clientY) / 2 - rect.top,
+        midX: (t1.clientX + t2.clientX) / 2 - canvas.getBoundingClientRect().left,
+        midY: (t1.clientY + t2.clientY) / 2 - canvas.getBoundingClientRect().top,
       };
     }
   }, []);
@@ -175,15 +174,15 @@ export function ImageViewer({ filePath, vaultRoot }: PreviewProps) {
   const needsTransform = zoom !== 1 || pan.x !== 0 || pan.y !== 0;
 
   return (
-    <div className="image-viewer">
-      <div className="image-viewer-toolbar">
-        <button className="ivt-btn" type="button" onClick={zoomOut} title="Zoom out">−</button>
-        <span className="ivt-pct">{pct}%</span>
-        <button className="ivt-btn" type="button" onClick={zoomIn} title="Zoom in">+</button>
-        <button className="ivt-btn" type="button" onClick={resetView} title="Reset">↺</button>
+    <div className="image-viewer w-full h-full flex flex-col relative bg-surf overflow-hidden">
+      <div className="image-viewer-toolbar absolute top-2 right-2 flex items-center gap-1 bg-panel border border-brd rounded-lg py-1 px-2 shadow-[0_2px_12px_rgba(0,0,0,.12)] opacity-70 transition-opacity duration-200 hover:opacity-100 z-10 select-none">
+        <button className="ivt-btn w-7 h-7 border-none bg-none rounded-md text-base leading-none text-t1 cursor-pointer flex items-center justify-center hover:bg-hov" type="button" onClick={zoomOut} title="Zoom out">−</button>
+        <span className="min-w-[48px] text-center text-xs text-t2 font-mono">{pct}%</span>
+        <button className="ivt-btn w-7 h-7 border-none bg-none rounded-md text-base leading-none text-t1 cursor-pointer flex items-center justify-center hover:bg-hov" type="button" onClick={zoomIn} title="Zoom in">+</button>
+        <button className="ivt-btn w-7 h-7 border-none bg-none rounded-md text-base leading-none text-t1 cursor-pointer flex items-center justify-center hover:bg-hov" type="button" onClick={resetView} title="Reset">↺</button>
       </div>
       <div
-        className="image-viewer-canvas"
+        className="image-viewer-canvas flex-1 overflow-hidden cursor-grab [&.dragging]:cursor-grabbing"
         ref={canvasRef}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -198,6 +197,7 @@ export function ImageViewer({ filePath, vaultRoot }: PreviewProps) {
           src={src}
           alt={filePath}
           draggable={false}
+          className="block w-full h-full object-contain select-none touch-none"
           style={needsTransform ? {
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: 'center center',

@@ -393,7 +393,7 @@ export function PdfViewer({ filePath, vaultRoot }: PreviewProps) {
       return (
         <div
           key={pageNum}
-          className="pdf-page-wrap"
+          className="pdf-page-wrap shadow-[0_2px_8px_rgba(0,0,0,.1)] dark:shadow-[0_2px_12px_rgba(0,0,0,.3)] rounded-sm overflow-hidden leading-none bg-panel shrink-0"
           style={{ height: `${h * scale}px`, width: `${w * scale}px` }}
         >
           {isVisible && <Page pageNumber={pageNum} scale={scale} renderTextLayer renderAnnotationLayer />}
@@ -405,33 +405,33 @@ export function PdfViewer({ filePath, vaultRoot }: PreviewProps) {
   if (!src) return null;
 
   return (
-    <div className="pdf-viewer">
-      <div className="pdf-toolbar">
-        <div className="pdf-tb-group">
-          <button className="pdf-tb-btn" onClick={zoomOut} title="缩小">
+    <div className="pdf-viewer w-full h-full flex flex-col bg-surf">
+      <div className="pdf-toolbar flex items-center justify-center gap-4 py-1.5 px-3 bg-panel border-b border-brd shrink-0">
+        <div className="pdf-tb-group flex items-center gap-1">
+          <button className="pdf-tb-btn w-7 h-7 flex items-center justify-center rounded-[5px] text-t2 cursor-pointer transition-all duration-[120ms] bg-none border-none hover:bg-hov hover:text-t1 disabled:opacity-30 disabled:cursor-not-allowed" onClick={zoomOut} title="缩小">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="3" y1="8" x2="13" y2="8" /></svg>
           </button>
-          <span className="pdf-tb-scale">{Math.round(scale * 100)}%</span>
-          <button className="pdf-tb-btn" onClick={zoomIn} title="放大">
+          <span className="text-[11px] font-medium text-t2 min-w-[40px] text-center font-mono">{Math.round(scale * 100)}%</span>
+          <button className="pdf-tb-btn w-7 h-7 flex items-center justify-center rounded-[5px] text-t2 cursor-pointer transition-all duration-[120ms] bg-none border-none hover:bg-hov hover:text-t1 disabled:opacity-30 disabled:cursor-not-allowed" onClick={zoomIn} title="放大">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="8" y1="3" x2="8" y2="13" /><line x1="3" y1="8" x2="13" y2="8" /></svg>
           </button>
-          <button className="pdf-tb-btn" onClick={fitWidth} title="适应宽度">
+          <button className="pdf-tb-btn w-7 h-7 flex items-center justify-center rounded-[5px] text-t2 cursor-pointer transition-all duration-[120ms] bg-none border-none hover:bg-hov hover:text-t1 disabled:opacity-30 disabled:cursor-not-allowed" onClick={fitWidth} title="适应宽度">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 4v-2h12v2M2 12v2h12v-2" /><line x1="8" y1="3" x2="8" y2="13" /></svg>
           </button>
         </div>
-        <div className="pdf-tb-group">
-          <button className="pdf-tb-btn" onClick={() => scrollToPage(Math.max(1, currentPage - 1))} disabled={currentPage <= 1}>
+        <div className="pdf-tb-group flex items-center gap-1">
+          <button className="pdf-tb-btn w-7 h-7 flex items-center justify-center rounded-[5px] text-t2 cursor-pointer transition-all duration-[120ms] bg-none border-none hover:bg-hov hover:text-t1 disabled:opacity-30 disabled:cursor-not-allowed" onClick={() => scrollToPage(Math.max(1, currentPage - 1))} disabled={currentPage <= 1}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 3l-5 5 5 5" /></svg>
           </button>
-          <span className="pdf-tb-page">{currentPage} / {numPages}</span>
-          <button className="pdf-tb-btn" onClick={() => scrollToPage(Math.min(numPages, currentPage + 1))} disabled={currentPage >= numPages}>
+          <span className="text-[11px] font-medium text-t2 min-w-[56px] text-center font-mono">{currentPage} / {numPages}</span>
+          <button className="pdf-tb-btn w-7 h-7 flex items-center justify-center rounded-[5px] text-t2 cursor-pointer transition-all duration-[120ms] bg-none border-none hover:bg-hov hover:text-t1 disabled:opacity-30 disabled:cursor-not-allowed" onClick={() => scrollToPage(Math.min(numPages, currentPage + 1))} disabled={currentPage >= numPages}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3l5 5-5 5" /></svg>
           </button>
         </div>
-        <div className="pdf-tb-group">
+        <div className="pdf-tb-group flex items-center gap-1">
           {outline.length > 0 && (
             <button
-              className={`pdf-tb-btn ${outlineVisible ? 'pdf-tb-btn-active' : ''}`}
+              className={`pdf-tb-btn w-7 h-7 flex items-center justify-center rounded-[5px] cursor-pointer transition-all duration-[120ms] bg-none border-none ${outlineVisible ? 'bg-accdim text-acc hover:bg-accdim hover:text-acc' : 'text-t2 hover:bg-hov hover:text-t1'}`}
               onClick={() => setOutlineVisible((v) => !v)}
               title="目录"
             >
@@ -445,18 +445,18 @@ export function PdfViewer({ filePath, vaultRoot }: PreviewProps) {
           )}
         </div>
       </div>
-      <div className="pdf-body">
+      <div className="pdf-body flex-1 flex overflow-hidden">
         {outlineVisible && outline.length > 0 && (
-          <div className="pdf-outline" style={{ width: outlineWidth }}>
-            <div className="pdf-outline-header">目录</div>
-            <div className="pdf-outline-body">
+          <div className="pdf-outline shrink-0 overflow-y-auto border-r border-brd bg-panel flex flex-col relative" style={{ width: outlineWidth }}>
+            <div className="pdf-outline-header text-[10px] font-semibold text-t3 uppercase tracking-[.08em] py-3 px-3.5 pb-2 border-b border-brd shrink-0">目录</div>
+            <div className="pdf-outline-body flex-1 overflow-y-auto py-1.5 scrollbar-thin">
               <OutlineTree items={outline} onNavigate={handleOutlineNavigate} activeTitle={activeOutlineTitle} />
             </div>
-            <div className="pdf-outline-resize" onMouseDown={onOutlineResize} />
+            <div className="pdf-outline-resize absolute top-0 -right-px w-0.5 h-full cursor-col-resize z-[2] hover:bg-acc hover:opacity-50 active:bg-acc active:opacity-50" onMouseDown={onOutlineResize} />
           </div>
         )}
-        <div className="pdf-pages" ref={containerRef} onScroll={updateVisibleRange}>
-          <Document file={src} className="pdf-doc" onLoadSuccess={onDocumentLoadSuccess} onItemClick={stableItemClick} loading={<div className="pdf-loading"><div className="ft-spinner" /> Loading...</div>}>
+        <div className="pdf-pages flex-1 overflow-auto pt-4 will-change-scroll" ref={containerRef} onScroll={updateVisibleRange}>
+          <Document file={src} className="pdf-doc flex flex-col items-center gap-3" onLoadSuccess={onDocumentLoadSuccess} onItemClick={stableItemClick} loading={<div className="pdf-loading flex items-center gap-2 p-10 text-t3 text-[13px]"><div className="ft-spinner" /> Loading...</div>}>
             {pages}
           </Document>
         </div>
@@ -476,13 +476,13 @@ function OutlineTree({ items, onNavigate, activeTitle, depth = 0 }: {
       {items.map((item, idx) => (
         <div key={idx}>
           <button
-            className={`pdf-outline-item ${item.title === activeTitle ? 'active' : ''}`}
+            className={`pdf-outline-item flex items-center justify-between gap-1.5 w-full py-[5px] px-3 border-none bg-none cursor-pointer text-xs text-t2 text-left rounded-none transition-all duration-100 font-ui border-l-2 border-l-transparent hover:bg-hov hover:text-t1 hover:border-l-acc ${item.title === activeTitle ? 'bg-accdim text-acc border-l-acc' : ''}`}
             style={{ paddingLeft: `${12 + depth * 14}px` }}
             onClick={() => item.pageNumber && onNavigate(item.pageNumber, item.title, item.dest)}
             title={`${item.title} (p.${item.pageNumber ?? '?'})`}
           >
-            <span className="pdf-outline-title">{item.title}</span>
-            {item.pageNumber && <span className="pdf-outline-page">{item.pageNumber}</span>}
+            <span className="overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0">{item.title}</span>
+            {item.pageNumber && <span className="text-[10px] text-t3 shrink-0 font-mono">{item.pageNumber}</span>}
           </button>
           {item.items && item.items.length > 0 && (
             <OutlineTree items={item.items} onNavigate={onNavigate} activeTitle={activeTitle} depth={depth + 1} />

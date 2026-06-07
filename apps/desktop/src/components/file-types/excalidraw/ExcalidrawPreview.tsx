@@ -32,11 +32,11 @@ export function ExcalidrawPreview({ filePath, alt }: ExcalidrawPreviewProps) {
     return () => { cancelled = true; };
   }, [filePath, externalContentVersion]);
 
-  if (error) return <span className="excalidraw-preview-error">{error}</span>;
-  if (!svgHtml) return <span className="excalidraw-preview-loading">Loading diagram...</span>;
+  if (error) return <span className="text-[var(--danger,#e53e3e)] text-[13px]">{error}</span>;
+  if (!svgHtml) return <span className="text-[var(--t3)] text-[13px] italic">Loading diagram...</span>;
   return (
     <div
-      className="excalidraw-preview"
+      className="max-w-full overflow-hidden my-2 [&_svg]:max-w-full [&_svg]:h-auto"
       title={alt || filePath}
       dangerouslySetInnerHTML={{ __html: svgHtml }}
     />

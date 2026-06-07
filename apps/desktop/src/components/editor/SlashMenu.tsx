@@ -116,24 +116,28 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
   let itemIndex = 0;
 
   return (
-    <div className="slash-menu" ref={menuRef} style={{ top: adjustedPosition.top, left: adjustedPosition.left, maxHeight: '300px', overflowY: 'auto' }}>
+    <div
+      className="slash-menu fixed z-40 bg-panel border border-brd2 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,.12)] min-w-[240px] max-h-[320px] overflow-y-auto p-1.5 animate-[fadeIn_.12s]"
+      ref={menuRef}
+      style={{ top: adjustedPosition.top, left: adjustedPosition.left }}
+    >
       {Array.from(grouped.entries()).map(([category, plugins]) => (
-        <div key={category} className="slash-menu-group">
-          <div className="slash-menu-category">{CATEGORY_LABELS[category]}</div>
+        <div key={category} className="mb-1">
+          <div className="text-[9px] font-semibold text-t3 uppercase tracking-[.1em] py-1.5 px-2">{CATEGORY_LABELS[category]}</div>
           {plugins.map((plugin) => {
             const currentIndex = itemIndex++;
             return (
               <div
                 key={plugin.name}
-                className={`slash-menu-item ${currentIndex === activeIndex ? 'active' : ''}`}
+                className={`slash-menu-item flex items-center gap-2 py-1.5 px-2 rounded-[5px] cursor-pointer transition-[background] duration-100 ${currentIndex === activeIndex ? 'active bg-hov' : ''}`}
                 onClick={() => onSelect(plugin)}
                 onMouseEnter={() => setActiveIndex(currentIndex)}
               >
-                <span className="slash-menu-icon">{plugin.icon}</span>
-                <div className="slash-menu-info">
-                  <span className="slash-menu-label">{plugin.label}</span>
+                <span className="text-base w-6 text-center shrink-0">{plugin.icon}</span>
+                <div className="flex flex-col gap-px">
+                  <span className="text-xs font-medium text-t1">{plugin.label}</span>
                   {plugin.description && (
-                    <span className="slash-menu-desc">{plugin.description}</span>
+                    <span className="text-[10px] text-t3">{plugin.description}</span>
                   )}
                 </div>
               </div>

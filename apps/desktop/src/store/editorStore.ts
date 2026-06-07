@@ -5,10 +5,8 @@ import { getHandlerByExtension, getHandlerById } from '@/components/file-types/r
 import { suppressWatcherFor } from '@/utils/fileWatcher';
 import { wikiProvider } from '@/services/wikiProvider';
 import { WIKI_PREFIX } from '@/types/wiki';
-
-/** Debounced auto-save timers per tab */
-const autoSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
-const AUTO_SAVE_DELAY_MS = 1000;
+import { scheduleAutoSave, flushAllAutoSaves } from './editorAutoSave';
+import { persistOpenTabs, flushPersistOpenTabs, loadPersistedOpenTabs } from './editorPersistence';
 
 export type ViewMode = 'split' | 'edit' | 'preview';
 
@@ -99,38 +97,6 @@ interface EditorState {
 
 const EDITOR_STORAGE_KEY = 'editor:viewMode';
 
-/** Storage key for open tabs, scoped by vault ID */
-function openTabsStorageKey(vaultId: string): string {
-  return `editor:openTabs:${vaultId}`;
-}
-
-interface PersistedTabInfo {
-  path: string;
-  name: string;
-  fileType?: FileType;
-  cursorLine?: number;
-  cursorCol?: number;
-}
-
-interface PersistedOpenTabs {
-  tabs: PersistedTabInfo[];
-  activeTabPath: string | null;
-}
-
-/** Persist currently open tabs to storage (debounced) */
-let persistTabsTimer: ReturnType<typeof setTimeout> | null = null;
-function persistOpenTabs(vaultId: string, tabs: FileTab[], activeTabId: string | null) {
-  if (persistTabsTimer) clearTimeout(persistTabsTimer);
-  persistTabsTimer = setTimeout(() => {
-    const activeTab = tabs.find((t) => t.id === activeTabId);
-    const data: PersistedOpenTabs = {
-      tabs: tabs.map((t) => ({ path: t.path, name: t.name, fileType: t.fileType, cursorLine: t.cursorLine, cursorCol: t.cursorCol })),
-      activeTabPath: activeTab?.path ?? null,
-    };
-    storageClient.set(openTabsStorageKey(vaultId), data);
-  }, 500);
-}
-
 export const useEditorStore = create<EditorState>()(
     (set, get) => ({
       viewMode: 'split',
@@ -186,15 +152,7 @@ export const useEditorStore = create<EditorState>()(
         }));
 
         // Debounced auto-save
-        const existing = autoSaveTimers.get(tabId);
-        if (existing) clearTimeout(existing);
-        autoSaveTimers.set(
-          tabId,
-          setTimeout(() => {
-            autoSaveTimers.delete(tabId);
-            get().saveFile(tabId);
-          }, AUTO_SAVE_DELAY_MS),
-        );
+        scheduleAutoSave(tabId, (id) => get().saveFile(id));
       },
 
       enterDiffReview: (filePath, oldContent, newContent) => {
@@ -223,15 +181,7 @@ export const useEditorStore = create<EditorState>()(
           externalContentVersion: state.externalContentVersion + 1,
         }));
 
-        const existing = autoSaveTimers.get(tabId);
-        if (existing) clearTimeout(existing);
-        autoSaveTimers.set(
-          tabId,
-          setTimeout(() => {
-            autoSaveTimers.delete(tabId);
-            get().saveFile(tabId);
-          }, AUTO_SAVE_DELAY_MS),
-        );
+        scheduleAutoSave(tabId, (id) => get().saveFile(id));
       },
 
       markTabDirty: (tabId, isDirty) =>
@@ -337,21 +287,13 @@ export const useEditorStore = create<EditorState>()(
       saveOpenTabs: () => {
         const vaultId = useVaultStore.getState().activeVaultId;
         if (!vaultId) return;
-        if (persistTabsTimer) clearTimeout(persistTabsTimer);
-        persistTabsTimer = null;
-        const { tabs, activeTabId } = get();
-        const activeTab = tabs.find((t) => t.id === activeTabId);
-        const data: PersistedOpenTabs = {
-          tabs: tabs.map((t) => ({ path: t.path, name: t.name, fileType: t.fileType, cursorLine: t.cursorLine, cursorCol: t.cursorCol })),
-          activeTabPath: activeTab?.path ?? null,
-        };
-        storageClient.set(openTabsStorageKey(vaultId), data);
+        flushPersistOpenTabs(vaultId, get().tabs, get().activeTabId);
       },
 
       restoreOpenTabs: async () => {
         const vaultId = useVaultStore.getState().activeVaultId;
         if (!vaultId) return;
-        const saved = await storageClient.get<PersistedOpenTabs>(openTabsStorageKey(vaultId));
+        const saved = await loadPersistedOpenTabs(vaultId);
         if (!saved || saved.tabs.length === 0) return;
 
         for (const tabInfo of saved.tabs) {
@@ -443,13 +385,7 @@ export const useEditorStore = create<EditorState>()(
       },
 
       flushAutoSaves: async () => {
-        const pending = Array.from(autoSaveTimers.keys());
-        for (const tabId of pending) {
-          const timer = autoSaveTimers.get(tabId);
-          if (timer) clearTimeout(timer);
-          autoSaveTimers.delete(tabId);
-        }
-        await Promise.allSettled(pending.map((tabId) => get().saveFile(tabId)));
+        await flushAllAutoSaves((tabId) => get().saveFile(tabId));
       },
 
       checkDiskChanges: async () => {

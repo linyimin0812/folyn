@@ -55,11 +55,11 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="topbar">
+    <header className="topbar h-[44px] shrink-0 bg-panel border-b border-brd flex items-center justify-between px-2.5 gap-[3px] z-50">
       {/* Left: Logo + mobile menu */}
-      <div className="tb-left">
+      <div className="tb-left flex items-center h-full flex-1 overflow-hidden">
         {isMobile && (
-          <button className="tb-btn mobile-menu-btn" onClick={onToggleSidebar} title="菜单">
+          <button className="tb-btn mobile-menu-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1" onClick={onToggleSidebar} title="菜单">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <line x1="2" y1="4" x2="14" y2="4" />
               <line x1="2" y1="8" x2="14" y2="8" />
@@ -67,25 +67,25 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
             </svg>
           </button>
         )}
-        <div className="logo" onClick={() => setCurrentPage('editor')}>
+        <div className="logo flex items-center gap-[7px] py-1 px-2 rounded-[5px] cursor-pointer shrink-0 transition-[background] duration-150 hover:bg-hov" onClick={() => setCurrentPage('editor')}>
           <img src={`${import.meta.env.BASE_URL}quill.svg`} alt="Quill" width="24" height="24" style={{ borderRadius: 5 }} />
-          <span className="logo-name">
-            Qu<em>ill</em>
+          <span className="logo-name font-bold text-[length:var(--ui-font-size)]">
+            Qu<em className="text-acc not-italic">ill</em>
           </span>
         </div>
       </div>
 
       {/* Right: View mode + Action buttons */}
-      <div className="tb-right">
-        {/* View mode segment — hidden for non-markdown file types */}
+      <div className="tb-right flex items-center gap-0.5 shrink-0">
+        {/* View mode segment -- hidden for non-markdown file types */}
         {!hideViewMode && (
-        <div className="view-seg">
+        <div className="view-seg flex items-center gap-px shrink-0">
           {VIEW_MODES.map((mode) => {
             const disabled = isPreviewOnly && mode.key !== 'preview';
             return (
               <button
                 key={mode.key}
-                className={`vseg ${isPreviewOnly ? (mode.key === 'preview' ? 'on' : '') : viewMode === mode.key ? 'on' : ''} ${disabled ? 'disabled' : ''}`}
+                className={`vseg py-[3px] px-[9px] rounded text-[length:calc(var(--ui-font-size)-3px)] cursor-pointer transition-all duration-150 font-medium ${isPreviewOnly ? (mode.key === 'preview' ? 'text-acc bg-accdim' : 'text-t3') : viewMode === mode.key ? 'text-acc bg-accdim' : 'text-t3 hover:text-t2 hover:bg-hov'} ${disabled ? 'opacity-[.35] cursor-not-allowed pointer-events-none' : ''}`}
                 onClick={() => !disabled && setViewMode(mode.key)}
                 title={disabled ? `${mode.label}（不可用）` : mode.label}
                 disabled={disabled}
@@ -97,13 +97,13 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
         </div>
         )}
 
-        <div className="top-div" />
+        <div className="top-div w-px h-[18px] bg-brd2 mx-[3px] shrink-0" />
 
-        <button className="tb-btn tb-ai-btn" onClick={toggleAiPanel} title="AI 面板">
+        <button className="tb-btn tb-ai-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-xs text-t3 transition-all duration-150 hover:bg-hov hover:text-t1 font-bold tracking-[-0.5px]" onClick={toggleAiPanel} title="AI 面板">
           AI
         </button>
         <ExportMenu />
-        <button className="tb-btn" onClick={toggleTheme} title="切换主题">
+        <button className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1" onClick={toggleTheme} title="切换主题">
           {theme === 'light' ? (
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
               <path d="M13.5 8.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z" />

@@ -1,4 +1,4 @@
-import { BaseVaultProvider } from './base.provider';
+import { BaseVaultProvider } from './baseProvider';
 import type { VaultCapabilities, VaultConfig, VaultEntry } from '../types';
 import { VaultError } from '../types';
 import {

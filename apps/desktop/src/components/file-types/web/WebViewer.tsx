@@ -130,24 +130,24 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
   const host = (() => { try { return new URL(filePath).hostname; } catch { return filePath; } })();
 
   return (
-    <div className="web-viewer-container" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-      <div className="web-viewer-bar">
+    <div className="web-viewer-container flex-1 flex flex-col bg-surf overflow-hidden relative">
+      <div className="web-viewer-bar flex items-center gap-2 py-1.5 px-3 bg-panel border-b border-brd shrink-0">
         {isTauri() && webviewLabelRef.current && (
           <>
-            <button className="web-viewer-nav-btn" title="后退" onClick={() => navigate('back')}>
+            <button className="web-viewer-nav-btn flex items-center justify-center w-[26px] h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1" title="后退" onClick={() => navigate('back')}>
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
                 <path d="M10 3L5 8l5 5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-            <button className="web-viewer-nav-btn" title="前进" onClick={() => navigate('forward')}>
+            <button className="web-viewer-nav-btn flex items-center justify-center w-[26px] h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1" title="前进" onClick={() => navigate('forward')}>
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
                 <path d="M6 3l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
           </>
         )}
-        <span className="web-viewer-url" title={filePath}>🌐 {filePath}</span>
-        <button className="web-viewer-open-btn" title="在外部浏览器打开" onClick={openExternal}>
+        <span className="flex-1 text-xs text-t3 font-mono overflow-hidden text-ellipsis whitespace-nowrap" title={filePath}>🌐 {filePath}</span>
+        <button className="web-viewer-open-btn flex items-center justify-center w-7 h-7 border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1" title="在外部浏览器打开" onClick={openExternal}>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M12 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4" />
             <path d="M9 2h5v5" />
@@ -157,8 +157,8 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
       </div>
 
       {status === 'loading' && (
-        <div className="web-viewer-status">
-          <div className="web-viewer-spinner" />
+        <div className="web-viewer-status absolute inset-x-0 top-10 bottom-0 flex flex-col items-center justify-center gap-3 bg-surf z-10 text-t2">
+          <div className="web-viewer-spinner w-7 h-7 rounded-full border-[2.5px] border-brd border-t-acc animate-spin" />
           <span>正在连接…</span>
         </div>
       )}
@@ -180,17 +180,17 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
             }
           : { title: '页面无法打开', desc: '加载页面时发生了未知错误。' };
         return (
-          <div className="web-viewer-status web-viewer-error">
-            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="web-viewer-error-icon">
+          <div className="web-viewer-status web-viewer-error absolute inset-x-0 top-10 bottom-0 flex flex-col items-center justify-center gap-2 bg-surf z-10 text-t2">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-t3 mb-1 opacity-85">
               <circle cx="12" cy="12" r="10" />
               <path d="M12 2a14.5 14.5 0 0 1 0 20M12 2a14.5 14.5 0 0 0 0 20M2 12h20" />
               <line x1="4.5" y1="4.5" x2="19.5" y2="19.5" strokeWidth="1.8" stroke="#e05252" />
             </svg>
-            <p className="web-viewer-error-title">{info.title}</p>
-            <p className="web-viewer-error-desc">{info.desc}</p>
-            {info.detail && <p className="web-viewer-error-detail">{info.detail}</p>}
-            <div className="web-viewer-error-url">{filePath}</div>
-            <button className="web-viewer-error-btn" onClick={openExternal}>
+            <p className="text-[15px] font-semibold text-t1 m-0">{info.title}</p>
+            <p className="text-[13px] text-t2 m-0 text-center max-w-[320px] leading-relaxed">{info.desc}</p>
+            {info.detail && <p className="text-xs text-t3 m-0 text-center max-w-[300px] leading-relaxed">{info.detail}</p>}
+            <div className="text-[11px] font-mono text-t3 bg-bg border border-brd rounded-[5px] py-[3px] px-2.5 max-w-[340px] overflow-hidden text-ellipsis whitespace-nowrap mt-0.5">{filePath}</div>
+            <button className="flex items-center gap-1.5 mt-2 py-2 px-5 rounded-[7px] border-none bg-acc text-white text-[13px] font-medium cursor-pointer transition-[opacity,transform] duration-150 hover:opacity-[.88] active:scale-[.97]" onClick={openExternal}>
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M12 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4" />
                 <path d="M9 2h5v5" />
@@ -202,7 +202,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
         );
       })()}
 
-      <div ref={webViewerRef} className="web-viewer-body" />
+      <div ref={webViewerRef} className="web-viewer-body flex-1 relative" />
     </div>
   );
 }

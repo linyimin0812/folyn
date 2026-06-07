@@ -15,16 +15,16 @@ export function StatusBar() {
   const vaultName = useSettingsStore((state) => state.vaultName);
 
   return (
-    <footer className="status-bar">
-      <div className="sb-left">
-        <span className="sb-ai">✦ AI 就绪</span>
-        <span className="sb-vault">{vaultName}</span>
+    <footer className="status-bar h-6 shrink-0 bg-panel border-t border-brd flex items-center justify-between px-3 text-[length:calc(var(--ui-font-size)-3px)] text-t3 font-mono">
+      <div className="flex items-center gap-3">
+        <span className="flex items-center gap-1">✦ AI 就绪</span>
+        <span>{vaultName}</span>
       </div>
-      <div className="sb-right">
-        <span className="sb-type">Markdown</span>
-        <span className="sb-view">{VIEW_LABELS[viewMode]}</span>
-        <span className="sb-pos">Ln {cursorLine}, Col {cursorCol}</span>
-        <span className="sb-words">{wordCount} 字</span>
+      <div className="flex items-center gap-3">
+        <span>Markdown</span>
+        <span>{VIEW_LABELS[viewMode]}</span>
+        <span>Ln {cursorLine}, Col {cursorCol}</span>
+        <span>{wordCount} 字</span>
       </div>
     </footer>
   );

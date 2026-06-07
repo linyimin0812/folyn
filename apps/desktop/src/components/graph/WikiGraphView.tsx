@@ -189,11 +189,11 @@ export function WikiGraphView() {
   }, [render]);
 
   return (
-    <div className="wiki-graph-view">
-      {isBuilding && <div className="wiki-graph-loading">构建图谱中...</div>}
+    <div className="relative w-full h-full bg-[var(--bg)]">
+      {isBuilding && <div className="absolute top-3 left-1/2 -translate-x-1/2 py-1 px-3 bg-[var(--surf)] border border-[var(--brd)] rounded-md text-xs text-[var(--t3)] z-10">构建图谱中...</div>}
       <canvas
         ref={canvasRef}
-        className="wiki-graph-canvas"
+        className="w-full h-full cursor-crosshair"
         onMouseDown={handleMouseDown}
         onMouseMove={handleDragMove}
         onMouseUp={handleMouseUp}
@@ -201,15 +201,15 @@ export function WikiGraphView() {
         onWheel={handleWheel}
         onMouseLeave={() => { setHoveredNode(null); dragRef.current = null; }}
       />
-      <div className="wiki-graph-legend">
+      <div className="absolute bottom-3 left-3 flex gap-2.5 py-1 px-2.5 bg-[var(--bg)] border border-[var(--brd)] rounded-md text-[11px] text-[var(--t3)]">
         {Object.entries(NODE_COLORS).map(([type, color]) => (
-          <span key={type} className="wiki-graph-legend-item">
-            <span className="wiki-graph-legend-dot" style={{ background: color }} />
+          <span key={type} className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full" style={{ background: color }} />
             {type}
           </span>
         ))}
       </div>
-      <div className="wiki-graph-stats">
+      <div className="absolute bottom-3 right-3 py-1 px-2.5 bg-[var(--bg)] border border-[var(--brd)] rounded-md text-[11px] text-[var(--t4)]">
         {nodes.length} 节点 · {edges.length} 条边
       </div>
     </div>

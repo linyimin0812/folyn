@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Topbar } from './components/shell/Topbar';
 import { Sidebar } from './components/sidebar/Sidebar';
-import { WorkArea } from './components/shell/WorkArea';
+import { WorkArea } from './components/work-area/WorkArea';
 import { StatusBar } from './components/shell/StatusBar';
 import { AiPanel } from './components/ai/AiPanel';
 import { GlobalSearchPanel } from './components/search/GlobalSearchPanel';
@@ -117,11 +117,11 @@ export default function App() {
   }, []);
 
   return (
-    <div className="shell" style={{ '--ui-font-size': `${fontSize}px` } as any}>
+    <div className="shell flex flex-col h-dvh" style={{ '--ui-font-size': `${fontSize}px` } as any}>
       <Topbar isMobile={isMobile} onToggleSidebar={toggleMobileSidebar} />
 
       {currentPage === 'editor' && (
-        <div className="body-row">
+        <div className="body-row flex-1 flex overflow-hidden">
           {isMobile && mobileSidebarOpen && (
             <div className="mobile-sidebar-overlay" onClick={closeMobileSidebar} />
           )}
@@ -134,7 +134,7 @@ export default function App() {
       )}
 
       {currentPage === 'vault' && (
-        <div className="body-row">
+        <div className="body-row flex-1 flex overflow-hidden">
           {isMobile && mobileSidebarOpen && (
             <div className="mobile-sidebar-overlay" onClick={closeMobileSidebar} />
           )}
@@ -146,7 +146,7 @@ export default function App() {
       )}
 
       {currentPage === 'settings' && (
-        <div className="body-row">
+        <div className="body-row flex-1 flex overflow-hidden">
           <SettingsPage />
         </div>
       )}

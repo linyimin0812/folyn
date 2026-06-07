@@ -135,56 +135,56 @@ export function ImagePasteDialog({
   if (!visible) return null;
 
   return (
-    <div className="img-paste-overlay" onKeyDown={handleKeyDown}>
-      <div className="img-paste-dialog">
+    <div className="img-paste-overlay fixed inset-0 z-[200] bg-black/45 flex items-center justify-center animate-[fadeIn_.15s]" onKeyDown={handleKeyDown}>
+      <div className="img-paste-dialog bg-panel border border-brd2 rounded-xl shadow-[0_16px_48px_rgba(0,0,0,.2)] w-[520px] max-w-[92vw] animate-[slideUp_.2s] overflow-hidden">
         {/* Header */}
-        <div className="img-paste-header">
+        <div className="flex items-center justify-between py-3.5 px-[18px] border-b border-brd font-semibold text-sm">
           <span>📷 粘贴图片</span>
-          <button className="img-paste-close" onClick={onCancel}>✕</button>
+          <button className="bg-none border-none text-t3 cursor-pointer text-sm py-0.5 px-1.5 rounded hover:bg-surf2 hover:text-t1" onClick={onCancel}>✕</button>
         </div>
 
         {/* Preview */}
-        <div className="img-paste-preview">
-          <img src={previewUrl} alt="preview" />
+        <div className="pt-4 px-[18px] pb-2 flex justify-center">
+          <img src={previewUrl} alt="preview" className="max-h-[200px] max-w-full object-contain rounded-md border border-brd bg-surf" />
         </div>
 
         {/* Upload target tabs */}
-        <div className="img-paste-field">
-          <label>上传方式</label>
-          <div className="img-paste-tabs">
+        <div className="py-1.5 px-[18px]">
+          <label className="block text-xs text-t3 mb-1 font-medium">上传方式</label>
+          <div className="flex gap-2">
             {strategies.map((strategy) => (
               <button
                 key={strategy.name}
-                className={`img-paste-tab ${selectedTarget === strategy.name ? 'active' : ''} ${!strategy.enabled ? 'disabled' : ''}`}
+                className={`img-paste-tab flex-1 flex flex-col items-center gap-0.5 py-2 px-1.5 border-[1.5px] rounded-lg cursor-pointer transition-all duration-150 ${selectedTarget === strategy.name ? 'border-acc bg-accdim' : 'border-brd2 bg-surf hover:border-acc'} ${!strategy.enabled ? 'opacity-45 cursor-not-allowed' : ''}`}
                 disabled={!strategy.enabled}
                 onClick={() => strategy.enabled && setSelectedTarget(strategy.name)}
               >
-                <span className="img-paste-tab-icon">{strategy.icon}</span>
-                <span className="img-paste-tab-label">{strategy.label}</span>
-                {!strategy.enabled && <span className="img-paste-tab-badge">敬请期待</span>}
+                <span className="text-lg">{strategy.icon}</span>
+                <span className="text-[11px] text-t1 font-medium">{strategy.label}</span>
+                {!strategy.enabled && <span className="text-[9px] text-t3 bg-surf2 px-[5px] py-px rounded mt-px">敬请期待</span>}
               </button>
             ))}
           </div>
         </div>
 
         {/* File name */}
-        <div className="img-paste-field">
-          <label>图片名称</label>
+        <div className="py-1.5 px-[18px]">
+          <label className="block text-xs text-t3 mb-1 font-medium">图片名称</label>
           <input
             ref={nameInputRef}
             type="text"
-            className="img-paste-input"
+            className="img-paste-input w-full py-[7px] px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[13px] outline-none focus:border-acc focus:shadow-[0_0_0_2px_var(--accdim)]"
             value={fileName}
             onCompositionStart={() => { isComposingRef.current = true; }}
             onCompositionEnd={(event) => {
               isComposingRef.current = false;
-              setFileName(event.currentTarget.value.replace(/[^\w\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff-]/g, ''));
+              setFileName(event.currentTarget.value.replace(/[^\w一-鿿㐀-䶿豈-﫿-]/g, ''));
             }}
             onChange={(event) => {
               if (isComposingRef.current) {
                 setFileName(event.target.value);
               } else {
-                setFileName(event.target.value.replace(/[^\w\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff-]/g, ''));
+                setFileName(event.target.value.replace(/[^\w一-鿿㐀-䶿豈-﫿-]/g, ''));
               }
             }}
             placeholder="输入图片名称"
@@ -195,31 +195,31 @@ export function ImagePasteDialog({
         {/* Local-server specific fields */}
         {selectedTarget === 'local' && (
           <>
-            <div className="img-paste-field">
-              <label>保存目录</label>
+            <div className="py-1.5 px-[18px]">
+              <label className="block text-xs text-t3 mb-1 font-medium">保存目录</label>
               <input
                 type="text"
-                className="img-paste-input"
+                className="img-paste-input w-full py-[7px] px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[13px] outline-none focus:border-acc focus:shadow-[0_0_0_2px_var(--accdim)]"
                 value={directory}
                 onChange={(event) => setDirectory(event.target.value)}
                 placeholder="相对于 Vault 根目录的路径"
                 autoCapitalize="off"
               />
               {vaultRoot && (
-                <div className="img-paste-vault-hint">
+                <div className="text-[11px] text-t3 mt-1 pl-0.5 font-mono break-all">
                   🗄️ vault: {vaultRoot}
                 </div>
               )}
             </div>
 
-            <div className="img-paste-field">
-              <label>图片格式</label>
-              <div className="img-paste-format-group">
+            <div className="py-1.5 px-[18px]">
+              <label className="block text-xs text-t3 mb-1 font-medium">图片格式</label>
+              <div className="flex gap-0 border border-brd2 rounded-md overflow-hidden">
                 {(['png', 'jpeg', 'webp'] as const).map((fmt) => (
                   <button
                     key={fmt}
                     type="button"
-                    className={`img-paste-format-btn ${format === fmt ? 'active' : ''}`}
+                    className={`flex-1 py-1.5 px-3.5 border-none text-xs font-medium cursor-pointer transition-all duration-150 border-r border-r-brd2 last:border-r-0 ${format === fmt ? 'bg-acc text-white font-semibold' : 'bg-surf text-t2 hover:bg-hov hover:text-t1'}`}
                     onClick={() => setFormat(fmt)}
                   >
                     {fmt.toUpperCase()}
@@ -231,14 +231,14 @@ export function ImagePasteDialog({
         )}
 
         {/* Image size */}
-        <div className="img-paste-field">
-          <label>图片尺寸</label>
-          <div className="img-paste-size-row">
-            <div className="img-paste-size-input-group">
-              <span className="img-paste-size-label">宽</span>
+        <div className="py-1.5 px-[18px]">
+          <label className="block text-xs text-t3 mb-1 font-medium">图片尺寸</label>
+          <div className="img-paste-size-row flex items-center gap-2">
+            <div className="flex items-center gap-1 flex-1">
+              <span className="text-xs text-t3 font-medium shrink-0">宽</span>
               <input
                 type="number"
-                className="img-paste-input img-paste-size-input"
+                className="img-paste-input img-paste-size-input w-20 flex-1 text-center py-[7px] px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[13px] outline-none focus:border-acc focus:shadow-[0_0_0_2px_var(--accdim)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 value={width}
                 min={1}
                 onChange={(event) => {
@@ -247,10 +247,10 @@ export function ImagePasteDialog({
                 }}
                 placeholder="宽度"
               />
-              <span className="img-paste-size-unit">px</span>
+              <span className="text-[11px] text-t3 shrink-0">px</span>
             </div>
             <button
-              className={`img-paste-lock-btn ${lockAspectRatio ? 'locked' : ''}`}
+              className={`bg-none border border-brd2 rounded-md w-8 h-8 flex items-center justify-center cursor-pointer text-sm shrink-0 transition-all duration-150 hover:border-acc hover:bg-hov ${lockAspectRatio ? 'border-acc bg-accdim' : ''}`}
               onClick={() => {
                 const nextLocked = !lockAspectRatio;
                 setLockAspectRatio(nextLocked);
@@ -262,11 +262,11 @@ export function ImagePasteDialog({
             >
               {lockAspectRatio ? '🔗' : '🔓'}
             </button>
-            <div className="img-paste-size-input-group">
-              <span className="img-paste-size-label">高</span>
+            <div className="flex items-center gap-1 flex-1">
+              <span className="text-xs text-t3 font-medium shrink-0">高</span>
               <input
                 type="number"
-                className="img-paste-input img-paste-size-input"
+                className="img-paste-input img-paste-size-input w-20 flex-1 text-center py-[7px] px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[13px] outline-none focus:border-acc focus:shadow-[0_0_0_2px_var(--accdim)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 value={height}
                 min={1}
                 onChange={(event) => {
@@ -275,28 +275,28 @@ export function ImagePasteDialog({
                 }}
                 placeholder="高度"
               />
-              <span className="img-paste-size-unit">px</span>
+              <span className="text-[11px] text-t3 shrink-0">px</span>
             </div>
-            <button className="img-paste-reset-btn" onClick={resetToOriginalSize} title="恢复原始尺寸">
+            <button className="bg-none border border-brd2 rounded-md w-8 h-8 flex items-center justify-center cursor-pointer text-base shrink-0 text-t2 transition-all duration-150 hover:border-acc hover:bg-hov hover:text-acc" onClick={resetToOriginalSize} title="恢复原始尺寸">
               ↺
             </button>
           </div>
           {originalWidth > 0 && (
-            <div className="img-paste-size-hint">
+            <div className="text-[11px] text-t3 mt-1 pl-0.5">
               原始尺寸：{originalWidth} × {originalHeight} px
             </div>
           )}
         </div>
 
         {/* Path preview */}
-        <div className="img-paste-path-preview">
+        <div className="mx-[18px] my-2 py-2 px-3 bg-surf rounded-md text-xs text-t3 font-mono border border-dashed border-brd2 break-all">
           📄 {fullPath}
         </div>
 
         {/* Actions */}
-        <div className="img-paste-actions">
-          <button className="img-paste-btn cancel" onClick={onCancel}>取消</button>
-          <button className="img-paste-btn confirm" onClick={handleConfirm} disabled={!fileName.trim()}>
+        <div className="flex justify-end gap-2 py-3 px-[18px] border-t border-brd mt-2">
+          <button className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-surf2 text-t2 hover:bg-brd" onClick={onCancel}>取消</button>
+          <button className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-acc text-white hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleConfirm} disabled={!fileName.trim()}>
             ✓ 上传
           </button>
         </div>

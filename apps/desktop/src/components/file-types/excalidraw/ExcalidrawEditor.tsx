@@ -56,7 +56,7 @@ export function ExcalidrawEditor({ content, tabId, onChange }: EditorProps) {
   }, []);
 
   return (
-    <div className="excalidraw-wrapper">
+    <div className="w-full h-full relative [&_.excalidraw]:w-full [&_.excalidraw]:h-full">
       <Excalidraw initialData={initialData} onChange={handleChange} theme={excalidrawTheme} />
     </div>
   );

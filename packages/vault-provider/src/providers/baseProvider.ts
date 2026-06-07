@@ -1,4 +1,4 @@
-import type { VaultProvider } from '../provider.interface';
+import type { VaultProvider } from '../providerInterface';
 import type { VaultCapabilities, VaultConfig, VaultEntry, ProviderType } from '../types';
 
 export abstract class BaseVaultProvider implements VaultProvider {

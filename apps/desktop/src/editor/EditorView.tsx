@@ -38,13 +38,13 @@ import {
   slashCommandExtension,
   slashMenuField,
   type SlashMenuState,
-} from './extensions/SlashCommandPlugin';
+} from './extensions/SlashCommandExtension';
 import {
   codeBlockExtension,
   codeBlockMenuField,
   type CodeBlockMenuState,
 } from './extensions/CodeBlockExtension';
-import { orderedListExtension } from './extensions/OrderedListPlugin';
+import { orderedListExtension } from './extensions/OrderedListExtension';
 import { inlineDiffExtension } from './extensions/InlineDiffExtension';
 import { json as jsonLanguage } from '@codemirror/lang-json';
 import type { ShortcutItem } from '@/store/settingsStore';

@@ -1,4 +1,4 @@
-import { BaseVaultProvider } from './base.provider';
+import { BaseVaultProvider } from './baseProvider';
 import type { VaultCapabilities, VaultEntry, WatchCallback, WatchHandle } from '../types';
 
 export class GitHubVaultProvider extends BaseVaultProvider {

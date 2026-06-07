@@ -9,15 +9,15 @@ function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
 
   if (entry.type === 'dir') {
     return (
-      <div className="wiki-tree-dir">
+      <div>
         <div
-          className="wiki-tree-item dir"
+          className="flex items-center gap-1.5 py-1 px-2 font-medium cursor-default text-xs text-t2 rounded mx-1 transition-colors duration-100 hover:bg-hov hover:text-t1"
           style={{ paddingLeft: `${depth * 14 + 8}px` }}
         >
-          <span className="wiki-tree-icon">📁</span>
-          <span className="wiki-tree-name">{entry.name}</span>
+          <span className="shrink-0 text-xs">📁</span>
+          <span className="overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1">{entry.name}</span>
           {entry.children && (
-            <span className="wiki-tree-count">{entry.children.filter((c) => c.type === 'file').length}</span>
+            <span className="shrink-0 text-[10px] text-t3 bg-hov px-[5px] rounded-lg">{entry.children.filter((c) => c.type === 'file').length}</span>
           )}
         </div>
         {entry.children?.map((child) => (
@@ -29,13 +29,13 @@ function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
 
   return (
     <div
-      className="wiki-tree-item file"
+      className="flex items-center gap-1.5 py-1 px-2 cursor-pointer text-xs text-t2 rounded mx-1 transition-colors duration-100 hover:bg-hov hover:text-t1"
       style={{ paddingLeft: `${depth * 14 + 8}px` }}
       onClick={() => openFile(`${WIKI_PREFIX}${entry.path}`, entry.name)}
       title={entry.path}
     >
-      <span className="wiki-tree-icon">✦</span>
-      <span className="wiki-tree-name">{entry.name.replace('.md', '')}</span>
+      <span className="shrink-0 text-xs">✦</span>
+      <span className="overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1">{entry.name.replace('.md', '')}</span>
     </div>
   );
 }
@@ -55,11 +55,11 @@ export function WikiFileTree() {
   const dirs = wikiFiles.filter((e) => e.type === 'dir');
 
   return (
-    <div className="wiki-file-tree">
-      <div className="wiki-tree-header">
-        <span className="wiki-tree-title">Wiki</span>
+    <div className="flex-1 overflow-y-auto flex flex-col">
+      <div className="py-2 px-3 text-[11px] font-semibold text-t3 uppercase tracking-[0.5px]">
+        <span>Wiki</span>
       </div>
-      <div className="wiki-tree-list">
+      <div className="flex-1 overflow-y-auto">
         {topFiles.map((entry) => (
           <WikiEntryItem key={entry.path} entry={entry} depth={0} />
         ))}
@@ -67,7 +67,7 @@ export function WikiFileTree() {
           <WikiEntryItem key={entry.path} entry={entry} depth={0} />
         ))}
         {wikiFiles.length === 0 && (
-          <div className="wiki-tree-empty">
+          <div className="p-4 text-center text-xs text-t3 leading-relaxed">
             Wiki 为空。在 AI 面板中摄入文件开始构建知识库。
           </div>
         )}
