@@ -55,7 +55,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="topbar h-[44px] shrink-0 bg-panel border-b border-brd flex items-center justify-between px-2.5 gap-[3px] z-50">
+    <header className="topbar h-[36px] shrink-0 bg-panel border-b border-brd flex items-center justify-between px-2.5 gap-[3px] z-50">
       {/* Left: Logo + mobile menu */}
       <div className="tb-left flex items-center h-full flex-1 overflow-hidden">
         {isMobile && (

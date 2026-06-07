@@ -139,7 +139,7 @@ export function VaultPage() {
             <span className="text-[13px] shrink-0">
               <FileIcon filename={entry.name} isDir={entry.type === 'dir'} />
             </span>
-            <span className="text-xs text-t2 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{entry.name}</span>
+            <span className="text-[calc(var(--ui-font-size)-2px)] text-t2 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{entry.name}</span>
             <span className="text-[10px] text-t3 font-mono shrink-0">
               {entry.type === 'dir'
                 ? (isExpanded ? '▾' : '▸')

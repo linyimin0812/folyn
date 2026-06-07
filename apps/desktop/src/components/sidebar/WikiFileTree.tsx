@@ -11,7 +11,7 @@ function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
     return (
       <div>
         <div
-          className="flex items-center gap-1.5 py-1 px-2 font-medium cursor-default text-xs text-t2 rounded mx-1 transition-colors duration-100 hover:bg-hov hover:text-t1"
+          className="flex items-center gap-1.5 py-1 px-2 font-medium cursor-default text-[calc(var(--ui-font-size)-2px)] text-t2 rounded mx-1 transition-colors duration-100 hover:bg-hov hover:text-t1"
           style={{ paddingLeft: `${depth * 14 + 8}px` }}
         >
           <span className="shrink-0 text-xs">📁</span>
@@ -29,7 +29,7 @@ function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
 
   return (
     <div
-      className="flex items-center gap-1.5 py-1 px-2 cursor-pointer text-xs text-t2 rounded mx-1 transition-colors duration-100 hover:bg-hov hover:text-t1"
+      className="flex items-center gap-1.5 py-1 px-2 cursor-pointer text-[calc(var(--ui-font-size)-2px)] text-t2 rounded mx-1 transition-colors duration-100 hover:bg-hov hover:text-t1"
       style={{ paddingLeft: `${depth * 14 + 8}px` }}
       onClick={() => openFile(`${WIKI_PREFIX}${entry.path}`, entry.name)}
       title={entry.path}

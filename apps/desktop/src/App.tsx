@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Topbar } from './components/shell/Topbar';
+import { ActivityBar, type ActivityPanel } from './components/shell/ActivityBar';
 import { Sidebar } from './components/sidebar/Sidebar';
 import { WorkArea } from './components/work-area/WorkArea';
 import { StatusBar } from './components/shell/StatusBar';
@@ -40,6 +41,7 @@ export default function App() {
 
   const isMobile = useIsMobile();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [activePanel, setActivePanel] = useState<ActivityPanel>('files');
 
   const toggleMobileSidebar = useCallback(() => {
     setMobileSidebarOpen((prev) => !prev);
@@ -122,11 +124,12 @@ export default function App() {
 
       {currentPage === 'editor' && (
         <div className="body-row flex-1 flex overflow-hidden">
+          {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={setActivePanel} />}
           {isMobile && mobileSidebarOpen && (
             <div className="mobile-sidebar-overlay" onClick={closeMobileSidebar} />
           )}
           <div className={`sidebar-wrapper ${isMobile ? 'mobile' : ''} ${mobileSidebarOpen ? 'open' : ''}`}>
-            <Sidebar onFileSelect={isMobile ? closeMobileSidebar : undefined} />
+            <Sidebar activePanel={activePanel} onFileSelect={isMobile ? closeMobileSidebar : undefined} />
           </div>
           <WorkArea />
           {showAiPanel && <AiPanel />}
@@ -135,12 +138,6 @@ export default function App() {
 
       {currentPage === 'vault' && (
         <div className="body-row flex-1 flex overflow-hidden">
-          {isMobile && mobileSidebarOpen && (
-            <div className="mobile-sidebar-overlay" onClick={closeMobileSidebar} />
-          )}
-          <div className={`sidebar-wrapper ${isMobile ? 'mobile' : ''} ${mobileSidebarOpen ? 'open' : ''}`}>
-            <Sidebar onFileSelect={isMobile ? closeMobileSidebar : undefined} />
-          </div>
           <VaultPage />
         </div>
       )}

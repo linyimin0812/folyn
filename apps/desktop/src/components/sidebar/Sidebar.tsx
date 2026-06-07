@@ -13,12 +13,15 @@ import { SidebarResizer } from './SidebarResizer';
 import { ContextMenu } from './ContextMenu';
 import type { ContextMenuData } from './ContextMenu';
 
+import type { ActivityPanel } from '@/components/shell/ActivityBar';
+
 const DEFAULT_WIDTH = 224;
 interface SidebarProps {
+  activePanel?: ActivityPanel;
   onFileSelect?: () => void;
 }
 
-export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
+export function Sidebar({ activePanel = 'files', onFileSelect }: SidebarProps): React.JSX.Element {
   const vaultName = useSettingsStore((state) => state.vaultName);
   const setCurrentPage = useSettingsStore((state) => state.setCurrentPage);
   const activeTabId = useEditorStore((state) => state.activeTabId);
@@ -39,7 +42,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const hasAutoExpanded = useRef(false);
-  const [sidebarTab, setSidebarTab] = useState<'files' | 'wiki'>('files');
+  const sidebarTab = activePanel === 'wiki' ? 'wiki' : 'files';
 
   // Close actions menu when clicking outside
   useEffect(() => {
@@ -393,21 +396,6 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
           </div>
         </div>
 
-        <div className="flex gap-0 px-3 border-b border-brd shrink-0">
-          <button
-            className={`flex-1 py-1.5 border-none bg-transparent text-[12px] cursor-pointer border-b-2 transition-[color,border-color] duration-150 hover:text-t1 ${sidebarTab === 'files' ? 'text-acc border-b-acc font-semibold' : 'text-t3 font-medium border-b-transparent'}`}
-            onClick={() => setSidebarTab('files')}
-          >
-            文件
-          </button>
-          <button
-            className={`flex-1 py-1.5 border-none bg-transparent text-[12px] cursor-pointer border-b-2 transition-[color,border-color] duration-150 hover:text-t1 ${sidebarTab === 'wiki' ? 'text-acc border-b-acc font-semibold' : 'text-t3 font-medium border-b-transparent'}`}
-            onClick={() => setSidebarTab('wiki')}
-          >
-            Wiki
-          </button>
-        </div>
-
         {sidebarTab === 'wiki' ? (
           <WikiFileTree />
         ) : (
@@ -443,21 +431,6 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
             </div>
           </>
         )}
-
-        {/* Settings button at bottom */}
-        <div className="shrink-0 py-2 px-2.5 border-t border-brd">
-          <button className="flex items-center gap-1.5 w-full py-1.5 px-2 rounded-[5px] cursor-pointer text-[calc(var(--ui-font-size)-2px)] text-t2 bg-transparent border-none font-ui transition-all duration-[140ms] hover:bg-hov hover:text-t1" onClick={() => setCurrentPage('settings')}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <line x1="2" y1="4" x2="14" y2="4" />
-              <line x1="2" y1="8" x2="14" y2="8" />
-              <line x1="2" y1="12" x2="14" y2="12" />
-              <circle cx="5" cy="4" r="1.5" fill="var(--panel)" />
-              <circle cx="9" cy="8" r="1.5" fill="var(--panel)" />
-              <circle cx="6" cy="12" r="1.5" fill="var(--panel)" />
-            </svg>
-            设置
-          </button>
-        </div>
 
         {/* Delete confirmation dialog */}
         {deleteConfirm && (

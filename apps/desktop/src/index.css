@@ -17,6 +17,28 @@
 [data-tip]:hover::after { opacity: 1; }
 aside button[data-tip]::after { bottom: auto; top: 100%; margin-bottom: 0; margin-top: 4px; }
 
+/* ── Activity Bar ── */
+.activity-bar {
+  width: 36px; flex-shrink: 0; height: 100%;
+  background: var(--panel); border-right: 1px solid var(--brd);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 8px 0; gap: 2px;
+}
+.activity-icon {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 32px; border-radius: 0;
+  color: var(--t3); cursor: pointer;
+  transition: color .15s;
+  border: none; background: transparent;
+}
+.activity-icon:hover { color: var(--t1); }
+.activity-icon.active { color: var(--acc); }
+.activity-icon.active::before {
+  content: ''; position: absolute; left: 0; top: 6px; bottom: 6px;
+  width: 2px; border-radius: 0 2px 2px 0; background: var(--acc);
+}
+
 /* ── Theme Tokens ── */
 :root {
   --font-ui: 'Sora', sans-serif;
