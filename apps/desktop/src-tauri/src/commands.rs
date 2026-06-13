@@ -56,6 +56,35 @@ pub async fn check_url(url: String) -> UrlCheckResult {
     }
 }
 
+/// Fetch web page content via curl.md and return as Markdown.
+/// Uses curl subprocess to bypass CORS restrictions in the Tauri webview.
+#[tauri::command]
+pub async fn fetch_url_content(url: String) -> Result<String, String> {
+    let curl_md_url = format!("https://curl.md/{}", url);
+    let output = std::process::Command::new("curl")
+        .args([
+            "-s",
+            "--max-time", "30",
+            "--location",
+            "-H", "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+            &curl_md_url,
+        ])
+        .output()
+        .map_err(|e| format!("Failed to execute curl: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("curl failed: {}", stderr));
+    }
+
+    let body = String::from_utf8_lossy(&output.stdout).to_string();
+    if body.trim().is_empty() {
+        return Err("页面内容为空或无法转换为 Markdown".to_string());
+    }
+
+    Ok(body)
+}
+
 /// Create an embedded webview in the main window from Rust side.
 /// Uses initialization_script to inject JS on every page load (handles target="_blank" links).
 #[tauri::command]
@@ -172,7 +201,7 @@ pub async fn create_webview(
     Ok(())
 }
 
-/// Navigate an embedded webview (back / forward).
+/// Navigate an embedded webview (back / forward / reload).
 #[tauri::command]
 pub async fn navigate_webview(app: tauri::AppHandle, label: String, action: String) -> Result<(), String> {
     let wv = app.get_webview(&label)
@@ -180,6 +209,7 @@ pub async fn navigate_webview(app: tauri::AppHandle, label: String, action: Stri
     let js = match action.as_str() {
         "back" => "history.back();",
         "forward" => "history.forward();",
+        "reload" => "location.reload();",
         _ => return Err(format!("Unknown action: {}", action)),
     };
     wv.eval(js).map_err(|e| e.to_string())
@@ -190,6 +220,30 @@ pub async fn navigate_webview(app: tauri::AppHandle, label: String, action: Stri
 pub async fn close_webview(app: tauri::AppHandle, label: String) -> Result<(), String> {
     if let Some(wv) = app.get_webview(&label) {
         wv.close().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// Hide an embedded webview by label (move off-screen to keep it alive but invisible).
+#[tauri::command]
+pub async fn hide_webview(app: tauri::AppHandle, label: String) -> Result<(), String> {
+    use tauri::LogicalPosition;
+    use tauri::LogicalSize;
+
+    if let Some(wv) = app.get_webview(&label) {
+        let _ = wv.set_position(LogicalPosition::new(-10000.0, -10000.0));
+        let _ = wv.set_size(LogicalSize::new(1.0, 1.0));
+    }
+    Ok(())
+}
+
+/// Show an embedded webview by label (restore visibility - position will be set by frontend).
+#[tauri::command]
+pub async fn show_webview(app: tauri::AppHandle, label: String) -> Result<(), String> {
+    if let Some(wv) = app.get_webview(&label) {
+        // Just make it visible again - the frontend will call set_webview_position
+        // to restore the correct position and size
+        let _ = wv.set_size(tauri::LogicalSize::new(1.0, 1.0));
     }
     Ok(())
 }
@@ -232,18 +286,84 @@ pub async fn on_webview_url_changed(
     Ok(())
 }
 
-/// Hide all embedded webviews (move off-screen) — used when navigating away from the editor page.
+/// Hide specific embedded webviews by labels — used when switching tabs.
+/// Accepts a list of labels from the frontend since child webviews are not
+/// enumerable via webview_windows() in Tauri v2.
 #[tauri::command]
-pub async fn hide_all_webviews(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn hide_all_webviews(app: tauri::AppHandle, labels: Vec<String>) -> Result<(), String> {
     use tauri::LogicalPosition;
     use tauri::LogicalSize;
 
-    for wv in app.webview_windows().values() {
-        let label = wv.label();
-        if label.starts_with("wv-") {
-            let _ = wv.as_ref().set_position(LogicalPosition::new(-10000.0, -10000.0));
-            let _ = wv.as_ref().set_size(LogicalSize::new(1.0, 1.0));
+    for label in labels {
+        if let Some(wv) = app.get_webview(&label) {
+            let _ = wv.set_position(LogicalPosition::new(-10000.0, -10000.0));
+            let _ = wv.set_size(LogicalSize::new(1.0, 1.0));
         }
     }
     Ok(())
+}
+
+/// Clone a git repository to a local directory (shallow clone).
+/// Removes the target directory first if it already exists (for re-cloning).
+#[tauri::command]
+pub async fn git_clone(url: String, target_dir: String) -> Result<String, String> {
+    // Remove existing target directory for clean re-clone
+    let _ = std::fs::remove_dir_all(&target_dir);
+
+    let output = std::process::Command::new("git")
+        .args(["clone", "--depth", "1", &url, &target_dir])
+        .output()
+        .map_err(|e| format!("Failed to execute git: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("git clone failed: {}", stderr));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    Ok(stdout)
+}
+
+/// Get a text overview of a project directory (file tree + basic stats).
+/// Excludes common noise directories (.git, node_modules, target, etc.).
+/// Limits output to 500 lines for manageable AI context.
+#[tauri::command]
+pub async fn get_project_overview(dir: String) -> Result<String, String> {
+    let tree_output = std::process::Command::new("find")
+        .args([
+            &dir,
+            "-maxdepth", "3",
+            "-not", "-path", "*/.git/*",
+            "-not", "-path", "*/.git",
+            "-not", "-path", "*/node_modules/*",
+            "-not", "-path", "*/target/*",
+            "-not", "-path", "*/__pycache__/*",
+            "-not", "-path", "*/.next/*",
+            "-not", "-path", "*/dist/*",
+            "-not", "-path", "*/build/*",
+        ])
+        .output()
+        .map_err(|e| format!("Failed to list files: {}", e))?;
+
+    let tree = String::from_utf8_lossy(&tree_output.stdout);
+
+    let total_lines = tree.lines().count();
+    let lines: Vec<&str> = tree.lines().take(500).collect();
+    let truncated = if total_lines > 500 {
+        format!(
+            "{}\n... ({} more files)",
+            lines.join("\n"),
+            total_lines - 500
+        )
+    } else {
+        lines.join("\n")
+    };
+
+    // Strip the base dir prefix for readability
+    let prefix = format!("{}/", dir.trim_end_matches('/'));
+    let cleaned = truncated
+        .replace(&prefix, "")
+        .replace(dir.trim_end_matches('/'), ".");
+
+    Ok(cleaned)
 }

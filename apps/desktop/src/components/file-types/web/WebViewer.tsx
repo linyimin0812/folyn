@@ -1,16 +1,72 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { isTauri } from '@/utils/platform';
 import { useEditorStore } from '@/store/editorStore';
+import { useClipStore } from '@/store/clipStore';
 import type { EditorProps } from '../types';
 
 type WebviewErrorCode = 'dns' | 'refused' | 'timeout' | 'http' | 'invalid_url' | 'blocked' | 'unknown';
 type WebviewError = { code: WebviewErrorCode; status?: number };
 type WebviewStatus = 'loading' | 'ready' | { error: WebviewError };
 
+// Module-level cache to persist webview labels across component remounts
+export const webviewCache = new Map<string, { label: string; url: string }>();
+
 export function WebViewer({ filePath, tabId }: EditorProps) {
   const webViewerRef = useRef<HTMLDivElement>(null);
   const webviewLabelRef = useRef<string | null>(null);
   const [status, setStatus] = useState<WebviewStatus>('loading');
+  const [clipping, setClipping] = useState(false);
+  const [clipError, setClipError] = useState(false);
+
+  // Check if this web tab was opened from a clip card
+  const clipPath = useEditorStore((s) => {
+    const tab = s.tabs.find((t) => t.id === tabId);
+    return tab?.clipPath ?? null;
+  });
+  const backToClip = useEditorStore((s) => s.backToClip);
+
+  // Track active tab to hide/show webview
+  const activeTabId = useEditorStore((s) => s.activeTabId);
+  const isActive = activeTabId === tabId;
+
+  const handleBackToClip = useCallback(async () => {
+    if (!clipPath) return;
+    // Hide the webview immediately before switching back to clip
+    const cached = webviewCache.get(tabId);
+    if (cached && isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('set_webview_position', {
+          label: cached.label,
+          x: -10000,
+          y: -10000,
+          width: 1,
+          height: 1,
+        });
+      } catch {}
+    }
+    backToClip(tabId);
+  }, [clipPath, tabId, backToClip]);
+
+  const handleClipPage = useCallback(async () => {
+    if (!filePath || clipping) return;
+    try {
+      new URL(filePath);
+    } catch {
+      return;
+    }
+    setClipping(true);
+    setClipError(false);
+    try {
+      await useClipStore.getState().clipUrl(filePath);
+    } catch (err) {
+      console.error('[WebViewer] Clip failed:', err);
+      setClipError(true);
+      setTimeout(() => setClipError(false), 3000);
+    } finally {
+      setClipping(false);
+    }
+  }, [filePath, clipping]);
 
   const syncPosition = useCallback(async () => {
     const container = webViewerRef.current;
@@ -32,6 +88,27 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
 
   useEffect(() => {
     if (!isTauri() || !filePath) return;
+
+    // Check if we already have a webview for this tab
+    const cached = webviewCache.get(tabId);
+    if (cached && cached.url === filePath) {
+      // Reuse existing webview
+      webviewLabelRef.current = cached.label;
+      setStatus('ready');
+      // First hide it, then reposition after layout is ready
+      import('@tauri-apps/api/core').then(({ invoke }) => {
+        invoke('set_webview_position', {
+          label: cached.label,
+          x: -10000,
+          y: -10000,
+          width: 1,
+          height: 1,
+        }).then(() => {
+          setTimeout(() => syncPosition(), 100);
+        });
+      });
+      return;
+    }
 
     setStatus('loading');
 
@@ -71,6 +148,8 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
         });
 
         webviewLabelRef.current = label;
+        // Cache the webview for this tab
+        webviewCache.set(tabId, { label, url: filePath });
         setStatus('ready');
       } catch {
         setStatus({ error: { code: 'unknown' } });
@@ -79,15 +158,22 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
 
     return () => {
       clearTimeout(timer);
+      // Hide webview when component unmounts (e.g., switching tabs)
       const label = webviewLabelRef.current;
       if (label) {
         import('@tauri-apps/api/core').then(({ invoke }) => {
-          invoke('close_webview', { label }).catch(() => {});
+          invoke('set_webview_position', {
+            label,
+            x: -10000,
+            y: -10000,
+            width: 1,
+            height: 1,
+          }).catch(() => {});
         });
         webviewLabelRef.current = null;
       }
     };
-  }, [filePath]);
+  }, [filePath, tabId, syncPosition]);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -111,7 +197,39 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
     return () => { unlisten?.(); };
   }, [tabId]);
 
-  const navigate = (action: 'back' | 'forward') => {
+  // Clean up webview only when tab is actually closed (not just switched away)
+  useEffect(() => {
+    return () => {
+      const cached = webviewCache.get(tabId);
+      if (cached && isTauri()) {
+        // Only close the webview if the tab no longer exists in the store
+        // (i.e., the tab was closed, not just switched away from)
+        const tabStillExists = useEditorStore.getState().tabs.some(t => t.id === tabId);
+        if (!tabStillExists) {
+          import('@tauri-apps/api/core').then(({ invoke }) => {
+            invoke('close_webview', { label: cached.label }).catch(() => {});
+          });
+          webviewCache.delete(tabId);
+        }
+      }
+    };
+  }, [tabId]);
+
+  // Show webview when active - hide_all_webviews in WorkArea handles hiding
+  useEffect(() => {
+    if (!isTauri() || !isActive) return;
+    const label = webviewLabelRef.current;
+    if (!label || status !== 'ready') return;
+
+    // Wait for layout to be ready, then sync position to show webview
+    const timer = setTimeout(() => {
+      syncPosition();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [isActive, status, syncPosition]);
+
+  const navigate = (action: 'back' | 'forward' | 'reload') => {
     const label = webviewLabelRef.current;
     if (!label) return;
     import('@tauri-apps/api/core').then(({ invoke }) => {
@@ -132,6 +250,15 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
   return (
     <div className="web-viewer-container flex-1 flex flex-col bg-surf overflow-hidden relative">
       <div className="web-viewer-bar flex items-center gap-2 py-1.5 px-3 bg-panel border-b border-brd shrink-0">
+        {clipPath && (
+          <button className="web-viewer-nav-btn flex items-center justify-center w-[26px] h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1" title="返回卡片" onClick={handleBackToClip}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="2" y="3" width="12" height="10" rx="1.5" />
+              <line x1="5" y1="6.5" x2="11" y2="6.5" />
+              <line x1="5" y1="9" x2="9" y2="9" />
+            </svg>
+          </button>
+        )}
         {isTauri() && webviewLabelRef.current && (
           <>
             <button className="web-viewer-nav-btn flex items-center justify-center w-[26px] h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1" title="后退" onClick={() => navigate('back')}>
@@ -144,9 +271,31 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
                 <path d="M6 3l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
+            <button className="web-viewer-nav-btn flex items-center justify-center w-[26px] h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1" title="重新加载" onClick={() => navigate('reload')}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" strokeLinecap="round" />
+                <path d="M13.5 2.5v3h-3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
           </>
         )}
         <span className="flex-1 text-xs text-t3 font-mono overflow-hidden text-ellipsis whitespace-nowrap" title={filePath}>🌐 {filePath}</span>
+        {!clipPath && (
+          <button className="web-viewer-clip-btn flex items-center justify-center w-7 h-7 border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1 disabled:opacity-50 disabled:cursor-not-allowed" title={clipError ? '剪藏失败，请重试' : '剪藏此页'} onClick={handleClipPage} disabled={clipping}>
+            {clipping ? (
+              <span className="inline-block w-3.5 h-3.5 rounded-full border-[1.5px] border-brd border-t-acc animate-spin" />
+            ) : clipError ? (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#e05252" strokeWidth="1.5">
+                <circle cx="8" cy="8" r="6" />
+                <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M3 2v12l5-3 5 3V2H3z" />
+              </svg>
+            )}
+          </button>
+        )}
         <button className="web-viewer-open-btn flex items-center justify-center w-7 h-7 border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1" title="在外部浏览器打开" onClick={openExternal}>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M12 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4" />

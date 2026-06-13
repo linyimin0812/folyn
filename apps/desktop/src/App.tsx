@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Topbar } from './components/shell/Topbar';
-import { ActivityBar, type ActivityPanel } from './components/shell/ActivityBar';
+import { ActivityBar } from './components/shell/ActivityBar';
 import { Sidebar } from './components/sidebar/Sidebar';
 import { WorkArea } from './components/work-area/WorkArea';
 import { StatusBar } from './components/shell/StatusBar';
@@ -41,7 +41,8 @@ export default function App() {
 
   const isMobile = useIsMobile();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [activePanel, setActivePanel] = useState<ActivityPanel>('files');
+  const activePanel = useEditorStore((s) => s.activePanel);
+  const setActivePanel = useEditorStore((s) => s.setActivePanel);
 
   const toggleMobileSidebar = useCallback(() => {
     setMobileSidebarOpen((prev) => !prev);
@@ -89,7 +90,7 @@ export default function App() {
   useEffect(() => {
     if (currentPage !== 'editor' && isTauri()) {
       import('@tauri-apps/api/core').then(({ invoke }) => {
-        invoke('hide_all_webviews').catch(() => {});
+        invoke('hide_all_webviews', { labels: [] }).catch(() => {});
       });
     }
   }, [currentPage]);

@@ -57,12 +57,17 @@ pub fn run() {
             commands::save_file,
             commands::select_directory,
             commands::check_url,
+            commands::fetch_url_content,
             commands::create_webview,
             commands::navigate_webview,
             commands::close_webview,
+            commands::hide_webview,
+            commands::show_webview,
             commands::set_webview_position,
             commands::hide_all_webviews,
             commands::on_webview_url_changed,
+            commands::git_clone,
+            commands::get_project_overview,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

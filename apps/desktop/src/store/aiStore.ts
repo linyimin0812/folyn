@@ -12,7 +12,7 @@ export { loadAiSessionsForVault } from './aiSessionPersistence';
 
 export type { CliMessage, FileChange, ToolCallInfo, MessageAttachment };
 
-export type AiChatMode = 'chat' | 'wiki';
+export type AiChatMode = 'chat' | 'wiki' | 'clip';
 
 export interface AiSession {
   id: string;

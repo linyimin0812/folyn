@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend spec index — overall architecture and conventions for the desktop app where clipper lives"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component guidelines — building ClipsPanel, ClipToolbar, modifying ActivityBar/Sidebar/AiPanel/WebViewer"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "State management — creating clipStore (Zustand), modifying aiStore AiChatMode"}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "Hook guidelines — clip service hooks, store integration patterns"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Code reuse — patterns for reusing existing wiki ingest service patterns, vault store file operations"}

@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality checks — lint, typecheck, component structure validation for new clipper components"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Type safety — verifying clipStore types, service interfaces, component props"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component structure — validating new components follow existing patterns (WikiToolbar, WikiFileTree)"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Code reuse check — ensure clipper reuses vault store file ops, editor store openFile, existing AI adapter"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Cross-layer — verify clip service correctly integrates curl.md API → AI → vault storage → editor"}

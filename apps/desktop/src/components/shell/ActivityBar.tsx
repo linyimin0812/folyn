@@ -1,7 +1,7 @@
 import { useSettingsStore } from '@/store/settingsStore';
 import { useEditorStore } from '@/store/editorStore';
 
-export type ActivityPanel = 'files' | 'wiki' | 'calendar';
+export type ActivityPanel = 'files' | 'wiki' | 'clips' | 'analyze' | 'calendar';
 
 interface ActivityBarProps {
   activePanel: ActivityPanel;
@@ -31,6 +31,27 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
           <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      </button>
+
+      <button
+        className={`activity-icon ${activePanel === 'clips' ? 'active' : ''}`}
+        onClick={() => onPanelChange('clips')}
+        title="Clips"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <path d="M5 3v18l7-4 7 4V3H5z" />
+        </svg>
+      </button>
+
+      <button
+        className={`activity-icon ${activePanel === 'analyze' ? 'active' : ''}`}
+        onClick={() => onPanelChange('analyze')}
+        title="GitHub Analysis"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <path d="M21 21H4.6c-.56 0-.84 0-1.054-.109a1 1 0 01-.437-.437C3 20.24 3 19.96 3 19.4V3" />
+          <path d="M7 14l4-4 4 4 6-6" />
         </svg>
       </button>
 

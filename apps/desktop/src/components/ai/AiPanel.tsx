@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { useAiStore } from '@/store/aiStore';
+import type { AiChatMode } from '@/store/aiStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useVaultStore } from '@/store/vaultStore';
 import type { CliStreamEvent, MessageAttachment } from '@quill/cli-adapter';
@@ -9,10 +10,12 @@ import { flattenFileTree } from '@/utils/treeUtils';
 import { sessionAdapters, getAdapterForSession } from './adapterManager';
 import { WikiToolbar } from './WikiToolbar';
 import { WikiActivityLog } from './WikiActivityLog';
+import { ClipToolbar } from './ClipToolbar';
 import { ReviewItemList } from './ReviewItemList';
 import { IngestDialog } from './IngestDialog';
 import { DeepResearchDialog } from './DeepResearchDialog';
 import { useWikiStore } from '@/store/wikiStore';
+import { useClipStore } from '@/store/clipStore';
 import { runIngest } from '@/services/wikiIngestService';
 import { runWikiLint } from '@/services/wikiLintService';
 import { saveToWiki } from '@/services/wikiQueryService';
@@ -48,9 +51,9 @@ export function AiPanel() {
   const [showDeepResearch, setShowDeepResearch] = useState(false);
 
   // Track separate active session per mode (seed chat with current session)
-  const modeSessionRef = useRef<{ chat: string | null; wiki: string | null }>({ chat: activeSessionId, wiki: null });
+  const modeSessionRef = useRef<Record<AiChatMode, string | null>>({ chat: activeSessionId, wiki: null, clip: null });
 
-  const handleModeSwitch = useCallback((mode: 'chat' | 'wiki') => {
+  const handleModeSwitch = useCallback((mode: AiChatMode) => {
     if (mode === chatMode) return;
     // Save current session for the old mode
     modeSessionRef.current[chatMode] = activeSessionId;
@@ -146,6 +149,24 @@ export function AiPanel() {
 
   const handleSend = async (userText: string, currentAttachments: PendingAttachment[]) => {
     if ((!userText && currentAttachments.length === 0) || isStreaming) return;
+
+    // Handle /clip <url> command in chat mode
+    if (chatMode === 'chat' && userText.startsWith('/clip ')) {
+      const url = userText.slice(6).trim();
+      if (url) {
+        let sessionId = activeSessionId;
+        if (!sessionId) sessionId = createSession();
+        addMessage('user', userText, sessionId);
+        addMessage('assistant', `正在剪藏: ${url} ...`, sessionId);
+        try {
+          const filePath = await useClipStore.getState().clipUrl(url);
+          appendToLastMessage(`\n\n剪藏完成: \`${filePath}\``, sessionId);
+        } catch (err) {
+          appendToLastMessage(`\n\n[错误] 剪藏失败: ${err instanceof Error ? err.message : String(err)}`, sessionId);
+        }
+      }
+      return;
+    }
 
     let sessionId = activeSessionId;
     if (!sessionId) {
@@ -413,6 +434,12 @@ export function AiPanel() {
         >
           Wiki
         </button>
+        <button
+          className={`flex-1 py-1.5 border-none bg-transparent text-[12px] cursor-pointer border-b-2 transition-[color,border-color] duration-150 hover:text-t1 ${chatMode === 'clip' ? 'text-acc border-b-acc font-semibold' : 'text-t3 font-medium border-b-transparent'}`}
+          onClick={() => handleModeSwitch('clip')}
+        >
+          Clip
+        </button>
       </div>
 
       {chatMode === 'wiki' && (
@@ -421,6 +448,12 @@ export function AiPanel() {
           onLint={handleLint}
           onDeepResearch={() => setShowDeepResearch(true)}
         />
+      )}
+
+      {chatMode === 'clip' && (
+        <ClipToolbar onClip={async (url) => {
+          await useClipStore.getState().clipUrl(url);
+        }} />
       )}
 
       <div className="ai-body flex-1 overflow-y-auto p-3 flex flex-col gap-3">

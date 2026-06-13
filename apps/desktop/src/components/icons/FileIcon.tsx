@@ -62,6 +62,14 @@ function ExcalidrawIcon() {
   );
 }
 
+function ClipIcon() {
+  return (
+    <svg width={S} height={S} viewBox="0 0 16 16" fill="none" style={{ stroke: 'var(--ic-web, #89b4fa)' }} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 2v12l4-2.5L12 14V2H4z" />
+    </svg>
+  );
+}
+
 function WebIcon() {
   return (
     <svg width={S} height={S} viewBox="0 0 16 16" fill="none" style={{ stroke: 'var(--ic-web)' }} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
@@ -101,6 +109,7 @@ export function FileIcon({ filename, isDir }: FileIconProps) {
 export function getFileTypeIcon(handlerId: string): React.ReactElement {
   if (handlerId === 'excalidraw') return <ExcalidrawIcon />;
   if (handlerId === 'web') return <WebIcon />;
+  if (handlerId === 'clip') return <ClipIcon />;
 
   const iconName = HANDLER_TO_THEME_ICON[handlerId];
   if (iconName && hasIcon(iconName)) return <ThemeIcon name={iconName} />;

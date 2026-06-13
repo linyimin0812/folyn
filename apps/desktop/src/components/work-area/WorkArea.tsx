@@ -2,10 +2,12 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useVaultStore } from '@/store/vaultStore';
+import { isTauri } from '@/utils/platform';
 import type { QuillEditorHandle } from '@/editor/EditorView';
 import { EditorView } from '@codemirror/view';
 import { getHandlerById } from '../file-types/registry';
 import { WikiGraphView } from '../graph/WikiGraphView';
+import { webviewCache } from '../file-types/web/WebViewer';
 import { TabBar } from './TabBar';
 import { EditorPane } from './EditorPane';
 import { PreviewPane } from './PreviewPane';
@@ -15,14 +17,18 @@ import { DailyDigest } from '../editor/DailyDigest';
 export function WorkArea() {
   const viewMode = useEditorStore((state) => state.viewMode);
   const setViewMode = useEditorStore((state) => state.setViewMode);
+  const activePanel = useEditorStore((state) => state.activePanel);
   const activeTabId = useEditorStore((state) => state.activeTabId);
-  const tabs = useEditorStore((state) => state.tabs);
+  const allTabs = useEditorStore((state) => state.tabs);
   const setActiveTab = useEditorStore((state) => state.setActiveTab);
   const closeTab = useEditorStore((state) => state.closeTab);
   const updateTabContent = useEditorStore((state) => state.updateTabContent);
   const markTabDirty = useEditorStore((state) => state.markTabDirty);
   const isFileLoading = useEditorStore((state) => state.isFileLoading);
   const externalContentVersion = useEditorStore((state) => state.externalContentVersion);
+
+  // Filter tabs by the active activity panel
+  const tabs = allTabs.filter((t) => t.activity === activePanel);
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const showLineNumbers = useSettingsStore((s) => s.showLineNumbers);
   const settingsTabSize = useSettingsStore((s) => s.tabSize);
@@ -37,16 +43,35 @@ export function WorkArea() {
   // Get the handler for the active tab
   const handler = activeTab ? getHandlerById(activeTab.fileType) : undefined;
 
-  // Apply handler's defaultViewMode when switching to a tab
+  // Hide all webviews when switching to a non-web tab
   const prevTabIdRef = useRef<string | null>(null);
+  const prevWasWebRef = useRef(false);
+
   useEffect(() => {
-    if (activeTabId && activeTabId !== prevTabIdRef.current) {
-      prevTabIdRef.current = activeTabId;
-      if (handler?.defaultViewMode && viewMode !== handler.defaultViewMode) {
-        setViewMode(handler.defaultViewMode);
+    if (activeTabId !== prevTabIdRef.current) {
+      const wasWeb = prevWasWebRef.current;
+      const isWeb = activeTab?.fileType === 'web';
+
+      // Hide all webviews when switching away from a web tab or between web tabs
+      if (wasWeb || isWeb) {
+        if (isTauri()) {
+          const labels = Array.from(webviewCache.values()).map(wv => wv.label);
+          if (labels.length > 0) {
+            import('@tauri-apps/api/core').then(({ invoke }) => {
+              invoke('hide_all_webviews', { labels }).catch(() => {});
+            });
+          }
+        }
       }
+
+      prevTabIdRef.current = activeTabId;
+      prevWasWebRef.current = isWeb;
     }
-  }, [activeTabId, handler, viewMode, setViewMode]);
+
+    if (activeTabId && handler?.defaultViewMode && viewMode !== handler.defaultViewMode) {
+      setViewMode(handler.defaultViewMode);
+    }
+  }, [activeTabId, handler, viewMode, setViewMode, activeTab]);
 
   // Pane resize (editor vs preview split ratio)
   const [editorFlex, setEditorFlex] = useState(1);
@@ -227,6 +252,10 @@ export function WorkArea() {
 
       {activeTab && activeTab.path === 'wiki-graph' ? (
         <WikiGraphView />
+      ) : tabs.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center text-t3 text-[13px] select-none">
+          {activePanel === 'clips' ? '暂无剪藏' : activePanel === 'wiki' ? '暂无 Wiki 页面' : activePanel === 'calendar' ? '暂无日记' : '暂无打开的文件'}
+        </div>
       ) : (<>
 
       {/* CodeMirror editor pane */}
@@ -259,8 +288,8 @@ export function WorkArea() {
         />
       )}
 
-      {/* Custom editor (full area) — e.g. Excalidraw, Web */}
-      {showCustomEditor && activeTab && handler?.Editor && (
+      {/* Custom editor (full area) — e.g. Excalidraw */}
+      {showCustomEditor && activeTab && handler?.Editor && activeTab.fileType !== 'web' && (
         <div className={`flex-1 flex flex-col overflow-hidden editor-${handler.id}`}>
           <handler.Editor
             key={`${activeTab.id}-${externalContentVersion}`}
@@ -272,6 +301,22 @@ export function WorkArea() {
           />
         </div>
       )}
+
+      {/* Render only the active web tab - webviews are cached at module level */}
+      {activeTab && activeTab.fileType === 'web' && (() => {
+        const webHandler = getHandlerById(activeTab.fileType);
+        return webHandler?.Editor ? (
+          <div className="flex-1 flex flex-col overflow-hidden editor-web">
+            <webHandler.Editor
+              content={activeTab.content}
+              tabId={activeTab.id}
+              filePath={activeTab.path}
+              onChange={(content) => updateTabContent(activeTab.id, content)}
+              onSave={() => markTabDirty(activeTab.id, false)}
+            />
+          </div>
+        ) : null;
+      })()}
 
       {/* Preview pane */}
       {showPreview && activeTab && handler?.Preview && (

@@ -5,6 +5,8 @@ import { useVaultStore } from '@/store/vaultStore';
 import type { VaultEntry } from '@quill/vault-provider';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 import { WikiFileTree } from './WikiFileTree';
+import { ClipsPanel } from './ClipsPanel';
+import { AnalysisPanel } from './AnalysisPanel';
 import { CalendarPanel } from './CalendarPanel';
 import { flattenTree } from '@/utils/treeUtils';
 import { useDragDrop } from './useDragDrop';
@@ -43,7 +45,7 @@ export function Sidebar({ activePanel = 'files', onFileSelect }: SidebarProps): 
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const hasAutoExpanded = useRef(false);
-  const sidebarTab = activePanel === 'wiki' ? 'wiki' : activePanel === 'calendar' ? 'calendar' : 'files';
+  const sidebarTab = activePanel === 'wiki' ? 'wiki' : activePanel === 'clips' ? 'clips' : activePanel === 'analyze' ? 'analyze' : activePanel === 'calendar' ? 'calendar' : 'files';
 
   // Close actions menu when clicking outside
   useEffect(() => {
@@ -315,12 +317,13 @@ export function Sidebar({ activePanel = 'files', onFileSelect }: SidebarProps): 
     <>
       <aside className={`sidebar shrink-0 h-full overflow-hidden bg-panel border-r border-brd flex flex-col${isResizing ? '' : ' transition-[width,opacity] duration-200 ease-in-out'}`} style={{ width: collapsed ? '0px' : `${width}px`, display: collapsed ? 'none' : undefined }}>
         {/* Vault selector */}
-        <div className="pt-3 px-2.5 pb-2 shrink-0">
-          <div className="flex items-center gap-1 min-w-0">
-          <div className="inline-flex items-center gap-1 px-2 py-1.5 rounded-[5px] cursor-pointer transition-colors duration-[140ms] text-[calc(var(--ui-font-size)-2px)] font-semibold min-w-[60px] max-w-full overflow-hidden shrink hover:bg-hov" onClick={() => setCurrentPage('vault')}>
-            <span className="overflow-hidden text-ellipsis whitespace-nowrap">{vaultName}</span>
-            <span className="text-t3 text-[10px] shrink-0">&#9662;</span>
-          </div>
+        {sidebarTab === 'files' && (
+          <div className="pt-3 px-2.5 pb-2 shrink-0">
+            <div className="flex items-center gap-1 min-w-0">
+            <div className="inline-flex items-center gap-1 px-2 py-1.5 rounded-[5px] cursor-pointer transition-colors duration-[140ms] text-[calc(var(--ui-font-size)-2px)] font-semibold min-w-[60px] max-w-full overflow-hidden shrink hover:bg-hov" onClick={() => setCurrentPage('vault')}>
+              <span className="overflow-hidden text-ellipsis whitespace-nowrap">{vaultName}</span>
+              <span className="text-t3 text-[10px] shrink-0">&#9662;</span>
+            </div>
 
           {/* Actions: new file / new folder / locate / refresh / expand / collapse */}
           {isCompact ? (
@@ -396,11 +399,16 @@ export function Sidebar({ activePanel = 'files', onFileSelect }: SidebarProps): 
             />
           </div>
         </div>
+        )}
 
         {sidebarTab === 'calendar' ? (
           <CalendarPanel />
         ) : sidebarTab === 'wiki' ? (
           <WikiFileTree />
+        ) : sidebarTab === 'clips' ? (
+          <ClipsPanel />
+        ) : sidebarTab === 'analyze' ? (
+          <AnalysisPanel />
         ) : (
           <>
             {/* New item inline input (root level only) */}

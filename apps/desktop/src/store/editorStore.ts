@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useVaultStore } from './vaultStore';
+import { useSettingsStore } from './settingsStore';
 import { storageClient } from '@/utils/storageClient';
 import { getHandlerByExtension, getHandlerById } from '@/components/file-types/registry';
 import { suppressWatcherFor } from '@/utils/fileWatcher';
@@ -7,6 +8,7 @@ import { wikiProvider } from '@/services/wikiProvider';
 import { WIKI_PREFIX } from '@/types/wiki';
 import { scheduleAutoSave, flushAllAutoSaves } from './editorAutoSave';
 import { persistOpenTabs, flushPersistOpenTabs, loadPersistedOpenTabs } from './editorPersistence';
+import type { ActivityPanel } from '@/components/shell/ActivityBar';
 
 function formatDailyDate(date: Date, format: string): string {
   const y = date.getFullYear();
@@ -23,6 +25,10 @@ export type ViewMode = 'split' | 'edit' | 'preview';
 export type FileType = string;
 
 export function detectFileType(filePath: string): FileType {
+  // Detect clip files by path prefix
+  if (filePath.startsWith('clips/') && filePath.endsWith('.md')) {
+    return 'clip';
+  }
   const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
   const handler = getHandlerByExtension(ext);
   return handler?.id ?? 'code';
@@ -35,15 +41,34 @@ export interface FileTab {
   content: string;
   isDirty: boolean;
   fileType: FileType;
+  /** Which activity panel this tab belongs to */
+  activity: ActivityPanel;
+  /** Original clip file path (set when web tab was opened from a clip card) */
+  clipPath?: string;
   /** Saved cursor line (1-based) for this tab */
   cursorLine?: number;
   /** Saved cursor column (1-based) for this tab */
   cursorCol?: number;
 }
 
+/** Determine which activity panel a tab belongs to based on its path and file type */
+export function detectActivity(filePath: string, fileType: FileType): ActivityPanel {
+  if (filePath === 'wiki-graph') return 'wiki';
+  if (fileType === 'clip' || filePath.startsWith('clips/')) return 'clips';
+  if (filePath.startsWith(WIKI_PREFIX)) return 'wiki';
+
+  // Check daily notes directory
+  const dailyDir = useSettingsStore.getState().dailyNotesDir || 'daily';
+  if (filePath.startsWith(`${dailyDir}/`)) return 'calendar';
+
+  return 'files';
+}
+
 interface EditorState {
   /** Currently active view mode */
   viewMode: ViewMode;
+  /** Currently active activity panel */
+  activePanel: ActivityPanel;
   /** List of open file tabs */
   tabs: FileTab[];
   /** ID of the currently active tab */
@@ -70,6 +95,7 @@ interface EditorState {
 
   // Actions
   setViewMode: (mode: ViewMode) => void;
+  setActivePanel: (panel: ActivityPanel) => void;
   addTab: (tab: FileTab) => void;
   closeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
@@ -91,6 +117,10 @@ interface EditorState {
   updateWebTabUrl: (tabId: string, url: string, title: string) => void;
   /** Open a web URL in a new tab */
   openWebTab: (url: string, title?: string) => void;
+  /** Open a web URL from a clip card (converts clip tab to web tab, adds back-to-clip button) */
+  openWebFromClip: (tabId: string, url: string, clipPath: string, title?: string) => void;
+  /** Convert a web tab back to its original clip card */
+  backToClip: (tabId: string) => Promise<void>;
   /** Open a file from the vault (reads content via VaultStore) */
   openFile: (path: string, name: string) => Promise<void>;
   /** Open (or create) today's daily note */
@@ -112,6 +142,7 @@ const EDITOR_STORAGE_KEY = 'editor:viewMode';
 export const useEditorStore = create<EditorState>()(
     (set, get) => ({
       viewMode: 'split',
+      activePanel: 'files' as ActivityPanel,
       tabs: [],
       activeTabId: null,
       outlineVisible: false,
@@ -131,19 +162,39 @@ export const useEditorStore = create<EditorState>()(
         storageClient.set(EDITOR_STORAGE_KEY, mode);
       },
 
+      setActivePanel: (panel) => {
+        set((state) => {
+          // Find the first tab belonging to the new activity panel
+          const firstTabOfPanel = state.tabs.find((t) => t.activity === panel);
+          return {
+            activePanel: panel,
+            activeTabId: firstTabOfPanel?.id ?? null,
+          };
+        });
+      },
+
       addTab: (tab) =>
-        set((state) => ({
-          tabs: [...state.tabs, tab],
-          activeTabId: tab.id,
-        })),
+        set((state) => {
+          // Auto-detect activity if not already set on the tab
+          const tabWithActivity = tab.activity ? tab : { ...tab, activity: detectActivity(tab.path, tab.fileType) };
+          return {
+            tabs: [...state.tabs, tabWithActivity],
+            activeTabId: tabWithActivity.id,
+          };
+        }),
 
       closeTab: (tabId) => {
         set((state) => {
+          const closedTab = state.tabs.find((t) => t.id === tabId);
           const newTabs = state.tabs.filter((t) => t.id !== tabId);
-          const newActiveId =
-            state.activeTabId === tabId
-              ? newTabs[newTabs.length - 1]?.id ?? null
-              : state.activeTabId;
+          let newActiveId = state.activeTabId;
+          if (state.activeTabId === tabId) {
+            // Prefer a tab from the same activity panel
+            const sameActivityTab = closedTab
+              ? newTabs.find((t) => t.activity === closedTab.activity)
+              : undefined;
+            newActiveId = sameActivityTab?.id ?? newTabs[newTabs.length - 1]?.id ?? null;
+          }
           return { tabs: newTabs, activeTabId: newActiveId };
         });
         const vaultId = useVaultStore.getState().activeVaultId;
@@ -242,10 +293,47 @@ export const useEditorStore = create<EditorState>()(
           content: '',
           isDirty: false,
           fileType: 'web',
+          activity: 'files',
         };
         set((state) => ({
           tabs: [...state.tabs, newTab],
           activeTabId: newTab.id,
+        }));
+      },
+
+      openWebFromClip: (tabId, url, clipPath, title) => {
+        const displayName = title || (() => { try { return new URL(url).hostname; } catch { return url; } })();
+        set((state) => ({
+          tabs: state.tabs.map((tab) =>
+            tab.id === tabId
+              ? { ...tab, path: url, name: displayName, content: '', fileType: 'web' as FileType, isDirty: false, clipPath, activity: 'clips' as ActivityPanel }
+              : tab,
+          ),
+        }));
+      },
+
+      backToClip: async (tabId) => {
+        const tab = get().tabs.find((t) => t.id === tabId);
+        if (!tab?.clipPath) return;
+        const clipPath = tab.clipPath;
+        const fileName = clipPath.split('/').pop() || clipPath;
+        // Read clip file content
+        let content = '';
+        try {
+          if (clipPath.startsWith(WIKI_PREFIX)) {
+            content = await wikiProvider.readFile(clipPath.slice(WIKI_PREFIX.length));
+          } else {
+            content = await useVaultStore.getState().readFile(clipPath);
+          }
+        } catch (err) {
+          console.error('[EditorStore] backToClip: failed to read clip file:', err);
+        }
+        set((state) => ({
+          tabs: state.tabs.map((t) =>
+            t.id === tabId
+              ? { ...t, path: clipPath, name: fileName, content, fileType: 'clip' as FileType, isDirty: false, clipPath: undefined, activity: 'clips' as ActivityPanel }
+              : t,
+          ),
         }));
       },
 
@@ -280,6 +368,7 @@ export const useEditorStore = create<EditorState>()(
             content,
             isDirty: false,
             fileType,
+            activity: detectActivity(filePath, fileType),
           };
           set((state) => ({
             tabs: [...state.tabs, newTab],
@@ -297,7 +386,6 @@ export const useEditorStore = create<EditorState>()(
       },
 
       openDailyNote: async (dateStr?) => {
-        const { useSettingsStore } = await import('./settingsStore');
         const settings = useSettingsStore.getState();
         const dir = settings.dailyNotesDir || 'daily';
         const fmt = settings.dailyNoteDateFormat || 'YYYY-MM-DD';
@@ -363,6 +451,7 @@ export const useEditorStore = create<EditorState>()(
             const webTabId = `web:${tabInfo.path}`;
             const alreadyOpen = get().tabs.find((t) => t.id === webTabId);
             if (alreadyOpen) continue;
+            const restoredActivity = tabInfo.activity ?? detectActivity(tabInfo.path, 'web');
             const newTab: FileTab = {
               id: webTabId,
               name: tabInfo.name,
@@ -370,6 +459,7 @@ export const useEditorStore = create<EditorState>()(
               content: '',
               isDirty: false,
               fileType: 'web',
+              activity: restoredActivity,
             };
             set((state) => ({
               tabs: [...state.tabs, newTab],
@@ -387,6 +477,7 @@ export const useEditorStore = create<EditorState>()(
                 const raw = await useVaultStore.getState().readFile(tabInfo.path);
                 content = handler.deserialize ? handler.deserialize(raw) : raw;
               }
+              const restoredActivity = tabInfo.activity ?? detectActivity(tabInfo.path, fileType);
               const newTab: FileTab = {
                 id: tabId,
                 name: tabInfo.name,
@@ -394,6 +485,7 @@ export const useEditorStore = create<EditorState>()(
                 content,
                 isDirty: false,
                 fileType,
+                activity: restoredActivity,
                 cursorLine: tabInfo.cursorLine,
                 cursorCol: tabInfo.cursorCol,
               };
