@@ -1,0 +1,40 @@
+# Frontend Development Guidelines
+
+> Best practices for frontend development in the Quill desktop app.
+
+---
+
+## Overview
+
+This directory contains guidelines for the `@quill/desktop` frontend — a Tauri 2 + React 18 + TypeScript + Zustand 5 + Tailwind CSS 3 + CodeMirror 6 application.
+
+---
+
+## Guidelines Index
+
+| Guide | Description | Status |
+|-------|-------------|--------|
+| [Directory Structure](./directory-structure.md) | Module organization and file layout | Filled |
+| [Component Guidelines](./component-guidelines.md) | Component patterns, props, composition, styling | Filled |
+| [Hook Guidelines](./hook-guidelines.md) | Custom hooks, data fetching patterns | Filled |
+| [State Management](./state-management.md) | Zustand stores, local vs global state, persistence | Filled |
+| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns, review checklist | Filled |
+| [Type Safety](./type-safety.md) | Type patterns, naming, validation | Filled |
+
+---
+
+## Quick Reference
+
+**Tech stack**: React 18, Vite 6, TypeScript (strict), Zustand 5, Tailwind CSS 3, CodeMirror 6, Tauri 2
+
+**Key patterns**:
+- Named function exports for all components (no default exports except `App`)
+- Zustand stores with granular selectors — never bare `useStore()`
+- Tailwind utility classes + CSS custom properties for theming
+- `@/` path alias maps to `src/`
+- Tauri commands via `invoke()` from `@tauri-apps/api/core`
+- Platform guards via `isTauri()` before Tauri-only APIs
+
+---
+
+**Language**: All documentation is written in **English**.
