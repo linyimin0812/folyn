@@ -149,28 +149,70 @@ ${readmeContent ? readmeContent.slice(0, 6000) : '(No README found)'}
    - Use monospace font for code references
    - Section cards should have subtle shadows, rounded corners, and clear headings
 
-4. Output ONLY the HTML code wrapped in \`\`\`html ... \`\`\` code block. No other text before or after.`;
+4. **Generate Tags**: Before the HTML, output 3-5 concise tags that describe the project's main technologies and domains. Tags should be lowercase (e.g., "react", "typescript", "machine-learning", "cli-tool").
+
+5. Output format: First output the tags block, then the HTML code block. No other text before or after.
+
+Example output:
+---TAGS---
+["react", "typescript", "frontend", "web-app"]
+---END---
+
+\`\`\`html
+<!DOCTYPE html>
+<html>
+...
+</html>
+\`\`\``;
 }
 
 /**
- * Extract HTML content from an AI response that may be wrapped in markdown code fences.
+ * Extract tags and HTML content from an AI response.
+ * Expected format:
+ * ---TAGS---
+ * ["tag1", "tag2"]
+ * ---END---
+ * ```html
+ * ...
+ * ```
  */
-function extractHtml(aiResponse: string): string {
-  // Try to extract from ```html ... ``` code block
-  const htmlMatch = aiResponse.match(/```html\s*\n([\s\S]*?)\n```/);
-  if (htmlMatch) return htmlMatch[1].trim();
+function extractTagsAndHtml(aiResponse: string): { tags: string[]; html: string } {
+  let tags: string[] = [];
+  let html: string = '';
 
-  // Try generic code block
-  const codeMatch = aiResponse.match(/```\s*\n([\s\S]*?)\n```/);
-  if (codeMatch) return codeMatch[1].trim();
-
-  // If it looks like HTML, return as-is
-  if (aiResponse.trim().startsWith('<!DOCTYPE') || aiResponse.trim().startsWith('<html')) {
-    return aiResponse.trim();
+  // Try to extract tags block
+  const tagsMatch = aiResponse.match(/---TAGS---\s*\n([\s\S]*?)\n---END---/);
+  if (tagsMatch) {
+    try {
+      const parsed = JSON.parse(tagsMatch[1].trim());
+      if (Array.isArray(parsed)) {
+        tags = parsed.map((t) => String(t).toLowerCase().trim()).filter(Boolean);
+      }
+    } catch {
+      console.warn('[githubAnalysisService] Failed to parse tags JSON:', tagsMatch[1]);
+    }
   }
 
-  // Fallback: return the full response
-  return aiResponse.trim();
+  // Extract HTML from code block or raw HTML
+  const trimmedResponse = aiResponse.replace(/---TAGS---[\s\S]*?---END---/, '').trim();
+
+  // Try to extract from ```html ... ``` code block
+  const htmlMatch = trimmedResponse.match(/```html\s*\n([\s\S]*?)\n```/);
+  if (htmlMatch) {
+    html = htmlMatch[1].trim();
+  } else {
+    // Try generic code block
+    const codeMatch = trimmedResponse.match(/```\s*\n([\s\S]*?)\n```/);
+    if (codeMatch) {
+      html = codeMatch[1].trim();
+    } else if (trimmedResponse.startsWith('<!DOCTYPE') || trimmedResponse.startsWith('<html')) {
+      html = trimmedResponse;
+    } else {
+      html = trimmedResponse;
+    }
+  }
+
+  return { tags, html };
 }
 
 /**
@@ -193,18 +235,27 @@ async function readReadme(cloneDir: string): Promise<string> {
 }
 
 /**
- * Main pipeline: clone repo, analyze with AI, save HTML report.
+ * Result of the generate phase — no files saved yet.
+ */
+export interface GeneratedReport {
+  tags: string[];
+  html: string;
+  repo: string;
+}
+
+/**
+ * Phase 1: Clone repo, analyze with AI, return tags + HTML without saving.
  *
  * @param url - GitHub repository URL
  * @param language - Report language preference
  * @param onProgress - Optional callback for progress updates
- * @returns The vault-relative path of the saved report file
+ * @returns Generated report data (tags, html, repo name)
  */
-export async function analyzeProject(
+export async function generateReport(
   url: string,
   language: ReportLanguage,
   onProgress?: (msg: string) => void,
-): Promise<string> {
+): Promise<GeneratedReport> {
   const vault = useVaultStore.getState();
   if (!vault.currentVault) throw new Error('请先打开一个 Vault');
 
@@ -265,28 +316,16 @@ export async function analyzeProject(
       throw new Error('AI 分析结果为空');
     }
 
-    // 7. Extract HTML from AI response
-    const htmlContent = extractHtml(aiResponse);
+    // 7. Extract tags and HTML from AI response
+    const { tags, html: htmlContent } = extractTagsAndHtml(aiResponse);
 
     if (!htmlContent.startsWith('<!DOCTYPE') && !htmlContent.startsWith('<html')) {
       throw new Error('AI 未能生成有效的 HTML 报告');
     }
 
-    // 8. Save report
-    onProgress?.('正在保存报告...');
-    const date = new Date().toISOString().split('T')[0];
-    const fileName = `${date}-${repo}.html`;
-    const filePath = `reports/${fileName}`;
-
-    await vault.createDir('reports');
-    await vault.createFile(filePath, htmlContent);
-
-    // Auto-open in editor
-    await useEditorStore.getState().openFile(filePath, fileName);
-
-    return filePath;
+    return { tags, html: htmlContent, repo };
   } finally {
-    // 9. Always cleanup cloned repo to avoid disk bloat
+    // Always cleanup cloned repo to avoid disk bloat
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('remove_dir', { path: cloneDir });
@@ -294,4 +333,57 @@ export async function analyzeProject(
       console.warn('[githubAnalysisService] Failed to cleanup cloned repo:', cloneDir);
     }
   }
+}
+
+/**
+ * Phase 2: Save a generated report (HTML + tags sidecar) to the vault.
+ *
+ * @param repo - Repository name (used for filename)
+ * @param tags - Tags to save in sidecar
+ * @param html - HTML content to save
+ * @returns The vault-relative path of the saved report file
+ */
+export async function saveReport(
+  repo: string,
+  tags: string[],
+  html: string,
+): Promise<string> {
+  const vault = useVaultStore.getState();
+
+  const date = new Date().toISOString().split('T')[0];
+  const fileName = `${date}-${repo}.html`;
+  const filePath = `reports/${fileName}`;
+
+  await vault.createDir('reports');
+  await vault.createFile(filePath, html);
+
+  // Save tags sidecar file
+  if (tags.length > 0) {
+    const sidecarPath = filePath.replace(/\.html$/, '.tags.json');
+    await vault.createFile(sidecarPath, JSON.stringify({ tags }, null, 2));
+  }
+
+  // Auto-open in editor
+  await useEditorStore.getState().openFile(filePath, fileName);
+
+  return filePath;
+}
+
+/**
+ * Main pipeline: clone repo, analyze with AI, save HTML report.
+ * Backward-compatible wrapper that calls generateReport + saveReport.
+ *
+ * @param url - GitHub repository URL
+ * @param language - Report language preference
+ * @param onProgress - Optional callback for progress updates
+ * @returns The vault-relative path of the saved report file
+ */
+export async function analyzeProject(
+  url: string,
+  language: ReportLanguage,
+  onProgress?: (msg: string) => void,
+): Promise<string> {
+  onProgress?.('正在保存报告...');
+  const { tags, html, repo } = await generateReport(url, language, onProgress);
+  return saveReport(repo, tags, html);
 }
