@@ -305,23 +305,45 @@ pub async fn hide_all_webviews(app: tauri::AppHandle, labels: Vec<String>) -> Re
 
 /// Clone a git repository to a local directory (shallow clone).
 /// Removes the target directory first if it already exists (for re-cloning).
+/// Includes network resilience configs for unstable connections.
 #[tauri::command]
 pub async fn git_clone(url: String, target_dir: String) -> Result<String, String> {
     // Remove existing target directory for clean re-clone
     let _ = std::fs::remove_dir_all(&target_dir);
 
+    // Ensure parent directory exists
+    if let Some(parent) = std::path::Path::new(&target_dir).parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+
     let output = std::process::Command::new("git")
-        .args(["clone", "--depth", "1", &url, &target_dir])
+        .args([
+            "-c", "http.version=HTTP/1.1",
+            "-c", "http.userAgent=Quill-Desktop/1.0",
+            "-c", "http.lowSpeedLimit=1000",
+            "-c", "http.lowSpeedTime=30",
+            "clone", "--depth", "1", "--single-branch",
+            &url, &target_dir,
+        ])
         .output()
         .map_err(|e| format!("Failed to execute git: {}", e))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("git clone failed: {}", stderr));
+        // Cleanup failed clone attempt
+        let _ = std::fs::remove_dir_all(&target_dir);
+        return Err(format!("克隆仓库失败: {}", stderr.trim()));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     Ok(stdout)
+}
+
+/// Remove a directory and all its contents recursively.
+/// Used to clean up cloned repos after analysis.
+#[tauri::command]
+pub async fn remove_dir(path: String) -> Result<(), String> {
+    std::fs::remove_dir_all(&path).map_err(|e| format!("Failed to remove directory: {}", e))
 }
 
 /// Get a text overview of a project directory (file tree + basic stats).

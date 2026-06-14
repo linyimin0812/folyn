@@ -62,7 +62,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   },
 
   startAnalysis: async (url: string, language: ReportLanguage) => {
-    if (get().isAnalyzing) throw new Error('Analysis already in progress');
+    if (get().isAnalyzing) throw new Error('分析正在进行中');
     set({ isAnalyzing: true, error: null, analysisProgress: '' });
     try {
       const filePath = await analyzeProject(url, language, (msg) => {

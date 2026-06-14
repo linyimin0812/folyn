@@ -47,7 +47,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
       <button
         className={`activity-icon ${activePanel === 'analyze' ? 'active' : ''}`}
         onClick={() => onPanelChange('analyze')}
-        title="GitHub Analysis"
+        title="项目分析"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
           <path d="M21 21H4.6c-.56 0-.84 0-1.054-.109a1 1 0 01-.437-.437C3 20.24 3 19.96 3 19.4V3" />

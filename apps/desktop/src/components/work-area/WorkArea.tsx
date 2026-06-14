@@ -254,7 +254,7 @@ export function WorkArea() {
         <WikiGraphView />
       ) : tabs.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-t3 text-[13px] select-none">
-          {activePanel === 'clips' ? '暂无剪藏' : activePanel === 'wiki' ? '暂无 Wiki 页面' : activePanel === 'calendar' ? '暂无日记' : '暂无打开的文件'}
+          {activePanel === 'clips' ? '暂无剪藏' : activePanel === 'wiki' ? '暂无 Wiki 页面' : activePanel === 'calendar' ? '暂无日记' : activePanel === 'analyze' ? '暂无分析报告' : '暂无打开的文件'}
         </div>
       ) : (<>
 

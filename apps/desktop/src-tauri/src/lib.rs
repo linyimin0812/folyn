@@ -68,6 +68,7 @@ pub fn run() {
             commands::on_webview_url_changed,
             commands::git_clone,
             commands::get_project_overview,
+            commands::remove_dir,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

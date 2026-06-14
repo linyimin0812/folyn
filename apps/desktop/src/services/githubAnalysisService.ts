@@ -32,10 +32,25 @@ export function parseGitHubUrl(url: string): { owner: string; repo: string } {
 /**
  * Clone a GitHub repository to a local directory using Tauri shell command.
  * Performs a shallow clone (--depth 1) for speed.
+ * Retries with alternate URL format on failure.
  */
-async function cloneRepo(url: string, targetDir: string): Promise<void> {
+async function cloneRepo(owner: string, repo: string, targetDir: string): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
-  await invoke<string>('git_clone', { url, targetDir });
+  const urls = [
+    `https://github.com/${owner}/${repo}.git`,
+    `https://github.com/${owner}/${repo}`,
+  ];
+
+  let lastError: string = '';
+  for (const url of urls) {
+    try {
+      await invoke<string>('git_clone', { url, targetDir });
+      return;
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+    }
+  }
+  throw new Error(lastError || '克隆失败');
 }
 
 /**
@@ -191,82 +206,92 @@ export async function analyzeProject(
   onProgress?: (msg: string) => void,
 ): Promise<string> {
   const vault = useVaultStore.getState();
-  if (!vault.currentVault) throw new Error('No active vault');
+  if (!vault.currentVault) throw new Error('请先打开一个 Vault');
 
   // 1. Parse URL
-  onProgress?.('Parsing repository URL...');
+  onProgress?.('解析仓库链接...');
   const { owner, repo } = parseGitHubUrl(url);
 
   // 2. Resolve base path and set up clone directory
-  onProgress?.('Cloning repository...');
+  onProgress?.('正在克隆仓库...');
   const basePath = await resolveBasePath(vault.currentVault.basePath);
   const reposDir = `${basePath}/.quill-repos`;
   const cloneDir = `${reposDir}/${repo}`;
 
   // Clone repo (shallow clone) to .quill-repos directory
   try {
-    await cloneRepo(`https://github.com/${owner}/${repo}.git`, cloneDir);
+    await cloneRepo(owner, repo, cloneDir);
   } catch (err) {
-    throw new Error(`Failed to clone repository: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`克隆仓库失败: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  // 3. Get project overview (file tree)
-  onProgress?.('Analyzing project structure...');
-  let projectOverview: string;
   try {
-    projectOverview = await getProjectOverview(cloneDir);
-  } catch (err) {
-    throw new Error(`Failed to analyze project structure: ${err instanceof Error ? err.message : String(err)}`);
-  }
+    // 3. Get project overview (file tree)
+    onProgress?.('正在分析项目结构...');
+    let projectOverview: string;
+    try {
+      projectOverview = await getProjectOverview(cloneDir);
+    } catch (err) {
+      throw new Error(`分析项目结构失败: ${err instanceof Error ? err.message : String(err)}`);
+    }
 
-  // 4. Read README
-  const readme = await readReadme(cloneDir);
+    // 4. Read README
+    const readme = await readReadme(cloneDir);
 
-  // 5. Detect language if auto
-  const resolvedLanguage: 'zh' | 'en' =
-    language === 'auto' ? detectLanguage(readme) : language;
+    // 5. Detect language if auto
+    const resolvedLanguage: 'zh' | 'en' =
+      language === 'auto' ? detectLanguage(readme) : language;
 
-  // 6. AI analysis
-  onProgress?.('AI is performing deep analysis...');
-  const settings = useSettingsStore.getState();
+    // 6. AI analysis
+    onProgress?.('AI 正在深度分析...');
+    const settings = useSettingsStore.getState();
 
-  const registry = CliAdapterRegistry.getInstance();
-  const adapter = registry.create(settings.cliAdapter);
-  // Set workingDir to cloneDir so AI can Read files from the cloned repo
-  await adapter.start({ cliPath: settings.cliPath, workingDir: cloneDir });
+    const registry = CliAdapterRegistry.getInstance();
+    const adapter = registry.create(settings.cliAdapter);
+    // Set workingDir to cloneDir so AI can Read files from the cloned repo
+    await adapter.start({ cliPath: settings.cliPath, workingDir: cloneDir });
 
-  let aiResponse: string;
-  try {
-    const prompt = buildAnalysisPrompt(projectOverview, readme, resolvedLanguage);
-    const textPromise = collectTextFromStream(adapter);
-    await adapter.send(prompt);
-    aiResponse = await textPromise;
+    let aiResponse: string;
+    try {
+      const prompt = buildAnalysisPrompt(projectOverview, readme, resolvedLanguage);
+      const textPromise = collectTextFromStream(adapter);
+      await adapter.send(prompt);
+      aiResponse = await textPromise;
+    } finally {
+      await adapter.stop();
+    }
+
+    if (!aiResponse || aiResponse.trim().length === 0) {
+      throw new Error('AI 分析结果为空');
+    }
+
+    // 7. Extract HTML from AI response
+    const htmlContent = extractHtml(aiResponse);
+
+    if (!htmlContent.startsWith('<!DOCTYPE') && !htmlContent.startsWith('<html')) {
+      throw new Error('AI 未能生成有效的 HTML 报告');
+    }
+
+    // 8. Save report
+    onProgress?.('正在保存报告...');
+    const date = new Date().toISOString().split('T')[0];
+    const fileName = `${date}-${repo}.html`;
+    const filePath = `reports/${fileName}`;
+
+    await vault.createDir('reports');
+    await vault.createFile(filePath, htmlContent);
+
+    // Auto-open in editor
+    await useEditorStore.getState().openFile(filePath, fileName);
+
+    return filePath;
   } finally {
-    await adapter.stop();
+    // 9. Always cleanup cloned repo to avoid disk bloat
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('remove_dir', { path: cloneDir });
+    } catch {
+      console.warn('[githubAnalysisService] Failed to cleanup cloned repo:', cloneDir);
+    }
   }
-
-  if (!aiResponse || aiResponse.trim().length === 0) {
-    throw new Error('AI analysis returned empty result');
-  }
-
-  // 7. Extract HTML from AI response
-  const htmlContent = extractHtml(aiResponse);
-
-  if (!htmlContent.startsWith('<!DOCTYPE') && !htmlContent.startsWith('<html')) {
-    throw new Error('AI did not generate a valid HTML report');
-  }
-
-  // 8. Save report
-  onProgress?.('Saving report...');
-  const date = new Date().toISOString().split('T')[0];
-  const fileName = `${date}-${repo}.html`;
-  const filePath = `reports/${fileName}`;
-
-  await vault.createDir('reports');
-  await vault.createFile(filePath, htmlContent);
-
-  // Auto-open in editor
-  await useEditorStore.getState().openFile(filePath, fileName);
-
-  return filePath;
 }

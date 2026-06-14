@@ -56,6 +56,7 @@ export function detectActivity(filePath: string, fileType: FileType): ActivityPa
   if (filePath === 'wiki-graph') return 'wiki';
   if (fileType === 'clip' || filePath.startsWith('clips/')) return 'clips';
   if (filePath.startsWith(WIKI_PREFIX)) return 'wiki';
+  if (filePath.startsWith('reports/')) return 'analyze';
 
   // Check daily notes directory
   const dailyDir = useSettingsStore.getState().dailyNotesDir || 'daily';
@@ -344,7 +345,47 @@ export const useEditorStore = create<EditorState>()(
 
         const existing = get().tabs.find((t) => t.id === tabId);
         if (existing) {
-          set({ activeTabId: existing.id });
+          // Re-detect activity to fix stale values from before path-based detection
+          const correctActivity = detectActivity(filePath, existing.fileType);
+          const needsActivityUpdate = existing.activity !== correctActivity;
+
+          // If existing tab has empty content but the file type needs content, reload it
+          if (!existing.content && getHandlerById(existing.fileType)?.needsFileContent) {
+            try {
+              const handler = getHandlerById(existing.fileType);
+              let raw: string;
+              if (filePath.startsWith(WIKI_PREFIX)) {
+                raw = await wikiProvider.readFile(filePath.slice(WIKI_PREFIX.length));
+              } else {
+                raw = await useVaultStore.getState().readFile(filePath);
+              }
+              const content = handler?.deserialize ? handler.deserialize(raw) : raw;
+              set((state) => ({
+                tabs: state.tabs.map((t) =>
+                  t.id === tabId ? { ...t, content, ...(needsActivityUpdate ? { activity: correctActivity } : {}) } : t,
+                ),
+                activeTabId: tabId,
+              }));
+            } catch (err) {
+              console.error('[EditorStore] Failed to reload content for existing tab:', err);
+              set((state) => ({
+                activeTabId: existing.id,
+                ...(needsActivityUpdate ? { tabs: state.tabs.map((t) => t.id === tabId ? { ...t, activity: correctActivity } : t) } : {}),
+              }));
+            }
+          } else if (needsActivityUpdate) {
+            set((state) => ({
+              tabs: state.tabs.map((t) => t.id === tabId ? { ...t, activity: correctActivity } : t),
+              activeTabId: existing.id,
+            }));
+          } else {
+            set({ activeTabId: existing.id });
+          }
+          // Auto-switch to appropriate view mode
+          const handler = getHandlerById(existing.fileType);
+          if (handler?.defaultViewMode) {
+            set({ viewMode: handler.defaultViewMode });
+          }
           return;
         }
         set({ isFileLoading: true });
@@ -360,6 +401,7 @@ export const useEditorStore = create<EditorState>()(
               raw = await useVaultStore.getState().readFile(filePath);
             }
             content = handler.deserialize ? handler.deserialize(raw) : raw;
+            console.log(`[EditorStore] openFile: ${filePath} type=${fileType} content=${content.length} chars`);
           }
           const newTab: FileTab = {
             id: tabId,
@@ -374,8 +416,9 @@ export const useEditorStore = create<EditorState>()(
             tabs: [...state.tabs, newTab],
             activeTabId: newTab.id,
           }));
-          if (filePath.startsWith(WIKI_PREFIX)) {
-            set({ viewMode: 'preview' });
+          // Auto-switch to preview mode for file types that prefer preview
+          if (handler?.defaultViewMode) {
+            set({ viewMode: handler.defaultViewMode });
           }
           persistOpenTabs(vaultId, get().tabs, get().activeTabId);
         } catch (err) {
@@ -451,7 +494,7 @@ export const useEditorStore = create<EditorState>()(
             const webTabId = `web:${tabInfo.path}`;
             const alreadyOpen = get().tabs.find((t) => t.id === webTabId);
             if (alreadyOpen) continue;
-            const restoredActivity = tabInfo.activity ?? detectActivity(tabInfo.path, 'web');
+            const restoredActivity = detectActivity(tabInfo.path, 'web');
             const newTab: FileTab = {
               id: webTabId,
               name: tabInfo.name,
@@ -477,7 +520,7 @@ export const useEditorStore = create<EditorState>()(
                 const raw = await useVaultStore.getState().readFile(tabInfo.path);
                 content = handler.deserialize ? handler.deserialize(raw) : raw;
               }
-              const restoredActivity = tabInfo.activity ?? detectActivity(tabInfo.path, fileType);
+              const restoredActivity = detectActivity(tabInfo.path, fileType);
               const newTab: FileTab = {
                 id: tabId,
                 name: tabInfo.name,
