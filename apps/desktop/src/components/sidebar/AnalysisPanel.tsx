@@ -1,9 +1,79 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAnalysisStore, type ReportMeta } from '@/store/analysisStore';
 import { useEditorStore } from '@/store/editorStore';
 import type { ReportLanguage } from '@/services/githubAnalysisService';
 import { parseGitHubUrl } from '@/services/githubAnalysisService';
+import type { StreamEvent } from '@/services/aiStreamUtils';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
+
+// ── Stream Event List (structured AI output with labels) ──
+
+function StreamEventList({ events }: { events: StreamEvent[] }) {
+  return (
+    <>
+      {events.map((event, i) => {
+        if (event.kind === 'thinking') {
+          return (
+            <details key={`t-${i}`} open className="text-[10px] text-purple-400/80 italic leading-relaxed">
+              <summary className="cursor-pointer text-[9px] font-semibold uppercase tracking-wider text-purple-400/60 not-italic select-none hover:text-purple-400/80 py-0.5">
+                Thinking
+              </summary>
+              <div className="whitespace-pre-wrap break-words pl-1.5 border-l border-purple-400/20 mt-0.5 max-h-[120px] overflow-y-auto">
+                {event.content}
+              </div>
+            </details>
+          );
+        }
+        if (event.kind === 'tool') {
+          return (
+            <div key={`tool-${i}`} className="py-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-blue-400 shrink-0">
+                  {event.output ? '✓' : '▸'} Tool
+                </span>
+                <span className="text-[10px] text-blue-400/80 font-mono truncate">{event.content}</span>
+              </div>
+              {event.detail && (
+                <div className="text-[9px] text-t3 font-mono pl-4 py-0.5 truncate" title={event.detail}>
+                  {event.detail}
+                </div>
+              )}
+              {event.output && (
+                <div className="text-[9px] text-green-500/70 font-mono pl-4 py-0.5 truncate" title={event.output}>
+                  → {event.output}
+                </div>
+              )}
+            </div>
+          );
+        }
+        return (
+          <div key={`text-${i}`} className="text-[11px] text-t3 leading-relaxed whitespace-pre-wrap break-words">
+            {event.content}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function StreamDisplay({ events }: { events: StreamEvent[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.scrollTop = ref.current.scrollHeight;
+    }
+  }, [events]);
+
+  return (
+    <div
+      ref={ref}
+      className="flex flex-col gap-1 max-h-[200px] overflow-y-auto bg-bg/50 rounded-md p-2 border border-brd/50"
+    >
+      <StreamEventList events={events} />
+    </div>
+  );
+}
 
 // ── Report Card ──
 
@@ -358,6 +428,7 @@ function AnalysisDialog({
   const analysisProgress = useAnalysisStore((s) => s.analysisProgress);
   const error = useAnalysisStore((s) => s.error);
   const pendingReport = useAnalysisStore((s) => s.pendingReport);
+  const aiStreamEvents = useAnalysisStore((s) => s.aiStreamEvents);
   const generateAnalysis = useAnalysisStore((s) => s.generateAnalysis);
   const confirmAnalysis = useAnalysisStore((s) => s.confirmAnalysis);
   const cancelAnalysis = useAnalysisStore((s) => s.cancelAnalysis);
@@ -422,7 +493,8 @@ function AnalysisDialog({
 
   const handleCancelPending = useCallback(() => {
     cancelAnalysis();
-  }, [cancelAnalysis]);
+    onClose();
+  }, [cancelAnalysis, onClose]);
 
   const handleClose = useCallback(() => {
     if (pendingReport) {
@@ -430,15 +502,15 @@ function AnalysisDialog({
     }
     onClose();
   }, [pendingReport, cancelAnalysis, onClose]);
-
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey && !pendingReport) {
+      if (e.key === 'Enter' && !e.shiftKey && !pendingReport && !isAnalyzing) {
         e.preventDefault();
         handleStart();
-      } else if (e.key === 'Escape' && !isAnalyzing) {
+      } else if (e.key === 'Escape') {
         if (pendingReport) {
           cancelAnalysis();
+          onClose();
         } else if (existingReport) {
           setExistingReport(null);
         } else {
@@ -449,15 +521,13 @@ function AnalysisDialog({
     [handleStart, isAnalyzing, onClose, existingReport, pendingReport, cancelAnalysis],
   );
 
-  const canClose = !isAnalyzing;
-
   return (
     <div
       className="fixed inset-0 z-[9999] bg-black/35 flex items-center justify-center"
-      onClick={() => canClose && handleClose()}
+      onClick={() => handleClose()}
     >
       <div
-        className="bg-panel rounded-[10px] py-5 px-6 w-[380px] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd"
+        className="bg-panel rounded-[10px] py-5 px-6 w-[420px] max-h-[75vh] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Title */}
@@ -468,6 +538,9 @@ function AnalysisDialog({
           </svg>
           <span className="text-[15px] font-semibold text-t1">新建项目分析</span>
         </div>
+
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto min-h-0">
 
         {/* Input mode */}
         {!isAnalyzing && !existingReport && !pendingReport && (
@@ -549,9 +622,20 @@ function AnalysisDialog({
 
         {/* Progress mode */}
         {isAnalyzing && !pendingReport && (
-          <div className="flex flex-col items-center gap-3 py-4">
-            <span className="inline-block w-8 h-8 rounded-full border-[2.5px] border-brd border-t-acc animate-spin" />
-            <div className="text-[13px] text-t2 text-center">{analysisProgress || '准备中...'}</div>
+          <div className="flex flex-col gap-3 py-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="inline-block w-5 h-5 rounded-full border-[2px] border-brd border-t-acc animate-spin" />
+                <span className="text-[13px] text-t2">{analysisProgress || '准备中...'}</span>
+              </div>
+              <button
+                className="py-1 px-3 text-[12px] rounded-md bg-bg text-t2 border border-brd cursor-pointer hover:bg-hov transition-colors"
+                onClick={onClose}
+              >
+                隐藏
+              </button>
+            </div>
+            {aiStreamEvents.length > 0 && <StreamDisplay events={aiStreamEvents} />}
             <div className="text-[11px] text-t3 text-center">分析过程可能需要几分钟，请耐心等待</div>
           </div>
         )}
@@ -565,6 +649,8 @@ function AnalysisDialog({
             onCancel={handleCancelPending}
           />
         )}
+
+        </div> {/* end scrollable content */}
       </div>
     </div>
   );
@@ -579,6 +665,8 @@ export function AnalysisPanel() {
   const loadReports = useAnalysisStore((s) => s.loadReports);
   const deleteReport = useAnalysisStore((s) => s.deleteReport);
   const removeTag = useAnalysisStore((s) => s.removeTag);
+  const isAnalyzing = useAnalysisStore((s) => s.isAnalyzing);
+  const pendingReport = useAnalysisStore((s) => s.pendingReport);
 
   const [showDialog, setShowDialog] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ report: ReportMeta; tag: string; tagCount: number } | null>(null);
@@ -587,6 +675,13 @@ export function AnalysisPanel() {
   useEffect(() => {
     loadReports();
   }, [loadReports]);
+
+  // Auto-open dialog when analysis is complete and report is ready for confirmation
+  useEffect(() => {
+    if (pendingReport) {
+      setShowDialog(true);
+    }
+  }, [pendingReport]);
 
   // Group reports by tags
   const { tagGroups, uncategorized } = useMemo(() => {
@@ -668,6 +763,16 @@ export function AnalysisPanel() {
         {hasAnyReports && (
           <span className="text-t3 font-normal">({reports.length})</span>
         )}
+        {isAnalyzing && !showDialog && (
+          <span
+            className="ml-1 flex items-center gap-1 text-acc text-[10px] cursor-pointer hover:opacity-80"
+            onClick={() => setShowDialog(true)}
+            title="点击查看详情"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-acc animate-pulse" />
+            分析中
+          </span>
+        )}
         <button
           className="ml-auto w-5 h-5 rounded flex items-center justify-center bg-transparent border-none cursor-pointer text-t2 hover:bg-hov hover:text-t1 transition-colors"
           onClick={() => setShowDialog(true)}
@@ -746,7 +851,7 @@ export function AnalysisPanel() {
       </div>
 
       {/* Analysis dialog */}
-      {showDialog && (
+      {(showDialog || pendingReport) && (
         <AnalysisDialog onClose={() => setShowDialog(false)} />
       )}
 

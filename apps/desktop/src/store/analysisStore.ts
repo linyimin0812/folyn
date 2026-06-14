@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { VaultEntry } from '@quill/vault-provider';
 import { useVaultStore } from './vaultStore';
+import type { StreamEvent } from '@/services/aiStreamUtils';
 import {
   analyzeProject,
   generateReport,
@@ -34,6 +35,10 @@ interface AnalysisState {
   isAnalyzing: boolean;
   error: string | null;
   analysisProgress: string;
+  /** Real-time AI streaming text (in-memory only, not persisted) */
+  aiStreamText: string;
+  /** Structured AI streaming events for UI rendering (in-memory only) */
+  aiStreamEvents: StreamEvent[];
 
   /** Pending report awaiting user confirmation */
   pendingReport: PendingReport | null;
@@ -116,6 +121,8 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   isAnalyzing: false,
   error: null,
   analysisProgress: '',
+  aiStreamText: '',
+  aiStreamEvents: [],
   pendingReport: null,
   pendingOverwritePath: null,
 
@@ -148,10 +155,14 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
 
   startAnalysis: async (url: string, language: ReportLanguage) => {
     if (get().isAnalyzing) throw new Error('分析正在进行中');
-    set({ isAnalyzing: true, error: null, analysisProgress: '' });
+    set({ isAnalyzing: true, error: null, analysisProgress: '', aiStreamText: '', aiStreamEvents: [] });
     try {
       const filePath = await analyzeProject(url, language, (msg) => {
         set({ analysisProgress: msg });
+      }, (chunk) => {
+        set((s) => ({ aiStreamText: s.aiStreamText + chunk }));
+      }, (event) => {
+        set((s) => ({ aiStreamEvents: [...s.aiStreamEvents, event] }));
       });
       await get().loadReports();
       return filePath;
@@ -160,16 +171,20 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
       set({ error: msg });
       throw new Error(msg);
     } finally {
-      set({ isAnalyzing: false, analysisProgress: '' });
+      set({ isAnalyzing: false, analysisProgress: '', aiStreamText: '', aiStreamEvents: [] });
     }
   },
 
   generateAnalysis: async (url: string, language: ReportLanguage) => {
     if (get().isAnalyzing) throw new Error('分析正在进行中');
-    set({ isAnalyzing: true, error: null, analysisProgress: '', pendingReport: null });
+    set({ isAnalyzing: true, error: null, analysisProgress: '', aiStreamText: '', aiStreamEvents: [], pendingReport: null });
     try {
       const result: GeneratedReport = await generateReport(url, language, (msg) => {
         set({ analysisProgress: msg });
+      }, (chunk) => {
+        set((s) => ({ aiStreamText: s.aiStreamText + chunk }));
+      }, (event) => {
+        set((s) => ({ aiStreamEvents: [...s.aiStreamEvents, event] }));
       });
       set({
         pendingReport: {
@@ -185,7 +200,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
       set({ error: msg });
       throw new Error(msg);
     } finally {
-      set({ isAnalyzing: false, analysisProgress: '' });
+      set({ isAnalyzing: false, analysisProgress: '', aiStreamText: '', aiStreamEvents: [] });
     }
   },
 
@@ -193,7 +208,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     const { pendingReport, pendingOverwritePath } = get();
     if (!pendingReport) throw new Error('没有待确认的报告');
 
-    set({ isAnalyzing: true, error: null, analysisProgress: '正在保存报告...' });
+    set({ isAnalyzing: true, error: null, analysisProgress: '正在保存报告...', aiStreamText: '' });
     try {
       const normalizedTags = tags.map((t) => t.toLowerCase().trim()).filter(Boolean);
       const filePath = await saveReport(pendingReport.repo, normalizedTags, pendingReport.html);
@@ -222,12 +237,12 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
       set({ error: msg });
       throw new Error(msg);
     } finally {
-      set({ isAnalyzing: false, analysisProgress: '' });
+      set({ isAnalyzing: false, analysisProgress: '', aiStreamText: '', aiStreamEvents: [] });
     }
   },
 
   cancelAnalysis: () => {
-    set({ pendingReport: null, pendingOverwritePath: null, error: null, analysisProgress: '' });
+    set({ pendingReport: null, pendingOverwritePath: null, error: null, analysisProgress: '', aiStreamText: '', aiStreamEvents: [] });
   },
 
   setPendingOverwritePath: (path: string | null) => {

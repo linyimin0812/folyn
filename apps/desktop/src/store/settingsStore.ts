@@ -3,7 +3,7 @@ import { storageClient } from '@/utils/storageClient';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type AppPage = 'editor' | 'vault' | 'settings';
-export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'ai' | 'templates' | 'about';
+export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'ai' | 'templates' | 'skills' | 'about';
 export type LinkOpenMode = 'external' | 'internal';
 
 export interface ShortcutItem {

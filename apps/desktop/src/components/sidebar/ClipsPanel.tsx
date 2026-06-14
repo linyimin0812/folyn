@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useClipStore, type ClipFile } from '@/store/clipStore';
 import type { ClipMetadata, ClipLanguage } from '@/services/clipService';
+import type { StreamEvent } from '@/services/aiStreamUtils';
 import { useEditorStore } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
@@ -199,12 +200,79 @@ function TagEditor({
   );
 }
 
-/** Progress display during clipping */
-function ClipProgress({ message }: { message: string }) {
+/** Renders a list of structured stream events with visual labels */
+function StreamEventList({ events }: { events: StreamEvent[] }) {
   return (
-    <div className="p-3 rounded-lg border border-acc/30 bg-surf flex items-center gap-2.5">
-      <span className="inline-block w-3.5 h-3.5 rounded-full border-[1.5px] border-brd border-t-acc animate-spin shrink-0" />
-      <span className="text-[12px] text-t2">{message}</span>
+    <>
+      {events.map((event, i) => {
+        if (event.kind === 'thinking') {
+          return (
+            <details key={`t-${i}`} open className="text-[10px] text-purple-400/80 italic leading-relaxed">
+              <summary className="cursor-pointer text-[9px] font-semibold uppercase tracking-wider text-purple-400/60 not-italic select-none hover:text-purple-400/80 py-0.5">
+                Thinking
+              </summary>
+              <div className="whitespace-pre-wrap break-words pl-1.5 border-l border-purple-400/20 mt-0.5 max-h-[120px] overflow-y-auto">
+                {event.content}
+              </div>
+            </details>
+          );
+        }
+        if (event.kind === 'tool') {
+          return (
+            <div key={`tool-${i}`} className="py-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-blue-400 shrink-0">
+                  {event.output ? '✓' : '▸'} Tool
+                </span>
+                <span className="text-[10px] text-blue-400/80 font-mono truncate">{event.content}</span>
+              </div>
+              {event.detail && (
+                <div className="text-[9px] text-t3 font-mono pl-4 py-0.5 truncate" title={event.detail}>
+                  {event.detail}
+                </div>
+              )}
+              {event.output && (
+                <div className="text-[9px] text-green-500/70 font-mono pl-4 py-0.5 truncate" title={event.output}>
+                  → {event.output}
+                </div>
+              )}
+            </div>
+          );
+        }
+        return (
+          <div key={`text-${i}`} className="text-[11px] text-t3 leading-relaxed whitespace-pre-wrap break-words">
+            {event.content}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/** Progress display during clipping */
+function ClipProgress({ message, events }: { message: string; events?: StreamEvent[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [events]);
+
+  return (
+    <div className="p-3 rounded-lg border border-acc/30 bg-surf flex flex-col gap-2">
+      <div className="flex items-center gap-2.5">
+        <span className="inline-block w-3.5 h-3.5 rounded-full border-[1.5px] border-brd border-t-acc animate-spin shrink-0" />
+        <span className="text-[12px] text-t2">{message || '准备中...'}</span>
+      </div>
+      {events && events.length > 0 && (
+        <div
+          ref={scrollRef}
+          className="flex flex-col gap-1 max-h-[200px] overflow-y-auto bg-bg/50 rounded-md p-2 border border-brd/50"
+        >
+          <StreamEventList events={events} />
+        </div>
+      )}
     </div>
   );
 }
@@ -364,6 +432,7 @@ export function ClipsPanel() {
   const pendingClip = useClipStore((s) => s.pendingClip);
   const error = useClipStore((s) => s.error);
   const allTags = useClipStore((s) => s.allTags);
+  const aiStreamEvents = useClipStore((s) => s.aiStreamEvents);
   const deleteFile = useVaultStore((s) => s.deleteFile);
   const refreshFileTree = useVaultStore((s) => s.refreshFileTree);
 
@@ -406,8 +475,8 @@ export function ClipsPanel() {
     setUrl('');
     setDuplicateWarning(null);
     setOverwritePath(null);
-    cancelClip();
-  }, [cancelClip]);
+    // Don't cancel clipping — let it continue in background
+  }, []);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -432,7 +501,7 @@ export function ClipsPanel() {
     cancelClip();
     setOverwritePath(null);
     setDuplicateWarning(null);
-    // Keep input visible so user can retry or change URL
+    setShowInput(false);
   }, [cancelClip]);
 
   const handleToggleTag = useCallback((tag: string) => {
@@ -473,10 +542,13 @@ export function ClipsPanel() {
   }, [deleteConfirm, deleteFile, refreshFileTree, loadClips]);
 
   // Determine what to show in the input area
-  const showProgress = isClipping && !pendingClip && clipProgress;
+  const showProgress = isClipping && !pendingClip;
   const showConfirmation = pendingClip && !isClipping;
   const showSaving = isClipping && pendingClip;
   const showModal = showInput || showProgress || showConfirmation || showSaving;
+
+  // Track previous pendingClip to detect transitions
+  const prevPendingClipRef = useRef(pendingClip);
 
   useEffect(() => {
     if (!showModal) return;
@@ -489,6 +561,18 @@ export function ClipsPanel() {
     return () => document.removeEventListener('keydown', handleEsc);
   }, [showModal, handleCloseModal]);
 
+  // Auto-open modal when clip is ready for confirmation
+  useEffect(() => {
+    if (pendingClip && !prevPendingClipRef.current) {
+      setShowInput(true);
+    }
+    // Dismiss modal when pending clip is cleared (cancel/confirm)
+    if (!pendingClip && prevPendingClipRef.current) {
+      setShowInput(false);
+    }
+    prevPendingClipRef.current = pendingClip;
+  }, [pendingClip]);
+
   return (
     <div className="flex-1 overflow-y-auto flex flex-col">
       <div className="py-2 px-3 text-[11px] font-semibold text-t3 uppercase tracking-[0.5px] flex items-center gap-1.5">
@@ -498,6 +582,16 @@ export function ClipsPanel() {
         <span>Clips</span>
         {clips.length > 0 && (
           <span className="text-t3 font-normal">({clips.length})</span>
+        )}
+        {isClipping && !showModal && (
+          <span
+            className="ml-1 flex items-center gap-1 text-acc text-[10px] cursor-pointer hover:opacity-80"
+            onClick={() => setShowInput(true)}
+            title="点击查看详情"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-acc animate-pulse" />
+            剪藏中
+          </span>
         )}
         <button
           className="ml-auto w-5 h-5 rounded flex items-center justify-center bg-transparent border-none cursor-pointer text-t2 hover:bg-hov hover:text-t1 transition-colors"
@@ -542,7 +636,7 @@ export function ClipsPanel() {
       {/* Clip modal dialog */}
       {showModal && (
         <div className="fixed inset-0 z-[9999] bg-black/35 flex items-center justify-center" onClick={handleCloseModal}>
-          <div className="bg-panel rounded-[10px] py-5 px-6 min-w-[420px] max-w-[500px] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd flex flex-col gap-2.5 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-panel rounded-[10px] py-5 px-6 min-w-[420px] max-w-[500px] max-h-[75vh] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd flex flex-col gap-2.5 overflow-hidden" onClick={(e) => e.stopPropagation()}>
             {/* Modal header */}
             <div className="text-[16px] font-semibold text-t1 flex items-center gap-1.5">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -550,6 +644,9 @@ export function ClipsPanel() {
               </svg>
               添加剪藏
             </div>
+
+            {/* Scrollable content area */}
+            <div className="flex-1 overflow-y-auto flex flex-col gap-2.5 min-h-0">
 
             {/* URL input */}
             {showInput && !showConfirmation && !showSaving && !duplicateWarning && (
@@ -647,8 +744,8 @@ export function ClipsPanel() {
               </div>
             )}
 
-            {/* Progress spinner */}
-            {showProgress && <ClipProgress message={clipProgress} />}
+            {/* Progress spinner with streaming events */}
+            {showProgress && <ClipProgress message={clipProgress} events={aiStreamEvents} />}
 
             {/* Confirmation card */}
             {showConfirmation && (
@@ -668,6 +765,8 @@ export function ClipsPanel() {
                 <span className="text-[12px] text-t2">正在保存文件...</span>
               </div>
             )}
+
+            </div> {/* end scrollable content */}
           </div>
         </div>
       )}

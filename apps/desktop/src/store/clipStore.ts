@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { VaultEntry } from '@quill/vault-provider';
 import { useVaultStore } from './vaultStore';
+import type { StreamEvent } from '@/services/aiStreamUtils';
 import {
   clipUrl as clipUrlService,
   generateClip as generateClipService,
@@ -31,6 +32,10 @@ interface ClipState {
   pendingClip: ClipMetadata | null;
   /** Progress message during clipping */
   clipProgress: string;
+  /** Real-time AI streaming text (in-memory only, not persisted) */
+  aiStreamText: string;
+  /** Structured AI streaming events for UI rendering (in-memory only) */
+  aiStreamEvents: StreamEvent[];
   /** Map of clipped URLs to their file paths (url → clipPath) */
   clipUrls: Map<string, string>;
 
@@ -182,6 +187,8 @@ export const useClipStore = create<ClipState>((set, get) => ({
   error: null,
   pendingClip: null,
   clipProgress: '',
+  aiStreamText: '',
+  aiStreamEvents: [],
   clipUrls: new Map(),
 
   loadClips: async () => {
@@ -205,9 +212,13 @@ export const useClipStore = create<ClipState>((set, get) => ({
 
   clipUrl: async (url: string, onProgress?: (msg: string) => void, lang?: ClipLanguage) => {
     if (get().isClipping) throw new Error('剪藏任务正在进行中');
-    set({ isClipping: true, error: null });
+    set({ isClipping: true, error: null, aiStreamText: '', aiStreamEvents: [] });
     try {
-      const filePath = await clipUrlService(url, onProgress, lang);
+      const filePath = await clipUrlService(url, onProgress, lang, (chunk) => {
+        set((s) => ({ aiStreamText: s.aiStreamText + chunk }));
+      }, (event) => {
+        set((s) => ({ aiStreamEvents: [...s.aiStreamEvents, event] }));
+      });
       await get().loadClips();
       return filePath;
     } catch (err) {
@@ -215,18 +226,22 @@ export const useClipStore = create<ClipState>((set, get) => ({
       set({ error: msg });
       throw new Error(msg);
     } finally {
-      set({ isClipping: false });
+      set({ isClipping: false, aiStreamText: '', aiStreamEvents: [] });
     }
   },
 
   startClip: async (url: string, lang?: ClipLanguage) => {
     if (get().isClipping) throw new Error('剪藏任务正在进行中');
-    set({ isClipping: true, error: null, pendingClip: null, clipProgress: '' });
+    set({ isClipping: true, error: null, pendingClip: null, clipProgress: '', aiStreamText: '', aiStreamEvents: [] });
     try {
       const metadata = await generateClipService(url, (msg) => {
         set({ clipProgress: msg });
-      }, lang);
-      set({ pendingClip: metadata, clipProgress: '' });
+      }, lang, (chunk) => {
+        set((s) => ({ aiStreamText: s.aiStreamText + chunk }));
+      }, (event) => {
+        set((s) => ({ aiStreamEvents: [...s.aiStreamEvents, event] }));
+      });
+      set({ pendingClip: metadata, clipProgress: '', aiStreamText: '', aiStreamEvents: [] });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       set({ error: msg });
@@ -253,7 +268,7 @@ export const useClipStore = create<ClipState>((set, get) => ({
   },
 
   cancelClip: () => {
-    set({ pendingClip: null, clipProgress: '', error: null });
+    set({ pendingClip: null, clipProgress: '', aiStreamText: '', aiStreamEvents: [], error: null });
   },
 
   findClipByUrl: (url: string) => {
