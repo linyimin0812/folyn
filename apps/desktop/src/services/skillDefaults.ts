@@ -17,6 +17,10 @@ const clipCardSkill: Skill = {
 
 你是一个网页内容分析助手。请按照以下步骤分析网页内容并生成结构化知识卡片。
 
+## 重要规则
+- **不要使用 Write 或任何文件创建工具将结果保存到磁盘。** 应用会自动处理保存。
+- 只在回复文本中输出 JSON 结果。
+
 ## 步骤
 
 1. **获取网页内容**：使用 WebFetch 工具获取用户提供的 URL 内容
@@ -56,6 +60,11 @@ const githubAnalysisSkill: Skill = {
   content: `# GitHub Repository Analysis
 
 You are a senior software architect. Analyze a GitHub repository and generate a comprehensive HTML report.
+
+## Important Rules
+- **Do NOT use Write or any file creation tool to save the HTML report to disk.** The application will handle saving automatically.
+- Only output the report content in your response text (inside a code block as specified below).
+- Clone repos to \`/tmp/\` only, and clean up after analysis.
 
 ## Steps
 

@@ -364,18 +364,40 @@ function ConfirmationMode({ pendingReport, isSaving, onConfirm, onCancel }: Conf
 
   return (
     <div className="flex flex-col gap-3" onKeyDown={handleKeyDown}>
-      {/* Repo info */}
-      <div className="flex items-start gap-2 p-2.5 rounded-md bg-acc/5 border border-acc/15">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-acc shrink-0 mt-0.5">
-          <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22" />
+      {/* Success header */}
+      <div className="flex items-center gap-2 p-2.5 rounded-md bg-green-500/8 border border-green-500/20">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-green-500 shrink-0">
+          <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <div className="flex-1 min-w-0">
-          <div className="text-[12px] text-t1 font-medium truncate">
-            {pendingReport.repo}
+          <div className="text-[12px] text-t1 font-medium">
+            分析完成 — {pendingReport.repo}
           </div>
           <div className="text-[10px] text-t3 truncate mt-0.5">
             {pendingReport.url}
           </div>
+        </div>
+      </div>
+
+      {/* HTML Preview */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[11px] text-t3 font-medium">
+          报告预览
+        </label>
+        <div className="rounded-md border border-brd overflow-hidden bg-white">
+          <iframe
+            srcDoc={pendingReport.html}
+            title="Report Preview"
+            sandbox=""
+            className="w-full h-[180px] border-none"
+          />
+        </div>
+        <div className="text-[10px] text-t3 flex items-center gap-1.5">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+            <path d="M14 2v6h6" />
+          </svg>
+          HTML {htmlSizeKB} KB · {pendingReport.tags.length} 个标签
         </div>
       </div>
 
@@ -385,15 +407,6 @@ function ConfirmationMode({ pendingReport, isSaving, onConfirm, onCancel }: Conf
           标签（可编辑）
         </label>
         <EditableTagChips tags={editedTags} onChange={setEditedTags} />
-      </div>
-
-      {/* Preview indicator */}
-      <div className="text-[10px] text-t3 flex items-center gap-1.5">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-          <path d="M14 2v6h6" />
-        </svg>
-        报告已生成，HTML 大小: {htmlSizeKB} KB
       </div>
 
       {/* Actions */}
