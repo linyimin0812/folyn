@@ -68,7 +68,7 @@ export function WorkArea() {
       prevWasWebRef.current = isWeb;
     }
 
-    if (activeTabId && handler?.defaultViewMode && viewMode !== handler.defaultViewMode) {
+    if (activeTabId && handler?.defaultViewMode && !activeTab?.viewMode && viewMode !== handler.defaultViewMode) {
       setViewMode(handler.defaultViewMode);
     }
   }, [activeTabId, handler, viewMode, setViewMode, activeTab]);

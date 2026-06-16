@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useAiStore } from '@/store/aiStore';
 import { useVaultStore } from '@/store/vaultStore';
+import { useEditorStore } from '@/store/editorStore';
 import { flattenFileTree } from '@/utils/treeUtils';
 import { FileIcon } from '@/components/icons/FileIcon';
 
@@ -49,12 +50,21 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
 
   const fileTree = useVaultStore((s) => s.fileTree);
   const allFiles = useMemo(() => flattenFileTree(fileTree), [fileTree]);
+  const activeFilePath = useEditorStore((s) => {
+    const tab = s.tabs.find((t) => t.id === s.activeTabId);
+    return tab?.path ?? null;
+  });
   const filteredMentionFiles = useMemo(() => {
     if (!mentionMenu.visible) return [];
     const q = mentionMenu.filter.toLowerCase();
-    if (!q) return allFiles.slice(0, 20);
-    return allFiles.filter((f) => f.path.toLowerCase().includes(q) || f.name.toLowerCase().includes(q)).slice(0, 20);
-  }, [mentionMenu.visible, mentionMenu.filter, allFiles]);
+    const matched = q
+      ? allFiles.filter((f) => f.path.toLowerCase().includes(q) || f.name.toLowerCase().includes(q))
+      : allFiles;
+    if (!activeFilePath) return matched.slice(0, 20);
+    const activeIdx = matched.findIndex((f) => f.path === activeFilePath);
+    if (activeIdx <= 0) return matched.slice(0, 20);
+    return [matched[activeIdx], ...matched.slice(0, activeIdx), ...matched.slice(activeIdx + 1)].slice(0, 20);
+  }, [mentionMenu.visible, mentionMenu.filter, allFiles, activeFilePath]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;

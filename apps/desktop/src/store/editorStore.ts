@@ -49,6 +49,8 @@ export interface FileTab {
   cursorLine?: number;
   /** Saved cursor column (1-based) for this tab */
   cursorCol?: number;
+  /** Saved view mode for this tab (restored on tab switch) */
+  viewMode?: ViewMode;
 }
 
 /** Determine which activity panel a tab belongs to based on its path and file type */
@@ -159,7 +161,15 @@ export const useEditorStore = create<EditorState>()(
       diffNewContent: null,
 
       setViewMode: (mode) => {
-        set({ viewMode: mode });
+        const activeTabId = get().activeTabId;
+        set((state) => ({
+          viewMode: mode,
+          tabs: activeTabId
+            ? state.tabs.map((t) =>
+                t.id === activeTabId ? { ...t, viewMode: mode } : t,
+              )
+            : state.tabs,
+        }));
         storageClient.set(EDITOR_STORAGE_KEY, mode);
       },
 
@@ -203,7 +213,11 @@ export const useEditorStore = create<EditorState>()(
       },
 
       setActiveTab: (tabId) => {
-        set({ activeTabId: tabId });
+        const tab = get().tabs.find((t) => t.id === tabId);
+        set({
+          activeTabId: tabId,
+          ...(tab?.viewMode ? { viewMode: tab.viewMode } : {}),
+        });
         const vaultId = useVaultStore.getState().activeVaultId;
         if (vaultId) persistOpenTabs(vaultId, get().tabs, tabId);
       },
@@ -381,10 +395,11 @@ export const useEditorStore = create<EditorState>()(
           } else {
             set({ activeTabId: existing.id });
           }
-          // Auto-switch to appropriate view mode
+          // Auto-switch to appropriate view mode — tab's saved mode takes priority
           const handler = getHandlerById(existing.fileType);
-          if (handler?.defaultViewMode) {
-            set({ viewMode: handler.defaultViewMode });
+          const targetMode = existing.viewMode ?? handler?.defaultViewMode;
+          if (targetMode) {
+            set({ viewMode: targetMode });
           }
           return;
         }
@@ -411,6 +426,7 @@ export const useEditorStore = create<EditorState>()(
             isDirty: false,
             fileType,
             activity: detectActivity(filePath, fileType),
+            viewMode: handler?.defaultViewMode,
           };
           set((state) => ({
             tabs: [...state.tabs, newTab],
@@ -503,6 +519,7 @@ export const useEditorStore = create<EditorState>()(
               isDirty: false,
               fileType: 'web',
               activity: restoredActivity,
+              viewMode: tabInfo.viewMode,
             };
             set((state) => ({
               tabs: [...state.tabs, newTab],
@@ -531,6 +548,7 @@ export const useEditorStore = create<EditorState>()(
                 activity: restoredActivity,
                 cursorLine: tabInfo.cursorLine,
                 cursorCol: tabInfo.cursorCol,
+                viewMode: tabInfo.viewMode,
               };
               set((state) => ({
                 tabs: [...state.tabs, newTab],
@@ -548,10 +566,17 @@ export const useEditorStore = create<EditorState>()(
           const webActiveId = `web:${saved.activeTabPath}`;
           const exists = get().tabs.find((t) => t.id === fileActiveId || t.id === webActiveId);
           if (exists) {
-            set({ activeTabId: exists.id });
+            set({
+              activeTabId: exists.id,
+              ...(exists.viewMode ? { viewMode: exists.viewMode } : {}),
+            });
           }
         } else if (get().tabs.length > 0 && !get().activeTabId) {
-          set({ activeTabId: get().tabs[0].id });
+          const firstTab = get().tabs[0];
+          set({
+            activeTabId: firstTab.id,
+            ...(firstTab.viewMode ? { viewMode: firstTab.viewMode } : {}),
+          });
         }
       },
 

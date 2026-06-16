@@ -1,23 +1,6 @@
 import { useState } from 'react';
 import { useEditorStore } from '../../store/editorStore';
-
-interface HeadingItem {
-  level: number;
-  text: string;
-  line: number;
-}
-
-function extractHeadings(content: string): HeadingItem[] {
-  const lines = content.split('\n');
-  const headings: HeadingItem[] = [];
-  lines.forEach((line, index) => {
-    const match = line.match(/^(#{1,6})\s+(.+)/);
-    if (match) {
-      headings.push({ level: match[1].length, text: match[2], line: index + 1 });
-    }
-  });
-  return headings;
-}
+import { extractHeadings } from '@/utils/markdownUtils';
 
 export function OutlinePanel() {
   const outlineVisible = useEditorStore((s) => s.outlineVisible);

@@ -1,5 +1,5 @@
 import { storageClient } from '@/utils/storageClient';
-import type { FileTab, FileType } from './editorStore';
+import type { FileTab, FileType, ViewMode } from './editorStore';
 import type { ActivityPanel } from '@/components/shell/ActivityBar';
 
 export interface PersistedTabInfo {
@@ -9,6 +9,7 @@ export interface PersistedTabInfo {
   activity?: ActivityPanel;
   cursorLine?: number;
   cursorCol?: number;
+  viewMode?: ViewMode;
 }
 
 export interface PersistedOpenTabs {
@@ -27,7 +28,7 @@ export function persistOpenTabs(vaultId: string, tabs: FileTab[], activeTabId: s
   persistTabsTimer = setTimeout(() => {
     const activeTab = tabs.find((t) => t.id === activeTabId);
     const data: PersistedOpenTabs = {
-      tabs: tabs.map((t) => ({ path: t.path, name: t.name, fileType: t.fileType, activity: t.activity, cursorLine: t.cursorLine, cursorCol: t.cursorCol })),
+      tabs: tabs.map((t) => ({ path: t.path, name: t.name, fileType: t.fileType, activity: t.activity, cursorLine: t.cursorLine, cursorCol: t.cursorCol, viewMode: t.viewMode })),
       activeTabPath: activeTab?.path ?? null,
     };
     storageClient.set(openTabsStorageKey(vaultId), data);
@@ -39,7 +40,7 @@ export function flushPersistOpenTabs(vaultId: string, tabs: FileTab[], activeTab
   persistTabsTimer = null;
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const data: PersistedOpenTabs = {
-    tabs: tabs.map((t) => ({ path: t.path, name: t.name, fileType: t.fileType, activity: t.activity, cursorLine: t.cursorLine, cursorCol: t.cursorCol })),
+    tabs: tabs.map((t) => ({ path: t.path, name: t.name, fileType: t.fileType, activity: t.activity, cursorLine: t.cursorLine, cursorCol: t.cursorCol, viewMode: t.viewMode })),
     activeTabPath: activeTab?.path ?? null,
   };
   storageClient.set(openTabsStorageKey(vaultId), data);
