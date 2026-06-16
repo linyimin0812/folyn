@@ -158,7 +158,7 @@ function TagSection({ tag, reports, collapsed, onToggle, onDeleteReport }: TagSe
         <span className="text-[10px] text-t3 ml-auto shrink-0">{reports.length}</span>
       </button>
       {!collapsed && (
-        <div className="mt-1.5">
+        <div className="mt-1.5 ml-2.5 pl-2 border-l-2 border-acc/20">
           {reports.map((report) => (
             <ReportCard
               key={report.path}
@@ -839,7 +839,7 @@ export function AnalysisPanel() {
               </button>
             )}
             {!collapsedTags.has('__uncategorized__') && (
-              <div className={tagGroups.length > 0 ? 'mt-1.5' : ''}>
+              <div className={tagGroups.length > 0 ? 'mt-1.5 ml-2.5 pl-2 border-l-2 border-acc/20' : ''}>
                 {uncategorized.map((report) => (
                   <ReportCard
                     key={report.path}

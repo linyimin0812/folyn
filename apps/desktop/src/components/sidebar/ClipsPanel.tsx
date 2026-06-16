@@ -409,7 +409,7 @@ function TagSection({
         <span className="text-[10px] text-t3 ml-auto shrink-0">{clips.length}</span>
       </button>
       {!collapsed && (
-        <div className="mt-1.5">
+        <div className="mt-1.5 ml-2.5 pl-2 border-l-2 border-acc/20">
           {clips.map((clip) => (
             <ClipCard key={clip.path} clip={clip} onDelete={() => onDeleteClip(clip, tag)} />
           ))}
