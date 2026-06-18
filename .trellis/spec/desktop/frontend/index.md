@@ -20,6 +20,7 @@ This directory contains guidelines for the `@quill/desktop` frontend — a Tauri
 | [State Management](./state-management.md) | Zustand stores, local vs global state, persistence | Filled |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns, review checklist | Filled |
 | [Type Safety](./type-safety.md) | Type patterns, naming, validation | Filled |
+| [File Type Editors](./file-type-editors.md) | Custom editors, iframe bridge, serialization hygiene | Filled |
 
 ---
 

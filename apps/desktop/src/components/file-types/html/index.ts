@@ -1,15 +1,17 @@
 import type { FileTypeHandler } from '../types';
 import { HtmlPreview } from './HtmlPreview';
+import { HtmlVisualEditor } from './HtmlVisualEditor';
 import { getFileTypeIcon } from '@/components/icons/FileIcon';
 
 const handler: FileTypeHandler = {
   id: 'html',
   extensions: ['html', 'htm'],
   icon: getFileTypeIcon('html'),
-  supportedViewModes: ['split', 'edit', 'preview'],
-  defaultViewMode: 'preview',
+  supportedViewModes: ['edit', 'preview'],
+  defaultViewMode: 'edit',
   needsFileContent: true,
-  useCodeMirror: true,
+  useCodeMirror: false,
+  Editor: HtmlVisualEditor,
   Preview: HtmlPreview,
 };
 
