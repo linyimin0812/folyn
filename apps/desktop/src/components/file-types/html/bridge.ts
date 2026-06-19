@@ -94,10 +94,7 @@ export function getBridgeScript(): string {
      Selection + Hover
      ═══════════════════════════════════════════ */
   function selectElement(el) {
-    if (selectedEl) {
-      selectedEl.style.outline = '';
-      selectedEl.style.outlineOffset = '';
-    }
+    // Outline is handled by host overlay, not inline styles
     if (!el) {
       selectedEl = null;
       selectedId = null;
@@ -108,8 +105,6 @@ export function getBridgeScript(): string {
     if (!qid) return;
     selectedEl = el;
     selectedId = qid;
-    el.style.outline = '2px solid var(--acc, #3a6ef0)';
-    el.style.outlineOffset = '-1px';
     post({
       type: 'select',
       quillId: qid,
@@ -571,19 +566,12 @@ export function getBridgeScript(): string {
     if (!target || !target.closest) return;
     var el = target.closest('[data-quill-id]');
     if (!el || el === selectedEl) return;
-    el.style.outline = '1px dashed var(--acc, #3a6ef0)';
-    el.style.outlineOffset = '-1px';
     setHover(el);
   }
 
   function handleMouseOut(e) {
     var target = e.target;
     if (!target || !target.closest) return;
-    var el = target.closest('[data-quill-id]');
-    if (el && el !== selectedEl) {
-      el.style.outline = '';
-      el.style.outlineOffset = '';
-    }
     clearHover();
   }
 
