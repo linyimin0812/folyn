@@ -36,12 +36,16 @@ export function getBridgeScript(): string {
   var animFrame = null;
   var lerpPos = { x: 0, y: 0 };
   var justDragged = false;
+  var dragFrameCount = 0;
 
   // Padding drag state (initiated from host overlay handles)
   var paddingDrag = null; // { el, side, startValue, quillId }
 
   // Resize state (initiated from host overlay handle)
   var resizeDrag = null; // { el, startW, startH, quillId }
+
+  // Track hovered element for scroll-time hover clearing
+  var hoverEl = null;
 
   function pause() { paused++; }
   function resume() { if (paused > 0) paused--; }
@@ -83,13 +87,7 @@ export function getBridgeScript(): string {
      ═══════════════════════════════════════════ */
   function getRect(el) {
     var r = el.getBoundingClientRect();
-    var br = document.body.getBoundingClientRect();
-    return {
-      x: r.left - br.left,
-      y: r.top - br.top,
-      w: r.width,
-      h: r.height
-    };
+    return { x: r.left, y: r.top, w: r.width, h: r.height };
   }
 
   /* ═══════════════════════════════════════════
@@ -126,10 +124,12 @@ export function getBridgeScript(): string {
     if (dragActive) return;
     var qid = el.getAttribute('data-quill-id');
     if (!qid) return;
+    hoverEl = el;
     post({ type: 'hover', quillId: qid, rect: getRect(el) });
   }
 
   function clearHover() {
+    hoverEl = null;
     if (!dragActive) {
       post({ type: 'hoverEnd' });
     }
@@ -236,12 +236,12 @@ export function getBridgeScript(): string {
 
     // Capture current position after potential lift
     var rect = el.getBoundingClientRect();
-    var cr = document.body.getBoundingClientRect();
-    canvasRect = cr;
+    var scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var scrollLeft = window.pageXOffset || document.documentElement.scrollLeft || 0;
 
     dragStartPos = {
-      x: rect.left - cr.left,
-      y: rect.top - cr.top
+      x: rect.left + scrollLeft,
+      y: rect.top + scrollTop
     };
     dragStartOffset = {
       x: dragStartMouse.x - dragStartPos.x,
@@ -250,6 +250,7 @@ export function getBridgeScript(): string {
 
     lerpPos = { x: dragStartPos.x, y: dragStartPos.y };
     snapLines = collectSnapLines();
+    dragFrameCount = 0;
 
     post({ type: 'dragStart', quillId: dragQuillId });
     animFrame = requestAnimationFrame(dragLoop);
@@ -264,34 +265,49 @@ export function getBridgeScript(): string {
     var w = dragElement.offsetWidth;
     var h = dragElement.offsetHeight;
 
-    // Snap (disabled when Alt is held)
+    var scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var scrollLeft = window.pageXOffset || document.documentElement.scrollLeft || 0;
+
+    // Convert body-relative target to viewport-relative for snap comparison
+    var targetVpX = targetX - scrollLeft;
+    var targetVpY = targetY - scrollTop;
+
+    // Snap (disabled when Alt is held) — operates in viewport-relative coords
     var snappedX = [];
     var snappedY = [];
     if (!altKeyDown) {
-      var snapped = applySnap(targetX, targetY, w, h, snapLines, 6);
-      targetX = snapped.x;
-      targetY = snapped.y;
+      var snapped = applySnap(targetVpX, targetVpY, w, h, snapLines, 6);
+      targetVpX = snapped.x;
+      targetVpY = snapped.y;
       snappedX = snapped.snappedX;
       snappedY = snapped.snappedY;
     }
 
-    // Lerp
-    lerpPos.x = lerp(lerpPos.x, targetX, 0.65);
-    lerpPos.y = lerp(lerpPos.y, targetY, 0.65);
+    // Convert viewport-relative target back to body-relative for element positioning
+    var bodyTargetX = targetVpX + scrollLeft;
+    var bodyTargetY = targetVpY + scrollTop;
+
+    // Lerp (body-relative)
+    lerpPos.x = lerp(lerpPos.x, bodyTargetX, 0.65);
+    lerpPos.y = lerp(lerpPos.y, bodyTargetY, 0.65);
 
     dragElement.style.left = lerpPos.x + 'px';
     dragElement.style.top = lerpPos.y + 'px';
 
-    post({
-      type: 'dragging',
-      quillId: dragQuillId,
-      x: lerpPos.x,
-      y: lerpPos.y,
-      w: w,
-      h: h,
-      snappedX: snappedX,
-      snappedY: snappedY
-    });
+    dragFrameCount++;
+    // Post every 3 frames (~50ms) to reduce host React re-render pressure
+    if (dragFrameCount % 3 === 0) {
+      post({
+        type: 'dragging',
+        quillId: dragQuillId,
+        x: lerpPos.x - scrollLeft,
+        y: lerpPos.y - scrollTop,
+        w: w,
+        h: h,
+        snappedX: snappedX,
+        snappedY: snappedY
+      });
+    }
 
     animFrame = requestAnimationFrame(dragLoop);
   }
@@ -360,33 +376,28 @@ export function getBridgeScript(): string {
      ═══════════════════════════════════════════ */
   function collectSnapLines() {
     var lines = [];
-    var cr = document.body.getBoundingClientRect();
-    var cw = cr.width;
-    var ch = cr.height;
+    var w = window.innerWidth;
+    var h = window.innerHeight;
 
-    // Canvas edges + center
+    // Viewport edges + center
     lines.push({ axis: 'x', value: 0 });
-    lines.push({ axis: 'x', value: cw / 2 });
-    lines.push({ axis: 'x', value: cw });
+    lines.push({ axis: 'x', value: w / 2 });
+    lines.push({ axis: 'x', value: w });
     lines.push({ axis: 'y', value: 0 });
-    lines.push({ axis: 'y', value: ch / 2 });
-    lines.push({ axis: 'y', value: ch });
+    lines.push({ axis: 'y', value: h / 2 });
+    lines.push({ axis: 'y', value: h });
 
     // Sibling elements (body direct children with data-quill-id)
     var sibs = document.body.querySelectorAll(':scope > [data-quill-id]');
     for (var i = 0; i < sibs.length; i++) {
       if (sibs[i] === selectedEl) continue;
       var r = sibs[i].getBoundingClientRect();
-      var l = r.left - cr.left;
-      var ri = r.right - cr.left;
-      var t = r.top - cr.top;
-      var b = r.bottom - cr.top;
-      lines.push({ axis: 'x', value: l });
-      lines.push({ axis: 'x', value: (l + ri) / 2 });
-      lines.push({ axis: 'x', value: ri });
-      lines.push({ axis: 'y', value: t });
-      lines.push({ axis: 'y', value: (t + b) / 2 });
-      lines.push({ axis: 'y', value: b });
+      lines.push({ axis: 'x', value: r.left });
+      lines.push({ axis: 'x', value: r.left + r.width / 2 });
+      lines.push({ axis: 'x', value: r.right });
+      lines.push({ axis: 'y', value: r.top });
+      lines.push({ axis: 'y', value: r.top + r.height / 2 });
+      lines.push({ axis: 'y', value: r.bottom });
     }
     return lines;
   }
@@ -501,6 +512,24 @@ export function getBridgeScript(): string {
     resizeDrag = null;
     post({ type: 'resizeEnd', quillId: qid });
     notifyChange();
+  }
+
+  /* ═══════════════════════════════════════════
+     Scroll handler — update overlay positions when iframe scrolls
+     ═══════════════════════════════════════════ */
+  function handleScroll() {
+    if (selectedEl) {
+      post({
+        type: 'select',
+        quillId: selectedId,
+        rect: getRect(selectedEl),
+        tagName: selectedEl.tagName.toLowerCase(),
+        positionType: window.getComputedStyle(selectedEl).position
+      });
+    }
+    if (hoverEl) {
+      clearHover();
+    }
   }
 
   /* ═══════════════════════════════════════════
@@ -691,8 +720,9 @@ export function getBridgeScript(): string {
     getPosition: function(quillId) {
       var el = document.querySelector('[data-quill-id="' + quillId + '"]');
       if (!el) return null;
-      var rect = getRect(el);
-      return { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
+      var r = el.getBoundingClientRect();
+      var br = document.body.getBoundingClientRect();
+      return { x: r.left - br.left, y: r.top - br.top, w: r.width, h: r.height };
     },
 
     getSelectedId: function() {
@@ -824,6 +854,7 @@ export function getBridgeScript(): string {
     document.addEventListener('mousemove', handleMouseMove, true);
     document.addEventListener('mouseup', handleMouseUp, true);
     document.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('scroll', handleScroll, true);
 
     post({ type: 'ready' });
     post({ type: 'deselect' });

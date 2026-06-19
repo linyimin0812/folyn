@@ -135,6 +135,7 @@ export function VisualEditCanvas({ content, onChange }: VisualEditCanvasProps) {
 
   // ── Mouse screen position (for tooltips) ──
   const [mouseScreen, setMouseScreen] = useState({ x: 0, y: 0 });
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
   // ── Undo/Redo ──
   const historyRef = useRef<{ stack: string[]; index: number }>({ stack: [], index: -1 });
@@ -503,10 +504,15 @@ export function VisualEditCanvas({ content, onChange }: VisualEditCanvasProps) {
   );
 
   // ── Track mouse screen position during element drag (for tooltip) ──
+  // Direct DOM update to avoid React re-render lag — tooltip follows cursor 1:1
   useEffect(() => {
     if (!isDragging) return;
     function handleMove(e: MouseEvent) {
-      setMouseScreen({ x: e.clientX, y: e.clientY });
+      const tip = tooltipRef.current;
+      if (tip) {
+        tip.style.left = (e.clientX + 16) + 'px';
+        tip.style.top = (e.clientY + 16) + 'px';
+      }
     }
     window.addEventListener('mousemove', handleMove);
     return () => window.removeEventListener('mousemove', handleMove);
@@ -560,7 +566,7 @@ export function VisualEditCanvas({ content, onChange }: VisualEditCanvasProps) {
             width: selected.rect.w,
             height: selected.rect.h,
           }}
-          className="absolute border-2 border-[#3a6ef0] pointer-events-none"
+          className="absolute border border-[#3a6ef0] pointer-events-none"
         />
       )}
 
@@ -657,6 +663,7 @@ export function VisualEditCanvas({ content, onChange }: VisualEditCanvasProps) {
       {/* Coordinate tooltip — during element drag */}
       {isDragging && dragState && (
         <div
+          ref={tooltipRef}
           className="fixed text-[10px] bg-panel border border-brd px-1.5 py-0.5 rounded shadow-sm pointer-events-none z-50"
           style={{ left: mouseScreen.x + 16, top: mouseScreen.y + 16 }}
         >
