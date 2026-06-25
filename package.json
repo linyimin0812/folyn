@@ -8,11 +8,18 @@
     "build": "pnpm --filter @quill/desktop build",
     "build:app": "cd apps/desktop && pnpm tauri build",
     "lint": "pnpm -r lint",
-    "clean": "pnpm -r clean"
+    "clean": "pnpm -r clean",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@types/d3-force": "^3.0.10",
-    "typescript": "^5.7.0"
+    "@vitest/coverage-v8": "^2.1.8",
+    "happy-dom": "^15.11.6",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.8"
   },
   "engines": {
     "node": ">=20.0.0",

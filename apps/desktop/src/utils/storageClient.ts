@@ -76,4 +76,15 @@ export const storageClient = {
     delete cache[key];
     scheduleFlush();
   },
+
+  /** Test-only: reset the in-memory cache and load flag so the next access reloads from disk. */
+  __resetForTesting(): void {
+    cache = {};
+    loaded = false;
+    storagePath = '';
+    if (flushTimer) {
+      clearTimeout(flushTimer);
+      flushTimer = null;
+    }
+  },
 };

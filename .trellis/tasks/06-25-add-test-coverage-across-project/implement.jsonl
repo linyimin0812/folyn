@@ -1,0 +1,10 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Store access patterns (selectors vs getState), Tauri invoke conventions, platform guards — must mirror these in tests."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store conventions; tests for 10 stores need to follow action/selectors split."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "No `any`; mock fixtures must use `unknown` + narrowing."}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "useExport/useTheme hooks testing boundaries; effect cleanup expectations."}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "Co-location pattern for tests next to source."}
+{"file": ".trellis/spec/cli-adapter/frontend/quality-guidelines.md", "reason": "cli-adapter test conventions — registry, adapter contract."}
+{"file": ".trellis/spec/container-plugins/frontend/quality-guidelines.md", "reason": "ContainerRegistry / ContainerPlugin contract to test."}
+{"file": ".trellis/spec/vault-provider/frontend/quality-guidelines.md", "reason": "vaultManager / registry test conventions; Tauri FS abstraction."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Shared Tauri mocks + setup file is a code-reuse decision; avoid duplicating mocks per test."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Tests touch desktop + 3 packages; cross-layer boundary discipline."}

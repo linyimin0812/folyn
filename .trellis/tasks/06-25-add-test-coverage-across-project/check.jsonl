@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Verify tests respect store-access / Tauri-invoke / platform-guard patterns."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Verify no `any` in tests or mocks."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Verify Tauri mocks are shared via setup file, not duplicated per test."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Verify desktop/package boundaries are respected by test layout."}
