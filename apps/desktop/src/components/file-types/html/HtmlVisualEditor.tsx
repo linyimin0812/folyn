@@ -2,6 +2,17 @@ import { useState, useRef, useCallback } from 'react';
 import type { EditorProps } from '../types';
 import { SourceEditCanvas } from './SourceEditCanvas';
 import { VisualEditCanvas } from './VisualEditCanvas';
+import { GrapesEditor } from './GrapesEditor';
+
+/**
+ * Feature flag for the GrapesJS migration (prd §八 Phase 3).
+ * When true, Visual mode renders the new GrapesEditor. When false, the legacy
+ * VisualEditCanvas (iframe + bridge) is used. Flip to false to A/B test.
+ *
+ * Phase 4 (delete bridge.ts / VisualEditCanvas.tsx / PropertiesPanel.tsx)
+ * is intentionally out of scope until this flag is validated.
+ */
+const USE_GRAPES = true;
 
 type EditorMode = 'visual' | 'source' | 'preview';
 
@@ -72,7 +83,11 @@ export function HtmlVisualEditor({ content, onChange }: EditorProps) {
       {/* Canvas area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {mode === 'visual' && (
-          <VisualEditCanvas content={currentContentRef.current} onChange={handleChange} />
+          USE_GRAPES ? (
+            <GrapesEditor content={currentContentRef.current} onChange={handleChange} />
+          ) : (
+            <VisualEditCanvas content={currentContentRef.current} onChange={handleChange} />
+          )
         )}
         {mode === 'source' && (
           <SourceEditCanvas content={currentContentRef.current} onChange={handleChange} />

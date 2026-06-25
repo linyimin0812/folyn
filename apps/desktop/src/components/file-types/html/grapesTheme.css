@@ -1,0 +1,127 @@
+/**
+ * GrapesJS UI theme overrides for Quill.
+ *
+ * All rules reference Quill's CSS custom properties (defined in index.css
+ * under [data-theme="light"] / [data-theme="dark"]). When the user toggles
+ * theme, the variables update and the GrapesJS UI follows automatically —
+ * no JS hook needed.
+ */
+
+/* —— Core surfaces —— */
+.gjs-one-bg { background-color: var(--panel) !important; }
+.gjs-two-color { color: var(--t2) !important; }
+.gjs-three-bg { background-color: var(--acc) !important; }
+.gjs-four-color,
+.gjs-four-color-h:hover { color: var(--acc) !important; }
+
+/* Canvas backdrop — slightly recessed so the white page reads as a sheet */
+.gjs-cv-canvas { background: var(--surf2) !important; }
+
+/* Canvas iframe scrollbar — GrapesJS manages canvas scroll internally, so
+   hide the iframe's own scrollbar to avoid a stray vertical bar in the
+   right blank strip (now eliminated by width:100%, kept as a safety net). */
+.gjs-cv-canvas iframe::-webkit-scrollbar { display: none; }
+.gjs-cv-canvas iframe { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* —— Block library tiles —— */
+.gjs-block {
+  background: var(--surf) !important;
+  border: 1px solid var(--brd) !important;
+  border-radius: 8px !important;
+  color: var(--t2) !important;
+  padding: 6px 8px !important;
+  transition: background-color 100ms ease, border-color 100ms ease;
+}
+.gjs-block:hover {
+  background: var(--hov) !important;
+  border-color: var(--acc) !important;
+}
+.gjs-block-label { color: var(--t3) !important; font-size: 11px !important; }
+.gjs-blocks-c { background: transparent !important; }
+.gjs-block-category { color: var(--t3) !important; font-size: 11px !important; }
+.gjs-blocks-svg { fill: var(--t3) !important; }
+
+/* —— Form fields / inputs —— */
+.gjs-field {
+  background: var(--inp) !important;
+  border: 1px solid var(--brd) !important;
+  border-radius: 4px !important;
+  color: var(--t1) !important;
+}
+.gjs-field input,
+.gjs-field select,
+.gjs-field textarea {
+  color: var(--t1) !important;
+  background: transparent !important;
+}
+.gjs-field input:focus,
+.gjs-field select:focus { border-color: var(--acc) !important; outline: none !important; }
+.gjs-field-arrow { border-top-color: var(--t3) !important; }
+.gjs-field-checkbox { background: var(--inp) !important; border: 1px solid var(--brd) !important; }
+.gjs-field-checkbox input:checked + .gjs-chk-icon { background: var(--acc) !important; }
+
+/* —— Style Manager —— */
+.gjs-sm-sector .gjs-sm-sector-title {
+  background: var(--surf2) !important;
+  color: var(--t2) !important;
+  font-size: 11px !important;
+}
+.gjs-sm-sector .gjs-sm-sector-title:hover { color: var(--acc) !important; }
+.gjs-sm-label { color: var(--t3) !important; font-size: 11px !important; }
+.gjs-sm-property { border-bottom-color: var(--brd) !important; }
+.gjs-sm-stack #gjs-sm-add { color: var(--acc) !important; }
+
+/* Color picker swatch in Style Manager */
+.gjs-sm-color { background: var(--inp) !important; border-color: var(--brd) !important; }
+.gjs-field-color-picker { background: var(--inp) !important; border-color: var(--brd) !important; }
+
+/* —— Selectors / SelectorManager —— */
+.gjs-clm-tags { background: var(--panel) !important; }
+.gjs-clm-tag { background: var(--accdim) !important; color: var(--acc) !important; }
+.gjs-clm-tag__close { color: var(--t3) !important; }
+
+/* —— Layer Manager —— */
+.gjs-layers { background: var(--panel) !important; color: var(--t2) !important; }
+.gjs-layer { border-bottom-color: var(--brd) !important; }
+.gjs-layer-name { color: var(--t2) !important; }
+.gjs-layer.gjs-selected { background: var(--accdim) !important; }
+.gjs-layer.gjs-selected .gjs-layer-name { color: var(--acc) !important; }
+.gjs-layer-vis { color: var(--t3) !important; }
+
+/* —— Trait Manager —— */
+.gjs-traits-label { color: var(--t3) !important; font-size: 11px !important; }
+.gjs-trt-trait__title { color: var(--t3) !important; }
+
+/* —— Selection / hover overlays on canvas —— */
+.gjs-selected { outline: 2px solid var(--acc) !important; }
+.gjs-hovered { outline: 1px dashed var(--acc) !important; }
+.gjs-toolbar { background: var(--acc) !important; border-radius: 4px !important; }
+.gjs-toolbar-item { color: #fff !important; }
+.gjs-toolbar-item:hover { background: var(--acc2) !important; }
+
+/* —— Modal (Code / Import dialogs) —— */
+.gjs-mdl-bg { background: rgba(0, 0, 0, 0.5) !important; }
+.gjs-mdl-dialog {
+  background: var(--panel) !important;
+  border: 1px solid var(--brd) !important;
+  border-radius: 12px !important;
+  color: var(--t1) !important;
+}
+.gjs-mdl-header {
+  background: var(--surf2) !important;
+  color: var(--t1) !important;
+  border-bottom: 1px solid var(--brd) !important;
+}
+.gjs-mdl-title { color: var(--t1) !important; }
+.gjs-mdl-close { color: var(--t3) !important; }
+
+/* —— Devices switcher (used in custom toolbar) —— */
+.gjs-devices-c { background: var(--panel) !important; }
+
+/* —— Block / Layers panel scrollbars follow global style —— */
+.gjs-blocks-c,
+.gjs-layers,
+.gjs-sm-sector__props { scrollbar-width: thin; }
+
+/* —— Trim default panel border radii so they sit flush in React shell —— */
+.gjs-pn-panel { border-radius: 0 !important; }

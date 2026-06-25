@@ -29,6 +29,7 @@ export default defineConfig(() => {
           manualChunks: {
             'codemirror': ['@codemirror/autocomplete', '@codemirror/commands', '@codemirror/lang-markdown', '@codemirror/language', '@codemirror/lint', '@codemirror/search', '@codemirror/state', '@codemirror/view'],
             'rehype': ['rehype-highlight', 'rehype-react', 'rehype-raw', 'rehype-sanitize', 'remark-gfm', 'remark-parse', 'remark-directive', 'remark-rehype', 'unified'],
+            'grapesjs': ['grapesjs'],
           },
         },
       },
