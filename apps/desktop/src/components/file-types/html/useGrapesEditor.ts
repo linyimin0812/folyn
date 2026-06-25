@@ -45,6 +45,14 @@ export interface UseGrapesEditorResult {
   editor: Editor | null;
   /** True when a component is currently selected in the canvas. */
   hasSelection: boolean;
+  /**
+   * Monotonically increasing counter bumped each time a NON-NULL component is
+   * selected via `component:select`. Used by the React shell to reset the
+   * `userClosed` flag on every new selection — including re-selecting an
+   * element while another is already selected (a case `hasSelection` alone
+   * can't detect, since the boolean doesn't change true → true).
+   */
+  selectionTick: number;
 }
 
 const DEBOUNCE_MS = 500;
@@ -93,6 +101,7 @@ export function useGrapesEditor(opts: UseGrapesEditorOptions): UseGrapesEditorRe
   const suppressChangeRef = useRef(false);
 
   const [hasSelection, setHasSelection] = useState(false);
+  const [selectionTick, setSelectionTick] = useState(0);
 
   const flushFinalContent = useCallback(() => {
     if (debounceTimer.current) {
@@ -204,7 +213,12 @@ export function useGrapesEditor(opts: UseGrapesEditorOptions): UseGrapesEditorRe
     // on `component:drag:move`, so this never triggers React re-renders
     // mid-drag.
     const onSelect = (component: unknown) => {
-      setHasSelection(Boolean(component));
+      const has = Boolean(component);
+      setHasSelection(has);
+      // Bump the tick only on a real (non-null) selection so that deselect
+      // does NOT re-open a user-closed panel — the shell's `hasSelection`
+      // fall to `false` already hides it.
+      if (has) setSelectionTick((t) => t + 1);
     };
     editor.on('component:select', onSelect);
 
@@ -220,6 +234,7 @@ export function useGrapesEditor(opts: UseGrapesEditorOptions): UseGrapesEditorRe
       }
       editorRef.current = null;
       setHasSelection(false);
+      setSelectionTick(0);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -227,5 +242,6 @@ export function useGrapesEditor(opts: UseGrapesEditorOptions): UseGrapesEditorRe
   return {
     editor: editorRef.current,
     hasSelection,
+    selectionTick,
   };
 }

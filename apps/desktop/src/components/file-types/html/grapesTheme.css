@@ -23,6 +23,16 @@
 .gjs-cv-canvas iframe::-webkit-scrollbar { display: none; }
 .gjs-cv-canvas iframe { scrollbar-width: none; -ms-overflow-style: none; }
 
+/* Right-panel (styles / layers / traits) scrollbar hide — scroll still
+   works, only the visible gutter is removed for a cleaner editor chrome.
+   The class is applied to the two scrollable React-owned containers in
+   GrapesEditor.tsx (selector strip + tab body). */
+.quill-no-scrollbar::-webkit-scrollbar { display: none; }
+.quill-no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
 /* —— Block library tiles —— */
 .gjs-block {
   background: var(--surf) !important;
