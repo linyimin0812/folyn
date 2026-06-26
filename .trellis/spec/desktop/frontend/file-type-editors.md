@@ -39,20 +39,25 @@ interface EditorProps {
 
 **View mode hiding**: Add the file type ID to `HIDE_VIEW_MODE_FILE_TYPES` in `Topbar.tsx` so the split/edit/preview toggle is hidden. The custom editor manages its own mode switching internally.
 
-Reference: `src/components/file-types/html/index.ts`, `src/components/file-types/excalidraw/index.ts`
+Reference: `src/components/file-types/html/HtmlVisualEditor.tsx`, `src/components/file-types/excalidraw/index.ts`
 
 ---
 
 ## Internal Mode Switching
 
-Custom editors can provide multiple internal modes (visual/source/preview) via a tab toolbar:
+The HTML editor exposes multiple internal modes (visual/source). The active mode is derived from the global editor store's `viewMode` (owned by the Topbar segment, shared with Markdown's split/edit/preview); preview mode is rendered by `WorkArea` via `HtmlPreview`, so `HtmlVisualEditor` only handles `visual` + `source`.
 
 ```tsx
 // HtmlVisualEditor.tsx
-type EditorMode = 'visual' | 'source' | 'preview';
+type EditorMode = 'visual' | 'source';
 
-function HtmlVisualEditor({ content, onChange }: EditorProps) {
-  const [mode, setMode] = useState<EditorMode>('visual');
+function viewModeToMode(viewMode: string): EditorMode {
+  return viewMode === 'source' ? 'source' : 'visual';
+}
+
+export function HtmlVisualEditor({ content, onChange }: EditorProps) {
+  const viewMode = useEditorStore((state) => state.viewMode);
+  const mode = viewModeToMode(viewMode);
   const currentContentRef = useRef(content);
 
   const handleChange = useCallback((newContent: string) => {
@@ -62,277 +67,128 @@ function HtmlVisualEditor({ content, onChange }: EditorProps) {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Mode toolbar */}
-      <div className="shrink-0 bg-panel border-b border-brd flex gap-1 p-1">
-        {(['visual', 'source', 'preview'] as EditorMode[]).map((m) => (
-          <button key={m} onClick={() => setMode(m)} ...>{MODE_LABELS[m]}</button>
-        ))}
-      </div>
-      {/* Canvas area — conditional render */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {mode === 'visual' && <VisualEditCanvas content={currentContentRef.current} onChange={handleChange} />}
-        {mode === 'source' && <SourceEditCanvas content={currentContentRef.current} onChange={handleChange} />}
+        {mode === 'visual' && (
+          <GrapesEditor content={currentContentRef.current} onChange={handleChange} />
+        )}
+        {mode === 'source' && (
+          <SourceEditCanvas content={currentContentRef.current} onChange={handleChange} />
+        )}
       </div>
     </div>
   );
 }
 ```
 
-**Key**: Use `currentContentRef.current` to pass the latest content when switching modes, preventing content loss between canvases.
+**Key**: Use `currentContentRef.current` to pass the latest content when switching modes, preventing content loss between canvases. Each canvas manages its own external-vs-user update detection internally — `SourceEditCanvas` diffs the incoming `content` against its CodeMirror doc and suppresses its own change emission during a programmatic swap; `GrapesEditor` is mount-once and never re-reads `content`, so no feedback loop is possible. There is no shared dirty flag between canvases.
+
+Reference: `src/components/file-types/html/HtmlVisualEditor.tsx`, `src/components/file-types/html/GrapesEditor.tsx`
 
 ---
 
-## iframe Bridge Architecture
+## GrapesJS Visual Editor Architecture
 
-For editing rendered content (HTML, SVG, etc.), use an iframe with an injected bridge script.
+The HTML visual mode is a React shell (`GrapesEditor.tsx`) around a GrapesJS editor instance managed by the `useGrapesEditor.ts` hook. Unlike a raw-iframe + host-bridge design, GrapesJS owns the canvas iframe and all in-canvas interaction (selection, drag, rich-text editing, undo/redo, Style/Trait/Layer managers) internally — the host only mounts GrapesJS panels into React-owned container refs and serializes the result.
 
-### Architecture
+### Component layout
 
 ```
-Host (React)                    iframe (contentDocument)
-┌──────────────────┐            ┌──────────────────────┐
-│ VisualEditCanvas │            │                      │
-│                  │  postMsg   │  bridge.ts (IIFE)    │
-│  callBridge() ───┼───────────►│  window.__bridge     │
-│                  │  direct    │    .setAttr()        │
-│                  │  access    │    .getStyle()       │
-│  handleMessage() ◄┼───────────│    .removeElement()  │
-│                  │            │                      │
-│  stripArtifacts()│  outerHTML │  MutationObserver    │
-│  onChange()      │◄───────────│  → notifyChange()    │
-└──────────────────┘            └──────────────────────┘
+┌──────────────────────────────────┬────────────────┐
+│                                  │ styles|layers  │
+│   GrapesJS canvas (flex: 1)      │ |traits (260px) │
+│   (iframe, GrapesJS-managed)     │ (only when     │
+│                                  │  element       │
+│                                  │  selected)     │
+└──────────────────────────────────┴────────────────┘
 ```
 
-### Bridge Script Design
+`GrapesEditor.tsx` holds the DOM refs (`containerRef`, `stylesRef`, `selectorsRef`, `layersRef`, `traitsRef`) and a right-side tabbed panel (`样式` / `图层` / `属性`) that is shown only while a component is selected. The panel container divs are **always mounted** (hidden via the `hidden` class, not unmounted) so the React refs survive show/hide cycles and GrapesJS can attach its managers into them once during the mount-once effect.
+
+### Lifecycle (`useGrapesEditor.ts`)
+
+The hook is **mount-once**: `content` and `onChange` are captured into refs so the GrapesJS lifecycle is not torn down and re-initialized when the parent re-renders. Content echoed back via `onChange` is never fed back into `editor.setComponents` (that would create a write loop).
+
+1. **Init**: `grapesjs.init(createGrapesConfig({...refs}))`, then `registerCustomBlocks(editor)`.
+2. **Load content**: `parseHtmlForGrapes(content)` → `editor.setComponents(parsed.bodyContent)` + `editor.setStyle(parsed.styleBlocks.join('\n'))`. A `suppressChangeRef` flag blocks the change pipeline during programmatic load so the input is not echoed back.
+3. **On `load`**: `injectExternalLinks(editor, parsed.headContent)` re-injects `<link rel="stylesheet">` tags from the original `<head>` into the canvas iframe, then `injectCanvasScrollbarHide(editor)` hides iframe scrollbars, then `suppressChangeRef` is released.
+4. **Change events**: `component:update`, `component:add`, `component:remove`, `component:drag:end`, `styleUpdate`, `style:custom`, `undo`, `redo` are wired to a debounced (500ms) `scheduleContentExtraction` that calls `editor.getHtml()` + `editor.getCss()` → `reconstructHtml(parsed, html, css)` → `onChange(full)`. `component:drag:move` is intentionally NOT wired (fires continuously during drag).
+5. **Selection tracking**: `component:select` updates `hasSelection` and bumps a monotonic `selectionTick` (only on non-null selections) so the React shell can show/hide the right panel and reset a user-closed state on each new selection.
+6. **Unmount**: `flushFinalContent()` cancels the pending debounce timer and emits the latest `reconstructHtml(...)` BEFORE `editor.destroy()` — so a mode switch before the debounce fires still persists the latest in-memory state.
+
+### Content pipeline (`grapesContentPipeline.ts`)
+
+GrapesJS edits only `<body>` components and the CSS rules; the surrounding document structure is preserved outside the editor and re-attached on serialization.
 
 ```typescript
-// bridge.ts — exported as string, injected into iframe
-export function getBridgeScript(): string {
-  return `
-(function() {
-  'use strict';
-  if (window.__bridge) return; // Guard against double injection
-
-  // Assign unique IDs for element targeting
-  let nextId = 1;
-  function assignIds(root) {
-    root.querySelectorAll('*').forEach(el => {
-      if (!el.getAttribute('data-quill-id')) {
-        el.setAttribute('data-quill-id', String(nextId++));
-      }
-    });
-  }
-
-  // Inject edit-mode CSS (hover outline, selection highlight)
-  function injectStyles() { /* ... */ }
-
-  // Post messages to host
-  function post(msg) {
-    window.parent.postMessage({ ...msg, source: 'quill-bridge' }, '*');
-  }
-
-  // MutationObserver with pause/resume to avoid self-triggered notifications
-  let paused = 0;
-  function pause() { paused++; }
-  function resume() { if (paused > 0) paused--; }
-
-  // Public API
-  window.__bridge = {
-    setAttr(quillId, name, value) { /* pause/resume wrapped */ },
-    removeElement(quillId) { /* pause/resume wrapped */ },
-    moveElement(quillId, direction) { /* pause/resume wrapped */ },
-    getAttrs(quillId) { /* non-mutating getter */ },
-    getStyle(quillId) { /* non-mutating getter */ },
-    setStyle(quillId, prop, val) { /* pause/resume wrapped */ },
-    removeAttr(quillId, name) { /* pause/resume wrapped */ },
-  };
-
-  // Init
-  assignIds(document.body);
-  injectStyles();
-  // ... event listeners, observer setup
-})();`;
+export interface ParsedHtml {
+  doctype: string;        // '<!DOCTYPE html>' or ''
+  htmlAttrs: string;      // attrs on <html> (e.g. ' lang="en"')
+  headContent: string;    // <head> children EXCLUDING <style>/<script> (meta/title/link)
+  styleBlocks: string[];  // innerText of each <style> block
+  bodyContent: string;    // <body> innerHTML with all <script> tags stripped
+  bodyAttrs: string;      // attrs on <body>
+  scriptBlocks: string[]; // innerText of every <script> tag in the document
 }
+
+export function parseHtmlForGrapes(rawHtml: string): ParsedHtml
+export function reconstructHtml(parsed: ParsedHtml, grapesHtml: string, grapesCss: string): string
 ```
 
-### Host-side Bridge Communication
+`parseHtmlForGrapes` uses `DOMParser.parseFromString(rawHtml, 'text/html')` and walks `doc.head.childNodes` and `doc.body`, splitting nodes into `styleBlocks` / `scriptBlocks` / `headContent` / `bodyContent`. It is robust to malformed input — on parser failure it falls back to treating the whole string as body content.
 
-**Injection** (on iframe load):
-```tsx
-const handleLoad = useCallback(() => {
-  const doc = iframe.contentDocument;
-  if (!doc) return;
-  const script = doc.createElement('script');
-  script.id = 'quill-bridge-script';
-  script.textContent = getBridgeScript();
-  doc.head.appendChild(script);
-}, []);
-```
+`reconstructHtml` reassembles `doctype + <html> + <head> (headContent + a single <style> of merged CSS) + <body> (grapesHtml + scripts)`:
 
-**Calling bridge functions** (direct contentWindow access, NOT script injection):
-```tsx
-const callBridge = useCallback((fn: string, ...args: unknown[]): unknown => {
-  const win = iframe.contentWindow as (Window & {
-    __bridge?: Record<string, (...a: unknown[]) => unknown>
-  }) | null;
-  if (!win?.__bridge?.[fn]) return undefined;
-  return win.__bridge[fn](...args);
-}, []);
-```
+- **CSS merge**: GrapesJS's `getCss()` already serializes the full CssComposer model (including everything fed to `setStyle` on mount), so the original `<style>` blocks are NOT re-appended verbatim — that would compound the file size on every save. Only at-rules GrapesJS may not round-trip faithfully (`@keyframes` / `@font-face` / `@import` / `@charset` / `@namespace`) are filtered out of the originals and re-appended.
+- **Scripts**: re-inserted verbatim as the last children of `<body>` (matching end-of-body loading semantics).
 
-> **Don't**: Create `<script>` elements for each bridge call — this pollutes the DOM, triggers MutationObserver, and leaks into outerHTML serialization.
+### Output cleanliness
 
-**Receiving messages**:
-```tsx
-useEffect(() => {
-  function handleMessage(event: MessageEvent) {
-    if (event.data?.source !== 'quill-bridge') return;
-    switch (event.data.type) {
-      case 'select': /* update selected element state */ break;
-      case 'deselect': /* clear selection */ break;
-      case 'change': /* debounce → extract outerHTML → strip → onChange */ break;
-    }
-  }
-  window.addEventListener('message', handleMessage);
-  return () => window.removeEventListener('message', handleMessage);
-}, []);
-```
+GrapesJS's `getHtml()` / `getCss()` produce output free of editor-internal artifacts — no host-injected bridge scripts, no `data-quill-id` tracking attributes, no edit-mode classes. There is no host-side `stripArtifacts` step; serialization is clean by construction.
+
+### Security / script handling
+
+GrapesJS loads content into its own canvas (not a raw iframe with an injected host bridge). Script safety is enforced by the content pipeline, not by sandbox attributes:
+
+- `parseHtmlForGrapes` extracts **all** `<script>` tags (head and body) into `scriptBlocks` and never hands them to `editor.setComponents()`.
+- The editor canvas therefore never executes page scripts during editing.
+- `reconstructHtml` re-attaches the original scripts verbatim on save, so the file on disk retains them.
+
+### Persistence
+
+Quill owns persistence via the Zustand editor store; GrapesJS's own `storageManager` is disabled (`storageManager: false` in `createGrapesConfig`). The `onChange` callback from `useGrapesEditor` flows into `editorStore.updateTabContent()` → autosave → `vault.writeFile()`. When the file changes on disk externally, `editorStore`'s `externalContentVersion` increments and `WorkArea` remounts `HtmlVisualEditor` (via `key={tabId}-${version}`), re-initializing GrapesJS with the new content.
+
+### Undo/Redo
+
+GrapesJS provides a fine-grained `UndoManager` internally; `undo` and `redo` events are wired into the same debounced content-extraction pipeline. There is no host-side snapshot stack — the host does not need to track history at all.
+
+Reference: `src/components/file-types/html/GrapesEditor.tsx`, `src/components/file-types/html/useGrapesEditor.ts`, `src/components/file-types/html/grapesContentPipeline.ts`, `src/components/file-types/html/grapesConfig.ts`
 
 ---
 
-## Serialization Hygiene
+## GrapesJS Panel Configuration
 
-When injecting artifacts into an iframe (bridge script, edit CSS, theme vars), they MUST be stripped before saving to disk.
+`createGrapesConfig(opts)` (in `grapesConfig.ts`) builds the config handed to `grapesjs.init()`:
 
-### stripBridgeArtifacts Pattern
+- **Panels disabled** (`panels: { defaults: [] }`): the React shell renders its own toolbar; no GrapesJS built-in top bar.
+- **Storage disabled**: Quill's store owns persistence.
+- **Managers mounted into React refs**: `styleManager.appendTo`, `selectorManager.appendTo`, `layerManager.appendTo`, `traitManager.appendTo`. (BlockManager is left at its default hidden container — the React shell no longer renders a block-library sidebar; `registerCustomBlocks` still mutates the registry.)
+- **DeviceManager**: three devices (`桌面` / `平板` 768px / `手机` 375px).
+- **Canvas styles**: external font stylesheet injected into the canvas iframe.
+- **i18n**: `locale: 'zh'` with a Chinese message map covering StyleManager property labels, trait labels, layers, selectors, and device names.
+- **StyleManager sectors**: 6 sectors — `字体` (typography), `背景` (background), `尺寸` (dimensions), `间距` (spacing), `边框` (border), `布局` (layout) — covering the full CSS surface area specified in prd §4.3.
+- **Plugin**: `grapesjs-blocks-basic` with `flexGrid: true`.
 
-```typescript
-function stripBridgeArtifacts(html: string): string {
-  let cleaned = html;
-  // 1. Remove bridge script by ID
-  cleaned = cleaned.replace(/<script\b[^>]*id=["']quill-bridge-script["'][\s\S]*?<\/script>/gi, '');
-  // 2. Remove bridge styles by ID
-  cleaned = cleaned.replace(/<style\b[^>]*id=["']quill-bridge-styles["'][\s\S]*?<\/style>/gi, '');
-  // 3. Remove theme vars style by ID
-  cleaned = cleaned.replace(/<style\b[^>]*id=["']quill-theme-vars["'][\s\S]*?<\/style>/gi, '');
-  // 4. Remove tracking attributes
-  cleaned = cleaned.replace(/\s+data-quill-id="[^"]*"/g, '');
-  // 5. Remove edit-mode classes
-  cleaned = cleaned.replace(/\s*quill-selected\b/g, '');
-  cleaned = cleaned.replace(/\s*class=""\s*/g, ' ');
-  // 6. Safety net: strip any remaining <script> tags
-  cleaned = cleaned.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-  return cleaned;
-}
-```
+Helper exports in the same file:
 
-**Rules**:
-- Always give injected elements explicit `id` attributes for targeted removal
-- Strip in order: scripts → styles → attributes → classes → safety net
-- Apply stripping BEFORE calling `onChange()` to prevent artifacts from reaching disk
-- Use `sanitizeHtml()` (DOMParser-based) to strip user `<script>` tags BEFORE injecting into iframe
+- `injectExternalLinks(editor, headContent)` — re-injects `<link rel="stylesheet">` from the parsed head into the canvas iframe on `load`.
+- `injectCanvasScrollbarHide(editor)` — injects a `<style data-quill="canvas-scrollbar-hide">` into the iframe `<head>` to suppress scrollbars while keeping wheel/trackpad scrolling.
 
-Reference: `src/components/file-types/html/VisualEditCanvas.tsx`
+Reference: `src/components/file-types/html/grapesConfig.ts`, `src/components/file-types/html/grapesBlocks.ts`
 
 ---
 
-## Security Model for iframe Editors
+## Theme Adaptation
 
-Editing arbitrary web pages requires freezing page scripts and isolating the bridge:
+`grapesTheme.css` maps GrapesJS's CSS classes to Quill's design-system CSS variables (`--panel`, `--surf`, `--surf2`, `--brd`, `--hov`, `--acc`, `--accdim`, `--t1`/`--t2`/`--t3`, `--inp`). Because every override references `var(--xxx)`, light/dark theme switching is automatic via the `[data-theme]` attribute on the root — no JavaScript intervention is needed. The file is imported once by `useGrapesEditor.ts` alongside `grapesjs/dist/css/grapes.min.css`.
 
-1. **Script stripping**: Use `DOMParser` to remove `<script>` tags from HTML before passing to iframe `srcDoc`
-2. **Sandbox**: Use `sandbox="allow-scripts allow-same-origin"` — scripts are allowed because the bridge needs them, but page scripts are already stripped
-3. **Bridge isolation**: Wrap bridge script in IIFE, expose only `window.__bridge` API
-4. **Theme injection**: Inject CSS variables into iframe so bridge edit styles follow app theme
-
-```typescript
-function sanitizeHtml(htmlStr: string): string {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(htmlStr, 'text/html');
-  doc.querySelectorAll('script').forEach((s) => s.remove());
-  return doc.documentElement.outerHTML;
-}
-```
-
-> **Warning**: Don't rely on regex for script stripping — `<script>` in attribute values or string literals can cause false matches. DOMParser handles edge cases correctly.
-
----
-
-## Undo/Redo for iframe Editors
-
-iframe contentEditable has its own undo stack that doesn't interop with the host. Use a snapshot-based approach:
-
-```typescript
-const MAX_HISTORY = 50;
-const historyRef = useRef<{ stack: string[]; index: number }>({ stack: [], index: -1 });
-const isUndoRedoRef = useRef(false);
-
-// Push snapshot on each change (after debounce)
-function pushSnapshot(rawHtml: string) {
-  const snapshot = buildSnapshot(rawHtml);
-  if (stack[index] === snapshot) return; // Skip duplicates
-  const newStack = stack.slice(0, index + 1); // Truncate forward history
-  newStack.push(snapshot);
-  while (newStack.length > MAX_HISTORY) newStack.shift();
-  historyRef.current = { stack: newStack, index: newStack.length - 1 };
-}
-
-// Keyboard shortcut (capture phase)
-function handleKeyDown(e: KeyboardEvent) {
-  // Guard: skip if focus is in INPUT/TEXTAREA/contentEditable
-  const target = e.target as HTMLElement;
-  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
-
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
-    e.preventDefault();
-    isUndoRedoRef.current = true;
-    const newIndex = e.shiftKey ? index + 1 : index - 1;
-    onChangeRef.current(stack[newIndex]); // React updates iframe srcDoc
-    // Clear flag after iframe reload
-    setTimeout(() => { isUndoRedoRef.current = false; }, 1000);
-  }
-}
-```
-
-**Key points**:
-- Guard against INPUT/TEXTAREA targets to avoid intercepting native text-input undo in panels
-- Set `isUndoRedoRef` flag to prevent the change handler from pushing undo-triggered snapshots
-- Track setTimeout ID in a ref and clean up on unmount
-- iframe reload after undo triggers `onLoad` → bridge re-injects → `isUndoRedoRef` cleared
-
----
-
-## Panel Interaction Patterns
-
-When editing elements via side panels (attributes, styles), coordinate panel/toolbar/selection interactions:
-
-### data-quill-panel Attribute
-
-Panels mark themselves with `data-quill-panel` so FloatingToolbar's click-outside handler doesn't deselect the element when the user clicks inside a panel:
-
-```tsx
-// FloatingToolbar.tsx
-function handleClickOutside(e: MouseEvent) {
-  if ((e.target as HTMLElement).closest('[data-quill-panel]')) return;
-  onClose();
-}
-```
-
-### Mutual Exclusion
-
-Only one panel can be open at a time:
-
-```tsx
-const handleEditAttrs = () => {
-  setStylePanelOpen(false);
-  setAttrPanelOpen(prev => !prev);
-};
-const handleEditStyle = () => {
-  setAttrPanelOpen(false);
-  setStylePanelOpen(prev => !prev);
-};
-```
-
-### Panel Close Coordination
-
-Panels close on: explicit close button, click outside (with `[data-quill-panel]` guard), element deselection, or undo/redo.
+Reference: `src/components/file-types/html/grapesTheme.css`

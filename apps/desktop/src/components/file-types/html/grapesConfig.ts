@@ -26,8 +26,8 @@ export interface GrapesInitOptions {
 }
 
 /**
- * Style Manager sectors — 6 sectors covering the full CSS surface area the
- * existing PropertiesPanel exposed (plus everything prd §4.3 lists).
+ * Style Manager sectors — 6 sectors covering the full CSS surface area prd
+ * §4.3 specifies (typography, background, dimensions, spacing, border, layout).
  */
 const STYLE_SECTORS = [
   {
