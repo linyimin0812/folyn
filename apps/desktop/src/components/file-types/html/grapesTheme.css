@@ -14,6 +14,21 @@
 .gjs-four-color,
 .gjs-four-color-h:hover { color: var(--acc) !important; }
 
+/* Font family — make every GrapesJS chrome surface use Quill's UI font
+   (Sora). The canvas iframe is unaffected (it has its own document). This is
+   scoped to the editor root + its non-canvas panels so the page being edited
+   keeps whatever font the user authored. */
+.quill-grapes-root,
+.gjs-pn-panel,
+.gjs-sm-sector,
+.gjs-clm-tags,
+.gjs-layers,
+.gjs-trt-traits,
+.gjs-blocks-c,
+.gjs-mdl-dialog {
+  font-family: var(--font-ui) !important;
+}
+
 /* Canvas backdrop — slightly recessed so the white page reads as a sheet */
 .gjs-cv-canvas { background: var(--surf2) !important; }
 
@@ -70,7 +85,7 @@
 .gjs-field {
   background: var(--inp) !important;
   border: 1px solid var(--brd) !important;
-  border-radius: 4px !important;
+  border-radius: 6px !important;
   color: var(--t1) !important;
 }
 .gjs-field input,
@@ -81,6 +96,9 @@
 }
 .gjs-field input:focus,
 .gjs-field select:focus { border-color: var(--acc) !important; outline: none !important; }
+/* Select dropdown options — match Quill's .settings-select option styling so
+   the open menu reads native rather than browser-default white-on-black. */
+.gjs-field select option { background: var(--panel) !important; color: var(--t1) !important; }
 .gjs-field-arrow { border-top-color: var(--t3) !important; }
 .gjs-field-checkbox { background: var(--inp) !important; border: 1px solid var(--brd) !important; }
 .gjs-field-checkbox input:checked + .gjs-chk-icon { background: var(--acc) !important; }
@@ -145,20 +163,24 @@
 .gjs-toolbar-item:hover { background: var(--acc2) !important; }
 
 /* —— Modal (Code / Import dialogs) —— */
-.gjs-mdl-bg { background: rgba(0, 0, 0, 0.5) !important; }
+/* Mirror Quill's .dlg-overlay / .dlg tokens: same 0.45 overlay opacity, same
+   14px dialog radius, same panel border + drop shadow, surf2 header strip. */
+.gjs-mdl-bg { background: rgba(0, 0, 0, 0.45) !important; backdrop-filter: blur(4px) !important; }
 .gjs-mdl-dialog {
   background: var(--panel) !important;
   border: 1px solid var(--brd) !important;
-  border-radius: 12px !important;
+  border-radius: 14px !important;
   color: var(--t1) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
 }
 .gjs-mdl-header {
   background: var(--surf2) !important;
   color: var(--t1) !important;
   border-bottom: 1px solid var(--brd) !important;
 }
-.gjs-mdl-title { color: var(--t1) !important; }
+.gjs-mdl-title { color: var(--t1) !important; font-size: 15px !important; font-weight: 600 !important; }
 .gjs-mdl-close { color: var(--t3) !important; }
+.gjs-mdl-close:hover { background: var(--hov) !important; color: var(--t1) !important; }
 
 /* —— Devices switcher (used in custom toolbar) —— */
 .gjs-devices-c { background: var(--panel) !important; }

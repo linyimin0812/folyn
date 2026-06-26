@@ -23,7 +23,7 @@ import type { Editor } from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
 import './grapesTheme.css';
 
-import { createGrapesConfig, injectExternalLinks, injectCanvasScrollbarHide } from './grapesConfig';
+import { createGrapesConfig, injectExternalLinks, injectCanvasScrollbarHide, localizeRteTitles } from './grapesConfig';
 import { registerCustomBlocks } from './grapesBlocks';
 import {
   parseHtmlForGrapes,
@@ -196,6 +196,10 @@ export function useGrapesEditor(opts: UseGrapesEditorOptions): UseGrapesEditorRe
     const onReady = () => {
       injectExternalLinks(editor, parsed.headContent);
       injectCanvasScrollbarHide(editor);
+      // Localize the inline Rich Text Editor toolbar tooltips (bold/italic/…).
+      // These titles are hardcoded in GrapesJS's default RTE actions and are
+      // NOT routed through the i18n module, so they must be patched post-load.
+      localizeRteTitles(editor);
       // Allow subsequent change events to flow.
       suppressChangeRef.current = false;
     };

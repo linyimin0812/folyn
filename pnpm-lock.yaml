@@ -105,6 +105,12 @@ importers:
       grapesjs-blocks-basic:
         specifier: ^1.0.2
         version: 1.0.2
+      grapesjs-plugin-forms:
+        specifier: ^2.0.6
+        version: 2.0.6
+      grapesjs-tui-image-editor:
+        specifier: ^1.0.2
+        version: 1.0.2
       highlight.js:
         specifier: ^11.10.0
         version: 11.11.1
@@ -2336,6 +2342,12 @@ packages:
 
   grapesjs-blocks-basic@1.0.2:
     resolution: {integrity: sha512-SsPKf/CvQkZ+kABOsN01auAPHXh/2J20g0AWYF7fHR3Gw3TZLtdIxT1mk90Qzi76u/7sUYi3CTI+i3ZaTtXHRA==}
+
+  grapesjs-plugin-forms@2.0.6:
+    resolution: {integrity: sha512-4rDob01NLiJWas5JW1FCpQc/4R4oS4wc/qr7pQwjGUiDzHNPKZLix10FqUKEv7hnzPmBaR2ejBL87sMwz11Tlw==}
+
+  grapesjs-tui-image-editor@1.0.2:
+    resolution: {integrity: sha512-cnKSYzzQV8m5mdvVGhhO9aO5tmtOZLR1O+12z2LqnBcYCvA1eN7ecEYqHT7qpRVH8Q84Nj2mmCn+2t4TvrkI8g==}
 
   grapesjs@0.21.13:
     resolution: {integrity: sha512-Qfl2kL7DV9kX+ihUUgAM2LtzkFUmZQYrMLol6/uENCkUE2ndB/Ebtf5UUx7UXWT3txDs4UiWIojYCvmmxTv4XA==}
@@ -5922,6 +5934,10 @@ snapshots:
   gopd@1.2.0: {}
 
   grapesjs-blocks-basic@1.0.2: {}
+
+  grapesjs-plugin-forms@2.0.6: {}
+
+  grapesjs-tui-image-editor@1.0.2: {}
 
   grapesjs@0.21.13:
     dependencies:
