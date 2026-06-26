@@ -230,12 +230,15 @@ describe('reconstructHtml', () => {
     expect(scriptBIdx).toBeGreaterThan(scriptAIdx);
   });
 
-  it('#16 combines grapesCss AND parsed.styleBlocks in the output <style> block', () => {
+  it('#16 combines grapesCss AND @-rule styleBlocks in the output <style> block', () => {
+    // Only @-rules (keyframes / font-face / import) are re-appended
+    // verbatim — regular rule duplication would compound across saves.
+    const atRule = '@keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }';
     const p: ParsedHtml = {
       doctype: '<!DOCTYPE html>',
       htmlAttrs: '',
       headContent: '',
-      styleBlocks: ['.orig { color: blue; }'],
+      styleBlocks: ['.orig { color: blue; }', atRule],
       bodyContent: '',
       bodyAttrs: '',
       scriptBlocks: [],
@@ -247,9 +250,11 @@ describe('reconstructHtml', () => {
     expect(styleClose).toBeGreaterThan(styleOpen);
     const cssBlock = out.slice(styleOpen, styleClose);
     expect(cssBlock).toContain('.gjs { color: red; }');
-    expect(cssBlock).toContain('.orig { color: blue; }');
-    // GrapesJS CSS comes first, original blocks appended after
-    expect(cssBlock.indexOf('.gjs')).toBeLessThan(cssBlock.indexOf('.orig'));
+    expect(cssBlock).toContain('@keyframes spin');
+    // Regular rules from styleBlocks are dropped (GrapesJS owns them)
+    expect(cssBlock).not.toContain('.orig { color: blue; }');
+    // GrapesJS CSS comes first, preserved @-rules appended after
+    expect(cssBlock.indexOf('.gjs')).toBeLessThan(cssBlock.indexOf('@keyframes'));
   });
 });
 

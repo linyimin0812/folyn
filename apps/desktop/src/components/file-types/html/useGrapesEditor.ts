@@ -182,12 +182,10 @@ export function useGrapesEditor(opts: UseGrapesEditorOptions): UseGrapesEditorRe
     // We pass the original <style> blocks to `editor.setStyle()` so the
     // canvas renders with the user's existing CSS and the Style Manager can
     // surface current values for selected components. `reconstructHtml`
-    // ALSO re-appends the verbatim originals on save — this is intentional:
-    // it preserves @keyframes / @media / @import constructs that GrapesJS
-    // may not perfectly round-trip through its CssComposer model. The
-    // resulting CSS duplicates are functionally idempotent (same selector +
-    // same declarations resolve to the same computed style). Trading a
-    // little file size for fidelity is the safer default for Phase 3.
+    // then relies on `editor.getCss()` for the full CSS output and only
+    // re-appends @-rules (keyframes / font-face / import) that GrapesJS
+    // may not round-trip faithfully — re-appending the originals verbatim
+    // would compound across saves and cause unbounded file growth.
     try {
       editor.setComponents(parsed.bodyContent || '');
       editor.setStyle(parsed.styleBlocks.join('\n'));

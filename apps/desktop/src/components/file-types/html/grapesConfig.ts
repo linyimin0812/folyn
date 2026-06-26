@@ -31,7 +31,7 @@ export interface GrapesInitOptions {
  */
 const STYLE_SECTORS = [
   {
-    name: 'Typography',
+    name: '字体',
     open: false,
     buildProps: [
       'font-family',
@@ -46,7 +46,7 @@ const STYLE_SECTORS = [
     ],
   },
   {
-    name: 'Background',
+    name: '背景',
     open: false,
     buildProps: [
       'background-color',
@@ -57,7 +57,7 @@ const STYLE_SECTORS = [
     ],
   },
   {
-    name: 'Dimensions',
+    name: '尺寸',
     open: false,
     buildProps: [
       'width',
@@ -69,17 +69,17 @@ const STYLE_SECTORS = [
     ],
   },
   {
-    name: 'Spacing',
+    name: '间距',
     open: false,
     buildProps: ['margin', 'padding'],
   },
   {
-    name: 'Border',
+    name: '边框',
     open: false,
     buildProps: ['border-radius', 'border', 'box-shadow'],
   },
   {
-    name: 'Layout',
+    name: '布局',
     open: false,
     buildProps: [
       'display',
@@ -101,6 +101,84 @@ const CANVAS_STYLES = [
 ];
 
 /**
+ * Chinese translations for GrapesJS built-in UI labels. Sector headers and
+ * device names are set in Chinese directly via the `name` fields above; this
+ * i18n map covers the property labels, trait labels, and other strings that
+ * GrapesJS renders from its default `en` locale.
+ */
+const ZH_MESSAGES: Record<string, string> = {
+  // StyleManager property labels
+  'styleManager.props.font-family': '字体族',
+  'styleManager.props.font-size': '字号',
+  'styleManager.props.font-weight': '字重',
+  'styleManager.props.line-height': '行高',
+  'styleManager.props.letter-spacing': '字间距',
+  'styleManager.props.color': '颜色',
+  'styleManager.props.text-align': '对齐',
+  'styleManager.props.text-decoration': '文字装饰',
+  'styleManager.props.text-transform': '大小写',
+  'styleManager.props.background-color': '背景色',
+  'styleManager.props.background-image': '背景图',
+  'styleManager.props.background-repeat': '背景重复',
+  'styleManager.props.background-position': '背景位置',
+  'styleManager.props.background-size': '背景大小',
+  'styleManager.props.width': '宽度',
+  'styleManager.props.min-width': '最小宽度',
+  'styleManager.props.max-width': '最大宽度',
+  'styleManager.props.height': '高度',
+  'styleManager.props.min-height': '最小高度',
+  'styleManager.props.max-height': '最大高度',
+  'styleManager.props.margin': '外边距',
+  'styleManager.props.padding': '内边距',
+  'styleManager.props.border-radius': '圆角',
+  'styleManager.props.border': '边框',
+  'styleManager.props.box-shadow': '阴影',
+  'styleManager.props.display': '显示',
+  'styleManager.props.flex-direction': '主轴方向',
+  'styleManager.props.justify-content': '主轴对齐',
+  'styleManager.props.align-items': '交叉轴对齐',
+  'styleManager.props.flex-wrap': '换行',
+  'styleManager.props.gap': '间距',
+  'styleManager.props.position': '定位',
+  'styleManager.props.overflow': '溢出',
+  'styleManager.props.opacity': '透明度',
+  // Common placeholders / buttons
+  'styleManager.empty': '请选择元素以编辑样式',
+  'styleManager.button-add': '添加',
+  'placeholder.class-name': '类名',
+  'placeholder.id-name': 'ID',
+  'placeholder.tag-name': '标签',
+  // Trait labels
+  'traits.label.id': 'ID',
+  'traits.label.name': '名称',
+  'traits.label.placeholder': '占位文本',
+  'traits.label.value': '值',
+  'traits.label.type': '类型',
+  'traits.label.href': '链接地址',
+  'traits.label.src': '资源地址',
+  'traits.label.alt': '替代文本',
+  'traits.label.title': '标题',
+  'traits.label.rel': 'rel',
+  'traits.label.target': '打开方式',
+  'traitManager.empty': '请选择元素以编辑属性',
+  // Layers
+  'layers.label': '图层',
+  // Selector / classes
+  'selectorManager.label': '选择器',
+  'selectorManager.empty': '选择元素以查看类与状态',
+  'selectorManager.state': '状态',
+  'selectorManager.states.hover': '悬停',
+  'selectorManager.states.active': '激活',
+  'selectorManager.states.focus': '聚焦',
+  'selectorManager.states.checked': '选中',
+  'selectorManager.add-new': '添加新类',
+  // Devices
+  'deviceManager.desktop': '桌面',
+  'deviceManager.tablet': '平板',
+  'deviceManager.mobile-portrait': '手机',
+};
+
+/**
  * Build the config object handed to `grapesjs.init()`.
  */
 export function createGrapesConfig(opts: GrapesInitOptions): Record<string, unknown> {
@@ -118,6 +196,13 @@ export function createGrapesConfig(opts: GrapesInitOptions): Record<string, unkn
     // Disable built-in panels — the React shell renders its own toolbar.
     panels: { defaults: [] },
 
+    // i18n — render the entire GrapesJS UI in Chinese.
+    i18n: {
+      locale: 'zh',
+      detect: false,
+      messages: { zh: ZH_MESSAGES },
+    },
+
     // BlockManager is intentionally left unmounted: the React shell no longer
     // renders a block-library sidebar. GrapesJS falls back to its default
     // hidden block container, and `registerCustomBlocks` still works (it
@@ -130,9 +215,9 @@ export function createGrapesConfig(opts: GrapesInitOptions): Record<string, unkn
 
     deviceManager: {
       devices: [
-        { name: 'Desktop', width: '' },
-        { name: 'Tablet', width: '768px', widthMedia: '992px' },
-        { name: 'Mobile portrait', width: '375px', widthMedia: '480px' },
+        { name: '桌面', width: '' },
+        { name: '平板', width: '768px', widthMedia: '992px' },
+        { name: '手机', width: '375px', widthMedia: '480px' },
       ],
     },
 

@@ -80,12 +80,12 @@ describe('createGrapesConfig', () => {
     const names = sectors.map((s) => s.name);
     expect(names).toEqual(
       expect.arrayContaining([
-        'Typography',
-        'Background',
-        'Dimensions',
-        'Spacing',
-        'Border',
-        'Layout',
+        '字体',
+        '背景',
+        '尺寸',
+        '间距',
+        '边框',
+        '布局',
       ]),
     );
     expect(names).toHaveLength(6);
@@ -118,12 +118,12 @@ describe('createGrapesConfig', () => {
     );
   });
 
-  it('#12 deviceManager.devices has 3 entries: Desktop, Tablet, Mobile portrait', () => {
+  it('#12 deviceManager.devices has 3 entries: 桌面, 平板, 手机', () => {
     const cfg = createGrapesConfig(makeOpts());
     const devices = (cfg.deviceManager as { devices: { name: string }[] }).devices;
     expect(devices).toHaveLength(3);
     const names = devices.map((d) => d.name);
-    expect(names).toEqual(['Desktop', 'Tablet', 'Mobile portrait']);
+    expect(names).toEqual(['桌面', '平板', '手机']);
   });
 
   it('#13 plugins array includes the grapesjs-blocks-basic plugin reference', () => {

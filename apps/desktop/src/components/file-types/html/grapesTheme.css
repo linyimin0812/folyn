@@ -88,11 +88,11 @@
 /* —— Style Manager —— */
 .gjs-sm-sector .gjs-sm-sector-title {
   background: var(--surf2) !important;
-  color: var(--t2) !important;
+  color: var(--t1) !important;
   font-size: 11px !important;
 }
 .gjs-sm-sector .gjs-sm-sector-title:hover { color: var(--acc) !important; }
-.gjs-sm-label { color: var(--t3) !important; font-size: 11px !important; }
+.gjs-sm-label { color: var(--t2) !important; font-size: 11px !important; }
 .gjs-sm-property { border-bottom-color: var(--brd) !important; }
 .gjs-sm-stack #gjs-sm-add { color: var(--acc) !important; }
 
@@ -114,8 +114,8 @@
 .gjs-layer-vis { color: var(--t3) !important; }
 
 /* —— Trait Manager —— */
-.gjs-traits-label { color: var(--t3) !important; font-size: 11px !important; }
-.gjs-trt-trait__title { color: var(--t3) !important; }
+.gjs-traits-label { color: var(--t2) !important; font-size: 11px !important; }
+.gjs-trt-trait__title { color: var(--t2) !important; }
 
 /* —— Selection / hover overlays on canvas —— */
 .gjs-selected { outline: 2px solid var(--acc) !important; }

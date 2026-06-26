@@ -139,13 +139,27 @@ export function reconstructHtml(
   const htmlOpen = parsed.htmlAttrs ? `<html${parsed.htmlAttrs}>` : '<html>';
   const bodyOpen = parsed.bodyAttrs ? `<body${parsed.bodyAttrs}>` : '<body>';
 
-  // Merge GrapesJS-generated CSS with any original <style> blocks preserved
-  // verbatim (e.g. raw @keyframes / @import the user authored by hand).
+  // GrapesJS's `getCss()` already serializes the full CssComposer model,
+  // which includes everything we fed into `editor.setStyle()` on mount.
+  // Re-appending the original <style> blocks verbatim would compound across
+  // saves: each save writes (grapesCss + originals) into a single <style>,
+  // the next mount parses that whole block back into styleBlocks, feeds it
+  // to setStyle, then re-appends it again — so the file roughly doubles in
+  // size on every save.
+  //
+  // To preserve at-rules that GrapesJS's CssComposer may not round-trip
+  // faithfully (@keyframes / @font-face / @import), we re-append ONLY the
+  // portions of the original style blocks that contain those constructs.
+  // Regular rule selectors and declarations are left to grapesCss.
+  const AT_RULE_RE = /@(?:keyframes|font-face|import|charset|namespace)\b/;
+  const preservedStyle = parsed.styleBlocks
+    .map((s) => s.trim())
+    .filter((s) => s && AT_RULE_RE.test(s))
+    .join('\n\n');
+
   const cssChunks: string[] = [];
   if (grapesCss && grapesCss.trim()) cssChunks.push(grapesCss);
-  for (const s of parsed.styleBlocks) {
-    if (s && s.trim()) cssChunks.push(s);
-  }
+  if (preservedStyle) cssChunks.push(preservedStyle);
   const mergedCss = cssChunks.join('\n\n');
 
   // Re-attach scripts verbatim. The script's original `type`/`src` attrs are
