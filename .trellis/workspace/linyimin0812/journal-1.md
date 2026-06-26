@@ -74,3 +74,37 @@ Completed the GrapesJS HTML visual editor migration. Phase 4: deleted the legacy
 ### Next Steps
 
 - None - task complete
+
+
+## Session 3: Web Link Clipper: Duplicate Detection + Batch Clipping
+
+**Date**: 2026-06-27
+**Task**: Web Link Clipper: Duplicate Detection + Batch Clipping
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Expanded the Web Link Clipper with duplicate URL detection and batch clipping. Added normalizeUrl (lowercase host, strip fragment/trailing slash, keep query) wired into clipStore findClipByUrl/clipUrls; extended duplicate checks to all four entry points (ClipsPanel single input, /clip + /clip! force modifier, WebViewer clip-this-page confirm dialog, batch loop) with a consistent open-existing default and force-overwrite path. Built sequential batch clipping (Approach A) in ClipsPanel's BatchClipView: skip+global-force toggle, fail-soft per-URL, mid-batch cancel, configurable inter-URL delay, no auto-open, and a __clips__/batch-<date>.md summary export. saveClip skipAutoOpen and clipUrl {force} are backward-compatible options; batch helpers extracted to clipBatchHelpers.ts. 271 tests + tsc + build green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `445dc45` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
