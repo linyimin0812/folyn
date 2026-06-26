@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Frontend overview — Tauri 2 + React 18 + TS + Zustand 5 + Tailwind stack context for all UI changes"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store patterns + persistence; settingsStore new fields/持久化 extraction must follow these conventions"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Named-export component patterns, props, store selectors — applies to ActivityBar/SettingsPage edits"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Granular selector rules and quality bar needed when adding settings reads to App.tsx and ActivityBar"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse existing Toggle component and settings row layout instead of duplicating; avoid parallel feature-flag branches"}

@@ -56,6 +56,10 @@ export default function App() {
   const showAiPanel = useSettingsStore((state) => state.showAiPanel);
   const showStatusBar = useSettingsStore((state) => state.showStatusBar);
   const fontSize = useSettingsStore((state) => state.fontSize);
+  const enableWikiPanel = useSettingsStore((state) => state.enableWikiPanel);
+  const enableClipsPanel = useSettingsStore((state) => state.enableClipsPanel);
+  const enableAnalyzePanel = useSettingsStore((state) => state.enableAnalyzePanel);
+  const enableDailyPanel = useSettingsStore((state) => state.enableDailyPanel);
 
   // ── Vault initialization ──
   const vaultInitialized = useRef(false);
@@ -95,6 +99,16 @@ export default function App() {
     }
   }, [currentPage]);
 
+  // ── Fall back to 'files' panel when the active feature is disabled ──
+  // If the user turns off a feature (in Settings) while its panel is active,
+  // we must not leave the UI on a now-hidden panel. Re-route to 'files'.
+  useEffect(() => {
+    if (activePanel === 'wiki' && !enableWikiPanel) setActivePanel('files');
+    else if (activePanel === 'clips' && !enableClipsPanel) setActivePanel('files');
+    else if (activePanel === 'analyze' && !enableAnalyzePanel) setActivePanel('files');
+    else if (activePanel === 'calendar' && !enableDailyPanel) setActivePanel('files');
+  }, [activePanel, enableWikiPanel, enableClipsPanel, enableAnalyzePanel, enableDailyPanel, setActivePanel]);
+
   // ── Global Ctrl+S / Cmd+S and Cmd+Shift+F ──
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -115,8 +129,12 @@ export default function App() {
         }
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
-        e.preventDefault();
-        useEditorStore.getState().openDailyNote();
+        // Only trigger daily note when the feature is enabled; otherwise let the
+        // event pass through untouched so users (and the OS) keep default behavior.
+        if (useSettingsStore.getState().enableDailyPanel) {
+          e.preventDefault();
+          useEditorStore.getState().openDailyNote();
+        }
       }
     };
     document.addEventListener('keydown', handleKeyDown);

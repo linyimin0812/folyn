@@ -34,6 +34,10 @@ interface SettingsState {
   showAiPanel: boolean;
   showStatusBar: boolean;
   showHiddenFiles: boolean;
+  enableWikiPanel: boolean;
+  enableClipsPanel: boolean;
+  enableAnalyzePanel: boolean;
+  enableDailyPanel: boolean;
   excludePatterns: string;
 
   // Editor
@@ -100,14 +104,18 @@ function debouncedPersist(state: Partial<SettingsState>) {
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     // Extract only serializable settings (exclude functions and runtime state)
-    const { theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles, excludePatterns,
+    const { theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles,
+      enableWikiPanel, enableClipsPanel, enableAnalyzePanel, enableDailyPanel,
+      excludePatterns,
       editorFont, editorFontSize, tabSize, wrapColumn, showLineNumbers,
       syntaxHighlight, autoSave, spellCheck, linkOpenMode, vaultPath, imagePath, docExtension,
       watchFileChanges, trashOnDelete, syncMethod, syncEndpoint, syncAccessKey,
       syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
       vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates } = state as SettingsState;
     storageClient.set(SETTINGS_STORAGE_KEY, {
-      theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles, excludePatterns,
+      theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles,
+      enableWikiPanel, enableClipsPanel, enableAnalyzePanel, enableDailyPanel,
+      excludePatterns,
       editorFont, editorFontSize, tabSize, wrapColumn, showLineNumbers,
       syntaxHighlight, autoSave, spellCheck, linkOpenMode, vaultPath, imagePath, docExtension,
       watchFileChanges, trashOnDelete, syncMethod, syncEndpoint, syncAccessKey,
@@ -129,6 +137,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   showAiPanel: true,
   showStatusBar: true,
   showHiddenFiles: true,
+  enableWikiPanel: true,
+  enableClipsPanel: true,
+  enableAnalyzePanel: true,
+  enableDailyPanel: true,
   excludePatterns: 'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__',
 
   // Editor

@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality bar — granular selectors, lint/typecheck/tests must pass before completion"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify settingsStore persistence + setState patterns conform to store conventions"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify ActivityBar/SettingsPage edits keep named-export + selector conventions"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Check no duplicated Toggle/row markup — reused existing SettingsPage Toggle"}
