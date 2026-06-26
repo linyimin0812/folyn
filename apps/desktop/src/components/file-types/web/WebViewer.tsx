@@ -17,6 +17,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
   const [status, setStatus] = useState<WebviewStatus>('loading');
   const [clipping, setClipping] = useState(false);
   const [clipError, setClipError] = useState(false);
+  const [clipDuplicate, setClipDuplicate] = useState<{ url: string; existingPath: string } | null>(null);
 
   // Check if this web tab was opened from a clip card
   const clipPath = useEditorStore((s) => {
@@ -48,11 +49,37 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
     backToClip(tabId);
   }, [clipPath, tabId, backToClip]);
 
+  // Move the native webview off-screen so HTML overlays (e.g. the duplicate
+  // clip confirm dialog) are visible. Restored via syncPosition().
+  const hideWebview = useCallback(async () => {
+    const cached = webviewCache.get(tabId);
+    if (cached && isTauri()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('set_webview_position', {
+          label: cached.label,
+          x: -10000,
+          y: -10000,
+          width: 1,
+          height: 1,
+        });
+      } catch {}
+    }
+  }, [tabId]);
+
   const handleClipPage = useCallback(async () => {
     if (!filePath || clipping) return;
     try {
       new URL(filePath);
     } catch {
+      return;
+    }
+    // Duplicate check before clipping.
+    await useClipStore.getState().loadClips();
+    const existing = useClipStore.getState().findClipByUrl(filePath);
+    if (existing) {
+      await hideWebview();
+      setClipDuplicate({ url: filePath, existingPath: existing });
       return;
     }
     setClipping(true);
@@ -66,7 +93,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
     } finally {
       setClipping(false);
     }
-  }, [filePath, clipping]);
+  }, [filePath, clipping, hideWebview]);
 
   const syncPosition = useCallback(async () => {
     const container = webViewerRef.current;
@@ -85,6 +112,42 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
       });
     } catch {}
   }, []);
+
+  const handleDuplicateOpen = useCallback(async () => {
+    if (!clipDuplicate) return;
+    const { existingPath } = clipDuplicate;
+    const fileName = existingPath.split('/').pop() || existingPath;
+    setClipDuplicate(null);
+    await syncPosition();
+    try {
+      await useEditorStore.getState().openFile(existingPath, fileName);
+    } catch (err) {
+      console.error('[WebViewer] openFile failed:', err);
+    }
+  }, [clipDuplicate, syncPosition]);
+
+  const handleDuplicateRegenerate = useCallback(async () => {
+    if (!clipDuplicate) return;
+    const { url } = clipDuplicate;
+    setClipDuplicate(null);
+    setClipping(true);
+    setClipError(false);
+    try {
+      await useClipStore.getState().clipUrl(url, undefined, undefined, { force: true });
+    } catch (err) {
+      console.error('[WebViewer] Clip failed:', err);
+      setClipError(true);
+      setTimeout(() => setClipError(false), 3000);
+    } finally {
+      setClipping(false);
+      await syncPosition();
+    }
+  }, [clipDuplicate, syncPosition]);
+
+  const handleDuplicateCancel = useCallback(async () => {
+    setClipDuplicate(null);
+    await syncPosition();
+  }, [syncPosition]);
 
   useEffect(() => {
     if (!isTauri() || !filePath) return;
@@ -304,6 +367,38 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
           </svg>
         </button>
       </div>
+
+      {clipDuplicate && (
+        <div className="web-viewer-duplicate absolute inset-x-0 top-10 bottom-0 flex items-center justify-center bg-surf z-20 p-4">
+          <div className="flex flex-col gap-2.5 max-w-[360px] w-full bg-panel border border-brd rounded-[10px] shadow-[0_8px_32px_rgba(0,0,0,0.18)] p-5">
+            <div className="text-[14px] font-semibold text-t1">该链接已经剪藏过</div>
+            <div className="text-[11px] text-t2 break-all bg-bg rounded-md px-2.5 py-1.5 border border-brd">
+              {clipDuplicate.url}
+            </div>
+            <div className="text-[12px] text-t2 leading-relaxed">是否打开已有笔记，或重新生成并覆盖？</div>
+            <div className="flex flex-col gap-1.5">
+              <button
+                className="py-2 text-[13px] rounded-md bg-acc text-white border-none cursor-pointer hover:opacity-90 transition-opacity font-medium"
+                onClick={handleDuplicateOpen}
+              >
+                打开已有
+              </button>
+              <button
+                className="py-2 text-[13px] rounded-md bg-amber-500 text-white border-none cursor-pointer hover:opacity-90 transition-opacity font-medium"
+                onClick={handleDuplicateRegenerate}
+              >
+                重新生成
+              </button>
+              <button
+                className="py-2 text-[13px] rounded-md bg-bg text-t2 border border-brd cursor-pointer hover:bg-hov transition-colors"
+                onClick={handleDuplicateCancel}
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {status === 'loading' && (
         <div className="web-viewer-status absolute inset-x-0 top-10 bottom-0 flex flex-col items-center justify-center gap-3 bg-surf z-10 text-t2">

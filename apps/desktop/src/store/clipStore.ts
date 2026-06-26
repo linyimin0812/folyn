@@ -9,6 +9,22 @@ import {
   type ClipMetadata,
   type ClipLanguage,
 } from '@/services/clipService';
+import { normalizeUrl } from '@/utils/urlUtils';
+import {
+  prepareBatchUrls,
+  cancellableSleep,
+  writeBatchSummary,
+  type BatchItem,
+  type BatchOptions,
+  type BatchSummary,
+} from './clipBatchHelpers';
+
+export {
+  prepareBatchUrls,
+  cancellableSleep,
+  writeBatchSummary,
+} from './clipBatchHelpers';
+export type { BatchItem, BatchItemStatus, BatchOptions, BatchSummary } from './clipBatchHelpers';
 
 export interface ClipFile {
   path: string;
@@ -39,9 +55,20 @@ interface ClipState {
   /** Map of clipped URLs to their file paths (url → clipPath) */
   clipUrls: Map<string, string>;
 
+  /** Batch clip run state */
+  batchItems: BatchItem[];
+  isBatchRunning: boolean;
+  /** Path of the most recent batch summary file (null if none / cleared) */
+  batchSummaryPath: string | null;
+
   loadClips: () => Promise<void>;
   /** Backward-compatible one-shot clip (used by /clip command and WebViewer) */
-  clipUrl: (url: string, onProgress?: (msg: string) => void, lang?: ClipLanguage) => Promise<string>;
+  clipUrl: (
+    url: string,
+    onProgress?: (msg: string) => void,
+    lang?: ClipLanguage,
+    options?: { force?: boolean },
+  ) => Promise<string>;
 
   /** Phase 1: Fetch + AI generate metadata (no save) */
   startClip: (url: string, lang?: ClipLanguage) => Promise<void>;
@@ -53,6 +80,13 @@ interface ClipState {
   findClipByUrl: (url: string) => string | null;
   /** Remove a tag from a clip. If no tags remain, delete the file. */
   removeTagFromClip: (clipPath: string, tag: string) => Promise<void>;
+
+  /** Run a sequential batch clip over a list of URLs. Resolves with a summary. */
+  clipBatch: (urls: string[], options?: BatchOptions) => Promise<BatchSummary>;
+  /** Cancel the currently-running batch (after the current clip finishes). */
+  cancelBatch: () => void;
+  /** Clear batch state (items + summary path). */
+  clearBatch: () => void;
 }
 
 /** Recursively collect all .md file entries from a nested VaultEntry tree */
@@ -132,7 +166,7 @@ async function buildClipGroups(clips: ClipFile[]): Promise<{ groups: ClipGroup[]
         const content = await vault.readFile(clip.path);
         tags = parseTagsFromContent(content);
         const clipUrl = parseUrlFromContent(content);
-        if (clipUrl) urlMap.set(clipUrl, clip.path);
+        if (clipUrl) urlMap.set(normalizeUrl(clipUrl), clip.path);
       } catch {
         tags = [dirTag];
       }
@@ -146,7 +180,7 @@ async function buildClipGroups(clips: ClipFile[]): Promise<{ groups: ClipGroup[]
         const content = await vault.readFile(clip.path);
         tags = parseTagsFromContent(content);
         const clipUrl = parseUrlFromContent(content);
-        if (clipUrl) urlMap.set(clipUrl, clip.path);
+        if (clipUrl) urlMap.set(normalizeUrl(clipUrl), clip.path);
       } catch {
         tags = [];
       }
@@ -178,6 +212,11 @@ async function buildClipGroups(clips: ClipFile[]): Promise<{ groups: ClipGroup[]
   return { groups, allTags: sortedTags, urlMap };
 }
 
+// Module-level cancel flag for the batch loop. Not reactive state — it's a
+// plain mutable boolean checked between iterations. `cancelBatch` sets it;
+// the loop clears it on entry and checks it after each clip + after sleeps.
+let batchCancelRequested = false;
+
 export const useClipStore = create<ClipState>((set, get) => ({
   clips: [],
   clipGroups: [],
@@ -190,6 +229,9 @@ export const useClipStore = create<ClipState>((set, get) => ({
   aiStreamText: '',
   aiStreamEvents: [],
   clipUrls: new Map(),
+  batchItems: [],
+  isBatchRunning: false,
+  batchSummaryPath: null,
 
   loadClips: async () => {
     if (get().isLoading) return;
@@ -210,15 +252,23 @@ export const useClipStore = create<ClipState>((set, get) => ({
     }
   },
 
-  clipUrl: async (url: string, onProgress?: (msg: string) => void, lang?: ClipLanguage) => {
+  clipUrl: async (url, onProgress, lang, options) => {
     if (get().isClipping) throw new Error('剪藏任务正在进行中');
     set({ isClipping: true, error: null, aiStreamText: '', aiStreamEvents: [] });
     try {
+      // Force mode: resolve the existing clip path and overwrite it.
+      // Non-force mode is the caller's responsibility (e.g. AiPanel/WebViewer
+      // check findClipByUrl before calling); here we only handle overwrite.
+      let overwritePath: string | undefined;
+      if (options?.force) {
+        await get().loadClips();
+        overwritePath = get().findClipByUrl(url) ?? undefined;
+      }
       const filePath = await clipUrlService(url, onProgress, lang, (chunk) => {
         set((s) => ({ aiStreamText: s.aiStreamText + chunk }));
       }, (event) => {
         set((s) => ({ aiStreamEvents: [...s.aiStreamEvents, event] }));
-      });
+      }, overwritePath);
       await get().loadClips();
       return filePath;
     } catch (err) {
@@ -272,7 +322,7 @@ export const useClipStore = create<ClipState>((set, get) => ({
   },
 
   findClipByUrl: (url: string) => {
-    return get().clipUrls.get(url) ?? null;
+    return get().clipUrls.get(normalizeUrl(url)) ?? null;
   },
 
   removeTagFromClip: async (clipPath: string, tagToRemove: string) => {
@@ -347,5 +397,135 @@ export const useClipStore = create<ClipState>((set, get) => ({
     }
 
     await get().loadClips();
+  },
+
+  clipBatch: async (urls, options) => {
+    if (get().isBatchRunning) {
+      throw new Error('批量剪藏正在进行中');
+    }
+
+    const force = !!options?.force;
+    const delayMs = Math.max(0, options?.delayMs ?? 0);
+
+    // 1. Normalize + dedupe + validate the input list (pure helper).
+    const items = prepareBatchUrls(urls);
+    batchCancelRequested = false;
+    set({ batchItems: items, isBatchRunning: true, batchSummaryPath: null, error: null });
+
+    // Helper to update a single item's status in-place.
+    const updateItem = (index: number, patch: Partial<BatchItem>) => {
+      set((s) => {
+        const next = s.batchItems.slice();
+        const current = next[index];
+        if (current) next[index] = { ...current, ...patch };
+        return { batchItems: next };
+      });
+    };
+
+    // 2. Ensure clipUrls is populated so findClipByUrl works for the whole batch.
+    try {
+      await get().loadClips();
+    } catch {
+      // Non-fatal: dedupe against existing clips just won't fire; the loop
+      // still runs (and creates new files).
+    }
+
+    let doneCount = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
+
+    // 3. Sequential loop over pending items.
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+
+      // Items already resolved during prepareBatchUrls (invalid / dup) stay as-is.
+      if (item.status !== 'pending') {
+        if (item.status === 'skipped') skippedCount++;
+        else if (item.status === 'failed') failedCount++;
+        continue;
+      }
+
+      // Cancellation check between iterations: finish the current clip but
+      // don't start the next one. Remaining pending items → cancelled.
+      if (batchCancelRequested) {
+        updateItem(i, { status: 'cancelled', reason: '已取消' });
+        // Mark all subsequent pending items as cancelled too.
+        for (let j = i + 1; j < items.length; j++) {
+          if (items[j].status === 'pending') {
+            updateItem(j, { status: 'cancelled', reason: '已取消' });
+          }
+        }
+        break;
+      }
+
+      updateItem(i, { status: 'running' });
+
+      try {
+        // Duplicate check against existing clips (unless force is on).
+        if (!force) {
+          const existingPath = get().findClipByUrl(item.url);
+          if (existingPath) {
+            updateItem(i, { status: 'skipped', reason: '已存在', clipPath: existingPath });
+            skippedCount++;
+            continue;
+          }
+        }
+
+        // Run the two-phase clip without auto-opening the editor.
+        const metadata = await generateClipService(item.url, (msg) => {
+          updateItem(i, { reason: msg });
+        });
+        const overwritePath = force
+          ? (get().findClipByUrl(item.url) ?? undefined)
+          : undefined;
+        const clipPath = await saveClipService(metadata, overwritePath, { skipAutoOpen: true });
+
+        updateItem(i, { status: 'done', clipPath, reason: undefined });
+        doneCount++;
+      } catch (err) {
+        // Fail-soft: record the error and continue with the next URL.
+        const msg = err instanceof Error ? err.message : String(err);
+        updateItem(i, { status: 'failed', error: msg });
+        failedCount++;
+      }
+
+      // Inter-URL delay (cancellation-aware). Checked again after the sleep
+      // so a cancel issued during the delay stops before the next clip.
+      if (delayMs > 0 && i < items.length - 1) {
+        try {
+          await cancellableSleep(delayMs, () => batchCancelRequested);
+        } catch {
+          // Cancelled during sleep — the loop-top check on the next iteration
+          // will mark remaining items as cancelled.
+        }
+      }
+    }
+
+    // 4. Write the summary file.
+    let summaryPath: string | undefined;
+    try {
+      summaryPath = await writeBatchSummary(get().batchItems);
+    } catch (err) {
+      // Summary write failure is non-fatal; the run itself already succeeded.
+      set({ error: `批量汇总写入失败: ${err instanceof Error ? err.message : String(err)}` });
+    }
+
+    set({ isBatchRunning: false, batchSummaryPath: summaryPath ?? null });
+
+    return {
+      total: items.length,
+      done: doneCount,
+      skipped: skippedCount,
+      failed: failedCount,
+      summaryPath,
+    };
+  },
+
+  cancelBatch: () => {
+    batchCancelRequested = true;
+  },
+
+  clearBatch: () => {
+    set({ batchItems: [], batchSummaryPath: null });
   },
 }));

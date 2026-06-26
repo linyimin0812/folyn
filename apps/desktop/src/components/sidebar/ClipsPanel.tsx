@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useClipStore, type ClipFile } from '@/store/clipStore';
+import { useClipStore, type ClipFile, type BatchItemStatus } from '@/store/clipStore';
 import type { ClipMetadata, ClipLanguage } from '@/services/clipService';
 import type { StreamEvent } from '@/services/aiStreamUtils';
 import { useEditorStore } from '@/store/editorStore';
@@ -419,6 +419,213 @@ function TagSection({
   );
 }
 
+const BATCH_STATUS_STYLE: Record<BatchItemStatus, { label: string; className: string }> = {
+  pending: { label: '待处理', className: 'text-t3' },
+  running: { label: '运行中', className: 'text-acc' },
+  done: { label: '已完成', className: 'text-acc' },
+  skipped: { label: '已跳过', className: 'text-amber-600 dark:text-amber-400' },
+  failed: { label: '失败', className: 'text-red-500' },
+  cancelled: { label: '已取消', className: 'text-t3' },
+};
+
+/** Batch clipping mode: textarea of URLs, force/delay options, progress list. */
+function BatchClipView({ onClose }: { onClose: () => void }) {
+  const batchItems = useClipStore((s) => s.batchItems);
+  const isBatchRunning = useClipStore((s) => s.isBatchRunning);
+  const batchSummaryPath = useClipStore((s) => s.batchSummaryPath);
+  const clipBatch = useClipStore((s) => s.clipBatch);
+  const cancelBatch = useClipStore((s) => s.cancelBatch);
+  const clearBatch = useClipStore((s) => s.clearBatch);
+  const error = useClipStore((s) => s.error);
+
+  const [text, setText] = useState('');
+  const [force, setForce] = useState(false);
+  const [delayMs, setDelayMs] = useState(0);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const urls = useMemo(
+    () => text.split('\n').map((l) => l.trim()).filter(Boolean),
+    [text],
+  );
+
+  const handleStart = useCallback(async () => {
+    if (urls.length === 0 || isBatchRunning) return;
+    setLocalError(null);
+    try {
+      await clipBatch(urls, { force, delayMs });
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : String(err));
+    }
+  }, [urls, isBatchRunning, clipBatch, force, delayMs]);
+
+  const handleCancel = useCallback(() => {
+    cancelBatch();
+  }, [cancelBatch]);
+
+  const handleClose = useCallback(() => {
+    if (isBatchRunning) return;
+    clearBatch();
+    onClose();
+  }, [isBatchRunning, clearBatch, onClose]);
+
+  const handleOpenPath = useCallback((path: string) => {
+    const fileName = path.split('/').pop() || path;
+    void useEditorStore.getState().openFile(path, fileName);
+  }, []);
+
+  const doneCount = batchItems.filter((i) => i.status === 'done').length;
+  const skippedCount = batchItems.filter((i) => i.status === 'skipped').length;
+  const failedCount = batchItems.filter((i) => i.status === 'failed').length;
+
+  return (
+    <div className="flex flex-col gap-2.5 p-2.5 mx-1.5 mb-1.5 rounded-lg border border-brd bg-surf">
+      <div className="flex items-center gap-1.5">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-acc shrink-0">
+          <path d="M2 4h12M2 8h12M2 12h8" strokeLinecap="round" />
+        </svg>
+        <span className="text-[12px] font-medium text-t1">批量剪藏</span>
+        <button
+          className="ml-auto w-5 h-5 rounded flex items-center justify-center bg-transparent border-none cursor-pointer text-t3 hover:bg-hov hover:text-t1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          onClick={handleClose}
+          disabled={isBatchRunning}
+          title="关闭批量模式"
+        >
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M3 3l10 10M13 3L3 13" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
+
+      {/* URL textarea */}
+      <textarea
+        className="w-full px-2.5 py-2 text-[12px] rounded-md border border-brd bg-bg text-t1 outline-none focus:border-acc transition-colors resize-y min-h-[80px] max-h-[200px] font-mono leading-relaxed"
+        placeholder={'一行一个 URL，例如：\nhttps://example.com/a\nhttps://example.com/b'}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        disabled={isBatchRunning}
+        spellCheck={false}
+      />
+
+      {/* Options row */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <label className="flex items-center gap-1.5 text-[11px] text-t2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            className="accent-[var(--acc)] cursor-pointer"
+            checked={force}
+            onChange={(e) => setForce(e.target.checked)}
+            disabled={isBatchRunning}
+          />
+          强制重新剪藏
+        </label>
+        <label className="flex items-center gap-1.5 text-[11px] text-t2">
+          条间延迟
+          <input
+            type="number"
+            min={0}
+            step={100}
+            className="w-16 px-1.5 py-1 text-[11px] rounded-md border border-brd bg-bg text-t1 outline-none focus:border-acc transition-colors"
+            value={delayMs}
+            onChange={(e) => setDelayMs(Math.max(0, Number(e.target.value) || 0))}
+            disabled={isBatchRunning}
+          />
+          ms
+        </label>
+        <span className="text-[10px] text-t3 ml-auto">{urls.length} 条</span>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex gap-1.5">
+        {!isBatchRunning ? (
+          <button
+            className="flex-1 py-2 text-[13px] rounded-md bg-acc text-white border-none cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            onClick={handleStart}
+            disabled={urls.length === 0}
+          >
+            开始批量剪藏
+          </button>
+        ) : (
+          <button
+            className="flex-1 py-2 text-[13px] rounded-md bg-amber-500 text-white border-none cursor-pointer hover:opacity-90 transition-opacity font-medium"
+            onClick={handleCancel}
+          >
+            取消（完成当前后停止）
+          </button>
+        )}
+      </div>
+
+      {/* Error display */}
+      {(localError || (error && isBatchRunning)) && (
+        <div className="p-2 rounded-md border border-red-500/20 bg-red-500/5">
+          <div className="text-[10px] text-red-500 leading-tight">{localError || error}</div>
+        </div>
+      )}
+
+      {/* Progress summary */}
+      {batchItems.length > 0 && (
+        <div className="flex items-center gap-2 text-[10px] text-t3">
+          <span>共 {batchItems.length}</span>
+          <span className="text-acc">完成 {doneCount}</span>
+          <span className="text-amber-600 dark:text-amber-400">跳过 {skippedCount}</span>
+          <span className="text-red-500">失败 {failedCount}</span>
+        </div>
+      )}
+
+      {/* Progress list */}
+      {batchItems.length > 0 && (
+        <div className="flex flex-col gap-0.5 max-h-[260px] overflow-y-auto rounded-md border border-brd bg-bg">
+          {batchItems.map((item, idx) => {
+            const style = BATCH_STATUS_STYLE[item.status];
+            return (
+              <div
+                key={`${idx}-${item.url}`}
+                className="flex items-center gap-1.5 px-2 py-1.5 border-b border-brd/50 last:border-b-0 min-w-0"
+              >
+                <span className={`text-[10px] font-medium shrink-0 w-12 ${style.className}`}>
+                  {item.status === 'running' && (
+                    <span className="inline-block w-2 h-2 rounded-full border-[1.5px] border-brd border-t-acc animate-spin mr-1 align-middle" />
+                  )}
+                  {style.label}
+                </span>
+                <div className="flex-1 min-w-0 flex flex-col">
+                  <span className="text-[11px] text-t2 truncate" title={item.url}>
+                    {item.url}
+                  </span>
+                  {(item.error || item.reason) && (
+                    <span className="text-[9px] text-t3 truncate">
+                      {item.error || item.reason}
+                    </span>
+                  )}
+                </div>
+                {item.clipPath && (
+                  <button
+                    className="shrink-0 text-[10px] text-acc bg-transparent border-none cursor-pointer hover:underline"
+                    onClick={() => handleOpenPath(item.clipPath!)}
+                    title={item.clipPath}
+                  >
+                    打开
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Open summary link */}
+      {batchSummaryPath && !isBatchRunning && (
+        <button
+          className="self-start text-[11px] text-acc bg-transparent border-none cursor-pointer hover:underline"
+          onClick={() => handleOpenPath(batchSummaryPath)}
+          title={batchSummaryPath}
+        >
+          打开批量汇总
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function ClipsPanel() {
   const clipGroups = useClipStore((s) => s.clipGroups);
   const clips = useClipStore((s) => s.clips);
@@ -443,6 +650,7 @@ export function ClipsPanel() {
   const [collapsedTags, setCollapsedTags] = useState<Set<string>>(new Set());
   const [duplicateWarning, setDuplicateWarning] = useState<{ url: string; existingPath: string } | null>(null);
   const [overwritePath, setOverwritePath] = useState<string | null>(null);
+  const [batchMode, setBatchMode] = useState(false);
 
   useEffect(() => {
     loadClips();
@@ -454,6 +662,13 @@ export function ClipsPanel() {
 
   const handleStartClip = useCallback(async () => {
     if (!url.trim() || isClipping) return;
+
+    // A fresh (non-duplicate) clip must never inherit a leftover overwrite
+    // target from a previous "重新生成" flow — reset explicitly.
+    setOverwritePath(null);
+
+    // Ensure clipUrls is populated before the duplicate check.
+    await loadClips();
 
     // Check for duplicate URL before triggering AI generation
     const existingPath = useClipStore.getState().findClipByUrl(url.trim());
@@ -468,7 +683,19 @@ export function ClipsPanel() {
     } catch {
       // error is handled in clipStore
     }
-  }, [url, isClipping, startClip, clipLang]);
+  }, [url, isClipping, startClip, clipLang, loadClips]);
+
+  const handleOpenExisting = useCallback(async (path: string) => {
+    const fileName = path.split('/').pop() || path;
+    setDuplicateWarning(null);
+    setShowInput(false);
+    setUrl('');
+    try {
+      await useEditorStore.getState().openFile(path, fileName);
+    } catch {
+      // openFile errors are handled in editorStore
+    }
+  }, []);
 
   const handleCloseModal = useCallback(() => {
     setShowInput(false);
@@ -595,6 +822,15 @@ export function ClipsPanel() {
         )}
         <button
           className="ml-auto w-5 h-5 rounded flex items-center justify-center bg-transparent border-none cursor-pointer text-t2 hover:bg-hov hover:text-t1 transition-colors"
+          onClick={() => setBatchMode((v) => !v)}
+          title={batchMode ? '退出批量模式' : '批量剪藏'}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M2 4h12M2 8h12M2 12h8" strokeLinecap="round" />
+          </svg>
+        </button>
+        <button
+          className="w-5 h-5 rounded flex items-center justify-center bg-transparent border-none cursor-pointer text-t2 hover:bg-hov hover:text-t1 transition-colors"
           onClick={handleAdd}
           title="添加剪藏"
         >
@@ -605,10 +841,15 @@ export function ClipsPanel() {
       </div>
 
       {/* Error display when not in input mode */}
-      {!showInput && error && (
+      {!showInput && error && !batchMode && (
         <div className="mx-1.5 mb-2 p-2 rounded-lg border border-red-500/20 bg-red-500/5">
           <div className="text-[10px] text-red-500 leading-tight">{error}</div>
         </div>
+      )}
+
+      {/* Batch clipping mode */}
+      {batchMode && (
+        <BatchClipView onClose={() => setBatchMode(false)} />
       )}
 
       {/* Tag-grouped clip list */}
@@ -718,6 +959,12 @@ export function ClipsPanel() {
                   是否重新生成并覆盖已有内容？
                 </div>
                 <div className="flex gap-1.5">
+                  <button
+                    className="px-3 py-2 text-[13px] rounded-md bg-bg text-t2 border border-brd cursor-pointer hover:bg-hov transition-colors"
+                    onClick={() => handleOpenExisting(duplicateWarning.existingPath)}
+                  >
+                    打开已有
+                  </button>
                   <button
                     className="flex-1 py-2 text-[13px] rounded-md bg-amber-500 text-white border-none cursor-pointer hover:opacity-90 transition-opacity font-medium"
                     onClick={async () => {

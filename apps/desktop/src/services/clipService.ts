@@ -111,8 +111,15 @@ export async function generateClip(
  * Phase 2: Assemble the markdown file and save to disk.
  * The metadata may have been modified by the user (e.g. edited tags/title).
  * If overwritePath is provided, overwrite the existing file at that path.
+ *
+ * Pass `{ skipAutoOpen: true }` to suppress auto-opening the saved file in
+ * the editor — used by the batch clip path so a batch run doesn't open N tabs.
  */
-export async function saveClip(metadata: ClipMetadata, overwritePath?: string): Promise<string> {
+export async function saveClip(
+  metadata: ClipMetadata,
+  overwritePath?: string,
+  options?: { skipAutoOpen?: boolean },
+): Promise<string> {
   const vault = useVaultStore.getState();
   if (!vault.currentVault) throw new Error('没有活跃的 vault');
 
@@ -166,9 +173,11 @@ export async function saveClip(metadata: ClipMetadata, overwritePath?: string): 
     await vault.createFile(filePath, fileContent);
   }
 
-  // Auto-open in editor
-  const fileName = filePath.split('/').pop() || filePath;
-  await useEditorStore.getState().openFile(filePath, fileName);
+  // Auto-open in editor (unless suppressed, e.g. during batch clipping)
+  if (!options?.skipAutoOpen) {
+    const fileName = filePath.split('/').pop() || filePath;
+    await useEditorStore.getState().openFile(filePath, fileName);
+  }
 
   return filePath;
 }
@@ -176,6 +185,8 @@ export async function saveClip(metadata: ClipMetadata, overwritePath?: string): 
 /**
  * Backward-compatible wrapper: AI generate + save in one step.
  * Used by /clip command in AiPanel and WebViewer "clip this page" button.
+ * If overwritePath is provided, the saved file overwrites the existing clip
+ * at that path (force re-clip path).
  */
 export async function clipUrl(
   url: string,
@@ -183,8 +194,9 @@ export async function clipUrl(
   lang: ClipLanguage = 'auto',
   onStream?: (chunk: string) => void,
   onEvent?: (event: StreamEvent) => void,
+  overwritePath?: string,
 ): Promise<string> {
   const metadata = await generateClip(url, onProgress, lang, onStream, onEvent);
   onProgress?.('正在保存文件...');
-  return saveClip(metadata);
+  return saveClip(metadata, overwritePath);
 }

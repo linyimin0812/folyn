@@ -150,16 +150,38 @@ export function AiPanel() {
   const handleSend = async (userText: string, currentAttachments: PendingAttachment[]) => {
     if ((!userText && currentAttachments.length === 0) || isStreaming) return;
 
-    // Handle /clip <url> command in chat mode
-    if (chatMode === 'chat' && userText.startsWith('/clip ')) {
-      const url = userText.slice(6).trim();
+    // Handle /clip <url> and /clip! <url> commands in chat mode.
+    // `/clip <url>` is the default non-destructive path: if the URL was
+    // already clipped, open the existing note and reply in chat instead of
+    // re-clipping. `/clip! <url>` forces a re-clip and overwrites the
+    // existing file at its current path.
+    if (chatMode === 'chat' && (userText.startsWith('/clip ') || userText.startsWith('/clip! '))) {
+      const force = userText.startsWith('/clip! ');
+      const url = userText.slice(force ? 7 : 6).trim();
       if (url) {
         let sessionId = activeSessionId;
         if (!sessionId) sessionId = createSession();
         addMessage('user', userText, sessionId);
+
+        // Non-force mode: surface duplicate without re-clipping.
+        if (!force) {
+          await useClipStore.getState().loadClips();
+          const existing = useClipStore.getState().findClipByUrl(url);
+          if (existing) {
+            const fileName = existing.split('/').pop() || existing;
+            addMessage('assistant', `已剪藏过，已打开 [${fileName}]`, sessionId);
+            try {
+              await useEditorStore.getState().openFile(existing, fileName);
+            } catch (err) {
+              console.error('[AiPanel] openFile failed:', err);
+            }
+            return;
+          }
+        }
+
         addMessage('assistant', `正在剪藏: ${url} ...`, sessionId);
         try {
-          const filePath = await useClipStore.getState().clipUrl(url);
+          const filePath = await useClipStore.getState().clipUrl(url, undefined, undefined, { force });
           appendToLastMessage(`\n\n剪藏完成: \`${filePath}\``, sessionId);
         } catch (err) {
           appendToLastMessage(`\n\n[错误] 剪藏失败: ${err instanceof Error ? err.message : String(err)}`, sessionId);
