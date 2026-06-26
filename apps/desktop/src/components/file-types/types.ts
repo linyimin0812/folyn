@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from 'react';
 
-export type ViewMode = 'split' | 'edit' | 'preview';
+export type ViewMode = 'split' | 'edit' | 'preview' | 'visual' | 'source';
 
 export interface EditorProps {
   content: string;

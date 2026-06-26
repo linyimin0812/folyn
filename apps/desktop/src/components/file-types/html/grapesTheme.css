@@ -86,12 +86,16 @@
 .gjs-field-checkbox input:checked + .gjs-chk-icon { background: var(--acc) !important; }
 
 /* —— Style Manager —— */
-.gjs-sm-sector .gjs-sm-sector-title {
+.gjs-sm-sector .gjs-sm-sector-title,
+.gjs-sm-sector .gjs-sm-sector-title b,
+.gjs-sm-sector .gjs-sm-sector-title > * {
   background: var(--surf2) !important;
   color: var(--t1) !important;
   font-size: 11px !important;
+  font-weight: 600 !important;
 }
-.gjs-sm-sector .gjs-sm-sector-title:hover { color: var(--acc) !important; }
+.gjs-sm-sector .gjs-sm-sector-title:hover,
+.gjs-sm-sector .gjs-sm-sector-title:hover b { color: var(--acc) !important; }
 .gjs-sm-label { color: var(--t2) !important; font-size: 11px !important; }
 .gjs-sm-property { border-bottom-color: var(--brd) !important; }
 .gjs-sm-stack #gjs-sm-add { color: var(--acc) !important; }
@@ -114,8 +118,24 @@
 .gjs-layer-vis { color: var(--t3) !important; }
 
 /* —— Trait Manager —— */
-.gjs-traits-label { color: var(--t2) !important; font-size: 11px !important; }
-.gjs-trt-trait__title { color: var(--t2) !important; }
+/* Force every text element in the trait panel to 11px so it matches the
+   style panel. GrapesJS scatters font-size across .gjs-field, .gjs-field
+   input, .gjs-trt-trait__title, etc.; a scoped wildcard is the only
+   reliable override. */
+.gjs-trt-traits,
+.gjs-trt-traits *,
+.gjs-trt-traits .gjs-field,
+.gjs-trt-traits .gjs-field input,
+.gjs-trt-traits .gjs-field select,
+.gjs-trt-traits .gjs-field textarea,
+.gjs-trt-traits .gjs-field option {
+  font-size: 11px !important;
+  color: var(--t2) !important;
+}
+.gjs-trt-trait__title { color: var(--t2) !important; font-weight: 500 !important; }
+.gjs-trt-trait input,
+.gjs-trt-trait select,
+.gjs-trt-trait textarea { color: var(--t1) !important; }
 
 /* —— Selection / hover overlays on canvas —— */
 .gjs-selected { outline: 2px solid var(--acc) !important; }

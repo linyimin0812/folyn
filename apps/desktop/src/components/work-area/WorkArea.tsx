@@ -230,7 +230,7 @@ export function WorkArea() {
 
   // Determine what to show
   const showCodeMirror = handler?.useCodeMirror && (viewMode === 'edit' || viewMode === 'split' || !handler.Preview);
-  const showCustomEditor = handler?.Editor && !handler.useCodeMirror;
+  const showCustomEditor = handler?.Editor && !handler.useCodeMirror && !(viewMode === 'preview' && handler?.Preview);
   const isPreviewOnly = handler?.Preview && !handler.useCodeMirror && !handler.Editor;
   const showPreview = handler?.Preview && (isPreviewOnly || viewMode === 'preview' || viewMode === 'split');
   const showSplitResizer = handler?.useCodeMirror && handler?.Preview && viewMode === 'split';

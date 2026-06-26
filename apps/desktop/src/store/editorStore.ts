@@ -20,7 +20,7 @@ function formatDailyDate(date: Date, format: string): string {
     .replace('DD', d);
 }
 
-export type ViewMode = 'split' | 'edit' | 'preview';
+export type ViewMode = 'split' | 'edit' | 'preview' | 'visual' | 'source';
 
 export type FileType = string;
 

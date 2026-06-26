@@ -7,7 +7,7 @@ import { ExportMenu } from '@/components/editor/ExportMenu';
 const PREVIEW_ONLY_FILE_TYPES = new Set(['image', 'pdf']);
 
 /** File types where view mode switching is not applicable */
-const HIDE_VIEW_MODE_FILE_TYPES = new Set(['image', 'pdf', 'code', 'web', 'html']);
+const HIDE_VIEW_MODE_FILE_TYPES = new Set(['image', 'pdf', 'code', 'web']);
 
 const VIEW_MODE_ICONS: Record<ViewMode, React.ReactNode> = {
   split: (
@@ -28,12 +28,29 @@ const VIEW_MODE_ICONS: Record<ViewMode, React.ReactNode> = {
       <circle cx="8" cy="8" r="2" />
     </svg>
   ),
+  visual: (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+      <path d="M11.5 1.5l3 3-9 9H2.5v-3l9-9z" />
+      <line x1="9" y1="4" x2="12" y2="7" />
+    </svg>
+  ),
+  source: (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+      <path d="M5 3L1 8l4 5M11 3l4 5-4 5" />
+    </svg>
+  ),
 };
 
 const VIEW_MODES: { key: ViewMode; label: string }[] = [
   { key: 'split', label: '分屏' },
   { key: 'edit', label: '编辑' },
   { key: 'preview', label: '预览' },
+];
+
+const HTML_MODES: { key: ViewMode; label: string }[] = [
+  { key: 'preview', label: '预览' },
+  { key: 'source', label: '源码' },
+  { key: 'visual', label: '可视化' },
 ];
 
 interface TopbarProps {
@@ -51,6 +68,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   });
   const isPreviewOnly = activeTab ? PREVIEW_ONLY_FILE_TYPES.has(activeTab.fileType) : false;
   const hideViewMode = activeTab ? HIDE_VIEW_MODE_FILE_TYPES.has(activeTab.fileType) : false;
+  const modes = activeTab?.fileType === 'html' ? HTML_MODES : VIEW_MODES;
   const setCurrentPage = useSettingsStore((state) => state.setCurrentPage);
   const { theme, toggleTheme } = useTheme();
 
@@ -80,7 +98,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
         {/* View mode segment -- hidden for non-markdown file types */}
         {!hideViewMode && (
         <div className="view-seg flex items-center gap-px shrink-0">
-          {VIEW_MODES.map((mode) => {
+          {modes.map((mode) => {
             const disabled = isPreviewOnly && mode.key !== 'preview';
             return (
               <button
