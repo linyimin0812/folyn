@@ -17,6 +17,21 @@
 /* Canvas backdrop — slightly recessed so the white page reads as a sheet */
 .gjs-cv-canvas { background: var(--surf2) !important; }
 
+/* Make the canvas iframe fill the editor area, matching the preview mode's
+   full-bleed iframe. Removes the gray padding around the page so the
+   visual editor occupies the same screen space as preview. */
+.gjs-cv-canvas,
+.gjs-cv-canvas > *,
+.gjs-cv-canvas iframe {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+}
+
 /* Canvas iframe scrollbar — GrapesJS manages canvas scroll internally, so
    hide the iframe's own scrollbar to avoid a stray vertical bar in the
    right blank strip (now eliminated by width:100%, kept as a safety net). */

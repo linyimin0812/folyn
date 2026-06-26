@@ -186,6 +186,10 @@ export function injectCanvasScrollbarHide(editor: Editor): void {
   style.setAttribute('data-quill', 'canvas-scrollbar-hide');
   style.textContent = `
     html, body {
+      width: 100% !important;
+      min-height: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
       scrollbar-width: none !important;
       -ms-overflow-style: none !important;
     }
