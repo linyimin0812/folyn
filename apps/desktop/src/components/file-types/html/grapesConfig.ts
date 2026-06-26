@@ -172,3 +172,30 @@ export function injectExternalLinks(editor: Editor, headContent: string): void {
     canvasDoc.head.appendChild(cloned);
   }
 }
+
+/**
+ * Hide scrollbars inside the canvas iframe document. GrapesJS renders the
+ * edited page inside a sandboxed iframe; parent-page CSS cannot reach into
+ * it, so a <style> tag is injected into the iframe's <head> to suppress the
+ * html/body scrollbar gutter while keeping wheel/trackpad scrolling working.
+ */
+export function injectCanvasScrollbarHide(editor: Editor): void {
+  const canvasDoc = editor.Canvas?.getDocument?.();
+  if (!canvasDoc) return;
+  const style = canvasDoc.createElement('style');
+  style.setAttribute('data-quill', 'canvas-scrollbar-hide');
+  style.textContent = `
+    html, body {
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar,
+    body *::-webkit-scrollbar { display: none !important; }
+    body * {
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
+  `;
+  canvasDoc.head.appendChild(style);
+}

@@ -128,10 +128,30 @@
 /* —— Devices switcher (used in custom toolbar) —— */
 .gjs-devices-c { background: var(--panel) !important; }
 
-/* —— Block / Layers panel scrollbars follow global style —— */
+/* —— Block / Layers / Style-manager panel scrollbars —— */
 .gjs-blocks-c,
 .gjs-layers,
-.gjs-sm-sector__props { scrollbar-width: thin; }
+.gjs-sm-sector__props,
+.gjs-clm-tags,
+.gjs-trt-traits {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.gjs-blocks-c::-webkit-scrollbar,
+.gjs-layers::-webkit-scrollbar,
+.gjs-sm-sector__props::-webkit-scrollbar,
+.gjs-clm-tags::-webkit-scrollbar,
+.gjs-trt-traits::-webkit-scrollbar { display: none; }
+
+/* Catch-all: hide scrollbars on every GrapesJS-owned scrollable surface
+   inside the editor (canvas + right panel). Scrolling still works via
+   wheel / trackpad; only the visible gutter is removed. This is the
+   safety net for any gjs-* container not enumerated above. */
+.quill-grapes-root ::-webkit-scrollbar { display: none !important; }
+.quill-grapes-root * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
 
 /* —— Trim default panel border radii so they sit flush in React shell —— */
 .gjs-pn-panel { border-radius: 0 !important; }

@@ -77,7 +77,7 @@ export function GrapesEditor({ content, onChange }: GrapesEditorProps) {
       {/* Center: canvas — always present, flexes to full width when the
           right panel is hidden. */}
       <div className="flex-1 flex flex-col overflow-hidden bg-surf2">
-        <div ref={containerRef} className="flex-1 overflow-hidden" />
+        <div ref={containerRef} className="flex-1 overflow-hidden quill-grapes-root" />
       </div>
 
       {/* Right: styles | layers | traits.
@@ -89,7 +89,7 @@ export function GrapesEditor({ content, onChange }: GrapesEditorProps) {
           the next init. The canvas column flexes to full width naturally
           because the hidden panel no longer claims layout space. */}
       <div
-        className={`w-[260px] shrink-0 border-l border-brd bg-panel overflow-hidden ${
+        className={`w-[260px] shrink-0 border-l border-brd bg-panel overflow-hidden quill-grapes-root ${
           panelVisible ? 'flex flex-col' : 'hidden'
         }`}
       >

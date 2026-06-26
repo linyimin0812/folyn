@@ -23,7 +23,7 @@ import type { Editor } from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
 import './grapesTheme.css';
 
-import { createGrapesConfig, injectExternalLinks } from './grapesConfig';
+import { createGrapesConfig, injectExternalLinks, injectCanvasScrollbarHide } from './grapesConfig';
 import { registerCustomBlocks } from './grapesBlocks';
 import {
   parseHtmlForGrapes,
@@ -197,6 +197,7 @@ export function useGrapesEditor(opts: UseGrapesEditorOptions): UseGrapesEditorRe
 
     const onReady = () => {
       injectExternalLinks(editor, parsed.headContent);
+      injectCanvasScrollbarHide(editor);
       // Allow subsequent change events to flow.
       suppressChangeRef.current = false;
     };
