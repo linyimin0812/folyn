@@ -26,7 +26,7 @@ export type FileType = string;
 
 export function detectFileType(filePath: string): FileType {
   // Detect clip files by path prefix
-  if (filePath.startsWith('clips/') && filePath.endsWith('.md')) {
+  if (filePath.startsWith('__clips__/') && filePath.endsWith('.md')) {
     return 'clip';
   }
   const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
@@ -56,12 +56,12 @@ export interface FileTab {
 /** Determine which activity panel a tab belongs to based on its path and file type */
 export function detectActivity(filePath: string, fileType: FileType): ActivityPanel {
   if (filePath === 'wiki-graph') return 'wiki';
-  if (fileType === 'clip' || filePath.startsWith('clips/')) return 'clips';
+  if (fileType === 'clip' || filePath.startsWith('__clips__/')) return 'clips';
   if (filePath.startsWith(WIKI_PREFIX)) return 'wiki';
-  if (filePath.startsWith('reports/')) return 'analyze';
+  if (filePath.startsWith('__reports__/')) return 'analyze';
 
   // Check daily notes directory
-  const dailyDir = useSettingsStore.getState().dailyNotesDir || 'daily';
+  const dailyDir = useSettingsStore.getState().dailyNotesDir || '__daily__';
   if (filePath.startsWith(`${dailyDir}/`)) return 'calendar';
 
   return 'files';
@@ -138,6 +138,8 @@ interface EditorState {
   checkDiskChanges: () => Promise<void>;
   /** Immediately save all tabs with pending auto-save timers */
   flushAutoSaves: () => Promise<void>;
+  /** Rewrite open tab paths after a directory rename (e.g. clips/ → __clips__/) */
+  rewriteTabPrefixes: (mapping: { from: string; to: string }[]) => void;
 }
 
 const EDITOR_STORAGE_KEY = 'editor:viewMode';
@@ -446,7 +448,7 @@ export const useEditorStore = create<EditorState>()(
 
       openDailyNote: async (dateStr?) => {
         const settings = useSettingsStore.getState();
-        const dir = settings.dailyNotesDir || 'daily';
+        const dir = settings.dailyNotesDir || '__daily__';
         const fmt = settings.dailyNoteDateFormat || 'YYYY-MM-DD';
 
         const date = dateStr ? new Date(dateStr) : new Date();
@@ -633,6 +635,23 @@ export const useEditorStore = create<EditorState>()(
             }
           }
         }));
+      },
+
+      rewriteTabPrefixes: (mapping) => {
+        if (mapping.length === 0) return;
+        set((state) => {
+          const rewritten = state.tabs.map((tab) => {
+            if (tab.fileType === 'web' || tab.path.startsWith(WIKI_PREFIX)) return tab;
+            for (const { from, to } of mapping) {
+              if (tab.path === from || tab.path.startsWith(`${from}/`)) {
+                const suffix = tab.path === from ? '' : tab.path.slice(from.length);
+                return { ...tab, path: `${to}${suffix}` };
+              }
+            }
+            return tab;
+          });
+          return { tabs: rewritten };
+        });
       },
     }),
 );

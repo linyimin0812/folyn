@@ -76,5 +76,5 @@ export interface WikiGraphEdge {
   };
 }
 
-export const WIKI_DIR = 'quill-wiki';
+export const WIKI_DIR = '__wiki__';
 export const WIKI_PREFIX = 'wiki://';

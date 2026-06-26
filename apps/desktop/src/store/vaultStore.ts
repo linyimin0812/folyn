@@ -75,6 +75,8 @@ interface VaultState {
   // ── File Operations ──
 
   refreshFileTree: () => Promise<void>;
+  /** One-time rename of legacy built-in dir names (quill-wiki/clips/reports/daily) to __name__ form. Returns the pairs actually renamed. */
+  migrateSpecialDirs: () => Promise<{ from: string; to: string }[]>;
   readFile: (path: string) => Promise<string>;
   writeFile: (path: string, content: string) => Promise<void>;
   createFile: (path: string, content?: string) => Promise<void>;
@@ -232,10 +234,15 @@ export const useVaultStore = create<VaultState>()(
 
             useEditorStore.setState({ tabs: [], activeTabId: null });
 
+            const renamedPairs = await get().migrateSpecialDirs();
             await get().refreshFileTree();
 
-            // Restore saved tabs for the new vault
+            // Restore saved tabs for the new vault, then rewrite any paths whose
+            // on-disk prefix was renamed during migration.
             await useEditorStore.getState().restoreOpenTabs();
+            if (renamedPairs.length > 0) {
+              useEditorStore.getState().rewriteTabPrefixes(renamedPairs);
+            }
 
             await startWatcherForVault(config);
           } catch (err) {
@@ -286,6 +293,38 @@ export const useVaultStore = create<VaultState>()(
             const message = err instanceof Error ? err.message : 'Failed to load file tree';
             set({ error: message });
             console.error('[VaultStore] refreshFileTree failed:', err);
+          }
+        },
+
+        migrateSpecialDirs: async () => {
+          const pairs: { from: string; to: string }[] = [
+            { from: 'quill-wiki', to: '__wiki__' },
+            { from: 'clips', to: '__clips__' },
+            { from: 'reports', to: '__reports__' },
+          ];
+          // Only migrate the daily dir if the user is still on the old default.
+          const dailyNotesDir = useSettingsStore.getState().dailyNotesDir;
+          if (dailyNotesDir === 'daily') {
+            pairs.push({ from: 'daily', to: '__daily__' });
+          }
+
+          try {
+            const rootEntries = await get().manager.listFiles('', false, true);
+            const names = new Set(rootEntries.map((e) => e.name));
+            const renamed: { from: string; to: string }[] = [];
+            for (const { from, to } of pairs) {
+              if (!names.has(from)) continue;
+              if (names.has(to)) {
+                console.warn(`[VaultStore] migrateSpecialDirs: skipping "${from}" → "${to}" (target already exists)`);
+                continue;
+              }
+              await get().manager.rename(from, to);
+              renamed.push({ from, to });
+            }
+            return renamed;
+          } catch (err) {
+            console.error('[VaultStore] migrateSpecialDirs failed:', err);
+            return [];
           }
         },
 

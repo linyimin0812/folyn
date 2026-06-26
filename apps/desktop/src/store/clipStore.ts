@@ -121,7 +121,7 @@ async function buildClipGroups(clips: ClipFile[]): Promise<{ groups: ClipGroup[]
     // clips/<tag>/file.md → tag is the first segment after clips/
     const segments = clip.path.split('/');
     let dirTag: string | null = null;
-    if (segments.length >= 3 && segments[0] === 'clips') {
+    if (segments.length >= 3 && segments[0] === '__clips__') {
       dirTag = segments[1];
     }
 
@@ -196,7 +196,7 @@ export const useClipStore = create<ClipState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const manager = useVaultStore.getState().manager;
-      const entries = await manager.listFiles('clips', true, false).catch(() => []);
+      const entries = await manager.listFiles('__clips__', true, false).catch(() => []);
       const clips = flattenMdFiles(entries).sort((a, b) => b.name.localeCompare(a.name));
       set({ clips });
 
@@ -320,7 +320,7 @@ export const useClipStore = create<ClipState>((set, get) => ({
       // Determine if we need to move the file (primary tag = directory changed)
       const newPrimaryTag = newTags[0];
       const segments = clipPath.split('/');
-      const oldDirTag = segments.length >= 3 && segments[0] === 'clips' ? segments[1] : null;
+      const oldDirTag = segments.length >= 3 && segments[0] === '__clips__' ? segments[1] : null;
 
       // Write updated content first
       await vault.writeFile(clipPath, newContent);
@@ -328,14 +328,14 @@ export const useClipStore = create<ClipState>((set, get) => ({
       // Move file if primary tag directory changed
       if (oldDirTag && newPrimaryTag !== oldDirTag) {
         const fileName = segments[segments.length - 1];
-        const newDir = `clips/${newPrimaryTag}`;
+        const newDir = `__clips__/${newPrimaryTag}`;
         const newPath = `${newDir}/${fileName}`;
 
         await vault.createDir(newDir);
         await vault.renameFile(clipPath, newPath);
 
         // Clean up empty old directory
-        const oldDir = `clips/${oldDirTag}`;
+        const oldDir = `__clips__/${oldDirTag}`;
         try {
           await vault.deleteDir(oldDir);
         } catch {

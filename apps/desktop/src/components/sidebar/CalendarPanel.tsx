@@ -50,7 +50,7 @@ export function CalendarPanel() {
   const [viewMonth, setViewMonth] = useState(today.getMonth());
 
   const fileTree = useVaultStore((s) => s.fileTree);
-  const dailyDir = useSettingsStore((s) => s.dailyNotesDir || 'daily');
+  const dailyDir = useSettingsStore((s) => s.dailyNotesDir || '__daily__');
   const openDailyNote = useEditorStore((s) => s.openDailyNote);
 
   const noteDates = useMemo(

@@ -4,7 +4,7 @@ import { useVaultStore } from '@/store/vaultStore';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 
 const VAULT_BASE = '/mock/vault';
-const WIKI_ROOT = `${VAULT_BASE}/quill-wiki`;
+const WIKI_ROOT = `${VAULT_BASE}/__wiki__`;
 
 function setVault(basePath: string) {
   useVaultStore.setState({

@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "zen store actions for vault + editor + settings; migration + tab rewrite live here"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "confirms services/store/types layout touched by the rename"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "path string literals and prefix checks must stay type-safe"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "tests + lint + typecheck bar for the rename"}

@@ -129,7 +129,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   showAiPanel: true,
   showStatusBar: true,
   showHiddenFiles: true,
-  excludePatterns: 'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp',
+  excludePatterns: 'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__',
 
   // Editor
   editorFont: 'DM Mono',
@@ -165,7 +165,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   cliPath: 'claude',
 
   // Daily Notes
-  dailyNotesDir: 'daily',
+  dailyNotesDir: '__daily__',
   dailyNoteDateFormat: 'YYYY-MM-DD',
 
   // File Templates
@@ -241,6 +241,15 @@ storageClient.get<Partial<SettingsState>>(SETTINGS_STORAGE_KEY).then((saved) => 
     // Apply font size to CSS variable
     if (saved.fontSize) {
       document.documentElement.style.setProperty('--ui-font-size', `${saved.fontSize}px`);
+    }
+    // Backfill excludePatterns for built-in managed dirs (__wiki__/__clips__/__reports__/__daily__)
+    // so existing users with persisted settings also hide them from the file panel.
+    if (saved.excludePatterns && !saved.excludePatterns.includes('__wiki__')) {
+      saved.excludePatterns = `${saved.excludePatterns.trim()}\n__wiki__\n__clips__\n__reports__\n__daily__`;
+    }
+    // Migrate persisted dailyNotesDir from the old default to the new built-in name.
+    if (saved.dailyNotesDir === 'daily') {
+      saved.dailyNotesDir = '__daily__';
     }
     useSettingsStore.setState(saved);
   }

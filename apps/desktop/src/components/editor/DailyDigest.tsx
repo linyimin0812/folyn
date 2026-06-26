@@ -33,7 +33,7 @@ export function DailyDigest({ currentFilePath, onInsertContent }: DailyDigestPro
   const [digest, setDigest] = useState('');
   const [, setModifiedFiles] = useState<ModifiedFile[]>([]);
 
-  const dailyDir = useSettingsStore((s) => s.dailyNotesDir || 'daily');
+  const dailyDir = useSettingsStore((s) => s.dailyNotesDir || '__daily__');
   const isDailyNote = currentFilePath.startsWith(dailyDir + '/');
 
   const generateDigest = useCallback(async () => {
@@ -82,7 +82,7 @@ export function DailyDigest({ currentFilePath, onInsertContent }: DailyDigestPro
         .join('\n');
 
       let recentDailyContext = '';
-      const dailyDir2 = settings.dailyNotesDir || 'daily';
+      const dailyDir2 = settings.dailyNotesDir || '__daily__';
       for (let i = 1; i <= 3; i++) {
         const d = new Date(today);
         d.setDate(d.getDate() - i);

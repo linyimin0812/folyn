@@ -131,7 +131,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const manager = useVaultStore.getState().manager;
-      const entries = await manager.listFiles('reports', true, false).catch(() => []);
+      const entries = await manager.listFiles('__reports__', true, false).catch(() => []);
       const htmlFiles = flattenHtmlFiles(entries).sort((a, b) =>
         b.name.localeCompare(a.name),
       );

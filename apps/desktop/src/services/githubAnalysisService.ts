@@ -165,9 +165,9 @@ export async function saveReport(
 
   const date = new Date().toISOString().split('T')[0];
   const fileName = `${date}-${repo}.html`;
-  const filePath = `reports/${fileName}`;
+  const filePath = `__reports__/${fileName}`;
 
-  await vault.createDir('reports');
+  await vault.createDir('__reports__');
   await vault.createFile(filePath, html);
 
   // Save tags sidecar file

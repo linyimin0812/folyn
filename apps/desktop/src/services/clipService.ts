@@ -155,7 +155,7 @@ export async function saveClip(metadata: ClipMetadata, overwritePath?: string): 
   } else {
     // Determine primary tag directory and create new file
     const primaryTag = metadata.tags.length > 0 ? metadata.tags[0] : '未分类';
-    const tagDir = `clips/${primaryTag}`;
+    const tagDir = `__clips__/${primaryTag}`;
 
     // Ensure directory exists
     await useVaultStore.getState().createDir(tagDir);
