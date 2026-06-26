@@ -108,3 +108,37 @@ Expanded the Web Link Clipper with duplicate URL detection and batch clipping. A
 ### Next Steps
 
 - None - task complete
+
+
+## Session 4: Test Coverage: stores, services, hooks, packages
+
+**Date**: 2026-06-27
+**Task**: Test Coverage: stores, services, hooks, packages
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Closed the remaining AC gaps for 06-25-add-test-coverage-across-project via 3 parallel trellis-implement agents. Added 13 unit test files (194 new tests, 271 -> 465 total): 5 stores (vaultStore, aiStore, wikiStore, wikiGraphStore, analysisStore), 2 services (clipService, graphDataBuilder), 2 hooks (useExport, useTheme as pure store interactions, no React render), and 4 package tests (cli-adapter registry+baseAdapter, container-plugins ContainerPlugin contract, vault-provider registry). No production code changed. Full suite + tsc + build green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e687258` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
