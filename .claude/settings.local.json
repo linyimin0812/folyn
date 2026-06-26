@@ -9,7 +9,17 @@
       "Bash(npx eslint *)",
       "Bash(cargo check *)",
       "Bash(npx vite *)",
-      "Bash(/Users/yiminlin/project/quill/apps/desktop/node_modules/.bin/tsc --noEmit --project /Users/yiminlin/project/quill/apps/desktop/tsconfig.json)"
+      "Bash(/Users/yiminlin/project/quill/apps/desktop/node_modules/.bin/tsc --noEmit --project /Users/yiminlin/project/quill/apps/desktop/tsconfig.json)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(npx vitest *)",
+      "Bash(pnpm exec *)",
+      "Bash(pnpm -r lint)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm --filter @quill/desktop typecheck)",
+      "Bash(pnpm build *)",
+      "Bash(pnpm lint *)"
     ]
   }
 }
