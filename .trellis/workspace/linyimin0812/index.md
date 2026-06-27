@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 4
+- **Total Sessions**: 5
 - **Last Active**: 2026-06-27
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~144 | Active |
+| `journal-1.md` | ~178 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 5 | 2026-06-27 | Archive: rename special dirs (__name__ form) | `2a6ffe1` | `master` |
 | 4 | 2026-06-27 | Test Coverage: stores, services, hooks, packages | `e687258` | `master` |
 | 3 | 2026-06-27 | Web Link Clipper: Duplicate Detection + Batch Clipping | `445dc45` | `master` |
 | 2 | 2026-06-27 | GrapesJS Migration Phase 4 & 5 | `747b993`, `b44343b` | `master` |

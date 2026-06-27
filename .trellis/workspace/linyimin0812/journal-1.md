@@ -142,3 +142,37 @@ Closed the remaining AC gaps for 06-25-add-test-coverage-across-project via 3 pa
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: Archive: rename special dirs (__name__ form)
+
+**Date**: 2026-06-27
+**Task**: Archive: rename special dirs (__name__ form)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Verified and archived 06-26-rename-special-dirs-with-prefix-suffix-and-hide-from-file-panel. The work was already committed in 2a6ffe1 (rename built-in dirs wiki/clips/reports/daily to __name__ form, hide from file panel, auto-migrate on vault switch, rewrite open tab paths, backfill excludePatterns + dailyNotesDir). All 8 AC verified against code: default excludePatterns contains the four __*__ dirs; backfill appends patterns + rewrites dailyNotesDir; migrateSpecialDirs renames old dirs and skips on conflict; editorStore.rewriteTabPrefixes rewrites open tabs; tsc + 465 tests green. Task had remained in_progress only because it was never run through finish-work.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2a6ffe1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
