@@ -210,3 +210,37 @@ Verified and archived 00-bootstrap-guidelines. The .trellis/spec tree is fully p
 ### Next Steps
 
 - None - task complete
+
+
+## Session 7: Unified Command Palette (Cmd+P)
+
+**Date**: 2026-06-27
+**Task**: Unified Command Palette (Cmd+P)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Built a unified command palette (Cmd+P) for Quill via 3 PRs. PR1: built-in subsequence fuzzy scorer (utils/fuzzyMatch.ts, contiguous>word-boundary>plain scoring), command registry (Command type + 20 builtin commands), commandPaletteStore (open/close/query/selection, grouped+flat list, FILE_CAP=50). PR2: CommandPalette.tsx UI reusing .dlg styling (grouped list, matched-substring highlight, keyboard nav, empty state), Cmd+P/Ctrl+P wired in App.tsx (!shiftKey/!altKey to avoid Cmd+Shift+P/F conflicts). PR3: file commands sourced live from vaultStore tree (reference-memoized, not stale), enabled predicates mirror ActivityBar panel toggles, useExport refactored to expose imperative functions (behavior-preserving), newItemBridge connects palette new-file/folder to Sidebar flow. 71 new tests (465->536); tsc + build green. Full Trellis flow: brainstorm -> implement -> check -> commit -> finish-work.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `30ff5ee` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
