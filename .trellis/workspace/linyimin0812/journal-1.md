@@ -176,3 +176,37 @@ Verified and archived 06-26-rename-special-dirs-with-prefix-suffix-and-hide-from
 ### Next Steps
 
 - None - task complete
+
+
+## Session 6: Archive: Bootstrap Guidelines (spec populated)
+
+**Date**: 2026-06-27
+**Task**: Archive: Bootstrap Guidelines (spec populated)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Verified and archived 00-bootstrap-guidelines. The .trellis/spec tree is fully populated (43 non-empty spec files across api/desktop/cli-adapter/container-plugins/vault-provider + 2 thinking guides); all 6 PRD status checkboxes checked. Spec was filled progressively starting at 82bc31b (feat: add trellis) and refined in later commits including 747b993 (file-type-editors rewrite during GrapesJS Phase 4). The guidelines have been load-bearing all session: every trellis-implement/trellis-check sub-agent read and followed them. Task had remained in_progress only because it was never run through finish-work. No new code changes this round — archive + journal only.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `82bc31b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
