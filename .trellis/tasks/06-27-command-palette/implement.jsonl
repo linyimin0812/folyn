@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend quick reference: named exports, @/ path alias, Tailwind token map — conventions for the new palette component + store + utils."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component patterns: named function exports, <Comp>Props, Tailwind + CSS var styling, component splitting when JSX > ~200 lines — for CommandPalette.tsx."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand patterns: create<State>(), granular selectors, getState() for imperative use, local vs global decision — for commandPaletteStore.ts."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality bar: no `any`, useEffect cleanup, import order, file-size guidelines, review checklist."}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "Hook patterns — the palette's keyboard handling and the existing useExport/useTheme hooks it calls."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Pre-Modification Rule + reuse: search the existing GlobalSearchPanel/IngestDialog/.dlg patterns and store actions before writing new ones."}

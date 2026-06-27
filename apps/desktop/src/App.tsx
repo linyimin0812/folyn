@@ -6,6 +6,7 @@ import { WorkArea } from './components/work-area/WorkArea';
 import { StatusBar } from './components/shell/StatusBar';
 import { AiPanel } from './components/ai/AiPanel';
 import { GlobalSearchPanel } from './components/search/GlobalSearchPanel';
+import { CommandPalette } from './components/shell/CommandPalette';
 import { useWikiStore } from '@/store/wikiStore';
 
 import { SettingsPage } from './components/pages/SettingsPage';
@@ -15,11 +16,16 @@ import { useSettingsStore } from './store/settingsStore';
 import { useVaultStore } from './store/vaultStore';
 import { useEditorStore } from './store/editorStore';
 import { useSearchStore } from './store/searchStore';
+import { useCommandPaletteStore } from './store/commandPaletteStore';
 import { loadAiSessionsForVault } from './store/aiStore';
 import { registerBuiltinPlugins } from '@quill/container-plugins';
+import { registerBuiltinCommands } from './services/commandRegistry';
 import { isTauri } from './utils/platform';
 
 registerBuiltinPlugins();
+// Seed the command palette's static commands (actions + panels/modes) once at
+// startup. File commands are sourced dynamically from the live vault tree.
+registerBuiltinCommands();
 
 /** Hook to detect mobile viewport */
 function useIsMobile(breakpoint = 768) {
@@ -136,6 +142,17 @@ export default function App() {
           useEditorStore.getState().openDailyNote();
         }
       }
+      // Cmd/Ctrl+P (no Shift) toggles the command palette. Shift is reserved
+      // (e.g. Cmd+Shift+P / Cmd+Shift+F), so this branch only fires without it.
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        !e.shiftKey &&
+        !e.altKey &&
+        e.key.toLowerCase() === 'p'
+      ) {
+        e.preventDefault();
+        useCommandPaletteStore.getState().toggle();
+      }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
@@ -173,6 +190,7 @@ export default function App() {
 
       {showStatusBar && <StatusBar />}
       <GlobalSearchPanel />
+      <CommandPalette />
     </div>
   );
 }

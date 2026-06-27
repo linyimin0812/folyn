@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist: granular selectors, useEffect cleanup, no `any`, no business logic in components, file-size."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify CommandPalette follows named-export + props + styling + splitting conventions."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify commandPaletteStore uses granular selectors, getState() for imperative, no bare useStore()."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Confirm palette reuses .dlg styling, existing store actions, and vaultStore file tree rather than duplicating."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Palette spans UI → store actions → multiple stores (editor/settings/ai/vault); verify command.run wiring is clean and not leaking cross-layer logic into the component."}

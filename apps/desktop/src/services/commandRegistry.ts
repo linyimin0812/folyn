@@ -1,0 +1,275 @@
+/**
+ * Command registry for the unified command palette (⌘P).
+ *
+ * A command is a single executable item surfaced in the palette. The registry
+ * is the single source of truth and the future extension point for additional
+ * command sources (custom commands, plugin commands).
+ *
+ * Static commands (actions + panels/modes) are registered once at app start via
+ * {@link registerBuiltinCommands}. File commands are NOT registered here — they
+ * are built lazily from the live `vaultStore` file tree by the palette store
+ * (see `services/fileCommands.ts`) so they always reflect the watched tree.
+ */
+
+import { useSettingsStore } from '@/store/settingsStore';
+import { useEditorStore } from '@/store/editorStore';
+import { useAiStore } from '@/store/aiStore';
+import { useSearchStore } from '@/store/searchStore';
+import type { ActivityPanel } from '@/components/shell/ActivityBar';
+import {
+  exportActiveMarkdown,
+  exportActiveHtml,
+  exportActivePdf,
+} from '@/hooks/useExport';
+import { requestNewItem } from './newItemBridge';
+
+export type CommandCategory = 'action' | 'panel-mode' | 'file';
+
+export interface Command {
+  /** Stable unique id; used by the palette store to run commands by id. */
+  id: string;
+  /** Display title shown in the palette UI; also the primary fuzzy-match target. */
+  title: string;
+  category: CommandCategory;
+  /** Optional icon name for rendering. */
+  icon?: string;
+  /** Extra terms to match against in addition to `title`. */
+  keywords?: string[];
+  /**
+   * Optional visibility predicate. When it returns `false` the command is
+   * hidden from the palette (e.g. a panel command whose feature is disabled in
+   * settings). Evaluated by the palette store at list-build time.
+   */
+  enabled?: () => boolean;
+  /** Execute the command. Errors are caught and logged by the registry. */
+  run: () => void | Promise<void>;
+}
+
+const registry = new Map<string, Command>();
+
+/**
+ * Register a command. A later registration with the same id replaces the prior
+ * one (allows re-seeding during HMR / tests).
+ */
+export function registerCommand(cmd: Command): void {
+  registry.set(cmd.id, cmd);
+}
+
+/** Register many commands at once. */
+export function registerCommands(commands: Command[]): void {
+  for (const cmd of commands) registerCommand(cmd);
+}
+
+/** Read all currently-registered commands (insertion order). */
+export function getCommands(): Command[] {
+  return Array.from(registry.values());
+}
+
+/** Look up a single command by id. */
+export function getCommand(id: string): Command | undefined {
+  return registry.get(id);
+}
+
+/** Remove all registered commands (test helper). */
+export function clearCommands(): void {
+  registry.clear();
+}
+
+/**
+ * Safely run a command by id. Errors are logged and never propagate so a single
+ * failing command cannot take down the palette.
+ */
+export async function runCommand(id: string): Promise<void> {
+  const cmd = registry.get(id);
+  if (!cmd) {
+    console.warn('[commandRegistry] unknown command:', id);
+    return;
+  }
+  try {
+    await cmd.run();
+  } catch (err) {
+    console.error(`[commandRegistry] command "${id}" failed:`, err);
+  }
+}
+
+/** Switch to the editor surface and a given activity panel. */
+function gotoPanel(panel: ActivityPanel): void {
+  useSettingsStore.getState().setCurrentPage('editor');
+  useEditorStore.getState().setActivePanel(panel);
+}
+
+/**
+ * Seed the built-in (static) command set: actions + panel/mode commands.
+ * File commands are sourced dynamically by the palette store.
+ *
+ * Safe to call multiple times — re-registration replaces by id.
+ */
+export function registerBuiltinCommands(): void {
+  const settings = () => useSettingsStore.getState();
+
+  registerCommands([
+    // ── Actions ──
+    {
+      id: 'action.toggle-theme',
+      title: 'Toggle Theme',
+      category: 'action',
+      keywords: ['dark', 'light', 'appearance'],
+      run: () => settings().toggleTheme(),
+    },
+    {
+      id: 'action.new-file',
+      title: 'New File',
+      category: 'action',
+      keywords: ['create', 'markdown', 'note'],
+      run: () => {
+        gotoPanel('files');
+        requestNewItem('file');
+      },
+    },
+    {
+      id: 'action.new-folder',
+      title: 'New Folder',
+      category: 'action',
+      keywords: ['create', 'directory', 'folder'],
+      run: () => {
+        gotoPanel('files');
+        requestNewItem('dir');
+      },
+    },
+    {
+      id: 'action.open-daily-note',
+      title: 'Open Daily Note',
+      category: 'action',
+      keywords: ['today', 'journal', 'calendar'],
+      run: () => useEditorStore.getState().openDailyNote(),
+    },
+    {
+      id: 'action.export-markdown',
+      title: 'Export as Markdown',
+      category: 'action',
+      keywords: ['download', 'md', 'save'],
+      run: () => exportActiveMarkdown(),
+    },
+    {
+      id: 'action.export-html',
+      title: 'Export as HTML',
+      category: 'action',
+      keywords: ['download', 'web', 'page'],
+      run: () => {
+        void exportActiveHtml();
+      },
+    },
+    {
+      id: 'action.export-pdf',
+      title: 'Export as PDF',
+      category: 'action',
+      keywords: ['download', 'print', 'document'],
+      run: () => {
+        void exportActivePdf();
+      },
+    },
+    {
+      id: 'action.open-global-search',
+      title: 'Open Global Search',
+      category: 'action',
+      keywords: ['find', 'grep', 'search'],
+      run: () => useSearchStore.getState().openPanel(),
+    },
+
+    // ── Panels (ActivityBar) ──
+    {
+      id: 'panel.files',
+      title: 'Go to Files',
+      category: 'panel-mode',
+      keywords: ['explorer', 'tree'],
+      run: () => gotoPanel('files'),
+    },
+    {
+      id: 'panel.clips',
+      title: 'Go to Clips',
+      category: 'panel-mode',
+      keywords: ['bookmark', 'clip'],
+      enabled: () => settings().enableClipsPanel,
+      run: () => gotoPanel('clips'),
+    },
+    {
+      id: 'panel.wiki',
+      title: 'Go to Wiki',
+      category: 'panel-mode',
+      enabled: () => settings().enableWikiPanel,
+      run: () => gotoPanel('wiki'),
+    },
+    {
+      id: 'panel.analyze',
+      title: 'Go to Analyze',
+      category: 'panel-mode',
+      keywords: ['analysis', 'project'],
+      enabled: () => settings().enableAnalyzePanel,
+      run: () => gotoPanel('analyze'),
+    },
+    {
+      id: 'panel.calendar',
+      title: 'Go to Calendar',
+      category: 'panel-mode',
+      keywords: ['daily', 'journal'],
+      enabled: () => settings().enableDailyPanel,
+      run: () => gotoPanel('calendar'),
+    },
+    {
+      id: 'panel.settings',
+      title: 'Open Settings',
+      category: 'panel-mode',
+      keywords: ['preferences', 'config'],
+      run: () => settings().setCurrentPage('settings'),
+    },
+
+    // ── Editor view modes ──
+    {
+      id: 'mode.split',
+      title: 'View: Split',
+      category: 'panel-mode',
+      keywords: ['view', 'editor'],
+      run: () => useEditorStore.getState().setViewMode('split'),
+    },
+    {
+      id: 'mode.edit',
+      title: 'View: Edit Only',
+      category: 'panel-mode',
+      keywords: ['view', 'editor'],
+      run: () => useEditorStore.getState().setViewMode('edit'),
+    },
+    {
+      id: 'mode.preview',
+      title: 'View: Preview Only',
+      category: 'panel-mode',
+      keywords: ['view', 'render'],
+      run: () => useEditorStore.getState().setViewMode('preview'),
+    },
+
+    // ── AI chat modes ──
+    {
+      id: 'mode.ai-chat',
+      title: 'AI Chat: Chat',
+      category: 'panel-mode',
+      keywords: ['ai', 'assistant'],
+      enabled: () => settings().showAiPanel,
+      run: () => useAiStore.getState().setChatMode('chat'),
+    },
+    {
+      id: 'mode.ai-wiki',
+      title: 'AI Chat: Wiki',
+      category: 'panel-mode',
+      keywords: ['ai', 'assistant'],
+      enabled: () => settings().showAiPanel,
+      run: () => useAiStore.getState().setChatMode('wiki'),
+    },
+    {
+      id: 'mode.ai-clip',
+      title: 'AI Chat: Clip',
+      category: 'panel-mode',
+      keywords: ['ai', 'assistant'],
+      enabled: () => settings().showAiPanel,
+      run: () => useAiStore.getState().setChatMode('clip'),
+    },
+  ]);
+}

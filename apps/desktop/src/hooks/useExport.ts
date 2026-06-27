@@ -13,27 +13,43 @@ import {
 export type { ExportFormat } from '@/services/exportService';
 export { hasContainerSyntax } from '@/services/exportService';
 
-export function useExport() {
-  const tabs = useEditorStore((s) => s.tabs);
-  const activeTabId = useEditorStore((s) => s.activeTabId);
-  const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
+export interface ActiveDocument {
+  name: string;
+  content: string;
+  path: string;
+  vaultRoot: string;
+}
 
-  const getActiveContent = useCallback(() => {
-    const tab = tabs.find((t) => t.id === activeTabId);
-    return { name: tab?.name ?? 'untitled.md', content: tab?.content ?? '', path: tab?.path ?? '' };
-  }, [tabs, activeTabId]);
+/**
+ * Read the active document from stores. Extracted so non-React callers (e.g.
+ * the command palette's export commands) can access the same source of truth
+ * without a hook.
+ */
+export function getActiveDocument(): ActiveDocument {
+  const { tabs, activeTabId } = useEditorStore.getState();
+  const { currentVault } = useVaultStore.getState();
+  const tab = tabs.find((t) => t.id === activeTabId);
+  return {
+    name: tab?.name ?? 'untitled.md',
+    content: tab?.content ?? '',
+    path: tab?.path ?? '',
+    vaultRoot: currentVault?.basePath ?? '',
+  };
+}
 
-  const exportMarkdown = useCallback(() => {
-    const { name, content } = getActiveContent();
-    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
-    downloadBlob(blob, name);
-  }, [getActiveContent]);
+/** Export the active document as Markdown. Imperative; callable outside React. */
+export function exportActiveMarkdown(): void {
+  const { name, content } = getActiveDocument();
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+  downloadBlob(blob, name);
+}
 
-  const exportHtml = useCallback(async () => {
-    const { name, content, path } = getActiveContent();
-    const renderedBody = renderMarkdownToHtml(content);
-    const inlinedBody = await inlineImages(renderedBody, vaultRoot, path);
-    const htmlContent = `<!DOCTYPE html>
+/** Export the active document as a standalone HTML file. Imperative. */
+export async function exportActiveHtml(): Promise<void> {
+  const { name, content, path, vaultRoot } = getActiveDocument();
+  const renderedBody = renderMarkdownToHtml(content);
+  const inlinedBody = await inlineImages(renderedBody, vaultRoot, path);
+  const htmlContent = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -45,14 +61,17 @@ export function useExport() {
 ${inlinedBody}
 </body>
 </html>`;
-    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-    downloadBlob(blob, name.replace(/\.md$/, '.html'));
-  }, [getActiveContent, vaultRoot]);
+  const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+  downloadBlob(blob, name.replace(/\.md$/, '.html'));
+}
 
-  const exportPdf = useCallback(async () => {
-    const { name, content, path } = getActiveContent();
+/** Export the active document as PDF. Imperative; callable outside React. */
+export async function exportActivePdf(): Promise<void> {
+  const { name, content, path, vaultRoot } = getActiveDocument();
+  const pdfTitle = name.replace(/\.md$/, '');
+
+  try {
     const renderedBody = await inlineImages(renderMarkdownToHtml(content), vaultRoot, path);
-    const pdfTitle = name.replace(/\.md$/, '');
 
     // Create an off-screen container that reuses the same HTML_STYLES as
     // the HTML export so the PDF looks identical to the preview.
@@ -130,7 +149,31 @@ ${inlinedBody}
     } else {
       worker.save().then(() => cleanup()).catch(() => cleanup());
     }
-  }, [getActiveContent, vaultRoot]);
+  } catch {
+    // Swallow PDF generation errors so a failing export cannot crash the caller.
+  }
+}
 
+/**
+ * React hook facade over the imperative export functions. Reads from stores at
+ * call time so the returned callbacks always reflect the latest active tab and
+ * vault without depending on render-captured state. Kept for component
+ * consumers (e.g. {@link ExportMenu}) that prefer hook-style access.
+ */
+export function useExport() {
+  const exportMarkdown = useCallback(() => exportActiveMarkdown(), []);
+  const exportHtml = useCallback(() => {
+    void exportActiveHtml();
+  }, []);
+  const exportPdf = useCallback(() => {
+    void exportActivePdf();
+  }, []);
+  const getActiveContent = useCallback(
+    () => {
+      const { name, content, path } = getActiveDocument();
+      return { name, content, path };
+    },
+    [],
+  );
   return { exportMarkdown, exportHtml, exportPdf, getActiveContent };
 }

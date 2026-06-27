@@ -4,6 +4,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
 import type { VaultEntry } from '@quill/vault-provider';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
+import { setNewItemStarter } from '@/services/newItemBridge';
 import { WikiFileTree } from './WikiFileTree';
 import { ClipsPanel } from './ClipsPanel';
 import { AnalysisPanel } from './AnalysisPanel';
@@ -119,6 +120,15 @@ export function Sidebar({ activePanel = 'files', onFileSelect }: SidebarProps): 
     startRename, confirmRename, cancelRename,
     deleteConfirm, setDeleteConfirm, confirmDelete, deleteItem,
   } = useSidebarActions({ handleFileClick, setExpandedDirs });
+
+  // Bridge the command palette's new-file/new-folder actions to the Sidebar's
+  // inline new-item flow. Registered on mount; cleared on unmount. A request
+  // that arrived while unmounted (e.g. palette switched from settings page) is
+  // fulfilled on mount by the bridge.
+  useEffect(() => {
+    setNewItemStarter(startNewItem);
+    return () => setNewItemStarter(null);
+  }, [startNewItem]);
 
   const handleItemSelect = useCallback(
     (e: React.MouseEvent, path: string, entry: VaultEntry) => {
