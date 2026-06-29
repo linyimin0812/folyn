@@ -800,3 +800,23 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
   .sw-nav-item span:not(.sw-count) { display: none; }
   .sw-nav-item { justify-content: center; }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   学习工作台 Study Workbench（复用 sw- 前缀，study-专属增量）
+   ════════════════════════════════════════════════════════════════ */
+.study-workbench .sw-study-body { padding: var(--space-5); overflow-y: auto; }
+.study-workbench .sw-study-body .sw-pomo { max-width: 260px; }
+.study-workbench .sw-study-placeholder { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-6); margin-top: var(--space-5); }
+.study-workbench .sw-study-placeholder p { color: var(--fg-2); font-size: var(--text-sm); margin: var(--space-2) 0 0; }
+.study-workbench .sw-study-placeholder code { font-family: var(--font-mono); font-size: 12px; background: var(--border-soft); padding: 1px 5px; border-radius: 3px; }
+.study-workbench .sw-empty-hint { color: var(--muted); font-size: 12px; padding: 10px 12px; list-style: none; }
+.study-workbench .sw-nav-group { margin: 0; list-style: none; }
+.study-workbench .sw-nav-item { list-style: none; }
+.study-workbench .sw-topic-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.study-workbench .sw-topic-del { flex-shrink: 0; opacity: 0; color: var(--muted); padding: 2px; border-radius: 4px; transition: opacity var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard); }
+.study-workbench .sw-nav-item:hover .sw-topic-del { opacity: 1; }
+.study-workbench .sw-topic-del:hover { background: var(--hov); color: var(--danger); }
+@media (max-width: 900px) {
+  .study-workbench .sw-topic-del { display: none; }
+}
+

@@ -15,11 +15,13 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   const enableAnalyzePanel = useSettingsStore((s) => s.enableAnalyzePanel);
   const enableDailyPanel = useSettingsStore((s) => s.enableDailyPanel);
   const onSchedule = currentPage === 'schedule';
+  const onStudy = currentPage === 'study';
+  const onPage = onSchedule || onStudy;
 
   return (
     <div className="activity-bar">
       <button
-        className={`activity-icon ${!onSchedule && activePanel === 'files' ? 'active' : ''}`}
+        className={`activity-icon ${!onPage && activePanel === 'files' ? 'active' : ''}`}
         onClick={() => onPanelChange('files')}
         title="文件"
       >
@@ -30,7 +32,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
 
       {enableWikiPanel && (
         <button
-          className={`activity-icon ${!onSchedule && activePanel === 'wiki' ? 'active' : ''}`}
+          className={`activity-icon ${!onPage && activePanel === 'wiki' ? 'active' : ''}`}
           onClick={() => onPanelChange('wiki')}
           title="Wiki"
         >
@@ -42,7 +44,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
 
       {enableClipsPanel && (
         <button
-          className={`activity-icon ${!onSchedule && activePanel === 'clips' ? 'active' : ''}`}
+          className={`activity-icon ${!onPage && activePanel === 'clips' ? 'active' : ''}`}
           onClick={() => onPanelChange('clips')}
           title="Clips"
         >
@@ -54,7 +56,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
 
       {enableAnalyzePanel && (
         <button
-          className={`activity-icon ${!onSchedule && activePanel === 'analyze' ? 'active' : ''}`}
+          className={`activity-icon ${!onPage && activePanel === 'analyze' ? 'active' : ''}`}
           onClick={() => onPanelChange('analyze')}
           title="项目分析"
         >
@@ -79,6 +81,17 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
           </svg>
         </button>
       )}
+
+      <button
+        className={`activity-icon ${onStudy ? 'active' : ''}`}
+        onClick={() => setCurrentPage('study')}
+        title="学习工作台"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 10L12 5 2 10l10 5 10-5z" />
+          <path d="M6 12v5c0 1 2.5 3 6 3s6-2 6-3v-5" />
+        </svg>
+      </button>
 
       <div className="flex-1" />
 
