@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist: no `any`, useEffect cleanup, no business logic in components, fail-soft error handling, file-size."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify PlanMyDayPreview follows named-export + props + styling + splitting conventions and reuses ScheduleView rendering."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify service uses getState() for imperative apply and preview uses granular selectors; no bare useStore()."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Confirm reuse of clipService pattern + scheduleStore actions + dailyScan helpers rather than duplicating."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Plan spans service → AI adapter → scheduleStore → ScheduleView preview; verify the gather/parse/apply data flow is clean and AI never mutates state directly."}

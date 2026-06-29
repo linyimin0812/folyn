@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend quick reference: named exports, @/ alias, Tailwind tokens, Zustand patterns — conventions for the new service + preview component."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component patterns for the PlanMyDayPreview overlay (named exports, props, styling tokens, splitting at ~200 JSX lines, reuse of ScheduleView rendering)."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand patterns — the service calls scheduleStore actions via getState(); preview reads scheduleStore via granular selectors."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality bar: no `any`, useEffect cleanup, no business logic in components (planning logic lives in the service), import order, file-size."}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "Hook patterns — the preview's drag-tweak + AI-call lifecycle."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse: mirror clipService's AI-JSON→confirm→apply pattern and scheduleStore's existing actions/shape before writing new logic."}

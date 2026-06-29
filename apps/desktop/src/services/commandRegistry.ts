@@ -22,6 +22,7 @@ import {
   exportActivePdf,
 } from '@/hooks/useExport';
 import { requestNewItem } from './newItemBridge';
+import { requestPlanMyDay } from './planMyDayBridge';
 
 export type CommandCategory = 'action' | 'panel-mode' | 'file';
 
@@ -174,6 +175,19 @@ export function registerBuiltinCommands(): void {
       category: 'action',
       keywords: ['find', 'grep', 'search'],
       run: () => useSearchStore.getState().openPanel(),
+    },
+    {
+      id: 'action.plan-my-day',
+      title: 'AI Plan My Day',
+      category: 'action',
+      keywords: ['ai', 'schedule', 'plan', 'today'],
+      run: () => {
+        // Switch to the schedule workbench, then trigger the plan flow via the
+        // bridge (handles the mount-race where the workbench isn't mounted
+        // yet — the request is replayed on mount).
+        settings().setCurrentPage('schedule');
+        requestPlanMyDay();
+      },
     },
 
     // ── Panels (ActivityBar) ──

@@ -26,6 +26,7 @@ const {
   exportHtmlMock,
   exportPdfMock,
   requestNewItemMock,
+  requestPlanMyDayMock,
 } = vi.hoisted(() => ({
   toggleThemeMock: vi.fn(),
   setCurrentPageMock: vi.fn(),
@@ -38,6 +39,7 @@ const {
   exportHtmlMock: vi.fn(),
   exportPdfMock: vi.fn(),
   requestNewItemMock: vi.fn(),
+  requestPlanMyDayMock: vi.fn(),
 }));
 
 vi.mock('@/store/settingsStore', () => ({
@@ -86,6 +88,10 @@ vi.mock('./newItemBridge', () => ({
   requestNewItem: requestNewItemMock,
 }));
 
+vi.mock('./planMyDayBridge', () => ({
+  requestPlanMyDay: requestPlanMyDayMock,
+}));
+
 function makeCommand(id: string, run: () => void = vi.fn()): Command {
   return { id, title: id, category: 'action', run };
 }
@@ -103,6 +109,7 @@ beforeEach(() => {
   exportHtmlMock.mockClear();
   exportPdfMock.mockClear();
   requestNewItemMock.mockClear();
+  requestPlanMyDayMock.mockClear();
 });
 
 describe('commandRegistry — basic registration', () => {
@@ -173,6 +180,7 @@ describe('commandRegistry — registerBuiltinCommands', () => {
       'action.export-html',
       'action.export-pdf',
       'action.open-global-search',
+      'action.plan-my-day',
     ]);
   });
 
@@ -227,6 +235,13 @@ describe('commandRegistry — registerBuiltinCommands', () => {
     registerBuiltinCommands();
     await runCommand('action.open-global-search');
     expect(openPanelMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('action.plan-my-day switches to schedule and requests the plan flow', async () => {
+    registerBuiltinCommands();
+    await runCommand('action.plan-my-day');
+    expect(setCurrentPageMock).toHaveBeenCalledWith('schedule');
+    expect(requestPlanMyDayMock).toHaveBeenCalledTimes(1);
   });
 
   it('mode.preview sets the editor view mode', async () => {
