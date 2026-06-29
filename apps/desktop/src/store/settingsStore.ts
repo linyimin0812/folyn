@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { storageClient } from '@/utils/storageClient';
+import { DEFAULT_BOARD_COLUMNS, COLUMN_COLOR_PALETTE, type BoardColumnDef } from '@/schedule/types';
 
 export type Theme = 'light' | 'dark' | 'system';
-export type AppPage = 'editor' | 'vault' | 'settings';
+export type AppPage = 'editor' | 'vault' | 'settings' | 'schedule';
 export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'ai' | 'templates' | 'skills' | 'about';
 export type LinkOpenMode = 'external' | 'internal';
 
@@ -83,6 +84,9 @@ interface SettingsState {
   // Shortcuts
   shortcuts: ShortcutItem[];
 
+  // Schedule Workbench: 自定义看板列
+  boardColumns: BoardColumnDef[];
+
   // Actions
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
@@ -94,6 +98,10 @@ interface SettingsState {
   updateSettings: (partial: Partial<SettingsState>) => void;
   updateShortcut: (id: string, keys: string[]) => void;
   resetShortcuts: () => void;
+  addBoardColumn: (name: string) => string;
+  renameBoardColumn: (id: string, name: string) => void;
+  reorderBoardColumns: (fromId: string, toId: string) => void;
+  setBoardColumns: (columns: BoardColumnDef[]) => void;
 }
 
 const SETTINGS_STORAGE_KEY = 'settings:all';
@@ -111,7 +119,7 @@ function debouncedPersist(state: Partial<SettingsState>) {
       syntaxHighlight, autoSave, spellCheck, linkOpenMode, vaultPath, imagePath, docExtension,
       watchFileChanges, trashOnDelete, syncMethod, syncEndpoint, syncAccessKey,
       syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
-      vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates } = state as SettingsState;
+      vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates, boardColumns } = state as SettingsState;
     storageClient.set(SETTINGS_STORAGE_KEY, {
       theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles,
       enableWikiPanel, enableClipsPanel, enableAnalyzePanel, enableDailyPanel,
@@ -120,7 +128,7 @@ function debouncedPersist(state: Partial<SettingsState>) {
       syntaxHighlight, autoSave, spellCheck, linkOpenMode, vaultPath, imagePath, docExtension,
       watchFileChanges, trashOnDelete, syncMethod, syncEndpoint, syncAccessKey,
       syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
-      vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates,
+      vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates, boardColumns,
     });
   }, 300);
 }
@@ -190,6 +198,9 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   // Shortcuts
   shortcuts: [...DEFAULT_SHORTCUTS],
 
+  // Schedule Workbench: 看板列（默认 4 列）
+  boardColumns: DEFAULT_BOARD_COLUMNS.map((c) => ({ ...c })),
+
   setTheme: (theme) => {
     const actual = theme === 'system'
       ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
@@ -239,6 +250,40 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ shortcuts: [...DEFAULT_SHORTCUTS] });
     debouncedPersist(useSettingsStore.getState());
   },
+  // ── 看板列自定义 ──
+  addBoardColumn: (name: string) => {
+    const id = `col-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    set((state) => {
+      const palette = COLUMN_COLOR_PALETTE;
+      const color = palette[state.boardColumns.length % palette.length];
+      return { boardColumns: [...state.boardColumns, { id, name: name || '新列', color }] };
+    });
+    debouncedPersist(useSettingsStore.getState());
+    return id;
+  },
+  renameBoardColumn: (id: string, name: string) => {
+    set((state) => ({
+      boardColumns: state.boardColumns.map((c) => (c.id === id ? { ...c, name } : c)),
+    }));
+    debouncedPersist(useSettingsStore.getState());
+  },
+  reorderBoardColumns: (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    set((state) => {
+      const cols = [...state.boardColumns];
+      const fromIdx = cols.findIndex((c) => c.id === fromId);
+      const toIdx = cols.findIndex((c) => c.id === toId);
+      if (fromIdx < 0 || toIdx < 0) return state;
+      const [moved] = cols.splice(fromIdx, 1);
+      cols.splice(toIdx, 0, moved);
+      return { boardColumns: cols };
+    });
+    debouncedPersist(useSettingsStore.getState());
+  },
+  setBoardColumns: (columns: BoardColumnDef[]) => {
+    set({ boardColumns: columns });
+    debouncedPersist(useSettingsStore.getState());
+  },
 }));
 
 /** Load persisted settings from backend on startup */
@@ -262,6 +307,10 @@ storageClient.get<Partial<SettingsState>>(SETTINGS_STORAGE_KEY).then((saved) => 
     // Migrate persisted dailyNotesDir from the old default to the new built-in name.
     if (saved.dailyNotesDir === 'daily') {
       saved.dailyNotesDir = '__daily__';
+    }
+    // Backfill boardColumns: 必须是非空数组且含一个 isDone 列，否则用默认。
+    if (!Array.isArray(saved.boardColumns) || saved.boardColumns.length === 0 || !saved.boardColumns.some((c) => c.isDone)) {
+      saved.boardColumns = DEFAULT_BOARD_COLUMNS.map((c) => ({ ...c }));
     }
     useSettingsStore.setState(saved);
   }

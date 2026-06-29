@@ -1,5 +1,4 @@
 import { useSettingsStore } from '@/store/settingsStore';
-import { useEditorStore } from '@/store/editorStore';
 
 export type ActivityPanel = 'files' | 'wiki' | 'clips' | 'analyze' | 'calendar';
 
@@ -10,16 +9,17 @@ interface ActivityBarProps {
 
 export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   const setCurrentPage = useSettingsStore((s) => s.setCurrentPage);
-  const openDailyNote = useEditorStore((s) => s.openDailyNote);
+  const currentPage = useSettingsStore((s) => s.currentPage);
   const enableWikiPanel = useSettingsStore((s) => s.enableWikiPanel);
   const enableClipsPanel = useSettingsStore((s) => s.enableClipsPanel);
   const enableAnalyzePanel = useSettingsStore((s) => s.enableAnalyzePanel);
   const enableDailyPanel = useSettingsStore((s) => s.enableDailyPanel);
+  const onSchedule = currentPage === 'schedule';
 
   return (
     <div className="activity-bar">
       <button
-        className={`activity-icon ${activePanel === 'files' ? 'active' : ''}`}
+        className={`activity-icon ${!onSchedule && activePanel === 'files' ? 'active' : ''}`}
         onClick={() => onPanelChange('files')}
         title="文件"
       >
@@ -30,7 +30,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
 
       {enableWikiPanel && (
         <button
-          className={`activity-icon ${activePanel === 'wiki' ? 'active' : ''}`}
+          className={`activity-icon ${!onSchedule && activePanel === 'wiki' ? 'active' : ''}`}
           onClick={() => onPanelChange('wiki')}
           title="Wiki"
         >
@@ -42,7 +42,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
 
       {enableClipsPanel && (
         <button
-          className={`activity-icon ${activePanel === 'clips' ? 'active' : ''}`}
+          className={`activity-icon ${!onSchedule && activePanel === 'clips' ? 'active' : ''}`}
           onClick={() => onPanelChange('clips')}
           title="Clips"
         >
@@ -54,7 +54,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
 
       {enableAnalyzePanel && (
         <button
-          className={`activity-icon ${activePanel === 'analyze' ? 'active' : ''}`}
+          className={`activity-icon ${!onSchedule && activePanel === 'analyze' ? 'active' : ''}`}
           onClick={() => onPanelChange('analyze')}
           title="项目分析"
         >
@@ -67,9 +67,9 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
 
       {enableDailyPanel && (
         <button
-          className={`activity-icon ${activePanel === 'calendar' ? 'active' : ''}`}
-          onClick={() => { onPanelChange('calendar'); openDailyNote(); }}
-          title="今日笔记 (⌘D)"
+          className={`activity-icon ${onSchedule ? 'active' : ''}`}
+          onClick={() => setCurrentPage('schedule')}
+          title="日程工作台 (⌘D)"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />

@@ -11,6 +11,7 @@ import { useWikiStore } from '@/store/wikiStore';
 
 import { SettingsPage } from './components/pages/SettingsPage';
 import { VaultPage } from './components/pages/VaultPage';
+import { ScheduleWorkbenchPage } from './components/schedule/ScheduleWorkbenchPage';
 import { useTheme } from './hooks/useTheme';
 import { useSettingsStore } from './store/settingsStore';
 import { useVaultStore } from './store/vaultStore';
@@ -49,6 +50,16 @@ export default function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const activePanel = useEditorStore((s) => s.activePanel);
   const setActivePanel = useEditorStore((s) => s.setActivePanel);
+  const setCurrentPage = useSettingsStore((s) => s.setCurrentPage);
+
+  // 切换 activity 面板时同时回到 editor 页（从 schedule 页点面板按钮可返回）。
+  const handlePanelChange = useCallback(
+    (panel: typeof activePanel) => {
+      setActivePanel(panel);
+      setCurrentPage('editor');
+    },
+    [setActivePanel, setCurrentPage],
+  );
 
   const toggleMobileSidebar = useCallback(() => {
     setMobileSidebarOpen((prev) => !prev);
@@ -139,7 +150,7 @@ export default function App() {
         // event pass through untouched so users (and the OS) keep default behavior.
         if (useSettingsStore.getState().enableDailyPanel) {
           e.preventDefault();
-          useEditorStore.getState().openDailyNote();
+          useSettingsStore.getState().setCurrentPage('schedule');
         }
       }
       // Cmd/Ctrl+P (no Shift) toggles the command palette. Shift is reserved
@@ -164,7 +175,7 @@ export default function App() {
 
       {currentPage === 'editor' && (
         <div className="body-row flex-1 flex overflow-hidden">
-          {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={setActivePanel} />}
+          {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
           {isMobile && mobileSidebarOpen && (
             <div className="mobile-sidebar-overlay" onClick={closeMobileSidebar} />
           )}
@@ -185,6 +196,13 @@ export default function App() {
       {currentPage === 'settings' && (
         <div className="body-row flex-1 flex overflow-hidden">
           <SettingsPage />
+        </div>
+      )}
+
+      {currentPage === 'schedule' && (
+        <div className="body-row flex-1 flex overflow-hidden">
+          {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
+          <ScheduleWorkbenchPage />
         </div>
       )}
 
