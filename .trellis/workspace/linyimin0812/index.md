@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 7
-- **Last Active**: 2026-06-27
+- **Total Sessions**: 8
+- **Last Active**: 2026-06-29
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~246 | Active |
+| `journal-1.md` | ~280 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 8 | 2026-06-29 | AI Plan My Day (schedule planning) | `e2cfb3a` | `master` |
 | 7 | 2026-06-27 | Unified Command Palette (Cmd+P) | `30ff5ee` | `master` |
 | 6 | 2026-06-27 | Archive: Bootstrap Guidelines (spec populated) | `82bc31b` | `master` |
 | 5 | 2026-06-27 | Archive: rename special dirs (__name__ form) | `2a6ffe1` | `master` |

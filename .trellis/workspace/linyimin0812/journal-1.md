@@ -244,3 +244,37 @@ Built a unified command palette (Cmd+P) for Quill via 3 PRs. PR1: built-in subse
 ### Next Steps
 
 - None - task complete
+
+
+## Session 8: AI Plan My Day (schedule planning)
+
+**Date**: 2026-06-29
+**Task**: AI Plan My Day (schedule planning)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added the 'AI 规划今日' feature to the Schedule workbench. Pattern B (JSON advisor): planMyDayService gathers today's events + last-7-days unfinished tasks, calls the AI (reusing clipService's adapter-call pattern), parses a structured plan JSON; PlanMyDayPreview renders proposed blocks on ScheduleView's timeline (dashed/translucent, per-item accept + drag-tweak, 15min snap); applyPlan creates new tasks (id-diff) then scheduleTask then addEvent, fail-soft. action.plan-my-day ⌘P command + ScheduleSidebar button. Time unit = hour-floating (9.5==09:30) throughout. Check fixed a duplicate-title new-task id-resolution bug (consumed-id set + regression test). 588 tests + tsc + build green. No new runtime dep. Skipped /trellis:finish-work to preserve the user's in-use .dev/worktree/bold-beacon; archived + journaled manually.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e2cfb3a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
