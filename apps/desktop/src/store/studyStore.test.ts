@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useStudyStore } from './studyStore';
+import { useStudyStore, collectDueAtoms } from './studyStore';
 import { useVaultStore } from './vaultStore';
 import { useSettingsStore } from './settingsStore';
 import { storageClient } from '@/utils/storageClient';
 import type { VaultEntry } from '@quill/vault-provider';
-import { STUDY_DIR, slugifyTopic, buildEmptyStudyDoc, studyDocPath, extractSlug } from '@/study/studyDoc';
+import { STUDY_DIR, slugifyTopic, buildEmptyStudyDoc, studyDocPath, extractSlug, type StudyTopicEntry } from '@/study/studyDoc';
+import { parseStudy } from '@/study/markdown';
 
 // 对标 vaultStore.test.ts 的 fake manager，提供 studyStore 用到的子集。
 vi.mock('@/utils/fileWatcher', () => ({
@@ -243,5 +244,94 @@ describe('useStudyStore.selectTopic', () => {
   it('sets activeSlug', () => {
     useStudyStore.getState().selectTopic('x');
     expect(useStudyStore.getState().activeSlug).toBe('x');
+  });
+});
+
+describe('collectDueAtoms (cross-topic today queue)', () => {
+  const TODAY = '2026-06-29';
+
+  function makeTopic(slug: string, reviewLines: string[]): StudyTopicEntry {
+    const content = [
+      '---',
+      `title: ${slug}`,
+      `slug: ${slug}`,
+      '---',
+      '',
+      '## 复习',
+      ...reviewLines,
+      '',
+    ].join('\n');
+    return { slug, path: studyDocPath(slug), parsed: parseStudy(content, slug) };
+  }
+
+  it('aggregates due atoms across topics with source annotation', () => {
+    const topics = [
+      makeTopic('a', [
+        `- [ ] a1 @{next:${TODAY} rep:0 ef:2.5 ivl:1 lapses:0 topic:a}`,
+        `- [ ] a2 @{next:2026-07-02 rep:1 ef:2.5 ivl:6 lapses:0 topic:a}`,
+      ]),
+      makeTopic('b', [
+        `- [ ] b1 @{next:2026-06-28 rep:2 ef:2.2 ivl:10 lapses:1 topic:b}`,
+      ]),
+    ];
+    const due = collectDueAtoms(topics, TODAY);
+    // a1 (today, due) + b1 (yesterday, due); a2 (future) excluded
+    expect(due).toHaveLength(2);
+    expect(due.map((d) => d.topicSlug).sort()).toEqual(['a', 'b']);
+    expect(due.find((d) => d.topicSlug === 'a')?.atom.summary).toBe('a1');
+  });
+
+  it('returns empty when no topics or all upcoming', () => {
+    expect(collectDueAtoms([], TODAY)).toEqual([]);
+    const topics = [makeTopic('a', [`- [ ] a1 @{next:2099-01-01 rep:1 ef:2.5 ivl:6 lapses:0 topic:a}`])];
+    expect(collectDueAtoms(topics, TODAY)).toEqual([]);
+  });
+
+  it('carries topicPath for write-back routing', () => {
+    const topics = [makeTopic('a', [`- [ ] a1 @{next:${TODAY} rep:0 ef:2.5 ivl:1 lapses:0 topic:a}`])];
+    expect(collectDueAtoms(topics, TODAY)[0].topicPath).toBe(studyDocPath('a'));
+  });
+});
+
+describe('useStudyStore.rateAtomInTopic', () => {
+  const TODAY = '2026-06-29';
+
+  it('writes back updated SM-2 state for the rated atom (cross-topic path)', async () => {
+    // 主题 a 含一条到期原子
+    const docA = [
+      '---', 'title: a', 'slug: a', '---', '',
+      '## 复习',
+      `- [ ] a1 @{next:${TODAY} rep:0 ef:2.5 ivl:1 lapses:0 topic:a}`,
+      '',
+    ].join('\n');
+    await useVaultStore.getState().createFile(studyDocPath('a'), docA);
+    await useStudyStore.getState().refresh();
+
+    const entry = useStudyStore.getState().topics.find((t) => t.slug === 'a')!;
+    const atom = entry.parsed.reviewAtoms[0];
+    // Good 评级：rep 0→1, ivl=1, next=today+1
+    const updated = await useStudyStore.getState().rateAtomInTopic('a', atom.id, {
+      ...atom,
+      rep: 1,
+      ef: 2.5,
+      ivl: 1,
+      lapses: 0,
+      next: '2026-06-30',
+    });
+    expect(updated).not.toBeNull();
+    // 落盘行包含新 next
+    const written = manager.files.get(studyDocPath('a'))!;
+    expect(written).toContain('next:2026-06-30');
+    expect(written).toContain('rep:1');
+    // 缓存已刷新：atom 不再到期（next 推后）
+    const cached = useStudyStore.getState().topics.find((t) => t.slug === 'a')!;
+    expect(cached.parsed.reviewAtoms[0].next).toBe('2026-06-30');
+  });
+
+  it('returns null for an unknown slug', async () => {
+    const res = await useStudyStore.getState().rateAtomInTopic('nope', 'x', {
+      id: 'x', summary: '', done: false, next: TODAY, rep: 0, ef: 2.5, ivl: 1, lapses: 0, lineIndex: -1,
+    });
+    expect(res).toBeNull();
   });
 });

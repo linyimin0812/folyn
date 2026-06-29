@@ -13,7 +13,34 @@ import {
   type StudyTopicEntry,
 } from '@/study/studyDoc';
 import { dateToString } from '@/schedule/dailyScan';
-import type { ParsedStudy } from '@/study/types';
+import { isDue } from '@/study/sm2';
+import type { ParsedStudy, ReviewAtom } from '@/study/types';
+
+/** 跨主题今日复习队列项（交错练习）：atom + 来源主题 slug/path（写回定位）。 */
+export interface DueAtomEntry {
+  atom: ReviewAtom;
+  topicSlug: string;
+  topicPath: string;
+}
+
+/**
+ * 聚合所有主题里到期的复习原子（交错练习队列）。纯函数，便于单测。
+ * today 由调用方传入（避免读系统时钟、便于测试）。每条带 topic 来源标注。
+ */
+export function collectDueAtoms(
+  topics: StudyTopicEntry[],
+  today: string,
+): DueAtomEntry[] {
+  const out: DueAtomEntry[] = [];
+  for (const t of topics) {
+    for (const atom of t.parsed.reviewAtoms) {
+      if (isDue(atom.next, today)) {
+        out.push({ atom, topicSlug: t.slug, topicPath: t.path });
+      }
+    }
+  }
+  return out;
+}
 
 interface StudyState {
   /** 扫描 `学习/` 得到的所有主题（按 slug 索引稳定 id）。 */
@@ -29,6 +56,12 @@ interface StudyState {
   deleteTopic: (slug: string) => Promise<void>;
   /** 把改动后的 ParsedStudy 序列化回写对应主题文档（PR3 勾选/评级用）。 */
   saveTopic: (parsed: ParsedStudy) => Promise<void>;
+  /**
+   * 对指定主题（可非当前激活）的复习原子做就地更新并回写。
+   * 跨主题"今日复习"队列评级用：避免依赖 activeSlug，直接按 slug 定位主题文档。
+   * 返回更新后的 ParsedStudy（供调用方刷新本地视图），失败返回 null。
+   */
+  rateAtomInTopic: (slug: string, atomId: string, next: ReviewAtom) => Promise<ParsedStudy | null>;
 }
 
 export const useStudyStore = create<StudyState>((set, get) => ({
@@ -131,6 +164,24 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         t.slug === slug ? { ...t, parsed: parseStudy(out, slug) } : t,
       ),
     }));
+  },
+
+  rateAtomInTopic: async (slug, atomId, next) => {
+    const target = get().topics.find((t) => t.slug === slug);
+    if (!target) return null;
+    // 用 lineIndex 定位要替换的 atom（id 含 lineIndex，但写回靠 lineIndex 原地重写）。
+    const reviewAtoms = target.parsed.reviewAtoms.map((a) =>
+      a.id === atomId || a.lineIndex === next.lineIndex ? { ...a, ...next } : a,
+    );
+    const updated: ParsedStudy = {
+      ...target.parsed,
+      reviewAtoms,
+    };
+    await get().saveTopic(updated);
+    return parseStudy(
+      serializeStudy(updated, updated.materials, updated.units, updated.reviewAtoms),
+      slug,
+    );
   },
 }));
 

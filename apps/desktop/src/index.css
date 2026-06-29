@@ -820,3 +820,46 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
   .study-workbench .sw-topic-del { display: none; }
 }
 
+/* PR3 四区 + 今日复习 */
+.study-workbench .sw-study-topbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-5); }
+.study-workbench .sw-study-view-switch { display: flex; gap: 2px; background: var(--border-soft); border-radius: var(--radius-sm); padding: 2px; }
+.study-workbench .sw-study-view-switch button { padding: 4px 12px; border-radius: calc(var(--radius-sm) - 1px); font-size: 11px; font-weight: 500; color: var(--t2); background: transparent; }
+.study-workbench .sw-study-view-switch button.active { background: var(--surface); color: var(--t1); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+.study-workbench .sw-study-grid { display: flex; flex-direction: column; gap: var(--space-6); }
+.study-workbench .sw-study-grid > .sw-topbar-title { margin: 0 0 calc(var(--space-2) * -1) 0; }
+.study-workbench .sw-study-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-5); }
+.study-workbench .sw-study-sec-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
+.study-workbench .sw-study-sec-head h3 { margin: 0; font-size: var(--text-sm); font-weight: 600; color: var(--t1); }
+.study-workbench .sw-study-count { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.study-workbench .sw-study-sec-actions { display: flex; gap: var(--space-2); }
+.study-workbench .sw-study-sec-actions button { padding: 3px 9px; border-radius: var(--radius-sm); font-size: 11px; background: var(--hov); color: var(--t1); }
+.study-workbench .sw-study-sec-actions button:hover { background: var(--act); }
+.study-workbench .sw-study-sec-actions button.ghost { background: transparent; color: var(--t2); border: 1px solid var(--border); }
+.study-workbench .sw-study-add-form { flex-wrap: wrap; }
+.study-workbench .sw-study-add-form input, .study-workbench .sw-study-add-form select { min-width: 120px; }
+.study-workbench .sw-study-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.study-workbench .sw-study-item { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); }
+.study-workbench .sw-study-item.done .sw-study-item-title { text-decoration: line-through; color: var(--muted); }
+.study-workbench .sw-study-item.due { border-color: color-mix(in oklab, var(--accent), transparent 60%); background: color-mix(in oklab, var(--accent), transparent 94%); }
+.study-workbench .sw-study-item-body { flex: 1; min-width: 0; }
+.study-workbench .sw-study-item-title { font-size: var(--text-sm); color: var(--t1); font-weight: 500; word-break: break-word; }
+.study-workbench .sw-study-item-title a, .study-workbench .sw-study-item-title.link { color: var(--accent); cursor: pointer; text-decoration: none; }
+.study-workbench .sw-study-item-title a:hover, .study-workbench .sw-study-item-title.link:hover { text-decoration: underline; }
+.study-workbench .sw-study-item-meta { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: var(--font-mono); }
+.study-workbench .sw-study-item-summary { margin: 4px 0 0; font-size: var(--text-xs); color: var(--t2); line-height: 1.5; }
+.study-workbench .sw-unit-order { color: var(--muted); font-family: var(--font-mono); margin-right: 4px; }
+.study-workbench .sw-study-notes-preview { margin: 0; padding: var(--space-3); background: var(--bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); font-size: var(--text-xs); color: var(--t2); white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow: auto; }
+.study-workbench .sw-study-subdocs { margin-top: var(--space-5); }
+.study-workbench .sw-subdoc .sw-study-item-meta { word-break: break-all; }
+.study-workbench .sw-review-btns { display: flex; gap: 4px; flex-shrink: 0; }
+.study-workbench .sw-rate { padding: 4px 10px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 500; background: var(--hov); color: var(--t1); }
+.study-workbench .sw-rate:hover { background: var(--act); }
+.study-workbench .sw-rate.again { background: color-mix(in oklab, var(--red), transparent 84%); color: var(--red); }
+.study-workbench .sw-rate.again:hover { background: color-mix(in oklab, var(--red), transparent 70%); }
+.study-workbench .sw-rate.hard { background: color-mix(in oklab, var(--orange, var(--t2)), transparent 84%); color: var(--orange, var(--t2)); }
+.study-workbench .sw-rate.good { background: color-mix(in oklab, var(--accent), transparent 84%); color: var(--accent); }
+.study-workbench .sw-rate.easy { background: color-mix(in oklab, var(--green), transparent 84%); color: var(--green); }
+.study-workbench .sw-review-upcoming { margin-top: var(--space-4); }
+.study-workbench .sw-review-upcoming summary { cursor: pointer; font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+.study-workbench .sw-review-topic { cursor: pointer; }
+

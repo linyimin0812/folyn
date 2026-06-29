@@ -64,3 +64,44 @@ export interface StudyTopicEntry {
   path: string;
   parsed: ParsedStudy;
 }
+
+const H2_RE = /^##\s+(.+?)\s*#*\s*$/;
+const NOTES_HEADING = '笔记';
+
+/**
+ * 在 `## 笔记` 非托管段尾追加一行（原样保留已有内容）。段不存在则在文件末尾新建。
+ *
+ * 笔记段不被 serializeStudy 托管（散文式），所以精细加工模板等追加走本函数：
+ * 直接对全文文本做行级 splice，只插入、不改写既有行，避免破坏用户笔记。
+ */
+export function appendToNotesSection(content: string, line: string): string {
+  const lines = content.split('\n');
+  let start = -1;
+  let end = lines.length;
+  for (let i = 0; i < lines.length; i++) {
+    const m = H2_RE.exec(lines[i]);
+    if (m && m[1].trim() === NOTES_HEADING) {
+      start = i;
+      for (let j = i + 1; j < lines.length; j++) {
+        if (H2_RE.test(lines[j])) { end = j; break; }
+      }
+      break;
+    }
+  }
+  if (start < 0) {
+    // 段不存在：在文件末尾新建（保留一个空行分隔）
+    if (lines.length && lines[lines.length - 1].trim() !== '') lines.push('');
+    lines.push(`## ${NOTES_HEADING}`);
+    lines.push(line);
+    return lines.join('\n');
+  }
+  // 段尾回退掉尾部空行，再追加，保持段内紧凑
+  let insertAt = end;
+  while (insertAt - 1 > start && lines[insertAt - 1].trim() === '') insertAt -= 1;
+  lines.splice(insertAt, 0, line);
+  return lines.join('\n');
+}
+
+/** 精细加工要点模板行（写入 `## 笔记` 段）。 */
+export const ELABORATION_TEMPLATE =
+  '- **概念**: … | 因为: … | 例子: … | 类比: [[]]';

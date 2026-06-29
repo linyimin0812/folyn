@@ -3,14 +3,23 @@ import { useStudyStore, subscribeToFileTree } from '@/store/studyStore';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { Pomodoro } from '@/components/schedule/Pomodoro';
 import { StudyTopicList } from './StudyTopicList';
+import { StudyMaterialsSection } from './StudyMaterialsSection';
+import { StudyPlanSection } from './StudyPlanSection';
+import { StudyNotesSection } from './StudyNotesSection';
+import { StudyReviewSection } from './StudyReviewSection';
+import { TodayReviewQueue } from './TodayReviewQueue';
+import type { StudyMaterial, StudyUnit, ReviewAtom } from '@/study/types';
+
+/** 学习工作台视图：主题主区四区，或跨主题今日复习队列（交错练习）。 */
+export type StudyView = 'topic' | 'today';
 
 /**
- * 学习工作台页壳。PR2：主题列表 + Pomodoro 头部 + 占位主区。
+ * 学习工作台页壳。PR3：主题列表 + Pomodoro 头部 + 四区主视图 + 今日复习切换。
  * 对标 ScheduleWorkbenchPage（进入刷新 + subscribeToFileTree debounce 300ms + pomo tick）。
- * PR3 将在主区填资料/计划/笔记/复习四区。
  */
 export function StudyWorkbenchPage() {
   const refresh = useStudyStore((s) => s.refresh);
+  const [view, setView] = useState<StudyView>('topic');
 
   useEffect(() => {
     refresh();
@@ -36,23 +45,63 @@ export function StudyWorkbenchPage() {
 
   const activeSlug = useStudyStore((s) => s.activeSlug);
   const topics = useStudyStore((s) => s.topics);
+  const saveTopic = useStudyStore((s) => s.saveTopic);
   const active = topics.find((t) => t.slug === activeSlug) ?? null;
-  // 主题切换时重置占位区 key，避免复用旧 DOM。
-  const [, setTick] = useState(0);
+
+  // ── 写回路径（均走 saveTopic → serializeStudy lineIndex 原地重写，非托管行原样保留）──
+  const addMaterial = async (m: StudyMaterial) => {
+    if (!active) return;
+    const parsed = active.parsed;
+    await saveTopic({ ...parsed, materials: [...parsed.materials, m] });
+  };
+  const toggleUnit = async (unit: StudyUnit) => {
+    if (!active) return;
+    const parsed = active.parsed;
+    const units = parsed.units.map((u) => (u.id === unit.id ? unit : u));
+    await saveTopic({ ...parsed, units });
+  };
+  const addUnit = async (u: StudyUnit) => {
+    if (!active) return;
+    const parsed = active.parsed;
+    await saveTopic({ ...parsed, units: [...parsed.units, u] });
+  };
+  const rateAtom = async (_prev: ReviewAtom, next: ReviewAtom) => {
+    if (!active) return;
+    const parsed = active.parsed;
+    const reviewAtoms = parsed.reviewAtoms.map((a) =>
+      a.lineIndex === next.lineIndex ? { ...a, ...next } : a,
+    );
+    await saveTopic({ ...parsed, reviewAtoms });
+  };
+  const addReviewAtom = async (atom: ReviewAtom) => {
+    if (!active) return;
+    const parsed = active.parsed;
+    await saveTopic({ ...parsed, reviewAtoms: [...parsed.reviewAtoms, atom] });
+  };
 
   return (
     <div className="study-workbench schedule-workbench">
-      <StudyTopicList onCreated={() => setTick((n) => n + 1)} />
+      <StudyTopicList onCreated={() => setView('topic')} />
 
       <main className="sw-main">
         <div className="sw-study-body">
-          <Pomodoro />
+          <div className="sw-study-topbar">
+            <Pomodoro />
+            <div className="sw-study-view-switch">
+              <button className={view === 'topic' ? 'active' : ''} onClick={() => setView('topic')}>主题</button>
+              <button className={view === 'today' ? 'active' : ''} onClick={() => setView('today')}>今日复习</button>
+            </div>
+          </div>
 
-          {active ? (
-            <div className="sw-study-placeholder">
+          {view === 'today' ? (
+            <TodayReviewQueue onShowTopic={() => setView('topic')} />
+          ) : active ? (
+            <div className="sw-study-grid">
               <h2 className="sw-topbar-title">{active.parsed.frontmatter.title ?? active.slug}</h2>
-              <p>选择左侧主题已就绪。资料 / 计划 / 笔记 / 复习四区即将上线（PR3）。</p>
-              <p className="sw-empty-hint">可先在编辑器手动编辑 <code>{active.path}</code> 体验 markdown 驱动。</p>
+              <StudyMaterialsSection path={active.path} materials={active.parsed.materials} onAdd={addMaterial} />
+              <StudyPlanSection units={active.parsed.units} onToggle={toggleUnit} onAdd={addUnit} />
+              <StudyNotesSection slug={active.slug} path={active.path} parsed={active.parsed} />
+              <StudyReviewSection slug={active.slug} parsed={active.parsed} onRate={rateAtom} onAdd={addReviewAtom} />
             </div>
           ) : (
             <div className="sw-study-placeholder">
