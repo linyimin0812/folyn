@@ -68,8 +68,15 @@ export function WorkArea() {
       prevWasWebRef.current = isWeb;
     }
 
-    if (activeTabId && handler?.defaultViewMode && !activeTab?.viewMode && viewMode !== handler.defaultViewMode) {
-      setViewMode(handler.defaultViewMode);
+    if (activeTabId && handler) {
+      const supported = handler.supportedViewModes ?? [];
+      if (supported.length > 0 && !supported.includes(viewMode)) {
+        // 当前 viewMode 不被该文件类型支持（如从 HTML 的 'visual' 切到 markdown），
+        // 重置为该 handler 的默认模式或首个支持模式，避免所有渲染门为 false 导致编辑区空白。
+        setViewMode(handler.defaultViewMode ?? supported[0]);
+      } else if (handler.defaultViewMode && !activeTab?.viewMode && viewMode !== handler.defaultViewMode) {
+        setViewMode(handler.defaultViewMode);
+      }
     }
   }, [activeTabId, handler, viewMode, setViewMode, activeTab]);
 
