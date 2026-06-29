@@ -19,7 +19,10 @@
       "Bash(pnpm test *)",
       "Bash(pnpm --filter @quill/desktop typecheck)",
       "Bash(pnpm build *)",
-      "Bash(pnpm lint *)"
+      "Bash(pnpm lint *)",
+      "Bash(pnpm --filter desktop typecheck)",
+      "Bash(pnpm tauri *)",
+      "Bash(npx tauri *)"
     ]
   }
 }
