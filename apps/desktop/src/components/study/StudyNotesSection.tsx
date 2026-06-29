@@ -4,10 +4,12 @@ import { useEditorStore } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useStudyStore } from '@/store/studyStore';
 import { STUDY_DIR, ELABORATION_TEMPLATE, appendToNotesSection } from '@/study/studyDoc';
+import { isAiAvailable, openStudyAiAction, buildStudyPrompt } from '@/study/scheduleLink';
 
 interface Props {
   slug: string;
   path: string;
+  topicName: string;
   parsed: ParsedStudy;
 }
 
@@ -23,12 +25,14 @@ const isSafeLink = (link: string): boolean => {
   return !link.split('/').some((seg) => seg === '..');
 };
 
-/** 笔记区：非托管段，提供"在编辑器编辑"入口 + 插入精细加工模板 + 列出子文档 wiki 链接。 */
-export function StudyNotesSection({ slug, path, parsed }: Props) {
+/** 笔记区：非托管段，提供"在编辑器编辑"入口 + 插入精细加工模板 + 列出子文档 wiki 链接；
+ *  AI 动作：费曼挑战（扮演 5 岁小孩追问，暴露盲区写入 :::callout{type="warning"}）。 */
+export function StudyNotesSection({ slug, path, topicName, parsed }: Props) {
   const openFile = useEditorStore((s) => s.openFile);
   const refresh = useStudyStore((s) => s.refresh);
   const fileTree = useVaultStore((s) => s.fileTree);
   const [inserting, setInserting] = useState(false);
+  const aiAvailable = isAiAvailable();
 
   // 扫描全文 `[[...]]` 链接（跨段），挑出指向 `学习/<主题>/` 子目录且在 vault 中已存在的子文档。
   const subDocs = useMemo(() => {
@@ -86,6 +90,14 @@ export function StudyNotesSection({ slug, path, parsed }: Props) {
         <div className="sw-study-sec-actions">
           <button onClick={insertTemplate} disabled={inserting} title="在笔记段尾追加精细加工模板行">
             {inserting ? '插入中…' : '+ 精细加工模板'}
+          </button>
+          <button
+            className="ghost"
+            disabled={!aiAvailable}
+            title={aiAvailable ? 'AI 扮演 5 岁小孩追问，暴露知识盲区' : '未配置 AI 适配器'}
+            onClick={() => openStudyAiAction(topicName, path, buildStudyPrompt('feynman', { topicName }))}
+          >
+            费曼挑战
           </button>
           <button className="ghost" onClick={() => openFile(path, path.split('/').pop() ?? path)} title="在编辑器自由编辑笔记段">
             在编辑器中编辑

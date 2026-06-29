@@ -202,6 +202,26 @@ describe('serializeDaily', () => {
     // 序列化不应抛错
     expect(() => serializeDaily(parsed, [], [])).not.toThrow();
   });
+
+  it('parses and preserves unknown extra attrs (study/unit回链) through round-trip', () => {
+    const note = [
+      '## 任务',
+      '- [ ] 学习单元 @{col:todo cat:learn study:agent-dev unit:1 due:06-29 prog:0 sub:0 as:YL}',
+    ].join('\n');
+    const parsed = parseDaily(note, '2026-06-29');
+    expect(parsed.tasks).toHaveLength(1);
+    const t = parsed.tasks[0];
+    expect(t.category).toBe('learn');
+    expect(t.extraAttrs).toMatchObject({ study: 'agent-dev', unit: '1' });
+    // 勾选完成（toggle）后写回：study:/unit: 必须原样保留，不能被丢弃
+    const toggled = parsed.tasks.map((x) =>
+      x.id === t.id ? { ...x, done: true, progress: 100 } : x,
+    );
+    const out = serializeDaily(parsed, parsed.events, toggled);
+    expect(out).toContain(
+      '- [x] 学习单元 @{col:todo cat:learn prio:med due:06-29 prog:100 sub:0 as:YL study:agent-dev unit:1}',
+    );
+  });
 });
 
 describe('dueState', () => {

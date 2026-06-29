@@ -2,7 +2,7 @@
 // （见 markdown.ts 的解析/序列化约定）。
 
 export type EventCategory = 'work' | 'personal' | 'family' | 'health' | 'task';
-export type TaskCategory = 'design' | 'dev' | 'bug' | 'growth' | 'ops' | 'calendar';
+export type TaskCategory = 'design' | 'dev' | 'bug' | 'growth' | 'ops' | 'calendar' | 'learn';
 /** 看板列 id（自由字符串，由 settings.boardColumns 定义） */
 export type TaskColumn = string;
 export type Priority = 'high' | 'med' | 'low';
@@ -62,6 +62,12 @@ export interface ScheduleTask {
   done: boolean;
   /** 在源文件中的行号，用于写回定位 */
   lineIndex: number;
+  /**
+   * 托管属性块中不被 ScheduleTask 固定字段覆盖的未知属性（如 `study:<slug>` /
+   * `unit:<n>` 回链）。解析时收集、序列化时原样透传，保证 schedule 侧对任务行
+   * 的任何写回（勾选/移动/排程）不会丢弃学习工作台赖以回链的自由属性。
+   */
+  extraAttrs?: Record<string, string>;
 }
 
 /** 一个 daily note 解析后的结构 */
@@ -73,7 +79,7 @@ export interface ParsedDaily {
 }
 
 export const EVENT_CATEGORIES: EventCategory[] = ['work', 'personal', 'family', 'health', 'task'];
-export const TASK_CATEGORIES: TaskCategory[] = ['design', 'dev', 'bug', 'growth', 'ops', 'calendar'];
+export const TASK_CATEGORIES: TaskCategory[] = ['design', 'dev', 'bug', 'growth', 'ops', 'calendar', 'learn'];
 export const PRIORITIES: Priority[] = ['high', 'med', 'low'];
 
 /** 默认看板列（与原硬编码 4 列一致） */
@@ -97,6 +103,7 @@ export const TASK_CATEGORY_LABEL: Record<TaskCategory, string> = {
   growth: '增长',
   ops: '运维',
   calendar: '日历',
+  learn: '学习',
 };
 export const EVENT_CATEGORY_LABEL: Record<EventCategory, string> = {
   work: '工作',

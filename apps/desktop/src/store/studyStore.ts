@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { useVaultStore } from './vaultStore';
+import { useScheduleStore } from './scheduleStore';
+import { useSettingsStore } from './settingsStore';
 import {
   parseStudy,
   serializeStudy,
@@ -12,9 +14,15 @@ import {
   extractSlug,
   type StudyTopicEntry,
 } from '@/study/studyDoc';
+import {
+  buildStudyTaskLine,
+  appendTaskLineToDaily,
+  collectScheduleLinks,
+  type ScheduleLink,
+} from '@/study/scheduleLink';
 import { dateToString } from '@/schedule/dailyScan';
 import { isDue } from '@/study/sm2';
-import type { ParsedStudy, ReviewAtom } from '@/study/types';
+import type { ParsedStudy, ReviewAtom, StudyUnit } from '@/study/types';
 
 /** 跨主题今日复习队列项（交错练习）：atom + 来源主题 slug/path（写回定位）。 */
 export interface DueAtomEntry {
@@ -62,6 +70,18 @@ interface StudyState {
    * 返回更新后的 ParsedStudy（供调用方刷新本地视图），失败返回 null。
    */
   rateAtomInTopic: (slug: string, atomId: string, next: ReviewAtom) => Promise<ParsedStudy | null>;
+  /**
+   * 把一个学习单元排到目标日期的 daily note `## 任务` 段（单向排期 + 回链）。
+   * study 侧直写任务行（不经 scheduleStore.addTask），回链属性 study:<slug> unit:<n>
+   * 由 schedule/markdown.ts 的 extraAttrs 透传机制在后续 schedule 写回中保留。
+   * noteDate 默认今天。写后刷新 scheduleStore 任务缓存与文件树。
+   */
+  scheduleUnitToToday: (unit: StudyUnit, slug: string, noteDate?: string) => Promise<void>;
+  /**
+   * 扫描 schedule 已解析任务中带 `study:<slug>` 回链的条目，返回各单元的
+   * 排期/完成状态（只读单向读回）。基于 scheduleStore.tasks 缓存（已扫描 daily note）。
+   */
+  scanScheduleLinks: (slug: string) => Map<number, ScheduleLink>;
 }
 
 export const useStudyStore = create<StudyState>((set, get) => ({
@@ -183,6 +203,33 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       slug,
     );
   },
+
+  scheduleUnitToToday: async (unit, slug, noteDate) => {
+    const vault = useVaultStore.getState();
+    const settings = useSettingsStore.getState();
+    const dir = settings.dailyNotesDir || '__daily__';
+    const date = noteDate ?? dateToString(new Date());
+    const path = `${dir}/${date}.md`;
+    // due 用 MM-DD（与 schedule 任务行约定一致）。
+    const dueMmDd = `${date.slice(5, 7)}-${date.slice(8, 10)}`;
+    const line = buildStudyTaskLine(unit, slug, dueMmDd);
+    let content: string;
+    try {
+      content = await vault.readFile(path);
+    } catch {
+      // 不存在 → 用与 scheduleStore.readNoteContent 一致的最小模板新建。
+      try { await vault.createDir(dir); } catch { /* 目录可能已存在 */ }
+      content = `---\ntitle: "${date}"\ndate: ${date}\ntags: [daily]\n---\n\n# ${date}\n`;
+    }
+    const next = appendTaskLineToDaily(content, line);
+    await vault.writeFile(path, next);
+    useVaultStore.getState().refreshFileTree().catch(() => {});
+    // 刷新 schedule 任务缓存，使回链状态可被 scanScheduleLinks 读到。
+    useScheduleStore.getState().refresh().catch(() => {});
+  },
+
+  scanScheduleLinks: (slug) =>
+    collectScheduleLinks(useScheduleStore.getState().tasks, slug),
 }));
 
 /** 文件树变化时触发外部刷新（对标 scheduleStore.subscribeToFileTree，debounce 由调用方做）。 */

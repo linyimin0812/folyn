@@ -3,9 +3,12 @@ import type { ParsedStudy, ReviewAtom, ReviewRating } from '@/study/types';
 import { DEFAULT_REVIEW_ATOM } from '@/study/types';
 import { reviewAtom, isDue } from '@/study/sm2';
 import { dateToString } from '@/schedule/dailyScan';
+import { isAiAvailable, openStudyAiAction, buildStudyPrompt } from '@/study/scheduleLink';
 
 interface Props {
   slug: string;
+  path: string;
+  topicName: string;
   parsed: ParsedStudy;
   /** 评级写回：用新 state 更新该 atom 的 next/rep/ef/ivl/lapses 并回写。 */
   onRate: (atom: ReviewAtom, next: ReviewAtom) => Promise<void>;
@@ -20,11 +23,13 @@ const RATING_LABEL: { rating: ReviewRating; label: string }[] = [
   { rating: 'easy', label: '简单' },
 ];
 
-/** 复习区：列出 `## 复习` 段原子，到期高亮；4 按钮 SM-2 评级写回；手动添加。 */
-export function StudyReviewSection({ slug, parsed, onRate, onAdd }: Props) {
+/** 复习区：列出 `## 复习` 段原子，到期高亮；4 按钮 SM-2 评级写回；手动添加；
+ *  AI 动作：生成自测题（主动检索，答案折叠在 :::callout{type="tip"}）。 */
+export function StudyReviewSection({ slug, path, topicName, parsed, onRate, onAdd }: Props) {
   const [draft, setDraft] = useState('');
   const [src, setSrc] = useState('');
   const today = dateToString(new Date());
+  const aiAvailable = isAiAvailable();
 
   const due = parsed.reviewAtoms.filter((a) => isDue(a.next, today));
   const upcoming = parsed.reviewAtoms.filter((a) => !isDue(a.next, today));
@@ -67,7 +72,17 @@ export function StudyReviewSection({ slug, parsed, onRate, onAdd }: Props) {
     <section className="sw-study-section">
       <header className="sw-study-sec-head">
         <h3>复习</h3>
-        <span className="sw-study-count">{due.length} 到期</span>
+        <div className="sw-study-sec-actions">
+          <span className="sw-study-count">{due.length} 到期</span>
+          <button
+            className="ghost"
+            disabled={!aiAvailable}
+            title={aiAvailable ? 'AI 根据 ## 笔记生成 5 道回忆题（答案折叠）' : '未配置 AI 适配器'}
+            onClick={() => openStudyAiAction(topicName, path, buildStudyPrompt('selftest', { topicName }))}
+          >
+            生成自测题
+          </button>
+        </div>
       </header>
 
       <div className="sw-quick-add sw-study-add-form">

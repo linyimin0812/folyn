@@ -716,6 +716,7 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .sw-tag.growth { background: color-mix(in oklab, var(--green), transparent 88%); color: var(--green); }
 .sw-tag.ops { background: color-mix(in oklab, var(--cyan), transparent 88%); color: var(--cyan); }
 .sw-tag.calendar { background: color-mix(in oklab, var(--t2), transparent 88%); color: var(--t2); }
+.sw-tag.learn { background: color-mix(in oklab, var(--amber), transparent 88%); color: var(--amber); }
 .sw-prio { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .sw-prio.high { background: var(--danger); }
 .sw-prio.med { background: var(--warn); }

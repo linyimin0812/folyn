@@ -60,6 +60,10 @@ interface AiState {
   pendingFileAttachments: { name: string; path: string }[];
   addFileToChat: (name: string, path: string) => void;
   consumePendingFiles: () => { name: string; path: string }[];
+  /** 预填到 ChatInput 输入框的提示词（学习工作台 AI 动作用，无新调用链）。 */
+  pendingPrompt: string;
+  setPendingPrompt: (prompt: string) => void;
+  consumePendingPrompt: () => string;
 
   /** Save current sessions and load sessions for a different vault */
   switchVaultSessions: (newVaultId: string) => Promise<void>;
@@ -324,6 +328,14 @@ export const useAiStore = create<AiState>((set, get) => ({
     const files = get().pendingFileAttachments;
     if (files.length > 0) set({ pendingFileAttachments: [] });
     return files;
+  },
+
+  pendingPrompt: '',
+  setPendingPrompt: (prompt) => set({ pendingPrompt: prompt }),
+  consumePendingPrompt: () => {
+    const p = get().pendingPrompt;
+    if (p) set({ pendingPrompt: '' });
+    return p;
   },
 
   switchVaultSessions: async (newVaultId: string) => {

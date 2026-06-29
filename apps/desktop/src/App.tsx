@@ -211,6 +211,7 @@ export default function App() {
         <div className="body-row flex-1 flex overflow-hidden">
           {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
           <StudyWorkbenchPage />
+          {showAiPanel && <AiPanel />}
         </div>
       )}
 

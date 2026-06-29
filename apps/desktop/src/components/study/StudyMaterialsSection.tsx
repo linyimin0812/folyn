@@ -3,18 +3,22 @@ import type { StudyMaterial } from '@/study/types';
 import { DIFFICULTY_LABEL } from '@/study/types';
 import { useEditorStore } from '@/store/editorStore';
 import { isTauri } from '@/utils/platform';
+import { isAiAvailable, openStudyAiAction, buildStudyPrompt } from '@/study/scheduleLink';
 
 interface Props {
   path: string;
+  topicName: string;
   materials: StudyMaterial[];
   /** 新增资料（lineIndex<0 → 追加到段尾）并回写。 */
   onAdd: (m: StudyMaterial) => Promise<void>;
 }
 
-/** 资料区：列出 `## 资料` 段的书目/网络资料，链接可点；手动 inline 添加。 */
-export function StudyMaterialsSection({ path, materials, onAdd }: Props) {
+/** 资料区：列出 `## 资料` 段的书目/网络资料，链接可点；手动 inline 添加；
+ *  AI 动作：学习研究（找资料）、SQ3R 预读（针对某条资料）。 */
+export function StudyMaterialsSection({ path, topicName, materials, onAdd }: Props) {
   const [adding, setAdding] = useState<false | 'book' | 'web'>(false);
   const openFile = useEditorStore((s) => s.openFile);
+  const aiAvailable = isAiAvailable();
 
   const openLink = (url?: string) => {
     if (!url) return;
@@ -25,6 +29,19 @@ export function StudyMaterialsSection({ path, materials, onAdd }: Props) {
     }
   };
 
+  const runResearch = () => {
+    if (!aiAvailable) return;
+    openStudyAiAction(topicName, path, buildStudyPrompt('research', { topicName }));
+  };
+  const runSq3r = (m: StudyMaterial) => {
+    if (!aiAvailable) return;
+    openStudyAiAction(topicName, path, buildStudyPrompt('sq3r', {
+      topicName,
+      materialTitle: m.title,
+      materialUrl: m.url,
+    }));
+  };
+
   return (
     <section className="sw-study-section">
       <header className="sw-study-sec-head">
@@ -32,6 +49,14 @@ export function StudyMaterialsSection({ path, materials, onAdd }: Props) {
         <div className="sw-study-sec-actions">
           <button onClick={() => setAdding('book')}>+ 书</button>
           <button onClick={() => setAdding('web')}>+ 网页</button>
+          <button
+            className="ghost"
+            disabled={!aiAvailable}
+            title={aiAvailable ? 'AI 检索网络资料与经典书籍/论文' : '未配置 AI 适配器'}
+            onClick={runResearch}
+          >
+            AI 找资料
+          </button>
           <button className="ghost" onClick={() => openFile(path, path.split('/').pop() ?? path)} title="在编辑器编辑资料段">编辑</button>
         </div>
       </header>
@@ -48,7 +73,7 @@ export function StudyMaterialsSection({ path, materials, onAdd }: Props) {
       )}
 
       {materials.length === 0 ? (
-        <p className="sw-empty-hint">暂无资料。可手动添加，或等待 PR4 的 AI 学习研究填充。</p>
+        <p className="sw-empty-hint">暂无资料。可手动添加，或点"AI 找资料"检索填充。</p>
       ) : (
         <ul className="sw-study-list">
           {materials.map((m) => (
@@ -68,6 +93,16 @@ export function StudyMaterialsSection({ path, materials, onAdd }: Props) {
                   <div className="sw-study-item-meta">作者：{m.author}{m.difficulty ? ` · 难度：${DIFFICULTY_LABEL[m.difficulty]}` : ''}</div>
                 )}
                 {m.summary && <p className="sw-study-item-summary">{m.summary}</p>}
+                <div className="sw-study-item-actions">
+                  <button
+                    className="ghost"
+                    disabled={!aiAvailable}
+                    title={aiAvailable ? '对该资料做 SQ3R 预读（大纲 + 预读问题）' : '未配置 AI 适配器'}
+                    onClick={() => runSq3r(m)}
+                  >
+                    SQ3R 预读
+                  </button>
+                </div>
               </div>
             </li>
           ))}

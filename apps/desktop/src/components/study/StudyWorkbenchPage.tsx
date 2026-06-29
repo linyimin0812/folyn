@@ -8,6 +8,7 @@ import { StudyPlanSection } from './StudyPlanSection';
 import { StudyNotesSection } from './StudyNotesSection';
 import { StudyReviewSection } from './StudyReviewSection';
 import { TodayReviewQueue } from './TodayReviewQueue';
+import { collectScheduleLinks, type ScheduleLink } from '@/study/scheduleLink';
 import type { StudyMaterial, StudyUnit, ReviewAtom } from '@/study/types';
 
 /** 学习工作台视图：主题主区四区，或跨主题今日复习队列（交错练习）。 */
@@ -19,10 +20,13 @@ export type StudyView = 'topic' | 'today';
  */
 export function StudyWorkbenchPage() {
   const refresh = useStudyStore((s) => s.refresh);
+  const scheduleRefresh = useScheduleStore((s) => s.refresh);
   const [view, setView] = useState<StudyView>('topic');
 
   useEffect(() => {
     refresh();
+    // 同步刷新 schedule 任务缓存，供计划区回链读回（scanScheduleLinks）。
+    scheduleRefresh().catch(() => {});
     let timer: ReturnType<typeof setTimeout> | null = null;
     const unsub = subscribeToFileTree(() => {
       if (timer) clearTimeout(timer);
@@ -32,7 +36,7 @@ export function StudyWorkbenchPage() {
       unsub();
       if (timer) clearTimeout(timer);
     };
-  }, [refresh]);
+  }, [refresh, scheduleRefresh]);
 
   // 番茄钟计时（复用 scheduleStore 的 pomo slice，共享状态可接受）。
   const pomoRunning = useScheduleStore((s) => s.pomo.running);
@@ -46,7 +50,14 @@ export function StudyWorkbenchPage() {
   const activeSlug = useStudyStore((s) => s.activeSlug);
   const topics = useStudyStore((s) => s.topics);
   const saveTopic = useStudyStore((s) => s.saveTopic);
+  const scheduleUnitToToday = useStudyStore((s) => s.scheduleUnitToToday);
   const active = topics.find((t) => t.slug === activeSlug) ?? null;
+
+  // 计划区回链状态：扫描 schedule 任务中带 study:<slug> 的条目（只读单向读回）。
+  const scheduleTasks = useScheduleStore((s) => s.tasks);
+  const scheduleLinks = active
+    ? collectScheduleLinks(scheduleTasks, active.slug)
+    : new Map<number, ScheduleLink>();
 
   // ── 写回路径（均走 saveTopic → serializeStudy lineIndex 原地重写，非托管行原样保留）──
   const addMaterial = async (m: StudyMaterial) => {
@@ -78,6 +89,10 @@ export function StudyWorkbenchPage() {
     const parsed = active.parsed;
     await saveTopic({ ...parsed, reviewAtoms: [...parsed.reviewAtoms, atom] });
   };
+  const onScheduleUnit = async (unit: StudyUnit, noteDate: string) => {
+    if (!active) return;
+    await scheduleUnitToToday(unit, active.slug, noteDate);
+  };
 
   return (
     <div className="study-workbench schedule-workbench">
@@ -98,10 +113,10 @@ export function StudyWorkbenchPage() {
           ) : active ? (
             <div className="sw-study-grid">
               <h2 className="sw-topbar-title">{active.parsed.frontmatter.title ?? active.slug}</h2>
-              <StudyMaterialsSection path={active.path} materials={active.parsed.materials} onAdd={addMaterial} />
-              <StudyPlanSection units={active.parsed.units} onToggle={toggleUnit} onAdd={addUnit} />
-              <StudyNotesSection slug={active.slug} path={active.path} parsed={active.parsed} />
-              <StudyReviewSection slug={active.slug} parsed={active.parsed} onRate={rateAtom} onAdd={addReviewAtom} />
+              <StudyMaterialsSection path={active.path} topicName={active.parsed.frontmatter.title ?? active.slug} materials={active.parsed.materials} onAdd={addMaterial} />
+              <StudyPlanSection units={active.parsed.units} scheduleLinks={scheduleLinks} onToggle={toggleUnit} onAdd={addUnit} onSchedule={onScheduleUnit} />
+              <StudyNotesSection slug={active.slug} path={active.path} topicName={active.parsed.frontmatter.title ?? active.slug} parsed={active.parsed} />
+              <StudyReviewSection slug={active.slug} path={active.path} topicName={active.parsed.frontmatter.title ?? active.slug} parsed={active.parsed} onRate={rateAtom} onAdd={addReviewAtom} />
             </div>
           ) : (
             <div className="sw-study-placeholder">
