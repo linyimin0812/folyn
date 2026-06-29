@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop 前端编码规范：组件/store/样式约定，EventBlock/WeekGrid 改动遵循"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "组件改动（EventBlock 新增 colCount/colIndex props、WeekGrid 分组渲染）需符合现有 React 组件约定"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "scheduleStore 的 scheduleTask/moveEvent 调用方改浮点参数，遵循 zustand store 约定"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "layout.ts 分组函数的输入/输出类型约束"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "并列布局/分钟吸附复用现有 EventBlock 定位与 scheduleStore actions，避免重复"}
+{"file": ".trellis/tasks/06-29-schedule-week-grid-layout-and-minute-precision/prd.md", "reason": "本任务 PRD：需求/验收/技术方案"}

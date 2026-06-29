@@ -5,7 +5,12 @@ import { TASK_CATEGORY_LABEL } from '@/schedule/types';
 
 export function UnschedDock() {
   const tasks = useScheduleStore((s) => s.tasks);
-  const list = tasks.filter((t) => !t.done && !t.scheduledDate);
+  const list = tasks
+    .filter((t) => !t.done && !t.scheduledDate)
+    .sort((a, b) => {
+      if (a.noteDate !== b.noteDate) return a.noteDate < b.noteDate ? 1 : -1;
+      return b.lineIndex - a.lineIndex;
+    });
 
   return (
     <div className="sw-rail-block">
@@ -44,6 +49,17 @@ function DockChip({ taskId, title, prio, cat }: { taskId: string; title: string;
       <span className={`sw-prio ${prio}`} />
       <span className="sw-label">{title}</span>
       <span className="sw-cat">{TASK_CATEGORY_LABEL[cat]}</span>
+      <button
+        className="sw-dock-del"
+        onClick={(e) => {
+          e.stopPropagation();
+          void useScheduleStore.getState().deleteTask(taskId);
+        }}
+        aria-label="删除"
+        type="button"
+      >
+        ✕
+      </button>
     </div>
   );
 }

@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "质量基线：lint/typecheck/build/手测要求"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "EventBlock/WeekGrid 改动是否符合组件约定"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "layout.ts 类型安全检查"}
+{"file": ".trellis/tasks/06-29-schedule-week-grid-layout-and-minute-precision/prd.md", "reason": "对照验收标准"}

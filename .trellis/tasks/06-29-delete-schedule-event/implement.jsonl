@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Modal and EventBlock changes must follow existing React component conventions"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "deleteEvent/unscheduleTask/restoreEvent extend the zustand schedule store"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "ScheduleEvent/Task types and toast action typing"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse mutateNote and ScheduleModal rather than duplicate"}

@@ -52,6 +52,7 @@ interface ScheduleState {
   scheduleTask: (taskId: string, date: string, start: number, end: number) => Promise<void>;
   updateTask: (taskId: string, patch: Partial<Pick<ScheduleTask, 'title' | 'scheduledStart' | 'scheduledEnd' | 'category' | 'column' | 'priority'>>) => Promise<void>;
   unscheduleTask: (taskId: string) => Promise<void>;
+  deleteTask: (taskId: string) => Promise<void>;
   setTaskDue: (taskId: string, dueMmDd: string) => Promise<void>;
   removeBoardColumn: (id: string) => Promise<void>;
 
@@ -403,6 +404,35 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     get().toast('已取消排程', {
       label: '撤销',
       run: () => { void get().scheduleTask(taskId, prevDate, prevStart, prevEnd); },
+    });
+  },
+
+  deleteTask: async (taskId) => {
+    const task = get().tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    const removed: ScheduleTask = { ...task };
+    const noteDate = task.noteDate;
+    const next = await mutateNote(noteDate, (parsed) => ({
+      events: parsed.events,
+      tasks: parsed.tasks.filter((t) => t.id !== taskId),
+    }));
+    if (!next) return;
+    set((s) => ({
+      tasks: [...s.tasks.filter((tk) => tk.noteDate !== noteDate), ...next.tasks],
+    }));
+    get().toast(`已删除「${removed.title}」`, {
+      label: '撤销',
+      run: () => {
+        void mutateNote(noteDate, (parsed) => ({
+          events: parsed.events,
+          tasks: [...parsed.tasks, { ...removed, id: '', lineIndex: -1 }],
+        })).then((reparsed) => {
+          if (!reparsed) return;
+          set((s) => ({
+            tasks: [...s.tasks.filter((tk) => tk.noteDate !== noteDate), ...reparsed.tasks],
+          }));
+        });
+      },
     });
   },
 

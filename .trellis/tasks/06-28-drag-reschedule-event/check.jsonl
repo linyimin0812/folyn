@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "对照 desktop 前端规范检查实现一致性"}
+{"file": ".trellis/spec/guides/index.md", "reason": "共享质量基线：tsc/build/测试通过、无回归"}
+{"file": ".trellis/tasks/06-28-drag-reschedule-event/prd.md", "reason": "对照验收标准（同日拖/跨日拖/原时长保留/任务拖不回归）"}

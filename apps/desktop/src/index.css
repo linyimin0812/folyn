@@ -744,11 +744,14 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 
 /* unscheduled dock */
 .sw-unsched-dock { display: flex; flex-direction: column; gap: var(--space-2); }
-.sw-dock-chip { display: flex; align-items: center; gap: var(--space-2); padding: 7px 10px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--fg-2); font-size: var(--text-xs); color: var(--fg); cursor: grab; transition: box-shadow var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard); }
+.sw-dock-chip { display: flex; align-items: center; gap: var(--space-2); padding: 7px 10px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--fg-2); font-size: var(--text-xs); color: var(--fg); cursor: grab; transition: box-shadow var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard); position: relative; }
 .sw-dock-chip:hover { box-shadow: 0 1px 3px rgba(0,0,0,0.06); transform: translateY(-1px); }
 .sw-dock-chip.dragging { opacity: 0.4; }
 .sw-dock-chip .sw-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sw-dock-chip .sw-cat { font-family: var(--font-mono); font-size: 9px; color: var(--muted); }
+.sw-dock-del { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border-radius: 3px; font-size: 11px; color: var(--t3); background: transparent; border: 0; cursor: pointer; opacity: 0; transition: opacity var(--motion-fast) var(--ease-standard); }
+.sw-dock-chip:hover .sw-dock-del { opacity: 1; }
+.sw-dock-del:hover { background: var(--hov); color: var(--danger); }
 .sw-dock-empty { font-size: 11px; color: var(--muted); padding: var(--space-2); text-align: center; font-style: italic; }
 .sw-section-hint { font-size: 10px; color: var(--muted); margin: var(--space-2) 0 0; line-height: 1.4; }
 
