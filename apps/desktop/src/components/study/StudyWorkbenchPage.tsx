@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStudyStore, subscribeToFileTree } from '@/store/studyStore';
 import { useScheduleStore } from '@/store/scheduleStore';
-import { Pomodoro } from '@/components/schedule/Pomodoro';
 import { StudyTopicList } from './StudyTopicList';
 import { StudyMaterialsSection } from './StudyMaterialsSection';
 import { StudyPlanSection } from './StudyPlanSection';
@@ -15,8 +14,8 @@ import type { StudyMaterial, StudyUnit, ReviewAtom } from '@/study/types';
 export type StudyView = 'topic' | 'today';
 
 /**
- * 学习工作台页壳。PR3：主题列表 + Pomodoro 头部 + 四区主视图 + 今日复习切换。
- * 对标 ScheduleWorkbenchPage（进入刷新 + subscribeToFileTree debounce 300ms + pomo tick）。
+ * 学习工作台页壳。PR3：主题列表 + 四区主视图 + 今日复习切换。
+ * 对标 ScheduleWorkbenchPage（进入刷新 + subscribeToFileTree debounce 300ms）。
  */
 export function StudyWorkbenchPage() {
   const refresh = useStudyStore((s) => s.refresh);
@@ -37,15 +36,6 @@ export function StudyWorkbenchPage() {
       if (timer) clearTimeout(timer);
     };
   }, [refresh, scheduleRefresh]);
-
-  // 番茄钟计时（复用 scheduleStore 的 pomo slice，共享状态可接受）。
-  const pomoRunning = useScheduleStore((s) => s.pomo.running);
-  const tickPomo = useScheduleStore((s) => s.tickPomo);
-  useEffect(() => {
-    if (!pomoRunning) return;
-    const id = setInterval(() => tickPomo(), 1000);
-    return () => clearInterval(id);
-  }, [pomoRunning, tickPomo]);
 
   const activeSlug = useStudyStore((s) => s.activeSlug);
   const topics = useStudyStore((s) => s.topics);
@@ -101,7 +91,6 @@ export function StudyWorkbenchPage() {
       <main className="sw-main">
         <div className="sw-study-body">
           <div className="sw-study-topbar">
-            <Pomodoro />
             <div className="sw-study-view-switch">
               <button className={view === 'topic' ? 'active' : ''} onClick={() => setView('topic')}>主题</button>
               <button className={view === 'today' ? 'active' : ''} onClick={() => setView('today')}>今日复习</button>
