@@ -146,7 +146,7 @@ export function StudyWorkbenchPage() {
             <div className="sw-study-grid">
               <h2 className="sw-topbar-title">{active.parsed.frontmatter.title ?? active.slug}</h2>
               <StudyMaterialsSection path={active.path} topicName={active.parsed.frontmatter.title ?? active.slug} materials={active.parsed.materials} onAdd={addMaterial} />
-              <StudyPlanSection units={active.parsed.units} scheduleLinks={scheduleLinks} onToggle={toggleUnit} onAdd={addUnit} onSchedule={onScheduleUnit} />
+              <StudyPlanSection path={active.path} topicName={active.parsed.frontmatter.title ?? active.slug} units={active.parsed.units} scheduleLinks={scheduleLinks} onToggle={toggleUnit} onAdd={addUnit} onSchedule={onScheduleUnit} />
               <StudyNotesSection slug={active.slug} path={active.path} topicName={active.parsed.frontmatter.title ?? active.slug} parsed={active.parsed} />
               <StudyReviewSection slug={active.slug} path={active.path} topicName={active.parsed.frontmatter.title ?? active.slug} parsed={active.parsed} onRate={rateAtom} onAdd={addReviewAtom} />
             </div>

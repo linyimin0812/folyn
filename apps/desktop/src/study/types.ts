@@ -95,8 +95,8 @@ export interface ParsedStudy {
 /** SM-2 评级（UI 4 按钮） */
 export type ReviewRating = 'again' | 'hard' | 'good' | 'easy';
 
-/** 学习工作台 AI 动作（4 个，走现有 AI 面板，无新调用链） */
-export type AiAction = 'research' | 'feynman' | 'selftest' | 'sq3r';
+/** 学习工作台 AI 动作（5 个，走现有 AI 面板，无新调用链） */
+export type AiAction = 'research' | 'plan' | 'feynman' | 'selftest' | 'sq3r';
 
 /** SM-2 调度器输入状态 */
 export interface Sm2State {

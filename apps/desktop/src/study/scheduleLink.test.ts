@@ -178,8 +178,21 @@ describe('buildStudyPrompt (PR5: AI 直接编辑文档)', () => {
     expect(p).toContain('https://example.com/x');
   });
 
+  it('plan: instructs AI to Edit the ## 计划 section with UNIT_RE line grammar', () => {
+    const p = buildStudyPrompt('plan', baseCtx);
+    expect(p).toContain(topicPath);
+    expect(p).toMatch(/Edit 工具直接编辑(附件)?文件/);
+    expect(p).toContain('## 计划');
+    // 行语法与 markdown.ts UNIT_RE 严格一致：序号 + 点 + 空格 + 单元名 + @{est:.. dep:.. prog:0}
+    expect(p).toContain('- [ ] 1. 入门概览 @{est:2h dep:- prog:0}');
+    expect(p).toContain('- [ ] 2. 核心概念 @{est:4h dep:1 prog:0}');
+    // 要求由浅入深 + 先修顺序 + 5-10 单元
+    expect(p).toMatch(/5-10/);
+    expect(p).toMatch(/由浅入深/);
+  });
+
   it('all actions emphasize append-only (do not rewrite existing lines)', () => {
-    for (const action of ['research', 'feynman', 'selftest', 'sq3r'] as const) {
+    for (const action of ['research', 'plan', 'feynman', 'selftest', 'sq3r'] as const) {
       const p = buildStudyPrompt(action, baseCtx);
       expect(p).toMatch(/不要删除或改写已有行|不要改写已有内容/);
     }

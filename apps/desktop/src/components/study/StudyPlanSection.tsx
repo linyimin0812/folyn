@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
 import type { StudyUnit } from '@/study/types';
 import type { ScheduleLink } from '@/study/scheduleLink';
+import { isAiAvailable, openStudyAiAction, buildStudyPrompt } from '@/study/scheduleLink';
 import { dateToString } from '@/schedule/dailyScan';
 import { computePlanProgress } from '@/study/progress';
 
 interface Props {
+  path: string;
+  topicName: string;
   units: StudyUnit[];
   /** 各单元在 schedule 的排期/完成回链（只读单向读回）。 */
   scheduleLinks: Map<number, ScheduleLink>;
@@ -34,7 +37,7 @@ const CHECK_CIRCLE_ICON = (
 
 /** 计划区：列出 `## 计划` 段的学习单元，卡片行展示序号/估时/依赖/进度；
  *  勾选写回；手动添加单元；单元可"排到日程"（带 study:<slug> 回链）。 */
-export function StudyPlanSection({ units, scheduleLinks, onToggle, onAdd, onSchedule }: Props) {
+export function StudyPlanSection({ path, topicName, units, scheduleLinks, onToggle, onAdd, onSchedule }: Props) {
   const [draft, setDraft] = useState('');
   const [est, setEst] = useState('');
   const [schedulingFor, setSchedulingFor] = useState<number | null>(null);
@@ -42,6 +45,12 @@ export function StudyPlanSection({ units, scheduleLinks, onToggle, onAdd, onSche
   const sorted = useMemo(() => [...units].sort((a, b) => a.order - b.order), [units]);
   const nextOrder = sorted.length ? Math.max(...sorted.map((u) => u.order)) + 1 : 1;
   const progress = useMemo(() => computePlanProgress(units), [units]);
+  const aiAvailable = isAiAvailable();
+
+  const runGeneratePlan = () => {
+    if (!aiAvailable) return;
+    openStudyAiAction(topicName, path, buildStudyPrompt('plan', { topicName, topicPath: path }));
+  };
 
   const submit = async () => {
     const title = draft.trim();
@@ -74,6 +83,14 @@ export function StudyPlanSection({ units, scheduleLinks, onToggle, onAdd, onSche
             <span className="sw-study-progress-summary-pct">{progress.percent}%</span>
             <span className="sw-study-count">{progress.done}/{progress.total}</span>
           </span>
+          <button
+            className="ghost"
+            disabled={!aiAvailable}
+            title={aiAvailable ? 'AI 拆解主题为有序学习单元' : '未配置 AI 适配器'}
+            onClick={runGeneratePlan}
+          >
+            AI 生成计划
+          </button>
         </div>
       </header>
 
@@ -96,7 +113,10 @@ export function StudyPlanSection({ units, scheduleLinks, onToggle, onAdd, onSche
         <div className="sw-empty-state">
           <span className="sw-empty-icon">{LIST_ICON}</span>
           <span className="sw-empty-text">暂无学习单元</span>
-          <span className="sw-empty-hint">添加第一个单元开始计划</span>
+          <span className="sw-empty-hint">用 AI 生成计划，或手动添加第一个单元</span>
+          <button className="sw-empty-cta" disabled={!aiAvailable} onClick={runGeneratePlan} title={aiAvailable ? 'AI 拆解主题为有序学习单元' : '未配置 AI 适配器'}>
+            AI 生成计划
+          </button>
         </div>
       ) : (
         <ul className="sw-study-list">
