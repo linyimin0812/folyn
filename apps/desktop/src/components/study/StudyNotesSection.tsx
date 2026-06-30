@@ -5,6 +5,7 @@ import { useVaultStore } from '@/store/vaultStore';
 import { useStudyStore } from '@/store/studyStore';
 import { STUDY_DIR, ELABORATION_TEMPLATE, appendToNotesSection } from '@/study/studyDoc';
 import { isAiAvailable, openStudyAiAction, buildStudyPrompt } from '@/study/scheduleLink';
+import { MarkdownPreview } from '@/components/file-types/markdown/MarkdownPreview';
 
 interface Props {
   slug: string;
@@ -25,12 +26,46 @@ const isSafeLink = (link: string): boolean => {
   return !link.split('/').some((seg) => seg === '..');
 };
 
-/** 笔记区：非托管段，提供"在编辑器编辑"入口 + 插入精细加工模板 + 列出子文档 wiki 链接；
+/** 从 `## 笔记` 段提取正文 markdown（不含该 heading 自身）。 */
+function extractNotesSection(rawLines: string[]): string {
+  let start = -1;
+  let end = rawLines.length;
+  for (let i = 0; i < rawLines.length; i++) {
+    if (/^##\s+笔记\s*$/.test(rawLines[i])) {
+      start = i + 1;
+      for (let j = i + 1; j < rawLines.length; j++) {
+        if (/^##\s+/.test(rawLines[j])) { end = j; break; }
+      }
+      break;
+    }
+  }
+  if (start < 0) return '';
+  return rawLines.slice(start, end).join('\n').trim();
+}
+
+/** 笔记图标。 */
+const NOTE_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+  </svg>
+);
+/** 子文档图标。 */
+const DOC_LINK_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 3h6l5 5v11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+    <path d="M14 3v5h5" />
+  </svg>
+);
+
+/** 笔记区：非托管段，复用项目 MarkdownPreview 渲染（含 callout）；"在编辑器编辑" +
+ *  插入精细加工模板置顶；列出子文档 wiki 链接（可点击 chips）；
  *  AI 动作：费曼挑战（扮演 5 岁小孩追问，暴露盲区写入 :::callout{type="warning"}）。 */
 export function StudyNotesSection({ slug, path, topicName, parsed }: Props) {
   const openFile = useEditorStore((s) => s.openFile);
   const refresh = useStudyStore((s) => s.refresh);
   const fileTree = useVaultStore((s) => s.fileTree);
+  const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
   const [inserting, setInserting] = useState(false);
   const aiAvailable = isAiAvailable();
 
@@ -52,6 +87,9 @@ export function StudyNotesSection({ slug, path, topicName, parsed }: Props) {
     });
   }, [parsed.rawLines, fileTree, slug]);
 
+  /** `## 笔记` 段的正文 markdown（复用项目 MarkdownPreview 渲染 callout）。 */
+  const notesBody = useMemo(() => extractNotesSection(parsed.rawLines), [parsed.rawLines]);
+
   const insertTemplate = async () => {
     setInserting(true);
     try {
@@ -64,24 +102,6 @@ export function StudyNotesSection({ slug, path, topicName, parsed }: Props) {
       setInserting(false);
     }
   };
-
-  // 笔记段摘要预览（取 `## 笔记` 段的前几行原文，渲染纯文本）
-  const notesPreview = useMemo(() => {
-    const lines = parsed.rawLines;
-    let start = -1;
-    let end = lines.length;
-    for (let i = 0; i < lines.length; i++) {
-      if (/^##\s+笔记\s*$/.test(lines[i])) {
-        start = i + 1;
-        for (let j = i + 1; j < lines.length; j++) {
-          if (/^##\s+/.test(lines[j])) { end = j; break; }
-        }
-        break;
-      }
-    }
-    if (start < 0) return [];
-    return lines.slice(start, end).filter((l) => l.trim() !== '').slice(0, 6);
-  }, [parsed.rawLines]);
 
   return (
     <section className="sw-study-section">
@@ -105,31 +125,42 @@ export function StudyNotesSection({ slug, path, topicName, parsed }: Props) {
         </div>
       </header>
 
-      {notesPreview.length === 0 ? (
-        <p className="sw-empty-hint">笔记段为空。点"在编辑器中编辑"自由书写，或插入精细加工模板。</p>
+      {notesBody.trim() === '' ? (
+        <div className="sw-empty-state">
+          <span className="sw-empty-icon">{NOTE_ICON}</span>
+          <span className="sw-empty-text">笔记段为空</span>
+          <span className="sw-empty-hint">点"在编辑器中编辑"自由书写，或插入精细加工模板</span>
+        </div>
       ) : (
-        <pre className="sw-study-notes-preview">{notesPreview.join('\n')}{notesPreview.length >= 6 ? '\n…' : ''}</pre>
+        <div className="sw-study-notes-render md-preview">
+          <MarkdownPreview content={notesBody} filePath={path} vaultRoot={vaultRoot} />
+        </div>
       )}
 
       <div className="sw-study-subdocs">
-        <p className="sw-section-label">知识库 · 子文档（[[wiki]] 链接）</p>
+        <p className="sw-section-label">
+          知识库 · 子文档（[[wiki]] 链接）
+          <span className="sw-section-count">{subDocs.length}</span>
+        </p>
         {subDocs.length === 0 ? (
           <p className="sw-empty-hint">暂无挂接的子文档。在笔记里用 `[[子文档名]]` 链接原子笔记。</p>
         ) : (
-          <ul className="sw-study-list">
+          <div className="sw-subdoc-chips">
             {subDocs.map((link) => {
               const p = subDocPath(slug, link);
               return (
-                <li key={link} className="sw-study-item sw-subdoc">
-                  <span className="sw-tag growth">笔记</span>
-                  <button className="sw-study-item-title link" onClick={() => openFile(p, `${link}.md`)}>
-                    [[{link}]]
-                  </button>
-                  <span className="sw-study-item-meta">{p}</span>
-                </li>
+                <button
+                  key={link}
+                  className="sw-chip sw-subdoc-chip"
+                  onClick={() => openFile(p, `${link}.md`)}
+                  title={p}
+                >
+                  {DOC_LINK_ICON}
+                  [[{link}]]
+                </button>
               );
             })}
-          </ul>
+          </div>
         )}
       </div>
     </section>

@@ -862,5 +862,91 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .study-workbench .sw-rate.easy { background: color-mix(in oklab, var(--green), transparent 84%); color: var(--green); }
 .study-workbench .sw-review-upcoming { margin-top: var(--space-4); }
 .study-workbench .sw-review-upcoming summary { cursor: pointer; font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
-.study-workbench .sw-review-topic { cursor: pointer; }
+.study-workbench .sw-review-topic { cursor: pointer; border: 0; font: inherit; }
 
+/* ════════════════════════════════════════════════════════════════
+   PR6 四区重设计：卡片化 / 徽章 / 进度可视化 / 空态 / diff 横幅
+   复用 schedule 的 sw-card / sw-tag / sw-chip / sw-progress / sw-empty-state 体系。
+   ════════════════════════════════════════════════════════════════ */
+
+/* 顶部栏 */
+.study-workbench .sw-study-topbar-left { display: flex; align-items: center; gap: var(--space-4); }
+.study-workbench .sw-study-topbar-progress { display: inline-flex; align-items: baseline; gap: 6px; }
+.study-workbench .sw-study-topbar-progress-pct { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--accent); }
+
+/* diff 审阅入口横幅 */
+.study-workbench .sw-diff-banner { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 500; background: color-mix(in oklab, var(--accent), transparent 88%); color: var(--accent); border: 1px solid color-mix(in oklab, var(--accent), transparent 70%); transition: background var(--motion-fast) var(--ease-standard); }
+.study-workbench .sw-diff-banner:hover { background: color-mix(in oklab, var(--accent), transparent 78%); }
+.study-workbench .sw-diff-banner svg { width: 14px; height: 14px; }
+
+/* 段标题附属计数 */
+.study-workbench .sw-section-label { display: flex; align-items: center; justify-content: space-between; }
+.study-workbench .sw-section-count { color: var(--muted); font-family: var(--font-mono); }
+
+/* 卡片化条目（复用全局 .sw-card，叠加 study 专属布局） */
+.study-workbench .sw-card { cursor: default; }
+.study-workbench .sw-card.done .sw-study-item-title { text-decoration: line-through; color: var(--muted); }
+.study-workbench .sw-card.due { border-color: color-mix(in oklab, var(--accent), transparent 55%); background: color-mix(in oklab, var(--accent), transparent 94%); }
+.study-workbench .sw-card-actions { display: flex; gap: var(--space-2); }
+.study-workbench .sw-card-action { padding: 3px 9px; border-radius: var(--radius-sm); font-size: 11px; background: var(--hov); color: var(--t1); }
+.study-workbench .sw-card-action:hover:not(:disabled) { background: var(--act); }
+.study-workbench .sw-card-action:disabled { opacity: 0.45; cursor: not-allowed; }
+.study-workbench .sw-card-meta-line { margin: 0; font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+.study-workbench .sw-tag-icon { display: inline-flex; }
+.study-workbench .sw-tag-icon svg { width: 11px; height: 11px; }
+
+/* ── 资料区 ── */
+.study-workbench .sw-material-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.study-workbench .sw-material-card { display: flex; flex-direction: column; }
+.study-workbench .sw-material-card .sw-material-title { font-size: var(--text-sm); font-weight: 600; color: var(--fg); line-height: 1.4; margin-bottom: var(--space-2); word-break: break-word; }
+.study-workbench .sw-material-card .sw-material-title a { color: var(--accent); text-decoration: none; }
+.study-workbench .sw-material-card .sw-material-title a:hover { text-decoration: underline; }
+.study-workbench .sw-material-card .sw-material-summary { margin: 4px 0 0; font-size: var(--text-xs); color: var(--t2); line-height: 1.5; flex: 1; }
+.study-workbench .sw-link-chip { border: 0; font: inherit; cursor: pointer; color: var(--accent); }
+.study-workbench .sw-link-chip:hover { text-decoration: underline; }
+.study-workbench .sw-link-chip svg { width: 12px; height: 12px; }
+
+/* ── 计划区 ── */
+.study-workbench .sw-study-overall-progress { margin-bottom: var(--space-4); }
+.study-workbench .sw-study-overall-progress .sw-bar { width: 100%; height: 5px; }
+.study-workbench .sw-study-progress-summary { display: inline-flex; align-items: baseline; gap: 6px; }
+.study-workbench .sw-study-progress-summary-pct { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--accent); }
+.study-workbench .sw-unit-card { align-items: flex-start; }
+.study-workbench .sw-unit-check { display: flex; flex-shrink: 0; padding-top: 1px; cursor: pointer; }
+.study-workbench .sw-unit-check input { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
+.study-workbench .sw-unit-card .sw-study-item-title { display: flex; align-items: baseline; gap: 8px; }
+.study-workbench .sw-unit-order { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: var(--radius-pill); background: color-mix(in oklab, var(--t2), transparent 86%); color: var(--t2); font-family: var(--font-mono); font-size: 10px; font-weight: 600; flex-shrink: 0; }
+.study-workbench .sw-unit-card.done .sw-unit-order { background: color-mix(in oklab, var(--green), transparent 86%); color: var(--green); }
+.study-workbench .sw-unit-title { flex: 1; word-break: break-word; }
+.study-workbench .sw-unit-meta { margin-top: 4px; }
+.study-workbench .sw-unit-progress { margin-top: var(--space-2); }
+.study-workbench .sw-unit-progress .sw-bar { width: 80px; }
+.study-workbench .sw-schedule-link.due { color: var(--warn); }
+.study-workbench .sw-schedule-link.done { color: var(--green); }
+.study-workbench .sw-schedule-link svg { width: 12px; height: 12px; }
+
+/* ── 笔记区 ── */
+.study-workbench .sw-study-notes-render { margin: 0; padding: var(--space-3) var(--space-4); background: var(--bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); max-height: 320px; overflow: auto; font-size: var(--text-xs); }
+.study-workbench .sw-study-notes-render.md-preview > :first-child { margin-top: 0; }
+.study-workbench .sw-subdoc-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.study-workbench .sw-subdoc-chip { border: 1px solid var(--border); background: var(--surface); color: var(--t2); padding: 4px 10px; border-radius: var(--radius-pill); font-size: 11px; cursor: pointer; transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); }
+.study-workbench .sw-subdoc-chip:hover { background: var(--hov); border-color: var(--accent); color: var(--accent); }
+.study-workbench .sw-subdoc-chip svg { width: 12px; height: 12px; }
+
+/* ── 复习区 / 今日复习 ── */
+.study-workbench .sw-review-card { align-items: flex-start; }
+.study-workbench .sw-review-meta { margin-top: 4px; }
+.study-workbench .sw-due-chip { color: var(--warn); }
+.study-workbench .sw-due-chip svg { width: 12px; height: 12px; }
+.study-workbench .sw-src-chip { color: var(--purple); }
+.study-workbench .sw-review-card .sw-review-topic { align-self: flex-start; flex-shrink: 0; }
+
+/* 空态 CTA */
+.study-workbench .sw-empty-cta { margin-top: 4px; padding: 5px 14px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; background: var(--accent); color: var(--accent-on); }
+.study-workbench .sw-empty-cta:hover:not(:disabled) { background: var(--accent-hover); }
+.study-workbench .sw-empty-cta:disabled { opacity: 0.45; cursor: not-allowed; }
+.study-workbench .sw-empty-celebrate .sw-empty-icon { border-color: color-mix(in oklab, var(--green), transparent 50%); color: var(--green); opacity: 0.8; }
+
+@media (max-width: 720px) {
+  .study-workbench .sw-material-grid { grid-template-columns: 1fr; }
+}
