@@ -3,7 +3,7 @@ import {
   buildStudyTaskLine,
   appendTaskLineToDaily,
   collectScheduleLinks,
-  buildStudyPrompt,
+  buildStudyInstruction,
 } from './scheduleLink';
 import type { ScheduleTask } from '@/schedule/types';
 import type { StudyUnit } from '@/study/types';
@@ -129,72 +129,63 @@ describe('collectScheduleLinks', () => {
   });
 });
 
-describe('buildStudyPrompt (PR8: research/plan 返回建议文本；feynman/selftest/sq3r 直编+diff)', () => {
+describe('buildStudyInstruction (PR9: 动态指令；静态契约由 study-agent.md 承载)', () => {
   const topicPath = '学习/agent-dev.md';
   const baseCtx = { topicName: 'agent 开发', topicPath };
 
-  it('research: 返回资料建议文本，不直编文件', () => {
-    const p = buildStudyPrompt('research', baseCtx);
+  it('research: 产出含主题路径与动作关键字的短指令，不含静态行语法契约', () => {
+    const p = buildStudyInstruction('research', baseCtx);
     expect(p).toContain(topicPath);
-    // 行语法与 markdown.ts BOOK_RE/WEB_RE 严格一致
-    expect(p).toContain('- @book <书名> | <作者> | <简介> | 难度:<易|中|难> | <链接>');
-    expect(p).toContain('- @web <标题> | <链接> | <简介>');
-    // 不再要求用 Edit 工具直编文件
-    expect(p).not.toMatch(/Edit 工具直接编辑(附件)?文件/);
-    expect(p).toMatch(/不要用 Edit 工具改文件/);
+    expect(p).toContain('agent 开发');
+    expect(p).toContain('动作：research');
+    // 行语法契约已移入 study-agent.md，指令不再重复
+    expect(p).not.toContain('- @book');
   });
 
-  it('feynman: instructs AI to append a warning callout to ## 笔记', () => {
-    const p = buildStudyPrompt('feynman', baseCtx);
+  it('feynman: 含主题路径与动作关键字，可带聚焦单元', () => {
+    const p = buildStudyInstruction('feynman', { ...baseCtx, unitTitle: '理解 agent 循环' });
     expect(p).toContain(topicPath);
-    expect(p).toMatch(/Edit 工具直接编辑(附件)?文件/);
-    expect(p).toContain('## 笔记');
-    expect(p).toContain(':::callout{type="warning" title="盲区"}');
-    expect(p).toContain(':::');
+    expect(p).toContain('动作：feynman');
+    expect(p).toContain('聚焦单元：理解 agent 循环');
+    // callout 格式契约已移入 study-agent.md
+    expect(p).not.toContain(':::callout');
   });
 
-  it('selftest: instructs AI to append a tip callout with folded answers', () => {
-    const p = buildStudyPrompt('selftest', baseCtx);
+  it('selftest: 含动作关键字，不含 callout 契约', () => {
+    const p = buildStudyInstruction('selftest', baseCtx);
     expect(p).toContain(topicPath);
-    expect(p).toMatch(/Edit 工具直接编辑(附件)?文件/);
-    expect(p).toContain('## 笔记');
-    expect(p).toContain(':::callout{type="tip" title="自测题"}');
-    expect(p).toContain('<details>');
+    expect(p).toContain('动作：selftest');
+    expect(p).not.toContain(':::callout');
+    expect(p).not.toContain('<details>');
   });
 
-  it('sq3r: instructs AI to append an info callout with pre-read questions', () => {
-    const p = buildStudyPrompt('sq3r', {
+  it('sq3r: 含资料标题/链接与动作关键字', () => {
+    const p = buildStudyInstruction('sq3r', {
       ...baseCtx,
       materialTitle: 'Building LLM Apps',
       materialUrl: 'https://example.com/x',
     });
     expect(p).toContain(topicPath);
-    expect(p).toMatch(/Edit 工具直接编辑(附件)?文件/);
-    expect(p).toContain('## 笔记');
-    expect(p).toContain(':::callout{type="info" title="预读问题"}');
+    expect(p).toContain('动作：sq3r');
     expect(p).toContain('Building LLM Apps');
     expect(p).toContain('https://example.com/x');
+    expect(p).not.toContain(':::callout');
   });
 
-  it('plan: 返回学习单元建议文本，不直编文件', () => {
-    const p = buildStudyPrompt('plan', baseCtx);
+  it('plan: 含动作关键字与由浅入深要求，不含行语法契约', () => {
+    const p = buildStudyInstruction('plan', baseCtx);
     expect(p).toContain(topicPath);
-    expect(p).toContain('## 计划');
-    // 行语法与 markdown.ts UNIT_RE 严格一致
-    expect(p).toContain('- [ ] 1. 入门概览 @{est:2h dep:- prog:0}');
-    expect(p).toContain('- [ ] 2. 核心概念 @{est:4h dep:1 prog:0}');
-    expect(p).toMatch(/5-10/);
-    expect(p).toMatch(/由浅入深/);
-    expect(p).not.toMatch(/Edit 工具直接编辑(附件)?文件/);
-    expect(p).toMatch(/不要用 Edit 工具改文件/);
+    expect(p).toContain('动作：plan');
+    expect(p).toContain('由浅入深');
+    expect(p).not.toContain('@{est:2h');
   });
 
-  it('plan: 传入 selectedMaterials 时提示词含选中资料信息', () => {
+  it('plan: 传入 selectedMaterials 时指令含选中资料信息', () => {
     const selected = [
       { id: 'a', kind: 'book' as const, title: '《LLM 书》', author: '作者甲', url: 'https://x', summary: '讲 Agent', lineIndex: 0 },
       { id: 'b', kind: 'web' as const, title: 'Agent 入门', url: 'https://y', summary: '好文', lineIndex: 1 },
     ];
-    const p = buildStudyPrompt('plan', { ...baseCtx, selectedMaterials: selected });
+    const p = buildStudyInstruction('plan', { ...baseCtx, selectedMaterials: selected });
     expect(p).toContain('《LLM 书》');
     expect(p).toContain('作者甲');
     expect(p).toContain('https://x');
@@ -203,14 +194,7 @@ describe('buildStudyPrompt (PR8: research/plan 返回建议文本；feynman/self
   });
 
   it('plan: 未传 selectedMaterials 时不出现"依据以下资料"', () => {
-    const p = buildStudyPrompt('plan', baseCtx);
+    const p = buildStudyInstruction('plan', baseCtx);
     expect(p).not.toContain('依据以下资料');
-  });
-
-  it('直编动作(feynman/selftest/sq3r)强调只追加不改写已有内容', () => {
-    for (const action of ['feynman', 'selftest', 'sq3r'] as const) {
-      const p = buildStudyPrompt(action, baseCtx);
-      expect(p).toMatch(/不要删除或改写已有行|不要改写已有内容/);
-    }
   });
 });

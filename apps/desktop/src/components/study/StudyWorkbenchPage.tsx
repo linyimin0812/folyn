@@ -9,7 +9,7 @@ import { StudyPlanSection } from './StudyPlanSection';
 import { StudyNotesSection } from './StudyNotesSection';
 import { StudyReviewSection } from './StudyReviewSection';
 import { TodayReviewQueue } from './TodayReviewQueue';
-import { collectScheduleLinks, isAiAvailable, openStudyAiAction, buildStudyPrompt, type ScheduleLink } from '@/study/scheduleLink';
+import { collectScheduleLinks, isAiAvailable, openStudyAiAction, buildStudyInstruction, type ScheduleLink } from '@/study/scheduleLink';
 import { computePlanProgress } from '@/study/progress';
 import type { StudyMaterial, StudyUnit, ReviewAtom } from '@/study/types';
 
@@ -62,45 +62,47 @@ export function StudyWorkbenchPage() {
     ? collectScheduleLinks(scheduleTasks, active.slug)
     : new Map<number, ScheduleLink>();
 
-  // diff 审阅入口横幅：当前 AI 会话中针对当前主题文档的待审阅编辑数。
-  // aiSessions/aiActiveId 同时供下方 AI 建议文本捕获 effect 复用。
+  // diff 审阅入口横幅：专用 study 会话中针对当前主题文档的待审阅编辑数。
+  // aiSessions/studySessionId 同时供下方 AI 建议文本捕获 effect 复用。
+  // PR9：study agent 在专用 study 会话（aiStore.studySessionId）里运行，
+  // 不再用活跃会话——避免用户切到其它会话时捕获/横幅失联。
   const aiSessions = useAiStore((s) => s.sessions);
-  const aiActiveId = useAiStore((s) => s.activeSessionId);
+  const studySessionId = useAiStore((s) => s.studySessionId);
   const updateSettings = useSettingsStore((s) => s.updateSettings);
   const pendingDiffCount = useMemo(() => {
     if (!active) return 0;
-    const sess = aiSessions.find((s) => s.id === aiActiveId);
+    const sess = aiSessions.find((s) => s.id === studySessionId);
     if (!sess) return 0;
     return sess.fileChanges.filter(
       (c) => c.path === active.path && c.status === 'pending',
     ).length;
-  }, [aiSessions, aiActiveId, active]);
+  }, [aiSessions, studySessionId, active]);
 
   const goReviewDiff = () => {
     updateSettings({ currentPage: 'editor' });
   };
 
   // ── AI 建议文本捕获（research/plan）──
-  // pendingSuggestion 置位后，监听 aiStore 活跃会话：流式结束后扫描"新产生的"
+  // pendingSuggestion 置位后，监听 study 会话：流式结束后扫描"新产生的"
   // 最后一条 assistant 消息文本 → 填充 suggestedMaterials/suggestedUnits，清 pending。
   // 关键：发起动作时先把当前最后一条 assistant 消息 id 记为 baseline（markSuggestionBaseline），
   // 避免把动作发起前就已存在的旧 assistant 消息误当作本次产出消费掉、提前清掉 pending。
   const lastScannedMsgId = useRef<string | null>(null);
   const markSuggestionBaseline = () => {
-    const sess = aiSessions.find((s) => s.id === aiActiveId);
+    const sess = aiSessions.find((s) => s.id === studySessionId);
     const last = sess ? [...sess.messages].reverse().find((m) => m.role === 'assistant') : null;
     lastScannedMsgId.current = last?.id ?? null;
   };
   useEffect(() => {
     if (!pendingSuggestion) return;
-    const sess = aiSessions.find((s) => s.id === aiActiveId);
+    const sess = aiSessions.find((s) => s.id === studySessionId);
     if (!sess || sess.isStreaming) return;
     const lastAssistant = [...sess.messages].reverse().find((m) => m.role === 'assistant');
     if (!lastAssistant) return;
     if (lastScannedMsgId.current === lastAssistant.id) return;
     lastScannedMsgId.current = lastAssistant.id;
     consumeSuggestion(lastAssistant.content);
-  }, [aiSessions, aiActiveId, pendingSuggestion, consumeSuggestion]);
+  }, [aiSessions, studySessionId, pendingSuggestion, consumeSuggestion]);
 
   // 切换主题时清空旧建议（避免上一个主题的建议残留）。
   useEffect(() => {
@@ -155,9 +157,8 @@ export function StudyWorkbenchPage() {
     markSuggestionBaseline();
     beginSuggestion('research', active.slug);
     openStudyAiAction(
-      active.parsed.frontmatter.title ?? active.slug,
       active.path,
-      buildStudyPrompt('research', { topicName: active.parsed.frontmatter.title ?? active.slug, topicPath: active.path }),
+      buildStudyInstruction('research', { topicName: active.parsed.frontmatter.title ?? active.slug, topicPath: active.path }),
       { openFile: false },
     );
   };
@@ -166,9 +167,8 @@ export function StudyWorkbenchPage() {
     markSuggestionBaseline();
     beginSuggestion('plan', active.slug);
     openStudyAiAction(
-      active.parsed.frontmatter.title ?? active.slug,
       active.path,
-      buildStudyPrompt('plan', {
+      buildStudyInstruction('plan', {
         topicName: active.parsed.frontmatter.title ?? active.slug,
         topicPath: active.path,
         selectedMaterials: selected,

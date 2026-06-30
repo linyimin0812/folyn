@@ -1,6 +1,7 @@
 export type {
   CliAdapter,
   CliAdapterConfig,
+  CliAgentDefinition,
   CliEventHandler,
   CliMessage,
   CliSendOptions,

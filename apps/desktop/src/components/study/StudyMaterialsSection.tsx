@@ -3,7 +3,7 @@ import type { StudyMaterial } from '@/study/types';
 import { DIFFICULTY_LABEL } from '@/study/types';
 import { useEditorStore } from '@/store/editorStore';
 import { isTauri } from '@/utils/platform';
-import { isAiAvailable, openStudyAiAction, buildStudyPrompt } from '@/study/scheduleLink';
+import { isAiAvailable, openStudyAiAction, buildStudyInstruction } from '@/study/scheduleLink';
 
 interface Props {
   slug: string;
@@ -93,7 +93,7 @@ export function StudyMaterialsSection({
 
   const runSq3r = (m: StudyMaterial) => {
     if (!aiAvailable) return;
-    openStudyAiAction(topicName, path, buildStudyPrompt('sq3r', {
+    openStudyAiAction(path, buildStudyInstruction('sq3r', {
       topicName,
       topicPath: path,
       materialTitle: m.title,

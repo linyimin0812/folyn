@@ -3,7 +3,7 @@ import type { ParsedStudy, ReviewAtom, ReviewRating } from '@/study/types';
 import { DEFAULT_REVIEW_ATOM } from '@/study/types';
 import { reviewAtom, isDue } from '@/study/sm2';
 import { dateToString } from '@/schedule/dailyScan';
-import { isAiAvailable, openStudyAiAction, buildStudyPrompt } from '@/study/scheduleLink';
+import { isAiAvailable, openStudyAiAction, buildStudyInstruction } from '@/study/scheduleLink';
 
 interface Props {
   slug: string;
@@ -91,7 +91,7 @@ export function StudyReviewSection({ slug, path, topicName, parsed, onRate, onAd
             className="ghost"
             disabled={!aiAvailable}
             title={aiAvailable ? 'AI 根据 ## 笔记生成 5 道回忆题（答案折叠）' : '未配置 AI 适配器'}
-            onClick={() => openStudyAiAction(topicName, path, buildStudyPrompt('selftest', { topicName, topicPath: path }))}
+            onClick={() => openStudyAiAction(path, buildStudyInstruction('selftest', { topicName, topicPath: path }))}
           >
             生成自测题
           </button>

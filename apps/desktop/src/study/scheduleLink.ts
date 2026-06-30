@@ -14,9 +14,9 @@
 import type { ScheduleTask } from '@/schedule/types';
 import type { StudyUnit, StudyMaterial, AiAction } from './types';
 import { CliAdapterRegistry } from '@quill/cli-adapter';
-import { useAiStore } from '@/store/aiStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useEditorStore } from '@/store/editorStore';
+import { runStudyAgent } from './studyAgentRunner';
 
 const H2_RE = /^##\s+(.+?)\s*#*\s*$/;
 const SECTION_TASK = '任务';
@@ -128,20 +128,21 @@ export function isAiAvailable(): boolean {
 }
 
 /**
- * 构造各 AI 动作的预填提示词。
+ * 构造各 AI 动作的运行指令（PR9：动态部分）。
  *
- * 两种产出模式（PR8）：
- * - research / plan：AI 返回结构化文本建议（严格单行），不直编文件、不走 diff。
- *   聊天产出由 studyStore 扫描（scanMaterialSuggestions / scanUnitSuggestions）
- *   → 建议卡片 → 用户逐条"加入"写盘。
- * - feynman / selftest / sq3r：AI 用 Edit 工具直接编辑主题 .md 的 `## 笔记` 段，
+ * 静态输出契约（行语法 / callout 格式 / append-only 规则）由 canonical
+ * `study-agent.md` 的 system prompt 承载，运行时经 `--agents` 内联交付。
+ * 本函数只产出与主题/资料相关的动态指令，agent 据此按契约执行：
+ * - research / plan：agent 返回结构化文本建议行（不直编文件）→ studyStore
+ *   捕获 effect 扫 study 会话最后 assistant 消息 → 建议卡片。
+ * - feynman / selftest / sq3r：agent 用 Edit 直编主题 .md 的 `## 笔记` 段，
  *   fileChange 经 aiStore.addFileChange → enterDiffReview 进 DiffView 审阅
  *   （PR5 机制不变）。
  *
  * topicName 为人类可读主题标题，topicPath 为 vault 相对路径。
  * plan 可选传入 selectedMaterials（用户在资料区勾选的资料），作为拆解依据。
  */
-export function buildStudyPrompt(
+export function buildStudyInstruction(
   action: AiAction,
   ctx: {
     topicName: string;
@@ -153,98 +154,59 @@ export function buildStudyPrompt(
   },
 ): string {
   const { topicName, topicPath, unitTitle, materialTitle, materialUrl, selectedMaterials } = ctx;
+  const head = `主题文档：${topicPath}（${topicName}）`;
   switch (action) {
     case 'research':
-      return [
-        `你是学习规划专家。基于主题「${topicName}」（见附件文件 ${topicPath}），`,
-        `检索高质量学习资料（网络文章/文档）与经典书籍/论文。`,
-        `请返回 5-8 条资料建议，每条严格单行，格式如下（\`|\` 两侧留空格，难度用 易/中/难，链接为可访问 URL）：`,
-        `- @book <书名> | <作者> | <简介> | 难度:<易|中|难> | <链接>`,
-        `- @web <标题> | <链接> | <简介>`,
-        `只输出这些行（可附简短说明），不要用 Edit 工具改文件。`,
-      ].join('\n');
+      return `${head}\n动作：research\n检索高质量学习资料（网络文章/文档）与经典书籍/论文，返回 5-8 条资料建议。`;
     case 'plan': {
       const refs = selectedMaterials && selectedMaterials.length
         ? [
-            '',
-            `依据以下资料（标题 / 作者 / 链接 / 简介）拆解单元，确保单元覆盖这些资料：`,
-            ...selectedMaterials.map((m) =>
-              `- ${m.title}${m.author ? ` | ${m.author}` : ''}${m.url ? ` | ${m.url}` : ''}${m.summary ? ` | ${m.summary}` : ''}`,
-            ),
-            '',
-          ].join('\n')
+          '',
+          '依据以下资料（标题 / 作者 / 链接 / 简介）拆解单元，确保单元覆盖这些资料：',
+          ...selectedMaterials.map((m) =>
+            `- ${m.title}${m.author ? ` | ${m.author}` : ''}${m.url ? ` | ${m.url}` : ''}${m.summary ? ` | ${m.summary}` : ''}`,
+          ),
+        ].join('\n')
         : '';
-      return [
-        `你是学习规划专家。基于主题「${topicName}」（见附件文件 ${topicPath}），将其拆解为 5-10 个由浅入深、有先修顺序的学习单元。`,
-        `这些单元将被加入主题文档的 \`## 计划\` 段，请按下述行语法返回。`,
-        refs,
-        `请返回 5-10 个学习单元，每条严格单行，行语法（序号 + 点 + 空格 + 单元名 + 空格 + \`@\{...\}\`，est 用合理估时如 2h/4h，dep 标注依赖单元序号、无依赖用 \`-\`，prog 固定 0）：`,
-        `- [ ] 1. 入门概览 @{est:2h dep:- prog:0}`,
-        `- [ ] 2. 核心概念 @{est:4h dep:1 prog:0}`,
-        `序号从 1 开始连续递增；估时贴近真实学习量；dep 指向先修单元的序号。`,
-        `只输出这些行，不要用 Edit 工具改文件。`,
-      ].filter((s) => s.length > 0).join('\n');
+      return `${head}${refs}\n动作：plan\n将主题拆解为 5-10 个由浅入深、有先修顺序的学习单元。`;
     }
     case 'feynman':
       return [
-        `扮演一个 5 岁小孩，听我用大白话讲「${topicName}」${unitTitle ? `的「${unitTitle}」` : ''}（见附件文件 ${topicPath}）。`,
-        `我会先讲，你哪里听不懂就一次只追问一个问题，直到我讲清或暴露知识盲区。`,
-        `当暴露盲区时，请用 Edit 工具直接编辑文件 \`${topicPath}\` 的 \`## 笔记\` 段：`,
-        `只在段尾追加一个 callout 块记录盲区，不要改写已有内容；若 \`## 笔记\` 段不存在，在文件末尾新建。`,
-        `块格式（前后各一空行）：`,
-        `:::callout{type="warning" title="盲区"}`,
-        `<用一句话描述这个知识盲区>`,
-        `:::`,
-        `一次暴露多个盲区时，可追加多个块。`,
+        head,
+        '动作：feynman',
+        ...(unitTitle ? [`聚焦单元：${unitTitle}`] : []),
+        '扮演 5 岁小孩，听我用大白话讲，哪里听不懂就一次只追问一个问题，直到讲清或暴露盲区；暴露盲区时按契约追加 callout。我会先讲。',
       ].join('\n');
     case 'selftest':
-      return [
-        `先读取附件文件 \`${topicPath}\` 的 \`## 笔记\` 段内容，根据其中要点为「${topicName}」生成 5 道回忆题，考查主动检索。`,
-        `然后用 Edit 工具直接编辑文件 \`${topicPath}\` 的 \`## 笔记\` 段：`,
-        `只在段尾追加一个 callout 块，先列题目、再用 <details> 折叠每题答案；不要改写已有内容。`,
-        `块格式（前后各一空行）：`,
-        `:::callout{type="tip" title="自测题"}`,
-        `1. <题目>`,
-        `<details><summary>答案</summary>答案…</details>`,
-        `:::`,
-      ].join('\n');
+      return `${head}\n动作：selftest\n读取该主题文档 ## 笔记 段，根据要点生成 5 道回忆题，按契约追加 callout（先题后折叠答案）。`;
     case 'sq3r':
       return [
-        `对这条资料做 SQ3R 预读：${materialTitle ? `「${materialTitle}」` : ''}${materialUrl ? `（${materialUrl}）` : ''}。`,
-        `先给 survey（大纲），再为每部分给一个预读问题。`,
-        `然后用 Edit 工具直接编辑附件文件 \`${topicPath}\` 的 \`## 笔记\` 段：`,
-        `只在段尾追加一个 callout 块列出预读问题，不要改写已有内容；若 \`## 笔记\` 段不存在，在文件末尾新建。`,
-        `块格式（前后各一空行）：`,
-        `:::callout{type="info" title="预读问题"}`,
-        `- <预读问题1>`,
-        `- <预读问题2>`,
-        `:::`,
-      ].join('\n');
+        head,
+        '动作：sq3r',
+        `对资料做 SQ3R 预读：${materialTitle ? `「${materialTitle}」` : ''}${materialUrl ? `（${materialUrl}）` : ''}`,
+        '给 survey 大纲 + 每部分一个预读问题，按契约追加 callout。',
+      ].filter((s) => s.length > 0).join('\n');
     default:
       return '';
   }
 }
 
 /**
- * 打开 AI 面板并预填提示词（无新调用链，复用 ContextMenu 的 addFileToChat 模式）。
- * - 注入主题文档作为附件上下文（ChatInput → AiPanel.handleSend 会生成"请先用 Read 工具
- *   读取该文件"指令）；
- * - 预填提示词到输入框（经 aiStore.pendingPrompt，由 ChatInput 消费）；
+ * 在专用 study 会话里运行 study agent（PR9）。
+ * - 不再预填 ChatInput 输入框（不 setPendingPrompt / addFileToChat）；
+ * - 调 runStudyAgent 在 study 会话自动执行，prompt 不显示在聊天框；
  * - 打开 AI 面板（settings.showAiPanel + editorStore.aiPanelVisible）；
  * - opts.openFile !== false 时，同时把主题文档作为编辑器 tab 打开，接上 diff 审阅链路
- *   （feynman/selftest/sq3r 直编文件场景需要）。research/plan 改为返回文本建议、
+ *   （feynman/selftest/sq3r 直编文件场景需要）。research/plan 返回文本建议、
  *   不直编文件，调用方传 { openFile: false } 跳过开 tab。
  * 调用方应在 isAiAvailable() 为真时才调用。
  */
 export function openStudyAiAction(
-  topicName: string,
   topicPath: string,
-  prompt: string,
+  instruction: string,
   opts?: { openFile?: boolean },
 ): void {
-  const ai = useAiStore.getState();
-  ai.addFileToChat(topicName, topicPath);
-  ai.setPendingPrompt(prompt);
+  void runStudyAgent(instruction);
   useSettingsStore.getState().updateSettings({ showAiPanel: true });
   useEditorStore.setState({ aiPanelVisible: true });
   if (opts?.openFile === false) return;
