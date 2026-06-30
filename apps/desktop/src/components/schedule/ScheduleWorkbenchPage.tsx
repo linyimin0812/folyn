@@ -128,7 +128,6 @@ export function ScheduleWorkbenchPage() {
         view={view}
         onSwitchView={setView}
         onNew={() => setModalIntent({ kind: view === 'board' ? 'task' : 'event', col: 'todo', day: dateToString(new Date()), hour: 9 })}
-        onPlanMyDay={() => void runPlanMyDay()}
       />
 
       <main className="sw-main">

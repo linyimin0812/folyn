@@ -2,6 +2,7 @@ import { useEditorStore, type ViewMode } from '@/store/editorStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useTheme } from '@/hooks/useTheme';
 import { ExportMenu } from '@/components/editor/ExportMenu';
+import { requestPlanMyDay } from '@/services/planMyDayBridge';
 
 /** File types that only support preview mode (no editor) */
 const PREVIEW_ONLY_FILE_TYPES = new Set(['image', 'pdf']);
@@ -70,6 +71,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const hideViewMode = activeTab ? HIDE_VIEW_MODE_FILE_TYPES.has(activeTab.fileType) : false;
   const modes = activeTab?.fileType === 'html' ? HTML_MODES : VIEW_MODES;
   const setCurrentPage = useSettingsStore((state) => state.setCurrentPage);
+  const currentPage = useSettingsStore((state) => state.currentPage);
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -117,7 +119,13 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
 
         <div className="top-div w-px h-[18px] bg-brd2 mx-[3px] shrink-0" />
 
-        <button className="tb-btn tb-ai-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-xs text-t3 transition-all duration-150 hover:bg-hov hover:text-t1 font-bold tracking-[-0.5px]" onClick={toggleAiPanel} title="AI 面板">
+        <button className="tb-btn tb-ai-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-xs text-t3 transition-all duration-150 hover:bg-hov hover:text-t1 font-bold tracking-[-0.5px]" onClick={() => {
+          if (currentPage === 'schedule') {
+            requestPlanMyDay();
+          } else {
+            toggleAiPanel();
+          }
+        }} title={currentPage === 'schedule' ? 'AI 规划今日' : 'AI 面板'}>
           AI
         </button>
         <ExportMenu />

@@ -4,10 +4,9 @@ interface Props {
   view: WorkbenchView;
   onSwitchView: (v: WorkbenchView) => void;
   onNew: () => void;
-  onPlanMyDay?: () => void;
 }
 
-export function ScheduleSidebar({ view, onSwitchView, onNew, onPlanMyDay }: Props) {
+export function ScheduleSidebar({ view, onSwitchView, onNew }: Props) {
   return (
     <aside className="sw-sidebar">
       <div className="sw-panel-header">
@@ -26,13 +25,6 @@ export function ScheduleSidebar({ view, onSwitchView, onNew, onPlanMyDay }: Prop
         <button type="button" className={`sw-nav-item ${view === 'board' ? 'active' : ''}`} onClick={() => onSwitchView('board')}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="6" height="18" rx="1" /><rect x="10" y="3" width="6" height="12" rx="1" /><rect x="17" y="3" width="4" height="8" rx="1" /></svg>
           <span>任务看板</span>
-        </button>
-      </div>
-
-      <div className="sw-nav-group">
-        <button type="button" className="sw-plan-trigger" onClick={onPlanMyDay} title="AI 规划今日 (⌘P)">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M13.5 8.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z" /></svg>
-          <span>AI 规划今日</span>
         </button>
       </div>
 
