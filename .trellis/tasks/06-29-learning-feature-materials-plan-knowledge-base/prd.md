@@ -61,9 +61,13 @@
 - **交替练习**：跨所有主题的"今日复习"队列（扫描 `学习/*.md` 的 `## 复习` 到期原子，带 `topic:<slug>` 标注来源）。
 - **Zettelkasten**：深笔记原子化放 `学习/<主题>/<slug>.md`，从 `## 笔记` 用 `[[]]` 挂接（复用 wiki/graph）。
 - **精细加工**：`## 笔记` 要点模板 `- **概念**: … | 因为: … | 例子: … | 类比: [[..]]` + AI"追问 elaboration"。
-- **番茄工作法**：工作台头部复用 `Pomodoro.tsx`。
+- **番茄工作法**：~~工作台头部复用 `Pomodoro.tsx`~~（已移除，见 commit 79b56b7）。
 - **Desirable Difficulties**：作为设计原则（偏好主动检索/费曼/交错复习，不做"重读资料"按钮），不产代码。
 - 三个 AI 动作统一走"打开 AI 面板 + 预填带上下文提示词"模式（`ContextMenu.tsx:139-140` 的 `addFileToChat` + `showAiPanel`），无新调用链。
+
+**Decision 7（AI 直接编辑文档 · PR5）**: 改 4 个 AI 动作（学习研究/费曼/自测/SQ3R）的提示词，让 AI 用 Edit 工具**直接编辑主题 .md 文件**的对应段（资料/笔记/复习），而非仅在聊天产出供粘贴。复用 Quill 已有的 AI 文件编辑+diff 审阅基础设施（`FileChange`/`aiFileChangeActions`/`DiffView`/`ReviewItemList`/`aiStore.enterDiffReview`）——用户在 DiffView 审阅 diff 后应用，应用后 studyStore 经 `subscribeToFileTree` 自动 refresh。零新基础设施。
+
+**Decision 8（UI 重设计 · PR6）**: 重新设计四区布局：资料卡片化、计划带进度可视化、复习原子带状态徽章、统一空态与图标、间距排版对齐 schedule 工作台质感。沿用 `sw-` 设计 token 与 Tailwind。
 
 ## Requirements (evolving)
 
@@ -124,6 +128,8 @@
 * PR2：studyStore + vault 文档读写集成 + 主题列表/切换/新建/删除 UI + 复用 Pomodoro 置入头部
 * PR3：工作台主视图（资料/计划/笔记/复习四区）+ 计划勾选写回 + 笔记精细加工模板 + 子文档 wiki 链接 + `## 复习` SM-2 扫描器(4 按钮评级写回) + 跨主题"今日复习"队列
 * PR4：与 schedule 关联（扩 cat:learn + 排到日程 + 回链读回）+ AI 接入（学习研究/费曼挑战/生成自测题/SQ3R 预读 四动作，走 addFileToChat 模式）+ callout 盲区/问题块 + 容错降级（AI 不可用禁用 AI 动作）
+* PR5：AI 直接编辑文档——改 4 动作提示词让 AI 用 Edit 工具直接改主题 .md 对应段，复用 DiffView/ReviewItemList 审阅；应用后 studyStore 自动 refresh
+* PR6：UI 重设计四区——资料卡片化、计划进度可视化、复习状态徽章、空态/图标/间距对齐 schedule 质感
 
 ## SM-2 scheduler spec (minimal)
 

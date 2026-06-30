@@ -78,7 +78,7 @@ export function StudyReviewSection({ slug, path, topicName, parsed, onRate, onAd
             className="ghost"
             disabled={!aiAvailable}
             title={aiAvailable ? 'AI 根据 ## 笔记生成 5 道回忆题（答案折叠）' : '未配置 AI 适配器'}
-            onClick={() => openStudyAiAction(topicName, path, buildStudyPrompt('selftest', { topicName }))}
+            onClick={() => openStudyAiAction(topicName, path, buildStudyPrompt('selftest', { topicName, topicPath: path }))}
           >
             生成自测题
           </button>

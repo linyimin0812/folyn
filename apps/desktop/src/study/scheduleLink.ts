@@ -127,38 +127,70 @@ export function isAiAvailable(): boolean {
   }
 }
 
-/** 构造各 AI 动作的预填提示词。topicName 为人类可读主题标题。 */
+/**
+ * 构造各 AI 动作的预填提示词（PR5：让 AI 用 Edit 工具直接编辑主题 .md 文件，
+ * 而非在聊天产出供粘贴）。topicName 为人类可读主题标题，topicPath 为 vault 相对
+ * 路径（如 `学习/<slug>.md`，与 Claude adapter 的 workingDir=vault 根对齐）。
+ *
+ * 复用既有 AI 文件编辑+diff 审阅基础设施：
+ * - openStudyAiAction 已 addFileToChat 把该文件挂进上下文（ChatInput → AiPanel.handleSend
+ *   会生成"请先使用 Read 工具读取以下文件"指令），AI 因此能 Read 该路径；
+ * - 提示词显式要求 AI 用 Edit 工具改对应段，fileChange 事件经 aiStore.addFileChange →
+ *   enterDiffReview 进 DiffView 审阅；用户接受 → 文件已是新内容，拒绝 → 回写 oldContent；
+ * - AiPanel 的 done 事件触发 vaultStore.refreshFileTree → studyStore.subscribeToFileTree
+ *   防抖 300ms → refresh，工作台自动重新解析并刷新缓存。
+ */
 export function buildStudyPrompt(
   action: AiAction,
-  ctx: { topicName: string; unitTitle?: string; materialTitle?: string; materialUrl?: string },
+  ctx: { topicName: string; topicPath: string; unitTitle?: string; materialTitle?: string; materialUrl?: string },
 ): string {
-  const { topicName, unitTitle, materialTitle, materialUrl } = ctx;
+  const { topicName, topicPath, unitTitle, materialTitle, materialUrl } = ctx;
   switch (action) {
     case 'research':
       return [
-        `你是学习规划专家。基于主题「${topicName}」（见附件文档），`,
-        `检索高质量学习资料（网络文章/文档）与经典书籍/论文，输出结构化清单：`,
-        `每条含类型(书/网)、标题、作者、简介、难度(易/中/难)、链接。`,
-        `格式供我粘贴到 ## 资料 段：`,
+        `你是学习规划专家。基于主题「${topicName}」（见附件文件 ${topicPath}），`,
+        `检索高质量学习资料（网络文章/文档）与经典书籍/论文。`,
+        `请用 Edit 工具直接编辑文件 \`${topicPath}\` 的 \`## 资料\` 段：`,
+        `只在段尾追加新行，不要删除或改写已有行；若该段不存在，在文件末尾新建 \`## 资料\` 段。`,
+        `每条资料必须严格单行，格式（\`|\` 两侧留空格，难度用 易/中/难，链接为可访问 URL）：`,
         `- @book <书名> | <作者> | <简介> | 难度:<易|中|难> | <链接>`,
         `- @web <标题> | <链接> | <简介>`,
+        `编辑完成后，在聊天里简要说明你追加了哪些资料即可，不要输出整段清单。`,
       ].join('\n');
     case 'feynman':
       return [
-        `扮演一个 5 岁小孩，听我用大白话讲「${topicName}」${unitTitle ? `的「${unitTitle}」` : ''}（见附件文档）。`,
-        `哪里听不懂就追问，一次只问一个问题，直到我讲清或暴露知识盲区。`,
-        `我暴露的盲区，建议我用 :::callout{type="warning" title="盲区"} 块记到 ## 笔记 段。`,
+        `扮演一个 5 岁小孩，听我用大白话讲「${topicName}」${unitTitle ? `的「${unitTitle}」` : ''}（见附件文件 ${topicPath}）。`,
+        `我会先讲，你哪里听不懂就一次只追问一个问题，直到我讲清或暴露知识盲区。`,
+        `当暴露盲区时，请用 Edit 工具直接编辑文件 \`${topicPath}\` 的 \`## 笔记\` 段：`,
+        `只在段尾追加一个 callout 块记录盲区，不要改写已有内容；若 \`## 笔记\` 段不存在，在文件末尾新建。`,
+        `块格式（前后各一空行）：`,
+        `:::callout{type="warning" title="盲区"}`,
+        `<用一句话描述这个知识盲区>`,
+        `:::`,
+        `一次暴露多个盲区时，可追加多个块。`,
       ].join('\n');
     case 'selftest':
       return [
-        `根据「${topicName}」的 ## 笔记（见附件文档）生成 5 道回忆题，考查主动检索。`,
-        `先只给题、答案折叠，用 :::callout{type="tip" title="答案"} 输出每题答案。`,
+        `先读取附件文件 \`${topicPath}\` 的 \`## 笔记\` 段内容，根据其中要点为「${topicName}」生成 5 道回忆题，考查主动检索。`,
+        `然后用 Edit 工具直接编辑文件 \`${topicPath}\` 的 \`## 笔记\` 段：`,
+        `只在段尾追加一个 callout 块，先列题目、再用 <details> 折叠每题答案；不要改写已有内容。`,
+        `块格式（前后各一空行）：`,
+        `:::callout{type="tip" title="自测题"}`,
+        `1. <题目>`,
+        `<details><summary>答案</summary>答案…</details>`,
+        `:::`,
       ].join('\n');
     case 'sq3r':
       return [
         `对这条资料做 SQ3R 预读：${materialTitle ? `「${materialTitle}」` : ''}${materialUrl ? `（${materialUrl}）` : ''}。`,
-        `先给 survey（大纲），再为每部分给一个预读问题，`,
-        `用 :::callout{type="info" title="预读问题"} 输出，供我读时带着问题。`,
+        `先给 survey（大纲），再为每部分给一个预读问题。`,
+        `然后用 Edit 工具直接编辑附件文件 \`${topicPath}\` 的 \`## 笔记\` 段：`,
+        `只在段尾追加一个 callout 块列出预读问题，不要改写已有内容；若 \`## 笔记\` 段不存在，在文件末尾新建。`,
+        `块格式（前后各一空行）：`,
+        `:::callout{type="info" title="预读问题"}`,
+        `- <预读问题1>`,
+        `- <预读问题2>`,
+        `:::`,
       ].join('\n');
     default:
       return '';
@@ -167,9 +199,17 @@ export function buildStudyPrompt(
 
 /**
  * 打开 AI 面板并预填提示词（无新调用链，复用 ContextMenu 的 addFileToChat 模式）。
- * - 注入主题文档作为附件上下文；
- * - 预填提示词到输入框（经 aiStore.pendingPrompt，由 ChatInput 消费）；
- * - 打开 AI 面板（settings.showAiPanel + editorStore.aiPanelVisible）。
+ * - 注入主题文档作为附件上下文（ChatInput → AiPanel.handleSend 会生成"请先用 Read 工具
+ *   读取该文件"指令，AI 据此 Read + Edit 该路径；Claude adapter 以 vault 根为 workingDir，
+ *   `topicPath` 为 vault 相对路径，Edit 工具可直达）；
+ * - 预填提示词到输入框（经 aiStore.pendingPrompt，由 ChatInput 消费）——提示词指令已从
+ *   "产出清单供粘贴"改为"用 Edit 工具直接编辑对应段"（PR5）；
+ * - 打开 AI 面板（settings.showAiPanel + editorStore.aiPanelVisible）；
+ * - 同时确保主题文档作为编辑器 tab 打开：AI 提出的 fileChange 经 aiStore.addFileChange
+ *   命中已打开的 tab → enterDiffReview，使现有 DiffReviewBar（WorkArea）可审阅 accept/reject；
+ *   openFile 不切换 currentPage，study 页无视觉影响，切回 editor 页即可审阅 diff。
+ *   工作台侧则由 AiPanel done → vaultStore.refreshFileTree → studyStore.subscribeToFileTree
+ *   （防抖 300ms）→ refresh 自动重新解析，无需 diff 审阅也能看到 AI 编辑结果。
  * 调用方应在 isAiAvailable() 为真时才调用。
  */
 export function openStudyAiAction(
@@ -182,4 +222,7 @@ export function openStudyAiAction(
   ai.setPendingPrompt(prompt);
   useSettingsStore.getState().updateSettings({ showAiPanel: true });
   useEditorStore.setState({ aiPanelVisible: true });
+  // 非阻塞打开主题文档 tab，接上 diff 审阅链路（不切换页面、不影响 study 视图）。
+  const fileName = topicPath.split('/').pop() ?? topicPath;
+  void useEditorStore.getState().openFile(topicPath, fileName);
 }

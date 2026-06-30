@@ -3,6 +3,7 @@ import {
   buildStudyTaskLine,
   appendTaskLineToDaily,
   collectScheduleLinks,
+  buildStudyPrompt,
 } from './scheduleLink';
 import type { ScheduleTask } from '@/schedule/types';
 import type { StudyUnit } from '@/study/types';
@@ -125,5 +126,62 @@ describe('collectScheduleLinks', () => {
 
   it('returns empty for empty task list', () => {
     expect(collectScheduleLinks([], 'agent-dev').size).toBe(0);
+  });
+});
+
+describe('buildStudyPrompt (PR5: AI 直接编辑文档)', () => {
+  const topicPath = '学习/agent-dev.md';
+  const baseCtx = { topicName: 'agent 开发', topicPath };
+
+  it('research: instructs AI to Edit the ## 资料 section with exact line grammar', () => {
+    const p = buildStudyPrompt('research', baseCtx);
+    // 必须指向具体文件路径并要求用 Edit 工具直接改段
+    expect(p).toContain(topicPath);
+    expect(p).toMatch(/Edit 工具直接编辑(附件)?文件/);
+    expect(p).toContain('## 资料');
+    // 行语法与 markdown.ts BOOK_RE/WEB_RE 严格一致
+    expect(p).toContain('- @book <书名> | <作者> | <简介> | 难度:<易|中|难> | <链接>');
+    expect(p).toContain('- @web <标题> | <链接> | <简介>');
+    // 不再要求"供粘贴"
+    expect(p).not.toMatch(/供我粘贴|供粘贴/);
+  });
+
+  it('feynman: instructs AI to append a warning callout to ## 笔记', () => {
+    const p = buildStudyPrompt('feynman', baseCtx);
+    expect(p).toContain(topicPath);
+    expect(p).toMatch(/Edit 工具直接编辑(附件)?文件/);
+    expect(p).toContain('## 笔记');
+    expect(p).toContain(':::callout{type="warning" title="盲区"}');
+    expect(p).toContain(':::');
+  });
+
+  it('selftest: instructs AI to append a tip callout with folded answers', () => {
+    const p = buildStudyPrompt('selftest', baseCtx);
+    expect(p).toContain(topicPath);
+    expect(p).toMatch(/Edit 工具直接编辑(附件)?文件/);
+    expect(p).toContain('## 笔记');
+    expect(p).toContain(':::callout{type="tip" title="自测题"}');
+    expect(p).toContain('<details>');
+  });
+
+  it('sq3r: instructs AI to append an info callout with pre-read questions', () => {
+    const p = buildStudyPrompt('sq3r', {
+      ...baseCtx,
+      materialTitle: 'Building LLM Apps',
+      materialUrl: 'https://example.com/x',
+    });
+    expect(p).toContain(topicPath);
+    expect(p).toMatch(/Edit 工具直接编辑(附件)?文件/);
+    expect(p).toContain('## 笔记');
+    expect(p).toContain(':::callout{type="info" title="预读问题"}');
+    expect(p).toContain('Building LLM Apps');
+    expect(p).toContain('https://example.com/x');
+  });
+
+  it('all actions emphasize append-only (do not rewrite existing lines)', () => {
+    for (const action of ['research', 'feynman', 'selftest', 'sq3r'] as const) {
+      const p = buildStudyPrompt(action, baseCtx);
+      expect(p).toMatch(/不要删除或改写已有行|不要改写已有内容/);
+    }
   });
 });

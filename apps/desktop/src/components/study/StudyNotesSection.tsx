@@ -95,7 +95,7 @@ export function StudyNotesSection({ slug, path, topicName, parsed }: Props) {
             className="ghost"
             disabled={!aiAvailable}
             title={aiAvailable ? 'AI 扮演 5 岁小孩追问，暴露知识盲区' : '未配置 AI 适配器'}
-            onClick={() => openStudyAiAction(topicName, path, buildStudyPrompt('feynman', { topicName }))}
+            onClick={() => openStudyAiAction(topicName, path, buildStudyPrompt('feynman', { topicName, topicPath: path }))}
           >
             费曼挑战
           </button>

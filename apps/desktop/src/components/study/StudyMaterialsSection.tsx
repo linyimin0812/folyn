@@ -31,12 +31,13 @@ export function StudyMaterialsSection({ path, topicName, materials, onAdd }: Pro
 
   const runResearch = () => {
     if (!aiAvailable) return;
-    openStudyAiAction(topicName, path, buildStudyPrompt('research', { topicName }));
+    openStudyAiAction(topicName, path, buildStudyPrompt('research', { topicName, topicPath: path }));
   };
   const runSq3r = (m: StudyMaterial) => {
     if (!aiAvailable) return;
     openStudyAiAction(topicName, path, buildStudyPrompt('sq3r', {
       topicName,
+      topicPath: path,
       materialTitle: m.title,
       materialUrl: m.url,
     }));
