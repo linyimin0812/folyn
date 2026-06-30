@@ -12,7 +12,7 @@
 // 4. AI 动作的可用性判断与"打开 AI 面板 + 预填提示词"统一入口（无新调用链）。
 
 import type { ScheduleTask } from '@/schedule/types';
-import type { StudyUnit, AiAction } from './types';
+import type { StudyUnit, StudyMaterial, AiAction } from './types';
 import { CliAdapterRegistry } from '@quill/cli-adapter';
 import { useAiStore } from '@/store/aiStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -128,46 +128,63 @@ export function isAiAvailable(): boolean {
 }
 
 /**
- * 构造各 AI 动作的预填提示词（PR5：让 AI 用 Edit 工具直接编辑主题 .md 文件，
- * 而非在聊天产出供粘贴）。topicName 为人类可读主题标题，topicPath 为 vault 相对
- * 路径（如 `学习/<slug>.md`，与 Claude adapter 的 workingDir=vault 根对齐）。
+ * 构造各 AI 动作的预填提示词。
  *
- * 复用既有 AI 文件编辑+diff 审阅基础设施：
- * - openStudyAiAction 已 addFileToChat 把该文件挂进上下文（ChatInput → AiPanel.handleSend
- *   会生成"请先使用 Read 工具读取以下文件"指令），AI 因此能 Read 该路径；
- * - 提示词显式要求 AI 用 Edit 工具改对应段，fileChange 事件经 aiStore.addFileChange →
- *   enterDiffReview 进 DiffView 审阅；用户接受 → 文件已是新内容，拒绝 → 回写 oldContent；
- * - AiPanel 的 done 事件触发 vaultStore.refreshFileTree → studyStore.subscribeToFileTree
- *   防抖 300ms → refresh，工作台自动重新解析并刷新缓存。
+ * 两种产出模式（PR8）：
+ * - research / plan：AI 返回结构化文本建议（严格单行），不直编文件、不走 diff。
+ *   聊天产出由 studyStore 扫描（scanMaterialSuggestions / scanUnitSuggestions）
+ *   → 建议卡片 → 用户逐条"加入"写盘。
+ * - feynman / selftest / sq3r：AI 用 Edit 工具直接编辑主题 .md 的 `## 笔记` 段，
+ *   fileChange 经 aiStore.addFileChange → enterDiffReview 进 DiffView 审阅
+ *   （PR5 机制不变）。
+ *
+ * topicName 为人类可读主题标题，topicPath 为 vault 相对路径。
+ * plan 可选传入 selectedMaterials（用户在资料区勾选的资料），作为拆解依据。
  */
 export function buildStudyPrompt(
   action: AiAction,
-  ctx: { topicName: string; topicPath: string; unitTitle?: string; materialTitle?: string; materialUrl?: string },
+  ctx: {
+    topicName: string;
+    topicPath: string;
+    unitTitle?: string;
+    materialTitle?: string;
+    materialUrl?: string;
+    selectedMaterials?: StudyMaterial[];
+  },
 ): string {
-  const { topicName, topicPath, unitTitle, materialTitle, materialUrl } = ctx;
+  const { topicName, topicPath, unitTitle, materialTitle, materialUrl, selectedMaterials } = ctx;
   switch (action) {
     case 'research':
       return [
         `你是学习规划专家。基于主题「${topicName}」（见附件文件 ${topicPath}），`,
         `检索高质量学习资料（网络文章/文档）与经典书籍/论文。`,
-        `请用 Edit 工具直接编辑文件 \`${topicPath}\` 的 \`## 资料\` 段：`,
-        `只在段尾追加新行，不要删除或改写已有行；若该段不存在，在文件末尾新建 \`## 资料\` 段。`,
-        `每条资料必须严格单行，格式（\`|\` 两侧留空格，难度用 易/中/难，链接为可访问 URL）：`,
+        `请返回 5-8 条资料建议，每条严格单行，格式如下（\`|\` 两侧留空格，难度用 易/中/难，链接为可访问 URL）：`,
         `- @book <书名> | <作者> | <简介> | 难度:<易|中|难> | <链接>`,
         `- @web <标题> | <链接> | <简介>`,
-        `编辑完成后，在聊天里简要说明你追加了哪些资料即可，不要输出整段清单。`,
+        `只输出这些行（可附简短说明），不要用 Edit 工具改文件。`,
       ].join('\n');
-    case 'plan':
+    case 'plan': {
+      const refs = selectedMaterials && selectedMaterials.length
+        ? [
+            '',
+            `依据以下资料（标题 / 作者 / 链接 / 简介）拆解单元，确保单元覆盖这些资料：`,
+            ...selectedMaterials.map((m) =>
+              `- ${m.title}${m.author ? ` | ${m.author}` : ''}${m.url ? ` | ${m.url}` : ''}${m.summary ? ` | ${m.summary}` : ''}`,
+            ),
+            '',
+          ].join('\n')
+        : '';
       return [
         `你是学习规划专家。基于主题「${topicName}」（见附件文件 ${topicPath}），将其拆解为 5-10 个由浅入深、有先修顺序的学习单元。`,
-        `请用 Edit 工具直接编辑文件 \`${topicPath}\` 的 \`## 计划\` 段：`,
-        `只在段尾追加新行，不要删除或改写已有行；若该段不存在，在文件末尾新建 \`## 计划\` 段。`,
-        `每个单元必须严格单行，行语法（序号 + 点 + 空格 + 单元名 + 空格 + \`@\{...\}\`，est 用合理估时如 2h/4h，dep 标注依赖单元序号、无依赖用 \`-\`，prog 固定 0）：`,
+        `这些单元将被加入主题文档的 \`## 计划\` 段，请按下述行语法返回。`,
+        refs,
+        `请返回 5-10 个学习单元，每条严格单行，行语法（序号 + 点 + 空格 + 单元名 + 空格 + \`@\{...\}\`，est 用合理估时如 2h/4h，dep 标注依赖单元序号、无依赖用 \`-\`，prog 固定 0）：`,
         `- [ ] 1. 入门概览 @{est:2h dep:- prog:0}`,
         `- [ ] 2. 核心概念 @{est:4h dep:1 prog:0}`,
         `序号从 1 开始连续递增；估时贴近真实学习量；dep 指向先修单元的序号。`,
-        `编辑完成后，在聊天里简要说明你拆解的思路与单元数即可，不要输出整段清单。`,
-      ].join('\n');
+        `只输出这些行，不要用 Edit 工具改文件。`,
+      ].filter((s) => s.length > 0).join('\n');
+    }
     case 'feynman':
       return [
         `扮演一个 5 岁小孩，听我用大白话讲「${topicName}」${unitTitle ? `的「${unitTitle}」` : ''}（见附件文件 ${topicPath}）。`,
@@ -211,28 +228,26 @@ export function buildStudyPrompt(
 /**
  * 打开 AI 面板并预填提示词（无新调用链，复用 ContextMenu 的 addFileToChat 模式）。
  * - 注入主题文档作为附件上下文（ChatInput → AiPanel.handleSend 会生成"请先用 Read 工具
- *   读取该文件"指令，AI 据此 Read + Edit 该路径；Claude adapter 以 vault 根为 workingDir，
- *   `topicPath` 为 vault 相对路径，Edit 工具可直达）；
- * - 预填提示词到输入框（经 aiStore.pendingPrompt，由 ChatInput 消费）——提示词指令已从
- *   "产出清单供粘贴"改为"用 Edit 工具直接编辑对应段"（PR5）；
+ *   读取该文件"指令）；
+ * - 预填提示词到输入框（经 aiStore.pendingPrompt，由 ChatInput 消费）；
  * - 打开 AI 面板（settings.showAiPanel + editorStore.aiPanelVisible）；
- * - 同时确保主题文档作为编辑器 tab 打开：AI 提出的 fileChange 经 aiStore.addFileChange
- *   命中已打开的 tab → enterDiffReview，使现有 DiffReviewBar（WorkArea）可审阅 accept/reject；
- *   openFile 不切换 currentPage，study 页无视觉影响，切回 editor 页即可审阅 diff。
- *   工作台侧则由 AiPanel done → vaultStore.refreshFileTree → studyStore.subscribeToFileTree
- *   （防抖 300ms）→ refresh 自动重新解析，无需 diff 审阅也能看到 AI 编辑结果。
+ * - opts.openFile !== false 时，同时把主题文档作为编辑器 tab 打开，接上 diff 审阅链路
+ *   （feynman/selftest/sq3r 直编文件场景需要）。research/plan 改为返回文本建议、
+ *   不直编文件，调用方传 { openFile: false } 跳过开 tab。
  * 调用方应在 isAiAvailable() 为真时才调用。
  */
 export function openStudyAiAction(
   topicName: string,
   topicPath: string,
   prompt: string,
+  opts?: { openFile?: boolean },
 ): void {
   const ai = useAiStore.getState();
   ai.addFileToChat(topicName, topicPath);
   ai.setPendingPrompt(prompt);
   useSettingsStore.getState().updateSettings({ showAiPanel: true });
   useEditorStore.setState({ aiPanelVisible: true });
+  if (opts?.openFile === false) return;
   // 非阻塞打开主题文档 tab，接上 diff 审阅链路（不切换页面、不影响 study 视图）。
   const fileName = topicPath.split('/').pop() ?? topicPath;
   void useEditorStore.getState().openFile(topicPath, fileName);

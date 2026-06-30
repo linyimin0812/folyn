@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStudyStore, subscribeToFileTree } from '@/store/studyStore';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { useAiStore } from '@/store/aiStore';
@@ -9,7 +9,7 @@ import { StudyPlanSection } from './StudyPlanSection';
 import { StudyNotesSection } from './StudyNotesSection';
 import { StudyReviewSection } from './StudyReviewSection';
 import { TodayReviewQueue } from './TodayReviewQueue';
-import { collectScheduleLinks, type ScheduleLink } from '@/study/scheduleLink';
+import { collectScheduleLinks, isAiAvailable, openStudyAiAction, buildStudyPrompt, type ScheduleLink } from '@/study/scheduleLink';
 import { computePlanProgress } from '@/study/progress';
 import type { StudyMaterial, StudyUnit, ReviewAtom } from '@/study/types';
 
@@ -42,8 +42,18 @@ export function StudyWorkbenchPage() {
 
   const activeSlug = useStudyStore((s) => s.activeSlug);
   const topics = useStudyStore((s) => s.topics);
-  const saveTopic = useStudyStore((s) => s.saveTopic);
+  const saveTopicEdits = useStudyStore((s) => s.saveTopicEdits);
   const scheduleUnitToToday = useStudyStore((s) => s.scheduleUnitToToday);
+  const suggestedMaterials = useStudyStore((s) => s.suggestedMaterials);
+  const suggestedUnits = useStudyStore((s) => s.suggestedUnits);
+  const pendingSuggestion = useStudyStore((s) => s.pendingSuggestion);
+  const beginSuggestion = useStudyStore((s) => s.beginSuggestion);
+  const consumeSuggestion = useStudyStore((s) => s.consumeSuggestion);
+  const clearSuggestions = useStudyStore((s) => s.clearSuggestions);
+  const acceptMaterialSuggestion = useStudyStore((s) => s.acceptMaterialSuggestion);
+  const dismissMaterialSuggestion = useStudyStore((s) => s.dismissMaterialSuggestion);
+  const acceptUnitSuggestion = useStudyStore((s) => s.acceptUnitSuggestion);
+  const dismissUnitSuggestion = useStudyStore((s) => s.dismissUnitSuggestion);
   const active = topics.find((t) => t.slug === activeSlug) ?? null;
 
   // 计划区回链状态：扫描 schedule 任务中带 study:<slug> 的条目（只读单向读回）。
@@ -53,6 +63,7 @@ export function StudyWorkbenchPage() {
     : new Map<number, ScheduleLink>();
 
   // diff 审阅入口横幅：当前 AI 会话中针对当前主题文档的待审阅编辑数。
+  // aiSessions/aiActiveId 同时供下方 AI 建议文本捕获 effect 复用。
   const aiSessions = useAiStore((s) => s.sessions);
   const aiActiveId = useAiStore((s) => s.activeSessionId);
   const updateSettings = useSettingsStore((s) => s.updateSettings);
@@ -69,39 +80,101 @@ export function StudyWorkbenchPage() {
     updateSettings({ currentPage: 'editor' });
   };
 
-  // ── 写回路径（均走 saveTopic → serializeStudy lineIndex 原地重写，非托管行原样保留）──
+  // ── AI 建议文本捕获（research/plan）──
+  // pendingSuggestion 置位后，监听 aiStore 活跃会话：流式结束后扫描"新产生的"
+  // 最后一条 assistant 消息文本 → 填充 suggestedMaterials/suggestedUnits，清 pending。
+  // 关键：发起动作时先把当前最后一条 assistant 消息 id 记为 baseline（markSuggestionBaseline），
+  // 避免把动作发起前就已存在的旧 assistant 消息误当作本次产出消费掉、提前清掉 pending。
+  const lastScannedMsgId = useRef<string | null>(null);
+  const markSuggestionBaseline = () => {
+    const sess = aiSessions.find((s) => s.id === aiActiveId);
+    const last = sess ? [...sess.messages].reverse().find((m) => m.role === 'assistant') : null;
+    lastScannedMsgId.current = last?.id ?? null;
+  };
+  useEffect(() => {
+    if (!pendingSuggestion) return;
+    const sess = aiSessions.find((s) => s.id === aiActiveId);
+    if (!sess || sess.isStreaming) return;
+    const lastAssistant = [...sess.messages].reverse().find((m) => m.role === 'assistant');
+    if (!lastAssistant) return;
+    if (lastScannedMsgId.current === lastAssistant.id) return;
+    lastScannedMsgId.current = lastAssistant.id;
+    consumeSuggestion(lastAssistant.content);
+  }, [aiSessions, aiActiveId, pendingSuggestion, consumeSuggestion]);
+
+  // 切换主题时清空旧建议（避免上一个主题的建议残留）。
+  useEffect(() => {
+    clearSuggestions();
+    lastScannedMsgId.current = null;
+  }, [activeSlug, clearSuggestions]);
+
+  // ── 写回路径（均走 saveTopicEdits → serializeStudy，以缓存原始 parsed 为第一参数，
+  //     非托管行原样保留；删除/编辑/新增均正确）──
   const addMaterial = async (m: StudyMaterial) => {
     if (!active) return;
-    const parsed = active.parsed;
-    await saveTopic({ ...parsed, materials: [...parsed.materials, m] });
+    await saveTopicEdits(active.slug, { materials: [...active.parsed.materials, m] });
+  };
+  const editMaterial = async (m: StudyMaterial) => {
+    if (!active) return;
+    const materials = active.parsed.materials.map((x) => (x.id === m.id ? m : x));
+    await saveTopicEdits(active.slug, { materials });
+  };
+  const deleteMaterial = async (id: string) => {
+    if (!active) return;
+    const materials = active.parsed.materials.filter((x) => x.id !== id);
+    await saveTopicEdits(active.slug, { materials });
   };
   const toggleUnit = async (unit: StudyUnit) => {
     if (!active) return;
-    const parsed = active.parsed;
-    const units = parsed.units.map((u) => (u.id === unit.id ? unit : u));
-    await saveTopic({ ...parsed, units });
+    const units = active.parsed.units.map((u) => (u.id === unit.id ? unit : u));
+    await saveTopicEdits(active.slug, { units });
   };
   const addUnit = async (u: StudyUnit) => {
     if (!active) return;
-    const parsed = active.parsed;
-    await saveTopic({ ...parsed, units: [...parsed.units, u] });
+    await saveTopicEdits(active.slug, { units: [...active.parsed.units, u] });
   };
   const rateAtom = async (_prev: ReviewAtom, next: ReviewAtom) => {
     if (!active) return;
-    const parsed = active.parsed;
-    const reviewAtoms = parsed.reviewAtoms.map((a) =>
+    const reviewAtoms = active.parsed.reviewAtoms.map((a) =>
       a.lineIndex === next.lineIndex ? { ...a, ...next } : a,
     );
-    await saveTopic({ ...parsed, reviewAtoms });
+    await saveTopicEdits(active.slug, { reviewAtoms });
   };
   const addReviewAtom = async (atom: ReviewAtom) => {
     if (!active) return;
-    const parsed = active.parsed;
-    await saveTopic({ ...parsed, reviewAtoms: [...parsed.reviewAtoms, atom] });
+    await saveTopicEdits(active.slug, { reviewAtoms: [...active.parsed.reviewAtoms, atom] });
   };
   const onScheduleUnit = async (unit: StudyUnit, noteDate: string) => {
     if (!active) return;
     await scheduleUnitToToday(unit, active.slug, noteDate);
+  };
+
+  // ── AI 动作入口（research/plan 走建议卡片；feynman/selftest/sq3r 仍直编+diff）──
+  const runResearch = () => {
+    if (!active || !isAiAvailable()) return;
+    markSuggestionBaseline();
+    beginSuggestion('research', active.slug);
+    openStudyAiAction(
+      active.parsed.frontmatter.title ?? active.slug,
+      active.path,
+      buildStudyPrompt('research', { topicName: active.parsed.frontmatter.title ?? active.slug, topicPath: active.path }),
+      { openFile: false },
+    );
+  };
+  const runPlanFromSelected = (selected: StudyMaterial[]) => {
+    if (!active || !isAiAvailable()) return;
+    markSuggestionBaseline();
+    beginSuggestion('plan', active.slug);
+    openStudyAiAction(
+      active.parsed.frontmatter.title ?? active.slug,
+      active.path,
+      buildStudyPrompt('plan', {
+        topicName: active.parsed.frontmatter.title ?? active.slug,
+        topicPath: active.path,
+        selectedMaterials: selected,
+      }),
+      { openFile: false },
+    );
   };
 
   const planProgress = useMemo(
@@ -145,8 +218,33 @@ export function StudyWorkbenchPage() {
           ) : active ? (
             <div className="sw-study-grid">
               <h2 className="sw-topbar-title">{active.parsed.frontmatter.title ?? active.slug}</h2>
-              <StudyMaterialsSection path={active.path} topicName={active.parsed.frontmatter.title ?? active.slug} materials={active.parsed.materials} onAdd={addMaterial} />
-              <StudyPlanSection path={active.path} topicName={active.parsed.frontmatter.title ?? active.slug} units={active.parsed.units} scheduleLinks={scheduleLinks} onToggle={toggleUnit} onAdd={addUnit} onSchedule={onScheduleUnit} />
+              <StudyMaterialsSection
+                slug={active.slug}
+                path={active.path}
+                topicName={active.parsed.frontmatter.title ?? active.slug}
+                materials={active.parsed.materials}
+                suggestedMaterials={suggestedMaterials}
+                onAdd={addMaterial}
+                onEdit={editMaterial}
+                onDelete={deleteMaterial}
+                onAcceptSuggestion={(m) => acceptMaterialSuggestion(active.slug, m)}
+                onDismissSuggestion={dismissMaterialSuggestion}
+                onResearch={runResearch}
+                onGeneratePlanFromSelected={runPlanFromSelected}
+              />
+              <StudyPlanSection
+                path={active.path}
+                topicName={active.parsed.frontmatter.title ?? active.slug}
+                units={active.parsed.units}
+                suggestedUnits={suggestedUnits}
+                scheduleLinks={scheduleLinks}
+                onToggle={toggleUnit}
+                onAdd={addUnit}
+                onSchedule={onScheduleUnit}
+                onGeneratePlan={() => runPlanFromSelected([])}
+                onAcceptUnitSuggestion={(u) => acceptUnitSuggestion(active.slug, u)}
+                onDismissUnitSuggestion={dismissUnitSuggestion}
+              />
               <StudyNotesSection slug={active.slug} path={active.path} topicName={active.parsed.frontmatter.title ?? active.slug} parsed={active.parsed} />
               <StudyReviewSection slug={active.slug} path={active.path} topicName={active.parsed.frontmatter.title ?? active.slug} parsed={active.parsed} onRate={rateAtom} onAdd={addReviewAtom} />
             </div>

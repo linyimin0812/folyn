@@ -5,6 +5,8 @@ import { useSettingsStore } from './settingsStore';
 import {
   parseStudy,
   serializeStudy,
+  scanMaterialSuggestions,
+  scanUnitSuggestions,
 } from '@/study/markdown';
 import {
   STUDY_DIR,
@@ -22,13 +24,30 @@ import {
 } from '@/study/scheduleLink';
 import { dateToString } from '@/schedule/dailyScan';
 import { isDue } from '@/study/sm2';
-import type { ParsedStudy, ReviewAtom, StudyUnit } from '@/study/types';
+import type { ParsedStudy, ReviewAtom, StudyUnit, StudyMaterial } from '@/study/types';
 
 /** 跨主题今日复习队列项（交错练习）：atom + 来源主题 slug/path（写回定位）。 */
 export interface DueAtomEntry {
   atom: ReviewAtom;
   topicSlug: string;
   topicPath: string;
+}
+
+/** AI research/plan 动作的待捕获状态：动作发起后置位，待聊天产出后扫描清零。 */
+export interface PendingSuggestion {
+  kind: 'research' | 'plan';
+  slug: string;
+}
+
+/** 复用 markdown.ts 的扫描器把 AI 聊天文本解析为建议项（纯函数，便于单测）。 */
+export function parseSuggestionText(
+  text: string,
+  kind: 'research' | 'plan',
+  slug: string,
+): StudyMaterial[] | StudyUnit[] {
+  return kind === 'research'
+    ? scanMaterialSuggestions(text, slug)
+    : scanUnitSuggestions(text, slug);
 }
 
 /**
@@ -58,12 +77,44 @@ interface StudyState {
   loading: boolean;
   error: string | null;
 
+  /** AI research 动作返回的资料建议（建议卡片，逐条加入后移除）。 */
+  suggestedMaterials: StudyMaterial[];
+  /** AI plan 动作返回的学习单元建议。 */
+  suggestedUnits: StudyUnit[];
+  /** 当前等待 AI 产出文本建议的动作（research/plan）；扫描到产出后清零。 */
+  pendingSuggestion: PendingSuggestion | null;
+
   refresh: () => Promise<void>;
   selectTopic: (slug: string) => void;
   createTopic: (title: string) => Promise<string | null>;
   deleteTopic: (slug: string) => Promise<void>;
   /** 把改动后的 ParsedStudy 序列化回写对应主题文档（PR3 勾选/评级用）。 */
   saveTopic: (parsed: ParsedStudy) => Promise<void>;
+  /**
+   * 对指定主题的 materials/units/reviewAtoms 做增量编辑（增/改/删）并回写。
+   * 关键修复：以 topics 缓存里的原始 parsed（含全部原 lineIndex）作为
+   * serializeStudy 第一参数，传入新数组（filter/map 后）作为后续参数，
+   * 使被删除的托管行（原 lineIndex 不在新数组中）被正确移除。
+   * 未传的维度沿用 originalParsed 的原数组（不改写）。
+   */
+  saveTopicEdits: (
+    slug: string,
+    edits: { materials?: StudyMaterial[]; units?: StudyUnit[]; reviewAtoms?: ReviewAtom[] },
+  ) => Promise<void>;
+  /** 发起 research/plan 建议：置 pendingSuggestion、清空对应建议列表。 */
+  beginSuggestion: (kind: 'research' | 'plan', slug: string) => void;
+  /** AI 产出后扫描聊天文本填充建议列表并清 pendingSuggestion（无产出也清零）。 */
+  consumeSuggestion: (text: string) => void;
+  /** 清空建议列表（切换主题/取消时）。 */
+  clearSuggestions: () => void;
+  /** 接受一条资料建议：追加到主题 `## 资料` 段并从建议列表移除。 */
+  acceptMaterialSuggestion: (slug: string, material: StudyMaterial) => Promise<void>;
+  /** 忽略一条资料建议：仅从建议列表移除。 */
+  dismissMaterialSuggestion: (id: string) => void;
+  /** 接受一条单元建议：序号重排为 max+1 后追加到 `## 计划` 段，并从建议列表移除。 */
+  acceptUnitSuggestion: (slug: string, unit: StudyUnit) => Promise<void>;
+  /** 忽略一条单元建议。 */
+  dismissUnitSuggestion: (id: string) => void;
   /**
    * 对指定主题（可非当前激活）的复习原子做就地更新并回写。
    * 跨主题"今日复习"队列评级用：避免依赖 activeSlug，直接按 slug 定位主题文档。
@@ -89,6 +140,9 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   activeSlug: null,
   loading: false,
   error: null,
+  suggestedMaterials: [],
+  suggestedUnits: [],
+  pendingSuggestion: null,
 
   refresh: async () => {
     const vault = useVaultStore.getState();
@@ -185,6 +239,75 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       ),
     }));
   },
+
+  saveTopicEdits: async (slug, edits) => {
+    const target = get().topics.find((t) => t.slug === slug);
+    if (!target) return;
+    const original = target.parsed;
+    const materials = edits.materials ?? original.materials;
+    const units = edits.units ?? original.units;
+    const reviewAtoms = edits.reviewAtoms ?? original.reviewAtoms;
+    // 以 original（含全部原 lineIndex）为第一参数，使删除检测生效。
+    const out = serializeStudy(original, materials, units, reviewAtoms);
+    const path = target.path;
+    await useVaultStore.getState().writeFile(path, out);
+    useVaultStore.getState().refreshFileTree().catch(() => {});
+    set((s) => ({
+      topics: s.topics.map((t) =>
+        t.slug === slug ? { ...t, parsed: parseStudy(out, slug) } : t,
+      ),
+    }));
+  },
+
+  beginSuggestion: (kind, slug) =>
+    set(() => ({
+      pendingSuggestion: { kind, slug },
+      ...(kind === 'research' ? { suggestedMaterials: [] } : { suggestedUnits: [] }),
+    })),
+
+  consumeSuggestion: (text) => {
+    const p = get().pendingSuggestion;
+    if (!p) return;
+    if (p.kind === 'research') {
+      const suggestions = scanMaterialSuggestions(text, p.slug);
+      set({ suggestedMaterials: suggestions, pendingSuggestion: null });
+    } else {
+      const suggestions = scanUnitSuggestions(text, p.slug);
+      set({ suggestedUnits: suggestions, pendingSuggestion: null });
+    }
+  },
+
+  clearSuggestions: () =>
+    set({ suggestedMaterials: [], suggestedUnits: [], pendingSuggestion: null }),
+
+  acceptMaterialSuggestion: async (slug, material) => {
+    const target = get().topics.find((t) => t.slug === slug);
+    if (!target) return;
+    const materials = [...target.parsed.materials, material];
+    await get().saveTopicEdits(slug, { materials });
+    set((s) => ({
+      suggestedMaterials: s.suggestedMaterials.filter((m) => m.id !== material.id),
+    }));
+  },
+
+  dismissMaterialSuggestion: (id) =>
+    set((s) => ({ suggestedMaterials: s.suggestedMaterials.filter((m) => m.id !== id) })),
+
+  acceptUnitSuggestion: async (slug, unit) => {
+    const target = get().topics.find((t) => t.slug === slug);
+    if (!target) return;
+    // 序号重排为现有 max+1，避免与已有单元冲突。
+    const maxOrder = target.parsed.units.reduce((mx, u) => Math.max(mx, u.order), 0);
+    const newUnit = { ...unit, order: maxOrder + 1 };
+    const units = [...target.parsed.units, newUnit];
+    await get().saveTopicEdits(slug, { units });
+    set((s) => ({
+      suggestedUnits: s.suggestedUnits.filter((u) => u.id !== unit.id),
+    }));
+  },
+
+  dismissUnitSuggestion: (id) =>
+    set((s) => ({ suggestedUnits: s.suggestedUnits.filter((u) => u.id !== id) })),
 
   rateAtomInTopic: async (slug, atomId, next) => {
     const target = get().topics.find((t) => t.slug === slug);

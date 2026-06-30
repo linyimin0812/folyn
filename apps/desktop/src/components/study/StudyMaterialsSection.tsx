@@ -6,11 +6,26 @@ import { isTauri } from '@/utils/platform';
 import { isAiAvailable, openStudyAiAction, buildStudyPrompt } from '@/study/scheduleLink';
 
 interface Props {
+  slug: string;
   path: string;
   topicName: string;
   materials: StudyMaterial[];
+  /** AI research 动作返回的资料建议（建议卡片，逐条加入后移除）。 */
+  suggestedMaterials: StudyMaterial[];
   /** 新增资料（lineIndex<0 → 追加到段尾）并回写。 */
   onAdd: (m: StudyMaterial) => Promise<void>;
+  /** 编辑资料（保持 lineIndex，原地重写）并回写。 */
+  onEdit: (m: StudyMaterial) => Promise<void>;
+  /** 删除资料（按 id 过滤后回写，托管行移除）。 */
+  onDelete: (id: string) => Promise<void>;
+  /** 接受一条建议：追加到 `## 资料` 段并从建议列表移除。 */
+  onAcceptSuggestion: (m: StudyMaterial) => void;
+  /** 忽略一条建议：从建议列表移除。 */
+  onDismissSuggestion: (id: string) => void;
+  /** 发起 AI 找资料（research 建议）。 */
+  onResearch: () => void;
+  /** 用选中的资料生成学习计划（plan 建议）。 */
+  onGeneratePlanFromSelected: (selected: StudyMaterial[]) => void;
 }
 
 /** 书籍图标。 */
@@ -43,10 +58,27 @@ const DIFFICULTY_TAG: Record<'easy' | 'medium' | 'hard', string> = {
   hard: 'bug',
 };
 
-/** 资料区：列出 `## 资料` 段的书目/网络资料，卡片化展示；手动 inline 添加；
- *  AI 动作：学习研究（找资料）、SQ3R 预读（针对某条资料）。 */
-export function StudyMaterialsSection({ path, topicName, materials, onAdd }: Props) {
+/**
+ * 资料区：列出 `## 资料` 段的书目/网络资料，卡片化展示；手动 inline 添加/编辑/删除；
+ * 多选资料 → 用选中资料生成计划；AI 动作：学习研究（建议卡片）、SQ3R 预读（直编+diff）。
+ */
+export function StudyMaterialsSection({
+  slug,
+  path,
+  topicName,
+  materials,
+  suggestedMaterials,
+  onAdd,
+  onEdit,
+  onDelete,
+  onAcceptSuggestion,
+  onDismissSuggestion,
+  onResearch,
+  onGeneratePlanFromSelected,
+}: Props) {
   const [adding, setAdding] = useState<false | 'book' | 'web'>(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const openFile = useEditorStore((s) => s.openFile);
   const aiAvailable = isAiAvailable();
 
@@ -59,10 +91,6 @@ export function StudyMaterialsSection({ path, topicName, materials, onAdd }: Pro
     }
   };
 
-  const runResearch = () => {
-    if (!aiAvailable) return;
-    openStudyAiAction(topicName, path, buildStudyPrompt('research', { topicName, topicPath: path }));
-  };
   const runSq3r = (m: StudyMaterial) => {
     if (!aiAvailable) return;
     openStudyAiAction(topicName, path, buildStudyPrompt('sq3r', {
@@ -72,6 +100,23 @@ export function StudyMaterialsSection({ path, topicName, materials, onAdd }: Pro
       materialUrl: m.url,
     }));
   };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const generatePlan = () => {
+    const selected = materials.filter((m) => selectedIds.has(m.id));
+    if (!selected.length) return;
+    onGeneratePlanFromSelected(selected);
+  };
+
+  const editing = editingId ? materials.find((m) => m.id === editingId) ?? null : null;
 
   return (
     <section className="sw-study-section">
@@ -83,22 +128,86 @@ export function StudyMaterialsSection({ path, topicName, materials, onAdd }: Pro
           <button
             className="ghost"
             disabled={!aiAvailable}
-            title={aiAvailable ? 'AI 检索网络资料与经典书籍/论文' : '未配置 AI 适配器'}
-            onClick={runResearch}
+            title={aiAvailable ? 'AI 检索网络资料与经典书籍/论文（返回建议卡片）' : '未配置 AI 适配器'}
+            onClick={onResearch}
           >
             AI 找资料
           </button>
+          {selectedIds.size > 0 && (
+            <button
+              className="ghost"
+              disabled={!aiAvailable}
+              title={aiAvailable ? `基于选中的 ${selectedIds.size} 条资料生成学习计划` : '未配置 AI 适配器'}
+              onClick={generatePlan}
+            >
+              用选中资料生成计划 ({selectedIds.size})
+            </button>
+          )}
           <button className="ghost" onClick={() => openFile(path, path.split('/').pop() ?? path)} title="在编辑器编辑资料段">编辑</button>
         </div>
       </header>
 
+      {suggestedMaterials.length > 0 && (
+        <div className="sw-study-suggestions">
+          <p className="sw-study-suggestions-title">AI 建议资料（逐条加入或忽略）</p>
+          <ul className="sw-study-list sw-material-grid">
+            {suggestedMaterials.map((m) => (
+              <li key={m.id} className="sw-card sw-material-card sw-suggestion-card">
+                <div className="sw-card-top">
+                  <span className={`sw-tag ${m.kind === 'book' ? 'dev' : 'ops'}`}>
+                    <span className="sw-tag-icon">{m.kind === 'book' ? BOOK_ICON : LINK_ICON}</span>
+                    {m.kind === 'book' ? '书' : '网页'}
+                  </span>
+                  {m.difficulty && (
+                    <span className={`sw-tag ${DIFFICULTY_TAG[m.difficulty]}`} title="难度">
+                      {DIFFICULTY_LABEL[m.difficulty]}
+                    </span>
+                  )}
+                </div>
+                <h4 className="sw-material-title">
+                  {m.url ? (
+                    <a href={m.url} onClick={(e) => { e.preventDefault(); openLink(m.url); }} title={m.url}>{m.title}</a>
+                  ) : (
+                    <span>{m.title}</span>
+                  )}
+                </h4>
+                {m.kind === 'book' && m.author && (
+                  <p className="sw-card-meta-line">作者：{m.author}</p>
+                )}
+                {m.summary && <p className="sw-material-summary">{m.summary}</p>}
+                <div className="sw-card-foot">
+                  <div className="sw-card-actions">
+                    <button className="sw-card-action" onClick={() => onAcceptSuggestion(m)}>加入</button>
+                    <button className="sw-card-action ghost" onClick={() => onDismissSuggestion(m.id)}>忽略</button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {adding && (
-        <MaterialAddForm
+        <MaterialForm
+          key={`add-${adding}`}
           kind={adding}
           onCancel={() => setAdding(false)}
           onSubmit={async (m) => {
-            await onAdd(m);
+            await onAdd({ ...m, id: `${slug}#materials-new`, lineIndex: -1 });
             setAdding(false);
+          }}
+        />
+      )}
+
+      {editing && (
+        <MaterialForm
+          key={`edit-${editing.id}`}
+          kind={editing.kind}
+          initial={editing}
+          onCancel={() => setEditingId(null)}
+          onSubmit={async (m) => {
+            await onEdit({ ...editing, ...m });
+            setEditingId(null);
           }}
         />
       )}
@@ -108,15 +217,22 @@ export function StudyMaterialsSection({ path, topicName, materials, onAdd }: Pro
           <span className="sw-empty-icon">{STACK_ICON}</span>
           <span className="sw-empty-text">还没有资料</span>
           <span className="sw-empty-hint">用 AI 找资料，或手动添加书目/网页</span>
-          <button className="sw-empty-cta" disabled={!aiAvailable} onClick={runResearch} title={aiAvailable ? '' : '未配置 AI 适配器'}>
+          <button className="sw-empty-cta" disabled={!aiAvailable} onClick={onResearch} title={aiAvailable ? '' : '未配置 AI 适配器'}>
             AI 找资料
           </button>
         </div>
       ) : (
         <ul className="sw-study-list sw-material-grid">
           {materials.map((m) => (
-            <li key={m.id} className="sw-card sw-material-card">
+            <li key={m.id} className={`sw-card sw-material-card${selectedIds.has(m.id) ? ' selected' : ''}`}>
               <div className="sw-card-top">
+                <label className="sw-card-select" title="选中以生成计划">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(m.id)}
+                    onChange={() => toggleSelect(m.id)}
+                  />
+                </label>
                 <span className={`sw-tag ${m.kind === 'book' ? 'dev' : 'ops'}`}>
                   <span className="sw-tag-icon">{m.kind === 'book' ? BOOK_ICON : LINK_ICON}</span>
                   {m.kind === 'book' ? '书' : '网页'}
@@ -153,6 +269,8 @@ export function StudyMaterialsSection({ path, topicName, materials, onAdd }: Pro
                   )}
                 </div>
                 <div className="sw-card-actions">
+                  <button className="sw-card-action" onClick={() => setEditingId(m.id)} title="编辑资料">编辑</button>
+                  <button className="sw-card-action" onClick={() => onDelete(m.id)} title="删除资料">删除</button>
                   <button
                     className="sw-card-action"
                     disabled={!aiAvailable}
@@ -171,31 +289,30 @@ export function StudyMaterialsSection({ path, topicName, materials, onAdd }: Pro
   );
 }
 
-interface AddProps {
+interface FormProps {
   kind: 'book' | 'web';
+  initial?: StudyMaterial;
   onCancel: () => void;
-  onSubmit: (m: StudyMaterial) => Promise<void>;
+  onSubmit: (m: Omit<StudyMaterial, 'id' | 'lineIndex'>) => Promise<void>;
 }
 
-function MaterialAddForm({ kind, onCancel, onSubmit }: AddProps) {
-  const [title, setTitle] = useState('');
-  const [author, setAuthor] = useState('');
-  const [summary, setSummary] = useState('');
-  const [url, setUrl] = useState('');
-  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+function MaterialForm({ kind, initial, onCancel, onSubmit }: FormProps) {
+  const [title, setTitle] = useState(initial?.title ?? '');
+  const [author, setAuthor] = useState(initial?.author ?? '');
+  const [summary, setSummary] = useState(initial?.summary ?? '');
+  const [url, setUrl] = useState(initial?.url ?? '');
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>(initial?.difficulty ?? 'medium');
 
   const submit = async () => {
     const t = title.trim();
     if (!t) return;
     await onSubmit({
-      id: `#materials--1`,
       kind,
       title: t,
       author: kind === 'book' ? author.trim() || undefined : undefined,
       summary: summary.trim() || undefined,
       difficulty: kind === 'book' ? difficulty : undefined,
       url: url.trim() || undefined,
-      lineIndex: -1,
     });
   };
 
@@ -214,7 +331,7 @@ function MaterialAddForm({ kind, onCancel, onSubmit }: AddProps) {
         </select>
       )}
       <input value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="简介" />
-      <button onClick={submit}>添加</button>
+      <button onClick={submit}>{initial ? '保存' : '添加'}</button>
       <button className="ghost" onClick={onCancel}>取消</button>
     </div>
   );

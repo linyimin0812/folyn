@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useStudyStore, collectDueAtoms } from './studyStore';
+import { useStudyStore, collectDueAtoms, parseSuggestionText } from './studyStore';
 import { useVaultStore } from './vaultStore';
 import { useSettingsStore } from './settingsStore';
 import { storageClient } from '@/utils/storageClient';
@@ -74,7 +74,7 @@ beforeEach(() => {
     currentVault: { id: 'v1', name: 'a', providerType: 'tauri', basePath: '/a' } as never,
     fileTree: [],
   } as never);
-  useStudyStore.setState({ topics: [], activeSlug: null, loading: false, error: null });
+  useStudyStore.setState({ topics: [], activeSlug: null, loading: false, error: null, suggestedMaterials: [], suggestedUnits: [], pendingSuggestion: null });
 });
 
 describe('studyDoc helpers', () => {
@@ -335,3 +335,191 @@ describe('useStudyStore.rateAtomInTopic', () => {
     expect(res).toBeNull();
   });
 });
+
+/** 构造一个含两条资料 + 一个单元的主题文档并加载到 store。 */
+async function setupTopicWithMaterials(slug: string) {
+  const doc = [
+    '---',
+    `title: ${slug}`,
+    `slug: ${slug}`,
+    'created: 2026-06-29',
+    '---',
+    '',
+    '## 资料',
+    '- @book 《书A》 | 作者A | 简介A | 难度:中 | https://a',
+    '- @web 网页B | https://b | 简介B',
+    '',
+    '## 计划',
+    '- [ ] 1. 入门 @{est:2h dep:- prog:0}',
+    '',
+    '## 笔记',
+    '',
+    '## 复习',
+    '',
+  ].join('\n');
+  await useVaultStore.getState().createFile(studyDocPath(slug), doc);
+  await useStudyStore.getState().refresh();
+}
+
+describe('useStudyStore.saveTopicEdits (delete/edit/append via cached original parsed)', () => {
+  it('deletes a material: round-trip parse no longer contains the line', async () => {
+    await setupTopicWithMaterials('dev');
+
+    const entry = useStudyStore.getState().topics.find((t) => t.slug === 'dev')!;
+    const target = entry.parsed.materials[0];
+    await useStudyStore.getState().saveTopicEdits('dev', {
+      materials: entry.parsed.materials.filter((m) => m.id !== target.id),
+    });
+
+    const written = manager.files.get(studyDocPath('dev'))!;
+    expect(written).not.toContain('《书A》');
+    expect(written).toContain('网页B');
+    // 缓存已刷新：重 parse 后该资料不再出现
+    const cached = useStudyStore.getState().topics.find((t) => t.slug === 'dev')!;
+    expect(cached.parsed.materials.map((m) => m.title)).toEqual(['网页B']);
+  });
+
+  it('edits a material in place (keeps lineIndex, rewrites line)', async () => {
+    await setupTopicWithMaterials('edit');
+
+    const entry = useStudyStore.getState().topics.find((t) => t.slug === 'edit')!;
+    const target = entry.parsed.materials[1];
+    await useStudyStore.getState().saveTopicEdits('edit', {
+      materials: entry.parsed.materials.map((m) =>
+        m.id === target.id ? { ...m, title: '网页B改名', summary: '新简介' } : m,
+      ),
+    });
+
+    const written = manager.files.get(studyDocPath('edit'))!;
+    expect(written).toContain('- @web 网页B改名 | https://b | 新简介');
+    // 原行不再以旧标题出现
+    expect(written).not.toContain('网页B | https://b | 简介B');
+    // 另一条资料与单元原样保留
+    expect(written).toContain('《书A》');
+    expect(written).toContain('- [ ] 1. 入门');
+  });
+
+  it('appends a new material (lineIndex=-1) to the 资料 section', async () => {
+    await setupTopicWithMaterials('append');
+
+    await useStudyStore.getState().saveTopicEdits('append', {
+      materials: [
+        ...useStudyStore.getState().topics.find((t) => t.slug === 'append')!.parsed.materials,
+        { id: 'x', kind: 'web', title: '新资料', url: 'https://c', summary: '好文', lineIndex: -1 },
+      ],
+    });
+
+    const written = manager.files.get(studyDocPath('append'))!;
+    expect(written).toContain('- @web 新资料 | https://c | 好文');
+    // 出现在 ## 计划 之前
+    expect(written.indexOf('新资料')).toBeLessThan(written.indexOf('## 计划'));
+  });
+
+  it('deleting via saveTopic (old path) does NOT remove the line (regression guard)', async () => {
+    // 旧 saveTopic(parsed) 用同源 parsed 作为 serializeStudy 第一参数，删除检测失效。
+    await setupTopicWithMaterials('oldsave');
+
+    const entry = useStudyStore.getState().topics.find((t) => t.slug === 'oldsave')!;
+    const filtered = { ...entry.parsed, materials: entry.parsed.materials.slice(1) };
+    await useStudyStore.getState().saveTopic(filtered);
+
+    const written = manager.files.get(studyDocPath('oldsave'))!;
+    // 旧路径：删除不生效，旧行仍在（这正是 saveTopicEdits 要修复的 bug）
+    expect(written).toContain('《书A》');
+  });
+});
+
+describe('useStudyStore suggestion flow (research/plan)', () => {
+  it('beginSuggestion sets pendingSuggestion and clears the matching list', () => {
+    useStudyStore.setState({ suggestedMaterials: [{ id: 'old', kind: 'web', title: 'x', lineIndex: -1 } as never] });
+    useStudyStore.getState().beginSuggestion('research', 'dev');
+    expect(useStudyStore.getState().pendingSuggestion).toEqual({ kind: 'research', slug: 'dev' });
+    expect(useStudyStore.getState().suggestedMaterials).toEqual([]);
+  });
+
+  it('consumeSuggestion scans AI text into suggestedMaterials and clears pending', () => {
+    useStudyStore.getState().beginSuggestion('research', 'dev');
+    const text = [
+      '- @book 《书》 | 作者 | 简介 | 难度:难 | https://x',
+      '说明文字',
+      '- @web 标题 | https://y | 简介',
+    ].join('\n');
+    useStudyStore.getState().consumeSuggestion(text);
+    const s = useStudyStore.getState();
+    expect(s.pendingSuggestion).toBeNull();
+    expect(s.suggestedMaterials).toHaveLength(2);
+    expect(s.suggestedMaterials[0]).toMatchObject({ kind: 'book', title: '《书》', difficulty: 'hard' });
+  });
+
+  it('consumeSuggestion scans plan text into suggestedUnits', () => {
+    useStudyStore.getState().beginSuggestion('plan', 'dev');
+    const text = '- [ ] 1. 入门 @{est:2h dep:- prog:0}\n- [ ] 2. 进阶 @{est:4h dep:1 prog:0}';
+    useStudyStore.getState().consumeSuggestion(text);
+    expect(useStudyStore.getState().suggestedUnits).toHaveLength(2);
+    expect(useStudyStore.getState().suggestedUnits[1]).toMatchObject({ order: 2, title: '进阶', dep: '1' });
+  });
+
+  it('consumeSuggestion with no matching lines still clears pending', () => {
+    useStudyStore.getState().beginSuggestion('research', 'dev');
+    useStudyStore.getState().consumeSuggestion('AI 没按格式回复');
+    expect(useStudyStore.getState().pendingSuggestion).toBeNull();
+    expect(useStudyStore.getState().suggestedMaterials).toEqual([]);
+  });
+
+  it('acceptMaterialSuggestion appends to ## 资料 and removes from suggestions', async () => {
+    await setupTopicWithMaterials('acc');
+    const sug: StudyMaterialLike = { id: 'acc#sug-mat-0', kind: 'web', title: '建议资料', url: 'https://s', summary: '好', lineIndex: -1 };
+    useStudyStore.setState({ suggestedMaterials: [sug as never], pendingSuggestion: null });
+
+    await useStudyStore.getState().acceptMaterialSuggestion('acc', sug as never);
+
+    const written = manager.files.get(studyDocPath('acc'))!;
+    expect(written).toContain('- @web 建议资料 | https://s | 好');
+    expect(useStudyStore.getState().suggestedMaterials).toHaveLength(0);
+  });
+
+  it('acceptUnitSuggestion renumbers order to max+1 and appends', async () => {
+    await setupTopicWithMaterials('accu');
+    // 建议里 order=1（与已有冲突），应被重排为 2
+    const sug: StudyUnitLike = { id: 'accu#sug-unit-0', order: 1, title: '建议单元', done: false, est: '3h', dep: '-', prog: 0, lineIndex: -1 };
+    useStudyStore.setState({ suggestedUnits: [sug as never], pendingSuggestion: null });
+
+    await useStudyStore.getState().acceptUnitSuggestion('accu', sug as never);
+
+    const written = manager.files.get(studyDocPath('accu'))!;
+    expect(written).toContain('- [ ] 2. 建议单元 @{est:3h dep:- prog:0}');
+    expect(useStudyStore.getState().suggestedUnits).toHaveLength(0);
+  });
+
+  it('dismiss removes from suggestion list without writing', async () => {
+    await setupTopicWithMaterials('dis');
+    const sug: StudyMaterialLike = { id: 'dis#sug-mat-0', kind: 'web', title: '建议', url: 'https://s', lineIndex: -1 };
+    useStudyStore.setState({ suggestedMaterials: [sug as never], pendingSuggestion: null });
+    const before = manager.files.get(studyDocPath('dis'))!;
+
+    useStudyStore.getState().dismissMaterialSuggestion('dis#sug-mat-0');
+    expect(useStudyStore.getState().suggestedMaterials).toHaveLength(0);
+    expect(manager.files.get(studyDocPath('dis'))).toBe(before);
+  });
+});
+
+describe('parseSuggestionText (pure helper)', () => {
+  it('routes research → scanMaterialSuggestions', () => {
+    const out = parseSuggestionText('- @web A | https://a | s', 'research', 'sl') as { kind: string }[];
+    expect(out).toHaveLength(1);
+    expect(out[0].kind).toBe('web');
+  });
+  it('routes plan → scanUnitSuggestions', () => {
+    const out = parseSuggestionText('- [ ] 1. A @{est:1h dep:- prog:0}', 'plan', 'sl') as { order: number }[];
+    expect(out[0].order).toBe(1);
+  });
+});
+
+type StudyMaterialLike = {
+  id: string; kind: 'book' | 'web'; title: string; url?: string;
+  summary?: string; author?: string; difficulty?: 'easy' | 'medium' | 'hard'; lineIndex: number;
+};
+type StudyUnitLike = {
+  id: string; order: number; title: string; done: boolean;
+  est?: string; dep?: string; prog: number; lineIndex: number;
+};

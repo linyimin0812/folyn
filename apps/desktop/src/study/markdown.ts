@@ -77,6 +77,66 @@ function sectionOf(heading: string): Section {
   return null;
 }
 
+/**
+ * 解析单行资料（`- @book` / `- @web`）为数据字段（不含 id / lineIndex）。
+ * 供 parseStudy 与 AI 建议文本扫描复用，正则单一来源。不匹配返回 null。
+ */
+export function parseMaterialLine(line: string): {
+  kind: MaterialKind;
+  title: string;
+  author?: string;
+  summary?: string;
+  difficulty?: Difficulty;
+  url?: string;
+} | null {
+  const bm = BOOK_RE.exec(line);
+  if (bm) {
+    return {
+      kind: 'book',
+      title: bm[1].trim(),
+      author: bm[2].trim(),
+      summary: bm[3].trim(),
+      difficulty: DIFFICULTY_FROM_LABEL[bm[4]],
+      url: bm[5],
+    };
+  }
+  const wm = WEB_RE.exec(line);
+  if (wm) {
+    return {
+      kind: 'web',
+      title: wm[1].trim(),
+      url: wm[2],
+      summary: wm[3].trim(),
+    };
+  }
+  return null;
+}
+
+/**
+ * 解析单行学习单元（`- [ ] N. 单元名 @{...}`）为数据字段（不含 id / lineIndex）。
+ * 供 parseStudy 与 AI 建议文本扫描复用。不匹配返回 null。
+ */
+export function parseUnitLine(line: string): {
+  order: number;
+  title: string;
+  done: boolean;
+  est?: string;
+  dep?: string;
+  prog: number;
+} | null {
+  const m = UNIT_RE.exec(line);
+  if (!m) return null;
+  const attrs = parseAttrBlock(m[4]);
+  return {
+    order: parseInt(m[2], 10),
+    title: m[3].trim(),
+    done: m[1] === 'x',
+    est: attrs.est,
+    dep: attrs.dep,
+    prog: clampInt(attrs.prog, 0, 100, 0),
+  };
+}
+
 /** 解析 front-matter（文件开头的 `---` ... `---` 块）。未识别键原样保留在 rawLines。 */
 function parseFrontmatter(rawLines: string[]): StudyFrontmatter {
   const fm: StudyFrontmatter = {};
@@ -111,46 +171,15 @@ export function parseStudy(content: string, slug: string): ParsedStudy {
       continue;
     }
     if (section === 'materials') {
-      const bm = BOOK_RE.exec(line);
-      if (bm) {
-        materials.push({
-          id: `${slug}#materials-${i}`,
-          kind: 'book' as MaterialKind,
-          title: bm[1].trim(),
-          author: bm[2].trim(),
-          summary: bm[3].trim(),
-          difficulty: DIFFICULTY_FROM_LABEL[bm[4]],
-          url: bm[5],
-          lineIndex: i,
-        });
-        continue;
-      }
-      const wm = WEB_RE.exec(line);
-      if (wm) {
-        materials.push({
-          id: `${slug}#materials-${i}`,
-          kind: 'web' as MaterialKind,
-          title: wm[1].trim(),
-          url: wm[2],
-          summary: wm[3].trim(),
-          lineIndex: i,
-        });
+      const md = parseMaterialLine(line);
+      if (md) {
+        materials.push({ id: `${slug}#materials-${i}`, lineIndex: i, ...md });
         continue;
       }
     } else if (section === 'plan') {
-      const m = UNIT_RE.exec(line);
-      if (m) {
-        const attrs = parseAttrBlock(m[4]);
-        units.push({
-          id: `${slug}#units-${i}`,
-          order: parseInt(m[2], 10),
-          title: m[3].trim(),
-          done: m[1] === 'x',
-          est: attrs.est,
-          dep: attrs.dep,
-          prog: clampInt(attrs.prog, 0, 100, 0),
-          lineIndex: i,
-        });
+      const ud = parseUnitLine(line);
+      if (ud) {
+        units.push({ id: `${slug}#units-${i}`, lineIndex: i, ...ud });
       }
     } else if (section === 'review') {
       const m = REVIEW_RE.exec(line);
@@ -301,4 +330,37 @@ function appendToSection(
     out.push(`## ${heading}`);
     out.push(...lines);
   }
+}
+
+/**
+ * 扫描一段自由文本（如 AI 研究动作返回的聊天消息），按行提取资料建议。
+ * 复用 parseMaterialLine（正则单一来源），产出 lineIndex=-1 的待加入资料，
+ * id 用 `sug-mat-<n>` 前缀保证建议卡片列表 key 唯一。不匹配的行忽略。
+ */
+export function scanMaterialSuggestions(text: string, slug: string): StudyMaterial[] {
+  const out: StudyMaterial[] = [];
+  let n = 0;
+  for (const line of text.split('\n')) {
+    const md = parseMaterialLine(line);
+    if (!md) continue;
+    out.push({ id: `${slug}#sug-mat-${n}`, lineIndex: -1, ...md });
+    n += 1;
+  }
+  return out;
+}
+
+/**
+ * 扫描一段自由文本，按行提取学习单元建议。复用 parseUnitLine。
+ * 产出 lineIndex=-1 的待加入单元，加入时可由调用方重排序号。
+ */
+export function scanUnitSuggestions(text: string, slug: string): StudyUnit[] {
+  const out: StudyUnit[] = [];
+  let n = 0;
+  for (const line of text.split('\n')) {
+    const ud = parseUnitLine(line);
+    if (!ud) continue;
+    out.push({ id: `${slug}#sug-unit-${n}`, lineIndex: -1, ...ud });
+    n += 1;
+  }
+  return out;
 }

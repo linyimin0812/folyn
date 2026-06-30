@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { StudyUnit } from '@/study/types';
 import type { ScheduleLink } from '@/study/scheduleLink';
-import { isAiAvailable, openStudyAiAction, buildStudyPrompt } from '@/study/scheduleLink';
+import { isAiAvailable } from '@/study/scheduleLink';
 import { dateToString } from '@/schedule/dailyScan';
 import { computePlanProgress } from '@/study/progress';
 
@@ -9,6 +9,8 @@ interface Props {
   path: string;
   topicName: string;
   units: StudyUnit[];
+  /** AI plan 动作返回的学习单元建议（建议卡片，逐条加入后移除）。 */
+  suggestedUnits: StudyUnit[];
   /** 各单元在 schedule 的排期/完成回链（只读单向读回）。 */
   scheduleLinks: Map<number, ScheduleLink>;
   /** 翻转单元 done（[ ]↔[x]）并回写。 */
@@ -17,6 +19,12 @@ interface Props {
   onAdd: (u: StudyUnit) => Promise<void>;
   /** 把单元排到目标日期的 daily note（单向排期 + 回链）。 */
   onSchedule: (unit: StudyUnit, noteDate: string) => Promise<void>;
+  /** 发起 AI 生成计划（plan 建议，不带选中资料）。 */
+  onGeneratePlan: () => void;
+  /** 接受一条单元建议：序号重排为 max+1 后追加到 `## 计划` 段。 */
+  onAcceptUnitSuggestion: (u: StudyUnit) => void;
+  /** 忽略一条单元建议。 */
+  onDismissUnitSuggestion: (id: string) => void;
 }
 
 /** 计划空态图标。 */
@@ -36,8 +44,21 @@ const CHECK_CIRCLE_ICON = (
 );
 
 /** 计划区：列出 `## 计划` 段的学习单元，卡片行展示序号/估时/依赖/进度；
- *  勾选写回；手动添加单元；单元可"排到日程"（带 study:<slug> 回链）。 */
-export function StudyPlanSection({ path, topicName, units, scheduleLinks, onToggle, onAdd, onSchedule }: Props) {
+ *  勾选写回；手动添加单元；单元可"排到日程"（带 study:<slug> 回链）；
+ *  AI plan 建议以卡片展示，逐条加入。 */
+export function StudyPlanSection({
+  path: _path,
+  topicName: _topicName,
+  units,
+  suggestedUnits,
+  scheduleLinks,
+  onToggle,
+  onAdd,
+  onSchedule,
+  onGeneratePlan,
+  onAcceptUnitSuggestion,
+  onDismissUnitSuggestion,
+}: Props) {
   const [draft, setDraft] = useState('');
   const [est, setEst] = useState('');
   const [schedulingFor, setSchedulingFor] = useState<number | null>(null);
@@ -46,11 +67,6 @@ export function StudyPlanSection({ path, topicName, units, scheduleLinks, onTogg
   const nextOrder = sorted.length ? Math.max(...sorted.map((u) => u.order)) + 1 : 1;
   const progress = useMemo(() => computePlanProgress(units), [units]);
   const aiAvailable = isAiAvailable();
-
-  const runGeneratePlan = () => {
-    if (!aiAvailable) return;
-    openStudyAiAction(topicName, path, buildStudyPrompt('plan', { topicName, topicPath: path }));
-  };
 
   const submit = async () => {
     const title = draft.trim();
@@ -86,8 +102,8 @@ export function StudyPlanSection({ path, topicName, units, scheduleLinks, onTogg
           <button
             className="ghost"
             disabled={!aiAvailable}
-            title={aiAvailable ? 'AI 拆解主题为有序学习单元' : '未配置 AI 适配器'}
-            onClick={runGeneratePlan}
+            title={aiAvailable ? 'AI 拆解主题为有序学习单元（返回建议卡片）' : '未配置 AI 适配器'}
+            onClick={onGeneratePlan}
           >
             AI 生成计划
           </button>
@@ -97,6 +113,36 @@ export function StudyPlanSection({ path, topicName, units, scheduleLinks, onTogg
       <div className="sw-study-overall-progress" title="总体进度">
         <div className="sw-bar"><i style={{ width: `${progress.percent}%` }} /></div>
       </div>
+
+      {suggestedUnits.length > 0 && (
+        <div className="sw-study-suggestions">
+          <p className="sw-study-suggestions-title">AI 建议学习单元（逐条加入或忽略）</p>
+          <ul className="sw-study-list">
+            {suggestedUnits.map((u) => (
+              <li key={u.id} className="sw-card sw-unit-card sw-suggestion-card">
+                <div className="sw-study-item-body">
+                  <div className="sw-study-item-title">
+                    <span className="sw-unit-order" title="建议序号">{u.order}</span>
+                    <span className="sw-unit-title">{u.title}</span>
+                  </div>
+                  <div className="sw-card-meta sw-unit-meta">
+                    {u.est && (
+                      <span className="sw-chip" title="估时">{u.est}</span>
+                    )}
+                    {u.dep && u.dep !== '-' && (
+                      <span className="sw-chip" title="依赖单元">依赖 #{u.dep}</span>
+                    )}
+                  </div>
+                  <div className="sw-card-actions">
+                    <button className="sw-card-action" onClick={() => onAcceptUnitSuggestion(u)}>加入</button>
+                    <button className="sw-card-action ghost" onClick={() => onDismissUnitSuggestion(u.id)}>忽略</button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="sw-quick-add sw-study-add-form">
         <input
@@ -114,7 +160,7 @@ export function StudyPlanSection({ path, topicName, units, scheduleLinks, onTogg
           <span className="sw-empty-icon">{LIST_ICON}</span>
           <span className="sw-empty-text">暂无学习单元</span>
           <span className="sw-empty-hint">用 AI 生成计划，或手动添加第一个单元</span>
-          <button className="sw-empty-cta" disabled={!aiAvailable} onClick={runGeneratePlan} title={aiAvailable ? 'AI 拆解主题为有序学习单元' : '未配置 AI 适配器'}>
+          <button className="sw-empty-cta" disabled={!aiAvailable} onClick={onGeneratePlan} title={aiAvailable ? 'AI 拆解主题为有序学习单元' : '未配置 AI 适配器'}>
             AI 生成计划
           </button>
         </div>

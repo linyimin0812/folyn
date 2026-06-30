@@ -5,6 +5,10 @@ import {
   buildMaterialLine,
   buildUnitLine,
   buildReviewLine,
+  parseMaterialLine,
+  parseUnitLine,
+  scanMaterialSuggestions,
+  scanUnitSuggestions,
 } from './markdown';
 import type { StudyMaterial, StudyUnit, ReviewAtom } from './types';
 
@@ -292,5 +296,97 @@ describe('serializeStudy', () => {
     const out = serializeStudy(parsed, parsed.materials, units, parsed.reviewAtoms);
     expect(out).toContain('- [x] 1. A @{est:1h dep:- prog:0}');
     expect(out).toContain('- [ ] 1. B @{est:2h dep:- prog:0}');
+  });
+});
+
+describe('parseMaterialLine / parseUnitLine (per-line parsers)', () => {
+  it('parses a book line into data fields', () => {
+    const md = parseMaterialLine('- @book 《书》 | 作者 | 简介 | 难度:中 | https://x');
+    expect(md).toMatchObject({
+      kind: 'book', title: '《书》', author: '作者', summary: '简介',
+      difficulty: 'medium', url: 'https://x',
+    });
+  });
+
+  it('parses a web line into data fields', () => {
+    const md = parseMaterialLine('- @web 标题 | https://x | 简介');
+    expect(md).toMatchObject({ kind: 'web', title: '标题', url: 'https://x', summary: '简介' });
+  });
+
+  it('returns null for non-material lines', () => {
+    expect(parseMaterialLine('- 普通散文')).toBeNull();
+    expect(parseMaterialLine('## 资料')).toBeNull();
+    expect(parseMaterialLine('- @book 缺字段 | 只有作者')).toBeNull();
+  });
+
+  it('parses a unit line into data fields', () => {
+    const ud = parseUnitLine('- [ ] 3. 实战 @{est:6h dep:2 prog:0}');
+    expect(ud).toMatchObject({ order: 3, title: '实战', done: false, est: '6h', dep: '2', prog: 0 });
+  });
+
+  it('parses a done unit', () => {
+    const ud = parseUnitLine('- [x] 1. 入门 @{est:2h dep:- prog:100}');
+    expect(ud?.done).toBe(true);
+    expect(ud?.prog).toBe(100);
+  });
+
+  it('returns null for non-unit lines', () => {
+    expect(parseUnitLine('- [ ] 没有序号点 @{est:1h dep:- prog:0}')).toBeNull();
+    expect(parseUnitLine('## 计划')).toBeNull();
+  });
+});
+
+describe('scanMaterialSuggestions / scanUnitSuggestions (AI output capture)', () => {
+  it('scans mixed prose + book/web lines out of free text', () => {
+    const text = [
+      '好的，以下是为「agent 开发」找的资料：',
+      '',
+      '- @book 《大模型应用开发》 | 张三 | 系统讲 Agent | 难度:中 | https://example.com/book',
+      '这书很适合入门。',
+      '- @web Agent 入门 | https://example.com/web | 不错的入门',
+      '',
+      '希望有帮助。',
+    ].join('\n');
+    const suggestions = scanMaterialSuggestions(text, SLUG);
+    expect(suggestions).toHaveLength(2);
+    expect(suggestions[0]).toMatchObject({
+      kind: 'book', title: '《大模型应用开发》', author: '张三', url: 'https://example.com/book',
+    });
+    expect(suggestions[1]).toMatchObject({ kind: 'web', title: 'Agent 入门' });
+    // 建议项 lineIndex = -1（待加入），id 带 sug 前缀唯一
+    expect(suggestions.every((m) => m.lineIndex === -1)).toBe(true);
+    const ids = suggestions.map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('ignores lines that do not match material grammar', () => {
+    const text = '一些说明\n- 不是资料\n- @book 缺字段 | 只有作者';
+    expect(scanMaterialSuggestions(text, SLUG)).toEqual([]);
+  });
+
+  it('scans unit suggestion lines out of free text', () => {
+    const text = [
+      '以下是拆解：',
+      '- [ ] 1. 入门概览 @{est:2h dep:- prog:0}',
+      '- [ ] 2. 核心 API @{est:4h dep:1 prog:0}',
+      '思路：由浅入深。',
+    ].join('\n');
+    const suggestions = scanUnitSuggestions(text, SLUG);
+    expect(suggestions).toHaveLength(2);
+    expect(suggestions[0]).toMatchObject({ order: 1, title: '入门概览', est: '2h', dep: '-' });
+    expect(suggestions[1]).toMatchObject({ order: 2, title: '核心 API', dep: '1' });
+    expect(suggestions.every((u) => u.lineIndex === -1)).toBe(true);
+  });
+
+  it('produces materials that round-trip through buildMaterialLine', () => {
+    const text = '- @web 标题 | https://x | 简介';
+    const [m] = scanMaterialSuggestions(text, SLUG);
+    expect(buildMaterialLine(m)).toBe('- @web 标题 | https://x | 简介');
+  });
+
+  it('produces units that round-trip through buildUnitLine', () => {
+    const text = '- [ ] 1. 入门 @{est:2h dep:- prog:0}';
+    const [u] = scanUnitSuggestions(text, SLUG);
+    expect(buildUnitLine(u)).toBe('- [ ] 1. 入门 @{est:2h dep:- prog:0}');
   });
 });
