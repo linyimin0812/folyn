@@ -44,14 +44,11 @@ export function StudyWorkbenchPage() {
   const topics = useStudyStore((s) => s.topics);
   const saveTopicEdits = useStudyStore((s) => s.saveTopicEdits);
   const scheduleUnitToToday = useStudyStore((s) => s.scheduleUnitToToday);
-  const suggestedMaterials = useStudyStore((s) => s.suggestedMaterials);
   const suggestedUnits = useStudyStore((s) => s.suggestedUnits);
   const pendingSuggestion = useStudyStore((s) => s.pendingSuggestion);
   const beginSuggestion = useStudyStore((s) => s.beginSuggestion);
   const consumeSuggestion = useStudyStore((s) => s.consumeSuggestion);
   const clearSuggestions = useStudyStore((s) => s.clearSuggestions);
-  const acceptMaterialSuggestion = useStudyStore((s) => s.acceptMaterialSuggestion);
-  const dismissMaterialSuggestion = useStudyStore((s) => s.dismissMaterialSuggestion);
   const acceptUnitSuggestion = useStudyStore((s) => s.acceptUnitSuggestion);
   const dismissUnitSuggestion = useStudyStore((s) => s.dismissUnitSuggestion);
   const active = topics.find((t) => t.slug === activeSlug) ?? null;
@@ -82,9 +79,9 @@ export function StudyWorkbenchPage() {
     updateSettings({ currentPage: 'editor' });
   };
 
-  // ── AI 建议文本捕获（research/plan）──
+  // ── AI 建议文本捕获（research 自动写盘 / plan 建议卡片）──
   // pendingSuggestion 置位后，监听 study 会话：流式结束后扫描"新产生的"
-  // 最后一条 assistant 消息文本 → 填充 suggestedMaterials/suggestedUnits，清 pending。
+  // 最后一条 assistant 消息文本 → research 自动追加到 `## 资料`、plan 填 suggestedUnits，清 pending。
   // 关键：发起动作时先把当前最后一条 assistant 消息 id 记为 baseline（markSuggestionBaseline），
   // 避免把动作发起前就已存在的旧 assistant 消息误当作本次产出消费掉、提前清掉 pending。
   const lastScannedMsgId = useRef<string | null>(null);
@@ -101,7 +98,8 @@ export function StudyWorkbenchPage() {
     if (!lastAssistant) return;
     if (lastScannedMsgId.current === lastAssistant.id) return;
     lastScannedMsgId.current = lastAssistant.id;
-    consumeSuggestion(lastAssistant.content);
+    // research 分支自动写盘、plan 分支填建议卡片；异步动作失败不阻塞 UI。
+    consumeSuggestion(lastAssistant.content).catch(() => {});
   }, [aiSessions, studySessionId, pendingSuggestion, consumeSuggestion]);
 
   // 切换主题时清空旧建议（避免上一个主题的建议残留）。
@@ -151,7 +149,7 @@ export function StudyWorkbenchPage() {
     await scheduleUnitToToday(unit, active.slug, noteDate);
   };
 
-  // ── AI 动作入口（research/plan 走建议卡片；feynman/selftest/sq3r 仍直编+diff）──
+  // ── AI 动作入口（research 自动写盘 `## 资料`；plan 走建议卡片；feynman/selftest/sq3r 直编+diff）──
   const runResearch = () => {
     if (!active || !isAiAvailable()) return;
     markSuggestionBaseline();
@@ -223,12 +221,9 @@ export function StudyWorkbenchPage() {
                 path={active.path}
                 topicName={active.parsed.frontmatter.title ?? active.slug}
                 materials={active.parsed.materials}
-                suggestedMaterials={suggestedMaterials}
                 onAdd={addMaterial}
                 onEdit={editMaterial}
                 onDelete={deleteMaterial}
-                onAcceptSuggestion={(m) => acceptMaterialSuggestion(active.slug, m)}
-                onDismissSuggestion={dismissMaterialSuggestion}
                 onResearch={runResearch}
                 onGeneratePlanFromSelected={runPlanFromSelected}
               />

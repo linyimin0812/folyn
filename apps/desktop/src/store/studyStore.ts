@@ -51,6 +51,15 @@ export function parseSuggestionText(
 }
 
 /**
+ * 资料去重键：优先用 url，否则用 title，统一小写。空标题/空链接返回空串
+ * （调用方按"已见过"处理，避免空资料重复落入 `## 资料`）。纯函数，便于单测。
+ */
+export function materialDedupeKey(m: { url?: string; title: string }): string {
+  const key = (m.url?.trim() || m.title.trim()).toLowerCase();
+  return key;
+}
+
+/**
  * 聚合所有主题里到期的复习原子（交错练习队列）。纯函数，便于单测。
  * today 由调用方传入（避免读系统时钟、便于测试）。每条带 topic 来源标注。
  */
@@ -77,9 +86,7 @@ interface StudyState {
   loading: boolean;
   error: string | null;
 
-  /** AI research 动作返回的资料建议（建议卡片，逐条加入后移除）。 */
-  suggestedMaterials: StudyMaterial[];
-  /** AI plan 动作返回的学习单元建议。 */
+  /** AI plan 动作返回的学习单元建议（research 不再产卡片，自动写盘）。 */
   suggestedUnits: StudyUnit[];
   /** 当前等待 AI 产出文本建议的动作（research/plan）；扫描到产出后清零。 */
   pendingSuggestion: PendingSuggestion | null;
@@ -103,14 +110,22 @@ interface StudyState {
   ) => Promise<void>;
   /** 发起 research/plan 建议：置 pendingSuggestion、清空对应建议列表。 */
   beginSuggestion: (kind: 'research' | 'plan', slug: string) => void;
-  /** AI 产出后扫描聊天文本填充建议列表并清 pendingSuggestion（无产出也清零）。 */
-  consumeSuggestion: (text: string) => void;
+  /**
+   * AI 产出后扫描聊天文本：
+   * - research：解析资料后**自动追加**到主题 `## 资料` 段（去重，不产建议卡片）
+   *   ——用户诉求"找好资料后自动更新，不要询问"。
+   * - plan：解析为 `suggestedUnits` 建议卡片（计划仍需人工取舍）。
+   * 任一分支结束后清 pendingSuggestion（无产出也清零）。
+   */
+  consumeSuggestion: (text: string) => Promise<void>;
   /** 清空建议列表（切换主题/取消时）。 */
   clearSuggestions: () => void;
-  /** 接受一条资料建议：追加到主题 `## 资料` 段并从建议列表移除。 */
-  acceptMaterialSuggestion: (slug: string, material: StudyMaterial) => Promise<void>;
-  /** 忽略一条资料建议：仅从建议列表移除。 */
-  dismissMaterialSuggestion: (id: string) => void;
+  /**
+   * 把 research 产出的资料建议去重后追加到主题 `## 资料` 段并回写。
+   * 去重键：`(url || title)` 小写；与已有资料重复则跳过。无主题/无新增则 no-op。
+   * 由 `consumeSuggestion` research 分支调用，取代旧的逐条 accept 流程。
+   */
+  autoApplyMaterialSuggestions: (slug: string, suggestions: StudyMaterial[]) => Promise<void>;
   /** 接受一条单元建议：序号重排为 max+1 后追加到 `## 计划` 段，并从建议列表移除。 */
   acceptUnitSuggestion: (slug: string, unit: StudyUnit) => Promise<void>;
   /** 忽略一条单元建议。 */
@@ -140,7 +155,6 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   activeSlug: null,
   loading: false,
   error: null,
-  suggestedMaterials: [],
   suggestedUnits: [],
   pendingSuggestion: null,
 
@@ -262,36 +276,46 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   beginSuggestion: (kind, slug) =>
     set(() => ({
       pendingSuggestion: { kind, slug },
-      ...(kind === 'research' ? { suggestedMaterials: [] } : { suggestedUnits: [] }),
+      ...(kind === 'research' ? {} : { suggestedUnits: [] }),
     })),
 
-  consumeSuggestion: (text) => {
+  consumeSuggestion: async (text) => {
     const p = get().pendingSuggestion;
     if (!p) return;
+    // 先清 pending，防止流式 effect 重入导致重复消费同一条消息。
+    set({ pendingSuggestion: null });
     if (p.kind === 'research') {
       const suggestions = scanMaterialSuggestions(text, p.slug);
-      set({ suggestedMaterials: suggestions, pendingSuggestion: null });
+      // 自动写入 `## 资料`（去重），不再产建议卡片——用户诉求"不要询问"。
+      if (suggestions.length) {
+        await get().autoApplyMaterialSuggestions(p.slug, suggestions);
+      }
     } else {
       const suggestions = scanUnitSuggestions(text, p.slug);
-      set({ suggestedUnits: suggestions, pendingSuggestion: null });
+      set({ suggestedUnits: suggestions });
     }
   },
 
-  clearSuggestions: () =>
-    set({ suggestedMaterials: [], suggestedUnits: [], pendingSuggestion: null }),
-
-  acceptMaterialSuggestion: async (slug, material) => {
+  autoApplyMaterialSuggestions: async (slug, suggestions) => {
     const target = get().topics.find((t) => t.slug === slug);
-    if (!target) return;
-    const materials = [...target.parsed.materials, material];
-    await get().saveTopicEdits(slug, { materials });
-    set((s) => ({
-      suggestedMaterials: s.suggestedMaterials.filter((m) => m.id !== material.id),
-    }));
+    if (!target || !suggestions.length) return;
+    const existing = target.parsed.materials;
+    const seen = new Set(
+      existing.map((m) => materialDedupeKey(m)),
+    );
+    const fresh: StudyMaterial[] = [];
+    for (const s of suggestions) {
+      const key = materialDedupeKey(s);
+      if (key && seen.has(key)) continue;
+      seen.add(key);
+      fresh.push({ ...s, lineIndex: -1 });
+    }
+    if (!fresh.length) return;
+    await get().saveTopicEdits(slug, { materials: [...existing, ...fresh] });
   },
 
-  dismissMaterialSuggestion: (id) =>
-    set((s) => ({ suggestedMaterials: s.suggestedMaterials.filter((m) => m.id !== id) })),
+  clearSuggestions: () =>
+    set({ suggestedUnits: [], pendingSuggestion: null }),
 
   acceptUnitSuggestion: async (slug, unit) => {
     const target = get().topics.find((t) => t.slug === slug);

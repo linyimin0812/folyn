@@ -10,19 +10,13 @@ interface Props {
   path: string;
   topicName: string;
   materials: StudyMaterial[];
-  /** AI research 动作返回的资料建议（建议卡片，逐条加入后移除）。 */
-  suggestedMaterials: StudyMaterial[];
   /** 新增资料（lineIndex<0 → 追加到段尾）并回写。 */
   onAdd: (m: StudyMaterial) => Promise<void>;
   /** 编辑资料（保持 lineIndex，原地重写）并回写。 */
   onEdit: (m: StudyMaterial) => Promise<void>;
   /** 删除资料（按 id 过滤后回写，托管行移除）。 */
   onDelete: (id: string) => Promise<void>;
-  /** 接受一条建议：追加到 `## 资料` 段并从建议列表移除。 */
-  onAcceptSuggestion: (m: StudyMaterial) => void;
-  /** 忽略一条建议：从建议列表移除。 */
-  onDismissSuggestion: (id: string) => void;
-  /** 发起 AI 找资料（research 建议）。 */
+  /** 发起 AI 找资料（research 后自动写入 `## 资料`，不再产建议卡片）。 */
   onResearch: () => void;
   /** 用选中的资料生成学习计划（plan 建议）。 */
   onGeneratePlanFromSelected: (selected: StudyMaterial[]) => void;
@@ -74,12 +68,9 @@ export function StudyMaterialsSection({
   path,
   topicName,
   materials,
-  suggestedMaterials,
   onAdd,
   onEdit,
   onDelete,
-  onAcceptSuggestion,
-  onDismissSuggestion,
   onResearch,
   onGeneratePlanFromSelected,
 }: Props) {
@@ -135,7 +126,7 @@ export function StudyMaterialsSection({
           <button
             className="primary"
             disabled={!aiAvailable}
-            title={aiAvailable ? 'AI 检索网络资料与经典书籍/论文（返回建议卡片）' : '未配置 AI 适配器'}
+            title={aiAvailable ? 'AI 检索网络资料与经典书籍/论文（自动写入资料段）' : '未配置 AI 适配器'}
             onClick={onResearch}
           >
             AI 找资料
@@ -153,46 +144,6 @@ export function StudyMaterialsSection({
           <button className="ghost" onClick={() => openFile(path, path.split('/').pop() ?? path)} title="在编辑器编辑资料段">编辑</button>
         </div>
       </header>
-
-      {suggestedMaterials.length > 0 && (
-        <div className="sw-study-suggestions">
-          <p className="sw-study-suggestions-title">AI 建议资料（逐条加入或忽略）</p>
-          <ul className="sw-study-list sw-material-grid">
-            {suggestedMaterials.map((m) => (
-              <li key={m.id} className="sw-card sw-material-card sw-suggestion-card">
-                <div className="sw-card-top">
-                  <span className={`sw-tag ${m.kind === 'book' ? 'dev' : 'ops'}`}>
-                    <span className="sw-tag-icon">{m.kind === 'book' ? BOOK_ICON : LINK_ICON}</span>
-                    {m.kind === 'book' ? '书' : '网页'}
-                  </span>
-                  {m.difficulty && (
-                    <span className={`sw-tag ${DIFFICULTY_TAG[m.difficulty]}`} title="难度">
-                      {DIFFICULTY_LABEL[m.difficulty]}
-                    </span>
-                  )}
-                </div>
-                <h4 className="sw-material-title">
-                  {m.url ? (
-                    <a href={m.url} onClick={(e) => { e.preventDefault(); openLink(m.url); }} title={m.url}>{m.title}</a>
-                  ) : (
-                    <span>{m.title}</span>
-                  )}
-                </h4>
-                {m.kind === 'book' && m.author && (
-                  <p className="sw-card-meta-line">作者：{m.author}</p>
-                )}
-                {m.summary && <p className="sw-material-summary">{m.summary}</p>}
-                <div className="sw-card-foot">
-                  <div className="sw-card-actions">
-                    <button className="sw-card-action primary" onClick={() => onAcceptSuggestion(m)}>加入</button>
-                    <button className="sw-card-action ghost" onClick={() => onDismissSuggestion(m.id)}>忽略</button>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {adding && (
         <MaterialForm

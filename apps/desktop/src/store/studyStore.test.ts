@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useStudyStore, collectDueAtoms, parseSuggestionText } from './studyStore';
+import { useStudyStore, collectDueAtoms, parseSuggestionText, materialDedupeKey } from './studyStore';
 import { useVaultStore } from './vaultStore';
 import { useSettingsStore } from './settingsStore';
 import { storageClient } from '@/utils/storageClient';
@@ -74,7 +74,7 @@ beforeEach(() => {
     currentVault: { id: 'v1', name: 'a', providerType: 'tauri', basePath: '/a' } as never,
     fileTree: [],
   } as never);
-  useStudyStore.setState({ topics: [], activeSlug: null, loading: false, error: null, suggestedMaterials: [], suggestedUnits: [], pendingSuggestion: null });
+  useStudyStore.setState({ topics: [], activeSlug: null, loading: false, error: null, suggestedUnits: [], pendingSuggestion: null });
 });
 
 describe('studyDoc helpers', () => {
@@ -430,52 +430,57 @@ describe('useStudyStore.saveTopicEdits (delete/edit/append via cached original p
 });
 
 describe('useStudyStore suggestion flow (research/plan)', () => {
-  it('beginSuggestion sets pendingSuggestion and clears the matching list', () => {
-    useStudyStore.setState({ suggestedMaterials: [{ id: 'old', kind: 'web', title: 'x', lineIndex: -1 } as never] });
+  it('beginSuggestion sets pendingSuggestion', () => {
     useStudyStore.getState().beginSuggestion('research', 'dev');
     expect(useStudyStore.getState().pendingSuggestion).toEqual({ kind: 'research', slug: 'dev' });
-    expect(useStudyStore.getState().suggestedMaterials).toEqual([]);
   });
 
-  it('consumeSuggestion scans AI text into suggestedMaterials and clears pending', () => {
+  it('consumeSuggestion (research) auto-appends to ## 资料 and clears pending', async () => {
+    await setupTopicWithMaterials('dev');
     useStudyStore.getState().beginSuggestion('research', 'dev');
     const text = [
       '- @book 《书》 | 作者 | 简介 | 难度:难 | https://x',
       '说明文字',
       '- @web 标题 | https://y | 简介',
     ].join('\n');
-    useStudyStore.getState().consumeSuggestion(text);
+    await useStudyStore.getState().consumeSuggestion(text);
     const s = useStudyStore.getState();
     expect(s.pendingSuggestion).toBeNull();
-    expect(s.suggestedMaterials).toHaveLength(2);
-    expect(s.suggestedMaterials[0]).toMatchObject({ kind: 'book', title: '《书》', difficulty: 'hard' });
+    // 资料已自动写入 `## 资料` 段。
+    const written = manager.files.get(studyDocPath('dev'))!;
+    expect(written).toContain('- @book 《书》 | 作者 | 简介 | 难度:难 | https://x');
+    expect(written).toContain('- @web 标题 | https://y | 简介');
+    // 原有资料仍在。
+    expect(written).toContain('- @book 《书A》 | 作者A | 简介A | 难度:中 | https://a');
   });
 
-  it('consumeSuggestion scans plan text into suggestedUnits', () => {
+  it('consumeSuggestion (research) dedups against existing materials', async () => {
+    await setupTopicWithMaterials('dup');
+    // 已有 《书A》|https://a 与 网页B|https://b；AI 再给一条重复的 https://b 和一条新的。
+    useStudyStore.getState().beginSuggestion('research', 'dup');
+    const text = [
+      '- @web 网页B | https://b | 重复简介',
+      '- @web 新资料 | https://new | 新简介',
+    ].join('\n');
+    await useStudyStore.getState().consumeSuggestion(text);
+    const written = manager.files.get(studyDocPath('dup'))!;
+    // 重复的不重复落盘（仍只有一条 https://b）。
+    expect((written.match(/https:\/\/b/g) || []).length).toBe(1);
+    expect(written).toContain('- @web 新资料 | https://new | 新简介');
+  });
+
+  it('consumeSuggestion scans plan text into suggestedUnits', async () => {
     useStudyStore.getState().beginSuggestion('plan', 'dev');
     const text = '- [ ] 1. 入门 @{est:2h dep:- prog:0}\n- [ ] 2. 进阶 @{est:4h dep:1 prog:0}';
-    useStudyStore.getState().consumeSuggestion(text);
+    await useStudyStore.getState().consumeSuggestion(text);
     expect(useStudyStore.getState().suggestedUnits).toHaveLength(2);
     expect(useStudyStore.getState().suggestedUnits[1]).toMatchObject({ order: 2, title: '进阶', dep: '1' });
   });
 
-  it('consumeSuggestion with no matching lines still clears pending', () => {
+  it('consumeSuggestion with no matching lines still clears pending', async () => {
     useStudyStore.getState().beginSuggestion('research', 'dev');
-    useStudyStore.getState().consumeSuggestion('AI 没按格式回复');
+    await useStudyStore.getState().consumeSuggestion('AI 没按格式回复');
     expect(useStudyStore.getState().pendingSuggestion).toBeNull();
-    expect(useStudyStore.getState().suggestedMaterials).toEqual([]);
-  });
-
-  it('acceptMaterialSuggestion appends to ## 资料 and removes from suggestions', async () => {
-    await setupTopicWithMaterials('acc');
-    const sug: StudyMaterialLike = { id: 'acc#sug-mat-0', kind: 'web', title: '建议资料', url: 'https://s', summary: '好', lineIndex: -1 };
-    useStudyStore.setState({ suggestedMaterials: [sug as never], pendingSuggestion: null });
-
-    await useStudyStore.getState().acceptMaterialSuggestion('acc', sug as never);
-
-    const written = manager.files.get(studyDocPath('acc'))!;
-    expect(written).toContain('- @web 建议资料 | https://s | 好');
-    expect(useStudyStore.getState().suggestedMaterials).toHaveLength(0);
   });
 
   it('acceptUnitSuggestion renumbers order to max+1 and appends', async () => {
@@ -489,17 +494,6 @@ describe('useStudyStore suggestion flow (research/plan)', () => {
     const written = manager.files.get(studyDocPath('accu'))!;
     expect(written).toContain('- [ ] 2. 建议单元 @{est:3h dep:- prog:0}');
     expect(useStudyStore.getState().suggestedUnits).toHaveLength(0);
-  });
-
-  it('dismiss removes from suggestion list without writing', async () => {
-    await setupTopicWithMaterials('dis');
-    const sug: StudyMaterialLike = { id: 'dis#sug-mat-0', kind: 'web', title: '建议', url: 'https://s', lineIndex: -1 };
-    useStudyStore.setState({ suggestedMaterials: [sug as never], pendingSuggestion: null });
-    const before = manager.files.get(studyDocPath('dis'))!;
-
-    useStudyStore.getState().dismissMaterialSuggestion('dis#sug-mat-0');
-    expect(useStudyStore.getState().suggestedMaterials).toHaveLength(0);
-    expect(manager.files.get(studyDocPath('dis'))).toBe(before);
   });
 });
 
@@ -515,10 +509,16 @@ describe('parseSuggestionText (pure helper)', () => {
   });
 });
 
-type StudyMaterialLike = {
-  id: string; kind: 'book' | 'web'; title: string; url?: string;
-  summary?: string; author?: string; difficulty?: 'easy' | 'medium' | 'hard'; lineIndex: number;
-};
+describe('materialDedupeKey (pure helper)', () => {
+  it('prefers url over title and lowercases', () => {
+    expect(materialDedupeKey({ title: 'A', url: 'https://X.com' })).toBe('https://x.com');
+    expect(materialDedupeKey({ title: 'Title' })).toBe('title');
+  });
+  it('treats empty url as title', () => {
+    expect(materialDedupeKey({ title: 'T', url: '   ' })).toBe('t');
+  });
+});
+
 type StudyUnitLike = {
   id: string; order: number; title: string; done: boolean;
   est?: string; dep?: string; prog: number; lineIndex: number;
