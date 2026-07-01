@@ -74,6 +74,11 @@ export interface CliSendOptions {
   agents?: Record<string, CliAgentDefinition>;
   /** Additional directories made readable to the CLI (`--add-dir`). */
   addDir?: string[];
+  /** Whether to run in `--bare` mode (isolated, no cwd agent discovery, no
+   * CLAUDE.md/hooks loading). Defaults to `true` to preserve the existing
+   * isolated behavior. Set to `false` to let Claude Code discover agents in
+   * `<cwd>/.claude/agents/` and load the project's CLAUDE.md / settings. */
+  bare?: boolean;
 }
 
 export type CliEventHandler = (event: CliStreamEvent) => void;

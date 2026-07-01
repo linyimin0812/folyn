@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { STUDY_AGENT_NAME, getStudyAgentDef, getStudyAgentDefinition } from './studyAgent';
 
-describe('getStudyAgentDef (canonical study-agent.md 解析)', () => {
+describe('getStudyAgentDef (canonical .claude/agents/study.md 解析)', () => {
   it('解析 front-matter name/description/tools', () => {
     const def = getStudyAgentDef();
     expect(def.name).toBe(STUDY_AGENT_NAME);

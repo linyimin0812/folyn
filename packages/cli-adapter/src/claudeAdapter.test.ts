@@ -172,6 +172,62 @@ describe('buildClaudeArgs (PR9: --agent / --agents / --add-dir)', () => {
   });
 });
 
+describe('buildClaudeArgs (PR1: bare 可选)', () => {
+  const baseArgsNoBare = [
+    '-p',
+    '--output-format', 'stream-json',
+    '--verbose',
+    '--thinking', 'enabled',
+    '--permission-mode', 'bypassPermissions',
+  ];
+
+  it('默认含 --bare（保持现有隔离行为）', () => {
+    const args = buildClaudeArgs('hello');
+    expect(args).toContain('--bare');
+    expect(args.slice(0, baseArgsNoBare.length)).toEqual(baseArgsNoBare);
+  });
+
+  it('bare:true 显式含 --bare', () => {
+    const args = buildClaudeArgs('hello', { bare: true });
+    expect(args).toContain('--bare');
+  });
+
+  it('bare:false 省略 --bare（启用 cwd agent 发现 + CLAUDE.md/hooks）', () => {
+    const args = buildClaudeArgs('hello', { bare: false });
+    expect(args).not.toContain('--bare');
+    expect(args.slice(0, baseArgsNoBare.length)).toEqual(baseArgsNoBare);
+    expect(args[args.length - 1]).toBe('hello');
+  });
+
+  it('bare:false + agent → 含 --agent 且不含 --bare', () => {
+    const args = buildClaudeArgs('p', { bare: false, agent: 'study' });
+    expect(args).not.toContain('--bare');
+    expect(args).toContain('--agent');
+    expect(args[args.indexOf('--agent') + 1]).toBe('study');
+  });
+
+  it('bare:false 与 --agents/--add-dir/--resume 组合正确', () => {
+    const args = buildClaudeArgs('p', {
+      bare: false,
+      agent: 'study',
+      agents: { study: { prompt: 'be study' } },
+      addDir: ['/tmp/extra'],
+      resumeSessionId: 'rs',
+    });
+    expect(args).not.toContain('--bare');
+    const agentIdx = args.indexOf('--agent');
+    const agentsIdx = args.indexOf('--agents');
+    const addDirIdx = args.indexOf('--add-dir');
+    const resumeIdx = args.indexOf('--resume');
+    const promptIdx = args.length - 1;
+    expect(agentIdx).toBeGreaterThan(-1);
+    expect(agentsIdx).toBeGreaterThan(agentIdx);
+    expect(addDirIdx).toBeGreaterThan(agentsIdx);
+    expect(resumeIdx).toBeGreaterThan(addDirIdx);
+    expect(promptIdx).toBeGreaterThan(resumeIdx);
+  });
+});
+
 describe('quoteShellArg / buildClaudeShellCommand', () => {
   it('单引号包裹参数，内部单引号转义', () => {
     expect(quoteShellArg('abc')).toBe("'abc'");

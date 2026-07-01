@@ -1,12 +1,17 @@
-// Study agent：canonical 定义文件（study-agent.md，版本控制）+ 运行时内联交付。
+// Study agent：canonical 定义文件（`.claude/agents/study.md`，版本控制）。
 //
-// Claude CLI 支持 `--agents '<json>'`（`{"<name>":{"description","prompt","tools"}}`）
-// 与 `--agent <name>`。因为 cwd=vault 因用户而异、仓库文件不会被 CLI 自动发现，
-// 且应避免污染全局 `~/.claude/agents/`——本模块把 canonical .md 在构建时通过
-// Vite `?raw` import 打进 bundle，运行时解析为 `--agents` JSON 内联传递 + `--agent study`。
-// 这样 canonical 文件是唯一来源，scope 仅限本次 Quill 调用，不写用户文件系统。
+// canonical agent 文件按功能就近放在 `apps/desktop/src/study/.claude/agents/study.md`，
+// 运行时由 featureAgentService 播种到 `<vault>/.claude/agents/study.md`（write-if-missing，
+// 不覆盖用户修改），Claude CLI 在 `bare:false` 下靠 cwd 自动发现。
+//
+// 本模块仍 `?raw` import canonical 文件，用途有二：
+// 1. 播种时取文件内容（featureAgentService.FEATURE_AGENTS）；
+// 2. 解析 front-matter 供过渡期/单测使用（getStudyAgentDef/getStudyAgentDefinition）。
+//
+// 注：feature agent 调用从本 PR 起改 cwd 发现（runFeatureAgent），不再用 `--agents`
+// 内联交付。`getStudyAgentDefinition` 保留供 studyAgentRunner（PR2 迁移前仍用内联）过渡。
 
-import agentDoc from './study-agent.md?raw';
+import agentDoc from './.claude/agents/study.md?raw';
 import type { CliAgentDefinition } from '@quill/cli-adapter';
 
 export const STUDY_AGENT_NAME = 'study';

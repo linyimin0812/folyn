@@ -10,6 +10,7 @@ import { storageClient } from '@/utils/storageClient';
 import { startVaultWatcher, stopVaultWatcher } from '@/utils/fileWatcher';
 import { generateShortId as generateId } from '@/utils/idGenerator';
 import { resolveBasePath } from '@/utils/pathResolver';
+import { seedAgentFiles } from '@/services/featureAgentService';
 
 async function startWatcherForVault(config: VaultConfig) {
   if (config.providerType !== 'tauri') return;
@@ -172,6 +173,8 @@ export const useVaultStore = create<VaultState>()(
             // Ensure vault root directory exists before listing files
             await get().manager.createDir('');
             await get().refreshFileTree();
+            // Seed canonical feature agent files into <vault>/.claude/agents/ (write-if-missing).
+            await seedAgentFiles(get().manager);
             // Connection succeeded — now persist the vault
             const newVaults = [...get().vaults, config];
             set({
@@ -236,6 +239,10 @@ export const useVaultStore = create<VaultState>()(
 
             const renamedPairs = await get().migrateSpecialDirs();
             await get().refreshFileTree();
+
+            // Seed canonical feature agent files into <vault>/.claude/agents/ (write-if-missing).
+            // Failures are silent (read-only vault → --bare fallback at call time).
+            await seedAgentFiles(get().manager);
 
             // Restore saved tabs for the new vault, then rewrite any paths whose
             // on-disk prefix was renamed during migration.

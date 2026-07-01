@@ -283,11 +283,17 @@ export function quoteShellArg(s: string): string {
 /**
  * Build the raw `claude` CLI argument vector (before shell-quoting).
  *
- * Order: base flags (`-p --output-format stream-json --verbose --thinking
- * enabled --permission-mode bypassPermissions --bare`) → `--agent` /
- * `--agents` / `--add-dir` (inline delivery) → `--resume <id>` → `<prompt>`.
- * `--agent`/`--agents`/`--add-dir` are appended after `--bare` and before
- * `--resume`/prompt so they are not interpreted as part of the prompt.
+ * Base flags: `-p --output-format stream-json --verbose --thinking enabled
+ * --permission-mode bypassPermissions` + optionally `--bare`. `--bare` is
+ * omitted when `options.bare === false` so Claude Code performs cwd agent
+ * discovery (loading `<cwd>/.claude/agents/*.md`) and reads the project's
+ * `CLAUDE.md` / `settings.json` hooks. By default `--bare` stays on to keep
+ * the historical isolated behavior.
+ *
+ * Order: base flags → `--agent` / `--agents` / `--add-dir` (inline delivery)
+ * → `--resume <id>` → `<prompt>`. `--agent`/`--agents`/`--add-dir` are
+ * appended after `--bare` and before `--resume`/prompt so they are not
+ * interpreted as part of the prompt.
  */
 export function buildClaudeArgs(prompt: string, options?: CliSendOptions): string[] {
   const args = [
@@ -296,8 +302,12 @@ export function buildClaudeArgs(prompt: string, options?: CliSendOptions): strin
     '--verbose',
     '--thinking', 'enabled',
     '--permission-mode', 'bypassPermissions',
-    '--bare',
   ];
+
+  // Default: --bare on (isolated). bare === false → omit so cwd agents/CLAUDE.md load.
+  if (options?.bare !== false) {
+    args.push('--bare');
+  }
 
   if (options?.agent) {
     args.push('--agent', options.agent);
