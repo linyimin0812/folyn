@@ -1,0 +1,13 @@
+{"file": ".trellis/tasks/06-29-learning-feature-materials-plan-knowledge-base/prd.md", "reason": "本任务 PRD：6 个决策(工作台视图/markdown持久化/多主题/AI找资料/学习计划格式/schedule关联/学习法融入)、验收标准、4 个 PR 划分、SM-2 规格片段。实现的源头需求。"}
+{"file": ".trellis/tasks/06-29-learning-feature-materials-plan-knowledge-base/research/learning-methods.md", "reason": "9 种学习法→markdown 嵌入映射表 + 可实现 SM-2 规格(评级→q、更新规则、行语法) + 各复用点的 file:line(schedule/markdown.ts 段落写回、ContextMenu.tsx 打开AI面板、CalloutPlugin、Pomodoro、wiki服务)。PR3/PR4 实现直接照此。"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop 前端 spec 入口。study 模块归属此包。"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "决定 study/ 与 components/study/ 放置位置与命名约定。"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store 约定，studyStore 需遵循(对标 scheduleStore)。"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "工作台视图组件(BoardView/三区面板/列表)的组件约定。"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "study 类型/解析层 TS 约定。"}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "study 视图用到的 React hook 约定。"}
+{"file": ".trellis/spec/cli-adapter/frontend/index.md", "reason": "AI 单调用链(claudeAdapter.send)约定——4 个 AI 动作(学习研究/费曼/自测/SQ3R)都走此路径。"}
+{"file": ".trellis/spec/vault-provider/frontend/index.md", "reason": "vault 文档读写约定——主题文档 学习/<主题>.md 的读写与跨后端同步。"}
+{"file": ".trellis/spec/container-plugins/frontend/index.md", "reason": "callout 指令复用约定——盲区/预读问题/elaboration 的 :::callout 块。"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "本任务大量复用 schedule/markdown.ts 段落写回、Pomodoro、wiki 服务——此指南约束'先复用再造'的决策。"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "study↔schedule↔vault↔ai 跨层数据流(回链读回/写任务行/AI 上下文注入)需跨层一致性。"}

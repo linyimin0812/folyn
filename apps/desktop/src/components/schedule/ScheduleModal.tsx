@@ -18,7 +18,7 @@ interface Props {
 }
 
 const EVENT_CATS: EventCategory[] = ['work', 'personal', 'family', 'health'];
-const TASK_CATS: TaskCategory[] = ['design', 'dev', 'bug', 'growth', 'ops'];
+const TASK_CATS: TaskCategory[] = ['design', 'dev', 'bug', 'growth', 'ops', 'learn'];
 const PRIOS: Priority[] = ['high', 'med', 'low'];
 
 /** "HH:MM" → 小时浮点。 */

@@ -12,6 +12,7 @@ import { useWikiStore } from '@/store/wikiStore';
 import { SettingsPage } from './components/pages/SettingsPage';
 import { VaultPage } from './components/pages/VaultPage';
 import { ScheduleWorkbenchPage } from './components/schedule/ScheduleWorkbenchPage';
+import { StudyWorkbenchPage } from './components/study/StudyWorkbenchPage';
 import { useTheme } from './hooks/useTheme';
 import { useSettingsStore } from './store/settingsStore';
 import { useVaultStore } from './store/vaultStore';
@@ -203,6 +204,14 @@ export default function App() {
         <div className="body-row flex-1 flex overflow-hidden">
           {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
           <ScheduleWorkbenchPage />
+        </div>
+      )}
+
+      {currentPage === 'study' && (
+        <div className="body-row flex-1 flex overflow-hidden">
+          {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
+          <StudyWorkbenchPage />
+          {showAiPanel && <AiPanel />}
         </div>
       )}
 

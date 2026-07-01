@@ -3,7 +3,7 @@ import { storageClient } from '@/utils/storageClient';
 import { DEFAULT_BOARD_COLUMNS, COLUMN_COLOR_PALETTE, type BoardColumnDef } from '@/schedule/types';
 
 export type Theme = 'light' | 'dark' | 'system';
-export type AppPage = 'editor' | 'vault' | 'settings' | 'schedule';
+export type AppPage = 'editor' | 'vault' | 'settings' | 'schedule' | 'study';
 export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'ai' | 'templates' | 'skills' | 'about';
 export type LinkOpenMode = 'external' | 'internal';
 

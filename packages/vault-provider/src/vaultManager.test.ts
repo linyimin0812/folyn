@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { VaultManager, VaultProviderRegistry, VaultError } from '../index';
 import { TauriVaultProvider } from './providers/tauriProvider';
 import type { VaultConfig } from './types';
-import { writeTextFile, readTextFile, exists } from '@tauri-apps/plugin-fs';
+import { readTextFile, exists } from '@tauri-apps/plugin-fs';
 
 const config: VaultConfig = {
   id: 'v1',

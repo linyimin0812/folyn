@@ -3,6 +3,7 @@ import { useVaultStore } from '@/store/vaultStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import type { VaultEntry } from '@quill/vault-provider';
 import { MessageContent } from '../ai/MessageContent';
+import { getFeatureAgentSendOptions } from '@/services/featureAgentService';
 
 interface ModifiedFile {
   path: string;
@@ -110,6 +111,8 @@ ${recentDailyContext || '(无历史日记)'}
 
       let result = '';
 
+      const sendOpts = await getFeatureAgentSendOptions('daily');
+
       await new Promise<void>((resolve, reject) => {
         adapter.onEvent((event) => {
           if (event.type === 'text' && event.content) {
@@ -119,7 +122,7 @@ ${recentDailyContext || '(无历史日记)'}
           if (event.type === 'error') reject(new Error(event.content));
         });
         adapter.start({ cliPath: settings.cliPath, workingDir }).then(() => {
-          adapter.send(prompt);
+          adapter.send(prompt, sendOpts);
         }).catch(reject);
       });
 

@@ -30,6 +30,8 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
 
   const pendingFileAttachments = useAiStore((s) => s.pendingFileAttachments);
   const consumePendingFiles = useAiStore((s) => s.consumePendingFiles);
+  const pendingPrompt = useAiStore((s) => s.pendingPrompt);
+  const consumePendingPrompt = useAiStore((s) => s.consumePendingPrompt);
 
   useEffect(() => {
     if (pendingFileAttachments.length === 0) return;
@@ -47,6 +49,22 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
       return [...prev, ...newOnes];
     });
   }, [pendingFileAttachments, consumePendingFiles]);
+
+  // 预填提示词（学习工作台 AI 动作经 aiStore.pendingPrompt 注入，无新调用链）。
+  useEffect(() => {
+    if (!pendingPrompt) return;
+    const p = consumePendingPrompt();
+    if (!p) return;
+    setInput(p);
+    // 聚焦输入框末端，便于用户审阅后直接发送。
+    setTimeout(() => {
+      const ta = textareaRef.current;
+      if (ta) {
+        ta.selectionStart = ta.selectionEnd = p.length;
+        ta.focus();
+      }
+    }, 0);
+  }, [pendingPrompt, consumePendingPrompt]);
 
   const fileTree = useVaultStore((s) => s.fileTree);
   const allFiles = useMemo(() => flattenFileTree(fileTree), [fileTree]);

@@ -53,29 +53,10 @@ export class ClaudeAdapter extends BaseCliAdapter {
     this.running = true;
     this.lineBuffer = '';
 
-    const resumeId = options?.resumeSessionId || this.sessionId;
-
+    const resumeId = options?.resumeSessionId || this.sessionId || undefined;
     const cliPath = this.config.cliPath || 'claude';
-    const cliArgs = [
-      '-p',
-      '--output-format', 'stream-json',
-      '--verbose',
-      '--thinking', 'enabled',
-      '--permission-mode', 'bypassPermissions',
-      '--bare',
-    ];
-
-    if (resumeId) {
-      cliArgs.push('--resume', resumeId);
-    }
-
-    cliArgs.push(prompt);
-
-    const quote = (s: string) => `'${s.replace(/'/g, "'\\''")}'`;
-    const cliCmd = [cliPath, ...cliArgs].map(quote).join(' ') + ' < /dev/null';
-    const shellCmd = this.config.workingDir
-      ? `cd ${quote(this.config.workingDir)} && exec ${cliCmd}`
-      : `exec ${cliCmd}`;
+    const cliArgs = buildClaudeArgs(prompt, { ...options, resumeSessionId: resumeId });
+    const shellCmd = buildClaudeShellCommand(cliPath, this.config.workingDir, cliArgs);
 
     try {
       const command = Command.create('claude-cli', ['-l', '-c', shellCmd]);
@@ -290,4 +271,81 @@ export class ClaudeAdapter extends BaseCliAdapter {
       // file might have been deleted
     }
   }
+}
+
+// ── Pure helpers (exported for unit testing) ──
+
+/** Shell-quote a single argument using single-quote wrapping. */
+export function quoteShellArg(s: string): string {
+  return `'${s.replace(/'/g, "'\\''")}'`;
+}
+
+/**
+ * Build the raw `claude` CLI argument vector (before shell-quoting).
+ *
+ * Base flags: `-p --output-format stream-json --verbose --thinking enabled
+ * --permission-mode bypassPermissions` + optionally `--bare`. `--bare` is
+ * omitted when `options.bare === false` so Claude Code performs cwd agent
+ * discovery (loading `<cwd>/.claude/agents/*.md`) and reads the project's
+ * `CLAUDE.md` / `settings.json` hooks. By default `--bare` stays on to keep
+ * the historical isolated behavior.
+ *
+ * Order: base flags → `--agent` / `--agents` / `--add-dir` (inline delivery)
+ * → `--resume <id>` → `<prompt>`. `--agent`/`--agents`/`--add-dir` are
+ * appended after `--bare` and before `--resume`/prompt so they are not
+ * interpreted as part of the prompt.
+ */
+export function buildClaudeArgs(prompt: string, options?: CliSendOptions): string[] {
+  const args = [
+    '-p',
+    '--output-format', 'stream-json',
+    '--verbose',
+    '--thinking', 'enabled',
+    '--permission-mode', 'bypassPermissions',
+  ];
+
+  // Default: --bare on (isolated). bare === false → omit so cwd agents/CLAUDE.md load.
+  if (options?.bare !== false) {
+    args.push('--bare');
+  }
+
+  if (options?.agent) {
+    args.push('--agent', options.agent);
+  }
+  if (options?.agents) {
+    args.push('--agents', JSON.stringify(options.agents));
+  }
+  if (options?.addDir && options.addDir.length > 0) {
+    // 去重（保序），避免同一目录多次传入。
+    const seen = new Set<string>();
+    for (const dir of options.addDir) {
+      if (dir && !seen.has(dir)) {
+        seen.add(dir);
+        args.push('--add-dir', dir);
+      }
+    }
+  }
+
+  if (options?.resumeSessionId) {
+    args.push('--resume', options.resumeSessionId);
+  }
+
+  args.push(prompt);
+  return args;
+}
+
+/**
+ * Compose the full shell command string: optionally `cd` into the working dir,
+ * then `exec claude ... < /dev/null`. Each arg is shell-quoted so values
+ * containing JSON / spaces survive intact.
+ */
+export function buildClaudeShellCommand(
+  cliPath: string,
+  workingDir: string,
+  args: string[],
+): string {
+  const cliCmd = [cliPath, ...args].map(quoteShellArg).join(' ') + ' < /dev/null';
+  return workingDir
+    ? `cd ${quoteShellArg(workingDir)} && exec ${cliCmd}`
+    : `exec ${cliCmd}`;
 }

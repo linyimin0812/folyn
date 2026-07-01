@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useSkillStore } from '@/store/skillStore';
 import { collectTextFromStream, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
+import { getFeatureAgentSendOptions } from './featureAgentService';
 
 export type ClipLanguage = 'en' | 'zh' | 'auto';
 
@@ -77,7 +78,7 @@ export async function generateClip(
       : `你是一个网页内容分析助手。请分析以下网页内容，生成一张结构化的知识卡片。\n\nURL: ${url}\n\n请以 JSON 格式回复：\n{\n  "title": "page title",\n  "tags": ["tag1", "tag2", "tag3"],\n  "suggestedTags": ["tag4", "tag5"],\n  "summary": "2-4 sentences summary",\n  "keyPoints": ["point 1", "point 2", "point 3"]\n}`;
 
     const textPromise = collectTextFromStream(adapter, onStream, onEvent);
-    await adapter.send(prompt);
+    await adapter.send(prompt, await getFeatureAgentSendOptions('clips'));
     const aiText = await textPromise;
 
     try {

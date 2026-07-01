@@ -14,6 +14,10 @@ export type { CliMessage, FileChange, ToolCallInfo, MessageAttachment };
 
 export type AiChatMode = 'chat' | 'wiki' | 'clip';
 
+/** 会话类型：普通聊天会话 vs 专用 study agent 会话（PR9）。
+ * study 会话由 runFeatureAgent('study') 自动驱动，输入框不可手动编辑。 */
+export type AiSessionKind = 'chat' | 'study';
+
 export interface AiSession {
   id: string;
   title: string;
@@ -23,14 +27,22 @@ export interface AiSession {
   isStreaming: boolean;
   createdAt: number;
   updatedAt: number;
+  /** 会话类型，缺省 'chat'。study 会话复用同一 cliSessionId 支持多轮 resume。 */
+  kind?: AiSessionKind;
 }
 
 interface AiState {
   sessions: AiSession[];
   activeSessionId: string | null;
+  /** 专用 study agent 会话 id（PR9）。复用同一会话以支持多轮 resume。 */
+  studySessionId: string | null;
 
   getActiveSession: () => AiSession | undefined;
+  /** 按 id 取会话（study 捕获/diff 横幅按 studySessionId 定位，不依赖 active）。 */
+  getSession: (id: string | null | undefined) => AiSession | undefined;
   createSession: () => string;
+  /** 创建或复用专用 study agent 会话，设为 active，返回其 id。 */
+  getOrCreateStudySession: () => string;
   switchSession: (id: string) => void;
   deleteSession: (id: string) => void;
 
@@ -60,6 +72,10 @@ interface AiState {
   pendingFileAttachments: { name: string; path: string }[];
   addFileToChat: (name: string, path: string) => void;
   consumePendingFiles: () => { name: string; path: string }[];
+  /** 预填到 ChatInput 输入框的提示词（学习工作台 AI 动作用，无新调用链）。 */
+  pendingPrompt: string;
+  setPendingPrompt: (prompt: string) => void;
+  consumePendingPrompt: () => string;
 
   /** Save current sessions and load sessions for a different vault */
   switchVaultSessions: (newVaultId: string) => Promise<void>;
@@ -86,6 +102,7 @@ function updateSession(sessions: AiSession[], id: string, updater: (s: AiSession
 export const useAiStore = create<AiState>((set, get) => ({
   sessions: [],
   activeSessionId: null,
+  studySessionId: null,
   isStreaming: false,
 
   getActiveSession: () => {
@@ -93,11 +110,43 @@ export const useAiStore = create<AiState>((set, get) => ({
     return sessions.find((s) => s.id === activeSessionId);
   },
 
+  getSession: (id) => (id ? get().sessions.find((s) => s.id === id) : undefined),
+
   createSession: () => {
     const session = createEmptySession();
     set((state) => ({
       sessions: [session, ...state.sessions],
       activeSessionId: session.id,
+    }));
+    return session.id;
+  },
+
+  getOrCreateStudySession: () => {
+    const state = get();
+    // 先按记录的 studySessionId 定位；命中失败（如重启后 studySessionId 未持久化、
+    // 或会话被外部清空）则回退扫描 sessions 里任意 kind='study' 会话，避免创建重复
+    // study 会话导致旧的孤立。
+    const existing = state.studySessionId
+      ? state.sessions.find((s) => s.id === state.studySessionId && s.kind === 'study')
+      : undefined;
+    if (existing) {
+      if (state.activeSessionId !== existing.id) {
+        set({ activeSessionId: existing.id });
+      }
+      return existing.id;
+    }
+    const orphan = state.sessions.find((s) => s.kind === 'study');
+    if (orphan) {
+      set({ studySessionId: orphan.id, activeSessionId: orphan.id });
+      return orphan.id;
+    }
+    const session = createEmptySession();
+    session.title = '学习 agent';
+    session.kind = 'study';
+    set((s) => ({
+      sessions: [session, ...s.sessions],
+      activeSessionId: session.id,
+      studySessionId: session.id,
     }));
     return session.id;
   },
@@ -113,7 +162,8 @@ export const useAiStore = create<AiState>((set, get) => ({
     if (state.activeSessionId === id) {
       nextActiveId = remaining.length > 0 ? remaining[0].id : null;
     }
-    set({ sessions: remaining, activeSessionId: nextActiveId });
+    const nextStudyId = state.studySessionId === id ? null : state.studySessionId;
+    set({ sessions: remaining, activeSessionId: nextActiveId, studySessionId: nextStudyId });
     const vaultId = useVaultStore.getState().activeVaultId;
     if (vaultId) sessionStorage.deleteSession(vaultId, id);
     persistAiState();
@@ -324,6 +374,14 @@ export const useAiStore = create<AiState>((set, get) => ({
     const files = get().pendingFileAttachments;
     if (files.length > 0) set({ pendingFileAttachments: [] });
     return files;
+  },
+
+  pendingPrompt: '',
+  setPendingPrompt: (prompt) => set({ pendingPrompt: prompt }),
+  consumePendingPrompt: () => {
+    const p = get().pendingPrompt;
+    if (p) set({ pendingPrompt: '' });
+    return p;
   },
 
   switchVaultSessions: async (newVaultId: string) => {

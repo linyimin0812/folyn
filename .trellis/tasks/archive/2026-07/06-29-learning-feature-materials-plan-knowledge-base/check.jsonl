@@ -1,0 +1,8 @@
+{"file": ".trellis/tasks/06-29-learning-feature-materials-plan-knowledge-base/prd.md", "reason": "验收标准与 Out of Scope 在此——检查实现是否满足全部 acceptance criteria、未越界到二期范围(双向同步/归档/SM-2高阶)。"}
+{"file": ".trellis/tasks/06-29-learning-feature-materials-plan-knowledge-base/research/learning-methods.md", "reason": "SM-2 规格与行语法在此——检查 ## 复习 段的评级→q 映射、更新规则(含 lapse 不降 ef)、行格式是否与规格一致；检查复用点是否真正复用了 schedule/markdown.ts 段落写回。"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "desktop 前端质量门禁——lint/typecheck/测试要求与质量标准。"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "检查 study 类型/解析层 TS 安全(无 any、解析降级容错类型完备)。"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "检查 studyStore 是否遵循 Zustand 约定(对标 scheduleStore 风格)。"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "检查工作台组件是否符合组件约定。"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "检查是否复用了 schedule/markdown.ts、Pomodoro、wiki、CalloutPlugin、ContextMenu 打开AI面板模式——避免重复造轮子。"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "检查 study↔schedule↔vault↔ai 跨层数据流一致性(回链属性 cat:learn study:<slug> unit:<n>、单向读回、AI上下文注入)。"}

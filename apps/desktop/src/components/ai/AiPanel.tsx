@@ -43,6 +43,7 @@ export function AiPanel() {
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const isStreaming = activeSession?.isStreaming ?? false;
+  const isStudySession = activeSession?.kind === 'study';
   const messages = activeSession?.messages ?? [];
 
   const chatMode = useAiStore((s) => s.chatMode);
@@ -490,11 +491,33 @@ export function AiPanel() {
       {chatMode === 'wiki' && <WikiActivityLog />}
       {chatMode === 'wiki' && <ReviewItemList />}
 
-      <ChatInput
-        onSend={handleSend}
-        onStop={handleStop}
-        isStreaming={isStreaming}
-      />
+      {isStudySession ? (
+        <div className="flex items-center justify-between gap-2 py-2.5 px-3 border-t border-brd shrink-0 text-[12px] text-t2">
+          <span className="flex items-center gap-1.5 min-w-0">
+            {isStreaming && <span className="ai-session-streaming shrink-0" />}
+            <span className="truncate">
+              {isStreaming ? 'study agent 运行中…' : 'study agent 会话（不可手动输入）'}
+            </span>
+          </span>
+          {isStreaming && (
+            <button
+              className="w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-all duration-[120ms] bg-red text-white hover:opacity-[.85] shrink-0"
+              onClick={handleStop}
+              title="停止"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+            </button>
+          )}
+        </div>
+      ) : (
+        <ChatInput
+          onSend={handleSend}
+          onStop={handleStop}
+          isStreaming={isStreaming}
+        />
+      )}
 
       {showIngestDialog && (
         <IngestDialog
