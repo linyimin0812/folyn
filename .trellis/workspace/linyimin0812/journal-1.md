@@ -278,3 +278,37 @@ Added the 'AI 规划今日' feature to the Schedule workbench. Pattern B (JSON a
 ### Next Steps
 
 - None - task complete
+
+
+## Session 9: per-vault __{feature}__/.claude agent refactor
+
+**Date**: 2026-07-02
+**Task**: per-vault __{feature}__/.claude agent refactor
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Refactored 5 feature agents (study/clips/wiki/schedule/analyze) into per-vault __{feature}__/.claude/ structure with CLAUDE.md (context) + agents/<feature>.md (contract) split. Feature code moved into apps/desktop/src/features/. daily→schedule rename with --add-dir <vault> for cross-vault diary access. wikiIngest/Lint/Query services refactored to call new wiki feature agent (4 actions: ingest/generate/lint/query). Sidebar hides all 5 __xxx__/ dirs. Captured architecture in new spec feature-agents.md. 776 tests pass, typecheck clean.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `599d73d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
