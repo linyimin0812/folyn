@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStudyStore } from '@/store/studyStore';
-import { isDue } from '@/study/sm2';
-import { dateToString } from '@/schedule/dailyScan';
+import { isDue } from '@/features/study/sm2';
+import { dateToString } from '@/features/schedule/dailyScan';
 
 interface StudyTopicListProps {
   /** 新建主题后回调（供页面聚焦主区，PR3 接四区）。 */

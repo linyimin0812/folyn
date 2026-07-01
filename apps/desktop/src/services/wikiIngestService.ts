@@ -9,6 +9,7 @@ import { wikiProvider } from './wikiProvider';
 import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';
 import type { IngestAnalysis, ReviewItem } from '@/types/wiki';
 import { collectTextFromStream } from './aiStreamUtils';
+import { getFeatureAgentSendOptions } from './featureAgentService';
 
 async function computeSHA256(content: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -16,79 +17,6 @@ async function computeSHA256(content: string): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-function buildAnalysisPrompt(
-  sourceContent: string,
-  sourcePath: string,
-  schema: string,
-  purpose: string,
-  index: string,
-): string {
-  return `You are a wiki maintainer. Analyze this source document and identify entities, concepts, and connections for a knowledge wiki.
-
-## Schema (wiki rules)
-${schema}
-
-## Purpose (wiki direction)
-${purpose}
-
-## Current Index (existing wiki structure)
-${index}
-
-## Source Document: ${sourcePath}
-${sourceContent}
-
-## Your Task
-Analyze this document and respond with a JSON object (no markdown fences):
-{
-  "entities": [{"name": "...", "type": "...", "description": "..."}],
-  "concepts": [{"name": "...", "definition": "..."}],
-  "connections": [{"from": "...", "to": "...", "relationship": "..."}],
-  "contradictions": [{"claim": "...", "vs": "...", "existingSource": "..."}],
-  "structureRecommendations": ["..."]
-}
-
-Focus on the most important entities and concepts. Use kebab-case for identifiers.
-Respond in the same language as the source document.`;
-}
-
-function buildGenerationPrompt(
-  analysis: IngestAnalysis,
-  sourcePath: string,
-  schema: string,
-  existingPages: Record<string, string>,
-): string {
-  const existingPagesStr = Object.entries(existingPages)
-    .map(([path, content]) => `### ${path}\n${content}`)
-    .join('\n\n');
-
-  return `You are a wiki maintainer. Based on the analysis below, create or update wiki pages.
-
-## Schema
-${schema}
-
-## Analysis Result
-${JSON.stringify(analysis, null, 2)}
-
-## Source File: ${sourcePath}
-
-## Existing Wiki Pages to Update
-${existingPagesStr || '_No existing pages to update._'}
-
-## Instructions
-1. Create a source summary page at \`sources/${toKebabCase(sourcePath)}.md\` with YAML frontmatter
-2. Create/update entity pages in \`entities/\` for each identified entity
-3. Create/update concept pages in \`concepts/\` for each identified concept
-4. Use \`[[wiki://entities/name]]\` for cross-references between wiki pages
-5. Use \`[[${sourcePath}]]\` for references back to the source file
-6. Every page MUST have YAML frontmatter with: title, type, sources, tags, created, updated, confidence, related
-
-For each file you create or update, use the file editing tool to write it.
-Also update \`index.md\` to include any new pages, and append a log entry to \`log.md\`.
-Finally, update \`overview.md\` with a brief summary reflecting the new knowledge.
-
-Respond in the same language as the source content.`;
 }
 
 function toKebabCase(str: string): string {
@@ -99,6 +27,76 @@ function toKebabCase(str: string): string {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
     .toLowerCase();
+}
+
+/**
+ * 构造 ingest action 的运行指令（动态部分）。静态输出契约由 canonical
+ * `__wiki__/.claude/agents/wiki.md` 承载（action: ingest → JSON）。
+ */
+function buildIngestInstruction(
+  sourceContent: string,
+  sourcePath: string,
+  schema: string,
+  purpose: string,
+  index: string,
+): string {
+  return [
+    '动作：ingest',
+    `源文档路径：${sourcePath}`,
+    '',
+    '## Schema (wiki rules)',
+    schema,
+    '',
+    '## Purpose (wiki direction)',
+    purpose,
+    '',
+    '## Current Index (existing wiki structure)',
+    index,
+    '',
+    '## Source Document Content',
+    sourceContent,
+    '',
+    '请按 ingest action 输出契约返回 JSON（entities/concepts/connections/contradictions/structureRecommendations）。',
+  ].join('\n');
+}
+
+/**
+ * 构造 generate action 的运行指令（动态部分）。静态输出契约由 canonical
+ * `__wiki__/.claude/agents/wiki.md` 承载（action: generate → 直写 wiki 页面）。
+ */
+function buildGenerateInstruction(
+  analysis: IngestAnalysis,
+  sourcePath: string,
+  schema: string,
+  existingPages: Record<string, string>,
+): string {
+  const existingPagesStr = Object.entries(existingPages)
+    .map(([path, content]) => `### ${path}\n${content}`)
+    .join('\n\n');
+
+  return [
+    '动作：generate',
+    `源文档路径：${sourcePath}`,
+    '',
+    '## Schema',
+    schema,
+    '',
+    '## Analysis Result (JSON)',
+    '```json',
+    JSON.stringify(analysis, null, 2),
+    '```',
+    '',
+    '## Existing Wiki Pages to Update',
+    existingPagesStr || '_No existing pages to update._',
+    '',
+    '请按 generate action 输出契约：',
+    `1. 在 sources/${toKebabCase(sourcePath)}.md 创建源摘要页（含 YAML frontmatter）`,
+    '2. 为每个 entity 在 entities/ 下创建/更新页面',
+    '3. 为每个 concept 在 concepts/ 下创建/更新页面',
+    '4. 页面间互引用 [[wiki://entities/name]]，引用源文件用 [[' + sourcePath + ']]',
+    '5. 每个页面必须含 frontmatter：title/type/sources/tags/created/updated/confidence/related',
+    '6. 更新 index.md（追加新页面）、log.md（追加变更条目）、overview.md（刷新摘要）',
+  ].join('\n');
 }
 
 function collectFileChangesFromStream(
@@ -152,8 +150,10 @@ export async function runIngest(filePaths: string[]): Promise<void> {
     const home = (await homeDir()).replace(/\/+$/, '');
     basePath = home + basePath.slice(1);
   }
+  // wiki agent cwd = `<vault>/__wiki__/`：agent 自动发现 `.claude/agents/wiki.md`。
+  const workingDir = `${basePath.replace(/\/+$/, '')}/__wiki__`;
 
-  await adapter.start({ cliPath: settings.cliPath, workingDir: basePath });
+  await adapter.start({ cliPath: settings.cliPath, workingDir });
 
   try {
     const schema = await wikiProvider.readFile('schema.md').catch(() => '');
@@ -161,6 +161,8 @@ export async function runIngest(filePaths: string[]): Promise<void> {
     const index = await wikiProvider.readFile('index.md').catch(() => '');
 
     const queue = useWikiStore.getState().ingestQueue;
+    // wiki feature agent 调用 options（agent 文件存在 → bare:false + --agent wiki）。
+    const sendOpts = await getFeatureAgentSendOptions('wiki');
 
     for (const task of queue) {
       if (task.status !== 'pending') continue;
@@ -179,12 +181,12 @@ export async function runIngest(filePaths: string[]): Promise<void> {
           continue;
         }
 
-        // Step 1: Analysis
+        // Step 1: Analysis (ingest action)
         store.setIngesting(true, 1);
         store.pushActivity('step', `[Step 1/2] 分析 ${task.filePath} ...`);
-        const analysisPrompt = buildAnalysisPrompt(content, task.filePath, schema, purpose, index);
+        const ingestInstruction = buildIngestInstruction(content, task.filePath, schema, purpose, index);
         const textPromise = collectTextFromStream(adapter);
-        await adapter.send(analysisPrompt);
+        await adapter.send(ingestInstruction, sendOpts);
         const analysisText = await textPromise;
 
         let analysis: IngestAnalysis;
@@ -197,7 +199,7 @@ export async function runIngest(filePaths: string[]): Promise<void> {
           continue;
         }
 
-        // Step 2: Generation
+        // Step 2: Generation (generate action)
         store.setIngestStatus(task.id, 'generating');
         store.setIngesting(true, 2);
         store.setIngestProgress(`生成 wiki 页面: ${task.filePath}`);
@@ -220,13 +222,13 @@ export async function runIngest(filePaths: string[]): Promise<void> {
           }
         }
 
-        const genPrompt = buildGenerationPrompt(analysis, task.filePath, schema, existingPages);
+        const genInstruction = buildGenerateInstruction(analysis, task.filePath, schema, existingPages);
 
         pauseWatcher();
         const changesPromise = collectFileChangesFromStream(adapter, (msg) => {
           store.setIngestProgress(msg);
         });
-        await adapter.send(genPrompt);
+        await adapter.send(genInstruction, sendOpts);
         const changes = await changesPromise;
 
         for (const change of changes) {

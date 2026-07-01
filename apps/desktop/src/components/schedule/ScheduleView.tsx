@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { startOfWeek } from '@/schedule/dailyScan';
+import { startOfWeek } from '@/features/schedule/dailyScan';
 import { MiniCalendar } from './MiniCalendar';
 import { CalendarCategoryList, WeeklyStats } from './CalendarCategoryList';
 import { WeekGrid } from './WeekGrid';

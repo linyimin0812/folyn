@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useScheduleStore } from '@/store/scheduleStore';
-import { dateToString } from '@/schedule/dailyScan';
-import { formatTime } from '@/schedule/markdown';
-import { useBoardColumns } from '@/schedule/columns';
-import type { EventCategory, Priority, TaskCategory, TaskColumn } from '@/schedule/types';
-import { EVENT_CATEGORY_LABEL, TASK_CATEGORY_LABEL } from '@/schedule/types';
+import { dateToString } from '@/features/schedule/dailyScan';
+import { formatTime } from '@/features/schedule/markdown';
+import { useBoardColumns } from '@/features/schedule/columns';
+import type { EventCategory, Priority, TaskCategory, TaskColumn } from '@/features/schedule/types';
+import { EVENT_CATEGORY_LABEL, TASK_CATEGORY_LABEL } from '@/features/schedule/types';
 
 export type ModalIntent =
   | { kind: 'event'; day: string; hour: number }

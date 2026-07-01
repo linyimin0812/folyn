@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useScheduleStore } from '@/store/scheduleStore';
-import { setDragPayload } from '@/schedule/dnd';
-import { TASK_CATEGORY_LABEL } from '@/schedule/types';
+import { setDragPayload } from '@/features/schedule/dnd';
+import { TASK_CATEGORY_LABEL } from '@/features/schedule/types';
 
 export function UnschedDock() {
   const tasks = useScheduleStore((s) => s.tasks);

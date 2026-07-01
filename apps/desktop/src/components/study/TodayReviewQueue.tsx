@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useStudyStore, collectDueAtoms, type DueAtomEntry } from '@/store/studyStore';
-import { reviewAtom } from '@/study/sm2';
-import { dateToString } from '@/schedule/dailyScan';
-import type { ReviewAtom, ReviewRating } from '@/study/types';
+import { reviewAtom } from '@/features/study/sm2';
+import { dateToString } from '@/features/schedule/dailyScan';
+import type { ReviewAtom, ReviewRating } from '@/features/study/types';
 
 const RATING_LABEL: { rating: ReviewRating; label: string }[] = [
   { rating: 'again', label: '重来' },

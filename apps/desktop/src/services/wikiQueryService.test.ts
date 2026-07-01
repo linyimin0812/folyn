@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { buildQueryPrompt, saveToWiki, buildWikiContext } from './wikiQueryService';
+import { buildQueryInstruction, saveToWiki, buildWikiContext } from './wikiQueryService';
 import { useVaultStore } from '@/store/vaultStore';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 
@@ -13,17 +13,22 @@ function setVault(basePath: string) {
   });
 }
 
-describe('buildQueryPrompt', () => {
+describe('buildQueryInstruction', () => {
   it('embeds the wiki context and the user query', () => {
-    const prompt = buildQueryPrompt('What is X?', 'CTX');
+    const prompt = buildQueryInstruction('What is X?', 'CTX');
     expect(prompt).toContain('What is X?');
     expect(prompt).toContain('CTX');
     expect(prompt).toContain('[[wiki://path]]');
   });
 
   it('uses the user query verbatim, including non-ASCII', () => {
-    const prompt = buildQueryPrompt('什么是 React？', 'ctx');
+    const prompt = buildQueryInstruction('什么是 React？', 'ctx');
     expect(prompt).toContain('什么是 React？');
+  });
+
+  it('contains the action keyword', () => {
+    const prompt = buildQueryInstruction('q', 'c');
+    expect(prompt).toContain('动作：query');
   });
 });
 

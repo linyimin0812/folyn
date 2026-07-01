@@ -4,8 +4,8 @@ import { useVaultStore } from './vaultStore';
 import { useSettingsStore } from './settingsStore';
 import { storageClient } from '@/utils/storageClient';
 import type { VaultEntry } from '@quill/vault-provider';
-import { STUDY_DIR, slugifyTopic, buildEmptyStudyDoc, studyDocPath, extractSlug, type StudyTopicEntry } from '@/study/studyDoc';
-import { parseStudy } from '@/study/markdown';
+import { STUDY_DIR, slugifyTopic, buildEmptyStudyDoc, studyDocPath, extractSlug, type StudyTopicEntry } from '@/features/study/studyDoc';
+import { parseStudy } from '@/features/study/markdown';
 
 // 对标 vaultStore.test.ts 的 fake manager，提供 studyStore 用到的子集。
 vi.mock('@/utils/fileWatcher', () => ({

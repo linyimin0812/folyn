@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import { dueState } from '@/schedule/markdown';
-import { useBoardColumns } from '@/schedule/columns';
+import { dueState } from '@/features/schedule/markdown';
+import { useBoardColumns } from '@/features/schedule/columns';
 import { DayCalAside } from './DayCalAside';
 import { BoardColumn } from './BoardColumn';
 

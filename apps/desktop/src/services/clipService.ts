@@ -65,10 +65,12 @@ export async function generateClip(
   onProgress?.('AI 正在分析网页...');
   const settings = useSettingsStore.getState();
   const basePath = await resolveBasePath(vault.currentVault.basePath);
+  // clips agent cwd = `<vault>/__clips__/`：agent 自动发现 `.claude/agents/clips.md`。
+  const workingDir = `${basePath.replace(/\/+$/, '')}/__clips__`;
 
   const registry = CliAdapterRegistry.getInstance();
   const adapter = registry.create(settings.cliAdapter);
-  await adapter.start({ cliPath: settings.cliPath, workingDir: basePath });
+  await adapter.start({ cliPath: settings.cliPath, workingDir });
 
   let card: ClipCard;
   try {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { sameDay } from '@/schedule/dailyScan';
+import { sameDay } from '@/features/schedule/dailyScan';
 
 interface Props {
   selectedDate: Date;

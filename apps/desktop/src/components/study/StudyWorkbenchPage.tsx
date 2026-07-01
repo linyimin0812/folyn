@@ -9,9 +9,9 @@ import { StudyPlanSection } from './StudyPlanSection';
 import { StudyNotesSection } from './StudyNotesSection';
 import { StudyReviewSection } from './StudyReviewSection';
 import { TodayReviewQueue } from './TodayReviewQueue';
-import { collectScheduleLinks, isAiAvailable, openStudyAiAction, buildStudyInstruction, type ScheduleLink } from '@/study/scheduleLink';
-import { computePlanProgress } from '@/study/progress';
-import type { StudyMaterial, StudyUnit, ReviewAtom } from '@/study/types';
+import { collectScheduleLinks, isAiAvailable, openStudyAiAction, buildStudyInstruction, type ScheduleLink } from '@/features/study/scheduleLink';
+import { computePlanProgress } from '@/features/study/progress';
+import type { StudyMaterial, StudyUnit, ReviewAtom } from '@/features/study/types';
 
 /** 学习工作台视图：主题主区四区，或跨主题今日复习队列（交错练习）。 */
 export type StudyView = 'topic' | 'today';

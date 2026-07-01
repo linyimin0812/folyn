@@ -116,10 +116,12 @@ export async function generateReport(
   onProgress?.('AI 正在深度分析...');
   const settings = useSettingsStore.getState();
   const basePath = await resolveBasePath(vault.currentVault.basePath);
+  // analyze agent cwd = `<vault>/__analyze__/`：agent 自动发现 `.claude/agents/analyze.md`。
+  const workingDir = `${basePath.replace(/\/+$/, '')}/__analyze__`;
 
   const registry = CliAdapterRegistry.getInstance();
   const adapter = registry.create(settings.cliAdapter);
-  await adapter.start({ cliPath: settings.cliPath, workingDir: basePath });
+  await adapter.start({ cliPath: settings.cliPath, workingDir });
 
   let aiResponse: string;
   try {

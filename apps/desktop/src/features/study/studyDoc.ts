@@ -1,12 +1,12 @@
-// 学习主题文档在 vault 中的落盘约定：目录根 `学习/`，每主题一个 `<slug>.md`。
-// slug 同时写入 front-matter，作为稳定 id 前缀与 schedule 回链 `study:<slug>` 的值。
+// 学习主题文档在 vault 中的落盘约定：目录根 `__study__/`（feature 级目录，兼作 study agent cwd），
+// 每主题一个 `<slug>.md`。slug 同时写入 front-matter，作为稳定 id 前缀与 schedule 回链 `study:<slug>` 的值。
 // 文件名 stem 必须与 front-matter slug 一致（createTopic 保证），故 path 可由 slug 推导；
 // 但 saveTopic 仍通过 store 的 pathsBySlug 查表，兼容用户手改文件名后的漂移。
 
 import type { ParsedStudy } from './types';
 
-/** 学习主题文档的 vault 目录根。 */
-export const STUDY_DIR = '学习';
+/** 学习主题文档的 vault 目录根（feature 级目录，兼作 study agent cwd）。 */
+export const STUDY_DIR = '__study__';
 
 /**
  * 把主题标题 slug 化为文件名安全串。保留 CJK（与 clipService.toSlug 同策略），

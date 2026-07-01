@@ -18,8 +18,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useScheduleStore } from '@/store/scheduleStore';
-import { formatTime } from '@/schedule/markdown';
-import { computeOverlapGroups, type LayoutItem } from '@/schedule/layout';
+import { formatTime } from '@/features/schedule/markdown';
+import { computeOverlapGroups, type LayoutItem } from '@/features/schedule/layout';
 import type {
   Plan,
   PlanAcceptance,
@@ -27,7 +27,7 @@ import type {
   PlannedNewTask,
   PlannedScheduledTask,
 } from '@/services/planMyDayService';
-import type { EventCategory } from '@/schedule/types';
+import type { EventCategory } from '@/features/schedule/types';
 
 // ── Pure helpers (exported for unit tests) ───────────────────────────────────
 

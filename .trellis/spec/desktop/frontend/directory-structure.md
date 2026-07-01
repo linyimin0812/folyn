@@ -33,9 +33,13 @@ apps/desktop/src/
 │   └── work-area/       # Main editor area (WorkArea, tab bar, editor host)
 │
 ├── editor/              # CodeMirror extensions, themes, and setup
+├── features/            # Feature modules — one folder per feature (study, clips, wiki,
+│                        #   schedule, analyze). Each owns its domain logic AND its
+│                        #   canonical .claude/ (CLAUDE.md + agents/<feature>.md)
 ├── hooks/               # Custom React hooks (useTheme, useExport)
-├── services/            # Business logic services (exportService, wikiProvider,
+├── services/            # Cross-feature business logic services (exportService, wikiProvider,
 │                        #   wikiIngestService, wikiQueryService, wikiLintService,
+│                        #   featureAgentService, clipService, githubAnalysisService,
 │                        #   graphDataBuilder)
 ├── store/               # Zustand 5 stores (one per domain)
 ├── types/               # Shared TypeScript types (wiki.ts)
@@ -47,9 +51,10 @@ apps/desktop/src/
 ## Module Organization
 
 - **Feature folders** under `components/` — each folder owns one UI feature area with a main component plus helper subcomponents (e.g., `sidebar/Sidebar.tsx` + `FileTreeItem.tsx` + `SidebarActions.tsx` + `SidebarResizer.tsx`)
+- **Feature modules** under `features/` — one folder per feature (`study`, `clips`, `wiki`, `schedule`, `analyze`). Each owns its domain logic (e.g. `study/sm2.ts`, `study/studyDoc.ts`) AND its canonical agent definition (`.claude/CLAUDE.md` + `.claude/agents/<feature>.md`). See `feature-agents.md` for the agent architecture contract.
 - **Stores** are flat in `store/`, one file per domain: `editorStore.ts`, `settingsStore.ts`, `vaultStore.ts`, `aiStore.ts`, `searchStore.ts`, `wikiStore.ts`, `wikiGraphStore.ts`
 - **Store helpers** co-located when logic grows: `editorAutoSave.ts`, `editorPersistence.ts`, `aiFileChangeActions.ts`, `aiSessionPersistence.ts`
-- **Services** are flat in `services/` — business logic that doesn't belong to a single store or component
+- **Services** are flat in `services/` — cross-feature business logic (e.g. `featureAgentService` seeds canonical agent files into the vault; `clipService` / `githubAnalysisService` consume feature agents)
 - **Utils** are flat in `utils/` — pure functions with no React or store dependencies
 
 ---

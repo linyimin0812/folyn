@@ -5,9 +5,9 @@ import {
   collectScheduleLinks,
   buildStudyInstruction,
 } from './scheduleLink';
-import type { ScheduleTask } from '@/schedule/types';
-import type { StudyUnit } from '@/study/types';
-import { parseDaily } from '@/schedule/markdown';
+import type { ScheduleTask } from '@/features/schedule/types';
+import type { StudyUnit } from '@/features/study/types';
+import { parseDaily } from '@/features/schedule/markdown';
 
 const UNIT: StudyUnit = {
   id: 'agent-dev#units-1',
@@ -130,7 +130,7 @@ describe('collectScheduleLinks', () => {
 });
 
 describe('buildStudyInstruction (PR9: 动态指令；静态契约由 study-agent.md 承载)', () => {
-  const topicPath = '学习/agent-dev.md';
+  const topicPath = '__study__/agent-dev.md';
   const baseCtx = { topicName: 'agent 开发', topicPath };
 
   it('research: 产出含主题路径、动作关键字与行格式契约的指令', () => {

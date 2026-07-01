@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { formatTime } from '@/schedule/markdown';
+import { formatTime } from '@/features/schedule/markdown';
 
 export function NowLine() {
   const ref = useRef<HTMLDivElement>(null);

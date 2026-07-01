@@ -77,6 +77,9 @@ export function DailyDigest({ currentFilePath, onInsertContent }: DailyDigestPro
         const home = (await homeDir()).replace(/\/+$/, '');
         workingDir = home + workingDir.slice(1);
       }
+      // schedule agent cwd = `<vault>/__schedule__/`；feature agent 在此自动发现
+      // `.claude/agents/schedule.md`，并通过 `--add-dir <vault>` 访问 `__daily__/` 日记。
+      workingDir = `${workingDir.replace(/\/+$/, '')}/__schedule__`;
 
       const fileSummaries = modified
         .map((f) => `- ${f.name}: ${f.summary.slice(0, 200)}`)
@@ -111,7 +114,7 @@ ${recentDailyContext || '(无历史日记)'}
 
       let result = '';
 
-      const sendOpts = await getFeatureAgentSendOptions('daily');
+      const sendOpts = await getFeatureAgentSendOptions('schedule');
 
       await new Promise<void>((resolve, reject) => {
         adapter.onEvent((event) => {

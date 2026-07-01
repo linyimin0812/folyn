@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { useScheduleStore } from '@/store/scheduleStore';
-import { startOfWeek, addDays, sameDay } from '@/schedule/dailyScan';
-import { formatTime } from '@/schedule/markdown';
-import { getColumnLabel } from '@/schedule/columns';
+import { startOfWeek, addDays, sameDay } from '@/features/schedule/dailyScan';
+import { formatTime } from '@/features/schedule/markdown';
+import { getColumnLabel } from '@/features/schedule/columns';
 
 const DOW_CN = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 

@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import type { StudyMaterial } from '@/study/types';
-import { DIFFICULTY_LABEL } from '@/study/types';
+import type { StudyMaterial } from '@/features/study/types';
+import { DIFFICULTY_LABEL } from '@/features/study/types';
 import { useEditorStore } from '@/store/editorStore';
 import { isTauri } from '@/utils/platform';
-import { isAiAvailable, openStudyAiAction, buildStudyInstruction } from '@/study/scheduleLink';
+import { isAiAvailable, openStudyAiAction, buildStudyInstruction } from '@/features/study/scheduleLink';
 
 interface Props {
   slug: string;

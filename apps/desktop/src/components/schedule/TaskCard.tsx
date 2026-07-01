@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useScheduleStore } from '@/store/scheduleStore';
-import { dueState } from '@/schedule/markdown';
-import { TASK_CATEGORY_LABEL } from '@/schedule/types';
-import type { ScheduleTask } from '@/schedule/types';
+import { dueState } from '@/features/schedule/markdown';
+import { TASK_CATEGORY_LABEL } from '@/features/schedule/types';
+import type { ScheduleTask } from '@/features/schedule/types';
 
 export function TaskCard({ task }: { task: ScheduleTask }) {
   const [dragging, setDragging] = useState(false);

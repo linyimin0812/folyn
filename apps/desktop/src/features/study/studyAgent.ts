@@ -1,8 +1,8 @@
 // Study agent：canonical 定义文件（`.claude/agents/study.md`，版本控制）。
 //
 // canonical agent 文件按功能就近放在 `apps/desktop/src/study/.claude/agents/study.md`，
-// 运行时由 featureAgentService 播种到 `<vault>/.claude/agents/study.md`（write-if-missing，
-// 不覆盖用户修改），Claude CLI 在 `bare:false` 下靠 cwd 自动发现。
+// 运行时由 featureAgentService 播种到 `<vault>/__study__/.claude/agents/study.md`（write-if-missing，
+// 不覆盖用户修改），Claude CLI 在 `bare:false` 下靠 cwd（`<vault>/__study__/`）自动发现。
 //
 // feature agent 调用从 PR2 起改 cwd 发现（runFeatureAgent），不再用 `--agents`
 // 内联交付。本模块 `?raw` import canonical 文件，仅解析 front-matter 供单测

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useScheduleStore, subscribeToFileTree } from '@/store/scheduleStore';
-import { dateToString } from '@/schedule/dailyScan';
+import { dateToString } from '@/features/schedule/dailyScan';
 import { ScheduleSidebar } from './ScheduleSidebar';
 import { ScheduleView } from './ScheduleView';
 import { BoardView } from './BoardView';

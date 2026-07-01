@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import type { ParsedStudy } from '@/study/types';
+import type { ParsedStudy } from '@/features/study/types';
 import { useEditorStore } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useStudyStore } from '@/store/studyStore';
-import { STUDY_DIR, ELABORATION_TEMPLATE, appendToNotesSection } from '@/study/studyDoc';
-import { isAiAvailable, openStudyAiAction, buildStudyInstruction } from '@/study/scheduleLink';
+import { STUDY_DIR, ELABORATION_TEMPLATE, appendToNotesSection } from '@/features/study/studyDoc';
+import { isAiAvailable, openStudyAiAction, buildStudyInstruction } from '@/features/study/scheduleLink';
 import { MarkdownPreview } from '@/components/file-types/markdown/MarkdownPreview';
 
 interface Props {

@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import type { StudyUnit } from '@/study/types';
-import type { ScheduleLink } from '@/study/scheduleLink';
-import { isAiAvailable } from '@/study/scheduleLink';
-import { dateToString } from '@/schedule/dailyScan';
-import { computePlanProgress } from '@/study/progress';
+import type { StudyUnit } from '@/features/study/types';
+import type { ScheduleLink } from '@/features/study/scheduleLink';
+import { isAiAvailable } from '@/features/study/scheduleLink';
+import { dateToString } from '@/features/schedule/dailyScan';
+import { computePlanProgress } from '@/features/study/progress';
 
 interface Props {
   path: string;

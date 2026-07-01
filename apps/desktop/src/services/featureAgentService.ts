@@ -1,24 +1,50 @@
-// Feature agent 框架（PR1）：canonical agent 文件播种 + runFeatureAgent（cwd 发现 vs --bare 回退）。
+// Feature agent 框架：canonical agent 文件播种 + runFeatureAgent + getFeatureAgentSendOptions。
 //
-// 设计见 `.trellis/tasks/07-01-feature-agent-generalization/prd.md`：
-// - canonical agent 文件按功能就近放 `apps/desktop/src/<feature>/.claude/agents/<feature>.md`。
-// - vault 切换/启动时把 canonical 文件拷贝到 `<vault>/.claude/agents/<file>`，**write-if-missing**（不覆盖用户修改）。
-// - feature agent 调用：agent 文件存在 → `adapter.send(instruction, {agent, bare:false})`（cwd=vault 自动发现）；
+// 设计见 `.trellis/tasks/07-01-refactor-study-wiki-clips-schedule-project-analysis-to-per-vault-claude-agents/prd.md`：
+// - 每 feature 独立子目录 `<vault>/__{feature}__/.claude/`（含 CLAUDE.md + agents/<feature>.md）。
+// - canonical 源文件按功能就近放 `apps/desktop/src/<feature>/.claude/{CLAUDE.md,agents/<feature>.md}`，经 `?raw` import。
+// - vault 切换/启动时把 canonical 文件拷贝到 `<vault>/__{feature}__/.claude/`，**write-if-missing**（不覆盖用户修改）。
+// - feature agent 调用：agent 文件存在 → `adapter.send(instruction, {agent, bare:false})`（cwd=`__{feature}__/` 自动发现）；
 //   不存在 → 回退 `--bare`（无 agent，隔离）。
-//
-// 本 PR 只注册 study（analyze/clips/daily 在 PR3 加入注册表）。runFeatureAgent 只接 study
-// feature 的会话路由（复用 aiStore study 会话机制）；PR2 把 study 调用迁到 runFeatureAgent，
-// PR3 接 analyze/clips/daily。
+// - schedule feature 额外传 `--add-dir <vault>` 以便访问 `__daily__/` 日记与今日修改文档。
 
 import type { CliSendOptions, CliStreamEvent } from '@quill/cli-adapter';
 import type { VaultManager } from '@quill/vault-provider';
-import studyAgentDoc from '@/study/.claude/agents/study.md?raw';
-import analyzeAgentDoc from '@/analyze/.claude/agents/analyze.md?raw';
-import clipsAgentDoc from '@/clips/.claude/agents/clips.md?raw';
-import dailyAgentDoc from '@/schedule/.claude/agents/daily.md?raw';
+import studyAgentDoc from '@/features/study/.claude/agents/study.md?raw';
+import studyClaudeDoc from '@/features/study/.claude/CLAUDE.md?raw';
+import analyzeAgentDoc from '@/features/analyze/.claude/agents/analyze.md?raw';
+import analyzeClaudeDoc from '@/features/analyze/.claude/CLAUDE.md?raw';
+import clipsAgentDoc from '@/features/clips/.claude/agents/clips.md?raw';
+import clipsClaudeDoc from '@/features/clips/.claude/CLAUDE.md?raw';
+import scheduleAgentDoc from '@/features/schedule/.claude/agents/schedule.md?raw';
+import scheduleClaudeDoc from '@/features/schedule/.claude/CLAUDE.md?raw';
+import wikiAgentDoc from '@/features/wiki/.claude/agents/wiki.md?raw';
+import wikiClaudeDoc from '@/features/wiki/.claude/CLAUDE.md?raw';
+
+/** Feature 子目录名前缀/后缀（双下划线包裹，与现有 `__clips__` / `__wiki__` / `__daily__` 约定一致）。 */
+function featureDir(feature: string): string {
+  return `__${feature}__`;
+}
+
+/** Vault 内 .claude 目录（相对 vault 根）。 */
+function claudeDir(feature: string): string {
+  return `${featureDir(feature)}/.claude`;
+}
 
 /** Vault 内 agent 文件存放目录（相对 vault 根）。 */
-const AGENTS_DIR = '.claude/agents';
+function agentsDir(feature: string): string {
+  return `${claudeDir(feature)}/agents`;
+}
+
+/** Vault 内 CLAUDE.md 路径（相对 vault 根）。 */
+function claudeMdPath(feature: string): string {
+  return `${claudeDir(feature)}/CLAUDE.md`;
+}
+
+/** Vault 内 agent 文件路径（相对 vault 根）。 */
+function agentFilePath(feature: string, file: string): string {
+  return `${agentsDir(feature)}/${file}`;
+}
 
 /** 诊断日志目录（相对 vault 根；已在 excludePatterns 里，不污染文件树）。 */
 const SEED_LOG_DIR = '.quill-tmp';
@@ -29,22 +55,27 @@ const SEED_LOG_PATH = `${SEED_LOG_DIR}/feature-agent-seed.log`;
 export interface FeatureAgentEntry {
   /** Feature 名（同时是 `--agent <name>` 的值与 vault 文件主名）。 */
   feature: string;
-  /** vault 内文件名（`<AGENTS_DIR>/<file>`）。 */
+  /** vault 内 agent 文件名（`<agentsDir(feature)>/<file>`）。 */
   file: string;
-  /** canonical 文件内容（`?raw` import）。 */
+  /** canonical agent 文件内容（`?raw` import）。 */
   doc: string;
+  /** canonical CLAUDE.md 内容（`?raw` import）。 */
+  claudeDoc: string;
+  /** 调用时是否额外传 `--add-dir <vault>`（schedule 需要跨目录访问 `__daily__/`）。 */
+  addVaultDir?: boolean;
 }
 
 /**
  * Feature agent 注册表。新增 feature 时在此登记 canonical 文件。
- * study 走 aiStore 会话（runFeatureAgent）；analyze/clips/daily 走 bespoke 流程
- * （getFeatureAgentSendOptions 仅给 adapter.send 提供 options）。
+ * - study 走 aiStore 会话（runFeatureAgent）。
+ * - analyze/clips/schedule/wiki 走 bespoke 流程（getFeatureAgentSendOptions 仅给 adapter.send 提供 options）。
  */
 export const FEATURE_AGENTS: FeatureAgentEntry[] = [
-  { feature: 'study', file: 'study.md', doc: studyAgentDoc },
-  { feature: 'analyze', file: 'analyze.md', doc: analyzeAgentDoc },
-  { feature: 'clips', file: 'clips.md', doc: clipsAgentDoc },
-  { feature: 'daily', file: 'daily.md', doc: dailyAgentDoc },
+  { feature: 'study', file: 'study.md', doc: studyAgentDoc, claudeDoc: studyClaudeDoc },
+  { feature: 'analyze', file: 'analyze.md', doc: analyzeAgentDoc, claudeDoc: analyzeClaudeDoc },
+  { feature: 'clips', file: 'clips.md', doc: clipsAgentDoc, claudeDoc: clipsClaudeDoc },
+  { feature: 'schedule', file: 'schedule.md', doc: scheduleAgentDoc, claudeDoc: scheduleClaudeDoc, addVaultDir: true },
+  { feature: 'wiki', file: 'wiki.md', doc: wikiAgentDoc, claudeDoc: wikiClaudeDoc },
 ];
 
 /** 取某 feature 的注册项（不存在返回 undefined）。 */
@@ -52,10 +83,16 @@ export function getFeatureAgentEntry(feature: string): FeatureAgentEntry | undef
   return FEATURE_AGENTS.find((e) => e.feature === feature);
 }
 
-/** vault 内 agent 文件的相对路径（`<AGENTS_DIR>/<file>`）。 */
-export function agentFilePath(feature: string): string | null {
+/** vault 内 agent 文件的相对路径（`__{feature}__/.claude/agents/<file>`）；未注册返回 null。 */
+export function agentFilePathOf(feature: string): string | null {
   const entry = getFeatureAgentEntry(feature);
-  return entry ? `${AGENTS_DIR}/${entry.file}` : null;
+  return entry ? agentFilePath(entry.feature, entry.file) : null;
+}
+
+/** vault 内 CLAUDE.md 的相对路径（`__{feature}__/.claude/CLAUDE.md`）；未注册返回 null。 */
+export function claudeMdPathOf(feature: string): string | null {
+  const entry = getFeatureAgentEntry(feature);
+  return entry ? claudeMdPath(entry.feature) : null;
 }
 
 /**
@@ -77,12 +114,13 @@ async function lazySeedAgentFiles(): Promise<void> {
 }
 
 /**
- * 检查 `<vault>/.claude/agents/<feature>.md` 是否存在（已播种或用户自建）。
+ * 检查 `<vault>/__{feature}__/.claude/agents/<feature>.md` 是否存在（已播种或用户自建）。
  * vault 不可读 / 文件缺失 → 返回 false（调用方回退 `--bare`）。
  */
 export async function agentFileExists(manager: VaultManager, feature: string): Promise<boolean> {
-  const path = agentFilePath(feature);
-  if (!path) return false;
+  const entry = getFeatureAgentEntry(feature);
+  if (!entry) return false;
+  const path = agentFilePath(entry.feature, entry.file);
   try {
     await manager.readFile(path);
     return true;
@@ -91,7 +129,7 @@ export async function agentFileExists(manager: VaultManager, feature: string): P
   }
 }
 
-/** 单个 feature 播种结果。 */
+/** 单个 feature 播种结果（agent 文件 + CLAUDE.md 各一条）。 */
 export interface SeedAgentResult {
   feature: string;
   path: string;
@@ -102,38 +140,55 @@ export interface SeedAgentResult {
 }
 
 /**
- * 把所有已注册的 canonical agent 文件播种到 `<vault>/.claude/agents/`。
+ * 把所有已注册的 canonical 文件（agent .md + CLAUDE.md）播种到 `<vault>/__{feature}__/.claude/`。
  * **write-if-missing**：已存在的文件不覆盖（保留用户修改）。缺父目录会自动创建。
  *
  * 播种失败（vault 只读等）静默降级——调用时 `agentFileExists` 返回 false → `--bare` 回退。
- * 不抛错，不阻塞 vault 切换。返回每个 feature 的播种结果（用于诊断）。
+ * 不抛错，不阻塞 vault 切换。返回每个文件路径的播种结果（用于诊断）。
  */
 export async function seedAgentFiles(manager: VaultManager): Promise<SeedAgentResult[]> {
   const results: SeedAgentResult[] = [];
 
-  // 先确保目录存在（非 tauri provider 的 writeFile 未必自动建父目录）。
-  try {
-    await manager.createDir(AGENTS_DIR);
-  } catch {
-    // 目录已存在或 vault 不可写——继续尝试逐文件写入。
+  // 先确保所有 feature 的 agents/ 目录存在（非 tauri provider 的 writeFile 未必自动建父目录）。
+  for (const entry of FEATURE_AGENTS) {
+    try {
+      await manager.createDir(agentsDir(entry.feature));
+    } catch {
+      // 目录已存在或 vault 不可写——继续尝试逐文件写入。
+    }
   }
 
   for (const entry of FEATURE_AGENTS) {
-    const path = `${AGENTS_DIR}/${entry.file}`;
+    // CLAUDE.md
+    const claudePath = claudeMdPath(entry.feature);
     try {
-      await manager.readFile(path);
-      // 已存在（canonical 或用户修改）——不覆盖。
-      results.push({ feature: entry.feature, path, status: 'exists' });
-      continue;
+      await manager.readFile(claudePath);
+      results.push({ feature: entry.feature, path: claudePath, status: 'exists' });
     } catch {
-      // 不存在 → 写入 canonical 内容。
       try {
-        await manager.writeFile(path, entry.doc);
-        results.push({ feature: entry.feature, path, status: 'seeded' });
+        await manager.writeFile(claudePath, entry.claudeDoc);
+        results.push({ feature: entry.feature, path: claudePath, status: 'seeded' });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`[featureAgent] seed failed for "${entry.feature}" at ${path}:`, err);
-        results.push({ feature: entry.feature, path, status: 'failed', error: msg });
+        console.warn(`[featureAgent] seed CLAUDE.md failed for "${entry.feature}" at ${claudePath}:`, err);
+        results.push({ feature: entry.feature, path: claudePath, status: 'failed', error: msg });
+      }
+    }
+
+    // agent .md
+    const agentPath = agentFilePath(entry.feature, entry.file);
+    try {
+      await manager.readFile(agentPath);
+      // 已存在（canonical 或用户修改）——不覆盖。
+      results.push({ feature: entry.feature, path: agentPath, status: 'exists' });
+    } catch {
+      try {
+        await manager.writeFile(agentPath, entry.doc);
+        results.push({ feature: entry.feature, path: agentPath, status: 'seeded' });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[featureAgent] seed agent failed for "${entry.feature}" at ${agentPath}:`, err);
+        results.push({ feature: entry.feature, path: agentPath, status: 'failed', error: msg });
       }
     }
   }
@@ -186,15 +241,16 @@ export interface RunFeatureAgentOpts {
 }
 
 /**
- * 运行 feature agent。本 PR 只支持 `study`（PR3 扩展到 analyze/clips/daily）。
+ * 运行 feature agent（cwd=`<vault>/__{feature}__/`）。
  *
  * 路径：
- * - `<vault>/.claude/agents/<feature>.md` 存在 → `adapter.send(instruction, {agent: feature, bare: false, ...})`，
- *   cwd=vault 自动发现 agent（去 `--bare`，加载 vault 的 CLAUDE.md/hooks）。
+ * - `<vault>/__{feature}__/.claude/agents/<feature>.md` 存在 → `adapter.send(instruction, {agent: feature, bare: false, ...})`，
+ *   cwd=`__{feature}__/` 自动发现 agent（去 `--bare`，加载 feature 级 CLAUDE.md/hooks）。
  * - 不存在 → 回退 `--bare`（无 agent，隔离，当前普通行为）。
  *
  * study feature 复用 aiStore 的专用 study 会话（getOrCreateStudySession）：事件路由到该会话，
- * 多轮复用 cliSessionId。其它 feature 本 PR 不支持（抛错，PR3 接入 bespoke 流程）。
+ * 多轮复用 cliSessionId。其它 feature 走 bespoke 流程，应使用 getFeatureAgentSendOptions
+ * 自行驱动 adapter（runFeatureAgent 仅支持 study）。
  */
 export async function runFeatureAgent(
   feature: string,
@@ -202,7 +258,7 @@ export async function runFeatureAgent(
   opts: RunFeatureAgentOpts = {},
 ): Promise<void> {
   if (feature !== 'study') {
-    throw new Error(`[featureAgent] feature "${feature}" not supported in PR1 (only study)`);
+    throw new Error(`[featureAgent] feature "${feature}" not supported by runFeatureAgent (only study; others use bespoke flow via getFeatureAgentSendOptions)`);
   }
 
   const { useAiStore } = await import('@/store/aiStore');
@@ -232,6 +288,11 @@ export async function runFeatureAgent(
     } catch {
       // 路径解析失败时退回原始值
     }
+  }
+  // cwd = `<vault>/__{feature}__/`：agent 自动发现 `.claude/agents/<feature>.md`。
+  const entry = getFeatureAgentEntry(feature);
+  if (entry) {
+    workingDir = `${workingDir.replace(/\/+$/, '')}/${featureDir(feature)}`;
   }
 
   const adapter = getAdapterForSession(sid);
@@ -315,23 +376,47 @@ export async function isAgentAvailable(feature: string): Promise<boolean> {
 }
 
 /**
- * 给 bespoke feature service（analyze/clips/daily）用的轻量辅助：返回 `adapter.send`
+ * 给 bespoke feature service（analyze/clips/schedule/wiki）用的轻量辅助：返回 `adapter.send`
  * 的 options 片段。这些 feature 不走 aiStore 会话，保留各自 collectTextFromStream /
  * setDigest 结果处理；只把 send 从无 options 升级为 feature-agent 模式。
  *
- * - agent 文件存在 → `{ agent: feature, bare: false }`（cwd=vault 自动发现）。
- * - 不存在 / vault 不可读 → `{ bare: true }`（`--bare` 回退，隔离行为）。
+ * - agent 文件存在 → `{ agent: feature, bare: false, addDir? }`（cwd=`__{feature}__/` 自动发现）。
+ *   schedule feature 额外传 `addDir: ['<vaultbasePath>']` 以便访问 `__daily__/` 日记。
+ * - 不存在 / vault 不可读 → `{ bare: true, addDir? }`（`--bare` 回退，隔离行为）。
  *
  * 调用方把自己的 `adapter.send(prompt)` 改为 `adapter.send(prompt, await getFeatureAgentSendOptions(feature))`。
+ * workingDir 仍由调用方在 `adapter.start({workingDir})` 处设为 `<vault>/__{feature}__/`。
  */
 export async function getFeatureAgentSendOptions(feature: string): Promise<CliSendOptions> {
   try {
     // 调用时懒播种兜底（幂等，安全）。
     await lazySeedAgentFiles();
     const { useVaultStore } = await import('@/store/vaultStore');
-    const manager = useVaultStore.getState().manager;
+    const vault = useVaultStore.getState();
+    const manager = vault.manager;
     const available = await agentFileExists(manager, feature);
-    return available ? { agent: feature, bare: false } : { bare: true };
+    const entry = getFeatureAgentEntry(feature);
+
+    // schedule feature 需要 --add-dir <vault> 访问 __daily__/ 日记与今日修改文档。
+    let addDir: string[] | undefined;
+    if (entry?.addVaultDir && vault.currentVault) {
+      let basePath = vault.currentVault.basePath;
+      if (basePath.startsWith('~')) {
+        try {
+          const { homeDir } = await import('@tauri-apps/api/path');
+          const home = (await homeDir()).replace(/\/+$/, '');
+          basePath = home + basePath.slice(1);
+        } catch {
+          // 路径解析失败时退回原始值
+        }
+      }
+      addDir = [basePath];
+    }
+
+    if (available) {
+      return { agent: feature, bare: false, ...(addDir ? { addDir } : {}) };
+    }
+    return { bare: true, ...(addDir ? { addDir } : {}) };
   } catch {
     return { bare: true };
   }

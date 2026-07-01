@@ -1,6 +1,6 @@
 import { useScheduleStore } from '@/store/scheduleStore';
-import type { EventCategory } from '@/schedule/types';
-import { EVENT_CATEGORY_LABEL } from '@/schedule/types';
+import type { EventCategory } from '@/features/schedule/types';
+import { EVENT_CATEGORY_LABEL } from '@/features/schedule/types';
 
 const CATS: { key: EventCategory; color: string }[] = [
   { key: 'work', color: 'var(--cal-work)' },

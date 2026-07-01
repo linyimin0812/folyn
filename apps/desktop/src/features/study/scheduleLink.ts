@@ -11,7 +11,7 @@
 // 3. 从 schedule 已解析任务中按 slug 收集回链状态（due/done/noteDate），供计划区只读展示。
 // 4. AI 动作的可用性判断与"打开 AI 面板 + 预填提示词"统一入口（无新调用链）。
 
-import type { ScheduleTask } from '@/schedule/types';
+import type { ScheduleTask } from '@/features/schedule/types';
 import type { StudyUnit, StudyMaterial, AiAction } from './types';
 import { CliAdapterRegistry } from '@quill/cli-adapter';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -132,8 +132,8 @@ export function isAiAvailable(): boolean {
  *
  * 静态输出契约（行语法 / callout 格式 / append-only 规则）由 canonical
  * `study.md` 的 system prompt 承载。运行时 agent 文件已播种到
- * `<vault>/.claude/agents/study.md`，Claude CLI 在 `bare:false` 下靠 cwd
- * 自动发现（PR2：不再用 `--agents` 内联交付）。
+ * `<vault>/__study__/.claude/agents/study.md`，Claude CLI 在 `bare:false` 下靠 cwd
+ * （`<vault>/__study__/`）自动发现（PR2：不再用 `--agents` 内联交付）。
  * 本函数只产出与主题/资料相关的动态指令，agent 据此按契约执行：
  * - research / plan：agent 返回结构化文本建议行（不直编文件）→ studyStore
  *   捕获 effect 扫 study 会话最后 assistant 消息 → 建议卡片。
@@ -156,7 +156,10 @@ export function buildStudyInstruction(
   },
 ): string {
   const { topicName, topicPath, unitTitle, materialTitle, materialUrl, selectedMaterials } = ctx;
-  const head = `主题文档：${topicPath}（${topicName}）`;
+  // agent cwd = `<vault>/__study__/`，topicPath 是 vault 相对路径（如 `__study__/<slug>.md`）。
+  // 提取 cwd 相对文件名（`<slug>.md`）方便 agent 直接 Read/Edit；同时保留 vault 相对路径供显示。
+  const cwdFileName = topicPath.split('/').pop() ?? topicPath;
+  const head = `主题文档：${topicPath}（${topicName}）\n主题文档 cwd 相对路径：${cwdFileName}`;
   switch (action) {
     case 'research':
       return [

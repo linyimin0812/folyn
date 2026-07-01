@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { formatTime } from '@/schedule/markdown';
-import { setDragPayload } from '@/schedule/dnd';
+import { formatTime } from '@/features/schedule/markdown';
+import { setDragPayload } from '@/features/schedule/dnd';
 import type { ModalIntent } from './ScheduleModal';
-import type { EventCategory } from '@/schedule/types';
+import type { EventCategory } from '@/features/schedule/types';
 
 interface Props {
   category: EventCategory;

@@ -1,7 +1,7 @@
 import { useScheduleStore } from '@/store/scheduleStore';
-import { dateToString } from '@/schedule/dailyScan';
-import { useBoardColumns } from '@/schedule/columns';
-import { TASK_CATEGORY_LABEL } from '@/schedule/types';
+import { dateToString } from '@/features/schedule/dailyScan';
+import { useBoardColumns } from '@/features/schedule/columns';
+import { TASK_CATEGORY_LABEL } from '@/features/schedule/types';
 
 export function TodayTaskList() {
   const tasks = useScheduleStore((s) => s.tasks);

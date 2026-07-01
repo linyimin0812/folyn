@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ScheduleTask } from '@/schedule/types';
+import type { ScheduleTask } from '@/features/schedule/types';
 import { TaskCard } from './TaskCard';
 
 // Tauri WKWebView quirk: getData('text/plain') during onDrop may return empty

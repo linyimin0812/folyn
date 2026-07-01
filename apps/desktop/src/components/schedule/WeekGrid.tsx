@@ -1,8 +1,8 @@
 import { useScheduleStore } from '@/store/scheduleStore';
-import { dateToString, startOfWeek, addDays, sameDay } from '@/schedule/dailyScan';
-import { formatTime } from '@/schedule/markdown';
-import { hasDragPayload, readDragPayload } from '@/schedule/dnd';
-import { buildDayLayout } from '@/schedule/layout';
+import { dateToString, startOfWeek, addDays, sameDay } from '@/features/schedule/dailyScan';
+import { formatTime } from '@/features/schedule/markdown';
+import { hasDragPayload, readDragPayload } from '@/features/schedule/dnd';
+import { buildDayLayout } from '@/features/schedule/layout';
 import { EventBlock } from './EventBlock';
 import { NowLine } from './NowLine';
 import type { ModalIntent } from './ScheduleModal';

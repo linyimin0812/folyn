@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist 与禁止模式：检查 5 个 feature agent .md 重构、featureAgentService 改动、WIKI 3 service 重构、sidebar 过滤是否符合规范"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "类型检查：CliSendOptions 字段、FeatureAgentEntry、WIKI 3 个 service 的返回类型（IngestAnalysis/ReviewItem/Markdown）"}
+{"file": ".trellis/spec/cli-adapter/frontend/index.md", "reason": "验证 ClaudeAdapter 调用参数：schedule 的 --add-dir、bare:false、--agent schedule 三个 flag 组合正确"}
+{"file": ".trellis/spec/vault-provider/frontend/index.md", "reason": "验证种入逻辑：createDir 幂等、writeFile 路径 <vault>/__{feature}__/.claude/{CLAUDE.md,agents/<feature>.md}、readFile 探测存在性"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "验证模块组织：canonical 源文件路径 apps/desktop/src/<feature>/.claude/、wiki 新模块位置、schedule rename 后的目录结构"}

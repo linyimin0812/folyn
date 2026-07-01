@@ -7,7 +7,7 @@ import {
   serializeStudy,
   scanMaterialSuggestions,
   scanUnitSuggestions,
-} from '@/study/markdown';
+} from '@/features/study/markdown';
 import {
   STUDY_DIR,
   slugifyTopic,
@@ -15,16 +15,16 @@ import {
   studyDocPath,
   extractSlug,
   type StudyTopicEntry,
-} from '@/study/studyDoc';
+} from '@/features/study/studyDoc';
 import {
   buildStudyTaskLine,
   appendTaskLineToDaily,
   collectScheduleLinks,
   type ScheduleLink,
-} from '@/study/scheduleLink';
-import { dateToString } from '@/schedule/dailyScan';
-import { isDue } from '@/study/sm2';
-import type { ParsedStudy, ReviewAtom, StudyUnit, StudyMaterial } from '@/study/types';
+} from '@/features/study/scheduleLink';
+import { dateToString } from '@/features/schedule/dailyScan';
+import { isDue } from '@/features/study/sm2';
+import type { ParsedStudy, ReviewAtom, StudyUnit, StudyMaterial } from '@/features/study/types';
 
 /** 跨主题今日复习队列项（交错练习）：atom + 来源主题 slug/path（写回定位）。 */
 export interface DueAtomEntry {

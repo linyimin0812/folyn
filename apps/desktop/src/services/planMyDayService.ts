@@ -18,8 +18,8 @@ import { useScheduleStore } from '@/store/scheduleStore';
 import { useSkillStore } from '@/store/skillStore';
 import { collectTextFromStream, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
-import { dateToString } from '@/schedule/dailyScan';
-import type { EventCategory, ScheduleEvent, ScheduleTask } from '@/schedule/types';
+import { dateToString } from '@/features/schedule/dailyScan';
+import type { EventCategory, ScheduleEvent, ScheduleTask } from '@/features/schedule/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

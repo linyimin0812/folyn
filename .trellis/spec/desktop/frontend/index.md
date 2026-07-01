@@ -15,6 +15,7 @@ This directory contains guidelines for the `@quill/desktop` frontend — a Tauri
 | Guide | Description | Status |
 |-------|-------------|--------|
 | [Directory Structure](./directory-structure.md) | Module organization and file layout | Filled |
+| [Feature Agents](./feature-agents.md) | Per-feature Claude Code agent architecture (canonical source, vault seeding, invoke contract) | Filled |
 | [Component Guidelines](./component-guidelines.md) | Component patterns, props, composition, styling | Filled |
 | [Hook Guidelines](./hook-guidelines.md) | Custom hooks, data fetching patterns | Filled |
 | [State Management](./state-management.md) | Zustand stores, local vs global state, persistence | Filled |

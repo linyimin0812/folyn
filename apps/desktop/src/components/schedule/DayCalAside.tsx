@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useScheduleStore } from '@/store/scheduleStore';
-import { sameDay } from '@/schedule/dailyScan';
-import { dueState } from '@/schedule/markdown';
-import { hasDragPayload, readDragPayload } from '@/schedule/dnd';
+import { sameDay } from '@/features/schedule/dailyScan';
+import { dueState } from '@/features/schedule/markdown';
+import { hasDragPayload, readDragPayload } from '@/features/schedule/dnd';
 
 const DOW = ['一', '二', '三', '四', '五', '六', '日'];
 

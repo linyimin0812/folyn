@@ -1,0 +1,9 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend 总入口：技术栈、关键模式（named exports、Zustand selectors、@/ alias、Tauri invoke）——所有 5 个 feature 的 agent .md canonical 源文件都在 apps/desktop/src/<feature>/.claude/ 下"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "模块组织约定：study/clips/analyze/schedule 各有 src 子目录，wiki 当前没有独立 src 目录（service 散在 services/）——PR3 需决定 wiki canonical 源放哪"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store 约定：vaultStore（vault 切换触发种入）、wikiStore、settingsStore——featureAgentService 依赖 vaultStore 切换事件"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "禁止模式与 review checklist：重构现有 4 agent、新增 WIKI agent、改 featureAgentService 都需符合"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "类型约定：CliSendOptions 的 agent/bare/addDir 字段、FeatureAgentEntry 类型、stream event 类型"}
+{"file": ".trellis/spec/cli-adapter/frontend/index.md", "reason": "ClaudeAdapter 契约：--agent/--agents/--add-dir/bare flag 行为、stream-json 解析、cwd 与 agent 发现机制——PR1 改 featureAgentService 调用参数的核心依据"}
+{"file": ".trellis/spec/vault-provider/frontend/index.md", "reason": "VaultManager 接口：createDir/writeFile/readFile 用于 featureAgentService 种入 .claude/CLAUDE.md + agents/*.md，write-if-missing 语义"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "本任务跨多层：canonical src（?raw import）→ featureAgentService（种入）→ VaultManager（写盘）→ ClaudeAdapter（调用）→ sidebar（过滤）——跨层数据流必须对齐"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "5 个 feature 的 CLAUDE.md + agent .md 结构高度相似，种入/调用/过滤逻辑应统一抽象，避免 5 份复制粘贴"}

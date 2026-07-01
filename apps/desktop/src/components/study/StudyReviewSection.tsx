@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import type { ParsedStudy, ReviewAtom, ReviewRating } from '@/study/types';
-import { DEFAULT_REVIEW_ATOM } from '@/study/types';
-import { reviewAtom, isDue } from '@/study/sm2';
-import { dateToString } from '@/schedule/dailyScan';
-import { isAiAvailable, openStudyAiAction, buildStudyInstruction } from '@/study/scheduleLink';
+import type { ParsedStudy, ReviewAtom, ReviewRating } from '@/features/study/types';
+import { DEFAULT_REVIEW_ATOM } from '@/features/study/types';
+import { reviewAtom, isDue } from '@/features/study/sm2';
+import { dateToString } from '@/features/schedule/dailyScan';
+import { isAiAvailable, openStudyAiAction, buildStudyInstruction } from '@/features/study/scheduleLink';
 
 interface Props {
   slug: string;

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { storageClient } from '@/utils/storageClient';
-import { DEFAULT_BOARD_COLUMNS, COLUMN_COLOR_PALETTE, type BoardColumnDef } from '@/schedule/types';
+import { DEFAULT_BOARD_COLUMNS, COLUMN_COLOR_PALETTE, type BoardColumnDef } from '@/features/schedule/types';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type AppPage = 'editor' | 'vault' | 'settings' | 'schedule' | 'study';
@@ -149,7 +149,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   enableClipsPanel: true,
   enableAnalyzePanel: true,
   enableDailyPanel: true,
-  excludePatterns: 'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__',
+  excludePatterns: 'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__study__\n__schedule__\n__analyze__',
 
   // Editor
   editorFont: 'DM Mono',
@@ -299,10 +299,11 @@ storageClient.get<Partial<SettingsState>>(SETTINGS_STORAGE_KEY).then((saved) => 
     if (saved.fontSize) {
       document.documentElement.style.setProperty('--ui-font-size', `${saved.fontSize}px`);
     }
-    // Backfill excludePatterns for built-in managed dirs (__wiki__/__clips__/__reports__/__daily__)
+    // Backfill excludePatterns for built-in managed dirs
+    // (__wiki__/__clips__/__reports__/__daily__/__study__/__schedule__/__analyze__)
     // so existing users with persisted settings also hide them from the file panel.
     if (saved.excludePatterns && !saved.excludePatterns.includes('__wiki__')) {
-      saved.excludePatterns = `${saved.excludePatterns.trim()}\n__wiki__\n__clips__\n__reports__\n__daily__`;
+      saved.excludePatterns = `${saved.excludePatterns.trim()}\n__wiki__\n__clips__\n__reports__\n__daily__\n__study__\n__schedule__\n__analyze__`;
     }
     // Migrate persisted dailyNotesDir from the old default to the new built-in name.
     if (saved.dailyNotesDir === 'daily') {

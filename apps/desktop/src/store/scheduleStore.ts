@@ -5,16 +5,16 @@ import {
   parseDaily,
   serializeDaily,
   formatTime,
-} from '@/schedule/markdown';
-import { dateToString } from '@/schedule/dailyScan';
-import { getDoneColumnId, getBoardColumns } from '@/schedule/columns';
+} from '@/features/schedule/markdown';
+import { dateToString } from '@/features/schedule/dailyScan';
+import { getDoneColumnId, getBoardColumns } from '@/features/schedule/columns';
 import type {
   EventCategory,
   ParsedDaily,
   ScheduleEvent,
   ScheduleTask,
   TaskColumn,
-} from '@/schedule/types';
+} from '@/features/schedule/types';
 export type { EventCategory, TaskColumn };
 
 interface PomoState {

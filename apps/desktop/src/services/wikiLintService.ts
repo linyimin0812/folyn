@@ -2,15 +2,14 @@
 
 import { wikiProvider } from './wikiProvider';
 import { useVaultStore } from '@/store/vaultStore';
+import { useSettingsStore } from '@/store/settingsStore';
+import { CliAdapterRegistry } from '@quill/cli-adapter';
 import type { ReviewItem } from '@/types/wiki';
+import { collectTextFromStream } from './aiStreamUtils';
+import { getFeatureAgentSendOptions } from './featureAgentService';
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function extractWikiLinks(content: string): string[] {
-  const matches = content.matchAll(/\[\[wiki:\/\/(.+?)\]\]/g);
-  return Array.from(matches, (m) => m[1]);
 }
 
 export function extractFrontmatterSources(content: string): string[] {
@@ -24,111 +23,107 @@ export function extractFrontmatterSources(content: string): string[] {
     .filter(Boolean);
 }
 
-async function collectAllWikiPages(): Promise<{ path: string; content: string }[]> {
-  const pages: { path: string; content: string }[] = [];
-  const dirs = ['entities', 'concepts', 'sources', 'syntheses'];
-
-  for (const dir of dirs) {
-    const entries = await wikiProvider.listFiles(dir).catch(() => []);
-    for (const entry of entries) {
-      if (entry.type === 'file' && entry.path.endsWith('.md')) {
-        try {
-          const content = await wikiProvider.readFile(entry.path);
-          pages.push({ path: entry.path, content });
-        } catch {
-          // skip unreadable
-        }
-      }
-    }
-  }
-  return pages;
+/**
+ * 构造 lint action 的运行指令（动态部分）。静态输出契约由 canonical
+ * `__wiki__/.claude/agents/wiki.md` 承载（action: lint → ReviewItem[] JSON）。
+ */
+function buildLintInstruction(hashCacheJson: string): string {
+  return [
+    '动作：lint',
+    '',
+    '## 当前哈希缓存 (cache/hashes.json)',
+    '```json',
+    hashCacheJson,
+    '```',
+    '',
+    '请按 lint action 输出契约：扫描 entities/ / concepts/ / sources/ / syntheses/ 下所有 .md 页面，',
+    '输出 JSON 数组（缺失页面 / 孤立页面 / 过时内容等 review items）。',
+  ].join('\n');
 }
 
+interface LintItemShape {
+  type?: string;
+  title?: string;
+  description?: string;
+  affectedPages?: unknown;
+  suggestedActions?: unknown;
+}
+
+/**
+ * 调用 wiki feature agent 的 lint action，返回 ReviewItem[]。
+ *
+ * agent 文件存在 → bare:false + --agent wiki（cwd=`<vault>/__wiki__/` 自动发现）；
+ * 不存在 → --bare 回退（agent 不可用时返回空数组，调用方 UI 显示"无问题"）。
+ */
 export async function runWikiLint(): Promise<ReviewItem[]> {
-  const items: ReviewItem[] = [];
-  const pages = await collectAllWikiPages();
-  const allPaths = new Set(pages.map((p) => p.path));
-
-  // 1. Missing pages: referenced but don't exist
-  for (const page of pages) {
-    const links = extractWikiLinks(page.content);
-    for (const link of links) {
-      const targetPath = link.endsWith('.md') ? link : `${link}.md`;
-      if (!allPaths.has(targetPath) && !allPaths.has(link)) {
-        items.push({
-          id: generateId(),
-          type: 'structure_change',
-          title: `缺失页面: ${link}`,
-          description: `${page.path} 引用了 [[wiki://${link}]]，但该页面不存在`,
-          affectedPages: [page.path],
-          suggestedActions: [
-            { label: '创建空白页面', type: 'accept' },
-            { label: '忽略', type: 'reject' },
-          ],
-          createdAt: Date.now(),
-          status: 'pending',
-        });
-      }
-    }
-  }
-
-  // 2. Orphan pages: no inbound links
-  const inboundCount = new Map<string, number>();
-  for (const page of pages) {
-    const links = extractWikiLinks(page.content);
-    for (const link of links) {
-      const key = link.endsWith('.md') ? link : `${link}.md`;
-      inboundCount.set(key, (inboundCount.get(key) || 0) + 1);
-    }
-  }
-  for (const page of pages) {
-    if (!inboundCount.has(page.path) && !page.path.startsWith('sources/')) {
-      items.push({
-        id: generateId(),
-        type: 'structure_change',
-        title: `孤立页面: ${page.path}`,
-        description: `没有其他 wiki 页面链接到此页面`,
-        affectedPages: [page.path],
-        suggestedActions: [
-          { label: '搜索关联', type: 'research' },
-          { label: '忽略', type: 'reject' },
-        ],
-        createdAt: Date.now(),
-        status: 'pending',
-      });
-    }
-  }
-
-  // 3. Stale content: source files changed since last ingest
-  const hashCache = await wikiProvider.readHashCache();
   const vault = useVaultStore.getState();
-  for (const [filePath, oldHash] of Object.entries(hashCache)) {
-    try {
-      const content = await vault.readFile(filePath);
-      const encoder = new TextEncoder();
-      const data = encoder.encode(content);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const newHash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-      if (newHash !== oldHash) {
-        items.push({
-          id: generateId(),
-          type: 'stale_content',
-          title: `过时内容: ${filePath}`,
-          description: `源文件 ${filePath} 已更新，但 wiki 中的摘要可能过时`,
-          affectedPages: [`sources/${filePath.replace(/[/\\]/g, '-').replace(/\.\w+$/, '')}.md`],
-          suggestedActions: [
-            { label: '重新摄入', type: 'accept' },
-            { label: '忽略', type: 'reject' },
-          ],
-          createdAt: Date.now(),
-          status: 'pending',
-        });
-      }
-    } catch {
-      // source file may have been deleted
-    }
+  const settings = useSettingsStore.getState();
+  if (!vault.currentVault) return [];
+
+  await wikiProvider.init();
+  const hashCache = await wikiProvider.readHashCache();
+
+  const registry = CliAdapterRegistry.getInstance();
+  const adapter = registry.create(settings.cliAdapter);
+  let basePath = vault.currentVault.basePath;
+  if (basePath.startsWith('~')) {
+    const { homeDir } = await import('@tauri-apps/api/path');
+    const home = (await homeDir()).replace(/\/+$/, '');
+    basePath = home + basePath.slice(1);
   }
+  // wiki agent cwd = `<vault>/__wiki__/`。
+  const workingDir = `${basePath.replace(/\/+$/, '')}/__wiki__`;
+
+  await adapter.start({ cliPath: settings.cliPath, workingDir });
+
+  let aiText: string;
+  try {
+    const sendOpts = await getFeatureAgentSendOptions('wiki');
+    const instruction = buildLintInstruction(JSON.stringify(hashCache, null, 2));
+    const textPromise = collectTextFromStream(adapter);
+    await adapter.send(instruction, sendOpts);
+    aiText = await textPromise;
+  } finally {
+    await adapter.stop();
+  }
+
+  // 解析 JSON 数组（容错：agent 可能包裹代码块或附加文字）。
+  const arrayMatch = aiText.match(/\[[\s\S]*\]/);
+  const jsonText = arrayMatch ? arrayMatch[0] : aiText;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    // agent 返回非 JSON（或 --bare 回退无 agent）→ 视为无问题。
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+
+  const now = Date.now();
+  const items: ReviewItem[] = (parsed as LintItemShape[]).map((raw, idx) => {
+    const suggestedActions = Array.isArray(raw.suggestedActions)
+      ? (raw.suggestedActions as Array<Record<string, unknown>>)
+          .map((a) => ({
+            label: typeof a?.label === 'string' ? a.label : '',
+            type: (typeof a?.type === 'string' ? (a.type as ReviewItem['suggestedActions'][number]['type']) : 'reject'),
+          }))
+          .filter((a) => a.label.length > 0)
+      : [{ label: '忽略', type: 'reject' as const }];
+    const affectedPages = Array.isArray(raw.affectedPages)
+      ? (raw.affectedPages as unknown[]).filter((p): p is string => typeof p === 'string')
+      : [];
+    const type = (typeof raw.type === 'string' && raw.type) as ReviewItem['type'] || 'structure_change';
+    return {
+      id: generateId() + `-${idx}`,
+      type,
+      title: typeof raw.title === 'string' ? raw.title : '未命名问题',
+      description: typeof raw.description === 'string' ? raw.description : '',
+      affectedPages,
+      suggestedActions,
+      createdAt: now,
+      status: 'pending' as const,
+    };
+  });
 
   return items;
 }
