@@ -50,6 +50,13 @@ const STACK_ICON = (
     <path d="m2 17 10 5 10-5" />
   </svg>
 );
+/** 区段标题图标。 */
+const SECTION_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+  </svg>
+);
 
 /** 难度 → 颜色 token（复用 schedule sw-tag 体系）。 */
 const DIFFICULTY_TAG: Record<'easy' | 'medium' | 'hard', string> = {
@@ -121,12 +128,12 @@ export function StudyMaterialsSection({
   return (
     <section className="sw-study-section">
       <header className="sw-study-sec-head">
-        <h3>资料</h3>
+        <h3><span className="sw-sec-icon" aria-hidden="true">{SECTION_ICON}</span>资料</h3>
         <div className="sw-study-sec-actions">
           <button onClick={() => setAdding('book')} title="手动添加书目">+ 书</button>
           <button onClick={() => setAdding('web')} title="手动添加网页">+ 网页</button>
           <button
-            className="ghost"
+            className="primary"
             disabled={!aiAvailable}
             title={aiAvailable ? 'AI 检索网络资料与经典书籍/论文（返回建议卡片）' : '未配置 AI 适配器'}
             onClick={onResearch}
@@ -177,7 +184,7 @@ export function StudyMaterialsSection({
                 {m.summary && <p className="sw-material-summary">{m.summary}</p>}
                 <div className="sw-card-foot">
                   <div className="sw-card-actions">
-                    <button className="sw-card-action" onClick={() => onAcceptSuggestion(m)}>加入</button>
+                    <button className="sw-card-action primary" onClick={() => onAcceptSuggestion(m)}>加入</button>
                     <button className="sw-card-action ghost" onClick={() => onDismissSuggestion(m.id)}>忽略</button>
                   </div>
                 </div>

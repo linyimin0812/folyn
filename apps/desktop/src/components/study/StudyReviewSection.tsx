@@ -32,6 +32,15 @@ const REPEAT_ICON = (
     <path d="M21 13v1a4 4 0 0 1-4 4H3" />
   </svg>
 );
+/** 区段标题图标。 */
+const SECTION_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m17 2 4 4-4 4" />
+    <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+    <path d="m7 22-4-4 4-4" />
+    <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+  </svg>
+);
 
 /** 复习区：列出 `## 复习` 段原子，卡片化 + 到期高亮置顶；4 按钮 SM-2 评级写回；
  *  手动添加；AI 动作：生成自测题（主动检索，答案折叠在 :::callout{type="tip"}）。 */
@@ -84,11 +93,11 @@ export function StudyReviewSection({ slug, path, topicName, parsed, onRate, onAd
   return (
     <section className="sw-study-section">
       <header className="sw-study-sec-head">
-        <h3>复习</h3>
+        <h3><span className="sw-sec-icon" aria-hidden="true">{SECTION_ICON}</span>复习</h3>
         <div className="sw-study-sec-actions">
           <span className="sw-study-count" title="今日到期数">{due.length} 到期</span>
           <button
-            className="ghost"
+            className="primary"
             disabled={!aiAvailable}
             title={aiAvailable ? 'AI 根据 ## 笔记生成 5 道回忆题（答案折叠）' : '未配置 AI 适配器'}
             onClick={() => openStudyAiAction(path, buildStudyInstruction('selftest', { topicName, topicPath: path }))}
