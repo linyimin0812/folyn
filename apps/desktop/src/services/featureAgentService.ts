@@ -20,6 +20,11 @@ import dailyAgentDoc from '@/schedule/.claude/agents/daily.md?raw';
 /** Vault 内 agent 文件存放目录（相对 vault 根）。 */
 const AGENTS_DIR = '.claude/agents';
 
+/** 诊断日志目录（相对 vault 根；已在 excludePatterns 里，不污染文件树）。 */
+const SEED_LOG_DIR = '.quill-tmp';
+/** 诊断日志文件路径（相对 vault 根）。 */
+const SEED_LOG_PATH = `${SEED_LOG_DIR}/feature-agent-seed.log`;
+
 /** 已注册的 feature agent（canonical 文件 → vault 播种目标）。 */
 export interface FeatureAgentEntry {
   /** Feature 名（同时是 `--agent <name>` 的值与 vault 文件主名）。 */
@@ -54,6 +59,24 @@ export function agentFilePath(feature: string): string | null {
 }
 
 /**
+ * 调用时的懒播种兜底：即使启动时 switchVault 的 seeding 被跳过/失败，
+ * 首次调用也会补播种。幂等（write-if-missing，安全）。
+ *
+ * 取 manager：动态 import vaultStore 避免循环依赖（runFeatureAgent 已有此模式）。
+ * 失败静默（seedAgentFiles 内部已 catch）。
+ */
+async function lazySeedAgentFiles(): Promise<void> {
+  try {
+    const { useVaultStore } = await import('@/store/vaultStore');
+    const manager = useVaultStore.getState().manager;
+    if (!manager) return;
+    await seedAgentFiles(manager);
+  } catch (err) {
+    console.warn('[featureAgent] lazy seed failed:', err);
+  }
+}
+
+/**
  * 检查 `<vault>/.claude/agents/<feature>.md` 是否存在（已播种或用户自建）。
  * vault 不可读 / 文件缺失 → 返回 false（调用方回退 `--bare`）。
  */
@@ -68,14 +91,26 @@ export async function agentFileExists(manager: VaultManager, feature: string): P
   }
 }
 
+/** 单个 feature 播种结果。 */
+export interface SeedAgentResult {
+  feature: string;
+  path: string;
+  /** 'seeded' (新写) | 'exists' (已存在未覆盖) | 'failed' (写失败)。 */
+  status: 'seeded' | 'exists' | 'failed';
+  /** status==='failed' 时的错误信息。 */
+  error?: string;
+}
+
 /**
  * 把所有已注册的 canonical agent 文件播种到 `<vault>/.claude/agents/`。
  * **write-if-missing**：已存在的文件不覆盖（保留用户修改）。缺父目录会自动创建。
  *
  * 播种失败（vault 只读等）静默降级——调用时 `agentFileExists` 返回 false → `--bare` 回退。
- * 不抛错，不阻塞 vault 切换。
+ * 不抛错，不阻塞 vault 切换。返回每个 feature 的播种结果（用于诊断）。
  */
-export async function seedAgentFiles(manager: VaultManager): Promise<void> {
+export async function seedAgentFiles(manager: VaultManager): Promise<SeedAgentResult[]> {
+  const results: SeedAgentResult[] = [];
+
   // 先确保目录存在（非 tauri provider 的 writeFile 未必自动建父目录）。
   try {
     await manager.createDir(AGENTS_DIR);
@@ -88,15 +123,57 @@ export async function seedAgentFiles(manager: VaultManager): Promise<void> {
     try {
       await manager.readFile(path);
       // 已存在（canonical 或用户修改）——不覆盖。
+      results.push({ feature: entry.feature, path, status: 'exists' });
       continue;
     } catch {
       // 不存在 → 写入 canonical 内容。
       try {
         await manager.writeFile(path, entry.doc);
+        results.push({ feature: entry.feature, path, status: 'seeded' });
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
         console.warn(`[featureAgent] seed failed for "${entry.feature}" at ${path}:`, err);
+        results.push({ feature: entry.feature, path, status: 'failed', error: msg });
       }
     }
+  }
+
+  // 写诊断日志到 <vault>/.quill-tmp/feature-agent-seed.log（失败不抛）。
+  await writeSeedLog(manager, results);
+  return results;
+}
+
+/**
+ * 把播种结果写入 `<vault>/.quill-tmp/feature-agent-seed.log`。
+ * webview console 在终端看不到——写文件让用户能直接在 vault 里确认 seeding 是否生效。
+ * 失败静默（只 console.warn）。
+ */
+async function writeSeedLog(manager: VaultManager, results: SeedAgentResult[]): Promise<void> {
+  const ts = new Date().toISOString();
+  const lines: string[] = [
+    `# feature-agent seeding diagnostic`,
+    `timestamp: ${ts}`,
+    `vault-manager: ${manager ? 'present' : 'null'}`,
+    ``,
+    `## results (${results.length})`,
+  ];
+  for (const r of results) {
+    const detail = r.status === 'failed' ? ` — error: ${r.error}` : '';
+    lines.push(`- ${r.feature}: ${r.status} (${r.path})${detail}`);
+  }
+  lines.push(``);
+  const content = lines.join('\n');
+  try {
+    try {
+      await manager.createDir(SEED_LOG_DIR);
+    } catch {
+      // 目录已存在或不可写——继续尝试写文件。
+    }
+    // 覆盖写（每次播种刷新日志，便于诊断最新一次）。
+    await manager.writeFile(SEED_LOG_PATH, content);
+    console.log(`[featureAgent] seed log written to ${SEED_LOG_PATH}`);
+  } catch (err) {
+    console.warn(`[featureAgent] failed to write seed log at ${SEED_LOG_PATH}:`, err);
   }
 }
 
@@ -159,6 +236,11 @@ export async function runFeatureAgent(
 
   const adapter = getAdapterForSession(sid);
   const manager = useVaultStore.getState().manager;
+
+  // 调用时懒播种兜底：确保 agent 文件已落盘（即使 switchVault 的 seeding 被跳过/失败）。
+  // 幂等（write-if-missing），不会覆盖用户修改。
+  await lazySeedAgentFiles();
+
   const available = await agentFileExists(manager, feature);
 
   // agent 文件存在 → cwd 发现（bare:false + --agent）；缺失 → --bare 回退（无 agent）。
@@ -222,6 +304,8 @@ export async function runFeatureAgent(
  */
 export async function isAgentAvailable(feature: string): Promise<boolean> {
   try {
+    // 调用时懒播种兜底（幂等，安全）。
+    await lazySeedAgentFiles();
     const { useVaultStore } = await import('@/store/vaultStore');
     const manager = useVaultStore.getState().manager;
     return await agentFileExists(manager, feature);
@@ -242,6 +326,8 @@ export async function isAgentAvailable(feature: string): Promise<boolean> {
  */
 export async function getFeatureAgentSendOptions(feature: string): Promise<CliSendOptions> {
   try {
+    // 调用时懒播种兜底（幂等，安全）。
+    await lazySeedAgentFiles();
     const { useVaultStore } = await import('@/store/vaultStore');
     const manager = useVaultStore.getState().manager;
     const available = await agentFileExists(manager, feature);

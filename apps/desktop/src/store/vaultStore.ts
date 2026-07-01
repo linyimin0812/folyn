@@ -237,12 +237,17 @@ export const useVaultStore = create<VaultState>()(
 
             useEditorStore.setState({ tabs: [], activeTabId: null });
 
+            // Seed canonical feature agent files into <vault>/.claude/agents/ (write-if-missing).
+            // 提前到 manager 连接后、migrateSpecialDirs/refreshFileTree 之前——
+            // 后者若抛错会跳过 seeding。独立 try/catch 确保不阻塞 switchVault。
+            try {
+              await seedAgentFiles(get().manager);
+            } catch (err) {
+              console.warn('[VaultStore] seedAgentFiles failed (call-time fallback will retry):', err);
+            }
+
             const renamedPairs = await get().migrateSpecialDirs();
             await get().refreshFileTree();
-
-            // Seed canonical feature agent files into <vault>/.claude/agents/ (write-if-missing).
-            // Failures are silent (read-only vault → --bare fallback at call time).
-            await seedAgentFiles(get().manager);
 
             // Restore saved tabs for the new vault, then rewrite any paths whose
             // on-disk prefix was renamed during migration.
