@@ -58,13 +58,23 @@ import {
   runFeatureAgent,
   FEATURE_AGENTS,
   getFeatureAgentEntry,
+  getFeatureAgentSendOptions,
 } from './featureAgentService';
 
 /** Build a fake VaultManager that records calls and controls file existence. */
-function makeFakeManager(opts: { hasStudyFile?: boolean; writableFails?: boolean } = {}) {
+function makeFakeManager(opts: {
+  hasStudyFile?: boolean;
+  /** Extra feature agent files to pre-seed (e.g. ['analyze','clips','daily']). */
+  agentFiles?: string[];
+  writableFails?: boolean;
+} = {}) {
   const files = new Map<string, string>();
   if (opts.hasStudyFile) {
     files.set('.claude/agents/study.md', 'USER-EDITED');
+  }
+  for (const f of opts.agentFiles ?? []) {
+    const entry = getFeatureAgentEntry(f);
+    if (entry) files.set(`.claude/agents/${entry.file}`, `USER-${f}`);
   }
   const createdDirs: string[] = [];
   const written: { path: string; content: string }[] = [];
@@ -124,10 +134,32 @@ describe('FEATURE_AGENTS 注册表 (PR1)', () => {
     expect(entry?.doc).toContain('study agent');
   });
 
+  it('注册了 analyze/clips/daily feature (PR3)', () => {
+    const analyze = getFeatureAgentEntry('analyze');
+    expect(analyze).toBeDefined();
+    expect(analyze?.file).toBe('analyze.md');
+    expect(analyze?.doc).toContain('项目分析');
+
+    const clips = getFeatureAgentEntry('clips');
+    expect(clips).toBeDefined();
+    expect(clips?.file).toBe('clips.md');
+    expect(clips?.doc).toContain('知识卡片');
+
+    const daily = getFeatureAgentEntry('daily');
+    expect(daily).toBeDefined();
+    expect(daily?.file).toBe('daily.md');
+    expect(daily?.doc).toContain('每日回顾');
+  });
+
+  it('FEATURE_AGENTS 含全部四个 feature', () => {
+    const features = FEATURE_AGENTS.map((e) => e.feature);
+    expect(features).toEqual(expect.arrayContaining(['study', 'analyze', 'clips', 'daily']));
+    expect(features).toHaveLength(4);
+  });
+
   it('未注册的 feature 返回 undefined', () => {
-    expect(getFeatureAgentEntry('analyze')).toBeUndefined();
-    expect(getFeatureAgentEntry('clips')).toBeUndefined();
-    expect(getFeatureAgentEntry('daily')).toBeUndefined();
+    expect(getFeatureAgentEntry('wiki')).toBeUndefined();
+    expect(getFeatureAgentEntry('unknown')).toBeUndefined();
   });
 });
 
@@ -144,7 +176,7 @@ describe('agentFileExists', () => {
 
   it('未注册的 feature 返回 false（不读盘）', async () => {
     const manager = makeFakeManager();
-    expect(await agentFileExists(manager as never, 'analyze')).toBe(false);
+    expect(await agentFileExists(manager as never, 'wiki')).toBe(false);
     expect(manager.readFile).not.toHaveBeenCalled();
   });
 });
@@ -170,9 +202,12 @@ describe('seedAgentFiles (write-if-missing)', () => {
     const manager = makeFakeManager({ hasStudyFile: true });
     await seedAgentFiles(manager as never);
 
-    // readFile 命中 → 不 writeFile
+    // readFile 命中 study → 不 writeFile study（其它 feature 仍会播种）
     expect(manager.readFile).toHaveBeenCalledWith('.claude/agents/study.md');
-    expect(manager.writeFile).not.toHaveBeenCalled();
+    expect(manager.writeFile).not.toHaveBeenCalledWith(
+      '.claude/agents/study.md',
+      expect.anything(),
+    );
     // 用户内容保留
     expect(manager._files.get('.claude/agents/study.md')).toBe('USER-EDITED');
   });
@@ -286,9 +321,70 @@ describe('runFeatureAgent (PR1: cwd 发现 vs --bare 回退)', () => {
     expect(sess.messages[1].content).toContain('[错误]');
   });
 
-  it('未支持的 feature 抛错（PR3 扩展）', async () => {
+  it('未支持的 feature 抛错（runFeatureAgent 仅支持 study；analyze/clips/daily 走 bespoke）', async () => {
     await expect(runFeatureAgent('analyze', 'x')).rejects.toThrow(/not supported/);
     await expect(runFeatureAgent('clips', 'x')).rejects.toThrow(/not supported/);
+    await expect(runFeatureAgent('daily', 'x')).rejects.toThrow(/not supported/);
     expect(fakeAdapter.send).not.toHaveBeenCalled();
+  });
+});
+
+describe('seedAgentFiles 覆盖 analyze/clips/daily (PR3)', () => {
+  it('播种 study + analyze + clips + daily 四个文件', async () => {
+    const manager = makeFakeManager({ hasStudyFile: false });
+    await seedAgentFiles(manager as never);
+
+    for (const feature of ['study', 'analyze', 'clips', 'daily']) {
+      const entry = getFeatureAgentEntry(feature)!;
+      const path = `.claude/agents/${entry.file}`;
+      expect(manager.writeFile).toHaveBeenCalledWith(path, entry.doc);
+      expect(manager._files.get(path)).toBe(entry.doc);
+    }
+  });
+
+  it('已存在的 analyze/clips/daily 文件不覆盖', async () => {
+    const manager = makeFakeManager({ agentFiles: ['analyze', 'clips', 'daily'] });
+    await seedAgentFiles(manager as never);
+
+    expect(manager._files.get('.claude/agents/analyze.md')).toBe('USER-analyze');
+    expect(manager._files.get('.claude/agents/clips.md')).toBe('USER-clips');
+    expect(manager._files.get('.claude/agents/daily.md')).toBe('USER-daily');
+    // 这三个文件 readFile 命中 → 不 writeFile
+    const writtenPaths = manager._written.map((w) => w.path);
+    expect(writtenPaths).not.toContain('.claude/agents/analyze.md');
+    expect(writtenPaths).not.toContain('.claude/agents/clips.md');
+    expect(writtenPaths).not.toContain('.claude/agents/daily.md');
+  });
+});
+
+describe('getFeatureAgentSendOptions (PR3: bespoke feature 调用辅助)', () => {
+  it('agent 文件存在 → { agent, bare:false }', async () => {
+    const manager = makeFakeManager({ agentFiles: ['analyze', 'clips', 'daily'] });
+    useVaultStore.setState({ manager: manager as never });
+
+    expect(await getFeatureAgentSendOptions('analyze')).toEqual({ agent: 'analyze', bare: false });
+    expect(await getFeatureAgentSendOptions('clips')).toEqual({ agent: 'clips', bare: false });
+    expect(await getFeatureAgentSendOptions('daily')).toEqual({ agent: 'daily', bare: false });
+  });
+
+  it('agent 文件缺失 → { bare:true }（--bare 回退）', async () => {
+    const manager = makeFakeManager();
+    useVaultStore.setState({ manager: manager as never });
+
+    expect(await getFeatureAgentSendOptions('analyze')).toEqual({ bare: true });
+    expect(await getFeatureAgentSendOptions('clips')).toEqual({ bare: true });
+    expect(await getFeatureAgentSendOptions('daily')).toEqual({ bare: true });
+  });
+
+  it('study 也适用（agent 存在→cwd 发现）', async () => {
+    const manager = makeFakeManager({ hasStudyFile: true });
+    useVaultStore.setState({ manager: manager as never });
+    expect(await getFeatureAgentSendOptions('study')).toEqual({ agent: 'study', bare: false });
+  });
+
+  it('vault 不可读时回退 { bare:true }', async () => {
+    // manager 为 null/undefined → 抛错被捕获
+    useVaultStore.setState({ manager: undefined as never });
+    expect(await getFeatureAgentSendOptions('analyze')).toEqual({ bare: true });
   });
 });

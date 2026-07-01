@@ -10,9 +10,12 @@
 // feature 的会话路由（复用 aiStore study 会话机制）；PR2 把 study 调用迁到 runFeatureAgent，
 // PR3 接 analyze/clips/daily。
 
-import type { CliStreamEvent } from '@quill/cli-adapter';
+import type { CliSendOptions, CliStreamEvent } from '@quill/cli-adapter';
 import type { VaultManager } from '@quill/vault-provider';
 import studyAgentDoc from '@/study/.claude/agents/study.md?raw';
+import analyzeAgentDoc from '@/analyze/.claude/agents/analyze.md?raw';
+import clipsAgentDoc from '@/clips/.claude/agents/clips.md?raw';
+import dailyAgentDoc from '@/schedule/.claude/agents/daily.md?raw';
 
 /** Vault 内 agent 文件存放目录（相对 vault 根）。 */
 const AGENTS_DIR = '.claude/agents';
@@ -29,10 +32,14 @@ export interface FeatureAgentEntry {
 
 /**
  * Feature agent 注册表。新增 feature 时在此登记 canonical 文件。
- * 本 PR 只注册 study；analyze/clips/daily 在 PR3 加入。
+ * study 走 aiStore 会话（runFeatureAgent）；analyze/clips/daily 走 bespoke 流程
+ * （getFeatureAgentSendOptions 仅给 adapter.send 提供 options）。
  */
 export const FEATURE_AGENTS: FeatureAgentEntry[] = [
   { feature: 'study', file: 'study.md', doc: studyAgentDoc },
+  { feature: 'analyze', file: 'analyze.md', doc: analyzeAgentDoc },
+  { feature: 'clips', file: 'clips.md', doc: clipsAgentDoc },
+  { feature: 'daily', file: 'daily.md', doc: dailyAgentDoc },
 ];
 
 /** 取某 feature 的注册项（不存在返回 undefined）。 */
@@ -220,5 +227,26 @@ export async function isAgentAvailable(feature: string): Promise<boolean> {
     return await agentFileExists(manager, feature);
   } catch {
     return false;
+  }
+}
+
+/**
+ * 给 bespoke feature service（analyze/clips/daily）用的轻量辅助：返回 `adapter.send`
+ * 的 options 片段。这些 feature 不走 aiStore 会话，保留各自 collectTextFromStream /
+ * setDigest 结果处理；只把 send 从无 options 升级为 feature-agent 模式。
+ *
+ * - agent 文件存在 → `{ agent: feature, bare: false }`（cwd=vault 自动发现）。
+ * - 不存在 / vault 不可读 → `{ bare: true }`（`--bare` 回退，隔离行为）。
+ *
+ * 调用方把自己的 `adapter.send(prompt)` 改为 `adapter.send(prompt, await getFeatureAgentSendOptions(feature))`。
+ */
+export async function getFeatureAgentSendOptions(feature: string): Promise<CliSendOptions> {
+  try {
+    const { useVaultStore } = await import('@/store/vaultStore');
+    const manager = useVaultStore.getState().manager;
+    const available = await agentFileExists(manager, feature);
+    return available ? { agent: feature, bare: false } : { bare: true };
+  } catch {
+    return { bare: true };
   }
 }

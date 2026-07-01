@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useSkillStore } from '@/store/skillStore';
 import { collectTextFromStream, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
+import { getFeatureAgentSendOptions } from './featureAgentService';
 
 export type ReportLanguage = 'zh' | 'en' | 'auto';
 
@@ -128,7 +129,7 @@ export async function generateReport(
       : `You are a senior software architect. Analyze this GitHub repository and generate a comprehensive HTML analysis report.\n\nRepository: ${url}\nLanguage: ${language}\n\nClone the repo, explore the source code, and generate a self-contained HTML report with tags.\n\nOutput format:\n---TAGS---\n["tag1", "tag2"]\n---END---\n\n\`\`\`html\n<!DOCTYPE html>...\n\`\`\``;
 
     const textPromise = collectTextFromStream(adapter, onStream, onEvent);
-    await adapter.send(prompt);
+    await adapter.send(prompt, await getFeatureAgentSendOptions('analyze'));
     aiResponse = await textPromise;
   } finally {
     await adapter.stop();
