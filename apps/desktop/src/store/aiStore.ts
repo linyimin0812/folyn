@@ -15,7 +15,7 @@ export type { CliMessage, FileChange, ToolCallInfo, MessageAttachment };
 export type AiChatMode = 'chat' | 'wiki' | 'clip';
 
 /** 会话类型：普通聊天会话 vs 专用 study agent 会话（PR9）。
- * study 会话由 runStudyAgent 自动驱动，输入框不可手动编辑。 */
+ * study 会话由 runFeatureAgent('study') 自动驱动，输入框不可手动编辑。 */
 export type AiSessionKind = 'chat' | 'study';
 
 export interface AiSession {

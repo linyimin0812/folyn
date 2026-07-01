@@ -16,7 +16,7 @@ import type { StudyUnit, StudyMaterial, AiAction } from './types';
 import { CliAdapterRegistry } from '@quill/cli-adapter';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useEditorStore } from '@/store/editorStore';
-import { runStudyAgent } from './studyAgentRunner';
+import { runFeatureAgent } from '@/services/featureAgentService';
 
 const H2_RE = /^##\s+(.+?)\s*#*\s*$/;
 const SECTION_TASK = '任务';
@@ -131,7 +131,9 @@ export function isAiAvailable(): boolean {
  * 构造各 AI 动作的运行指令（PR9：动态部分）。
  *
  * 静态输出契约（行语法 / callout 格式 / append-only 规则）由 canonical
- * `study-agent.md` 的 system prompt 承载，运行时经 `--agents` 内联交付。
+ * `study.md` 的 system prompt 承载。运行时 agent 文件已播种到
+ * `<vault>/.claude/agents/study.md`，Claude CLI 在 `bare:false` 下靠 cwd
+ * 自动发现（PR2：不再用 `--agents` 内联交付）。
  * 本函数只产出与主题/资料相关的动态指令，agent 据此按契约执行：
  * - research / plan：agent 返回结构化文本建议行（不直编文件）→ studyStore
  *   捕获 effect 扫 study 会话最后 assistant 消息 → 建议卡片。
@@ -192,9 +194,10 @@ export function buildStudyInstruction(
 }
 
 /**
- * 在专用 study 会话里运行 study agent（PR9）。
+ * 在专用 study 会话里运行 study agent（PR2：改调 runFeatureAgent）。
  * - 不再预填 ChatInput 输入框（不 setPendingPrompt / addFileToChat）；
- * - 调 runStudyAgent 在 study 会话自动执行，prompt 不显示在聊天框；
+ * - 调 runFeatureAgent('study', instruction) 在 study 会话自动执行（cwd 发现
+ *   vault 内 agent 文件，缺失回退 `--bare`），prompt 不显示在聊天框；
  * - 打开 AI 面板（settings.showAiPanel + editorStore.aiPanelVisible）；
  * - opts.openFile !== false 时，同时把主题文档作为编辑器 tab 打开，接上 diff 审阅链路
  *   （feynman/selftest/sq3r 直编文件场景需要）。research/plan 返回文本建议、
@@ -206,7 +209,7 @@ export function openStudyAiAction(
   instruction: string,
   opts?: { openFile?: boolean },
 ): void {
-  void runStudyAgent(instruction);
+  void runFeatureAgent('study', instruction);
   useSettingsStore.getState().updateSettings({ showAiPanel: true });
   useEditorStore.setState({ aiPanelVisible: true });
   if (opts?.openFile === false) return;
