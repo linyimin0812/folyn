@@ -42,6 +42,13 @@ const CALENDAR_ICON = (
 const CHECK_CIRCLE_ICON = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></svg>
 );
+/** 区段标题图标。 */
+const SECTION_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 11l3 3L22 4" />
+    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+  </svg>
+);
 
 /** 计划区：列出 `## 计划` 段的学习单元，卡片行展示序号/估时/依赖/进度；
  *  勾选写回；手动添加单元；单元可"排到日程"（带 study:<slug> 回链）；
@@ -93,14 +100,14 @@ export function StudyPlanSection({
   return (
     <section className="sw-study-section">
       <header className="sw-study-sec-head">
-        <h3>计划</h3>
+        <h3><span className="sw-sec-icon" aria-hidden="true">{SECTION_ICON}</span>计划</h3>
         <div className="sw-study-sec-actions">
           <span className="sw-study-progress-summary" title="已完成 / 总数">
             <span className="sw-study-progress-summary-pct">{progress.percent}%</span>
             <span className="sw-study-count">{progress.done}/{progress.total}</span>
           </span>
           <button
-            className="ghost"
+            className="primary"
             disabled={!aiAvailable}
             title={aiAvailable ? 'AI 拆解主题为有序学习单元（返回建议卡片）' : '未配置 AI 适配器'}
             onClick={onGeneratePlan}
@@ -134,7 +141,7 @@ export function StudyPlanSection({
                     )}
                   </div>
                   <div className="sw-card-actions">
-                    <button className="sw-card-action" onClick={() => onAcceptUnitSuggestion(u)}>加入</button>
+                    <button className="sw-card-action primary" onClick={() => onAcceptUnitSuggestion(u)}>加入</button>
                     <button className="sw-card-action ghost" onClick={() => onDismissUnitSuggestion(u.id)}>忽略</button>
                   </div>
                 </div>

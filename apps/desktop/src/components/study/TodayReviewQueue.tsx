@@ -18,6 +18,15 @@ const SPARK_ICON = (
     <circle cx="12" cy="12" r="3" />
   </svg>
 );
+/** 区段标题图标。 */
+const SECTION_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m17 2 4 4-4 4" />
+    <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+    <path d="m7 22-4-4 4-4" />
+    <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+  </svg>
+);
 
 interface Props {
   /** 切换到主题视图（来源点击时调用，配合 selectTopic 让用户看到对应主题）。 */
@@ -77,7 +86,7 @@ export function TodayReviewQueue({ onShowTopic }: Props) {
   return (
     <section className="sw-study-section sw-today-review">
       <header className="sw-study-sec-head">
-        <h3>今日复习</h3>
+        <h3><span className="sw-sec-icon" aria-hidden="true">{SECTION_ICON}</span>今日复习</h3>
         <div className="sw-study-sec-actions">
           <span className="sw-study-count" title="今日到期数">{ordered.length} 到期</span>
         </div>
