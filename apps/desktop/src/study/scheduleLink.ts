@@ -159,7 +159,15 @@ export function buildStudyInstruction(
   const head = `主题文档：${topicPath}（${topicName}）`;
   switch (action) {
     case 'research':
-      return `${head}\n动作：research\n检索高质量学习资料（网络文章/文档）与经典书籍/论文，返回 5-8 条资料建议。`;
+      return [
+        head,
+        '动作：research',
+        '检索高质量学习资料（网络文章/文档）与经典书籍/论文，返回 5-8 条资料建议。',
+        '每条严格单行，格式（| 两侧留空格；难度用 易/中/难）：',
+        '- `- @book <书名> | <作者> | <简介> | 难度:<易|中|难>`（书籍无在线链接时可省略最后的 ` | <链接>`；有则附 ` | <链接>`）',
+        '- `- @web <标题> | <链接> | <简介>`',
+        '只输出资料行，不要用 Edit 改文件。',
+      ].join('\n');
     case 'plan': {
       const refs = selectedMaterials && selectedMaterials.length
         ? [

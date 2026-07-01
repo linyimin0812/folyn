@@ -469,6 +469,23 @@ describe('useStudyStore suggestion flow (research/plan)', () => {
     expect(written).toContain('- @web 新资料 | https://new | 新简介');
   });
 
+  it('consumeSuggestion (research) auto-applies a book without url and round-trips', async () => {
+    await setupTopicWithMaterials('nourl');
+    useStudyStore.getState().beginSuggestion('research', 'nourl');
+    const text = '- @book 《无链接书》 | 作者 | 简介 | 难度:难';
+    await useStudyStore.getState().consumeSuggestion(text);
+    const written = manager.files.get(studyDocPath('nourl'))!;
+    // 写入行无尾随 ` | `，与输入一致。
+    expect(written).toContain('- @book 《无链接书》 | 作者 | 简介 | 难度:难');
+    expect(written).not.toContain('- @book 《无链接书》 | 作者 | 简介 | 难度:难 |');
+    // 重新解析能拿到该资料（round-trip）。
+    const reparsed = parseStudy(written, 'nourl');
+    const m = reparsed.materials.find((x) => x.title === '《无链接书》');
+    expect(m).toBeDefined();
+    expect(m).toMatchObject({ kind: 'book', author: '作者', summary: '简介', difficulty: 'hard' });
+    expect(m?.url).toBeUndefined();
+  });
+
   it('consumeSuggestion scans plan text into suggestedUnits', async () => {
     useStudyStore.getState().beginSuggestion('plan', 'dev');
     const text = '- [ ] 1. 入门 @{est:2h dep:- prog:0}\n- [ ] 2. 进阶 @{est:4h dep:1 prog:0}';

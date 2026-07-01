@@ -23,11 +23,11 @@ const SECTION_MATERIALS = '资料';
 const SECTION_PLAN = '计划';
 const SECTION_REVIEW = '复习';
 
-// - @book <书名> | <作者> | <简介> | 难度:<易|中|难> | <链接>
+// - @book <书名> | <作者> | <简介> | 难度:<易|中|难>（| <链接> 可选；作者/简介允许空）
 const BOOK_RE =
-  /^- @book\s+(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*难度:(易|中|难)\s*\|\s*(\S+)$/;
-// - @web <标题> | <链接> | <简介>
-const WEB_RE = /^- @web\s+(.+?)\s*\|\s*(\S+)\s*\|\s*(.+)$/;
+  /^- @book\s+(.+?)\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|\s*难度:(易|中|难)\s*(?:\|\s*(.*?)\s*)?$/;
+// - @web <标题> | <链接> | <简介>（简介允许空，标题与链接必填）
+const WEB_RE = /^- @web\s+(.+?)\s*\|\s*(\S+)\s*\|\s*(.*)$/;
 // - [ ] N. 单元名 @{est:.. dep:.. prog:..}
 const UNIT_RE = /^- \[([ x])\]\s+(\d+)\.\s+(.+?)\s+@\{([^}]*)\}\s*$/;
 // - [ ] 摘要 @{next:.. ...}（要求含 next: 才视为托管复习原子）
@@ -94,10 +94,10 @@ export function parseMaterialLine(line: string): {
     return {
       kind: 'book',
       title: bm[1].trim(),
-      author: bm[2].trim(),
-      summary: bm[3].trim(),
+      author: bm[2].trim() || undefined,
+      summary: bm[3].trim() || undefined,
       difficulty: DIFFICULTY_FROM_LABEL[bm[4]],
-      url: bm[5],
+      url: (bm[5] != null ? bm[5].trim() : '') || undefined,
     };
   }
   const wm = WEB_RE.exec(line);
@@ -106,7 +106,7 @@ export function parseMaterialLine(line: string): {
       kind: 'web',
       title: wm[1].trim(),
       url: wm[2],
-      summary: wm[3].trim(),
+      summary: wm[3].trim() || undefined,
     };
   }
   return null;
@@ -208,14 +208,15 @@ export function parseStudy(content: string, slug: string): ParsedStudy {
   return { rawLines, frontmatter, materials, units, reviewAtoms };
 }
 
-/** 序列化一条资料为规范行。 */
+/** 序列化一条资料为规范行。books without url omit the trailing ` | <url>` segment so the line re-parses. */
 export function buildMaterialLine(m: StudyMaterial): string {
   if (m.kind === 'book') {
     const diff = m.difficulty ? DIFFICULTY_LABEL[m.difficulty] : '中';
     const author = m.author ?? '';
     const summary = m.summary ?? '';
-    const url = m.url ?? '';
-    return `- @book ${m.title} | ${author} | ${summary} | 难度:${diff} | ${url}`;
+    const parts = [m.title, author, summary, `难度:${diff}`];
+    if (m.url) parts.push(m.url);
+    return `- @book ${parts.join(' | ')}`;
   }
   const url = m.url ?? '';
   const summary = m.summary ?? '';

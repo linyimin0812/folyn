@@ -319,6 +319,89 @@ describe('parseMaterialLine / parseUnitLine (per-line parsers)', () => {
     expect(parseMaterialLine('- @book 缺字段 | 只有作者')).toBeNull();
   });
 
+  it('parses a book without url (trailing | <链接> omitted)', () => {
+    const md = parseMaterialLine('- @book 《书》 | 作者 | 简介 | 难度:中');
+    expect(md).toMatchObject({
+      kind: 'book', title: '《书》', author: '作者', summary: '简介',
+      difficulty: 'medium',
+    });
+    expect(md?.url).toBeUndefined();
+  });
+
+  it('parses a book with empty author/summary to undefined', () => {
+    const md = parseMaterialLine('- @book 《书》 |  |  | 难度:难');
+    expect(md).toMatchObject({ kind: 'book', title: '《书》', difficulty: 'hard' });
+    expect(md?.author).toBeUndefined();
+    expect(md?.summary).toBeUndefined();
+    expect(md?.url).toBeUndefined();
+  });
+
+  it('parses a book with empty author/summary but with url', () => {
+    const md = parseMaterialLine('- @book 《书》 |  |  | 难度:易 | https://x');
+    expect(md).toMatchObject({
+      kind: 'book', title: '《书》', difficulty: 'easy', url: 'https://x',
+    });
+    expect(md?.author).toBeUndefined();
+    expect(md?.summary).toBeUndefined();
+  });
+
+  it('parses a web line with empty summary', () => {
+    const md = parseMaterialLine('- @web T | https://x |');
+    expect(md).toMatchObject({ kind: 'web', title: 'T', url: 'https://x' });
+    expect(md?.summary).toBeUndefined();
+  });
+
+  it('round-trips a book without url (no trailing `| `)', () => {
+    const m: StudyMaterial = {
+      id: 'x', kind: 'book', title: '《书》', author: '作者', summary: '简介',
+      difficulty: 'medium', lineIndex: -1,
+    };
+    const built = buildMaterialLine(m);
+    expect(built).toBe('- @book 《书》 | 作者 | 简介 | 难度:中');
+    const reparsed = parseMaterialLine(built);
+    expect(reparsed).toEqual({
+      kind: 'book', title: '《书》', author: '作者', summary: '简介',
+      difficulty: 'medium', url: undefined,
+    });
+  });
+
+  it('round-trips a book with empty author/summary and no url', () => {
+    const m: StudyMaterial = {
+      id: 'x', kind: 'book', title: '《书》', difficulty: 'hard', lineIndex: -1,
+    };
+    const built = buildMaterialLine(m);
+    expect(built).toBe('- @book 《书》 |  |  | 难度:难');
+    const reparsed = parseMaterialLine(built);
+    expect(reparsed).toEqual({
+      kind: 'book', title: '《书》', author: undefined, summary: undefined,
+      difficulty: 'hard', url: undefined,
+    });
+  });
+
+  it('round-trips a full-format book with url (regression)', () => {
+    const m: StudyMaterial = {
+      id: 'x', kind: 'book', title: '《书》', author: '作者', summary: '简介',
+      difficulty: 'medium', url: 'https://x', lineIndex: -1,
+    };
+    const built = buildMaterialLine(m);
+    expect(built).toBe('- @book 《书》 | 作者 | 简介 | 难度:中 | https://x');
+    expect(parseMaterialLine(built)).toMatchObject({
+      kind: 'book', title: '《书》', author: '作者', summary: '简介',
+      difficulty: 'medium', url: 'https://x',
+    });
+  });
+
+  it('round-trips a full-format web line (regression)', () => {
+    const m: StudyMaterial = {
+      id: 'x', kind: 'web', title: '标题', url: 'https://x', summary: '简介', lineIndex: -1,
+    };
+    const built = buildMaterialLine(m);
+    expect(built).toBe('- @web 标题 | https://x | 简介');
+    expect(parseMaterialLine(built)).toMatchObject({
+      kind: 'web', title: '标题', url: 'https://x', summary: '简介',
+    });
+  });
+
   it('parses a unit line into data fields', () => {
     const ud = parseUnitLine('- [ ] 3. 实战 @{est:6h dep:2 prog:0}');
     expect(ud).toMatchObject({ order: 3, title: '实战', done: false, est: '6h', dep: '2', prog: 0 });

@@ -133,13 +133,17 @@ describe('buildStudyInstruction (PR9: 动态指令；静态契约由 study-agent
   const topicPath = '学习/agent-dev.md';
   const baseCtx = { topicName: 'agent 开发', topicPath };
 
-  it('research: 产出含主题路径与动作关键字的短指令，不含静态行语法契约', () => {
+  it('research: 产出含主题路径、动作关键字与行格式契约的指令', () => {
     const p = buildStudyInstruction('research', baseCtx);
     expect(p).toContain(topicPath);
     expect(p).toContain('agent 开发');
     expect(p).toContain('动作：research');
-    // 行语法契约已移入 study-agent.md，指令不再重复
-    expect(p).not.toContain('- @book');
+    // 运行时指令内嵌资料行格式契约（保证旧 vault 内 agent prompt 未更新时仍输出正确格式）
+    expect(p).toContain('- @book');
+    expect(p).toContain('- @web');
+    expect(p).toContain('难度:<易|中|难>');
+    expect(p).toMatch(/省略|可选|无在线链接/);
+    expect(p).toMatch(/不要.*Edit|不用.*Edit/);
   });
 
   it('feynman: 含主题路径与动作关键字，可带聚焦单元', () => {
