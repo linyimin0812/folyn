@@ -312,3 +312,37 @@ Refactored 5 feature agents (study/clips/wiki/schedule/analyze) into per-vault _
 ### Next Steps
 
 - None - task complete
+
+
+## Session 10: Refactor: move feature dirs into src/features
+
+**Date**: 2026-07-02
+**Task**: Refactor: move feature dirs into src/features
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Moved study/analyze/clips/schedule/wiki (incl .claude) from apps/desktop/src/ into apps/desktop/src/features/. Updated 31 files / 91 imports @/{feature}/ -> @/features/{feature}/. tsc + vitest (776 tests) green. Refactor landed in commit 599d73d alongside the per-vault agent restructure.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `599d73d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

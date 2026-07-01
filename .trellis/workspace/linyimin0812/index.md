@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 9
+- **Total Sessions**: 10
 - **Last Active**: 2026-07-02
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~314 | Active |
+| `journal-1.md` | ~348 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 10 | 2026-07-02 | Refactor: move feature dirs into src/features | `599d73d` | `master` |
 | 9 | 2026-07-02 | per-vault __{feature}__/.claude agent refactor | `599d73d` | `master` |
 | 8 | 2026-06-29 | AI Plan My Day (schedule planning) | `e2cfb3a` | `master` |
 | 7 | 2026-06-27 | Unified Command Palette (Cmd+P) | `30ff5ee` | `master` |
