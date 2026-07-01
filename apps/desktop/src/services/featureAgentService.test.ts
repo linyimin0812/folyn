@@ -48,6 +48,14 @@ vi.mock('@/store/aiFileChangeActions', () => ({
   applyRejectChange: vi.fn(),
 }));
 
+// 隔断 excalidraw 链路（editorStore → file-types/registry → ExcalidrawPreview）。
+// excalidraw 在当前 pnpm+node 环境下加载报错（roughjs/open-color.json），与本测试无关。
+vi.mock('@/components/file-types/registry', () => ({
+  getHandlerByExtension: () => undefined,
+  getHandlerById: () => undefined,
+  getAllHandlers: () => [],
+}));
+
 import { useAiStore } from '@/store/aiStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
@@ -215,14 +223,15 @@ describe('seedAgentFiles (write-if-missing)', () => {
   it('createDir 失败时不抛错（继续逐文件写入）', async () => {
     const manager = makeFakeManager({ hasStudyFile: false });
     manager.createDir.mockRejectedValueOnce(new Error('exists'));
-    await expect(seedAgentFiles(manager as never)).resolves.toBeUndefined();
+    await expect(seedAgentFiles(manager as never)).resolves.toEqual(expect.any(Array));
     expect(manager.writeFile).toHaveBeenCalled();
   });
 
   it('writeFile 失败时静默降级（不抛错）', async () => {
     const manager = makeFakeManager({ hasStudyFile: false, writableFails: true });
-    await expect(seedAgentFiles(manager as never)).resolves.toBeUndefined();
+    const results = await seedAgentFiles(manager as never);
     // 失败但未抛——调用方 agentFileExists 返回 false → --bare 回退
+    expect(results.every((r) => r.status === 'failed')).toBe(true);
     expect(manager._files.has('.claude/agents/study.md')).toBe(false);
   });
 });
@@ -252,7 +261,8 @@ describe('runFeatureAgent (PR1: cwd 发现 vs --bare 回退)', () => {
   });
 
   it('agent 文件缺失 → --bare 回退（无 agent）', async () => {
-    const manager = makeFakeManager({ hasStudyFile: false });
+    // vault 不可写 → 懒播种失败 → agentFileExists 返回 false → --bare 回退
+    const manager = makeFakeManager({ hasStudyFile: false, writableFails: true });
     useVaultStore.setState({ manager: manager as never });
 
     fakeAdapter.send.mockImplementation(async () => {
@@ -368,7 +378,8 @@ describe('getFeatureAgentSendOptions (PR3: bespoke feature 调用辅助)', () =>
   });
 
   it('agent 文件缺失 → { bare:true }（--bare 回退）', async () => {
-    const manager = makeFakeManager();
+    // vault 不可写 → 懒播种失败 → agentFileExists 返回 false → --bare 回退
+    const manager = makeFakeManager({ writableFails: true });
     useVaultStore.setState({ manager: manager as never });
 
     expect(await getFeatureAgentSendOptions('analyze')).toEqual({ bare: true });
@@ -386,5 +397,79 @@ describe('getFeatureAgentSendOptions (PR3: bespoke feature 调用辅助)', () =>
     // manager 为 null/undefined → 抛错被捕获
     useVaultStore.setState({ manager: undefined as never });
     expect(await getFeatureAgentSendOptions('analyze')).toEqual({ bare: true });
+  });
+});
+
+describe('call-time 懒播种兜底 (seeding bug fix)', () => {
+  it('runFeatureAgent 调用时先懒播种（agent 文件最终存在→bare:false）', async () => {
+    // 初始 manager 无 study 文件 → 懒播种会写入 study.md
+    const manager = makeFakeManager({ hasStudyFile: false });
+    useVaultStore.setState({ manager: manager as never });
+
+    fakeAdapter.send.mockImplementation(async () => {
+      fakeAdapter.__emit({ type: 'done' });
+    });
+
+    await runFeatureAgent('study', 'do research');
+
+    // 懒播种后 study.md 已写入 manager → 应走 bare:false + agent
+    const [, opts] = fakeAdapter.send.mock.calls[0];
+    expect(opts.agent).toBe('study');
+    expect(opts.bare).toBe(false);
+    // 文件确实被写入
+    expect(manager._files.get('.claude/agents/study.md')).toBeTruthy();
+  });
+
+  it('getFeatureAgentSendOptions 调用时懒播种', async () => {
+    const manager = makeFakeManager({ hasStudyFile: false });
+    useVaultStore.setState({ manager: manager as never });
+
+    const before = manager._files.get('.claude/agents/analyze.md');
+    expect(before).toBeUndefined();
+
+    const opts = await getFeatureAgentSendOptions('analyze');
+    expect(opts).toEqual({ agent: 'analyze', bare: false });
+    // 懒播种写入了 analyze.md
+    expect(manager._files.get('.claude/agents/analyze.md')).toBeTruthy();
+  });
+
+  it('seedAgentFiles 幂等：调用两次不覆盖已写 agent 文件（log 覆盖写除外）', async () => {
+    const manager = makeFakeManager({ hasStudyFile: false });
+    await seedAgentFiles(manager as never);
+    const afterFirst = manager._files.get('.claude/agents/study.md');
+    expect(afterFirst).toBeTruthy();
+
+    // 第二次：所有 agent 文件已存在 → 不应再 writeFile agent 文件（log 仍覆盖写）。
+    manager.writeFile.mockClear();
+    await seedAgentFiles(manager as never);
+    const agentWrites = manager._written
+      .filter((w) => !w.path.startsWith('.quill-tmp/'))
+      .map((w) => w.path);
+    // 第二次调用后，新写入只应有 log（agent 文件零写入）。
+    const newAgentWrites = manager.writeFile.mock.calls
+      .map((c) => c[0] as string)
+      .filter((p) => !p.startsWith('.quill-tmp/'));
+    expect(newAgentWrites).toEqual([]);
+    // 内容不变
+    expect(manager._files.get('.claude/agents/study.md')).toBe(afterFirst);
+    void agentWrites;
+  });
+
+  it('seedAgentFiles 写诊断日志到 .quill-tmp/feature-agent-seed.log', async () => {
+    const manager = makeFakeManager({ hasStudyFile: false });
+    await seedAgentFiles(manager as never);
+
+    const log = manager._files.get('.quill-tmp/feature-agent-seed.log');
+    expect(log).toBeTruthy();
+    expect(log).toContain('feature-agent seeding diagnostic');
+    expect(log).toContain('study');
+    expect(log).toContain('timestamp:');
+  });
+
+  it('懒播种失败不阻塞调用（manager 为 null → --bare 回退）', async () => {
+    useVaultStore.setState({ manager: undefined as never });
+    // getFeatureAgentSendOptions 内部 lazySeed 抛错被 catch → 仍返回 { bare:true }
+    const opts = await getFeatureAgentSendOptions('analyze');
+    expect(opts).toEqual({ bare: true });
   });
 });

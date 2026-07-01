@@ -57,6 +57,13 @@ const DOC_LINK_ICON = (
     <path d="M14 3v5h5" />
   </svg>
 );
+/** 区段标题图标。 */
+const SECTION_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+  </svg>
+);
 
 /** 笔记区：非托管段，复用项目 MarkdownPreview 渲染（含 callout）；"在编辑器编辑" +
  *  插入精细加工模板置顶；列出子文档 wiki 链接（可点击 chips）；
@@ -106,13 +113,13 @@ export function StudyNotesSection({ slug, path, topicName, parsed }: Props) {
   return (
     <section className="sw-study-section">
       <header className="sw-study-sec-head">
-        <h3>笔记</h3>
+        <h3><span className="sw-sec-icon" aria-hidden="true">{SECTION_ICON}</span>笔记</h3>
         <div className="sw-study-sec-actions">
           <button onClick={insertTemplate} disabled={inserting} title="在笔记段尾追加精细加工模板行">
             {inserting ? '插入中…' : '+ 精细加工模板'}
           </button>
           <button
-            className="ghost"
+            className="primary"
             disabled={!aiAvailable}
             title={aiAvailable ? 'AI 扮演 5 岁小孩追问，暴露知识盲区' : '未配置 AI 适配器'}
             onClick={() => openStudyAiAction(path, buildStudyInstruction('feynman', { topicName, topicPath: path }))}
