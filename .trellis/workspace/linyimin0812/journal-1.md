@@ -448,3 +448,37 @@ Fixed all 5 feature agents (study/clips/wiki/schedule/analyze) losing contract w
 ### Next Steps
 
 - None - task complete
+
+
+## Session 14: Trim runtime prompts to params-only across 5 feature callers
+
+**Date**: 2026-07-02
+**Task**: Trim runtime prompts to params-only across 5 feature callers
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Trimmed runtime prompt builders (study/scheduleLink, clipService card metadata, wikiQueryService, DailyDigest) to emit only runtime params. Static contract stays in canonical .claude/agents/<feature>.md as single source. Infographic prompt left as reference correct pattern. feature-agents.md spec gained new 'Runtime Prompt = Params Only' convention. Cross-checked every dropped rule exists in agent .md — no contract lost.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fbf5098` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
