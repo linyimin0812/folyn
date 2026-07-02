@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { useStudyStore } from '@/store/studyStore';
 import { isDue } from '@/features/study/sm2';
 import { dateToString } from '@/features/schedule/dailyScan';
+import { StudyAddTopicDialog } from './StudyAddTopicDialog';
 
 interface StudyTopicListProps {
   /** 新建主题后回调（供页面聚焦主区，PR3 接四区）。 */
   onCreated?: (slug: string) => void;
 }
 
-/** 左侧主题列表：新建（inline 输入）/ 切换 / 删除。对标 ScheduleSidebar 的轻量风格。 */
+/** 左侧主题列表：新建（弹窗）/ 切换 / 删除。对标 ScheduleSidebar 的轻量风格。 */
 export function StudyTopicList({ onCreated }: StudyTopicListProps) {
   const topics = useStudyStore((s) => s.topics);
   const activeSlug = useStudyStore((s) => s.activeSlug);
@@ -16,18 +17,11 @@ export function StudyTopicList({ onCreated }: StudyTopicListProps) {
   const createTopic = useStudyStore((s) => s.createTopic);
   const deleteTopic = useStudyStore((s) => s.deleteTopic);
 
-  const [draft, setDraft] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
 
-  const submit = async () => {
-    const title = draft.trim();
-    if (!title) {
-      setCreating(false);
-      return;
-    }
+  const handleCreate = async (title: string) => {
     const slug = await createTopic(title);
-    setDraft('');
-    setCreating(false);
+    setShowAdd(false);
     if (slug) onCreated?.(slug);
   };
 
@@ -39,31 +33,22 @@ export function StudyTopicList({ onCreated }: StudyTopicListProps) {
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
         </svg>
         <span>学习主题</span>
-        <button className="sw-add-btn" onClick={() => setCreating((v) => !v)} title="新建主题">
+        <button className="sw-add-btn" onClick={() => setShowAdd(true)} title="新建主题">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M12 5v14M5 12h14" />
           </svg>
         </button>
       </div>
 
-      {creating && (
-        <div className="sw-quick-add">
-          <input
-            autoFocus
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void submit();
-              if (e.key === 'Escape') { setDraft(''); setCreating(false); }
-            }}
-            placeholder="主题标题，回车新建…"
-          />
-          <button onClick={submit}>新建</button>
-        </div>
+      {showAdd && (
+        <StudyAddTopicDialog
+          onConfirm={handleCreate}
+          onCancel={() => setShowAdd(false)}
+        />
       )}
 
       <ul className="sw-nav-group">
-        {topics.length === 0 && !creating && (
+        {topics.length === 0 && (
           <li className="sw-empty-hint">暂无学习主题。点上方 + 新建一个。</li>
         )}
         {topics.map((t) => {
