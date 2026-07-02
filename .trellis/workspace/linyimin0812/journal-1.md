@@ -893,3 +893,37 @@ Integrated @file-viewer preset-office for offline Office preview (Word/Excel inc
 ### Next Steps
 
 - None - task complete
+
+
+## Session 27: Replace PDF handler with file-viewer
+
+**Date**: 2026-07-03
+**Task**: Replace PDF handler with file-viewer
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added 'pdf' to office handler extensions; deleted components/file-types/pdf/. PDF now renders via OfficeFileViewer (FileViewer preset-office pdf.js). Tree icon retained. tsc + 856 tests + vite build green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8549a2a4e1703c590b4d6e93794953d59eaba7e6` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
