@@ -414,3 +414,37 @@ clips now fetches pages via curl.md (https://curl.md/<encoded-url> HTML→Markdo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 13: fix feature agent fallback --agents inline delivery
+
+**Date**: 2026-07-02
+**Task**: fix feature agent fallback --agents inline delivery
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Fixed all 5 feature agents (study/clips/wiki/schedule/analyze) losing contract when vault seed failed. getFeatureAgentSendOptions and runFeatureAgent now inline-deliver canonical agent definition via --agents flag on the agentFileExists=false fallback path, parsing frontmatter (description/tools) + body into CliAgentDefinition. Aligns implementation with feature-agents.md spec Validation Matrix. clips infographic now renders blocks instead of JSON when vault isn't seeded. 45+32 tests pass, typecheck clean.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `25b2c3d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
