@@ -995,3 +995,37 @@ Removed react-pdf (unused after PdfViewer deletion; PDF now via file-viewer pres
 ### Next Steps
 
 - None - task complete
+
+
+## Session 30: Audit and remove unused deps
+
+**Date**: 2026-07-03
+**Task**: Audit and remove unused deps
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Removed 4 unused apps/desktop deps (codemirror meta, rehype-stringify, rehype-sanitize, remark) + 2 transitive = 6; root happy-dom removed (vitest uses jsdom). vite.config dropped rehype-sanitize chunk. tsc + 856 tests + build green. Audit table in task prd.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0a91019040423ba23b48ac91a7e41819371c9881` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

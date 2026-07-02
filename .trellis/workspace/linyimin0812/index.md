@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 29
+- **Total Sessions**: 30
 - **Last Active**: 2026-07-03
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~997 | Active |
+| `journal-1.md` | ~1031 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 30 | 2026-07-03 | Audit and remove unused deps | `0a91019040423ba23b48ac91a7e41819371c9881` | `master` |
 | 29 | 2026-07-03 | Remove unused react-pdf dependency | `d28fca715f1efb96102ac0a58c6c6faa31e78028` | `master` |
 | 28 | 2026-07-03 | Fix office viewer forbidden path | `02dce8cbccbe781a93f60acea93443b1b80b4e9e` | `master` |
 | 27 | 2026-07-03 | Replace PDF handler with file-viewer | `8549a2a4e1703c590b4d6e93794953d59eaba7e6` | `master` |
