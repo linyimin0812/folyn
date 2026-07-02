@@ -1,0 +1,5 @@
+{"file": ".trellis/tasks/07-02-clips-article-to-infographic/research/infographic-schema.md", "reason": "信息图 block schema、9 类型枚举、layout 模型、LLM/渲染 pitfall 的权威依据"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop frontend 总 spec：named exports / Tailwind / @ alias / Zustand 约定"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "文件归属约定（components/file-types/clip/ 下新增 InfographicView）"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "组件 props/组合/样式规范，BlockView 子组件需遵循"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "clipStore 新增 isGeneratingInfographic/action 需遵循 Zustand granular selector 模式"}
