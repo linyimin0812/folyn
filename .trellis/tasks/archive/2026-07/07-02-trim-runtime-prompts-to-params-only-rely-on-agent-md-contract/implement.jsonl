@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/feature-agents.md", "reason": "Feature-agent architecture spec; will add 'runtime prompt = params only, contract = agent .md' rule + trim pattern example"}
+{"file": "apps/desktop/src/features/study/.claude/agents/study.md", "reason": "Canonical study agent contract — research/plan/feynman/selftest/sq3r format rules live here; verify completeness before trimming scheduleLink.ts"}
+{"file": "apps/desktop/src/features/clips/.claude/agents/clips.md", "reason": "Canonical clips agent contract — card metadata JSON shape + infographic block schema; verify before trimming clipService.ts fallback"}
+{"file": "apps/desktop/src/features/wiki/.claude/agents/wiki.md", "reason": "Canonical wiki agent contract — query action Markdown + citation rule; verify before trimming wikiQueryService.ts"}
+{"file": "apps/desktop/src/features/schedule/.claude/agents/schedule.md", "reason": "Canonical schedule agent contract — 300字限制 + 内容包含; verify before trimming DailyDigest.tsx"}
+{"file": ".trellis/tasks/07-02-trim-runtime-prompts-to-params-only-rely-on-agent-md-contract/prd.md", "reason": "Task PRD with trim pattern, per-caller requirements, AC, DoD"}
