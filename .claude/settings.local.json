@@ -22,7 +22,24 @@
       "Bash(pnpm lint *)",
       "Bash(pnpm --filter desktop typecheck)",
       "Bash(pnpm tauri *)",
-      "Bash(npx tauri *)"
+      "Bash(npx tauri *)",
+      "Bash(pnpm typecheck *)",
+      "Bash(pnpm vitest *)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(pnpm --filter @quill/desktop exec tsc -b)",
+      "Bash(pnpm --filter @quill/desktop exec vitest run src/features/study/scheduleLink.test.ts src/services/featureAgentService.test.ts)",
+      "Bash(pnpm --filter @quill/desktop exec vitest run src/features/study/scheduleLink.test.ts)",
+      "Bash(git stash *)",
+      "Bash(npm view *)",
+      "Bash(sed -n '1,30p' src/services/exportService.ts)",
+      "Bash(sed -n '255,275p' src/services/exportService.ts)",
+      "Bash(pnpm install *)",
+      "Bash(cat tailwind.config.js)",
+      "Bash(cat tailwind.config.ts)",
+      "Bash(find . -name \"setup.ts\" -not -path \"*/node_modules/*\")",
+      "Bash(grep -rn \"setupFiles\" vite.config.ts)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(git checkout *)"
     ]
   }
 }
