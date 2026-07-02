@@ -791,3 +791,37 @@ Wired csv.svg/csv_dark.svg (already in assets/icons, auto-loaded by ThemeIcon) i
 ### Next Steps
 
 - None - task complete
+
+
+## Session 24: CSV preview excel-style full-bleed
+
+**Date**: 2026-07-02
+**Task**: CSV preview excel-style full-bleed
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+CSV preview now Excel-style: PreviewPane drops px-8/pt-2/pb-[80vh] padding for csv (full-bleed); CsvTablePreview removes card wrapper, table is the grid with per-cell borders + sticky header + zebra. Markdown unaffected. 877 tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ff2872d7ce02fcd076e6cad850897e5c9a9e85ab` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
