@@ -26,12 +26,15 @@ describe('CsvTablePreview', () => {
     expect(html).toContain('25');
   });
 
-  it('renders the empty hint when content is empty', () => {
+  it('renders a full empty grid (no hint) when content is empty', () => {
     const html = renderToString(
       <CsvTablePreview content={''} filePath="" vaultRoot="" />,
     );
-    expect(html).toContain('CSV 为空或无法解析');
-    expect(html).not.toContain('<table');
+    // Empty content now renders a grid instead of the "CSV 为空" hint.
+    expect(html).toContain('<table');
+    expect(html).toContain('<thead>');
+    expect(html).toContain('<tbody>');
+    expect(html).not.toContain('CSV 为空');
   });
 
   it('renders only the empty hint for whitespace-only newline content without crashing', () => {
@@ -72,7 +75,9 @@ describe('CsvTablePreview', () => {
     expect(html).toContain('<thead>');
     expect(html).toContain('col1');
     expect(html).toContain('col2');
-    // tbody still present but empty — ensure no body cell rendered.
-    expect(html).not.toContain('<td');
+    // Header-only CSV still fills the body with empty filler rows, so <td>
+    // cells are present (padded grid). Ensure no body cell carries content.
+    expect(html).not.toContain('col1</td>');
+    expect(html).not.toContain('col2</td>');
   });
 });
