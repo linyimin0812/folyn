@@ -825,3 +825,37 @@ CSV preview now Excel-style: PreviewPane drops px-8/pt-2/pb-[80vh] padding for c
 ### Next Steps
 
 - None - task complete
+
+
+## Session 25: CSV preview: always-on grid fills page
+
+**Date**: 2026-07-02
+**Task**: CSV preview: always-on grid fills page
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+CSV preview now always renders a grid: empty CSV shows a full empty grid (no hint text); few-row CSV fills below with empty filler rows (MIN_ROWS=60, MIN_COLS=10). Zebra continuous across data+filler. 877 tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c4770e6faa5cefbc1a6967380f30959c2399849d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
