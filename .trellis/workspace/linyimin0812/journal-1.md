@@ -621,3 +621,37 @@ Study add-topic moved from inline sidebar input to a modal dialog. New StudyAddT
 ### Next Steps
 
 - None - task complete
+
+
+## Session 19: Study: topic delete icon reuse file delete icon
+
+**Date**: 2026-07-02
+**Task**: Study: topic delete icon reuse file delete icon
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Topic delete button now uses <ThemeIcon name="delete" size={12}> instead of an inline trash svg, matching ClipsPanel/AnalysisPanel. Delete behavior unchanged. 853 tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7d037b72c5220104a0eb59a7b3b28a4a77f7d69f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

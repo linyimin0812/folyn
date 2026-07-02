@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 18
+- **Total Sessions**: 19
 - **Last Active**: 2026-07-02
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~623 | Active |
+| `journal-1.md` | ~657 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 19 | 2026-07-02 | Study: topic delete icon reuse file delete icon | `7d037b72c5220104a0eb59a7b3b28a4a77f7d69f` | `master` |
 | 18 | 2026-07-02 | Study: add topic via modal | `10710d1` | `master` |
 | 17 | 2026-07-02 | Fix wikiQueryService stale test assertion | `7e21725` | `master` |
 | 16 | 2026-07-02 | Clips: infographic full width | `80b7d3f` | `master` |
