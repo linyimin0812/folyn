@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "验证 parser/组件达标"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "验证 parseCsv 返回类型与降级路径类型安全"}
