@@ -1,37 +1,71 @@
-import { forwardRef } from 'react';
+import { forwardRef, type ReactNode } from 'react';
 import type { InfographicBlock, InfographicDoc } from '@/features/clips/clipParse';
 
 /**
- * Poster-style infographic renderer for clips.
+ * Editorial / newspaper-poster infographic renderer for clips.
  *
- * Renders a flat ordered `blocks` list (see `clipParse.ts`) as a **single
- * unified poster** — one container, one background, one accent header band —
- * not a vertical stack of separate cards. The poster is the export target
- * for the "导出为图片" button in `ClipCardView`, which calls
- * `html-to-image.toPng()` on the poster DOM node.
+ * Replaces the old card-stack layout with a single unified poster modeled on
+ * `.dev/infographic-reference.html`: warm oklch palette, strong horizontal
+ * rules, 3-column body with vertical dividers, serif display type + mono
+ * eyebrows, accent-color emphasis.
  *
  * Layout:
- *   ┌───────────────────────────────────────────┐
- *   │ ▌accent band                              │  HeroBlock (full-width)
- *   │  Title / subtitle                         │
- *   ├───────────────────────────────────────────┤
- *   │  stat  │  stat  │  stat  │  stat          │  StatBlock (full-width 4-col)
- *   ├──────────────────────┬────────────────────┤
- *   │  keypoints           │  timeline          │  2-col middle (when both present)
- *   ├──────────────────────┴────────────────────┤
- *   │  steps / comparison / quote / tags        │  full-width middle
- *   ├───────────────────────────────────────────┤
- *   │  source footer (hostname · url · clipped) │  SourceBlock (full-width)
- *   └───────────────────────────────────────────┘
+ *   ┌───────────────────────────────────────────────┐
+ *   │ === 1.5px solid fg top border ===             │
+ *   │ [kicker]  [hero title — serif]  [meta]        │  ← masthead
+ *   │ === 1.5px solid fg bottom border ===          │
+ *   │ ┌────────┬────────────┬────────┐              │
+ *   │ │ col 1  │ col 2 (wide)│ col 3 │              │  ← 3-col body
+ *   │ │ eyebrow│ eyebrow     │ eyebrow│              │
+ *   │ │ block  │ block       │ block  │              │
+ *   │ └────────┴────────────┴────────┘              │
+ *   │ === 1.5px solid fg bottom border ===          │
+ *   │ [quote / source]  [div]  [tags]               │  ← footer
+ *   └───────────────────────────────────────────────┘
  *
- * Block dispatch is unchanged from the card-stack version — each block has
- * its own typed renderer. The difference is the container: a single
- * `bg-panel rounded-2xl border shadow-lg` wrapper with no per-block card
- * chrome. Unknown block types fall back to muted plain-text and never throw.
+ * Block placement:
+ *   - hero   → masthead (full width)
+ *   - quote  → footer left (stacked above source when both present)
+ *   - tags   → footer right
+ *   - source → footer left (always; stacked below quote when quote present)
+ *   - stat / keypoints / timeline / steps / comparison → 3-col body, chunked
  *
- * `InfographicView` is a `forwardRef` so the export button can grab the
- * poster DOM node directly.
+ * Theme isolation: the poster uses inline oklch colors + serif/mono font
+ * stacks (matching the reference) so the editorial aesthetic is preserved
+ * regardless of the app's light/dark theme. The export helper
+ * (`InfographicExport.ts`) reads computed styles via `html-to-image`, which
+ * inlines them correctly — no `var()` breakage.
+ *
+ * `forwardRef` exposes the outermost poster container DOM node so the
+ * "导出为图片" button in `ClipCardView` can serialize it to PNG.
  */
+
+// --- Editorial design tokens (mirror .dev/infographic-reference.html) ------
+const FONT_DISPLAY = "'Iowan Old Style', 'Charter', 'Songti SC', Georgia, serif";
+const FONT_BODY =
+  "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', system-ui, sans-serif";
+const FONT_MONO = "ui-monospace, 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace";
+
+const C = {
+  bg: 'oklch(98% 0.004 95)',
+  surface: 'oklch(100% 0.002 95)',
+  fg: 'oklch(20% 0.018 70)',
+  muted: 'oklch(48% 0.012 70)',
+  border: 'oklch(86% 0.006 95)',
+  accent: 'oklch(52% 0.10 28)',
+} as const;
+
+// --- Block type → eyebrow label ---------------------------------------------
+const EYEBROW_LABELS: Record<string, string> = {
+  stat: '数据 · NUMBERS',
+  keypoints: '关键要点 · KEY POINTS',
+  timeline: '时间线 · TIMELINE',
+  steps: '步骤 · STEPS',
+  comparison: '对比 · COMPARISON',
+  quote: '引言 · QUOTE',
+  tags: '标签 · TAGS',
+  source: '来源 · SOURCE',
+};
 
 export interface InfographicViewProps {
   doc: InfographicDoc;
@@ -39,96 +73,197 @@ export interface InfographicViewProps {
 
 export const InfographicView = forwardRef<HTMLDivElement, InfographicViewProps>(
   function InfographicView({ doc }, ref) {
-    // Partition blocks into layout slots. The poster layout is:
-    //   hero (first, full-width header)
-    //   stat (full-width row)
-    //   middle (2-col where appropriate, full-width otherwise)
-    //   source (last, full-width footer)
-    // Everything else (keypoints/timeline/steps/comparison/quote/tags) goes
-    // into the middle region in document order. When two adjacent middle
-    // blocks are both "narrow" (keypoints/timeline/comparison), they share a
-    // 2-col row; otherwise each takes a full-width row.
-    const heroIdx = doc.blocks.findIndex((b) => b.type === 'hero');
-    const statIdx = doc.blocks.findIndex((b) => b.type === 'stat');
-    const sourceIdx = doc.blocks.findIndex((b) => b.type === 'source');
-    const hero = heroIdx >= 0 ? (doc.blocks[heroIdx] as Extract<InfographicBlock, { type: 'hero' }>) : undefined;
-    const stat = statIdx >= 0 ? (doc.blocks[statIdx] as Extract<InfographicBlock, { type: 'stat' }>) : undefined;
-    const source = sourceIdx >= 0 ? (doc.blocks[sourceIdx] as Extract<InfographicBlock, { type: 'source' }>) : undefined;
-    // Middle = everything except the first hero / stat / source (which are
-    // promoted to header / stat-row / footer slots). Duplicate hero / stat /
-    // source blocks remain in the middle and render via BlockView.
-    const picked = new Set([heroIdx, statIdx, sourceIdx].filter((i) => i >= 0));
-    const middleBlocks = doc.blocks.filter((_, i) => !picked.has(i));
+    // Pick special-slot blocks (first occurrence wins; duplicates stay in body).
+    const hero = doc.blocks.find((b) => b.type === 'hero');
+    const quote = doc.blocks.find((b) => b.type === 'quote');
+    const tags = doc.blocks.find((b) => b.type === 'tags');
+    const source = doc.blocks.find((b) => b.type === 'source');
+    const bodyBlocks = doc.blocks.filter(
+      (b) => b !== hero && b !== quote && b !== tags && b !== source,
+    );
 
-    // Group consecutive "narrow" blocks into 2-col rows. Narrow = keypoints /
-    // timeline / comparison / tags. "Wide" = steps / quote (full-width).
-    const narrowTypes = new Set(['keypoints', 'timeline', 'comparison', 'tags']);
-    type Row =
-      | { kind: 'pair'; left: InfographicBlock; right: InfographicBlock }
-      | { kind: 'single'; block: InfographicBlock };
-    const rows: Row[] = [];
-    for (let i = 0; i < middleBlocks.length; ) {
-      const cur = middleBlocks[i];
-      const next = middleBlocks[i + 1];
-      if (next && narrowTypes.has(cur.type) && narrowTypes.has(next.type)) {
-        rows.push({ kind: 'pair', left: cur, right: next });
-        i += 2;
-      } else {
-        rows.push({ kind: 'single', block: cur });
-        i += 1;
-      }
-    }
+    // Chunk body blocks into 3 columns (column-major order: read down then
+    // across). Round-robin would interleave; chunking keeps related blocks
+    // together which reads more like a real editorial column.
+    const perCol = Math.ceil(Math.max(bodyBlocks.length, 1) / 3);
+    const col1 = bodyBlocks.slice(0, perCol);
+    const col2 = bodyBlocks.slice(perCol, perCol * 2);
+    const col3 = bodyBlocks.slice(perCol * 2);
 
     return (
       <div
         ref={ref}
-        className="poster-container max-w-[800px] w-full mx-auto bg-panel rounded-2xl overflow-hidden border border-brd shadow-lg flex flex-col"
+        className="poster-container mx-auto w-full max-w-[960px] flex flex-col"
+        style={{
+          background: C.bg,
+          color: C.fg,
+          fontFamily: FONT_BODY,
+          borderRadius: 4,
+          overflow: 'hidden',
+        }}
       >
-        {hero ? <HeroBlock block={hero} /> : null}
-        <div className="poster-body px-6 py-5 flex flex-col gap-4">
-          {stat ? <StatBlock block={stat} /> : null}
-          {rows.map((row, i) =>
-            row.kind === 'pair' ? (
-              <div key={i} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <BlockView block={row.left} />
-                <BlockView block={row.right} />
-              </div>
-            ) : (
-              <BlockView key={i} block={row.block} />
-            ),
-          )}
+        {hero ? <Masthead block={hero} /> : null}
+        {/* Body has no top/bottom border — the masthead's bottom border and
+            the footer's top border frame the body (matching the reference HTML,
+            which uses exactly two strong horizontal rules, not four). When the
+            masthead is absent, the body renders its own top border so the frame
+            is preserved. */}
+        <div
+          className="poster-body grid grid-cols-1 md:grid-cols-[1.05fr_1.4fr_1fr]"
+          style={hero ? undefined : { borderTop: `1.5px solid ${C.fg}` }}
+        >
+          <Column blocks={col1} />
+          <Column blocks={col2} />
+          <Column blocks={col3} last />
         </div>
-        {source ? <SourceBlock block={source} /> : null}
+        <Footer quote={quote} tags={tags} source={source} />
       </div>
     );
   },
 );
 
+// --- Layout primitives ------------------------------------------------------
+
+function Masthead({ block }: { block: Extract<InfographicBlock, { type: 'hero' }> }) {
+  return (
+    <header
+      className="poster-masthead grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-4 px-8 py-6"
+      style={{ borderBottom: `1.5px solid ${C.fg}` }}
+    >
+      <div
+        className="poster-kicker text-left"
+        style={{
+          fontFamily: FONT_MONO,
+          fontSize: 11,
+          letterSpacing: '0.22em',
+          textTransform: 'uppercase',
+          color: C.muted,
+        }}
+      >
+        <span style={{ color: C.accent }}>●</span>
+        &nbsp;INFOGRAPHIC · 网络知识卡片
+      </div>
+      <div className="poster-title-wrap text-center min-w-0">
+        <h1
+          className="poster-title poster-serif-title m-0 break-words"
+          style={{
+            fontFamily: FONT_DISPLAY,
+            fontWeight: 700,
+            fontSize: 48,
+            lineHeight: 1.05,
+            letterSpacing: '-0.02em',
+          }}
+        >
+          {block.title}
+        </h1>
+        {block.subtitle ? (
+          <p
+            className="poster-subtitle m-0 mt-2 break-words"
+            style={{
+              fontFamily: FONT_DISPLAY,
+              fontSize: 17,
+              color: C.muted,
+              fontStyle: 'italic',
+            }}
+          >
+            {block.subtitle}
+          </p>
+        ) : null}
+      </div>
+      <div
+        className="poster-meta text-right"
+        style={{
+          fontFamily: FONT_MONO,
+          fontSize: 11,
+          lineHeight: 1.5,
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+          color: C.muted,
+        }}
+      >
+        <strong style={{ color: C.fg, fontWeight: 600 }}>QUILL</strong>
+        &nbsp;·&nbsp;CLIP
+      </div>
+    </header>
+  );
+}
+
+function Column({ blocks, last }: { blocks: InfographicBlock[]; last?: boolean }) {
+  return (
+    <div
+      className={`poster-col flex flex-col gap-7 px-7 py-8${last ? '' : ' md:border-r'}`}
+      style={{ borderRightColor: C.border }}
+    >
+      {blocks.length === 0 ? (
+        <div style={{ minHeight: 8 }} />
+      ) : (
+        blocks.map((b, i) => <BlockView key={i} block={b} index={i + 1} />)
+      )}
+    </div>
+  );
+}
+
+function Footer({
+  quote,
+  tags,
+  source,
+}: {
+  quote?: InfographicBlock;
+  tags?: InfographicBlock;
+  source?: InfographicBlock;
+}) {
+  // Left slot stacks quote (editorial pull) above source (citation) when both
+  // are present — neither is dropped, so the source URL is always preserved.
+  // Right slot holds tags.
+  return (
+    <footer
+      className="poster-footer grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-4 px-8 py-5"
+      style={{ borderTop: `1.5px solid ${C.fg}` }}
+    >
+      <div className="poster-footer-left min-w-0 flex flex-col gap-3">
+        {quote ? <BlockView block={quote} /> : null}
+        {source ? <BlockView block={source} /> : null}
+      </div>
+      <div
+        className="poster-footer-div hidden md:block"
+        style={{ width: 1, height: 56, background: C.border }}
+      />
+      <div className="poster-footer-right text-center min-w-0">
+        {tags ? <BlockView block={tags} /> : null}
+      </div>
+    </footer>
+  );
+}
+
+// --- Block dispatch ---------------------------------------------------------
+
 interface BlockViewProps {
   block: InfographicBlock;
+  /** 1-based position within the parent column (used for eyebrow numbering). */
+  index?: number;
 }
 
 /**
  * Dispatch a block to its typed renderer. Unknown types hit the fallback
- * (muted plain-text `JSON.stringify`) and emit a `console.warn` so missing
- * enum drift is observable in dev without crashing the card.
+ * (muted plain-text `JSON.stringify`) and emit a `console.warn` so enum drift
+ * is observable in dev without crashing the card.
  *
  * Exported for unit testing.
  */
-export function BlockView({ block }: BlockViewProps) {
+export function BlockView({ block, index = 1 }: BlockViewProps) {
   switch (block.type) {
     case 'hero':
-      return <HeroBlock block={block} />;
+      return <Masthead block={block} />;
     case 'stat':
       return <StatBlock block={block} />;
     case 'keypoints':
-      return <KeyPointsBlock block={block} />;
+      return <KeyPointsBlock block={block} index={index} />;
     case 'timeline':
-      return <TimelineBlock block={block} />;
+      return <TimelineBlock block={block} index={index} />;
     case 'steps':
-      return <StepsBlock block={block} />;
+      return <StepsBlock block={block} index={index} />;
     case 'comparison':
-      return <ComparisonBlock block={block} />;
+      return <ComparisonBlock block={block} index={index} />;
     case 'quote':
       return <QuoteBlock block={block} />;
     case 'tags':
@@ -140,111 +275,254 @@ export function BlockView({ block }: BlockViewProps) {
   }
 }
 
-function HeroBlock({ block }: { block: { type: 'hero'; title: string; subtitle?: string } }) {
+// --- Shared editorial atoms -------------------------------------------------
+
+function Eyebrow({ label, num }: { label: string; num: number }) {
   return (
-    <div className="poster-hero border-b border-brd">
-      {/* Accent band — poster header */}
-      <div className="h-2 bg-acc" />
-      <div className="px-6 py-5 bg-surf">
-        <h2 className="text-[22px] font-bold text-t1 m-0 leading-tight break-words">{block.title}</h2>
-        {block.subtitle && (
-          <p className="mt-1.5 text-[13px] text-t2 m-0 leading-relaxed break-words">{block.subtitle}</p>
-        )}
+    <div
+      className="poster-eyebrow"
+      style={{
+        fontFamily: FONT_MONO,
+        fontSize: 11,
+        letterSpacing: '0.2em',
+        textTransform: 'uppercase',
+        color: C.accent,
+        marginBottom: 14,
+      }}
+    >
+      {String(num).padStart(2, '0')} · {label}
+    </div>
+  );
+}
+
+function MonoLabel({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        fontFamily: FONT_MONO,
+        fontSize: 11,
+        letterSpacing: '0.18em',
+        textTransform: 'uppercase',
+        color: C.fg,
+        fontWeight: 600,
+        marginBottom: 8,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// --- Per-block renderers ----------------------------------------------------
+
+function StatBlock({ block }: { block: Extract<InfographicBlock, { type: 'stat' }> }) {
+  const items = block.items.slice(0, 4);
+  return (
+    <div className="poster-stat">
+      <Eyebrow label={EYEBROW_LABELS['stat']!} num={1} />
+      <div className="flex flex-col">
+        {items.map((item, i) => (
+          <div
+            key={i}
+            className="flex items-baseline gap-3 py-2.5"
+            style={i < items.length - 1 ? { borderBottom: `1px solid ${C.border}` } : undefined}
+          >
+            <span
+              className="break-words"
+              style={{
+                fontFamily: FONT_DISPLAY,
+                fontWeight: 700,
+                fontSize: 32,
+                color: C.accent,
+                letterSpacing: '-0.02em',
+                lineHeight: 1,
+              }}
+            >
+              {item.value}
+              {item.unit ? (
+                <span style={{ fontSize: 16, marginLeft: 2 }}>{item.unit}</span>
+              ) : null}
+            </span>
+            <span className="break-words" style={{ fontSize: 13, color: C.muted }}>
+              {item.label}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-function StatBlock({ block }: { block: { type: 'stat'; items: { value: string; label: string; unit?: string }[] } }) {
-  const items = block.items.slice(0, 4);
-  const cols = items.length <= 1 ? 'grid-cols-1' : items.length <= 2 ? 'grid-cols-2' : items.length === 3 ? 'grid-cols-3' : 'grid-cols-2 md:grid-cols-4';
+function KeyPointsBlock({
+  block,
+  index,
+}: {
+  block: Extract<InfographicBlock, { type: 'keypoints' }>;
+  index: number;
+}) {
   return (
-    <div className={`grid ${cols} gap-3`}>
-      {items.map((item, i) => (
-        <div key={i} className="rounded-md bg-acc/10 border border-acc/15 px-3 py-2.5 flex flex-col">
-          <div className="flex items-baseline gap-0.5">
-            <span className="text-[22px] font-bold text-acc leading-none break-words">{item.value}</span>
-            {item.unit && <span className="text-[12px] text-acc font-medium">{item.unit}</span>}
-          </div>
-          <span className="mt-1 text-[11px] text-t2 leading-snug break-words">{item.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function KeyPointsBlock({ block }: { block: { type: 'keypoints'; items: string[] } }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="text-[11px] text-t3 font-semibold uppercase tracking-[0.5px]">要点</div>
-      <ul className="m-0 pl-0 list-none flex flex-col gap-2">
+    <div className="poster-keypoints">
+      <Eyebrow label={EYEBROW_LABELS['keypoints']!} num={index} />
+      <div className="flex flex-col">
         {block.items.map((point, i) => (
-          <li key={i} className="flex items-start gap-2 text-[13px] text-t1 leading-relaxed">
-            <span className="shrink-0 w-5 h-5 rounded-full bg-acc/10 text-acc text-[10px] font-bold flex items-center justify-center mt-px">{i + 1}</span>
-            <span className="break-words">{point}</span>
-          </li>
+          <div
+            key={i}
+            className="grid grid-cols-[28px_1fr] gap-3 pb-3 mb-3"
+            style={
+              i < block.items.length - 1 ? { borderBottom: `1px solid ${C.border}` } : undefined
+            }
+          >
+            <span
+              style={{
+                fontFamily: FONT_DISPLAY,
+                fontWeight: 600,
+                fontSize: 18,
+                color: C.fg,
+                letterSpacing: '-0.01em',
+                lineHeight: 1.2,
+              }}
+            >
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <span style={{ fontSize: 14, lineHeight: 1.55, color: C.fg }}>{point}</span>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
 
-function TimelineBlock({ block }: { block: { type: 'timeline'; items: { time: string; title: string; detail?: string }[] } }) {
+function TimelineBlock({
+  block,
+  index,
+}: {
+  block: Extract<InfographicBlock, { type: 'timeline' }>;
+  index: number;
+}) {
   return (
-    <div className="flex flex-col gap-2">
-      <div className="text-[11px] text-t3 font-semibold uppercase tracking-[0.5px]">时间线</div>
-      <ol className="m-0 pl-0 list-none flex flex-col gap-3">
+    <div className="poster-timeline">
+      <Eyebrow label={EYEBROW_LABELS['timeline']!} num={index} />
+      <div className="flex flex-col gap-3">
         {block.items.map((item, i) => (
-          <li key={i} className="flex gap-3">
-            <div className="flex flex-col items-center">
-              <span className="w-2.5 h-2.5 rounded-full bg-acc border-2 border-panel shrink-0 mt-1" />
-              {i < block.items.length - 1 && <span className="w-px flex-1 bg-brd mt-1" />}
+          <div
+            key={i}
+            className="px-3.5 py-3"
+            style={{ border: `1px solid ${C.border}`, background: C.surface }}
+          >
+            <div
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 11,
+                letterSpacing: '0.16em',
+                color: C.muted,
+                marginBottom: 6,
+              }}
+            >
+              {String(i + 1).padStart(2, '0')} / {item.time}
             </div>
-            <div className="flex-1 min-w-0 pb-0.5">
-              <div className="text-[11px] text-acc font-semibold">{item.time}</div>
-              <div className="text-[13px] text-t1 font-medium leading-snug break-words">{item.title}</div>
-              {item.detail && <div className="mt-0.5 text-[12px] text-t2 leading-relaxed break-words">{item.detail}</div>}
+            <div
+              className="break-words"
+              style={{
+                fontFamily: FONT_DISPLAY,
+                fontWeight: 600,
+                fontSize: 17,
+                marginBottom: 4,
+                letterSpacing: '-0.01em',
+              }}
+            >
+              {item.title}
             </div>
-          </li>
+            {item.detail ? (
+              <div className="break-words" style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
+                {item.detail}
+              </div>
+            ) : null}
+          </div>
         ))}
-      </ol>
+      </div>
     </div>
   );
 }
 
-function StepsBlock({ block }: { block: { type: 'steps'; steps: { title: string; detail?: string }[] } }) {
+function StepsBlock({
+  block,
+  index,
+}: {
+  block: Extract<InfographicBlock, { type: 'steps' }>;
+  index: number;
+}) {
   return (
-    <div className="flex flex-col gap-2">
-      <div className="text-[11px] text-t3 font-semibold uppercase tracking-[0.5px]">步骤</div>
-      <ol className="m-0 pl-0 list-none flex flex-col gap-2.5">
+    <div className="poster-steps">
+      <Eyebrow label={EYEBROW_LABELS['steps']!} num={index} />
+      <div className="flex flex-col gap-3">
         {block.steps.map((step, i) => (
-          <li key={i} className="flex items-start gap-2.5">
-            <span className="shrink-0 w-6 h-6 rounded-full bg-acc text-white text-[11px] font-bold flex items-center justify-center mt-px">{i + 1}</span>
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] text-t1 font-medium leading-snug break-words">{step.title}</div>
-              {step.detail && <div className="mt-0.5 text-[12px] text-t2 leading-relaxed break-words">{step.detail}</div>}
+          <div
+            key={i}
+            className="px-3.5 py-3"
+            style={{ border: `1px solid ${C.border}`, background: C.surface }}
+          >
+            <div
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 11,
+                letterSpacing: '0.16em',
+                color: C.muted,
+                marginBottom: 6,
+              }}
+            >
+              {String(i + 1).padStart(2, '0')} / STEP
             </div>
-          </li>
+            <div
+              className="break-words"
+              style={{
+                fontFamily: FONT_DISPLAY,
+                fontWeight: 600,
+                fontSize: 17,
+                marginBottom: 4,
+                letterSpacing: '-0.01em',
+              }}
+            >
+              {step.title}
+            </div>
+            {step.detail ? (
+              <div className="break-words" style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
+                {step.detail}
+              </div>
+            ) : null}
+          </div>
         ))}
-      </ol>
+      </div>
     </div>
   );
 }
 
-function ComparisonBlock({ block }: { block: { type: 'comparison'; columns: { title: string; items: string[] }[] } }) {
+function ComparisonBlock({
+  block,
+  index,
+}: {
+  block: Extract<InfographicBlock, { type: 'comparison' }>;
+  index: number;
+}) {
   const cols = block.columns.slice(0, 3);
-  const grid = cols.length <= 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-3';
   return (
-    <div className="flex flex-col gap-2">
-      <div className="text-[11px] text-t3 font-semibold uppercase tracking-[0.5px]">对比</div>
-      <div className={`grid ${grid} gap-3`}>
+    <div className="poster-comparison">
+      <Eyebrow label={EYEBROW_LABELS['comparison']!} num={index} />
+      <div className="flex flex-col">
         {cols.map((col, i) => (
-          <div key={i} className="rounded-md border border-brd bg-bg px-3 py-2.5">
-            <div className="text-[12px] text-acc font-semibold mb-1.5 break-words">{col.title}</div>
-            <ul className="m-0 pl-0 list-none flex flex-col gap-1">
+          <div
+            key={i}
+            className="py-2.5"
+            style={i < cols.length - 1 ? { borderBottom: `1px solid ${C.border}` } : undefined}
+          >
+            <MonoLabel>{col.title}</MonoLabel>
+            <ul className="m-0 p-0 list-none flex flex-col gap-1.5">
               {col.items.map((item, j) => (
-                <li key={j} className="text-[12px] text-t1 leading-snug break-words flex items-start gap-1.5">
-                  <span className="text-acc mt-px">·</span>
+                <li
+                  key={j}
+                  className="flex items-start gap-2 break-words"
+                  style={{ fontSize: 13, lineHeight: 1.55, color: C.fg }}
+                >
+                  <span style={{ color: C.accent }}>·</span>
                   <span>{item}</span>
                 </li>
               ))}
@@ -256,48 +534,95 @@ function ComparisonBlock({ block }: { block: { type: 'comparison'; columns: { ti
   );
 }
 
-function QuoteBlock({ block }: { block: { type: 'quote'; text: string; source?: string } }) {
+function QuoteBlock({ block }: { block: Extract<InfographicBlock, { type: 'quote' }> }) {
   return (
-    <div className="border-l-[3px] border-l-acc pl-4 py-1">
-      <p className="text-[14px] text-t1 italic m-0 leading-relaxed break-words">“{block.text}”</p>
-      {block.source && <div className="mt-2 text-[11px] text-t3 break-words">— {block.source}</div>}
+    <div
+      className="poster-quote"
+      style={{ borderLeft: `3px solid ${C.accent}`, paddingLeft: 16 }}
+    >
+      <p
+        className="m-0 break-words"
+        style={{
+          fontFamily: FONT_DISPLAY,
+          fontSize: 22,
+          lineHeight: 1.35,
+          color: C.fg,
+          letterSpacing: '-0.01em',
+        }}
+      >
+        <span style={{ color: C.accent, fontStyle: 'italic' }}>“</span>
+        {block.text}
+        <span style={{ color: C.accent, fontStyle: 'italic' }}>”</span>
+      </p>
+      {block.source ? (
+        <div
+          className="mt-2 break-words"
+          style={{
+            fontFamily: FONT_MONO,
+            fontSize: 11,
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+            color: C.muted,
+          }}
+        >
+          — {block.source}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function TagsBlock({ block }: { block: { type: 'tags'; tags: string[] } }) {
+function TagsBlock({ block }: { block: Extract<InfographicBlock, { type: 'tags' }> }) {
   return (
-    <div className="flex flex-col gap-2">
-      <div className="text-[11px] text-t3 font-semibold uppercase tracking-[0.5px]">标签</div>
-      <div className="flex flex-wrap gap-1.5">
-        {block.tags.map((tag, i) => (
-          <span key={i} className="text-[11px] text-acc bg-acc/8 border border-acc/15 px-2 py-0.5 rounded-full font-medium">{tag}</span>
-        ))}
-      </div>
+    <div
+      className="poster-tags"
+      style={{
+        fontFamily: FONT_MONO,
+        fontSize: 11,
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        color: C.muted,
+        textAlign: 'center',
+        lineHeight: 1.6,
+      }}
+    >
+      {block.tags.map((tag, i) => (
+        <span key={i}>
+          {i > 0 ? <span style={{ margin: '0 8px', color: C.border }}>·</span> : null}
+          <span style={{ color: C.fg, fontWeight: 600 }}>{tag}</span>
+        </span>
+      ))}
     </div>
   );
 }
 
-function SourceBlock({ block }: { block: { type: 'source'; url: string; hostname?: string; clipped?: string } }) {
+function SourceBlock({ block }: { block: Extract<InfographicBlock, { type: 'source' }> }) {
   return (
-    <div className="poster-footer px-6 py-3 bg-bg border-t border-brd flex flex-wrap items-center gap-2 text-[11px] text-t3">
-      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="shrink-0">
-        <circle cx="8" cy="8" r="6" />
-        <path d="M8 2a9 9 0 0 1 0 12M8 2a9 9 0 0 0 0 12M2 8h12" />
-      </svg>
-      {block.hostname && <span className="text-t2 break-all">{block.hostname}</span>}
-      {block.clipped && <span className="text-t3">· {block.clipped}</span>}
-      {block.url && (
-        <a
-          href={block.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-acc hover:underline break-all"
-          title={block.url}
+    <div
+      className="poster-source"
+      style={{
+        fontFamily: FONT_MONO,
+        fontSize: 11,
+        letterSpacing: '0.14em',
+        textTransform: 'uppercase',
+        color: C.muted,
+        lineHeight: 1.6,
+      }}
+    >
+      {block.hostname ? (
+        <div className="break-words">
+          <strong style={{ color: C.fg, fontWeight: 600 }}>{block.hostname}</strong>
+        </div>
+      ) : null}
+      {block.clipped ? <div>{block.clipped}</div> : null}
+      {block.url ? (
+        <div
+          className="break-all"
+          style={{ color: C.accent, textTransform: 'none', letterSpacing: 0 }}
         >
           {block.url}
-        </a>
-      )}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -306,9 +631,17 @@ function UnknownBlock({ block }: { block: InfographicBlock }) {
   // Defensive fallback: never throw on enum drift. Log so it's observable.
   console.warn('[InfographicView] unknown block type:', (block as { type?: string }).type);
   return (
-    <div className="rounded-md border border-dashed border-brd bg-bg px-4 py-2.5">
-      <div className="text-[11px] text-t3 mb-1">未知信息图块</div>
-      <pre className="m-0 text-[11px] text-t3 whitespace-pre-wrap break-all font-mono">
+    <div
+      className="poster-unknown"
+      style={{ border: `1px dashed ${C.border}`, padding: 12 }}
+    >
+      <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: C.muted, marginBottom: 6 }}>
+        未知信息图块
+      </div>
+      <pre
+        className="m-0 whitespace-pre-wrap break-all"
+        style={{ fontFamily: FONT_MONO, fontSize: 11, color: C.muted }}
+      >
         {JSON.stringify(block, null, 2)}
       </pre>
     </div>

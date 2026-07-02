@@ -35,3 +35,6 @@ pnpm-debug.log*
 .ipynb_checkpoints/
 
 default_vault/
+
+# Local dev scratch / reference files
+.dev/
