@@ -109,6 +109,53 @@ describe('generateClip — validateUrl (via service entry)', () => {
   });
 });
 
+describe('generateClip — curl.md URL construction', () => {
+  it('constructs the curl.md URL with the original URL encoded', async () => {
+    collectTextFromStream.mockResolvedValueOnce(
+      '{"title":"T","tags":[],"suggestedTags":[],"summary":"","keyPoints":[]}',
+    );
+    await generateClip('https://example.com/a?b=c&d');
+    const prompt = fakeAdapter.send.mock.calls[0][0] as string;
+    // Original URL is URL-encoded into the curl.md path (query params preserved
+    // inside the encoded segment, not as a live query string).
+    expect(prompt).toContain('https://curl.md/https%3A%2F%2Fexample.com%2Fa%3Fb%3Dc%26d');
+    // The agent must WebFetch the curl.md URL, not the raw page URL as a fetch target.
+    expect(prompt).toMatch(/WebFetch.*curl\.md/s);
+    // The raw URL is still conveyed for source/title context.
+    expect(prompt).toContain('https://example.com/a?b=c&d');
+  });
+
+  it('encodes the URL even with fragment and trailing slash', async () => {
+    collectTextFromStream.mockResolvedValueOnce(
+      '{"title":"T","tags":[],"suggestedTags":[],"summary":"","keyPoints":[]}',
+    );
+    await generateClip('https://example.com/path/#section');
+    const prompt = fakeAdapter.send.mock.calls[0][0] as string;
+    expect(prompt).toContain(
+      'https://curl.md/' + encodeURIComponent('https://example.com/path/#section'),
+    );
+  });
+
+  it('uses the curl.md URL in both skill and fallback prompt branches', async () => {
+    // Fallback branch (no skill configured — the default mock returns undefined).
+    collectTextFromStream.mockResolvedValueOnce(
+      '{"title":"T","tags":[],"suggestedTags":[],"summary":"","keyPoints":[]}',
+    );
+    await generateClip('https://x.com/y');
+    const prompt = fakeAdapter.send.mock.calls[0][0] as string;
+    expect(prompt).toContain('https://curl.md/' + encodeURIComponent('https://x.com/y'));
+    expect(prompt).toMatch(/WebFetch/s);
+  });
+
+  it('keeps the original (decoded) URL in the returned metadata', async () => {
+    collectTextFromStream.mockResolvedValueOnce(
+      '{"title":"T","tags":[],"suggestedTags":[],"summary":"","keyPoints":[]}',
+    );
+    const meta = await generateClip('https://example.com/a?b=c&d');
+    expect(meta.url).toBe('https://example.com/a?b=c&d');
+  });
+});
+
 describe('generateClip — AI response parsing', () => {
   it('parses a clean JSON card', async () => {
     collectTextFromStream.mockResolvedValueOnce(

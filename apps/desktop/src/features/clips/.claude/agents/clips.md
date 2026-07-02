@@ -9,7 +9,7 @@ tools: WebFetch, WebSearch, Read
 # 模式一：卡片元数据（默认）
 
 ## 工作流程
-1. 用 WebFetch 抓取目标 URL 的正文内容。
+1. 运行指令会给出原始页面 URL（仅作来源/标题参考）以及一个 `https://curl.md/<url>` 链接（curl.md 服务的 Markdown 端点，已做 HTML→Markdown 转换）。用 WebFetch 抓取该 **curl.md URL** 获取页面 Markdown 正文。**不要**直接 WebFetch 原始页面 URL。
 2. 提炼标题、核心标签、补充标签、摘要、要点。
 3. 只输出 JSON，不要改 vault 文件（落盘由调用方处理）。
 
@@ -29,7 +29,7 @@ tools: WebFetch, WebSearch, Read
 - `tags` 为 3-5 个与内容强相关的主标签；`suggestedTags` 为 2-3 个补充/分类标签。
 - `keyPoints` 为 3-5 条核心要点，每条一句话。
 - 标签优先用正文出现的关键概念；中文页面用中文标签，英文页面用英文标签。
-- 若页面无法抓取或内容极少，仍返回最小合法 JSON（title 用 URL hostname，其余字段为空数组/空串），不要报错。
+- 若 curl.md 抓取失败、返回错误或内容极少，仍返回最小合法 JSON（title 用原始 URL 的 hostname，其余字段为空数组/空串），不要报错。
 
 # 模式二：信息图（infographic）
 
