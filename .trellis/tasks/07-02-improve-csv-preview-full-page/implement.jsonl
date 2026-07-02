@@ -1,0 +1,3 @@
+{"file": ".trellis/tasks/07-02-improve-csv-preview-full-page/prd.md", "reason": "Task PRD — requirements, AC, DoD, technical approach"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "React component guidelines — for table layout + ResizeObserver patterns"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "File-type editor/preview patterns — CSV preview context"}

@@ -859,3 +859,37 @@ CSV preview now always renders a grid: empty CSV shows a full empty grid (no hin
 ### Next Steps
 
 - None - task complete
+
+
+## Session 26: Integrate file-viewer preset-office
+
+**Date**: 2026-07-02
+**Task**: Integrate file-viewer preset-office
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Integrated @file-viewer preset-office for offline Office preview (Word/Excel incl csv/PPT/OFD) via new office handler + OfficeFileViewer (Tauri FS read bytes -> File -> FileViewer). Removed self-built CSV preview. PDF unchanged. tsc + 856 tests + vite build (7/7 assets) green. Runtime Tauri Worker/WASM URL resolution needs manual verify.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `16f4d49d3b5e41ca4782f8290a3e02bcc66e4cef` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

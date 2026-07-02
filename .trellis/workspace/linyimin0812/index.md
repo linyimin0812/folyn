@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 25
+- **Total Sessions**: 26
 - **Last Active**: 2026-07-02
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~861 | Active |
+| `journal-1.md` | ~895 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 26 | 2026-07-02 | Integrate file-viewer preset-office | `16f4d49d3b5e41ca4782f8290a3e02bcc66e4cef` | `master` |
 | 25 | 2026-07-02 | CSV preview: always-on grid fills page | `c4770e6faa5cefbc1a6967380f30959c2399849d` | `master` |
 | 24 | 2026-07-02 | CSV preview excel-style full-bleed | `ff2872d7ce02fcd076e6cad850897e5c9a9e85ab` | `master` |
 | 23 | 2026-07-02 | CSV file icon | `6c712d2c26833406b80b42b9a0b510b0013c48ae` | `master` |
