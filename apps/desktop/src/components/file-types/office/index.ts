@@ -5,6 +5,7 @@ import { getFileTypeIcon } from '@/components/icons/FileIcon';
 const handler: FileTypeHandler = {
   id: 'office',
   extensions: [
+    'pdf',
     'docx', 'doc', 'dot', 'rtf', 'odt',
     'xlsx', 'xls', 'xlsm', 'xlsb', 'csv', 'ods', 'fods', 'numbers',
     'pptx', 'pptm', 'potx', 'potm', 'ppsx', 'ppsm', 'odp',
