@@ -12,6 +12,7 @@ const {
   createFile,
   createDir,
   openFile,
+  readFile,
 } = vi.hoisted(() => {
   const collectTextFromStream = vi.fn();
   const fakeAdapter = {
@@ -26,6 +27,7 @@ const {
     createFile: vi.fn(async (_path: string, _content: string) => {}),
     createDir: vi.fn(async (_dir: string) => {}),
     openFile: vi.fn(async (_path: string, _name: string) => {}),
+    readFile: vi.fn(async (_path: string) => ''),
   };
 });
 
@@ -37,6 +39,7 @@ vi.mock('@/store/vaultStore', () => ({
       writeFile,
       createFile,
       createDir,
+      readFile,
     }),
   },
 }));
@@ -71,7 +74,7 @@ vi.mock('./aiStreamUtils', () => ({
   collectTextFromStream,
 }));
 
-import { generateClip, saveClip, clipUrl } from './clipService';
+import { generateClip, saveClip, clipUrl, generateInfographic } from './clipService';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -322,5 +325,133 @@ describe('clipUrl — backward-compatible wrapper', () => {
     expect(path).toBe('__clips__/t/existing.md');
     expect(writeFile).toHaveBeenCalledWith('__clips__/t/existing.md', expect.any(String));
     expect(createFile).not.toHaveBeenCalled();
+  });
+});
+
+const sampleClipMd = [
+  '---',
+  'title: "Hello World"',
+  'type: clip',
+  'url: "https://example.com/hello"',
+  'tags: ["tech", "ai"]',
+  'clipped: 2026-07-02',
+  '---',
+  '',
+  '> **来源**: [example.com](https://example.com/hello)',
+  '',
+  '## 摘要',
+  '',
+  'A short summary of the page.',
+  '',
+  '## 要点',
+  '',
+  '- point one',
+  '- point two',
+  '',
+].join('\n');
+
+describe('generateInfographic', () => {
+  it('reads the clip, invokes the clips agent, and writes back a ## 信息图 section', async () => {
+    readFile.mockResolvedValueOnce(sampleClipMd);
+    const aiDoc = {
+      version: 1,
+      blocks: [
+        { type: 'hero', title: 'Hello' },
+        { type: 'source', url: 'https://example.com/hello' },
+      ],
+    };
+    collectTextFromStream.mockResolvedValueOnce(JSON.stringify(aiDoc));
+
+    const doc = await generateInfographic('__clips__/tech/2026-07-02-hello-world.md');
+
+    expect(doc.version).toBe(1);
+    expect(doc.blocks).toHaveLength(2);
+    expect(doc.blocks[0]).toEqual({ type: 'hero', title: 'Hello' });
+
+    // Agent was started + stopped.
+    expect(fakeAdapter.start).toHaveBeenCalledTimes(1);
+    expect(fakeAdapter.stop).toHaveBeenCalledTimes(1);
+
+    // The prompt carried the [infographic-mode] marker + clip content.
+    const prompt = fakeAdapter.send.mock.calls[0][0] as string;
+    expect(prompt).toContain('[infographic-mode]');
+    expect(prompt).toContain('Hello World');
+    expect(prompt).toContain('https://example.com/hello');
+    expect(prompt).toContain('A short summary of the page.');
+    expect(prompt).toContain('- point one');
+
+    // Wrote back to the same path, with a ## 信息图 section.
+    expect(writeFile).toHaveBeenCalledTimes(1);
+    const [writtenPath, writtenContent] = writeFile.mock.calls[0];
+    expect(writtenPath).toBe('__clips__/tech/2026-07-02-hello-world.md');
+    expect(writtenContent).toContain('## 信息图');
+    expect(writtenContent).toContain('"type": "hero"');
+    // Original sections preserved byte-for-byte.
+    expect(writtenContent).toContain('title: "Hello World"');
+    expect(writtenContent).toContain('## 摘要');
+    expect(writtenContent).toContain('A short summary of the page.');
+    expect(writtenContent).toContain('## 要点');
+    expect(writtenContent).toContain('- point one');
+  });
+
+  it('extracts JSON embedded in prose / fences (defensive parse)', async () => {
+    readFile.mockResolvedValueOnce(sampleClipMd);
+    collectTextFromStream.mockResolvedValueOnce(
+      'Here is the infographic:\n```json\n{"version":1,"blocks":[{"type":"hero","title":"X"}]}\n```\nThanks',
+    );
+    const doc = await generateInfographic('__clips__/tech/x.md');
+    expect(doc.blocks).toHaveLength(1);
+    expect(doc.blocks[0]).toEqual({ type: 'hero', title: 'X' });
+  });
+
+  it('throws a parse error when AI output is not JSON', async () => {
+    readFile.mockResolvedValueOnce(sampleClipMd);
+    collectTextFromStream.mockResolvedValueOnce('not json at all');
+    await expect(generateInfographic('__clips__/tech/x.md')).rejects.toThrow(/无法解析为信息图 JSON/);
+    expect(fakeAdapter.stop).toHaveBeenCalledTimes(1);
+    expect(writeFile).not.toHaveBeenCalled();
+  });
+
+  it('throws a shape error when blocks is missing', async () => {
+    readFile.mockResolvedValueOnce(sampleClipMd);
+    collectTextFromStream.mockResolvedValueOnce('{"version":1,"noBlocks":[]}');
+    await expect(generateInfographic('__clips__/tech/x.md')).rejects.toThrow(/形状不合法/);
+    expect(writeFile).not.toHaveBeenCalled();
+  });
+
+  it('throws when the clip file cannot be read', async () => {
+    readFile.mockRejectedValueOnce(new Error('ENOENT'));
+    await expect(generateInfographic('__clips__/tech/missing.md')).rejects.toThrow(/读取剪藏文件失败/);
+    expect(fakeAdapter.start).not.toHaveBeenCalled();
+    expect(writeFile).not.toHaveBeenCalled();
+  });
+
+  it('replaces an existing ## 信息图 section (regenerate semantics)', async () => {
+    const existingWithInfographic = `${sampleClipMd}## 信息图\n\n\`\`\`json\n${JSON.stringify({
+      version: 1,
+      blocks: [{ type: 'hero', title: 'OLD' }],
+    })}\n\`\`\`\n`;
+    readFile.mockResolvedValueOnce(existingWithInfographic);
+    collectTextFromStream.mockResolvedValueOnce(
+      JSON.stringify({ version: 1, blocks: [{ type: 'hero', title: 'NEW' }] }),
+    );
+
+    await generateInfographic('__clips__/tech/hello.md');
+
+    expect(writeFile).toHaveBeenCalledTimes(1);
+    const [, writtenContent] = writeFile.mock.calls[0];
+    expect(writtenContent).not.toContain('OLD');
+    expect(writtenContent).toContain('NEW');
+    // Exactly one ## 信息图 heading.
+    expect((writtenContent.match(/## 信息图/g) || []).length).toBe(1);
+    // Surrounding content preserved.
+    expect(writtenContent).toContain('## 摘要');
+    expect(writtenContent).toContain('## 要点');
+  });
+
+  it('throws when clip content is empty', async () => {
+    readFile.mockResolvedValueOnce('---\n---\n');
+    await expect(generateInfographic('__clips__/tech/empty.md')).rejects.toThrow(/内容为空/);
+    expect(fakeAdapter.start).not.toHaveBeenCalled();
   });
 });

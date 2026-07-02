@@ -19,7 +19,12 @@ apps/desktop/src/
 │   │                    #   IngestDialog, adapterManager, WikiToolbar, WikiActivityLog)
 │   ├── editor/          # Editor toolbar and overlays (SlashMenu, ExportMenu, DiffToolbar,
 │   │                    #   ImagePasteDialog, CodeBlockLangMenu, DailyDigest)
-│   ├── file-types/      # File type handler registry (markdown, code, image, pdf, web)
+│   ├── file-types/      # File type handler registry (markdown, code, image, pdf, web). The
+│   │                    #   `clip/` subfolder holds the clip card editor: `ClipCardView`
+│   │                    #   (frontmatter + 摘要/要点/信息图 renderer) and `InfographicView`
+│   │                    #   (poster-style block renderer with 9 block types + unknown
+│   │                    #   fallback). See `features/clips/clipParse.ts` for the shared
+│   │                    #   `{ version, blocks: InfographicBlock[] }` schema and parsers.
 │   ├── graph/           # Wiki link graph visualization (D3 force-directed)
 │   ├── icons/           # Reusable SVG icon components (ThemeIcon)
 │   ├── outline/         # Document heading outline panel
@@ -51,7 +56,7 @@ apps/desktop/src/
 ## Module Organization
 
 - **Feature folders** under `components/` — each folder owns one UI feature area with a main component plus helper subcomponents (e.g., `sidebar/Sidebar.tsx` + `FileTreeItem.tsx` + `SidebarActions.tsx` + `SidebarResizer.tsx`)
-- **Feature modules** under `features/` — one folder per feature (`study`, `clips`, `wiki`, `schedule`, `analyze`). Each owns its domain logic (e.g. `study/sm2.ts`, `study/studyDoc.ts`) AND its canonical agent definition (`.claude/CLAUDE.md` + `.claude/agents/<feature>.md`). See `feature-agents.md` for the agent architecture contract.
+- **Feature modules** under `features/` — one folder per feature (`study`, `clips`, `wiki`, `schedule`, `analyze`). Each owns its domain logic (e.g. `study/sm2.ts`, `study/studyDoc.ts`; `clips/clipParse.ts` — shared clip-markdown parsers and the infographic `{ version, blocks: Block[] }` schema with 9 block types: hero/stat/keypoints/timeline/steps/comparison/quote/tags/source) AND its canonical agent definition (`.claude/CLAUDE.md` + `.claude/agents/<feature>.md`). See `feature-agents.md` for the agent architecture contract.
 - **Stores** are flat in `store/`, one file per domain: `editorStore.ts`, `settingsStore.ts`, `vaultStore.ts`, `aiStore.ts`, `searchStore.ts`, `wikiStore.ts`, `wikiGraphStore.ts`
 - **Store helpers** co-located when logic grows: `editorAutoSave.ts`, `editorPersistence.ts`, `aiFileChangeActions.ts`, `aiSessionPersistence.ts`
 - **Services** are flat in `services/` — cross-feature business logic (e.g. `featureAgentService` seeds canonical agent files into the vault; `clipService` / `githubAnalysisService` consume feature agents)

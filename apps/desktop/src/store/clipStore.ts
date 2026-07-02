@@ -6,8 +6,10 @@ import {
   clipUrl as clipUrlService,
   generateClip as generateClipService,
   saveClip as saveClipService,
+  generateInfographic as generateInfographicService,
   type ClipMetadata,
   type ClipLanguage,
+  type InfographicDoc,
 } from '@/services/clipService';
 import { normalizeUrl } from '@/utils/urlUtils';
 import {
@@ -61,6 +63,17 @@ interface ClipState {
   /** Path of the most recent batch summary file (null if none / cleared) */
   batchSummaryPath: string | null;
 
+  /** Infographic generation state (on-demand, per-clip). */
+  isGeneratingInfographic: boolean;
+  /** Last infographic generation error; null when none / cleared. The error
+   *  is surfaced without clobbering the existing card content. */
+  infographicError: string | null;
+  /** Path of the clip file the current `infographicError` refers to. The
+   *  error is scoped per-clip so a failure on clip A does not leak onto
+   *  clip B's card when the user switches tabs (the editor remounts per
+   *  tab id, but the store error is global). Null when no error. */
+  infographicErrorPath: string | null;
+
   loadClips: () => Promise<void>;
   /** Backward-compatible one-shot clip (used by /clip command and WebViewer) */
   clipUrl: (
@@ -80,6 +93,13 @@ interface ClipState {
   findClipByUrl: (url: string) => string | null;
   /** Remove a tag from a clip. If no tags remain, delete the file. */
   removeTagFromClip: (clipPath: string, tag: string) => Promise<void>;
+
+  /** On-demand infographic generation for an existing clip file. Calls
+   *  clipService.generateInfographic, updates isGeneratingInfographic /
+   *  infographicError, and (on success) reloads the clip list so the editor
+   *  reflects the newly-written `## 信息图` section. Mirrors the isClipping /
+   *  error pattern of the clip-generation flow. */
+  generateInfographic: (filePath: string) => Promise<InfographicDoc>;
 
   /** Run a sequential batch clip over a list of URLs. Resolves with a summary. */
   clipBatch: (urls: string[], options?: BatchOptions) => Promise<BatchSummary>;
@@ -232,6 +252,9 @@ export const useClipStore = create<ClipState>((set, get) => ({
   batchItems: [],
   isBatchRunning: false,
   batchSummaryPath: null,
+  isGeneratingInfographic: false,
+  infographicError: null,
+  infographicErrorPath: null,
 
   loadClips: async () => {
     if (get().isLoading) return;
@@ -397,6 +420,34 @@ export const useClipStore = create<ClipState>((set, get) => ({
     }
 
     await get().loadClips();
+  },
+
+  generateInfographic: async (filePath: string) => {
+    if (get().isGeneratingInfographic) {
+      throw new Error('信息图生成正在进行中');
+    }
+    set({ isGeneratingInfographic: true, infographicError: null, infographicErrorPath: null });
+    try {
+      const doc = await generateInfographicService(filePath, (msg) => {
+        // Progress is surfaced via the same clipProgress field the clip
+        // generation flow uses; PR3 wires a dedicated UI affordance.
+        set({ clipProgress: msg });
+      });
+      set({ clipProgress: '' });
+      // Reload so the editor / file tree reflects the updated `## 信息图` section.
+      await get().loadClips();
+      return doc;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Infographic error is kept separate from the top-level `error` so a
+      // generation failure never clobbers the existing card content state.
+      // Scope it to the file path so it only surfaces on the clip that
+      // actually failed, not on whichever clip the user switches to next.
+      set({ infographicError: msg, infographicErrorPath: filePath });
+      throw new Error(msg);
+    } finally {
+      set({ isGeneratingInfographic: false });
+    }
   },
 
   clipBatch: async (urls, options) => {
