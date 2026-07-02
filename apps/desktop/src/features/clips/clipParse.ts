@@ -180,8 +180,8 @@ export function parseInfographic(content: string): InfographicDoc | null {
  * Returns null if the shape is fundamentally wrong. Drops unknown fields
  * silently; the renderer handles unknown block types via fallback.
  *
- * Exported so `clipService.generateInfographic` reuses the same validation
- * instead of duplicating the logic.
+ * Exported so `clipService.generateClip` (chained infographic-mode call)
+ * reuses the same validation instead of duplicating the logic.
  */
 export function normalizeInfographicDoc(raw: unknown): InfographicDoc | null {
   if (!raw || typeof raw !== 'object') return null;

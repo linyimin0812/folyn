@@ -246,7 +246,7 @@ return [head, '动作：research'].join('\n');
 
 ## Convention: Clip `## 正文` Storage + Infographic Content Enrichment
 
-**What**: The clips feature stores the full page markdown (fetched via `curl.md` at card-gen time) under a `## 正文` section in the clip file. The infographic agent reads `## 正文` from the clip content passed in the runtime prompt and produces 7-9 dense blocks (vs. 2-5 for clips without `## 正文`).
+**What**: The clips feature stores the full page markdown (fetched via `curl.md` at card-gen time) under a `## 正文` section in the clip file. The infographic is auto-generated at clip time by chaining a second agent call in `[infographic-mode]` right after the card-metadata call; that call receives `## 正文` (and summary/keyPoints) in its runtime prompt and produces 7-9 dense blocks (vs. 2-5 for clips without `## 正文`).
 
 **Why**: Without `## 正文`, the infographic agent only has `## 摘要` (2-4 sentences) + `## 要点` (3-5 bullets) to work with — the resulting poster is content-thin. Storing the full page markdown at clip time makes the infographic offline-safe (no re-fetch needed) and dead-link-safe (the clip survives even if the source URL goes away). The infographic becomes "一图胜千言" — a real poster.
 
@@ -254,37 +254,40 @@ return [head, '动作：research'].join('\n');
 ```
 front-matter
 > **来源**: [<hostname>](<url>)
-## 信息图        ← optional, on-demand; ALWAYS written at TOP position
+## 信息图        ← optional; auto-generated at clip time; ALWAYS written at TOP position
 ## 摘要
 ## 要点
 ## 正文          ← optional; full page markdown from curl.md
 ```
 
-**Top-position rule for `## 信息图`**: `generateInfographic` writes/replaces the `## 信息图` section at the TOP position — right after the `> **来源**` quote line, before `## 摘要`. For existing clips with `## 信息图` at the bottom (legacy order), regenerate moves it to the top. The poster is the first thing the user sees when opening a clip.
+**Top-position rule for `## 信息图`**: `saveClip` writes the `## 信息图` section (when an infographic was auto-generated) at the TOP position — right after the `> **来源**` quote line, before `## 摘要`. The poster is the first thing the user sees when opening a clip.
 
 **Order-agnostic parsing**: `parseClipContent` finds `## 信息图` / `## 摘要` / `## 要点` / `## 正文` by heading, not by position — so old clips with `## 信息图` at the end still parse correctly. Never assume section order in the parser.
 
 **Content flow**:
 ```
-generateClip (agent WebFetches curl.md → JSON metadata + pageContent field)
+generateClip
+  ├─ Phase 1: card-metadata agent call (WebFetch curl.md → JSON metadata + pageContent field)
+  └─ Phase 2: chained infographic-mode agent call (passes ## 正文 + summary/keyPoints → 7-9 blocks)
+  ↓ returns { metadata, infographic: InfographicDoc | null }
+saveClip ({ metadata, infographic })
+  → writes ## 信息图 (top) + ## 摘要 + ## 要点 + ## 正文
   ↓
-saveClip (writes ## 摘要 / ## 要点 / ## 正文; does NOT write ## 信息图)
-  ↓
-generateInfographic (reads clip → passes ## 正文 to agent → 7-9 blocks → writes ## 信息图 at TOP)
-  ↓
-InfographicView (renders blocks as unified poster; export button → PNG)
+InfographicView (renders blocks as unified poster)
 ```
 
-**Backward compatibility**: existing clips without `## 正文` still work — the infographic agent falls back to summary + keyPoints (2-5 blocks). The UI shows a hint suggesting re-clip for a richer infographic. No auto-migration; the user re-clips manually.
+**Auto-generation, not on-demand**: there is no manual "重新生成" / "生成信息图" button in the UI. The infographic is generated automatically during `generateClip` (chained agent call). If the chained call fails, `infographic` is `null` and `saveClip` skips writing `## 信息图` — the clip itself still succeeds (best-effort). The user can re-clip to retry.
 
-**Runtime prompt discipline**: the infographic prompt is params-only (reference pattern, see `clipService.generateInfographic`). It passes `[infographic-mode]` marker + title/url/hostname/clipped + `## 摘要` + `## 要点` + (optional) `## 正文`. The 7-9 block minimum, block-type enum, and content-density rules live in `agents/clips.md` (the contract source).
+**Backward compatibility**: existing clips without `## 正文` (or without `## 信息图`) still work — the renderer just shows nothing in the infographic slot. No auto-migration; the user re-clips manually to get the enriched flow.
+
+**Runtime prompt discipline**: the infographic prompt is params-only (reference pattern, see `clipService.runInfographicAgent`). It passes `[infographic-mode]` marker + title/url + `## 摘要` + `## 要点` + (optional) `## 正文`. The 7-9 block minimum, block-type enum, and content-density rules live in `agents/clips.md` (the contract source).
 
 **Related files**:
-- `apps/desktop/src/services/clipService.ts` — `ClipMetadata.pageContent`, `saveClip` writes `## 正文`, `generateInfographic` passes `## 正文` to agent + writes `## 信息图` at top
-- `apps/desktop/src/features/clips/clipParse.ts` — `parseClipContent` (order-agnostic), `writeInfographicSection` (top-position rule)
+- `apps/desktop/src/services/clipService.ts` — `ClipMetadata.pageContent`, `GenerateClipResult`, `generateClip` (chained card + infographic calls), `saveClip` writes `## 信息图` at top + `## 正文`
+- `apps/desktop/src/features/clips/clipParse.ts` — `parseClipContent` (order-agnostic), `serializeInfographicSection`, `writeInfographicSection` (top-position rule)
 - `apps/desktop/src/features/clips/.claude/agents/clips.md` — card mode (`pageContent` field) + infographic mode (`## 正文` input, 7-9 block minimum)
-- `apps/desktop/src/components/file-types/clip/InfographicView.tsx` — unified poster container (single background, hero header, stat row, 2-col middle, source footer)
-- `apps/desktop/src/components/file-types/clip/InfographicExport.ts` — `html-to-image.toPng()` + Tauri save dialog
+- `apps/desktop/src/components/file-types/clip/InfographicView.tsx` — unified poster container (single background, hero header, 3-column body, source footer)
+- `apps/desktop/src/components/file-types/clip/ClipCardView.tsx` — renders infographic region BEFORE 摘要, no chrome (just `<InfographicView doc={...} />`)
 
 ---
 

@@ -135,12 +135,15 @@ describe('prepareBatchUrls', () => {
 describe('useClipStore.clipBatch', () => {
   function mockGenerateClip(url: string) {
     vi.mocked(generateClipMock).mockImplementation(async () => ({
-      title: `Title for ${url}`,
-      tags: ['tech'],
-      suggestedTags: [],
-      summary: 'summary',
-      keyPoints: [],
-      url,
+      metadata: {
+        title: `Title for ${url}`,
+        tags: ['tech'],
+        suggestedTags: [],
+        summary: 'summary',
+        keyPoints: [],
+        url,
+      },
+      infographic: null,
     }));
   }
 
@@ -204,7 +207,10 @@ describe('useClipStore.clipBatch', () => {
     vi.mocked(generateClipMock)
       .mockRejectedValueOnce(new Error('AI boom'))
       .mockResolvedValueOnce({
-        title: 'ok', tags: [], suggestedTags: [], summary: '', keyPoints: [], url: 'https://b.com',
+        metadata: {
+          title: 'ok', tags: [], suggestedTags: [], summary: '', keyPoints: [], url: 'https://b.com',
+        },
+        infographic: null,
       });
     mockSaveClip('__clips__/tech/b.md');
 

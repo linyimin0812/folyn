@@ -1,4 +1,4 @@
-import { CliAdapterRegistry } from '@quill/cli-adapter';
+import { CliAdapterRegistry, type CliAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -7,9 +7,8 @@ import { collectTextFromStream, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { getFeatureAgentSendOptions } from './featureAgentService';
 import {
-  parseClipContent,
-  writeInfographicSection,
   normalizeInfographicDoc,
+  serializeInfographicSection,
   type InfographicDoc,
   type InfographicBlock,
 } from '@/features/clips/clipParse';
@@ -45,6 +44,16 @@ export interface ClipMetadata {
   pageContent?: string;
 }
 
+/** Result of `generateClip`: card metadata + (optionally) the auto-generated
+ *  infographic. The infographic is produced by chaining a second agent call
+ *  in infographic-mode right after the card-metadata call; `null` when the
+ *  second call fails (the clip must still succeed — infographic is a
+ *  best-effort enhancement, not a hard requirement). */
+export interface GenerateClipResult {
+  metadata: ClipMetadata;
+  infographic: InfographicDoc | null;
+}
+
 export function toSlug(title: string): string {
   return title
     .toLowerCase()
@@ -65,9 +74,28 @@ function validateUrl(url: string): void {
 }
 
 /**
- * Phase 1: Generate metadata via AI.
- * Claude Code handles fetching the URL content via its own tools.
- * Does NOT save to disk — returns the metadata for user confirmation.
+ * Defensive JSON extractor: pull the first `{ ... }` object out of an AI
+ * response that may be wrapped in prose or code fences. Shared by the
+ * card-metadata and infographic agent calls so the same extraction
+ * discipline applies to both.
+ *
+ * Returns the raw JSON string slice, or null if no object-shaped substring is
+ * found. Callers `JSON.parse` the result and handle parse errors themselves.
+ */
+function extractJsonObject(aiText: string): string | null {
+  const match = aiText.match(/\{[\s\S]*\}/);
+  return match ? match[0] : null;
+}
+
+/**
+ * Phase 1: Generate metadata via AI, then chain a second agent call in
+ * infographic-mode to auto-generate the poster. Claude Code handles
+ * fetching the URL content via its own tools (curl.md). Does NOT save to
+ * disk — returns `{ metadata, infographic }` for user confirmation.
+ *
+ * The infographic call is best-effort: if it fails (parse error, agent
+ * crash, etc.), `infographic` is `null` and the clip still succeeds. The
+ * user can re-clip later to retry the infographic.
  */
 export async function generateClip(
   url: string,
@@ -75,7 +103,7 @@ export async function generateClip(
   _lang: ClipLanguage = 'auto',
   onStream?: (chunk: string) => void,
   onEvent?: (event: StreamEvent) => void,
-): Promise<ClipMetadata> {
+): Promise<GenerateClipResult> {
   const vault = useVaultStore.getState();
   if (!vault.currentVault) throw new Error('没有活跃的 vault');
   validateUrl(url);
@@ -88,10 +116,13 @@ export async function generateClip(
 
   const registry = CliAdapterRegistry.getInstance();
   const adapter = registry.create(settings.cliAdapter);
-  await adapter.start({ cliPath: settings.cliPath, workingDir });
 
   let card: ClipCard;
+  let infographic: InfographicDoc | null = null;
   try {
+    await adapter.start({ cliPath: settings.cliPath, workingDir });
+
+    // --- Phase 1: card metadata via curl.md ---------------------------------
     // curl.md service: GET https://curl.md/<encoded original URL> → optimized Markdown.
     // The agent WebFetches this curl.md URL (not the raw page URL) to get the page
     // content already converted to Markdown. The original URL is still conveyed for
@@ -120,11 +151,31 @@ export async function generateClip(
     } catch {
       throw new Error('AI 返回的内容无法解析为知识卡片，请检查 SKILL 配置');
     }
+
+    // --- Phase 2: chained infographic-mode call -----------------------------
+    // Best-effort: a failure here MUST NOT fail the whole clip. We catch
+    // everything and surface `infographic: null` so saveClip skips writing
+    // the `## 信息图` section. The user can re-clip to retry.
+    try {
+      onProgress?.('AI 正在生成信息图...');
+      infographic = await runInfographicAgent(adapter, {
+        title: card.title,
+        url,
+        hostname: (() => { try { return new URL(url).hostname; } catch { return ''; } })(),
+        summary: card.summary,
+        keyPoints: card.keyPoints,
+        pageContent: card.pageContent,
+        onStream,
+        onEvent,
+      });
+    } catch {
+      infographic = null;
+    }
   } finally {
     await adapter.stop();
   }
 
-  return {
+  const metadata: ClipMetadata = {
     title: card.title,
     tags: card.tags,
     suggestedTags: card.suggestedTags,
@@ -133,23 +184,119 @@ export async function generateClip(
     pageContent: card.pageContent,
     url,
   };
+
+  return { metadata, infographic };
+}
+
+/**
+ * Internal helper: invoke the clips agent in `[infographic-mode]` against
+ * the already-fetched card metadata (no WebFetch — content is embedded in
+ * the prompt). Returns the parsed `InfographicDoc`, or throws on parse /
+ * shape failure (the caller is expected to catch and downgrade to `null`).
+ *
+ * The adapter must already be started; this function only sends the
+ * infographic prompt and parses the response. Used by `generateClip` for
+ * the chained auto-generation flow.
+ */
+async function runInfographicAgent(
+  adapter: CliAdapter,
+  input: {
+    title: string;
+    url: string;
+    hostname: string;
+    summary: string;
+    keyPoints: string[];
+    pageContent: string;
+    onStream?: (chunk: string) => void;
+    onEvent?: (event: StreamEvent) => void;
+  },
+): Promise<InfographicDoc> {
+  const keyPointsBlock = input.keyPoints.length > 0
+    ? input.keyPoints.map((p) => `- ${p}`).join('\n')
+    : '（无要点）';
+  // Build the prompt. When `## 正文` (full page markdown from curl.md) is
+  // present, pass it so the agent has real source material to build 7-9
+  // dense blocks. When absent (older clips), fall back to summary +
+  // keyPoints — the agent still produces a minimal infographic.
+  const hasPageContent = input.pageContent.length > 0;
+  const promptLines: string[] = [
+    '[infographic-mode]',
+    '请基于以下已剪藏的卡片内容，生成一张海报式信息图（{ "version": 1, "blocks": [...] }）。',
+    '不要 WebFetch / WebSearch，只用下方提供的内容。',
+    hasPageContent
+      ? '卡片包含 `## 正文`（curl.md 抓取的页面 Markdown 全文），请基于正文提炼 7-9 个信息密集的 block。'
+      : '卡片无 `## 正文`（旧剪藏），仅基于摘要与要点生成信息图（可少于 7 个 block）。',
+    '',
+    `title: ${input.title}`,
+    `url: ${input.url}`,
+    input.hostname ? `hostname: ${input.hostname}` : '',
+    '',
+    '## 摘要',
+    input.summary || '（无摘要）',
+    '',
+    '## 要点',
+    keyPointsBlock,
+  ];
+  if (hasPageContent) {
+    // Soft cap to avoid blowing the prompt budget; the agent summarizes
+    // beyond this. ~12k chars is well within Claude's context window while
+    // leaving room for the output blocks.
+    const body = input.pageContent.length > 12000
+      ? input.pageContent.slice(0, 12000) + '\n\n…（正文过长，已截断）'
+      : input.pageContent;
+    promptLines.push('', '## 正文', body);
+  }
+  const prompt = promptLines.filter((l) => l !== '').join('\n');
+
+  const textPromise = collectTextFromStream(adapter, input.onStream, input.onEvent);
+  await adapter.send(prompt, await getFeatureAgentSendOptions('clips'));
+  const aiText = await textPromise;
+
+  const jsonStr = extractJsonObject(aiText);
+  if (!jsonStr) {
+    throw new Error('AI 返回的内容无法解析为信息图 JSON');
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch {
+    throw new Error('AI 返回的内容无法解析为信息图 JSON');
+  }
+  const normalized = normalizeInfographicDoc(parsed);
+  if (!normalized) {
+    throw new Error('AI 返回的信息图 JSON 形状不合法（需为 { version, blocks: [...] }）');
+  }
+  return normalized;
 }
 
 /**
  * Phase 2: Assemble the markdown file and save to disk.
  * The metadata may have been modified by the user (e.g. edited tags/title).
+ * If `infographic` is provided, it's written under a `## 信息图` section at
+ * the TOP position (right after the `> **来源**` quote line, before
+ * `## 摘要`). If `infographic` is null, the section is omitted.
+ *
  * If overwritePath is provided, overwrite the existing file at that path.
  *
  * Pass `{ skipAutoOpen: true }` to suppress auto-opening the saved file in
  * the editor — used by the batch clip path so a batch run doesn't open N tabs.
  */
 export async function saveClip(
-  metadata: ClipMetadata,
+  payload: { metadata: ClipMetadata; infographic?: InfographicDoc | null } | ClipMetadata,
   overwritePath?: string,
   options?: { skipAutoOpen?: boolean },
 ): Promise<string> {
   const vault = useVaultStore.getState();
   if (!vault.currentVault) throw new Error('没有活跃的 vault');
+
+  // Accept both the new `{ metadata, infographic }` shape and a bare
+  // `ClipMetadata` for backward compatibility with callers that haven't
+  // been migrated yet (e.g. legacy tests / external callers).
+  const metadata: ClipMetadata = 'metadata' in payload && payload.metadata
+    ? payload.metadata
+    : (payload as ClipMetadata);
+  const infographic: InfographicDoc | null =
+    'metadata' in payload ? (payload.infographic ?? null) : null;
 
   const tagsStr = metadata.tags.map((t) => `"${t}"`).join(', ');
   const date = new Date().toISOString().split('T')[0];
@@ -161,10 +308,8 @@ export async function saveClip(
 
   const hostname = (() => { try { return new URL(metadata.url).hostname; } catch { return metadata.url; } })();
 
-  // Section order: front-matter → `> **来源**` quote → ## 摘要 → ## 要点
-  // → ## 正文 (if present). `## 信息图` is NOT written here — it's generated
-  // on-demand by `generateInfographic`, which writes it at the TOP position
-  // (right after the quote line, before `## 摘要`).
+  // Section order: front-matter → `> **来源**` quote → ## 信息图 (if present,
+  // TOP position) → ## 摘要 → ## 要点 → ## 正文 (if present).
   const sections: string[] = [
     '---',
     `title: "${metadata.title}"`,
@@ -176,6 +321,13 @@ export async function saveClip(
     '',
     `> **来源**: [${hostname}](${metadata.url})`,
     '',
+  ];
+
+  if (infographic) {
+    sections.push(serializeInfographicSection(infographic), '');
+  }
+
+  sections.push(
     '## 摘要',
     '',
     metadata.summary,
@@ -184,11 +336,11 @@ export async function saveClip(
     '',
     keyPointsSection,
     '',
-  ];
+  );
 
   // Only write `## 正文` when the agent returned page content. Older clips
   // (and any caller that doesn't supply `pageContent`) simply omit the
-  // section; the infographic agent falls back to summary + keyPoints.
+  // section; a future re-clip can populate it.
   if (metadata.pageContent) {
     sections.push('## 正文', '', metadata.pageContent, '');
   }
@@ -237,138 +389,7 @@ export async function clipUrl(
   onEvent?: (event: StreamEvent) => void,
   overwritePath?: string,
 ): Promise<string> {
-  const metadata = await generateClip(url, onProgress, lang, onStream, onEvent);
+  const { metadata, infographic } = await generateClip(url, onProgress, lang, onStream, onEvent);
   onProgress?.('正在保存文件...');
-  return saveClip(metadata, overwritePath);
-}
-
-/**
- * Defensive JSON extractor: pull the first `{ ... }` object out of an AI
- * response that may be wrapped in prose or code fences. Shared by
- * `generateClip` (card metadata) and `generateInfographic` so the same
- * extraction discipline applies to both agent modes.
- *
- * Returns the raw JSON string slice, or null if no object-shaped substring is
- * found. Callers `JSON.parse` the result and handle parse errors themselves.
- */
-function extractJsonObject(aiText: string): string | null {
-  const match = aiText.match(/\{[\s\S]*\}/);
-  return match ? match[0] : null;
-}
-
-/**
- * On-demand infographic generation for an existing clip file.
- *
- * Reads the clip markdown → parses title/url/summary/keyPoints → invokes the
- * clips agent in `[infographic-mode]` (no WebFetch — content is taken from
- * the already-clipped file) → defensive JSON parse → writes the result back
- * under a `## 信息图` fenced-JSON section, replacing any existing one
- * (regenerate semantics). The rest of the file is preserved byte-for-byte.
- *
- * Returns the parsed `InfographicDoc`. Throws on read/agent/write failures;
- * the caller (clipStore) is responsible for surfacing `infographicError`
- * without clobbering the existing card content.
- */
-export async function generateInfographic(
-  filePath: string,
-  onProgress?: (msg: string) => void,
-  onStream?: (chunk: string) => void,
-  onEvent?: (event: StreamEvent) => void,
-): Promise<InfographicDoc> {
-  const vault = useVaultStore.getState();
-  if (!vault.currentVault) throw new Error('没有活跃的 vault');
-
-  // 1. Read + parse the existing clip file.
-  onProgress?.('正在读取剪藏文件...');
-  let content: string;
-  try {
-    content = await vault.readFile(filePath);
-  } catch (err) {
-    throw new Error(`读取剪藏文件失败: ${err instanceof Error ? err.message : String(err)}`);
-  }
-  const clip = parseClipContent(content);
-  if (!clip.url && !clip.summary && clip.keyPoints.length === 0) {
-    throw new Error('剪藏文件内容为空，无法生成信息图');
-  }
-
-  // 2. Build the infographic-mode instruction. The agent must NOT WebFetch —
-  //    all needed content (title/url/summary/keyPoints) is embedded here.
-  onProgress?.('AI 正在生成信息图...');
-  const settings = useSettingsStore.getState();
-  const basePath = await resolveBasePath(vault.currentVault.basePath);
-  const workingDir = `${basePath.replace(/\/+$/, '')}/__clips__`;
-
-  const registry = CliAdapterRegistry.getInstance();
-  const adapter = registry.create(settings.cliAdapter);
-  await adapter.start({ cliPath: settings.cliPath, workingDir });
-
-  let doc: InfographicDoc;
-  try {
-    const keyPointsBlock = clip.keyPoints.length > 0
-      ? clip.keyPoints.map((p) => `- ${p}`).join('\n')
-      : '（无要点）';
-    // Build the prompt. When `## 正文` (full page markdown from curl.md) is
-    // present, pass it so the agent has real source material to build 7-9
-    // dense blocks. When absent (older clips), fall back to summary +
-    // keyPoints — the agent still produces a minimal infographic.
-    const hasPageContent = clip.pageContent.length > 0;
-    const promptLines: string[] = [
-      '[infographic-mode]',
-      '请基于以下已剪藏的卡片内容，生成一张海报式信息图（{ "version": 1, "blocks": [...] }）。',
-      '不要 WebFetch / WebSearch，只用下方提供的内容。',
-      hasPageContent
-        ? '卡片包含 `## 正文`（curl.md 抓取的页面 Markdown 全文），请基于正文提炼 7-9 个信息密集的 block。'
-        : '卡片无 `## 正文`（旧剪藏），仅基于摘要与要点生成信息图（可少于 7 个 block）。',
-      '',
-      `title: ${clip.title}`,
-      `url: ${clip.url}`,
-      clip.hostname ? `hostname: ${clip.hostname}` : '',
-      clip.clipped ? `clipped: ${clip.clipped}` : '',
-      '',
-      '## 摘要',
-      clip.summary || '（无摘要）',
-      '',
-      '## 要点',
-      keyPointsBlock,
-    ];
-    if (hasPageContent) {
-      // Soft cap to avoid blowing the prompt budget; the agent summarizes
-      // beyond this. ~12k chars is well within Claude's context window while
-      // leaving room for the output blocks.
-      const body = clip.pageContent.length > 12000
-        ? clip.pageContent.slice(0, 12000) + '\n\n…（正文过长，已截断）'
-        : clip.pageContent;
-      promptLines.push('', '## 正文', body);
-    }
-    const prompt = promptLines.filter((l) => l !== '').join('\n');
-
-    const textPromise = collectTextFromStream(adapter, onStream, onEvent);
-    await adapter.send(prompt, await getFeatureAgentSendOptions('clips'));
-    const aiText = await textPromise;
-
-    const jsonStr = extractJsonObject(aiText);
-    if (!jsonStr) {
-      throw new Error('AI 返回的内容无法解析为信息图 JSON');
-    }
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(jsonStr);
-    } catch {
-      throw new Error('AI 返回的内容无法解析为信息图 JSON');
-    }
-    const normalized = normalizeInfographicDoc(parsed);
-    if (!normalized) {
-      throw new Error('AI 返回的信息图 JSON 形状不合法（需为 { version, blocks: [...] }）');
-    }
-    doc = normalized;
-  } finally {
-    await adapter.stop();
-  }
-
-  // 3. Write back: replace (or append) the `## 信息图` section, preserve the rest.
-  onProgress?.('正在写入信息图...');
-  const newContent = writeInfographicSection(content, doc);
-  await vault.writeFile(filePath, newContent);
-
-  return doc;
+  return saveClip({ metadata, infographic }, overwritePath);
 }

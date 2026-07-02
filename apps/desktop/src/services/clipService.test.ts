@@ -74,7 +74,7 @@ vi.mock('./aiStreamUtils', () => ({
   collectTextFromStream,
 }));
 
-import { generateClip, saveClip, clipUrl, generateInfographic } from './clipService';
+import { generateClip, saveClip, clipUrl } from './clipService';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -84,6 +84,14 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
 });
+
+// Helper: enqueue two canned AI responses for the chained
+// (card-metadata → infographic) agent calls inside `generateClip`.
+function enqueueCardThenInfographic(cardJson: string, infographicJson: string) {
+  collectTextFromStream
+    .mockResolvedValueOnce(cardJson)
+    .mockResolvedValueOnce(infographicJson);
+}
 
 describe('generateClip — validateUrl (via service entry)', () => {
   it('throws on a malformed URL before invoking AI', async () => {
@@ -99,20 +107,24 @@ describe('generateClip — validateUrl (via service entry)', () => {
   });
 
   it('accepts a valid https URL and proceeds to AI', async () => {
-    collectTextFromStream.mockResolvedValueOnce(
+    enqueueCardThenInfographic(
       '{"title":"T","tags":["a"],"suggestedTags":[],"summary":"s","keyPoints":["p"]}',
+      '{"version":1,"blocks":[{"type":"hero","title":"H"}]}',
     );
-    const meta = await generateClip('https://example.com/article');
-    expect(meta.url).toBe('https://example.com/article');
-    expect(meta.title).toBe('T');
-    expect(meta.tags).toEqual(['a']);
+    const { metadata, infographic } = await generateClip('https://example.com/article');
+    expect(metadata.url).toBe('https://example.com/article');
+    expect(metadata.title).toBe('T');
+    expect(metadata.tags).toEqual(['a']);
+    expect(infographic).not.toBeNull();
+    expect(infographic!.blocks[0]).toEqual({ type: 'hero', title: 'H' });
   });
 });
 
 describe('generateClip — curl.md URL construction', () => {
   it('constructs the curl.md URL with the original URL encoded', async () => {
-    collectTextFromStream.mockResolvedValueOnce(
+    enqueueCardThenInfographic(
       '{"title":"T","tags":[],"suggestedTags":[],"summary":"","keyPoints":[]}',
+      '{"version":1,"blocks":[]}',
     );
     await generateClip('https://example.com/a?b=c&d');
     const prompt = fakeAdapter.send.mock.calls[0][0] as string;
@@ -126,8 +138,9 @@ describe('generateClip — curl.md URL construction', () => {
   });
 
   it('encodes the URL even with fragment and trailing slash', async () => {
-    collectTextFromStream.mockResolvedValueOnce(
+    enqueueCardThenInfographic(
       '{"title":"T","tags":[],"suggestedTags":[],"summary":"","keyPoints":[]}',
+      '{"version":1,"blocks":[]}',
     );
     await generateClip('https://example.com/path/#section');
     const prompt = fakeAdapter.send.mock.calls[0][0] as string;
@@ -138,8 +151,9 @@ describe('generateClip — curl.md URL construction', () => {
 
   it('uses the curl.md URL in both skill and fallback prompt branches', async () => {
     // Fallback branch (no skill configured — the default mock returns undefined).
-    collectTextFromStream.mockResolvedValueOnce(
+    enqueueCardThenInfographic(
       '{"title":"T","tags":[],"suggestedTags":[],"summary":"","keyPoints":[]}',
+      '{"version":1,"blocks":[]}',
     );
     await generateClip('https://x.com/y');
     const prompt = fakeAdapter.send.mock.calls[0][0] as string;
@@ -148,11 +162,12 @@ describe('generateClip — curl.md URL construction', () => {
   });
 
   it('keeps the original (decoded) URL in the returned metadata', async () => {
-    collectTextFromStream.mockResolvedValueOnce(
+    enqueueCardThenInfographic(
       '{"title":"T","tags":[],"suggestedTags":[],"summary":"","keyPoints":[]}',
+      '{"version":1,"blocks":[]}',
     );
-    const meta = await generateClip('https://example.com/a?b=c&d');
-    expect(meta.url).toBe('https://example.com/a?b=c&d');
+    const { metadata } = await generateClip('https://example.com/a?b=c&d');
+    expect(metadata.url).toBe('https://example.com/a?b=c&d');
   });
 });
 
@@ -166,9 +181,16 @@ describe('generateClip — AI response parsing', () => {
       keyPoints: ['a', 'b'],
       pageContent: '# Page\n\nbody',
     };
-    collectTextFromStream.mockResolvedValueOnce(JSON.stringify(card));
-    const meta = await generateClip('https://x.com/p');
-    expect(meta).toEqual({
+    const infoDoc = {
+      version: 1,
+      blocks: [
+        { type: 'hero', title: 'My Page' },
+        { type: 'source', url: 'https://x.com/p' },
+      ],
+    };
+    enqueueCardThenInfographic(JSON.stringify(card), JSON.stringify(infoDoc));
+    const { metadata, infographic } = await generateClip('https://x.com/p');
+    expect(metadata).toEqual({
       title: 'My Page',
       tags: ['t1', 't2'],
       suggestedTags: ['s1'],
@@ -177,9 +199,10 @@ describe('generateClip — AI response parsing', () => {
       pageContent: '# Page\n\nbody',
       url: 'https://x.com/p',
     });
+    expect(infographic).toEqual(infoDoc);
   });
 
-  it('extracts JSON embedded in surrounding prose', async () => {
+  it('extracts JSON embedded in surrounding prose for the card call', async () => {
     const card = {
       title: 'Embedded',
       tags: [],
@@ -188,28 +211,32 @@ describe('generateClip — AI response parsing', () => {
       keyPoints: [],
       pageContent: 'body',
     };
-    collectTextFromStream.mockResolvedValueOnce(
+    enqueueCardThenInfographic(
       `Here is the card:\n${JSON.stringify(card)}\nThanks`,
+      '{"version":1,"blocks":[]}',
     );
-    const meta = await generateClip('https://x.com/e');
-    expect(meta.title).toBe('Embedded');
-    expect(meta.pageContent).toBe('body');
+    const { metadata } = await generateClip('https://x.com/e');
+    expect(metadata.title).toBe('Embedded');
+    expect(metadata.pageContent).toBe('body');
   });
 
-  it('throws a parse error when AI output is not JSON', async () => {
+  it('throws a parse error when the card AI output is not JSON', async () => {
     collectTextFromStream.mockResolvedValueOnce('the page is about cats');
     await expect(generateClip('https://x.com/bad')).rejects.toThrow(/无法解析为知识卡片/);
   });
 
   it('defaults missing fields to safe empties, including pageContent', async () => {
-    collectTextFromStream.mockResolvedValueOnce('{"title":"Partial"}');
-    const meta = await generateClip('https://x.com/partial');
-    expect(meta.title).toBe('Partial');
-    expect(meta.tags).toEqual([]);
-    expect(meta.suggestedTags).toEqual([]);
-    expect(meta.summary).toBe('');
-    expect(meta.keyPoints).toEqual([]);
-    expect(meta.pageContent).toBe('');
+    enqueueCardThenInfographic(
+      '{"title":"Partial"}',
+      '{"version":1,"blocks":[]}',
+    );
+    const { metadata } = await generateClip('https://x.com/partial');
+    expect(metadata.title).toBe('Partial');
+    expect(metadata.tags).toEqual([]);
+    expect(metadata.suggestedTags).toEqual([]);
+    expect(metadata.summary).toBe('');
+    expect(metadata.keyPoints).toEqual([]);
+    expect(metadata.pageContent).toBe('');
   });
 
   it('stops the adapter even when parsing fails', async () => {
@@ -218,24 +245,80 @@ describe('generateClip — AI response parsing', () => {
     expect(fakeAdapter.stop).toHaveBeenCalledTimes(1);
   });
 
-  it('stops the adapter on the success path', async () => {
-    collectTextFromStream.mockResolvedValueOnce(
+  it('stops the adapter on the success path (after both card + infographic calls)', async () => {
+    enqueueCardThenInfographic(
       '{"title":"ok","tags":[],"suggestedTags":[],"summary":"","keyPoints":[]}',
+      '{"version":1,"blocks":[]}',
     );
     await generateClip('https://x.com/ok');
     expect(fakeAdapter.stop).toHaveBeenCalledTimes(1);
+    // Two agent sends: card-metadata + infographic-mode.
+    expect(fakeAdapter.send).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('generateClip — chained infographic call', () => {
+  it('chains a second agent call in [infographic-mode] after the card call', async () => {
+    enqueueCardThenInfographic(
+      '{"title":"T","tags":["a"],"suggestedTags":[],"summary":"s","keyPoints":["p"],"pageContent":"body text"}',
+      '{"version":1,"blocks":[{"type":"hero","title":"H"},{"type":"source","url":"https://x.com/p"}]}',
+    );
+    const { infographic } = await generateClip('https://x.com/p');
+    expect(fakeAdapter.send).toHaveBeenCalledTimes(2);
+    const infographicPrompt = fakeAdapter.send.mock.calls[1][0] as string;
+    expect(infographicPrompt).toContain('[infographic-mode]');
+    expect(infographicPrompt).toContain('title: T');
+    expect(infographicPrompt).toContain('https://x.com/p');
+    expect(infographicPrompt).toContain('## 正文');
+    expect(infographicPrompt).toContain('body text');
+    expect(infographic).not.toBeNull();
+    expect(infographic!.blocks).toHaveLength(2);
+  });
+
+  it('returns infographic: null when the chained call fails (best-effort)', async () => {
+    // Card call succeeds, infographic call returns non-JSON.
+    collectTextFromStream
+      .mockResolvedValueOnce('{"title":"T","tags":[],"suggestedTags":[],"summary":"","keyPoints":[]}')
+      .mockResolvedValueOnce('not json at all');
+    const { metadata, infographic } = await generateClip('https://x.com/ok');
+    expect(metadata.title).toBe('T');
+    expect(infographic).toBeNull();
+  });
+
+  it('returns infographic: null when the chained call returns a bad shape', async () => {
+    collectTextFromStream
+      .mockResolvedValueOnce('{"title":"T","tags":[],"suggestedTags":[],"summary":"","keyPoints":[]}')
+      .mockResolvedValueOnce('{"version":1,"noBlocks":[]}');
+    const { infographic } = await generateClip('https://x.com/badshape');
+    expect(infographic).toBeNull();
+  });
+
+  it('omits ## 正文 from the infographic prompt when pageContent is empty', async () => {
+    enqueueCardThenInfographic(
+      '{"title":"T","tags":[],"suggestedTags":[],"summary":"s","keyPoints":["p"]}',
+      '{"version":1,"blocks":[]}',
+    );
+    await generateClip('https://x.com/nobody');
+    const infographicPrompt = fakeAdapter.send.mock.calls[1][0] as string;
+    // No `## 正文` section header line in the prompt.
+    expect(infographicPrompt).not.toMatch(/^## 正文$/m);
+    // Summary + keyPoints still present.
+    expect(infographicPrompt).toContain('s');
+    expect(infographicPrompt).toContain('- p');
   });
 });
 
 describe('saveClip — markdown assembly', () => {
   it('writes frontmatter with title/type/url/tags/clipped date', async () => {
     const path = await saveClip({
-      title: 'Hello World',
-      tags: ['tech', 'ai'],
-      suggestedTags: [],
-      summary: 'a summary',
-      keyPoints: ['p1', 'p2'],
-      url: 'https://example.com/hello',
+      metadata: {
+        title: 'Hello World',
+        tags: ['tech', 'ai'],
+        suggestedTags: [],
+        summary: 'a summary',
+        keyPoints: ['p1', 'p2'],
+        url: 'https://example.com/hello',
+      },
     });
 
     expect(path).toBe('__clips__/tech/2026-03-04-hello-world.md');
@@ -256,12 +339,14 @@ describe('saveClip — markdown assembly', () => {
 
   it('falls back to 未分类 when no tags provided', async () => {
     const path = await saveClip({
-      title: 'No Tags',
-      tags: [],
-      suggestedTags: [],
-      summary: '',
-      keyPoints: [],
-      url: 'https://x.com/n',
+      metadata: {
+        title: 'No Tags',
+        tags: [],
+        suggestedTags: [],
+        summary: '',
+        keyPoints: [],
+        url: 'https://x.com/n',
+      },
     });
     expect(path).toBe('__clips__/未分类/2026-03-04-no-tags.md');
     expect(createDir).toHaveBeenCalledWith('__clips__/未分类');
@@ -269,24 +354,28 @@ describe('saveClip — markdown assembly', () => {
 
   it('uses the first tag as the directory', async () => {
     await saveClip({
-      title: 'X',
-      tags: ['second-tag', 'first-tag'],
-      suggestedTags: [],
-      summary: '',
-      keyPoints: [],
-      url: 'https://x.com/x',
+      metadata: {
+        title: 'X',
+        tags: ['second-tag', 'first-tag'],
+        suggestedTags: [],
+        summary: '',
+        keyPoints: [],
+        url: 'https://x.com/x',
+      },
     });
     expect(createDir).toHaveBeenCalledWith('__clips__/second-tag');
   });
 
   it('renders the empty key-points placeholder when none provided', async () => {
     await saveClip({
-      title: 'X',
-      tags: ['t'],
-      suggestedTags: [],
-      summary: '',
-      keyPoints: [],
-      url: 'https://x.com/x',
+      metadata: {
+        title: 'X',
+        tags: ['t'],
+        suggestedTags: [],
+        summary: '',
+        keyPoints: [],
+        url: 'https://x.com/x',
+      },
     });
     const content = createFile.mock.calls[0][1] as string;
     expect(content).toContain('_无要点提取_');
@@ -294,19 +383,21 @@ describe('saveClip — markdown assembly', () => {
 
   it('writes a ## 正文 section when pageContent is provided', async () => {
     await saveClip({
-      title: 'With Body',
-      tags: ['t'],
-      suggestedTags: [],
-      summary: 's',
-      keyPoints: ['p1'],
-      url: 'https://x.com/b',
-      pageContent: '# Page Title\n\nSome body text.',
+      metadata: {
+        title: 'With Body',
+        tags: ['t'],
+        suggestedTags: [],
+        summary: 's',
+        keyPoints: ['p1'],
+        url: 'https://x.com/b',
+        pageContent: '# Page Title\n\nSome body text.',
+      },
     });
     const content = createFile.mock.calls[0][1] as string;
     expect(content).toContain('## 正文');
     expect(content).toContain('# Page Title');
     expect(content).toContain('Some body text.');
-    // Section order: 摘要 → 要点 → 正文.
+    // Section order: 信息图 (absent) → 摘要 → 要点 → 正文.
     const idxSummary = content.indexOf('## 摘要');
     const idxPoints = content.indexOf('## 要点');
     const idxBody = content.indexOf('## 正文');
@@ -316,46 +407,119 @@ describe('saveClip — markdown assembly', () => {
 
   it('omits ## 正文 when pageContent is empty or missing', async () => {
     await saveClip({
-      title: 'No Body',
-      tags: ['t'],
-      suggestedTags: [],
-      summary: 's',
-      keyPoints: ['p1'],
-      url: 'https://x.com/n',
+      metadata: {
+        title: 'No Body',
+        tags: ['t'],
+        suggestedTags: [],
+        summary: 's',
+        keyPoints: ['p1'],
+        url: 'https://x.com/n',
+      },
     });
     const content = createFile.mock.calls[0][1] as string;
     expect(content).not.toContain('## 正文');
   });
 
+  it('writes ## 信息图 at the TOP position when infographic is provided', async () => {
+    const doc = {
+      version: 1,
+      blocks: [
+        { type: 'hero', title: 'H' },
+        { type: 'source', url: 'https://x.com/b' },
+      ],
+    };
+    await saveClip({
+      metadata: {
+        title: 'With Infographic',
+        tags: ['t'],
+        suggestedTags: [],
+        summary: 's',
+        keyPoints: ['p1'],
+        url: 'https://x.com/b',
+        pageContent: 'body',
+      },
+      infographic: doc,
+    });
+    const content = createFile.mock.calls[0][1] as string;
+    expect(content).toContain('## 信息图');
+    expect(content).toContain('"type": "hero"');
+    // Top position: 信息图 right after the quote, before 摘要 / 要点 / 正文.
+    const idxQuote = content.indexOf('> **来源**');
+    const idxInfo = content.indexOf('## 信息图');
+    const idxSummary = content.indexOf('## 摘要');
+    const idxPoints = content.indexOf('## 要点');
+    const idxBody = content.indexOf('## 正文');
+    expect(idxQuote).toBeGreaterThan(-1);
+    expect(idxInfo).toBeGreaterThan(idxQuote);
+    expect(idxInfo).toBeLessThan(idxSummary);
+    expect(idxSummary).toBeLessThan(idxPoints);
+    expect(idxPoints).toBeLessThan(idxBody);
+  });
+
+  it('skips ## 信息图 when infographic is null', async () => {
+    await saveClip({
+      metadata: {
+        title: 'No Infographic',
+        tags: ['t'],
+        suggestedTags: [],
+        summary: 's',
+        keyPoints: ['p1'],
+        url: 'https://x.com/n',
+      },
+      infographic: null,
+    });
+    const content = createFile.mock.calls[0][1] as string;
+    expect(content).not.toContain('## 信息图');
+  });
+
   it('slugifies titles: lowercases, drops non-alphanumerics, keeps CJK, caps at 60 chars', async () => {
     const path = await saveClip({
-      title: 'My Cool Article! (Part 2) 关于 React',
-      tags: ['t'],
-      suggestedTags: [],
-      summary: '',
-      keyPoints: [],
-      url: 'https://x.com/x',
+      metadata: {
+        title: 'My Cool Article! (Part 2) 关于 React',
+        tags: ['t'],
+        suggestedTags: [],
+        summary: '',
+        keyPoints: [],
+        url: 'https://x.com/x',
+      },
     });
     expect(path).toBe('__clips__/t/2026-03-04-my-cool-article-part-2-关于-react.md');
   });
 
   it('falls back to "clip" slug when title yields empty', async () => {
     const path = await saveClip({
-      title: '!!!',
-      tags: ['t'],
-      suggestedTags: [],
-      summary: '',
-      keyPoints: [],
-      url: 'https://x.com/x',
+      metadata: {
+        title: '!!!',
+        tags: ['t'],
+        suggestedTags: [],
+        summary: '',
+        keyPoints: [],
+        url: 'https://x.com/x',
+      },
     });
     expect(path).toBe('__clips__/t/2026-03-04-clip.md');
+  });
+
+  it('accepts a bare ClipMetadata (backward-compat shape) without infographic', async () => {
+    // Legacy callers may pass a bare ClipMetadata instead of { metadata, infographic }.
+    const path = await saveClip({
+      title: 'Bare',
+      tags: ['t'],
+      suggestedTags: [],
+      summary: 's',
+      keyPoints: ['p1'],
+      url: 'https://x.com/bare',
+    });
+    expect(path).toBe('__clips__/t/2026-03-04-bare.md');
+    const content = createFile.mock.calls[0][1] as string;
+    expect(content).not.toContain('## 信息图');
   });
 });
 
 describe('saveClip — overwrite + auto-open', () => {
   it('overwritePath writes to that path via writeFile and skips createFile/createDir', async () => {
     const path = await saveClip(
-      { title: 'T', tags: ['t'], suggestedTags: [], summary: '', keyPoints: [], url: 'https://x.com' },
+      { metadata: { title: 'T', tags: ['t'], suggestedTags: [], summary: '', keyPoints: [], url: 'https://x.com' } },
       '__clips__/t/existing.md',
     );
     expect(path).toBe('__clips__/t/existing.md');
@@ -366,12 +530,14 @@ describe('saveClip — overwrite + auto-open', () => {
 
   it('auto-opens the saved file by default', async () => {
     await saveClip({
-      title: 'T',
-      tags: ['t'],
-      suggestedTags: [],
-      summary: '',
-      keyPoints: [],
-      url: 'https://x.com',
+      metadata: {
+        title: 'T',
+        tags: ['t'],
+        suggestedTags: [],
+        summary: '',
+        keyPoints: [],
+        url: 'https://x.com',
+      },
     });
     expect(openFile).toHaveBeenCalledTimes(1);
     const [openedPath, openedName] = openFile.mock.calls[0];
@@ -381,7 +547,7 @@ describe('saveClip — overwrite + auto-open', () => {
 
   it('skipAutoOpen suppresses the editor open call', async () => {
     await saveClip(
-      { title: 'T', tags: ['t'], suggestedTags: [], summary: '', keyPoints: [], url: 'https://x.com' },
+      { metadata: { title: 'T', tags: ['t'], suggestedTags: [], summary: '', keyPoints: [], url: 'https://x.com' } },
       undefined,
       { skipAutoOpen: true },
     );
@@ -390,7 +556,7 @@ describe('saveClip — overwrite + auto-open', () => {
 
   it('skipAutoOpen also applies on the overwrite path', async () => {
     await saveClip(
-      { title: 'T', tags: ['t'], suggestedTags: [], summary: '', keyPoints: [], url: 'https://x.com' },
+      { metadata: { title: 'T', tags: ['t'], suggestedTags: [], summary: '', keyPoints: [], url: 'https://x.com' } },
       '__clips__/t/existing.md',
       { skipAutoOpen: true },
     );
@@ -400,8 +566,9 @@ describe('saveClip — overwrite + auto-open', () => {
 
 describe('clipUrl — backward-compatible wrapper', () => {
   it('runs generate then save and returns the saved path', async () => {
-    collectTextFromStream.mockResolvedValueOnce(
+    enqueueCardThenInfographic(
       '{"title":"W","tags":["t"],"suggestedTags":[],"summary":"s","keyPoints":[]}',
+      '{"version":1,"blocks":[]}',
     );
     const path = await clipUrl('https://example.com/w');
     expect(path).toBe('__clips__/t/2026-03-04-w.md');
@@ -410,8 +577,9 @@ describe('clipUrl — backward-compatible wrapper', () => {
   });
 
   it('forwards overwritePath to saveClip', async () => {
-    collectTextFromStream.mockResolvedValueOnce(
+    enqueueCardThenInfographic(
       '{"title":"W","tags":["t"],"suggestedTags":[],"summary":"","keyPoints":[]}',
+      '{"version":1,"blocks":[]}',
     );
     const path = await clipUrl(
       'https://example.com/w',
@@ -425,200 +593,17 @@ describe('clipUrl — backward-compatible wrapper', () => {
     expect(writeFile).toHaveBeenCalledWith('__clips__/t/existing.md', expect.any(String));
     expect(createFile).not.toHaveBeenCalled();
   });
-});
 
-const sampleClipMd = [
-  '---',
-  'title: "Hello World"',
-  'type: clip',
-  'url: "https://example.com/hello"',
-  'tags: ["tech", "ai"]',
-  'clipped: 2026-07-02',
-  '---',
-  '',
-  '> **来源**: [example.com](https://example.com/hello)',
-  '',
-  '## 摘要',
-  '',
-  'A short summary of the page.',
-  '',
-  '## 要点',
-  '',
-  '- point one',
-  '- point two',
-  '',
-].join('\n');
-
-describe('generateInfographic', () => {
-  it('reads the clip, invokes the clips agent, and writes back a ## 信息图 section', async () => {
-    readFile.mockResolvedValueOnce(sampleClipMd);
-    const aiDoc = {
-      version: 1,
-      blocks: [
-        { type: 'hero', title: 'Hello' },
-        { type: 'source', url: 'https://example.com/hello' },
-      ],
-    };
-    collectTextFromStream.mockResolvedValueOnce(JSON.stringify(aiDoc));
-
-    const doc = await generateInfographic('__clips__/tech/2026-07-02-hello-world.md');
-
-    expect(doc.version).toBe(1);
-    expect(doc.blocks).toHaveLength(2);
-    expect(doc.blocks[0]).toEqual({ type: 'hero', title: 'Hello' });
-
-    // Agent was started + stopped.
-    expect(fakeAdapter.start).toHaveBeenCalledTimes(1);
-    expect(fakeAdapter.stop).toHaveBeenCalledTimes(1);
-
-    // The prompt carried the [infographic-mode] marker + clip content.
-    const prompt = fakeAdapter.send.mock.calls[0][0] as string;
-    expect(prompt).toContain('[infographic-mode]');
-    expect(prompt).toContain('Hello World');
-    expect(prompt).toContain('https://example.com/hello');
-    expect(prompt).toContain('A short summary of the page.');
-    expect(prompt).toContain('- point one');
-
-    // Wrote back to the same path, with a ## 信息图 section.
-    expect(writeFile).toHaveBeenCalledTimes(1);
-    const [writtenPath, writtenContent] = writeFile.mock.calls[0];
-    expect(writtenPath).toBe('__clips__/tech/2026-07-02-hello-world.md');
-    expect(writtenContent).toContain('## 信息图');
-    expect(writtenContent).toContain('"type": "hero"');
-    // Original sections preserved byte-for-byte.
-    expect(writtenContent).toContain('title: "Hello World"');
-    expect(writtenContent).toContain('## 摘要');
-    expect(writtenContent).toContain('A short summary of the page.');
-    expect(writtenContent).toContain('## 要点');
-    expect(writtenContent).toContain('- point one');
-  });
-
-  it('extracts JSON embedded in prose / fences (defensive parse)', async () => {
-    readFile.mockResolvedValueOnce(sampleClipMd);
-    collectTextFromStream.mockResolvedValueOnce(
-      'Here is the infographic:\n```json\n{"version":1,"blocks":[{"type":"hero","title":"X"}]}\n```\nThanks',
+  it('writes the auto-generated infographic to disk via saveClip', async () => {
+    enqueueCardThenInfographic(
+      '{"title":"W","tags":["t"],"suggestedTags":[],"summary":"s","keyPoints":[],"pageContent":"body"}',
+      '{"version":1,"blocks":[{"type":"hero","title":"W"},{"type":"source","url":"https://example.com/w"}]}',
     );
-    const doc = await generateInfographic('__clips__/tech/x.md');
-    expect(doc.blocks).toHaveLength(1);
-    expect(doc.blocks[0]).toEqual({ type: 'hero', title: 'X' });
-  });
-
-  it('throws a parse error when AI output is not JSON', async () => {
-    readFile.mockResolvedValueOnce(sampleClipMd);
-    collectTextFromStream.mockResolvedValueOnce('not json at all');
-    await expect(generateInfographic('__clips__/tech/x.md')).rejects.toThrow(/无法解析为信息图 JSON/);
-    expect(fakeAdapter.stop).toHaveBeenCalledTimes(1);
-    expect(writeFile).not.toHaveBeenCalled();
-  });
-
-  it('throws a shape error when blocks is missing', async () => {
-    readFile.mockResolvedValueOnce(sampleClipMd);
-    collectTextFromStream.mockResolvedValueOnce('{"version":1,"noBlocks":[]}');
-    await expect(generateInfographic('__clips__/tech/x.md')).rejects.toThrow(/形状不合法/);
-    expect(writeFile).not.toHaveBeenCalled();
-  });
-
-  it('throws when the clip file cannot be read', async () => {
-    readFile.mockRejectedValueOnce(new Error('ENOENT'));
-    await expect(generateInfographic('__clips__/tech/missing.md')).rejects.toThrow(/读取剪藏文件失败/);
-    expect(fakeAdapter.start).not.toHaveBeenCalled();
-    expect(writeFile).not.toHaveBeenCalled();
-  });
-
-  it('replaces an existing ## 信息图 section (regenerate semantics)', async () => {
-    const existingWithInfographic = `${sampleClipMd}## 信息图\n\n\`\`\`json\n${JSON.stringify({
-      version: 1,
-      blocks: [{ type: 'hero', title: 'OLD' }],
-    })}\n\`\`\`\n`;
-    readFile.mockResolvedValueOnce(existingWithInfographic);
-    collectTextFromStream.mockResolvedValueOnce(
-      JSON.stringify({ version: 1, blocks: [{ type: 'hero', title: 'NEW' }] }),
-    );
-
-    await generateInfographic('__clips__/tech/hello.md');
-
-    expect(writeFile).toHaveBeenCalledTimes(1);
-    const [, writtenContent] = writeFile.mock.calls[0];
-    expect(writtenContent).not.toContain('OLD');
-    expect(writtenContent).toContain('NEW');
-    // Exactly one ## 信息图 heading.
-    expect((writtenContent.match(/## 信息图/g) || []).length).toBe(1);
-    // Surrounding content preserved.
-    expect(writtenContent).toContain('## 摘要');
-    expect(writtenContent).toContain('## 要点');
-  });
-
-  it('throws when clip content is empty', async () => {
-    readFile.mockResolvedValueOnce('---\n---\n');
-    await expect(generateInfographic('__clips__/tech/empty.md')).rejects.toThrow(/内容为空/);
-    expect(fakeAdapter.start).not.toHaveBeenCalled();
-  });
-
-  it('writes ## 信息图 at the TOP position (before ## 摘要), not at the bottom', async () => {
-    readFile.mockResolvedValueOnce(sampleClipMd);
-    collectTextFromStream.mockResolvedValueOnce(
-      JSON.stringify({ version: 1, blocks: [{ type: 'hero', title: 'H' }] }),
-    );
-    await generateInfographic('__clips__/tech/order.md');
-    const [, writtenContent] = writeFile.mock.calls[0];
-    const idxQuote = writtenContent.indexOf('> **来源**');
-    const idxInfo = writtenContent.indexOf('## 信息图');
-    const idxSummary = writtenContent.indexOf('## 摘要');
-    const idxPoints = writtenContent.indexOf('## 要点');
-    expect(idxQuote).toBeGreaterThan(-1);
-    expect(idxInfo).toBeGreaterThan(idxQuote);
-    expect(idxInfo).toBeLessThan(idxSummary);
-    expect(idxSummary).toBeLessThan(idxPoints);
-  });
-
-  it('moves an existing bottom ## 信息图 to the TOP position on regenerate', async () => {
-    // Legacy clip with ## 信息图 at the bottom (after ## 要点).
-    const legacy = `${sampleClipMd}## 信息图\n\n\`\`\`json\n${JSON.stringify({
-      version: 1,
-      blocks: [{ type: 'hero', title: 'OLD' }],
-    })}\n\`\`\`\n`;
-    readFile.mockResolvedValueOnce(legacy);
-    collectTextFromStream.mockResolvedValueOnce(
-      JSON.stringify({ version: 1, blocks: [{ type: 'hero', title: 'NEW' }] }),
-    );
-    await generateInfographic('__clips__/tech/legacy.md');
-    const [, writtenContent] = writeFile.mock.calls[0];
-    expect(writtenContent).not.toContain('OLD');
-    expect(writtenContent).toContain('NEW');
-    expect((writtenContent.match(/## 信息图/g) || []).length).toBe(1);
-    // Top position: 信息图 before 摘要.
-    const idxInfo = writtenContent.indexOf('## 信息图');
-    const idxSummary = writtenContent.indexOf('## 摘要');
-    expect(idxInfo).toBeLessThan(idxSummary);
-  });
-
-  it('passes ## 正文 content to the agent when present', async () => {
-    const clipWithBody = `${sampleClipMd}## 正文\n\n# Page Title\n\nReal body text from curl.md.\n`;
-    readFile.mockResolvedValueOnce(clipWithBody);
-    collectTextFromStream.mockResolvedValueOnce(
-      JSON.stringify({ version: 1, blocks: [{ type: 'hero', title: 'H' }] }),
-    );
-    await generateInfographic('__clips__/tech/body.md');
-    const prompt = fakeAdapter.send.mock.calls[0][0] as string;
-    expect(prompt).toContain('## 正文');
-    expect(prompt).toContain('Real body text from curl.md.');
-    // Hint to the agent that 正文 is present.
-    expect(prompt).toContain('7-9');
-  });
-
-  it('falls back to summary + keyPoints (no ## 正文 in prompt) when 正文 absent', async () => {
-    readFile.mockResolvedValueOnce(sampleClipMd);
-    collectTextFromStream.mockResolvedValueOnce(
-      JSON.stringify({ version: 1, blocks: [{ type: 'hero', title: 'H' }] }),
-    );
-    await generateInfographic('__clips__/tech/nobody.md');
-    const prompt = fakeAdapter.send.mock.calls[0][0] as string;
-    // No `## 正文` section header line (a line that is exactly `## 正文`).
-    // The hint text mentions `## 正文` inline within backticks, but there's
-    // no actual section header + body in the prompt.
-    expect(prompt).not.toMatch(/^## 正文$/m);
-    // Still has summary + keyPoints.
-    expect(prompt).toContain('A short summary of the page.');
-    expect(prompt).toContain('- point one');
+    await clipUrl('https://example.com/w');
+    const content = createFile.mock.calls[0][1] as string;
+    expect(content).toContain('## 信息图');
+    expect(content).toContain('"type": "hero"');
+    expect(content).toContain('## 正文');
+    expect(content).toContain('body');
   });
 });

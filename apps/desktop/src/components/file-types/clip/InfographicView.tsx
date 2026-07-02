@@ -1,4 +1,4 @@
-import { forwardRef, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import type { InfographicBlock, InfographicDoc } from '@/features/clips/clipParse';
 
 /**
@@ -32,12 +32,7 @@ import type { InfographicBlock, InfographicDoc } from '@/features/clips/clipPars
  *
  * Theme isolation: the poster uses inline oklch colors + serif/mono font
  * stacks (matching the reference) so the editorial aesthetic is preserved
- * regardless of the app's light/dark theme. The export helper
- * (`InfographicExport.ts`) reads computed styles via `html-to-image`, which
- * inlines them correctly — no `var()` breakage.
- *
- * `forwardRef` exposes the outermost poster container DOM node so the
- * "导出为图片" button in `ClipCardView` can serialize it to PNG.
+ * regardless of the app's light/dark theme.
  */
 
 // --- Editorial design tokens (mirror .dev/infographic-reference.html) ------
@@ -71,8 +66,7 @@ export interface InfographicViewProps {
   doc: InfographicDoc;
 }
 
-export const InfographicView = forwardRef<HTMLDivElement, InfographicViewProps>(
-  function InfographicView({ doc }, ref) {
+export function InfographicView({ doc }: InfographicViewProps) {
     // Pick special-slot blocks (first occurrence wins; duplicates stay in body).
     const hero = doc.blocks.find((b) => b.type === 'hero');
     const quote = doc.blocks.find((b) => b.type === 'quote');
@@ -92,7 +86,6 @@ export const InfographicView = forwardRef<HTMLDivElement, InfographicViewProps>(
 
     return (
       <div
-        ref={ref}
         className="poster-container mx-auto w-full max-w-[960px] flex flex-col"
         style={{
           background: C.bg,
@@ -119,8 +112,7 @@ export const InfographicView = forwardRef<HTMLDivElement, InfographicViewProps>(
         <Footer quote={quote} tags={tags} source={source} />
       </div>
     );
-  },
-);
+  }
 
 // --- Layout primitives ------------------------------------------------------
 
