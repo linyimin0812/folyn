@@ -723,3 +723,37 @@ Added CSV file type: RFC-4180 parser (utils/csvParse.ts) + csv handler (split/ed
 ### Next Steps
 
 - None - task complete
+
+
+## Session 22: CSV preview fill width
+
+**Date**: 2026-07-02
+**Task**: CSV preview fill width
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+CsvTablePreview table w-auto -> w-full so small CSVs fill the preview area; wide CSVs still scroll. 877 tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f4e440ae12a27d98ae2874cf2b90de88f5d936a0` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
