@@ -18,7 +18,7 @@ describe('buildQueryInstruction', () => {
     const prompt = buildQueryInstruction('What is X?', 'CTX');
     expect(prompt).toContain('What is X?');
     expect(prompt).toContain('CTX');
-    expect(prompt).toContain('[[wiki://path]]');
+    expect(prompt).toContain('请按 query action 契约输出');
   });
 
   it('uses the user query verbatim, including non-ASCII', () => {
