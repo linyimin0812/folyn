@@ -961,3 +961,37 @@ OfficeFileViewer now expands ~ via resolveBasePath + join before plugin-fs.readF
 ### Next Steps
 
 - None - task complete
+
+
+## Session 29: Remove unused react-pdf dependency
+
+**Date**: 2026-07-03
+**Task**: Remove unused react-pdf dependency
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Removed react-pdf (unused after PdfViewer deletion; PDF now via file-viewer preset-office). Kept html2pdf.js (useExport). -10 transitive deps. tsc + 856 tests + vite build green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d28fca715f1efb96102ac0a58c6c6faa31e78028` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
