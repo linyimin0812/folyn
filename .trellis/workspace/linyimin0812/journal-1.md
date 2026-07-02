@@ -519,3 +519,37 @@ Redesigned CLIPS infographic from card-stack to editorial poster. Content enrich
 ### Next Steps
 
 - None - task complete
+
+
+## Session 16: Clips: infographic full width
+
+**Date**: 2026-07-02
+**Task**: Clips: infographic full width
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Dropped max-w-[960px] cap (and mx-auto) on infographic poster-container so it fills the clip card content width. Card padding and block layouts unchanged. 102 clip tests green. NOTE: pre-existing wikiQueryService test failure from another session's commit fbf5098 (prompt trimmed to params-only but test still expects [[wiki://path]]) — unrelated, left for that window.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `80b7d3f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

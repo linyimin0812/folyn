@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 15
+- **Total Sessions**: 16
 - **Last Active**: 2026-07-02
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~521 | Active |
+| `journal-1.md` | ~555 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 16 | 2026-07-02 | Clips: infographic full width | `80b7d3f` | `master` |
 | 15 | 2026-07-02 | Redesign CLIPS infographic as editorial poster with dark mode | `d6f01ae`, `015472c`, `6b4495d`, `9c42349` | `master` |
 | 14 | 2026-07-02 | Trim runtime prompts to params-only across 5 feature callers | `fbf5098` | `master` |
 | 13 | 2026-07-02 | fix feature agent fallback --agents inline delivery | `25b2c3d` | `master` |
