@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/feature-agents.md", "reason": "本任务直接修复 spec Validation Matrix 承诺的 '--agents inline delivery' fallback 路径——spec 是契约源，实现必须对齐"}
+{"file": ".trellis/spec/cli-adapter/frontend/index.md", "reason": "CliSendOptions 的 agent/bare/addDir/agents 字段语义、buildClaudeArgs 的 --agents flag 行为——修改 fallback 返回值形状的依据"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "禁止模式与 review checklist：frontmatter 解析器、fallback 路径、单测覆盖需符合规范"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "CliAgentDefinition 类型、FeatureAgentEntry 类型、返回值类型对齐"}

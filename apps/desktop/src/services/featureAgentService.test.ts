@@ -377,7 +377,7 @@ describe('runFeatureAgent (cwd 发现 vs --bare 回退)', () => {
     expect(fakeAdapter.start).toHaveBeenCalledWith(expect.objectContaining({ workingDir: '/vault/__study__' }));
   });
 
-  it('agent 文件缺失 → --bare 回退（无 agent）', async () => {
+  it('agent 文件缺失 → --bare 回退 + --agents 内联交付 canonical agent 定义', async () => {
     const manager = makeFakeManager({ hasStudyFile: false, writableFails: true });
     useVaultStore.setState({ manager: manager as never });
 
@@ -389,7 +389,14 @@ describe('runFeatureAgent (cwd 发现 vs --bare 回退)', () => {
 
     const [, opts] = fakeAdapter.send.mock.calls[0];
     expect(opts.bare).toBe(true);
-    expect(opts.agent).toBeUndefined();
+    expect(opts.agent).toBe('study');
+    expect(opts.agents).toBeDefined();
+    expect(opts.agents.study).toBeDefined();
+    expect(opts.agents.study.prompt).toBeTruthy();
+    expect(opts.agents.study.prompt).toContain('study agent');
+    expect(opts.agents.study.description).toBeTruthy();
+    expect(opts.agents.study.tools).toBeInstanceOf(Array);
+    expect(opts.agents.study.tools?.length).toBeGreaterThan(0);
   });
 
   it('复用 study 会话并传 resumeSessionId（多轮）', async () => {
@@ -478,7 +485,7 @@ describe('getFeatureAgentSendOptions (bespoke feature 调用辅助)', () => {
     expect(opts.addDir).toEqual(['/vault']);
   });
 
-  it('schedule agent 缺失时仍传 addDir（--bare 回退也需跨目录访问）', async () => {
+  it('schedule agent 缺失时仍传 addDir（--bare 回退也需跨目录访问）+ 内联交付 agent', async () => {
     const manager = makeFakeManager({ writableFails: true });
     useVaultStore.setState({
       manager: manager as never,
@@ -487,7 +494,11 @@ describe('getFeatureAgentSendOptions (bespoke feature 调用辅助)', () => {
 
     const opts = await getFeatureAgentSendOptions('schedule');
     expect(opts.bare).toBe(true);
+    expect(opts.agent).toBe('schedule');
     expect(opts.addDir).toEqual(['/vault']);
+    expect(opts.agents).toBeDefined();
+    expect(opts.agents.schedule).toBeDefined();
+    expect(opts.agents.schedule.prompt).toContain('每日回顾');
   });
 
   it('非 schedule feature 不传 addDir', async () => {
@@ -499,13 +510,22 @@ describe('getFeatureAgentSendOptions (bespoke feature 调用辅助)', () => {
     expect(await getFeatureAgentSendOptions('wiki')).not.toHaveProperty('addDir');
   });
 
-  it('agent 文件缺失 → { bare:true }（--bare 回退）', async () => {
+  it('agent 文件缺失 → --bare 回退 + --agents 内联交付（5 个 feature）', async () => {
     const manager = makeFakeManager({ writableFails: true });
     useVaultStore.setState({ manager: manager as never });
 
-    expect(await getFeatureAgentSendOptions('analyze')).toEqual({ bare: true });
-    expect(await getFeatureAgentSendOptions('clips')).toEqual({ bare: true });
-    expect(await getFeatureAgentSendOptions('wiki')).toEqual({ bare: true });
+    for (const feature of ['analyze', 'clips', 'wiki']) {
+      const opts = await getFeatureAgentSendOptions(feature);
+      expect(opts.bare).toBe(true);
+      expect(opts.agent).toBe(feature);
+      expect(opts.agents).toBeDefined();
+      const def = (opts.agents as Record<string, { prompt: string; description?: string; tools?: string[] }>)[feature];
+      expect(def).toBeDefined();
+      expect(def.prompt).toBeTruthy();
+      expect(def.description).toBeTruthy();
+      expect(def.tools).toBeInstanceOf(Array);
+      expect(def.tools && def.tools.length).toBeGreaterThan(0);
+    }
   });
 
   it('study 也适用（agent 存在→cwd 发现）', async () => {
@@ -514,9 +534,13 @@ describe('getFeatureAgentSendOptions (bespoke feature 调用辅助)', () => {
     expect(await getFeatureAgentSendOptions('study')).toEqual({ agent: 'study', bare: false });
   });
 
-  it('vault 不可读时回退 { bare:true }', async () => {
+  it('vault 不可读时回退 --bare + --agents 内联交付（registry 是静态的）', async () => {
     useVaultStore.setState({ manager: undefined as never });
-    expect(await getFeatureAgentSendOptions('analyze')).toEqual({ bare: true });
+    const opts = await getFeatureAgentSendOptions('analyze');
+    expect(opts.bare).toBe(true);
+    expect(opts.agent).toBe('analyze');
+    expect(opts.agents).toBeDefined();
+    expect((opts.agents as Record<string, { prompt: string }>).analyze.prompt).toBeTruthy();
   });
 });
 
@@ -551,9 +575,65 @@ describe('call-time 懒播种兜底', () => {
     expect(manager._files.get('__wiki__/.claude/CLAUDE.md')).toBeTruthy();
   });
 
-  it('懒播种失败不阻塞调用（manager 为 null → --bare 回退）', async () => {
+  it('懒播种失败不阻塞调用（manager 为 null → --bare + --agents 内联交付）', async () => {
     useVaultStore.setState({ manager: undefined as never });
     const opts = await getFeatureAgentSendOptions('wiki');
-    expect(opts).toEqual({ bare: true });
+    expect(opts.bare).toBe(true);
+    expect(opts.agent).toBe('wiki');
+    expect(opts.agents).toBeDefined();
+    expect((opts.agents as Record<string, { prompt: string }>).wiki.prompt).toBeTruthy();
+  });
+});
+
+describe('parseAgentDoc（canonical agent .md frontmatter 解析，5 个 feature 全覆盖）', () => {
+  // 通过 getFeatureAgentSendOptions fallback 间接测 parseAgentDoc（不导出）。
+  // vault 不可读 → 走 catch 块的内联交付路径，agents[feature] 即解析结果。
+  beforeEach(() => {
+    useVaultStore.setState({ manager: undefined as never });
+  });
+
+  const features = ['study', 'analyze', 'clips', 'schedule', 'wiki'] as const;
+
+  for (const feature of features) {
+    it(`${feature}: frontmatter 解析出 description / tools / prompt body`, async () => {
+      const opts = await getFeatureAgentSendOptions(feature);
+      expect(opts.bare).toBe(true);
+      expect(opts.agent).toBe(feature);
+      expect(opts.agents).toBeDefined();
+      const def = (opts.agents as Record<string, {
+        description?: string;
+        prompt: string;
+        tools?: string[];
+      }>)[feature];
+      expect(def).toBeDefined();
+      // description 非空
+      expect(typeof def.description).toBe('string');
+      expect(def.description!.length).toBeGreaterThan(0);
+      // tools 是非空数组
+      expect(Array.isArray(def.tools)).toBe(true);
+      expect(def.tools!.length).toBeGreaterThan(0);
+      // prompt body 是 frontmatter 之后的正文，应包含 "agent" 字样且不包含 frontmatter 分隔符
+      expect(def.prompt).toContain('agent');
+      expect(def.prompt).not.toMatch(/^---\n/);
+      expect(def.prompt).not.toMatch(/\n---$/);
+    });
+  }
+
+  it('study 的 prompt body 含输出契约标记', async () => {
+    const opts = await getFeatureAgentSendOptions('study');
+    const def = (opts.agents as Record<string, { prompt: string }>).study;
+    expect(def.prompt).toContain('输出契约');
+  });
+
+  it('clips 的 prompt body 含信息图相关契约', async () => {
+    const opts = await getFeatureAgentSendOptions('clips');
+    const def = (opts.agents as Record<string, { prompt: string }>).clips;
+    expect(def.prompt).toContain('信息图');
+  });
+
+  it('schedule 的 tools 含 Read', async () => {
+    const opts = await getFeatureAgentSendOptions('schedule');
+    const def = (opts.agents as Record<string, { tools?: string[] }>).schedule;
+    expect(def.tools).toContain('Read');
   });
 });

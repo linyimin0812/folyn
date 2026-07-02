@@ -5,10 +5,10 @@
 // - canonical 源文件按功能就近放 `apps/desktop/src/<feature>/.claude/{CLAUDE.md,agents/<feature>.md}`，经 `?raw` import。
 // - vault 切换/启动时把 canonical 文件拷贝到 `<vault>/__{feature}__/.claude/`，**write-if-missing**（不覆盖用户修改）。
 // - feature agent 调用：agent 文件存在 → `adapter.send(instruction, {agent, bare:false})`（cwd=`__{feature}__/` 自动发现）；
-//   不存在 → 回退 `--bare`（无 agent，隔离）。
+//   不存在 → 回退 `--bare` + `--agents` 内联交付 canonical agent 定义（contract 不丢，spec `feature-agents.md` Validation Matrix 承诺的 graceful degradation）。
 // - schedule feature 额外传 `--add-dir <vault>` 以便访问 `__daily__/` 日记与今日修改文档。
 
-import type { CliSendOptions, CliStreamEvent } from '@quill/cli-adapter';
+import type { CliAgentDefinition, CliSendOptions, CliStreamEvent } from '@quill/cli-adapter';
 import type { VaultManager } from '@quill/vault-provider';
 import studyAgentDoc from '@/features/study/.claude/agents/study.md?raw';
 import studyClaudeDoc from '@/features/study/.claude/CLAUDE.md?raw';
@@ -81,6 +81,44 @@ export const FEATURE_AGENTS: FeatureAgentEntry[] = [
 /** 取某 feature 的注册项（不存在返回 undefined）。 */
 export function getFeatureAgentEntry(feature: string): FeatureAgentEntry | undefined {
   return FEATURE_AGENTS.find((e) => e.feature === feature);
+}
+
+/**
+ * 从 canonical agent .md frontmatter 解析出 `CliAgentDefinition`。
+ * canonical 形如：
+ * ```
+ * ---
+ * name: clips
+ * description: ...
+ * tools: WebFetch, WebSearch, Read
+ * ---
+ * <body>
+ * ```
+ * frontmatter 缺失或字段缺失时降级（至少返回 `{ prompt: <整份 md> }`）。
+ *
+ * 用于 fallback 路径：agent 文件未播种时，把解析后的 definition 通过 `--agents` flag 内联交付给 CLI，
+ * 让 agent 仍能拿到输出契约（spec `feature-agents.md` Validation Matrix）。
+ */
+function parseAgentDoc(md: string): CliAgentDefinition {
+  const fmMatch = md.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (!fmMatch) {
+    return { prompt: md };
+  }
+  const fm = fmMatch[1];
+  const body = fmMatch[2];
+  const description = matchField(fm, 'description');
+  const toolsLine = matchField(fm, 'tools');
+  const tools = toolsLine
+    ? toolsLine.split(',').map((t) => t.trim()).filter(Boolean)
+    : undefined;
+  return { description, prompt: body, tools };
+}
+
+/** 从 frontmatter 文本中取 `<key>: <value>` 行的 value（去引号、trim）；不存在返回 undefined。 */
+function matchField(fm: string, key: string): string | undefined {
+  const m = fm.match(new RegExp(`^${key}:\\s*(.+)$`, 'm'));
+  if (!m) return undefined;
+  return m[1].trim().replace(/^["']|["']$/g, '');
 }
 
 /** vault 内 agent 文件的相对路径（`__{feature}__/.claude/agents/<file>`）；未注册返回 null。 */
@@ -246,7 +284,7 @@ export interface RunFeatureAgentOpts {
  * 路径：
  * - `<vault>/__{feature}__/.claude/agents/<feature>.md` 存在 → `adapter.send(instruction, {agent: feature, bare: false, ...})`，
  *   cwd=`__{feature}__/` 自动发现 agent（去 `--bare`，加载 feature 级 CLAUDE.md/hooks）。
- * - 不存在 → 回退 `--bare`（无 agent，隔离，当前普通行为）。
+ * - 不存在 → 回退 `--bare` + `--agents` 内联交付 canonical agent 定义（contract 不丢，spec graceful degradation）。
  *
  * study feature 复用 aiStore 的专用 study 会话（getOrCreateStudySession）：事件路由到该会话，
  * 多轮复用 cliSessionId。其它 feature 走 bespoke 流程，应使用 getFeatureAgentSendOptions
@@ -304,10 +342,23 @@ export async function runFeatureAgent(
 
   const available = await agentFileExists(manager, feature);
 
-  // agent 文件存在 → cwd 发现（bare:false + --agent）；缺失 → --bare 回退（无 agent）。
-  const sendOptions = available
-    ? { agent: feature, bare: false, resumeSessionId, addDir: opts.addDir }
-    : { bare: true, resumeSessionId, addDir: opts.addDir };
+  // agent 文件存在 → cwd 发现（bare:false + --agent）。
+  // 缺失 → --bare 回退 + `--agents` 内联交付 canonical agent 定义（contract 不丢，spec graceful degradation）。
+  let sendOptions: CliSendOptions;
+  if (available) {
+    sendOptions = { agent: feature, bare: false, resumeSessionId, ...(opts.addDir ? { addDir: opts.addDir } : {}) };
+  } else if (entry) {
+    const def = parseAgentDoc(entry.doc);
+    sendOptions = {
+      agent: feature,
+      bare: true,
+      agents: { [feature]: def },
+      resumeSessionId,
+      ...(opts.addDir ? { addDir: opts.addDir } : {}),
+    };
+  } else {
+    sendOptions = { bare: true, resumeSessionId, ...(opts.addDir ? { addDir: opts.addDir } : {}) };
+  }
 
   const eventHandler = (event: CliStreamEvent) => {
     switch (event.type) {
@@ -382,7 +433,8 @@ export async function isAgentAvailable(feature: string): Promise<boolean> {
  *
  * - agent 文件存在 → `{ agent: feature, bare: false, addDir? }`（cwd=`__{feature}__/` 自动发现）。
  *   schedule feature 额外传 `addDir: ['<vaultbasePath>']` 以便访问 `__daily__/` 日记。
- * - 不存在 / vault 不可读 → `{ bare: true, addDir? }`（`--bare` 回退，隔离行为）。
+ * - 不存在 / vault 不可读 → `{ agent: feature, bare: true, agents: { [feature]: def }, addDir? }`
+ *   （`--bare` 回退 + `--agents` 内联交付 canonical agent 定义，contract 不丢，spec graceful degradation）。
  *
  * 调用方把自己的 `adapter.send(prompt)` 改为 `adapter.send(prompt, await getFeatureAgentSendOptions(feature))`。
  * workingDir 仍由调用方在 `adapter.start({workingDir})` 处设为 `<vault>/__{feature}__/`。
@@ -416,8 +468,25 @@ export async function getFeatureAgentSendOptions(feature: string): Promise<CliSe
     if (available) {
       return { agent: feature, bare: false, ...(addDir ? { addDir } : {}) };
     }
+    // Fallback: 内联交付 canonical agent 定义 via --agents flag。
+    // agent 文件未播种 / vault 不可读时仍把 contract 交给 CLI（spec graceful degradation）。
+    if (entry) {
+      const def = parseAgentDoc(entry.doc);
+      return {
+        agent: feature,
+        bare: true,
+        agents: { [feature]: def },
+        ...(addDir ? { addDir } : {}),
+      };
+    }
     return { bare: true, ...(addDir ? { addDir } : {}) };
   } catch {
+    // 异常路径也尝试内联交付（registry 是静态的，不依赖 vault）。
+    const entry = getFeatureAgentEntry(feature);
+    if (entry) {
+      const def = parseAgentDoc(entry.doc);
+      return { agent: feature, bare: true, agents: { [feature]: def } };
+    }
     return { bare: true };
   }
 }

@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/feature-agents.md", "reason": "验证修复后实现与 spec Validation Matrix 的 'agentFileExists=false → --agents inline delivery' 承诺一致"}
+{"file": ".trellis/spec/cli-adapter/frontend/index.md", "reason": "验证 CliSendOptions 返回值形状、--agents flag 序列化、bare:true 语义符合 adapter 契约"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist：单测覆盖两条 fallback 路径、frontmatter 解析器对 5 feature canonical .md 的正确性"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "验证 CliAgentDefinition 形状、parseAgentDoc 返回类型、无 any"}
