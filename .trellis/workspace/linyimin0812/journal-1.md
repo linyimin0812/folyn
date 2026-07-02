@@ -587,3 +587,37 @@ Aligned wikiQueryService.test.ts with fbf5098's params-only prompt design: asser
 ### Next Steps
 
 - None - task complete
+
+
+## Session 18: Study: add topic via modal
+
+**Date**: 2026-07-02
+**Task**: Study: add topic via modal
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Study add-topic moved from inline sidebar input to a modal dialog. New StudyAddTopicDialog (dlg-* classes, autofocus, Enter/Esc); StudyTopicList + button opens dialog, removed sw-quick-add. Topic list/select/delete unchanged. 853 tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `10710d1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
