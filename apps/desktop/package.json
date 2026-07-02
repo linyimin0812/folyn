@@ -23,6 +23,8 @@
     "@codemirror/state": "^6.5.0",
     "@codemirror/view": "^6.35.0",
     "@excalidraw/excalidraw": "^0.18.1",
+    "@file-viewer/preset-office": "^2.1.17",
+    "@file-viewer/react": "^2.1.17",
     "@quill/cli-adapter": "workspace:*",
     "@quill/container-plugins": "workspace:*",
     "@quill/vault-provider": "workspace:*",
@@ -59,6 +61,7 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@file-viewer/vite-plugin": "^2.1.17",
     "@tauri-apps/cli": "^2.2.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",

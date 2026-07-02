@@ -1,5 +1,6 @@
 import { defineConfig, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { fileViewerRenderers } from '@file-viewer/vite-plugin';
 import path from 'path';
 
 const host = process.env.TAURI_DEV_HOST;
@@ -7,7 +8,7 @@ const isTauri = !!process.env.TAURI_ENV_PLATFORM;
 
 export default defineConfig(() => {
   return {
-    plugins: [react()],
+    plugins: [react(), fileViewerRenderers({ preset: 'office', copyAssets: true })],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
