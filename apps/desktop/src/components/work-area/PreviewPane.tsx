@@ -79,6 +79,8 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
       [onScrollToHeading],
     );
 
+    const isCsv = activeTab.fileType === 'csv';
+
     return (
       <div
         className="flex-1 flex flex-col overflow-hidden min-w-[200px]"
@@ -103,7 +105,14 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
           </div>
         )}
         <div className="flex-1 flex overflow-hidden">
-          <div className="prev-body flex-1 overflow-auto pt-2 px-8 pb-[80vh]" ref={setBodyRef}>
+          <div
+            className={
+              isCsv
+                ? 'prev-body h-full overflow-auto'
+                : 'prev-body flex-1 overflow-auto pt-2 px-8 pb-[80vh]'
+            }
+            ref={setBodyRef}
+          >
             <Preview
               content={activeTab.content}
               filePath={activeTab.path}

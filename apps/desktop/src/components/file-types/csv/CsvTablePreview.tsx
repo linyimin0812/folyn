@@ -23,39 +23,37 @@ export function CsvTablePreview({ content }: PreviewProps) {
   const [headerRow, ...bodyRows] = rows;
 
   return (
-    <div className="csv-table-preview h-full overflow-auto bg-panel p-4">
-      <div className="overflow-x-auto rounded border border-brd2">
-        <table className="w-full border-collapse text-sm">
-          {headerRow && (
-            <thead>
-              <tr className="bg-hov">
-                {headerRow.map((cell, i) => (
-                  <th
-                    key={i}
-                    className="border-b border-brd px-3 py-2 text-left font-semibold text-t1 whitespace-nowrap"
-                  >
-                    {cell}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-          )}
-          <tbody>
-            {bodyRows.map((row, r) => (
-              <tr key={r} className="even:bg-hov/40">
-                {row.map((cell, c) => (
-                  <td
-                    key={c}
-                    className="border-b border-brd2 px-3 py-2 text-t2 whitespace-nowrap align-top"
-                  >
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <div className="csv-table-preview h-full w-full overflow-auto bg-panel">
+      <table className="w-full border-collapse text-sm">
+        {headerRow && (
+          <thead>
+            <tr>
+              {headerRow.map((cell, i) => (
+                <th
+                  key={i}
+                  className="border border-brd2 px-3 py-1.5 text-left font-semibold text-t1 whitespace-nowrap sticky top-0 z-10 bg-hov"
+                >
+                  {cell}
+                </th>
+              ))}
+            </tr>
+          </thead>
+        )}
+        <tbody>
+          {bodyRows.map((row, r) => (
+            <tr key={r} className="even:bg-hov/40">
+              {row.map((cell, c) => (
+                <td
+                  key={c}
+                  className="border border-brd2 px-3 py-1.5 text-t2 whitespace-nowrap align-top"
+                >
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
