@@ -108,7 +108,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
           <div
             className={
               fullBleed
-                ? 'prev-body h-full overflow-auto'
+                ? 'prev-body flex-1 h-full overflow-auto'
                 : 'prev-body flex-1 overflow-auto pt-2 px-8 pb-[80vh]'
             }
             ref={setBodyRef}
