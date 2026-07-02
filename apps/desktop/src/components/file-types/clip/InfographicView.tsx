@@ -145,7 +145,7 @@ export function InfographicView({ doc }: InfographicViewProps) {
   return (
     <PaletteContext.Provider value={C}>
       <div
-        className="poster-container mx-auto w-full max-w-[960px] flex flex-col"
+        className="poster-container w-full flex flex-col"
         style={{
           background: C.bg,
           color: C.fg,
