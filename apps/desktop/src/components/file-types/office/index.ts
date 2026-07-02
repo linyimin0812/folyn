@@ -7,7 +7,7 @@ const handler: FileTypeHandler = {
   extensions: [
     'pdf',
     'docx', 'doc', 'dot', 'rtf', 'odt',
-    'xlsx', 'xls', 'xlsm', 'xlsb', 'csv', 'ods', 'fods', 'numbers',
+    'xlsx', 'xls', 'xlsm', 'xlsb', 'ods', 'fods', 'numbers',
     'pptx', 'pptm', 'potx', 'potm', 'ppsx', 'ppsm', 'odp',
     'ofd',
   ],

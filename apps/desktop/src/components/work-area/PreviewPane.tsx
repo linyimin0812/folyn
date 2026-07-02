@@ -79,7 +79,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
       [onScrollToHeading],
     );
 
-    const isCsv = activeTab.fileType === 'csv';
+    const fullBleed = activeTab.fileType === 'csv' || activeTab.fileType === 'office';
 
     return (
       <div
@@ -107,7 +107,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
         <div className="flex-1 flex overflow-hidden">
           <div
             className={
-              isCsv
+              fullBleed
                 ? 'prev-body h-full overflow-auto'
                 : 'prev-body flex-1 overflow-auto pt-2 px-8 pb-[80vh]'
             }
