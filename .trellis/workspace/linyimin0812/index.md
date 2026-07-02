@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 16
+- **Total Sessions**: 17
 - **Last Active**: 2026-07-02
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~555 | Active |
+| `journal-1.md` | ~589 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 17 | 2026-07-02 | Fix wikiQueryService stale test assertion | `7e21725` | `master` |
 | 16 | 2026-07-02 | Clips: infographic full width | `80b7d3f` | `master` |
 | 15 | 2026-07-02 | Redesign CLIPS infographic as editorial poster with dark mode | `d6f01ae`, `015472c`, `6b4495d`, `9c42349` | `master` |
 | 14 | 2026-07-02 | Trim runtime prompts to params-only across 5 feature callers | `fbf5098` | `master` |

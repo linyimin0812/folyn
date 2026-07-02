@@ -553,3 +553,37 @@ Dropped max-w-[960px] cap (and mx-auto) on infographic poster-container so it fi
 ### Next Steps
 
 - None - task complete
+
+
+## Session 17: Fix wikiQueryService stale test assertion
+
+**Date**: 2026-07-02
+**Task**: Fix wikiQueryService stale test assertion
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Aligned wikiQueryService.test.ts with fbf5098's params-only prompt design: assertion now checks the delegation pointer (请按 query action 契约输出) instead of the moved [[wiki://path]] citation format. Full suite 849/849 green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7e21725` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
