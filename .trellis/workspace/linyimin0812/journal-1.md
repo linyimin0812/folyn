@@ -346,3 +346,37 @@ Moved study/analyze/clips/schedule/wiki (incl .claude) from apps/desktop/src/ in
 ### Next Steps
 
 - None - task complete
+
+
+## Session 11: Clips: article-to-infographic
+
+**Date**: 2026-07-02
+**Task**: Clips: article-to-infographic
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added article-to-infographic for clips: extended clips agent with infographic mode (9 block types, pure JSON), clipService.generateInfographic writes ## 信息图 section (byte-preserving replace), shared clipParse util, InfographicView + 9 BlockViews + unknown-type fallback, ClipCardView generate/regenerate/corrupt/error UI with per-clip error scoping. trellis-check fixed a cross-clip error-leak bug. 823 tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1953940` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
