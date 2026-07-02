@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "settingsStore 持久化与回填改动的 Zustand 约定"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "store 改动需遵循的规范"}

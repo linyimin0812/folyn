@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "验证回填改动达标"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "验证 settingsStore 持久化/回填符合 Zustand 约定"}
