@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { readFile } from '@tauri-apps/plugin-fs';
+import { join } from '@tauri-apps/api/path';
 import FileViewer from '@file-viewer/react';
 import officePreset from '@file-viewer/preset-office';
 import { isTauri } from '@/utils/platform';
+import { resolveBasePath } from '@/utils/pathResolver';
 import type { PreviewProps } from '../types';
 
 export function OfficeFileViewer({ filePath, vaultRoot }: PreviewProps) {
@@ -27,20 +29,21 @@ export function OfficeFileViewer({ filePath, vaultRoot }: PreviewProps) {
     setLoading(true);
     setError(null);
 
-    const abs = `${vaultRoot.replace(/\/+$/, '')}/${filePath.replace(/^\/+/, '')}`;
-    readFile(abs)
-      .then((bytes) => {
+    (async () => {
+      try {
+        const base = await resolveBasePath(vaultRoot);
+        const abs = await join(base, filePath);
+        const bytes = await readFile(abs);
         if (cancelled) return;
         const name = filePath.split('/').pop() || 'file';
         setFile(new File([bytes], name));
-      })
-      .catch((e: unknown) => {
+      } catch (e: unknown) {
         if (cancelled) return;
         setError(e instanceof Error ? e.message : String(e));
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
