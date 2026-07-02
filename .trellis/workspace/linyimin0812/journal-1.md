@@ -689,3 +689,37 @@ Fixed: excludePatterns backfill was gated on __wiki__ sentinel only, so __study_
 ### Next Steps
 
 - None - task complete
+
+
+## Session 21: CSV file type support
+
+**Date**: 2026-07-02
+**Task**: CSV file type support
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added CSV file type: RFC-4180 parser (utils/csvParse.ts) + csv handler (split/edit/preview, useCodeMirror) + CsvTablePreview (table render, graceful empty/jagged). 21 new tests, 877 total green. No new deps, no WorkArea/registry changes.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0410a1b7b95596921110a93c86937c975df83d3e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
