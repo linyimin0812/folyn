@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "验证样式/容器改动达标"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "验证 className 与 PreviewPane 分支约定"}
