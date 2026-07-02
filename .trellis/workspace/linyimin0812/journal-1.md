@@ -380,3 +380,37 @@ Added article-to-infographic for clips: extended clips agent with infographic mo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 12: Clips: fetch via curl.md service
+
+**Date**: 2026-07-02
+**Task**: Clips: fetch via curl.md service
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+clips now fetches pages via curl.md (https://curl.md/<encoded-url> HTML→Markdown service) instead of WebFetching the raw page. clipService.generateClip constructs the curl.md URL + updates prompt; clips.md agent workflow step 1 + failure fallback updated. Zero new deps, agent tools line unchanged. 827 tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dd231f3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
