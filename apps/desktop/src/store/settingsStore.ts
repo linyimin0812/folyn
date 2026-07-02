@@ -106,6 +106,31 @@ interface SettingsState {
 
 const SETTINGS_STORAGE_KEY = 'settings:all';
 
+/** Built-in managed dirs that should always be hidden from the file panel. */
+const BUILTIN_EXCLUDE_DIRS = [
+  '__wiki__',
+  '__clips__',
+  '__reports__',
+  '__daily__',
+  '__study__',
+  '__schedule__',
+  '__analyze__',
+];
+
+/**
+ * Per-dir backfill for persisted excludePatterns: append each missing built-in
+ * managed dir without duplicating ones already present or dropping user-defined
+ * patterns. Returns the joined newline-separated list.
+ */
+export function backfillBuiltinExcludePatterns(raw: string): string {
+  const existing = raw
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const missing = BUILTIN_EXCLUDE_DIRS.filter((d) => !existing.includes(d));
+  return [...existing, ...missing].join('\n');
+}
+
 /** Debounced persist to avoid excessive API calls */
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 function debouncedPersist(state: Partial<SettingsState>) {
@@ -300,10 +325,13 @@ storageClient.get<Partial<SettingsState>>(SETTINGS_STORAGE_KEY).then((saved) => 
       document.documentElement.style.setProperty('--ui-font-size', `${saved.fontSize}px`);
     }
     // Backfill excludePatterns for built-in managed dirs
-    // (__wiki__/__clips__/__reports__/__daily__/__study__/__schedule__/__analyze__)
-    // so existing users with persisted settings also hide them from the file panel.
-    if (saved.excludePatterns && !saved.excludePatterns.includes('__wiki__')) {
-      saved.excludePatterns = `${saved.excludePatterns.trim()}\n__wiki__\n__clips__\n__reports__\n__daily__\n__study__\n__schedule__\n__analyze__`;
+    // (__wiki__/__clips__/__reports__/__daily__/__study__/__schedule__/__analyze__).
+    // Per-dir backfill: append each missing built-in dir without duplicating
+    // ones already present, so existing users whose persisted value already has
+    // some (e.g. __wiki__) but lacks later-added ones (e.g. __study__) also hide
+    // them from the file panel.
+    if (saved.excludePatterns) {
+      saved.excludePatterns = backfillBuiltinExcludePatterns(saved.excludePatterns);
     }
     // Migrate persisted dailyNotesDir from the old default to the new built-in name.
     if (saved.dailyNotesDir === 'daily') {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { useSettingsStore, DEFAULT_SHORTCUTS } from './settingsStore';
+import { useSettingsStore, DEFAULT_SHORTCUTS, backfillBuiltinExcludePatterns } from './settingsStore';
 import { storageClient } from '@/utils/storageClient';
 
 beforeEach(() => {
@@ -94,5 +94,54 @@ describe('useSettingsStore shortcuts', () => {
     const s = useSettingsStore.getState().shortcuts.find((x) => x.id === 'bold')!;
     const original = DEFAULT_SHORTCUTS.find((x) => x.id === 'bold')!;
     expect(s.keys).toEqual(original.keys);
+  });
+});
+
+describe('backfillBuiltinExcludePatterns', () => {
+  const BUILTIN_DIRS = [
+    '__wiki__',
+    '__clips__',
+    '__reports__',
+    '__daily__',
+    '__study__',
+    '__schedule__',
+    '__analyze__',
+  ];
+
+  it('appends missing built-in dirs when persisted value has __wiki__ but lacks others', () => {
+    // Simulates an existing user whose persisted value predates __study__/__schedule__/__analyze__.
+    const raw = 'node_modules\n.git\n__wiki__\n__clips__';
+    const result = backfillBuiltinExcludePatterns(raw);
+    const lines = result.split('\n');
+    // All 7 built-in dirs present.
+    for (const d of BUILTIN_DIRS) {
+      expect(lines).toContain(d);
+    }
+    // User-defined patterns preserved.
+    expect(lines).toContain('node_modules');
+    expect(lines).toContain('.git');
+    // No duplicates.
+    expect(lines.length).toBe(new Set(lines).size);
+    // Existing entries keep their order; missing ones appended.
+    expect(lines.slice(0, 4)).toEqual(['node_modules', '.git', '__wiki__', '__clips__']);
+  });
+
+  it('leaves an already-complete persisted value unchanged (no duplication)', () => {
+    const raw = BUILTIN_DIRS.join('\n');
+    const result = backfillBuiltinExcludePatterns(raw);
+    expect(result).toBe(raw);
+  });
+
+  it('preserves user-defined custom patterns', () => {
+    const raw = 'node_modules\n__wiki__';
+    const result = backfillBuiltinExcludePatterns(raw);
+    const lines = result.split('\n');
+    expect(lines).toContain('node_modules');
+    expect(lines).toContain('__wiki__');
+    for (const d of BUILTIN_DIRS) {
+      expect(lines).toContain(d);
+    }
+    // node_modules appears exactly once.
+    expect(lines.filter((l) => l === 'node_modules').length).toBe(1);
   });
 });
