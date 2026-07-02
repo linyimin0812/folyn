@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 19
+- **Total Sessions**: 20
 - **Last Active**: 2026-07-02
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~657 | Active |
+| `journal-1.md` | ~691 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 20 | 2026-07-02 | Hide __study__ dir from file panel | `802b84b36376a11d48ff1bb8a12aca570c00b02b` | `master` |
 | 19 | 2026-07-02 | Study: topic delete icon reuse file delete icon | `7d037b72c5220104a0eb59a7b3b28a4a77f7d69f` | `master` |
 | 18 | 2026-07-02 | Study: add topic via modal | `10710d1` | `master` |
 | 17 | 2026-07-02 | Fix wikiQueryService stale test assertion | `7e21725` | `master` |

@@ -655,3 +655,37 @@ Topic delete button now uses <ThemeIcon name="delete" size={12}> instead of an i
 ### Next Steps
 
 - None - task complete
+
+
+## Session 20: Hide __study__ dir from file panel
+
+**Date**: 2026-07-02
+**Task**: Hide __study__ dir from file panel
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Fixed: excludePatterns backfill was gated on __wiki__ sentinel only, so __study__/__schedule__/__analyze__ never backfilled for early users. Per-dir append via pure helper backfillBuiltinExcludePatterns; user patterns preserved. 856 tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `802b84b36376a11d48ff1bb8a12aca570c00b02b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
