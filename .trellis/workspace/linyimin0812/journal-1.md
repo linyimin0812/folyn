@@ -1029,3 +1029,37 @@ Removed 4 unused apps/desktop deps (codemirror meta, rehype-stringify, rehype-sa
 ### Next Steps
 
 - None - task complete
+
+
+## Session 31: CSV preview fill width (flex-1)
+
+**Date**: 2026-07-03
+**Task**: CSV preview fill width (flex-1)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+PreviewPane full-bleed branch (csv/office) was missing flex-1, shrank to content width in the flex-row parent. Added flex-1 to fill screen width. tsc + 856 tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b1b3c68036f378a6f13859d154e04a39fccc9049` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
