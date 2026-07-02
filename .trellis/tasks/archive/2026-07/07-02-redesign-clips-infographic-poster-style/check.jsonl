@@ -1,0 +1,5 @@
+{"file": ".trellis/tasks/07-02-redesign-clips-infographic-poster-style/prd.md", "reason": "AC + DoD checklist source"}
+{"file": ".trellis/spec/desktop/frontend/feature-agents.md", "reason": "Verify ## 正文 storage + infographic content enrichment rules were added"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "General quality bar — tests, typecheck, no regression"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify InfographicView poster redesign + export button follow component patterns"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Verify ClipMetadata pageContent field + InfographicDoc block typing are sound"}

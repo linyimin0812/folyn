@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/07-02-redesign-clips-infographic-poster-style/prd.md", "reason": "Full task PRD — requirements, AC, DoD, technical approach, implementation plan"}
+{"file": ".trellis/tasks/07-02-redesign-clips-infographic-poster-style/research/html-to-image-library.md", "reason": "Research recommends html-to-image ^1.11.13 for PNG export (CSS-variable friendly, zero-dep, Tauri-compatible)"}
+{"file": ".trellis/spec/desktop/frontend/feature-agents.md", "reason": "Feature-agent spec — clips agent contract rules; will be updated with ## 正文 storage + infographic content enrichment rule"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "File-type editor spec — ClipCardView pattern for rendering clip file content"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "React component guidelines — for new InfographicView poster layout + export button component patterns"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store patterns — for clipStore exportInfographic action if added"}
