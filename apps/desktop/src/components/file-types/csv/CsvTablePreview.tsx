@@ -25,7 +25,7 @@ export function CsvTablePreview({ content }: PreviewProps) {
   return (
     <div className="csv-table-preview h-full overflow-auto bg-panel p-4">
       <div className="overflow-x-auto rounded border border-brd2">
-        <table className="w-auto border-collapse text-sm">
+        <table className="w-full border-collapse text-sm">
           {headerRow && (
             <thead>
               <tr className="bg-hov">
