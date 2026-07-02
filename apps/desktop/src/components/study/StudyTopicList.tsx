@@ -3,6 +3,7 @@ import { useStudyStore } from '@/store/studyStore';
 import { isDue } from '@/features/study/sm2';
 import { dateToString } from '@/features/schedule/dailyScan';
 import { StudyAddTopicDialog } from './StudyAddTopicDialog';
+import { ThemeIcon } from '@/components/icons/ThemeIcon';
 
 interface StudyTopicListProps {
   /** 新建主题后回调（供页面聚焦主区，PR3 接四区）。 */
@@ -78,9 +79,7 @@ export function StudyTopicList({ onCreated }: StudyTopicListProps) {
                   }
                 }}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                  <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
-                </svg>
+                <ThemeIcon name="delete" size={12} />
               </button>
             </li>
           );
