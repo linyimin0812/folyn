@@ -1,5 +1,7 @@
+import { createContext, useContext, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import type { InfographicBlock, InfographicDoc } from '@/features/clips/clipParse';
+import { useSettingsStore } from '@/store/settingsStore';
 
 /**
  * Editorial / newspaper-poster infographic renderer for clips.
@@ -30,18 +32,30 @@ import type { InfographicBlock, InfographicDoc } from '@/features/clips/clipPars
  *   - source → footer left (always; stacked below quote when quote present)
  *   - stat / keypoints / timeline / steps / comparison → 3-col body, chunked
  *
- * Theme isolation: the poster uses inline oklch colors + serif/mono font
- * stacks (matching the reference) so the editorial aesthetic is preserved
- * regardless of the app's light/dark theme.
+ * Theme adaptation: the poster reads `theme` from `useSettingsStore` and picks
+ * between a light palette (warm off-white) and a dark palette (dark warm bg
+ * with light foreground). The palette is distributed to all sub-components via
+ * `PaletteContext` so direct `<BlockView>` renders (e.g. in unit tests) get a
+ * sensible default (light) without needing to wrap in a provider.
  */
 
 // --- Editorial design tokens (mirror .dev/infographic-reference.html) ------
-const FONT_DISPLAY = "'Iowan Old Style', 'Charter', 'Songti SC', Georgia, serif";
+const FONT_DISPLAY = "'Iwan Old Style', 'Charter', 'Songti SC', Georgia, serif";
 const FONT_BODY =
   "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', system-ui, sans-serif";
 const FONT_MONO = "ui-monospace, 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace";
 
-const C = {
+export interface InfographicPalette {
+  bg: string;
+  surface: string;
+  fg: string;
+  muted: string;
+  border: string;
+  accent: string;
+}
+
+/** Light palette — warm off-white editorial (default). */
+const C_LIGHT: InfographicPalette = {
   bg: 'oklch(98% 0.004 95)',
   surface: 'oklch(100% 0.002 95)',
   fg: 'oklch(20% 0.018 70)',
@@ -49,6 +63,27 @@ const C = {
   border: 'oklch(86% 0.006 95)',
   accent: 'oklch(52% 0.10 28)',
 } as const;
+
+/** Dark palette — mirrored warmth, inverted fg/bg for dark app theme. */
+const C_DARK: InfographicPalette = {
+  bg: 'oklch(20% 0.018 70)',
+  surface: 'oklch(24% 0.018 70)',
+  fg: 'oklch(95% 0.004 95)',
+  muted: 'oklch(65% 0.012 70)',
+  border: 'oklch(35% 0.012 70)',
+  accent: 'oklch(72% 0.10 28)',
+} as const;
+
+/**
+ * React context distributing the active palette. Defaults to the light palette
+ * so block renderers work standalone (e.g. `<BlockView>` in unit tests) without
+ * needing to wrap in an `<InfographicView>` provider.
+ */
+const PaletteContext = createContext<InfographicPalette>(C_LIGHT);
+
+function usePalette(): InfographicPalette {
+  return useContext(PaletteContext);
+}
 
 // --- Block type → eyebrow label ---------------------------------------------
 const EYEBROW_LABELS: Record<string, string> = {
@@ -66,25 +101,49 @@ export interface InfographicViewProps {
   doc: InfographicDoc;
 }
 
+/**
+ * Reads the current theme from `useSettingsStore`.
+ *
+ * Implemented via `useSyncExternalStore` directly (rather than
+ * `useSettingsStore((s) => s.theme)`) so the SSR server snapshot reads CURRENT
+ * state. Zustand v5's default `useStore` uses `api.getInitialState()` as the
+ * server snapshot, which means `useSettingsStore((s) => s.theme)` always
+ * returns the initial `'light'` theme during `renderToString` — ignoring any
+ * `setState({ theme: 'dark' })` the test set up. Passing `getState().theme` as
+ * the third arg (`getServerSnapshot`) makes the hook SSR-correct while still
+ * subscribing to (and re-rendering on) theme changes in the browser.
+ */
+function useThemeState(): string {
+  return useSyncExternalStore(
+    useSettingsStore.subscribe,
+    () => useSettingsStore.getState().theme,
+    () => useSettingsStore.getState().theme,
+  );
+}
+
 export function InfographicView({ doc }: InfographicViewProps) {
-    // Pick special-slot blocks (first occurrence wins; duplicates stay in body).
-    const hero = doc.blocks.find((b) => b.type === 'hero');
-    const quote = doc.blocks.find((b) => b.type === 'quote');
-    const tags = doc.blocks.find((b) => b.type === 'tags');
-    const source = doc.blocks.find((b) => b.type === 'source');
-    const bodyBlocks = doc.blocks.filter(
-      (b) => b !== hero && b !== quote && b !== tags && b !== source,
-    );
+  const theme = useThemeState();
+  const C = theme === 'dark' ? C_DARK : C_LIGHT;
 
-    // Chunk body blocks into 3 columns (column-major order: read down then
-    // across). Round-robin would interleave; chunking keeps related blocks
-    // together which reads more like a real editorial column.
-    const perCol = Math.ceil(Math.max(bodyBlocks.length, 1) / 3);
-    const col1 = bodyBlocks.slice(0, perCol);
-    const col2 = bodyBlocks.slice(perCol, perCol * 2);
-    const col3 = bodyBlocks.slice(perCol * 2);
+  // Pick special-slot blocks (first occurrence wins; duplicates stay in body).
+  const hero = doc.blocks.find((b) => b.type === 'hero');
+  const quote = doc.blocks.find((b) => b.type === 'quote');
+  const tags = doc.blocks.find((b) => b.type === 'tags');
+  const source = doc.blocks.find((b) => b.type === 'source');
+  const bodyBlocks = doc.blocks.filter(
+    (b) => b !== hero && b !== quote && b !== tags && b !== source,
+  );
 
-    return (
+  // Chunk body blocks into 3 columns (column-major order: read down then
+  // across). Round-robin would interleave; chunking keeps related blocks
+  // together which reads more like a real editorial column.
+  const perCol = Math.ceil(Math.max(bodyBlocks.length, 1) / 3);
+  const col1 = bodyBlocks.slice(0, perCol);
+  const col2 = bodyBlocks.slice(perCol, perCol * 2);
+  const col3 = bodyBlocks.slice(perCol * 2);
+
+  return (
+    <PaletteContext.Provider value={C}>
       <div
         className="poster-container mx-auto w-full max-w-[960px] flex flex-col"
         style={{
@@ -111,12 +170,14 @@ export function InfographicView({ doc }: InfographicViewProps) {
         </div>
         <Footer quote={quote} tags={tags} source={source} />
       </div>
-    );
-  }
+    </PaletteContext.Provider>
+  );
+}
 
 // --- Layout primitives ------------------------------------------------------
 
 function Masthead({ block }: { block: Extract<InfographicBlock, { type: 'hero' }> }) {
+  const C = usePalette();
   return (
     <header
       className="poster-masthead grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-4 px-8 py-6"
@@ -181,6 +242,7 @@ function Masthead({ block }: { block: Extract<InfographicBlock, { type: 'hero' }
 }
 
 function Column({ blocks, last }: { blocks: InfographicBlock[]; last?: boolean }) {
+  const C = usePalette();
   return (
     <div
       className={`poster-col flex flex-col gap-7 px-7 py-8${last ? '' : ' md:border-r'}`}
@@ -204,6 +266,7 @@ function Footer({
   tags?: InfographicBlock;
   source?: InfographicBlock;
 }) {
+  const C = usePalette();
   // Left slot stacks quote (editorial pull) above source (citation) when both
   // are present — neither is dropped, so the source URL is always preserved.
   // Right slot holds tags.
@@ -270,6 +333,7 @@ export function BlockView({ block, index = 1 }: BlockViewProps) {
 // --- Shared editorial atoms -------------------------------------------------
 
 function Eyebrow({ label, num }: { label: string; num: number }) {
+  const C = usePalette();
   return (
     <div
       className="poster-eyebrow"
@@ -288,6 +352,7 @@ function Eyebrow({ label, num }: { label: string; num: number }) {
 }
 
 function MonoLabel({ children }: { children: ReactNode }) {
+  const C = usePalette();
   return (
     <div
       style={{
@@ -308,6 +373,7 @@ function MonoLabel({ children }: { children: ReactNode }) {
 // --- Per-block renderers ----------------------------------------------------
 
 function StatBlock({ block }: { block: Extract<InfographicBlock, { type: 'stat' }> }) {
+  const C = usePalette();
   const items = block.items.slice(0, 4);
   return (
     <div className="poster-stat">
@@ -352,6 +418,7 @@ function KeyPointsBlock({
   block: Extract<InfographicBlock, { type: 'keypoints' }>;
   index: number;
 }) {
+  const C = usePalette();
   return (
     <div className="poster-keypoints">
       <Eyebrow label={EYEBROW_LABELS['keypoints']!} num={index} />
@@ -391,6 +458,7 @@ function TimelineBlock({
   block: Extract<InfographicBlock, { type: 'timeline' }>;
   index: number;
 }) {
+  const C = usePalette();
   return (
     <div className="poster-timeline">
       <Eyebrow label={EYEBROW_LABELS['timeline']!} num={index} />
@@ -443,6 +511,7 @@ function StepsBlock({
   block: Extract<InfographicBlock, { type: 'steps' }>;
   index: number;
 }) {
+  const C = usePalette();
   return (
     <div className="poster-steps">
       <Eyebrow label={EYEBROW_LABELS['steps']!} num={index} />
@@ -495,6 +564,7 @@ function ComparisonBlock({
   block: Extract<InfographicBlock, { type: 'comparison' }>;
   index: number;
 }) {
+  const C = usePalette();
   const cols = block.columns.slice(0, 3);
   return (
     <div className="poster-comparison">
@@ -527,6 +597,7 @@ function ComparisonBlock({
 }
 
 function QuoteBlock({ block }: { block: Extract<InfographicBlock, { type: 'quote' }> }) {
+  const C = usePalette();
   return (
     <div
       className="poster-quote"
@@ -565,6 +636,7 @@ function QuoteBlock({ block }: { block: Extract<InfographicBlock, { type: 'quote
 }
 
 function TagsBlock({ block }: { block: Extract<InfographicBlock, { type: 'tags' }> }) {
+  const C = usePalette();
   return (
     <div
       className="poster-tags"
@@ -589,6 +661,7 @@ function TagsBlock({ block }: { block: Extract<InfographicBlock, { type: 'tags' 
 }
 
 function SourceBlock({ block }: { block: Extract<InfographicBlock, { type: 'source' }> }) {
+  const C = usePalette();
   return (
     <div
       className="poster-source"
@@ -620,6 +693,7 @@ function SourceBlock({ block }: { block: Extract<InfographicBlock, { type: 'sour
 }
 
 function UnknownBlock({ block }: { block: InfographicBlock }) {
+  const C = usePalette();
   // Defensive fallback: never throw on enum drift. Log so it's observable.
   console.warn('[InfographicView] unknown block type:', (block as { type?: string }).type);
   return (

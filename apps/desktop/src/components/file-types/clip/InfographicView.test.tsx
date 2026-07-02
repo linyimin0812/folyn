@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { InfographicView, BlockView } from './InfographicView';
 import type { InfographicBlock, InfographicDoc } from '@/features/clips/clipParse';
+import { useSettingsStore } from '@/store/settingsStore';
 
 /**
  * Component tests for the editorial-style infographic renderer.
@@ -27,6 +28,12 @@ const stripTags = (html: string): string => html.replace(/<[^>]+>/g, '');
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+// Theme is module-level state in `useSettingsStore`; restore to the default
+// 'light' between tests so dark-mode assertions don't leak into siblings.
+beforeEach(() => {
+  useSettingsStore.setState({ theme: 'light' });
 });
 
 describe('BlockView — known types', () => {
@@ -317,5 +324,58 @@ describe('InfographicView — editorial poster layout', () => {
     // 3 poster-col divs.
     const colCount = (html.match(/poster-col/g) || []).length;
     expect(colCount).toBe(3);
+  });
+});
+
+describe('InfographicView — theme-aware palette', () => {
+  // oklch values that uniquely identify each palette in the rendered inline
+  // styles. We pick tokens that do NOT collide across palettes AND that are
+  // actually emitted by the sample blocks (hero / stat / source use `bg`,
+  // `fg`, `muted`, `border`, `accent` — NOT `surface`):
+  //   - LIGHT_BG `oklch(98% 0.004 95)` is light's bg, unique to light.
+  //   - DARK_FG `oklch(95% 0.004 95)` is dark's fg, unique to dark.
+  //   - DARK_ACCENT `oklch(72% 0.10 28)` is dark's accent, unique to dark.
+  // (Dark bg `oklch(20% 0.018 70)` collides with light fg — avoid it.)
+  const LIGHT_BG = 'oklch(98% 0.004 95)';
+  const DARK_FG = 'oklch(95% 0.004 95)';
+  const DARK_ACCENT = 'oklch(72% 0.10 28)';
+
+  const sampleDoc: InfographicDoc = {
+    version: 1,
+    blocks: [
+      { type: 'hero', title: '主题标题' },
+      { type: 'stat', items: [{ value: '10x', label: '吞吐量' }] },
+      { type: 'source', url: 'https://example.com/a', hostname: 'example.com' },
+    ],
+  };
+
+  it('renders the light palette by default (theme="light")', () => {
+    useSettingsStore.setState({ theme: 'light' });
+    const html = renderDoc(sampleDoc);
+    expect(html).toContain(LIGHT_BG);
+    // Dark palette tokens must NOT appear when theme is light.
+    expect(html).not.toContain(DARK_FG);
+    expect(html).not.toContain(DARK_ACCENT);
+  });
+
+  it('renders the dark palette when theme="dark"', () => {
+    useSettingsStore.setState({ theme: 'dark' });
+    const html = renderDoc(sampleDoc);
+    // Dark fg + accent both appear in the inline styles (hero fg, stat accent).
+    expect(html).toContain(DARK_FG);
+    expect(html).toContain(DARK_ACCENT);
+    // Light bg must NOT leak into the dark render.
+    expect(html).not.toContain(LIGHT_BG);
+  });
+
+  it('swaps palettes when theme toggles between renders', () => {
+    useSettingsStore.setState({ theme: 'light' });
+    const lightHtml = renderDoc(sampleDoc);
+    useSettingsStore.setState({ theme: 'dark' });
+    const darkHtml = renderDoc(sampleDoc);
+    expect(lightHtml).toContain(LIGHT_BG);
+    expect(lightHtml).not.toContain(DARK_FG);
+    expect(darkHtml).toContain(DARK_FG);
+    expect(darkHtml).not.toContain(LIGHT_BG);
   });
 });
