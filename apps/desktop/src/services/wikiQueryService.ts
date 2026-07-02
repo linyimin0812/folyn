@@ -64,7 +64,7 @@ export function buildQueryInstruction(query: string, wikiContext: string): strin
     '## User Question',
     query,
     '',
-    '请按 query action 输出契约：基于 wiki 上下文回答，用 [[wiki://path]] 引用来源；信息不足时明确说明。',
+    '请按 query action 契约输出。',
   ].join('\n');
 }
 

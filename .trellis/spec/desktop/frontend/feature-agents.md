@@ -202,6 +202,48 @@ return opts;
 
 ---
 
+## Convention: Runtime Prompt = Params Only, Contract = Agent .md
+
+**What**: Runtime prompt builders (e.g. `buildStudyInstruction`, `buildQueryInstruction`, card metadata fallback, `DailyDigest` schedule prompt) emit only runtime parameters — action name, topic path/name, selected context, mode markers, dynamic data the agent can't derive. All static contract content (output format rules, line grammar, callout syntax, JSON shape, "不要 Edit 改文件", 字数限制, role/preamble) lives in canonical `.claude/agents/<feature>.md` as the single contract source.
+
+**Why**: Duplicating contract in the runtime prompt means a contract change requires editing two places (caller + agent .md) — and the agent .md is the only file the agent actually loads at invoke time (via cwd auto-discovery). Trimming prompts to params-only keeps the contract authoritative in one place, matches how the agent actually loads context, and shrinks token overhead without changing behavior.
+
+**Trim pattern** (apply to every caller):
+1. Drop role/preamble ("你是 ... 助手")
+2. Drop output format rules (JSON shape, callout syntax, line grammar)
+3. Drop meta-instructions ("不要 Edit 改文件", "只输出 ...")
+4. Keep: action name (e.g. `动作：research`), dynamic runtime data (paths, names, selected items, mode markers)
+
+**Reference pattern** (correct): `apps/desktop/src/services/clipService.ts` infographic prompt — only passes `[infographic-mode]` marker + runtime data (title/url/summary/keyPoints), no contract duplication. JSON block schema lives in `clips.md`.
+
+**Anti-pattern** (pre-trim, incorrect): `buildStudyInstruction('research')` used to inline the full format rules:
+```ts
+// ❌ Don't: duplicate contract in the runtime prompt
+return [
+  head,
+  '动作：research',
+  '检索高质量学习资料...返回 5-8 条资料建议。',
+  '每条严格单行，格式（| 两侧留空格；难度用 易/中/难）：',
+  '- `- @book <书名> | <作者> | <简介> | 难度:<易|中|难>`...',
+  '- `- @web <标题> | <链接> | <简介>`',
+  '只输出资料行，不要用 Edit 改文件。',
+].join('\n');
+```
+```ts
+// ✅ Do: params only; format rules live in agents/study.md
+return [head, '动作：research'].join('\n');
+```
+
+**Cross-check before trimming**: diff the runtime prompt against the agent .md. Any rule in the runtime prompt that's NOT in .md must be added to .md first (so we don't silently lose contract). All 5 canonical agent .md files already contain the full contract for their actions.
+
+**Related files**:
+- `apps/desktop/src/features/study/scheduleLink.ts` — `buildStudyInstruction` (5 actions, params only)
+- `apps/desktop/src/services/clipService.ts` — card metadata fallback (thin) + infographic (reference pattern)
+- `apps/desktop/src/services/wikiQueryService.ts` — `buildQueryInstruction` (params + wiki context block)
+- `apps/desktop/src/components/editor/DailyDigest.tsx` — schedule prompt (today + modified docs + recent daily notes)
+
+---
+
 ## Reference Files
 
 - `apps/desktop/src/services/featureAgentService.ts` — registry, seed logic, send-options

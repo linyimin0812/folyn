@@ -133,17 +133,16 @@ describe('buildStudyInstruction (PR9: 动态指令；静态契约由 study-agent
   const topicPath = '__study__/agent-dev.md';
   const baseCtx = { topicName: 'agent 开发', topicPath };
 
-  it('research: 产出含主题路径、动作关键字与行格式契约的指令', () => {
+  it('research: 只产出主题路径 + 动作关键字，契约由 agent .md 承载', () => {
     const p = buildStudyInstruction('research', baseCtx);
     expect(p).toContain(topicPath);
     expect(p).toContain('agent 开发');
     expect(p).toContain('动作：research');
-    // 运行时指令内嵌资料行格式契约（保证旧 vault 内 agent prompt 未更新时仍输出正确格式）
-    expect(p).toContain('- @book');
-    expect(p).toContain('- @web');
-    expect(p).toContain('难度:<易|中|难>');
-    expect(p).toMatch(/省略|可选|无在线链接/);
-    expect(p).toMatch(/不要.*Edit|不用.*Edit/);
+    // 格式契约已移入 canonical agent .md，运行时指令不再重复
+    expect(p).not.toContain('- @book');
+    expect(p).not.toContain('- @web');
+    expect(p).not.toContain('难度:<易|中|难>');
+    expect(p).not.toMatch(/不要.*Edit|不用.*Edit/);
   });
 
   it('feynman: 含主题路径与动作关键字，可带聚焦单元', () => {
@@ -153,14 +152,16 @@ describe('buildStudyInstruction (PR9: 动态指令；静态契约由 study-agent
     expect(p).toContain('聚焦单元：理解 agent 循环');
     // callout 格式契约已移入 study-agent.md
     expect(p).not.toContain(':::callout');
+    expect(p).not.toContain('扮演 5 岁小孩');
   });
 
-  it('selftest: 含动作关键字，不含 callout 契约', () => {
+  it('selftest: 只含动作关键字，不含 callout/笔记段契约', () => {
     const p = buildStudyInstruction('selftest', baseCtx);
     expect(p).toContain(topicPath);
     expect(p).toContain('动作：selftest');
     expect(p).not.toContain(':::callout');
     expect(p).not.toContain('<details>');
+    expect(p).not.toContain('## 笔记');
   });
 
   it('sq3r: 含资料标题/链接与动作关键字', () => {
@@ -174,13 +175,14 @@ describe('buildStudyInstruction (PR9: 动态指令；静态契约由 study-agent
     expect(p).toContain('Building LLM Apps');
     expect(p).toContain('https://example.com/x');
     expect(p).not.toContain(':::callout');
+    expect(p).not.toContain('survey');
   });
 
-  it('plan: 含动作关键字与由浅入深要求，不含行语法契约', () => {
+  it('plan: 只含动作关键字，行语法/由浅入深契约由 agent .md 承载', () => {
     const p = buildStudyInstruction('plan', baseCtx);
     expect(p).toContain(topicPath);
     expect(p).toContain('动作：plan');
-    expect(p).toContain('由浅入深');
+    expect(p).not.toContain('由浅入深');
     expect(p).not.toContain('@{est:2h');
   });
 

@@ -91,8 +91,8 @@ export async function generateClip(
     const mdUrl = 'https://curl.md/' + encodeURIComponent(url);
     const skill = useSkillStore.getState().getSkillForCapability('clip');
     const prompt = skill
-      ? `${skill.content}\n\n## Task\n请分析以下网页并生成知识卡片。\n原始 URL（仅作来源/标题参考）：${url}\n用 WebFetch 抓取该页面的 Markdown 版本（curl.md 服务），地址：${mdUrl}\n据该 Markdown 生成知识卡片元数据 JSON。`
-      : `你是一个网页内容分析助手。请分析以下网页内容，生成一张结构化的知识卡片。\n\n原始 URL（仅作来源/标题参考）：${url}\n\n用 WebFetch 抓取该页面的 Markdown 版本（curl.md 服务，已做 HTML→Markdown 转换）：\n${mdUrl}\n\n据此 Markdown 生成卡片元数据，以 JSON 格式回复：\n{\n  "title": "page title",\n  "tags": ["tag1", "tag2", "tag3"],\n  "suggestedTags": ["tag4", "tag5"],\n  "summary": "2-4 sentences summary",\n  "keyPoints": ["point 1", "point 2", "point 3"]\n}`;
+      ? `${skill.content}\n\n## Task\n请分析以下网页并生成知识卡片元数据。\n原始 URL（仅作来源/标题参考）：${url}\n用 WebFetch 抓取 curl.md 版本：${mdUrl}`
+      : `请分析以下网页并生成知识卡片元数据。\n原始 URL（仅作来源/标题参考）：${url}\n用 WebFetch 抓取 curl.md 版本：${mdUrl}`;
 
     const textPromise = collectTextFromStream(adapter, onStream, onEvent);
     await adapter.send(prompt, await getFeatureAgentSendOptions('clips'));

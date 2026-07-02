@@ -99,18 +99,13 @@ export function DailyDigest({ currentFilePath, onInsertContent }: DailyDigestPro
         }
       }
 
-      const prompt = `你是 Quill 知识库的 AI 助手。请生成今日（${todayStr}）的写作回顾，包含以下内容：
-1. 今日修改/创建的文档列表和简要内容摘要
-2. 工作/写作主题总结
-3. 与过去笔记的关联提示（如果能发现关联）
+      const prompt = `今日：${todayStr}
 
-今日修改的文档:
+## 今日修改文档
 ${fileSummaries || '(无修改记录)'}
 
-最近几天的日记:
-${recentDailyContext || '(无历史日记)'}
-
-请输出 Markdown 格式的简洁回顾，控制在 300 字以内。`;
+## 最近日记
+${recentDailyContext || '(无历史日记)'}`;
 
       let result = '';
 

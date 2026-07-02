@@ -165,39 +165,33 @@ export function buildStudyInstruction(
       return [
         head,
         '动作：research',
-        '检索高质量学习资料（网络文章/文档）与经典书籍/论文，返回 5-8 条资料建议。',
-        '每条严格单行，格式（| 两侧留空格；难度用 易/中/难）：',
-        '- `- @book <书名> | <作者> | <简介> | 难度:<易|中|难>`（书籍无在线链接时可省略最后的 ` | <链接>`；有则附 ` | <链接>`）',
-        '- `- @web <标题> | <链接> | <简介>`',
-        '只输出资料行，不要用 Edit 改文件。',
       ].join('\n');
     case 'plan': {
       const refs = selectedMaterials && selectedMaterials.length
         ? [
           '',
-          '依据以下资料（标题 / 作者 / 链接 / 简介）拆解单元，确保单元覆盖这些资料：',
+          '依据以下资料拆解单元，确保单元覆盖这些资料：',
           ...selectedMaterials.map((m) =>
             `- ${m.title}${m.author ? ` | ${m.author}` : ''}${m.url ? ` | ${m.url}` : ''}${m.summary ? ` | ${m.summary}` : ''}`,
           ),
         ].join('\n')
         : '';
-      return `${head}${refs}\n动作：plan\n将主题拆解为 5-10 个由浅入深、有先修顺序的学习单元。`;
+      return `${head}${refs}\n动作：plan`;
     }
     case 'feynman':
       return [
         head,
         '动作：feynman',
         ...(unitTitle ? [`聚焦单元：${unitTitle}`] : []),
-        '扮演 5 岁小孩，听我用大白话讲，哪里听不懂就一次只追问一个问题，直到讲清或暴露盲区；暴露盲区时按契约追加 callout。我会先讲。',
+        '我会先用大白话讲，请按契约执行。',
       ].join('\n');
     case 'selftest':
-      return `${head}\n动作：selftest\n读取该主题文档 ## 笔记 段，根据要点生成 5 道回忆题，按契约追加 callout（先题后折叠答案）。`;
+      return `${head}\n动作：selftest`;
     case 'sq3r':
       return [
         head,
         '动作：sq3r',
         `对资料做 SQ3R 预读：${materialTitle ? `「${materialTitle}」` : ''}${materialUrl ? `（${materialUrl}）` : ''}`,
-        '给 survey 大纲 + 每部分一个预读问题，按契约追加 callout。',
       ].filter((s) => s.length > 0).join('\n');
     default:
       return '';
