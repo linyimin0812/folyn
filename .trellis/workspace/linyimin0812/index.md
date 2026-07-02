@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 27
+- **Total Sessions**: 28
 - **Last Active**: 2026-07-03
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~929 | Active |
+| `journal-1.md` | ~963 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 28 | 2026-07-03 | Fix office viewer forbidden path | `02dce8cbccbe781a93f60acea93443b1b80b4e9e` | `master` |
 | 27 | 2026-07-03 | Replace PDF handler with file-viewer | `8549a2a4e1703c590b4d6e93794953d59eaba7e6` | `master` |
 | 26 | 2026-07-02 | Integrate file-viewer preset-office | `16f4d49d3b5e41ca4782f8290a3e02bcc66e4cef` | `master` |
 | 25 | 2026-07-02 | CSV preview: always-on grid fills page | `c4770e6faa5cefbc1a6967380f30959c2399849d` | `master` |

@@ -927,3 +927,37 @@ Added 'pdf' to office handler extensions; deleted components/file-types/pdf/. PD
 ### Next Steps
 
 - None - task complete
+
+
+## Session 28: Fix office viewer forbidden path
+
+**Date**: 2026-07-03
+**Task**: Fix office viewer forbidden path
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+OfficeFileViewer now expands ~ via resolveBasePath + join before plugin-fs.readFile. Fixes 'forbidden path: ~/quill/...' caused by vaultRoot carrying a literal ~ that Tauri plugin-fs doesn't expand. tsc + 856 tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `02dce8cbccbe781a93f60acea93443b1b80b4e9e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
