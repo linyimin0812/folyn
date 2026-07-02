@@ -29,6 +29,7 @@ const EXT_TO_THEME_ICON: Record<string, string> = {
   yaml: 'yaml',
   yml: 'yaml',
   sql: 'sql',
+  csv: 'csv',
   png: 'image',
   jpg: 'image',
   jpeg: 'image',
@@ -50,6 +51,7 @@ const HANDLER_TO_THEME_ICON: Record<string, string> = {
   html: 'xhtml',
   image: 'image',
   pdf: 'pdf',
+  csv: 'csv',
   code: 'javaScript',
 };
 
