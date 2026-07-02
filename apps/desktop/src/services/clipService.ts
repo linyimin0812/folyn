@@ -25,6 +25,7 @@ interface ClipCard {
   suggestedTags: string[];
   summary: string;
   keyPoints: string[];
+  pageContent: string;
 }
 
 /** Metadata returned by generateClip, consumed by saveClip */
@@ -35,9 +36,16 @@ export interface ClipMetadata {
   summary: string;
   keyPoints: string[];
   url: string;
+  /** Full page markdown fetched via curl.md at card-gen time. Written to the
+   *  `## 正文` section of the clip file by `saveClip` so the infographic
+   *  agent has real source material offline (dead-link-safe). Empty string
+   *  (or undefined) when the agent didn't return one (older clips lack the
+   *  section). Optional so legacy callers that construct ClipMetadata
+   *  literals don't have to specify it. */
+  pageContent?: string;
 }
 
-function toSlug(title: string): string {
+export function toSlug(title: string): string {
   return title
     .toLowerCase()
     .replace(/[^a-z0-9一-鿿]+/g, '-')
@@ -107,6 +115,7 @@ export async function generateClip(
         suggestedTags: Array.isArray(parsed.suggestedTags) ? parsed.suggestedTags : [],
         summary: parsed.summary || '',
         keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints : [],
+        pageContent: typeof parsed.pageContent === 'string' ? parsed.pageContent : '',
       };
     } catch {
       throw new Error('AI 返回的内容无法解析为知识卡片，请检查 SKILL 配置');
@@ -121,6 +130,7 @@ export async function generateClip(
     suggestedTags: card.suggestedTags,
     summary: card.summary,
     keyPoints: card.keyPoints,
+    pageContent: card.pageContent,
     url,
   };
 }
@@ -151,7 +161,11 @@ export async function saveClip(
 
   const hostname = (() => { try { return new URL(metadata.url).hostname; } catch { return metadata.url; } })();
 
-  const fileContent = [
+  // Section order: front-matter → `> **来源**` quote → ## 摘要 → ## 要点
+  // → ## 正文 (if present). `## 信息图` is NOT written here — it's generated
+  // on-demand by `generateInfographic`, which writes it at the TOP position
+  // (right after the quote line, before `## 摘要`).
+  const sections: string[] = [
     '---',
     `title: "${metadata.title}"`,
     'type: clip',
@@ -170,7 +184,16 @@ export async function saveClip(
     '',
     keyPointsSection,
     '',
-  ].join('\n');
+  ];
+
+  // Only write `## 正文` when the agent returned page content. Older clips
+  // (and any caller that doesn't supply `pageContent`) simply omit the
+  // section; the infographic agent falls back to summary + keyPoints.
+  if (metadata.pageContent) {
+    sections.push('## 正文', '', metadata.pageContent, '');
+  }
+
+  const fileContent = sections.join('\n');
 
   let filePath: string;
   if (overwritePath) {
@@ -284,10 +307,18 @@ export async function generateInfographic(
     const keyPointsBlock = clip.keyPoints.length > 0
       ? clip.keyPoints.map((p) => `- ${p}`).join('\n')
       : '（无要点）';
-    const prompt = [
+    // Build the prompt. When `## 正文` (full page markdown from curl.md) is
+    // present, pass it so the agent has real source material to build 7-9
+    // dense blocks. When absent (older clips), fall back to summary +
+    // keyPoints — the agent still produces a minimal infographic.
+    const hasPageContent = clip.pageContent.length > 0;
+    const promptLines: string[] = [
       '[infographic-mode]',
       '请基于以下已剪藏的卡片内容，生成一张海报式信息图（{ "version": 1, "blocks": [...] }）。',
       '不要 WebFetch / WebSearch，只用下方提供的内容。',
+      hasPageContent
+        ? '卡片包含 `## 正文`（curl.md 抓取的页面 Markdown 全文），请基于正文提炼 7-9 个信息密集的 block。'
+        : '卡片无 `## 正文`（旧剪藏），仅基于摘要与要点生成信息图（可少于 7 个 block）。',
       '',
       `title: ${clip.title}`,
       `url: ${clip.url}`,
@@ -299,7 +330,17 @@ export async function generateInfographic(
       '',
       '## 要点',
       keyPointsBlock,
-    ].filter((l) => l !== '').join('\n');
+    ];
+    if (hasPageContent) {
+      // Soft cap to avoid blowing the prompt budget; the agent summarizes
+      // beyond this. ~12k chars is well within Claude's context window while
+      // leaving room for the output blocks.
+      const body = clip.pageContent.length > 12000
+        ? clip.pageContent.slice(0, 12000) + '\n\n…（正文过长，已截断）'
+        : clip.pageContent;
+      promptLines.push('', '## 正文', body);
+    }
+    const prompt = promptLines.filter((l) => l !== '').join('\n');
 
     const textPromise = collectTextFromStream(adapter, onStream, onEvent);
     await adapter.send(prompt, await getFeatureAgentSendOptions('clips'));

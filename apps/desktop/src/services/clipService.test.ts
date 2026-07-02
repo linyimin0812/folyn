@@ -158,9 +158,15 @@ describe('generateClip — curl.md URL construction', () => {
 
 describe('generateClip — AI response parsing', () => {
   it('parses a clean JSON card', async () => {
-    collectTextFromStream.mockResolvedValueOnce(
-      '{"title":"My Page","tags":["t1","t2"],"suggestedTags":["s1"],"summary":"sum","keyPoints":["a","b"]}',
-    );
+    const card = {
+      title: 'My Page',
+      tags: ['t1', 't2'],
+      suggestedTags: ['s1'],
+      summary: 'sum',
+      keyPoints: ['a', 'b'],
+      pageContent: '# Page\n\nbody',
+    };
+    collectTextFromStream.mockResolvedValueOnce(JSON.stringify(card));
     const meta = await generateClip('https://x.com/p');
     expect(meta).toEqual({
       title: 'My Page',
@@ -168,16 +174,26 @@ describe('generateClip — AI response parsing', () => {
       suggestedTags: ['s1'],
       summary: 'sum',
       keyPoints: ['a', 'b'],
+      pageContent: '# Page\n\nbody',
       url: 'https://x.com/p',
     });
   });
 
   it('extracts JSON embedded in surrounding prose', async () => {
+    const card = {
+      title: 'Embedded',
+      tags: [],
+      suggestedTags: [],
+      summary: '',
+      keyPoints: [],
+      pageContent: 'body',
+    };
     collectTextFromStream.mockResolvedValueOnce(
-      'Here is the card:\n{"title":"Embedded","tags":[],"suggestedTags":[],"summary":"","keyPoints":[]}\nThanks',
+      `Here is the card:\n${JSON.stringify(card)}\nThanks`,
     );
     const meta = await generateClip('https://x.com/e');
     expect(meta.title).toBe('Embedded');
+    expect(meta.pageContent).toBe('body');
   });
 
   it('throws a parse error when AI output is not JSON', async () => {
@@ -185,7 +201,7 @@ describe('generateClip — AI response parsing', () => {
     await expect(generateClip('https://x.com/bad')).rejects.toThrow(/无法解析为知识卡片/);
   });
 
-  it('defaults missing fields to safe empties', async () => {
+  it('defaults missing fields to safe empties, including pageContent', async () => {
     collectTextFromStream.mockResolvedValueOnce('{"title":"Partial"}');
     const meta = await generateClip('https://x.com/partial');
     expect(meta.title).toBe('Partial');
@@ -193,6 +209,7 @@ describe('generateClip — AI response parsing', () => {
     expect(meta.suggestedTags).toEqual([]);
     expect(meta.summary).toBe('');
     expect(meta.keyPoints).toEqual([]);
+    expect(meta.pageContent).toBe('');
   });
 
   it('stops the adapter even when parsing fails', async () => {
@@ -273,6 +290,41 @@ describe('saveClip — markdown assembly', () => {
     });
     const content = createFile.mock.calls[0][1] as string;
     expect(content).toContain('_无要点提取_');
+  });
+
+  it('writes a ## 正文 section when pageContent is provided', async () => {
+    await saveClip({
+      title: 'With Body',
+      tags: ['t'],
+      suggestedTags: [],
+      summary: 's',
+      keyPoints: ['p1'],
+      url: 'https://x.com/b',
+      pageContent: '# Page Title\n\nSome body text.',
+    });
+    const content = createFile.mock.calls[0][1] as string;
+    expect(content).toContain('## 正文');
+    expect(content).toContain('# Page Title');
+    expect(content).toContain('Some body text.');
+    // Section order: 摘要 → 要点 → 正文.
+    const idxSummary = content.indexOf('## 摘要');
+    const idxPoints = content.indexOf('## 要点');
+    const idxBody = content.indexOf('## 正文');
+    expect(idxSummary).toBeLessThan(idxPoints);
+    expect(idxPoints).toBeLessThan(idxBody);
+  });
+
+  it('omits ## 正文 when pageContent is empty or missing', async () => {
+    await saveClip({
+      title: 'No Body',
+      tags: ['t'],
+      suggestedTags: [],
+      summary: 's',
+      keyPoints: ['p1'],
+      url: 'https://x.com/n',
+    });
+    const content = createFile.mock.calls[0][1] as string;
+    expect(content).not.toContain('## 正文');
   });
 
   it('slugifies titles: lowercases, drops non-alphanumerics, keeps CJK, caps at 60 chars', async () => {
@@ -500,5 +552,73 @@ describe('generateInfographic', () => {
     readFile.mockResolvedValueOnce('---\n---\n');
     await expect(generateInfographic('__clips__/tech/empty.md')).rejects.toThrow(/内容为空/);
     expect(fakeAdapter.start).not.toHaveBeenCalled();
+  });
+
+  it('writes ## 信息图 at the TOP position (before ## 摘要), not at the bottom', async () => {
+    readFile.mockResolvedValueOnce(sampleClipMd);
+    collectTextFromStream.mockResolvedValueOnce(
+      JSON.stringify({ version: 1, blocks: [{ type: 'hero', title: 'H' }] }),
+    );
+    await generateInfographic('__clips__/tech/order.md');
+    const [, writtenContent] = writeFile.mock.calls[0];
+    const idxQuote = writtenContent.indexOf('> **来源**');
+    const idxInfo = writtenContent.indexOf('## 信息图');
+    const idxSummary = writtenContent.indexOf('## 摘要');
+    const idxPoints = writtenContent.indexOf('## 要点');
+    expect(idxQuote).toBeGreaterThan(-1);
+    expect(idxInfo).toBeGreaterThan(idxQuote);
+    expect(idxInfo).toBeLessThan(idxSummary);
+    expect(idxSummary).toBeLessThan(idxPoints);
+  });
+
+  it('moves an existing bottom ## 信息图 to the TOP position on regenerate', async () => {
+    // Legacy clip with ## 信息图 at the bottom (after ## 要点).
+    const legacy = `${sampleClipMd}## 信息图\n\n\`\`\`json\n${JSON.stringify({
+      version: 1,
+      blocks: [{ type: 'hero', title: 'OLD' }],
+    })}\n\`\`\`\n`;
+    readFile.mockResolvedValueOnce(legacy);
+    collectTextFromStream.mockResolvedValueOnce(
+      JSON.stringify({ version: 1, blocks: [{ type: 'hero', title: 'NEW' }] }),
+    );
+    await generateInfographic('__clips__/tech/legacy.md');
+    const [, writtenContent] = writeFile.mock.calls[0];
+    expect(writtenContent).not.toContain('OLD');
+    expect(writtenContent).toContain('NEW');
+    expect((writtenContent.match(/## 信息图/g) || []).length).toBe(1);
+    // Top position: 信息图 before 摘要.
+    const idxInfo = writtenContent.indexOf('## 信息图');
+    const idxSummary = writtenContent.indexOf('## 摘要');
+    expect(idxInfo).toBeLessThan(idxSummary);
+  });
+
+  it('passes ## 正文 content to the agent when present', async () => {
+    const clipWithBody = `${sampleClipMd}## 正文\n\n# Page Title\n\nReal body text from curl.md.\n`;
+    readFile.mockResolvedValueOnce(clipWithBody);
+    collectTextFromStream.mockResolvedValueOnce(
+      JSON.stringify({ version: 1, blocks: [{ type: 'hero', title: 'H' }] }),
+    );
+    await generateInfographic('__clips__/tech/body.md');
+    const prompt = fakeAdapter.send.mock.calls[0][0] as string;
+    expect(prompt).toContain('## 正文');
+    expect(prompt).toContain('Real body text from curl.md.');
+    // Hint to the agent that 正文 is present.
+    expect(prompt).toContain('7-9');
+  });
+
+  it('falls back to summary + keyPoints (no ## 正文 in prompt) when 正文 absent', async () => {
+    readFile.mockResolvedValueOnce(sampleClipMd);
+    collectTextFromStream.mockResolvedValueOnce(
+      JSON.stringify({ version: 1, blocks: [{ type: 'hero', title: 'H' }] }),
+    );
+    await generateInfographic('__clips__/tech/nobody.md');
+    const prompt = fakeAdapter.send.mock.calls[0][0] as string;
+    // No `## 正文` section header line (a line that is exactly `## 正文`).
+    // The hint text mentions `## 正文` inline within backticks, but there's
+    // no actual section header + body in the prompt.
+    expect(prompt).not.toMatch(/^## 正文$/m);
+    // Still has summary + keyPoints.
+    expect(prompt).toContain('A short summary of the page.');
+    expect(prompt).toContain('- point one');
   });
 });

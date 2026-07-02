@@ -4,7 +4,7 @@
 // rewired in PR2) so neither depends on the other for parsing. Pure
 // functions, no React / store deps — safe to import from services.
 //
-// Clip markdown structure:
+// Clip markdown structure (new section order, poster-first):
 //   ---
 //   title: "..."
 //   type: clip
@@ -15,14 +15,20 @@
 //
 //   > **来源**: [<hostname>](<url>)
 //
+//   ## 信息图        ← optional, on-demand; written at TOP position
+//   ```json
+//   { "version": 1, "blocks": [...] }
+//   ```
 //   ## 摘要
 //   ...
 //   ## 要点
 //   - ...
-//   ## 信息图
-//   ```json
-//   { "version": 1, "blocks": [...] }
-//   ```
+//   ## 正文          ← optional; full page markdown from curl.md
+//   ...
+//
+// `parseClipContent` is order-agnostic: it finds each section by heading
+// regardless of position, so old clips with `## 信息图` at the bottom still
+// parse correctly.
 
 /** A single infographic block. Discriminated union on `type`. */
 export type InfographicBlock =
@@ -51,14 +57,35 @@ export interface ClipData {
   summary: string;
   keyPoints: string[];
   hostname: string;
+  /** Full page markdown stored under `## 正文`; empty string when absent. */
+  pageContent: string;
   /** Parsed `## 信息图` section; null when absent or invalid. */
   infographic: InfographicDoc | null;
+}
+
+/**
+ * Extract a section body by heading, order-agnostic. Finds the first
+ * `## <heading>` occurrence and returns the text between it and the next
+ * `## ` heading (or EOF). Returns empty string when the heading is absent.
+ *
+ * Shared by `parseClipContent` so `## 摘要` / `## 要点` / `## 正文` /
+ * `## 信息图` all parse the same way regardless of where they appear in
+ * the document — old clips with `## 信息图` at the end still parse.
+ */
+function extractSection(content: string, heading: string): string {
+  const re = new RegExp(`${heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\n([\\s\\S]*?)(?=\\n## |$)`);
+  const m = content.match(re);
+  return m ? m[1].trim() : '';
 }
 
 /**
  * Parse clip markdown into structured data. Tolerant: missing frontmatter or
  * sections yield safe defaults rather than throwing. Mirrors the parsing the
  * render layer (ClipCardView) historically did inline, now shared.
+ *
+ * Order-agnostic: sections are located by heading, not by position, so any
+ * clip — new (## 信息图 at top) or legacy (## 信息图 at bottom) — parses
+ * the same way.
  */
 export function parseClipContent(content: string): ClipData {
   const fm: Record<string, string> = {};
@@ -88,20 +115,17 @@ export function parseClipContent(content: string): ClipData {
     }
   }
 
-  // Extract summary (up to the next ## section or EOF).
-  let summary = '';
-  const summaryMatch = body.match(/## 摘要\s*\n([\s\S]*?)(?=\n## |\n$|$)/);
-  if (summaryMatch) summary = summaryMatch[1].trim();
+  const summary = extractSection(body, '## 摘要');
 
   // Extract key points.
-  let keyPoints: string[] = [];
-  const pointsMatch = body.match(/## 要点\s*\n([\s\S]*?)(?=\n## |\n$|$)/);
-  if (pointsMatch) {
-    keyPoints = pointsMatch[1]
-      .split('\n')
-      .map((l) => l.replace(/^-\s*/, '').trim())
-      .filter(Boolean);
-  }
+  const pointsBody = extractSection(body, '## 要点');
+  const keyPoints: string[] = pointsBody
+    .split('\n')
+    .map((l) => l.replace(/^-\s*/, '').trim())
+    .filter(Boolean);
+
+  // Extract full page content stored under ## 正文 (may be absent on older clips).
+  const pageContent = extractSection(body, '## 正文');
 
   const url = fm['url'] || '';
   let hostname = '';
@@ -119,6 +143,7 @@ export function parseClipContent(content: string): ClipData {
     summary,
     keyPoints,
     hostname,
+    pageContent,
     infographic: parseInfographic(body),
   };
 }
@@ -130,11 +155,11 @@ export function parseClipContent(content: string): ClipData {
  * fenced JSON is invalid. Never throws: callers can render a fallback on null.
  *
  * Accepts the full document content (it searches within) or just the body
- * after frontmatter.
+ * after frontmatter. Order-agnostic: finds `## 信息图` wherever it appears.
  */
 export function parseInfographic(content: string): InfographicDoc | null {
   // Match the `## 信息图` section up to the next `## ` heading or EOF.
-  const sectionMatch = content.match(/## 信息图\s*\n([\s\S]*?)(?=\n## [^\n]|\n$|$)/);
+  const sectionMatch = content.match(/## 信息图\s*\n([\s\S]*?)(?=\n## |$)/);
   if (!sectionMatch) return null;
   const sectionBody = sectionMatch[1];
 
@@ -187,20 +212,61 @@ export function serializeInfographicSection(doc: InfographicDoc): string {
  * preserving every other section byte-for-byte. Used by clipService for both
  * first-generation and regenerate (overwrite) flows.
  *
- * - If a `## 信息图` section already exists, it is replaced in-place.
- * - If not, the new section is appended at the end of the document.
+ * **Top-position rule**: the `## 信息图` section is always written at the
+ * TOP position — right after the `> **来源**` quote line, before
+ * `## 摘要`. For existing clips where `## 信息图` was previously at the
+ * bottom (after `## 正文`), regenerate moves it to the top: the old
+ * section is removed, then the new section is inserted at the top.
+ *
+ * Insertion point selection (in priority order):
+ *   1. Before `## 摘要` if present
+ *   2. Before `## 要点` if present
+ *   3. Before `## 正文` if present
+ *   4. After the `> **来源**` quote line if present
+ *   5. Appended at end of document
  */
 export function writeInfographicSection(content: string, doc: InfographicDoc): string {
   const section = serializeInfographicSection(doc);
-  // Matches `## 信息图` heading through to the next `## ` heading or EOF.
-  const existing = content.match(/## 信息图\s*\n[\s\S]*?(?=\n## [^\n]|\n$|$)/);
+
+  // 1. Remove any existing `## 信息图` section (wherever it is).
+  let cleaned = content;
+  const existing = content.match(/## 信息图\s*\n[\s\S]*?(?=\n## |$)/);
   if (existing && existing.index !== undefined) {
-    // Replace the matched section. Preserve trailing newline structure by
-    // matching up to (but not consuming) the next heading / EOF.
-    return content.slice(0, existing.index) + section + content.slice(existing.index + existing[0].length);
+    const before = content.slice(0, existing.index);
+    const after = content.slice(existing.index + existing[0].length);
+    // Collapse the surrounding blank lines so we don't leave a double-gap.
+    cleaned = `${before.replace(/[ \t]*\n+$/, '')}\n\n${after.replace(/^\s+/, '')}`.trim() + '\n';
   }
-  // Append: ensure exactly one blank line between the previous content and
-  // the new section, and a trailing newline at EOF.
-  const trimmed = content.replace(/\s+$/, '');
+
+  // 2. Find the insertion index — before the first of (## 摘要 / ## 要点 /
+  //    ## 正文) that appears in the cleaned doc. Each is searched by literal
+  //    heading text so we get the earliest position regardless of order.
+  const targets = ['## 摘要', '## 要点', '## 正文'];
+  let insertAt: number | null = null;
+  for (const heading of targets) {
+    const idx = cleaned.indexOf(heading);
+    if (idx !== -1 && (insertAt === null || idx < insertAt)) {
+      insertAt = idx;
+    }
+  }
+
+  if (insertAt !== null) {
+    const before = cleaned.slice(0, insertAt).replace(/[ \t]*\n+$/, '');
+    const after = cleaned.slice(insertAt).replace(/^\s+/, '');
+    return `${before}\n\n${section}\n\n${after}`.replace(/\n{3,}/g, '\n\n') + '\n';
+  }
+
+  // 3. No `## 摘要` / `## 要点` / `## 正文` — insert after the `> **来源**`
+  //    quote line if present.
+  const quoteMatch = cleaned.match(/^> \*\*来源\*\*[^\n]*\n?/m);
+  if (quoteMatch && quoteMatch.index !== undefined) {
+    const splitAt = quoteMatch.index + quoteMatch[0].length;
+    const before = cleaned.slice(0, splitAt).replace(/[ \t]*\n+$/, '');
+    const after = cleaned.slice(splitAt).replace(/^\s+/, '');
+    return `${before}\n\n${section}\n\n${after}`.replace(/\n{3,}/g, '\n\n') + '\n';
+  }
+
+  // 4. Nothing else — append at end.
+  const trimmed = cleaned.replace(/\s+$/, '');
   return `${trimmed}\n\n${section}\n`;
 }

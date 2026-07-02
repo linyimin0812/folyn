@@ -46,6 +46,15 @@ vi.mock('@/store/clipStore', () => ({
   }),
 }));
 
+// Mock the PNG export helper so the test never touches html-to-image / Tauri.
+// The mock captures the element passed in so the test can assert it's the
+// poster container, and resolves by default (success path).
+const exportInfographicToPng = vi.fn(async (_el: HTMLElement, _opts: { slug: string }) => {});
+vi.mock('./InfographicExport', () => ({
+  exportInfographicToPng: (...args: Parameters<typeof exportInfographicToPng>) =>
+    exportInfographicToPng(...args),
+}));
+
 import { ClipCardView } from './ClipCardView';
 import { useClipStore } from '@/store/clipStore';
 
@@ -129,10 +138,13 @@ const clipWithCorruptInfographic = `${baseFrontmatter}
 
 afterEach(() => {
   vi.restoreAllMocks();
+  exportInfographicToPng.mockClear();
+  exportInfographicToPng.mockResolvedValue(undefined);
 });
 
 beforeEach(() => {
   presetStores();
+  exportInfographicToPng.mockResolvedValue(undefined);
 });
 
 describe('ClipCardView — infographic region', () => {
@@ -213,5 +225,55 @@ describe('ClipCardView — infographic region', () => {
     );
     expect(html).toContain('重新生成中...');
     expect(html).toContain('disabled=""');
+  });
+});
+
+describe('ClipCardView — export-as-image button', () => {
+  it('renders the export button next to regenerate when an infographic is present', () => {
+    presetStores();
+    const doc: InfographicDoc = {
+      version: 1,
+      blocks: [{ type: 'hero', title: 'H' }],
+    };
+    const html = renderToString(
+      <ClipCardView content={clipWithInfographic(doc)} tabId="t1" filePath="p.md" onChange={noopSync} onSave={noopSync} />,
+    );
+    expect(html).toContain('导出为图片');
+    // Regenerate button still present alongside.
+    expect(html).toContain('重新生成');
+  });
+
+  it('does not render the export button when no infographic exists', () => {
+    presetStores();
+    const html = renderToString(
+      <ClipCardView content={clipWithoutInfographic} tabId="t1" filePath="p.md" onChange={noopSync} onSave={noopSync} />,
+    );
+    expect(html).not.toContain('导出为图片');
+  });
+
+  it('shows re-clip hint when an infographic exists but ## 正文 is absent', () => {
+    presetStores();
+    const doc: InfographicDoc = {
+      version: 1,
+      blocks: [{ type: 'hero', title: 'H' }],
+    };
+    const html = renderToString(
+      <ClipCardView content={clipWithInfographic(doc)} tabId="t1" filePath="p.md" onChange={noopSync} onSave={noopSync} />,
+    );
+    // clipWithInfographic has no ## 正文 section → hint shown.
+    expect(html).toContain('重新剪藏可获得更丰富的内容');
+  });
+
+  it('does not show re-clip hint when ## 正文 is present', () => {
+    presetStores();
+    const doc: InfographicDoc = {
+      version: 1,
+      blocks: [{ type: 'hero', title: 'H' }],
+    };
+    const clipWithBody = `${clipWithInfographic(doc)}## 正文\n\npage body text\n`;
+    const html = renderToString(
+      <ClipCardView content={clipWithBody} tabId="t1" filePath="p.md" onChange={noopSync} onSave={noopSync} />,
+    );
+    expect(html).not.toContain('重新剪藏可获得更丰富的内容');
   });
 });

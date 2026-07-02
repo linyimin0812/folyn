@@ -1,9 +1,11 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useRef, useState } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { useClipStore } from '@/store/clipStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { parseClipContent } from '@/features/clips/clipParse';
 import { InfographicView } from './InfographicView';
+import { exportInfographicToPng } from './InfographicExport';
+import { toSlug } from '@/services/clipService';
 import type { EditorProps } from '../types';
 
 export function ClipCardView({ content, tabId, filePath }: EditorProps) {
@@ -16,6 +18,10 @@ export function ClipCardView({ content, tabId, filePath }: EditorProps) {
   const infographicErrorPath = useClipStore((s) => s.infographicErrorPath);
 
   const data = useMemo(() => parseClipContent(content), [content]);
+
+  const posterRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // Detect a `## 信息图` section that exists on disk but failed to parse
   // (corrupt/invalid JSON). `parseInfographic` returns null both when the
@@ -44,6 +50,24 @@ export function ClipCardView({ content, tabId, filePath }: EditorProps) {
       // Error is surfaced via `infographicError` from the store.
     }
   }, [filePath, tabId, isGeneratingInfographic, generateInfographic, readFile, updateTabContent]);
+
+  // PNG export of the poster DOM node via html-to-image + Tauri save dialog.
+  // Surface errors inline (separate from the infographic-generation error
+  // channel) so a failed export doesn't clobber the generation error state.
+  const handleExportInfographic = useCallback(async () => {
+    if (!posterRef.current || isExporting) return;
+    setExportError(null);
+    setIsExporting(true);
+    try {
+      const slug = toSlug(data.title);
+      await exportInfographicToPng(posterRef.current, { slug });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setExportError(`导出失败: ${msg}`);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [data.title, isExporting]);
 
   return (
     <div className="clip-card-view flex-1 overflow-y-auto p-4">
@@ -115,31 +139,53 @@ export function ClipCardView({ content, tabId, filePath }: EditorProps) {
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="text-[11px] text-t3 font-semibold uppercase tracking-[0.5px]">信息图</div>
             {data.infographic && (
-              <button
-                className="py-1 px-2 border border-brd rounded-md bg-surf text-t2 text-[11px] cursor-pointer transition-all duration-150 inline-flex items-center gap-1 hover:bg-hov hover:text-t1 hover:border-acc disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={handleGenerateInfographic}
-                disabled={isGeneratingInfographic}
-                title="基于当前摘要/要点重新生成信息图"
-              >
-                {isGeneratingInfographic ? (
-                  <>
-                    <span className="inline-block w-3 h-3 rounded-full border-[1.5px] border-brd border-t-acc animate-spin" />
-                    重新生成中...
-                  </>
-                ) : (
-                  <>
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <path d="M8 2a6 6 0 1 0 4.5 2M8 2v3M8 2l3 .5" />
-                    </svg>
-                    重新生成
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  className="py-1 px-2 border border-brd rounded-md bg-surf text-t2 text-[11px] cursor-pointer transition-all duration-150 inline-flex items-center gap-1 hover:bg-hov hover:text-t1 hover:border-acc disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleExportInfographic}
+                  disabled={isExporting}
+                  title="导出为 PNG 图片"
+                >
+                  {isExporting ? (
+                    <>
+                      <span className="inline-block w-3 h-3 rounded-full border-[1.5px] border-brd border-t-acc animate-spin" />
+                      导出中...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path d="M8 2v9M4 6l4 4 4-4M2 13h12" />
+                      </svg>
+                      导出为图片
+                    </>
+                  )}
+                </button>
+                <button
+                  className="py-1 px-2 border border-brd rounded-md bg-surf text-t2 text-[11px] cursor-pointer transition-all duration-150 inline-flex items-center gap-1 hover:bg-hov hover:text-t1 hover:border-acc disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleGenerateInfographic}
+                  disabled={isGeneratingInfographic}
+                  title="基于当前摘要/要点重新生成信息图"
+                >
+                  {isGeneratingInfographic ? (
+                    <>
+                      <span className="inline-block w-3 h-3 rounded-full border-[1.5px] border-brd border-t-acc animate-spin" />
+                      重新生成中...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path d="M8 2a6 6 0 1 0 4.5 2M8 2v3M8 2l3 .5" />
+                      </svg>
+                      重新生成
+                    </>
+                  )}
+                </button>
+              </div>
             )}
           </div>
 
           {data.infographic ? (
-            <InfographicView doc={data.infographic} />
+            <InfographicView ref={posterRef} doc={data.infographic} />
           ) : hasCorruptInfographic ? (
             <div className="flex flex-col gap-2">
               <div className="text-[11px] text-t3">信息图数据损坏，重新生成可修复</div>
@@ -211,6 +257,31 @@ export function ClipCardView({ content, tabId, filePath }: EditorProps) {
                 </svg>
                 重试
               </button>
+            </div>
+          )}
+
+          {/* Export error — separate channel so a failed PNG export doesn't
+              clobber the generation error state. Inline because export errors
+              are transient (font/CORS/dialog-cancel) and don't need a retry
+              affordance beyond re-clicking the export button. */}
+          {exportError && !isExporting && (
+            <div className="mt-2 rounded-md border border-red-500/30 bg-red-500/5 px-3 py-2 flex items-center gap-2">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="shrink-0 text-red-500">
+                <circle cx="8" cy="8" r="6" />
+                <path d="M8 5v4M8 11h.01" />
+              </svg>
+              <span className="text-[11px] text-red-500 flex-1 break-words">{exportError}</span>
+            </div>
+          )}
+
+          {/* Re-clip hint for clips without `## 正文` — the infographic
+              falls back to summary + keyPoints, which is content-thin. Hint
+              nudges the user to re-clip so the agent has full page markdown
+              to work with. Only shown when an infographic exists (so the
+              hint doesn't crowd the empty-state generate button). */}
+          {data.infographic && !data.pageContent && (
+            <div className="mt-2 text-[11px] text-t3">
+              此剪藏无 `## 正文`，信息图基于摘要/要点生成。重新剪藏可获得更丰富的内容。
             </div>
           )}
         </div>

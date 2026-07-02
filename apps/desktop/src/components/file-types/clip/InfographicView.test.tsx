@@ -149,7 +149,7 @@ describe('BlockView — unknown type fallback', () => {
 });
 
 describe('InfographicView — multi-block doc', () => {
-  it('renders all blocks in document order', () => {
+  it('renders all blocks in document order within a single poster container', () => {
     // Use distinctive strings so indexOf doesn't collide with class names
     // (e.g. a stat value of "1" would match `grid-cols-1`).
     const doc: InfographicDoc = {
@@ -175,5 +175,70 @@ describe('InfographicView — multi-block doc', () => {
   it('renders an empty blocks array without throwing', () => {
     const doc: InfographicDoc = { version: 1, blocks: [] };
     expect(() => renderDoc(doc)).not.toThrow();
+  });
+
+  it('renders a single unified poster container (not per-block cards)', () => {
+    const doc: InfographicDoc = {
+      version: 1,
+      blocks: [
+        { type: 'hero', title: 'H' },
+        { type: 'stat', items: [{ value: 'V', label: 'L' }] },
+        { type: 'source', url: 'https://x.com' },
+      ],
+    };
+    const html = renderDoc(doc);
+    // The poster container class is the single outer wrapper.
+    expect(html).toContain('poster-container');
+    // Each block renderer no longer wraps in its own `rounded-xl border ... bg-panel`
+    // chrome — stat renders as a bare grid, source as a bare footer div.
+    // Count outer card wrappers: there should be exactly one poster container.
+    const posterCount = (html.match(/poster-container/g) || []).length;
+    expect(posterCount).toBe(1);
+  });
+
+  it('places source at the bottom (full-width footer) and hero at the top', () => {
+    const doc: InfographicDoc = {
+      version: 1,
+      blocks: [
+        { type: 'source', url: 'https://x.com', hostname: 'x.com' },
+        { type: 'hero', title: 'HERO_TOP' },
+        { type: 'stat', items: [{ value: 'V', label: 'L' }] },
+        { type: 'source', url: 'https://y.com', hostname: 'y.com' },
+      ],
+    };
+    const html = renderDoc(doc);
+    // The renderer picks the first hero and first source for the header /
+    // footer slots, regardless of input order.
+    const idxHero = html.indexOf('HERO_TOP');
+    const idxStat = html.indexOf('V');
+    // First source (x.com) is picked as the footer; second source (y.com)
+    // falls through to the middle region as a regular block.
+    const idxX = html.indexOf('x.com');
+    const idxY = html.indexOf('y.com');
+    expect(idxHero).toBeGreaterThan(-1);
+    expect(idxStat).toBeGreaterThan(-1);
+    expect(idxX).toBeGreaterThan(-1);
+    expect(idxY).toBeGreaterThan(-1);
+    // Hero (header) comes before stat (middle), which comes before x.com
+    // (footer). y.com (middle fallback) appears between stat and x.com.
+    expect(idxHero).toBeLessThan(idxStat);
+    expect(idxStat).toBeLessThan(idxY);
+    expect(idxY).toBeLessThan(idxX);
+  });
+
+  it('pairs two narrow blocks (keypoints + timeline) into a 2-col row', () => {
+    const doc: InfographicDoc = {
+      version: 1,
+      blocks: [
+        { type: 'hero', title: 'H' },
+        { type: 'keypoints', items: ['KP_ONE'] },
+        { type: 'timeline', items: [{ time: 'T1', title: 'TL_TITLE' }] },
+      ],
+    };
+    const html = renderDoc(doc);
+    expect(html).toContain('KP_ONE');
+    expect(html).toContain('TL_TITLE');
+    // The 2-col grid wrapper is rendered (md:grid-cols-2).
+    expect(html).toContain('md:grid-cols-2');
   });
 });
