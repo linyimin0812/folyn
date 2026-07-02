@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 22
+- **Total Sessions**: 23
 - **Last Active**: 2026-07-02
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~759 | Active |
+| `journal-1.md` | ~793 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 23 | 2026-07-02 | CSV file icon | `6c712d2c26833406b80b42b9a0b510b0013c48ae` | `master` |
 | 22 | 2026-07-02 | CSV preview fill width | `f4e440ae12a27d98ae2874cf2b90de88f5d936a0` | `master` |
 | 21 | 2026-07-02 | CSV file type support | `0410a1b7b95596921110a93c86937c975df83d3e` | `master` |
 | 20 | 2026-07-02 | Hide __study__ dir from file panel | `802b84b36376a11d48ff1bb8a12aca570c00b02b` | `master` |

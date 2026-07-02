@@ -757,3 +757,37 @@ CsvTablePreview table w-auto -> w-full so small CSVs fill the preview area; wide
 ### Next Steps
 
 - None - task complete
+
+
+## Session 23: CSV file icon
+
+**Date**: 2026-07-02
+**Task**: CSV file icon
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Wired csv.svg/csv_dark.svg (already in assets/icons, auto-loaded by ThemeIcon) into FileIcon's EXT_TO_THEME_ICON + HANDLER_TO_THEME_ICON and the csv handler icon. csv files now show csv icon in tree/tab with light/dark. 877 tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6c712d2c26833406b80b42b9a0b510b0013c48ae` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
