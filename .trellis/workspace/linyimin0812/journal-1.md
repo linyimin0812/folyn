@@ -482,3 +482,40 @@ Trimmed runtime prompt builders (study/scheduleLink, clipService card metadata, 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 15: Redesign CLIPS infographic as editorial poster with dark mode
+
+**Date**: 2026-07-02
+**Task**: Redesign CLIPS infographic as editorial poster with dark mode
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Redesigned CLIPS infographic from card-stack to editorial poster. Content enrichment: saveClip stores full page markdown in ## 正文; generateClip chains card-metadata + infographic agent calls to auto-generate infographic at clip time. Renderer: rewrote InfographicView as 3-region editorial poster (masthead + 3-col body + footer) matching reference HTML, with serif display + mono eyebrows + oklch palette. Scope reduction: completely removed PNG export (deleted InfographicExport.ts, html-to-image dep, forwardRef, posterRef, export button); removed inline chrome (label, 重新生成 button, re-clip hint, errors); moved infographic before 摘要 in card view. Dark mode: added C_LIGHT/C_DARK palettes swapped via PaletteContext, useThemeState uses useSyncExternalStore to work around Zustand v5 SSR snapshot quirk.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d6f01ae` | (see git log) |
+| `015472c` | (see git log) |
+| `6b4495d` | (see git log) |
+| `9c42349` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
