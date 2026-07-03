@@ -192,3 +192,50 @@ Reference: `src/components/file-types/html/grapesConfig.ts`, `src/components/fil
 `grapesTheme.css` maps GrapesJS's CSS classes to Quill's design-system CSS variables (`--panel`, `--surf`, `--surf2`, `--brd`, `--hov`, `--acc`, `--accdim`, `--t1`/`--t2`/`--t3`, `--inp`). Because every override references `var(--xxx)`, light/dark theme switching is automatic via the `[data-theme]` attribute on the root — no JavaScript intervention is needed. The file is imported once by `useGrapesEditor.ts` alongside `grapesjs/dist/css/grapes.min.css`.
 
 Reference: `src/components/file-types/html/grapesTheme.css`
+
+---
+
+## FileViewer Spreadsheet Preview (CSV / XLSX / ODS)
+
+CSV, XLSX, ODS previews use `@file-viewer/react` with `@file-viewer/preset-office`. The spreadsheet renderer (`@file-viewer/renderer-spreadsheet`) internally renders via `e-virt-table` — a **canvas-based** virtual table, not an HTML `<table>`.
+
+### Gotcha: CSS overrides on `table/th/td` are dead code
+
+> **Warning**: The spreadsheet renderer does NOT produce an HTML `<table>` element. The cells are drawn on a `<canvas>` by `e-virt-table`. CSS selectors like `.csv-preview-container table { width: 100% }` or `.csv-preview-container td { ... }` match nothing and have zero effect.
+
+If you need to change column-width behavior for CSV/XLSX/ODS, CSS cannot do it. The column widths are computed in JS by the renderer's `buildColumns` (in `dist/spreadsheet/view.js`) and `e-virt-table`'s init logic (in `e-virt-table/dist/index.es.js`).
+
+### Width-fill is hardcoded off; `FileViewerSpreadsheetOptions` has no toggle
+
+The renderer explicitly sets `widthFillDisable: true` on every column (data columns AND the index/row-number column) inside `buildColumns`. This disables `e-virt-table`'s built-in "distribute remaining container width across columns" logic (which fires in `init()` when `resizeNum > 0`). `FileViewerSpreadsheetOptions` only exposes `worker`, `workerUrl`, `workerAutoThreshold`, `resizableColumns`, `resizableRows` — no width-fill switch.
+
+Result: tables render at their measured content width, left-aligned, with empty space on the right when the container is wider than the content.
+
+### Convention: Use `pnpm patch` to enable width-fill for spreadsheet family
+
+When width-fill is required for CSV/XLSX/ODS previews, patch the renderer via `pnpm patch`:
+
+```bash
+pnpm patch @file-viewer/renderer-spreadsheet@2.1.17
+# edit dist/spreadsheet/view.js in the temp dir
+pnpm patch-commit <temp-dir>
+```
+
+**The minimal patch**: change line 267 (the data-column branch of `buildColumns`) from `widthFillDisable: true` to `widthFillDisable: false`. Leave line 246 (the `INDEX_COLUMN_KEY` column) as `true` — the row-number column must keep its fixed width.
+
+After the patch, `e-virt-table`'s init() auto-distributes extra container width across data columns on every render and on every container resize. No DOM hack, no instance capture. The patch file lives at `patches/@file-viewer__renderer-spreadsheet@2.1.17.patch` in the repo root and is auto-applied by `pnpm install` via `package.json`'s `pnpm.patchedDependencies` block.
+
+### Scope: only the spreadsheet family is affected
+
+Other FileViewer renderers already fill the container and need no patch:
+- **PDF** (`@file-viewer/renderer-pdf`): scale-based zoom, fit-page.
+- **Word** (`@file-viewer/renderer-word`): HTML pages with `width: 100% !important`.
+- **Presentation** (`@file-viewer/renderer-presentation`): slide HTML, fills container.
+- **OFD** (`@file-viewer/renderer-ofd`): page-based, similar to PDF.
+
+### Risks
+
+- Upgrading `@file-viewer/renderer-spreadsheet` may break the patch (line numbers shift, field names change). Pin the version (no `^`) in `package.json` while the patch is in use.
+- `e-virt-table` internal API changes (`widthFillDisable` field renamed, `resizeAllColumn` logic changed) would silently re-disable width-fill. Re-verify after any `e-virt-table` version bump.
+
+Reference: `apps/desktop/src/components/file-types/csv/CsvFileViewerPreview.tsx`, `patches/@file-viewer__renderer-spreadsheet@2.1.17.patch`
