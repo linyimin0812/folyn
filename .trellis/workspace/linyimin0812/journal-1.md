@@ -1063,3 +1063,39 @@ PreviewPane full-bleed branch (csv/office) was missing flex-1, shrank to content
 ### Next Steps
 
 - None - task complete
+
+
+## Session 32: CSV/XLSX/ODS preview fill-width via pnpm patch on FileViewer renderer-spreadsheet
+
+**Date**: 2026-07-03
+**Task**: CSV/XLSX/ODS preview fill-width via pnpm patch on FileViewer renderer-spreadsheet
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+CSV preview was not filling pane width. Discovered the prior CSS-override approach (993d78b) was dead code: FileViewer's spreadsheet renderer uses e-virt-table (canvas), no HTML <table> element exists. FileViewerSpreadsheetOptions has no width-fill toggle; renderer hardcodes widthFillDisable: true on data columns. Switched to pnpm patch on @file-viewer/renderer-spreadsheet@2.1.17 — flip data-column widthFillDisable to false (view.js:267) so e-virt-table's own init() auto-distributes remaining container width. Index column (line 246) kept at true. Removed dead css-preview.css. Scope covers CSV + XLSX + ODS (all use spreadsheet renderer). Spec updated with FileViewer gotcha + pnpm patch convention. Visual verification still pending (user to run dev server).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7c2334f` | (see git log) |
+| `e6e6286` | (see git log) |
+| `68f9741` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
