@@ -1,0 +1,9 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns, review checklist, code standards to verify before completion."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Verify no any-types, proper unknown narrowing on parsed value, discriminated-union input modes."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify named exports, Tailwind token usage (no hardcoded colors), light/dark theme parity."}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Verify handler registration pattern matches CSV template, lazy-load pattern applied to all heavy parsers + jq-wasm, version pins locked."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared cross-package guides always included in checks."}
+{"file": ".trellis/tasks/07-03-json-file-viewer-with-preview-conversion-and-query-support/research/input-format-parsers.md", "reason": "Verify selected libraries match recommendations and lazy-load policy is enforced."}
+{"file": ".trellis/tasks/07-03-json-file-viewer-with-preview-conversion-and-query-support/research/query-libraries.md", "reason": "Verify jq-wasm is worker-isolated, lazy-loaded, and split via manualChunks."}
+{"file": ".trellis/tasks/07-03-json-file-viewer-with-preview-conversion-and-query-support/research/output-converters.md", "reason": "Verify exceljs multi-header correctness, XML attribute convention, language serializers are template strings (no quicktype dep)."}
+{"file": ".trellis/tasks/07-03-json-file-viewer-with-preview-conversion-and-query-support/research/viewer-ux-libraries.md", "reason": "Verify tree viewer is custom (not react-json-view), minimap wired via @replit/codemirror-minimap, diff iframe has theme-sync logic."}
