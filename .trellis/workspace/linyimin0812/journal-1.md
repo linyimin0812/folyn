@@ -1099,3 +1099,37 @@ CSV preview was not filling pane width. Discovered the prior CSS-override approa
 ### Next Steps
 
 - None - task complete
+
+
+## Session 33: CSV preview styling + index column auto-width
+
+**Date**: 2026-07-03
+**Task**: CSV preview styling + index column auto-width
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Extended @file-viewer/renderer-spreadsheet pnpm patch (font/header/row sizes, SCROLLER_TRACK_SIZE=0, computeIndexColumnWidth by totalRows digit count), added e-virt-table pnpm patch to draw grid lines filling empty canvas area below data rows, wired FileViewer messages i18n override in CSV and Office viewers, trimmed toolbar/sheet-tab CSS, documented index-column auto-width convention in spec.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7d78a82` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

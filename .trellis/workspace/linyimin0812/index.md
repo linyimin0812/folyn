@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 32
+- **Total Sessions**: 33
 - **Last Active**: 2026-07-03
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1101 | Active |
+| `journal-1.md` | ~1135 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 33 | 2026-07-03 | CSV preview styling + index column auto-width | `7d78a82` | `master` |
 | 32 | 2026-07-03 | CSV/XLSX/ODS preview fill-width via pnpm patch on FileViewer renderer-spreadsheet | `7c2334f`, `e6e6286`, `68f9741` | `master` |
 | 31 | 2026-07-03 | CSV preview fill width (flex-1) | `b1b3c68036f378a6f13859d154e04a39fccc9049` | `master` |
 | 30 | 2026-07-03 | Audit and remove unused deps | `0a91019040423ba23b48ac91a7e41819371c9881` | `master` |
