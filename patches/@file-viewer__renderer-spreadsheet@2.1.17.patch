@@ -1,8 +1,64 @@
+diff --git a/dist/spreadsheet/state.js b/dist/spreadsheet/state.js
+index 819db3cd6864cb62ead5c777946ea1b93e2b5da4..456e28313a6df8ab78de5fe2079c43f11d834175 100644
+--- a/dist/spreadsheet/state.js
++++ b/dist/spreadsheet/state.js
+@@ -5,7 +5,7 @@ export const INDEX_COLUMN_KEY = '__index';
+ export const ROW_KEY_FIELD = '__k';
+ export const ROW_STATE_FIELD = '__s';
+ export const DEFAULT_SHEET_DEFAULTS = {
+-    rowHeight: 20,
++    rowHeight: 22,
+     colWidth: 64
+ };
+ export const RowState = {
 diff --git a/dist/spreadsheet/view.js b/dist/spreadsheet/view.js
-index 3afd8fc6ab972a10857168502feb23ac9ade77e5..a63f8556f652e91b7ccba48f41981fbf911d97b2 100644
+index 3afd8fc6ab972a10857168502feb23ac9ade77e5..b0b5ba25e7801890b83d8b7183de2b72d700970f 100644
 --- a/dist/spreadsheet/view.js
 +++ b/dist/spreadsheet/view.js
-@@ -264,7 +264,7 @@ export const buildColumns = (ws) => {
+@@ -1,13 +1,17 @@
+ import tinycolor from 'tinycolor2';
+ import { displayCellKey, getDataKey, getRowState, INDEX_COLUMN_KEY, ROW_KEY_FIELD, RowState } from './state.js';
+ export const INDEX_COLUMN_WIDTH = 68;
++export const computeIndexColumnWidth = (totalRows = 0) => {
++    const digits = Math.max(1, String(totalRows || 1).length);
++    return Math.min(80, Math.max(28, 16 + digits * 9));
++};
+ const TABLE_FONT_FAMILY = 'Aptos, Calibri, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif';
+-const TABLE_FONT_SIZE = 11;
++const TABLE_FONT_SIZE = 12;
+ const MIN_RENDERABLE_ROW_HEIGHT = 8;
+ const HIDDEN_ROW_HEIGHT = 0.1;
+ const CELL_PADDING = 2;
+ const CELL_LINE_HEIGHT = 1.2;
+-export const HEADER_HEIGHT = 34;
++export const HEADER_HEIGHT = 22;
+ export const RESIZABLE_COLUMN_MIN_WIDTH = 40;
+ export const RESIZABLE_ROW_MIN_HEIGHT = 18;
+ const EXCEL_HEADER_BG = '#f3f3f3';
+@@ -232,17 +236,18 @@ export const detectIndexOffset = (ws) => {
+     return 1;
+ };
+ export const buildColumns = (ws) => {
+-    var _a;
++    var _a, _b;
+     const columnsMeta = getSheetColumnsMeta(ws);
+     const colWidths = getSheetColWidths(ws);
++    const indexWidth = computeIndexColumnWidth(((_b = (_a = ws.meta) === null || _a === void 0 ? void 0 : _a.totalRows) !== null && _b !== void 0 ? _b : 0) || 0);
+     const columns = [{
+             key: INDEX_COLUMN_KEY,
+             title: '',
+             type: 'index',
+             fixed: 'left',
+-            width: INDEX_COLUMN_WIDTH,
+-            minWidth: INDEX_COLUMN_WIDTH,
+-            maxWidth: INDEX_COLUMN_WIDTH,
++            width: indexWidth,
++            minWidth: indexWidth,
++            maxWidth: indexWidth,
+             widthFillDisable: true,
+             headerAlign: 'center',
+             align: 'center',
+@@ -264,7 +269,7 @@ export const buildColumns = (ws) => {
              title: (column === null || column === void 0 ? void 0 : column.title) || `${index + 1}`,
              width: hidden ? 0 : Math.max(Math.ceil(width), 1),
              hide: hidden,
@@ -11,3 +67,11 @@ index 3afd8fc6ab972a10857168502feb23ac9ade77e5..a63f8556f652e91b7ccba48f41981fbf
              renderType: 'both',
              headerAlign: 'center',
              headerVerticalAlign: 'middle',
+@@ -847,6 +852,7 @@ export const createTableConfig = ({ hostHeight, resizableColumns = false, resiza
+         PLACEHOLDER_COLOR: '#8a94a3',
+         SCROLLER_COLOR: '#c1c7d0',
+         SCROLLER_FOCUS_COLOR: '#9aa0a6',
++        SCROLLER_TRACK_SIZE: 0,
+         SELECT_ROW_COL_BG_COLOR: EXCEL_GREEN_SOFT,
+         SELECT_AREA_COLOR: 'rgba(33, 163, 102, 0.14)',
+         SELECT_BORDER_COLOR: EXCEL_GREEN,

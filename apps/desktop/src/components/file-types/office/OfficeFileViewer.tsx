@@ -59,7 +59,17 @@ export function OfficeFileViewer({ filePath, vaultRoot }: PreviewProps) {
         </div>
       )}
       {!loading && !error && file && (
-        <FileViewer file={file} options={{ preset: officePreset }} style={{ height: '100%', width: '100%' }} />
+        <FileViewer
+          file={file}
+          options={{
+            preset: officePreset,
+            messages: {
+              'spreadsheet.state.rows': '共 {rows} 行',
+              'spreadsheet.state.rowsAndColumns': '共 {rows} 行，{cols} 列',
+            },
+          }}
+          style={{ height: '100%', width: '100%' }}
+        />
       )}
     </div>
   );

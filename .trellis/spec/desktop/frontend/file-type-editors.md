@@ -238,4 +238,17 @@ Other FileViewer renderers already fill the container and need no patch:
 - Upgrading `@file-viewer/renderer-spreadsheet` may break the patch (line numbers shift, field names change). Pin the version (no `^`) in `package.json` while the patch is in use.
 - `e-virt-table` internal API changes (`widthFillDisable` field renamed, `resizeAllColumn` logic changed) would silently re-disable width-fill. Re-verify after any `e-virt-table` version bump.
 
+### Convention: Index/row-number column auto-width by digit count
+
+The renderer hardcodes `INDEX_COLUMN_WIDTH = 68` and applies it as `width = minWidth = maxWidth` on the `__index` column. For small files (single-digit rows) this is too wide and wastes data-column space. Patch `buildColumns` to compute width from `ws.meta.totalRows` digit count:
+
+```js
+export const computeIndexColumnWidth = (totalRows = 0) => {
+    const digits = Math.max(1, String(totalRows || 1).length);
+    return Math.min(80, Math.max(28, 16 + digits * 9));
+};
+```
+
+Call it inside `buildColumns(ws)` with `ws.meta?.totalRows`. Keep `width = minWidth = maxWidth` (column stays non-resizable) and keep `widthFillDisable: true` (index column does not participate in width-fill distribution — only data columns do).
+
 Reference: `apps/desktop/src/components/file-types/csv/CsvFileViewerPreview.tsx`, `patches/@file-viewer__renderer-spreadsheet@2.1.17.patch`

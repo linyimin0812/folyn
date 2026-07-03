@@ -11,7 +11,17 @@ export function CsvFileViewerPreview({ content, filePath }: PreviewProps) {
 
   return (
     <div className="h-full w-full overflow-hidden bg-panel">
-      <FileViewer file={file} options={{ preset: officePreset }} style={{ height: '100%', width: '100%' }} />
+      <FileViewer
+        file={file}
+        options={{
+          preset: officePreset,
+          messages: {
+            'spreadsheet.state.rows': '共 {rows} 行',
+            'spreadsheet.state.rowsAndColumns': '共 {rows} 行，{cols} 列',
+          },
+        }}
+        style={{ height: '100%', width: '100%' }}
+      />
     </div>
   );
 }

@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Contains the FileViewer Spreadsheet Preview (CSV/XLSX/ODS) section documenting the pnpm patch convention on @file-viewer/renderer-spreadsheet — directly relevant to extending the patch for index column width auto-sizing."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Desktop frontend quality bar — patch must keep tsc -b green and preserve existing behavior on CSV/XLSX/ODS."}

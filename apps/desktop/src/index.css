@@ -1026,3 +1026,17 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 @media (max-width: 720px) {
   .study-workbench .sw-material-grid { grid-template-columns: 1fr; }
 }
+
+/* ── FileViewer spreadsheet toolbar override ──
+ * Renderer default: min-height 44px, padding 8px 12px — too tall for the
+ * compact preview pane. !important needed because the renderer injects its
+ * own <style> at mount, which would win on equal specificity.
+ */
+.excel-wrapper .toolbar { min-height: 22px !important; padding: 2px 10px !important; }
+.excel-wrapper .sheet-tab { height: 22px !important; padding: 0 10px !important; font-size: 11px !important; }
+.excel-wrapper .e-virt-table-stage { border-radius: 0 !important; }
+/* Hide the sheet-tabs bar (Sheet1 button) but keep the .summary text
+ * ("共 X 行，Y 列") so the bottom line stays informative without the
+ * redundant single-sheet tab. */
+.excel-wrapper .toolbar .btn-group { display: none !important; }
+.excel-wrapper .toolbar .summary { font-size: 11px !important; font-weight: 500 !important; }

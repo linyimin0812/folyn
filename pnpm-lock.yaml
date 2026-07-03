@@ -6,8 +6,11 @@ settings:
 
 patchedDependencies:
   '@file-viewer/renderer-spreadsheet@2.1.17':
-    hash: xofpqfztr3oy54jannzyr6pqli
+    hash: za3qzmknglyqjqbcqzfqdmp6ka
     path: patches/@file-viewer__renderer-spreadsheet@2.1.17.patch
+  e-virt-table@1.4.2:
+    hash: 4qsgisplhrk7qnejqmvcprfx4e
+    path: patches/e-virt-table@1.4.2.patch
 
 importers:
 
@@ -4408,7 +4411,7 @@ snapshots:
       '@file-viewer/renderer-ofd': 2.1.17
       '@file-viewer/renderer-pdf': 2.1.17
       '@file-viewer/renderer-presentation': 2.1.17
-      '@file-viewer/renderer-spreadsheet': 2.1.17(patch_hash=xofpqfztr3oy54jannzyr6pqli)
+      '@file-viewer/renderer-spreadsheet': 2.1.17(patch_hash=za3qzmknglyqjqbcqzfqdmp6ka)
       '@file-viewer/renderer-word': 2.1.17
 
   '@file-viewer/react@2.1.17(react@18.3.1)':
@@ -4431,10 +4434,10 @@ snapshots:
       '@file-viewer/core': 2.1.17
       '@file-viewer/pptx': 2.1.17
 
-  '@file-viewer/renderer-spreadsheet@2.1.17(patch_hash=xofpqfztr3oy54jannzyr6pqli)':
+  '@file-viewer/renderer-spreadsheet@2.1.17(patch_hash=za3qzmknglyqjqbcqzfqdmp6ka)':
     dependencies:
       '@file-viewer/core': 2.1.17
-      e-virt-table: 1.4.2
+      e-virt-table: 1.4.2(patch_hash=4qsgisplhrk7qnejqmvcprfx4e)
       styled-exceljs: 0.21.1
       tinycolor2: 1.6.0
 
@@ -5857,7 +5860,7 @@ snapshots:
       es-errors: 1.3.0
       gopd: 1.2.0
 
-  e-virt-table@1.4.2:
+  e-virt-table@1.4.2(patch_hash=4qsgisplhrk7qnejqmvcprfx4e):
     dependencies:
       '@floating-ui/dom': 1.7.6
 

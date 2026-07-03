@@ -1,0 +1,32 @@
+diff --git a/dist/index.es.js b/dist/index.es.js
+index b0344274d9d579cfa2184d13b5cad76b29c8f6fa..ebdd9e114cbf9b49edf6bc44a83b35748019c58c 100644
+--- a/dist/index.es.js
++++ b/dist/index.es.js
+@@ -8425,6 +8425,27 @@ const mt = class mt {
+   }
+   doDraw(t = !1) {
+     this.header.update(), this.body.update(), this.footer.update(), this.ctx.paint.clear(), this.textSelector.clearLayouts(), this.body.draw(), this.footer.draw(), this.header.draw(), this.textSelector.draw(), this.body.drawDragRowTip(), this.scroller.draw(), this.empty.draw(), this.loading.draw(), t || this.overlayer.draw();
++    (() => {
++      const b = this.body, cfg = this.ctx.config;
++      if (!b || !b.visibleHeight) return;
++      const dataBottom = b.y + (b.height || 0);
++      const visBottom = b.y + b.visibleHeight;
++      if (visBottom <= dataBottom) return;
++      const paint = this.ctx.paint, borderColor = cfg.BORDER_COLOR;
++      const cellH = cfg.CELL_HEIGHT || 22;
++      const sx = this.ctx.scrollX || 0;
++      const headers = (this.ctx.header && this.ctx.header.leafCellHeaders) || [];
++      const x0 = b.x, x1 = b.x + b.visibleWidth;
++      for (let y = dataBottom + cellH; y <= visBottom + 0.5; y += cellH) {
++        paint.drawLine([x0, y, x1, y], { borderColor, borderWidth: 1 });
++      }
++      for (let i = 0; i < headers.length; i++) {
++        const h = headers[i];
++        if (!h) continue;
++        const hx = h.fixed === "left" || h.fixed === "right" ? h.x : h.x - sx;
++        if (hx > x0 && hx < x1) paint.drawLine([hx, dataBottom, hx, visBottom], { borderColor, borderWidth: 1 });
++      }
++    })();
+   }
+   draw(t = !1) {
+     this.animationFrameId && cancelAnimationFrame(this.animationFrameId), this.animationFrameId = requestAnimationFrame(() => {

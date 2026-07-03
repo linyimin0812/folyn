@@ -30,7 +30,8 @@
   },
   "pnpm": {
     "patchedDependencies": {
-      "@file-viewer/renderer-spreadsheet@2.1.17": "patches/@file-viewer__renderer-spreadsheet@2.1.17.patch"
+      "@file-viewer/renderer-spreadsheet@2.1.17": "patches/@file-viewer__renderer-spreadsheet@2.1.17.patch",
+      "e-virt-table@1.4.2": "patches/e-virt-table@1.4.2.patch"
     }
   }
 }
