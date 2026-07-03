@@ -79,7 +79,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
       [onScrollToHeading],
     );
 
-    const fullBleed = activeTab.fileType === 'csv' || activeTab.fileType === 'office';
+    const fullBleed = activeTab.fileType === 'csv' || activeTab.fileType === 'office' || activeTab.fileType === 'dbml';
 
     return (
       <div

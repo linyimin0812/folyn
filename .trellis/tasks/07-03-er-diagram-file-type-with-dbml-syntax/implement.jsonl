@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "file-type handler 契约、CSV handler 范例、PreviewPane fullBleed 约定、自定义预览组件接入方式"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "React 组件编写规范"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "TS 类型安全规范，parseDbml 输出类型定义参考"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "file-types 目录组织约定"}
+{"file": ".trellis/tasks/07-03-er-diagram-file-type-with-dbml-syntax/research/dbml-core-api.md", "reason": "@dbml/core 解析 API、输出结构、关系基数映射、错误结构、可用 parseDbml() 代码"}

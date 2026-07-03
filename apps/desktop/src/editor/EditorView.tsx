@@ -327,6 +327,7 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
       // For code files, dynamically load the matching language support
       if (!isMarkdown && filePath) {
         const isJson = /\.json$/i.test(filePath);
+        const isDbml = /\.dbml$/i.test(filePath);
         if (isJson) {
           // JSON files: use dedicated language support + lint
           view.dispatch({
@@ -336,6 +337,18 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
               linter(jsonLintSource, { delay: 300 }),
             ]),
           });
+        } else if (isDbml) {
+          // DBML has no dedicated CodeMirror language; reuse SQL highlighting
+          // (via @codemirror/language-data's SQL LanguageDescription) as a
+          // close-enough fallback for keywords/types/strings/comments.
+          const sqlDesc = languages.find((l) => l.name === 'SQL');
+          if (sqlDesc) {
+            sqlDesc.load().then((langSupport) => {
+              view.dispatch({
+                effects: langCompartment.current.reconfigure(langSupport),
+              });
+            });
+          }
         } else {
           const langDesc = LanguageDescription.matchFilename(languages, filePath);
           if (langDesc) {

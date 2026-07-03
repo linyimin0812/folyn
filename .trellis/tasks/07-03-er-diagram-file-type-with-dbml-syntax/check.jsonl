@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "代码质量检查清单"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "验证 dbml handler 符合 file-type 注册约定与 PreviewPane fullBleed 约定"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "验证 parseDbml 类型安全"}
+{"file": ".trellis/tasks/07-03-er-diagram-file-type-with-dbml-syntax/research/dbml-core-api.md", "reason": "验证 @dbml/core 用法正确（版本 pin、错误读取、基数映射）"}

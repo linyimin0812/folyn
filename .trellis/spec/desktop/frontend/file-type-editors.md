@@ -252,3 +252,63 @@ export const computeIndexColumnWidth = (totalRows = 0) => {
 Call it inside `buildColumns(ws)` with `ws.meta?.totalRows`. Keep `width = minWidth = maxWidth` (column stays non-resizable) and keep `widthFillDisable: true` (index column does not participate in width-fill distribution — only data columns do).
 
 Reference: `apps/desktop/src/components/file-types/csv/CsvFileViewerPreview.tsx`, `patches/@file-viewer__renderer-spreadsheet@2.1.17.patch`
+
+---
+
+## DBML ER Diagram (`.dbml`)
+
+DBML files use CodeMirror for editing (`useCodeMirror: true`) with SQL syntax highlighting as a fallback, and render an ER diagram preview via `@dbml/core` + `d3-force` + hand-drawn SVG.
+
+### Handler registration
+
+```typescript
+// src/components/file-types/dbml/index.ts
+const handler: FileTypeHandler = {
+  id: 'dbml',
+  extensions: ['dbml'],
+  supportedViewModes: ['split', 'edit', 'preview'],
+  defaultViewMode: 'split',
+  needsFileContent: true,
+  useCodeMirror: true,          // CodeMirror editor (SQL fallback highlighting)
+  Preview: ErDiagramPreview,    // SVG ER diagram
+};
+```
+
+`dbml` is added to `PreviewPane.tsx`'s `fullBleed` set so the diagram fills the pane (no padding/scroll gutter), matching `csv`/`office`.
+
+### CodeMirror SQL fallback for `.dbml`
+
+`@codemirror/language-data` has no DBML LanguageDescription, so `.dbml` would get no highlighting. `EditorView.tsx` special-cases `.dbml` (alongside the `.json` branch) and loads the SQL LanguageDescription from the shared `languages` array:
+
+```typescript
+const sqlDesc = languages.find((l) => l.name === 'SQL');
+if (sqlDesc) {
+  sqlDesc.load().then((langSupport) => {
+    view.dispatch({ effects: langCompartment.current.reconfigure(langSupport) });
+  });
+}
+```
+
+No new `@codemirror/lang-sql` direct dependency is needed — it is a transitive dep of `@codemirror/language-data` and loads on demand. DBML-specific keywords (`Table`/`Ref`/`Enum`/`Indexes`) are not in SQL's keyword set, so they render as plain identifiers; this is the accepted trade-off for the MVP (a precise Lezer grammar for DBML is explicitly out of scope).
+
+### Parser: `@dbml/core` (pin `8.3.1`)
+
+- **Version pin is mandatory**: `@dbml/core`'s npm `latest` dist-tag points at `9.0.0-alpha.2`; a bare `@dbml/core` installs the alpha. Pin `"@dbml/core": "8.3.1"` (no `^`) in `apps/desktop/package.json`.
+- **Bundle size**: ~15 MB minified — the package bundles antlr4-generated SQL parsers (MySQL/Postgres/MSSQL/Oracle/Snowflake) that cannot be tree-shaken. `parseDbml.ts` therefore lazy-loads it via `await import('@dbml/core')` on first ER preview open, so the rest of the app's first-paint is unaffected.
+- **Build memory**: terser minifying the 15 MB chunk exhausts Node's default 4 GB heap → OOM. The `build` script sets `NODE_OPTIONS=--max-old-space-size=8192`.
+- **API**: `Parser.parse(str, 'dbml')` is synchronous and returns a `Database`. Use `db.export().schemas[0]` to get plain JSON (avoids circular refs on class instances).
+- **Cardinality**: DBML uses operators (`>` `<` `-` `<>`), NOT `[1:*]` bracket syntax (brackets throw a syntax error in 8.3.1). Each `ref.endpoints[i].relation` is `'1'` or `'*'`; for `>`/`<` the endpoints are reordered so ep0 is always the `'1'` side. Read `endpoint.relation` directly; ignore operator direction.
+- **Errors**: parse failures throw `CompilerError`; `err.message` is `undefined` — read `err.diags[i].message` + `err.diags[i].location.start.line/column`. Semantic errors sometimes have an empty `message`; fall back to a line-based message.
+
+Reference: `src/components/file-types/dbml/parseDbml.ts`, `src/components/file-types/dbml/erLayout.ts`, `src/components/file-types/dbml/ErDiagramPreview.tsx`, `.trellis/tasks/07-03-er-diagram-file-type-with-dbml-syntax/research/dbml-core-api.md`
+
+### Layout: d3-force, static SVG
+
+`erLayout.ts` runs `forceSimulation` synchronously (`for (i<ticks) sim.tick()`) to convergence — NOT animated on each tick. This gives a stable static layout (no React re-render churn) and deterministic output (grid start positions, since d3-force has no built-in seed). Tables are nodes (`forceCollide` keyed on estimated card size), refs are links. The SVG renders table cards (header + field rows with PK/NN/UQ/AI marks) and bezier relationship lines with cardinality badges (`1` / `∞`) at both endpoints. Theme adapts automatically via CSS variables (`--bg`/`--surf`/`--brd`/`--t1`/`--t2`/`--t3`/`--acc`) — no JS theme switching.
+
+### Out of scope (explicit MVP boundary)
+
+- Interactive drag/zoom/pan (static layout only)
+- `TableGroup` / `StickyNote` / `Enum` dedicated visualization
+- DBML → SQL DDL generation; reverse engineering from a live database
+- Precise DBML Lezer grammar (SQL fallback is accepted)
