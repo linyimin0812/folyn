@@ -1167,3 +1167,37 @@ Extended @file-viewer/renderer-spreadsheet pnpm patch (font/header/row sizes, SC
 ### Next Steps
 
 - None - task complete
+
+
+## Session 35: CSV UTF-8 mojibake fix + Cmd+C copy in Tauri webview
+
+**Date**: 2026-07-03
+**Task**: CSV UTF-8 mojibake fix + Cmd+C copy in Tauri webview
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Fixed two CSV preview bugs: (1) Chinese UTF-8 CSVs (no BOM) rendered as mojibake — prepend UTF-8 BOM in CsvFileViewerPreview so SheetJS takes the UTF-8 path. (2) Cmd+C in the spreadsheet preview copied nothing because the macOS Edit menu's Cmd+C accelerator preempts the webview keydown (e-virt-table listens to keydown, not the native copy event) and WKWebView rejects navigator.clipboard.writeText on the tauri:// scheme. Added tauri-plugin-clipboard-manager (Rust + JS + capability) and patched @file-viewer/renderer-spreadsheet's writeSpreadsheetClipboard to route through the Tauri plugin when __TAURI_INTERNALS__ is present, plus a new copy event listener that routes menu-triggered Cmd+C into the same copy pipeline. Textareas fall through to native copy/paste so editor Cmd+C/Cmd+V/Cmd+X keep working. 4 new unit tests; tsc, cargo check, 867/867 tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `896edab` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
