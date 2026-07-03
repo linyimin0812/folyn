@@ -6,8 +6,10 @@
  *   │ Input | Query | Convert | Diff | format ▾ | expand… │ toggles │
  *   ├──────────────────────────────┬─────────────────────────┤
  *   │                              │  Tab-dependent content:  │
- *   │  <textarea> (CM6 comes PR7)  │  - Input → JsonTree      │
- *   │                              │  - others → placeholder  │
+ *   │  <Json5CodeMirror> (PR7)     │  - Input → JsonTree      │
+ *   │                              │  - Query → QueryBar+Tree │
+ *   │                              │  - Convert → ConvertPanel│
+ *   │                              │  - Diff → DiffPane       │
  *   └──────────────────────────────┴─────────────────────────┘
  *
  * Owns state per PR3 spec: parsedValue, inputMode, activeTab, autoSort,
@@ -15,7 +17,7 @@
  * technical notes).
  *
  * Pipeline:
- *   content prop → inputContent state (textarea value)
+ *   content prop → inputContent state (editor value)
  *      → debounced 300ms → parseInput(text, mode)
  *      → if autoSort, sortKeysDeep → parsedValue
  *      → parseError on failure (last valid parsedValue retained)
@@ -33,11 +35,17 @@ import {
 import type { PreviewProps } from '../types';
 import { parseInput, type InputMode } from './lib/parseInput';
 import { sortKeysDeep } from './lib/sortKeysDeep';
+import { runQuery, type QueryLang } from './lib/query';
 import { JsonTree } from './components/JsonTree';
 import { PreviewToolbar, type PreviewTab } from './components/PreviewToolbar';
+import { QueryBar } from './components/QueryBar';
+import { ConvertPanel } from './components/ConvertPanel';
+import { DiffPane } from './components/DiffPane';
+import { Json5CodeMirror } from './editor/Json5CodeMirror';
 
 const PARSE_DEBOUNCE_MS = 300;
 const TOAST_DURATION_MS = 1500;
+const QUERY_DEBOUNCE_MS = 200;
 
 export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
   const [inputContent, setInputContent] = useState(content ?? '');
@@ -53,6 +61,20 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
   const [collapseAllKey, setCollapseAllKey] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [hasParsed, setHasParsed] = useState(false);
+
+  // Query tab state (PR4)
+  const [queryLang] = useState<QueryLang>('jq');
+  const [queryResult, setQueryResult] = useState<unknown>(null);
+  const [queryResultVersion, setQueryResultVersion] = useState(0);
+  const [queryError, setQueryError] = useState<string | null>(null);
+  const [queryLoading, setQueryLoading] = useState(false);
+  const queryAbortRef = useRef<AbortController | null>(null);
+
+  // Diff tab state (PR6)
+  const [diffInput, setDiffInput] = useState('');
+  const [diffValue, setDiffValue] = useState<unknown>(null);
+  const [sortBeforeDiff, setSortBeforeDiff] = useState(false);
+
   const toastTimer = useRef<number | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -80,13 +102,25 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
         setParsedValueVersion((v) => v + 1);
         setParseError(null);
         setHasParsed(true);
+        // PR8: auto-copy on parse (only when auto-copy is on AND content
+        // is non-empty). Skip copying null/primitive results is fine —
+        // copying a stringified value is still useful.
+        if (autoCopy) {
+          try {
+            const mod = await import('@tauri-apps/plugin-clipboard-manager');
+            await mod.writeText(JSON.stringify(finalValue, null, 2));
+            showToast('已自动复制解析结果');
+          } catch {
+            /* clipboard unavailable — silent */
+          }
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         setParseError(msg);
         setHasParsed(true);
       }
     },
-    [],
+    [autoCopy, showToast],
   );
 
   // Initial parse on mount using the file's `content` prop in auto mode.
@@ -111,11 +145,14 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
     return () => window.clearTimeout(handle);
   }, [inputContent, inputMode, autoSort, parse]);
 
-  // Cleanup toast timer on unmount.
+  // Cleanup toast timer + in-flight query on unmount.
   useEffect(() => {
     return () => {
       if (toastTimer.current !== null) {
         window.clearTimeout(toastTimer.current);
+      }
+      if (queryAbortRef.current) {
+        queryAbortRef.current.abort();
       }
     };
   }, []);
@@ -147,6 +184,88 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
     [showToast],
   );
 
+  // PR8: auto-copy helper for query/convert outputs.
+  const autoCopyIfEnabled = useCallback(
+    async (text: string, label: string) => {
+      if (!autoCopy) return;
+      try {
+        const mod = await import('@tauri-apps/plugin-clipboard-manager');
+        await mod.writeText(text);
+        showToast(`已自动复制${label}`);
+      } catch {
+        /* silent */
+      }
+    },
+    [autoCopy, showToast],
+  );
+
+  // PR4: query runner — debounced + abortable.
+  const handleQueryRun = useCallback(
+    (lang: QueryLang, expr: string) => {
+      // Abort any in-flight query.
+      if (queryAbortRef.current) {
+        queryAbortRef.current.abort();
+      }
+      const controller = new AbortController();
+      queryAbortRef.current = controller;
+
+      // Debounce so rapid keystrokes don't fire multiple jq/wasm loads.
+      window.setTimeout(() => {
+        if (controller.signal.aborted) return;
+        setQueryLoading(true);
+        setQueryError(null);
+        runQuery(lang, parsedValue, expr)
+          .then((result) => {
+            if (controller.signal.aborted) return;
+            setQueryResult(result);
+            setQueryResultVersion((v) => v + 1);
+            setQueryLoading(false);
+            // PR8: auto-copy query result.
+            const resultStr = result === null ? 'null' : JSON.stringify(result, null, 2);
+            void autoCopyIfEnabled(resultStr, '查询结果');
+          })
+          .catch((err: unknown) => {
+            if (controller.signal.aborted) return;
+            const msg = err instanceof Error ? err.message : String(err);
+            setQueryError(msg);
+            setQueryResult(null);
+            setQueryLoading(false);
+          });
+      }, QUERY_DEBOUNCE_MS);
+    },
+    [parsedValue, autoCopyIfEnabled],
+  );
+
+  const handleQueryResult = useCallback((value: unknown) => {
+    setQueryResult(value);
+    setQueryResultVersion((v) => v + 1);
+  }, []);
+
+  const handleQueryError = useCallback((message: string) => {
+    setQueryError(message);
+    setQueryResult(null);
+  }, []);
+
+  // PR5: convert output handler — auto-copy if enabled.
+  const handleConvertOutput = useCallback(
+    (text: string, mime?: string) => {
+      void autoCopyIfEnabled(text, mime ? '转换结果' : '转换结果');
+    },
+    [autoCopyIfEnabled],
+  );
+
+  // PR6: diff input handlers.
+  const handleDiffInputChange = useCallback((text: string) => {
+    setDiffInput(text);
+  }, []);
+
+  const handleDiffValueChange = useCallback((value: unknown) => {
+    setDiffValue(value);
+  }, []);
+
+  // Persist queryLang across re-renders for QueryBar's default.
+  const queryBarKey = `${queryLang}-${parsedValueVersion}`;
+
   const name = filePath.split('/').pop() || 'data.json';
 
   return (
@@ -162,6 +281,10 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
         onToggleAutoCopy={() => setAutoCopy((v) => !v)}
         onExpandAll={() => setExpandAllKey((k) => k + 1)}
         onCollapseAll={() => setCollapseAllKey((k) => k + 1)}
+        // PR4-6: enable all tabs.
+        enableAllTabs
+        // PR6: sort-before-diff toggle is rendered inside DiffPane; toolbar
+        // doesn't need a slot for it.
       />
 
       {parseError !== null && (
@@ -172,18 +295,16 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
       )}
 
       <div className="grid min-h-0 flex-1 grid-cols-2">
-        {/* Left: editable textarea (CM6 JSON5 editor comes in PR7). */}
+        {/* Left: CodeMirror JSON5 editor (PR7). */}
         <div className="flex min-h-0 flex-col border-r border-brd">
           <div className="flex shrink-0 items-center justify-between border-b border-brd bg-surf px-2 py-0.5 text-[11px] text-t3">
             <span className="truncate">{name}</span>
             <span>{inputContent.length} chars</span>
           </div>
-          <textarea
+          <Json5CodeMirror
+            key={`editor-${filePath}`}
             value={inputContent}
-            onChange={(e) => setInputContent(e.target.value)}
-            spellCheck={false}
-            placeholder="粘贴 JSON / JSON5 / Base64 / YAML / XML / CSV …"
-            className="min-h-0 flex-1 resize-none border-0 bg-panel px-2 py-1.5 font-mono text-[12px] leading-[1.5] text-t1 outline-none placeholder:text-t3"
+            onChange={setInputContent}
           />
         </div>
 
@@ -217,10 +338,46 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
                 )}
               </div>
             </>
+          ) : activeTab === 'query' ? (
+            <>
+              <QueryBar
+                key={queryBarKey}
+                value={parsedValue}
+                loading={queryLoading}
+                error={queryError}
+                defaultLang={queryLang}
+                onRun={handleQueryRun}
+                onResult={handleQueryResult}
+                onError={handleQueryError}
+              />
+              <div className="min-h-0 flex-1">
+                <JsonTree
+                  key={queryResultVersion}
+                  value={queryResult}
+                  expandAllKey={expandAllKey}
+                  collapseAllKey={collapseAllKey}
+                  onCopyPath={handleCopyPath}
+                  onCopyValue={handleCopyValue}
+                />
+              </div>
+            </>
+          ) : activeTab === 'convert' ? (
+            <ConvertPanel
+              value={parsedValue}
+              onOutput={handleConvertOutput}
+              onCopyValue={handleCopyValue}
+            />
           ) : (
-            <div className="flex h-full items-center justify-center text-[12px] text-t3 italic">
-              coming in {activeTab === 'query' ? 'PR4' : activeTab === 'convert' ? 'PR5' : 'PR6'}
-            </div>
+            <DiffPane
+              left={parsedValue}
+              rightInput={diffInput}
+              right={diffValue}
+              sortBoth={sortBeforeDiff}
+              onRightInputChange={handleDiffInputChange}
+              onRightValueChange={handleDiffValueChange}
+              onToggleSortBoth={() => setSortBeforeDiff((v) => !v)}
+              onCopyValue={handleCopyValue}
+            />
           )}
         </div>
       </div>

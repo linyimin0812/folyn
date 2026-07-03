@@ -31,6 +31,12 @@ export default defineConfig(() => {
             'codemirror': ['@codemirror/autocomplete', '@codemirror/commands', '@codemirror/lang-markdown', '@codemirror/language', '@codemirror/lint', '@codemirror/search', '@codemirror/state', '@codemirror/view'],
             'rehype': ['rehype-highlight', 'rehype-react', 'rehype-raw', 'remark-gfm', 'remark-parse', 'remark-directive', 'remark-rehype', 'unified'],
             'grapesjs': ['grapesjs'],
+            // PR4-6: heavy JSON-viewer libs are split into their own chunks so
+            // the initial bundle stays small. Each is dynamically imported
+            // only when its tab is engaged, so these chunks load on demand.
+            'jq-wasm': ['jq-wasm'],
+            'exceljs': ['exceljs'],
+            'jsondiffpatch': ['jsondiffpatch'],
           },
         },
       },

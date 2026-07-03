@@ -5,10 +5,10 @@
  *   [Input | Query | Convert | Diff] tabs
  *   | Input-mode dropdown (Auto / JSON5 / Escaped / Base64 / YAML / XML / CSV)
  *   | [Expand all] [Collapse all]   (active on Input tab only)
- *   | [Auto-sort toggle] [Auto-copy toggle]   (Auto-copy is visual only in PR3)
+ *   | [Auto-sort toggle] [Auto-copy toggle]
  *
- * Tabs Query/Convert/Diff are disabled in PR3 — they render as disabled
- * buttons with a `title` tooltip "coming in PR4/PR5/PR6".
+ * PR4-6: pass `enableAllTabs` to enable the Query/Convert/Diff tabs (they
+ * start disabled in PR3 and are flipped on once their panes ship).
  */
 import type { InputMode } from '../lib/parseInput';
 
@@ -19,6 +19,7 @@ export interface PreviewToolbarProps {
   inputMode: InputMode;
   autoSort: boolean;
   autoCopy: boolean;
+  enableAllTabs?: boolean;
   onTabChange: (tab: PreviewTab) => void;
   onInputModeChange: (mode: InputMode) => void;
   onToggleAutoSort: () => void;
@@ -26,13 +27,6 @@ export interface PreviewToolbarProps {
   onExpandAll: () => void;
   onCollapseAll: () => void;
 }
-
-const TABS: Array<{ id: PreviewTab; label: string; disabled: boolean; tooltip?: string }> = [
-  { id: 'input', label: 'Input', disabled: false },
-  { id: 'query', label: 'Query', disabled: true, tooltip: 'coming in PR4' },
-  { id: 'convert', label: 'Convert', disabled: true, tooltip: 'coming in PR5' },
-  { id: 'diff', label: 'Diff', disabled: true, tooltip: 'coming in PR6' },
-];
 
 const MODE_OPTIONS: Array<{ value: InputMode; label: string }> = [
   { value: 'auto', label: 'Auto' },
@@ -49,6 +43,7 @@ export function PreviewToolbar({
   inputMode,
   autoSort,
   autoCopy,
+  enableAllTabs = false,
   onTabChange,
   onInputModeChange,
   onToggleAutoSort,
@@ -56,11 +51,33 @@ export function PreviewToolbar({
   onExpandAll,
   onCollapseAll,
 }: PreviewToolbarProps) {
+  const tabs: Array<{ id: PreviewTab; label: string; disabled: boolean; tooltip?: string }> = [
+    { id: 'input', label: 'Input', disabled: false },
+    {
+      id: 'query',
+      label: 'Query',
+      disabled: !enableAllTabs,
+      tooltip: enableAllTabs ? undefined : 'coming in PR4',
+    },
+    {
+      id: 'convert',
+      label: 'Convert',
+      disabled: !enableAllTabs,
+      tooltip: enableAllTabs ? undefined : 'coming in PR5',
+    },
+    {
+      id: 'diff',
+      label: 'Diff',
+      disabled: !enableAllTabs,
+      tooltip: enableAllTabs ? undefined : 'coming in PR6',
+    },
+  ];
+
   return (
     <div className="flex h-[36px] shrink-0 items-center gap-2 border-b border-brd bg-panel px-2">
       {/* Tabs */}
       <div className="flex items-center gap-px">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const base =
             'inline-flex items-center rounded px-2.5 py-1 text-[12px] font-medium transition-colors';
@@ -131,12 +148,12 @@ export function PreviewToolbar({
         onClick={onToggleAutoSort}
         title="解析后对键按字母顺序递归排序"
       />
-      {/* Auto-copy toggle (visual only in PR3) */}
+      {/* Auto-copy toggle (PR8: wired to copy parse/query/convert results) */}
       <ToggleChip
         label="自动复制"
         active={autoCopy}
         onClick={onToggleAutoCopy}
-        title="格式/排序/查询/转换后自动复制结果（PR8 接入）"
+        title="格式/排序/查询/转换后自动复制结果到剪贴板"
       />
     </div>
   );

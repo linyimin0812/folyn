@@ -159,10 +159,27 @@ describe('JsonFileViewerPreview — PR3', () => {
       fireEvent.click(sortToggle);
     });
 
-    // Trigger a re-parse by editing the textarea.
-    const textarea = view!.container.querySelector('textarea')!;
+    // Trigger a re-parse by sending new content via the CodeMirror editor.
+    // The CM content element is a contenteditable `.cm-content`; we
+    // dispatch an input event with a new textContent to simulate typing.
+    // (CM6's mutation observer picks up DOM changes in jsdom.)
+    const cmContent = view!.container.querySelector('.cm-content') as HTMLElement | null;
+    if (cmContent) {
+      await act(async () => {
+        cmContent.focus();
+        fireEvent.input(cmContent, {
+          target: { textContent: '{ "zebra": 1, "apple": 2, "mango": 3 }' },
+        });
+      });
+    }
+    // Also fall back to re-rendering with new `content` to ensure re-parse.
     await act(async () => {
-      fireEvent.change(textarea, { target: { value: '{ "zebra": 1, "apple": 2, "mango": 3 }' } });
+      view!.rerender(
+        <JsonFileViewerPreview
+          content='{ "zebra": 1, "apple": 2, "mango": 3 }'
+          filePath='/v/data.json'
+        />,
+      );
     });
 
     // After debounce + parse, keys should be sorted: apple, mango, zebra.
@@ -177,7 +194,7 @@ describe('JsonFileViewerPreview — PR3', () => {
     );
   });
 
-  it('shows a "coming in PR*" placeholder when switching to Query / Convert / Diff tabs', async () => {
+  it('enables Query / Convert / Diff tabs (PR4-6 wired)', async () => {
     let view: ReturnType<typeof render>;
     await act(async () => {
       view = render(<JsonFileViewerPreview content='{"a":1}' filePath='/v/data.json' />);
@@ -186,16 +203,14 @@ describe('JsonFileViewerPreview — PR3', () => {
       expect(within(getTree()).getByText('a')).toBeTruthy();
     });
 
-    // Query/Convert/Diff tabs are disabled in PR3 — assert disabled state +
-    // tooltip text rather than clicking.
+    // PR4-6: all tabs are now enabled.
     const queryTab = view!.getByText('Query') as HTMLButtonElement;
-    expect(queryTab.disabled).toBe(true);
-    expect(queryTab.getAttribute('title')).toContain('PR4');
+    expect(queryTab.disabled).toBe(false);
 
     const convertTab = view!.getByText('Convert') as HTMLButtonElement;
-    expect(convertTab.disabled).toBe(true);
+    expect(convertTab.disabled).toBe(false);
 
     const diffTab = view!.getByText('Diff') as HTMLButtonElement;
-    expect(diffTab.disabled).toBe(true);
+    expect(diffTab.disabled).toBe(false);
   });
 });
