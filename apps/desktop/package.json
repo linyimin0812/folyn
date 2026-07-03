@@ -29,6 +29,7 @@
     "@quill/cli-adapter": "workspace:*",
     "@quill/container-plugins": "workspace:*",
     "@quill/vault-provider": "workspace:*",
+    "@radix-ui/react-collapsible": "^1.1.15",
     "@replit/codemirror-indentation-markers": "^6.5.3",
     "@tauri-apps/api": "^2.11.0",
     "@tauri-apps/plugin-clipboard-manager": "^2.2.0",
@@ -64,6 +65,8 @@
   "devDependencies": {
     "@file-viewer/vite-plugin": "^2.1.17",
     "@tauri-apps/cli": "^2.2.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
     "@types/papaparse": "^5.3.16",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
