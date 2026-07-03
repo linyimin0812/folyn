@@ -1,0 +1,13 @@
+diff --git a/dist/spreadsheet/view.js b/dist/spreadsheet/view.js
+index 3afd8fc6ab972a10857168502feb23ac9ade77e5..a63f8556f652e91b7ccba48f41981fbf911d97b2 100644
+--- a/dist/spreadsheet/view.js
++++ b/dist/spreadsheet/view.js
+@@ -264,7 +264,7 @@ export const buildColumns = (ws) => {
+             title: (column === null || column === void 0 ? void 0 : column.title) || `${index + 1}`,
+             width: hidden ? 0 : Math.max(Math.ceil(width), 1),
+             hide: hidden,
+-            widthFillDisable: true,
++            widthFillDisable: false,
+             renderType: 'both',
+             headerAlign: 'center',
+             headerVerticalAlign: 'middle',

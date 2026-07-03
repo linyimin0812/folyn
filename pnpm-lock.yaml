@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@file-viewer/renderer-spreadsheet@2.1.17':
+    hash: xofpqfztr3oy54jannzyr6pqli
+    path: patches/@file-viewer__renderer-spreadsheet@2.1.17.patch
+
 importers:
 
   .:
@@ -4403,7 +4408,7 @@ snapshots:
       '@file-viewer/renderer-ofd': 2.1.17
       '@file-viewer/renderer-pdf': 2.1.17
       '@file-viewer/renderer-presentation': 2.1.17
-      '@file-viewer/renderer-spreadsheet': 2.1.17
+      '@file-viewer/renderer-spreadsheet': 2.1.17(patch_hash=xofpqfztr3oy54jannzyr6pqli)
       '@file-viewer/renderer-word': 2.1.17
 
   '@file-viewer/react@2.1.17(react@18.3.1)':
@@ -4426,7 +4431,7 @@ snapshots:
       '@file-viewer/core': 2.1.17
       '@file-viewer/pptx': 2.1.17
 
-  '@file-viewer/renderer-spreadsheet@2.1.17':
+  '@file-viewer/renderer-spreadsheet@2.1.17(patch_hash=xofpqfztr3oy54jannzyr6pqli)':
     dependencies:
       '@file-viewer/core': 2.1.17
       e-virt-table: 1.4.2
