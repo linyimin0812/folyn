@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 33
+- **Total Sessions**: 34
 - **Last Active**: 2026-07-03
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1135 | Active |
+| `journal-1.md` | ~1169 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 34 | 2026-07-03 | ER diagram file type with DBML syntax and preview | `34efa62` | `master` |
 | 33 | 2026-07-03 | CSV preview styling + index column auto-width | `7d78a82` | `master` |
 | 32 | 2026-07-03 | CSV/XLSX/ODS preview fill-width via pnpm patch on FileViewer renderer-spreadsheet | `7c2334f`, `e6e6286`, `68f9741` | `master` |
 | 31 | 2026-07-03 | CSV preview fill width (flex-1) | `b1b3c68036f378a6f13859d154e04a39fccc9049` | `master` |

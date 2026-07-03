@@ -1133,3 +1133,37 @@ Extended @file-viewer/renderer-spreadsheet pnpm patch (font/header/row sizes, SC
 ### Next Steps
 
 - None - task complete
+
+
+## Session 34: ER diagram file type with DBML syntax and preview
+
+**Date**: 2026-07-03
+**Task**: ER diagram file type with DBML syntax and preview
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+新增 .dbml 文件类型：CodeMirror 编辑（SQL 高亮兜底）+ SVG ER 图预览。@dbml/core@8.3.1 解析（pin 版本、懒加载、build 提内存到 8GB 避免 terser OOM），d3-force 布局，dbdiagram.io 风格卡片（彩色表头 + PK 钥匙图标），正交折线（直角圆角）锚到具体字段行 + 鸦爪/横线 marker，表可拖拽且位置跨编辑持久，画布支持滚轮缩放/平移/适应全部/网格切换。拆分提交：只提交 ER，csv-preview WIP 留未提交。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `34efa62` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
