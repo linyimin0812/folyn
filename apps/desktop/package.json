@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && NODE_OPTIONS=--max-old-space-size=8192 vite build",
+    "build": "tsc -b && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "clean": "rm -rf dist"
