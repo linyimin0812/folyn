@@ -6,7 +6,11 @@ import type { PreviewProps } from '../types';
 export function CsvFileViewerPreview({ content, filePath }: PreviewProps) {
   const file = useMemo(() => {
     const name = filePath.split('/').pop() || 'data.csv';
-    return new File([content ?? ''], name, { type: 'text/csv' });
+    const body = content ?? '';
+    // SheetJS decodes BOM-less UTF-8 CSV as latin-1 by default → mojibake.
+    // Prepend a UTF-8 BOM so it takes the UTF-8 path; don't double-prefix.
+    const prefixed = body.startsWith('\uFEFF') ? body : `\uFEFF${body}`;
+    return new File([prefixed], name, { type: 'text/csv' });
   }, [content, filePath]);
 
   return (

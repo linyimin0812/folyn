@@ -35,6 +35,7 @@
     "shell:allow-stdin-write",
     "shell:allow-kill",
     "dialog:default",
+    "clipboard-manager:allow-write-text",
     "fs:default",
     "fs:allow-read",
     "fs:allow-write",

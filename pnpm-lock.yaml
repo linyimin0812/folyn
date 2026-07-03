@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   '@file-viewer/renderer-spreadsheet@2.1.17':
-    hash: za3qzmknglyqjqbcqzfqdmp6ka
+    hash: vojbpxmhlfiq2ltapp4u4uut5u
     path: patches/@file-viewer__renderer-spreadsheet@2.1.17.patch
   e-virt-table@1.4.2:
     hash: 4qsgisplhrk7qnejqmvcprfx4e
@@ -98,6 +98,9 @@ importers:
       '@tauri-apps/api':
         specifier: ^2.11.0
         version: 2.11.0
+      '@tauri-apps/plugin-clipboard-manager':
+        specifier: ^2.2.0
+        version: 2.3.2
       '@tauri-apps/plugin-dialog':
         specifier: ^2.2.0
         version: 2.7.0
@@ -1532,6 +1535,9 @@ packages:
     resolution: {integrity: sha512-jQNGF/5quwORdZSSLtTluyKQ+o6SMa/AUICfhf4egCGFdMHqWssApVgYSbg+jmrZoc8e1DscNvjTnXtlHLS11g==}
     engines: {node: '>= 10'}
     hasBin: true
+
+  '@tauri-apps/plugin-clipboard-manager@2.3.2':
+    resolution: {integrity: sha512-CUlb5Hqi2oZbcZf4VUyUH53XWPPdtpw43EUpCza5HWZJwxEoDowFzNUDt1tRUXA8Uq+XPn17Ysfptip33sG4eQ==}
 
   '@tauri-apps/plugin-dialog@2.7.0':
     resolution: {integrity: sha512-4nS/hfGMGCXiAS3LtVjH9AgsSAPJeG/7R+q8agTFqytjnMa4Zq95Bq8WzVDkckpanX+yyRHXnRtrKXkANKDHvw==}
@@ -4459,7 +4465,7 @@ snapshots:
       '@file-viewer/renderer-ofd': 2.1.17
       '@file-viewer/renderer-pdf': 2.1.17
       '@file-viewer/renderer-presentation': 2.1.17
-      '@file-viewer/renderer-spreadsheet': 2.1.17(patch_hash=za3qzmknglyqjqbcqzfqdmp6ka)
+      '@file-viewer/renderer-spreadsheet': 2.1.17(patch_hash=vojbpxmhlfiq2ltapp4u4uut5u)
       '@file-viewer/renderer-word': 2.1.17
 
   '@file-viewer/react@2.1.17(react@18.3.1)':
@@ -4482,7 +4488,7 @@ snapshots:
       '@file-viewer/core': 2.1.17
       '@file-viewer/pptx': 2.1.17
 
-  '@file-viewer/renderer-spreadsheet@2.1.17(patch_hash=za3qzmknglyqjqbcqzfqdmp6ka)':
+  '@file-viewer/renderer-spreadsheet@2.1.17(patch_hash=vojbpxmhlfiq2ltapp4u4uut5u)':
     dependencies:
       '@file-viewer/core': 2.1.17
       e-virt-table: 1.4.2(patch_hash=4qsgisplhrk7qnejqmvcprfx4e)
@@ -5139,6 +5145,10 @@ snapshots:
       '@tauri-apps/cli-win32-arm64-msvc': 2.10.1
       '@tauri-apps/cli-win32-ia32-msvc': 2.10.1
       '@tauri-apps/cli-win32-x64-msvc': 2.10.1
+
+  '@tauri-apps/plugin-clipboard-manager@2.3.2':
+    dependencies:
+      '@tauri-apps/api': 2.11.0
 
   '@tauri-apps/plugin-dialog@2.7.0':
     dependencies:

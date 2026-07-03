@@ -1,0 +1,6 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "file-type Preview/Editor 契约（PreviewProps、needsFileContent、supportedViewModes），CSV handler 与 CsvFileViewerPreview 改动需符合此规范"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "React 组件规范（命名导出、props、Tailwind 样式），CsvFileViewerPreview 改动需遵守"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "代码规范与禁用模式、review checklist，避免引入禁用写法"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "strict TS 类型规范，BOM 预置与 File 构造需类型安全"}
+{"file": ".trellis/tasks/07-03-csv-utf8-mojibake-fix-and-cell-copy/research/tauri-clipboard-copy-failure.md", "reason": "复制失效根因 + Tauri clipboard 插件接入 + renderer patch 草图，R2 实现直接依据"}

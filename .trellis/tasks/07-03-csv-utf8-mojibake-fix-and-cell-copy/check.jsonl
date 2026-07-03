@@ -1,0 +1,5 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "代码规范与禁用模式、review checklist，check 阶段对照"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "strict TS 类型规范，校验 BOM 预置与 File 构造的类型安全"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "file-type handler 契约，校验 CSV handler 仍满足 needsFileContent/PreviewProps 约定"}
+{"file": ".trellis/tasks/07-03-csv-utf8-mojibake-fix-and-cell-copy/research/tauri-clipboard-copy-failure.md", "reason": "复制失效根因与 patch 草图，校验 R2 patch 是否落在 writeSpreadsheetClipboard 且仅在 __TAURI_INTERNALS__ 时改走 Tauri 插件"}

@@ -75,3 +75,57 @@ index 3afd8fc6ab972a10857168502feb23ac9ade77e5..b0b5ba25e7801890b83d8b7183de2b72
          SELECT_ROW_COL_BG_COLOR: EXCEL_GREEN_SOFT,
          SELECT_AREA_COLOR: 'rgba(33, 163, 102, 0.14)',
          SELECT_BORDER_COLOR: EXCEL_GREEN,
+diff --git a/dist/spreadsheet.js b/dist/spreadsheet.js
+index 117229afdf2c1a8f477c7c69595d2f3a240d6904..234ff65aac339bcbf4ad2e92ae1e271ca5b9c60b 100644
+--- a/dist/spreadsheet.js
++++ b/dist/spreadsheet.js
+@@ -405,6 +405,15 @@ const copyTextWithTextareaFallback = (documentRef, text) => {
+ };
+ const writeSpreadsheetClipboard = async (documentRef, text) => {
+     var _a;
++    if (typeof globalThis !== 'undefined' && globalThis.__TAURI_INTERNALS__) {
++        try {
++            const mod = await import('@tauri-apps/plugin-clipboard-manager');
++            await mod.writeText(text);
++            return true;
++        } catch (e) {
++            console.error('Tauri clipboard writeText failed:', e);
++        }
++    }
+     const targetWindow = documentRef.defaultView;
+     const clipboard = (_a = targetWindow === null || targetWindow === void 0 ? void 0 : targetWindow.navigator) === null || _a === void 0 ? void 0 : _a.clipboard;
+     const useAsyncClipboard = !!(targetWindow === null || targetWindow === void 0 ? void 0 : targetWindow.isSecureContext) && typeof (clipboard === null || clipboard === void 0 ? void 0 : clipboard.writeText) === 'function';
+@@ -747,6 +756,25 @@ const renderFileViewerSpreadsheet = async (buffer, target, _type, context) => {
+             console.error('Spreadsheet copy failed:', error);
+         });
+     };
++    // macOS Edit menu's Cmd+C accelerator preempts the webview keydown, so
++    // e-virt-table's keydown-based copy never fires. The menu dispatches a
++    // native `copy` event instead — intercept it here and route to the same
++    // copy pipeline. Textareas/text selections fall through to native copy.
++    const handleDocumentCopy = (event) => {
++        if (disposed || !table) return;
++        const active = documentRef.activeElement;
++        const target = event.target;
++        const insideTable = (target && tableHost.contains(target)) || (active && tableHost.contains(active));
++        if (!insideTable) return;
++        const ctx = table.ctx;
++        if (!ctx || ctx.textSelectionStr || ctx.domSelectionStr) return;
++        if (typeof ctx.getSelectedData !== 'function') return;
++        const { value, xArr, yArr } = ctx.getSelectedData();
++        if (!xArr || !yArr || (xArr.length === 0 && yArr.length === 0)) return;
++        event.preventDefault();
++        copySpreadsheetSelection({ focusCell: ctx.focusCell, data: value, xArr, yArr });
++    };
++    documentRef.addEventListener('copy', handleDocumentCopy);
+     const buildTableView = () => ({
+         config: createTableConfig({
+             hostHeight: getHostHeight(),
+@@ -1340,6 +1368,7 @@ const renderFileViewerSpreadsheet = async (buffer, target, _type, context) => {
+         unmount() {
+             var _a;
+             disposed = true;
++            documentRef.removeEventListener('copy', handleDocumentCopy);
+             if (resizeFrame) {
+                 cancelAnimationFrame(resizeFrame);
+             }
