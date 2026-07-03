@@ -360,7 +360,7 @@ function Diagram({
             height={GRID_SIZE}
             patternUnits="userSpaceOnUse"
           >
-            <circle cx={0} cy={0} r={1} fill="var(--brd2)" />
+            <circle cx={0} cy={0} r={1.5} fill="var(--t3)" />
           </pattern>
           {/*
             Crow's foot markers. `orient="auto-start-reverse"` makes markerStart
