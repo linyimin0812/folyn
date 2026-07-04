@@ -61,7 +61,6 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
   const [collapseAllKey, setCollapseAllKey] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [hasParsed, setHasParsed] = useState(false);
-  const [formatIndent, setFormatIndent] = useState<2 | 4>(2);
 
   // Query tab state (PR4)
   const [queryLang] = useState<QueryLang>('jq');
@@ -292,14 +291,14 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
     if (inputContent.trim().length === 0) return;
     try {
       const value = await parseInput(inputContent, 'auto');
-      const formatted = JSON.stringify(value, null, formatIndent);
+      const formatted = JSON.stringify(value, null, 2);
       setInputContent(formatted);
-      showToast(`已格式化 (${formatIndent} 空格)`);
+      showToast('已格式化 (2 空格)');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       showToast(`格式化失败: ${msg}`);
     }
-  }, [inputContent, formatIndent, showToast]);
+  }, [inputContent, showToast]);
 
   // PR6: diff input handlers.
   const handleDiffInputChange = useCallback((text: string) => {
@@ -312,8 +311,6 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
 
   // Persist queryLang across re-renders for QueryBar's default.
   const queryBarKey = `${queryLang}-${parsedValueVersion}`;
-
-  const name = filePath.split('/').pop() || 'data.json';
 
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-panel text-t1">
@@ -344,35 +341,16 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
       <div className="flex min-h-0 flex-1" ref={splitContainerRef}>
         {/* Left: CodeMirror JSON5 editor (PR7). */}
         <div className="flex min-h-0 flex-col" style={{ flex: editorFlex }}>
-          <div className="flex h-[28px] shrink-0 items-center justify-between border-b border-brd bg-surf px-2 text-[11px] text-t3">
-            <span className="truncate">{name}</span>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={handleFormat}
-                className="rounded border border-brd bg-panel px-1.5 text-[11px] text-t2 hover:bg-hov hover:text-t1"
-                title="格式化 JSON"
-              >
-                格式化
-              </button>
-              <div className="flex items-center rounded border border-brd bg-panel text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => setFormatIndent(2)}
-                  className={`px-1.5 ${formatIndent === 2 ? 'bg-acc/15 text-acc font-medium' : 'text-t3 hover:text-t1'}`}
-                >
-                  2
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormatIndent(4)}
-                  className={`px-1.5 ${formatIndent === 4 ? 'bg-acc/15 text-acc font-medium' : 'text-t3 hover:text-t1'}`}
-                >
-                  4
-                </button>
-              </div>
-              <span>{inputContent.length} chars</span>
-            </div>
+          <div className="flex h-[28px] shrink-0 items-center justify-end gap-1.5 border-b border-brd bg-surf px-2 text-[11px] text-t3">
+            <button
+              type="button"
+              onClick={handleFormat}
+              className="rounded border border-brd bg-panel px-1.5 text-[11px] text-t2 hover:bg-hov hover:text-t1"
+              title="格式化 JSON"
+            >
+              格式化
+            </button>
+            <span>{inputContent.length} chars</span>
           </div>
           <Json5CodeMirror
             key={`editor-${filePath}`}
