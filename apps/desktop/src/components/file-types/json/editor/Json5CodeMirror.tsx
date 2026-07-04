@@ -105,25 +105,16 @@ export function Json5CodeMirror({ value, onChange, onSave }: Json5CodeMirrorProp
       '.cm-foldPlaceholder': { color: 'var(--t3, #999)' },
       '&.cm-focused': { outline: 'none' },
       '.cm-lint-marker-error': { color: '#ef4444' },
-      '.json-err-inline': {
-        color: '#b91c1c',
+      '.json-err-line': {
         backgroundColor: 'rgba(254, 226, 226, 0.5)',
-        borderLeft: '2px solid #ef4444',
-        padding: '2px 6px',
-        fontSize: '11px',
-        fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
-        marginLeft: '12px',
-        display: 'inline-block',
       },
     });
 
     const darkTheme = EditorView.theme(
       {
         '&': { backgroundColor: '#1a1a1a', color: '#ddd' },
-        '.json-err-inline': {
-          color: '#fca5a5',
+        '.json-err-line': {
           backgroundColor: 'rgba(127, 29, 29, 0.3)',
-          borderLeftColor: '#ef4444',
         },
       },
       { dark: true },
