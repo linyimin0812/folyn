@@ -53,6 +53,7 @@ const HANDLER_TO_THEME_ICON: Record<string, string> = {
   image: 'image',
   pdf: 'pdf',
   csv: 'csv',
+  json: 'json',
   dbml: 'sql',
   code: 'javaScript',
 };
