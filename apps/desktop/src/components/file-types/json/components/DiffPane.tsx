@@ -1,23 +1,20 @@
 /**
- * DiffPane — side-by-side diff for the JSON viewer's Diff tab.
+ * DiffPane — single-box diff for the JSON viewer's Diff tab.
  *
  * Layout:
  *   ┌────────────────────────────────────────────────────┐
  *   │ [☑ Sort both before diff]                          │
- *   ├──────────────────────────────┬─────────────────────┤
- *   │ left (read-only JsonTree)    │ right: [编辑][Diff]  │
- *   │                              │ ──────────────────  │
- *   │                              │ textarea            │
- *   │                              │   OR                │
- *   │                              │ diff iframe         │
- *   └──────────────────────────────┴─────────────────────┘
+ *   │ 输入要比对的 JSON            [编辑][Diff]          │
+ *   │ ──────────────────────────────────────────────────  │
+ *   │ textarea (edit mode) OR diff iframe (diff mode)    │
+ *   └────────────────────────────────────────────────────┘
  *
- * The right column is a single box that shows EITHER the textarea
+ * The pane is a single box that shows EITHER the textarea
  * (edit mode) OR the diff iframe (diff mode) — never both at once.
  * When the user pastes/types JSON for the first time (empty → non-
  * empty transition), the box auto-switches to diff mode. After that
  * the user owns the mode; [编辑] / [Diff] toggle buttons in the
- * right header switch manually.
+ * header switch manually.
  *
  * The diff runs automatically once the right input is parsed into a
  * value (the parent owns the debounced parse; this component re-runs
@@ -28,7 +25,6 @@
  * the root's `[data-theme]` attribute).
  */
 import { useEffect, useState } from 'react';
-import { JsonTree } from './JsonTree';
 import { parseInput } from '../lib/parseInput';
 import { sortKeysDeep } from '../lib/sortKeysDeep';
 
@@ -53,7 +49,6 @@ export function DiffPane({
   onRightInputChange,
   onRightValueChange,
   onToggleSortBoth,
-  onCopyValue,
 }: DiffPaneProps) {
   const [delta, setDelta] = useState<unknown>(null);
   const [html, setHtml] = useState<string>('');
@@ -177,68 +172,55 @@ export function DiffPane({
         )}
       </div>
 
-      {/* Two side-by-side panes: left tree, right textarea + diff iframe */}
-      <div className="grid min-h-0 flex-1 grid-cols-2">
-        {/* Left: current value tree */}
-        <div className="flex min-h-0 flex-col border-r border-brd">
-          <div className="flex h-[28px] shrink-0 items-center border-b border-brd bg-surf px-2 text-[11px] text-t3">
-            左侧 (当前)
-          </div>
-          <div className="min-h-0 flex-1">
-            <JsonTree value={left} onCopyValue={onCopyValue} />
+      {/* Single box: textarea OR diff iframe (one at a time) */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex h-[28px] shrink-0 items-center justify-between border-b border-brd bg-surf px-2 text-[11px] text-t3">
+          <span>输入要比对的 JSON</span>
+          <div className="flex items-center gap-px">
+            <button
+              type="button"
+              onClick={() => setRightViewMode('edit')}
+              className={`px-2 py-0.5 text-[11px] font-medium border ${
+                rightViewMode === 'edit'
+                  ? 'bg-accdim text-acc border-acc/40'
+                  : 'bg-surf text-t3 border-brd hover:bg-hov hover:text-t1'
+              }`}
+            >
+              编辑
+            </button>
+            <button
+              type="button"
+              onClick={() => setRightViewMode('diff')}
+              className={`px-2 py-0.5 text-[11px] font-medium border ${
+                rightViewMode === 'diff'
+                  ? 'bg-accdim text-acc border-acc/40'
+                  : 'bg-surf text-t3 border-brd hover:bg-hov hover:text-t1'
+              }`}
+            >
+              Diff
+            </button>
           </div>
         </div>
-
-        {/* Right: textarea OR diff iframe (one at a time) */}
-        <div className="flex min-h-0 flex-col">
-          <div className="flex h-[28px] shrink-0 items-center justify-between border-b border-brd bg-surf px-2 text-[11px] text-t3">
-            <span>右侧 (输入要比对的 JSON)</span>
-            <div className="flex items-center gap-px">
-              <button
-                type="button"
-                onClick={() => setRightViewMode('edit')}
-                className={`px-2 py-0.5 text-[11px] font-medium border ${
-                  rightViewMode === 'edit'
-                    ? 'bg-accdim text-acc border-acc/40'
-                    : 'bg-surf text-t3 border-brd hover:bg-hov hover:text-t1'
-                }`}
-              >
-                编辑
-              </button>
-              <button
-                type="button"
-                onClick={() => setRightViewMode('diff')}
-                className={`px-2 py-0.5 text-[11px] font-medium border ${
-                  rightViewMode === 'diff'
-                    ? 'bg-accdim text-acc border-acc/40'
-                    : 'bg-surf text-t3 border-brd hover:bg-hov hover:text-t1'
-                }`}
-              >
-                Diff
-              </button>
-            </div>
+        {rightViewMode === 'edit' ? (
+          <textarea
+            value={rightInput}
+            onChange={(e) => onRightInputChange(e.target.value)}
+            spellCheck={false}
+            placeholder="粘贴 JSON / JSON5 / Base64 / YAML / XML / CSV …"
+            className="min-h-0 flex-1 resize-none border-0 bg-panel px-2 py-1 font-mono text-[12px] leading-[1.5] text-t1 outline-none placeholder:text-t3"
+          />
+        ) : rightInput.length === 0 || html === '' ? (
+          <div className="flex min-h-0 flex-1 items-center justify-center px-2 text-center text-[12px] text-t3">
+            在编辑模式输入要比对的 JSON
           </div>
-          {rightViewMode === 'edit' ? (
-            <textarea
-              value={rightInput}
-              onChange={(e) => onRightInputChange(e.target.value)}
-              spellCheck={false}
-              placeholder="粘贴 JSON / JSON5 / Base64 / YAML / XML / CSV …"
-              className="min-h-0 flex-1 resize-none border-0 bg-panel px-2 py-1 font-mono text-[12px] leading-[1.5] text-t1 outline-none placeholder:text-t3"
-            />
-          ) : rightInput.length === 0 || html === '' ? (
-            <div className="flex min-h-0 flex-1 items-center justify-center px-2 text-center text-[12px] text-t3">
-              在编辑模式输入要比对的 JSON
-            </div>
-          ) : (
-            <iframe
-              title="json-diff"
-              srcDoc={html}
-              sandbox="allow-same-origin"
-              className="min-h-0 flex-1 w-full border-0 bg-white dark:bg-gray-900"
-            />
-          )}
-        </div>
+        ) : (
+          <iframe
+            title="json-diff"
+            srcDoc={html}
+            sandbox="allow-same-origin"
+            className="min-h-0 flex-1 w-full border-0 bg-white dark:bg-gray-900"
+          />
+        )}
       </div>
     </div>
   );
