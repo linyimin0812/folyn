@@ -34,6 +34,16 @@ describe('parseInput — auto-detect (positive)', () => {
     expect(value).toEqual({ k: 1 });
   });
 
+  it('parses unwrapped escaped JSON ({\\"a\\":1} → {a:1})', async () => {
+    const value = await parseInput('{\\"a\\":1}');
+    expect(value).toEqual({ a: 1 });
+  });
+
+  it('parses unwrapped escaped JSON with nested string + escapes', async () => {
+    const value = await parseInput('{\\"k\\":\\"v\\\\n\\"}');
+    expect(value).toEqual({ k: 'v\n' });
+  });
+
   it('parses base64-encoded JSON', async () => {
     const value = await parseInput(enc('{"x": 42}'));
     expect(value).toEqual({ x: 42 });

@@ -3,7 +3,10 @@
  *
  * Supported formats (see prd R3):
  *   - json5    : JSON5 (comments, unquoted keys, trailing commas, hex, etc.)
- *   - escaped  : a JSON string literal whose inner text is itself JSON
+ *   - escaped  : a JSON string literal whose inner text is itself JSON;
+ *                also accepts the "unwrapped" form where the outer quotes
+ *                were stripped but inner quotes remain backslash-escaped
+ *                (e.g. `{\"a\":1}`)
  *   - base64   : base64-encoded UTF-8 JSON string
  *   - yaml     : YAML
  *   - xml      : XML (attributes prefixed `@_`)
@@ -86,26 +89,43 @@ async function parseJson5(content: string): Promise<unknown> {
 
 function parseEscapedString(content: string): unknown {
   const trimmed = content.trim();
-  if (!looksLikeEscaped(trimmed)) {
-    throw new Error('not an escaped string literal');
-  }
-  const first = trimmed[0] as '"' | "'";
 
-  let inner: string;
-  if (first === '"') {
-    // JSON.parse unwraps the double-quoted string and processes escapes.
-    const unwrapped = JSON.parse(trimmed);
-    if (typeof unwrapped !== 'string') {
-      throw new Error('quoted literal did not unwrap to a string');
+  // Case 1: a fully-wrapped JSON string literal, e.g. `"{\"a\":1}"` or
+  // `'{"a":1}'`. Strip the outer quotes and JSON.parse the inner text.
+  if (looksLikeEscaped(trimmed)) {
+    const first = trimmed[0] as '"' | "'";
+    let inner: string;
+    if (first === '"') {
+      // JSON.parse unwraps the double-quoted string and processes escapes.
+      const unwrapped = JSON.parse(trimmed);
+      if (typeof unwrapped !== 'string') {
+        throw new Error('quoted literal did not unwrap to a string');
+      }
+      inner = unwrapped;
+    } else {
+      // Single-quoted: strip the outer quotes; the inner is expected to be
+      // JSON (which uses double quotes internally), so no escape processing.
+      inner = trimmed.slice(1, -1);
     }
-    inner = unwrapped;
-  } else {
-    // Single-quoted: strip the outer quotes; the inner is expected to be
-    // JSON (which uses double quotes internally), so no escape processing.
-    inner = trimmed.slice(1, -1);
+    return JSON.parse(inner);
   }
 
-  return JSON.parse(inner);
+  // Case 2: a stringified JSON whose outer quotes were stripped — e.g. the
+  // user pasted `{\"a\":1}` (inner quotes still backslash-escaped, no
+  // surrounding `"..."`). Re-wrap the text in double quotes so JSON.parse
+  // undoes the escape processing (`\"`, `\\`, `\n` …) and yields the inner
+  // JSON as a string; a second JSON.parse produces the object. The double
+  // parse is a strong guard: real YAML/CSV that merely happens to contain
+  // `\"` won't survive both parses, so this doesn't shadow later branches.
+  if (trimmed.includes('\\"')) {
+    const unwrapped = JSON.parse(`"${trimmed}"`);
+    if (typeof unwrapped !== 'string') {
+      throw new Error('unwrapped escaped literal did not yield a string');
+    }
+    return JSON.parse(unwrapped);
+  }
+
+  throw new Error('not an escaped string literal');
 }
 
 function parseBase64String(content: string): unknown {
