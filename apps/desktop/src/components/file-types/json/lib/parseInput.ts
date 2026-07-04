@@ -11,6 +11,9 @@
  *   - yaml     : YAML
  *   - xml      : XML (attributes prefixed `@_`)
  *   - csv      : CSV / TSV (array of records, header: true)
+ *   - partial  : best-effort repair of truncated/invalid JSON via
+ *                `jsonrepair` — for LLM streaming output that isn't a
+ *                complete JSON document yet (e.g. `{"a":1,"b":[1,2`)
  *
  * Heavy parsers (`json5`, `yaml`, `fast-xml-parser`, `papaparse`) are
  * lazy-loaded via `await import()` per `.trellis/spec/desktop/frontend/file-type-editors.md`
@@ -20,7 +23,7 @@
  * API:
  *   parseInput(content, mode?) => Promise<unknown>
  *
- * Auto-detect order: json5 → escaped → base64 → yaml → xml → csv.
+ * Auto-detect order: json5 → escaped → base64 → yaml → xml → csv → partial.
  * First successful parse wins; on all-fail, throws an aggregate Error.
  *
  * Design note: in `auto` mode, the `json5` and `yaml` branches only
@@ -40,7 +43,8 @@ export type InputMode =
   | 'base64'
   | 'yaml'
   | 'xml'
-  | 'csv';
+  | 'csv'
+  | 'partial';
 
 export interface ParseSuccess {
   value: unknown;
@@ -233,6 +237,20 @@ async function parseCsv(
   return data as Array<Record<string, string>>;
 }
 
+async function parsePartialJson(content: string): Promise<unknown> {
+  // `jsonrepair` tolerates truncated / malformed JSON: it closes unclosed
+  // strings, arrays and objects, drops incomplete trailing values, etc.
+  // It returns a repaired JSON *string*; JSON.parse then yields the value.
+  // Used for LLM streaming output that hasn't formed a complete document.
+  const mod = await import('jsonrepair');
+  const repair = mod.jsonrepair;
+  if (typeof repair !== 'function') {
+    throw new Error('jsonrepair is not available');
+  }
+  const repaired = repair(content);
+  return JSON.parse(repaired);
+}
+
 const PARSERS: Record<
   Exclude<InputMode, 'auto'>,
   (content: string) => Promise<unknown> | unknown
@@ -243,6 +261,7 @@ const PARSERS: Record<
   yaml: parseYaml,
   xml: parseXml,
   csv: parseCsv,
+  partial: parsePartialJson,
 };
 
 const AUTO_ORDER: ReadonlyArray<Exclude<InputMode, 'auto'>> = [
@@ -252,6 +271,7 @@ const AUTO_ORDER: ReadonlyArray<Exclude<InputMode, 'auto'>> = [
   'yaml',
   'xml',
   'csv',
+  'partial',
 ];
 
 export class ParseError extends Error {
@@ -307,6 +327,19 @@ export async function parseInput(
         });
         continue;
       }
+      // partial is a permissive last resort; only let it claim inputs that
+      // look JSON-shaped so it doesn't swallow YAML/CSV/text that the
+      // earlier branches already passed on.
+      if (candidate === 'partial') {
+        const head = input.trimStart()[0];
+        if (head !== '{' && head !== '[') {
+          attempted.push({
+            mode: candidate,
+            error: 'auto-mode partial rejected: input does not start with { or [',
+          });
+          continue;
+        }
+      }
       const value = await parser(input);
       // In auto mode, json5 and yaml only accept structured results
       // (object/array). A primitive result means the input was probably
@@ -319,6 +352,16 @@ export async function parseInput(
         attempted.push({
           mode: candidate,
           error: `auto-mode ${candidate} rejected primitive result`,
+        });
+        continue;
+      }
+      // partial repair of a truncated object/array should still yield a
+      // structured value; otherwise it repaired a bare primitive and we
+      // treat that as a non-match so the aggregate error is honest.
+      if (candidate === 'partial' && !isStructured(value)) {
+        attempted.push({
+          mode: candidate,
+          error: 'auto-mode partial rejected primitive result',
         });
         continue;
       }

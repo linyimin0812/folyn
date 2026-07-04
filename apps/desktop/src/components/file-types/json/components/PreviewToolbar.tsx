@@ -3,7 +3,7 @@
  *
  * Layout (left → right):
  *   [Input | Query | Convert | Diff] tabs
- *   | Input-mode dropdown (Auto / JSON5 / Escaped / Base64 / YAML / XML / CSV)
+ *   | Input-mode dropdown (Auto / JSON5 / Escaped / Base64 / YAML / XML / CSV / Partial JSON)
  *   | [Expand all] [Collapse all]   (active on Input tab only)
  *   | [Auto-sort toggle] [Auto-copy toggle]
  *
@@ -36,6 +36,7 @@ const MODE_OPTIONS: Array<{ value: InputMode; label: string }> = [
   { value: 'yaml', label: 'YAML' },
   { value: 'xml', label: 'XML' },
   { value: 'csv', label: 'CSV' },
+  { value: 'partial', label: 'Partial JSON' },
 ];
 
 export function PreviewToolbar({

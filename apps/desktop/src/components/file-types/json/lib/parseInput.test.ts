@@ -124,6 +124,27 @@ describe('parseInput — auto-detect precedence', () => {
     const result = await parseInputWithMode('h1,h2\nv1,v2');
     expect(result.mode).toBe('csv');
   });
+
+  it('claims truncated JSON object as partial', async () => {
+    const result = await parseInputWithMode('{"a":1,"b":[1,2');
+    expect(result.mode).toBe('partial');
+    expect(result.value).toEqual({ a: 1, b: [1, 2] });
+  });
+
+  it('claims truncated JSON array as partial', async () => {
+    const result = await parseInputWithMode('["a","b","c');
+    expect(result.mode).toBe('partial');
+    expect(result.value).toEqual(['a', 'b', 'c']);
+  });
+
+  it('partial does not shadow complete JSON (claimed by json5 first)', async () => {
+    const result = await parseInputWithMode('{"a":1}');
+    expect(result.mode).toBe('json5');
+  });
+
+  it('partial auto-branch rejects non-JSON-shaped input', async () => {
+    await expect(parseInput('hello world')).rejects.toBeInstanceOf(ParseError);
+  });
 });
 
 describe('parseInput — per-format explicit mode (positive)', () => {
@@ -155,6 +176,11 @@ describe('parseInput — per-format explicit mode (positive)', () => {
   it('csv mode parses CSV', async () => {
     const value = await parseInput('k,v\n1,2', 'csv');
     expect(value).toEqual([{ k: '1', v: '2' }]);
+  });
+
+  it('partial mode repairs truncated object', async () => {
+    const value = await parseInput('{"a":1,"b":"unterminated', 'partial');
+    expect(value).toEqual({ a: 1, b: 'unterminated' });
   });
 });
 
@@ -215,7 +241,7 @@ describe('parseInput — negative cases', () => {
     }
     expect(err).toBeInstanceOf(ParseError);
     const pe = err as ParseError;
-    expect(pe.attempted.length).toBe(6);
+    expect(pe.attempted.length).toBe(7);
     const modes = pe.attempted.map((a) => a.mode);
     expect(modes).toEqual([
       'json5',
@@ -224,6 +250,7 @@ describe('parseInput — negative cases', () => {
       'yaml',
       'xml',
       'csv',
+      'partial',
     ]);
   });
 });
