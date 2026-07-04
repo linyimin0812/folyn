@@ -12,13 +12,13 @@
  *   │                              │  - Diff → DiffPane       │
  *   └──────────────────────────────┴─────────────────────────┘
  *
- * Owns state per PR3 spec: parsedValue, inputMode, activeTab, autoSort,
+ * Owns state per PR3 spec: parsedValue, activeTab, autoSort,
  * autoCopy, parseError, search. Local-only — no Zustand store (per PRD
  * technical notes).
  *
  * Pipeline:
  *   content prop → inputContent state (editor value)
- *      → debounced 300ms → parseInput(text, mode)
+ *      → debounced 300ms → parseInput(text, 'auto')
  *      → if autoSort, sortKeysDeep → parsedValue
  *      → parseError on failure (last valid parsedValue retained)
  *
