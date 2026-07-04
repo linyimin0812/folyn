@@ -38,3 +38,8 @@ default_vault/
 
 # Local dev scratch / reference files
 .dev/
+
+# @file-viewer/vite-plugin artifacts (regenerated on dev/build/test)
+apps/desktop/dummy-non-existing-folder/
+apps/desktop/public/flyfish-viewer-assets.json
+apps/desktop/public/vendor/
