@@ -10,11 +10,16 @@ interface PreviewPaneProps {
   viewMode: ViewMode;
   previewFlex?: number;
   onScrollToHeading: (headingText: string) => void;
+  /**
+   * Optional write-back for preview components that support in-place editing
+   * (e.g. JSON file viewer). Forwarded to the rendered `<Preview>`.
+   */
+  onChange?: (content: string) => void;
 }
 
 export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
   function PreviewPane(
-    { activeTab, Preview, vaultRoot, viewMode, previewFlex, onScrollToHeading },
+    { activeTab, Preview, vaultRoot, viewMode, previewFlex, onScrollToHeading, onChange },
     ref,
   ) {
     const [outlineVisible, setOutlineVisible] = useState(false);
@@ -117,6 +122,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
               content={activeTab.content}
               filePath={activeTab.path}
               vaultRoot={vaultRoot}
+              onChange={onChange}
             />
           </div>
           {activeTab.fileType === 'markdown' && outlineVisible && (

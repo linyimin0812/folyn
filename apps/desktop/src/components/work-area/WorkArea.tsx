@@ -335,6 +335,7 @@ export function WorkArea() {
           viewMode={viewMode}
           previewFlex={previewFlex}
           onScrollToHeading={scrollEditorToHeading}
+          onChange={(content) => updateTabContent(activeTab.id, content)}
         />
       )}
 

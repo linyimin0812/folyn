@@ -47,7 +47,7 @@ const PARSE_DEBOUNCE_MS = 300;
 const TOAST_DURATION_MS = 1500;
 const QUERY_DEBOUNCE_MS = 200;
 
-export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
+export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewProps) {
   const [inputContent, setInputContent] = useState(content ?? '');
   const [parsedValue, setParsedValue] = useState<unknown>(null);
   const [parsedValueVersion, setParsedValueVersion] = useState(0);
@@ -293,12 +293,27 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
       const value = await parseInput(inputContent, 'auto');
       const formatted = JSON.stringify(value, null, 2);
       setInputContent(formatted);
+      // Sync the formatted content back to the store so Cmd+S / auto-save
+      // persist the formatted value to disk (mirrors editor edits).
+      onChange?.(formatted);
       showToast('已格式化 (2 空格)');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       showToast(`格式化失败: ${msg}`);
     }
-  }, [inputContent, showToast]);
+  }, [inputContent, onChange, showToast]);
+
+  // Stable wrapper that forwards editor edits to BOTH local state (for the
+  // debounced parse pipeline) AND the optional store write-back (`onChange`
+  // from PreviewProps). Keeping it stable via useCallback prevents the
+  // CodeMirror editor from re-mounting on every parent re-render.
+  const handleEditorChange = useCallback(
+    (text: string) => {
+      setInputContent(text);
+      onChange?.(text);
+    },
+    [onChange],
+  );
 
   // PR6: diff input handlers.
   const handleDiffInputChange = useCallback((text: string) => {
@@ -348,7 +363,7 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
           <Json5CodeMirror
             key={`editor-${filePath}`}
             value={inputContent}
-            onChange={setInputContent}
+            onChange={handleEditorChange}
           />
         </div>
 
