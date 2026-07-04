@@ -75,6 +75,12 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
   const [diffValue, setDiffValue] = useState<unknown>(null);
   const [sortBeforeDiff, setSortBeforeDiff] = useState(false);
 
+  // Split-pane drag-to-resize state (mirrors WorkArea.tsx pattern).
+  const [editorFlex, setEditorFlex] = useState(1);
+  const [treeFlex, setTreeFlex] = useState(1);
+  const splitDragging = useRef(false);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+
   const toastTimer = useRef<number | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -154,6 +160,33 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
       if (queryAbortRef.current) {
         queryAbortRef.current.abort();
       }
+    };
+  }, []);
+
+  // Split-pane drag handlers — registered on document so dragging continues
+  // even when the cursor leaves the resizer div.
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!splitDragging.current || !splitContainerRef.current) return;
+      const rect = splitContainerRef.current.getBoundingClientRect();
+      if (rect.width === 0) return;
+      const ratio = (e.clientX - rect.left) / rect.width;
+      const clamped = Math.max(0.2, Math.min(0.8, ratio));
+      setEditorFlex(clamped);
+      setTreeFlex(1 - clamped);
+    };
+    const handleMouseUp = () => {
+      if (splitDragging.current) {
+        splitDragging.current = false;
+        document.body.style.cursor = '';
+        document.documentElement.classList.remove('is-resizing');
+      }
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
     };
   }, []);
 
@@ -294,9 +327,9 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
         </div>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-2">
+      <div className="flex min-h-0 flex-1" ref={splitContainerRef}>
         {/* Left: CodeMirror JSON5 editor (PR7). */}
-        <div className="flex min-h-0 flex-col">
+        <div className="flex min-h-0 flex-col" style={{ flex: editorFlex }}>
           <div className="flex shrink-0 items-center justify-between border-b border-brd bg-surf px-2 py-0.5 text-[11px] text-t3">
             <span className="truncate">{name}</span>
             <span>{inputContent.length} chars</span>
@@ -308,8 +341,18 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
           />
         </div>
 
+        {/* Draggable vertical divider (mirrors WorkArea.tsx resizer). */}
+        <div
+          className="w-[2px] shrink-0 cursor-col-resize bg-brd transition-[background] duration-[140ms] hover:bg-acc hover:opacity-30"
+          onMouseDown={() => {
+            splitDragging.current = true;
+            document.body.style.cursor = 'col-resize';
+            document.documentElement.classList.add('is-resizing');
+          }}
+        />
+
         {/* Right: tab-dependent content. */}
-        <div className="flex min-h-0 flex-col">
+        <div className="flex min-h-0 flex-col" style={{ flex: treeFlex }}>
           {activeTab === 'input' ? (
             <>
               <div className="flex shrink-0 items-center gap-2 border-b border-brd bg-surf px-2 py-0.5">
