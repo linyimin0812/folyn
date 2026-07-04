@@ -4,17 +4,17 @@
  * Layout:
  *   ┌────────────────────────────────────────────────────┐
  *   │ [☑ Sort both before diff]                          │
- *   │ 输入要比对的 JSON            [编辑][Diff]          │
+ *   │ 输入要比对的 JSON                          清空    │
  *   │ ──────────────────────────────────────────────────  │
- *   │ textarea (edit mode) OR diff iframe (diff mode)    │
+ *   │ textarea (empty input) OR diff iframe (non-empty)  │
  *   └────────────────────────────────────────────────────┘
  *
  * The pane is a single box that shows EITHER the textarea
- * (edit mode) OR the diff iframe (diff mode) — never both at once.
- * When the user pastes/types JSON for the first time (empty → non-
- * empty transition), the box auto-switches to diff mode. After that
- * the user owns the mode; [编辑] / [Diff] toggle buttons in the
- * header switch manually.
+ * (when `rightInput` is empty) OR the diff iframe (when `rightInput`
+ * is non-empty) — never both at once. There is no manual toggle:
+ * the swap is purely automatic based on input presence. A subtle
+ * "清空" link in the header clears `rightInput` so the user can
+ * return to the textarea after pasting.
  *
  * The diff runs automatically once the right input is parsed into a
  * value (the parent owns the debounced parse; this component re-runs
@@ -54,7 +54,6 @@ export function DiffPane({
   const [html, setHtml] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(false);
-  const [rightViewMode, setRightViewMode] = useState<'edit' | 'diff'>('edit');
 
   // Debounced parse of the right textarea → diffValue.
   useEffect(() => {
@@ -87,21 +86,10 @@ export function DiffPane({
     return () => mq.removeEventListener('change', update);
   }, []);
 
-  // Auto-switch the right column from edit → diff mode the first time
-  // the user pastes/types non-empty input. After that the user owns
-  // the mode (the [编辑] / [Diff] buttons toggle it manually); we don't
-  // force-switch back to edit when the input becomes empty again, so
-  // the user can clear+re-paste without losing their diff view.
-  useEffect(() => {
-    if (rightInput.trim().length > 0 && rightViewMode === 'edit') {
-      setRightViewMode('diff');
-    }
-  }, [rightInput, rightViewMode]);
-
   // Auto-run diff whenever left/right/sortBoth changes (right is updated
   // by the parent's debounced parse effect, so this fires AFTER parsing
-  // completes — no race). Skipped when rightInput is empty (handled by
-  // the placeholder branch in JSX).
+  // completes — no race). Skipped when rightInput is empty (the textarea
+  // is shown instead of the iframe in that case).
   useEffect(() => {
     if (rightInput.length === 0) {
       setError(null);
@@ -172,36 +160,21 @@ export function DiffPane({
         )}
       </div>
 
-      {/* Single box: textarea OR diff iframe (one at a time) */}
+      {/* Single box: textarea (empty input) OR diff iframe (non-empty) */}
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex h-[28px] shrink-0 items-center justify-between border-b border-brd bg-surf px-2 text-[11px] text-t3">
           <span>输入要比对的 JSON</span>
-          <div className="flex items-center gap-px">
+          {rightInput.length > 0 && (
             <button
               type="button"
-              onClick={() => setRightViewMode('edit')}
-              className={`px-2 py-0.5 text-[11px] font-medium border ${
-                rightViewMode === 'edit'
-                  ? 'bg-accdim text-acc border-acc/40'
-                  : 'bg-surf text-t3 border-brd hover:bg-hov hover:text-t1'
-              }`}
+              onClick={() => onRightInputChange('')}
+              className="text-t3 hover:text-t1 text-[11px]"
             >
-              编辑
+              清空
             </button>
-            <button
-              type="button"
-              onClick={() => setRightViewMode('diff')}
-              className={`px-2 py-0.5 text-[11px] font-medium border ${
-                rightViewMode === 'diff'
-                  ? 'bg-accdim text-acc border-acc/40'
-                  : 'bg-surf text-t3 border-brd hover:bg-hov hover:text-t1'
-              }`}
-            >
-              Diff
-            </button>
-          </div>
+          )}
         </div>
-        {rightViewMode === 'edit' ? (
+        {rightInput.length === 0 ? (
           <textarea
             value={rightInput}
             onChange={(e) => onRightInputChange(e.target.value)}
@@ -209,9 +182,9 @@ export function DiffPane({
             placeholder="粘贴 JSON / JSON5 / Base64 / YAML / XML / CSV …"
             className="min-h-0 flex-1 resize-none border-0 bg-panel px-2 py-1 font-mono text-[12px] leading-[1.5] text-t1 outline-none placeholder:text-t3"
           />
-        ) : rightInput.length === 0 || html === '' ? (
+        ) : html === '' ? (
           <div className="flex min-h-0 flex-1 items-center justify-center px-2 text-center text-[12px] text-t3">
-            在编辑模式输入要比对的 JSON
+            正在计算差异...
           </div>
         ) : (
           <iframe
