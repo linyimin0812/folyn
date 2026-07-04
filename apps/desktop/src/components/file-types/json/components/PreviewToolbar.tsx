@@ -3,50 +3,36 @@
  *
  * Layout (left → right):
  *   [Input | Query | Convert | Diff] tabs
- *   | Input-mode dropdown (Auto / JSON5 / Escaped / Base64 / YAML / XML / CSV / Partial JSON)
  *   | [Expand all] [Collapse all]   (active on Input tab only)
  *   | [Auto-sort toggle] [Auto-copy toggle]
+ *
+ * Pasted input is auto-detected as JSON / JSON5 / escaped / base64 / YAML /
+ * XML / CSV / partial-JSON by `parseInput` — no manual format selector.
  *
  * PR4-6: pass `enableAllTabs` to enable the Query/Convert/Diff tabs (they
  * start disabled in PR3 and are flipped on once their panes ship).
  */
-import type { InputMode } from '../lib/parseInput';
 
 export type PreviewTab = 'input' | 'query' | 'convert' | 'diff';
 
 export interface PreviewToolbarProps {
   activeTab: PreviewTab;
-  inputMode: InputMode;
   autoSort: boolean;
   autoCopy: boolean;
   enableAllTabs?: boolean;
   onTabChange: (tab: PreviewTab) => void;
-  onInputModeChange: (mode: InputMode) => void;
   onToggleAutoSort: () => void;
   onToggleAutoCopy: () => void;
   onExpandAll: () => void;
   onCollapseAll: () => void;
 }
 
-const MODE_OPTIONS: Array<{ value: InputMode; label: string }> = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'json5', label: 'JSON5' },
-  { value: 'escaped', label: 'Escaped' },
-  { value: 'base64', label: 'Base64' },
-  { value: 'yaml', label: 'YAML' },
-  { value: 'xml', label: 'XML' },
-  { value: 'csv', label: 'CSV' },
-  { value: 'partial', label: 'Partial JSON' },
-];
-
 export function PreviewToolbar({
   activeTab,
-  inputMode,
   autoSort,
   autoCopy,
   enableAllTabs = false,
   onTabChange,
-  onInputModeChange,
   onToggleAutoSort,
   onToggleAutoCopy,
   onExpandAll,
@@ -101,24 +87,6 @@ export function PreviewToolbar({
           );
         })}
       </div>
-
-      <div className="mx-1 h-4 w-px bg-brd" />
-
-      {/* Input-mode dropdown */}
-      <label className="flex items-center gap-1 text-[11px] text-t3">
-        <span>格式</span>
-        <select
-          value={inputMode}
-          onChange={(e) => onInputModeChange(e.target.value as InputMode)}
-          className="rounded border border-brd bg-surf px-1.5 py-0.5 text-[11px] text-t1 focus:outline-none focus:border-acc"
-        >
-          {MODE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </label>
 
       <div className="mx-1 h-4 w-px bg-brd" />
 

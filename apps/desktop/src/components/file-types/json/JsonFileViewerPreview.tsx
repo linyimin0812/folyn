@@ -33,7 +33,7 @@ import {
   useState,
 } from 'react';
 import type { PreviewProps } from '../types';
-import { parseInput, type InputMode } from './lib/parseInput';
+import { parseInput } from './lib/parseInput';
 import { sortKeysDeep } from './lib/sortKeysDeep';
 import { runQuery, type QueryLang } from './lib/query';
 import { JsonTree } from './components/JsonTree';
@@ -51,7 +51,6 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
   const [inputContent, setInputContent] = useState(content ?? '');
   const [parsedValue, setParsedValue] = useState<unknown>(null);
   const [parsedValueVersion, setParsedValueVersion] = useState(0);
-  const [inputMode, setInputMode] = useState<InputMode>('auto');
   const [activeTab, setActiveTab] = useState<PreviewTab>('input');
   const [autoSort, setAutoSort] = useState(false);
   const [autoCopy, setAutoCopy] = useState(false);
@@ -91,10 +90,12 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
     toastTimer.current = window.setTimeout(() => setToast(null), TOAST_DURATION_MS);
   }, []);
 
-  // parse: runs parseInput (async due to dynamic-import of heavy parsers),
-  // applies auto-sort if enabled, updates parsedValue / parseError.
+  // parse: runs parseInput in auto-detect mode (async due to dynamic-import
+  // of heavy parsers), applies auto-sort if enabled, updates parsedValue /
+  // parseError. Auto-detect covers JSON5 / escaped / base64 / YAML / XML /
+  // CSV / partial-JSON — pasted content is converted automatically.
   const parse = useCallback(
-    async (text: string, mode: InputMode, sort: boolean) => {
+    async (text: string, sort: boolean) => {
       if (text.length === 0) {
         setParsedValue(null);
         setParseError(null);
@@ -102,7 +103,7 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
         return;
       }
       try {
-        const value = await parseInput(text, mode);
+        const value = await parseInput(text, 'auto');
         const finalValue = sort ? sortKeysDeep(value) : value;
         setParsedValue(finalValue);
         setParsedValueVersion((v) => v + 1);
@@ -132,24 +133,24 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
   // Initial parse on mount using the file's `content` prop in auto mode.
   useEffect(() => {
     setInputContent(content ?? '');
-    void parse(content ?? '', 'auto', false);
+    void parse(content ?? '', false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // External content change → reset input + re-parse.
   useEffect(() => {
     setInputContent(content ?? '');
-    void parse(content ?? '', 'auto', autoSort);
+    void parse(content ?? '', autoSort);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content]);
 
-  // Debounced re-parse on input/mode/sort change.
+  // Debounced re-parse on input/sort change.
   useEffect(() => {
     const handle = window.setTimeout(() => {
-      void parse(inputContent, inputMode, autoSort);
+      void parse(inputContent, autoSort);
     }, PARSE_DEBOUNCE_MS);
     return () => window.clearTimeout(handle);
-  }, [inputContent, inputMode, autoSort, parse]);
+  }, [inputContent, autoSort, parse]);
 
   // Cleanup toast timer + in-flight query on unmount.
   useEffect(() => {
@@ -331,11 +332,9 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-panel text-t1">
       <PreviewToolbar
         activeTab={activeTab}
-        inputMode={inputMode}
         autoSort={autoSort}
         autoCopy={autoCopy}
         onTabChange={setActiveTab}
-        onInputModeChange={setInputMode}
         onToggleAutoSort={() => setAutoSort((v) => !v)}
         onToggleAutoCopy={() => setAutoCopy((v) => !v)}
         onExpandAll={() => setExpandAllKey((k) => k + 1)}

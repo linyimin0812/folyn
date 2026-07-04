@@ -105,21 +105,12 @@ describe('JsonFileViewerPreview — PR3', () => {
     });
   });
 
-  it('re-parses as YAML when input-mode dropdown switches to YAML', async () => {
+  it('auto-detects YAML input and parses it without a format selector', async () => {
     const yaml = 'name: Alice\nage: 30';
-    let view: ReturnType<typeof render>;
     await act(async () => {
-      view = render(<JsonFileViewerPreview content={yaml} filePath='/v/data.json' />);
+      render(<JsonFileViewerPreview content={yaml} filePath='/v/data.json' />);
     });
-    await waitFor(() => {
-      expect(within(getTree()).getByText('name')).toBeTruthy();
-    });
-
-    // Switch dropdown to YAML explicitly — should still parse and show keys.
-    const select = view!.getByDisplayValue('Auto') as HTMLSelectElement;
-    await act(async () => {
-      fireEvent.change(select, { target: { value: 'yaml' } });
-    });
+    // No format dropdown — auto-detect should claim YAML and show both keys.
     await waitFor(() => {
       expect(within(getTree()).getByText('name')).toBeTruthy();
       expect(within(getTree()).getByText('age')).toBeTruthy();
