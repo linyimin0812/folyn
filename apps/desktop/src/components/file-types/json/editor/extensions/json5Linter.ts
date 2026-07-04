@@ -47,16 +47,27 @@ export function diagnosticsFromError(
 ): Diagnostic[] {
   const message = err instanceof Error ? err.message : String(err);
   let errorPos = 0;
-  const posMatch = message.match(/(?:position|char)\s+(\d+)/i);
-  if (posMatch) {
-    errorPos = Math.min(parseInt(posMatch[1], 10), content.length);
+  // json5 format: "at L:C" (1-based line:column)
+  const atMatch = message.match(/at\s+(\d+):(\d+)/i);
+  if (atMatch) {
+    const lineNum = parseInt(atMatch[1], 10);
+    // Convert 1-based line number to char position of the line start
+    // so the loop below picks the right line.
+    errorPos = lineNum > 1
+      ? content.split('\n').slice(0, lineNum - 1).join('\n').length + 1
+      : 0;
   } else {
-    const lineMatch = message.match(/line\s+(\d+)/i);
-    if (lineMatch) {
-      const lineNum = Math.min(parseInt(lineMatch[1], 10), lineCount);
-      errorPos = lineNum > 0
-        ? content.split('\n').slice(0, lineNum - 1).join('\n').length + 1
-        : 0;
+    const posMatch = message.match(/(?:position|char)\s+(\d+)/i);
+    if (posMatch) {
+      errorPos = Math.min(parseInt(posMatch[1], 10), content.length);
+    } else {
+      const lineMatch = message.match(/line\s+(\d+)/i);
+      if (lineMatch) {
+        const lineNum = Math.min(parseInt(lineMatch[1], 10), lineCount);
+        errorPos = lineNum > 0
+          ? content.split('\n').slice(0, lineNum - 1).join('\n').length + 1
+          : 0;
+      }
     }
   }
   // Split content into lines so we can compute the error line's range.
