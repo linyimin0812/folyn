@@ -330,7 +330,7 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
       <div className="flex min-h-0 flex-1" ref={splitContainerRef}>
         {/* Left: CodeMirror JSON5 editor (PR7). */}
         <div className="flex min-h-0 flex-col" style={{ flex: editorFlex }}>
-          <div className="flex shrink-0 items-center justify-between border-b border-brd bg-surf px-2 py-0.5 text-[11px] text-t3">
+          <div className="flex h-[28px] shrink-0 items-center justify-between border-b border-brd bg-surf px-2 text-[11px] text-t3">
             <span className="truncate">{name}</span>
             <span>{inputContent.length} chars</span>
           </div>
@@ -355,14 +355,14 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
         <div className="flex min-h-0 flex-col" style={{ flex: treeFlex }}>
           {activeTab === 'input' ? (
             <>
-              <div className="flex shrink-0 items-center gap-2 border-b border-brd bg-surf px-2 py-0.5">
+              <div className="flex h-[28px] shrink-0 items-center gap-2 border-b border-brd bg-surf px-2">
                 <span className="text-[11px] text-t3">搜索</span>
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="键或值…"
-                  className="min-w-0 flex-1 rounded border border-brd bg-panel px-1.5 py-0.5 text-[11px] text-t1 outline-none focus:border-acc"
+                  className="min-w-0 flex-1 rounded border border-brd bg-panel px-1.5 text-[11px] text-t1 outline-none focus:border-acc"
                 />
               </div>
               <div className="min-h-0 flex-1">

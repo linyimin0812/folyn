@@ -117,7 +117,7 @@ export function DiffPane({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Toolbar */}
-      <div className="flex shrink-0 items-center gap-3 border-b border-brd bg-surf px-2 py-1 text-[11px]">
+      <div className="flex h-[28px] shrink-0 items-center gap-3 border-b border-brd bg-surf px-2 text-[11px]">
         <label className="flex items-center gap-1 text-t2">
           <input
             type="checkbox"
@@ -130,7 +130,7 @@ export function DiffPane({
         <button
           type="button"
           onClick={runDiff}
-          className="rounded border border-acc/40 bg-accdim px-3 py-0.5 text-[11px] font-medium text-acc hover:bg-acc hover:text-white"
+          className="rounded border border-acc/40 bg-accdim px-3 text-[11px] font-medium text-acc hover:bg-acc hover:text-white"
         >
           运行 Diff
         </button>
@@ -142,7 +142,7 @@ export function DiffPane({
       {/* Two side-by-side trees */}
       <div className="grid min-h-[40%] grid-cols-2 border-b border-brd">
         <div className="flex min-h-0 flex-col border-r border-brd">
-          <div className="shrink-0 border-b border-brd bg-surf px-2 py-0.5 text-[11px] text-t3">
+          <div className="flex h-[28px] shrink-0 items-center border-b border-brd bg-surf px-2 text-[11px] text-t3">
             左侧 (当前)
           </div>
           <div className="min-h-0 flex-1">
@@ -150,7 +150,7 @@ export function DiffPane({
           </div>
         </div>
         <div className="flex min-h-0 flex-col">
-          <div className="shrink-0 border-b border-brd bg-surf px-2 py-0.5 text-[11px] text-t3">
+          <div className="flex h-[28px] shrink-0 items-center border-b border-brd bg-surf px-2 text-[11px] text-t3">
             右侧 (粘贴第二个)
           </div>
           <textarea

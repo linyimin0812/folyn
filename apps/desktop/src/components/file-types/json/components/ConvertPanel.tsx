@@ -72,9 +72,9 @@ export function ConvertPanel({ value, onOutput, onCopyValue }: ConvertPanelProps
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 flex-col gap-1 border-b border-brd bg-surf px-2 py-1.5">
+      <div className="flex shrink-0 flex-col border-b border-brd bg-surf px-2">
         {groups.map((g) => (
-          <div key={g} className="flex items-center gap-1">
+          <div key={g} className="flex h-[28px] shrink-0 items-center gap-1.5">
             <span className="w-16 shrink-0 text-[11px] text-t3">{GROUP_LABELS[g]}</span>
             <div className="flex flex-wrap items-center gap-1">
               {converters
@@ -85,7 +85,7 @@ export function ConvertPanel({ value, onOutput, onCopyValue }: ConvertPanelProps
                     type="button"
                     disabled={loading}
                     onClick={() => handleRun(c)}
-                    className={`rounded border px-2 py-0.5 text-[11px] ${
+                    className={`rounded border px-2 text-[11px] ${
                       loading
                         ? 'border-brd bg-surf text-t3 opacity-60'
                         : 'border-brd bg-panel text-t2 hover:bg-hov hover:text-t1'
@@ -105,13 +105,13 @@ export function ConvertPanel({ value, onOutput, onCopyValue }: ConvertPanelProps
         </div>
       )}
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex shrink-0 items-center justify-between border-b border-brd bg-panel px-2 py-0.5">
+        <div className="flex h-[28px] shrink-0 items-center justify-between border-b border-brd bg-panel px-2">
           <span className="text-[11px] text-t3">输出</span>
           <button
             type="button"
             disabled={output === null}
             onClick={handleCopy}
-            className={`rounded px-2 py-0.5 text-[11px] ${
+            className={`rounded px-2 text-[11px] ${
               output === null
                 ? 'text-t3 opacity-50'
                 : 'text-t2 hover:bg-hov hover:text-t1'
