@@ -58,14 +58,30 @@ import { indentationMarkers } from '@replit/codemirror-indentation-markers';
 import { json5LintSource } from './extensions/json5Linter';
 import { jsonAutocomplete } from './extensions/jsonAutocomplete';
 import { errorInlineWidgetExtension } from './extensions/errorInlineWidget';
+import {
+  diffLineDecoratorExtension,
+  setDiffBaseline,
+} from './extensions/diffLineDecorator';
 
 export interface Json5CodeMirrorProps {
   value: string;
   onChange: (v: string) => void;
   onSave?: () => void;
+  /**
+   * Optional baseline text for the inline diff line decorator. When provided,
+   * the editor highlights "added" lines (lines present in the doc but not in
+   * the baseline) with a green line background. Used by the JSON viewer's
+   * Diff tab. Omitted for the main left-side editor.
+   */
+  diffBaseline?: string;
 }
 
-export function Json5CodeMirror({ value, onChange, onSave }: Json5CodeMirrorProps) {
+export function Json5CodeMirror({
+  value,
+  onChange,
+  onSave,
+  diffBaseline,
+}: Json5CodeMirrorProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
@@ -108,6 +124,9 @@ export function Json5CodeMirror({ value, onChange, onSave }: Json5CodeMirrorProp
       '.json-err-line': {
         backgroundColor: 'rgba(254, 226, 226, 0.5)',
       },
+      '.cm-diff-added-line': {
+        backgroundColor: 'rgba(26, 127, 55, 0.15)',
+      },
     });
 
     const darkTheme = EditorView.theme(
@@ -115,6 +134,9 @@ export function Json5CodeMirror({ value, onChange, onSave }: Json5CodeMirrorProp
         '&': { backgroundColor: '#1a1a1a', color: '#ddd' },
         '.json-err-line': {
           backgroundColor: 'rgba(127, 29, 29, 0.3)',
+        },
+        '.cm-diff-added-line': {
+          backgroundColor: 'rgba(46, 160, 67, 0.25)',
         },
       },
       { dark: true },
@@ -173,6 +195,9 @@ export function Json5CodeMirror({ value, onChange, onSave }: Json5CodeMirrorProp
           linter(json5LintSource, { delay: 300 }),
           errorInlineWidgetExtension,
         ]),
+        ...(diffBaseline !== undefined
+          ? [diffLineDecoratorExtension]
+          : []),
       ],
     });
 
@@ -216,6 +241,17 @@ export function Json5CodeMirror({ value, onChange, onSave }: Json5CodeMirrorProp
       });
     }
   }, [value]);
+
+  // Push baseline updates into the diff line decorator. Runs on mount and
+  // whenever `diffBaseline` changes. The extension is only present when
+  // `diffBaseline` was provided at mount; if it wasn't, the dispatched
+  // effect is a harmless no-op (no plugin is listening).
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    if (diffBaseline === undefined) return;
+    setDiffBaseline(view, diffBaseline);
+  }, [diffBaseline]);
 
   return (
     <div
