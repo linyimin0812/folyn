@@ -74,7 +74,9 @@ export function diagnosticsFromError(
   }
   // Fallback: if errorPos pointed past the end, use last line.
   if (errorLine >= lines.length) errorLine = Math.max(0, lines.length - 1);
-  const lineStart = lines.slice(0, errorLine).join('\n').length;
+  const lineStart = errorLine === 0
+    ? 0
+    : lines.slice(0, errorLine).join('\n').length + 1;
   const lineText = lines[errorLine] ?? '';
   return [
     {
