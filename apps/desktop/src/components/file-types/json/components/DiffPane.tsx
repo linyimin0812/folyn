@@ -180,69 +180,111 @@ export function DiffPane({
 }
 
 function wrapHtml(body: string, isDark: boolean): string {
-  // jsondiffpatch's HTML formatter emits <li> elements with classes like
-  // `added`, `deleted`, `modified`, `moved`. The base stylesheet lives at
-  // `jsondiffpatch/formatters/styles/html.css`; we inline a minimal subset
-  // here so the iframe doesn't have to fetch it.
+  // jsondiffpatch's HTML formatter emits <li> elements with classes prefixed
+  // by `jsondiffpatch-`: `jsondiffpatch-added`, `jsondiffpatch-deleted`,
+  // `jsondiffpatch-modified`, `jsondiffpatch-unchanged`. Property names live
+  // in `<div class="jsondiffpatch-property-name">`, values in
+  // `<div class="jsondiffpatch-value">` (with `jsondiffpatch-left-value` /
+  // `jsondiffpatch-right-value` modifiers on modified rows). Char-level
+  // string textdiff emits `<ins>`/`<del>` inside `.jsondiffpatch-textdiff-value`.
+  // The base stylesheet at `jsondiffpatch/formatters/styles/html.css` is NOT
+  // loaded here; we inline a tailored subset so the iframe stays self-contained.
   //
   // Diff visibility: each changed row gets a saturated left-border stripe,
   // a git-style +/-/~ prefix marker, and a tinted background so additions,
   // deletions and modifications are readable at a glance in both themes.
+  // Unchanged rows are dimmed so changed rows stand out.
   const bg = isDark ? '#1a1a1a' : '#fff';
   const fg = isDark ? '#e6e6e6' : '#111';
   const keyCol = isDark ? '#79c0ff' : '#0550ae';
 
-  // Added — green.
-  const addedBg = isDark ? '#16391f' : '#dcffe3';
+  // Added — green. Saturated (alpha ~0.22 dark / ~0.18 light).
+  const addedBg = isDark ? 'rgba(63,185,80,0.22)' : 'rgba(26,127,55,0.18)';
   const addedBd = isDark ? '#3fb950' : '#1a7f37';
   const addedFg = isDark ? '#7ee787' : '#1a7f37';
 
   // Deleted — red.
-  const delBg = isDark ? '#3d1717' : '#ffebe9';
+  const delBg = isDark ? 'rgba(248,81,73,0.22)' : 'rgba(207,34,46,0.18)';
   const delBd = isDark ? '#f85149' : '#cf222e';
   const delFg = isDark ? '#ff9b9b' : '#cf222e';
 
   // Modified — amber.
-  const modBg = isDark ? '#3a2e10' : '#fff8c5';
+  const modBg = isDark ? 'rgba(210,153,34,0.22)' : 'rgba(191,135,0,0.18)';
   const modBd = isDark ? '#d29922' : '#bf8700';
   const modFg = isDark ? '#e3b341' : '#7d4e00';
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
-  body { font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.55; background: ${bg}; color: ${fg}; margin: 8px; }
+  body { font-family: ui-monospace, monospace; font-size: 13px; line-height: 1.55; background: ${bg}; color: ${fg}; margin: 8px; }
   ul { list-style: none; padding-left: 18px; margin: 0; }
   li { position: relative; padding: 1px 4px 1px 22px; border-radius: 3px; }
-  li > .key { color: ${keyCol}; font-weight: 600; }
-  li > .jsondiffpatch-textdiff-value { white-space: pre-wrap; }
-
-  /* git-style +/-/~ prefix markers */
-  li.added::before, li.deleted::before, li.modified::before {
-    position: absolute; left: 6px; width: 14px; text-align: center;
-    font-weight: 700; font-family: ui-monospace, monospace;
-  }
-  li.added::before { content: '+'; color: ${addedFg}; }
-  li.deleted::before { content: '-'; color: ${delFg}; }
-  li.modified::before { content: '~'; color: ${modFg}; }
-
-  /* left-border stripe + tinted background per change type */
-  li.added { background: ${addedBg}; border-left: 3px solid ${addedBd}; }
-  li.added > .jsondiffpatch-property-name, li.added > .key { color: ${addedFg}; }
-  li.deleted { background: ${delBg}; border-left: 3px solid ${delBd}; }
-  li.deleted > .jsondiffpatch-property-name, li.deleted > .key { color: ${delFg}; text-decoration: line-through; }
-  li.modified { background: ${modBg}; border-left: 3px solid ${modBd}; }
-  li.modified > .jsondiffpatch-textdiff-line { display: inline; }
 
   .jsondiffpatch-delta { display: block; }
-  .jsondiffpatch-textdiff-value { display: inline; }
-  .jsondiffpatch-property-name { color: ${keyCol}; }
+  .jsondiffpatch-property-name { color: ${keyCol}; font-weight: 600; }
+  .jsondiffpatch-value pre { font-family: ui-monospace, monospace; margin: 0; }
+  .jsondiffpatch-value { display: inline; }
 
-  /* inline old→new values on modified primitives */
-  .jsondiffpatch-value-deleted { color: ${delFg}; text-decoration: line-through; background: ${isDark ? 'rgba(248,81,73,0.12)' : 'rgba(207,34,46,0.08)'}; padding: 0 2px; border-radius: 2px; }
-  .jsondiffpatch-value-deleted::after { content: ' → '; color: ${fg}; font-weight: 700; text-decoration: none; }
-  .jsondiffpatch-value-added { color: ${addedFg}; background: ${isDark ? 'rgba(63,185,80,0.12)' : 'rgba(26,127,55,0.08)'}; padding: 0 2px; border-radius: 2px; }
+  /* Unchanged rows: dim so changed rows stand out. */
+  li.jsondiffpatch-unchanged { opacity: 0.55; }
+  li.jsondiffpatch-unchanged > .jsondiffpatch-property-name { font-weight: 400; }
 
-  /* char-level string textdiff: jsondiffpatch emits <ins>/<del> */
-  .jsondiffpatch-textdiff-value ins { background: ${isDark ? 'rgba(63,185,80,0.28)' : 'rgba(26,127,55,0.22)'}; color: ${addedFg}; text-decoration: none; border-radius: 2px; padding: 0 1px; }
-  .jsondiffpatch-textdiff-value del { background: ${isDark ? 'rgba(248,81,73,0.28)' : 'rgba(207,34,46,0.22)'}; color: ${delFg}; text-decoration: line-through; border-radius: 2px; padding: 0 1px; }
+  /* git-style +/-/~ prefix markers — only on changed rows. */
+  li.jsondiffpatch-added::before,
+  li.jsondiffpatch-deleted::before,
+  li.jsondiffpatch-modified::before {
+    position: absolute; left: 6px; width: 14px; text-align: center;
+    font-weight: 700; font-family: ui-monospace, monospace; font-size: 13px;
+  }
+  li.jsondiffpatch-added::before { content: '+'; color: ${addedFg}; }
+  li.jsondiffpatch-deleted::before { content: '-'; color: ${delFg}; }
+  li.jsondiffpatch-modified::before { content: '~'; color: ${modFg}; }
+
+  /* Added — green tint + left stripe. */
+  li.jsondiffpatch-added {
+    background: ${addedBg}; border-left: 4px solid ${addedBd};
+    font-size: 13px;
+  }
+  li.jsondiffpatch-added > .jsondiffpatch-property-name { color: ${addedFg}; font-weight: 700; }
+
+  /* Deleted — red tint + left stripe; property name struck through. */
+  li.jsondiffpatch-deleted {
+    background: ${delBg}; border-left: 4px solid ${delBd};
+    font-size: 13px;
+  }
+  li.jsondiffpatch-deleted > .jsondiffpatch-property-name { color: ${delFg}; font-weight: 700; text-decoration: line-through; }
+  li.jsondiffpatch-deleted > .jsondiffpatch-value { color: ${delFg}; text-decoration: line-through; }
+
+  /* Modified — amber tint + left stripe; old value red+struck, new value green. */
+  li.jsondiffpatch-modified {
+    background: ${modBg}; border-left: 4px solid ${modBd};
+    font-size: 13px;
+  }
+  li.jsondiffpatch-modified > .jsondiffpatch-property-name { color: ${modFg}; font-weight: 700; }
+  li.jsondiffpatch-modified > .jsondiffpatch-value.jsondiffpatch-left-value {
+    color: ${delFg}; text-decoration: line-through;
+    background: ${isDark ? 'rgba(248,81,73,0.18)' : 'rgba(207,34,46,0.14)'};
+    padding: 0 3px; border-radius: 2px; margin-right: 4px;
+  }
+  li.jsondiffpatch-modified > .jsondiffpatch-value.jsondiffpatch-left-value::after {
+    content: ' → '; color: ${fg}; font-weight: 700; text-decoration: none; margin-left: 2px;
+  }
+  li.jsondiffpatch-modified > .jsondiffpatch-value.jsondiffpatch-right-value {
+    color: ${addedFg};
+    background: ${isDark ? 'rgba(63,185,80,0.18)' : 'rgba(26,127,55,0.14)'};
+    padding: 0 3px; border-radius: 2px;
+  }
+
+  /* char-level string textdiff: jsondiffpatch emits <ins>/<del> inside
+     .jsondiffpatch-textdiff-value (used when both sides are strings). */
+  .jsondiffpatch-textdiff-value { white-space: pre-wrap; display: inline; }
+  .jsondiffpatch-textdiff-line { display: block; }
+  .jsondiffpatch-textdiff-value ins {
+    background: ${isDark ? 'rgba(63,185,80,0.32)' : 'rgba(26,127,55,0.26)'};
+    color: ${addedFg}; text-decoration: none; border-radius: 2px; padding: 0 1px;
+  }
+  .jsondiffpatch-textdiff-value del {
+    background: ${isDark ? 'rgba(248,81,73,0.32)' : 'rgba(207,34,46,0.26)'};
+    color: ${delFg}; text-decoration: line-through; border-radius: 2px; padding: 0 1px;
+  }
 </style></head><body>${body}</body></html>`;
 }
