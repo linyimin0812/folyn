@@ -6,7 +6,7 @@ const handler: FileTypeHandler = {
   id: 'json',
   extensions: ['json'],
   icon: getFileTypeIcon('json'),
-  supportedViewModes: ['split', 'edit', 'preview'],
+  supportedViewModes: ['edit', 'preview'],
   needsFileContent: true,
   useCodeMirror: true,
   Preview: JsonFileViewerPreview,
