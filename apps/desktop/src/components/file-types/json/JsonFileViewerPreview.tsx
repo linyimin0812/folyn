@@ -296,7 +296,7 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
 
       <div className="grid min-h-0 flex-1 grid-cols-2">
         {/* Left: CodeMirror JSON5 editor (PR7). */}
-        <div className="flex min-h-0 flex-col border-r border-brd">
+        <div className="flex min-h-0 flex-col">
           <div className="flex shrink-0 items-center justify-between border-b border-brd bg-surf px-2 py-0.5 text-[11px] text-t3">
             <span className="truncate">{name}</span>
             <span>{inputContent.length} chars</span>
