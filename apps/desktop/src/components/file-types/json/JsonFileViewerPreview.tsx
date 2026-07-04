@@ -331,13 +331,6 @@ export function JsonFileViewerPreview({ content, filePath }: PreviewProps) {
         // doesn't need a slot for it.
       />
 
-      {parseError !== null && (
-        <div className="shrink-0 border-b border-rose-200 bg-rose-50 px-3 py-1.5 text-[12px] text-rose-700 dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-300">
-          <span className="font-medium">解析失败: </span>
-          <span className="break-all font-mono">{parseError}</span>
-        </div>
-      )}
-
       <div className="flex min-h-0 flex-1" ref={splitContainerRef}>
         {/* Left: CodeMirror JSON5 editor (PR7). */}
         <div className="flex min-h-0 flex-col" style={{ flex: editorFlex }}>
