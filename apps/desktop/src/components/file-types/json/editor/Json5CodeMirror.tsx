@@ -10,7 +10,9 @@
  *     per PRD R8).
  *   - JSON5-aware linter (lazy-loads `json5` for validation).
  *   - Custom `CompletionSource` walking the parsed AST.
- *   - `@replit/codemirror-minimap` gutter-style minimap on the right.
+ *
+ * No line-number / fold / lint gutters and no minimap — the editor is
+ * gutter-free by design.
  *
  * Controlled: the parent owns `value` and is notified via `onChange`.
  * External `value` changes (e.g. file switch) re-dispatch the doc into
@@ -24,9 +26,7 @@ import { EditorState, Compartment } from '@codemirror/state';
 import {
   EditorView,
   keymap,
-  lineNumbers,
   highlightActiveLine,
-  highlightActiveLineGutter,
   drawSelection,
   dropCursor,
   rectangularSelection,
@@ -43,7 +43,6 @@ import {
   syntaxHighlighting,
   defaultHighlightStyle,
   bracketMatching,
-  foldGutter,
   indentOnInput,
   indentUnit,
 } from '@codemirror/language';
@@ -54,13 +53,8 @@ import {
   completionKeymap,
 } from '@codemirror/autocomplete';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
-import {
-  lintKeymap,
-  linter,
-  lintGutter,
-} from '@codemirror/lint';
+import { lintKeymap, linter } from '@codemirror/lint';
 import { indentationMarkers } from '@replit/codemirror-indentation-markers';
-import { minimapExtension } from './extensions/minimap';
 import { json5LintSource } from './extensions/json5Linter';
 import { jsonAutocomplete } from './extensions/jsonAutocomplete';
 
@@ -106,31 +100,15 @@ export function Json5CodeMirror({ value, onChange, onSave }: Json5CodeMirrorProp
         fontFamily:
           'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
       },
-      '.cm-gutters': {
-        backgroundColor: 'var(--panel, #fff)',
-        color: 'var(--t3, #999)',
-        border: 'none',
-      },
       '.cm-activeLine': { backgroundColor: 'transparent' },
-      '.cm-activeLineGutter': {
-        backgroundColor: 'var(--hov, #f0f0f0)',
-        color: 'var(--t1, #111)',
-      },
       '.cm-foldPlaceholder': { color: 'var(--t3, #999)' },
       '&.cm-focused': { outline: 'none' },
       '.cm-lint-marker-error': { color: '#ef4444' },
-      '.cm-minimap-dom': {
-        backgroundColor: 'var(--surf, #fafafa)',
-        borderLeft: '1px solid var(--brd, #e0e0e0)',
-      },
     });
 
     const darkTheme = EditorView.theme(
       {
         '&': { backgroundColor: '#1a1a1a', color: '#ddd' },
-        '.cm-gutters': { backgroundColor: '#1a1a1a', color: '#666' },
-        '.cm-activeLineGutter': { backgroundColor: '#2a2a2a', color: '#ddd' },
-        '.cm-minimap-dom': { backgroundColor: '#222', borderLeftColor: '#333' },
       },
       { dark: true },
     );
@@ -154,11 +132,8 @@ export function Json5CodeMirror({ value, onChange, onSave }: Json5CodeMirrorProp
     const state = EditorState.create({
       doc: value,
       extensions: [
-        lineNumbers(),
-        highlightActiveLineGutter(),
         drawSelection(),
         history(),
-        foldGutter(),
         dropCursor(),
         EditorState.allowMultipleSelections.of(true),
         EditorState.tabSize.of(2),
@@ -188,10 +163,8 @@ export function Json5CodeMirror({ value, onChange, onSave }: Json5CodeMirrorProp
         themeCompartment.of(isDark ? darkTheme : baseTheme),
         langCompartment.of([
           jsonLanguage(),
-          lintGutter(),
           linter(json5LintSource, { delay: 300 }),
         ]),
-        minimapExtension(),
       ],
     });
 
