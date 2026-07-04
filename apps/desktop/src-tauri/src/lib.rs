@@ -28,6 +28,7 @@ pub fn run() {
                 .cut()
                 .copy()
                 .paste()
+                .select_all()
                 .build()?;
 
             let window_menu = SubmenuBuilder::new(app, "Window")

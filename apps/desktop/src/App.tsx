@@ -44,8 +44,45 @@ function useIsMobile(breakpoint = 768) {
   return isMobile;
 }
 
+/**
+ * 强制关闭所有文本输入元素的首字母自动大写 / 自动纠正 / 拼写检查。
+ * Tauri (WKWebView) 对 <html autocapitalize="off"> 的继承不可靠，
+ * 因此逐元素强制设置，并对后续动态插入的节点保持同步。
+ */
+function useDisableAutoCapitalize() {
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const TARGET = 'input, textarea, [contenteditable=""], [contenteditable="true"]';
+    const apply = (root: ParentNode) => {
+      root.querySelectorAll<HTMLElement>(TARGET).forEach((el) => {
+        el.setAttribute('autocapitalize', 'off');
+        el.setAttribute('autocorrect', 'off');
+        el.setAttribute('spellcheck', 'false');
+      });
+    };
+    apply(document);
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        m.addedNodes.forEach((node) => {
+          if (node.nodeType !== Node.ELEMENT_NODE) return;
+          const el = node as HTMLElement;
+          if (el.matches?.(TARGET)) {
+            el.setAttribute('autocapitalize', 'off');
+            el.setAttribute('autocorrect', 'off');
+            el.setAttribute('spellcheck', 'false');
+          }
+          apply(el);
+        });
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+}
+
 export default function App() {
   useTheme();
+  useDisableAutoCapitalize();
 
   const isMobile = useIsMobile();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
