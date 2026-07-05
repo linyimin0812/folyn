@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 1
-- **Last Active**: 2026-07-01
+- **Total Sessions**: 2
+- **Last Active**: 2026-07-05
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~50 | Active |
+| `journal-1.md` | ~84 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 2 | 2026-07-05 | Desktop Pet Mode (macOS MVP) | `ab46e8c` | `calm-meadow` |
 | 1 | 2026-07-01 | 学习功能 workbench：资料/计划/复习/知识库 + SM-2 + AI agent | `6bb9e63`, `eddc15b`, `4e625b5`, `97d8fdf`, `79b56b7`, `ea9d7e5`, `1d1c9e0`, `0b593af`, `9dbad6a`, `b3f19bd` | `bold-beacon` |
 <!-- @@@/auto:session-history -->
 
