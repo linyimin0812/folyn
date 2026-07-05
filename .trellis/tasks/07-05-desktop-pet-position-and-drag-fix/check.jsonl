@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Verify fix meets code standards; isTauri() guards, named exports, useEffect cleanup, no any types."}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Verify click-through polling interval note + position-unit contract are consistent with the fix."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify petPosition helper + PetApp probe changes follow conventions."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Check for duplication; reuse existing helpers."}

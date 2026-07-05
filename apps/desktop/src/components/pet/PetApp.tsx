@@ -25,7 +25,7 @@ type PetState = 'idle' | 'hover' | 'drag' | 'click';
 /** Sprite occupies the center 80x80 of the 120x120 pet window. */
 const SPRITE_OFFSET = 20;
 const SPRITE_SIZE = 80;
-const PROBE_INTERVAL_MS = 250;
+const PROBE_INTERVAL_MS = 60;
 const POSITION_PERSIST_INTERVAL_MS = 800;
 
 interface PetCursorProbeResult {
@@ -95,6 +95,19 @@ export function PetApp() {
     }
     // Native drag returns when the user releases the mouse.
     draggingRef.current = false;
+    // Proactively re-enable mouse events so follow-up clicks register
+    // immediately, without waiting for the next probe tick to flip
+    // `ignore` back to false. (The probe will reconcile this on its next
+    // tick based on cursor position.)
+    if (ignoreRef.current) {
+      ignoreRef.current = false;
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        await getCurrentWindow().setIgnoreCursorEvents(false);
+      } catch {
+        // Best-effort; the probe tick will retry.
+      }
+    }
 
     let afterX = beforeX;
     let afterY = beforeY;

@@ -245,10 +245,15 @@ const overSprite = pointInRect(
 await win.setIgnoreCursorEvents(!overSprite);
 ```
 
-**Limitation**: there is up to `<poll-interval>` latency (250ms) before the window re-enables
-mouse events after the cursor enters the sprite — clicks landing in that window pass through.
-Acceptable for MVP; a per-pixel hit-test via `NSWindow` hit-testing would remove the latency
-but needs native bridging.
+**Limitation**: there is up to `<poll-interval>` latency (60ms with the current
+`PROBE_INTERVAL_MS = 60`) before the window re-enables mouse events after the
+cursor enters the sprite — clicks landing in that window pass through. The
+interval was reduced from 250ms to 60ms so `ignore` flips within one frame of
+cursor entry, making drag initiation responsive (a press before the next tick
+would otherwise pass through and `startDragging()` would never fire). The probe
+is cheap (a single `invoke` returning a handful of numbers). Acceptable for MVP;
+a per-pixel hit-test via `NSWindow` hit-testing would remove the latency
+entirely but needs native bridging.
 
 **Required ACL**: `core:window:allow-set-ignore-cursor-events`, `core:window:allow-outer-position`.
 Both are absent from `core:default`.
