@@ -82,3 +82,37 @@ Added a desktop pet mode to Quill: a transparent always-on-top Tauri window with
 ### Next Steps
 
 - None - task complete
+
+
+## Session 3: Desktop Pet Visibility Fix
+
+**Date**: 2026-07-05
+**Task**: Desktop Pet Visibility Fix
+**Package**: api
+**Branch**: `calm-meadow`
+
+### Summary
+
+Fixed two bugs found when manually enabling desktop pet mode: (1) pet window was not transparent — index.html's hardcoded data-theme=light + index.css body background made the 120x120 window opaque; fixed by gating an is-pet-window class on the #/pet route and scoping background:transparent !important in pet.css. (2) default position unit mismatch — PetApp divided monitor.size by scaleFactor (logical px) but set_pet_position expects PhysicalPosition (physical px), so the pet landed mid-screen on retina displays; fixed by extracting computeDefaultPetPosition (physical in/out, clamped >=0). Added petPosition unit tests. Appended a 'Transparent Window Inherits Opaque Body Background' common-mistake section to tauri-window-patterns.md.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `943e6f2` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
