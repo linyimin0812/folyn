@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PetMascot } from './PetMascot';
 import { openPetContextMenu, type PetMenuAction } from './PetContextMenu';
+import { computeDefaultPetPosition } from './petPosition';
 
 /**
  * PetApp — mounted only in the `pet` Tauri window (see main.tsx `#/pet` route
@@ -255,12 +256,17 @@ export function PetApp() {
           await invoke('set_pet_position', { x: petPositionX, y: petPositionY });
         } else {
           // Default: bottom-right corner of the primary monitor.
+          // `monitor.size` is physical px and `set_pet_position` expects
+          // physical px (Rust `PhysicalPosition`) — do NOT divide by
+          // scaleFactor (that produced logical px and misplaced the window
+          // on retina displays). See `tauri-window-patterns.md`.
           const { currentMonitor } = await import('@tauri-apps/api/window');
           const monitor = await currentMonitor();
           if (monitor) {
-            const scale = monitor.scaleFactor;
-            const x = Math.round(monitor.size.width / scale - 140);
-            const y = Math.round(monitor.size.height / scale - 140);
+            const { x, y } = computeDefaultPetPosition({
+              width: monitor.size.width,
+              height: monitor.size.height,
+            });
             await invoke('set_pet_position', { x, y });
             useSettingsStore.getState().setPetPosition(x, y);
           }

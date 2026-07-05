@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Verify the fix meets code standards; no default exports, proper isTauri() guards, etc."}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Verify transparency (R1) and position-unit consistency; confirm spec note about body-bg gotcha is captured."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify pet.css override + main.tsx class gating follow component/styling conventions."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Check for duplication; reuse existing monitor/position helpers if present."}

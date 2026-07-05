@@ -7,6 +7,18 @@
  * mouse events on the sprite; motion is CSS keyframes.
  */
 
+/* The pet window shares `index.css` with the main editor, which sets
+ * `html, body { background: var(--bg) }` — an opaque theme color. That would
+ * show as a 120x120 light-gray square behind the transparent mascot, breaking
+ * R1 (transparent) and R6 (click-through on transparent regions). main.tsx
+ * adds `.is-pet-window` to <html> for the pet route only, so this override
+ * leaves the main editor window's theming untouched. `--acc` stays available
+ * so the mascot's `var(--acc, #3a6ef0)` fallback still resolves. */
+html.is-pet-window,
+html.is-pet-window body {
+  background: transparent !important;
+}
+
 .pet-root {
   /* The pet window is 120x120 physical px. The root fills it so the sprite
    * can be centered, and transparent regions pass clicks through to the

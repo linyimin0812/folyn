@@ -288,3 +288,46 @@ dragging`/`set-ignore-cursor-events` even on its own window.
 
 **Prevention**: when adding a window, run the permission trace test — for every
 `getCurrentWindow().<api>(` call site, assert `core:window:allow-<api>` exists for that label.
+
+---
+
+## Common Mistake: Transparent Window Inherits Opaque Body Background
+
+**Symptom**: a transparent always-on-top window (e.g. the pet) renders as an opaque
+light-gray square instead of just the sprite — the desktop is not visible through the
+"transparent" regions, and click-through on those regions is defeated because there are
+no truly transparent regions.
+
+**Cause**: the secondary window reuses the main app's CSS entry (`index.css`), which sets
+`html, body { background: var(--bg); }`. Under `[data-theme="light"]` `--bg` is an opaque
+color (`#f0f2f8`). `index.html` also hardcodes `<html data-theme="light">`. So the secondary
+window's `<body>` paints an opaque background over the Tauri window's transparent surface,
+even though `tauri.conf.json` declares `"transparent": true`. Tauri window transparency
+only clears the native surface — anything the webview paints on top is on its own.
+
+**Fix**: scope a transparent background override to the secondary window only. The route
+switch (`main.tsx` checks `window.location.hash === '#/pet'`) is the natural discriminator:
+tag `<html>` with a class for that route, then override in CSS:
+
+```ts
+// main.tsx
+const isPetWindow = window.location.hash === '#/pet';
+if (isPetWindow) document.documentElement.classList.add('is-pet-window');
+```
+
+```css
+/* pet.css — scoped so the main editor window's theming is untouched */
+html.is-pet-window,
+html.is-pet-window body {
+  background: transparent !important;
+}
+```
+
+Keep `--acc` available — the mascot uses `var(--acc, #3a6ef0)`, which resolves via fallback
+even without a theme applied.
+
+**Prevention**: when a secondary window must be transparent, audit every CSS rule that
+sets `background` on `html`/`body`/root containers and confirm each is either scoped away
+from the secondary window or overridden to `transparent`. A `transparent: true` flag in
+`tauri.conf.json` is necessary but not sufficient — the webview's own background must also
+be transparent.
