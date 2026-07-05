@@ -30,9 +30,10 @@ import { clampPetPosition, computeDefaultPetPosition } from './petPosition';
 
 type PetState = 'idle' | 'hover' | 'drag' | 'click';
 
-/** Sprite occupies the center 80x80 of the 120x120 pet window. */
-const SPRITE_OFFSET = 20;
-const SPRITE_SIZE = 80;
+/** Sprite fills the full 120x120 pet window — no transparent margin around
+ * the quill icon. The breathing glow sits behind it as a separate layer. */
+const SPRITE_OFFSET = 0;
+const SPRITE_SIZE = 120;
 const PROBE_INTERVAL_MS = 250;
 const POSITION_PERSIST_INTERVAL_MS = 800;
 
@@ -267,6 +268,10 @@ export function PetApp() {
 
   return (
     <div className="pet-root">
+      {/* Breathing-light glow — a soft pulsing halo behind the quill. Sits
+          below the sprite layer (DOM order) and ignores pointer events so it
+          never steals the drag/click gestures owned by `.pet-sprite-layer`. */}
+      <div className="pet-glow" aria-hidden="true" />
       {/* The mascot sprite is wrapped in an interaction layer that owns all
           mouse handlers. CSS keyframes on `.pet-mascot` drive the animations. */}
       <div

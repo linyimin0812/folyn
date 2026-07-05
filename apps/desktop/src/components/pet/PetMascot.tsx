@@ -1,8 +1,13 @@
 /* ── Pet mascot sprite ──
- * SVG ink-drop body + quill-pen tip, echoing the "Quill" product name.
- * Drawn with `currentColor` so the editor accent theme applies; states
- * (idle/hover/drag/click) are switched via CSS classes on the root
- * `.pet-mascot` element (see pet.css).
+ * The Quill logo — feather + ink drop — cropped tight so the icon is "just
+ * the quill," with no rounded-rect background and no empty margin around it.
+ * A separate `.pet-glow` layer (see PetApp + pet.css) pulses behind it for
+ * the breathing-light feel. States (idle/hover/drag/click) still switch via
+ * `is-<state>` classes on `.pet-mascot`.
+ *
+ * Artwork mirrors /public/quill.svg (feather tilted -38°, cream gradient +
+ * blue ink-gradient nib/drop), just without the dark square background so the
+ * transparent pet window shows only the feather silhouette.
  */
 
 export interface PetMascotProps {
@@ -14,41 +19,45 @@ export function PetMascot({ state }: PetMascotProps) {
   return (
     <svg
       className={`pet-mascot is-${state}`}
-      viewBox="0 0 100 100"
-      width="80"
-      height="80"
+      viewBox="-155 -155 310 310"
+      width="120"
+      height="120"
       fill="none"
-      stroke="none"
       aria-hidden="true"
     >
-      {/* Ink-drop body — a soft teardrop/leaf silhouette. */}
-      <path
-        d="M50 8 C72 8 86 28 86 50 C86 72 70 90 50 90 C30 90 14 72 14 50 C14 28 28 8 50 8 Z"
-        fill="currentColor"
-        opacity="0.92"
-      />
-      {/* Highlight gloss on the upper-left of the drop. */}
-      <ellipse cx="38" cy="32" rx="9" ry="6" fill="#fff" opacity="0.35" />
+      <defs>
+        <linearGradient id="petQuillGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f0ece0" />
+          <stop offset="100%" stopColor="#d4c9a8" />
+        </linearGradient>
+        <linearGradient id="petInkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#6b9fff" />
+          <stop offset="100%" stopColor="#3a6ef0" />
+        </linearGradient>
+      </defs>
 
-      {/* Eyes — two small dots so the "looks up" hover animation reads. */}
-      <circle cx="40" cy="50" r="3.2" fill="#fff" />
-      <circle cx="60" cy="50" r="3.2" fill="#fff" />
-      <circle cx="40" cy="51" r="1.6" fill="currentColor" />
-      <circle cx="60" cy="51" r="1.6" fill="currentColor" />
+      {/* Feather quill, tilted -38° (same artwork as /public/quill.svg). */}
+      <g transform="rotate(-38)">
+        {/* Left barbs */}
+        <path d="M 0,-140 C -44,-90 -64,-38 -58,18 C -52,62 -30,96 0,116 Z"
+              fill="url(#petQuillGrad)" opacity="0.95" />
+        {/* Right barbs */}
+        <path d="M 0,-140 C 44,-90 64,-38 58,18 C 52,62 30,96 0,116 Z"
+              fill="url(#petQuillGrad)" opacity="0.78" />
+        {/* Spine */}
+        <line x1="0" y1="-140" x2="0" y2="144"
+              stroke="#b0985a" strokeWidth="2.5" strokeLinecap="round" />
+        {/* Nib */}
+        <path d="M -9,116 Q 0,144 9,116 Z" fill="url(#petInkGrad)" />
+        {/* Nib split */}
+        <line x1="0" y1="120" x2="0" y2="144"
+              stroke="#2448b8" strokeWidth="1.4" strokeLinecap="round" opacity="0.6" />
+      </g>
 
-      {/* Quill-pen tip — a feather slanting up-right from the drop. */}
-      <path
-        d="M74 22 C82 14 90 12 92 10 C90 18 86 26 78 32 C74 35 70 34 68 31 C66 28 70 26 74 22 Z"
-        fill="currentColor"
-      />
-      {/* Quill spine. */}
-      <path
-        d="M70 30 L90 12"
-        stroke="#fff"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        opacity="0.6"
-      />
+      {/* Ink drop at the nib tip. */}
+      <circle cx="-5" cy="133" r="20" fill="url(#petInkGrad)" />
+      <ellipse cx="-12" cy="125" rx="6" ry="7" fill="white" opacity="0.3"
+               transform="rotate(-20 -12 125)" />
     </svg>
   );
 }

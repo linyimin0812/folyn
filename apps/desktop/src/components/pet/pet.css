@@ -35,10 +35,10 @@ html.is-pet-window body {
 }
 
 .pet-mascot {
-  width: 80px;
-  height: 80px;
+  width: 120px;
+  height: 120px;
   cursor: grab;
-  transform-origin: center bottom;
+  transform-origin: center;
   will-change: transform;
   color: var(--acc, #3a6ef0);
   transition: filter 0.15s ease;
@@ -46,6 +46,32 @@ html.is-pet-window body {
 
 .pet-mascot:hover { filter: brightness(1.08); }
 .pet-mascot:active { cursor: grabbing; }
+
+/* ── Breathing-light glow ──
+ * A soft halo behind the quill that pulses opacity + scale like a heartbeat.
+ * Independent of the sprite's idle/hover/drag/click transforms so the
+ * breathing never stops during state changes. */
+.pet-glow {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(58, 110, 240, 0.55) 0%,
+    rgba(58, 110, 240, 0.18) 45%,
+    transparent 70%
+  );
+  filter: blur(8px);
+  pointer-events: none;
+  animation: pet-breathe 2.6s ease-in-out infinite;
+}
+@keyframes pet-breathe {
+  0%, 100% { opacity: 0.45; transform: scale(0.88); }
+  50%      { opacity: 1;    transform: scale(1.18); }
+}
 
 /* ── State: idle (breathing/floating) ── */
 .pet-mascot.is-idle {
