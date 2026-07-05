@@ -202,6 +202,33 @@ export default function App() {
             // Non-fatal; the menu bar item can still toggle it off.
           }
           break;
+        // ── Pet-panel launcher actions (PR1). These are dispatched by the
+        // pet-panel launcher grid via the same `pet://menu-action` channel.
+        // Each action that targets the main editor focuses it so the editor
+        // comes forward. `clip-from-url` is handled in-panel (PR2) — the
+        // listener just focuses main as a no-op-ish fallback. ──
+        case 'daily-note':
+          void useEditorStore.getState().openDailyNote();
+          await focusMain();
+          break;
+        case 'global-search':
+          useSearchStore.getState().openPanel();
+          await focusMain();
+          break;
+        case 'clip-from-url':
+          // Handled inside the pet-panel (inline URL form, PR2). Focus main
+          // as a safe fallback so the user sees the editor if the panel
+          // flow is interrupted.
+          await focusMain();
+          break;
+        case 'command-palette':
+          useCommandPaletteStore.getState().toggle();
+          await focusMain();
+          break;
+        case 'toggle-theme':
+          useSettingsStore.getState().toggleTheme();
+          await focusMain();
+          break;
       }
     };
 

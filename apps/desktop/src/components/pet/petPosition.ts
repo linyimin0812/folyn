@@ -94,3 +94,62 @@ export function clampPetPosition(saved: PetPosition, workArea: PetWorkArea): Pet
   const y = Math.min(Math.max(saved.y, workArea.y), maxY);
   return { x, y };
 }
+
+/**
+ * Pet-panel window footprint (matches `tauri.conf.json` `pet-panel` window
+ * size). Used by `computePanelPosition` and `clampPanelPosition` so the
+ * panel stays fully on-screen.
+ */
+export const PET_PANEL_WIDTH = 380;
+export const PET_PANEL_HEIGHT = 520;
+
+/** Gap between the pet window and the panel when the panel opens next to it. */
+export const PET_PANEL_GAP = 8;
+
+/**
+ * Compute the pet-panel position (physical px, absolute screen coords) given
+ * the pet's current position and the work area. The panel opens to the
+ * right of the pet by default; if that would overflow the right edge it
+ * opens to the left instead. Likewise the panel opens below the pet, but if
+ * that would overflow the bottom edge it opens above. Both axes are clamped
+ * to the work area so the whole panel stays on-screen.
+ *
+ * The pet window's outer position is its top-left in physical px (matches
+ * Tauri's `PhysicalPosition`), so `petPos` must be the same kind of value
+ * returned by `get_pet_position` / `outerPosition()`.
+ */
+export function computePanelPosition(
+  petPos: PetPosition,
+  workArea: PetWorkArea,
+): PetPosition {
+  const rightOpen = petPos.x + PET_WINDOW_SIZE + PET_PANEL_GAP + PET_PANEL_WIDTH;
+  const opensRight = rightOpen <= workArea.x + workArea.width;
+  const x = opensRight
+    ? petPos.x + PET_WINDOW_SIZE + PET_PANEL_GAP
+    : petPos.x - PET_PANEL_GAP - PET_PANEL_WIDTH;
+
+  const belowOpen = petPos.y + PET_PANEL_HEIGHT;
+  const opensBelow = belowOpen <= workArea.y + workArea.height;
+  const y = opensBelow
+    ? petPos.y
+    : Math.max(workArea.y, petPos.y + PET_WINDOW_SIZE - PET_PANEL_HEIGHT);
+
+  return clampPanelPosition({ x, y }, workArea);
+}
+
+/**
+ * Clamp a panel position (absolute screen px) so the whole panel stays inside
+ * the work area. Generalized sibling of `clampPetPosition` for the larger
+ * panel window. If the work area is smaller than the panel (degenerate case)
+ * the panel is placed at the work area's top-left.
+ */
+export function clampPanelPosition(
+  saved: PetPosition,
+  workArea: PetWorkArea,
+): PetPosition {
+  const maxX = workArea.x + Math.max(0, workArea.width - PET_PANEL_WIDTH);
+  const maxY = workArea.y + Math.max(0, workArea.height - PET_PANEL_HEIGHT);
+  const x = Math.min(Math.max(saved.x, workArea.x), maxX);
+  const y = Math.min(Math.max(saved.y, workArea.y), maxY);
+  return { x, y };
+}

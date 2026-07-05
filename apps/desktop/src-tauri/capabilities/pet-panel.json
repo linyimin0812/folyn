@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/tooling/cli/schema.json",
+  "identifier": "pet-panel",
+  "description": "Capabilities for the desktop pet quick-action panel window (launcher grid + embedded AI chat)",
+  "windows": ["pet-panel"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-is-visible",
+    "core:window:allow-set-focus",
+    "core:window:allow-outer-position",
+    "core:window:allow-start-dragging",
+    "core:event:allow-emit",
+    "core:event:allow-listen"
+  ]
+}

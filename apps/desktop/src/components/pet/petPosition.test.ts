@@ -2,10 +2,15 @@ import { describe, it, expect } from 'vitest';
 import {
   computeDefaultPetPosition,
   clampPetPosition,
+  computePanelPosition,
+  clampPanelPosition,
   PET_WINDOW_SIZE,
   PET_RIGHT_MARGIN,
   PET_BOTTOM_MARGIN,
   PET_MIN_TOP,
+  PET_PANEL_WIDTH,
+  PET_PANEL_HEIGHT,
+  PET_PANEL_GAP,
   type PetWorkArea,
 } from './petPosition';
 
@@ -104,5 +109,76 @@ describe('clampPetPosition', () => {
     const pos = clampPetPosition({ x: 5000, y: 5000 }, shifted);
     expect(pos.x).toBe(100 + 1000 - PET_WINDOW_SIZE);
     expect(pos.y).toBe(100 + 700 - PET_WINDOW_SIZE);
+  });
+});
+
+describe('computePanelPosition', () => {
+  const workArea: PetWorkArea = { x: 0, y: 25, width: 1440, height: 875 };
+
+  it('opens the panel to the right of the pet when there is room', () => {
+    // Pet at top-left: panel opens right + below.
+    const pos = computePanelPosition({ x: 100, y: 100 }, workArea);
+    expect(pos.x).toBe(100 + PET_WINDOW_SIZE + PET_PANEL_GAP);
+    expect(pos.y).toBe(100);
+    // Whole panel inside the work area.
+    expect(pos.x + PET_PANEL_WIDTH).toBeLessThanOrEqual(workArea.x + workArea.width);
+    expect(pos.y + PET_PANEL_HEIGHT).toBeLessThanOrEqual(workArea.y + workArea.height);
+  });
+
+  it('opens the panel to the left when the pet is near the right edge', () => {
+    // Pet near right edge: panel would overflow right → opens left.
+    const petX = workArea.width - PET_WINDOW_SIZE - 10;
+    const pos = computePanelPosition({ x: petX, y: 100 }, workArea);
+    expect(pos.x).toBe(petX - PET_PANEL_GAP - PET_PANEL_WIDTH);
+    expect(pos.x).toBeGreaterThanOrEqual(workArea.x);
+  });
+
+  it('opens the panel above when the pet is near the bottom edge', () => {
+    // Pet near bottom: panel would overflow below → opens above.
+    const petY = workArea.y + workArea.height - PET_WINDOW_SIZE - 10;
+    const pos = computePanelPosition({ x: 100, y: petY }, workArea);
+    expect(pos.y + PET_PANEL_HEIGHT).toBeLessThanOrEqual(workArea.y + workArea.height);
+  });
+
+  it('clamps the panel fully on-screen at the bottom-right corner', () => {
+    // Pet at the very bottom-right corner.
+    const petX = workArea.x + workArea.width - PET_WINDOW_SIZE;
+    const petY = workArea.y + workArea.height - PET_WINDOW_SIZE;
+    const pos = computePanelPosition({ x: petX, y: petY }, workArea);
+    expect(pos.x + PET_PANEL_WIDTH).toBeLessThanOrEqual(workArea.x + workArea.width);
+    expect(pos.y + PET_PANEL_HEIGHT).toBeLessThanOrEqual(workArea.y + workArea.height);
+    expect(pos.x).toBeGreaterThanOrEqual(workArea.x);
+    expect(pos.y).toBeGreaterThanOrEqual(workArea.y);
+  });
+});
+
+describe('clampPanelPosition', () => {
+  const workArea: PetWorkArea = { x: 0, y: 25, width: 1440, height: 875 };
+
+  it('returns the saved position unchanged when already on-screen', () => {
+    const pos = clampPanelPosition({ x: 100, y: 100 }, workArea);
+    expect(pos).toEqual({ x: 100, y: 100 });
+  });
+
+  it('clamps a position off the right edge', () => {
+    const pos = clampPanelPosition({ x: 99999, y: 100 }, workArea);
+    expect(pos.x).toBe(workArea.x + workArea.width - PET_PANEL_WIDTH);
+  });
+
+  it('clamps a position off the bottom edge', () => {
+    const pos = clampPanelPosition({ x: 100, y: 99999 }, workArea);
+    expect(pos.y).toBe(workArea.y + workArea.height - PET_PANEL_HEIGHT);
+  });
+
+  it('clamps a position off the top/left edges', () => {
+    const pos = clampPanelPosition({ x: -50, y: -50 }, workArea);
+    expect(pos.x).toBe(workArea.x);
+    expect(pos.y).toBe(workArea.y);
+  });
+
+  it('handles a work area smaller than the panel (degenerate)', () => {
+    const tiny: PetWorkArea = { x: 0, y: 0, width: 100, height: 100 };
+    const pos = clampPanelPosition({ x: 5000, y: 5000 }, tiny);
+    expect(pos).toEqual({ x: 0, y: 0 });
   });
 });

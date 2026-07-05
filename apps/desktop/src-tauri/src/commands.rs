@@ -646,3 +646,79 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), String> 
     pet.popup_menu(&menu).map_err(|e| e.to_string())?;
     Ok(())
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Pet quick-action panel window (`pet-panel`).
+//
+// The panel is a second managed Tauri window (label `pet-panel`) shown on pet
+// left-click. It is opaque, decorated:false, always-on-top, skipTaskbar, and
+// hidden at launch. Positioning + show/hide are driven by these Rust commands
+// so the pet frontend's `invoke` calls bypass the ACL (only built-in `core:*`
+// plugin commands are ACL-gated; custom invoke commands are not). The panel
+// frontend still needs `capabilities/pet-panel.json` for its own
+// `@tauri-apps/api/window` calls (hide on Esc/close, drag, listen for events).
+// ────────────────────────────────────────────────────────────────────────────
+
+const PET_PANEL_LABEL: &str = "pet-panel";
+
+/// Show the pet-panel window and set focus. The caller sets the window's
+/// position via `pet_panel_set_position` first (or right after) so the panel
+/// appears next to the pet.
+#[tauri::command]
+pub async fn pet_panel_show(app: tauri::AppHandle) -> Result<(), String> {
+    let panel = app
+        .get_webview_window(PET_PANEL_LABEL)
+        .ok_or_else(|| "pet-panel window not found".to_string())?;
+    panel.show().map_err(|e| e.to_string())?;
+    panel.set_focus().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Hide the pet-panel window without closing it (the window stays alive for
+/// the next show). Used by the close button, Esc, and the second pet click.
+#[tauri::command]
+pub async fn pet_panel_hide(app: tauri::AppHandle) -> Result<(), String> {
+    let panel = app
+        .get_webview_window(PET_PANEL_LABEL)
+        .ok_or_else(|| "pet-panel window not found".to_string())?;
+    panel.hide().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Set the pet-panel window's screen position (physical pixels). The pet
+/// frontend computes a clamped position next to the pet (using
+/// `pet_get_work_area`) and passes it here so Rust stays the single source of
+/// truth for window mutation.
+#[tauri::command]
+pub async fn pet_panel_set_position(
+    app: tauri::AppHandle,
+    x: i32,
+    y: i32,
+) -> Result<(), String> {
+    let panel = app
+        .get_webview_window(PET_PANEL_LABEL)
+        .ok_or_else(|| "pet-panel window not found".to_string())?;
+    panel
+        .set_position(PhysicalPosition::new(x, y))
+        .map_err(|e| e.to_string())
+}
+
+/// Get the pet-panel window's current screen position (physical pixels).
+#[tauri::command]
+pub async fn pet_panel_get_position(app: tauri::AppHandle) -> Result<PetPosition, String> {
+    let panel = app
+        .get_webview_window(PET_PANEL_LABEL)
+        .ok_or_else(|| "pet-panel window not found".to_string())?;
+    let pos = panel.outer_position().map_err(|e| e.to_string())?;
+    Ok(PetPosition { x: pos.x, y: pos.y })
+}
+
+/// Returns whether the pet-panel window is currently visible. The pet
+/// frontend uses this for the toggle-on-second-click decision.
+#[tauri::command]
+pub async fn pet_panel_is_visible(app: tauri::AppHandle) -> Result<bool, String> {
+    let panel = app
+        .get_webview_window(PET_PANEL_LABEL)
+        .ok_or_else(|| "pet-panel window not found".to_string())?;
+    panel.is_visible().map_err(|e| e.to_string())
+}

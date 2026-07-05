@@ -20,12 +20,27 @@ const PET_MODE_MENU_ID: &str = "pet_mode_toggle";
 /// Maps a pet context-menu item id (see `commands::PET_CTX_MENU_*`) to the
 /// `PetMenuAction` payload the main window expects. Returns `None` for
 /// unknown ids (e.g. separators, which never fire `on_menu_event`).
+///
+/// The mapping also recognizes the 5 launcher-only actions
+/// (`daily-note`, `global-search`, `clip-from-url`, `command-palette`,
+/// `toggle-theme`) even though they are not in the native right-click menu —
+/// the pet-panel launcher dispatches them via the same `pet://menu-action`
+/// event channel, and the frontend contract test asserts the full set stays
+/// in sync. Returning the action unchanged here keeps the event payload
+/// stable for any future caller that routes through `on_menu_event`.
 fn pet_ctx_menu_action(id: &str) -> Option<&'static str> {
     match id {
         commands::PET_CTX_MENU_SHOW_MAIN => Some("show-main"),
         commands::PET_CTX_MENU_NEW_NOTE => Some("new-note"),
         commands::PET_CTX_MENU_TOGGLE_AI => Some("toggle-ai"),
         commands::PET_CTX_MENU_DISABLE_PET => Some("disable-pet"),
+        // Launcher-only actions (pet-panel buttons, not native menu items).
+        // Recognized here so the action-string contract stays uniform.
+        "pet-ctx-daily-note" => Some("daily-note"),
+        "pet-ctx-global-search" => Some("global-search"),
+        "pet-ctx-clip-from-url" => Some("clip-from-url"),
+        "pet-ctx-command-palette" => Some("command-palette"),
+        "pet-ctx-toggle-theme" => Some("toggle-theme"),
         _ => None,
     }
 }
@@ -180,6 +195,11 @@ pub fn run() {
             commands::pet_cursor_probe,
             commands::pet_show_context_menu,
             commands::pet_get_work_area,
+            commands::pet_panel_show,
+            commands::pet_panel_hide,
+            commands::pet_panel_set_position,
+            commands::pet_panel_get_position,
+            commands::pet_panel_is_visible,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

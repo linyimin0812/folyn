@@ -1,18 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PetMascot } from './PetMascot';
 import { openPetContextMenu } from './PetContextMenu';
-import { clampPetPosition, computeDefaultPetPosition } from './petPosition';
+import { clampPetPosition, computeDefaultPetPosition, computePanelPosition } from './petPosition';
 
 /**
  * PetApp — mounted only in the `pet` Tauri window (see main.tsx `#/pet` route
  * switch). Renders the ink-drop + quill mascot and wires up:
  *
  *  - State machine (idle/hover/drag/click) — D4, R2.
- *  - Single click → open the native quick-action menu (same as right-click).
- *    The menu's "Show Main Window" entry covers the focus-main-window flow.
- *  - Right-click → native context menu (D8, R3, AC5). The menu is built
- *    Rust-side (`pet_show_context_menu`) because the 120x120 pet window
- *    would clip an HTML menu (issue #1); selections emit `pet://menu-action`.
+ *  - Single click → open the pet-panel quick-action window
+ *    (`openOrTogglePetPanel`): a second Tauri window (`pet-panel`) with a
+ *    launcher grid + embedded AI chat. Position is clamped next to the pet
+ *    via `computePanelPosition` / `pet_get_work_area`. A second click (or
+ *    × / Esc) hides the panel. Skipped while the main window is fullscreen.
+ *  - Right-click → native context menu (D8, R3, AC5), kept for muscle
+ *    memory + power-user access. Built Rust-side (`pet_show_context_menu`)
+ *    because the 120x120 pet window would clip an HTML menu (issue #1);
+ *    selections emit `pet://menu-action`.
  *  - Drag → `startDragging` on the pet window; position persisted to
  *    `settingsStore` (R5, AC3/AC7).
  *  - Fullscreen handling (R7, AC9) — hide when the main window is fullscreen.
@@ -50,6 +54,46 @@ interface PetWorkAreaResult {
   y: number;
   width: number;
   height: number;
+}
+
+/**
+ * Open the pet-panel quick-action window next to the pet, or hide it if it is
+ * already visible (R8 toggle). Skipped while the main window is fullscreen
+ * (R4) — the probe's `main_fullscreen` field is checked first. Position is
+ * computed via `computePanelPosition` (clamps the panel fully on-screen,
+ * opening left/up when the pet is near the right/bottom edge) using the work
+ * area from `pet_get_work_area`. All window mutation goes through Rust
+ * `invoke` commands so the ACL contract is satisfied (custom commands bypass
+ * the ACL; the panel window still has `capabilities/pet-panel.json` for its
+ * own `@tauri-apps/api/window` calls).
+ */
+async function openOrTogglePetPanel(): Promise<void> {
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+
+    // Fullscreen guard (R4): skip while the main editor is fullscreen.
+    const probe = await invoke<PetCursorProbeResult>('pet_cursor_probe');
+    if (probe.main_fullscreen) return;
+
+    // Toggle: if the panel is already visible, hide it (R8 second-click).
+    const visible = await invoke<boolean>('pet_panel_is_visible');
+    if (visible) {
+      await invoke('pet_panel_hide');
+      return;
+    }
+
+    // Compute the panel position next to the pet, clamped to the work area.
+    const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
+    const petPos = { x: probe.window_x, y: probe.window_y };
+    const panelPos = computePanelPosition(petPos, workArea);
+
+    // Position the panel before showing so it appears at the right spot in
+    // one frame (avoids a flash at the default position).
+    await invoke('pet_panel_set_position', { x: panelPos.x, y: panelPos.y });
+    await invoke('pet_panel_show');
+  } catch (err) {
+    console.warn('[pet] openOrTogglePetPanel failed:', err);
+  }
 }
 
 export function PetApp() {
@@ -118,12 +162,15 @@ export function PetApp() {
     const wasClick = dx < 5 && dy < 5;
 
     if (wasClick) {
-      // Single-click mascot = open the native quick-action menu (D5, R3, AC4).
-      // The menu's "Show Main Window" entry covers focus; no separate
-      // `show-main` emission from left-click anymore.
+      // Single-click mascot = open the pet-panel quick-action window (PR1).
+      // Right-click still opens the native context menu (handleContextMenu
+      // below) for muscle-memory + power-user access. The panel is shown via
+      // `pet_panel_show` + `pet_panel_set_position`; if it is already visible
+      // the click toggles it closed (R8). The panel is skipped while the main
+      // window is fullscreen (R4) — re-use `pet_cursor_probe.main_fullscreen`.
       setState('click');
       window.setTimeout(() => setState('idle'), 320);
-      await openPetContextMenu();
+      await openOrTogglePetPanel();
     } else {
       // Drag ended — persist the new position immediately so AC7 holds even
       // if the periodic poller hasn't fired yet.

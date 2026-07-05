@@ -12,20 +12,58 @@
 // Rust side can emit) and exposes `openPetContextMenu()` for the pet
 // frontend to call on right-click. App.tsx's listener needs no change.
 
-/** Quick-action menu items (D8). Each maps to an existing in-app action. */
-export type PetMenuAction = 'show-main' | 'new-note' | 'toggle-ai' | 'disable-pet';
+/**
+ * Quick-action menu/launcher actions. The first four (`show-main`,
+ * `new-note`, `toggle-ai`, `disable-pet`) are surfaced by the native pet
+ * right-click context menu (built Rust-side in `commands::pet_show_context_menu`).
+ *
+ * The remaining five (`daily-note`, `global-search`, `clip-from-url`,
+ * `command-palette`, `toggle-theme`) are dispatched by the pet-panel launcher
+ * grid (PR2) via the same `pet://menu-action` event channel — they are NOT in
+ * the native right-click menu, but the action strings are recognized by
+ * `pet_ctx_menu_action` in `lib.rs` so the contract stays uniform and the
+ * frontend↔Rust sync test (see PetContextMenu.test.tsx) covers the full set.
+ */
+export type PetMenuAction =
+  | 'show-main'
+  | 'new-note'
+  | 'toggle-ai'
+  | 'disable-pet'
+  | 'daily-note'
+  | 'global-search'
+  | 'clip-from-url'
+  | 'command-palette'
+  | 'toggle-theme';
 
 /**
- * The complete set of actions the native pet context menu can emit. Kept in
- * sync with the Rust menu item ids → action mapping in `lib.rs`
- * (`pet_ctx_menu_action`). Tests assert this matches the D8 contract so a
- * future Rust-side change that drops or renames an action is caught here.
+ * The complete set of actions the pet context-menu / pet-panel launcher can
+ * emit via `pet://menu-action`. Kept in sync with the Rust menu item id →
+ * action mapping in `lib.rs` (`pet_ctx_menu_action`). Tests assert this
+ * matches the contract so a future Rust-side change that drops or renames an
+ * action is caught here.
+ *
+ * `PET_NATIVE_MENU_ACTIONS` is the subset surfaced by the native right-click
+ * menu; `PET_LAUNCHER_ACTIONS` is the subset dispatched by the pet-panel
+ * launcher grid. `PET_MENU_ACTIONS` is the union (used by the contract test).
  */
-export const PET_MENU_ACTIONS: readonly PetMenuAction[] = [
+export const PET_NATIVE_MENU_ACTIONS: readonly PetMenuAction[] = [
   'show-main',
   'new-note',
   'toggle-ai',
   'disable-pet',
+] as const;
+
+export const PET_LAUNCHER_ACTIONS: readonly PetMenuAction[] = [
+  'daily-note',
+  'global-search',
+  'clip-from-url',
+  'command-palette',
+  'toggle-theme',
+] as const;
+
+export const PET_MENU_ACTIONS: readonly PetMenuAction[] = [
+  ...PET_NATIVE_MENU_ACTIONS,
+  ...PET_LAUNCHER_ACTIONS,
 ] as const;
 
 /**

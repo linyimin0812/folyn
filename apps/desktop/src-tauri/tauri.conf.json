@@ -50,6 +50,22 @@
         "visible": false,
         "focus": false,
         "dragDropEnabled": false
+      },
+      {
+        "label": "pet-panel",
+        "url": "/#/pet-panel",
+        "title": "Quill Pet Panel",
+        "width": 380,
+        "height": 520,
+        "resizable": false,
+        "decorations": false,
+        "transparent": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "shadow": true,
+        "visible": false,
+        "focus": true,
+        "dragDropEnabled": false
       }
     ],
     "security": {

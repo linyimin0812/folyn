@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Canonical contract for adding a secondary Tauri window (pet-panel): tauri.conf entry, show/hide/position commands, always-on-top/skipTaskbar, ACL permission contract. This task is exactly that scenario."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store + persistence patterns for the new petChatStore (independent persisted session, separate namespace from aiStore)."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component patterns (named exports, props, composition, Tailwind+CSS vars) for PetPanelApp / PetLauncher / PetChat."}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "Where the new pet-panel components, store, and Rust commands should live."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Extending the PetMenuAction union + Rust mapping; CliSendOptions typing for the self-hosted chat adapter."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns and review checklist to satisfy during implementation."}

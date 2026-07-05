@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Verify pet-panel window contract compliance: tauri.conf flags, show/hide/position commands, ACL permissions, left-click rebind safety."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist + forbidden patterns gate for the whole diff."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify petChatStore persistence correctness, no aiStore coupling, granular selectors."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Verify PetMenuAction union stays in sync with Rust mapping; no any/unsafe casts in chat adapter wiring."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Feature spans Rust commands + frontend route + store + cli-adapter; verify cross-layer data flow and event contract."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Verify reuse of focusMain / pet://menu-action / clampPetPosition / aiStreamUtils / CliAdapterRegistry rather than duplicating."}

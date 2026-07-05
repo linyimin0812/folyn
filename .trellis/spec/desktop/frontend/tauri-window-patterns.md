@@ -321,7 +321,147 @@ the same as the work area — do not mix them.
 
 ---
 
-## Don't: Wrap-and-Swallow Tauri Calls
+## Scenario: Secondary Opaque Panel Window (the `pet-panel` quick-action popup)
+
+### 1. Scope / Trigger
+- Trigger: adding a second top-level window that is **opaque** (not transparent), always-on-top,
+  skipTaskbar, shown on demand from another window, and dismissed via close-button / Esc /
+  second-click toggle. The `pet-panel` quick-action window (launcher grid + embedded chat) opened
+  by left-clicking the desktop pet is the canonical case.
+- This is the **opaque counterpart** to the transparent `pet` window above: same structural
+  `tauri.conf.json` declaration + per-window capability file + hash-route mount, but the body
+  background is the editor theme (NOT transparent) and the window hosts real interactive content.
+
+### 2. Signatures
+- `tauri.conf.json` `app.windows[]` entry — declared structurally, `visible: false` at launch:
+  ```json
+  {
+    "label": "pet-panel",
+    "url": "/#/pet-panel",
+    "width": 380, "height": 520,
+    "resizable": false,
+    "decorations": false,
+    "transparent": false,
+    "alwaysOnTop": true,
+    "skipTaskbar": true,
+    "shadow": true,
+    "visible": false,
+    "focus": true,
+    "dragDropEnabled": false
+  }
+  ```
+- Frontend route switch in `main.tsx` (extends the `#/pet` switch — one hash route per secondary
+  window):
+  ```ts
+  const hash = window.location.hash;
+  const route = hash.startsWith('#/pet-panel') ? 'pet-panel'
+              : hash.startsWith('#/pet')       ? 'pet'
+              : 'main';
+  route === 'pet-panel' ? <PetPanelApp /> : route === 'pet' ? <PetApp /> : <App />;
+  // tag <html> with is-pet-panel-window for scoped CSS (opaque body bg)
+  ```
+- Rust commands (in `commands.rs`, registered in `lib.rs` `invoke_handler`) — custom `invoke`
+  commands own all window mutation (show/hide/position/visibility). `pet_panel_show` calls
+  `set_focus()` after `show()` so the panel receives the Esc keydown:
+  ```rust
+  #[tauri::command]
+  pub async fn pet_panel_show(app: tauri::AppHandle) -> Result<(), String> {
+      if let Some(w) = app.get_webview_window("pet-panel") {
+          w.show().map_err(|e| e.to_string())?;
+          w.set_focus().map_err(|e| e.to_string())?;
+      }
+      Ok(())
+  }
+  // pet_panel_hide, pet_panel_set_position { x: i32, y: i32 },
+  // pet_panel_get_position -> {x,y}, pet_panel_is_visible -> bool
+  ```
+
+### 3. Contracts
+- **Window label** `pet-panel` scopes `capabilities/pet-panel.json` (`"windows": ["pet-panel"]`).
+- **ACL reality**: the panel frontend does NOT call `getCurrentWindow().<api>()` for show/hide/
+  position — it uses custom `invoke('pet_panel_*')` commands, which **bypass the ACL** (only
+  built-in `core:*` plugin commands are gated). The only ACL-gated call site is
+  `@tauri-apps/api/event` `emit('pet://menu-action', {action})` → requires
+  `core:event:allow-emit`. Over-granting `core:window:allow-*` in `pet-panel.json` is harmless
+  (provides future flexibility) but **not required** by the current panel code.
+- **Event channel**: reuses the existing `pet://menu-action` channel (same as the native right-
+  click menu). The launcher buttons `emit` `{ action: PetMenuAction }`; the main window's existing
+  `App.tsx` listener dispatches + `focusMain()`. No new event channel needed.
+- **`PetMenuAction` extension**: the union was extended from 4 (native menu) to 9 (4 native +
+  5 launcher-only: `daily-note`, `global-search`, `clip-from-url`, `command-palette`,
+  `toggle-theme`). The Rust `pet_ctx_menu_action` mapping recognizes all 9 strings so the
+  contract stays uniform even though the native menu only renders 4 — the launcher emits the
+  other 5 directly from the frontend.
+
+### 4. Validation & Error Matrix
+
+| Frontend action | Mechanism | Required ACL | If missing |
+|---|---|---|---|
+| show / hide / position the panel | custom `invoke('pet_panel_*')` | none (custom cmds bypass ACL) | n/a — check `invoke_handler` registration |
+| `emit('pet://menu-action', …)` from the panel | `@tauri-apps/api/event` | `core:event:allow-emit` on `pet-panel` | launcher button looks clicked but main window never receives the action |
+| Esc / close-button / second-click dismiss | custom `invoke('pet_panel_hide')` | none | n/a |
+| fullscreen guard before show | `invoke('pet_cursor_probe')` → `main_fullscreen` | none | n/a |
+| on-screen position clamp | `invoke('pet_get_work_area')` + TS `computePanelPosition` | none | n/a |
+
+### 5. Good / Base / Bad Cases
+- **Good**: structural window in `tauri.conf.json` (`visible:false`); custom `invoke` commands for
+  all mutation; position the panel via `pet_panel_set_position` BEFORE `pet_panel_show` so it
+  appears at the right spot in one frame (no flash at the default origin); fullscreen guard first;
+  clamp via `pet_get_work_area` + `computePanelPosition` so the 380×520 panel stays fully on-screen
+  even when the pet is at the bottom-right corner (opens left/up near edges).
+- **Base**: the panel is a normal opaque window — `core:default` covers `invoke`/`listen`; only
+  `core:event:allow-emit` must be added on top for the launcher's `emit`.
+- **Bad**: calling `getCurrentWindow().show()` from the panel frontend without granting
+  `core:window:allow-show` on the `pet-panel` label → silent swallow → panel never appears. Use
+  custom `invoke` commands instead (bypass ACL, host controls focus/position atomically).
+
+### 6. Tests Required
+- **Event contract test**: the `PetMenuAction` union, `PET_MENU_ACTIONS`, `PET_NATIVE_MENU_ACTIONS`,
+  and `PET_LAUNCHER_ACTIONS` arrays must stay in sync with the Rust `pet_ctx_menu_action`
+  id→action map (assert in `PetContextMenu.test.tsx`). The native and launcher sets must be
+  disjoint; their union must equal `PET_MENU_ACTIONS`.
+- **Positioning unit test**: `computePanelPosition` (right/below default, flips left/up near edges,
+  clamps to work area) + `clampPanelPosition` (all four edges + degenerate work area) — see
+  `petPosition.test.ts`.
+- **Launcher dispatch test**: each launcher button emits the correct `pet://menu-action` payload
+  and calls `pet_panel_hide` for main-window-targeting actions; Clip-from-URL toggles the inline
+  form instead (no emit, no hide) — see `PetLauncher.test.tsx`.
+
+### 7. Wrong vs Correct
+
+#### Wrong — drive the secondary window from frontend `getCurrentWindow()` calls
+```ts
+// panel frontend on mount
+const win = getCurrentWindow();
+await win.setPosition(new LogicalPosition(x, y));  // needs core:window:allow-set-position
+await win.show();                                   // needs core:window:allow-show
+await win.setFocus();                               // needs core:window:allow-set-focus
+// forgetting any of the 3 capability entries → silent swallow → panel inert
+```
+
+#### Correct — custom `invoke` commands own all mutation; position before show
+```ts
+// caller (the pet window) opens the panel
+const probe = await invoke<PetCursorProbe>('pet_cursor_probe');
+if (probe.main_fullscreen) return;                       // R4 fullscreen guard
+if (await invoke<boolean>('pet_panel_is_visible')) {     // toggle (R8)
+  await invoke('pet_panel_hide');
+  return;
+}
+const workArea = await invoke<WorkArea>('pet_get_work_area');
+const pos = computePanelPosition({x: probe.window_x, y: probe.window_y}, workArea);
+await invoke('pet_panel_set_position', pos);             // position FIRST
+await invoke('pet_panel_show');                          // then show → no flash
+// panel frontend: close button + Esc both call invoke('pet_panel_hide')
+```
+
+> **Why custom commands**: they bypass the ACL (so no per-API capability entries to forget),
+> let the host set focus + position atomically, and keep all window-state logic in one Rust
+> module — the frontend never reasons about `core:window:allow-*` for the panel.
+
+---
+
+
 
 ```ts
 // ❌ Hides permission gaps; the feature ships inert with no surfaced error
