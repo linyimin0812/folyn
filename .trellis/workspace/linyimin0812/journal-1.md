@@ -1201,3 +1201,37 @@ Fixed two CSV preview bugs: (1) Chinese UTF-8 CSVs (no BOM) rendered as mojibake
 ### Next Steps
 
 - None - task complete
+
+
+## Session 36: AI panel input mode selector (ask/agent, extensible)
+
+**Date**: 2026-07-05
+**Task**: AI panel input mode selector (ask/agent, extensible)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added an extensible ask/agent mode toggle in the AI panel input box. CliSendOptions gains permissionMode + systemPrompt (buildClaudeArgs emits --permission-mode defaulting to bypassPermissions for backward compat, and --append-system-prompt after --bare before --resume). New inputModes.ts registry (declarative AiInputModeDef + optional buildSendOptions escape hatch; built-ins agent=bypassPermissions, ask=plan) with register/list/get/resolve. aiStore gains global inputMode/setInputMode. ChatInput renders a segmented toggle from the registry (disabled while streaming); AiPanel.handleSend merges mode options via resolveSendOptions. Tests cover buildClaudeArgs combinations/ordering, registry/resolveSendOptions, and setInputMode. Specs updated: pluggable registry pattern (desktop quality-guidelines), CliSendOptions extension contract (cli-adapter type-safety).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5009ca8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

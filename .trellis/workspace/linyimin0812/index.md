@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 35
-- **Last Active**: 2026-07-03
+- **Total Sessions**: 36
+- **Last Active**: 2026-07-05
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1203 | Active |
+| `journal-1.md` | ~1237 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 36 | 2026-07-05 | AI panel input mode selector (ask/agent, extensible) | `5009ca8` | `master` |
 | 35 | 2026-07-03 | CSV UTF-8 mojibake fix + Cmd+C copy in Tauri webview | `896edab` | `master` |
 | 34 | 2026-07-03 | ER diagram file type with DBML syntax and preview | `34efa62` | `master` |
 | 33 | 2026-07-03 | CSV preview styling + index column auto-width | `7d78a82` | `master` |
