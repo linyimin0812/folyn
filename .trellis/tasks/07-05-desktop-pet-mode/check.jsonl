@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist + forbidden patterns; verify pet feature meets code standards (no default exports, no bare useStore, etc.)."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Verify strict TS for pet state machine, event payloads, and store extensions."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify settingsStore extension follows Zustand conventions (granular selectors, persistence)."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify mascot + context menu components follow composition/styling conventions."}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "Verify custom hooks for pet window lifecycle / Tauri events follow hook guidelines."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Check for duplication — reuse existing window/focus/settings/AI-panel helpers rather than reinventing."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Check pet <-> main window event flow across Rust/frontend layers; verify event contract and data consistency."}

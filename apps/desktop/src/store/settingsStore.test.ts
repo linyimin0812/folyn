@@ -62,6 +62,57 @@ describe('useSettingsStore simple setters', () => {
   });
 });
 
+// ── Desktop Pet Mode persistence (R5, AC7) ──
+describe('useSettingsStore pet mode', () => {
+  it('defaults to disabled with no saved position', () => {
+    useSettingsStore.setState({ petModeEnabled: false, petPositionX: -1, petPositionY: -1 });
+    expect(useSettingsStore.getState().petModeEnabled).toBe(false);
+    expect(useSettingsStore.getState().petPositionX).toBe(-1);
+    expect(useSettingsStore.getState().petPositionY).toBe(-1);
+  });
+
+  it('setPetModeEnabled updates state and persists to storageClient', async () => {
+    const setSpy = vi.spyOn(storageClient, 'set');
+    useSettingsStore.getState().setPetModeEnabled(true);
+    expect(useSettingsStore.getState().petModeEnabled).toBe(true);
+    // debouncedPersist fires after 300ms (fake timers).
+    vi.advanceTimersByTime(400);
+    expect(setSpy).toHaveBeenCalled();
+    const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1] as Record<string, unknown>;
+    expect(payload.petModeEnabled).toBe(true);
+    setSpy.mockRestore();
+  });
+
+  it('setPetPosition updates X/Y and persists', async () => {
+    const setSpy = vi.spyOn(storageClient, 'set');
+    useSettingsStore.getState().setPetPosition(120, 340);
+    expect(useSettingsStore.getState().petPositionX).toBe(120);
+    expect(useSettingsStore.getState().petPositionY).toBe(340);
+    vi.advanceTimersByTime(400);
+    const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1] as Record<string, unknown>;
+    expect(payload.petPositionX).toBe(120);
+    expect(payload.petPositionY).toBe(340);
+    setSpy.mockRestore();
+  });
+
+  it('persisted payload round-trips through storageClient.get', async () => {
+    // Capture the persisted payload by writing through the real setter.
+    const setSpy = vi.spyOn(storageClient, 'set');
+    useSettingsStore.getState().setPetModeEnabled(true);
+    useSettingsStore.getState().setPetPosition(50, 70);
+    vi.advanceTimersByTime(400);
+    const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1];
+    setSpy.mockRestore();
+    storageClient.__resetForTesting();
+    await storageClient.set('settings:all', payload);
+    const loaded = await storageClient.get<typeof payload>('settings:all');
+    expect(loaded).not.toBeNull();
+    expect((loaded as Record<string, unknown>).petModeEnabled).toBe(true);
+    expect((loaded as Record<string, unknown>).petPositionX).toBe(50);
+    expect((loaded as Record<string, unknown>).petPositionY).toBe(70);
+  });
+});
+
 describe('useSettingsStore.updateSettings', () => {
   it('merges partial settings', () => {
     useSettingsStore.getState().updateSettings({ autoSave: false, tabSize: 2 });

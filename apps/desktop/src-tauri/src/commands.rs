@@ -1,6 +1,6 @@
 use std::fs;
 use serde::Serialize;
-use tauri::Manager;
+use tauri::{Emitter, Manager, PhysicalPosition};
 
 #[tauri::command]
 pub async fn open_file(path: String) -> Result<String, String> {
@@ -388,4 +388,191 @@ pub async fn get_project_overview(dir: String) -> Result<String, String> {
         .replace(dir.trim_end_matches('/'), ".");
 
     Ok(cleaned)
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Desktop Pet Mode commands (macOS MVP).
+//
+// The pet is a second Tauri window (label `pet`) that is transparent,
+// always-on-top, skipTaskbar, and hidden by default. These commands toggle
+// its visibility, manage its position, expose cursor hit-testing for
+// click-through on transparent regions, and show the right-click quick-action
+// menu as a native popup (the pet window is only 120x120, so an HTML menu
+// would be clipped — issue #1). Menu item selections are routed back to the
+// frontend via the `pet://menu-action` event emitted from `lib.rs::on_menu_event`.
+// ────────────────────────────────────────────────────────────────────────────
+
+const PET_LABEL: &str = "pet";
+
+/// Menu item IDs for the pet's native right-click context menu. The mapping
+/// from ID → `PetMenuAction` lives in `lib.rs::on_menu_event`; keep both
+/// sides in sync. (IDs are stable strings so the Rust menu builder and the
+/// event handler can share them across crate modules.)
+pub const PET_CTX_MENU_SHOW_MAIN: &str = "pet-ctx-show-main";
+pub const PET_CTX_MENU_NEW_NOTE: &str = "pet-ctx-new-note";
+pub const PET_CTX_MENU_TOGGLE_AI: &str = "pet-ctx-toggle-ai";
+pub const PET_CTX_MENU_DISABLE_PET: &str = "pet-ctx-disable-pet";
+
+/// Toggle the pet window's visibility. Returns the new visibility state.
+/// Also used by the menu bar "Desktop Pet Mode" check item — the caller is
+/// expected to sync the checkmark from the returned bool.
+#[tauri::command]
+pub async fn toggle_pet_mode(app: tauri::AppHandle) -> Result<bool, String> {
+    let pet = app
+        .get_webview_window(PET_LABEL)
+        .ok_or_else(|| "pet window not found".to_string())?;
+    let currently_visible = pet.is_visible().map_err(|e| e.to_string())?;
+    let next = !currently_visible;
+    if next {
+        pet.show().map_err(|e| e.to_string())?;
+        // Do not steal focus from the editor when summoning the pet.
+        // `focus:false` in tauri.conf.json controls focus-on-creation; for
+        // subsequent show() calls we rely on the window being non-activating
+        // on macOS via the transparent + skipTaskbar flags.
+    } else {
+        pet.hide().map_err(|e| e.to_string())?;
+    }
+    // Keep the macOS menu bar check item in sync (the menu event path sets
+    // visibility from the checkmark; this is the reverse: setting the
+    // checkmark from visibility, for the frontend-driven toggle path).
+    if let Some(menu) = app.menu() {
+        if let Some(kind) = menu.get("pet_mode_toggle") {
+            if let Some(check) = kind.as_check_menuitem() {
+                let _ = check.set_checked(next);
+            }
+        }
+    }
+    // Notify the frontend so settingsStore.petModeEnabled stays in sync with
+    // the actual window visibility (covers the frontend-driven toggle path).
+    let _ = app.emit("pet://visibility-changed", next);
+    Ok(next)
+}
+
+/// Set the pet window's screen position (physical pixels).
+#[tauri::command]
+pub async fn set_pet_position(app: tauri::AppHandle, x: i32, y: i32) -> Result<(), String> {
+    let pet = app
+        .get_webview_window(PET_LABEL)
+        .ok_or_else(|| "pet window not found".to_string())?;
+    pet.set_position(PhysicalPosition::new(x, y))
+        .map_err(|e| e.to_string())
+}
+
+/// Get the pet window's current screen position (physical pixels).
+#[derive(Serialize)]
+pub struct PetPosition {
+    pub x: i32,
+    pub y: i32,
+}
+
+#[tauri::command]
+pub async fn get_pet_position(app: tauri::AppHandle) -> Result<PetPosition, String> {
+    let pet = app
+        .get_webview_window(PET_LABEL)
+        .ok_or_else(|| "pet window not found".to_string())?;
+    let pos = pet.outer_position().map_err(|e| e.to_string())?;
+    Ok(PetPosition { x: pos.x, y: pos.y })
+}
+
+/// Returns the cursor position in physical screen coordinates, the pet
+/// window's outer position, and whether the main editor window is currently
+/// fullscreen. The pet frontend polls this to:
+///  (a) decide whether the cursor is over the mascot sprite (click-through),
+///  (b) hide itself when the main window enters fullscreen (R7/AC9).
+///
+/// Fullscreen detection here is best-effort: it only covers the Quill main
+/// window being fullscreen, not arbitrary foreground apps. Detecting any-app
+/// macOS fullscreen Spaces requires NSWorkspace/Space-change notifications
+/// (see research/fullscreen-detection-macos.md); that is out of MVP scope.
+#[derive(Serialize)]
+pub struct PetCursorProbe {
+    pub cursor_x: f64,
+    pub cursor_y: f64,
+    pub window_x: i32,
+    pub window_y: i32,
+    pub main_fullscreen: bool,
+}
+
+#[tauri::command]
+pub async fn pet_cursor_probe(app: tauri::AppHandle) -> Result<PetCursorProbe, String> {
+    let pet = app
+        .get_webview_window(PET_LABEL)
+        .ok_or_else(|| "pet window not found".to_string())?;
+    let cursor = app.cursor_position().map_err(|e| e.to_string())?;
+    let win = pet.outer_position().map_err(|e| e.to_string())?;
+    let main_fullscreen = app
+        .get_webview_window("main")
+        .and_then(|m| m.is_fullscreen().ok())
+        .unwrap_or(false);
+    Ok(PetCursorProbe {
+        cursor_x: cursor.x,
+        cursor_y: cursor.y,
+        window_x: win.x,
+        window_y: win.y,
+        main_fullscreen,
+    })
+}
+
+/// Show the pet's quick-action context menu as a native OS popup at the
+/// cursor position. The pet Tauri window is only 120x120px, so an HTML
+/// `position: fixed` menu would be clipped by the window bounds (issue #1).
+/// A native popup menu is rendered by the OS, ignores the tiny window, and
+/// fires `on_menu_event` (handled in `lib.rs`) for each item — which emits
+/// `pet://menu-action` so the main window's existing listener dispatches the
+/// action. `popup_menu` blocks the calling (non-main) thread until the menu
+/// is dismissed; the JS `invoke` therefore resolves after dismissal.
+#[tauri::command]
+pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+
+    let pet = app
+        .get_webview_window(PET_LABEL)
+        .ok_or_else(|| "pet window not found".to_string())?;
+
+    let show_main = MenuItem::with_id(
+        &app,
+        PET_CTX_MENU_SHOW_MAIN,
+        "Show Main Window",
+        true,
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let new_note = MenuItem::with_id(
+        &app,
+        PET_CTX_MENU_NEW_NOTE,
+        "New Note",
+        true,
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let toggle_ai = MenuItem::with_id(
+        &app,
+        PET_CTX_MENU_TOGGLE_AI,
+        "Toggle AI Panel",
+        true,
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let sep = PredefinedMenuItem::separator(&app).map_err(|e| e.to_string())?;
+    let disable = MenuItem::with_id(
+        &app,
+        PET_CTX_MENU_DISABLE_PET,
+        "Disable Pet Mode",
+        true,
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+
+    let menu = Menu::with_items(
+        &app,
+        &[&show_main, &new_note, &toggle_ai, &sep, &disable],
+    )
+    .map_err(|e| e.to_string())?;
+
+    // popup_menu shows the menu at the current cursor position. It runs the
+    // underlying NSMenu popUp on the main thread (blocking) and returns once
+    // the user picks an item or dismisses — so the menu items stay alive for
+    // the duration of the popup.
+    pet.popup_menu(&menu).map_err(|e| e.to_string())?;
+    Ok(())
 }

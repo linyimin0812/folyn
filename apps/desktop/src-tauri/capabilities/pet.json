@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/tooling/cli/schema.json",
+  "identifier": "pet",
+  "description": "Capabilities for the desktop pet window (mascot sprite + context menu)",
+  "windows": ["pet"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-ignore-cursor-events",
+    "core:window:allow-outer-position",
+    "core:window:allow-is-visible",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:event:allow-emit"
+  ]
+}

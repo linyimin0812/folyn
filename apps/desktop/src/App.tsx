@@ -22,7 +22,9 @@ import { useCommandPaletteStore } from './store/commandPaletteStore';
 import { loadAiSessionsForVault } from './store/aiStore';
 import { registerBuiltinPlugins } from '@quill/container-plugins';
 import { registerBuiltinCommands } from './services/commandRegistry';
+import { requestNewItem } from './services/newItemBridge';
 import { isTauri } from './utils/platform';
+import type { PetMenuAction } from './components/pet/PetContextMenu';
 
 registerBuiltinPlugins();
 // Seed the command palette's static commands (actions + panels/modes) once at
@@ -153,6 +155,94 @@ export default function App() {
       });
     }
   }, [currentPage]);
+
+  // ── Desktop Pet Mode bridge (macOS MVP) ──
+  // (1) On launch, if the user had pet mode enabled, re-show the pet window.
+  //     The pet window starts `visible:false` in tauri.conf.json; calling
+  //     `toggle_pet_mode` flips it to visible and syncs the menu checkmark.
+  //     PetApp (mounted in the pet window) restores its own saved position.
+  // (2) Listen for `pet://menu-action` events from the pet window and
+  //     dispatch to existing store actions / window-focus helpers. Each
+  //     action also focuses the main window so the editor comes forward.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | null = null;
+    let cancelled = false;
+
+    const focusMain = async () => {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const win = getCurrentWindow();
+        await win.show();
+        await win.setFocus();
+      } catch {
+        // Non-fatal.
+      }
+    };
+
+    const handleAction = async (action: PetMenuAction) => {
+      switch (action) {
+        case 'show-main':
+          await focusMain();
+          break;
+        case 'new-note':
+          requestNewItem('file');
+          await focusMain();
+          break;
+        case 'toggle-ai':
+          useEditorStore.getState().toggleAiPanel();
+          await focusMain();
+          break;
+        case 'disable-pet':
+          useSettingsStore.getState().setPetModeEnabled(false);
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            await invoke('toggle_pet_mode');
+          } catch {
+            // Non-fatal; the menu bar item can still toggle it off.
+          }
+          break;
+      }
+    };
+
+    (async () => {
+      // Launch restore: only re-show if the user left pet mode on.
+      const { petModeEnabled } = useSettingsStore.getState();
+      if (petModeEnabled) {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          // The pet window starts hidden; toggle → show.
+          await invoke('toggle_pet_mode');
+        } catch {
+          // Non-fatal.
+        }
+      }
+      // Event listener for pet → main window actions.
+      const { listen } = await import('@tauri-apps/api/event');
+      const unAction = await listen<{ action: PetMenuAction }>('pet://menu-action', (event) => {
+        if (event.payload?.action) void handleAction(event.payload.action);
+      });
+      // Visibility sync: when the pet is toggled via the menu bar / keyboard
+      // shortcut, Rust emits this so the frontend preference stays in sync.
+      const unVis = await listen<boolean>('pet://visibility-changed', (event) => {
+        useSettingsStore.getState().setPetModeEnabled(!!event.payload);
+      });
+      if (cancelled) {
+        unAction();
+        unVis();
+      } else {
+        unlisten = () => {
+          unAction();
+          unVis();
+        };
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
 
   // ── Fall back to 'files' panel when the active feature is disabled ──
   // If the user turns off a feature (in Settings) while its panel is active,

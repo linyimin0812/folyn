@@ -25,6 +25,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Quill",
         "width": 1440,
         "height": 900,
@@ -32,6 +33,22 @@
         "minHeight": 600,
         "resizable": true,
         "fullscreen": false,
+        "dragDropEnabled": false
+      },
+      {
+        "label": "pet",
+        "url": "/#/pet",
+        "title": "Quill Pet",
+        "width": 120,
+        "height": 120,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "shadow": false,
+        "visible": false,
+        "focus": false,
         "dragDropEnabled": false
       }
     ],

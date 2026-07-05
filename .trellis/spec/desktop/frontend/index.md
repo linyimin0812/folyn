@@ -22,6 +22,7 @@ This directory contains guidelines for the `@quill/desktop` frontend — a Tauri
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns, review checklist | Filled |
 | [Type Safety](./type-safety.md) | Type patterns, naming, validation | Filled |
 | [File Type Editors](./file-type-editors.md) | Custom editors, iframe bridge, serialization hygiene | Filled |
+| [Tauri Window & ACL Patterns](./tauri-window-patterns.md) | Multi-window features, transparent/click-through windows, native popup menus, close-to-tray, ACL permission contract | Filled |
 
 ---
 

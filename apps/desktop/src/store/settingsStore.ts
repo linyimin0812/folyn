@@ -87,6 +87,14 @@ interface SettingsState {
   // Schedule Workbench: 自定义看板列
   boardColumns: BoardColumnDef[];
 
+  // Desktop Pet Mode (macOS MVP). `petModeEnabled` mirrors the pet window's
+  // visibility; `petPositionX/Y` persist the last dragged position so the
+  // pet reappears where the user left it. `-1` => "no saved position yet,
+  // default to a sensible corner".
+  petModeEnabled: boolean;
+  petPositionX: number;
+  petPositionY: number;
+
   // Actions
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
@@ -102,6 +110,8 @@ interface SettingsState {
   renameBoardColumn: (id: string, name: string) => void;
   reorderBoardColumns: (fromId: string, toId: string) => void;
   setBoardColumns: (columns: BoardColumnDef[]) => void;
+  setPetModeEnabled: (enabled: boolean) => void;
+  setPetPosition: (x: number, y: number) => void;
 }
 
 const SETTINGS_STORAGE_KEY = 'settings:all';
@@ -144,7 +154,8 @@ function debouncedPersist(state: Partial<SettingsState>) {
       syntaxHighlight, autoSave, spellCheck, linkOpenMode, vaultPath, imagePath, docExtension,
       watchFileChanges, trashOnDelete, syncMethod, syncEndpoint, syncAccessKey,
       syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
-      vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates, boardColumns } = state as SettingsState;
+      vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates, boardColumns,
+      petModeEnabled, petPositionX, petPositionY } = state as SettingsState;
     storageClient.set(SETTINGS_STORAGE_KEY, {
       theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles,
       enableWikiPanel, enableClipsPanel, enableAnalyzePanel, enableDailyPanel,
@@ -154,6 +165,7 @@ function debouncedPersist(state: Partial<SettingsState>) {
       watchFileChanges, trashOnDelete, syncMethod, syncEndpoint, syncAccessKey,
       syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
       vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates, boardColumns,
+      petModeEnabled, petPositionX, petPositionY,
     });
   }, 300);
 }
@@ -225,6 +237,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 
   // Schedule Workbench: 看板列（默认 4 列）
   boardColumns: DEFAULT_BOARD_COLUMNS.map((c) => ({ ...c })),
+
+  // Desktop Pet Mode — default off; position -1 means "no saved position".
+  petModeEnabled: false,
+  petPositionX: -1,
+  petPositionY: -1,
 
   setTheme: (theme) => {
     const actual = theme === 'system'
@@ -307,6 +324,14 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   },
   setBoardColumns: (columns: BoardColumnDef[]) => {
     set({ boardColumns: columns });
+    debouncedPersist(useSettingsStore.getState());
+  },
+  setPetModeEnabled: (enabled: boolean) => {
+    set({ petModeEnabled: enabled });
+    debouncedPersist(useSettingsStore.getState());
+  },
+  setPetPosition: (x: number, y: number) => {
+    set({ petPositionX: x, petPositionY: y });
     debouncedPersist(useSettingsStore.getState());
   },
 }));

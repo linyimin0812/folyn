@@ -1,0 +1,83 @@
+/* ── Desktop Pet Mode ──
+ * Mascot = ink-drop body + quill-pen tip. The pet window is a transparent,
+ * always-on-top, skipTaskbar Tauri window (label `pet`) that mounts only the
+ * `PetApp` component via the `#/pet` hash route (see main.tsx).
+ *
+ * States (D4): idle / hover / drag / click. State transitions are driven by
+ * mouse events on the sprite; motion is CSS keyframes.
+ */
+
+.pet-root {
+  /* The pet window is 120x120 physical px. The root fills it so the sprite
+   * can be centered, and transparent regions pass clicks through to the
+   * desktop via setIgnoreCursorEvents toggling (see PetApp.tsx). */
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+}
+
+.pet-mascot {
+  width: 80px;
+  height: 80px;
+  cursor: grab;
+  transform-origin: center bottom;
+  will-change: transform;
+  color: var(--acc, #3a6ef0);
+  transition: filter 0.15s ease;
+}
+
+.pet-mascot:hover { filter: brightness(1.08); }
+.pet-mascot:active { cursor: grabbing; }
+
+/* ── State: idle (breathing/floating) ── */
+.pet-mascot.is-idle {
+  animation: pet-idle 3.2s ease-in-out infinite;
+}
+@keyframes pet-idle {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-3px) scale(1.015); }
+}
+
+/* ── State: hover (looks up / reacts) ── */
+.pet-mascot.is-hover {
+  animation: pet-hover 1.6s ease-in-out infinite;
+}
+@keyframes pet-hover {
+  0%, 100% { transform: translateY(-2px) rotate(-2deg); }
+  50%      { transform: translateY(-5px) rotate(2deg); }
+}
+
+/* ── State: drag (wobble while being dragged) ── */
+.pet-mascot.is-drag {
+  animation: pet-drag 0.5s ease-in-out infinite;
+  cursor: grabbing;
+}
+@keyframes pet-drag {
+  0%, 100% { transform: rotate(-4deg) scale(1.02); }
+  25%      { transform: rotate(3deg) scale(0.98); }
+  50%      { transform: rotate(-2deg) scale(1.03); }
+  75%      { transform: rotate(4deg) scale(0.99); }
+}
+
+/* ── State: click (squish/pop feedback) ── */
+.pet-mascot.is-click {
+  animation: pet-click 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 1;
+}
+@keyframes pet-click {
+  0%   { transform: scale(1, 1); }
+  40%  { transform: scale(1.18, 0.82); }
+  70%  { transform: scale(0.92, 1.08); }
+  100% { transform: scale(1, 1); }
+}
+
+/* ── Context menu ──
+ * The right-click quick-action menu is rendered as a *native* OS popup
+ * (built Rust-side via `pet_show_context_menu`), not as HTML — the pet
+ * window is only 120x120, so an HTML `position: fixed` menu would be
+ * clipped by the window bounds (issue #1). See PetContextMenu.tsx. */
