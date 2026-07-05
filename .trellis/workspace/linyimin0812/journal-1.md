@@ -1235,3 +1235,37 @@ Added an extensible ask/agent mode toggle in the AI panel input box. CliSendOpti
 ### Next Steps
 
 - None - task complete
+
+
+## Session 37: Switch AI panel mode selector to dropdown
+
+**Date**: 2026-07-05
+**Task**: Switch AI panel mode selector to dropdown
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Replaced the segmented toggle mode selector in ChatInput with a custom popover dropdown (house style: trigger + caret, click-outside-to-close, active item highlighted with bg-accdim/text-acc, onMouseDown+preventDefault before setInputMode, disabled while streaming). Pure UI change — inputModes registry, aiStore, and cli-adapter untouched. tsc clean, 44 tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `85ca076` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
