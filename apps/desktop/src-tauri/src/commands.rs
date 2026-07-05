@@ -513,6 +513,76 @@ pub async fn pet_cursor_probe(app: tauri::AppHandle) -> Result<PetCursorProbe, S
     })
 }
 
+/// Get the pet's usable work-area rect (physical px, top-left origin) on the
+/// primary monitor. On macOS this is `NSScreen::mainScreen().visibleFrame`,
+/// which excludes the Dock and menu bar — using it for default-position math
+/// avoids placing the mascot under the Dock regardless of Dock size/position.
+/// On non-macOS targets the full monitor rect is returned as a best-effort
+/// fallback (pet mode is macOS-only at present anyway).
+///
+/// Returns `{ x, y, width, height }` where `(x, y)` is the top-left corner of
+/// the work area in physical screen coordinates (top-left origin, NOT the
+/// bottom-left origin that AppKit's NSRect uses natively — we flip Y here so
+/// the value is directly comparable to `set_pet_position`'s `PhysicalPosition`).
+#[derive(Serialize)]
+pub struct PetWorkArea {
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
+}
+
+#[tauri::command]
+pub async fn pet_get_work_area(_app: tauri::AppHandle) -> Result<PetWorkArea, String> {
+    #[cfg(target_os = "macos")]
+    {
+        use cocoa::appkit::NSScreen;
+        use cocoa::base::id;
+        use cocoa::foundation::NSRect;
+        use objc::{msg_send, sel, sel_impl};
+
+        unsafe {
+            // `NSScreen::mainScreen` is a class method; call it via msg_send!
+            // against the class object (cocoa's NSScreen trait method is
+            // misleadingly implemented for `id` instances, not `&Class`).
+            let screen: id = msg_send![objc::class!(NSScreen), mainScreen];
+            if screen.is_null() {
+                return Err("NSScreen.mainScreen is null".to_string());
+            }
+            // `visibleFrame` excludes the Dock and menu bar. NSRect uses
+            // bottom-left origin; we convert to top-left origin below.
+            let vis_rect: NSRect = NSScreen::visibleFrame(screen);
+            // Full frame gives us the total screen height, used to flip Y.
+            let full_rect: NSRect = NSScreen::frame(screen);
+            let flip_y =
+                full_rect.size.height - vis_rect.origin.y - vis_rect.size.height;
+
+            Ok(PetWorkArea {
+                x: vis_rect.origin.x as i32,
+                y: flip_y as i32,
+                width: vis_rect.size.width as i32,
+                height: vis_rect.size.height as i32,
+            })
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let monitor = app
+            .primary_monitor()
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "no primary monitor".to_string())?;
+        let pos = monitor.position();
+        let size = monitor.size();
+        Ok(PetWorkArea {
+            x: pos.x as i32,
+            y: pos.y as i32,
+            width: size.width as i32,
+            height: size.height as i32,
+        })
+    }
+}
+
 /// Show the pet's quick-action context menu as a native OS popup at the
 /// cursor position. The pet Tauri window is only 120x120px, so an HTML
 /// `position: fixed` menu would be clipped by the window bounds (issue #1).

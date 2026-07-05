@@ -231,32 +231,93 @@ or a frontend-driven hide/show can desync the close decision. Quitting via the a
 A transparent always-on-top window should let clicks on transparent areas pass through to the
 desktop, while the mascot sprite remains interactive.
 
-### Solution (best-effort polling)
-Poll the screen cursor + the window's outer position (Rust `pet_cursor_probe` returns both),
-compute whether the cursor is over the sprite rect, and toggle `setIgnoreCursorEvents`:
+### Decision: do NOT toggle `setIgnoreCursorEvents` for the pet window
+
+The pet window keeps `setIgnoreCursorEvents(false)` for its entire lifetime — the whole 120×120
+window receives pointer events at all times. The transparent 20 px border around the 80×80
+sprite does NOT pass clicks through to apps behind.
+
+**Why**: the previous best-effort polling approach (60 ms `pet_cursor_probe` + 80×80 sprite
+hit-test toggling `setIgnoreCursorEvents`) raced with native drag end. After `startDragging()`
+returned, the cursor frequently rested in the 20 px transparent border; the next probe tick
+flipped `setIgnoreCursorEvents(true)`, and the next click on the sprite passed through the
+window without firing `handlePointerDown`. Symptom: the pet could be dragged once and then
+stuck — "drag-once-then-blocked". The proactive `setIgnoreCursorEvents(false)` after drag end
+did not help because the probe overwrote it within 60 ms.
+
+**Trade-off**: the transparent border eats clicks (small UX cost — clicks intended for apps
+behind the pet's transparent border hit the pet window instead). In exchange, drag and click
+become 100 % reliable. Click-through via per-pixel `NSWindow` hit-testing is possible later if
+the border's click-eating becomes a real problem, but MVP does not need it.
+
+**What the probe still does**: `pet_cursor_probe` is still invoked periodically, but only for
+fullscreen detection (hide the pet while the main editor window is fullscreen, re-show when
+not). The cursor / window-position fields remain in the payload for future use; the JS side
+ignores them.
+
+### Required ACL (changed)
+
+`core:window:allow-set-ignore-cursor-events` is **no longer required** for the pet window
+(no `setIgnoreCursorEvents` calls remain). Keep `core:window:allow-outer-position` (drag-end
+position read) and `core:window:allow-show` / `allow-hide` (fullscreen path).
+
+---
+
+## Scenario: Default & Restored Position via Work Area
+
+### Problem
+The pet's default bottom-right position must clear the macOS Dock and menu bar regardless of
+Dock size, Dock position (bottom / left / right), or screen scale. Using `monitor.size` (the
+full monitor rect) for the default-position math clips the mascot under the Dock. Restoring a
+saved `petPositionX/Y` from a previous session without clamping also clips when the saved value
+is off-screen (e.g. saved on a different monitor or before a margin fix).
+
+### Solution: Rust `pet_get_work_area` + TS `clampPetPosition`
+
+**Rust** (`commands.rs::pet_get_work_area`, registered in `lib.rs`): returns the primary
+monitor's **work area** in physical px with top-left origin (matches `PhysicalPosition`):
+
+- macOS: `NSScreen::mainScreen().visibleFrame` — excludes the Dock and menu bar. The native
+  NSRect uses bottom-left origin, so flip Y before returning: `y = fullHeight - visOriginY - visHeight`.
+- Other platforms (fallback): the full monitor rect from `app.primary_monitor()`.
+
+Payload shape: `{ x: i32, y: i32, width: i32, height: i32 }`.
+
+**TS** (`petPosition.ts::clampPetPosition`): pure function that clamps a saved absolute
+position to a work-area rect so the whole 120×120 window stays on-screen. Returns the clamped
+position; the caller persists the clamped value back to `settingsStore` so the next launch
+doesn't re-clamp.
+
+**TS** (`petPosition.ts::computeDefaultPetPosition`): unchanged signature — takes the work
+area's `{width, height}` (NOT the full monitor size) and returns a position **relative to the
+work area's top-left**. The caller adds the work area's `(x, y)` origin to get an absolute
+screen position for `set_pet_position`. Margins (`PET_RIGHT_MARGIN`, `PET_BOTTOM_MARGIN`,
+`PET_MIN_TOP`) are a small safety inset ON TOP of the work area, not a Dock-clearance buffer.
+
+**Initial restore flow** (`PetApp.tsx`):
 
 ```ts
-const probe = await invoke<PetCursorProbe>('pet_cursor_probe');
-const overSprite = pointInRect(
-  probe.cursorX - probe.winX,
-  probe.cursorY - probe.winY,
-  SPRITE_RECT,            // e.g. {x:20,y:20,w:80,h:80} within the 120x120 window
-);
-await win.setIgnoreCursorEvents(!overSprite);
+const workArea = await invoke<PetWorkArea>('pet_get_work_area');
+const { petPositionX, petPositionY } = useSettingsStore.getState();
+if (petPositionX >= 0 && petPositionY >= 0) {
+  const clamped = clampPetPosition({x: petPositionX, y: petPositionY}, workArea);
+  if (clamped.x !== petPositionX || clamped.y !== petPositionY) {
+    useSettingsStore.getState().setPetPosition(clamped.x, clamped.y);  // persist correction
+  }
+  await invoke('set_pet_position', { x: clamped.x, y: clamped.y });
+} else {
+  const rel = computeDefaultPetPosition({ width: workArea.width, height: workArea.height });
+  const abs = { x: workArea.x + rel.x, y: workArea.y + rel.y };
+  await invoke('set_pet_position', abs);
+  useSettingsStore.getState().setPetPosition(abs.x, abs.y);
+}
 ```
 
-**Limitation**: there is up to `<poll-interval>` latency (60ms with the current
-`PROBE_INTERVAL_MS = 60`) before the window re-enables mouse events after the
-cursor enters the sprite — clicks landing in that window pass through. The
-interval was reduced from 250ms to 60ms so `ignore` flips within one frame of
-cursor entry, making drag initiation responsive (a press before the next tick
-would otherwise pass through and `startDragging()` would never fire). The probe
-is cheap (a single `invoke` returning a handful of numbers). Acceptable for MVP;
-a per-pixel hit-test via `NSWindow` hit-testing would remove the latency
-entirely but needs native bridging.
+### Unit contract
 
-**Required ACL**: `core:window:allow-set-ignore-cursor-events`, `core:window:allow-outer-position`.
-Both are absent from `core:default`.
+`set_pet_position` (Rust) takes a `PhysicalPosition<i32>`. `pet_get_work_area` returns values
+in the same physical-px top-left-origin space. `monitor.size` (the full monitor rect) is NOT
+the same as the work area — do not mix them.
 
 ---
 

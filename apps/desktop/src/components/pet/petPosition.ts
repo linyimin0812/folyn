@@ -15,23 +15,26 @@
 export const PET_WINDOW_SIZE = 120;
 
 /**
- * Margins kept between the pet window's edges and the monitor's physical
- * edges so the mascot isn't clipped off-screen on first launch.
+ * Margins kept between the pet window's edges and the work-area's physical
+ * edges so the mascot isn't clipped off-screen. Applied IN ADDITION to the
+ * OS work area (`NSScreen.visibleFrame` on macOS, which already excludes the
+ * Dock and menu bar) — these are a small safety inset so the mascot doesn't
+ * sit flush against the Dock's edge.
  *
- * These are SEPARATE per axis because macOS `monitor.size.height` (from
- * `currentMonitor()`) is the **full screen height including the Dock area**
- * (~50–70px at the bottom) and the menu bar at the top. A single 20px margin
- * left the bottom of the mascot hidden behind the Dock. The bottom margin is
- * larger to clear the Dock; the right margin stays small.
+ * The bottom margin stays larger than the right so even on a setup where the
+ * work area underreports the Dock (e.g. auto-hide Dock), the mascot's lower
+ * portion still clears the screen bottom.
  */
-export const PET_RIGHT_MARGIN = 20;
-export const PET_BOTTOM_MARGIN = 80;
+export const PET_RIGHT_MARGIN = 8;
+export const PET_BOTTOM_MARGIN = 12;
 
 /**
  * Minimum top-edge position so the pet stays below the macOS menu bar on
- * very small / oddly sized monitors.
+ * very small / oddly sized monitors. The work area's `y` already accounts
+ * for the menu bar, but this floor protects against a work area that
+ * underreports the menu-bar height.
  */
-export const PET_MIN_TOP = 40;
+export const PET_MIN_TOP = 25;
 
 export interface MonitorSizePhysical {
   width: number;
@@ -44,16 +47,50 @@ export interface PetPosition {
 }
 
 /**
+ * Work-area rect in physical px, top-left origin (matches Tauri's
+ * `PhysicalPosition`). Returned by the Rust `pet_get_work_area` command.
+ * On macOS this is `NSScreen.visibleFrame` (excludes Dock + menu bar); on
+ * other platforms it's the full monitor rect as a best-effort fallback.
+ */
+export interface PetWorkArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
  * Compute the default pet position (physical px) for the bottom-right of the
- * given monitor. Uses separate right/bottom margins so the macOS Dock does
- * not occlude the mascot. Always clamps `x >= 0` and `y >= PET_MIN_TOP` so
- * a tiny / oddly sized monitor cannot push the default off-origin or behind
- * the menu bar.
+ * given monitor size. The result is **relative to the work area's top-left**;
+ * the caller must add the work area's `(x, y)` origin to get an absolute
+ * screen position for `set_pet_position`.
+ *
+ * Always clamps `x >= 0` and `y >= PET_MIN_TOP` so a tiny / oddly sized
+ * monitor cannot push the default off-origin or behind the menu bar.
  */
 export function computeDefaultPetPosition(
   monitorSize: MonitorSizePhysical,
 ): PetPosition {
   const x = Math.max(0, Math.round(monitorSize.width - PET_WINDOW_SIZE - PET_RIGHT_MARGIN));
   const y = Math.max(PET_MIN_TOP, Math.round(monitorSize.height - PET_WINDOW_SIZE - PET_BOTTOM_MARGIN));
+  return { x, y };
+}
+
+/**
+ * Clamp a saved pet position (absolute screen px) so the whole 120×120
+ * window stays inside the work area. If the saved position would clip on
+ * any edge, it is moved inward to the nearest valid position. The caller
+ * should persist the clamped value back to `settingsStore` so a subsequent
+ * launch doesn't need to re-clamp.
+ *
+ * If the work area is smaller than the pet window (degenerate case), the
+ * pet is placed at the work area's top-left — the window will overflow but
+ * at least its anchor stays on-screen.
+ */
+export function clampPetPosition(saved: PetPosition, workArea: PetWorkArea): PetPosition {
+  const maxX = workArea.x + Math.max(0, workArea.width - PET_WINDOW_SIZE);
+  const maxY = workArea.y + Math.max(0, workArea.height - PET_WINDOW_SIZE);
+  const x = Math.min(Math.max(saved.x, workArea.x), maxX);
+  const y = Math.min(Math.max(saved.y, workArea.y), maxY);
   return { x, y };
 }

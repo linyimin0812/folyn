@@ -1,6 +1,15 @@
+// `objc 0.2` (transitive via `cocoa`) emits `cfg(cargo-clippy)` inside its
+// `msg_send!` / `class!` macros — an old clippy-detection hack that Rust
+// 1.80+'s check-cfg flags as an unknown cfg. The macro expansion is
+// attributed to the `objc` crate (not our call site), so function-level
+// `#[allow]` does not suppress it. Crate-level allow is the only effective
+// scope. Upgrade `objc` to `objc2` would also fix it but is a larger change
+// (Tauri 2's macOS backend uses `objc2` internally already; we add `cocoa`
+// only for `NSScreen.visibleFrame` FFI).
+#![allow(unexpected_cfgs)]
+
 mod commands;
 
-#[cfg(debug_assertions)]
 use tauri::Manager;
 use tauri::menu::{CheckMenuItem, MenuBuilder, SubmenuBuilder};
 use tauri::{Emitter, WindowEvent};
@@ -170,6 +179,7 @@ pub fn run() {
             commands::get_pet_position,
             commands::pet_cursor_probe,
             commands::pet_show_context_menu,
+            commands::pet_get_work_area,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

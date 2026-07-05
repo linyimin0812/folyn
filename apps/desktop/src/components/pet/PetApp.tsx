@@ -1,23 +1,31 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PetMascot } from './PetMascot';
-import { openPetContextMenu, type PetMenuAction } from './PetContextMenu';
-import { computeDefaultPetPosition } from './petPosition';
+import { openPetContextMenu } from './PetContextMenu';
+import { clampPetPosition, computeDefaultPetPosition } from './petPosition';
 
 /**
  * PetApp — mounted only in the `pet` Tauri window (see main.tsx `#/pet` route
  * switch). Renders the ink-drop + quill mascot and wires up:
  *
  *  - State machine (idle/hover/drag/click) — D4, R2.
- *  - Single click → focus the main editor window (D5, R3, AC4) via the
- *    `pet://menu-action` Tauri event consumed by the main window.
+ *  - Single click → open the native quick-action menu (same as right-click).
+ *    The menu's "Show Main Window" entry covers the focus-main-window flow.
  *  - Right-click → native context menu (D8, R3, AC5). The menu is built
  *    Rust-side (`pet_show_context_menu`) because the 120x120 pet window
  *    would clip an HTML menu (issue #1); selections emit `pet://menu-action`.
  *  - Drag → `startDragging` on the pet window; position persisted to
  *    `settingsStore` (R5, AC3/AC7).
- *  - Click-through on transparent regions (R6, AC8) — periodic
- *    `pet_cursor_probe` toggles `setIgnoreCursorEvents`.
  *  - Fullscreen handling (R7, AC9) — hide when the main window is fullscreen.
+ *
+ * Click-through on transparent regions was REMOVED. The prior 60ms probe +
+ * 80×80 sprite hit-test raced with native drag end: after a drag the cursor
+ * often rested in the 20px transparent border, the next probe tick flipped
+ * `setIgnoreCursorEvents(true)`, and the next click passed through the
+ * window without firing `handlePointerDown` — so the pet could be dragged
+ * once and then stuck. The trade-off: the transparent border no longer
+ * passes clicks to apps behind the pet (small UX cost); in exchange, drag
+ * and click are 100% reliable. The probe still runs, only for fullscreen
+ * detection. See `tauri-window-patterns.md` for the contract.
  */
 
 type PetState = 'idle' | 'hover' | 'drag' | 'click';
@@ -25,7 +33,7 @@ type PetState = 'idle' | 'hover' | 'drag' | 'click';
 /** Sprite occupies the center 80x80 of the 120x120 pet window. */
 const SPRITE_OFFSET = 20;
 const SPRITE_SIZE = 80;
-const PROBE_INTERVAL_MS = 60;
+const PROBE_INTERVAL_MS = 250;
 const POSITION_PERSIST_INTERVAL_MS = 800;
 
 interface PetCursorProbeResult {
@@ -36,19 +44,18 @@ interface PetCursorProbeResult {
   main_fullscreen: boolean;
 }
 
+interface PetWorkAreaResult {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export function PetApp() {
   const [state, setState] = useState<PetState>('idle');
-  // While dragging, click-through must stay off so the window keeps receiving
-  // the events it needs. The native right-click menu is rendered by the OS,
-  // so it doesn't need click-through gating on the pet window.
+  // Removed: `draggingRef` is still tracked so the state-machine callbacks
+  // (hover/leave) know not to clobber 'drag' while native drag is in flight.
   const draggingRef = useRef(false);
-  const ignoreRef = useRef(false);
-
-  // ── Emit a menu action to the main window ──
-  const emitAction = useCallback(async (action: PetMenuAction) => {
-    const { emit } = await import('@tauri-apps/api/event');
-    await emit('pet://menu-action', { action });
-  }, []);
 
   // ── State machine: mouse event handlers ──
   const handleMouseEnter = useCallback(() => {
@@ -69,9 +76,9 @@ export function PetApp() {
 
     // Record the window position before the native drag starts. After
     // startDragging() resolves we compare: if the window barely moved, the
-    // gesture was a click (not a drag) — we then fire the single-click
-    // action (focus main window). Native drag consumes mouseup/click, so we
-    // cannot rely on a separate onClick handler.
+    // gesture was a click (not a drag) — we then open the quick-action
+    // menu. Native drag consumes mouseup/click, so we cannot rely on a
+    // separate onClick handler.
     let beforeX = 0;
     let beforeY = 0;
     try {
@@ -89,25 +96,10 @@ export function PetApp() {
       const { getCurrentWindow } = await import('@tauri-apps/api/window');
       await getCurrentWindow().startDragging();
     } catch (err) {
-      // startDragging can fail if the platform doesn't support it; fall back
-      // to a no-op drag so the click-through + state machine still work.
       console.warn('[pet] startDragging failed:', err);
     }
     // Native drag returns when the user releases the mouse.
     draggingRef.current = false;
-    // Proactively re-enable mouse events so follow-up clicks register
-    // immediately, without waiting for the next probe tick to flip
-    // `ignore` back to false. (The probe will reconcile this on its next
-    // tick based on cursor position.)
-    if (ignoreRef.current) {
-      ignoreRef.current = false;
-      try {
-        const { getCurrentWindow } = await import('@tauri-apps/api/window');
-        await getCurrentWindow().setIgnoreCursorEvents(false);
-      } catch {
-        // Best-effort; the probe tick will retry.
-      }
-    }
 
     let afterX = beforeX;
     let afterY = beforeY;
@@ -125,10 +117,12 @@ export function PetApp() {
     const wasClick = dx < 5 && dy < 5;
 
     if (wasClick) {
-      // Single-click mascot = focus/show the main window (D5, R3, AC4).
+      // Single-click mascot = open the native quick-action menu (D5, R3, AC4).
+      // The menu's "Show Main Window" entry covers focus; no separate
+      // `show-main` emission from left-click anymore.
       setState('click');
       window.setTimeout(() => setState('idle'), 320);
-      void emitAction('show-main');
+      await openPetContextMenu();
     } else {
       // Drag ended — persist the new position immediately so AC7 holds even
       // if the periodic poller hasn't fired yet.
@@ -140,19 +134,18 @@ export function PetApp() {
       }
       setState('idle');
     }
-  }, [emitAction]);
+  }, []);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    // Native OS popup menu (issue #1): the pet window is 120x120, so an HTML
-    // menu would be clipped. The menu is built Rust-side; selections emit
-    // `pet://menu-action`, which App.tsx already listens for. The native
-    // menu handles its own dismiss (Escape / outside-click) so we don't need
-    // a `menuOpen` flag here.
     void openPetContextMenu();
   }, []);
 
-  // ── Click-through + fullscreen probe (periodic) ──
+  // ── Fullscreen probe (periodic) ──
+  // The probe no longer toggles `setIgnoreCursorEvents` — the whole 120x120
+  // window receives pointer events at all times. The probe's only remaining
+  // job is fullscreen detection: hide the pet while the main editor window is
+  // fullscreen, re-show it when not.
   useEffect(() => {
     let cancelled = false;
 
@@ -162,53 +155,24 @@ export function PetApp() {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         result = await invoke<PetCursorProbeResult>('pet_cursor_probe');
-      } catch (err) {
-        // Probe failure is non-fatal — keep the window interactive (ignore off).
-        if (!cancelled && ignoreRef.current) {
-          ignoreRef.current = false;
-        }
+      } catch {
+        // Probe failure is non-fatal — leave visibility as-is.
         return;
       }
       if (cancelled) return;
 
-      // Fullscreen handling (R7/AC9): hide the pet while the main window is
-      // fullscreen. We do NOT close the window — just hide() so the saved
-      // position + visibility preference are preserved.
       try {
         const { getCurrentWindow } = await import('@tauri-apps/api/window');
         const win = getCurrentWindow();
         if (result.main_fullscreen) {
           const visible = await win.isVisible();
           if (visible) await win.hide();
-          return; // stay hidden while fullscreen; don't toggle click-through.
         } else {
           const visible = await win.isVisible();
           if (!visible) await win.show();
         }
       } catch {
-        // Non-fatal; continue to click-through logic.
-      }
-
-      // Click-through (R6/AC8): when the cursor is outside the sprite's
-      // rect, set ignore=true so transparent regions pass clicks through.
-      // The sprite is at (SPRITE_OFFSET, SPRITE_OFFSET) within the window.
-      const relX = result.cursor_x - result.window_x;
-      const relY = result.cursor_y - result.window_y;
-      const overSprite =
-        relX >= SPRITE_OFFSET &&
-        relX <= SPRITE_OFFSET + SPRITE_SIZE &&
-        relY >= SPRITE_OFFSET &&
-        relY <= SPRITE_OFFSET + SPRITE_SIZE;
-
-      const wantIgnore = !overSprite && !draggingRef.current;
-      if (wantIgnore !== ignoreRef.current) {
-        ignoreRef.current = wantIgnore;
-        try {
-          const { getCurrentWindow } = await import('@tauri-apps/api/window');
-          await getCurrentWindow().setIgnoreCursorEvents(wantIgnore);
-        } catch {
-          // Best-effort: if the platform refuses, leave the window as-is.
-        }
+        // Non-fatal; try again next tick.
       }
     };
 
@@ -234,8 +198,6 @@ export function PetApp() {
       try {
         const { getCurrentWindow } = await import('@tauri-apps/api/window');
         const pos = await getCurrentWindow().outerPosition();
-        // outerPosition returns a PhysicalPosition; values may be floats on
-        // some platforms — round for stable comparison.
         const x = Math.round(pos.x);
         const y = Math.round(pos.y);
         if (x !== lastX || y !== lastY) {
@@ -256,34 +218,47 @@ export function PetApp() {
     };
   }, []);
 
-  // ── Initial position restore (R5, AC7) ──
-  // On mount, move the pet window to its saved position (or a sensible
-  // bottom-right default on first launch).
+  // ── Initial position restore (R5, AC7, R1/R2) ──
+  // On mount, resolve the pet's initial position:
+  //  - If a saved position exists, clamp it to the current work area. If the
+  //    saved value was off-screen (e.g. from a previous monitor setup or a
+  //    pre-fix default), the clamped value is persisted back so subsequent
+  //    launches don't re-clamp.
+  //  - Otherwise, compute the default bottom-right position from the work
+  //    area (NSScreen.visibleFrame on macOS, excludes Dock + menu bar) and
+  //    persist it.
   useEffect(() => {
     (async () => {
       try {
         const { useSettingsStore } = await import('@/store/settingsStore');
-        const { petPositionX, petPositionY } = useSettingsStore.getState();
         const { invoke } = await import('@tauri-apps/api/core');
+        const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
+        const { petPositionX, petPositionY } = useSettingsStore.getState();
+
+        let resolved: { x: number; y: number };
         if (petPositionX >= 0 && petPositionY >= 0) {
-          await invoke('set_pet_position', { x: petPositionX, y: petPositionY });
-        } else {
-          // Default: bottom-right corner of the primary monitor.
-          // `monitor.size` is physical px and `set_pet_position` expects
-          // physical px (Rust `PhysicalPosition`) — do NOT divide by
-          // scaleFactor (that produced logical px and misplaced the window
-          // on retina displays). See `tauri-window-patterns.md`.
-          const { currentMonitor } = await import('@tauri-apps/api/window');
-          const monitor = await currentMonitor();
-          if (monitor) {
-            const { x, y } = computeDefaultPetPosition({
-              width: monitor.size.width,
-              height: monitor.size.height,
-            });
-            await invoke('set_pet_position', { x, y });
-            useSettingsStore.getState().setPetPosition(x, y);
+          const clamped = clampPetPosition(
+            { x: petPositionX, y: petPositionY },
+            { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
+          );
+          // If clamping changed the value, persist the corrected position
+          // so the next launch doesn't need to re-clamp.
+          if (clamped.x !== petPositionX || clamped.y !== petPositionY) {
+            useSettingsStore.getState().setPetPosition(clamped.x, clamped.y);
           }
+          resolved = clamped;
+        } else {
+          // Default: bottom-right of the work area, plus the work area's
+          // origin offset (work area is in physical px top-left origin,
+          // same coordinate space as `set_pet_position`).
+          const rel = computeDefaultPetPosition({
+            width: workArea.width,
+            height: workArea.height,
+          });
+          resolved = { x: workArea.x + rel.x, y: workArea.y + rel.y };
+          useSettingsStore.getState().setPetPosition(resolved.x, resolved.y);
         }
+        await invoke('set_pet_position', { x: resolved.x, y: resolved.y });
       } catch {
         // Non-fatal; the window just stays at its creation position.
       }
