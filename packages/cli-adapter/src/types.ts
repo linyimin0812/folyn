@@ -64,6 +64,11 @@ export interface CliAgentDefinition {
   tools?: string[];
 }
 
+/** Claude Code `--permission-mode` values. Controls how the CLI treats tools
+ * that require permission. `bypassPermissions` (the historical default) grants
+ * all tools; `plan` enables read-only research without side effects. */
+export type PermissionMode = 'default' | 'acceptEdits' | 'plan' | 'bypassPermissions';
+
 export interface CliSendOptions {
   resumeSessionId?: string;
   /** Run with a named agent (`--agent <name>`). Requires `agents` to inline the
@@ -79,6 +84,14 @@ export interface CliSendOptions {
    * isolated behavior. Set to `false` to let Claude Code discover agents in
    * `<cwd>/.claude/agents/` and load the project's CLAUDE.md / settings. */
   bare?: boolean;
+  /** `--permission-mode` value. Defaults to `bypassPermissions` to preserve the
+   * historical full-tool behavior when unset. Use `plan` for read-only ask
+   * mode, `acceptEdits` to auto-accept edits, etc. */
+  permissionMode?: PermissionMode;
+  /** Text appended to the CLI's default system prompt via
+   * `--append-system-prompt`. Used by input modes to nudge reply style without
+   * replacing the base system prompt. */
+  systemPrompt?: string;
 }
 
 export type CliEventHandler = (event: CliStreamEvent) => void;

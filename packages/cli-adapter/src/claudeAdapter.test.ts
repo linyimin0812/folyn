@@ -228,6 +228,71 @@ describe('buildClaudeArgs (PR1: bare 可选)', () => {
   });
 });
 
+describe('buildClaudeArgs (input mode: permissionMode / systemPrompt)', () => {
+  const baseArgsNoBare = [
+    '-p',
+    '--output-format', 'stream-json',
+    '--verbose',
+    '--thinking', 'enabled',
+    '--permission-mode', 'bypassPermissions',
+  ];
+
+  it('缺省 permissionMode 仍为 bypassPermissions（向后兼容）', () => {
+    const args = buildClaudeArgs('hello');
+    expect(args.slice(0, baseArgsNoBare.length)).toEqual(baseArgsNoBare);
+    expect(args).not.toContain('--append-system-prompt');
+  });
+
+  it('permissionMode=plan 输出 --permission-mode plan', () => {
+    const args = buildClaudeArgs('hi', { permissionMode: 'plan' });
+    const idx = args.indexOf('--permission-mode');
+    expect(idx).toBeGreaterThan(-1);
+    expect(args[idx + 1]).toBe('plan');
+    expect(args).not.toContain('bypassPermissions');
+  });
+
+  it('systemPrompt 透传为 --append-system-prompt <text>', () => {
+    const args = buildClaudeArgs('p', { systemPrompt: 'be concise' });
+    const idx = args.indexOf('--append-system-prompt');
+    expect(idx).toBeGreaterThan(-1);
+    expect(args[idx + 1]).toBe('be concise');
+  });
+
+  it('空 systemPrompt 不输出 --append-system-prompt', () => {
+    expect(buildClaudeArgs('p', { systemPrompt: '' })).not.toContain('--append-system-prompt');
+    expect(buildClaudeArgs('p', { systemPrompt: undefined })).not.toContain('--append-system-prompt');
+  });
+
+  it('--append-system-prompt 在 --bare 之后、--resume 之前', () => {
+    const args = buildClaudeArgs('p', {
+      systemPrompt: 's',
+      agent: 'study',
+      resumeSessionId: 'rs',
+    });
+    const bareIdx = args.indexOf('--bare');
+    const spIdx = args.indexOf('--append-system-prompt');
+    const agentIdx = args.indexOf('--agent');
+    const resumeIdx = args.indexOf('--resume');
+    const promptIdx = args.length - 1;
+    expect(spIdx).toBeGreaterThan(bareIdx);
+    expect(agentIdx).toBeGreaterThan(spIdx);
+    expect(resumeIdx).toBeGreaterThan(agentIdx);
+    expect(promptIdx).toBeGreaterThan(resumeIdx);
+  });
+
+  it('permissionMode=plan + systemPrompt + bare:false 组合', () => {
+    const args = buildClaudeArgs('p', {
+      permissionMode: 'plan',
+      systemPrompt: 'read-only',
+      bare: false,
+    });
+    expect(args).not.toContain('--bare');
+    expect(args[args.indexOf('--permission-mode') + 1]).toBe('plan');
+    expect(args[args.indexOf('--append-system-prompt') + 1]).toBe('read-only');
+    expect(args[args.length - 1]).toBe('p');
+  });
+});
+
 describe('quoteShellArg / buildClaudeShellCommand', () => {
   it('单引号包裹参数，内部单引号转义', () => {
     expect(quoteShellArg('abc')).toBe("'abc'");

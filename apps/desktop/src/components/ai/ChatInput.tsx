@@ -4,6 +4,7 @@ import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
 import { flattenFileTree } from '@/utils/treeUtils';
 import { FileIcon } from '@/components/icons/FileIcon';
+import { listInputModes } from './inputModes';
 
 export interface PendingAttachment {
   id: string;
@@ -32,6 +33,9 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
   const consumePendingFiles = useAiStore((s) => s.consumePendingFiles);
   const pendingPrompt = useAiStore((s) => s.pendingPrompt);
   const consumePendingPrompt = useAiStore((s) => s.consumePendingPrompt);
+  const inputMode = useAiStore((s) => s.inputMode);
+  const setInputMode = useAiStore((s) => s.setInputMode);
+  const inputModes = useMemo(() => listInputModes(), []);
 
   useEffect(() => {
     if (pendingFileAttachments.length === 0) return;
@@ -269,6 +273,24 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
             </svg>
           </button>
+          {inputModes.length > 1 && (
+            <div className="flex items-center gap-0.5 ml-0.5">
+              {inputModes.map((m) => {
+                const active = m.id === inputMode;
+                return (
+                  <button
+                    key={m.id}
+                    className={`px-1.5 h-7 flex items-center rounded text-[11px] cursor-pointer border-none transition-all duration-[120ms] disabled:opacity-40 disabled:cursor-not-allowed ${active ? 'bg-accdim text-acc font-semibold' : 'bg-transparent text-t3 hover:bg-hov hover:text-t1'}`}
+                    onClick={() => setInputMode(m.id)}
+                    disabled={isStreaming}
+                    title={m.description}
+                  >
+                    {m.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div className="flex-1" />
           {isStreaming ? (
             <button className="w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-all duration-[120ms] bg-red text-white hover:opacity-[.85]" onClick={onStop} title="停止">

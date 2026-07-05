@@ -51,6 +51,53 @@ useEffect(() => {
 
 ---
 
+## Pluggable Registry Pattern
+
+When a UI affordance (input mode, editor view mode, toolbar plugin, …) is driven
+by a store value and must be extensible without touching the host component,
+use a **module-scope registry + declarative descriptor + escape hatch**.
+
+**What**: a feature exposes `register*` / `list*` / `get*` / `resolve*` over a
+`Map<id, Def>`. Built-ins are registered at module load. The host component
+renders from `list*()` so a newly registered entry appears with no code change.
+
+**Why**: keeps the host component (ChatInput, toolbar, etc.) open for extension
+but closed for modification, and keeps the store value a plain `string` id
+rather than a closed union that would defeat extensibility.
+
+**Example** (see `apps/desktop/src/components/ai/inputModes.ts`):
+
+```ts
+export interface AiInputModeDef {
+  id: string; label: string; description?: string;
+  permissionMode?: PermissionMode;          // declarative fields
+  bare?: boolean; systemPrompt?: string;
+  buildSendOptions?: (base: CliSendOptions) => CliSendOptions; // escape hatch
+}
+
+const defsById = new Map<string, AiInputModeDef>();
+const order: string[] = [];
+
+export function registerInputMode(def: AiInputModeDef): void { /* … */ }
+export function listInputModes(): AiInputModeDef[] { /* … */ }
+
+/** Unknown id returns base unchanged — a stale stored id must never break sending. */
+export function resolveSendOptions(modeId: string, base: CliSendOptions): CliSendOptions { /* … */ }
+```
+
+**Rules**:
+- Store the active id as a plain `string` in the zustand store (e.g.
+  `aiStore.inputMode`), **not** a closed union — the whole point is open
+  extension.
+- `resolve*` must apply declarative fields first, then the `buildSendOptions`
+  escape hatch, and must return `base` **unchanged** for an unknown id
+  (defensive boundary; never throw on a stale id).
+- The host component renders the toggle/list from `list*()` and only knows
+  `id`/`label`/`description`; cross-layer option construction stays in
+  `resolve*`, never in the component.
+
+---
+
 ## Forbidden Patterns
 
 | Pattern | Why | Alternative |

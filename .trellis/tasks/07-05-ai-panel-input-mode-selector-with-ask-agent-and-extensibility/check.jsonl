@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "desktop 前端质量门：lint/typecheck/测试覆盖要求，校验 ChatInput/aiStore 改动"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "校验 AiInputModeDef/PermissionMode 类型导出与 inputMode 状态类型安全"}
+{"file": ".trellis/spec/cli-adapter/frontend/quality-guidelines.md", "reason": "cli-adapter 质量门：buildClaudeArgs 单测覆盖 permissionMode/systemPrompt 各组合"}
+{"file": ".trellis/spec/cli-adapter/frontend/type-safety.md", "reason": "校验 CliSendOptions 新增字段类型与缺省值兼容"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "校验 desktop→cli-adapter 跨层选项合并不漏字段、不破现有调用方"}

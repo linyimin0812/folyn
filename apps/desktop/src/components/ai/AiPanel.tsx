@@ -22,6 +22,7 @@ import { saveToWiki } from '@/services/wikiQueryService';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import type { PendingAttachment } from './ChatInput';
+import { resolveSendOptions } from './inputModes';
 
 export function AiPanel() {
   const aiPanelVisible = useEditorStore((s) => s.aiPanelVisible);
@@ -341,7 +342,10 @@ export function AiPanel() {
 
     try {
       await adapter.start({ cliPath: settings.cliPath, workingDir });
-      await adapter.send(prompt, { resumeSessionId });
+      // 合并当前输入模式（ask/agent/…）的 permissionMode/systemPrompt 等到 send options。
+      const inputMode = useAiStore.getState().inputMode;
+      const sendOptions = resolveSendOptions(inputMode, { resumeSessionId });
+      await adapter.send(prompt, sendOptions);
     } catch (err) {
       appendToLastMessage(`\n\n[错误] ${String(err)}`, sid);
       setSessionStreaming(sid, false);

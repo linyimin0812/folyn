@@ -1,0 +1,8 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop 前端 spec 总览，定位 ChatInput/AiPanel 所属包的约定入口"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "ChatInput 内新增 segmented toggle 的组件写法、样式与复用约定"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "aiStore 用 zustand 新增 inputMode/setInputMode 的状态管理模式"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "AiInputModeDef / PermissionMode 类型定义与导出约定"}
+{"file": ".trellis/spec/cli-adapter/frontend/index.md", "reason": "cli-adapter 包总览，定位 buildClaudeArgs/CliSendOptions 所属层"}
+{"file": ".trellis/spec/cli-adapter/frontend/component-guidelines.md", "reason": "CliSendOptions 扩展字段与 buildClaudeArgs 改动的适配器实现约定"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "inputModeRegistry 注册表 + resolveSendOptions 的复用与扩展设计参考"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "desktop(aiStore/ChatInput) → cli-adapter(CliSendOptions) 跨层数据流约定"}

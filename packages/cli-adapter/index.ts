@@ -9,6 +9,7 @@ export type {
   CliStreamEventType,
   FileChange,
   MessageAttachment,
+  PermissionMode,
   ToolCallInfo,
 } from './src/types';
 

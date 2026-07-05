@@ -284,16 +284,20 @@ export function quoteShellArg(s: string): string {
  * Build the raw `claude` CLI argument vector (before shell-quoting).
  *
  * Base flags: `-p --output-format stream-json --verbose --thinking enabled
- * --permission-mode bypassPermissions` + optionally `--bare`. `--bare` is
+ * --permission-mode <mode>` + optionally `--bare`. `--permission-mode` defaults
+ * to `bypassPermissions` (historical full-tool behavior); override via
+ * `options.permissionMode` (e.g. `plan` for read-only ask mode). `--bare` is
  * omitted when `options.bare === false` so Claude Code performs cwd agent
  * discovery (loading `<cwd>/.claude/agents/*.md`) and reads the project's
  * `CLAUDE.md` / `settings.json` hooks. By default `--bare` stays on to keep
- * the historical isolated behavior.
+ * the historical isolated behavior. `options.systemPrompt`, when set, appends
+ * to the CLI's default system prompt via `--append-system-prompt`.
  *
- * Order: base flags → `--agent` / `--agents` / `--add-dir` (inline delivery)
- * → `--resume <id>` → `<prompt>`. `--agent`/`--agents`/`--add-dir` are
- * appended after `--bare` and before `--resume`/prompt so they are not
- * interpreted as part of the prompt.
+ * Order: base flags → `--append-system-prompt` → `--agent` / `--agents` /
+ * `--add-dir` (inline delivery) → `--resume <id>` → `<prompt>`.
+ * `--agent`/`--agents`/`--add-dir`/`--append-system-prompt` are appended after
+ * `--bare` and before `--resume`/prompt so they are not interpreted as part of
+ * the prompt.
  */
 export function buildClaudeArgs(prompt: string, options?: CliSendOptions): string[] {
   const args = [
@@ -301,12 +305,16 @@ export function buildClaudeArgs(prompt: string, options?: CliSendOptions): strin
     '--output-format', 'stream-json',
     '--verbose',
     '--thinking', 'enabled',
-    '--permission-mode', 'bypassPermissions',
+    '--permission-mode', options?.permissionMode ?? 'bypassPermissions',
   ];
 
   // Default: --bare on (isolated). bare === false → omit so cwd agents/CLAUDE.md load.
   if (options?.bare !== false) {
     args.push('--bare');
+  }
+
+  if (options?.systemPrompt) {
+    args.push('--append-system-prompt', options.systemPrompt);
   }
 
   if (options?.agent) {

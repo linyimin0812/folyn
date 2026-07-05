@@ -69,6 +69,11 @@ interface AiState {
   chatMode: AiChatMode;
   setChatMode: (mode: AiChatMode) => void;
 
+  /** AI panel 输入模式（ask/agent/…），全局共享，默认 'agent' 保持现状行为。
+   * 与 chatMode 正交：决定单次发送的 permission-mode/system-prompt 等。 */
+  inputMode: string;
+  setInputMode: (mode: string) => void;
+
   pendingFileAttachments: { name: string; path: string }[];
   addFileToChat: (name: string, path: string) => void;
   consumePendingFiles: () => { name: string; path: string }[];
@@ -363,6 +368,9 @@ export const useAiStore = create<AiState>((set, get) => ({
 
   chatMode: 'chat' as AiChatMode,
   setChatMode: (mode) => set({ chatMode: mode }),
+
+  inputMode: 'agent',
+  setInputMode: (mode) => set({ inputMode: mode }),
 
   pendingFileAttachments: [],
   addFileToChat: (name, path) => {

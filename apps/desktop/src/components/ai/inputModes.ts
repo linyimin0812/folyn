@@ -1,0 +1,81 @@
+import type { CliSendOptions, PermissionMode } from '@quill/cli-adapter';
+
+/**
+ * Declarative descriptor for an AI panel input mode (ask / agent / future).
+ *
+ * Most modes only need to fill the declarative fields (`permissionMode`,
+ * `bare`, `systemPrompt`, …) — `resolveSendOptions` merges them onto the
+ * caller's base `CliSendOptions`. Modes that need dynamic logic (e.g. computing
+ * a tool whitelist from vault state) can supply `buildSendOptions`, which runs
+ * after the declarative merge and may override anything.
+ *
+ * To add a new mode: call `registerInputMode({ id, label, ... })`. ChatInput
+ * renders the toggle from `listInputModes()`, so a registered mode appears in
+ * the UI with no further changes.
+ */
+export interface AiInputModeDef {
+  id: string;
+  label: string;
+  /** Short human hint shown as the button title. */
+  description?: string;
+  /** Maps to `--permission-mode`. */
+  permissionMode?: PermissionMode;
+  /** Reserved for future tool-whitelist wiring (not yet consumed by buildClaudeArgs). */
+  allowedTools?: string[];
+  /** Reserved for future tool-blacklist wiring. */
+  disallowedTools?: string[];
+  /** Override `--bare` (defaults to true when unset). */
+  bare?: boolean;
+  /** Appended to the CLI's default system prompt via `--append-system-prompt`. */
+  systemPrompt?: string;
+  /** Escape hatch: transform the merged options arbitrarily. Runs last. */
+  buildSendOptions?: (base: CliSendOptions) => CliSendOptions;
+}
+
+const defsById = new Map<string, AiInputModeDef>();
+const order: string[] = [];
+
+/** Register (or replace) an input mode. Idempotent on `id`. */
+export function registerInputMode(def: AiInputModeDef): void {
+  if (!defsById.has(def.id)) order.push(def.id);
+  defsById.set(def.id, def);
+}
+
+/** Look up a mode by id (e.g. the value stored in `aiStore.inputMode`). */
+export function getInputModeDef(id: string): AiInputModeDef | undefined {
+  return defsById.get(id);
+}
+
+/** Ordered list of registered modes, for rendering the ChatInput toggle. */
+export function listInputModes(): AiInputModeDef[] {
+  return order.map((id) => defsById.get(id)!).filter(Boolean);
+}
+
+/**
+ * Merge a mode's declarative fields onto `base`, then apply its
+ * `buildSendOptions` escape hatch if present. Unknown mode ids return `base`
+ * unchanged so a stale stored `inputMode` never breaks sending.
+ */
+export function resolveSendOptions(modeId: string, base: CliSendOptions): CliSendOptions {
+  const def = defsById.get(modeId);
+  if (!def) return base;
+  const merged: CliSendOptions = { ...base };
+  if (def.permissionMode !== undefined) merged.permissionMode = def.permissionMode;
+  if (def.bare !== undefined) merged.bare = def.bare;
+  if (def.systemPrompt) merged.systemPrompt = def.systemPrompt;
+  return def.buildSendOptions ? def.buildSendOptions(merged) : merged;
+}
+
+// --- Built-in modes -------------------------------------------------------
+registerInputMode({
+  id: 'agent',
+  label: 'Agent',
+  description: '全工具自主执行（可读写文件）',
+  permissionMode: 'bypassPermissions',
+});
+registerInputMode({
+  id: 'ask',
+  label: 'Ask',
+  description: '只读问答，不修改文件',
+  permissionMode: 'plan',
+});
