@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop 前端 spec 入口，定位 ChatInput 所属包约定"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "下拉组件写法、点击外部关闭、样式与复用约定"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "复用上任务沉淀的 pluggable registry 模式（仅改 UI，registry 不动）"}

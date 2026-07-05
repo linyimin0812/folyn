@@ -26,8 +26,10 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [mentionMenu, setMentionMenu] = useState<{ visible: boolean; filter: string; anchorPos: number }>({ visible: false, filter: '', anchorPos: 0 });
   const [mentionIndex, setMentionIndex] = useState(0);
+  const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const modeMenuRef = useRef<HTMLDivElement>(null);
 
   const pendingFileAttachments = useAiStore((s) => s.pendingFileAttachments);
   const consumePendingFiles = useAiStore((s) => s.consumePendingFiles);
@@ -36,6 +38,22 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
   const inputMode = useAiStore((s) => s.inputMode);
   const setInputMode = useAiStore((s) => s.setInputMode);
   const inputModes = useMemo(() => listInputModes(), []);
+  const currentModeDef = useMemo(
+    () => inputModes.find((m) => m.id === inputMode),
+    [inputModes, inputMode],
+  );
+
+  // 点击外部关闭模式下拉
+  useEffect(() => {
+    if (!modeMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (modeMenuRef.current && !modeMenuRef.current.contains(e.target as Node)) {
+        setModeMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [modeMenuOpen]);
 
   useEffect(() => {
     if (pendingFileAttachments.length === 0) return;
@@ -274,21 +292,35 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
             </svg>
           </button>
           {inputModes.length > 1 && (
-            <div className="flex items-center gap-0.5 ml-0.5">
-              {inputModes.map((m) => {
-                const active = m.id === inputMode;
-                return (
-                  <button
-                    key={m.id}
-                    className={`px-1.5 h-7 flex items-center rounded text-[11px] cursor-pointer border-none transition-all duration-[120ms] disabled:opacity-40 disabled:cursor-not-allowed ${active ? 'bg-accdim text-acc font-semibold' : 'bg-transparent text-t3 hover:bg-hov hover:text-t1'}`}
-                    onClick={() => setInputMode(m.id)}
-                    disabled={isStreaming}
-                    title={m.description}
-                  >
-                    {m.label}
-                  </button>
-                );
-              })}
+            <div className="relative ml-0.5" ref={modeMenuRef}>
+              <button
+                className="px-1.5 h-7 flex items-center gap-1 rounded text-[11px] cursor-pointer border-none transition-all duration-[120ms] bg-transparent text-t3 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => setModeMenuOpen((v) => !v)}
+                disabled={isStreaming}
+                title={currentModeDef?.description}
+              >
+                <span>{currentModeDef?.label ?? inputMode}</span>
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 6 L8 10 L12 6" />
+                </svg>
+              </button>
+              {modeMenuOpen && (
+                <div className="absolute bottom-full left-0 mb-1 min-w-[120px] bg-panel border border-brd rounded-md shadow-[0_4px_16px_rgba(0,0,0,.12)] z-[100] py-0.5">
+                  {inputModes.map((m) => {
+                    const active = m.id === inputMode;
+                    return (
+                      <div
+                        key={m.id}
+                        className={`py-1.5 px-3 text-[12px] cursor-pointer whitespace-nowrap ${active ? 'bg-accdim text-acc font-semibold' : 'text-t2 hover:bg-hov hover:text-t1'}`}
+                        title={m.description}
+                        onMouseDown={(e) => { e.preventDefault(); setInputMode(m.id); setModeMenuOpen(false); }}
+                      >
+                        {m.label}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
           <div className="flex-1" />

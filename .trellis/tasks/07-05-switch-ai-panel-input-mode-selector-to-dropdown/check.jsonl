@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "校验下拉组件质量门：useEffect 清理、无 any、组件内无业务逻辑"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "校验点击外部关闭与样式约定"}
