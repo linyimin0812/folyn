@@ -116,3 +116,37 @@ Fixed two bugs found when manually enabling desktop pet mode: (1) pet window was
 ### Next Steps
 
 - None - task complete
+
+
+## Session 4: Desktop Pet Position & Drag Fix
+
+**Date**: 2026-07-05
+**Task**: Desktop Pet Position & Drag Fix
+**Package**: api
+**Branch**: `calm-meadow`
+
+### Summary
+
+Fixed pet clipped behind the macOS Dock (computeDefaultPetPosition now uses separate per-axis margins: PET_BOTTOM_MARGIN=80 clears the Dock, PET_RIGHT_MARGIN=20, clamp y>=PET_MIN_TOP=40) and fixed drag not working (PROBE_INTERVAL_MS 250->60 so setIgnoreCursorEvents flips within one frame of cursor entry, plus proactive ignore=false at drag end for follow-up clicks). Updated tauri-window-patterns.md click-through latency note.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8d94f03` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
