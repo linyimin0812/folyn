@@ -268,8 +268,9 @@ export function PetApp() {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         await invoke('pet_set_topmost_level', { label: 'pet' });
-      } catch {
-        // Non-fatal; try again next tick.
+        console.log('[pet] topmost invoke result ok');
+      } catch (err) {
+        console.error('[pet] pet_set_topmost_level poll failed:', err);
       }
     };
 
@@ -303,6 +304,7 @@ export function PetApp() {
         const { invoke } = await import('@tauri-apps/api/core');
         await getCurrentWindow().show();
         await invoke('pet_set_topmost_level', { label: 'pet' });
+        console.log('[pet] topmost invoke result ok (mount)');
         // Native transparency: Tauri's `transparent: true` config doesn't
         // reliably disable the macOS WKWebView's opaque background on all
         // builds, leaving a white rect around the circular mascot. The
@@ -313,11 +315,12 @@ export function PetApp() {
         // NOT made transparent.
         try {
           await invoke('pet_make_transparent', { label: 'pet' });
+          console.log('[pet] pet_make_transparent invoke result ok');
         } catch (err) {
-          console.warn('[pet] pet_make_transparent failed:', err);
+          console.error('[pet] pet_make_transparent failed:', err);
         }
       } catch (err) {
-        console.warn('[pet] initial show / set_topmost_level failed:', err);
+        console.error('[pet] initial show / set_topmost_level failed:', err);
       }
     })();
   }, []);
@@ -380,10 +383,40 @@ export function PetApp() {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         await invoke('pet_set_topmost_level', { label: 'pet' });
+        console.log('[pet] topmost invoke result ok (topmost effect)');
       } catch (err) {
-        console.warn('[pet] set_topmost_level failed:', err);
+        console.error('[pet] set_topmost_level failed:', err);
       }
     })();
+  }, []);
+
+  // ── Re-assert topmost level on window blur (Issue 2 diagnostic + fix) ──
+  // Tauri/macOS may reset the always-on-top level when the pet window loses
+  // focus (app deactivation — user switched to another app). Re-invoke
+  // `pet_set_topmost_level('pet')` on the `tauri://blur` event so the
+  // ScreenSaver level is re-asserted immediately when the user switches away.
+  // Without this, switching to another app can hide the pet behind it.
+  // Wrapped in isTauri + try/catch so non-Tauri/test envs skip it. The
+  // unlisten callback is returned from `listen` for cleanup.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const { invoke } = await import('@tauri-apps/api/core');
+        unlisten = await getCurrentWindow().listen('tauri://blur', () => {
+          invoke('pet_set_topmost_level', { label: 'pet' })
+            .then(() => console.log('[pet] topmost re-applied on blur'))
+            .catch((err) => console.error('[pet] topmost re-apply on blur failed:', err));
+        });
+      } catch (err) {
+        console.error('[pet] blur listener setup failed:', err);
+      }
+    })();
+    return () => {
+      if (unlisten) unlisten();
+    };
   }, []);
 
   return (

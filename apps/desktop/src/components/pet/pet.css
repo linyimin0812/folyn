@@ -57,6 +57,13 @@ html.is-pet-window .pet-root {
    * scale 1.18 (→127px) + halo clipped the circle's edges during animation. */
   width: 88px;
   height: 88px;
+  /* `overflow: visible` so the circle (now r=244 inside the 512 viewBox, with
+   * 12px margin) is not clipped by the SVG root if a state-animation scale
+   * pushes it past the viewBox edge. The `<svg>` element also sets
+   * `overflow="visible"` as an attribute; both belt-and-suspenders. The OS
+   * window still clips at 120px, but the mascot is shrunk to 88px so the
+   * halo + scale fit inside with margin. */
+  overflow: visible;
   cursor: grab;
   transform-origin: center;
   will-change: transform;
@@ -84,8 +91,8 @@ html.is-pet-window .pet-root {
              pet-breathe 2.6s ease-in-out infinite;
 }
 @keyframes pet-idle {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50%      { transform: translateY(-3px) scale(1.015); }
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
 }
 
 /* ── State: hover (looks up / reacts) ── */

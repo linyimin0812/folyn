@@ -33,6 +33,7 @@ export function PetMascot({ state }: PetMascotProps) {
       width="88"
       height="88"
       fill="none"
+      overflow="visible"
       aria-hidden="true"
     >
       <defs>
@@ -50,10 +51,14 @@ export function PetMascot({ state }: PetMascotProps) {
         </linearGradient>
       </defs>
 
-      {/* Circular dark badge background — a true circle (r=256 inscribed in
-          the 512 square) so the transparent window shows the desktop through
-          the corners; no square silhouette. */}
-      <circle cx="256" cy="256" r="256" fill="url(#petBg)" />
+      {/* Circular dark badge background — a true circle inscribed WITH MARGIN
+          inside the 512 square (r=244, not r=256) so the circle does not touch
+          the viewBox edge. The idle animation no longer scales the SVG, but
+          hover/drag/click do (briefly); the margin + `overflow="visible"` on
+          the svg root + `.pet-mascot { overflow: visible }` in pet.css ensure
+          the circle is never clipped even if a scale pushes it past the
+          viewBox. The transparent corners still show the desktop through. */}
+      <circle cx="256" cy="256" r="244" fill="url(#petBg)" />
 
       {/* Feather quill, tilted -38deg, centered — copied verbatim from
           /public/quill.svg. */}
