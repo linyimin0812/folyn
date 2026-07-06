@@ -839,24 +839,23 @@ pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Resu
             // Floating(3) on focus changes; the readback surfaces that.
             let current_level: isize = msg_send![ns_ptr, level];
             eprintln!("[pet] level after set = {}", current_level);
-            // Set collectionBehavior so the pet stays visible across all
-            // Spaces and floats over fullscreen apps. Numeric values:
-            //   NSWindowCollectionBehaviorCanJoinAllSpaces      = 1 << 0  (1)
+            // Set collectionBehavior so the pet follows the active Space and
+            // floats over fullscreen apps. Numeric values:
+            //   NSWindowCollectionBehaviorMoveToActiveSpace    = 1 << 1  (2)
             //   NSWindowCollectionBehaviorFullScreenAuxiliary   = 1 << 8  (256)
             //   NSWindowCollectionBehaviorFullScreenAllowsTiling= 1 << 9  (512)
-            // Combined = 1 | 256 | 512 = 769. Passed as NSUInteger (isize on
+            // Combined = 2 | 256 | 512 = 770. Passed as NSUInteger (isize on
             // 64-bit) to `setCollectionBehavior:`.
-            // canJoinAllSpaces(1) | fullScreenAuxiliary(256) | fullScreenAllowsTiling(512)
-            // — fullScreenAllowsTiling lets the window tile alongside
-            // fullscreen windows, which may be the missing flag for showing
-            // over fullscreen. stationary(16) was removed because it
-            // conflicts with canJoinAllSpaces and prevented the pet from
-            // showing over fullscreen VS Code.
-            const CB_CAN_JOIN_ALL_SPACES: isize = 1 << 0;
+            // moveToActiveSpace(2) — the window follows the active Space;
+            // when the user switches to VS Code's fullscreen Space, the pet
+            // window moves there. canJoinAllSpaces(1) was tried first but
+            // didn't take effect (isOnActiveSpace stayed false over
+            // fullscreen VS Code).
+            const CB_MOVE_TO_ACTIVE_SPACE: isize = 1 << 1;
             const CB_FULLSCREEN_AUXILIARY: isize = 1 << 8;
             const CB_FULLSCREEN_ALLOWS_TILING: isize = 1 << 9;
             let behavior: isize =
-                CB_CAN_JOIN_ALL_SPACES | CB_FULLSCREEN_AUXILIARY | CB_FULLSCREEN_ALLOWS_TILING;
+                CB_MOVE_TO_ACTIVE_SPACE | CB_FULLSCREEN_AUXILIARY | CB_FULLSCREEN_ALLOWS_TILING;
             let _: () = msg_send![ns_ptr, setCollectionBehavior: behavior];
             let cur_behavior: isize = msg_send![ns_ptr, collectionBehavior];
             eprintln!("[pet] collectionBehavior = {}", cur_behavior);
@@ -976,25 +975,23 @@ pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Resul
                 // the level to Floating(3) on focus changes.
                 let current_level: isize = msg_send![ns, level];
                 eprintln!("[pet] make_transparent level after set = {}", current_level);
-                // Set collectionBehavior so the pet stays visible across all
-                // Spaces and floats over fullscreen apps. Numeric values:
-                //   NSWindowCollectionBehaviorCanJoinAllSpaces      = 1 << 0  (1)
+                // Set collectionBehavior so the pet follows the active Space
+                // and floats over fullscreen apps. Numeric values:
+                //   NSWindowCollectionBehaviorMoveToActiveSpace    = 1 << 1  (2)
                 //   NSWindowCollectionBehaviorFullScreenAuxiliary   = 1 << 8  (256)
                 //   NSWindowCollectionBehaviorFullScreenAllowsTiling= 1 << 9  (512)
-                // Combined = 1 | 256 | 512 = 769. Passed as NSUInteger
+                // Combined = 2 | 256 | 512 = 770. Passed as NSUInteger
                 // (isize on 64-bit) to `setCollectionBehavior:`.
-                // canJoinAllSpaces(1) | fullScreenAuxiliary(256) |
-                // fullScreenAllowsTiling(512) — fullScreenAllowsTiling lets
-                // the window tile alongside fullscreen windows, which may be
-                // the missing flag for showing over fullscreen.
-                // stationary(16) was removed because it conflicts with
-                // canJoinAllSpaces and prevented the pet from showing over
-                // fullscreen VS Code.
-                const CB_CAN_JOIN_ALL_SPACES: isize = 1 << 0;
+                // moveToActiveSpace(2) — the window follows the active Space;
+                // when the user switches to VS Code's fullscreen Space, the
+                // pet window moves there. canJoinAllSpaces(1) was tried first
+                // but didn't take effect (isOnActiveSpace stayed false over
+                // fullscreen VS Code).
+                const CB_MOVE_TO_ACTIVE_SPACE: isize = 1 << 1;
                 const CB_FULLSCREEN_AUXILIARY: isize = 1 << 8;
                 const CB_FULLSCREEN_ALLOWS_TILING: isize = 1 << 9;
                 let behavior: isize =
-                    CB_CAN_JOIN_ALL_SPACES | CB_FULLSCREEN_AUXILIARY | CB_FULLSCREEN_ALLOWS_TILING;
+                    CB_MOVE_TO_ACTIVE_SPACE | CB_FULLSCREEN_AUXILIARY | CB_FULLSCREEN_ALLOWS_TILING;
                 let _: () = msg_send![ns, setCollectionBehavior: behavior];
                 let cur_behavior: isize = msg_send![ns, collectionBehavior];
                 eprintln!("[pet] make_transparent collectionBehavior = {}", cur_behavior);

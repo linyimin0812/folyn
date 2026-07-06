@@ -87,7 +87,7 @@ fn reapply_pet_topmost(app: &tauri::AppHandle) {
         // can tell WHY the pet isn't showing over fullscreen VS Code.
         //   - visible=false → something is hiding the window (hide calls /
         //     NSPanel conversion).
-        //   - on_active_space=false → canJoinAllSpaces isn't taking effect;
+        //   - on_active_space=false → moveToActiveSpace isn't taking effect;
         //     need a different collectionBehavior or NSPanel.
         //   - both true + level 1000 but still invisible → rendering /
         //     compositing issue (transparent webview paused when backgrounded).
@@ -100,20 +100,25 @@ fn reapply_pet_topmost(app: &tauri::AppHandle) {
         let _: () = msg_send![ns_ptr, setLevel: level];
 
         // NSWindowCollectionBehavior:
-        //   canJoinAllSpaces (1) | fullScreenAuxiliary (256) | fullScreenAllowsTiling (512) = 769
-        // canJoinAllSpaces(1) | fullScreenAuxiliary(256) — the documented
-        // macOS combo for floating over fullscreen apps. fullScreenAllowsTiling(512)
-        // is added so the window can tile alongside fullscreen windows — without
-        // it, the pet still gets hidden behind native fullscreen apps on recent
-        // macOS. stationary(16) was removed because it conflicts with
-        // canJoinAllSpaces and prevented the pet from showing over fullscreen
-        // VS Code.
-        const CB_CAN_JOIN_ALL_SPACES: isize = 1 << 0;
+        //   moveToActiveSpace(2) | fullScreenAuxiliary(256) | fullScreenAllowsTiling(512) = 770
+        // moveToActiveSpace(2) — the window follows the active Space; when the
+        // user switches to VS Code's fullscreen Space, the pet window moves
+        // there. canJoinAllSpaces(1) was tried first but didn't take effect
+        // (isOnActiveSpace stayed false over fullscreen VS Code).
+        // fullScreenAllowsTiling(512) lets the window tile alongside
+        // fullscreen windows.
+        const CB_MOVE_TO_ACTIVE_SPACE: isize = 1 << 1;
         const CB_FULLSCREEN_AUXILIARY: isize = 1 << 8;
         const CB_FULLSCREEN_ALLOWS_TILING: isize = 1 << 9;
         let behavior: isize =
-            CB_CAN_JOIN_ALL_SPACES | CB_FULLSCREEN_AUXILIARY | CB_FULLSCREEN_ALLOWS_TILING;
+            CB_MOVE_TO_ACTIVE_SPACE | CB_FULLSCREEN_AUXILIARY | CB_FULLSCREEN_ALLOWS_TILING;
         let _: () = msg_send![ns_ptr, setCollectionBehavior: behavior];
+        // Force macOS to re-evaluate the window's space membership after the
+        // behavior change — orderFrontRegardless brings the window to the
+        // front on its current space without stealing focus (no activation),
+        // which helps the moveToActiveSpace flag take effect on an
+        // already-visible window.
+        let _: () = msg_send![ns_ptr, orderFrontRegardless];
     }
 }
 
