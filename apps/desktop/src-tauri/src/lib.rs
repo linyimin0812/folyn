@@ -83,18 +83,36 @@ fn reapply_pet_topmost(app: &tauri::AppHandle) {
         let current: isize = msg_send![ns_ptr, level];
         eprintln!("[pet] rust-poll current level = {}", current);
 
+        // Diagnostics: read visibility + space membership every tick so we
+        // can tell WHY the pet isn't showing over fullscreen VS Code.
+        //   - visible=false → something is hiding the window (hide calls /
+        //     NSPanel conversion).
+        //   - on_active_space=false → canJoinAllSpaces isn't taking effect;
+        //     need a different collectionBehavior or NSPanel.
+        //   - both true + level 1000 but still invisible → rendering /
+        //     compositing issue (transparent webview paused when backgrounded).
+        let visible: bool = msg_send![ns_ptr, isVisible];
+        eprintln!("[pet] rust-poll visible = {}", visible);
+        let on_space: bool = msg_send![ns_ptr, isOnActiveSpace];
+        eprintln!("[pet] rust-poll on_active_space = {}", on_space);
+
         let level = CGWindowLevelForKey(KCG_SCREENSAVER_WINDOW_LEVEL_KEY) as isize;
         let _: () = msg_send![ns_ptr, setLevel: level];
 
         // NSWindowCollectionBehavior:
-        //   canJoinAllSpaces (1) | fullScreenAuxiliary (256) = 257
+        //   canJoinAllSpaces (1) | fullScreenAuxiliary (256) | fullScreenAllowsTiling (512) = 769
         // canJoinAllSpaces(1) | fullScreenAuxiliary(256) — the documented
-        // macOS combo for floating over fullscreen apps. stationary(16) was
-        // removed because it conflicts with canJoinAllSpaces and prevented
-        // the pet from showing over fullscreen VS Code.
+        // macOS combo for floating over fullscreen apps. fullScreenAllowsTiling(512)
+        // is added so the window can tile alongside fullscreen windows — without
+        // it, the pet still gets hidden behind native fullscreen apps on recent
+        // macOS. stationary(16) was removed because it conflicts with
+        // canJoinAllSpaces and prevented the pet from showing over fullscreen
+        // VS Code.
         const CB_CAN_JOIN_ALL_SPACES: isize = 1 << 0;
         const CB_FULLSCREEN_AUXILIARY: isize = 1 << 8;
-        let behavior: isize = CB_CAN_JOIN_ALL_SPACES | CB_FULLSCREEN_AUXILIARY;
+        const CB_FULLSCREEN_ALLOWS_TILING: isize = 1 << 9;
+        let behavior: isize =
+            CB_CAN_JOIN_ALL_SPACES | CB_FULLSCREEN_AUXILIARY | CB_FULLSCREEN_ALLOWS_TILING;
         let _: () = msg_send![ns_ptr, setCollectionBehavior: behavior];
     }
 }

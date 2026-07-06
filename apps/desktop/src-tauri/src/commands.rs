@@ -843,15 +843,20 @@ pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Resu
             // Spaces and floats over fullscreen apps. Numeric values:
             //   NSWindowCollectionBehaviorCanJoinAllSpaces      = 1 << 0  (1)
             //   NSWindowCollectionBehaviorFullScreenAuxiliary   = 1 << 8  (256)
-            // Combined = 1 | 256 = 257. Passed as NSUInteger (isize on
+            //   NSWindowCollectionBehaviorFullScreenAllowsTiling= 1 << 9  (512)
+            // Combined = 1 | 256 | 512 = 769. Passed as NSUInteger (isize on
             // 64-bit) to `setCollectionBehavior:`.
-            // canJoinAllSpaces(1) | fullScreenAuxiliary(256) — the documented
-            // macOS combo for floating over fullscreen apps. stationary(16) was
-            // removed because it conflicts with canJoinAllSpaces and prevented
-            // the pet from showing over fullscreen VS Code.
+            // canJoinAllSpaces(1) | fullScreenAuxiliary(256) | fullScreenAllowsTiling(512)
+            // — fullScreenAllowsTiling lets the window tile alongside
+            // fullscreen windows, which may be the missing flag for showing
+            // over fullscreen. stationary(16) was removed because it
+            // conflicts with canJoinAllSpaces and prevented the pet from
+            // showing over fullscreen VS Code.
             const CB_CAN_JOIN_ALL_SPACES: isize = 1 << 0;
             const CB_FULLSCREEN_AUXILIARY: isize = 1 << 8;
-            let behavior: isize = CB_CAN_JOIN_ALL_SPACES | CB_FULLSCREEN_AUXILIARY;
+            const CB_FULLSCREEN_ALLOWS_TILING: isize = 1 << 9;
+            let behavior: isize =
+                CB_CAN_JOIN_ALL_SPACES | CB_FULLSCREEN_AUXILIARY | CB_FULLSCREEN_ALLOWS_TILING;
             let _: () = msg_send![ns_ptr, setCollectionBehavior: behavior];
             let cur_behavior: isize = msg_send![ns_ptr, collectionBehavior];
             eprintln!("[pet] collectionBehavior = {}", cur_behavior);
@@ -975,16 +980,21 @@ pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Resul
                 // Spaces and floats over fullscreen apps. Numeric values:
                 //   NSWindowCollectionBehaviorCanJoinAllSpaces      = 1 << 0  (1)
                 //   NSWindowCollectionBehaviorFullScreenAuxiliary   = 1 << 8  (256)
-                // Combined = 1 | 256 = 257. Passed as NSUInteger
+                //   NSWindowCollectionBehaviorFullScreenAllowsTiling= 1 << 9  (512)
+                // Combined = 1 | 256 | 512 = 769. Passed as NSUInteger
                 // (isize on 64-bit) to `setCollectionBehavior:`.
-                // canJoinAllSpaces(1) | fullScreenAuxiliary(256) — the
-                // documented macOS combo for floating over fullscreen apps.
+                // canJoinAllSpaces(1) | fullScreenAuxiliary(256) |
+                // fullScreenAllowsTiling(512) — fullScreenAllowsTiling lets
+                // the window tile alongside fullscreen windows, which may be
+                // the missing flag for showing over fullscreen.
                 // stationary(16) was removed because it conflicts with
                 // canJoinAllSpaces and prevented the pet from showing over
                 // fullscreen VS Code.
                 const CB_CAN_JOIN_ALL_SPACES: isize = 1 << 0;
                 const CB_FULLSCREEN_AUXILIARY: isize = 1 << 8;
-                let behavior: isize = CB_CAN_JOIN_ALL_SPACES | CB_FULLSCREEN_AUXILIARY;
+                const CB_FULLSCREEN_ALLOWS_TILING: isize = 1 << 9;
+                let behavior: isize =
+                    CB_CAN_JOIN_ALL_SPACES | CB_FULLSCREEN_AUXILIARY | CB_FULLSCREEN_ALLOWS_TILING;
                 let _: () = msg_send![ns, setCollectionBehavior: behavior];
                 let cur_behavior: isize = msg_send![ns, collectionBehavior];
                 eprintln!("[pet] make_transparent collectionBehavior = {}", cur_behavior);
