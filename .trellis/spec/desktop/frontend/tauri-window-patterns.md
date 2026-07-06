@@ -380,10 +380,25 @@ the same as the work area — do not mix them.
 - **Window label** `pet-panel` scopes `capabilities/pet-panel.json` (`"windows": ["pet-panel"]`).
 - **ACL reality**: the panel frontend does NOT call `getCurrentWindow().<api>()` for show/hide/
   position — it uses custom `invoke('pet_panel_*')` commands, which **bypass the ACL** (only
-  built-in `core:*` plugin commands are gated). The only ACL-gated call site is
-  `@tauri-apps/api/event` `emit('pet://menu-action', {action})` → requires
+  built-in `core:*` plugin commands are gated). The launcher dispatch's only ACL-gated call site
+  is `@tauri-apps/api/event` `emit('pet://menu-action', {action})` → requires
   `core:event:allow-emit`. Over-granting `core:window:allow-*` in `pet-panel.json` is harmless
-  (provides future flexibility) but **not required** by the current panel code.
+  (provides future flexibility) but **not required** by the launcher code.
+- **Chat ACL reality (corrected)**: the embedded AI chat self-hosts a `CliAdapter` that spawns
+  the `claude` CLI via the Tauri **shell plugin** (`shell:allow-spawn` / `shell:allow-execute`
+  scoped to the `claude-cli` sidecar — same `/bin/sh` + `args: true` scope as the main window),
+  streams stdin (`shell:allow-stdin-write`), and stops the process (`shell:allow-kill`). Its
+  neutral `workingDir` lives under `appDataDir/pet-chat-tmp`, so the panel also needs an
+  **appData-scoped** fs grant: `fs:allow-mkdir`, `fs:allow-exists`, `fs:allow-read-file`,
+  `fs:allow-read-text-file`, `fs:allow-write-file`, `fs:allow-write-text-file`,
+  `fs:create-app-specific-dirs`, `fs:scope-appdata-recursive`. Do NOT grant
+  `fs:scope-home-recursive` or any vault scope — the chat is vault-free per the PRD. ACL
+  permissions are **per-window-label**: the main window's shell/fs grant in
+  `capabilities/default.json` does NOT extend to `pet-panel`; the panel must carry its own
+  identical shell sidecar grant. Earlier drafts said "the panel frontend only needs
+  `core:event:allow-emit`" — that was true for the launcher dispatch but NOT for the chat; a
+  missing shell grant surfaces as `[错误] Command plugin: shell|spawn not allowed by ACL` on
+  first `send()`.
 - **Event channel**: reuses the existing `pet://menu-action` channel (same as the native right-
   click menu). The launcher buttons `emit` `{ action: PetMenuAction }`; the main window's existing
   `App.tsx` listener dispatches + `focusMain()`. No new event channel needed.
@@ -399,6 +414,9 @@ the same as the work area — do not mix them.
 |---|---|---|---|
 | show / hide / position the panel | custom `invoke('pet_panel_*')` | none (custom cmds bypass ACL) | n/a — check `invoke_handler` registration |
 | `emit('pet://menu-action', …)` from the panel | `@tauri-apps/api/event` | `core:event:allow-emit` on `pet-panel` | launcher button looks clicked but main window never receives the action |
+| chat: spawn `claude` CLI via `CliAdapter` | `@tauri-apps/plugin-shell` `spawn`/`execute` | `shell:allow-spawn` + `shell:allow-execute` on `pet-panel` (scoped to `claude-cli` sidecar, same `/bin/sh` + `args: true` as main window) | `[错误] Command plugin: shell\|spawn not allowed by ACL` on first `send()` — chat inert |
+| chat: stream stdin / kill process | shell `stdinWrite` / `kill` | `shell:allow-stdin-write` + `shell:allow-kill` on `pet-panel` | stream hangs / stop button no-ops |
+| chat: read/write the neutral `workingDir` under appData | `@tauri-apps/plugin-fs` | `fs:allow-mkdir` + `fs:allow-exists` + `fs:allow-read-file` + `fs:allow-read-text-file` + `fs:allow-write-file` + `fs:allow-write-text-file` + `fs:create-app-specific-dirs` + `fs:scope-appdata-recursive` on `pet-panel` (appData-scoped only; NO vault scope) | adapter `start()` fails to create/use the workingDir |
 | Esc / close-button / second-click dismiss | custom `invoke('pet_panel_hide')` | none | n/a |
 | fullscreen guard before show | `invoke('pet_cursor_probe')` → `main_fullscreen` | none | n/a |
 | on-screen position clamp | `invoke('pet_get_work_area')` + TS `computePanelPosition` | none | n/a |
@@ -458,6 +476,37 @@ await invoke('pet_panel_show');                          // then show → no fla
 > **Why custom commands**: they bypass the ACL (so no per-API capability entries to forget),
 > let the host set focus + position atomically, and keep all window-state logic in one Rust
 > module — the frontend never reasons about `core:window:allow-*` for the panel.
+
+---
+
+## Common Mistake: Secondary Window Hosting a CliAdapter Forgets Its Own Shell Grant
+
+**Symptom**: the `pet-panel` embedded AI chat throws
+`[错误] Command plugin: shell|spawn not allowed by ACL` on the first `send()`, even though
+the same `CliAdapter` / `claude` CLI works perfectly in the main window.
+
+**Cause**: ACL permissions are scoped **per window label**. The main window's
+`capabilities/default.json` grants `shell:allow-spawn` (scoped to the `claude-cli` sidecar)
+plus the `shell:allow-stdin-write` / `shell:allow-kill` / appData fs set the adapter needs —
+but that grant is bound to `"windows": ["main"]` and does NOT extend to the `pet-panel` label.
+A secondary window that self-hosts a `CliAdapter` (pet-panel's chat, any future floating AI
+surface) must carry its own identical shell sidecar grant in `capabilities/<label>.json`.
+Earlier panel-capability drafts only granted `core:default` + `core:event:allow-emit`, which
+is sufficient for the launcher dispatch but leaves the chat's `spawn()` call ACL-denied at
+runtime.
+
+**Fix**: in `capabilities/pet-panel.json`, grant the same `shell:allow-spawn` /
+`shell:allow-execute` sidecar scope as `default.json` (the spawn target is the same `claude`
+CLI), plus `shell:allow-stdin-write` + `shell:allow-kill` for streaming/stop, plus an
+**appData-scoped** fs set (`fs:allow-mkdir`, `fs:allow-exists`, `fs:allow-read-file`,
+`fs:allow-read-text-file`, `fs:allow-write-file`, `fs:allow-write-text-file`,
+`fs:create-app-specific-dirs`, `fs:scope-appdata-recursive`) for the neutral `workingDir`
+under `appDataDir/pet-chat-tmp`. Do NOT grant `fs:scope-home-recursive` or any vault scope —
+the chat is vault-free per the PRD.
+
+**Prevention**: when a secondary window runs any code path that touches a Tauri plugin
+(shell, fs, dialog, …), trace every plugin call site and add the matching permission to that
+window's capability file. The main window's grant never "leaks" to another label.
 
 ---
 

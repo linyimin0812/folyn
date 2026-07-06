@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/tooling/cli/schema.json",
   "identifier": "pet-panel",
-  "description": "Capabilities for the desktop pet quick-action panel window (launcher grid + embedded AI chat)",
+  "description": "Capabilities for the desktop pet quick-action panel window (launcher grid + embedded AI chat). The embedded chat self-hosts a CliAdapter that spawns the `claude` CLI via the shell plugin with a neutral workingDir under appData, so the panel needs its own shell + appData-scoped fs grant (ACL permissions are per-window-label; the main window's grant does NOT extend here).",
   "windows": ["pet-panel"],
   "permissions": [
     "core:default",
@@ -12,6 +12,36 @@
     "core:window:allow-outer-position",
     "core:window:allow-start-dragging",
     "core:event:allow-emit",
-    "core:event:allow-listen"
+    "core:event:allow-listen",
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "claude-cli",
+          "cmd": "/bin/sh",
+          "args": true
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "claude-cli",
+          "cmd": "/bin/sh",
+          "args": true
+        }
+      ]
+    },
+    "shell:allow-stdin-write",
+    "shell:allow-kill",
+    "fs:allow-mkdir",
+    "fs:allow-exists",
+    "fs:allow-read-file",
+    "fs:allow-read-text-file",
+    "fs:allow-write-file",
+    "fs:allow-write-text-file",
+    "fs:create-app-specific-dirs",
+    "fs:scope-appdata-recursive"
   ]
 }
