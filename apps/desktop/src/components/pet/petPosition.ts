@@ -103,6 +103,10 @@ export function clampPetPosition(saved: PetPosition, workArea: PetWorkArea): Pet
 export const PET_PANEL_WIDTH = 380;
 export const PET_PANEL_HEIGHT = 520;
 
+/** Minimum panel size (matches `tauri.conf.json` `minWidth`/`minHeight`). */
+export const PET_PANEL_MIN_WIDTH = 280;
+export const PET_PANEL_MIN_HEIGHT = 360;
+
 /** Gap between the pet window and the panel when the panel opens next to it. */
 export const PET_PANEL_GAP = 8;
 
@@ -152,4 +156,34 @@ export function clampPanelPosition(
   const x = Math.min(Math.max(saved.x, workArea.x), maxX);
   const y = Math.min(Math.max(saved.y, workArea.y), maxY);
   return { x, y };
+}
+
+/** Panel size payload (physical px). Mirrors the Rust `PetPanelSize` struct
+ *  returned by `pet_panel_get_size`. */
+export interface PetPanelSize {
+  width: number;
+  height: number;
+}
+
+/**
+ * Clamp a saved panel size (physical px) so the panel never exceeds the work
+ * area and never drops below `PET_PANEL_MIN_*`. A size that was saved on a
+ * larger monitor is shrunk to fit the current work area; a degenerate work
+ * area falls back to the minimum. The `tauri.conf.json` `minWidth`/`minHeight`
+ * already enforce a floor at the OS level — this is the JS-side mirror so
+ * `setSize` calls don't fight the clamp.
+ */
+export function clampPanelSize(
+  saved: PetPanelSize,
+  workArea: PetWorkArea,
+): PetPanelSize {
+  const width = Math.min(
+    Math.max(saved.width, PET_PANEL_MIN_WIDTH),
+    Math.max(PET_PANEL_MIN_WIDTH, workArea.width),
+  );
+  const height = Math.min(
+    Math.max(saved.height, PET_PANEL_MIN_HEIGHT),
+    Math.max(PET_PANEL_MIN_HEIGHT, workArea.height),
+  );
+  return { width, height };
 }

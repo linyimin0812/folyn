@@ -95,6 +95,15 @@ interface SettingsState {
   petPositionX: number;
   petPositionY: number;
 
+  // Pet quick-action panel window (`pet-panel`). Position/size are persisted
+  // across restarts so the panel reappears where the user last dragged/resized
+  // it instead of snapping back to the pet's default corner. `-1` means "no
+  // saved value yet → fall back to `computePanelPosition` next to the pet".
+  petPanelX: number;
+  petPanelY: number;
+  petPanelWidth: number;
+  petPanelHeight: number;
+
   // Actions
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
@@ -112,6 +121,8 @@ interface SettingsState {
   setBoardColumns: (columns: BoardColumnDef[]) => void;
   setPetModeEnabled: (enabled: boolean) => void;
   setPetPosition: (x: number, y: number) => void;
+  setPetPanelPosition: (x: number, y: number) => void;
+  setPetPanelSize: (width: number, height: number) => void;
 }
 
 const SETTINGS_STORAGE_KEY = 'settings:all';
@@ -155,7 +166,8 @@ function debouncedPersist(state: Partial<SettingsState>) {
       watchFileChanges, trashOnDelete, syncMethod, syncEndpoint, syncAccessKey,
       syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
       vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates, boardColumns,
-      petModeEnabled, petPositionX, petPositionY } = state as SettingsState;
+      petModeEnabled, petPositionX, petPositionY,
+      petPanelX, petPanelY, petPanelWidth, petPanelHeight } = state as SettingsState;
     storageClient.set(SETTINGS_STORAGE_KEY, {
       theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles,
       enableWikiPanel, enableClipsPanel, enableAnalyzePanel, enableDailyPanel,
@@ -166,6 +178,7 @@ function debouncedPersist(state: Partial<SettingsState>) {
       syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
       vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates, boardColumns,
       petModeEnabled, petPositionX, petPositionY,
+      petPanelX, petPanelY, petPanelWidth, petPanelHeight,
     });
   }, 300);
 }
@@ -242,6 +255,13 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   petModeEnabled: false,
   petPositionX: -1,
   petPositionY: -1,
+
+  // Pet quick-action panel — -1 means "no saved pos/size yet, fall back to
+  // `computePanelPosition` next to the pet on first open".
+  petPanelX: -1,
+  petPanelY: -1,
+  petPanelWidth: -1,
+  petPanelHeight: -1,
 
   setTheme: (theme) => {
     const actual = theme === 'system'
@@ -332,6 +352,14 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   },
   setPetPosition: (x: number, y: number) => {
     set({ petPositionX: x, petPositionY: y });
+    debouncedPersist(useSettingsStore.getState());
+  },
+  setPetPanelPosition: (x: number, y: number) => {
+    set({ petPanelX: x, petPanelY: y });
+    debouncedPersist(useSettingsStore.getState());
+  },
+  setPetPanelSize: (width: number, height: number) => {
+    set({ petPanelWidth: width, petPanelHeight: height });
     debouncedPersist(useSettingsStore.getState());
   },
 }));

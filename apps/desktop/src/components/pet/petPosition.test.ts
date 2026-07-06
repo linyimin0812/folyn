@@ -4,12 +4,15 @@ import {
   clampPetPosition,
   computePanelPosition,
   clampPanelPosition,
+  clampPanelSize,
   PET_WINDOW_SIZE,
   PET_RIGHT_MARGIN,
   PET_BOTTOM_MARGIN,
   PET_MIN_TOP,
   PET_PANEL_WIDTH,
   PET_PANEL_HEIGHT,
+  PET_PANEL_MIN_WIDTH,
+  PET_PANEL_MIN_HEIGHT,
   PET_PANEL_GAP,
   type PetWorkArea,
 } from './petPosition';
@@ -180,5 +183,44 @@ describe('clampPanelPosition', () => {
     const tiny: PetWorkArea = { x: 0, y: 0, width: 100, height: 100 };
     const pos = clampPanelPosition({ x: 5000, y: 5000 }, tiny);
     expect(pos).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe('clampPanelSize', () => {
+  const workArea: PetWorkArea = { x: 0, y: 25, width: 1440, height: 875 };
+
+  it('returns the saved size unchanged when it fits the work area', () => {
+    const size = clampPanelSize({ width: 380, height: 520 }, workArea);
+    expect(size).toEqual({ width: 380, height: 520 });
+  });
+
+  it('enforces the minimum width', () => {
+    const size = clampPanelSize({ width: 100, height: 400 }, workArea);
+    expect(size.width).toBe(PET_PANEL_MIN_WIDTH);
+    expect(size.height).toBe(400);
+  });
+
+  it('enforces the minimum height', () => {
+    const size = clampPanelSize({ width: 300, height: 50 }, workArea);
+    expect(size.width).toBe(300);
+    expect(size.height).toBe(PET_PANEL_MIN_HEIGHT);
+  });
+
+  it('shrinks a saved size that exceeds the work area width', () => {
+    const size = clampPanelSize({ width: 99999, height: 500 }, workArea);
+    expect(size.width).toBe(workArea.width);
+    expect(size.height).toBe(500);
+  });
+
+  it('shrinks a saved size that exceeds the work area height', () => {
+    const size = clampPanelSize({ width: 380, height: 99999 }, workArea);
+    expect(size.width).toBe(380);
+    expect(size.height).toBe(workArea.height);
+  });
+
+  it('falls back to minimums for a degenerate (zero) work area', () => {
+    const tiny: PetWorkArea = { x: 0, y: 0, width: 0, height: 0 };
+    const size = clampPanelSize({ width: 99999, height: 99999 }, tiny);
+    expect(size).toEqual({ width: PET_PANEL_MIN_WIDTH, height: PET_PANEL_MIN_HEIGHT });
   });
 });

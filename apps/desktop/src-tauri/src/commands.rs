@@ -1,6 +1,6 @@
 use std::fs;
 use serde::Serialize;
-use tauri::{Emitter, Manager, PhysicalPosition};
+use tauri::{Emitter, Manager, PhysicalPosition, PhysicalSize};
 
 #[tauri::command]
 pub async fn open_file(path: String) -> Result<String, String> {
@@ -685,6 +685,14 @@ pub async fn pet_panel_hide(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Size payload for `pet_panel_get_size` (physical px, matches Tauri's
+/// `PhysicalSize`).
+#[derive(Serialize)]
+pub struct PetPanelSize {
+    pub width: i32,
+    pub height: i32,
+}
+
 /// Set the pet-panel window's screen position (physical pixels). The pet
 /// frontend computes a clamped position next to the pet (using
 /// `pet_get_work_area`) and passes it here so Rust stays the single source of
@@ -711,6 +719,38 @@ pub async fn pet_panel_get_position(app: tauri::AppHandle) -> Result<PetPosition
         .ok_or_else(|| "pet-panel window not found".to_string())?;
     let pos = panel.outer_position().map_err(|e| e.to_string())?;
     Ok(PetPosition { x: pos.x, y: pos.y })
+}
+
+/// Set the pet-panel window's size (physical pixels). Used to restore a
+/// persisted size on panel open. The window is declared `resizable: true`
+/// with `minWidth/minHeight` in tauri.conf.json, so the OS enforces a floor.
+#[tauri::command]
+pub async fn pet_panel_set_size(
+    app: tauri::AppHandle,
+    width: i32,
+    height: i32,
+) -> Result<(), String> {
+    let panel = app
+        .get_webview_window(PET_PANEL_LABEL)
+        .ok_or_else(|| "pet-panel window not found".to_string())?;
+    panel
+        .set_size(PhysicalSize::new(width, height))
+        .map_err(|e| e.to_string())
+}
+
+/// Get the pet-panel window's current size (physical pixels). Used by the
+/// panel frontend's periodic poller to detect a user-driven resize and
+/// persist the new size.
+#[tauri::command]
+pub async fn pet_panel_get_size(app: tauri::AppHandle) -> Result<PetPanelSize, String> {
+    let panel = app
+        .get_webview_window(PET_PANEL_LABEL)
+        .ok_or_else(|| "pet-panel window not found".to_string())?;
+    let size = panel.outer_size().map_err(|e| e.to_string())?;
+    Ok(PetPanelSize {
+        width: size.width as i32,
+        height: size.height as i32,
+    })
 }
 
 /// Returns whether the pet-panel window is currently visible. The pet

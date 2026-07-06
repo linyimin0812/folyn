@@ -199,6 +199,8 @@ pub fn run() {
             commands::pet_panel_hide,
             commands::pet_panel_set_position,
             commands::pet_panel_get_position,
+            commands::pet_panel_set_size,
+            commands::pet_panel_get_size,
             commands::pet_panel_is_visible,
         ])
         .build(tauri::generate_context!())

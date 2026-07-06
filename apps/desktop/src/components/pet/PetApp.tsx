@@ -59,13 +59,18 @@ interface PetWorkAreaResult {
 /**
  * Open the pet-panel quick-action window next to the pet, or hide it if it is
  * already visible (R8 toggle). Skipped while the main window is fullscreen
- * (R4) — the probe's `main_fullscreen` field is checked first. Position is
- * computed via `computePanelPosition` (clamps the panel fully on-screen,
- * opening left/up when the pet is near the right/bottom edge) using the work
- * area from `pet_get_work_area`. All window mutation goes through Rust
- * `invoke` commands so the ACL contract is satisfied (custom commands bypass
- * the ACL; the panel window still has `capabilities/pet-panel.json` for its
- * own `@tauri-apps/api/window` calls).
+ * (R4) — the probe's `main_fullscreen` field is checked first.
+ *
+ * Positioning: if a saved `petPanelX/Y` exists (user has dragged the panel
+ * before), restore that position (clamped to the work area) so the panel
+ * reappears where the user left it instead of snapping back to the pet's
+ * corner. On the first-ever open (no saved pos), fall back to
+ * `computePanelPosition` next to the pet. Likewise restore a saved size if
+ * present so a user-resized panel keeps its size across opens. All window
+ * mutation goes through Rust `invoke` commands so the ACL contract is
+ * satisfied (custom commands bypass the ACL; the panel window still has
+ * `capabilities/pet-panel.json` for its own `@tauri-apps/api/window` calls
+ * — `startDragging`, `outerPosition`).
  */
 async function openOrTogglePetPanel(): Promise<void> {
   try {
@@ -82,10 +87,40 @@ async function openOrTogglePetPanel(): Promise<void> {
       return;
     }
 
-    // Compute the panel position next to the pet, clamped to the work area.
     const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
-    const petPos = { x: probe.window_x, y: probe.window_y };
-    const panelPos = computePanelPosition(petPos, workArea);
+
+    // Restore a saved size first so the position clamp uses the right
+    // footprint. (clampPanelPosition uses the default PET_PANEL_WIDTH/HEIGHT
+    // — that's fine for a clamp: a smaller saved size only means more slack.)
+    const { useSettingsStore } = await import('@/store/settingsStore');
+    const { petPanelX, petPanelY, petPanelWidth, petPanelHeight } =
+      useSettingsStore.getState();
+
+    if (petPanelWidth > 0 && petPanelHeight > 0) {
+      const { clampPanelSize } = await import('./petPosition');
+      const size = clampPanelSize(
+        { width: petPanelWidth, height: petPanelHeight },
+        { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
+      );
+      await invoke('pet_panel_set_size', { width: size.width, height: size.height });
+    }
+
+    // Position: restore saved (clamped) or fall back to next-to-pet.
+    let panelPos: { x: number; y: number };
+    if (petPanelX >= 0 && petPanelY >= 0) {
+      const { clampPanelPosition } = await import('./petPosition');
+      panelPos = clampPanelPosition(
+        { x: petPanelX, y: petPanelY },
+        { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
+      );
+      if (panelPos.x !== petPanelX || panelPos.y !== petPanelY) {
+        useSettingsStore.getState().setPetPanelPosition(panelPos.x, panelPos.y);
+      }
+    } else {
+      const petPos = { x: probe.window_x, y: probe.window_y };
+      panelPos = computePanelPosition(petPos, workArea);
+      useSettingsStore.getState().setPetPanelPosition(panelPos.x, panelPos.y);
+    }
 
     // Position the panel before showing so it appears at the right spot in
     // one frame (avoids a flash at the default position).

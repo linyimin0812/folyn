@@ -166,7 +166,7 @@ describe('PetChat', () => {
     await fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
     await waitFor(() => expect(usePetChatStore.getState().streaming).toBe(true));
 
-    await fireEvent.click(screen.getByText('停止'));
+    await fireEvent.click(screen.getByLabelText('停止生成'));
     await waitFor(() => expect(stopMock).toHaveBeenCalledTimes(1));
     expect(usePetChatStore.getState().streaming).toBe(false);
   });

@@ -113,6 +113,63 @@ describe('useSettingsStore pet mode', () => {
   });
 });
 
+// ── Pet quick-action panel window persistence (Fix 2) ──
+describe('useSettingsStore pet panel pos/size', () => {
+  it('defaults to -1 (no saved pos/size yet)', () => {
+    useSettingsStore.setState({
+      petPanelX: -1,
+      petPanelY: -1,
+      petPanelWidth: -1,
+      petPanelHeight: -1,
+    });
+    expect(useSettingsStore.getState().petPanelX).toBe(-1);
+    expect(useSettingsStore.getState().petPanelY).toBe(-1);
+    expect(useSettingsStore.getState().petPanelWidth).toBe(-1);
+    expect(useSettingsStore.getState().petPanelHeight).toBe(-1);
+  });
+
+  it('setPetPanelPosition updates X/Y and persists', async () => {
+    const setSpy = vi.spyOn(storageClient, 'set');
+    useSettingsStore.getState().setPetPanelPosition(220, 440);
+    expect(useSettingsStore.getState().petPanelX).toBe(220);
+    expect(useSettingsStore.getState().petPanelY).toBe(440);
+    vi.advanceTimersByTime(400);
+    const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1] as Record<string, unknown>;
+    expect(payload.petPanelX).toBe(220);
+    expect(payload.petPanelY).toBe(440);
+    setSpy.mockRestore();
+  });
+
+  it('setPetPanelSize updates W/H and persists', async () => {
+    const setSpy = vi.spyOn(storageClient, 'set');
+    useSettingsStore.getState().setPetPanelSize(420, 600);
+    expect(useSettingsStore.getState().petPanelWidth).toBe(420);
+    expect(useSettingsStore.getState().petPanelHeight).toBe(600);
+    vi.advanceTimersByTime(400);
+    const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1] as Record<string, unknown>;
+    expect(payload.petPanelWidth).toBe(420);
+    expect(payload.petPanelHeight).toBe(600);
+    setSpy.mockRestore();
+  });
+
+  it('persisted payload round-trips through storageClient.get', async () => {
+    const setSpy = vi.spyOn(storageClient, 'set');
+    useSettingsStore.getState().setPetPanelPosition(11, 22);
+    useSettingsStore.getState().setPetPanelSize(33, 44);
+    vi.advanceTimersByTime(400);
+    const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1];
+    setSpy.mockRestore();
+    storageClient.__resetForTesting();
+    await storageClient.set('settings:all', payload);
+    const loaded = await storageClient.get<typeof payload>('settings:all');
+    expect(loaded).not.toBeNull();
+    expect((loaded as Record<string, unknown>).petPanelX).toBe(11);
+    expect((loaded as Record<string, unknown>).petPanelY).toBe(22);
+    expect((loaded as Record<string, unknown>).petPanelWidth).toBe(33);
+    expect((loaded as Record<string, unknown>).petPanelHeight).toBe(44);
+  });
+});
+
 describe('useSettingsStore.updateSettings', () => {
   it('merges partial settings', () => {
     useSettingsStore.getState().updateSettings({ autoSave: false, tabSize: 2 });

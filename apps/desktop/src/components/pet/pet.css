@@ -149,6 +149,13 @@ html.is-pet-panel-window body {
   border-bottom: 1px solid var(--brd, #e2e5ee);
   background: var(--panel, #ffffff);
   flex-shrink: 0;
+  /* The header is a drag handle (PetPanelApp.tsx onPointerDown →
+   * startDragging). The grab cursor signals draggability; buttons inside
+   * (close) keep their own cursor via stopPropagation. */
+  cursor: grab;
+}
+.pet-panel-header:active {
+  cursor: grabbing;
 }
 
 .pet-panel-title {
@@ -448,7 +455,9 @@ html.is-pet-panel-window body {
   background: var(--panel, #ffffff);
   color: var(--t1, #1f2330);
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.3;
+  min-height: 28px;
   outline: none;
 }
 .pet-chat-input:focus {
@@ -458,16 +467,25 @@ html.is-pet-panel-window body {
   opacity: 0.6;
 }
 
+/* Compact icon-only action buttons (send / stop). ~28×28px so the input row
+ * takes minimal vertical space in the 380×520 panel. The clear button below
+ * the messages stays text-sized (it's not in the input row). */
 .pet-chat-send,
 .pet-chat-stop {
   appearance: none;
-  padding: 6px 10px;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   border: 1px solid var(--acc, #3a6ef0);
   border-radius: 6px;
   font-family: inherit;
   font-size: 12px;
   cursor: pointer;
-  transition: opacity 0.12s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.12s ease, background 0.12s ease;
 }
 .pet-chat-send {
   background: var(--acc, #3a6ef0);
@@ -477,9 +495,19 @@ html.is-pet-panel-window body {
   background: transparent;
   color: var(--acc, #3a6ef0);
 }
+.pet-chat-send:hover:not(:disabled) {
+  opacity: 0.85;
+}
 .pet-chat-send:disabled {
   opacity: 0.5;
   cursor: default;
+}
+.pet-chat-action-icon {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pet-chat-clear {

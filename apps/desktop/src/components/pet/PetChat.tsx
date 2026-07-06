@@ -157,17 +157,22 @@ export function PetChat() {
       <div className="pet-chat-input-row">
         <textarea
           className="pet-chat-input"
-          placeholder="输入消息，Enter 发送，Shift+Enter 换行"
+          placeholder="输入消息，Enter 发送"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={streaming}
-          rows={2}
+          rows={1}
           aria-label="Pet chat input"
         />
         {streaming ? (
-          <button type="button" className="pet-chat-stop" onClick={() => void handleStop()}>
-            停止
+          <button type="button" className="pet-chat-stop" onClick={() => void handleStop()} aria-label="停止生成">
+            <span className="pet-chat-action-icon" aria-hidden="true">
+              {/* stop square */}
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <rect x="3" y="3" width="10" height="10" rx="1.5" />
+              </svg>
+            </span>
           </button>
         ) : (
           <button
@@ -175,8 +180,15 @@ export function PetChat() {
             className="pet-chat-send"
             onClick={() => void handleSend()}
             disabled={!input.trim()}
+            aria-label="发送"
           >
-            发送
+            <span className="pet-chat-action-icon" aria-hidden="true">
+              {/* paper plane */}
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14.5 1.5L1.5 7l5 1.5L8 14l6.5-12.5z" />
+                <path d="M6.5 8.5L14.5 1.5" />
+              </svg>
+            </span>
           </button>
         )}
       </div>
