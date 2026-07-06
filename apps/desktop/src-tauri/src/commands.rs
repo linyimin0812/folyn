@@ -839,19 +839,23 @@ pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Resu
             // Floating(3) on focus changes; the readback surfaces that.
             let current_level: isize = msg_send![ns_ptr, level];
             eprintln!("[pet] level after set = {}", current_level);
-            // Set collectionBehavior for the NSPanel so it floats over
-            // fullscreen apps. For NSPanel the documented combo is
-            // `canJoinAllSpaces | fullScreenAuxiliary` — drop the
-            // `moveToActiveSpace(2)` and `fullScreenAllowsTiling(512)`
-            // NSWindow experiments (they did not help: isOnActiveSpace
-            // stayed false over fullscreen VS Code). Numeric values:
-            //   NSWindowCollectionBehaviorCanJoinAllSpaces     = 1 << 0  (1)
+            // Set collectionBehavior so the pet follows the active Space and
+            // floats over fullscreen apps. Numeric values:
+            //   NSWindowCollectionBehaviorMoveToActiveSpace    = 1 << 1  (2)
             //   NSWindowCollectionBehaviorFullScreenAuxiliary   = 1 << 8  (256)
-            // Combined = 1 | 256 = 257. Passed as NSUInteger (isize on
+            //   NSWindowCollectionBehaviorFullScreenAllowsTiling= 1 << 9  (512)
+            // Combined = 2 | 256 | 512 = 770. Passed as NSUInteger (isize on
             // 64-bit) to `setCollectionBehavior:`.
-            const CB_CAN_JOIN_ALL_SPACES: isize = 1 << 0;
+            // moveToActiveSpace(2) — the window follows the active Space;
+            // when the user switches to VS Code's fullscreen Space, the pet
+            // window moves there. canJoinAllSpaces(1) was tried first but
+            // didn't take effect (isOnActiveSpace stayed false over
+            // fullscreen VS Code).
+            const CB_MOVE_TO_ACTIVE_SPACE: isize = 1 << 1;
             const CB_FULLSCREEN_AUXILIARY: isize = 1 << 8;
-            let behavior: isize = CB_CAN_JOIN_ALL_SPACES | CB_FULLSCREEN_AUXILIARY;
+            const CB_FULLSCREEN_ALLOWS_TILING: isize = 1 << 9;
+            let behavior: isize =
+                CB_MOVE_TO_ACTIVE_SPACE | CB_FULLSCREEN_AUXILIARY | CB_FULLSCREEN_ALLOWS_TILING;
             let _: () = msg_send![ns_ptr, setCollectionBehavior: behavior];
             let cur_behavior: isize = msg_send![ns_ptr, collectionBehavior];
             eprintln!("[pet] collectionBehavior = {}", cur_behavior);
@@ -911,7 +915,7 @@ pub async fn pet_set_topmost_level(_app: tauri::AppHandle, _label: String) -> Re
 pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Result<(), String> {
     use cocoa::base::{id, nil};
     use cocoa::foundation::NSString;
-    use objc::runtime::{Class, Object};
+    use objc::runtime::Object;
     use objc::{msg_send, sel, sel_impl};
 
     let window = app
@@ -942,23 +946,6 @@ pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Resul
                 if ns.is_null() || wk.is_null() {
                     return;
                 }
-                // 0. Swap NSWindow -> NSPanel at runtime. NSPanel is a subclass
-                //    of NSWindow; the ivar layout is compatible (this is a known
-                //    technique). NSPanel is the documented window type for
-                //    utility panels that float over fullscreen apps (Spotlight,
-                //    Notification Center). NSWindow's collectionBehavior flags
-                //    (canJoinAllSpaces / moveToActiveSpace) did not make the pet
-                //    visible over fullscreen VS Code; NSPanel's space handling
-                //    differs and is what AppKit uses for overlays like Spotlight.
-                //    `object_setClass` is not exposed by the `objc` 0.2 crate, so
-                //    declare the runtime FFI directly. It is part of libobjc.
-                extern "C" {
-                    fn object_setClass(obj: *mut Object, cls: *const Class) -> *const Class;
-                }
-                let panel_class: *const Class = objc::class!(NSPanel);
-                let _ = object_setClass(ns, panel_class);
-                let _: () = msg_send![ns, setHidesOnDeactivate: objc::runtime::NO];
-                eprintln!("[pet] make_transparent swapped to NSPanel");
                 // 1. NSWindow opaque = NO
                 let _: () = msg_send![ns, setOpaque: objc::runtime::NO];
                 // 2. NSWindow backgroundColor = NSColor clearColor
@@ -988,19 +975,23 @@ pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Resul
                 // the level to Floating(3) on focus changes.
                 let current_level: isize = msg_send![ns, level];
                 eprintln!("[pet] make_transparent level after set = {}", current_level);
-                // 5. Set collectionBehavior for NSPanel so it floats over
-                //    fullscreen apps. For NSPanel the documented combo is
-                //    `canJoinAllSpaces | fullScreenAuxiliary` — drop the
-                //    `moveToActiveSpace(2)` and `fullScreenAllowsTiling(512)`
-                //    NSWindow experiments (they did not help: isOnActiveSpace
-                //    stayed false over fullscreen VS Code). Numeric values:
-                //   NSWindowCollectionBehaviorCanJoinAllSpaces     = 1 << 0  (1)
+                // Set collectionBehavior so the pet follows the active Space
+                // and floats over fullscreen apps. Numeric values:
+                //   NSWindowCollectionBehaviorMoveToActiveSpace    = 1 << 1  (2)
                 //   NSWindowCollectionBehaviorFullScreenAuxiliary   = 1 << 8  (256)
-                // Combined = 1 | 256 = 257. Passed as NSUInteger (isize on
-                // 64-bit) to `setCollectionBehavior:`.
-                const CB_CAN_JOIN_ALL_SPACES: isize = 1 << 0;
+                //   NSWindowCollectionBehaviorFullScreenAllowsTiling= 1 << 9  (512)
+                // Combined = 2 | 256 | 512 = 770. Passed as NSUInteger
+                // (isize on 64-bit) to `setCollectionBehavior:`.
+                // moveToActiveSpace(2) — the window follows the active Space;
+                // when the user switches to VS Code's fullscreen Space, the
+                // pet window moves there. canJoinAllSpaces(1) was tried first
+                // but didn't take effect (isOnActiveSpace stayed false over
+                // fullscreen VS Code).
+                const CB_MOVE_TO_ACTIVE_SPACE: isize = 1 << 1;
                 const CB_FULLSCREEN_AUXILIARY: isize = 1 << 8;
-                let behavior: isize = CB_CAN_JOIN_ALL_SPACES | CB_FULLSCREEN_AUXILIARY;
+                const CB_FULLSCREEN_ALLOWS_TILING: isize = 1 << 9;
+                let behavior: isize =
+                    CB_MOVE_TO_ACTIVE_SPACE | CB_FULLSCREEN_AUXILIARY | CB_FULLSCREEN_ALLOWS_TILING;
                 let _: () = msg_send![ns, setCollectionBehavior: behavior];
                 let cur_behavior: isize = msg_send![ns, collectionBehavior];
                 eprintln!("[pet] make_transparent collectionBehavior = {}", cur_behavior);

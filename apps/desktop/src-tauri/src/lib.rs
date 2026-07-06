@@ -99,16 +99,18 @@ fn reapply_pet_topmost(app: &tauri::AppHandle) {
         let level = CGWindowLevelForKey(KCG_SCREENSAVER_WINDOW_LEVEL_KEY) as isize;
         let _: () = msg_send![ns_ptr, setLevel: level];
 
-        // NSWindowCollectionBehavior for the NSPanel:
-        //   canJoinAllSpaces(1) | fullScreenAuxiliary(256) = 257
-        // For NSPanel the documented combo for floating over fullscreen apps
-        // is `canJoinAllSpaces | fullScreenAuxiliary`. The previous NSWindow
-        // experiments — `moveToActiveSpace(2)` and `fullScreenAllowsTiling
-        // (512)` (combined 770) — did not help (isOnActiveSpace stayed false
-        // over fullscreen VS Code), so they are dropped.
-        const CB_CAN_JOIN_ALL_SPACES: isize = 1 << 0;
+        // NSWindowCollectionBehavior for the pet window:
+        //   moveToActiveSpace(2) | fullScreenAuxiliary(256)
+        //   | fullScreenAllowsTiling(512) = 770
+        // moveToActiveSpace — the window follows the active Space; when the
+        // user switches to VS Code's fullscreen Space, the pet window moves
+        // there. canJoinAllSpaces(1) was tried first but didn't take effect
+        // (isOnActiveSpace stayed false over fullscreen VS Code).
+        const CB_MOVE_TO_ACTIVE_SPACE: isize = 1 << 1;
         const CB_FULLSCREEN_AUXILIARY: isize = 1 << 8;
-        let behavior: isize = CB_CAN_JOIN_ALL_SPACES | CB_FULLSCREEN_AUXILIARY;
+        const CB_FULLSCREEN_ALLOWS_TILING: isize = 1 << 9;
+        let behavior: isize =
+            CB_MOVE_TO_ACTIVE_SPACE | CB_FULLSCREEN_AUXILIARY | CB_FULLSCREEN_ALLOWS_TILING;
         let _: () = msg_send![ns_ptr, setCollectionBehavior: behavior];
         // NOTE: a previous version attempted to force macOS to re-evaluate
         // space membership by calling `orderFrontRegardless` here, and an
