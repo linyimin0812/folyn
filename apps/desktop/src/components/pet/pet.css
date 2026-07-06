@@ -43,12 +43,20 @@ html.is-pet-window .pet-root {
   background: transparent;
   user-select: none;
   -webkit-user-select: none;
-  overflow: hidden;
+  /* `visible` (not `hidden`) so the breathing `drop-shadow` halo and the
+   * state-animation scale overflow are not clipped by the root container.
+   * The OS window still clips at 120px, but the mascot is shrunk to 88px
+   * (see `.pet-mascot`) so the halo + scale fit inside with margin. */
+  overflow: visible;
 }
 
 .pet-mascot {
-  width: 108px;
-  height: 108px;
+  /* 88px in the 120x120 pet window. At 88px, click scale 1.08 → ~95px and
+   * the breathing `drop-shadow` halo (up to 12px) → ~100px, both fit inside
+   * the 120px window with margin. Previously 108px, which combined with
+   * scale 1.18 (→127px) + halo clipped the circle's edges during animation. */
+  width: 88px;
+  height: 88px;
   cursor: grab;
   transform-origin: center;
   will-change: transform;
@@ -110,8 +118,8 @@ html.is-pet-window .pet-root {
 }
 @keyframes pet-click {
   0%   { transform: scale(1, 1); }
-  40%  { transform: scale(1.18, 0.82); }
-  70%  { transform: scale(0.92, 1.08); }
+  40%  { transform: scale(1.08, 0.92); }
+  70%  { transform: scale(0.96, 1.04); }
   100% { transform: scale(1, 1); }
 }
 

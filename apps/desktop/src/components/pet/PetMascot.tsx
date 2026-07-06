@@ -12,11 +12,12 @@
  * barbs + spine + nib + nib split + ink drop + highlight). The dark `petBg`
  * gradient (`#0f1420`→`#181e30`) is restored from the original icon.
  *
- * width/height stay 108px (mascot is 108px in the 120×120 window, leaving
- * ~6px for the breathing `drop-shadow` halo on `.pet-mascot`, which now rings
- * the circle). States (idle/hover/drag/click) switch via `is-<state>` classes
- * on `.pet-mascot`. The `petBg` + `petQuillGrad` + `petInkGrad` defs use ids
- * prefixed with `pet` to avoid collisions with the main app's icon.
+ * width/height are 88px (mascot is 88px in the 120×120 window, leaving
+ * ~16px of headroom for the breathing `drop-shadow` halo on `.pet-mascot`
+ * and the state-animation scale, so the circle is not clipped at the edges
+ * during animation). States (idle/hover/drag/click) switch via `is-<state>`
+ * classes on `.pet-mascot`. The `petBg` + `petQuillGrad` + `petInkGrad` defs
+ * use ids prefixed with `pet` to avoid collisions with the main app's icon.
  */
 
 export interface PetMascotProps {
@@ -29,8 +30,8 @@ export function PetMascot({ state }: PetMascotProps) {
     <svg
       className={`pet-mascot is-${state}`}
       viewBox="0 0 512 512"
-      width="108"
-      height="108"
+      width="88"
+      height="88"
       fill="none"
       aria-hidden="true"
     >

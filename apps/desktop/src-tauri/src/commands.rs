@@ -823,7 +823,14 @@ pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Resu
     app.run_on_main_thread(move || {
         let ns_ptr = ns_ptr_as_usize as *mut Object;
         unsafe {
-            let level = CGWindowLevelForKey(KCG_SCREENSAVER_WINDOW_LEVEL_KEY);
+            // `CGWindowLevelForKey` returns `i32` (CGWindowLevel is int32_t),
+            // but `NSWindow.setLevel:` expects `NSInteger` (64-bit `isize` on
+            // 64-bit macOS). Passing the raw `i32` to `msg_send!` for a 64-bit
+            // parameter leaves the upper 32 bits undefined → the window gets
+            // a garbled level, not the real ScreenSaver level, so switching
+            // to another always-on-top app (VS Code) covers the pet. Cast to
+            // `isize` so the value is zero-extended to 64-bit correctly.
+            let level = CGWindowLevelForKey(KCG_SCREENSAVER_WINDOW_LEVEL_KEY) as isize;
             let _: () = msg_send![ns_ptr, setLevel: level];
         }
     })
@@ -891,6 +898,14 @@ pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Resul
     // satisfies that without the raw-pointer-across-threads dance used by
     // `pet_set_topmost_level` (which only had the NSWindow pointer, not the
     // WKWebView).
+    //
+    // The closure ALSO sets the ScreenSaver NSWindow level here (alongside
+    // the transparency calls) so the level is set once on mount, reliably,
+    // on the main thread. `pet_set_topmost_level` is kept as a separate
+    // command for the ~800ms poll re-apply (Tauri's `show()` /
+    // `set_always_on_top(true)` can reset the level to Floating). Both use
+    // the same `CGWindowLevelForKey(13) as isize` cast so the 64-bit
+    // `setLevel:` parameter is correctly zero-extended from the i32 return.
     window
         .with_webview(move |webview| {
             unsafe {
@@ -912,6 +927,17 @@ pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Resul
                 ];
                 let key: id = NSString::alloc(nil).init_str("drawsBackground");
                 let _: () = msg_send![wk, setValue: no_num forKey: key];
+                // 4. Raise to the ScreenSaver NSWindow level so the pet
+                //    stays visible over other always-on-top apps (VS Code,
+                //    etc.). Tauri's `alwaysOnTop: true` config only sets the
+                //    Floating level (5). `CGWindowLevelForKey` returns i32;
+                //    `setLevel:` takes NSInteger (isize on 64-bit), so cast.
+                extern "C" {
+                    fn CGWindowLevelForKey(key: i32) -> i32;
+                }
+                const KCG_SCREENSAVER_WINDOW_LEVEL_KEY: i32 = 13;
+                let level = CGWindowLevelForKey(KCG_SCREENSAVER_WINDOW_LEVEL_KEY) as isize;
+                let _: () = msg_send![ns, setLevel: level];
             }
         })
         .map_err(|e| e.to_string())?;
