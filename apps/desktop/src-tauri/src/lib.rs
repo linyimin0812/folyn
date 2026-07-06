@@ -45,6 +45,64 @@ fn pet_ctx_menu_action(id: &str) -> Option<&'static str> {
     }
 }
 
+/// Re-apply the ScreenSaver NSWindow level + collectionBehavior to the `pet`
+/// window. Called periodically from a Rust thread (see the `setup` hook below)
+/// so the re-apply keeps firing even when the app is backgrounded — WKWebView
+/// throttles `setInterval`, but Rust threads are not throttled, so this is the
+/// reliable path that prevents macOS from resetting the level on app
+/// deactivation (which lets VS Code cover the pet).
+///
+/// Must run on the macOS main thread (NSWindow API is main-thread-only). The
+/// caller schedules this via `app.run_on_main_thread`. Re-fetches the window +
+/// `ns_window()` fresh each tick (no raw pointer captured across threads).
+#[cfg(target_os = "macos")]
+fn reapply_pet_topmost(app: &tauri::AppHandle) {
+    use objc::{msg_send, sel, sel_impl};
+    use objc::runtime::Object;
+
+    extern "C" {
+        fn CGWindowLevelForKey(key: i32) -> i32;
+    }
+    const KCG_SCREENSAVER_WINDOW_LEVEL_KEY: i32 = 13;
+
+    let Some(window) = app.get_webview_window("pet") else {
+        // Pet window not yet created / already destroyed — nothing to do.
+        return;
+    };
+    let Ok(ns_window) = window.ns_window() else {
+        return;
+    };
+    let ns_ptr = ns_window as *mut Object;
+    if ns_ptr.is_null() {
+        return;
+    }
+    unsafe {
+        // Read the current level BEFORE re-setting — this tells us whether
+        // macOS reset it between ticks. If it's not 1000 here, we know
+        // something reset it (and our set below restores it).
+        let current: isize = msg_send![ns_ptr, level];
+        eprintln!("[pet] rust-poll current level = {}", current);
+
+        let level = CGWindowLevelForKey(KCG_SCREENSAVER_WINDOW_LEVEL_KEY) as isize;
+        let _: () = msg_send![ns_ptr, setLevel: level];
+
+        // NSWindowCollectionBehavior:
+        //   canJoinAllSpaces (1) | stationary (16) | fullScreenAuxiliary (256)
+        //   = 273
+        const CB_CAN_JOIN_ALL_SPACES: isize = 1 << 0;
+        const CB_STATIONARY: isize = 1 << 4;
+        const CB_FULLSCREEN_AUXILIARY: isize = 1 << 8;
+        let behavior: isize =
+            CB_CAN_JOIN_ALL_SPACES | CB_STATIONARY | CB_FULLSCREEN_AUXILIARY;
+        let _: () = msg_send![ns_ptr, setCollectionBehavior: behavior];
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn reapply_pet_topmost(_app: &tauri::AppHandle) {
+    // Non-macOS: no equivalent level API; pet mode is macOS-only at present.
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -169,6 +227,31 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 window.open_devtools();
             }
+
+            // Periodic re-apply of the pet's ScreenSaver NSWindow level +
+            // collectionBehavior from a Rust thread. WKWebView throttles
+            // `setInterval` when the app is backgrounded, so the frontend's
+            // ~800ms poll is unreliable — macOS can reset the level on app
+            // deactivation and the JS re-apply never fires, letting VS Code
+            // cover the pet. A plain Rust thread is not throttled, so it keeps
+            // re-applying the level every 500ms regardless of app activation
+            // state. `run_on_main_thread` schedules the actual NSWindow
+            // `setLevel:` / `setCollectionBehavior:` calls on the macOS main
+            // run loop (NSWindow API is main-thread-only). The closure
+            // captures only the `AppHandle` (Clone + Send + 'static) and
+            // re-fetches the window + ns_ptr fresh each tick — no raw
+            // pointer is sent across threads.
+            let app_handle = app.handle().clone();
+            std::thread::spawn(move || {
+                loop {
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                    let app = app_handle.clone();
+                    let app_for_closure = app.clone();
+                    let _ = app.run_on_main_thread(move || {
+                        reapply_pet_topmost(&app_for_closure);
+                    });
+                }
+            });
 
             Ok(())
         })
