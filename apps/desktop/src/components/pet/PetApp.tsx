@@ -303,6 +303,19 @@ export function PetApp() {
         const { invoke } = await import('@tauri-apps/api/core');
         await getCurrentWindow().show();
         await invoke('pet_set_topmost_level', { label: 'pet' });
+        // Native transparency: Tauri's `transparent: true` config doesn't
+        // reliably disable the macOS WKWebView's opaque background on all
+        // builds, leaving a white rect around the circular mascot. The
+        // `pet_make_transparent` command flips NSWindow opaque=NO +
+        // backgroundColor=clear + WKWebView drawsBackground=NO on the main
+        // thread so transparent CSS regions finally show the desktop. Called
+        // once on mount, after show(). Pet-panel is opaque by design and is
+        // NOT made transparent.
+        try {
+          await invoke('pet_make_transparent', { label: 'pet' });
+        } catch (err) {
+          console.warn('[pet] pet_make_transparent failed:', err);
+        }
       } catch (err) {
         console.warn('[pet] initial show / set_topmost_level failed:', err);
       }

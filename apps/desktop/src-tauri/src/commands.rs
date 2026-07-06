@@ -838,3 +838,91 @@ pub async fn pet_set_topmost_level(_app: tauri::AppHandle, _label: String) -> Re
     // best available. Pet mode is macOS-only at present.
     Ok(())
 }
+
+/// Make a Tauri window natively transparent on macOS.
+///
+/// Tauri 2's `transparent: true` config flag is supposed to disable the
+/// macOS WKWebView's native opaque background, but doesn't reliably on all
+/// macOS builds. The result: the pet mascot (a circular badge) renders with a
+/// white rectangular background around it — CSS-level transparency is
+/// exhausted (`pet.css` sets `html.is-pet-window, body, #root, .pet-root`
+/// `background: transparent !important`), but the webview's *native* surface
+/// still paints white because `drawsBackground = YES` by default and the
+/// NSWindow is `opaque = YES` with an opaque `backgroundColor`.
+///
+/// This command flips three native flags on the main thread:
+///   1. `NSWindow setOpaque:NO` — the window is no longer treated as opaque.
+///   2. `NSWindow setBackgroundColor:[NSColor clearColor]]` — clear native bg.
+///   3. `WKWebView setValue:@(NO) forKey:@"drawsBackground"]` (KVC) — the
+///      webview stops painting its own opaque background, so transparent CSS
+///      regions finally show the desktop through the native surface.
+///
+/// KVC (rather than the private `_setDrawsBackground:` selector) is used to
+/// avoid App Store notarization private-API flags — `setValue:forKey:` with
+/// the `drawsBackground` string is not a private-selector reference. The
+/// value is a boxed NSNumber `@NO`; passing a raw BOOL to KVC crashes.
+///
+/// The closure passed to `with_webview` runs on the macOS main thread, so the
+/// `msg_send!` calls are main-thread-safe without a separate
+/// `run_on_main_thread` dispatch. `WebviewWindow::with_webview` exposes the
+/// platform webview whose `inner()` returns the WKWebView pointer and
+/// `ns_window()` returns the NSWindow pointer on macOS. Custom `invoke`
+/// commands bypass the ACL, so no capability entry is needed.
+///
+/// Call once on mount from `PetApp` (the pet window is transparent). Do NOT
+/// call for `pet-panel` (opaque by design — `transparent: false`). macOS-only;
+/// no-op on other platforms.
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Result<(), String> {
+    use cocoa::base::{id, nil};
+    use cocoa::foundation::NSString;
+    use objc::runtime::Object;
+    use objc::{msg_send, sel, sel_impl};
+
+    let window = app
+        .get_webview_window(&label)
+        .ok_or_else(|| format!("window '{}' not found", label))?;
+
+    // `with_webview` schedules the closure onto the macOS main run loop and
+    // gives it a `PlatformWebview` whose `inner()` is the WKWebView pointer
+    // and `ns_window()` is the NSWindow pointer. All AppKit msg_send! calls
+    // must happen on the main thread — doing the work inside the closure
+    // satisfies that without the raw-pointer-across-threads dance used by
+    // `pet_set_topmost_level` (which only had the NSWindow pointer, not the
+    // WKWebView).
+    window
+        .with_webview(move |webview| {
+            unsafe {
+                let wk = webview.inner() as *mut Object;
+                let ns = webview.ns_window() as *mut Object;
+                if ns.is_null() || wk.is_null() {
+                    return;
+                }
+                // 1. NSWindow opaque = NO
+                let _: () = msg_send![ns, setOpaque: objc::runtime::NO];
+                // 2. NSWindow backgroundColor = NSColor clearColor
+                let clear: id = msg_send![objc::class!(NSColor), clearColor];
+                let _: () = msg_send![ns, setBackgroundColor: clear];
+                // 3. WKWebView drawsBackground = NO via KVC. The value must
+                //    be an NSNumber (boxed BOOL) — a raw BOOL crashes KVC.
+                let no_num: id = msg_send![
+                    objc::class!(NSNumber),
+                    numberWithBool: objc::runtime::NO
+                ];
+                let key: id = NSString::alloc(nil).init_str("drawsBackground");
+                let _: () = msg_send![wk, setValue: no_num forKey: key];
+            }
+        })
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+pub async fn pet_make_transparent(_app: tauri::AppHandle, _label: String) -> Result<(), String> {
+    // Non-macOS: native transparency is platform-specific and pet mode is
+    // macOS-only at present. Tauri's `transparent: true` config is the best
+    // available on Windows/Linux.
+    Ok(())
+}
