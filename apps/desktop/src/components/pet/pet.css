@@ -35,47 +35,33 @@ html.is-pet-window body {
 }
 
 .pet-mascot {
-  width: 120px;
-  height: 120px;
+  width: 108px;
+  height: 108px;
   cursor: grab;
   transform-origin: center;
   will-change: transform;
   color: var(--acc, #3a6ef0);
-  transition: filter 0.15s ease;
+  transition: transform 0.15s ease;
 }
 
-.pet-mascot:hover { filter: brightness(1.08); }
+.pet-mascot:hover { transform: scale(1.04); }
 .pet-mascot:active { cursor: grabbing; }
 
-/* ── Breathing-light glow ──
- * A soft halo behind the quill that pulses opacity + scale like a heartbeat.
- * Independent of the sprite's idle/hover/drag/click transforms so the
- * breathing never stops during state changes. */
-.pet-glow {
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(58, 110, 240, 0.55) 0%,
-    rgba(58, 110, 240, 0.18) 45%,
-    transparent 70%
-  );
-  filter: blur(8px);
-  pointer-events: none;
-  animation: pet-breathe 2.6s ease-in-out infinite;
-}
+/* ── Breathing-light halo ──
+ * A soft `drop-shadow` filter pulse around the dark tile (the tile is opaque,
+ * so the glow must be a halo around it, not a blob behind it). Combined with
+ * the state animations below via a comma-separated `animation` list so the
+ * breathing never stops during state changes; the breathe owns `filter`,
+ * the state keyframes own `transform`. */
 @keyframes pet-breathe {
-  0%, 100% { opacity: 0.45; transform: scale(0.88); }
-  50%      { opacity: 1;    transform: scale(1.18); }
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(58, 110, 240, 0.4)); }
+  50%      { filter: drop-shadow(0 0 12px rgba(58, 110, 240, 0.9)); }
 }
 
 /* ── State: idle (breathing/floating) ── */
 .pet-mascot.is-idle {
-  animation: pet-idle 3.2s ease-in-out infinite;
+  animation: pet-idle 3.2s ease-in-out infinite,
+             pet-breathe 2.6s ease-in-out infinite;
 }
 @keyframes pet-idle {
   0%, 100% { transform: translateY(0) scale(1); }
@@ -84,7 +70,8 @@ html.is-pet-window body {
 
 /* ── State: hover (looks up / reacts) ── */
 .pet-mascot.is-hover {
-  animation: pet-hover 1.6s ease-in-out infinite;
+  animation: pet-hover 1.6s ease-in-out infinite,
+             pet-breathe 2.6s ease-in-out infinite;
 }
 @keyframes pet-hover {
   0%, 100% { transform: translateY(-2px) rotate(-2deg); }
@@ -93,7 +80,8 @@ html.is-pet-window body {
 
 /* ── State: drag (wobble while being dragged) ── */
 .pet-mascot.is-drag {
-  animation: pet-drag 0.5s ease-in-out infinite;
+  animation: pet-drag 0.5s ease-in-out infinite,
+             pet-breathe 2.6s ease-in-out infinite;
   cursor: grabbing;
 }
 @keyframes pet-drag {
@@ -105,7 +93,8 @@ html.is-pet-window body {
 
 /* ── State: click (squish/pop feedback) ── */
 .pet-mascot.is-click {
-  animation: pet-click 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 1;
+  animation: pet-click 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 1,
+             pet-breathe 2.6s ease-in-out infinite;
 }
 @keyframes pet-click {
   0%   { transform: scale(1, 1); }

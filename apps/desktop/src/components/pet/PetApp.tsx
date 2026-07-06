@@ -315,12 +315,11 @@ export function PetApp() {
 
   return (
     <div className="pet-root">
-      {/* Breathing-light glow — a soft pulsing halo behind the quill. Sits
-          below the sprite layer (DOM order) and ignores pointer events so it
-          never steals the drag/click gestures owned by `.pet-sprite-layer`. */}
-      <div className="pet-glow" aria-hidden="true" />
       {/* The mascot sprite is wrapped in an interaction layer that owns all
-          mouse handlers. CSS keyframes on `.pet-mascot` drive the animations. */}
+          mouse handlers. CSS keyframes on `.pet-mascot` drive the animations,
+          including the breathing `drop-shadow` halo around the dark tile
+          (see pet.css). The glow is the mascot's own filter — no separate
+          layer needed. */}
       <div
         className="pet-sprite-layer"
         onMouseEnter={handleMouseEnter}
