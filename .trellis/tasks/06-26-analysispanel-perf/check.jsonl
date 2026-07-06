@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality bar — verify no main-thread-blocking, no perf regressions."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify Zustand store changes follow conventions."}

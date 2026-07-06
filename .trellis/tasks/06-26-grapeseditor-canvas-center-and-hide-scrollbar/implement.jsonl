@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend spec index — entry point for all desktop-side coding guidelines."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "React component conventions — GrapesEditor.tsx is the component whose canvas iframe is being styled."}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "Hook conventions — useGrapesEditor.ts is the hook that calls injectExternalLinks on editor load."}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "File-type editor patterns — GrapesEditor is the HTML file type visual editor."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality bar — tests + lint + typecheck expectations for the change."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Code reuse guide — extend existing injectExternalLinks rather than creating a parallel helper."}

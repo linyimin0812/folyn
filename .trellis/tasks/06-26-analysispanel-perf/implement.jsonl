@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend spec index."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store patterns — analysisStore.loadReports is likely the bottleneck."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality bar — performance / no main-thread-blocking patterns."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse guide — check if a virtualized-list utility already exists before adding one."}

@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality bar — lint, typecheck, tests must pass before completion."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify React component conventions are followed in GrapesEditor.tsx."}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "Verify useGrapesEditor.ts changes follow hook conventions."}
