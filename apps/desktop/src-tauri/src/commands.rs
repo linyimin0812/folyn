@@ -834,6 +834,26 @@ pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Resu
             eprintln!("[pet] topmost level resolved = {}", level);
             eprintln!("[pet] make_transparent+level: ns={} wk=n/a", !ns_ptr.is_null());
             let _: () = msg_send![ns_ptr, setLevel: level];
+            // Read the level back to confirm the set stuck (1000 = ScreenSaver).
+            // Tauri's `alwaysOnTop: true` config can reset the level to
+            // Floating(3) on focus changes; the readback surfaces that.
+            let current_level: isize = msg_send![ns_ptr, level];
+            eprintln!("[pet] level after set = {}", current_level);
+            // Set collectionBehavior so the pet stays visible across all
+            // Spaces and isn't hidden on app deactivation. Numeric values:
+            //   NSWindowCollectionBehaviorCanJoinAllSpaces      = 1 << 0  (1)
+            //   NSWindowCollectionBehaviorStationary            = 1 << 4  (16)
+            //   NSWindowCollectionBehaviorFullScreenAuxiliary   = 1 << 8  (256)
+            // Combined = 1 | 16 | 256 = 273. Passed as NSUInteger (isize on
+            // 64-bit) to `setCollectionBehavior:`.
+            const CB_CAN_JOIN_ALL_SPACES: isize = 1 << 0;
+            const CB_STATIONARY: isize = 1 << 4;
+            const CB_FULLSCREEN_AUXILIARY: isize = 1 << 8;
+            let behavior: isize =
+                CB_CAN_JOIN_ALL_SPACES | CB_STATIONARY | CB_FULLSCREEN_AUXILIARY;
+            let _: () = msg_send![ns_ptr, setCollectionBehavior: behavior];
+            let cur_behavior: isize = msg_send![ns_ptr, collectionBehavior];
+            eprintln!("[pet] collectionBehavior = {}", cur_behavior);
         }
     })
     .map_err(|e| {
@@ -945,6 +965,26 @@ pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Resul
                 const KCG_SCREENSAVER_WINDOW_LEVEL_KEY: i32 = 13;
                 let level = CGWindowLevelForKey(KCG_SCREENSAVER_WINDOW_LEVEL_KEY) as isize;
                 let _: () = msg_send![ns, setLevel: level];
+                // Read the level back to confirm the set stuck (1000 =
+                // ScreenSaver). Tauri's `alwaysOnTop: true` config can reset
+                // the level to Floating(3) on focus changes.
+                let current_level: isize = msg_send![ns, level];
+                eprintln!("[pet] make_transparent level after set = {}", current_level);
+                // Set collectionBehavior so the pet stays visible across all
+                // Spaces and isn't hidden on app deactivation. Numeric values:
+                //   NSWindowCollectionBehaviorCanJoinAllSpaces      = 1 << 0  (1)
+                //   NSWindowCollectionBehaviorStationary            = 1 << 4  (16)
+                //   NSWindowCollectionBehaviorFullScreenAuxiliary   = 1 << 8  (256)
+                // Combined = 1 | 16 | 256 = 273. Passed as NSUInteger
+                // (isize on 64-bit) to `setCollectionBehavior:`.
+                const CB_CAN_JOIN_ALL_SPACES: isize = 1 << 0;
+                const CB_STATIONARY: isize = 1 << 4;
+                const CB_FULLSCREEN_AUXILIARY: isize = 1 << 8;
+                let behavior: isize =
+                    CB_CAN_JOIN_ALL_SPACES | CB_STATIONARY | CB_FULLSCREEN_AUXILIARY;
+                let _: () = msg_send![ns, setCollectionBehavior: behavior];
+                let cur_behavior: isize = msg_send![ns, collectionBehavior];
+                eprintln!("[pet] make_transparent collectionBehavior = {}", cur_behavior);
             }
         })
         .map_err(|e| {

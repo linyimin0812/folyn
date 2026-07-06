@@ -52,7 +52,7 @@ html.is-pet-window .pet-root {
 
 .pet-mascot {
   /* 88px in the 120x120 pet window. At 88px, click scale 1.08 → ~95px and
-   * the breathing `drop-shadow` halo (up to 12px) → ~100px, both fit inside
+   * the breathing `drop-shadow` halo (up to 7px) → ~98px, both fit inside
    * the 120px window with margin. Previously 108px, which combined with
    * scale 1.18 (→127px) + halo clipped the circle's edges during animation. */
   width: 88px;
@@ -81,8 +81,8 @@ html.is-pet-window .pet-root {
  * breathing never stops during state changes; the breathe owns `filter`,
  * the state keyframes own `transform`. */
 @keyframes pet-breathe {
-  0%, 100% { filter: drop-shadow(0 0 4px rgba(58, 110, 240, 0.4)); }
-  50%      { filter: drop-shadow(0 0 12px rgba(58, 110, 240, 0.9)); }
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(58, 110, 240, 0.4)); }
+  50%      { filter: drop-shadow(0 0 7px rgba(58, 110, 240, 0.85)); }
 }
 
 /* ── State: idle (breathing/floating) ── */
@@ -92,7 +92,7 @@ html.is-pet-window .pet-root {
 }
 @keyframes pet-idle {
   0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-3px); }
+  50%      { transform: translateY(-1px); }
 }
 
 /* ── State: hover (looks up / reacts) ── */
