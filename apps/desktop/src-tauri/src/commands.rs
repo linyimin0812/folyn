@@ -796,6 +796,15 @@ pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Resu
     use objc::{msg_send, sel, sel_impl};
     use objc::runtime::Object;
 
+    // NSPanel backend owns the window's level (Dock) + collectionBehavior
+    // (273). The legacy ScreenSaver-level re-apply below would overwrite the
+    // panel's Dock level and break fullscreen-overlay visibility, so it is a
+    // no-op in NSPanel mode. The frontend's ~800ms poll still calls this
+    // command, which is harmless (returns immediately).
+    if crate::pet_panel_macos::backend_is_nspanel() {
+        return Ok(());
+    }
+
     // kCGScreenSaverWindowLevelKey = 13 is the enum KEY, not the level
     // number. NSWindow.setLevel: takes the actual CGWindowLevel number,
     // which on modern macOS is resolved from the key via
@@ -945,11 +954,18 @@ pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Resul
                 ];
                 let key: id = NSString::alloc(nil).init_str("drawsBackground");
                 let _: () = msg_send![wk, setValue: no_num forKey: key];
-                // 4. Raise to the ScreenSaver NSWindow level so the pet
-                //    stays visible over other always-on-top apps (VS Code,
-                //    etc.). Tauri's `alwaysOnTop: true` config only sets the
-                //    Floating level (5). `CGWindowLevelForKey` returns i32;
-                //    `setLevel:` takes NSInteger (isize on 64-bit), so cast.
+                // 4. Raise to the ScreenSaver NSWindow level + set the
+                //    fullscreen-auxiliary collectionBehavior. LEGACY path
+                //    only — the NSPanel backend (`to_panel()`) already sets
+                //    `Dock` level + `stationary | can_join_all_spaces |
+                //    full_screen_auxiliary` (273), and re-asserting the
+                //    ScreenSaver level here would overwrite Dock and break
+                //    fullscreen-overlay visibility. The transparency calls
+                //    above (1-3) still run in both modes — the NSPanel pet
+                //    is still a transparent circular badge.
+                if crate::pet_panel_macos::backend_is_nspanel() {
+                    return;
+                }
                 extern "C" {
                     fn CGWindowLevelForKey(key: i32) -> i32;
                 }

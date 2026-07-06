@@ -35,6 +35,12 @@ import { isTauri } from '@/utils/platform';
  * passes clicks to apps behind the pet (small UX cost); in exchange, drag
  * and click are 100% reliable. See `tauri-window-patterns.md` for the
  * contract.
+ *
+ * Click-vs-drag detection is now movement-threshold based (pointermove ≥4px
+ * → drag; clean pointerup with <4px movement → click), not the old
+ * pointerdown+window-position-delta approach — the latter misclassified
+ * drags as clicks after the NSPanel swap because `startDragging()` +
+ * `outerPosition()` no longer reliably reflect the drag delta.
  */
 
 type PetState = 'idle' | 'hover' | 'drag' | 'click';
@@ -62,17 +68,23 @@ interface PetWorkAreaResult {
 
 /**
  * Open the pet-panel quick-action window next to the pet, or hide it if it is
- * already visible (R8 toggle). Skipped while the main window is fullscreen
- * (R4) — the probe's `main_fullscreen` field is checked first.
+ * already visible (R8 toggle). The panel is an NSPanel at Dock level with
+ * `can_join_all_spaces | full_screen_auxiliary`, so it shows over fullscreen
+ * apps too — no fullscreen guard needed (the R4 guard that used to abort here
+ * was from when the pet/panel could not rise over fullscreen; the NSPanel
+ * backend makes it possible, so the guard is removed).
  *
- * Positioning: if a saved `petPanelX/Y` exists (user has dragged the panel
- * before), restore that position (clamped to the work area) so the panel
- * reappears where the user left it instead of snapping back to the pet's
- * corner. On the first-ever open (no saved pos), fall back to
- * `computePanelPosition` next to the pet. Likewise restore a saved size if
- * present so a user-resized panel keeps its size across opens. All window
- * mutation goes through Rust `invoke` commands so the ACL contract is
- * satisfied (custom commands bypass the ACL; the panel window still has
+ * Positioning: ALWAYS recompute the panel position from the pet's CURRENT
+ * outer position at open time via `computePanelPosition` (panel opens above
+ * the pet, or below if the pet is near the top of the screen, with
+ * `PET_PANEL_GAP` clearance so the panel never covers the pet icon). The
+ * saved `petPanelX/Y` is NOT restored — even if the user dragged the panel
+ * to a new spot while it was open, the next open snaps back to the
+ * pet-relative position. (The panel can still be dragged while open; that
+ * drag is just not persisted.) A saved SIZE is still restored so a
+ * user-resized panel keeps its size across opens. All window mutation goes
+ * through Rust `invoke` commands so the ACL contract is satisfied (custom
+ * commands bypass the ACL; the panel window still has
  * `capabilities/pet-panel.json` for its own `@tauri-apps/api/window` calls
  * — `startDragging`, `outerPosition`).
  */
@@ -80,9 +92,11 @@ async function openOrTogglePetPanel(): Promise<void> {
   try {
     const { invoke } = await import('@tauri-apps/api/core');
 
-    // Fullscreen guard (R4): skip while the main editor is fullscreen.
+    // The probe is still needed for `window_x/window_y` (the pet's current
+    // outer position, used to compute the panel position on every open).
+    // Its `main_fullscreen` field is no longer a reason to abort; the NSPanel
+    // panel shows over fullscreen too.
     const probe = await invoke<PetCursorProbeResult>('pet_cursor_probe');
-    if (probe.main_fullscreen) return;
 
     // Toggle: if the panel is already visible, hide it (R8 second-click).
     const visible = await invoke<boolean>('pet_panel_is_visible');
@@ -93,12 +107,11 @@ async function openOrTogglePetPanel(): Promise<void> {
 
     const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
 
-    // Restore a saved size first so the position clamp uses the right
-    // footprint. (clampPanelPosition uses the default PET_PANEL_WIDTH/HEIGHT
-    // — that's fine for a clamp: a smaller saved size only means more slack.)
+    // Restore a saved SIZE only (so a user-resized panel keeps its size
+    // across opens). The panel POSITION is intentionally NOT restored —
+    // see the function doc above.
     const { useSettingsStore } = await import('@/store/settingsStore');
-    const { petPanelX, petPanelY, petPanelWidth, petPanelHeight } =
-      useSettingsStore.getState();
+    const { petPanelWidth, petPanelHeight } = useSettingsStore.getState();
 
     if (petPanelWidth > 0 && petPanelHeight > 0) {
       const { clampPanelSize } = await import('./petPosition');
@@ -109,27 +122,29 @@ async function openOrTogglePetPanel(): Promise<void> {
       await invoke('pet_panel_set_size', { width: size.width, height: size.height });
     }
 
-    // Position: restore saved (clamped) or fall back to next-to-pet.
-    let panelPos: { x: number; y: number };
-    if (petPanelX >= 0 && petPanelY >= 0) {
-      const { clampPanelPosition } = await import('./petPosition');
-      panelPos = clampPanelPosition(
-        { x: petPanelX, y: petPanelY },
-        { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
-      );
-      if (panelPos.x !== petPanelX || panelPos.y !== petPanelY) {
-        useSettingsStore.getState().setPetPanelPosition(panelPos.x, panelPos.y);
-      }
-    } else {
-      const petPos = { x: probe.window_x, y: probe.window_y };
-      panelPos = computePanelPosition(petPos, workArea);
-      useSettingsStore.getState().setPetPanelPosition(panelPos.x, panelPos.y);
-    }
+    // ALWAYS recompute the panel position from the pet's current outer
+    // position so the panel opens next to the pet (above, or below if the
+    // pet is near the top of the screen). `computePanelPosition` guarantees
+    // a `PET_PANEL_GAP` clearance between the panel and the pet, so the
+    // panel never covers the icon — even if the pet has moved since the
+    // last open. The computed position is NOT persisted.
+    const petPos = { x: probe.window_x, y: probe.window_y };
+    const panelPos = computePanelPosition(petPos, workArea);
 
     // Position the panel before showing so it appears at the right spot in
     // one frame (avoids a flash at the default position).
     await invoke('pet_panel_set_position', { x: panelPos.x, y: panelPos.y });
     await invoke('pet_panel_show');
+    // Re-assert the position AFTER show() too: on macOS, `set_position` on a
+    // HIDDEN NSPanel/NSWindow may not take effect reliably (the window
+    // manager can defer the frame update until the window is ordered in), and
+    // `show()` can reset the frame to the last visible position. Calling
+    // `set_position` again on the now-visible window guarantees the panel is
+    // at the computed spot — same value, so no visible jump. This also fixes
+    // the "panel doesn't follow the pet after a drag" symptom: the pet's new
+    // position is reflected in `probe.window_x/y`, and the re-asserted
+    // `set_position` moves the visible panel to the new spot.
+    await invoke('pet_panel_set_position', { x: panelPos.x, y: panelPos.y });
   } catch (err) {
     console.warn('[pet] openOrTogglePetPanel failed:', err);
   }
@@ -152,28 +167,36 @@ export function PetApp() {
     setState((s) => (s === 'hover' ? 'idle' : s));
   }, []);
 
-  const handlePointerDown = useCallback(async (e: React.PointerEvent) => {
+  // Track an in-progress pointer gesture to distinguish a click from a drag.
+  // `becameDrag` flips true once the pointer moves past the threshold, which
+  // gates BOTH the native drag start AND the panel-open on pointerup — drag
+  // and click are mutually exclusive (a drag never opens the panel).
+  const pointerStartRef = useRef<{ x: number; y: number; id: number; becameDrag: boolean } | null>(null);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
     // Right-click (button 2) opens the context menu; let the contextmenu
     // handler do the work to avoid duplicate menu opens.
     if (e.button === 2) return;
     if (e.button !== 0) return;
 
-    // Record the window position before the native drag starts. After
-    // startDragging() resolves we compare: if the window barely moved, the
-    // gesture was a click (not a drag) — we then open the quick-action
-    // menu. Native drag consumes mouseup/click, so we cannot rely on a
-    // separate onClick handler.
-    let beforeX = 0;
-    let beforeY = 0;
-    try {
-      const { getCurrentWindow } = await import('@tauri-apps/api/window');
-      const before = await getCurrentWindow().outerPosition();
-      beforeX = Math.round(before.x);
-      beforeY = Math.round(before.y);
-    } catch {
-      // If we can't read the position, fall back to treating as a click.
-    }
+    pointerStartRef.current = { x: e.clientX, y: e.clientY, id: e.pointerId, becameDrag: false };
+    // Capture so move/up fire on this element even if the cursor leaves it.
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, []);
 
+  const handlePointerMove = useCallback(async (e: React.PointerEvent) => {
+    const st = pointerStartRef.current;
+    if (!st || st.becameDrag || st.id !== e.pointerId) return;
+
+    const dx = Math.abs(e.clientX - st.x);
+    const dy = Math.abs(e.clientY - st.y);
+    // Below the threshold the gesture is still a candidate click — do nothing.
+    if (dx < 4 && dy < 4) return;
+
+    // Movement past the threshold → this is a drag, not a click. Start the
+    // native drag; the panel will NOT open (drag and click are mutually
+    // exclusive, satisfying "移动时不要显示页面，只有点击时才显示").
+    st.becameDrag = true;
     draggingRef.current = true;
     setState('drag');
     try {
@@ -185,42 +208,41 @@ export function PetApp() {
     // Native drag returns when the user releases the mouse.
     draggingRef.current = false;
 
-    let afterX = beforeX;
-    let afterY = beforeY;
+    // Persist the new position immediately so AC7 holds even if the periodic
+    // poller hasn't fired yet.
     try {
       const { getCurrentWindow } = await import('@tauri-apps/api/window');
       const after = await getCurrentWindow().outerPosition();
-      afterX = Math.round(after.x);
-      afterY = Math.round(after.y);
+      const { useSettingsStore } = await import('@/store/settingsStore');
+      useSettingsStore.getState().setPetPosition(Math.round(after.x), Math.round(after.y));
     } catch {
-      // ignore — treat as no-move
+      // Non-fatal; the periodic poller will catch up.
+    }
+    setState('idle');
+  }, []);
+
+  const handlePointerUp = useCallback(async (e: React.PointerEvent) => {
+    const st = pointerStartRef.current;
+    if (!st || st.id !== e.pointerId) return;
+    pointerStartRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // pointer capture may already be released — ignore.
     }
 
-    const dx = Math.abs(afterX - beforeX);
-    const dy = Math.abs(afterY - beforeY);
-    const wasClick = dx < 5 && dy < 5;
+    // If a drag started, the native drag handled the gesture — do NOT open
+    // the panel. Only a clean click (pointerdown→up with <4px movement) opens
+    // the pet-panel quick-action window.
+    if (st.becameDrag) return;
 
-    if (wasClick) {
-      // Single-click mascot = open the pet-panel quick-action window (PR1).
-      // Right-click still opens the native context menu (handleContextMenu
-      // below) for muscle-memory + power-user access. The panel is shown via
-      // `pet_panel_show` + `pet_panel_set_position`; if it is already visible
-      // the click toggles it closed (R8). The panel is skipped while the main
-      // window is fullscreen (R4) — re-use `pet_cursor_probe.main_fullscreen`.
-      setState('click');
-      window.setTimeout(() => setState('idle'), 320);
-      await openOrTogglePetPanel();
-    } else {
-      // Drag ended — persist the new position immediately so AC7 holds even
-      // if the periodic poller hasn't fired yet.
-      try {
-        const { useSettingsStore } = await import('@/store/settingsStore');
-        useSettingsStore.getState().setPetPosition(afterX, afterY);
-      } catch {
-        // Non-fatal; the periodic poller will catch up.
-      }
-      setState('idle');
-    }
+    // Single-click mascot = open the pet-panel quick-action window.
+    // Right-click still opens the native context menu (handleContextMenu
+    // below) for muscle-memory + power-user access. The NSPanel panel shows
+    // over fullscreen apps too, so no fullscreen guard here.
+    setState('click');
+    window.setTimeout(() => setState('idle'), 320);
+    await openOrTogglePetPanel();
   }, []);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
@@ -280,7 +302,7 @@ export function PetApp() {
     };
   }, []);
 
-  // ── Show the pet window on launch ──
+  // ── Show the pet window on launch (position-first) ──
   // The pet window is created `visible: false` (tauri.conf.json) and relies on
   // the frontend to show it when it mounts. The previous fullscreen-auto-hide
   // probe's `else` branch used to call `win.show()` — that probe was removed
@@ -290,6 +312,17 @@ export function PetApp() {
   // `core:window:allow-show`, so this call is ACL-allowed. Do NOT re-add
   // fullscreen hide logic — the pet must stay visible at all times.
   //
+  // ORDERING: resolve and `set_pet_position` BEFORE `show()`. tauri.conf.json
+  // uses `center: true` (no hardcoded `x`/`y`) so the window is CREATED
+  // off-screen-center as a transient — the runtime position-set corrects to
+  // the exact saved-or-default position before the first visible frame. The
+  // previous layout had a separate position-restore useEffect running in
+  // PARALLEL with this show effect, which raced: `show()` could land before
+  // `set_pet_position`, briefly flashing the window at the conf default
+  // (centered) position. Merging them into one async chain guarantees the
+  // position is applied first. Both calls are non-fatal if they fail — the
+  // window still shows at the conf default (centered, never off-screen).
+  //
   // `show()` resets the NSWindow level to Floating (Tauri's alwaysOnTop
   // default), which lets other always-on-top apps (VS Code, etc.) cover the
   // pet. Re-apply `pet_set_topmost_level` immediately after `show()` so the
@@ -298,9 +331,97 @@ export function PetApp() {
   useEffect(() => {
     if (!isTauri()) return;
     (async () => {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      const { invoke } = await import('@tauri-apps/api/core');
+
+      // 1. Resolve and apply the initial position BEFORE show() so the first
+      //    visible frame is already at the right spot (no centered flash).
       try {
-        const { getCurrentWindow } = await import('@tauri-apps/api/window');
-        const { invoke } = await import('@tauri-apps/api/core');
+        const { useSettingsStore } = await import('@/store/settingsStore');
+        const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
+        const { petPositionX, petPositionY } = useSettingsStore.getState();
+
+        // Work-area guard: if the OS returns a zero-sized work area (e.g.
+        // NSScreen.mainScreen is nil during early launch), the default-branch
+        // math would compute x=0, y=PET_MIN_TOP (top-left) — visibly wrong.
+        // Skip the position-set entirely and let Tauri's `center: true` conf
+        // default apply (centered, never off-screen). The ~800ms poller below
+        // will persist the actual (centered) position; on the next launch the
+        // saved-position branch will restore it. The user can drag the pet to
+        // overwrite. This is an edge case; on most launches workArea is valid.
+        if (workArea.width <= 0 || workArea.height <= 0) {
+          console.warn('[pet] work area is zero, skipping position-set:', workArea);
+        } else {
+          let resolved: { x: number; y: number };
+          let source: 'saved' | 'default' = 'default';
+          if (petPositionX >= 0 && petPositionY >= 0) {
+            // Saved position: clamp to the current work area. If the saved
+            // value is off-screen (different monitor / pre-fix default), the
+            // clamped value is persisted back so subsequent launches skip the
+            // re-clamp.
+            source = 'saved';
+            const clamped = clampPetPosition(
+              { x: petPositionX, y: petPositionY },
+              { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
+            );
+            if (clamped.x !== petPositionX || clamped.y !== petPositionY) {
+              useSettingsStore.getState().setPetPosition(clamped.x, clamped.y);
+            }
+            resolved = clamped;
+          } else {
+            // First-launch default: bottom-right of the work area, lifted by
+            // PET_BOTTOM_MARGIN. Persist so the next launch restores it.
+            const rel = computeDefaultPetPosition({
+              width: workArea.width,
+              height: workArea.height,
+            });
+            resolved = { x: workArea.x + rel.x, y: workArea.y + rel.y };
+            useSettingsStore.getState().setPetPosition(resolved.x, resolved.y);
+          }
+
+          // Diagnostic: log the saved + work-area + resolved values so a
+          // "still centered" report can be traced to a saved localStorage
+          // position vs. a work-area fallback vs. a set_pet_position failure.
+          console.info('[pet] launch position:', {
+            source,
+            saved: { x: petPositionX, y: petPositionY },
+            workArea,
+            resolved,
+          });
+
+          // Apply via the custom Rust command first (ACL-safe custom invoke).
+          // Then verify with `outerPosition()`; if the OS didn't honor the
+          // custom command (some builds race the WebviewWindow creation), fall
+          // back to the standard `setPosition()` API — both are valid paths,
+          // belt-and-suspenders so a silent invoke failure cannot leave the
+          // window centered.
+          try {
+            await invoke('set_pet_position', { x: resolved.x, y: resolved.y });
+          } catch (err) {
+            console.warn('[pet] set_pet_position invoke failed, falling back to setPosition:', err);
+          }
+          try {
+            const actual = await getCurrentWindow().outerPosition();
+            if (Math.round(actual.x) !== resolved.x || Math.round(actual.y) !== resolved.y) {
+              console.warn('[pet] position mismatch after invoke, retrying via setPosition:', {
+                actual: { x: Math.round(actual.x), y: Math.round(actual.y) },
+                expected: resolved,
+              });
+              const { PhysicalPosition } = await import('@tauri-apps/api/dpi');
+              await getCurrentWindow().setPosition(new PhysicalPosition(resolved.x, resolved.y));
+            }
+          } catch (err) {
+            console.warn('[pet] position verify/retry failed:', err);
+          }
+        }
+      } catch (err) {
+        // Non-fatal; the window falls back to the Tauri `center: true` conf
+        // default (centered), which is never off-screen.
+        console.warn('[pet] launch position resolve failed:', err);
+      }
+
+      // 2. Show the window at the now-correct position.
+      try {
         await getCurrentWindow().show();
         await invoke('pet_set_topmost_level', { label: 'pet' });
         // Native transparency: Tauri's `transparent: true` config doesn't
@@ -318,53 +439,6 @@ export function PetApp() {
         }
       } catch (err) {
         console.warn('[pet] initial show / set_topmost_level failed:', err);
-      }
-    })();
-  }, []);
-
-  // ── Initial position restore (R5, AC7, R1/R2) ──
-  // On mount, resolve the pet's initial position:
-  //  - If a saved position exists, clamp it to the current work area. If the
-  //    saved value was off-screen (e.g. from a previous monitor setup or a
-  //    pre-fix default), the clamped value is persisted back so subsequent
-  //    launches don't re-clamp.
-  //  - Otherwise, compute the default bottom-right position from the work
-  //    area (NSScreen.visibleFrame on macOS, excludes Dock + menu bar) and
-  //    persist it.
-  useEffect(() => {
-    (async () => {
-      try {
-        const { useSettingsStore } = await import('@/store/settingsStore');
-        const { invoke } = await import('@tauri-apps/api/core');
-        const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
-        const { petPositionX, petPositionY } = useSettingsStore.getState();
-
-        let resolved: { x: number; y: number };
-        if (petPositionX >= 0 && petPositionY >= 0) {
-          const clamped = clampPetPosition(
-            { x: petPositionX, y: petPositionY },
-            { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
-          );
-          // If clamping changed the value, persist the corrected position
-          // so the next launch doesn't need to re-clamp.
-          if (clamped.x !== petPositionX || clamped.y !== petPositionY) {
-            useSettingsStore.getState().setPetPosition(clamped.x, clamped.y);
-          }
-          resolved = clamped;
-        } else {
-          // Default: bottom-right of the work area, plus the work area's
-          // origin offset (work area is in physical px top-left origin,
-          // same coordinate space as `set_pet_position`).
-          const rel = computeDefaultPetPosition({
-            width: workArea.width,
-            height: workArea.height,
-          });
-          resolved = { x: workArea.x + rel.x, y: workArea.y + rel.y };
-          useSettingsStore.getState().setPetPosition(resolved.x, resolved.y);
-        }
-        await invoke('set_pet_position', { x: resolved.x, y: resolved.y });
-      } catch {
-        // Non-fatal; the window just stays at its creation position.
       }
     })();
   }, []);
@@ -427,6 +501,8 @@ export function PetApp() {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
         onContextMenu={handleContextMenu}
         style={{
           position: 'absolute',
@@ -434,7 +510,7 @@ export function PetApp() {
           top: SPRITE_OFFSET,
           width: SPRITE_SIZE,
           height: SPRITE_SIZE,
-          cursor: 'grab',
+          cursor: 'pointer',
         }}
         aria-label="Quill desktop pet"
         role="button"

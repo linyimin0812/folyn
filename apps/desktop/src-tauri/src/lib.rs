@@ -10,6 +10,9 @@
 
 mod commands;
 
+#[cfg(target_os = "macos")]
+mod pet_panel_macos;
+
 use tauri::Manager;
 use tauri::menu::{CheckMenuItem, MenuBuilder, SubmenuBuilder};
 use tauri::{Emitter, WindowEvent};
@@ -110,6 +113,58 @@ fn reapply_pet_topmost(app: &tauri::AppHandle) {
 fn reapply_pet_topmost(_app: &tauri::AppHandle) {
     // Non-macOS: no equivalent level API; pet mode is macOS-only at present.
 }
+
+/// Apply the pet window's topmost backend once at startup. Two paths:
+///   - NSPanel (default): convert the `pet` window to a real NSPanel
+///     (`Dock` level + `nonactivating_panel` + `can_join_all_spaces |
+///     full_screen_auxiliary`) so it floats over fullscreen apps.
+///   - Legacy (`QUILL_PET_PANEL_BACKEND=legacy`): the old NSWindow +
+///     ScreenSaver-level + behavior-780 re-apply (`reapply_pet_topmost`).
+///
+/// Both paths schedule their NSWindow API calls on the macOS main thread via
+/// `run_on_main_thread` (NSWindow API is main-thread-only). No-op on non-macOS.
+#[cfg(target_os = "macos")]
+fn apply_pet_backend_init(app: &tauri::AppHandle) {
+    if pet_panel_macos::backend_is_nspanel() {
+        let app2 = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            pet_panel_macos::convert_windows(&app2);
+        });
+    } else {
+        let app2 = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            reapply_pet_topmost(&app2);
+        });
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn apply_pet_backend_init(_app: &tauri::AppHandle) {}
+
+/// Spawn the 500ms re-apply thread for the LEGACY path only. WKWebView
+/// throttles `setInterval` when backgrounded, so the frontend's ~800ms poll
+/// is unreliable; a Rust thread keeps re-asserting the ScreenSaver level that
+/// macOS can reset on app deactivation. The NSPanel path does NOT need this
+/// (Dock level + `nonactivating_panel` + `hidesOnDeactivate`-default is
+/// stable across activation changes). No-op on non-macOS.
+#[cfg(target_os = "macos")]
+fn spawn_legacy_reapply_thread(app: tauri::AppHandle) {
+    if pet_panel_macos::backend_is_nspanel() {
+        return;
+    }
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            let app_for_closure = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                reapply_pet_topmost(&app_for_closure);
+            });
+        }
+    });
+}
+
+#[cfg(not(target_os = "macos"))]
+fn spawn_legacy_reapply_thread(_app: tauri::AppHandle) {}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -236,41 +291,16 @@ pub fn run() {
                 window.open_devtools();
             }
 
-            // Apply ScreenSaver level + canJoinAllSpaces|fullScreenAuxiliary
-            // to the pet window at creation (before show) so macOS evaluates
-            // space membership with the flags already set — setting them only
-            // after show can fail to make the window appear over fullscreen
-            // apps.
-            let app_handle_for_init = app.handle().clone();
-            let init_for_closure = app_handle_for_init.clone();
-            let _ = app_handle_for_init.run_on_main_thread(move || {
-                reapply_pet_topmost(&init_for_closure);
-            });
-
-            // Periodic re-apply of the pet's ScreenSaver NSWindow level +
-            // collectionBehavior from a Rust thread. WKWebView throttles
-            // `setInterval` when the app is backgrounded, so the frontend's
-            // ~800ms poll is unreliable — macOS can reset the level on app
-            // deactivation and the JS re-apply never fires, letting VS Code
-            // cover the pet. A plain Rust thread is not throttled, so it keeps
-            // re-applying the level every 500ms regardless of app activation
-            // state. `run_on_main_thread` schedules the actual NSWindow
-            // `setLevel:` / `setCollectionBehavior:` calls on the macOS main
-            // run loop (NSWindow API is main-thread-only). The closure
-            // captures only the `AppHandle` (Clone + Send + 'static) and
-            // re-fetches the window + ns_ptr fresh each tick — no raw
-            // pointer is sent across threads.
+            // Apply the pet window's topmost backend at creation (before the
+            // first show) so macOS evaluates space membership with the flags
+            // already set. NSPanel path converts the window to a real NSPanel
+            // (Dock level + fullscreen-auxiliary collectionBehavior); legacy
+            // path applies the ScreenSaver level + behavior 770 and spawns a
+            // 500ms re-apply thread. See `apply_pet_backend_init` /
+            // `spawn_legacy_reapply_thread`.
             let app_handle = app.handle().clone();
-            std::thread::spawn(move || {
-                loop {
-                    std::thread::sleep(std::time::Duration::from_millis(500));
-                    let app = app_handle.clone();
-                    let app_for_closure = app.clone();
-                    let _ = app.run_on_main_thread(move || {
-                        reapply_pet_topmost(&app_for_closure);
-                    });
-                }
-            });
+            apply_pet_backend_init(&app_handle);
+            spawn_legacy_reapply_thread(app_handle);
 
             Ok(())
         })

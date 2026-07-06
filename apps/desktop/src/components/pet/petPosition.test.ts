@@ -118,33 +118,45 @@ describe('clampPetPosition', () => {
 describe('computePanelPosition', () => {
   const workArea: PetWorkArea = { x: 0, y: 25, width: 1440, height: 875 };
 
-  it('opens the panel to the right of the pet when there is room', () => {
-    // Pet at top-left: panel opens right + below.
-    const pos = computePanelPosition({ x: 100, y: 100 }, workArea);
-    expect(pos.x).toBe(100 + PET_WINDOW_SIZE + PET_PANEL_GAP);
-    expect(pos.y).toBe(100);
+  it('opens the panel ABOVE the pet when there is room above', () => {
+    // Pet low enough that there is >= PET_PANEL_HEIGHT+gap room above it
+    // (workArea.y=25, so petY must be >= 25 + 520 + 8 = 553).
+    const pos = computePanelPosition({ x: 600, y: 600 }, workArea);
+    expect(pos.y).toBe(600 - PET_PANEL_GAP - PET_PANEL_HEIGHT);
+    // X is centered on the pet.
+    expect(pos.x).toBe(600 + (PET_WINDOW_SIZE - PET_PANEL_WIDTH) / 2);
     // Whole panel inside the work area.
     expect(pos.x + PET_PANEL_WIDTH).toBeLessThanOrEqual(workArea.x + workArea.width);
     expect(pos.y + PET_PANEL_HEIGHT).toBeLessThanOrEqual(workArea.y + workArea.height);
   });
 
-  it('opens the panel to the left when the pet is near the right edge', () => {
-    // Pet near right edge: panel would overflow right → opens left.
-    const petX = workArea.width - PET_WINDOW_SIZE - 10;
-    const pos = computePanelPosition({ x: petX, y: 100 }, workArea);
-    expect(pos.x).toBe(petX - PET_PANEL_GAP - PET_PANEL_WIDTH);
-    expect(pos.x).toBeGreaterThanOrEqual(workArea.x);
-  });
-
-  it('opens the panel above when the pet is near the bottom edge', () => {
-    // Pet near bottom: panel would overflow below → opens above.
-    const petY = workArea.y + workArea.height - PET_WINDOW_SIZE - 10;
-    const pos = computePanelPosition({ x: 100, y: petY }, workArea);
+  it('opens the panel BELOW the pet when the pet is near the top edge', () => {
+    // Pet near top: not enough room above → opens below (panel top = pet bottom + gap).
+    const petY = workArea.y + 10;
+    const pos = computePanelPosition({ x: 600, y: petY }, workArea);
+    expect(pos.y).toBe(petY + PET_WINDOW_SIZE + PET_PANEL_GAP);
+    expect(pos.x).toBe(600 + (PET_WINDOW_SIZE - PET_PANEL_WIDTH) / 2);
     expect(pos.y + PET_PANEL_HEIGHT).toBeLessThanOrEqual(workArea.y + workArea.height);
   });
 
+  it('centers the panel on the pet X, clamped when the pet is near the left edge', () => {
+    // Pet near left edge: centered X would underflow → clamped to work area.
+    // Pet y is low enough that panel opens above.
+    const pos = computePanelPosition({ x: 0, y: 600 }, workArea);
+    expect(pos.x).toBe(workArea.x);
+    expect(pos.y).toBe(600 - PET_PANEL_GAP - PET_PANEL_HEIGHT);
+  });
+
+  it('centers the panel on the pet X, clamped when the pet is near the right edge', () => {
+    // Pet near right edge: centered X would overflow → clamped to work area.
+    const petX = workArea.width - PET_WINDOW_SIZE;
+    const pos = computePanelPosition({ x: petX, y: 600 }, workArea);
+    expect(pos.x).toBe(workArea.x + workArea.width - PET_PANEL_WIDTH);
+  });
+
   it('clamps the panel fully on-screen at the bottom-right corner', () => {
-    // Pet at the very bottom-right corner.
+    // Pet at the very bottom-right corner: panel opens above (room exists)
+    // and is clamped horizontally to the work area.
     const petX = workArea.x + workArea.width - PET_WINDOW_SIZE;
     const petY = workArea.y + workArea.height - PET_WINDOW_SIZE;
     const pos = computePanelPosition({ x: petX, y: petY }, workArea);
@@ -152,6 +164,48 @@ describe('computePanelPosition', () => {
     expect(pos.y + PET_PANEL_HEIGHT).toBeLessThanOrEqual(workArea.y + workArea.height);
     expect(pos.x).toBeGreaterThanOrEqual(workArea.x);
     expect(pos.y).toBeGreaterThanOrEqual(workArea.y);
+  });
+
+  it('NEVER overlaps the pet, even when the work area is too short to fit the panel', () => {
+    // Degenerate tiny work area: height < PET_PANEL_HEIGHT. Neither above nor
+    // below has enough room for the full panel. The function must still keep
+    // the panel off the pet — it picks the side with more room and places the
+    // panel at the non-overlapping position for that side (aboveTop or
+    // belowTop), accepting overflow past the work-area edge.
+    const tiny: PetWorkArea = { x: 0, y: 0, width: 800, height: 400 };
+    const petPos = { x: 340, y: 200 };
+    const pos = computePanelPosition(petPos, tiny);
+    // The panel must NOT overlap the pet vertically: either panel bottom <=
+    // petTop - gap (panel is above), or panel top >= petBottom + gap (panel
+    // is below).
+    const petTop = petPos.y;
+    const petBottom = petPos.y + PET_WINDOW_SIZE;
+    const panelTop = pos.y;
+    const panelBottom = pos.y + PET_PANEL_HEIGHT;
+    const aboveOk = panelBottom <= petTop - PET_PANEL_GAP;
+    const belowOk = panelTop >= petBottom + PET_PANEL_GAP;
+    expect(aboveOk || belowOk).toBe(true);
+    // Sanity: panel has a non-zero height.
+    expect(panelBottom).toBeGreaterThan(panelTop);
+  });
+
+  it('picks the side with more room when neither above nor below fits cleanly', () => {
+    // Pet in the LOWER half of a short work area: more room above than below.
+    // The panel should open ABOVE (overflow above the work-area top) so its
+    // bottom = petTop - gap — no overlap with the pet body. The previous
+    // implementation's clamp fallback forced BELOW here, pushing the panel
+    // off the bottom edge and (in some layouts) back onto the pet.
+    const tiny: PetWorkArea = { x: 0, y: 0, width: 800, height: 400 };
+    const petPos = { x: 340, y: 300 };
+    const pos = computePanelPosition(petPos, tiny);
+    // Panel is above the pet: panel bottom <= petTop - gap.
+    expect(pos.y + PET_PANEL_HEIGHT).toBeLessThanOrEqual(petPos.y - PET_PANEL_GAP);
+  });
+
+  it('never overlaps the pet when opening above on a normal work area', () => {
+    // Regression: when opening above, the panel bottom + gap must be ≤ pet top.
+    const pos = computePanelPosition({ x: 600, y: 600 }, workArea);
+    expect(pos.y + PET_PANEL_HEIGHT).toBeLessThanOrEqual(600 - PET_PANEL_GAP);
   });
 });
 

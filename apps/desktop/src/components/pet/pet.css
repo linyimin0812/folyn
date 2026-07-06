@@ -65,9 +65,10 @@ html.is-pet-window .pet-root {
 
 .pet-mascot {
   /* 88px in the 120x120 pet window. At 88px, click scale 1.08 → ~95px and
-   * the breathing `drop-shadow` halo (up to 7px) → ~98px, both fit inside
-   * the 120px window with margin. Previously 108px, which combined with
-   * scale 1.18 (→127px) + halo clipped the circle's edges during animation. */
+   * the breathing `drop-shadow` halo (up to 16px) → ~108px effective visible
+   * extent, both fit inside the 120px window with margin. Previously 108px,
+   * which combined with scale 1.18 (→127px) + halo clipped the circle's edges
+   * during animation. */
   width: 88px;
   height: 88px;
   /* `overflow: visible` so the circle (now r=244 inside the 512 viewBox, with
@@ -77,7 +78,7 @@ html.is-pet-window .pet-root {
    * window still clips at 120px, but the mascot is shrunk to 88px so the
    * halo + scale fit inside with margin. */
   overflow: visible;
-  cursor: grab;
+  cursor: pointer;
   transform-origin: center;
   will-change: transform;
   color: var(--acc, #3a6ef0);
@@ -85,33 +86,55 @@ html.is-pet-window .pet-root {
 }
 
 .pet-mascot:hover { transform: scale(1.04); }
-.pet-mascot:active { cursor: grabbing; }
+.pet-mascot:active { cursor: pointer; }
 
 /* ── Breathing-light halo ──
  * A soft `drop-shadow` filter pulse around the dark tile (the tile is opaque,
  * so the glow must be a halo around it, not a blob behind it). Combined with
  * the state animations below via a comma-separated `animation` list so the
  * breathing never stops during state changes; the breathe owns `filter`,
- * the state keyframes own `transform`. */
+ * the state keyframes own `transform`.
+ *
+ * Tuned for an unmistakably visible pulse even when no mouse is over the pet
+ * (idle): peak halo 20px @ alpha 1.0, trough 10px @ alpha 0.4, 2.4s cycle.
+ * The halo color is soft white (not the previous blue) so it reads as a
+ * neutral glow against any desktop wallpaper and stays clearly visible in
+ * both light and dark themes. The peak radius slightly exceeds the ~16px
+ * margin the 88px mascot leaves inside the 120px window (16px each side), so
+ * the halo reaches past the window edge and is clipped to a soft square —
+ * this is intentional: the clipped halo at the window boundary makes the
+ * pulse read clearly at the edge rather than fading into the transparent
+ * surround. The trough drops to alpha 0.4 (vs the previous 0.6) so the
+ * bright/dim contrast is larger and the pulse is unmissable. The 2.4s cycle
+ * is slightly slower than the previous 2.0s so the peak is held longer and
+ * reads as a deliberate pulse rather than a flicker. macOS may throttle CSS
+ * animations on a `focus:false` window when the owning app is not frontmost,
+ * so the amplitude is set high enough to be unmissable when the webview is
+ * active. */
 @keyframes pet-breathe {
-  0%, 100% { filter: drop-shadow(0 0 3px rgba(58, 110, 240, 0.4)); }
-  50%      { filter: drop-shadow(0 0 7px rgba(58, 110, 240, 0.85)); }
+  0%, 100% { filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.4)); }
+  50%      { filter: drop-shadow(0 0 20px rgba(255, 255, 255, 1.0)); }
 }
 
-/* ── State: idle (breathing/floating) ── */
+/* ── State: idle (breathing/floating) ──
+ * The idle state owns the most visible breathing so the pet pulses clearly
+ * even with no mouse interaction. The state keyframe (`pet-idle`) nudges
+ * `transform` by 2px (not 1px) so there is BOTH a filter pulse AND a visible
+ * float at idle — the previous 1px nudge was too subtle to read as motion.
+ * Both run in parallel via the comma-separated `animation` list. */
 .pet-mascot.is-idle {
   animation: pet-idle 3.2s ease-in-out infinite,
-             pet-breathe 2.6s ease-in-out infinite;
+             pet-breathe 2.4s ease-in-out infinite;
 }
 @keyframes pet-idle {
   0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-1px); }
+  50%      { transform: translateY(-2px); }
 }
 
 /* ── State: hover (looks up / reacts) ── */
 .pet-mascot.is-hover {
   animation: pet-hover 1.6s ease-in-out infinite,
-             pet-breathe 2.6s ease-in-out infinite;
+             pet-breathe 2.4s ease-in-out infinite;
 }
 @keyframes pet-hover {
   0%, 100% { transform: translateY(-2px) rotate(-2deg); }
@@ -121,8 +144,8 @@ html.is-pet-window .pet-root {
 /* ── State: drag (wobble while being dragged) ── */
 .pet-mascot.is-drag {
   animation: pet-drag 0.5s ease-in-out infinite,
-             pet-breathe 2.6s ease-in-out infinite;
-  cursor: grabbing;
+             pet-breathe 2.4s ease-in-out infinite;
+  cursor: pointer;
 }
 @keyframes pet-drag {
   0%, 100% { transform: rotate(-4deg) scale(1.02); }
@@ -134,7 +157,7 @@ html.is-pet-window .pet-root {
 /* ── State: click (squish/pop feedback) ── */
 .pet-mascot.is-click {
   animation: pet-click 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 1,
-             pet-breathe 2.6s ease-in-out infinite;
+             pet-breathe 2.4s ease-in-out infinite;
 }
 @keyframes pet-click {
   0%   { transform: scale(1, 1); }

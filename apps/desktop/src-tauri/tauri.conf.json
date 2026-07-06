@@ -23,6 +23,7 @@
     "resources": []
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "label": "main",
@@ -41,6 +42,7 @@
         "title": "Quill Pet",
         "width": 120,
         "height": 120,
+        "center": true,
         "resizable": false,
         "decorations": false,
         "transparent": true,
@@ -62,7 +64,7 @@
         "resizable": true,
         "decorations": false,
         "transparent": false,
-        "alwaysOnTop": true,
+        "alwaysOnTop": false,
         "skipTaskbar": true,
         "shadow": true,
         "visible": false,

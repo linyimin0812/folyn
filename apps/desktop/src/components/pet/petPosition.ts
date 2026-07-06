@@ -21,12 +21,14 @@ export const PET_WINDOW_SIZE = 120;
  * Dock and menu bar) — these are a small safety inset so the mascot doesn't
  * sit flush against the Dock's edge.
  *
- * The bottom margin stays larger than the right so even on a setup where the
- * work area underreports the Dock (e.g. auto-hide Dock), the mascot's lower
- * portion still clears the screen bottom.
+ * The bottom margin is intentionally larger than the right: the default
+ * position is "bottom-right, slightly lifted" so the mascot clears the
+ * Dock + the rounded screen corner with visible breathing room. Users who
+ * have dragged the pet still keep their saved position (settingsStore clamp
+ * branch); this margin only sets the first-launch default.
  */
 export const PET_RIGHT_MARGIN = 8;
-export const PET_BOTTOM_MARGIN = 12;
+export const PET_BOTTOM_MARGIN = 48;
 
 /**
  * Minimum top-edge position so the pet stays below the macOS menu bar on
@@ -112,11 +114,30 @@ export const PET_PANEL_GAP = 8;
 
 /**
  * Compute the pet-panel position (physical px, absolute screen coords) given
- * the pet's current position and the work area. The panel opens to the
- * right of the pet by default; if that would overflow the right edge it
- * opens to the left instead. Likewise the panel opens below the pet, but if
- * that would overflow the bottom edge it opens above. Both axes are clamped
- * to the work area so the whole panel stays on-screen.
+ * the pet's current position and the work area. The panel opens ABOVE the pet
+ * by default (panel bottom edge = pet top edge - gap); if there isn't room
+ * above (pet near the top of the screen), the panel opens BELOW the pet
+ * instead (panel top edge = pet bottom edge + gap).
+ *
+ * The panel's X is centered on the pet's X (panel.x = pet.x + PET_WINDOW_SIZE/2
+ * - PET_PANEL_WIDTH/2), then clamped to the work area's horizontal extent so
+ * the whole panel stays on-screen even when the pet is near the left/right
+ * edge.
+ *
+ * No-overlap invariant: the panel NEVER covers the pet icon. The chosen
+ * vertical position always leaves at least `PET_PANEL_GAP` between the panel
+ * and the pet. Vertical Y is NOT clamped to the work area — when neither
+ * above nor below has enough room to fit the full panel (degenerate tiny
+ * work area, or pet in the middle of a short screen), the panel is placed
+ * on the side with more room at its non-overlapping position
+ * (aboveTop = petTop - gap - panelHeight, or belowTop = petBottom + gap),
+ * accepting that the panel overflows the work-area edge on that side. The
+ * previous implementation clamped Y to the work area and then fell back to
+ * `belowTop` if the clamp pushed the panel onto the pet — but that fallback
+ * could push the panel off the bottom edge when the pet was in the lower
+ * half of a short work area. Picking the side with more room (and accepting
+ * overflow) is strictly better: the panel never overlaps the pet, and it
+ * overflows the edge that has the least visual cost.
  *
  * The pet window's outer position is its top-left in physical px (matches
  * Tauri's `PhysicalPosition`), so `petPos` must be the same kind of value
@@ -126,19 +147,41 @@ export function computePanelPosition(
   petPos: PetPosition,
   workArea: PetWorkArea,
 ): PetPosition {
-  const rightOpen = petPos.x + PET_WINDOW_SIZE + PET_PANEL_GAP + PET_PANEL_WIDTH;
-  const opensRight = rightOpen <= workArea.x + workArea.width;
-  const x = opensRight
-    ? petPos.x + PET_WINDOW_SIZE + PET_PANEL_GAP
-    : petPos.x - PET_PANEL_GAP - PET_PANEL_WIDTH;
+  // Center the panel on the pet horizontally, then clamp to the work area.
+  const centeredX = petPos.x + (PET_WINDOW_SIZE - PET_PANEL_WIDTH) / 2;
+  const minX = workArea.x;
+  const maxX = workArea.x + Math.max(0, workArea.width - PET_PANEL_WIDTH);
+  const x = Math.min(Math.max(centeredX, minX), maxX);
 
-  const belowOpen = petPos.y + PET_PANEL_HEIGHT;
-  const opensBelow = belowOpen <= workArea.y + workArea.height;
-  const y = opensBelow
-    ? petPos.y
-    : Math.max(workArea.y, petPos.y + PET_WINDOW_SIZE - PET_PANEL_HEIGHT);
+  // Vertical: prefer ABOVE the pet; if there isn't room, go BELOW. If neither
+  // fits cleanly, pick the side with more room and accept overflow on that
+  // side — the panel still does NOT overlap the pet (panel bottom = petTop -
+  // gap for above; panel top = petBottom + gap for below).
+  const aboveTop = petPos.y - PET_PANEL_GAP - PET_PANEL_HEIGHT;
+  const belowTop = petPos.y + PET_WINDOW_SIZE + PET_PANEL_GAP;
+  // Vertical space available above the pet (down to workArea.y) and below the
+  // pet (up to workArea.y + workArea.height). Both exclude PET_PANEL_GAP so
+  // the no-overlap clearance is baked into the room calc.
+  const roomAbove = petPos.y - PET_PANEL_GAP - workArea.y;
+  const roomBelow =
+    workArea.y + workArea.height - (petPos.y + PET_WINDOW_SIZE) - PET_PANEL_GAP;
 
-  return clampPanelPosition({ x, y }, workArea);
+  let y: number;
+  if (roomAbove >= PET_PANEL_HEIGHT) {
+    // Above fits cleanly → panel top at aboveTop, panel bottom at petTop - gap.
+    y = aboveTop;
+  } else if (roomBelow >= PET_PANEL_HEIGHT) {
+    // Below fits cleanly → panel top at petBottom + gap.
+    y = belowTop;
+  } else {
+    // Neither side fits the full panel. Pick the side with more room; the
+    // panel overflows the work-area edge on that side but never overlaps the
+    // pet. Tie-break goes to ABOVE so the panel drops from above (matches the
+    // default preferred side).
+    y = roomAbove >= roomBelow ? aboveTop : belowTop;
+  }
+
+  return { x, y };
 }
 
 /**

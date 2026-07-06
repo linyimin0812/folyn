@@ -13,7 +13,7 @@ crate-type = ["lib", "cdylib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["devtools", "unstable", "protocol-asset"] }
+tauri = { version = "2", features = ["devtools", "unstable", "protocol-asset", "macos-private-api"] }
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = { version = "2", features = ["watch"] }
@@ -24,6 +24,13 @@ serde_json = "1"
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.25"
 objc = "0.2"
+# NSPanel backend for the pet / pet-panel windows. Converts the Tauri
+# WebviewWindow into a real NSPanel (object_setClass onto a custom objc2
+# subclass with empty ivars + mouse-event overrides — the design that avoids
+# the click crash our earlier base-NSPanel swap hit, see task
+# 07-06-pet-overlay-on-fullscreen-apps). Not on crates.io; the exact revision
+# is pinned via Cargo.lock for reproducible builds.
+tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }
 
 [profile.release]
 codegen-units = 1
