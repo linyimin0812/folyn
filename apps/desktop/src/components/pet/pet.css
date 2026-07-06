@@ -436,6 +436,47 @@ html.is-pet-panel-window body {
 }
 .pet-chat-bubble-content {
   white-space: pre-wrap;
+  /* Allow selecting message text for copy, even though `.pet-panel-root`
+   * sets `user-select: none` (the launcher/input stay non-selectable). */
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Copy button on assistant message bubbles. Small (~20px) icon button,
+ * always visible (the panel is compact; hover-only would be fiddly on the
+ * 120px-wide mascot-adjacent surface). Clicking copies the bubble's text
+ * via the Tauri clipboard-manager plugin; the icon toggles to a check for
+ * ~1.2s as "已复制" feedback. */
+.pet-chat-copy {
+  appearance: none;
+  align-self: flex-end;
+  margin-top: 2px;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--t3, #8a92a3);
+  cursor: pointer;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.pet-chat-copy:hover {
+  color: var(--t1, #1f2330);
+  background: var(--hov, #e2e5ee);
+}
+.pet-chat-copy[aria-pressed="true"] {
+  color: var(--acc, #3a6ef0);
+}
+.pet-chat-copy-icon {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pet-chat-input-row {

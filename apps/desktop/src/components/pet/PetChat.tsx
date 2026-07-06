@@ -36,6 +36,23 @@ async function emitMenuAction(action: PetMenuAction): Promise<void> {
   }
 }
 
+/** Copy text to the clipboard via the Tauri clipboard-manager plugin (same
+ *  API the main app's JsonFileViewerPreview uses). Guarded with `isTauri()`
+ *  because the panel may run in a non-Tauri (web/dev) context; the dynamic
+ *  import keeps the plugin out of the main-window bundle. Returns true on
+ *  success so the caller can toggle "已复制" feedback. */
+async function copyToClipboard(text: string): Promise<boolean> {
+  if (!isTauri() || !text) return false;
+  try {
+    const mod = await import('@tauri-apps/plugin-clipboard-manager');
+    await mod.writeText(text);
+    return true;
+  } catch (err) {
+    console.warn('[pet-chat] clipboard writeText failed:', err);
+    return false;
+  }
+}
+
 /** Detect "no AI configured" (R7). Mirrors the implicit check in
  *  AiPanel/ChatInput: the AI is considered configured when both the
  *  adapter id and the CLI binary path are non-empty. Defaults in
@@ -55,6 +72,7 @@ export function PetChat() {
   const clear = usePetChatStore((s) => s.clear);
 
   const [input, setInput] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const configured = isPetChatConfigured();
 
@@ -107,6 +125,16 @@ export function PetChat() {
     setStreaming(false);
   }, [setStreaming]);
 
+  const handleCopy = useCallback(async (id: string, text: string) => {
+    if (!text) return;
+    const ok = await copyToClipboard(text);
+    if (ok) {
+      setCopiedId(id);
+      // Brief "已复制" feedback: toggle the icon to a check for ~1.2s.
+      window.setTimeout(() => setCopiedId((curr) => (curr === id ? null : curr)), 1200);
+    }
+  }, []);
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -150,6 +178,30 @@ export function PetChat() {
           <div key={m.id} className={`pet-chat-bubble pet-chat-bubble-${m.role}`}>
             <div className="pet-chat-bubble-role">{m.role === 'user' ? '我' : 'AI'}</div>
             <div className="pet-chat-bubble-content">{m.content || (streaming ? '…' : '')}</div>
+            {m.role === 'assistant' && m.content && (
+              <button
+                type="button"
+                className="pet-chat-copy"
+                onClick={() => void handleCopy(m.id, m.content)}
+                aria-label={copiedId === m.id ? '已复制' : '复制'}
+                aria-pressed={copiedId === m.id}
+              >
+                <span className="pet-chat-copy-icon" aria-hidden="true">
+                  {copiedId === m.id ? (
+                    // check
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 8.5l3.5 3.5L13 5" />
+                    </svg>
+                  ) : (
+                    // copy (two overlapping rects)
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="5" y="5" width="8" height="8" rx="1.5" />
+                      <path d="M11 5V3.5A1.5 1.5 0 009.5 2H3.5A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" />
+                    </svg>
+                  )}
+                </span>
+              </button>
+            )}
           </div>
         ))}
         <div ref={messagesEndRef} />

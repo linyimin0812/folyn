@@ -1,16 +1,22 @@
 /* ── Pet mascot sprite ──
- * The Quill app icon — dark rounded-square tile + feather quill + ink drop —
- * rendered as an inline SVG so it can be animated by CSS keyframes. The
- * artwork mirrors /public/quill.svg verbatim (same viewBox 0 0 512 512, same
- * rect rx=110 dark `bg` gradient, same feather group transform, same ink
- * drop) so the pet mascot matches the app icon exactly. The gradient ids are
- * prefixed with `pet` (`petBg`, `petQuillGrad`, `petInkGrad`) to avoid id
- * collisions if the SVG is ever inlined alongside the main app's icon.
+ * Bare feather quill + ink drop — NO background tile. The pet window is
+ * `transparent: true`, so the desktop shows through; the previous dark
+ * rounded-square `<rect fill="url(#petBg)"/>` read as a "blank background"
+ * tile and is removed. Only the feather artwork (left/right barbs + spine +
+ * nib + nib split) and the ink drop circle + highlight remain, copied
+ * verbatim from /public/quill.svg (same group transform, same paths).
  *
- * The sprite is sized to 108px inside the 120x120 pet window, leaving a ~6px
- * transparent margin so the breathing `drop-shadow` halo on `.pet-mascot`
- * (see pet.css) is visible around the dark tile. States (idle/hover/drag/
- * click) still switch via `is-<state>` classes on `.pet-mascot`.
+ * The viewBox is cropped tight to the feather's bounding box in the 512-space
+ * (the feather group `translate(240,252) rotate(-38)` maps its local
+ * x∈[-64,64], y∈[-140,144] bbox to roughly x∈[103,379], y∈[102,405]; the ink
+ * drop at (318,360) r=20 sits inside that). A small margin is added so the
+ * feather fills the 120×120 window without huge empty transparent borders —
+ * `100 100 285 310`. width/height stay 108px (mascot is 108px in the 120
+ * window, leaving ~6px for the breathing `drop-shadow` halo on
+ * `.pet-mascot`, which now rings the feather silhouette instead of a square
+ * tile). States (idle/hover/drag/click) still switch via `is-<state>`
+ * classes on `.pet-mascot`. The `petQuillGrad` + `petInkGrad` defs are kept
+ * (ids prefixed with `pet` to avoid collisions with the main app's icon).
  */
 
 export interface PetMascotProps {
@@ -22,17 +28,13 @@ export function PetMascot({ state }: PetMascotProps) {
   return (
     <svg
       className={`pet-mascot is-${state}`}
-      viewBox="0 0 512 512"
+      viewBox="100 100 285 310"
       width="108"
       height="108"
       fill="none"
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id="petBg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#0f1420" />
-          <stop offset="100%" stopColor="#181e30" />
-        </linearGradient>
         <linearGradient id="petQuillGrad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#f0ece0" />
           <stop offset="100%" stopColor="#d4c9a8" />
@@ -43,11 +45,9 @@ export function PetMascot({ state }: PetMascotProps) {
         </linearGradient>
       </defs>
 
-      {/* Background rounded square — matches quill.svg rx=110. */}
-      <rect width="512" height="512" rx="110" fill="url(#petBg)" />
-
       {/* Feather quill, tilted -38deg, centered — copied verbatim from
-          /public/quill.svg. */}
+          /public/quill.svg (background tile removed; transparent window
+          surface shows the desktop through the feather silhouette). */}
       <g transform="translate(240,252) rotate(-38)">
         {/* Left barbs */}
         <path d="M 0,-140 C -44,-90 -64,-38 -58,18 C -52,62 -30,96 0,116 Z"

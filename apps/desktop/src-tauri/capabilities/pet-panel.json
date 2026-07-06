@@ -35,6 +35,7 @@
     },
     "shell:allow-stdin-write",
     "shell:allow-kill",
+    "clipboard-manager:allow-write-text",
     "fs:allow-mkdir",
     "fs:allow-exists",
     "fs:allow-read-file",

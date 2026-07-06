@@ -10,6 +10,14 @@ if (!Element.prototype.scrollIntoView) {
 // Mock @tauri-apps/api/event (emit) — provided by vitest.workspace.ts alias.
 import { emit } from '@tauri-apps/api/event';
 
+// Mock @tauri-apps/plugin-clipboard-manager — the copy button on assistant
+// messages dynamically imports `writeText`. Mirror the stub pattern used in
+// JsonFileViewerPreview.test.tsx.
+const writeTextMock = vi.fn().mockResolvedValue(undefined);
+vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
+  writeText: writeTextMock,
+}));
+
 // Mock the CliAdapter-backed petChatService so we don't spawn a real CLI.
 // We assert the service is invoked with the right shape and can simulate a
 // streamed token by calling the onToken hook directly. vi.hoisted keeps
@@ -57,6 +65,8 @@ beforeEach(() => {
   stopMock.mockClear();
   resetMock.mockClear();
   lastHandlersRef.current = null;
+  writeTextMock.mockClear();
+  writeTextMock.mockResolvedValue(undefined);
   // mockImplementation MUST be set after mockResolvedValue — otherwise the
   // latter overrides it and handlers never get captured.
   sendMock.mockResolvedValue(undefined);
@@ -200,5 +210,55 @@ describe('PetChat', () => {
     render(<PetChat />);
     expect(screen.getByText('saved user')).toBeTruthy();
     expect(screen.getByText('saved ai')).toBeTruthy();
+  });
+
+  it('assistant messages render a copy button; user messages do not', () => {
+    usePetChatStore.setState({
+      messages: [
+        { id: 'u1', role: 'user', content: 'hi there', ts: 1 },
+        { id: 'a1', role: 'assistant', content: 'hello back', ts: 2 },
+      ],
+      streaming: false,
+    });
+    render(<PetChat />);
+    // assistant bubble has a copy button labelled "复制"
+    expect(screen.getByLabelText('复制')).toBeTruthy();
+    // only one copy button (the user bubble has none)
+    expect(screen.getAllByLabelText('复制').length).toBe(1);
+  });
+
+  it('clicking the copy button calls clipboard writeText with the message text', async () => {
+    usePetChatStore.setState({
+      messages: [
+        { id: 'a1', role: 'assistant', content: 'copy me please', ts: 1 },
+      ],
+      streaming: false,
+    });
+    render(<PetChat />);
+    await fireEvent.click(screen.getByLabelText('复制'));
+    await waitFor(() => expect(writeTextMock).toHaveBeenCalledWith('copy me please'));
+    // feedback toggles the label to "已复制"
+    expect(screen.getByLabelText('已复制')).toBeTruthy();
+  });
+
+  it('message bubble content is selectable via pet.css override', async () => {
+    // jsdom does not load CSS files, so getComputedStyle cannot reflect the
+    // rule. Read the stylesheet source and assert the `user-select: text`
+    // override exists on `.pet-chat-bubble-content` (the input/launcher
+    // stay non-selectable via `.pet-panel-root`'s `user-select: none`).
+    const { readFile } = await import('node:fs/promises');
+    const { resolve } = await import('node:path');
+    // vitest's desktop project root is apps/desktop; process.cwd() is the
+    // repo root. Try desktop-root first, then repo-root-relative.
+    const candidates = [
+      resolve('apps/desktop/src/components/pet/pet.css'),
+      resolve('src/components/pet/pet.css'),
+    ];
+    let css = '';
+    for (const p of candidates) {
+      try { css = await readFile(p, 'utf8'); break; } catch { /* try next */ }
+    }
+    expect(css).toContain('.pet-chat-bubble-content');
+    expect(css).toMatch(/\.pet-chat-bubble-content\s*{[^}]*user-select:\s*text/);
   });
 });
