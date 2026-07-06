@@ -513,23 +513,27 @@ pub async fn pet_cursor_probe(app: tauri::AppHandle) -> Result<PetCursorProbe, S
     })
 }
 
-/// Get the pet's usable work-area rect (physical px, top-left origin) on the
-/// primary monitor. On macOS this is `NSScreen::mainScreen().visibleFrame`,
-/// which excludes the Dock and menu bar — using it for default-position math
-/// avoids placing the mascot under the Dock regardless of Dock size/position.
-/// On non-macOS targets the full monitor rect is returned as a best-effort
-/// fallback (pet mode is macOS-only at present anyway).
+/// Get the pet's usable work-area rect on the primary monitor, plus the
+/// monitor's `scale_factor` (physical px per logical point). On macOS the
+/// rect is `NSScreen::mainScreen().visibleFrame` (logical points, excludes
+/// the Dock and menu bar); on other platforms it's the full monitor rect as
+/// a best-effort fallback (pet mode is macOS-only at present anyway).
 ///
-/// Returns `{ x, y, width, height }` where `(x, y)` is the top-left corner of
-/// the work area in physical screen coordinates (top-left origin, NOT the
-/// bottom-left origin that AppKit's NSRect uses natively — we flip Y here so
-/// the value is directly comparable to `set_pet_position`'s `PhysicalPosition`).
+/// **Unit contract**: `x`/`y`/`width`/`height` are **logical points** with a
+/// top-left origin (NOT the bottom-left origin that AppKit's NSRect uses
+/// natively — we flip Y here so the value is directly comparable across
+/// platforms). `scale_factor` converts logical points to physical pixels:
+/// `physical = logical * scale_factor`. `set_pet_position` / `outerPosition()`
+/// operate in physical px, so the JS caller must multiply by `scale_factor`
+/// before calling those APIs and divide by `scale_factor` after reading from
+/// them. The math in `petPosition.ts` runs in logical space.
 #[derive(Serialize)]
 pub struct PetWorkArea {
     pub x: i32,
     pub y: i32,
     pub width: i32,
     pub height: i32,
+    pub scale_factor: f64,
 }
 
 #[tauri::command]
@@ -556,19 +560,25 @@ pub async fn pet_get_work_area(_app: tauri::AppHandle) -> Result<PetWorkArea, St
             let full_rect: NSRect = NSScreen::frame(screen);
             let flip_y =
                 full_rect.size.height - vis_rect.origin.y - vis_rect.size.height;
+            // `backingScaleFactor` is the physical-px-per-logical-point ratio
+            // (2.0 on Retina, 1.0 on non-Retina). The math in petPosition.ts
+            // runs in logical points; the JS caller uses this to convert at
+            // the set_pet_position / outerPosition() boundary.
+            let scale_factor: f64 = msg_send![screen, backingScaleFactor];
 
             Ok(PetWorkArea {
                 x: vis_rect.origin.x as i32,
                 y: flip_y as i32,
                 width: vis_rect.size.width as i32,
                 height: vis_rect.size.height as i32,
+                scale_factor,
             })
         }
     }
 
     #[cfg(not(target_os = "macos"))]
     {
-        let monitor = app
+        let monitor = _app
             .primary_monitor()
             .map_err(|e| e.to_string())?
             .ok_or_else(|| "no primary monitor".to_string())?;
@@ -579,6 +589,7 @@ pub async fn pet_get_work_area(_app: tauri::AppHandle) -> Result<PetWorkArea, St
             y: pos.y as i32,
             width: size.width as i32,
             height: size.height as i32,
+            scale_factor: monitor.scale_factor(),
         })
     }
 }

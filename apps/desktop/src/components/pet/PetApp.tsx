@@ -64,6 +64,7 @@ interface PetWorkAreaResult {
   y: number;
   width: number;
   height: number;
+  scale_factor: number;
 }
 
 /**
@@ -106,6 +107,7 @@ async function openOrTogglePetPanel(): Promise<void> {
     }
 
     const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
+    const sf = workArea.scale_factor || 1;
 
     // Restore a saved SIZE only (so a user-resized panel keeps its size
     // across opens). The panel POSITION is intentionally NOT restored —
@@ -128,12 +130,31 @@ async function openOrTogglePetPanel(): Promise<void> {
     // a `PET_PANEL_GAP` clearance between the panel and the pet, so the
     // panel never covers the icon — even if the pet has moved since the
     // last open. The computed position is NOT persisted.
-    const petPos = { x: probe.window_x, y: probe.window_y };
-    const panelPos = computePanelPosition(petPos, workArea);
+    //
+    // Unit boundary: `probe.window_x/y` is PHYSICAL px (from `outerPosition()`
+    // inside `pet_cursor_probe`); `computePanelPosition` runs in LOGICAL
+    // points (workArea is logical). Divide the probe position by `sf` to get
+    // logical, compute, then multiply the result by `sf` to get the physical
+    // px that `pet_panel_set_position` expects.
+    const petPosLogical = {
+      x: probe.window_x / sf,
+      y: probe.window_y / sf,
+    };
+    const panelPosLogical = computePanelPosition(petPosLogical, {
+      x: workArea.x,
+      y: workArea.y,
+      width: workArea.width,
+      height: workArea.height,
+      scale_factor: sf,
+    });
+    const panelPosPhysical = {
+      x: Math.round(panelPosLogical.x * sf),
+      y: Math.round(panelPosLogical.y * sf),
+    };
 
     // Position the panel before showing so it appears at the right spot in
     // one frame (avoids a flash at the default position).
-    await invoke('pet_panel_set_position', { x: panelPos.x, y: panelPos.y });
+    await invoke('pet_panel_set_position', panelPosPhysical);
     await invoke('pet_panel_show');
     // Re-assert the position AFTER show() too: on macOS, `set_position` on a
     // HIDDEN NSPanel/NSWindow may not take effect reliably (the window
@@ -144,7 +165,7 @@ async function openOrTogglePetPanel(): Promise<void> {
     // the "panel doesn't follow the pet after a drag" symptom: the pet's new
     // position is reflected in `probe.window_x/y`, and the re-asserted
     // `set_position` moves the visible panel to the new spot.
-    await invoke('pet_panel_set_position', { x: panelPos.x, y: panelPos.y });
+    await invoke('pet_panel_set_position', panelPosPhysical);
   } catch (err) {
     console.warn('[pet] openOrTogglePetPanel failed:', err);
   }
@@ -209,12 +230,19 @@ export function PetApp() {
     draggingRef.current = false;
 
     // Persist the new position immediately so AC7 holds even if the periodic
-    // poller hasn't fired yet.
+    // poller hasn't fired yet. `outerPosition()` returns PHYSICAL px; divide
+    // by `scaleFactor` to store LOGICAL points (display-resolution-independent,
+    // matches the work-area math). The poller below caches `sf` once and does
+    // the same conversion.
     try {
       const { getCurrentWindow } = await import('@tauri-apps/api/window');
       const after = await getCurrentWindow().outerPosition();
+      const sf = (await getCurrentWindow().scaleFactor()) || 1;
       const { useSettingsStore } = await import('@/store/settingsStore');
-      useSettingsStore.getState().setPetPosition(Math.round(after.x), Math.round(after.y));
+      useSettingsStore.getState().setPetPosition(
+        Math.round(after.x / sf),
+        Math.round(after.y / sf),
+      );
     } catch {
       // Non-fatal; the periodic poller will catch up.
     }
@@ -255,6 +283,15 @@ export function PetApp() {
   // settingsStore when it changes. Native drag doesn't deliver JS pointerup
   // reliably, so polling is the robust path.
   //
+  // Unit boundary: `outerPosition()` returns PHYSICAL px; the saved position
+  // is stored in LOGICAL points (display-resolution-independent, matches the
+  // work-area math used at launch). `scaleFactor()` is cached once per poller
+  // lifetime — it only changes when the window moves to a monitor with a
+  // different DPI, which for the pet is effectively never (single primary-
+  // monitor macOS MVP); if it ever does, the launch effect re-resolves from
+  // `pet_get_work_area.scale_factor` on the next startup and the saved logical
+  // value is still correct.
+  //
   // Topmost re-apply: Tauri's `alwaysOnTop: true` config only sets the
   // Floating NSWindow level (5), which other always-on-top apps (VS Code,
   // etc.) can cover. `pet_set_topmost_level` raises the pet to
@@ -267,14 +304,21 @@ export function PetApp() {
     let cancelled = false;
     let lastX = -1;
     let lastY = -1;
+    let sf = 1;
 
     const persist = async () => {
       if (cancelled) return;
       try {
         const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        // Cache the scale factor once; it doesn't change for a single-
+        // monitor pet window. (If it ever does, the launch effect re-
+        // resolves from pet_get_work_area on next startup.)
+        if (sf === 1) {
+          sf = await getCurrentWindow().scaleFactor() || 1;
+        }
         const pos = await getCurrentWindow().outerPosition();
-        const x = Math.round(pos.x);
-        const y = Math.round(pos.y);
+        const x = Math.round(pos.x / sf);
+        const y = Math.round(pos.y / sf);
         if (x !== lastX || y !== lastY) {
           lastX = x;
           lastY = y;
@@ -323,6 +367,13 @@ export function PetApp() {
   // position is applied first. Both calls are non-fatal if they fail — the
   // window still shows at the conf default (centered, never off-screen).
   //
+  // Unit boundary: the work area from `pet_get_work_area` is in LOGICAL points
+  // (plus `scale_factor`); the saved position is also logical. The math here
+  // (`computeDefaultPetPosition` / `clampPetPosition`) runs in logical space.
+  // `set_pet_position` / `outerPosition()` / `setPosition` operate in PHYSICAL
+  // px, so multiply by `sf` before calling them and divide by `sf` after
+  // reading `outerPosition()`.
+  //
   // `show()` resets the NSWindow level to Floating (Tauri's alwaysOnTop
   // default), which lets other always-on-top apps (VS Code, etc.) cover the
   // pet. Re-apply `pet_set_topmost_level` immediately after `show()` so the
@@ -339,6 +390,7 @@ export function PetApp() {
       try {
         const { useSettingsStore } = await import('@/store/settingsStore');
         const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
+        const sf = workArea.scale_factor || 1;
         const { petPositionX, petPositionY } = useSettingsStore.getState();
 
         // Work-area guard: if the OS returns a zero-sized work area (e.g.
@@ -355,14 +407,14 @@ export function PetApp() {
           let resolved: { x: number; y: number };
           let source: 'saved' | 'default' = 'default';
           if (petPositionX >= 0 && petPositionY >= 0) {
-            // Saved position: clamp to the current work area. If the saved
-            // value is off-screen (different monitor / pre-fix default), the
-            // clamped value is persisted back so subsequent launches skip the
-            // re-clamp.
+            // Saved position (logical): clamp to the current work area. If the
+            // saved value is off-screen (different monitor / pre-fix default),
+            // the clamped value is persisted back so subsequent launches skip
+            // the re-clamp.
             source = 'saved';
             const clamped = clampPetPosition(
               { x: petPositionX, y: petPositionY },
-              { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
+              { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height, scale_factor: sf },
             );
             if (clamped.x !== petPositionX || clamped.y !== petPositionY) {
               useSettingsStore.getState().setPetPosition(clamped.x, clamped.y);
@@ -386,29 +438,36 @@ export function PetApp() {
             source,
             saved: { x: petPositionX, y: petPositionY },
             workArea,
+            sf,
             resolved,
           });
 
           // Apply via the custom Rust command first (ACL-safe custom invoke).
-          // Then verify with `outerPosition()`; if the OS didn't honor the
-          // custom command (some builds race the WebviewWindow creation), fall
-          // back to the standard `setPosition()` API — both are valid paths,
-          // belt-and-suspenders so a silent invoke failure cannot leave the
-          // window centered.
+          // `set_pet_position` takes PHYSICAL px, so multiply the logical
+          // resolved value by `sf`. Then verify with `outerPosition()` (also
+          // physical — divide by `sf` to compare with the logical resolved);
+          // if the OS didn't honor the custom command (some builds race the
+          // WebviewWindow creation), fall back to the standard `setPosition()`
+          // API — both are valid paths, belt-and-suspenders so a silent invoke
+          // failure cannot leave the window centered.
+          const physicalX = Math.round(resolved.x * sf);
+          const physicalY = Math.round(resolved.y * sf);
           try {
-            await invoke('set_pet_position', { x: resolved.x, y: resolved.y });
+            await invoke('set_pet_position', { x: physicalX, y: physicalY });
           } catch (err) {
             console.warn('[pet] set_pet_position invoke failed, falling back to setPosition:', err);
           }
           try {
             const actual = await getCurrentWindow().outerPosition();
-            if (Math.round(actual.x) !== resolved.x || Math.round(actual.y) !== resolved.y) {
+            const actualLogicalX = Math.round(actual.x / sf);
+            const actualLogicalY = Math.round(actual.y / sf);
+            if (actualLogicalX !== resolved.x || actualLogicalY !== resolved.y) {
               console.warn('[pet] position mismatch after invoke, retrying via setPosition:', {
-                actual: { x: Math.round(actual.x), y: Math.round(actual.y) },
+                actual: { x: actualLogicalX, y: actualLogicalY },
                 expected: resolved,
               });
               const { PhysicalPosition } = await import('@tauri-apps/api/dpi');
-              await getCurrentWindow().setPosition(new PhysicalPosition(resolved.x, resolved.y));
+              await getCurrentWindow().setPosition(new PhysicalPosition(physicalX, physicalY));
             }
           } catch (err) {
             console.warn('[pet] position verify/retry failed:', err);

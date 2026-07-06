@@ -104,6 +104,15 @@ interface SettingsState {
   petPanelWidth: number;
   petPanelHeight: number;
 
+  // Storage-version key for the pet/panel position fields. The pre-fix code
+  // saved positions in PHYSICAL pixels (mixed with logical-point work-area
+  // math), which on Retina placed the pet at screen-center on launch. The fix
+  // stores positions in LOGICAL points; `petPosVersion` gates a one-shot
+  // migration that discards the old physical-pixel values (resets to -1) so
+  // every upgrader re-runs the default-position branch. Bump to invalidate
+  // any future position-unit change.
+  petPosVersion: number;
+
   // Actions
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
@@ -167,7 +176,8 @@ function debouncedPersist(state: Partial<SettingsState>) {
       syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
       vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates, boardColumns,
       petModeEnabled, petPositionX, petPositionY,
-      petPanelX, petPanelY, petPanelWidth, petPanelHeight } = state as SettingsState;
+      petPanelX, petPanelY, petPanelWidth, petPanelHeight,
+      petPosVersion } = state as SettingsState;
     storageClient.set(SETTINGS_STORAGE_KEY, {
       theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles,
       enableWikiPanel, enableClipsPanel, enableAnalyzePanel, enableDailyPanel,
@@ -179,6 +189,7 @@ function debouncedPersist(state: Partial<SettingsState>) {
       vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates, boardColumns,
       petModeEnabled, petPositionX, petPositionY,
       petPanelX, petPanelY, petPanelWidth, petPanelHeight,
+      petPosVersion,
     });
   }, 300);
 }
@@ -262,6 +273,12 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   petPanelY: -1,
   petPanelWidth: -1,
   petPanelHeight: -1,
+
+  // Position-unit migration version. 0 = pre-fix (positions saved as physical
+  // px, which on Retina placed the pet at screen-center on launch). Bumped to
+  // 1 once positions are stored as logical points; the hydrate path discards
+  // pre-1 saved positions so the default-position branch re-runs.
+  petPosVersion: 1,
 
   setTheme: (theme) => {
     const actual = theme === 'system'
@@ -393,6 +410,18 @@ storageClient.get<Partial<SettingsState>>(SETTINGS_STORAGE_KEY).then((saved) => 
     // Backfill boardColumns: 必须是非空数组且含一个 isDone 列，否则用默认。
     if (!Array.isArray(saved.boardColumns) || saved.boardColumns.length === 0 || !saved.boardColumns.some((c) => c.isDone)) {
       saved.boardColumns = DEFAULT_BOARD_COLUMNS.map((c) => ({ ...c }));
+    }
+    // Position-unit migration: pre-fix `petPosVersion !== 1` saved the pet
+    // and panel positions in PHYSICAL pixels, which on Retina placed the pet
+    // at screen-center on launch (logical work-area math applied to physical
+    // values). Discard the stale physical-pixel positions so the default-
+    // position branch re-runs and the next save stores logical points.
+    if (saved.petPosVersion !== 1) {
+      saved.petPositionX = -1;
+      saved.petPositionY = -1;
+      saved.petPanelX = -1;
+      saved.petPanelY = -1;
+      saved.petPosVersion = 1;
     }
     useSettingsStore.setState(saved);
   }

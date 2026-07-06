@@ -115,12 +115,19 @@ export function PetPanelApp() {
   // positions the panel before showing it on the *open* gesture, but the
   // panel frontend also restores on its own mount so a show-without-position
   // (e.g. dev reload) still lands sensibly.
+  //
+  // Unit boundary: `petPanelX/Y` is saved in LOGICAL points (matches the
+  // work-area math); `pet_panel_set_position` takes PHYSICAL px, so multiply
+  // by `sf`. `probe.window_x/y` (first-open fallback) is physical — divide
+  // by `sf` before passing to `computePanelPosition` (logical). Panel SIZE
+  // is stored/restored as-is (size-unit cleanup is a separate task).
   useEffect(() => {
     (async () => {
       if (!isTauri()) return;
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         const workArea = await invoke<PetWorkArea>('pet_get_work_area');
+        const sf = workArea.scale_factor || 1;
         const {
           petPanelX,
           petPanelY,
@@ -133,15 +140,22 @@ export function PetPanelApp() {
           if (pos.x !== petPanelX || pos.y !== petPanelY) {
             setPetPanelPosition(pos.x, pos.y);
           }
-          await invoke('pet_panel_set_position', { x: pos.x, y: pos.y });
+          await invoke('pet_panel_set_position', {
+            x: Math.round(pos.x * sf),
+            y: Math.round(pos.y * sf),
+          });
         } else {
-          // First-ever open: position next to the pet (probe gives pet pos).
+          // First-ever open: position next to the pet (probe gives pet pos
+          // in PHYSICAL px — divide by `sf` to get logical for the math).
           const probe = await invoke<PetCursorProbeResult>('pet_cursor_probe');
           const pos = computePanelPosition(
-            { x: probe.window_x, y: probe.window_y },
+            { x: probe.window_x / sf, y: probe.window_y / sf },
             workArea,
           );
-          await invoke('pet_panel_set_position', { x: pos.x, y: pos.y });
+          await invoke('pet_panel_set_position', {
+            x: Math.round(pos.x * sf),
+            y: Math.round(pos.y * sf),
+          });
           setPetPanelPosition(pos.x, pos.y);
         }
 
@@ -170,6 +184,13 @@ export function PetPanelApp() {
   // window's persist pattern) and persist when either changes. Uses the
   // custom Rust `pet_panel_get_*` commands so no extra ACL permission is
   // needed (custom invoke commands bypass the ACL).
+  //
+  // Unit boundary: `pet_panel_get_position` returns PHYSICAL px; the saved
+  // `petPanelX/Y` is stored in LOGICAL points (matches the work-area math at
+  // restore), so divide by `sf` before persisting. `sf` is cached once from
+  // `pet_get_work_area` (a single-monitor panel window never changes DPI).
+  // Panel SIZE is stored/restored as-is (size-unit cleanup is a separate
+  // task).
   useEffect(() => {
     if (!isTauri()) return;
     let cancelled = false;
@@ -177,15 +198,20 @@ export function PetPanelApp() {
     let lastY = -1;
     let lastW = -1;
     let lastH = -1;
+    let sf = 1;
 
     const persist = async () => {
       if (cancelled) return;
       try {
         const { invoke } = await import('@tauri-apps/api/core');
+        if (sf === 1) {
+          const wa = await invoke<PetWorkArea>('pet_get_work_area');
+          sf = wa.scale_factor || 1;
+        }
         const pos = await invoke<{ x: number; y: number }>('pet_panel_get_position');
         const size = await invoke<PetPanelSizePayload>('pet_panel_get_size');
-        const x = Math.round(pos.x);
-        const y = Math.round(pos.y);
+        const x = Math.round(pos.x / sf);
+        const y = Math.round(pos.y / sf);
         const w = Math.round(size.width);
         const h = Math.round(size.height);
         if (x !== lastX || y !== lastY) {

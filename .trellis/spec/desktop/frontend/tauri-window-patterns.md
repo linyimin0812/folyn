@@ -275,49 +275,72 @@ is off-screen (e.g. saved on a different monitor or before a margin fix).
 ### Solution: Rust `pet_get_work_area` + TS `clampPetPosition`
 
 **Rust** (`commands.rs::pet_get_work_area`, registered in `lib.rs`): returns the primary
-monitor's **work area** in physical px with top-left origin (matches `PhysicalPosition`):
+monitor's **work area in LOGICAL POINTS** with top-left origin, **plus `scale_factor`**:
 
 - macOS: `NSScreen::mainScreen().visibleFrame` — excludes the Dock and menu bar. The native
   NSRect uses bottom-left origin, so flip Y before returning: `y = fullHeight - visOriginY - visHeight`.
-- Other platforms (fallback): the full monitor rect from `app.primary_monitor()`.
+  `scale_factor` = `[screen backingScaleFactor]` (2.0 on Retina, 1.0 on non-Retina).
+- Other platforms (fallback): the full monitor rect from `app.primary_monitor()`,
+  `scale_factor` = `monitor.scale_factor()`.
 
-Payload shape: `{ x: i32, y: i32, width: i32, height: i32 }`.
+Payload shape: `{ x: i32, y: i32, width: i32, height: i32, scale_factor: f64 }`. The
+`x`/`y`/`width`/`height` are **logical points**, NOT physical px.
 
-**TS** (`petPosition.ts::clampPetPosition`): pure function that clamps a saved absolute
-position to a work-area rect so the whole 120×120 window stays on-screen. Returns the clamped
-position; the caller persists the clamped value back to `settingsStore` so the next launch
-doesn't re-clamp.
+**TS** (`petPosition.ts::clampPetPosition`): pure function that clamps a saved LOGICAL
+position to a LOGICAL work-area rect so the whole 120×120 window stays on-screen. Returns
+the clamped position; the caller persists the clamped value back to `settingsStore` so the
+next launch doesn't re-clamp.
 
 **TS** (`petPosition.ts::computeDefaultPetPosition`): unchanged signature — takes the work
-area's `{width, height}` (NOT the full monitor size) and returns a position **relative to the
-work area's top-left**. The caller adds the work area's `(x, y)` origin to get an absolute
-screen position for `set_pet_position`. Margins (`PET_RIGHT_MARGIN`, `PET_BOTTOM_MARGIN`,
-`PET_MIN_TOP`) are a small safety inset ON TOP of the work area, not a Dock-clearance buffer.
+area's `{width, height}` (logical) and returns a position **relative to the work area's
+top-left** in logical points. The caller adds the work area's `(x, y)` origin to get an
+absolute LOGICAL position, then multiplies by `scale_factor` before calling
+`set_pet_position`. Margins (`PET_RIGHT_MARGIN`, `PET_BOTTOM_MARGIN`, `PET_MIN_TOP`) are a
+small safety inset ON TOP of the work area, not a Dock-clearance buffer.
 
-**Initial restore flow** (`PetApp.tsx`):
+**Initial restore flow** (`PetApp.tsx`) — note the `× sf` at the `set_pet_position`
+boundary and `÷ sf` after `outerPosition()`:
 
 ```ts
-const workArea = await invoke<PetWorkArea>('pet_get_work_area');
-const { petPositionX, petPositionY } = useSettingsStore.getState();
+const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
+const sf = workArea.scale_factor || 1;
+const { petPositionX, petPositionY } = useSettingsStore.getState();  // saved as LOGICAL
 if (petPositionX >= 0 && petPositionY >= 0) {
   const clamped = clampPetPosition({x: petPositionX, y: petPositionY}, workArea);
   if (clamped.x !== petPositionX || clamped.y !== petPositionY) {
     useSettingsStore.getState().setPetPosition(clamped.x, clamped.y);  // persist correction
   }
-  await invoke('set_pet_position', { x: clamped.x, y: clamped.y });
+  await invoke('set_pet_position', { x: Math.round(clamped.x * sf), y: Math.round(clamped.y * sf) });
 } else {
   const rel = computeDefaultPetPosition({ width: workArea.width, height: workArea.height });
-  const abs = { x: workArea.x + rel.x, y: workArea.y + rel.y };
-  await invoke('set_pet_position', abs);
-  useSettingsStore.getState().setPetPosition(abs.x, abs.y);
+  const abs = { x: workArea.x + rel.x, y: workArea.y + rel.y };  // LOGICAL
+  await invoke('set_pet_position', { x: Math.round(abs.x * sf), y: Math.round(abs.y * sf) });
+  useSettingsStore.getState().setPetPosition(abs.x, abs.y);       // persist LOGICAL
 }
+// poller persist: const pos = await getCurrentWindow().outerPosition();  // PHYSICAL
+//   setPetPosition(Math.round(pos.x / sf), Math.round(pos.y / sf));     // store LOGICAL
 ```
 
 ### Unit contract
 
-`set_pet_position` (Rust) takes a `PhysicalPosition<i32>`. `pet_get_work_area` returns values
-in the same physical-px top-left-origin space. `monitor.size` (the full monitor rect) is NOT
-the same as the work area — do not mix them.
+`set_pet_position` (Rust) and `getCurrentWindow().outerPosition()` / `setPosition()` take
+/return `PhysicalPosition` — **physical px**. `pet_get_work_area` returns **logical points**
+plus `scale_factor`. The size constants in `petPosition.ts` (`PET_WINDOW_SIZE=120`,
+`PET_PANEL_WIDTH=380`, margins) are **logical** (they mirror the `tauri.conf.json` window
+sizes, which are logical). So:
+
+- **Do all position math in logical points** (workArea is logical; constants are logical).
+- **Multiply by `scale_factor` immediately before** any physical-px API
+  (`set_pet_position`, `pet_panel_set_position`, `setPosition(new PhysicalPosition(...))`).
+- **Divide by `scale_factor` immediately after** any physical-px read
+  (`outerPosition()`, `probe.window_x/y` from `pet_cursor_probe`).
+- **Persist saved positions as logical** (display-resolution-independent). A `petPosVersion`
+  migration key discards pre-fix physical-px saved values (reset to `-1`) so the default
+  branch re-runs.
+
+`monitor.size` (the full monitor rect from `@tauri-apps/api/window`) IS physical px — do
+NOT mix it with the logical work area. Use the Rust `pet_get_work_area` for both the work
+area rect and the scale factor.
 
 ---
 
@@ -586,3 +609,42 @@ sets `background` on `html`/`body`/root containers and confirm each is either sc
 from the secondary window or overridden to `transparent`. A `transparent: true` flag in
 `tauri.conf.json` is necessary but not sufficient — the webview's own background must also
 be transparent.
+
+---
+
+## Common Mistake: Mixing Logical Points and Physical Pixels for Window Position
+
+**Symptom**: the pet (or any positioned secondary window) renders in the **center of the
+screen** instead of its computed bottom-right default. The diagnostic log shows
+`set_pet_position ok` and `outerPosition` matching the expected value — no errors, no
+throws, the position logic "works" but the window is in the wrong place.
+
+**Cause**: `pet_get_work_area` returns `NSScreen.visibleFrame` in **logical points**, but
+`set_pet_position` / `outerPosition()` / `setPosition()` use `PhysicalPosition` (**physical
+px**). On a Retina display (`backingScaleFactor` = 2.0), a logical bottom-right coordinate
+like `(1552, 815)` passed directly as physical px lands at logical `(776, 408)` — the
+screen center. The code's own header comment even claimed "physical px throughout" while the
+implementation fetched logical points from Rust, so the unit contract was self-contradictory.
+A `try/catch` around `set_pet_position` does NOT catch this — the call succeeds, it just
+places the window at the wrong coordinates. Compounding the silence: the `800ms` poller
+reads the wrong physical position, divides nothing, and persists it, so the bug looks
+"stable" across restarts.
+
+**Fix**: `pet_get_work_area` now also returns `scale_factor`. Do all position math in
+**logical points** (workArea is logical; `PET_WINDOW_SIZE` / margins / `PET_PANEL_*` are
+logical because they mirror `tauri.conf.json` logical sizes). Convert only at the physical
+boundary: `× scale_factor` immediately before `set_pet_position` / `setPosition(PhysicalPosition)`,
+`÷ scale_factor` immediately after `outerPosition()` / `probe.window_x/y`. Persist saved
+positions as logical (display-resolution-independent); a `petPosVersion` migration discards
+pre-fix physical saved values. See the "Default & Restored Position via Work Area" scenario
+for the full contract.
+
+**Prevention**: never trust a comment that asserts the unit of a value — verify against the
+producing API. `NSScreen.visibleFrame` is points; `PhysicalPosition` is px; `monitor.size`
+is px; `tauri.conf.json` `width`/`height` are logical. When a value crosses a
+points↔px boundary, the conversion (`× backingScaleFactor` / `÷ backingScaleFactor`) must
+happen at the call site, not be assumed away. If a window is mysteriously centered despite
+"correct" position math, suspect a unit mismatch on Retina — add a one-shot file-based
+diagnostic (a Rust command that appends to `appDataDir/<name>.log`, bypassing the secondary
+window's devtools and fs-permission limits) and read the actual `scale_factor` + the value
+passed to `set_pet_position`.

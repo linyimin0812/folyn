@@ -4,11 +4,20 @@
  * Extracted as a pure function so it can be unit-tested without mounting
  * PetApp (which spins up Tauri-window effect loops impractical to test).
  *
- * Units: **physical px** throughout. `set_pet_position` (Rust) takes a
- * `PhysicalPosition`, and `monitor.size` from `@tauri-apps/api/window` is
- * already physical px — so the default calc must NOT divide by `scaleFactor`
- * (that would produce logical px and place the window at the wrong spot on
- * retina displays). See `tauri-window-patterns.md` for the unit contract.
+ * Units: **logical points** throughout the math in this file. The Rust
+ * `pet_get_work_area` command returns `NSScreen.visibleFrame` (logical points
+ * on macOS, excludes Dock + menu bar) plus a `scale_factor` field
+ * (`backingScaleFactor`, 2.0 on Retina). `set_pet_position` (Rust) and
+ * `getCurrentWindow().outerPosition()` operate in **physical pixels**
+ * (`PhysicalPosition`). The caller is responsible for the boundary conversion:
+ * multiply logical → physical (`* scale_factor`) before calling
+ * `set_pet_position` / `setPosition(new PhysicalPosition(...))`, and divide
+ * physical → logical (`/ scale_factor`) after reading `outerPosition()` or
+ * `pet_cursor_probe`'s `window_x/window_y`. The math functions here never
+ * touch `scale_factor` — they stay in logical space where the work-area rect
+ * and the window-size/margin constants (which match `tauri.conf.json`'s logical
+ * sizes) are directly comparable. See `tauri-window-patterns.md` for the
+ * full unit contract.
  */
 
 /** Pet window footprint (matches `tauri.conf.json` `pet` window size). */
@@ -49,23 +58,30 @@ export interface PetPosition {
 }
 
 /**
- * Work-area rect in physical px, top-left origin (matches Tauri's
- * `PhysicalPosition`). Returned by the Rust `pet_get_work_area` command.
- * On macOS this is `NSScreen.visibleFrame` (excludes Dock + menu bar); on
- * other platforms it's the full monitor rect as a best-effort fallback.
+ * Work-area rect in logical points, top-left origin. Returned by the Rust
+ * `pet_get_work_area` command. On macOS this is `NSScreen.visibleFrame`
+ * (excludes Dock + menu bar); on other platforms it's the full monitor rect
+ * as a best-effort fallback. `scale_factor` is the physical-px-per-logical-
+ * point ratio (`backingScaleFactor`, 2.0 on Retina) — present on the Rust
+ * payload but OPTIONAL here because the math functions in this file never
+ * touch it (they run purely in logical space). Callers read `scale_factor`
+ * off the raw `invoke` result (typed as `PetWorkAreaResult` in PetApp) and
+ * do the ×/÷ boundary conversion themselves.
  */
 export interface PetWorkArea {
   x: number;
   y: number;
   width: number;
   height: number;
+  scale_factor?: number;
 }
 
 /**
- * Compute the default pet position (physical px) for the bottom-right of the
+ * Compute the default pet position (logical points) for the bottom-right of the
  * given monitor size. The result is **relative to the work area's top-left**;
  * the caller must add the work area's `(x, y)` origin to get an absolute
- * screen position for `set_pet_position`.
+ * logical screen position, then multiply by `scale_factor` before passing it
+ * to `set_pet_position` (which takes a `PhysicalPosition`).
  *
  * Always clamps `x >= 0` and `y >= PET_MIN_TOP` so a tiny / oddly sized
  * monitor cannot push the default off-origin or behind the menu bar.
@@ -79,9 +95,9 @@ export function computeDefaultPetPosition(
 }
 
 /**
- * Clamp a saved pet position (absolute screen px) so the whole 120×120
- * window stays inside the work area. If the saved position would clip on
- * any edge, it is moved inward to the nearest valid position. The caller
+ * Clamp a saved pet position (absolute logical screen points) so the whole
+ * 120×120 window stays inside the work area. If the saved position would clip
+ * on any edge, it is moved inward to the nearest valid position. The caller
  * should persist the clamped value back to `settingsStore` so a subsequent
  * launch doesn't need to re-clamp.
  *
@@ -113,7 +129,7 @@ export const PET_PANEL_MIN_HEIGHT = 360;
 export const PET_PANEL_GAP = 8;
 
 /**
- * Compute the pet-panel position (physical px, absolute screen coords) given
+ * Compute the pet-panel position (logical points, absolute screen coords) given
  * the pet's current position and the work area. The panel opens ABOVE the pet
  * by default (panel bottom edge = pet top edge - gap); if there isn't room
  * above (pet near the top of the screen), the panel opens BELOW the pet
@@ -139,9 +155,11 @@ export const PET_PANEL_GAP = 8;
  * overflow) is strictly better: the panel never overlaps the pet, and it
  * overflows the edge that has the least visual cost.
  *
- * The pet window's outer position is its top-left in physical px (matches
- * Tauri's `PhysicalPosition`), so `petPos` must be the same kind of value
- * returned by `get_pet_position` / `outerPosition()`.
+ * The pet window's outer position (`petPos`) and the returned panel position
+ * are both in logical points. The caller must divide `petPos` by
+ * `scale_factor` if it came from `outerPosition()` / `pet_cursor_probe`
+ * (physical px), and multiply the result by `scale_factor` before calling
+ * `pet_panel_set_position` (physical px).
  */
 export function computePanelPosition(
   petPos: PetPosition,
@@ -185,10 +203,10 @@ export function computePanelPosition(
 }
 
 /**
- * Clamp a panel position (absolute screen px) so the whole panel stays inside
- * the work area. Generalized sibling of `clampPetPosition` for the larger
- * panel window. If the work area is smaller than the panel (degenerate case)
- * the panel is placed at the work area's top-left.
+ * Clamp a panel position (absolute logical screen points) so the whole panel
+ * stays inside the work area. Generalized sibling of `clampPetPosition` for
+ * the larger panel window. If the work area is smaller than the panel
+ * (degenerate case) the panel is placed at the work area's top-left.
  */
 export function clampPanelPosition(
   saved: PetPosition,
