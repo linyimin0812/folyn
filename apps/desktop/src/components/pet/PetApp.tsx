@@ -289,14 +289,22 @@ export function PetApp() {
   // window's capability file (`capabilities/pet.json`) grants
   // `core:window:allow-show`, so this call is ACL-allowed. Do NOT re-add
   // fullscreen hide logic — the pet must stay visible at all times.
+  //
+  // `show()` resets the NSWindow level to Floating (Tauri's alwaysOnTop
+  // default), which lets other always-on-top apps (VS Code, etc.) cover the
+  // pet. Re-apply `pet_set_topmost_level` immediately after `show()` so the
+  // ScreenSaver level is restored in the same frame — the ~800ms poll would
+  // otherwise leave a window where the pet sits at Floating for up to 800ms.
   useEffect(() => {
     if (!isTauri()) return;
     (async () => {
       try {
         const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const { invoke } = await import('@tauri-apps/api/core');
         await getCurrentWindow().show();
+        await invoke('pet_set_topmost_level', { label: 'pet' });
       } catch (err) {
-        console.warn('[pet] initial show failed:', err);
+        console.warn('[pet] initial show / set_topmost_level failed:', err);
       }
     })();
   }, []);

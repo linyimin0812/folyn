@@ -770,9 +770,9 @@ pub async fn pet_panel_is_visible(app: tauri::AppHandle) -> Result<bool, String>
 /// `alwaysOnTop: true` config flag) only sets the NSWindow level to
 /// `NSFloatingWindowLevel` (kCGFloatingWindowLevelKey = 5). Other always-
 /// on-top apps that sit at Floating or higher can cover the pet. The user
-/// wants the pet visible everywhere, so we override the level to
-/// `kCGScreenSaverWindowLevelKey` (13) — the highest standard level, above
-/// the Dock, menu bar, pop-up menus, and any always-on-top app window.
+/// wants the pet visible everywhere, so we override the level to the
+/// ScreenSaver level — the highest standard level, above the Dock, menu
+/// bar, pop-up menus, and any always-on-top app window.
 ///
 /// This is a raw `setLevel:` on the underlying NSWindow (obtained via
 /// `WebviewWindow::ns_window`). It is macOS-only; on other platforms the
@@ -782,18 +782,35 @@ pub async fn pet_panel_is_visible(app: tauri::AppHandle) -> Result<bool, String>
 ///
 /// Call once on mount from `PetApp` and `PetPanelApp` (the level persists
 /// across show/hide for the lifetime of the window).
+///
+/// NOTE: `NSWindow.setLevel:` takes a `CGWindowLevel` (the actual level
+/// NUMBER), not a `CGWindowLevelKey` enum value. `kCGScreenSaverWindowLevelKey`
+/// is `13` — but passing `13` directly to `setLevel:` sets a low level
+/// (between Floating=3 and Status=25) that VS Code and other always-on-top
+/// apps can still cover. The real ScreenSaver level on modern macOS is a
+/// large number (~1000+), resolved from the key via `CGWindowLevelForKey()`.
+/// We FFI that C function and pass the resolved number to `setLevel:`.
 #[cfg(target_os = "macos")]
 #[tauri::command]
 pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Result<(), String> {
     use objc::{msg_send, sel, sel_impl};
     use objc::runtime::Object;
 
+    // kCGScreenSaverWindowLevelKey = 13 is the enum KEY, not the level
+    // number. NSWindow.setLevel: takes the actual CGWindowLevel number,
+    // which on modern macOS is resolved from the key via
+    // `CGWindowLevelForKey()` (a CoreGraphics C function). Tauri's macOS
+    // build links CoreGraphics transitively (via cocoa/objc/core-foundation),
+    // so the symbol resolves at link time.
+    extern "C" {
+        fn CGWindowLevelForKey(key: i32) -> i32;
+    }
+    const KCG_SCREENSAVER_WINDOW_LEVEL_KEY: i32 = 13;
+
     let window = app
         .get_webview_window(&label)
         .ok_or_else(|| format!("window '{}' not found", label))?;
     let ns_window = window.ns_window().map_err(|e| e.to_string())?;
-    // kCGScreenSaverWindowLevelKey = 13 — highest standard NSWindow level.
-    const NS_SCREENSAVER_WINDOW_LEVEL: isize = 13;
     // NSWindow API must be called on the macOS main thread. This command runs
     // on an async thread; calling `setLevel:` off-main-thread segfaults the
     // app. Dispatch the `msg_send!` to the main thread via Tauri's
@@ -806,7 +823,8 @@ pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Resu
     app.run_on_main_thread(move || {
         let ns_ptr = ns_ptr_as_usize as *mut Object;
         unsafe {
-            let _: () = msg_send![ns_ptr, setLevel: NS_SCREENSAVER_WINDOW_LEVEL];
+            let level = CGWindowLevelForKey(KCG_SCREENSAVER_WINDOW_LEVEL_KEY);
+            let _: () = msg_send![ns_ptr, setLevel: level];
         }
     })
     .map_err(|e| e.to_string())?;
