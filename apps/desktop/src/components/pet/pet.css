@@ -50,6 +50,19 @@ html.is-pet-window .pet-root {
   overflow: visible;
 }
 
+.pet-sprite-layer {
+  /* The sprite layer hosts the 88px mascot SVG inside the 120x120 pet window.
+   * Without centering, the inline-element mascot sits at the layer's top-left
+   * (0,0), so the circle's top + the breathing drop-shadow halo land on the
+   * window's top edge and get clipped. Centering the mascot gives ~16px
+   * margin on all sides → the halo (7px max) + idle translate (1px) stay
+   * ~8px inside the window top, no clip. The inline style in PetApp.tsx
+   * (position/left/top/width/height/cursor) is unaffected. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .pet-mascot {
   /* 88px in the 120x120 pet window. At 88px, click scale 1.08 → ~95px and
    * the breathing `drop-shadow` halo (up to 7px) → ~98px, both fit inside
