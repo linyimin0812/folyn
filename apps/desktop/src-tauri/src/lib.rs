@@ -87,13 +87,14 @@ fn reapply_pet_topmost(app: &tauri::AppHandle) {
         let _: () = msg_send![ns_ptr, setLevel: level];
 
         // NSWindowCollectionBehavior:
-        //   canJoinAllSpaces (1) | stationary (16) | fullScreenAuxiliary (256)
-        //   = 273
+        //   canJoinAllSpaces (1) | fullScreenAuxiliary (256) = 257
+        // canJoinAllSpaces(1) | fullScreenAuxiliary(256) — the documented
+        // macOS combo for floating over fullscreen apps. stationary(16) was
+        // removed because it conflicts with canJoinAllSpaces and prevented
+        // the pet from showing over fullscreen VS Code.
         const CB_CAN_JOIN_ALL_SPACES: isize = 1 << 0;
-        const CB_STATIONARY: isize = 1 << 4;
         const CB_FULLSCREEN_AUXILIARY: isize = 1 << 8;
-        let behavior: isize =
-            CB_CAN_JOIN_ALL_SPACES | CB_STATIONARY | CB_FULLSCREEN_AUXILIARY;
+        let behavior: isize = CB_CAN_JOIN_ALL_SPACES | CB_FULLSCREEN_AUXILIARY;
         let _: () = msg_send![ns_ptr, setCollectionBehavior: behavior];
     }
 }
@@ -227,6 +228,17 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 window.open_devtools();
             }
+
+            // Apply ScreenSaver level + canJoinAllSpaces|fullScreenAuxiliary
+            // to the pet window at creation (before show) so macOS evaluates
+            // space membership with the flags already set — setting them only
+            // after show can fail to make the window appear over fullscreen
+            // apps.
+            let app_handle_for_init = app.handle().clone();
+            let init_for_closure = app_handle_for_init.clone();
+            let _ = app_handle_for_init.run_on_main_thread(move || {
+                reapply_pet_topmost(&init_for_closure);
+            });
 
             // Periodic re-apply of the pet's ScreenSaver NSWindow level +
             // collectionBehavior from a Rust thread. WKWebView throttles
