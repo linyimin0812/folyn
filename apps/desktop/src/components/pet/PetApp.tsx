@@ -268,9 +268,8 @@ export function PetApp() {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         await invoke('pet_set_topmost_level', { label: 'pet' });
-        console.log('[pet] topmost invoke result ok');
       } catch (err) {
-        console.error('[pet] pet_set_topmost_level poll failed:', err);
+        console.warn('[pet] pet_set_topmost_level poll failed:', err);
       }
     };
 
@@ -304,7 +303,6 @@ export function PetApp() {
         const { invoke } = await import('@tauri-apps/api/core');
         await getCurrentWindow().show();
         await invoke('pet_set_topmost_level', { label: 'pet' });
-        console.log('[pet] topmost invoke result ok (mount)');
         // Native transparency: Tauri's `transparent: true` config doesn't
         // reliably disable the macOS WKWebView's opaque background on all
         // builds, leaving a white rect around the circular mascot. The
@@ -315,12 +313,11 @@ export function PetApp() {
         // NOT made transparent.
         try {
           await invoke('pet_make_transparent', { label: 'pet' });
-          console.log('[pet] pet_make_transparent invoke result ok');
         } catch (err) {
-          console.error('[pet] pet_make_transparent failed:', err);
+          console.warn('[pet] pet_make_transparent failed:', err);
         }
       } catch (err) {
-        console.error('[pet] initial show / set_topmost_level failed:', err);
+        console.warn('[pet] initial show / set_topmost_level failed:', err);
       }
     })();
   }, []);
@@ -383,9 +380,8 @@ export function PetApp() {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         await invoke('pet_set_topmost_level', { label: 'pet' });
-        console.log('[pet] topmost invoke result ok (topmost effect)');
       } catch (err) {
-        console.error('[pet] set_topmost_level failed:', err);
+        console.warn('[pet] set_topmost_level failed:', err);
       }
     })();
   }, []);
@@ -406,12 +402,12 @@ export function PetApp() {
         const { getCurrentWindow } = await import('@tauri-apps/api/window');
         const { invoke } = await import('@tauri-apps/api/core');
         unlisten = await getCurrentWindow().listen('tauri://blur', () => {
-          invoke('pet_set_topmost_level', { label: 'pet' })
-            .then(() => console.log('[pet] topmost re-applied on blur'))
-            .catch((err) => console.error('[pet] topmost re-apply on blur failed:', err));
+          invoke('pet_set_topmost_level', { label: 'pet' }).catch((err) =>
+            console.warn('[pet] topmost re-apply on blur failed:', err),
+          );
         });
       } catch (err) {
-        console.error('[pet] blur listener setup failed:', err);
+        console.warn('[pet] blur listener setup failed:', err);
       }
     })();
     return () => {

@@ -77,25 +77,6 @@ fn reapply_pet_topmost(app: &tauri::AppHandle) {
         return;
     }
     unsafe {
-        // Read the current level BEFORE re-setting — this tells us whether
-        // macOS reset it between ticks. If it's not 1000 here, we know
-        // something reset it (and our set below restores it).
-        let current: isize = msg_send![ns_ptr, level];
-        eprintln!("[pet] rust-poll current level = {}", current);
-
-        // Diagnostics: read visibility + space membership every tick so we
-        // can tell WHY the pet isn't showing over fullscreen VS Code.
-        //   - visible=false → something is hiding the window (hide calls /
-        //     NSPanel conversion).
-        //   - on_active_space=false → moveToActiveSpace isn't taking effect;
-        //     need a different collectionBehavior or NSPanel.
-        //   - both true + level 1000 but still invisible → rendering /
-        //     compositing issue (transparent webview paused when backgrounded).
-        let visible: bool = msg_send![ns_ptr, isVisible];
-        eprintln!("[pet] rust-poll visible = {}", visible);
-        let on_space: bool = msg_send![ns_ptr, isOnActiveSpace];
-        eprintln!("[pet] rust-poll on_active_space = {}", on_space);
-
         let level = CGWindowLevelForKey(KCG_SCREENSAVER_WINDOW_LEVEL_KEY) as isize;
         let _: () = msg_send![ns_ptr, setLevel: level];
 

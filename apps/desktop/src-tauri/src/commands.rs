@@ -831,14 +831,7 @@ pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Resu
             // to another always-on-top app (VS Code) covers the pet. Cast to
             // `isize` so the value is zero-extended to 64-bit correctly.
             let level = CGWindowLevelForKey(KCG_SCREENSAVER_WINDOW_LEVEL_KEY) as isize;
-            eprintln!("[pet] topmost level resolved = {}", level);
-            eprintln!("[pet] make_transparent+level: ns={} wk=n/a", !ns_ptr.is_null());
             let _: () = msg_send![ns_ptr, setLevel: level];
-            // Read the level back to confirm the set stuck (1000 = ScreenSaver).
-            // Tauri's `alwaysOnTop: true` config can reset the level to
-            // Floating(3) on focus changes; the readback surfaces that.
-            let current_level: isize = msg_send![ns_ptr, level];
-            eprintln!("[pet] level after set = {}", current_level);
             // Set collectionBehavior so the pet follows the active Space and
             // floats over fullscreen apps. Numeric values:
             //   NSWindowCollectionBehaviorMoveToActiveSpace    = 1 << 1  (2)
@@ -857,15 +850,9 @@ pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Resu
             let behavior: isize =
                 CB_MOVE_TO_ACTIVE_SPACE | CB_FULLSCREEN_AUXILIARY | CB_FULLSCREEN_ALLOWS_TILING;
             let _: () = msg_send![ns_ptr, setCollectionBehavior: behavior];
-            let cur_behavior: isize = msg_send![ns_ptr, collectionBehavior];
-            eprintln!("[pet] collectionBehavior = {}", cur_behavior);
         }
     })
-    .map_err(|e| {
-        eprintln!("[pet] pet_set_topmost_level schedule failed: {}", e);
-        e.to_string()
-    })?;
-    eprintln!("[pet] pet_set_topmost_level scheduled ok");
+    .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -942,7 +929,6 @@ pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Resul
             unsafe {
                 let wk = webview.inner() as *mut Object;
                 let ns = webview.ns_window() as *mut Object;
-                eprintln!("[pet] make_transparent+level: ns={} wk={}", !ns.is_null(), !wk.is_null());
                 if ns.is_null() || wk.is_null() {
                     return;
                 }
@@ -970,11 +956,6 @@ pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Resul
                 const KCG_SCREENSAVER_WINDOW_LEVEL_KEY: i32 = 13;
                 let level = CGWindowLevelForKey(KCG_SCREENSAVER_WINDOW_LEVEL_KEY) as isize;
                 let _: () = msg_send![ns, setLevel: level];
-                // Read the level back to confirm the set stuck (1000 =
-                // ScreenSaver). Tauri's `alwaysOnTop: true` config can reset
-                // the level to Floating(3) on focus changes.
-                let current_level: isize = msg_send![ns, level];
-                eprintln!("[pet] make_transparent level after set = {}", current_level);
                 // Set collectionBehavior so the pet follows the active Space
                 // and floats over fullscreen apps. Numeric values:
                 //   NSWindowCollectionBehaviorMoveToActiveSpace    = 1 << 1  (2)
@@ -993,15 +974,9 @@ pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Resul
                 let behavior: isize =
                     CB_MOVE_TO_ACTIVE_SPACE | CB_FULLSCREEN_AUXILIARY | CB_FULLSCREEN_ALLOWS_TILING;
                 let _: () = msg_send![ns, setCollectionBehavior: behavior];
-                let cur_behavior: isize = msg_send![ns, collectionBehavior];
-                eprintln!("[pet] make_transparent collectionBehavior = {}", cur_behavior);
             }
         })
-        .map_err(|e| {
-            eprintln!("[pet] pet_make_transparent schedule failed: {}", e);
-            e.to_string()
-        })?;
-    eprintln!("[pet] pet_make_transparent scheduled ok");
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
