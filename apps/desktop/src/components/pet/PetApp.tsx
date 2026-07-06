@@ -348,6 +348,23 @@ export function PetApp() {
     })();
   }, []);
 
+  // ── Topmost level (visible over all always-on-top apps) ──
+  // Tauri's `alwaysOnTop: true` config only sets the Floating NSWindow
+  // level (5), which other always-on-top apps (VS Code, etc.) can cover.
+  // Raise the pet to `kCGScreenSaverWindowLevelKey` (13) so it stays
+  // visible everywhere. The level persists for the window's lifetime, so
+  // calling once on mount is sufficient. Non-fatal if it fails.
+  useEffect(() => {
+    (async () => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('pet_set_topmost_level', { label: 'pet' });
+      } catch (err) {
+        console.warn('[pet] set_topmost_level failed:', err);
+      }
+    })();
+  }, []);
+
   return (
     <div className="pet-root">
       {/* The mascot sprite is wrapped in an interaction layer that owns all

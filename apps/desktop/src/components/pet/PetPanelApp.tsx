@@ -86,6 +86,24 @@ export function PetPanelApp() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [hidePanel]);
 
+  // ── Topmost level (visible over all always-on-top apps) ──
+  // Tauri's `alwaysOnTop: true` config only sets the Floating NSWindow
+  // level (5), which other always-on-top apps (VS Code, etc.) can cover.
+  // Raise the panel to `kCGScreenSaverWindowLevelKey` (13) so it stays
+  // visible everywhere. The level persists for the window's lifetime, so
+  // calling once on mount is sufficient. Non-fatal if it fails.
+  useEffect(() => {
+    (async () => {
+      if (!isTauri()) return;
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('pet_set_topmost_level', { label: 'pet-panel' });
+      } catch (err) {
+        console.warn('[pet-panel] set_topmost_level failed:', err);
+      }
+    })();
+  }, []);
+
   // ── Initial position/size restore ──
   // On mount, if a saved pos+size exists, restore it (clamped to the current
   // work area so a monitor change since the last session doesn't push the

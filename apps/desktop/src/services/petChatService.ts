@@ -1,6 +1,7 @@
 import { CliAdapterRegistry } from '@quill/cli-adapter';
 import type { CliAdapter, CliStreamEvent } from '@quill/cli-adapter';
 import { useSettingsStore } from '@/store/settingsStore';
+import { isTauri } from '@/utils/platform';
 import { appDataDir, join } from '@tauri-apps/api/path';
 
 /**
@@ -25,10 +26,50 @@ let cachedAdapterId: string | null = null;
 /** Resolve a neutral working directory that is NOT the vault. Uses the
  *  app-data dir + `pet-chat-tmp` so the CLI has a stable cwd with no
  *  project CLAUDE.md / `.claude/agents/` discovery (the send options use
- *  `bare: true` to enforce isolation). */
+ *  `bare: true` to enforce isolation).
+ *
+ *  The directory is created (recursive) before it is handed to
+ *  `adapter.start()` — the claude adapter spawns `/bin/sh -c 'cd <dir> && …'`
+ *  and `cd` fails if the dir does not exist (symptom:
+ *  `cd: …/pet-chat-tmp: No such file or directory`). `fs:allow-mkdir` +
+ *  `fs:create-app-specific-dirs` + `fs:scope-appdata-recursive` are granted
+ *  in `capabilities/pet-panel.json`.
+ *
+ *  Fallback chain (never throws — a missing workingDir must not break the
+ *  chat, the adapter can run with `cd` skipped):
+ *    1. mkdir(<appData>/pet-chat-tmp, { recursive: true }) → return that path.
+ *    2. mkdir failed → return <appData> itself (always exists; Tauri creates
+ *       it on startup).
+ *    3. appDataDir() failed → return '' (empty string → adapter skips `cd`
+ *       and just `exec`s the CLI in the process cwd).
+ */
 async function resolveWorkingDir(): Promise<string> {
-  const appData = await appDataDir();
-  return join(appData, 'pet-chat-tmp');
+  if (!isTauri()) return '';
+  let appData: string;
+  try {
+    appData = await appDataDir();
+  } catch (err) {
+    console.warn('[petChat] appDataDir failed; proceeding without workingDir:', err);
+    return '';
+  }
+  let dir: string;
+  try {
+    dir = await join(appData, 'pet-chat-tmp');
+  } catch (err) {
+    console.warn('[petChat] join failed; falling back to appDataDir:', err);
+    return appData;
+  }
+  try {
+    const { mkdir } = await import('@tauri-apps/plugin-fs');
+    await mkdir(dir, { recursive: true });
+    return dir;
+  } catch (err) {
+    console.warn(
+      '[petChat] mkdir pet-chat-tmp failed; falling back to appDataDir:',
+      err,
+    );
+    return appData;
+  }
 }
 
 /** Lazily create (or reuse) a `CliAdapter` for the pet chat. The adapter id

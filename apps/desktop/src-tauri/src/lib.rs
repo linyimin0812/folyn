@@ -202,6 +202,7 @@ pub fn run() {
             commands::pet_panel_set_size,
             commands::pet_panel_get_size,
             commands::pet_panel_is_visible,
+            commands::pet_set_topmost_level,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

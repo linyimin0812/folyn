@@ -762,3 +762,49 @@ pub async fn pet_panel_is_visible(app: tauri::AppHandle) -> Result<bool, String>
         .ok_or_else(|| "pet-panel window not found".to_string())?;
     panel.is_visible().map_err(|e| e.to_string())
 }
+
+/// Raise a pet-managed window to the highest standard macOS window level so
+/// it stays visible over every other always-on-top app (VS Code, etc.).
+///
+/// Why: Tauri 2.11's `WebviewWindow::set_always_on_top(true)` (and the
+/// `alwaysOnTop: true` config flag) only sets the NSWindow level to
+/// `NSFloatingWindowLevel` (kCGFloatingWindowLevelKey = 5). Other always-
+/// on-top apps that sit at Floating or higher can cover the pet. The user
+/// wants the pet visible everywhere, so we override the level to
+/// `kCGScreenSaverWindowLevelKey` (13) — the highest standard level, above
+/// the Dock, menu bar, pop-up menus, and any always-on-top app window.
+///
+/// This is a raw `setLevel:` on the underlying NSWindow (obtained via
+/// `WebviewWindow::ns_window`). It is macOS-only; on other platforms the
+/// command is a no-op (Tauri's `alwaysOnTop: true` config is the best
+/// available and pet mode is macOS-only at present). Custom `invoke`
+/// commands bypass the ACL, so no capability entry is needed.
+///
+/// Call once on mount from `PetApp` and `PetPanelApp` (the level persists
+/// across show/hide for the lifetime of the window).
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Result<(), String> {
+    use objc::{msg_send, sel, sel_impl};
+    use objc::runtime::Object;
+
+    let window = app
+        .get_webview_window(&label)
+        .ok_or_else(|| format!("window '{}' not found", label))?;
+    let ns_window = window.ns_window().map_err(|e| e.to_string())?;
+    let ns_ptr = ns_window as *mut Object;
+    // kCGScreenSaverWindowLevelKey = 13 — highest standard NSWindow level.
+    const NS_SCREENSAVER_WINDOW_LEVEL: isize = 13;
+    unsafe {
+        let _: () = msg_send![ns_ptr, setLevel: NS_SCREENSAVER_WINDOW_LEVEL];
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+pub async fn pet_set_topmost_level(_app: tauri::AppHandle, _label: String) -> Result<(), String> {
+    // Non-macOS: no equivalent level API; `alwaysOnTop: true` config is the
+    // best available. Pet mode is macOS-only at present.
+    Ok(())
+}
