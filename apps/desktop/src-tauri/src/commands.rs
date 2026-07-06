@@ -792,12 +792,24 @@ pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Resu
         .get_webview_window(&label)
         .ok_or_else(|| format!("window '{}' not found", label))?;
     let ns_window = window.ns_window().map_err(|e| e.to_string())?;
-    let ns_ptr = ns_window as *mut Object;
     // kCGScreenSaverWindowLevelKey = 13 — highest standard NSWindow level.
     const NS_SCREENSAVER_WINDOW_LEVEL: isize = 13;
-    unsafe {
-        let _: () = msg_send![ns_ptr, setLevel: NS_SCREENSAVER_WINDOW_LEVEL];
-    }
+    // NSWindow API must be called on the macOS main thread. This command runs
+    // on an async thread; calling `setLevel:` off-main-thread segfaults the
+    // app. Dispatch the `msg_send!` to the main thread via Tauri's
+    // `run_on_main_thread` (schedules the closure onto the main run loop).
+    // The raw NSWindow pointer is not `Send`; cast it to `usize` to transfer
+    // it across threads safely — the pointer is a stable window handle that
+    // stays valid for the app's lifetime, and the closure runs on the same
+    // main thread that owns the AppKit run loop.
+    let ns_ptr_as_usize = ns_window as usize;
+    app.run_on_main_thread(move || {
+        let ns_ptr = ns_ptr_as_usize as *mut Object;
+        unsafe {
+            let _: () = msg_send![ns_ptr, setLevel: NS_SCREENSAVER_WINDOW_LEVEL];
+        }
+    })
+    .map_err(|e| e.to_string())?;
     Ok(())
 }
 
