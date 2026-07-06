@@ -1,11 +1,16 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { PetLauncher } from './PetLauncher';
 import { PetChat } from './PetChat';
 
+type PetPanelTab = 'actions' | 'chat';
+
 /**
  * PetPanelApp — mounted only in the `pet-panel` Tauri window (see main.tsx
- * `#/pet-panel` route switch). PR2 mounts the launcher grid (`PetLauncher`);
- * PR3 will mount the embedded AI chat below it (see `pet-panel-chat-slot`).
+ * `#/pet-panel` route switch). Hosts a tabbed layout: **Actions** (the
+ * `PetLauncher` grid) and **Chat** (the `PetChat` component). Only one view
+ * is mounted at a time; switching tabs unmounts the inactive view — this
+ * releases the chat's `CliAdapter` mid-stream, which is acceptable per the
+ * PRD's Out-of-Scope "stream-interrupt resume" rule.
  *
  * Lifecycle (PR1):
  *  - Close button (×) → invoke `pet_panel_hide` to hide the window.
@@ -24,6 +29,8 @@ import { PetChat } from './PetChat';
  * mascot window.
  */
 export function PetPanelApp() {
+  const [tab, setTab] = useState<PetPanelTab>('actions');
+
   const hidePanel = useCallback(async () => {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
@@ -58,13 +65,28 @@ export function PetPanelApp() {
           ×
         </button>
       </header>
+      <nav className="pet-panel-tabs" role="tablist" aria-label="Pet panel sections">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'actions'}
+          className={`pet-panel-tab${tab === 'actions' ? ' is-active' : ''}`}
+          onClick={() => setTab('actions')}
+        >
+          Actions
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'chat'}
+          className={`pet-panel-tab${tab === 'chat' ? ' is-active' : ''}`}
+          onClick={() => setTab('chat')}
+        >
+          Chat
+        </button>
+      </nav>
       <main className="pet-panel-body">
-        <PetLauncher />
-        {/* PR3: embedded vault-free AI chat. Persisted in its own namespace
-            (pet-chat:messages) via storageClient; self-hosted CliAdapter. */}
-        <div className="pet-panel-chat-slot" aria-hidden={false}>
-          <PetChat />
-        </div>
+        {tab === 'actions' ? <PetLauncher /> : <PetChat />}
       </main>
     </div>
   );

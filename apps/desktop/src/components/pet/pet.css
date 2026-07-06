@@ -178,6 +178,38 @@ html.is-pet-panel-window body {
   color: var(--t1, #1f2330);
 }
 
+.pet-panel-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--brd, #e2e5ee);
+  background: var(--panel, #ffffff);
+  flex-shrink: 0;
+}
+
+.pet-panel-tab {
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--t2, #5a6275);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.pet-panel-tab:hover {
+  color: var(--t1, #1f2330);
+  background: var(--hov, #eef0f5);
+}
+.pet-panel-tab.is-active {
+  color: var(--acc, #3a6ef0);
+  border-bottom-color: var(--acc, #3a6ef0);
+}
+
 .pet-panel-body {
   flex: 1;
   display: flex;
@@ -187,20 +219,12 @@ html.is-pet-panel-window body {
   padding: 12px;
   gap: 10px;
   overflow: auto;
+  min-height: 0;
 }
 
 .pet-panel-placeholder {
   color: var(--t3, #8a92a3);
   font-size: 13px;
-}
-
-/* PR3 mounts the embedded AI chat (PetChat) in this slot. Filled by PR3;
-   flexes to fill the remaining panel height below the launcher grid. */
-.pet-panel-chat-slot {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
 }
 
 /* ── Launcher grid (PR2) ──
