@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 37
-- **Last Active**: 2026-07-05
+- **Total Sessions**: 38
+- **Last Active**: 2026-07-07
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1271 | Active |
+| `journal-1.md` | ~1305 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 38 | 2026-07-07 | Pet breathing animation + default position + panel placement | `705a3f9` | `master` |
 | 37 | 2026-07-05 | Switch AI panel mode selector to dropdown | `85ca076` | `master` |
 | 36 | 2026-07-05 | AI panel input mode selector (ask/agent, extensible) | `5009ca8` | `master` |
 | 35 | 2026-07-03 | CSV UTF-8 mojibake fix + Cmd+C copy in Tauri webview | `896edab` | `master` |

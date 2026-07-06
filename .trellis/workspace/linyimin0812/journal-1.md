@@ -1269,3 +1269,37 @@ Replaced the segmented toggle mode selector in ChatInput with a custom popover d
 ### Next Steps
 
 - None - task complete
+
+
+## Session 38: Pet breathing animation + default position + panel placement
+
+**Date**: 2026-07-07
+**Task**: Pet breathing animation + default position + panel placement
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Strengthened pet breathing halo (soft white, peak 20px @ alpha 1.0, 2.4s cycle, visible at idle). Lifted default pet position to bottom-right with 48px bottom margin. Rewrote computePanelPosition to open the panel above the pet (or below if no room) with X centered on the pet; panel position now recomputed from the pet's current location on every open. Added NSPanel backend (pet_panel_macos.rs) for pet/pet-panel windows with Dock level + full_screen_auxiliary; commands.rs pet_set_topmost_level / pet_make_transparent become no-ops in NSPanel mode. tauri.conf.json: pet window center:true, pet-panel alwaysOnTop:false, macOSPrivateApi:true.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `705a3f9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
