@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { PetMascot } from './PetMascot';
 import { openPetContextMenu } from './PetContextMenu';
 import { clampPetPosition, computeDefaultPetPosition, computePanelPosition } from './petPosition';
+import { isTauri } from '@/utils/platform';
 
 /**
  * PetApp — mounted only in the `pet` Tauri window (see main.tsx `#/pet` route
@@ -19,7 +20,11 @@ import { clampPetPosition, computeDefaultPetPosition, computePanelPosition } fro
  *    selections emit `pet://menu-action`.
  *  - Drag → `startDragging` on the pet window; position persisted to
  *    `settingsStore` (R5, AC3/AC7).
- *  - Fullscreen handling (R7, AC9) — hide when the main window is fullscreen.
+ *  - Always visible: the pet stays on-screen at all times, including over
+ *    fullscreen apps / VS Code. The previous fullscreen-auto-hide probe was
+ *    removed — the user wants the pet always visible. `pet_set_topmost_level`
+ *    (kCGScreenSaverWindowLevelKey = 13) is re-applied on the ~800ms
+ *    position-persist poll because the OS can reset the level after a `show()`.
  *
  * Click-through on transparent regions was REMOVED. The prior 60ms probe +
  * 80×80 sprite hit-test raced with native drag end: after a drag the cursor
@@ -28,8 +33,8 @@ import { clampPetPosition, computeDefaultPetPosition, computePanelPosition } fro
  * window without firing `handlePointerDown` — so the pet could be dragged
  * once and then stuck. The trade-off: the transparent border no longer
  * passes clicks to apps behind the pet (small UX cost); in exchange, drag
- * and click are 100% reliable. The probe still runs, only for fullscreen
- * detection. See `tauri-window-patterns.md` for the contract.
+ * and click are 100% reliable. See `tauri-window-patterns.md` for the
+ * contract.
  */
 
 type PetState = 'idle' | 'hover' | 'drag' | 'click';
@@ -38,7 +43,6 @@ type PetState = 'idle' | 'hover' | 'drag' | 'click';
  * the quill icon. The breathing glow sits behind it as a separate layer. */
 const SPRITE_OFFSET = 0;
 const SPRITE_SIZE = 120;
-const PROBE_INTERVAL_MS = 250;
 const POSITION_PERSIST_INTERVAL_MS = 800;
 
 interface PetCursorProbeResult {
@@ -224,54 +228,20 @@ export function PetApp() {
     void openPetContextMenu();
   }, []);
 
-  // ── Fullscreen probe (periodic) ──
-  // The probe no longer toggles `setIgnoreCursorEvents` — the whole 120x120
-  // window receives pointer events at all times. The probe's only remaining
-  // job is fullscreen detection: hide the pet while the main editor window is
-  // fullscreen, re-show it when not.
-  useEffect(() => {
-    let cancelled = false;
-
-    const probe = async () => {
-      if (cancelled) return;
-      let result: PetCursorProbeResult;
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        result = await invoke<PetCursorProbeResult>('pet_cursor_probe');
-      } catch {
-        // Probe failure is non-fatal — leave visibility as-is.
-        return;
-      }
-      if (cancelled) return;
-
-      try {
-        const { getCurrentWindow } = await import('@tauri-apps/api/window');
-        const win = getCurrentWindow();
-        if (result.main_fullscreen) {
-          const visible = await win.isVisible();
-          if (visible) await win.hide();
-        } else {
-          const visible = await win.isVisible();
-          if (!visible) await win.show();
-        }
-      } catch {
-        // Non-fatal; try again next tick.
-      }
-    };
-
-    const id = window.setInterval(probe, PROBE_INTERVAL_MS);
-    probe();
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, []);
-
-  // ── Position persistence (R5, AC7) ──
+  // ── Position persistence + topmost re-apply (R5, AC7) ──
   // Periodically read the window's outer position and persist it to
   // settingsStore when it changes. Native drag doesn't deliver JS pointerup
   // reliably, so polling is the robust path.
+  //
+  // Topmost re-apply: Tauri's `alwaysOnTop: true` config only sets the
+  // Floating NSWindow level (5), which other always-on-top apps (VS Code,
+  // etc.) can cover. `pet_set_topmost_level` raises the pet to
+  // `kCGScreenSaverWindowLevelKey` (13) so it stays visible everywhere. The
+  // OS can reset the level after a `show()` (e.g. when `toggle_pet_mode`
+  // re-shows the pet), so re-invoke it on this ~800ms poll — it is idempotent
+  // and cheap. Wrapped in isTauri + try/catch so non-Tauri/test envs skip it.
   useEffect(() => {
+    if (!isTauri()) return;
     let cancelled = false;
     let lastX = -1;
     let lastY = -1;
@@ -289,6 +259,15 @@ export function PetApp() {
           const { useSettingsStore } = await import('@/store/settingsStore');
           useSettingsStore.getState().setPetPosition(x, y);
         }
+      } catch {
+        // Non-fatal; try again next tick.
+      }
+
+      // Re-apply the ScreenSaver-level topmost so the OS never demotes the
+      // pet below other always-on-top apps after a show().
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('pet_set_topmost_level', { label: 'pet' });
       } catch {
         // Non-fatal; try again next tick.
       }

@@ -42,30 +42,30 @@ afterEach(() => {
 });
 
 describe('PetPanelApp', () => {
-  it('defaults to the Actions tab and shows the launcher (not chat)', () => {
+  it('defaults to the Chat tab and shows the chat (not launcher)', () => {
     const { container } = render(<PetPanelApp />);
-    expect(container.querySelector('.pet-launcher')).toBeTruthy();
-    expect(container.querySelector('.pet-chat')).toBeNull();
-    const actionsTab = screen.getByRole('tab', { name: 'Actions' });
-    expect(actionsTab.getAttribute('aria-selected')).toBe('true');
-  });
-
-  it('clicking the Chat tab mounts PetChat and unmounts PetLauncher', () => {
-    const { container } = render(<PetPanelApp />);
-    fireEvent.click(screen.getByRole('tab', { name: 'Chat' }));
     expect(container.querySelector('.pet-chat')).toBeTruthy();
     expect(container.querySelector('.pet-launcher')).toBeNull();
-    expect(screen.getByRole('tab', { name: 'Chat' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByRole('tab', { name: 'Actions' }).getAttribute('aria-selected')).toBe('false');
+    const chatTab = screen.getByRole('tab', { name: 'Chat' });
+    expect(chatTab.getAttribute('aria-selected')).toBe('true');
   });
 
-  it('clicking Actions tab reverses back to the launcher', () => {
+  it('clicking the Actions tab mounts PetLauncher and unmounts PetChat', () => {
     const { container } = render(<PetPanelApp />);
-    fireEvent.click(screen.getByRole('tab', { name: 'Chat' }));
-    expect(container.querySelector('.pet-chat')).toBeTruthy();
     fireEvent.click(screen.getByRole('tab', { name: 'Actions' }));
     expect(container.querySelector('.pet-launcher')).toBeTruthy();
     expect(container.querySelector('.pet-chat')).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Actions' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'Chat' }).getAttribute('aria-selected')).toBe('false');
+  });
+
+  it('clicking Chat tab reverses back to the chat', () => {
+    const { container } = render(<PetPanelApp />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Actions' }));
+    expect(container.querySelector('.pet-launcher')).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: 'Chat' }));
+    expect(container.querySelector('.pet-chat')).toBeTruthy();
+    expect(container.querySelector('.pet-launcher')).toBeNull();
   });
 
   it('close button hides the panel via pet_panel_hide', async () => {

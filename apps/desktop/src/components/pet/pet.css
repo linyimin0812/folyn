@@ -13,9 +13,21 @@
  * R1 (transparent) and R6 (click-through on transparent regions). main.tsx
  * adds `.is-pet-window` to <html> for the pet route only, so this override
  * leaves the main editor window's theming untouched. `--acc` stays available
- * so the mascot's `var(--acc, #3a6ef0)` fallback still resolves. */
+ * so the mascot's `var(--acc, #3a6ef0)` fallback still resolves.
+ *
+ * The override covers `html`, `body`, AND `#root` (the React mount point):
+ * `#root` itself has no background rule in `index.css`, but the webview's
+ * default root-paint can still surface an opaque layer behind the SVG, and
+ * any future rule targeting `#root` would re-introduce the square. Tagging
+ * it here makes transparency bulletproof. `.pet-root` is also pinned
+ * transparent even though its own rule below already sets it — the `!important`
+ * here defends against a higher-specificity override. */
 html.is-pet-window,
-html.is-pet-window body {
+html.is-pet-window body,
+html.is-pet-window #root {
+  background: transparent !important;
+}
+html.is-pet-window .pet-root {
   background: transparent !important;
 }
 

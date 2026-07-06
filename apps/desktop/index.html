@@ -5,6 +5,24 @@
     <link rel="icon" type="image/svg+xml" href="/quill.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Quill</title>
+    <script>
+      // Apply the pet-window class before paint so the transparent-body
+      // override in pet.css wins from the first frame (avoids a white square
+      // behind the circular mascot). main.tsx also sets this, but the inline
+      // script guarantees the class is present before CSS background is painted
+      // — module evaluation can lag a tick in some Tauri webview builds, and
+      // `location.hash` can read '' at first paint even when the URL is
+      // `/#/pet`. The `#/pet-panel` check MUST come first: `#/pet` is a prefix
+      // of `#/pet-panel`, so the longer route is matched before the shorter.
+      (function () {
+        var h = (window.location && (window.location.hash || window.location.href)) || '';
+        if (h.indexOf('#/pet-panel') !== -1) {
+          document.documentElement.classList.add('is-pet-panel-window');
+        } else if (h.indexOf('#/pet') !== -1) {
+          document.documentElement.classList.add('is-pet-window');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

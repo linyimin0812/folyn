@@ -61,7 +61,10 @@ const PANEL_PERSIST_INTERVAL_MS = 800;
  * `pet.css` (scoped via `is-pet-panel-window` on `<html>`).
  */
 export function PetPanelApp() {
-  const [tab, setTab] = useState<PetPanelTab>('actions');
+  // Default tab is Chat — the panel opens on the embedded AI chat so a
+  // single left-click on the pet drops the user into "ask" mode without an
+  // extra tab switch. The launcher grid is one click away on the Actions tab.
+  const [tab, setTab] = useState<PetPanelTab>('chat');
   const setPetPanelPosition = useSettingsStore((s) => s.setPetPanelPosition);
   const setPetPanelSize = useSettingsStore((s) => s.setPetPanelSize);
 
@@ -253,24 +256,24 @@ export function PetPanelApp() {
         <button
           type="button"
           role="tab"
-          aria-selected={tab === 'actions'}
-          className={`pet-panel-tab${tab === 'actions' ? ' is-active' : ''}`}
-          onClick={() => setTab('actions')}
-        >
-          Actions
-        </button>
-        <button
-          type="button"
-          role="tab"
           aria-selected={tab === 'chat'}
           className={`pet-panel-tab${tab === 'chat' ? ' is-active' : ''}`}
           onClick={() => setTab('chat')}
         >
           Chat
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'actions'}
+          className={`pet-panel-tab${tab === 'actions' ? ' is-active' : ''}`}
+          onClick={() => setTab('actions')}
+        >
+          Actions
+        </button>
       </nav>
       <main className="pet-panel-body">
-        {tab === 'actions' ? <PetLauncher /> : <PetChat />}
+        {tab === 'chat' ? <PetChat /> : <PetLauncher />}
       </main>
     </div>
   );
