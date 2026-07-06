@@ -280,6 +280,27 @@ export function PetApp() {
     };
   }, []);
 
+  // ── Show the pet window on launch ──
+  // The pet window is created `visible: false` (tauri.conf.json) and relies on
+  // the frontend to show it when it mounts. The previous fullscreen-auto-hide
+  // probe's `else` branch used to call `win.show()` — that probe was removed
+  // for "always visible", so this mount effect now owns the launch-time show.
+  // Idempotent: `show()` on an already-visible window is a no-op. The pet
+  // window's capability file (`capabilities/pet.json`) grants
+  // `core:window:allow-show`, so this call is ACL-allowed. Do NOT re-add
+  // fullscreen hide logic — the pet must stay visible at all times.
+  useEffect(() => {
+    if (!isTauri()) return;
+    (async () => {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        await getCurrentWindow().show();
+      } catch (err) {
+        console.warn('[pet] initial show failed:', err);
+      }
+    })();
+  }, []);
+
   // ── Initial position restore (R5, AC7, R1/R2) ──
   // On mount, resolve the pet's initial position:
   //  - If a saved position exists, clamp it to the current work area. If the
