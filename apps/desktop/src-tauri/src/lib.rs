@@ -119,6 +119,29 @@ fn reapply_pet_topmost(app: &tauri::AppHandle) {
         // which helps the moveToActiveSpace flag take effect on an
         // already-visible window.
         let _: () = msg_send![ns_ptr, orderFrontRegardless];
+
+        // Reorder onto the active Space when the window is off it. macOS does
+        // not re-evaluate space membership for an already-visible window on
+        // space switches, so `moveToActiveSpace` (770) alone leaves the pet
+        // stranded on the wrong Space when the user enters VS Code's
+        // fullscreen Space. `orderOut` removes the window from the screen and
+        // `orderFrontRegardless` re-shows it, which forces macOS to reassign
+        // it to the now-active Space (honoring moveToActiveSpace). Throttle
+        // to once per 1s to avoid flicker on every 500ms poll tick.
+        if !on_space {
+            static LAST_REORDER: std::sync::OnceLock<std::sync::Mutex<std::time::Instant>> =
+                std::sync::OnceLock::new();
+            let mutex = LAST_REORDER
+                .get_or_init(|| std::sync::Mutex::new(std::time::Instant::now() - std::time::Duration::from_secs(2)));
+            let mut last = mutex.lock().unwrap();
+            let now = std::time::Instant::now();
+            if now.duration_since(*last) >= std::time::Duration::from_secs(1) {
+                *last = now;
+                let _: () = msg_send![ns_ptr, orderOut];
+                let _: () = msg_send![ns_ptr, orderFrontRegardless];
+                eprintln!("[pet] rust-poll reordered (was off active space)");
+            }
+        }
     }
 }
 
