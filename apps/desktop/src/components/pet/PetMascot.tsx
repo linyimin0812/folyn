@@ -1,22 +1,22 @@
-/* ── Pet mascot sprite ──
- * Bare feather quill + ink drop — NO background tile. The pet window is
- * `transparent: true`, so the desktop shows through; the previous dark
- * rounded-square `<rect fill="url(#petBg)"/>` read as a "blank background"
- * tile and is removed. Only the feather artwork (left/right barbs + spine +
- * nib + nib split) and the ink drop circle + highlight remain, copied
- * verbatim from /public/quill.svg (same group transform, same paths).
+/* ── Pet mascot sprite — circular badge ──
+ * The mascot is a circular dark badge: the feather quill + ink drop artwork
+ * from /public/quill.svg rendered inside a true `<circle>` background
+ * (`<circle cx="256" cy="256" r="256" fill="url(#petBg)"/>`). The pet window
+ * is `transparent: true`, so the corners of the 512×512 viewBox outside the
+ * inscribed circle show the desktop through — no square silhouette, only a
+ * round badge ("圆,不是方").
  *
- * The viewBox is cropped tight to the feather's bounding box in the 512-space
- * (the feather group `translate(240,252) rotate(-38)` maps its local
- * x∈[-64,64], y∈[-140,144] bbox to roughly x∈[103,379], y∈[102,405]; the ink
- * drop at (318,360) r=20 sits inside that). A small margin is added so the
- * feather fills the 120×120 window without huge empty transparent borders —
- * `100 100 285 310`. width/height stay 108px (mascot is 108px in the 120
- * window, leaving ~6px for the breathing `drop-shadow` halo on
- * `.pet-mascot`, which now rings the feather silhouette instead of a square
- * tile). States (idle/hover/drag/click) still switch via `is-<state>`
- * classes on `.pet-mascot`. The `petQuillGrad` + `petInkGrad` defs are kept
- * (ids prefixed with `pet` to avoid collisions with the main app's icon).
+ * The viewBox is the full `0 0 512 512` (so the circle fills it); the
+ * feather group transform `translate(240,252) rotate(-38)` and the ink drop
+ * at (318,360) r=20 are copied verbatim from /public/quill.svg (left/right
+ * barbs + spine + nib + nib split + ink drop + highlight). The dark `petBg`
+ * gradient (`#0f1420`→`#181e30`) is restored from the original icon.
+ *
+ * width/height stay 108px (mascot is 108px in the 120×120 window, leaving
+ * ~6px for the breathing `drop-shadow` halo on `.pet-mascot`, which now rings
+ * the circle). States (idle/hover/drag/click) switch via `is-<state>` classes
+ * on `.pet-mascot`. The `petBg` + `petQuillGrad` + `petInkGrad` defs use ids
+ * prefixed with `pet` to avoid collisions with the main app's icon.
  */
 
 export interface PetMascotProps {
@@ -28,13 +28,17 @@ export function PetMascot({ state }: PetMascotProps) {
   return (
     <svg
       className={`pet-mascot is-${state}`}
-      viewBox="100 100 285 310"
+      viewBox="0 0 512 512"
       width="108"
       height="108"
       fill="none"
       aria-hidden="true"
     >
       <defs>
+        <linearGradient id="petBg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#0f1420" />
+          <stop offset="100%" stopColor="#181e30" />
+        </linearGradient>
         <linearGradient id="petQuillGrad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#f0ece0" />
           <stop offset="100%" stopColor="#d4c9a8" />
@@ -45,9 +49,13 @@ export function PetMascot({ state }: PetMascotProps) {
         </linearGradient>
       </defs>
 
+      {/* Circular dark badge background — a true circle (r=256 inscribed in
+          the 512 square) so the transparent window shows the desktop through
+          the corners; no square silhouette. */}
+      <circle cx="256" cy="256" r="256" fill="url(#petBg)" />
+
       {/* Feather quill, tilted -38deg, centered — copied verbatim from
-          /public/quill.svg (background tile removed; transparent window
-          surface shows the desktop through the feather silhouette). */}
+          /public/quill.svg. */}
       <g transform="translate(240,252) rotate(-38)">
         {/* Left barbs */}
         <path d="M 0,-140 C -44,-90 -64,-38 -58,18 C -52,62 -30,96 0,116 Z"
