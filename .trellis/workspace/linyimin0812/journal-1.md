@@ -1445,3 +1445,38 @@ Added a global keyboard shortcut (default Cmd+Shift+Q, user-configurable in Sett
 ### Next Steps
 
 - None - task complete
+
+
+## Session 43: Pet settings tab + custom icon + bug fixes
+
+**Date**: 2026-07-07
+**Task**: Pet settings tab + custom icon + bug fixes
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added a 桌宠 tab to desktop settings (show/hide toggle, icon source radio, custom image upload ≤1MB, 恢复默认). Shrunk default pet to 96×96 window / 72×72 mascot with PET_SIZE_VERSION migration gate. Fixed three follow-up bugs: (1) toggle only updated store flag without invoking toggle_pet_mode, so the window never showed/hid; (2) custom icon uploads didn't reach the pet window because it has its own Zustand store — added pet://icon-changed cross-window event; (3) removed the redundant View menu 'Desktop Pet Mode' CheckMenuItem, which also fixed pet showing on launch with the toggle off (macOS was restoring a stale checkmark).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `be99f8c` | (see git log) |
+| `f35ffc5` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

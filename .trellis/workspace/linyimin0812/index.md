@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 42
+- **Total Sessions**: 43
 - **Last Active**: 2026-07-07
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1447 | Active |
+| `journal-1.md` | ~1482 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 43 | 2026-07-07 | Pet settings tab + custom icon + bug fixes | `be99f8c`, `f35ffc5` | `master` |
 | 42 | 2026-07-07 | Pet panel toggle via global shortcut | `a29b7ce` | `master` |
 | 41 | 2026-07-07 | Pet panel corner attaches to icon + size tuning | `696e330`, `acaea36`, `b080032`, `ebbadbe`, `b838010` | `master` |
 | 40 | 2026-07-07 | Pet breathing halo removal + pet-panel size/position clamp fix | `17cb54e`, `1094254` | `master` |
