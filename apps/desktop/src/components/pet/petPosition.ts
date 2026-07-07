@@ -205,34 +205,49 @@ export function computePanelPosition(
 /**
  * Clamp a panel position (absolute logical screen points) so the whole panel
  * stays inside the work area. Generalized sibling of `clampPetPosition` for
- * the larger panel window. If the work area is smaller than the panel
- * (degenerate case) the panel is placed at the work area's top-left.
+ * the larger panel window. Unlike `clampPetPosition` (which uses the fixed
+ * 120×120 pet size), this takes the **actual panel size** as a parameter so
+ * the clamp respects a user-resized panel — a panel grown to 600×700 must be
+ * clamped by 600/700, not by the default 380×520, or the bottom-right corner
+ * would slide off-screen after a resize → close → reopen cycle.
+ *
+ * `panelSize` is in LOGICAL points (matches the work area). The caller is
+ * responsible for the unit boundary: pass the same logical size you computed
+ * via `clampPanelSize` (which also runs in logical space). If the work area is
+ * smaller than the panel (degenerate case) the panel is placed at the work
+ * area's top-left.
  */
 export function clampPanelPosition(
   saved: PetPosition,
   workArea: PetWorkArea,
+  panelSize: { width: number; height: number },
 ): PetPosition {
-  const maxX = workArea.x + Math.max(0, workArea.width - PET_PANEL_WIDTH);
-  const maxY = workArea.y + Math.max(0, workArea.height - PET_PANEL_HEIGHT);
+  const maxX = workArea.x + Math.max(0, workArea.width - panelSize.width);
+  const maxY = workArea.y + Math.max(0, workArea.height - panelSize.height);
   const x = Math.min(Math.max(saved.x, workArea.x), maxX);
   const y = Math.min(Math.max(saved.y, workArea.y), maxY);
   return { x, y };
 }
 
-/** Panel size payload (physical px). Mirrors the Rust `PetPanelSize` struct
- *  returned by `pet_panel_get_size`. */
+/** Panel size payload (logical points). Mirrors the Rust `PetPanelSize` struct
+ *  returned by `pet_panel_get_size` (which returns PHYSICAL px) — the caller
+ *  divides by `scale_factor` before constructing/reading this type so the math
+ *  here stays in logical space, directly comparable to the logical work area. */
 export interface PetPanelSize {
   width: number;
   height: number;
 }
 
 /**
- * Clamp a saved panel size (physical px) so the panel never exceeds the work
- * area and never drops below `PET_PANEL_MIN_*`. A size that was saved on a
- * larger monitor is shrunk to fit the current work area; a degenerate work
- * area falls back to the minimum. The `tauri.conf.json` `minWidth`/`minHeight`
- * already enforce a floor at the OS level — this is the JS-side mirror so
- * `setSize` calls don't fight the clamp.
+ * Clamp a saved panel size (LOGICAL points) so the panel never exceeds the work
+ * area (also logical) and never drops below `PET_PANEL_MIN_*` (logical). A size
+ * that was saved on a larger monitor is shrunk to fit the current work area; a
+ * degenerate work area falls back to the minimum. The `tauri.conf.json`
+ * `minWidth`/`minHeight` already enforce a floor at the OS level — this is the
+ * JS-side mirror so `setSize` calls don't fight the clamp. The caller is
+ * responsible for the unit boundary: divide by `scale_factor` after
+ * `pet_panel_get_size` (physical → logical) before passing `saved`, and
+ * multiply by `scale_factor` before `pet_panel_set_size` (logical → physical).
  */
 export function clampPanelSize(
   saved: PetPanelSize,

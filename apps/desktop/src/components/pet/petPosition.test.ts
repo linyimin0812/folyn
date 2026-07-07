@@ -211,32 +211,68 @@ describe('computePanelPosition', () => {
 
 describe('clampPanelPosition', () => {
   const workArea: PetWorkArea = { x: 0, y: 25, width: 1440, height: 875 };
+  // Default panel size — preserves the pre-existing assertions that were
+  // written against the hardcoded PET_PANEL_WIDTH/HEIGHT constants.
+  const defaultSize = { width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT };
 
   it('returns the saved position unchanged when already on-screen', () => {
-    const pos = clampPanelPosition({ x: 100, y: 100 }, workArea);
+    const pos = clampPanelPosition({ x: 100, y: 100 }, workArea, defaultSize);
     expect(pos).toEqual({ x: 100, y: 100 });
   });
 
   it('clamps a position off the right edge', () => {
-    const pos = clampPanelPosition({ x: 99999, y: 100 }, workArea);
+    const pos = clampPanelPosition({ x: 99999, y: 100 }, workArea, defaultSize);
     expect(pos.x).toBe(workArea.x + workArea.width - PET_PANEL_WIDTH);
   });
 
   it('clamps a position off the bottom edge', () => {
-    const pos = clampPanelPosition({ x: 100, y: 99999 }, workArea);
+    const pos = clampPanelPosition({ x: 100, y: 99999 }, workArea, defaultSize);
     expect(pos.y).toBe(workArea.y + workArea.height - PET_PANEL_HEIGHT);
   });
 
   it('clamps a position off the top/left edges', () => {
-    const pos = clampPanelPosition({ x: -50, y: -50 }, workArea);
+    const pos = clampPanelPosition({ x: -50, y: -50 }, workArea, defaultSize);
     expect(pos.x).toBe(workArea.x);
     expect(pos.y).toBe(workArea.y);
   });
 
   it('handles a work area smaller than the panel (degenerate)', () => {
     const tiny: PetWorkArea = { x: 0, y: 0, width: 100, height: 100 };
-    const pos = clampPanelPosition({ x: 5000, y: 5000 }, tiny);
+    const pos = clampPanelPosition({ x: 5000, y: 5000 }, tiny, defaultSize);
     expect(pos).toEqual({ x: 0, y: 0 });
+  });
+
+  it('clamps by the ACTUAL panel size when resized larger (regression)', () => {
+    // Regression: user resized the panel to 600×700 (logical) and saved a
+    // position near the bottom-right of a 1440×900 work area. The old
+    // implementation hardcoded 380×520 → maxX=1060, maxY=380 → position
+    // stayed at (1000, 300) and the 600×700 panel overflowed by 160px on
+    // X and 100px on Y. With the actual size, maxX=840 and maxY=200 so the
+    // whole panel fits.
+    const retina: PetWorkArea = {
+      x: 0,
+      y: 0,
+      width: 1440,
+      height: 900,
+      scale_factor: 1,
+    };
+    const pos = clampPanelPosition(
+      { x: 1000, y: 300 },
+      retina,
+      { width: 600, height: 700 },
+    );
+    expect(pos).toEqual({ x: 840, y: 200 });
+  });
+
+  it('leaves the position unchanged when the panel is smaller than default', () => {
+    // A panel shrunk to 300×400 at (100, 100) is well inside the work area —
+    // clamp should be a no-op.
+    const pos = clampPanelPosition(
+      { x: 100, y: 100 },
+      workArea,
+      { width: 300, height: 400 },
+    );
+    expect(pos).toEqual({ x: 100, y: 100 });
   });
 });
 
@@ -276,5 +312,39 @@ describe('clampPanelSize', () => {
     const tiny: PetWorkArea = { x: 0, y: 0, width: 0, height: 0 };
     const size = clampPanelSize({ width: 99999, height: 99999 }, tiny);
     expect(size).toEqual({ width: PET_PANEL_MIN_WIDTH, height: PET_PANEL_MIN_HEIGHT });
+  });
+
+  it('does NOT shrink a logical saved size on a 2x DPI (Retina) work area', () => {
+    // Regression: on a 2x DPI display the work area is 1440×900 LOGICAL points
+    // (scale_factor=2). A user who resized the panel to 450×600 logical must
+    // get 450×600 back — NOT 450×450 (which happened when `saved` was
+    // PHYSICAL px and the height was clamped against the LOGICAL work-area
+    // height of 900). After the unit-cleanup fix, `saved` is logical and
+    // compares directly to the logical work area.
+    const retina: PetWorkArea = {
+      x: 0,
+      y: 0,
+      width: 1440,
+      height: 900,
+      scale_factor: 2,
+    };
+    const size = clampPanelSize({ width: 450, height: 600 }, retina);
+    expect(size).toEqual({ width: 450, height: 600 });
+  });
+
+  it('clamps a saved logical size that exceeds the work area on 2x DPI', () => {
+    // User resized to 1500×1000 logical on a 1440×900 logical Retina work
+    // area → clamp shrinks to fit. (Pre-fix, a physical-px saved value of
+    // 1500 was min'd against logical workArea.width=1440 → 1440, then passed
+    // to pet_panel_set_size as physical → 720 logical, half-size.)
+    const retina: PetWorkArea = {
+      x: 0,
+      y: 0,
+      width: 1440,
+      height: 900,
+      scale_factor: 2,
+    };
+    const size = clampPanelSize({ width: 1500, height: 1000 }, retina);
+    expect(size).toEqual({ width: 1440, height: 900 });
   });
 });
