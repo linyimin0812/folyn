@@ -46,7 +46,8 @@ import { isTauri } from '@/utils/platform';
 type PetState = 'idle' | 'hover' | 'drag' | 'click';
 
 /** Sprite fills the full 120x120 pet window — no transparent margin around
- * the quill icon. The breathing glow sits behind it as a separate layer. */
+ * the quill icon. The breathing self-pulse is driven by CSS `scale` on
+ * `.pet-mascot` (see pet.css), no separate layer. */
 const SPRITE_OFFSET = 0;
 const SPRITE_SIZE = 120;
 const POSITION_PERSIST_INTERVAL_MS = 800;
@@ -552,9 +553,8 @@ export function PetApp() {
     <div className="pet-root">
       {/* The mascot sprite is wrapped in an interaction layer that owns all
           mouse handlers. CSS keyframes on `.pet-mascot` drive the animations,
-          including the breathing `drop-shadow` halo around the dark tile
-          (see pet.css). The glow is the mascot's own filter — no separate
-          layer needed. */}
+          including the breathing `scale` self-pulse on the icon (see
+          pet.css). No surrounding glow layer. */}
       <div
         className="pet-sprite-layer"
         onMouseEnter={handleMouseEnter}

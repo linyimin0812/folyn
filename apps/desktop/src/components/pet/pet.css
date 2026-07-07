@@ -43,21 +43,21 @@ html.is-pet-window .pet-root {
   background: transparent;
   user-select: none;
   -webkit-user-select: none;
-  /* `visible` (not `hidden`) so the breathing `drop-shadow` halo and the
-   * state-animation scale overflow are not clipped by the root container.
-   * The OS window still clips at 120px, but the mascot is shrunk to 88px
-   * (see `.pet-mascot`) so the halo + scale fit inside with margin. */
+  /* `visible` (not `hidden`) so the state-animation scale overflow is not
+   * clipped by the root container. The OS window still clips at 120px, but
+   * the mascot is shrunk to 88px (see `.pet-mascot`) so the scale fits
+   * inside with margin. */
   overflow: visible;
 }
 
 .pet-sprite-layer {
   /* The sprite layer hosts the 88px mascot SVG inside the 120x120 pet window.
-   * Without centering, the inline-element mascot sits at the layer's top-left
-   * (0,0), so the circle's top + the breathing drop-shadow halo land on the
-   * window's top edge and get clipped. Centering the mascot gives ~16px
-   * margin on all sides → the halo (7px max) + idle translate (1px) stay
-   * ~8px inside the window top, no clip. The inline style in PetApp.tsx
-   * (position/left/top/width/height/cursor) is unaffected. */
+   * Without centering, the inline-element mascot sits at the layer's
+   * top-left (0,0), so the circle's top would land on the window's top
+   * edge. Centering the mascot gives ~16px margin on all sides → the
+   * idle translate (1px) and scale-breathe (1.04 → +~1.8px each side)
+   * stay well inside the window, no clip. The inline style in
+   * PetApp.tsx (position/left/top/width/height/cursor) is unaffected. */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -65,18 +65,14 @@ html.is-pet-window .pet-root {
 
 .pet-mascot {
   /* 88px in the 120x120 pet window. At 88px, click scale 1.08 → ~95px and
-   * the breathing `drop-shadow` halo (up to 16px) → ~108px effective visible
-   * extent, both fit inside the 120px window with margin. Previously 108px,
-   * which combined with scale 1.18 (→127px) + halo clipped the circle's edges
-   * during animation. */
+   * the scale-breathe peak (1.04 → ~91.5px) both fit inside the 120px
+   * window with margin. */
   width: 88px;
   height: 88px;
-  /* `overflow: visible` so the circle (now r=244 inside the 512 viewBox, with
-   * 12px margin) is not clipped by the SVG root if a state-animation scale
-   * pushes it past the viewBox edge. The `<svg>` element also sets
-   * `overflow="visible"` as an attribute; both belt-and-suspenders. The OS
-   * window still clips at 120px, but the mascot is shrunk to 88px so the
-   * halo + scale fit inside with margin. */
+  /* `overflow: visible` so the circle (r=244 inside the 512 viewBox, with
+   * 12px margin) is not clipped by the SVG root if a state-animation
+   * scale pushes it past the viewBox edge. The `<svg>` element also sets
+   * `overflow="visible"` as an attribute; both belt-and-suspenders. */
   overflow: visible;
   cursor: pointer;
   transform-origin: center;
@@ -88,40 +84,35 @@ html.is-pet-window .pet-root {
 .pet-mascot:hover { transform: scale(1.04); }
 .pet-mascot:active { cursor: pointer; }
 
-/* ── Breathing-light halo ──
- * A soft `drop-shadow` filter pulse around the dark tile (the tile is opaque,
- * so the glow must be a halo around it, not a blob behind it). Combined with
- * the state animations below via a comma-separated `animation` list so the
- * breathing never stops during state changes; the breathe owns `filter`,
- * the state keyframes own `transform`.
+/* ── Breathing-light (icon self-pulse, no surrounding glow) ──
+ * The breathing uses the independent CSS `scale` property (not
+ * `transform: scale(...)`), so it composes with the state keyframes
+ * below which own `transform` (translateY / rotate / scale). `scale`
+ * and `transform` are separate CSS properties and multiply together —
+ * the breathe owns `scale`, the state keyframes own `transform`, no
+ * conflict. (Replacing the prior `filter: drop-shadow(...)` white halo
+ * per user request — the user wanted only the icon self-pulse, no
+ * surrounding glow.)
  *
- * Tuned for an unmistakably visible pulse even when no mouse is over the pet
- * (idle): peak halo 20px @ alpha 1.0, trough 10px @ alpha 0.4, 2.4s cycle.
- * The halo color is soft white (not the previous blue) so it reads as a
- * neutral glow against any desktop wallpaper and stays clearly visible in
- * both light and dark themes. The peak radius slightly exceeds the ~16px
- * margin the 88px mascot leaves inside the 120px window (16px each side), so
- * the halo reaches past the window edge and is clipped to a soft square —
- * this is intentional: the clipped halo at the window boundary makes the
- * pulse read clearly at the edge rather than fading into the transparent
- * surround. The trough drops to alpha 0.4 (vs the previous 0.6) so the
- * bright/dim contrast is larger and the pulse is unmissable. The 2.4s cycle
- * is slightly slower than the previous 2.0s so the peak is held longer and
- * reads as a deliberate pulse rather than a flicker. macOS may throttle CSS
- * animations on a `focus:false` window when the owning app is not frontmost,
- * so the amplitude is set high enough to be unmissable when the webview is
- * active. */
+ * Amplitude 1.0 ↔ 1.04, 2.4s cycle, ease-in-out. The 4% delta is small
+ * enough to read as a calm breath but large enough to be visible at the
+ * 88px mascot size even on a busy wallpaper. macOS may throttle CSS
+ * animations on a `focus:false` window when the owning app is not
+ * frontmost, so the amplitude is set high enough to be unmissable when
+ * the webview is active. */
 @keyframes pet-breathe {
-  0%, 100% { filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.4)); }
-  50%      { filter: drop-shadow(0 0 20px rgba(255, 255, 255, 1.0)); }
+  0%, 100% { scale: 1; }
+  50%      { scale: 1.04; }
 }
 
-/* ── State: idle (breathing/floating) ──
- * The idle state owns the most visible breathing so the pet pulses clearly
- * even with no mouse interaction. The state keyframe (`pet-idle`) nudges
- * `transform` by 2px (not 1px) so there is BOTH a filter pulse AND a visible
- * float at idle — the previous 1px nudge was too subtle to read as motion.
- * Both run in parallel via the comma-separated `animation` list. */
+/* ── State: idle (floating + breathing) ──
+ * The idle state owns the most visible breathing so the pet pulses
+ * clearly even with no mouse interaction. The state keyframe
+ * (`pet-idle`) nudges `transform` by 2px (not 1px) so there is BOTH a
+ * scale pulse AND a visible float at idle — the previous 1px nudge was
+ * too subtle to read as motion. Both run in parallel via the
+ * comma-separated `animation` list (pet-idle owns `transform`,
+ * pet-breathe owns `scale`). */
 .pet-mascot.is-idle {
   animation: pet-idle 3.2s ease-in-out infinite,
              pet-breathe 2.4s ease-in-out infinite;

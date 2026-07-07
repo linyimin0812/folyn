@@ -13,10 +13,10 @@
  * gradient (`#0f1420`→`#181e30`) is restored from the original icon.
  *
  * width/height are 88px (mascot is 88px in the 120×120 window, leaving
- * ~16px of headroom for the breathing `drop-shadow` halo on `.pet-mascot`
- * and the state-animation scale, so the circle is not clipped at the edges
- * during animation). States (idle/hover/drag/click) switch via `is-<state>`
- * classes on `.pet-mascot`. The `petBg` + `petQuillGrad` + `petInkGrad` defs
+ * ~16px of headroom for the breathing `scale` self-pulse on
+ * `.pet-mascot` and the state-animation scale, so the circle is not
+ * clipped at the edges during animation). States (idle/hover/drag/click)
+ * switch via `is-<state>` classes on `.pet-mascot`. The `petBg` + `petQuillGrad` + `petInkGrad` defs
  * use ids prefixed with `pet` to avoid collisions with the main app's icon.
  */
 
@@ -53,11 +53,12 @@ export function PetMascot({ state }: PetMascotProps) {
 
       {/* Circular dark badge background — a true circle inscribed WITH MARGIN
           inside the 512 square (r=244, not r=256) so the circle does not touch
-          the viewBox edge. The idle animation no longer scales the SVG, but
-          hover/drag/click do (briefly); the margin + `overflow="visible"` on
-          the svg root + `.pet-mascot { overflow: visible }` in pet.css ensure
-          the circle is never clipped even if a scale pushes it past the
-          viewBox. The transparent corners still show the desktop through. */}
+          the viewBox edge. The breathing `scale` self-pulse and the
+          hover/drag/click state scales all scale the SVG briefly; the margin
+          + `overflow="visible"` on the svg root + `.pet-mascot { overflow:
+          visible }` in pet.css ensure the circle is never clipped even if a
+          scale pushes it past the viewBox. The transparent corners still show
+          the desktop through. */}
       <circle cx="256" cy="256" r="244" fill="url(#petBg)" />
 
       {/* Feather quill, tilted -38deg, centered — copied verbatim from
