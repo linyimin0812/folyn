@@ -1373,3 +1373,41 @@ Two pet-related fixes. (1) Replaced the pet breathing white drop-shadow halo wit
 ### Next Steps
 
 - None - task complete
+
+
+## Session 41: Pet panel corner attaches to icon + size tuning
+
+**Date**: 2026-07-07
+**Task**: Pet panel corner attaches to icon + size tuning
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Rewrote computePanelPosition so one of the panel's four corners attaches to the pet MASCOT ICON's diagonally-opposite corner (was: centered X + above/below). Quadrant chosen by pet-center vs work-area-center; corner offset by PET_MASCOT_SIZE inset (16px) so the panel corner visually touches the 88x88 icon inside the 120x120 window, not the transparent window margin. Added panelSize param so resized panels still track the pet. Iteratively tuned default size: 380x520 → 600x840 → 520x720 → 440x620; gap 8 → 2. PET_MASCOT_SIZE=88 constant mirrors .pet-mascot CSS. 37/37 tests pass, tsc clean.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `696e330` | (see git log) |
+| `acaea36` | (see git log) |
+| `b080032` | (see git log) |
+| `ebbadbe` | (see git log) |
+| `b838010` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

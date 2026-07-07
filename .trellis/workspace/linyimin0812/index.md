@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 40
+- **Total Sessions**: 41
 - **Last Active**: 2026-07-07
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1375 | Active |
+| `journal-1.md` | ~1413 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 41 | 2026-07-07 | Pet panel corner attaches to icon + size tuning | `696e330`, `acaea36`, `b080032`, `ebbadbe`, `b838010` | `master` |
 | 40 | 2026-07-07 | Pet breathing halo removal + pet-panel size/position clamp fix | `17cb54e`, `1094254` | `master` |
 | 39 | 2026-07-07 | Fix pet launch position unit mismatch (logical points vs physical px) | `6860a0d`, `5a4d5ad` | `master` |
 | 38 | 2026-07-07 | Pet breathing animation + default position + panel placement | `705a3f9` | `master` |
