@@ -1411,3 +1411,37 @@ Rewrote computePanelPosition so one of the panel's four corners attaches to the 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 42: Pet panel toggle via global shortcut
+
+**Date**: 2026-07-07
+**Task**: Pet panel toggle via global shortcut
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added a global keyboard shortcut (default Cmd+Shift+Q, user-configurable in Settings → 快捷键) that toggles the pet-panel centered in the work area, firing even when Quill is unfocused. Wired tauri-plugin-global-shortcut with a single global handler emitting pet://shortcut-toggle; pet_panel_set_shortcut swaps the bound accelerator at runtime. Shortcut path uses a new openPetPanelCentered (work-area center), sharing size-resolution + post-show re-assert helpers with the click-open path. SettingsStore backfills missing DEFAULT_SHORTCUTS entries by id on load so existing users see togglePetPanel without losing their rebindings. ShortcutEditor surfaces a 2.5s timeout hint when a pressed combo is consumed by the app menu / macOS system (e.g. Cmd+Shift+P, Cmd+Q) and never reaches keydown. Spec gained a Global Keyboard Shortcut scenario.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a29b7ce` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
