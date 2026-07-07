@@ -115,7 +115,7 @@ async function openOrTogglePetPanel(): Promise<void> {
     // across opens). The panel POSITION is intentionally NOT restored —
     // see the function doc above. The clamped size is also passed to
     // `computePanelPosition` so a resized panel's corner still tracks the
-    // pet — passing the default 600×840 here when the panel has been
+    // pet — passing the default 520×720 here when the panel has been
     // resized larger would place the corner at the wrong spot.
     const { useSettingsStore } = await import('@/store/settingsStore');
     const { petPanelWidth, petPanelHeight } = useSettingsStore.getState();
