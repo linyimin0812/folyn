@@ -698,3 +698,62 @@ happen at the call site, not be assumed away. If a window is mysteriously center
 diagnostic (a Rust command that appends to `appDataDir/<name>.log`, bypassing the secondary
 window's devtools and fs-permission limits) and read the actual `scale_factor` + the value
 passed to `set_pet_position`.
+
+---
+
+## Scenario: Global Keyboard Shortcut (OS-wide, fires when app is unfocused)
+
+### 1. Scope / Trigger
+- Trigger: binding an OS-wide keyboard shortcut that fires even when the app is not focused (e.g. summon the pet-panel from any app, global quick-action hotkeys).
+- The in-editor `ShortcutItem` keybindings (Cmd+S, Cmd+B, etc.) are NOT global shortcuts — they're consumed by EditorView's keymap and never registered with the OS. Only entries flagged as global (currently `togglePetPanel`) go through this path.
+
+### 2. Signatures
+- `Cargo.toml`: `tauri-plugin-global-shortcut = "2"`.
+- `lib.rs` plugin registration with a single global handler:
+  ```rust
+  .plugin(
+      tauri_plugin_global_shortcut::Builder::new()
+          .with_handler(|app, _shortcut, event| {
+              if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                  let _ = app.emit("pet://shortcut-toggle", ());
+              }
+          })
+          .build(),
+  )
+  ```
+- Custom Rust command to swap the bound accelerator at runtime:
+  ```rust
+  #[tauri::command]
+  pub async fn pet_panel_set_shortcut(app: tauri::AppHandle, accelerator: String) -> Result<(), String> {
+      use tauri_plugin_global_shortcut::GlobalShortcutExt;
+      app.global_shortcut().unregister_all().map_err(|e| e.to_string())?;
+      if accelerator.is_empty() { return Ok(()); }
+      app.global_shortcut().register(accelerator.as_str()).map_err(|e| e.to_string())?;
+      Ok(())
+  }
+  ```
+- Frontend accelerator converter: `keysToAccelerator(["⌘","Shift","Q"]) → "Cmd+Shift+Q"` (see `src/utils/shortcutAccelerator.ts`). Symbol→token map: `⌘→Cmd`, `Ctrl→Control`, `⌥→Alt`, `Shift→Shift`; single-letter keys uppercased; multi-char tokens (e.g. `F5`, `Space`) pass through.
+
+### 3. Contracts
+- **Single global handler, swappable accelerator**: the plugin's `with_handler` closure is set ONCE at plugin build time and emits `pet://shortcut-toggle` on every `Pressed` event. `pet_panel_set_shortcut` only swaps WHICH accelerator fires that handler (`unregister_all` + `register`). This keeps the swap atomic and avoids re-binding a closure per rebind.
+- **Fire on Pressed only**: filter `event.state == ShortcutState::Pressed` so a single keypress toggles once (not twice on press+release).
+- **Custom invoke bypasses ACL**: the frontend calls only `pet_panel_set_shortcut` (a custom `#[tauri::command]`); it never invokes the plugin's built-in `register`/`unregister` commands directly. Custom commands bypass the ACL, so **no capability JSON entry is needed** for global shortcuts. (If the frontend ever needs to call the plugin's built-in commands directly, add `global-shortcut:allow-register` / `allow-unregister` to the relevant window's capability.)
+- **Event channel**: `pet://shortcut-toggle` follows the app-private `pet://` prefix convention; payload is `()` (the handler just signals "fire", the frontend decides what to do).
+- **Lifecycle**: register the persisted accelerator on `PetApp` mount (the `pet` window is always alive while pet mode is on, so the registration survives main-window hide/show). The OS auto-unregisters on process exit; no explicit unregister-on-unmount is needed.
+- **Rebind flow**: `SettingsPage.tsx` `ShortcutEditor`'s `handleKeyDown` calls `updateShortcut` (persists to settingsStore) THEN, if the changed shortcut id is `togglePetPanel`, invokes `pet_panel_set_shortcut` with the converted accelerator. The command's `unregister_all`+`register` makes the new combo take effect system-wide immediately.
+
+### 4. Why
+- The pet floats over other apps; the user must summon the panel without switching to Quill first. In-app `keydown` listeners only fire when Quill is focused, defeating the purpose.
+- Routing through a custom Rust command (instead of the plugin's JS API) keeps the frontend dependency surface small (no `@tauri-apps/plugin-global-shortcut` npm package) and avoids the ACL capability dance for the built-in commands.
+- macOS uses Carbon `RegisterEventHotKey` under the hood (via the `global-hotkey` crate) — does NOT require Accessibility permission, unlike CGEventTap-based approaches. No permission prompt on first use.
+
+### 5. Failure / Edge Modes
+- **Accelerator parse error**: `register("Cmd+Shift+")` (trailing `+`) returns an `Err`; the command propagates it as a `String` and the frontend logs `[settings] failed to re-register global shortcut`. The OLD accelerator was already unregistered at that point, so a malformed rebind leaves the user with no global shortcut — the frontend should validate before calling (the `ShortcutEditor` recording handler always produces a non-empty, well-formed combo, so this path is defensive only).
+- **OS-level conflict**: if another app has the same combo registered globally, the OS resolves the conflict unpredictably (typically the last-registered app wins, but ordering is not guaranteed). Document as a known limitation; do NOT build conflict-detection UI for the MVP.
+- **Cross-platform**: the plugin loads on all platforms, but pet mode is macOS-only at present. On non-macOS, no accelerator is registered until the frontend calls `pet_panel_set_shortcut` — harmless no-op.
+- **Reset to defaults**: `resetShortcuts` restores `togglePetPanel` to `['⌘','Shift','Q']` in the store, but does NOT call `pet_panel_set_shortcut` — the rebind only takes effect on next app restart (the mount effect re-reads the store). If immediate reset-to-default is needed, wire `resetShortcuts` to also call `pet_panel_set_shortcut`.
+
+### 6. Tests
+- `keysToAccelerator` unit tests (`src/utils/shortcutAccelerator.test.ts`): symbol→token map, single-letter uppercasing, multi-char passthrough, empty input, order preservation.
+- `settingsStore` test: `DEFAULT_SHORTCUTS` includes `togglePetPanel` with default `['⌘','Shift','Q']`.
+- No Rust unit test for `pet_panel_set_shortcut` (it shells out to the plugin's `register`, which needs a live app handle — covered by manual integration testing).

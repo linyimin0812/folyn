@@ -3,6 +3,7 @@ import {
   computeDefaultPetPosition,
   clampPetPosition,
   computePanelPosition,
+  computeCenteredPanelPosition,
   clampPanelPosition,
   clampPanelSize,
   resolvePanelSize,
@@ -491,5 +492,29 @@ describe('resolvePanelSize', () => {
     );
     expect(size.width).toBe(PET_PANEL_MIN_WIDTH);
     expect(size.height).toBe(PET_PANEL_MIN_HEIGHT);
+  });
+});
+
+describe('computeCenteredPanelPosition', () => {
+  const workArea: PetWorkArea = { x: 0, y: 25, width: 1440, height: 875, scale_factor: 2 };
+
+  it('centers the panel in the work area (logical points)', () => {
+    const pos = computeCenteredPanelPosition(workArea, { width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT });
+    expect(pos.x).toBe(Math.round((1440 - PET_PANEL_WIDTH) / 2));
+    expect(pos.y).toBe(Math.round(25 + (875 - PET_PANEL_HEIGHT) / 2));
+  });
+
+  it('offsets by a nonzero work-area origin', () => {
+    const wa: PetWorkArea = { x: 100, y: 50, width: 1000, height: 600, scale_factor: 2 };
+    const pos = computeCenteredPanelPosition(wa, { width: 200, height: 400 });
+    expect(pos.x).toBe(Math.round(100 + (1000 - 200) / 2));
+    expect(pos.y).toBe(Math.round(50 + (600 - 400) / 2));
+  });
+
+  it('pins to work-area top-left when panel is larger than the work area', () => {
+    const wa: PetWorkArea = { x: 0, y: 0, width: 100, height: 100, scale_factor: 2 };
+    const pos = computeCenteredPanelPosition(wa, { width: 500, height: 700 });
+    expect(pos.x).toBe(0);
+    expect(pos.y).toBe(0);
   });
 });

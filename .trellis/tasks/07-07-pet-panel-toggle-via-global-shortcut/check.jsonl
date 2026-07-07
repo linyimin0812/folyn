@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Verify the new global-shortcut scenario doc was added and the ACL capability entry follows the windows-scoped contract."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify settings store change (togglePetPanel in DEFAULT_SHORTCUTS) follows the Zustand persistence + selector conventions."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Final review checklist: lint/typecheck/tests, forbidden patterns, no half-finished implementations."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify PetApp.tsx refactor (shared helpers extracted, named exports, listener registration) follows conventions."}
+{"file": ".trellis/tasks/07-07-pet-panel-toggle-via-global-shortcut/prd.md", "reason": "Acceptance Criteria checklist: global toggle when unfocused, centered position, no click-open regression, rebind flow, tests."}

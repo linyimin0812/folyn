@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PetMascot } from './PetMascot';
 import { openPetContextMenu } from './PetContextMenu';
-import { clampPetPosition, computeDefaultPetPosition, computePanelPosition, resolvePanelSize, PET_PANEL_SIZE_VERSION } from './petPosition';
+import { clampPetPosition, computeDefaultPetPosition, computePanelPosition, computeCenteredPanelPosition, resolvePanelSize, PET_PANEL_SIZE_VERSION } from './petPosition';
+import { keysToAccelerator } from '@/utils/shortcutAccelerator';
 import { isTauri } from '@/utils/platform';
 
 /**
@@ -69,6 +70,80 @@ interface PetWorkAreaResult {
 }
 
 /**
+ * Resolve the panel size for an open, applying the version-gate migration
+ * (saved size whose persisted `petPanelSizeVersion` mismatches the current
+ * `PET_PANEL_SIZE_VERSION` is replaced with the new default, and the new
+ * default + version are persisted so subsequent opens don't re-migrate).
+ * Returns the resolved logical size. Shared by the click-open and
+ * shortcut-open paths so they cannot drift on size-resolution behavior.
+ *
+ * Pure w.r.t. settingsStore + invoke('pet_panel_set_size'): no position
+ * computation, no show, no post-show re-assert. Callers feed the returned
+ * size into their own position computation + `applyPanelFrame`.
+ */
+async function resolveAndPersistPanelSize(workArea: PetWorkAreaResult): Promise<{ width: number; height: number }> {
+  const { invoke } = await import('@tauri-apps/api/core');
+  const { useSettingsStore } = await import('@/store/settingsStore');
+  const { petPanelWidth, petPanelHeight, petPanelSizeVersion } = useSettingsStore.getState();
+
+  const savedMatchesVersion = petPanelSizeVersion === PET_PANEL_SIZE_VERSION;
+  const size = resolvePanelSize(
+    { width: petPanelWidth, height: petPanelHeight },
+    petPanelSizeVersion,
+    { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
+  );
+  await invoke('pet_panel_set_size', { width: size.width, height: size.height });
+
+  if (!savedMatchesVersion || petPanelWidth !== size.width || petPanelHeight !== size.height) {
+    const { setPetPanelSize, setPetPanelSizeVersion } = useSettingsStore.getState();
+    setPetPanelSize(size.width, size.height);
+    setPetPanelSizeVersion(PET_PANEL_SIZE_VERSION);
+  }
+  return size;
+}
+
+/**
+ * Apply the panel's outer frame (position + size), show it, then re-assert
+ * position+size AFTER show. The post-show re-assert is required on macOS:
+ * `set_position` / `set_size` on a HIDDEN NSPanel/NSWindow may not take
+ * effect reliably (the window manager can defer the frame update until the
+ * window is ordered in), and `show()` can reset the frame to the last
+ * visible position/size. Calling them again on the now-visible window
+ * guarantees the panel lands at the computed spot — same values, so no
+ * visible jump. Shared by both open paths so neither can regress on the
+ * NSPanel frame-deferral workaround.
+ *
+ * `panelPosPhysical` and `panelSizePhysical` are PHYSICAL px (the caller
+ * multiplies logical by `scale_factor` before calling).
+ */
+async function applyPanelFrame(
+  panelPosPhysical: { x: number; y: number },
+  panelSizePhysical: { width: number; height: number },
+): Promise<void> {
+  const { invoke } = await import('@tauri-apps/api/core');
+  await invoke('pet_panel_set_position', panelPosPhysical);
+  await invoke('pet_panel_set_size', panelSizePhysical);
+  await invoke('pet_panel_show');
+  await invoke('pet_panel_set_position', panelPosPhysical);
+  await invoke('pet_panel_set_size', panelSizePhysical);
+}
+
+/**
+ * If the panel is currently visible, hide it and return `true` (toggle-off).
+ * Otherwise return `false` (caller proceeds with open). Shared by both open
+ * paths so the toggle-on-second-trigger semantics stay unified.
+ */
+async function hideIfVisible(): Promise<boolean> {
+  const { invoke } = await import('@tauri-apps/api/core');
+  const visible = await invoke<boolean>('pet_panel_is_visible');
+  if (visible) {
+    await invoke('pet_panel_hide');
+    return true;
+  }
+  return false;
+}
+
+/**
  * Open the pet-panel quick-action window next to the pet, or hide it if it is
  * already visible (R8 toggle). The panel is an NSPanel at Dock level with
  * `can_join_all_spaces | full_screen_auxiliary`, so it shows over fullscreen
@@ -93,118 +168,68 @@ interface PetWorkAreaResult {
  */
 async function openOrTogglePetPanel(): Promise<void> {
   try {
+    if (await hideIfVisible()) return;
+
     const { invoke } = await import('@tauri-apps/api/core');
-
-    // The probe is still needed for `window_x/window_y` (the pet's current
-    // outer position, used to compute the panel position on every open).
-    // Its `main_fullscreen` field is no longer a reason to abort; the NSPanel
-    // panel shows over fullscreen too.
     const probe = await invoke<PetCursorProbeResult>('pet_cursor_probe');
-
-    // Toggle: if the panel is already visible, hide it (R8 second-click).
-    const visible = await invoke<boolean>('pet_panel_is_visible');
-    if (visible) {
-      await invoke('pet_panel_hide');
-      return;
-    }
-
     const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
     const sf = workArea.scale_factor || 1;
-
-    // Restore a saved SIZE only (so a user-resized panel keeps its size
-    // across opens). The panel POSITION is intentionally NOT restored —
-    // see the function doc above. The clamped size is also passed to
-    // `computePanelPosition` so a resized panel's corner still tracks the
-    // pet — passing the default 440×620 here when the panel has been
-    // resized larger would place the corner at the wrong spot.
-    //
-    // Version-gate: if the saved `petPanelSizeVersion` doesn't match the
-    // current `PET_PANEL_SIZE_VERSION` constant (e.g. the default size was
-    // bumped since the user last opened the panel, or first-ever open with
-    // version 0), ignore the saved size and use the new default. The new
-    // default + new version are persisted below so subsequent opens are
-    // stable and don't re-trigger the migration.
-    const { useSettingsStore } = await import('@/store/settingsStore');
-    const { petPanelWidth, petPanelHeight, petPanelSizeVersion } = useSettingsStore.getState();
-
-    const savedMatchesVersion = petPanelSizeVersion === PET_PANEL_SIZE_VERSION;
-    const size = resolvePanelSize(
-      { width: petPanelWidth, height: petPanelHeight },
-      petPanelSizeVersion,
-      { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
-    );
-    await invoke('pet_panel_set_size', { width: size.width, height: size.height });
-
-    // If we just applied the default due to a version mismatch (or first-ever
-    // open), persist the new default + version so subsequent opens are stable
-    // and don't re-trigger the migration. Skip when the saved size was already
-    // correct (no state change to write) — the persist poll handles ongoing
-    // user resizes.
-    if (!savedMatchesVersion || petPanelWidth !== size.width || petPanelHeight !== size.height) {
-      const { setPetPanelSize, setPetPanelSizeVersion } = useSettingsStore.getState();
-      setPetPanelSize(size.width, size.height);
-      setPetPanelSizeVersion(PET_PANEL_SIZE_VERSION);
-    }
+    const size = await resolveAndPersistPanelSize(workArea);
 
     // ALWAYS recompute the panel position from the pet's current outer
-    // position so the panel opens next to the pet (corner-attachment: the
-    // panel's corner sits `PET_PANEL_GAP` away from the pet's opposite corner
-    // on both axes, quadrant-chosen). `computePanelPosition` guarantees
-    // a `PET_PANEL_GAP` clearance between the panel and the pet, so the
-    // panel never covers the icon — even if the pet has moved since the
-    // last open. The computed position is NOT persisted.
+    // position so the panel opens next to the pet (corner-attachment). See
+    // `computePanelPosition` for the quadrant + corner math. The computed
+    // position is NOT persisted.
     //
-    // Unit boundary: `probe.window_x/y` is PHYSICAL px (from `outerPosition()`
-    // inside `pet_cursor_probe`); `computePanelPosition` runs in LOGICAL
-    // points (workArea is logical). Divide the probe position by `sf` to get
-    // logical, compute, then multiply the result by `sf` to get the physical
-    // px that `pet_panel_set_position` expects.
-    const petPosLogical = {
-      x: probe.window_x / sf,
-      y: probe.window_y / sf,
-    };
+    // Unit boundary: `probe.window_x/y` is PHYSICAL px; `computePanelPosition`
+    // runs in LOGICAL points. Divide by `sf` to get logical, compute, then
+    // multiply by `sf` for `pet_panel_set_position` (physical px).
+    const petPosLogical = { x: probe.window_x / sf, y: probe.window_y / sf };
     const panelPosLogical = computePanelPosition(petPosLogical, {
-      x: workArea.x,
-      y: workArea.y,
-      width: workArea.width,
-      height: workArea.height,
-      scale_factor: sf,
+      x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height, scale_factor: sf,
     }, size);
-    const panelPosPhysical = {
-      x: Math.round(panelPosLogical.x * sf),
-      y: Math.round(panelPosLogical.y * sf),
-    };
-
-    // Position the panel before showing so it appears at the right spot in
-    // one frame (avoids a flash at the default position). Likewise set the
-    // size before show so a version-bump default applies to the first frame.
-    // `pet_panel_set_position` and `pet_panel_set_size` both take PHYSICAL px,
-    // so multiply the logical `size` and `panelPosLogical` by `sf`.
-    const panelSizePhysical = {
-      width: Math.round(size.width * sf),
-      height: Math.round(size.height * sf),
-    };
-    await invoke('pet_panel_set_position', panelPosPhysical);
-    await invoke('pet_panel_set_size', panelSizePhysical);
-    await invoke('pet_panel_show');
-    // Re-assert the position AND size AFTER show() too: on macOS,
-    // `set_position` and `set_size` on a HIDDEN NSPanel/NSWindow may not take
-    // effect reliably (the window manager can defer the frame update until
-    // the window is ordered in), and `show()` can reset the frame to the last
-    // visible position/size. Calling `set_position` and `set_size` again on
-    // the now-visible window guarantees the panel is at the computed spot and
-    // size — same values, so no visible jump. This also fixes the "panel
-    // doesn't follow the pet after a drag" symptom: the pet's new position is
-    // reflected in `probe.window_x/y`, and the re-asserted `set_position`
-    // moves the visible panel to the new spot. It also fixes the "panel
-    // doesn't pick up the new default size after a version bump" symptom:
-    // the version-gate in `resolvePanelSize` computes the new default, but
-    // the pre-show `set_size` on the hidden window may not take; the
-    // re-asserted `set_size` on the visible window applies it.
-    await invoke('pet_panel_set_position', panelPosPhysical);
-    await invoke('pet_panel_set_size', panelSizePhysical);
+    await applyPanelFrame(
+      { x: Math.round(panelPosLogical.x * sf), y: Math.round(panelPosLogical.y * sf) },
+      { width: Math.round(size.width * sf), height: Math.round(size.height * sf) },
+    );
   } catch (err) {
     console.warn('[pet] openOrTogglePetPanel failed:', err);
+  }
+}
+
+/**
+ * Open the pet-panel window **centered in the work area**, or hide it if it
+ * is already visible (toggle semantics, matching the click path). Invoked
+ * exclusively by the global-shortcut handler (Rust emits `pet://shortcut-toggle`
+ * → this function). Distinct from `openOrTogglePetPanel` (which positions
+ * the panel next to the pet icon) because the shortcut is meant to summon
+ * the panel from any app — the pet icon may be obscured or off-screen, so
+ * anchoring to it is unreliable; work-area center is the predictable spot.
+ *
+ * Reuses `resolveAndPersistPanelSize` + `applyPanelFrame` so size-resolution,
+ * the version-gate migration, and the post-show NSPanel frame re-assert stay
+ * unified with the click path. Only the position computation differs
+ * (`computeCenteredPanelPosition` instead of `computePanelPosition`).
+ */
+async function openPetPanelCentered(): Promise<void> {
+  try {
+    if (await hideIfVisible()) return;
+
+    const { invoke } = await import('@tauri-apps/api/core');
+    const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
+    const sf = workArea.scale_factor || 1;
+    const size = await resolveAndPersistPanelSize(workArea);
+
+    const panelPosLogical = computeCenteredPanelPosition(
+      { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
+      size,
+    );
+    await applyPanelFrame(
+      { x: Math.round(panelPosLogical.x * sf), y: Math.round(panelPosLogical.y * sf) },
+      { width: Math.round(size.width * sf), height: Math.round(size.height * sf) },
+    );
+  } catch (err) {
+    console.warn('[pet] openPetPanelCentered failed:', err);
   }
 }
 
@@ -578,6 +603,48 @@ export function PetApp() {
         });
       } catch (err) {
         console.warn('[pet] blur listener setup failed:', err);
+      }
+    })();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  // ── Global shortcut: toggle pet-panel from any app ──
+  // Rust's `tauri_plugin_global_shortcut` handler emits `pet://shortcut-toggle`
+  // on every Pressed event (see lib.rs plugin build). This effect:
+  //   1. registers the persisted accelerator on mount (so the shortcut works
+  //      before the user visits Settings), and
+  //   2. listens for `pet://shortcut-toggle` and calls `openPetPanelCentered`.
+  //
+  // Mounted in the `pet` window (always alive while pet mode is on) so the
+  // listener + registration survive across main-window hide/show. Wrapped in
+  // isTauri + try/catch so non-Tauri/test envs skip it. The unlisten callback
+  // is returned from `listen` for cleanup; the accelerator stays registered
+  // at the OS level after unmount (Tauri process exit unregisters it).
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const { listen } = await import('@tauri-apps/api/event');
+        const { useSettingsStore } = await import('@/store/settingsStore');
+        const { shortcuts } = useSettingsStore.getState();
+        const toggle = shortcuts.find((s) => s.id === 'togglePetPanel');
+        if (toggle) {
+          const accelerator = keysToAccelerator(toggle.keys);
+          await invoke('pet_panel_set_shortcut', { accelerator });
+          console.info('[pet] global shortcut registered:', accelerator);
+        } else {
+          console.warn('[pet] togglePetPanel shortcut not found in settingsStore; global shortcut not registered');
+        }
+        unlisten = await listen('pet://shortcut-toggle', () => {
+          console.info('[pet] pet://shortcut-toggle event received');
+          void openPetPanelCentered();
+        });
+      } catch (err) {
+        console.warn('[pet] global shortcut setup failed:', err);
       }
     })();
     return () => {

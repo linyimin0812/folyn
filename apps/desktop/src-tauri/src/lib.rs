@@ -173,6 +173,24 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        // Global keyboard shortcut plugin. A single global handler emits
+        // `pet://shortcut-toggle` on every Pressed event; WHICH accelerator
+        // fires it is swapped at runtime by the `pet_panel_set_shortcut`
+        // command (unregister_all + register). Pet mode is macOS-only at
+        // present, but the plugin loads on all platforms — non-macOS just
+        // never has an accelerator registered until the frontend calls the
+        // command. No ACL capability entry is needed: the frontend never
+        // invokes the plugin's built-in commands directly, only our custom
+        // `pet_panel_set_shortcut` (custom invoke bypasses the ACL).
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        let _ = app.emit("pet://shortcut-toggle", ());
+                    }
+                })
+                .build(),
+        )
         .on_menu_event(|app, event| {
             let id = event.id().as_ref();
             if id == PET_MODE_MENU_ID {
@@ -329,6 +347,7 @@ pub fn run() {
             commands::pet_get_work_area,
             commands::pet_panel_show,
             commands::pet_panel_hide,
+            commands::pet_panel_set_shortcut,
             commands::pet_panel_set_position,
             commands::pet_panel_get_position,
             commands::pet_panel_set_size,

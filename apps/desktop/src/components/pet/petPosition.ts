@@ -107,6 +107,26 @@ export function computeDefaultPetPosition(
 }
 
 /**
+ * Compute the panel position (logical points, absolute screen coords) so the
+ * panel opens **centered in the work area** — used by the global-shortcut
+ * toggle path. The click-open path uses `computePanelPosition` (pet-adjacent
+ * corner); the shortcut path uses this so the panel lands mid-screen instead
+ * of next to the (possibly obscured) pet icon.
+ *
+ * The result is clamped so the whole panel stays inside the work area on
+ * either axis: when the panel is larger than the work area (degenerate case),
+ * it is placed at the work-area top-left and overflows downward/rightward.
+ */
+export function computeCenteredPanelPosition(
+  workArea: PetWorkArea,
+  panelSize: { width: number; height: number },
+): PetPosition {
+  const x = workArea.x + Math.max(0, (workArea.width - panelSize.width) / 2);
+  const y = workArea.y + Math.max(0, (workArea.height - panelSize.height) / 2);
+  return { x: Math.round(x), y: Math.round(y) };
+}
+
+/**
  * Clamp a saved pet position (absolute logical screen points) so the whole
  * 120×120 window stays inside the work area. If the saved position would clip
  * on any edge, it is moved inward to the nearest valid position. The caller

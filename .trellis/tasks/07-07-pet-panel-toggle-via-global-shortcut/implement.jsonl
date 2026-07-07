@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Plugin registration, ACL capability contract for global-shortcut, and the pet://event channel naming convention. The implementer will extend this spec with a new 'Global Shortcuts' scenario as part of the work."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store patterns for adding the new togglePetPanel entry to DEFAULT_SHORTCUTS in settingsStore.ts; persistence round-trip via the debounced persist path."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component structure conventions for PetApp.tsx refactor (extracting shared panel-open helpers, adding the pet://shortcut-toggle listener)."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns and review checklist the implementer must satisfy before handoff."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Top-level frontend conventions: isTauri() guard, @/ path alias, invoke() usage, named exports."}
+{"file": ".trellis/tasks/07-07-pet-panel-toggle-via-global-shortcut/prd.md", "reason": "The confirmed PRD: default Cmd+Shift+Q, work-area-centered position via openPetPanelCentered, Rust to pet://shortcut-toggle to PetApp routing, ACL capability entry, and Out-of-Scope items."}

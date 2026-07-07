@@ -696,6 +696,36 @@ pub async fn pet_panel_hide(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Register (or replace) the global keyboard shortcut that toggles the
+/// pet-panel window. Pass an empty string to unregister without re-binding.
+///
+/// The accelerator string follows Tauri's accelerator grammar
+/// (e.g. `"Cmd+Shift+Q"`, `"CommandOrControl+Shift+Q"`). The plugin is built
+/// with a single global handler (see `lib.rs` `tauri_plugin_global_shortcut::Builder`)
+/// that emits `pet://shortcut-toggle` on every Pressed event — this command
+/// only swaps WHICH accelerator fires that handler. Unregister-all + register
+/// keeps the swap atomic (we only ever manage one shortcut).
+///
+/// macOS-only in practice (pet mode is macOS-only); on other platforms the
+/// plugin still loads but no accelerator is registered until the frontend
+/// calls this. Custom `invoke` commands bypass the ACL, so no capability
+/// entry is needed for this command or for the plugin's built-in commands
+/// (we never invoke those from the frontend — the global handler is set at
+/// plugin build time, Rust-side).
+#[tauri::command]
+pub async fn pet_panel_set_shortcut(app: tauri::AppHandle, accelerator: String) -> Result<(), String> {
+    use tauri_plugin_global_shortcut::GlobalShortcutExt;
+    // Unregister everything we previously registered. We manage exactly one
+    // shortcut (the pet-panel toggle), so unregister_all is the simplest
+    // atomic swap. Returns Ok if nothing was registered.
+    app.global_shortcut().unregister_all().map_err(|e| e.to_string())?;
+    if accelerator.is_empty() {
+        return Ok(());
+    }
+    app.global_shortcut().register(accelerator.as_str()).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Size payload for `pet_panel_get_size` (physical px, matches Tauri's
 /// `PhysicalSize`).
 #[derive(Serialize)]

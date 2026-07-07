@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { useSettingsStore, DEFAULT_SHORTCUTS, backfillBuiltinExcludePatterns } from './settingsStore';
+import { useSettingsStore, DEFAULT_SHORTCUTS, backfillBuiltinExcludePatterns, backfillDefaultShortcuts, type ShortcutItem } from './settingsStore';
 import { storageClient } from '@/utils/storageClient';
 
 beforeEach(() => {
@@ -233,6 +233,54 @@ describe('useSettingsStore shortcuts', () => {
     const s = useSettingsStore.getState().shortcuts.find((x) => x.id === 'bold')!;
     const original = DEFAULT_SHORTCUTS.find((x) => x.id === 'bold')!;
     expect(s.keys).toEqual(original.keys);
+  });
+
+  it('DEFAULT_SHORTCUTS includes the global togglePetPanel shortcut with the default Cmd+Shift+Q binding', () => {
+    // The global-shortcut entry must round-trip through the same persistence
+    // path as the in-editor bindings, and its default keys must match the
+    // accelerator documented in the PRD (and asserted by ShortcutEditor's
+    // rebind-to-Rust flow). Bumping or renaming this id without updating
+    // PetApp's mount-time registration + SettingsPage's rebind hook would
+    // silently break the global shortcut.
+    const entry = DEFAULT_SHORTCUTS.find((x) => x.id === 'togglePetPanel');
+    expect(entry).toBeDefined();
+    expect(entry!.name).toBe('唤起桌宠面板');
+    expect(entry!.keys).toEqual(['⌘', 'Shift', 'Q']);
+  });
+});
+
+describe('backfillDefaultShortcuts', () => {
+  it('appends missing default entries (by id) to a persisted array', () => {
+    // Simulate an existing user whose persisted array predates togglePetPanel.
+    const persisted = DEFAULT_SHORTCUTS
+      .filter((s) => s.id !== 'togglePetPanel')
+      .map((s) => ({ ...s }));
+    const result = backfillDefaultShortcuts(persisted);
+    const ids = result.map((s) => s.id);
+    expect(ids).toContain('togglePetPanel');
+    expect(result.length).toBe(DEFAULT_SHORTCUTS.length);
+  });
+
+  it('preserves user-customized keys on existing entries', () => {
+    // User rebound 'bold' to Cmd+X; the backfill must NOT overwrite it with
+    // the default Cmd+B.
+    const persisted = DEFAULT_SHORTCUTS.map((s) => ({ ...s }));
+    const boldIdx = persisted.findIndex((s) => s.id === 'bold');
+    persisted[boldIdx].keys = ['⌘', 'X'];
+    const result = backfillDefaultShortcuts(persisted);
+    const bold = result.find((s) => s.id === 'bold')!;
+    expect(bold.keys).toEqual(['⌘', 'X']);
+  });
+
+  it('returns DEFAULT_SHORTCUTS copy when persisted is empty or non-array', () => {
+    expect(backfillDefaultShortcuts([])).toEqual(DEFAULT_SHORTCUTS);
+    expect(backfillDefaultShortcuts(undefined as unknown as ShortcutItem[])).toEqual(DEFAULT_SHORTCUTS);
+  });
+
+  it('returns the input unchanged when no defaults are missing', () => {
+    const persisted = DEFAULT_SHORTCUTS.map((s) => ({ ...s }));
+    const result = backfillDefaultShortcuts(persisted);
+    expect(result).toEqual(persisted);
   });
 });
 

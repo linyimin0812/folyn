@@ -21,6 +21,13 @@ export const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   { id: 'code', name: '行内代码', keys: ['⌘', 'E'] },
   { id: 'link', name: '插入链接', keys: ['⌘', 'K'] },
   { id: 'dailyNote', name: '今日笔记', keys: ['⌘', 'D'] },
+  // GLOBAL shortcut — registered with the OS via `pet_panel_set_shortcut` so
+  // it fires even when Quill is not focused. The other entries above are
+  // in-editor keybindings (consumed by EditorView's keymap, never registered
+  // with the OS). Only this entry needs an accelerator conversion + Rust
+  // re-registration on rebind (see SettingsPage.tsx ShortcutEditor +
+  // PetApp.tsx mount effect).
+  { id: 'togglePetPanel', name: '唤起桌宠面板', keys: ['⌘', 'Shift', 'Q'] },
 ];
 
 interface SettingsState {
@@ -154,6 +161,25 @@ const BUILTIN_EXCLUDE_DIRS = [
   '__schedule__',
   '__analyze__',
 ];
+
+/**
+ * Backfill persisted `shortcuts` with any DEFAULT_SHORTCUTS entries that are
+ * missing (by id). Existing entries' customized `keys` are preserved — only
+ * missing ids are appended from the defaults. This runs at settings-load
+ * time so a user who persisted a `shortcuts` array before a new default was
+ * added (e.g. `togglePetPanel`) sees the new entry appear automatically
+ * without resetting their other rebindings. Mirrors the
+ * `backfillBuiltinExcludePatterns` pattern.
+ */
+export function backfillDefaultShortcuts(saved: ShortcutItem[]): ShortcutItem[] {
+  if (!Array.isArray(saved) || saved.length === 0) {
+    return [...DEFAULT_SHORTCUTS];
+  }
+  const savedIds = new Set(saved.map((s) => s.id));
+  const missing = DEFAULT_SHORTCUTS.filter((d) => !savedIds.has(d.id));
+  if (missing.length === 0) return saved;
+  return [...saved, ...missing];
+}
 
 /**
  * Per-dir backfill for persisted excludePatterns: append each missing built-in
@@ -418,6 +444,13 @@ storageClient.get<Partial<SettingsState>>(SETTINGS_STORAGE_KEY).then((saved) => 
     // them from the file panel.
     if (saved.excludePatterns) {
       saved.excludePatterns = backfillBuiltinExcludePatterns(saved.excludePatterns);
+    }
+    // Backfill shortcuts: append any DEFAULT_SHORTCUTS entry whose id is
+    // missing from the persisted array (e.g. a newly-added global shortcut
+    // like `togglePetPanel`). Preserves user-customized keys on existing
+    // entries — only missing ids are appended.
+    if (saved.shortcuts) {
+      saved.shortcuts = backfillDefaultShortcuts(saved.shortcuts);
     }
     // Migrate persisted dailyNotesDir from the old default to the new built-in name.
     if (saved.dailyNotesDir === 'daily') {
