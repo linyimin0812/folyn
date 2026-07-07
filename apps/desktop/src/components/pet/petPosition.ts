@@ -133,6 +133,22 @@ export function clampPetPosition(saved: PetPosition, workArea: PetWorkArea): Pet
 export const PET_PANEL_WIDTH = 440;
 export const PET_PANEL_HEIGHT = 620;
 
+/**
+ * Monotonically-increasing version of the default panel size. Bump this
+ * whenever `PET_PANEL_WIDTH` / `PET_PANEL_HEIGHT` change — the open gesture
+ * and mount-restore ignore any saved `petPanelWidth/Height` whose persisted
+ * `petPanelSizeVersion` doesn't match, so a default-size bump auto-applies
+ * on next open instead of being shadowed by the old default saved from a
+ * previous install. The new default + new version are then persisted, so
+ * subsequent opens are stable until the next bump.
+ *
+ * `0` is reserved for "unset / pre-versioning" — any existing user whose
+ * persisted value predates this field defaults to `0` and therefore
+ * mismatches the current constant, triggering a one-time migration to the
+ * new default on next open.
+ */
+export const PET_PANEL_SIZE_VERSION = 1;
+
 /** Minimum panel size (matches `tauri.conf.json` `minWidth`/`minHeight`). */
 export const PET_PANEL_MIN_WIDTH = 280;
 export const PET_PANEL_MIN_HEIGHT = 360;
@@ -265,6 +281,30 @@ export function clampPanelPosition(
 export interface PetPanelSize {
   width: number;
   height: number;
+}
+
+/**
+ * Resolve the panel size to apply on open, given the saved size + version.
+ * If the saved version matches `PET_PANEL_SIZE_VERSION`, the saved size is
+ * clamped to the work area and returned. Otherwise (version mismatch or
+ * first-ever open with `saved.width <= 0`), the current default is returned.
+ * The caller is responsible for persisting the resolved size + current
+ * version when the saved values were stale (see PetApp.tsx open gesture +
+ * PetPanelApp.tsx mount restore).
+ *
+ * Extracted as a pure function so the version-gate logic is unit-testable
+ * without mounting the panel component (which spins up Tauri-window effect
+ * loops impractical to test). Mirrors the existing `clampPanelSize` pattern.
+ */
+export function resolvePanelSize(
+  saved: PetPanelSize,
+  savedVersion: number,
+  workArea: PetWorkArea,
+): PetPanelSize {
+  if (saved.width > 0 && saved.height > 0 && savedVersion === PET_PANEL_SIZE_VERSION) {
+    return clampPanelSize(saved, workArea);
+  }
+  return { width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT };
 }
 
 /**

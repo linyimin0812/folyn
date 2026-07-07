@@ -461,6 +461,21 @@ area rect and the scale factor.
   first-ever open, the clamped saved size for subsequent opens) so a user-resized panel's corner
   still tracks the pet — passing the hardcoded default 600×840 when the panel has been resized
   larger would leave the corner drifting off the pet.
+- **Panel size version-gate (auto-invalidation on default bump)**: the saved `petPanelWidth/Height`
+  in `settingsStore` is **version-gated** by `petPanelSizeVersion` (persisted) vs the
+  `PET_PANEL_SIZE_VERSION` constant in `petPosition.ts`. The open gesture (`PetApp.tsx`) and the
+  panel mount-restore (`PetPanelApp.tsx`) both call `resolvePanelSize(saved, savedVersion, workArea)`
+  — a pure helper that returns the clamped saved size when the version matches, or the current
+  default (`PET_PANEL_WIDTH`/`PET_PANEL_HEIGHT`) when it doesn't (mismatch or first-ever open with
+  `saved.width <= 0`). After applying the default, the caller persists the new size + new version so
+  subsequent opens are stable. The persist poll saves the version alongside the size so a user
+  resize after a migration is respected on next open. **Bump `PET_PANEL_SIZE_VERSION` whenever the
+  default size changes** — forgetting means users keep the old default (same as today's bug). The
+  hard-replace policy: a version bump resets ALL user resizes (a user who resized before the bump
+  sees the new default, not their old resize). `0` is reserved for "pre-versioning / unset" so any
+  existing user with version `0` (or a missing field) mismatches the current constant and gets
+  migrated on next open. Panel POSITION (`petPanelX/Y`) is NOT version-gated — it is recomputed
+  every open via `computePanelPosition` and is therefore never stale.
 - **Base**: the panel is a normal opaque window — `core:default` covers `invoke`/`listen`; only
   `core:event:allow-emit` must be added on top for the launcher's `emit`.
 - **Bad**: calling `getCurrentWindow().show()` from the panel frontend without granting

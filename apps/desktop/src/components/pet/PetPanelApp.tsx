@@ -3,8 +3,9 @@ import { isTauri } from '@/utils/platform';
 import { useSettingsStore } from '@/store/settingsStore';
 import {
   clampPanelPosition,
-  clampPanelSize,
   computePanelPosition,
+  resolvePanelSize,
+  PET_PANEL_SIZE_VERSION,
   PET_PANEL_WIDTH,
   PET_PANEL_HEIGHT,
   type PetWorkArea,
@@ -121,6 +122,14 @@ export function PetPanelApp() {
   // while the actual panel is larger, the bottom-right corner would slide
   // off-screen after a resize → close → reopen cycle.
   //
+  // Version-gate: the saved size is only restored when its persisted
+  // `petPanelSizeVersion` matches the current `PET_PANEL_SIZE_VERSION`
+  // constant. A mismatch (e.g. the default size was bumped since the user
+  // last opened the panel, or first-ever open with version 0) ignores the
+  // saved size, applies the new default, and persists the new default +
+  // version so subsequent opens are stable. Mirrors the open-gesture logic
+  // in PetApp.tsx — kept in sync so a dev-reload mount path also migrates.
+  //
   // Unit boundary: `petPanelX/Y` is saved in LOGICAL points (matches the
   // work-area math); `pet_panel_set_position` takes PHYSICAL px, so multiply
   // by `sf`. `probe.window_x/y` (first-open fallback) is physical — divide
@@ -139,26 +148,33 @@ export function PetPanelApp() {
           petPanelY,
           petPanelWidth,
           petPanelHeight,
+          petPanelSizeVersion,
         } = useSettingsStore.getState();
 
-        // 1. Clamp the saved SIZE first (logical points). The clamped size is
-        //    reused by `clampPanelPosition` so the position clamp respects the
-        //    actual panel dimensions, not the default 440×620. If no saved
-        //    size, fall back to the default constants (first-ever open).
-        const clampedSize =
-          petPanelWidth > 0 && petPanelHeight > 0
-            ? clampPanelSize(
-                { width: petPanelWidth, height: petPanelHeight },
-                workArea,
-              )
-            : { width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT };
+        // 1. Resolve the SIZE (logical points). `resolvePanelSize` returns
+        //    the clamped saved size when the version matches, or the current
+        //    default when it doesn't (version mismatch / first-ever open).
+        //    The clamped size is reused by `clampPanelPosition` so the
+        //    position clamp respects the actual panel dimensions, not the
+        //    default 440×620.
+        const savedMatchesVersion = petPanelSizeVersion === PET_PANEL_SIZE_VERSION;
+        const clampedSize = resolvePanelSize(
+          { width: petPanelWidth, height: petPanelHeight },
+          petPanelSizeVersion,
+          workArea,
+        );
+        // Persist corrections: (a) version mismatch → write new default +
+        //    new version; (b) version matched but clamp shrunk the saved
+        //    size to fit the current work area → write the clamped value.
         if (
-          petPanelWidth > 0 &&
-          petPanelHeight > 0 &&
-          (clampedSize.width !== petPanelWidth ||
-            clampedSize.height !== petPanelHeight)
+          !savedMatchesVersion ||
+          petPanelWidth !== clampedSize.width ||
+          petPanelHeight !== clampedSize.height
         ) {
           setPetPanelSize(clampedSize.width, clampedSize.height);
+        }
+        if (!savedMatchesVersion) {
+          useSettingsStore.getState().setPetPanelSizeVersion(PET_PANEL_SIZE_VERSION);
         }
         await invoke('pet_panel_set_size', {
           width: Math.round(clampedSize.width * sf),
@@ -249,6 +265,11 @@ export function PetPanelApp() {
           lastW = w;
           lastH = h;
           useSettingsStore.getState().setPetPanelSize(w, h);
+          // Keep the persisted version in sync with the persisted size so
+          // the open gesture / mount-restore respect the user-resized size
+          // on next open. Without this, a user resize after a default-bump
+          // migration would still be ignored next open (version mismatch).
+          useSettingsStore.getState().setPetPanelSizeVersion(PET_PANEL_SIZE_VERSION);
         }
       } catch {
         // Non-fatal; try again next tick.

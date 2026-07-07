@@ -5,6 +5,7 @@ import {
   computePanelPosition,
   clampPanelPosition,
   clampPanelSize,
+  resolvePanelSize,
   PET_WINDOW_SIZE,
   PET_MASCOT_SIZE,
   PET_RIGHT_MARGIN,
@@ -15,6 +16,7 @@ import {
   PET_PANEL_MIN_WIDTH,
   PET_PANEL_MIN_HEIGHT,
   PET_PANEL_GAP,
+  PET_PANEL_SIZE_VERSION,
   type PetWorkArea,
 } from './petPosition';
 
@@ -411,5 +413,83 @@ describe('clampPanelSize', () => {
     };
     const size = clampPanelSize({ width: 1500, height: 1000 }, retina);
     expect(size).toEqual({ width: 1440, height: 900 });
+  });
+});
+
+describe('resolvePanelSize', () => {
+  const workArea: PetWorkArea = { x: 0, y: 25, width: 1440, height: 875 };
+
+  it('returns the clamped saved size when the version matches', () => {
+    // Saved 380×520 with the current version → clamped to fit the work area
+    // (no shrinkage needed since 380×520 fits inside 1440×875) and returned.
+    const size = resolvePanelSize(
+      { width: 380, height: 520 },
+      PET_PANEL_SIZE_VERSION,
+      workArea,
+    );
+    expect(size).toEqual({ width: 380, height: 520 });
+  });
+
+  it('returns the default when the saved version mismatches (e.g. default-size bump)', () => {
+    // Simulates an existing user whose persisted size is the OLD default
+    // (380×520) saved with version 0 — the default has since bumped to
+    // 440×620 (version 1). The saved size must be IGNORED so the new
+    // default applies on next open instead of being shadowed.
+    const size = resolvePanelSize(
+      { width: 380, height: 520 },
+      0, // pre-versioning / mismatched
+      workArea,
+    );
+    expect(size).toEqual({ width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT });
+  });
+
+  it('returns the default on first-ever open (saved.width <= 0)', () => {
+    // `petPanelWidth/Height` default to -1 (unset). Even with a matching
+    // version (an impossible state in practice — version is 0 on first
+    // open — but the helper guards defensively), a non-positive saved
+    // dimension falls through to the default branch.
+    const size = resolvePanelSize(
+      { width: -1, height: -1 },
+      PET_PANEL_SIZE_VERSION,
+      workArea,
+    );
+    expect(size).toEqual({ width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT });
+  });
+
+  it('clamps (shrinks) the saved size when version matches but size exceeds the work area', () => {
+    // User resized the panel to 2000×1500 logical on a 1440×875 work area
+    // and saved it with the current version. The clamped size shrinks to
+    // fit the work area — the saved size is respected but bounded.
+    const size = resolvePanelSize(
+      { width: 2000, height: 1500 },
+      PET_PANEL_SIZE_VERSION,
+      workArea,
+    );
+    expect(size).toEqual({ width: 1440, height: 875 });
+  });
+
+  it('ignores the saved size even if it fits the work area when the version mismatches', () => {
+    // Regression guard: a saved size that happens to fit the work area must
+    // STILL be ignored when the version mismatches — the version-gate is
+    // authoritative, not the size's validity. Otherwise a default-bump
+    // would silently no-op for users whose saved size happened to fit.
+    const size = resolvePanelSize(
+      { width: 500, height: 700 }, // fits 1440×875
+      0, // mismatched version
+      workArea,
+    );
+    expect(size).toEqual({ width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT });
+  });
+
+  it('enforces minimums on a saved size that drops below PET_PANEL_MIN_*', () => {
+    // Saved 100×100 with matching version → clampPanelSize enforces the
+    // minimum width/height. Mirrors the clampPanelSize contract.
+    const size = resolvePanelSize(
+      { width: 100, height: 100 },
+      PET_PANEL_SIZE_VERSION,
+      workArea,
+    );
+    expect(size.width).toBe(PET_PANEL_MIN_WIDTH);
+    expect(size.height).toBe(PET_PANEL_MIN_HEIGHT);
   });
 });

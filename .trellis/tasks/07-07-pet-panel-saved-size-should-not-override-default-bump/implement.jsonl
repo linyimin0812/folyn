@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Documents the pet-panel size/position persistence contract (settingsStore, clampPanelSize, persist poll) — the spec this task modifies."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store patterns — version-gate field + setter must follow the project's store conventions."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Code standards + forbidden patterns for the settingsStore + component changes."}

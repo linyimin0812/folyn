@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PetMascot } from './PetMascot';
 import { openPetContextMenu } from './PetContextMenu';
-import { clampPetPosition, computeDefaultPetPosition, computePanelPosition, clampPanelSize, PET_PANEL_WIDTH, PET_PANEL_HEIGHT } from './petPosition';
+import { clampPetPosition, computeDefaultPetPosition, computePanelPosition, resolvePanelSize, PET_PANEL_SIZE_VERSION } from './petPosition';
 import { isTauri } from '@/utils/platform';
 
 /**
@@ -117,17 +117,34 @@ async function openOrTogglePetPanel(): Promise<void> {
     // `computePanelPosition` so a resized panel's corner still tracks the
     // pet — passing the default 440×620 here when the panel has been
     // resized larger would place the corner at the wrong spot.
+    //
+    // Version-gate: if the saved `petPanelSizeVersion` doesn't match the
+    // current `PET_PANEL_SIZE_VERSION` constant (e.g. the default size was
+    // bumped since the user last opened the panel, or first-ever open with
+    // version 0), ignore the saved size and use the new default. The new
+    // default + new version are persisted below so subsequent opens are
+    // stable and don't re-trigger the migration.
     const { useSettingsStore } = await import('@/store/settingsStore');
-    const { petPanelWidth, petPanelHeight } = useSettingsStore.getState();
+    const { petPanelWidth, petPanelHeight, petPanelSizeVersion } = useSettingsStore.getState();
 
-    const size =
-      petPanelWidth > 0 && petPanelHeight > 0
-        ? clampPanelSize(
-            { width: petPanelWidth, height: petPanelHeight },
-            { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
-          )
-        : { width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT };
+    const savedMatchesVersion = petPanelSizeVersion === PET_PANEL_SIZE_VERSION;
+    const size = resolvePanelSize(
+      { width: petPanelWidth, height: petPanelHeight },
+      petPanelSizeVersion,
+      { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
+    );
     await invoke('pet_panel_set_size', { width: size.width, height: size.height });
+
+    // If we just applied the default due to a version mismatch (or first-ever
+    // open), persist the new default + version so subsequent opens are stable
+    // and don't re-trigger the migration. Skip when the saved size was already
+    // correct (no state change to write) — the persist poll handles ongoing
+    // user resizes.
+    if (!savedMatchesVersion || petPanelWidth !== size.width || petPanelHeight !== size.height) {
+      const { setPetPanelSize, setPetPanelSizeVersion } = useSettingsStore.getState();
+      setPetPanelSize(size.width, size.height);
+      setPetPanelSizeVersion(PET_PANEL_SIZE_VERSION);
+    }
 
     // ALWAYS recompute the panel position from the pet's current outer
     // position so the panel opens next to the pet (corner-attachment: the

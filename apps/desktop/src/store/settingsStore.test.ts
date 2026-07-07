@@ -170,6 +170,37 @@ describe('useSettingsStore pet panel pos/size', () => {
   });
 });
 
+// ── Pet panel size version-gate (default-size bump auto-invalidation) ──
+describe('useSettingsStore pet panel size version', () => {
+  it('defaults to 0 (pre-versioning) so existing users migrate on next open', () => {
+    useSettingsStore.setState({ petPanelSizeVersion: 0 });
+    expect(useSettingsStore.getState().petPanelSizeVersion).toBe(0);
+  });
+
+  it('setPetPanelSizeVersion updates the field and persists', async () => {
+    const setSpy = vi.spyOn(storageClient, 'set');
+    useSettingsStore.getState().setPetPanelSizeVersion(7);
+    expect(useSettingsStore.getState().petPanelSizeVersion).toBe(7);
+    vi.advanceTimersByTime(400);
+    const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1] as Record<string, unknown>;
+    expect(payload.petPanelSizeVersion).toBe(7);
+    setSpy.mockRestore();
+  });
+
+  it('persisted payload round-trips the version field', async () => {
+    const setSpy = vi.spyOn(storageClient, 'set');
+    useSettingsStore.getState().setPetPanelSizeVersion(3);
+    vi.advanceTimersByTime(400);
+    const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1];
+    setSpy.mockRestore();
+    storageClient.__resetForTesting();
+    await storageClient.set('settings:all', payload);
+    const loaded = await storageClient.get<typeof payload>('settings:all');
+    expect(loaded).not.toBeNull();
+    expect((loaded as Record<string, unknown>).petPanelSizeVersion).toBe(3);
+  });
+});
+
 describe('useSettingsStore.updateSettings', () => {
   it('merges partial settings', () => {
     useSettingsStore.getState().updateSettings({ autoSave: false, tabSize: 2 });

@@ -103,6 +103,13 @@ interface SettingsState {
   petPanelY: number;
   petPanelWidth: number;
   petPanelHeight: number;
+  // Monotonically-increasing version of the default panel size. Bump
+  // `PET_PANEL_SIZE_VERSION` in `petPosition.ts` whenever the default
+  // changes — the open gesture / mount-restore ignore a saved size whose
+  // persisted version doesn't match, so a default-size bump auto-applies
+  // on next open instead of being shadowed by the old default. `0` means
+  // "unset / pre-versioning" so any existing user migrates on next open.
+  petPanelSizeVersion: number;
 
   // Storage-version key for the pet/panel position fields. The pre-fix code
   // saved positions in PHYSICAL pixels (mixed with logical-point work-area
@@ -132,6 +139,7 @@ interface SettingsState {
   setPetPosition: (x: number, y: number) => void;
   setPetPanelPosition: (x: number, y: number) => void;
   setPetPanelSize: (width: number, height: number) => void;
+  setPetPanelSizeVersion: (version: number) => void;
 }
 
 const SETTINGS_STORAGE_KEY = 'settings:all';
@@ -177,7 +185,7 @@ function debouncedPersist(state: Partial<SettingsState>) {
       vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates, boardColumns,
       petModeEnabled, petPositionX, petPositionY,
       petPanelX, petPanelY, petPanelWidth, petPanelHeight,
-      petPosVersion } = state as SettingsState;
+      petPanelSizeVersion, petPosVersion } = state as SettingsState;
     storageClient.set(SETTINGS_STORAGE_KEY, {
       theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles,
       enableWikiPanel, enableClipsPanel, enableAnalyzePanel, enableDailyPanel,
@@ -189,7 +197,7 @@ function debouncedPersist(state: Partial<SettingsState>) {
       vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates, boardColumns,
       petModeEnabled, petPositionX, petPositionY,
       petPanelX, petPanelY, petPanelWidth, petPanelHeight,
-      petPosVersion,
+      petPanelSizeVersion, petPosVersion,
     });
   }, 300);
 }
@@ -273,6 +281,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   petPanelY: -1,
   petPanelWidth: -1,
   petPanelHeight: -1,
+  // 0 = pre-versioning / unset. Any existing user with version 0 mismatches
+  // the current `PET_PANEL_SIZE_VERSION` constant and gets migrated to the
+  // new default on next open (one-time flip).
+  petPanelSizeVersion: 0,
 
   // Position-unit migration version. 0 = pre-fix (positions saved as physical
   // px, which on Retina placed the pet at screen-center on launch). Bumped to
@@ -377,6 +389,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   },
   setPetPanelSize: (width: number, height: number) => {
     set({ petPanelWidth: width, petPanelHeight: height });
+    debouncedPersist(useSettingsStore.getState());
+  },
+  setPetPanelSizeVersion: (version: number) => {
+    set({ petPanelSizeVersion: version });
     debouncedPersist(useSettingsStore.getState());
   },
 }));

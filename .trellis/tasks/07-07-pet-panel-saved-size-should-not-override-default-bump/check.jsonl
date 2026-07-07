@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Verify the panel size persistence spec still matches the version-gate behavior — this spec needs updating alongside the code."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Confirm the new petPanelSizeVersion field + setter follow Zustand conventions."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist for the settingsStore + component changes."}
