@@ -24,6 +24,18 @@
 export const PET_WINDOW_SIZE = 120;
 
 /**
+ * Visible mascot icon size. The pet window is `PET_WINDOW_SIZE` (120×120)
+ * but the actual mascot SVG is smaller and centered (see `.pet-mascot` in
+ * `pet.css` — `width: 88px; height: 88px`). Panel positioning uses the
+ * icon's bounds, not the window's, so the panel corner visually touches
+ * the mascot — the 16px transparent margin around the icon would otherwise
+ * read as a gap between the panel and the pet.
+ *
+ * MUST stay in sync with `.pet-mascot` width/height in `pet.css`.
+ */
+export const PET_MASCOT_SIZE = 88;
+
+/**
  * Margins kept between the pet window's edges and the work-area's physical
  * edges so the mascot isn't clipped off-screen. Applied IN ADDITION to the
  * OS work area (`NSScreen.visibleFrame` on macOS, which already excludes the
@@ -118,32 +130,37 @@ export function clampPetPosition(saved: PetPosition, workArea: PetWorkArea): Pet
  * size). Used by `computePanelPosition` and `clampPanelPosition` so the
  * panel stays fully on-screen.
  */
-export const PET_PANEL_WIDTH = 380;
-export const PET_PANEL_HEIGHT = 520;
+export const PET_PANEL_WIDTH = 600;
+export const PET_PANEL_HEIGHT = 840;
 
 /** Minimum panel size (matches `tauri.conf.json` `minWidth`/`minHeight`). */
 export const PET_PANEL_MIN_WIDTH = 280;
 export const PET_PANEL_MIN_HEIGHT = 360;
 
 /** Gap between the pet window and the panel when the panel opens next to it. */
-export const PET_PANEL_GAP = 8;
+export const PET_PANEL_GAP = 2;
 
 /**
  * Compute the pet-panel position (logical points, absolute screen coords) given
  * the pet's current position and the work area. The panel attaches one of its
- * **four corners** to the pet icon's diagonally-opposite corner, leaving
- * `PET_PANEL_GAP` clearance on BOTH axes. The corner is chosen by quadrant:
- * compare the pet's center to the work area's center on each axis independently.
+ * **four corners** to the pet **icon's** diagonally-opposite corner (NOT the
+ * window's corner — the visible mascot is `PET_MASCOT_SIZE` (88×88) centered
+ * inside the 120×120 `PET_WINDOW_SIZE`, leaving a 16px transparent margin on
+ * each side; attaching to the window corner would put a 16px+gap visual gap
+ * between the panel and the visible mascot). The corner is `PET_PANEL_GAP`
+ * away from the icon's corner on BOTH axes, and the corner is chosen by
+ * quadrant: compare the pet's center to the work area's center on each axis
+ * independently.
  *
  * Quadrant map (pet center vs work-area center, per axis; `>=` falls into the
  * right/bottom half):
- * - bottom-right quadrant → panel's **bottom-right** corner at pet's **top-left**
+ * - bottom-right quadrant → panel's **bottom-right** corner at icon's **top-left**
  *   corner − gap on both axes (panel extends up-left).
- * - bottom-left  → panel's **bottom-left**  corner at pet's **top-right** − gap
+ * - bottom-left  → panel's **bottom-left**  corner at icon's **top-right** − gap
  *   (panel extends up-right).
- * - top-right     → panel's **top-right**    corner at pet's **bottom-left** − gap
+ * - top-right     → panel's **top-right**    corner at icon's **bottom-left** − gap
  *   (panel extends down-left).
- * - top-left      → panel's **top-left**     corner at pet's **bottom-right** − gap
+ * - top-left      → panel's **top-left**     corner at icon's **bottom-right** − gap
  *   (panel extends down-right).
  *
  * Tie-break: a pet center exactly at the work-area center falls into the
@@ -152,11 +169,14 @@ export const PET_PANEL_GAP = 8;
  * placement.
  *
  * No-overlap invariant: because the panel's pet-ward edge is exactly
- * `PET_PANEL_GAP` away from the pet's opposite edge on each axis, the panel
- * bounding box never intersects the pet's `[petX, petX+PET_WINDOW_SIZE] ×
- * [petY, petY+PET_WINDOW_SIZE]` rect. This holds even in the degenerate case
- * where the work area is smaller than the panel — the panel overflows the
- * work-area edge on the diagonal side but still does not cover the pet.
+ * `PET_PANEL_GAP` away from the **icon's** opposite edge on each axis, the
+ * panel bounding box never intersects the icon's
+ * `[iconLeft, iconRight] × [iconTop, iconBottom]` rect. The panel CAN overlap
+ * the window's transparent 16px margin around the icon — that margin is
+ * transparent and click-through, so the visual overlap is harmless. This holds
+ * even in the degenerate case where the work area is smaller than the panel —
+ * the panel overflows the work-area edge on the diagonal side but still does
+ * not cover the icon.
  *
  * The pet window's outer position (`petPos`) and the returned panel position
  * are both in logical points. The caller must divide `petPos` by
@@ -183,21 +203,30 @@ export function computePanelPosition(
   const workCenterX = workArea.x + workArea.width / 2;
   const workCenterY = workArea.y + workArea.height / 2;
 
-  // X axis: pet in right half → panel extends left (panel right edge = pet
-  // left edge − gap); else panel extends right (panel left edge = pet right
+  // The visible mascot icon is PET_MASCOT_SIZE centered inside the
+  // PET_WINDOW_SIZE window — compute the icon's bounding box so the panel
+  // corner attaches to the icon, not to the (transparent) window corner.
+  const inset = (PET_WINDOW_SIZE - PET_MASCOT_SIZE) / 2; // = 16
+  const iconLeft = petPos.x + inset;
+  const iconRight = petPos.x + PET_WINDOW_SIZE - inset; // = petPos.x + PET_MASCOT_SIZE + inset
+  const iconTop = petPos.y + inset;
+  const iconBottom = petPos.y + PET_WINDOW_SIZE - inset;
+
+  // X axis: pet in right half → panel extends left (panel right edge = icon
+  // left edge − gap); else panel extends right (panel left edge = icon right
   // edge + gap).
   const x =
     petCenterX >= workCenterX
-      ? petPos.x - PET_PANEL_GAP - panelSize.width
-      : petPos.x + PET_WINDOW_SIZE + PET_PANEL_GAP;
+      ? iconLeft - PET_PANEL_GAP - panelSize.width
+      : iconRight + PET_PANEL_GAP;
 
-  // Y axis: pet in bottom half → panel extends up (panel bottom edge = pet
-  // top edge − gap); else panel extends down (panel top edge = pet bottom
+  // Y axis: pet in bottom half → panel extends up (panel bottom edge = icon
+  // top edge − gap); else panel extends down (panel top edge = icon bottom
   // edge + gap).
   const y =
     petCenterY >= workCenterY
-      ? petPos.y - PET_PANEL_GAP - panelSize.height
-      : petPos.y + PET_WINDOW_SIZE + PET_PANEL_GAP;
+      ? iconTop - PET_PANEL_GAP - panelSize.height
+      : iconBottom + PET_PANEL_GAP;
 
   return { x, y };
 }
@@ -208,7 +237,7 @@ export function computePanelPosition(
  * the larger panel window. Unlike `clampPetPosition` (which uses the fixed
  * 120×120 pet size), this takes the **actual panel size** as a parameter so
  * the clamp respects a user-resized panel — a panel grown to 600×700 must be
- * clamped by 600/700, not by the default 380×520, or the bottom-right corner
+ * clamped by 600/700, not by the default 600×840, or the bottom-right corner
  * would slide off-screen after a resize → close → reopen cycle.
  *
  * `panelSize` is in LOGICAL points (matches the work area). The caller is

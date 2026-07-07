@@ -6,6 +6,7 @@ import {
   clampPanelPosition,
   clampPanelSize,
   PET_WINDOW_SIZE,
+  PET_MASCOT_SIZE,
   PET_RIGHT_MARGIN,
   PET_BOTTOM_MARGIN,
   PET_MIN_TOP,
@@ -121,95 +122,119 @@ describe('computePanelPosition', () => {
   // Default panel size — preserves the pre-existing assertions that were
   // written against the hardcoded PET_PANEL_WIDTH/HEIGHT constants.
   const defaultSize = { width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT };
+  // The visible mascot icon (88×88) is centered inside the 120×120 pet
+  // window — inset = 16px on each side. The panel corner attaches to the
+  // ICON's corner, not the window's corner, so the panel visually touches
+  // the mascot instead of leaving a 16px+gap gap.
+  const inset = (PET_WINDOW_SIZE - PET_MASCOT_SIZE) / 2;
+  // Helper: icon bounding box for a pet at petPos.
+  const iconBox = (petPos: { x: number; y: number }) => ({
+    left: petPos.x + inset,
+    right: petPos.x + PET_WINDOW_SIZE - inset,
+    top: petPos.y + inset,
+    bottom: petPos.y + PET_WINDOW_SIZE - inset,
+  });
 
-  it('pet in bottom-right quadrant: panel bottom-right corner at pet top-left corner minus gap', () => {
+  it('pet in bottom-right quadrant: panel bottom-right corner at icon top-left corner minus gap', () => {
     // petCenterX = 1300 + 60 = 1360 >= 720 (right half).
     // petCenterY = 700 + 60 = 760 >= 462.5 (bottom half).
-    // Panel extends up-left: panel right edge = pet left - gap; panel bottom
-    // edge = pet top - gap.
-    const pos = computePanelPosition({ x: 1300, y: 700 }, workArea, defaultSize);
-    expect(pos.x).toBe(1300 - PET_PANEL_GAP - PET_PANEL_WIDTH);
-    expect(pos.y).toBe(700 - PET_PANEL_GAP - PET_PANEL_HEIGHT);
-    // No overlap with pet: panel right <= pet left - gap, panel bottom <=
-    // pet top - gap.
-    expect(pos.x + PET_PANEL_WIDTH).toBeLessThanOrEqual(1300 - PET_PANEL_GAP);
-    expect(pos.y + PET_PANEL_HEIGHT).toBeLessThanOrEqual(700 - PET_PANEL_GAP);
+    // Panel extends up-left: panel right edge = icon left - gap; panel bottom
+    // edge = icon top - gap.
+    const petPos = { x: 1300, y: 700 };
+    const icon = iconBox(petPos);
+    const pos = computePanelPosition(petPos, workArea, defaultSize);
+    expect(pos.x).toBe(icon.left - PET_PANEL_GAP - PET_PANEL_WIDTH);
+    expect(pos.y).toBe(icon.top - PET_PANEL_GAP - PET_PANEL_HEIGHT);
+    // No overlap with icon: panel right <= icon left - gap, panel bottom <=
+    // icon top - gap.
+    expect(pos.x + PET_PANEL_WIDTH).toBeLessThanOrEqual(icon.left - PET_PANEL_GAP);
+    expect(pos.y + PET_PANEL_HEIGHT).toBeLessThanOrEqual(icon.top - PET_PANEL_GAP);
   });
 
-  it('pet in bottom-left quadrant: panel bottom-left corner at pet top-right corner plus gap', () => {
+  it('pet in bottom-left quadrant: panel bottom-left corner at icon top-right corner plus gap', () => {
     // petCenterX = 20 + 60 = 80 < 720 (left half).
     // petCenterY = 700 + 60 = 760 >= 462.5 (bottom half).
-    // Panel extends up-right: panel left edge = pet right + gap; panel bottom
-    // edge = pet top - gap.
-    const pos = computePanelPosition({ x: 20, y: 700 }, workArea, defaultSize);
-    expect(pos.x).toBe(20 + PET_WINDOW_SIZE + PET_PANEL_GAP);
-    expect(pos.y).toBe(700 - PET_PANEL_GAP - PET_PANEL_HEIGHT);
-    expect(pos.x).toBeGreaterThanOrEqual(20 + PET_WINDOW_SIZE + PET_PANEL_GAP);
-    expect(pos.y + PET_PANEL_HEIGHT).toBeLessThanOrEqual(700 - PET_PANEL_GAP);
+    // Panel extends up-right: panel left edge = icon right + gap; panel bottom
+    // edge = icon top - gap.
+    const petPos = { x: 20, y: 700 };
+    const icon = iconBox(petPos);
+    const pos = computePanelPosition(petPos, workArea, defaultSize);
+    expect(pos.x).toBe(icon.right + PET_PANEL_GAP);
+    expect(pos.y).toBe(icon.top - PET_PANEL_GAP - PET_PANEL_HEIGHT);
+    expect(pos.x).toBeGreaterThanOrEqual(icon.right + PET_PANEL_GAP);
+    expect(pos.y + PET_PANEL_HEIGHT).toBeLessThanOrEqual(icon.top - PET_PANEL_GAP);
   });
 
-  it('pet in top-right quadrant: panel top-right corner at pet bottom-left corner minus gap', () => {
+  it('pet in top-right quadrant: panel top-right corner at icon bottom-left corner minus gap', () => {
     // petCenterX = 1300 + 60 = 1360 >= 720 (right half).
     // petCenterY = 50 + 60 = 110 < 462.5 (top half).
-    // Panel extends down-left: panel right edge = pet left - gap; panel top
-    // edge = pet bottom + gap.
-    const pos = computePanelPosition({ x: 1300, y: 50 }, workArea, defaultSize);
-    expect(pos.x).toBe(1300 - PET_PANEL_GAP - PET_PANEL_WIDTH);
-    expect(pos.y).toBe(50 + PET_WINDOW_SIZE + PET_PANEL_GAP);
-    expect(pos.x + PET_PANEL_WIDTH).toBeLessThanOrEqual(1300 - PET_PANEL_GAP);
-    expect(pos.y).toBeGreaterThanOrEqual(50 + PET_WINDOW_SIZE + PET_PANEL_GAP);
+    // Panel extends down-left: panel right edge = icon left - gap; panel top
+    // edge = icon bottom + gap.
+    const petPos = { x: 1300, y: 50 };
+    const icon = iconBox(petPos);
+    const pos = computePanelPosition(petPos, workArea, defaultSize);
+    expect(pos.x).toBe(icon.left - PET_PANEL_GAP - PET_PANEL_WIDTH);
+    expect(pos.y).toBe(icon.bottom + PET_PANEL_GAP);
+    expect(pos.x + PET_PANEL_WIDTH).toBeLessThanOrEqual(icon.left - PET_PANEL_GAP);
+    expect(pos.y).toBeGreaterThanOrEqual(icon.bottom + PET_PANEL_GAP);
   });
 
-  it('pet in top-left quadrant: panel top-left corner at pet bottom-right corner plus gap', () => {
+  it('pet in top-left quadrant: panel top-left corner at icon bottom-right corner plus gap', () => {
     // petCenterX = 20 + 60 = 80 < 720 (left half).
     // petCenterY = 50 + 60 = 110 < 462.5 (top half).
-    // Panel extends down-right: panel left edge = pet right + gap; panel top
-    // edge = pet bottom + gap.
-    const pos = computePanelPosition({ x: 20, y: 50 }, workArea, defaultSize);
-    expect(pos.x).toBe(20 + PET_WINDOW_SIZE + PET_PANEL_GAP);
-    expect(pos.y).toBe(50 + PET_WINDOW_SIZE + PET_PANEL_GAP);
+    // Panel extends down-right: panel left edge = icon right + gap; panel top
+    // edge = icon bottom + gap.
+    const petPos = { x: 20, y: 50 };
+    const icon = iconBox(petPos);
+    const pos = computePanelPosition(petPos, workArea, defaultSize);
+    expect(pos.x).toBe(icon.right + PET_PANEL_GAP);
+    expect(pos.y).toBe(icon.bottom + PET_PANEL_GAP);
   });
 
   it('tie-break: pet center exactly at work-area center falls into right/bottom half (extends up-left)', () => {
     // Place pet so its center is exactly at (720, 462.5):
     // petX = 720 - 60 = 660; petY = 462.5 - 60 = 402.5.
     // `>=` on both axes → right/bottom → panel extends up-left.
-    const pos = computePanelPosition({ x: 660, y: 402.5 }, workArea, defaultSize);
-    expect(pos.x).toBe(660 - PET_PANEL_GAP - PET_PANEL_WIDTH);
-    expect(pos.y).toBe(402.5 - PET_PANEL_GAP - PET_PANEL_HEIGHT);
+    const petPos = { x: 660, y: 402.5 };
+    const icon = iconBox(petPos);
+    const pos = computePanelPosition(petPos, workArea, defaultSize);
+    expect(pos.x).toBe(icon.left - PET_PANEL_GAP - PET_PANEL_WIDTH);
+    expect(pos.y).toBe(icon.top - PET_PANEL_GAP - PET_PANEL_HEIGHT);
   });
 
   it('respects a non-zero work-area origin for quadrant split', () => {
     // shifted center = (100 + 1000/2, 100 + 700/2) = (600, 450).
     // Pet at (800, 500): petCenter = (860, 560) → right + bottom → up-left.
     const shifted: PetWorkArea = { x: 100, y: 100, width: 1000, height: 700 };
-    const pos = computePanelPosition({ x: 800, y: 500 }, shifted, defaultSize);
-    expect(pos.x).toBe(800 - PET_PANEL_GAP - PET_PANEL_WIDTH);
-    expect(pos.y).toBe(500 - PET_PANEL_GAP - PET_PANEL_HEIGHT);
+    const petPos = { x: 800, y: 500 };
+    const icon = iconBox(petPos);
+    const pos = computePanelPosition(petPos, shifted, defaultSize);
+    expect(pos.x).toBe(icon.left - PET_PANEL_GAP - PET_PANEL_WIDTH);
+    expect(pos.y).toBe(icon.top - PET_PANEL_GAP - PET_PANEL_HEIGHT);
   });
 
-  it('NEVER overlaps the pet, even in a degenerate tiny work area', () => {
+  it('NEVER overlaps the icon, even in a degenerate tiny work area', () => {
     // Work area smaller than the panel. Quadrant still picks a corner; the
     // panel overflows the work-area edge on the diagonal side but its
-    // pet-ward edge stays `PET_PANEL_GAP` away from the pet's opposite edge.
+    // pet-ward edge stays `PET_PANEL_GAP` away from the icon's opposite edge.
+    // The panel CAN overlap the window's transparent 16px margin around the
+    // icon — that margin is transparent and click-through, so the visual
+    // overlap is harmless. The invariant is against the ICON bounds.
     const tiny: PetWorkArea = { x: 0, y: 0, width: 800, height: 400 };
     const petPos = { x: 340, y: 200 };
+    const icon = iconBox(petPos);
     const pos = computePanelPosition(petPos, tiny, defaultSize);
     // tiny center = (400, 200). petCenter = (400, 260). 400 >= 400 (right),
-    // 260 >= 200 (bottom) → up-left. Panel right edge = pet left - gap; panel
-    // bottom edge = pet top - gap.
-    const petLeft = petPos.x;
-    const petRight = petPos.x + PET_WINDOW_SIZE;
-    const petTop = petPos.y;
-    const petBottom = petPos.y + PET_WINDOW_SIZE;
+    // 260 >= 200 (bottom) → up-left. Panel right edge = icon left - gap; panel
+    // bottom edge = icon top - gap.
     const panelLeft = pos.x;
     const panelRight = pos.x + PET_PANEL_WIDTH;
     const panelTop = pos.y;
     const panelBottom = pos.y + PET_PANEL_HEIGHT;
-    // Either panel is entirely left of pet (panelRight <= petLeft - gap) or
-    // entirely right (panelLeft >= petRight + gap); same for Y.
-    const xClear = panelRight <= petLeft - PET_PANEL_GAP || panelLeft >= petRight + PET_PANEL_GAP;
-    const yClear = panelBottom <= petTop - PET_PANEL_GAP || panelTop >= petBottom + PET_PANEL_GAP;
+    // Either panel is entirely left of icon (panelRight <= icon left - gap) or
+    // entirely right (panelLeft >= icon right + gap); same for Y.
+    const xClear = panelRight <= icon.left - PET_PANEL_GAP || panelLeft >= icon.right + PET_PANEL_GAP;
+    const yClear = panelBottom <= icon.top - PET_PANEL_GAP || panelTop >= icon.bottom + PET_PANEL_GAP;
     expect(xClear).toBe(true);
     expect(yClear).toBe(true);
     // Sanity: panel has non-zero size.
@@ -217,31 +242,35 @@ describe('computePanelPosition', () => {
     expect(panelBottom).toBeGreaterThan(panelTop);
   });
 
-  it('never overlaps the pet when extending up-left on a normal work area', () => {
+  it('never overlaps the icon when extending up-left on a normal work area', () => {
     // Regression: when the panel extends up-left, its right edge + gap must
-    // be ≤ pet left, and its bottom edge + gap must be ≤ pet top.
-    const pos = computePanelPosition({ x: 1300, y: 700 }, workArea, defaultSize);
-    expect(pos.x + PET_PANEL_WIDTH).toBeLessThanOrEqual(1300 - PET_PANEL_GAP);
-    expect(pos.y + PET_PANEL_HEIGHT).toBeLessThanOrEqual(700 - PET_PANEL_GAP);
+    // be ≤ icon left, and its bottom edge + gap must be ≤ icon top.
+    const petPos = { x: 1300, y: 700 };
+    const icon = iconBox(petPos);
+    const pos = computePanelPosition(petPos, workArea, defaultSize);
+    expect(pos.x + PET_PANEL_WIDTH).toBeLessThanOrEqual(icon.left - PET_PANEL_GAP);
+    expect(pos.y + PET_PANEL_HEIGHT).toBeLessThanOrEqual(icon.top - PET_PANEL_GAP);
   });
 
   it('clamps by the ACTUAL panel size when resized larger (regression)', () => {
     // Regression: user resized the panel to 600×700 (logical) and saved the
-    // size. The panel's corner must still attach to the pet's opposite corner
-    // minus gap, computed against 600×700 — NOT against the default 380×520
-    // (which would leave the corner drifting off the pet). Pet at
+    // size. The panel's corner must still attach to the icon's opposite corner
+    // minus gap, computed against 600×700 — NOT against the default 600×840
+    // (which would leave the corner drifting off the icon). Pet at
     // (1300, 700) in the bottom-right quadrant → panel extends up-left:
-    // panel right edge = pet left - gap; panel bottom edge = pet top - gap.
+    // panel right edge = icon left - gap; panel bottom edge = icon top - gap.
+    const petPos = { x: 1300, y: 700 };
+    const icon = iconBox(petPos);
     const pos = computePanelPosition(
-      { x: 1300, y: 700 },
+      petPos,
       workArea,
       { width: 600, height: 700 },
     );
-    expect(pos.x).toBe(1300 - PET_PANEL_GAP - 600);
-    expect(pos.y).toBe(700 - PET_PANEL_GAP - 700);
-    // No overlap with pet against the actual size.
-    expect(pos.x + 600).toBeLessThanOrEqual(1300 - PET_PANEL_GAP);
-    expect(pos.y + 700).toBeLessThanOrEqual(700 - PET_PANEL_GAP);
+    expect(pos.x).toBe(icon.left - PET_PANEL_GAP - 600);
+    expect(pos.y).toBe(icon.top - PET_PANEL_GAP - 700);
+    // No overlap with icon against the actual size.
+    expect(pos.x + 600).toBeLessThanOrEqual(icon.left - PET_PANEL_GAP);
+    expect(pos.y + 700).toBeLessThanOrEqual(icon.top - PET_PANEL_GAP);
   });
 });
 
@@ -252,8 +281,8 @@ describe('clampPanelPosition', () => {
   const defaultSize = { width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT };
 
   it('returns the saved position unchanged when already on-screen', () => {
-    const pos = clampPanelPosition({ x: 100, y: 100 }, workArea, defaultSize);
-    expect(pos).toEqual({ x: 100, y: 100 });
+    const pos = clampPanelPosition({ x: 100, y: 30 }, workArea, defaultSize);
+    expect(pos).toEqual({ x: 100, y: 30 });
   });
 
   it('clamps a position off the right edge', () => {

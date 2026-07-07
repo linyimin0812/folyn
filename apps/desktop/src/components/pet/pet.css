@@ -290,7 +290,7 @@ html.is-pet-panel-window body {
 
 /* ── Launcher grid (PR2) ──
  * 8 buttons in a 2-column × 4-row grid. Each button is a vertical stack of
- * icon + label. Fits the 380×520 panel with room below for the chat slot. */
+ * icon + label. Fits the 600×840 panel with room below for the chat slot. */
 .pet-launcher {
   display: flex;
   flex-direction: column;
@@ -563,7 +563,7 @@ html.is-pet-panel-window body {
 }
 
 /* Compact icon-only action buttons (send / stop). ~28×28px so the input row
- * takes minimal vertical space in the 380×520 panel. The clear button below
+ * takes minimal vertical space in the 600×840 panel. The clear button below
  * the messages stays text-sized (it's not in the input row). */
 .pet-chat-send,
 .pet-chat-stop {
