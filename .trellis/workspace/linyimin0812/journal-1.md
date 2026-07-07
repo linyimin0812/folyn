@@ -1338,3 +1338,38 @@ Strengthened pet breathing halo (soft white, peak 20px @ alpha 1.0, 2.4s cycle, 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 40: Pet breathing halo removal + pet-panel size/position clamp fix
+
+**Date**: 2026-07-07
+**Task**: Pet breathing halo removal + pet-panel size/position clamp fix
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Two pet-related fixes. (1) Replaced the pet breathing white drop-shadow halo with an icon self-pulse via the independent CSS 'scale' property (1.0↔1.04, 2.4s) so it composes with state 'transform' keyframes without conflict; cleaned stale halo comments in pet.css/PetMascot.tsx/PetApp.tsx. (2) Fixed two pet-panel bugs that caused the panel to extend off-screen on Retina after resize→close→reopen: size was persisted as physical px but clampPanelSize compared against logical workArea (fixed by ÷sf/×sf at persist/restore boundary, mirroring the position link); clampPanelPosition hardcoded the default 380×520 constants instead of the actual resized panel size (fixed by passing the clamped size as a parameter and reordering the restore effect to clamp size first, then position). Added 4 unit tests; tsc + 36 vitest tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `17cb54e` | (see git log) |
+| `1094254` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
