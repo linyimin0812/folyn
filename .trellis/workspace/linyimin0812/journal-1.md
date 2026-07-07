@@ -1303,3 +1303,38 @@ Strengthened pet breathing halo (soft white, peak 20px @ alpha 1.0, 2.4s cycle, 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 39: Fix pet launch position unit mismatch (logical points vs physical px)
+
+**Date**: 2026-07-07
+**Task**: Fix pet launch position unit mismatch (logical points vs physical px)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+桌宠启动后显示在屏幕中间而非右下角偏上。诊断发现 pet_get_work_area 返回 NSScreen.visibleFrame 逻辑点，但 set_pet_position/outerPosition() 用物理像素，Retina 2x 下逻辑坐标被当物理用导致居中。修复：PetWorkArea 增加 scale_factor，数学保持逻辑空间，在物理 API 边界 x/÷ scale_factor 转换，saved 位置改存逻辑值，petPosVersion 迁移丢弃旧物理坐标。覆盖 pet 与 panel 位置。spec tauri-window-patterns 单位契约已修正并加 Common Mistake 条目。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6860a0d` | (see git log) |
+| `5a4d5ad` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

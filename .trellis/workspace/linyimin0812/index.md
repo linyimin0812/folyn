@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 38
+- **Total Sessions**: 39
 - **Last Active**: 2026-07-07
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1305 | Active |
+| `journal-1.md` | ~1340 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 39 | 2026-07-07 | Fix pet launch position unit mismatch (logical points vs physical px) | `6860a0d`, `5a4d5ad` | `master` |
 | 38 | 2026-07-07 | Pet breathing animation + default position + panel placement | `705a3f9` | `master` |
 | 37 | 2026-07-05 | Switch AI panel mode selector to dropdown | `85ca076` | `master` |
 | 36 | 2026-07-05 | AI panel input mode selector (ask/agent, extensible) | `5009ca8` | `master` |
