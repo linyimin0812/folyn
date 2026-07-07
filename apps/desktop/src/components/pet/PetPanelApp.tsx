@@ -117,7 +117,7 @@ export function PetPanelApp() {
   // (e.g. dev reload) still lands sensibly.
   //
   // Order matters: SIZE is clamped first, then POSITION is clamped against
-  // the clamped size. If position were clamped against the default 520×720
+  // the clamped size. If position were clamped against the default 440×620
   // while the actual panel is larger, the bottom-right corner would slide
   // off-screen after a resize → close → reopen cycle.
   //
@@ -143,7 +143,7 @@ export function PetPanelApp() {
 
         // 1. Clamp the saved SIZE first (logical points). The clamped size is
         //    reused by `clampPanelPosition` so the position clamp respects the
-        //    actual panel dimensions, not the default 520×720. If no saved
+        //    actual panel dimensions, not the default 440×620. If no saved
         //    size, fall back to the default constants (first-ever open).
         const clampedSize =
           petPanelWidth > 0 && petPanelHeight > 0
