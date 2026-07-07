@@ -21,19 +21,41 @@
  */
 
 /** Pet window footprint (matches `tauri.conf.json` `pet` window size). */
-export const PET_WINDOW_SIZE = 120;
+export const PET_WINDOW_SIZE = 96;
 
 /**
- * Visible mascot icon size. The pet window is `PET_WINDOW_SIZE` (120×120)
+ * Visible mascot icon size. The pet window is `PET_WINDOW_SIZE` (96×96)
  * but the actual mascot SVG is smaller and centered (see `.pet-mascot` in
- * `pet.css` — `width: 88px; height: 88px`). Panel positioning uses the
+ * `pet.css` — `width: 72px; height: 72px`). Panel positioning uses the
  * icon's bounds, not the window's, so the panel corner visually touches
- * the mascot — the 16px transparent margin around the icon would otherwise
+ * the mascot — the transparent margin around the icon would otherwise
  * read as a gap between the panel and the pet.
  *
  * MUST stay in sync with `.pet-mascot` width/height in `pet.css`.
  */
-export const PET_MASCOT_SIZE = 88;
+export const PET_MASCOT_SIZE = 72;
+
+/**
+ * Monotonically-increasing version of the default pet window size. Bump this
+ * whenever `PET_WINDOW_SIZE` / `PET_MASCOT_SIZE` change — the settings-store
+ * hydrate path discards any saved `petPositionX/Y` whose persisted
+ * `petSizeVersion` doesn't match, so a default-size bump auto-applies on next
+ * launch (the saved position was computed against the OLD window size and may
+ * now leave the smaller/larger window overlapping the screen edge by the size
+ * delta; re-running the default-position branch with the new size is safer
+ * than re-clamping, which only slides the window to fit but doesn't account
+ * for the user's intentional placement relative to the old bounds).
+ *
+ * `0` is reserved for "unset / pre-versioning" — any existing user whose
+ * persisted value predates this field defaults to `0` and therefore
+ * mismatches the current constant, triggering a one-time migration on next
+ * launch. The new version is then persisted, so subsequent launches are
+ * stable until the next bump.
+ *
+ * History: `1` = the original 120×120 window / 88×88 mascot era. `2` = the
+ * shrunk 96×96 window / 72×72 mascot (PRD `settings-pet-tab-and-custom-icon`).
+ */
+export const PET_SIZE_VERSION = 2;
 
 /**
  * Margins kept between the pet window's edges and the work-area's physical

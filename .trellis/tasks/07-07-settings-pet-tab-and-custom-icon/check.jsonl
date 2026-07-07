@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Authoritative review checklist + forbidden patterns — verify new Pet tab code against it"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify Zustand store edits: granular selectors, persist allowlist hygiene, no bare useStore()"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify component patterns: named exports, props, Tailwind conventions in the new tab block"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Verify TS strict patterns for SettingsTab union extension + new action signatures"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Verify pet window resize + plugin-dialog/plugin-fs ACL + transparent-window conventions still hold"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Verify icon-upload code reuses imageUploader.ts / existing dialog patterns rather than duplicating"}

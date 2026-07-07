@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Overview of desktop frontend tech stack (Tauri 2 + React 18 + TS + Zustand 5 + Tailwind) — context for all edits"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store patterns + persistence — needed for adding petIconSource/petIconPath/petSizeVersion keys + extend persist allowlist"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component patterns (named exports, props, composition, Tailwind) — needed for new Pet tab render block + upload/reset UI"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Pet is a transparent always-on-top Tauri window; covers ACL permissions for plugin-dialog/plugin-fs and multi-window conventions"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "TS strict patterns — needed for SettingsTab union extension + new action signatures"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns + review checklist — keep new code compliant"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "We're modifying constants (SPRITE_SIZE, window config) and adding an icon-upload utility — guide mandates search-first for similar patterns (imageUploader.ts already exists)"}

@@ -12,13 +12,26 @@
  * barbs + spine + nib + nib split + ink drop + highlight). The dark `petBg`
  * gradient (`#0f1420`→`#181e30`) is restored from the original icon.
  *
- * width/height are 88px (mascot is 88px in the 120×120 window, leaving
- * ~16px of headroom for the breathing `scale` self-pulse on
+ * width/height are 72px (mascot is 72px in the 96×96 window, leaving
+ * ~12px of headroom for the breathing `scale` self-pulse on
  * `.pet-mascot` and the state-animation scale, so the circle is not
  * clipped at the edges during animation). States (idle/hover/drag/click)
  * switch via `is-<state>` classes on `.pet-mascot`. The `petBg` + `petQuillGrad` + `petInkGrad` defs
  * use ids prefixed with `pet` to avoid collisions with the main app's icon.
+ *
+ * Custom icon: when `petIconSource === 'custom'` and `petIconPath` is set,
+ * render an `<img src={convertFileSrc(petIconPath)}>` with the same
+ * `.pet-mascot is-<state>` classes so the `pet-breathe` keyframes + hover/drag
+ * state animations apply to the image unchanged (PRD Q3: keep CSS transform
+ * animation on the `<img>`). The `<img>` `onError` handler clears the flag
+ * to `'builtin'` so a missing/corrupt custom file falls back gracefully
+ * (PRD fallback requirement). `object-fit: contain` (set in `pet.css` on
+ * `.pet-mascot.is-img`) prevents non-square images from stretching.
  */
+
+import { convertFileSrc } from '@tauri-apps/api/core';
+import { useSettingsStore } from '@/store/settingsStore';
+import { isTauri } from '@/utils/platform';
 
 export interface PetMascotProps {
   /** Animation state class. The root element receives `is-<state>`. */
@@ -26,12 +39,38 @@ export interface PetMascotProps {
 }
 
 export function PetMascot({ state }: PetMascotProps) {
+  const petIconSource = useSettingsStore((s) => s.petIconSource);
+  const petIconPath = useSettingsStore((s) => s.petIconPath);
+
+  // Custom icon path: render an `<img>` via the Tauri asset protocol. In
+  // non-Tauri envs (tests, web preview) `convertFileSrc` would return a
+  // malformed URL, so fall back to the builtin SVG. A missing/empty path
+  // also falls back. The `<img>` onError handler clears the flag to
+  // `'builtin'` so a deleted custom file surfaces gracefully at render.
+  if (petIconSource === 'custom' && petIconPath && isTauri()) {
+    return (
+      <img
+        className={`pet-mascot is-img is-${state}`}
+        src={convertFileSrc(petIconPath)}
+        alt="Quill pet"
+        onError={() => {
+          // Custom file missing or corrupt → fall back to builtin (PRD
+          // fallback). Clears the flag in settingsStore so the next render
+          // takes the inline-SVG branch. Non-fatal; logged for diagnostics.
+          console.warn('[pet] custom icon load failed, falling back to builtin:', petIconPath);
+          useSettingsStore.getState().setPetIcon('builtin');
+        }}
+        draggable={false}
+      />
+    );
+  }
+
   return (
     <svg
       className={`pet-mascot is-${state}`}
       viewBox="0 0 512 512"
-      width="88"
-      height="88"
+      width="72"
+      height="72"
       fill="none"
       overflow="visible"
       aria-hidden="true"

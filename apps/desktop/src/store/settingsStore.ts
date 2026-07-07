@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { storageClient } from '@/utils/storageClient';
 import { DEFAULT_BOARD_COLUMNS, COLUMN_COLOR_PALETTE, type BoardColumnDef } from '@/features/schedule/types';
+import { PET_SIZE_VERSION } from '@/components/pet/petPosition';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type AppPage = 'editor' | 'vault' | 'settings' | 'schedule' | 'study';
-export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'ai' | 'templates' | 'skills' | 'about';
+export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'ai' | 'templates' | 'skills' | 'pet' | 'about';
 export type LinkOpenMode = 'external' | 'internal';
+export type PetIconSource = 'builtin' | 'custom';
 
 export interface ShortcutItem {
   id: string;
@@ -127,6 +129,20 @@ interface SettingsState {
   // any future position-unit change.
   petPosVersion: number;
 
+  // Pet icon customization. `petIconSource` switches the mascot render
+  // between the inline SVG default (`'builtin'`) and an `<img>` loaded from
+  // `petIconPath` (`'custom'`). `petIconPath` is an absolute path under
+  // appDataDir (e.g. `<appData>/pet-icon.png`), rendered via
+  // `convertFileSrc(petIconPath)` in PetMascot. `petSizeVersion` mirrors
+  // `petPanelSizeVersion` — bump the matching `PET_SIZE_VERSION` constant in
+  // `petPosition.ts` whenever the default pet window/mascot size changes so
+  // a saved position is discarded (default-position branch re-runs with the
+  // new size) on next launch instead of being shadowed by the old size's
+  // saved position. See `PET_SIZE_VERSION` history comment for the timeline.
+  petIconSource: PetIconSource;
+  petIconPath: string;
+  petSizeVersion: number;
+
   // Actions
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
@@ -147,6 +163,7 @@ interface SettingsState {
   setPetPanelPosition: (x: number, y: number) => void;
   setPetPanelSize: (width: number, height: number) => void;
   setPetPanelSizeVersion: (version: number) => void;
+  setPetIcon: (source: PetIconSource, path?: string) => void;
 }
 
 const SETTINGS_STORAGE_KEY = 'settings:all';
@@ -211,7 +228,8 @@ function debouncedPersist(state: Partial<SettingsState>) {
       vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates, boardColumns,
       petModeEnabled, petPositionX, petPositionY,
       petPanelX, petPanelY, petPanelWidth, petPanelHeight,
-      petPanelSizeVersion, petPosVersion } = state as SettingsState;
+      petPanelSizeVersion, petPosVersion,
+      petIconSource, petIconPath, petSizeVersion } = state as SettingsState;
     storageClient.set(SETTINGS_STORAGE_KEY, {
       theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles,
       enableWikiPanel, enableClipsPanel, enableAnalyzePanel, enableDailyPanel,
@@ -224,6 +242,7 @@ function debouncedPersist(state: Partial<SettingsState>) {
       petModeEnabled, petPositionX, petPositionY,
       petPanelX, petPanelY, petPanelWidth, petPanelHeight,
       petPanelSizeVersion, petPosVersion,
+      petIconSource, petIconPath, petSizeVersion,
     });
   }, 300);
 }
@@ -317,6 +336,16 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   // 1 once positions are stored as logical points; the hydrate path discards
   // pre-1 saved positions so the default-position branch re-runs.
   petPosVersion: 1,
+
+  // Pet icon customization. `'builtin'` renders the inline SVG mascot;
+  // `'custom'` renders an `<img>` from `petIconPath` (absolute path under
+  // appDataDir). `petSizeVersion` defaults to 0 (pre-versioning) so any
+  // existing user mismatches `PET_SIZE_VERSION` and gets migrated on next
+  // launch — the saved pet position is discarded so the default-position
+  // branch re-runs with the new (smaller) window size.
+  petIconSource: 'builtin',
+  petIconPath: '',
+  petSizeVersion: 0,
 
   setTheme: (theme) => {
     const actual = theme === 'system'
@@ -421,6 +450,23 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ petPanelSizeVersion: version });
     debouncedPersist(useSettingsStore.getState());
   },
+  setPetIcon: (source: PetIconSource, path?: string) => {
+    // When switching to `'builtin'`, clear the path (no file to track). When
+    // switching to `'custom'`, the caller must pass the absolute path; if
+    // omitted, keep the existing path (defensive — the upload flow always
+    // passes the new path, but a stale `'custom'` flag without a path would
+    // render nothing, so the PetMascot `<img>` onError falls back to
+    // builtin at render time).
+    if (source === 'builtin') {
+      set({ petIconSource: 'builtin', petIconPath: '' });
+    } else {
+      set({
+        petIconSource: 'custom',
+        petIconPath: path !== undefined ? path : useSettingsStore.getState().petIconPath,
+      });
+    }
+    debouncedPersist(useSettingsStore.getState());
+  },
 }));
 
 /** Load persisted settings from backend on startup */
@@ -471,6 +517,27 @@ storageClient.get<Partial<SettingsState>>(SETTINGS_STORAGE_KEY).then((saved) => 
       saved.petPanelX = -1;
       saved.petPanelY = -1;
       saved.petPosVersion = 1;
+    }
+    // Pet window-size migration: pre-shrink saved positions assumed the
+    // 120×120 window. After shrinking to 96×96, a saved position computed
+    // against the old size may now leave the smaller window oddly placed
+    // (e.g. floating 24px further from the screen edge than the user
+    // intended). Discard the saved position when the persisted
+    // `petSizeVersion` mismatches the current `PET_SIZE_VERSION` so the
+    // default-position branch re-runs with the new size; persist the new
+    // version so subsequent launches are stable. 0 = pre-versioning / unset,
+    // so any existing user migrates on next launch. Coerce a missing
+    // `petIconSource` to `'builtin'` (defensive — a corrupt persisted state
+    // without the field would otherwise render `undefined` in the mascot
+    // switch).
+    if (saved.petSizeVersion !== PET_SIZE_VERSION) {
+      saved.petPositionX = -1;
+      saved.petPositionY = -1;
+      saved.petSizeVersion = PET_SIZE_VERSION;
+    }
+    if (saved.petIconSource !== 'builtin' && saved.petIconSource !== 'custom') {
+      saved.petIconSource = 'builtin';
+      saved.petIconPath = '';
     }
     useSettingsStore.setState(saved);
   }

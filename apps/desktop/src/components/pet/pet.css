@@ -32,7 +32,7 @@ html.is-pet-window .pet-root {
 }
 
 .pet-root {
-  /* The pet window is 120x120 physical px. The root fills it so the sprite
+  /* The pet window is 96x96 physical px. The root fills it so the sprite
    * can be centered, and transparent regions pass clicks through to the
    * desktop via setIgnoreCursorEvents toggling (see PetApp.tsx). */
   position: fixed;
@@ -44,18 +44,18 @@ html.is-pet-window .pet-root {
   user-select: none;
   -webkit-user-select: none;
   /* `visible` (not `hidden`) so the state-animation scale overflow is not
-   * clipped by the root container. The OS window still clips at 120px, but
-   * the mascot is shrunk to 88px (see `.pet-mascot`) so the scale fits
+   * clipped by the root container. The OS window still clips at 96px, but
+   * the mascot is shrunk to 72px (see `.pet-mascot`) so the scale fits
    * inside with margin. */
   overflow: visible;
 }
 
 .pet-sprite-layer {
-  /* The sprite layer hosts the 88px mascot SVG inside the 120x120 pet window.
+  /* The sprite layer hosts the 72px mascot SVG inside the 96x96 pet window.
    * Without centering, the inline-element mascot sits at the layer's
    * top-left (0,0), so the circle's top would land on the window's top
-   * edge. Centering the mascot gives ~16px margin on all sides → the
-   * idle translate (1px) and scale-breathe (1.04 → +~1.8px each side)
+   * edge. Centering the mascot gives ~12px margin on all sides → the
+   * idle translate (1px) and scale-breathe (1.04 → +~1.5px each side)
    * stay well inside the window, no clip. The inline style in
    * PetApp.tsx (position/left/top/width/height/cursor) is unaffected. */
   display: flex;
@@ -64,11 +64,13 @@ html.is-pet-window .pet-root {
 }
 
 .pet-mascot {
-  /* 88px in the 120x120 pet window. At 88px, click scale 1.08 → ~95px and
-   * the scale-breathe peak (1.04 → ~91.5px) both fit inside the 120px
-   * window with margin. */
-  width: 88px;
-  height: 88px;
+  /* 72px in the 96×96 pet window. At 72px, click scale 1.08 → ~78px and
+   * the scale-breathe peak (1.04 → ~75px) both fit inside the 96px
+   * window with margin. MUST stay in sync with `PET_MASCOT_SIZE` in
+   * `petPosition.ts` and the SVG `width`/`height` attributes in
+   * `PetMascot.tsx`. */
+  width: 72px;
+  height: 72px;
   /* `overflow: visible` so the circle (r=244 inside the 512 viewBox, with
    * 12px margin) is not clipped by the SVG root if a state-animation
    * scale pushes it past the viewBox edge. The `<svg>` element also sets
@@ -79,6 +81,21 @@ html.is-pet-window .pet-root {
   will-change: transform;
   color: var(--acc, #3a6ef0);
   transition: transform 0.15s ease;
+}
+
+/* Custom `<img>` mascot (PRD Q3): keep the CSS transform animations on the
+ * `<img>` so the breathing / hover / drag / click "alive" feel is preserved
+ * regardless of source image. `object-fit: contain` prevents non-square
+ * images from stretching; `user-select: none` + `-webkit-user-drag: none`
+ * prevent the browser from initiating a native image drag (the pet window
+ * owns drag via `startDragging`). `display: block` removes the inline-image
+ * baseline gap so the image centers exactly like the inline SVG. */
+.pet-mascot.is-img {
+  object-fit: contain;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
 }
 
 .pet-mascot:hover { transform: scale(1.04); }

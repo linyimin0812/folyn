@@ -196,9 +196,9 @@ describe('computePanelPosition', () => {
 
   it('tie-break: pet center exactly at work-area center falls into right/bottom half (extends up-left)', () => {
     // Place pet so its center is exactly at (720, 462.5):
-    // petX = 720 - 60 = 660; petY = 462.5 - 60 = 402.5.
+    // petX = 720 - PET_WINDOW_SIZE/2; petY = 462.5 - PET_WINDOW_SIZE/2.
     // `>=` on both axes → right/bottom → panel extends up-left.
-    const petPos = { x: 660, y: 402.5 };
+    const petPos = { x: 720 - PET_WINDOW_SIZE / 2, y: 462.5 - PET_WINDOW_SIZE / 2 };
     const icon = iconBox(petPos);
     const pos = computePanelPosition(petPos, workArea, defaultSize);
     expect(pos.x).toBe(icon.left - PET_PANEL_GAP - PET_PANEL_WIDTH);

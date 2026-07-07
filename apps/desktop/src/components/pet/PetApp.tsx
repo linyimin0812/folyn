@@ -46,11 +46,13 @@ import { isTauri } from '@/utils/platform';
 
 type PetState = 'idle' | 'hover' | 'drag' | 'click';
 
-/** Sprite fills the full 120x120 pet window — no transparent margin around
+/** Sprite fills the full 96x96 pet window — no transparent margin around
  * the quill icon. The breathing self-pulse is driven by CSS `scale` on
- * `.pet-mascot` (see pet.css), no separate layer. */
+ * `.pet-mascot` (see pet.css), no separate layer. MUST stay in sync with
+ * `PET_WINDOW_SIZE` in `petPosition.ts` and the `pet` window size in
+ * `tauri.conf.json`. */
 const SPRITE_OFFSET = 0;
-const SPRITE_SIZE = 120;
+const SPRITE_SIZE = 96;
 const POSITION_PERSIST_INTERVAL_MS = 800;
 
 interface PetCursorProbeResult {

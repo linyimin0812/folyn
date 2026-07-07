@@ -147,6 +147,78 @@ export default function App() {
     initializeVault();
   }, []);
 
+  // ── Pet icon orphan sweep + fallback (PRD: settings-pet-tab-and-custom-icon) ──
+  // On startup, reconcile the persisted `petIconSource` / `petIconPath` with
+  // the actual files under appDataDir:
+  //  (a) If `petIconSource === 'custom'` but the saved file is missing
+  //      (externally deleted / moved), clear the flag to `'builtin'` so the
+  //      pet window renders the inline SVG instead of a broken-image icon.
+  //      Belt-and-suspenders with the `<img>` onError handler in PetMascot
+  //      (which clears the flag at render time); this sweep covers the case
+  //      where the pet window hasn't mounted yet (pet mode off) so the
+  //      missing file would otherwise persist in storage unchecked.
+  //  (b) If `petIconSource !== 'custom'` but a leftover `pet-icon.<ext>`
+  //      file exists in appDataDir (e.g. the user previously uploaded an
+  //      icon then reset to builtin, but the reset's file-delete failed),
+  //      delete it so the appData dir stays clean.
+  //
+  // Lives in the MAIN window (not PetApp) because the fs plugin calls
+  // (`exists`, `remove`, `readDir`) require fs ACL permissions that the
+  // main window already has (`capabilities/default.json`) but the pet
+  // window does not (`capabilities/pet.json` only grants core:window + core:event).
+  // Running the sweep here on every main-window startup is more reliable
+  // than running it in PetApp (which only mounts when pet mode is on).
+  // Wrapped in isTauri + try/catch so non-Tauri/test envs skip it.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { exists, remove, readDir } = await import('@tauri-apps/plugin-fs');
+        const { appDataDir, join } = await import('@tauri-apps/api/path');
+        const appData = await appDataDir();
+        const { petIconSource, petIconPath } = useSettingsStore.getState();
+
+        if (petIconSource === 'custom' && petIconPath) {
+          // Fallback: custom flag set but file missing → clear flag.
+          let fileExists = false;
+          try {
+            fileExists = await exists(petIconPath);
+          } catch {
+            // exists() can throw on permission errors; treat as "missing"
+            // so the flag clears and the pet doesn't render a broken icon.
+            fileExists = false;
+          }
+          if (!fileExists && !cancelled) {
+            console.warn('[App] pet custom icon file missing, clearing flag:', petIconPath);
+            useSettingsStore.getState().setPetIcon('builtin');
+          }
+        } else {
+          // Orphan sweep: delete any leftover pet-icon.<ext> files in
+          // appDataDir so they don't accumulate across reset cycles.
+          try {
+            const entries = await readDir(appData);
+            for (const e of entries) {
+              if (cancelled) break;
+              if (!e.name.startsWith('pet-icon.')) continue;
+              try {
+                await remove(await join(appData, e.name));
+              } catch {
+                // Non-fatal; best-effort cleanup.
+              }
+            }
+          } catch {
+            // readDir on appDataDir can fail on permission / platform
+            // edge cases — non-fatal, the sweep is best-effort.
+          }
+        }
+      } catch (err) {
+        console.warn('[App] pet icon sweep failed:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   // ── Hide all native webviews when leaving the editor page ──
   useEffect(() => {
     if (currentPage !== 'editor' && isTauri()) {
