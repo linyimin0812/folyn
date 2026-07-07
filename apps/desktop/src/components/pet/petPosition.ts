@@ -130,74 +130,74 @@ export const PET_PANEL_GAP = 8;
 
 /**
  * Compute the pet-panel position (logical points, absolute screen coords) given
- * the pet's current position and the work area. The panel opens ABOVE the pet
- * by default (panel bottom edge = pet top edge - gap); if there isn't room
- * above (pet near the top of the screen), the panel opens BELOW the pet
- * instead (panel top edge = pet bottom edge + gap).
+ * the pet's current position and the work area. The panel attaches one of its
+ * **four corners** to the pet icon's diagonally-opposite corner, leaving
+ * `PET_PANEL_GAP` clearance on BOTH axes. The corner is chosen by quadrant:
+ * compare the pet's center to the work area's center on each axis independently.
  *
- * The panel's X is centered on the pet's X (panel.x = pet.x + PET_WINDOW_SIZE/2
- * - PET_PANEL_WIDTH/2), then clamped to the work area's horizontal extent so
- * the whole panel stays on-screen even when the pet is near the left/right
- * edge.
+ * Quadrant map (pet center vs work-area center, per axis; `>=` falls into the
+ * right/bottom half):
+ * - bottom-right quadrant → panel's **bottom-right** corner at pet's **top-left**
+ *   corner − gap on both axes (panel extends up-left).
+ * - bottom-left  → panel's **bottom-left**  corner at pet's **top-right** − gap
+ *   (panel extends up-right).
+ * - top-right     → panel's **top-right**    corner at pet's **bottom-left** − gap
+ *   (panel extends down-left).
+ * - top-left      → panel's **top-left**     corner at pet's **bottom-right** − gap
+ *   (panel extends down-right).
  *
- * No-overlap invariant: the panel NEVER covers the pet icon. The chosen
- * vertical position always leaves at least `PET_PANEL_GAP` between the panel
- * and the pet. Vertical Y is NOT clamped to the work area — when neither
- * above nor below has enough room to fit the full panel (degenerate tiny
- * work area, or pet in the middle of a short screen), the panel is placed
- * on the side with more room at its non-overlapping position
- * (aboveTop = petTop - gap - panelHeight, or belowTop = petBottom + gap),
- * accepting that the panel overflows the work-area edge on that side. The
- * previous implementation clamped Y to the work area and then fell back to
- * `belowTop` if the clamp pushed the panel onto the pet — but that fallback
- * could push the panel off the bottom edge when the pet was in the lower
- * half of a short work area. Picking the side with more room (and accepting
- * overflow) is strictly better: the panel never overlaps the pet, and it
- * overflows the edge that has the least visual cost.
+ * Tie-break: a pet center exactly at the work-area center falls into the
+ * right/bottom half on each axis (via `>=`), so the panel extends up-left — a
+ * deterministic default that matches the most common "pet at bottom-right"
+ * placement.
+ *
+ * No-overlap invariant: because the panel's pet-ward edge is exactly
+ * `PET_PANEL_GAP` away from the pet's opposite edge on each axis, the panel
+ * bounding box never intersects the pet's `[petX, petX+PET_WINDOW_SIZE] ×
+ * [petY, petY+PET_WINDOW_SIZE]` rect. This holds even in the degenerate case
+ * where the work area is smaller than the panel — the panel overflows the
+ * work-area edge on the diagonal side but still does not cover the pet.
  *
  * The pet window's outer position (`petPos`) and the returned panel position
  * are both in logical points. The caller must divide `petPos` by
  * `scale_factor` if it came from `outerPosition()` / `pet_cursor_probe`
  * (physical px), and multiply the result by `scale_factor` before calling
  * `pet_panel_set_position` (physical px).
+ *
+ * `panelSize` is the **actual** panel size in LOGICAL points (matches the
+ * work area). The caller must pass the actual size — default constants for
+ * first-ever open, the clamped saved size for subsequent opens — so a
+ * user-resized panel's corner still tracks the pet. Passing the hardcoded
+ * `PET_PANEL_WIDTH`/`PET_PANEL_HEIGHT` here when the panel has been resized
+ * larger would place the corner at the wrong spot (the corner drifts off the
+ * pet). This mirrors the `clampPanelPosition` contract which already takes
+ * the actual panel size for the same reason.
  */
 export function computePanelPosition(
   petPos: PetPosition,
   workArea: PetWorkArea,
+  panelSize: { width: number; height: number },
 ): PetPosition {
-  // Center the panel on the pet horizontally, then clamp to the work area.
-  const centeredX = petPos.x + (PET_WINDOW_SIZE - PET_PANEL_WIDTH) / 2;
-  const minX = workArea.x;
-  const maxX = workArea.x + Math.max(0, workArea.width - PET_PANEL_WIDTH);
-  const x = Math.min(Math.max(centeredX, minX), maxX);
+  const petCenterX = petPos.x + PET_WINDOW_SIZE / 2;
+  const petCenterY = petPos.y + PET_WINDOW_SIZE / 2;
+  const workCenterX = workArea.x + workArea.width / 2;
+  const workCenterY = workArea.y + workArea.height / 2;
 
-  // Vertical: prefer ABOVE the pet; if there isn't room, go BELOW. If neither
-  // fits cleanly, pick the side with more room and accept overflow on that
-  // side — the panel still does NOT overlap the pet (panel bottom = petTop -
-  // gap for above; panel top = petBottom + gap for below).
-  const aboveTop = petPos.y - PET_PANEL_GAP - PET_PANEL_HEIGHT;
-  const belowTop = petPos.y + PET_WINDOW_SIZE + PET_PANEL_GAP;
-  // Vertical space available above the pet (down to workArea.y) and below the
-  // pet (up to workArea.y + workArea.height). Both exclude PET_PANEL_GAP so
-  // the no-overlap clearance is baked into the room calc.
-  const roomAbove = petPos.y - PET_PANEL_GAP - workArea.y;
-  const roomBelow =
-    workArea.y + workArea.height - (petPos.y + PET_WINDOW_SIZE) - PET_PANEL_GAP;
+  // X axis: pet in right half → panel extends left (panel right edge = pet
+  // left edge − gap); else panel extends right (panel left edge = pet right
+  // edge + gap).
+  const x =
+    petCenterX >= workCenterX
+      ? petPos.x - PET_PANEL_GAP - panelSize.width
+      : petPos.x + PET_WINDOW_SIZE + PET_PANEL_GAP;
 
-  let y: number;
-  if (roomAbove >= PET_PANEL_HEIGHT) {
-    // Above fits cleanly → panel top at aboveTop, panel bottom at petTop - gap.
-    y = aboveTop;
-  } else if (roomBelow >= PET_PANEL_HEIGHT) {
-    // Below fits cleanly → panel top at petBottom + gap.
-    y = belowTop;
-  } else {
-    // Neither side fits the full panel. Pick the side with more room; the
-    // panel overflows the work-area edge on that side but never overlaps the
-    // pet. Tie-break goes to ABOVE so the panel drops from above (matches the
-    // default preferred side).
-    y = roomAbove >= roomBelow ? aboveTop : belowTop;
-  }
+  // Y axis: pet in bottom half → panel extends up (panel bottom edge = pet
+  // top edge − gap); else panel extends down (panel top edge = pet bottom
+  // edge + gap).
+  const y =
+    petCenterY >= workCenterY
+      ? petPos.y - PET_PANEL_GAP - panelSize.height
+      : petPos.y + PET_WINDOW_SIZE + PET_PANEL_GAP;
 
   return { x, y };
 }

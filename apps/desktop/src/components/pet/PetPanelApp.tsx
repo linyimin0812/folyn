@@ -182,12 +182,14 @@ export function PetPanelApp() {
         } else {
           // First-ever open: position next to the pet (probe gives pet pos
           // in PHYSICAL px — divide by `sf` to get logical for the math).
-          // `computePanelPosition` uses the default PET_PANEL_WIDTH/HEIGHT,
-          // which matches the default size used above for first open.
+          // Pass the clamped size (which equals the defaults here, since
+          // first-ever open has no saved size) so `computePanelPosition`
+          // attaches the panel's actual corner to the pet icon.
           const probe = await invoke<PetCursorProbeResult>('pet_cursor_probe');
           const pos = computePanelPosition(
             { x: probe.window_x / sf, y: probe.window_y / sf },
             workArea,
+            clampedSize,
           );
           await invoke('pet_panel_set_position', {
             x: Math.round(pos.x * sf),

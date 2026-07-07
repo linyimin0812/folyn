@@ -448,8 +448,15 @@ area rect and the scale factor.
 - **Good**: structural window in `tauri.conf.json` (`visible:false`); custom `invoke` commands for
   all mutation; position the panel via `pet_panel_set_position` BEFORE `pet_panel_show` so it
   appears at the right spot in one frame (no flash at the default origin); fullscreen guard first;
-  clamp via `pet_get_work_area` + `computePanelPosition` so the 380×520 panel stays fully on-screen
-  even when the pet is at the bottom-right corner (opens left/up near edges).
+  attach the panel via `computePanelPosition` so one of the panel's four corners sits
+  `PET_PANEL_GAP` away from the pet icon's diagonally-opposite corner on BOTH axes — the corner is
+  picked by comparing the pet's center to the work-area center on each axis (4 quadrants), so the
+  panel always extends into the quadrant with more room. The panel may overflow the work-area edge
+  on the diagonal side in degenerate cases but never overlaps the pet. `computePanelPosition` takes
+  the **actual panel size** as a third arg (default constants for first-ever open, the clamped saved
+  size for subsequent opens) so a user-resized panel's corner still tracks the pet — passing the
+  hardcoded default 380×520 when the panel has been resized larger would leave the corner drifting
+  off the pet.
 - **Base**: the panel is a normal opaque window — `core:default` covers `invoke`/`listen`; only
   `core:event:allow-emit` must be added on top for the launcher's `emit`.
 - **Bad**: calling `getCurrentWindow().show()` from the panel frontend without granting
@@ -461,8 +468,10 @@ area rect and the scale factor.
   and `PET_LAUNCHER_ACTIONS` arrays must stay in sync with the Rust `pet_ctx_menu_action`
   id→action map (assert in `PetContextMenu.test.tsx`). The native and launcher sets must be
   disjoint; their union must equal `PET_MENU_ACTIONS`.
-- **Positioning unit test**: `computePanelPosition` (right/below default, flips left/up near edges,
-  clamps to work area) + `clampPanelPosition` (all four edges + degenerate work area) — see
+- **Positioning unit test**: `computePanelPosition` (corner attaches to pet icon per quadrant —
+  bottom-right pet → panel bottom-right at pet top-left minus gap on both axes; degenerate tiny
+  work area still no-overlap; the actual panel size is passed as a third arg so a resized panel's
+  corner still tracks the pet) + `clampPanelPosition` (all four edges + degenerate work area) — see
   `petPosition.test.ts`.
 - **Launcher dispatch test**: each launcher button emits the correct `pet://menu-action` payload
   and calls `pet_panel_hide` for main-window-targeting actions; Clip-from-URL toggles the inline
@@ -490,7 +499,8 @@ if (await invoke<boolean>('pet_panel_is_visible')) {     // toggle (R8)
   return;
 }
 const workArea = await invoke<WorkArea>('pet_get_work_area');
-const pos = computePanelPosition({x: probe.window_x, y: probe.window_y}, workArea);
+const size = resolvePanelSize(workArea);              // default constants OR clamped saved size
+const pos = computePanelPosition({x: probe.window_x, y: probe.window_y}, workArea, size);
 await invoke('pet_panel_set_position', pos);             // position FIRST
 await invoke('pet_panel_show');                          // then show → no flash
 // panel frontend: close button + Esc both call invoke('pet_panel_hide')

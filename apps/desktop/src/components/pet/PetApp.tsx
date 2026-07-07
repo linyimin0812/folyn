@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PetMascot } from './PetMascot';
 import { openPetContextMenu } from './PetContextMenu';
-import { clampPetPosition, computeDefaultPetPosition, computePanelPosition } from './petPosition';
+import { clampPetPosition, computeDefaultPetPosition, computePanelPosition, clampPanelSize, PET_PANEL_WIDTH, PET_PANEL_HEIGHT } from './petPosition';
 import { isTauri } from '@/utils/platform';
 
 /**
@@ -77,9 +77,10 @@ interface PetWorkAreaResult {
  * backend makes it possible, so the guard is removed).
  *
  * Positioning: ALWAYS recompute the panel position from the pet's CURRENT
- * outer position at open time via `computePanelPosition` (panel opens above
- * the pet, or below if the pet is near the top of the screen, with
- * `PET_PANEL_GAP` clearance so the panel never covers the pet icon). The
+ * outer position at open time via `computePanelPosition` (the panel's corner
+ * attaches to the pet icon's diagonally-opposite corner with `PET_PANEL_GAP`
+ * clearance on BOTH axes; the corner is chosen by work-area quadrant so the
+ * panel extends into the open quadrant and never covers the pet icon). The
  * saved `petPanelX/Y` is NOT restored — even if the user dragged the panel
  * to a new spot while it was open, the next open snaps back to the
  * pet-relative position. (The panel can still be dragged while open; that
@@ -112,22 +113,26 @@ async function openOrTogglePetPanel(): Promise<void> {
 
     // Restore a saved SIZE only (so a user-resized panel keeps its size
     // across opens). The panel POSITION is intentionally NOT restored —
-    // see the function doc above.
+    // see the function doc above. The clamped size is also passed to
+    // `computePanelPosition` so a resized panel's corner still tracks the
+    // pet — passing the default 380×520 here when the panel has been
+    // resized larger would place the corner at the wrong spot.
     const { useSettingsStore } = await import('@/store/settingsStore');
     const { petPanelWidth, petPanelHeight } = useSettingsStore.getState();
 
-    if (petPanelWidth > 0 && petPanelHeight > 0) {
-      const { clampPanelSize } = await import('./petPosition');
-      const size = clampPanelSize(
-        { width: petPanelWidth, height: petPanelHeight },
-        { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
-      );
-      await invoke('pet_panel_set_size', { width: size.width, height: size.height });
-    }
+    const size =
+      petPanelWidth > 0 && petPanelHeight > 0
+        ? clampPanelSize(
+            { width: petPanelWidth, height: petPanelHeight },
+            { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
+          )
+        : { width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT };
+    await invoke('pet_panel_set_size', { width: size.width, height: size.height });
 
     // ALWAYS recompute the panel position from the pet's current outer
-    // position so the panel opens next to the pet (above, or below if the
-    // pet is near the top of the screen). `computePanelPosition` guarantees
+    // position so the panel opens next to the pet (corner-attachment: the
+    // panel's corner sits `PET_PANEL_GAP` away from the pet's opposite corner
+    // on both axes, quadrant-chosen). `computePanelPosition` guarantees
     // a `PET_PANEL_GAP` clearance between the panel and the pet, so the
     // panel never covers the icon — even if the pet has moved since the
     // last open. The computed position is NOT persisted.
@@ -147,7 +152,7 @@ async function openOrTogglePetPanel(): Promise<void> {
       width: workArea.width,
       height: workArea.height,
       scale_factor: sf,
-    });
+    }, size);
     const panelPosPhysical = {
       x: Math.round(panelPosLogical.x * sf),
       y: Math.round(panelPosLogical.y * sf),
