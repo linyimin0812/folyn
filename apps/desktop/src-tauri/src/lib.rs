@@ -14,11 +14,8 @@ mod commands;
 mod pet_panel_macos;
 
 use tauri::Manager;
-use tauri::menu::{CheckMenuItem, MenuBuilder, SubmenuBuilder};
+use tauri::menu::{MenuBuilder, SubmenuBuilder};
 use tauri::{Emitter, WindowEvent};
-
-/// Menu item id for the "Desktop Pet Mode" checkable entry in the View submenu.
-const PET_MODE_MENU_ID: &str = "pet_mode_toggle";
 
 /// Maps a pet context-menu item id (see `commands::PET_CTX_MENU_*`) to the
 /// `PetMenuAction` payload the main window expects. Returns `None` for
@@ -193,30 +190,6 @@ pub fn run() {
         )
         .on_menu_event(|app, event| {
             let id = event.id().as_ref();
-            if id == PET_MODE_MENU_ID {
-                // The check item's state is toggled automatically by muda
-                // before this event fires; reflect it onto the pet window.
-                let pet = app.get_webview_window("pet");
-                if let Some(pet) = pet {
-                    let checked = app
-                        .menu()
-                        .and_then(|menu| menu.get(PET_MODE_MENU_ID))
-                        .and_then(|kind| kind.as_check_menuitem().cloned())
-                        .and_then(|item| item.is_checked().ok());
-                    if let Some(checked) = checked {
-                        if checked {
-                            let _ = pet.show();
-                        } else {
-                            let _ = pet.hide();
-                        }
-                        // Keep settingsStore.petModeEnabled in sync with the
-                        // menu-driven visibility change (the frontend listens
-                        // for this event; covers the menu/keyboard path).
-                        let _ = app.emit("pet://visibility-changed", checked);
-                    }
-                }
-                return;
-            }
             // Pet right-click context menu items → emit `pet://menu-action`
             // so the main window's listener (App.tsx) dispatches the action.
             // Native popup menu (issue #1): the menu is built in
@@ -272,21 +245,6 @@ pub fn run() {
                 .select_all()
                 .build()?;
 
-            // View submenu — hosts the checkable "Desktop Pet Mode" entry.
-            // Default off; the checkmark syncs with pet window visibility
-            // (toggled either from the menu or from the frontend settings).
-            let pet_toggle = CheckMenuItem::with_id(
-                app,
-                PET_MODE_MENU_ID,
-                "Desktop Pet Mode",
-                true,
-                false,
-                Some("CmdOrCtrl+Shift+P"),
-            )?;
-            let view_menu = SubmenuBuilder::new(app, "View")
-                .item(&pet_toggle)
-                .build()?;
-
             let window_menu = SubmenuBuilder::new(app, "Window")
                 .minimize()
                 .maximize()
@@ -298,7 +256,6 @@ pub fn run() {
             let menu = MenuBuilder::new(app)
                 .item(&app_menu)
                 .item(&edit_menu)
-                .item(&view_menu)
                 .item(&window_menu)
                 .build()?;
 

@@ -682,6 +682,24 @@ function PetSettings() {
   /** File-size cap: 1MB (PRD). Rejected oversized files instead of resizing. */
   const MAX_ICON_BYTES = 1024 * 1024;
 
+  // Cross-window icon-change broadcast. The `pet` Tauri window has its own
+  // JS context + its own Zustand store instance; `storageClient`'s in-memory
+  // cache is per-window with no cross-window invalidation, so a `setPetIcon`
+  // call here only updates the main window's store. The pet window would keep
+  // rendering the stale icon until next launch. Emit `pet://icon-changed` so
+  // `PetApp.tsx`'s listener can `setState` on its own store instance. Guarded
+  // with `isTauri()` so non-Tauri/test envs skip the dynamic import. The
+  // payload shape is `{ source, path }` so the listener can blindly apply it.
+  const emitIconChanged = useCallback(async (source: 'builtin' | 'custom', path: string) => {
+    if (!isTauri()) return;
+    try {
+      const { emit } = await import('@tauri-apps/api/event');
+      await emit('pet://icon-changed', { source, path });
+    } catch {
+      // Non-fatal — the pet window will pick up the change on next launch.
+    }
+  }, []);
+
   const handleUploadIcon = useCallback(async () => {
     setErrorMsg('');
     if (busy) return;
@@ -753,12 +771,13 @@ function PetSettings() {
       }
       await writeFile(destPath, bytes);
       setPetIcon('custom', destPath);
+      await emitIconChanged('custom', destPath);
     } catch (e: unknown) {
       setErrorMsg(e instanceof Error ? e.message : '上传失败');
     } finally {
       setBusy(false);
     }
-  }, [busy, setPetIcon]);
+  }, [busy, setPetIcon, emitIconChanged]);
 
   const handleTogglePetMode = useCallback(async (v: boolean) => {
     // Optimistic store update so the toggle feels snappy; then invoke the
@@ -784,6 +803,7 @@ function PetSettings() {
     try {
       if (!isTauri()) {
         setPetIcon('builtin');
+        await emitIconChanged('builtin', '');
         return;
       }
       const { remove, readDir } = await import('@tauri-apps/plugin-fs');
@@ -802,10 +822,11 @@ function PetSettings() {
         // Non-fatal; the flag still clears.
       }
       setPetIcon('builtin');
+      await emitIconChanged('builtin', '');
     } catch (e: unknown) {
       setErrorMsg(e instanceof Error ? e.message : '重置失败');
     }
-  }, [setPetIcon]);
+  }, [setPetIcon, emitIconChanged]);
 
   const handleSelectCustom = useCallback(() => {
     // Radio "自定义": if a custom icon is already uploaded, just switch
@@ -813,10 +834,11 @@ function PetSettings() {
     // pick one (selecting "自定义" with no path would render nothing).
     if (petIconPath) {
       setPetIcon('custom', petIconPath);
+      void emitIconChanged('custom', petIconPath);
     } else {
       void handleUploadIcon();
     }
-  }, [petIconPath, setPetIcon, handleUploadIcon]);
+  }, [petIconPath, setPetIcon, handleUploadIcon, emitIconChanged]);
 
   // Preview thumbnail: builtin quill.svg (served from the app's public dir)
   // or the custom image via `convertFileSrc` (resolved in `CustomIconPreview`
@@ -848,7 +870,10 @@ function PetSettings() {
         <div className="flex gap-1">
           <button
             className={`py-[5px] px-3 rounded-md text-[11px] font-ui cursor-pointer border transition-all duration-100 ${petIconSource === 'builtin' ? 'border-acc bg-accdim text-acc' : 'border-brd bg-surf text-t2 hover:bg-hov hover:text-t1'}`}
-            onClick={() => setPetIcon('builtin')}
+            onClick={() => {
+              setPetIcon('builtin');
+              void emitIconChanged('builtin', '');
+            }}
           >默认</button>
           <button
             className={`py-[5px] px-3 rounded-md text-[11px] font-ui cursor-pointer border transition-all duration-100 ${petIconSource === 'custom' ? 'border-acc bg-accdim text-acc' : 'border-brd bg-surf text-t2 hover:bg-hov hover:text-t1'}`}
@@ -861,7 +886,10 @@ function PetSettings() {
       <div className="flex items-center gap-3 mt-3">
         <div className="w-14 h-14 rounded-md border border-brd2 bg-surf2 flex items-center justify-center overflow-hidden shrink-0">
           {petIconSource === 'custom' && petIconPath && isTauri() ? (
-            <CustomIconPreview path={petIconPath} onError={() => setPetIcon('builtin')} />
+            <CustomIconPreview path={petIconPath} onError={() => {
+              setPetIcon('builtin');
+              void emitIconChanged('builtin', '');
+            }} />
           ) : (
             <img src={builtinPreviewSrc} alt="Quill" className="w-12 h-12" />
           )}

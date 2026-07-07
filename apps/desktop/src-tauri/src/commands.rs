@@ -414,8 +414,9 @@ pub const PET_CTX_MENU_TOGGLE_AI: &str = "pet-ctx-toggle-ai";
 pub const PET_CTX_MENU_DISABLE_PET: &str = "pet-ctx-disable-pet";
 
 /// Toggle the pet window's visibility. Returns the new visibility state.
-/// Also used by the menu bar "Desktop Pet Mode" check item — the caller is
-/// expected to sync the checkmark from the returned bool.
+/// The frontend settings tab "桌宠" is the sole entry point for this toggle;
+/// the macOS app menu no longer hosts a checkable "Desktop Pet Mode" item
+/// (removed in favor of the dedicated settings tab).
 #[tauri::command]
 pub async fn toggle_pet_mode(app: tauri::AppHandle) -> Result<bool, String> {
     let pet = app
@@ -431,16 +432,6 @@ pub async fn toggle_pet_mode(app: tauri::AppHandle) -> Result<bool, String> {
         // on macOS via the transparent + skipTaskbar flags.
     } else {
         pet.hide().map_err(|e| e.to_string())?;
-    }
-    // Keep the macOS menu bar check item in sync (the menu event path sets
-    // visibility from the checkmark; this is the reverse: setting the
-    // checkmark from visibility, for the frontend-driven toggle path).
-    if let Some(menu) = app.menu() {
-        if let Some(kind) = menu.get("pet_mode_toggle") {
-            if let Some(check) = kind.as_check_menuitem() {
-                let _ = check.set_checked(next);
-            }
-        }
     }
     // Notify the frontend so settingsStore.petModeEnabled stays in sync with
     // the actual window visibility (covers the frontend-driven toggle path).

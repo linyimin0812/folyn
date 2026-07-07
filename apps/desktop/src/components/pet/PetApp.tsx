@@ -654,6 +654,43 @@ export function PetApp() {
     };
   }, []);
 
+  // ── Cross-window icon-change sync ──
+  // The `pet` Tauri window has its own JS context + its own Zustand store
+  // instance; `storageClient`'s in-memory cache is per-window with no cross-
+  // window invalidation. When the main window's PetSettings calls
+  // `setPetIcon(...)`, only the main window's store updates — this pet window
+  // would keep rendering the stale icon until next launch. The main window
+  // emits `pet://icon-changed` after every `setPetIcon` call; this listener
+  // applies the payload to the pet window's own store instance so the mascot
+  // re-renders live. Pattern mirrors the `pet://visibility-changed` listener
+  // in App.tsx. Wrapped in isTauri + try/catch so non-Tauri/test envs skip it.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        const { useSettingsStore } = await import('@/store/settingsStore');
+        unlisten = await listen<{ source: 'builtin' | 'custom'; path: string }>(
+          'pet://icon-changed',
+          (event) => {
+            const { source, path } = event.payload ?? {};
+            if (source !== 'builtin' && source !== 'custom') return;
+            useSettingsStore.setState({
+              petIconSource: source,
+              petIconPath: typeof path === 'string' ? path : '',
+            });
+          },
+        );
+      } catch (err) {
+        console.warn('[pet] icon-changed listener setup failed:', err);
+      }
+    })();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
   return (
     <div className="pet-root">
       {/* The mascot sprite is wrapped in an interaction layer that owns all
