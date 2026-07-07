@@ -136,6 +136,17 @@ export function PetPanelApp() {
   // by `sf` before passing to `computePanelPosition` (logical). Panel SIZE
   // is also stored/restored in LOGICAL points (mirrors the position link);
   // `pet_panel_set_size` takes PHYSICAL px, so multiply by `sf` here.
+  //
+  // Authority note: this mount-restore runs once when the webview loads, at
+  // which point the panel window may still be HIDDEN (Tauri creates it
+  // `visible: false`). On macOS, `set_size` / `set_position` on a hidden
+  // NSPanel can be deferred by the window manager until the window is
+  // ordered in, so this pre-show `set_size` is best-effort. The
+  // authoritative size-set is the post-show re-assert in `PetApp.tsx`'s
+  // `openOrTogglePetPanel` (it calls `pet_panel_set_size` again AFTER
+  // `pet_panel_show`), which fires when the user clicks the pet to open the
+  // panel. Don't add a `set_size` re-assert here — there's no `show()` call
+  // in this mount path to follow.
   useEffect(() => {
     (async () => {
       if (!isTauri()) return;

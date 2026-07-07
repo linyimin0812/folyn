@@ -176,19 +176,33 @@ async function openOrTogglePetPanel(): Promise<void> {
     };
 
     // Position the panel before showing so it appears at the right spot in
-    // one frame (avoids a flash at the default position).
+    // one frame (avoids a flash at the default position). Likewise set the
+    // size before show so a version-bump default applies to the first frame.
+    // `pet_panel_set_position` and `pet_panel_set_size` both take PHYSICAL px,
+    // so multiply the logical `size` and `panelPosLogical` by `sf`.
+    const panelSizePhysical = {
+      width: Math.round(size.width * sf),
+      height: Math.round(size.height * sf),
+    };
     await invoke('pet_panel_set_position', panelPosPhysical);
+    await invoke('pet_panel_set_size', panelSizePhysical);
     await invoke('pet_panel_show');
-    // Re-assert the position AFTER show() too: on macOS, `set_position` on a
-    // HIDDEN NSPanel/NSWindow may not take effect reliably (the window
-    // manager can defer the frame update until the window is ordered in), and
-    // `show()` can reset the frame to the last visible position. Calling
-    // `set_position` again on the now-visible window guarantees the panel is
-    // at the computed spot — same value, so no visible jump. This also fixes
-    // the "panel doesn't follow the pet after a drag" symptom: the pet's new
-    // position is reflected in `probe.window_x/y`, and the re-asserted
-    // `set_position` moves the visible panel to the new spot.
+    // Re-assert the position AND size AFTER show() too: on macOS,
+    // `set_position` and `set_size` on a HIDDEN NSPanel/NSWindow may not take
+    // effect reliably (the window manager can defer the frame update until
+    // the window is ordered in), and `show()` can reset the frame to the last
+    // visible position/size. Calling `set_position` and `set_size` again on
+    // the now-visible window guarantees the panel is at the computed spot and
+    // size — same values, so no visible jump. This also fixes the "panel
+    // doesn't follow the pet after a drag" symptom: the pet's new position is
+    // reflected in `probe.window_x/y`, and the re-asserted `set_position`
+    // moves the visible panel to the new spot. It also fixes the "panel
+    // doesn't pick up the new default size after a version bump" symptom:
+    // the version-gate in `resolvePanelSize` computes the new default, but
+    // the pre-show `set_size` on the hidden window may not take; the
+    // re-asserted `set_size` on the visible window applies it.
     await invoke('pet_panel_set_position', panelPosPhysical);
+    await invoke('pet_panel_set_size', panelSizePhysical);
   } catch (err) {
     console.warn('[pet] openOrTogglePetPanel failed:', err);
   }

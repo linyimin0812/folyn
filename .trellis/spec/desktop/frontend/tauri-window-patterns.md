@@ -531,6 +531,25 @@ await invoke('pet_panel_show');                          // then show → no fla
 > let the host set focus + position atomically, and keep all window-state logic in one Rust
 > module — the frontend never reasons about `core:window:allow-*` for the panel.
 
+> **Re-assert `set_position` AND `set_size` AFTER `pet_panel_show` too** (macOS hidden-window
+> deferral). On macOS, `set_size` and `set_position` on a HIDDEN `NSPanel`/`NSWindow` may not
+> take effect reliably — the window manager can defer the frame update until the window is
+> ordered in, and `show()` can reset the frame to the last visible position/size. So the
+> pre-show `set_position` / `set_size` is best-effort; the authoritative call is the
+> **re-asserted** one on the now-visible window, immediately after `pet_panel_show`:
+> ```ts
+> await invoke('pet_panel_set_position', posPhysical);   // pre-show (best-effort, avoids flash)
+> await invoke('pet_panel_set_size', sizePhysical);      // pre-show (best-effort)
+> await invoke('pet_panel_show');
+> await invoke('pet_panel_set_position', posPhysical);   // re-assert AFTER show (authoritative)
+> await invoke('pet_panel_set_size', sizePhysical);      // re-assert AFTER show (authoritative)
+> ```
+> Same values, so no visible jump. This is also why the version-bump default size fix
+> (`PET_PANEL_SIZE_VERSION`) needs the **post-show** `set_size` to take — the pre-show call on
+> the hidden window may not apply. Do NOT add a post-show re-assert in `PetPanelApp.tsx`'s
+> mount-restore effect — that path runs on a hidden window with no `show()` call to follow;
+> the open gesture's re-assert is the authoritative size-set.
+
 ---
 
 ## Common Mistake: Secondary Window Hosting a CliAdapter Forgets Its Own Shell Grant
