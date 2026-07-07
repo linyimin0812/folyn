@@ -130,8 +130,8 @@ export function clampPetPosition(saved: PetPosition, workArea: PetWorkArea): Pet
  * size). Used by `computePanelPosition` and `clampPanelPosition` so the
  * panel stays fully on-screen.
  */
-export const PET_PANEL_WIDTH = 600;
-export const PET_PANEL_HEIGHT = 840;
+export const PET_PANEL_WIDTH = 520;
+export const PET_PANEL_HEIGHT = 720;
 
 /** Minimum panel size (matches `tauri.conf.json` `minWidth`/`minHeight`). */
 export const PET_PANEL_MIN_WIDTH = 280;
@@ -237,7 +237,7 @@ export function computePanelPosition(
  * the larger panel window. Unlike `clampPetPosition` (which uses the fixed
  * 120×120 pet size), this takes the **actual panel size** as a parameter so
  * the clamp respects a user-resized panel — a panel grown to 600×700 must be
- * clamped by 600/700, not by the default 600×840, or the bottom-right corner
+ * clamped by 600/700, not by the default 520×720, or the bottom-right corner
  * would slide off-screen after a resize → close → reopen cycle.
  *
  * `panelSize` is in LOGICAL points (matches the work area). The caller is
