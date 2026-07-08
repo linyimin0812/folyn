@@ -1,0 +1,29 @@
+{
+  "id": "markdown-todo",
+  "name": "Markdown Todo",
+  "version": "1.0.0",
+  "author": "Quill Examples",
+  "quill": ">=0.1.0",
+  "tier": "trusted",
+  "main": "index.js",
+  "permissions": {
+    "vault": { "insertContent": true }
+  },
+  "contributes": {
+    "commands": [
+      { "id": "insert-todo", "title": "Todo: Insert Checklist", "icon": "✅", "run": "insert-todo" }
+    ],
+    "containers": [
+      {
+        "name": "todo",
+        "icon": "✅",
+        "label": "Todo",
+        "category": "data",
+        "component": "todo",
+        "template": ":::todo\n- [ ] Task one\n- [ ] Task two\n:::",
+        "description": "A simple checkbox-style todo list rendered as a callout."
+      }
+    ]
+  },
+  "activation": { "onCommand": "insert-todo", "onLanguage": ["markdown"] }
+}

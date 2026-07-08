@@ -8,12 +8,17 @@ export const join = vi.fn(async (...parts: string[]) =>
     .join('/')
     .replace(/\/+/g, '/'),
 );
+export const dirname = vi.fn(async (p: string) => {
+  const idx = p.lastIndexOf('/');
+  return idx <= 0 ? '' : p.substring(0, idx);
+});
 
 export const __internals = {
   reset() {
     appDataDir.mockClear();
     homeDir.mockClear();
     join.mockClear();
+    dirname.mockClear();
     appDataDir.mockResolvedValue('/mock/appdata');
     homeDir.mockResolvedValue('/mock/home');
   },

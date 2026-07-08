@@ -6,6 +6,7 @@ import { builtinSkills } from '@/services/skillDefaults';
 import type { SkillOutputFormat, SkillCapability } from '@/types/skill';
 import { isTauri } from '@/utils/platform';
 import { CliAdapterRegistry } from '@quill/cli-adapter';
+import { PluginsSettings } from '@/components/settings/PluginsSettings';
 
 /** Map keyboard event key to display symbol */
 function keyToSymbol(key: string): string {
@@ -131,6 +132,7 @@ const NAV_GROUPS = [
     { id: 'shortcuts' as SettingsTab, icon: '⌨️', name: '快捷键' },
     { id: 'templates' as SettingsTab, icon: '📄', name: '文件模板' },
     { id: 'pet' as SettingsTab, icon: '🐾', name: '桌宠' },
+    { id: 'plugins' as SettingsTab, icon: '🧩', name: '插件' },
   ]},
   { label: 'AI', items: [
     { id: 'ai' as SettingsTab, icon: '✦', name: 'AI 工具' },
@@ -1227,6 +1229,11 @@ export function SettingsPage() {
         {/* -- 桌宠 -- */}
         {settingsTab === 'pet' && (
           <PetSettings />
+        )}
+
+        {/* -- 插件 -- */}
+        {settingsTab === 'plugins' && (
+          <PluginsSettings />
         )}
 
         {/* -- 关于 -- */}

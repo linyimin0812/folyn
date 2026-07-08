@@ -7,6 +7,7 @@ import {
   clearCommands,
   runCommand,
   registerBuiltinCommands,
+  unregisterCommand,
   type Command,
 } from './commandRegistry';
 
@@ -275,5 +276,35 @@ describe('commandRegistry — registerBuiltinCommands', () => {
     expect(wiki?.enabled).toBeDefined();
     // Default mock has enableWikiPanel: true → visible.
     expect(wiki?.enabled?.()).toBe(true);
+  });
+});
+
+describe('commandRegistry / register disposable + unregister', () => {
+  beforeEach(() => {
+    clearCommands();
+  });
+
+  it('registerCommand returns a disposable that removes the command', () => {
+    const cmd: Command = { id: 'disposable.test', title: 'T', category: 'action', run: () => {} };
+    const handle = registerCommand(cmd);
+    expect(getCommand('disposable.test')).toBe(cmd);
+    handle.dispose();
+    expect(getCommand('disposable.test')).toBeUndefined();
+  });
+
+  it('dispose is a no-op if the command was re-registered (late dispose safe)', () => {
+    const first: Command = { id: 're.test', title: '1', category: 'action', run: () => {} };
+    const second: Command = { id: 're.test', title: '2', category: 'action', run: () => {} };
+    const handle = registerCommand(first);
+    registerCommand(second);
+    handle.dispose();
+    expect(getCommand('re.test')).toBe(second);
+  });
+
+  it('unregisterCommand removes by id and returns true/false', () => {
+    expect(unregisterCommand('absent')).toBe(false);
+    registerCommand({ id: 'rm.me', title: 'R', category: 'action', run: () => {} });
+    expect(unregisterCommand('rm.me')).toBe(true);
+    expect(getCommand('rm.me')).toBeUndefined();
   });
 });

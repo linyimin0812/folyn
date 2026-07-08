@@ -9,6 +9,7 @@
 #![allow(unexpected_cfgs)]
 
 mod commands;
+mod plugin_commands;
 
 #[cfg(target_os = "macos")]
 mod pet_panel_macos;
@@ -166,6 +167,90 @@ fn spawn_legacy_reapply_thread(_app: tauri::AppHandle) {}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // ── quill-plugin:// URI scheme ──
+        // Registered ONCE at startup (register_uri_scheme_protocol is on
+        // tauri::Builder and consumes self — cannot add schemes at runtime).
+        // Dispatches by path: quill-plugin://localhost/<id>/<file> reads from
+        // ~/.quill/plugins/<id>/<file>. Each response carries a per-plugin CSP
+        // header so sandbox plugins cannot reach the network or the host DOM
+        // without going through the postMessage RPC bridge.
+        .register_uri_scheme_protocol("quill-plugin", |ctx, request| {
+            use plugin_commands::{content_type_for, parse_plugin_uri, plugins_dir, PLUGIN_CSP};
+
+            let uri_path = request.uri().path();
+            let (id, file_path) = match parse_plugin_uri(uri_path) {
+                Some(v) => v,
+                None => {
+                    return http::Response::builder()
+                        .status(400)
+                        .body(b"invalid plugin uri".to_vec())
+                        .unwrap_or_else(|_| {
+                            http::Response::new(b"invalid plugin uri".to_vec())
+                        });
+                }
+            };
+
+            if file_path.is_empty() {
+                return http::Response::builder()
+                    .status(404)
+                    .body(b"not found".to_vec())
+                    .unwrap_or_else(|_| http::Response::new(b"not found".to_vec()));
+            }
+
+            let dir = match plugins_dir(ctx.app_handle()) {
+                Ok(d) => d,
+                Err(e) => {
+                    return http::Response::builder()
+                        .status(500)
+                        .body(e.as_bytes().to_vec())
+                        .unwrap_or_else(|_| http::Response::new(e.as_bytes().to_vec()));
+                }
+            };
+
+            let file_full = dir.join(&id).join(&file_path);
+
+            // Defense-in-depth: canonicalize and verify the resolved path is
+            // still within the plugin's directory (prevents symlinks from
+            // escaping).
+            let canonical = match file_full.canonicalize() {
+                Ok(c) => c,
+                Err(_) => {
+                    return http::Response::builder()
+                        .status(404)
+                        .body(b"not found".to_vec())
+                        .unwrap_or_else(|_| http::Response::new(b"not found".to_vec()));
+                }
+            };
+            let plugin_root = dir.join(&id);
+            let plugin_root = match plugin_root.canonicalize() {
+                Ok(c) => c,
+                Err(_) => dir.join(&id),
+            };
+            if !canonical.starts_with(&plugin_root) {
+                return http::Response::builder()
+                    .status(403)
+                    .body(b"forbidden".to_vec())
+                    .unwrap_or_else(|_| http::Response::new(b"forbidden".to_vec()));
+            }
+
+            let bytes = match std::fs::read(&canonical) {
+                Ok(b) => b,
+                Err(_) => {
+                    return http::Response::builder()
+                        .status(404)
+                        .body(b"not found".to_vec())
+                        .unwrap_or_else(|_| http::Response::new(b"not found".to_vec()));
+                }
+            };
+
+            let ct = content_type_for(&file_path);
+            http::Response::builder()
+                .status(200)
+                .header("Content-Type", ct)
+                .header("Content-Security-Policy", PLUGIN_CSP)
+                .body(bytes)
+                .unwrap_or_else(|_| http::Response::new(b"error".to_vec()))
+        })
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -312,6 +397,14 @@ pub fn run() {
             commands::pet_panel_is_visible,
             commands::pet_set_topmost_level,
             commands::pet_make_transparent,
+            plugin_commands::install_plugin,
+            plugin_commands::list_plugins,
+            plugin_commands::uninstall_plugin,
+            plugin_commands::approve_plugin,
+            plugin_commands::get_plugin_record,
+            plugin_commands::read_plugin_file,
+            plugin_commands::grant_plugin_capabilities,
+            plugin_commands::verify_plugin_signature_cmd,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

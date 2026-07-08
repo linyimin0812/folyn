@@ -1,0 +1,268 @@
+/**
+ * Plugin management UI store.
+ *
+ * Owns the React-facing state for the Settings → Plugins tab: the list of
+ * installed plugins (refreshed from `list_plugins()`), the consent-prompt
+ * modal state, install-from-folder progress, and per-plugin action busy
+ * flags. The source of truth for *installedness* lives on disk in
+ * `plugins.json` (owned by the Rust `plugin_commands` module); this store is
+ * a read-through cache + UI orchestration layer.
+ *
+ * State management conventions (see `.trellis/spec/desktop/frontend/state-
+ * management.md`): granular selectors, `getState()` for imperative code
+ * (Tauri event listeners in App.tsx), no whole-store subscriptions.
+ *
+ * Lifecycle event listeners (`plugin://installed` / `uninstalled` /
+ * `approved`) are wired in `App.tsx`, not here — they call
+ * `usePluginStore.getState().refresh()` after mutating the on-disk registry
+ * so every open Settings tab sees the latest state.
+ */
+
+import { create } from 'zustand';
+import { isTauri } from '@/utils/platform';
+
+/** Mirrors the Rust `PluginEntry` shape (plugin_commands.rs). */
+export interface PluginEntry {
+  id: string;
+  name: string;
+  version: string;
+  tier: 'sandbox' | 'trusted';
+  /** TOFU trust flag — `true` after the user approves the plugin. */
+  trusted: boolean;
+  /** relpath → SHA-256 hex, computed at install time. */
+  integrity: Record<string, string>;
+  /** Optional ed25519 signature over the canonicalized manifest (PR4 scaffolding). */
+  signature?: string;
+  /** Optional pinned publisher public key (base64). */
+  publisherPublicKey?: string;
+}
+
+/**
+ * Runtime activation state, surfaced in the UI. The on-disk `PluginEntry`
+ * has no `state` field (it only knows install/trust); the activation state
+ * lives in the in-memory `PluginHost`. This enum is the merge of both used
+ * for display.
+ */
+export type PluginUiState = 'installed' | 'active' | 'inactive' | 'failed';
+
+/** Display-facing row: the on-disk entry + the host's runtime state. */
+export interface PluginRow {
+  entry: PluginEntry;
+  state: PluginUiState;
+  /** Present when `state === 'failed'`, for diagnostics. */
+  error?: string;
+}
+
+/** Consent-prompt modal state. */
+export interface ConsentPrompt {
+  /** Plugin id being approved. */
+  id: string;
+  /** Plugin display name. */
+  name: string;
+  /** Human-readable summary of declared permissions (parsed from manifest). */
+  permissions: string[];
+}
+
+interface PluginState {
+  rows: PluginRow[];
+  /** True while `refresh()` is in flight. */
+  refreshing: boolean;
+  /** True while an install-from-folder is in flight. */
+  installing: false | { id: string; sourcePath: string };
+  /** Per-plugin action busy flags, keyed by `${id}:${action}`. */
+  busy: Record<string, boolean>;
+  /** Last error surfaced to the UI (install/activate/etc.). */
+  error: string;
+  /** Consent-prompt modal. `null` when closed. */
+  consent: ConsentPrompt | null;
+
+  // ── Actions ──
+  refresh: () => Promise<void>;
+  installFromFolder: (sourcePath: string) => Promise<void>;
+  approve: (id: string) => Promise<void>;
+  activate: (id: string) => Promise<void>;
+  deactivate: (id: string) => Promise<void>;
+  uninstall: (id: string) => Promise<void>;
+  openConsent: (id: string) => Promise<void>;
+  closeConsent: () => void;
+  clearError: () => void;
+}
+
+/** Pull the host's runtime plugin records into display rows. */
+async function fetchRows(): Promise<PluginRow[]> {
+  if (!isTauri()) return [];
+  const { invoke } = await import('@tauri-apps/api/core');
+  const entries = await invoke<PluginEntry[]>('list_plugins');
+  // Lazy-import the pluginHost so this store stays decoupled at module load.
+  const { pluginHost } = await import('@quill/plugin-host');
+  return entries.map((entry) => {
+    const record = pluginHost.get(entry.id);
+    const state: PluginUiState = record?.state ?? 'installed';
+    return { entry, state, error: record?.error ? String(record.error) : undefined };
+  });
+}
+
+/** Parse a plugin's manifest permissions into human-readable summary lines. */
+async function readManifestPermissions(id: string): Promise<string[]> {
+  if (!isTauri()) return [];
+  const { invoke } = await import('@tauri-apps/api/core');
+  const manifestText = await invoke<string>('read_plugin_file', { id, path: 'manifest.json' });
+  const manifest = JSON.parse(manifestText) as {
+    permissions?: Record<string, unknown>;
+    tier?: string;
+    contributes?: Record<string, unknown>;
+  };
+  const out: string[] = [];
+  const perms = manifest.permissions;
+  if (perms) {
+    if (perms.fs) out.push('文件读写（受限于插件数据目录）');
+    if (perms.http) out.push('网络请求（受限于声明的 origin 白名单）');
+    if (perms.clipboard) out.push('剪贴板读写');
+    if (perms.dialog) out.push('文件对话框');
+    if (perms.window) out.push('打开工具窗口');
+    if (perms.vault) out.push('读取/插入当前文档');
+  }
+  const contributes = manifest.contributes;
+  if (contributes) {
+    if (Array.isArray(contributes.commands)) out.push(`命令 ×${contributes.commands.length}`);
+    if (Array.isArray(contributes.fileTypes)) out.push(`文件类型 ×${contributes.fileTypes.length}`);
+    if (Array.isArray(contributes.containers)) out.push(`容器指令 ×${contributes.containers.length}`);
+    if (Array.isArray(contributes.features)) out.push(`功能面板 ×${contributes.features.length}`);
+    if (Array.isArray(contributes.tools)) out.push(`工具 ×${contributes.tools.length}`);
+  }
+  if (manifest.tier === 'trusted') {
+    out.unshift('可信层（运行于主进程，拥有完整宿主能力）');
+  } else if (manifest.tier === 'sandbox') {
+    out.unshift('沙箱层（独立 origin，仅经宿主 RPC 调用受控能力）');
+  }
+  return out;
+}
+
+function busyKey(id: string, action: string): string {
+  return `${id}:${action}`;
+}
+
+export const usePluginStore = create<PluginState>((set, get) => ({
+  rows: [],
+  refreshing: false,
+  installing: false,
+  busy: {},
+  error: '',
+  consent: null,
+
+  refresh: async () => {
+    if (!isTauri()) return;
+    set({ refreshing: true });
+    try {
+      const rows = await fetchRows();
+      set({ rows, refreshing: false, error: '' });
+    } catch (err) {
+      set({ refreshing: false, error: String(err) });
+    }
+  },
+
+  installFromFolder: async (sourcePath: string) => {
+    if (!isTauri()) {
+      set({ error: '桌面端功能，请在 Tauri 环境中使用' });
+      return;
+    }
+    // Derive the plugin id from the source folder name (must be kebab-case to
+    // match the manifest id; the Rust side cross-checks).
+    const id = sourcePath.replace(/\/$/, '').split('/').pop() ?? '';
+    set({ installing: { id, sourcePath }, error: '' });
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('install_plugin', { id, sourcePath });
+      // The `plugin://installed` event listener in App.tsx installs the
+      // manifest into the in-memory PluginHost and activates sandbox
+      // plugins. Refresh to pick up the new row.
+      await get().refresh();
+      set({ installing: false });
+    } catch (err) {
+      set({ installing: false, error: String(err) });
+    }
+  },
+
+  approve: async (id) => {
+    if (!isTauri()) return;
+    set({ busy: { ...get().busy, [busyKey(id, 'approve')]: true } });
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('approve_plugin', { id });
+      // The `plugin://approved` event listener in App.tsx activates the
+      // trusted plugin. Refresh to reflect the new state.
+      await get().refresh();
+      set({ consent: null });
+    } catch (err) {
+      set({ error: String(err) });
+    } finally {
+      const next = { ...get().busy };
+      delete next[busyKey(id, 'approve')];
+      set({ busy: next });
+    }
+  },
+
+  activate: async (id) => {
+    set({ busy: { ...get().busy, [busyKey(id, 'activate')]: true } });
+    try {
+      const { pluginHost } = await import('@quill/plugin-host');
+      await pluginHost.activate(id);
+      await get().refresh();
+    } catch (err) {
+      set({ error: String(err) });
+      await get().refresh();
+    } finally {
+      const next = { ...get().busy };
+      delete next[busyKey(id, 'activate')];
+      set({ busy: next });
+    }
+  },
+
+  deactivate: async (id) => {
+    set({ busy: { ...get().busy, [busyKey(id, 'deactivate')]: true } });
+    try {
+      const { pluginHost } = await import('@quill/plugin-host');
+      await pluginHost.deactivate(id);
+      await get().refresh();
+    } catch (err) {
+      set({ error: String(err) });
+      await get().refresh();
+    } finally {
+      const next = { ...get().busy };
+      delete next[busyKey(id, 'deactivate')];
+      set({ busy: next });
+    }
+  },
+
+  uninstall: async (id) => {
+    if (!isTauri()) return;
+    set({ busy: { ...get().busy, [busyKey(id, 'uninstall')]: true } });
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('uninstall_plugin', { id });
+      // The `plugin://uninstalled` event listener in App.tsx calls
+      // pluginHost.uninstall; refresh to reflect the removal.
+      await get().refresh();
+    } catch (err) {
+      set({ error: String(err) });
+    } finally {
+      const next = { ...get().busy };
+      delete next[busyKey(id, 'uninstall')];
+      set({ busy: next });
+    }
+  },
+
+  openConsent: async (id) => {
+    const row = get().rows.find((r) => r.entry.id === id);
+    const name = row?.entry.name ?? id;
+    try {
+      const permissions = await readManifestPermissions(id);
+      set({ consent: { id, name, permissions } });
+    } catch (err) {
+      set({ error: String(err) });
+    }
+  },
+
+  closeConsent: () => set({ consent: null }),
+  clearError: () => set({ error: '' }),
+}));

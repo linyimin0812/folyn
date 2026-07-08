@@ -35,6 +35,11 @@ export class VaultProviderRegistry {
     this.descriptors.set(descriptor.type, descriptor);
   }
 
+  /** Unregister a provider factory by type. Returns true if removed. */
+  unregister(type: ProviderType): boolean {
+    return this.descriptors.delete(type);
+  }
+
   /** Get a provider descriptor by type */
   get(type: ProviderType): VaultProviderDescriptor | undefined {
     return this.descriptors.get(type);

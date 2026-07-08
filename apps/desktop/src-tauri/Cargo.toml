@@ -21,6 +21,27 @@ tauri-plugin-clipboard-manager = "2"
 tauri-plugin-global-shortcut = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+http = "1"
+# SHA-256 for trusted-tier plugin integrity verification (TOFU gate). Already
+# pulled in transitively by tauri-codegen; declaring it as a direct dep pins
+# the version and makes the import path stable.
+sha2 = "0.10"
+# ed25519 signature verification for the trusted-tier plugin signature
+# scaffolding (PR4). MVP does not REQUIRE signatures — `verify_plugin_signature`
+# returns Ok(()) when no signature is present, so SHA-256 integrity remains the
+# gate. This dep is pulled in now so a future marketplace can require ed25519
+# signatures without a Cargo.toml change; see `docs/plugin-development.md`
+# "Integrity upgrade path" for the migration story.
+ed25519-dalek = { version = "2", default-features = false, features = ["std", "rand_core"] }
+# Base64 encoding for the optional `signature` / `publisherPublicKey` manifest
+# fields (ed25519 signatures are bytes; we carry them as standard base64 in
+# plugins.json + manifest.json so they survive JSON round-trips).
+base64 = "0.22"
+# Dev-only: RNG for the ed25519 signature round-trip tests (signs + verifies
+# with a real keypair). NOT linked into the release binary — only used in
+# `#[cfg(test)]` blocks.
+[dev-dependencies]
+rand = "0.8"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.25"

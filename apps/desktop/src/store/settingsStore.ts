@@ -5,7 +5,7 @@ import { PET_SIZE_VERSION } from '@/components/pet/petPosition';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type AppPage = 'editor' | 'vault' | 'settings' | 'schedule' | 'study';
-export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'ai' | 'templates' | 'skills' | 'pet' | 'about';
+export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'ai' | 'templates' | 'skills' | 'pet' | 'plugins' | 'about';
 export type LinkOpenMode = 'external' | 'internal';
 export type PetIconSource = 'builtin' | 'custom';
 

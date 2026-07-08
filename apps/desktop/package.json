@@ -28,6 +28,7 @@
     "@file-viewer/react": "^2.1.17",
     "@quill/cli-adapter": "workspace:*",
     "@quill/container-plugins": "workspace:*",
+    "@quill/plugin-host": "workspace:*",
     "@quill/vault-provider": "workspace:*",
     "@radix-ui/react-collapsible": "^1.1.15",
     "@replit/codemirror-indentation-markers": "^6.5.3",

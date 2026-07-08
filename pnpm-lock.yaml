@@ -89,6 +89,9 @@ importers:
       '@quill/container-plugins':
         specifier: workspace:*
         version: link:../../packages/container-plugins
+      '@quill/plugin-host':
+        specifier: workspace:*
+        version: link:../../packages/plugin-host
       '@quill/vault-provider':
         specifier: workspace:*
         version: link:../../packages/vault-provider
@@ -267,6 +270,12 @@ importers:
       react:
         specifier: ^18.3.1
         version: 18.3.1
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
+  packages/plugin-host:
+    devDependencies:
       typescript:
         specifier: ^5.7.0
         version: 5.9.3

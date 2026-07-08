@@ -1,0 +1,22 @@
+{
+  "name": "@quill/plugin-host",
+  "version": "0.1.0",
+  "description": "Quill microkernel — plugin host, manifest schema, lifecycle, contribution points",
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts",
+      "default": "./index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

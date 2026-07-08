@@ -1,32 +1,54 @@
 import type { FileTypeHandler } from './types';
+import { HandlerRegistry } from './HandlerRegistry';
 
-const modules = import.meta.glob<{ default: FileTypeHandler }>(
-  './*/index.ts',
-  { eager: true }
-);
+/**
+ * File-type handler registry.
+ *
+ * Built-in handlers are discovered at build time via `import.meta.glob` and
+ * registered once at module load. {@link registerFileTypeHandler} /
+ * {@link unregisterFileTypeHandler} expose the registry as the contribution
+ * target for plugins (PR3 trusted tier): a plugin can register a handler for
+ * a new extension at runtime and it takes effect immediately, and is removed
+ * on uninstall.
+ *
+ * Public read API (`getHandlerByExtension` / `getHandlerById` /
+ * `getAllHandlers`) is unchanged so existing call sites behave identically.
+ * The Map/extension-index logic lives in {@link HandlerRegistry} so it can be
+ * unit-tested without triggering the eager glob (which pulls @excalidraw).
+ */
 
-const handlers: FileTypeHandler[] = Object.values(modules).map((m) => m.default);
+const registry = new HandlerRegistry({
+  text: 'markdown',
+});
 
-const extMap = new Map<string, FileTypeHandler>();
-for (const handler of handlers) {
-  for (const ext of handler.extensions) {
-    extMap.set(ext, handler);
-  }
+/** Register a file-type handler. Replaces any prior handler with the same id. */
+export function registerFileTypeHandler(handler: FileTypeHandler): { dispose: () => void } {
+  return registry.register(handler);
+}
+
+/** Remove a handler by id. Returns true if a handler was removed. */
+export function unregisterFileTypeHandler(id: string): boolean {
+  return registry.unregister(id);
 }
 
 export function getHandlerByExtension(ext: string): FileTypeHandler | undefined {
-  return extMap.get(ext);
+  return registry.getByExtension(ext);
 }
 
-const idAliases: Record<string, string> = {
-  text: 'markdown',
-};
-
 export function getHandlerById(id: string): FileTypeHandler | undefined {
-  return handlers.find((h) => h.id === id)
-    ?? handlers.find((h) => h.id === idAliases[id]);
+  return registry.getById(id);
 }
 
 export function getAllHandlers(): FileTypeHandler[] {
-  return handlers;
+  return registry.getAll();
+}
+
+// ── Built-in discovery ──────────────────────────────────────────────────────
+const modules = import.meta.glob<{ default: FileTypeHandler }>(
+  './*/index.ts',
+  { eager: true },
+);
+
+for (const m of Object.values(modules)) {
+  registry.register(m.default);
 }

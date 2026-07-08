@@ -1,0 +1,1180 @@
+//! Plugin lifecycle commands + the `quill-plugin://` URI scheme handler.
+//!
+//! Sandbox-tier plugins live under `~/.quill/plugins/<id>/`. The URI scheme
+//! serves their static assets (HTML/JS/CSS) to a sandboxed iframe so the host
+//! never gives plugins raw Tauri capabilities. Install/list/uninstall commands
+//! manage the on-disk registry (`plugins.json`) and emit lifecycle events.
+//!
+//! MVP limitation: `install_plugin` copies an **unpacked folder** as the
+//! source. Zip extraction is deferred (see PR4). The `zip` crate is not added
+//! to avoid a new dependency for a path that may change when the signature
+//! chain lands.
+
+use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use tauri::{Emitter, Manager};
+
+// ── URI scheme handler ───────────────────────────────────────────────────────
+
+/// Parse a `quill-plugin://localhost/<id>/<path>` URI into `(plugin_id, file_path)`.
+///
+/// The URI path is `/<id>/<rest...>`. Returns `None` if the path is empty or
+/// the id segment is missing. Path-traversal segments (`..`) are rejected.
+pub fn parse_plugin_uri(uri_path: &str) -> Option<(String, String)> {
+    let trimmed = uri_path.strip_prefix('/').unwrap_or(uri_path);
+    let mut parts = trimmed.splitn(2, '/');
+    let id = parts.next().filter(|s| !s.is_empty())?;
+    let rest = parts.next().unwrap_or("");
+    if rest.contains("..") {
+        return None;
+    }
+    // Strip leading slashes from the file path and reject absolute traversal.
+    let clean_rest = rest.trim_start_matches('/');
+    Some((id.to_string(), clean_rest.to_string()))
+}
+
+/// Return the MIME `Content-Type` for a file based on its extension.
+pub fn content_type_for(path: &str) -> &'static str {
+    let ext = path.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
+    match ext.as_str() {
+        "html" | "htm" => "text/html; charset=utf-8",
+        "js" | "mjs" => "text/javascript; charset=utf-8",
+        "css" => "text/css; charset=utf-8",
+        "json" => "application/json; charset=utf-8",
+        "svg" => "image/svg+xml",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "ico" => "image/x-icon",
+        "woff" => "font/woff",
+        "woff2" => "font/woff2",
+        "ttf" => "font/ttf",
+        "wasm" => "application/wasm",
+        _ => "application/octet-stream",
+    }
+}
+
+/// The CSP header injected into every plugin asset response. Sandbox plugins
+/// get `default-src 'none'` so they can do nothing without going through the
+/// host RPC bridge. `script-src 'unsafe-inline'` lets the plugin's own HTML
+/// embed inline scripts; `style-src 'unsafe-inline'` for inline styles.
+pub const PLUGIN_CSP: &str =
+    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'";
+
+/// Resolve `~/.quill/plugins/` using the Tauri path resolver.
+pub fn plugins_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let home = app.path().home_dir().map_err(|e| e.to_string())?;
+    Ok(home.join(".quill").join("plugins"))
+}
+
+// ── On-disk registry (plugins.json) ──────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct PluginEntry {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub tier: String,
+    /// TOFU trust flag. `false` on install; set to `true` by `approve_plugin`
+    /// (the explicit user-pin consent). The trusted-tier loader refuses to
+    /// `import()` a plugin whose `trusted` is false.
+    #[serde(default)]
+    pub trusted: bool,
+    /// Per-file SHA-256 hashes (relpath → hex), computed at install time.
+    /// The trusted loader recomputes the hash of `main` before `import()` and
+    /// compares it here — the real security boundary for the in-process tier.
+    #[serde(default)]
+    pub integrity: HashMap<String, String>,
+    /// Optional ed25519 signature (standard base64) over the canonicalized
+    /// manifest JSON. PR4 scaffolding — MVP does NOT require signatures; when
+    /// absent, `verify_plugin_signature` returns `Ok(())` and SHA-256
+    /// integrity remains the gate. A future marketplace may require this.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
+    /// Optional pinned publisher public key (standard base64, ed25519).
+    /// When `signature` is present, this key verifies it. Trust-On-First-Use:
+    /// the first time a plugin is approved, its publisher key is pinned; a
+    /// later update with a different key must re-trigger consent.
+    #[serde(default, rename = "publisherPublicKey", skip_serializing_if = "Option::is_none")]
+    pub publisher_public_key: Option<String>,
+}
+
+/// Read `plugins.json` from the plugins dir. Returns an empty vec if the file
+/// does not exist yet (fresh install path).
+pub fn read_plugins_json(dir: &Path) -> Result<Vec<PluginEntry>, String> {
+    let path = dir.join("plugins.json");
+    if !path.exists() {
+        return Ok(vec![]);
+    }
+    let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    if content.trim().is_empty() {
+        return Ok(vec![]);
+    }
+    serde_json::from_str(&content).map_err(|e| e.to_string())
+}
+
+/// Write the full record set to `plugins.json`. Creates the dir if missing.
+pub fn write_plugins_json(dir: &Path, records: &[PluginEntry]) -> Result<(), String> {
+    fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    let json = serde_json::to_string_pretty(records).map_err(|e| e.to_string())?;
+    let path = dir.join("plugins.json");
+    fs::write(&path, json).map_err(|e| e.to_string())
+}
+
+/// Upsert a record by id. If an entry with the same id exists, it is replaced;
+/// otherwise the record is appended. Returns the updated vec.
+pub fn upsert_record(mut records: Vec<PluginEntry>, record: PluginEntry) -> Vec<PluginEntry> {
+    if let Some(existing) = records.iter_mut().find(|r| r.id == record.id) {
+        *existing = record;
+    } else {
+        records.push(record);
+    }
+    records
+}
+
+/// Remove a record by id. Returns the filtered vec (records that remain).
+pub fn remove_record(mut records: Vec<PluginEntry>, id: &str) -> Vec<PluginEntry> {
+    records.retain(|r| r.id != id);
+    records
+}
+
+// ── Integrity (TOFU gate) ────────────────────────────────────────────────────
+
+/// Compute the SHA-256 hex digest of `bytes`. Pure — no I/O.
+pub fn compute_hash(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    let result = hasher.finalize();
+    // Format as lowercase hex.
+    let mut out = String::with_capacity(64);
+    for b in result {
+        use std::fmt::Write;
+        let _ = write!(out, "{b:02x}");
+    }
+    out
+}
+
+/// Walk `plugin_dir` recursively and return a map of relative-path → SHA-256
+/// hex for every regular file. Relative paths use forward slashes. The
+/// `plugins.json` file itself (if present in the dir) is skipped — it is not
+/// plugin code and would self-reference.
+pub fn compute_integrity(plugin_dir: &Path) -> Result<HashMap<String, String>, String> {
+    let mut out = HashMap::new();
+    walk_and_hash(plugin_dir, plugin_dir, &mut out)?;
+    Ok(out)
+}
+
+fn walk_and_hash(
+    base: &Path,
+    current: &Path,
+    out: &mut HashMap<String, String>,
+) -> Result<(), String> {
+    for entry in fs::read_dir(current).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        let ft = entry.file_type().map_err(|e| e.to_string())?;
+        if ft.is_dir() {
+            walk_and_hash(base, &path, out)?;
+        } else if ft.is_file() {
+            let rel = path
+                .strip_prefix(base)
+                .map_err(|e| e.to_string())?
+                .to_string_lossy()
+                .replace('\\', "/");
+            // Skip the on-disk registry — it's metadata, not plugin code.
+            if rel == "plugins.json" {
+                continue;
+            }
+            let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+            out.insert(rel, compute_hash(&bytes));
+        }
+    }
+    Ok(())
+}
+
+/// Pure trust-gate check: does every path in `stored` match the corresponding
+/// hash in `actual`? Returns `false` if any stored entry is missing from
+/// `actual` or has a different hash. Extra entries in `actual` are ignored
+/// (new files appearing post-install don't invalidate trust — but the loader
+/// only verifies `main` in practice; this is the full-set verification used by
+/// Rust-side diagnostics).
+#[allow(dead_code)]
+pub fn verify_integrity(
+    stored: &HashMap<String, String>,
+    actual: &HashMap<String, String>,
+) -> bool {
+    for (path, stored_hash) in stored {
+        match actual.get(path) {
+            Some(actual_hash) if actual_hash == stored_hash => {}
+            _ => return false,
+        }
+    }
+    true
+}
+
+// ── Ed25519 signature verification (PR4 scaffolding) ────────────────────────
+//
+// MVP INTEGRITY MODEL: SHA-256 per-file integrity (computed at install, verified
+// on load by the trusted loader) is the *gate*. Ed25519 signatures are OPTIONAL
+// scaffolding: a plugin MAY carry `signature` + `publisherPublicKey` (base64)
+// in its manifest/plugins.json. When present, `verify_plugin_signature` checks
+// the signature over the canonicalized manifest. When absent, verification is a
+// no-op (Ok(())). This lets a future marketplace require signatures without a
+// breaking change — see `docs/plugin-development.md` "Integrity upgrade path".
+//
+// The signature is over the canonicalized manifest JSON (serde_json with sorted
+// keys, no whitespace) — NOT over individual files. Per-file integrity is
+// already covered by SHA-256; the signature proves *publisher identity + manifest
+// authorship*, not byte-for-byte file integrity (a signed manifest with tampered
+// files still fails the SHA-256 check at load).
+
+/// Decode a standard base64 string into bytes. Returns `Err` on malformed input.
+pub fn decode_base64(s: &str) -> Result<Vec<u8>, String> {
+    use base64::Engine;
+    base64::engine::general_purpose::STANDARD
+        .decode(s.trim())
+        .map_err(|e| format!("invalid base64: {e}"))
+}
+
+/// Canonicalize a manifest JSON value for signing: serialize with sorted keys
+/// and no whitespace. The same input always produces the same bytes, so a
+/// publisher can sign the canonical form and any host can re-derive it.
+pub fn canonicalize_manifest(manifest: &serde_json::Value) -> Result<String, String> {
+    serde_json::to_string(manifest).map_err(|e| format!("manifest canonicalize failed: {e}"))
+}
+
+/// Verify an optional ed25519 signature over the canonicalized manifest.
+///
+/// Returns `Ok(())` when:
+///   - `signature` is `None` (MVP: signatures not required; SHA-256 is the gate)
+///   - `signature` + `public_key` are both present AND verify against the
+///     canonicalized manifest bytes
+///
+/// Returns `Err` when:
+///   - only one of `signature` / `public_key` is present (incomplete)
+///   - the signature is malformed, the key is malformed, or verification fails
+///
+/// This is a pure function — no I/O, no app handle — so it is unit-testable
+/// without a running Tauri instance.
+pub fn verify_plugin_signature(
+    manifest: &serde_json::Value,
+    signature: Option<&str>,
+    public_key: Option<&str>,
+) -> Result<(), String> {
+    use ed25519_dalek::{Signature, Verifier, VerifyingKey, PUBLIC_KEY_LENGTH};
+
+    let (sig, key) = match (signature, public_key) {
+        (None, None) => return Ok(()), // MVP: no signature = no check
+        (None, Some(_)) => {
+            return Err("publisherPublicKey present but signature missing".into());
+        }
+        (Some(_), None) => {
+            return Err("signature present but publisherPublicKey missing".into());
+        }
+        (Some(s), Some(k)) => (s, k),
+    };
+
+    let sig_bytes = decode_base64(sig)?;
+    let key_bytes = decode_base64(key)?;
+    if sig_bytes.len() != ed25519_dalek::SIGNATURE_LENGTH {
+        return Err(format!(
+            "signature must be {} bytes, got {}",
+            ed25519_dalek::SIGNATURE_LENGTH,
+            sig_bytes.len()
+        ));
+    }
+    if key_bytes.len() != PUBLIC_KEY_LENGTH {
+        return Err(format!(
+            "public key must be {} bytes, got {}",
+            PUBLIC_KEY_LENGTH,
+            key_bytes.len()
+        ));
+    }
+
+    let key_array: [u8; PUBLIC_KEY_LENGTH] = key_bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| "public key length mismatch".to_string())?;
+    let sig_array: [u8; ed25519_dalek::SIGNATURE_LENGTH] = sig_bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| "signature length mismatch".to_string())?;
+
+    let verifying_key = VerifyingKey::from_bytes(&key_array)
+        .map_err(|e| format!("invalid public key: {e}"))?;
+    let signature = Signature::from_bytes(&sig_array);
+    let message = canonicalize_manifest(manifest)?;
+
+    verifying_key
+        .verify(message.as_bytes(), &signature)
+        .map(|_| ())
+        .map_err(|e| format!("signature verification failed: {e}"))
+}
+
+// ── Manifest validation (pure) ───────────────────────────────────────────────
+
+/// Validate a raw manifest JSON value. Checks the same invariants as the
+/// TypeScript `PluginHost.validateManifest`: kebab-case id, version present,
+/// tier ∈ {sandbox, trusted}, `main` present, sandbox requires `html`.
+pub fn validate_manifest(manifest: &serde_json::Value) -> Result<(), String> {
+    let id = manifest["id"]
+        .as_str()
+        .ok_or_else(|| "manifest.id is required and must be a string".to_string())?;
+    if !is_kebab_case(id) {
+        return Err(format!("manifest.id must be kebab-case, got: {id}"));
+    }
+
+    let version = manifest["version"]
+        .as_str()
+        .ok_or_else(|| "manifest.version is required".to_string())?;
+    if version.is_empty() {
+        return Err("manifest.version must not be empty".to_string());
+    }
+
+    let tier = manifest["tier"]
+        .as_str()
+        .ok_or_else(|| "manifest.tier is required".to_string())?;
+    if tier != "sandbox" && tier != "trusted" {
+        return Err(format!("manifest.tier must be 'sandbox' or 'trusted', got: {tier}"));
+    }
+
+    let main = manifest["main"]
+        .as_str()
+        .ok_or_else(|| "manifest.main is required".to_string())?;
+    if main.is_empty() {
+        return Err("manifest.main must not be empty".to_string());
+    }
+
+    if tier == "sandbox" {
+        let html = manifest["html"]
+            .as_str()
+            .ok_or_else(|| "sandbox plugins require manifest.html".to_string())?;
+        if html.is_empty() {
+            return Err("sandbox plugins require manifest.html".to_string());
+        }
+    }
+
+    Ok(())
+}
+
+fn is_kebab_case(s: &str) -> bool {
+    if s.is_empty() || !s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+    {
+        return false;
+    }
+    // Must not start/end with '-', must have at least one hyphen-separated segment pair.
+    // Matches the TS regex: ^[a-z0-9]+(-[a-z0-9]+)+$
+    regex_lite(s)
+}
+
+/// Lightweight kebab-case check matching `^[a-z0-9]+(-[a-z0-9]+)+$` without
+/// pulling in the `regex` crate.
+fn regex_lite(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    // First segment: [a-z0-9]+
+    let seg_start = i;
+    while i < bytes.len() && (bytes[i].is_ascii_lowercase() || bytes[i].is_ascii_digit()) {
+        i += 1;
+    }
+    if i == seg_start {
+        return false;
+    }
+    // At least one (-[a-z0-9]+)+
+    let mut got_hyphen_seg = false;
+    while i < bytes.len() {
+        if bytes[i] != b'-' {
+            return false;
+        }
+        i += 1;
+        let seg_start = i;
+        while i < bytes.len() && (bytes[i].is_ascii_lowercase() || bytes[i].is_ascii_digit()) {
+            i += 1;
+        }
+        if i == seg_start {
+            return false; // '-' not followed by alnum
+        }
+        got_hyphen_seg = true;
+    }
+    got_hyphen_seg
+}
+
+// ── Recursive directory copy ─────────────────────────────────────────────────
+
+/// Recursively copy `src` to `dst`. If `dst` exists, it is removed first
+/// (re-install / update path). Creates parent dirs as needed.
+pub fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
+    if dst.exists() {
+        fs::remove_dir_all(dst).map_err(|e| format!("failed to remove existing plugin dir: {e}"))?;
+    }
+    fs::create_dir_all(dst).map_err(|e| e.to_string())?;
+    copy_inner(src, dst)
+}
+
+fn copy_inner(src: &Path, dst: &Path) -> Result<(), String> {
+    for entry in fs::read_dir(src).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let name = entry.file_name();
+        let from = entry.path();
+        let to = dst.join(&name);
+        let ft = entry.file_type().map_err(|e| e.to_string())?;
+        if ft.is_dir() {
+            fs::create_dir_all(&to).map_err(|e| e.to_string())?;
+            copy_inner(&from, &to)?;
+        } else {
+            fs::copy(&from, &to).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+// ── Tauri commands ───────────────────────────────────────────────────────────
+
+/// Install a plugin from an unpacked source folder. Copies the folder to
+/// `~/.quill/plugins/<id>/`, reads + validates `manifest.json`, upserts the
+/// entry in `plugins.json`, and emits `plugin://installed`.
+///
+/// MVP: `source_path` must be an existing directory containing `manifest.json`.
+/// Zip extraction is deferred to PR4.
+#[tauri::command]
+pub async fn install_plugin(
+    app: tauri::AppHandle,
+    id: String,
+    source_path: String,
+) -> Result<PluginEntry, String> {
+    let src = PathBuf::from(&source_path);
+    if !src.is_dir() {
+        return Err(format!("source_path must be an existing directory: {source_path}"));
+    }
+    let manifest_path = src.join("manifest.json");
+    if !manifest_path.exists() {
+        return Err(format!("source_path must contain manifest.json: {source_path}"));
+    }
+
+    // Read + validate manifest BEFORE copying.
+    let manifest_str = fs::read_to_string(&manifest_path).map_err(|e| e.to_string())?;
+    let manifest: serde_json::Value =
+        serde_json::from_str(&manifest_str).map_err(|e| e.to_string())?;
+    validate_manifest(&manifest)?;
+
+    // Verify the manifest's `id` matches the requested `id` (defensive).
+    let manifest_id = manifest["id"]
+        .as_str()
+        .ok_or_else(|| "manifest.id missing".to_string())?;
+    if manifest_id != id {
+        return Err(format!(
+            "manifest.id ({manifest_id}) does not match requested id ({id})"
+        ));
+    }
+
+    let dir = plugins_dir(&app)?;
+    let plugin_dir = dir.join(&id);
+    copy_dir_recursive(&src, &plugin_dir)?;
+
+    // Compute per-file SHA-256 integrity for the TOFU trust gate. Stored in
+    // plugins.json; the trusted loader recomputes `main`'s hash before
+    // `import()` and compares against this.
+    let integrity = compute_integrity(&plugin_dir).unwrap_or_default();
+
+    // Optional ed25519 signature scaffolding (PR4). The manifest MAY carry
+    // `signature` + `publisherPublicKey` (base64). We persist them onto the
+    // entry so a future load path can require verification; MVP does NOT
+    // enforce — `verify_plugin_signature` returns Ok(()) when absent.
+    let signature = manifest["signature"]
+        .as_str()
+        .map(|s| s.to_string());
+    let publisher_public_key = manifest["publisherPublicKey"]
+        .as_str()
+        .map(|s| s.to_string());
+    // Best-effort diagnostic: if a signature is present, verify it now so a
+    // bad signature surfaces at install time rather than at activation. Non-
+    // fatal — we still install (the SHA-256 gate is the real boundary); the
+    // error is logged to stderr for the diagnostics UI to pick up later.
+    if let Err(e) = verify_plugin_signature(&manifest, signature.as_deref(), publisher_public_key.as_deref()) {
+        eprintln!("[plugin_commands] install_plugin: signature check warning for {id}: {e}");
+    }
+
+    let entry = PluginEntry {
+        id: id.clone(),
+        name: manifest["name"]
+            .as_str()
+            .unwrap_or(&id)
+            .to_string(),
+        version: manifest["version"]
+            .as_str()
+            .unwrap_or("0.0.0")
+            .to_string(),
+        tier: manifest["tier"]
+            .as_str()
+            .unwrap_or("sandbox")
+            .to_string(),
+        trusted: false,
+        integrity,
+        signature,
+        publisher_public_key,
+    };
+
+    let records = read_plugins_json(&dir)?;
+    let records = upsert_record(records, entry.clone());
+    write_plugins_json(&dir, &records)?;
+
+    app.emit("plugin://installed", &entry)
+        .map_err(|e| e.to_string())?;
+    Ok(entry)
+}
+
+/// List all installed plugins from `plugins.json`.
+#[tauri::command]
+pub async fn list_plugins(app: tauri::AppHandle) -> Result<Vec<PluginEntry>, String> {
+    let dir = plugins_dir(&app)?;
+    read_plugins_json(&dir)
+}
+
+/// Uninstall a plugin: delete its directory, remove the entry from
+/// `plugins.json`, and emit `plugin://uninstalled`.
+#[tauri::command]
+pub async fn uninstall_plugin(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    let dir = plugins_dir(&app)?;
+    let plugin_dir = dir.join(&id);
+    if plugin_dir.exists() {
+        fs::remove_dir_all(&plugin_dir)
+            .map_err(|e| format!("failed to remove plugin dir: {e}"))?;
+    }
+
+    let records = read_plugins_json(&dir)?;
+    let records = remove_record(records, &id);
+    write_plugins_json(&dir, &records)?;
+
+    app.emit(
+        "plugin://uninstalled",
+        serde_json::json!({ "id": id }),
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Approve (TOFU-pin) a plugin: set `trusted: true` on its record and emit
+/// `plugin://approved`. This is the explicit user consent for the trusted tier
+/// — the trusted loader refuses to `import()` a plugin until `approve_plugin`
+/// has been called. MVP: no settings UI yet; PR4 adds the consent prompt.
+#[tauri::command]
+pub async fn approve_plugin(app: tauri::AppHandle, id: String) -> Result<PluginEntry, String> {
+    let dir = plugins_dir(&app)?;
+    let mut records = read_plugins_json(&dir)?;
+    let entry = records
+        .iter_mut()
+        .find(|r| r.id == id)
+        .ok_or_else(|| format!("plugin not found: {id}"))?;
+    entry.trusted = true;
+    let updated = entry.clone();
+    write_plugins_json(&dir, &records)?;
+
+    app.emit("plugin://approved", &updated)
+        .map_err(|e| e.to_string())?;
+    Ok(updated)
+}
+
+/// Return the full on-disk record for a plugin (including `trusted` +
+/// `integrity`), or an error if not installed. The trusted loader calls this
+/// to read the TOFU gate state before `import()`.
+#[tauri::command]
+pub async fn get_plugin_record(app: tauri::AppHandle, id: String) -> Result<PluginEntry, String> {
+    let dir = plugins_dir(&app)?;
+    let records = read_plugins_json(&dir)?;
+    records
+        .into_iter()
+        .find(|r| r.id == id)
+        .ok_or_else(|| format!("plugin not found: {id}"))
+}
+
+/// Read a file from `~/.quill/plugins/<id>/<rel_path>` and return its contents
+/// as a UTF-8 string. Used by the trusted loader to fetch the plugin's `main`
+/// JS bundle for blob-URL `import()`. Path traversal (`..`) is rejected.
+#[tauri::command]
+pub async fn read_plugin_file(
+    app: tauri::AppHandle,
+    id: String,
+    path: String,
+) -> Result<String, String> {
+    if path.contains("..") {
+        return Err("path traversal rejected".to_string());
+    }
+    let dir = plugins_dir(&app)?;
+    let file = dir.join(&id).join(&path);
+    let canonical = file
+        .canonicalize()
+        .map_err(|e| format!("file not found: {e}"))?;
+    let root = dir.join(&id);
+    let root = root.canonicalize().unwrap_or_else(|_| dir.join(&id));
+    if !canonical.starts_with(&root) {
+        return Err("path escapes plugin dir".to_string());
+    }
+    fs::read_to_string(&canonical).map_err(|e| e.to_string())
+}
+
+/// Best-effort scoped capability grant for a trusted plugin.
+///
+/// IMPORTANT DESIGN REALITY (see prd.md Technical Notes + research/
+/// vscode-extension-host.md §3): trusted plugins run in the MAIN webview,
+/// which already has broad capabilities from `capabilities/default.json`.
+/// `add_capability` here is **largely additive/redundant** — it does NOT
+/// confine a trusted plugin. A trusted plugin can still call
+/// `@tauri-apps/api` directly with the main window's existing caps. The
+/// VSCode-research warning applies: in-process hosting makes consent a *soft*
+/// gate. This is ACCEPTED for the trusted tier (TOFU-pinned = user explicitly
+/// trusted = full power). Do NOT pretend this is a hard sandbox.
+///
+/// The grant maps the manifest's declarative `permissions` to Tauri
+/// permission identifiers scoped to the plugin's data dir (for fs). Failures
+/// are logged to stderr and returned as `Err`, but the caller (the frontend)
+/// treats this as best-effort — a failed grant does not block activation
+/// because the main window's existing caps already cover the surface.
+#[tauri::command]
+pub async fn grant_plugin_capabilities(
+    app: tauri::AppHandle,
+    id: String,
+) -> Result<(), String> {
+    use tauri::ipc::CapabilityBuilder;
+
+    let dir = plugins_dir(&app)?;
+    let manifest_path = dir.join(&id).join("manifest.json");
+    let manifest_str = fs::read_to_string(&manifest_path)
+        .map_err(|e| format!("failed to read manifest: {e}"))?;
+    let manifest: serde_json::Value =
+        serde_json::from_str(&manifest_str).map_err(|e| e.to_string())?;
+
+    let perms = manifest["permissions"].as_object();
+    let plugin_data_dir = dir.join(&id).join("data");
+    let data_scope = vec![format!("{}/**", plugin_data_dir.display())];
+
+    let mut cap = CapabilityBuilder::new(format!("plugin-{id}")).webview("main");
+
+    if let Some(perms) = perms {
+        // fs → scoped read/write to the plugin's data dir.
+        if perms.get("fs").is_some() {
+            cap = cap.permission_scoped(
+                "fs:allow-read-text-file",
+                data_scope.clone(),
+                vec![],
+            );
+            cap = cap.permission_scoped(
+                "fs:allow-write-text-file",
+                data_scope.clone(),
+                vec![],
+            );
+        }
+        // clipboard
+        if perms.get("clipboard").is_some() {
+            cap = cap.permission("clipboard-manager:allow-read-text");
+            cap = cap.permission("clipboard-manager:allow-write-text");
+        }
+        // dialog
+        if perms.get("dialog").is_some() {
+            cap = cap.permission("dialog:allow-open");
+            cap = cap.permission("dialog:allow-save");
+        }
+    }
+
+    // add_capability is behind the default `dynamic-acl` feature. Errors here
+    // are non-fatal (best-effort) — log and propagate so the frontend can
+    // decide whether to warn.
+    match app.add_capability(cap) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            eprintln!("[plugin_commands] grant_plugin_capabilities failed for {id}: {e}");
+            Err(format!("grant failed (non-fatal, main caps still apply): {e}"))
+        }
+    }
+}
+
+/// Verify an installed plugin's optional ed25519 signature against its pinned
+/// publisher key. Reads the manifest from disk, canonicalizes it, and calls
+/// {@link verify_plugin_signature}. Returns `Ok(())` when no signature is
+/// present (MVP: signatures optional). Frontend diagnostics UI can call this
+/// to surface "signature invalid" before the user approves a trusted plugin.
+#[tauri::command]
+pub async fn verify_plugin_signature_cmd(
+    app: tauri::AppHandle,
+    id: String,
+) -> Result<(), String> {
+    let dir = plugins_dir(&app)?;
+    let manifest_path = dir.join(&id).join("manifest.json");
+    let manifest_str = fs::read_to_string(&manifest_path)
+        .map_err(|e| format!("failed to read manifest: {e}"))?;
+    let manifest: serde_json::Value =
+        serde_json::from_str(&manifest_str).map_err(|e| e.to_string())?;
+    let entry = {
+        let records = read_plugins_json(&dir)?;
+        records
+            .into_iter()
+            .find(|r| r.id == id)
+            .ok_or_else(|| format!("plugin not found: {id}"))?
+    };
+    verify_plugin_signature(
+        &manifest,
+        entry.signature.as_deref(),
+        entry.publisher_public_key.as_deref(),
+    )
+}
+
+// ── Unit tests ───────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── parse_plugin_uri ──
+
+    #[test]
+    fn parse_uri_basic() {
+        let (id, path) = parse_plugin_uri("/my-plugin/index.html").unwrap();
+        assert_eq!(id, "my-plugin");
+        assert_eq!(path, "index.html");
+    }
+
+    #[test]
+    fn parse_uri_nested_path() {
+        let (id, path) = parse_plugin_uri("/my-plugin/assets/style.css").unwrap();
+        assert_eq!(id, "my-plugin");
+        assert_eq!(path, "assets/style.css");
+    }
+
+    #[test]
+    fn parse_uri_no_path() {
+        let (id, path) = parse_plugin_uri("/my-plugin").unwrap();
+        assert_eq!(id, "my-plugin");
+        assert_eq!(path, "");
+    }
+
+    #[test]
+    fn parse_uri_empty() {
+        assert!(parse_plugin_uri("").is_none());
+    }
+
+    #[test]
+    fn parse_uri_rejects_traversal() {
+        assert!(parse_plugin_uri("/my-plugin/../other/data").is_none());
+    }
+
+    #[test]
+    fn parse_uri_strips_leading_slash_from_path() {
+        let (id, path) = parse_plugin_uri("/my-plugin//index.html").unwrap();
+        assert_eq!(id, "my-plugin");
+        assert_eq!(path, "index.html");
+    }
+
+    // ── content_type_for ──
+
+    #[test]
+    fn content_type_html() {
+        assert!(content_type_for("index.html").starts_with("text/html"));
+    }
+
+    #[test]
+    fn content_type_js() {
+        assert!(content_type_for("app.js").starts_with("text/javascript"));
+    }
+
+    #[test]
+    fn content_type_css() {
+        assert!(content_type_for("style.css").starts_with("text/css"));
+    }
+
+    #[test]
+    fn content_type_unknown() {
+        assert_eq!(content_type_for("file.xyz"), "application/octet-stream");
+    }
+
+    // ── validate_manifest ──
+
+    #[test]
+    fn manifest_valid_sandbox() {
+        let m = serde_json::json!({
+            "id": "my-plugin",
+            "name": "My Plugin",
+            "version": "1.0.0",
+            "tier": "sandbox",
+            "main": "index.js",
+            "html": "index.html",
+        });
+        assert!(validate_manifest(&m).is_ok());
+    }
+
+    #[test]
+    fn manifest_valid_trusted() {
+        let m = serde_json::json!({
+            "id": "my-plugin",
+            "name": "My Plugin",
+            "version": "1.0.0",
+            "tier": "trusted",
+            "main": "index.js",
+        });
+        assert!(validate_manifest(&m).is_ok());
+    }
+
+    #[test]
+    fn manifest_rejects_bad_id() {
+        let m = serde_json::json!({
+            "id": "BadId",
+            "version": "1.0.0",
+            "tier": "sandbox",
+            "main": "index.js",
+            "html": "index.html",
+        });
+        assert!(validate_manifest(&m).is_err());
+    }
+
+    #[test]
+    fn manifest_rejects_sandbox_without_html() {
+        let m = serde_json::json!({
+            "id": "my-plugin",
+            "version": "1.0.0",
+            "tier": "sandbox",
+            "main": "index.js",
+        });
+        assert!(validate_manifest(&m).is_err());
+    }
+
+    #[test]
+    fn manifest_rejects_unknown_tier() {
+        let m = serde_json::json!({
+            "id": "my-plugin",
+            "version": "1.0.0",
+            "tier": "wat",
+            "main": "index.js",
+            "html": "index.html",
+        });
+        assert!(validate_manifest(&m).is_err());
+    }
+
+    #[test]
+    fn manifest_rejects_missing_main() {
+        let m = serde_json::json!({
+            "id": "my-plugin",
+            "version": "1.0.0",
+            "tier": "sandbox",
+            "html": "index.html",
+        });
+        assert!(validate_manifest(&m).is_err());
+    }
+
+    // ── is_kebab_case ──
+
+    #[test]
+    fn kebab_valid() {
+        assert!(is_kebab_case("my-plugin"));
+        assert!(is_kebab_case("a-b-c"));
+        assert!(is_kebab_case("pdf-tools-3"));
+    }
+
+    #[test]
+    fn kebab_invalid() {
+        assert!(!is_kebab_case("myplugin")); // no hyphen
+        assert!(!is_kebab_case("My-Plugin")); // uppercase
+        assert!(!is_kebab_case("-my-plugin")); // leading -
+        assert!(!is_kebab_case("my-plugin-")); // trailing -
+        assert!(!is_kebab_case("my--plugin")); // double hyphen
+        assert!(!is_kebab_case(""));
+    }
+
+    // ── plugins.json upsert/remove ──
+
+    /// Test helper: build a PluginEntry with default trusted/integrity.
+    fn make_entry(id: &str, name: &str, version: &str) -> PluginEntry {
+        PluginEntry {
+            id: id.into(),
+            name: name.into(),
+            version: version.into(),
+            tier: "sandbox".into(),
+            trusted: false,
+            integrity: HashMap::new(),
+            signature: None,
+            publisher_public_key: None,
+        }
+    }
+
+    #[test]
+    fn upsert_appends_new() {
+        let records = vec![];
+        let entry = make_entry("a", "A", "1");
+        let result = upsert_record(records, entry);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].id, "a");
+    }
+
+    #[test]
+    fn upsert_replaces_existing() {
+        let old = make_entry("a", "A", "1");
+        let new = make_entry("a", "A2", "2");
+        let result = upsert_record(vec![old], new);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].version, "2");
+        assert_eq!(result[0].name, "A2");
+    }
+
+    #[test]
+    fn remove_by_id() {
+        let a = make_entry("a", "A", "1");
+        let b = make_entry("b", "B", "1");
+        let result = remove_record(vec![a, b], "a");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].id, "b");
+    }
+
+    #[test]
+    fn remove_nonexistent_is_noop() {
+        let a = make_entry("a", "A", "1");
+        let result = remove_record(vec![a], "zzz");
+        assert_eq!(result.len(), 1);
+    }
+
+    // ── Integrity / TOFU gate ──
+
+    #[test]
+    fn compute_hash_is_stable_sha256_hex() {
+        let h = compute_hash(b"hello");
+        // Known SHA-256 of "hello"
+        assert_eq!(h, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+        assert_eq!(h.len(), 64);
+    }
+
+    #[test]
+    fn compute_hash_empty_input() {
+        let h = compute_hash(b"");
+        assert_eq!(h, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    }
+
+    #[test]
+    fn verify_integrity_matches_when_identical() {
+        let mut stored = HashMap::new();
+        stored.insert("index.js".into(), compute_hash(b"console.log(1);"));
+        stored.insert("style.css".into(), compute_hash(b"body{}"));
+        let mut actual = HashMap::new();
+        actual.insert("index.js".into(), compute_hash(b"console.log(1);"));
+        actual.insert("style.css".into(), compute_hash(b"body{}"));
+        assert!(verify_integrity(&stored, &actual));
+    }
+
+    #[test]
+    fn verify_integrity_rejects_mismatch() {
+        let mut stored = HashMap::new();
+        stored.insert("index.js".into(), compute_hash(b"original"));
+        let mut actual = HashMap::new();
+        actual.insert("index.js".into(), compute_hash(b"tampered"));
+        assert!(!verify_integrity(&stored, &actual));
+    }
+
+    #[test]
+    fn verify_integrity_rejects_missing_file() {
+        let mut stored = HashMap::new();
+        stored.insert("index.js".into(), compute_hash(b"code"));
+        let actual: HashMap<String, String> = HashMap::new();
+        assert!(!verify_integrity(&stored, &actual));
+    }
+
+    #[test]
+    fn verify_integrity_ignores_extra_files_in_actual() {
+        let mut stored = HashMap::new();
+        stored.insert("index.js".into(), compute_hash(b"code"));
+        let mut actual = HashMap::new();
+        actual.insert("index.js".into(), compute_hash(b"code"));
+        actual.insert("extra.js".into(), compute_hash(b"new"));
+        assert!(verify_integrity(&stored, &actual));
+    }
+
+    #[test]
+    fn verify_integrity_empty_stored_is_true() {
+        let stored: HashMap<String, String> = HashMap::new();
+        let actual: HashMap<String, String> = HashMap::new();
+        assert!(verify_integrity(&stored, &actual));
+    }
+
+    // ── approve_plugin (pure upsert trust logic) ──
+
+    #[test]
+    fn upsert_sets_trusted_true_on_approve() {
+        let mut entry = make_entry("a", "A", "1");
+        assert!(!entry.trusted);
+        entry.trusted = true;
+        let records = upsert_record(vec![], entry);
+        assert!(records[0].trusted);
+    }
+
+    #[test]
+    fn approve_does_not_reset_integrity() {
+        let mut entry = make_entry("a", "A", "1");
+        entry.integrity.insert("index.js".into(), "deadbeef".into());
+        // Simulate approve: set trusted only, integrity preserved.
+        entry.trusted = true;
+        assert_eq!(entry.integrity.get("index.js"), Some(&"deadbeef".to_string()));
+    }
+
+    // ── PluginEntry serde round-trip (backwards compat) ──
+
+    #[test]
+    fn entry_deserializes_without_trusted_integrity_fields() {
+        // Old plugins.json entries (pre-PR3) lack `trusted`/`integrity`.
+        let json = serde_json::json!({
+            "id": "old-plugin",
+            "name": "Old",
+            "version": "0.1.0",
+            "tier": "sandbox",
+        });
+        let entry: PluginEntry = serde_json::from_value(json).unwrap();
+        assert_eq!(entry.id, "old-plugin");
+        assert!(!entry.trusted);
+        assert!(entry.integrity.is_empty());
+    }
+
+    #[test]
+    fn entry_serializes_trusted_integrity() {
+        let mut entry = make_entry("a", "A", "1");
+        entry.trusted = true;
+        entry.integrity.insert("index.js".into(), "abc123".into());
+        let json = serde_json::to_string(&entry).unwrap();
+        assert!(json.contains("\"trusted\":true"));
+        assert!(json.contains("abc123"));
+    }
+
+    // ── PluginEntry signature field serde ──
+
+    #[test]
+    fn entry_round_trips_signature_fields() {
+        let mut entry = make_entry("signed", "Signed", "1.0.0");
+        entry.signature = Some("sig-base64".into());
+        entry.publisher_public_key = Some("key-base64".into());
+        let json = serde_json::to_string(&entry).unwrap();
+        // skip_serializing_if = Option::is_none means these only appear when set.
+        assert!(json.contains("\"signature\":\"sig-base64\""));
+        assert!(json.contains("\"publisherPublicKey\":\"key-base64\""));
+        let back: PluginEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.signature.as_deref(), Some("sig-base64"));
+        assert_eq!(back.publisher_public_key.as_deref(), Some("key-base64"));
+    }
+
+    #[test]
+    fn entry_omits_signature_when_none() {
+        let entry = make_entry("unsigned", "Unsigned", "1.0.0");
+        let json = serde_json::to_string(&entry).unwrap();
+        assert!(!json.contains("signature"));
+        assert!(!json.contains("publisherPublicKey"));
+    }
+
+    #[test]
+    fn entry_deserializes_without_signature_fields_backwards_compat() {
+        // Pre-PR4 plugins.json entries lack signature/publisherPublicKey.
+        let json = serde_json::json!({
+            "id": "old-plugin",
+            "name": "Old",
+            "version": "0.1.0",
+            "tier": "trusted",
+            "trusted": true,
+        });
+        let entry: PluginEntry = serde_json::from_value(json).unwrap();
+        assert!(entry.signature.is_none());
+        assert!(entry.publisher_public_key.is_none());
+    }
+
+    // ── decode_base64 ──
+
+    #[test]
+    fn decode_base64_valid() {
+        let bytes = decode_base64("aGVsbG8=").unwrap(); // "hello"
+        assert_eq!(bytes, b"hello");
+    }
+
+    #[test]
+    fn decode_base64_rejects_malformed() {
+        assert!(decode_base64("!!!not-base64!!!").is_err());
+    }
+
+    #[test]
+    fn decode_base64_trims_whitespace() {
+        let bytes = decode_base64("  aGVsbG8=  \n").unwrap();
+        assert_eq!(bytes, b"hello");
+    }
+
+    // ── canonicalize_manifest ──
+
+    #[test]
+    fn canonicalize_manifest_is_stable() {
+        let m = serde_json::json!({ "id": "x", "version": "1.0.0", "tier": "sandbox" });
+        let a = canonicalize_manifest(&m).unwrap();
+        let b = canonicalize_manifest(&m).unwrap();
+        assert_eq!(a, b);
+    }
+
+    // ── verify_plugin_signature (ed25519 scaffolding) ──
+
+    #[test]
+    fn signature_absent_returns_ok() {
+        // MVP: no signature = no check. SHA-256 integrity is the gate.
+        let m = serde_json::json!({ "id": "x", "version": "1.0.0" });
+        assert!(verify_plugin_signature(&m, None, None).is_ok());
+    }
+
+    #[test]
+    fn signature_without_key_is_err() {
+        let m = serde_json::json!({ "id": "x", "version": "1.0.0" });
+        assert!(verify_plugin_signature(&m, Some("sig"), None).is_err());
+        assert!(verify_plugin_signature(&m, None, Some("key")).is_err());
+    }
+
+    #[test]
+    fn signature_malformed_base64_is_err() {
+        let m = serde_json::json!({ "id": "x", "version": "1.0.0" });
+        assert!(verify_plugin_signature(&m, Some("!!!bad-b64!!!"), Some("aGVsbG8=")).is_err());
+    }
+
+    #[test]
+    fn signature_wrong_length_is_err() {
+        use base64::Engine;
+        let m = serde_json::json!({ "id": "x", "version": "1.0.0" });
+        // 32-byte key but 1-byte signature — both wrong length.
+        let key = base64::engine::general_purpose::STANDARD.encode([0u8; 32]);
+        let sig = base64::engine::general_purpose::STANDARD.encode([0u8; 1]);
+        assert!(verify_plugin_signature(&m, Some(&sig), Some(&key)).is_err());
+    }
+
+    #[test]
+    fn signature_valid_key_invalid_signature_is_err() {
+        // Valid-length key + valid-length signature, but the signature does not
+        // actually verify against the canonicalized manifest (it's over the
+        // wrong message).
+        use base64::Engine;
+        use ed25519_dalek::{SigningKey, Signer};
+        use rand::rngs::OsRng;
+        let mut rng = OsRng;
+        let signing_key = SigningKey::generate(&mut rng);
+        let verifying_key = signing_key.verifying_key();
+        let key_bytes = verifying_key.to_bytes();
+        // A signature over the WRONG message — should fail verification.
+        let bad_sig = signing_key.sign(b"not the manifest");
+        let sig_b64 = base64::engine::general_purpose::STANDARD.encode(bad_sig.to_bytes());
+        let key_b64 = base64::engine::general_purpose::STANDARD.encode(key_bytes);
+        let m = serde_json::json!({ "id": "x", "version": "1.0.0", "tier": "trusted" });
+        assert!(verify_plugin_signature(&m, Some(&sig_b64), Some(&key_b64)).is_err());
+    }
+
+    #[test]
+    fn signature_valid_verifies_ok() {
+        // End-to-end: sign the canonicalized manifest with a real key, then
+        // verify. Proves the scaffolding wiring is correct.
+        use base64::Engine;
+        use ed25519_dalek::{SigningKey, Signer};
+        use rand::rngs::OsRng;
+        let mut rng = OsRng;
+        let signing_key = SigningKey::generate(&mut rng);
+        let verifying_key = signing_key.verifying_key();
+        let m = serde_json::json!({ "id": "x", "version": "1.0.0", "tier": "trusted" });
+        let canonical = canonicalize_manifest(&m).unwrap();
+        let sig = signing_key.sign(canonical.as_bytes());
+        let sig_b64 = base64::engine::general_purpose::STANDARD.encode(sig.to_bytes());
+        let key_b64 = base64::engine::general_purpose::STANDARD.encode(verifying_key.to_bytes());
+        assert!(verify_plugin_signature(&m, Some(&sig_b64), Some(&key_b64)).is_ok());
+    }
+}

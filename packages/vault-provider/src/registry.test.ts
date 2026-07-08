@@ -127,6 +127,20 @@ describe('VaultProviderRegistry.register custom flow', () => {
   });
 });
 
+describe('VaultProviderRegistry.unregister', () => {
+  it('removes a custom descriptor and returns true', () => {
+    const registry = VaultProviderRegistry.getInstance();
+    registry.register(makeDescriptor('unreg-target'));
+    expect(registry.unregister('unreg-target')).toBe(true);
+    expect(registry.get('unreg-target')).toBeUndefined();
+  });
+
+  it('returns false for a type that was never registered', () => {
+    const registry = VaultProviderRegistry.getInstance();
+    expect(registry.unregister('never-registered' as ProviderType)).toBe(false);
+  });
+});
+
 describe('VaultError', () => {
   it('is throwable and carries a code + message', () => {
     const err = new VaultError('CONFLICT', 'already exists');

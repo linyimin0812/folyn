@@ -24,6 +24,9 @@ import { registerBuiltinPlugins } from '@quill/container-plugins';
 import { registerBuiltinCommands } from './services/commandRegistry';
 import { requestNewItem } from './services/newItemBridge';
 import { isTauri } from './utils/platform';
+import { pluginHost } from '@quill/plugin-host';
+import { sandboxLoader } from './services/plugin-host/sandboxLoader';
+import { trustedLoader } from './services/plugin-host/trustedLoader';
 import type { PetMenuAction } from './components/pet/PetContextMenu';
 
 registerBuiltinPlugins();
@@ -340,6 +343,123 @@ export default function App() {
     return () => {
       cancelled = true;
       unlisten?.();
+    };
+  }, []);
+
+  // ── Plugin host: register loaders + sync on install/approve/uninstall ──
+  // The sandbox loader is the untrusted-tier PluginLoader (sandboxed iframe +
+  // host RPC). The trusted loader is the in-process PluginLoader (blob-URL
+  // `import()` + TOFU gate). Sandbox plugins auto-activate on install (their
+  // commands appear immediately). Trusted plugins do NOT auto-activate on
+  // install — they require `approve_plugin` (the explicit TOFU-pin consent,
+  // surfaced as the `plugin://approved` event) before activation. This is the
+  // PR3 acceptance: "trusted-tier plugins require explicit approval before
+  // loading". Failures are logged and never crash the main app.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let uninstalled: (() => void) | null = null;
+    let cancelled = false;
+
+    /** Read a plugin manifest from ~/.quill/plugins/<id>/manifest.json */
+    async function readPluginManifest(id: string): Promise<Record<string, unknown>> {
+      const { homeDir, join } = await import('@tauri-apps/api/path');
+      const { readTextFile } = await import('@tauri-apps/plugin-fs');
+      const home = await homeDir();
+      const manifestPath = await join(home, '.quill', 'plugins', id, 'manifest.json');
+      return JSON.parse(await readTextFile(manifestPath)) as Record<string, unknown>;
+    }
+
+    (async () => {
+      // Register both loaders (disposable; cleaned up on unmount).
+      const sandboxDisposable = pluginHost.registerLoader(sandboxLoader);
+      const trustedDisposable = pluginHost.registerLoader(trustedLoader);
+
+      // Hydrate from disk: query the Rust side for installed plugins and
+      // install + activate each one in the in-memory host.
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const entries = await invoke<
+          Array<{ id: string; name: string; version: string; tier: string; trusted: boolean }>
+        >('list_plugins');
+        for (const entry of entries) {
+          if (cancelled) break;
+          try {
+            const manifest = await readPluginManifest(entry.id);
+            await pluginHost.install(manifest as never);
+            // Activate sandbox plugins so their commands appear immediately.
+            // Trusted plugins activate only after approval (plugin://approved).
+            if (manifest.tier === 'sandbox') {
+              await pluginHost.activate(manifest.id as string).catch((err: unknown) => {
+                console.warn(`[App] failed to activate plugin ${entry.id}:`, err);
+              });
+            } else if (manifest.tier === 'trusted' && entry.trusted) {
+              // Already-approved trusted plugin (hydrated from a prior
+              // session) — activate it now.
+              await pluginHost.activate(manifest.id as string).catch((err: unknown) => {
+                console.warn(`[App] failed to activate trusted plugin ${entry.id}:`, err);
+              });
+            }
+          } catch (err: unknown) {
+            console.warn(`[App] failed to hydrate plugin ${entry.id}:`, err);
+          }
+        }
+      } catch (err: unknown) {
+        console.warn('[App] plugin hydration failed:', err);
+      }
+
+      // Listen for live install/approve/uninstall events.
+      const { listen } = await import('@tauri-apps/api/event');
+      const unInstall = await listen<{ id: string }>('plugin://installed', async (event) => {
+        try {
+          const manifest = await readPluginManifest(event.payload.id);
+          await pluginHost.install(manifest as never);
+          // Sandbox: activate immediately. Trusted: wait for approval.
+          if (manifest.tier === 'sandbox') {
+            await pluginHost.activate(manifest.id as string).catch(() => {});
+          }
+        } catch (err: unknown) {
+          console.warn(`[App] failed to install plugin on event:`, err);
+        }
+      });
+      const unApprove = await listen<{ id: string }>('plugin://approved', async (event) => {
+        try {
+          // The plugin was already installed on the `plugin://installed`
+          // event; just activate it now that the user has approved.
+          await pluginHost.activate(event.payload.id).catch((err: unknown) => {
+            console.warn(`[App] failed to activate approved plugin ${event.payload.id}:`, err);
+          });
+        } catch (err: unknown) {
+          console.warn(`[App] failed to approve plugin on event:`, err);
+        }
+      });
+      const unUninstall = await listen<{ id: string }>('plugin://uninstalled', async (event) => {
+        try {
+          await pluginHost.uninstall(event.payload.id);
+        } catch (err: unknown) {
+          console.warn(`[App] failed to uninstall plugin on event:`, err);
+        }
+      });
+
+      if (cancelled) {
+        unInstall();
+        unApprove();
+        unUninstall();
+        sandboxDisposable.dispose();
+        trustedDisposable.dispose();
+      } else {
+        uninstalled = () => {
+          unInstall();
+          unApprove();
+          unUninstall();
+          sandboxDisposable.dispose();
+          trustedDisposable.dispose();
+        };
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      uninstalled?.();
     };
   }, []);
 

@@ -48,12 +48,25 @@ export interface Command {
 
 const registry = new Map<string, Command>();
 
+/** Minimal disposable returned by command registration for plugin cleanup. */
+export interface CommandDisposable {
+  dispose(): void;
+}
+
 /**
  * Register a command. A later registration with the same id replaces the prior
- * one (allows re-seeding during HMR / tests).
+ * one (allows re-seeding during HMR / tests). Returns a disposable that removes
+ * the command only if it is still the same instance (avoids clobbering a
+ * re-registered command on late dispose — the plugin-uninstall safe path).
  */
-export function registerCommand(cmd: Command): void {
+export function registerCommand(cmd: Command): CommandDisposable {
   registry.set(cmd.id, cmd);
+  return {
+    dispose: () => {
+      const existing = registry.get(cmd.id);
+      if (existing === cmd) registry.delete(cmd.id);
+    },
+  };
 }
 
 /** Register many commands at once. */
@@ -69,6 +82,11 @@ export function getCommands(): Command[] {
 /** Look up a single command by id. */
 export function getCommand(id: string): Command | undefined {
   return registry.get(id);
+}
+
+/** Remove a command by id. Returns true if a command was removed. */
+export function unregisterCommand(id: string): boolean {
+  return registry.delete(id);
 }
 
 /** Remove all registered commands (test helper). */

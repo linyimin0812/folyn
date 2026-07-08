@@ -88,6 +88,24 @@ describe('CliAdapterRegistry.getAll', () => {
   });
 });
 
+describe('CliAdapterRegistry.unregister', () => {
+  let registry: CliAdapterRegistry;
+
+  beforeEach(() => {
+    registry = CliAdapterRegistry.getInstance();
+  });
+
+  it('removes a registered factory and returns true', () => {
+    registry.register('unreg-target', () => makeFakeAdapter('unreg-target'));
+    expect(registry.unregister('unreg-target')).toBe(true);
+    expect(() => registry.create('unreg-target')).toThrow(/not found/i);
+  });
+
+  it('returns false for an id that was never registered', () => {
+    expect(registry.unregister('never-registered')).toBe(false);
+  });
+});
+
 describe('registerBuiltinAdapters', () => {
   it('registers the "claude" adapter factory', () => {
     registerBuiltinAdapters();

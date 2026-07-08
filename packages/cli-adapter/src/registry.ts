@@ -16,6 +16,11 @@ export class CliAdapterRegistry {
     this.adapters.set(id, factory);
   }
 
+  /** Unregister an adapter by id. Returns true if removed. */
+  unregister(id: string): boolean {
+    return this.adapters.delete(id);
+  }
+
   create(id: string): CliAdapter {
     const factory = this.adapters.get(id);
     if (!factory) {
