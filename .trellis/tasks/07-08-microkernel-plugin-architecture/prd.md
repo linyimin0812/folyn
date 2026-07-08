@@ -163,3 +163,9 @@
 * ES module cache 不可驱逐 → trusted 档热卸载用 blob URL cache-busting + `dispose()`，sandbox 档用 iframe destroy。
 * 风险点：trusted 档 `dispose()` 不完整会泄漏监听器/全局态——SDK 契约须强制 `dispose()` 返回 Promise 且 host 仍以 iframe-destroy 为兜底。
 
+### PR3 add_capability 设计现实（trusted tier）
+
+`grant_plugin_capabilities`（Rust）对 trusted 插件声明的 `permissions` 调用 `app_handle.add_capability(CapabilityBuilder::new(...).webview("main").permission_scoped(...))`。**关键现实**：trusted 插件运行在 **main webview** 中，该 webview 已通过 `capabilities/default.json` 拥有广泛的 Tauri 能力（`fs:scope-home-recursive`、`shell:allow-spawn` 等）。因此 `add_capability` 在此层是**叠加/冗余**的——它并不 *confinement*（限制）trusted 插件。trusted 插件仍可直接 `import('@tauri-apps/api/core')` 以 main 窗口的现有 caps 调用 `invoke`。
+
+这与 VSCode 研究报告的警告一致（research/vscode-extension-host.md §3）：in-process 托管使安装期 consent 沦为"软门槛"——capability-scoped API 只有配合隔离层（Worker/iframe）才能对不可信插件强制执行。**此 trade-off 在 trusted tier 被显式接受**：TOFU-pinned = 用户显式信任 = 全权。真正的安全边界是 **TOFU 门槛（integrity + 用户批准）**，而非 `add_capability`。不要假装它是硬沙箱。不可信插件走 sandbox tier（PR2 iframe + host RPC）。
+

@@ -1544,3 +1544,35 @@ trellis-implement 子代理完成。Rust: quill-plugin:// 自定义 scheme(启�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 46: PR3: trusted-tier plugin loading (TOFU + blob-URL import + in-process adapters)
+
+**Date**: 2026-07-08
+**Task**: PR3: trusted-tier plugin loading (TOFU + blob-URL import + in-process adapters)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+trellis-implement 完成。trustedLoader: TOFU 门槛(trusted flag + SHA-256 完整性,Web Crypto 重算 main 哈希校验,失败拒载) + blob-URL import()(read_plugin_file 拉 JS→Blob→import,每次激活新 blob URL 规避 module cache)。contributionAdapters: commands→commandRegistry、fileTypes→registerFileTypeHandler、containers→ContainerRegistry、features→轻量 featurePanelRegistry(MVP stub,ActivityBar 集成延后)。Rust: install_plugin 落盘时算每文件 SHA-256→plugins.json integrity; approve_plugin 设 trusted:true 并发 plugin://approved; grant_plugin_capabilities(add_capability webview main,已注明对主窗口是 additive/redundant,TOFU 才是真门槛)。33 cargo + 28 vitest 新测试绿。setup.desktop.ts 升级 file-types mock 为 HandlerRegistry-backed。PRD 加 add_capability 设计现实注。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
