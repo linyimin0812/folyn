@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "desktop 前端质量验收基线"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "manifest/SDK 类型安全检查"}
+{"file": ".trellis/spec/container-plugins/frontend/quality-guidelines.md", "reason": "容器插件质量基线"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "检查是否复用既有 registry"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "检查 Rust↔React 跨层数据流"}
+{"file": ".trellis/tasks/07-08-microkernel-plugin-architecture/research/tauri-runtime-loading.md", "reason": "核验 CSP/sandbox/add_capability 安全约束是否落实"}

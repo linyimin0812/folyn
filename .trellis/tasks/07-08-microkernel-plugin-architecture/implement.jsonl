@@ -1,0 +1,14 @@
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "file-type handler 贡献点改造的直接参考"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "desktop 前端目录结构，PluginHost 落位参考"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "组件规范，贡献点 UI 组件需遵守"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store 规范，PluginHost 状态管理"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "tool-window 独立 webview 模式参考（create_webview 已有）"}
+{"file": ".trellis/spec/desktop/frontend/feature-agents.md", "reason": "feature 贡献点参考形态"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "类型安全规范，manifest/SDK 类型定义"}
+{"file": ".trellis/spec/container-plugins/frontend/directory-structure.md", "reason": "container 贡献点 registry 改造参考"}
+{"file": ".trellis/spec/container-plugins/frontend/component-guidelines.md", "reason": "容器指令插件组件规范"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "复用既有 registry 而非另起炉灶"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Rust↔React 跨层 RPC 设计"}
+{"file": ".trellis/tasks/07-08-microkernel-plugin-architecture/research/utool-plugin-model.md", "reason": "uTool 插件模型调研，manifest/打包借鉴"}
+{"file": ".trellis/tasks/07-08-microkernel-plugin-architecture/research/vscode-extension-host.md", "reason": "VSCode 贡献点/生命周期/disposable 借鉴"}
+{"file": ".trellis/tasks/07-08-microkernel-plugin-architecture/research/tauri-runtime-loading.md", "reason": "Tauri 运行时装载可行性（scheme/add_capability/CSP）已核验源码"}

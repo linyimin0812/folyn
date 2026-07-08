@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 43
-- **Last Active**: 2026-07-07
+- **Total Sessions**: 44
+- **Last Active**: 2026-07-08
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1482 | Active |
+| `journal-1.md` | ~1514 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 44 | 2026-07-08 | PR1: plugin-host kernel skeleton + registry register/unregister | - | `master` |
 | 43 | 2026-07-07 | Pet settings tab + custom icon + bug fixes | `be99f8c`, `f35ffc5` | `master` |
 | 42 | 2026-07-07 | Pet panel toggle via global shortcut | `a29b7ce` | `master` |
 | 41 | 2026-07-07 | Pet panel corner attaches to icon + size tuning | `696e330`, `acaea36`, `b080032`, `ebbadbe`, `b838010` | `master` |

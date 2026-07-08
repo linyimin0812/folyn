@@ -1480,3 +1480,35 @@ Added a 桌宠 tab to desktop settings (show/hide toggle, icon source radio, cus
 ### Next Steps
 
 - None - task complete
+
+
+## Session 44: PR1: plugin-host kernel skeleton + registry register/unregister
+
+**Date**: 2026-07-08
+**Task**: PR1: plugin-host kernel skeleton + registry register/unregister
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+新建 packages/plugin-host（Disposable/manifest types/PluginHost 生命周期+校验，11 tests）；抽 HandlerRegistry 类并重构 file-types/registry（register/unregister/disposable，公共 API 不变）；commandRegistry 返回 Disposable + unregisterCommand；vault-provider/cli-adapter 补 unregister；vitest workspace 加 plugin-host 项目。165 tests 绿；2 个既有失败(HtmlVisualEditor/toExcel)与 PR1 无关。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
