@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "质量验收基线"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "类型安全检查"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "检查 Rust↔React 数据流"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "检查是否复用既有模式"}
