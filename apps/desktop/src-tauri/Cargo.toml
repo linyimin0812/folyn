@@ -37,6 +37,21 @@ ed25519-dalek = { version = "2", default-features = false, features = ["std", "r
 # fields (ed25519 signatures are bytes; we carry them as standard base64 in
 # plugins.json + manifest.json so they survive JSON round-trips).
 base64 = "0.22"
+# HTTP client for the sandbox-tier `plugin_http_fetch` command. Sandbox plugins
+# run in a host-webview iframe whose `fetch()` is gated by the main page's CSP
+# `connect-src`; rather than relax CSP to admit every plugin-declared origin,
+# the RPC bridge routes `http:fetch` to this Rust command which performs the
+# request with `reqwest` (no CSP) and re-checks the manifest's origin allowlist
+# as defense-in-depth behind the JS-side `isOriginAllowed` fast-fail. Already
+# a transitive dep via tauri; declared directly for a stable import path.
+# `rustls` is the TLS backend (no system OpenSSL on Linux — the release CI apt
+# list does not install libssl-dev); in reqwest 0.13 it pulls `aws-lc-rs` as the
+# crypto provider, which needs `cmake` (preinstalled on GitHub runners) to
+# build. `charset` lets `Response::text()` honor non-UTF-8 bodies. `http2` and
+# `system-proxy` are re-added because `default-features = false` drops them from
+# the default set; the old JS `fetch()` spoke HTTP/2 and honored `HTTP_PROXY`,
+# so dropping either would be a silent behavioral regression for plugins.
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "charset", "http2", "system-proxy"] }
 # Dev-only: RNG for the ed25519 signature round-trip tests (signs + verifies
 # with a real keypair). NOT linked into the release binary — only used in
 # `#[cfg(test)]` blocks.

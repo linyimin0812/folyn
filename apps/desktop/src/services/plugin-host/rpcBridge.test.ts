@@ -3,6 +3,7 @@ import { RpcBridge, isPathInScope, isOriginAllowed, hasPermission } from './rpcB
 import type { PluginManifest } from '@quill/plugin-host';
 import { __internals as fsInternals } from '@tauri-apps/plugin-fs';
 import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
+import { invoke } from '@tauri-apps/api/core';
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -324,7 +325,7 @@ describe('RpcBridge / fs scope enforcement', () => {
 });
 
 describe('RpcBridge / http origin enforcement', () => {
-  it('allows fetch from allowed origin', async () => {
+  it('routes allowed-origin fetch to the Rust plugin_http_fetch command', async () => {
     const manifest = sandboxManifest();
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
@@ -333,11 +334,12 @@ describe('RpcBridge / http origin enforcement', () => {
       targetWindow: () => target,
     });
 
-    // Mock global fetch
-    const origFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () =>
-      new Response('body-text', { status: 200, headers: { 'content-type': 'text/plain' } }),
-    ) as unknown as typeof fetch;
+    // The Rust command returns the buffered {status, headers, body} shape.
+    invoke.mockResolvedValueOnce({
+      status: 200,
+      headers: { 'content-type': 'text/plain' },
+      body: 'body-text',
+    });
 
     await bridge.handleMessage(
       { type: 'request', id: 'h1', method: 'http:fetch', params: { url: 'https://api.example.com/data' } },
@@ -345,15 +347,87 @@ describe('RpcBridge / http origin enforcement', () => {
     );
     await Promise.resolve();
 
-    const resp = sent[0] as { result?: { status: number; body: string } };
+    // Must invoke the Rust command with the plugin id + url, NOT global fetch.
+    expect(invoke).toHaveBeenCalledWith('plugin_http_fetch', expect.objectContaining({
+      pluginId: 'demo-plugin',
+      url: 'https://api.example.com/data',
+    }));
+
+    const resp = sent[0] as { result?: { status: number; body: string; headers: Record<string, string> } };
     expect(resp.result?.status).toBe(200);
     expect(resp.result?.body).toBe('body-text');
+    expect(resp.result?.headers).toEqual({ 'content-type': 'text/plain' });
 
-    globalThis.fetch = origFetch;
     bridge.dispose();
   });
 
-  it('rejects fetch from unallowed origin', async () => {
+  it('passes method/headers/body through to plugin_http_fetch', async () => {
+    const manifest = sandboxManifest();
+    const { target } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    invoke.mockResolvedValueOnce({ status: 201, headers: {}, body: '' });
+
+    await bridge.handleMessage(
+      {
+        type: 'request', id: 'h1b', method: 'http:fetch',
+        params: {
+          url: 'https://api.example.com/data',
+          init: {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: '{"a":1}',
+          },
+        },
+      },
+      target,
+    );
+    await Promise.resolve();
+
+    expect(invoke).toHaveBeenCalledWith('plugin_http_fetch', expect.objectContaining({
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{"a":1}',
+    }));
+
+    bridge.dispose();
+  });
+
+  it('normalizes a Headers object into a plain string map for IPC', async () => {
+    const manifest = sandboxManifest();
+    const { target } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    invoke.mockResolvedValueOnce({ status: 200, headers: {}, body: '' });
+
+    const headers = new Headers();
+    headers.set('x-custom', 'yes');
+
+    await bridge.handleMessage(
+      {
+        type: 'request', id: 'h1c', method: 'http:fetch',
+        params: { url: 'https://api.example.com/data', init: { headers } },
+      },
+      target,
+    );
+    await Promise.resolve();
+
+    expect(invoke).toHaveBeenCalledWith('plugin_http_fetch', expect.objectContaining({
+      headers: { 'x-custom': 'yes' },
+    }));
+
+    bridge.dispose();
+  });
+
+  it('rejects fetch from unallowed origin WITHOUT calling invoke', async () => {
     const manifest = sandboxManifest();
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
@@ -367,6 +441,9 @@ describe('RpcBridge / http origin enforcement', () => {
       target,
     );
     await Promise.resolve();
+
+    // JS-side fast-fail: the Rust command must never be invoked.
+    expect(invoke).not.toHaveBeenCalled();
 
     const resp = sent[0] as { error?: string };
     expect(resp.error).toMatch(/not allowed/);

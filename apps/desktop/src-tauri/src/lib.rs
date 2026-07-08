@@ -405,6 +405,7 @@ pub fn run() {
             plugin_commands::read_plugin_file,
             plugin_commands::grant_plugin_capabilities,
             plugin_commands::verify_plugin_signature_cmd,
+            plugin_commands::plugin_http_fetch,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

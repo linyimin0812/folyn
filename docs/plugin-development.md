@@ -281,7 +281,7 @@ Available RPC methods (all gated by the manifest `permissions`):
 | `fs:read` | `{ path }` | `fs.scope` (glob, relative to plugin data dir) |
 | `fs:write` | `{ path, content }` | `fs.scope` |
 | `fs:list` | `{ path }` | `fs.scope` |
-| `http:fetch` | `{ url }` | `http.origins` (allowlist) |
+| `http:fetch` | `{ url, init? }` | `http.origins` (allowlist) |
 | `clipboard:read` | `{}` | `clipboard: true` |
 | `clipboard:write` | `{ text }` | `clipboard: true` |
 | `dialog:open` | `{}` | `dialog: true` |
@@ -292,6 +292,27 @@ Available RPC methods (all gated by the manifest `permissions`):
 
 See `examples/plugins/hello-tool/index.js` for a complete iframe script that
 wraps `postMessage` in a Promise-based `rpc()` helper.
+
+#### `http:fetch` routing (CSP bypass)
+
+`http:fetch` does NOT run `fetch()` in the host webview. The host webview's
+CSP `connect-src 'self' ipc: http://ipc.localhost` does not include the
+plugin-declared origins, so a direct `fetch()` would be blocked in release
+(dev does not inject CSP, which masked the bug). Instead the RPC bridge
+invokes the Rust command `plugin_http_fetch(plugin_id, url, method?, headers?, body?)`,
+which performs the request with `reqwest` (no CSP) and returns a buffered
+`{ status, headers, body }` matching the old `fetch()` shape.
+
+Origin enforcement is double-layered:
+
+1. **JS fast-fail** — `rpcBridge` calls `isOriginAllowed(url, manifest.permissions.http.origins)`
+   before the IPC hop; a non-allowlisted origin never reaches Rust.
+2. **Rust defense-in-depth** — `plugin_http_fetch` re-reads the plugin's
+   on-disk `manifest.json` `permissions.http.origins` and re-checks the
+   origin before issuing the request, so a future JS-bridge bypass still
+   cannot exfiltrate to an undeclared origin.
+
+Streaming responses are out of scope for the MVP (buffered `{body: string}`).
 
 ---
 

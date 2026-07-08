@@ -13,6 +13,7 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -721,6 +722,216 @@ pub async fn verify_plugin_signature_cmd(
     )
 }
 
+// ── sandbox http:fetch (CSP bypass via Rust) ─────────────────────────────────
+//
+// Sandbox-tier `http:fetch` used to run `fetch()` in the host webview realm,
+// which is gated by the main page's CSP `connect-src 'self' ipc: http://ipc.localhost`.
+// Any plugin-declared origin (e.g. `https://api.example.com`) is blocked by CSP
+// in release (dev does not inject CSP, so the bug was invisible locally). The
+// fix: route `http:fetch` to this Rust command, which performs the request with
+// `reqwest` (no CSP) and re-checks the manifest's `permissions.http.origins`
+// allowlist as defense-in-depth behind the JS-side `isOriginAllowed` fast-fail.
+//
+// Contract (matches the old JS `fetch()` return shape so rpcBridge is unchanged):
+//   request:  { pluginId, url, method?, headers?, body? }
+//   response: { status: u16, headers: HashMap<String,String>, body: String }
+
+/// Response shape returned by `plugin_http_fetch`. Mirrors the object the old
+/// JS `fetch()` branch returned so the rpcBridge caller is unchanged.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct HttpResponse {
+    pub status: u16,
+    pub headers: HashMap<String, String>,
+    pub body: String,
+}
+
+/// Extract the origin (`scheme://host[:port]`) from a URL string.
+///
+/// `host` includes the port if present. The host is lowercased (RFC 3986 §3.2.2
+/// says host is case-insensitive); scheme is lowercased too. Returns `None` for
+/// malformed URLs or URLs without a host (e.g. `file:///...` has no host → the
+/// sandbox http allowlist is origin-based, so hostless URLs are rejected).
+pub fn extract_origin(url: &str) -> Option<String> {
+    // Hand-rolled parser: `scheme://host[:port]/...` or `scheme://host[:port]?...`.
+    // We avoid pulling the `url` crate (not currently a direct dep) for a tiny
+    // parse. This mirrors the TS `extractOrigin` using `new URL()`.
+    let scheme_end = url.find("://")?;
+    let scheme = url[..scheme_end].to_ascii_lowercase();
+    // Scheme must be non-empty and start with a letter (per RFC 3986).
+    if scheme.is_empty()
+        || !scheme
+            .chars()
+            .next()
+            .map(|c| c.is_ascii_alphabetic())
+            .unwrap_or(false)
+    {
+        return None;
+    }
+    let rest = &url[scheme_end + 3..];
+    // Authority runs until the first '/', '?', or '#'.
+    let authority_end = rest
+        .find(['/', '?', '#'])
+        .unwrap_or(rest.len());
+    let authority = &rest[..authority_end];
+    if authority.is_empty() {
+        return None; // no host
+    }
+    // Strip userinfo (user:pass@) if present.
+    let host_port = match authority.rfind('@') {
+        Some(at) => &authority[at + 1..],
+        None => authority,
+    };
+    if host_port.is_empty() {
+        return None;
+    }
+    // Lowercase the host (and port — harmless for digits). Host is everything
+    // up to the last colon that is NOT inside an IPv6 literal `[...]`. ASCII
+    // lowercasing is safe for both reg-names and IPv6 hex digits/colons.
+    let host_port_lower = host_port.to_ascii_lowercase();
+    Some(format!("{scheme}://{host_port_lower}"))
+}
+
+/// Check whether a URL's origin is in the declared allowlist. Pure — no I/O.
+///
+/// Origins are compared as `scheme://host[:port]` (host lowercased). A
+/// subdomain is NOT matched by a bare apex entry (e.g. `https://api.example.com`
+/// does NOT match `https://example.com`) — exact origin match only, matching
+/// the JS-side `isOriginAllowed` semantics.
+pub fn is_origin_allowed(url: &str, allowed_origins: &[String]) -> bool {
+    if allowed_origins.is_empty() {
+        return false;
+    }
+    let Some(origin) = extract_origin(url) else {
+        return false;
+    };
+    allowed_origins
+        .iter()
+        .any(|allowed| allowed.eq_ignore_ascii_case(&origin))
+}
+
+/// Validate a `plugin_id` segment used to build a manifest path. Rejects empty,
+/// `.`/`..`-bearing, and path-separator-containing ids so a caller cannot point
+/// at another plugin's manifest on disk (defense-in-depth: the JS bridge passes
+/// a trusted id, but this holds even if the bridge is bypassed). Pure — no I/O.
+pub fn is_valid_plugin_id(id: &str) -> bool {
+    if id.is_empty() {
+        return false;
+    }
+    // Any '.' (covers `.` and `..`), '/' or '\' could escape the plugin dir.
+    !id.contains('.') && !id.contains('/') && !id.contains('\\')
+}
+
+/// Defense-in-depth origin check against a plugin manifest. Reads
+/// `permissions.http.origins` from the manifest JSON value and calls
+/// {@link is_origin_allowed}. Pure — no I/O, no app handle — so it is
+/// unit-testable without a live reqwest or AppHandle.
+pub fn check_http_origin(manifest: &serde_json::Value, url: &str) -> Result<(), String> {
+    let origins = manifest["permissions"]["http"]["origins"]
+        .as_array()
+        .ok_or_else(|| "http:fetch denied: no http.origins declared".to_string())?;
+    let allowed: Vec<String> = origins
+        .iter()
+        .filter_map(|v| v.as_str().map(String::from))
+        .collect();
+    if !is_origin_allowed(url, &allowed) {
+        return Err(format!("http:fetch denied: origin not allowed: {url}"));
+    }
+    Ok(())
+}
+
+/// Perform an HTTP request on behalf of a sandbox plugin. The origin is
+/// re-checked against the plugin's on-disk `manifest.json`
+/// `permissions.http.origins` (defense-in-depth behind the JS-side fast-fail).
+/// Uses `reqwest` to bypass the host webview's CSP `connect-src`. Returns a
+/// buffered `{status, headers, body}` matching the old JS `fetch()` shape.
+#[tauri::command]
+pub async fn plugin_http_fetch(
+    app: tauri::AppHandle,
+    plugin_id: String,
+    url: String,
+    method: Option<String>,
+    headers: Option<HashMap<String, String>>,
+    body: Option<String>,
+) -> Result<HttpResponse, String> {
+    // Load the plugin's manifest from disk and re-check the origin allowlist.
+    // The JS rpcBridge already fast-fails on non-allowlisted origins; this is
+    // the defense-in-depth layer that holds even if the JS bridge is bypassed.
+    // Reject path-traversal/path-separator chars in `plugin_id` so a caller
+    // cannot point at another plugin's manifest and read its declared origins.
+    // `plugin_id` is a bare id segment (`<id>`, not a path).
+    if !is_valid_plugin_id(&plugin_id) {
+        return Err(format!("http:fetch denied: invalid plugin id: {plugin_id}"));
+    }
+    let dir = plugins_dir(&app)?;
+    let manifest_path = dir.join(&plugin_id).join("manifest.json");
+    let manifest_str = fs::read_to_string(&manifest_path)
+        .map_err(|e| format!("failed to read manifest for {plugin_id}: {e}"))?;
+    let manifest: serde_json::Value =
+        serde_json::from_str(&manifest_str).map_err(|e| e.to_string())?;
+    check_http_origin(&manifest, &url)?;
+
+    // Build the request. Method defaults to GET.
+    let method_str = method.as_deref().unwrap_or("GET").to_ascii_uppercase();
+    let method = reqwest::Method::from_bytes(method_str.as_bytes())
+        .map_err(|e| format!("invalid method {method_str}: {e}"))?;
+
+    let builder = reqwest::Client::builder()
+        .timeout(Duration::from_secs(30))
+        .redirect(reqwest::redirect::Policy::limited(10));
+    // (No default headers; the plugin's headers are applied per-request below.)
+
+    let client = builder
+        .build()
+        .map_err(|e| format!("reqwest client build failed: {e}"))?;
+
+    let mut req = client.request(method, &url);
+    if let Some(headers) = headers {
+        for (k, v) in headers {
+            // Silently skip headers reqwest rejects (e.g. forbidden header
+            // names like `Host`); a malformed header must not abort the whole
+            // plugin surface.
+            if let Ok(name) = reqwest::header::HeaderName::try_from(k.as_str()) {
+                if let Ok(val) = reqwest::header::HeaderValue::try_from(v) {
+                    req = req.header(name, val);
+                }
+            }
+        }
+    }
+    if let Some(body) = body {
+        req = req.body(body);
+    }
+
+    let resp = req
+        .send()
+        .await
+        .map_err(|e| format!("http:fetch request failed: {e}"))?;
+
+    let status = resp.status().as_u16();
+    let mut out_headers: HashMap<String, String> = HashMap::new();
+    for (name, value) in resp.headers().iter() {
+        // Lowercase the header name to match the old JS shape: the DOM `Headers`
+        // API normalizes names to lowercase, so `Object.fromEntries(entries())`
+        // produced lowercase keys. reqwest's `HeaderMap` preserves the case as
+        // received from the server; without lowercasing, a plugin reading
+        // `headers['content-type']` would miss a `Content-Type` response header.
+        // Last-wins on duplicate names (HashMap overwrite), matching the old JS
+        // `Object.fromEntries` semantics.
+        if let Ok(v) = value.to_str() {
+            out_headers.insert(name.as_str().to_ascii_lowercase(), v.to_string());
+        }
+    }
+    let body = resp
+        .text()
+        .await
+        .map_err(|e| format!("http:fetch body read failed: {e}"))?;
+
+    Ok(HttpResponse {
+        status,
+        headers: out_headers,
+        body,
+    })
+}
+
 // ── Unit tests ───────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -1176,5 +1387,168 @@ mod tests {
         let sig_b64 = base64::engine::general_purpose::STANDARD.encode(sig.to_bytes());
         let key_b64 = base64::engine::general_purpose::STANDARD.encode(verifying_key.to_bytes());
         assert!(verify_plugin_signature(&m, Some(&sig_b64), Some(&key_b64)).is_ok());
+    }
+
+    // ── extract_origin / is_origin_allowed (sandbox http:fetch) ──
+
+    #[test]
+    fn extract_origin_https_host() {
+        assert_eq!(
+            extract_origin("https://api.example.com/data?q=1"),
+            Some("https://api.example.com".into())
+        );
+    }
+
+    #[test]
+    fn extract_origin_with_port() {
+        assert_eq!(
+            extract_origin("http://localhost:3000/api"),
+            Some("http://localhost:3000".into())
+        );
+    }
+
+    #[test]
+    fn extract_origin_strips_userinfo() {
+        assert_eq!(
+            extract_origin("https://user:pass@api.example.com/path"),
+            Some("https://api.example.com".into())
+        );
+    }
+
+    #[test]
+    fn extract_origin_lowercases_host() {
+        assert_eq!(
+            extract_origin("https://API.Example.COM/Path"),
+            Some("https://api.example.com".into())
+        );
+    }
+
+    #[test]
+    fn extract_origin_rejects_malformed() {
+        assert!(extract_origin("not-a-url").is_none());
+        assert!(extract_origin("://no-scheme").is_none());
+        assert!(extract_origin("https://").is_none()); // no host
+        assert!(extract_origin("file:///etc/passwd").is_none()); // hostless
+    }
+
+    #[test]
+    fn is_origin_allowed_exact_match() {
+        let allow = vec!["https://api.example.com".to_string()];
+        assert!(is_origin_allowed("https://api.example.com/data", &allow));
+    }
+
+    #[test]
+    fn is_origin_allowed_case_insensitive_host() {
+        let allow = vec!["https://API.Example.COM".to_string()];
+        assert!(is_origin_allowed("https://api.example.com/data", &allow));
+    }
+
+    #[test]
+    fn is_origin_allowed_denies_different_origin() {
+        let allow = vec!["https://api.example.com".to_string()];
+        assert!(!is_origin_allowed("https://evil.com/data", &allow));
+    }
+
+    #[test]
+    fn is_origin_allowed_denies_subdomain_not_in_list() {
+        // A bare apex entry does NOT match a subdomain — exact origin only.
+        let allow = vec!["https://example.com".to_string()];
+        assert!(!is_origin_allowed("https://api.example.com/data", &allow));
+    }
+
+    #[test]
+    fn is_origin_allowed_denies_port_mismatch() {
+        let allow = vec!["http://localhost:3000".to_string()];
+        assert!(!is_origin_allowed("http://localhost:8080/api", &allow));
+    }
+
+    #[test]
+    fn is_origin_allowed_denies_malformed_url() {
+        let allow = vec!["https://api.example.com".to_string()];
+        assert!(!is_origin_allowed("not-a-url", &allow));
+    }
+
+    #[test]
+    fn is_origin_allowed_empty_allowlist_denies() {
+        assert!(!is_origin_allowed("https://api.example.com/data", &[]));
+    }
+
+    // ── check_http_origin (manifest defense-in-depth) ──
+
+    #[test]
+    fn check_http_origin_allows_declared_origin() {
+        let m = serde_json::json!({
+            "permissions": { "http": { "origins": ["https://api.example.com"] } }
+        });
+        assert!(check_http_origin(&m, "https://api.example.com/x").is_ok());
+    }
+
+    #[test]
+    fn check_http_origin_denies_undeclared_origin() {
+        let m = serde_json::json!({
+            "permissions": { "http": { "origins": ["https://api.example.com"] } }
+        });
+        assert!(check_http_origin(&m, "https://evil.com/x").is_err());
+    }
+
+    #[test]
+    fn check_http_origin_denies_when_no_http_permissions() {
+        let m = serde_json::json!({ "permissions": { "fs": { "scope": ["data/**"] } } });
+        assert!(check_http_origin(&m, "https://api.example.com/x").is_err());
+    }
+
+    #[test]
+    fn check_http_origin_denies_when_origins_not_array() {
+        let m = serde_json::json!({ "permissions": { "http": { "origins": "oops" } } });
+        assert!(check_http_origin(&m, "https://api.example.com/x").is_err());
+    }
+
+    #[test]
+    fn check_http_origin_denies_when_no_permissions_key() {
+        let m = serde_json::json!({ "id": "x" });
+        assert!(check_http_origin(&m, "https://api.example.com/x").is_err());
+    }
+
+    #[test]
+    fn http_response_round_trips() {
+        let mut headers = HashMap::new();
+        headers.insert("content-type".into(), "text/plain".into());
+        let resp = HttpResponse {
+            status: 200,
+            headers,
+            body: "hello".into(),
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let back: HttpResponse = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, resp);
+    }
+
+    // ── is_valid_plugin_id (manifest path safety) ──
+
+    #[test]
+    fn is_valid_plugin_id_accepts_plain_segment() {
+        assert!(is_valid_plugin_id("demo-plugin"));
+        assert!(is_valid_plugin_id("a"));
+        assert!(is_valid_plugin_id("my_plugin_2"));
+    }
+
+    #[test]
+    fn is_valid_plugin_id_rejects_empty() {
+        assert!(!is_valid_plugin_id(""));
+    }
+
+    #[test]
+    fn is_valid_plugin_id_rejects_dot_traversal() {
+        // A single '.' or '..' would resolve to the parent dir.
+        assert!(!is_valid_plugin_id("."));
+        assert!(!is_valid_plugin_id(".."));
+        assert!(!is_valid_plugin_id("a..b"));
+    }
+
+    #[test]
+    fn is_valid_plugin_id_rejects_separators() {
+        assert!(!is_valid_plugin_id("a/b"));
+        assert!(!is_valid_plugin_id("a\\b"));
+        assert!(!is_valid_plugin_id("/abs"));
     }
 }

@@ -108,6 +108,34 @@ function extractOrigin(url: string): string | null {
 }
 
 /**
+ * Normalize a `RequestInit.headers` value (which may be a `Headers`, a plain
+ * `Record`, or an array of `[key, value]` tuples) into a plain string map for
+ * Tauri IPC serialization. Non-string-coercible entries are skipped. Returns
+ * `undefined` when there are no headers so the Rust `Option<HashMap>` receives
+ * `None`.
+ */
+function normalizeHeaders(
+  headers: HeadersInit | undefined,
+): Record<string, string> | undefined {
+  if (headers == null) return undefined;
+  const out: Record<string, string> = {};
+  if (headers instanceof Headers) {
+    headers.forEach((value, key) => {
+      out[key] = value;
+    });
+  } else if (Array.isArray(headers)) {
+    for (const [key, value] of headers) {
+      if (typeof key === 'string' && typeof value === 'string') out[key] = value;
+    }
+  } else {
+    for (const [key, value] of Object.entries(headers)) {
+      if (typeof value === 'string') out[key] = value;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
  * Check whether the manifest grants a specific capability. Used by the bridge
  * to gate methods that require a boolean permission flag.
  */
@@ -345,14 +373,32 @@ export class RpcBridge {
       }
 
       // ── http (origin allowlist) ──
+      //
+      // Routed through the Rust `plugin_http_fetch` command rather than a
+      // host-webview `fetch()`. The host webview's CSP `connect-src` does not
+      // include plugin-declared origins, so a direct `fetch()` is blocked in
+      // release (dev does not inject CSP, masking the bug). The JS-side
+      // `isOriginAllowed` fast-fails before the IPC hop; the Rust command
+      // re-checks against the on-disk `manifest.json` `permissions.http.origins`
+      // as defense-in-depth, then performs the request with `reqwest` (no CSP).
       case 'http:fetch': {
         const { url, init } = (params ?? {}) as { url?: string; init?: RequestInit };
         if (typeof url !== 'string') throw new Error('http:fetch requires { url }');
         if (!perms?.http || !isOriginAllowed(url, perms.http.origins)) {
           throw new Error(`http:fetch denied: origin not allowed: ${url}`);
         }
-        const resp = await fetch(url, init);
-        return { status: resp.status, headers: Object.fromEntries(resp.headers.entries()), body: await resp.text() };
+        const { invoke } = await import('@tauri-apps/api/core');
+        const resp = await invoke<{ status: number; headers: Record<string, string>; body: string }>(
+          'plugin_http_fetch',
+          {
+            pluginId: this.opts.pluginId,
+            url,
+            method: typeof init?.method === 'string' ? init.method : undefined,
+            headers: normalizeHeaders(init?.headers),
+            body: typeof init?.body === 'string' ? init.body : undefined,
+          },
+        );
+        return { status: resp.status, headers: resp.headers, body: resp.body };
       }
 
       // ── clipboard ──
