@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 44
+- **Total Sessions**: 45
 - **Last Active**: 2026-07-08
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1514 | Active |
+| `journal-1.md` | ~1546 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 45 | 2026-07-08 | PR2: sandbox-tier plugin loading (Rust scheme + install cmds + CSP + iframe RPC bridge) | - | `master` |
 | 44 | 2026-07-08 | PR1: plugin-host kernel skeleton + registry register/unregister | - | `master` |
 | 43 | 2026-07-07 | Pet settings tab + custom icon + bug fixes | `be99f8c`, `f35ffc5` | `master` |
 | 42 | 2026-07-07 | Pet panel toggle via global shortcut | `a29b7ce` | `master` |

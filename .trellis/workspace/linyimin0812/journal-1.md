@@ -1512,3 +1512,35 @@ Added a 桌宠 tab to desktop settings (show/hide toggle, icon source radio, cus
 ### Next Steps
 
 - None - task complete
+
+
+## Session 45: PR2: sandbox-tier plugin loading (Rust scheme + install cmds + CSP + iframe RPC bridge)
+
+**Date**: 2026-07-08
+**Task**: PR2: sandbox-tier plugin loading (Rust scheme + install cmds + CSP + iframe RPC bridge)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+trellis-implement 子代理完成。Rust: quill-plugin:// 自定义 scheme(启动期注册,按 path 路由,CSP+MIME)+ install/list/uninstall_plugin 命令 + plugins.json(22 cargo tests)。前端: sandboxLoader(隐藏 sandbox iframe,无 allow-same-origin,destroy 卸载) + rpcBridge(postMessage 协议,fs 作用域/http origin allowlist/clipboard gating,host-mediation 无原始 Tauri API) + commandAdapter(plugin.<id>.<cmd> 命名空间)。tauri.conf.json 补 CSP(原 null)。App.tsx 接线。38 desktop + 11 plugin-host tests 绿。限制: zip 提取延后 PR4、tool-window 可见面板 stubbed、无设置 UI(PR4)。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
