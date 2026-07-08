@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 46
+- **Total Sessions**: 47
 - **Last Active**: 2026-07-08
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1578 | Active |
+| `journal-1.md` | ~1610 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 47 | 2026-07-08 | PR4: consent UI + ed25519 scaffolding + dev guide + sample plugins | - | `master` |
 | 46 | 2026-07-08 | PR3: trusted-tier plugin loading (TOFU + blob-URL import + in-process adapters) | - | `master` |
 | 45 | 2026-07-08 | PR2: sandbox-tier plugin loading (Rust scheme + install cmds + CSP + iframe RPC bridge) | - | `master` |
 | 44 | 2026-07-08 | PR1: plugin-host kernel skeleton + registry register/unregister | - | `master` |

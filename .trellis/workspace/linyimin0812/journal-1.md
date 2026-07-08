@@ -1576,3 +1576,35 @@ trellis-implement 完成。trustedLoader: TOFU 门槛(trusted flag + SHA-256 完
 ### Next Steps
 
 - None - task complete
+
+
+## Session 47: PR4: consent UI + ed25519 scaffolding + dev guide + sample plugins
+
+**Date**: 2026-07-08
+**Task**: PR4: consent UI + ed25519 scaffolding + dev guide + sample plugins
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+trellis-implement 完成。UI: pluginStore(Zustand)+ PluginsSettings tab(🧩)含 从文件夹安装(dialog)+ 列表卡片(状态/tier/已批准 badge)+ 启用/停用/卸载 + trusted 批准 consent modal(列权限+全权警告)。Rust: PluginEntry 加可选 signature+publisherPublicKey(ed25519-dalek+base64), verify_plugin_signature 纯函数(无签名→Ok,有则验,各错误变体), install_plugin 持久化+best-effort 校验, verify_plugin_signature_cmd 命令。+13 cargo tests(46 总)。docs/plugin-development.md: manifest schema/双档/贡献点/PluginModule 契约/sandbox RPC/权限模型+设计现实注/生命周期/TOFU/ed25519 升级路径/本地开发/打包。examples/plugins/: hello-tool(sandbox,clipboard RPC)+ markdown-todo(trusted,todo 容器+命令,纯 ESM 无 bundler)。samplePlugins.test.ts 5 tests 验证 manifest+导出契约。tsc/cargo/vitest 全绿,无回归。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
