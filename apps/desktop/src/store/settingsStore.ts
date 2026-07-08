@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { storageClient } from '@/utils/storageClient';
 import { DEFAULT_BOARD_COLUMNS, COLUMN_COLOR_PALETTE, type BoardColumnDef } from '@/features/schedule/types';
-import { PET_SIZE_VERSION } from '@/components/pet/petPosition';
+import { PET_SIZE_VERSION, PET_SIZE_DEFAULT, type PetSize } from '@/components/pet/petPosition';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type AppPage = 'editor' | 'vault' | 'settings' | 'schedule' | 'study';
@@ -143,6 +143,14 @@ interface SettingsState {
   petIconPath: string;
   petSizeVersion: number;
 
+  // User-selectable pet size level (small/medium/large). Drives the Tauri
+  // `pet` window size + mascot SVG scale via `PET_SIZE_TO_PX`. Defaults to
+  // `'medium'` (96px) so existing users keep the pre-feature layout. Synced
+  // to the pet window via the `pet://size-changed` event when changed from
+  // the main window (settings tab) or via the native right-click menu's
+  // "桌宠大小" submenu. See `set_pet_size` Rust command.
+  petSize: PetSize;
+
   // Actions
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
@@ -164,6 +172,7 @@ interface SettingsState {
   setPetPanelSize: (width: number, height: number) => void;
   setPetPanelSizeVersion: (version: number) => void;
   setPetIcon: (source: PetIconSource, path?: string) => void;
+  setPetSize: (size: PetSize) => void;
 }
 
 const SETTINGS_STORAGE_KEY = 'settings:all';
@@ -229,7 +238,7 @@ function debouncedPersist(state: Partial<SettingsState>) {
       petModeEnabled, petPositionX, petPositionY,
       petPanelX, petPanelY, petPanelWidth, petPanelHeight,
       petPanelSizeVersion, petPosVersion,
-      petIconSource, petIconPath, petSizeVersion } = state as SettingsState;
+      petIconSource, petIconPath, petSizeVersion, petSize } = state as SettingsState;
     storageClient.set(SETTINGS_STORAGE_KEY, {
       theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles,
       enableWikiPanel, enableClipsPanel, enableAnalyzePanel, enableDailyPanel,
@@ -242,7 +251,7 @@ function debouncedPersist(state: Partial<SettingsState>) {
       petModeEnabled, petPositionX, petPositionY,
       petPanelX, petPanelY, petPanelWidth, petPanelHeight,
       petPanelSizeVersion, petPosVersion,
-      petIconSource, petIconPath, petSizeVersion,
+      petIconSource, petIconPath, petSizeVersion, petSize,
     });
   }, 300);
 }
@@ -346,6 +355,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   petIconSource: 'builtin',
   petIconPath: '',
   petSizeVersion: 0,
+  petSize: PET_SIZE_DEFAULT,
 
   setTheme: (theme) => {
     const actual = theme === 'system'
@@ -467,6 +477,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     }
     debouncedPersist(useSettingsStore.getState());
   },
+  setPetSize: (size: PetSize) => {
+    set({ petSize: size });
+    debouncedPersist(useSettingsStore.getState());
+  },
 }));
 
 /** Load persisted settings from backend on startup */
@@ -538,6 +552,12 @@ storageClient.get<Partial<SettingsState>>(SETTINGS_STORAGE_KEY).then((saved) => 
     if (saved.petIconSource !== 'builtin' && saved.petIconSource !== 'custom') {
       saved.petIconSource = 'builtin';
       saved.petIconPath = '';
+    }
+    // Coerce a missing/invalid `petSize` to the default (defensive — a
+    // persisted state from before this feature would otherwise have
+    // `undefined`, crashing the `PET_SIZE_TO_PX` lookup in PetMascot/PetApp).
+    if (saved.petSize !== 'small' && saved.petSize !== 'medium' && saved.petSize !== 'large') {
+      saved.petSize = PET_SIZE_DEFAULT;
     }
     useSettingsStore.setState(saved);
   }

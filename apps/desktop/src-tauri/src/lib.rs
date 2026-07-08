@@ -34,6 +34,10 @@ fn pet_ctx_menu_action(id: &str) -> Option<&'static str> {
         commands::PET_CTX_MENU_SHOW_MAIN => Some("show-main"),
         commands::PET_CTX_MENU_NEW_NOTE => Some("new-note"),
         commands::PET_CTX_MENU_TOGGLE_AI => Some("toggle-ai"),
+        commands::PET_CTX_MENU_HIDE_PET => Some("hide-pet"),
+        commands::PET_CTX_MENU_SIZE_SMALL => Some("set-pet-size"),
+        commands::PET_CTX_MENU_SIZE_MEDIUM => Some("set-pet-size"),
+        commands::PET_CTX_MENU_SIZE_LARGE => Some("set-pet-size"),
         commands::PET_CTX_MENU_DISABLE_PET => Some("disable-pet"),
         // Launcher-only actions (pet-panel buttons, not native menu items).
         // Recognized here so the action-string contract stays uniform.
@@ -42,6 +46,19 @@ fn pet_ctx_menu_action(id: &str) -> Option<&'static str> {
         "pet-ctx-clip-from-url" => Some("clip-from-url"),
         "pet-ctx-command-palette" => Some("command-palette"),
         "pet-ctx-toggle-theme" => Some("toggle-theme"),
+        _ => None,
+    }
+}
+
+/// Resolve the `PetSize` level string from a native menu item id. Returns
+/// `None` for non-size ids. Used by `on_menu_event` to attach the `{ size }`
+/// payload to `set-pet-size` actions so the frontend handler applies the
+/// correct size without re-parsing the menu id.
+fn pet_ctx_menu_size_level(id: &str) -> Option<&'static str> {
+    match id {
+        commands::PET_CTX_MENU_SIZE_SMALL => Some("small"),
+        commands::PET_CTX_MENU_SIZE_MEDIUM => Some("medium"),
+        commands::PET_CTX_MENU_SIZE_LARGE => Some("large"),
         _ => None,
     }
 }
@@ -280,10 +297,26 @@ pub fn run() {
             // Native popup menu (issue #1): the menu is built in
             // `commands::pet_show_context_menu` and shown via `popup_menu`.
             if let Some(action) = pet_ctx_menu_action(id) {
-                let _ = app.emit(
-                    "pet://menu-action",
-                    serde_json::json!({ "action": action }),
-                );
+                // The size submenu items all map to `set-pet-size`; attach
+                // the `{ size }` payload so the frontend applies the right
+                // level without re-parsing the menu id.
+                if action == "set-pet-size" {
+                    if let Some(level) = pet_ctx_menu_size_level(id) {
+                        // Update the shared state so the next menu build
+                        // pre-checks the new size radio item even before
+                        // the frontend's `set_pet_size` invoke lands.
+                        app.state::<commands::PetSizeState>().set_level(level);
+                        let _ = app.emit(
+                            "pet://menu-action",
+                            serde_json::json!({ "action": action, "size": level }),
+                        );
+                    }
+                } else {
+                    let _ = app.emit(
+                        "pet://menu-action",
+                        serde_json::json!({ "action": action }),
+                    );
+                }
             }
         })
         // R8 (lifecycle): when pet mode is on, closing the main editor window
@@ -311,6 +344,15 @@ pub fn run() {
             }
         })
         .setup(|app| {
+            // Shared pet-size state ("small"|"medium"|"large"). Synced from
+            // the frontend via `set_pet_size` and from `on_menu_event` on a
+            // native submenu pick. Read by `pet_show_context_menu` to
+            // pre-check the current size radio item. Defaults to `"medium"`
+            // so existing users keep the 96×96 layout on first right-click.
+            app.manage(commands::PetSizeState(std::sync::Mutex::new(
+                commands::PetSizeState::DEFAULT_LEVEL.to_string(),
+            )));
+
             let app_menu = SubmenuBuilder::new(app, "Quill")
                 .about(None)
                 .separator()
@@ -397,6 +439,7 @@ pub fn run() {
             commands::pet_panel_is_visible,
             commands::pet_set_topmost_level,
             commands::pet_make_transparent,
+            commands::set_pet_size,
             plugin_commands::install_plugin,
             plugin_commands::list_plugins,
             plugin_commands::uninstall_plugin,

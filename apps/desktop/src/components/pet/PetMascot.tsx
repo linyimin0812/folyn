@@ -32,15 +32,27 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useSettingsStore } from '@/store/settingsStore';
 import { isTauri } from '@/utils/platform';
+import { mascotSizeForPetSize, type PetSize } from './petPosition';
 
 export interface PetMascotProps {
   /** Animation state class. The root element receives `is-<state>`. */
   state: 'idle' | 'hover' | 'drag' | 'click';
+  /** Pet size level — drives the mascot's pixel footprint (75% of the pet
+   *  window size, see `mascotSizeForPetSize`). Inline style on the SVG / `<img>`
+   *  overrides the `.pet-mascot { width:72px; height:72px }` CSS rule (which
+   *  stays as the medium-default fallback). */
+  size?: PetSize;
 }
 
-export function PetMascot({ state }: PetMascotProps) {
+export function PetMascot({ state, size }: PetMascotProps) {
   const petIconSource = useSettingsStore((s) => s.petIconSource);
   const petIconPath = useSettingsStore((s) => s.petIconPath);
+  // Resolve the mascot pixel size from the level (falls back to the default
+  // for unknown values). Inline style on the SVG / `<img>` overrides the
+  // `.pet-mascot { width:72px; height:72px }` CSS rule so a small (48px) or
+  // large (96px) mascot renders at the right footprint without needing a
+  // per-size CSS rule.
+  const mascotPx = mascotSizeForPetSize(size);
 
   // Custom icon path: render an `<img>` via the Tauri asset protocol. In
   // non-Tauri envs (tests, web preview) `convertFileSrc` would return a
@@ -53,6 +65,7 @@ export function PetMascot({ state }: PetMascotProps) {
         className={`pet-mascot is-img is-${state}`}
         src={convertFileSrc(petIconPath)}
         alt="Quill pet"
+        style={{ width: mascotPx, height: mascotPx }}
         onError={() => {
           // Custom file missing or corrupt → fall back to builtin (PRD
           // fallback). Clears the flag in settingsStore so the next render
@@ -69,8 +82,9 @@ export function PetMascot({ state }: PetMascotProps) {
     <svg
       className={`pet-mascot is-${state}`}
       viewBox="0 0 512 512"
-      width="72"
-      height="72"
+      width={mascotPx}
+      height={mascotPx}
+      style={{ width: mascotPx, height: mascotPx }}
       fill="none"
       overflow="visible"
       aria-hidden="true"

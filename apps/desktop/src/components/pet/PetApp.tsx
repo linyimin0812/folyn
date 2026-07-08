@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PetMascot } from './PetMascot';
 import { openPetContextMenu } from './PetContextMenu';
-import { clampPetPosition, computeDefaultPetPosition, computePanelPosition, computeCenteredPanelPosition, resolvePanelSize, PET_PANEL_SIZE_VERSION } from './petPosition';
+import { clampPetPosition, computeDefaultPetPosition, computePanelPosition, computeCenteredPanelPosition, resolvePanelSize, PET_PANEL_SIZE_VERSION, petSizeToPx } from './petPosition';
 import { keysToAccelerator } from '@/utils/shortcutAccelerator';
 import { isTauri } from '@/utils/platform';
+import { useSettingsStore } from '@/store/settingsStore';
 
 /**
  * PetApp — mounted only in the `pet` Tauri window (see main.tsx `#/pet` route
@@ -46,13 +47,14 @@ import { isTauri } from '@/utils/platform';
 
 type PetState = 'idle' | 'hover' | 'drag' | 'click';
 
-/** Sprite fills the full 96x96 pet window — no transparent margin around
- * the quill icon. The breathing self-pulse is driven by CSS `scale` on
- * `.pet-mascot` (see pet.css), no separate layer. MUST stay in sync with
- * `PET_WINDOW_SIZE` in `petPosition.ts` and the `pet` window size in
- * `tauri.conf.json`. */
+/** Pet window size is now user-selectable (small/medium/large). The sprite
+ *  layer reads `petSize` from settingsStore and scales to match the Tauri
+ *  window size (kept in sync by the Rust `set_pet_size` command). The
+ *  mascot SVG inside is 75% of this value (see `mascotSizeForPetSize`).
+ *  MUST stay in sync with `PET_SIZE_TO_PX` in `petPosition.ts` and the
+ *  `pet` window size in `tauri.conf.json` (which is the medium default,
+ *  overridden at mount via `set_pet_size`). */
 const SPRITE_OFFSET = 0;
-const SPRITE_SIZE = 96;
 const POSITION_PERSIST_INTERVAL_MS = 800;
 
 interface PetCursorProbeResult {
@@ -178,6 +180,13 @@ async function openOrTogglePetPanel(): Promise<void> {
     const sf = workArea.scale_factor || 1;
     const size = await resolveAndPersistPanelSize(workArea);
 
+    // Read the current pet size level from settingsStore so the panel anchor
+    // tracks the actual mascot bounds (a large/ small pet shifts where the
+    // panel's corner attaches). The pet window's own store instance is kept
+    // in sync via the `pet://size-changed` listener below.
+    const { useSettingsStore } = await import('@/store/settingsStore');
+    const petSize = useSettingsStore.getState().petSize;
+
     // ALWAYS recompute the panel position from the pet's current outer
     // position so the panel opens next to the pet (corner-attachment). See
     // `computePanelPosition` for the quadrant + corner math. The computed
@@ -189,7 +198,7 @@ async function openOrTogglePetPanel(): Promise<void> {
     const petPosLogical = { x: probe.window_x / sf, y: probe.window_y / sf };
     const panelPosLogical = computePanelPosition(petPosLogical, {
       x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height, scale_factor: sf,
-    }, size);
+    }, size, petSize);
     await applyPanelFrame(
       { x: Math.round(panelPosLogical.x * sf), y: Math.round(panelPosLogical.y * sf) },
       { width: Math.round(size.width * sf), height: Math.round(size.height * sf) },
@@ -240,6 +249,14 @@ export function PetApp() {
   // Removed: `draggingRef` is still tracked so the state-machine callbacks
   // (hover/leave) know not to clobber 'drag' while native drag is in flight.
   const draggingRef = useRef(false);
+
+  // Pet size level — drives the sprite layer size (inline style below) and
+  // is synced to the Tauri window via `set_pet_size` (invoked on mount to
+  // restore the persisted level, and re-applied when the main window emits
+  // `pet://size-changed`). The mascot SVG inside reads the same value via
+  // `PetMascot`'s `size` prop.
+  const petSize = useSettingsStore((s) => s.petSize);
+  const spriteSize = petSizeToPx(petSize);
 
   // ── State machine: mouse event handlers ──
   const handleMouseEnter = useCallback(() => {
@@ -455,7 +472,20 @@ export function PetApp() {
         const { useSettingsStore } = await import('@/store/settingsStore');
         const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
         const sf = workArea.scale_factor || 1;
-        const { petPositionX, petPositionY } = useSettingsStore.getState();
+        const { petPositionX, petPositionY, petSize } = useSettingsStore.getState();
+        const petWindowSize = petSizeToPx(petSize);
+
+        // Restore the persisted pet window size BEFORE positioning so a large
+        // / small pet's bounds are correct when the position is clamped. The
+        // `pet` Tauri window starts at the medium (96) default from
+        // tauri.conf.json; `set_pet_size` resizes it to the saved level. If
+        // this fails the medium default still applies, which is never
+        // off-screen.
+        try {
+          await invoke('set_pet_size', { level: petSize });
+        } catch (err) {
+          console.warn('[pet] set_pet_size on mount failed:', err);
+        }
 
         // Work-area guard: if the OS returns a zero-sized work area (e.g.
         // NSScreen.mainScreen is nil during early launch), the default-branch
@@ -471,14 +501,16 @@ export function PetApp() {
           let resolved: { x: number; y: number };
           let source: 'saved' | 'default' = 'default';
           if (petPositionX >= 0 && petPositionY >= 0) {
-            // Saved position (logical): clamp to the current work area. If the
-            // saved value is off-screen (different monitor / pre-fix default),
-            // the clamped value is persisted back so subsequent launches skip
-            // the re-clamp.
+            // Saved position (logical): clamp to the current work area, using
+            // the actual pet window size so a size change between launches
+            // still keeps the whole window on-screen. If the saved value is
+            // off-screen, the clamped value is persisted back so subsequent
+            // launches skip the re-clamp.
             source = 'saved';
             const clamped = clampPetPosition(
               { x: petPositionX, y: petPositionY },
               { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height, scale_factor: sf },
+              petWindowSize,
             );
             if (clamped.x !== petPositionX || clamped.y !== petPositionY) {
               useSettingsStore.getState().setPetPosition(clamped.x, clamped.y);
@@ -546,6 +578,21 @@ export function PetApp() {
       // 2. Show the window at the now-correct position.
       try {
         await getCurrentWindow().show();
+        // Re-assert the pet size AFTER show(). macOS can defer `set_size` on
+        // a HIDDEN NSWindow and `show()` may reset the frame to the conf
+        // default (96×96 medium). If the user saved small/large, the
+        // pre-show `set_pet_size` (step 1) may have been clobbered by show()
+        // — re-assert here so a non-medium size reliably takes effect on
+        // first launch. Mirrors the pet-panel post-show re-assert pattern
+        // (see tauri-window-patterns.md "Secondary Opaque Panel Window").
+        const { petSize: savedSize } = (await import('@/store/settingsStore')).useSettingsStore.getState();
+        if (savedSize !== 'medium') {
+          try {
+            await invoke('set_pet_size', { level: savedSize });
+          } catch (err) {
+            console.warn('[pet] set_pet_size post-show re-assert failed:', err);
+          }
+        }
         await invoke('pet_set_topmost_level', { label: 'pet' });
         // Native transparency: Tauri's `transparent: true` config doesn't
         // reliably disable the macOS WKWebView's opaque background on all
@@ -691,6 +738,64 @@ export function PetApp() {
     };
   }, []);
 
+  // ── Cross-window size change sync ──
+  // The main window's `handleAction('set-pet-size')` (App.tsx) calls Rust
+  // `set_pet_size` (which resizes the pet window) AND emits `pet://size-changed`
+  // here. This listener applies the new level to this pet window's own store
+  // instance (so `petSize` re-renders the sprite layer + mascot SVG) and
+  // re-clamps the position so a larger pet doesn't sit off-screen. Pattern
+  // mirrors `pet://icon-changed` above. Wrapped in isTauri + try/catch so
+  // non-Tauri/test envs skip it.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        const { invoke } = await import('@tauri-apps/api/core');
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        unlisten = await listen<{ size: 'small' | 'medium' | 'large' }>(
+          'pet://size-changed',
+          async (event) => {
+            const size = event.payload?.size;
+            if (size !== 'small' && size !== 'medium' && size !== 'large') return;
+            const { useSettingsStore } = await import('@/store/settingsStore');
+            useSettingsStore.setState({ petSize: size });
+            // Re-clamp the current position with the new size so a larger
+            // pet stays fully on-screen. Non-fatal if the work-area probe
+            // fails — the saved position is unchanged and the user can
+            // drag the pet back on-screen.
+            try {
+              const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
+              if (workArea.width > 0 && workArea.height > 0) {
+                const sf = workArea.scale_factor || 1;
+                const pos = await getCurrentWindow().outerPosition();
+                const x = Math.round(pos.x / sf);
+                const y = Math.round(pos.y / sf);
+                const clamped = clampPetPosition(
+                  { x, y },
+                  { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height, scale_factor: sf },
+                  petSizeToPx(size),
+                );
+                if (clamped.x !== x || clamped.y !== y) {
+                  await invoke('set_pet_position', { x: Math.round(clamped.x * sf), y: Math.round(clamped.y * sf) });
+                  useSettingsStore.getState().setPetPosition(clamped.x, clamped.y);
+                }
+              }
+            } catch (err) {
+              console.warn('[pet] size-changed re-clamp failed:', err);
+            }
+          },
+        );
+      } catch (err) {
+        console.warn('[pet] size-changed listener setup failed:', err);
+      }
+    })();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
   return (
     <div className="pet-root">
       {/* The mascot sprite is wrapped in an interaction layer that owns all
@@ -709,14 +814,14 @@ export function PetApp() {
           position: 'absolute',
           left: SPRITE_OFFSET,
           top: SPRITE_OFFSET,
-          width: SPRITE_SIZE,
-          height: SPRITE_SIZE,
+          width: spriteSize,
+          height: spriteSize,
           cursor: 'pointer',
         }}
         aria-label="Quill desktop pet"
         role="button"
       >
-        <PetMascot state={state} />
+        <PetMascot state={state} size={petSize} />
       </div>
     </div>
   );
