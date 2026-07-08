@@ -255,7 +255,7 @@ export default function App() {
       }
     };
 
-    const handleAction = async (action: PetMenuAction) => {
+    const handleAction = async (action: PetMenuAction, size?: 'small' | 'medium' | 'large') => {
       switch (action) {
         case 'show-main':
           await focusMain();
@@ -268,6 +268,9 @@ export default function App() {
           useEditorStore.getState().toggleAiPanel();
           await focusMain();
           break;
+        case 'hide-pet':
+          // Chinese-labeled sibling of `disable-pet` (PRD D1): same behavior,
+          // distinct label. Falls through to the disable-pet branch.
         case 'disable-pet':
           useSettingsStore.getState().setPetModeEnabled(false);
           try {
@@ -277,6 +280,24 @@ export default function App() {
             // Non-fatal; the menu bar item can still toggle it off.
           }
           break;
+        case 'set-pet-size': {
+          const level = size ?? 'medium';
+          useSettingsStore.getState().setPetSize(level);
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            // Rust resizes the pet window + updates the shared size state so
+            // the next right-click menu pre-checks the new radio item.
+            await invoke('set_pet_size', { level });
+            // Notify the pet window to re-clamp its position + re-scale the
+            // mascot SVG (the pet window owns its own store instance + sprite
+            // layer, so the main window cannot resize them directly).
+            const { emit } = await import('@tauri-apps/api/event');
+            await emit('pet://size-changed', { size: level });
+          } catch {
+            // Non-fatal; the settings still persisted, next launch restores.
+          }
+          break;
+        }
         // ── Pet-panel launcher actions (PR1). These are dispatched by the
         // pet-panel launcher grid via the same `pet://menu-action` channel.
         // Each action that targets the main editor focuses it so the editor
@@ -321,8 +342,8 @@ export default function App() {
       }
       // Event listener for pet → main window actions.
       const { listen } = await import('@tauri-apps/api/event');
-      const unAction = await listen<{ action: PetMenuAction }>('pet://menu-action', (event) => {
-        if (event.payload?.action) void handleAction(event.payload.action);
+      const unAction = await listen<{ action: PetMenuAction; size?: 'small' | 'medium' | 'large' }>('pet://menu-action', (event) => {
+        if (event.payload?.action) void handleAction(event.payload.action, event.payload?.size);
       });
       // Visibility sync: when the pet is toggled via the menu bar / keyboard
       // shortcut, Rust emits this so the frontend preference stays in sync.

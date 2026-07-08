@@ -11,8 +11,11 @@ import { describe, it, expect } from 'vitest';
 // PR1 of the pet-quick-action-panel task extends the contract: the union now
 // also includes the 5 launcher-only actions dispatched by the pet-panel
 // launcher grid (daily-note, global-search, clip-from-url, command-palette,
-// toggle-theme). The native right-click menu still surfaces only the first
-// four (`PET_NATIVE_MENU_ACTIONS`); the launcher dispatches the rest.
+// toggle-theme). The native right-click menu surfaces the first six
+// (`PET_NATIVE_MENU_ACTIONS`: show-main, new-note, toggle-ai, hide-pet,
+// set-pet-size, disable-pet); the launcher dispatches the rest.
+// `hide-pet` is the Chinese-labeled sibling of `disable-pet` (same behavior);
+// `set-pet-size` carries a `{ size }` payload on the event.
 //
 // `@tauri-apps/api/core` is mocked globally via vitest.workspace.ts alias
 // (test/mocks/@tauri-apps/api/core.ts) and reset in beforeEach.
@@ -27,11 +30,13 @@ import {
 } from './PetContextMenu';
 
 describe('PetContextMenu (native popup + launcher contract)', () => {
-  it('PET_NATIVE_MENU_ACTIONS lists the four native right-click actions', () => {
+  it('PET_NATIVE_MENU_ACTIONS lists the six native right-click actions', () => {
     expect(PET_NATIVE_MENU_ACTIONS).toEqual([
       'show-main',
       'new-note',
       'toggle-ai',
+      'hide-pet',
+      'set-pet-size',
       'disable-pet',
     ]);
   });
@@ -51,6 +56,8 @@ describe('PetContextMenu (native popup + launcher contract)', () => {
       'show-main',
       'new-note',
       'toggle-ai',
+      'hide-pet',
+      'set-pet-size',
       'disable-pet',
       'daily-note',
       'global-search',

@@ -23,6 +23,38 @@
 /** Pet window footprint (matches `tauri.conf.json` `pet` window size). */
 export const PET_WINDOW_SIZE = 96;
 
+/** User-selectable pet size levels. Synced with Rust `set_pet_size` command
+ *  and `PET_CTX_MENU_SIZE_*` menu ids. The medium level matches the default
+ *  `PET_WINDOW_SIZE` (96) so existing users keep their layout. */
+export type PetSize = 'small' | 'medium' | 'large';
+
+/** Pixel footprint for each `PetSize` (logical points, matches the work-area
+ *  unit). The mascot SVG and the sprite layer both scale to this value via
+ *  inline styles in `PetMascot` / `PetApp`. The `pet` Tauri window itself is
+ *  resized Rust-side by `set_pet_size`. MUST stay in sync with the Rust
+ *  `pet_size_to_px` mapping in `commands.rs`. */
+export const PET_SIZE_TO_PX: Record<PetSize, number> = {
+  small: 64,
+  medium: 96,
+  large: 128,
+};
+
+/** Default pet size level (used when the persisted value is missing / invalid
+ *  on hydrate). Matches `PET_WINDOW_SIZE` so the pre-size-feature layout is
+ *  preserved. */
+export const PET_SIZE_DEFAULT: PetSize = 'medium';
+
+/**
+ * Resolve a `PetSize` to its pixel footprint. Falls back to the default for
+ * unknown values (defensive — a corrupt persisted string would otherwise crash
+ * the renderer). */
+export function petSizeToPx(size: PetSize | string | undefined): number {
+  if (size === 'small' || size === 'medium' || size === 'large') {
+    return PET_SIZE_TO_PX[size];
+  }
+  return PET_SIZE_TO_PX[PET_SIZE_DEFAULT];
+}
+
 /**
  * Visible mascot icon size. The pet window is `PET_WINDOW_SIZE` (96×96)
  * but the actual mascot SVG is smaller and centered (see `.pet-mascot` in
@@ -31,9 +63,23 @@ export const PET_WINDOW_SIZE = 96;
  * the mascot — the transparent margin around the icon would otherwise
  * read as a gap between the panel and the pet.
  *
- * MUST stay in sync with `.pet-mascot` width/height in `pet.css`.
+ * The mascot is 75% of the window (72/96), leaving a ~12% transparent
+ * margin on each side for the breathing `scale` self-pulse. The ratio is
+ * preserved across all three `PetSize` levels — `mascotSizeForPetSize(s)`
+ * returns `PET_SIZE_TO_PX[s] * 0.75`.
+ *
+ * MUST stay in sync with `.pet-mascot` width/height in `pet.css` for the
+ * default (medium) size; other sizes override via inline style in
+ * `PetMascot.tsx`.
  */
 export const PET_MASCOT_SIZE = 72;
+
+/** Mascot icon pixel size for a given `PetSize` (75% of the window footprint).
+ *  Used by `computePanelPosition` (icon-bounds attachment) and `PetMascot`
+ *  (inline SVG/img size). */
+export function mascotSizeForPetSize(size: PetSize | string | undefined): number {
+  return Math.round(petSizeToPx(size) * 0.75);
+}
 
 /**
  * Monotonically-increasing version of the default pet window size. Bump this
@@ -150,18 +196,28 @@ export function computeCenteredPanelPosition(
 
 /**
  * Clamp a saved pet position (absolute logical screen points) so the whole
- * 120×120 window stays inside the work area. If the saved position would clip
- * on any edge, it is moved inward to the nearest valid position. The caller
- * should persist the clamped value back to `settingsStore` so a subsequent
- * launch doesn't need to re-clamp.
+ * window stays inside the work area. If the saved position would clip on any
+ * edge, it is moved inward to the nearest valid position. The caller should
+ * persist the clamped value back to `settingsStore` so a subsequent launch
+ * doesn't need to re-clamp.
  *
- * If the work area is smaller than the pet window (degenerate case), the
- * pet is placed at the work area's top-left — the window will overflow but
- * at least its anchor stays on-screen.
+ * `petWindowSize` defaults to `PET_WINDOW_SIZE` (96) for backward
+ * compatibility, but callers that persist `petSize` should pass the resolved
+ * pixel footprint so a large (128) or small (64) pet is clamped by its actual
+ * bounds — otherwise a 128px pet saved at the small-size position could clip
+ * off-screen.
+ *
+ * If the work area is smaller than the pet window (degenerate case), the pet
+ * is placed at the work area's top-left — the window will overflow but at
+ * least its anchor stays on-screen.
  */
-export function clampPetPosition(saved: PetPosition, workArea: PetWorkArea): PetPosition {
-  const maxX = workArea.x + Math.max(0, workArea.width - PET_WINDOW_SIZE);
-  const maxY = workArea.y + Math.max(0, workArea.height - PET_WINDOW_SIZE);
+export function clampPetPosition(
+  saved: PetPosition,
+  workArea: PetWorkArea,
+  petWindowSize: number = PET_WINDOW_SIZE,
+): PetPosition {
+  const maxX = workArea.x + Math.max(0, workArea.width - petWindowSize);
+  const maxY = workArea.y + Math.max(0, workArea.height - petWindowSize);
   const x = Math.min(Math.max(saved.x, workArea.x), maxX);
   const y = Math.min(Math.max(saved.y, workArea.y), maxY);
   return { x, y };
@@ -255,20 +311,23 @@ export function computePanelPosition(
   petPos: PetPosition,
   workArea: PetWorkArea,
   panelSize: { width: number; height: number },
+  petSize: PetSize = PET_SIZE_DEFAULT,
 ): PetPosition {
-  const petCenterX = petPos.x + PET_WINDOW_SIZE / 2;
-  const petCenterY = petPos.y + PET_WINDOW_SIZE / 2;
+  const petWindowSize = petSizeToPx(petSize);
+  const mascotSize = mascotSizeForPetSize(petSize);
+  const petCenterX = petPos.x + petWindowSize / 2;
+  const petCenterY = petPos.y + petWindowSize / 2;
   const workCenterX = workArea.x + workArea.width / 2;
   const workCenterY = workArea.y + workArea.height / 2;
 
-  // The visible mascot icon is PET_MASCOT_SIZE centered inside the
-  // PET_WINDOW_SIZE window — compute the icon's bounding box so the panel
-  // corner attaches to the icon, not to the (transparent) window corner.
-  const inset = (PET_WINDOW_SIZE - PET_MASCOT_SIZE) / 2; // = 16
+  // The visible mascot icon is `mascotSize` centered inside the `petWindowSize`
+  // window — compute the icon's bounding box so the panel corner attaches to
+  // the icon, not to the (transparent) window corner.
+  const inset = (petWindowSize - mascotSize) / 2;
   const iconLeft = petPos.x + inset;
-  const iconRight = petPos.x + PET_WINDOW_SIZE - inset; // = petPos.x + PET_MASCOT_SIZE + inset
+  const iconRight = petPos.x + petWindowSize - inset;
   const iconTop = petPos.y + inset;
-  const iconBottom = petPos.y + PET_WINDOW_SIZE - inset;
+  const iconBottom = petPos.y + petWindowSize - inset;
 
   // X axis: pet in right half → panel extends left (panel right edge = icon
   // left edge − gap); else panel extends right (panel left edge = icon right

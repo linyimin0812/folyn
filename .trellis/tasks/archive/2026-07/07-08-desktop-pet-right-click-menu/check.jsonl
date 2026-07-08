@@ -1,5 +1,6 @@
-{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Final review checklist — verify no forbidden patterns, lint/typecheck/tests green."}
-{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Verify PetMenuAction union extension is exhaustive in switch statements and contract test covers the new actions."}
-{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Verify native menu items (CheckMenuItem, Submenu) follow the documented pattern and ACL contract is unchanged."}
-{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify new settingsStore fields follow persistence + cross-window sync conventions."}
-{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Verify position clamp and existing event listener were reused, not duplicated."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "lint/typecheck/build/测试门槛——验证 Rust + 前端全绿，契约测试更新"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "验证新 set_pet_size 命令、pet://size-changed 事件、位置夹取流程未破坏现有窗口契约"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "验证 settingsStore.petSize 持久化、跨窗口同步、默认值迁移符合 store 规范"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "验证 PetMenuAction 联合类型与 Rust pet_ctx_menu_action 映射、PET_NATIVE_MENU_ACTIONS 与测试断言一致"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "验证 Rust 菜单 ID → action → 前端 handleAction 三层契约完全同步，无遗漏分支"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "验证复用 clampPetPosition / disable-pet 逻辑 / icon-changed listener 模式，无重复实现"}

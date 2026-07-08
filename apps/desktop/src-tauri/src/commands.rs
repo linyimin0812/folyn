@@ -1,6 +1,38 @@
 use std::fs;
+use std::sync::Mutex;
 use serde::Serialize;
 use tauri::{Emitter, Manager, PhysicalPosition, PhysicalSize};
+
+/// Shared pet-size level state ("small"|"medium"|"large"). Synced from the
+/// frontend via the `set_pet_size` command and from `on_menu_event` when the
+/// user picks a size from the native submenu. Read by `pet_show_context_menu`
+/// to pre-check the current size radio item. Defaults to `"medium"` so
+/// existing users keep the 96×96 layout on first right-click.
+///
+/// Defined here (not in `lib.rs`) so both `commands.rs` and `lib.rs` share
+/// the SAME type — Rust treats same-name structs in different modules as
+/// distinct types, which would break `app.state::<PetSizeState>()`.
+pub struct PetSizeState(pub Mutex<String>);
+
+impl PetSizeState {
+    /// The default size level — matches `PET_SIZE_DEFAULT` in
+    /// `petPosition.ts` and the `PET_WINDOW_SIZE` (96) default.
+    pub const DEFAULT_LEVEL: &'static str = "medium";
+
+    /// Read the current level. Returns the default if the mutex is poisoned
+    /// (shouldn't happen — only a panic while holding the lock would poison
+    /// it, and we never panic under the lock).
+    pub fn level(&self) -> String {
+        self.0.lock().map(|g| g.clone()).unwrap_or_else(|_| Self::DEFAULT_LEVEL.to_string())
+    }
+
+    /// Set the current level. Silently ignores a poison error.
+    pub fn set_level(&self, level: &str) {
+        if let Ok(mut guard) = self.0.lock() {
+            *guard = level.to_string();
+        }
+    }
+}
 
 #[tauri::command]
 pub async fn open_file(path: String) -> Result<String, String> {
@@ -411,7 +443,58 @@ const PET_LABEL: &str = "pet";
 pub const PET_CTX_MENU_SHOW_MAIN: &str = "pet-ctx-show-main";
 pub const PET_CTX_MENU_NEW_NOTE: &str = "pet-ctx-new-note";
 pub const PET_CTX_MENU_TOGGLE_AI: &str = "pet-ctx-toggle-ai";
+pub const PET_CTX_MENU_HIDE_PET: &str = "pet-ctx-hide-pet";
+pub const PET_CTX_MENU_SIZE_SMALL: &str = "pet-ctx-size-small";
+pub const PET_CTX_MENU_SIZE_MEDIUM: &str = "pet-ctx-size-medium";
+pub const PET_CTX_MENU_SIZE_LARGE: &str = "pet-ctx-size-large";
 pub const PET_CTX_MENU_DISABLE_PET: &str = "pet-ctx-disable-pet";
+
+/// Map a `PetSize` level string ("small"|"medium"|"large") to the logical
+/// pixel footprint of the pet window. Mirrors `PET_SIZE_TO_PX` in
+/// `petPosition.ts` — keep both in sync. Used by `set_pet_size` to resolve
+/// the level to a `LogicalSize`.
+fn pet_size_to_px(level: &str) -> Option<(u32, u32)> {
+    match level {
+        "small" => Some((64, 64)),
+        "medium" => Some((96, 96)),
+        "large" => Some((128, 128)),
+        _ => None,
+    }
+}
+
+/// Resolve the current pet size level from the app's shared `PetSizeState`.
+/// Returns `"medium"` (the default) when the state is unset, which preserves
+/// the pre-feature 96×96 layout for existing users on first right-click.
+fn current_pet_size_level(app: &tauri::AppHandle) -> String {
+    app.state::<PetSizeState>().level()
+}
+
+/// Resize the pet Tauri window to the given size level. The level string is
+/// validated against the three known values (`"small"|"medium"|"large"`);
+/// any other value returns an error so a corrupt frontend payload cannot
+/// shrink the window to 0×0. The window's `transparent`/`decorations` flags
+/// are unaffected — only `setSize` is called.
+///
+/// Also updates the shared `PetSizeState` so the next right-click menu
+/// build pre-selects the correct size radio item.
+#[tauri::command]
+pub async fn set_pet_size(app: tauri::AppHandle, level: String) -> Result<(), String> {
+    use tauri::LogicalSize;
+
+    let (w, h) = pet_size_to_px(&level)
+        .ok_or_else(|| format!("unknown pet size level: {}", level))?;
+
+    // Update the shared state BEFORE the window resize so a concurrent
+    // right-click menu build sees the new level even if the resize is slow.
+    app.state::<PetSizeState>().set_level(&level);
+
+    let pet = app
+        .get_webview_window(PET_LABEL)
+        .ok_or_else(|| "pet window not found".to_string())?;
+    pet.set_size(LogicalSize::new(w as f64, h as f64))
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
 
 /// Toggle the pet window's visibility. Returns the new visibility state.
 /// The frontend settings tab "桌宠" is the sole entry point for this toggle;
@@ -595,7 +678,8 @@ pub async fn pet_get_work_area(_app: tauri::AppHandle) -> Result<PetWorkArea, St
 /// is dismissed; the JS `invoke` therefore resolves after dismissal.
 #[tauri::command]
 pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), String> {
-    use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+    use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
+    use tauri::Manager;
 
     let pet = app
         .get_webview_window(PET_LABEL)
@@ -625,6 +709,59 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), String> 
         None::<&str>,
     )
     .map_err(|e| e.to_string())?;
+
+    // Hide pet icon — Chinese-labeled sibling of "Disable Pet Mode" (same
+    // behavior, distinct label). D1 in PRD: coexists with Disable per user
+    // decision.
+    let hide_pet = MenuItem::with_id(
+        &app,
+        PET_CTX_MENU_HIDE_PET,
+        "隐藏桌宠图标",
+        true,
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+
+    // Pet size submenu — three radio items (小/中/大), the current size
+    // pre-checked. Reads the shared `PetSizeState` (synced from frontend
+    // via `set_pet_size` / `set_pet_size_state`) so the checkmark reflects
+    // the last-applied size.
+    let current_level = current_pet_size_level(&app);
+    let size_small = CheckMenuItem::with_id(
+        &app,
+        PET_CTX_MENU_SIZE_SMALL,
+        "小",
+        true,
+        current_level == "small",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let size_medium = CheckMenuItem::with_id(
+        &app,
+        PET_CTX_MENU_SIZE_MEDIUM,
+        "中",
+        true,
+        current_level == "medium",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let size_large = CheckMenuItem::with_id(
+        &app,
+        PET_CTX_MENU_SIZE_LARGE,
+        "大",
+        true,
+        current_level == "large",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let size_submenu = Submenu::with_items(
+        &app,
+        "桌宠大小",
+        true,
+        &[&size_small, &size_medium, &size_large],
+    )
+    .map_err(|e| e.to_string())?;
+
     let sep = PredefinedMenuItem::separator(&app).map_err(|e| e.to_string())?;
     let disable = MenuItem::with_id(
         &app,
@@ -637,7 +774,15 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), String> 
 
     let menu = Menu::with_items(
         &app,
-        &[&show_main, &new_note, &toggle_ai, &sep, &disable],
+        &[
+            &show_main,
+            &new_note,
+            &toggle_ai,
+            &hide_pet,
+            &size_submenu,
+            &sep,
+            &disable,
+        ],
     )
     .map_err(|e| e.to_string())?;
 

@@ -1,7 +1,7 @@
-{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Task extends a native popup NSMenu built Rust-side (commands.rs pet_show_context_menu) and adds CheckMenuItem + Submenu. This spec documents the native popup menu pattern, transparent window constraints, and ACL contract — required to add new menu items correctly."}
-{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Adding two new persisted fields to settingsStore (petAlwaysOnTop: boolean, petSize: 'small'|'medium'|'large'). Need the Zustand store conventions (granular selectors, persistence, cross-window sync via events)."}
-{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Extending the PetMenuAction union with 'toggle-always-on-top' and 'set-pet-size' (payload-carrying). The contract test (PetContextMenu.test.tsx) asserts the union matches Rust ids — type patterns matter here."}
-{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "PetContextMenu.tsx + PetApp.tsx changes need to follow named-export, props, and composition conventions."}
-{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns and review checklist — needed before finalizing."}
-{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Position clamp logic (PetApp.tsx:446-567) and pet://menu-action listener (App.tsx:258-308) already exist — guide ensures we reuse them instead of duplicating."}
-{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Changes cross Rust (commands.rs, lib.rs) ↔ frontend (PetContextMenu.tsx, App.tsx, settingsStore) ↔ contract test — guide ensures the layers stay coherent."}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "桌宠窗口契约：topmost 级别、透明、set_size/set_position、位置夹取、跨窗口事件模式（pet://icon-changed 等）——本任务新增 set_pet_size 与 pet://size-changed 必须遵循同模式"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "settingsStore 新增 petSize 字段 + setPetSize action + debouncedPersist 持久化——遵循现有 store 模式"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "PetApp/PetMascot/PetContextMenu 组件改造（SPRITE_SIZE 动态化、SVG 缩放、菜单项契约）——遵循组件结构约定"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "PetMenuAction 联合类型扩展 'hide-pet' | 'set-pet-size'，payload 类型安全——遵循 union 类型与契约同步约定"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "新增 petSize 常量/类型位置（petPosition.ts vs 新文件）——遵循目录结构约定"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "复用 clampPetPosition / openPetContextMenu / pet://icon-changed listener 模式 / handleAction disable-pet 逻辑——避免重复造轮子"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Rust↔frontend 契约：菜单 ID 常量、pet_ctx_menu_action 映射、PetMenuAction 联合类型、pet://menu-action payload——三层必须同步"}

@@ -13,9 +13,20 @@
 // frontend to call on right-click. App.tsx's listener needs no change.
 
 /**
- * Quick-action menu/launcher actions. The first four (`show-main`,
- * `new-note`, `toggle-ai`, `disable-pet`) are surfaced by the native pet
- * right-click context menu (built Rust-side in `commands::pet_show_context_menu`).
+ * Quick-action menu/launcher actions. The first six (`show-main`,
+ * `new-note`, `toggle-ai`, `hide-pet`, `set-pet-size`, `disable-pet`) are
+ * surfaced by the native pet right-click context menu (built Rust-side in
+ * `commands::pet_show_context_menu`).
+ *
+ * `hide-pet` is a Chinese-labeled sibling of `disable-pet` — same behavior
+ * (hide pet window + `setPetModeEnabled(false)`), distinct label. Both
+ * dispatch through the same `pet://menu-action` channel; `App.tsx`
+ * `handleAction` routes `hide-pet` to the same logic as `disable-pet`.
+ *
+ * `set-pet-size` carries a `{ size: 'small'|'medium'|'large' }` payload on
+ * the event (see `App.tsx` listener) so the handler can apply the size
+ * without re-parsing the menu id; the Rust `pet_ctx_menu_action` mapping
+ * emits the action string and the size payload is attached separately.
  *
  * The remaining five (`daily-note`, `global-search`, `clip-from-url`,
  * `command-palette`, `toggle-theme`) are dispatched by the pet-panel launcher
@@ -28,12 +39,21 @@ export type PetMenuAction =
   | 'show-main'
   | 'new-note'
   | 'toggle-ai'
+  | 'hide-pet'
+  | 'set-pet-size'
   | 'disable-pet'
   | 'daily-note'
   | 'global-search'
   | 'clip-from-url'
   | 'command-palette'
   | 'toggle-theme';
+
+/** Payload for `pet://menu-action` events. `set-pet-size` carries the size
+ *  level; all other actions use only `action`. */
+export interface PetMenuActionPayload {
+  action: PetMenuAction;
+  size?: 'small' | 'medium' | 'large';
+}
 
 /**
  * The complete set of actions the pet context-menu / pet-panel launcher can
@@ -50,6 +70,8 @@ export const PET_NATIVE_MENU_ACTIONS: readonly PetMenuAction[] = [
   'show-main',
   'new-note',
   'toggle-ai',
+  'hide-pet',
+  'set-pet-size',
   'disable-pet',
 ] as const;
 

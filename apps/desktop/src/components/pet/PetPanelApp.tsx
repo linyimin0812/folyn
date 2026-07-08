@@ -213,10 +213,16 @@ export function PetPanelApp() {
           // first-ever open has no saved size) so `computePanelPosition`
           // attaches the panel's actual corner to the pet icon.
           const probe = await invoke<PetCursorProbeResult>('pet_cursor_probe');
+          // Read the current pet size so the panel anchor tracks the actual
+          // mascot bounds (a small/ large pet shifts where the panel's corner
+          // attaches). The pet window keeps its own store instance in sync
+          // via the `pet://size-changed` listener in PetApp.
+          const petSize = useSettingsStore.getState().petSize;
           const pos = computePanelPosition(
             { x: probe.window_x / sf, y: probe.window_y / sf },
             workArea,
             clampedSize,
+            petSize,
           );
           await invoke('pet_panel_set_position', {
             x: Math.round(pos.x * sf),
