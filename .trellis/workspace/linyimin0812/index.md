@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 47
+- **Total Sessions**: 48
 - **Last Active**: 2026-07-08
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1610 | Active |
+| `journal-1.md` | ~1644 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 48 | 2026-07-08 | 微内核+插件化架构：双层 plugin host 全量落地 | `138deda` | `master` |
 | 47 | 2026-07-08 | PR4: consent UI + ed25519 scaffolding + dev guide + sample plugins | - | `master` |
 | 46 | 2026-07-08 | PR3: trusted-tier plugin loading (TOFU + blob-URL import + in-process adapters) | - | `master` |
 | 45 | 2026-07-08 | PR2: sandbox-tier plugin loading (Rust scheme + install cmds + CSP + iframe RPC bridge) | - | `master` |

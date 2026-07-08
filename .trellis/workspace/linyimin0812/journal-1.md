@@ -1608,3 +1608,37 @@ trellis-implement 完成。UI: pluginStore(Zustand)+ PluginsSettings tab(🧩)�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 48: 微内核+插件化架构：双层 plugin host 全量落地
+
+**Date**: 2026-07-08
+**Task**: 微内核+插件化架构：双层 plugin host 全量落地
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+brainstorm(3 个 trellis-research 调研 uTool/VSCode/Tauri 运行时装载)→4 个 PR(trellis-implement：PR1 内核+5 registry register/unregister/Disposable；PR2 sandbox 档 quill-plugin:// scheme+install 命令+CSP+iframe+RPC bridge+command adapter；PR3 trusted 档 TOFU+SHA-256+blob-URL import+in-process 贡献适配器+add_capability 设计现实注；PR4 consent UI+ed25519 脚手架+开发指南+2 示例插件)→trellis-check 全量质检(自修 2 个生产 bug：CSP 漏 blob:、Windows fs:write 路径)→commit master。交付 packages/plugin-host 内核+46 Rust/~150 TS 测试，typecheck/clippy 干净。Follow-up：sandbox http:fetch CSP、feature ActivityBar 集成、zip 打包、ed25519 强制签名。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `138deda` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
