@@ -1642,3 +1642,37 @@ brainstorm(3 个 trellis-research 调研 uTool/VSCode/Tauri 运行时装载)→4
 ### Next Steps
 
 - None - task complete
+
+
+## Session 49: 桌宠右键菜单：隐藏图标 + 大小调整
+
+**Date**: 2026-07-09
+**Task**: 桌宠右键菜单：隐藏图标 + 大小调整
+**Package**: api
+**Branch**: `worktree-desktop-pet-right-click-menu`
+
+### Summary
+
+为桌宠原生右键菜单新增「隐藏桌宠图标」项与「桌宠大小」子菜单（小/中/大=64/96/128px 单选）。三层契约同步：Rust pet_ctx_menu_action / PetMenuAction union / App.tsx handleAction。跨窗口同步 pet://size-changed；启动还原 petSize + show 后重断言修隐藏窗口延迟；clampPetPosition/computePanelPosition 参数化 petSize。tsc + cargo check + 58 pet 测试全绿。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c46b62b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
