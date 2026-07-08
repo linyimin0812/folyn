@@ -1642,3 +1642,37 @@ brainstorm(3 个 trellis-research 调研 uTool/VSCode/Tauri 运行时装载)→4
 ### Next Steps
 
 - None - task complete
+
+
+## Session 49: sandbox http:fetch 走 Rust reqwest 命令
+
+**Date**: 2026-07-08
+**Task**: sandbox http:fetch 走 Rust reqwest 命令
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+follow-up of 微内核插件架构。rpcBridge http:fetch 从 host webview fetch()（被主页 CSP connect-src 拦）改为 invoke('plugin_http_fetch') Rust reqwest 命令。双层 origin 校验：JS isOriginAllowed 快速失败 + Rust 读 manifest.json permissions.http.origins 再校验。trellis-check 自修 4 问题：plugin_id 路径穿越安全漏洞、响应头大小写跨层 bug、reqwest feature 回归(http2/system-proxy 被丢)、死代码。+18 cargo(68 总)+33 rpcBridge tests。reqwest rustls/aws-lc(CI 预装 cmake，用户装预编译包)。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `11d865d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
