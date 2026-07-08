@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Final review checklist — verify no forbidden patterns, lint/typecheck/tests green."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Verify PetMenuAction union extension is exhaustive in switch statements and contract test covers the new actions."}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Verify native menu items (CheckMenuItem, Submenu) follow the documented pattern and ACL contract is unchanged."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify new settingsStore fields follow persistence + cross-window sync conventions."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Verify position clamp and existing event listener were reused, not duplicated."}
