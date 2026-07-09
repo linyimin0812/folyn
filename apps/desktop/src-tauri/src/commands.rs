@@ -44,11 +44,6 @@ pub async fn save_file(path: String, content: String) -> Result<(), String> {
     fs::write(&path, content).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub async fn select_directory() -> Result<String, String> {
-    Err("Use tauri-plugin-dialog for directory selection".to_string())
-}
-
 #[derive(Serialize)]
 pub struct UrlCheckResult {
     pub reachable: bool,
@@ -86,35 +81,6 @@ pub async fn check_url(url: String) -> UrlCheckResult {
         }
         Err(e) => UrlCheckResult { reachable: false, error: e.to_string() },
     }
-}
-
-/// Fetch web page content via curl.md and return as Markdown.
-/// Uses curl subprocess to bypass CORS restrictions in the Tauri webview.
-#[tauri::command]
-pub async fn fetch_url_content(url: String) -> Result<String, String> {
-    let curl_md_url = format!("https://curl.md/{}", url);
-    let output = std::process::Command::new("curl")
-        .args([
-            "-s",
-            "--max-time", "30",
-            "--location",
-            "-H", "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
-            &curl_md_url,
-        ])
-        .output()
-        .map_err(|e| format!("Failed to execute curl: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("curl failed: {}", stderr));
-    }
-
-    let body = String::from_utf8_lossy(&output.stdout).to_string();
-    if body.trim().is_empty() {
-        return Err("页面内容为空或无法转换为 Markdown".to_string());
-    }
-
-    Ok(body)
 }
 
 /// Create an embedded webview in the main window from Rust side.

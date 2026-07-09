@@ -62,17 +62,17 @@ vi.mock('@/store/skillStore', () => ({
   },
 }));
 
-// Fake CLI adapter registry + adapter so generateClip never spawns a process.
+// Fake CLI adapter factory + adapter so generateClip never spawns a process.
 vi.mock('@quill/cli-adapter', () => ({
-  CliAdapterRegistry: {
-    getInstance: () => ({ create: () => fakeAdapter }),
-  },
+  createAdapter: () => fakeAdapter,
 }));
 
-// Mock collectTextFromStream so we can feed canned AI output.
-vi.mock('./aiStreamUtils', () => ({
-  collectTextFromStream,
-}));
+// Mock collectTextFromStream so we can feed canned AI output; keep the real
+// extractJsonObject (clipService imports it from this module).
+vi.mock('./aiStreamUtils', async () => {
+  const actual = await vi.importActual<typeof import('./aiStreamUtils')>('./aiStreamUtils');
+  return { ...actual, collectTextFromStream };
+});
 
 import { generateClip, saveClip, clipUrl } from './clipService';
 

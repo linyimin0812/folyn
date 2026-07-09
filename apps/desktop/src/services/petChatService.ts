@@ -1,4 +1,4 @@
-import { CliAdapterRegistry } from '@quill/cli-adapter';
+import { createAdapter } from '@quill/cli-adapter';
 import type { CliAdapter, CliStreamEvent } from '@quill/cli-adapter';
 import { useSettingsStore } from '@/store/settingsStore';
 import { usePetChatStore } from '@/store/petChatStore';
@@ -10,8 +10,7 @@ import { appDataDir, join } from '@tauri-apps/api/path';
  *
  * The pet-panel chat is vault-free (PRD R6): it does NOT use `aiStore`,
  * `adapterManager`, or any vault-grounded send options. Instead it creates
- * its own `CliAdapter` instances via `CliAdapterRegistry.getInstance()
- * .create(...)`, starts them in a neutral temp dir (NOT the vault), and
+ * its own `CliAdapter` instances via `createAdapter(...)`, starts them in a neutral temp dir (NOT the vault), and
  * streams plain text in/out. This mirrors the adapter-creation pattern in
  * `clipService` / `planMyDayService` / `wikiIngestService` but with no vault
  * dependency. It does NOT import `ai/adapterManager` — the per-session Map
@@ -67,8 +66,7 @@ function getAdapterForSession(sessionId: string): CliAdapter {
       console.warn('[petChat] stale adapter stop failed:', err);
     });
   }
-  const registry = CliAdapterRegistry.getInstance();
-  const adapter = registry.create(id);
+  const adapter = createAdapter(id);
   sessionAdapters.set(sessionId, adapter);
   return adapter;
 }
@@ -240,7 +238,7 @@ export async function resetPetChatAdapter(sessionId?: string): Promise<void> {
 
 /** Test-only access to the live adapter for a session. Used by the service
  *  unit tests to assert per-session isolation / id invalidation without
- *  reaching into the `CliAdapterRegistry` mock. Not part of the public
+ *  reaching into the `createAdapter` mock. Not part of the public
  *  runtime API. */
 export function __getAdapterForTesting(sessionId: string): CliAdapter | undefined {
   return sessionAdapters.get(sessionId);

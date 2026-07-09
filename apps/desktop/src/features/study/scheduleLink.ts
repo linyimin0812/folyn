@@ -13,7 +13,7 @@
 
 import type { ScheduleTask } from '@/features/schedule/types';
 import type { StudyUnit, StudyMaterial, AiAction } from './types';
-import { CliAdapterRegistry } from '@quill/cli-adapter';
+import { listAdapters } from '@quill/cli-adapter';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useEditorStore } from '@/store/editorStore';
 import { runFeatureAgent } from '@/services/featureAgentService';
@@ -114,14 +114,14 @@ export function collectScheduleLinks(tasks: ScheduleTask[], slug: string): Map<n
 
 /**
  * 判断 AI 适配器是否可用（容错降级入口）。
- * 判定：settings.cliAdapter 非空且在 CliAdapterRegistry 中已注册。
+ * 判定：settings.cliAdapter 非空且在已注册 CLI 适配器列表中。
  * 未配置时 AI 动作按钮禁用并提示，复习/计划/笔记非 AI 部分仍可用。
  */
 export function isAiAvailable(): boolean {
   const id = useSettingsStore.getState().cliAdapter;
   if (!id) return false;
   try {
-    return CliAdapterRegistry.getInstance().getAll().some((a) => a.id === id);
+    return listAdapters().some((a) => a.id === id);
   } catch {
     return false;
   }

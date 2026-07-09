@@ -379,13 +379,5 @@ export const useStudyStore = create<StudyState>((set, get) => ({
     collectScheduleLinks(useScheduleStore.getState().tasks, slug),
 }));
 
-/** 文件树变化时触发外部刷新（对标 scheduleStore.subscribeToFileTree，debounce 由调用方做）。 */
-export function subscribeToFileTree(cb: () => void): () => void {
-  let prev = useVaultStore.getState().fileTree;
-  return useVaultStore.subscribe((state) => {
-    if (state.fileTree !== prev) {
-      prev = state.fileTree;
-      cb();
-    }
-  });
-}
+// subscribeToFileTree lives in vaultStore now (shared with scheduleStore).
+export { subscribeToFileTree } from './vaultStore';

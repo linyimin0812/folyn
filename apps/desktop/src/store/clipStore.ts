@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import type { VaultEntry } from '@quill/vault-provider';
 import { useVaultStore } from './vaultStore';
 import type { StreamEvent } from '@/services/aiStreamUtils';
+import { flattenFilesByExt } from '@/utils/treeUtils';
 import {
   clipUrl as clipUrlService,
   generateClip as generateClipService,
@@ -94,20 +94,6 @@ interface ClipState {
   cancelBatch: () => void;
   /** Clear batch state (items + summary path). */
   clearBatch: () => void;
-}
-
-/** Recursively collect all .md file entries from a nested VaultEntry tree */
-function flattenMdFiles(entries: VaultEntry[]): ClipFile[] {
-  const result: ClipFile[] = [];
-  for (const entry of entries) {
-    if (entry.type === 'file' && entry.name.endsWith('.md')) {
-      result.push({ path: entry.path, name: entry.name });
-    }
-    if (entry.type === 'dir' && entry.children) {
-      result.push(...flattenMdFiles(entry.children));
-    }
-  }
-  return result;
 }
 
 /** Parse frontmatter tags from a clip file content (lightweight, no full parse) */
@@ -247,7 +233,7 @@ export const useClipStore = create<ClipState>((set, get) => ({
     try {
       const manager = useVaultStore.getState().manager;
       const entries = await manager.listFiles('__clips__', true, false).catch(() => []);
-      const clips = flattenMdFiles(entries).sort((a, b) => b.name.localeCompare(a.name));
+      const clips = (flattenFilesByExt(entries, '.md') as ClipFile[]).sort((a, b) => b.name.localeCompare(a.name));
       set({ clips });
 
       // Build tag groups

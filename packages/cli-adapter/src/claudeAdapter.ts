@@ -1,5 +1,4 @@
-import { BaseCliAdapter } from './baseAdapter';
-import type { CliAdapterConfig, CliSendOptions, FileChange } from './types';
+import type { CliAdapter, CliAdapterConfig, CliEventHandler, CliSendOptions, CliStreamEvent, FileChange } from './types';
 import { Command } from '@tauri-apps/plugin-shell';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 
@@ -16,11 +15,13 @@ interface ClaudeStreamMessage {
   is_error?: boolean;
 }
 
-export class ClaudeAdapter extends BaseCliAdapter {
+export class ClaudeAdapter implements CliAdapter {
   readonly id = 'claude';
   readonly displayName = 'Claude Code';
   readonly description = 'Anthropic 官方 CLI 工具，支持对话式编辑与多工具调用';
 
+  private handlers: CliEventHandler[] = [];
+  protected config: CliAdapterConfig | null = null;
   private sessionId: string | null = null;
   private running = false;
   private lineBuffer = '';
@@ -28,6 +29,20 @@ export class ClaudeAdapter extends BaseCliAdapter {
   private pendingWriteTools = new Map<string, { relativePath: string; absolutePath: string }>();
   private runningToolIds: string[] = [];
   private childProcess: Awaited<ReturnType<ReturnType<typeof Command.create>['spawn']>> | null = null;
+
+  onEvent(handler: CliEventHandler): void {
+    this.handlers.push(handler);
+  }
+
+  offEvent(handler: CliEventHandler): void {
+    this.handlers = this.handlers.filter((h) => h !== handler);
+  }
+
+  protected emit(event: CliStreamEvent): void {
+    for (const handler of this.handlers) {
+      handler(event);
+    }
+  }
 
   isRunning(): boolean {
     return this.running;

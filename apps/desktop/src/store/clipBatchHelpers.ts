@@ -5,7 +5,7 @@
  * call into these.
  */
 import { useVaultStore } from './vaultStore';
-import { normalizeUrl } from '@/utils/urlUtils';
+import { normalizeUrl, isHttpUrl } from '@/utils/urlUtils';
 
 /** Status of a single URL within a batch clip run. */
 export type BatchItemStatus =
@@ -51,16 +51,6 @@ const STATUS_LABEL: Record<BatchItemStatus, string> = {
   cancelled: '已取消',
 };
 
-/** Lightweight http(s) URL validation (mirrors clipService.validateUrl). */
-function isValidHttpUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return ['http:', 'https:'].includes(parsed.protocol);
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Pure helper: normalize + dedupe + validate a raw URL list into BatchItems.
  *
@@ -81,7 +71,7 @@ export function prepareBatchUrls(rawUrls: string[]): BatchItem[] {
 
     const normalized = normalizeUrl(url);
 
-    if (!isValidHttpUrl(url)) {
+    if (!isHttpUrl(url)) {
       items.push({ url, status: 'failed', reason: '无效的网址' });
       continue;
     }

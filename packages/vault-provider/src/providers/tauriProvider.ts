@@ -1,4 +1,4 @@
-import { BaseVaultProvider } from './baseProvider';
+import type { VaultProvider } from '../providerInterface';
 import type { VaultCapabilities, VaultConfig, VaultEntry } from '../types';
 import { VaultError } from '../types';
 import {
@@ -13,7 +13,7 @@ import {
 } from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
 
-export class TauriVaultProvider extends BaseVaultProvider {
+export class TauriVaultProvider implements VaultProvider {
   readonly id = 'tauri';
   readonly type: 'tauri' = 'tauri' as any;
   readonly displayName = '本地文件';
@@ -30,7 +30,6 @@ export class TauriVaultProvider extends BaseVaultProvider {
   private basePath = '';
 
   async connect(config: VaultConfig): Promise<void> {
-    await super.connect(config);
     let base = config.basePath;
     if (base.startsWith('~')) {
       const home = (await this.getHome()).replace(/\/+$/, '');
@@ -42,6 +41,10 @@ export class TauriVaultProvider extends BaseVaultProvider {
     if (!dirExists) {
       await mkdir(this.basePath, { recursive: true });
     }
+  }
+
+  async disconnect(): Promise<void> {
+    this.basePath = '';
   }
 
   async ping(): Promise<boolean> {

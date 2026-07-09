@@ -1,10 +1,11 @@
-import { CliAdapterRegistry, type CliAdapter } from '@quill/cli-adapter';
+import { createAdapter, type CliAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useSkillStore } from '@/store/skillStore';
-import { collectTextFromStream, type StreamEvent } from './aiStreamUtils';
+import { collectTextFromStream, extractJsonObject, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
+import { isHttpUrl } from '@/utils/urlUtils';
 import { getFeatureAgentSendOptions } from './featureAgentService';
 import {
   normalizeInfographicDoc,
@@ -63,28 +64,9 @@ export function toSlug(title: string): string {
 }
 
 function validateUrl(url: string): void {
-  try {
-    const parsed = new URL(url);
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
-      throw new Error('invalid protocol');
-    }
-  } catch {
+  if (!isHttpUrl(url)) {
     throw new Error('无效的网址，请输入以 http:// 或 https:// 开头的链接');
   }
-}
-
-/**
- * Defensive JSON extractor: pull the first `{ ... }` object out of an AI
- * response that may be wrapped in prose or code fences. Shared by the
- * card-metadata and infographic agent calls so the same extraction
- * discipline applies to both.
- *
- * Returns the raw JSON string slice, or null if no object-shaped substring is
- * found. Callers `JSON.parse` the result and handle parse errors themselves.
- */
-function extractJsonObject(aiText: string): string | null {
-  const match = aiText.match(/\{[\s\S]*\}/);
-  return match ? match[0] : null;
 }
 
 /**
@@ -114,8 +96,7 @@ export async function generateClip(
   // clips agent cwd = `<vault>/__clips__/`：agent 自动发现 `.claude/agents/clips.md`。
   const workingDir = `${basePath.replace(/\/+$/, '')}/__clips__`;
 
-  const registry = CliAdapterRegistry.getInstance();
-  const adapter = registry.create(settings.cliAdapter);
+  const adapter = createAdapter(settings.cliAdapter);
 
   let card: ClipCard;
   let infographic: InfographicDoc | null = null;

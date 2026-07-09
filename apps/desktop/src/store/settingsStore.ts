@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { storageClient } from '@/utils/storageClient';
+import { debounce } from '@/utils/debounce';
 import { DEFAULT_BOARD_COLUMNS, COLUMN_COLOR_PALETTE, type BoardColumnDef } from '@/features/schedule/types';
 import { PET_SIZE_VERSION, PET_SIZE_DEFAULT, type PetSize } from '@/components/pet/petPosition';
 
@@ -221,40 +222,37 @@ export function backfillBuiltinExcludePatterns(raw: string): string {
   return [...existing, ...missing].join('\n');
 }
 
-/** Debounced persist to avoid excessive API calls */
-let persistTimer: ReturnType<typeof setTimeout> | null = null;
-function debouncedPersist(state: Partial<SettingsState>) {
-  if (persistTimer) clearTimeout(persistTimer);
-  persistTimer = setTimeout(() => {
-    // Extract only serializable settings (exclude functions and runtime state)
-    const { theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles,
-      enableWikiPanel, enableClipsPanel, enableAnalyzePanel, enableDailyPanel,
-      excludePatterns,
-      editorFont, editorFontSize, tabSize, wrapColumn, showLineNumbers,
-      syntaxHighlight, autoSave, spellCheck, linkOpenMode, vaultPath, imagePath, docExtension,
-      watchFileChanges, trashOnDelete, syncMethod, syncEndpoint, syncAccessKey,
-      syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
-      vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates, boardColumns,
-      petModeEnabled, petPositionX, petPositionY,
-      petPanelX, petPanelY, petPanelWidth, petPanelHeight,
-      petPanelSizeVersion, petPosVersion,
-      petIconSource, petIconPath, petSizeVersion, petSize } = state as SettingsState;
-    storageClient.set(SETTINGS_STORAGE_KEY, {
-      theme, fontSize, lineHeight, showAiPanel, showStatusBar, showHiddenFiles,
-      enableWikiPanel, enableClipsPanel, enableAnalyzePanel, enableDailyPanel,
-      excludePatterns,
-      editorFont, editorFontSize, tabSize, wrapColumn, showLineNumbers,
-      syntaxHighlight, autoSave, spellCheck, linkOpenMode, vaultPath, imagePath, docExtension,
-      watchFileChanges, trashOnDelete, syncMethod, syncEndpoint, syncAccessKey,
-      syncSecretKey, syncBucket, autoSync, e2eEncrypt, cliAdapter, cliPath,
-      vaultName, shortcuts, dailyNotesDir, dailyNoteDateFormat, fileTemplates, boardColumns,
-      petModeEnabled, petPositionX, petPositionY,
-      petPanelX, petPanelY, petPanelWidth, petPanelHeight,
-      petPanelSizeVersion, petPosVersion,
-      petIconSource, petIconPath, petSizeVersion, petSize,
-    });
-  }, 300);
+/** Fields persisted to storageClient. Must stay an explicit allowlist —
+ *  SettingsState carries runtime-only fields (e.g. currentPage, settingsTab,
+ *  sync status) that must NOT be persisted. */
+const PERSIST_KEYS = [
+  'theme', 'fontSize', 'lineHeight', 'showAiPanel', 'showStatusBar', 'showHiddenFiles',
+  'enableWikiPanel', 'enableClipsPanel', 'enableAnalyzePanel', 'enableDailyPanel',
+  'excludePatterns',
+  'editorFont', 'editorFontSize', 'tabSize', 'wrapColumn', 'showLineNumbers',
+  'syntaxHighlight', 'autoSave', 'spellCheck', 'linkOpenMode', 'vaultPath', 'imagePath', 'docExtension',
+  'watchFileChanges', 'trashOnDelete', 'syncMethod', 'syncEndpoint', 'syncAccessKey',
+  'syncSecretKey', 'syncBucket', 'autoSync', 'e2eEncrypt', 'cliAdapter', 'cliPath',
+  'vaultName', 'shortcuts', 'dailyNotesDir', 'dailyNoteDateFormat', 'fileTemplates', 'boardColumns',
+  'petModeEnabled', 'petPositionX', 'petPositionY',
+  'petPanelX', 'petPanelY', 'petPanelWidth', 'petPanelHeight',
+  'petPanelSizeVersion', 'petPosVersion',
+  'petIconSource', 'petIconPath', 'petSizeVersion', 'petSize',
+] as const;
+
+/** Pick only PERSIST_KEYS from state (drops functions + runtime fields). */
+function pickPersisted(state: Partial<SettingsState>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of PERSIST_KEYS) {
+    if (key in state) out[key] = state[key as keyof SettingsState];
+  }
+  return out;
 }
+
+/** Debounced persist to avoid excessive API calls */
+const debouncedPersist = debounce((state: Partial<SettingsState>) => {
+  storageClient.set(SETTINGS_STORAGE_KEY, pickPersisted(state));
+}, 300);
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   theme: 'light',

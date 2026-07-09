@@ -409,9 +409,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::open_file,
             commands::save_file,
-            commands::select_directory,
             commands::check_url,
-            commands::fetch_url_content,
             commands::create_webview,
             commands::navigate_webview,
             commands::close_webview,

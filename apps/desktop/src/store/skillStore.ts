@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { storageClient } from '@/utils/storageClient';
+import { debounce } from '@/utils/debounce';
 import type { Skill, SkillCapability } from '@/types/skill';
 import { builtinSkills } from '@/services/skillDefaults';
 
@@ -28,21 +29,15 @@ interface SkillState {
 }
 
 /** Debounced persist — same pattern as settingsStore. */
-let skillsPersistTimer: ReturnType<typeof setTimeout> | null = null;
-function debouncedPersistSkills(skills: Record<string, Skill>) {
-  if (skillsPersistTimer) clearTimeout(skillsPersistTimer);
-  skillsPersistTimer = setTimeout(() => {
-    storageClient.set(SKILLS_STORAGE_KEY, skills);
-  }, 300);
-}
+const debouncedPersistSkills = debounce(
+  (skills: Record<string, Skill>) => storageClient.set(SKILLS_STORAGE_KEY, skills),
+  300,
+);
 
-let capsPersistTimer: ReturnType<typeof setTimeout> | null = null;
-function debouncedPersistCapabilities(capabilitySkills: Record<SkillCapability, string>) {
-  if (capsPersistTimer) clearTimeout(capsPersistTimer);
-  capsPersistTimer = setTimeout(() => {
-    storageClient.set(CAPABILITIES_STORAGE_KEY, capabilitySkills);
-  }, 300);
-}
+const debouncedPersistCapabilities = debounce(
+  (capabilitySkills: Record<SkillCapability, string>) => storageClient.set(CAPABILITIES_STORAGE_KEY, capabilitySkills),
+  300,
+);
 
 export const useSkillStore = create<SkillState>((set, get) => ({
   skills: {},

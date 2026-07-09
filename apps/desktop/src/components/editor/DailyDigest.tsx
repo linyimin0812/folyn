@@ -67,9 +67,9 @@ export function DailyDigest({ currentFilePath, onInsertContent }: DailyDigestPro
 
       setModifiedFiles(modified);
 
-      const { CliAdapterRegistry } = await import('@quill/cli-adapter');
+      const { createAdapter } = await import('@quill/cli-adapter');
       const settings = useSettingsStore.getState();
-      const adapter = CliAdapterRegistry.getInstance().create(settings.cliAdapter);
+      const adapter = createAdapter(settings.cliAdapter);
       const vault = useVaultStore.getState().currentVault;
       let workingDir = vault?.basePath ?? '';
       if (workingDir.startsWith('~')) {

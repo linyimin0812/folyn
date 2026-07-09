@@ -24,6 +24,20 @@ export function flattenFileTree(entries: VaultEntry[]): { path: string; name: st
   return result;
 }
 
+/** Recursively collect all file entries matching a given extension (e.g. '.md'). */
+export function flattenFilesByExt(entries: VaultEntry[], ext: string): { path: string; name: string }[] {
+  const result: { path: string; name: string }[] = [];
+  for (const entry of entries) {
+    if (entry.type === 'file' && entry.name.endsWith(ext)) {
+      result.push({ path: entry.path, name: entry.name });
+    }
+    if (entry.type === 'dir' && entry.children) {
+      result.push(...flattenFilesByExt(entry.children, ext));
+    }
+  }
+  return result;
+}
+
 export function collectAllDirPaths(entries: VaultEntry[]): string[] {
   const paths: string[] = [];
   const walk = (items: VaultEntry[]) => {

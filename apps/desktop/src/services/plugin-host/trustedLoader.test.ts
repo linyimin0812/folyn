@@ -16,9 +16,6 @@ import {
   sha256Hex,
 } from './trustedLoader';
 import type { PluginModule } from './contributionAdapters';
-import {
-  clearPluginFeaturePanels,
-} from './contributionAdapters';
 import { getCommands, getCommand, clearCommands } from '@/services/commandRegistry';
 import { getAllHandlers, getHandlerByExtension } from '@/components/file-types/registry';
 import { HandlerRegistry } from '@/components/file-types/HandlerRegistry';
@@ -59,7 +56,6 @@ const PLUGIN_CODE = `
 export const handlers = { 'default': { id: 'x', extensions: ['.x'], supportedViewModes: ['edit'], needsFileContent: true, useCodeMirror: true } };
 export const containers = { 'my-block': (props) => null };
 export const commands = { 'greet': () => {} };
-export const features = { 'my-panel': () => null };
 export function activate() {}
 export function deactivate() {}
 `;
@@ -77,7 +73,6 @@ function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
       containers: [
         { name: 'my-block', icon: '📦', label: 'My Block', category: 'custom', component: 'my-block', template: ':::my-block\n:::' },
       ],
-      features: [{ id: 'my-panel', panel: 'right', component: 'my-panel' }],
     },
     ...overrides,
   };
@@ -97,7 +92,6 @@ function fakeModule(overrides: Partial<PluginModule> = {}): PluginModule {
     },
     containers: { 'my-block': (() => null) as never },
     commands: { greet: vi.fn(async () => {}) },
-    features: { 'my-panel': (() => null) as never },
     activate: vi.fn(),
     deactivate: vi.fn(),
     ...overrides,
@@ -120,7 +114,6 @@ let originalRegistry: HandlerRegistry | null = null;
 beforeEach(() => {
   vi.clearAllMocks();
   clearCommands();
-  clearPluginFeaturePanels();
   // Clear container registry for isolation.
   const cr = ContainerRegistry.getInstance();
   for (const p of cr.getAll()) cr.unregister(p.name);
@@ -130,7 +123,6 @@ beforeEach(() => {
 afterEach(() => {
   setModuleResolver((url) => import(/* @vite-ignore */ url) as Promise<Record<string, unknown>>);
   clearCommands();
-  clearPluginFeaturePanels();
   const cr = ContainerRegistry.getInstance();
   for (const p of cr.getAll()) cr.unregister(p.name);
   resetFileRegistry();
@@ -237,7 +229,7 @@ describe('trustedLoader / TOFU gate', () => {
 });
 
 describe('trustedLoader / contribution adapters', () => {
-  it('registers commands, file-types, containers, and features on activate', async () => {
+  it('registers commands, file-types, and containers on activate', async () => {
     await setupInvoke({ trusted: true });
     const mod = fakeModule();
     setModuleResolver(async () => mod as unknown as Record<string, unknown>);
@@ -258,11 +250,6 @@ describe('trustedLoader / contribution adapters', () => {
     // Container registered
     const cr = ContainerRegistry.getInstance();
     expect(cr.get('my-block')).toBeDefined();
-
-    // Feature panel registered
-    const { getPluginFeaturePanels } = await import('./contributionAdapters');
-    expect(getPluginFeaturePanels()).toHaveLength(1);
-    expect(getPluginFeaturePanels()[0].contribution.id).toBe('my-panel');
   });
 
   it('disposes all contributions on deactivate', async () => {
@@ -282,9 +269,6 @@ describe('trustedLoader / contribution adapters', () => {
     expect(getHandlerByExtension('.x')).toBeUndefined();
     // Container removed
     expect(ContainerRegistry.getInstance().get('my-block')).toBeUndefined();
-    // Feature panel removed
-    const { getPluginFeaturePanels } = await import('./contributionAdapters');
-    expect(getPluginFeaturePanels()).toHaveLength(0);
   });
 
   it('calls plugin activate/deactivate hooks', async () => {

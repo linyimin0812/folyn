@@ -532,13 +532,5 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   },
 }));
 
-// 让刷新逻辑在 fileTree 变化时被外部订阅触发（见 ScheduleWorkbenchPage）。
-export function subscribeToFileTree(cb: () => void): () => void {
-  let prev = useVaultStore.getState().fileTree;
-  return useVaultStore.subscribe((state) => {
-    if (state.fileTree !== prev) {
-      prev = state.fileTree;
-      cb();
-    }
-  });
-}
+// subscribeToFileTree lives in vaultStore now (shared with studyStore).
+export { subscribeToFileTree } from './vaultStore';

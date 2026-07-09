@@ -51,7 +51,7 @@ function seedSession(overrides: Partial<AiSession> = {}): AiSession {
 }
 
 beforeEach(() => {
-  useAiStore.setState({ sessions: [], activeSessionId: null, studySessionId: null, isStreaming: false, chatMode: 'chat', inputMode: 'agent', pendingFileAttachments: [] });
+  useAiStore.setState({ sessions: [], activeSessionId: null, studySessionId: null, chatMode: 'chat', inputMode: 'agent', pendingFileAttachments: [] });
   useVaultStore.setState({ activeVaultId: null, currentVault: null } as never);
   vi.clearAllMocks();
 });
@@ -243,17 +243,6 @@ describe('useAiStore streaming + cli session + chat mode', () => {
     seedSession();
     useAiStore.getState().setSessionStreaming('s1', true);
     expect(useAiStore.getState().sessions[0].isStreaming).toBe(true);
-  });
-
-  it('setStreaming delegates to the active session', () => {
-    seedSession();
-    useAiStore.getState().setStreaming(true);
-    expect(useAiStore.getState().sessions[0].isStreaming).toBe(true);
-  });
-
-  it('setStreaming is a no-op without an active session', () => {
-    useAiStore.getState().setStreaming(true);
-    expect(useAiStore.getState().sessions).toEqual([]);
   });
 
   it('setCliSessionId records the CLI session id', () => {

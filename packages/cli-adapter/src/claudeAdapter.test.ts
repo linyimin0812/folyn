@@ -1,53 +1,21 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { CliAdapterRegistry, registerBuiltinAdapters } from './registry';
+import { createAdapter, listAdapters } from './registry';
 import { ClaudeAdapter, buildClaudeArgs, buildClaudeShellCommand, quoteShellArg } from './claudeAdapter';
 
-describe('CliAdapterRegistry singleton', () => {
-  it('returns the same instance across calls', () => {
-    const a = CliAdapterRegistry.getInstance();
-    const b = CliAdapterRegistry.getInstance();
-    expect(a).toBe(b);
-  });
-});
-
-describe('CliAdapterRegistry.register / create', () => {
-  let registry: CliAdapterRegistry;
-
-  beforeEach(() => {
-    // Use a fresh instance by calling getInstance (singleton state persists
-    // across tests; we register under unique ids to avoid collisions).
-    registry = CliAdapterRegistry.getInstance();
+describe('cli-adapter registry module functions', () => {
+  it('listAdapters includes the "claude" adapter with display metadata', () => {
+    const claude = listAdapters().find((a) => a.id === 'claude');
+    expect(claude).toBeDefined();
+    expect(claude?.displayName).toBe('Claude Code');
+    expect(claude?.description).toContain('Anthropic');
   });
 
-  it('creates an adapter from a registered factory', () => {
-    registry.register('test-factory', () => new ClaudeAdapter());
-    const adapter = registry.create('test-factory');
-    expect(adapter.id).toBe('claude');
+  it('createAdapter returns a ClaudeAdapter for "claude"', () => {
+    expect(createAdapter('claude')).toBeInstanceOf(ClaudeAdapter);
   });
 
-  it('throws when creating an unregistered id', () => {
-    expect(() => registry.create('does-not-exist')).toThrow(/not found/i);
-  });
-});
-
-describe('CliAdapterRegistry.getAll', () => {
-  it('returns id, displayName, description for each registered adapter', () => {
-    const registry = CliAdapterRegistry.getInstance();
-    registry.register('desc-test', () => new ClaudeAdapter());
-    const all = registry.getAll();
-    const entry = all.find((x) => x.id === 'desc-test');
-    expect(entry).toBeDefined();
-    expect(entry?.displayName).toBe('Claude Code');
-    expect(entry?.description).toContain('Anthropic');
-  });
-});
-
-describe('registerBuiltinAdapters', () => {
-  it('registers the "claude" adapter', () => {
-    registerBuiltinAdapters();
-    const registry = CliAdapterRegistry.getInstance();
-    const adapter = registry.create('claude');
-    expect(adapter).toBeInstanceOf(ClaudeAdapter);
+  it('createAdapter throws for an unknown id', () => {
+    expect(() => createAdapter('does-not-exist')).toThrow(/not found/i);
   });
 });
 
