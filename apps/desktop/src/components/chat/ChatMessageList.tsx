@@ -240,7 +240,7 @@ export function ChatMessageList({
   const showListDots = streaming && streamingIndicator === 'dots';
 
   return (
-    <div className={`flex flex-col gap-2 flex-1 ${className ?? ''}`} role="log" aria-live="polite">
+    <div className={`flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto chat-msg-scroll ${className ?? ''}`} role="log" aria-live="polite">
       {messages.length === 0 && (emptyState ?? DEFAULT_EMPTY_HINT)}
 
       {messages.map((msg, idx) => {

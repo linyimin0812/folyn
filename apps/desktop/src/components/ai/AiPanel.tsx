@@ -465,14 +465,13 @@ export function AiPanel() {
         }} />
       )}
 
-      <div className="ai-body flex-1 overflow-y-auto p-3 flex flex-col gap-3">
-        <ChatMessageList
-          messages={messages}
-          streaming={isStreaming}
-          streamingIndicator="dots"
-          onSaveToWiki={chatMode === 'wiki' ? (msg: CliMessage) => handleSaveToWiki(msg.content) : undefined}
-        />
-      </div>
+      <ChatMessageList
+        messages={messages}
+        streaming={isStreaming}
+        streamingIndicator="dots"
+        onSaveToWiki={chatMode === 'wiki' ? (msg: CliMessage) => handleSaveToWiki(msg.content) : undefined}
+        className="p-3 gap-3"
+      />
 
       {chatMode === 'wiki' && <WikiActivityLog />}
       {chatMode === 'wiki' && <ReviewItemList />}

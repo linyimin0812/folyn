@@ -126,12 +126,12 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .prev-body::-webkit-scrollbar-thumb { background: var(--t4); border-radius: 3px; }
 .prev-body::-webkit-scrollbar-track { background: transparent; }
 
-.ai-body { scrollbar-width: none; }
-.ai-body:hover { scrollbar-width: thin; }
-.ai-body::-webkit-scrollbar { width: 0; }
-.ai-body:hover::-webkit-scrollbar { width: 6px; }
-.ai-body::-webkit-scrollbar-thumb { background: var(--t4); border-radius: 3px; }
-.ai-body::-webkit-scrollbar-track { background: transparent; }
+.chat-msg-scroll { scrollbar-width: none; }
+.chat-msg-scroll:hover { scrollbar-width: thin; }
+.chat-msg-scroll::-webkit-scrollbar { width: 0; }
+.chat-msg-scroll:hover::-webkit-scrollbar { width: 6px; }
+.chat-msg-scroll::-webkit-scrollbar-thumb { background: var(--t4); border-radius: 3px; }
+.chat-msg-scroll::-webkit-scrollbar-track { background: transparent; }
 
 /* ── Keyframes (consolidated) ── */
 @keyframes spin { to { transform: rotate(360deg); } }
