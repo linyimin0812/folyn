@@ -93,6 +93,48 @@ const activeTab = useEditorStore((state) => {
 });
 ```
 
+### Selector return values MUST be referentially stable
+
+Zustand 5 selects via React 18's `useSyncExternalStore`. On every render, React
+calls the selector and compares the result with `Object.is`. If the selector
+returns a **new** reference each call (an inline `[]` / `{}` / `.map(...)` /
+`.filter(...)` result), React treats it as a store change → re-render → calls
+the selector again → another new reference → **infinite loop**, throwing
+`Maximum update depth exceeded` and unmounting the component subtree (the panel
+goes blank, with no error boundary to catch it).
+
+The `find(...)` example above is safe: it returns either the found object
+(stable ref) or `undefined` (a stable primitive). The danger is only with
+**freshly-constructed** return values on a path that fires every render.
+
+```tsx
+// ❌ Bad — `?? []` mints a new array on every call when the session is absent
+const messages = usePetChatStore(
+  (s) => s.sessions.find((sess) => sess.id === s.activeSessionId)?.messages ?? [],
+);
+
+// ✅ Good — return a module-level constant on the not-found path
+const EMPTY_MESSAGES: PetChatMessage[] = [];
+const messages = usePetChatStore(
+  (s) => s.sessions.find((sess) => sess.id === s.activeSessionId)?.messages ?? EMPTY_MESSAGES,
+);
+```
+
+Rules:
+- A selector may return a freshly-derived array/object **only if** the
+  not-found / empty path returns a stable constant (or `undefined`/`null`).
+- For `.map`/`.filter`/`.sort` results, prefer `useShallow` (zustand's
+  shallow-equality selector) or compute outside the selector by selecting the
+  stable source array first:
+  ```tsx
+  const sessions = usePetChatStore((s) => s.sessions);        // stable ref
+  const active = sessions.find((s) => s.id === activeId);     // derive in render body
+  ```
+- This bites hardest on the **initial empty state** (e.g. before an async
+  `rehydrate()` resolves, `sessions: []`) — a path tests often miss because
+  they seed the store before rendering. Add a test that renders the initial
+  empty state directly.
+
 ---
 
 ## Out-of-React Access
@@ -158,6 +200,7 @@ Helper files import from the store but are not stores themselves.
 ## Common Mistakes
 
 - Default store subscriptions (`useStore()` with no selector) — causes full re-renders on every state change
+- Selectors returning a freshly-constructed `[]`/`{}`/`.map()`/`.filter()` on the empty path — `useSyncExternalStore` infinite loop, panel goes blank (see "Selector return values MUST be referentially stable" above)
 - Calling hooks in `useEffect` callbacks — use `getState()` instead
 - Mixing async business logic directly in components — extract to store actions or services
 - Forgetting to clean up watchers/listeners when a store-driven effect unmounts

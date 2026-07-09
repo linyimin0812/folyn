@@ -3,6 +3,7 @@ import type { CliMessage } from '@quill/cli-adapter';
 import { isTauri } from '@/utils/platform';
 import { useSettingsStore } from '@/store/settingsStore';
 import { usePetChatStore } from '@/store/petChatStore';
+import type { PetChatMessage } from '@/store/petChatStore';
 import { sendPetChatMessage, stopPetChat, resetPetChatAdapter } from '@/services/petChatService';
 import { ChatMessageList, ChatInputBox } from '@/components/chat';
 import { PetChatSessionHeader } from './PetChatSessionHeader';
@@ -59,6 +60,17 @@ export function isPetChatConfigured(): boolean {
   return Boolean(cliAdapter && cliPath);
 }
 
+/** Stable empty reference for the messages selector. When the active
+ *  session isn't found (initial `sessions: []` state before rehydrate, or a
+ *  stale activeSessionId), returning an inline `[]` here would create a NEW
+ *  array reference on every selector call. Zustand v5 uses
+ *  `useSyncExternalStore`, and React 18 treats a changing snapshot as a
+ *  store mutation → re-render → new snapshot → infinite loop →
+ *  "Maximum update depth exceeded" → the component tree crashes and the
+ *  panel renders blank. Returning this constant keeps the not-found path
+ *  referentially stable. */
+const EMPTY_MESSAGES: PetChatMessage[] = [];
+
 /** Map the pet store's flat message shape to the shared `CliMessage`
  *  supertype at the prop boundary. `petChatStore` keeps its own
  *  `{id, role, content, ts}` type (unchanged); thinking / toolCalls /
@@ -81,7 +93,7 @@ export function PetChat() {
   // header owns session switching and stop-while-streaming, this component
   // only renders the active session's linear history + the input box.
   const messages = usePetChatStore(
-    (s) => s.sessions.find((sess) => sess.id === s.activeSessionId)?.messages ?? [],
+    (s) => s.sessions.find((sess) => sess.id === s.activeSessionId)?.messages ?? EMPTY_MESSAGES,
   );
   const streaming = usePetChatStore((s) => s.streaming);
   const addMessage = usePetChatStore((s) => s.addMessage);

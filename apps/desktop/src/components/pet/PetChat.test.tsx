@@ -184,6 +184,26 @@ describe('PetChat', () => {
     expect(screen.getByText('向 AI 提问，回答会在此处流式显示。')).toBeTruthy();
   });
 
+  // Regression: the real pet-panel window first renders with the store's
+  // INITIAL state (sessions: [], activeSessionId: null) because `rehydrate()`
+  // is async and hasn't resolved yet. The messages selector
+  // `s.sessions.find(...)?.messages ?? []` returned an inline `[]` on that
+  // path — a NEW reference per selector call. Zustand v5 uses
+  // `useSyncExternalStore`, so React 18 treated each new reference as a store
+  // change → re-render → new reference → infinite loop →
+  // "Maximum update depth exceeded" → the component tree crashed → the panel
+  // showed blank. This test renders the initial empty state directly (the
+  // beforeEach seed is overwritten) and asserts it renders without crashing.
+  it('renders the empty hint without crashing in the initial empty-sessions state (selector referential stability)', () => {
+    usePetChatStore.setState({ sessions: [], activeSessionId: null, streaming: false });
+    render(<PetChat />);
+    // Header falls back to '新对话' (active session is undefined).
+    expect(screen.getByLabelText('切换会话').textContent).toContain('新对话');
+    // Empty-state hint renders — no infinite loop, no crash.
+    expect(screen.getByText('向 AI 提问，回答会在此处流式显示。')).toBeTruthy();
+    expect(screen.getByLabelText('Pet chat input')).toBeTruthy();
+  });
+
   it('renders the active session messages on mount', () => {
     usePetChatStore.setState({
       sessions: [
