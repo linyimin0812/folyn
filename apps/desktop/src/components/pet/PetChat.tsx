@@ -391,6 +391,7 @@ export function PetChat() {
         showCopy
         streamingIndicator="dots"
         onClear={clear}
+        className="pt-2"
         emptyState={
           <div className="text-[12px] text-t3 text-center px-1 py-3">
             向 AI 提问，回答会在此处流式显示。

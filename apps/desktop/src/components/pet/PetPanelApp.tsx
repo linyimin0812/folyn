@@ -317,8 +317,9 @@ export function PetPanelApp() {
     }
   }, []);
 
-  const handleClosePointerDown = useCallback((e: React.PointerEvent) => {
-    // Prevent the header drag handler from firing on the close button.
+  const suppressDrag = useCallback((e: React.PointerEvent) => {
+    // Prevent the header drag handler from firing on interactive children
+    // (close button, tabs). Same stopPropagation for both.
     e.stopPropagation();
   }, []);
 
@@ -329,37 +330,41 @@ export function PetPanelApp() {
         onPointerDown={headerPointerDown}
         role="banner"
       >
-        <span className="pet-panel-title">Quick Actions</span>
+        <nav
+          className="pet-panel-tabs"
+          role="tablist"
+          aria-label="Pet panel sections"
+          onPointerDown={suppressDrag}
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'chat'}
+            className={`pet-panel-tab${tab === 'chat' ? ' is-active' : ''}`}
+            onClick={() => setTab('chat')}
+          >
+            Chat
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'actions'}
+            className={`pet-panel-tab${tab === 'actions' ? ' is-active' : ''}`}
+            onClick={() => setTab('actions')}
+          >
+            Actions
+          </button>
+        </nav>
         <button
           type="button"
           className="pet-panel-close"
           aria-label="Close pet panel"
           onClick={() => void hidePanel()}
-          onPointerDown={handleClosePointerDown}
+          onPointerDown={suppressDrag}
         >
           ×
         </button>
       </header>
-      <nav className="pet-panel-tabs" role="tablist" aria-label="Pet panel sections">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'chat'}
-          className={`pet-panel-tab${tab === 'chat' ? ' is-active' : ''}`}
-          onClick={() => setTab('chat')}
-        >
-          Chat
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'actions'}
-          className={`pet-panel-tab${tab === 'actions' ? ' is-active' : ''}`}
-          onClick={() => setTab('actions')}
-        >
-          Actions
-        </button>
-      </nav>
       <main className="pet-panel-body">
         {tab === 'chat' ? <PetChat /> : <PetLauncher />}
       </main>

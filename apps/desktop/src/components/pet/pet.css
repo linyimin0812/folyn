@@ -229,10 +229,13 @@ html.is-pet-panel-window body {
   cursor: grabbing;
 }
 
-.pet-panel-title {
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--t1, #1f2330);
+.pet-panel-tabs {
+  /* Tabs live inside the header (left of the close button); the header
+   * provides padding, background, and the bottom border, so the nav itself
+   * is just a flex row for the tab buttons. */
+  display: flex;
+  align-items: stretch;
+  gap: 0;
 }
 
 .pet-panel-close {
@@ -254,16 +257,6 @@ html.is-pet-panel-window body {
 .pet-panel-close:hover {
   background: var(--hov, #eef0f5);
   color: var(--t1, #1f2330);
-}
-
-.pet-panel-tabs {
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-  padding: 0 8px;
-  border-bottom: 1px solid var(--brd, #e2e5ee);
-  background: var(--panel, #ffffff);
-  flex-shrink: 0;
 }
 
 .pet-panel-tab {
