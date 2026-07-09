@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 50
+- **Total Sessions**: 51
 - **Last Active**: 2026-07-09
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1678 | Active |
+| `journal-1.md` | ~1749 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 51 | 2026-07-09 | 桌宠 chat 与 AI panel 共用 UI + 多 session + 文件上传 + markdown 对齐 | `a60c5ae`, `ff8ebe8`, `4f39f89`, `742e5ce` | `master` |
 | 50 | 2026-07-09 | 桌宠右键菜单：隐藏图标 + 大小调整 | `c46b62b` | `worktree-desktop-pet-right-click-menu` |
 | 49 | 2026-07-08 | sandbox http:fetch 走 Rust reqwest 命令 | `11d865d` | `master` |
 | 48 | 2026-07-08 | 微内核+插件化架构：双层 plugin host 全量落地 | `138deda` | `master` |

@@ -1710,3 +1710,40 @@ follow-up of 微内核插件架构。rpcBridge http:fetch 从 host webview fetch
 ### Next Steps
 
 - None - task complete
+
+
+## Session 51: 桌宠 chat 与 AI panel 共用 UI + 多 session + 文件上传 + markdown 对齐
+
+**Date**: 2026-07-09
+**Task**: 桌宠 chat 与 AI panel 共用 UI + 多 session + 文件上传 + markdown 对齐
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+三任务连做：(1) 抽取 components/chat/ 共用 chat UI（ChatMessageList/MessageContent+plaintext/插槽式 ChatInputBox），AiPanel 与 PetChat 共用，统一 Tailwind、删 .pet-chat-* BEM、两端 user 气泡标签统一「我」；(2) PetChat 多 session——petChatStore sessions[]+activeSessionId+per-session cliSessionId（含旧 pet-chat:messages 迁移）、petChatService per-session adapter Map（本地、不 import ai/adapterManager）+ resumeSessionId + 接管 session_id 事件（按 send 闭包归属防切走竞态）、PetChatSessionHeader 下拉（新建/切换/重命名/二次确认删除/上限 50）；修复桌宠面板空白（zustand v5 selector 返回内联 [] 触发 useSyncExternalStore 无限循环）；(3) PetChat 文件上传——抽取 vault-free components/chat/attachments.ts helper（PendingAttachment/addFiles/handlePaste/saveBlobs(fs+shell)/buildReadInstructions/validateFile/revokeUrls）AiPanel 与 PetChat 共用、@mention 留 AiPanel wrapper，落盘 <appData>/pet-chat-tmp/attachments/、Read 指令拼进 CLI prompt（可见气泡存原始文本）、10MB+白名单护栏；AiPanel 重构到 helper（shell 策略保持字节级一致）顺带获得护栏；PetChat 去 plaintext + streamingIndicator 改 dots 实现 markdown 渲染与 AiPanel 完全一致。Spec 沉淀：directory-structure(chat/ 目录)、component-guidelines(插槽式共用展示组件+副窗口 store 隔离约定+vault-free helper 抽取模式)、tauri-window-patterns(副窗口 per-session adapter 本地化+session_id 防竞态)、state-management(selector 引用稳定性)。214 测试全绿、typecheck 通过。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a60c5ae` | (see git log) |
+| `ff8ebe8` | (see git log) |
+| `4f39f89` | (see git log) |
+| `742e5ce` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
