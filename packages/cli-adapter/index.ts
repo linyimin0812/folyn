@@ -13,6 +13,5 @@ export type {
   ToolCallInfo,
 } from './src/types';
 
-export { BaseCliAdapter } from './src/baseAdapter';
 export { ClaudeAdapter } from './src/claudeAdapter';
-export { CliAdapterRegistry, registerBuiltinAdapters } from './src/registry';
+export { createAdapter, listAdapters } from './src/registry';

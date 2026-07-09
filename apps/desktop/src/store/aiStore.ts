@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CliMessage, FileChange, ToolCallInfo, MessageAttachment } from '@quill/cli-adapter';
+import type { CliMessage, FileChange, MessageAttachment } from '@quill/cli-adapter';
 import { useVaultStore } from './vaultStore';
 import { useEditorStore } from './editorStore';
 import { sessionStorage } from '@/utils/sessionStorage';
@@ -9,8 +9,6 @@ import { applyAcceptChange, applyRejectChange } from './aiFileChangeActions';
 import { persistAiState, saveAllSessions, loadSessionsFromDisk, setSuppressPersist, setupPersistSubscription } from './aiSessionPersistence';
 
 export { loadAiSessionsForVault } from './aiSessionPersistence';
-
-export type { CliMessage, FileChange, ToolCallInfo, MessageAttachment };
 
 export type AiChatMode = 'chat' | 'wiki' | 'clip';
 
@@ -61,11 +59,6 @@ interface AiState {
   setCliSessionId: (sessionId: string, targetSessionId?: string) => void;
   clearMessages: () => void;
 
-  /** @deprecated use setSessionStreaming */
-  setStreaming: (streaming: boolean) => void;
-  /** Check if the active session is streaming */
-  isStreaming: boolean;
-
   chatMode: AiChatMode;
   setChatMode: (mode: AiChatMode) => void;
 
@@ -108,7 +101,6 @@ export const useAiStore = create<AiState>((set, get) => ({
   sessions: [],
   activeSessionId: null,
   studySessionId: null,
-  isStreaming: false,
 
   getActiveSession: () => {
     const { sessions, activeSessionId } = get();
@@ -332,12 +324,6 @@ export const useAiStore = create<AiState>((set, get) => ({
         isStreaming: streaming,
       })),
     }));
-  },
-
-  setStreaming: (streaming) => {
-    const { activeSessionId } = get();
-    if (!activeSessionId) return;
-    get().setSessionStreaming(activeSessionId, streaming);
   },
 
   setCliSessionId: (cliId, targetSessionId?) => {

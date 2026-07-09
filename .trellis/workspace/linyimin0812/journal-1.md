@@ -1711,7 +1711,6 @@ follow-up of 微内核插件架构。rpcBridge http:fetch 从 host webview fetch
 
 - None - task complete
 
-
 ## Session 51: 桌宠 chat 与 AI panel 共用 UI + 多 session + 文件上传 + markdown 对齐
 
 **Date**: 2026-07-09
@@ -1735,6 +1734,39 @@ follow-up of 微内核插件架构。rpcBridge http:fetch 从 host webview fetch
 | `ff8ebe8` | (see git log) |
 | `4f39f89` | (see git log) |
 | `742e5ce` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+## Session 52: Ponytail repo-wide audit: apply findings 1-27
+
+**Date**: 2026-07-09
+**Task**: Ponytail repo-wide audit: apply findings 1-27
+**Package**: api
+**Branch**: `eager-harbor`
+
+### Summary
+
+Ran ponytail-audit over the whole project (27 findings). Applied 1-12 (dead code + YAGNI), 13-18 (dedup/stdlib), 19-27 (shrink/dedup) via trellis-implement sub-agents. Skipped 4 findings with real dependencies: HandlerRegistry.clear (test-setup caller), idGenerator->crypto.randomUUID (id-format test assertion), searchStore toggle wrappers (test-asserted actions), bridge generic (newItemBridge/planMyDayBridge payloads differ). Net: ~940 lines deleted, 6 files deleted, no behavior change, no dep changes. Verified tsc clean + desktop suite 1129 passed (2 pre-existing failures unchanged). One cleanup commit 1fa4b6a.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1fa4b6a` | (see git log) |
 
 ### Testing
 

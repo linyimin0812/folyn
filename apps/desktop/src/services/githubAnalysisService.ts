@@ -1,4 +1,4 @@
-import { CliAdapterRegistry } from '@quill/cli-adapter';
+import { createAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -119,8 +119,7 @@ export async function generateReport(
   // analyze agent cwd = `<vault>/__analyze__/`：agent 自动发现 `.claude/agents/analyze.md`。
   const workingDir = `${basePath.replace(/\/+$/, '')}/__analyze__`;
 
-  const registry = CliAdapterRegistry.getInstance();
-  const adapter = registry.create(settings.cliAdapter);
+  const adapter = createAdapter(settings.cliAdapter);
   await adapter.start({ cliPath: settings.cliPath, workingDir });
 
   let aiResponse: string;

@@ -17,6 +17,7 @@
 
 import type { VaultEntry } from '@quill/vault-provider';
 import { useEditorStore } from '@/store/editorStore';
+import { flattenFileTree } from '@/utils/treeUtils';
 import type { Command } from './commandRegistry';
 
 export interface FlatFile {
@@ -24,22 +25,11 @@ export interface FlatFile {
   name: string;
 }
 
-/** Recursively flatten a `VaultEntry` tree to `.md` file paths. */
+/** Recursively flatten a `VaultEntry` tree to `.md` file paths, sorted by path. */
 export function flattenMarkdownFiles(entries: VaultEntry[]): FlatFile[] {
-  const files: FlatFile[] = [];
-  const walk = (items: VaultEntry[]): void => {
-    for (const entry of items) {
-      if (entry.type === 'file' && entry.name.endsWith('.md')) {
-        files.push({ path: entry.path, name: entry.name });
-      } else if (entry.type === 'dir' && entry.children) {
-        walk(entry.children);
-      }
-    }
-  };
-  walk(entries);
-  // Sort by path so the empty-query "All Files" group has a stable order.
-  files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
-  return files;
+  return flattenFileTree(entries)
+    .filter((f) => f.name.endsWith('.md'))
+    .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
 
 let cachedTree: VaultEntry[] | null = null;

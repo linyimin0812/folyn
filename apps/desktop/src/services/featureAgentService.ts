@@ -20,6 +20,7 @@ import scheduleAgentDoc from '@/features/schedule/.claude/agents/schedule.md?raw
 import scheduleClaudeDoc from '@/features/schedule/.claude/CLAUDE.md?raw';
 import wikiAgentDoc from '@/features/wiki/.claude/agents/wiki.md?raw';
 import wikiClaudeDoc from '@/features/wiki/.claude/CLAUDE.md?raw';
+import { resolveBasePath } from '@/utils/pathResolver';
 
 /** Feature 子目录名前缀/后缀（双下划线包裹，与现有 `__clips__` / `__wiki__` / `__daily__` 约定一致）。 */
 function featureDir(feature: string): string {
@@ -320,9 +321,7 @@ export async function runFeatureAgent(
   let workingDir = vault?.basePath ?? '';
   if (workingDir.startsWith('~')) {
     try {
-      const { homeDir } = await import('@tauri-apps/api/path');
-      const home = (await homeDir()).replace(/\/+$/, '');
-      workingDir = home + workingDir.slice(1);
+      workingDir = await resolveBasePath(workingDir);
     } catch {
       // 路径解析失败时退回原始值
     }
@@ -455,9 +454,7 @@ export async function getFeatureAgentSendOptions(feature: string): Promise<CliSe
       let basePath = vault.currentVault.basePath;
       if (basePath.startsWith('~')) {
         try {
-          const { homeDir } = await import('@tauri-apps/api/path');
-          const home = (await homeDir()).replace(/\/+$/, '');
-          basePath = home + basePath.slice(1);
+          basePath = await resolveBasePath(basePath);
         } catch {
           // 路径解析失败时退回原始值
         }

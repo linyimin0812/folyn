@@ -3,14 +3,12 @@
 import { wikiProvider } from './wikiProvider';
 import { useVaultStore } from '@/store/vaultStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import { CliAdapterRegistry } from '@quill/cli-adapter';
+import { createAdapter } from '@quill/cli-adapter';
 import type { ReviewItem } from '@/types/wiki';
 import { collectTextFromStream } from './aiStreamUtils';
 import { getFeatureAgentSendOptions } from './featureAgentService';
-
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
+import { resolveBasePath } from '@/utils/pathResolver';
+import { generateId } from '@/utils/idGenerator';
 
 export function extractFrontmatterSources(content: string): string[] {
   const fmMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
@@ -63,16 +61,10 @@ export async function runWikiLint(): Promise<ReviewItem[]> {
   await wikiProvider.init();
   const hashCache = await wikiProvider.readHashCache();
 
-  const registry = CliAdapterRegistry.getInstance();
-  const adapter = registry.create(settings.cliAdapter);
-  let basePath = vault.currentVault.basePath;
-  if (basePath.startsWith('~')) {
-    const { homeDir } = await import('@tauri-apps/api/path');
-    const home = (await homeDir()).replace(/\/+$/, '');
-    basePath = home + basePath.slice(1);
-  }
+  const adapter = createAdapter(settings.cliAdapter);
+  const basePath = await resolveBasePath(vault.currentVault.basePath);
   // wiki agent cwd = `<vault>/__wiki__/`。
-  const workingDir = `${basePath.replace(/\/+$/, '')}/__wiki__`;
+  const workingDir = `${basePath}/__wiki__`;
 
   await adapter.start({ cliPath: settings.cliPath, workingDir });
 

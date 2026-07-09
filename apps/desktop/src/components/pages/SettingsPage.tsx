@@ -5,7 +5,7 @@ import { useSkillStore } from '@/store/skillStore';
 import { builtinSkills } from '@/services/skillDefaults';
 import type { SkillOutputFormat, SkillCapability } from '@/types/skill';
 import { isTauri } from '@/utils/platform';
-import { CliAdapterRegistry } from '@quill/cli-adapter';
+import { listAdapters } from '@quill/cli-adapter';
 import { PluginsSettings } from '@/components/settings/PluginsSettings';
 
 /** Map keyboard event key to display symbol */
@@ -1138,7 +1138,7 @@ export function SettingsPage() {
             <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">配置 AI CLI 工具，用于智能编辑文档</div>
             <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-2 flex items-center gap-1.5">CLI 适配器</div>
             <div className="ml flex flex-col gap-1">
-              {CliAdapterRegistry.getInstance().getAll().map((a) => (
+              {listAdapters().map((a) => (
                 <div
                   key={a.id}
                   className={`mi flex items-center justify-between py-2 px-2.5 rounded-md border cursor-pointer transition-all duration-100 ${store.cliAdapter === a.id ? 'border-acc bg-accdim' : 'border-brd hover:border-acc'}`}

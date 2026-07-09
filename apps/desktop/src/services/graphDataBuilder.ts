@@ -2,7 +2,7 @@ import { wikiProvider } from './wikiProvider';
 import { useVaultStore } from '@/store/vaultStore';
 import type { WikiGraphNode, WikiGraphEdge, WikiPageType } from '@/types/wiki';
 import { WIKI_PREFIX } from '@/types/wiki';
-import type { VaultEntry } from '@quill/vault-provider';
+import { flattenTree } from '@/utils/treeUtils';
 
 interface ParsedPage {
   path: string;
@@ -55,19 +55,6 @@ function parseFrontmatter(content: string): Record<string, string | string[]> {
   return result;
 }
 
-function flattenMdFiles(entries: VaultEntry[]): string[] {
-  const result: string[] = [];
-  for (const entry of entries) {
-    if (entry.type === 'file' && entry.path.endsWith('.md')) {
-      result.push(entry.path);
-    }
-    if (entry.type === 'dir' && entry.children) {
-      result.push(...flattenMdFiles(entry.children));
-    }
-  }
-  return result;
-}
-
 export async function buildGraphData(): Promise<{ nodes: WikiGraphNode[]; edges: WikiGraphEdge[] }> {
   const pages: ParsedPage[] = [];
 
@@ -92,7 +79,7 @@ export async function buildGraphData(): Promise<{ nodes: WikiGraphNode[]; edges:
   }
 
   const vault = useVaultStore.getState();
-  const vaultFiles = flattenMdFiles(vault.fileTree);
+  const vaultFiles = flattenTree(vault.fileTree).filter((p) => p.endsWith('.md'));
   for (const filePath of vaultFiles) {
     try {
       const content = await vault.readFile(filePath);

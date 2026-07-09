@@ -123,14 +123,13 @@ vi.mock('@/store/skillStore', () => ({
 }));
 
 vi.mock('@quill/cli-adapter', () => ({
-  CliAdapterRegistry: {
-    getInstance: () => ({ create: () => fakeAdapter }),
-  },
+  createAdapter: () => fakeAdapter,
 }));
 
-vi.mock('./aiStreamUtils', () => ({
-  collectTextFromStream,
-}));
+vi.mock('./aiStreamUtils', async () => {
+  const actual = await vi.importActual<typeof import('./aiStreamUtils')>('./aiStreamUtils');
+  return { ...actual, collectTextFromStream };
+});
 
 vi.mock('@/utils/pathResolver', () => ({
   resolveBasePath: async (p: string) => p,

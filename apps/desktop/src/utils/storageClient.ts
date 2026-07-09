@@ -1,11 +1,11 @@
 import { readTextFile, writeTextFile, mkdir, exists } from '@tauri-apps/plugin-fs';
 import { appDataDir, join } from '@tauri-apps/api/path';
+import { debounce } from './debounce';
 
 let cache: Record<string, string> = {};
 let loaded = false;
 let storagePath = '';
 
-let flushTimer: ReturnType<typeof setTimeout> | null = null;
 const FLUSH_DELAY = 300;
 
 async function getStoragePath(): Promise<string> {
@@ -35,10 +35,8 @@ async function ensureLoaded(): Promise<void> {
   loaded = true;
 }
 
-function scheduleFlush(): void {
-  if (flushTimer) clearTimeout(flushTimer);
-  flushTimer = setTimeout(async () => {
-    flushTimer = null;
+function flushImpl(): void {
+  void (async () => {
     try {
       const filePath = await getStoragePath();
       const appData = await appDataDir();
@@ -50,8 +48,10 @@ function scheduleFlush(): void {
     } catch (err) {
       console.warn('[storageClient] Failed to flush:', err);
     }
-  }, FLUSH_DELAY);
+  })();
 }
+
+const scheduleFlush = debounce(flushImpl, FLUSH_DELAY);
 
 export const storageClient = {
   async get<T>(key: string): Promise<T | null> {
@@ -82,9 +82,6 @@ export const storageClient = {
     cache = {};
     loaded = false;
     storagePath = '';
-    if (flushTimer) {
-      clearTimeout(flushTimer);
-      flushTimer = null;
-    }
+    scheduleFlush.cancel();
   },
 };

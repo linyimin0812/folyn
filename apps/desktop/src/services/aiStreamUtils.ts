@@ -11,6 +11,17 @@ export interface StreamEvent {
 }
 
 /**
+ * Defensive JSON extractor: pull the first `{ ... }` object out of an AI
+ * response that may be wrapped in prose or code fences. Greedy — matches to
+ * the last `}`. Returns the raw JSON string slice, or null if no object-shaped
+ * substring is found. Callers `JSON.parse` the result and handle parse errors.
+ */
+export function extractJsonObject(aiText: string): string | null {
+  const match = aiText.match(/\{[\s\S]*\}/);
+  return match ? match[0] : null;
+}
+
+/**
  * Collect all text output from a CLI adapter stream until 'done' or 'error'.
  * Shared between wikiIngestService and clipService.
  *

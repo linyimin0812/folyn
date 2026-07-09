@@ -1,16 +1,12 @@
 import { useVaultStore } from '@/store/vaultStore';
 import { WIKI_DIR, type WikiEntry } from '@/types/wiki';
+import { resolveBasePath } from '@/utils/pathResolver';
 
 async function getWikiRoot(): Promise<string> {
   const vault = useVaultStore.getState().currentVault;
   if (!vault) throw new Error('No active vault');
-  let basePath = vault.basePath;
-  if (basePath.startsWith('~')) {
-    const { homeDir } = await import('@tauri-apps/api/path');
-    const home = (await homeDir()).replace(/\/+$/, '');
-    basePath = home + basePath.slice(1);
-  }
-  return `${basePath.replace(/\/+$/, '')}/${WIKI_DIR}`;
+  const basePath = await resolveBasePath(vault.basePath);
+  return `${basePath}/${WIKI_DIR}`;
 }
 
 export const wikiProvider = {

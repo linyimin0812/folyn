@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import type { VaultEntry } from '@quill/vault-provider';
 import { useVaultStore } from './vaultStore';
 import type { StreamEvent } from '@/services/aiStreamUtils';
+import { flattenFilesByExt } from '@/utils/treeUtils';
 import {
   analyzeProject,
   generateReport,
@@ -73,20 +73,6 @@ function getSidecarPath(reportPath: string): string {
   return reportPath.replace(/\.html$/, '.tags.json');
 }
 
-/** Recursively collect all .html file entries from a nested VaultEntry tree */
-function flattenHtmlFiles(entries: VaultEntry[]): ReportFile[] {
-  const result: ReportFile[] = [];
-  for (const entry of entries) {
-    if (entry.type === 'file' && entry.name.endsWith('.html')) {
-      result.push({ path: entry.path, name: entry.name });
-    }
-    if (entry.type === 'dir' && entry.children) {
-      result.push(...flattenHtmlFiles(entry.children));
-    }
-  }
-  return result;
-}
-
 /** Read tags from sidecar JSON file; returns empty array if not found */
 async function readTags(reportPath: string): Promise<string[]> {
   const vault = useVaultStore.getState();
@@ -132,7 +118,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     try {
       const manager = useVaultStore.getState().manager;
       const entries = await manager.listFiles('__reports__', true, false).catch(() => []);
-      const htmlFiles = flattenHtmlFiles(entries).sort((a, b) =>
+      const htmlFiles = (flattenFilesByExt(entries, '.html') as ReportFile[]).sort((a, b) =>
         b.name.localeCompare(a.name),
       );
 

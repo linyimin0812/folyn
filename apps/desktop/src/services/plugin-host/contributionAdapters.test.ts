@@ -14,9 +14,6 @@ import {
   registerTrustedPluginCommands,
   registerPluginFileTypes,
   registerPluginContainers,
-  registerPluginFeatures,
-  clearPluginFeaturePanels,
-  getPluginFeaturePanels,
 } from './contributionAdapters';
 import type { PluginModule } from './contributionAdapters';
 import { getCommands, getCommand, clearCommands } from '@/services/commandRegistry';
@@ -55,13 +52,11 @@ function fakeModule(): PluginModule {
     },
     containers: { block: (() => null) as never },
     commands: { greet: async () => {} },
-    features: { panel: (() => null) as never },
   };
 }
 
 beforeEach(() => {
   clearCommands();
-  clearPluginFeaturePanels();
   const cr = ContainerRegistry.getInstance();
   for (const p of cr.getAll()) cr.unregister(p.name);
   resetFileRegistry();
@@ -69,7 +64,6 @@ beforeEach(() => {
 
 afterEach(() => {
   clearCommands();
-  clearPluginFeaturePanels();
   const cr = ContainerRegistry.getInstance();
   for (const p of cr.getAll()) cr.unregister(p.name);
   resetFileRegistry();
@@ -175,30 +169,6 @@ describe('registerPluginContainers', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     registerPluginContainers(manifest(), mod);
     expect(ContainerRegistry.getInstance().get('adt-block')).toBeUndefined();
-    warn.mockRestore();
-  });
-});
-
-describe('registerPluginFeatures', () => {
-  it('registers the feature panel', () => {
-    registerPluginFeatures(manifest(), fakeModule());
-    const panels = getPluginFeaturePanels();
-    expect(panels).toHaveLength(1);
-    expect(panels[0].contribution.id).toBe('adt-panel');
-  });
-
-  it('dispose removes the feature panel', async () => {
-    const d = registerPluginFeatures(manifest(), fakeModule());
-    await d.dispose();
-    expect(getPluginFeaturePanels()).toHaveLength(0);
-  });
-
-  it('skips features with missing component entry-ref', () => {
-    const mod = fakeModule();
-    mod.features = undefined;
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    registerPluginFeatures(manifest(), mod);
-    expect(getPluginFeaturePanels()).toHaveLength(0);
     warn.mockRestore();
   });
 });

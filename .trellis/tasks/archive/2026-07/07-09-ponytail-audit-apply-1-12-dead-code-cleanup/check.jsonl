@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "verify desktop changes meet quality bar"}
+{"file": ".trellis/spec/cli-adapter/frontend/quality-guidelines.md", "reason": "verify cli-adapter changes meet quality bar"}
+{"file": ".trellis/spec/vault-provider/frontend/quality-guidelines.md", "reason": "verify vault-provider changes meet quality bar"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "deleting re-exports / types can break cross-layer imports — verify no cross-layer caller"}

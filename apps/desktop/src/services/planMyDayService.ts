@@ -11,12 +11,12 @@
 // scheduleStore directly. (prd.md says "minutes since midnight" — that is a doc
 // error; the store is the source of truth.)
 
-import { CliAdapterRegistry } from '@quill/cli-adapter';
+import { createAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { useSkillStore } from '@/store/skillStore';
-import { collectTextFromStream, type StreamEvent } from './aiStreamUtils';
+import { collectTextFromStream, extractJsonObject, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { dateToString } from '@/features/schedule/dailyScan';
 import type { EventCategory, ScheduleEvent, ScheduleTask } from '@/features/schedule/types';
@@ -244,10 +244,10 @@ export function buildPlanPrompt(ctx: PlanContext): string {
  * and tolerates surrounding prose. Throws a friendly Chinese error on failure.
  */
 export function parsePlan(aiText: string): Plan {
-  const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+  const jsonStr = extractJsonObject(aiText);
   let parsed: unknown;
   try {
-    parsed = JSON.parse(jsonMatch ? jsonMatch[0] : aiText);
+    parsed = JSON.parse(jsonStr ?? aiText);
   } catch {
     throw new Error('AI 返回的计划无法解析');
   }
@@ -314,8 +314,7 @@ export async function generatePlan(
   const settings = useSettingsStore.getState();
   const basePath = await resolveBasePath(vault.currentVault.basePath);
 
-  const registry = CliAdapterRegistry.getInstance();
-  const adapter = registry.create(settings.cliAdapter);
+  const adapter = createAdapter(settings.cliAdapter);
   await adapter.start({ cliPath: settings.cliPath, workingDir: basePath });
 
   try {

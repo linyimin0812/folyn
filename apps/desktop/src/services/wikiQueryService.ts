@@ -3,9 +3,10 @@
 import { wikiProvider } from './wikiProvider';
 import { useVaultStore } from '@/store/vaultStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import { CliAdapterRegistry } from '@quill/cli-adapter';
+import { createAdapter } from '@quill/cli-adapter';
 import { collectTextFromStream } from './aiStreamUtils';
 import { getFeatureAgentSendOptions } from './featureAgentService';
+import { resolveBasePath } from '@/utils/pathResolver';
 
 export async function buildWikiContext(query: string): Promise<string> {
   const index = await wikiProvider.readFile('index.md').catch(() => '');
@@ -82,16 +83,10 @@ export async function runWikiQuery(query: string): Promise<string> {
   const wikiContext = await buildWikiContext(query);
   const instruction = buildQueryInstruction(query, wikiContext);
 
-  const registry = CliAdapterRegistry.getInstance();
-  const adapter = registry.create(settings.cliAdapter);
-  let basePath = vault.currentVault.basePath;
-  if (basePath.startsWith('~')) {
-    const { homeDir } = await import('@tauri-apps/api/path');
-    const home = (await homeDir()).replace(/\/+$/, '');
-    basePath = home + basePath.slice(1);
-  }
+  const adapter = createAdapter(settings.cliAdapter);
+  const basePath = await resolveBasePath(vault.currentVault.basePath);
   // wiki agent cwd = `<vault>/__wiki__/`。
-  const workingDir = `${basePath.replace(/\/+$/, '')}/__wiki__`;
+  const workingDir = `${basePath}/__wiki__`;
 
   await adapter.start({ cliPath: settings.cliPath, workingDir });
 

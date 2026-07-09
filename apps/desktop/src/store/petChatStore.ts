@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { storageClient } from '@/utils/storageClient';
 import { generateId } from '@/utils/idGenerator';
+import { debounce } from '@/utils/debounce';
 
 /**
  * PetChatStore — the pet-panel's independent, persisted AI chat sessions.
@@ -154,14 +155,11 @@ function updateSession(
 
 // ── Persistence (debounced) ──
 
-let persistTimer: ReturnType<typeof setTimeout> | null = null;
 const PERSIST_DELAY = 300;
-function schedulePersist(payload: PersistedPetChat): void {
-  if (persistTimer) clearTimeout(persistTimer);
-  persistTimer = setTimeout(() => {
-    void storageClient.set(PET_CHAT_SESSIONS_KEY, payload);
-  }, PERSIST_DELAY);
-}
+const schedulePersist = debounce(
+  (payload: PersistedPetChat) => { void storageClient.set(PET_CHAT_SESSIONS_KEY, payload); },
+  PERSIST_DELAY,
+);
 
 // ── Store ──
 

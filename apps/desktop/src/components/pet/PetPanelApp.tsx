@@ -6,8 +6,6 @@ import {
   computePanelPosition,
   resolvePanelSize,
   PET_PANEL_SIZE_VERSION,
-  PET_PANEL_WIDTH,
-  PET_PANEL_HEIGHT,
   type PetWorkArea,
 } from './petPosition';
 import { PetLauncher } from './PetLauncher';
@@ -368,7 +366,3 @@ export function PetPanelApp() {
     </div>
   );
 }
-
-// Re-export so callers can reference the canonical default panel size
-// (declared in `petPosition.ts`) without an extra import hop.
-export { PET_PANEL_WIDTH, PET_PANEL_HEIGHT };

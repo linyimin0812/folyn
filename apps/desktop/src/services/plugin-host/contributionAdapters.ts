@@ -5,7 +5,7 @@
  * so their contributions resolve to real React components / handlers — not
  * postMessage proxies. Each adapter maps a manifest contribution array into
  * the matching app registry (`commandRegistry` / `file-types` /
- * `ContainerRegistry` / `featurePanelRegistry`) and returns a single
+ * `ContainerRegistry`) and returns a single
  * `Disposable` that unregisters everything on plugin deactivate/uninstall.
  *
  * The plugin module's export shape (the contract a trusted plugin authors
@@ -20,7 +20,6 @@
  * export const handlers: Record<string, FileTypeHandler> = { 'default': { ... } };
  * export const containers: Record<string, ComponentType> = { 'callout': MyComp };
  * export const commands: Record<string, () => void | Promise<void>> = { 'greet': () => {} };
- * export const features: Record<string, ComponentType> = { 'my-panel': Panel };
  *
  * // Optional lifecycle hooks (also accepted as a default-export factory).
  * export function activate(ctx: PluginContext) { ... }
@@ -38,7 +37,6 @@ import type { Disposable, PluginManifest, PluginContext } from '@quill/plugin-ho
 import type {
   CommandContribution,
   ContainerContribution,
-  FeatureContribution,
 } from '@quill/plugin-host';
 import type { FileTypeHandler } from '@/components/file-types/types';
 import type { ContainerProps, ContainerCategory } from '@quill/container-plugins';
@@ -54,8 +52,6 @@ export interface PluginModule {
   containers?: Record<string, ComponentType<ContainerProps>>;
   /** Entry-ref → command handler. Keys match `contributes.commands[].run`. */
   commands?: Record<string, () => void | Promise<void>>;
-  /** Entry-ref → React component. Keys match `contributes.features[].component`. */
-  features?: Record<string, ComponentType<unknown>>;
   /** Optional lifecycle hook; called by the trusted loader on activate. */
   activate?: (ctx: PluginContext) => void | Promise<void>;
   /** Optional lifecycle hook; called by the trusted loader on deactivate. */
@@ -200,71 +196,4 @@ export function registerPluginContainers(
       }
     },
   };
-}
-
-// ── Feature panel adapter (MVP stub) ────────────────────────────────────────
-
-/**
- * Lightweight feature-panel registry for trusted plugin panels.
- *
- * MVP: the full ActivityBar integration (adding a new icon to the activity
- * bar, routing to the panel, persisting active state) is deferred — it
- * requires changes to `ActivityBar.tsx`, `settingsStore` (panel enable flags),
- * and the editor layout. For PR3, we register panels here and render a
- * placeholder. PR4 (or a follow-up) wires the real ActivityBar slot.
- *
- * The registry is a plain singleton (not Zustand) so it can be consumed
- * without pulling app stores into the plugin-host layer.
- */
-
-export interface PluginFeaturePanel {
-  pluginId: string;
-  contribution: FeatureContribution;
-  component: ComponentType<unknown>;
-}
-
-const featurePanels = new Map<string, PluginFeaturePanel>();
-
-/** Register all of a plugin's feature contributions. */
-export function registerPluginFeatures(
-  manifest: PluginManifest,
-  module: PluginModule,
-): Disposable {
-  const features: FeatureContribution[] = manifest.contributes?.features ?? [];
-  if (features.length === 0) return { dispose: () => {} };
-
-  const registeredIds: string[] = [];
-  for (const f of features) {
-    const component = module.features?.[f.component];
-    if (!component) {
-      console.warn(
-        `[plugin-host] plugin "${manifest.id}" feature "${f.id}" has no component for entry-ref "${f.component}" — skipped`,
-      );
-      continue;
-    }
-    const key = `${manifest.id}:${f.id}`;
-    featurePanels.set(key, {
-      pluginId: manifest.id,
-      contribution: f,
-      component,
-    });
-    registeredIds.push(key);
-  }
-  return {
-    dispose: async () => {
-      for (const key of registeredIds) {
-        featurePanels.delete(key);
-      }
-    },
-  };
-}
-
-/** Read all registered feature panels (for the future ActivityBar consumer). */
-export function getPluginFeaturePanels(): PluginFeaturePanel[] {
-  return Array.from(featurePanels.values());
-}
-
-/** Test helper: clear all feature panels. */
-export function clearPluginFeaturePanels(): void {
-  featurePanels.clear();
 }

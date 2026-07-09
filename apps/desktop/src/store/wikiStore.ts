@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { wikiProvider } from '@/services/wikiProvider';
 import type { WikiEntry, ReviewItem, IngestTask } from '@/types/wiki';
+import { generateId } from '@/utils/idGenerator';
 
 export interface ActivityLogEntry {
   id: string;
@@ -43,10 +44,6 @@ interface WikiState {
 
   readWikiFile: (relativePath: string) => Promise<string>;
   writeWikiFile: (relativePath: string, content: string) => Promise<void>;
-}
-
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export const useWikiStore = create<WikiState>((set, _get) => ({

@@ -39,15 +39,6 @@ export class ContainerRegistry {
     return this.getAll().filter((plugin) => plugin.category === category);
   }
 
-  /** Get all unique categories that have registered plugins */
-  getCategories(): ContainerCategory[] {
-    const categories = new Set<ContainerCategory>();
-    for (const plugin of this.plugins.values()) {
-      categories.add(plugin.category);
-    }
-    return Array.from(categories);
-  }
-
   /** Check if a plugin is registered */
   has(name: string): boolean {
     return this.plugins.has(name);

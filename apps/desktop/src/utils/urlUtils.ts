@@ -27,3 +27,13 @@ export function normalizeUrl(url: string): string {
   // Fragment is intentionally dropped; query is preserved.
   return `${parsed.protocol}//${parsed.hostname.toLowerCase()}${port}${pathname}${parsed.search}`;
 }
+
+/** True when `url` parses as an http: or https: URL. */
+export function isHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}

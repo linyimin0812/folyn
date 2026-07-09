@@ -59,7 +59,7 @@ describe('ContainerRegistry.register / get / has / unregister', () => {
   });
 });
 
-describe('ContainerRegistry.getAll / getByCategory / getCategories', () => {
+describe('ContainerRegistry.getAll / getByCategory', () => {
   let registry: ContainerRegistry;
 
   beforeEach(() => {
@@ -78,13 +78,6 @@ describe('ContainerRegistry.getAll / getByCategory / getCategories', () => {
     registry.register(makePlugin('media-1', 'media'));
     registry.register(makePlugin('layout-2', 'layout'));
     expect(registry.getByCategory('layout').map((p) => p.name).sort()).toEqual(['layout-1', 'layout-2']);
-  });
-
-  it('getCategories returns unique categories with at least one plugin', () => {
-    registry.register(makePlugin('a', 'layout'));
-    registry.register(makePlugin('b', 'media'));
-    registry.register(makePlugin('c', 'layout'));
-    expect(registry.getCategories().sort()).toEqual(['layout', 'media']);
   });
 });
 

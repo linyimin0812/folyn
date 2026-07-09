@@ -1,45 +1,34 @@
 import type { CliAdapter } from './types';
 import { ClaudeAdapter } from './claudeAdapter';
 
-export class CliAdapterRegistry {
-  private static instance: CliAdapterRegistry;
-  private adapters = new Map<string, () => CliAdapter>();
+type AdapterDescriptor = {
+  displayName: string;
+  description: string;
+  factory: () => CliAdapter;
+};
 
-  static getInstance(): CliAdapterRegistry {
-    if (!this.instance) {
-      this.instance = new CliAdapterRegistry();
-    }
-    return this.instance;
-  }
+const ADAPTERS: Record<string, AdapterDescriptor> = {
+  claude: {
+    displayName: 'Claude Code',
+    description: 'Anthropic 官方 CLI 工具，支持对话式编辑与多工具调用',
+    factory: () => new ClaudeAdapter(),
+  },
+};
 
-  register(id: string, factory: () => CliAdapter): void {
-    this.adapters.set(id, factory);
-  }
-
-  /** Unregister an adapter by id. Returns true if removed. */
-  unregister(id: string): boolean {
-    return this.adapters.delete(id);
-  }
-
-  create(id: string): CliAdapter {
-    const factory = this.adapters.get(id);
-    if (!factory) {
-      throw new Error(`CLI adapter "${id}" not found`);
-    }
-    return factory();
-  }
-
-  getAll(): { id: string; displayName: string; description: string }[] {
-    return [...this.adapters.entries()].map(([id, factory]) => {
-      const instance = factory();
-      return { id, displayName: instance.displayName, description: instance.description };
-    });
-  }
+/** List all registered CLI adapters (id + display metadata). */
+export function listAdapters(): { id: string; displayName: string; description: string }[] {
+  return Object.entries(ADAPTERS).map(([id, d]) => ({
+    id,
+    displayName: d.displayName,
+    description: d.description,
+  }));
 }
 
-export function registerBuiltinAdapters(): void {
-  const registry = CliAdapterRegistry.getInstance();
-  registry.register('claude', () => new ClaudeAdapter());
+/** Create an adapter instance by id. Throws if the id is unknown. */
+export function createAdapter(id: string): CliAdapter {
+  const descriptor = ADAPTERS[id];
+  if (!descriptor) {
+    throw new Error(`CLI adapter "${id}" not found`);
+  }
+  return descriptor.factory();
 }
-
-registerBuiltinAdapters();

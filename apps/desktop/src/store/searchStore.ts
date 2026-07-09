@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { useVaultStore } from './vaultStore';
-import type { VaultEntry } from '@quill/vault-provider';
+import { flattenFilesByExt } from '@/utils/treeUtils';
 
 export interface SearchResult {
   filePath: string;
@@ -38,19 +38,6 @@ interface SearchState {
   clearCache: () => void;
 }
 
-/** Recursively flatten a VaultEntry tree to get all .md file paths */
-function flattenMarkdownFiles(entries: VaultEntry[]): { path: string; name: string }[] {
-  const files: { path: string; name: string }[] = [];
-  for (const entry of entries) {
-    if (entry.type === 'file' && entry.name.endsWith('.md')) {
-      files.push({ path: entry.path, name: entry.name });
-    } else if (entry.type === 'dir' && entry.children) {
-      files.push(...flattenMarkdownFiles(entry.children));
-    }
-  }
-  return files;
-}
-
 export const useSearchStore = create<SearchState>()((set, get) => ({
   isOpen: false,
   query: '',
@@ -84,7 +71,7 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
 
     try {
       const { fileTree, readFile } = useVaultStore.getState();
-      const mdFiles = flattenMarkdownFiles(fileTree);
+      const mdFiles = flattenFilesByExt(fileTree, '.md');
       const results: SearchResult[] = [];
 
       // Build the search pattern

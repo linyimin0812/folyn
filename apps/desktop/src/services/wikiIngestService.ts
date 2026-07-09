@@ -2,14 +2,15 @@
 
 import { useWikiStore } from '@/store/wikiStore';
 import { useVaultStore } from '@/store/vaultStore';
-import { CliAdapterRegistry } from '@quill/cli-adapter';
+import { createAdapter } from '@quill/cli-adapter';
 import type { CliAdapter, CliStreamEvent } from '@quill/cli-adapter';
 import { useSettingsStore } from '@/store/settingsStore';
 import { wikiProvider } from './wikiProvider';
 import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';
 import type { IngestAnalysis, ReviewItem } from '@/types/wiki';
-import { collectTextFromStream } from './aiStreamUtils';
+import { collectTextFromStream, extractJsonObject } from './aiStreamUtils';
 import { getFeatureAgentSendOptions } from './featureAgentService';
+import { resolveBasePath } from '@/utils/pathResolver';
 
 async function computeSHA256(content: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -142,16 +143,10 @@ export async function runIngest(filePaths: string[]): Promise<void> {
 
   await wikiProvider.init();
   const hashCache = await wikiProvider.readHashCache();
-  const registry = CliAdapterRegistry.getInstance();
-  const adapter = registry.create(settings.cliAdapter);
-  let basePath = vault.currentVault.basePath;
-  if (basePath.startsWith('~')) {
-    const { homeDir } = await import('@tauri-apps/api/path');
-    const home = (await homeDir()).replace(/\/+$/, '');
-    basePath = home + basePath.slice(1);
-  }
+  const adapter = createAdapter(settings.cliAdapter);
+  const basePath = await resolveBasePath(vault.currentVault.basePath);
   // wiki agent cwd = `<vault>/__wiki__/`：agent 自动发现 `.claude/agents/wiki.md`。
-  const workingDir = `${basePath.replace(/\/+$/, '')}/__wiki__`;
+  const workingDir = `${basePath}/__wiki__`;
 
   await adapter.start({ cliPath: settings.cliPath, workingDir });
 
@@ -191,8 +186,8 @@ export async function runIngest(filePaths: string[]): Promise<void> {
 
         let analysis: IngestAnalysis;
         try {
-          const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
-          analysis = JSON.parse(jsonMatch ? jsonMatch[0] : analysisText);
+          const jsonStr = extractJsonObject(analysisText);
+          analysis = JSON.parse(jsonStr ?? analysisText);
         } catch {
           store.setIngestStatus(task.id, 'error', '分析结果解析失败');
           store.pushActivity('error', `${task.filePath} 分析结果解析失败`);

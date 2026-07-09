@@ -22,19 +22,6 @@ export interface LocalUploadConfig extends ImageUploadConfig {
   directory: string;
 }
 
-/** Config specific to OSS uploads (reserved) */
-export interface OssUploadConfig extends ImageUploadConfig {
-  bucket: string;
-  pathPrefix: string;
-  region?: string;
-}
-
-/** Config specific to CDN uploads (reserved) */
-export interface CdnUploadConfig extends ImageUploadConfig {
-  cdnDomain: string;
-  pathPrefix: string;
-}
-
 /** Strategy interface – every upload backend implements this */
 export interface ImageUploadStrategy {
   readonly name: UploadTarget;

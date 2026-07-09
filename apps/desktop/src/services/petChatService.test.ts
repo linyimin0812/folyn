@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 // vitest.workspace.ts and reset between tests by test/setup.ts.
 
 /** A fake adapter that records calls and lets the test emit stream events
- *  back through the registered handlers (mirrors BaseCliAdapter's emit). */
+ *  back through the registered handlers (mirrors ClaudeAdapter's emit). */
 function makeFakeAdapter(id: string) {
   const handlers: ((event: { type: string; content?: string; sessionId?: string }) => void)[] = [];
   return {
@@ -66,7 +66,7 @@ vi.mock('@/store/petChatStore', () => {
 });
 
 vi.mock('@quill/cli-adapter', () => ({
-  CliAdapterRegistry: { getInstance: () => ({ create: (id: string) => createAdapter(id) }) },
+  createAdapter: (id: string) => createAdapter(id),
 }));
 
 import { mkdir as mockedMkdir } from '@tauri-apps/plugin-fs';

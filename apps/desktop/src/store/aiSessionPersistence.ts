@@ -1,6 +1,7 @@
 import type { CliMessage, FileChange } from '@quill/cli-adapter';
 import { useVaultStore } from './vaultStore';
 import { storageClient } from '@/utils/storageClient';
+import { debounce } from '@/utils/debounce';
 import { sessionStorage } from '@/utils/sessionStorage';
 import { useAiStore, createEmptySession } from './aiStore';
 import type { AiSession } from './aiStore';
@@ -89,11 +90,7 @@ export function persistAiState() {
   saveAllSessions(vaultId);
 }
 
-let persistTimer: ReturnType<typeof setTimeout> | null = null;
-export function debouncedPersist() {
-  if (persistTimer) clearTimeout(persistTimer);
-  persistTimer = setTimeout(persistAiState, 500);
-}
+export const debouncedPersist = debounce(persistAiState, 500);
 
 export function setupPersistSubscription() {
   useAiStore.subscribe((state, prev) => {

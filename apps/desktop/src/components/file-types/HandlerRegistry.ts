@@ -61,6 +61,7 @@ export class HandlerRegistry {
     return Array.from(this.handlers.values());
   }
 
+  /** Test-only: reset the registry between tests (used by test/setup.desktop.ts). */
   clear(): void {
     this.handlers.clear();
     this.extMap.clear();

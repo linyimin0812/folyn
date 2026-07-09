@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "dead-code removal in desktop frontend (aiStore, plugin-host, file-types, pet) must follow desktop quality rules"}
+{"file": ".trellis/spec/cli-adapter/frontend/quality-guidelines.md", "reason": "cli-adapter registry/baseAdapter collapse touches this package's quality contract"}
+{"file": ".trellis/spec/container-plugins/frontend/quality-guidelines.md", "reason": "ContainerRegistry.getCategories deletion touches this package"}
+{"file": ".trellis/spec/vault-provider/frontend/quality-guidelines.md", "reason": "stub provider deletion + base class collapse touches this package"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "audit is fundamentally about removing over-engineering / single-impl abstractions"}
