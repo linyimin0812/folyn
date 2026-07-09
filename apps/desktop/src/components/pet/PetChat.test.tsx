@@ -176,7 +176,7 @@ describe('PetChat', () => {
     await fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
     await waitFor(() => expect(usePetChatStore.getState().streaming).toBe(true));
 
-    await fireEvent.click(screen.getByLabelText('停止生成'));
+    await fireEvent.click(screen.getByLabelText('停止'));
     await waitFor(() => expect(stopMock).toHaveBeenCalledTimes(1));
     expect(usePetChatStore.getState().streaming).toBe(false);
   });
@@ -241,24 +241,27 @@ describe('PetChat', () => {
     expect(screen.getByLabelText('已复制')).toBeTruthy();
   });
 
-  it('message bubble content is selectable via pet.css override', async () => {
-    // jsdom does not load CSS files, so getComputedStyle cannot reflect the
-    // rule. Read the stylesheet source and assert the `user-select: text`
-    // override exists on `.pet-chat-bubble-content` (the input/launcher
-    // stay non-selectable via `.pet-panel-root`'s `user-select: none`).
-    const { readFile } = await import('node:fs/promises');
-    const { resolve } = await import('node:path');
-    // vitest's desktop project root is apps/desktop; process.cwd() is the
-    // repo root. Try desktop-root first, then repo-root-relative.
-    const candidates = [
-      resolve('apps/desktop/src/components/pet/pet.css'),
-      resolve('src/components/pet/pet.css'),
-    ];
-    let css = '';
-    for (const p of candidates) {
-      try { css = await readFile(p, 'utf8'); break; } catch { /* try next */ }
-    }
-    expect(css).toContain('.pet-chat-bubble-content');
-    expect(css).toMatch(/\.pet-chat-bubble-content\s*{[^}]*user-select:\s*text/);
+  it('assistant message content is rendered as plain text (no markdown pipeline)', async () => {
+    // PR3: PetChat now renders bubbles via the shared `ChatMessageList`
+    // with `plaintext`, which wraps assistant content in a plain div
+    // (whitespace-pre-wrap) and skips the unified/remark/rehype pipeline.
+    // The old `.pet-chat-bubble-content` `user-select: text` CSS override
+    // was deleted along with the rest of `.pet-chat-*`; selection is now
+    // the browser default on the shared Tailwind-rendered content.
+    usePetChatStore.setState({
+      messages: [
+        { id: 'a1', role: 'assistant', content: 'line1\nline2', ts: 1 },
+      ],
+      streaming: false,
+    });
+    const { container } = render(<PetChat />);
+    // The whitespace-pre-wrap class is applied to the plaintext wrapper.
+    const wrapper = container.querySelector('.whitespace-pre-wrap');
+    expect(wrapper).toBeTruthy();
+    // The raw content (including the newline) is rendered as a single text
+    // node; whitespace-pre-wrap preserves the \n visually.
+    expect(wrapper!.textContent).toBe('line1\nline2');
+    // Confirm no markdown wrapper (.msg-md) is present on the pet path.
+    expect(container.querySelector('.msg-md')).toBeNull();
   });
 });

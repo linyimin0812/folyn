@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop 前端入口：Pre-Development Checklist + 组件/状态/类型/窗口等指引索引，实现前必读"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "抽取共用组件 ChatMessageList/MessageContent/ChatInputBox，需遵循组件划分与 props 契约规范"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "PetChat 运行在独立 Tauri 窗口（#/pet-panel），共用组件不得在顶层 import vault/editor store，需遵循多窗口模式约束"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "两端 Zustand store（petChatStore/aiStore）保留各自管理，需遵循状态管理规范与 store 隔离约定"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "新建 src/components/chat/ 目录，需符合 desktop 前端目录结构约定"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "message 统一为 CliMessage 超集 + PetChat 适配层，需严格类型安全"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "本任务核心是抽取共用 UI 消除重复，需遵循代码复用思维指南（避免过度抽象、保留最小路径）"}

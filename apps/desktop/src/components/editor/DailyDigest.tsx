@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useVaultStore } from '@/store/vaultStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import type { VaultEntry } from '@quill/vault-provider';
-import { MessageContent } from '../ai/MessageContent';
+import { MessageContent } from '@/components/chat';
 import { getFeatureAgentSendOptions } from '@/services/featureAgentService';
 
 interface ModifiedFile {

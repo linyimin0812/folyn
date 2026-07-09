@@ -5,6 +5,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { flattenFileTree } from '@/utils/treeUtils';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { listInputModes } from './inputModes';
+import { ChatInputBox } from '@/components/chat';
 
 export interface PendingAttachment {
   id: string;
@@ -40,7 +41,7 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
   const inputModes = useMemo(() => listInputModes(), []);
   const currentModeDef = useMemo(
     () => inputModes.find((m) => m.id === inputMode),
-    [inputModes, inputMode],
+    [inputMode, inputModes],
   );
 
   // 点击外部关闭模式下拉
@@ -106,10 +107,11 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
     return [matched[activeIdx], ...matched.slice(0, activeIdx), ...matched.slice(activeIdx + 1)].slice(0, 20);
   }, [mentionMenu.visible, mentionMenu.filter, allFiles, activeFilePath]);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
+  const handleChange = useCallback((value: string) => {
     setInput(value);
-    const cursorPos = e.target.selectionStart;
+    // Read the live cursor position off the textarea DOM node (the same
+    // node ChatInputBox owns; `textareaRef` is the merged `inputRef`).
+    const cursorPos = textareaRef.current?.selectionStart ?? value.length;
     const textBeforeCursor = value.slice(0, cursorPos);
     const atIdx = textBeforeCursor.lastIndexOf('@');
     if (atIdx >= 0 && (atIdx === 0 || /\s/.test(textBeforeCursor[atIdx - 1]))) {
@@ -161,36 +163,35 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
     onSend(userText, currentAttachments);
   }, [input, attachments, isStreaming, onSend]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+  // Mention-menu key handling runs BEFORE the base Enter-to-send. Returns
+  // true when a key is consumed so ChatInputBox skips its Enter handler.
+  const handleBeforeKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (mentionMenu.visible && filteredMentionFiles.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setMentionIndex((i) => (i + 1) % filteredMentionFiles.length);
-        return;
+        return true;
       }
       if (e.key === 'ArrowUp') {
         e.preventDefault();
         setMentionIndex((i) => (i - 1 + filteredMentionFiles.length) % filteredMentionFiles.length);
-        return;
+        return true;
       }
       if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
         insertMention(filteredMentionFiles[mentionIndex].path);
-        return;
+        return true;
       }
       if (e.key === 'Escape') {
         e.preventDefault();
         setMentionMenu({ visible: false, filter: '', anchorPos: 0 });
-        return;
+        return true;
       }
     }
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendClick();
-    }
-  }, [mentionMenu.visible, filteredMentionFiles, mentionIndex, insertMention, handleSendClick]);
+    return false;
+  }, [mentionMenu.visible, filteredMentionFiles, mentionIndex, insertMention]);
 
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = e.clipboardData?.items;
     if (!items) return;
     for (const item of Array.from(items)) {
@@ -241,109 +242,99 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
     });
   }, []);
 
-  return (
-    <div className="flex flex-col py-2.5 px-3 border-t border-brd shrink-0">
-      {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {attachments.map((att) => (
-            <div key={att.id} className="flex items-center gap-1 py-0.5 px-1.5 bg-surf border border-brd rounded-md text-[11px] text-t2 max-w-[160px]">
-              {att.previewUrl ? (
-                <img className="w-7 h-7 object-cover rounded shrink-0" src={att.previewUrl} alt={att.name} />
-              ) : (
-                <span className="inline-flex items-center shrink-0"><FileIcon filename={att.name} /></span>
-              )}
-              <span className="truncate min-w-0 flex-1">{att.name}</span>
-              <button className="w-3.5 h-3.5 flex items-center justify-center rounded-full text-[10px] text-t3 cursor-pointer shrink-0 transition-all duration-100 bg-transparent border-none hover:bg-hov hover:text-red" onClick={() => removeAttachment(att.id)}>×</button>
-            </div>
-          ))}
+  // ── Slots built from AiPanel-specific state ──
+
+  const attachmentsRow = attachments.length > 0 ? (
+    <div className="flex flex-wrap gap-1.5 mb-2">
+      {attachments.map((att) => (
+        <div key={att.id} className="flex items-center gap-1 py-0.5 px-1.5 bg-surf border border-brd rounded-md text-[11px] text-t2 max-w-[160px]">
+          {att.previewUrl ? (
+            <img className="w-7 h-7 object-cover rounded shrink-0" src={att.previewUrl} alt={att.name} />
+          ) : (
+            <span className="inline-flex items-center shrink-0"><FileIcon filename={att.name} /></span>
+          )}
+          <span className="truncate min-w-0 flex-1">{att.name}</span>
+          <button className="w-3.5 h-3.5 flex items-center justify-center rounded-full text-[10px] text-t3 cursor-pointer shrink-0 transition-all duration-100 bg-transparent border-none hover:bg-hov hover:text-red" onClick={() => removeAttachment(att.id)}>×</button>
         </div>
-      )}
-      <div className="flex flex-col border border-brd rounded-lg bg-inp transition-[border-color] duration-[140ms] focus-within:border-acc" style={{ position: 'relative' }}>
-        {mentionMenu.visible && filteredMentionFiles.length > 0 && (
-          <div className="absolute bottom-full left-0 right-0 max-h-[200px] overflow-y-auto bg-panel border border-brd rounded-lg mb-1 shadow-[0_-4px_12px_rgba(0,0,0,.08)] z-[100]">
-            {filteredMentionFiles.map((file, i) => (
-              <div
-                key={file.path}
-                className={`py-1.5 px-3 text-[12px] cursor-pointer flex items-center gap-1.5 ${i === mentionIndex ? 'bg-hov' : ''} hover:bg-hov`}
-                onMouseDown={(e) => { e.preventDefault(); insertMention(file.path); }}
-              >
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><FileIcon filename={file.name} /> {file.name}</span>
-                <span className="text-t3 text-[11px] ml-auto overflow-hidden text-ellipsis whitespace-nowrap max-w-[60%] text-right">{file.path}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        <textarea
-          ref={textareaRef}
-          className="flex-1 resize-none border-none rounded-t-lg pt-2 px-2.5 pb-1 text-[12px] font-ui bg-transparent text-t1 outline-none placeholder:text-t3"
-          placeholder="输入指令，@ 引用文件..."
-          value={input}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          rows={2}
-          disabled={isStreaming}
-          autoCapitalize="off"
-        />
-        <div className="flex items-center gap-0.5 py-0.5 px-1.5 pb-1.5">
-          <button className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed" onClick={handleFileSelect} disabled={isStreaming} title="附加文件">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+      ))}
+    </div>
+  ) : null;
+
+  const mentionOverlay = mentionMenu.visible && filteredMentionFiles.length > 0 ? (
+    <div className="absolute bottom-full left-0 right-0 max-h-[200px] overflow-y-auto bg-panel border border-brd rounded-lg mb-1 shadow-[0_-4px_12px_rgba(0,0,0,.08)] z-[100]">
+      {filteredMentionFiles.map((file, i) => (
+        <div
+          key={file.path}
+          className={`py-1.5 px-3 text-[12px] cursor-pointer flex items-center gap-1.5 ${i === mentionIndex ? 'bg-hov' : ''} hover:bg-hov`}
+          onMouseDown={(e) => { e.preventDefault(); insertMention(file.path); }}
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><FileIcon filename={file.name} /> {file.name}</span>
+          <span className="text-t3 text-[11px] ml-auto overflow-hidden text-ellipsis whitespace-nowrap max-w-[60%] text-right">{file.path}</span>
+        </div>
+      ))}
+    </div>
+  ) : null;
+
+  const leadingSlot = (
+    <>
+      <button className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed" onClick={handleFileSelect} disabled={isStreaming} title="附加文件">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+        </svg>
+      </button>
+      {inputModes.length > 1 && (
+        <div className="relative ml-0.5" ref={modeMenuRef}>
+          <button
+            className="px-1.5 h-7 flex items-center gap-1 rounded text-[11px] cursor-pointer border-none transition-all duration-[120ms] bg-transparent text-t3 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={() => setModeMenuOpen((v) => !v)}
+            disabled={isStreaming}
+            title={currentModeDef?.description}
+          >
+            <span>{currentModeDef?.label ?? inputMode}</span>
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 6 L8 10 L12 6" />
             </svg>
           </button>
-          {inputModes.length > 1 && (
-            <div className="relative ml-0.5" ref={modeMenuRef}>
-              <button
-                className="px-1.5 h-7 flex items-center gap-1 rounded text-[11px] cursor-pointer border-none transition-all duration-[120ms] bg-transparent text-t3 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
-                onClick={() => setModeMenuOpen((v) => !v)}
-                disabled={isStreaming}
-                title={currentModeDef?.description}
-              >
-                <span>{currentModeDef?.label ?? inputMode}</span>
-                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 6 L8 10 L12 6" />
-                </svg>
-              </button>
-              {modeMenuOpen && (
-                <div className="absolute bottom-full left-0 mb-1 min-w-[120px] bg-panel border border-brd rounded-md shadow-[0_4px_16px_rgba(0,0,0,.12)] z-[100] py-0.5">
-                  {inputModes.map((m) => {
-                    const active = m.id === inputMode;
-                    return (
-                      <div
-                        key={m.id}
-                        className={`py-1.5 px-3 text-[12px] cursor-pointer whitespace-nowrap ${active ? 'bg-accdim text-acc font-semibold' : 'text-t2 hover:bg-hov hover:text-t1'}`}
-                        title={m.description}
-                        onMouseDown={(e) => { e.preventDefault(); setInputMode(m.id); setModeMenuOpen(false); }}
-                      >
-                        {m.label}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+          {modeMenuOpen && (
+            <div className="absolute bottom-full left-0 mb-1 min-w-[120px] bg-panel border border-brd rounded-md shadow-[0_4px_16px_rgba(0,0,0,.12)] z-[100] py-0.5">
+              {inputModes.map((m) => {
+                const active = m.id === inputMode;
+                return (
+                  <div
+                    key={m.id}
+                    className={`py-1.5 px-3 text-[12px] cursor-pointer whitespace-nowrap ${active ? 'bg-accdim text-acc font-semibold' : 'text-t2 hover:bg-hov hover:text-t1'}`}
+                    title={m.description}
+                    onMouseDown={(e) => { e.preventDefault(); setInputMode(m.id); setModeMenuOpen(false); }}
+                  >
+                    {m.label}
+                  </div>
+                );
+              })}
             </div>
           )}
-          <div className="flex-1" />
-          {isStreaming ? (
-            <button className="w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-all duration-[120ms] bg-red text-white hover:opacity-[.85]" onClick={onStop} title="停止">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="6" width="12" height="12" rx="2" />
-              </svg>
-            </button>
-          ) : (
-            <button
-              className="w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-all duration-[120ms] bg-acc text-white hover:opacity-[.85] disabled:opacity-40 disabled:cursor-not-allowed"
-              onClick={handleSendClick}
-              disabled={!input.trim() && attachments.length === 0}
-              title="发送"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
-          )}
         </div>
-      </div>
+      )}
+    </>
+  );
+
+  return (
+    <>
+      <ChatInputBox
+        value={input}
+        onChange={handleChange}
+        onSend={handleSendClick}
+        onStop={onStop}
+        streaming={isStreaming}
+        canSend={input.trim().length > 0 || attachments.length > 0}
+        placeholder="输入指令，@ 引用文件..."
+        textareaRows={2}
+        onPaste={handlePaste}
+        inputRef={textareaRef}
+        onBeforeKeyDown={handleBeforeKeyDown}
+        leadingSlot={leadingSlot}
+        attachmentsRow={attachmentsRow}
+        overlayLayer={mentionOverlay}
+      />
       <input
         ref={fileInputRef}
         type="file"
@@ -352,6 +343,6 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
         style={{ display: 'none' }}
         onChange={handleFileInputChange}
       />
-    </div>
+    </>
   );
 }

@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { CliMessage } from '@quill/cli-adapter';
 import { isTauri } from '@/utils/platform';
 import { useSettingsStore } from '@/store/settingsStore';
 import { usePetChatStore } from '@/store/petChatStore';
 import { sendPetChatMessage, stopPetChat, resetPetChatAdapter } from '@/services/petChatService';
+import { ChatMessageList, ChatInputBox } from '@/components/chat';
 import type { PetMenuAction } from './PetContextMenu';
 
 /**
@@ -20,6 +22,15 @@ import type { PetMenuAction } from './PetContextMenu';
  *  - Unconfigured-AI (R7): if `settings.cliPath` or `settings.cliAdapter`
  *    is empty, render a guidance CTA instead of the input.
  *
+ * PR3: the message list, bubbles, copy button, clear button, and input box
+ * are now the shared `components/chat/*` components (Tailwind). PetChat only
+ * owns: the send/stop/clear handlers, the unmount lifecycle, the
+ * unconfigured-CTA, and the `PetChatMessage → CliMessage` boundary mapping.
+ * The copy button is fully owned by `ChatMessageList` (its built-in
+ * clipboard write + 1.2s "已复制" feedback is identical to pet's old
+ * inline copy button, so no `onCopy` is wired — see `CopyButton` in
+ * `ChatMessageList.tsx`).
+ *
  * Dismiss paths (× / Esc / second pet click) are owned by `PetPanelApp`;
  * this component only owns the Stop button mid-stream.
  */
@@ -36,23 +47,6 @@ async function emitMenuAction(action: PetMenuAction): Promise<void> {
   }
 }
 
-/** Copy text to the clipboard via the Tauri clipboard-manager plugin (same
- *  API the main app's JsonFileViewerPreview uses). Guarded with `isTauri()`
- *  because the panel may run in a non-Tauri (web/dev) context; the dynamic
- *  import keeps the plugin out of the main-window bundle. Returns true on
- *  success so the caller can toggle "已复制" feedback. */
-async function copyToClipboard(text: string): Promise<boolean> {
-  if (!isTauri() || !text) return false;
-  try {
-    const mod = await import('@tauri-apps/plugin-clipboard-manager');
-    await mod.writeText(text);
-    return true;
-  } catch (err) {
-    console.warn('[pet-chat] clipboard writeText failed:', err);
-    return false;
-  }
-}
-
 /** Detect "no AI configured" (R7). Mirrors the implicit check in
  *  AiPanel/ChatInput: the AI is considered configured when both the
  *  adapter id and the CLI binary path are non-empty. Defaults in
@@ -61,6 +55,21 @@ async function copyToClipboard(text: string): Promise<boolean> {
 export function isPetChatConfigured(): boolean {
   const { cliAdapter, cliPath } = useSettingsStore.getState();
   return Boolean(cliAdapter && cliPath);
+}
+
+/** Map the pet store's flat message shape to the shared `CliMessage`
+ *  supertype at the prop boundary. `petChatStore` keeps its own
+ *  `{id, role, content, ts}` type (unchanged); thinking / toolCalls /
+ *  attachments are left undefined (pet is vault-free). */
+function toCliMessages(
+  msgs: { id: string; role: 'user' | 'assistant'; content: string; ts: number }[],
+): CliMessage[] {
+  return msgs.map((m) => ({
+    id: m.id,
+    role: m.role,
+    content: m.content,
+    timestamp: m.ts,
+  }));
 }
 
 export function PetChat() {
@@ -72,17 +81,15 @@ export function PetChat() {
   const clear = usePetChatStore((s) => s.clear);
 
   const [input, setInput] = useState('');
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const configured = isPetChatConfigured();
-
-  // Auto-scroll to the latest message on new content.
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages]);
 
   // Stop the adapter on unmount so an in-flight stream doesn't outlive the
   // panel (the cached adapter is reset so the next mount starts fresh).
+  // NOTE: this effect is pet-owned (NOT moved into ChatInputBox). Its deps
+  // on `[streaming, setStreaming]` are intentional and preserved from the
+  // pre-refactor implementation — the cleanup-only-return pattern means
+  // each re-run first runs the previous cleanup (idempotent
+  // `resetPetChatAdapter`). See research/input-and-streaming.md caveat.
   useEffect(() => {
     return () => {
       if (streaming) {
@@ -125,26 +132,6 @@ export function PetChat() {
     setStreaming(false);
   }, [setStreaming]);
 
-  const handleCopy = useCallback(async (id: string, text: string) => {
-    if (!text) return;
-    const ok = await copyToClipboard(text);
-    if (ok) {
-      setCopiedId(id);
-      // Brief "已复制" feedback: toggle the icon to a check for ~1.2s.
-      window.setTimeout(() => setCopiedId((curr) => (curr === id ? null : curr)), 1200);
-    }
-  }, []);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        void handleSend();
-      }
-    },
-    [handleSend],
-  );
-
   const handleOpenSettings = useCallback(async () => {
     // focusMain() path: emit `show-main` then navigate to settings. The
     // main window's App.tsx listener handles `show-main` (shows+focuses
@@ -157,98 +144,77 @@ export function PetChat() {
   }, []);
 
   if (!configured) {
+    // Unconfigured-AI CTA (R7) — rendered OUTSIDE the shared chat
+    // components (it replaces the whole chat body). Styled with Tailwind
+    // tokens; the old `.pet-chat-empty` / `.pet-chat-cta` BEM classes were
+    // deleted from pet.css in PR3.
     return (
-      <div className="pet-chat-empty" role="status">
-        <div className="pet-chat-empty-title">未配置 AI</div>
-        <div className="pet-chat-empty-desc">在设置中配置 CLI 路径后即可在此对话。</div>
-        <button type="button" className="pet-chat-cta" onClick={() => void handleOpenSettings()}>
+      <div
+        className="flex flex-col items-center justify-center gap-2 px-2 py-4 text-center flex-1"
+        role="status"
+      >
+        <div className="text-[13px] font-semibold text-t1">未配置 AI</div>
+        <div className="text-[12px] text-t3">在设置中配置 CLI 路径后即可在此对话。</div>
+        <button
+          type="button"
+          className="mt-1 py-1.5 px-3 border border-acc rounded-md bg-acc text-white text-[12px] cursor-pointer hover:opacity-[.85] transition-opacity"
+          onClick={() => void handleOpenSettings()}
+        >
           打开 AI 设置
         </button>
       </div>
     );
   }
 
+  // streamingIndicator choice (see PR3 task spec):
+  // Pet's OLD behavior: empty streaming assistant content showed a `…`
+  // placeholder; once tokens arrived, only the content showed (no cursor).
+  // The shared `ChatMessageList`:
+  //  - 'none': shows NOTHING for empty streaming content (regression vs
+  //    pet's `…` placeholder) but matches pet for the has-content case.
+  //  - 'cursor': shows a `▎` cursor for BOTH empty and has-content
+  //    streaming last-assistant messages (pet never had a cursor once
+  //    content arrived).
+  // Because 'none' regresses the empty-streaming case (shows nothing
+  // instead of `…`), we use 'cursor' and accept the minor visual delta
+  // (a `▎` cursor appears during streaming, including on the empty
+  // initial frame). This is the task-spec's prescribed fallback.
   return (
-    <div className="pet-chat">
-      <div className="pet-chat-messages" role="log" aria-live="polite">
-        {messages.length === 0 && (
-          <div className="pet-chat-hint">向 AI 提问，回答会在此处流式显示。</div>
-        )}
-        {messages.map((m) => (
-          <div key={m.id} className={`pet-chat-bubble pet-chat-bubble-${m.role}`}>
-            <div className="pet-chat-bubble-role">{m.role === 'user' ? '我' : 'AI'}</div>
-            <div className="pet-chat-bubble-content">{m.content || (streaming ? '…' : '')}</div>
-            {m.role === 'assistant' && m.content && (
-              <button
-                type="button"
-                className="pet-chat-copy"
-                onClick={() => void handleCopy(m.id, m.content)}
-                aria-label={copiedId === m.id ? '已复制' : '复制'}
-                aria-pressed={copiedId === m.id}
-              >
-                <span className="pet-chat-copy-icon" aria-hidden="true">
-                  {copiedId === m.id ? (
-                    // check
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 8.5l3.5 3.5L13 5" />
-                    </svg>
-                  ) : (
-                    // copy (two overlapping rects)
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="5" y="5" width="8" height="8" rx="1.5" />
-                      <path d="M11 5V3.5A1.5 1.5 0 009.5 2H3.5A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" />
-                    </svg>
-                  )}
-                </span>
-              </button>
-            )}
+    <div className="flex flex-col flex-1 min-h-0">
+      <ChatMessageList
+        messages={toCliMessages(messages)}
+        streaming={streaming}
+        plaintext
+        showCopy
+        streamingIndicator="cursor"
+        onClear={clear}
+        emptyState={
+          <div className="text-[12px] text-t3 text-center px-1 py-3">
+            向 AI 提问，回答会在此处流式显示。
           </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-      <div className="pet-chat-input-row">
-        <textarea
-          className="pet-chat-input"
-          placeholder="输入消息，Enter 发送"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={streaming}
-          rows={1}
-          aria-label="Pet chat input"
-        />
-        {streaming ? (
-          <button type="button" className="pet-chat-stop" onClick={() => void handleStop()} aria-label="停止生成">
-            <span className="pet-chat-action-icon" aria-hidden="true">
-              {/* stop square */}
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                <rect x="3" y="3" width="10" height="10" rx="1.5" />
-              </svg>
-            </span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="pet-chat-send"
-            onClick={() => void handleSend()}
-            disabled={!input.trim()}
-            aria-label="发送"
-          >
-            <span className="pet-chat-action-icon" aria-hidden="true">
-              {/* paper plane */}
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14.5 1.5L1.5 7l5 1.5L8 14l6.5-12.5z" />
-                <path d="M6.5 8.5L14.5 1.5" />
-              </svg>
-            </span>
-          </button>
-        )}
-      </div>
-      {messages.length > 0 && (
-        <button type="button" className="pet-chat-clear" onClick={() => clear()} disabled={streaming}>
-          清空对话
-        </button>
-      )}
+        }
+      />
+      <ChatInputBox
+        value={input}
+        onChange={setInput}
+        onSend={handleSend}
+        streaming={streaming}
+        onStop={handleStop}
+        placeholder="输入消息，Enter 发送"
+        textareaRows={1}
+        inputAriaLabel="Pet chat input"
+      />
+      {/* Note on `disabled` / `canSend`: both are intentionally OMITTED.
+          The task spec suggested `disabled={!input.trim()}`, but
+          `ChatInputBox`'s `disabled` prop disables the <textarea> itself
+          (not just the send button) — passing it would make the input
+          untypeable when empty (the user could never type the first char).
+          Omitting both props uses the base default
+          `canSend = value.trim().length > 0`, which disables the SEND
+          button on empty input (matching pet's old `disabled={!input.trim}`
+          on the send button) while leaving the textarea enabled until
+          streaming flips it off. This exactly preserves the pre-refactor
+          behavior. */}
     </div>
   );
 }

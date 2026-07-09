@@ -19,7 +19,8 @@ import { useClipStore } from '@/store/clipStore';
 import { runIngest } from '@/services/wikiIngestService';
 import { runWikiLint } from '@/services/wikiLintService';
 import { saveToWiki } from '@/services/wikiQueryService';
-import { ChatMessages } from './ChatMessages';
+import { ChatMessageList } from '@/components/chat';
+import type { CliMessage } from '@quill/cli-adapter';
 import { ChatInput } from './ChatInput';
 import type { PendingAttachment } from './ChatInput';
 import { resolveSendOptions } from './inputModes';
@@ -484,11 +485,11 @@ export function AiPanel() {
       )}
 
       <div className="ai-body flex-1 overflow-y-auto p-3 flex flex-col gap-3">
-        <ChatMessages
+        <ChatMessageList
           messages={messages}
-          isStreaming={isStreaming}
-          chatMode={chatMode}
-          onSaveToWiki={chatMode === 'wiki' ? handleSaveToWiki : undefined}
+          streaming={isStreaming}
+          streamingIndicator="dots"
+          onSaveToWiki={chatMode === 'wiki' ? (msg: CliMessage) => handleSaveToWiki(msg.content) : undefined}
         />
       </div>
 

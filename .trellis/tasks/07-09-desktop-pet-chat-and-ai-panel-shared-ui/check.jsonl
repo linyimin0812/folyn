@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "质量检查主入口：lint/typecheck/测试/跨层数据流/复用/一致性检查项"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop 前端 Quality Check 章节，核对实现是否符合规范"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "核查共用组件抽取是否合理（不过度抽象、最小路径未被污染、两端真正复用）"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "核查共用组件 props 契约、插槽设计、presentational 纯净度"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "核查 CliMessage 超集类型与 PetChat 适配层类型正确性"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "核查 PetChat 独立窗口下共用组件未引入 vault/editor store 顶层依赖"}

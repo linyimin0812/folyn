@@ -96,7 +96,79 @@ interface SidebarProps {
 
 ---
 
-## State Inside Components
+## Shared Presentational Components (`components/chat/`)
+
+`components/chat/` holds chat UI shared by **two consumers with divergent capability**:
+the main-window AI panel (full: markdown, attachments, @-mention, inputMode, tool calls,
+multi-session) and the secondary `pet-panel` window chat (minimal: plain text, single
+linear session, vault-free). The shared components stay presentational — they receive
+data + callbacks and render; they do NOT own adapter lifecycle, store mutations, or
+prompt-building (those stay in each consumer).
+
+### Pattern: slot-based extension for capability divergence
+
+When a shared component must serve a full-featured consumer AND a minimal consumer,
+expose advanced capabilities as **explicit slots** the minimal consumer simply omits —
+not as a forest of internal conditionals.
+
+`ChatInputBox` (canonical example) owns only the base (textarea + send/stop + optional
+clear) and exposes slots for everything else:
+
+```tsx
+interface ChatInputBoxProps {
+  // base — both consumers
+  value: string; onChange: (v: string) => void; onSend: () => void;
+  streaming: boolean; onStop?: () => void; onClear?: () => void;
+  disabled?: boolean; placeholder?: string; textareaRows?: number;
+  // keyboard gate for consumers that intercept keys before base (e.g. @-mention nav)
+  onBeforeKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => boolean;
+  // slots — AiPanel fills these; PetChat leaves them undefined
+  leadingSlot?: React.ReactNode;     // file-picker btn + input-mode dropdown
+  attachmentsRow?: React.ReactNode;  // attachment chips
+  overlayLayer?: React.ReactNode;    // @-mention popup + mode-menu (absolutely positioned)
+  trailingSlot?: React.ReactNode;
+}
+```
+
+- AiPanel's `ChatInput` is a thin wrapper that builds the slots from its own
+  attachment/mention/mode state (vault-coupled logic stays in the wrapper, NOT in the
+  shared component) and forwards `onBeforeKeyDown` so @-mention nav can gate base Enter.
+- PetChat passes only base props + `onClear`. No slots, no `onBeforeKeyDown`.
+
+The same shape applies to `ChatMessageList`: `plaintext?` / `showCopy?` / `onClear?` /
+`onSaveToWiki?` / `streamingIndicator?` / `renderMessage?` are all optional — the minimal
+consumer passes a subset. Reserved-but-unrendered optional props (`sessions?` /
+`activeSessionId?` / `onSwitchSession?`) preserve extension points without coupling the
+minimal consumer to concepts it doesn't have.
+
+### Convention: shared components MUST NOT top-level import vault/editor/main-window stores
+
+`components/chat/*` is imported by the secondary `pet-panel` Tauri window, which has no
+vault/editor/`aiStore` in its bundle. A top-level `import { useVaultStore } from
+'@/store/vaultStore'` in a shared component would either break the secondary window's
+build or pull main-window-only state into it.
+
+**Rule**: shared chat components may import only `react`, `@quill/cli-adapter` types,
+fellow `components/chat/*` / `components/icons/*`, and platform guards (`isTauri`).
+Anything vault/editor/main-window-coupled (file-tree for @-mention, `aiStore.inputMode`,
+attachment blob-saving) belongs in the **consumer wrapper** (`ChatInput.tsx`,
+`PetChat.tsx`), injected via props/slots. Verify with a grep before adding an import to
+`components/chat/`:
+
+```bash
+grep -nE "from '@/store/(aiStore|vaultStore|editorStore|petChatStore)'" \
+  apps/desktop/src/components/chat/*.tsx   # must return nothing
+```
+
+> **Bundle gotcha**: a top-level `import` of a heavy pipeline (e.g. the
+> `unified`/remark/rehype markdown stack in `MessageContent`) is pulled into every
+> consumer's bundle even when that consumer only uses the `plaintext` path. The `plaintext`
+> prop gates runtime behavior but not bundle inclusion. If a secondary window's bundle
+> size matters, lazy-load the heavy path via dynamic `import()` inside the non-`plaintext`
+> branch rather than at module top level. (Currently accepted as a known cost in
+> `MessageContent` — `TODO` marker in source.)
+
+
 
 | Tool | Use Case | Example |
 |------|----------|---------|
