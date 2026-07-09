@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "review checklist + 禁用模式 — check 阶段对照"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "窗口/NSPanel/click-through 模式符合性核对"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "载荷与 action 类型严格性核对"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "跨窗口数据流一致性核对(bubble→event→主窗口路由)"}
+{"file": ".trellis/tasks/07-09-pet-popup-bubble-notification/prd.md", "reason": "验收标准与 Out of Scope 核对"}

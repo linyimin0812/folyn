@@ -38,6 +38,7 @@
     "shell:allow-kill",
     "dialog:default",
     "clipboard-manager:allow-write-text",
+    "notification:default",
     "fs:default",
     "fs:allow-read",
     "fs:allow-write",

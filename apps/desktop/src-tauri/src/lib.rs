@@ -269,6 +269,12 @@ pub fn run() {
                 .unwrap_or_else(|_| http::Response::new(b"error".to_vec()))
         })
         .plugin(tauri_plugin_shell::init())
+        // OS native notifications (PRD pet-popup-bubble-notification: system
+        // notification form). The main window's dispatcher calls the plugin's
+        // JS API (`sendNotification`/`registerActionTypes`/`onAction`);
+        // `notification:default` is granted on the `main` window in
+        // `capabilities/default.json`.
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -317,6 +323,26 @@ pub fn run() {
                         serde_json::json!({ "action": action }),
                     );
                 }
+            } else if id == commands::PET_CTX_MENU_TEST_BUBBLE {
+                // Demo trigger for the pet bubble notification (PRD
+                // pet-popup-bubble-notification). Emits a `pet://notify` event
+                // with a demo payload — the main window's dispatcher
+                // (`App.tsx`) routes it by `settingsStore.notificationForm`
+                // (bubble / system / both / off). The "查看详情" action
+                // exercises the full bubble→`pet://bubble-action`→main-window
+                // jump chain (target = schedule workbench).
+                let _ = app.emit(
+                    "pet://notify",
+                    serde_json::json!({
+                        "title": "提醒",
+                        "text": "这是一条气泡通知示例",
+                        "kind": "info",
+                        "target": { "kind": "schedule", "id": "demo" },
+                        "actions": [
+                            { "id": "view", "label": "查看详情", "kind": "primary" }
+                        ]
+                    }),
+                );
             }
         })
         // R8 (lifecycle): when pet mode is on, closing the main editor window
@@ -435,6 +461,9 @@ pub fn run() {
             commands::pet_panel_set_size,
             commands::pet_panel_get_size,
             commands::pet_panel_is_visible,
+            commands::pet_bubble_show,
+            commands::pet_bubble_hide,
+            commands::pet_bubble_set_position,
             commands::pet_set_topmost_level,
             commands::pet_make_transparent,
             commands::set_pet_size,

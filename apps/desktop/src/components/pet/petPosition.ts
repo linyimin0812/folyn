@@ -433,3 +433,59 @@ export function clampPanelSize(
   );
   return { width, height };
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Pet bubble notification window (`pet-bubble`).
+//
+// The bubble is a transparent NSPanel window that pops a speech bubble ABOVE
+// the pet on `pet://bubble-show`. The math here runs in LOGICAL points (same
+// unit as the work area); the caller divides `get_pet_position` (physical px)
+// by `scale_factor` before passing `petPos`, and multiplies the result by
+// `scale_factor` before `pet_bubble_set_position` (physical px). See
+// `tauri-window-patterns.md` for the unit contract.
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Bubble window footprint (matches `tauri.conf.json` `pet-bubble` size). */
+export const PET_BUBBLE_WIDTH = 320;
+export const PET_BUBBLE_HEIGHT = 120;
+
+/** Gap between the pet window's top edge and the bubble's bottom edge. */
+export const PET_BUBBLE_GAP = 6;
+
+/**
+ * Compute the bubble position (logical points, absolute screen coords) so the
+ * bubble sits ABOVE the pet, horizontally centered on the pet window. The
+ * bubble's bottom edge is `PET_BUBBLE_GAP` above the pet's top edge. If that
+ * would push the bubble above the work-area top (menu bar / no room), the
+ * bubble flips to BELOW the pet (`PET_BUBBLE_GAP` below the pet's bottom
+ * edge). X is clamped into the work area so the bubble never overflows the
+ * left/right screen edge (it may extend past the pet's centerline on a
+ * near-edge pet — that's fine, the bubble is wider than the pet).
+ *
+ * `petPos` is the pet window's top-left in LOGICAL points (caller converts
+ * from `get_pet_position`'s physical px via `÷ scale_factor`). `petSize`
+ * defaults to `PET_SIZE_DEFAULT` so the bubble tracks the actual mascot
+ * bounds (a small/large pet shifts the center). The bubble size is fixed at
+ * `PET_BUBBLE_WIDTH`×`PET_BUBBLE_HEIGHT` (non-resizable window).
+ */
+export function computeBubblePosition(
+  petPos: PetPosition,
+  workArea: PetWorkArea,
+  petSize: PetSize = PET_SIZE_DEFAULT,
+): PetPosition {
+  const petWindowSize = petSizeToPx(petSize);
+  const petCenterX = petPos.x + petWindowSize / 2;
+  const bubbleW = PET_BUBBLE_WIDTH;
+  const bubbleH = PET_BUBBLE_HEIGHT;
+
+  // X: center the bubble on the pet, clamped into the work area.
+  const maxX = workArea.x + Math.max(0, workArea.width - bubbleW);
+  const x = Math.min(Math.max(workArea.x, petCenterX - bubbleW / 2), maxX);
+
+  // Y: prefer above the pet; flip below if there's no room above.
+  const aboveY = petPos.y - PET_BUBBLE_GAP - bubbleH;
+  const belowY = petPos.y + petWindowSize + PET_BUBBLE_GAP;
+  const y = aboveY >= workArea.y ? aboveY : belowY;
+
+  return { x: Math.round(x), y: Math.round(y) };
+}

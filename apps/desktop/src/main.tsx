@@ -3,13 +3,15 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { PetApp } from './components/pet/PetApp';
 import { PetPanelApp } from './components/pet/PetPanelApp';
+import { PetBubbleApp } from './components/pet/PetBubbleApp';
 import './index.css';
 import './components/pet/pet.css';
 
 // The `pet` Tauri window loads `/#/pet` (see tauri.conf.json) and mounts only
 // the mascot — not the full editor app — so the pet window stays tiny and
 // cheap. The `pet-panel` window loads `/#/pet-panel` and mounts only the
-// quick-action panel shell. Everything else mounts the main editor.
+// quick-action panel shell. The `pet-bubble` window loads `/#/pet-bubble` and
+// mounts only the notification bubble. Everything else mounts the main editor.
 //
 // Hash detection: `window.location.hash` is normally set by the time this
 // module evaluates, but in some Tauri webview builds the hash can lag a tick
@@ -19,22 +21,25 @@ import './components/pet/pet.css';
 // transparent mascot renders with an opaque `#f0f2f8` square behind it (the
 // "white square" bug). Fall back to scanning `location.hash || location.href`
 // for the `#/pet` segment so the class is applied even when `location.hash`
-// is momentarily empty. The `#/pet-panel` route is checked FIRST because
-// `#/pet` is a prefix of `#/pet-panel` — order matters.
+// is momentarily empty. Route check order matters: `#/pet-panel` and
+// `#/pet-bubble` are checked before `#/pet` because `#/pet` is a prefix of
+// both — a stale prefix match would route the panel/bubble to the mascot.
 const petLoc =
   typeof window !== 'undefined'
     ? (window.location.hash || window.location.href || '')
     : '';
 const isPetPanelWindow = petLoc.indexOf('#/pet-panel') !== -1;
-const isPetWindow = !isPetPanelWindow && petLoc.indexOf('#/pet') !== -1;
+const isPetBubbleWindow = !isPetPanelWindow && petLoc.indexOf('#/pet-bubble') !== -1;
+const isPetWindow = !isPetPanelWindow && !isPetBubbleWindow && petLoc.indexOf('#/pet') !== -1;
 
-// The pet + pet-panel windows share `index.css` with the main editor, which
-// sets `html, body { background: var(--bg) }` — an opaque theme color. For
-// the transparent always-on-top pet window that opaque body bg would show up
-// as a 120x120 light-gray square behind the mascot (R1 violation). For the
-// pet-panel window the body bg is fine (panel is opaque) but we still tag
-// the root so `pet.css` can scope panel-specific overrides. Tag the root
-// element per route so the override leaves the main editor window untouched.
+// The pet + pet-panel + pet-bubble windows share `index.css` with the main
+// editor, which sets `html, body { background: var(--bg) }` — an opaque theme
+// color. For the transparent always-on-top pet + pet-bubble windows that
+// opaque body bg would show up as a light-gray square behind the sprite /
+// bubble card (R1 violation). For the pet-panel window the body bg is fine
+// (panel is opaque) but we still tag the root so `pet.css` can scope
+// panel-specific overrides. Tag the root element per route so the override
+// leaves the main editor window untouched.
 if (isPetWindow) {
   document.documentElement.classList.add('is-pet-window');
   // Debug marker: confirms the transparency class landed on <html>. If this
@@ -46,9 +51,20 @@ if (isPetWindow) {
 if (isPetPanelWindow) {
   document.documentElement.classList.add('is-pet-panel-window');
 }
+if (isPetBubbleWindow) {
+  document.documentElement.classList.add('is-pet-bubble-window');
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {isPetWindow ? <PetApp /> : isPetPanelWindow ? <PetPanelApp /> : <App />}
+    {isPetWindow ? (
+      <PetApp />
+    ) : isPetPanelWindow ? (
+      <PetPanelApp />
+    ) : isPetBubbleWindow ? (
+      <PetBubbleApp />
+    ) : (
+      <App />
+    )}
   </React.StrictMode>,
 );

@@ -55,7 +55,7 @@ pub fn backend_is_nspanel() -> bool {
     }
 }
 
-/// Convert the `pet` and `pet-panel` windows into NSPanels with the
+/// Convert the `pet`, `pet-panel`, and `pet-bubble` windows into NSPanels with the
 /// fullscreen-overlay configuration. Must run on the macOS main thread
 /// (NSWindow API is main-thread-only). `to_panel()` swaps the window's class
 /// in place; calling it again on an already-converted window re-asserts the
@@ -74,7 +74,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
     let _ = app.plugin(tauri_nspanel::init());
 
     let mut count = 0;
-    for label in ["pet", "pet-panel"] {
+    for label in ["pet", "pet-panel", "pet-bubble"] {
         let Some(window) = app.get_webview_window(label) else {
             continue;
         };

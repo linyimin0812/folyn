@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useSettingsStore, type SettingsTab } from '@/store/settingsStore';
+import { useSettingsStore, type SettingsTab, type NotificationForm } from '@/store/settingsStore';
 import { useSkillStore } from '@/store/skillStore';
 import { builtinSkills } from '@/services/skillDefaults';
 import type { SkillOutputFormat, SkillCapability } from '@/types/skill';
@@ -132,6 +132,7 @@ const NAV_GROUPS = [
     { id: 'shortcuts' as SettingsTab, icon: '⌨️', name: '快捷键' },
     { id: 'templates' as SettingsTab, icon: '📄', name: '文件模板' },
     { id: 'pet' as SettingsTab, icon: '🐾', name: '桌宠' },
+    { id: 'notifications' as SettingsTab, icon: '🔔', name: '通知' },
     { id: 'plugins' as SettingsTab, icon: '🧩', name: '插件' },
   ]},
   { label: 'AI', items: [
@@ -961,6 +962,39 @@ function CustomIconPreview({ path, onError }: CustomIconPreviewProps) {
   );
 }
 
+function NotificationsSettings() {
+  const notificationForm = useSettingsStore((s) => s.notificationForm);
+  const setNotificationForm = useSettingsStore((s) => s.setNotificationForm);
+  const options: { value: NotificationForm; label: string }[] = [
+    { value: 'bubble', label: '宠物头顶气泡' },
+    { value: 'system', label: '系统通知' },
+    { value: 'both', label: '两者都发' },
+    { value: 'off', label: '关闭' },
+  ];
+  return (
+    <div className="mb-[26px]">
+      <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">通知</div>
+      <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">选择桌面宠物事件通知的形式</div>
+      <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
+        <div className="tr-info">
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">通知形式</h4>
+          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">气泡浮于宠物头顶；系统通知走 macOS 通知中心（失焦时仍可见）</p>
+        </div>
+        <select
+          className="settings-select"
+          style={{ maxWidth: 200 }}
+          value={notificationForm}
+          onChange={(e) => setNotificationForm(e.target.value as NotificationForm)}
+        >
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsPage() {
   const store = useSettingsStore();
   const { settingsTab, setSettingsTab, setTheme, updateSettings } = store;
@@ -1229,6 +1263,11 @@ export function SettingsPage() {
         {/* -- 桌宠 -- */}
         {settingsTab === 'pet' && (
           <PetSettings />
+        )}
+
+        {/* -- 通知 -- */}
+        {settingsTab === 'notifications' && (
+          <NotificationsSettings />
         )}
 
         {/* -- 插件 -- */}

@@ -12,6 +12,7 @@ const tauriAlias = {
   '@tauri-apps/plugin-shell': path.resolve(root, 'test/mocks/@tauri-apps/plugin-shell.ts'),
   '@tauri-apps/plugin-dialog': path.resolve(root, 'test/mocks/@tauri-apps/plugin-dialog.ts'),
   '@tauri-apps/plugin-clipboard-manager': path.resolve(root, 'test/mocks/@tauri-apps/plugin-clipboard-manager.ts'),
+  '@tauri-apps/plugin-notification': path.resolve(root, 'test/mocks/@tauri-apps/plugin-notification.ts'),
   '@tauri-apps/api/core': path.resolve(root, 'test/mocks/@tauri-apps/api/core.ts'),
   '@tauri-apps/api/path': path.resolve(root, 'test/mocks/@tauri-apps/api/path.ts'),
   '@tauri-apps/api/event': path.resolve(root, 'test/mocks/@tauri-apps/api/event.ts'),

@@ -414,6 +414,13 @@ pub const PET_CTX_MENU_SIZE_SMALL: &str = "pet-ctx-size-small";
 pub const PET_CTX_MENU_SIZE_MEDIUM: &str = "pet-ctx-size-medium";
 pub const PET_CTX_MENU_SIZE_LARGE: &str = "pet-ctx-size-large";
 pub const PET_CTX_MENU_DISABLE_PET: &str = "pet-ctx-disable-pet";
+/// Native context-menu item that fires the demo bubble notification (PRD:
+/// pet-popup-bubble-notification). `on_menu_event` in `lib.rs` maps this id
+/// to a `pet://notify` emit with a demo payload; the main window's dispatcher
+/// routes it by `settingsStore.notificationForm` (bubble / system / both /
+/// off) so the bubble window can be exercised without any real trigger
+/// source wired up yet.
+pub const PET_CTX_MENU_TEST_BUBBLE: &str = "pet-ctx-test-bubble";
 
 /// Map a `PetSize` level string ("small"|"medium"|"large") to the logical
 /// pixel footprint of the pet window. Mirrors `PET_SIZE_TO_PX` in
@@ -737,6 +744,17 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), String> 
         None::<&str>,
     )
     .map_err(|e| e.to_string())?;
+    // Demo: fire a test bubble notification (PRD pet-popup-bubble-notification).
+    // Routed in `lib.rs` `on_menu_event` to a `pet://notify` emit (the main
+    // window's dispatcher routes it by `notificationForm`).
+    let test_bubble = MenuItem::with_id(
+        &app,
+        PET_CTX_MENU_TEST_BUBBLE,
+        "测试气泡通知",
+        true,
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
 
     let menu = Menu::with_items(
         &app,
@@ -747,6 +765,7 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), String> 
             &hide_pet,
             &size_submenu,
             &sep,
+            &test_bubble,
             &disable,
         ],
     )
@@ -904,6 +923,62 @@ pub async fn pet_panel_is_visible(app: tauri::AppHandle) -> Result<bool, String>
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
     panel.is_visible().map_err(|e| e.to_string())
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Pet bubble notification window (`pet-bubble`).
+//
+// A transparent, decorations:false, skipTaskbar NSPanel window that pops a
+// speech bubble above the pet on `pet://bubble-show`. Shown/hidden/positioned
+// via these custom invoke commands so the bubble frontend's calls bypass the
+// ACL (mirrors the `pet-panel` command pattern). The bubble window's own
+// capability file grants only `core:event` (listen for `pet://bubble-show`,
+// emit `pet://bubble-action`) — no `core:window:*` perms are needed because
+// all window mutation goes through these commands.
+// ────────────────────────────────────────────────────────────────────────────
+
+const PET_BUBBLE_LABEL: &str = "pet-bubble";
+
+/// Show the pet-bubble window. Does NOT steal focus (the window is configured
+/// `focus:false` + converted to a `nonactivating_panel` NSPanel, so it appears
+/// without deactivating the foreground app). The caller sets position via
+/// `pet_bubble_set_position` first so the bubble appears above the pet.
+#[tauri::command]
+pub async fn pet_bubble_show(app: tauri::AppHandle) -> Result<(), String> {
+    let bubble = app
+        .get_webview_window(PET_BUBBLE_LABEL)
+        .ok_or_else(|| "pet-bubble window not found".to_string())?;
+    bubble.show().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Hide the pet-bubble window without closing it (stays alive for the next
+/// show). Used by the TTL auto-dismiss, the ✕ close button, and after an
+/// action button fires `pet://bubble-action`.
+#[tauri::command]
+pub async fn pet_bubble_hide(app: tauri::AppHandle) -> Result<(), String> {
+    let bubble = app
+        .get_webview_window(PET_BUBBLE_LABEL)
+        .ok_or_else(|| "pet-bubble window not found".to_string())?;
+    bubble.hide().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Set the pet-bubble window's screen position (physical pixels). The bubble
+/// frontend computes a clamped position above the pet (using
+/// `get_pet_position` + `pet_get_work_area`) and passes it here.
+#[tauri::command]
+pub async fn pet_bubble_set_position(
+    app: tauri::AppHandle,
+    x: i32,
+    y: i32,
+) -> Result<(), String> {
+    let bubble = app
+        .get_webview_window(PET_BUBBLE_LABEL)
+        .ok_or_else(|| "pet-bubble window not found".to_string())?;
+    bubble
+        .set_position(PhysicalPosition::new(x, y))
+        .map_err(|e| e.to_string())
 }
 
 /// Raise a pet-managed window to the highest standard macOS window level so

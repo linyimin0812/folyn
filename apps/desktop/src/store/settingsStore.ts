@@ -6,9 +6,14 @@ import { PET_SIZE_VERSION, PET_SIZE_DEFAULT, type PetSize } from '@/components/p
 
 export type Theme = 'light' | 'dark' | 'system';
 export type AppPage = 'editor' | 'vault' | 'settings' | 'schedule' | 'study';
-export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'ai' | 'templates' | 'skills' | 'pet' | 'plugins' | 'about';
+export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'ai' | 'templates' | 'skills' | 'pet' | 'plugins' | 'notifications' | 'about';
 export type LinkOpenMode = 'external' | 'internal';
 export type PetIconSource = 'builtin' | 'custom';
+/** Global notification form (PRD pet-popup-bubble-notification). `'bubble'`
+ *  is the default so existing users keep the in-app bubble behavior;
+ *  `'system'` routes through `tauri-plugin-notification`, `'both'` shows both,
+ *  `'off'` drops the notification entirely. */
+export type NotificationForm = 'bubble' | 'system' | 'both' | 'off';
 
 export interface ShortcutItem {
   id: string;
@@ -152,6 +157,14 @@ interface SettingsState {
   // "桌宠大小" submenu. See `set_pet_size` Rust command.
   petSize: PetSize;
 
+  // Global notification form (PRD pet-popup-bubble-notification). Selects how
+  // a `pet://notify` payload is surfaced: in-app bubble (`pet-bubble` window),
+  // OS native notification (`tauri-plugin-notification`), both, or neither.
+  // Persisted so the choice survives restarts; defaults to `'bubble'` to keep
+  // the existing behavior. The main-window dispatcher reads this on every
+  // `pet://notify` event.
+  notificationForm: NotificationForm;
+
   // Actions
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
@@ -174,6 +187,7 @@ interface SettingsState {
   setPetPanelSizeVersion: (version: number) => void;
   setPetIcon: (source: PetIconSource, path?: string) => void;
   setPetSize: (size: PetSize) => void;
+  setNotificationForm: (form: NotificationForm) => void;
 }
 
 const SETTINGS_STORAGE_KEY = 'settings:all';
@@ -238,6 +252,7 @@ const PERSIST_KEYS = [
   'petPanelX', 'petPanelY', 'petPanelWidth', 'petPanelHeight',
   'petPanelSizeVersion', 'petPosVersion',
   'petIconSource', 'petIconPath', 'petSizeVersion', 'petSize',
+  'notificationForm',
 ] as const;
 
 /** Pick only PERSIST_KEYS from state (drops functions + runtime fields). */
@@ -354,6 +369,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   petIconPath: '',
   petSizeVersion: 0,
   petSize: PET_SIZE_DEFAULT,
+
+  // Default `'bubble'` preserves the pre-feature behavior (the in-app
+  // `pet-bubble` window). Existing users without a persisted value get this on
+  // next hydrate (missing field → undefined → coerced below to `'bubble'`).
+  notificationForm: 'bubble',
 
   setTheme: (theme) => {
     const actual = theme === 'system'
@@ -479,6 +499,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ petSize: size });
     debouncedPersist(useSettingsStore.getState());
   },
+  setNotificationForm: (form: NotificationForm) => {
+    set({ notificationForm: form });
+    debouncedPersist(useSettingsStore.getState());
+  },
 }));
 
 /** Load persisted settings from backend on startup */
@@ -556,6 +580,17 @@ storageClient.get<Partial<SettingsState>>(SETTINGS_STORAGE_KEY).then((saved) => 
     // `undefined`, crashing the `PET_SIZE_TO_PX` lookup in PetMascot/PetApp).
     if (saved.petSize !== 'small' && saved.petSize !== 'medium' && saved.petSize !== 'large') {
       saved.petSize = PET_SIZE_DEFAULT;
+    }
+    // Coerce a missing/invalid `notificationForm` to the default `'bubble'`
+    // (defensive — a persisted state from before this feature would otherwise
+    // have `undefined`, which would break the dispatcher's switch).
+    if (
+      saved.notificationForm !== 'bubble' &&
+      saved.notificationForm !== 'system' &&
+      saved.notificationForm !== 'both' &&
+      saved.notificationForm !== 'off'
+    ) {
+      saved.notificationForm = 'bubble';
     }
     useSettingsStore.setState(saved);
   }

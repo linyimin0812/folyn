@@ -70,6 +70,22 @@
         "visible": false,
         "focus": true,
         "dragDropEnabled": false
+      },
+      {
+        "label": "pet-bubble",
+        "url": "/#/pet-bubble",
+        "title": "Quill Pet Bubble",
+        "width": 320,
+        "height": 120,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": false,
+        "skipTaskbar": true,
+        "shadow": true,
+        "visible": false,
+        "focus": false,
+        "dragDropEnabled": false
       }
     ],
     "security": {

@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "多窗口/透明窗口/NSPanel/click-through/原生菜单模式 — pet-bubble 窗口定义与 NSPanel 转换直接遵循"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "气泡 runtime-only 状态与 Zustand 边界 — 决定气泡不持久化、是否独立 store"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "PetBubbleApp 组件结构、props、命名导出、样式约定"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "禁用模式、review checklist — 实现期遵循"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "bubble 载荷与 action 类型定义规范"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "气泡跨窗口数据流(bubble→event→主窗口路由),跨层思考触发"}
+{"file": ".trellis/tasks/07-09-pet-popup-bubble-notification/prd.md", "reason": "本任务 PRD — 载荷契约、双事件入口、跳转链路、验收标准"}

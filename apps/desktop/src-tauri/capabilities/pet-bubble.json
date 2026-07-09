@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/tooling/cli/schema.json",
+  "identifier": "pet-bubble",
+  "description": "Capabilities for the desktop pet bubble notification window (speech bubble above the pet). All window mutation (show/hide/position) goes through custom `pet_bubble_*` invoke commands which bypass the ACL, so no `core:window:*` perms are needed here. The bubble only needs event access: `listen` for `pet://bubble-show` (render + TTL) and `emit` for `pet://bubble-action` (button/title jump → main window routes).",
+  "windows": ["pet-bubble"],
+  "permissions": [
+    "core:default",
+    "core:event:allow-listen",
+    "core:event:allow-emit"
+  ]
+}

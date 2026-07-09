@@ -7,6 +7,7 @@ import {
   clampPanelPosition,
   clampPanelSize,
   resolvePanelSize,
+  computeBubblePosition,
   PET_WINDOW_SIZE,
   PET_MASCOT_SIZE,
   PET_RIGHT_MARGIN,
@@ -18,6 +19,9 @@ import {
   PET_PANEL_MIN_HEIGHT,
   PET_PANEL_GAP,
   PET_PANEL_SIZE_VERSION,
+  PET_BUBBLE_WIDTH,
+  PET_BUBBLE_HEIGHT,
+  PET_BUBBLE_GAP,
   type PetWorkArea,
 } from './petPosition';
 
@@ -516,5 +520,54 @@ describe('computeCenteredPanelPosition', () => {
     const pos = computeCenteredPanelPosition(wa, { width: 500, height: 700 });
     expect(pos.x).toBe(0);
     expect(pos.y).toBe(0);
+  });
+});
+
+describe('computeBubblePosition', () => {
+  // Medium pet (96×96). Work area mirrors a 1440×875 desktop minus menu bar.
+  const workArea: PetWorkArea = { x: 0, y: 25, width: 1440, height: 875, scale_factor: 2 };
+
+  it('places the bubble above the pet, centered on the pet (bottom-right pet)', () => {
+    const petPos = { x: 1344, y: 731 }; // petCenterX = 1392
+    const pos = computeBubblePosition(petPos, workArea);
+    // X centered on pet then clamped into work area (maxX = 1440-320 = 1120).
+    expect(pos.x).toBe(1120);
+    // Y = petTop - gap - bubbleHeight = 731 - 6 - 120 = 605 (>= 25, so above).
+    expect(pos.y).toBe(605);
+  });
+
+  it('flips below the pet when there is no room above (menu bar)', () => {
+    const petPos = { x: 600, y: 30 }; // aboveY = -96 < 25 → flip
+    const pos = computeBubblePosition(petPos, workArea);
+    // X centered: 648 - 160 = 488, within [0, 1120].
+    expect(pos.x).toBe(488);
+    // Y = petTop + petSize + gap = 30 + 96 + 6 = 132.
+    expect(pos.y).toBe(132);
+  });
+
+  it('clamps X to the work-area right edge when the pet is near the right edge', () => {
+    const petPos = { x: 1500, y: 731 }; // petCenterX = 1548 → raw x = 1388
+    const pos = computeBubblePosition(petPos, workArea);
+    expect(pos.x).toBe(1120); // clamped to maxX
+    expect(pos.y).toBe(605);
+  });
+
+  it('respects a nonzero work-area origin', () => {
+    const wa: PetWorkArea = { x: 100, y: 50, width: 1000, height: 600, scale_factor: 2 };
+    const petPos = { x: 1056, y: 554 }; // petCenterX = 1104 → raw x = 944
+    const pos = computeBubblePosition(petPos, wa);
+    // maxX = 100 + 1000 - 320 = 780 → 944 clamps down to 780.
+    expect(pos.x).toBe(780);
+    // aboveY = 554 - 6 - 120 = 428 (>= 50, so above).
+    expect(pos.y).toBe(428);
+  });
+
+  it('keeps the bubble inside the work area when the pet is small', () => {
+    const petPos = { x: 20, y: 40 };
+    const pos = computeBubblePosition(petPos, workArea, 'small');
+    // small pet = 64px; petCenterX = 20+32 = 52 → raw x = 52-160 = -108 → clamped to 0.
+    expect(pos.x).toBe(0);
+    // aboveY = 40 - 6 - 120 = -86 < 25 → below = 40 + 64 + 6 = 110.
+    expect(pos.y).toBe(110);
   });
 });

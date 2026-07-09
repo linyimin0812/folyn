@@ -847,3 +847,107 @@ passed to `set_pet_position`.
 - `keysToAccelerator` unit tests (`src/utils/shortcutAccelerator.test.ts`): symbol→token map, single-letter uppercasing, multi-char passthrough, empty input, order preservation.
 - `settingsStore` test: `DEFAULT_SHORTCUTS` includes `togglePetPanel` with default `['⌘','Shift','Q']`.
 - No Rust unit test for `pet_panel_set_shortcut` (it shells out to the plugin's `register`, which needs a live app handle — covered by manual integration testing).
+
+---
+
+## Scenario: Pet Bubble Notification + Configurable OS Notification
+
+### 1. Scope / Trigger
+- Trigger: surfacing a desktop-pet event (schedule reminder, pet-chat new message, task event, external push) to the user as EITHER an in-app speech bubble above the pet OR an OS native notification, with the form user-configurable (`bubble` | `system` | `both` | `off`).
+- Three moving parts: a transparent `pet-bubble` NSPanel window (the bubble), a `tauri-plugin-notification` OS-notification path, and a main-window dispatcher that reads the user's `notificationForm` setting and routes a single `pet://notify` event to one or both.
+
+### 2. Signatures
+- **Tauri window** (`tauri.conf.json` `app.windows[]`): `label:"pet-bubble"`, `url:"/#/pet-bubble"`, `transparent:true`, `decorations:false`, `skipTaskbar:true`, `visible:false`, `focus:false`, `shadow:true`, size 320×120. Route mounted in `main.tsx` (`#/pet-bubble` → `<PetBubbleApp/>`), checked BEFORE `#/pet` (prefix collision).
+- **Rust commands** (`commands.rs`, registered in `lib.rs`): `pet_bubble_show`, `pet_bubble_hide`, `pet_bubble_set_position { x: i32, y: i32 }` — mirror the `pet_panel_*` pattern; custom invoke bypasses the ACL.
+- **NSPanel conversion**: `pet_panel_macos.rs` `convert_windows` label list must include `"pet-bubble"` so the bubble gains Dock level + `can_join_all_spaces | full_screen_auxiliary` (fullscreen coverage). A plain `alwaysOnTop` window CANNOT rise over a fullscreen app.
+- **Event channels** (typed payload shared Rust↔TS):
+  - `pet://notify` — `PetBubblePayload` — trigger sources emit this (the single entry point).
+  - `pet://bubble-show` — `PetBubblePayload` — dispatcher re-emits to the `pet-bubble` window when `notificationForm` includes bubble.
+  - `pet://bubble-action` — `{ type: 'navigate' | 'action'; actionId?: string; target?: PetBubbleTarget }` — bubble buttons/title AND OS-notification click both emit this; the main window's `handleBubbleAction` is the single routing exit.
+- **Dispatcher** (`services/petNotifyDispatcher.ts`, main-window-only):
+  - `decideNotification(form): { bubble: boolean; system: boolean }` — pure.
+  - `dispatchNotification(payload)` — reads `settingsStore.notificationForm`, routes to bubble emit and/or `osNotify`.
+  - `osNotify(payload)` — `requestPermission` → `registerActionTypes` (once) → `sendNotification({ id, title, body, actionTypeId, extra })`; stashes `target` in `Map<id, target>`.
+  - `startNotificationClickListener()` → `onAction(cb)` → `targetById.get(notification.id)` → `emit('pet://bubble-action', { type:'navigate', target })`.
+
+### 3. Contracts
+- **`PetBubblePayload`** (the contract across Rust demo emit + all future trigger sources):
+  `{ text: string; title?: string; kind?: 'info'|'reminder'|'message'|'event'; source?: string; target?: { kind: 'schedule'|'chat'|'task'|'file'; id: string }; actions?: { id: string; label: string; kind?: 'primary'|'ghost' }[] }`
+- **`notificationForm`** (`settingsStore`, persisted, default `'bubble'` to preserve pre-feature behavior): `'bubble' | 'system' | 'both' | 'off'`. Hydrate coerces unknown/missing → `'bubble'`.
+- **Capability scoping** (per-window-label, ACL reality):
+  - `capabilities/pet-bubble.json` (`windows: ["pet-bubble"]`): `core:default` + `core:event:allow-listen` (hear `pet://bubble-show`) + `core:event:allow-emit` (fire `pet://bubble-action`). NO `core:window:*` — all window mutation goes through custom `pet_bubble_*` invoke (bypass ACL).
+  - `capabilities/default.json` (`windows: ["main"]`): add `notification:default` — the OS notification is fired from the MAIN window's dispatcher only. The main window's grant does NOT extend to `pet` / `pet-panel` / `pet-bubble`.
+- **OS-notification click→target contract**: pass an explicit numeric `id` in `sendNotification({ id, ... })`; stash `target` in a module-local `Map<id, target>`; on `onAction` click, look up by `notification.id`, `delete` (one-shot), emit `pet://bubble-action`. Do NOT rely on `extra` round-trip in the click event — research confirmed it is unreliable across platforms.
+
+### 4. Validation & Error Matrix
+
+| Frontend action | Mechanism | Required ACL | If missing / fails |
+|---|---|---|---|
+| bubble show/hide/position | custom `invoke('pet_bubble_*')` | none (custom cmds bypass ACL) | check `invoke_handler` registration in `lib.rs` |
+| `emit('pet://bubble-show')` from main | `@tauri-apps/api/event` | `core:event:allow-emit` on `main` (in `default.json`) | bubble never shows; main already has it via `core:default`? — NO, `core:default` omits `allow-emit`; verify `default.json` grants it |
+| `listen('pet://bubble-show')` in bubble window | `@tauri-apps/api/event` | `core:event:allow-listen` on `pet-bubble` | listener never registers → bubble inert (silent) |
+| `emit('pet://bubble-action')` from bubble | event | `core:event:allow-emit` on `pet-bubble` | button click looks to work but main window never receives the jump |
+| `sendNotification` / `registerActionTypes` / `onAction` | `@tauri-apps/plugin-notification` | `notification:default` on `main` | `[错误] notification not allowed by ACL` on first notify |
+| OS notification permission | `requestPermission()` | n/a (OS gate, not ACL) | first notify triggers the macOS auth prompt; denied → `osNotify` returns early, bubble path (for `'both'`) still fires |
+
+### 5. Good / Base / Bad Cases
+- **Good**: trigger source emits `pet://notify` once → dispatcher reads `notificationForm` → routes to bubble and/or OS notification; OS-notification click → `onAction` → id-lookup → `pet://bubble-action` → `handleBubbleAction` jumps. Single routing exit, single entry point.
+- **Base**: `'bubble'` (default) — only the in-app bubble fires; OS notification path is dormant. Existing behavior preserved.
+- **Bad**: a trigger source emits `pet://bubble-show` directly (bypassing `pet://notify` + dispatcher) → the user's `notificationForm` setting is ignored (system-only users never see it). Always emit `pet://notify`; only the dispatcher emits `pet://bubble-show`.
+- **Bad**: rely on `notification.extra.target` inside `onAction` instead of the `Map<id,target>` lookup → works on some platforms, silently returns `undefined` on others → click does nothing. Use `notification.id` lookup.
+
+### 6. Tests Required
+- **Dispatcher routing** (`services/petNotifyDispatcher.test.ts`): `decideNotification` over all 4 forms; `dispatchNotification` emits `pet://bubble-show` only when `bubble`, calls `osNotify` only when `system`, both for `'both'`, neither for `'off'`; OS click `onAction` → id-lookup → `emit('pet://bubble-action', { type:'navigate', target })` → entry deleted (one-shot). Mock `@tauri-apps/plugin-notification` via `vi.mock` (the plugin is NOT in `vitest.workspace.ts` tauriAlias by default — add an alias or `vi.mock` per test).
+- **Bubble component** (`components/pet/PetBubbleApp.test.tsx`): TTL auto-dismiss, ✕ close, action/title → `pet://bubble-action` emit, in-flight replacement (no double TTL). The `pet://bubble-show` listener registers on an async microtask — `await waitFor` before asserting.
+- **Positioning** (`components/pet/petPosition.test.ts`): `computeBubblePosition` — above pet when room, flips below at the menu-bar top, X clamps to work area, nonzero origin, small pet.
+- **Settings** (`store/settingsStore.test.ts`): `notificationForm` default `'bubble'`; hydrate coerces invalid → `'bubble'`; persist round-trip.
+
+### 7. Wrong vs Correct
+
+#### Wrong — trigger source emits the bubble channel directly, ignoring the form setting
+```ts
+// some future schedule-reminder trigger
+await emit('pet://bubble-show', payload);  // bypasses dispatcher
+// user who picked 'system' never sees the reminder
+```
+
+#### Correct — single `pet://notify` entry point; dispatcher owns form-based routing
+```ts
+// any trigger source
+await emit('pet://notify', payload);
+// dispatcher (main window):
+const form = useSettingsStore.getState().notificationForm;
+const { bubble, system } = decideNotification(form);
+if (bubble) await emit('pet://bubble-show', payload);
+if (system) await osNotify(payload);
+```
+
+#### Wrong — trust `extra` in the OS click callback
+```ts
+onAction((n) => {
+  const target = (n.extra as any)?.target;  // undefined on some platforms
+  if (target) emit('pet://bubble-action', { type: 'navigate', target });
+});
+```
+
+#### Correct — id-lookup in a module-local map
+```ts
+sendNotification({ id, title, body, actionTypeId, extra: { target } });
+targetById.set(id, payload.target);
+onAction((n) => {
+  const target = targetById.get(n.id);
+  if (target) { targetById.delete(n.id); emit('pet://bubble-action', { type: 'navigate', target }); }
+});
+```
+
+---
+
+## Common Mistake: `tauri-plugin-notification` Click API Name & `extra` Round-Trip
+
+**Symptom**: OS notification shows, but clicking it does nothing (no jump). Or: code references `onNotificationEvent` / `onClicked` which don't exist — TS build fails or runtime `TypeError: onNotificationEvent is not a function`.
+
+**Cause**: `@tauri-apps/plugin-notification` v2.3.3 exposes `onAction(cb: (notification: Options) => void)` — NOT `onNotificationEvent`, NOT `onClicked`. The click callback receives the full `Options` object (including the `id` you set), but `extra` round-trip in that callback is unreliable across platforms (sometimes `undefined`). Relying on `extra` for the jump target silently breaks on the affected platform.
+
+**Fix**: register a single action type via `registerActionTypes([{ id, actions: [{ id: 'view', title: '查看详情' }] }])` (once per process, idempotent guard), pass `actionTypeId` + an explicit numeric `id` to `sendNotification`, stash the jump `target` in a module-local `Map<id, target>`, and in the `onAction` callback look up by `notification.id` (then `delete` — one-shot). The looked-up target is emitted on `pet://bubble-action` so the existing jump router handles it uniformly.
+
+**Prevention**: when integrating any `@tauri-apps/plugin-*` click/event callback, verify the actual exported symbol name against `node_modules/.pnpm/@tauri-apps+plugin-*/node_modules/@tauri-apps/plugin-*/index.d.ts` before coding — the v2 plugin event API names are not stable across minor versions and several names that appear in docs/issues (`onNotificationEvent`, `onClicked`) do not exist in the shipped types. Do not trust callback-carried custom data (`extra`); pass an explicit `id` and keep a side-table.

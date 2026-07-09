@@ -19,6 +19,7 @@ import { useVaultStore } from './store/vaultStore';
 import { useEditorStore } from './store/editorStore';
 import { useSearchStore } from './store/searchStore';
 import { useCommandPaletteStore } from './store/commandPaletteStore';
+import { usePetChatStore } from './store/petChatStore';
 import { loadAiSessionsForVault } from './store/aiStore';
 import { registerBuiltinPlugins } from '@quill/container-plugins';
 import { registerBuiltinCommands } from './services/commandRegistry';
@@ -28,6 +29,8 @@ import { pluginHost } from '@quill/plugin-host';
 import { sandboxLoader } from './services/plugin-host/sandboxLoader';
 import { trustedLoader } from './services/plugin-host/trustedLoader';
 import type { PetMenuAction } from './components/pet/PetContextMenu';
+import type { PetBubbleActionEvent, PetBubbleTarget, PetBubblePayload } from './components/pet/PetBubbleApp';
+import { dispatchNotification, startNotificationClickListener } from './services/petNotifyDispatcher';
 
 registerBuiltinPlugins();
 // Seed the command palette's static commands (actions + panels/modes) once at
@@ -328,6 +331,41 @@ export default function App() {
       }
     };
 
+    // Route a `pet://bubble-action` jump from the pet-bubble window (PRD
+    // pet-popup-bubble-notification). The bubble emits this on title/action
+    // click; the main window owns the routing tables (schedule page, file
+    // tabs, pet-panel chat sessions) so it executes the jump + brings the
+    // target window forward. `focusMain` is reused so the editor comes with.
+    const handleBubbleAction = async (event: PetBubbleActionEvent) => {
+      const target: PetBubbleTarget | undefined = event.target;
+      if (!target) {
+        await focusMain();
+        return;
+      }
+      switch (target.kind) {
+        case 'schedule':
+          setCurrentPage('schedule');
+          await focusMain();
+          break;
+        case 'chat':
+          usePetChatStore.getState().switchSession(target.id);
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            await invoke('pet_panel_show');
+          } catch {
+            // Non-fatal — session still switched in-store.
+          }
+          break;
+        case 'file':
+        case 'task': {
+          const name = target.id.split('/').pop() || target.id;
+          await useEditorStore.getState().openFile(target.id, name);
+          await focusMain();
+          break;
+        }
+      }
+    };
+
     (async () => {
       // Launch restore: only re-show if the user left pet mode on.
       const { petModeEnabled } = useSettingsStore.getState();
@@ -350,13 +388,37 @@ export default function App() {
       const unVis = await listen<boolean>('pet://visibility-changed', (event) => {
         useSettingsStore.getState().setPetModeEnabled(!!event.payload);
       });
+      // Bubble jump: the pet-bubble window emits `pet://bubble-action` when
+      // the user clicks a bubble title / action button; route the jump.
+      const unBubble = await listen<PetBubbleActionEvent>('pet://bubble-action', (event) => {
+        if (event.payload) void handleBubbleAction(event.payload);
+      });
+      // Unified notification entry: trigger sources (currently the Rust demo
+      // menu item; future: schedule reminder, pet-chat new message, task
+      // events, external push) emit `pet://notify` with a PetBubblePayload;
+      // the dispatcher routes it by `settingsStore.notificationForm` to the
+      // in-app bubble (`pet://bubble-show`) and/or an OS native notification.
+      // The OS notification click→jump reuses `pet://bubble-action` above.
+      const unNotify = await listen<PetBubblePayload>('pet://notify', (event) => {
+        if (event.payload) void dispatchNotification(event.payload);
+      });
+      // OS notification click listener: maps `notification.id` → target →
+      // emits `pet://bubble-action` (handled by `unBubble` above). Registered
+      // once for the main window's lifetime.
+      const unNotifClick = await startNotificationClickListener();
       if (cancelled) {
         unAction();
         unVis();
+        unBubble();
+        unNotify();
+        unNotifClick();
       } else {
         unlisten = () => {
           unAction();
           unVis();
+          unBubble();
+          unNotify();
+          unNotifClick();
         };
       }
     })();
