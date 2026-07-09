@@ -4,8 +4,25 @@ import { isTauri } from '@/utils/platform';
 import { useSettingsStore } from '@/store/settingsStore';
 import { usePetChatStore } from '@/store/petChatStore';
 import type { PetChatMessage } from '@/store/petChatStore';
-import { sendPetChatMessage, stopPetChat, resetPetChatAdapter } from '@/services/petChatService';
+import {
+  sendPetChatMessage,
+  stopPetChat,
+  resetPetChatAdapter,
+  getPetChatWorkingDir,
+} from '@/services/petChatService';
 import { ChatMessageList, ChatInputBox } from '@/components/chat';
+import type { PendingAttachment } from '@/components/chat';
+import {
+  addFiles,
+  handlePaste,
+  saveBlobs,
+  buildReadInstructions,
+  revokeUrls,
+  DEFAULT_MAX_BYTES,
+  DEFAULT_ALLOWED_TYPES,
+  ATTACHMENTS_SUBDIR,
+} from '@/components/chat';
+import { FileIcon } from '@/components/icons/FileIcon';
 import { PetChatSessionHeader } from './PetChatSessionHeader';
 import type { PetMenuAction } from './PetContextMenu';
 
@@ -21,18 +38,36 @@ import type { PetMenuAction } from './PetContextMenu';
  *  - Message list persisted across restarts via `petChatStore` (namespace
  *    `pet-chat:sessions` in `storageClient`; PR2: per-session adapter +
  *    `resumeSessionId` cross-turn memory). `streaming` is runtime-only.
- *  - No vault UI: no file mentions, no wiki/clip toolbar, no attachments.
+ *  - No vault UI: no file mentions (@mention), no wiki/clip toolbar, no
+ *    inputMode dropdown. PR4 (file-upload) adds disk-file + paste-image
+ *    attachments that land in the appData temp cwd (NOT the vault) and are
+ *    surfaced to the CLI via Read-tool instructions prepended to the user
+ *    message — the same mechanism AiPanel uses, minus the vault-coupled
+ *    @mention resolution (pet is vault-free, so no fileTree to resolve
+ *    against).
  *  - Unconfigured-AI (R7): if `settings.cliPath` or `settings.cliAdapter`
  *    is empty, render a guidance CTA instead of the input.
  *
  * PR3: the message list, bubbles, copy button, clear button, and input box
- * are now the shared `components/chat/*` components (Tailwind). PetChat only
+ * are the shared `components/chat/*` components (Tailwind). PetChat only
  * owns: the send/stop/clear handlers, the unmount lifecycle, the
  * unconfigured-CTA, and the `PetChatMessage → CliMessage` boundary mapping.
- * The copy button is fully owned by `ChatMessageList` (its built-in
- * clipboard write + 1.2s "已复制" feedback is identical to pet's old
- * inline copy button, so no `onCopy` is wired — see `CopyButton` in
- * `ChatMessageList.tsx`).
+ * The message list renders markdown parity with AiPanel (no `plaintext` prop
+ * → MessageContent runs the unified/remark/rehype pipeline into `.msg-md`;
+ * `streamingIndicator='dots'` matches AiPanel's list-level 3-dot block +
+ * per-bubble cursor). The copy button is fully owned by `ChatMessageList`
+ * (its built-in clipboard write + 1.2s "已复制" feedback is identical to
+ * pet's old inline copy button, so no `onCopy` is wired — see `CopyButton`
+ * in `ChatMessageList.tsx`).
+ *
+ * PR4 (file-upload): attachments are wired via the shared `ChatInputBox`
+ * slot props (`leadingSlot` = file-picker button, `attachmentsRow` = chip
+ * row, `onPaste` = paste-image) + the vault-free `components/chat/
+ * attachments.ts` helper. Send flow: save blob attachments to
+ * `<appData>/pet-chat-tmp/attachments/`, build Read-tool instructions,
+ * store the RAW user text as the visible user bubble, and send the
+ * Read-wrapped `finalPrompt` to the CLI — mirroring AiPanel's split
+ * (visible text ≠ what the CLI receives). No `overlayLayer` (no @mention).
  *
  * Dismiss paths (× / Esc / second pet click) are owned by `PetPanelApp`;
  * this component only owns the Stop button mid-stream.
@@ -88,10 +123,6 @@ function toCliMessages(
 
 export function PetChat() {
   const activeSessionId = usePetChatStore((s) => s.activeSessionId);
-  // Derive the active session's messages at the boundary. PR3 mounts a
-  // `PetChatSessionHeader` above the list for new/switch/delete/rename; the
-  // header owns session switching and stop-while-streaming, this component
-  // only renders the active session's linear history + the input box.
   const messages = usePetChatStore(
     (s) => s.sessions.find((sess) => sess.id === s.activeSessionId)?.messages ?? EMPTY_MESSAGES,
   );
@@ -102,14 +133,26 @@ export function PetChat() {
   const clear = usePetChatStore((s) => s.clearActive);
 
   const [input, setInput] = useState('');
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+  /** Inline guardrail / save-error message rendered under the input. Cleared
+   *  on the next successful add/paste/send or after a timeout. */
+  const [rejectError, setRejectError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const configured = isPetChatConfigured();
+
+  // Hold the latest attachments for the unmount cleanup so it can revoke
+  // any pending object URLs without depending on `attachments` in its deps
+  // (which would re-run the cleanup on every attachment change).
+  const attachmentsRef = useRef<PendingAttachment[]>(attachments);
+  attachmentsRef.current = attachments;
 
   // Stop + reset ALL active adapters on unmount so an in-flight stream does
   // not outlive the panel (PR2: per-session model → reset all adapters, not
-  // just one). Unmount-only via an empty-deps effect with a ref holding the
-  // latest `streaming` — avoids the old `[streaming, setStreaming]` deps
-  // pattern that re-ran the cleanup on every streaming flip (see
-  // research/input-and-streaming.md caveat).
+  // just one). Also revoke any pending attachment previewUrls so object
+  // URLs don't leak when the panel closes mid-compose. Unmount-only via an
+  // empty-deps effect with refs holding the latest `streaming` /
+  // `attachments` — avoids the old `[streaming, setStreaming]` deps pattern
+  // that re-ran the cleanup on every streaming flip.
   const streamingRef = useRef(streaming);
   streamingRef.current = streaming;
   useEffect(() => {
@@ -118,19 +161,110 @@ export function PetChat() {
       void resetPetChatAdapter().finally(() => {
         if (wasStreaming) setStreaming(false);
       });
+      revokeUrls(attachmentsRef.current);
     };
   }, [setStreaming]);
+
+  // Auto-clear the inline guardrail error after a short delay so it does
+  // not linger after the user has moved on. Re-arm on each new error.
+  useEffect(() => {
+    if (rejectError === null) return;
+    const t = setTimeout(() => setRejectError(null), 3000);
+    return () => clearTimeout(t);
+  }, [rejectError]);
+
+  // ── Attachment add / remove ──
+
+  const handleFileInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      const { accepted, rejected } = addFiles(files, {
+        maxBytes: DEFAULT_MAX_BYTES,
+        allowedTypes: [...DEFAULT_ALLOWED_TYPES],
+      });
+      if (accepted.length > 0) {
+        setAttachments((prev) => [...prev, ...accepted]);
+        setRejectError(null);
+      }
+      if (rejected.length > 0) {
+        const first = rejected[0];
+        setRejectError(`${first.name}: ${first.error}`);
+      }
+      // Reset so the same file can be re-picked (the picker only fires
+      // onChange when the selection actually changes).
+      e.target.value = '';
+    },
+    [],
+  );
+
+  const handleFileSelect = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handlePasteWrapper = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const { accepted, rejected } = handlePaste(e, {
+        maxBytes: DEFAULT_MAX_BYTES,
+        allowedTypes: [...DEFAULT_ALLOWED_TYPES],
+      });
+      if (accepted.length > 0) {
+        // Consume the paste so the image is NOT also inserted as text.
+        e.preventDefault();
+        setAttachments((prev) => [...prev, ...accepted]);
+        setRejectError(null);
+      }
+      if (rejected.length > 0) {
+        const first = rejected[0];
+        setRejectError(`${first.name}: ${first.error}`);
+      }
+      // No image item → let the textarea insert text normally.
+    },
+    [],
+  );
+
+  const removeAttachment = useCallback((id: string) => {
+    setAttachments((prev) => {
+      const att = prev.find((a) => a.id === id);
+      if (att) revokeUrls([att]);
+      return prev.filter((a) => a.id !== id);
+    });
+  }, []);
+
+  // ── Send ──
 
   const handleSend = useCallback(async () => {
     const prompt = input.trim();
     const sessionId = activeSessionId;
-    if (!prompt || streaming || !configured || !sessionId) return;
+    if ((!prompt && attachments.length === 0) || streaming || !configured || !sessionId) return;
+
+    // Save blob attachments to <appData>/pet-chat-tmp/attachments/ BEFORE
+    // clearing input / adding messages: a save failure must preserve the
+    // user's text + attachments for retry (the CLI can't Read a blob that
+    // hasn't been written to disk). Path-only attachments pass through.
+    let saved;
+    try {
+      const workingDir = await getPetChatWorkingDir();
+      saved = await saveBlobs(attachments, workingDir, { subdir: ATTACHMENTS_SUBDIR });
+    } catch (err) {
+      setRejectError(`附件保存失败: ${String(err)}`);
+      return;
+    }
+    const finalPrompt = buildReadInstructions(saved, prompt);
+
+    // Now that the save succeeded, clear the compose state (input +
+    // attachments) and record the messages. The visible user bubble shows
+    // the RAW text (NOT the Read-wrapped finalPrompt) — mirroring AiPanel,
+    // which stores `userText` and sends the wrapped prompt to the CLI.
+    revokeUrls(attachments);
+    setAttachments([]);
     setInput('');
+    setRejectError(null);
     addMessage(sessionId, 'user', prompt);
     addMessage(sessionId, 'assistant', '');
     setStreaming(true);
     try {
-      await sendPetChatMessage(sessionId, prompt, {
+      await sendPetChatMessage(sessionId, finalPrompt, {
         onToken: (text) => appendToLastMessage(sessionId, text),
         onDone: () => {
           setStreaming(false);
@@ -144,7 +278,16 @@ export function PetChat() {
       appendToLastMessage(sessionId, `\n\n[错误] ${String(err)}`);
       setStreaming(false);
     }
-  }, [input, streaming, configured, activeSessionId, addMessage, appendToLastMessage, setStreaming]);
+  }, [
+    input,
+    attachments,
+    streaming,
+    configured,
+    activeSessionId,
+    addMessage,
+    appendToLastMessage,
+    setStreaming,
+  ]);
 
   const handleStop = useCallback(async () => {
     const sessionId = activeSessionId;
@@ -154,21 +297,73 @@ export function PetChat() {
   }, [activeSessionId, setStreaming]);
 
   const handleOpenSettings = useCallback(async () => {
-    // focusMain() path: emit `show-main` then navigate to settings. The
-    // main window's App.tsx listener handles `show-main` (shows+focuses
-    // the hidden main window); settings navigation piggybacks on the
-    // `command-palette`-style action by setting the page directly via the
-    // shared settings store (the main window reads the same store).
     useSettingsStore.getState().setCurrentPage('settings');
     useSettingsStore.getState().setSettingsTab('ai');
     await emitMenuAction('show-main');
   }, []);
 
+  // ── Slot wiring ──
+
+  const attachmentsRow =
+    attachments.length > 0 ? (
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {attachments.map((att) => (
+          <div
+            key={att.id}
+            className="flex items-center gap-1 py-0.5 px-1.5 bg-surf border border-brd rounded-md text-[11px] text-t2 max-w-[160px]"
+          >
+            {att.previewUrl ? (
+              <img
+                className="w-7 h-7 object-cover rounded shrink-0"
+                src={att.previewUrl}
+                alt={att.name}
+              />
+            ) : (
+              <span className="inline-flex items-center shrink-0">
+                <FileIcon filename={att.name} />
+              </span>
+            )}
+            <span className="truncate min-w-0 flex-1">{att.name}</span>
+            <button
+              type="button"
+              className="w-3.5 h-3.5 flex items-center justify-center rounded-full text-[10px] text-t3 cursor-pointer shrink-0 transition-all duration-100 bg-transparent border-none hover:bg-hov hover:text-red"
+              onClick={() => removeAttachment(att.id)}
+              aria-label="移除附件"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+    ) : null;
+
+  const leadingSlot = (
+    <button
+      type="button"
+      className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
+      onClick={handleFileSelect}
+      disabled={streaming}
+      title="附加文件"
+      aria-label="附加文件"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+      </svg>
+    </button>
+  );
+
   if (!configured) {
     // Unconfigured-AI CTA (R7) — rendered OUTSIDE the shared chat
-    // components (it replaces the whole chat body). Styled with Tailwind
-    // tokens; the old `.pet-chat-empty` / `.pet-chat-cta` BEM classes were
-    // deleted from pet.css in PR3.
+    // components (it replaces the whole chat body).
     return (
       <div
         className="flex flex-col items-center justify-center gap-2 px-2 py-4 text-center flex-1"
@@ -187,28 +382,14 @@ export function PetChat() {
     );
   }
 
-  // streamingIndicator choice (see PR3 task spec):
-  // Pet's OLD behavior: empty streaming assistant content showed a `…`
-  // placeholder; once tokens arrived, only the content showed (no cursor).
-  // The shared `ChatMessageList`:
-  //  - 'none': shows NOTHING for empty streaming content (regression vs
-  //    pet's `…` placeholder) but matches pet for the has-content case.
-  //  - 'cursor': shows a `▎` cursor for BOTH empty and has-content
-  //    streaming last-assistant messages (pet never had a cursor once
-  //    content arrived).
-  // Because 'none' regresses the empty-streaming case (shows nothing
-  // instead of `…`), we use 'cursor' and accept the minor visual delta
-  // (a `▎` cursor appears during streaming, including on the empty
-  // initial frame). This is the task-spec's prescribed fallback.
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <PetChatSessionHeader />
       <ChatMessageList
         messages={toCliMessages(messages)}
         streaming={streaming}
-        plaintext
         showCopy
-        streamingIndicator="cursor"
+        streamingIndicator="dots"
         onClear={clear}
         emptyState={
           <div className="text-[12px] text-t3 text-center px-1 py-3">
@@ -222,21 +403,27 @@ export function PetChat() {
         onSend={handleSend}
         streaming={streaming}
         onStop={handleStop}
+        canSend={input.trim().length > 0 || attachments.length > 0}
         placeholder="输入消息，Enter 发送"
         textareaRows={1}
         inputAriaLabel="Pet chat input"
+        onPaste={handlePasteWrapper}
+        leadingSlot={leadingSlot}
+        attachmentsRow={attachmentsRow}
       />
-      {/* Note on `disabled` / `canSend`: both are intentionally OMITTED.
-          The task spec suggested `disabled={!input.trim()}`, but
-          `ChatInputBox`'s `disabled` prop disables the <textarea> itself
-          (not just the send button) — passing it would make the input
-          untypeable when empty (the user could never type the first char).
-          Omitting both props uses the base default
-          `canSend = value.trim().length > 0`, which disables the SEND
-          button on empty input (matching pet's old `disabled={!input.trim}`
-          on the send button) while leaving the textarea enabled until
-          streaming flips it off. This exactly preserves the pre-refactor
-          behavior. */}
+      {rejectError && (
+        <div className="px-3 pb-1.5 text-[11px] text-red" role="alert">
+          {rejectError}
+        </div>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept={DEFAULT_ALLOWED_TYPES.join(',')}
+        className="hidden"
+        onChange={handleFileInputChange}
+      />
     </div>
   );
 }

@@ -6,15 +6,20 @@ import { flattenFileTree } from '@/utils/treeUtils';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { listInputModes } from './inputModes';
 import { ChatInputBox } from '@/components/chat';
+import type { PendingAttachment } from '@/components/chat';
+import {
+  addFiles,
+  handlePaste as handlePasteHelper,
+  revokeUrls,
+  DEFAULT_MAX_BYTES,
+  DEFAULT_ALLOWED_TYPES,
+} from '@/components/chat';
 
-export interface PendingAttachment {
-  id: string;
-  name: string;
-  type: 'image' | 'file';
-  path?: string;
-  blob?: Blob;
-  previewUrl?: string;
-}
+// Re-export PendingAttachment so existing AiPanel imports
+// (`import type { PendingAttachment } from './ChatInput'`) keep working
+// during the PR3 migration. The canonical type now lives in the shared
+// `components/chat/attachments.ts` helper.
+export type { PendingAttachment };
 
 interface ChatInputProps {
   onSend: (text: string, attachments: PendingAttachment[]) => void;
@@ -28,6 +33,11 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
   const [mentionMenu, setMentionMenu] = useState<{ visible: boolean; filter: string; anchorPos: number }>({ visible: false, filter: '', anchorPos: 0 });
   const [mentionIndex, setMentionIndex] = useState(0);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
+  /** Inline guardrail / save-error message rendered under the input. Cleared
+   *  on the next successful add/paste or after a timeout. Mirrors PetChat's
+   *  rejectError pattern so both consumers surface attachment rejections
+   *  consistently (previously AiPanel had no validation UI at all). */
+  const [rejectError, setRejectError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modeMenuRef = useRef<HTMLDivElement>(null);
@@ -88,6 +98,15 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
       }
     }, 0);
   }, [pendingPrompt, consumePendingPrompt]);
+
+  // Auto-clear the inline guardrail error after a short delay so it does
+  // not linger after the user has moved on. Re-arms on each new error.
+  // Mirrors PetChat's rejectError timeout.
+  useEffect(() => {
+    if (rejectError === null) return;
+    const t = setTimeout(() => setRejectError(null), 3000);
+    return () => clearTimeout(t);
+  }, [rejectError]);
 
   const fileTree = useVaultStore((s) => s.fileTree);
   const allFiles = useMemo(() => flattenFileTree(fileTree), [fileTree]);
@@ -192,25 +211,21 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
   }, [mentionMenu.visible, filteredMentionFiles, mentionIndex, insertMention]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (const item of Array.from(items)) {
-      if (item.type.startsWith('image/')) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        if (!file) continue;
-        const ext = file.type.split('/')[1] || 'png';
-        const previewUrl = URL.createObjectURL(file);
-        setAttachments((prev) => [...prev, {
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          name: `paste-${Date.now()}.${ext}`,
-          type: 'image',
-          blob: file,
-          previewUrl,
-        }]);
-        return;
-      }
+    const { accepted, rejected } = handlePasteHelper(e, {
+      maxBytes: DEFAULT_MAX_BYTES,
+      allowedTypes: [...DEFAULT_ALLOWED_TYPES],
+    });
+    if (accepted.length > 0) {
+      // Consume the paste so the image is NOT also inserted as text.
+      e.preventDefault();
+      setAttachments((prev) => [...prev, ...accepted]);
+      setRejectError(null);
     }
+    if (rejected.length > 0) {
+      const first = rejected[0];
+      setRejectError(`${first.name}: ${first.error}`);
+    }
+    // No image item → let the textarea insert text normally.
   }, []);
 
   const handleFileSelect = useCallback(() => {
@@ -219,25 +234,28 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
 
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
-    for (const file of Array.from(files)) {
-      const isImage = file.type.startsWith('image/');
-      const previewUrl = isImage ? URL.createObjectURL(file) : undefined;
-      setAttachments((prev) => [...prev, {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        name: file.name,
-        type: isImage ? 'image' : 'file',
-        blob: file,
-        previewUrl,
-      }]);
+    if (!files || files.length === 0) return;
+    const { accepted, rejected } = addFiles(files, {
+      maxBytes: DEFAULT_MAX_BYTES,
+      allowedTypes: [...DEFAULT_ALLOWED_TYPES],
+    });
+    if (accepted.length > 0) {
+      setAttachments((prev) => [...prev, ...accepted]);
+      setRejectError(null);
     }
+    if (rejected.length > 0) {
+      const first = rejected[0];
+      setRejectError(`${first.name}: ${first.error}`);
+    }
+    // Reset so the same file can be re-picked (the picker only fires
+    // onChange when the selection actually changes).
     e.target.value = '';
   }, []);
 
   const removeAttachment = useCallback((id: string) => {
     setAttachments((prev) => {
       const att = prev.find((a) => a.id === id);
-      if (att?.previewUrl) URL.revokeObjectURL(att.previewUrl);
+      if (att) revokeUrls([att]);
       return prev.filter((a) => a.id !== id);
     });
   }, []);
@@ -254,7 +272,7 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
             <span className="inline-flex items-center shrink-0"><FileIcon filename={att.name} /></span>
           )}
           <span className="truncate min-w-0 flex-1">{att.name}</span>
-          <button className="w-3.5 h-3.5 flex items-center justify-center rounded-full text-[10px] text-t3 cursor-pointer shrink-0 transition-all duration-100 bg-transparent border-none hover:bg-hov hover:text-red" onClick={() => removeAttachment(att.id)}>×</button>
+          <button className="w-3.5 h-3.5 flex items-center justify-center rounded-full text-[10px] text-t3 cursor-pointer shrink-0 transition-all duration-100 bg-transparent border-none hover:bg-hov hover:text-red" onClick={() => removeAttachment(att.id)} aria-label="移除附件">×</button>
         </div>
       ))}
     </div>
@@ -335,11 +353,16 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
         attachmentsRow={attachmentsRow}
         overlayLayer={mentionOverlay}
       />
+      {rejectError && (
+        <div className="px-3 pb-1.5 text-[11px] text-red" role="alert">
+          {rejectError}
+        </div>
+      )}
       <input
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/*,.txt,.md,.json,.csv,.pdf,.html,.htm,.xml,.yaml,.yml,.toml,.log"
+        accept={DEFAULT_ALLOWED_TYPES.join(',')}
         style={{ display: 'none' }}
         onChange={handleFileInputChange}
       />

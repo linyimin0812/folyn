@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "质量检查主入口：lint/typecheck/测试/跨层/复用/一致性"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop 前端 Quality Check 章节"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "核查附件 helper 与 PetChat 未引入 vault/editor/aiStore 顶层依赖；blob 落盘 appData 在 ACL 范围"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "核查 PendingAttachment 类型与 helper 签名正确性、无 any"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "核查 helper 的 presentational 纯净度、插槽接线、props 契约"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "核查共用附件 helper 抽取边界合理（@mention 留 wrapper）、AiPanel 与 PetChat 真正复用、不过度抽象"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "核查附件 state（wrapper 本地 useState）与 selector 引用稳定性、不触发 useSyncExternalStore 无限循环"}

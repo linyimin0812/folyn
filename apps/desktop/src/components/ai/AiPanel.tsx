@@ -24,6 +24,8 @@ import type { CliMessage } from '@quill/cli-adapter';
 import { ChatInput } from './ChatInput';
 import type { PendingAttachment } from './ChatInput';
 import { resolveSendOptions } from './inputModes';
+import { saveBlobs, buildReadInstructions } from '@/components/chat';
+import type { SavedAttachment } from '@/components/chat';
 
 export function AiPanel() {
   const aiPanelVisible = useEditorStore((s) => s.aiPanelVisible);
@@ -221,60 +223,39 @@ export function AiPanel() {
       } catch {}
     }
 
-    // Save blob attachments to temp directory
-    const savedAttachments: MessageAttachment[] = [];
+    // Save blob attachments to temp directory.
+    //
+    // Uses the shared `saveBlobs` helper with `strategy: 'shell'` to preserve
+    // AiPanel's EXACT legacy mechanism (base64-via-`claude-cli` sidecar →
+    // `<vault>/.quill-tmp`), so behavior is byte-identical to the pre-PR3
+    // inline implementation. The main window's fs ACL scope for arbitrary
+    // vault paths was not verified to cover `.quill-tmp`, so we keep the
+    // shell path (which bypasses the fs ACL via `/bin/sh`) rather than
+    // switching to the helper's cleaner default `'fs'` strategy.
+    //
+    // path-only attachments (vault @mention / pendingFileAttachments) pass
+    // through unchanged; blob attachments (paste / file-picker) are written
+    // to disk. previewUrls are revoked per-attachment after the write.
+    let saved: SavedAttachment[] = [];
     let attachSaveError = '';
     if (currentAttachments.length > 0) {
       try {
-        const { Command } = await import('@tauri-apps/plugin-shell');
-        const tmpDir = `${workingDir}/.quill-tmp`;
-        await Command.create('claude-cli', ['-l', '-c', `mkdir -p '${tmpDir}'`]).execute();
-
-        for (const att of currentAttachments) {
-          if (att.path) {
-            savedAttachments.push({ name: att.name, path: att.path, type: att.type });
-          } else if (att.blob) {
-            const ext = att.name.split('.').pop() || 'png';
-            const fileName = `img-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
-            const filePath = `${tmpDir}/${fileName}`;
-            const buffer = await att.blob.arrayBuffer();
-            const bytes = new Uint8Array(buffer);
-            let binaryStr = '';
-            const chunk = 8192;
-            for (let i = 0; i < bytes.length; i += chunk) {
-              binaryStr += String.fromCharCode(...bytes.slice(i, i + chunk));
-            }
-            const base64 = btoa(binaryStr);
-            const writeResult = await Command.create('claude-cli', ['-l', '-c',
-              `printf '%s' '${base64}' | base64 -D > '${filePath}'`,
-            ]).execute();
-            if (writeResult.code === 0) {
-              savedAttachments.push({ name: att.name, path: filePath, type: att.type });
-            }
-          }
-          if (att.previewUrl) URL.revokeObjectURL(att.previewUrl);
-        }
+        saved = await saveBlobs(currentAttachments, workingDir, {
+          strategy: 'shell',
+          subdir: '.quill-tmp',
+        });
       } catch (err) {
         attachSaveError = String(err);
         console.error('[AiPanel] Failed to save attachments:', err);
       }
     }
 
-    // Build prompt with attachment references
-    let prompt = userText;
-    if (savedAttachments.length > 0) {
-      const images = savedAttachments.filter((a) => a.type === 'image');
-      const files = savedAttachments.filter((a) => a.type === 'file');
-      const parts: string[] = [];
-      if (images.length > 0) {
-        parts.push(`请先使用 Read 工具读取以下图片文件:\n${images.map((a) => a.path).join('\n')}`);
-      }
-      if (files.length > 0) {
-        parts.push(`请先使用 Read 工具读取以下文件:\n${files.map((a) => a.path).join('\n')}`);
-      }
-      const instruction = parts.join('\n\n');
-      prompt = prompt ? `${instruction}\n\n用户消息: ${prompt}` : instruction;
-    }
+    // Phase A — build the Read-tool instruction prefix from saved
+    // attachments (images first, then files; wraps `用户消息: <prompt>`).
+    // Delegated to the shared `buildReadInstructions` helper (vault-free).
+    // Phase B (@mention resolution) runs AFTER this on the already-wrapped
+    // prompt and is vault-coupled (needs `allFiles`), so it stays inline.
+    let prompt = buildReadInstructions(saved, userText);
 
     // Extract @file references from prompt
     const mentionedFiles: string[] = [];

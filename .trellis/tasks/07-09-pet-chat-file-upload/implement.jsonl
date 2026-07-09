@@ -1,0 +1,8 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop 前端入口：Pre-Development Checklist + 组件/类型/窗口/状态索引，实现前必读"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "抽取共用附件 helper + 填 ChatInputBox 插槽，需遵循组件/props/插槽规范与副窗口 store 隔离约定"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "pet-panel 独立窗口 ACL：shell/fs appData 权限范围（blob 落盘 appData temp、CLI Read 路径）；附件 helper 不得顶层 import vault/editor/aiStore"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "PendingAttachment 类型 + buildReadInstructions/saveBlobs 签名，需严格类型安全"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "zustand selector 引用稳定性约定（附件 state 在 wrapper 本地 useState，非 store；仍需参照 selector 稳定性规范）"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "attachments helper 放 components/chat/ 的目录约定；PetChat/AiPanel ChatInput 放置"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "抽取共用附件 helper（AiPanel 与 PetChat 共用、@mention 留 wrapper）需遵循复用思维判断抽象边界"}
+{"file": ".trellis/tasks/07-09-desktop-pet-chat-and-ai-panel-shared-ui/research/input-and-streaming.md", "reason": "上一任务 research：AiPanel ChatInput 附件/粘贴/文件选择/@mention/blob 落盘/Read 指令拼接全流程与 handleSend 细节，为本任务 helper 抽取的直接参照"}

@@ -168,6 +168,28 @@ grep -nE "from '@/store/(aiStore|vaultStore|editorStore|petChatStore)'" \
 > branch rather than at module top level. (Currently accepted as a known cost in
 > `MessageContent` — `TODO` marker in source.)
 
+### Pattern: extracting a shared helper from a vault-coupled consumer
+
+When a main-window consumer (e.g. `components/ai/ChatInput.tsx`) holds logic you want to
+reuse in a vault-free secondary window (e.g. pet-panel's `PetChat`), extract the
+**vault-free** core into a shared helper under `components/chat/` and keep the
+**vault-coupled** part in each consumer's wrapper.
+
+Canonical example: `components/chat/attachments.ts` holds the attachment lifecycle
+(`PendingAttachment`, `addFiles`, `handlePaste`, `saveBlobs`, `buildReadInstructions`,
+`validateFile`, `revokeUrls`) — none of which touch the vault. AiPanel's `ChatInput`
+uses it AND layers `@mention` (which needs `vaultStore.flattenFileTree`) locally;
+PetChat uses it with no `@mention` layer.
+
+- The helper follows the same no-store-import rule as shared components: grep-verify
+  `grep -nE "from '@/store/(vaultStore|editorStore|aiStore)'" apps/desktop/src/components/chat/*.ts` is empty.
+- Vault-coupled features that have no vault-free form (file-tree `@mention`, wiki/clip
+  toolbars) stay in the consumer wrapper — do NOT try to abstract them into the helper
+  with an optional vault dependency; that re-couples the secondary window.
+- A consumer may pass its own `workingDir` to a side-effectful helper (`saveBlobs(atts, workingDir, ...)`)
+  so the same helper serves both appData-scoped (pet, `strategy:'fs'`) and vault-scoped
+  (AiPanel, `strategy:'shell'`) callers without either coupling.
+
 
 
 | Tool | Use Case | Example |

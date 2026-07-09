@@ -123,6 +123,15 @@ async function resolveWorkingDir(): Promise<string> {
   }
 }
 
+/** Resolve the neutral working directory (NOT the vault) used as the CLI
+ *  cwd AND as the parent dir for saved blob attachments. Public wrapper
+ *  around {@link resolveWorkingDir} so PetChat can pass the same path to
+ *  `saveBlobs(attachments, workingDir, { subdir: ATTACHMENTS_SUBDIR })`
+ *  without reaching into the private helper. Returns `''` outside Tauri. */
+export async function getPetChatWorkingDir(): Promise<string> {
+  return resolveWorkingDir();
+}
+
 export interface PetChatSendHandlers {
   onToken?: (text: string) => void;
   onDone?: () => void;

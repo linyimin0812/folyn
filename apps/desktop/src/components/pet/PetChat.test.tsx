@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
+import React from 'react';
 import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 
 // jsdom does not implement Element.scrollIntoView; the auto-scroll effect in
@@ -9,6 +10,25 @@ if (!Element.prototype.scrollIntoView) {
 
 // Mock @tauri-apps/api/event (emit) — provided by vitest.workspace.ts alias.
 import { emit } from '@tauri-apps/api/event';
+// plugin-fs is mocked via vitest.workspace.ts alias; import the mock fns so
+// we can assert saveBlobs' disk writes and force a save failure.
+import { mkdir as mockedMkdir, writeFile as mockedWriteFile } from '@tauri-apps/plugin-fs';
+
+// jsdom lacks URL.createObjectURL / revokeObjectURL; the attachments helper
+// (addFiles / handlePaste) calls them to build image preview URLs. Polyfill
+// with vitest mocks so individual tests can assert call counts.
+const createObjectURLMock = vi.fn((_blob: Blob) => 'blob:mock');
+const revokeObjectURLMock = vi.fn((_url: string) => {});
+beforeAll(() => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const urlAny = URL as any;
+  if (typeof urlAny.createObjectURL !== 'function') {
+    urlAny.createObjectURL = createObjectURLMock;
+  }
+  if (typeof urlAny.revokeObjectURL !== 'function') {
+    urlAny.revokeObjectURL = revokeObjectURLMock;
+  }
+});
 
 // Mock @tauri-apps/plugin-clipboard-manager — the copy button on assistant
 // messages dynamically imports `writeText`. Mirror the stub pattern used in
@@ -16,6 +36,17 @@ import { emit } from '@tauri-apps/api/event';
 const writeTextMock = vi.fn().mockResolvedValue(undefined);
 vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
   writeText: writeTextMock,
+}));
+
+// Mock FileIcon — its real impl renders ThemeIcon, which calls the
+// useSettingsStore hook. This test mocks useSettingsStore as a plain object
+// (not a callable hook) to drive isPetChatConfigured's getState() path, so
+// ThemeIcon would throw "useSettingsStore is not a function". The attachment
+// chip only needs a placeholder icon node; the real FileIcon is exercised
+// elsewhere. Stubbing here keeps the test focused on PetChat's wiring.
+vi.mock('@/components/icons/FileIcon', () => ({
+  FileIcon: () => React.createElement('span', { 'data-testid': 'file-icon' }),
+  getFileTypeIcon: () => null,
 }));
 
 // Mock storageClient so the store's module-load rehydrate is deterministic
@@ -43,6 +74,7 @@ const {
   sendMock,
   stopMock,
   resetMock,
+  getWorkingDirMock,
   lastHandlersRef,
 } = vi.hoisted(() => {
   type Handlers = {
@@ -55,13 +87,15 @@ const {
   );
   const stopMock = vi.fn<(s: string) => Promise<void>>(async () => undefined);
   const resetMock = vi.fn<(s?: string) => Promise<void>>(async () => undefined);
+  const getWorkingDirMock = vi.fn<() => Promise<string>>(async () => '/appdata/pet-chat-tmp');
   const lastHandlersRef: { current: Handlers | null } = { current: null };
-  return { sendMock, stopMock, resetMock, lastHandlersRef };
+  return { sendMock, stopMock, resetMock, getWorkingDirMock, lastHandlersRef };
 });
 vi.mock('@/services/petChatService', () => ({
   sendPetChatMessage: sendMock,
   stopPetChat: stopMock,
   resetPetChatAdapter: resetMock,
+  getPetChatWorkingDir: getWorkingDirMock,
 }));
 
 const settingsState = {
@@ -80,6 +114,7 @@ import { PetChat } from './PetChat';
 import { usePetChatStore } from '@/store/petChatStore';
 import type { PetChatSession, PetChatMessage } from '@/store/petChatStore';
 import { MAX_SESSIONS } from '@/store/petChatStore';
+import { DEFAULT_MAX_BYTES } from '@/components/chat';
 
 const emitMock = emit as unknown as import('vitest').Mock;
 
@@ -113,6 +148,7 @@ beforeEach(() => {
   sendMock.mockClear();
   stopMock.mockClear();
   resetMock.mockClear();
+  getWorkingDirMock.mockClear();
   lastHandlersRef.current = null;
   writeTextMock.mockClear();
   writeTextMock.mockResolvedValue(undefined);
@@ -130,6 +166,7 @@ beforeEach(() => {
   });
   stopMock.mockResolvedValue(undefined);
   resetMock.mockResolvedValue(undefined);
+  getWorkingDirMock.mockResolvedValue('/appdata/pet-chat-tmp');
   emitMock.mockClear();
   emitMock.mockResolvedValue(undefined);
   storageGet.mockClear();
@@ -138,6 +175,11 @@ beforeEach(() => {
   storageSet.mockResolvedValue(undefined);
   storageRemove.mockClear();
   storageRemove.mockResolvedValue(undefined);
+  createObjectURLMock.mockClear();
+  createObjectURLMock.mockReturnValue('blob:mock');
+  revokeObjectURLMock.mockClear();
+  mockedMkdir.mockClear();
+  mockedWriteFile.mockClear();
   resetStoreToSingleEmpty();
   settingsState.cliAdapter = 'claude';
   settingsState.cliPath = 'claude';
@@ -511,7 +553,7 @@ describe('PetChat', () => {
     expect(active.messages).toEqual([]);
   });
 
-  // ── Copy + plaintext rendering (shared-component smoke) ──
+  // ── Copy + markdown rendering (shared-component smoke) ──
   it('assistant messages render a copy button; user messages do not', () => {
     usePetChatStore.setState({
       sessions: [
@@ -541,18 +583,248 @@ describe('PetChat', () => {
     expect(screen.getByLabelText('已复制')).toBeTruthy();
   });
 
-  it('assistant message content is rendered as plain text (no markdown pipeline)', () => {
+  it('assistant message content is rendered through the markdown pipeline (parity with AiPanel)', () => {
     usePetChatStore.setState({
       sessions: [
-        sessionWith('s1', [{ id: 'a1', role: 'assistant', content: 'line1\nline2', ts: 1 }]),
+        sessionWith('s1', [{ id: 'a1', role: 'assistant', content: '**bold**', ts: 1 }]),
       ],
       activeSessionId: 's1',
       streaming: false,
     });
     const { container } = render(<PetChat />);
-    const wrapper = container.querySelector('.whitespace-pre-wrap');
+    // Markdown path: the .msg-md wrapper is present (no plaintext prop).
+    const wrapper = container.querySelector('.msg-md');
     expect(wrapper).toBeTruthy();
-    expect(wrapper!.textContent).toBe('line1\nline2');
-    expect(container.querySelector('.msg-md')).toBeNull();
+    // **bold** → <strong>bold</strong> via the unified/remark/rehype pipeline.
+    const strong = container.querySelector('strong');
+    expect(strong).toBeTruthy();
+    expect(strong!.textContent).toBe('bold');
+    // The plaintext wrapper (whitespace-pre-wrap) is NOT used.
+    expect(container.querySelector('.whitespace-pre-wrap')).toBeNull();
+  });
+
+  // ── PR4: file-upload attachments ──
+
+  /** Build a File whose blob.arrayBuffer() resolves. jsdom's Blob lacks
+   *  `arrayBuffer()`, so stub it on the instance — `saveBlobs` reads bytes
+   *  via `att.blob.arrayBuffer()` when writing the blob to disk. Mirrors
+   *  the `makeBlob` stub in attachments.test.ts. */
+  function makeFile(name: string, content: string, type = ''): File {
+    const bytes = new TextEncoder().encode(content);
+    const buffer = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength,
+    ) as ArrayBuffer;
+    const file = new File([bytes], name, { type });
+    Object.defineProperty(file, 'arrayBuffer', {
+      value: () => Promise.resolve(buffer),
+      configurable: true,
+    });
+    return file;
+  }
+
+  /** The hidden `<input type="file">` is rendered as a SIBLING of
+   *  ChatInputBox (not inside it), so the attach-button's nearest div does
+   *  not contain it. Query the whole rendered container for the single
+   *  file input PetChat mounts. */
+  function getFileInput(container: HTMLElement): HTMLInputElement {
+    const el = container.querySelector('input[type="file"]');
+    if (!el) throw new Error('file input not rendered');
+    return el as HTMLInputElement;
+  }
+
+  /** Dispatch a `paste` event with a stubbed `clipboardData.items` carrying
+   *  file items. jsdom has no `ClipboardEvent` constructor, so synthesize a
+   *  plain `Event('paste')` and override `clipboardData` with a file-carrying
+   *  stub. React 18's `onPaste` plugin dispatches on the DOM event type
+   *  (not the constructor), so this reaches the wired `onPaste` handler; it
+   *  reads `nativeEvent.clipboardData`. The caller MUST wrap the call in
+   *  `act(...)` (or use the async wrapper below) so React flushes the
+   *  resulting `setAttachments` state update before assertions. Returns the
+   *  dispatched event so the caller can assert `defaultPrevented`. */
+  function dispatchPaste(
+    target: HTMLElement,
+    items: { kind: 'file' | 'string'; type: string; file?: File | null }[],
+  ) {
+    const evt = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(evt, 'clipboardData', {
+      value: {
+        items: items.map((it) => ({
+          kind: it.kind,
+          type: it.type,
+          getAsFile: () => it.file ?? null,
+        })),
+      },
+      configurable: true,
+    });
+    target.dispatchEvent(evt);
+    return evt;
+  }
+
+  /** Async wrapper around {@link dispatchPaste} that flushes the resulting
+   *  React state update inside `act` so the chip renders before the caller
+   *  asserts. */
+  async function pasteAsync(
+    target: HTMLElement,
+    items: { kind: 'file' | 'string'; type: string; file?: File | null }[],
+  ) {
+    let evt!: Event;
+    await act(() => {
+      evt = dispatchPaste(target, items);
+    });
+    return evt;
+  }
+
+  it('file picker: adding a valid file renders a chip and send stores raw text but sends Read-instruction prompt to the CLI', async () => {
+    const { container } = render(<PetChat />);
+    const fileInput = getFileInput(container);
+    const file = makeFile('note.md', 'hello content', 'text/markdown');
+    await fireEvent.change(fileInput, { target: { files: [file] } });
+
+    // Chip renders with the filename.
+    expect(screen.getByText('note.md')).toBeTruthy();
+
+    const input = screen.getByLabelText('Pet chat input') as HTMLTextAreaElement;
+    fireEvent.change(input, { target: { value: 'read this' } });
+    await fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
+
+    await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(1));
+    const sentPrompt = sendMock.mock.calls[0][1];
+    // The CLI receives the Read-instruction-wrapped prompt.
+    expect(sentPrompt).toContain('请先使用 Read 工具读取以下文件');
+    expect(sentPrompt).toContain('/appdata/pet-chat-tmp/attachments/');
+    expect(sentPrompt).toContain('用户消息: read this');
+    // The visible user bubble stores the RAW text (not the Read prefix).
+    const active = usePetChatStore.getState().sessions.find((s) => s.id === 's1')!;
+    expect(active.messages[0].role).toBe('user');
+    expect(active.messages[0].content).toBe('read this');
+  });
+
+  it('paste image: adds an image chip and send includes the image Read instruction', async () => {
+    render(<PetChat />);
+    const input = screen.getByLabelText('Pet chat input') as HTMLTextAreaElement;
+    const img = makeFile('pic.png', 'pngdata', 'image/png');
+    const pasteEvt = await pasteAsync(input, [{ kind: 'file', type: 'image/png', file: img }]);
+
+    // Paste of an image should preventDefault (consumed).
+    expect(pasteEvt.defaultPrevented).toBe(true);
+    // Image chip renders with the paste-<ts>.png name.
+    expect(screen.getByText(/paste-\d+\.png/)).toBeTruthy();
+    // An <img> thumbnail is rendered for the image attachment.
+    expect(document.querySelector('img[src="blob:mock"]')).toBeTruthy();
+
+    fireEvent.change(input, { target: { value: 'describe this' } });
+    await fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
+
+    await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(1));
+    const sentPrompt = sendMock.mock.calls[0][1];
+    expect(sentPrompt).toContain('请先使用 Read 工具读取以下图片文件');
+    expect(sentPrompt).toContain('/appdata/pet-chat-tmp/attachments/');
+  });
+
+  it('canSend: empty input + one attachment enables send; attachment-only send works (no text)', async () => {
+    const { container } = render(<PetChat />);
+    const fileInput = getFileInput(container);
+    const file = makeFile('data.json', '{}', 'application/json');
+    await fireEvent.change(fileInput, { target: { files: [file] } });
+
+    const sendBtn = screen.getByLabelText('发送') as HTMLButtonElement;
+    // Empty input but has an attachment → send enabled.
+    expect(sendBtn.disabled).toBe(false);
+
+    await fireEvent.click(sendBtn);
+    await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(1));
+    const sentPrompt = sendMock.mock.calls[0][1];
+    // No user text → instruction alone (no `用户消息:` wrapper).
+    expect(sentPrompt).toContain('请先使用 Read 工具读取以下文件');
+    expect(sentPrompt).not.toContain('用户消息:');
+    // Visible user bubble stores empty string (raw text was empty).
+    const active = usePetChatStore.getState().sessions.find((s) => s.id === 's1')!;
+    expect(active.messages[0].content).toBe('');
+  });
+
+  it('remove chip: clicking × removes the attachment and revokes its previewUrl', async () => {
+    const { container } = render(<PetChat />);
+    const fileInput = getFileInput(container);
+    const img = makeFile('pic.png', 'x', 'image/png');
+    await fireEvent.change(fileInput, { target: { files: [img] } });
+    expect(screen.getByText('pic.png')).toBeTruthy();
+    expect(createObjectURLMock).toHaveBeenCalled();
+
+    await fireEvent.click(screen.getByLabelText('移除附件'));
+    expect(screen.queryByText('pic.png')).toBeNull();
+    expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:mock');
+  });
+
+  it('guardrail: oversize file is rejected and not added; rejectError is shown', async () => {
+    const { container } = render(<PetChat />);
+    const fileInput = getFileInput(container);
+    // Build a File whose size exceeds DEFAULT_MAX_BYTES (10 MB).
+    const bigContent = 'x'.repeat(DEFAULT_MAX_BYTES + 1);
+    const big = makeFile('big.txt', bigContent, 'text/plain');
+    Object.defineProperty(big, 'size', { value: DEFAULT_MAX_BYTES + 1 });
+    await fireEvent.change(fileInput, { target: { files: [big] } });
+
+    expect(screen.queryByText('big.txt')).toBeNull();
+    expect(screen.getByRole('alert').textContent).toContain('big.txt');
+    expect(screen.getByRole('alert').textContent).toMatch(/超过/);
+  });
+
+  it('guardrail: non-whitelist extension is rejected', async () => {
+    const { container } = render(<PetChat />);
+    const fileInput = getFileInput(container);
+    const bad = makeFile('malware.exe', 'MZ', 'application/x-msdownload');
+    await fireEvent.change(fileInput, { target: { files: [bad] } });
+    expect(screen.queryByText('malware.exe')).toBeNull();
+    expect(screen.getByRole('alert').textContent).toContain('不支持的文件类型');
+  });
+
+  it('saveBlobs failure: input + attachments preserved for retry; error surfaced; send NOT called', async () => {
+    const { container } = render(<PetChat />);
+    const fileInput = getFileInput(container);
+    const file = makeFile('note.md', 'hi', 'text/markdown');
+    await fireEvent.change(fileInput, { target: { files: [file] } });
+
+    // Make the fs write fail so saveBlobs rejects.
+    mockedWriteFile.mockRejectedValueOnce(new Error('disk full'));
+
+    const input = screen.getByLabelText('Pet chat input') as HTMLTextAreaElement;
+    fireEvent.change(input, { target: { value: 'read this' } });
+    await fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/附件保存失败/));
+    // Send was NOT called (input preserved for retry).
+    expect(sendMock).not.toHaveBeenCalled();
+    // Input + attachment still present.
+    expect((input as HTMLTextAreaElement).value).toBe('read this');
+    expect(screen.getByText('note.md')).toBeTruthy();
+  });
+
+  it('after successful send: attachments are cleared', async () => {
+    const { container } = render(<PetChat />);
+    const fileInput = getFileInput(container);
+    const file = makeFile('note.md', 'hi', 'text/markdown');
+    await fireEvent.change(fileInput, { target: { files: [file] } });
+    expect(screen.getByText('note.md')).toBeTruthy();
+
+    const input = screen.getByLabelText('Pet chat input') as HTMLTextAreaElement;
+    fireEvent.change(input, { target: { value: 'go' } });
+    await fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
+
+    await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(1));
+    // Chip row is gone after send.
+    expect(screen.queryByText('note.md')).toBeNull();
+  });
+
+  it('unmount: pending attachment previewUrls are revoked', async () => {
+    const { container, unmount } = render(<PetChat />);
+    const fileInput = getFileInput(container);
+    const img = makeFile('pic.png', 'x', 'image/png');
+    await fireEvent.change(fileInput, { target: { files: [img] } });
+    expect(createObjectURLMock).toHaveBeenCalled();
+    revokeObjectURLMock.mockClear();
+
+    unmount();
+    expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:mock');
   });
 });
