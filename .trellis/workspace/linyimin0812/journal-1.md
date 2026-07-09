@@ -1779,3 +1779,37 @@ Ran ponytail-audit over the whole project (27 findings). Applied 1-12 (dead code
 ### Next Steps
 
 - None - task complete
+
+
+## Session 53: Pet popup bubble + OS notification with configurable form
+
+**Date**: 2026-07-09
+**Task**: Pet popup bubble + OS notification with configurable form
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added a desktop-pet notification system: a transparent NSPanel 'pet-bubble' window that pops a speech bubble above the pet (6s TTL, ✕ close, title + action buttons jump to source entity), plus OS-native notifications via tauri-plugin-notification. A pet://notify dispatcher in the main window reads settingsStore.notificationForm (bubble/system/both/off) and routes to the bubble and/or OS notification; both click paths reuse a single pet://bubble-action router (schedule/chat/task/file jump). OS-notification click uses registerActionTypes + onAction + a module-local Map<id,target> lookup (extra round-trip is unreliable across platforms). Added a '通知' settings tab, pet://notify demo trigger via the pet right-click menu, and spec'd the whole pattern in tauri-window-patterns.md. tsc/cargo/168 tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fa12fb5` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 52
+- **Total Sessions**: 53
 - **Last Active**: 2026-07-09
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1781 | Active |
+| `journal-1.md` | ~1815 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 53 | 2026-07-09 | Pet popup bubble + OS notification with configurable form | `fa12fb5` | `master` |
 | 52 | 2026-07-09 | Ponytail repo-wide audit: apply findings 1-27 | `1fa4b6a` | `eager-harbor` |
 | 51 | 2026-07-09 | 桌宠 chat 与 AI panel 共用 UI + 多 session + 文件上传 + markdown 对齐 | `a60c5ae`, `ff8ebe8`, `4f39f89`, `742e5ce` | `master` |
 | 50 | 2026-07-09 | 桌宠右键菜单：隐藏图标 + 大小调整 | `c46b62b` | `worktree-desktop-pet-right-click-menu` |
