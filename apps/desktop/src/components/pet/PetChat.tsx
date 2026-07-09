@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CliMessage } from '@quill/cli-adapter';
 import { isTauri } from '@/utils/platform';
 import { useSettingsStore } from '@/store/settingsStore';
 import { usePetChatStore } from '@/store/petChatStore';
 import { sendPetChatMessage, stopPetChat, resetPetChatAdapter } from '@/services/petChatService';
 import { ChatMessageList, ChatInputBox } from '@/components/chat';
+import { PetChatSessionHeader } from './PetChatSessionHeader';
 import type { PetMenuAction } from './PetContextMenu';
 
 /**
@@ -17,7 +18,8 @@ import type { PetMenuAction } from './PetContextMenu';
  *    `sessionAdapters`). Fresh exchange per send, no vault system prompt,
  *    `bare: true` isolation, workingDir = neutral app-data temp dir.
  *  - Message list persisted across restarts via `petChatStore` (namespace
- *    `pet-chat:messages` in `storageClient`). `streaming` is runtime-only.
+ *    `pet-chat:sessions` in `storageClient`; PR2: per-session adapter +
+ *    `resumeSessionId` cross-turn memory). `streaming` is runtime-only.
  *  - No vault UI: no file mentions, no wiki/clip toolbar, no attachments.
  *  - Unconfigured-AI (R7): if `settings.cliPath` or `settings.cliAdapter`
  *    is empty, render a guidance CTA instead of the input.
@@ -73,64 +75,71 @@ function toCliMessages(
 }
 
 export function PetChat() {
-  const messages = usePetChatStore((s) => s.messages);
+  const activeSessionId = usePetChatStore((s) => s.activeSessionId);
+  // Derive the active session's messages at the boundary. PR3 mounts a
+  // `PetChatSessionHeader` above the list for new/switch/delete/rename; the
+  // header owns session switching and stop-while-streaming, this component
+  // only renders the active session's linear history + the input box.
+  const messages = usePetChatStore(
+    (s) => s.sessions.find((sess) => sess.id === s.activeSessionId)?.messages ?? [],
+  );
   const streaming = usePetChatStore((s) => s.streaming);
   const addMessage = usePetChatStore((s) => s.addMessage);
   const appendToLastMessage = usePetChatStore((s) => s.appendToLastMessage);
   const setStreaming = usePetChatStore((s) => s.setStreaming);
-  const clear = usePetChatStore((s) => s.clear);
+  const clear = usePetChatStore((s) => s.clearActive);
 
   const [input, setInput] = useState('');
   const configured = isPetChatConfigured();
 
-  // Stop the adapter on unmount so an in-flight stream doesn't outlive the
-  // panel (the cached adapter is reset so the next mount starts fresh).
-  // NOTE: this effect is pet-owned (NOT moved into ChatInputBox). Its deps
-  // on `[streaming, setStreaming]` are intentional and preserved from the
-  // pre-refactor implementation — the cleanup-only-return pattern means
-  // each re-run first runs the previous cleanup (idempotent
-  // `resetPetChatAdapter`). See research/input-and-streaming.md caveat.
+  // Stop + reset ALL active adapters on unmount so an in-flight stream does
+  // not outlive the panel (PR2: per-session model → reset all adapters, not
+  // just one). Unmount-only via an empty-deps effect with a ref holding the
+  // latest `streaming` — avoids the old `[streaming, setStreaming]` deps
+  // pattern that re-ran the cleanup on every streaming flip (see
+  // research/input-and-streaming.md caveat).
+  const streamingRef = useRef(streaming);
+  streamingRef.current = streaming;
   useEffect(() => {
     return () => {
-      if (streaming) {
-        void stopPetChat().finally(() => {
-          setStreaming(false);
-          resetPetChatAdapter();
-        });
-      } else {
-        resetPetChatAdapter();
-      }
+      const wasStreaming = streamingRef.current;
+      void resetPetChatAdapter().finally(() => {
+        if (wasStreaming) setStreaming(false);
+      });
     };
-  }, [streaming, setStreaming]);
+  }, [setStreaming]);
 
   const handleSend = useCallback(async () => {
     const prompt = input.trim();
-    if (!prompt || streaming || !configured) return;
+    const sessionId = activeSessionId;
+    if (!prompt || streaming || !configured || !sessionId) return;
     setInput('');
-    addMessage('user', prompt);
-    addMessage('assistant', '');
+    addMessage(sessionId, 'user', prompt);
+    addMessage(sessionId, 'assistant', '');
     setStreaming(true);
     try {
-      await sendPetChatMessage(prompt, {
-        onToken: (text) => appendToLastMessage(text),
+      await sendPetChatMessage(sessionId, prompt, {
+        onToken: (text) => appendToLastMessage(sessionId, text),
         onDone: () => {
           setStreaming(false);
         },
         onError: (message) => {
-          appendToLastMessage(`\n\n[错误] ${message}`);
+          appendToLastMessage(sessionId, `\n\n[错误] ${message}`);
           setStreaming(false);
         },
       });
     } catch (err) {
-      appendToLastMessage(`\n\n[错误] ${String(err)}`);
+      appendToLastMessage(sessionId, `\n\n[错误] ${String(err)}`);
       setStreaming(false);
     }
-  }, [input, streaming, configured, addMessage, appendToLastMessage, setStreaming]);
+  }, [input, streaming, configured, activeSessionId, addMessage, appendToLastMessage, setStreaming]);
 
   const handleStop = useCallback(async () => {
-    await stopPetChat();
+    const sessionId = activeSessionId;
+    if (!sessionId) return;
+    await stopPetChat(sessionId);
     setStreaming(false);
-  }, [setStreaming]);
+  }, [activeSessionId, setStreaming]);
 
   const handleOpenSettings = useCallback(async () => {
     // focusMain() path: emit `show-main` then navigate to settings. The
@@ -181,6 +190,7 @@ export function PetChat() {
   // initial frame). This is the task-spec's prescribed fallback.
   return (
     <div className="flex flex-col flex-1 min-h-0">
+      <PetChatSessionHeader />
       <ChatMessageList
         messages={toCliMessages(messages)}
         streaming={streaming}

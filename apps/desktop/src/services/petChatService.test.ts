@@ -2,48 +2,93 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Shared Tauri mocks (@tauri-apps/plugin-fs, @tauri-apps/api/path,
 // @tauri-apps/api/core) are installed via resolve.alias in
-// vitest.workspace.ts and reset between tests by test/setup.ts. We spy on
-// the mocked `mkdir` directly by importing the module.
+// vitest.workspace.ts and reset between tests by test/setup.ts.
 
-const { fakeAdapter, mkdir, appDataDir, join } = vi.hoisted(() => {
-  const fakeAdapter = {
+/** A fake adapter that records calls and lets the test emit stream events
+ *  back through the registered handlers (mirrors BaseCliAdapter's emit). */
+function makeFakeAdapter(id: string) {
+  const handlers: ((event: { type: string; content?: string; sessionId?: string }) => void)[] = [];
+  return {
+    id,
+    displayName: `Fake ${id}`,
+    description: `Fake description ${id}`,
     start: vi.fn(async () => {}),
     stop: vi.fn(async () => {}),
-    send: vi.fn(async (_prompt: string) => {}),
-    onEvent: vi.fn(),
-    offEvent: vi.fn(),
+    send: vi.fn(async (_prompt: string, _options?: unknown) => {}),
+    isRunning: vi.fn(() => false),
+    onEvent: vi.fn((h: (event: { type: string; content?: string; sessionId?: string }) => void) => {
+      handlers.push(h);
+    }),
+    offEvent: vi.fn((h: (event: { type: string; content?: string; sessionId?: string }) => void) => {
+      const idx = handlers.indexOf(h);
+      if (idx >= 0) handlers.splice(idx, 1);
+    }),
+    __emit(event: { type: string; content?: string; sessionId?: string }) {
+      for (const h of [...handlers]) h(event);
+    },
+    __handlerCount() {
+      return handlers.length;
+    },
+  };
+}
+
+const { settingsState, createAdapter } = vi.hoisted(() => {
+  const settingsState: { cliAdapter: string; cliPath: string } = {
+    cliAdapter: 'claude',
+    cliPath: '/mock/claude',
   };
   return {
-    fakeAdapter,
-    // Placeholders; the real mocked fns are imported below. These bindings
-    // exist so vi.mock factories (hoisted) can reference the same adapter
-    // instance without re-creating it.
-    mkdir: vi.fn(),
-    appDataDir: vi.fn(),
-    join: vi.fn(),
+    settingsState,
+    // Factory stub the test re-points before each send to control which
+    // adapter instance a session gets.
+    createAdapter: vi.fn(() => makeFakeAdapter('claude')),
   };
 });
 
 vi.mock('@/store/settingsStore', () => ({
-  useSettingsStore: {
-    getState: () => ({ cliAdapter: 'claude', cliPath: '/mock/claude' }),
-  },
+  useSettingsStore: { getState: () => settingsState },
 }));
 
+vi.mock('@/store/petChatStore', () => {
+  // A lightweight stand-in for the store: a sessions array + activeSessionId
+  // + setCliSessionId spy. The service only reads sessions/cliSessionId and
+  // calls setCliSessionId.
+  const store: {
+    sessions: { id: string; cliSessionId?: string }[];
+    activeSessionId: string | null;
+    setCliSessionId: ReturnType<typeof vi.fn>;
+  } = {
+    sessions: [],
+    activeSessionId: null,
+    setCliSessionId: vi.fn(),
+  };
+  return { usePetChatStore: { getState: () => store } };
+});
+
 vi.mock('@quill/cli-adapter', () => ({
-  CliAdapterRegistry: {
-    getInstance: () => ({ create: () => fakeAdapter }),
-  },
+  CliAdapterRegistry: { getInstance: () => ({ create: (id: string) => createAdapter(id) }) },
 }));
 
 import { mkdir as mockedMkdir } from '@tauri-apps/plugin-fs';
 import { appDataDir as mockedAppDataDir, join as mockedJoin } from '@tauri-apps/api/path';
-import { sendPetChatMessage, resetPetChatAdapter } from './petChatService';
+import {
+  sendPetChatMessage,
+  stopPetChat,
+  resetPetChatAdapter,
+  __getAdapterForTesting,
+} from './petChatService';
+
+// Reaching the mocked store state to seed sessions per-test.
+const petChatStoreState = (
+  await import('@/store/petChatStore')
+).usePetChatStore.getState() as {
+  sessions: { id: string; cliSessionId?: string }[];
+  activeSessionId: string | null;
+  setCliSessionId: ReturnType<typeof vi.fn>;
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // The shared mock module is reset by test/setup.ts; re-arm the path mock
-  // defaults here so each test starts from a known state.
   mockedAppDataDir.mockResolvedValue('/mock/appdata');
   mockedJoin.mockImplementation(async (...parts: string[]) =>
     parts
@@ -51,79 +96,292 @@ beforeEach(() => {
       .join('/')
       .replace(/\/+/g, '/'),
   );
-  resetPetChatAdapter();
+  settingsState.cliAdapter = 'claude';
+  settingsState.cliPath = '/mock/claude';
+  createAdapter.mockImplementation(() => makeFakeAdapter('claude'));
+  petChatStoreState.sessions = [];
+  petChatStoreState.activeSessionId = null;
+  petChatStoreState.setCliSessionId.mockClear();
+  // Clear the per-session adapter Map between tests.
+  void resetPetChatAdapter();
 });
 
-describe('petChatService — workingDir creation', () => {
-  it('creates <appData>/pet-chat-tmp via mkdir({ recursive: true }) before adapter.start', async () => {
-    await sendPetChatMessage('hello', {
-      onToken: () => {},
-      onDone: () => {},
-      onError: () => {},
-    });
+/** Seed a session with an optional cliSessionId (for resume assertions). */
+function seedSession(id: string, cliSessionId?: string): void {
+  petChatStoreState.sessions = [{ id, cliSessionId }];
+  petChatStoreState.activeSessionId = id;
+}
 
-    // mkdir must be called with the pet-chat-tmp path and recursive: true.
-    expect(mockedMkdir).toHaveBeenCalledWith('/mock/appdata/pet-chat-tmp', {
-      recursive: true,
-    });
+// ── send: adapter.send options ──
+describe('sendPetChatMessage — send options', () => {
+  it('calls adapter.send with { bare: true, resumeSessionId } where resumeSessionId comes from the session cliSessionId', async () => {
+    const fake = makeFakeAdapter('claude');
+    createAdapter.mockReturnValue(fake);
+    seedSession('s1', 'cli-prev');
 
-    // adapter.start must be called AFTER mkdir (mkdir call index < start
-    // call index) with the pet-chat-tmp path as workingDir.
+    await sendPetChatMessage('s1', 'hi', {});
+
+    expect(fake.send).toHaveBeenCalledWith('hi', { bare: true, resumeSessionId: 'cli-prev' });
+  });
+
+  it('passes resumeSessionId: undefined on a session with no cliSessionId yet (first send)', async () => {
+    const fake = makeFakeAdapter('claude');
+    createAdapter.mockReturnValue(fake);
+    seedSession('s1'); // no cliSessionId
+
+    await sendPetChatMessage('s1', 'hi', {});
+
+    expect(fake.send).toHaveBeenCalledWith('hi', { bare: true, resumeSessionId: undefined });
+  });
+
+  it('creates <appData>/pet-chat-tmp via mkdir before adapter.start and passes it as workingDir', async () => {
+    const fake = makeFakeAdapter('claude');
+    createAdapter.mockReturnValue(fake);
+    seedSession('s1');
+
+    await sendPetChatMessage('s1', 'hello', {});
+
+    expect(mockedMkdir).toHaveBeenCalledWith('/mock/appdata/pet-chat-tmp', { recursive: true });
     const mkdirOrder = mockedMkdir.mock.invocationCallOrder[0];
-    const startOrder = fakeAdapter.start.mock.invocationCallOrder[0];
+    const startOrder = fake.start.mock.invocationCallOrder[0];
     expect(mkdirOrder).toBeLessThan(startOrder);
-    expect(fakeAdapter.start).toHaveBeenCalledWith({
+    expect(fake.start).toHaveBeenCalledWith({
       cliPath: '/mock/claude',
       workingDir: '/mock/appdata/pet-chat-tmp',
     });
   });
+});
 
-  it('passes bare: true on send (no vault grounding)', async () => {
-    await sendPetChatMessage('hi', {
-      onToken: () => {},
-      onDone: () => {},
-      onError: () => {},
-    });
+// ── event mapping ──
+describe('sendPetChatMessage — event mapping', () => {
+  it('text event → onToken with content', async () => {
+    const fake = makeFakeAdapter('claude');
+    createAdapter.mockReturnValue(fake);
+    seedSession('s1');
+    const onToken = vi.fn();
 
-    expect(fakeAdapter.send).toHaveBeenCalledWith('hi', { bare: true });
+    await sendPetChatMessage('s1', 'hi', { onToken });
+    fake.__emit({ type: 'text', content: 'Hel' });
+    fake.__emit({ type: 'text', content: 'lo' });
+
+    expect(onToken).toHaveBeenNthCalledWith(1, 'Hel');
+    expect(onToken).toHaveBeenNthCalledWith(2, 'lo');
   });
 
-  it('falls back to appDataDir when mkdir rejects', async () => {
-    mockedMkdir.mockRejectedValueOnce(new Error('fs denied'));
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('session_id event → setCliSessionId(sessionId, id) on the store', async () => {
+    const fake = makeFakeAdapter('claude');
+    createAdapter.mockReturnValue(fake);
+    seedSession('s1');
 
-    await sendPetChatMessage('hello', {
-      onToken: () => {},
-      onDone: () => {},
-      onError: () => {},
-    });
+    await sendPetChatMessage('s1', 'hi', {});
+    fake.__emit({ type: 'session_id', sessionId: 'cli-abc' });
 
-    // start still called, with appDataDir as workingDir (fallback).
-    expect(fakeAdapter.start).toHaveBeenCalledWith({
-      cliPath: '/mock/claude',
-      workingDir: '/mock/appdata',
-    });
-    expect(warnSpy).toHaveBeenCalled();
-    warnSpy.mockRestore();
+    expect(petChatStoreState.setCliSessionId).toHaveBeenCalledWith('s1', 'cli-abc');
   });
 
-  it('falls back to empty workingDir when appDataDir rejects', async () => {
-    mockedAppDataDir.mockRejectedValueOnce(new Error('no appdata'));
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('done event → onDone + handler deregistered (offEvent called)', async () => {
+    const fake = makeFakeAdapter('claude');
+    createAdapter.mockReturnValue(fake);
+    seedSession('s1');
+    const onDone = vi.fn();
 
-    await sendPetChatMessage('hello', {
-      onToken: () => {},
-      onDone: () => {},
-      onError: () => {},
-    });
+    await sendPetChatMessage('s1', 'hi', { onDone });
+    expect(fake.__handlerCount()).toBe(1);
+    fake.__emit({ type: 'done' });
 
-    // start called with empty workingDir (adapter skips `cd`).
-    expect(fakeAdapter.start).toHaveBeenCalledWith({
-      cliPath: '/mock/claude',
-      workingDir: '',
-    });
-    // mkdir must NOT have been called since appDataDir failed first.
-    expect(mockedMkdir).not.toHaveBeenCalled();
-    warnSpy.mockRestore();
+    expect(onDone).toHaveBeenCalledOnce();
+    expect(fake.__handlerCount()).toBe(0);
+    expect(fake.offEvent).toHaveBeenCalled();
+  });
+
+  it('error event → onError + handler deregistered', async () => {
+    const fake = makeFakeAdapter('claude');
+    createAdapter.mockReturnValue(fake);
+    seedSession('s1');
+    const onError = vi.fn();
+
+    await sendPetChatMessage('s1', 'hi', { onError });
+    fake.__emit({ type: 'error', content: 'boom' });
+
+    expect(onError).toHaveBeenCalledWith('boom');
+    expect(fake.__handlerCount()).toBe(0);
+  });
+
+  it('error event with no content falls back to "LLM error"', async () => {
+    const fake = makeFakeAdapter('claude');
+    createAdapter.mockReturnValue(fake);
+    seedSession('s1');
+    const onError = vi.fn();
+
+    await sendPetChatMessage('s1', 'hi', { onError });
+    fake.__emit({ type: 'error' });
+
+    expect(onError).toHaveBeenCalledWith('LLM error');
+  });
+
+  it('thinking / tool_start / tool_end / file_change are silently dropped (no store mutation, no handler call)', async () => {
+    const fake = makeFakeAdapter('claude');
+    createAdapter.mockReturnValue(fake);
+    seedSession('s1');
+    const onToken = vi.fn();
+    const onDone = vi.fn();
+    const onError = vi.fn();
+
+    await sendPetChatMessage('s1', 'hi', { onToken, onDone, onError });
+    fake.__emit({ type: 'thinking', content: 'ponder' });
+    fake.__emit({ type: 'tool_start', content: 't' });
+    fake.__emit({ type: 'tool_end', content: 't' });
+    fake.__emit({ type: 'file_change', content: 'f' });
+
+    expect(onToken).not.toHaveBeenCalled();
+    expect(onDone).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+    expect(petChatStoreState.setCliSessionId).not.toHaveBeenCalled();
+    // handler still registered (no terminal event yet).
+    expect(fake.__handlerCount()).toBe(1);
+  });
+
+  it('adapter.send rejection deregisters the handler and rethrows', async () => {
+    const fake = makeFakeAdapter('claude');
+    fake.send.mockRejectedValueOnce(new Error('spawn failed'));
+    createAdapter.mockReturnValue(fake);
+    seedSession('s1');
+
+    await expect(sendPetChatMessage('s1', 'hi', {})).rejects.toThrow('spawn failed');
+    expect(fake.__handlerCount()).toBe(0);
+  });
+});
+
+// ── session_id race prevention ──
+describe('session_id event attribution (race prevention)', () => {
+  it('attributes session_id to the SEND session, not "current active" after a mid-stream switch', async () => {
+    const fake = makeFakeAdapter('claude');
+    createAdapter.mockReturnValue(fake);
+    // Send for session A.
+    seedSession('A');
+
+    await sendPetChatMessage('A', 'hi', {});
+    // Handler is now registered, closed over 'A'.
+
+    // User switches active to B BEFORE the session_id event fires.
+    petChatStoreState.activeSessionId = 'B';
+    petChatStoreState.sessions = [
+      { id: 'A' },
+      { id: 'B' },
+    ];
+
+    // Late session_id event from A's stream.
+    fake.__emit({ type: 'session_id', sessionId: 'cli-A' });
+
+    // Must attribute to A (the send's session), NOT B (now-active).
+    expect(petChatStoreState.setCliSessionId).toHaveBeenCalledWith('A', 'cli-A');
+    expect(petChatStoreState.setCliSessionId).not.toHaveBeenCalledWith('B', expect.anything());
+  });
+});
+
+// ── per-session adapter isolation ──
+describe('per-session adapter isolation', () => {
+  it('two sessions get two distinct adapter instances from the Map', async () => {
+    const fakeA = makeFakeAdapter('claude');
+    const fakeB = makeFakeAdapter('claude');
+    createAdapter.mockReturnValueOnce(fakeA).mockReturnValueOnce(fakeB);
+    seedSession('A');
+
+    await sendPetChatMessage('A', 'hi', {});
+    seedSession('B');
+    await sendPetChatMessage('B', 'hi', {});
+
+    expect(__getAdapterForTesting('A')).toBe(fakeA);
+    expect(__getAdapterForTesting('B')).toBe(fakeB);
+    expect(fakeA).not.toBe(fakeB);
+  });
+
+  it('reuses the same adapter for a second send to the same session', async () => {
+    const fake = makeFakeAdapter('claude');
+    createAdapter.mockReturnValue(fake);
+    seedSession('A');
+
+    await sendPetChatMessage('A', 'hi', {});
+    await sendPetChatMessage('A', 'again', {});
+
+    // createAdapter called once for the session; second send reuses.
+    expect(createAdapter).toHaveBeenCalledTimes(1);
+    expect(__getAdapterForTesting('A')).toBe(fake);
+  });
+});
+
+// ── adapter id invalidation ──
+describe('adapter id invalidation', () => {
+  it('changing settings.cliAdapter creates a fresh adapter for the session (and stops the stale one)', async () => {
+    const stale = makeFakeAdapter('claude');
+    const fresh = makeFakeAdapter('gemini');
+    createAdapter.mockReturnValueOnce(stale).mockReturnValueOnce(fresh);
+    seedSession('A');
+
+    await sendPetChatMessage('A', 'hi', {});
+    expect(__getAdapterForTesting('A')).toBe(stale);
+
+    // User switches adapter type in settings.
+    settingsState.cliAdapter = 'gemini';
+    createAdapter.mockReturnValue(fresh);
+
+    await sendPetChatMessage('A', 'again', {});
+
+    expect(__getAdapterForTesting('A')).toBe(fresh);
+    expect(stale.stop).toHaveBeenCalled();
+  });
+});
+
+// ── stop / reset ──
+describe('stopPetChat', () => {
+  it('stops the adapter for the given session', async () => {
+    const fake = makeFakeAdapter('claude');
+    createAdapter.mockReturnValue(fake);
+    seedSession('A');
+    await sendPetChatMessage('A', 'hi', {});
+
+    await stopPetChat('A');
+
+    expect(fake.stop).toHaveBeenCalled();
+  });
+
+  it('is a safe no-op for a session with no adapter', async () => {
+    await expect(stopPetChat('never')).resolves.toBeUndefined();
+  });
+});
+
+describe('resetPetChatAdapter', () => {
+  it('with a sessionId stops + deletes only that one', async () => {
+    const fakeA = makeFakeAdapter('claude');
+    const fakeB = makeFakeAdapter('claude');
+    createAdapter.mockReturnValueOnce(fakeA).mockReturnValueOnce(fakeB);
+    seedSession('A');
+    await sendPetChatMessage('A', 'hi', {});
+    seedSession('B');
+    await sendPetChatMessage('B', 'hi', {});
+
+    await resetPetChatAdapter('A');
+
+    expect(fakeA.stop).toHaveBeenCalled();
+    expect(fakeB.stop).not.toHaveBeenCalled();
+    expect(__getAdapterForTesting('A')).toBeUndefined();
+    expect(__getAdapterForTesting('B')).toBe(fakeB);
+  });
+
+  it('with no arg stops + deletes ALL adapters (window unmount path)', async () => {
+    const fakeA = makeFakeAdapter('claude');
+    const fakeB = makeFakeAdapter('claude');
+    createAdapter.mockReturnValueOnce(fakeA).mockReturnValueOnce(fakeB);
+    seedSession('A');
+    await sendPetChatMessage('A', 'hi', {});
+    seedSession('B');
+    await sendPetChatMessage('B', 'hi', {});
+
+    await resetPetChatAdapter();
+
+    expect(fakeA.stop).toHaveBeenCalled();
+    expect(fakeB.stop).toHaveBeenCalled();
+    expect(__getAdapterForTesting('A')).toBeUndefined();
+    expect(__getAdapterForTesting('B')).toBeUndefined();
   });
 });

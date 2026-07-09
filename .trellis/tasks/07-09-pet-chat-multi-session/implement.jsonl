@@ -1,0 +1,8 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop 前端入口：Pre-Development Checklist + 状态/组件/类型/窗口索引，实现前必读"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "petChatStore 演进为 sessions[]+activeSessionId+cliSessionId，需遵循 Zustand 状态管理规范与持久化约定"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "PetChat 运行在独立 pet-panel 窗口，session/adapter 不得顶层 import vault/editor/aiStore；shell/fs ACL 已就绪"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "session header 下拉 UI + 复用共用 ChatMessageList/ChatInputBox（含插槽模式与副窗口 store 隔离约定）"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "PetChatSession 类型 + cliSessionId + 事件归属闭包，需严格类型安全"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "store/service/component 放置约定（petChatStore/petChatService/PetChat）"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "pet session 与 AiPanel session 模型相似但刻意不合并（vault-free 隔离），需遵循复用思维判断抽象边界"}
+{"file": ".trellis/tasks/07-09-desktop-pet-chat-and-ai-panel-shared-ui/research/input-and-streaming.md", "reason": "上一任务 research：pet service 事件映射（text/error/done，丢弃 session_id）、adapter 缓存与生命周期、AiPanel per-session adapterManager 模式，为本任务 service 改造的直接参照"}

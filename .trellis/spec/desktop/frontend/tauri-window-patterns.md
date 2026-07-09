@@ -602,7 +602,97 @@ try { await win.hide(); } catch (e) { console.warn('[pet] hide failed', e); }
 
 ---
 
-## Common Mistake: Declaring a Second Window but Forgetting the Capability File
+## Common Mistake: Per-Session CLI Adapter in a Secondary Window Imports the Main Window's `adapterManager`
+
+**Symptom**: a secondary window that hosts a multi-session CLI chat (e.g. `pet-panel`'s chat
+after it gained sessions) either fails to build, or pulls main-window-only store state into
+the secondary window's bundle, breaking Tauri-window isolation.
+
+**Cause**: the main window's `components/ai/adapterManager.ts` exports a `sessionAdapters` Map
++ `getAdapterForSession` that read `useSettingsStore`. A secondary window tempted to reuse it
+imports a module that transitively couples to main-window stores (`aiStore`, etc.), violating
+the rule that secondary-window code must not top-level import vault/editor/`aiStore`.
+
+**Fix**: the secondary window holds its OWN module-local `Map<sessionId, CliAdapter>` +
+`getAdapterForSession(sessionId)`, mirroring `adapterManager`'s shape but reading only stores
+the secondary window legitimately owns (for `pet-panel`: `settingsStore` + `petChatStore`).
+Do NOT import `@/components/ai/adapterManager` from any `components/pet/*` or `services/petChat*`
+file.
+
+**Why a local Map (not a single shared adapter)**: `claudeAdapter.send` spawns a fresh process
+per call, but the adapter instance caches `this.sessionId` (from the last `session_id` event)
+as the `--resume` fallback. A single shared adapter serving multiple sessions would leak the
+previous session's id as the fallback on a new session's first send (which has no explicit
+`resumeSessionId` yet) — silently resuming the wrong conversation. One adapter per session
+keeps each session's cached id scoped. This is exactly why the main window's `adapterManager`
+is per-session too.
+
+```ts
+// services/petChatService.ts — secondary-window-local, NOT imported from ai/adapterManager
+const sessionAdapters = new Map<string, CliAdapter>();
+function getAdapterForSession(sessionId: string): CliAdapter {
+  const settings = useSettingsStore.getState();
+  const existing = sessionAdapters.get(sessionId);
+  if (existing && existing.id === settings.cliAdapter) return existing;
+  const adapter = CliAdapterRegistry.getInstance().create(settings.cliAdapter);
+  sessionAdapters.set(sessionId, adapter);
+  return adapter;
+}
+```
+
+**Prevention**: when a secondary window needs per-session CLI adapters, copy the
+`Map<sessionId, CliAdapter>` + id-invalidation pattern locally; never reach for the main
+window's `adapterManager`. Grep-verify: `grep -nE "from '@/components/ai/adapterManager'"
+apps/desktop/src/components/pet apps/desktop/src/services/petChatService.ts` must be empty.
+
+---
+
+## Common Mistake: `session_id` Event Lands on the Wrong Session After a Mid-Stream Switch
+
+**Symptom**: user sends in session A, switches to session B while A is still streaming, then
+sends in B. The CLI's `session_id` event for A's send arrives late and writes A's
+`cliSessionId` onto B (or onto "the current active session") — corrupting B's resume chain so
+B's next send resumes A's conversation.
+
+**Cause**: the `onEvent` handler registered for the send reads "the current active session"
+from the store AT EVENT TIME (`useStore.getState().activeSessionId`). Because the user switched
+sessions between send and the `session_id` event, "active" no longer points at the session that
+triggered the send.
+
+**Fix**: the `onEvent` handler must be **closed over the `sessionId` that triggered the send**
+and attribute every event (especially `session_id`) to THAT id, never to "current active".
+`text`/`error`/`done` callbacks the caller passes should likewise target the send's `sessionId`
+(e.g. `appendToLastMessage(sessionId, chunk)`), not "active".
+
+```ts
+// services/petChatService.ts — handler closed over `sessionId` (the send's session)
+async function sendPetChatMessage(sessionId: string, prompt: string, handlers) {
+  const adapter = getAdapterForSession(sessionId);
+  const resumeSessionId = usePetChatStore.getState().sessions.find(s => s.id === sessionId)?.cliSessionId ?? undefined;
+  const handler = (event: CliStreamEvent) => {
+    switch (event.type) {
+      case 'text':       handlers.onToken?.(event.content); break;
+      case 'session_id': usePetChatStore.getState().setCliSessionId(sessionId, event.sessionId); break; // ← sessionId, NOT active
+      case 'error':      adapter.offEvent(handler); handlers.onError?.(event.content ?? 'LLM error'); break;
+      case 'done':       adapter.offEvent(handler); handlers.onDone?.(); break;
+    }
+  };
+  adapter.onEvent(handler);
+  await adapter.send(prompt, { bare: true, resumeSessionId });
+}
+```
+
+**Test**: start a send for session A, switch active to B before the `session_id` event fires,
+emit the event, assert `cliSessionId` was set on A (the send's session), not B. This applies
+to ANY session-switching CLI adapter surface, including the main-window AI panel — the handler
+must always attribute by the send's session, not by "current active".
+
+**Prevention**: never read `activeSessionId` inside an event handler that was registered for a
+specific send. Capture the send's `sessionId` in the closure at registration time.
+
+---
+
+
 
 **Symptom**: a new transparent/persistent window is declared in `tauri.conf.json` but its
 `@tauri-apps/api/window` calls all no-op at runtime.

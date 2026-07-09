@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "质量检查主入口：lint/typecheck/测试/跨层数据流/复用/一致性"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop 前端 Quality Check 章节"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "核查 petChatStore sessions 模型、迁移、持久化、cliSessionId 归属是否符合状态管理规范"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "核查 pet-panel 独立窗口下 session/adapter 未引入 vault/editor/aiStore 顶层依赖"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "核查 PetChatSession 类型、事件归属闭包、resumeSessionId 类型正确性"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "核查 pet session 是否合理独立于 AiPanel（不过度抽象/不强行合并），共用组件是否正确复用"}
