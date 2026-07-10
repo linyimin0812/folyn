@@ -649,11 +649,48 @@ pub async fn pet_get_work_area(_app: tauri::AppHandle) -> Result<PetWorkArea, St
 /// `pet://menu-action` so the main window's existing listener dispatches the
 /// action. `popup_menu` blocks the calling (non-main) thread until the menu
 /// is dismissed; the JS `invoke` therefore resolves after dismissal.
+/// Set the OS cursor for the pet window's hover state. The pet NSPanel is
+/// `nonactivating_panel` + `can_become_main_window: false`, so WKWebView's
+/// CSS `cursor: pointer` doesn't take effect on plain hover — only after the
+/// panel becomes key via a click. Calling `[NSCursor pointingHandCursor] set]`
+/// from the frontend's `onMouseEnter` (and `arrowCursor` on leave) bypasses
+/// the webview cursor system and sets the OS cursor directly. May not stick
+/// when the cursor is over another app's window (the frontmost app owns the
+/// cursor); reliable fix needs an `NSTrackingArea` with `NSTrackingActiveAlways`
+/// on the panel's content view, deferred until this proves insufficient.
+#[tauri::command]
+pub async fn pet_set_cursor(app: tauri::AppHandle, kind: String) -> Result<(), String> {
+    use cocoa::base::id;
+    use objc::{class, msg_send, sel, sel_impl};
+    let app2 = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        unsafe {
+            let cursor: id = if kind == "pointer" {
+                msg_send![class!(NSCursor), pointingHandCursor]
+            } else {
+                msg_send![class!(NSCursor), arrowCursor]
+            };
+            let _: () = msg_send![cursor, set];
+        }
+        let _ = app2;
+    });
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), String> {
     use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
     use tauri::Manager;
 
+    // ponytail: popup the menu attached to the pet NSPanel's own ns_view, with
+    // the cursor position relative to the pet window. The pet panel carries
+    // `full_screen_auxiliary` collectionBehavior so it stays on the active
+    // Space even when another app is fullscreen — attaching the menu to the
+    // pet's view (inView = Some) makes NSMenu popUp on the same Space.
+    // Position=None would use `NSEvent::mouseLocation()` + inView=nil (an
+    // orphaned menu that opens on the frontmost app's Space — invisible when
+    // our app isn't frontmost). Computing cursor-relative-to-pet-frame and
+    // passing to `popup_menu_at` keeps the menu anchored to the pet window.
     let pet = app
         .get_webview_window(PET_LABEL)
         .ok_or_else(|| "pet window not found".to_string())?;
@@ -771,12 +808,40 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), String> 
     )
     .map_err(|e| e.to_string())?;
 
-    // popup_menu shows the menu at the current cursor position. It runs the
-    // underlying NSMenu popUp on the main thread (blocking) and returns once
-    // the user picks an item or dismisses — so the menu items stay alive for
-    // the duration of the popup.
-    pet.popup_menu(&menu).map_err(|e| e.to_string())?;
+    // popup_menu_at anchors the menu to `pet`'s ns_view (so NSMenu opens on
+    // the pet panel's Space — visible even when the frontmost app is
+    // fullscreen) at the cursor position expressed in the view's top-left
+    // origin (logical points). muda flips Y to the NSView's bottom-left.
+    let popup_pos = pet_cursor_pos_relative(&pet)?;
+    pet.popup_menu_at(&menu, popup_pos).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+/// Compute the current cursor position relative to the pet window's top-left,
+/// in logical points (top-left origin, Y-down) — the format muda's
+/// `popup_menu_at` expects. Uses Tauri's portable `cursor_position()` +
+/// `outer_position()` / `outer_size()` so we don't have to call struct-
+/// returning AppKit methods (`NSEvent::mouseLocation`, `NSWindow::frame`)
+/// through `msg_send!`, which is UB on ARM64 and crashes. Falls back to
+/// (0,0) if any of the calls fail (menu shows at the pet window's top-left).
+fn pet_cursor_pos_relative(pet: &tauri::WebviewWindow) -> Result<tauri::Position, String> {
+    let cursor = pet.cursor_position().map_err(|e| e.to_string())?;
+    let win = pet.outer_position().map_err(|e| e.to_string())?;
+    let size = pet.outer_size().map_err(|e| e.to_string())?;
+    let scale_factor = pet.scale_factor().unwrap_or(1.0);
+    // Tauri returns physical px with top-left origin. muda's popup_menu_at
+    // takes Position in logical points (top-left origin, Y-down); it flips
+    // Y internally to NSView's bottom-left.
+    let dx = (cursor.x - win.x as f64) / scale_factor;
+    let dy = (cursor.y - win.y as f64) / scale_factor;
+    // Clamp to the pet window's bounds so the menu origin is always inside
+    // the window (muda attaches the menu to the view, an out-of-bounds
+    // origin can render the menu off-screen).
+    let max_x = size.width as f64 / scale_factor;
+    let max_y = size.height as f64 / scale_factor;
+    let dx = dx.clamp(0.0, max_x.max(0.0));
+    let dy = dy.clamp(0.0, max_y.max(0.0));
+    Ok(tauri::Position::Logical(tauri::LogicalPosition::new(dx, dy)))
 }
 
 // ────────────────────────────────────────────────────────────────────────────

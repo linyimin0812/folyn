@@ -452,6 +452,7 @@ pub fn run() {
             commands::get_pet_position,
             commands::pet_cursor_probe,
             commands::pet_show_context_menu,
+            commands::pet_set_cursor,
             commands::pet_get_work_area,
             commands::pet_panel_show,
             commands::pet_panel_hide,

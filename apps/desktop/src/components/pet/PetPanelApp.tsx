@@ -64,6 +64,14 @@ export function PetPanelApp() {
   // single left-click on the pet drops the user into "ask" mode without an
   // extra tab switch. The launcher grid is one click away on the Actions tab.
   const [tab, setTab] = useState<PetPanelTab>('chat');
+  // ponytail: drives the CSS opacity/transform transition on
+  // `.pet-panel-root`. The webview persists across shows (no re-mount), so
+  // the fade-in has to be class-driven by a window focus event rather than
+  // a mount-only @keyframes. `pet_panel_show` calls Tauri `set_focus()`
+  // which fires `tauri://focus` → flip `is-visible` on → CSS transitions
+  // opacity 0→1 + scale 0.96→1 over 160ms, masking the frame re-assert
+  // flash from `applyPanelFrame` (show → set_pos/size post-show).
+  const [isVisible, setVisible] = useState(false);
   const setPetPanelPosition = useSettingsStore((s) => s.setPetPanelPosition);
   const setPetPanelSize = useSettingsStore((s) => s.setPetPanelSize);
 
@@ -87,6 +95,30 @@ export function PetPanelApp() {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [hidePanel]);
+
+  // ponytail: drive the fade-in transition via window focus. `pet_panel_show`
+  // ends with `set_focus()` which fires `tauri://focus`; on blur (panel
+  // hidden or app deactivated) we drop `is-visible` so the next show starts
+  // from opacity 0 again. Lets the CSS transition replay on every open
+  // (webview doesn't re-mount between shows).
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const win = getCurrentWindow();
+        unlisten = await win.onFocusChanged(({ payload: focused }: { payload: boolean }) => {
+          setVisible(focused);
+        });
+      } catch (err) {
+        console.warn('[pet-panel] focus listener failed:', err);
+      }
+    })();
+    return () => {
+      void unlisten?.();
+    };
+  }, []);
 
   // ── Topmost level (visible over all always-on-top apps) ──
   // Tauri's `alwaysOnTop: true` config only sets the Floating NSWindow
@@ -324,7 +356,7 @@ export function PetPanelApp() {
   }, []);
 
   return (
-    <div className="pet-panel-root">
+    <div className={`pet-panel-root${isVisible ? ' is-visible' : ''}`}>
       <header
         className="pet-panel-header"
         onPointerDown={headerPointerDown}

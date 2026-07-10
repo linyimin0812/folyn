@@ -115,6 +115,8 @@ export function ChatInputBox({
           disabled={isDisabled}
           aria-label={inputAriaLabel ?? 'chat input'}
           autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
         />
 
         <div className="flex items-center gap-0.5 py-0.5 px-1.5 pb-1.5">

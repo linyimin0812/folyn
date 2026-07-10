@@ -262,11 +262,25 @@ export function PetApp() {
   const handleMouseEnter = useCallback(() => {
     if (draggingRef.current) return;
     setState((s) => (s === 'idle' || s === 'hover' ? 'hover' : s));
+    // ponytail: CSS `cursor: pointer` doesn't take effect on a nonactivating
+    // NSPanel until it becomes key (a click). Call NSCursor directly so the
+    // hand cursor shows on plain hover. If the frontmost app owns the cursor
+    // this may not stick — reliable fix needs NSTrackingArea ActiveAlways.
+    if (isTauri()) {
+      import('@tauri-apps/api/core')
+        .then(({ invoke }) => invoke('pet_set_cursor', { kind: 'pointer' }))
+        .catch(() => {});
+    }
   }, []);
 
   const handleMouseLeave = useCallback(() => {
     if (draggingRef.current) return;
     setState((s) => (s === 'hover' ? 'idle' : s));
+    if (isTauri()) {
+      import('@tauri-apps/api/core')
+        .then(({ invoke }) => invoke('pet_set_cursor', { kind: 'default' }))
+        .catch(() => {});
+    }
   }, []);
 
   // Track an in-progress pointer gesture to distinguish a click from a drag.
