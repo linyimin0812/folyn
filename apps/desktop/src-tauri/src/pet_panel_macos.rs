@@ -36,7 +36,14 @@ use tauri_nspanel::{
 };
 
 tauri_panel! {
-    panel!(QuillNsPanel {
+    panel!(QuillPetPanel {
+        config: {
+            is_floating_panel: true,
+            can_become_key_window: true,
+            can_become_main_window: false,
+        }
+    })
+    panel!(QuillPanelWindow {
         config: {
             is_floating_panel: true,
             can_become_key_window: true,
@@ -62,35 +69,76 @@ pub fn backend_is_nspanel() -> bool {
 /// class and re-applies level/style/behavior. Returns the count of windows
 /// successfully converted.
 ///
-/// Both windows get the same recipe: `Dock` level + `nonactivating_panel` +
-/// `stationary | can_join_all_spaces | full_screen_auxiliary` (273). The
-/// `pet-panel` is opaque (not transparent) but still benefits from the
-/// panel tier — a regular `alwaysOnTop` NSWindow at Floating level cannot
-/// rise over a fullscreen app, but an NSPanel at Dock level with
-/// `full_screen_auxiliary` can.
+/// Two panel types are used: `QuillPetPanel` for the `pet` mascot and
+/// `pet-bubble` (no keyboard interaction; `can_become_key_window: true` so
+/// the webview can become key for CSS cursor updates after a click — plain
+/// hover doesn't update the cursor without a click on macOS because the
+/// panel isn't key until clicked), and `QuillPanelWindow` for the
+/// `pet-panel`, which needs keyboard focus for its Esc keydown listener
+/// (`pet_panel_show` calls Tauri's `set_focus()`, which activates the Quill
+/// app and makes the panel key).
+/// Both get the same level/style/collection recipe: `Dock` level +
+/// `nonactivating_panel` + `stationary | can_join_all_spaces |
+/// full_screen_auxiliary` (273). The `pet-panel` is opaque (not transparent)
+/// but still benefits from the panel tier — a regular `alwaysOnTop` NSWindow
+/// at Floating level cannot rise over a fullscreen app, but an NSPanel at Dock
+/// level with `full_screen_auxiliary` can.
 pub fn convert_windows(app: &AppHandle) -> usize {
     // The nspanel plugin provides the `ManagerExt` panel store (label-based
     // lookup). Registering it is also what BongoCat does before `to_panel()`.
     let _ = app.plugin(tauri_nspanel::init());
 
     let mut count = 0;
-    for label in ["pet", "pet-panel", "pet-bubble"] {
-        let Some(window) = app.get_webview_window(label) else {
-            continue;
-        };
-        let Ok(panel) = window.to_panel::<QuillNsPanel>() else {
-            continue;
-        };
-        panel.set_level(PanelLevel::Dock.value());
-        panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
-        panel.set_collection_behavior(
-            CollectionBehavior::new()
-                .stationary()
-                .can_join_all_spaces()
-                .full_screen_auxiliary()
-                .into(),
-        );
-        count += 1;
+
+    // Pet mascot.
+    if let Some(window) = app.get_webview_window("pet") {
+        if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
+            panel.set_level(PanelLevel::Dock.value());
+            panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
+            panel.set_collection_behavior(
+                CollectionBehavior::new()
+                    .stationary()
+                    .can_join_all_spaces()
+                    .full_screen_auxiliary()
+                    .into(),
+            );
+            count += 1;
+        }
     }
+
+    // Pet-panel — needs key window for Esc; set_focus() makes it key on show.
+    if let Some(window) = app.get_webview_window("pet-panel") {
+        if let Ok(panel) = window.to_panel::<QuillPanelWindow>() {
+            panel.set_level(PanelLevel::Dock.value());
+            panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
+            panel.set_collection_behavior(
+                CollectionBehavior::new()
+                    .stationary()
+                    .can_join_all_spaces()
+                    .full_screen_auxiliary()
+                    .into(),
+            );
+            count += 1;
+        }
+    }
+
+    // Pet-bubble — clickable notification bubble, no keyboard needed; same
+    // non-key panel as the mascot so first clicks on action buttons deliver
+    // immediately.
+    if let Some(window) = app.get_webview_window("pet-bubble") {
+        if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
+            panel.set_level(PanelLevel::Dock.value());
+            panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
+            panel.set_collection_behavior(
+                CollectionBehavior::new()
+                    .stationary()
+                    .can_join_all_spaces()
+                    .full_screen_auxiliary()
+                    .into(),
+            );
+            count += 1;
+        }
+    }
+
     count
 }
