@@ -66,11 +66,11 @@ export function PetPanelApp() {
   const [tab, setTab] = useState<PetPanelTab>('chat');
   // ponytail: drives the CSS opacity/transform transition on
   // `.pet-panel-root`. The webview persists across shows (no re-mount), so
-  // the fade-in has to be class-driven by a window focus event rather than
-  // a mount-only @keyframes. `pet_panel_show` calls Tauri `set_focus()`
-  // which fires `tauri://focus` → flip `is-visible` on → CSS transitions
-  // opacity 0→1 + scale 0.96→1 over 160ms, masking the frame re-assert
-  // flash from `applyPanelFrame` (show → set_pos/size post-show).
+  // the fade-in has to be class-driven by an explicit event rather than a
+  // mount-only @keyframes. `applyPanelFrame` (PetApp.tsx) emits
+  // `pet://panel-fade-in` AFTER the post-show frame re-assert; this listener
+  // flips `is-visible` on → CSS transitions opacity 0→1 + scale 0.98→1 over
+  // 180ms from the stable final frame.
   const [isVisible, setVisible] = useState(false);
   const setPetPanelPosition = useSettingsStore((s) => s.setPetPanelPosition);
   const setPetPanelSize = useSettingsStore((s) => s.setPetPanelSize);
@@ -96,12 +96,12 @@ export function PetPanelApp() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [hidePanel]);
 
-  // ponytail: drive the fade-in transition via window focus. `pet_panel_show`
-  // ends with `set_focus()` which fires `tauri://focus` → flip `is-visible`
-  // on → CSS transitions opacity 0→1 + scale 0.96→1 over 160ms, masking the
-  // frame re-assert flash from `applyPanelFrame` (show → set_pos/size
-  // post-show). The webview persists across shows (no re-mount), so the fade
-  // has to be class-driven by a focus event rather than a mount-only @keyframes.
+  // ponytail: the show fade is driven by the explicit `pet://panel-fade-in`
+  // event emitted by `applyPanelFrame` (PetApp.tsx) AFTER the post-show frame
+  // re-assert. Previously this was keyed off `tauri://focus` (fired by
+  // `set_focus()` inside `pet_panel_show`), which fires BEFORE the re-assert
+  // — the panel moved/resized while half-faded-in → 闪动. Now focus true is a
+  // no-op for visibility; only `pet://panel-fade-in` sets `is-visible`.
   //
   // On blur we do NOT blindly drop `is-visible` — only when the window was
   // actually hidden (`pet_panel_hide`). The pet-panel is a `nonactivating_panel`
@@ -121,7 +121,9 @@ export function PetPanelApp() {
         const win = getCurrentWindow();
         unlisten = await win.onFocusChanged(({ payload: focused }: { payload: boolean }) => {
           if (focused) {
-            setVisible(true);
+            // ponytail: focus alone no longer drives the fade — the
+            // `pet://panel-fade-in` listener below owns setVisible(true)
+            // so the fade starts from the stable final frame.
             return;
           }
           void win.isVisible().then((stillVisible) => {
@@ -134,6 +136,30 @@ export function PetPanelApp() {
     })();
     return () => {
       void unlisten?.();
+    };
+  }, []);
+
+  // ── Show-fade trigger (decoupled from focus) ──
+  // Listens for `pet://panel-fade-in` emitted by `applyPanelFrame` AFTER the
+  // post-show frame re-assert completes. This guarantees the CSS opacity/scale
+  // transition starts from the stable final rect, not mid-re-assert. The `pet`
+  // window emits via global `emit` (ACL: `core:event:allow-emit` on `pet`);
+  // this `listen` is ACL-allowed via `core:event:allow-listen` on `pet-panel`.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        unlisten = await listen('pet://panel-fade-in', () => {
+          setVisible(true);
+        });
+      } catch (err) {
+        console.warn('[pet-panel] panel-fade-in listener failed:', err);
+      }
+    })();
+    return () => {
+      if (unlisten) unlisten();
     };
   }, []);
 

@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Pet/pet-panel NSPanel window contract — show/hide/focus patterns, applyPanelFrame re-assert, the fade-in design. Core spec for all 3 issues."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Selector referential-stability + Zustand state rules — the fade-trigger setVisible state and the prior isVisible() blur-guard must stay stable."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Frontend component/hook patterns for the PetPanelApp fade listener + PetChat textarea focus contract."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared cross-package guides (always included)."}
+{"file": ".trellis/tasks/07-11-pet-panel-smooth-popup-animation-hover-cursor-without-click-esc-without-click/research/nstrackingarea-cursor-hover.md", "reason": "Issue 2 approach: tauri-nspanel crate native tracking_area (ActiveAlways) + cursorUpdate; the exact macro/options/handler shape."}
+{"file": ".trellis/tasks/07-11-pet-panel-smooth-popup-animation-hover-cursor-without-click-esc-without-click/research/makefirstresponder-keyboard.md", "reason": "Issue 3 approach: makeFirstResponder(WKWebView) after set_focus; pet_make_transparent ns_view accessor precedent; frontend textarea focus."}

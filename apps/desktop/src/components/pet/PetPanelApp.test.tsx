@@ -12,10 +12,13 @@ import { invoke } from '@tauri-apps/api/core';
 // `invoke` commands (mocked above). `vi.hoisted` ensures the spies exist
 // before the hoisted `vi.mock` factory captures them. `focusHandler` holds the
 // focus callback the component registers so tests can synthesize focus/blur.
-const { startDraggingMock, focusHandler, isVisibleMock } = vi.hoisted(() => ({
+// `fadeHandler` holds the `pet://panel-fade-in` listen callback so tests can
+// drive the show-fade without touching focus (the fade is decoupled from focus).
+const { startDraggingMock, focusHandler, isVisibleMock, fadeHandler } = vi.hoisted(() => ({
   startDraggingMock: vi.fn(async () => undefined),
   focusHandler: { current: null as null | ((e: { payload: boolean }) => void) },
   isVisibleMock: vi.fn(async () => true),
+  fadeHandler: { current: null as null | (() => void) },
 }));
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => ({
@@ -28,6 +31,21 @@ vi.mock('@tauri-apps/api/window', () => ({
     },
     isVisible: isVisibleMock,
   }),
+}));
+
+// Mock @tauri-apps/api/event so the `pet://panel-fade-in` listener can be
+// captured. The show-fade is now driven by this event (emitted by
+// `applyPanelFrame` after the post-show re-assert) instead of `tauri://focus`.
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn(async (channel: string, cb: () => void) => {
+    if (channel === 'pet://panel-fade-in') {
+      fadeHandler.current = cb;
+    }
+    return () => {
+      if (fadeHandler.current === cb) fadeHandler.current = null;
+    };
+  }),
+  emit: vi.fn(async () => undefined),
 }));
 
 // Mock the heavy child components so this test focuses on tab host behavior.
@@ -51,6 +69,7 @@ beforeEach(() => {
   isVisibleMock.mockClear();
   isVisibleMock.mockResolvedValue(true);
   focusHandler.current = null;
+  fadeHandler.current = null;
 });
 
 afterEach(() => {
@@ -132,7 +151,34 @@ describe('PetPanelApp', () => {
     expect(startDraggingMock).not.toHaveBeenCalled();
   });
 
-  // ── Fade visibility vs. transient blur (file-upload blank regression) ──
+  // ── Show-fade via `pet://panel-fade-in` (decoupled from focus) ──
+  // The fade-in is now driven by an explicit `pet://panel-fade-in` event
+  // emitted by `applyPanelFrame` AFTER the post-show re-assert, NOT by
+  // `tauri://focus`. Focus true is a no-op for visibility — only the
+  // event sets `is-visible`. The blur→`isVisible()` reset (file-upload
+  // blank fix) stays unchanged.
+  it('pet://panel-fade-in event sets is-visible (drives the show fade)', async () => {
+    const { container } = render(<PetPanelApp />);
+    await waitFor(() => expect(fadeHandler.current).not.toBeNull());
+    const root = container.querySelector('.pet-panel-root')!;
+    expect(root.className).not.toContain('is-visible');
+    await act(async () => {
+      fadeHandler.current!();
+    });
+    expect(root.className).toContain('is-visible');
+  });
+
+  it('tauri://focus true alone does NOT set is-visible (fade is decoupled)', async () => {
+    const { container } = render(<PetPanelApp />);
+    await waitFor(() => expect(focusHandler.current).not.toBeNull());
+    const root = container.querySelector('.pet-panel-root')!;
+    await act(async () => {
+      focusHandler.current!({ payload: true });
+    });
+    expect(root.className).not.toContain('is-visible');
+  });
+
+  // ── Blur visibility reset (file-upload blank regression) ──
   // The panel is a `nonactivating_panel`; clicking the attach button opens a
   // native NSOpenPanel that steals key window → blur fires while the window is
   // STILL visible. Dropping `is-visible` there would set opacity:0 and, since a
@@ -140,10 +186,11 @@ describe('PetPanelApp', () => {
   it('blur while the window is still visible (file dialog stole focus) does NOT blank the panel', async () => {
     isVisibleMock.mockResolvedValue(true); // window still shown — dialog only stole key
     const { container } = render(<PetPanelApp />);
-    await waitFor(() => expect(focusHandler.current).not.toBeNull());
+    await waitFor(() => expect(fadeHandler.current).not.toBeNull());
     const root = container.querySelector('.pet-panel-root')!;
+    // Show the panel via the fade-in event (NOT focus — focus is decoupled now).
     await act(async () => {
-      focusHandler.current!({ payload: true }); // show → focus gained
+      fadeHandler.current!();
     });
     expect(root.className).toContain('is-visible');
     // File dialog opens → blur. Window is STILL visible → must stay visible.
@@ -158,10 +205,10 @@ describe('PetPanelApp', () => {
   it('blur when the window was actually hidden drops is-visible (fade resets for next show)', async () => {
     isVisibleMock.mockResolvedValue(false); // pet_panel_hide hid the window
     const { container } = render(<PetPanelApp />);
-    await waitFor(() => expect(focusHandler.current).not.toBeNull());
+    await waitFor(() => expect(fadeHandler.current).not.toBeNull());
     const root = container.querySelector('.pet-panel-root')!;
     await act(async () => {
-      focusHandler.current!({ payload: true });
+      fadeHandler.current!();
     });
     expect(root.className).toContain('is-visible');
     await act(async () => {

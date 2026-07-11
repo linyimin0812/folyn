@@ -138,6 +138,12 @@ export function PetChat() {
    *  on the next successful add/paste/send or after a timeout. */
   const [rejectError, setRejectError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Ref to the chat textarea so we can `.focus()` it on `pet://panel-fade-in`
+  // (the show signal). ChatInputBox merges this with its own internal ref.
+  // The panel defaults to the Chat tab, so on open the user can type
+  // immediately — no click needed. On the Actions tab PetChat is unmounted,
+  // so the listener never fires (don't force-focus input on Actions).
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const configured = isPetChatConfigured();
 
   // Hold the latest attachments for the unmount cleanup so it can revoke
@@ -172,6 +178,36 @@ export function PetChat() {
     const t = setTimeout(() => setRejectError(null), 3000);
     return () => clearTimeout(t);
   }, [rejectError]);
+
+  // ── Focus the textarea on panel show (Esc + typing without click) ──
+  // Listens for `pet://panel-fade-in` (emitted by `applyPanelFrame` after the
+  // post-show frame re-assert) and focuses the chat textarea so the user can
+  // type immediately. Also reinforces the WKWebView's first-responder status
+  // (belt-and-suspenders for the Rust `makeFirstResponder` in `pet_panel_show`).
+  // PetChat is only mounted when `tab === 'chat'` (PetPanelApp conditional
+  // render), so the listener never fires on the Actions tab — no force-focus
+  // when the user is on Actions. Wrapped in isTauri so non-Tauri/test envs skip.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        unlisten = await listen('pet://panel-fade-in', () => {
+          // Focus on the next microtask so the CSS fade-in has started and
+          // the webview is visible — focusing a hidden webview can be a no-op.
+          requestAnimationFrame(() => {
+            textareaRef.current?.focus();
+          });
+        });
+      } catch (err) {
+        console.warn('[pet-chat] panel-fade-in listener failed:', err);
+      }
+    })();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
 
   // ── Attachment add / remove ──
 
@@ -408,6 +444,7 @@ export function PetChat() {
         placeholder="输入消息，Enter 发送"
         textareaRows={1}
         inputAriaLabel="Pet chat input"
+        inputRef={textareaRef}
         onPaste={handlePasteWrapper}
         leadingSlot={leadingSlot}
         attachmentsRow={attachmentsRow}

@@ -221,15 +221,16 @@ html.is-pet-panel-window body {
   font-family: var(--ui-font, system-ui, sans-serif);
   font-size: 14px;
   /* ponytail: fade-in on every show. The webview persists across shows,
-     so the animation must be class-driven (toggled by window focus event
-     in PetPanelApp) instead of a mount-only @keyframes. Start at 0 so the
-     window-appears-at-wrong-frame flash + first-paint flash are both
-     masked by the 0→1 transition. Hides the frame re-assert jump from
-     `applyPanelFrame` (show → set_pos/size post-show). */
+     so the animation must be class-driven (toggled by the
+     `pet://panel-fade-in` event listener in PetPanelApp) instead of a
+     mount-only @keyframes. Start at 0 so the window-appears-at-wrong-frame
+     flash + first-paint flash are both masked by the 0→1 transition.
+     Softer entrance: scale(0.98) from center (was 0.96 from top-left) —
+     the bigger scale + top-left origin amplified the mid-fade frame shift. */
   opacity: 0;
-  transform: scale(0.96);
-  transform-origin: top left;
-  transition: opacity 160ms ease-out, transform 160ms ease-out;
+  transform: scale(0.98);
+  transform-origin: center;
+  transition: opacity 180ms ease-out, transform 180ms ease-out;
 }
 .pet-panel-root.is-visible {
   opacity: 1;

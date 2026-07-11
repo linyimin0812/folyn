@@ -125,11 +125,21 @@ async function applyPanelFrame(
   panelSizePhysical: { width: number; height: number },
 ): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
+  const { emit } = await import('@tauri-apps/api/event');
   await invoke('pet_panel_set_position', panelPosPhysical);
   await invoke('pet_panel_set_size', panelSizePhysical);
   await invoke('pet_panel_show');
   await invoke('pet_panel_set_position', panelPosPhysical);
   await invoke('pet_panel_set_size', panelSizePhysical);
+  // ponytail: emit the fade-in trigger AFTER the post-show frame re-assert so
+  // the panel is already in its final rect when the CSS opacity/scale
+  // transition starts. Previously the fade was keyed off `tauri://focus`
+  // (fired by `set_focus()` inside `pet_panel_show`), which fires BEFORE the
+  // re-assert — the panel moved/resized while half-faded-in → 闪动. Now the
+  // pet-panel window listens for `pet://panel-fade-in` and calls
+  // `setVisible(true)` only then. The `pet` window has `core:event:allow-emit`
+  // in capabilities/pet.json; `pet-panel` has `core:event:allow-listen`.
+  await emit('pet://panel-fade-in');
 }
 
 /**
@@ -259,28 +269,21 @@ export function PetApp() {
   const spriteSize = petSizeToPx(petSize);
 
   // ── State machine: mouse event handlers ──
+  // ponytail: the hand cursor on hover is now set by the Rust-side
+  // NSTrackingArea (ActiveAlways + cursorUpdate) on the QuillPetPanel — see
+  // pet_panel_macos.rs. The previous `invoke('pet_set_cursor')` calls didn't
+  // stick when another app owned the cursor (the nonactivating panel isn't
+  // key until clicked). The tracking area delivers cursorUpdate even when
+  // Quill isn't frontmost. The `pet_set_cursor` Rust command is kept as a
+  // fallback.
   const handleMouseEnter = useCallback(() => {
     if (draggingRef.current) return;
     setState((s) => (s === 'idle' || s === 'hover' ? 'hover' : s));
-    // ponytail: CSS `cursor: pointer` doesn't take effect on a nonactivating
-    // NSPanel until it becomes key (a click). Call NSCursor directly so the
-    // hand cursor shows on plain hover. If the frontmost app owns the cursor
-    // this may not stick — reliable fix needs NSTrackingArea ActiveAlways.
-    if (isTauri()) {
-      import('@tauri-apps/api/core')
-        .then(({ invoke }) => invoke('pet_set_cursor', { kind: 'pointer' }))
-        .catch(() => {});
-    }
   }, []);
 
   const handleMouseLeave = useCallback(() => {
     if (draggingRef.current) return;
     setState((s) => (s === 'hover' ? 'idle' : s));
-    if (isTauri()) {
-      import('@tauri-apps/api/core')
-        .then(({ invoke }) => invoke('pet_set_cursor', { kind: 'default' }))
-        .catch(() => {});
-    }
   }, []);
 
   // Track an in-progress pointer gesture to distinguish a click from a drag.

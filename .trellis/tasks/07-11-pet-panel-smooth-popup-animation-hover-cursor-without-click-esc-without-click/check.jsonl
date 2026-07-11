@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality bar the changes must meet before completion."}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Verify the NSPanel show/focus/fade changes stay consistent with the documented window contract."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify the fade-trigger state + isVisible() blur-guard remain referentially stable (no regression of the file-upload-blank fix)."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared cross-package guides (always included)."}
+{"file": ".trellis/tasks/07-11-pet-panel-smooth-popup-animation-hover-cursor-without-click-esc-without-click/research/nstrackingarea-cursor-hover.md", "reason": "Verify issue 2 matches the researched crate-native tracking_area approach (no raw objc)."}
+{"file": ".trellis/tasks/07-11-pet-panel-smooth-popup-animation-hover-cursor-without-click-esc-without-click/research/makefirstresponder-keyboard.md", "reason": "Verify issue 3 matches makeFirstResponder(WKWebView) + textarea focus; the wrong-target (contentView) pitfall is avoided."}

@@ -861,6 +861,19 @@ const PET_PANEL_LABEL: &str = "pet-panel";
 /// Show the pet-panel window and set focus. The caller sets the window's
 /// position via `pet_panel_set_position` first (or right after) so the panel
 /// appears next to the pet.
+///
+/// After `set_focus()` (which activates the Quill app + makes the panel key),
+/// this also makes the **WKWebView** the first responder via
+/// `makeFirstResponder:` on the main thread. `set_focus()` alone makes the
+/// WINDOW key but does NOT make the WKWebView first responder — `document`
+/// never receives `keydown` until a click makes the webview FR. This is the
+/// deterministic Esc fix: `makeFirstResponder(wkwebview)` → AppKit delivers
+/// `keyDown:` to the webview → the DOM `document` receives `keydown` → the
+/// React Esc listener fires without a click. See
+/// `research/makefirstresponder-keyboard.md` — the crate's own
+/// `show_and_make_key` does `makeFirstResponder: &*content_view` (the tao
+/// parent view, NOT the WKWebView), which routes `keyDown:` to the wrong
+/// target; we must target the WKWebView ns_view specifically.
 #[tauri::command]
 pub async fn pet_panel_show(app: tauri::AppHandle) -> Result<(), String> {
     let panel = app
@@ -876,6 +889,35 @@ pub async fn pet_panel_show(app: tauri::AppHandle) -> Result<(), String> {
     // Restoring the previous app needs `NSWorkspace.frontmostApplication`
     // tracking + `activateWithOptions:` on hide — out of scope for this fix.
     panel.set_focus().map_err(|e| e.to_string())?;
+
+    // Make the WKWebView (NOT the contentView / parent view) the first
+    // responder so `document` receives `keydown` → Esc works without a click.
+    // Reuses the `pet_make_transparent` `with_webview` accessor pattern:
+    // `webview.inner()` = WKWebView pointer, `webview.ns_window()` = NSWindow.
+    // Must run on the main thread (AppKit API); `with_webview` schedules the
+    // closure onto the macOS main run loop. The panel is shown/hidden (not
+    // recreated), so `makeFirstResponder` must be re-applied on every show —
+    // after `orderOut` (hide) the first responder resigns and is NOT
+    // auto-restored on the next `makeKeyAndOrderFront` for a nonactivating
+    // panel.
+    #[cfg(target_os = "macos")]
+    {
+        use objc::runtime::Object;
+        use objc::{msg_send, sel, sel_impl};
+        panel
+            .with_webview(move |webview| {
+                unsafe {
+                    let wk = webview.inner() as *mut Object;
+                    let ns = webview.ns_window() as *mut Object;
+                    if ns.is_null() || wk.is_null() {
+                        return;
+                    }
+                    let _: () = msg_send![ns, makeFirstResponder: wk];
+                }
+            })
+            .map_err(|e| e.to_string())?;
+    }
+
     Ok(())
 }
 
