@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 import { createEvent } from '@testing-library/dom';
 
 // Mock @tauri-apps/api/core invoke — provided via vitest.workspace.ts alias.
@@ -7,14 +7,27 @@ import { invoke } from '@tauri-apps/api/core';
 
 // Mock @tauri-apps/api/window so the drag-handle handler can be asserted
 // without loading the real native bindings. The panel frontend only uses
-// `getCurrentWindow().startDragging()` (drag handle) — other window mutation
-// goes through custom `invoke` commands (mocked above). `vi.hoisted` ensures
-// the spy exists before the hoisted `vi.mock` factory captures it.
-const { startDraggingMock } = vi.hoisted(() => ({
+// `getCurrentWindow().startDragging()` (drag handle) + `onFocusChanged` /
+// `isVisible()` (fade visibility) — other window mutation goes through custom
+// `invoke` commands (mocked above). `vi.hoisted` ensures the spies exist
+// before the hoisted `vi.mock` factory captures them. `focusHandler` holds the
+// focus callback the component registers so tests can synthesize focus/blur.
+const { startDraggingMock, focusHandler, isVisibleMock } = vi.hoisted(() => ({
   startDraggingMock: vi.fn(async () => undefined),
+  focusHandler: { current: null as null | ((e: { payload: boolean }) => void) },
+  isVisibleMock: vi.fn(async () => true),
 }));
 vi.mock('@tauri-apps/api/window', () => ({
-  getCurrentWindow: () => ({ startDragging: startDraggingMock }),
+  getCurrentWindow: () => ({
+    startDragging: startDraggingMock,
+    onFocusChanged: async (cb: (e: { payload: boolean }) => void) => {
+      focusHandler.current = cb;
+      return () => {
+        focusHandler.current = null;
+      };
+    },
+    isVisible: isVisibleMock,
+  }),
 }));
 
 // Mock the heavy child components so this test focuses on tab host behavior.
@@ -35,6 +48,9 @@ beforeEach(() => {
   invokeMock.mockResolvedValue(undefined);
   startDraggingMock.mockClear();
   startDraggingMock.mockResolvedValue(undefined);
+  isVisibleMock.mockClear();
+  isVisibleMock.mockResolvedValue(true);
+  focusHandler.current = null;
 });
 
 afterEach(() => {
@@ -114,5 +130,43 @@ describe('PetPanelApp', () => {
     await fireEvent.pointerDown(screen.getByRole('tab', { name: 'Chat' }), { button: 0 });
     await Promise.resolve();
     expect(startDraggingMock).not.toHaveBeenCalled();
+  });
+
+  // ── Fade visibility vs. transient blur (file-upload blank regression) ──
+  // The panel is a `nonactivating_panel`; clicking the attach button opens a
+  // native NSOpenPanel that steals key window → blur fires while the window is
+  // STILL visible. Dropping `is-visible` there would set opacity:0 and, since a
+  // nonactivating panel doesn't reliably regain focus, leave the panel blank.
+  it('blur while the window is still visible (file dialog stole focus) does NOT blank the panel', async () => {
+    isVisibleMock.mockResolvedValue(true); // window still shown — dialog only stole key
+    const { container } = render(<PetPanelApp />);
+    await waitFor(() => expect(focusHandler.current).not.toBeNull());
+    const root = container.querySelector('.pet-panel-root')!;
+    await act(async () => {
+      focusHandler.current!({ payload: true }); // show → focus gained
+    });
+    expect(root.className).toContain('is-visible');
+    // File dialog opens → blur. Window is STILL visible → must stay visible.
+    isVisibleMock.mockClear();
+    await act(async () => {
+      focusHandler.current!({ payload: false });
+    });
+    await waitFor(() => expect(isVisibleMock).toHaveBeenCalled());
+    expect(root.className).toContain('is-visible'); // NOT blanked
+  });
+
+  it('blur when the window was actually hidden drops is-visible (fade resets for next show)', async () => {
+    isVisibleMock.mockResolvedValue(false); // pet_panel_hide hid the window
+    const { container } = render(<PetPanelApp />);
+    await waitFor(() => expect(focusHandler.current).not.toBeNull());
+    const root = container.querySelector('.pet-panel-root')!;
+    await act(async () => {
+      focusHandler.current!({ payload: true });
+    });
+    expect(root.className).toContain('is-visible');
+    await act(async () => {
+      focusHandler.current!({ payload: false });
+    });
+    await waitFor(() => expect(root.className).not.toContain('is-visible'));
   });
 });

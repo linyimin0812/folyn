@@ -97,10 +97,21 @@ export function PetPanelApp() {
   }, [hidePanel]);
 
   // ponytail: drive the fade-in transition via window focus. `pet_panel_show`
-  // ends with `set_focus()` which fires `tauri://focus`; on blur (panel
-  // hidden or app deactivated) we drop `is-visible` so the next show starts
-  // from opacity 0 again. Lets the CSS transition replay on every open
-  // (webview doesn't re-mount between shows).
+  // ends with `set_focus()` which fires `tauri://focus` → flip `is-visible`
+  // on → CSS transitions opacity 0→1 + scale 0.96→1 over 160ms, masking the
+  // frame re-assert flash from `applyPanelFrame` (show → set_pos/size
+  // post-show). The webview persists across shows (no re-mount), so the fade
+  // has to be class-driven by a focus event rather than a mount-only @keyframes.
+  //
+  // On blur we do NOT blindly drop `is-visible` — only when the window was
+  // actually hidden (`pet_panel_hide`). The pet-panel is a `nonactivating_panel`
+  // NSPanel: clicking the attach button opens a native NSOpenPanel that steals
+  // key window → blur fires. Dropping `is-visible` there would set `opacity:0`,
+  // and since a nonactivating panel doesn't reliably regain focus after the
+  // dialog, the panel would stay blank. Same hazard on app deactivation.
+  // `isVisible()` distinguishes "hidden" from "blurred but still shown"; a
+  // rejected check (no permission — currently granted in pet-panel.json) leaves
+  // the panel visible, which is the safe state.
   useEffect(() => {
     if (!isTauri()) return;
     let unlisten: (() => void) | undefined;
@@ -109,7 +120,13 @@ export function PetPanelApp() {
         const { getCurrentWindow } = await import('@tauri-apps/api/window');
         const win = getCurrentWindow();
         unlisten = await win.onFocusChanged(({ payload: focused }: { payload: boolean }) => {
-          setVisible(focused);
+          if (focused) {
+            setVisible(true);
+            return;
+          }
+          void win.isVisible().then((stillVisible) => {
+            if (!stillVisible) setVisible(false);
+          });
         });
       } catch (err) {
         console.warn('[pet-panel] focus listener failed:', err);
