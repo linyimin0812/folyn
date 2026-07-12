@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Graph, Node } from '@antv/x6';
 import type { PreviewProps } from '../types';
 import { parseDbml, type ErSchema, type ErParseError } from './parseDbml';
@@ -25,6 +26,13 @@ type State =
 // component mounts/unmounts multiple times across tabs.
 let registered = false;
 
+// Per-graph overlay element (the React-managed sibling of the graph's own
+// container div). X6 react-shape node components reach back through this map
+// to render popovers as React portals attached to the overlay, decoupling
+// popover DOM from the transformed SVG (foreignObject pointer-events inside
+// a transformed SVG are unreliable in Chromium).
+const overlayByGraph = new WeakMap<Graph, HTMLDivElement>();
+
 /**
  * ER diagram preview backed by @antv/x6 v3. Replaces the hand-rolled SVG
  * renderer (ErDiagramPreview.tsx). x6 + react-shape are dynamic-imported
@@ -38,6 +46,7 @@ export default function ErDiagramX6({ content }: PreviewProps) {
   const [showGrid, setShowGrid] = useState(false);
   const [zoomPct, setZoomPct] = useState(100);
   const containerRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<Graph | null>(null);
   // Persisted manual positions (top-left {x,y}) per card name. Survives
   // content edits so user-dragged cards keep their coordinates; only new /
@@ -124,10 +133,12 @@ export default function ErDiagramX6({ content }: PreviewProps) {
       });
       graph.on('scale', ({ sx }: { sx: number }) => setZoomPct(Math.round(sx * 100)));
       graphRef.current = graph;
+      if (overlayRef.current) overlayByGraph.set(graph, overlayRef.current);
       setGraphReady(true);
     })();
     return () => {
       cancelled = true;
+      if (graphRef.current) overlayByGraph.delete(graphRef.current);
       graphRef.current?.dispose();
       graphRef.current = null;
       setGraphReady(false);
@@ -282,6 +293,11 @@ export default function ErDiagramX6({ content }: PreviewProps) {
           here, or reconciler mutation effects hit X6's canvas nodes and
           throw NotFoundError. */}
       <div ref={containerRef} className="absolute inset-0" />
+      {/* Overlay for React-portal popovers. Sibling of the X6-owned container
+          div (not a child — React must not render inside containerRef). The
+          overlay itself is pointer-events:none so it doesn't block graph
+          panning; individual popover portals set pointer-events:auto. */}
+      <div ref={overlayRef} className="absolute inset-0 z-20 pointer-events-none" />
       {state.kind === 'loading' && <StatusMsg>正在解析 DBML…</StatusMsg>}
       {state.kind === 'error' && <ErrorView errors={state.errors} />}
       {empty && <StatusMsg>空 ER 图 — 在编辑器中定义 Table 以渲染关系图</StatusMsg>}
@@ -486,6 +502,10 @@ function TableCardNode({ node }: { node: Node }) {
   // delay so the user can move between header and popover) or when the node
   // starts moving (so the popover doesn't ghost at the pre-drag position).
   const [infoOpen, setInfoOpen] = useState(false);
+  // Tick state forces a re-render (and thus a portal-position recompute) when
+  // the graph pans/zooms while the popover is open, so the popover tracks the
+  // card instead of stranding at the old screen position.
+  const [, setTick] = useState(0);
   const closeTimeoutRef = useRef<number | null>(null);
   const clearCloseTimer = useCallback(() => {
     if (closeTimeoutRef.current != null) {
@@ -503,21 +523,29 @@ function TableCardNode({ node }: { node: Node }) {
   }, [clearCloseTimer]);
   useEffect(() => {
     if (!infoOpen) return;
-    // Bring the whole card to the front so the popover (rendered inside this
-    // node's foreignObject, extending outside its bounds) isn't occluded by
-    // edges or other cards added after this one.
+    // Bring the whole card to the front so the popover (now portaled into the
+    // overlay above the graph) isn't occluded by edges or other cards added
+    // after this one.
     node.toFront();
     const close = () => setInfoOpen(false);
     node.on('change:position', close);
+    const graph = node.model?.graph;
+    const recompute = () => setTick((t) => t + 1);
+    graph?.on('scale', recompute);
+    graph?.on('translate', recompute);
+    graph?.on('resize', recompute);
     return () => {
       node.off('change:position', close);
+      graph?.off('scale', recompute);
+      graph?.off('translate', recompute);
+      graph?.off('resize', recompute);
       clearCloseTimer();
     };
   }, [infoOpen, node, clearCloseTimer]);
 
   // Popover content: structured noteLines (table note + per-field + per-index
-  // notes) + indexLines (full index list). NO wrapping — width auto-fits to
-  // the longest raw line so nothing gets truncated or wrapped.
+  // notes) + indexLines (full index list). The portal popover wraps content
+  // to a fixed width, so lines stay verbatim — no char-width fit, no cap.
   const noteLines = [
     table.note ?? null,
     ...table.fields
@@ -532,26 +560,41 @@ function TableCardNode({ node }: { node: Node }) {
       `${ix.name ?? '(unnamed)'} (${ix.columns.join(', ')})${ix.unique ? ' unique' : ''}`,
   );
 
-  // Auto-fit popover width to the longest raw content line. No wrapping, no
-  // truncation — just fit. Char widths approximate text-sm (header) / text-xs
-  // (body). Max 600 keeps very long notes from spanning the whole canvas.
-  const SM_CHAR = 6.5; // text-xs
-  const MD_CHAR = 8; // text-sm
-  const longestForWidth = Math.max(
-    table.name.length * MD_CHAR + 60, // icon + padding + name
-    ...noteLines.map((l) => l.length * SM_CHAR + 30),
-    ...indexLines.map((l) => l.length * SM_CHAR + 50), // list indent + padding
-    200, // floor
-  );
-  const popoverW = Math.min(600, Math.ceil(longestForWidth));
-
   const indexPillLabel = `${indexes.length} idx`;
   const indexPillW = 8 + indexPillLabel.length * 6.5;
   const indexPillX = width - PAD - indexPillW;
 
   const hasInfo = hasIndexes || hasAnyNote;
 
+  // Fixed-width portal popover: render into the React-managed overlay div
+  // (sibling of the X6-owned container) so HTML mouse events work reliably
+  // and the popover is decoupled from the node's transformed SVG.
+  const POPOVER_W = 320;
+  const graph = node.model?.graph;
+  const overlay = graph ? overlayByGraph.get(graph) : null;
+  let popoverX = 0;
+  let popoverY = 0;
+  if (graph && overlay) {
+    const pos = node.getPosition();
+    const size = node.getSize();
+    const screen = graph.localToGraph(pos.x, pos.y, size.width, size.height);
+    const containerW = overlay.clientWidth;
+    const spaceRight = containerW - (screen.x + screen.width);
+    const openRight = spaceRight >= POPOVER_W + 16;
+    popoverX = openRight
+      ? screen.x + screen.width + 8
+      : screen.x - POPOVER_W - 8;
+    // ponytail: if the chosen side clips the popover off the left edge
+    // (card sits very near the left), fall back to opening right even though
+    // space is tight — better a slightly cramped popover than one clipped to
+    // invisibility. Symmetric right-edge clip isn't worth the branch: opening
+    // left was already the "tight on the right" fallback.
+    if (popoverX < 8) popoverX = Math.min(screen.x + screen.width + 8, Math.max(8, containerW - POPOVER_W - 8));
+    popoverY = screen.y;
+  }
+
   return (
+    <>
     <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
       {/* card body — no CSS filter (drop-shadow creates a compositing layer
           that lags behind scale transforms during zoom, leaving ghost edges). */}
@@ -638,19 +681,23 @@ function TableCardNode({ node }: { node: Node }) {
         );
       })}
 
-      {infoOpen && (
-        <TableInfoPopover
-          x={width + 8}
-          y={0}
-          width={popoverW}
-          tableName={table.name}
-          noteLines={noteLines}
-          indexLines={indexLines}
-          onContentMouseEnter={clearCloseTimer}
-          onContentMouseLeave={scheduleClose}
-        />
+      {infoOpen && overlay && (
+        createPortal(
+          <TableInfoPopoverHTML
+            x={popoverX}
+            y={popoverY}
+            width={POPOVER_W}
+            tableName={table.name}
+            noteLines={noteLines}
+            indexLines={indexLines}
+            onContentMouseEnter={clearCloseTimer}
+            onContentMouseLeave={scheduleClose}
+          />,
+          overlay,
+        )
       )}
     </svg>
+    </>
   );
 }
 
@@ -782,15 +829,19 @@ function KeyIcon({ cx, cy }: { cx: number; cy: number }) {
 
 
 /**
- * Unified table-info popover, rendered as HTML inside a nested foreignObject
- * so we can use Tailwind classes and let the browser wrap text to fit width.
- * Structure (per reference): header bar (table icon + name) → divider →
- * "Note" label + content → divider → "Indexes" label + bulleted list.
- * The foreignObject captures pointer events so the user can hover the
- * popover itself without it auto-closing (handlers wired to the same
- * schedule-close timer as the header).
+ * Unified table-info popover, rendered as plain HTML via a React portal into
+ * the graph's overlay div (sibling of the X6-owned container). Decoupling it
+ * from the node's transformed SVG fixes the foreignObject pointer-events bug
+ * where `onMouseEnter` on the inner div never fired — the scheduleClose
+ * (150ms) timer would elapse while the user was still hovering the popover
+ * and it would auto-close. As a normal HTML div, mouse events work reliably.
+ *
+ * Structure: header bar (table icon + name) → divider → "Note" label +
+ * content (wraps) → divider → "Indexes" label + bulleted list (wraps).
+ * Fixed width; content wraps naturally — no truncation, no horizontal
+ * overflow.
  */
-function TableInfoPopover({
+function TableInfoPopoverHTML({
   x,
   y,
   width,
@@ -812,76 +863,83 @@ function TableInfoPopover({
   const hasNotes = noteLines.length > 0;
   const hasIndexes = indexLines.length > 0;
   return (
-    <foreignObject
-      x={x}
-      y={y}
-      width={width}
-      height={600}
-      style={{ overflow: 'visible', pointerEvents: 'none' }}
+    <div
+      className="rounded-md border bg-[var(--surf)] text-[var(--t1)] text-[13px] font-semibold shadow-md"
+      // ponytail: pointer-events:auto on the popover (overlay parent is
+      // pointer-events:none so it doesn't block graph panning). position:
+      // absolute + left/top are container-relative pixel coords from
+      // graph.localToGraph. No CSS filter / transform — keep this a plain
+      // stacking layer so it never lags behind graph transforms (the popover
+      // repositions on every scale/translate event, see TableCardNode).
+      style={{
+        position: 'absolute',
+        left: x,
+        top: y,
+        width,
+        borderColor: 'var(--brd)',
+        pointerEvents: 'auto',
+        // ponytail: maxHeight tied to this popover's top so very long
+        // note/index lists scroll inside the popover instead of overflowing
+        // past the canvas bottom. calc(): 100% is the overlay (= container)
+        // height; subtract the popover's own top + 8px margin.
+        maxHeight: `calc(100% - ${y}px - 8px)`,
+        overflowY: 'auto',
+      }}
+      onMouseEnter={onContentMouseEnter}
+      onMouseLeave={onContentMouseLeave}
     >
-      {/* Pointer handlers on the inner div — mouse events on HTML are
-          reliable; foreignObject's onPointerEnter can misfire in nested
-          foreignObject contexts. pointerEvents:none on the foreignObject
-          parent lets the div opt back in via its own default auto. */}
-      <div
-        className="rounded-md border bg-[var(--surf)] text-[var(--t1)] text-[13px] font-semibold"
-        style={{ borderColor: 'var(--brd)', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
-        onMouseEnter={onContentMouseEnter}
-        onMouseLeave={onContentMouseLeave}
-      >
-        {/* header bar */}
-        <div className="flex items-center gap-1.5 min-w-0 px-3 py-2.5 bg-[var(--hov)] rounded-t-md">
-          <svg
-            width="12"
-            height="10"
-            viewBox="0 0 12 10"
-            fill="none"
-            className="shrink-0 text-[var(--t1)]"
-          >
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M9.93182 0.909091H2.31818C1.8161 0.909091 1.40909 1.3161 1.40909 1.81818V8.18182C1.40909 8.6839 1.8161 9.09091 2.31818 9.09091H9.93182C10.4339 9.09091 10.8409 8.6839 10.8409 8.18182V1.81818C10.8409 1.3161 10.4339 0.909091 9.93182 0.909091ZM2.31818 0C1.31403 0 0.5 0.814028 0.5 1.81818V8.18182C0.5 9.18597 1.31403 10 2.31818 10H9.93182C10.936 10 11.75 9.18597 11.75 8.18182V1.81818C11.75 0.814028 10.936 0 9.93182 0H2.31818Z"
-              fill="currentColor"
-            />
-            <path
-              d="M0.5 1.81818C0.5 0.814028 1.31403 0 2.31818 0H9.93182C10.936 0 11.75 0.814028 11.75 1.81818V2.5H0.5V1.81818Z"
-              fill="currentColor"
-            />
-          </svg>
-          <span className="text-sm font-semibold break-all">{tableName}</span>
-        </div>
-        <div className="h-px bg-[var(--brd2)]" />
-        {hasNotes && (
-          <>
-            <div className="px-3 pt-1 pb-1 text-xs font-semibold text-[var(--t2)]">
-              Note
-            </div>
-            {/* whitespace-pre preserves \n; no wrap (whiteSpace: pre keeps
-                each line on one visual line, even if wider than the box). */}
-            <div
-              className="px-3 pb-2.5 text-xs font-normal text-[var(--t2)]"
-              style={{ whiteSpace: 'pre' }}
-            >
-              {noteLines.join('\n')}
-            </div>
-          </>
-        )}
-        {hasNotes && hasIndexes && <div className="h-px bg-[var(--brd2)]" />}
-        {hasIndexes && (
-          <>
-            <div className="px-3 pt-1 pb-0 text-xs font-semibold text-[var(--t2)]">
-              Indexes
-            </div>
-            <ul className="px-3 pb-1.5 pl-7 font-normal leading-relaxed text-[12px] list-disc text-[var(--acc)]">
-              {indexLines.map((l, i) => (
-                <li key={i}>{l}</li>
-              ))}
-            </ul>
-          </>
-        )}
+      {/* header bar */}
+      <div className="flex items-center gap-1.5 min-w-0 px-3 py-2.5 bg-[var(--hov)] rounded-t-md">
+        <svg
+          width="12"
+          height="10"
+          viewBox="0 0 12 10"
+          fill="none"
+          className="shrink-0 text-[var(--t1)]"
+        >
+          <path
+            fillRule="evenodd"
+            clipRule="evenodd"
+            d="M9.93182 0.909091H2.31818C1.8161 0.909091 1.40909 1.3161 1.40909 1.81818V8.18182C1.40909 8.6839 1.8161 9.09091 2.31818 9.09091H9.93182C10.4339 9.09091 10.8409 8.6839 10.8409 8.18182V1.81818C10.8409 1.3161 10.4339 0.909091 9.93182 0.909091ZM2.31818 0C1.31403 0 0.5 0.814028 0.5 1.81818V8.18182C0.5 9.18597 1.31403 10 2.31818 10H9.93182C10.936 10 11.75 9.18597 11.75 8.18182V1.81818C11.75 0.814028 10.936 0 9.93182 0H2.31818Z"
+            fill="currentColor"
+          />
+          <path
+            d="M0.5 1.81818C0.5 0.814028 1.31403 0 2.31818 0H9.93182C10.936 0 11.75 0.814028 11.75 1.81818V2.5H0.5V1.81818Z"
+            fill="currentColor"
+          />
+        </svg>
+        <span className="text-sm font-semibold break-all">{tableName}</span>
       </div>
-    </foreignObject>
+      <div className="h-px bg-[var(--brd2)]" />
+      {hasNotes && (
+        <>
+          <div className="px-3 pt-1 pb-1 text-xs font-semibold text-[var(--t2)]">
+            Note
+          </div>
+          {/* pre-wrap: preserve \n between note entries AND wrap long lines
+              instead of clipping or overflowing horizontally. */}
+          <div
+            className="px-3 pb-2.5 text-xs font-normal text-[var(--t2)]"
+            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+          >
+            {noteLines.join('\n')}
+          </div>
+        </>
+      )}
+      {hasNotes && hasIndexes && <div className="h-px bg-[var(--brd2)]" />}
+      {hasIndexes && (
+        <>
+          <div className="px-3 pt-1 pb-0 text-xs font-semibold text-[var(--t2)]">
+            Indexes
+          </div>
+          <ul className="px-3 pb-1.5 pl-7 font-normal leading-relaxed text-[12px] list-disc text-[var(--acc)]">
+            {indexLines.map((l, i) => (
+              <li key={i}>{l}</li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
   );
 }
 
