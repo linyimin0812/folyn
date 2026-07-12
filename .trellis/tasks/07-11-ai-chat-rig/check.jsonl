@@ -1,0 +1,5 @@
+{"file": ".trellis/tasks/07-11-ai-chat-rig/research/rig-core-integration.md", "reason": "核对实现是否正确使用 rig 0.40.0 API（stream_prompt 轮询、StreamedAssistantContent 匹配、NoToolConfig 默认无工具）"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "desktop 前端质量基线，检查 PetChat/settingsStore/inputModes 改动"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "channel chunk 类型、settings 新字段、mode 路由分支的类型安全"}
+{"file": ".trellis/spec/cli-adapter/frontend/quality-guidelines.md", "reason": "检查 chat 与 CLI 双后端路由是否复用现有 adapter 事件类型、无多余抽象"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "前端 Channel ↔ Rust chat_stream 的跨层数据流与错误传播一致性"}

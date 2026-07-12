@@ -1,0 +1,8 @@
+{"file": ".trellis/tasks/07-11-ai-chat-rig/research/rig-core-integration.md", "reason": "rig-core 0.40.0 API、stream_prompt 流式语义、provider 配置、Cargo.toml 依赖行、Tauri ipc::Channel 流式命令骨架——Rust 后端 chat_stream 命令的直接蓝本"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop 前端总约定，本次主要改动在 PetChat/AiPanel/settingsStore/inputModes"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "新增 rigChat service / chat 会话恢复放哪个目录"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "settingsStore 加 provider/model/apiKey、aiStore inputMode、petChatStore 的 zustand 约定"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "桌宠 PetChat 模式下拉 + settings provider 配置 UI 的组件写法"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "pet-panel 与 main 窗口上下文、vaultPath 如何跨窗口取"}
+{"file": ".trellis/spec/cli-adapter/frontend/index.md", "reason": "adapter 抽象约定——按 mode 路由 chat(rig) vs ask/agent(CLI) 时不引入多余抽象"}
+{"file": ".trellis/spec/cli-adapter/frontend/directory-structure.md", "reason": "rigChat 封装落在 packages/cli-adapter 还是 desktop services 的判断依据"}
