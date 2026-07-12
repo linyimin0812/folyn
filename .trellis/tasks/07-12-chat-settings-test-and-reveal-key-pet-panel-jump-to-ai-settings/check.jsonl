@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "check 阶段需对照禁止模式与 review checklist"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "类型严格性核查（no implicit any、union 类型完备）"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "确认组件 props/命名/样式合规"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "确认跨窗口 emit/listen 与 ACL 仍合规"}

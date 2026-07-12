@@ -39,6 +39,13 @@ export interface PetChatMessage {
   role: 'user' | 'assistant';
   content: string;
   ts: number;
+  /** Reasoning / thinking text streamed from Claude / OpenAI reasoning
+   *  models. Optional — absent on user messages and on assistant turns
+   *  that produced no reasoning. Not round-tripped through the rig
+   *  history on disk (chat.rs persists only `{role, content}`); this
+   *  field is re-hydrated from `storageClient` only if previously
+   *  persisted by the panel store. */
+  thinking?: string;
 }
 
 export interface PetChatSession {
@@ -84,6 +91,11 @@ interface PetChatState {
   // ── Message actions (target a specific session by id, NOT "active") ──
   addMessage: (sessionId: string, role: 'user' | 'assistant', content: string) => void;
   appendToLastMessage: (sessionId: string, chunk: string) => void;
+  /** Append a thinking/reasoning chunk to the last message's `thinking`
+   *  field (NOT `content`). Used for streaming Reasoning /
+   *  ReasoningDelta events from rig. Same no-op guards as
+   *  `appendToLastMessage` (no messages / last message isn't assistant). */
+  appendToLastMessageThinking: (sessionId: string, chunk: string) => void;
   /** Clear the active session's messages. */
   clearActive: () => void;
 
@@ -247,6 +259,22 @@ export const usePetChatStore = create<PetChatState>((set, get) => ({
       const messages = [...s.messages];
       const last = messages[messages.length - 1];
       messages[messages.length - 1] = { ...last, content: last.content + chunk };
+      return { ...s, messages };
+    });
+    const payload: PersistedPetChat = { sessions, activeSessionId: state.activeSessionId };
+    set({ sessions });
+    schedulePersist(payload);
+  },
+
+  appendToLastMessageThinking: (sessionId, chunk) => {
+    const state = get();
+    const sessions = updateSession(state.sessions, sessionId, (s) => {
+      if (s.messages.length === 0) return s; // no-op guard
+      const messages = [...s.messages];
+      const last = messages[messages.length - 1];
+      if (last.role !== 'assistant') return s; // thinking only on assistant
+      const prev = last.thinking ?? '';
+      messages[messages.length - 1] = { ...last, thinking: prev + chunk };
       return { ...s, messages };
     });
     const payload: PersistedPetChat = { sessions, activeSessionId: state.activeSessionId };

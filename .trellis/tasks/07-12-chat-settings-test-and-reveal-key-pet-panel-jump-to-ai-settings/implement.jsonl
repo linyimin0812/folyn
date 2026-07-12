@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Chat 设置区与 PetChatSessionHeader 都要加按钮/输入组合，需遵循命名导出、props 组合、Tailwind 样式约定"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "测试按钮本地 state（idle/testing/ok/err）；显隐 state；需遵循 Zustand selector 与本地 state 边界"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "禁止模式、review checklist、注释规范（含 ponytail: 标记）"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "strict TS，测试状态 union 类型，runRigChat 参数类型"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "PetChatSessionHeader 触发跨窗口 store + emit pet://menu-action show-main 的 ACL 与多窗口模式"}

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePetChatStore, MAX_SESSIONS } from '@/store/petChatStore';
+import { useSettingsStore } from '@/store/settingsStore';
+import { isTauri } from '@/utils/platform';
 import { stopPetChat, resetPetChatAdapter } from '@/services/petChatService';
 
 /**
@@ -160,6 +162,27 @@ export function PetChatSessionHeader() {
 
   const title = activeSession?.title || '新对话';
 
+  // Jump to main window's Settings → AI 工具 tab. Mirrors the
+  // `handleOpenSettings` in PetChat.tsx (used by the unconfigured-AI CTA):
+  // (1) setCurrentPage('settings') + setSettingsTab('ai') on the shared
+  // store (persists across windows), then (2) emit `pet://menu-action`
+  // `show-main` so App.tsx's listener focuses the main window, which
+  // re-renders with the new page/tab. ponytail: duplicates PetChat's
+  // 3-line emitMenuAction — the existing pattern is per-consumer (PetLauncher
+  // has its own copy too), so a shared helper would be a bigger diff than
+  // the duplication itself.
+  const handleOpenSettings = useCallback(async () => {
+    useSettingsStore.getState().setCurrentPage('settings');
+    useSettingsStore.getState().setSettingsTab('ai');
+    if (!isTauri()) return;
+    try {
+      const { emit } = await import('@tauri-apps/api/event');
+      await emit('pet://menu-action', { action: 'show-main' });
+    } catch (err) {
+      console.warn('[pet-chat-header] emit show-main failed:', err);
+    }
+  }, []);
+
   return (
     <div
       ref={containerRef}
@@ -188,6 +211,14 @@ export function PetChatSessionHeader() {
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
+      </button>
+
+      <button
+        type="button"
+        className="py-[3px] px-2 border border-acc rounded-md bg-acc text-white text-[11px] cursor-pointer hover:opacity-[.85] transition-opacity"
+        onClick={() => void handleOpenSettings()}
+      >
+        AI 设置
       </button>
 
       {open && (

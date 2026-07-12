@@ -107,15 +107,22 @@ const EMPTY_MESSAGES: PetChatMessage[] = [];
 
 /** Map the pet store's flat message shape to the shared `CliMessage`
  *  supertype at the prop boundary. `petChatStore` keeps its own
- *  `{id, role, content, ts}` type (unchanged); thinking / toolCalls /
- *  attachments are left undefined (pet is vault-free). */
+ *  `{id, role, content, ts, thinking?}` type; toolCalls / attachments
+ *  are left undefined (pet is vault-free). */
 function toCliMessages(
-  msgs: { id: string; role: 'user' | 'assistant'; content: string; ts: number }[],
+  msgs: {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    ts: number;
+    thinking?: string;
+  }[],
 ): CliMessage[] {
   return msgs.map((m) => ({
     id: m.id,
     role: m.role,
     content: m.content,
+    thinking: m.thinking,
     timestamp: m.ts,
   }));
 }
@@ -128,6 +135,7 @@ export function PetChat() {
   const streaming = usePetChatStore((s) => s.streaming);
   const addMessage = usePetChatStore((s) => s.addMessage);
   const appendToLastMessage = usePetChatStore((s) => s.appendToLastMessage);
+  const appendToLastMessageThinking = usePetChatStore((s) => s.appendToLastMessageThinking);
   const setStreaming = usePetChatStore((s) => s.setStreaming);
   const clear = usePetChatStore((s) => s.clearActive);
   const inputMode = usePetChatStore((s) => s.inputMode);
@@ -303,6 +311,7 @@ export function PetChat() {
     try {
       await sendPetChatMessage(sessionId, finalPrompt, {
         onToken: (text) => appendToLastMessage(sessionId, text),
+        onThinking: (text) => appendToLastMessageThinking(sessionId, text),
         onDone: () => {
           setStreaming(false);
         },
@@ -323,6 +332,7 @@ export function PetChat() {
     activeSessionId,
     addMessage,
     appendToLastMessage,
+    appendToLastMessageThinking,
     setStreaming,
   ]);
 

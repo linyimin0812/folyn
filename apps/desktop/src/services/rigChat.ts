@@ -14,7 +14,7 @@ import type { CliStreamEvent } from '@quill/cli-adapter';
 // Mirrors the `#[serde(tag = "type", rename_all = "camelCase")] ChatChunk` in
 // chat.rs. Keep in sync if the Rust enum changes.
 interface ChatChunk {
-  type: 'delta' | 'done' | 'error';
+  type: 'delta' | 'thinking' | 'done' | 'error';
   text?: string;
   message?: string;
 }
@@ -42,6 +42,8 @@ export async function runRigChat(p: RigChatParams): Promise<void> {
   channel.onmessage = (chunk: ChatChunk) => {
     if (chunk.type === 'delta' && chunk.text) {
       p.onEvent({ type: 'text', content: chunk.text });
+    } else if (chunk.type === 'thinking' && chunk.text) {
+      p.onEvent({ type: 'thinking', content: chunk.text });
     } else if (chunk.type === 'error') {
       p.onEvent({ type: 'error', content: chunk.message ?? 'chat error' });
     } else if (chunk.type === 'done') {
@@ -60,5 +62,64 @@ export async function runRigChat(p: RigChatParams): Promise<void> {
       prompt: p.prompt,
     },
     onEvent: channel,
+  });
+}
+
+export interface ChatTestResult {
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Verify chat-mode provider/key/baseUrl by sending a short ping through
+ * `chat_stream`. Resolves with `{ success, message }` on `done`/`error`/invoke
+ * failure, or auto-fails after `timeoutMs` (default 10s). Uses a fixed
+ * sessionId `__connection_test__` so at most one test session file lingers in
+ * ~/.quill/chat-sessions/ (overwritten each test).
+ *
+ * ponytail: thin wrapper over runRigChat — keeps the Promise-race + timeout
+ * logic testable without rendering SettingsPage.
+ */
+export async function testChatConnection(params: {
+  provider: string;
+  model: string;
+  apiKey: string;
+  baseUrl?: string;
+  timeoutMs?: number;
+}): Promise<ChatTestResult> {
+  const { provider, model, apiKey, baseUrl, timeoutMs = 10000 } = params;
+  let settled = false;
+  return new Promise<ChatTestResult>((resolve) => {
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        resolve({ success: false, message: `${timeoutMs / 1000} 秒超时` });
+      }
+    }, timeoutMs);
+    void runRigChat({
+      sessionId: '__connection_test__',
+      prompt: 'ping',
+      provider,
+      model,
+      apiKey,
+      baseUrl,
+      onEvent: (e) => {
+        if (settled) return;
+        if (e.type === 'done') {
+          settled = true;
+          clearTimeout(timer);
+          resolve({ success: true, message: '连接成功' });
+        } else if (e.type === 'error') {
+          settled = true;
+          clearTimeout(timer);
+          resolve({ success: false, message: e.content ?? 'chat error' });
+        }
+      },
+    }).catch((err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ success: false, message: String(err) });
+    });
   });
 }

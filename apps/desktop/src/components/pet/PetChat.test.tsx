@@ -226,6 +226,22 @@ describe('PetChat', () => {
     expect(screen.getByText('向 AI 提问，回答会在此处流式显示。')).toBeTruthy();
   });
 
+  // ponytail: the new "AI 设置" button in PetChatSessionHeader duplicates the
+  // unconfigured-CTA's navigation logic (setCurrentPage + setSettingsTab +
+  // emit show-main). One check that clicks the new button and asserts the
+  // same effects — fails if the header button's wiring breaks, even though
+  // the underlying logic is shared with the (already-tested) CTA path.
+  it('header "AI 设置" button emits show-main and navigates to AI settings', async () => {
+    render(<PetChat />);
+    const headerSettingsBtn = screen.getByRole('button', { name: 'AI 设置' });
+    await fireEvent.click(headerSettingsBtn);
+    expect(settingsState.setCurrentPage).toHaveBeenCalledWith('settings');
+    expect(settingsState.setSettingsTab).toHaveBeenCalledWith('ai');
+    await waitFor(() =>
+      expect(emitMock).toHaveBeenCalledWith('pet://menu-action', { action: 'show-main' }),
+    );
+  });
+
   // Regression: the real pet-panel window first renders with the store's
   // INITIAL state (sessions: [], activeSessionId: null) because `rehydrate()`
   // is async and hasn't resolved yet. The messages selector

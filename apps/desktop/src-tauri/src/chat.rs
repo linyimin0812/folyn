@@ -16,7 +16,7 @@ use tauri::{AppHandle, Manager};
 
 use rig_core::agent::MultiTurnStreamItem;
 use rig_core::client::CompletionClient;
-use rig_core::message::{Message, Text};
+use rig_core::message::{Message, ReasoningContent, Text};
 use rig_core::prelude::*; // brings StreamingChat (stream_chat) into scope
 use rig_core::providers::{anthropic, openai};
 use rig_core::streaming::StreamedAssistantContent;
@@ -29,6 +29,12 @@ const PREAMBLE: &str = "You are Quill's writing assistant. Reply concisely and h
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ChatChunk {
     Delta {
+        text: String,
+    },
+    /// Reasoning / thinking text from Claude (Reasoning block) or
+    /// OpenAI reasoning models (ReasoningDelta). Ephemeral — NOT persisted
+    /// to history (see `drain_loop`).
+    Thinking {
         text: String,
     },
     Done,
@@ -138,11 +144,13 @@ pub async fn chat_stream(
             if let Some(url) = params.base_url {
                 b = b.base_url(url);
             }
+            // ponytail: Anthropic requires max_tokens (no default); 4096 fits most chat turns. Bump to 8192 if a user hits truncation on long responses.
             let agent = b
                 .build()
                 .map_err(|e| e.to_string())?
                 .agent(params.model.as_str())
                 .preamble(PREAMBLE)
+                .max_tokens(4096)
                 .build();
             // `.await` yields the stream directly (no Result wrapper); stream
             // setup/connection errors surface as `Err` items below.
@@ -153,9 +161,16 @@ pub async fn chat_stream(
             // "openai" and "openai-compatible". Any non-default base_url needs
             // `with_system_instructions_as_messages()` or the preamble silently
             // vanishes on compatible servers; harmless for real OpenAI.
-            let base = params
+            // ponytail: ensure baseUrl ends with /v1 so rig appends /chat/completions to .../v1/chat/completions. Ollama/vLLM/LM Studio all use /v1; a server with a non-/v1 version root would still 404 — add an explicit /v1 in that case.
+            let mut base = params
                 .base_url
                 .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
+            while base.ends_with('/') {
+                base.pop();
+            }
+            if !base.ends_with("/v1") {
+                base.push_str("/v1");
+            }
             let client = openai::Client::builder()
                 .api_key(params.api_key)
                 .base_url(base)
@@ -174,6 +189,11 @@ pub async fn chat_stream(
     // Persist the turn. We reconstruct history from accumulated text (not
     // FinalResponse.messages(), which the loop discards) — simpler and
     // decoupled from provider-specific response types.
+    // ponytail: thinking is NOT persisted to history — reasoning is
+    // ephemeral by nature (Anthropic signatures are one-shot, OpenAI
+    // reasoning is not resumable across turns) and the on-disk
+    // `HistoryMsg` shape stays `{role, content}` only. Re-running a turn
+    // regenerates reasoning fresh.
     let mut hist = load_history(&app, &params.session_id)?;
     hist.push(HistoryMsg {
         role: "user".into(),
@@ -210,6 +230,23 @@ where
             ))) => {
                 full.push_str(&text);
                 on_event.send(ChatChunk::Delta { text }).ok();
+            }
+            // Reasoning block (full): iterate its content parts, emit each
+            // Text part as a Thinking chunk. Encrypted/Redacted/Summary
+            // variants are ignored — pet chat has no UI for them and they
+            // are not useful as plain text.
+            Ok(MultiTurnStreamItem::StreamAssistantItem(StreamedAssistantContent::Reasoning(r))) => {
+                for part in r.content {
+                    if let ReasoningContent::Text { text, .. } = part {
+                        on_event.send(ChatChunk::Thinking { text }).ok();
+                    }
+                }
+            }
+            // Partial reasoning text (incremental): emit as-is.
+            Ok(MultiTurnStreamItem::StreamAssistantItem(
+                StreamedAssistantContent::ReasoningDelta { reasoning, .. },
+            )) => {
+                on_event.send(ChatChunk::Thinking { text: reasoning }).ok();
             }
             Ok(MultiTurnStreamItem::FinalResponse(_)) => {
                 on_event.send(ChatChunk::Done).ok();

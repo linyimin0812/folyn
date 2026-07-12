@@ -216,8 +216,11 @@ html.is-pet-panel-window body {
   color: var(--t1, #1f2330);
   border-radius: 10px;
   overflow: hidden;
-  user-select: none;
-  -webkit-user-select: none;
+  /* ponytail: panel-root no longer sets user-select — message body must be
+     selectable so users can copy chat text; the header stays non-select
+     because it's a drag handle. The old blanket `user-select: none` here
+     was historical (inherited from the transparent pet window's no-interact
+     assumption) and silently broke text selection in the chat body. */
   font-family: var(--ui-font, system-ui, sans-serif);
   font-size: 14px;
   /* ponytail: fade-in on every show. The webview persists across shows,
@@ -250,6 +253,11 @@ html.is-pet-panel-window body {
    * startDragging). The grab cursor signals draggability; buttons inside
    * (close) keep their own cursor via stopPropagation. */
   cursor: grab;
+  /* ponytail: drag handle must stay non-select so dragging doesn't select
+     the header text; message body (`.pet-panel-body`) is explicitly
+     selectable to allow copy. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 .pet-panel-header:active {
   cursor: grabbing;
@@ -317,6 +325,11 @@ html.is-pet-panel-window body {
   gap: 10px;
   overflow: auto;
   min-height: 0;
+  /* ponytail: chat message content must be selectable so users can copy
+     assistant/user text. Header stays non-select (drag handle) via its own
+     rule; root no longer sets user-select. */
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .pet-panel-placeholder {

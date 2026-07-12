@@ -6,6 +6,7 @@ import { builtinSkills } from '@/services/skillDefaults';
 import type { SkillOutputFormat, SkillCapability } from '@/types/skill';
 import { isTauri } from '@/utils/platform';
 import { listAdapters } from '@quill/cli-adapter';
+import { testChatConnection } from '@/services/rigChat';
 import { PluginsSettings } from '@/components/settings/PluginsSettings';
 
 /** Map keyboard event key to display symbol */
@@ -999,6 +1000,12 @@ export function SettingsPage() {
   const store = useSettingsStore();
   const { settingsTab, setSettingsTab, setTheme, updateSettings } = store;
   const [testStatus, setTestStatus] = useState<{ testing: boolean; result?: { success: boolean; message: string } }>({ testing: false });
+  // ponytail: reuse the same state shape as `testStatus` for the Chat-mode ping
+  // test. Separate state because both sections render simultaneously inside the
+  // AI tab, so sharing one would have the CLI test clear the chat test result
+  // (and vice versa) via the auto-clear setTimeout.
+  const [chatTestStatus, setChatTestStatus] = useState<{ testing: boolean; result?: { success: boolean; message: string } }>({ testing: false });
+  const [showChatKey, setShowChatKey] = useState(false);
 
   return (
     <div className="settings-page flex flex-row max-w-none h-full">
@@ -1275,15 +1282,36 @@ export function SettingsPage() {
               </div>
               <div className="mb-3.5">
                 <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">API Key</div>
-                <input
-                  type="password"
-                  className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-                  value={store.chatApiKey}
-                  onChange={(e) => updateSettings({ chatApiKey: e.target.value })}
-                  placeholder="sk-…"
-                  autoCapitalize="off"
-                  autoComplete="off"
-                />
+                <div className="relative">
+                  <input
+                    type={showChatKey ? 'text' : 'password'}
+                    className="fi2 w-full py-[7px] px-2.5 pr-[34px] rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                    value={store.chatApiKey}
+                    onChange={(e) => updateSettings({ chatApiKey: e.target.value })}
+                    placeholder="sk-…"
+                    autoCapitalize="off"
+                    autoComplete="off"
+                  />
+                  <button
+                    type="button"
+                    aria-label={showChatKey ? '隐藏 API Key' : '显示 API Key'}
+                    title={showChatKey ? '隐藏 API Key' : '显示 API Key'}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 w-[26px] h-[26px] flex items-center justify-center rounded bg-transparent border-none text-t3 cursor-pointer hover:bg-hov hover:text-t1"
+                    onClick={() => setShowChatKey((v) => !v)}
+                  >
+                    {showChatKey ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
               <div className="mb-1">
                 <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">Base URL（可选）</div>
@@ -1294,7 +1322,34 @@ export function SettingsPage() {
                   placeholder={store.chatProvider === 'openai-compatible' ? 'http://localhost:11434/v1' : '留空用默认'}
                   autoCapitalize="off"
                 />
-                <div className="text-[10.5px] text-t3 mt-1">OpenAI 兼容端点（Ollama / vLLM / LM Studio 等）必填；官方 OpenAI / Anthropic 留空。</div>
+                <div className="text-[10.5px] text-t3 mt-1">{store.chatProvider === 'anthropic' ? '官方 Anthropic 留空；Anthropic 兼容端点' : store.chatProvider === 'openai' ? '官方 OpenAI 留空。' : 'Ollama / vLLM / LM Studio 等必填；不以 /v1 结尾时会自动补 /v1。'}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 7, alignItems: 'center', marginTop: 8 }}>
+                <button
+                  className="btn btn-g btn-sm"
+                  disabled={chatTestStatus.testing || !store.chatApiKey}
+                  onClick={async () => {
+                    setChatTestStatus({ testing: true });
+                    try {
+                      const result = await testChatConnection({
+                        provider: store.chatProvider,
+                        model: store.chatModel || (store.chatProvider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-4o-mini'),
+                        apiKey: store.chatApiKey,
+                        baseUrl: store.chatBaseUrl || undefined,
+                      });
+                      setChatTestStatus({ testing: false, result });
+                      setTimeout(() => setChatTestStatus((s) => ({ ...s, result: undefined })), 6000);
+                    } catch (err) {
+                      setChatTestStatus({ testing: false, result: { success: false, message: String(err) } });
+                      setTimeout(() => setChatTestStatus((s) => ({ ...s, result: undefined })), 6000);
+                    }
+                  }}
+                >{chatTestStatus.testing ? '测试中…' : '测试连接'}</button>
+                {chatTestStatus.result && (
+                  <span style={{ fontSize: 11, color: chatTestStatus.result.success ? 'var(--green, #22a863)' : 'var(--red, #f06a6a)' }}>
+                    {chatTestStatus.result.success ? '✓ ' : '✗ '}{chatTestStatus.result.message}
+                  </span>
+                )}
               </div>
             </div>
           </div>

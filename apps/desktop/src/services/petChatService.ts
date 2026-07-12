@@ -134,6 +134,7 @@ export async function getPetChatWorkingDir(): Promise<string> {
 
 export interface PetChatSendHandlers {
   onToken?: (text: string) => void;
+  onThinking?: (text: string) => void;
   onDone?: () => void;
   onError?: (msg: string) => void;
 }
@@ -182,6 +183,8 @@ export async function sendPetChatMessage(
   const handler = (event: CliStreamEvent) => {
     if (event.type === 'text' && event.content) {
       handlers.onToken?.(event.content);
+    } else if (event.type === 'thinking' && event.content) {
+      handlers.onThinking?.(event.content);
     } else if (event.type === 'session_id' && event.sessionId) {
       usePetChatStore.getState().setCliSessionId(sessionId, event.sessionId);
     } else if (event.type === 'error') {
@@ -191,8 +194,8 @@ export async function sendPetChatMessage(
       adapter.offEvent(handler);
       handlers.onDone?.();
     }
-    // thinking / tool_start / tool_end / file_change → ignored (pet is
-    // vault-free, bare; no UI surface for them). Silently dropped.
+    // tool_start / tool_end / file_change → ignored (pet is vault-free,
+    // bare; no UI surface for them). Silently dropped.
   };
 
   if (isRigMode(mode)) {
