@@ -618,7 +618,7 @@ function TableCardNode({ node }: { node: Node }) {
               y={fy}
               dominantBaseline="central"
               fontSize={13}
-              fill={f.pk ? 'var(--t1)' : 'var(--t2)'}
+              fill="var(--t1)"
               fontWeight={f.pk ? 600 : 400}
             >
               {f.name}
@@ -629,7 +629,7 @@ function TableCardNode({ node }: { node: Node }) {
               dominantBaseline="central"
               textAnchor="end"
               fontSize={12}
-              fill="var(--t3)"
+              fill="var(--t2)"
             >
               {f.type}
             </text>
@@ -752,7 +752,7 @@ function EnumCardNode({ node }: { node: Node }) {
               y={vy}
               dominantBaseline="central"
               fontSize={13}
-              fill="var(--t2)"
+              fill="var(--t1)"
             >
               {v.name}
             </text>
