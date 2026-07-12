@@ -1247,6 +1247,56 @@ export function SettingsPage() {
                 <p className="text-[11px] text-t3 leading-normal m-0">AI 工具通过调用本地 CLI（如 Claude Code）来编辑文档。请确保已安装对应的 CLI 工具。修改会以 Diff 形式展示，确认后再应用到文件。</p>
               </div>
             </div>
+            {/* -- Chat 模式（rig 直连 LLM）-- */}
+            <div className="mt-5 pt-4 border-t border-brd2">
+              <div className="text-[length:calc(var(--ui-font-size)-1px)] font-bold text-t1 mb-[3px]">Chat 模式</div>
+              <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3">多轮对话，经 rig 直连 LLM（不经过 CLI，无工具/文件访问）。ask/agent 仍用上面的 CLI。</div>
+              <div className="mb-3.5">
+                <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">Provider</div>
+                <select
+                  className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                  value={store.chatProvider}
+                  onChange={(e) => updateSettings({ chatProvider: e.target.value as 'anthropic' | 'openai' | 'openai-compatible' })}
+                >
+                  <option value="anthropic">Anthropic（Claude）</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="openai-compatible">OpenAI 兼容（自定义 baseUrl）</option>
+                </select>
+              </div>
+              <div className="mb-3.5">
+                <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">模型</div>
+                <input
+                  className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                  value={store.chatModel}
+                  onChange={(e) => updateSettings({ chatModel: e.target.value })}
+                  placeholder={store.chatProvider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-5.2'}
+                  autoCapitalize="off"
+                />
+              </div>
+              <div className="mb-3.5">
+                <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">API Key</div>
+                <input
+                  type="password"
+                  className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                  value={store.chatApiKey}
+                  onChange={(e) => updateSettings({ chatApiKey: e.target.value })}
+                  placeholder="sk-…"
+                  autoCapitalize="off"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="mb-1">
+                <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">Base URL（可选）</div>
+                <input
+                  className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                  value={store.chatBaseUrl}
+                  onChange={(e) => updateSettings({ chatBaseUrl: e.target.value })}
+                  placeholder={store.chatProvider === 'openai-compatible' ? 'http://localhost:11434/v1' : '留空用默认'}
+                  autoCapitalize="off"
+                />
+                <div className="text-[10.5px] text-t3 mt-1">OpenAI 兼容端点（Ollama / vLLM / LM Studio 等）必填；官方 OpenAI / Anthropic 留空。</div>
+              </div>
+            </div>
           </div>
         )}
 

@@ -24,6 +24,7 @@ import {
 } from '@/components/chat';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { PetChatSessionHeader } from './PetChatSessionHeader';
+import { listInputModes, getInputModeDef } from '@/components/ai/inputModes';
 import type { PetMenuAction } from './PetContextMenu';
 
 /**
@@ -38,13 +39,10 @@ import type { PetMenuAction } from './PetContextMenu';
  *  - Message list persisted across restarts via `petChatStore` (namespace
  *    `pet-chat:sessions` in `storageClient`; PR2: per-session adapter +
  *    `resumeSessionId` cross-turn memory). `streaming` is runtime-only.
- *  - No vault UI: no file mentions (@mention), no wiki/clip toolbar, no
- *    inputMode dropdown. PR4 (file-upload) adds disk-file + paste-image
- *    attachments that land in the appData temp cwd (NOT the vault) and are
- *    surfaced to the CLI via Read-tool instructions prepended to the user
- *    message — the same mechanism AiPanel uses, minus the vault-coupled
- *    @mention resolution (pet is vault-free, so no fileTree to resolve
- *    against).
+ *  - Vault-aware per mode: chat (rig) has no cwd; ask/agent run against the
+ *    current vault (via `settingsStore.vaultPath`, appData fallback). A mode
+ *    dropdown (chat/ask/agent) lives in the input `leadingSlot`; chat routes
+ *    to the rig backend, ask/agent to the claude CLI.
  *  - Unconfigured-AI (R7): if `settings.cliPath` or `settings.cliAdapter`
  *    is empty, render a guidance CTA instead of the input.
  *
@@ -85,14 +83,15 @@ async function emitMenuAction(action: PetMenuAction): Promise<void> {
   }
 }
 
-/** Detect "no AI configured" (R7). Mirrors the implicit check in
- *  AiPanel/ChatInput: the AI is considered configured when both the
- *  adapter id and the CLI binary path are non-empty. Defaults in
- *  `settingsStore` are `'claude'` / `'claude'`, so this is only true when
- *  the user has explicitly cleared them. */
+/** Detect "no AI configured" (R7). Mode-aware: chat (rig) needs provider +
+ *  model + apiKey; ask/agent need the CLI adapter id + binary path. Defaults
+ *  in `settingsStore` make ask/agent configured out-of-the-box
+ *  (`'claude'`/`'claude'`); chat is configured once `chatApiKey` is set. */
 export function isPetChatConfigured(): boolean {
-  const { cliAdapter, cliPath } = useSettingsStore.getState();
-  return Boolean(cliAdapter && cliPath);
+  const s = useSettingsStore.getState();
+  const mode = usePetChatStore.getState().inputMode;
+  if (mode === 'chat') return Boolean(s.chatProvider && s.chatModel && s.chatApiKey);
+  return Boolean(s.cliAdapter && s.cliPath);
 }
 
 /** Stable empty reference for the messages selector. When the active
@@ -131,6 +130,8 @@ export function PetChat() {
   const appendToLastMessage = usePetChatStore((s) => s.appendToLastMessage);
   const setStreaming = usePetChatStore((s) => s.setStreaming);
   const clear = usePetChatStore((s) => s.clearActive);
+  const inputMode = usePetChatStore((s) => s.inputMode);
+  const setInputMode = usePetChatStore((s) => s.setInputMode);
 
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
@@ -374,27 +375,46 @@ export function PetChat() {
     ) : null;
 
   const leadingSlot = (
-    <button
-      type="button"
-      className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
-      onClick={handleFileSelect}
-      disabled={streaming}
-      title="附加文件"
-      aria-label="附加文件"
-    >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+    <>
+      <button
+        type="button"
+        className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
+        onClick={handleFileSelect}
+        disabled={streaming}
+        title="附加文件"
+        aria-label="附加文件"
       >
-        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-      </svg>
-    </button>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+        </svg>
+      </button>
+      {/* Mode picker (chat / ask / agent). Native <select> — zero JS for the
+        open/close the AI panel's custom dropdown needs, and the pet panel is
+        compact. chat routes to the rig backend; ask/agent to the claude CLI. */}
+      <select
+        className="ml-0.5 h-7 max-w-[96px] text-[11px] bg-transparent text-t3 border-none cursor-pointer outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+        value={inputMode}
+        onChange={(e) => setInputMode(e.target.value)}
+        disabled={streaming}
+        title={getInputModeDef(inputMode)?.description}
+        aria-label="AI 模式"
+      >
+        {listInputModes().map((m) => (
+          <option key={m.id} value={m.id} title={m.description}>
+            {m.label}
+          </option>
+        ))}
+      </select>
+    </>
   );
 
   if (!configured) {
