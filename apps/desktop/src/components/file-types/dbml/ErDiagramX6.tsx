@@ -118,8 +118,13 @@ export default function ErDiagramX6({ content }: PreviewProps) {
           zoomAtMousePosition: true,
         },
         connecting: {
+          // `er` router emits strictly orthogonal vertices (horizontal exit →
+          // vertical mid-segment → horizontal entry), so all segments meet at
+          // right angles. The `rounded` connector's default radius is 10,
+          // which produces a large bezier arc at each corner that reads as a
+          // curve; clamping to 4 keeps a slight arc without the curvy look.
           router: { name: 'er', args: { direction: 'H' } },
-          connector: 'rounded',
+          connector: { name: 'rounded', args: { radius: 4 } },
           anchor: 'center',
           connectionPoint: 'anchor',
         },
