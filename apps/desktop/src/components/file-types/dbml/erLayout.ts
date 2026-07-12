@@ -6,12 +6,12 @@ import type { ErSchema, ErTable, ErEnum, ErRef } from './parseDbml';
  * react-shape renderer so the force-collision size and the drawn TableCard
  * stay in sync.
  */
-export const HEADER_H = 30;
-export const ROW_H = 22;
-export const FIELD_NOTE_H = 14; // extra row below each field for the field note
-export const NOTE_BLOCK_H = 38; // collapsed table-note block (2 lines + padding)
-export const INDEX_ROW_H = 16; // one row in the indexes block
-export const BLOCK_PAD = 8; // padding around table-note / index blocks
+export const HEADER_H = 38;
+export const ROW_H = 28;
+export const FIELD_NOTE_H = 16; // extra row below each field for the field note
+export const NOTE_BLOCK_H = 44; // collapsed table-note block (2 lines + padding)
+export const INDEX_ROW_H = 20; // one row in the indexes block
+export const BLOCK_PAD = 10; // padding around table-note / index blocks
 
 /**
  * Distinct palette for enum cards so they're visually distinguishable from
@@ -34,8 +34,8 @@ export const ENUM_PALETTE = [
  * so forceCollide keeps cards from overlapping their drawn size.
  */
 export function estimateTableSize(table: ErTable): { width: number; height: number } {
-  const PAD = 12;
-  const CHAR_W = 7.2; // approx avg char width at 12px system-ui
+  const PAD = 14;
+  const CHAR_W = 7.8; // approx avg char width at 13px system-ui
 
   let maxLabel = table.name.length;
   for (const f of table.fields) {
@@ -72,8 +72,8 @@ export function estimateTableSize(table: ErTable): { width: number; height: numb
  * row, no type column / no PK icon. Header height matches table cards.
  */
 export function estimateEnumSize(e: ErEnum): { width: number; height: number } {
-  const PAD = 12;
-  const CHAR_W = 7.2;
+  const PAD = 14;
+  const CHAR_W = 7.8;
   let maxLabel = e.name.length + 8; // include «enum» prefix
   for (const v of e.values) {
     maxLabel = Math.max(maxLabel, v.name.length);

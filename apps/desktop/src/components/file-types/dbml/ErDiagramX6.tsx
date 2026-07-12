@@ -17,7 +17,7 @@ import {
 const DEBOUNCE_MS = 300;
 const ZOOM_MIN = 0.2;
 const ZOOM_MAX = 4;
-const CHIP_H = 18;
+const CHIP_H = 22;
 
 type State =
   | { kind: 'loading' }
@@ -460,7 +460,7 @@ function TableCardNode({ node }: { node: Node }) {
   const data = node.getData() as TableNodeData;
   const table = data.table;
   const [expanded, setExpanded] = useState(false);
-  const PAD = 12;
+  const PAD = 14;
   const width = table.width;
   const innerW = width - PAD * 2;
   const noteMaxChars = Math.max(8, Math.floor(innerW / 6));
@@ -534,7 +534,7 @@ function TableCardNode({ node }: { node: Node }) {
         x={PAD}
         y={HEADER_H / 2}
         dominantBaseline="central"
-        fontSize={13}
+        fontSize={15}
         fontWeight={700}
         fill={headerColor ? '#ffffff' : 'var(--t1)'}
       >
@@ -560,28 +560,28 @@ function TableCardNode({ node }: { node: Node }) {
                 strokeWidth={1}
               />
             )}
-            {f.pk ? <KeyIcon cx={PAD + 6} cy={fy} /> : null}
+            {f.pk ? <KeyIcon cx={PAD + 7} cy={fy} /> : null}
             <text
-              x={PAD + (f.pk ? 18 : 0)}
+              x={PAD + (f.pk ? 22 : 0)}
               y={fy}
               dominantBaseline="central"
-              fontSize={12}
+              fontSize={13}
               fill={f.pk ? 'var(--t1)' : 'var(--t2)'}
               fontWeight={f.pk ? 600 : 400}
             >
               {f.name}
             </text>
             <text
-              x={f.note ? width - PAD - 14 : width - PAD}
+              x={f.note ? width - PAD - 16 : width - PAD}
               y={fy}
               dominantBaseline="central"
               textAnchor="end"
-              fontSize={11}
+              fontSize={12}
               fill="var(--t3)"
             >
               {f.type}
             </text>
-            {f.note && <NoteIcon cx={width - PAD - 6} cy={fy} note={f.note} />}
+            {f.note && <NoteIcon cx={width - PAD - 7} cy={fy} note={f.note} />}
           </g>
         );
       })}
@@ -606,7 +606,7 @@ function TableCardNode({ node }: { node: Node }) {
                 x={PAD}
                 y={iy}
                 dominantBaseline="central"
-                fontSize={11}
+                fontSize={12}
                 fill="var(--t3)"
                 fontStyle="italic"
               >
@@ -642,7 +642,7 @@ function TableCardNode({ node }: { node: Node }) {
             x={PAD + 8}
             y={chipY + (CHIP_H - 2) / 2}
             dominantBaseline="central"
-            fontSize={11}
+            fontSize={12}
             fill="var(--t3)"
           >
             {expanded ? '收起' : `⋯ ${chipLabel}`}
@@ -660,7 +660,7 @@ function TableCardNode({ node }: { node: Node }) {
 function EnumCardNode({ node }: { node: Node }) {
   const data = node.getData() as EnumNodeData;
   const enumCard = data.enum;
-  const PAD = 12;
+  const PAD = 14;
   const width = enumCard.width;
 
   // Value notes are hover-only icons now — every value row is ROW_H.
@@ -713,23 +713,23 @@ function EnumCardNode({ node }: { node: Node }) {
         x={PAD}
         y={HEADER_H / 2}
         dominantBaseline="central"
-        fontSize={11}
+        fontSize={12}
         fill="var(--t3)"
       >
         {'«enum»'}
       </text>
       <text
-        x={PAD + 42}
+        x={PAD + 48}
         y={HEADER_H / 2}
         dominantBaseline="central"
-        fontSize={13}
+        fontSize={15}
         fontWeight={700}
         fill="var(--t1)"
       >
         {enumCard.name}
       </text>
       {hasAnyNote && (
-        <NoteIcon cx={width - PAD - 4} cy={HEADER_H / 2} note={cardNoteTooltip} />
+        <NoteIcon cx={width - PAD - 5} cy={HEADER_H / 2} note={cardNoteTooltip} />
       )}
 
       {enumCard.values.map((v, i) => {
@@ -751,12 +751,12 @@ function EnumCardNode({ node }: { node: Node }) {
               x={PAD}
               y={vy}
               dominantBaseline="central"
-              fontSize={12}
+              fontSize={13}
               fill="var(--t2)"
             >
               {v.name}
             </text>
-            {v.note && <NoteIcon cx={width - PAD - 6} cy={vy} note={v.note} />}
+            {v.note && <NoteIcon cx={width - PAD - 7} cy={vy} note={v.note} />}
           </g>
         );
       })}
@@ -768,12 +768,12 @@ function EnumCardNode({ node }: { node: Node }) {
 function KeyIcon({ cx, cy }: { cx: number; cy: number }) {
   return (
     <g transform={`translate(${cx} ${cy})`} pointerEvents="none">
-      <circle cx={-3} cy={0} r={3} fill="none" stroke="#f1c40f" strokeWidth={1.3} />
+      <circle cx={-4} cy={0} r={4} fill="none" stroke="#f1c40f" strokeWidth={1.6} />
       <path
-        d="M 0 0 L 8 0 M 6 0 L 6 2 M 8 0 L 8 2"
+        d="M 0 0 L 10 0 M 7 0 L 7 3 M 10 0 L 10 3"
         fill="none"
         stroke="#f1c40f"
-        strokeWidth={1.3}
+        strokeWidth={1.6}
         strokeLinecap="round"
       />
     </g>
@@ -788,11 +788,11 @@ function NoteIcon({ cx, cy, note }: { cx: number; cy: number; note: string }) {
   return (
     <g transform={`translate(${cx} ${cy})`}>
       <title>{note}</title>
-      <circle r={4} fill="var(--acc)" />
+      <circle r={5} fill="var(--acc)" />
       <text
         dominantBaseline="central"
         textAnchor="middle"
-        fontSize={7}
+        fontSize={9}
         fontWeight={700}
         fill="#ffffff"
       >
