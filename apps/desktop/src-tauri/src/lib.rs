@@ -10,6 +10,7 @@
 
 mod commands;
 mod plugin_commands;
+mod chat;
 
 #[cfg(target_os = "macos")]
 mod pet_panel_macos;
@@ -468,6 +469,7 @@ pub fn run() {
             commands::pet_set_topmost_level,
             commands::pet_make_transparent,
             commands::set_pet_size,
+            chat::chat_stream,
             plugin_commands::install_plugin,
             plugin_commands::list_plugins,
             plugin_commands::uninstall_plugin,

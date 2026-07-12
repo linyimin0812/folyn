@@ -53,6 +53,15 @@ base64 = "0.22"
 # the default set; the old JS `fetch()` spoke HTTP/2 and honored `HTTP_PROXY`,
 # so dropping either would be a silent behavioral regression for plugins.
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "charset", "http2", "system-proxy"] }
+# chat mode (rig) LLM client. `default-features = false` + `reqwest`/`derive`/
+# `rustls` re-selects rig-core's default set explicitly so a future default
+# change can't silently pull `native-tls` (and system OpenSSL on Linux). All
+# providers (OpenAI/Anthropic/...) compile unconditionally — features only gate
+# transports/extras. `rustls` matches the reqwest TLS choice above; rig-core
+# 0.40 also uses reqwest 0.13, so versions align. `futures` for `StreamExt::next`
+# on the streaming response.
+rig-core = { version = "0.40", default-features = false, features = ["reqwest", "derive", "rustls"] }
+futures = "0.3"
 # Dev-only: RNG for the ed25519 signature round-trip tests (signs + verifies
 # with a real keypair). NOT linked into the release binary — only used in
 # `#[cfg(test)]` blocks.
