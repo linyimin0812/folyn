@@ -118,11 +118,19 @@ export default function ErDiagramX6({ content }: PreviewProps) {
           zoomAtMousePosition: true,
         },
         connecting: {
-          // `er` router emits strictly orthogonal vertices (horizontal exit →
-          // vertical mid-segment → horizontal entry), so all segments meet at
-          // right angles. `normal` connector draws straight segments between
-          // vertices with sharp 90° corners — no bezier, no rounding.
-          router: { name: 'er', args: { direction: 'H' } },
+          // `orth` router inserts a freeJoin point at (from.x, to.y) or
+          // (to.x, from.y) — guaranteed axis-aligned — so every segment is
+          // strictly horizontal or vertical with sharp 90° corners.
+          // ponytail: padding:0 disables the default 20px exclusion box around
+          // each port; with the default, tables closer than ~80px trigger the
+          // `insideNode` branch and produce noisy detours. Ports are 0-size at
+          // the table edge, so 0 padding still bends at the table boundary.
+          // `normal` connector draws straight polyline segments between the
+          // router vertices — no bezier, no rounding.
+          // NB: the `er` router only offsets source/target horizontally and
+          // leaves a straight (diagonal when field rows differ in y) middle
+          // segment — that was the previous diagonal-corner bug.
+          router: { name: 'orth', args: { padding: 0 } },
           connector: { name: 'normal' },
           anchor: 'center',
           connectionPoint: 'anchor',
