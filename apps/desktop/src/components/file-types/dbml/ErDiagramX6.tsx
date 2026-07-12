@@ -504,12 +504,9 @@ function TableCardNode({ node }: { node: Node }) {
 
   return (
     <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
-      <defs>
-        <filter id={`er-shadow-${node.id}`} x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000000" floodOpacity={0.08} />
-        </filter>
-      </defs>
-      {/* card body */}
+      {/* card body — CSS filter for drop shadow (SVG <filter> + feDropShadow
+          creates a separate rendering layer that lags behind CSS transforms
+          during drag, leaving ghost horizontal/vertical lines at the old pos). */}
       <rect
         x={0}
         y={0}
@@ -520,7 +517,7 @@ function TableCardNode({ node }: { node: Node }) {
         fill="var(--surf)"
         stroke="var(--brd)"
         strokeWidth={1}
-        filter={`url(#er-shadow-${node.id})`}
+        style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.08))' }}
       />
       {/* header — darker neutral band by default; DBML `headerColor` overrides */}
       <path
@@ -638,11 +635,6 @@ function EnumCardNode({ node }: { node: Node }) {
 
   return (
     <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
-      <defs>
-        <filter id={`er-eshadow-${node.id}`} x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000000" floodOpacity={0.08} />
-        </filter>
-      </defs>
       <rect
         x={0}
         y={0}
@@ -654,7 +646,7 @@ function EnumCardNode({ node }: { node: Node }) {
         stroke="var(--brd)"
         strokeWidth={1}
         strokeDasharray="3 2"
-        filter={`url(#er-eshadow-${node.id})`}
+        style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.08))' }}
       />
       {/* «enum» tag + name on a darker neutral header band */}
       <path
@@ -773,7 +765,7 @@ function Popover({
         fill="var(--surf)"
         stroke="var(--brd)"
         strokeWidth={1}
-        filter="drop-shadow(0 2px 4px rgba(0,0,0,0.18))"
+        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.18))' }}
       />
       {header && (
         <text
