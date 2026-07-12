@@ -509,8 +509,15 @@ function TableCardNode({ node }: { node: Node }) {
     node.toFront();
     const close = () => setInfoOpen(false);
     node.on('change:position', close);
+    // Close on wheel — the popover is HTML inside a foreignObject, which the
+    // browser rasterizes. During the zoom scale transform the rasterized layer
+    // lags behind and leaves ghost content. Closing pre-empt avoids the
+    // residue; the user can re-hover to reopen.
+    const onWheel = () => setInfoOpen(false);
+    window.addEventListener('wheel', onWheel, { capture: true, passive: true });
     return () => {
       node.off('change:position', close);
+      window.removeEventListener('wheel', onWheel, { capture: true });
       clearCloseTimer();
     };
   }, [infoOpen, node, clearCloseTimer]);
