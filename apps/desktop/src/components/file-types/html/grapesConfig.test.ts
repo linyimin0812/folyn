@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { createGrapesConfig } from './grapesConfig';
 import grapesjsBlocksBasic from 'grapesjs-blocks-basic';

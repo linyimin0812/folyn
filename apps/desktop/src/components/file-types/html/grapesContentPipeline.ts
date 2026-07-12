@@ -109,6 +109,17 @@ export function parseHtmlForGrapes(rawHtml: string): ParsedHtml {
       scriptBlocks.push(s.innerHTML);
       s.remove();
     });
+    // ponytail: GrapesJS's component model drops <style> inside <svg><defs>
+    // during setComponents — the rules never reach CssComposer, so SVG rects
+    // with class-based fills render black. Extract those <style> blocks here
+    // and append to styleBlocks so editor.setStyle() injects them into the
+    // canvas. The SVG <defs> loses its <style> after round-trip, but the rules
+    // migrate to head <style> — semantically equivalent (SVG <defs><style> is
+    // global, not scoped to the SVG).
+    doc.body.querySelectorAll('svg style').forEach((s) => {
+      styleBlocks.push(s.innerHTML);
+      s.remove();
+    });
     bodyContent = doc.body.innerHTML;
   }
 
@@ -170,8 +181,19 @@ export function reconstructHtml(
     .map((s) => `<script>${s}</script>`)
     .join('\n');
 
+  // ponytail: GrapesJS's `editor.getHtml()` wraps body content in
+  // `<body>…</body>`. We wrap it again below, so the raw grapesHtml would
+  // produce `<body><body>…</body></body>`. On re-parse, the inner <body> is
+  // hoisted out of the outer <body> by DOMParser (a <body> can't nest in a
+  // <body>), so its contents get spliced into the outer body — duplicating
+  // every element on each round-trip. Strip the wrapper here so the final
+  // document has exactly one <body>.
+  const bodyInner = grapesHtml
+    .replace(/^\s*<body\b[^>]*>/i, '')
+    .replace(/<\/body>\s*$/i, '');
+
   const headContent = parsed.headContent.trim();
-  const bodyContent = grapesHtml.trim();
+  const bodyContent = bodyInner.trim();
   const scriptContent = scripts.trim();
 
   return [

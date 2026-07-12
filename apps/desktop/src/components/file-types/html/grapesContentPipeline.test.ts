@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import {
   parseHtmlForGrapes,
@@ -149,6 +150,63 @@ describe('parseHtmlForGrapes', () => {
     const p = parseHtmlForGrapes(html);
     expect(p.bodyContent).toContain('&amp;');
     expect(p.bodyContent).toContain('&lt;esc&gt;');
+  });
+
+  it('#11 extracts <style> inside SVG <defs> into styleBlocks (GrapesJS strips them otherwise)', () => {
+    const html = `<html><body>
+<svg viewBox="0 0 100 100"><defs><style>.hook{fill:#eff6ff;stroke:#2563eb}</style><marker id="m"></marker></defs>
+<rect class="hook" x="0" y="0" width="10" height="10"/></svg>
+</body></html>`;
+    const p = parseHtmlForGrapes(html);
+    expect(p.styleBlocks).toHaveLength(1);
+    expect(p.styleBlocks[0]).toContain('.hook');
+    expect(p.styleBlocks[0]).toContain('#eff6ff');
+    // bodyContent no longer contains the SVG <style> — GrapesJS can't drop what it never sees
+    expect(p.bodyContent.toLowerCase()).not.toContain('<style');
+    // But the <rect class="hook"> survives for GrapesJS to render
+    expect(p.bodyContent).toContain('<rect class="hook"');
+    // And the <marker> in defs survives
+    expect(p.bodyContent).toContain('<marker id="m"');
+  });
+
+  it('#12 extracts <style> from multiple SVGs in document order', () => {
+    const html = `<html><body>
+<svg><defs><style>.a{fill:red}</style></defs><rect class="a"/></svg>
+<svg><defs><style>.b{fill:blue}</style></defs><rect class="b"/></svg>
+</body></html>`;
+    const p = parseHtmlForGrapes(html);
+    expect(p.styleBlocks).toHaveLength(2);
+    expect(p.styleBlocks[0]).toContain('.a{fill:red}');
+    expect(p.styleBlocks[1]).toContain('.b{fill:blue}');
+  });
+
+  it('#13 extracts multiple <style> blocks from one SVG <defs>', () => {
+    const html = `<html><body>
+<svg><defs><style>.a{fill:red}</style><style>.b{fill:blue}</style></defs></svg>
+</body></html>`;
+    const p = parseHtmlForGrapes(html);
+    expect(p.styleBlocks).toHaveLength(2);
+    expect(p.styleBlocks[0]).toContain('.a{fill:red}');
+    expect(p.styleBlocks[1]).toContain('.b{fill:blue}');
+  });
+
+  it('#14 extracts <style> directly inside <svg> (not nested in <defs>)', () => {
+    const html = `<html><body>
+<svg><style>.x{fill:green}</style><rect class="x"/></svg>
+</body></html>`;
+    const p = parseHtmlForGrapes(html);
+    expect(p.styleBlocks).toHaveLength(1);
+    expect(p.styleBlocks[0]).toContain('.x{fill:green}');
+    expect(p.bodyContent.toLowerCase()).not.toContain('<style');
+  });
+
+  it('#15 leaves SVG without <style> untouched in bodyContent', () => {
+    const html = `<html><body>
+<svg viewBox="0 0 10 10"><rect fill="#fff" x="0" y="0" width="10" height="10"/></svg>
+</body></html>`;
+    const p = parseHtmlForGrapes(html);
+    expect(p.styleBlocks).toEqual([]);
+    expect(p.bodyContent).toContain('<rect fill="#fff"');
   });
 });
 

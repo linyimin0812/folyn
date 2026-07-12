@@ -11,6 +11,12 @@ export function HtmlPreview({ content }: PreviewProps) {
         const iframe = e.currentTarget;
         const doc = iframe.contentDocument;
         if (!doc) return;
+        // ponytail: iframe inherits color-scheme from parent (Quill app dark theme),
+        // so the canvas defaults to dark and transparent-bg SVG areas render dark.
+        // Force light canvas to match browser behavior when opening the .html file.
+        const style = doc.createElement('style');
+        style.textContent = 'html,body{color-scheme:light !important;background:#fff !important}';
+        doc.head.appendChild(style);
         doc.addEventListener('click', (ev) => {
           const anchor = (ev.target as HTMLElement).closest('a');
           if (!anchor) return;

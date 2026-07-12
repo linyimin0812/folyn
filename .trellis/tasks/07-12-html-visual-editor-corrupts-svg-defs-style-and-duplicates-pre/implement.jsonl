@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "File-type editor patterns — GrapesJS integration lifecycle, setComponents/setStyle contract, onChange propagation to store"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "General React component patterns — effect lifecycle, ref handling (useGrapesEditor is mount-once)"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Test/quality bar — vitest patterns, what to assert in pipeline tests"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store interaction — onChange → activeTab.content write path that causes file corruption"}
+{"file": ".trellis/tasks/07-12-html-visual-editor-corrupts-svg-defs-style-and-duplicates-pre/prd.md", "reason": "PRD — requirements, ADR decision (Approach B), acceptance criteria, implementation plan"}

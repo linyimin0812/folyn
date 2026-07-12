@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
 import grapesjs, { type Editor } from 'grapesjs';
 import blocksBasic from 'grapesjs-blocks-basic';
