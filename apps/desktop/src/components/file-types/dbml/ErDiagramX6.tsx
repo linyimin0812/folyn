@@ -108,7 +108,7 @@ export default function ErDiagramX6({ content }: PreviewProps) {
         connecting: {
           router: { name: 'er', args: { direction: 'H' } },
           connector: 'rounded',
-          anchor: 'midpoint',
+          anchor: 'center',
           connectionPoint: 'anchor',
         },
         interacting: { nodeMovable: true, edgeMovable: false, magnetConnectable: false },
