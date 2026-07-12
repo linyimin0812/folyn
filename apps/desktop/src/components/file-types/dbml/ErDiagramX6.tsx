@@ -70,13 +70,27 @@ export default function ErDiagramX6({ content }: PreviewProps) {
         registered = true;
         register({ shape: 'er-table', component: TableCardNode });
         register({ shape: 'er-enum', component: EnumCardNode });
-        // Crow's foot markers — port of the SVG <marker> defs from the
-        // previous renderer. `auto-start-reverse` makes markerStart point
-        // outward from the path start and markerEnd outward from the end.
-        // Marker attrs are flat at the top level of the result (tagName,
-        // refX, refY, markerOrient, markerUnits are special-cased; the rest
-        // become attributes on the marker's child SVG element).
-        Graph.registerMarker('er-one', () => ({
+        // Crow's foot markers — separate start/end variants because X6 applies
+        // `transform: 'rotate(180)'` to the child element of marker-end only
+        // (see `@antv/x6` src/registry/attr/marker.ts:17-24 — targetMarker
+        // passes `{ transform: 'rotate(180)' }` as manual options, which
+        // `defs.marker` spreads onto the child <path>/<line>). sourceMarker
+        // does NOT rotate. Combined with `markerOrient: 'auto-start-reverse'`
+        // (which reverses marker-start's orient but leaves marker-end as
+        // 'auto'), the NET effect on the child's local +d_x axis is:
+        //   marker-start: +d_x = +marker_x = OUT of path (toward source entity)
+        //   marker-end:   +d_x = -marker_x = INTO path (away from target entity)
+        // So the d path must be MIRRORED between start and end variants to
+        // render the same visual shape at both ends. For marker-start (no
+        // rotate): prongs at d_x=refX sit at the entity boundary, convergence
+        // at d_x=refX-9 sits 9px into the path interior. For marker-end
+        // (rotate 180): prongs at d_x=refX still sit at the entity boundary
+        // (refX-x flips sign around refX), but convergence must move to
+        // d_x=refX+9 so that after the rotate it lands 9px into the path
+        // interior (marker_x = refX - d_x = -9).
+        Graph.registerMarker('er-one-start', () => ({
+          // Perpendicular bar 2px inside the path from the source entity
+          // boundary. marker_x = d_x - refX = 0 - 2 = -2 (into path interior).
           tagName: 'line',
           x1: 0,
           y1: 1,
@@ -89,14 +103,45 @@ export default function ErDiagramX6({ content }: PreviewProps) {
           markerOrient: 'auto-start-reverse' as const,
           markerUnits: 'userSpaceOnUse',
         }));
-        Graph.registerMarker('er-many', () => ({
+        Graph.registerMarker('er-one-end', () => ({
+          // Mirrored: bar at d_x=2, refX=0. After rotate(180),
+          // marker_x = refX - d_x = 0 - 2 = -2 (into path interior).
+          tagName: 'line',
+          x1: 2,
+          y1: 1,
+          x2: 2,
+          y2: 9,
+          stroke: 'var(--t3)',
+          strokeWidth: 1.4,
+          refX: 0,
+          refY: 5,
+          markerOrient: 'auto-start-reverse' as const,
+          markerUnits: 'userSpaceOnUse',
+        }));
+        Graph.registerMarker('er-many-start', () => ({
+          // Three prongs AT the source entity boundary (d_x=12=refX), splaying
+          // in y, converging 9px INTO the path interior (d_x=3, marker_x=-9).
+          tagName: 'path',
+          d: 'M 3 7 L 12 0 M 3 7 L 12 7 M 3 7 L 12 14',
+          fill: 'none',
+          stroke: 'var(--t3)',
+          strokeWidth: 1.3,
+          strokeLinecap: 'round',
+          refX: 12,
+          refY: 7,
+          markerOrient: 'auto-start-reverse' as const,
+          markerUnits: 'userSpaceOnUse',
+        }));
+        Graph.registerMarker('er-many-end', () => ({
+          // Mirrored: prongs at d_x=3=refX (entity boundary), convergence at
+          // d_x=12 (marker_x = refX - d_x = 3 - 12 = -9, into path interior).
           tagName: 'path',
           d: 'M 3 0 L 12 7 M 3 7 L 12 7 M 3 14 L 12 7',
           fill: 'none',
           stroke: 'var(--t3)',
           strokeWidth: 1.3,
           strokeLinecap: 'round',
-          refX: 12,
+          refX: 3,
           refY: 7,
           markerOrient: 'auto-start-reverse' as const,
           markerUnits: 'userSpaceOnUse',
@@ -108,6 +153,21 @@ export default function ErDiagramX6({ content }: PreviewProps) {
         width: el.clientWidth,
         height: el.clientHeight,
         autoResize: true,
+        // ponytail: async:false makes the scheduler flush synchronously after
+        // every addNode/addEdge (src/renderer/scheduler.ts:333 — flush uses
+        // queueFlushSync instead of queueFlush). Without this, when addEdge
+        // runs in the same tick as addNode, the node's portsCache isn't built
+        // yet, so `findPortElem` returns null, `sourceMagnet` becomes null,
+        // and `view.sourceBBox` (src/view/edge/index.ts:127-142) falls back to
+        // `getBBoxOfElement(sourceView.container)` — the WHOLE NODE bbox. The
+        // orth router's `nodeToNode` (src/registry/router/orth.ts:236) then
+        // computes a bend at (sourcePort.x, targetPort.y) via `freeJoin`,
+        // producing a vertical-first L-shape (the "vertical stub at the
+        // source" bug). With sync rendering, ports render before edges
+        // resolve magnets, so sourceBBox = 0-size at the port, and the orth
+        // router produces a horizontal-first L (vertical segment at the
+        // target, which is the expected ER routing).
+        async: false,
         grid: { visible: false, type: 'dot', size: 20, args: { color: 'var(--t3)' } },
         panning: { enabled: true, eventTypes: ['leftMouseDown'] },
         mousewheel: {
@@ -130,6 +190,16 @@ export default function ErDiagramX6({ content }: PreviewProps) {
           // NB: the `er` router only offsets source/target horizontally and
           // leaves a straight (diagonal when field rows differ in y) middle
           // segment — that was the previous diagonal-corner bug.
+          //
+          // Vertical-stub-at-source root cause: when the magnet is null
+          // (port not yet rendered when addEdge runs), `view.sourceBBox`
+          // falls back to the whole node bbox, and `nodeToNode`'s `freeJoin`
+          // picks (sourcePort.x, targetPort.y) when sourcePort.y is within
+          // the target node's y-range — producing a vertical-first L. Fixed
+          // by `async:false` above (sync rendering ensures portsCache is
+          // built before edges resolve magnets, so sourceBBox = 0-size at
+          // port, and freeJoin picks (targetPort.x, sourcePort.y) — a
+          // horizontal-first L with the vertical segment at the target).
           router: { name: 'orth', args: { padding: 0 } },
           connector: { name: 'normal' },
           anchor: 'center',
@@ -269,8 +339,8 @@ export default function ErDiagramX6({ content }: PreviewProps) {
             stroke: 'var(--t3)',
             strokeWidth: 1.5,
             opacity: 0.9,
-            sourceMarker: fromLabel === '1' ? 'er-one' : 'er-many',
-            targetMarker: toLabel === '1' ? 'er-one' : 'er-many',
+            sourceMarker: fromLabel === '1' ? 'er-one-start' : 'er-many-start',
+            targetMarker: toLabel === '1' ? 'er-one-end' : 'er-many-end',
           },
         },
       });
