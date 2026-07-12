@@ -466,14 +466,13 @@ function TableCardNode({ node }: { node: Node }) {
 
   const indexes = table.indexes ?? [];
   const hasIndexes = indexes.length > 0;
-  // Table-level note OR any field note OR any index note → show card note icon.
+  // Table-level note OR any field note OR any index note → show info button.
   const hasAnyNote =
     !!table.note ||
     table.fields.some((f) => f.note) ||
     indexes.some((ix) => ix.note);
 
-  // Index info lives in the header pill now (hover for full details). No
-  // expanded block, no bottom chip — card height is just header + fields.
+  // Card height is just header + fields (no expanded block, no bottom chip).
   const height = fieldsEnd + 8;
 
   useEffect(() => {
@@ -481,26 +480,48 @@ function TableCardNode({ node }: { node: Node }) {
   }, [node, width, height]);
 
   const headerColor = table.headerColor ?? undefined;
-  // Aggregate all notes on this card for the header note-icon hover tooltip.
-  const cardNoteTooltip = [
-    table.note ? `[table] ${table.note}` : null,
-    ...table.fields
-      .filter((f) => f.note)
-      .map((f) => `[field ${f.name}] ${f.note}`),
-    ...indexes
-      .filter((ix) => ix.note)
-      .map((ix) => `[index ${ix.name ?? '(unnamed)'}] ${ix.note}`),
-  ]
-    .filter(Boolean)
-    .join('\n');
 
-  // Header index pill: count on the right, <title> shows full index list.
-  const indexTooltip = indexes
-    .map((ix) => `${ix.name ?? '(unnamed)'} (${ix.columns.join(', ')})${ix.unique ? ' unique' : ''}`)
-    .join('\n');
+  // Unified table-info popover state — IndexPill (if hasIndexes) OR the "i"
+  // icon (if only hasAnyNote) triggers the same popover. Lifted to the card
+  // level so both buttons share one open/close.
+  const [infoOpen, setInfoOpen] = useState(false);
+  useEffect(() => {
+    if (!infoOpen) return;
+    const close = () => setInfoOpen(false);
+    node.on('change:position', close);
+    return () => {
+      node.off('change:position', close);
+    };
+  }, [infoOpen, node]);
+  const toggleInfo = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    setInfoOpen((v) => !v);
+  };
+
+  // Popover content: structured noteLines (table note + per-field + per-index
+  // notes, wrapped) + indexLines (full index list).
+  const noteLines = wrapNote(
+    [
+      table.note ?? null,
+      ...table.fields
+        .filter((f) => f.note)
+        .map((f) => `[${f.name}] ${f.note}`),
+      ...indexes
+        .filter((ix) => ix.note)
+        .map((ix) => `[${ix.name ?? '(unnamed)'}] ${ix.note}`),
+    ]
+      .filter(Boolean)
+      .join('\n'),
+    44,
+  );
+  const indexLines = indexes.map(
+    (ix) =>
+      `${ix.name ?? '(unnamed)'} (${ix.columns.join(', ')})${ix.unique ? ' unique' : ''}`,
+  );
+
   const indexPillLabel = `${indexes.length} idx`;
   const indexPillW = 8 + indexPillLabel.length * 6.5;
-  const indexPillX = width - PAD - indexPillW - (hasAnyNote ? 16 : 0);
+  const indexPillX = width - PAD - indexPillW;
 
   return (
     <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
@@ -534,29 +555,23 @@ function TableCardNode({ node }: { node: Node }) {
       >
         {table.name}
       </text>
-      {/* header index pill — click to show full index list in a popover */}
-      {hasIndexes && (
+      {/* unified table-info trigger: IndexPill if hasIndexes, else "i" icon */}
+      {hasIndexes ? (
         <IndexPill
           x={indexPillX}
           y={HEADER_H / 2 - 9}
           w={indexPillW}
           label={indexPillLabel}
-          tooltip={indexTooltip}
           headerColor={headerColor}
-          node={node}
+          onToggle={toggleInfo}
         />
-      )}
-      {/* card-level note icon — click to show aggregated notes popover */}
-      {hasAnyNote && (
-        <NoteIcon
+      ) : hasAnyNote ? (
+        <InfoIconButton
           cx={width - PAD - 4}
           cy={HEADER_H / 2}
-          note={cardNoteTooltip}
-          header="Notes"
-          wrap={48}
-          node={node}
+          onToggle={toggleInfo}
         />
-      )}
+      ) : null}
 
       {table.fields.map((f, i) => {
         const blockTop = HEADER_H + i * fieldRowH;
@@ -598,6 +613,17 @@ function TableCardNode({ node }: { node: Node }) {
           </g>
         );
       })}
+
+      {infoOpen && (
+        <TableInfoPopover
+          x={Math.max(0, width - PAD - 280)}
+          y={HEADER_H + 4}
+          width={280}
+          tableName={table.name}
+          noteLines={noteLines}
+          indexLines={indexLines}
+        />
+      )}
     </svg>
   );
 }
@@ -677,8 +703,6 @@ function EnumCardNode({ node }: { node: Node }) {
           cx={width - PAD - 5}
           cy={HEADER_H / 2}
           note={cardNoteTooltip}
-          header="Notes"
-          wrap={48}
           node={node}
         />
       )}
@@ -733,11 +757,125 @@ function KeyIcon({ cx, cy }: { cx: number; cy: number }) {
 
 
 /**
- * Shared popover box. Optional `header` renders as a small muted label at
- * the top (per Image #5 "Note" header style); `lines` are wrapped below.
- * Surf background + brd border + drop shadow for elevation.
+ * Unified table-info popover. Structured layout per Image #4 + the new
+ * request: table name header → divider → notes → divider → indexes.
+ * Each section is omitted if empty (and the divider between notes and
+ * indexes only renders if both sections are present).
  */
-function Popover({
+function TableInfoPopover({
+  x,
+  y,
+  width,
+  tableName,
+  noteLines,
+  indexLines,
+}: {
+  x: number;
+  y: number;
+  width: number;
+  tableName: string;
+  noteLines: string[];
+  indexLines: string[];
+}) {
+  const PAD = 10;
+  const LINE_H = 14;
+  const HEADER_H = 26;
+  const SECTION_GAP = 8;
+
+  const hasNotes = noteLines.length > 0;
+  const hasIndexes = indexLines.length > 0;
+  const hasMidDivider = hasNotes && hasIndexes;
+
+  const notesH = hasNotes ? noteLines.length * LINE_H + SECTION_GAP : 0;
+  const midDividerH = hasMidDivider ? SECTION_GAP : 0;
+  const indexesH = hasIndexes ? indexLines.length * LINE_H + SECTION_GAP : 0;
+  const totalH = HEADER_H + notesH + midDividerH + indexesH + PAD;
+
+  const headerTextY = y + 17;
+  const headerDividerY = y + HEADER_H;
+  const notesStartY = y + HEADER_H + 12;
+  const midDividerY = y + HEADER_H + notesH + (hasMidDivider ? midDividerH / 2 : 0);
+  const indexesStartY = y + HEADER_H + notesH + midDividerH + 12;
+
+  return (
+    <g pointerEvents="none">
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={totalH}
+        rx={6}
+        ry={6}
+        fill="var(--surf)"
+        stroke="var(--brd)"
+        strokeWidth={1}
+        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.2))' }}
+      />
+      {/* table name header */}
+      <text
+        x={x + PAD}
+        y={headerTextY}
+        fontSize={13}
+        fontWeight={700}
+        fill="var(--t1)"
+      >
+        {tableName}
+      </text>
+      <line
+        x1={x + PAD}
+        y1={headerDividerY}
+        x2={x + width - PAD}
+        y2={headerDividerY}
+        stroke="var(--brd2)"
+        strokeWidth={1}
+      />
+      {/* notes section */}
+      {hasNotes &&
+        noteLines.map((l, i) => (
+          <text
+            key={`n${i}`}
+            x={x + PAD}
+            y={notesStartY + i * LINE_H}
+            fontSize={11}
+            fill="var(--t2)"
+          >
+            {l}
+          </text>
+        ))}
+      {/* divider between notes and indexes */}
+      {hasMidDivider && (
+        <line
+          x1={x + PAD}
+          y1={midDividerY}
+          x2={x + width - PAD}
+          y2={midDividerY}
+          stroke="var(--brd2)"
+          strokeWidth={1}
+        />
+      )}
+      {/* indexes section */}
+      {hasIndexes &&
+        indexLines.map((l, i) => (
+          <text
+            key={`i${i}`}
+            x={x + PAD}
+            y={indexesStartY + i * LINE_H}
+            fontSize={11}
+            fill="var(--t2)"
+          >
+            {l}
+          </text>
+        ))}
+    </g>
+  );
+}
+
+/**
+ * Small popover for per-field notes (Image #5 style). "Note" header label +
+ * wrapped note text. Used by NoteIcon for field-level notes and value-level
+ * notes on enums.
+ */
+function NotePopover({
   x,
   y,
   width,
@@ -747,10 +885,10 @@ function Popover({
   x: number;
   y: number;
   width: number;
-  header?: string;
+  header: string;
   lines: string[];
 }) {
-  const HEADER_H = header ? 20 : 0;
+  const HEADER_H = 20;
   const LINE_H = 14;
   const boxH = lines.length * LINE_H + HEADER_H + 12;
   return (
@@ -767,18 +905,16 @@ function Popover({
         strokeWidth={1}
         style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.18))' }}
       />
-      {header && (
-        <text
-          x={x + 10}
-          y={y + 13}
-          fontSize={10}
-          fontWeight={700}
-          fill="var(--t3)"
-          letterSpacing="0.4"
-        >
-          {header.toUpperCase()}
-        </text>
-      )}
+      <text
+        x={x + 10}
+        y={y + 13}
+        fontSize={10}
+        fontWeight={700}
+        fill="var(--t3)"
+        letterSpacing="0.4"
+      >
+        {header.toUpperCase()}
+      </text>
       {lines.map((l, i) => (
         <text
           key={i}
@@ -795,51 +931,30 @@ function Popover({
 }
 
 /**
- * Header index pill. Click toggles a popover with the full index list.
- * No <title> — native browser tooltips are a screen-level overlay that
- * doesn't follow the card during drag (same root cause as NoteIcon).
+ * Header index pill. Controlled — onToggle fires on pointerdown. The unified
+ * TableInfoPopover (rendered by TableCardNode) opens below the pill.
  */
 function IndexPill({
   x,
   y,
   w,
   label,
-  tooltip,
   headerColor,
-  node,
+  onToggle,
 }: {
   x: number;
   y: number;
   w: number;
   label: string;
-  tooltip: string;
   headerColor?: string;
-  node: Node;
+  onToggle: (e: React.PointerEvent) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  // Close the popover as soon as the node starts moving so its rect border
-  // doesn't lag behind the dragged card (foreignObject + filter rendering
-  // can leave "ghost" horizontal/vertical lines at the pre-drag position).
-  useEffect(() => {
-    if (!open) return;
-    const close = () => setOpen(false);
-    node.on('change:position', close);
-    return () => {
-      node.off('change:position', close);
-    };
-  }, [open, node]);
-  const lines = tooltip.split('\n');
-  const maxLine = Math.max(1, ...lines.map((l) => l.length));
-  const boxW = Math.max(180, maxLine * 6.4 + 20);
-  // Anchor popover to the pill's left edge, just below it.
-  const boxX = x;
-  const boxY = y + 22;
   return (
     <g
       style={{ cursor: 'pointer' }}
       onPointerDown={(e) => {
         e.stopPropagation();
-        setOpen((v) => !v);
+        onToggle(e);
       }}
     >
       <rect
@@ -864,39 +979,65 @@ function IndexPill({
       >
         {label}
       </text>
-      {open && (
-        <Popover x={boxX} y={boxY} width={boxW} header="Indexes" lines={lines} />
-      )}
     </g>
   );
 }
 
 /**
- * Small "i" icon. Click toggles a popover showing the note text (multi-line
- * aware). No <title> — native browser tooltips are a screen-level overlay
- * that doesn't follow the card during drag, leaving stale text behind.
- *
- * `header` defaults to "Note" (Image #5 style). Card-level aggregated notes
- * pass `header="Notes"` (Image #4 style) — both share the Popover component.
+ * "i" icon button used as the unified-info trigger when a table has notes
+ * but no indexes (so no IndexPill). Controlled — onToggle fires on click.
+ */
+function InfoIconButton({
+  cx,
+  cy,
+  onToggle,
+}: {
+  cx: number;
+  cy: number;
+  onToggle: (e: React.PointerEvent) => void;
+}) {
+  return (
+    <g
+      transform={`translate(${cx} ${cy})`}
+      style={{ cursor: 'pointer' }}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        onToggle(e);
+      }}
+    >
+      <circle r={5} fill="var(--acc)" />
+      <text
+        dominantBaseline="central"
+        textAnchor="middle"
+        fontSize={9}
+        fontWeight={700}
+        fill="#ffffff"
+        pointerEvents="none"
+      >
+        i
+      </text>
+    </g>
+  );
+}
+
+/**
+ * Per-field / per-value "i" icon with its own small popover (Image #5 style:
+ * "Note" header + wrapped note text). Uncontrolled — manages its own open
+ * state. Closes on node:change:position so the popover's rect border doesn't
+ * ghost at the pre-drag position.
  */
 function NoteIcon({
   cx,
   cy,
   note,
-  header = 'Note',
-  wrap = 38,
   node,
 }: {
   cx: number;
   cy: number;
   note: string;
-  header?: string;
-  wrap?: number;
   node: Node;
 }) {
   const [open, setOpen] = useState(false);
-  // Same drag-close as IndexPill — popover's rect border would otherwise
-  // ghost at the pre-drag position during move.
   useEffect(() => {
     if (!open) return;
     const close = () => setOpen(false);
@@ -905,10 +1046,10 @@ function NoteIcon({
       node.off('change:position', close);
     };
   }, [open, node]);
-  const lines = wrapNote(note, wrap);
+  const lines = wrapNote(note, 38);
   const maxLine = Math.max(1, ...lines.map((l) => l.length));
   const boxW = Math.max(160, maxLine * 6.4 + 20);
-  const HEADER_H = header ? 20 : 0;
+  const HEADER_H = 20;
   const LINE_H = 14;
   const boxH = lines.length * LINE_H + HEADER_H + 12;
   // Coords are relative to the icon center (0,0) — parent <g> is translated
@@ -937,7 +1078,7 @@ function NoteIcon({
         i
       </text>
       {open && (
-        <Popover x={boxX} y={boxY} width={boxW} header={header} lines={lines} />
+        <NotePopover x={boxX} y={boxY} width={boxW} header="Note" lines={lines} />
       )}
     </g>
   );
