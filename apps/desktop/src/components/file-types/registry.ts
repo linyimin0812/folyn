@@ -45,7 +45,7 @@ export function getAllHandlers(): FileTypeHandler[] {
 
 // ── Built-in discovery ──────────────────────────────────────────────────────
 const modules = import.meta.glob<{ default: FileTypeHandler }>(
-  './*/index.ts',
+  './*/index.{ts,tsx}',
   { eager: true },
 );
 

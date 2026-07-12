@@ -2,8 +2,9 @@ import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } 
 import type { ErSchema, ErTable, ErEnum, ErRef } from './parseDbml';
 
 /**
- * Card geometry constants shared between layout estimation and SVG rendering
- * so the force-collision size and the drawn TableCard stay in sync.
+ * Card geometry constants shared between layout estimation and the x6
+ * react-shape renderer so the force-collision size and the drawn TableCard
+ * stay in sync.
  */
 export const HEADER_H = 30;
 export const ROW_H = 22;
@@ -29,9 +30,8 @@ export const ENUM_PALETTE = [
 
 /**
  * Estimate table card dimensions from field count, text length, and the
- * presence of note / index blocks. Sized to match the SVG rendering in
- * ErDiagramPreview so forceCollide keeps cards from overlapping their
- * drawn size.
+ * presence of note / index blocks. Sized to match the x6 react-shape renderer
+ * so forceCollide keeps cards from overlapping their drawn size.
  */
 export function estimateTableSize(table: ErTable): { width: number; height: number } {
   const PAD = 12;
@@ -110,7 +110,7 @@ export interface Point {
   y: number;
 }
 export interface PositionedTable extends ErTable {
-  x: number; // top-left x of the card bounding box (used by SVG rendering)
+  x: number; // top-left x of the card bounding box
   y: number; // top-left y
   width: number;
   height: number;
@@ -124,146 +124,19 @@ export interface PositionedEnum extends ErEnum {
   height: number;
   manual?: boolean;
 }
-export interface LaidRef extends ErRef {
-  /** anchor points on table borders + cardinality labels */
-  from: { x: number; y: number; label: string };
-  to: { x: number; y: number; label: string };
-  path: string; // SVG path d
-}
 export interface ErLayout {
   tables: PositionedTable[];
   enums: PositionedEnum[];
-  refs: LaidRef[];
+  /** Refs are passed through as-is; the x6 `er` router + per-field ports
+   *  own the anchor / path geometry now. */
+  refs: ErRef[];
   width: number;
   height: number;
 }
 
-export interface RefAnchor {
-  x: number;
-  y: number;
-  label: string;
-}
-
-/**
- * Compute the anchor point of a ref endpoint on `self`'s border, anchored to
- * the field row referenced by `fieldName` (or the table body's vertical
- * center as a fallback). The anchor sits on the left or right edge of the
- * card depending on which side the `other` table lies, so the bezier exits
- * the field row horizontally. Shared by layoutEr and the drag-time recompute
- * in ErDiagramPreview to keep ref paths consistent.
- */
-function fieldAnchor(
-  self: PositionedTable,
-  other: PositionedTable,
-  fieldName?: string,
-): { x: number; y: number } {
-  const selfCenterX = self.x + self.width / 2;
-  const otherCenterX = other.x + other.width / 2;
-  const onRight = otherCenterX >= selfCenterX;
-  const x = onRight ? self.x + self.width : self.x;
-
-  let rowY: number;
-  const idx =
-    fieldName !== undefined
-      ? self.fields.findIndex((f) => f.name === fieldName)
-      : -1;
-  if (idx >= 0) {
-    rowY = self.y + HEADER_H + idx * ROW_H + ROW_H / 2;
-  } else {
-    // Fallback: vertical center of the field list (body midpoint).
-    rowY = self.y + HEADER_H + (self.fields.length * ROW_H) / 2;
-  }
-  // Clamp so the anchor never escapes the card body (e.g. empty field list).
-  const y = Math.max(self.y + HEADER_H, Math.min(rowY, self.y + self.height - 4));
-  return { x, y };
-}
-
-/**
- * Resolve a ref's two border anchors (anchored to the referenced field rows)
- * and the orthogonal path joining them (straight segments + 90° rounded
- * corners). Returns empty path when either table is missing.
- */
-export function refEndpoints(
-  ref: ErRef,
-  tables: PositionedTable[],
-): { from: RefAnchor; to: RefAnchor; path: string } {
-  const byName = new Map(tables.map((t) => [t.name, t]));
-  const from = byName.get(ref.fromTable);
-  const to = byName.get(ref.toTable);
-  const [fromLabel, toLabel] = ref.cardinality.split(':');
-  if (!from || !to) {
-    return {
-      from: { x: 0, y: 0, label: fromLabel },
-      to: { x: 0, y: 0, label: toLabel },
-      path: '',
-    };
-  }
-  const fromAnchor = fieldAnchor(from, to, ref.fromFields[0]);
-  const toAnchor = fieldAnchor(to, from, ref.toFields[0]);
-  const path = orthoRefPath(fromAnchor, toAnchor);
-  return {
-    from: { x: fromAnchor.x, y: fromAnchor.y, label: fromLabel },
-    to: { x: toAnchor.x, y: toAnchor.y, label: toLabel },
-    path,
-  };
-}
-
-/**
- * Build an orthogonal (Manhattan) ref path between two border anchors with
- * 90° corners rounded by small quadratic beziers. Routing uses a single
- * mid-X waypoint so the line exits each field row horizontally, turns 90°,
- * runs vertically, then turns back into the target field row. Degenerate
- * cases (same row / same column) collapse to a straight segment.
- */
-function orthoRefPath(from: Point, to: Point): string {
-  if (Math.abs(from.y - to.y) < 0.5 || Math.abs(from.x - to.x) < 0.5) {
-    return `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
-  }
-  const midX = (from.x + to.x) / 2;
-  return orthoPath([from, { x: midX, y: from.y }, { x: midX, y: to.y }, to], 7);
-}
-
-/**
- * Polyline with rounded 90° corners. Walks the waypoints; at each interior
- * corner it inserts `L cornerIn Q corner cornerOut` where the control point
- * is the corner itself (standard quadratic rounded corner). The corner
- * radius is clamped to half the adjacent segment lengths so short segments
- * don't distort. Endpoints are never rounded (markers own the tip).
- */
-function orthoPath(points: Point[], r: number): string {
-  if (points.length < 2) return '';
-  if (points.length === 2) {
-    return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
-  }
-  const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
-  let d = `M ${points[0].x} ${points[0].y}`;
-  for (let i = 1; i < points.length - 1; i += 1) {
-    const prev = points[i - 1];
-    const curr = points[i];
-    const next = points[i + 1];
-    const lenIn = dist(prev, curr);
-    const lenOut = dist(curr, next);
-    if (lenIn === 0 || lenOut === 0) {
-      d += ` L ${curr.x} ${curr.y}`;
-      continue;
-    }
-    const rr = Math.min(r, lenIn / 2, lenOut / 2);
-    const inDx = (curr.x - prev.x) / lenIn;
-    const inDy = (curr.y - prev.y) / lenIn;
-    const outDx = (next.x - curr.x) / lenOut;
-    const outDy = (next.y - curr.y) / lenOut;
-    const cIn = { x: curr.x - inDx * rr, y: curr.y - inDy * rr };
-    const cOut = { x: curr.x + outDx * rr, y: curr.y + outDy * rr };
-    d += ` L ${cIn.x} ${cIn.y} Q ${curr.x} ${curr.y} ${cOut.x} ${cOut.y}`;
-  }
-  const last = points[points.length - 1];
-  d += ` L ${last.x} ${last.y}`;
-  return d;
-}
-
 /**
  * Bounding box over a set of positioned tables (top-left coords + size).
- * Used by the "fit all" toolbar action and the grid background rect.
+ * Kept for consumers that need a quick scan of the laid-out content area.
  */
 export function tablesBounds(tables: PositionedTable[]): {
   minX: number;
@@ -498,15 +371,12 @@ export function layoutEr(
   });
 
   // Refs anchor only against tables (enums don't participate in relationships).
-  const laidRefs: LaidRef[] = schema.refs.map((r) => {
-    const { from, to, path } = refEndpoints(r, positioned);
-    return { ...r, from, to, path };
-  });
-
+  // Geometry (anchor points + path) is owned by the x6 `er` router + per-field
+  // ports in the renderer, so we pass `schema.refs` through verbatim.
   return {
     tables: positioned,
     enums: positionedEnums,
-    refs: laidRefs,
+    refs: schema.refs,
     width: Math.max(viewW, maxX - minX + 80),
     height: Math.max(viewH, maxY - minY + 80),
   };
