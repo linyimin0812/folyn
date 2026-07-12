@@ -1847,3 +1847,40 @@ Chat 模式 UX 补全：API Key eye toggle + 测试连接按钮（runRigChat pin
 ### Next Steps
 
 - None - task complete
+
+
+## Session 55: HTML visual editor corruption + style fidelity fixes
+
+**Date**: 2026-07-12
+**Task**: HTML visual editor corruption + style fidelity fixes
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Fixed three independent bugs in the HTML visual editor (GrapesJS) round-trip: (1) SVG <defs><style> blocks were dropped by GrapesJS's component model during setComponents, making SVG rects render with default black fill — now extracted in parseHtmlForGrapes and merged into styleBlocks. (2) editor.getHtml() returns <body>...</body> and reconstructHtml wrapped it in another <body>, causing exponential content duplication on every round-trip (the visible '<pre> duplication' symptom) — now strips the grapesHtml body wrapper before re-wrapping. (3) GrapesJS's CssComposer drops var() from shorthand declarations (e.g. body { background: var(--bg) } loses the background declaration) — bypassed via injectInlineStyles (appends user's styleBlocks verbatim as a <style> tag in canvas iframe head) and reconstructHtml now serializes from parsed.styleBlocks instead of editor.getCss(). Also removed scrollbar-hide style's margin/padding !important that was stripping user body padding. Added // @vitest-environment jsdom to 5 html test files that were silently not running on master. 65/65 html tests pass; pre-existing unrelated failures (HtmlVisualEditor.test open-color JSON import, toExcel, PetPanelApp) confirmed on master. Known limitation: Style Manager edits to existing class rules do not persist on save (CssComposer bypassed for serialization) — documented as ponytail: comment, proper fix deferred.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `307c5e5` | (see git log) |
+| `5db84fb` | (see git log) |
+| `5c77167` | (see git log) |
+| `949c8af` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
