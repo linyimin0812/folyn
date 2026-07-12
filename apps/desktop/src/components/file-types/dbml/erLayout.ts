@@ -35,16 +35,26 @@ export const ENUM_PALETTE = [
  */
 export function estimateTableSize(table: ErTable): { width: number; height: number } {
   const PAD = 14;
-  const CHAR_W = 7.8; // approx avg char width at 13px system-ui
+  const CHAR_W = 7.8; // approx avg char width at 13px system-ui (field name/type)
+  const NAME_CHAR_W = 9; // 15px header table name renders wider than fields
 
   // Width is driven by table name + field name/type only — notes render as
   // hover icons, indexes live in a header pill. Long notes no longer blow
   // up card width.
-  let maxLabel = table.name.length;
+  const nameW = table.name.length * NAME_CHAR_W;
+  let fieldsW = 0;
   for (const f of table.fields) {
-    maxLabel = Math.max(maxLabel, f.name.length + f.type.length + 3);
+    fieldsW = Math.max(fieldsW, f.name.length + f.type.length + 3);
   }
-  const width = Math.max(160, maxLabel * CHAR_W + PAD * 2);
+  const hasIndexes = (table.indexes?.length ?? 0) > 0;
+  const hasAnyNote =
+    !!table.note ||
+    table.fields.some((f) => f.note) ||
+    (table.indexes ?? []).some((ix) => ix.note);
+  // Reserve space for header right-side overlays so the name text doesn't
+  // run into the index pill (~40px + gap) and note icon (~10px + gap).
+  const headerReserve = (hasIndexes ? 52 : 0) + (hasAnyNote ? 18 : 0);
+  const width = Math.max(160, Math.max(nameW, fieldsW * CHAR_W) + PAD * 2 + headerReserve);
   const fieldRows = table.fields.length * ROW_H;
   const height = HEADER_H + fieldRows + PAD;
   return { width, height };
@@ -57,12 +67,16 @@ export function estimateTableSize(table: ErTable): { width: number; height: numb
 export function estimateEnumSize(e: ErEnum): { width: number; height: number } {
   const PAD = 14;
   const CHAR_W = 7.8;
+  const NAME_CHAR_W = 9; // 15px «enum» name renders wider than 13px value rows
   // Value notes render as hover-only icons — don't factor into width.
-  let maxLabel = e.name.length + 8; // include «enum» prefix
+  const nameW = e.name.length * NAME_CHAR_W + 48; // include «enum» prefix
+  let valuesW = 0;
   for (const v of e.values) {
-    maxLabel = Math.max(maxLabel, v.name.length);
+    valuesW = Math.max(valuesW, v.name.length);
   }
-  const width = Math.max(160, maxLabel * CHAR_W + PAD * 2);
+  const hasAnyNote = !!e.note || e.values.some((v) => v.note);
+  const headerReserve = hasAnyNote ? 18 : 0;
+  const width = Math.max(160, Math.max(nameW, valuesW * CHAR_W) + PAD * 2 + headerReserve);
   const valueRows = e.values.length * ROW_H;
   const height = HEADER_H + valueRows + PAD;
   return { width, height };

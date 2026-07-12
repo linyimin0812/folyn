@@ -741,12 +741,29 @@ function KeyIcon({ cx, cy }: { cx: number; cy: number }) {
 }
 
 /**
- * Small "i" icon indicating a hover-visible note. SVG `<title>` renders as
- * the host browser's native tooltip on hover.
+ * Small "i" icon. Click toggles a popover showing the note text (multi-line
+ * aware). SVG `<title>` is kept as a hover fallback for mouse users.
  */
 function NoteIcon({ cx, cy, note }: { cx: number; cy: number; note: string }) {
+  const [open, setOpen] = useState(false);
+  const lines = wrapNote(note, 38);
+  const maxLine = Math.max(1, ...lines.map((l) => l.length));
+  const boxW = maxLine * 6.4 + 16;
+  const boxH = lines.length * 14 + 10;
+  // Coords are relative to the icon center (0,0) — parent <g> is translated
+  // to (cx, cy). Popover opens above the icon; if it'd clip the top, open below.
+  const boxX = -boxW / 2;
+  const boxYOpenAbove = -8 - boxH;
+  const boxY = cy + boxYOpenAbove >= 0 ? boxYOpenAbove : 8;
   return (
-    <g transform={`translate(${cx} ${cy})`}>
+    <g
+      transform={`translate(${cx} ${cy})`}
+      style={{ cursor: 'pointer' }}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        setOpen((v) => !v);
+      }}
+    >
       <title>{note}</title>
       <circle r={5} fill="var(--acc)" />
       <text
@@ -755,9 +772,53 @@ function NoteIcon({ cx, cy, note }: { cx: number; cy: number; note: string }) {
         fontSize={9}
         fontWeight={700}
         fill="#ffffff"
+        pointerEvents="none"
       >
         i
       </text>
+      {open && (
+        <g pointerEvents="none">
+          <rect
+            x={boxX}
+            y={boxY}
+            width={boxW}
+            height={boxH}
+            rx={4}
+            ry={4}
+            fill="var(--bg)"
+            stroke="var(--brd)"
+            strokeWidth={1}
+            filter="drop-shadow(0 2px 4px rgba(0,0,0,0.18))"
+          />
+          {lines.map((l, i) => (
+            <text
+              key={i}
+              x={boxX + 8}
+              y={boxY + 12 + i * 14}
+              fontSize={11}
+              fill="var(--t2)"
+            >
+              {l}
+            </text>
+          ))}
+        </g>
+      )}
     </g>
   );
+}
+
+/** Hard-wrap `text` for the NoteIcon popover. Splits on \n first, then
+ *  hard-wraps each paragraph at `maxChars`. */
+function wrapNote(text: string, maxChars: number): string[] {
+  const out: string[] = [];
+  for (const para of text.split('\n')) {
+    if (para.length <= maxChars) {
+      out.push(para);
+      continue;
+    }
+    for (let i = 0; i < para.length; i += maxChars) {
+      out.push(para.slice(i, i + maxChars));
+    }
+  }
+  return out.length > 0 ? out : [''];
 }
