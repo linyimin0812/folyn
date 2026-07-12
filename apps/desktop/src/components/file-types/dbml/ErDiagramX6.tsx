@@ -482,8 +482,9 @@ function TableCardNode({ node }: { node: Node }) {
   const headerColor = table.headerColor ?? undefined;
 
   // Unified table-info popover state — IndexPill (if hasIndexes) OR the "i"
-  // icon (if only hasAnyNote) triggers the same popover. Lifted to the card
-  // level so both buttons share one open/close.
+  // Popover opens on header hover (setInfoOpen(true) on pointer enter). Closes
+  // on pointer leave or when the node starts moving (so the popover doesn't
+  // ghost at the pre-drag position).
   const [infoOpen, setInfoOpen] = useState(false);
   useEffect(() => {
     if (!infoOpen) return;
@@ -493,13 +494,9 @@ function TableCardNode({ node }: { node: Node }) {
       node.off('change:position', close);
     };
   }, [infoOpen, node]);
-  const toggleInfo = (e: React.PointerEvent) => {
-    e.stopPropagation();
-    setInfoOpen((v) => !v);
-  };
 
   // Popover content: structured noteLines (table note + per-field + per-index
-  // notes, wrapped) + indexLines (full index list).
+  // notes, wrapped) + indexLines (full index list, wrapped to fit width).
   const noteLines = wrapNote(
     [
       table.note ?? null,
@@ -514,14 +511,18 @@ function TableCardNode({ node }: { node: Node }) {
       .join('\n'),
     44,
   );
-  const indexLines = indexes.map(
-    (ix) =>
-      `${ix.name ?? '(unnamed)'} (${ix.columns.join(', ')})${ix.unique ? ' unique' : ''}`,
-  );
+  const indexLines = indexes
+    .map(
+      (ix) =>
+        `${ix.name ?? '(unnamed)'} (${ix.columns.join(', ')})${ix.unique ? ' unique' : ''}`,
+    )
+    .flatMap((s) => wrapNote(s, 42));
 
   const indexPillLabel = `${indexes.length} idx`;
   const indexPillW = 8 + indexPillLabel.length * 6.5;
   const indexPillX = width - PAD - indexPillW;
+
+  const hasInfo = hasIndexes || hasAnyNote;
 
   return (
     <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
@@ -540,10 +541,14 @@ function TableCardNode({ node }: { node: Node }) {
         strokeWidth={1}
         style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.08))' }}
       />
-      {/* header — darker neutral band by default; DBML `headerColor` overrides */}
+      {/* header — darker neutral band by default; DBML `headerColor` overrides.
+          Hover on the header opens the table-info popover beside the card. */}
       <path
         d={`M 6 0 H ${width - 6} A 6 6 0 0 1 ${width} 6 V ${HEADER_H} H 0 V 6 A 6 6 0 0 1 6 0 Z`}
         fill={headerColor ?? 'var(--brd2)'}
+        style={hasInfo ? { cursor: 'help' } : undefined}
+        onPointerEnter={hasInfo ? () => setInfoOpen(true) : undefined}
+        onPointerLeave={hasInfo ? () => setInfoOpen(false) : undefined}
       />
       <text
         x={PAD}
@@ -552,26 +557,20 @@ function TableCardNode({ node }: { node: Node }) {
         fontSize={15}
         fontWeight={700}
         fill={headerColor ? '#ffffff' : 'var(--t1)'}
+        pointerEvents="none"
       >
         {table.name}
       </text>
-      {/* unified table-info trigger: IndexPill if hasIndexes, else "i" icon */}
-      {hasIndexes ? (
+      {/* index pill — non-interactive count badge (popover opens via header hover) */}
+      {hasIndexes && (
         <IndexPill
           x={indexPillX}
           y={HEADER_H / 2 - 9}
           w={indexPillW}
           label={indexPillLabel}
           headerColor={headerColor}
-          onToggle={toggleInfo}
         />
-      ) : hasAnyNote ? (
-        <InfoIconButton
-          cx={width - PAD - 4}
-          cy={HEADER_H / 2}
-          onToggle={toggleInfo}
-        />
-      ) : null}
+      )}
 
       {table.fields.map((f, i) => {
         const blockTop = HEADER_H + i * fieldRowH;
@@ -616,8 +615,8 @@ function TableCardNode({ node }: { node: Node }) {
 
       {infoOpen && (
         <TableInfoPopover
-          x={Math.max(0, width - PAD - 280)}
-          y={HEADER_H + 4}
+          x={width + 8}
+          y={0}
           width={280}
           tableName={table.name}
           noteLines={noteLines}
@@ -757,10 +756,11 @@ function KeyIcon({ cx, cy }: { cx: number; cy: number }) {
 
 
 /**
- * Unified table-info popover. Structured layout per Image #4 + the new
- * request: table name header → divider → notes → divider → indexes.
- * Each section is omitted if empty (and the divider between notes and
- * indexes only renders if both sections are present).
+ * Unified table-info popover, rendered as HTML inside a nested foreignObject
+ * so we can use Tailwind classes and let the browser wrap text to fit width.
+ * Structure (per reference): header bar (table icon + name) → divider →
+ * "Note" label + content → divider → "Indexes" label + bulleted list.
+ * pointerEvents:none so the popover doesn't block hover-leave on the card.
  */
 function TableInfoPopover({
   x,
@@ -777,96 +777,68 @@ function TableInfoPopover({
   noteLines: string[];
   indexLines: string[];
 }) {
-  const PAD = 10;
-  const LINE_H = 14;
-  const HEADER_H = 26;
-  const SECTION_GAP = 8;
-
   const hasNotes = noteLines.length > 0;
   const hasIndexes = indexLines.length > 0;
-  const hasMidDivider = hasNotes && hasIndexes;
-
-  const notesH = hasNotes ? noteLines.length * LINE_H + SECTION_GAP : 0;
-  const midDividerH = hasMidDivider ? SECTION_GAP : 0;
-  const indexesH = hasIndexes ? indexLines.length * LINE_H + SECTION_GAP : 0;
-  const totalH = HEADER_H + notesH + midDividerH + indexesH + PAD;
-
-  const headerTextY = y + 17;
-  const headerDividerY = y + HEADER_H;
-  const notesStartY = y + HEADER_H + 12;
-  const midDividerY = y + HEADER_H + notesH + (hasMidDivider ? midDividerH / 2 : 0);
-  const indexesStartY = y + HEADER_H + notesH + midDividerH + 12;
-
   return (
-    <g pointerEvents="none">
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={totalH}
-        rx={6}
-        ry={6}
-        fill="var(--surf)"
-        stroke="var(--brd)"
-        strokeWidth={1}
-        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.2))' }}
-      />
-      {/* table name header */}
-      <text
-        x={x + PAD}
-        y={headerTextY}
-        fontSize={13}
-        fontWeight={700}
-        fill="var(--t1)"
+    <foreignObject
+      x={x}
+      y={y}
+      width={width}
+      height={600}
+      style={{ overflow: 'visible', pointerEvents: 'none' }}
+    >
+      <div
+        className="rounded-md border bg-[var(--surf)] text-[var(--t1)] text-[13px] font-semibold"
+        style={{ borderColor: 'var(--brd)', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
       >
-        {tableName}
-      </text>
-      <line
-        x1={x + PAD}
-        y1={headerDividerY}
-        x2={x + width - PAD}
-        y2={headerDividerY}
-        stroke="var(--brd2)"
-        strokeWidth={1}
-      />
-      {/* notes section */}
-      {hasNotes &&
-        noteLines.map((l, i) => (
-          <text
-            key={`n${i}`}
-            x={x + PAD}
-            y={notesStartY + i * LINE_H}
-            fontSize={11}
-            fill="var(--t2)"
+        {/* header bar */}
+        <div className="flex items-center gap-1.5 min-w-0 px-3 py-2.5 bg-[var(--hov)] rounded-t-md">
+          <svg
+            width="12"
+            height="10"
+            viewBox="0 0 12 10"
+            fill="none"
+            className="shrink-0 text-[var(--t1)]"
           >
-            {l}
-          </text>
-        ))}
-      {/* divider between notes and indexes */}
-      {hasMidDivider && (
-        <line
-          x1={x + PAD}
-          y1={midDividerY}
-          x2={x + width - PAD}
-          y2={midDividerY}
-          stroke="var(--brd2)"
-          strokeWidth={1}
-        />
-      )}
-      {/* indexes section */}
-      {hasIndexes &&
-        indexLines.map((l, i) => (
-          <text
-            key={`i${i}`}
-            x={x + PAD}
-            y={indexesStartY + i * LINE_H}
-            fontSize={11}
-            fill="var(--t2)"
-          >
-            {l}
-          </text>
-        ))}
-    </g>
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M9.93182 0.909091H2.31818C1.8161 0.909091 1.40909 1.3161 1.40909 1.81818V8.18182C1.40909 8.6839 1.8161 9.09091 2.31818 9.09091H9.93182C10.4339 9.09091 10.8409 8.6839 10.8409 8.18182V1.81818C10.8409 1.3161 10.4339 0.909091 9.93182 0.909091ZM2.31818 0C1.31403 0 0.5 0.814028 0.5 1.81818V8.18182C0.5 9.18597 1.31403 10 2.31818 10H9.93182C10.936 10 11.75 9.18597 11.75 8.18182V1.81818C11.75 0.814028 10.936 0 9.93182 0H2.31818Z"
+              fill="currentColor"
+            />
+            <path
+              d="M0.5 1.81818C0.5 0.814028 1.31403 0 2.31818 0H9.93182C10.936 0 11.75 0.814028 11.75 1.81818V2.5H0.5V1.81818Z"
+              fill="currentColor"
+            />
+          </svg>
+          <span className="text-sm font-semibold break-all">{tableName}</span>
+        </div>
+        <div className="h-px bg-[var(--brd2)]" />
+        {hasNotes && (
+          <>
+            <div className="px-3 pt-1 pb-1 text-xs font-semibold text-[var(--t2)]">
+              Note
+            </div>
+            <div className="px-3 pb-2.5 text-xs font-normal whitespace-pre-wrap break-words text-[var(--t2)]">
+              {noteLines.join('\n')}
+            </div>
+          </>
+        )}
+        {hasNotes && hasIndexes && <div className="h-px bg-[var(--brd2)]" />}
+        {hasIndexes && (
+          <>
+            <div className="px-3 pt-1 pb-0 text-xs font-semibold text-[var(--t2)]">
+              Indexes
+            </div>
+            <ul className="px-3 pb-1.5 pl-7 font-normal leading-relaxed text-[12px] list-disc text-[var(--acc)]">
+              {indexLines.map((l, i) => (
+                <li key={i}>{l}</li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    </foreignObject>
   );
 }
 
@@ -931,8 +903,8 @@ function NotePopover({
 }
 
 /**
- * Header index pill. Controlled — onToggle fires on pointerdown. The unified
- * TableInfoPopover (rendered by TableCardNode) opens below the pill.
+ * Header index pill — non-interactive count badge. The popover opens via
+ * header hover; this just signals "N idx" visually.
  */
 function IndexPill({
   x,
@@ -940,23 +912,15 @@ function IndexPill({
   w,
   label,
   headerColor,
-  onToggle,
 }: {
   x: number;
   y: number;
   w: number;
   label: string;
   headerColor?: string;
-  onToggle: (e: React.PointerEvent) => void;
 }) {
   return (
-    <g
-      style={{ cursor: 'pointer' }}
-      onPointerDown={(e) => {
-        e.stopPropagation();
-        onToggle(e);
-      }}
-    >
+    <g pointerEvents="none">
       <rect
         x={x}
         y={y}
@@ -978,43 +942,6 @@ function IndexPill({
         pointerEvents="none"
       >
         {label}
-      </text>
-    </g>
-  );
-}
-
-/**
- * "i" icon button used as the unified-info trigger when a table has notes
- * but no indexes (so no IndexPill). Controlled — onToggle fires on click.
- */
-function InfoIconButton({
-  cx,
-  cy,
-  onToggle,
-}: {
-  cx: number;
-  cy: number;
-  onToggle: (e: React.PointerEvent) => void;
-}) {
-  return (
-    <g
-      transform={`translate(${cx} ${cy})`}
-      style={{ cursor: 'pointer' }}
-      onPointerDown={(e) => {
-        e.stopPropagation();
-        onToggle(e);
-      }}
-    >
-      <circle r={5} fill="var(--acc)" />
-      <text
-        dominantBaseline="central"
-        textAnchor="middle"
-        fontSize={9}
-        fontWeight={700}
-        fill="#ffffff"
-        pointerEvents="none"
-      >
-        i
       </text>
     </g>
   );
