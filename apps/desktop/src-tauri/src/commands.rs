@@ -879,17 +879,6 @@ pub async fn pet_panel_show(app: tauri::AppHandle) -> Result<(), String> {
     let panel = app
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
-    // ponytail: alpha=0 is set by `pet_panel_hide` (after the previous hide)
-    // and by `pet_panel_set_alpha` (called once at mount from PetPanelApp).
-    // We DON'T set it here — `with_webview` is async (schedules on the main
-    // run loop), so a setAlphaValue:0 in this function would race with
-    // `show()`. The window's alphaValue PERSISTS across hide/show, so the
-    // previous hide's alpha=0 carries over → show() displays an invisible
-    // window → the frontend calls `pet_panel_fade_in` after the re-assert
-    // to animate alpha back to 1. This masks the entire show+focus+re-assert
-    // phase (including the OS-level window hide-show during app activation
-    // that caused 忽隐忽现 — CSS opacity:0 only masks content, not the
-    // window itself).
     panel.show().map_err(|e| e.to_string())?;
     // `set_focus()` activates the Quill app (`activateIgnoringOtherApps:YES`)
     // so the pet-panel becomes the active app's key window — required for
@@ -951,93 +940,6 @@ pub async fn pet_panel_hide(app: tauri::AppHandle) -> Result<(), String> {
     // File-upload (NSOpenPanel steals key window → blur, but panel still
     // visible) does NOT emit this event → panel stays at opacity:1.
     let _ = app.emit("pet://panel-fade-out", ());
-    // ponytail: set alphaValue=0 AFTER hide so the NEXT show() starts
-    // invisible. `with_webview` is async (schedules on main run loop) but
-    // the window is already hidden, so no visual race — alpha=0 persists
-    // across hide/show, and the next `pet_panel_show` displays an invisible
-    // window. The frontend's `pet_panel_fade_in` (after the post-show
-    // re-assert) animates alpha back to 1, masking the entire show+focus+
-    // re-assert phase (including the OS-level window hide-show during app
-    // activation → 忽隐忽现).
-    #[cfg(target_os = "macos")]
-    {
-        use objc::runtime::Object;
-        use objc::{msg_send, sel, sel_impl};
-        let _ = panel.with_webview(move |webview| {
-            unsafe {
-                let ns = webview.ns_window() as *mut Object;
-                if !ns.is_null() {
-                    let _: () = msg_send![ns, setAlphaValue: 0.0f64];
-                }
-            }
-        });
-    }
-    Ok(())
-}
-
-/// Set the pet-panel window's alphaValue (NSWindow-level opacity, not CSS
-/// opacity). Called once at PetPanelApp mount with alpha=0 so the FIRST
-/// show() starts invisible (subsequent shows inherit alpha=0 from
-/// `pet_panel_hide`'s post-hide reset). `pet_panel_fade_in` animates it
-/// back to 1 after the post-show re-assert. Tauri v2.11 has no `set_alpha`
-/// API, so we use raw objc `setAlphaValue:` (NSPanel inherits from NSWindow).
-#[tauri::command]
-pub async fn pet_panel_set_alpha(app: tauri::AppHandle, alpha: f64) -> Result<(), String> {
-    let panel = app
-        .get_webview_window(PET_PANEL_LABEL)
-        .ok_or_else(|| "pet-panel window not found".to_string())?;
-    #[cfg(target_os = "macos")]
-    {
-        use objc::runtime::Object;
-        use objc::{msg_send, sel, sel_impl};
-        panel
-            .with_webview(move |webview| {
-                unsafe {
-                    let ns = webview.ns_window() as *mut Object;
-                    if !ns.is_null() {
-                        let _: () = msg_send![ns, setAlphaValue: alpha];
-                    }
-                }
-            })
-            .map_err(|e| e.to_string())?;
-    }
-    let _ = alpha; // suppress unused on non-macOS
-    Ok(())
-}
-
-/// Animate the pet-panel window's alphaValue from its current value (0, set
-/// by `pet_panel_show`) to 1 over ~180ms using NSAnimationContext. Called by
-/// the frontend (`applyPanelFrame`) AFTER the post-show frame re-assert, so
-/// the entire show+focus+re-assert phase is masked by alpha=0, and the
-/// fade-in starts from the stable final rect. This is the window-level
-/// mask that CSS opacity:0 could not provide (CSS only masks content, not
-/// the OS-level window hide-show during app activation).
-#[tauri::command]
-pub async fn pet_panel_fade_in(app: tauri::AppHandle) -> Result<(), String> {
-    let panel = app
-        .get_webview_window(PET_PANEL_LABEL)
-        .ok_or_else(|| "pet-panel window not found".to_string())?;
-    // Reuses the `pet_make_transparent` `with_webview` accessor pattern:
-    // `webview.ns_window()` = NSWindow/NSPanel pointer. NSAnimationContext
-    // beginGrouping/endGrouping wraps the implicit animation for the
-    // setAlphaValue: call — AppKit interpolates alpha over `duration`.
-    panel
-        .with_webview(move |webview| {
-            use objc::runtime::Object;
-            use objc::{class, msg_send, sel, sel_impl};
-            unsafe {
-                let ns = webview.ns_window() as *mut Object;
-                if ns.is_null() {
-                    return;
-                }
-                let ctx: *mut Object = msg_send![class!(NSAnimationContext), currentContext];
-                let _: () = msg_send![ctx, beginGrouping];
-                let _: () = msg_send![ctx, setDuration: 0.18f64];
-                let _: () = msg_send![ns, setAlphaValue: 1.0f64];
-                let _: () = msg_send![ctx, endGrouping];
-            }
-        })
-        .map_err(|e| e.to_string())?;
     Ok(())
 }
 

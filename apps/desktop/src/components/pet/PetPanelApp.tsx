@@ -181,18 +181,6 @@ export function PetPanelApp() {
         // `background: var(--panel)` still provides the opaque panel body.
         try {
           await invoke('pet_make_transparent', { label: 'pet-panel' });
-          // ponytail: set alphaValue=0 at mount so the FIRST show() starts
-          // invisible. Subsequent shows inherit alpha=0 from pet_panel_hide's
-          // post-hide reset. The frontend's pet_panel_fade_in (called after
-          // the post-show re-assert) animates alpha back to 1. This masks
-          // the entire show+focus+re-assert phase at the WINDOW level —
-          // CSS opacity:0 only masks content, not the OS-level window
-          // hide-show during app activation (set_focus) → 忽隐忽现.
-          try {
-            await invoke('pet_panel_set_alpha', { alpha: 0.0 });
-          } catch (err) {
-            console.warn('[pet-panel] pet_panel_set_alpha on mount failed:', err);
-          }
         } catch (err) {
           console.warn('[pet-panel] pet_make_transparent failed:', err);
         }

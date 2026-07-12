@@ -39,7 +39,9 @@
       "Bash(find . -name \"setup.ts\" -not -path \"*/node_modules/*\")",
       "Bash(grep -rn \"setupFiles\" vite.config.ts)",
       "Bash(echo \"EXIT=$?\")",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(echo \"---RUST FILES---\"; find /Users/yiminlin/project/quill/apps/desktop/src-tauri/src -name \"*.rs\" 2>/dev/null; echo \"---PET COMMANDS---\"; grep -rln \"pet_panel_show\\\\|pet_panel_hide\\\\|pet_cursor_probe\\\\|pet_get_work_area\\\\|set_pet_size\\\\|pet_set_topmost_level\\\\|pet_panel_set_position\" /Users/yiminlin/project/quill/apps/desktop/src-tauri/src 2>/dev/null; echo \"---CLAUDE-CLI SIDECAR REG---\"; grep -rn \"claude-cli\\\\|sidecar\\\\|shell\" /Users/yiminlin/project/quill/apps/desktop/src-tauri/tauri.conf.json /Users/yyinlin/project/quill/apps/desktop/src-tauri/Cargo.toml 2>/dev/null | head; echo \"---INVOKE IN aiStore/petChatStore---\"; grep -rn \"invoke\\(\" /Users/yiminlin/project/quill/apps/desktop/src/store/aiStore.ts /Users/yiminlin/project/quill/apps/desktop/src/store/petChatStore.ts 2>/dev/null | head)",
+      "Read(//Users/yyinlin/project/quill/apps/desktop/src-tauri/**)"
     ]
   }
 }

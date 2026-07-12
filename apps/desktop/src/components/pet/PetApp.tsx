@@ -131,16 +131,13 @@ async function applyPanelFrame(
   await invoke('pet_panel_show');
   await invoke('pet_panel_set_position', panelPosPhysical);
   await invoke('pet_panel_set_size', panelSizePhysical);
-  // ponytail: animate the window-level alphaValue 0→1 (set by pet_panel_show
-  // to alpha=0 before show()). This is the mask that CSS opacity:0 could NOT
-  // provide — CSS only masks content, not the OS-level window hide-show
-  // during app activation (set_focus) → 忽隐忽现. Window-level alpha masks
-  // the entire show+focus+re-assert phase. Called AFTER the re-assert so the
-  // fade starts from the stable final rect.
-  await invoke('pet_panel_fade_in');
-  // Keep the CSS is-visible trigger for the transform: scale(0.98→1) zoom.
-  // The opacity transition is redundant now (window alpha handles it) but
-  // harmless — both run together for a smooth fade+zoom.
+  // ponytail: CSS opacity:0 + transition handles the fade-in. The earlier
+  // window-level alphaValue mask (NSAnimationContext) crashed with ObjC
+  // exceptions ("Rust cannot catch foreign exceptions"). The 忽隐忽现
+  // root cause was the racy onFocusChanged → setVisible(false) mid-
+  // transition, already fixed by the `pet://panel-fade-out` event listener
+  // in PetPanelApp. The transparent window (pet_make_transparent) means
+  // CSS opacity:0 shows desktop, not a white flash — silky enough.
   await emit('pet://panel-fade-in');
 }
 
