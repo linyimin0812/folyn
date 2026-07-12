@@ -57,12 +57,13 @@ export function estimateTableSize(table: ErTable): { width: number; height: numb
     maxLabel = Math.max(maxLabel, label.length);
   }
   const width = Math.max(160, maxLabel * CHAR_W + PAD * 2);
-  const fieldRows = table.fields.length * (ROW_H + (table.fields.some((f) => f.note) ? FIELD_NOTE_H : 0));
-  const noteBlock = table.note ? NOTE_BLOCK_H + BLOCK_PAD : 0;
+  // Field notes render as hover-only icons now (no inline text row), so
+  // field rows always use ROW_H — no FIELD_NOTE_H reservation.
+  const fieldRows = table.fields.length * ROW_H;
   const indexBlock = (table.indexes?.length ?? 0) > 0
     ? table.indexes.length * INDEX_ROW_H + BLOCK_PAD
     : 0;
-  const height = HEADER_H + fieldRows + noteBlock + indexBlock + PAD;
+  const height = HEADER_H + fieldRows + indexBlock + PAD;
   return { width, height };
 }
 
@@ -79,9 +80,9 @@ export function estimateEnumSize(e: ErEnum): { width: number; height: number } {
     if (v.note) maxLabel = Math.max(maxLabel, v.note.length + 4);
   }
   const width = Math.max(160, maxLabel * CHAR_W + PAD * 2);
-  const valueRows = e.values.length * (ROW_H + (e.values.some((v) => v.note) ? FIELD_NOTE_H : 0));
-  const noteBlock = e.note ? NOTE_BLOCK_H + BLOCK_PAD : 0;
-  const height = HEADER_H + valueRows + noteBlock + PAD;
+  // Value notes render as hover-only icons (no inline text row).
+  const valueRows = e.values.length * ROW_H;
+  const height = HEADER_H + valueRows + PAD;
   return { width, height };
 }
 

@@ -6,10 +6,8 @@ import {
   layoutEr,
   HEADER_H,
   ROW_H,
-  FIELD_NOTE_H,
   INDEX_ROW_H,
   BLOCK_PAD,
-  wrapText,
   type Point,
   type ErLayout,
   type PositionedTable,
@@ -48,6 +46,10 @@ export default function ErDiagramX6({ content }: PreviewProps) {
   // content edits so user-dragged cards keep their coordinates; only new /
   // undragged cards re-enter d3-force on the next layout.
   const manualPositionsRef = useRef<Map<string, Point>>(new Map());
+  // True until the first content load completes — drives auto-fit-on-open
+  // so the first .dbml view centers content, but subsequent re-parses
+  // (edits) don't override the user's manual pan/zoom.
+  const firstLoadRef = useRef(true);
 
   // Mount: lazy-load x6 + react-shape, register shapes + markers, create graph.
   useEffect(() => {
@@ -100,7 +102,7 @@ export default function ErDiagramX6({ content }: PreviewProps) {
         width: el.clientWidth,
         height: el.clientHeight,
         autoResize: true,
-        grid: { visible: false, type: 'dot', size: 20 },
+        grid: { visible: false, type: 'dot', size: 20, args: { color: 'var(--t3)' } },
         panning: { enabled: true, eventTypes: ['leftMouseDown'] },
         mousewheel: {
           enabled: true,
@@ -182,8 +184,8 @@ export default function ErDiagramX6({ content }: PreviewProps) {
     const tableMap = new Map(layout.tables.map((t) => [t.name, t]));
 
     for (const t of layout.tables) {
-      const hasFieldNotes = t.fields.some((f) => f.note);
-      const fieldRowH = ROW_H + (hasFieldNotes ? FIELD_NOTE_H : 0);
+      // Field notes render as hover-only icons now — every row is ROW_H.
+      const fieldRowH = ROW_H;
       const ports: Record<string, unknown>[] = [];
       t.fields.forEach((f, i) => {
         const y = HEADER_H + i * fieldRowH + fieldRowH / 2;
@@ -252,6 +254,13 @@ export default function ErDiagramX6({ content }: PreviewProps) {
           },
         },
       });
+    }
+
+    // First content load: fit all content into view so the user starts
+    // centered. Subsequent re-parses (content edits) leave pan/zoom alone.
+    if (firstLoadRef.current) {
+      firstLoadRef.current = false;
+      requestAnimationFrame(() => graph.zoomToFit({ padding: 40 }));
     }
   }, [state, graphReady]);
 
@@ -456,43 +465,44 @@ function TableCardNode({ node }: { node: Node }) {
   const innerW = width - PAD * 2;
   const noteMaxChars = Math.max(8, Math.floor(innerW / 6));
 
-  const hasFieldNotes = table.fields.some((f) => f.note);
-  const fieldRowH = ROW_H + (hasFieldNotes ? FIELD_NOTE_H : 0);
+  // Field notes are hover-only icons now (no inline text row), so every
+  // field row is exactly ROW_H tall — no FIELD_NOTE_H reservation.
+  const fieldRowH = ROW_H;
   const fieldsEnd = HEADER_H + table.fields.length * fieldRowH;
 
-  const noteLines = table.note ? wrapText(table.note, noteMaxChars) : [];
   const indexes = table.indexes ?? [];
-  const hasTableNote = noteLines.length > 0;
   const hasIndexes = indexes.length > 0;
-  const hasChip = hasTableNote || hasIndexes;
+  // Table-level note OR any field note OR any index note → show card note icon.
+  const hasAnyNote =
+    !!table.note ||
+    table.fields.some((f) => f.note) ||
+    indexes.some((ix) => ix.note);
 
-  const noteBlockH = expanded && hasTableNote ? noteLines.length * 16 + 8 : 0;
   const indexBlockH = expanded && hasIndexes ? indexes.length * INDEX_ROW_H + 8 : 0;
-  let cursorY = fieldsEnd;
-  const noteY = noteBlockH > 0 ? cursorY + BLOCK_PAD : cursorY;
-  cursorY = noteBlockH > 0 ? noteY + noteBlockH : cursorY;
-  const indexY = indexBlockH > 0 ? cursorY + BLOCK_PAD : cursorY;
+  const indexY = indexBlockH > 0 ? fieldsEnd + BLOCK_PAD : fieldsEnd;
 
-  // Collapsed card: header + fields + chip footer. No empty space below.
-  const collapsedH = fieldsEnd + (hasChip ? CHIP_H + 4 : 8);
-  const height = expanded ? table.height : collapsedH;
+  const collapsedH = fieldsEnd + (hasIndexes ? CHIP_H + 4 : 8);
+  const height = expanded ? Math.max(table.height, collapsedH) : collapsedH;
 
-  // Sync node logical size to visual so edge anchors and hit-testing follow
-  // the collapsed/expanded state. Runs on mount (expanded=false → collapse)
-  // and on every toggle.
   useEffect(() => {
     node.resize(width, height);
   }, [node, width, height]);
 
   const headerColor = table.headerColor ?? undefined;
-  const noteCount = (hasTableNote ? 1 : 0) + table.fields.filter((f) => f.note).length;
-  const chipLabel = [
-    noteCount > 0 ? `${noteCount} notes` : null,
-    hasIndexes ? `${indexes.length} indexes` : null,
+  // Aggregate all notes on this card for the header note-icon hover tooltip.
+  const cardNoteTooltip = [
+    table.note ? `[table] ${table.note}` : null,
+    ...table.fields
+      .filter((f) => f.note)
+      .map((f) => `[field ${f.name}] ${f.note}`),
+    ...indexes
+      .filter((ix) => ix.note)
+      .map((ix) => `[index ${ix.name ?? '(unnamed)'}] ${ix.note}`),
   ]
     .filter(Boolean)
-    .join(' · ');
+    .join('\n');
 
+  const chipLabel = hasIndexes ? `${indexes.length} index${indexes.length > 1 ? 'es' : ''}` : '';
   const chipY = height - CHIP_H - 4;
 
   return (
@@ -515,10 +525,10 @@ function TableCardNode({ node }: { node: Node }) {
         strokeWidth={1}
         filter={`url(#er-shadow-${node.id})`}
       />
-      {/* header — subtle band when no DBML headerColor; colored band when set */}
+      {/* header — darker neutral band by default; DBML `headerColor` overrides */}
       <path
         d={`M 6 0 H ${width - 6} A 6 6 0 0 1 ${width} 6 V ${HEADER_H} H 0 V 6 A 6 6 0 0 1 6 0 Z`}
-        fill={headerColor ?? 'var(--hov)'}
+        fill={headerColor ?? 'var(--brd2)'}
       />
       <text
         x={PAD}
@@ -530,11 +540,14 @@ function TableCardNode({ node }: { node: Node }) {
       >
         {table.name}
       </text>
+      {/* card-level note icon — hover shows all notes aggregated in the tooltip */}
+      {hasAnyNote && (
+        <NoteIcon cx={width - PAD - 4} cy={HEADER_H / 2} note={cardNoteTooltip} />
+      )}
 
       {table.fields.map((f, i) => {
         const blockTop = HEADER_H + i * fieldRowH;
         const fy = blockTop + ROW_H / 2;
-        const noteY2 = blockTop + ROW_H + (hasFieldNotes ? FIELD_NOTE_H / 2 : 0);
         return (
           <g key={f.name + i}>
             {i > 0 && (
@@ -559,7 +572,7 @@ function TableCardNode({ node }: { node: Node }) {
               {f.name}
             </text>
             <text
-              x={width - PAD}
+              x={f.note ? width - PAD - 14 : width - PAD}
               y={fy}
               dominantBaseline="central"
               textAnchor="end"
@@ -568,49 +581,12 @@ function TableCardNode({ node }: { node: Node }) {
             >
               {f.type}
             </text>
-            {hasFieldNotes && f.note && (
-              <text
-                x={PAD}
-                y={noteY2}
-                dominantBaseline="central"
-                fontSize={11}
-                fill="var(--t3)"
-              >
-                {f.note.length > noteMaxChars ? `${f.note.slice(0, noteMaxChars - 1)}…` : f.note}
-                <title>{f.note}</title>
-              </text>
-            )}
+            {f.note && <NoteIcon cx={width - PAD - 6} cy={fy} note={f.note} />}
           </g>
         );
       })}
 
-      {/* expanded table-note block */}
-      {expanded && noteBlockH > 0 && (
-        <g>
-          <line
-            x1={0}
-            y1={noteY}
-            x2={width}
-            y2={noteY}
-            stroke="var(--brd2)"
-            strokeWidth={1}
-          />
-          {noteLines.map((line, i) => (
-            <text
-              key={i}
-              x={PAD}
-              y={noteY + 8 + i * 16}
-              dominantBaseline="central"
-              fontSize={11}
-              fill="var(--t3)"
-            >
-              {line}
-            </text>
-          ))}
-        </g>
-      )}
-
-      {/* expanded indexes block */}
+      {/* expanded indexes block (notes hover-only via NoteIcon on each row) */}
       {expanded && indexBlockH > 0 && (
         <g>
           <line
@@ -623,7 +599,7 @@ function TableCardNode({ node }: { node: Node }) {
           />
           {indexes.map((ix, i) => {
             const iy = indexY + 8 + i * INDEX_ROW_H + INDEX_ROW_H / 2 - 4;
-            const label = `${ix.name ?? '(unnamed)'} (${ix.columns.join(', ')})${ix.unique ? ' unique' : ''}${ix.note ? ' — ' + ix.note : ''}`;
+            const label = `${ix.name ?? '(unnamed)'} (${ix.columns.join(', ')})${ix.unique ? ' unique' : ''}`;
             return (
               <text
                 key={i}
@@ -635,15 +611,15 @@ function TableCardNode({ node }: { node: Node }) {
                 fontStyle="italic"
               >
                 {label.length > noteMaxChars ? `${label.slice(0, noteMaxChars - 1)}…` : label}
-                <title>{label}</title>
+                {ix.note && <title>{`${label} — ${ix.note}`}</title>}
               </text>
             );
           })}
         </g>
       )}
 
-      {/* collapsed chip */}
-      {hasChip && (
+      {/* collapsed chip — indexes only (notes are hover-only now) */}
+      {hasIndexes && (
         <g
           style={{ cursor: 'pointer' }}
           onPointerDown={(e) => {
@@ -678,35 +654,35 @@ function TableCardNode({ node }: { node: Node }) {
 }
 
 /**
- * Enum card — dashed border + «enum» tag + name, no colored header. Note
- * collapses into a bottom chip like table cards.
+ * Enum card — dashed border + «enum» tag + name, no colored header.
+ * Value notes render as hover-only icons (no inline text row, no chip).
  */
 function EnumCardNode({ node }: { node: Node }) {
   const data = node.getData() as EnumNodeData;
   const enumCard = data.enum;
-  const [expanded, setExpanded] = useState(false);
   const PAD = 12;
   const width = enumCard.width;
-  const innerW = width - PAD * 2;
-  const noteMaxChars = Math.max(8, Math.floor(innerW / 6));
 
-  const hasValueNotes = enumCard.values.some((v) => v.note);
-  const valueRowH = ROW_H + (hasValueNotes ? FIELD_NOTE_H : 0);
+  // Value notes are hover-only icons now — every value row is ROW_H.
+  const valueRowH = ROW_H;
   const valuesEnd = HEADER_H + enumCard.values.length * valueRowH;
 
-  const noteLines = enumCard.note ? wrapText(enumCard.note, noteMaxChars) : [];
-  const hasChip = noteLines.length > 0 || hasValueNotes;
-  const noteBlockH = expanded && noteLines.length > 0 ? noteLines.length * 16 + 8 : 0;
-  const noteY = noteBlockH > 0 ? valuesEnd + BLOCK_PAD : valuesEnd;
+  const hasAnyNote = !!enumCard.note || enumCard.values.some((v) => v.note);
+  const cardNoteTooltip = [
+    enumCard.note ? `[enum] ${enumCard.note}` : null,
+    ...enumCard.values
+      .filter((v) => v.note)
+      .map((v) => `[value ${v.name}] ${v.note}`),
+  ]
+    .filter(Boolean)
+    .join('\n');
 
-  const collapsedH = valuesEnd + (hasChip ? CHIP_H + 4 : 8);
-  const height = expanded ? enumCard.height : collapsedH;
+  // Enum cards have no indexes → always the collapsed size.
+  const height = valuesEnd + 8;
 
   useEffect(() => {
     node.resize(width, height);
   }, [node, width, height]);
-
-  const chipY = height - CHIP_H - 4;
 
   return (
     <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
@@ -728,7 +704,11 @@ function EnumCardNode({ node }: { node: Node }) {
         strokeDasharray="3 2"
         filter={`url(#er-eshadow-${node.id})`}
       />
-      {/* «enum» tag + name on a neutral header (no color block) */}
+      {/* «enum» tag + name on a darker neutral header band */}
+      <path
+        d={`M 6 0 H ${width - 6} A 6 6 0 0 1 ${width} 6 V ${HEADER_H} H 0 V 6 A 6 6 0 0 1 6 0 Z`}
+        fill="var(--brd2)"
+      />
       <text
         x={PAD}
         y={HEADER_H / 2}
@@ -748,19 +728,13 @@ function EnumCardNode({ node }: { node: Node }) {
       >
         {enumCard.name}
       </text>
-      <line
-        x1={0}
-        y1={HEADER_H}
-        x2={width}
-        y2={HEADER_H}
-        stroke="var(--brd2)"
-        strokeWidth={1}
-      />
+      {hasAnyNote && (
+        <NoteIcon cx={width - PAD - 4} cy={HEADER_H / 2} note={cardNoteTooltip} />
+      )}
 
       {enumCard.values.map((v, i) => {
         const blockTop = HEADER_H + i * valueRowH;
         const vy = blockTop + ROW_H / 2;
-        const noteY2 = blockTop + ROW_H + (hasValueNotes ? FIELD_NOTE_H / 2 : 0);
         return (
           <g key={v.name + i}>
             {i > 0 && (
@@ -782,77 +756,10 @@ function EnumCardNode({ node }: { node: Node }) {
             >
               {v.name}
             </text>
-            {hasValueNotes && v.note && (
-              <text
-                x={PAD}
-                y={noteY2}
-                dominantBaseline="central"
-                fontSize={11}
-                fill="var(--t3)"
-              >
-                {v.note.length > noteMaxChars ? `${v.note.slice(0, noteMaxChars - 1)}…` : v.note}
-                <title>{v.note}</title>
-              </text>
-            )}
+            {v.note && <NoteIcon cx={width - PAD - 6} cy={vy} note={v.note} />}
           </g>
         );
       })}
-
-      {expanded && noteBlockH > 0 && (
-        <g>
-          <line
-            x1={0}
-            y1={noteY}
-            x2={width}
-            y2={noteY}
-            stroke="var(--brd2)"
-            strokeWidth={1}
-          />
-          {noteLines.map((line, i) => (
-            <text
-              key={i}
-              x={PAD}
-              y={noteY + 8 + i * 16}
-              dominantBaseline="central"
-              fontSize={11}
-              fill="var(--t3)"
-            >
-              {line}
-            </text>
-          ))}
-        </g>
-      )}
-
-      {hasChip && (
-        <g
-          style={{ cursor: 'pointer' }}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            setExpanded((v) => !v);
-          }}
-        >
-          <rect
-            x={PAD}
-            y={chipY}
-            width={Math.min(innerW, 12 + (noteLines.length + (hasValueNotes ? 1 : 0)) * 6.5)}
-            height={CHIP_H - 2}
-            rx={9}
-            ry={9}
-            fill="var(--hov)"
-            stroke="var(--brd2)"
-            strokeWidth={1}
-          />
-          <text
-            x={PAD + 8}
-            y={chipY + (CHIP_H - 2) / 2}
-            dominantBaseline="central"
-            fontSize={11}
-            fill="var(--t3)"
-          >
-            {expanded ? '收起' : `⋯ ${noteLines.length + (hasValueNotes ? enumCard.values.filter((v) => v.note).length : 0)} notes`}
-          </text>
-        </g>
-      )}
     </svg>
   );
 }
@@ -869,6 +776,28 @@ function KeyIcon({ cx, cy }: { cx: number; cy: number }) {
         strokeWidth={1.3}
         strokeLinecap="round"
       />
+    </g>
+  );
+}
+
+/**
+ * Small "i" icon indicating a hover-visible note. SVG `<title>` renders as
+ * the host browser's native tooltip on hover.
+ */
+function NoteIcon({ cx, cy, note }: { cx: number; cy: number; note: string }) {
+  return (
+    <g transform={`translate(${cx} ${cy})`}>
+      <title>{note}</title>
+      <circle r={4} fill="var(--acc)" />
+      <text
+        dominantBaseline="central"
+        textAnchor="middle"
+        fontSize={7}
+        fontWeight={700}
+        fill="#ffffff"
+      >
+        i
+      </text>
     </g>
   );
 }
