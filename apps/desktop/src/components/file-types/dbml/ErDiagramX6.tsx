@@ -516,38 +516,34 @@ function TableCardNode({ node }: { node: Node }) {
   }, [infoOpen, node, clearCloseTimer]);
 
   // Popover content: structured noteLines (table note + per-field + per-index
-  // notes, wrapped) + indexLines (full index list, wrapped to fit width).
-  const noteLines = wrapNote(
-    [
-      table.note ?? null,
-      ...table.fields
-        .filter((f) => f.note)
-        .map((f) => `[${f.name}] ${f.note}`),
-      ...indexes
-        .filter((ix) => ix.note)
-        .map((ix) => `[${ix.name ?? '(unnamed)'}] ${ix.note}`),
-    ]
-      .filter(Boolean)
-      .join('\n'),
-    44,
+  // notes) + indexLines (full index list). NO wrapping — width auto-fits to
+  // the longest raw line so nothing gets truncated or wrapped.
+  const noteLines = [
+    table.note ?? null,
+    ...table.fields
+      .filter((f) => f.note)
+      .map((f) => `[${f.name}] ${f.note}`),
+    ...indexes
+      .filter((ix) => ix.note)
+      .map((ix) => `[${ix.name ?? '(unnamed)'}] ${ix.note}`),
+  ].filter(Boolean) as string[];
+  const indexLines = indexes.map(
+    (ix) =>
+      `${ix.name ?? '(unnamed)'} (${ix.columns.join(', ')})${ix.unique ? ' unique' : ''}`,
   );
-  const indexLines = indexes
-    .map(
-      (ix) =>
-        `${ix.name ?? '(unnamed)'} (${ix.columns.join(', ')})${ix.unique ? ' unique' : ''}`,
-    )
-    .flatMap((s) => wrapNote(s, 42));
 
-  // Auto-fit popover width to longest content line so nothing overflows the
-  // box. Char widths approximate text-sm (header) and text-xs (body).
+  // Auto-fit popover width to the longest raw content line. No wrapping, no
+  // truncation — just fit. Char widths approximate text-sm (header) / text-xs
+  // (body). Max 600 keeps very long notes from spanning the whole canvas.
   const SM_CHAR = 6.5; // text-xs
   const MD_CHAR = 8; // text-sm
   const longestForWidth = Math.max(
     table.name.length * MD_CHAR + 60, // icon + padding + name
     ...noteLines.map((l) => l.length * SM_CHAR + 30),
     ...indexLines.map((l) => l.length * SM_CHAR + 50), // list indent + padding
+    200, // floor
   );
-  const popoverW = Math.max(200, Math.min(420, Math.ceil(longestForWidth)));
+  const popoverW = Math.min(600, Math.ceil(longestForWidth));
 
   const indexPillLabel = `${indexes.length} idx`;
   const indexPillW = 8 + indexPillLabel.length * 6.5;
@@ -576,8 +572,8 @@ function TableCardNode({ node }: { node: Node }) {
         d={`M 6 0 H ${width - 6} A 6 6 0 0 1 ${width} 6 V ${HEADER_H} H 0 V 6 A 6 6 0 0 1 6 0 Z`}
         fill={headerColor ?? 'var(--brd2)'}
         style={hasInfo ? { cursor: 'help' } : undefined}
-        onPointerEnter={hasInfo ? openInfo : undefined}
-        onPointerLeave={hasInfo ? scheduleClose : undefined}
+        onMouseEnter={hasInfo ? openInfo : undefined}
+        onMouseLeave={hasInfo ? scheduleClose : undefined}
       />
       <text
         x={PAD}
@@ -650,8 +646,8 @@ function TableCardNode({ node }: { node: Node }) {
           tableName={table.name}
           noteLines={noteLines}
           indexLines={indexLines}
-          onPointerEnter={clearCloseTimer}
-          onPointerLeave={scheduleClose}
+          onContentMouseEnter={clearCloseTimer}
+          onContentMouseLeave={scheduleClose}
         />
       )}
     </svg>
@@ -801,8 +797,8 @@ function TableInfoPopover({
   tableName,
   noteLines,
   indexLines,
-  onPointerEnter,
-  onPointerLeave,
+  onContentMouseEnter,
+  onContentMouseLeave,
 }: {
   x: number;
   y: number;
@@ -810,8 +806,8 @@ function TableInfoPopover({
   tableName: string;
   noteLines: string[];
   indexLines: string[];
-  onPointerEnter: () => void;
-  onPointerLeave: () => void;
+  onContentMouseEnter: () => void;
+  onContentMouseLeave: () => void;
 }) {
   const hasNotes = noteLines.length > 0;
   const hasIndexes = indexLines.length > 0;
@@ -821,13 +817,17 @@ function TableInfoPopover({
       y={y}
       width={width}
       height={600}
-      style={{ overflow: 'visible' }}
-      onPointerEnter={onPointerEnter}
-      onPointerLeave={onPointerLeave}
+      style={{ overflow: 'visible', pointerEvents: 'none' }}
     >
+      {/* Pointer handlers on the inner div — mouse events on HTML are
+          reliable; foreignObject's onPointerEnter can misfire in nested
+          foreignObject contexts. pointerEvents:none on the foreignObject
+          parent lets the div opt back in via its own default auto. */}
       <div
         className="rounded-md border bg-[var(--surf)] text-[var(--t1)] text-[13px] font-semibold"
         style={{ borderColor: 'var(--brd)', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
+        onMouseEnter={onContentMouseEnter}
+        onMouseLeave={onContentMouseLeave}
       >
         {/* header bar */}
         <div className="flex items-center gap-1.5 min-w-0 px-3 py-2.5 bg-[var(--hov)] rounded-t-md">
@@ -857,7 +857,12 @@ function TableInfoPopover({
             <div className="px-3 pt-1 pb-1 text-xs font-semibold text-[var(--t2)]">
               Note
             </div>
-            <div className="px-3 pb-2.5 text-xs font-normal whitespace-pre-wrap break-words text-[var(--t2)]">
+            {/* whitespace-pre preserves \n; no wrap (whiteSpace: pre keeps
+                each line on one visual line, even if wider than the box). */}
+            <div
+              className="px-3 pb-2.5 text-xs font-normal text-[var(--t2)]"
+              style={{ whiteSpace: 'pre' }}
+            >
               {noteLines.join('\n')}
             </div>
           </>
