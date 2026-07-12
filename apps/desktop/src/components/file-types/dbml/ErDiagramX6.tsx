@@ -267,10 +267,11 @@ export default function ErDiagramX6({ content }: PreviewProps) {
   const empty = state.kind === 'ok' && state.layout.tables.length === 0 && state.layout.enums.length === 0;
 
   return (
-    <div
-      ref={containerRef}
-      className="er-preview relative h-full w-full overflow-hidden bg-[var(--bg)]"
-    >
+    <div className="er-preview relative h-full w-full overflow-hidden bg-[var(--bg)]">
+      {/* X6 owns this div's DOM exclusively — React must not render siblings
+          here, or reconciler mutation effects hit X6's canvas nodes and
+          throw NotFoundError. */}
+      <div ref={containerRef} className="absolute inset-0" />
       {state.kind === 'loading' && <StatusMsg>正在解析 DBML…</StatusMsg>}
       {state.kind === 'error' && <ErrorView errors={state.errors} />}
       {empty && <StatusMsg>空 ER 图 — 在编辑器中定义 Table 以渲染关系图</StatusMsg>}
