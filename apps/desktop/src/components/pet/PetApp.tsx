@@ -131,14 +131,16 @@ async function applyPanelFrame(
   await invoke('pet_panel_show');
   await invoke('pet_panel_set_position', panelPosPhysical);
   await invoke('pet_panel_set_size', panelSizePhysical);
-  // ponytail: emit the fade-in trigger AFTER the post-show frame re-assert so
-  // the panel is already in its final rect when the CSS opacity/scale
-  // transition starts. Previously the fade was keyed off `tauri://focus`
-  // (fired by `set_focus()` inside `pet_panel_show`), which fires BEFORE the
-  // re-assert — the panel moved/resized while half-faded-in → 闪动. Now the
-  // pet-panel window listens for `pet://panel-fade-in` and calls
-  // `setVisible(true)` only then. The `pet` window has `core:event:allow-emit`
-  // in capabilities/pet.json; `pet-panel` has `core:event:allow-listen`.
+  // ponytail: animate the window-level alphaValue 0→1 (set by pet_panel_show
+  // to alpha=0 before show()). This is the mask that CSS opacity:0 could NOT
+  // provide — CSS only masks content, not the OS-level window hide-show
+  // during app activation (set_focus) → 忽隐忽现. Window-level alpha masks
+  // the entire show+focus+re-assert phase. Called AFTER the re-assert so the
+  // fade starts from the stable final rect.
+  await invoke('pet_panel_fade_in');
+  // Keep the CSS is-visible trigger for the transform: scale(0.98→1) zoom.
+  // The opacity transition is redundant now (window alpha handles it) but
+  // harmless — both run together for a smooth fade+zoom.
   await emit('pet://panel-fade-in');
 }
 

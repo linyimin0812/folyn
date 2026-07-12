@@ -31,9 +31,7 @@
 //! Default (unset / `nspanel`) uses this backend.
 
 use tauri::{AppHandle, Manager};
-use tauri_nspanel::{
-    CollectionBehavior, PanelLevel, StyleMask, TrackingAreaOptions, WebviewWindowExt, tauri_panel,
-};
+use tauri_nspanel::{CollectionBehavior, PanelLevel, StyleMask, WebviewWindowExt, tauri_panel};
 
 tauri_panel! {
     panel!(QuillPetPanel {
@@ -42,24 +40,16 @@ tauri_panel! {
             can_become_key_window: true,
             can_become_main_window: false,
         }
-        // ponytail: NSTrackingArea with ActiveAlways delivers cursor/mouse
-        // events even when the app is NOT frontmost — this is the flag that
-        // makes the hand cursor show on plain hover over the pet mascot when
-        // another app (VS Code, etc.) owns the cursor. Without ActiveAlways,
-        // `cursorUpdate:` only fires when the panel is key (after a click).
-        // `CursorUpdate` → set hand cursor on enter/move; `MouseEnteredAndExited`
-        // → restore arrow on leave. `InVisibleRect` tracks the visible rect
-        // (the window can resize). See research/nstrackingarea-cursor-hover.md.
-        with: {
-            tracking_area: {
-                options: TrackingAreaOptions::new()
-                    .active_always()
-                    .cursor_update()
-                    .mouse_entered_and_exited()
-                    .in_visible_rect(),
-                auto_resize: true,
-            }
-        }
+        // ponytail: NO `with: { tracking_area }` here. The crate's
+        // `add_tracking_area` (panel.rs:659-692) hardcodes `owner: contentView`
+        // (a stock NSView), but the `cursorUpdate:` override that forwards to
+        // the delegate lives on the PANEL subclass — a different object.
+        // `cursorUpdate:` is dispatched directly to the TA owner; a stock
+        // NSView's default impl does nothing and does NOT forward to
+        // nextResponder, so the panel's override + the `on_cursor_update`
+        // closure NEVER fire. We add the TA manually in `convert_windows`
+        // with `owner = the panel` (the object with the override). See
+        // research/cursor-nonfrontmost-followup.md (Q1, Q3c option d).
     })
     panel!(QuillPanelWindow {
         config: {
@@ -125,32 +115,19 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                     .full_screen_auxiliary()
                     .into(),
             );
-            // ponytail: attach the cursor handler so the tracking area's
-            // cursorUpdate:/mouseExited: callbacks fire. on_cursor_update →
-            // [NSCursor pointingHandCursor] set] (hand cursor on hover, even
-            // when Quill isn't frontmost — ActiveAlways delivers the event);
-            // on_mouse_exited → [NSCursor arrowCursor] set] (restore on leave).
-            // This replaces the frontend `pet_set_cursor` invoke calls (removed
-            // from PetApp.tsx) which didn't stick when another app owned the
-            // cursor. Only attached to the `pet` instance, NOT `pet-bubble`
-            // (the bubble is transient and doesn't need a hover cursor).
-            //
-            // Trade-off: set_event_handler REPLACES the tao NSWindowDelegate.
-            // The pet window's `tauri://blur` listener (topmost re-apply on
-            // deactivation) will stop firing — the ~800ms poller in PetApp.tsx
-            // already re-applies `pet_set_topmost_level` on the same cadence,
-            // so the blur listener was just an optimization. No other tao
-            // window events are consumed by the pet window.
-            let handler = QuillPetEventHandler::new();
-            handler.on_cursor_update(|_event| {
-                let cursor = tauri_nspanel::objc2_app_kit::NSCursor::pointingHandCursor();
-                cursor.set();
-            });
-            handler.on_mouse_exited(|_event| {
-                let cursor = tauri_nspanel::objc2_app_kit::NSCursor::arrowCursor();
-                cursor.set();
-            });
-            panel.set_event_handler(Some(handler.as_ref()));
+            // ponytail: cursor handlers + NSTrackingArea + acceptsMouseMovedEvents
+            // all REVERTED. The cursor-on-hover-when-not-frontmost path
+            // (cursorUpdate → [NSCursor set]) crashed with "Rust cannot catch
+            // foreign exceptions" — `NSCursor::pointingHandCursor()` returns
+            // `Retained<NSCursor>` and the high-frequency retain/release churn
+            // (cursorUpdate/mouseMoved fire on every pixel of cursor motion
+            // within the TA) triggered an ObjC exception Rust can't catch.
+            // The user accepted the macOS limitation: hand cursor works via
+            // CSS `cursor: pointer` (pet.css) when Quill is frontmost (or after
+            // a click makes the panel key), and does NOT work on first hover
+            // when another app is frontmost. No cursor code = no crash path.
+            // The `pet_set_cursor` Rust command is kept as a fallback if a
+            // future need arises.
             count += 1;
         }
     }

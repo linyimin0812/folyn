@@ -96,42 +96,32 @@ export function PetPanelApp() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [hidePanel]);
 
-  // ponytail: the show fade is driven by the explicit `pet://panel-fade-in`
-  // event emitted by `applyPanelFrame` (PetApp.tsx) AFTER the post-show frame
-  // re-assert. Previously this was keyed off `tauri://focus` (fired by
-  // `set_focus()` inside `pet_panel_show`), which fires BEFORE the re-assert
-  // — the panel moved/resized while half-faded-in → 闪动. Now focus true is a
-  // no-op for visibility; only `pet://panel-fade-in` sets `is-visible`.
+  // ponytail: show-fade is driven by `pet://panel-fade-in` (emitted by
+  // `applyPanelFrame` in PetApp.tsx AFTER the post-show frame re-assert) and
+  // hide-reset is driven by `pet://panel-fade-out` (emitted by `pet_panel_hide`
+  // in Rust on actual hide). Both are explicit events — NOT `tauri://focus`.
   //
-  // On blur we do NOT blindly drop `is-visible` — only when the window was
-  // actually hidden (`pet_panel_hide`). The pet-panel is a `nonactivating_panel`
-  // NSPanel: clicking the attach button opens a native NSOpenPanel that steals
-  // key window → blur fires. Dropping `is-visible` there would set `opacity:0`,
-  // and since a nonactivating panel doesn't reliably regain focus after the
-  // dialog, the panel would stay blank. Same hazard on app deactivation.
-  // `isVisible()` distinguishes "hidden" from "blurred but still shown"; a
-  // rejected check (no permission — currently granted in pet-panel.json) leaves
-  // the panel visible, which is the safe state.
+  // The previous onFocusChanged + isVisible() check was unreliable during
+  // the app activation that `set_focus()` (in pet_panel_show) triggers:
+  // `isVisible()` could return false momentarily mid-activation →
+  // setVisible(false) interrupted the fade-in transition → 忽隐忽现 (flicker:
+  // appear, vanish, reappear). The explicit fade-out event fires ONLY on
+  // actual hide, so the fade-in is never interrupted.
+  //
+  // File-upload (NSOpenPanel steals key window → blur, panel still visible)
+  // does NOT emit fade-out → panel stays at opacity:1, no blank. Same for
+  // app deactivation (blur without hide).
   useEffect(() => {
     if (!isTauri()) return;
     let unlisten: (() => void) | undefined;
     (async () => {
       try {
-        const { getCurrentWindow } = await import('@tauri-apps/api/window');
-        const win = getCurrentWindow();
-        unlisten = await win.onFocusChanged(({ payload: focused }: { payload: boolean }) => {
-          if (focused) {
-            // ponytail: focus alone no longer drives the fade — the
-            // `pet://panel-fade-in` listener below owns setVisible(true)
-            // so the fade starts from the stable final frame.
-            return;
-          }
-          void win.isVisible().then((stillVisible) => {
-            if (!stillVisible) setVisible(false);
-          });
+        const { listen } = await import('@tauri-apps/api/event');
+        unlisten = await listen('pet://panel-fade-out', () => {
+          setVisible(false);
         });
       } catch (err) {
-        console.warn('[pet-panel] focus listener failed:', err);
+        console.warn('[pet-panel] panel-fade-out listener failed:', err);
       }
     })();
     return () => {
@@ -175,6 +165,37 @@ export function PetPanelApp() {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         await invoke('pet_set_topmost_level', { label: 'pet-panel' });
+        // ponytail: make the panel WINDOW transparent (opaque=NO +
+        // backgroundColor=clear + WKWebView drawsBackground=NO). The panel
+        // webview persists across shows, so this runs once on mount. Without
+        // this, `show()` can reset the frame to the last visible position
+        // WHILE CSS opacity is still 0 — CSS opacity only masks the root
+        // element's content, NOT the WKWebView's opaque white background,
+        // so the user sees a white rect jump from old → new position (闪动).
+        // With a transparent window + drawsBackground=NO, CSS opacity:0 means
+        // "see desktop through the window" — no white flash, the CSS
+        // opacity 0→1 + scale(0.98→1) transition takes over cleanly from
+        // the stable final frame. Also gives the panel visible rounded
+        // corners (CSS border-radius:10px now shows desktop at the corners
+        // instead of white webview background). The root element's own
+        // `background: var(--panel)` still provides the opaque panel body.
+        try {
+          await invoke('pet_make_transparent', { label: 'pet-panel' });
+          // ponytail: set alphaValue=0 at mount so the FIRST show() starts
+          // invisible. Subsequent shows inherit alpha=0 from pet_panel_hide's
+          // post-hide reset. The frontend's pet_panel_fade_in (called after
+          // the post-show re-assert) animates alpha back to 1. This masks
+          // the entire show+focus+re-assert phase at the WINDOW level —
+          // CSS opacity:0 only masks content, not the OS-level window
+          // hide-show during app activation (set_focus) → 忽隐忽现.
+          try {
+            await invoke('pet_panel_set_alpha', { alpha: 0.0 });
+          } catch (err) {
+            console.warn('[pet-panel] pet_panel_set_alpha on mount failed:', err);
+          }
+        } catch (err) {
+          console.warn('[pet-panel] pet_make_transparent failed:', err);
+        }
       } catch (err) {
         console.warn('[pet-panel] set_topmost_level failed:', err);
       }
