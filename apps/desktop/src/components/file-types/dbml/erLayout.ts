@@ -60,10 +60,10 @@ export function estimateTableSize(table: ErTable): { width: number; height: numb
   // Field notes render as hover-only icons now (no inline text row), so
   // field rows always use ROW_H — no FIELD_NOTE_H reservation.
   const fieldRows = table.fields.length * ROW_H;
-  const indexBlock = (table.indexes?.length ?? 0) > 0
-    ? table.indexes.length * INDEX_ROW_H + BLOCK_PAD
-    : 0;
-  const height = HEADER_H + fieldRows + indexBlock + PAD;
+  // Collision/visual height is the COLLAPSED size (no index block). When
+  // the user clicks the chip to expand indexes, the card grows beyond
+  // this — momentary neighbor overlap is acceptable for MVP.
+  const height = HEADER_H + fieldRows + PAD;
   return { width, height };
 }
 

@@ -192,13 +192,19 @@ export default function ErDiagramX6({ content }: PreviewProps) {
         ports.push({ id: `f-${f.name}-L`, group: 'left', args: { x: 0, y } });
         ports.push({ id: `f-${f.name}-R`, group: 'right', args: { x: t.width, y } });
       });
+      // Initial node height = collapsed size so foreignObject matches the
+      // SVG rendered by TableCardNode (which draws collapsed by default).
+      // The component calls node.resize() if it expands.
+      const hasIndexes = (t.indexes?.length ?? 0) > 0;
+      const collapsedH =
+        HEADER_H + t.fields.length * fieldRowH + (hasIndexes ? CHIP_H + 4 : 8);
       graph.addNode({
         shape: 'er-table',
         id: `t:${t.name}`,
         x: t.x,
         y: t.y,
         width: t.width,
-        height: t.height,
+        height: collapsedH,
         data: { table: t },
         ports: {
           groups: {
@@ -217,13 +223,14 @@ export default function ErDiagramX6({ content }: PreviewProps) {
     }
 
     for (const e of layout.enums) {
+      const enumCollapsedH = HEADER_H + e.values.length * ROW_H + 8;
       graph.addNode({
         shape: 'er-enum',
         id: `e:${e.name}`,
         x: e.x,
         y: e.y,
         width: e.width,
-        height: e.height,
+        height: enumCollapsedH,
         data: { enum: e },
       });
     }
@@ -482,7 +489,8 @@ function TableCardNode({ node }: { node: Node }) {
   const indexY = indexBlockH > 0 ? fieldsEnd + BLOCK_PAD : fieldsEnd;
 
   const collapsedH = fieldsEnd + (hasIndexes ? CHIP_H + 4 : 8);
-  const height = expanded ? Math.max(table.height, collapsedH) : collapsedH;
+  const expandedH = fieldsEnd + indexBlockH + (hasIndexes ? BLOCK_PAD : 8);
+  const height = expanded ? expandedH : collapsedH;
 
   useEffect(() => {
     node.resize(width, height);
