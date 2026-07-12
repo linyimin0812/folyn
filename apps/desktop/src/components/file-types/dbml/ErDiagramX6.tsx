@@ -537,36 +537,28 @@ function TableCardNode({ node }: { node: Node }) {
       >
         {table.name}
       </text>
-      {/* header index pill — count on the right, hover for full index list */}
+      {/* header index pill — click to show full index list in a popover */}
       {hasIndexes && (
-        <g>
-          <title>{indexTooltip}</title>
-          <rect
-            x={indexPillX}
-            y={HEADER_H / 2 - 9}
-            width={indexPillW}
-            height={18}
-            rx={9}
-            ry={9}
-            fill={headerColor ? 'rgba(255,255,255,0.18)' : 'var(--hov)'}
-            stroke={headerColor ? 'rgba(255,255,255,0.35)' : 'var(--brd2)'}
-            strokeWidth={1}
-          />
-          <text
-            x={indexPillX + indexPillW / 2}
-            y={HEADER_H / 2}
-            dominantBaseline="central"
-            textAnchor="middle"
-            fontSize={11}
-            fill={headerColor ? '#ffffff' : 'var(--t3)'}
-          >
-            {indexPillLabel}
-          </text>
-        </g>
+        <IndexPill
+          x={indexPillX}
+          y={HEADER_H / 2 - 9}
+          w={indexPillW}
+          label={indexPillLabel}
+          tooltip={indexTooltip}
+          headerColor={headerColor}
+          node={node}
+        />
       )}
-      {/* card-level note icon — hover shows all notes aggregated in the tooltip */}
+      {/* card-level note icon — click to show aggregated notes popover */}
       {hasAnyNote && (
-        <NoteIcon cx={width - PAD - 4} cy={HEADER_H / 2} note={cardNoteTooltip} />
+        <NoteIcon
+          cx={width - PAD - 4}
+          cy={HEADER_H / 2}
+          note={cardNoteTooltip}
+          header="Notes"
+          wrap={48}
+          node={node}
+        />
       )}
 
       {table.fields.map((f, i) => {
@@ -605,7 +597,7 @@ function TableCardNode({ node }: { node: Node }) {
             >
               {f.type}
             </text>
-            {f.note && <NoteIcon cx={width - PAD - 7} cy={fy} note={f.note} />}
+            {f.note && <NoteIcon cx={width - PAD - 7} cy={fy} note={f.note} node={node} />}
           </g>
         );
       })}
@@ -689,7 +681,14 @@ function EnumCardNode({ node }: { node: Node }) {
         {enumCard.name}
       </text>
       {hasAnyNote && (
-        <NoteIcon cx={width - PAD - 5} cy={HEADER_H / 2} note={cardNoteTooltip} />
+        <NoteIcon
+          cx={width - PAD - 5}
+          cy={HEADER_H / 2}
+          note={cardNoteTooltip}
+          header="Notes"
+          wrap={48}
+          node={node}
+        />
       )}
 
       {enumCard.values.map((v, i) => {
@@ -716,7 +715,7 @@ function EnumCardNode({ node }: { node: Node }) {
             >
               {v.name}
             </text>
-            {v.note && <NoteIcon cx={width - PAD - 7} cy={vy} note={v.note} />}
+            {v.note && <NoteIcon cx={width - PAD - 7} cy={vy} note={v.note} node={node} />}
           </g>
         );
       })}
@@ -740,16 +739,186 @@ function KeyIcon({ cx, cy }: { cx: number; cy: number }) {
   );
 }
 
+
+/**
+ * Shared popover box. Optional `header` renders as a small muted label at
+ * the top (per Image #5 "Note" header style); `lines` are wrapped below.
+ * Surf background + brd border + drop shadow for elevation.
+ */
+function Popover({
+  x,
+  y,
+  width,
+  header,
+  lines,
+}: {
+  x: number;
+  y: number;
+  width: number;
+  header?: string;
+  lines: string[];
+}) {
+  const HEADER_H = header ? 20 : 0;
+  const LINE_H = 14;
+  const boxH = lines.length * LINE_H + HEADER_H + 12;
+  return (
+    <g pointerEvents="none">
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={boxH}
+        rx={4}
+        ry={4}
+        fill="var(--surf)"
+        stroke="var(--brd)"
+        strokeWidth={1}
+        filter="drop-shadow(0 2px 4px rgba(0,0,0,0.18))"
+      />
+      {header && (
+        <text
+          x={x + 10}
+          y={y + 13}
+          fontSize={10}
+          fontWeight={700}
+          fill="var(--t3)"
+          letterSpacing="0.4"
+        >
+          {header.toUpperCase()}
+        </text>
+      )}
+      {lines.map((l, i) => (
+        <text
+          key={i}
+          x={x + 10}
+          y={y + HEADER_H + 13 + i * LINE_H}
+          fontSize={11}
+          fill="var(--t2)"
+        >
+          {l}
+        </text>
+      ))}
+    </g>
+  );
+}
+
+/**
+ * Header index pill. Click toggles a popover with the full index list.
+ * No <title> — native browser tooltips are a screen-level overlay that
+ * doesn't follow the card during drag (same root cause as NoteIcon).
+ */
+function IndexPill({
+  x,
+  y,
+  w,
+  label,
+  tooltip,
+  headerColor,
+  node,
+}: {
+  x: number;
+  y: number;
+  w: number;
+  label: string;
+  tooltip: string;
+  headerColor?: string;
+  node: Node;
+}) {
+  const [open, setOpen] = useState(false);
+  // Close the popover as soon as the node starts moving so its rect border
+  // doesn't lag behind the dragged card (foreignObject + filter rendering
+  // can leave "ghost" horizontal/vertical lines at the pre-drag position).
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    node.on('change:position', close);
+    return () => {
+      node.off('change:position', close);
+    };
+  }, [open, node]);
+  const lines = tooltip.split('\n');
+  const maxLine = Math.max(1, ...lines.map((l) => l.length));
+  const boxW = Math.max(180, maxLine * 6.4 + 20);
+  // Anchor popover to the pill's left edge, just below it.
+  const boxX = x;
+  const boxY = y + 22;
+  return (
+    <g
+      style={{ cursor: 'pointer' }}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        setOpen((v) => !v);
+      }}
+    >
+      <rect
+        x={x}
+        y={y}
+        width={w}
+        height={18}
+        rx={9}
+        ry={9}
+        fill={headerColor ? 'rgba(255,255,255,0.18)' : 'var(--hov)'}
+        stroke={headerColor ? 'rgba(255,255,255,0.35)' : 'var(--brd2)'}
+        strokeWidth={1}
+      />
+      <text
+        x={x + w / 2}
+        y={y + 9}
+        dominantBaseline="central"
+        textAnchor="middle"
+        fontSize={11}
+        fill={headerColor ? '#ffffff' : 'var(--t3)'}
+        pointerEvents="none"
+      >
+        {label}
+      </text>
+      {open && (
+        <Popover x={boxX} y={boxY} width={boxW} header="Indexes" lines={lines} />
+      )}
+    </g>
+  );
+}
+
 /**
  * Small "i" icon. Click toggles a popover showing the note text (multi-line
- * aware). SVG `<title>` is kept as a hover fallback for mouse users.
+ * aware). No <title> — native browser tooltips are a screen-level overlay
+ * that doesn't follow the card during drag, leaving stale text behind.
+ *
+ * `header` defaults to "Note" (Image #5 style). Card-level aggregated notes
+ * pass `header="Notes"` (Image #4 style) — both share the Popover component.
  */
-function NoteIcon({ cx, cy, note }: { cx: number; cy: number; note: string }) {
+function NoteIcon({
+  cx,
+  cy,
+  note,
+  header = 'Note',
+  wrap = 38,
+  node,
+}: {
+  cx: number;
+  cy: number;
+  note: string;
+  header?: string;
+  wrap?: number;
+  node: Node;
+}) {
   const [open, setOpen] = useState(false);
-  const lines = wrapNote(note, 38);
+  // Same drag-close as IndexPill — popover's rect border would otherwise
+  // ghost at the pre-drag position during move.
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    node.on('change:position', close);
+    return () => {
+      node.off('change:position', close);
+    };
+  }, [open, node]);
+  const lines = wrapNote(note, wrap);
   const maxLine = Math.max(1, ...lines.map((l) => l.length));
-  const boxW = maxLine * 6.4 + 16;
-  const boxH = lines.length * 14 + 10;
+  const boxW = Math.max(160, maxLine * 6.4 + 20);
+  const HEADER_H = header ? 20 : 0;
+  const LINE_H = 14;
+  const boxH = lines.length * LINE_H + HEADER_H + 12;
   // Coords are relative to the icon center (0,0) — parent <g> is translated
   // to (cx, cy). Popover opens above the icon; if it'd clip the top, open below.
   const boxX = -boxW / 2;
@@ -764,7 +933,6 @@ function NoteIcon({ cx, cy, note }: { cx: number; cy: number; note: string }) {
         setOpen((v) => !v);
       }}
     >
-      <title>{note}</title>
       <circle r={5} fill="var(--acc)" />
       <text
         dominantBaseline="central"
@@ -777,31 +945,7 @@ function NoteIcon({ cx, cy, note }: { cx: number; cy: number; note: string }) {
         i
       </text>
       {open && (
-        <g pointerEvents="none">
-          <rect
-            x={boxX}
-            y={boxY}
-            width={boxW}
-            height={boxH}
-            rx={4}
-            ry={4}
-            fill="var(--bg)"
-            stroke="var(--brd)"
-            strokeWidth={1}
-            filter="drop-shadow(0 2px 4px rgba(0,0,0,0.18))"
-          />
-          {lines.map((l, i) => (
-            <text
-              key={i}
-              x={boxX + 8}
-              y={boxY + 12 + i * 14}
-              fontSize={11}
-              fill="var(--t2)"
-            >
-              {l}
-            </text>
-          ))}
-        </g>
+        <Popover x={boxX} y={boxY} width={boxW} header={header} lines={lines} />
       )}
     </g>
   );
