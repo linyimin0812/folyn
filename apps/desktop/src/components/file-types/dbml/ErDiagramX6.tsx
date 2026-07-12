@@ -482,10 +482,25 @@ function TableCardNode({ node }: { node: Node }) {
   const headerColor = table.headerColor ?? undefined;
 
   // Unified table-info popover state — IndexPill (if hasIndexes) OR the "i"
-  // Popover opens on header hover (setInfoOpen(true) on pointer enter). Closes
-  // on pointer leave or when the node starts moving (so the popover doesn't
-  // ghost at the pre-drag position).
+  // Popover opens on header hover. Closes on pointer leave (with a small
+  // delay so the user can move between header and popover) or when the node
+  // starts moving (so the popover doesn't ghost at the pre-drag position).
   const [infoOpen, setInfoOpen] = useState(false);
+  const closeTimeoutRef = useRef<number | null>(null);
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimeoutRef.current != null) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  }, []);
+  const scheduleClose = useCallback(() => {
+    clearCloseTimer();
+    closeTimeoutRef.current = window.setTimeout(() => setInfoOpen(false), 150);
+  }, [clearCloseTimer]);
+  const openInfo = useCallback(() => {
+    clearCloseTimer();
+    setInfoOpen(true);
+  }, [clearCloseTimer]);
   useEffect(() => {
     if (!infoOpen) return;
     // Bring the whole card to the front so the popover (rendered inside this
@@ -496,8 +511,9 @@ function TableCardNode({ node }: { node: Node }) {
     node.on('change:position', close);
     return () => {
       node.off('change:position', close);
+      clearCloseTimer();
     };
-  }, [infoOpen, node]);
+  }, [infoOpen, node, clearCloseTimer]);
 
   // Popover content: structured noteLines (table note + per-field + per-index
   // notes, wrapped) + indexLines (full index list, wrapped to fit width).
@@ -522,6 +538,17 @@ function TableCardNode({ node }: { node: Node }) {
     )
     .flatMap((s) => wrapNote(s, 42));
 
+  // Auto-fit popover width to longest content line so nothing overflows the
+  // box. Char widths approximate text-sm (header) and text-xs (body).
+  const SM_CHAR = 6.5; // text-xs
+  const MD_CHAR = 8; // text-sm
+  const longestForWidth = Math.max(
+    table.name.length * MD_CHAR + 60, // icon + padding + name
+    ...noteLines.map((l) => l.length * SM_CHAR + 30),
+    ...indexLines.map((l) => l.length * SM_CHAR + 50), // list indent + padding
+  );
+  const popoverW = Math.max(200, Math.min(420, Math.ceil(longestForWidth)));
+
   const indexPillLabel = `${indexes.length} idx`;
   const indexPillW = 8 + indexPillLabel.length * 6.5;
   const indexPillX = width - PAD - indexPillW;
@@ -530,9 +557,8 @@ function TableCardNode({ node }: { node: Node }) {
 
   return (
     <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
-      {/* card body — CSS filter for drop shadow (SVG <filter> + feDropShadow
-          creates a separate rendering layer that lags behind CSS transforms
-          during drag, leaving ghost horizontal/vertical lines at the old pos). */}
+      {/* card body — no CSS filter (drop-shadow creates a compositing layer
+          that lags behind scale transforms during zoom, leaving ghost edges). */}
       <rect
         x={0}
         y={0}
@@ -543,7 +569,6 @@ function TableCardNode({ node }: { node: Node }) {
         fill="var(--surf)"
         stroke="var(--brd)"
         strokeWidth={1}
-        style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.08))' }}
       />
       {/* header — darker neutral band by default; DBML `headerColor` overrides.
           Hover on the header opens the table-info popover beside the card. */}
@@ -551,8 +576,8 @@ function TableCardNode({ node }: { node: Node }) {
         d={`M 6 0 H ${width - 6} A 6 6 0 0 1 ${width} 6 V ${HEADER_H} H 0 V 6 A 6 6 0 0 1 6 0 Z`}
         fill={headerColor ?? 'var(--brd2)'}
         style={hasInfo ? { cursor: 'help' } : undefined}
-        onPointerEnter={hasInfo ? () => setInfoOpen(true) : undefined}
-        onPointerLeave={hasInfo ? () => setInfoOpen(false) : undefined}
+        onPointerEnter={hasInfo ? openInfo : undefined}
+        onPointerLeave={hasInfo ? scheduleClose : undefined}
       />
       <text
         x={PAD}
@@ -621,10 +646,12 @@ function TableCardNode({ node }: { node: Node }) {
         <TableInfoPopover
           x={width + 8}
           y={0}
-          width={280}
+          width={popoverW}
           tableName={table.name}
           noteLines={noteLines}
           indexLines={indexLines}
+          onPointerEnter={clearCloseTimer}
+          onPointerLeave={scheduleClose}
         />
       )}
     </svg>
@@ -675,7 +702,6 @@ function EnumCardNode({ node }: { node: Node }) {
         stroke="var(--brd)"
         strokeWidth={1}
         strokeDasharray="3 2"
-        style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.08))' }}
       />
       {/* «enum» tag + name on a darker neutral header band */}
       <path
@@ -764,7 +790,9 @@ function KeyIcon({ cx, cy }: { cx: number; cy: number }) {
  * so we can use Tailwind classes and let the browser wrap text to fit width.
  * Structure (per reference): header bar (table icon + name) → divider →
  * "Note" label + content → divider → "Indexes" label + bulleted list.
- * pointerEvents:none so the popover doesn't block hover-leave on the card.
+ * The foreignObject captures pointer events so the user can hover the
+ * popover itself without it auto-closing (handlers wired to the same
+ * schedule-close timer as the header).
  */
 function TableInfoPopover({
   x,
@@ -773,6 +801,8 @@ function TableInfoPopover({
   tableName,
   noteLines,
   indexLines,
+  onPointerEnter,
+  onPointerLeave,
 }: {
   x: number;
   y: number;
@@ -780,6 +810,8 @@ function TableInfoPopover({
   tableName: string;
   noteLines: string[];
   indexLines: string[];
+  onPointerEnter: () => void;
+  onPointerLeave: () => void;
 }) {
   const hasNotes = noteLines.length > 0;
   const hasIndexes = indexLines.length > 0;
@@ -789,7 +821,9 @@ function TableInfoPopover({
       y={y}
       width={width}
       height={600}
-      style={{ overflow: 'visible', pointerEvents: 'none' }}
+      style={{ overflow: 'visible' }}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
     >
       <div
         className="rounded-md border bg-[var(--surf)] text-[var(--t1)] text-[13px] font-semibold"
@@ -879,7 +913,6 @@ function NotePopover({
         fill="var(--surf)"
         stroke="var(--brd)"
         strokeWidth={1}
-        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.18))' }}
       />
       <text
         x={x + 10}
