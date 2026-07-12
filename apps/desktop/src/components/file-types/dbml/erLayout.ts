@@ -37,29 +37,15 @@ export function estimateTableSize(table: ErTable): { width: number; height: numb
   const PAD = 14;
   const CHAR_W = 7.8; // approx avg char width at 13px system-ui
 
+  // Width is driven by table name + field name/type only — notes render as
+  // hover icons, indexes live in a header pill. Long notes no longer blow
+  // up card width.
   let maxLabel = table.name.length;
   for (const f of table.fields) {
-    // "name  type" combined label length (marks no longer rendered as text)
     maxLabel = Math.max(maxLabel, f.name.length + f.type.length + 3);
-    if (f.note) {
-      maxLabel = Math.max(maxLabel, f.note.length + 4);
-    }
   }
-  if (table.note) {
-    // Note wraps but its widest single line (split on \n then by width) drives min width.
-    for (const line of wrapText(table.note, Math.floor(220 / CHAR_W))) {
-      maxLabel = Math.max(maxLabel, line.length);
-    }
-  }
-  // Index info moves to a header pill (hover for details) — no longer
-  // contributes to card width, so cards auto-fit to name + fields only.
   const width = Math.max(160, maxLabel * CHAR_W + PAD * 2);
-  // Field notes render as hover-only icons now (no inline text row), so
-  // field rows always use ROW_H — no FIELD_NOTE_H reservation.
   const fieldRows = table.fields.length * ROW_H;
-  // Collision/visual height is the COLLAPSED size (no index block). When
-  // the user clicks the chip to expand indexes, the card grows beyond
-  // this — momentary neighbor overlap is acceptable for MVP.
   const height = HEADER_H + fieldRows + PAD;
   return { width, height };
 }
@@ -71,36 +57,15 @@ export function estimateTableSize(table: ErTable): { width: number; height: numb
 export function estimateEnumSize(e: ErEnum): { width: number; height: number } {
   const PAD = 14;
   const CHAR_W = 7.8;
+  // Value notes render as hover-only icons — don't factor into width.
   let maxLabel = e.name.length + 8; // include «enum» prefix
   for (const v of e.values) {
     maxLabel = Math.max(maxLabel, v.name.length);
-    if (v.note) maxLabel = Math.max(maxLabel, v.note.length + 4);
   }
   const width = Math.max(160, maxLabel * CHAR_W + PAD * 2);
-  // Value notes render as hover-only icons (no inline text row).
   const valueRows = e.values.length * ROW_H;
   const height = HEADER_H + valueRows + PAD;
   return { width, height };
-}
-
-/**
- * Wrap `text` into lines of at most `maxChars` characters by splitting on
- * existing newlines first, then hard-wrapping each paragraph. Used for SVG
- * <tspan> line slicing in the table-note block.
- */
-export function wrapText(text: string, maxChars: number): string[] {
-  if (maxChars <= 0) return [text];
-  const out: string[] = [];
-  for (const para of text.split('\n')) {
-    if (para.length <= maxChars) {
-      out.push(para);
-      continue;
-    }
-    for (let i = 0; i < para.length; i += maxChars) {
-      out.push(para.slice(i, i + maxChars));
-    }
-  }
-  return out.length > 0 ? out : [''];
 }
 
 export interface Point {
