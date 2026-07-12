@@ -89,6 +89,18 @@ interface SettingsState {
   cliAdapter: string;
   cliPath: string;
 
+  // AI chat mode (rig, direct LLM — does NOT shell out to the CLI). chat mode
+  // is multi-turn, tool-free, persisted to `~/.quill/chat-sessions/<id>.json`.
+  // ask/agent are unaffected and still use `cliPath` above. `chatProvider`
+  // picks the rig provider; `chatBaseUrl` is optional (real OpenAI/Anthropic
+  // have sensible defaults; set it to point at an OpenAI-compatible local
+  // server). `chatApiKey` is stored alongside the rest of settings — same
+  // trust boundary as `syncSecretKey` (local plaintext in storageClient).
+  chatProvider: 'anthropic' | 'openai' | 'openai-compatible';
+  chatModel: string;
+  chatApiKey: string;
+  chatBaseUrl: string;
+
   // Daily Notes
   dailyNotesDir: string;
   dailyNoteDateFormat: string;
@@ -247,6 +259,7 @@ const PERSIST_KEYS = [
   'syntaxHighlight', 'autoSave', 'spellCheck', 'linkOpenMode', 'vaultPath', 'imagePath', 'docExtension',
   'watchFileChanges', 'trashOnDelete', 'syncMethod', 'syncEndpoint', 'syncAccessKey',
   'syncSecretKey', 'syncBucket', 'autoSync', 'e2eEncrypt', 'cliAdapter', 'cliPath',
+  'chatProvider', 'chatModel', 'chatApiKey', 'chatBaseUrl',
   'vaultName', 'shortcuts', 'dailyNotesDir', 'dailyNoteDateFormat', 'fileTemplates', 'boardColumns',
   'petModeEnabled', 'petPositionX', 'petPositionY',
   'petPanelX', 'petPanelY', 'petPanelWidth', 'petPanelHeight',
@@ -319,6 +332,14 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   // AI CLI
   cliAdapter: 'claude',
   cliPath: 'claude',
+
+  // AI chat mode (rig). Defaults match the existing claude CLI flavor
+  // (Anthropic, sonnet) so a user with an Anthropic key gets a working chat
+  // by filling only `chatApiKey`. `chatBaseUrl: ''` => provider default.
+  chatProvider: 'anthropic',
+  chatModel: 'claude-sonnet-4-6',
+  chatApiKey: '',
+  chatBaseUrl: '',
 
   // Daily Notes
   dailyNotesDir: '__daily__',

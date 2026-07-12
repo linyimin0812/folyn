@@ -28,6 +28,10 @@ export interface AiInputModeDef {
   bare?: boolean;
   /** Appended to the CLI's default system prompt via `--append-system-prompt`. */
   systemPrompt?: string;
+  /** Which backend serves this mode. `'rig'` modes bypass the CLI adapter and
+   * call the Rust `chat_stream` command directly (see `services/rigChat.ts`);
+   * unset (the default) means the CLI adapter (`claude` binary). */
+  backend?: 'rig';
   /** Escape hatch: transform the merged options arbitrarily. Runs last. */
   buildSendOptions?: (base: CliSendOptions) => CliSendOptions;
 }
@@ -79,3 +83,14 @@ registerInputMode({
   description: '只读问答，不修改文件',
   permissionMode: 'plan',
 });
+registerInputMode({
+  id: 'chat',
+  label: 'Chat',
+  description: '多轮对话（rig 直连 LLM，无工具，不读写文件）',
+  backend: 'rig',
+});
+
+/** True if the mode is served by the rig backend (bypasses the CLI adapter). */
+export function isRigMode(modeId: string): boolean {
+  return getInputModeDef(modeId)?.backend === 'rig';
+}

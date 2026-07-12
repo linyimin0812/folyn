@@ -19,11 +19,12 @@ import { useClipStore } from '@/store/clipStore';
 import { runIngest } from '@/services/wikiIngestService';
 import { runWikiLint } from '@/services/wikiLintService';
 import { saveToWiki } from '@/services/wikiQueryService';
+import { runRigChat } from '@/services/rigChat';
 import { ChatMessageList } from '@/components/chat';
 import type { CliMessage } from '@quill/cli-adapter';
 import { ChatInput } from './ChatInput';
 import type { PendingAttachment } from './ChatInput';
-import { resolveSendOptions } from './inputModes';
+import { resolveSendOptions, isRigMode } from './inputModes';
 import { saveBlobs, buildReadInstructions } from '@/components/chat';
 import type { SavedAttachment } from '@/components/chat';
 
@@ -323,11 +324,27 @@ export function AiPanel() {
     pauseWatcher();
 
     try {
-      await adapter.start({ cliPath: settings.cliPath, workingDir });
-      // 合并当前输入模式（ask/agent/…）的 permissionMode/systemPrompt 等到 send options。
       const inputMode = useAiStore.getState().inputMode;
-      const sendOptions = resolveSendOptions(inputMode, { resumeSessionId });
-      await adapter.send(prompt, sendOptions);
+      if (isRigMode(inputMode)) {
+        // chat: rig direct LLM, no CLI adapter. runRigChat calls eventHandler
+        // directly with the same CliStreamEvent shape; the dormant
+        // adapter.onEvent subscription above is harmless and cleaned up in
+        // finally. workingDir / cliPath are unused (rig has no cwd).
+        await runRigChat({
+          sessionId: sid,
+          prompt,
+          provider: settings.chatProvider,
+          model: settings.chatModel,
+          apiKey: settings.chatApiKey,
+          baseUrl: settings.chatBaseUrl,
+          onEvent: eventHandler,
+        });
+      } else {
+        await adapter.start({ cliPath: settings.cliPath, workingDir });
+        // 合并当前输入模式（ask/agent/…）的 permissionMode/systemPrompt 等到 send options。
+        const sendOptions = resolveSendOptions(inputMode, { resumeSessionId });
+        await adapter.send(prompt, sendOptions);
+      }
     } catch (err) {
       appendToLastMessage(`\n\n[错误] ${String(err)}`, sid);
       setSessionStreaming(sid, false);

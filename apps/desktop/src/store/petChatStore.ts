@@ -63,6 +63,11 @@ interface PetChatState {
   /** True while a streamed assistant response is in flight for the active
    *  session. Runtime-only — NOT persisted. */
   streaming: boolean;
+  /** Active AI mode for the pet panel ('agent' | 'ask' | 'chat'). Runtime-only
+   *  (NOT persisted) — defaults to 'agent' to preserve the pre-chat behavior
+   *  (bare bypassPermissions). 'chat' routes to the rig backend; the other two
+   *  stay on the claude CLI adapter. Set by the PetChat mode dropdown. */
+  inputMode: string;
 
   // ── Session actions ──
   /** Create a new empty session, switch active to it, return its id.
@@ -84,6 +89,8 @@ interface PetChatState {
 
   // ── Runtime / resume state ──
   setStreaming: (streaming: boolean) => void;
+  /** Switch the pet panel's active AI mode. */
+  setInputMode: (mode: string) => void;
   /** Write the CLI-assigned session id onto a session (PR2 calls this on the
    *  `session_id` stream event). Attributed by the sessionId that triggered
    *  the send — not "current active" — to avoid a late `session_id` polluting
@@ -167,6 +174,7 @@ export const usePetChatStore = create<PetChatState>((set, get) => ({
   sessions: [],
   activeSessionId: null,
   streaming: false,
+  inputMode: 'agent',
 
   createSession: () => {
     const state = get();
@@ -259,6 +267,7 @@ export const usePetChatStore = create<PetChatState>((set, get) => ({
   },
 
   setStreaming: (streaming) => set({ streaming }),
+  setInputMode: (mode) => set({ inputMode: mode }),
 
   setCliSessionId: (sessionId, cliSessionId) => {
     const state = get();

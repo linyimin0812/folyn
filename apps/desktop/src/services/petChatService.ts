@@ -2,6 +2,8 @@ import { createAdapter } from '@quill/cli-adapter';
 import type { CliAdapter, CliStreamEvent } from '@quill/cli-adapter';
 import { useSettingsStore } from '@/store/settingsStore';
 import { usePetChatStore } from '@/store/petChatStore';
+import { isRigMode, resolveSendOptions } from '@/components/ai/inputModes';
+import { runRigChat } from '@/services/rigChat';
 import { isTauri } from '@/utils/platform';
 import { appDataDir, join } from '@tauri-apps/api/path';
 
@@ -10,8 +12,8 @@ import { appDataDir, join } from '@tauri-apps/api/path';
  *
  * The pet-panel chat is vault-free (PRD R6): it does NOT use `aiStore`,
  * `adapterManager`, or any vault-grounded send options. Instead it creates
- * its own `CliAdapter` instances via `createAdapter(...)`, starts them in a neutral temp dir (NOT the vault), and
- * streams plain text in/out. This mirrors the adapter-creation pattern in
+ * its own `CliAdapter` instances via `createAdapter(...)`, and
+ * streams plain text in/out. cwd depends on mode: `chat` (rig) has none; This mirrors the adapter-creation pattern in
  * `clipService` / `planMyDayService` / `wikiIngestService` but with no vault
  * dependency. It does NOT import `ai/adapterManager` — the per-session Map
  * is replicated locally to preserve pet-panel window isolation.
@@ -170,8 +172,8 @@ export async function sendPetChatMessage(
 ): Promise<void> {
   const settings = useSettingsStore.getState();
   const adapter = getAdapterForSession(sessionId);
-  const workingDir = await resolveWorkingDir();
   const resumeSessionId = getCliSessionIdFor(sessionId);
+  const mode = usePetChatStore.getState().inputMode;
 
   // Closed over `sessionId` — NOT re-read from the store at event time.
   // This is the race-prevention contract: even if the user switches the
@@ -192,11 +194,41 @@ export async function sendPetChatMessage(
     // thinking / tool_start / tool_end / file_change → ignored (pet is
     // vault-free, bare; no UI surface for them). Silently dropped.
   };
+
+  if (isRigMode(mode)) {
+    // chat: rig direct LLM (Rust `chat_stream`). handler is driven directly by
+    // runRigChat — no CLI adapter subscription, so the `adapter.offEvent(...)`
+    // calls above are harmless no-ops for a chat turn. workingDir / cliPath
+    // are unused (rig has no cwd). History is persisted on disk by the backend
+    // keyed by `sessionId`.
+    try {
+      await runRigChat({
+        sessionId,
+        prompt,
+        provider: settings.chatProvider,
+        model: settings.chatModel,
+        apiKey: settings.chatApiKey,
+        baseUrl: settings.chatBaseUrl,
+        onEvent: handler,
+      });
+    } catch (err) {
+      handlers.onError?.(String(err));
+      throw err;
+    }
+    return;
+  }
+
+  // ask/agent: CLI adapter. Run against the current vault so file tools are
+  // meaningful (previously the pet was vault-free); fall back to the neutral
+  // appData dir when no vault is open so ask/agent still run. chat (above) has
+  // no cwd. `resolveSendOptions` applies ask (plan) vs agent (bypassPermissions);
+  // 'agent' here is byte-identical to the pre-chat `{ bare: true }` default.
+  const workingDir = settings.vaultPath || (await resolveWorkingDir());
   adapter.onEvent(handler);
 
   try {
     await adapter.start({ cliPath: settings.cliPath, workingDir });
-    await adapter.send(prompt, { bare: true, resumeSessionId });
+    await adapter.send(prompt, resolveSendOptions(mode, { bare: true, resumeSessionId }));
   } catch (err) {
     adapter.offEvent(handler);
     throw err;
