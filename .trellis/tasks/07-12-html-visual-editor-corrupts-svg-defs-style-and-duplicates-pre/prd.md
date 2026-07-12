@@ -73,6 +73,8 @@ Fix GrapesJS round-trip corruption that strikes when a user opens an `.html` fil
 
 ## Decision (ADR-lite)
 
+### Bug 1: SVG `<defs><style>` extraction (Approach B)
+
 **Context**: GrapesJS's component model drops `<style>` inside SVG `<defs>` during `editor.setComponents()`. The styles never reach CssComposer, so the canvas renders SVG rects with default black fill and the serialized output loses the rules entirely.
 
 **Decision**: Approach B — extract SVG-internal `<style>` blocks in `parseHtmlForGrapes`, append them to `styleBlocks` (alongside the existing head `<style>` extraction). `editor.setStyle()` then injects them into the canvas; `editor.getCss()` serializes them back. SVG `<defs>` loses its `<style>` after round-trip, but the rules live in the head `<style>` block — semantically equivalent (SVG `<defs><style>` is global, not scoped to the SVG).
@@ -81,7 +83,29 @@ Fix GrapesJS round-trip corruption that strikes when a user opens an `.html` fil
 - Pro: Minimal diff to `grapesContentPipeline.ts`. Reuses existing `styleBlocks` plumbing.
 - Pro: Correct canvas render (SVG classes work).
 - Con: File structure changes on first save — SVG `<defs><style>` migrates to head `<style>`. One-time churn for existing files.
-- Con: Doesn't fix the `<pre>` duplication (separate fix needed).
+
+### Bug 2: Body double-wrap strip
+
+**Context**: `editor.getHtml()` returns `<body>...</body>`, but `reconstructHtml` wrapped it in another `<body>...</body>`, producing `<body><body>...</body></body>`. On re-parse, DOMParser hoisted the inner body out (bodies can't nest), splicing its contents into the outer body — duplicating every element on each round-trip.
+
+**Decision**: Strip the grapesHtml `<body>` wrapper in `reconstructHtml` before re-wrapping with the document's `<body>` tag.
+
+**Consequences**:
+- Pro: One-line regex strip. Eliminates exponential content growth.
+- Con: None observed.
+
+### Bug 3: GrapesJS CssComposer drops `var()` from shorthand declarations
+
+**Context**: Discovered after Bugs 1+2 were fixed and the user reported visual editor still mismatched preview. GrapesJS's CSS parser silently drops `var()` from shorthand declarations — e.g. `body { background: var(--bg); }` becomes a body rule with NO background declaration. Only longhand-with-var (like `color: var(--ink)`) survives. The browser's native CSS parser handles var() in shorthands correctly.
+
+**Decision**: Bypass GrapesJS's CssComposer for both rendering and serialization:
+- `injectInlineStyles` (new) — appends user's `styleBlocks` verbatim as a `<style data-quill="inline-styles">` tag in the canvas iframe head, AFTER GrapesJS's CSS. Browser parses correctly.
+- `reconstructHtml` serializes CSS from `parsed.styleBlocks` (original) instead of `editor.getCss()` (broken).
+
+**Consequences**:
+- Pro: Canvas rendering matches browser/preview.
+- Pro: File save preserves original CSS verbatim (no var() loss).
+- Con: Style Manager edits to existing class rules do NOT persist on save (CssComposer is bypassed for serialization). Inline-style edits via the canvas still round-trip normally. Documented as `ponytail:` known limitation; proper fix would merge `editor.getCss()` edits into `parsed.styleBlocks` — deferred.
 
 ## Technical Approach
 
