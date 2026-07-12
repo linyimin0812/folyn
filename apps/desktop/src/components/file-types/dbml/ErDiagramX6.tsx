@@ -6,8 +6,6 @@ import {
   layoutEr,
   HEADER_H,
   ROW_H,
-  INDEX_ROW_H,
-  BLOCK_PAD,
   type Point,
   type ErLayout,
   type PositionedTable,
@@ -17,7 +15,6 @@ import {
 const DEBOUNCE_MS = 300;
 const ZOOM_MIN = 0.2;
 const ZOOM_MAX = 4;
-const CHIP_H = 22;
 
 type State =
   | { kind: 'loading' }
@@ -192,19 +189,13 @@ export default function ErDiagramX6({ content }: PreviewProps) {
         ports.push({ id: `f-${f.name}-L`, group: 'left', args: { x: 0, y } });
         ports.push({ id: `f-${f.name}-R`, group: 'right', args: { x: t.width, y } });
       });
-      // Initial node height = collapsed size so foreignObject matches the
-      // SVG rendered by TableCardNode (which draws collapsed by default).
-      // The component calls node.resize() if it expands.
-      const hasIndexes = (t.indexes?.length ?? 0) > 0;
-      const collapsedH =
-        HEADER_H + t.fields.length * fieldRowH + (hasIndexes ? CHIP_H + 4 : 8);
       graph.addNode({
         shape: 'er-table',
         id: `t:${t.name}`,
         x: t.x,
         y: t.y,
         width: t.width,
-        height: collapsedH,
+        height: t.height,
         data: { table: t },
         ports: {
           groups: {
@@ -223,14 +214,13 @@ export default function ErDiagramX6({ content }: PreviewProps) {
     }
 
     for (const e of layout.enums) {
-      const enumCollapsedH = HEADER_H + e.values.length * ROW_H + 8;
       graph.addNode({
         shape: 'er-enum',
         id: `e:${e.name}`,
         x: e.x,
         y: e.y,
         width: e.width,
-        height: enumCollapsedH,
+        height: e.height,
         data: { enum: e },
       });
     }
@@ -466,11 +456,8 @@ interface EnumNodeData {
 function TableCardNode({ node }: { node: Node }) {
   const data = node.getData() as TableNodeData;
   const table = data.table;
-  const [expanded, setExpanded] = useState(false);
   const PAD = 14;
   const width = table.width;
-  const innerW = width - PAD * 2;
-  const noteMaxChars = Math.max(8, Math.floor(innerW / 6));
 
   // Field notes are hover-only icons now (no inline text row), so every
   // field row is exactly ROW_H tall — no FIELD_NOTE_H reservation.
@@ -485,12 +472,9 @@ function TableCardNode({ node }: { node: Node }) {
     table.fields.some((f) => f.note) ||
     indexes.some((ix) => ix.note);
 
-  const indexBlockH = expanded && hasIndexes ? indexes.length * INDEX_ROW_H + 8 : 0;
-  const indexY = indexBlockH > 0 ? fieldsEnd + BLOCK_PAD : fieldsEnd;
-
-  const collapsedH = fieldsEnd + (hasIndexes ? CHIP_H + 4 : 8);
-  const expandedH = fieldsEnd + indexBlockH + (hasIndexes ? BLOCK_PAD : 8);
-  const height = expanded ? expandedH : collapsedH;
+  // Index info lives in the header pill now (hover for full details). No
+  // expanded block, no bottom chip — card height is just header + fields.
+  const height = fieldsEnd + 8;
 
   useEffect(() => {
     node.resize(width, height);
@@ -510,8 +494,13 @@ function TableCardNode({ node }: { node: Node }) {
     .filter(Boolean)
     .join('\n');
 
-  const chipLabel = hasIndexes ? `${indexes.length} index${indexes.length > 1 ? 'es' : ''}` : '';
-  const chipY = height - CHIP_H - 4;
+  // Header index pill: count on the right, <title> shows full index list.
+  const indexTooltip = indexes
+    .map((ix) => `${ix.name ?? '(unnamed)'} (${ix.columns.join(', ')})${ix.unique ? ' unique' : ''}`)
+    .join('\n');
+  const indexPillLabel = `${indexes.length} idx`;
+  const indexPillW = 8 + indexPillLabel.length * 6.5;
+  const indexPillX = width - PAD - indexPillW - (hasAnyNote ? 16 : 0);
 
   return (
     <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
@@ -548,6 +537,33 @@ function TableCardNode({ node }: { node: Node }) {
       >
         {table.name}
       </text>
+      {/* header index pill — count on the right, hover for full index list */}
+      {hasIndexes && (
+        <g>
+          <title>{indexTooltip}</title>
+          <rect
+            x={indexPillX}
+            y={HEADER_H / 2 - 9}
+            width={indexPillW}
+            height={18}
+            rx={9}
+            ry={9}
+            fill={headerColor ? 'rgba(255,255,255,0.18)' : 'var(--hov)'}
+            stroke={headerColor ? 'rgba(255,255,255,0.35)' : 'var(--brd2)'}
+            strokeWidth={1}
+          />
+          <text
+            x={indexPillX + indexPillW / 2}
+            y={HEADER_H / 2}
+            dominantBaseline="central"
+            textAnchor="middle"
+            fontSize={11}
+            fill={headerColor ? '#ffffff' : 'var(--t3)'}
+          >
+            {indexPillLabel}
+          </text>
+        </g>
+      )}
       {/* card-level note icon — hover shows all notes aggregated in the tooltip */}
       {hasAnyNote && (
         <NoteIcon cx={width - PAD - 4} cy={HEADER_H / 2} note={cardNoteTooltip} />
@@ -593,70 +609,6 @@ function TableCardNode({ node }: { node: Node }) {
           </g>
         );
       })}
-
-      {/* expanded indexes block (notes hover-only via NoteIcon on each row) */}
-      {expanded && indexBlockH > 0 && (
-        <g>
-          <line
-            x1={0}
-            y1={indexY}
-            x2={width}
-            y2={indexY}
-            stroke="var(--brd2)"
-            strokeWidth={1}
-          />
-          {indexes.map((ix, i) => {
-            const iy = indexY + 8 + i * INDEX_ROW_H + INDEX_ROW_H / 2 - 4;
-            const label = `${ix.name ?? '(unnamed)'} (${ix.columns.join(', ')})${ix.unique ? ' unique' : ''}`;
-            return (
-              <text
-                key={i}
-                x={PAD}
-                y={iy}
-                dominantBaseline="central"
-                fontSize={12}
-                fill="var(--t3)"
-                fontStyle="italic"
-              >
-                {label.length > noteMaxChars ? `${label.slice(0, noteMaxChars - 1)}…` : label}
-                {ix.note && <title>{`${label} — ${ix.note}`}</title>}
-              </text>
-            );
-          })}
-        </g>
-      )}
-
-      {/* collapsed chip — indexes only (notes are hover-only now) */}
-      {hasIndexes && (
-        <g
-          style={{ cursor: 'pointer' }}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            setExpanded((v) => !v);
-          }}
-        >
-          <rect
-            x={PAD}
-            y={chipY}
-            width={Math.min(innerW, 12 + chipLabel.length * 6.5)}
-            height={CHIP_H - 2}
-            rx={9}
-            ry={9}
-            fill="var(--hov)"
-            stroke="var(--brd2)"
-            strokeWidth={1}
-          />
-          <text
-            x={PAD + 8}
-            y={chipY + (CHIP_H - 2) / 2}
-            dominantBaseline="central"
-            fontSize={12}
-            fill="var(--t3)"
-          >
-            {expanded ? '收起' : `⋯ ${chipLabel}`}
-          </text>
-        </g>
-      )}
     </svg>
   );
 }

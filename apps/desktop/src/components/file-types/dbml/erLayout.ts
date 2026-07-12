@@ -51,11 +51,8 @@ export function estimateTableSize(table: ErTable): { width: number; height: numb
       maxLabel = Math.max(maxLabel, line.length);
     }
   }
-  for (const ix of table.indexes ?? []) {
-    const cols = ix.columns.join(', ');
-    const label = `${ix.name ?? ''} (${cols})${ix.unique ? ' unique' : ''}`;
-    maxLabel = Math.max(maxLabel, label.length);
-  }
+  // Index info moves to a header pill (hover for details) — no longer
+  // contributes to card width, so cards auto-fit to name + fields only.
   const width = Math.max(160, maxLabel * CHAR_W + PAD * 2);
   // Field notes render as hover-only icons now (no inline text row), so
   // field rows always use ROW_H — no FIELD_NOTE_H reservation.
