@@ -502,11 +502,15 @@ function TableCardNode({ node }: { node: Node }) {
 
   const headerColor = table.headerColor ?? undefined;
 
-  // Unified table-info popover state — IndexPill (if hasIndexes) OR the "i"
-  // Popover opens on header hover. Closes on pointer leave (with a small
-  // delay so the user can move between header and popover) or when the node
-  // starts moving (so the popover doesn't ghost at the pre-drag position).
-  const [infoOpen, setInfoOpen] = useState(false);
+  // Unified popover state — either the table-info popover (opened from the
+  // header) or a field-info popover (opened from a field row). Only one is
+  // open at a time; both share the 150ms close timer, the drag-close, and the
+  // scale/translate reposition effect below.
+  type PopoverState =
+    | { kind: 'table' }
+    | { kind: 'field'; idx: number }
+    | null;
+  const [popover, setPopover] = useState<PopoverState>(null);
   // Tick state forces a re-render (and thus a portal-position recompute) when
   // the graph pans/zooms while the popover is open, so the popover tracks the
   // card instead of stranding at the old screen position.
@@ -520,19 +524,24 @@ function TableCardNode({ node }: { node: Node }) {
   }, []);
   const scheduleClose = useCallback(() => {
     clearCloseTimer();
-    closeTimeoutRef.current = window.setTimeout(() => setInfoOpen(false), 150);
+    closeTimeoutRef.current = window.setTimeout(() => setPopover(null), 150);
   }, [clearCloseTimer]);
-  const openInfo = useCallback(() => {
+  const openTable = useCallback(() => {
     clearCloseTimer();
-    setInfoOpen(true);
+    setPopover({ kind: 'table' });
+  }, [clearCloseTimer]);
+  const openField = useCallback((idx: number) => {
+    clearCloseTimer();
+    setPopover((p) =>
+      p?.kind === 'field' && p.idx === idx ? p : { kind: 'field', idx });
   }, [clearCloseTimer]);
   useEffect(() => {
-    if (!infoOpen) return;
+    if (!popover) return;
     // Bring the whole card to the front so the popover (now portaled into the
     // overlay above the graph) isn't occluded by edges or other cards added
     // after this one.
     node.toFront();
-    const close = () => setInfoOpen(false);
+    const close = () => setPopover(null);
     node.on('change:position', close);
     const graph = node.model?.graph;
     const recompute = () => setTick((t) => t + 1);
@@ -546,7 +555,7 @@ function TableCardNode({ node }: { node: Node }) {
       graph?.off('resize', recompute);
       clearCloseTimer();
     };
-  }, [infoOpen, node, clearCloseTimer]);
+  }, [popover, node, clearCloseTimer]);
 
   // Popover content: structured noteLines (table note + per-field + per-index
   // notes) + indexLines (full index list). The portal popover wraps content
@@ -595,7 +604,12 @@ function TableCardNode({ node }: { node: Node }) {
     // invisibility. Symmetric right-edge clip isn't worth the branch: opening
     // left was already the "tight on the right" fallback.
     if (popoverX < 8) popoverX = Math.min(screen.x + screen.width + 8, Math.max(8, containerW - POPOVER_W - 8));
-    popoverY = screen.y;
+    // Y: table-info popover anchors at the card top; field-info popover
+    // anchors at the hovered row so it reads as "about this field".
+    const scale = graph.zoom();
+    const rowTop =
+      popover?.kind === 'field' ? HEADER_H + popover.idx * fieldRowH : 0;
+    popoverY = screen.y + rowTop * scale;
   }
 
   return (
@@ -620,7 +634,7 @@ function TableCardNode({ node }: { node: Node }) {
         d={`M 6 0 H ${width - 6} A 6 6 0 0 1 ${width} 6 V ${HEADER_H} H 0 V 6 A 6 6 0 0 1 6 0 Z`}
         fill={headerColor ?? 'var(--brd2)'}
         style={hasInfo ? { cursor: 'help' } : undefined}
-        onMouseEnter={hasInfo ? openInfo : undefined}
+        onMouseEnter={hasInfo ? openTable : undefined}
         onMouseLeave={hasInfo ? scheduleClose : undefined}
       />
       <text
@@ -672,7 +686,7 @@ function TableCardNode({ node }: { node: Node }) {
               {f.name}
             </text>
             <text
-              x={f.note ? width - PAD - 16 : width - PAD}
+              x={width - PAD}
               y={fy}
               dominantBaseline="central"
               textAnchor="end"
@@ -681,24 +695,57 @@ function TableCardNode({ node }: { node: Node }) {
             >
               {f.type}
             </text>
-            {f.note && <NoteIcon cx={width - PAD - 7} cy={fy} note={f.note} node={node} />}
+            {/* Hover catcher for the field-info popover. Transparent rect over
+                the full row, last in DOM so it's on top and catches pointer
+                events across the whole row width (text/icons below are
+                pointer-events:none or just sit under it). Only fields with a
+                note get a popover — gating avoids a header-only popover that
+                just echoes the inline name/type. */}
+            {f.note && (
+              <rect
+                x={0}
+                y={blockTop}
+                width={width}
+                height={fieldRowH}
+                fill="transparent"
+                style={{ cursor: 'help' }}
+                onMouseEnter={() => openField(i)}
+                onMouseLeave={scheduleClose}
+              />
+            )}
           </g>
         );
       })}
 
-      {infoOpen && overlay && (
-        createPortal(
-          <TableInfoPopoverHTML
-            x={popoverX}
-            y={popoverY}
-            width={POPOVER_W}
-            tableName={table.name}
-            noteLines={noteLines}
-            indexLines={indexLines}
-            onContentMouseEnter={clearCloseTimer}
-            onContentMouseLeave={scheduleClose}
-          />,
-          overlay,
+      {popover && overlay && (
+        popover.kind === 'table' ? (
+          createPortal(
+            <TableInfoPopoverHTML
+              x={popoverX}
+              y={popoverY}
+              width={POPOVER_W}
+              tableName={table.name}
+              noteLines={noteLines}
+              indexLines={indexLines}
+              onContentMouseEnter={clearCloseTimer}
+              onContentMouseLeave={scheduleClose}
+            />,
+            overlay,
+          )
+        ) : (
+          createPortal(
+            <FieldInfoPopoverHTML
+              x={popoverX}
+              y={popoverY}
+              width={POPOVER_W}
+              fieldName={table.fields[popover.idx].name}
+              fieldType={table.fields[popover.idx].type}
+              fieldNote={table.fields[popover.idx].note}
+              onContentMouseEnter={clearCloseTimer}
+              onContentMouseLeave={scheduleClose}
+            />,
+            overlay,
+          )
         )
       )}
     </svg>
@@ -720,22 +767,74 @@ function EnumCardNode({ node }: { node: Node }) {
   const valueRowH = ROW_H;
   const valuesEnd = HEADER_H + enumCard.values.length * valueRowH;
 
-  const hasAnyNote = !!enumCard.note || enumCard.values.some((v) => v.note);
-  const cardNoteTooltip = [
-    enumCard.note ? `[enum] ${enumCard.note}` : null,
-    ...enumCard.values
-      .filter((v) => v.note)
-      .map((v) => `[value ${v.name}] ${v.note}`),
-  ]
-    .filter(Boolean)
-    .join('\n');
-
-  // Enum cards have no indexes → always the collapsed size.
   const height = valuesEnd + 8;
 
   useEffect(() => {
     node.resize(width, height);
   }, [node, width, height]);
+
+  // Per-value popover state — same pattern as TableCardNode's field popover:
+  // 150ms close timer, drag-close, scale/translate reposition. Only values
+  // with a note get a popover (enum values have no type/default, so a
+  // note-less row would render a header-only popover that echoes the name).
+  type PopoverState = { idx: number } | null;
+  const [popover, setPopover] = useState<PopoverState>(null);
+  const [, setTick] = useState(0);
+  const closeTimeoutRef = useRef<number | null>(null);
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimeoutRef.current != null) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  }, []);
+  const scheduleClose = useCallback(() => {
+    clearCloseTimer();
+    closeTimeoutRef.current = window.setTimeout(() => setPopover(null), 150);
+  }, [clearCloseTimer]);
+  const openValue = useCallback((idx: number) => {
+    clearCloseTimer();
+    setPopover((p) => (p?.idx === idx ? p : { idx }));
+  }, [clearCloseTimer]);
+  useEffect(() => {
+    if (!popover) return;
+    node.toFront();
+    const close = () => setPopover(null);
+    node.on('change:position', close);
+    const graph = node.model?.graph;
+    const recompute = () => setTick((t) => t + 1);
+    graph?.on('scale', recompute);
+    graph?.on('translate', recompute);
+    graph?.on('resize', recompute);
+    return () => {
+      node.off('change:position', close);
+      graph?.off('scale', recompute);
+      graph?.off('translate', recompute);
+      graph?.off('resize', recompute);
+      clearCloseTimer();
+    };
+  }, [popover, node, clearCloseTimer]);
+
+  const POPOVER_W = 280;
+  const graph = node.model?.graph;
+  const overlay = graph ? overlayByGraph.get(graph) : null;
+  let popoverX = 0;
+  let popoverY = 0;
+  if (graph && overlay) {
+    const pos = node.getPosition();
+    const size = node.getSize();
+    const screen = graph.localToGraph(pos.x, pos.y, size.width, size.height);
+    const containerW = overlay.clientWidth;
+    const spaceRight = containerW - (screen.x + screen.width);
+    const openRight = spaceRight >= POPOVER_W + 16;
+    popoverX = openRight
+      ? screen.x + screen.width + 8
+      : screen.x - POPOVER_W - 8;
+    if (popoverX < 8) popoverX = Math.min(screen.x + screen.width + 8, Math.max(8, containerW - POPOVER_W - 8));
+    const scale = graph.zoom();
+    const rowTop =
+      popover ? HEADER_H + popover.idx * valueRowH : 0;
+    popoverY = screen.y + rowTop * scale;
+  }
 
   return (
     <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
@@ -775,14 +874,6 @@ function EnumCardNode({ node }: { node: Node }) {
       >
         {enumCard.name}
       </text>
-      {hasAnyNote && (
-        <NoteIcon
-          cx={width - PAD - 5}
-          cy={HEADER_H / 2}
-          note={cardNoteTooltip}
-          node={node}
-        />
-      )}
 
       {enumCard.values.map((v, i) => {
         const blockTop = HEADER_H + i * valueRowH;
@@ -808,10 +899,38 @@ function EnumCardNode({ node }: { node: Node }) {
             >
               {v.name}
             </text>
-            {v.note && <NoteIcon cx={width - PAD - 7} cy={vy} note={v.note} node={node} />}
+            {/* Hover catcher for the value-info popover — same pattern as
+                table field rows. Only values with a note get a popover. */}
+            {v.note && (
+              <rect
+                x={0}
+                y={blockTop}
+                width={width}
+                height={valueRowH}
+                fill="transparent"
+                style={{ cursor: 'help' }}
+                onMouseEnter={() => openValue(i)}
+                onMouseLeave={scheduleClose}
+              />
+            )}
           </g>
         );
       })}
+
+      {popover && overlay && (
+        createPortal(
+          <FieldInfoPopoverHTML
+            x={popoverX}
+            y={popoverY}
+            width={POPOVER_W}
+            fieldName={enumCard.values[popover.idx].name}
+            fieldNote={enumCard.values[popover.idx].note}
+            onContentMouseEnter={clearCloseTimer}
+            onContentMouseLeave={scheduleClose}
+          />,
+          overlay,
+        )
+      )}
     </svg>
   );
 }
@@ -949,61 +1068,100 @@ function TableInfoPopoverHTML({
 }
 
 /**
- * Small popover for per-field notes (Image #5 style). "Note" header label +
- * wrapped note text. Used by NoteIcon for field-level notes and value-level
- * notes on enums.
+ * Per-field / per-value info popover, rendered as plain HTML via a React
+ * portal into the graph's overlay div (same decoupling rationale as
+ * TableInfoPopoverHTML — foreignObject pointer-events inside a transformed
+ * SVG are unreliable in Chromium, so a normal HTML div keeps mouse events
+ * firing and the 150ms close timer honest).
+ *
+ * Structure: header bar (table-grid icon + field name + optional type) →
+ * divider → "Note" label + note content (preserves line breaks, scrolls past
+ * 260px). No Default section: ErField doesn't expose a default value today
+ * (parseDbml doesn't map `dbdefault`), so rendering that section would be
+ * dead code — add it when/if parseDbml gains `default`.
+ *
+ * For enum values, fieldType is omitted and only the note section renders.
  */
-function NotePopover({
+function FieldInfoPopoverHTML({
   x,
   y,
   width,
-  header,
-  lines,
+  fieldName,
+  fieldType,
+  fieldNote,
+  onContentMouseEnter,
+  onContentMouseLeave,
 }: {
   x: number;
   y: number;
   width: number;
-  header: string;
-  lines: string[];
+  fieldName: string;
+  fieldType?: string;
+  fieldNote?: string;
+  onContentMouseEnter: () => void;
+  onContentMouseLeave: () => void;
 }) {
-  const HEADER_H = 20;
-  const LINE_H = 14;
-  const boxH = lines.length * LINE_H + HEADER_H + 12;
+  const hasNote = !!fieldNote;
   return (
-    <g pointerEvents="none">
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={boxH}
-        rx={4}
-        ry={4}
-        fill="var(--surf)"
-        stroke="var(--brd)"
-        strokeWidth={1}
-      />
-      <text
-        x={x + 10}
-        y={y + 13}
-        fontSize={10}
-        fontWeight={700}
-        fill="var(--t3)"
-        letterSpacing="0.4"
-      >
-        {header.toUpperCase()}
-      </text>
-      {lines.map((l, i) => (
-        <text
-          key={i}
-          x={x + 10}
-          y={y + HEADER_H + 13 + i * LINE_H}
-          fontSize={11}
-          fill="var(--t2)"
-        >
-          {l}
-        </text>
-      ))}
-    </g>
+    <div
+      className="rounded-md border bg-[var(--surf)] text-[var(--t1)] text-[13px] font-semibold shadow-md"
+      style={{
+        position: 'absolute',
+        left: x,
+        top: y,
+        width,
+        borderColor: 'var(--brd)',
+        pointerEvents: 'auto',
+        maxHeight: `calc(100% - ${y}px - 8px)`,
+        overflowY: 'auto',
+      }}
+      onMouseEnter={onContentMouseEnter}
+      onMouseLeave={onContentMouseLeave}
+    >
+      {/* header bar: grid icon + field name + type (orange/acc, monospace) */}
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[var(--hov)] rounded-t-md">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <svg
+            viewBox="0 0 12 12"
+            fill="none"
+            width="12"
+            height="12"
+            className="w-3 h-3 shrink-0 text-[var(--t1)]"
+          >
+            <rect x="0.5" y="0.5" width="11" height="11" rx="1.5" stroke="currentColor" />
+            <line x1="0.5" y1="4" x2="11.5" y2="4" stroke="currentColor" />
+            <line x1="4" y1="4" x2="4" y2="11.5" stroke="currentColor" />
+          </svg>
+          <div className="flex items-baseline gap-1.5 min-w-0 flex-wrap">
+            <span className="text-sm font-semibold break-all">{fieldName}</span>
+            {fieldType && (
+              <span
+                className="text-sm font-normal min-w-0 break-all text-[var(--acc)]"
+                style={{ fontFamily: 'Inconsolata, monospace' }}
+              >
+                {fieldType}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="h-px bg-[var(--brd2)]" />
+      {hasNote && (
+        <>
+          <div className="px-3 pt-1 pb-1 text-xs font-semibold text-[var(--t2)]">
+            Note
+          </div>
+          {/* pre-wrap: preserve \n in the note AND wrap long lines instead of
+              overflowing horizontally. max-h-[260px] mirrors the reference. */}
+          <div
+            className="px-3 pb-2.5 text-xs font-normal text-[var(--t2)] max-h-[260px] overflow-y-auto overflow-x-hidden"
+            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+          >
+            {fieldNote}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -1050,84 +1208,4 @@ function IndexPill({
       </text>
     </g>
   );
-}
-
-/**
- * Per-field / per-value "i" icon with its own small popover (Image #5 style:
- * "Note" header + wrapped note text). Uncontrolled — manages its own open
- * state. Closes on node:change:position so the popover's rect border doesn't
- * ghost at the pre-drag position.
- */
-function NoteIcon({
-  cx,
-  cy,
-  note,
-  node,
-}: {
-  cx: number;
-  cy: number;
-  note: string;
-  node: Node;
-}) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const close = () => setOpen(false);
-    node.on('change:position', close);
-    return () => {
-      node.off('change:position', close);
-    };
-  }, [open, node]);
-  const lines = wrapNote(note, 38);
-  const maxLine = Math.max(1, ...lines.map((l) => l.length));
-  const boxW = Math.max(160, maxLine * 6.4 + 20);
-  const HEADER_H = 20;
-  const LINE_H = 14;
-  const boxH = lines.length * LINE_H + HEADER_H + 12;
-  // Coords are relative to the icon center (0,0) — parent <g> is translated
-  // to (cx, cy). Popover opens above the icon; if it'd clip the top, open below.
-  const boxX = -boxW / 2;
-  const boxYOpenAbove = -8 - boxH;
-  const boxY = cy + boxYOpenAbove >= 0 ? boxYOpenAbove : 8;
-  return (
-    <g
-      transform={`translate(${cx} ${cy})`}
-      style={{ cursor: 'pointer' }}
-      onPointerDown={(e) => {
-        e.stopPropagation();
-        setOpen((v) => !v);
-      }}
-    >
-      <circle r={5} fill="var(--acc)" />
-      <text
-        dominantBaseline="central"
-        textAnchor="middle"
-        fontSize={9}
-        fontWeight={700}
-        fill="#ffffff"
-        pointerEvents="none"
-      >
-        i
-      </text>
-      {open && (
-        <NotePopover x={boxX} y={boxY} width={boxW} header="Note" lines={lines} />
-      )}
-    </g>
-  );
-}
-
-/** Hard-wrap `text` for the NoteIcon popover. Splits on \n first, then
- *  hard-wraps each paragraph at `maxChars`. */
-function wrapNote(text: string, maxChars: number): string[] {
-  const out: string[] = [];
-  for (const para of text.split('\n')) {
-    if (para.length <= maxChars) {
-      out.push(para);
-      continue;
-    }
-    for (let i = 0; i < para.length; i += maxChars) {
-      out.push(para.slice(i, i + maxChars));
-    }
-  }
-  return out.length > 0 ? out : [''];
 }
