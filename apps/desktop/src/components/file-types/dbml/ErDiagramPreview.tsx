@@ -8,8 +8,15 @@ import {
   tablesBounds,
   HEADER_H,
   ROW_H,
+  FIELD_NOTE_H,
+  NOTE_BLOCK_H,
+  INDEX_ROW_H,
+  BLOCK_PAD,
+  ENUM_PALETTE,
+  wrapText,
   type ErLayout,
   type PositionedTable,
+  type PositionedEnum,
   type Point,
 } from './erLayout';
 
@@ -93,6 +100,7 @@ export function ErDiagramPreview({ content }: PreviewProps) {
       {state.kind === 'error' && <ErrorView errors={state.errors} />}
       {state.kind === 'ok' && (
         <Diagram
+          schema={state.schema}
           layout={state.layout}
           manualPositionsRef={manualPositionsRef}
           containerW={size.w}
@@ -128,11 +136,13 @@ function ErrorView({ errors }: { errors: ErParseError[] }) {
 }
 
 function Diagram({
+  schema,
   layout,
   manualPositionsRef,
   containerW,
   containerH,
 }: {
+  schema: ErSchema;
   layout: ErLayout;
   manualPositionsRef: React.MutableRefObject<Map<string, Point>>;
   containerW: number;
@@ -142,6 +152,7 @@ function Diagram({
   // the SVG without re-running d3-force. Initialized from layout each time
   // the layout identity changes (content re-parse), then mutated by drags.
   const [tables, setTables] = useState<PositionedTable[]>(layout.tables);
+  const [enums, setEnums] = useState<PositionedEnum[]>(layout.enums);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const dragStateRef = useRef<{
     id: string;
@@ -151,6 +162,7 @@ function Diagram({
     originY: number;
     width: number;
     height: number;
+    isEnum: boolean;
   } | null>(null);
 
   // Viewport state: zoom + pan translate the whole content group; grid is a
@@ -170,6 +182,19 @@ function Diagram({
   } | null>(null);
   const [panning, setPanning] = useState(false);
 
+  // Per-card note expansion (table name or `enum:name`). Drives whether the
+  // table/enum note block renders full or collapsed-2-line.
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+  const toggleNote = useCallback((id: string) => {
+    setExpandedNotes((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const [projectExpanded, setProjectExpanded] = useState(false);
+
   // Keep a ref of the current zoom so the table-drag move handler (attached
   // once per drag) can divide screen deltas by the live zoom without
   // re-subscribing on every zoom change.
@@ -182,6 +207,7 @@ function Diagram({
 
   useEffect(() => {
     setTables(layout.tables);
+    setEnums(layout.enums);
   }, [layout]);
 
   // Re-derive ref paths whenever table positions change so relationship lines
@@ -227,9 +253,15 @@ function Diagram({
       const z = zoomRef.current;
       const nx = ds.originX + (e.clientX - ds.startX) / z;
       const ny = ds.originY + (e.clientY - ds.startY) / z;
-      setTables((prev) =>
-        prev.map((t) => (t.name === ds.id ? { ...t, x: nx, y: ny } : t)),
-      );
+      if (ds.isEnum) {
+        setEnums((prev) =>
+          prev.map((t) => (t.name === ds.id ? { ...t, x: nx, y: ny } : t)),
+        );
+      } else {
+        setTables((prev) =>
+          prev.map((t) => (t.name === ds.id ? { ...t, x: nx, y: ny } : t)),
+        );
+      }
     };
     const onPanMove = (e: PointerEvent) => {
       const ps = panStateRef.current;
@@ -245,14 +277,24 @@ function Diagram({
       const ds = dragStateRef.current;
       if (ds) {
         // Persist the final position into manualPositions so the next
-        // content-edit re-layout keeps this table where the user dropped it.
-        setTables((prev) => {
-          const table = prev.find((t) => t.name === ds.id);
-          if (table) {
-            manualPositionsRef.current.set(ds.id, { x: table.x, y: table.y });
-          }
-          return prev;
-        });
+        // content-edit re-layout keeps this card where the user dropped it.
+        if (ds.isEnum) {
+          setEnums((prev) => {
+            const card = prev.find((t) => t.name === ds.id);
+            if (card) {
+              manualPositionsRef.current.set(ds.id, { x: card.x, y: card.y });
+            }
+            return prev;
+          });
+        } else {
+          setTables((prev) => {
+            const table = prev.find((t) => t.name === ds.id);
+            if (table) {
+              manualPositionsRef.current.set(ds.id, { x: table.x, y: table.y });
+            }
+            return prev;
+          });
+        }
         dragStateRef.current = null;
         setDraggingId(null);
       }
@@ -272,7 +314,7 @@ function Diagram({
   }, [draggingId, panning, manualPositionsRef]);
 
   const onTablePointerDown = useCallback(
-    (e: ReactPointerEvent<SVGGElement>, table: PositionedTable) => {
+    (e: ReactPointerEvent<SVGGElement>, table: PositionedTable, isEnum = false) => {
       // Only react to primary button drags.
       if (e.button !== 0) return;
       e.stopPropagation();
@@ -286,6 +328,7 @@ function Diagram({
         originY: table.y,
         width: table.width,
         height: table.height,
+        isEnum,
       };
       setDraggingId(table.name);
     },
@@ -301,10 +344,11 @@ function Diagram({
     [panX, panY],
   );
 
-  // "Fit all": zoom so every table fits the viewport with margin, then
+  // "Fit all": zoom so every card fits the viewport with margin, then
   // center the bounding box.
   const fit = useCallback(() => {
-    const b = tablesBounds(tables);
+    const allCards = [...tables, ...(enums as unknown as PositionedTable[])];
+    const b = tablesBounds(allCards);
     const bw = b.maxX - b.minX;
     const bh = b.maxY - b.minY;
     if (bw <= 0 || bh <= 0) return;
@@ -315,9 +359,9 @@ function Diagram({
     setZoom(z);
     setPanX((containerW - bw * z) / 2 - b.minX * z);
     setPanY((containerH - bh * z) / 2 - b.minY * z);
-  }, [tables, containerW, containerH]);
+  }, [tables, enums, containerW, containerH]);
 
-  if (tables.length === 0) {
+  if (tables.length === 0 && enums.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-[13px] text-[var(--t3)]">
         空 ER 图 — 在编辑器中定义 Table 以渲染关系图
@@ -327,7 +371,7 @@ function Diagram({
 
   // Grid background rect covers the tables' bounds plus a generous margin so
   // panning never reveals empty (grid-less) canvas.
-  const b = tablesBounds(tables);
+  const b = tablesBounds([...tables, ...(enums as unknown as PositionedTable[])]);
   const gridRect = {
     x: b.minX - 2000,
     y: b.minY - 2000,
@@ -345,6 +389,15 @@ function Diagram({
         onFit={fit}
         onToggleGrid={() => setShowGrid((v) => !v)}
       />
+      {schema.projectNote && (
+        <ProjectBanner
+          name={schema.projectName}
+          databaseType={schema.databaseType}
+          note={schema.projectNote}
+          expanded={projectExpanded}
+          onToggle={() => setProjectExpanded((v) => !v)}
+        />
+      )}
       <svg
         ref={svgRef}
         className="er-diagram"
@@ -466,6 +519,19 @@ function Diagram({
               headerColor={t.headerColor ?? HEADER_PALETTE[i % HEADER_PALETTE.length]}
               dragging={draggingId === t.name}
               onPointerDown={onTablePointerDown}
+              noteExpanded={expandedNotes.has(`table:${t.name}`)}
+              onToggleNote={() => toggleNote(`table:${t.name}`)}
+            />
+          ))}
+          {enums.map((e, i) => (
+            <EnumCard
+              key={`enum:${e.name}`}
+              enumCard={e}
+              headerColor={ENUM_PALETTE[i % ENUM_PALETTE.length]}
+              dragging={draggingId === e.name}
+              onPointerDown={(ev, card) => onTablePointerDown(ev, card, true)}
+              noteExpanded={expandedNotes.has(`enum:${e.name}`)}
+              onToggleNote={() => toggleNote(`enum:${e.name}`)}
             />
           ))}
         </g>
@@ -549,14 +615,36 @@ function TableCard({
   headerColor,
   dragging,
   onPointerDown,
+  noteExpanded,
+  onToggleNote,
 }: {
   table: PositionedTable;
   headerColor: string;
   dragging: boolean;
   onPointerDown: (e: ReactPointerEvent<SVGGElement>, table: PositionedTable) => void;
+  noteExpanded: boolean;
+  onToggleNote: () => void;
 }) {
-  const { x, y, width, height, name, fields } = table;
+  const { x, y, width, name, fields } = table;
   const PAD = 12;
+  const hasFieldNotes = fields.some((f) => f.note);
+  const fieldRowH = ROW_H + (hasFieldNotes ? FIELD_NOTE_H : 0);
+  const fieldsEnd = y + HEADER_H + fields.length * fieldRowH;
+  const innerW = width - PAD * 2;
+  const noteMaxChars = Math.max(8, Math.floor(innerW / 6));
+  const noteLines = table.note ? wrapText(table.note, noteMaxChars) : [];
+  const visibleNoteLines = noteExpanded ? noteLines : noteLines.slice(0, 2);
+  const noteBlockH = noteLines.length > 0
+    ? (noteExpanded ? noteLines.length * 16 : NOTE_BLOCK_H)
+    : 0;
+  const indexes = table.indexes ?? [];
+  const hasIndexes = indexes.length > 0;
+
+  // Cursor for stacking note + index blocks after the fields section.
+  let cursorY = fieldsEnd;
+  const noteY = noteBlockH > 0 ? cursorY + BLOCK_PAD : cursorY;
+  cursorY = noteBlockH > 0 ? noteY + noteBlockH : cursorY;
+  const indexY = hasIndexes ? cursorY + BLOCK_PAD : cursorY;
 
   return (
     <g
@@ -570,7 +658,7 @@ function TableCard({
         x={x}
         y={y}
         width={width}
-        height={height}
+        height={table.height}
         rx={6}
         ry={6}
         fill="var(--surf)"
@@ -595,23 +683,23 @@ function TableCard({
 
       {/* fields */}
       {fields.map((f, i) => {
-        const fy = y + HEADER_H + i * ROW_H + ROW_H / 2;
+        const blockTop = y + HEADER_H + i * fieldRowH;
+        const fy = blockTop + ROW_H / 2;
+        const noteY2 = blockTop + ROW_H + (hasFieldNotes ? FIELD_NOTE_H / 2 : 0);
         return (
           <g key={f.name + i}>
             {/* row separator (skip the first row — header bottom already drawn) */}
             {i > 0 && (
               <line
                 x1={x}
-                y1={y + HEADER_H + i * ROW_H}
+                y1={blockTop}
                 x2={x + width}
-                y2={y + HEADER_H + i * ROW_H}
+                y2={blockTop}
                 stroke="var(--brd2)"
                 strokeWidth={1}
               />
             )}
-            {f.pk ? (
-              <KeyIcon cx={x + PAD + 6} cy={fy} />
-            ) : null}
+            {f.pk ? <KeyIcon cx={x + PAD + 6} cy={fy} /> : null}
             <text
               x={x + PAD + (f.pk ? 18 : 0)}
               y={fy}
@@ -632,10 +720,341 @@ function TableCard({
             >
               {f.type}
             </text>
+            {hasFieldNotes && f.note && (
+              <text
+                x={x + PAD}
+                y={noteY2}
+                dominantBaseline="central"
+                fontSize={11}
+                fill="var(--t3)"
+              >
+                {f.note.length > noteMaxChars
+                  ? `${f.note.slice(0, noteMaxChars - 1)}…`
+                  : f.note}
+                <title>{f.note}</title>
+              </text>
+            )}
           </g>
         );
       })}
+
+      {/* table note block */}
+      {noteBlockH > 0 && (
+        <g>
+          <line
+            x1={x}
+            y1={noteY}
+            x2={x + width}
+            y2={noteY}
+            stroke="var(--brd2)"
+            strokeWidth={1}
+          />
+          {visibleNoteLines.map((line, i) => (
+            <text
+              key={i}
+              x={x + PAD}
+              y={noteY + 8 + i * 16}
+              dominantBaseline="central"
+              fontSize={11}
+              fill="var(--t3)"
+            >
+              {line}
+            </text>
+          ))}
+          {!noteExpanded && noteLines.length > 2 && (
+            <text
+              x={x + width - PAD}
+              y={noteY + 8 + 1 * 16}
+              dominantBaseline="central"
+              textAnchor="end"
+              fontSize={10}
+              fill="var(--acc)"
+              style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                onToggleNote();
+              }}
+            >
+              展开
+              <title>{table.note}</title>
+            </text>
+          )}
+          {noteExpanded && (
+            <text
+              x={x + width - PAD}
+              y={noteY + 8}
+              dominantBaseline="central"
+              textAnchor="end"
+              fontSize={10}
+              fill="var(--acc)"
+              style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                onToggleNote();
+              }}
+            >
+              收起
+            </text>
+          )}
+        </g>
+      )}
+
+      {/* indexes block */}
+      {hasIndexes && (
+        <g>
+          <line
+            x1={x}
+            y1={indexY}
+            x2={x + width}
+            y2={indexY}
+            stroke="var(--brd2)"
+            strokeWidth={1}
+          />
+          {indexes.map((ix, i) => {
+            const iy = indexY + 8 + i * INDEX_ROW_H + INDEX_ROW_H / 2 - 4;
+            const label = `${ix.name ?? '(unnamed)'} (${ix.columns.join(', ')})${ix.unique ? ' unique' : ''}${ix.note ? ' — ' + ix.note : ''}`;
+            return (
+              <text
+                key={i}
+                x={x + PAD}
+                y={iy}
+                dominantBaseline="central"
+                fontSize={11}
+                fill="var(--t3)"
+                fontStyle="italic"
+              >
+                {label.length > noteMaxChars ? `${label.slice(0, noteMaxChars - 1)}…` : label}
+                <title>{label}</title>
+              </text>
+            );
+          })}
+        </g>
+      )}
     </g>
+  );
+}
+
+function EnumCard({
+  enumCard,
+  headerColor,
+  dragging,
+  onPointerDown,
+  noteExpanded,
+  onToggleNote,
+}: {
+  enumCard: PositionedEnum;
+  headerColor: string;
+  dragging: boolean;
+  onPointerDown: (e: ReactPointerEvent<SVGGElement>, card: PositionedTable) => void;
+  noteExpanded: boolean;
+  onToggleNote: () => void;
+}) {
+  const { x, y, width, name, values } = enumCard;
+  const PAD = 12;
+  const hasValueNotes = values.some((v) => v.note);
+  const valueRowH = ROW_H + (hasValueNotes ? FIELD_NOTE_H : 0);
+  const valuesEnd = y + HEADER_H + values.length * valueRowH;
+  const innerW = width - PAD * 2;
+  const noteMaxChars = Math.max(8, Math.floor(innerW / 6));
+  const noteLines = enumCard.note ? wrapText(enumCard.note, noteMaxChars) : [];
+  const visibleNoteLines = noteExpanded ? noteLines : noteLines.slice(0, 2);
+  const noteBlockH = noteLines.length > 0
+    ? (noteExpanded ? noteLines.length * 16 : NOTE_BLOCK_H)
+    : 0;
+  let cursorY = valuesEnd;
+  const noteY = noteBlockH > 0 ? cursorY + BLOCK_PAD : cursorY;
+
+  const synthetic = enumCard as unknown as PositionedTable;
+  return (
+    <g
+      className="er-enum"
+      style={{ cursor: dragging ? 'grabbing' : 'grab' }}
+      onPointerDown={(e) => onPointerDown(e, synthetic)}
+      filter="url(#er-card-shadow)"
+    >
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={enumCard.height}
+        rx={6}
+        ry={6}
+        fill="var(--surf)"
+        stroke="var(--brd)"
+        strokeWidth={1}
+        strokeDasharray="3 2"
+      />
+      <path
+        d={`M ${x + 6} ${y} H ${x + width - 6} A 6 6 0 0 1 ${x + width} ${y + 6} V ${y + HEADER_H} H ${x} V ${y + 6} A 6 6 0 0 1 ${x + 6} ${y} Z`}
+        fill={headerColor}
+      />
+      <text
+        x={x + PAD}
+        y={y + HEADER_H / 2}
+        dominantBaseline="central"
+        fontSize={11}
+        fill="#ffffffcc"
+      >
+        {'«enum» '}
+      </text>
+      <text
+        x={x + PAD + 42}
+        y={y + HEADER_H / 2}
+        dominantBaseline="central"
+        fontSize={13}
+        fontWeight={700}
+        fill="#ffffff"
+      >
+        {name}
+      </text>
+
+      {values.map((v, i) => {
+        const blockTop = y + HEADER_H + i * valueRowH;
+        const vy = blockTop + ROW_H / 2;
+        const noteY2 = blockTop + ROW_H + (hasValueNotes ? FIELD_NOTE_H / 2 : 0);
+        return (
+          <g key={v.name + i}>
+            {i > 0 && (
+              <line
+                x1={x}
+                y1={blockTop}
+                x2={x + width}
+                y2={blockTop}
+                stroke="var(--brd2)"
+                strokeWidth={1}
+              />
+            )}
+            <text
+              x={x + PAD}
+              y={vy}
+              dominantBaseline="central"
+              fontSize={12}
+              fill="var(--t2)"
+            >
+              {v.name}
+            </text>
+            {hasValueNotes && v.note && (
+              <text
+                x={x + PAD}
+                y={noteY2}
+                dominantBaseline="central"
+                fontSize={11}
+                fill="var(--t3)"
+              >
+                {v.note.length > noteMaxChars
+                  ? `${v.note.slice(0, noteMaxChars - 1)}…`
+                  : v.note}
+                <title>{v.note}</title>
+              </text>
+            )}
+          </g>
+        );
+      })}
+
+      {noteBlockH > 0 && (
+        <g>
+          <line
+            x1={x}
+            y1={noteY}
+            x2={x + width}
+            y2={noteY}
+            stroke="var(--brd2)"
+            strokeWidth={1}
+          />
+          {visibleNoteLines.map((line, i) => (
+            <text
+              key={i}
+              x={x + PAD}
+              y={noteY + 8 + i * 16}
+              dominantBaseline="central"
+              fontSize={11}
+              fill="var(--t3)"
+            >
+              {line}
+            </text>
+          ))}
+          {!noteExpanded && noteLines.length > 2 && (
+            <text
+              x={x + width - PAD}
+              y={noteY + 8 + 16}
+              dominantBaseline="central"
+              textAnchor="end"
+              fontSize={10}
+              fill="var(--acc)"
+              style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                onToggleNote();
+              }}
+            >
+              展开
+              <title>{enumCard.note}</title>
+            </text>
+          )}
+          {noteExpanded && (
+            <text
+              x={x + width - PAD}
+              y={noteY + 8}
+              dominantBaseline="central"
+              textAnchor="end"
+              fontSize={10}
+              fill="var(--acc)"
+              style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                onToggleNote();
+              }}
+            >
+              收起
+            </text>
+          )}
+        </g>
+      )}
+    </g>
+  );
+}
+
+function ProjectBanner({
+  name,
+  databaseType,
+  note,
+  expanded,
+  onToggle,
+}: {
+  name?: string;
+  databaseType?: string;
+  note: string;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const header = [
+    name ? `Project: ${name}` : 'Project',
+    databaseType ? `· ${databaseType}` : '',
+  ].filter(Boolean).join(' ');
+  return (
+    <div className="absolute left-2 top-2 z-10 max-w-[min(560px,calc(100%-32px))] bg-[var(--surf)] border border-[var(--brd)] rounded-md px-3 py-2 text-[12px] shadow-sm">
+      <div className="flex items-center gap-2">
+        <span className="font-semibold text-[var(--t1)] truncate">{header}</span>
+        {note.length > 80 && (
+          <button
+            type="button"
+            className="text-[10px] text-[var(--acc)] hover:underline shrink-0"
+            onClick={onToggle}
+          >
+            {expanded ? '收起' : '展开'}
+          </button>
+        )}
+      </div>
+      {expanded ? (
+        <div className="mt-1 text-[11px] text-[var(--t3)] whitespace-pre-wrap break-words">
+          {note}
+        </div>
+      ) : (
+        <div className="mt-1 text-[11px] text-[var(--t3)] truncate" title={note}>
+          {note.length > 80 ? `${note.slice(0, 79)}…` : note}
+        </div>
+      )}
+    </div>
   );
 }
 

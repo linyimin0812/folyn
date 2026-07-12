@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Reviewer checks: useEffect cleanup, store selector granularity, forbidden patterns — applies to ER preview changes."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Reviewer checks: named exports, Props interface naming, styling tokens — applies to new TableCard / EnumCard / ProjectBanner."}

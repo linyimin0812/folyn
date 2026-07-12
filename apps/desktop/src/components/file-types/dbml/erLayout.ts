@@ -1,5 +1,5 @@
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force';
-import type { ErSchema, ErTable, ErRef } from './parseDbml';
+import type { ErSchema, ErTable, ErEnum, ErRef } from './parseDbml';
 
 /**
  * Card geometry constants shared between layout estimation and SVG rendering
@@ -7,11 +7,31 @@ import type { ErSchema, ErTable, ErRef } from './parseDbml';
  */
 export const HEADER_H = 30;
 export const ROW_H = 22;
+export const FIELD_NOTE_H = 14; // extra row below each field for the field note
+export const NOTE_BLOCK_H = 38; // collapsed table-note block (2 lines + padding)
+export const INDEX_ROW_H = 16; // one row in the indexes block
+export const BLOCK_PAD = 8; // padding around table-note / index blocks
 
 /**
- * Estimate table card dimensions from field count and text length.
- * Sized to match the SVG rendering in ErDiagramPreview (same font metrics),
- * so forceCollide keeps cards from overlapping their drawn size.
+ * Distinct palette for enum cards so they're visually distinguishable from
+ * regular tables (dbdiagram.io uses a slightly different shade family).
+ */
+export const ENUM_PALETTE = [
+  '#8e44ad',
+  '#16a085',
+  '#27ae60',
+  '#2980b9',
+  '#c0392b',
+  '#d35400',
+  '#7f8c8d',
+  '#34495e',
+];
+
+/**
+ * Estimate table card dimensions from field count, text length, and the
+ * presence of note / index blocks. Sized to match the SVG rendering in
+ * ErDiagramPreview so forceCollide keeps cards from overlapping their
+ * drawn size.
  */
 export function estimateTableSize(table: ErTable): { width: number; height: number } {
   const PAD = 12;
@@ -21,10 +41,68 @@ export function estimateTableSize(table: ErTable): { width: number; height: numb
   for (const f of table.fields) {
     // "name  type" combined label length (marks no longer rendered as text)
     maxLabel = Math.max(maxLabel, f.name.length + f.type.length + 3);
+    if (f.note) {
+      maxLabel = Math.max(maxLabel, f.note.length + 4);
+    }
+  }
+  if (table.note) {
+    // Note wraps but its widest single line (split on \n then by width) drives min width.
+    for (const line of wrapText(table.note, Math.floor(220 / CHAR_W))) {
+      maxLabel = Math.max(maxLabel, line.length);
+    }
+  }
+  for (const ix of table.indexes ?? []) {
+    const cols = ix.columns.join(', ');
+    const label = `${ix.name ?? ''} (${cols})${ix.unique ? ' unique' : ''}`;
+    maxLabel = Math.max(maxLabel, label.length);
   }
   const width = Math.max(160, maxLabel * CHAR_W + PAD * 2);
-  const height = HEADER_H + table.fields.length * ROW_H + PAD;
+  const fieldRows = table.fields.length * (ROW_H + (table.fields.some((f) => f.note) ? FIELD_NOTE_H : 0));
+  const noteBlock = table.note ? NOTE_BLOCK_H + BLOCK_PAD : 0;
+  const indexBlock = (table.indexes?.length ?? 0) > 0
+    ? table.indexes.length * INDEX_ROW_H + BLOCK_PAD
+    : 0;
+  const height = HEADER_H + fieldRows + noteBlock + indexBlock + PAD;
   return { width, height };
+}
+
+/**
+ * Estimate enum card dimensions. Each value row has just the name + a note
+ * row, no type column / no PK icon. Header height matches table cards.
+ */
+export function estimateEnumSize(e: ErEnum): { width: number; height: number } {
+  const PAD = 12;
+  const CHAR_W = 7.2;
+  let maxLabel = e.name.length + 8; // include «enum» prefix
+  for (const v of e.values) {
+    maxLabel = Math.max(maxLabel, v.name.length);
+    if (v.note) maxLabel = Math.max(maxLabel, v.note.length + 4);
+  }
+  const width = Math.max(160, maxLabel * CHAR_W + PAD * 2);
+  const valueRows = e.values.length * (ROW_H + (e.values.some((v) => v.note) ? FIELD_NOTE_H : 0));
+  const noteBlock = e.note ? NOTE_BLOCK_H + BLOCK_PAD : 0;
+  const height = HEADER_H + valueRows + noteBlock + PAD;
+  return { width, height };
+}
+
+/**
+ * Wrap `text` into lines of at most `maxChars` characters by splitting on
+ * existing newlines first, then hard-wrapping each paragraph. Used for SVG
+ * <tspan> line slicing in the table-note block.
+ */
+export function wrapText(text: string, maxChars: number): string[] {
+  if (maxChars <= 0) return [text];
+  const out: string[] = [];
+  for (const para of text.split('\n')) {
+    if (para.length <= maxChars) {
+      out.push(para);
+      continue;
+    }
+    for (let i = 0; i < para.length; i += maxChars) {
+      out.push(para.slice(i, i + maxChars));
+    }
+  }
+  return out.length > 0 ? out : [''];
 }
 
 export interface Point {
@@ -39,6 +117,13 @@ export interface PositionedTable extends ErTable {
   /** true when x/y came from a manual drag position (skip re-layout) */
   manual?: boolean;
 }
+export interface PositionedEnum extends ErEnum {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  manual?: boolean;
+}
 export interface LaidRef extends ErRef {
   /** anchor points on table borders + cardinality labels */
   from: { x: number; y: number; label: string };
@@ -47,6 +132,7 @@ export interface LaidRef extends ErRef {
 }
 export interface ErLayout {
   tables: PositionedTable[];
+  enums: PositionedEnum[];
   refs: LaidRef[];
   width: number;
   height: number;
@@ -228,11 +314,13 @@ export function layoutEr(
   manualPositions?: Map<string, Point>,
 ): ErLayout {
   const tables = schema.tables;
-  if (tables.length === 0) {
-    return { tables: [], refs: [], width: viewW, height: viewH };
+  const enums = schema.enums ?? [];
+  if (tables.length === 0 && enums.length === 0) {
+    return { tables: [], enums: [], refs: [], width: viewW, height: viewH };
   }
 
-  const sizes = new Map(tables.map((t) => [t.name, estimateTableSize(t)]));
+  const tableSizes = new Map(tables.map((t) => [t.name, estimateTableSize(t)]));
+  const enumSizes = new Map(enums.map((e) => [e.name, estimateEnumSize(e)]));
   const manual = manualPositions ?? new Map<string, Point>();
 
   // `manualPositions` stores top-left {x,y} (matching PositionedTable.x/y).
@@ -244,14 +332,16 @@ export function layoutEr(
 
   // Deterministic grid start positions so repeated parses of the same input
   // produce a stable layout (d3-force has no built-in seed).
-  const cols = Math.ceil(Math.sqrt(tables.length));
+  const allCardNames = [...tables.map((t) => t.name), ...enums.map((e) => e.name)];
+  const totalCards = allCardNames.length;
+  const cols = Math.ceil(Math.sqrt(totalCards));
   const cellW = 280;
   const cellH = 220;
   const simNodes: SimNode[] = [];
   const fixedPositions = new Map<string, Point>();
   let gridIndex = 0;
   for (const t of tables) {
-    const s = sizes.get(t.name)!;
+    const s = tableSizes.get(t.name)!;
     const mp = manual.get(t.name);
     if (mp) {
       fixedPositions.set(t.name, mp);
@@ -261,7 +351,25 @@ export function layoutEr(
       simNodes.push({
         id: t.name,
         x: col * cellW - (cols * cellW) / 2,
-        y: row * cellH - (Math.ceil(tables.length / cols) * cellH) / 2,
+        y: row * cellH - (Math.ceil(totalCards / cols) * cellH) / 2,
+        width: s.width,
+        height: s.height,
+      });
+      gridIndex += 1;
+    }
+  }
+  for (const e of enums) {
+    const s = enumSizes.get(e.name)!;
+    const mp = manual.get(e.name);
+    if (mp) {
+      fixedPositions.set(e.name, mp);
+    } else {
+      const col = gridIndex % cols;
+      const row = Math.floor(gridIndex / cols);
+      simNodes.push({
+        id: e.name,
+        x: col * cellW - (cols * cellW) / 2,
+        y: row * cellH - (Math.ceil(totalCards / cols) * cellH) / 2,
         width: s.width,
         height: s.height,
       });
@@ -270,13 +378,9 @@ export function layoutEr(
   }
 
   const nodeById = new Map(simNodes.map((n) => [n.id, n]));
-  // Build links that reference whichever side exists (fixed or sim node).
-  // forceLink needs actual node objects in the node array; for fixed tables
-  // we add them as pinned nodes (fx/fy) so the simulator can resolve links
-  // while keeping their coordinates locked.
   const fixedNodes: SimNode[] = [];
   for (const [id, p] of fixedPositions) {
-    const s = sizes.get(id);
+    const s = tableSizes.get(id) ?? enumSizes.get(id);
     if (!s) continue;
     const c = toCenter(p, s.width, s.height);
     const node: SimNode & { fx?: number; fy?: number } = {
@@ -305,7 +409,7 @@ export function layoutEr(
       'link',
       forceLink<SimNode, SimLink>(simLinks)
         .id((d) => d.id)
-        .distance(220),
+        .distance(280),
     )
     .force('charge', forceManyBody().strength(-900))
     .force('center', forceCenter(0, 0))
@@ -335,7 +439,7 @@ export function layoutEr(
   // Expand bounds to include each fixed table's box so the SVG viewport
   // still covers manually-positioned tables (without shifting them).
   for (const [id, p] of fixedPositions) {
-    const s = sizes.get(id);
+    const s = tableSizes.get(id) ?? enumSizes.get(id);
     if (!s) continue;
     minX = Math.min(minX, p.x);
     minY = Math.min(minY, p.y);
@@ -346,10 +450,9 @@ export function layoutEr(
   const dy = -minY + 40;
 
   const positioned: PositionedTable[] = tables.map((t) => {
-    const s = sizes.get(t.name)!;
+    const s = tableSizes.get(t.name)!;
     const mp = fixedPositions.get(t.name);
     if (mp) {
-      // Manual position preserved verbatim (top-left coords).
       return {
         ...t,
         x: mp.x,
@@ -360,7 +463,6 @@ export function layoutEr(
       };
     }
     const n = nodeById.get(t.name)!;
-    // Convert shifted center back to top-left.
     return {
       ...t,
       x: n.x + dx - s.width / 2,
@@ -371,6 +473,31 @@ export function layoutEr(
     };
   });
 
+  const positionedEnums: PositionedEnum[] = enums.map((e) => {
+    const s = enumSizes.get(e.name)!;
+    const mp = fixedPositions.get(e.name);
+    if (mp) {
+      return {
+        ...e,
+        x: mp.x,
+        y: mp.y,
+        width: s.width,
+        height: s.height,
+        manual: true,
+      };
+    }
+    const n = nodeById.get(e.name)!;
+    return {
+      ...e,
+      x: n.x + dx - s.width / 2,
+      y: n.y + dy - s.height / 2,
+      width: s.width,
+      height: s.height,
+      manual: false,
+    };
+  });
+
+  // Refs anchor only against tables (enums don't participate in relationships).
   const laidRefs: LaidRef[] = schema.refs.map((r) => {
     const { from, to, path } = refEndpoints(r, positioned);
     return { ...r, from, to, path };
@@ -378,6 +505,7 @@ export function layoutEr(
 
   return {
     tables: positioned,
+    enums: positionedEnums,
     refs: laidRefs,
     width: Math.max(viewW, maxX - minX + 80),
     height: Math.max(viewH, maxY - minY + 80),
