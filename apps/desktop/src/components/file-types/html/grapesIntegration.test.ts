@@ -322,8 +322,7 @@ line2</code></pre></div>
     expect((rebuilt.match(/<\/body>/gi) || []).length).toBe(1);
   });
 
-  it('#12c two consecutive round-trips are idempotent (no body content growth)', () => {
-    // The body-double-wrap bug caused exponential content growth across
+  it('#12c two consecutive round-trips are idempotent (no body content growth)', () => {    // The body-double-wrap bug caused exponential content growth across
     // repeated round-trips. After the fix, body content should be stable.
     // (CSS may still grow slightly — GrapesJS prepends reset rules on each
     // setStyle, which is benign CSS redundancy, not content duplication.)
@@ -351,5 +350,26 @@ line2</code></pre>
     const ratio = p3.bodyContent.length / p2.bodyContent.length;
     expect(ratio).toBeGreaterThan(0.8);
     expect(ratio).toBeLessThan(1.2);
+  });
+
+  it('#13b reconstructHtml serializes var() in shorthand verbatim from parsed.styleBlocks', () => {
+    // End-to-end: parse a file with var()-in-shorthand CSS, then reconstruct,
+    // and verify the shorthand-with-var survives (GrapesJS's getCss would
+    // drop the background:var(--bg) declaration).
+    const source = `<!DOCTYPE html>
+<html><head><style>
+:root { --bg: #fafafa; --ink: #1a1a1a; }
+body { background: var(--bg); color: var(--ink); padding: 24px; }
+th { background: var(--soft); }
+</style></head>
+<body><th>x</th></body></html>`;
+    const p = parseHtmlForGrapes(source);
+    // Even if grapesCss is empty (simulating GrapesJS dropping var-in-shorthand),
+    // reconstructHtml uses parsed.styleBlocks which has the original CSS.
+    const out = reconstructHtml(p, '<body><th>x</th></body>', '');
+    expect(out).toContain('background: var(--bg)');
+    expect(out).toContain('color: var(--ink)');
+    expect(out).toContain('background: var(--soft)');
+    expect(out).toContain('--bg: #fafafa');
   });
 });

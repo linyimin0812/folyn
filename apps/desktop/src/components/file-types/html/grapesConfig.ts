@@ -364,6 +364,36 @@ export function injectExternalLinks(editor: Editor, headContent: string): void {
 }
 
 /**
+ * Inject the user's original inline <style> blocks directly into the canvas
+ * iframe document head, bypassing GrapesJS's CssComposer.
+ *
+ * Why: GrapesJS's CSS parser drops `var()` from shorthand declarations (e.g.
+ * `body { background: var(--bg); }` — the `background: var(--bg)` is silently
+ * lost during setStyle parsing; only longhand-with-var like `color: var(--ink)`
+ * survives). The browser's native CSS parser handles var() in shorthands
+ * correctly, so injecting the original CSS verbatim gives correct rendering.
+ *
+ * Style Manager trade-off: CssComposer (populated separately by editor.setStyle)
+ * holds the broken GrapesJS-parsed version, so Style Manager may show stale
+ * values for rules that used var() in shorthands. Edits via Style Manager
+ * update CssComposer, but `reconstructHtml` serializes from `parsed.styleBlocks`
+ * (the original CSS), so Style Manager edits to existing rules do not persist.
+ * Inline-style edits via the canvas still work and round-trip normally.
+ * // ponytail: known limitation — Style Manager edits to class rules don't
+ * // persist on save. Bypass CssComposer for serialization to preserve
+ * // original CSS. Fix properly by merging editor.getCss() edits into
+ * // parsed.styleBlocks when this becomes a real workflow blocker.
+ */
+export function injectInlineStyles(editor: Editor, styleBlocks: string[]): void {
+  const canvasDoc = editor.Canvas?.getDocument?.();
+  if (!canvasDoc || !styleBlocks.length) return;
+  const style = canvasDoc.createElement('style');
+  style.setAttribute('data-quill', 'inline-styles');
+  style.textContent = styleBlocks.join('\n\n');
+  canvasDoc.head.appendChild(style);
+}
+
+/**
  * Hide scrollbars inside the canvas iframe document. GrapesJS renders the
  * edited page inside a sandboxed iframe; parent-page CSS cannot reach into
  * it, so a <style> tag is injected into the iframe's <head> to suppress the

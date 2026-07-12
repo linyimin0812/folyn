@@ -288,9 +288,11 @@ describe('reconstructHtml', () => {
     expect(scriptBIdx).toBeGreaterThan(scriptAIdx);
   });
 
-  it('#16 combines grapesCss AND @-rule styleBlocks in the output <style> block', () => {
-    // Only @-rules (keyframes / font-face / import) are re-appended
-    // verbatim — regular rule duplication would compound across saves.
+  it('#16 serializes CSS from parsed.styleBlocks (original user CSS), ignoring grapesCss', () => {
+    // ponytail: we bypass GrapesJS's CssComposer for serialization because its
+    // CSS parser drops `var()` from shorthand declarations (e.g.
+    // `body { background: var(--bg); }` loses the background declaration).
+    // The original styleBlocks preserve the user's CSS verbatim.
     const atRule = '@keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }';
     const p: ParsedHtml = {
       doctype: '<!DOCTYPE html>',
@@ -307,12 +309,33 @@ describe('reconstructHtml', () => {
     expect(styleOpen).toBeGreaterThan(-1);
     expect(styleClose).toBeGreaterThan(styleOpen);
     const cssBlock = out.slice(styleOpen, styleClose);
-    expect(cssBlock).toContain('.gjs { color: red; }');
+    // Original styleBlocks content is preserved verbatim
+    expect(cssBlock).toContain('.orig { color: blue; }');
     expect(cssBlock).toContain('@keyframes spin');
-    // Regular rules from styleBlocks are dropped (GrapesJS owns them)
-    expect(cssBlock).not.toContain('.orig { color: blue; }');
-    // GrapesJS CSS comes first, preserved @-rules appended after
-    expect(cssBlock.indexOf('.gjs')).toBeLessThan(cssBlock.indexOf('@keyframes'));
+    // grapesCss is ignored — bypassing CssComposer's var() dropping bug
+    expect(cssBlock).not.toContain('.gjs { color: red; }');
+  });
+
+  it('#16b preserves var() in shorthand declarations through round-trip', () => {
+    // GrapesJS's CssComposer drops `var()` from shorthands like `background: var(--bg)`.
+    // Serializing from parsed.styleBlocks preserves the original CSS verbatim.
+    const html = `<!DOCTYPE html>
+<html><head><style>
+:root { --bg: #fafafa; --ink: #1a1a1a; }
+body { background: var(--bg); color: var(--ink); }
+th { background: var(--soft); }
+</style></head>
+<body><th>x</th></body></html>`;
+    const p = parseHtmlForGrapes(html);
+    const out = reconstructHtml(p, p.bodyContent, '');
+    const styleOpen = out.indexOf('<style>');
+    const styleClose = out.indexOf('</style>');
+    const cssBlock = out.slice(styleOpen, styleClose);
+    // Both shorthand-with-var and longhand-with-var survive
+    expect(cssBlock).toContain('background: var(--bg)');
+    expect(cssBlock).toContain('color: var(--ink)');
+    expect(cssBlock).toContain('background: var(--soft)');
+    expect(cssBlock).toContain('--bg: #fafafa');
   });
 });
 

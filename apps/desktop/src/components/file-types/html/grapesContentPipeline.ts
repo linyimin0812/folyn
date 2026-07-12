@@ -150,28 +150,27 @@ export function reconstructHtml(
   const htmlOpen = parsed.htmlAttrs ? `<html${parsed.htmlAttrs}>` : '<html>';
   const bodyOpen = parsed.bodyAttrs ? `<body${parsed.bodyAttrs}>` : '<body>';
 
-  // GrapesJS's `getCss()` already serializes the full CssComposer model,
-  // which includes everything we fed into `editor.setStyle()` on mount.
-  // Re-appending the original <style> blocks verbatim would compound across
-  // saves: each save writes (grapesCss + originals) into a single <style>,
-  // the next mount parses that whole block back into styleBlocks, feeds it
-  // to setStyle, then re-appends it again — so the file roughly doubles in
-  // size on every save.
+  // ponytail: serialize CSS from `parsed.styleBlocks` (original user CSS)
+  // instead of `grapesCss` (GrapesJS's CssComposer output). GrapesJS's CSS
+  // parser drops `var()` from shorthand declarations — e.g.
+  // `body { background: var(--bg); }` becomes a body rule with NO background
+  // declaration at all. Using `parsed.styleBlocks` preserves the original CSS
+  // verbatim, including var() in shorthands. The browser parses the injected
+  // <style> in the canvas iframe correctly (see injectInlineStyles), so
+  // rendering and serialization both stay faithful to the source.
   //
-  // To preserve at-rules that GrapesJS's CssComposer may not round-trip
-  // faithfully (@keyframes / @font-face / @import), we re-append ONLY the
-  // portions of the original style blocks that contain those constructs.
-  // Regular rule selectors and declarations are left to grapesCss.
-  const AT_RULE_RE = /@(?:keyframes|font-face|import|charset|namespace)\b/;
-  const preservedStyle = parsed.styleBlocks
+  // Trade-off: Style Manager edits update CssComposer, not parsed.styleBlocks,
+  // so edits to existing class rules do not persist on save. Inline-style
+  // edits via the canvas still work (they go to component style attrs, which
+  // GrapesJS serializes into grapesHtml). See injectInlineStyles for the full
+  // trade-off discussion.
+  //
+  // `grapesCss` arg is kept for API compatibility but ignored.
+  void grapesCss;
+  const mergedCss = parsed.styleBlocks
     .map((s) => s.trim())
-    .filter((s) => s && AT_RULE_RE.test(s))
+    .filter((s) => s)
     .join('\n\n');
-
-  const cssChunks: string[] = [];
-  if (grapesCss && grapesCss.trim()) cssChunks.push(grapesCss);
-  if (preservedStyle) cssChunks.push(preservedStyle);
-  const mergedCss = cssChunks.join('\n\n');
 
   // Re-attach scripts verbatim. The script's original `type`/`src` attrs are
   // intentionally dropped here — they were never passed to GrapesJS and we
