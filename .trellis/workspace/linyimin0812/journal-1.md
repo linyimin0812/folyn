@@ -1813,3 +1813,37 @@ Added a desktop-pet notification system: a transparent NSPanel 'pet-bubble' wind
 ### Next Steps
 
 - None - task complete
+
+
+## Session 54: Chat settings test/reveal-key + pet-panel AI-settings jump + thinking stream
+
+**Date**: 2026-07-12
+**Task**: Chat settings test/reveal-key + pet-panel AI-settings jump + thinking stream
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Chat 模式 UX 补全：API Key eye toggle + 测试连接按钮（runRigChat ping，10s 超时兜底，provider-aware hint）；PetChatSessionHeader 右侧 AI 设置跳转按钮；chat.rs openai baseUrl /v1 规范化 + anthropic max_tokens 默认 4096 + ChatChunk::Thinking variant + drain_loop 处理 Reasoning/ReasoningDelta；thinking 链路打通（rigChat → petChatService → petChatStore → PetChat → ChatMessageList 既有渲染）；pet.css 拆 user-select 让 panel body 可选中复制。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a10cdb1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
