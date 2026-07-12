@@ -488,6 +488,10 @@ function TableCardNode({ node }: { node: Node }) {
   const [infoOpen, setInfoOpen] = useState(false);
   useEffect(() => {
     if (!infoOpen) return;
+    // Bring the whole card to the front so the popover (rendered inside this
+    // node's foreignObject, extending outside its bounds) isn't occluded by
+    // edges or other cards added after this one.
+    node.toFront();
     const close = () => setInfoOpen(false);
     node.on('change:position', close);
     return () => {
