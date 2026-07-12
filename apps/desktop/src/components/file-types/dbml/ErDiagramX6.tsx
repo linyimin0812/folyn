@@ -16,6 +16,15 @@ import {
 const DEBOUNCE_MS = 300;
 const ZOOM_MIN = 0.2;
 const ZOOM_MAX = 4;
+// ponytail: per-edge source/target stub vertices. The orth router's
+// `nodeToNode` picks a freeJoin bend at (targetPort.x, sourcePort.y) — i.e. the
+// vertical segment lands AT the target card's border, so the edge coincides
+// with the border and you can't tell which field row it points to. Prepending
+// a vertex STUB_PX outside the source card and appending one outside the
+// target card forces the orth router to route `srcPort → srcStub →
+// (tgtStub.x, srcStub.y) → tgtStub → tgtPort` — 10px horizontal stubs on both
+// ends with the vertical bend in the gap, not on the border.
+const STUB_PX = 10;
 
 type State =
   | { kind: 'loading' }
@@ -331,9 +340,34 @@ export default function ErDiagramX6({ content }: PreviewProps) {
       const [fromLabel, toLabel] = r.cardinality.split(':');
       const sourcePort = fromField ? `f-${fromField}-${fromOnRight ? 'R' : 'L'}` : undefined;
       const targetPort = toField ? `f-${toField}-${toOnRight ? 'R' : 'L'}` : undefined;
+
+      // Compute stub vertices (one STUB_PX outside each card along the
+      // port's outward direction). Only when both field ports resolve —
+      // otherwise the edge anchors at a node center and a stub is undefined.
+      let vertices: { x: number; y: number }[] | undefined;
+      if (fromField && toField) {
+        const fromIdx = fromTable.fields.findIndex((f) => f.name === fromField);
+        const toIdx = toTable.fields.findIndex((f) => f.name === toField);
+        if (fromIdx >= 0 && toIdx >= 0) {
+          const fromFieldY = fromTable.y + HEADER_H + fromIdx * ROW_H + ROW_H / 2;
+          const toFieldY = toTable.y + HEADER_H + toIdx * ROW_H + ROW_H / 2;
+          const fromStubX = fromOnRight
+            ? fromTable.x + fromTable.width + STUB_PX
+            : fromTable.x - STUB_PX;
+          const toStubX = toOnRight
+            ? toTable.x + toTable.width + STUB_PX
+            : toTable.x - STUB_PX;
+          vertices = [
+            { x: fromStubX, y: fromFieldY },
+            { x: toStubX, y: toFieldY },
+          ];
+        }
+      }
+
       graph.addEdge({
         source: { cell: `t:${r.fromTable}`, ...(sourcePort ? { port: sourcePort } : {}) },
         target: { cell: `t:${r.toTable}`, ...(targetPort ? { port: targetPort } : {}) },
+        ...(vertices ? { vertices } : {}),
         attrs: {
           line: {
             stroke: 'var(--t3)',
