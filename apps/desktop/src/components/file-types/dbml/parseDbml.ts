@@ -20,6 +20,11 @@ interface DbmlDiagnostic {
 }
 interface DbmlDatabase {
   export(): DbmlRawDatabase;
+  // Project-level fields are direct properties on the Database instance,
+  // not part of export() output (see `shallowExport` in @dbml/core types).
+  name: string;
+  databaseType: string;
+  note: string;
 }
 interface DbmlRawDatabase {
   schemas: DbmlRawSchema[];
@@ -52,6 +57,7 @@ interface DbmlRawIndex {
   name: string | null;
   unique?: boolean;
   columns: { type: string; value: string }[];
+  note?: string;
 }
 interface DbmlRawRef {
   name: string | null;
@@ -59,6 +65,7 @@ interface DbmlRawRef {
 }
 interface DbmlRawEnum {
   name: string;
+  note: string;
   values: { name: string; note: string }[];
 }
 
@@ -78,12 +85,33 @@ export interface ErField {
   unique: boolean;
   notNull: boolean;
   increment: boolean;
+  note?: string;
+}
+export interface ErIndex {
+  name: string | null;
+  unique: boolean;
+  columns: string[];
+  note?: string;
 }
 export interface ErTable {
+  kind: 'table';
   name: string;
   fields: ErField[];
   headerColor?: string;
+  note?: string;
+  indexes: ErIndex[];
 }
+export interface ErEnumValue {
+  name: string;
+  note?: string;
+}
+export interface ErEnum {
+  kind: 'enum';
+  name: string;
+  note?: string;
+  values: ErEnumValue[];
+}
+export type ErCard = ErTable | ErEnum;
 export interface ErRef {
   id: string;
   fromTable: string;
@@ -95,7 +123,11 @@ export interface ErRef {
 }
 export interface ErSchema {
   tables: ErTable[];
+  enums: ErEnum[];
   refs: ErRef[];
+  projectName?: string;
+  databaseType?: string;
+  projectNote?: string;
 }
 export interface ErParseError {
   line: number;
@@ -118,7 +150,7 @@ function formatType(t: { type_name: string; args: string | null }): string {
 
 export async function parseDbml(source: string): Promise<ParseResult> {
   if (!source.trim()) {
-    return { schema: { tables: [], refs: [] }, errors: [] };
+    return { schema: { tables: [], enums: [], refs: [] }, errors: [] };
   }
   try {
     const mod = await loadParser();
@@ -126,6 +158,7 @@ export async function parseDbml(source: string): Promise<ParseResult> {
     const raw = db.export().schemas[0] ?? { tables: [], refs: [], enums: [] };
 
     const tables: ErTable[] = raw.tables.map((t) => ({
+      kind: 'table',
       name: t.name,
       fields: t.fields.map<ErField>((f) => ({
         name: f.name,
@@ -134,8 +167,26 @@ export async function parseDbml(source: string): Promise<ParseResult> {
         unique: !!f.unique,
         notNull: !!f.not_null,
         increment: !!f.increment,
+        note: f.note || undefined,
       })),
       headerColor: t.headerColor || undefined,
+      note: t.note || undefined,
+      indexes: (t.indexes ?? []).map<ErIndex>((ix) => ({
+        name: ix.name ?? null,
+        unique: !!ix.unique,
+        columns: (ix.columns ?? []).map((c) => c.value),
+        note: ix.note || undefined,
+      })),
+    }));
+
+    const enums: ErEnum[] = (raw.enums ?? []).map<ErEnum>((e) => ({
+      kind: 'enum',
+      name: e.name,
+      note: e.note || undefined,
+      values: (e.values ?? []).map((v) => ({
+        name: v.name,
+        note: v.note || undefined,
+      })),
     }));
 
     const refs: ErRef[] = raw.refs.map((r, i) => {
@@ -152,7 +203,17 @@ export async function parseDbml(source: string): Promise<ParseResult> {
       };
     });
 
-    return { schema: { tables, refs }, errors: [] };
+    return {
+      schema: {
+        tables,
+        enums,
+        refs,
+        projectName: db.name || undefined,
+        databaseType: db.databaseType || undefined,
+        projectNote: db.note || undefined,
+      },
+      errors: [],
+    };
   } catch (err) {
     if (err && typeof err === 'object' && 'diags' in err) {
       const diags = (err as { diags: DbmlDiagnostic[] }).diags ?? [];

@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend guideline index — entry point to spec layers for the package this task lives in."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Named exports, props interfaces, Tailwind + CSS var styling — TableCard / EnumCard / ProjectBanner must follow."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "useEffect cleanup, store access patterns — ER preview uses ResizeObserver / window pointer listeners that need clean cleanup."}
+{"file": ".trellis/tasks/archive/2026-07/07-03-er-diagram-file-type-with-dbml-syntax/research/dbml-core-api.md", "reason": "@dbml/core Parser.parse + export() shape (tables[].note / indexes / enums / project note) — needed to confirm raw fields exist before exposing them in parseDbml.ts."}
