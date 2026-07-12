@@ -94,8 +94,12 @@ export default function ErDiagramX6({ content }: PreviewProps) {
           markerUnits: 'userSpaceOnUse',
         }));
       }
+      const el = containerRef.current!;
       const graph = new Graph({
-        container: containerRef.current!,
+        container: el,
+        width: el.clientWidth,
+        height: el.clientHeight,
+        autoResize: true,
         grid: { visible: false, type: 'dot', size: 20 },
         panning: { enabled: true, eventTypes: ['leftMouseDown'] },
         mousewheel: {
@@ -449,7 +453,6 @@ function TableCardNode({ node }: { node: Node }) {
   const [expanded, setExpanded] = useState(false);
   const PAD = 12;
   const width = table.width;
-  const height = table.height;
   const innerW = width - PAD * 2;
   const noteMaxChars = Math.max(8, Math.floor(innerW / 6));
 
@@ -469,7 +472,17 @@ function TableCardNode({ node }: { node: Node }) {
   const noteY = noteBlockH > 0 ? cursorY + BLOCK_PAD : cursorY;
   cursorY = noteBlockH > 0 ? noteY + noteBlockH : cursorY;
   const indexY = indexBlockH > 0 ? cursorY + BLOCK_PAD : cursorY;
-  const chipY = height - CHIP_H;
+
+  // Collapsed card: header + fields + chip footer. No empty space below.
+  const collapsedH = fieldsEnd + (hasChip ? CHIP_H + 4 : 8);
+  const height = expanded ? table.height : collapsedH;
+
+  // Sync node logical size to visual so edge anchors and hit-testing follow
+  // the collapsed/expanded state. Runs on mount (expanded=false → collapse)
+  // and on every toggle.
+  useEffect(() => {
+    node.resize(width, height);
+  }, [node, width, height]);
 
   const headerColor = table.headerColor ?? undefined;
   const noteCount = (hasTableNote ? 1 : 0) + table.fields.filter((f) => f.note).length;
@@ -479,6 +492,8 @@ function TableCardNode({ node }: { node: Node }) {
   ]
     .filter(Boolean)
     .join(' · ');
+
+  const chipY = height - CHIP_H - 4;
 
   return (
     <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
@@ -500,12 +515,10 @@ function TableCardNode({ node }: { node: Node }) {
         strokeWidth={1}
         filter={`url(#er-shadow-${node.id})`}
       />
-      {/* header — neutral by default, colored only when DBML headerColor is set */}
+      {/* header — subtle band when no DBML headerColor; colored band when set */}
       <path
         d={`M 6 0 H ${width - 6} A 6 6 0 0 1 ${width} 6 V ${HEADER_H} H 0 V 6 A 6 6 0 0 1 6 0 Z`}
-        fill={headerColor ?? 'var(--surf)'}
-        stroke={headerColor ? 'none' : 'var(--brd)'}
-        strokeWidth={1}
+        fill={headerColor ?? 'var(--hov)'}
       />
       <text
         x={PAD}
@@ -674,7 +687,6 @@ function EnumCardNode({ node }: { node: Node }) {
   const [expanded, setExpanded] = useState(false);
   const PAD = 12;
   const width = enumCard.width;
-  const height = enumCard.height;
   const innerW = width - PAD * 2;
   const noteMaxChars = Math.max(8, Math.floor(innerW / 6));
 
@@ -686,7 +698,15 @@ function EnumCardNode({ node }: { node: Node }) {
   const hasChip = noteLines.length > 0 || hasValueNotes;
   const noteBlockH = expanded && noteLines.length > 0 ? noteLines.length * 16 + 8 : 0;
   const noteY = noteBlockH > 0 ? valuesEnd + BLOCK_PAD : valuesEnd;
-  const chipY = height - CHIP_H;
+
+  const collapsedH = valuesEnd + (hasChip ? CHIP_H + 4 : 8);
+  const height = expanded ? enumCard.height : collapsedH;
+
+  useEffect(() => {
+    node.resize(width, height);
+  }, [node, width, height]);
+
+  const chipY = height - CHIP_H - 4;
 
   return (
     <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
