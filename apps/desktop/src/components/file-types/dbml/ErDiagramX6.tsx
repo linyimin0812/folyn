@@ -213,57 +213,10 @@ export default function ErDiagramX6({ content }: PreviewProps) {
           zoomAtMousePosition: true,
         },
         connecting: {
-          // `manhattan` router: A*-on-grid obstacle-aware orthogonal router.
-          // Routes around every node bbox (padded by `padding` px) and emits
-          // strictly right-angle segments (`maxDirectionChange: 90`,
-          // `perpendicular: true` — see manhattan/options.js). The obstacle
-          // map (manhattan/obstacle-map.ts) listens on `cell:change:position`
-          // and marks itself dirty, so the path re-routes on every node drag
-          // and stays orthogonal — no static `vertices` array could do that.
-          //
-          // ROOT CAUSE of through-cards bug: by default `excludeTerminals: []`
-          // (manhattan/options.ts:150) — the source AND target nodes are
-          // registered as obstacles. Their padded bboxes then block the
-          // start/end points computed from their own ports (getRectPoints
-          // shoots a line from the port anchor in each direction and takes
-          // the bbox intersection; for a port sitting ON the node bbox edge,
-          // the only accessible intersections land ON the padded bbox
-          // boundary, which `containsPoint` (geometry/util.ts:58) treats as
-          // inside, so `isAccessible` returns false and the start point is
-          // filtered out). With startPoints/endPoints empty, the A* loop
-          // never runs (manhattan/router.ts:87) and the router falls back to
-          // `fallbackRouter: orth` (manhattan/options.ts:198), which is NOT
-          // obstacle-aware — edges then route orthogonally straight through
-          // cards. Fix: `excludeTerminals: ['source', 'target']` removes the
-          // connected nodes from the obstacle map so their own port-adjacent
-          // start/end points stay accessible; `padding: 16` (up from 10)
-          // gives more visual clearance so the path's vertical segment stays
-          // clear of card borders when bending near a card.
+          // Router is set PER EDGE (addEdge below) — each edge needs its own
+          // single start/end direction matching the port side it connects on.
           // `connector: 'normal'` draws straight polyline segments between the
           // manhattan-computed vertices — no bezier, no rounding.
-          //
-          // Port exit direction: ports sit at x=0 (left group) or x=width
-          // (right group) on the node bbox edge. With `startDirections` /
-          // `endDirections` constrained to ['left', 'right'], `getRectPoints`
-          // (manhattan/util.ts:186) only shoots lines leftward/rightward
-          // from the anchor, so every candidate start/end point shares the
-          // port's y — the path's first and last segments are forced
-          // horizontal (perpendicular to the card's left/right edge). The
-          // port-side selection above (fromOnRight / toOnRight) already
-          // picks the port on the target-facing side, and A* picks the
-          // rect point on that same side (it's closer to the other end),
-          // so the wrong-side candidate that would cross the source card
-          // never wins.
-          router: {
-            name: 'manhattan',
-            args: {
-              step: 10,
-              padding: 16,
-              excludeTerminals: ['source', 'target'],
-              startDirections: ['left', 'right'],
-              endDirections: ['left', 'right'],
-            },
-          },
           connector: { name: 'normal' },
           anchor: 'center',
           connectionPoint: 'anchor',
@@ -394,12 +347,47 @@ export default function ErDiagramX6({ content }: PreviewProps) {
       const sourcePort = fromField ? `f-${fromField}-${fromOnRight ? 'R' : 'L'}` : undefined;
       const targetPort = toField ? `f-${toField}-${toOnRight ? 'R' : 'L'}` : undefined;
 
-      // No explicit `vertices` — the manhattan router computes the orthogonal
-      // path dynamically from the port anchors, routes around obstacles, and
-      // re-runs on every node drag (obstacle map dirty flag).
+      // Manhattan router, configured PER EDGE. Root cause of the lingering
+      // through-cards bug: x6 3.1.7's getSharedObstacleMap caches ONE map per
+      // model keyed only by options (obstacle-map.js:134-155), while
+      // `excludeTerminals` resolves against whichever edge triggered the
+      // build — so the cached map excluded the FIRST edge's terminals and
+      // every other edge's own cards stayed obstacles. Their padded bboxes
+      // made the port-adjacent start/end points inaccessible, A* never ran
+      // (router.js:55), and the silent fallback `orth` router (not
+      // obstacle-aware) drew straight through cards. Fix: per-edge
+      // `excludeNodes` (edge-specific node IDs) — the option key differs per
+      // edge, forcing a correct rebuild each time (tens of nodes, cheap).
+      //
+      // startDirections/endDirections carry exactly ONE side — the side the
+      // chosen port sits on. With both sides allowed, getRectPoints
+      // (util.js:139) also emitted a candidate on the FAR side of the card;
+      // when A* picked it, the first segment sliced through the source card.
+      // One direction + `padding: 16` forces the first/last segment to be
+      // horizontal (perpendicular to the card's vertical edge) and ≥16px.
+      //
+      // snapToGrid: false — snap() (router.js:172) shifts vertex coords onto
+      // the 20px graph grid, which both breaks the port-row alignment of the
+      // exit segment (turning it slightly diagonal) and can shave the 16px
+      // exit below the 8px minimum.
+      //
+      // maxLoopCount: 20000 (default 2000) — A* explores ~(dist/step)² grid
+      // cells; distant tables exhausted 2000 loops and fell back to orth.
       graph.addEdge({
         source: { cell: `t:${r.fromTable}`, ...(sourcePort ? { port: sourcePort } : {}) },
         target: { cell: `t:${r.toTable}`, ...(targetPort ? { port: targetPort } : {}) },
+        router: {
+          name: 'manhattan',
+          args: {
+            step: 10,
+            padding: 16,
+            maxLoopCount: 20000,
+            snapToGrid: false,
+            excludeNodes: [`t:${r.fromTable}`, `t:${r.toTable}`],
+            startDirections: [fromOnRight ? 'right' : 'left'],
+            endDirections: [toOnRight ? 'right' : 'left'],
+          },
+        },
         attrs: {
           line: {
             stroke: 'var(--t3)',
