@@ -16,15 +16,6 @@ import {
 const DEBOUNCE_MS = 300;
 const ZOOM_MIN = 0.2;
 const ZOOM_MAX = 4;
-// ponytail: per-edge source/target stub vertices. The orth router's
-// `nodeToNode` picks a freeJoin bend at (targetPort.x, sourcePort.y) — i.e. the
-// vertical segment lands AT the target card's border, so the edge coincides
-// with the border and you can't tell which field row it points to. Prepending
-// a vertex STUB_PX outside the source card and appending one outside the
-// target card forces the orth router to route `srcPort → srcStub →
-// (tgtStub.x, srcStub.y) → tgtStub → tgtPort` — 10px horizontal stubs on both
-// ends with the vertical bend in the gap, not on the border.
-const STUB_PX = 10;
 
 type State =
   | { kind: 'loading' }
@@ -167,15 +158,9 @@ export default function ErDiagramX6({ content }: PreviewProps) {
         // queueFlushSync instead of queueFlush). Without this, when addEdge
         // runs in the same tick as addNode, the node's portsCache isn't built
         // yet, so `findPortElem` returns null, `sourceMagnet` becomes null,
-        // and `view.sourceBBox` (src/view/edge/index.ts:127-142) falls back to
-        // `getBBoxOfElement(sourceView.container)` — the WHOLE NODE bbox. The
-        // orth router's `nodeToNode` (src/registry/router/orth.ts:236) then
-        // computes a bend at (sourcePort.x, targetPort.y) via `freeJoin`,
-        // producing a vertical-first L-shape (the "vertical stub at the
-        // source" bug). With sync rendering, ports render before edges
-        // resolve magnets, so sourceBBox = 0-size at the port, and the orth
-        // router produces a horizontal-first L (vertical segment at the
-        // target, which is the expected ER routing).
+        // and the edge's sourceMarker/targetMarker anchors against the WHOLE
+        // NODE bbox instead of the field-row port. With sync rendering, ports
+        // render before edges resolve magnets, so markers sit at the port.
         async: false,
         grid: { visible: false, type: 'dot', size: 20, args: { color: 'var(--t3)' } },
         panning: { enabled: true, eventTypes: ['leftMouseDown'] },
@@ -187,29 +172,15 @@ export default function ErDiagramX6({ content }: PreviewProps) {
           zoomAtMousePosition: true,
         },
         connecting: {
-          // `orth` router inserts a freeJoin point at (from.x, to.y) or
-          // (to.x, from.y) — guaranteed axis-aligned — so every segment is
-          // strictly horizontal or vertical with sharp 90° corners.
-          // ponytail: padding:0 disables the default 20px exclusion box around
-          // each port; with the default, tables closer than ~80px trigger the
-          // `insideNode` branch and produce noisy detours. Ports are 0-size at
-          // the table edge, so 0 padding still bends at the table boundary.
-          // `normal` connector draws straight polyline segments between the
-          // router vertices — no bezier, no rounding.
-          // NB: the `er` router only offsets source/target horizontally and
-          // leaves a straight (diagonal when field rows differ in y) middle
-          // segment — that was the previous diagonal-corner bug.
-          //
-          // Vertical-stub-at-source root cause: when the magnet is null
-          // (port not yet rendered when addEdge runs), `view.sourceBBox`
-          // falls back to the whole node bbox, and `nodeToNode`'s `freeJoin`
-          // picks (sourcePort.x, targetPort.y) when sourcePort.y is within
-          // the target node's y-range — producing a vertical-first L. Fixed
-          // by `async:false` above (sync rendering ensures portsCache is
-          // built before edges resolve magnets, so sourceBBox = 0-size at
-          // port, and freeJoin picks (targetPort.x, sourcePort.y) — a
-          // horizontal-first L with the vertical segment at the target).
-          router: { name: 'orth', args: { padding: 0 } },
+          // `normal` router + explicit per-edge vertices: the path is exactly
+          // `[srcAnchor, ...vertices, tgtAnchor]` as straight polyline segments
+          // — no rerouting around nodes. Each edge supplies a clean Z-shape:
+          // (srcPort) → (midX, sy) → (midX, ty) → (tgtPort), where midX is the
+          // midpoint of the source/target port x's so the vertical segment
+          // lands in the middle of the inter-card gap rather than on either
+          // card's border. `normal` connector draws straight segments between
+          // those vertices — no bezier, no rounding.
+          router: { name: 'normal' },
           connector: { name: 'normal' },
           anchor: 'center',
           connectionPoint: 'anchor',
@@ -341,25 +312,28 @@ export default function ErDiagramX6({ content }: PreviewProps) {
       const sourcePort = fromField ? `f-${fromField}-${fromOnRight ? 'R' : 'L'}` : undefined;
       const targetPort = toField ? `f-${toField}-${toOnRight ? 'R' : 'L'}` : undefined;
 
-      // Compute stub vertices (one STUB_PX outside each card along the
-      // port's outward direction). Only when both field ports resolve —
-      // otherwise the edge anchors at a node center and a stub is undefined.
+      // Clean Z-shape: srcPort → (midX, sy) → (midX, ty) → tgtPort.
+      // midX is the midpoint of the two port x's so the vertical segment
+      // lands in the middle of the inter-card gap, not on either border.
+      // Only when both field ports resolve — otherwise the edge anchors at
+      // a node center and a midpoint is undefined.
       let vertices: { x: number; y: number }[] | undefined;
       if (fromField && toField) {
         const fromIdx = fromTable.fields.findIndex((f) => f.name === fromField);
         const toIdx = toTable.fields.findIndex((f) => f.name === toField);
         if (fromIdx >= 0 && toIdx >= 0) {
-          const fromFieldY = fromTable.y + HEADER_H + fromIdx * ROW_H + ROW_H / 2;
-          const toFieldY = toTable.y + HEADER_H + toIdx * ROW_H + ROW_H / 2;
-          const fromStubX = fromOnRight
-            ? fromTable.x + fromTable.width + STUB_PX
-            : fromTable.x - STUB_PX;
-          const toStubX = toOnRight
-            ? toTable.x + toTable.width + STUB_PX
-            : toTable.x - STUB_PX;
+          const sy = fromTable.y + HEADER_H + fromIdx * ROW_H + ROW_H / 2;
+          const ty = toTable.y + HEADER_H + toIdx * ROW_H + ROW_H / 2;
+          const sx = fromOnRight
+            ? fromTable.x + fromTable.width
+            : fromTable.x;
+          const tx = toOnRight
+            ? toTable.x + toTable.width
+            : toTable.x;
+          const midX = (sx + tx) / 2;
           vertices = [
-            { x: fromStubX, y: fromFieldY },
-            { x: toStubX, y: toFieldY },
+            { x: midX, y: sy },
+            { x: midX, y: ty },
           ];
         }
       }
