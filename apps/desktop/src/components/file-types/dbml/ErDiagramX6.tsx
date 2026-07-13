@@ -146,6 +146,29 @@ export default function ErDiagramX6({ content }: PreviewProps) {
           markerOrient: 'auto-start-reverse' as const,
           markerUnits: 'userSpaceOnUse',
         }));
+        // Double perpendicular bar — "exactly one / mandatory one" Chen
+        // notation. ALWAYS used as sourceMarker regardless of cardinality
+        // (the source end of every ER relationship is mandatory-one). Two
+        // vertical bar subpaths in one <path>, 3px apart. With refX=7,
+        // marker_x = d_x - refX: bar at d_x=5 → marker_x=-2 (2px into path,
+        // matching er-one-start placement), bar at d_x=2 → marker_x=-5 (5px
+        // into path). Both bars sit just inside the path from the source
+        // entity boundary — the standard "||" notation. Single <path> with
+        // two subpaths (not `children: [<line/>,<line/>]`) so the return
+        // type stays a plain MarkerResult without BaseResult index-signature
+        // friction — matches er-many-start's shape exactly.
+        Graph.registerMarker('er-one-double-start', () => ({
+          tagName: 'path',
+          d: 'M 5 1 L 5 9 M 2 1 L 2 9',
+          fill: 'none',
+          stroke: 'var(--t3)',
+          strokeWidth: 1.4,
+          strokeLinecap: 'round',
+          refX: 7,
+          refY: 5,
+          markerOrient: 'auto-start-reverse' as const,
+          markerUnits: 'userSpaceOnUse',
+        }));
       }
       const el = containerRef.current!;
       const graph = new Graph({
@@ -176,11 +199,28 @@ export default function ErDiagramX6({ content }: PreviewProps) {
           // Routes around every node bbox (padded by `padding` px) and emits
           // strictly right-angle segments (`maxDirectionChange: 90`,
           // `perpendicular: true` — see manhattan/options.js). The obstacle
-          // map (manhattan/obstacle-map.js) listens on `cell:change:position`
+          // map (manhattan/obstacle-map.ts) listens on `cell:change:position`
           // and marks itself dirty, so the path re-routes on every node drag
           // and stays orthogonal — no static `vertices` array could do that.
-          // `padding: 10` keeps the vertical segment clear of card borders;
-          // `step: 10` is the router's grid quantum (also drives snapToGrid).
+          //
+          // ROOT CAUSE of through-cards bug: by default `excludeTerminals: []`
+          // (manhattan/options.ts:150) — the source AND target nodes are
+          // registered as obstacles. Their padded bboxes then block the
+          // start/end points computed from their own ports (getRectPoints
+          // shoots a line from the port anchor in each direction and takes
+          // the bbox intersection; for a port sitting ON the node bbox edge,
+          // the only accessible intersections land ON the padded bbox
+          // boundary, which `containsPoint` (geometry/util.ts:58) treats as
+          // inside, so `isAccessible` returns false and the start point is
+          // filtered out). With startPoints/endPoints empty, the A* loop
+          // never runs (manhattan/router.ts:87) and the router falls back to
+          // `fallbackRouter: orth` (manhattan/options.ts:198), which is NOT
+          // obstacle-aware — edges then route orthogonally straight through
+          // cards. Fix: `excludeTerminals: ['source', 'target']` removes the
+          // connected nodes from the obstacle map so their own port-adjacent
+          // start/end points stay accessible; `padding: 16` (up from 10)
+          // gives more visual clearance so the path's vertical segment stays
+          // clear of card borders when bending near a card.
           // `connector: 'normal'` draws straight polyline segments between the
           // manhattan-computed vertices — no bezier, no rounding.
           //
@@ -194,7 +234,10 @@ export default function ErDiagramX6({ content }: PreviewProps) {
           // the only accessible start points are on the outward side — left
           // port exits leftward, right port exits rightward. No per-edge
           // `startDirections` override needed.
-          router: { name: 'manhattan', args: { step: 10, padding: 10 } },
+          router: {
+            name: 'manhattan',
+            args: { step: 10, padding: 16, excludeTerminals: ['source', 'target'] },
+          },
           connector: { name: 'normal' },
           anchor: 'center',
           connectionPoint: 'anchor',
@@ -322,7 +365,7 @@ export default function ErDiagramX6({ content }: PreviewProps) {
       const toOnRight = fromTable.x + fromTable.width / 2 >= toTable.x + toTable.width / 2;
       const fromField = r.fromFields[0];
       const toField = r.toFields[0];
-      const [fromLabel, toLabel] = r.cardinality.split(':');
+      const toLabel = r.cardinality.split(':')[1];
       const sourcePort = fromField ? `f-${fromField}-${fromOnRight ? 'R' : 'L'}` : undefined;
       const targetPort = toField ? `f-${toField}-${toOnRight ? 'R' : 'L'}` : undefined;
 
@@ -337,7 +380,7 @@ export default function ErDiagramX6({ content }: PreviewProps) {
             stroke: 'var(--t3)',
             strokeWidth: 1.5,
             opacity: 0.9,
-            sourceMarker: fromLabel === '1' ? 'er-one-start' : 'er-many-start',
+            sourceMarker: 'er-one-double-start',
             targetMarker: toLabel === '1' ? 'er-one-end' : 'er-many-end',
           },
         },
