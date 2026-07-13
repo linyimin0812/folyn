@@ -133,16 +133,34 @@ export default function ErDiagramX6({ content }: PreviewProps) {
           markerUnits: 'userSpaceOnUse',
         }));
         Graph.registerMarker('er-many-end', () => ({
-          // Mirrored: prongs at d_x=3=refX (entity boundary), convergence at
-          // d_x=12 (marker_x = refX - d_x = 3 - 12 = -9, into path interior).
+          // For marker-end X6 applies `transform: 'rotate(180)'` to the
+          // child (src/registry/attr/marker.ts:17-24) — rotation around the
+          // marker viewport origin (0,0), NOT around (refX, refY). So the
+          // registered d is rotated 180° about (0,0) before rendering.
+          //
+          // With refX=0, refY=0 the path endpoint (vertex) aligns with the
+          // marker origin, so the post-rotate shape's "attachment point"
+          // stays at (0,0)=vertex=target boundary. We want post-rotate:
+          //   - prongs AT boundary (x=0), y ∈ {-7, 0, +7} (fan perpendicular
+          //     to path)
+          //   - convergence 9px INTO path interior (x=-9, y=0)
+          // Pre-rotate (mirror across origin): prongs at (0, ±7), (0, 0);
+          // convergence at (9, 0). d below.
+          //
+          // With `startDirections: ['left','right']` the last segment is
+          // horizontal, so marker +x (path direction of travel, toward
+          // target) is horizontal: prongs fan vertically AT the boundary
+          // and the convergence sits 9px into the path — correct crow's
+          // foot (three prongs fanning OUTWARD toward the card, single
+          // convergence on the path side).
           tagName: 'path',
-          d: 'M 3 0 L 12 7 M 3 7 L 12 7 M 3 14 L 12 7',
+          d: 'M 0 -7 L 9 0 M 0 0 L 9 0 M 0 7 L 9 0',
           fill: 'none',
           stroke: 'var(--t3)',
           strokeWidth: 1.3,
           strokeLinecap: 'round',
-          refX: 3,
-          refY: 7,
+          refX: 0,
+          refY: 0,
           markerOrient: 'auto-start-reverse' as const,
           markerUnits: 'userSpaceOnUse',
         }));
@@ -225,18 +243,26 @@ export default function ErDiagramX6({ content }: PreviewProps) {
           // manhattan-computed vertices — no bezier, no rounding.
           //
           // Port exit direction: ports sit at x=0 (left group) or x=width
-          // (right group) on the node bbox edge. `getRectPoints`
-          // (manhattan/util.js:139) shoots a line from the anchor in each
-          // allowed direction and takes the bbox intersection; a line going
-          // INTO the node (left port + left direction) hits no bbox edge and
-          // falls back to the anchor itself, which the obstacle map then
-          // filters as inaccessible (it sits on the padded source bbox). So
-          // the only accessible start points are on the outward side — left
-          // port exits leftward, right port exits rightward. No per-edge
-          // `startDirections` override needed.
+          // (right group) on the node bbox edge. With `startDirections` /
+          // `endDirections` constrained to ['left', 'right'], `getRectPoints`
+          // (manhattan/util.ts:186) only shoots lines leftward/rightward
+          // from the anchor, so every candidate start/end point shares the
+          // port's y — the path's first and last segments are forced
+          // horizontal (perpendicular to the card's left/right edge). The
+          // port-side selection above (fromOnRight / toOnRight) already
+          // picks the port on the target-facing side, and A* picks the
+          // rect point on that same side (it's closer to the other end),
+          // so the wrong-side candidate that would cross the source card
+          // never wins.
           router: {
             name: 'manhattan',
-            args: { step: 10, padding: 16, excludeTerminals: ['source', 'target'] },
+            args: {
+              step: 10,
+              padding: 16,
+              excludeTerminals: ['source', 'target'],
+              startDirections: ['left', 'right'],
+              endDirections: ['left', 'right'],
+            },
           },
           connector: { name: 'normal' },
           anchor: 'center',
