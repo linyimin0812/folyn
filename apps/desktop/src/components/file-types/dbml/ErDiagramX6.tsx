@@ -172,15 +172,29 @@ export default function ErDiagramX6({ content }: PreviewProps) {
           zoomAtMousePosition: true,
         },
         connecting: {
-          // `normal` router + explicit per-edge vertices: the path is exactly
-          // `[srcAnchor, ...vertices, tgtAnchor]` as straight polyline segments
-          // — no rerouting around nodes. Each edge supplies a clean Z-shape:
-          // (srcPort) → (midX, sy) → (midX, ty) → (tgtPort), where midX is the
-          // midpoint of the source/target port x's so the vertical segment
-          // lands in the middle of the inter-card gap rather than on either
-          // card's border. `normal` connector draws straight segments between
-          // those vertices — no bezier, no rounding.
-          router: { name: 'normal' },
+          // `manhattan` router: A*-on-grid obstacle-aware orthogonal router.
+          // Routes around every node bbox (padded by `padding` px) and emits
+          // strictly right-angle segments (`maxDirectionChange: 90`,
+          // `perpendicular: true` — see manhattan/options.js). The obstacle
+          // map (manhattan/obstacle-map.js) listens on `cell:change:position`
+          // and marks itself dirty, so the path re-routes on every node drag
+          // and stays orthogonal — no static `vertices` array could do that.
+          // `padding: 10` keeps the vertical segment clear of card borders;
+          // `step: 10` is the router's grid quantum (also drives snapToGrid).
+          // `connector: 'normal'` draws straight polyline segments between the
+          // manhattan-computed vertices — no bezier, no rounding.
+          //
+          // Port exit direction: ports sit at x=0 (left group) or x=width
+          // (right group) on the node bbox edge. `getRectPoints`
+          // (manhattan/util.js:139) shoots a line from the anchor in each
+          // allowed direction and takes the bbox intersection; a line going
+          // INTO the node (left port + left direction) hits no bbox edge and
+          // falls back to the anchor itself, which the obstacle map then
+          // filters as inaccessible (it sits on the padded source bbox). So
+          // the only accessible start points are on the outward side — left
+          // port exits leftward, right port exits rightward. No per-edge
+          // `startDirections` override needed.
+          router: { name: 'manhattan', args: { step: 10, padding: 10 } },
           connector: { name: 'normal' },
           anchor: 'center',
           connectionPoint: 'anchor',
@@ -302,8 +316,8 @@ export default function ErDiagramX6({ content }: PreviewProps) {
       const fromTable = tableMap.get(r.fromTable);
       const toTable = tableMap.get(r.toTable);
       if (!fromTable || !toTable) continue;
-      // Pick the port on the side facing the other table so the er router
-      // exits the field row horizontally toward the target.
+      // Pick the port on the side facing the other table so the manhattan
+      // router exits the field row horizontally toward the target.
       const fromOnRight = toTable.x + toTable.width / 2 >= fromTable.x + fromTable.width / 2;
       const toOnRight = fromTable.x + fromTable.width / 2 >= toTable.x + toTable.width / 2;
       const fromField = r.fromFields[0];
@@ -312,36 +326,12 @@ export default function ErDiagramX6({ content }: PreviewProps) {
       const sourcePort = fromField ? `f-${fromField}-${fromOnRight ? 'R' : 'L'}` : undefined;
       const targetPort = toField ? `f-${toField}-${toOnRight ? 'R' : 'L'}` : undefined;
 
-      // Clean Z-shape: srcPort → (midX, sy) → (midX, ty) → tgtPort.
-      // midX is the midpoint of the two port x's so the vertical segment
-      // lands in the middle of the inter-card gap, not on either border.
-      // Only when both field ports resolve — otherwise the edge anchors at
-      // a node center and a midpoint is undefined.
-      let vertices: { x: number; y: number }[] | undefined;
-      if (fromField && toField) {
-        const fromIdx = fromTable.fields.findIndex((f) => f.name === fromField);
-        const toIdx = toTable.fields.findIndex((f) => f.name === toField);
-        if (fromIdx >= 0 && toIdx >= 0) {
-          const sy = fromTable.y + HEADER_H + fromIdx * ROW_H + ROW_H / 2;
-          const ty = toTable.y + HEADER_H + toIdx * ROW_H + ROW_H / 2;
-          const sx = fromOnRight
-            ? fromTable.x + fromTable.width
-            : fromTable.x;
-          const tx = toOnRight
-            ? toTable.x + toTable.width
-            : toTable.x;
-          const midX = (sx + tx) / 2;
-          vertices = [
-            { x: midX, y: sy },
-            { x: midX, y: ty },
-          ];
-        }
-      }
-
+      // No explicit `vertices` — the manhattan router computes the orthogonal
+      // path dynamically from the port anchors, routes around obstacles, and
+      // re-runs on every node drag (obstacle map dirty flag).
       graph.addEdge({
         source: { cell: `t:${r.fromTable}`, ...(sourcePort ? { port: sourcePort } : {}) },
         target: { cell: `t:${r.toTable}`, ...(targetPort ? { port: targetPort } : {}) },
-        ...(vertices ? { vertices } : {}),
         attrs: {
           line: {
             stroke: 'var(--t3)',
