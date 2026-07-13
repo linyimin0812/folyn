@@ -111,6 +111,34 @@ export interface ErLayout {
   height: number;
 }
 
+/** Axis-aligned box, top-left {x,y} + {width,height} — same shape as an x6 Node's position+size. */
+export interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * True when two boxes are closer than `minGap` on both axes (i.e. overlap or
+ * sit within the gap). Used by the ER canvas's drag guard: the manhattan
+ * router treats every OTHER card as an obstacle padded by its own `padding`
+ * option, so dragging two cards closer than that starves the router of an
+ * accessible port-adjacent point and it silently falls back to a straight,
+ * non-obstacle-aware line that cuts through cards. Keeping every pair at
+ * least `minGap` apart (see ErDiagramX6's `node:change:position` handler)
+ * avoids that failure mode entirely instead of trying to detect/repair a bad
+ * route after the fact.
+ */
+export function boxesTooClose(a: Box, b: Box, minGap: number): boolean {
+  return !(
+    a.x + a.width + minGap <= b.x ||
+    b.x + b.width + minGap <= a.x ||
+    a.y + a.height + minGap <= b.y ||
+    b.y + b.height + minGap <= a.y
+  );
+}
+
 /**
  * Bounding box over a set of positioned tables (top-left coords + size).
  * Kept for consumers that need a quick scan of the laid-out content area.

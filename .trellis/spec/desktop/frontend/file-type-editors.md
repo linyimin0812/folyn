@@ -257,7 +257,7 @@ Reference: `apps/desktop/src/components/file-types/csv/CsvFileViewerPreview.tsx`
 
 ## DBML ER Diagram (`.dbml`)
 
-DBML files use CodeMirror for editing (`useCodeMirror: true`) with SQL syntax highlighting as a fallback, and render an ER diagram preview via `@dbml/core` + `d3-force` + hand-drawn SVG.
+DBML files use CodeMirror for editing (`useCodeMirror: true`) with SQL syntax highlighting as a fallback, and render an ER diagram preview via `@dbml/core` (parse) + `d3-force` (layout, `erLayout.ts`) + **`@antv/x6` v3** (rendering — `ErDiagramX6.tsx`, replaced the original hand-drawn SVG renderer `ErDiagramPreview.tsx` which no longer exists).
 
 ### Handler registration
 
@@ -270,7 +270,7 @@ const handler: FileTypeHandler = {
   defaultViewMode: 'split',
   needsFileContent: true,
   useCodeMirror: true,          // CodeMirror editor (SQL fallback highlighting)
-  Preview: ErDiagramPreview,    // SVG ER diagram
+  Preview: ErDiagramX6,         // React.lazy-loaded @antv/x6 renderer
 };
 ```
 
@@ -300,7 +300,23 @@ No new `@codemirror/lang-sql` direct dependency is needed — it is a transitive
 - **Cardinality**: DBML uses operators (`>` `<` `-` `<>`), NOT `[1:*]` bracket syntax (brackets throw a syntax error in 8.3.1). Each `ref.endpoints[i].relation` is `'1'` or `'*'`; for `>`/`<` the endpoints are reordered so ep0 is always the `'1'` side. Read `endpoint.relation` directly; ignore operator direction.
 - **Errors**: parse failures throw `CompilerError`; `err.message` is `undefined` — read `err.diags[i].message` + `err.diags[i].location.start.line/column`. Semantic errors sometimes have an empty `message`; fall back to a line-based message.
 
-Reference: `src/components/file-types/dbml/parseDbml.ts`, `src/components/file-types/dbml/erLayout.ts`, `src/components/file-types/dbml/ErDiagramPreview.tsx`, `.trellis/tasks/07-03-er-diagram-file-type-with-dbml-syntax/research/dbml-core-api.md`
+Reference: `src/components/file-types/dbml/parseDbml.ts`, `src/components/file-types/dbml/erLayout.ts`, `src/components/file-types/dbml/ErDiagramX6.tsx`, `.trellis/tasks/07-03-er-diagram-file-type-with-dbml-syntax/research/dbml-core-api.md`
+
+### Renderer: `@antv/x6` v3 + `manhattan` router (`ErDiagramX6.tsx`)
+
+Table/enum cards are `@antv/x6-react-shape` `register()`-ed React components positioned by `erLayout.ts`'s `layoutEr()` (d3-force). Relationship edges use x6's `manhattan` router (the only *obstacle-aware* built-in router — `er`/`normal`/`orth` ignore other nodes entirely) with **per-edge** `excludeNodes: ['t:${fromTable}', 't:${toTable}']` so the edge's own endpoints don't block its own port-adjacent start/end points (x6 3.1.7's shared obstacle-map cache key already includes `excludeNodes`, so per-edge values correctly force a rebuild — this is not a caching bug to "fix" again).
+
+> **Gotcha — silent fallback draws straight through cards**: `manhattan`'s A* returns `null` when it can't find an accessible start/end point (e.g. two *unrelated* cards sitting closer than the router's `padding`, 16px, apart). On `null`, x6 logs `Unable to execute manhattan algorithm, use orth instead` and silently falls back to `orth`, which is **not** obstacle-aware — the edge is drawn as a straight line through whatever card is in the way. There is no drag-time collision avoidance built into x6 (`interacting.nodeMovable: true` has no collision constraint), so a user dragging two cards close together is the most common real-world trigger.
+>
+> **Fix (already applied)**: `erLayout.ts` exports a pure `boxesTooClose(a, b, minGap)` helper; `ErDiagramX6.tsx`'s `node:change:position` handler reverts a drag to the last known non-colliding position (tracked in `lastValidPositionsRef`) whenever it would bring the dragged card within `DRAG_MIN_GAP` (24px) of any other card — this keeps every pair of cards far enough apart that the router's obstacle map always has an accessible route, instead of trying to detect/repair a bad path after the fact. If you touch edge routing again, keep this invariant (`DRAG_MIN_GAP` ≥ router `padding`) rather than re-deriving it.
+
+### Pattern: CSS-only edge interaction state (click-to-highlight)
+
+For per-edge interaction feedback (e.g. click-to-highlight with a "flowing dashes" animation), prefer driving it through `edge.attr('line', {...})` + a CSS `@keyframes` string rendered in the component's own JSX (`<style>{EDGE_FLOW_ANIMATION_CSS}</style>`) over a `requestAnimationFrame` loop — it's cheaper and the animation is scoped to the component's lifecycle (mounts/unmounts with it, no manual `document.head` append/cleanup). Track single-selection state in a `useRef<string | null>` (not React state — avoids re-rendering the whole graph on every click) and extract the "which edge should now be selected" transition into a pure function (see `nextSelectedEdgeId` next to `boxesTooClose`) so it's unit-testable without a real x6 `Graph`.
+
+> **Gotcha**: `graph.clearCells()` (called on every content re-parse to rebuild nodes/edges) destroys the currently-selected edge's cell. Any ref tracking "selected edge id" must be reset to `null` at the same point, or a stale id can silently no-op against a cell that no longer exists.
+
+> **Gotcha — jsdom can't render a real x6 `Graph`**: `@antv/x6`'s `NodeView`/`EdgeView` call real SVG APIs (`getScreenCTM`, `createSVGMatrix`, `getBBox`) that jsdom does not implement (`TypeError: svgDocument.createSVGMatrix is not a function`). Don't write vitest tests that mount an actual `Graph` for this file — extract any logic worth testing into pure functions (`boxesTooClose`, `nextSelectedEdgeId`) and unit-test those directly; verify actual rendering/interaction by opening a `.dbml` file in the running app.
 
 ### Layout: d3-force, static SVG
 

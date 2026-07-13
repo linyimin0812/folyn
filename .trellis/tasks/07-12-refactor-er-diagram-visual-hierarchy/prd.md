@@ -45,6 +45,7 @@
 - [ ] x6 主 chunk 不进入主 bundle（懒加载）
 - [ ] tsc + 11 个 parseDbml 测试通过
 - [ ] `ErDiagramPreview.tsx` 删除，`ErDiagramX6.tsx` 取代
+- [x] 拖拽表卡时不能拖到与其他卡片间距 < 24px（否则连线会因 manhattan router 找不到可达点而穿过卡片）
 
 ## Definition of Done
 
@@ -79,3 +80,25 @@
 | 1 | 新建 `ErDiagramX6.tsx`：Graph 实例 + 注册 React-shape + 移植 TableCard/EnumCard JSX（视觉决策一并带上）；`index.ts` 切到 `React.lazy` |
 | 2 | 加边：`router: 'er'` + 注册 `er-one`/`er-many` marker（复用 SVG path d）；删 `recomputeRefs` |
 | 3 | 删 `ErDiagramPreview.tsx`；删 `erLayout.ts` 中 `refEndpoints`/`orthoRefPath`/`fieldAnchor` 块 |
+
+## Amendment: router 从 `er` 改为 `manhattan`（实现偏离原 ADR，补记）
+
+原 ADR/研究都建议用 x6 内置 `er` router（§5，边界框中点折线），但 `er` router **不做障碍物规避**——纯按 source/target 的 bbox 中心算一条 Z 形折线，完全不知道画面上还有第三张表挡在中间。多轮实测（`3b9472a`→`836872e`→`9c073b0`→`b22e7c9` 等 commit）后改用 `manhattan` router（A* 网格寻路，唯一 obstacle-aware 的内置 router），每条边单独传 `excludeNodes: [源表id, 目标表id]`（否则共享 obstacle map 缓存错误，见 `9c073b0` 注释）+ 单方向 `startDirections`/`endDirections`（否则 A* 会选到穿卡片的候选点）。
+
+**遗留失效模式（本次修复）**：`excludeNodes` 只让 source/target 不再是障碍物，其余每张卡片仍是障碍物（padded by `padding: 16`）。当用户拖拽把两张卡片拖到彼此 `padding` 范围内（画布没有任何防重叠约束）时，A* 找不到可达的起点/终点，`findRoute` 返回 `null`，`manhattan` 静默 fallback 到**不感知障碍物**的 `orth` router，连线直接穿过卡片——这正是"连线穿过表"复现的根因，而不是 obstacle map 本身没生效。
+
+**修复**：`ErDiagramX6.tsx` 的 `node:change:position` 拖拽回调新增碰撞守卫（`erLayout.ts` 新增 `boxesTooClose(a, b, minGap)` 纯函数，`DRAG_MIN_GAP = 24`）——任何一次拖拽如果会让两张卡片的间距小于 24px，直接把该卡片位置还原到最后一次合法（不碰撞）位置，从源头保证 manhattan router 的障碍物间距要求始终满足，而不是事后检测/修补错误的路由。自动布局（d3-force `forceCollide` 半径已含 +24 buffer）不受影响。
+
+**验证**：`boxesTooClose` 单测（`erLayout.test.ts`，5 组：重叠/间距不足/恰好达标/远离/单轴对齐但另一轴够远）+ `tsc -b` 通过 + `parseDbml.test.ts` 11 个测试不回归。
+
+## Amendment: 关系线点击动效（新增需求，补记）
+
+**需求**：点击一条关系线（relationship edge）时要有视觉动效反馈；点击空白画布或另一条线时恢复正常。
+
+**动效方案**：流动虚线（不是呼吸脉动）——选中态把 `attrs.line` 切到 `stroke: var(--acc)` + `strokeWidth: 2` + `strokeDasharray: '6 4'`，再用 `attrs.line.style = { animation: 'er-edge-flow .6s linear infinite' }` 挂一个只动 `stroke-dashoffset`（0 → -20，两个虚线周期，首尾无缝）的 CSS `@keyframes`。选纯 CSS 动画而不是呼吸脉动，是因为流动方向感和现有 crow's foot 细线风格更搭，且比透明度/线宽脉动更容易一眼识别出"这条线被选中了"。`@keyframes` 定义放在组件渲染的一个 `<style>` 标签里（`EDGE_FLOW_ANIMATION_CSS` 常量），不新增 CSS 文件/方案，也不污染全局样式。
+
+**事件绑定**：mount 时的 Graph 实例上挂 `graph.on('edge:click', ...)` 和 `graph.on('blank:click', ...)`，都转发到同一个 `selectEdge(clickedEdgeId)` 闭包。单选模型用 `useRef<string | null>` (`selectedEdgeIdRef`) 记录当前选中边 id，没有引入状态管理库。选中态切换的 next-id 逻辑抽成了纯函数 `nextSelectedEdgeId(current, clickedEdgeId)`（导出自 `ErDiagramX6.tsx`，仿照 `boxesTooClose` 的模式），补了 4 组单测（`ErDiagramX6.test.ts`）：blank click 清空选中 / 点击新线切换 / 点击已选中的线再切换为取消选中（额外加的小 UX：单选模型下再点一次同一条线会取消高亮，不在原始需求描述里但不冲突） / 二者组合。
+
+**清理时机**：内容变更触发的「Sync state → graph」`useEffect` 里，`graph.clearCells()` 之后立刻把 `selectedEdgeIdRef.current` 置空——`clearCells()` 会销毁所有边 cell（包括被选中的那条），不同步清空的话下次点击同 id 的新边会被 `nextSelectedEdgeId` 误判成"已选中"而变成取消选中的 no-op。
+
+**未触碰**：marker（crow's foot 端点符号）颜色保持 `var(--t3)` 不随选中态变化——marker 是独立注册的 SVG `<defs>`，不跟着单条边的 `attrs.line` 走，改动会牵扯到按边生成独立 marker 变体，超出本次需求范围（需求只要求线本身响应点击）。`interacting.edgeMovable: false` 未改动，点击选中不会让边可拖动。

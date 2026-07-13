@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { Graph, Node } from '@antv/x6';
+import type { Edge, Graph, Node } from '@antv/x6';
 import type { PreviewProps } from '../types';
 import { parseDbml, type ErSchema, type ErParseError } from './parseDbml';
 import {
   layoutEr,
+  boxesTooClose,
   HEADER_H,
   ROW_H,
   type Point,
@@ -16,6 +17,41 @@ import {
 const DEBOUNCE_MS = 300;
 const ZOOM_MIN = 0.2;
 const ZOOM_MAX = 4;
+// Minimum clearance enforced between any two cards while dragging — see the
+// `node:change:position` handler below and `boxesTooClose` in erLayout.ts.
+const DRAG_MIN_GAP = 24;
+
+// Relationship-line click feedback: a flowing dashed line (stroke-dashoffset
+// keyframe), toggled via `attrs.line.style`/`stroke`/`strokeDasharray` on the
+// clicked edge — see `setEdgeSelected` + the `edge:click`/`blank:click`
+// handlers in the mount effect. Pure CSS animation (no rAF polling); the
+// `@keyframes` lives in a `<style>` tag rendered by this component so it
+// doesn't leak into global stylesheets used by other file-type previews.
+const EDGE_FLOW_ANIMATION_CSS = `@keyframes er-edge-flow { to { stroke-dashoffset: -20; } }`;
+const EDGE_LINE_DEFAULT = { stroke: 'var(--t3)', strokeWidth: 1.5, strokeDasharray: null, style: { animation: 'none' } } as const;
+const EDGE_LINE_SELECTED = { stroke: 'var(--acc)', strokeWidth: 2, strokeDasharray: '6 4', style: { animation: 'er-edge-flow .6s linear infinite' } } as const;
+
+function setEdgeSelected(edge: Edge, selected: boolean): void {
+  const line = selected ? EDGE_LINE_SELECTED : EDGE_LINE_DEFAULT;
+  edge.attr('line/stroke', line.stroke);
+  edge.attr('line/strokeWidth', line.strokeWidth);
+  edge.attr('line/strokeDasharray', line.strokeDasharray);
+  edge.attr('line/style', line.style);
+}
+
+/**
+ * Pure toggle logic for the single-selected-edge model (see prd.md's "点击
+ * 连线动效" amendment). `clickedEdgeId: null` models a blank-canvas click,
+ * which always clears the selection. Clicking the already-selected edge
+ * again deselects it (toggle); clicking any other edge switches to it.
+ */
+export function nextSelectedEdgeId(
+  current: string | null,
+  clickedEdgeId: string | null,
+): string | null {
+  if (clickedEdgeId === null) return null;
+  return current === clickedEdgeId ? null : clickedEdgeId;
+}
 
 type State =
   | { kind: 'loading' }
@@ -52,6 +88,16 @@ export default function ErDiagramX6({ content }: PreviewProps) {
   // content edits so user-dragged cards keep their coordinates; only new /
   // undragged cards re-enter d3-force on the next layout.
   const manualPositionsRef = useRef<Map<string, Point>>(new Map());
+  // Last known non-colliding {x,y} per card name — the drag guard (see
+  // `node:change:position` below) reverts to this when a drag would push a
+  // card closer than MIN_GAP to another card. Reseeded whenever the graph
+  // is rebuilt from a fresh layout (layoutEr already keeps auto-placed
+  // cards apart; this just tracks the baseline so drags can be undone).
+  const lastValidPositionsRef = useRef<Map<string, Point>>(new Map());
+  // Currently click-selected edge id (see `setEdgeSelected` / `edge:click` /
+  // `blank:click` below). Reset to null whenever `graph.clearCells()` runs
+  // (content re-sync) since that destroys the underlying edge cell.
+  const selectedEdgeIdRef = useRef<string | null>(null);
   // True until the first content load completes — drives auto-fit-on-open
   // so the first .dbml view centers content, but subsequent re-parses
   // (edits) don't override the user's manual pan/zoom.
@@ -224,12 +270,47 @@ export default function ErDiagramX6({ content }: PreviewProps) {
         interacting: { nodeMovable: true, edgeMovable: false, magnetConnectable: false },
       });
       graph.on('node:change:position', ({ node }) => {
-        const pos = node.getPosition();
         const data = node.getData() as { table?: { name: string }; enum?: { name: string } } | undefined;
         const id = data?.table?.name ?? data?.enum?.name;
-        if (id) manualPositionsRef.current.set(id, { x: pos.x, y: pos.y });
+        if (!id) return;
+        const pos = node.getPosition();
+        const size = node.getSize();
+        // Drag collision guard — see `boxesTooClose` in erLayout.ts for why.
+        const collides = graph.getNodes().some((other) => {
+          if (other.id === node.id) return false;
+          const p = other.getPosition();
+          const s = other.getSize();
+          return boxesTooClose(
+            { x: pos.x, y: pos.y, width: size.width, height: size.height },
+            { x: p.x, y: p.y, width: s.width, height: s.height },
+            DRAG_MIN_GAP,
+          );
+        });
+        if (collides) {
+          const last = lastValidPositionsRef.current.get(id);
+          if (last) node.position(last.x, last.y, { silent: true });
+          return;
+        }
+        lastValidPositionsRef.current.set(id, { x: pos.x, y: pos.y });
+        manualPositionsRef.current.set(id, { x: pos.x, y: pos.y });
       });
       graph.on('scale', ({ sx }: { sx: number }) => setZoomPct(Math.round(sx * 100)));
+      // Click-to-highlight a relationship line — see `nextSelectedEdgeId` /
+      // `setEdgeSelected` above. `interacting.edgeMovable: false` (set below)
+      // already keeps this click from making the edge draggable/editable.
+      const selectEdge = (clickedEdgeId: string | null) => {
+        const nextId = nextSelectedEdgeId(selectedEdgeIdRef.current, clickedEdgeId);
+        if (nextId === selectedEdgeIdRef.current) return;
+        const prevEdge = selectedEdgeIdRef.current
+          ? graph.getCellById(selectedEdgeIdRef.current)
+          : null;
+        if (prevEdge?.isEdge()) setEdgeSelected(prevEdge, false);
+        const nextEdge = nextId ? graph.getCellById(nextId) : null;
+        if (nextEdge?.isEdge()) setEdgeSelected(nextEdge, true);
+        selectedEdgeIdRef.current = nextId;
+      };
+      graph.on('edge:click', ({ edge }) => selectEdge(edge.id));
+      graph.on('blank:click', () => selectEdge(null));
       graphRef.current = graph;
       if (overlayRef.current) overlayByGraph.set(graph, overlayRef.current);
       setGraphReady(true);
@@ -287,7 +368,18 @@ export default function ErDiagramX6({ content }: PreviewProps) {
     if (!graph || state.kind !== 'ok') return;
     const { layout, schema } = state;
     graph.clearCells();
+    // clearCells() destroys every edge cell, including whichever one was
+    // click-selected — drop the stale id so a later click on the (new) edge
+    // with the same id doesn't no-op via the "already selected" check.
+    selectedEdgeIdRef.current = null;
     const tableMap = new Map(layout.tables.map((t) => [t.name, t]));
+
+    for (const t of layout.tables) {
+      lastValidPositionsRef.current.set(t.name, { x: t.x, y: t.y });
+    }
+    for (const e of layout.enums) {
+      lastValidPositionsRef.current.set(e.name, { x: e.x, y: e.y });
+    }
 
     for (const t of layout.tables) {
       // Field notes render as hover-only icons now — every row is ROW_H.
@@ -425,6 +517,7 @@ export default function ErDiagramX6({ content }: PreviewProps) {
 
   return (
     <div className="er-preview relative h-full w-full overflow-hidden bg-[var(--bg)]">
+      <style>{EDGE_FLOW_ANIMATION_CSS}</style>
       {/* X6 owns this div's DOM exclusively — React must not render siblings
           here, or reconciler mutation effects hit X6's canvas nodes and
           throw NotFoundError. */}
