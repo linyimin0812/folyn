@@ -365,7 +365,6 @@ export default function ErDiagramX6({ content }: PreviewProps) {
       const toOnRight = fromTable.x + fromTable.width / 2 >= toTable.x + toTable.width / 2;
       const fromField = r.fromFields[0];
       const toField = r.toFields[0];
-      const toLabel = r.cardinality.split(':')[1];
       const sourcePort = fromField ? `f-${fromField}-${fromOnRight ? 'R' : 'L'}` : undefined;
       const targetPort = toField ? `f-${toField}-${toOnRight ? 'R' : 'L'}` : undefined;
 
@@ -381,7 +380,7 @@ export default function ErDiagramX6({ content }: PreviewProps) {
             strokeWidth: 1.5,
             opacity: 0.9,
             sourceMarker: 'er-one-double-start',
-            targetMarker: toLabel === '1' ? 'er-one-end' : 'er-many-end',
+            targetMarker: 'er-many-end',
           },
         },
       });
