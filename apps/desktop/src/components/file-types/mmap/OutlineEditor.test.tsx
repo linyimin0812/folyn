@@ -31,7 +31,7 @@ function textareas(): HTMLTextAreaElement[] {
 describe('OutlineEditor keyboard', () => {
   afterEach(cleanup);
 
-  it('Tab indents the focused row (depth 0 → 1)', () => {
+  it('Tab indents the focused row (depth 1 → 2)', () => {
     const src = '- Root\n  - A\n  - B';
     const { onChange } = setup(src);
     const tas = textareas();
@@ -41,14 +41,32 @@ describe('OutlineEditor keyboard', () => {
     expect(emitted).toBe('- Root\n    - A\n  - B');
   });
 
-  it('Shift+Tab outdents the focused row (depth 1 → 0)', () => {
-    const src = '- Root\n  - Child';
+  it('Shift+Tab outdents the focused row (depth 2 → 1)', () => {
+    const src = '- Root\n    - Child';
     const { onChange } = setup(src);
     const tas = textareas();
     tas[1].focus();
     fireEvent.keyDown(tas[1], { key: 'Tab', shiftKey: true });
     const emitted = onChange.mock.calls[0][0] as string;
-    expect(emitted).toBe('- Root\n- Child');
+    expect(emitted).toBe('- Root\n  - Child');
+  });
+
+  it('Shift+Tab on a depth-1 row is a no-op (cannot become a sibling of root)', () => {
+    const src = '- Root\n  - Child';
+    const { onChange } = setup(src);
+    const tas = textareas();
+    tas[1].focus();
+    fireEvent.keyDown(tas[1], { key: 'Tab', shiftKey: true });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('Tab on the root (idx 0) is a no-op (root stays depth 0)', () => {
+    const src = '- Root\n  - Child';
+    const { onChange } = setup(src);
+    const ta = textareas()[0];
+    ta.focus();
+    fireEvent.keyDown(ta, { key: 'Tab', shiftKey: false });
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('Enter on root splits the row into a depth-1 child (not a depth-0 sibling)', () => {

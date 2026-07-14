@@ -139,8 +139,12 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
   };
 
   const changeDepth = (idx: number, delta: 1 | -1) => {
+    // ponytail: single-root invariant — the root row (idx 0) is the implicit
+    // container at depth 0 and must never be indented (would make it a
+    // non-root, rendering it bullet-less and orphaning the tree). No-op.
+    if (idx === 0) return;
     const cur = lines[idx];
-    const newDepth = Math.max(0, Math.min(20, cur.depth + delta));
+    const newDepth = Math.max(1, Math.min(20, cur.depth + delta));
     if (newDepth === cur.depth) return;
     const next = lines.slice();
     next[idx] = { ...cur, depth: newDepth };

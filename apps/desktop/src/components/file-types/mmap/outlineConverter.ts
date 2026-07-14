@@ -26,8 +26,15 @@ export function parseOutline(content: string): OutlineLine[] {
     if (!raw.trim()) continue;
     const m = raw.match(/^(\s*)(?:-\s+)?(.*)$/);
     const spaces = m?.[1].length ?? 0;
-    const depth = Math.floor(spaces / 2);
+    const parsedDepth = Math.floor(spaces / 2);
     const text = m?.[2] ?? '';
+    // ponytail: single-root invariant — the first non-empty line is always
+    // the root (depth 0); every subsequent non-empty line MUST be a
+    // descendant (depth >= 1). Without this, sibling-of-root lines parse
+    // at depth 0 and render bullet-less (bullets are gated on depth > 0),
+    // breaking the outliner contract. Source files with multiple depth-0
+    // lines (e.g. `- A\n- B`) are normalized: B is bumped to depth 1.
+    const depth = result.length === 0 ? 0 : Math.max(parsedDepth, 1);
     result.push({ text, depth });
   }
   if (result.length === 0) return FALLBACK.slice();

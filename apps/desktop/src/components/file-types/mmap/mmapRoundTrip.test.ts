@@ -73,4 +73,38 @@ describe('OutlineEditor converter (strip/prepend `- ` round-trip)', () => {
       { text: 'Child', depth: 1 },
     ]);
   });
+
+  it('single-root invariant: sibling-of-root lines bump to depth 1', () => {
+    // Source `- A\n- B\n- C` has three depth-0 lines; the fix makes B and C
+    // children of the root A, so all non-first rows are depth >= 1.
+    expect(parseOutline('- A\n- B\n- C')).toEqual([
+      { text: 'A', depth: 0 },
+      { text: 'B', depth: 1 },
+      { text: 'C', depth: 1 },
+    ]);
+  });
+
+  it('single-root invariant: a later under-indented line bumps from 0 to 1', () => {
+    // `- A\n  - B\n- C` — C is parsed at depth 0 but bumped to depth 1 so it
+    // stays a descendant of the root A rather than a sibling.
+    expect(parseOutline('- A\n  - B\n- C')).toEqual([
+      { text: 'A', depth: 0 },
+      { text: 'B', depth: 1 },
+      { text: 'C', depth: 1 },
+    ]);
+  });
+
+  it('round-trip is stable: re-parsing the serialized output yields the same rows', () => {
+    const cases = [
+      '- A\n- B\n- C',
+      '- A\n  - B\n- C',
+      '- Root\n  - Child A\n  - Child B\n    - Grandchild',
+    ];
+    for (const src of cases) {
+      const first = parseOutline(src);
+      const serialized = serializeOutline(first);
+      const reparsed = parseOutline(serialized);
+      expect(reparsed).toEqual(first);
+    }
+  });
 });
