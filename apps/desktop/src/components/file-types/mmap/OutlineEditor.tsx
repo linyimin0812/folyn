@@ -215,7 +215,6 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
           if (hiddenIdx.has(idx)) return null;
           const isCollapsed = collapsed.has(idx);
           const hasKids = hasChildren(idx);
-          const isRoot = line.depth === 0;
           return (
             <div
               key={idx}
@@ -322,10 +321,7 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                 placeholder="输入文字"
                 style={{ color: 'var(--t1)', caretColor: 'var(--t1)' }}
                 className={
-                  'flex-1 resize-none bg-transparent outline-none text-t1 py-[3px] px-[4px] rounded-[3px] overflow-hidden transition-colors duration-100 placeholder:text-t3 placeholder:opacity-50 focus:bg-surf/60 ' +
-                  (isRoot
-                    ? 'text-[16px] font-medium leading-[1.6]'
-                    : 'text-[14px] leading-[1.7]')
+                  'flex-1 resize-none bg-transparent outline-none text-t1 text-[14px] leading-[1.7] py-[3px] px-[4px] rounded-[3px] overflow-hidden transition-colors duration-100 placeholder:text-t3 placeholder:opacity-50 focus:bg-surf/60 '
                 }
               />
             </div>
