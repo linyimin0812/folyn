@@ -240,7 +240,7 @@ export function WorkArea() {
   const showCustomEditor = handler?.Editor && !handler.useCodeMirror && !(viewMode === 'preview' && handler?.Preview);
   const isPreviewOnly = handler?.Preview && !handler.useCodeMirror && !handler.Editor;
   const showPreview = handler?.Preview && (isPreviewOnly || viewMode === 'preview' || viewMode === 'split');
-  const showSplitResizer = handler?.useCodeMirror && handler?.Preview && viewMode === 'split';
+  const showSplitResizer = handler?.Preview && viewMode === 'split' && (handler.useCodeMirror || !!handler.Editor);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-bg" ref={splitContainerRef}>
@@ -297,7 +297,10 @@ export function WorkArea() {
 
       {/* Custom editor (full area) — e.g. Excalidraw */}
       {showCustomEditor && activeTab && handler?.Editor && activeTab.fileType !== 'web' && (
-        <div className={`flex-1 flex flex-col overflow-hidden editor-${handler.id}`}>
+        <div
+          className={`flex-1 flex flex-col overflow-hidden editor-${handler.id}`}
+          style={handler?.Preview && viewMode === 'split' ? { flex: editorFlex } : undefined}
+        >
           <handler.Editor
             key={`${activeTab.id}-${externalContentVersion}`}
             content={activeTab.content}

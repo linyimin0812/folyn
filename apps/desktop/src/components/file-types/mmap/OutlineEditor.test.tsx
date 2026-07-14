@@ -61,4 +61,46 @@ describe('OutlineEditor keyboard', () => {
     const emitted = onChange.mock.calls[0][0] as string;
     expect(emitted).toBe('- Root\n- Node');
   });
+
+  it('Backspace at caret 0 on a non-empty row merges with previous visible row', () => {
+    const src = '- A\n- B';
+    const { onChange } = setup(src);
+    const ta = textareas()[1];
+    ta.focus();
+    ta.setSelectionRange(0, 0);
+    fireEvent.keyDown(ta, { key: 'Backspace' });
+    const emitted = onChange.mock.calls[0][0] as string;
+    expect(emitted).toBe('- AB');
+  });
+
+  it('Backspace on an empty row deletes the row', () => {
+    const src = '- A\n- ';
+    const { onChange } = setup(src);
+    const ta = textareas()[1];
+    ta.focus();
+    ta.setSelectionRange(0, 0);
+    fireEvent.keyDown(ta, { key: 'Backspace' });
+    const emitted = onChange.mock.calls[0][0] as string;
+    expect(emitted).toBe('- A');
+  });
+
+  it('Backspace at caret 0 on root (no previous row) does not emit', () => {
+    const src = '- Root';
+    const { onChange } = setup(src);
+    const ta = textareas()[0];
+    ta.focus();
+    ta.setSelectionRange(0, 0);
+    fireEvent.keyDown(ta, { key: 'Backspace' });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('Backspace mid-text does not intercept (no merge)', () => {
+    const src = '- AB';
+    const { onChange } = setup(src);
+    const ta = textareas()[0];
+    ta.focus();
+    ta.setSelectionRange(1, 1);
+    fireEvent.keyDown(ta, { key: 'Backspace' });
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });
