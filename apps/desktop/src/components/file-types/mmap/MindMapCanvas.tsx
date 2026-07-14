@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { MindElixirInstance } from 'mind-elixir';
 import type { PreviewProps } from '../types';
+import { topicMarkdown } from './topicMarkdown';
 
 const FALLBACK_SRC = '- Root';
 
@@ -31,6 +32,7 @@ export default function MindMapCanvas({ content, onChange }: PreviewProps) {
         el,
         editable: true,
         allowUndo: true,
+        markdown: topicMarkdown,
       });
 
       const syncOut = () => {

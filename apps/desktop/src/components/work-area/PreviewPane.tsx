@@ -84,7 +84,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
       [onScrollToHeading],
     );
 
-    const fullBleed = ['csv', 'office', 'dbml', 'json'].includes(activeTab.fileType);
+    const fullBleed = ['csv', 'office', 'dbml', 'json', 'mmap'].includes(activeTab.fileType);
 
     return (
       <div
