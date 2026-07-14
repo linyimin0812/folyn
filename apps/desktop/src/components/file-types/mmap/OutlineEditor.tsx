@@ -77,11 +77,6 @@ function isLastAtDepth(
 // to 6px so the a=D-1 line clears the triangle — chevron sits left of the
 // line, line sits left of the bullet. Magic number — recompute if row
 // layout changes.
-// NOTE: the span's `left` is relative to the row's PADDING EDGE (inside the
-//   paddingLeft), not the row's left edge. To land at the ancestor's bullet
-//   column ((a-1)*16 + 22 from the row's left edge), subtract the current
-//   row's paddingLeft ((D-1)*16): left = (a-D)*16 + 22. Without this
-//   subtraction the line sits (D-1)*16 px too far right.
 const BULLET_CENTER_OFFSET = 22;
 const ROW_HALF_HEIGHT = 15; // ~half of single-line row height for L-turn
 
@@ -254,7 +249,7 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                     key={a}
                     className="absolute pointer-events-none border-l border-brd"
                     style={{
-                      left: `${(a - line.depth) * 16 + BULLET_CENTER_OFFSET}px`,
+                      left: `${(a - 1) * 16 + BULLET_CENTER_OFFSET}px`,
                       top: 0,
                       bottom: last ? 'auto' : 0,
                       height: last ? `${ROW_HALF_HEIGHT}px` : 'auto',
