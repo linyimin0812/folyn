@@ -95,40 +95,41 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
     }
   }, [lines]);
 
+  // ponytail: option 3 — compute `next` from closure `lines`, call
+  // `setLines(next)` value-form, then `emit(next)`. Safe because these run
+  // in event handlers (onChange/onKeyDown), each its own tick — no batched
+  // stale-closure risk. Avoids calling `emit` inside a `setLines` updater
+  // (which executes during render phase and trips the "Cannot update a
+  // component while rendering a different component" warning via the parent
+  // setState in `onChange`).
   const updateLineText = (idx: number, text: string) => {
-    setLines((prev) => {
-      const next = prev.slice();
-      next[idx] = { ...next[idx], text };
-      emit(next);
-      return next;
-    });
+    const next = lines.slice();
+    next[idx] = { ...next[idx], text };
+    setLines(next);
+    emit(next);
   };
 
   const changeDepth = (idx: number, delta: 1 | -1) => {
-    setLines((prev) => {
-      const cur = prev[idx];
-      const newDepth = Math.max(0, Math.min(20, cur.depth + delta));
-      if (newDepth === cur.depth) return prev;
-      const next = prev.slice();
-      next[idx] = { ...cur, depth: newDepth };
-      emit(next);
-      return next;
-    });
+    const cur = lines[idx];
+    const newDepth = Math.max(0, Math.min(20, cur.depth + delta));
+    if (newDepth === cur.depth) return;
+    const next = lines.slice();
+    next[idx] = { ...cur, depth: newDepth };
+    setLines(next);
+    emit(next);
   };
 
   const splitLine = (idx: number, cursorPos: number) => {
-    setLines((prev) => {
-      const cur = prev[idx];
-      const before = cur.text.slice(0, cursorPos);
-      const after = cur.text.slice(cursorPos);
-      const next = prev.slice();
-      next[idx] = { ...cur, text: before };
-      next.splice(idx + 1, 0, { text: after, depth: cur.depth });
-      focusIdxRef.current = idx + 1;
-      focusCaretRef.current = 0;
-      emit(next);
-      return next;
-    });
+    const cur = lines[idx];
+    const before = cur.text.slice(0, cursorPos);
+    const after = cur.text.slice(cursorPos);
+    const next = lines.slice();
+    next[idx] = { ...cur, text: before };
+    next.splice(idx + 1, 0, { text: after, depth: cur.depth });
+    focusIdxRef.current = idx + 1;
+    focusCaretRef.current = 0;
+    setLines(next);
+    emit(next);
   };
 
   // Backspace handling — WorkFlowy contract:
@@ -138,34 +139,32 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
   //   - empty row: delete the row, focus moves to previous visible row at end.
   //   - no previous visible row (root): do nothing.
   const backspaceAtStart = (idx: number) => {
-    setLines((prev) => {
-      const hidden = computeHiddenIdx(prev, collapsed);
-      let prevIdx = -1;
-      for (let i = idx - 1; i >= 0; i--) {
-        if (!hidden.has(i)) {
-          prevIdx = i;
-          break;
-        }
+    const hidden = computeHiddenIdx(lines, collapsed);
+    let prevIdx = -1;
+    for (let i = idx - 1; i >= 0; i--) {
+      if (!hidden.has(i)) {
+        prevIdx = i;
+        break;
       }
-      if (prevIdx < 0) return prev; // root — no-op
-      const cur = prev[idx];
-      const prevRow = prev[prevIdx];
-      const next = prev.slice();
-      if (cur.text === '') {
-        // Delete the empty row entirely.
-        next.splice(idx, 1);
-        focusIdxRef.current = prevIdx;
-        focusCaretRef.current = prevRow.text.length;
-      } else {
-        // Merge: append current row's text to previous visible row.
-        next[prevIdx] = { ...prevRow, text: prevRow.text + cur.text };
-        next.splice(idx, 1);
-        focusIdxRef.current = prevIdx;
-        focusCaretRef.current = prevRow.text.length;
-      }
-      emit(next);
-      return next;
-    });
+    }
+    if (prevIdx < 0) return; // root — no-op
+    const cur = lines[idx];
+    const prevRow = lines[prevIdx];
+    const next = lines.slice();
+    if (cur.text === '') {
+      // Delete the empty row entirely.
+      next.splice(idx, 1);
+      focusIdxRef.current = prevIdx;
+      focusCaretRef.current = prevRow.text.length;
+    } else {
+      // Merge: append current row's text to previous visible row.
+      next[prevIdx] = { ...prevRow, text: prevRow.text + cur.text };
+      next.splice(idx, 1);
+      focusIdxRef.current = prevIdx;
+      focusCaretRef.current = prevRow.text.length;
+    }
+    setLines(next);
+    emit(next);
   };
 
   // Compute hidden rows (subtrees of collapsed ancestors).
