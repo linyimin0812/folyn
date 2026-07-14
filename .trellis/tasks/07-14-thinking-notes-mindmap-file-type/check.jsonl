@@ -1,0 +1,8 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns, review checklist, code standards to verify before completion."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Verify no any-types on MindElixir node tree and mdast walk, proper unknown narrowing on parsed markdown."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify named exports, Tailwind token usage (no hardcoded colors), light/dark theme parity on mind-elixir canvas."}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Verify handler registration matches CSV/DBML template, mind-elixir is lazy-loaded with Suspense fallback mirroring ErPreviewWithFallback, version pin present in package.json."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify writeback flows through editorStore.updateTabContent (JSON viewer pattern), no new plumbing added."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared cross-package guides always included in checks."}
+{"file": ".trellis/tasks/07-14-thinking-notes-mindmap-file-type/research/mindmap-libraries.md", "reason": "Verify mind-elixir is the only editable-canvas dep added, lazy-loaded only when .mmap preview opened, main bundle unchanged (manualChunks split confirmed)."}
+{"file": ".trellis/tasks/07-14-thinking-notes-mindmap-file-type/research/source-format-roundtrip.md", "reason": "Verify markdown bullet round-trip is lossless for text+tree (per MVP scope), no metadata persistence snuck in, remark-parse reused (no new parser dep)."}

@@ -45,6 +45,7 @@ const EXT_TO_THEME_ICON: Record<string, string> = {
   zsh: 'shell',
   fish: 'shell',
   java: 'java',
+  mmap: 'markdown',
 };
 
 const HANDLER_TO_THEME_ICON: Record<string, string> = {
@@ -55,6 +56,7 @@ const HANDLER_TO_THEME_ICON: Record<string, string> = {
   csv: 'csv',
   json: 'json',
   dbml: 'sql',
+  mmap: 'markdown',
   code: 'javaScript',
 };
 

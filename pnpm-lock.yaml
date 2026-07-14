@@ -176,6 +176,9 @@ importers:
       mermaid:
         specifier: ^11.15.0
         version: 11.15.0
+      mind-elixir:
+        specifier: ^5.14.0
+        version: 5.14.0
       papaparse:
         specifier: ^5.5.4
         version: 5.5.4
@@ -3352,6 +3355,9 @@ packages:
   mime-types@2.1.35:
     resolution: {integrity: sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw==}
     engines: {node: '>= 0.6'}
+
+  mind-elixir@5.14.0:
+    resolution: {integrity: sha512-V1PHE6TcVvbWMku8Jgo00LV6/vFLC0StAVccPqRT3GmaQsj93SFMviRoDHEjv0M0Yn8n10gktxNWCDUWdgRY0Q==}
 
   minimatch@10.2.5:
     resolution: {integrity: sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg==}
@@ -7868,6 +7874,8 @@ snapshots:
   mime-types@2.1.35:
     dependencies:
       mime-db: 1.52.0
+
+  mind-elixir@5.14.0: {}
 
   minimatch@10.2.5:
     dependencies:
