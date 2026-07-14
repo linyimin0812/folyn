@@ -248,7 +248,7 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                   min-height and the textarea's first-line center (py-[3px] +
                   half of 14*1.7 ≈ 15px), so items-center puts the chevron on
                   the first text line. */}
-              <div className="flex items-center justify-center w-4 h-[30px] self-start shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center justify-center w-4 h-[30px] self-start shrink-0">
                 {hasKids ? (
                   <button
                     type="button"
@@ -320,6 +320,7 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                 }}
                 rows={1}
                 placeholder="输入文字"
+                style={{ color: 'var(--t1)', caretColor: 'var(--t1)' }}
                 className={
                   'flex-1 resize-none bg-transparent outline-none text-t1 py-[3px] px-[4px] rounded-[3px] overflow-hidden transition-colors duration-100 placeholder:text-t3 placeholder:opacity-50 focus:bg-surf/60 ' +
                   (isRoot
