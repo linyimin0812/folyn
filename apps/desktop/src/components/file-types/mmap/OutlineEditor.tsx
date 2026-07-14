@@ -281,9 +281,16 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                   fixed-height first-line box (h-[30px], matching the row
                   min-height and textarea first-line center ~15px) so
                   items-center centers the dot on the first text line without
-                  manual mt-[Npx] hacks. */}
+                  manual mt-[Npx] hacks. Root (depth 0) renders an empty
+                  spacer of identical width so the textarea column stays
+                  aligned across all rows — root is an implicit container
+                  without a bullet, matching the standard outliner pattern. */}
               <div className="self-start h-[30px] flex items-center justify-center shrink-0">
-                <span className="w-[4px] h-[4px] rounded-full bg-t1 shrink-0" />
+                {line.depth > 0 ? (
+                  <span className="w-[4px] h-[4px] rounded-full bg-t1 shrink-0" />
+                ) : (
+                  <span className="w-[4px] h-[4px] shrink-0" aria-hidden="true" />
+                )}
               </div>
               <textarea
                 ref={(el) => {
