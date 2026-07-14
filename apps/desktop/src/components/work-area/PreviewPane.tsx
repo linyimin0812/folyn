@@ -90,7 +90,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
       <div
         className="flex-1 flex flex-col overflow-hidden min-w-[200px]"
         ref={paneRef}
-        style={{ ...(viewMode === 'split' ? { flex: previewFlex } : {}), position: 'relative' }}
+        style={{ ...(viewMode === 'split' ? { flexGrow: previewFlex, flexBasis: 0 } : {}), position: 'relative' }}
       >
         {/* Outline toggle -- markdown only */}
         {activeTab.fileType === 'markdown' && (

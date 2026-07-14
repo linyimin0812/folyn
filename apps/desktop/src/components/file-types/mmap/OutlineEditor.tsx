@@ -196,10 +196,15 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
               style={{ paddingLeft: `${line.depth * 16}px` }}
             >
               {hasKids ? (
+                // ponytail: mt-[4px] is a magic offset to vertically center the
+                // 12px chevron against the textarea's first text line (py-[3px]
+                // + line-box ~20px → first line center ~13px → chevron top ~7px
+                // minus the gap-1.5 leading margin already on the row). If
+                // font-size or line-height changes, recompute.
                 <button
                   type="button"
                   onClick={() => toggleCollapse(idx)}
-                  className="mt-[6px] w-3 h-3 flex items-center justify-center text-t3 hover:text-t1 shrink-0"
+                  className="mt-[4px] w-3 h-3 flex items-center justify-center text-t3 hover:text-t1 shrink-0"
                   title={isCollapsed ? '展开' : '折叠'}
                 >
                   <svg
@@ -220,9 +225,12 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                   </svg>
                 </button>
               ) : (
-                <span className="mt-[6px] w-3 shrink-0" />
+                <span className="mt-[4px] w-3 shrink-0" />
               )}
-              <span className="mt-[6px] text-t3 shrink-0 select-none text-[13px]">·</span>
+              {/* ponytail: bullet uses • (U+2022) at text-[15px] to match
+                  WorkFlowy's solid-circle aesthetic. The previous · (U+00B7)
+                  rendered too thin. */}
+              <span className="mt-[6px] text-t3 shrink-0 select-none text-[15px] leading-[1.6]">•</span>
               <textarea
                 ref={(el) => {
                   taRefs.current[idx] = el;

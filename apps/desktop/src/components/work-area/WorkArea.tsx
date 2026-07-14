@@ -243,7 +243,7 @@ export function WorkArea() {
   const showSplitResizer = handler?.Preview && viewMode === 'split' && (handler.useCodeMirror || !!handler.Editor);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-bg" ref={splitContainerRef}>
+    <div className="flex-1 flex flex-col overflow-hidden bg-bg">
       {/* File tabs */}
       {tabs.length > 0 && (
         <TabBar
@@ -255,7 +255,12 @@ export function WorkArea() {
       )}
 
       {/* Content area */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* ponytail: splitContainerRef on the INNER horizontal split container
+          so rect.left/width match the actual split axis. The outer container
+          is flex-col and includes TabBar; its rect happens to share the same
+          horizontal extent, but pinning the ref here is the correct invariant
+          if TabBar ever gets horizontal padding. */}
+      <div className="flex-1 flex overflow-hidden" ref={splitContainerRef}>
 
       {activeTab && activeTab.path === 'wiki-graph' ? (
         <WikiGraphView />
@@ -279,19 +284,7 @@ export function WorkArea() {
           wrapColumn={wrapColumn}
           editorFont={editorFont}
           editorFontSize={editorFontSize}
-          style={handler?.Preview && viewMode === 'split' ? { flex: editorFlex } : undefined}
-        />
-      )}
-
-      {/* Split resizer */}
-      {showSplitResizer && (
-        <div
-          className="w-[2px] shrink-0 cursor-col-resize bg-transparent transition-[background] duration-[140ms] hover:bg-acc hover:opacity-30"
-          onMouseDown={() => {
-            splitDragging.current = true;
-            document.body.style.cursor = 'col-resize';
-            document.documentElement.classList.add('is-resizing');
-          }}
+          style={handler?.Preview && viewMode === 'split' ? { flexGrow: editorFlex, flexBasis: 0 } : undefined}
         />
       )}
 
@@ -299,7 +292,7 @@ export function WorkArea() {
       {showCustomEditor && activeTab && handler?.Editor && activeTab.fileType !== 'web' && (
         <div
           className={`flex-1 flex flex-col overflow-hidden editor-${handler.id}`}
-          style={handler?.Preview && viewMode === 'split' ? { flex: editorFlex } : undefined}
+          style={handler?.Preview && viewMode === 'split' ? { flexGrow: editorFlex, flexBasis: 0 } : undefined}
         >
           <handler.Editor
             key={`${activeTab.id}-${externalContentVersion}`}
@@ -309,6 +302,27 @@ export function WorkArea() {
             onChange={(content) => updateTabContent(activeTab.id, content)}
             onSave={() => markTabDirty(activeTab.id, false)}
           />
+        </div>
+      )}
+
+      {/* Split resizer — sits between editor pane and preview pane.
+          ponytail: visible 2px bar via w-[2px] inside a w-[6px] hit area
+          with -mx-[2px] so it overlaps neighbors without shifting layout.
+          z-10 needed because the preview pane (next sibling) has
+          position:relative and would otherwise paint over the resizer's
+          right 2px overlap, making the hit area asymmetric (4px left, 0px
+          right of the visible bar). */}
+      {showSplitResizer && (
+        <div
+          className="shrink-0 cursor-col-resize -mx-[2px] group relative z-10"
+          style={{ width: '6px' }}
+          onMouseDown={() => {
+            splitDragging.current = true;
+            document.body.style.cursor = 'col-resize';
+            document.documentElement.classList.add('is-resizing');
+          }}
+        >
+          <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-[2px] bg-transparent transition-[background] duration-[140ms] group-hover:bg-acc group-hover:opacity-30" />
         </div>
       )}
 
