@@ -251,7 +251,10 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                   half of 14*1.7 ≈ 15px), so items-center puts the chevron on
                   the first text line. */}
               <div className="flex items-center justify-start w-4 h-[30px] self-start shrink-0">
-                {hasKids ? (
+                {/* Root (depth 0) renders no chevron — root is an implicit
+                    container, not a collapsable item. Spacer keeps the
+                    textarea column aligned with child rows. */}
+                {hasKids && line.depth > 0 ? (
                   <button
                     type="button"
                     onClick={() => toggleCollapse(idx)}
