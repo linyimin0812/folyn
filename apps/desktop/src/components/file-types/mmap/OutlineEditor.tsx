@@ -254,7 +254,7 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                   <button
                     type="button"
                     onClick={() => toggleCollapse(idx)}
-                    className="flex items-center justify-center w-[16px] h-[16px] text-t3 hover:text-t1"
+                    className="flex items-center justify-center w-[16px] h-[16px] text-t1"
                     title={isCollapsed ? '展开' : '折叠'}
                   >
                     <svg
@@ -270,7 +270,7 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                     >
                       {/* ponytail: solid right-pointing triangle (collapsed).
                           Rotated 90deg → down-pointing (expanded). Fill currentColor
-                          inherits text-t3 / hover:text-t1 from the button. */}
+                          inherits text-t1 from the button. */}
                       <polygon points="1.5,1 6.5,4 1.5,7" />
                     </svg>
                   </button>
@@ -282,7 +282,7 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                   items-center centers the dot on the first text line without
                   manual mt-[Npx] hacks. */}
               <div className="self-start h-[30px] flex items-center justify-center shrink-0">
-                <span className="w-[4px] h-[4px] rounded-full bg-t3 shrink-0" />
+                <span className="w-[4px] h-[4px] rounded-full bg-t1 shrink-0" />
               </div>
               <textarea
                 ref={(el) => {
