@@ -51,7 +51,7 @@ describe('OutlineEditor keyboard', () => {
     expect(emitted).toBe('- Root\n- Child');
   });
 
-  it('Enter splits the focused row at the cursor position', () => {
+  it('Enter on root splits the row into a depth-1 child (not a depth-0 sibling)', () => {
     const src = '- RootNode';
     const { onChange } = setup(src);
     const ta = textareas()[0];
@@ -59,7 +59,8 @@ describe('OutlineEditor keyboard', () => {
     ta.setSelectionRange(4, 4);
     fireEvent.keyDown(ta, { key: 'Enter' });
     const emitted = onChange.mock.calls[0][0] as string;
-    expect(emitted).toBe('- Root\n- Node');
+    // Root is unique — Enter creates a child so the new row gets a bullet.
+    expect(emitted).toBe('- Root\n  - Node');
   });
 
   it('Backspace at caret 0 on a non-empty row merges with previous visible row', () => {

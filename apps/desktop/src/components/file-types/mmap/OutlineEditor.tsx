@@ -154,7 +154,12 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
     const after = cur.text.slice(cursorPos);
     const next = lines.slice();
     next[idx] = { ...cur, text: before };
-    next.splice(idx + 1, 0, { text: after, depth: cur.depth });
+    // ponytail: root (depth 0) is a unique implicit container — WorkFlowy
+    // semantics say Enter on root creates a depth-1 child, not a depth-0
+    // sibling (a depth-0 sibling would render without a bullet since bullets
+    // are gated on depth > 0). Non-root rows split into a same-depth sibling.
+    const newDepth = cur.depth === 0 ? 1 : cur.depth;
+    next.splice(idx + 1, 0, { text: after, depth: newDepth });
     focusIdxRef.current = idx + 1;
     focusCaretRef.current = 0;
     setLines(next);
