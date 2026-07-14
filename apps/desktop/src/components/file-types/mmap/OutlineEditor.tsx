@@ -66,13 +66,17 @@ function isLastAtDepth(
 }
 
 // ponytail: tree-line x-offset = bullet center. Row layout (per depth D) is
-//   paddingLeft(D*16) + chevron slot(w-4=16) + gap-1(4) + bullet wrap(4)
-// so bullet center = D*16 + 16 + 4 + 2 = D*16 + 22. The ancestor line for
-// depth a draws at a*16 + 22, dropping through the subtree at the ancestor's
-// own bullet column. The chevron svg is left-aligned (justify-start) and
-// shrunk to 6px so the a=D-1 line (at D*16+6, i.e. 6px into the chevron
-// slot) clears the triangle — chevron sits left of the line, line sits left
-// of the bullet. Magic number — recompute if row layout changes.
+//   paddingLeft(max(D-1,0)*16) + chevron slot(w-4=16) + gap-1(4) + bullet
+//   wrap(4) so bullet center = max(D-1,0)*16 + 16 + 4 + 2 = max(D-1,0)*16 + 22.
+// Depth-1 rows have paddingLeft 0 (same x as root — root is an implicit
+// container, depth-1 rows are its direct children rendered flush-left). The
+// ancestor line for depth a (a>=1) draws at (a-1)*16 + 22, dropping through
+// the subtree at the ancestor's own bullet column. No line drops from root
+// (a=0) — root has no bullet column to anchor a line, so the loop below
+// starts at a=1. The chevron svg is left-aligned (justify-start) and shrunk
+// to 6px so the a=D-1 line clears the triangle — chevron sits left of the
+// line, line sits left of the bullet. Magic number — recompute if row
+// layout changes.
 const BULLET_CENTER_OFFSET = 22;
 const ROW_HALF_HEIGHT = 15; // ~half of single-line row height for L-turn
 
@@ -231,19 +235,21 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
             <div
               key={idx}
               className="group relative flex items-start gap-1 rounded-[3px] min-h-[30px] transition-colors duration-100 hover:bg-hov/40"
-              style={{ paddingLeft: `${line.depth * 16}px` }}
+              style={{ paddingLeft: `${Math.max(line.depth - 1, 0) * 16}px` }}
             >
               {/* Tree connecting lines: one vertical segment per ancestor
                   depth. Last visible descendant at depth a draws a half-height
-                  segment (L-turn); others draw full-height. */}
-              {Array.from({ length: line.depth }, (_, a) => {
+                  segment (L-turn); others draw full-height. Skip a=0 (root) —
+                  root has no bullet column, so no line drops from it; depth-1
+                  rows thus have no tree lines. */}
+              {Array.from({ length: Math.max(line.depth - 1, 0) }, (_, k) => k + 1).map((a) => {
                 const last = isLastAtDepth(lines, hiddenIdx, idx, a);
                 return (
                   <span
                     key={a}
                     className="absolute pointer-events-none border-l border-brd"
                     style={{
-                      left: `${a * 16 + BULLET_CENTER_OFFSET}px`,
+                      left: `${(a - 1) * 16 + BULLET_CENTER_OFFSET}px`,
                       top: 0,
                       bottom: last ? 'auto' : 0,
                       height: last ? `${ROW_HALF_HEIGHT}px` : 'auto',
