@@ -122,4 +122,31 @@ describe('OutlineEditor keyboard', () => {
     fireEvent.keyDown(ta, { key: 'Backspace' });
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it('Shift+Enter inserts a newline that survives re-render (regression)', () => {
+    // The textarea is controlled: value = text + ('\n' + note if note set).
+    // Shift+Enter inserts `\n` → onChange fires with e.g. "Hello\n" →
+    // updateLineText splits: text="Hello", note="" (empty string).
+    // The value formula must use `note !== undefined` not truthy, or the
+    // empty-string note strips the `\n` on re-render and Shift+Enter
+    // appears to do nothing.
+    const src = '- Hello';
+    const { onChange } = setup(src);
+    const ta = textareas()[0];
+    ta.focus();
+    ta.setSelectionRange(5, 5);
+    // Simulate the browser's default Shift+Enter behavior: it inserts `\n`
+    // into the textarea value, then fires `input`/`change`.
+    fireEvent.change(ta, { target: { value: 'Hello\n' } });
+    // Textarea value must still contain the newline after React re-renders.
+    expect(ta.value).toBe('Hello\n');
+    // Source serialization: an empty note emits no `> ` line (no noise), but
+    // the in-memory textarea must keep the `\n` so the user can keep typing
+    // into the note section.
+    const emitted = onChange.mock.calls[0][0] as string;
+    expect(emitted).toBe('- Hello');
+    // Typing into the now-present note section appends to `note`, not `text`.
+    fireEvent.change(ta, { target: { value: 'Hello\nWorld' } });
+    expect(ta.value).toBe('Hello\nWorld');
+  });
 });
