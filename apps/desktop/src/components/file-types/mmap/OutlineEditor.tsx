@@ -65,12 +65,14 @@ function isLastAtDepth(
   return true;
 }
 
-// ponytail: bullet column x-offset. Row layout is
+// ponytail: tree-line x-offset. Row layout is
 //   paddingLeft(depth*16) + action-zone(w-4=16) + gap(4) + bullet-wrap(w-[4px])
-// so bullet center sits at depth*16 + 16 + 4 + 2 = depth*16 + 22.
-// Tree line for ancestor at depth a draws at a*16 + 22 to align with the
-// parent's bullet column. Magic number — recompute if row layout changes.
-const BULLET_CENTER_OFFSET = 22;
+// The chevron slot occupies [depth*16, depth*16+16). To keep the ancestor
+// vertical line clear of the chevron, it draws in the LEFT of its own indent
+// slot at a*16 + 4 — forming a left-side tree gutter, with the chevron
+// between the gutter and the bullet. Magic number — recompute if row layout
+// changes.
+const TREE_LINE_OFFSET = 4;
 const ROW_HALF_HEIGHT = 15; // ~half of single-line row height for L-turn
 
 export function OutlineEditor({ content, onChange }: EditorProps) {
@@ -231,7 +233,7 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                     key={a}
                     className="absolute pointer-events-none border-l border-brd"
                     style={{
-                      left: `${a * 16 + BULLET_CENTER_OFFSET}px`,
+                      left: `${a * 16 + TREE_LINE_OFFSET}px`,
                       top: 0,
                       bottom: last ? 'auto' : 0,
                       height: last ? `${ROW_HALF_HEIGHT}px` : 'auto',
@@ -259,17 +261,17 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                       width="8"
                       height="8"
                       viewBox="0 0 8 8"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                      fill="currentColor"
                       style={{
                         transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
                         transition: 'transform 100ms',
+                        transformOrigin: '50% 50%',
                       }}
                     >
-                      <path d="M2 1.5 L6 4 L2 6.5" />
+                      {/* ponytail: solid right-pointing triangle (collapsed).
+                          Rotated 90deg → down-pointing (expanded). Fill currentColor
+                          inherits text-t3 / hover:text-t1 from the button. */}
+                      <polygon points="1.5,1 6.5,4 1.5,7" />
                     </svg>
                   </button>
                 ) : null}
