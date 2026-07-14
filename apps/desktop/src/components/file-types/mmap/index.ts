@@ -1,6 +1,7 @@
 import type { FileTypeHandler } from '../types';
 import { MmapFileViewerPreview } from './MmapFileViewerPreview';
 import { getFileTypeIcon } from '@/components/icons/FileIcon';
+import { OutlineEditor } from './OutlineEditor';
 
 const handler: FileTypeHandler = {
   id: 'mmap',
@@ -9,7 +10,8 @@ const handler: FileTypeHandler = {
   supportedViewModes: ['split', 'edit', 'preview'],
   defaultViewMode: 'split',
   needsFileContent: true,
-  useCodeMirror: true,
+  useCodeMirror: false,
+  Editor: OutlineEditor,
   Preview: MmapFileViewerPreview,
 };
 

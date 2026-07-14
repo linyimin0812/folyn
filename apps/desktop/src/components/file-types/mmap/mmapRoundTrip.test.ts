@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { plaintextToMindElixir, mindElixirToPlaintext } from 'mind-elixir/plaintextConverter';
 import { topicMarkdown } from './topicMarkdown';
+import { parseOutline, serializeOutline } from './outlineConverter';
 
 describe('mind-elixir plaintext round-trip (mmap source format)', () => {
   // ponytail: ONE check for the only non-trivial behavior we own — that
@@ -41,5 +42,35 @@ describe('mind-elixir plaintext round-trip (mmap source format)', () => {
     expect(fmt).toContain('<strong>bold</strong>');
     expect(fmt).toContain('<em>italic</em>');
     expect(fmt).toContain('<code>code</code>');
+  });
+});
+
+describe('OutlineEditor converter (strip/prepend `- ` round-trip)', () => {
+  // ponytail: the converter is the only non-trivial behavior the editor
+  // owns; keyboard wiring is covered by manual acceptance testing.
+
+  it('parse+serialize round-trips a 2-level bullet tree identically', () => {
+    const src = '- Root\n  - Child A\n  - Child B\n    - Grandchild';
+    const out = serializeOutline(parseOutline(src));
+    expect(out).toBe(src);
+  });
+
+  it('round-trips a single root', () => {
+    const src = '- Root';
+    const out = serializeOutline(parseOutline(src));
+    expect(out).toBe(src);
+  });
+
+  it('empty/blank input yields the fallback root', () => {
+    expect(parseOutline('')).toEqual([{ text: 'Root', depth: 0 }]);
+    expect(parseOutline('   \n  \n')).toEqual([{ text: 'Root', depth: 0 }]);
+  });
+
+  it('parse strips the `- ` prefix and preserves depth via indent', () => {
+    const rows = parseOutline('- Root\n  - Child');
+    expect(rows).toEqual([
+      { text: 'Root', depth: 0 },
+      { text: 'Child', depth: 1 },
+    ]);
   });
 });
