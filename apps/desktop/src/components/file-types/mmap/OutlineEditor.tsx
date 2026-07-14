@@ -65,14 +65,15 @@ function isLastAtDepth(
   return true;
 }
 
-// ponytail: tree-line x-offset. Row layout is
-//   paddingLeft(depth*16) + action-zone(w-4=16) + gap(4) + bullet-wrap(w-[4px])
-// The chevron slot occupies [depth*16, depth*16+16). To keep the ancestor
-// vertical line clear of the chevron, it draws in the LEFT of its own indent
-// slot at a*16 + 4 — forming a left-side tree gutter, with the chevron
-// between the gutter and the bullet. Magic number — recompute if row layout
-// changes.
-const TREE_LINE_OFFSET = 4;
+// ponytail: tree-line x-offset = bullet center. Row layout (per depth D) is
+//   paddingLeft(D*16) + chevron slot(w-4=16) + gap-1(4) + bullet wrap(4)
+// so bullet center = D*16 + 16 + 4 + 2 = D*16 + 22. The ancestor line for
+// depth a draws at a*16 + 22, dropping through the subtree at the ancestor's
+// own bullet column. The chevron svg is left-aligned (justify-start) and
+// shrunk to 6px so the a=D-1 line (at D*16+6, i.e. 6px into the chevron
+// slot) clears the triangle — chevron sits left of the line, line sits left
+// of the bullet. Magic number — recompute if row layout changes.
+const BULLET_CENTER_OFFSET = 22;
 const ROW_HALF_HEIGHT = 15; // ~half of single-line row height for L-turn
 
 export function OutlineEditor({ content, onChange }: EditorProps) {
@@ -233,7 +234,7 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                     key={a}
                     className="absolute pointer-events-none border-l border-brd"
                     style={{
-                      left: `${a * 16 + TREE_LINE_OFFSET}px`,
+                      left: `${a * 16 + BULLET_CENTER_OFFSET}px`,
                       top: 0,
                       bottom: last ? 'auto' : 0,
                       height: last ? `${ROW_HALF_HEIGHT}px` : 'auto',
@@ -249,17 +250,17 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                   min-height and the textarea's first-line center (py-[3px] +
                   half of 14*1.7 ≈ 15px), so items-center puts the chevron on
                   the first text line. */}
-              <div className="flex items-center justify-center w-4 h-[30px] self-start shrink-0">
+              <div className="flex items-center justify-start w-4 h-[30px] self-start shrink-0">
                 {hasKids ? (
                   <button
                     type="button"
                     onClick={() => toggleCollapse(idx)}
-                    className="flex items-center justify-center w-[16px] h-[16px] text-t1"
+                    className="flex items-center justify-start w-[16px] h-[16px] text-t1"
                     title={isCollapsed ? '展开' : '折叠'}
                   >
                     <svg
-                      width="8"
-                      height="8"
+                      width="6"
+                      height="6"
                       viewBox="0 0 8 8"
                       fill="currentColor"
                       style={{
