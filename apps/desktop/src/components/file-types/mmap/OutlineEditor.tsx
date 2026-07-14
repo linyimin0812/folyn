@@ -47,6 +47,32 @@ function autoSize(ta: HTMLTextAreaElement | null) {
   ta.style.height = `${ta.scrollHeight}px`;
 }
 
+// ponytail: O(n) scan per row per ancestor for tree-line L-turn detection.
+// Fine for outline-scale doc sizes (hundreds of rows). If huge docs become a
+// thing, precompute a "last visible descendant at depth" map once per render
+// instead of scanning per (row, ancestor) pair.
+function isLastAtDepth(
+  lines: OutlineLine[],
+  hidden: Set<number>,
+  i: number,
+  a: number,
+): boolean {
+  for (let j = i + 1; j < lines.length; j++) {
+    if (hidden.has(j)) continue;
+    if (lines[j].depth <= a) return true;
+    return false;
+  }
+  return true;
+}
+
+// ponytail: bullet column x-offset. Row layout is
+//   paddingLeft(depth*16) + action-zone(w-4=16) + gap(4) + bullet(w-6)
+// so bullet center sits at depth*16 + 16 + 4 + 3 = depth*16 + 23.
+// Tree line for ancestor at depth a draws at a*16 + 23 to align with the
+// parent's bullet column. Magic number — recompute if row layout changes.
+const BULLET_CENTER_OFFSET = 23;
+const ROW_HALF_HEIGHT = 15; // ~half of single-line row height for L-turn
+
 export function OutlineEditor({ content, onChange }: EditorProps) {
   const [lines, setLines] = useState<OutlineLine[]>(() => parseOutline(content));
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
@@ -184,53 +210,71 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden editor-mmap">
-      <div className="flex-1 overflow-auto px-5 py-4">
+      <div className="flex-1 overflow-auto px-6 py-4">
         {lines.map((line, idx) => {
           if (hiddenIdx.has(idx)) return null;
           const isCollapsed = collapsed.has(idx);
           const hasKids = hasChildren(idx);
+          const isRoot = line.depth === 0;
           return (
             <div
               key={idx}
-              className="flex items-start gap-1.5 leading-[1.6] min-h-[24px] rounded transition-colors duration-100 hover:bg-hov"
+              className="group relative flex items-start gap-1 rounded-[3px] min-h-[30px] transition-colors duration-100 hover:bg-hov/40"
               style={{ paddingLeft: `${line.depth * 16}px` }}
             >
-              {hasKids ? (
-                // ponytail: mt-[4px] is a magic offset to vertically center the
-                // 12px chevron against the textarea's first text line (py-[3px]
-                // + line-box ~20px → first line center ~13px → chevron top ~7px
-                // minus the gap-1.5 leading margin already on the row). If
-                // font-size or line-height changes, recompute.
-                <button
-                  type="button"
-                  onClick={() => toggleCollapse(idx)}
-                  className="mt-[4px] w-3 h-3 flex items-center justify-center text-t3 hover:text-t1 shrink-0"
-                  title={isCollapsed ? '展开' : '折叠'}
-                >
-                  <svg
-                    width="6"
-                    height="6"
-                    viewBox="0 0 8 8"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+              {/* Tree connecting lines: one vertical segment per ancestor
+                  depth. Last visible descendant at depth a draws a half-height
+                  segment (L-turn); others draw full-height. */}
+              {Array.from({ length: line.depth }, (_, a) => {
+                const last = isLastAtDepth(lines, hiddenIdx, idx, a);
+                return (
+                  <span
+                    key={a}
+                    className="absolute pointer-events-none border-l border-brd"
                     style={{
-                      transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
-                      transition: 'transform 100ms',
+                      left: `${a * 16 + BULLET_CENTER_OFFSET}px`,
+                      top: 0,
+                      bottom: last ? 'auto' : 0,
+                      height: last ? `${ROW_HALF_HEIGHT}px` : 'auto',
                     }}
+                  />
+                );
+              })}
+              {/* Hover-triggered action zone (fold toggle only, only when row
+                  has children). Invisible by default to keep the clean look;
+                  reveals on row hover. Always takes layout space so the bullet
+                  column stays aligned across rows. */}
+              <div className="flex items-center justify-center w-4 min-h-[30px] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                {hasKids ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleCollapse(idx)}
+                    className="flex items-center justify-center w-3 h-3 text-t3 hover:text-t1"
+                    title={isCollapsed ? '展开' : '折叠'}
                   >
-                    <path d="M2.5 1.5 L5.5 4 L2.5 6.5" />
-                  </svg>
-                </button>
-              ) : (
-                <span className="mt-[4px] w-3 shrink-0" />
-              )}
-              {/* ponytail: bullet uses • (U+2022) at text-[15px] to match
-                  WorkFlowy's solid-circle aesthetic. The previous · (U+00B7)
-                  rendered too thin. */}
-              <span className="mt-[6px] text-t3 shrink-0 select-none text-[15px] leading-[1.6]">•</span>
+                    <svg
+                      width="6"
+                      height="6"
+                      viewBox="0 0 8 8"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={{
+                        transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                        transition: 'transform 100ms',
+                      }}
+                    >
+                      <path d="M2.5 1.5 L5.5 4 L2.5 6.5" />
+                    </svg>
+                  </button>
+                ) : null}
+              </div>
+              {/* Bullet as a CSS-drawn dot (not a • char), vertically centered
+                  on the first text line. mt-[8px] aligns to first line center
+                  of the textarea (py-[3px] + half line-box). */}
+              <span className="mt-[8px] w-[6px] h-[6px] rounded-full bg-t3 shrink-0" />
               <textarea
                 ref={(el) => {
                   taRefs.current[idx] = el;
@@ -267,7 +311,13 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                   focusIdxRef.current = idx;
                 }}
                 rows={1}
-                className="flex-1 resize-none bg-transparent outline-none text-t1 text-[13px] leading-[1.6] py-[3px] px-[6px] rounded overflow-hidden transition-colors duration-100 focus:bg-surf"
+                placeholder="输入文字"
+                className={
+                  'flex-1 resize-none bg-transparent outline-none text-t1 py-[3px] px-[4px] rounded-[3px] overflow-hidden transition-colors duration-100 placeholder:text-t3 placeholder:opacity-50 focus:bg-surf/60 ' +
+                  (isRoot
+                    ? 'text-[16px] font-medium leading-[1.6]'
+                    : 'text-[14px] leading-[1.7]')
+                }
               />
             </div>
           );
