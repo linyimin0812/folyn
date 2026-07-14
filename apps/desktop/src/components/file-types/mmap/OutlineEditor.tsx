@@ -66,11 +66,11 @@ function isLastAtDepth(
 }
 
 // ponytail: bullet column x-offset. Row layout is
-//   paddingLeft(depth*16) + action-zone(w-4=16) + gap(4) + bullet(w-6)
-// so bullet center sits at depth*16 + 16 + 4 + 3 = depth*16 + 23.
-// Tree line for ancestor at depth a draws at a*16 + 23 to align with the
+//   paddingLeft(depth*16) + action-zone(w-4=16) + gap(4) + bullet-wrap(w-[4px])
+// so bullet center sits at depth*16 + 16 + 4 + 2 = depth*16 + 22.
+// Tree line for ancestor at depth a draws at a*16 + 22 to align with the
 // parent's bullet column. Magic number — recompute if row layout changes.
-const BULLET_CENTER_OFFSET = 23;
+const BULLET_CENTER_OFFSET = 22;
 const ROW_HALF_HEIGHT = 15; // ~half of single-line row height for L-turn
 
 export function OutlineEditor({ content, onChange }: EditorProps) {
@@ -243,22 +243,26 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
               {/* Hover-triggered action zone (fold toggle only, only when row
                   has children). Invisible by default to keep the clean look;
                   reveals on row hover. Always takes layout space so the bullet
-                  column stays aligned across rows. */}
-              <div className="flex items-center justify-center w-4 min-h-[30px] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  column stays aligned across rows. The zone itself is the
+                  chevron's first-line centering box: h-[30px] matches the row
+                  min-height and the textarea's first-line center (py-[3px] +
+                  half of 14*1.7 ≈ 15px), so items-center puts the chevron on
+                  the first text line. */}
+              <div className="flex items-center justify-center w-4 h-[30px] self-start shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 {hasKids ? (
                   <button
                     type="button"
                     onClick={() => toggleCollapse(idx)}
-                    className="flex items-center justify-center w-3 h-3 text-t3 hover:text-t1"
+                    className="flex items-center justify-center w-[16px] h-[16px] text-t3 hover:text-t1"
                     title={isCollapsed ? '展开' : '折叠'}
                   >
                     <svg
-                      width="6"
-                      height="6"
+                      width="8"
+                      height="8"
                       viewBox="0 0 8 8"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="1.4"
+                      strokeWidth="1.3"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       style={{
@@ -266,15 +270,19 @@ export function OutlineEditor({ content, onChange }: EditorProps) {
                         transition: 'transform 100ms',
                       }}
                     >
-                      <path d="M2.5 1.5 L5.5 4 L2.5 6.5" />
+                      <path d="M2 1.5 L6 4 L2 6.5" />
                     </svg>
                   </button>
                 ) : null}
               </div>
-              {/* Bullet as a CSS-drawn dot (not a • char), vertically centered
-                  on the first text line. mt-[8px] aligns to first line center
-                  of the textarea (py-[3px] + half line-box). */}
-              <span className="mt-[8px] w-[6px] h-[6px] rounded-full bg-t3 shrink-0" />
+              {/* Bullet as a CSS-drawn dot (not a • char). Wrapped in a
+                  fixed-height first-line box (h-[30px], matching the row
+                  min-height and textarea first-line center ~15px) so
+                  items-center centers the dot on the first text line without
+                  manual mt-[Npx] hacks. */}
+              <div className="self-start h-[30px] flex items-center justify-center shrink-0">
+                <span className="w-[4px] h-[4px] rounded-full bg-t3 shrink-0" />
+              </div>
               <textarea
                 ref={(el) => {
                   taRefs.current[idx] = el;
