@@ -4,11 +4,8 @@ import { useTheme } from '@/hooks/useTheme';
 import { ExportMenu } from '@/components/editor/ExportMenu';
 import { requestPlanMyDay } from '@/services/planMyDayBridge';
 
-/** File types that only support preview mode (no editor) */
-const PREVIEW_ONLY_FILE_TYPES = new Set(['image', 'pdf']);
-
-/** File types where view mode switching is not applicable */
-const HIDE_VIEW_MODE_FILE_TYPES = new Set(['image', 'pdf', 'code', 'web', 'drawio']);
+/** File types that support meaningful multi-mode switching — show the view-mode segment. */
+const SHOW_VIEW_MODE_FILE_TYPES = new Set(['markdown', 'json', 'csv', 'mmap', 'dbml', 'html']);
 
 const VIEW_MODE_ICONS: Record<ViewMode, React.ReactNode> = {
   split: (
@@ -67,8 +64,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
     const tabs = state.tabs;
     return tabs.find((t) => t.id === state.activeTabId);
   });
-  const isPreviewOnly = activeTab ? PREVIEW_ONLY_FILE_TYPES.has(activeTab.fileType) : false;
-  const hideViewMode = activeTab ? HIDE_VIEW_MODE_FILE_TYPES.has(activeTab.fileType) : false;
+  const showViewMode = activeTab ? SHOW_VIEW_MODE_FILE_TYPES.has(activeTab.fileType) : false;
   const modes = activeTab?.fileType === 'html' ? HTML_MODES : VIEW_MODES;
   const setCurrentPage = useSettingsStore((state) => state.setCurrentPage);
   const currentPage = useSettingsStore((state) => state.currentPage);
@@ -97,18 +93,16 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
 
       {/* Right: View mode + Action buttons */}
       <div className="tb-right flex items-center gap-0.5 shrink-0">
-        {/* View mode segment -- hidden for non-markdown file types */}
-        {!hideViewMode && (
+        {/* View mode segment -- shown only for multi-mode file types */}
+        {showViewMode && (
         <div className="view-seg flex items-center gap-px shrink-0">
           {modes.map((mode) => {
-            const disabled = isPreviewOnly && mode.key !== 'preview';
             return (
               <button
                 key={mode.key}
-                className={`vseg py-[3px] px-[9px] rounded text-[length:calc(var(--ui-font-size)-3px)] cursor-pointer transition-all duration-150 font-medium ${isPreviewOnly ? (mode.key === 'preview' ? 'text-acc bg-accdim' : 'text-t3') : viewMode === mode.key ? 'text-acc bg-accdim' : 'text-t3 hover:text-t2 hover:bg-hov'} ${disabled ? 'opacity-[.35] cursor-not-allowed pointer-events-none' : ''}`}
-                onClick={() => !disabled && setViewMode(mode.key)}
-                title={disabled ? `${mode.label}（不可用）` : mode.label}
-                disabled={disabled}
+                className={`vseg py-[3px] px-[9px] rounded text-[length:calc(var(--ui-font-size)-3px)] cursor-pointer transition-all duration-150 font-medium ${viewMode === mode.key ? 'text-acc bg-accdim' : 'text-t3 hover:text-t2 hover:bg-hov'}`}
+                onClick={() => setViewMode(mode.key)}
+                title={mode.label}
               >
                 {VIEW_MODE_ICONS[mode.key]}
               </button>
