@@ -46,6 +46,8 @@ const EXT_TO_THEME_ICON: Record<string, string> = {
   fish: 'shell',
   java: 'java',
   mmap: 'dataStructure',
+  drawio: 'dataStructure',
+  dio: 'dataStructure',
 };
 
 const HANDLER_TO_THEME_ICON: Record<string, string> = {
@@ -57,6 +59,7 @@ const HANDLER_TO_THEME_ICON: Record<string, string> = {
   json: 'json',
   dbml: 'sql',
   mmap: 'dataStructure',
+  drawio: 'dataStructure',
   code: 'javaScript',
 };
 

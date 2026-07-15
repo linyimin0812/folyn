@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Direct spec for custom file-type editors — covers the Editor contract, iframe bridge patterns, and serialization hygiene that the drawio handler must follow."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component patterns (named exports, props, composition) that DrawioEditor must conform to."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "How EditorProps.onChange flows through editorStore.updateTabContent — needed to wire write-back correctly."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Frontend overview — tech stack, path alias, Tauri/React conventions for the desktop app."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Excalidraw editor is the canonical pattern to mirror (debounced onChange, tabId reset, useState-once parse) — search before reimplementing."}

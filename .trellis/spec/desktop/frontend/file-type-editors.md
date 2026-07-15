@@ -43,6 +43,100 @@ Reference: `src/components/file-types/html/HtmlVisualEditor.tsx`, `src/component
 
 ---
 
+## AI File-Change Routing for Custom Editors
+
+When the AI panel modifies a file, the CLI writes the file to disk and emits a `file_change` event. `aiStore.addFileChange` consumes the event and must route it differently depending on whether the target tab's handler uses CodeMirror:
+
+```ts
+// apps/desktop/src/store/aiStore.ts — addFileChange
+const tab = useEditorStore.getState().tabs.find((t) => t.id === tabId);
+if (tab && change.status === 'pending') {
+  const handler = getHandlerById(tab.fileType);
+  if (handler?.useCodeMirror) {
+    // CodeMirror tabs: enter diff review; DiffReviewBar handles accept/reject
+    useEditorStore.getState().enterDiffReview(change.path, change.oldContent, change.newContent);
+  } else {
+    // Custom editors (drawio, excalidraw, mmap, ...): apply directly via
+    // updateTabContent (NOT setContentExternal) so externalContentVersion
+    // doesn't bump and WorkArea doesn't remount the iframe.
+    useEditorStore.getState().updateTabContent(tabId, change.newContent);
+  }
+}
+```
+
+**Why branch on `useCodeMirror`**: `DiffReviewBar` is mounted exclusively inside `EditorPane` (`WorkArea.tsx:239`), which only renders when `handler.useCodeMirror === true`. For non-CodeMirror custom editors, the `<handler.Editor>` branch at `WorkArea.tsx:295` does NOT mount `DiffReviewBar` — there is no Accept button and no way for `enterDiffReview` to ever update `tab.content`. The old behavior (always calling `enterDiffReview` for every handler) silently set unused diff state for custom editors; the AI's change was never actionable. The branch above makes custom editors see AI changes live.
+
+**Why `updateTabContent` (not `setContentExternal`)**: `setContentExternal` bumps `externalContentVersion`, which changes `WorkArea`'s remount key `${activeTab.id}-${externalContentVersion}` and destroys+recreates the `<handler.Editor>`. For iframe-backed editors (drawio), this means a full-page flicker on every AI modification. `updateTabContent` mutates `tabs[].content` in place without bumping the version → no remount → the editor's own content-prop effect picks up the change and reloads the iframe in place (postMessage, no DOM destroy).
+
+**Trade-off (marked `ponytail:` in source)**: non-CodeMirror editors have no accept/reject UI; AI changes auto-apply. Users undo in-editor. A per-type diff UI for custom editors is the upgrade path.
+
+**Real-time granularity ceiling**: `file_change` events fire once per completed Write/Edit tool call in `packages/cli-adapter/src/claudeAdapter.ts:244,283`, carrying the full new file content (re-read from disk). Token-level streaming of file content is NOT supported by the architecture. The best achievable granularity is per-tool-call: each `file_change` triggers one live reload. If the AI uses one big Write call per modification, the editor sees only the final state; if the AI uses multiple Edit calls, the editor shows intermediate states.
+
+Reference: `apps/desktop/src/store/aiStore.ts`, `apps/desktop/src/components/work-area/WorkArea.tsx`, `packages/cli-adapter/src/claudeAdapter.ts`, `packages/cli-adapter/src/types.ts` (`FileChange`)
+
+---
+
+## Draw.io Editor (`.drawio` / `.dio`)
+
+`.drawio` files use `react-drawio`'s `DrawIoEmbed` component, which wraps `https://embed.diagrams.net` in an iframe and communicates via postMessage. Unlike GrapesJS (host-driven canvas), DrawIoEmbed owns its iframe and exposes:
+- **`xml` prop** — when this changes, DrawIoEmbed's internal `useEffect` (deps `[isInitialized, xml, csv, autosave]`) postMessages a `load({xml, autosave})` action to the iframe → drawio replaces its diagram. No DOM destroy.
+- **`onAutoSave({xml, ...})` event** — fires on every edit when `autosave: true` is set. Carries the current diagram XML. This is the write-back hook.
+- **`onLoad` event** — fires when drawio finishes loading content.
+
+### Pattern: `loadedXml` + `loadedXmlRef` to break the write-back loop
+
+Naively passing `xml={content}` causes a loop: user edits → `onAutoSave({xml: A})` → `onChange(A)` → `editorStore.updateTabContent` → `content` prop becomes A → `xml` prop changes → DrawIoEmbed reloads the iframe → disrupts undo history, scroll, focus. The fix is a ref that tracks "what we last handed to DrawIoEmbed":
+
+```tsx
+// apps/desktop/src/components/file-types/drawio/DrawioEditor.tsx
+const [loadedXml, setLoadedXml] = useState(content);
+const loadedXmlRef = useRef(content);
+
+// External content change (AI / file watcher): reload the iframe.
+useEffect(() => {
+  if (content !== loadedXmlRef.current) {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current); // race guard — see below
+    loadedXmlRef.current = content;
+    setLoadedXml(content);
+  }
+}, [content]);
+
+// User edit: update the ref ONLY (not setLoadedXml), so the content-prop
+// effect above sees content === loadedXmlRef.current after our own onChange
+// flows back via updateTabContent — no iframe reload on user edits.
+const handleAutoSave = useCallback((data: { xml?: string }) => {
+  if (!data?.xml) return;
+  loadedXmlRef.current = data.xml;
+  if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+  saveTimerRef.current = setTimeout(() => {
+    onChangeRef.current(data.xml!);
+  }, 1000);
+}, []);
+
+return (
+  <DrawIoEmbed
+    autosave
+    xml={loadedXml}
+    urlParameters={{ dark: theme === 'dark' }}
+    onAutoSave={handleAutoSave}
+  />
+);
+```
+
+**Why not `useState(content)` freeze + remount (excalidraw pattern)**: excalidraw uses `useState(() => parseContent(content))` and relies on WorkArea's remount-on-`externalContentVersion`-bump to handle external changes. DrawIoEmbed could do the same, but each remount destroys and recreates the iframe → full-page flicker. The `loadedXml` pattern avoids remounts entirely — AI changes flow through `updateTabContent` → content-prop effect → `setLoadedXml` → DrawIoEmbed's internal `xml`-dep useEffect → postMessage reload. Smooth.
+
+### Gotcha: autosave-timer race with external content changes
+
+When an external content change (AI modification) arrives while the user's autosave debounce timer is pending, the stale timer fires `onChangeRef.current(staleXml)` AFTER the iframe reloaded with the new content. This overwrites the AI's change on disk AND reloads the iframe with the stale value, defeating the AI flow. The fix is to clear `saveTimerRef` in the content-prop effect before reloading the iframe (shown above). The user's unsaved in-iframe edits are lost by design (matches the `ponytail:` no-accept/reject-UI shortcut).
+
+### Ponytail ceiling: online embed
+
+`DrawIoEmbed` defaults to `https://embed.diagrams.net` (public CDN). Requires internet at edit time; CDN downtime breaks the editor (file XML persists on disk, no data loss). Upgrade path: bundle drawio-desktop web assets (~30MB) into `apps/desktop/public/drawio/` and pass `baseUrl="/drawio/index.html"` to `DrawIoEmbed`. Defer until offline use is a real requirement.
+
+Reference: `apps/desktop/src/components/file-types/drawio/DrawioEditor.tsx`, `apps/desktop/src/components/file-types/drawio/index.ts`, `node_modules/react-drawio/dist/index.js` (DrawIoEmbed source for `xml`-dep useEffect + `onAutoSave` event shape)
+
+---
+
 ## Internal Mode Switching
 
 The HTML editor exposes multiple internal modes (visual/source). The active mode is derived from the global editor store's `viewMode` (owned by the Topbar segment, shared with Markdown's split/edit/preview); preview mode is rendered by `WorkArea` via `HtmlPreview`, so `HtmlVisualEditor` only handles `visual` + `source`.

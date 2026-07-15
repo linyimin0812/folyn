@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Code standards, forbidden patterns, and review checklist — the check phase verifies the drawio handler against these."}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Verify iframe bridge + serialization hygiene rules are followed by DrawioEditor."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Strict TS patterns — DrawIoEmbedRef typing, EditorProps conformance."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Confirm the handler mirrors excalidraw's pattern rather than reimplementing; no duplicate debounce/parse utilities."}

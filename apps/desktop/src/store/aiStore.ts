@@ -6,6 +6,7 @@ import { sessionStorage } from '@/utils/sessionStorage';
 import { suppressWatcherFor } from '@/utils/fileWatcher';
 import { generateId } from '@/utils/idGenerator';
 import { applyAcceptChange, applyRejectChange } from './aiFileChangeActions';
+import { getHandlerById } from '@/components/file-types/registry';
 import { persistAiState, saveAllSessions, loadSessionsFromDisk, setSuppressPersist, setupPersistSubscription } from './aiSessionPersistence';
 
 export { loadAiSessionsForVault } from './aiSessionPersistence';
@@ -267,7 +268,19 @@ export const useAiStore = create<AiState>((set, get) => ({
     const tabId = `${vaultId}:${change.path}`;
     const tab = useEditorStore.getState().tabs.find((t) => t.id === tabId);
     if (tab && change.status === 'pending') {
-      useEditorStore.getState().enterDiffReview(change.path, change.oldContent, change.newContent);
+      const handler = getHandlerById(tab.fileType);
+      if (handler?.useCodeMirror) {
+        useEditorStore.getState().enterDiffReview(change.path, change.oldContent, change.newContent);
+      } else {
+        // Custom editors (drawio, excalidraw, mmap, ...) have no diff-review UI —
+        // DiffReviewBar is only mounted in the CodeMirror branch. Apply via
+        // updateTabContent (NOT setContentExternal) so externalContentVersion
+        // doesn't bump and WorkArea doesn't remount the iframe. DrawioEditor's
+        // content-prop effect picks up the change and postMessages a load to the
+        // existing iframe — smooth live reload as the AI streams modifications.
+        // ponytail: no accept/reject flow for custom editors; users undo in-editor.
+        useEditorStore.getState().updateTabContent(tabId, change.newContent);
+      }
     }
   },
 

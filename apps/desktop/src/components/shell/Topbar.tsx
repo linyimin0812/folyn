@@ -8,7 +8,7 @@ import { requestPlanMyDay } from '@/services/planMyDayBridge';
 const PREVIEW_ONLY_FILE_TYPES = new Set(['image', 'pdf']);
 
 /** File types where view mode switching is not applicable */
-const HIDE_VIEW_MODE_FILE_TYPES = new Set(['image', 'pdf', 'code', 'web']);
+const HIDE_VIEW_MODE_FILE_TYPES = new Set(['image', 'pdf', 'code', 'web', 'drawio']);
 
 const VIEW_MODE_ICONS: Record<ViewMode, React.ReactNode> = {
   split: (
