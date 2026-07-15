@@ -51,7 +51,7 @@ export function OfficeFileViewer({ filePath, vaultRoot }: PreviewProps) {
   }, [filePath, vaultRoot]);
 
   return (
-    <div className="h-full w-full overflow-hidden bg-panel">
+    <div className="h-full w-full overflow-y-auto overflow-x-hidden bg-panel">
       {loading && <div className="flex h-full items-center justify-center text-t3 text-[13px]">加载中…</div>}
       {error && (
         <div className="flex h-full items-center justify-center text-t3 text-[13px] text-red-500">
