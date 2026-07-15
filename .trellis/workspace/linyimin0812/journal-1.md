@@ -1884,3 +1884,37 @@ Fixed three independent bugs in the HTML visual editor (GrapesJS) round-trip: (1
 ### Next Steps
 
 - None - task complete
+
+
+## Session 56: drawio file type with react-drawio embed + AI auto-apply for custom editors
+
+**Date**: 2026-07-15
+**Task**: drawio file type with react-drawio embed + AI auto-apply for custom editors
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added .drawio/.dio file type using react-drawio's DrawIoEmbed (online CDN). DrawioEditor uses loadedXml+loadedXmlRef pattern to break write-back loop: user edits update the ref only so content-prop effect skips iframe reloads on our own onChange; external changes (AI / file watcher) trigger setLoadedXml -> postMessage reload without DOM remount. Fixed AI file-change routing in aiStore.addFileChange — branched on handler.useCodeMirror: CodeMirror tabs keep enterDiffReview (DiffReviewBar handles accept); non-CodeMirror editors (drawio/excalidraw/mmap/...) call updateTabContent directly so the editor sees AI changes live. Previously these handlers silently entered diff review with no UI to ever apply the change. Real-time granularity is per-tool-call (file_change fires once per completed Write/Edit in claudeAdapter.ts); token-level streaming not supported by architecture. ponytail: online embed requires internet, offline bundle is upgrade path; non-CodeMirror editors have no accept/reject UI, users undo in-editor. Spec updated in file-type-editors.md with AI file-change routing section + Draw.io editor pattern + autosave-timer race gotcha.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `888a758` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
