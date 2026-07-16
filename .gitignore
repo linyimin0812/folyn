@@ -43,3 +43,4 @@ default_vault/
 apps/desktop/dummy-non-existing-folder/
 apps/desktop/public/flyfish-viewer-assets.json
 apps/desktop/public/vendor/
+apps/desktop/public/wasm/
