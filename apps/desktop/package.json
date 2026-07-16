@@ -28,6 +28,7 @@
     "@dbml/core": "8.3.1",
     "@excalidraw/excalidraw": "^0.18.1",
     "@file-viewer/preset-all": "2.1.17",
+    "@file-viewer/preset-office": "^2.1.30",
     "@file-viewer/react": "^2.1.17",
     "@quill/cli-adapter": "workspace:*",
     "@quill/container-plugins": "workspace:*",

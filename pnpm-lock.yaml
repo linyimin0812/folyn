@@ -92,6 +92,9 @@ importers:
       '@file-viewer/preset-all':
         specifier: 2.1.17
         version: 2.1.17(three@0.184.0)
+      '@file-viewer/preset-office':
+        specifier: ^2.1.30
+        version: 2.1.30
       '@file-viewer/react':
         specifier: ^2.1.17
         version: 2.1.17(react@18.3.1)
@@ -935,6 +938,9 @@ packages:
 
   '@file-viewer/preset-all@2.1.17':
     resolution: {integrity: sha512-FhZfkVvCotA1Xg3tvwwA65T/EexnarFvTcLpZHAnonKA2CENq88SmFuY/F0fRAO6QAR0BOXlb8LBEVM72OzEOA==}
+
+  '@file-viewer/preset-office@2.1.30':
+    resolution: {integrity: sha512-T3OewZi9OBT+gOoja/C2IA42b1zgrhkpCOSSfvAbQmxS4ukQDphSqeK2W/jBw88D3nF02eiFYMo+llpcE4aBHA==}
 
   '@file-viewer/react@2.1.17':
     resolution: {integrity: sha512-VRnyACXuzP/KbSLR77Tn7GOC3I/Is2OnSsnT6Myw1FR/hZ1zF1ma+oig1cas5OjWS7jkNyLbJ/Uy6f5iI8jnFA==}
@@ -5466,6 +5472,15 @@ snapshots:
     transitivePeerDependencies:
       - geotiff
       - three
+
+  '@file-viewer/preset-office@2.1.30':
+    dependencies:
+      '@file-viewer/core': 2.1.30
+      '@file-viewer/renderer-ofd': 2.1.30
+      '@file-viewer/renderer-pdf': 2.1.30
+      '@file-viewer/renderer-presentation': 2.1.30
+      '@file-viewer/renderer-spreadsheet': 2.1.17(patch_hash=vojbpxmhlfiq2ltapp4u4uut5u)
+      '@file-viewer/renderer-word': 2.1.30
 
   '@file-viewer/react@2.1.17(react@18.3.1)':
     dependencies:
