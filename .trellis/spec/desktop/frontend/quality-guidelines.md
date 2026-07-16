@@ -98,6 +98,47 @@ export function resolveSendOptions(modeId: string, base: CliSendOptions): CliSen
 
 ---
 
+## Sandboxed iframes for untrusted content
+
+Any `<iframe>` rendering content that is **not** fully trusted (a vault `.html`
+file, a fetched web page, user-supplied markup) MUST use `sandbox="allow-scripts"`
+**without** `allow-same-origin`. The `allow-scripts allow-same-origin` combo is
+no sandbox at all — the iframe shares the app's origin, so inline `<script>`
+can reach `parent.window.__TAURI__` and invoke Tauri commands / read
+`localStorage` (privilege escalation). The legacy `HtmlPreview` had exactly
+this hole.
+
+```tsx
+// ✅ Correct — opaque origin; scripts run but cannot touch parent
+<iframe sandbox="allow-scripts" srcDoc={injectPreviewBootstrap(content)} />
+
+// ❌ Wrong — same-origin + scripts = full parent-realm access
+<iframe sandbox="allow-scripts allow-same-origin" srcDoc={content} />
+```
+
+When the host needs to manipulate the previewed content (force a theme, intercept
+links, inject helpers), do it by **injecting into the `srcDoc` content**, not by
+reaching into `iframe.contentDocument` from the parent (that access requires
+`allow-same-origin` and is the leak). Parse with `DOMParser.parseFromString(html, 'text/html')`
+— parsing does NOT execute scripts — inject `<style>`/`<script>` into `doc.head`/`doc.body`,
+serialize back. The injected script touches the iframe's OWN document (same-origin
+to itself), never `parent`/`window.top`/`window.opener`.
+
+Reference: `apps/desktop/src/components/file-types/html/HtmlPreview.tsx`,
+`apps/desktop/src/components/file-types/html/injectPreviewBootstrap.ts`.
+For full host↔iframe RPC (plugins), see the `plugin-host` sandbox loader + `rpcBridge`
+(`allow-scripts` only + `postMessage` with origin verification).
+
+> **Testing gotcha**: jsdom does NOT enforce iframe `sandbox` cross-origin
+> isolation, nor execute `srcDoc` inline scripts. A privilege-escalation attempt
+> cannot be simulated in jsdom. Sandbox tests must assert (a) the `sandbox`
+> attribute string omits `allow-same-origin`, (b) the bootstrap is injected
+> into `srcDoc`, (c) the parent-realm `onLoad`/`contentDocument` path is gone —
+> with a `ponytail:` comment naming the ceiling and the real-browser upgrade path.
+> The real cross-origin contract is owned by the browser at runtime.
+
+---
+
 ## Forbidden Patterns
 
 | Pattern | Why | Alternative |
@@ -109,6 +150,7 @@ export function resolveSendOptions(modeId: string, base: CliSendOptions): CliSen
 | `useEffect` without deps array | Stale closures | Always specify deps |
 | Side effects in selectors | Unpredictable behavior | Compute in actions |
 | Raw `fetch` for Tauri ops | Bypasses Tauri IPC | `invoke()` |
+| `sandbox="allow-scripts allow-same-origin"` on untrusted-content iframe | Privilege escalation — iframe script reaches `parent.__TAURI__` | `sandbox="allow-scripts"` only; inject into `srcDoc` |
 
 ---
 
@@ -169,3 +211,4 @@ Observed convention (enforced by reading order, not tooling):
 - [ ] Business logic lives in stores/services, not components
 - [ ] New files follow naming conventions (PascalCase components, camelCase stores)
 - [ ] No circular imports between store files
+- [ ] Iframes rendering untrusted content use `sandbox="allow-scripts"` (no `allow-same-origin`); host manipulation goes via `srcDoc` injection, not `contentDocument`

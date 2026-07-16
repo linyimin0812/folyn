@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "沙箱/安全边界与 DOM 操作约定，注入脚本访问自身 document 的合法性基准"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "file-type Preview 组件约定，HtmlPreview 作为 Preview 的实现规范"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "DOMParser 注入与序列化的类型安全，处理 null head/body"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "iframe 跨 origin 边界思考——什么能进 parent、什么不能"}
