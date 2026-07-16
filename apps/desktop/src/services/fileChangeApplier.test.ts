@@ -138,6 +138,58 @@ describe('EditorFileChangeApplier routing', () => {
   });
 });
 
+describe('EditorFileChangeApplier.acceptEditorChange', () => {
+  it('calls diffReviewStore.setContentExternal(tabId, newContent) when the tab is open', () => {
+    editorState.tabs = [{ id: 'vault-1:notes/a.md', fileType: 'markdown' }];
+    new EditorFileChangeApplier().acceptEditorChange('notes/a.md', 'new');
+
+    expect(diffReviewState.setContentExternal).toHaveBeenCalledWith('vault-1:notes/a.md', 'new');
+    expect(editorState.updateTabContent).not.toHaveBeenCalled();
+    expect(diffReviewState.enterDiffReview).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op when the tab is not open', () => {
+    editorState.tabs = [{ id: 'vault-1:other.md', fileType: 'markdown' }];
+    new EditorFileChangeApplier().acceptEditorChange('notes/absent.md', 'new');
+
+    expect(diffReviewState.setContentExternal).not.toHaveBeenCalled();
+    expect(editorState.updateTabContent).not.toHaveBeenCalled();
+  });
+
+  it('resolves the tabId as `${vaultId}:${path}`', () => {
+    editorState.tabs = [{ id: 'vault-1:deep/path.md', fileType: 'markdown' }];
+    new EditorFileChangeApplier().acceptEditorChange('deep/path.md', 'X');
+
+    expect(diffReviewState.setContentExternal).toHaveBeenCalledWith('vault-1:deep/path.md', 'X');
+  });
+});
+
+describe('EditorFileChangeApplier.revertEditorTab', () => {
+  it('calls editorStore.updateTabContent(tabId, oldContent) when the tab is open', () => {
+    editorState.tabs = [{ id: 'vault-1:notes/a.md', fileType: 'markdown' }];
+    new EditorFileChangeApplier().revertEditorTab('notes/a.md', 'old');
+
+    expect(editorState.updateTabContent).toHaveBeenCalledWith('vault-1:notes/a.md', 'old');
+    expect(diffReviewState.setContentExternal).not.toHaveBeenCalled();
+    expect(diffReviewState.enterDiffReview).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op when the tab is not open', () => {
+    editorState.tabs = [{ id: 'vault-1:other.md', fileType: 'markdown' }];
+    new EditorFileChangeApplier().revertEditorTab('notes/absent.md', 'old');
+
+    expect(editorState.updateTabContent).not.toHaveBeenCalled();
+    expect(diffReviewState.setContentExternal).not.toHaveBeenCalled();
+  });
+
+  it('resolves the tabId as `${vaultId}:${path}`', () => {
+    editorState.tabs = [{ id: 'vault-1:deep/path.md', fileType: 'markdown' }];
+    new EditorFileChangeApplier().revertEditorTab('deep/path.md', 'old');
+
+    expect(editorState.updateTabContent).toHaveBeenCalledWith('vault-1:deep/path.md', 'old');
+  });
+});
+
 describe('registerEditorFileChangeApplier', () => {
   it('registers an EditorFileChangeApplier in the aiStore slot', () => {
     expect(getFileChangeApplier()).toBeNull();

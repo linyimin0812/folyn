@@ -2,20 +2,23 @@ import { writeTextFile } from '@tauri-apps/plugin-fs';
 import type { FileChange } from '@quill/cli-adapter';
 import type { AiSession } from './aiStore';
 import { useVaultStore } from './vaultStore';
-import { useEditorStore } from './editorStore';
-import { useDiffReviewStore } from './diffReviewStore';
+// ESM cycle: aiStore imports applyAcceptChange/applyRejectChange from here
+// (runtime), and we import getFileChangeApplier back from aiStore (runtime).
+// Safe because both sides export function declarations (hoisted, no TDZ) and
+// neither calls the other at module-eval time — aiStore only invokes the
+// apply fns inside store actions, we only call getFileChangeApplier inside
+// applyAcceptChange/applyRejectChange bodies. Live bindings resolve at call
+// time. Same shape as the editorStore↔editorIoService cycle.
+import { getFileChangeApplier } from './aiStore';
 import { resolveBasePath } from '@/utils/pathResolver';
 
-// ponytail: these accept/reject paths still construct the `${vaultId}:${path}`
-// tabId inline (lines below). The apply-path tabId already lives in
-// EditorFileChangeApplier (the audit-named reverse dependency); accept/reject
-// are forward user actions, not a reverse dependency, so centralizing their
-// tabId is lower value. Extending FileChangeApplier with accept/reject was
-// considered and deferred: the reject path interleaves disk IO (writeTextFile)
-// + session-status mutation + editor mutation, and moving only the editor
-// slice would split one logical operation across two modules. Revisit if
-// accept/reject grow a useCodeMirror branch (then the applier is the right
-// home for the routing).
+/**
+ * aiFileChangeActions — orchestration of accept/reject user actions over a
+ * session's FileChange list. Pure editor mutations (tabId resolution, tab
+ * lookup, editorStore/diffReviewStore calls) are delegated to the injected
+ * FileChangeApplier (editor-layer owned); this module keeps session state
+ * mutation + the reject disk IO, which are not editor-domain.
+ */
 
 export function applyAcceptChange(
   session: AiSession,
@@ -28,14 +31,10 @@ export function applyAcceptChange(
     c.path === path && c.status === 'pending' ? { ...c, status: 'accepted' as const } : c,
   );
 
-  const vaultId = useVaultStore.getState().activeVaultId || '';
-  const tabId = `${vaultId}:${path}`;
-  const tab = useEditorStore.getState().tabs.find((t) => t.id === tabId);
-  if (tab) {
-    // setContentExternal lives on diffReviewStore — bumps
-    // externalContentVersion so EditorPane resyncs the CodeMirror doc.
-    useDiffReviewStore.getState().setContentExternal(tabId, change.newContent);
-  }
+  // Editor slice: bump externalContentVersion on the open tab so EditorPane
+  // resyncs the CodeMirror doc. No-op if the tab isn't open or no applier is
+  // registered yet (init-order safe).
+  getFileChangeApplier()?.acceptEditorChange(path, change.newContent);
 
   return { updatedFileChanges, newContent: change.newContent };
 }
@@ -58,12 +57,9 @@ export async function applyRejectChange(
     c.path === path && c.status === 'pending' ? { ...c, status: 'rejected' as const } : c,
   );
 
-  const vaultId = useVaultStore.getState().activeVaultId || '';
-  const tabId = `${vaultId}:${path}`;
-  const tab = useEditorStore.getState().tabs.find((t) => t.id === tabId);
-  if (tab) {
-    useEditorStore.getState().updateTabContent(tabId, change.oldContent);
-  }
+  // Editor slice: write oldContent back to the open tab. No-op if the tab
+  // isn't open or no applier is registered yet.
+  getFileChangeApplier()?.revertEditorTab(path, change.oldContent);
 
   return updatedFileChanges;
 }

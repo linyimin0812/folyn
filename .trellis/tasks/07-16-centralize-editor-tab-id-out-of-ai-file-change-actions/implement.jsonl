@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "依赖方向校验——aiFileChangeActions 不再 import editorStore/diffReviewStore，editor 切片收编进 applier"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "resolveTab helper 返回类型、acceptEditorChange/revertEditorTab 签名类型完备"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "cross-store dependency inversion 约定（applier 模式）已在 spec，本任务是其延续应用"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "store getState 用法、applier 内调 diffReviewStore/editorStore 的约定"}
