@@ -89,7 +89,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: asset:; connect-src 'self' ipc: http://ipc.localhost; frame-src 'self' blob: data: quill-plugin:",
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net https://esm.sh; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob: asset:; connect-src 'self' ipc: http://ipc.localhost https://cdn.jsdelivr.net https://esm.sh; worker-src 'self' blob: https://cdn.jsdelivr.net; frame-src 'self' blob: data: quill-plugin: https://embed.diagrams.net:",
       "assetProtocol": {
         "enable": true,
         "scope": {

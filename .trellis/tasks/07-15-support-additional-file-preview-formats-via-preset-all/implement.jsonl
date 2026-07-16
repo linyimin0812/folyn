@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Direct spec for file-type handler registration, extensions array, and HandlerRegistry conventions — this task extends the office handler's extensions array."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend spec index — entry point for all desktop frontend conventions."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality bar (lint/type/build) the change must meet before completion."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reusing existing office handler + FileViewer component instead of adding new handlers — this guide frames the reuse decision."}

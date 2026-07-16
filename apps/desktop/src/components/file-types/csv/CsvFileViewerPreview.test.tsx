@@ -28,7 +28,6 @@ vi.stubGlobal('File', MockFile);
 vi.mock('@file-viewer/react', () => ({
   default: () => null,
 }));
-vi.mock('@file-viewer/preset-office', () => ({ default: {} }));
 
 import { CsvFileViewerPreview } from './CsvFileViewerPreview';
 
