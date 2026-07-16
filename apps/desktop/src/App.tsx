@@ -285,6 +285,55 @@ export default function App() {
     };
   }, []);
 
+  // ── Voice input: global push-to-talk hotkey ──
+  // PR4. Registers the persisted voice hotkey on mount (so the shortcut works
+  // before the user visits Voice Settings), and listens for `voice://hotkey-press`
+  // / `voice://hotkey-release` events from the `tauri-plugin-global-shortcut`
+  // handler in `lib.rs`. Press → `useVoiceInput.getState().start()`; release →
+  // `.stop()` → transcribe → polish → insert. Reuses the SAME flow as the mic
+  // button (the hook owns the state machine) so the two entry points stay
+  // unified. The hotkey is re-registered from VoiceSettings when the user
+  // changes it; this effect only handles the mount-time bootstrap + event
+  // routing. Non-Tauri/test envs skip.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlistenPress: (() => void) | undefined;
+    let unlistenRelease: (() => void) | undefined;
+    (async () => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const { listen } = await import('@tauri-apps/api/event');
+        const { useVoiceStore } = await import('@/store/voiceStore');
+        const { useVoiceInput } = await import('@/hooks/useVoiceInput');
+
+        // Mount-time registration of the persisted hotkey (if any).
+        const { globalHotkey } = useVoiceStore.getState();
+        if (globalHotkey) {
+          try {
+            await invoke('voice_set_global_hotkey', { accelerator: globalHotkey });
+          } catch (err) {
+            console.warn('[voice] mount-time hotkey register failed:', err);
+          }
+        }
+
+        // Route press/release to the shared hook. The hook guards against
+        // double-start/double-stop, so a stray release while idle is a no-op.
+        unlistenPress = await listen('voice://hotkey-press', () => {
+          void useVoiceInput.getState().start();
+        });
+        unlistenRelease = await listen('voice://hotkey-release', () => {
+          void useVoiceInput.getState().stop();
+        });
+      } catch (err) {
+        console.warn('[voice] hotkey listener setup failed:', err);
+      }
+    })();
+    return () => {
+      unlistenPress?.();
+      unlistenRelease?.();
+    };
+  }, []);
+
   // ── Fall back to 'files' panel when the active feature is disabled ──
   // If the user turns off a feature (in Settings) while its panel is active,
   // we must not leave the UI on a now-hidden panel. Re-route to 'files'.

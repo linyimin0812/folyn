@@ -160,3 +160,22 @@ Create detailed flow docs when:
 - Multiple teams are involved
 - Data format is complex
 - Feature has caused bugs before
+
+---
+
+## Known Ceiling: `chat_stream` / `runRigChat` Has No `systemPrompt` Param
+
+When orchestrating a one-shot LLM pass from the frontend (e.g. polish-style calls that transcribe → apply a prompt template → return text), the current `runRigChat` (`apps/desktop/src/services/rigChat.ts`) + `chat_stream` Rust command (`apps/desktop/src-tauri/src/chat.rs`) lack a `systemPrompt` argument. The Rust side hardcodes a `PREAMBLE` and there's no `skipHistory` toggle either.
+
+**Current workaround** (used by voice polish in `apps/desktop/src/hooks/useVoiceInput.ts`): prepend the polish prompt to the user transcript as the `prompt` field, with each call using a unique `sessionId` so prior polish history doesn't leak. The default polish prompt ends with "原始文本:" so the concatenation reads naturally. Marked with a `ponytail:` comment in source.
+
+**Upgrade path** when this becomes a problem (file litter, preamble interference, history bleed):
+- Add `system_prompt: Option<String>` + `skip_history: bool` params to `chat_stream`.
+- Plumb through `runRigChat({ ...args, systemPrompt?, skipHistory? })`.
+- Update voice polish to pass `polishPrompt` as `systemPrompt` (clean system/user separation).
+
+**Checklist before adding a new one-shot LLM orchestration**:
+- [ ] Does the call need system/user prompt separation? If yes, you're blocked by this ceiling — either accept the prepend workaround or upgrade `chat_stream` first.
+- [ ] Will the call accumulate across user sessions? If yes, mint a unique `sessionId` per call so history doesn't bleed (the voice polish pattern).
+- [ ] Does the call need streaming UI? `runRigChat` returns a `CliStreamEvent` stream — wire `onEvent` for incremental text. Polish-style one-shot calls can drain + resolve on `done` instead.
+

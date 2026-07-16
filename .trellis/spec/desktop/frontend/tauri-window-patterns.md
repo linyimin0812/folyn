@@ -850,6 +850,121 @@ passed to `set_pet_position`.
 
 ---
 
+## Scenario: Multiple OS-wide Shortcuts (dispatch by HotKey id)
+
+### 1. Scope / Trigger
+- Trigger: the app needs TWO or more OS-wide shortcuts at the same time (e.g. pet-panel toggle + voice push-to-talk). The single-shortcut `with_handler` closure from the [Global Keyboard Shortcut scenario](#scenario-global-keyboard-shortcut-os-wide-fires-when-app-is-unfocused) no longer suffices because there is only ONE handler closure for the whole plugin.
+
+### 2. Signatures
+- `lib.rs` catch-all dispatches by HotKey identity, not by assuming "the shortcut" = one bound accelerator:
+  ```rust
+  .plugin(
+      tauri_plugin_global_shortcut::Builder::new()
+          .with_handler(|app, shortcut, event| {
+              // `shortcut: HotKey` — the actual accelerator that fired.
+              let pressed = event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed;
+              let released = event.state == tauri_plugin_global_shortcut::ShortcutState::Released;
+              // Voice push-to-talk: Pressed→start, Released→stop.
+              let voice_hotkey = app.state::<voice::VoiceState>();
+              if let Some(vhk) = voice_hotkey.voice_hotkey() {
+                  if shortcut == &vhk {
+                      let _ = app.emit(if pressed { "voice://hotkey-press" } else { "voice://hotkey-release" }, ());
+                      return;
+                  }
+              }
+              // Pet-panel: only Pressed, release ignored.
+              if pressed { let _ = app.emit("pet://shortcut-toggle", ()); }
+          })
+          .build(),
+  )
+  ```
+- Per-feature command that registers ONLY its own HotKey (targeted `unregister(prev)` + `register(new)`), NOT `unregister_all`:
+  ```rust
+  #[tauri::command]
+  pub async fn voice_set_global_hotkey(app: tauri::AppHandle, accelerator: String) -> Result<(), String> {
+      use tauri_plugin_global_shortcut::GlobalShortcutExt;
+      let state = app.state::<VoiceState>();
+      // Targeted unregister: only the previously-stored voice HotKey, leaving the
+      // pet-panel accelerator intact. `unregister_all` here would wipe BOTH.
+      if let Some(prev) = state.voice_hotkey() {
+          let _ = app.global_shortcut().unregister(prev);
+      }
+      if accelerator.is_empty() {
+          state.set_voice_hotkey(None);
+          return Ok(());
+      }
+      app.global_shortcut().register(accelerator.as_str()).map_err(|e| e.to_string())?;
+      state.set_voice_hotkey(app.global_shortcut().resolve(accelerator.as_str()).ok());
+      Ok(())
+  }
+  ```
+- `VoiceState` holds `voice_hotkey: Mutex<Option<HotKey>>` (mirrors `PetSizeState` pattern). `voice_hotkey()` / `set_voice_hotkey()` accessors.
+
+### 3. Contracts
+- **ONE `with_handler` closure per app**. Tauri-plugin-global-shortcut does NOT support per-shortcut handlers in Rust — every `register`'d accelerator fires the SAME `with_handler`. Dispatch is by `shortcut: HotKey` parameter inside the closure.
+- **Gotcha — the JS API `register(shortcut, handler)` ALSO fires the catch-all**: `@tauri-apps/plugin-global-shortcut`'s `register(shortcut, handler)` does NOT replace the Rust `with_handler`; the JS handler AND the Rust catch-all both fire. For multi-shortcut apps, this means: (a) the JS `handler` for shortcut A would ALSO trigger the Rust catch-all that emits "shortcut B toggled" — a bug. Use the Rust-catch-all-dispatch-by-HotKey-id approach exclusively; do NOT mix in JS-side `register(handler)`.
+- **Targeted unregister, never `unregister_all`**: each per-feature command (`voice_set_global_hotkey`, future `foo_set_shortcut`) unregisters ONLY its own previously-stored HotKey. `unregister_all` in any of them would silently wipe every other feature's accelerator — the cross-feature bug that targeted unregister prevents.
+- **Event channels**: each feature owns its own `app-private-prefix://` event. Voice uses `voice://hotkey-press` / `voice://hotkey-release` (push-to-talk needs both edges); pet-panel uses `pet://shortcut-toggle` (Pressed only). Do NOT route two features through one channel — the handler closure's dispatch already separates them.
+- **HotKey identity**: `shortcut == &stored_hotkey` compares the resolved HotKey object (modifier+key+side), not the accelerator string. Store the `HotKey` returned by `resolve(accelerator)` in the per-feature state, then compare by reference identity in the catch-all.
+
+### 4. Validation & Error Matrix
+| Condition | Result |
+|---|---|
+| Two features register the same accelerator | OS resolves last-registered wins; both catch-all branches see the HotKey but only the matching feature dispatches — the other feature's HotKey never matches, silent no-op. Document as a known limitation. |
+| `voice_set_global_hotkey("Cmd+Shift+")` (malformed) | `register` returns `Err`; `set_voice_hotkey(None)` is NOT called, so the previous HotKey stays registered. Frontend should validate before invoke. |
+| Pet-panel `pet_panel_set_shortcut` still uses `unregister_all` | ✅ backward-compatible for the SINGLE-shortcut case; but if voice is also active, calling `pet_panel_set_shortcut` would WIPE the voice accelerator. Migrate `pet_panel_set_shortcut` to targeted unregister when a second non-pet shortcut is introduced. |
+| Frontend uses `@tauri-apps/plugin-global-shortcut` JS `register(shortcut, handler)` | Both the JS handler AND the Rust catch-all fire for that shortcut. The catch-all's dispatch-by-id still routes correctly IF the HotKey is also stored in `VoiceState` — but the JS handler is redundant and confusing. Don't do it. |
+
+### 5. Good / Base / Bad Cases
+- **Good**: two OS-wide shortcuts (pet + voice), each registered by its own per-feature command, catch-all dispatches by HotKey id → each fires its own `app-private-prefix://` event. No cross-fire.
+- **Base**: single OS-wide shortcut (pet only). The catch-all falls through to `pet://shortcut-toggle` when `voice_hotkey` is None. Same behavior as the pre-voice spec.
+- **Bad**: a per-feature command uses `unregister_all` → rebinding the voice hotkey wipes the pet-panel accelerator; the user's pet-panel toggle silently stops working until app restart.
+
+### 6. Tests
+- No Rust unit test for the catch-all (needs a live app handle + OS shortcut registration — manual integration testing).
+- `shortcutAccelerator.test.ts` still covers the `keys → "Cmd+Shift+KeyX"` converter shared by both features' frontend rebind flows.
+- Manual smoke: set voice hotkey to Cmd+Shift+V → pet-panel toggle (Cmd+Shift+Q) still works → rebinding voice to Cmd+Shift+D does not break pet-panel.
+
+### 7. Wrong vs Correct
+
+#### Wrong — per-feature command uses `unregister_all`
+```rust
+// voice_set_global_hotkey
+app.global_shortcut().unregister_all().map_err(|e| e.to_string())?;  // wipes pet-panel too!
+app.global_shortcut().register(accelerator.as_str()).map_err(|e| e.to_string())?;
+```
+
+#### Correct — targeted unregister of the previously-stored HotKey only
+```rust
+if let Some(prev) = state.voice_hotkey() {
+    let _ = app.global_shortcut().unregister(prev);  // pet-panel accelerator untouched
+}
+app.global_shortcut().register(accelerator.as_str()).map_err(|e| e.to_string())?;
+state.set_voice_hotkey(app.global_shortcut().resolve(accelerator.as_str()).ok());
+```
+
+#### Wrong — frontend uses `@tauri-apps/plugin-global-shortcut` JS `register(shortcut, handler)` for the voice shortcut
+```ts
+// Frontend registers a JS handler — BUT the Rust with_handler catch-all ALSO fires.
+await register('Cmd+Shift+V', (event) => {
+  if (event.state === 'Pressed') invoke('voice_start');
+});
+// Result: the Rust catch-all dispatches by HotKey id → emits voice://hotkey-press
+// (correct), AND the JS handler fires (also correct, but redundant). Worse: the
+// pet-panel catch-all branch is in the SAME closure — if the JS handler ever
+// short-circuits, the Rust branch is unaffected, giving inconsistent behavior.
+```
+
+#### Correct — frontend calls only the custom `voice_set_global_hotkey` invoke; Rust catch-all owns all dispatch
+```ts
+// Settings change → re-register via Rust (which owns HotKey storage + dispatch).
+await invoke('voice_set_global_hotkey', { accelerator });
+// App.tsx mount effect listens for voice://hotkey-press / voice://hotkey-release
+// (emitted by the Rust catch-all) and calls useVoiceInput.getState().start()/stop().
+```
+
+**Reference implementation**: `apps/desktop/src-tauri/src/lib.rs` (catch-all dispatch), `apps/desktop/src-tauri/src/voice.rs` (`VoiceState` + `voice_set_global_hotkey`), `apps/desktop/src/App.tsx` (event listener).
+
 ## Scenario: Pet Bubble Notification + Configurable OS Notification
 
 ### 1. Scope / Trigger

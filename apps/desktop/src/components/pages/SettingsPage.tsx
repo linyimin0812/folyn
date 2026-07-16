@@ -13,6 +13,7 @@ import { isTauri } from '@/utils/platform';
 import { listAdapters } from '@quill/cli-adapter';
 import { testChatConnection } from '@/services/rigChat';
 import { PluginsSettings } from '@/components/settings/PluginsSettings';
+import { VoiceSettings } from '@/components/settings/VoiceSettings';
 
 /** Map keyboard event key to display symbol */
 function keyToSymbol(key: string): string {
@@ -143,6 +144,7 @@ const NAV_GROUPS = [
   ]},
   { label: 'AI', items: [
     { id: 'ai' as SettingsTab, icon: '✦', name: 'AI 工具' },
+    { id: 'voice' as SettingsTab, icon: '🎤', name: '语音输入' },
     { id: 'skills' as SettingsTab, icon: '⚡', name: 'Skills' },
   ]},
   { label: '关于', items: [
@@ -1413,6 +1415,11 @@ export function SettingsPage() {
         )}
 
         {/* -- 文件模板 -- */}
+        {/* -- 语音输入 -- */}
+        {settingsTab === 'voice' && (
+          <VoiceSettings />
+        )}
+
         {settingsTab === 'templates' && (
           <FileTemplatesSettings />
         )}

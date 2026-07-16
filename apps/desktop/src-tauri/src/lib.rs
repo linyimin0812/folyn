@@ -11,6 +11,7 @@
 mod commands;
 mod plugin_commands;
 mod chat;
+mod voice;
 
 #[cfg(target_os = "macos")]
 mod pet_panel_macos;
@@ -279,19 +280,47 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        // Global keyboard shortcut plugin. A single global handler emits
-        // `pet://shortcut-toggle` on every Pressed event; WHICH accelerator
-        // fires it is swapped at runtime by the `pet_panel_set_shortcut`
-        // command (unregister_all + register). Pet mode is macOS-only at
-        // present, but the plugin loads on all platforms — non-macOS just
-        // never has an accelerator registered until the frontend calls the
-        // command. No ACL capability entry is needed: the frontend never
-        // invokes the plugin's built-in commands directly, only our custom
-        // `pet_panel_set_shortcut` (custom invoke bypasses the ACL).
+        // Global keyboard shortcut plugin. A single global handler dispatches
+        // by HotKey id: the voice push-to-talk HotKey (stored in
+        // `VoiceState::voice_hotkey` by `voice_set_global_hotkey`) emits
+        // `voice://hotkey-press` / `voice://hotkey-release` (PR4 push-to-talk),
+        // and any OTHER registered HotKey (currently the pet-panel toggle
+        // managed by `pet_panel_set_shortcut`) emits `pet://shortcut-toggle`
+        // on Pressed. WHICH accelerator fires each is swapped at runtime by
+        // the respective `*_set_shortcut` commands; this closure only decides
+        // the routing. Pet mode is macOS-only at present, but the plugin loads
+        // on all platforms — non-macOS just never has an accelerator registered
+        // until the frontend calls a command. No ACL capability entry is
+        // needed: the frontend never invokes the plugin's built-in commands
+        // directly, only our custom `pet_panel_set_shortcut` +
+        // `voice_set_global_hotkey` (custom invoke bypasses the ACL).
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(|app, _shortcut, event| {
-                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                .with_handler(|app, shortcut, event| {
+                    use tauri_plugin_global_shortcut::ShortcutState;
+                    // PR4: is this the voice push-to-talk HotKey? Read the
+                    // stored voice HotKey from VoiceState and compare. The
+                    // stored value is `Copy` so a brief uncontended lock
+                    // suffices. Unwrap-to-None on a poisoned lock so a
+                    // poisoned lock never breaks the pet-panel toggle.
+                    let voice_hotkey = app
+                        .state::<voice::VoiceState>()
+                        .voice_hotkey();
+                    let is_voice = voice_hotkey
+                        .map(|vh| vh == *shortcut)
+                        .unwrap_or(false);
+                    if is_voice {
+                        match event.state {
+                            ShortcutState::Pressed => {
+                                let _ = app.emit("voice://hotkey-press", ());
+                            }
+                            ShortcutState::Released => {
+                                let _ = app.emit("voice://hotkey-release", ());
+                            }
+                        }
+                        return;
+                    }
+                    if event.state == ShortcutState::Pressed {
                         let _ = app.emit("pet://shortcut-toggle", ());
                     }
                 })
@@ -379,6 +408,12 @@ pub fn run() {
             app.manage(commands::PetSizeState(std::sync::Mutex::new(
                 commands::PetSizeState::DEFAULT_LEVEL.to_string(),
             )));
+
+            // Voice input shared state (PR2). Holds the live `Recorder` +
+            // `AppleSpeechAsr` consumer between `voice_start` and
+            // `voice_stop` / `voice_cancel`. Idle on non-macOS (commands
+            // there return macOS-only errors). See `voice::VoiceState`.
+            app.manage(voice::VoiceState::new());
 
             let app_menu = SubmenuBuilder::new(app, "Quill")
                 .about(None)
@@ -478,6 +513,11 @@ pub fn run() {
             plugin_commands::grant_plugin_capabilities,
             plugin_commands::verify_plugin_signature_cmd,
             plugin_commands::plugin_http_fetch,
+            voice::voice_start,
+            voice::voice_stop,
+            voice::voice_cancel,
+            voice::voice_insert_text,
+            voice::voice_set_global_hotkey,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

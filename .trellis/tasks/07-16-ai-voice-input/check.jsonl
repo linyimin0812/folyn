@@ -1,0 +1,8 @@
+{"file": ".trellis/tasks/07-16-ai-voice-input/prd.md", "reason": "Acceptance criteria + Definition of Done checklist; trellis-check verifies each item."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Lint/typecheck/test bar; check agent enforces."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "No any/unknown leakage in voiceStore + VoiceInputButton + Tauri command return types."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify voiceStore follows registerPersistSlice + hydrate pattern; no drift from aiConfigStore."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify VoiceInputButton + VoiceSettings component conventions (props, no inline state sprawl)."}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "Verify recording state machine hook usage (cleanup, no leaked listeners)."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Verify polish reuses runRigChat + aiConfigStore + clipboard plugin; no reinvented LLM/clipboard code."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Verify Rust↔TS boundary: Tauri commands are thin, polish stays frontend, no LLM logic leaked into Rust."}

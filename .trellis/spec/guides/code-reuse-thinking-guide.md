@@ -103,3 +103,21 @@ When you've made similar changes to multiple files:
 - [ ] No copy-pasted logic that should be shared
 - [ ] Constants defined in one place
 - [ ] Similar patterns follow same structure
+
+---
+
+## Reference: macOS Native Framework FFI Pattern
+
+When you need to call a macOS native framework (Speech, AVFoundation, CoreGraphics, AppKit, etc.) from Rust, the canonical reference implementation lives at `apps/desktop/src-tauri/src/voice/`:
+
+- `apple_speech.rs` — `SFSpeechRecognizer` via `objc2` + `block2` (request authorization block, URL recognition request, multi-utterance `SegmentAccumulator` for "speech pauses don't lose prior text" bug).
+- `recorder.rs` — `cpal` mic capture → 16kHz mono Int16 PCM (downmix + linear-interpolation resample).
+- `insertion.rs` — CoreGraphics `CGEvent` Cmd+V via raw `extern "C"` + `#[link(name = "...", kind = "framework")]` (zero Cargo deps for system frameworks).
+- `wav.rs` — `encode_wav_16k_mono` WAV encoder (pure Rust).
+
+Crate pinning: `objc2` + `block2` coexist with the older `objc 0.2` + `cocoa 0.25` used by `pet_panel_macos.rs`. Don't try to unify — both work side by side. Match versions to `Cargo.toml`'s `[target.'cfg(target_os = "macos")'.dependencies]` block.
+
+cfg gate: all native-framework files start with `#![cfg(target_os = "macos")]` so Windows builds compile clean (the parent module's types become empty on non-macOS).
+
+**Before writing new macOS FFI from scratch**: read `voice/apple_speech.rs`'s doc comments — they explain the SAFETY reasoning for every `msg_send!`, the runloop-thread model (`spawn_blocking` for objc runloop), and the cancellation pattern (`Send` wrapper around a `*mut AnyObject` task handle).
+

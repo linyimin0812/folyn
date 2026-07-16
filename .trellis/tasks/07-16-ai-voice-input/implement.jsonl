@@ -1,0 +1,10 @@
+{"file": ".trellis/tasks/07-16-ai-voice-input/prd.md", "reason": "Task PRD — full requirements, ADR, 4-PR plan, acceptance criteria, and pointers to openless reference modules to port."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Spec entry point for desktop package — load before any frontend code in apps/desktop/src."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand + registerPersistSlice + schedulePersist pattern; voiceStore.ts must mirror aiConfigStore.ts exactly."}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "Where voiceStore.ts (store/) and VoiceSettings.tsx / VoiceInputButton.tsx (components/) live; SettingsPage tab wiring location."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "React component conventions for the new mic button + settings panel."}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Tauri invoke patterns; how frontend calls voice_start/stop/insert_text commands."}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "Hook conventions for the recording state machine in VoiceInputButton."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Lint/typecheck/test bar the code must clear before PR."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Must reuse runRigChat + aiConfigStore + clipboard plugin + ChatInputBox leadingSlot slot; do NOT reinvent."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Rust src-tauri backend ↔ TS frontend boundary; defines what crosses (Tauri commands) vs. stays frontend (polish orchestration)."}
