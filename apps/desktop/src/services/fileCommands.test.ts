@@ -6,12 +6,12 @@ import {
 } from './fileCommands';
 import type { VaultEntry } from '@quill/vault-provider';
 
-// Mock editorStore so file command run() calls a spyable openFile.
-const openFileMock = vi.fn();
-vi.mock('@/store/editorStore', () => ({
-  useEditorStore: {
-    getState: () => ({ openFile: openFileMock }),
-  },
+// Mock editorIoService so file command run() calls a spyable openFile (PR2:
+// openFile moved from editorStore action to editorIoService function). vi.mock
+// factories are hoisted above imports, so declare the fn via vi.hoisted.
+const openFileMock = vi.hoisted(() => vi.fn());
+vi.mock('@/services/editorIoService', () => ({
+  openFile: openFileMock,
 }));
 
 function file(name: string, path?: string): VaultEntry {

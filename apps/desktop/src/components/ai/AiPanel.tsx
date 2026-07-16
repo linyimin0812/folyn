@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useEditorStore } from '@/store/editorStore';
+import { useEditorViewStateStore } from '@/store/editorViewState';
+import * as editorIoService from '@/services/editorIoService';
 import { useAiStore } from '@/store/aiStore';
 import type { AiChatMode } from '@/store/aiStore';
 import { useAiConfigStore } from '@/store/aiConfigStore';
@@ -29,8 +30,8 @@ import { saveBlobs, buildReadInstructions } from '@/components/chat';
 import type { SavedAttachment } from '@/components/chat';
 
 export function AiPanel() {
-  const aiPanelVisible = useEditorStore((s) => s.aiPanelVisible);
-  const toggleAiPanel = useEditorStore((s) => s.toggleAiPanel);
+  const aiPanelVisible = useEditorViewStateStore((s) => s.aiPanelVisible);
+  const toggleAiPanel = useEditorViewStateStore((s) => s.toggleAiPanel);
 
   const sessions = useAiStore((s) => s.sessions);
   const activeSessionId = useAiStore((s) => s.activeSessionId);
@@ -177,7 +178,7 @@ export function AiPanel() {
             const fileName = existing.split('/').pop() || existing;
             addMessage('assistant', `已剪藏过，已打开 [${fileName}]`, sessionId);
             try {
-              await useEditorStore.getState().openFile(existing, fileName);
+              await editorIoService.openFile(existing, fileName);
             } catch (err) {
               console.error('[AiPanel] openFile failed:', err);
             }
@@ -312,7 +313,7 @@ export function AiPanel() {
           setSessionStreaming(sid, false);
           adapter.offEvent(eventHandler);
           useVaultStore.getState().refreshFileTree();
-          useEditorStore.getState().checkDiskChanges().finally(() => {
+          editorIoService.checkDiskChanges().finally(() => {
             resumeWatcher();
           });
           break;
@@ -320,7 +321,7 @@ export function AiPanel() {
     };
 
     adapter.onEvent(eventHandler);
-    await useEditorStore.getState().flushAutoSaves();
+    await editorIoService.flushAutoSaves();
     pauseWatcher();
 
     try {

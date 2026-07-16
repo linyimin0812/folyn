@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useSearchStore, type SearchResult } from '@/store/searchStore';
-import { useEditorStore } from '@/store/editorStore';
+import { useEditorViewStateStore } from '@/store/editorViewState';
+import * as editorIoService from '@/services/editorIoService';
 
 export function GlobalSearchPanel() {
   const isOpen = useSearchStore((s) => s.isOpen);
@@ -51,10 +52,9 @@ export function GlobalSearchPanel() {
 
   const handleResultClick = useCallback((result: SearchResult) => {
     useSearchStore.getState().closePanel();
-    const { openFile } = useEditorStore.getState();
-    openFile(result.filePath, result.fileName).then(() => {
+    editorIoService.openFile(result.filePath, result.fileName).then(() => {
       setTimeout(() => {
-        useEditorStore.getState().setCursorPosition(result.lineNumber, 1);
+        useEditorViewStateStore.getState().setCursorPosition(result.lineNumber, 1);
       }, 100);
     });
   }, []);

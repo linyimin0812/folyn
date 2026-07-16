@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { useEditorStore } from '@/store/editorStore';
+import { useDiffReviewStore } from '@/store/diffReviewStore';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { isTauri } from '@/utils/platform';
@@ -25,7 +26,7 @@ export function WorkArea() {
   const updateTabContent = useEditorStore((state) => state.updateTabContent);
   const markTabDirty = useEditorStore((state) => state.markTabDirty);
   const isFileLoading = useEditorStore((state) => state.isFileLoading);
-  const externalContentVersion = useEditorStore((state) => state.externalContentVersion);
+  const externalContentVersion = useDiffReviewStore((state) => state.externalContentVersion);
 
   // Filter tabs by the active activity panel
   const tabs = allTabs.filter((t) => t.activity === activePanel);

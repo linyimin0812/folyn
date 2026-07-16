@@ -1,4 +1,5 @@
 import { useEditorStore, type ViewMode } from '@/store/editorStore';
+import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useNavStore } from '@/store/navStore';
 import { useTheme } from '@/hooks/useTheme';
 import { ExportMenu } from '@/components/editor/ExportMenu';
@@ -59,7 +60,7 @@ interface TopbarProps {
 export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const viewMode = useEditorStore((state) => state.viewMode);
   const setViewMode = useEditorStore((state) => state.setViewMode);
-  const toggleAiPanel = useEditorStore((state) => state.toggleAiPanel);
+  const toggleAiPanel = useEditorViewStateStore((state) => state.toggleAiPanel);
   const activeTab = useEditorStore((state) => {
     const tabs = state.tabs;
     return tabs.find((t) => t.id === state.activeTabId);

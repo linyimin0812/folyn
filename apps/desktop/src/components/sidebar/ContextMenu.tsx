@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useVaultStore } from '@/store/vaultStore';
 import { useAiStore } from '@/store/aiStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
-import { useEditorStore } from '@/store/editorStore';
+import { useEditorViewStateStore } from '@/store/editorViewState';
 import { getAllHandlers } from '@/components/file-types/registry';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
@@ -138,7 +138,7 @@ export function ContextMenu({
         <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => {
           useAiStore.getState().addFileToChat(menu.name, menu.path);
           useAppearanceStore.getState().setShowAiPanel(true);
-          useEditorStore.setState({ aiPanelVisible: true });
+          useEditorViewStateStore.setState({ aiPanelVisible: true });
           onClose();
         }}>
           <span className="font-bold text-[11px] tracking-[-0.5px] leading-none">AI</span>

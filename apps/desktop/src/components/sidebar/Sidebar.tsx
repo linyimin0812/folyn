@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useNavStore } from '@/store/navStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
+import * as editorIoService from '@/services/editorIoService';
 import { useVaultStore } from '@/store/vaultStore';
 import type { VaultEntry } from '@quill/vault-provider';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
@@ -30,7 +31,7 @@ export function Sidebar({ activePanel = 'files', onFileSelect }: SidebarProps): 
   const vaultName = useAppearanceStore((state) => state.vaultName);
   const setCurrentPage = useNavStore((state) => state.setCurrentPage);
   const activeTabId = useEditorStore((state) => state.activeTabId);
-  const openFile = useEditorStore((state) => state.openFile);
+  const openFile = editorIoService.openFile;
   const tabs = useEditorStore((state) => state.tabs);
 
   const fileTree = useVaultStore((state) => state.fileTree);

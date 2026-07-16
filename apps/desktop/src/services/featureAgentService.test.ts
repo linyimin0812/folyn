@@ -48,6 +48,18 @@ vi.mock('@/store/aiFileChangeActions', () => ({
   applyRejectChange: vi.fn(),
 }));
 
+// PR2: featureAgentService now calls editorIo.checkDiskChanges/flushAutoSaves
+// via dynamic import. Stub them so the test touches no real IO.
+vi.mock('@/services/editorIoService', () => ({
+  checkDiskChanges: vi.fn(async () => {}),
+  flushAutoSaves: vi.fn(async () => {}),
+  openFile: vi.fn(async () => {}),
+  openDailyNote: vi.fn(async () => {}),
+  saveFile: vi.fn(async () => {}),
+  saveOpenTabs: vi.fn(() => {}),
+  restoreOpenTabs: vi.fn(async () => {}),
+}));
+
 // 隔断 excalidraw 链路（editorStore → file-types/registry → ExcalidrawPreview）。
 // excalidraw 在当前 pnpm+node 环境下加载报错（roughjs/open-color.json），与本测试无关。
 vi.mock('@/components/file-types/registry', () => ({
@@ -58,7 +70,6 @@ vi.mock('@/components/file-types/registry', () => ({
 
 import { useAiStore } from '@/store/aiStore';
 import { useVaultStore } from '@/store/vaultStore';
-import { useEditorStore } from '@/store/editorStore';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import {
   seedAgentFiles,
@@ -142,10 +153,6 @@ beforeEach(() => {
     refreshFileTree: vi.fn(async () => {}),
   } as never);
   useAiConfigStore.setState({ cliPath: 'claude' } as never);
-  useEditorStore.setState({
-    flushAutoSaves: vi.fn(async () => {}),
-    checkDiskChanges: vi.fn(async () => {}),
-  } as never);
   fakeAdapter.__handlers = [];
   fakeAdapter.start.mockClear();
   fakeAdapter.send.mockClear();

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useVaultStore } from '@/store/vaultStore';
-import { useEditorStore } from '@/store/editorStore';
+import { useDiffReviewStore } from '@/store/diffReviewStore';
 import { exportToSvg } from '@excalidraw/excalidraw';
 
 interface ExcalidrawPreviewProps {
@@ -11,7 +11,7 @@ interface ExcalidrawPreviewProps {
 export function ExcalidrawPreview({ filePath, alt }: ExcalidrawPreviewProps) {
   const [svgHtml, setSvgHtml] = useState<string>('');
   const [error, setError] = useState<string>('');
-  const externalContentVersion = useEditorStore((s) => s.externalContentVersion);
+  const externalContentVersion = useDiffReviewStore((s) => s.externalContentVersion);
 
   useEffect(() => {
     let cancelled = false;

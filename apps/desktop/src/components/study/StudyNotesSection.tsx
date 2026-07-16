@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { ParsedStudy } from '@/features/study/types';
-import { useEditorStore } from '@/store/editorStore';
+import * as editorIoService from '@/services/editorIoService';
 import { useVaultStore } from '@/store/vaultStore';
 import { useStudyStore } from '@/store/studyStore';
 import { STUDY_DIR, ELABORATION_TEMPLATE, appendToNotesSection } from '@/features/study/studyDoc';
@@ -69,7 +69,7 @@ const SECTION_ICON = (
  *  插入精细加工模板置顶；列出子文档 wiki 链接（可点击 chips）；
  *  AI 动作：费曼挑战（扮演 5 岁小孩追问，暴露盲区写入 :::callout{type="warning"}）。 */
 export function StudyNotesSection({ slug, path, topicName, parsed }: Props) {
-  const openFile = useEditorStore((s) => s.openFile);
+  const openFile = editorIoService.openFile;
   const refresh = useStudyStore((s) => s.refresh);
   const fileTree = useVaultStore((s) => s.fileTree);
   const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');

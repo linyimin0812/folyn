@@ -1,6 +1,6 @@
 import { createAdapter, type CliAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
-import { useEditorStore } from '@/store/editorStore';
+import * as editorIoService from '@/services/editorIoService';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useSkillStore } from '@/store/skillStore';
 import { collectTextFromStream, extractJsonObject, type StreamEvent } from './aiStreamUtils';
@@ -350,7 +350,7 @@ export async function saveClip(
   // Auto-open in editor (unless suppressed, e.g. during batch clipping)
   if (!options?.skipAutoOpen) {
     const fileName = filePath.split('/').pop() || filePath;
-    await useEditorStore.getState().openFile(filePath, fileName);
+    await editorIoService.openFile(filePath, fileName);
   }
 
   return filePath;

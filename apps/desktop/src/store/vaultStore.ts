@@ -220,9 +220,10 @@ export const useVaultStore = create<VaultState>()(
           try {
             // Save current vault state before switching (skip on initial startup when empty)
             const { useEditorStore } = await import('./editorStore');
+            const editorIo = await import('@/services/editorIoService');
             const { useAiStore } = await import('./aiStore');
             if (useEditorStore.getState().tabs.length > 0) {
-              useEditorStore.getState().saveOpenTabs();
+              editorIo.saveOpenTabs();
             }
             // Save AI sessions for current vault before activeVaultId changes
             await useAiStore.getState().switchVaultSessions(config.id);
@@ -253,7 +254,7 @@ export const useVaultStore = create<VaultState>()(
 
             // Restore saved tabs for the new vault, then rewrite any paths whose
             // on-disk prefix was renamed during migration.
-            await useEditorStore.getState().restoreOpenTabs();
+            await editorIo.restoreOpenTabs();
             if (renamedPairs.length > 0) {
               useEditorStore.getState().rewriteTabPrefixes(renamedPairs);
             }

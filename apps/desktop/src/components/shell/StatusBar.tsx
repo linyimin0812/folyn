@@ -1,4 +1,5 @@
 import { useEditorStore } from '../../store/editorStore';
+import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useAppearanceStore } from '@/store/appearanceStore';
 
 const VIEW_LABELS: Record<string, string> = {
@@ -9,9 +10,9 @@ const VIEW_LABELS: Record<string, string> = {
 
 export function StatusBar() {
   const viewMode = useEditorStore((state) => state.viewMode);
-  const cursorLine = useEditorStore((state) => state.cursorLine);
-  const cursorCol = useEditorStore((state) => state.cursorCol);
-  const wordCount = useEditorStore((state) => state.wordCount);
+  const cursorLine = useEditorViewStateStore((state) => state.cursorLine);
+  const cursorCol = useEditorViewStateStore((state) => state.cursorCol);
+  const wordCount = useEditorViewStateStore((state) => state.wordCount);
   const vaultName = useAppearanceStore((state) => state.vaultName);
 
   return (

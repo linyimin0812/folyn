@@ -8,15 +8,19 @@ import {
 } from '@/services/commandRegistry';
 import type { VaultEntry } from '@quill/vault-provider';
 
-// Mock editorStore so recent-files / file commands don't touch real IO.
-const openFileMock = vi.fn();
+// Mock editorStore so recent-files reads a spyable tabs array. openFile moved
+// to editorIoService (PR2) — mock that separately. vi.mock factories are
+// hoisted, so declare the fn via vi.hoisted.
+const openFileMock = vi.hoisted(() => vi.fn());
 vi.mock('@/store/editorStore', () => ({
   useEditorStore: {
     getState: () => ({
       tabs: [],
-      openFile: openFileMock,
     }),
   },
+}));
+vi.mock('@/services/editorIoService', () => ({
+  openFile: openFileMock,
 }));
 
 // Mock vaultStore with a controllable fileTree.

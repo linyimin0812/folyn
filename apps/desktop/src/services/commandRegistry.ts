@@ -14,6 +14,7 @@
 import { useNavStore } from '@/store/navStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
+import * as editorIoService from '@/services/editorIoService';
 import { useAiStore } from '@/store/aiStore';
 import { useSearchStore } from '@/store/searchStore';
 import type { ActivityPanel } from '@/components/shell/ActivityBar';
@@ -162,7 +163,7 @@ export function registerBuiltinCommands(): void {
       title: 'Open Daily Note',
       category: 'action',
       keywords: ['today', 'journal', 'calendar'],
-      run: () => useEditorStore.getState().openDailyNote(),
+      run: () => editorIoService.openDailyNote(),
     },
     {
       id: 'action.export-markdown',

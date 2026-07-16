@@ -2,23 +2,23 @@ import { create } from 'zustand';
 import type { CliMessage, FileChange, MessageAttachment } from '@quill/cli-adapter';
 import type { FileChangeApplier } from '@/services/fileChangeApplier';
 import { useVaultStore } from './vaultStore';
-import { useEditorStore } from './editorStore';
 import { sessionStorage } from '@/utils/sessionStorage';
 import { suppressWatcherFor } from '@/utils/fileWatcher';
 import { generateId } from '@/utils/idGenerator';
 import { applyAcceptChange, applyRejectChange } from './aiFileChangeActions';
-import { getHandlerById } from '@/components/file-types/registry';
 import { persistAiState, saveAllSessions, loadSessionsFromDisk, setSuppressPersist, setupPersistSubscription } from './aiSessionPersistence';
 
 export { loadAiSessionsForVault } from './aiSessionPersistence';
 
 // ── FileChangeApplier injection slot (PR1) ──────────────────────────────────
-// ponytail: PR1 only registers the slot; addFileChange below still uses its
-// inline editorStore branch (zero behavior change). PR2 flips the comment to
-// `fileChangeApplier?.apply(change)` and deletes the inline branch + the
-// editorStore import. The slot is tsc-legal while "registered but unconsumed"
-// because getFileChangeApplier reads it (exported) — no noUnusedLocals fire on
-// module-level lets that are referenced by an exported getter.
+// ponytail: PR2 — addFileChange now delegates to the registered applier
+// (EditorFileChangeApplier, registered at App init via
+// registerEditorFileChangeApplier). The applier owns the useCodeMirror
+// routing (diffReviewStore.enterDiffReview vs editorStore.updateTabContent)
+// and the tabId format — aiStore no longer imports editorStore/diffReviewStore
+// at runtime. If the applier is null (init not yet run), addFileChange still
+// records the change but applies nothing — defensive against init ordering;
+// the normal flow registers the applier before any user/AI action.
 let fileChangeApplier: FileChangeApplier | null = null;
 
 /** Editor layer registers its FileChangeApplier here (see services/fileChangeApplier.ts). */
@@ -284,28 +284,11 @@ export const useAiStore = create<AiState>((set, get) => ({
 
     suppressWatcherFor(change.path);
 
-    const vaultId = useVaultStore.getState().activeVaultId || '';
-    const tabId = `${vaultId}:${change.path}`;
-    const tab = useEditorStore.getState().tabs.find((t) => t.id === tabId);
-    if (tab && change.status === 'pending') {
-      const handler = getHandlerById(tab.fileType);
-      if (handler?.useCodeMirror) {
-        useEditorStore.getState().enterDiffReview(change.path, change.oldContent, change.newContent);
-      } else {
-        // Custom editors (drawio, excalidraw, mmap, ...) have no diff-review UI —
-        // DiffReviewBar is only mounted in the CodeMirror branch. Apply via
-        // updateTabContent (NOT setContentExternal) so externalContentVersion
-        // doesn't bump and WorkArea doesn't remount the iframe. DrawioEditor's
-        // content-prop effect picks up the change and postMessages a load to the
-        // existing iframe — smooth live reload as the AI streams modifications.
-        // ponytail: no accept/reject flow for custom editors; users undo in-editor.
-        useEditorStore.getState().updateTabContent(tabId, change.newContent);
-      }
-    }
-    // ponytail: PR2 swaps the inline branch above for
-    //   fileChangeApplier?.apply(change)
-    // (via the slot registered by setFileChangeApplier) and removes the
-    // editorStore import. Behavior is identical — see EditorFileChangeApplier.
+    // ponytail: PR2 — delegate editor mutation to the injected FileChangeApplier
+    // (EditorFileChangeApplier). It routes by useCodeMirror (enterDiffReview vs
+    // updateTabContent) and owns the tabId format. Equivalent to the old inline
+    // branch at aiStore.ts:269-284; aiStore no longer imports editorStore.
+    fileChangeApplier?.apply(change);
   },
 
   acceptChange: (path) => {

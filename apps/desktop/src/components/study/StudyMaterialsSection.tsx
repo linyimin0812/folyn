@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { StudyMaterial } from '@/features/study/types';
 import { DIFFICULTY_LABEL } from '@/features/study/types';
-import { useEditorStore } from '@/store/editorStore';
+import * as editorIoService from '@/services/editorIoService';
 import { isTauri } from '@/utils/platform';
 import { isAiAvailable, openStudyAiAction, buildStudyInstruction } from '@/features/study/scheduleLink';
 
@@ -77,7 +77,7 @@ export function StudyMaterialsSection({
   const [adding, setAdding] = useState<false | 'book' | 'web'>(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const openFile = useEditorStore((s) => s.openFile);
+  const openFile = editorIoService.openFile;
   const aiAvailable = isAiAvailable();
 
   const openLink = (url?: string) => {

@@ -44,10 +44,8 @@ vi.mock('@/store/vaultStore', () => ({
   },
 }));
 
-vi.mock('@/store/editorStore', () => ({
-  useEditorStore: {
-    getState: () => ({ openFile }),
-  },
+vi.mock('@/services/editorIoService', () => ({
+  openFile,
 }));
 
 vi.mock('@/store/aiConfigStore', () => ({

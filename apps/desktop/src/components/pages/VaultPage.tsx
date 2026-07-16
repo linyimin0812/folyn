@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavStore } from '@/store/navStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
+import * as editorIoService from '@/services/editorIoService';
 import { CreateVaultDialog } from '../vault/CreateVaultDialog';
 import { FileIcon } from '@/components/icons/FileIcon';
 import type { VaultEntry } from '@quill/vault-provider';
@@ -56,7 +57,7 @@ export function VaultPage() {
   const fileTree = useVaultStore((s) => s.fileTree);
   const switchVault = useVaultStore((s) => s.switchVault);
   const removeVault = useVaultStore((s) => s.removeVault);
-  const openFile = useEditorStore((s) => s.openFile);
+  const openFile = editorIoService.openFile;
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);

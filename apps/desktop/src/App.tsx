@@ -19,6 +19,9 @@ import { useAppearanceStore } from './store/appearanceStore';
 import { usePetStore } from './store/petStore';
 import { useVaultStore } from './store/vaultStore';
 import { useEditorStore } from './store/editorStore';
+import { useEditorViewStateStore } from './store/editorViewState';
+import * as editorIoService from './services/editorIoService';
+import { registerEditorFileChangeApplier } from './services/fileChangeApplier';
 import { useSearchStore } from './store/searchStore';
 import { useCommandPaletteStore } from './store/commandPaletteStore';
 import { usePetChatStore } from './store/petChatStore';
@@ -134,10 +137,16 @@ export default function App() {
     vaultInitialized.current = true;
 
     const initializeVault = async () => {
+      // ponytail: register the editor-layer FileChangeApplier BEFORE any AI
+      // flow could fire addFileChange. aiStore.addFileChange no-ops if the
+      // applier slot is null, so ordering just needs this before the first
+      // user/AI action — here at init is the safe earliest point.
+      registerEditorFileChangeApplier();
+
       await useVaultStore.getState().initVault();
 
       await loadAiSessionsForVault();
-      await useEditorStore.getState().restoreOpenTabs();
+      await editorIoService.restoreOpenTabs();
 
       useWikiStore.getState().initWiki().catch((err) => {
         console.warn('[App] Wiki init failed:', err);
@@ -148,7 +157,7 @@ export default function App() {
       if (tabs.length === 0 && fileTree.length > 0) {
         const firstFile = fileTree.find((entry) => entry.type === 'file');
         if (firstFile) {
-          await useEditorStore.getState().openFile(firstFile.path, firstFile.name);
+          await editorIoService.openFile(firstFile.path, firstFile.name);
         }
       }
     };
@@ -270,7 +279,7 @@ export default function App() {
           await focusMain();
           break;
         case 'toggle-ai':
-          useEditorStore.getState().toggleAiPanel();
+          useEditorViewStateStore.getState().toggleAiPanel();
           await focusMain();
           break;
         case 'hide-pet':
@@ -309,7 +318,7 @@ export default function App() {
         // comes forward. `clip-from-url` is handled in-panel (PR2) — the
         // listener just focuses main as a no-op-ish fallback. ──
         case 'daily-note':
-          void useEditorStore.getState().openDailyNote();
+          void editorIoService.openDailyNote();
           await focusMain();
           break;
         case 'global-search':
@@ -361,7 +370,7 @@ export default function App() {
         case 'file':
         case 'task': {
           const name = target.id.split('/').pop() || target.id;
-          await useEditorStore.getState().openFile(target.id, name);
+          await editorIoService.openFile(target.id, name);
           await focusMain();
           break;
         }
@@ -563,9 +572,9 @@ export default function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        const { activeTabId, saveFile } = useEditorStore.getState();
+        const activeTabId = useEditorStore.getState().activeTabId;
         if (activeTabId) {
-          saveFile(activeTabId);
+          editorIoService.saveFile(activeTabId);
         }
       }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {

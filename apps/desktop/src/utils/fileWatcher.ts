@@ -58,9 +58,11 @@ async function handleWatchEvent(event: WatchEvent) {
   if (!isModifyEvent(event)) return;
 
   const { useEditorStore } = await import('@/store/editorStore');
+  const { useDiffReviewStore } = await import('@/store/diffReviewStore');
   const { useVaultStore } = await import('@/store/vaultStore');
 
-  const { tabs, diffReviewMode, diffFilePath } = useEditorStore.getState();
+  const { tabs } = useEditorStore.getState();
+  const { diffReviewMode, diffFilePath } = useDiffReviewStore.getState();
   const vaultId = useVaultStore.getState().activeVaultId || '';
 
   for (const changedPath of event.paths) {
@@ -84,7 +86,9 @@ async function handleWatchEvent(event: WatchEvent) {
       const diskContent = handler.deserialize ? handler.deserialize(raw) : raw;
       if (diskContent === tab.content) continue;
 
-      useEditorStore.getState().setContentExternal(tabId, diskContent);
+      // ponytail: setContentExternal moved to diffReviewStore (PR2) — bumps
+      // externalContentVersion so editors watching it resync.
+      useDiffReviewStore.getState().setContentExternal(tabId, diskContent);
     } catch {
       // file may have been deleted
     }

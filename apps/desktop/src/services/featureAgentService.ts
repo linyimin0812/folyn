@@ -302,7 +302,7 @@ export async function runFeatureAgent(
 
   const { useAiStore } = await import('@/store/aiStore');
   const { useVaultStore } = await import('@/store/vaultStore');
-  const { useEditorStore } = await import('@/store/editorStore');
+  const editorIo = await import('@/services/editorIoService');
   const { useAiConfigStore } = await import('@/store/aiConfigStore');
   const { getAdapterForSession } = await import('@/components/ai/adapterManager');
   const { pauseWatcher, resumeWatcher } = await import('@/utils/fileWatcher');
@@ -386,7 +386,7 @@ export async function runFeatureAgent(
         useAiStore.getState().setSessionStreaming(sid, false);
         adapter.offEvent(eventHandler);
         useVaultStore.getState().refreshFileTree().catch(() => {});
-        useEditorStore.getState().checkDiskChanges().finally(() => {
+        editorIo.checkDiskChanges().finally(() => {
           resumeWatcher();
         });
         break;
@@ -394,7 +394,7 @@ export async function runFeatureAgent(
   };
 
   adapter.onEvent(eventHandler);
-  await useEditorStore.getState().flushAutoSaves();
+  await editorIo.flushAutoSaves();
   pauseWatcher();
 
   try {

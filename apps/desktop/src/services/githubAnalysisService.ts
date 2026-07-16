@@ -1,6 +1,6 @@
 import { createAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
-import { useEditorStore } from '@/store/editorStore';
+import * as editorIoService from '@/services/editorIoService';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useSkillStore } from '@/store/skillStore';
 import { collectTextFromStream, type StreamEvent } from './aiStreamUtils';
@@ -179,7 +179,7 @@ export async function saveReport(
   }
 
   // Auto-open in editor
-  await useEditorStore.getState().openFile(filePath, fileName);
+  await editorIoService.openFile(filePath, fileName);
 
   return filePath;
 }

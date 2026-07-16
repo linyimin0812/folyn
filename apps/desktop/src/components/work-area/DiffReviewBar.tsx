@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useEditorStore } from '@/store/editorStore';
+import { useDiffReviewStore } from '@/store/diffReviewStore';
 import type { QuillEditorHandle } from '@/editor/EditorView';
 import { DiffToolbar } from '../editor/DiffToolbar';
 import {
@@ -17,11 +18,11 @@ interface DiffReviewBarProps {
 }
 
 export function DiffReviewBar({ editorRef, activeTab }: DiffReviewBarProps) {
-  const diffReviewMode = useEditorStore((s) => s.diffReviewMode);
-  const diffFilePath = useEditorStore((s) => s.diffFilePath);
-  const diffOldContent = useEditorStore((s) => s.diffOldContent);
-  const diffNewContent = useEditorStore((s) => s.diffNewContent);
-  const exitDiffReview = useEditorStore((s) => s.exitDiffReview);
+  const diffReviewMode = useDiffReviewStore((s) => s.diffReviewMode);
+  const diffFilePath = useDiffReviewStore((s) => s.diffFilePath);
+  const diffOldContent = useDiffReviewStore((s) => s.diffOldContent);
+  const diffNewContent = useDiffReviewStore((s) => s.diffNewContent);
+  const exitDiffReview = useDiffReviewStore((s) => s.exitDiffReview);
   const updateTabContent = useEditorStore((s) => s.updateTabContent);
 
   const [hunkCount, setHunkCount] = useState(0);

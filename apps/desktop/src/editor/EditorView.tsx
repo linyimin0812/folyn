@@ -32,7 +32,7 @@ import {
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { lintKeymap, linter, lintGutter, type Diagnostic } from '@codemirror/lint';
 import { indentationMarkers } from '@replit/codemirror-indentation-markers';
-import { useEditorStore } from '@/store/editorStore';
+import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { usePrefsStore, type ShortcutItem } from '@/store/prefsStore';
 import {
@@ -163,8 +163,8 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
     const tabSizeCompartment = useRef(new Compartment());
     const markdownKeymapCompartment = useRef(new Compartment());
     const langCompartment = useRef(new Compartment());
-    const setCursorPosition = useEditorStore((s) => s.setCursorPosition);
-    const setWordCount = useEditorStore((s) => s.setWordCount);
+    const setCursorPosition = useEditorViewStateStore((s) => s.setCursorPosition);
+    const setWordCount = useEditorViewStateStore((s) => s.setWordCount);
     const editorFont = useEditorPrefsStore((s) => s.editorFont);
     const editorFontSize = useEditorPrefsStore((s) => s.editorFontSize);
     const showLineNumbers = useEditorPrefsStore((s) => s.showLineNumbers);

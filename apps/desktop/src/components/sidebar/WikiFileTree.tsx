@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 import { useWikiStore } from '@/store/wikiStore';
-import { useEditorStore } from '@/store/editorStore';
+import * as editorIoService from '@/services/editorIoService';
 import type { WikiEntry } from '@/types/wiki';
 import { WIKI_PREFIX } from '@/types/wiki';
 import { FileIcon } from '@/components/icons/FileIcon';
 
 function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
-  const openFile = useEditorStore((s) => s.openFile);
+  const openFile = editorIoService.openFile;
 
   if (entry.type === 'dir') {
     return (

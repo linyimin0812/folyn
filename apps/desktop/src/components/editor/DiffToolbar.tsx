@@ -1,4 +1,4 @@
-import { useEditorStore } from '@/store/editorStore';
+import { useDiffReviewStore } from '@/store/diffReviewStore';
 
 interface DiffToolbarProps {
   hunkCount: number;
@@ -7,7 +7,7 @@ interface DiffToolbarProps {
 }
 
 export function DiffToolbar({ hunkCount, onAcceptAll, onRejectAll }: DiffToolbarProps) {
-  const diffReviewMode = useEditorStore((s) => s.diffReviewMode);
+  const diffReviewMode = useDiffReviewStore((s) => s.diffReviewMode);
 
   if (!diffReviewMode) return null;
 

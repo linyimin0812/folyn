@@ -3,6 +3,7 @@ import { useClipStore, type ClipFile, type BatchItemStatus } from '@/store/clipS
 import type { ClipMetadata, ClipLanguage } from '@/services/clipService';
 import type { StreamEvent } from '@/services/aiStreamUtils';
 import { useEditorStore } from '@/store/editorStore';
+import * as editorIoService from '@/services/editorIoService';
 import { useVaultStore } from '@/store/vaultStore';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 
@@ -38,7 +39,7 @@ function getHostname(url: string): string {
 }
 
 function ClipCard({ clip, onDelete }: { clip: ClipFile; onDelete: () => void }) {
-  const openFile = useEditorStore((s) => s.openFile);
+  const openFile = editorIoService.openFile;
   const openWebFromClip = useEditorStore((s) => s.openWebFromClip);
   const readFile = useVaultStore((s) => s.readFile);
   const [meta, setMeta] = useState<ClipMeta | null>(null);
@@ -470,7 +471,7 @@ function BatchClipView({ onClose }: { onClose: () => void }) {
 
   const handleOpenPath = useCallback((path: string) => {
     const fileName = path.split('/').pop() || path;
-    void useEditorStore.getState().openFile(path, fileName);
+    void editorIoService.openFile(path, fileName);
   }, []);
 
   const doneCount = batchItems.filter((i) => i.status === 'done').length;
@@ -691,7 +692,7 @@ export function ClipsPanel() {
     setShowInput(false);
     setUrl('');
     try {
-      await useEditorStore.getState().openFile(path, fileName);
+      await editorIoService.openFile(path, fileName);
     } catch {
       // openFile errors are handled in editorStore
     }

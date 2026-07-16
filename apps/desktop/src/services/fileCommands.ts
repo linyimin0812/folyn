@@ -16,7 +16,7 @@
  */
 
 import type { VaultEntry } from '@quill/vault-provider';
-import { useEditorStore } from '@/store/editorStore';
+import * as editorIoService from '@/services/editorIoService';
 import { flattenFileTree } from '@/utils/treeUtils';
 import type { Command } from './commandRegistry';
 
@@ -48,7 +48,7 @@ export function buildFileCommands(entries: VaultEntry[]): Command[] {
     category: 'file',
     keywords: path.split('/'),
     run: () => {
-      void useEditorStore.getState().openFile(path, name);
+      void editorIoService.openFile(path, name);
     },
   }));
   return cachedCommands;

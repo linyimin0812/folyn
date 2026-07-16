@@ -4,6 +4,7 @@ import {
   detectActivity,
   useEditorStore,
 } from '@/store/editorStore';
+import { useDiffReviewStore } from '@/store/diffReviewStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { usePrefsStore } from '@/store/prefsStore';
 import { getHandlerById } from '@/components/file-types/registry';
@@ -308,8 +309,10 @@ export async function restoreOpenTabs(): Promise<void> {
 export async function checkDiskChanges(): Promise<void> {
   const get = useEditorStore.getState;
   const set = useEditorStore.setState;
-  const { tabs, activeTabId, diffReviewMode } = get();
-  if (diffReviewMode) return;
+  // ponytail: diffReviewMode/externalContentVersion/enterDiffReview moved to
+  // diffReviewStore (PR2). Read diff state from there, not editorStore.
+  const { tabs, activeTabId } = get();
+  if (useDiffReviewStore.getState().diffReviewMode) return;
 
   const candidates = tabs.filter((tab) => {
     if (tab.fileType === 'web') return false;
@@ -323,16 +326,17 @@ export async function checkDiskChanges(): Promise<void> {
     const diskContent = handler!.deserialize ? handler!.deserialize(raw) : raw;
     if (diskContent !== tab.content) {
       if (tab.id === activeTabId) {
-        // ponytail: enterDiffReview stays on editorStore in PR1; PR2 moves it
-        // to diffReviewStore and this call is redirected.
-        get().enterDiffReview(tab.path, tab.content, diskContent);
+        useDiffReviewStore
+          .getState()
+          .enterDiffReview(tab.path, tab.content, diskContent);
       } else {
         set((state) => ({
           tabs: state.tabs.map((t) =>
             t.id === tab.id ? { ...t, content: diskContent, isDirty: false } : t,
           ),
-          // ponytail: externalContentVersion moves to diffReviewStore in PR2.
-          externalContentVersion: state.externalContentVersion + 1,
+        }));
+        useDiffReviewStore.setState((s) => ({
+          externalContentVersion: s.externalContentVersion + 1,
         }));
       }
     }

@@ -16,7 +16,8 @@ import type { StudyUnit, StudyMaterial, AiAction } from './types';
 import { listAdapters } from '@quill/cli-adapter';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
-import { useEditorStore } from '@/store/editorStore';
+import { useEditorViewStateStore } from '@/store/editorViewState';
+import * as editorIoService from '@/services/editorIoService';
 import { runFeatureAgent } from '@/services/featureAgentService';
 
 const H2_RE = /^##\s+(.+?)\s*#*\s*$/;
@@ -204,7 +205,7 @@ export function buildStudyInstruction(
  * - 不再预填 ChatInput 输入框（不 setPendingPrompt / addFileToChat）；
  * - 调 runFeatureAgent('study', instruction) 在 study 会话自动执行（cwd 发现
  *   vault 内 agent 文件，缺失回退 `--bare`），prompt 不显示在聊天框；
- * - 打开 AI 面板（settings.showAiPanel + editorStore.aiPanelVisible）；
+ * - 打开 AI 面板（settings.showAiPanel + editorViewState.aiPanelVisible）；
  * - opts.openFile !== false 时，同时把主题文档作为编辑器 tab 打开，接上 diff 审阅链路
  *   （feynman/selftest/sq3r 直编文件场景需要）。research/plan 返回文本建议、
  *   不直编文件，调用方传 { openFile: false } 跳过开 tab。
@@ -217,9 +218,9 @@ export function openStudyAiAction(
 ): void {
   void runFeatureAgent('study', instruction);
   useAppearanceStore.getState().setShowAiPanel(true);
-  useEditorStore.setState({ aiPanelVisible: true });
+  useEditorViewStateStore.setState({ aiPanelVisible: true });
   if (opts?.openFile === false) return;
   // 非阻塞打开主题文档 tab，接上 diff 审阅链路（不切换页面、不影响 study 视图）。
   const fileName = topicPath.split('/').pop() ?? topicPath;
-  void useEditorStore.getState().openFile(topicPath, fileName);
+  void editorIoService.openFile(topicPath, fileName);
 }

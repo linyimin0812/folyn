@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useEditorStore } from '../../store/editorStore';
+import { useEditorViewStateStore } from '@/store/editorViewState';
 import { extractHeadings } from '@/utils/markdownUtils';
 
 export function OutlinePanel() {
-  const outlineVisible = useEditorStore((s) => s.outlineVisible);
+  const outlineVisible = useEditorViewStateStore((s) => s.outlineVisible);
   const tabs = useEditorStore((s) => s.tabs);
   const activeTabId = useEditorStore((s) => s.activeTabId);
   const [collapsed, setCollapsed] = useState(false);

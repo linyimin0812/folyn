@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useVaultStore } from '@/store/vaultStore';
-import { useEditorStore } from '@/store/editorStore';
+import * as editorIoService from '@/services/editorIoService';
 import { usePrefsStore } from '@/store/prefsStore';
 import type { VaultEntry } from '@quill/vault-provider';
 
@@ -51,7 +51,7 @@ export function CalendarPanel() {
 
   const fileTree = useVaultStore((s) => s.fileTree);
   const dailyDir = usePrefsStore((s) => s.dailyNotesDir || '__daily__');
-  const openDailyNote = useEditorStore((s) => s.openDailyNote);
+  const openDailyNote = editorIoService.openDailyNote;
 
   const noteDates = useMemo(
     () => extractDailyNoteDates(fileTree, dailyDir),

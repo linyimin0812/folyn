@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAnalysisStore, type ReportMeta } from '@/store/analysisStore';
-import { useEditorStore } from '@/store/editorStore';
+import * as editorIoService from '@/services/editorIoService';
 import type { ReportLanguage } from '@/services/githubAnalysisService';
 import { parseGitHubUrl } from '@/services/githubAnalysisService';
 import type { StreamEvent } from '@/services/aiStreamUtils';
@@ -83,7 +83,7 @@ interface ReportCardProps {
 }
 
 function ReportCard({ report, onDelete }: ReportCardProps) {
-  const openFile = useEditorStore((s) => s.openFile);
+  const openFile = editorIoService.openFile;
 
   const handleOpen = useCallback(async () => {
     try {

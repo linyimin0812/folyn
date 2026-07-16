@@ -7,6 +7,7 @@ import {
 } from '@/services/commandRegistry';
 import { fuzzyMatch } from '@/utils/fuzzyMatch';
 import { useEditorStore, type FileTab } from '@/store/editorStore';
+import * as editorIoService from '@/services/editorIoService';
 import { useVaultStore } from '@/store/vaultStore';
 import { buildFileCommands } from '@/services/fileCommands';
 
@@ -72,7 +73,7 @@ function fileCommandFromTab(tab: FileTab): Command {
     category: 'file',
     keywords: [tab.path],
     run: () => {
-      void useEditorStore.getState().openFile(tab.path, tab.name);
+      void editorIoService.openFile(tab.path, tab.name);
     },
   };
 }

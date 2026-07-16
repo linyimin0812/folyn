@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { isTauri } from '@/utils/platform';
 import { useEditorStore } from '@/store/editorStore';
+import * as editorIoService from '@/services/editorIoService';
 import { useClipStore } from '@/store/clipStore';
 import type { EditorProps } from '../types';
 
@@ -120,7 +121,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
     setClipDuplicate(null);
     await syncPosition();
     try {
-      await useEditorStore.getState().openFile(existingPath, fileName);
+      await editorIoService.openFile(existingPath, fileName);
     } catch (err) {
       console.error('[WebViewer] openFile failed:', err);
     }

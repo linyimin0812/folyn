@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force';
 import { useWikiGraphStore } from '@/store/wikiGraphStore';
-import { useEditorStore } from '@/store/editorStore';
+import * as editorIoService from '@/services/editorIoService';
 import type { WikiGraphNode, WikiGraphEdge } from '@/types/wiki';
 
 const NODE_COLORS: Record<string, string> = {
@@ -26,7 +26,7 @@ export function WikiGraphView() {
   const isBuilding = useWikiGraphStore((s) => s.isBuilding);
   const buildGraph = useWikiGraphStore((s) => s.buildGraph);
   const getNeighborIds = useWikiGraphStore((s) => s.getNeighborIds);
-  const openFile = useEditorStore((s) => s.openFile);
+  const openFile = editorIoService.openFile;
 
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
