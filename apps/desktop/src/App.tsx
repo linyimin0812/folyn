@@ -14,28 +14,22 @@ import { VaultPage } from './components/pages/VaultPage';
 import { ScheduleWorkbenchPage } from './components/schedule/ScheduleWorkbenchPage';
 import { StudyWorkbenchPage } from './components/study/StudyWorkbenchPage';
 import { useTheme } from './hooks/useTheme';
+import { usePetHostBridge } from './hooks/usePetHostBridge';
 import { useNavStore } from './store/navStore';
 import { useAppearanceStore } from './store/appearanceStore';
-import { usePetStore } from './store/petStore';
 import { useVaultStore } from './store/vaultStore';
 import { useEditorStore } from './store/editorStore';
-import { useEditorViewStateStore } from './store/editorViewState';
 import * as editorIoService from './services/editorIoService';
 import { registerEditorFileChangeApplier } from './services/fileChangeApplier';
 import { useSearchStore } from './store/searchStore';
 import { useCommandPaletteStore } from './store/commandPaletteStore';
-import { usePetChatStore } from './store/petChatStore';
 import { loadAiSessionsForVault } from './store/aiStore';
 import { registerBuiltinPlugins } from '@quill/container-plugins';
 import { registerBuiltinCommands } from './services/commandRegistry';
-import { requestNewItem } from './services/newItemBridge';
 import { isTauri } from './utils/platform';
 import { pluginHost } from '@quill/plugin-host';
 import { sandboxLoader } from './services/plugin-host/sandboxLoader';
 import { trustedLoader } from './services/plugin-host/trustedLoader';
-import type { PetMenuAction } from './components/pet/PetContextMenu';
-import type { PetBubbleActionEvent, PetBubbleTarget, PetBubblePayload } from './components/pet/PetBubbleApp';
-import { dispatchNotification, startNotificationClickListener } from './services/petNotifyDispatcher';
 
 registerBuiltinPlugins();
 // Seed the command palette's static commands (actions + panels/modes) once at
@@ -96,6 +90,7 @@ function useDisableAutoCapitalize() {
 export default function App() {
   useTheme();
   useDisableAutoCapitalize();
+  usePetHostBridge();
 
   const isMobile = useIsMobile();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -164,78 +159,6 @@ export default function App() {
     initializeVault();
   }, []);
 
-  // ── Pet icon orphan sweep + fallback (PRD: settings-pet-tab-and-custom-icon) ──
-  // On startup, reconcile the persisted `petIconSource` / `petIconPath` with
-  // the actual files under appDataDir:
-  //  (a) If `petIconSource === 'custom'` but the saved file is missing
-  //      (externally deleted / moved), clear the flag to `'builtin'` so the
-  //      pet window renders the inline SVG instead of a broken-image icon.
-  //      Belt-and-suspenders with the `<img>` onError handler in PetMascot
-  //      (which clears the flag at render time); this sweep covers the case
-  //      where the pet window hasn't mounted yet (pet mode off) so the
-  //      missing file would otherwise persist in storage unchecked.
-  //  (b) If `petIconSource !== 'custom'` but a leftover `pet-icon.<ext>`
-  //      file exists in appDataDir (e.g. the user previously uploaded an
-  //      icon then reset to builtin, but the reset's file-delete failed),
-  //      delete it so the appData dir stays clean.
-  //
-  // Lives in the MAIN window (not PetApp) because the fs plugin calls
-  // (`exists`, `remove`, `readDir`) require fs ACL permissions that the
-  // main window already has (`capabilities/default.json`) but the pet
-  // window does not (`capabilities/pet.json` only grants core:window + core:event).
-  // Running the sweep here on every main-window startup is more reliable
-  // than running it in PetApp (which only mounts when pet mode is on).
-  // Wrapped in isTauri + try/catch so non-Tauri/test envs skip it.
-  useEffect(() => {
-    if (!isTauri()) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { exists, remove, readDir } = await import('@tauri-apps/plugin-fs');
-        const { appDataDir, join } = await import('@tauri-apps/api/path');
-        const appData = await appDataDir();
-        const { petIconSource, petIconPath } = usePetStore.getState();
-
-        if (petIconSource === 'custom' && petIconPath) {
-          // Fallback: custom flag set but file missing → clear flag.
-          let fileExists = false;
-          try {
-            fileExists = await exists(petIconPath);
-          } catch {
-            // exists() can throw on permission errors; treat as "missing"
-            // so the flag clears and the pet doesn't render a broken icon.
-            fileExists = false;
-          }
-          if (!fileExists && !cancelled) {
-            console.warn('[App] pet custom icon file missing, clearing flag:', petIconPath);
-            usePetStore.getState().setPetIcon('builtin');
-          }
-        } else {
-          // Orphan sweep: delete any leftover pet-icon.<ext> files in
-          // appDataDir so they don't accumulate across reset cycles.
-          try {
-            const entries = await readDir(appData);
-            for (const e of entries) {
-              if (cancelled) break;
-              if (!e.name.startsWith('pet-icon.')) continue;
-              try {
-                await remove(await join(appData, e.name));
-              } catch {
-                // Non-fatal; best-effort cleanup.
-              }
-            }
-          } catch {
-            // readDir on appDataDir can fail on permission / platform
-            // edge cases — non-fatal, the sweep is best-effort.
-          }
-        }
-      } catch (err) {
-        console.warn('[App] pet icon sweep failed:', err);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
   // ── Hide all native webviews when leaving the editor page ──
   useEffect(() => {
     if (currentPage !== 'editor' && isTauri()) {
@@ -244,201 +167,6 @@ export default function App() {
       });
     }
   }, [currentPage]);
-
-  // ── Desktop Pet Mode bridge (macOS MVP) ──
-  // (1) On launch, if the user had pet mode enabled, re-show the pet window.
-  //     The pet window starts `visible:false` in tauri.conf.json; calling
-  //     `toggle_pet_mode` flips it to visible and syncs the menu checkmark.
-  //     PetApp (mounted in the pet window) restores its own saved position.
-  // (2) Listen for `pet://menu-action` events from the pet window and
-  //     dispatch to existing store actions / window-focus helpers. Each
-  //     action also focuses the main window so the editor comes forward.
-  useEffect(() => {
-    if (!isTauri()) return;
-    let unlisten: (() => void) | null = null;
-    let cancelled = false;
-
-    const focusMain = async () => {
-      try {
-        const { getCurrentWindow } = await import('@tauri-apps/api/window');
-        const win = getCurrentWindow();
-        await win.show();
-        await win.setFocus();
-      } catch {
-        // Non-fatal.
-      }
-    };
-
-    const handleAction = async (action: PetMenuAction, size?: 'small' | 'medium' | 'large') => {
-      switch (action) {
-        case 'show-main':
-          await focusMain();
-          break;
-        case 'new-note':
-          requestNewItem('file');
-          await focusMain();
-          break;
-        case 'toggle-ai':
-          useEditorViewStateStore.getState().toggleAiPanel();
-          await focusMain();
-          break;
-        case 'hide-pet':
-          // Chinese-labeled sibling of `disable-pet` (PRD D1): same behavior,
-          // distinct label. Falls through to the disable-pet branch.
-        case 'disable-pet':
-          usePetStore.getState().setPetModeEnabled(false);
-          try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            await invoke('toggle_pet_mode');
-          } catch {
-            // Non-fatal; the menu bar item can still toggle it off.
-          }
-          break;
-        case 'set-pet-size': {
-          const level = size ?? 'medium';
-          usePetStore.getState().setPetSize(level);
-          try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            // Rust resizes the pet window + updates the shared size state so
-            // the next right-click menu pre-checks the new radio item.
-            await invoke('set_pet_size', { level });
-            // Notify the pet window to re-clamp its position + re-scale the
-            // mascot SVG (the pet window owns its own store instance + sprite
-            // layer, so the main window cannot resize them directly).
-            const { emit } = await import('@tauri-apps/api/event');
-            await emit('pet://size-changed', { size: level });
-          } catch {
-            // Non-fatal; the settings still persisted, next launch restores.
-          }
-          break;
-        }
-        // ── Pet-panel launcher actions (PR1). These are dispatched by the
-        // pet-panel launcher grid via the same `pet://menu-action` channel.
-        // Each action that targets the main editor focuses it so the editor
-        // comes forward. `clip-from-url` is handled in-panel (PR2) — the
-        // listener just focuses main as a no-op-ish fallback. ──
-        case 'daily-note':
-          void editorIoService.openDailyNote();
-          await focusMain();
-          break;
-        case 'global-search':
-          useSearchStore.getState().openPanel();
-          await focusMain();
-          break;
-        case 'clip-from-url':
-          // Handled inside the pet-panel (inline URL form, PR2). Focus main
-          // as a safe fallback so the user sees the editor if the panel
-          // flow is interrupted.
-          await focusMain();
-          break;
-        case 'command-palette':
-          useCommandPaletteStore.getState().toggle();
-          await focusMain();
-          break;
-        case 'toggle-theme':
-          useAppearanceStore.getState().toggleTheme();
-          await focusMain();
-          break;
-      }
-    };
-
-    // Route a `pet://bubble-action` jump from the pet-bubble window (PRD
-    // pet-popup-bubble-notification). The bubble emits this on title/action
-    // click; the main window owns the routing tables (schedule page, file
-    // tabs, pet-panel chat sessions) so it executes the jump + brings the
-    // target window forward. `focusMain` is reused so the editor comes with.
-    const handleBubbleAction = async (event: PetBubbleActionEvent) => {
-      const target: PetBubbleTarget | undefined = event.target;
-      if (!target) {
-        await focusMain();
-        return;
-      }
-      switch (target.kind) {
-        case 'schedule':
-          setCurrentPage('schedule');
-          await focusMain();
-          break;
-        case 'chat':
-          usePetChatStore.getState().switchSession(target.id);
-          try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            await invoke('pet_panel_show');
-          } catch {
-            // Non-fatal — session still switched in-store.
-          }
-          break;
-        case 'file':
-        case 'task': {
-          const name = target.id.split('/').pop() || target.id;
-          await editorIoService.openFile(target.id, name);
-          await focusMain();
-          break;
-        }
-      }
-    };
-
-    (async () => {
-      // Launch restore: only re-show if the user left pet mode on.
-      const { petModeEnabled } = usePetStore.getState();
-      if (petModeEnabled) {
-        try {
-          const { invoke } = await import('@tauri-apps/api/core');
-          // The pet window starts hidden; toggle → show.
-          await invoke('toggle_pet_mode');
-        } catch {
-          // Non-fatal.
-        }
-      }
-      // Event listener for pet → main window actions.
-      const { listen } = await import('@tauri-apps/api/event');
-      const unAction = await listen<{ action: PetMenuAction; size?: 'small' | 'medium' | 'large' }>('pet://menu-action', (event) => {
-        if (event.payload?.action) void handleAction(event.payload.action, event.payload?.size);
-      });
-      // Visibility sync: when the pet is toggled via the menu bar / keyboard
-      // shortcut, Rust emits this so the frontend preference stays in sync.
-      const unVis = await listen<boolean>('pet://visibility-changed', (event) => {
-        usePetStore.getState().setPetModeEnabled(!!event.payload);
-      });
-      // Bubble jump: the pet-bubble window emits `pet://bubble-action` when
-      // the user clicks a bubble title / action button; route the jump.
-      const unBubble = await listen<PetBubbleActionEvent>('pet://bubble-action', (event) => {
-        if (event.payload) void handleBubbleAction(event.payload);
-      });
-      // Unified notification entry: trigger sources (currently the Rust demo
-      // menu item; future: schedule reminder, pet-chat new message, task
-      // events, external push) emit `pet://notify` with a PetBubblePayload;
-      // the dispatcher routes it by `petStore.notificationForm` to the
-      // in-app bubble (`pet://bubble-show`) and/or an OS native notification.
-      // The OS notification click→jump reuses `pet://bubble-action` above.
-      const unNotify = await listen<PetBubblePayload>('pet://notify', (event) => {
-        if (event.payload) void dispatchNotification(event.payload);
-      });
-      // OS notification click listener: maps `notification.id` → target →
-      // emits `pet://bubble-action` (handled by `unBubble` above). Registered
-      // once for the main window's lifetime.
-      const unNotifClick = await startNotificationClickListener();
-      if (cancelled) {
-        unAction();
-        unVis();
-        unBubble();
-        unNotify();
-        unNotifClick();
-      } else {
-        unlisten = () => {
-          unAction();
-          unVis();
-          unBubble();
-          unNotify();
-          unNotifClick();
-        };
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, []);
 
   // ── Plugin host: register loaders + sync on install/approve/uninstall ──
   // The sandbox loader is the untrusted-tier PluginLoader (sandboxed iframe +
