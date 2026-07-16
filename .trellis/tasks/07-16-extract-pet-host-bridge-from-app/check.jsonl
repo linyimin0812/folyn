@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "校验 hook useEffect cleanup 完整（所有 listen unlisten）、无泄漏"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "校验 pet:// 事件 listen/emit 正确、主窗口/pet 窗口隔离未被破坏"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "校验 App.tsx 不再焊 pet plumbing、根组件职责收敛"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "校验 isTauri 守卫、useEffect cleanup、business logic 归 service/hook 非 component"}

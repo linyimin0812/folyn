@@ -1,0 +1,167 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Tauri APIs are aliased to vi.fn mocks via vitest.workspace.ts.
+import { invoke } from '@tauri-apps/api/core';
+import { emit } from '@tauri-apps/api/event';
+import { useNavStore } from '@/store/navStore';
+import { usePetStore } from '@/store/petStore';
+import { useEditorViewStateStore } from '@/store/editorViewState';
+import { useSearchStore } from '@/store/searchStore';
+import { useCommandPaletteStore } from '@/store/commandPaletteStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
+import { usePetChatStore } from '@/store/petChatStore';
+import * as editorIoService from '@/services/editorIoService';
+import * as newItemBridge from '@/services/newItemBridge';
+import { routePetMenuAction, routePetBubbleAction } from './petHostRouter';
+import type { PetBubbleActionEvent } from '@/components/pet/PetBubbleApp';
+
+// `@tauri-apps/api/window` is the real installed package (not aliased); in
+// jsdom `getCurrentWindow()` would throw, which focusMain swallows. To assert
+// the focus path is reached, mock the module so show/setFocus become spies.
+const showMock = vi.fn(async () => undefined);
+const setFocusMock = vi.fn(async () => undefined);
+vi.mock('@tauri-apps/api/window', () => ({
+  getCurrentWindow: () => ({ show: showMock, setFocus: setFocusMock }),
+}));
+
+const invokeMock = invoke as unknown as import('vitest').Mock;
+const emitMock = emit as unknown as import('vitest').Mock;
+
+beforeEach(() => {
+  invokeMock.mockClear();
+  emitMock.mockClear();
+  showMock.mockClear();
+  setFocusMock.mockClear();
+  invokeMock.mockResolvedValue(undefined);
+});
+
+describe('routePetMenuAction', () => {
+  it('show-main focuses the main window', async () => {
+    await routePetMenuAction('show-main');
+    expect(showMock).toHaveBeenCalledTimes(1);
+    expect(setFocusMock).toHaveBeenCalledTimes(1);
+    expect(invokeMock).not.toHaveBeenCalled();
+  });
+
+  it('new-note requests a new file and focuses main', async () => {
+    const requestSpy = vi.spyOn(newItemBridge, 'requestNewItem');
+    await routePetMenuAction('new-note');
+    expect(requestSpy).toHaveBeenCalledWith('file');
+    expect(showMock).toHaveBeenCalledTimes(1);
+    requestSpy.mockRestore();
+  });
+
+  it('toggle-ai toggles the AI panel and focuses main', async () => {
+    const before = useEditorViewStateStore.getState().aiPanelVisible;
+    await routePetMenuAction('toggle-ai');
+    expect(useEditorViewStateStore.getState().aiPanelVisible).toBe(!before);
+    expect(showMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('disable-pet clears pet mode and invokes toggle_pet_mode', async () => {
+    usePetStore.setState({ petModeEnabled: true });
+    await routePetMenuAction('disable-pet');
+    expect(usePetStore.getState().petModeEnabled).toBe(false);
+    expect(invokeMock).toHaveBeenCalledWith('toggle_pet_mode');
+  });
+
+  it('hide-pet behaves like disable-pet (same branch, distinct label)', async () => {
+    usePetStore.setState({ petModeEnabled: true });
+    await routePetMenuAction('hide-pet');
+    expect(usePetStore.getState().petModeEnabled).toBe(false);
+    expect(invokeMock).toHaveBeenCalledWith('toggle_pet_mode');
+  });
+
+  it('set-pet-size persists size, invokes set_pet_size, and emits pet://size-changed', async () => {
+    await routePetMenuAction('set-pet-size', 'large');
+    expect(usePetStore.getState().petSize).toBe('large');
+    expect(invokeMock).toHaveBeenCalledWith('set_pet_size', { level: 'large' });
+    expect(emitMock).toHaveBeenCalledWith('pet://size-changed', { size: 'large' });
+  });
+
+  it('set-pet-size defaults to medium when size omitted', async () => {
+    await routePetMenuAction('set-pet-size');
+    expect(usePetStore.getState().petSize).toBe('medium');
+    expect(invokeMock).toHaveBeenCalledWith('set_pet_size', { level: 'medium' });
+  });
+
+  it('daily-note opens the daily note and focuses main', async () => {
+    const spy = vi.spyOn(editorIoService, 'openDailyNote').mockResolvedValue(undefined);
+    await routePetMenuAction('daily-note');
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(showMock).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
+  it('global-search opens the search panel and focuses main', async () => {
+    useSearchStore.setState({ isOpen: false });
+    await routePetMenuAction('global-search');
+    expect(useSearchStore.getState().isOpen).toBe(true);
+    expect(showMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('clip-from-url focuses main as fallback (panel owns the flow)', async () => {
+    await routePetMenuAction('clip-from-url');
+    expect(showMock).toHaveBeenCalledTimes(1);
+    expect(invokeMock).not.toHaveBeenCalled();
+  });
+
+  it('command-palette toggles the palette and focuses main', async () => {
+    useCommandPaletteStore.setState({ isOpen: false });
+    await routePetMenuAction('command-palette');
+    expect(useCommandPaletteStore.getState().isOpen).toBe(true);
+    expect(showMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('toggle-theme flips the theme and focuses main', async () => {
+    useAppearanceStore.setState({ theme: 'light' });
+    await routePetMenuAction('toggle-theme');
+    expect(useAppearanceStore.getState().theme).toBe('dark');
+    expect(showMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('routePetBubbleAction', () => {
+  const showSpy = showMock; // alias for readability
+
+  it('focuses main when the event has no target', async () => {
+    await routePetBubbleAction({ type: 'navigate' });
+    expect(showSpy).toHaveBeenCalledTimes(1);
+    expect(invokeMock).not.toHaveBeenCalled();
+  });
+
+  it('schedule target navigates to the schedule page and focuses main', async () => {
+    useNavStore.setState({ currentPage: 'editor' });
+    await routePetBubbleAction({ type: 'navigate', target: { kind: 'schedule', id: 'x' } });
+    expect(useNavStore.getState().currentPage).toBe('schedule');
+    expect(showSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('chat target switches the pet-panel session and invokes pet_panel_show', async () => {
+    usePetChatStore.setState({ sessions: [{ id: 's1', messages: [] }] as never, activeSessionId: 's1' });
+    await routePetBubbleAction({ type: 'navigate', target: { kind: 'chat', id: 's1' } });
+    expect(invokeMock).toHaveBeenCalledWith('pet_panel_show');
+  });
+
+  it('file target opens the file in the editor and focuses main', async () => {
+    const spy = vi.spyOn(editorIoService, 'openFile').mockResolvedValue(undefined);
+    await routePetBubbleAction({
+      type: 'navigate',
+      target: { kind: 'file', id: 'path/to/note.md' },
+    });
+    expect(spy).toHaveBeenCalledWith('path/to/note.md', 'note.md');
+    expect(showSpy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
+  it('task target opens the file (same branch as file)', async () => {
+    const spy = vi.spyOn(editorIoService, 'openFile').mockResolvedValue(undefined);
+    await routePetBubbleAction({
+      type: 'action',
+      actionId: 'view',
+      target: { kind: 'task', id: 'a/b/task.md' },
+    });
+    expect(spy).toHaveBeenCalledWith('a/b/task.md', 'task.md');
+    spy.mockRestore();
+  });
+});

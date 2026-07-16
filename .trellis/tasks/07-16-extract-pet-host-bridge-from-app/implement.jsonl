@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "hook 约定——useEffect listen/unlisten cleanup 生命周期、hook 命名/位置"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Tauri 事件 listen/emit、多窗口（主窗口 vs pet 窗口）隔离约定"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "hook 放 hooks/、router helper 放 services/ 还是 components/pet/ 的归属"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "App.tsx 根组件该放什么、不该焊功能 plumbing 的约定"}
