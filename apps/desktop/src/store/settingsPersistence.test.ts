@@ -9,6 +9,7 @@ import { usePrefsStore, DEFAULT_SHORTCUTS } from './prefsStore';
 import { usePetStore } from './petStore';
 import { useScheduleStore } from './scheduleStore';
 import { loadSettings, hydrateAllStores } from './settingsPersistence';
+import { PET_SIZE_VERSION } from '@/components/pet/petPosition';
 
 beforeEach(() => {
   storageClient.__resetForTesting();
@@ -221,6 +222,68 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
     // scheduleStore boardColumns
     expect(useScheduleStore.getState().boardColumns.length).toBe(2);
     expect(useScheduleStore.getState().boardColumns[1].isDone).toBe(true);
+  });
+
+  it('applies every migration to a pre-split blob (old user restart = zero-perception)', () => {
+    // A blob exactly as an old user's settingsStore would have written before
+    // the split: pre-migration values that the hydrate path must fix up.
+    const oldBlob: Record<string, unknown> = {
+      theme: 'dark',
+      excludePatterns: 'node_modules\n.git\n__wiki__', // missing later built-in dirs
+      vaultName: 'old-vault',
+      // dailyNotesDir at the pre-__daily__ default → must migrate to __daily__.
+      dailyNotesDir: 'daily',
+      // Shortcuts persisted before togglePetPanel was added → backfill appends it.
+      shortcuts: DEFAULT_SHORTCUTS.filter((s) => s.id !== 'togglePetPanel').map((s) => ({ ...s })),
+      // boardColumns missing an isDone column → falls back to defaults.
+      boardColumns: [{ id: 'only', name: '只此一列', color: 'var(--t3)' }],
+      // Pre-fix positions saved as PHYSICAL px (petPosVersion !== 1) → discard.
+      petPosVersion: 0,
+      petPositionX: 999,
+      petPositionY: 888,
+      petPanelX: 777,
+      petPanelY: 666,
+      // Pre-versioning pet size (mismatches PET_SIZE_VERSION) → discard pet pos.
+      petSizeVersion: 0,
+      // Invalid enum values → coerce to defaults.
+      petIconSource: 'bogus',
+      petIconPath: '/stale',
+      petSize: 'enormous',
+      notificationForm: 'bogus',
+    };
+
+    hydrateAllStores(oldBlob);
+
+    // appearanceStore: backfill appended every missing built-in dir.
+    const excludeLines = useAppearanceStore.getState().excludePatterns.split('\n');
+    expect(excludeLines).toContain('__study__');
+    expect(excludeLines).toContain('__schedule__');
+    expect(excludeLines).toContain('__analyze__');
+    expect(useAppearanceStore.getState().vaultName).toBe('old-vault');
+
+    // prefsStore: dailyNotesDir migrated; togglePetPanel backfilled.
+    expect(usePrefsStore.getState().dailyNotesDir).toBe('__daily__');
+    const scIds = usePrefsStore.getState().shortcuts.map((s) => s.id);
+    expect(scIds).toContain('togglePetPanel');
+    expect(scIds.length).toBe(DEFAULT_SHORTCUTS.length);
+
+    // scheduleStore: invalid boardColumns → DEFAULT_BOARD_COLUMNS with an isDone.
+    const cols = useScheduleStore.getState().boardColumns;
+    expect(cols.length).toBeGreaterThan(1);
+    expect(cols.some((c) => c.isDone)).toBe(true);
+
+    // petStore: stale physical-px positions discarded; invalid enums coerced.
+    const pet = usePetStore.getState();
+    expect(pet.petPositionX).toBe(-1);
+    expect(pet.petPositionY).toBe(-1);
+    expect(pet.petPanelX).toBe(-1);
+    expect(pet.petPanelY).toBe(-1);
+    expect(pet.petPosVersion).toBe(1);
+    expect(pet.petSizeVersion).toBe(PET_SIZE_VERSION);
+    expect(pet.petIconSource).toBe('builtin');
+    expect(pet.petIconPath).toBe('');
+    expect(['small', 'medium', 'large']).toContain(pet.petSize);
+    expect(pet.notificationForm).toBe('bubble');
   });
 });
 

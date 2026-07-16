@@ -398,7 +398,7 @@ export default function App() {
       // Unified notification entry: trigger sources (currently the Rust demo
       // menu item; future: schedule reminder, pet-chat new message, task
       // events, external push) emit `pet://notify` with a PetBubblePayload;
-      // the dispatcher routes it by `settingsStore.notificationForm` to the
+      // the dispatcher routes it by `petStore.notificationForm` to the
       // in-app bubble (`pet://bubble-show`) and/or an OS native notification.
       // The OS notification click→jump reuses `pet://bubble-action` above.
       const unNotify = await listen<PetBubblePayload>('pet://notify', (event) => {

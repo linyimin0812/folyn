@@ -26,7 +26,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('useScheduleStore boardColumns (PR1 dormant)', () => {
+describe('useScheduleStore boardColumns', () => {
   it('defaults to DEFAULT_BOARD_COLUMNS with 4 cols incl one isDone', () => {
     const cols = useScheduleStore.getState().boardColumns;
     expect(cols.length).toBe(4);

@@ -1,6 +1,6 @@
 /**
  * Convert a `ShortcutItem.keys` display array (e.g. `["⌘", "Shift", "Q"]`,
- * as stored by `settingsStore.ts` and rendered by `ShortcutEditor`) into the
+ * as stored by `prefsStore.ts` and rendered by `ShortcutEditor`) into the
  * Tauri accelerator grammar string (e.g. `"Cmd+Shift+Q"`) accepted by
  * `tauri-plugin-global-shortcut`'s `register` (via the
  * `pet_panel_set_shortcut` custom command).

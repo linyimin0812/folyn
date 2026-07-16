@@ -81,7 +81,10 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
   return blob;
 }
 
-// Eagerly kick off the load on module import. The legacy settingsStore did
-// the same (`storageClient.get(...).then(...)` at module bottom). Errors are
-// swallowed — a missing blob is the normal first-launch case.
+// Eagerly kick off the load on module import — this is the app's single
+// startup hydration entry. The pre-split settingsStore did the same
+// (`storageClient.get(...).then(...)` at module bottom); after the split this
+// module owns that responsibility exclusively (no other module eager-loads
+// the settings blob). Errors are swallowed — a missing blob is the normal
+// first-launch case.
 void loadSettings().catch(() => {});

@@ -113,7 +113,7 @@ export const PET_SIZE_VERSION = 2;
  * The bottom margin is intentionally larger than the right: the default
  * position is "bottom-right, slightly lifted" so the mascot clears the
  * Dock + the rounded screen corner with visible breathing room. Users who
- * have dragged the pet still keep their saved position (settingsStore clamp
+ * have dragged the pet still keep their saved position (petStore clamp
  * branch); this margin only sets the first-launch default.
  */
 export const PET_RIGHT_MARGIN = 8;
@@ -198,7 +198,7 @@ export function computeCenteredPanelPosition(
  * Clamp a saved pet position (absolute logical screen points) so the whole
  * window stays inside the work area. If the saved position would clip on any
  * edge, it is moved inward to the nearest valid position. The caller should
- * persist the clamped value back to `settingsStore` so a subsequent launch
+ * persist the clamped value back to `petStore` so a subsequent launch
  * doesn't need to re-clamp.
  *
  * `petWindowSize` defaults to `PET_WINDOW_SIZE` (96) for backward

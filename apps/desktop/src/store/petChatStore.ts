@@ -17,7 +17,7 @@ import { debounce } from '@/utils/debounce';
  * vault coupling.
  *
  * Persistence namespace: `pet-chat:sessions` in `storageClient` (the shared
- * Tauri-store-backed key/value cache used by `settingsStore`). The persisted
+ * Tauri-store-backed key/value cache used by `settingsPersistence`). The persisted
  * payload is `{ sessions, activeSessionId }`. The `streaming` flag is
  * runtime-only and is NOT persisted — if the app quits mid-stream, the
  * partial assistant message is retained as-is and the user can resend /

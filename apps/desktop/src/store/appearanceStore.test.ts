@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { useAppearanceStore } from './appearanceStore';
+import { useAppearanceStore, backfillBuiltinExcludePatterns } from './appearanceStore';
 import { storageClient } from '@/utils/storageClient';
 
 beforeEach(() => {
@@ -123,5 +123,33 @@ describe('useAppearanceStore.hydrate', () => {
   it('missing fields keep defaults', () => {
     useAppearanceStore.getState().hydrate({ theme: 'light' });
     expect(useAppearanceStore.getState().fontSize).toBe(14);
+  });
+});
+
+describe('backfillBuiltinExcludePatterns', () => {
+  const BUILTIN_DIRS = [
+    '__wiki__',
+    '__clips__',
+    '__reports__',
+    '__daily__',
+    '__study__',
+    '__schedule__',
+    '__analyze__',
+  ];
+
+  it('leaves an already-complete persisted value unchanged (no duplication)', () => {
+    const raw = BUILTIN_DIRS.join('\n');
+    expect(backfillBuiltinExcludePatterns(raw)).toBe(raw);
+  });
+
+  it('preserves user-defined custom patterns without duplicating them', () => {
+    const result = backfillBuiltinExcludePatterns('node_modules\n__wiki__');
+    const lines = result.split('\n');
+    expect(lines).toContain('node_modules');
+    expect(lines).toContain('__wiki__');
+    for (const d of BUILTIN_DIRS) {
+      expect(lines).toContain(d);
+    }
+    expect(lines.filter((l) => l === 'node_modules').length).toBe(1);
   });
 });

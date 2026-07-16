@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { usePrefsStore, DEFAULT_SHORTCUTS } from './prefsStore';
+import { usePrefsStore, DEFAULT_SHORTCUTS, backfillDefaultShortcuts } from './prefsStore';
 import { storageClient } from '@/utils/storageClient';
 
 beforeEach(() => {
@@ -92,5 +92,32 @@ describe('usePrefsStore.hydrate', () => {
   it('missing fields keep defaults', () => {
     usePrefsStore.getState().hydrate({ dailyNotesDir: '__daily__' });
     expect(usePrefsStore.getState().dailyNoteDateFormat).toBe('YYYY-MM-DD');
+  });
+});
+
+describe('DEFAULT_SHORTCUTS', () => {
+  it('includes the global togglePetPanel shortcut with the default Cmd+Shift+Q binding', () => {
+    // The global-shortcut entry must round-trip through the same persistence
+    // path as the in-editor bindings, and its default keys must match the
+    // accelerator documented in the PRD (asserted by ShortcutEditor's rebind
+    // flow). Bumping/renaming this id without updating PetApp's mount-time
+    // registration + SettingsPage's rebind hook would silently break the
+    // global shortcut.
+    const entry = DEFAULT_SHORTCUTS.find((x) => x.id === 'togglePetPanel');
+    expect(entry).toBeDefined();
+    expect(entry!.name).toBe('唤起桌宠面板');
+    expect(entry!.keys).toEqual(['⌘', 'Shift', 'Q']);
+  });
+});
+
+describe('backfillDefaultShortcuts', () => {
+  it('returns DEFAULT_SHORTCUTS copy when persisted is empty or non-array', () => {
+    expect(backfillDefaultShortcuts([])).toEqual(DEFAULT_SHORTCUTS);
+    expect(backfillDefaultShortcuts(undefined as unknown as never[])).toEqual(DEFAULT_SHORTCUTS);
+  });
+
+  it('returns the input unchanged when no defaults are missing', () => {
+    const persisted = DEFAULT_SHORTCUTS.map((s) => ({ ...s }));
+    expect(backfillDefaultShortcuts(persisted)).toEqual(persisted);
   });
 });

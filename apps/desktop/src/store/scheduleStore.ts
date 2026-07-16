@@ -22,14 +22,11 @@ import {
 export type { EventCategory, TaskColumn };
 export type { BoardColumnDef };
 
-// ponytail: boardColumns + its 4 setters are duplicated here from the legacy
-// settingsStore in PR1 (construction PR). The legacy settingsStore copy stays
-// the live source for all existing consumers until PR2 flips the imports; the
-// scheduleStore copy here is dormant (no consumer reads/writes it yet). PR2
-// retargets columns.ts + SettingsPage + removeBoardColumn below onto this
-// store; PR3 deletes the legacy settingsStore. This is the only field the PRD
-// folds into an EXISTING store rather than a new dedicated one (schedule domain
-// owns boardColumns — it's a schedule-workbench concept, not a global pref).
+// ponytail: boardColumns + its 4 setters live here (schedule domain owns the
+// kanban-column concept, not a global pref). The legacy settingsStore held
+// these pre-split; PR2 retargeted columns.ts / SettingsPage /
+// removeBoardColumn onto this store, and PR3 deleted the legacy
+// settingsStore — this slice is now the sole live source.
 export const PERSIST_KEYS_BOARD_COLUMNS = ['boardColumns'] as const;
 
 interface PomoState {
@@ -46,8 +43,7 @@ interface ScheduleState {
   lastScan: number;
   calendarFilter: Record<EventCategory, boolean>;
   boardAnchorDate: string; // YYYY-MM-DD
-  /** 看板列定义（PR1: duplicated from legacy settingsStore; dormant until PR2
-   *  flips consumers onto this store). */
+  /** 看板列定义（schedule 域自有；持久化切片 boardColumns）。 */
   boardColumns: BoardColumnDef[];
 
   pomo: PomoState;
@@ -59,7 +55,7 @@ interface ScheduleState {
   setCalendarFilter: (cat: EventCategory, on: boolean) => void;
   setBoardAnchorDate: (date: string) => void;
 
-  // ── 看板列自定义 (PR1: dormant copy of legacy settingsStore setters) ──
+  // ── 看板列自定义 ──
   addBoardColumn: (name: string) => string;
   renameBoardColumn: (id: string, name: string) => void;
   reorderBoardColumns: (fromId: string, toId: string) => void;
@@ -187,7 +183,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
 
   setBoardAnchorDate: (date) => set({ boardAnchorDate: date }),
 
-  // ── 看板列自定义 (PR1: dormant copy; PR2 retargets consumers here) ──
+  // ── 看板列自定义 ──
   addBoardColumn: (name: string) => {
     const id = `col-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     set((state) => {
@@ -595,10 +591,10 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
 // subscribeToFileTree lives in vaultStore now (shared with studyStore).
 export { subscribeToFileTree } from './vaultStore';
 
-// ponytail: boardColumns persistence slice (PR1 dormant). The hydrate mirrors
-// the legacy settingsStore path: non-empty array with at least one isDone
-// column, else DEFAULT_BOARD_COLUMNS. PR2 flips columns.ts / SettingsPage /
-// removeBoardColumn onto this store so the slice becomes the live source.
+// ponytail: boardColumns persistence slice. The hydrate mirrors the
+// pre-split settingsStore path: non-empty array with at least one isDone
+// column, else DEFAULT_BOARD_COLUMNS. This slice is the sole live source
+// (PR2 retargeted columns.ts / SettingsPage / removeBoardColumn here).
 registerPersistSlice({
   keys: PERSIST_KEYS_BOARD_COLUMNS,
   getState: () => useScheduleStore.getState() as unknown as Record<string, unknown>,

@@ -28,7 +28,7 @@ interface SkillState {
   exportSkill: (id: string) => string;
 }
 
-/** Debounced persist — same pattern as settingsStore. */
+/** Debounced persist — same pattern as settingsPersistence. */
 const debouncedPersistSkills = debounce(
   (skills: Record<string, Skill>) => storageClient.set(SKILLS_STORAGE_KEY, skills),
   300,
