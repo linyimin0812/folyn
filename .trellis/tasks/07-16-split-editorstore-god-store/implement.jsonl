@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store 结构约定——editorViewState/diffReviewStore 的形状、selector 模式、getState 用法"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "新 store/service 文件归属，editorIoService 放 store/ 还是 services/"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "selector 粒度、business logic 不进组件、IO service 化约定"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "aiStore→editorStore 反向依赖反转、FileChangeApplier 依赖倒置的跨层方向校验"}

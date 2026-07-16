@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { CliMessage, FileChange, MessageAttachment } from '@quill/cli-adapter';
+import type { FileChangeApplier } from '@/services/fileChangeApplier';
 import { useVaultStore } from './vaultStore';
 import { useEditorStore } from './editorStore';
 import { sessionStorage } from '@/utils/sessionStorage';
@@ -10,6 +11,25 @@ import { getHandlerById } from '@/components/file-types/registry';
 import { persistAiState, saveAllSessions, loadSessionsFromDisk, setSuppressPersist, setupPersistSubscription } from './aiSessionPersistence';
 
 export { loadAiSessionsForVault } from './aiSessionPersistence';
+
+// ── FileChangeApplier injection slot (PR1) ──────────────────────────────────
+// ponytail: PR1 only registers the slot; addFileChange below still uses its
+// inline editorStore branch (zero behavior change). PR2 flips the comment to
+// `fileChangeApplier?.apply(change)` and deletes the inline branch + the
+// editorStore import. The slot is tsc-legal while "registered but unconsumed"
+// because getFileChangeApplier reads it (exported) — no noUnusedLocals fire on
+// module-level lets that are referenced by an exported getter.
+let fileChangeApplier: FileChangeApplier | null = null;
+
+/** Editor layer registers its FileChangeApplier here (see services/fileChangeApplier.ts). */
+export function setFileChangeApplier(applier: FileChangeApplier | null): void {
+  fileChangeApplier = applier;
+}
+
+/** Read the registered applier. Returns null until the editor layer registers one. */
+export function getFileChangeApplier(): FileChangeApplier | null {
+  return fileChangeApplier;
+}
 
 export type AiChatMode = 'chat' | 'wiki' | 'clip';
 
@@ -282,6 +302,10 @@ export const useAiStore = create<AiState>((set, get) => ({
         useEditorStore.getState().updateTabContent(tabId, change.newContent);
       }
     }
+    // ponytail: PR2 swaps the inline branch above for
+    //   fileChangeApplier?.apply(change)
+    // (via the slot registered by setFileChangeApplier) and removes the
+    // editorStore import. Behavior is identical — see EditorFileChangeApplier.
   },
 
   acceptChange: (path) => {

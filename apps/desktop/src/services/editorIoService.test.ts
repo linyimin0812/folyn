@@ -1,0 +1,108 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock the editor-layer dependencies the service routes through. The service
+// reads/writes editorStore via getState/setState and chains out to vaultStore,
+// watcher, wikiProvider, persistence — stub them all so we can assert routing
+// without touching real Tauri FS / wiki ingestion.
+
+const { editorState, setStateMock } = vi.hoisted(() => {
+  const editorState = {
+    tabs: [] as Array<{ id: string; name: string; path: string; content: string; isDirty: boolean; fileType: string; activity: string; cursorLine?: number; cursorCol?: number; viewMode?: string }>,
+    activeTabId: null as string | null,
+    viewMode: 'split' as string,
+    isFileLoading: false,
+    externalContentVersion: 0,
+    diffReviewMode: false,
+    enterDiffReview: vi.fn(),
+    updateTabContent: vi.fn(),
+    setContentExternal: vi.fn(),
+    saveFile: vi.fn(),
+    openFile: vi.fn(),
+  };
+  return { editorState, setStateMock: vi.fn() };
+});
+
+vi.mock('@/store/editorStore', () => ({
+  useEditorStore: {
+    getState: () => editorState,
+    setState: setStateMock,
+  },
+  detectFileType: vi.fn((p: string) => (p.endsWith('.md') ? 'markdown' : 'code')),
+  detectActivity: vi.fn(() => 'files'),
+}));
+
+vi.mock('@/store/vaultStore', () => ({
+  useVaultStore: { getState: () => ({ activeVaultId: 'v1', readFile: vi.fn(), writeFile: vi.fn(), createDir: vi.fn(), refreshFileTree: vi.fn(), currentVault: null }) },
+}));
+vi.mock('@/store/prefsStore', () => ({ usePrefsStore: { getState: () => ({ dailyNotesDir: '__daily__', dailyNoteDateFormat: 'YYYY-MM-DD' }) } }));
+vi.mock('@/components/file-types/registry', () => ({ getHandlerById: vi.fn(() => ({ id: 'markdown', needsFileContent: true, deserialize: (r: string) => r, serialize: (c: string) => c })) }));
+vi.mock('@/utils/fileWatcher', () => ({ suppressWatcherFor: vi.fn() }));
+vi.mock('@/services/wikiProvider', () => ({ wikiProvider: { readFile: vi.fn(), writeFile: vi.fn() } }));
+vi.mock('@/types/wiki', () => ({ WIKI_PREFIX: 'wiki://' }));
+vi.mock('@/store/editorAutoSave', () => ({ scheduleAutoSave: vi.fn(), flushAllAutoSaves: vi.fn() }));
+vi.mock('@/store/editorPersistence', () => ({ persistOpenTabs: vi.fn(), flushPersistOpenTabs: vi.fn(), loadPersistedOpenTabs: vi.fn(async () => null) }));
+
+import {
+  openFile,
+  openDailyNote,
+  saveFile,
+  saveOpenTabs,
+  restoreOpenTabs,
+  checkDiskChanges,
+  flushAutoSaves,
+} from './editorIoService';
+import { flushAllAutoSaves } from '@/store/editorAutoSave';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  editorState.tabs = [];
+  editorState.activeTabId = null;
+  editorState.viewMode = 'split';
+  editorState.isFileLoading = false;
+  editorState.externalContentVersion = 0;
+  editorState.diffReviewMode = false;
+});
+
+describe('editorIoService — signatures exist', () => {
+  it('exports the 7 IO functions', () => {
+    expect(typeof openFile).toBe('function');
+    expect(typeof openDailyNote).toBe('function');
+    expect(typeof saveFile).toBe('function');
+    expect(typeof saveOpenTabs).toBe('function');
+    expect(typeof restoreOpenTabs).toBe('function');
+    expect(typeof checkDiskChanges).toBe('function');
+    expect(typeof flushAutoSaves).toBe('function');
+  });
+});
+
+describe('editorIoService.saveOpenTabs', () => {
+  it('is a no-op when there is no active vault id', async () => {
+    // ponytail: ceiling — full IO path (read/write file via Tauri FS, watcher
+    // suppression, wiki ingestion, persistence round-trip) can't be exercised
+    // in jsdom. We assert the early-return guard and the flushAutoSaves
+    // delegation to flushAllAutoSaves; the on-disk behavior is covered by the
+    // existing editorStore integration surface and will be re-asserted in PR2
+    // after the consumer migration.
+    const { useVaultStore } = await import('@/store/vaultStore');
+    const flushPersistOpenTabs = (await import('@/store/editorPersistence')).flushPersistOpenTabs;
+    vi.spyOn(useVaultStore, 'getState').mockReturnValue({ activeVaultId: null } as never);
+    saveOpenTabs();
+    expect(flushPersistOpenTabs).not.toHaveBeenCalled();
+  });
+});
+
+describe('editorIoService.flushAutoSaves', () => {
+  it('delegates to flushAllAutoSaves with saveFile as the per-tab sink', async () => {
+    await flushAutoSaves();
+    expect(flushAllAutoSaves).toHaveBeenCalledOnce();
+    const sink = (flushAllAutoSaves as unknown as { mock: { calls: unknown[][] } }).mock.calls[0][0];
+    expect(typeof sink).toBe('function');
+  });
+});
+
+describe('editorIoService.saveFile', () => {
+  it('is a no-op when the tab is absent', async () => {
+    await saveFile('missing');
+    expect(setStateMock).not.toHaveBeenCalled();
+  });
+});

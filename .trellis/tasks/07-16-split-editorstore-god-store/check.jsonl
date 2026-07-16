@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "校验 selector 粒度、IO 不在 store action、business logic 归 service/store 非 component"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "校验新 store 符合 create<StateInterface> 单文件约定、getState 用法"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "校验 FileChangeApplier 接口类型完备、无 any、applier 未注册 no-op 的类型处理"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "校验 aiStore 不再 import editorStore/diffReviewStore、依赖方向已倒置、无反向耦合残留"}
