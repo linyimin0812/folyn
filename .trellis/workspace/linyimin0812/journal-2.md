@@ -77,3 +77,37 @@ Final center-rot cleanup from the architecture audit: extracted App.tsx's inline
 ### Next Steps
 
 - None - task complete
+
+
+## Session 61: centralize editor tabId into FileChangeApplier
+
+**Date**: 2026-07-16
+**Task**: centralize editor tabId into FileChangeApplier
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Closed the editorStore PR3 deferred tail: the accept/reject editor slice (tabId format ${vaultId}:${path} + tab lookup + which editorStore/diffReviewStore method to call) was still inlined in aiFileChangeActions, leaking editor-domain knowledge into the AI layer. Extended FileChangeApplier with acceptEditorChange(path, newContent) + revertEditorTab(path, oldContent); extracted a private resolveTab(path) helper that apply/accept/revert all reuse, so the tabId format + tab lookup live in one editor-owned place. aiFileChangeActions now delegates the editor slice through the applier interface (getFileChangeApplier()?.acceptEditorChange/revertEditorTab) and no longer imports editorStore/diffReviewStore; disk IO (writeTextFile) + session status mutation stay in aiFileChangeActions as the orchestrator so reject's interwoven operation is not split. FileChangeApplier is now the complete editor-side file-change abstraction (apply/accept/revert three states). The new aiStore<->aiFileChangeActions ESM cycle is TDZ-safe (hoisted function declarations, no module-eval cross calls) — same shape as the editorStore<->editorIoService cycle, documented with a comment per the spec's ESM-cycle gotcha. Single PR; check zero issues; behavior zero-regression; tsc/build green, 23 targeted tests pass. This fully closes the audit's center-rot list + the editorStore PR3 tail.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d782b0e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
