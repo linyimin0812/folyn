@@ -1,6 +1,6 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
 import { DrawIoEmbed } from 'react-drawio';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 import type { EditorProps } from '../types';
 
 // ponytail: online embed via https://embed.diagrams.net — requires internet at edit time.
@@ -9,7 +9,7 @@ import type { EditorProps } from '../types';
 // `baseUrl="/drawio/index.html"` to DrawIoEmbed. Defer until offline use is a real requirement.
 
 export function DrawioEditor({ content, onChange }: EditorProps) {
-  const theme = useSettingsStore((s) => s.theme);
+  const theme = useAppearanceStore((s) => s.theme);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

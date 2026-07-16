@@ -1,7 +1,7 @@
 import { createContext, useContext, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import type { InfographicBlock, InfographicDoc } from '@/features/clips/clipParse';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 
 /**
  * Editorial / newspaper-poster infographic renderer for clips.
@@ -32,7 +32,7 @@ import { useSettingsStore } from '@/store/settingsStore';
  *   - source → footer left (always; stacked below quote when quote present)
  *   - stat / keypoints / timeline / steps / comparison → 3-col body, chunked
  *
- * Theme adaptation: the poster reads `theme` from `useSettingsStore` and picks
+ * Theme adaptation: the poster reads `theme` from `useAppearanceStore` and picks
  * between a light palette (warm off-white) and a dark palette (dark warm bg
  * with light foreground). The palette is distributed to all sub-components via
  * `PaletteContext` so direct `<BlockView>` renders (e.g. in unit tests) get a
@@ -102,12 +102,12 @@ export interface InfographicViewProps {
 }
 
 /**
- * Reads the current theme from `useSettingsStore`.
+ * Reads the current theme from `useAppearanceStore`.
  *
  * Implemented via `useSyncExternalStore` directly (rather than
- * `useSettingsStore((s) => s.theme)`) so the SSR server snapshot reads CURRENT
+ * `useAppearanceStore((s) => s.theme)`) so the SSR server snapshot reads CURRENT
  * state. Zustand v5's default `useStore` uses `api.getInitialState()` as the
- * server snapshot, which means `useSettingsStore((s) => s.theme)` always
+ * server snapshot, which means `useAppearanceStore((s) => s.theme)` always
  * returns the initial `'light'` theme during `renderToString` — ignoring any
  * `setState({ theme: 'dark' })` the test set up. Passing `getState().theme` as
  * the third arg (`getServerSnapshot`) makes the hook SSR-correct while still
@@ -115,9 +115,9 @@ export interface InfographicViewProps {
  */
 function useThemeState(): string {
   return useSyncExternalStore(
-    useSettingsStore.subscribe,
-    () => useSettingsStore.getState().theme,
-    () => useSettingsStore.getState().theme,
+    useAppearanceStore.subscribe,
+    () => useAppearanceStore.getState().theme,
+    () => useAppearanceStore.getState().theme,
   );
 }
 

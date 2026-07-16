@@ -110,8 +110,8 @@ vi.mock('@/store/vaultStore', () => ({
   },
 }));
 
-vi.mock('@/store/settingsStore', () => ({
-  useSettingsStore: {
+vi.mock('@/store/aiConfigStore', () => ({
+  useAiConfigStore: {
     getState: () => ({ cliAdapter: 'claude', cliPath: '/mock/claude' }),
   },
 }));

@@ -39,9 +39,9 @@ vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
 }));
 
 // Mock FileIcon — its real impl renders ThemeIcon, which calls the
-// useSettingsStore hook. This test mocks useSettingsStore as a plain object
+// useAppearanceStore hook. This test mocks useAppearanceStore as a plain object
 // (not a callable hook) to drive isPetChatConfigured's getState() path, so
-// ThemeIcon would throw "useSettingsStore is not a function". The attachment
+// ThemeIcon would throw "useAppearanceStore is not a function". The attachment
 // chip only needs a placeholder icon node; the real FileIcon is exercised
 // elsewhere. Stubbing here keeps the test focused on PetChat's wiring.
 vi.mock('@/components/icons/FileIcon', () => ({
@@ -98,16 +98,31 @@ vi.mock('@/services/petChatService', () => ({
   getPetChatWorkingDir: getWorkingDirMock,
 }));
 
-const settingsState = {
+const aiConfigState = {
   cliAdapter: 'claude',
   cliPath: 'claude',
+};
+vi.mock('@/store/aiConfigStore', () => ({
+  useAiConfigStore: {
+    getState: () => aiConfigState,
+  },
+}));
+
+const navState = {
   setCurrentPage: vi.fn(),
   setSettingsTab: vi.fn(),
 };
-vi.mock('@/store/settingsStore', () => ({
-  useSettingsStore: {
-    getState: () => settingsState,
+vi.mock('@/store/navStore', () => ({
+  useNavStore: {
+    getState: () => navState,
   },
+}));
+
+// Mock appearanceStore as a plain object so ThemeIcon's `useAppearanceStore(...)`
+// selector call returns the theme without needing a real hook. ThemeIcon is
+// rendered by FileIcon fallback; only the theme field is read.
+vi.mock('@/store/appearanceStore', () => ({
+  useAppearanceStore: (_sel: (s: { theme: string }) => unknown) => 'light',
 }));
 
 import { PetChat } from './PetChat';
@@ -181,8 +196,8 @@ beforeEach(() => {
   mockedMkdir.mockClear();
   mockedWriteFile.mockClear();
   resetStoreToSingleEmpty();
-  settingsState.cliAdapter = 'claude';
-  settingsState.cliPath = 'claude';
+  aiConfigState.cliAdapter = 'claude';
+  aiConfigState.cliPath = 'claude';
 });
 
 afterEach(() => {
@@ -192,7 +207,7 @@ afterEach(() => {
 describe('PetChat', () => {
   // ── Unconfigured CTA ──
   it('renders the unconfigured-AI CTA when cliPath is empty (no session header)', () => {
-    settingsState.cliPath = '';
+    aiConfigState.cliPath = '';
     render(<PetChat />);
     expect(screen.getByText('未配置 AI')).toBeTruthy();
     expect(screen.queryByLabelText('切换会话')).toBeNull();
@@ -200,17 +215,17 @@ describe('PetChat', () => {
   });
 
   it('renders the unconfigured-AI CTA when cliAdapter is empty', () => {
-    settingsState.cliAdapter = '';
+    aiConfigState.cliAdapter = '';
     render(<PetChat />);
     expect(screen.getByText('未配置 AI')).toBeTruthy();
   });
 
   it('CTA button emits show-main and navigates to AI settings', async () => {
-    settingsState.cliPath = '';
+    aiConfigState.cliPath = '';
     render(<PetChat />);
     await fireEvent.click(screen.getByText('打开 AI 设置'));
-    expect(settingsState.setCurrentPage).toHaveBeenCalledWith('settings');
-    expect(settingsState.setSettingsTab).toHaveBeenCalledWith('ai');
+    expect(navState.setCurrentPage).toHaveBeenCalledWith('settings');
+    expect(navState.setSettingsTab).toHaveBeenCalledWith('ai');
     await waitFor(() =>
       expect(emitMock).toHaveBeenCalledWith('pet://menu-action', { action: 'show-main' }),
     );
@@ -235,8 +250,8 @@ describe('PetChat', () => {
     render(<PetChat />);
     const headerSettingsBtn = screen.getByRole('button', { name: 'AI 设置' });
     await fireEvent.click(headerSettingsBtn);
-    expect(settingsState.setCurrentPage).toHaveBeenCalledWith('settings');
-    expect(settingsState.setSettingsTab).toHaveBeenCalledWith('ai');
+    expect(navState.setCurrentPage).toHaveBeenCalledWith('settings');
+    expect(navState.setSettingsTab).toHaveBeenCalledWith('ai');
     await waitFor(() =>
       expect(emitMock).toHaveBeenCalledWith('pet://menu-action', { action: 'show-main' }),
     );

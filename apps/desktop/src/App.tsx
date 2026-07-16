@@ -14,7 +14,9 @@ import { VaultPage } from './components/pages/VaultPage';
 import { ScheduleWorkbenchPage } from './components/schedule/ScheduleWorkbenchPage';
 import { StudyWorkbenchPage } from './components/study/StudyWorkbenchPage';
 import { useTheme } from './hooks/useTheme';
-import { useSettingsStore } from './store/settingsStore';
+import { useNavStore } from './store/navStore';
+import { useAppearanceStore } from './store/appearanceStore';
+import { usePetStore } from './store/petStore';
 import { useVaultStore } from './store/vaultStore';
 import { useEditorStore } from './store/editorStore';
 import { useSearchStore } from './store/searchStore';
@@ -96,7 +98,7 @@ export default function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const activePanel = useEditorStore((s) => s.activePanel);
   const setActivePanel = useEditorStore((s) => s.setActivePanel);
-  const setCurrentPage = useSettingsStore((s) => s.setCurrentPage);
+  const setCurrentPage = useNavStore((s) => s.setCurrentPage);
 
   // 切换 activity 面板时同时回到 editor 页（从 schedule 页点面板按钮可返回）。
   const handlePanelChange = useCallback(
@@ -115,14 +117,14 @@ export default function App() {
     setMobileSidebarOpen(false);
   }, []);
 
-  const currentPage = useSettingsStore((state) => state.currentPage);
-  const showAiPanel = useSettingsStore((state) => state.showAiPanel);
-  const showStatusBar = useSettingsStore((state) => state.showStatusBar);
-  const fontSize = useSettingsStore((state) => state.fontSize);
-  const enableWikiPanel = useSettingsStore((state) => state.enableWikiPanel);
-  const enableClipsPanel = useSettingsStore((state) => state.enableClipsPanel);
-  const enableAnalyzePanel = useSettingsStore((state) => state.enableAnalyzePanel);
-  const enableDailyPanel = useSettingsStore((state) => state.enableDailyPanel);
+  const currentPage = useNavStore((state) => state.currentPage);
+  const showAiPanel = useAppearanceStore((state) => state.showAiPanel);
+  const showStatusBar = useAppearanceStore((state) => state.showStatusBar);
+  const fontSize = useAppearanceStore((state) => state.fontSize);
+  const enableWikiPanel = useAppearanceStore((state) => state.enableWikiPanel);
+  const enableClipsPanel = useAppearanceStore((state) => state.enableClipsPanel);
+  const enableAnalyzePanel = useAppearanceStore((state) => state.enableAnalyzePanel);
+  const enableDailyPanel = useAppearanceStore((state) => state.enableDailyPanel);
 
   // ── Vault initialization ──
   const vaultInitialized = useRef(false);
@@ -183,7 +185,7 @@ export default function App() {
         const { exists, remove, readDir } = await import('@tauri-apps/plugin-fs');
         const { appDataDir, join } = await import('@tauri-apps/api/path');
         const appData = await appDataDir();
-        const { petIconSource, petIconPath } = useSettingsStore.getState();
+        const { petIconSource, petIconPath } = usePetStore.getState();
 
         if (petIconSource === 'custom' && petIconPath) {
           // Fallback: custom flag set but file missing → clear flag.
@@ -197,7 +199,7 @@ export default function App() {
           }
           if (!fileExists && !cancelled) {
             console.warn('[App] pet custom icon file missing, clearing flag:', petIconPath);
-            useSettingsStore.getState().setPetIcon('builtin');
+            usePetStore.getState().setPetIcon('builtin');
           }
         } else {
           // Orphan sweep: delete any leftover pet-icon.<ext> files in
@@ -275,7 +277,7 @@ export default function App() {
           // Chinese-labeled sibling of `disable-pet` (PRD D1): same behavior,
           // distinct label. Falls through to the disable-pet branch.
         case 'disable-pet':
-          useSettingsStore.getState().setPetModeEnabled(false);
+          usePetStore.getState().setPetModeEnabled(false);
           try {
             const { invoke } = await import('@tauri-apps/api/core');
             await invoke('toggle_pet_mode');
@@ -285,7 +287,7 @@ export default function App() {
           break;
         case 'set-pet-size': {
           const level = size ?? 'medium';
-          useSettingsStore.getState().setPetSize(level);
+          usePetStore.getState().setPetSize(level);
           try {
             const { invoke } = await import('@tauri-apps/api/core');
             // Rust resizes the pet window + updates the shared size state so
@@ -325,7 +327,7 @@ export default function App() {
           await focusMain();
           break;
         case 'toggle-theme':
-          useSettingsStore.getState().toggleTheme();
+          useAppearanceStore.getState().toggleTheme();
           await focusMain();
           break;
       }
@@ -368,7 +370,7 @@ export default function App() {
 
     (async () => {
       // Launch restore: only re-show if the user left pet mode on.
-      const { petModeEnabled } = useSettingsStore.getState();
+      const { petModeEnabled } = usePetStore.getState();
       if (petModeEnabled) {
         try {
           const { invoke } = await import('@tauri-apps/api/core');
@@ -386,7 +388,7 @@ export default function App() {
       // Visibility sync: when the pet is toggled via the menu bar / keyboard
       // shortcut, Rust emits this so the frontend preference stays in sync.
       const unVis = await listen<boolean>('pet://visibility-changed', (event) => {
-        useSettingsStore.getState().setPetModeEnabled(!!event.payload);
+        usePetStore.getState().setPetModeEnabled(!!event.payload);
       });
       // Bubble jump: the pet-bubble window emits `pet://bubble-action` when
       // the user clicks a bubble title / action button; route the jump.
@@ -578,9 +580,9 @@ export default function App() {
       if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
         // Only trigger daily note when the feature is enabled; otherwise let the
         // event pass through untouched so users (and the OS) keep default behavior.
-        if (useSettingsStore.getState().enableDailyPanel) {
+        if (useAppearanceStore.getState().enableDailyPanel) {
           e.preventDefault();
-          useSettingsStore.getState().setCurrentPage('schedule');
+          useNavStore.getState().setCurrentPage('schedule');
         }
       }
       // Cmd/Ctrl+P (no Shift) toggles the command palette. Shift is reserved

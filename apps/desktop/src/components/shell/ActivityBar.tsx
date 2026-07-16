@@ -1,4 +1,5 @@
-import { useSettingsStore } from '@/store/settingsStore';
+import { useNavStore } from '@/store/navStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 
 export type ActivityPanel = 'files' | 'wiki' | 'clips' | 'analyze' | 'calendar';
 
@@ -8,12 +9,12 @@ interface ActivityBarProps {
 }
 
 export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
-  const setCurrentPage = useSettingsStore((s) => s.setCurrentPage);
-  const currentPage = useSettingsStore((s) => s.currentPage);
-  const enableWikiPanel = useSettingsStore((s) => s.enableWikiPanel);
-  const enableClipsPanel = useSettingsStore((s) => s.enableClipsPanel);
-  const enableAnalyzePanel = useSettingsStore((s) => s.enableAnalyzePanel);
-  const enableDailyPanel = useSettingsStore((s) => s.enableDailyPanel);
+  const setCurrentPage = useNavStore((s) => s.setCurrentPage);
+  const currentPage = useNavStore((s) => s.currentPage);
+  const enableWikiPanel = useAppearanceStore((s) => s.enableWikiPanel);
+  const enableClipsPanel = useAppearanceStore((s) => s.enableClipsPanel);
+  const enableAnalyzePanel = useAppearanceStore((s) => s.enableAnalyzePanel);
+  const enableDailyPanel = useAppearanceStore((s) => s.enableDailyPanel);
   const onSchedule = currentPage === 'schedule';
   const onStudy = currentPage === 'study';
   const onPage = onSchedule || onStudy;

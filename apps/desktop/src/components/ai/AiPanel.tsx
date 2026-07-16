@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { useAiStore } from '@/store/aiStore';
 import type { AiChatMode } from '@/store/aiStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useVaultStore } from '@/store/vaultStore';
 import type { CliStreamEvent, MessageAttachment } from '@quill/cli-adapter';
 import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';
@@ -212,7 +212,7 @@ export function AiPanel() {
     addMessage('assistant', '', sessionId);
     setSessionStreaming(sessionId, true);
 
-    const settings = useSettingsStore.getState();
+    const aiConfig = useAiConfigStore.getState();
     const vault = useVaultStore.getState().currentVault;
 
     let workingDir = vault?.basePath ?? '';
@@ -333,14 +333,14 @@ export function AiPanel() {
         await runRigChat({
           sessionId: sid,
           prompt,
-          provider: settings.chatProvider,
-          model: settings.chatModel,
-          apiKey: settings.chatApiKey,
-          baseUrl: settings.chatBaseUrl,
+          provider: aiConfig.chatProvider,
+          model: aiConfig.chatModel,
+          apiKey: aiConfig.chatApiKey,
+          baseUrl: aiConfig.chatBaseUrl,
           onEvent: eventHandler,
         });
       } else {
-        await adapter.start({ cliPath: settings.cliPath, workingDir });
+        await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
         // 合并当前输入模式（ask/agent/…）的 permissionMode/systemPrompt 等到 send options。
         const sendOptions = resolveSendOptions(inputMode, { resumeSessionId });
         await adapter.send(prompt, sendOptions);

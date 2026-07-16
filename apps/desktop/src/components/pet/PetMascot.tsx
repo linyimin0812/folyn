@@ -30,7 +30,7 @@
  */
 
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { useSettingsStore } from '@/store/settingsStore';
+import { usePetStore } from '@/store/petStore';
 import { isTauri } from '@/utils/platform';
 import { mascotSizeForPetSize, type PetSize } from './petPosition';
 
@@ -45,8 +45,8 @@ export interface PetMascotProps {
 }
 
 export function PetMascot({ state, size }: PetMascotProps) {
-  const petIconSource = useSettingsStore((s) => s.petIconSource);
-  const petIconPath = useSettingsStore((s) => s.petIconPath);
+  const petIconSource = usePetStore((s) => s.petIconSource);
+  const petIconPath = usePetStore((s) => s.petIconPath);
   // Resolve the mascot pixel size from the level (falls back to the default
   // for unknown values). Inline style on the SVG / `<img>` overrides the
   // `.pet-mascot { width:72px; height:72px }` CSS rule so a small (48px) or
@@ -68,10 +68,10 @@ export function PetMascot({ state, size }: PetMascotProps) {
         style={{ width: mascotPx, height: mascotPx }}
         onError={() => {
           // Custom file missing or corrupt → fall back to builtin (PRD
-          // fallback). Clears the flag in settingsStore so the next render
+          // fallback). Clears the flag in petStore so the next render
           // takes the inline-SVG branch. Non-fatal; logged for diagnostics.
           console.warn('[pet] custom icon load failed, falling back to builtin:', petIconPath);
-          useSettingsStore.getState().setPetIcon('builtin');
+          usePetStore.getState().setPetIcon('builtin');
         }}
         draggable={false}
       />

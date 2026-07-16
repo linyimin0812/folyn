@@ -15,7 +15,7 @@ import { ContainerRegistry, registerBuiltinPlugins } from '@quill/container-plug
 import type { ContainerProps } from '@quill/container-plugins';
 import { isTauri } from '@/utils/platform';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
 import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview';
 import { MermaidBlock } from './MermaidBlock';
@@ -234,7 +234,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot }: import('../typ
           href,
           onClick: (e: React.MouseEvent) => {
             e.preventDefault();
-            const linkOpenMode = useSettingsStore.getState().linkOpenMode;
+            const linkOpenMode = useAppearanceStore.getState().linkOpenMode;
             if (linkOpenMode === 'internal') {
               const linkText = typeof children === 'string' ? children : href;
               useEditorStore.getState().openWebTab(href, linkText);

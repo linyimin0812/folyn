@@ -1,5 +1,5 @@
 import { useEditorStore } from '../../store/editorStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 
 const VIEW_LABELS: Record<string, string> = {
   split: '分屏模式',
@@ -12,7 +12,7 @@ export function StatusBar() {
   const cursorLine = useEditorStore((state) => state.cursorLine);
   const cursorCol = useEditorStore((state) => state.cursorCol);
   const wordCount = useEditorStore((state) => state.wordCount);
-  const vaultName = useSettingsStore((state) => state.vaultName);
+  const vaultName = useAppearanceStore((state) => state.vaultName);
 
   return (
     <footer className="status-bar h-6 shrink-0 bg-panel border-t border-brd flex items-center justify-between px-3 text-[length:calc(var(--ui-font-size)-3px)] text-t3 font-mono">

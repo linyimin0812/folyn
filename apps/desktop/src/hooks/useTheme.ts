@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 
 /**
  * Hook to initialize and manage the theme.
@@ -7,9 +7,9 @@ import { useSettingsStore } from '@/store/settingsStore';
  * Supports 'system' theme that follows OS preference.
  */
 export function useTheme() {
-  const theme = useSettingsStore((state) => state.theme);
-  const setTheme = useSettingsStore((state) => state.setTheme);
-  const toggleTheme = useSettingsStore((state) => state.toggleTheme);
+  const theme = useAppearanceStore((state) => state.theme);
+  const setTheme = useAppearanceStore((state) => state.setTheme);
+  const toggleTheme = useAppearanceStore((state) => state.toggleTheme);
 
   useEffect(() => {
     if (theme === 'system') {

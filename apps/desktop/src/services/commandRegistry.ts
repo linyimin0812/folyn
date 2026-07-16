@@ -11,7 +11,8 @@
  * (see `services/fileCommands.ts`) so they always reflect the watched tree.
  */
 
-import { useSettingsStore } from '@/store/settingsStore';
+import { useNavStore } from '@/store/navStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
 import { useAiStore } from '@/store/aiStore';
 import { useSearchStore } from '@/store/searchStore';
@@ -113,7 +114,7 @@ export async function runCommand(id: string): Promise<void> {
 
 /** Switch to the editor surface and a given activity panel. */
 function gotoPanel(panel: ActivityPanel): void {
-  useSettingsStore.getState().setCurrentPage('editor');
+  useNavStore.getState().setCurrentPage('editor');
   useEditorStore.getState().setActivePanel(panel);
 }
 
@@ -124,7 +125,8 @@ function gotoPanel(panel: ActivityPanel): void {
  * Safe to call multiple times — re-registration replaces by id.
  */
 export function registerBuiltinCommands(): void {
-  const settings = () => useSettingsStore.getState();
+  const nav = () => useNavStore.getState();
+  const appearance = () => useAppearanceStore.getState();
 
   registerCommands([
     // ── Actions ──
@@ -133,7 +135,7 @@ export function registerBuiltinCommands(): void {
       title: 'Toggle Theme',
       category: 'action',
       keywords: ['dark', 'light', 'appearance'],
-      run: () => settings().toggleTheme(),
+      run: () => appearance().toggleTheme(),
     },
     {
       id: 'action.new-file',
@@ -203,7 +205,7 @@ export function registerBuiltinCommands(): void {
         // Switch to the schedule workbench, then trigger the plan flow via the
         // bridge (handles the mount-race where the workbench isn't mounted
         // yet — the request is replayed on mount).
-        settings().setCurrentPage('schedule');
+        nav().setCurrentPage('schedule');
         requestPlanMyDay();
       },
     },
@@ -221,14 +223,14 @@ export function registerBuiltinCommands(): void {
       title: 'Go to Clips',
       category: 'panel-mode',
       keywords: ['bookmark', 'clip'],
-      enabled: () => settings().enableClipsPanel,
+      enabled: () => appearance().enableClipsPanel,
       run: () => gotoPanel('clips'),
     },
     {
       id: 'panel.wiki',
       title: 'Go to Wiki',
       category: 'panel-mode',
-      enabled: () => settings().enableWikiPanel,
+      enabled: () => appearance().enableWikiPanel,
       run: () => gotoPanel('wiki'),
     },
     {
@@ -236,7 +238,7 @@ export function registerBuiltinCommands(): void {
       title: 'Go to Analyze',
       category: 'panel-mode',
       keywords: ['analysis', 'project'],
-      enabled: () => settings().enableAnalyzePanel,
+      enabled: () => appearance().enableAnalyzePanel,
       run: () => gotoPanel('analyze'),
     },
     {
@@ -244,7 +246,7 @@ export function registerBuiltinCommands(): void {
       title: 'Go to Calendar',
       category: 'panel-mode',
       keywords: ['daily', 'journal'],
-      enabled: () => settings().enableDailyPanel,
+      enabled: () => appearance().enableDailyPanel,
       run: () => gotoPanel('calendar'),
     },
     {
@@ -252,7 +254,7 @@ export function registerBuiltinCommands(): void {
       title: 'Open Settings',
       category: 'panel-mode',
       keywords: ['preferences', 'config'],
-      run: () => settings().setCurrentPage('settings'),
+      run: () => nav().setCurrentPage('settings'),
     },
 
     // ── Editor view modes ──
@@ -284,7 +286,7 @@ export function registerBuiltinCommands(): void {
       title: 'AI Chat: Chat',
       category: 'panel-mode',
       keywords: ['ai', 'assistant'],
-      enabled: () => settings().showAiPanel,
+      enabled: () => appearance().showAiPanel,
       run: () => useAiStore.getState().setChatMode('chat'),
     },
     {
@@ -292,7 +294,7 @@ export function registerBuiltinCommands(): void {
       title: 'AI Chat: Wiki',
       category: 'panel-mode',
       keywords: ['ai', 'assistant'],
-      enabled: () => settings().showAiPanel,
+      enabled: () => appearance().showAiPanel,
       run: () => useAiStore.getState().setChatMode('wiki'),
     },
     {
@@ -300,7 +302,7 @@ export function registerBuiltinCommands(): void {
       title: 'AI Chat: Clip',
       category: 'panel-mode',
       keywords: ['ai', 'assistant'],
-      enabled: () => settings().showAiPanel,
+      enabled: () => appearance().showAiPanel,
       run: () => useAiStore.getState().setChatMode('clip'),
     },
   ]);

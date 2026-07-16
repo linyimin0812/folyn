@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useScheduleStore } from '@/store/scheduleStore';
-import { useSettingsStore } from '@/store/settingsStore';
 import { dueState } from '@/features/schedule/markdown';
 import { useBoardColumns } from '@/features/schedule/columns';
 import { DayCalAside } from './DayCalAside';
@@ -10,9 +9,9 @@ export function BoardView() {
   const tasks = useScheduleStore((s) => s.tasks);
   const moveTaskStatus = useScheduleStore((s) => s.moveTaskStatus);
   const removeBoardColumn = useScheduleStore((s) => s.removeBoardColumn);
-  const addBoardColumn = useSettingsStore((s) => s.addBoardColumn);
-  const renameBoardColumn = useSettingsStore((s) => s.renameBoardColumn);
-  const reorderBoardColumns = useSettingsStore((s) => s.reorderBoardColumns);
+  const addBoardColumn = useScheduleStore((s) => s.addBoardColumn);
+  const renameBoardColumn = useScheduleStore((s) => s.renameBoardColumn);
+  const reorderBoardColumns = useScheduleStore((s) => s.reorderBoardColumns);
   const { columns: boardColumns, doneId } = useBoardColumns();
   const today = new Date();
   today.setHours(0, 0, 0, 0);

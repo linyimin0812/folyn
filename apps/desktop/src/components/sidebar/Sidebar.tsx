@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useNavStore } from '@/store/navStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
 import type { VaultEntry } from '@quill/vault-provider';
@@ -26,8 +27,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activePanel = 'files', onFileSelect }: SidebarProps): React.JSX.Element {
-  const vaultName = useSettingsStore((state) => state.vaultName);
-  const setCurrentPage = useSettingsStore((state) => state.setCurrentPage);
+  const vaultName = useAppearanceStore((state) => state.vaultName);
+  const setCurrentPage = useNavStore((state) => state.setCurrentPage);
   const activeTabId = useEditorStore((state) => state.activeTabId);
   const openFile = useEditorStore((state) => state.openFile);
   const tabs = useEditorStore((state) => state.tabs);

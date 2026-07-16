@@ -1,7 +1,7 @@
 import { createAdapter, type CliAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useSkillStore } from '@/store/skillStore';
 import { collectTextFromStream, extractJsonObject, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
@@ -91,17 +91,17 @@ export async function generateClip(
   validateUrl(url);
 
   onProgress?.('AI 正在分析网页...');
-  const settings = useSettingsStore.getState();
+  const aiConfig = useAiConfigStore.getState();
   const basePath = await resolveBasePath(vault.currentVault.basePath);
   // clips agent cwd = `<vault>/__clips__/`：agent 自动发现 `.claude/agents/clips.md`。
   const workingDir = `${basePath.replace(/\/+$/, '')}/__clips__`;
 
-  const adapter = createAdapter(settings.cliAdapter);
+  const adapter = createAdapter(aiConfig.cliAdapter);
 
   let card: ClipCard;
   let infographic: InfographicDoc | null = null;
   try {
-    await adapter.start({ cliPath: settings.cliPath, workingDir });
+    await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
 
     // --- Phase 1: card metadata via curl.md ---------------------------------
     // curl.md service: GET https://curl.md/<encoded original URL> → optimized Markdown.

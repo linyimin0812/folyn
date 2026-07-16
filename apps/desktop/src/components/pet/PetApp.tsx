@@ -4,7 +4,7 @@ import { openPetContextMenu } from './PetContextMenu';
 import { clampPetPosition, computeDefaultPetPosition, computePanelPosition, computeCenteredPanelPosition, resolvePanelSize, PET_PANEL_SIZE_VERSION, petSizeToPx } from './petPosition';
 import { keysToAccelerator } from '@/utils/shortcutAccelerator';
 import { isTauri } from '@/utils/platform';
-import { useSettingsStore } from '@/store/settingsStore';
+import { usePetStore } from '@/store/petStore';
 
 /**
  * PetApp — mounted only in the `pet` Tauri window (see main.tsx `#/pet` route
@@ -21,7 +21,7 @@ import { useSettingsStore } from '@/store/settingsStore';
  *    because the 120x120 pet window would clip an HTML menu (issue #1);
  *    selections emit `pet://menu-action`.
  *  - Drag → `startDragging` on the pet window; position persisted to
- *    `settingsStore` (R5, AC3/AC7).
+ *    `petStore` (R5, AC3/AC7).
  *  - Always visible: the pet stays on-screen at all times, including over
  *    fullscreen apps / VS Code. The previous fullscreen-auto-hide probe was
  *    removed — the user wants the pet always visible. `pet_set_topmost_level`
@@ -48,7 +48,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 type PetState = 'idle' | 'hover' | 'drag' | 'click';
 
 /** Pet window size is now user-selectable (small/medium/large). The sprite
- *  layer reads `petSize` from settingsStore and scales to match the Tauri
+ *  layer reads `petSize` from petStore and scales to match the Tauri
  *  window size (kept in sync by the Rust `set_pet_size` command). The
  *  mascot SVG inside is 75% of this value (see `mascotSizeForPetSize`).
  *  MUST stay in sync with `PET_SIZE_TO_PX` in `petPosition.ts` and the
@@ -81,14 +81,14 @@ interface PetWorkAreaResult {
  * Returns the resolved logical size. Shared by the click-open and
  * shortcut-open paths so they cannot drift on size-resolution behavior.
  *
- * Pure w.r.t. settingsStore + invoke('pet_panel_set_size'): no position
+ * Pure w.r.t. petStore + invoke('pet_panel_set_size'): no position
  * computation, no show, no post-show re-assert. Callers feed the returned
  * size into their own position computation + `applyPanelFrame`.
  */
 async function resolveAndPersistPanelSize(workArea: PetWorkAreaResult): Promise<{ width: number; height: number }> {
   const { invoke } = await import('@tauri-apps/api/core');
-  const { useSettingsStore } = await import('@/store/settingsStore');
-  const { petPanelWidth, petPanelHeight, petPanelSizeVersion } = useSettingsStore.getState();
+  const { usePetStore } = await import('@/store/petStore');
+  const { petPanelWidth, petPanelHeight, petPanelSizeVersion } = usePetStore.getState();
 
   const savedMatchesVersion = petPanelSizeVersion === PET_PANEL_SIZE_VERSION;
   const size = resolvePanelSize(
@@ -99,7 +99,7 @@ async function resolveAndPersistPanelSize(workArea: PetWorkAreaResult): Promise<
   await invoke('pet_panel_set_size', { width: size.width, height: size.height });
 
   if (!savedMatchesVersion || petPanelWidth !== size.width || petPanelHeight !== size.height) {
-    const { setPetPanelSize, setPetPanelSizeVersion } = useSettingsStore.getState();
+    const { setPetPanelSize, setPetPanelSizeVersion } = usePetStore.getState();
     setPetPanelSize(size.width, size.height);
     setPetPanelSizeVersion(PET_PANEL_SIZE_VERSION);
   }
@@ -189,12 +189,12 @@ async function openOrTogglePetPanel(): Promise<void> {
     const sf = workArea.scale_factor || 1;
     const size = await resolveAndPersistPanelSize(workArea);
 
-    // Read the current pet size level from settingsStore so the panel anchor
+    // Read the current pet size level from petStore so the panel anchor
     // tracks the actual mascot bounds (a large/ small pet shifts where the
     // panel's corner attaches). The pet window's own store instance is kept
     // in sync via the `pet://size-changed` listener below.
-    const { useSettingsStore } = await import('@/store/settingsStore');
-    const petSize = useSettingsStore.getState().petSize;
+    const { usePetStore } = await import('@/store/petStore');
+    const petSize = usePetStore.getState().petSize;
 
     // ALWAYS recompute the panel position from the pet's current outer
     // position so the panel opens next to the pet (corner-attachment). See
@@ -264,7 +264,7 @@ export function PetApp() {
   // restore the persisted level, and re-applied when the main window emits
   // `pet://size-changed`). The mascot SVG inside reads the same value via
   // `PetMascot`'s `size` prop.
-  const petSize = useSettingsStore((s) => s.petSize);
+  const petSize = usePetStore((s) => s.petSize);
   const spriteSize = petSizeToPx(petSize);
 
   // ── State machine: mouse event handlers ──
@@ -335,8 +335,8 @@ export function PetApp() {
       const { getCurrentWindow } = await import('@tauri-apps/api/window');
       const after = await getCurrentWindow().outerPosition();
       const sf = (await getCurrentWindow().scaleFactor()) || 1;
-      const { useSettingsStore } = await import('@/store/settingsStore');
-      useSettingsStore.getState().setPetPosition(
+      const { usePetStore } = await import('@/store/petStore');
+      usePetStore.getState().setPetPosition(
         Math.round(after.x / sf),
         Math.round(after.y / sf),
       );
@@ -377,7 +377,7 @@ export function PetApp() {
 
   // ── Position persistence + topmost re-apply (R5, AC7) ──
   // Periodically read the window's outer position and persist it to
-  // settingsStore when it changes. Native drag doesn't deliver JS pointerup
+  // petStore when it changes. Native drag doesn't deliver JS pointerup
   // reliably, so polling is the robust path.
   //
   // Unit boundary: `outerPosition()` returns PHYSICAL px; the saved position
@@ -419,8 +419,8 @@ export function PetApp() {
         if (x !== lastX || y !== lastY) {
           lastX = x;
           lastY = y;
-          const { useSettingsStore } = await import('@/store/settingsStore');
-          useSettingsStore.getState().setPetPosition(x, y);
+          const { usePetStore } = await import('@/store/petStore');
+          usePetStore.getState().setPetPosition(x, y);
         }
       } catch {
         // Non-fatal; try again next tick.
@@ -485,10 +485,10 @@ export function PetApp() {
       // 1. Resolve and apply the initial position BEFORE show() so the first
       //    visible frame is already at the right spot (no centered flash).
       try {
-        const { useSettingsStore } = await import('@/store/settingsStore');
+        const { usePetStore } = await import('@/store/petStore');
         const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
         const sf = workArea.scale_factor || 1;
-        const { petPositionX, petPositionY, petSize } = useSettingsStore.getState();
+        const { petPositionX, petPositionY, petSize } = usePetStore.getState();
         const petWindowSize = petSizeToPx(petSize);
 
         // Restore the persisted pet window size BEFORE positioning so a large
@@ -529,7 +529,7 @@ export function PetApp() {
               petWindowSize,
             );
             if (clamped.x !== petPositionX || clamped.y !== petPositionY) {
-              useSettingsStore.getState().setPetPosition(clamped.x, clamped.y);
+              usePetStore.getState().setPetPosition(clamped.x, clamped.y);
             }
             resolved = clamped;
           } else {
@@ -540,7 +540,7 @@ export function PetApp() {
               height: workArea.height,
             });
             resolved = { x: workArea.x + rel.x, y: workArea.y + rel.y };
-            useSettingsStore.getState().setPetPosition(resolved.x, resolved.y);
+            usePetStore.getState().setPetPosition(resolved.x, resolved.y);
           }
 
           // Diagnostic: log the saved + work-area + resolved values so a
@@ -601,7 +601,7 @@ export function PetApp() {
         // — re-assert here so a non-medium size reliably takes effect on
         // first launch. Mirrors the pet-panel post-show re-assert pattern
         // (see tauri-window-patterns.md "Secondary Opaque Panel Window").
-        const { petSize: savedSize } = (await import('@/store/settingsStore')).useSettingsStore.getState();
+        const { petSize: savedSize } = (await import('@/store/petStore')).usePetStore.getState();
         if (savedSize !== 'medium') {
           try {
             await invoke('set_pet_size', { level: savedSize });
@@ -694,15 +694,15 @@ export function PetApp() {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         const { listen } = await import('@tauri-apps/api/event');
-        const { useSettingsStore } = await import('@/store/settingsStore');
-        const { shortcuts } = useSettingsStore.getState();
+        const { usePrefsStore } = await import('@/store/prefsStore');
+        const { shortcuts } = usePrefsStore.getState();
         const toggle = shortcuts.find((s) => s.id === 'togglePetPanel');
         if (toggle) {
           const accelerator = keysToAccelerator(toggle.keys);
           await invoke('pet_panel_set_shortcut', { accelerator });
           console.info('[pet] global shortcut registered:', accelerator);
         } else {
-          console.warn('[pet] togglePetPanel shortcut not found in settingsStore; global shortcut not registered');
+          console.warn('[pet] togglePetPanel shortcut not found in prefsStore; global shortcut not registered');
         }
         unlisten = await listen('pet://shortcut-toggle', () => {
           console.info('[pet] pet://shortcut-toggle event received');
@@ -733,13 +733,13 @@ export function PetApp() {
     (async () => {
       try {
         const { listen } = await import('@tauri-apps/api/event');
-        const { useSettingsStore } = await import('@/store/settingsStore');
+        const { usePetStore } = await import('@/store/petStore');
         unlisten = await listen<{ source: 'builtin' | 'custom'; path: string }>(
           'pet://icon-changed',
           (event) => {
             const { source, path } = event.payload ?? {};
             if (source !== 'builtin' && source !== 'custom') return;
-            useSettingsStore.setState({
+            usePetStore.setState({
               petIconSource: source,
               petIconPath: typeof path === 'string' ? path : '',
             });
@@ -775,8 +775,8 @@ export function PetApp() {
           async (event) => {
             const size = event.payload?.size;
             if (size !== 'small' && size !== 'medium' && size !== 'large') return;
-            const { useSettingsStore } = await import('@/store/settingsStore');
-            useSettingsStore.setState({ petSize: size });
+            const { usePetStore } = await import('@/store/petStore');
+            usePetStore.setState({ petSize: size });
             // Re-clamp the current position with the new size so a larger
             // pet stays fully on-screen. Non-fatal if the work-area probe
             // fails — the saved position is unchanged and the user can
@@ -795,7 +795,7 @@ export function PetApp() {
                 );
                 if (clamped.x !== x || clamped.y !== y) {
                   await invoke('set_pet_position', { x: Math.round(clamped.x * sf), y: Math.round(clamped.y * sf) });
-                  useSettingsStore.getState().setPetPosition(clamped.x, clamped.y);
+                  usePetStore.getState().setPetPosition(clamped.x, clamped.y);
                 }
               }
             } catch (err) {

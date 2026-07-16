@@ -1,13 +1,13 @@
 import { createAdapter, type CliAdapter } from '@quill/cli-adapter';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
 
 export const sessionAdapters = new Map<string, CliAdapter>();
 
 export function getAdapterForSession(sessionId: string): CliAdapter {
-  const settings = useSettingsStore.getState();
+  const cliAdapter = useAiConfigStore.getState().cliAdapter;
   const existing = sessionAdapters.get(sessionId);
-  if (existing && existing.id === settings.cliAdapter) return existing;
-  const adapter = createAdapter(settings.cliAdapter);
+  if (existing && existing.id === cliAdapter) return existing;
+  const adapter = createAdapter(cliAdapter);
   sessionAdapters.set(sessionId, adapter);
   return adapter;
 }

@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useSettingsStore, type SettingsTab, type NotificationForm } from '@/store/settingsStore';
+import { useNavStore, type SettingsTab } from '@/store/navStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
+import { useEditorPrefsStore } from '@/store/editorPrefsStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
+import { usePrefsStore } from '@/store/prefsStore';
+import { usePetStore, type NotificationForm } from '@/store/petStore';
 import { useSkillStore } from '@/store/skillStore';
 import { builtinSkills } from '@/services/skillDefaults';
 import type { SkillOutputFormat, SkillCapability } from '@/types/skill';
@@ -29,7 +34,7 @@ function ShortcutEditor({ shortcutId, currentKeys }: { shortcutId: string; curre
   // stays open, and the user sees "按下快捷键…" forever with no feedback.
   // This flag flips on timeout to surface "the combo you pressed is occupied".
   const [conflictHint, setConflictHint] = useState(false);
-  const updateShortcut = useSettingsStore((s) => s.updateShortcut);
+  const updateShortcut = usePrefsStore((s) => s.updateShortcut);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -155,7 +160,8 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 
 
 function FileTemplatesSettings() {
-  const { fileTemplates, updateSettings } = useSettingsStore();
+  const fileTemplates = usePrefsStore((s) => s.fileTemplates);
+  const setFileTemplates = usePrefsStore((s) => s.setFileTemplates);
   const [editingExt, setEditingExt] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [newExt, setNewExt] = useState('');
@@ -170,12 +176,10 @@ function FileTemplatesSettings() {
 
   const saveEdit = useCallback(() => {
     if (editingExt === null) return;
-    updateSettings({
-      fileTemplates: { ...fileTemplates, [editingExt]: editContent },
-    });
+    setFileTemplates({ ...fileTemplates, [editingExt]: editContent });
     setEditingExt(null);
     setEditContent('');
-  }, [editingExt, editContent, fileTemplates, updateSettings]);
+  }, [editingExt, editContent, fileTemplates, setFileTemplates]);
 
   const cancelEdit = useCallback(() => {
     setEditingExt(null);
@@ -185,19 +189,17 @@ function FileTemplatesSettings() {
   const addTemplate = useCallback(() => {
     const ext = newExt.trim().replace(/^\./, '').toLowerCase();
     if (!ext || fileTemplates[ext] !== undefined) return;
-    updateSettings({
-      fileTemplates: { ...fileTemplates, [ext]: '' },
-    });
+    setFileTemplates({ ...fileTemplates, [ext]: '' });
     setNewExt('');
     startEdit(ext);
-  }, [newExt, fileTemplates, updateSettings, startEdit]);
+  }, [newExt, fileTemplates, setFileTemplates, startEdit]);
 
   const removeTemplate = useCallback((ext: string) => {
     const next = { ...fileTemplates };
     delete next[ext];
-    updateSettings({ fileTemplates: next });
+    setFileTemplates(next);
     if (editingExt === ext) cancelEdit();
-  }, [fileTemplates, updateSettings, editingExt, cancelEdit]);
+  }, [fileTemplates, setFileTemplates, editingExt, cancelEdit]);
 
   return (
     <div className="mb-[26px]">
@@ -673,11 +675,11 @@ function SkillsSettings() {
  * needed for the upload/reset flows here.
  */
 function PetSettings() {
-  const petModeEnabled = useSettingsStore((s) => s.petModeEnabled);
-  const setPetModeEnabled = useSettingsStore((s) => s.setPetModeEnabled);
-  const petIconSource = useSettingsStore((s) => s.petIconSource);
-  const petIconPath = useSettingsStore((s) => s.petIconPath);
-  const setPetIcon = useSettingsStore((s) => s.setPetIcon);
+  const petModeEnabled = usePetStore((s) => s.petModeEnabled);
+  const setPetModeEnabled = usePetStore((s) => s.setPetModeEnabled);
+  const petIconSource = usePetStore((s) => s.petIconSource);
+  const petIconPath = usePetStore((s) => s.petIconPath);
+  const setPetIcon = usePetStore((s) => s.setPetIcon);
   const [errorMsg, setErrorMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -964,8 +966,8 @@ function CustomIconPreview({ path, onError }: CustomIconPreviewProps) {
 }
 
 function NotificationsSettings() {
-  const notificationForm = useSettingsStore((s) => s.notificationForm);
-  const setNotificationForm = useSettingsStore((s) => s.setNotificationForm);
+  const notificationForm = usePetStore((s) => s.notificationForm);
+  const setNotificationForm = usePetStore((s) => s.setNotificationForm);
   const options: { value: NotificationForm; label: string }[] = [
     { value: 'bubble', label: '宠物头顶气泡' },
     { value: 'system', label: '系统通知' },
@@ -997,8 +999,63 @@ function NotificationsSettings() {
 }
 
 export function SettingsPage() {
-  const store = useSettingsStore();
-  const { settingsTab, setSettingsTab, setTheme, updateSettings } = store;
+  const settingsTab = useNavStore((s) => s.settingsTab);
+  const setSettingsTab = useNavStore((s) => s.setSettingsTab);
+  const setCurrentPage = useNavStore((s) => s.setCurrentPage);
+
+  const theme = useAppearanceStore((s) => s.theme);
+  const setTheme = useAppearanceStore((s) => s.setTheme);
+  const fontSize = useAppearanceStore((s) => s.fontSize);
+  const showAiPanel = useAppearanceStore((s) => s.showAiPanel);
+  const showStatusBar = useAppearanceStore((s) => s.showStatusBar);
+  const showHiddenFiles = useAppearanceStore((s) => s.showHiddenFiles);
+  const enableWikiPanel = useAppearanceStore((s) => s.enableWikiPanel);
+  const enableClipsPanel = useAppearanceStore((s) => s.enableClipsPanel);
+  const enableAnalyzePanel = useAppearanceStore((s) => s.enableAnalyzePanel);
+  const enableDailyPanel = useAppearanceStore((s) => s.enableDailyPanel);
+  const excludePatterns = useAppearanceStore((s) => s.excludePatterns);
+  const setFontSize = useAppearanceStore((s) => s.setFontSize);
+  const setShowAiPanel = useAppearanceStore((s) => s.setShowAiPanel);
+  const setShowStatusBar = useAppearanceStore((s) => s.setShowStatusBar);
+  const setShowHiddenFiles = useAppearanceStore((s) => s.setShowHiddenFiles);
+  const setEnableWikiPanel = useAppearanceStore((s) => s.setEnableWikiPanel);
+  const setEnableClipsPanel = useAppearanceStore((s) => s.setEnableClipsPanel);
+  const setEnableAnalyzePanel = useAppearanceStore((s) => s.setEnableAnalyzePanel);
+  const setEnableDailyPanel = useAppearanceStore((s) => s.setEnableDailyPanel);
+  const setExcludePatterns = useAppearanceStore((s) => s.setExcludePatterns);
+  const linkOpenMode = useAppearanceStore((s) => s.linkOpenMode);
+  const setLinkOpenMode = useAppearanceStore((s) => s.setLinkOpenMode);
+
+  const editorFont = useEditorPrefsStore((s) => s.editorFont);
+  const editorFontSize = useEditorPrefsStore((s) => s.editorFontSize);
+  const tabSize = useEditorPrefsStore((s) => s.tabSize);
+  const showLineNumbers = useEditorPrefsStore((s) => s.showLineNumbers);
+  const autoSave = useEditorPrefsStore((s) => s.autoSave);
+  const setEditorFont = useEditorPrefsStore((s) => s.setEditorFont);
+  const setEditorFontSize = useEditorPrefsStore((s) => s.setEditorFontSize);
+  const setTabSize = useEditorPrefsStore((s) => s.setTabSize);
+  const setShowLineNumbers = useEditorPrefsStore((s) => s.setShowLineNumbers);
+  const setAutoSave = useEditorPrefsStore((s) => s.setAutoSave);
+
+  const dailyNotesDir = usePrefsStore((s) => s.dailyNotesDir);
+  const dailyNoteDateFormat = usePrefsStore((s) => s.dailyNoteDateFormat);
+  const shortcuts = usePrefsStore((s) => s.shortcuts);
+  const setDailyNotesDir = usePrefsStore((s) => s.setDailyNotesDir);
+  const setDailyNoteDateFormat = usePrefsStore((s) => s.setDailyNoteDateFormat);
+  const resetShortcuts = usePrefsStore((s) => s.resetShortcuts);
+
+  const cliAdapter = useAiConfigStore((s) => s.cliAdapter);
+  const cliPath = useAiConfigStore((s) => s.cliPath);
+  const chatProvider = useAiConfigStore((s) => s.chatProvider);
+  const chatModel = useAiConfigStore((s) => s.chatModel);
+  const chatApiKey = useAiConfigStore((s) => s.chatApiKey);
+  const chatBaseUrl = useAiConfigStore((s) => s.chatBaseUrl);
+  const setCliAdapter = useAiConfigStore((s) => s.setCliAdapter);
+  const setCliPath = useAiConfigStore((s) => s.setCliPath);
+  const setChatProvider = useAiConfigStore((s) => s.setChatProvider);
+  const setChatModel = useAiConfigStore((s) => s.setChatModel);
+  const setChatApiKey = useAiConfigStore((s) => s.setChatApiKey);
+  const setChatBaseUrl = useAiConfigStore((s) => s.setChatBaseUrl);
   const [testStatus, setTestStatus] = useState<{ testing: boolean; result?: { success: boolean; message: string } }>({ testing: false });
   // ponytail: reuse the same state shape as `testStatus` for the Chat-mode ping
   // test. Separate state because both sections render simultaneously inside the
@@ -1028,7 +1085,7 @@ export function SettingsPage() {
           ))}
         </div>
         <div className="py-2 px-[7px] border-t border-brd shrink-0">
-          <button className="sn-back-btn flex items-center gap-2 py-[7px] px-[9px] rounded-md cursor-pointer text-t2 text-[length:calc(var(--ui-font-size)-2px)] transition-all duration-100 border-none bg-transparent w-full text-left font-ui hover:bg-hov hover:text-t1" onClick={() => store.setCurrentPage('editor')}>
+          <button className="sn-back-btn flex items-center gap-2 py-[7px] px-[9px] rounded-md cursor-pointer text-t2 text-[length:calc(var(--ui-font-size)-2px)] transition-all duration-100 border-none bg-transparent w-full text-left font-ui hover:bg-hov hover:text-t1" onClick={() => setCurrentPage('editor')}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <polyline points="10,2 4,8 10,14" />
             </svg>
@@ -1047,15 +1104,15 @@ export function SettingsPage() {
             <div className="mb-3.5">
               <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">界面主题</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
-                <div className={`theme-card p-[11px] cursor-pointer rounded-lg border transition-all duration-100 ${store.theme === 'dark' ? 'border-acc bg-accdim' : 'border-brd hover:border-acc'}`} onClick={() => setTheme('dark')}>
+                <div className={`theme-card p-[11px] cursor-pointer rounded-lg border transition-all duration-100 ${theme === 'dark' ? 'border-acc bg-accdim' : 'border-brd hover:border-acc'}`} onClick={() => setTheme('dark')}>
                   <div className="h-[34px] rounded mb-[5px] border border-brd2" style={{ background: '#0b0d14' }} />
                   <div className="text-[11.5px] font-semibold text-t1 text-center">暗色</div>
                 </div>
-                <div className={`theme-card p-[11px] cursor-pointer rounded-lg border transition-all duration-100 ${store.theme === 'light' ? 'border-acc bg-accdim' : 'border-brd hover:border-acc'}`} onClick={() => setTheme('light')}>
+                <div className={`theme-card p-[11px] cursor-pointer rounded-lg border transition-all duration-100 ${theme === 'light' ? 'border-acc bg-accdim' : 'border-brd hover:border-acc'}`} onClick={() => setTheme('light')}>
                   <div className="h-[34px] rounded mb-[5px] border border-brd2" style={{ background: '#f0f2f8' }} />
                   <div className="text-[11.5px] font-semibold text-t1 text-center">亮色</div>
                 </div>
-                <div className={`theme-card p-[11px] cursor-pointer rounded-lg border transition-all duration-100 ${store.theme === 'system' ? 'border-acc bg-accdim' : 'border-brd hover:border-acc'}`} onClick={() => setTheme('system')}>
+                <div className={`theme-card p-[11px] cursor-pointer rounded-lg border transition-all duration-100 ${theme === 'system' ? 'border-acc bg-accdim' : 'border-brd hover:border-acc'}`} onClick={() => setTheme('system')}>
                   <div className="h-[34px] rounded mb-[5px] border border-brd2" style={{ background: 'linear-gradient(135deg, #0b0d14 50%, #f0f2f8 50%)' }} />
                   <div className="text-[11.5px] font-semibold text-t1 text-center">跟随系统</div>
                 </div>
@@ -1063,19 +1120,19 @@ export function SettingsPage() {
             </div>
             <div className="mb-3.5">
               <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">界面字体大小</div>
-              <select className="settings-select" style={{ maxWidth: 180 }} value={`${store.fontSize}px`} onChange={(e) => updateSettings({ fontSize: parseInt(e.target.value) })}>
+              <select className="settings-select" style={{ maxWidth: 180 }} value={`${fontSize}px`} onChange={(e) => setFontSize(parseInt(e.target.value))}>
                 <option value="12px">12px（紧凑）</option>
                 <option value="14px">14px（默认）</option>
                 <option value="16px">16px（舒适）</option>
               </select>
             </div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">默认显示 AI 面板</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">打开编辑器时自动展开 AI 对话面板</p></div><Toggle value={store.showAiPanel} onChange={(v) => updateSettings({ showAiPanel: v })} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">状态栏</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">底部显示字数、光标位置等信息</p></div><Toggle value={store.showStatusBar} onChange={(v) => updateSettings({ showStatusBar: v })} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">显示隐藏文件</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">在文件树中显示以 . 开头的隐藏文件和文件夹</p></div><Toggle value={store.showHiddenFiles} onChange={(v) => { updateSettings({ showHiddenFiles: v }); import('@/store/vaultStore').then(m => m.useVaultStore.getState().refreshFileTree()); }} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">Wiki 面板</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">在侧栏显示 Wiki 知识库入口</p></div><Toggle value={store.enableWikiPanel} onChange={(v) => updateSettings({ enableWikiPanel: v })} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">Clips 面板</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">在侧栏显示网页剪藏入口</p></div><Toggle value={store.enableClipsPanel} onChange={(v) => updateSettings({ enableClipsPanel: v })} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">项目分析面板</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">在侧栏显示项目分析入口</p></div><Toggle value={store.enableAnalyzePanel} onChange={(v) => updateSettings({ enableAnalyzePanel: v })} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">今日笔记面板</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">在侧栏显示日历与今日笔记入口（禁用后 ⌘D 也不再打开）</p></div><Toggle value={store.enableDailyPanel} onChange={(v) => updateSettings({ enableDailyPanel: v })} /></div>
+            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">默认显示 AI 面板</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">打开编辑器时自动展开 AI 对话面板</p></div><Toggle value={showAiPanel} onChange={(v) => setShowAiPanel(v)} /></div>
+            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">状态栏</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">底部显示字数、光标位置等信息</p></div><Toggle value={showStatusBar} onChange={(v) => setShowStatusBar(v)} /></div>
+            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">显示隐藏文件</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">在文件树中显示以 . 开头的隐藏文件和文件夹</p></div><Toggle value={showHiddenFiles} onChange={(v) => { setShowHiddenFiles(v); import('@/store/vaultStore').then(m => m.useVaultStore.getState().refreshFileTree()); }} /></div>
+            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">Wiki 面板</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">在侧栏显示 Wiki 知识库入口</p></div><Toggle value={enableWikiPanel} onChange={(v) => setEnableWikiPanel(v)} /></div>
+            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">Clips 面板</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">在侧栏显示网页剪藏入口</p></div><Toggle value={enableClipsPanel} onChange={(v) => setEnableClipsPanel(v)} /></div>
+            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">项目分析面板</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">在侧栏显示项目分析入口</p></div><Toggle value={enableAnalyzePanel} onChange={(v) => setEnableAnalyzePanel(v)} /></div>
+            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">今日笔记面板</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">在侧栏显示日历与今日笔记入口（禁用后 ⌘D 也不再打开）</p></div><Toggle value={enableDailyPanel} onChange={(v) => setEnableDailyPanel(v)} /></div>
             <div className="mb-3.5 flex flex-col items-stretch gap-1.5">
               <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">过滤文件/文件夹</div>
               <p style={{ fontSize: 11, color: 'var(--t3)', margin: 0 }}>每行一个规则，匹配的文件或文件夹将在文件树中隐藏。支持 * 和 ? 通配符，# 开头为注释。</p>
@@ -1083,8 +1140,8 @@ export function SettingsPage() {
                 className="fsel py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui w-full"
                 rows={6}
                 style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12, resize: 'vertical', lineHeight: 1.6, padding: '8px 10px' }}
-                value={store.excludePatterns}
-                onChange={(e) => updateSettings({ excludePatterns: e.target.value })}
+                value={excludePatterns}
+                onChange={(e) => setExcludePatterns(e.target.value)}
                 onBlur={() => import('@/store/vaultStore').then(m => m.useVaultStore.getState().refreshFileTree())}
                 placeholder={'node_modules\n.git\n.DS_Store\n*.log'}
               />
@@ -1098,12 +1155,12 @@ export function SettingsPage() {
             <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">编辑器</div>
             <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">配置编辑器行为与显示选项</div>
             <div className="grid grid-cols-3 gap-3 mb-3.5">
-              <div><div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">编辑器字体</div><select className="settings-select" value={store.editorFont} onChange={(e) => updateSettings({ editorFont: e.target.value })}><option>DM Mono</option><option>JetBrains Mono</option><option>Fira Code</option></select></div>
-              <div><div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">字体大小</div><select className="settings-select" value={`${store.editorFontSize}px`} onChange={(e) => updateSettings({ editorFontSize: parseInt(e.target.value) })}><option value="12px">12px</option><option value="13px">13px</option><option value="14px">14px</option><option value="16px">16px</option></select></div>
-              <div><div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">Tab 大小</div><select className="settings-select" value={store.tabSize} onChange={(e) => updateSettings({ tabSize: parseInt(e.target.value) })}><option value={2}>2 空格</option><option value={4}>4 空格</option></select></div>
+              <div><div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">编辑器字体</div><select className="settings-select" value={editorFont} onChange={(e) => setEditorFont(e.target.value)}><option>DM Mono</option><option>JetBrains Mono</option><option>Fira Code</option></select></div>
+              <div><div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">字体大小</div><select className="settings-select" value={`${editorFontSize}px`} onChange={(e) => setEditorFontSize(parseInt(e.target.value))}><option value="12px">12px</option><option value="13px">13px</option><option value="14px">14px</option><option value="16px">16px</option></select></div>
+              <div><div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">Tab 大小</div><select className="settings-select" value={tabSize} onChange={(e) => setTabSize(parseInt(e.target.value))}><option value={2}>2 空格</option><option value={4}>4 空格</option></select></div>
             </div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">显示行号</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">在编辑区左侧显示行号</p></div><Toggle value={store.showLineNumbers} onChange={(v) => updateSettings({ showLineNumbers: v })} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">自动保存</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">每 30 秒自动保存当前文档</p></div><Toggle value={store.autoSave} onChange={(v) => updateSettings({ autoSave: v })} /></div>
+            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">显示行号</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">在编辑区左侧显示行号</p></div><Toggle value={showLineNumbers} onChange={(v) => setShowLineNumbers(v)} /></div>
+            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">自动保存</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">每 30 秒自动保存当前文档</p></div><Toggle value={autoSave} onChange={(v) => setAutoSave(v)} /></div>
             <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
               <div className="tr-info">
                 <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">链接打开方式</h4>
@@ -1111,12 +1168,12 @@ export function SettingsPage() {
               </div>
               <div className="flex gap-1">
                 <button
-                  className={`py-[5px] px-3 rounded-md text-[11px] font-ui cursor-pointer border transition-all duration-100 ${store.linkOpenMode === 'external' ? 'border-acc bg-accdim text-acc' : 'border-brd bg-surf text-t2 hover:bg-hov hover:text-t1'}`}
-                  onClick={() => updateSettings({ linkOpenMode: 'external' })}
+                  className={`py-[5px] px-3 rounded-md text-[11px] font-ui cursor-pointer border transition-all duration-100 ${linkOpenMode === 'external' ? 'border-acc bg-accdim text-acc' : 'border-brd bg-surf text-t2 hover:bg-hov hover:text-t1'}`}
+                  onClick={() => setLinkOpenMode('external')}
                 >外部浏览器</button>
                 <button
-                  className={`py-[5px] px-3 rounded-md text-[11px] font-ui cursor-pointer border transition-all duration-100 ${store.linkOpenMode === 'internal' ? 'border-acc bg-accdim text-acc' : 'border-brd bg-surf text-t2 hover:bg-hov hover:text-t1'}`}
-                  onClick={() => updateSettings({ linkOpenMode: 'internal' })}
+                  className={`py-[5px] px-3 rounded-md text-[11px] font-ui cursor-pointer border transition-all duration-100 ${linkOpenMode === 'internal' ? 'border-acc bg-accdim text-acc' : 'border-brd bg-surf text-t2 hover:bg-hov hover:text-t1'}`}
+                  onClick={() => setLinkOpenMode('internal')}
                 >应用内打开</button>
               </div>
             </div>
@@ -1133,8 +1190,8 @@ export function SettingsPage() {
               <input
                 className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
                 style={{ maxWidth: 240 }}
-                value={store.dailyNotesDir}
-                onChange={(e) => updateSettings({ dailyNotesDir: e.target.value })}
+                value={dailyNotesDir}
+                onChange={(e) => setDailyNotesDir(e.target.value)}
                 placeholder="daily"
                 autoCapitalize="off"
               />
@@ -1144,8 +1201,8 @@ export function SettingsPage() {
               <select
                 className="settings-select"
                 style={{ maxWidth: 240 }}
-                value={store.dailyNoteDateFormat}
-                onChange={(e) => updateSettings({ dailyNoteDateFormat: e.target.value })}
+                value={dailyNoteDateFormat}
+                onChange={(e) => setDailyNoteDateFormat(e.target.value)}
               >
                 <option value="YYYY-MM-DD">YYYY-MM-DD</option>
                 <option value="YYYY.MM.DD">YYYY.MM.DD</option>
@@ -1160,14 +1217,14 @@ export function SettingsPage() {
           <div className="mb-[26px]">
             <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">快捷键</div>
             <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">点击快捷键区域可重新录入，按下新的组合键即可修改</div>
-            {store.shortcuts.map((shortcut) => (
+            {shortcuts.map((shortcut) => (
               <div className="sk-row flex items-center justify-between py-2 border-b border-brd last:border-b-0" key={shortcut.id}>
                 <span className="text-xs text-t2">{shortcut.name}</span>
                 <ShortcutEditor shortcutId={shortcut.id} currentKeys={shortcut.keys} />
               </div>
             ))}
             <div style={{ marginTop: 14, display: 'flex', gap: 7 }}>
-              <button className="btn btn-g btn-sm" onClick={() => store.resetShortcuts()}>恢复默认</button>
+              <button className="btn btn-g btn-sm" onClick={() => resetShortcuts()}>恢复默认</button>
             </div>
           </div>
         )}
@@ -1182,11 +1239,11 @@ export function SettingsPage() {
               {listAdapters().map((a) => (
                 <div
                   key={a.id}
-                  className={`mi flex items-center justify-between py-2 px-2.5 rounded-md border cursor-pointer transition-all duration-100 ${store.cliAdapter === a.id ? 'border-acc bg-accdim' : 'border-brd hover:border-acc'}`}
-                  onClick={() => updateSettings({ cliAdapter: a.id })}
+                  className={`mi flex items-center justify-between py-2 px-2.5 rounded-md border cursor-pointer transition-all duration-100 ${cliAdapter === a.id ? 'border-acc bg-accdim' : 'border-brd hover:border-acc'}`}
+                  onClick={() => setCliAdapter(a.id)}
                 >
                   <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full border-2 shrink-0 ${store.cliAdapter === a.id ? 'bg-acc border-acc' : 'border-brd2'}`} />
+                    <div className={`w-2 h-2 rounded-full border-2 shrink-0 ${cliAdapter === a.id ? 'bg-acc border-acc' : 'border-brd2'}`} />
                     <div>
                       <div className="text-xs font-semibold text-t1 font-mono">{a.displayName}</div>
                       <div className="text-[10px] text-t3 mt-px">{a.description}</div>
@@ -1198,19 +1255,19 @@ export function SettingsPage() {
             <div className="mb-3.5 mt-4">
               <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">CLI 路径</div>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc" style={{ flex: 1 }} value={store.cliPath} onChange={(e) => updateSettings({ cliPath: e.target.value })} placeholder="claude" autoCapitalize="off" />
+                <input className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc" style={{ flex: 1 }} value={cliPath} onChange={(e) => setCliPath(e.target.value)} placeholder="claude" autoCapitalize="off" />
                 <button
                   className="btn btn-g btn-sm"
                   title="自动检测路径"
                   onClick={async () => {
                     try {
                       const { Command } = await import('@tauri-apps/plugin-shell');
-                      const adapterCmd = store.cliAdapter === 'claude' ? 'claude' : store.cliAdapter;
+                      const adapterCmd = cliAdapter === 'claude' ? 'claude' : cliAdapter;
                       const cmd = Command.create('claude-cli', ['-l', '-c', `which ${adapterCmd}`]);
                       const output = await cmd.execute();
                       const detected = output.stdout.trim().split('\n')[0];
                       if (output.code === 0 && detected) {
-                        updateSettings({ cliPath: detected });
+                        setCliPath(detected);
                       }
                     } catch {}
                   }}
@@ -1226,7 +1283,7 @@ export function SettingsPage() {
                   setTestStatus({ testing: true });
                   try {
                     const { Command } = await import('@tauri-apps/plugin-shell');
-                    const cliPath = store.cliPath || 'claude';
+                    const cliPath = useAiConfigStore.getState().cliPath || 'claude';
                     const cmd = Command.create('claude-cli', ['-l', '-c', `${cliPath} --version`]);
                     const output = await cmd.execute();
                     if (output.code === 0) {
@@ -1262,8 +1319,8 @@ export function SettingsPage() {
                 <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">Provider</div>
                 <select
                   className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-                  value={store.chatProvider}
-                  onChange={(e) => updateSettings({ chatProvider: e.target.value as 'anthropic' | 'openai' | 'openai-compatible' })}
+                  value={chatProvider}
+                  onChange={(e) => setChatProvider(e.target.value as 'anthropic' | 'openai' | 'openai-compatible')}
                 >
                   <option value="anthropic">Anthropic（Claude）</option>
                   <option value="openai">OpenAI</option>
@@ -1274,9 +1331,9 @@ export function SettingsPage() {
                 <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">模型</div>
                 <input
                   className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-                  value={store.chatModel}
-                  onChange={(e) => updateSettings({ chatModel: e.target.value })}
-                  placeholder={store.chatProvider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-5.2'}
+                  value={chatModel}
+                  onChange={(e) => setChatModel(e.target.value)}
+                  placeholder={chatProvider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-5.2'}
                   autoCapitalize="off"
                 />
               </div>
@@ -1286,8 +1343,8 @@ export function SettingsPage() {
                   <input
                     type={showChatKey ? 'text' : 'password'}
                     className="fi2 w-full py-[7px] px-2.5 pr-[34px] rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-                    value={store.chatApiKey}
-                    onChange={(e) => updateSettings({ chatApiKey: e.target.value })}
+                    value={chatApiKey}
+                    onChange={(e) => setChatApiKey(e.target.value)}
                     placeholder="sk-…"
                     autoCapitalize="off"
                     autoComplete="off"
@@ -1317,25 +1374,25 @@ export function SettingsPage() {
                 <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">Base URL（可选）</div>
                 <input
                   className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-                  value={store.chatBaseUrl}
-                  onChange={(e) => updateSettings({ chatBaseUrl: e.target.value })}
-                  placeholder={store.chatProvider === 'openai-compatible' ? 'http://localhost:11434/v1' : '留空用默认'}
+                  value={chatBaseUrl}
+                  onChange={(e) => setChatBaseUrl(e.target.value)}
+                  placeholder={chatProvider === 'openai-compatible' ? 'http://localhost:11434/v1' : '留空用默认'}
                   autoCapitalize="off"
                 />
-                <div className="text-[10.5px] text-t3 mt-1">{store.chatProvider === 'anthropic' ? '官方 Anthropic 留空；Anthropic 兼容端点' : store.chatProvider === 'openai' ? '官方 OpenAI 留空。' : 'Ollama / vLLM / LM Studio 等必填；不以 /v1 结尾时会自动补 /v1。'}</div>
+                <div className="text-[10.5px] text-t3 mt-1">{chatProvider === 'anthropic' ? '官方 Anthropic 留空；Anthropic 兼容端点' : chatProvider === 'openai' ? '官方 OpenAI 留空。' : 'Ollama / vLLM / LM Studio 等必填；不以 /v1 结尾时会自动补 /v1。'}</div>
               </div>
               <div style={{ display: 'flex', gap: 7, alignItems: 'center', marginTop: 8 }}>
                 <button
                   className="btn btn-g btn-sm"
-                  disabled={chatTestStatus.testing || !store.chatApiKey}
+                  disabled={chatTestStatus.testing || !chatApiKey}
                   onClick={async () => {
                     setChatTestStatus({ testing: true });
                     try {
                       const result = await testChatConnection({
-                        provider: store.chatProvider,
-                        model: store.chatModel || (store.chatProvider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-4o-mini'),
-                        apiKey: store.chatApiKey,
-                        baseUrl: store.chatBaseUrl || undefined,
+                        provider: chatProvider,
+                        model: chatModel || (chatProvider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-4o-mini'),
+                        apiKey: chatApiKey,
+                        baseUrl: chatBaseUrl || undefined,
                       });
                       setChatTestStatus({ testing: false, result });
                       setTimeout(() => setChatTestStatus((s) => ({ ...s, result: undefined })), 6000);

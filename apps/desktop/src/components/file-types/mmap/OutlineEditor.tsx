@@ -7,7 +7,7 @@ import {
   type MmapMeta,
   type MmapNodeStyle,
 } from './outlineConverter';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { ImagePasteDialog, type ImageSaveConfig } from '@/components/editor/ImagePasteDialog';
 import { getStrategy, fileToBase64, convertImageFormat } from '@/utils/imageUploader';
@@ -248,7 +248,7 @@ function renderMetaSection(
 }
 
 export function OutlineEditor({ content, filePath, onChange }: EditorProps) {
-  const editorFontSize = useSettingsStore((s) => s.editorFontSize);
+  const editorFontSize = useEditorPrefsStore((s) => s.editorFontSize);
   const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
   const [lines, setLines] = useState<OutlineLine[]>(() => parseOutline(content));
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());

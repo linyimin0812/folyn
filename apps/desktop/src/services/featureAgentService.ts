@@ -303,7 +303,7 @@ export async function runFeatureAgent(
   const { useAiStore } = await import('@/store/aiStore');
   const { useVaultStore } = await import('@/store/vaultStore');
   const { useEditorStore } = await import('@/store/editorStore');
-  const { useSettingsStore } = await import('@/store/settingsStore');
+  const { useAiConfigStore } = await import('@/store/aiConfigStore');
   const { getAdapterForSession } = await import('@/components/ai/adapterManager');
   const { pauseWatcher, resumeWatcher } = await import('@/utils/fileWatcher');
 
@@ -316,7 +316,7 @@ export async function runFeatureAgent(
   ai.addMessage('assistant', '', sid);
   ai.setSessionStreaming(sid, true);
 
-  const settings = useSettingsStore.getState();
+  const aiConfig = useAiConfigStore.getState();
   const vault = useVaultStore.getState().currentVault;
   let workingDir = vault?.basePath ?? '';
   if (workingDir.startsWith('~')) {
@@ -398,7 +398,7 @@ export async function runFeatureAgent(
   pauseWatcher();
 
   try {
-    await adapter.start({ cliPath: settings.cliPath, workingDir });
+    await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
     await adapter.send(instruction, sendOptions);
   } catch (err) {
     ai.appendToLastMessage(`\n\n[错误] ${String(err)}`, sid);

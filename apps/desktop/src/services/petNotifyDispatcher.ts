@@ -2,7 +2,7 @@
 //
 // Sits in the MAIN window. Trigger sources emit a single `pet://notify` event
 // carrying a `PetBubblePayload`; this dispatcher reads
-// `settingsStore.notificationForm` and routes the payload to:
+// `petStore.notificationForm` and routes the payload to:
 //   - `'bubble'`  → re-emits `pet://bubble-show` (the `pet-bubble` window shows the in-app bubble)
 //   - `'system'`  → `osNotify()` (tauri-plugin-notification, OS native notification)
 //   - `'both'`     → bubble + OS notification
@@ -22,11 +22,11 @@
 // handles it uniformly.
 //
 // This module is main-window-only: it imports `@tauri-apps/plugin-notification`
-// (a Tauri plugin) and `useSettingsStore`. Secondary windows must NOT import it
+// (a Tauri plugin) and `usePetStore`. Secondary windows must NOT import it
 // (see tauri-window-patterns.md "Common Mistake: Per-Session CLI Adapter...").
 
 import { isTauri } from '@/utils/platform';
-import { useSettingsStore, type NotificationForm } from '@/store/settingsStore';
+import { usePetStore, type NotificationForm } from '@/store/petStore';
 import type { PetBubblePayload, PetBubbleTarget } from '@/components/pet/PetBubbleApp';
 
 /** The action-type id registered with the OS notification plugin. */
@@ -124,11 +124,11 @@ export async function osNotify(payload: PetBubblePayload): Promise<void> {
   }
 }
 
-/** Route a `pet://notify` payload according to `settingsStore.notificationForm`.
+/** Route a `pet://notify` payload according to `petStore.notificationForm`.
  *  This is the entry point the main-window `pet://notify` listener calls. */
 export async function dispatchNotification(payload: PetBubblePayload): Promise<void> {
   if (!payload?.text) return;
-  const form = useSettingsStore.getState().notificationForm;
+  const form = usePetStore.getState().notificationForm;
   const { bubble, system } = decideNotification(form);
   if (bubble) {
     try {

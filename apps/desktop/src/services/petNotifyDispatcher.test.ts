@@ -12,7 +12,7 @@ import {
   onAction,
   __fireAction,
 } from '@tauri-apps/plugin-notification';
-import { useSettingsStore } from '@/store/settingsStore';
+import { usePetStore } from '@/store/petStore';
 import {
   decideNotification,
   osNotify,
@@ -62,14 +62,14 @@ describe('dispatchNotification', () => {
   });
 
   it('emits pet://bubble-show and no OS notification when form is bubble', async () => {
-    useSettingsStore.setState({ notificationForm: 'bubble' });
+    usePetStore.setState({ notificationForm: 'bubble' });
     await dispatchNotification(samplePayload);
     expect(emitMock).toHaveBeenCalledWith('pet://bubble-show', samplePayload);
     expect(sendNotificationMock).not.toHaveBeenCalled();
   });
 
   it('sends an OS notification and no bubble when form is system', async () => {
-    useSettingsStore.setState({ notificationForm: 'system' });
+    usePetStore.setState({ notificationForm: 'system' });
     await dispatchNotification(samplePayload);
     expect(emitMock).not.toHaveBeenCalled();
     expect(sendNotificationMock).toHaveBeenCalledTimes(1);
@@ -80,14 +80,14 @@ describe('dispatchNotification', () => {
   });
 
   it('sends both bubble and OS notification when form is both', async () => {
-    useSettingsStore.setState({ notificationForm: 'both' });
+    usePetStore.setState({ notificationForm: 'both' });
     await dispatchNotification(samplePayload);
     expect(emitMock).toHaveBeenCalledWith('pet://bubble-show', samplePayload);
     expect(sendNotificationMock).toHaveBeenCalledTimes(1);
   });
 
   it('drops the payload when form is off', async () => {
-    useSettingsStore.setState({ notificationForm: 'off' });
+    usePetStore.setState({ notificationForm: 'off' });
     await dispatchNotification(samplePayload);
     expect(emitMock).not.toHaveBeenCalled();
     expect(sendNotificationMock).not.toHaveBeenCalled();

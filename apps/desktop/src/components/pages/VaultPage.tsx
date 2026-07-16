@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useNavStore } from '@/store/navStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
 import { CreateVaultDialog } from '../vault/CreateVaultDialog';
@@ -50,7 +50,7 @@ function formatDate(date?: Date): string {
 }
 
 export function VaultPage() {
-  const setCurrentPage = useSettingsStore((s) => s.setCurrentPage);
+  const setCurrentPage = useNavStore((s) => s.setCurrentPage);
   const vaults = useVaultStore((s) => s.vaults);
   const currentVault = useVaultStore((s) => s.currentVault);
   const fileTree = useVaultStore((s) => s.fileTree);

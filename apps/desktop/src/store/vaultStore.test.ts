@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useVaultStore } from './vaultStore';
-import { useSettingsStore } from './settingsStore';
+import { useAppearanceStore } from './appearanceStore';
+import { usePrefsStore } from './prefsStore';
 import { storageClient } from '@/utils/storageClient';
 import type { VaultEntry } from '@quill/vault-provider';
 
@@ -63,9 +64,12 @@ type FakeManager = ReturnType<typeof createFakeManager>;
 
 beforeEach(() => {
   storageClient.__resetForTesting();
-  useSettingsStore.setState({
+  useAppearanceStore.setState({
     showHiddenFiles: false,
     excludePatterns: '',
+    vaultName: 'my-vault',
+  });
+  usePrefsStore.setState({
     dailyNotesDir: '__daily__',
   });
   useVaultStore.setState({
@@ -234,7 +238,7 @@ describe('useVaultStore.refreshFileTree', () => {
   });
 
   it('filters out entries matching excludePatterns', async () => {
-    useSettingsStore.setState({ excludePatterns: 'secret.md' });
+    useAppearanceStore.setState({ excludePatterns: 'secret.md' });
     await useVaultStore.getState().refreshFileTree();
     const names = useVaultStore.getState().fileTree.map((e) => e.name);
     expect(names).not.toContain('secret.md');
@@ -242,7 +246,7 @@ describe('useVaultStore.refreshFileTree', () => {
   });
 
   it('supports glob exclude patterns', async () => {
-    useSettingsStore.setState({ excludePatterns: '*.md' });
+    useAppearanceStore.setState({ excludePatterns: '*.md' });
     await useVaultStore.getState().refreshFileTree();
     const files = useVaultStore.getState().fileTree.filter((e) => e.type === 'file');
     expect(files).toEqual([]);
@@ -289,11 +293,11 @@ describe('useVaultStore.migrateSpecialDirs', () => {
 
   it('migrates the daily dir only when still on the old default', async () => {
     manager.tree.push({ path: 'daily', name: 'daily', type: 'dir' });
-    useSettingsStore.setState({ dailyNotesDir: 'daily' });
+    usePrefsStore.setState({ dailyNotesDir: 'daily' });
     const renamed = await useVaultStore.getState().migrateSpecialDirs();
     expect(renamed.find((r) => r.from === 'daily')).toBeDefined();
 
-    useSettingsStore.setState({ dailyNotesDir: '__daily__' });
+    usePrefsStore.setState({ dailyNotesDir: '__daily__' });
     const renamed2 = await useVaultStore.getState().migrateSpecialDirs();
     expect(renamed2.find((r) => r.from === 'daily')).toBeUndefined();
   });
@@ -317,8 +321,8 @@ describe('useVaultStore.addVault', () => {
     expect(s.currentVault?.name).toBe('mine');
     expect(s.activeVaultId).toBe(s.vaults[0].id);
     expect(s.isLoading).toBe(false);
-    // syncToSettings updates the settings store vault name.
-    expect(useSettingsStore.getState().vaultName).toBe('mine');
+    // syncToSettings updates the appearance store vault name.
+    expect(useAppearanceStore.getState().vaultName).toBe('mine');
   });
 
   it('sets an error and re-throws when the manager fails to connect', async () => {

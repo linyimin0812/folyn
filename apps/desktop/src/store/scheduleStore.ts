@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { useVaultStore } from './vaultStore';
-import { useSettingsStore } from './settingsStore';
+import { usePrefsStore } from './prefsStore';
 import { registerPersistSlice, schedulePersist } from './settingsPersistence';
 import {
   parseDaily,
@@ -96,8 +96,8 @@ function defaultPomo(): PomoState {
 /** 读取 noteDate 对应 daily note；不存在则用最小模板新建（不打开 tab）。 */
 async function readNoteContent(noteDate: string): Promise<{ content: string; created: boolean }> {
   const vault = useVaultStore.getState();
-  const settings = useSettingsStore.getState();
-  const dir = settings.dailyNotesDir || '__daily__';
+  const prefs = usePrefsStore.getState();
+  const dir = prefs.dailyNotesDir || '__daily__';
   const path = `${dir}/${noteDate}.md`;
   try {
     const content = await vault.readFile(path);
@@ -116,8 +116,8 @@ async function readNoteContent(noteDate: string): Promise<{ content: string; cre
 
 async function writeNoteContent(noteDate: string, content: string) {
   const vault = useVaultStore.getState();
-  const settings = useSettingsStore.getState();
-  const dir = settings.dailyNotesDir || '__daily__';
+  const prefs = usePrefsStore.getState();
+  const dir = prefs.dailyNotesDir || '__daily__';
   const path = `${dir}/${noteDate}.md`;
   await vault.writeFile(path, content);
 }
@@ -154,8 +154,8 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
 
   refresh: async () => {
     const vault = useVaultStore.getState();
-    const settings = useSettingsStore.getState();
-    const dir = settings.dailyNotesDir || '__daily__';
+    const prefs = usePrefsStore.getState();
+    const dir = prefs.dailyNotesDir || '__daily__';
     set({ loading: true });
     const allEvents: ScheduleEvent[] = [];
     const allTasks: ScheduleTask[] = [];
@@ -555,8 +555,8 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set((s) => ({
       tasks: s.tasks.map((t) => (t.column === id ? { ...t, column: fallback } : t)),
     }));
-    // 从 settings 移除该列
-    useSettingsStore.getState().setBoardColumns(next);
+    // 从 scheduleStore 自身移除该列（boardColumns 已迁入 scheduleStore）
+    useScheduleStore.getState().setBoardColumns(next);
     get().toast(`已删除列「${col.name}」`);
   },
 

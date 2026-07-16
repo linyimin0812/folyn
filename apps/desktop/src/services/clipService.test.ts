@@ -50,8 +50,8 @@ vi.mock('@/store/editorStore', () => ({
   },
 }));
 
-vi.mock('@/store/settingsStore', () => ({
-  useSettingsStore: {
+vi.mock('@/store/aiConfigStore', () => ({
+  useAiConfigStore: {
     getState: () => ({ cliAdapter: 'claude', cliPath: '/mock/claude' }),
   },
 }));

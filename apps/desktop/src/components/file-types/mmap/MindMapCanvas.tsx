@@ -16,7 +16,7 @@ import {
   type MmapDirection,
 } from './outlineConverter';
 import { resolveBasePath } from '@/utils/pathResolver';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 
 const FALLBACK_SRC = '- Root';
 
@@ -89,9 +89,9 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
   // override (a user can set theme='light' while OS is dark). We re-sync on
   // every resolved-theme flip via `changeTheme` below. Lazy useState init so
   // the constructor gets the right theme on first mount (no flash).
-  const themeSetting = useSettingsStore((state) => state.theme);
+  const themeSetting = useAppearanceStore((state) => state.theme);
   const [isDark, setIsDark] = useState<boolean>(() => {
-    const s = useSettingsStore.getState().theme;
+    const s = useAppearanceStore.getState().theme;
     if (s === 'dark') return true;
     if (s === 'light') return false;
     return window.matchMedia('(prefers-color-scheme: dark)').matches;

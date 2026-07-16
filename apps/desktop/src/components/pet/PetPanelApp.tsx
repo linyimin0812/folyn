@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { isTauri } from '@/utils/platform';
-import { useSettingsStore } from '@/store/settingsStore';
+import { usePetStore } from '@/store/petStore';
 import {
   clampPanelPosition,
   computePanelPosition,
@@ -47,7 +47,7 @@ const PANEL_PERSIST_INTERVAL_MS = 800;
  *    `getCurrentWindow().startDragging()`). The close button stops
  *    propagation so it never triggers a drag.
  *  - The window is `resizable: true` (edges are OS-draggable). Position and
- *    size are persisted to `settingsStore` (`petPanelX/Y/Width/Height`) via
+ *    size are persisted to `petStore` (`petPanelX/Y/Width/Height`) via
  *    a periodic poll, and restored on mount — so the panel reappears where
  *    the user last left it instead of snapping back to the pet's corner.
  *
@@ -72,8 +72,8 @@ export function PetPanelApp() {
   // flips `is-visible` on → CSS transitions opacity 0→1 + scale 0.98→1 over
   // 180ms from the stable final frame.
   const [isVisible, setVisible] = useState(false);
-  const setPetPanelPosition = useSettingsStore((s) => s.setPetPanelPosition);
-  const setPetPanelSize = useSettingsStore((s) => s.setPetPanelSize);
+  const setPetPanelPosition = usePetStore((s) => s.setPetPanelPosition);
+  const setPetPanelSize = usePetStore((s) => s.setPetPanelSize);
 
   const hidePanel = useCallback(async () => {
     try {
@@ -242,7 +242,7 @@ export function PetPanelApp() {
           petPanelWidth,
           petPanelHeight,
           petPanelSizeVersion,
-        } = useSettingsStore.getState();
+        } = usePetStore.getState();
 
         // 1. Resolve the SIZE (logical points). `resolvePanelSize` returns
         //    the clamped saved size when the version matches, or the current
@@ -267,7 +267,7 @@ export function PetPanelApp() {
           setPetPanelSize(clampedSize.width, clampedSize.height);
         }
         if (!savedMatchesVersion) {
-          useSettingsStore.getState().setPetPanelSizeVersion(PET_PANEL_SIZE_VERSION);
+          usePetStore.getState().setPetPanelSizeVersion(PET_PANEL_SIZE_VERSION);
         }
         await invoke('pet_panel_set_size', {
           width: Math.round(clampedSize.width * sf),
@@ -299,7 +299,7 @@ export function PetPanelApp() {
           // mascot bounds (a small/ large pet shifts where the panel's corner
           // attaches). The pet window keeps its own store instance in sync
           // via the `pet://size-changed` listener in PetApp.
-          const petSize = useSettingsStore.getState().petSize;
+          const petSize = usePetStore.getState().petSize;
           const pos = computePanelPosition(
             { x: probe.window_x / sf, y: probe.window_y / sf },
             workArea,
@@ -358,17 +358,17 @@ export function PetPanelApp() {
         if (x !== lastX || y !== lastY) {
           lastX = x;
           lastY = y;
-          useSettingsStore.getState().setPetPanelPosition(x, y);
+          usePetStore.getState().setPetPanelPosition(x, y);
         }
         if (w !== lastW || h !== lastH) {
           lastW = w;
           lastH = h;
-          useSettingsStore.getState().setPetPanelSize(w, h);
+          usePetStore.getState().setPetPanelSize(w, h);
           // Keep the persisted version in sync with the persisted size so
           // the open gesture / mount-restore respect the user-resized size
           // on next open. Without this, a user resize after a default-bump
           // migration would still be ignored next open (version mismatch).
-          useSettingsStore.getState().setPetPanelSizeVersion(PET_PANEL_SIZE_VERSION);
+          usePetStore.getState().setPetPanelSizeVersion(PET_PANEL_SIZE_VERSION);
         }
       } catch {
         // Non-fatal; try again next tick.

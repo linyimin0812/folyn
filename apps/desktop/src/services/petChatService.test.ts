@@ -32,21 +32,29 @@ function makeFakeAdapter(id: string) {
   };
 }
 
-const { settingsState, createAdapter } = vi.hoisted(() => {
-  const settingsState: { cliAdapter: string; cliPath: string } = {
+const { aiConfigState, vaultConfigState, createAdapter } = vi.hoisted(() => {
+  const aiConfigState: { cliAdapter: string; cliPath: string } = {
     cliAdapter: 'claude',
     cliPath: '/mock/claude',
   };
+  const vaultConfigState: { vaultPath: string } = {
+    vaultPath: '',
+  };
   return {
-    settingsState,
+    aiConfigState,
+    vaultConfigState,
     // Factory stub the test re-points before each send to control which
     // adapter instance a session gets.
     createAdapter: vi.fn(() => makeFakeAdapter('claude')),
   };
 });
 
-vi.mock('@/store/settingsStore', () => ({
-  useSettingsStore: { getState: () => settingsState },
+vi.mock('@/store/aiConfigStore', () => ({
+  useAiConfigStore: { getState: () => aiConfigState },
+}));
+
+vi.mock('@/store/vaultConfigStore', () => ({
+  useVaultConfigStore: { getState: () => vaultConfigState },
 }));
 
 vi.mock('@/store/petChatStore', () => {
@@ -96,8 +104,8 @@ beforeEach(() => {
       .join('/')
       .replace(/\/+/g, '/'),
   );
-  settingsState.cliAdapter = 'claude';
-  settingsState.cliPath = '/mock/claude';
+  aiConfigState.cliAdapter = 'claude';
+  aiConfigState.cliPath = '/mock/claude';
   createAdapter.mockImplementation(() => makeFakeAdapter('claude'));
   petChatStoreState.sessions = [];
   petChatStoreState.activeSessionId = null;
@@ -322,7 +330,7 @@ describe('adapter id invalidation', () => {
     expect(__getAdapterForTesting('A')).toBe(stale);
 
     // User switches adapter type in settings.
-    settingsState.cliAdapter = 'gemini';
+    aiConfigState.cliAdapter = 'gemini';
     createAdapter.mockReturnValue(fresh);
 
     await sendPetChatMessage('A', 'again', {});

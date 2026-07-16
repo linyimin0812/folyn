@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useVaultStore } from './vaultStore';
 import { useScheduleStore } from './scheduleStore';
-import { useSettingsStore } from './settingsStore';
+import { usePrefsStore } from './prefsStore';
 import {
   parseStudy,
   serializeStudy,
@@ -353,7 +353,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
 
   scheduleUnitToToday: async (unit, slug, noteDate) => {
     const vault = useVaultStore.getState();
-    const settings = useSettingsStore.getState();
+    const settings = usePrefsStore.getState();
     const dir = settings.dailyNotesDir || '__daily__';
     const date = noteDate ?? dateToString(new Date());
     const path = `${dir}/${date}.md`;

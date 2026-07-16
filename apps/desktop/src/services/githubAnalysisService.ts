@@ -1,7 +1,7 @@
 import { createAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useSkillStore } from '@/store/skillStore';
 import { collectTextFromStream, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
@@ -114,13 +114,13 @@ export async function generateReport(
 
   // 2. AI analysis — Claude Code handles cloning, reading, analyzing
   onProgress?.('AI 正在深度分析...');
-  const settings = useSettingsStore.getState();
+  const aiConfig = useAiConfigStore.getState();
   const basePath = await resolveBasePath(vault.currentVault.basePath);
   // analyze agent cwd = `<vault>/__analyze__/`：agent 自动发现 `.claude/agents/analyze.md`。
   const workingDir = `${basePath.replace(/\/+$/, '')}/__analyze__`;
 
-  const adapter = createAdapter(settings.cliAdapter);
-  await adapter.start({ cliPath: settings.cliPath, workingDir });
+  const adapter = createAdapter(aiConfig.cliAdapter);
+  await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
 
   let aiResponse: string;
   try {

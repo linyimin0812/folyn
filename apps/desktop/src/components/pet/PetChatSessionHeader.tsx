@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePetChatStore, MAX_SESSIONS } from '@/store/petChatStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useNavStore } from '@/store/navStore';
 import { isTauri } from '@/utils/platform';
 import { stopPetChat, resetPetChatAdapter } from '@/services/petChatService';
 
@@ -172,8 +172,8 @@ export function PetChatSessionHeader() {
   // has its own copy too), so a shared helper would be a bigger diff than
   // the duplication itself.
   const handleOpenSettings = useCallback(async () => {
-    useSettingsStore.getState().setCurrentPage('settings');
-    useSettingsStore.getState().setSettingsTab('ai');
+    useNavStore.getState().setCurrentPage('settings');
+    useNavStore.getState().setSettingsTab('ai');
     if (!isTauri()) return;
     try {
       const { emit } = await import('@tauri-apps/api/event');

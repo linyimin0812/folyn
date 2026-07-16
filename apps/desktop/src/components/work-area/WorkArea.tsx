@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { useEditorStore } from '@/store/editorStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { isTauri } from '@/utils/platform';
 import type { QuillEditorHandle } from '@/editor/EditorView';
@@ -30,11 +30,11 @@ export function WorkArea() {
   // Filter tabs by the active activity panel
   const tabs = allTabs.filter((t) => t.activity === activePanel);
   const activeTab = tabs.find((t) => t.id === activeTabId);
-  const showLineNumbers = useSettingsStore((s) => s.showLineNumbers);
-  const settingsTabSize = useSettingsStore((s) => s.tabSize);
-  const wrapColumn = useSettingsStore((s) => s.wrapColumn);
-  const editorFont = useSettingsStore((s) => s.editorFont);
-  const editorFontSize = useSettingsStore((s) => s.editorFontSize);
+  const showLineNumbers = useEditorPrefsStore((s) => s.showLineNumbers);
+  const settingsTabSize = useEditorPrefsStore((s) => s.tabSize);
+  const wrapColumn = useEditorPrefsStore((s) => s.wrapColumn);
+  const editorFont = useEditorPrefsStore((s) => s.editorFont);
+  const editorFontSize = useEditorPrefsStore((s) => s.editorFontSize);
   const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
 
   const editorRef = useRef<QuillEditorHandle>(null);

@@ -4,7 +4,7 @@ import { useWikiStore } from '@/store/wikiStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { createAdapter } from '@quill/cli-adapter';
 import type { CliAdapter, CliStreamEvent } from '@quill/cli-adapter';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
 import { wikiProvider } from './wikiProvider';
 import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';
 import type { IngestAnalysis, ReviewItem } from '@/types/wiki';
@@ -133,7 +133,7 @@ function collectFileChangesFromStream(
 export async function runIngest(filePaths: string[]): Promise<void> {
   const store = useWikiStore.getState();
   const vault = useVaultStore.getState();
-  const settings = useSettingsStore.getState();
+  const aiConfig = useAiConfigStore.getState();
 
   if (!vault.currentVault) throw new Error('No active vault');
 
@@ -143,12 +143,12 @@ export async function runIngest(filePaths: string[]): Promise<void> {
 
   await wikiProvider.init();
   const hashCache = await wikiProvider.readHashCache();
-  const adapter = createAdapter(settings.cliAdapter);
+  const adapter = createAdapter(aiConfig.cliAdapter);
   const basePath = await resolveBasePath(vault.currentVault.basePath);
   // wiki agent cwd = `<vault>/__wiki__/`：agent 自动发现 `.claude/agents/wiki.md`。
   const workingDir = `${basePath}/__wiki__`;
 
-  await adapter.start({ cliPath: settings.cliPath, workingDir });
+  await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
 
   try {
     const schema = await wikiProvider.readFile('schema.md').catch(() => '');

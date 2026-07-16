@@ -13,7 +13,7 @@
 
 import { createAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { useSkillStore } from '@/store/skillStore';
 import { collectTextFromStream, extractJsonObject, type StreamEvent } from './aiStreamUtils';
@@ -311,11 +311,11 @@ export async function generatePlan(
   if (!vault.currentVault) throw new Error('没有活跃的 vault');
 
   onProgress?.('AI 正在规划今日...');
-  const settings = useSettingsStore.getState();
+  const aiConfig = useAiConfigStore.getState();
   const basePath = await resolveBasePath(vault.currentVault.basePath);
 
-  const adapter = createAdapter(settings.cliAdapter);
-  await adapter.start({ cliPath: settings.cliPath, workingDir: basePath });
+  const adapter = createAdapter(aiConfig.cliAdapter);
+  await adapter.start({ cliPath: aiConfig.cliPath, workingDir: basePath });
 
   try {
     // plan-my-day is not a registered SkillCapability yet; use a built-in prompt

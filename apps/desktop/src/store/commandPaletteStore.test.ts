@@ -27,10 +27,18 @@ vi.mock('@/store/vaultStore', () => ({
   },
 }));
 
-// Mock the settingsStore so registerBuiltinCommands' enabled predicates resolve.
-vi.mock('@/store/settingsStore', () => ({
-  useSettingsStore: {
+// Mock the navStore + appearanceStore so registerBuiltinCommands' enabled predicates resolve.
+vi.mock('@/store/navStore', () => ({
+  useNavStore: {
     getState: () => ({
+      setCurrentPage: vi.fn(),
+    }),
+  },
+}));
+vi.mock('@/store/appearanceStore', () => ({
+  useAppearanceStore: {
+    getState: () => ({
+      toggleTheme: vi.fn(),
       enableWikiPanel: true,
       enableClipsPanel: true,
       enableAnalyzePanel: true,

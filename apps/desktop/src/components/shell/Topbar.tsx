@@ -1,5 +1,5 @@
 import { useEditorStore, type ViewMode } from '@/store/editorStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useNavStore } from '@/store/navStore';
 import { useTheme } from '@/hooks/useTheme';
 import { ExportMenu } from '@/components/editor/ExportMenu';
 import { requestPlanMyDay } from '@/services/planMyDayBridge';
@@ -66,8 +66,8 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   });
   const showViewMode = activeTab ? SHOW_VIEW_MODE_FILE_TYPES.has(activeTab.fileType) : false;
   const modes = activeTab?.fileType === 'html' ? HTML_MODES : VIEW_MODES;
-  const setCurrentPage = useSettingsStore((state) => state.setCurrentPage);
-  const currentPage = useSettingsStore((state) => state.currentPage);
+  const setCurrentPage = useNavStore((state) => state.setCurrentPage);
+  const currentPage = useNavStore((state) => state.currentPage);
   const { theme, toggleTheme } = useTheme();
 
   return (

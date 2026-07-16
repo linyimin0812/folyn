@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CliMessage } from '@quill/cli-adapter';
 import { isTauri } from '@/utils/platform';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useNavStore } from '@/store/navStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
 import { usePetChatStore } from '@/store/petChatStore';
 import type { PetChatMessage } from '@/store/petChatStore';
 import {
@@ -40,10 +41,10 @@ import type { PetMenuAction } from './PetContextMenu';
  *    `pet-chat:sessions` in `storageClient`; PR2: per-session adapter +
  *    `resumeSessionId` cross-turn memory). `streaming` is runtime-only.
  *  - Vault-aware per mode: chat (rig) has no cwd; ask/agent run against the
- *    current vault (via `settingsStore.vaultPath`, appData fallback). A mode
+ *    current vault (via `vaultConfigStore.vaultPath`, appData fallback). A mode
  *    dropdown (chat/ask/agent) lives in the input `leadingSlot`; chat routes
  *    to the rig backend, ask/agent to the claude CLI.
- *  - Unconfigured-AI (R7): if `settings.cliPath` or `settings.cliAdapter`
+ *  - Unconfigured-AI (R7): if `aiConfig.cliPath` or `aiConfig.cliAdapter`
  *    is empty, render a guidance CTA instead of the input.
  *
  * PR3: the message list, bubbles, copy button, clear button, and input box
@@ -85,10 +86,10 @@ async function emitMenuAction(action: PetMenuAction): Promise<void> {
 
 /** Detect "no AI configured" (R7). Mode-aware: chat (rig) needs provider +
  *  model + apiKey; ask/agent need the CLI adapter id + binary path. Defaults
- *  in `settingsStore` make ask/agent configured out-of-the-box
+ *  in `aiConfigStore` make ask/agent configured out-of-the-box
  *  (`'claude'`/`'claude'`); chat is configured once `chatApiKey` is set. */
 export function isPetChatConfigured(): boolean {
-  const s = useSettingsStore.getState();
+  const s = useAiConfigStore.getState();
   const mode = usePetChatStore.getState().inputMode;
   if (mode === 'chat') return Boolean(s.chatProvider && s.chatModel && s.chatApiKey);
   return Boolean(s.cliAdapter && s.cliPath);
@@ -344,8 +345,8 @@ export function PetChat() {
   }, [activeSessionId, setStreaming]);
 
   const handleOpenSettings = useCallback(async () => {
-    useSettingsStore.getState().setCurrentPage('settings');
-    useSettingsStore.getState().setSettingsTab('ai');
+    useNavStore.getState().setCurrentPage('settings');
+    useNavStore.getState().setSettingsTab('ai');
     await emitMenuAction('show-main');
   }, []);
 

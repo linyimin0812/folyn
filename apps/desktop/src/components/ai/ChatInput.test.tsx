@@ -19,7 +19,7 @@ beforeAll(() => {
 });
 
 // Mock FileIcon — the chip renders it for non-image attachments; its real
-// impl pulls in ThemeIcon → useSettingsStore. Stubbing keeps the test
+// impl pulls in ThemeIcon → useAppearanceStore. Stubbing keeps the test
 // focused on ChatInput's attachment wiring (mirrors PetChat.test.tsx).
 vi.mock('@/components/icons/FileIcon', () => ({
   FileIcon: () => React.createElement('span', { 'data-testid': 'file-icon' }),

@@ -1,7 +1,7 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
 import { Excalidraw } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 import type { EditorProps } from '../types';
 
 function parseContent(content: string) {
@@ -18,7 +18,7 @@ function parseContent(content: string) {
 }
 
 export function ExcalidrawEditor({ content, tabId, onChange }: EditorProps) {
-  const theme = useSettingsStore((s) => s.theme);
+  const theme = useAppearanceStore((s) => s.theme);
   const excalidrawTheme = theme === 'dark' ? 'dark' : 'light';
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;

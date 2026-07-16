@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { usePrefsStore } from '@/store/prefsStore';
 import { FileIcon } from '@/components/icons/FileIcon';
 
 /* -------------------------------------------------------------------------- */
@@ -71,7 +71,7 @@ export function useSidebarActions({ handleFileClick, setExpandedDirs }: UseSideb
     } else {
       const ext = finalName.includes('.') ? finalName.split('.').pop()! : '';
       const title = finalName.substring(0, finalName.lastIndexOf('.')) || finalName;
-      const templates = useSettingsStore.getState().fileTemplates;
+      const templates = usePrefsStore.getState().fileTemplates;
       const template = templates[ext];
 
       let content: string;

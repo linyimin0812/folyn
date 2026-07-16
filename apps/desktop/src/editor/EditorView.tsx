@@ -33,7 +33,8 @@ import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { lintKeymap, linter, lintGutter, type Diagnostic } from '@codemirror/lint';
 import { indentationMarkers } from '@replit/codemirror-indentation-markers';
 import { useEditorStore } from '@/store/editorStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useEditorPrefsStore } from '@/store/editorPrefsStore';
+import { usePrefsStore, type ShortcutItem } from '@/store/prefsStore';
 import {
   slashCommandExtension,
   slashMenuField,
@@ -47,7 +48,6 @@ import {
 import { orderedListExtension } from './extensions/OrderedListExtension';
 import { inlineDiffExtension } from './extensions/InlineDiffExtension';
 import { json as jsonLanguage } from '@codemirror/lang-json';
-import type { ShortcutItem } from '@/store/settingsStore';
 
 /** JSON linter: validates JSON syntax and highlights only the error line */
 function jsonLintSource(view: EditorView): Diagnostic[] {
@@ -165,11 +165,11 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
     const langCompartment = useRef(new Compartment());
     const setCursorPosition = useEditorStore((s) => s.setCursorPosition);
     const setWordCount = useEditorStore((s) => s.setWordCount);
-    const editorFont = useSettingsStore((s) => s.editorFont);
-    const editorFontSize = useSettingsStore((s) => s.editorFontSize);
-    const showLineNumbers = useSettingsStore((s) => s.showLineNumbers);
-    const settingsTabSize = useSettingsStore((s) => s.tabSize);
-    const shortcuts = useSettingsStore((s) => s.shortcuts);
+    const editorFont = useEditorPrefsStore((s) => s.editorFont);
+    const editorFontSize = useEditorPrefsStore((s) => s.editorFontSize);
+    const showLineNumbers = useEditorPrefsStore((s) => s.showLineNumbers);
+    const settingsTabSize = useEditorPrefsStore((s) => s.tabSize);
+    const shortcuts = usePrefsStore((s) => s.shortcuts);
     const onChangeRef = useRef(onChange);
     onChangeRef.current = onChange;
     const onSlashMenuChangeRef = useRef(onSlashMenuChange);

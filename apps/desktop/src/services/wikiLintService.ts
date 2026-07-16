@@ -2,7 +2,7 @@
 
 import { wikiProvider } from './wikiProvider';
 import { useVaultStore } from '@/store/vaultStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
 import { createAdapter } from '@quill/cli-adapter';
 import type { ReviewItem } from '@/types/wiki';
 import { collectTextFromStream } from './aiStreamUtils';
@@ -55,18 +55,18 @@ interface LintItemShape {
  */
 export async function runWikiLint(): Promise<ReviewItem[]> {
   const vault = useVaultStore.getState();
-  const settings = useSettingsStore.getState();
+  const aiConfig = useAiConfigStore.getState();
   if (!vault.currentVault) return [];
 
   await wikiProvider.init();
   const hashCache = await wikiProvider.readHashCache();
 
-  const adapter = createAdapter(settings.cliAdapter);
+  const adapter = createAdapter(aiConfig.cliAdapter);
   const basePath = await resolveBasePath(vault.currentVault.basePath);
   // wiki agent cwd = `<vault>/__wiki__/`。
   const workingDir = `${basePath}/__wiki__`;
 
-  await adapter.start({ cliPath: settings.cliPath, workingDir });
+  await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
 
   let aiText: string;
   try {

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { useVaultStore } from './vaultStore';
-import { useSettingsStore } from './settingsStore';
+import { usePrefsStore } from './prefsStore';
 import { storageClient } from '@/utils/storageClient';
 import { getHandlerByExtension, getHandlerById } from '@/components/file-types/registry';
 import { suppressWatcherFor } from '@/utils/fileWatcher';
@@ -61,7 +61,7 @@ export function detectActivity(filePath: string, fileType: FileType): ActivityPa
   if (filePath.startsWith('__reports__/')) return 'analyze';
 
   // Check daily notes directory
-  const dailyDir = useSettingsStore.getState().dailyNotesDir || '__daily__';
+  const dailyDir = usePrefsStore.getState().dailyNotesDir || '__daily__';
   if (filePath.startsWith(`${dailyDir}/`)) return 'calendar';
 
   return 'files';
@@ -447,9 +447,9 @@ export const useEditorStore = create<EditorState>()(
       },
 
       openDailyNote: async (dateStr?) => {
-        const settings = useSettingsStore.getState();
-        const dir = settings.dailyNotesDir || '__daily__';
-        const fmt = settings.dailyNoteDateFormat || 'YYYY-MM-DD';
+        const prefs = usePrefsStore.getState();
+        const dir = prefs.dailyNotesDir || '__daily__';
+        const fmt = prefs.dailyNoteDateFormat || 'YYYY-MM-DD';
 
         const date = dateStr ? new Date(dateStr) : new Date();
         const fileName = formatDailyDate(date, fmt);

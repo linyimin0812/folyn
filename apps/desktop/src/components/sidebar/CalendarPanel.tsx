@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { usePrefsStore } from '@/store/prefsStore';
 import type { VaultEntry } from '@quill/vault-provider';
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
@@ -50,7 +50,7 @@ export function CalendarPanel() {
   const [viewMonth, setViewMonth] = useState(today.getMonth());
 
   const fileTree = useVaultStore((s) => s.fileTree);
-  const dailyDir = useSettingsStore((s) => s.dailyNotesDir || '__daily__');
+  const dailyDir = usePrefsStore((s) => s.dailyNotesDir || '__daily__');
   const openDailyNote = useEditorStore((s) => s.openDailyNote);
 
   const noteDates = useMemo(

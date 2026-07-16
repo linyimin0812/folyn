@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { InfographicView, BlockView } from './InfographicView';
 import type { InfographicBlock, InfographicDoc } from '@/features/clips/clipParse';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 
 /**
  * Component tests for the editorial-style infographic renderer.
@@ -30,10 +30,10 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// Theme is module-level state in `useSettingsStore`; restore to the default
+// Theme is module-level state in `useAppearanceStore`; restore to the default
 // 'light' between tests so dark-mode assertions don't leak into siblings.
 beforeEach(() => {
-  useSettingsStore.setState({ theme: 'light' });
+  useAppearanceStore.setState({ theme: 'light' });
 });
 
 describe('BlockView — known types', () => {
@@ -350,7 +350,7 @@ describe('InfographicView — theme-aware palette', () => {
   };
 
   it('renders the light palette by default (theme="light")', () => {
-    useSettingsStore.setState({ theme: 'light' });
+    useAppearanceStore.setState({ theme: 'light' });
     const html = renderDoc(sampleDoc);
     expect(html).toContain(LIGHT_BG);
     // Dark palette tokens must NOT appear when theme is light.
@@ -359,7 +359,7 @@ describe('InfographicView — theme-aware palette', () => {
   });
 
   it('renders the dark palette when theme="dark"', () => {
-    useSettingsStore.setState({ theme: 'dark' });
+    useAppearanceStore.setState({ theme: 'dark' });
     const html = renderDoc(sampleDoc);
     // Dark fg + accent both appear in the inline styles (hero fg, stat accent).
     expect(html).toContain(DARK_FG);
@@ -369,9 +369,9 @@ describe('InfographicView — theme-aware palette', () => {
   });
 
   it('swaps palettes when theme toggles between renders', () => {
-    useSettingsStore.setState({ theme: 'light' });
+    useAppearanceStore.setState({ theme: 'light' });
     const lightHtml = renderDoc(sampleDoc);
-    useSettingsStore.setState({ theme: 'dark' });
+    useAppearanceStore.setState({ theme: 'dark' });
     const darkHtml = renderDoc(sampleDoc);
     expect(lightHtml).toContain(LIGHT_BG);
     expect(lightHtml).not.toContain(DARK_FG);

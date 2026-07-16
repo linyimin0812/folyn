@@ -14,7 +14,8 @@
 import type { ScheduleTask } from '@/features/schedule/types';
 import type { StudyUnit, StudyMaterial, AiAction } from './types';
 import { listAdapters } from '@quill/cli-adapter';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
 import { runFeatureAgent } from '@/services/featureAgentService';
 
@@ -118,7 +119,7 @@ export function collectScheduleLinks(tasks: ScheduleTask[], slug: string): Map<n
  * 未配置时 AI 动作按钮禁用并提示，复习/计划/笔记非 AI 部分仍可用。
  */
 export function isAiAvailable(): boolean {
-  const id = useSettingsStore.getState().cliAdapter;
+  const id = useAiConfigStore.getState().cliAdapter;
   if (!id) return false;
   try {
     return listAdapters().some((a) => a.id === id);
@@ -215,7 +216,7 @@ export function openStudyAiAction(
   opts?: { openFile?: boolean },
 ): void {
   void runFeatureAgent('study', instruction);
-  useSettingsStore.getState().updateSettings({ showAiPanel: true });
+  useAppearanceStore.getState().setShowAiPanel(true);
   useEditorStore.setState({ aiPanelVisible: true });
   if (opts?.openFile === false) return;
   // 非阻塞打开主题文档 tab，接上 diff 审阅链路（不切换页面、不影响 study 视图）。

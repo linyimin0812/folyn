@@ -1,6 +1,7 @@
 import { createAdapter } from '@quill/cli-adapter';
 import type { CliAdapter, CliStreamEvent } from '@quill/cli-adapter';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useVaultConfigStore } from '@/store/vaultConfigStore';
 import { usePetChatStore } from '@/store/petChatStore';
 import { isRigMode, resolveSendOptions } from '@/components/ai/inputModes';
 import { runRigChat } from '@/services/rigChat';
@@ -54,10 +55,9 @@ const sessionAdapters = new Map<string, CliAdapter>();
  *  stale adapter (so no orphan process lingers) and create a fresh one.
  *
  *  The id check mirrors `adapterManager.getAdapterForSession`'s
- *  `existing.id === settings.cliAdapter` guard. */
+ *  `existing.id === aiConfig.cliAdapter` guard. */
 function getAdapterForSession(sessionId: string): CliAdapter {
-  const settings = useSettingsStore.getState();
-  const id = settings.cliAdapter || 'claude';
+  const id = useAiConfigStore.getState().cliAdapter || 'claude';
   const existing = sessionAdapters.get(sessionId);
   if (existing && existing.id === id) return existing;
 
@@ -171,7 +171,8 @@ export async function sendPetChatMessage(
   prompt: string,
   handlers: PetChatSendHandlers,
 ): Promise<void> {
-  const settings = useSettingsStore.getState();
+  const aiConfig = useAiConfigStore.getState();
+  const vaultConfig = useVaultConfigStore.getState();
   const adapter = getAdapterForSession(sessionId);
   const resumeSessionId = getCliSessionIdFor(sessionId);
   const mode = usePetChatStore.getState().inputMode;
@@ -208,10 +209,10 @@ export async function sendPetChatMessage(
       await runRigChat({
         sessionId,
         prompt,
-        provider: settings.chatProvider,
-        model: settings.chatModel,
-        apiKey: settings.chatApiKey,
-        baseUrl: settings.chatBaseUrl,
+        provider: aiConfig.chatProvider,
+        model: aiConfig.chatModel,
+        apiKey: aiConfig.chatApiKey,
+        baseUrl: aiConfig.chatBaseUrl,
         onEvent: handler,
       });
     } catch (err) {
@@ -226,11 +227,11 @@ export async function sendPetChatMessage(
   // appData dir when no vault is open so ask/agent still run. chat (above) has
   // no cwd. `resolveSendOptions` applies ask (plan) vs agent (bypassPermissions);
   // 'agent' here is byte-identical to the pre-chat `{ bare: true }` default.
-  const workingDir = settings.vaultPath || (await resolveWorkingDir());
+  const workingDir = vaultConfig.vaultPath || (await resolveWorkingDir());
   adapter.onEvent(handler);
 
   try {
-    await adapter.start({ cliPath: settings.cliPath, workingDir });
+    await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
     await adapter.send(prompt, resolveSendOptions(mode, { bare: true, resumeSessionId }));
   } catch (err) {
     adapter.offEvent(handler);

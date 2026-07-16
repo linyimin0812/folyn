@@ -59,7 +59,7 @@ vi.mock('@/components/file-types/registry', () => ({
 import { useAiStore } from '@/store/aiStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
 import {
   seedAgentFiles,
   agentFileExists,
@@ -141,7 +141,7 @@ beforeEach(() => {
     manager: makeFakeManager() as never,
     refreshFileTree: vi.fn(async () => {}),
   } as never);
-  useSettingsStore.setState({ cliPath: 'claude' } as never);
+  useAiConfigStore.setState({ cliPath: 'claude' } as never);
   useEditorStore.setState({
     flushAutoSaves: vi.fn(async () => {}),
     checkDiskChanges: vi.fn(async () => {}),

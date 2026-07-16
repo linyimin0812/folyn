@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useStudyStore, collectDueAtoms, parseSuggestionText, materialDedupeKey } from './studyStore';
 import { useVaultStore } from './vaultStore';
-import { useSettingsStore } from './settingsStore';
+import { usePrefsStore } from './prefsStore';
+import { useAppearanceStore } from './appearanceStore';
 import { storageClient } from '@/utils/storageClient';
 import type { VaultEntry } from '@quill/vault-provider';
 import { STUDY_DIR, slugifyTopic, buildEmptyStudyDoc, studyDocPath, extractSlug, type StudyTopicEntry } from '@/features/study/studyDoc';
@@ -67,7 +68,8 @@ let manager: FakeManager;
 
 beforeEach(() => {
   storageClient.__resetForTesting();
-  useSettingsStore.setState({ dailyNotesDir: '__daily__', excludePatterns: '' });
+  usePrefsStore.setState({ dailyNotesDir: '__daily__' });
+  useAppearanceStore.setState({ excludePatterns: '' });
   manager = createFakeManager();
   useVaultStore.setState({
     manager: manager as never,

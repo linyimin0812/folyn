@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { detectFileType, detectActivity, useEditorStore } from './editorStore';
-import { useSettingsStore } from './settingsStore';
+import { usePrefsStore } from './prefsStore';
 
 beforeEach(() => {
   useEditorStore.setState({ tabs: [], activeTabId: null });
-  useSettingsStore.setState({ dailyNotesDir: '__daily__' });
-});describe('detectFileType', () => {
+  usePrefsStore.setState({ dailyNotesDir: '__daily__' });
+});
+
+describe('detectFileType', () => {
   it('detects clip files by __clips__/ prefix', () => {
     expect(detectFileType('__clips__/tech/foo.md')).toBe('clip');
   });
@@ -43,7 +45,7 @@ describe('detectActivity', () => {
   });
 
   it('uses the configured dailyNotesDir', () => {
-    useSettingsStore.setState({ dailyNotesDir: 'journal' });
+    usePrefsStore.setState({ dailyNotesDir: 'journal' });
     expect(detectActivity('journal/2026-01-01.md', 'markdown')).toBe('calendar');
   });
 

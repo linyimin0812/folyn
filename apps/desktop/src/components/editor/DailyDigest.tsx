@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useVaultStore } from '@/store/vaultStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { usePrefsStore } from '@/store/prefsStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
 import type { VaultEntry } from '@quill/vault-provider';
 import { MessageContent } from '@/components/chat';
 import { getFeatureAgentSendOptions } from '@/services/featureAgentService';
@@ -34,7 +35,7 @@ export function DailyDigest({ currentFilePath, onInsertContent }: DailyDigestPro
   const [digest, setDigest] = useState('');
   const [, setModifiedFiles] = useState<ModifiedFile[]>([]);
 
-  const dailyDir = useSettingsStore((s) => s.dailyNotesDir || '__daily__');
+  const dailyDir = usePrefsStore((s) => s.dailyNotesDir || '__daily__');
   const isDailyNote = currentFilePath.startsWith(dailyDir + '/');
 
   const generateDigest = useCallback(async () => {
@@ -68,8 +69,8 @@ export function DailyDigest({ currentFilePath, onInsertContent }: DailyDigestPro
       setModifiedFiles(modified);
 
       const { createAdapter } = await import('@quill/cli-adapter');
-      const settings = useSettingsStore.getState();
-      const adapter = createAdapter(settings.cliAdapter);
+      const { cliAdapter, cliPath } = useAiConfigStore.getState();
+      const adapter = createAdapter(cliAdapter);
       const vault = useVaultStore.getState().currentVault;
       let workingDir = vault?.basePath ?? '';
       if (workingDir.startsWith('~')) {
@@ -86,7 +87,7 @@ export function DailyDigest({ currentFilePath, onInsertContent }: DailyDigestPro
         .join('\n');
 
       let recentDailyContext = '';
-      const dailyDir2 = settings.dailyNotesDir || '__daily__';
+      const dailyDir2 = usePrefsStore.getState().dailyNotesDir || '__daily__';
       for (let i = 1; i <= 3; i++) {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
@@ -119,7 +120,7 @@ ${recentDailyContext || '(无历史日记)'}`;
           if (event.type === 'done') resolve();
           if (event.type === 'error') reject(new Error(event.content));
         });
-        adapter.start({ cliPath: settings.cliPath, workingDir }).then(() => {
+        adapter.start({ cliPath, workingDir }).then(() => {
           adapter.send(prompt, sendOpts);
         }).catch(reject);
       });

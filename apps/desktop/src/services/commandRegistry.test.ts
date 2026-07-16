@@ -43,11 +43,18 @@ const {
   requestPlanMyDayMock: vi.fn(),
 }));
 
-vi.mock('@/store/settingsStore', () => ({
-  useSettingsStore: {
+vi.mock('@/store/navStore', () => ({
+  useNavStore: {
+    getState: () => ({
+      setCurrentPage: setCurrentPageMock,
+    }),
+  },
+}));
+
+vi.mock('@/store/appearanceStore', () => ({
+  useAppearanceStore: {
     getState: () => ({
       toggleTheme: toggleThemeMock,
-      setCurrentPage: setCurrentPageMock,
       enableWikiPanel: true,
       enableClipsPanel: true,
       enableAnalyzePanel: true,

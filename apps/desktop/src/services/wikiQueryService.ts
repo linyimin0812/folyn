@@ -2,7 +2,7 @@
 
 import { wikiProvider } from './wikiProvider';
 import { useVaultStore } from '@/store/vaultStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
 import { createAdapter } from '@quill/cli-adapter';
 import { collectTextFromStream } from './aiStreamUtils';
 import { getFeatureAgentSendOptions } from './featureAgentService';
@@ -77,18 +77,18 @@ export function buildQueryInstruction(query: string, wikiContext: string): strin
  */
 export async function runWikiQuery(query: string): Promise<string> {
   const vault = useVaultStore.getState();
-  const settings = useSettingsStore.getState();
+  const aiConfig = useAiConfigStore.getState();
   if (!vault.currentVault) throw new Error('No active vault');
 
   const wikiContext = await buildWikiContext(query);
   const instruction = buildQueryInstruction(query, wikiContext);
 
-  const adapter = createAdapter(settings.cliAdapter);
+  const adapter = createAdapter(aiConfig.cliAdapter);
   const basePath = await resolveBasePath(vault.currentVault.basePath);
   // wiki agent cwd = `<vault>/__wiki__/`。
   const workingDir = `${basePath}/__wiki__`;
 
-  await adapter.start({ cliPath: settings.cliPath, workingDir });
+  await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
 
   try {
     const sendOpts = await getFeatureAgentSendOptions('wiki');

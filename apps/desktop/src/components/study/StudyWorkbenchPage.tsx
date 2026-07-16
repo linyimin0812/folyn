@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStudyStore, subscribeToFileTree } from '@/store/studyStore';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { useAiStore } from '@/store/aiStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useNavStore } from '@/store/navStore';
 import { StudyTopicList } from './StudyTopicList';
 import { StudyMaterialsSection } from './StudyMaterialsSection';
 import { StudyPlanSection } from './StudyPlanSection';
@@ -65,7 +65,7 @@ export function StudyWorkbenchPage() {
   // 不再用活跃会话——避免用户切到其它会话时捕获/横幅失联。
   const aiSessions = useAiStore((s) => s.sessions);
   const studySessionId = useAiStore((s) => s.studySessionId);
-  const updateSettings = useSettingsStore((s) => s.updateSettings);
+  const setCurrentPage = useNavStore((s) => s.setCurrentPage);
   const pendingDiffCount = useMemo(() => {
     if (!active) return 0;
     const sess = aiSessions.find((s) => s.id === studySessionId);
@@ -76,7 +76,7 @@ export function StudyWorkbenchPage() {
   }, [aiSessions, studySessionId, active]);
 
   const goReviewDiff = () => {
-    updateSettings({ currentPage: 'editor' });
+    setCurrentPage('editor');
   };
 
   // ── AI 建议文本捕获（research 自动写盘 / plan 建议卡片）──

@@ -5,7 +5,9 @@ import {
   type VaultConfig,
   type VaultEntry,
 } from '@quill/vault-provider';
-import { useSettingsStore } from './settingsStore';
+import { useAppearanceStore } from './appearanceStore';
+import { useVaultConfigStore } from './vaultConfigStore';
+import { usePrefsStore } from './prefsStore';
 import { storageClient } from '@/utils/storageClient';
 import { startVaultWatcher, stopVaultWatcher } from '@/utils/fileWatcher';
 import { generateShortId as generateId } from '@/utils/idGenerator';
@@ -88,11 +90,11 @@ interface VaultState {
   moveFiles: (paths: string[], targetDir: string) => Promise<void>;
 }
 
-/** Sync vault info to settingsStore */
+/** Sync vault info to vaultConfigStore / appearanceStore */
 function syncToSettings(config: VaultConfig | null) {
   if (config) {
-    useSettingsStore.getState().setVaultName(config.name);
-    useSettingsStore.getState().updateSettings({ vaultPath: config.basePath });
+    useAppearanceStore.getState().setVaultName(config.name);
+    useVaultConfigStore.getState().setVaultPath(config.basePath);
   }
 }
 
@@ -279,10 +281,10 @@ export const useVaultStore = create<VaultState>()(
 
         refreshFileTree: async () => {
           try {
-            const showHidden = useSettingsStore.getState().showHiddenFiles;
+            const showHidden = useAppearanceStore.getState().showHiddenFiles;
             const entries = await get().manager.listFiles('', true, showHidden);
 
-            const excludeRaw = useSettingsStore.getState().excludePatterns || '';
+            const excludeRaw = useAppearanceStore.getState().excludePatterns || '';
             const patterns = excludeRaw
               .split('\n')
               .map((line) => line.trim())
@@ -315,7 +317,7 @@ export const useVaultStore = create<VaultState>()(
             { from: 'reports', to: '__reports__' },
           ];
           // Only migrate the daily dir if the user is still on the old default.
-          const dailyNotesDir = useSettingsStore.getState().dailyNotesDir;
+          const dailyNotesDir = usePrefsStore.getState().dailyNotesDir;
           if (dailyNotesDir === 'daily') {
             pairs.push({ from: 'daily', to: '__daily__' });
           }

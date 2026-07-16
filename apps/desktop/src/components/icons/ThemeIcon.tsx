@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 
 const allIcons = import.meta.glob<string>('../../assets/icons/*.svg', {
   eager: true,
@@ -35,7 +35,7 @@ interface ThemeIconProps {
 }
 
 export function ThemeIcon({ name, size = 16, className, style }: ThemeIconProps) {
-  const theme = useSettingsStore((s) => s.theme);
+  const theme = useAppearanceStore((s) => s.theme);
   const isDark = theme === 'dark';
 
   const svg = useMemo(() => {

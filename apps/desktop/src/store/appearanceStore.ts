@@ -1,11 +1,11 @@
 import { create } from 'zustand';
-import type { Theme, LinkOpenMode } from './settingsStore';
-import { backfillBuiltinExcludePatterns } from './settingsStore';
 import { registerPersistSlice, schedulePersist } from './settingsPersistence';
 
-// ponytail: types (Theme/LinkOpenMode) and backfillBuiltinExcludePatterns are
-// still owned by the legacy settingsStore in PR1 (no consumer migration). PR2
-// will move the type/backfill ownership here and drop the settingsStore import.
+// ponytail: appearanceStore owns Theme/LinkOpenMode type ownership and
+// backfillBuiltinExcludePatterns (PR2 migrated from legacy settingsStore).
+
+export type Theme = 'light' | 'dark' | 'system';
+export type LinkOpenMode = 'external' | 'internal';
 
 /** Built-in managed dirs that should always be hidden from the file panel. */
 const BUILTIN_EXCLUDE_DIRS = [
@@ -17,6 +17,20 @@ const BUILTIN_EXCLUDE_DIRS = [
   '__schedule__',
   '__analyze__',
 ];
+
+/**
+ * Per-dir backfill for persisted excludePatterns: append each missing built-in
+ * managed dir without duplicating ones already present or dropping user-defined
+ * patterns. Returns the joined newline-separated list.
+ */
+export function backfillBuiltinExcludePatterns(raw: string): string {
+  const existing = raw
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const missing = BUILTIN_EXCLUDE_DIRS.filter((d) => !existing.includes(d));
+  return [...existing, ...missing].join('\n');
+}
 
 const DEFAULT_EXCLUDE_PATTERNS =
   'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__study__\n__schedule__\n__analyze__';
