@@ -1918,3 +1918,38 @@ Added .drawio/.dio file type using react-drawio's DrawIoEmbed (online CDN). Draw
 ### Next Steps
 
 - None - task complete
+
+
+## Session 57: file-viewer: expand preview formats, CDN-load CAD/media
+
+**Date**: 2026-07-16
+**Task**: file-viewer: expand preview formats, CDN-load CAD/media
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added 100+ file preview extensions via preset-office + explicit renderer list (archives, EDA, CAD, geo, 3D, mindmap, ebooks, fonts, av); dropped typst (39MB WASM). CAD (~6.9MB) and media (hls.js/tonejs) renderers loaded from jsDelivr at runtime with esm.sh ESM fallback; CAD worker bundled locally for same-origin sibling resolution. CSP allows jsdelivr/esm.sh/embed.diagrams.net. Pnpm override pins renderer-spreadsheet to 2.1.17 for patch compat. Auto-generated wasm assets under apps/desktop/public/wasm/ gitignored.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5016d22` | (see git log) |
+| `1248435` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

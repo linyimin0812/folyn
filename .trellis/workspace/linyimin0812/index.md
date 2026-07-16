@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 56
-- **Last Active**: 2026-07-15
+- **Total Sessions**: 57
+- **Last Active**: 2026-07-16
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1920 | Active |
+| `journal-1.md` | ~1955 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 57 | 2026-07-16 | file-viewer: expand preview formats, CDN-load CAD/media | `5016d22`, `1248435` | `master` |
 | 56 | 2026-07-15 | drawio file type with react-drawio embed + AI auto-apply for custom editors | `888a758` | `master` |
 | 55 | 2026-07-12 | HTML visual editor corruption + style fidelity fixes | `307c5e5`, `5db84fb`, `5c77167`, `949c8af` | `master` |
 | 54 | 2026-07-12 | Chat settings test/reveal-key + pet-panel AI-settings jump + thinking stream | `a10cdb1` | `master` |
