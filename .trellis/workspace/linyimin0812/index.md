@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 59
+- **Total Sessions**: 60
 - **Last Active**: 2026-07-16
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~44 | Active |
+| `journal-2.md` | ~79 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 60 | 2026-07-16 | extract pet host bridge from App.tsx | `b6c0d84`, `4c18409` | `master` |
 | 59 | 2026-07-16 | harden HtmlPreview sandbox + split editorStore god-store | `c12b002`, `0dce06c`, `52ef395`, `a431f4e` | `master` |
 | 58 | 2026-07-16 | Architecture audit + apps/api cleanup + settingsStore god-store split | `877476e`, `2f91a2f`, `eb46b3d`, `3bce097` | `master` |
 | 57 | 2026-07-16 | file-viewer: expand preview formats, CDN-load CAD/media | `5016d22`, `1248435` | `master` |

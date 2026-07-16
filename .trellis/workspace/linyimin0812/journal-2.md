@@ -42,3 +42,38 @@ Two architecture-hardening tasks from the audit. (1) Fixed the HtmlPreview sandb
 ### Next Steps
 
 - None - task complete
+
+
+## Session 60: extract pet host bridge from App.tsx
+
+**Date**: 2026-07-16
+**Task**: extract pet host bridge from App.tsx
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Final center-rot cleanup from the architecture audit: extracted App.tsx's inline pet event-bus plumbing (pet://menu-action switch, pet://bubble-action jump router, pet://visibility-changed sync, pet-mode launch restore, pet-icon orphan sweep) into a usePetHostBridge() hook, with the routing logic split into pure routePetMenuAction/routePetBubbleAction helpers (testable, no React). App.tsx 664->391 lines (-273); root component no longer welds an optional feature's plumbing. petNotifyDispatcher (pet://notify) left as-is — already cohesive. hide_all_webviews page-change effect and the useDisableAutoCapitalize MutationObserver preserved (out of scope, not pet:// event-bus). 2 PRs: PR1 built the hook + router + 22 sibling tests dormant; PR2 flipped App to the one-line call + deleted the 4 inline blocks. Behavior zero-regression (PR1 verbatim lift, PR2 call-site swap); check zero issues; tsc/build/tests green (4 pre-existing master failures unchanged). This completes the audit's named center-rot list: settingsStore split, editorStore split + aiStore dependency inversion, HtmlPreview sandbox, App pet bridge.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b6c0d84` | (see git log) |
+| `4c18409` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
