@@ -169,8 +169,8 @@ export const useEditorStore = create<EditorState>()(
           ),
         }));
 
-        // Debounced auto-save — ponytail: saveFile moved to editorIoService
-        // (PR2); route the debounced save through it. ESM live binding resolves
+        // Debounced auto-save — ponytail: saveFile lives in editorIoService;
+        // route the debounced save through it. ESM live binding resolves
         // the editorStore↔editorIoService cycle at call time, not eval time.
         scheduleAutoSave(tabId, (id) => saveFileIo(id));
       },

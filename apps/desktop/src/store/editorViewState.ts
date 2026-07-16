@@ -11,9 +11,9 @@ import { useEditorStore } from './editorStore';
  *
  * Runtime-only — NOT persisted.
  *
- * ponytail: dormant in PR1 (no consumers migrated). PR2 redirects
- * editorStore consumers to this store and deletes the duplicate fields from
- * editorStore. Behavior is identical to the old editorStore fields.
+ * Consumers (EditorView, GlobalSearchPanel, Topbar, StatusBar, …) read/write
+ * these fields directly here. Behavior is identical to the old editorStore
+ * fields they replaced.
  */
 
 interface EditorViewState {

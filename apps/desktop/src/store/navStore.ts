@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-// ponytail: navStore owns AppPage/SettingsTab type ownership (PR2 migrated
+// ponytail: navStore owns AppPage/SettingsTab type ownership (migrated
 // from legacy settingsStore). These are nav-domain discriminators.
 
 export type AppPage = 'editor' | 'vault' | 'settings' | 'schedule' | 'study';

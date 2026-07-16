@@ -8,18 +8,17 @@ import { getHandlerById } from '@/components/file-types/registry';
 import { setFileChangeApplier } from '@/store/aiStore';
 
 /**
- * FileChangeApplier — owned by the editor layer (PR1, Scope B + 机制 1).
+ * FileChangeApplier — owned by the editor layer (Scope B + 机制 1).
  *
  * Inverts the legacy reverse-dependency where aiStore reached into editorStore
  * to decide editor-mounting policy (useCodeMirror → enterDiffReview vs
  * updateTabContent). The interface is generic over FileChange so future
  * rename/delete change types can plug in without reshaping the contract
- * (ponytail: only the two existing branches are wired in PR1).
+ * (ponytail: only the two existing branches are wired today).
  *
  * aiStore receives the applier via `setFileChangeApplier` (module-level
- * injection) and calls `apply(change)` from `addFileChange` in PR2. PR1 only
- * registers the slot — addFileChange still uses its inline editorStore branch
- * (zero behavior change).
+ * injection) and calls `apply(change)` from `addFileChange`. Registered at App
+ * init via `registerEditorFileChangeApplier`.
  */
 
 export interface FileChangeApplier {
@@ -30,8 +29,8 @@ export interface FileChangeApplier {
  * Editor-layer implementation. Routes a pending FileChange to the right
  * editor mutation based on the affected file's FileTypeHandler.useCodeMirror.
  *
- * Equivalence to the old aiStore.ts:269-284 inline branch is the contract —
- * this is what makes the PR2 swap a pure refactor.
+ * Equivalence to the old aiStore inline branch is the contract — this is what
+ * makes the swap a pure refactor.
  */
 export class EditorFileChangeApplier implements FileChangeApplier {
   apply(change: FileChange): void {
@@ -48,13 +47,11 @@ export class EditorFileChangeApplier implements FileChangeApplier {
         .getState()
         .enterDiffReview(change.path, change.oldContent, change.newContent);
     } else {
-      // ponytail: matches old aiStore.ts:282 — updateTabContent ONLY (not
-      // setContentExternal). The PRD prose listed setContentExternal here, but
-      // the old code intentionally omits it: custom-editor iframes (drawio,
-      // excalidraw, mmap, …) live-reload via their content-prop effect, and a
-      // version bump would remount the iframe. Zero-regression mandates
-      // matching the old branch, not the PRD prose. The accept path (PR2,
-      // aiFileChangeActions) is where setContentExternal is invoked.
+      // ponytail: matches the old aiStore branch — updateTabContent ONLY (not
+      // setContentExternal). Custom-editor iframes (drawio, excalidraw, mmap, …)
+      // live-reload via their content-prop effect, and a version bump would
+      // remount the iframe. Zero-regression mandates matching the old branch.
+      // The accept path (aiFileChangeActions) is where setContentExternal fires.
       editorState.updateTabContent(tabId, change.newContent);
     }
   }
@@ -62,12 +59,7 @@ export class EditorFileChangeApplier implements FileChangeApplier {
 
 /**
  * Register the editor-layer FileChangeApplier into aiStore's injection slot.
- *
- * ponytail: PR1 provides the wiring function but does NOT call it from App
- * init (that would touch a consumer — out of scope for PR1). PR2 calls this
- * from the app init sequence and flips `addFileChange` to invoke
- * `fileChangeApplier?.apply(change)`. The wiring path is exercised by the
- * applier test now so it is green before PR2 needs it.
+ * Called from App init.
  */
 export function registerEditorFileChangeApplier(): void {
   setFileChangeApplier(new EditorFileChangeApplier());

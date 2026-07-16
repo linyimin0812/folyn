@@ -10,13 +10,13 @@ import { persistAiState, saveAllSessions, loadSessionsFromDisk, setSuppressPersi
 
 export { loadAiSessionsForVault } from './aiSessionPersistence';
 
-// ── FileChangeApplier injection slot (PR1) ──────────────────────────────────
-// ponytail: PR2 — addFileChange now delegates to the registered applier
+// ── FileChangeApplier injection slot ───────────────────────────────────────
+// addFileChange delegates editor mutation to the registered applier
 // (EditorFileChangeApplier, registered at App init via
-// registerEditorFileChangeApplier). The applier owns the useCodeMirror
-// routing (diffReviewStore.enterDiffReview vs editorStore.updateTabContent)
-// and the tabId format — aiStore no longer imports editorStore/diffReviewStore
-// at runtime. If the applier is null (init not yet run), addFileChange still
+// registerEditorFileChangeApplier). The applier owns the useCodeMirror routing
+// (diffReviewStore.enterDiffReview vs editorStore.updateTabContent) and the
+// tabId format — aiStore does not import editorStore/diffReviewStore at
+// runtime. If the applier is null (init not yet run), addFileChange still
 // records the change but applies nothing — defensive against init ordering;
 // the normal flow registers the applier before any user/AI action.
 let fileChangeApplier: FileChangeApplier | null = null;
@@ -284,10 +284,9 @@ export const useAiStore = create<AiState>((set, get) => ({
 
     suppressWatcherFor(change.path);
 
-    // ponytail: PR2 — delegate editor mutation to the injected FileChangeApplier
+    // Delegate editor mutation to the injected FileChangeApplier
     // (EditorFileChangeApplier). It routes by useCodeMirror (enterDiffReview vs
-    // updateTabContent) and owns the tabId format. Equivalent to the old inline
-    // branch at aiStore.ts:269-284; aiStore no longer imports editorStore.
+    // updateTabContent) and owns the tabId format.
     fileChangeApplier?.apply(change);
   },
 

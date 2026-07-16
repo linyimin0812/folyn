@@ -22,15 +22,12 @@ import {
 
 /**
  * Editor file-IO service — the file read/write/persist/disk-sync operations
- * that lived as editorStore actions in the legacy god-store (PR1).
+ * that lived as editorStore actions in the legacy god-store.
  *
  * These are service functions (NOT a store): they operate on editorStore's
  * `tabs` via `useEditorStore.getState()` / `useEditorStore.setState()`.
- *
- * ponytail: dormant in PR1 — no callers. PR2 repoints editorStore consumers
- * (App init, keyboard shortcuts, fileWatcher) from `useEditorStore.getState().openFile`
- * etc. to these functions, and deletes the action impls from editorStore.
- * Bodies are verbatim from the old editorStore actions — zero behavior change.
+ * Consumers (App init, keyboard shortcuts, fileWatcher) call these functions
+ * directly.
  */
 
 function formatDailyDate(date: Date, format: string): string {
@@ -309,8 +306,8 @@ export async function restoreOpenTabs(): Promise<void> {
 export async function checkDiskChanges(): Promise<void> {
   const get = useEditorStore.getState;
   const set = useEditorStore.setState;
-  // ponytail: diffReviewMode/externalContentVersion/enterDiffReview moved to
-  // diffReviewStore (PR2). Read diff state from there, not editorStore.
+  // ponytail: diffReviewMode/externalContentVersion/enterDiffReview live on
+  // diffReviewStore. Read diff state from there, not editorStore.
   const { tabs, activeTabId } = get();
   if (useDiffReviewStore.getState().diffReviewMode) return;
 

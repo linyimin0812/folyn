@@ -6,6 +6,17 @@ import { useEditorStore } from './editorStore';
 import { useDiffReviewStore } from './diffReviewStore';
 import { resolveBasePath } from '@/utils/pathResolver';
 
+// ponytail: these accept/reject paths still construct the `${vaultId}:${path}`
+// tabId inline (lines below). The apply-path tabId already lives in
+// EditorFileChangeApplier (the audit-named reverse dependency); accept/reject
+// are forward user actions, not a reverse dependency, so centralizing their
+// tabId is lower value. Extending FileChangeApplier with accept/reject was
+// considered and deferred: the reject path interleaves disk IO (writeTextFile)
+// + session-status mutation + editor mutation, and moving only the editor
+// slice would split one logical operation across two modules. Revisit if
+// accept/reject grow a useCodeMirror branch (then the applier is the right
+// home for the routing).
+
 export function applyAcceptChange(
   session: AiSession,
   path: string,
@@ -21,7 +32,7 @@ export function applyAcceptChange(
   const tabId = `${vaultId}:${path}`;
   const tab = useEditorStore.getState().tabs.find((t) => t.id === tabId);
   if (tab) {
-    // ponytail: setContentExternal moved to diffReviewStore (PR2) — bumps
+    // setContentExternal lives on diffReviewStore — bumps
     // externalContentVersion so EditorPane resyncs the CodeMirror doc.
     useDiffReviewStore.getState().setContentExternal(tabId, change.newContent);
   }

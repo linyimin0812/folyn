@@ -139,6 +139,58 @@ For full host↔iframe RPC (plugins), see the `plugin-host` sandbox loader + `rp
 
 ---
 
+## Cross-store dependency inversion
+
+When store A needs to trigger an action whose **policy belongs to store B's layer**
+(e.g. the AI store applying a file change, where "diff-review vs direct write" is an
+editor-mounting decision), store A MUST NOT import store B and branch on B's internals
+(`handler.useCodeMirror`, tab-id format, etc.). That couples A to B's implementation
+and centralizes B's policy inside A — a reverse dependency that rots both stores. The
+legacy `aiStore.addFileChange` had this: it imported `editorStore`, built
+`` `${vaultId}:${path}` ``, and picked `enterDiffReview` vs `updateTabContent` itself.
+
+Invert it: the layer that owns the policy defines an **interface**, store A depends on
+the interface (type-only), and a concrete implementation is **injected into A at init**
+via a module-level setter. A calls `applier.apply(change)`; the branching lives in the
+implementer, owned by B's layer.
+
+```ts
+// editor-owned interface (fileChangeApplier.ts)
+export interface FileChangeApplier { apply(change: FileChange): void; }
+
+export class EditorFileChangeApplier implements FileChangeApplier {
+  apply(change: FileChange) { /* tabId, useCodeMirror branching, enterDiffReview/updateTabContent */ }
+}
+
+// aiStore.ts — depends on the abstraction, not editorStore
+import type { FileChangeApplier } from '@/services/fileChangeApplier';
+let fileChangeApplier: FileChangeApplier | null = null;
+export const setFileChangeApplier = (a: FileChangeApplier) => { fileChangeApplier = a; };
+// addFileChange: fileChangeApplier?.apply(change)  — no-op if unregistered (init-order safe)
+
+// App init (before any AI flow): registerEditorFileChangeApplier();
+```
+
+**Rules**:
+- The interface lives in B's layer; A imports it **type-only** (erased at runtime → no
+  cycle). A holds a module-level slot + setter; callers register the concrete impl at init.
+- A's call site must tolerate the slot being null (no-op, don't throw) so init order can't crash.
+- The branching/policy logic moves into the implementer — never stays in A.
+- Type-only import is the cycle-breaker: `import type { FileChangeApplier }`.
+
+> **ESM cycle gotcha**: a service that operates on a store may also be called BY that
+> store (e.g. `editorStore.updateTabContent` → `editorIoService.saveFile`, while
+> `editorIoService` reads/writes `editorStore`). This is safe ONLY if both sides reference
+> each other **inside function bodies**, never at module-evaluation time — ESM live
+> bindings are resolved at call time, so no TDZ. A module-top-level call across the cycle
+> WOULD hit a partial init. Verify with `tsc` + a smoke test that both modules load.
+
+Reference: `apps/desktop/src/services/fileChangeApplier.ts` (interface + impl +
+`registerEditorFileChangeApplier`), `apps/desktop/src/store/aiStore.ts` (slot + setter +
+`addFileChange` delegation).
+
+---
+
 ## Forbidden Patterns
 
 | Pattern | Why | Alternative |
@@ -151,6 +203,7 @@ For full host↔iframe RPC (plugins), see the `plugin-host` sandbox loader + `rp
 | Side effects in selectors | Unpredictable behavior | Compute in actions |
 | Raw `fetch` for Tauri ops | Bypasses Tauri IPC | `invoke()` |
 | `sandbox="allow-scripts allow-same-origin"` on untrusted-content iframe | Privilege escalation — iframe script reaches `parent.__TAURI__` | `sandbox="allow-scripts"` only; inject into `srcDoc` |
+| Store A imports store B to drive B's policy (branching on B's internals) | Reverse dependency — A centralizes B's policy, both rot | Invert: B-layer interface + module-level injection into A (type-only import) |
 
 ---
 

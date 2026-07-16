@@ -3,7 +3,7 @@ import { useEditorStore } from './editorStore';
 
 /**
  * Inline diff-review + external-content-version state split out of the legacy
- * editorStore god-store (PR1).
+ * editorStore god-store.
  *
  * `diffReviewMode`/`diffFilePath`/`diffOldContent`/`diffNewContent` are the
  * inline diff-review banner state; `externalContentVersion` is the remount
@@ -12,10 +12,8 @@ import { useEditorStore } from './editorStore';
  * and bumps the version on non-active-tab disk changes), so they move
  * together.
  *
- * Runtime-only — NOT persisted.
- *
- * ponytail: dormant in PR1. PR2 redirects editorStore + fileWatcher + EditorPane
- * consumers to this store and deletes the duplicate fields from editorStore.
+ * Runtime-only — NOT persisted. Consumers (fileWatcher, EditorPane,
+ * aiFileChangeActions) read diff state directly from here.
  */
 
 interface DiffReviewState {
@@ -62,13 +60,11 @@ export const useDiffReviewStore = create<DiffReviewState>((set) => ({
   // bump now lives here; the tab mutation delegates to editorStore.updateTabContent
   // (which does the same tabs-map + isDirty + scheduleAutoSave the old
   // setContentExternal did). Two sets instead of one — a brief intermediate
-  // state, but PR1 has no observers (dormant). Equivalent end state.
+  // state, but no observer reads both atomically. Equivalent end state.
   setContentExternal: (tabId, content) => {
     set((state) => ({ externalContentVersion: state.externalContentVersion + 1 }));
-    // ponytail: delegate tab mutation to editorStore.updateTabContent — it does
-    // the same tabs-map + isDirty + scheduleAutoSave the old setContentExternal
-    // did. Two sets vs one atomic set; brief intermediate state but PR1 is
-    // dormant (no observers). Equivalent end state.
+    // Delegate tab mutation to editorStore.updateTabContent — it does the same
+    // tabs-map + isDirty + scheduleAutoSave the old setContentExternal did.
     useEditorStore.getState().updateTabContent(tabId, content);
   },
 }));

@@ -49,8 +49,15 @@ vi.mock('@/store/aiFileChangeActions', () => ({
   applyRejectChange: vi.fn(),
 }));
 
-import { EditorFileChangeApplier, registerEditorFileChangeApplier } from './fileChangeApplier';
-import { getFileChangeApplier, setFileChangeApplier } from '@/store/aiStore';
+import {
+  EditorFileChangeApplier,
+  registerEditorFileChangeApplier,
+} from './fileChangeApplier';
+import {
+  getFileChangeApplier,
+  setFileChangeApplier,
+  useAiStore,
+} from '@/store/aiStore';
 
 function change(overrides: Partial<FileChange> = {}): FileChange {
   return {
@@ -137,5 +144,64 @@ describe('registerEditorFileChangeApplier', () => {
     registerEditorFileChangeApplier();
     const registered = getFileChangeApplier();
     expect(registered).toBeInstanceOf(EditorFileChangeApplier);
+  });
+});
+
+// ── End-to-end: aiStore.addFileChange → injected applier → editor/diff store ─
+// Upgrades the routing tests above from calling applier.apply() directly to
+// driving the full aiStore.addFileChange path. Asserts the same routing
+// contract plus the no-op-when-unregistered guard, and that the change is
+// still recorded on the session either way.
+describe('aiStore.addFileChange end-to-end (via registered applier)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    editorState.tabs = [];
+    getHandlerByIdMock.mockReset();
+    // Seed an active session through the real store; addFileChange targets it.
+    useAiStore.setState({ sessions: [], activeSessionId: null });
+    useAiStore.getState().createSession();
+    registerEditorFileChangeApplier();
+  });
+
+  it('routes a useCodeMirror file change to diffReviewStore.enterDiffReview (NOT updateTabContent)', () => {
+    editorState.tabs = [{ id: 'vault-1:notes/a.md', fileType: 'markdown' }];
+    getHandlerByIdMock.mockReturnValue({ id: 'markdown', useCodeMirror: true });
+
+    useAiStore.getState().addFileChange(change());
+
+    expect(diffReviewState.enterDiffReview).toHaveBeenCalledWith('notes/a.md', 'old', 'new');
+    expect(editorState.updateTabContent).not.toHaveBeenCalled();
+    expect(diffReviewState.setContentExternal).not.toHaveBeenCalled();
+    // Change is still recorded on the session.
+    const session = useAiStore.getState().getActiveSession();
+    expect(session?.fileChanges).toHaveLength(1);
+    expect(session?.fileChanges[0].path).toBe('notes/a.md');
+  });
+
+  it('routes a non-useCodeMirror file change to editorStore.updateTabContent only', () => {
+    editorState.tabs = [{ id: 'vault-1:diagrams/x.drawio', fileType: 'drawio' }];
+    getHandlerByIdMock.mockReturnValue({ id: 'drawio', useCodeMirror: false });
+
+    useAiStore.getState().addFileChange(change({ path: 'diagrams/x.drawio' }));
+
+    expect(editorState.updateTabContent).toHaveBeenCalledWith('vault-1:diagrams/x.drawio', 'new');
+    // Matches the old aiStore.ts:282 branch — no setContentExternal (iframe
+    // remount), no enterDiffReview.
+    expect(diffReviewState.setContentExternal).not.toHaveBeenCalled();
+    expect(diffReviewState.enterDiffReview).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op on the editor/diff side when no applier is registered (change still recorded)', () => {
+    setFileChangeApplier(null);
+    editorState.tabs = [{ id: 'vault-1:notes/a.md', fileType: 'markdown' }];
+    getHandlerByIdMock.mockReturnValue({ id: 'markdown', useCodeMirror: true });
+
+    useAiStore.getState().addFileChange(change());
+
+    expect(diffReviewState.enterDiffReview).not.toHaveBeenCalled();
+    expect(editorState.updateTabContent).not.toHaveBeenCalled();
+    // Defensive against init ordering — the change is recorded, nothing throws.
+    const session = useAiStore.getState().getActiveSession();
+    expect(session?.fileChanges).toHaveLength(1);
   });
 });
