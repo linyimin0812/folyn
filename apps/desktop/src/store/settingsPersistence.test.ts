@@ -1,0 +1,244 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { storageClient } from '@/utils/storageClient';
+import { useAppearanceStore } from './appearanceStore';
+import { useEditorPrefsStore } from './editorPrefsStore';
+import { useVaultConfigStore } from './vaultConfigStore';
+import { useSyncStore } from './syncStore';
+import { useAiConfigStore } from './aiConfigStore';
+import { usePrefsStore, DEFAULT_SHORTCUTS } from './prefsStore';
+import { usePetStore } from './petStore';
+import { useScheduleStore } from './scheduleStore';
+import { loadSettings, hydrateAllStores } from './settingsPersistence';
+
+beforeEach(() => {
+  storageClient.__resetForTesting();
+  vi.useFakeTimers();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+/** Reset every new store to its module defaults so a test starts clean. */
+function resetAllDefaults() {
+  useAppearanceStore.setState({
+    theme: 'light', fontSize: 14, lineHeight: 1.7, showAiPanel: true,
+    showStatusBar: true, showHiddenFiles: true, enableWikiPanel: true,
+    enableClipsPanel: true, enableAnalyzePanel: true, enableDailyPanel: true,
+    excludePatterns:
+      'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__study__\n__schedule__\n__analyze__',
+    linkOpenMode: 'external', vaultName: 'my-vault',
+  }, false);
+  useEditorPrefsStore.setState({
+    editorFont: 'DM Mono', editorFontSize: 13, tabSize: 4, wrapColumn: 80,
+    showLineNumbers: true, syntaxHighlight: true, autoSave: true, spellCheck: false,
+  }, false);
+  useVaultConfigStore.setState({
+    vaultPath: '~/Documents/quill/my-notes', imagePath: 'assets/images/',
+    docExtension: '.md', watchFileChanges: true, trashOnDelete: true,
+  }, false);
+  useSyncStore.setState({
+    syncMethod: 'S3 兼容（R2 / MinIO）', syncEndpoint: '', syncAccessKey: '',
+    syncSecretKey: '', syncBucket: '', autoSync: true, e2eEncrypt: false,
+  }, false);
+  useAiConfigStore.setState({
+    cliAdapter: 'claude', cliPath: 'claude', chatProvider: 'anthropic',
+    chatModel: 'claude-sonnet-4-6', chatApiKey: '', chatBaseUrl: '',
+  }, false);
+  usePrefsStore.setState({
+    dailyNotesDir: '__daily__', dailyNoteDateFormat: 'YYYY-MM-DD',
+    fileTemplates: { md: '# {{title}}\n\n' }, shortcuts: [...DEFAULT_SHORTCUTS],
+  }, false);
+  usePetStore.setState({
+    petModeEnabled: false, petPositionX: -1, petPositionY: -1,
+    petPanelX: -1, petPanelY: -1, petPanelWidth: -1, petPanelHeight: -1,
+    petPanelSizeVersion: 0, petPosVersion: 1, petIconSource: 'builtin',
+    petIconPath: '', petSizeVersion: 0, petSize: 'medium', notificationForm: 'bubble',
+  }, false);
+}
+
+describe('settingsPersistence round-trip', () => {
+  beforeEach(resetAllDefaults);
+
+  it('mutate → persist → reload restores every store', async () => {
+    // Mutate a field in each store via the dedicated setter.
+    useAppearanceStore.getState().setVaultName('rt-vault');
+    useEditorPrefsStore.getState().setTabSize(2);
+    useVaultConfigStore.getState().setDocExtension('.org');
+    useSyncStore.getState().setSyncBucket('rt-bucket');
+    useAiConfigStore.getState().setChatModel('rt-model');
+    usePrefsStore.getState().setDailyNoteDateFormat('DD/MM');
+    usePetStore.getState().setPetSize('large');
+
+    // Flush the debounced persist.
+    vi.advanceTimersByTime(400);
+
+    // Reload from storageClient into a fresh (reset) set of stores.
+    resetAllDefaults();
+    await loadSettings();
+
+    expect(useAppearanceStore.getState().vaultName).toBe('rt-vault');
+    expect(useEditorPrefsStore.getState().tabSize).toBe(2);
+    expect(useVaultConfigStore.getState().docExtension).toBe('.org');
+    expect(useSyncStore.getState().syncBucket).toBe('rt-bucket');
+    expect(useAiConfigStore.getState().chatModel).toBe('rt-model');
+    expect(usePrefsStore.getState().dailyNoteDateFormat).toBe('DD/MM');
+    expect(usePetStore.getState().petSize).toBe('large');
+  });
+
+  it('missing fields keep defaults on load', async () => {
+    // Persist only one field.
+    useEditorPrefsStore.getState().setTabSize(8);
+    vi.advanceTimersByTime(400);
+
+    resetAllDefaults();
+    await loadSettings();
+
+    // The one mutated field round-trips.
+    expect(useEditorPrefsStore.getState().tabSize).toBe(8);
+    // Everything else stays at defaults.
+    expect(useAppearanceStore.getState().vaultName).toBe('my-vault');
+    expect(useSyncStore.getState().syncMethod).toBe('S3 兼容（R2 / MinIO）');
+  });
+
+  it('null blob (first launch) loads nothing without throwing', async () => {
+    const blob = await loadSettings();
+    expect(blob).toBeNull();
+    // Stores stay at defaults.
+    expect(useAppearanceStore.getState().theme).toBe('light');
+  });
+});
+
+describe('settingsPersistence fan-out from legacy settings:all blob', () => {
+  beforeEach(resetAllDefaults);
+
+  it('dispatches a full legacy blob to the right stores', () => {
+    // A blob shaped exactly like the legacy settingsStore would persist.
+    const legacyBlob: Record<string, unknown> = {
+      theme: 'dark',
+      fontSize: 18,
+      lineHeight: 2,
+      showAiPanel: false,
+      showStatusBar: false,
+      showHiddenFiles: false,
+      enableWikiPanel: false,
+      enableClipsPanel: false,
+      enableAnalyzePanel: false,
+      enableDailyPanel: false,
+      excludePatterns: 'node_modules\n__wiki__',
+      linkOpenMode: 'internal',
+      vaultName: 'legacy-vault',
+      editorFont: 'JetBrains Mono',
+      editorFontSize: 16,
+      tabSize: 2,
+      wrapColumn: 100,
+      showLineNumbers: false,
+      syntaxHighlight: false,
+      autoSave: false,
+      spellCheck: true,
+      vaultPath: '/legacy/vault',
+      imagePath: '/legacy/img',
+      docExtension: '.txt',
+      watchFileChanges: false,
+      trashOnDelete: false,
+      syncMethod: 'WebDAV',
+      syncEndpoint: 'https://dav.legacy',
+      syncAccessKey: 'ak',
+      syncSecretKey: 'sk',
+      syncBucket: 'legacy-bucket',
+      autoSync: false,
+      e2eEncrypt: true,
+      cliAdapter: 'gemini',
+      cliPath: '/bin/gemini',
+      chatProvider: 'openai',
+      chatModel: 'gpt-4o',
+      chatApiKey: 'sk-legacy',
+      chatBaseUrl: 'https://api.legacy',
+      dailyNotesDir: '__daily__',
+      dailyNoteDateFormat: 'MM-DD',
+      fileTemplates: { md: '# {{title}}\n' },
+      shortcuts: DEFAULT_SHORTCUTS.map((s) => ({ ...s })),
+      boardColumns: [
+        { id: 'todo', name: '待办', color: 'var(--t3)' },
+        { id: 'done', name: '已完成', color: 'var(--green)', isDone: true },
+      ],
+      petModeEnabled: true,
+      petPositionX: 250,
+      petPositionY: 350,
+      petPanelX: 10,
+      petPanelY: 20,
+      petPanelWidth: 440,
+      petPanelHeight: 620,
+      petPanelSizeVersion: 1,
+      petPosVersion: 1,
+      petIconSource: 'custom',
+      petIconPath: '/abs/pet.png',
+      petSizeVersion: 2, // matches PET_SIZE_VERSION
+      petSize: 'large',
+      notificationForm: 'both',
+    };
+
+    hydrateAllStores(legacyBlob);
+
+    // Appearance
+    expect(useAppearanceStore.getState().theme).toBe('dark');
+    expect(useAppearanceStore.getState().fontSize).toBe(18);
+    expect(useAppearanceStore.getState().showAiPanel).toBe(false);
+    expect(useAppearanceStore.getState().linkOpenMode).toBe('internal');
+    expect(useAppearanceStore.getState().vaultName).toBe('legacy-vault');
+    // backfill applied
+    expect(useAppearanceStore.getState().excludePatterns.split('\n')).toContain('__analyze__');
+
+    // Editor prefs
+    expect(useEditorPrefsStore.getState().editorFont).toBe('JetBrains Mono');
+    expect(useEditorPrefsStore.getState().tabSize).toBe(2);
+    expect(useEditorPrefsStore.getState().spellCheck).toBe(true);
+
+    // Vault config
+    expect(useVaultConfigStore.getState().vaultPath).toBe('/legacy/vault');
+    expect(useVaultConfigStore.getState().docExtension).toBe('.txt');
+
+    // Sync
+    expect(useSyncStore.getState().syncMethod).toBe('WebDAV');
+    expect(useSyncStore.getState().syncBucket).toBe('legacy-bucket');
+    expect(useSyncStore.getState().e2eEncrypt).toBe(true);
+
+    // AI config
+    expect(useAiConfigStore.getState().cliAdapter).toBe('gemini');
+    expect(useAiConfigStore.getState().chatProvider).toBe('openai');
+    expect(useAiConfigStore.getState().chatApiKey).toBe('sk-legacy');
+
+    // Prefs
+    expect(usePrefsStore.getState().dailyNoteDateFormat).toBe('MM-DD');
+
+    // Pet
+    expect(usePetStore.getState().petModeEnabled).toBe(true);
+    expect(usePetStore.getState().petPositionX).toBe(250);
+    expect(usePetStore.getState().petIconSource).toBe('custom');
+    expect(usePetStore.getState().petSize).toBe('large');
+    expect(usePetStore.getState().notificationForm).toBe('both');
+
+    // scheduleStore boardColumns
+    expect(useScheduleStore.getState().boardColumns.length).toBe(2);
+    expect(useScheduleStore.getState().boardColumns[1].isDone).toBe(true);
+  });
+});
+
+describe('settingsPersistence single writer', () => {
+  beforeEach(resetAllDefaults);
+
+  it('persists a single merged blob containing every slice', () => {
+    const setSpy = vi.spyOn(storageClient, 'set');
+    useAppearanceStore.getState().setVaultName('a');
+    useSyncStore.getState().setSyncBucket('b');
+    usePetStore.getState().setPetSize('large');
+    vi.advanceTimersByTime(400);
+    // One debounced flush → one storageClient.set call for the whole blob.
+    expect(setSpy).toHaveBeenCalledTimes(1);
+    const payload = setSpy.mock.calls[0][1] as Record<string, unknown>;
+    expect(payload.vaultName).toBe('a');
+    expect(payload.syncBucket).toBe('b');
+    expect(payload.petSize).toBe('large');
+    setSpy.mockRestore();
+  });
+});

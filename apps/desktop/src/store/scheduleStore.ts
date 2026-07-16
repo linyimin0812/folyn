@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { useVaultStore } from './vaultStore';
 import { useSettingsStore } from './settingsStore';
+import { registerPersistSlice, schedulePersist } from './settingsPersistence';
 import {
   parseDaily,
   serializeDaily,
@@ -8,14 +9,28 @@ import {
 } from '@/features/schedule/markdown';
 import { dateToString } from '@/features/schedule/dailyScan';
 import { getDoneColumnId, getBoardColumns } from '@/features/schedule/columns';
-import type {
-  EventCategory,
-  ParsedDaily,
-  ScheduleEvent,
-  ScheduleTask,
-  TaskColumn,
+import {
+  DEFAULT_BOARD_COLUMNS,
+  COLUMN_COLOR_PALETTE,
+  type BoardColumnDef,
+  type EventCategory,
+  type ParsedDaily,
+  type ScheduleEvent,
+  type ScheduleTask,
+  type TaskColumn,
 } from '@/features/schedule/types';
 export type { EventCategory, TaskColumn };
+export type { BoardColumnDef };
+
+// ponytail: boardColumns + its 4 setters are duplicated here from the legacy
+// settingsStore in PR1 (construction PR). The legacy settingsStore copy stays
+// the live source for all existing consumers until PR2 flips the imports; the
+// scheduleStore copy here is dormant (no consumer reads/writes it yet). PR2
+// retargets columns.ts + SettingsPage + removeBoardColumn below onto this
+// store; PR3 deletes the legacy settingsStore. This is the only field the PRD
+// folds into an EXISTING store rather than a new dedicated one (schedule domain
+// owns boardColumns — it's a schedule-workbench concept, not a global pref).
+export const PERSIST_KEYS_BOARD_COLUMNS = ['boardColumns'] as const;
 
 interface PomoState {
   mode: 'work' | 'break';
@@ -31,6 +46,9 @@ interface ScheduleState {
   lastScan: number;
   calendarFilter: Record<EventCategory, boolean>;
   boardAnchorDate: string; // YYYY-MM-DD
+  /** 看板列定义（PR1: duplicated from legacy settingsStore; dormant until PR2
+   *  flips consumers onto this store). */
+  boardColumns: BoardColumnDef[];
 
   pomo: PomoState;
   toastMsg: string;
@@ -40,6 +58,12 @@ interface ScheduleState {
   refresh: () => Promise<void>;
   setCalendarFilter: (cat: EventCategory, on: boolean) => void;
   setBoardAnchorDate: (date: string) => void;
+
+  // ── 看板列自定义 (PR1: dormant copy of legacy settingsStore setters) ──
+  addBoardColumn: (name: string) => string;
+  renameBoardColumn: (id: string, name: string) => void;
+  reorderBoardColumns: (fromId: string, toId: string) => void;
+  setBoardColumns: (columns: BoardColumnDef[]) => void;
 
   addEvent: (noteDate: string, e: Omit<ScheduleEvent, 'id' | 'noteDate' | 'lineIndex'>) => Promise<void>;
   moveEvent: (eventId: string, newNoteDate: string, newStart: number, newEnd: number) => Promise<void>;
@@ -122,6 +146,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   lastScan: 0,
   calendarFilter: { work: true, personal: true, family: true, health: true, task: true },
   boardAnchorDate: dateToString(new Date()),
+  boardColumns: DEFAULT_BOARD_COLUMNS.map((c) => ({ ...c })),
   pomo: defaultPomo(),
   toastMsg: '',
   toastAction: null,
@@ -161,6 +186,41 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set((s) => ({ calendarFilter: { ...s.calendarFilter, [cat]: on } })),
 
   setBoardAnchorDate: (date) => set({ boardAnchorDate: date }),
+
+  // ── 看板列自定义 (PR1: dormant copy; PR2 retargets consumers here) ──
+  addBoardColumn: (name: string) => {
+    const id = `col-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    set((state) => {
+      const palette = COLUMN_COLOR_PALETTE;
+      const color = palette[state.boardColumns.length % palette.length];
+      return { boardColumns: [...state.boardColumns, { id, name: name || '新列', color }] };
+    });
+    schedulePersist();
+    return id;
+  },
+  renameBoardColumn: (id: string, name: string) => {
+    set((state) => ({
+      boardColumns: state.boardColumns.map((c) => (c.id === id ? { ...c, name } : c)),
+    }));
+    schedulePersist();
+  },
+  reorderBoardColumns: (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    set((state) => {
+      const cols = [...state.boardColumns];
+      const fromIdx = cols.findIndex((c) => c.id === fromId);
+      const toIdx = cols.findIndex((c) => c.id === toId);
+      if (fromIdx < 0 || toIdx < 0) return state;
+      const [moved] = cols.splice(fromIdx, 1);
+      cols.splice(toIdx, 0, moved);
+      return { boardColumns: cols };
+    });
+    schedulePersist();
+  },
+  setBoardColumns: (columns: BoardColumnDef[]) => {
+    set({ boardColumns: columns });
+    schedulePersist();
+  },
 
   addEvent: async (noteDate, e) => {
     const next = await mutateNote(noteDate, (parsed) => {
@@ -534,3 +594,20 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
 
 // subscribeToFileTree lives in vaultStore now (shared with studyStore).
 export { subscribeToFileTree } from './vaultStore';
+
+// ponytail: boardColumns persistence slice (PR1 dormant). The hydrate mirrors
+// the legacy settingsStore path: non-empty array with at least one isDone
+// column, else DEFAULT_BOARD_COLUMNS. PR2 flips columns.ts / SettingsPage /
+// removeBoardColumn onto this store so the slice becomes the live source.
+registerPersistSlice({
+  keys: PERSIST_KEYS_BOARD_COLUMNS,
+  getState: () => useScheduleStore.getState() as unknown as Record<string, unknown>,
+  hydrate: (blob) => {
+    const raw = blob.boardColumns;
+    if (!Array.isArray(raw) || raw.length === 0 || !raw.some((c) => (c as BoardColumnDef).isDone)) {
+      useScheduleStore.setState({ boardColumns: DEFAULT_BOARD_COLUMNS.map((c) => ({ ...c })) });
+    } else {
+      useScheduleStore.setState({ boardColumns: raw as BoardColumnDef[] });
+    }
+  },
+});

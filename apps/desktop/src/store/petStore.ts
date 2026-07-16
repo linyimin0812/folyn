@@ -1,0 +1,200 @@
+import { create } from 'zustand';
+import { registerPersistSlice, schedulePersist } from './settingsPersistence';
+import {
+  PET_SIZE_VERSION,
+  PET_SIZE_DEFAULT,
+  PET_SIZE_TO_PX,
+  type PetSize,
+} from '@/components/pet/petPosition';
+
+// ponytail: PET_SIZE_VERSION / PET_SIZE_DEFAULT / PET_SIZE_TO_PX / PetSize are
+// owned by petPosition.ts (the pure-math module). petStore imports them — this
+// matches the legacy settingsStore which also imported them from petPosition.
+
+export type PetIconSource = 'builtin' | 'custom';
+/** Global notification form (PRD pet-popup-bubble-notification). `'bubble'`
+ *  is the default so existing users keep the in-app bubble behavior;
+ *  `'system'` routes through `tauri-plugin-notification`, `'both'` shows both,
+ *  `'off'` drops the notification entirely. */
+export type NotificationForm = 'bubble' | 'system' | 'both' | 'off';
+
+// Re-export so consumers can import pet-size constants from the store if they
+// already hold a store import — but the canonical site remains petPosition.ts.
+export { PET_SIZE_VERSION, PET_SIZE_DEFAULT, PET_SIZE_TO_PX, type PetSize };
+
+export const PERSIST_KEYS_PET = [
+  'petModeEnabled',
+  'petPositionX',
+  'petPositionY',
+  'petPanelX',
+  'petPanelY',
+  'petPanelWidth',
+  'petPanelHeight',
+  'petPanelSizeVersion',
+  'petPosVersion',
+  'petIconSource',
+  'petIconPath',
+  'petSizeVersion',
+  'petSize',
+  'notificationForm',
+] as const;
+
+export interface PetState {
+  petModeEnabled: boolean;
+  petPositionX: number;
+  petPositionY: number;
+  petPanelX: number;
+  petPanelY: number;
+  petPanelWidth: number;
+  petPanelHeight: number;
+  petPanelSizeVersion: number;
+  petPosVersion: number;
+  petIconSource: PetIconSource;
+  petIconPath: string;
+  petSizeVersion: number;
+  petSize: PetSize;
+  notificationForm: NotificationForm;
+
+  setPetModeEnabled: (enabled: boolean) => void;
+  setPetPosition: (x: number, y: number) => void;
+  setPetPanelPosition: (x: number, y: number) => void;
+  setPetPanelSize: (width: number, height: number) => void;
+  setPetPanelSizeVersion: (version: number) => void;
+  setPetIcon: (source: PetIconSource, path?: string) => void;
+  setPetSize: (size: PetSize) => void;
+  setNotificationForm: (form: NotificationForm) => void;
+
+  /** Load this store's slice from the persisted `settings:all` blob. */
+  hydrate: (blob: Record<string, unknown>) => void;
+}
+
+function isPetIconSource(v: unknown): v is PetIconSource {
+  return v === 'builtin' || v === 'custom';
+}
+
+function isPetSize(v: unknown): v is PetSize {
+  return v === 'small' || v === 'medium' || v === 'large';
+}
+
+function isNotificationForm(v: unknown): v is NotificationForm {
+  return v === 'bubble' || v === 'system' || v === 'both' || v === 'off';
+}
+
+export const usePetStore = create<PetState>((set, get) => ({
+  petModeEnabled: false,
+  petPositionX: -1,
+  petPositionY: -1,
+  petPanelX: -1,
+  petPanelY: -1,
+  petPanelWidth: -1,
+  petPanelHeight: -1,
+  petPanelSizeVersion: 0,
+  petPosVersion: 1,
+  petIconSource: 'builtin',
+  petIconPath: '',
+  petSizeVersion: 0,
+  petSize: PET_SIZE_DEFAULT,
+  notificationForm: 'bubble',
+
+  setPetModeEnabled: (enabled) => { set({ petModeEnabled: enabled }); schedulePersist(); },
+
+  setPetPosition: (x, y) => { set({ petPositionX: x, petPositionY: y }); schedulePersist(); },
+
+  setPetPanelPosition: (x, y) => { set({ petPanelX: x, petPanelY: y }); schedulePersist(); },
+
+  setPetPanelSize: (width, height) => { set({ petPanelWidth: width, petPanelHeight: height }); schedulePersist(); },
+
+  setPetPanelSizeVersion: (version) => { set({ petPanelSizeVersion: version }); schedulePersist(); },
+
+  setPetIcon: (source, path) => {
+    // When switching to `'builtin'`, clear the path (no file to track). When
+    // switching to `'custom'`, the caller must pass the absolute path; if
+    // omitted, keep the existing path (defensive — the upload flow always
+    // passes the new path, but a stale `'custom'` flag without a path would
+    // render nothing, so the PetMascot `<img>` onError falls back to builtin
+    // at render time).
+    if (source === 'builtin') {
+      set({ petIconSource: 'builtin', petIconPath: '' });
+    } else {
+      set({
+        petIconSource: 'custom',
+        petIconPath: path !== undefined ? path : get().petIconPath,
+      });
+    }
+    schedulePersist();
+  },
+
+  setPetSize: (size) => { set({ petSize: size }); schedulePersist(); },
+
+  setNotificationForm: (form) => { set({ notificationForm: form }); schedulePersist(); },
+
+  hydrate: (blob) => {
+    // Mirror the legacy settingsStore hydrate: build a working copy of the
+    // persisted fields, run the migrations in-place (so a later migration
+    // sees an earlier one's override), then apply the result as a patch.
+    // Only the PERSIST_KEYS_PET fields participate.
+    const saved: Record<string, unknown> = {};
+    for (const k of PERSIST_KEYS_PET) {
+      if (blob[k] !== undefined) saved[k] = blob[k];
+    }
+
+    // Position-unit migration: pre-fix `petPosVersion !== 1` saved the pet
+    // and panel positions in PHYSICAL pixels, which on Retina placed the pet
+    // at screen-center on launch (logical work-area math applied to physical
+    // values). Discard the stale physical-pixel positions so the default-
+    // position branch re-runs and the next save stores logical points.
+    if (saved.petPosVersion !== 1) {
+      saved.petPositionX = -1;
+      saved.petPositionY = -1;
+      saved.petPanelX = -1;
+      saved.petPanelY = -1;
+      saved.petPosVersion = 1;
+    }
+
+    // Pet window-size migration: pre-shrink saved positions assumed the
+    // 120×120 window. After shrinking to 96×96, a saved position computed
+    // against the old size may now leave the smaller window oddly placed.
+    // Discard the saved position when the persisted `petSizeVersion`
+    // mismatches the current `PET_SIZE_VERSION` so the default-position
+    // branch re-runs with the new size; persist the new version so subsequent
+    // launches are stable. 0 = pre-versioning / unset, so any existing user
+    // migrates on next launch.
+    if (saved.petSizeVersion !== PET_SIZE_VERSION) {
+      // Only discard pet window position (not panel — panel has its own
+      // petPanelSizeVersion gate). Mirrors the legacy path.
+      saved.petPositionX = -1;
+      saved.petPositionY = -1;
+      saved.petSizeVersion = PET_SIZE_VERSION;
+    }
+
+    // Coerce a missing/invalid `petIconSource` to `'builtin'` (defensive — a
+    // corrupt persisted state without the field would otherwise render
+    // `undefined` in the mascot switch).
+    if (isPetIconSource(saved.petIconSource)) {
+      // keep petIconPath as persisted (may be '' or a real path)
+    } else {
+      saved.petIconSource = 'builtin';
+      saved.petIconPath = '';
+    }
+
+    // Coerce a missing/invalid `petSize` to the default (defensive — a
+    // persisted state from before this feature would otherwise have
+    // `undefined`, crashing the `PET_SIZE_TO_PX` lookup).
+    if (!isPetSize(saved.petSize)) saved.petSize = PET_SIZE_DEFAULT;
+
+    // Coerce a missing/invalid `notificationForm` to the default `'bubble'`
+    // (defensive — a persisted state from before this feature would otherwise
+    // have `undefined`, which would break the dispatcher's switch).
+    if (!isNotificationForm(saved.notificationForm)) saved.notificationForm = 'bubble';
+
+    // Apply the migrated working copy as a patch. The cast is safe — every
+    // key in `saved` came from PERSIST_KEYS_PET (typed fields).
+    set(saved as Partial<PetState>);
+  },
+}));
+
+registerPersistSlice({
+  keys: PERSIST_KEYS_PET,
+  getState: () => usePetStore.getState() as unknown as Record<string, unknown>,
+  hydrate: (blob) => usePetStore.getState().hydrate(blob),
+});

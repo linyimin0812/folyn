@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store 结构约定（单文件 create<StateInterface>、selector 模式、持久化）——8 个新 store 的形状基准"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "store 文件归属目录约定，新 store 放哪、scheduleStore 扩展 boardColumns 的位置"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "删 updateSettings(Partial) 后专用 setter 的类型安全约定，避免再引入逃生舱"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "迁移 66 消费者时复用既有 selector 形状，不重写模式"}

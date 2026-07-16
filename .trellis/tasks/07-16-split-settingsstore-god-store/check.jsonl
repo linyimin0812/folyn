@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "校验 selector 粒度（禁止整 store 订阅）、getState 用法——正好覆盖 SettingsPage 2 处全量订阅是否需修"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "校验 8 个新 store 是否符合 Zustand 单文件/接口/setter 约定"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "校验 updateSettings 已删尽、无残留 Partial 逃生舱、专用 setter 类型完备"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "校验 vaultStore→vaultConfigStore 跨 store 写方向合理、未引入反向依赖"}
