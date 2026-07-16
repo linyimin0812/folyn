@@ -1953,3 +1953,40 @@ Added 100+ file preview extensions via preset-office + explicit renderer list (a
 ### Next Steps
 
 - None - task complete
+
+
+## Session 58: Architecture audit + apps/api cleanup + settingsStore god-store split
+
+**Date**: 2026-07-16
+**Task**: Architecture audit + apps/api cleanup + settingsStore god-store split
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Audited the whole quill architecture (frontend/packages/Rust) — rot is concentrated at the center (god-stores, App.tsx pet wiring, aiStore→editorStore reverse coupling), edges are healthy. Deleted the abandoned apps/api NestJS sidecar (untracked dist only) + cleaned stale quill-api gitignore lines. Then split the 618-line settingsStore god-store into 8 cohesive stores (nav/appearance/editorPrefs/vaultConfig/sync/aiConfig/prefs/pet) + boardColumns folded into scheduleStore, across 3 PRs: PR1 new stores + fan-out persistence loader, PR2 migrate 66 consumers + replace 41 updateSettings calls with dedicated setters, PR3 delete legacy store + old-blob compat verification. Zero data migration (single settings:all blob + fan-out loader), updateSettings escape hatch eliminated. Updated state-management spec with the fan-out persistence contract and the no-escape-hatch convention.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `877476e` | (see git log) |
+| `2f91a2f` | (see git log) |
+| `eb46b3d` | (see git log) |
+| `3bce097` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
