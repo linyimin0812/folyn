@@ -5,11 +5,6 @@ dist/
 
 # Tauri
 apps/desktop/src-tauri/target/
-apps/desktop/src-tauri/binaries/quill-api-*
-apps/desktop/src-tauri/binaries/quill-api-bundle/
-
-# NestJS
-apps/api/dist/
 
 # IDE
 .idea/
