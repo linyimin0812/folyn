@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:voice": "node scripts/dev-voice.mjs",
+    "build:mac": "bash scripts/build-mac.sh",
     "build": "tsc -b && NODE_OPTIONS=--max-old-space-size=8192 vite build",
     "preview": "vite preview",
     "tauri": "tauri",
