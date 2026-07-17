@@ -62,6 +62,38 @@ For each boundary:
 
 **Good**: Validate once at the entry point
 
+### Mistake 3: Raw `~/...` Paths Crossing the FFI Boundary
+
+**Symptom**: A file the user expects at `~/.voice_input/foo.wav` (or `~/quill/default_vault/.voice_input/foo.wav`) is silently written to `<process-CWD>/~/...` — a literal directory named `~` in whichever directory the app was launched from. The user can't find the file; `save_source_wav` returns Ok because the write succeeded.
+
+**Cause**: Frontend state often holds user-configured paths with a leading `~` (e.g. `useVaultStore.getState().currentVault?.basePath === '~/quill/default_vault'`). Rust's `Path::new("~/quill/default_vault").join(".voice_input")` does NOT expand `~` — it's a literal segment. Shell tilde expansion is a shell feature; neither `std::path::Path` nor `tauri::path` expand it automatically at the Rust call site.
+
+**Fix**: The canonical expansion helper is `apps/desktop/src/utils/pathResolver.ts::resolveBasePath()` — it awaits `homeDir()` from `@tauri-apps/api/path` and replaces a leading `~` with the real home directory. The `vaultStore` already uses it internally before `startVaultWatcher`; any NEW call site that passes `basePath` to a Rust command must use it too.
+
+**Prevention**: Before any `invoke('some_command', { vaultPath: ..., basePath: ... })`, grep the frontend for the path's source. If it comes from `useVaultStore.currentVault?.basePath` or any user-editable config field, wrap it in `await resolveBasePath(...)` first. This is a cross-layer contract: the frontend OWNS tilde expansion; Rust OWNS filesystem write — neither side can do the other's job.
+
+#### Wrong
+```ts
+const vaultPath = useVaultStore.getState().currentVault?.basePath ?? '';
+// vaultPath === '~/quill/default_vault'
+await invoke('voice_stop', { saveSource, sourceDir, vaultPath });
+// Rust: Path::new("~/quill/default_vault").join(".voice_input")
+// → file written to <CWD>/~/quill/default_vault/.voice_input/<ts>.wav
+```
+
+#### Correct
+```ts
+import { resolveBasePath } from '@/utils/pathResolver';
+const rawVaultPath = useVaultStore.getState().currentVault?.basePath ?? '';
+const vaultPath = await resolveBasePath(rawVaultPath);
+// vaultPath === '/Users/yiminlin/quill/default_vault'
+await invoke('voice_stop', { saveSource, sourceDir, vaultPath });
+// Rust: Path::new("/Users/yiminlin/quill/default_vault").join(".voice_input")
+// → file written to /Users/yiminlin/quill/default_vault/.voice_input/<ts>.wav
+```
+
+**Real-world example**: `apps/desktop/src/hooks/useVoiceInput.ts::stop()` originally passed `currentVault.basePath` straight to `voice_stop`. The source WAV silently landed in `<CWD>/~/quill/default_vault/.voice_input/`. Round-2 fix wrapped the path in `resolveBasePath`.
+
 ### Mistake 3: Leaky Abstractions
 
 **Bad**: Component knows about database schema

@@ -5,6 +5,7 @@ import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { runRigChat } from '@/services/rigChat';
 import { isTauri } from '@/utils/platform';
+import { resolveBasePath } from '@/utils/pathResolver';
 
 // ponytail: a zustand store IS a hook (`useVoiceInput((s) => s.phase)`), so
 // one file satisfies the project's "extract a reusable hook" requirement
@@ -93,7 +94,16 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
 
     set({ phase: 'transcribing', error: null });
     const { saveSource, sourceDir, autoPolish, polishPrompt } = useVoiceStore.getState();
-    const vaultPath = useVaultStore.getState().currentVault?.basePath ?? '';
+    const rawVaultPath = useVaultStore.getState().currentVault?.basePath ?? '';
+
+    // Bug #1 fix: `currentVault.basePath` 可能是 `~/quill/default_vault`（默认
+    // 创建路径就是这样，见 vaultStore.ts:155）。`~` 不展开会让 Rust 的
+    // `Path::new("~/quill/default_vault").join(".voice_input")` 把 `~` 当成
+    // CWD 下的字面目录，WAV 写到 `<process cwd>/~/quill/default_vault/...` 而
+    // 不是 `/Users/<user>/quill/default_vault/.voice_input/<ts>.wav`。复用
+    // `resolveBasePath`（vaultStore 已在打开 vault 前调用同一个 helper）保证
+    // 一致行为。
+    const vaultPath = isTauri() ? await resolveBasePath(rawVaultPath) : rawVaultPath;
 
     let transcript: string;
     let saveError: string | null = null;

@@ -523,6 +523,7 @@ pub fn run() {
             voice::voice_stop,
             voice::voice_cancel,
             voice::voice_insert_text,
+            voice::voice_request_accessibility,
             voice::voice_set_global_hotkey,
         ])
         .build(tauri::generate_context!())

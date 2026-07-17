@@ -42,6 +42,8 @@ mod apple_speech;
 #[cfg(target_os = "macos")]
 mod insertion;
 #[cfg(target_os = "macos")]
+mod permissions;
+#[cfg(target_os = "macos")]
 mod recorder;
 #[cfg(target_os = "macos")]
 mod wav;
@@ -180,6 +182,17 @@ pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result
     // through `Arc::clone`'s type parameter directly).
     let consumer_typed = Arc::clone(&asr);
     let consumer: Arc<dyn recorder::AudioConsumer> = consumer_typed;
+    // Bug #2 fix: 主动请求麦克风权限（AVAudioApplication / AVCaptureDevice），
+    // 而不是依赖 cpal 在 `default_input_config` 调用时的隐式首次提示。后者在
+    // `.app` stub 包装（pnpm dev:voice）或用户之前拒绝过 TCC 的场景下不可靠，
+    // 导致 cpal 返回 `BackendSpecific` → 被分类为 `PermissionDenied` → 静默
+    // 失败，用户看不到录音也无从重试。与 openless `coordinator/dictation.rs`
+    // 的 `ensure_microphone_permission` 同源：录音启动前同步请求。Speech
+    // recognition 权限由 `apple_speech::ensure_authorized` 在 `transcribe()` 内
+    // 请求，本处只管麦克风这条链路。
+    if let Err(err) = permissions::ensure_microphone() {
+        return Err(err);
+    }
     let (recorder, runtime_rx) = match Recorder::start(consumer) {
         Ok(pair) => pair,
         Err(RecorderError::PermissionDenied) => {
@@ -418,10 +431,39 @@ pub async fn voice_insert_text(app: tauri::AppHandle, text: String) -> Result<()
         .map_err(|e| format!("voice insert join failed: {e}"))?
 }
 
+/// Proactively request macOS Accessibility permission by popping the system
+/// prompt. The frontend calls this from VoiceSettings (or on first voice-enable)
+/// so the user gets a chance to grant BEFORE the first insert — otherwise
+/// `voice_insert_text` would surface the permission error only after a full
+/// record → transcribe → polish cycle, which feels broken. Uses
+/// `AXIsProcessTrustedWithOptions({prompt: true})` (the openless port in
+/// `voice::permissions`). Returns true if already granted OR granted after
+/// the prompt; false if still not trusted (user declined / closed the dialog
+/// without granting).
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub async fn voice_request_accessibility() -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        permissions::request_accessibility();
+        Ok::<bool, String>(permissions::check_accessibility())
+    })
+    .await
+    .map_err(|e| format!("voice_request_accessibility join failed: {e}"))?
+}
+
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
 pub async fn voice_insert_text(_app: tauri::AppHandle, _text: String) -> Result<(), String> {
     Err("voice input is macOS-only".into())
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+pub async fn voice_request_accessibility() -> Result<bool, String> {
+    // Non-macOS: no Accessibility concept; report "not applicable" as false so
+    // the frontend can short-circuit its permission UI the same way as a denied
+    // macOS user (the voice flow is gated to macOS-only anyway).
+    Ok(false)
 }
 
 // ── PR4: global push-to-talk hotkey ────────────────────────────────────────

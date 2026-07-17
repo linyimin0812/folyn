@@ -195,23 +195,23 @@ extern "C" {
     fn CFRelease(cf: *const c_void);
 }
 
-#[link(name = "ApplicationServices", kind = "framework")]
-extern "C" {
-    fn AXIsProcessTrusted() -> bool;
-}
-
 /// Accessibility gate + Cmd+V post. Returns a clear error if accessibility
 /// is not granted (CGEventPost would otherwise silently no-op).
+///
+/// Bug #3 fix: 主动请求辅助功能权限（弹系统授权框），而不是只检查后返回错误
+/// —— 用户此前必须在系统设置里手工开启才能继续。现改为先调
+/// `permissions::request_accessibility()` 弹框，用户授权后立刻重检继续；
+/// 仍未授权才返回错误。前端也可提前通过 `voice_request_accessibility` 命令
+/// 预热授权。Speech recognition 权限在 `apple_speech.rs` 内独立处理。
 fn post_cmd_v() -> Result<(), String> {
-    // SAFETY: `AXIsProcessTrusted` is a no-arg C function returning bool;
-    // calling it is always safe. It does NOT prompt — for a prompt, use
-    // `AXIsProcessTrustedWithOptions` (PR4 first-run flow).
-    let trusted = unsafe { AXIsProcessTrusted() };
-    if !trusted {
-        return Err(
-            "未授予辅助功能权限。请在 系统设置 → 隐私与安全性 → 辅助功能 中允许 Quill。"
-                .into(),
-        );
+    if !super::permissions::check_accessibility() {
+        super::permissions::request_accessibility();
+        if !super::permissions::check_accessibility() {
+            return Err(
+                "未授予辅助功能权限。请在 系统设置 → 隐私与安全性 → 辅助功能 中允许 Quill"
+                    .into(),
+            );
+        }
     }
 
     // SAFETY: all four CGEvent calls are standard C entrypoints into
