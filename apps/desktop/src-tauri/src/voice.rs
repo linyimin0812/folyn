@@ -217,10 +217,28 @@ pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result
     // 导致 cpal 返回 `BackendSpecific` → 被分类为 `PermissionDenied` → 静默
     // 失败，用户看不到录音也无从重试。与 openless `coordinator/dictation.rs`
     // 的 `ensure_microphone_permission` 同源：录音启动前同步请求。Speech
-    // recognition 权限由 `apple_speech::ensure_authorized` 在 `transcribe()` 内
-    // 请求，本处只管麦克风这条链路。
+    // recognition 权限原本由 `apple_speech::ensure_authorized` 在 `transcribe()`
+    // 内请求——时序太晚（录完才弹）。现前置到此处，与麦克风、辅助功能一起在
+    // 点击/快捷键时三框依次弹出，见下方两个检查。
     if let Err(err) = permissions::ensure_microphone() {
         return Err(err);
+    }
+    // Issue「权限在录完后才要」：语音识别 + 辅助功能也前置到 voice_start。
+    // - 语音识别：`SFSpeechRecognizer.requestAuthorization`（系统模态框，同步等
+    //   待用户应答）。原本只在 `voice_stop`→`apple_speech::transcribe()` 内调
+    //   `ensure_authorized`，时序太晚。
+    // - 辅助功能：最终 Cmd+V 粘贴需要 AX 信任。`request_accessibility` 弹系统
+    //   授权框（跳转系统设置），未授权时返回错误引导用户先授权再重试——否则
+    //   录完整段后粘贴会静默失败。`transcribe`/`post_cmd_v` 内仍各自保留一次
+    //   调用作为兜底（已授权时即时通过，无副作用）。
+    if let Err(err) = apple_speech::ensure_authorized() {
+        return Err(format!("{err:#}"));
+    }
+    if !permissions::check_accessibility() {
+        permissions::request_accessibility();
+        return Err(
+            "请先在 系统设置 → 隐私与安全性 → 辅助功能 中允许 Quill，然后重试语音输入".into(),
+        );
     }
     // Mic-level feed for the SiriGL waveform shader. The handler emits a
     // `voice://mic-level` event with `{ level: f32 }` (RMS, 0..1) on every

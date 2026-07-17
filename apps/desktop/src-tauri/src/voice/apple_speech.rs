@@ -238,7 +238,12 @@ fn transcribe_pcm_blocking(
 }
 
 /// 当前授权未确定时弹系统授权框并等待；最终非 authorized 一律返回清晰错误。
-fn ensure_authorized() -> Result<()> {
+///
+/// pub 以便 `voice_start` 在录音启动前前置请求语音识别权限（issue: 权限在
+/// 录完后才要），而不是等到 `voice_stop`→`transcribe()` 内才弹——后者让用户
+/// 录完一整段才看到系统授权框。`transcribe` 内仍保留一次调用作为兜底（已授权
+/// 时即时 Ok，无副作用）。
+pub fn ensure_authorized() -> Result<()> {
     let cls = speech_recognizer_class()?;
 
     // SFSpeechRecognizer.authorizationStatus（类方法）。

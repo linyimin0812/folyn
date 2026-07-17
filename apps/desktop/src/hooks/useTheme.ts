@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppearanceStore } from '@/store/appearanceStore';
+import type { Theme } from '@/store/appearanceStore';
 
 /**
  * Hook to initialize and manage the theme.
@@ -25,4 +26,35 @@ export function useTheme() {
   }, [theme]);
 
   return { theme, setTheme, toggleTheme };
+}
+
+/** Resolve the user's theme setting ('system' → OS preference) to a concrete
+ *  'light' | 'dark'. Used by viewers that need a concrete theme (FileViewer's
+ *  `theme: 'light' | 'dark'`) and must re-render on OS-prefers-color-scheme
+ *  change while in 'system' mode. Mirrors the DOM-sync logic in `useTheme`
+ *  / `appearanceStore.setTheme` so the viewer's theme tracks `data-theme`. */
+export function useResolvedTheme(): 'light' | 'dark' {
+  const theme = useAppearanceStore((state) => state.theme);
+  const [resolved, setResolved] = useState<'light' | 'dark'>(() => resolveTheme(theme));
+
+  useEffect(() => {
+    if (theme !== 'system') {
+      setResolved(theme);
+      return;
+    }
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => setResolved(mq.matches ? 'dark' : 'light');
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, [theme]);
+
+  return resolved;
+}
+
+function resolveTheme(theme: Theme): 'light' | 'dark' {
+  if (theme === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return theme;
 }

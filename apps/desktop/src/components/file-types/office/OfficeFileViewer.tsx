@@ -4,6 +4,7 @@ import { join } from '@tauri-apps/api/path';
 import FileViewer from '@file-viewer/react';
 import { isTauri } from '@/utils/platform';
 import { resolveBasePath } from '@/utils/pathResolver';
+import { useResolvedTheme } from '@/hooks/useTheme';
 import type { PreviewProps } from '../types';
 
 type PresetModule = typeof import('virtual:file-viewer-renderers');
@@ -51,10 +52,13 @@ export function OfficeFileViewer({ filePath, vaultRoot }: PreviewProps) {
   const [loading, setLoading] = useState(true);
   const [preset, setPreset] = useState<Preset | null>(null);
 
+  // ponytail: FileViewer defaults to light; pass the app's resolved theme so
+  // docx/ppt render follows light/dark (incl. 'system' → OS preference).
+  const theme = useResolvedTheme();
+
   const ext = getFileExtension(filePath);
   const needsCad = CAD_EXTENSIONS.has(ext);
   const needsMedia = MEDIA_EXTENSIONS.has(ext);
-
   useEffect(() => {
     let cancelled = false;
     const cadImport: Promise<Record<string, unknown> | null> = needsCad
@@ -148,6 +152,19 @@ export function OfficeFileViewer({ filePath, vaultRoot }: PreviewProps) {
     dwfWasmUrl: `${CAD_WASM_BASE}dwfv-render.wasm`,
   } : undefined, [needsCad]);
 
+  // ponytail: memoize so FileViewer's controller.update() (fired on options
+  // identity change) doesn't reload/re-parse the docx on every unrelated
+  // parent re-render — only when preset/cad/theme actually change.
+  const viewerOptions = useMemo(() => ({
+    preset: preset ?? undefined,
+    cad: cadOptions,
+    theme,
+    messages: {
+      'spreadsheet.state.rows': '共 {rows} 行',
+      'spreadsheet.state.rowsAndColumns': '共 {rows} 行，{cols} 列',
+    },
+  }), [preset, cadOptions, theme]);
+
   return (
     <div className="h-full w-full overflow-y-auto overflow-x-hidden bg-panel">
       {loading && <div className="flex h-full items-center justify-center text-t3 text-[13px]">加载中…</div>}
@@ -158,15 +175,20 @@ export function OfficeFileViewer({ filePath, vaultRoot }: PreviewProps) {
       )}
       {!loading && !error && file && preset && (
         <FileViewer
+          // ponytail: two theme mechanisms, both required —
+          // 1) options.theme drives docx dark: the word renderer reads
+          //    context.options.theme → sets data-docx-dark-mode on its target.
+          // 2) data-viewer-theme on THIS container drives pptx/image/ofd dark:
+          //    their CSS uses the [data-viewer-theme='dark'] ANCESTOR selector,
+          //    and the lib never sets that attribute itself (integrator's job)
+          //    — without it pptx stays light forever. key on theme forces a
+          //    remount so docx re-runs with the new data-docx-dark-mode (the
+          //    dataset is only written during render). Re-parse on theme toggle
+          //    is acceptable (low-frequency).
+          key={theme}
+          data-viewer-theme={theme}
           file={file}
-          options={{
-            preset,
-            cad: cadOptions,
-            messages: {
-              'spreadsheet.state.rows': '共 {rows} 行',
-              'spreadsheet.state.rowsAndColumns': '共 {rows} 行，{cols} 列',
-            },
-          }}
+          options={viewerOptions}
           style={{ height: '100%', width: '100%' }}
         />
       )}
