@@ -44,10 +44,12 @@ const EXT_TO_THEME_ICON: Record<string, string> = {
   bash: 'shell',
   zsh: 'shell',
   fish: 'shell',
+  txt: 'text',
+  text: 'text',
   java: 'java',
-  mmap: 'dataStructure',
-  drawio: 'dataStructure',
-  dio: 'dataStructure',
+  mmap: 'mindMap',
+  drawio: 'drawio',
+  dio: 'drawio',
 };
 
 const HANDLER_TO_THEME_ICON: Record<string, string> = {
@@ -58,8 +60,8 @@ const HANDLER_TO_THEME_ICON: Record<string, string> = {
   csv: 'csv',
   json: 'json',
   dbml: 'sql',
-  mmap: 'dataStructure',
-  drawio: 'dataStructure',
+  mmap: 'mindMap',
+  drawio: 'drawio',
   code: 'javaScript',
 };
 
@@ -92,15 +94,6 @@ function WebIcon() {
   );
 }
 
-function DefaultFileIcon() {
-  return (
-    <svg width={S} height={S} viewBox="0 0 16 16" fill="none" style={{ stroke: 'var(--ic-default)' }} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4.5 1.5h4.5l4 4v8.5a1 1 0 01-1 1h-7.5a1 1 0 01-1-1v-11.5a1 1 0 011-1z" />
-      <path d="M9 1.5v4h4" />
-    </svg>
-  );
-}
-
 export function FileIcon({ filename, isDir }: FileIconProps) {
   if (isDir) {
     return <ThemeIcon name="folder" />;
@@ -113,7 +106,7 @@ export function FileIcon({ filename, isDir }: FileIconProps) {
   const iconName = EXT_TO_THEME_ICON[ext];
   if (iconName && hasIcon(iconName)) return <ThemeIcon name={iconName} />;
 
-  return <DefaultFileIcon />;
+  return <ThemeIcon name="documentation" />;
 }
 
 export function getFileTypeIcon(handlerId: string): React.ReactElement {
@@ -124,5 +117,5 @@ export function getFileTypeIcon(handlerId: string): React.ReactElement {
   const iconName = HANDLER_TO_THEME_ICON[handlerId];
   if (iconName && hasIcon(iconName)) return <ThemeIcon name={iconName} />;
 
-  return <DefaultFileIcon />;
+  return <ThemeIcon name="documentation" />;
 }

@@ -22,9 +22,14 @@ for (const [path, svg] of Object.entries(allIcons)) {
 }
 
 function normalizeSvg(raw: string, size: number): string {
-  return raw
-    .replace(/width="[^"]*"/, `width="${size}"`)
-    .replace(/height="[^"]*"/, `height="${size}"`);
+  let s = raw;
+  s = /width="[^"]*"/.test(s)
+    ? s.replace(/width="[^"]*"/, `width="${size}"`)
+    : s.replace(/<svg/, `<svg width="${size}"`);
+  s = /height="[^"]*"/.test(s)
+    ? s.replace(/height="[^"]*"/, `height="${size}"`)
+    : s.replace(/<svg/, `<svg height="${size}"`);
+  return s;
 }
 
 interface ThemeIconProps {

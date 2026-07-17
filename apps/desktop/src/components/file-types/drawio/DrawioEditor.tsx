@@ -62,6 +62,7 @@ export function DrawioEditor({ content, onChange }: EditorProps) {
   return (
     <div className="w-full h-full">
       <DrawIoEmbed
+        key={theme}
         autosave
         xml={loadedXml}
         urlParameters={{ dark: theme === 'dark' }}
