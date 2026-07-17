@@ -111,3 +111,44 @@ Closed the editorStore PR3 deferred tail: the accept/reject editor slice (tabId 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 62: Voice input: toggle hotkey + floating SiriGL orb + cross-app paste
+
+**Date**: 2026-07-17
+**Task**: Voice input: toggle hotkey + floating SiriGL orb + cross-app paste
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Ported openless toggle-mode voice hotkey + verbatim SiriGL WebGL orb in a floating always-on-top NSPanel visible across all apps. Fixed cross-app Cmd+V paste: (1) dev-voice.mjs bundle codesign with --deep + entitlements (Info.plist sealed so TCC grants stick); (2) release build via tauri.conf.json signingIdentity='-' + new build-mac.sh mirroring openless (xattr -cr quarantine + tccutil reset per rebuild); (3) StrictMode-racing hydration in App.tsx via useVoiceStore.subscribe; (4) voice-orb can_become_key_window=false + hide-before-paste so the orb NSPanel never swallows the Cmd+V event. Dropped Linux from release.yml matrix; voice is macOS-only via cfg gate. File-based paste diagnostic logs at ~/Library/Logs/quill-voice-debug.log for release-build debugging (log::info! is no-op without tauri-plugin-log).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ca07ab1` | (see git log) |
+| `9ac4c42` | (see git log) |
+| `3b05d61` | (see git log) |
+| `73b0983` | (see git log) |
+| `76e8231` | (see git log) |
+| `dc81f1a` | (see git log) |
+| `ef5c3f2` | (see git log) |
+| `d3e6f6d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

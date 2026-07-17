@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 61
-- **Last Active**: 2026-07-16
+- **Total Sessions**: 62
+- **Last Active**: 2026-07-17
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~113 | Active |
+| `journal-2.md` | ~154 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 62 | 2026-07-17 | Voice input: toggle hotkey + floating SiriGL orb + cross-app paste | `ca07ab1`, `9ac4c42`, `3b05d61`, `73b0983`, `76e8231`, `dc81f1a`, `ef5c3f2`, `d3e6f6d` | `master` |
 | 61 | 2026-07-16 | centralize editor tabId into FileChangeApplier | `d782b0e` | `master` |
 | 60 | 2026-07-16 | extract pet host bridge from App.tsx | `b6c0d84`, `4c18409` | `master` |
 | 59 | 2026-07-16 | harden HtmlPreview sandbox + split editorStore god-store | `c12b002`, `0dce06c`, `52ef395`, `a431f4e` | `master` |
