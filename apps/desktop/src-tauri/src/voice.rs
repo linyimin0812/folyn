@@ -440,10 +440,19 @@ pub async fn voice_insert_text(app: tauri::AppHandle, text: String) -> Result<()
 /// `voice::permissions`). Returns true if already granted OR granted after
 /// the prompt; false if still not trusted (user declined / closed the dialog
 /// without granting).
+///
+/// This command ALWAYS fires the system dialog (when not yet trusted) — it
+/// resets `insertion::ACCESSIBILITY_PROMPTED` before calling
+/// `request_accessibility` so the button acts as an explicit "re-trigger the
+/// prompt" affordance, bypassing the per-session cap that the `post_cmd_v`
+/// hot path enforces. The hot path auto-prompts at most once per process so
+/// repeat inserts don't pop the dialog; the button is the user-facing escape
+/// hatch for "I dismissed the first prompt, let me try again".
 #[cfg(target_os = "macos")]
 #[tauri::command]
 pub async fn voice_request_accessibility() -> Result<bool, String> {
     tauri::async_runtime::spawn_blocking(|| {
+        insertion::reset_accessibility_prompt_guard();
         permissions::request_accessibility();
         Ok::<bool, String>(permissions::check_accessibility())
     })

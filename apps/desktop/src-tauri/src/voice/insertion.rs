@@ -16,13 +16,39 @@
 #![cfg(target_os = "macos")]
 
 use std::ffi::c_void;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::OnceLock;
 use std::time::Duration;
 
 use parking_lot::Mutex;
 use tauri::AppHandle;
 use tauri_plugin_clipboard_manager::ClipboardExt;
+
+/// Per-session guard so the system accessibility prompt fires at most once
+/// per process lifetime from the `post_cmd_v` hot path. Apple does NOT
+/// suppress repeat `AXIsProcessTrustedWithOptions({prompt:true})` prompts for
+/// apps not yet in the Accessibility list, so unguarded prompting from
+/// `post_cmd_v` is popup hell. The first call where `check_accessibility()`
+/// is false prompts (user wants auto-popup on first attempt); subsequent
+/// calls in the same session skip the popup and return the error directly
+/// (the user already saw the prompt). Process restart resets the guard —
+/// which is correct, because the new process picks up the refreshed TCC
+/// verdict if the user granted in System Settings (and won't enter the
+/// not-trusted branch at all in that case).
+///
+/// `voice_request_accessibility` (the VoiceSettings button) resets this guard
+/// before prompting, so the button acts as an explicit "re-trigger the system
+/// dialog" entrypoint — see `reset_accessibility_prompt_guard`.
+static ACCESSIBILITY_PROMPTED: AtomicBool = AtomicBool::new(false);
+
+/// Reset the per-session prompt guard. Called by the
+/// `voice_request_accessibility` Tauri command (the VoiceSettings "授权辅助功能"
+/// button) so the button always re-fires the system dialog on demand, even if
+/// the hot path already prompted this session. The button is the "explicit
+/// re-prompt" affordance; the hot path is "auto-prompt once, then silent".
+pub fn reset_accessibility_prompt_guard() {
+    ACCESSIBILITY_PROMPTED.store(false, Ordering::SeqCst);
+}
 
 /// How long to wait after the Cmd+V post before restoring the user's prior
 /// clipboard. Ported verbatim from openless `CLIPBOARD_RESTORE_DELAY` — short
@@ -198,25 +224,37 @@ extern "C" {
 /// Accessibility gate + Cmd+V post. Returns a clear error if accessibility
 /// is not granted (CGEventPost would otherwise silently no-op).
 ///
-/// ponytail: hot-path accessibility check is non-prompting. Re-prompting on
-/// every voice insertion is popup hell — Apple does NOT suppress repeat
-/// `AXIsProcessTrustedWithOptions({prompt:true})` prompts for apps that are
-/// not yet in the Accessibility list, so calling it from `post_cmd_v` on
-/// every insert pops the system dialog each time. The user-facing onboarding
-/// to actually grant accessibility happens via the `voice_request_accessibility`
-/// Tauri command (called from VoiceSettings's "授权辅助功能" button or on
-/// first voice-enable), NOT here. Once granted in System Settings, the user
-/// may still need to restart the app for TCC to reflect the new verdict
-/// (macOS caches the per-process TCC verdict at launch). See
-/// `/Users/yiminlin/project/openless/openless-all/app/src-tauri/src/insertion.rs`
-/// `insert_with_clipboard_restore` — openless never prompts from the paste
-/// path either, it just returns `InsertStatus::CopiedFallback`.
+/// ponytail: prompts the system accessibility dialog ONCE per process
+/// lifetime when `check_accessibility()` is false. This deviates from
+/// openless `insertion::macos::insert_with_clipboard_restore`, which never
+/// prompts from the paste path (it returns `InsertStatus::CopiedFallback`
+/// and lets the user trigger the prompt themselves). Quill deviates because
+/// the user explicitly asked for the system dialog to fire automatically on
+/// the first insert attempt — without that, they have to find and click the
+/// VoiceSettings "授权辅助功能" button, which feels broken on first use.
+/// The per-session `ACCESSIBILITY_PROMPTED` guard caps the popup to once
+/// per process so the auto-prompt doesn't become popup hell on repeat
+/// inserts. The `voice_request_accessibility` Tauri command (the button)
+/// resets the guard so the user can still re-trigger the dialog explicitly.
+/// Once granted in System Settings, the user may still need to restart the
+/// app for TCC to reflect the new verdict (macOS caches the per-process TCC
+/// verdict at launch).
 fn post_cmd_v() -> Result<(), String> {
     if !super::permissions::check_accessibility() {
-        return Err(
-            "未授予辅助功能权限。请在 系统设置 → 隐私与安全性 → 辅助功能 中允许 Quill（授权后需重启应用生效）"
-                .into(),
-        );
+        // First-call-only prompt. `swap` returns the PRIOR value; if it was
+        // already true, we've prompted this session → skip the popup and just
+        // return the error. The user already saw the dialog; re-prompting is
+        // popup hell.
+        let already_prompted = ACCESSIBILITY_PROMPTED.swap(true, Ordering::SeqCst);
+        if !already_prompted {
+            super::permissions::request_accessibility();
+        }
+        if !super::permissions::check_accessibility() {
+            return Err(
+                "未授予辅助功能权限。请在 系统设置 → 隐私与安全性 → 辅助功能 中允许 Quill（授权后需重启应用生效）"
+                    .into(),
+            );
+        }
     }
 
     // SAFETY: all four CGEvent calls are standard C entrypoints into
@@ -284,5 +322,22 @@ mod tests {
 
     fn clear_for_test() {
         *pending().lock() = None;
+    }
+
+    #[test]
+    fn accessibility_prompt_guard_starts_false_and_resets() {
+        // ponytail: smallest check that fails if the guard's store/swap/reset
+        // logic breaks. We reset, store false (already the initial state but
+        // defensive), swap to read the prior value, and verify reset clears it.
+        reset_accessibility_prompt_guard();
+        let prior = ACCESSIBILITY_PROMPTED.swap(true, Ordering::SeqCst);
+        assert!(!prior, "first swap after reset must read false");
+        // Second swap without reset must read true (already prompted this session).
+        let prior_again = ACCESSIBILITY_PROMPTED.swap(true, Ordering::SeqCst);
+        assert!(prior_again, "second swap must read true (already prompted)");
+        reset_accessibility_prompt_guard();
+        let after_reset = ACCESSIBILITY_PROMPTED.swap(true, Ordering::SeqCst);
+        assert!(!after_reset, "swap after reset must read false again");
+        reset_accessibility_prompt_guard();
     }
 }
