@@ -409,6 +409,12 @@ pub fn run() {
                 commands::PetSizeState::DEFAULT_LEVEL.to_string(),
             )));
 
+            // Pet-panel global-shortcut state. Holds the currently-registered
+            // pet HotKey so `pet_panel_set_shortcut` can do a TARGETED
+            // unregister (not `unregister_all`, which would wipe the voice
+            // push-to-talk HotKey registered by `voice::voice_set_global_hotkey`).
+            app.manage(commands::PetShortcutState::new());
+
             // Voice input shared state (PR2). Holds the live `Recorder` +
             // `AppleSpeechAsr` consumer between `voice_start` and
             // `voice_stop` / `voice_cancel`. Idle on non-macOS (commands

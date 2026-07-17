@@ -943,33 +943,95 @@ pub async fn pet_panel_hide(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Shared pet-panel global-shortcut state. Holds the currently-registered
+/// pet-panel HotKey so `pet_panel_set_shortcut` can do a TARGETED unregister
+/// of just the previous pet HotKey — NOT `unregister_all`, which would also
+/// wipe the voice push-to-talk HotKey registered by `voice::voice_set_global_hotkey`.
+/// See the "Multiple OS-wide Shortcuts" scenario in
+/// `.trellis/spec/desktop/frontend/tauri-window-patterns.md` — the
+/// `unregister_all` here was the root cause of bug #3 (pet-panel mount wiped
+/// the voice hotkey registered at main-window mount).
+///
+/// `None` = no pet-panel shortcut currently registered. `Shortcut`
+/// (= `global_hotkey::HotKey`) is `Copy + Send + Sync`, so storing it in a
+/// `Mutex` is cheap and safe — same shape as `voice::VoiceState::voice_hotkey`.
+pub struct PetShortcutState(pub Mutex<Option<tauri_plugin_global_shortcut::Shortcut>>);
+
+impl PetShortcutState {
+    pub fn new() -> Self {
+        Self(Mutex::new(None))
+    }
+
+    /// Snapshot of the currently-registered pet HotKey (Copy). `None` when
+    /// no pet shortcut is registered. Unwrap-to-None on a poisoned lock so
+    /// a poisoned lock never breaks shortcut re-registration.
+    pub fn hotkey(&self) -> Option<tauri_plugin_global_shortcut::Shortcut> {
+        self.0.lock().ok().and_then(|guard| *guard)
+    }
+
+    /// Swap the stored HotKey. Silently ignores a poison error.
+    pub fn set_hotkey(&self, hotkey: Option<tauri_plugin_global_shortcut::Shortcut>) {
+        if let Ok(mut guard) = self.0.lock() {
+            *guard = hotkey;
+        }
+    }
+}
+
+impl Default for PetShortcutState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Register (or replace) the global keyboard shortcut that toggles the
 /// pet-panel window. Pass an empty string to unregister without re-binding.
 ///
 /// The accelerator string follows Tauri's accelerator grammar
 /// (e.g. `"Cmd+Shift+Q"`, `"CommandOrControl+Shift+Q"`). The plugin is built
 /// with a single global handler (see `lib.rs` `tauri_plugin_global_shortcut::Builder`)
-/// that emits `pet://shortcut-toggle` on every Pressed event — this command
-/// only swaps WHICH accelerator fires that handler. Unregister-all + register
-/// keeps the swap atomic (we only ever manage one shortcut).
+/// that dispatches by HotKey id — the voice HotKey emits `voice://hotkey-*`,
+/// every other registered HotKey (currently just this one) emits
+/// `pet://shortcut-toggle` on Pressed. This command only swaps WHICH
+/// accelerator fires the pet-panel branch.
 ///
-/// macOS-only in practice (pet mode is macOS-only); on other platforms the
-/// plugin still loads but no accelerator is registered until the frontend
-/// calls this. Custom `invoke` commands bypass the ACL, so no capability
-/// entry is needed for this command or for the plugin's built-in commands
-/// (we never invoke those from the frontend — the global handler is set at
-/// plugin build time, Rust-side).
+/// Bug #3 fix: TARGETED unregister of the previously-stored pet HotKey only,
+/// NOT `unregister_all`. The pet window mounts at app startup (visible:false
+/// still loads the webview → PetApp mount effect calls this command), so the
+/// previous `unregister_all` impl wiped the voice hotkey registered by
+/// `App.tsx`'s mount effect. Migrated to the same targeted-unregister shape
+/// as `voice::voice_set_global_hotkey` — the two accelerators are now
+/// independent.
 #[tauri::command]
 pub async fn pet_panel_set_shortcut(app: tauri::AppHandle, accelerator: String) -> Result<(), String> {
-    use tauri_plugin_global_shortcut::GlobalShortcutExt;
-    // Unregister everything we previously registered. We manage exactly one
-    // shortcut (the pet-panel toggle), so unregister_all is the simplest
-    // atomic swap. Returns Ok if nothing was registered.
-    app.global_shortcut().unregister_all().map_err(|e| e.to_string())?;
-    if accelerator.is_empty() {
+    use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
+    use std::str::FromStr;
+
+    let state = app.state::<PetShortcutState>();
+
+    // Targeted unregister: only the previously-stored pet HotKey, leaving
+    // the voice HotKey (and any other feature's) intact.
+    let prev = state.hotkey();
+    if let Some(prev_hotkey) = prev {
+        let _ = app.global_shortcut().unregister(prev_hotkey);
+    }
+
+    if accelerator.trim().is_empty() {
+        // Unregister-only path.
+        state.set_hotkey(None);
         return Ok(());
     }
-    app.global_shortcut().register(accelerator.as_str()).map_err(|e| e.to_string())?;
+
+    // Parse so we store a HotKey (Copy) — the catch-all in `lib.rs` compares
+    // by id, so storing the parsed HotKey (not the string) lets it recognize
+    // this shortcut's fired events. Registering via the HotKey (not the
+    // string) keeps parse + register consistent.
+    let hotkey = Shortcut::from_str(&accelerator)
+        .map_err(|e| format!("invalid pet-panel shortcut '{accelerator}': {e}"))?;
+    app.global_shortcut()
+        .register(hotkey)
+        .map_err(|e| format!("register pet-panel shortcut failed: {e}"))?;
+    state.set_hotkey(Some(hotkey));
+    log::info!("[pet] global shortcut registered: {accelerator}");
     Ok(())
 }
 
