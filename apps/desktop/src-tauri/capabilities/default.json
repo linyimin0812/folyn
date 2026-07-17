@@ -54,7 +54,13 @@
     "fs:allow-write-file",
     "fs:allow-write-text-file",
     "fs:create-app-specific-dirs",
-    "fs:scope-home-recursive",
+    {
+      "identifier": "fs:scope-home-recursive",
+      "allow": [
+        { "path": "$HOME/**/.*" },
+        { "path": "$HOME/**/.*/**" }
+      ]
+    },
     "fs:scope-appdata-recursive"
   ]
 }
