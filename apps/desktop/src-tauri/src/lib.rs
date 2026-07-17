@@ -420,6 +420,11 @@ pub fn run() {
             // `voice_stop` / `voice_cancel`. Idle on non-macOS (commands
             // there return macOS-only errors). See `voice::VoiceState`.
             app.manage(voice::VoiceState::new());
+            // Startup beacon: confirms `log stream --predicate 'process == "quill"'`
+            // is wired before the user touches voice. If this line shows in the
+            // log stream, the predicate works; if not, the user is filtering on
+            // the wrong process name (dev .app's executable is `quill`, lowercase).
+            log::info!("[voice] module ready; bundle_id={}", "com.quill.editor");
 
             let app_menu = SubmenuBuilder::new(app, "Quill")
                 .about(None)

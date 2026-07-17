@@ -150,6 +150,12 @@ pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result
     use apple_speech::AppleSpeechAsr;
     use recorder::{Recorder, RecorderError};
 
+    // Entry-point beacon: confirms the frontend's click-to-start actually
+    // reached Rust. `spoken_locale` is logged so a wrong-locale routing
+    // (bug #2 in the task PRD — empty locale fell back to system default)
+    // is visible without console access.
+    log::info!("[voice] voice_start called: spoken_locale={:?}", spoken_locale);
+
     let state = app.state::<VoiceState>();
     let mut inner = state.inner.lock().map_err(|e| format!("voice state poisoned: {e}"))?;
 
@@ -222,6 +228,18 @@ pub async fn voice_stop(
     vault_path: String,
 ) -> Result<VoiceStopResult, String> {
     use std::sync::Arc;
+
+    // Entry-point beacon: tells us (a) voice_stop was actually invoked from the
+    // frontend click, (b) what save_source value the frontend passed (false →
+    // no folder will be created THIS run, no saveError, no files — that's the
+    // bug-1 paradox if the user expected files), and (c) what vault_path arrived
+    // (catches resolveBasePath / tilde-expansion bugs at the boundary).
+    log::info!(
+        "[voice] voice_stop called: save_source={}, source_dir={:?}, vault_path={:?}",
+        save_source,
+        source_dir,
+        vault_path
+    );
 
     let state = app.state::<VoiceState>();
     let (recorder, asr): (

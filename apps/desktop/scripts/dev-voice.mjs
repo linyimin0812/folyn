@@ -21,9 +21,16 @@
 //     MacOS/quill -> symlink to ../../quill}`. The MacOS/quill symlink means a
 //     rebuild picks up the new binary without re-wrapping; just re-launch.
 //   - `open target/debug/Quill.app` — launches the .app; TCC sees the bundle.
-//   - Rust `log::info!` output goes to the macOS Unified Log; read it via
-//     `log stream --predicate 'process == "Quill"' --info --debug` in a
-//     separate Terminal, or via Console.app (filter process = Quill).
+//   - Rust `log::info!` output goes to the macOS Unified Log. The dev .app's
+//     `CFBundleExecutable` is `quill` (lowercase, see line ~149 below — the
+//     MacOS symlink is `Contents/MacOS/quill`, NOT `Quill`), so the Unified
+//     Log `process` field is `quill`, NOT `Quill` (CFBundleName is irrelevant).
+//     Read the log via:
+//       log stream --predicate 'process == "quill"' --info --debug
+//     in a separate Terminal. If `process ==` matching is flaky on your OS
+//     version, fall back to matching the binary path:
+//       log stream --predicate 'senderImagePath CONTAINS "Quill.app"' --info --debug
+//     In Console.app, filter by process name `quill` (lowercase), not `Quill`.
 //     The sidecar `<stamp>.txt` in `.voice_input/` is the on-disk
 //     diagnostic for source-save issues — no console needed for that.
 //   - Ctrl+C: kill vite + the .app cleanly.
