@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useVoiceStore, DEFAULT_POLISH_PROMPT, SPOKEN_LANGUAGES } from '@/store/voiceStore';
 import { isTauri } from '@/utils/platform';
+import { invoke } from '@tauri-apps/api/core';
 
 function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -131,6 +132,26 @@ export function VoiceSettings() {
 
   const onMac = isTauri() && typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
 
+  // Accessibility permission onboarding. The `voice_insert_text` hot path does
+  // NOT prompt (ponytail: popup hell — Apple doesn't suppress repeat
+  // `AXIsProcessTrustedWithOptions` prompts for apps not yet in the list, and
+  // the per-process TCC verdict is cached at launch). This button is the
+  // explicit user action that triggers the system prompt, matching openless's
+  // pattern where permission prompts fire from explicit user actions, not hot
+  // paths. State: 'idle' | 'checking' | 'granted' | 'denied'.
+  const [axState, setAxState] = useState<'idle' | 'checking' | 'granted' | 'denied'>('idle');
+  const requestAccessibility = useCallback(async () => {
+    if (!onMac) return;
+    setAxState('checking');
+    try {
+      const granted = await invoke<boolean>('voice_request_accessibility');
+      setAxState(granted ? 'granted' : 'denied');
+    } catch (err) {
+      console.warn('[voice] request accessibility failed:', err);
+      setAxState('denied');
+    }
+  }, [onMac]);
+
   return (
     <div className="mb-[26px]">
       <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">语音输入</div>
@@ -142,6 +163,24 @@ export function VoiceSettings() {
         <div className="mb-3.5 px-3 py-2 rounded-md border border-brd bg-surf text-[length:calc(var(--ui-font-size)-2.5px)] text-t3">
           当前平台暂不支持语音输入。macOS 使用 Apple Speech (SFSpeechRecognizer)。
         </div>
+      )}
+
+      {onMac && (
+        <Row title="辅助功能权限" desc="跨应用插入文本需要辅助功能权限。点击按钮触发系统授权弹框;授权后需重启应用生效(TCC 缓存进程启动时的判定)。">
+          <button
+            className="text-[length:calc(var(--ui-font-size)-2.5px)] px-2.5 py-1 rounded-md border border-brd2 bg-surf2 text-t1 hover:bg-hov cursor-pointer disabled:opacity-50 disabled:cursor-default"
+            disabled={axState === 'checking'}
+            onClick={() => void requestAccessibility()}
+          >
+            {axState === 'checking'
+              ? '检查中…'
+              : axState === 'granted'
+                ? '已授权 ✓'
+                : axState === 'denied'
+                  ? '仍未授权,点击重试'
+                  : '授权辅助功能'}
+          </button>
+        </Row>
       )}
 
       <div className="mb-3.5">

@@ -198,20 +198,25 @@ extern "C" {
 /// Accessibility gate + Cmd+V post. Returns a clear error if accessibility
 /// is not granted (CGEventPost would otherwise silently no-op).
 ///
-/// Bug #3 fix: 主动请求辅助功能权限（弹系统授权框），而不是只检查后返回错误
-/// —— 用户此前必须在系统设置里手工开启才能继续。现改为先调
-/// `permissions::request_accessibility()` 弹框，用户授权后立刻重检继续；
-/// 仍未授权才返回错误。前端也可提前通过 `voice_request_accessibility` 命令
-/// 预热授权。Speech recognition 权限在 `apple_speech.rs` 内独立处理。
+/// ponytail: hot-path accessibility check is non-prompting. Re-prompting on
+/// every voice insertion is popup hell — Apple does NOT suppress repeat
+/// `AXIsProcessTrustedWithOptions({prompt:true})` prompts for apps that are
+/// not yet in the Accessibility list, so calling it from `post_cmd_v` on
+/// every insert pops the system dialog each time. The user-facing onboarding
+/// to actually grant accessibility happens via the `voice_request_accessibility`
+/// Tauri command (called from VoiceSettings's "授权辅助功能" button or on
+/// first voice-enable), NOT here. Once granted in System Settings, the user
+/// may still need to restart the app for TCC to reflect the new verdict
+/// (macOS caches the per-process TCC verdict at launch). See
+/// `/Users/yiminlin/project/openless/openless-all/app/src-tauri/src/insertion.rs`
+/// `insert_with_clipboard_restore` — openless never prompts from the paste
+/// path either, it just returns `InsertStatus::CopiedFallback`.
 fn post_cmd_v() -> Result<(), String> {
     if !super::permissions::check_accessibility() {
-        super::permissions::request_accessibility();
-        if !super::permissions::check_accessibility() {
-            return Err(
-                "未授予辅助功能权限。请在 系统设置 → 隐私与安全性 → 辅助功能 中允许 Quill"
-                    .into(),
-            );
-        }
+        return Err(
+            "未授予辅助功能权限。请在 系统设置 → 隐私与安全性 → 辅助功能 中允许 Quill（授权后需重启应用生效）"
+                .into(),
+        );
     }
 
     // SAFETY: all four CGEvent calls are standard C entrypoints into
