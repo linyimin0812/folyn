@@ -565,6 +565,8 @@ pub fn run() {
             voice::voice_cancel,
             voice::voice_insert_text,
             voice::voice_request_accessibility,
+            voice::voice_request_microphone,
+            voice::voice_request_speech,
             voice::voice_set_global_hotkey,
             voice::voice_orb_hide,
             voice::voice_debug_frontmost,

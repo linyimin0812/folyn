@@ -730,6 +730,35 @@ pub async fn voice_request_accessibility() -> Result<bool, String> {
     .map_err(|e| format!("voice_request_accessibility join failed: {e}"))?
 }
 
+/// 弹系统麦克风授权框并返回当前是否已授权。镜像 `voice_request_accessibility`:
+/// 设置页显式入口,`AVAudioApplication.requestRecordPermission` 仅在 NotDetermined
+/// 时弹框,Denied 时 Apple 不重复弹(需用户去系统设置手动开)——前端据返回值渲染状态。
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub async fn voice_request_microphone() -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        Ok::<bool, String>(matches!(
+            permissions::request_microphone(),
+            permissions::MicStatus::Granted
+        ))
+    })
+    .await
+    .map_err(|e| format!("voice_request_microphone join failed: {e}"))?
+}
+
+/// 弹系统语音识别(SFSpeechRecognizer)授权框并返回当前是否已授权。镜像
+/// `voice_request_accessibility`:`ensure_authorized` 在 NotDetermined 时弹框,
+/// Denied 时 bail(不重复弹)——与麦克风同,拒绝后需去系统设置开启。
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub async fn voice_request_speech() -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        Ok::<bool, String>(apple_speech::ensure_authorized().is_ok())
+    })
+    .await
+    .map_err(|e| format!("voice_request_speech join failed: {e}"))?
+}
+
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
 pub async fn voice_insert_text(_app: tauri::AppHandle, _text: String) -> Result<(), String> {
@@ -814,6 +843,18 @@ pub async fn voice_request_accessibility() -> Result<bool, String> {
     // Non-macOS: no Accessibility concept; report "not applicable" as false so
     // the frontend can short-circuit its permission UI the same way as a denied
     // macOS user (the voice flow is gated to macOS-only anyway).
+    Ok(false)
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+pub async fn voice_request_microphone() -> Result<bool, String> {
+    Ok(false)
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+pub async fn voice_request_speech() -> Result<bool, String> {
     Ok(false)
 }
 

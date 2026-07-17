@@ -23,6 +23,34 @@ function Row({ title, desc, children }: { title: string; desc?: string; children
   );
 }
 
+type PermState = 'idle' | 'checking' | 'granted' | 'denied';
+
+/// One macOS permission row with a state-machine button (idle → checking →
+/// granted/denied). Reused for accessibility + mic + speech so the three
+/// affordances stay visually + behaviorally identical.
+/// ponytail: extracted at the third consumer — the inline JSX was triplicated.
+function PermissionRow({ title, desc, idleLabel, state, onClick }: {
+  title: string; desc: string; idleLabel: string; state: PermState; onClick: () => void;
+}) {
+  return (
+    <Row title={title} desc={desc}>
+      <button
+        className="text-[length:calc(var(--ui-font-size)-2.5px)] px-2.5 py-1 rounded-md border border-brd2 bg-surf2 text-t1 hover:bg-hov cursor-pointer disabled:opacity-50 disabled:cursor-default"
+        disabled={state === 'checking'}
+        onClick={onClick}
+      >
+        {state === 'checking'
+          ? '检查中…'
+          : state === 'granted'
+            ? '已授权 ✓'
+            : state === 'denied'
+              ? '仍未授权,点击重试'
+              : idleLabel}
+      </button>
+    </Row>
+  );
+}
+
 /**
  * Push-to-talk hotkey recorder. Captures a modifier+key combo via the next
  * keydown event, converts it to a Tauri accelerator string (`Cmd+Shift+V`),
@@ -132,25 +160,30 @@ export function VoiceSettings() {
 
   const onMac = isTauri() && typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
 
-  // Accessibility permission onboarding. The `voice_insert_text` hot path does
-  // NOT prompt (ponytail: popup hell — Apple doesn't suppress repeat
-  // `AXIsProcessTrustedWithOptions` prompts for apps not yet in the list, and
-  // the per-process TCC verdict is cached at launch). This button is the
-  // explicit user action that triggers the system prompt, matching openless's
-  // pattern where permission prompts fire from explicit user actions, not hot
-  // paths. State: 'idle' | 'checking' | 'granted' | 'denied'.
-  const [axState, setAxState] = useState<'idle' | 'checking' | 'granted' | 'denied'>('idle');
-  const requestAccessibility = useCallback(async () => {
-    if (!onMac) return;
-    setAxState('checking');
-    try {
-      const granted = await invoke<boolean>('voice_request_accessibility');
-      setAxState(granted ? 'granted' : 'denied');
-    } catch (err) {
-      console.warn('[voice] request accessibility failed:', err);
-      setAxState('denied');
-    }
-  }, [onMac]);
+  // macOS permission affordances: each is an explicit "trigger the system prompt"
+  // button (mirrors openless — prompts fire from explicit user actions, not hot
+  // paths). The voice hot path (`voice_start`) does NOT prompt for mic/speech
+  // from here; it has its own `ensure_*` guards. These rows let the user grant
+  // BEFORE the first recording, and re-check status after toggling in System
+  // Settings. State: 'idle' | 'checking' | 'granted' | 'denied'.
+  const [axState, setAxState] = useState<PermState>('idle');
+  const [micState, setMicState] = useState<PermState>('idle');
+  const [speechState, setSpeechState] = useState<PermState>('idle');
+
+  const requestPerm = useCallback(
+    async (cmd: string, setState: (s: PermState) => void) => {
+      if (!onMac) return;
+      setState('checking');
+      try {
+        const granted = await invoke<boolean>(cmd);
+        setState(granted ? 'granted' : 'denied');
+      } catch (err) {
+        console.warn(`[voice] request ${cmd} failed:`, err);
+        setState('denied');
+      }
+    },
+    [onMac],
+  );
 
   return (
     <div className="mb-[26px]">
@@ -166,21 +199,29 @@ export function VoiceSettings() {
       )}
 
       {onMac && (
-        <Row title="辅助功能权限" desc="跨应用插入文本需要辅助功能权限。点击按钮触发系统授权弹框;授权后需重启应用生效(TCC 缓存进程启动时的判定)。">
-          <button
-            className="text-[length:calc(var(--ui-font-size)-2.5px)] px-2.5 py-1 rounded-md border border-brd2 bg-surf2 text-t1 hover:bg-hov cursor-pointer disabled:opacity-50 disabled:cursor-default"
-            disabled={axState === 'checking'}
-            onClick={() => void requestAccessibility()}
-          >
-            {axState === 'checking'
-              ? '检查中…'
-              : axState === 'granted'
-                ? '已授权 ✓'
-                : axState === 'denied'
-                  ? '仍未授权,点击重试'
-                  : '授权辅助功能'}
-          </button>
-        </Row>
+        <>
+          <PermissionRow
+            title="辅助功能权限"
+            desc="跨应用插入文本需要辅助功能权限。点击按钮触发系统授权弹框;授权后需重启应用生效(TCC 缓存进程启动时的判定)。"
+            idleLabel="授权辅助功能"
+            state={axState}
+            onClick={() => void requestPerm('voice_request_accessibility', setAxState)}
+          />
+          <PermissionRow
+            title="麦克风权限"
+            desc="录音需要麦克风权限。点击按钮触发系统授权弹框;若曾拒绝,需在 系统设置 → 隐私与安全性 → 麦克风 中允许 Quill 后再点重试。"
+            idleLabel="授权麦克风"
+            state={micState}
+            onClick={() => void requestPerm('voice_request_microphone', setMicState)}
+          />
+          <PermissionRow
+            title="语音识别权限"
+            desc="Apple Speech 转写需要语音识别权限。点击按钮触发系统授权弹框;若曾拒绝,需在 系统设置 → 隐私与安全性 → 语音识别 中允许 Quill 后再点重试。"
+            idleLabel="授权语音识别"
+            state={speechState}
+            onClick={() => void requestPerm('voice_request_speech', setSpeechState)}
+          />
+        </>
       )}
 
       <div className="mb-3.5">
