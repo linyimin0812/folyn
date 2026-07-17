@@ -5,6 +5,7 @@
   "description": "Quill — AI-enhanced local-first Markdown editor",
   "scripts": {
     "dev": "pnpm --filter @quill/desktop dev",
+    "dev:voice": "pnpm --filter @quill/desktop dev:voice",
     "build": "pnpm --filter @quill/desktop build",
     "build:app": "cd apps/desktop && pnpm tauri build",
     "lint": "pnpm -r lint",
