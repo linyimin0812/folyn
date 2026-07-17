@@ -19,9 +19,11 @@
 //   - Runs `cargo build` (debug) — blocks until success.
 //   - Builds `target/debug/Quill.app/Contents/{Info.plist,Entitlements.plist,
 //     MacOS/quill -> symlink to ../../quill}`. The MacOS/quill symlink means a
-//     rebuild picks up the new binary without re-wrapping; just re-`open`.
-//   - `open target/debug/Quill.app` — launches the .app; TCC sees the bundle.
-//   - Ctrl+C: kill vite + the .app cleanly.
+//     rebuild picks up the new binary without re-wrapping; just re-launch.
+//   - Spawns `Contents/MacOS/quill` directly with stdio piped to
+//     `target/debug/Quill.log` so `tail -f` shows the .app's stdout/stderr
+//     (TCC still sees the bundle because the binary lives inside Quill.app/).
+//   - Ctrl+C: kill vite + the .app cleanly (pkill -f against the dev binary).
 //
 // CAVEATS:
 //   - macOS-only (refuses on other platforms with a clear error).
@@ -30,7 +32,7 @@
 //     System Settings > Privacy & Security if so.
 
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, copyFileSync, rmSync, symlinkSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, copyFileSync, rmSync, symlinkSync, readFileSync, writeFileSync, openSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -46,6 +48,7 @@ const CONTENTS_DIR = join(APP_BUNDLE_DIR, 'Contents');
 const MACOS_DIR = join(CONTENTS_DIR, 'MacOS');
 const DEV_BINARY = join(TARGET_DEBUG_DIR, 'quill'); // target/debug/quill
 const MACOS_SYMLINK = join(MACOS_DIR, 'quill'); // Contents/MacOS/quill -> ../../quill
+const APP_LOG = join(TARGET_DEBUG_DIR, 'Quill.log'); // stdout+stderr of the spawned .app
 const SOURCE_INFO_PLIST = join(SRC_TAURI_DIR, 'Info.plist');
 const SOURCE_ENTITLEMENTS = join(SRC_TAURI_DIR, 'Entitlements.plist');
 const BUNDLE_INFO_PLIST = join(CONTENTS_DIR, 'Info.plist');
@@ -163,23 +166,31 @@ function buildAppBundle() {
   log(`built ${APP_BUNDLE_DIR}`);
 }
 
-// `open` the .app — launches it via LaunchServices (TCC sees the bundle).
+// Spawn the binary directly via the MacOS/quill symlink (resolves to
+// target/debug/quill). Spawning directly (vs `open`) lets us pipe stdout/stderr
+// to a log file the user can `tail -f`. TCC still sees the bundle because the
+// binary path lives inside Quill.app/Contents/MacOS/quill — bundle-ID lookup
+// + Info.plist + code signature are read from the bundle structure, none
+// depend on LaunchServices registration.
 function openApp() {
-  const result = spawnSync('open', [APP_BUNDLE_DIR], { stdio: 'inherit' });
-  if (result.status !== 0) {
-    fail(`open ${APP_BUNDLE_DIR} failed (status=${result.status})`);
+  const logFd = openSync(APP_LOG, 'w'); // truncate on each launch
+  const child = spawn(MACOS_SYMLINK, [], {
+    stdio: ['ignore', logFd, logFd],
+    detached: true,
+  });
+  child.unref();
+  if (child.pid) {
+    log(`launched ${MACOS_SYMLINK} (pid=${child.pid}); logs → ${APP_LOG}`);
+  } else {
+    fail(`failed to spawn ${MACOS_SYMLINK}`);
   }
-  log(`launched ${APP_BUNDLE_DIR}`);
 }
 
-// Kill the .app process tree (by bundle id).
+// Kill the dev binary process tree. The .app is spawned directly (not via
+// `open`), so LaunchServices doesn't know about it — `osascript` can't find
+// "Quill". Use `pkill -f` against the binary path instead.
 function killApp() {
-  // `osascript -e 'tell application "Quill" to quit'` is the polite way;
-  // falls back to pkill if the applescript fails (e.g. app already gone).
-  const polite = spawnSync('osascript', ['-e', `tell application "${BUNDLE_NAME}" to quit`], { stdio: 'ignore' });
-  if (polite.status !== 0) {
-    spawnSync('pkill', ['-f', DEV_BINARY], { stdio: 'ignore' });
-  }
+  spawnSync('pkill', ['-f', DEV_BINARY], { stdio: 'ignore' });
   log('app stopped');
 }
 

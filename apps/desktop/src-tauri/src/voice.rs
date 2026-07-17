@@ -322,8 +322,39 @@ fn save_source_wav(
         .map(|c| i16::from_le_bytes([c[0], c[1]]))
         .collect();
     let wav = wav::encode_wav_16k_mono(&samples);
+    let wav_bytes = wav.len();
     std::fs::write(&path, &wav).map_err(|e| format!("write source wav failed: {e}"))?;
-    log::info!("[voice] source audio saved: {}", path.display());
+
+    // ponytail: sidecar diagnostic so the user can verify the save without
+    // console access. dev:voice uses `open` to launch the .app, so
+    // log::info! output is invisible to the user (goes to system log, only
+    // readable via Console.app). Writing a sibling .txt puts the facts on
+    // disk in the same folder the user is already checking. Delete this
+    // once the source-save bug is resolved — it's debug scaffolding, not
+    // a runtime feature.
+    let diag_path = dir.join(format!("{stamp}.txt"));
+    let diag = format!(
+        "voice source save\n\
+         stamp: {stamp}\n\
+         vault_path (resolved): {vault_path}\n\
+         source_dir: {source_dir}\n\
+         dir_name (extracted): {dir_name}\n\
+         final dir: {}\n\
+         final wav path: {}\n\
+         pcm bytes: {}\n\
+         pcm samples (i16): {}\n\
+         wav bytes (with header): {wav_bytes}\n\
+         write result: Ok\n",
+        dir.display(),
+        path.display(),
+        pcm.len(),
+        samples.len(),
+    );
+    if let Err(err) = std::fs::write(&diag_path, diag) {
+        log::warn!("[voice] failed to write sidecar diagnostic: {err}");
+    }
+
+    log::info!("[voice] source audio saved: {} ({} bytes)", path.display(), wav_bytes);
     path.to_str()
         .map(|s| s.to_string())
         .ok_or_else(|| format!("source wav path not UTF-8: {}", path.display()))
