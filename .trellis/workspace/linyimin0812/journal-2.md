@@ -152,3 +152,37 @@ Ported openless toggle-mode voice hotkey + verbatim SiriGL WebGL orb in a floati
 ### Next Steps
 
 - None - task complete
+
+
+## Session 63: 麦克风/语音识别权限接入设置页
+
+**Date**: 2026-07-18
+**Task**: 麦克风/语音识别权限接入设置页
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+镜像辅助功能权限行,把麦克风与语音识别也做成设置页里可显式触发系统授权框的入口。后端新增 voice_request_microphone / voice_request_speech 两个 IPC(spawn_blocking 复用现有 permissions::request_microphone 与 apple_speech::ensure_authorized),非 macOS 桩返回 false;前端抽 PermissionRow 组件三处复用,新增麦克风/语音识别两行,文案点明拒绝后需去系统设置开启。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `50976cd` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
