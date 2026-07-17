@@ -24,6 +24,8 @@ use parking_lot::Mutex;
 use tauri::AppHandle;
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
+use super::paste_log;
+
 /// Per-session guard so the system accessibility prompt fires at most once
 /// per process lifetime from the `post_cmd_v` hot path. Apple does NOT
 /// suppress repeat `AXIsProcessTrustedWithOptions({prompt:true})` prompts for
@@ -80,9 +82,9 @@ fn pending() -> &'static Mutex<Option<PendingClipboardRestore>> {
 /// set `false` only if the caller explicitly wants to leave the text on the
 /// clipboard. Quill's voice path always restores.
 pub fn insert_text(app: &AppHandle, text: &str) -> Result<(), String> {
-    log::info!("[voice-paste] insert_text enter, text_len={}", text.len());
+    paste_log(&format!("[voice-paste] insert_text enter, text_len={}", text.len()));
     if text.is_empty() {
-        log::info!("[voice-paste] insert_text empty text, no-op");
+        paste_log("[voice-paste] insert_text empty text, no-op");
         return Ok(());
     }
 
@@ -91,24 +93,24 @@ pub fn insert_text(app: &AppHandle, text: &str) -> Result<(), String> {
     // restore will just clear/leave the inserted text).
     let clipboard = app.clipboard();
     let previous_text = clipboard.read_text().ok();
-    log::info!("[voice-paste] previous clipboard snapshot taken: present={}", previous_text.is_some());
+    paste_log(&format!("[voice-paste] previous clipboard snapshot taken: present={}", previous_text.is_some()));
 
     if let Err(err) = clipboard.write_text(text.to_string()) {
-        log::error!("[voice-paste] clipboard write failed: {}", err);
+        paste_log(&format!("[voice-paste] clipboard write failed: {}", err));
         return Err(format!("写入剪贴板失败: {}", err));
     }
-    log::info!("[voice-paste] clipboard written");
+    paste_log("[voice-paste] clipboard written");
 
     if let Err(err) = post_cmd_v() {
         // Paste failed — leave the text on the clipboard so the user can
         // manually paste. Don't restore (the text IS the fallback).
-        log::warn!("[voice-paste] CGEvent Cmd+V failed: {}", err);
+        paste_log(&format!("[voice-paste] CGEvent Cmd+V failed: {}", err));
         return Err(format!(
             "模拟粘贴失败（需辅助功能权限）: {err}。文本已写入剪贴板，可手动 Cmd+V 粘贴。"
         ));
     }
 
-    log::info!("[voice-paste] scheduling clipboard restore");
+    paste_log("[voice-paste] scheduling clipboard restore");
     schedule_clipboard_restore(app.clone(), previous_text, text.to_string());
     Ok(())
 }
@@ -245,9 +247,9 @@ extern "C" {
 /// app for TCC to reflect the new verdict (macOS caches the per-process TCC
 /// verdict at launch).
 fn post_cmd_v() -> Result<(), String> {
-    log::info!("[voice-paste] post_cmd_v enter");
+    paste_log("[voice-paste] post_cmd_v enter");
     let trusted = super::permissions::check_accessibility();
-    log::info!("[voice-paste] accessibility trusted: {}", trusted);
+    paste_log(&format!("[voice-paste] accessibility trusted: {}", trusted));
     if !trusted {
         // First-call-only prompt. `swap` returns the PRIOR value; if it was
         // already true, we've prompted this session → skip the popup and just
@@ -258,7 +260,7 @@ fn post_cmd_v() -> Result<(), String> {
             super::permissions::request_accessibility();
         }
         let now_trusted = super::permissions::check_accessibility();
-        log::info!("[voice-paste] requested accessibility, now trusted: {}", now_trusted);
+        paste_log(&format!("[voice-paste] requested accessibility, now trusted: {}", now_trusted));
         if !now_trusted {
             return Err(
                 "未授予辅助功能权限。请在 系统设置 → 隐私与安全性 → 辅助功能 中允许 Quill（授权后需重启应用生效）"
@@ -272,13 +274,13 @@ fn post_cmd_v() -> Result<(), String> {
     // a NULL source); we still release non-NULL returns below. `down`/`up`
     // are owned by us until `CFRelease`. `CGEventPost` does not take
     // ownership. `CGEventSetFlags` mutates the event in place.
-    log::info!("[voice-paste] creating CGEventSource");
+    paste_log("[voice-paste] creating CGEventSource");
     unsafe {
         let source = CGEventSourceCreate(KCG_EVENT_SOURCE_STATE_HID_SYSTEM_STATE);
-        log::info!("[voice-paste] source ptr: {:?}", source);
+        paste_log(&format!("[voice-paste] source ptr: {:?}", source));
         let down = CGEventCreateKeyboardEvent(source, KEY_V, true);
         let up = CGEventCreateKeyboardEvent(source, KEY_V, false);
-        log::info!("[voice-paste] down ptr: {:?}, up ptr: {:?}", down, up);
+        paste_log(&format!("[voice-paste] down ptr: {:?}, up ptr: {:?}", down, up));
         if down.is_null() || up.is_null() {
             if !source.is_null() {
                 CFRelease(source as *const c_void);
@@ -291,12 +293,12 @@ fn post_cmd_v() -> Result<(), String> {
             }
             return Err("CGEventCreateKeyboardEvent returned null".into());
         }
-        log::info!("[voice-paste] posting CGEvent keydown + keyup with Cmd flag");
+        paste_log("[voice-paste] posting CGEvent keydown + keyup with Cmd flag");
         CGEventSetFlags(down, KCG_EVENT_FLAG_MASK_COMMAND);
         CGEventSetFlags(up, KCG_EVENT_FLAG_MASK_COMMAND);
         CGEventPost(KCG_HID_EVENT_TAP, down);
         CGEventPost(KCG_HID_EVENT_TAP, up);
-        log::info!("[voice-paste] CGEvent posted");
+        paste_log("[voice-paste] CGEvent posted");
 
         CFRelease(down as *const c_void);
         CFRelease(up as *const c_void);

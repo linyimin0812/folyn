@@ -21,6 +21,29 @@ use serde::Serialize;
 use std::sync::Mutex;
 use tauri::{Emitter, Manager, PhysicalPosition};
 
+// ponytail: diagnostic for the "Cmd+V didn't paste anywhere" release-build bug.
+// Quill has no tauri-plugin-log, so release `log::info!` is a no-op. This writes
+// the voice-paste trace to ~/Library/Logs/quill-voice-debug.log so the user can
+// `tail` it without DevTools. Delete once the root cause is fixed.
+#[cfg(target_os = "macos")]
+fn paste_log(msg: &str) {
+    use std::io::Write;
+    let path = std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default())
+        .join("Library/Logs/quill-voice-debug.log");
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+    {
+        use std::time::SystemTime;
+        let ts = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0);
+        let _ = writeln!(f, "[{}] {}", ts, msg);
+    }
+}
+
 // PR4: the voice global hotkey is registered/unregistered via the
 // `tauri-plugin-global-shortcut` crate (already a dependency for the pet-panel
 // toggle). The plugin's single global handler in `lib.rs::with_handler`
@@ -754,6 +777,7 @@ pub async fn voice_debug_frontmost() -> Result<String, String> {
             let is_quill = bid_s == QUILL_BUNDLE;
             format!("bundle={bid_s} name={name_s} pid={pid} isQuill={is_quill}")
         };
+        paste_log(&format!("[voice-paste] frontmost: {info}"));
         Ok(info)
     })
     .await
