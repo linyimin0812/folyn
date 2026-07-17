@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { isTauri } from '@/utils/platform';
 
@@ -8,6 +9,32 @@ import { isTauri } from '@/utils/platform';
 // "打开系统设置" link opens the matching System Settings pane via
 // `tauri-plugin-shell`'s `open()`. The OS shows its own first-run prompt;
 // this is the recovery path for a denied/revoked permission.
+//
+// Recording indicator: a floating "正在录音…" pill below the mic button with
+// 3 animated equalizer bars. CSS-only (no RMS plumbing). The recorder DOES
+// compute per-callback RMS (`voice/recorder.rs::quantize_to_i16_le` returns
+// it, currently discarded as `_output_rms`); wiring it through would need a
+// Tauri event (`voice://level`) emitted from the recorder thread + a
+// frontend listener driving bar heights — >30 lines of new plumbing, skipped
+// for the visibility fix. Upgrade path: add `AppHandle` to the recorder
+// thread, emit `voice://level` with the RMS each callback, listen here and
+// scale the bar `height` inline. The bars would then reflect actual audio.
+
+// Inject the equalizer keyframes once per document. Idempotent — the
+// `data-voice-keyframes` marker guards re-injection in StrictMode / HMR.
+function ensureRecordingKeyframes(): void {
+  if (typeof document === 'undefined') return;
+  if (document.head.querySelector('style[data-voice-keyframes]')) return;
+  const style = document.createElement('style');
+  style.setAttribute('data-voice-keyframes', '1');
+  style.textContent = `
+@keyframes quill-voice-eq {
+  0%, 100% { transform: scaleY(0.35); }
+  50%      { transform: scaleY(1); }
+}
+`;
+  document.head.appendChild(style);
+}
 
 function onMac(): boolean {
   return isTauri() && typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
@@ -74,7 +101,7 @@ export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
       <button
         className={`w-7 h-7 flex items-center justify-center rounded-md transition-all duration-[120ms] disabled:opacity-40 disabled:cursor-not-allowed bg-transparent border-none cursor-pointer ${
           recording
-            ? 'text-red animate-pulse'
+            ? 'text-red'
             : phase === 'error'
               ? 'text-red'
               : 'text-t3 hover:bg-hov hover:text-t1'
@@ -97,6 +124,7 @@ export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
           </svg>
         )}
       </button>
+      {recording && <RecordingPill />}
       {settingsUrl && (
         // Inline "打开系统设置" link below the mic icon, shown only on a
         // permission error. Clicking opens the matching System Settings
@@ -121,6 +149,44 @@ export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
           打开系统设置
         </span>
       )}
+    </span>
+  );
+}
+
+/** Floating "正在录音…" pill with 3 animated equalizer bars. Sits below the
+ *  mic button while `phase === 'recording'`. `pointer-events-none` so it
+ *  never steals the click that stops recording. Animation is the CSS
+ *  `quill-voice-eq` keyframes (injected at module load); each bar gets a
+ *  different `animationDelay` so the bars don't pulse in lockstep. */
+function RecordingPill() {
+  ensureRecordingKeyframes();
+  // Inline background/border via `color-mix` — `--red` is a hex CSS var so the
+  // Tailwind `/10` opacity modifier won't work on `bg-red`. Matches the
+  // `.diff-btn-reject` repo convention (index.css line 227).
+  const pillStyle: CSSProperties = {
+    background: 'color-mix(in srgb, var(--red, #f06a6a) 12%, transparent)',
+    border: '1px solid color-mix(in srgb, var(--red, #f06a6a) 30%, transparent)',
+  };
+  return (
+    <span
+      className="absolute top-full left-1/2 -translate-x-1/2 mt-1 flex items-center gap-1.5 px-2 py-1 rounded-full text-red text-[10px] whitespace-nowrap pointer-events-none z-10 select-none"
+      style={pillStyle}
+      role="status"
+      aria-live="polite"
+    >
+      <span className="flex items-end gap-[2px] h-2.5">
+        {[0, 0.25, 0.5].map((delay) => (
+          <span
+            key={delay}
+            className="w-[2px] h-2.5 bg-red origin-bottom"
+            style={{
+              animation: 'quill-voice-eq 0.9s ease-in-out infinite',
+              animationDelay: `${delay}s`,
+            }}
+          />
+        ))}
+      </span>
+      正在录音…
     </span>
   );
 }
