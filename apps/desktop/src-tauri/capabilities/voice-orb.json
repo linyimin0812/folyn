@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/tooling/cli/schema.json",
+  "identifier": "voice-orb",
+  "description": "Capabilities for the voice-orb window (the SiriGL waveform/canvas shown while the global voice hotkey is recording). The window is shown/hidden via the custom voice_orb_hide invoke command (the show side is driven directly from Rust in voice_start, bypassing the ACL). The orb only needs event access: listen for voice://mic-level (live RMS feed from the Rust recorder) and voice://orb-phase (phase/trigger broadcast from the main window's useVoiceInput store — Tauri windows are separate JS realms, so the store does NOT sync across windows).",
+  "windows": ["voice-orb"],
+  "permissions": [
+    "core:default",
+    "core:event:allow-listen",
+    "core:event:allow-emit"
+  ]
+}

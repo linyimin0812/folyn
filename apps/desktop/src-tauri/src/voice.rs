@@ -19,7 +19,7 @@
 
 use serde::Serialize;
 use std::sync::Mutex;
-use tauri::Manager;
+use tauri::{Emitter, Manager, PhysicalPosition};
 
 // PR4: the voice global hotkey is registered/unregistered via the
 // `tauri-plugin-global-shortcut` crate (already a dependency for the pet-panel
@@ -199,7 +199,17 @@ pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result
     if let Err(err) = permissions::ensure_microphone() {
         return Err(err);
     }
-    let (recorder, runtime_rx) = match Recorder::start(consumer) {
+    // Mic-level feed for the SiriGL waveform shader. The handler emits a
+    // `voice://mic-level` event with `{ level: f32 }` (RMS, 0..1) on every
+    // cpal callback throttled to ~30 Hz inside the recorder. Tauri's emit is
+    // non-blocking (posts to an internal event bus), so it is safe to call
+    // from the real-time audio thread — matches the openless capsule:state
+    // emit pattern (see openless `coordinator/capsule_focus.rs`).
+    let app_for_level = app.clone();
+    let level_handler: Option<recorder::LevelHandler> = Some(std::sync::Arc::new(move |level: f32| {
+        let _ = app_for_level.emit("voice://mic-level", serde_json::json!({ "level": level }));
+    }));
+    let (recorder, runtime_rx) = match Recorder::start(consumer, level_handler) {
         Ok(pair) => pair,
         Err(RecorderError::PermissionDenied) => {
             return Err("麦克风权限被拒绝，请在 系统设置 → 隐私与安全性 → 麦克风 中允许 Quill".into());
@@ -216,6 +226,154 @@ pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result
     inner.recorder = Some(recorder);
     inner.asr = asr;
     log::info!("[voice] recording started");
+
+    // Reveal the voice-orb window (the SiriGL waveform) now that recording is
+    // actually live. The window is created hidden at startup (see
+    // tauri.conf.json `voice-orb`) and converted to a nonactivating NSPanel on
+    // app launch (see `pet_panel_macos::convert_windows`). Position is re-
+    // computed bottom-center of the primary monitor on every start so a
+    // monitor-layout change since startup is respected. The frontend's
+    // VoiceOrbApp hides the window when phase returns to idle/error.
+    show_voice_orb(&app);
+    Ok(())
+}
+
+/// Show the `voice-orb` window at the bottom-center of the primary monitor and
+/// reveal it. Called from `voice_start` after the recorder is live. No-op if
+/// the window is missing (e.g. non-macOS where the macOS-only `#[cfg]` block
+/// is not compiled in). The window's NSPanel conversion + transparency flags
+/// were applied at app startup via `pet_panel_macos::convert_windows` +
+/// `pet_make_transparent`, so this just sets position + shows.
+///
+/// ponytail: positioning uses Tauri's `Monitor` API (full monitor rect, NOT
+/// `NSScreen.visibleFrame`), so the orb may overlap the Dock on macOS. The
+/// orb is short-lived (recording duration only) and transparent; a small
+/// bottom margin clears the menu bar on most setups. Upgrade to
+/// `NSScreen.visibleFrame` via the cocoa FFI (see `commands::pet_get_work_area`)
+/// if Dock overlap becomes visible.
+#[cfg(target_os = "macos")]
+fn show_voice_orb(app: &tauri::AppHandle) {
+    use tauri::PhysicalSize;
+    const VOICE_ORB_WIDTH: f64 = 460.0;
+    const VOICE_ORB_HEIGHT: f64 = 180.0;
+    const BOTTOM_MARGIN_PX: f64 = 40.0;
+
+    let window = match app.get_webview_window("voice-orb") {
+        Some(w) => w,
+        None => {
+            log::warn!("[voice] voice-orb window not found");
+            return;
+        }
+    };
+
+    // ponytail: every NSWindow mutation below — `set_position`, `set_size`, and
+    // the NSPanel `show()` (= `orderFrontRegardless`) reached via
+    // `show_voice_orb_no_activate` — MUST run on the macOS main thread. `voice_start`
+    // is a `#[tauri::command] async fn`, so it executes on a tokio worker thread;
+    // calling `WebviewWindow::set_position` / `set_size` or `Panel::show` from there
+    // trips AppKit's `NSWMWindowCoordinator performTransactionUsingBlock:` main-thread
+    // guard, which `os_crash("Must only be used from the main thread")`s the process
+    // (EXC_BREAKPOINT / SIGTRAP) — observed in the field after the user granted
+    // Accessibility permission. Marshal the whole window-mutation block to the main
+    // thread via `run_on_main_thread` (fire-and-forget; `voice_start` doesn't need
+    // to wait — the orb appearing one frame later is fine). Monitor geometry is read
+    // here (on the tokio thread) because `app.primary_monitor()` is not main-thread-
+    // only and the params are plain `i32`s that are trivially `Send + 'static`.
+    let monitor = app.primary_monitor().ok().flatten();
+    let have_monitor = monitor.is_some();
+    let (x, y, win_w_phys, win_h_phys) = match &monitor {
+        Some(m) => {
+            let scale = m.scale_factor();
+            let mon_pos = m.position();
+            let mon_size = m.size();
+            let win_w_phys = (VOICE_ORB_WIDTH * scale) as i32;
+            let win_h_phys = (VOICE_ORB_HEIGHT * scale) as i32;
+            let bottom_phys = (BOTTOM_MARGIN_PX * scale) as i32;
+            let x = mon_pos.x + ((mon_size.width as i32) - win_w_phys) / 2;
+            let y = mon_pos.y + (mon_size.height as i32) - win_h_phys - bottom_phys;
+            (x, y, win_w_phys, win_h_phys)
+        }
+        None => (0, 0, 0, 0),
+    };
+
+    let app2 = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        if have_monitor {
+            // Position FIRST so the first visible frame is already at the right
+            // spot (mirrors the pet-panel open path — no flash at the default
+            // origin).
+            let _ = window.set_position(PhysicalPosition::new(x, y));
+            // The conf-declared size is logical points (460×180). Re-assert in
+            // physical px so a monitor with a different scale_factor doesn't squish.
+            let _ = window.set_size(PhysicalSize::new(win_w_phys, win_h_phys));
+        }
+        // ponytail: do NOT use `window.show()` — on an NSPanel-converted window
+        // it routes through wry/tao's default show path which calls
+        // `makeKeyAndOrderFront:`, making the orb the KEY window of the active
+        // app (Quill itself when the user clicked the mic button; or, on the
+        // global-hotkey path, the orb would steal key from VS Code/the browser
+        // the user is dictating into). The post-recording CGEvent Cmd+V posted
+        // to `kCGHIDEventTap` is dispatched to the active app's key window — if
+        // that is the orb (no text field), nothing lands; the user sees "didn't
+        // paste anywhere". Port openless's `show_capsule_window_no_activate`
+        // pattern: call the NSPanel's `show()` directly, which does
+        // `orderFrontRegardless` — non-activating, non-key-stealing. The orb
+        // appears over the user's frontmost app without disturbing key focus,
+        // so the subsequent Cmd+V lands at the user's actual cursor. The panel
+        // handle is registered in `WebviewPanelManager` by `convert_windows` at
+        // startup (`window.to_panel::<QuillPetPanel>()`); we retrieve it here.
+        // Fall back to `window.show()` only if the panel isn't registered (e.g.
+        // backend=legacy or convert failed) — the orb still appears, paste may
+        // still be wrong, but at least the user sees recording feedback.
+        show_voice_orb_no_activate(&app2, &window);
+    });
+}
+
+/// Show the orb via the NSPanel's `show()` (= `orderFrontRegardless`) —
+/// non-activating, non-key-stealing. Falls back to `window.show()` only if the
+/// panel handle isn't registered. See the ponytail note in `show_voice_orb`
+/// for why `window.show()` (which `makeKeyAndOrderFront:`s) breaks the
+/// cross-app paste.
+#[cfg(target_os = "macos")]
+fn show_voice_orb_no_activate(app: &tauri::AppHandle, window: &tauri::WebviewWindow) {
+    use tauri_nspanel::ManagerExt;
+    match app.get_webview_panel("voice-orb") {
+        Ok(panel) => panel.show(),
+        Err(_) => {
+            log::warn!(
+                "[voice] voice-orb panel not registered; falling back to window.show() (paste target may be wrong)"
+            );
+            let _ = window.show();
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn show_voice_orb(_app: &tauri::AppHandle) {
+    // Non-macOS: voice flow is gated to macOS-only; this helper is never
+    // reached on Windows because `voice_start` returns the macOS-only error
+    // before calling it. Stub kept so the call site compiles unchanged.
+}
+
+/// Hide the `voice-orb` window. Called by the frontend VoiceOrbApp via
+/// `invoke('voice_orb_hide')` when the phase transitions to idle or error —
+/// the Rust `voice_start` SHOWS the window, but `voice_stop` does NOT hide it
+/// (transcribe → polish → insert phases follow `voice_stop`, all of which
+/// the orb must stay visible for). Frontend owns the hide because the
+/// transcribing/polishing/inserting phases are frontend-only state.
+#[tauri::command]
+pub async fn voice_orb_hide(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("voice-orb")
+        .ok_or_else(|| "voice-orb window not found".to_string())?;
+    // ponytail: `window.hide()` mutates NSWindow state and MUST run on the
+    // macOS main thread — same class of crash as `show_voice_orb` if called
+    // from this tokio worker thread (`os_crash("Must only be used from the
+    // main thread")`). Marshal via `run_on_main_thread`; fire-and-forget is
+    // fine (frontend treats hide as best-effort).
+    let _ = app.run_on_main_thread(move || {
+        let _ = window.hide();
+    });
     Ok(())
 }
 

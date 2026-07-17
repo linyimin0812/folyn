@@ -166,5 +166,26 @@ pub fn convert_windows(app: &AppHandle) -> usize {
         }
     }
 
+    // Voice orb — the SiriGL waveform window shown during voice recording. Pure
+    // display (no keyboard interaction); same non-key panel as the mascot so it
+    // appears without stealing focus from the foreground app (the user is
+    // dictating into VS Code, the browser, etc. — focus must stay there so the
+    // post-recording CGEvent Cmd+V lands in the right field). Transparent so
+    // the WebGL canvas floats over the desktop without an opaque square.
+    if let Some(window) = app.get_webview_window("voice-orb") {
+        if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
+            panel.set_level(PanelLevel::Dock.value());
+            panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
+            panel.set_collection_behavior(
+                CollectionBehavior::new()
+                    .stationary()
+                    .can_join_all_spaces()
+                    .full_screen_auxiliary()
+                    .into(),
+            );
+            count += 1;
+        }
+    }
+
     count
 }

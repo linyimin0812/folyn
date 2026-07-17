@@ -4,6 +4,7 @@ import App from './App';
 import { PetApp } from './components/pet/PetApp';
 import { PetPanelApp } from './components/pet/PetPanelApp';
 import { PetBubbleApp } from './components/pet/PetBubbleApp';
+import { VoiceOrbApp } from './components/ai/VoiceOrbApp';
 import './index.css';
 import './components/pet/pet.css';
 
@@ -11,7 +12,10 @@ import './components/pet/pet.css';
 // the mascot — not the full editor app — so the pet window stays tiny and
 // cheap. The `pet-panel` window loads `/#/pet-panel` and mounts only the
 // quick-action panel shell. The `pet-bubble` window loads `/#/pet-bubble` and
-// mounts only the notification bubble. Everything else mounts the main editor.
+// mounts only the notification bubble. The `voice-orb` window loads
+// `/#/voice-orb` and mounts only the SiriGL waveform canvas (a floating
+// always-on-top transparent indicator shown while the global voice hotkey is
+// recording). Everything else mounts the main editor.
 //
 // Hash detection: `window.location.hash` is normally set by the time this
 // module evaluates, but in some Tauri webview builds the hash can lag a tick
@@ -30,16 +34,17 @@ const petLoc =
     : '';
 const isPetPanelWindow = petLoc.indexOf('#/pet-panel') !== -1;
 const isPetBubbleWindow = !isPetPanelWindow && petLoc.indexOf('#/pet-bubble') !== -1;
-const isPetWindow = !isPetPanelWindow && !isPetBubbleWindow && petLoc.indexOf('#/pet') !== -1;
+const isVoiceOrbWindow = !isPetPanelWindow && !isPetBubbleWindow && petLoc.indexOf('#/voice-orb') !== -1;
+const isPetWindow = !isPetPanelWindow && !isPetBubbleWindow && !isVoiceOrbWindow && petLoc.indexOf('#/pet') !== -1;
 
-// The pet + pet-panel + pet-bubble windows share `index.css` with the main
-// editor, which sets `html, body { background: var(--bg) }` — an opaque theme
-// color. For the transparent always-on-top pet + pet-bubble windows that
-// opaque body bg would show up as a light-gray square behind the sprite /
-// bubble card (R1 violation). For the pet-panel window the body bg is fine
-// (panel is opaque) but we still tag the root so `pet.css` can scope
-// panel-specific overrides. Tag the root element per route so the override
-// leaves the main editor window untouched.
+// The pet + pet-panel + pet-bubble + voice-orb windows share `index.css` with
+// the main editor, which sets `html, body { background: var(--bg) }` — an
+// opaque theme color. For the transparent always-on-top pet + pet-bubble +
+// voice-orb windows that opaque body bg would show up as a light-gray square
+// behind the sprite / bubble card / waveform canvas (R1 violation). For the
+// pet-panel window the body bg is fine (panel is opaque) but we still tag the
+// root so `pet.css` can scope panel-specific overrides. Tag the root element
+// per route so the override leaves the main editor window untouched.
 if (isPetWindow) {
   document.documentElement.classList.add('is-pet-window');
   // Debug marker: confirms the transparency class landed on <html>. If this
@@ -54,6 +59,9 @@ if (isPetPanelWindow) {
 if (isPetBubbleWindow) {
   document.documentElement.classList.add('is-pet-bubble-window');
 }
+if (isVoiceOrbWindow) {
+  document.documentElement.classList.add('is-voice-orb-window');
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -63,6 +71,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <PetPanelApp />
     ) : isPetBubbleWindow ? (
       <PetBubbleApp />
+    ) : isVoiceOrbWindow ? (
+      <VoiceOrbApp />
     ) : (
       <App />
     )}

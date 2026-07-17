@@ -281,12 +281,14 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         // Global keyboard shortcut plugin. A single global handler dispatches
-        // by HotKey id: the voice push-to-talk HotKey (stored in
+        // by HotKey id: the voice toggle HotKey (stored in
         // `VoiceState::voice_hotkey` by `voice_set_global_hotkey`) emits
-        // `voice://hotkey-press` / `voice://hotkey-release` (PR4 push-to-talk),
-        // and any OTHER registered HotKey (currently the pet-panel toggle
-        // managed by `pet_panel_set_shortcut`) emits `pet://shortcut-toggle`
-        // on Pressed. WHICH accelerator fires each is swapped at runtime by
+        // `voice://hotkey-toggle` on Pressed only (toggle semantics — first
+        // press starts recording, second press stops; mirrors openless
+        // `qa_hotkey.rs` which filters to `HotKeyState::Pressed` and lets the
+        // coordinator interpret press #1 vs #2), and any OTHER registered
+        // HotKey (currently the pet-panel toggle managed by
+        // `pet_panel_set_shortcut`) emits `pet://shortcut-toggle` on Pressed. WHICH accelerator fires each is swapped at runtime by
         // the respective `*_set_shortcut` commands; this closure only decides
         // the routing. Pet mode is macOS-only at present, but the plugin loads
         // on all platforms — non-macOS just never has an accelerator registered
@@ -298,26 +300,21 @@ pub fn run() {
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
                     use tauri_plugin_global_shortcut::ShortcutState;
-                    // PR4: is this the voice push-to-talk HotKey? Read the
-                    // stored voice HotKey from VoiceState and compare. The
-                    // stored value is `Copy` so a brief uncontended lock
-                    // suffices. Unwrap-to-None on a poisoned lock so a
-                    // poisoned lock never breaks the pet-panel toggle.
+                    log::info!("[voice] shortcut handler fired: shortcut={:?} state={:?}", shortcut, event.state);
+                    // Voice toggle HotKey? Read the stored voice HotKey from
+                    // VoiceState and compare. The stored value is `Copy` so a
+                    // brief uncontended lock suffices. Unwrap-to-None on a
+                    // poisoned lock so a poisoned lock never breaks the
+                    // pet-panel toggle. Toggle mode: only Pressed fires —
+                    // Released is dropped (openless parity).
                     let voice_hotkey = app
                         .state::<voice::VoiceState>()
                         .voice_hotkey();
                     let is_voice = voice_hotkey
                         .map(|vh| vh == *shortcut)
                         .unwrap_or(false);
-                    if is_voice {
-                        match event.state {
-                            ShortcutState::Pressed => {
-                                let _ = app.emit("voice://hotkey-press", ());
-                            }
-                            ShortcutState::Released => {
-                                let _ = app.emit("voice://hotkey-release", ());
-                            }
-                        }
+                    if is_voice && event.state == ShortcutState::Pressed {
+                        let _ = app.emit("voice://hotkey-toggle", ());
                         return;
                     }
                     if event.state == ShortcutState::Pressed {
@@ -412,7 +409,7 @@ pub fn run() {
             // Pet-panel global-shortcut state. Holds the currently-registered
             // pet HotKey so `pet_panel_set_shortcut` can do a TARGETED
             // unregister (not `unregister_all`, which would wipe the voice
-            // push-to-talk HotKey registered by `voice::voice_set_global_hotkey`).
+            // toggle HotKey registered by `voice::voice_set_global_hotkey`).
             app.manage(commands::PetShortcutState::new());
 
             // Voice input shared state (PR2). Holds the live `Recorder` +
@@ -530,6 +527,7 @@ pub fn run() {
             voice::voice_insert_text,
             voice::voice_request_accessibility,
             voice::voice_set_global_hotkey,
+            voice::voice_orb_hide,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

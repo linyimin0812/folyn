@@ -42,6 +42,19 @@ html.is-pet-bubble-window #root {
   background: transparent !important;
 }
 
+/* The voice-orb window is also transparent (the SiriGL WebGL waveform floats
+ * above the desktop while the global voice hotkey is recording). Same opaque-
+ * square defense: tag <html> with `.is-voice-orb-window` (see main.tsx) so
+ * the editor's `html, body { background: var(--bg) }` rule does not paint an
+ * opaque 460x180 square behind the canvas. The canvas itself outputs alpha
+ * (the shader's alpha = max(R,G,B)), so the desktop shows through the
+ * transparent regions. */
+html.is-voice-orb-window,
+html.is-voice-orb-window body,
+html.is-voice-orb-window #root {
+  background: transparent !important;
+}
+
 .pet-root {
   /* The pet window is 96x96 physical px. The root fills it so the sprite
    * can be centered, and transparent regions pass clicks through to the

@@ -13,10 +13,11 @@
 
 #![cfg(target_os = "macos")]
 
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
+use std::time::Instant;
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, StreamConfig};
@@ -26,6 +27,11 @@ use parking_lot::Mutex;
 const TARGET_SAMPLE_RATE: u32 = 16_000;
 /// How often to log a diagnostic line (every N callbacks).
 const LOG_EVERY_N_CALLBACKS: usize = 50;
+/// Min interval between two `level_handler` invocations. cpal callbacks run
+/// ~100 Hz (10 ms chunks); piping every RMS to Tauri's event bus would flood
+/// the IPC. 33 ms ≈ 30 Hz matches the openless capsule feed rate, which the
+/// SiriGL shader's internal attack/release smoothing is tuned for.
+const LEVEL_EMIT_INTERVAL_MS: u64 = 33;
 
 /// Receives the resampled 16 kHz mono Int16-LE PCM byte stream. Mirrors the
 /// openless trait of the same name; `AppleSpeechAsr` implements it to buffer
@@ -35,6 +41,16 @@ pub trait AudioConsumer: Send + Sync {
     /// multiple of 2).
     fn consume_pcm_chunk(&self, pcm: &[u8]);
 }
+
+/// Optional mic-level callback invoked from the cpal audio thread at
+/// ~30 Hz (see `LEVEL_EMIT_INTERVAL_MS`). `level` is the RMS amplitude
+/// (0.0..1.0) of the resampled mono PCM for the chunk(s) since the last
+/// invocation. Used by the frontend to drive the SiriGL waveform shader.
+///
+/// The handler MUST be cheap (no synchronous IPC blocking) — it is called
+/// from the real-time audio thread. Tauri's `app.emit` is non-blocking
+/// (posts to an internal bus), so the typical handler is a one-line emit.
+pub type LevelHandler = Arc<dyn Fn(f32) + Send + Sync + 'static>;
 
 /// Recorder errors surfaced via the runtime channel or returned from `start`.
 #[derive(Debug)]
@@ -54,8 +70,13 @@ pub struct Recorder {
 
 impl Recorder {
     /// Start capturing. `consumer` receives 16 kHz / mono / Int16-LE PCM.
+    /// `level_handler`, if provided, is invoked at ~30 Hz with the RMS amplitude
+    /// of the captured mono PCM — the frontend feeds it to the SiriGL shader.
     /// Returns the recorder + a runtime-error receiver.
-    pub fn start(consumer: Arc<dyn AudioConsumer>) -> Result<(Self, Receiver<RecorderError>), RecorderError> {
+    pub fn start(
+        consumer: Arc<dyn AudioConsumer>,
+        level_handler: Option<LevelHandler>,
+    ) -> Result<(Self, Receiver<RecorderError>), RecorderError> {
         // Startup signal: child thread reports Stream-constructed-or-failed.
         let (startup_tx, startup_rx) = channel::<Result<(), RecorderError>>();
         // Runtime errors: surfaced asynchronously via cpal's err_cb.
@@ -66,7 +87,7 @@ impl Recorder {
         let join_handle = thread::Builder::new()
             .name("quill-voice-recorder".into())
             .spawn(move || {
-                run_audio_thread(consumer, stop_for_thread, startup_tx, runtime_error_tx);
+                run_audio_thread(consumer, level_handler, stop_for_thread, startup_tx, runtime_error_tx);
             })
             .map_err(|e| RecorderError::EngineFailed(format!("spawn audio thread: {e}")))?;
 
@@ -100,11 +121,12 @@ impl Recorder {
 /// to actually release the mic — same fix as openless).
 fn run_audio_thread(
     consumer: Arc<dyn AudioConsumer>,
+    level_handler: Option<LevelHandler>,
     stop_flag: Arc<AtomicBool>,
     startup_tx: Sender<Result<(), RecorderError>>,
     runtime_error_tx: Sender<RecorderError>,
 ) {
-    let stream = match build_input_stream(consumer, runtime_error_tx.clone()) {
+    let stream = match build_input_stream(consumer, level_handler, runtime_error_tx.clone()) {
         Ok(s) => s,
         Err(err) => {
             let _ = startup_tx.send(Err(err));
@@ -137,6 +159,7 @@ fn run_audio_thread(
 
 fn build_input_stream(
     consumer: Arc<dyn AudioConsumer>,
+    level_handler: Option<LevelHandler>,
     runtime_error_tx: Sender<RecorderError>,
 ) -> Result<cpal::Stream, RecorderError> {
     let host = cpal::default_host();
@@ -160,7 +183,7 @@ fn build_input_stream(
         sample_format
     );
 
-    let state = Arc::new(StreamState::new());
+    let state = Arc::new(StreamState::new(level_handler));
     build_stream_for_format(
         &device,
         &config,
@@ -246,24 +269,35 @@ fn classify_build_stream_err(err: cpal::BuildStreamError) -> RecorderError {
     }
 }
 
-/// Cross-callback state for resampling + diagnostics.
+/// Cross-callback state for resampling + diagnostics + level throttling.
 struct StreamState {
     resample_phase: Mutex<f64>,
     last_sample: Mutex<f32>,
-    callback_count: AtomicUsize,
+    callback_count: AtomicU64,
+    /// Last `Instant` the level handler was invoked. Pinned to the audio
+    /// thread (cpal calls back on its own thread), but stored as `Mutex<Instant>`
+    /// so the `Fn(f32)` handler can be reassigned per-session without unsafe.
+    last_level_emit: Mutex<Instant>,
+    /// Optional mic-level handler (~30 Hz). `None` = no UI feed (level metering
+    /// disabled); the consumer still gets the PCM as usual.
+    level_handler: Option<LevelHandler>,
 }
 
 impl StreamState {
-    fn new() -> Self {
+    fn new(level_handler: Option<LevelHandler>) -> Self {
         Self {
             resample_phase: Mutex::new(0.0),
             last_sample: Mutex::new(0.0),
-            callback_count: AtomicUsize::new(0),
+            callback_count: AtomicU64::new(0),
+            last_level_emit: Mutex::new(Instant::now()),
+            level_handler,
         }
     }
 }
 
-/// Per callback: downmix → resample → quantize to i16 → feed consumer.
+/// Per callback: downmix → resample → quantize to i16 → feed consumer, then
+/// (optionally) feed the level handler with the chunk's RMS, throttled to
+/// ~30 Hz so the IPC bus isn't flooded.
 fn process_callback(
     interleaved: &[f32],
     channels: usize,
@@ -281,11 +315,26 @@ fn process_callback(
         return;
     }
 
-    let (pcm_bytes, _output_rms) = quantize_to_i16_le(&resampled);
+    let (pcm_bytes, output_rms) = quantize_to_i16_le(&resampled);
     consumer.consume_pcm_chunk(&pcm_bytes);
 
+    // Mic-level feed for the SiriGL waveform shader. Throttled: cpal calls
+    // back ~100 Hz, but the shader's internal attack/release smoothing makes
+    // 30 Hz plenty — same rate as openless's capsule:state feed. The handler
+    // is invoked outside the resample/quantize critical path so a slow IPC
+    // can't stall the audio thread (Tauri's emit is non-blocking).
+    if let Some(handler) = state.level_handler.as_ref() {
+        let mut last_emit = state.last_level_emit.lock();
+        let elapsed = last_emit.elapsed();
+        if elapsed.as_millis() as u64 >= LEVEL_EMIT_INTERVAL_MS {
+            *last_emit = Instant::now();
+            drop(last_emit);
+            handler(output_rms);
+        }
+    }
+
     let count = state.callback_count.fetch_add(1, Ordering::Relaxed) + 1;
-    if count == 1 || count % LOG_EVERY_N_CALLBACKS == 0 {
+    if count == 1 || count % LOG_EVERY_N_CALLBACKS as u64 == 0 {
         log::info!("[voice] cb#{count} inLen={} outLen={}", mono.len(), resampled.len());
     }
 }
@@ -351,9 +400,9 @@ fn resample_to_target(samples: &[f32], src_sr: u32, dst_sr: u32, state: &StreamS
     out
 }
 
-/// f32 → i16 little-endian byte stream. RMS is computed as a side effect but
-/// unused in PR2 (level metering is PR3); kept to minimize the diff from
-/// openless where the same function feeds the level UI.
+/// f32 → i16 little-endian byte stream. RMS is returned alongside so the
+/// audio-thread level handler can feed the SiriGL waveform shader without a
+/// second pass over the samples.
 fn quantize_to_i16_le(samples: &[f32]) -> (Vec<u8>, f32) {
     let mut bytes = Vec::with_capacity(samples.len() * 2);
     let mut sum_sq = 0.0f64;
@@ -415,7 +464,7 @@ mod tests {
 
     #[test]
     fn resample_passthrough_updates_tail_sample_without_phase_drift() {
-        let state = StreamState::new();
+        let state = StreamState::new(None);
         *state.resample_phase.lock() = 0.5;
 
         let out = resample_to_target(
@@ -432,7 +481,7 @@ mod tests {
 
     #[test]
     fn resample_upsamples_with_linear_interpolation_and_tail_state() {
-        let state = StreamState::new();
+        let state = StreamState::new(None);
 
         let out = resample_to_target(&[0.0, 1.0], 8_000, TARGET_SAMPLE_RATE, &state);
 
@@ -444,7 +493,7 @@ mod tests {
     #[test]
     fn process_callback_resamples_non_target_input_before_emitting_pcm() {
         let consumer = RecordingConsumer::default();
-        let state = StreamState::new();
+        let state = StreamState::new(None);
 
         process_callback(&[0.0, 1.0], 1, 8_000, &consumer, &state);
 
@@ -457,12 +506,80 @@ mod tests {
     #[test]
     fn process_callback_ignores_empty_or_zero_channel_input() {
         let consumer = RecordingConsumer::default();
-        let state = StreamState::new();
+        let state = StreamState::new(None);
 
         process_callback(&[], 1, TARGET_SAMPLE_RATE, &consumer, &state);
         process_callback(&[0.25, -0.25], 0, TARGET_SAMPLE_RATE, &consumer, &state);
 
         assert!(consumer.chunks.lock().unwrap().is_empty());
         assert_eq!(state.callback_count.load(Ordering::Relaxed), 0);
+    }
+
+    /// ponytail: the level handler is throttled to ~30 Hz — cpal callbacks run
+    /// ~100 Hz and piping every RMS to the IPC bus would flood it. This test
+    /// drives `process_callback` many times in tight succession and asserts the
+    /// handler fires at most once per `LEVEL_EMIT_INTERVAL_MS` window. The
+    /// ceiling is named: if LEVEL_EMIT_INTERVAL_MS shrinks, the count goes up;
+    /// if it grows, the count goes down. Upgrade path: per-stream config or
+    /// adaptive rate based on shader load — not needed yet.
+    #[test]
+    fn level_handler_throttles_to_emit_interval() {
+        let counter = Arc::new(AtomicU64::new(0));
+        let counter_for_cb = Arc::clone(&counter);
+        let handler: LevelHandler = Arc::new(move |_level: f32| {
+            counter_for_cb.fetch_add(1, Ordering::Relaxed);
+        });
+        let consumer = RecordingConsumer::default();
+        let state = Arc::new(StreamState::new(Some(handler)));
+
+        // 200 callbacks with zero time advance between them: cpal would only
+        // emit on the very first call (Instant::now() was set in
+        // StreamState::new, and 0 elapsed < LEVEL_EMIT_INTERVAL_MS). Drive
+        // `last_level_emit` backward by the interval before each call to
+        // simulate time passing; assert exactly one emit per simulated
+        // interval window.
+        for _ in 0..200 {
+            // Force `last_level_emit` into the past so the throttle releases.
+            *state.last_level_emit.lock() =
+                Instant::now() - std::time::Duration::from_millis(LEVEL_EMIT_INTERVAL_MS + 1);
+            process_callback(
+                &[0.5, -0.5, 0.25],
+                1,
+                TARGET_SAMPLE_RATE,
+                &consumer,
+                &state,
+            );
+        }
+
+        assert_eq!(counter.load(Ordering::Relaxed), 200);
+    }
+
+    /// Throttle WITHOUT time advance = zero emits. Asserts the gate actually
+    /// holds — a regression that dropped the throttle would let this test fire
+    /// 100 times.
+    #[test]
+    fn level_handler_blocks_emits_within_interval() {
+        let counter = Arc::new(AtomicU64::new(0));
+        let counter_for_cb = Arc::clone(&counter);
+        let handler: LevelHandler = Arc::new(move |_level: f32| {
+            counter_for_cb.fetch_add(1, Ordering::Relaxed);
+        });
+        let consumer = RecordingConsumer::default();
+        let state = Arc::new(StreamState::new(Some(handler)));
+
+        for _ in 0..100 {
+            process_callback(
+                &[0.5, -0.5, 0.25],
+                1,
+                TARGET_SAMPLE_RATE,
+                &consumer,
+                &state,
+            );
+        }
+
+        // The StreamState::new call seeded `last_level_emit` to "now"; the
+        // 100 callbacks all run within microseconds — far under
+        // LEVEL_EMIT_INTERVAL_MS (33 ms). Zero emits while inside the window.
+        assert_eq!(counter.load(Ordering::Relaxed), 0);
     }
 }

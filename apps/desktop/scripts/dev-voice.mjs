@@ -37,16 +37,27 @@
 //
 // CAVEATS:
 //   - macOS-only (refuses on other platforms with a clear error).
-//   - The dev binary is ad-hoc signed by cargo. TCC may still re-prompt on
-//     rebuilds if the binary's signature path changes — re-grant in
-//     System Settings > Privacy & Security if so.
+//   - Codesign the .app bundle (NOT just the raw binary) so the Info.plist +
+//     Entitlements.plist are SEALED into the bundle signature. This is the fix
+//     for the "accessibility granted in System Settings but AXIsProcessTrusted()
+//     returns false" symptom: an unsealed Info.plist (the previous symlink +
+//     sign-binary-only approach produced `Info.plist=not bound` +
+//     `Sealed Resources=none`) lets TCC distrust the bundle's claimed
+//     CFBundleIdentifier / NS*UsageDescription, so it falls back to cdhash-only
+//     matching that breaks across rebuilds. Openless gets this for free because
+//     `tauri build` codesigns the whole bundle; we have to do it manually in dev.
+//   - Copies the binary into the bundle (not a symlink) so `codesign --deep`
+//     seals the Mach-O inside the bundle. A symlink would let codesign -d
+//     resolve to the raw `target/debug/quill`, leaving the bundle's
+//     Info.plist/Entitlements.plist unsealed — the previous bug.
+//   - ad-hoc signed dev binary: TCC rows are keyed on bundle ID + cdhash.
 //   - DON'T spawn the binary directly to capture stdout/stderr — bypassing
 //     LaunchServices loses the bundle context TCC needs to find
 //     NSSpeechRecognitionUsageDescription → instant TCC crash on stop.
 //     (commit c88ecbe tried this; reverted in the follow-up.)
 
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, copyFileSync, rmSync, symlinkSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, copyFileSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -61,7 +72,7 @@ const APP_BUNDLE_DIR = join(TARGET_DEBUG_DIR, 'Quill.app');
 const CONTENTS_DIR = join(APP_BUNDLE_DIR, 'Contents');
 const MACOS_DIR = join(CONTENTS_DIR, 'MacOS');
 const DEV_BINARY = join(TARGET_DEBUG_DIR, 'quill'); // target/debug/quill
-const MACOS_SYMLINK = join(MACOS_DIR, 'quill'); // Contents/MacOS/quill -> ../../quill
+const MACOS_BINARY = join(MACOS_DIR, 'quill'); // Contents/MacOS/quill (a copy, not a symlink)
 const SOURCE_INFO_PLIST = join(SRC_TAURI_DIR, 'Info.plist');
 const SOURCE_ENTITLEMENTS = join(SRC_TAURI_DIR, 'Entitlements.plist');
 const BUNDLE_INFO_PLIST = join(CONTENTS_DIR, 'Info.plist');
@@ -72,6 +83,13 @@ const BUNDLE_ID = 'com.quill.editor';
 const BUNDLE_NAME = 'Quill';
 const BUNDLE_VERSION = '0.1.0';
 const BUNDLE_BUILD = '1';
+// Stamp file recording the dev bundle's code-signature DR from the last run.
+// ponytail: cdhash is the only TCC-relevant field in the ad-hoc DR; comparing
+// the full `codesign -d -r-` output is sufficient — no need to parse out just
+// the hash. If throughput ever matters, narrow to a cdhash regex. We sample the
+// BUNDLE (not the raw binary) so the stamp reflects the sealed-Info.plist
+// signature — if the bundle's signature changes, TCC's grant is stale.
+const SIGNATURE_STAMP = join(TARGET_DEBUG_DIR, '.dev-voice-codesign-stamp');
 
 function log(msg) {
   console.log(`[dev:voice] ${msg}`);
@@ -129,6 +147,104 @@ function cargoBuild() {
   log('cargo build OK');
 }
 
+// Re-sign the .app BUNDLE (not just the raw binary) with a stable identifier
+// matching the bundle's CFBundleIdentifier + the audio-input entitlement.
+//
+// Why the bundle, not the raw binary: macOS TCC trusts a .app bundle's claimed
+// CFBundleIdentifier / NS*UsageDescription ONLY when the Info.plist is SEALED
+// into the bundle's code signature (`codesign -dv` must report
+// `Info.plist=` bound, not "not bound"; `Sealed Resources=` something, not
+// "none"). Signing only `target/debug/quill` (the previous approach) left
+// `Info.plist=not bound` + `Sealed Resources=none` — TCC fell back to
+// cdhash-only matching that broke across rebuilds, surfacing as
+// "AXIsProcessTrusted() returns false even after the user toggled Accessibility
+// ON in System Settings".
+//
+// `--deep` traverses into the bundle and seals the Mach-O executable +
+// Info.plist + Entitlements.plist + Resources in one signature. The
+// `--entitlements` flag injects the audio-input entitlement (the same one
+// openless/Tauri release builds apply) so cpal mic capture is permitted.
+//
+// ponytail: `--sign -` is ad-hoc; a stable self-signed cert would make TCC
+// grants survive rebuilds entirely (no reset needed), but requires the user
+// to create + trust a cert in Keychain. Out of scope for the dev script.
+function codesignAppBundle() {
+  // ponytail: `-i` is the identifier flag (short for `--identifier`); macOS
+  // codesign has no `--bundle-id` flag. `--entitlements` injects the plist
+  // into the signature; `--deep` seals nested code (the Mach-O binary).
+  const result = spawnSync(
+    'codesign',
+    [
+      '--force',
+      '--deep',
+      '--sign', '-',
+      '-i', BUNDLE_ID,
+      '--entitlements', BUNDLE_ENTITLEMENTS,
+      APP_BUNDLE_DIR,
+    ],
+    { stdio: 'inherit' },
+  );
+  if (result.status !== 0) {
+    fail(`codesign of .app bundle failed (status=${result.status}) — run \`codesign --force --deep --sign - -i ${BUNDLE_ID} --entitlements ${BUNDLE_ENTITLEMENTS} ${APP_BUNDLE_DIR}\` manually to diagnose`);
+  }
+  log(`re-signed ${APP_BUNDLE_DIR} (identifier=${BUNDLE_ID}, entitlements sealed)`);
+}
+
+// Read the .app bundle's current code-signature designated requirement (DR).
+// `codesign -d -r-` prints `# designated => cdhash H"<hex>"` for ad-hoc signed
+// bundles. The cdhash is the only TCC-relevant field — comparing the full
+// stdout is a cheap, parsing-free way to detect "bundle signature changed".
+// Reads the BUNDLE (not the raw binary) so the stamp reflects the sealed
+// signature — matches what TCC actually validates.
+function readBundleSignature() {
+  const result = spawnSync(
+    'codesign',
+    ['-d', '-r-', APP_BUNDLE_DIR],
+    { encoding: 'utf8' },
+  );
+  // codesign -d writes the DR to stderr (not stdout); merge both so a future
+  // codesign version that moves it to stdout doesn't silently break detection.
+  return `${result.stdout || ''}${result.stderr || ''}`.trim();
+}
+
+// If the .app bundle's signature DR changed since the last run, reset TCC for
+// the bundle ID so the user gets a clean prompt instead of a stale toggle.
+// Faithful port of openless `build-mac.sh` (tccutil reset before install) +
+// `lib.rs::reset_tcc_for_beta_restart` (same rationale: "ad-hoc 签名 hash
+// 每次构建都会变，旧授权立即失效"). Without this, System Settings shows the
+// Accessibility toggle ON but `AXIsProcessTrusted()` returns false — exactly
+// the "已经授权了，但是还是显示错误" symptom. SpeechRecognition is reset
+// too: SFSpeechRecognizer authorization is also a TCC row keyed on the same
+// cdhash.
+function resetTccIfSignatureChanged() {
+  const current = readBundleSignature();
+  let previous = '';
+  try {
+    previous = readFileSync(SIGNATURE_STAMP, 'utf8').trim();
+  } catch {
+    // First run — no stamp yet. Fall through to reset so a prior grant from a
+    // different signature doesn't linger as a stale toggle.
+  }
+  if (current === previous) {
+    log('dev binary signature unchanged — keeping existing TCC grants');
+    return;
+  }
+  log('dev binary signature changed — resetting TCC so the next prompt fires cleanly');
+  for (const service of ['Accessibility', 'Microphone', 'SpeechRecognition']) {
+    const r = spawnSync('tccutil', ['reset', service, BUNDLE_ID], { stdio: 'inherit' });
+    if (r.status !== 0) {
+      // tccutil exits non-zero if the service has no row for this bundle ID —
+      // harmless on a fresh install. Don't abort the dev script over it.
+      console.warn(`[dev:voice] tccutil reset ${service} ${BUNDLE_ID} exited ${r.status} (ok if no prior grant)`);
+    }
+  }
+  try {
+    writeFileSync(SIGNATURE_STAMP, current, 'utf8');
+  } catch (err) {
+    console.warn(`[dev:voice] could not write stamp ${SIGNATURE_STAMP}: ${err.message}`);
+  }
+}
+
 // Build the Quill.app wrapper. Idempotent: rm -rf's the existing bundle first.
 // - Copies Info.plist + Entitlements.plist from src-tauri/.
 // - Injects CFBundleIdentifier / CFBundleExecutable / CFBundlePackageType /
@@ -171,10 +287,14 @@ function buildAppBundle() {
   // binary, but the task spec says to include it; harmless).
   copyFileSync(SOURCE_ENTITLEMENTS, BUNDLE_ENTITLEMENTS);
 
-  // Contents/MacOS/quill -> symlink to ../../../quill (the dev binary).
-  // Three `..` to escape Quill.app/Contents/MacOS/ and reach target/debug/.
-  // Relative symlink so the wrapper is portable if target/debug is moved.
-  symlinkSync('../../../quill', MACOS_SYMLINK, 'file');
+  // COPY the dev binary into the bundle (not a symlink). A symlink would let
+  // `codesign --deep` resolve to the raw `target/debug/quill`, leaving the
+  // bundle's Info.plist + Entitlements.plist unsealed (`Info.plist=not bound`)
+  // — exactly the TCC-ignores-grant bug we fixed. Copying means codesign seals
+  // the in-bundle Mach-O + Info.plist together as one signed bundle. A rebuild
+  // requires re-copying (buildAppBundle runs every dev:voice invocation — rm -rf
+  // + mkdir at the top, so the copy is fresh each time).
+  copyFileSync(DEV_BINARY, MACOS_BINARY);
 
   log(`built ${APP_BUNDLE_DIR}`);
 }
@@ -192,11 +312,12 @@ function openApp() {
 }
 
 // Kill the .app. LaunchServices tracks the app again (launched via `open`), so
-// osascript can find "Quill" by name; fall back to pkill on the dev binary.
+// osascript can find "Quill" by name; fall back to pkill on the bundle's
+// MacOS executable path (a copy of the dev binary inside the .app).
 function killApp() {
   const polite = spawnSync('osascript', ['-e', `tell application "${BUNDLE_NAME}" to quit`], { stdio: 'ignore' });
   if (polite.status !== 0) {
-    spawnSync('pkill', ['-f', DEV_BINARY], { stdio: 'ignore' });
+    spawnSync('pkill', ['-f', MACOS_BINARY], { stdio: 'ignore' });
   }
   log('app stopped');
 }
@@ -240,6 +361,8 @@ function main() {
 
     cargoBuild();
     buildAppBundle();
+    codesignAppBundle();
+    resetTccIfSignatureChanged();
     openApp();
 
     log('voice dev environment up. Press Ctrl+C to stop (kills vite + the .app).');

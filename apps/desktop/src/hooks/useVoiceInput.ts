@@ -23,11 +23,20 @@ export type VoicePhase =
   | 'inserting'
   | 'error';
 
+/** Which entry point kicked off the current recording. Drives UI: the
+ *  SiriGL waveform overlay only shows for the global-hotkey path (bottom-
+ *  center of the main window); the mic-button path uses the button body
+ *  itself (red bg + stop square) as the sole indicator. */
+export type VoiceTrigger = 'hotkey' | 'button' | null;
+
 export interface VoiceInputState {
   phase: VoicePhase;
   error: string | null;
-  /** Start recording. No-op (returns) if not on macOS or already recording. */
-  start: () => Promise<void>;
+  trigger: VoiceTrigger;
+  /** Start recording. `trigger` labels the entry point so the overlay can
+   *  gate on the hotkey path. No-op (returns) if not on macOS or already
+   *  recording. */
+  start: (trigger?: 'hotkey' | 'button') => Promise<void>;
   /** Stop → transcribe → (optional) polish → insert into focused input.
    *  Silently returns to idle on an empty transcript (user stayed silent). */
   stop: () => Promise<void>;
@@ -46,10 +55,25 @@ function onMac(): boolean {
 // store action can clear/extend it across calls without exposing it.
 let errorTimer: ReturnType<typeof setTimeout> | null = null;
 
+/** Broadcast the current phase + trigger to the voice-orb window. The
+ *  voice-orb is a SEPARATE Tauri window (separate JS realm) — its copy of
+ *  `useVoiceInput` starts at `idle` and never receives the main window's
+ *  state updates. Tauri's `emit` broadcasts to every window, so the orb's
+ *  `voice://orb-phase` listener (VoiceOrbApp.tsx) gets the source of truth
+ *  for mode/resolved/merging. Swallows emit errors so a missing orb window
+ *  never breaks the main flow. */
+function emitOrbPhase(phase: VoicePhase, trigger: VoiceTrigger): void {
+  if (!isTauri()) return;
+  void import('@tauri-apps/api/event').then(({ emit }) =>
+    emit('voice://orb-phase', { phase, trigger }).catch(() => {}),
+  );
+}
+
 function flashError(set: (partial: Partial<VoiceInputState>) => void, msg: string): void {
   console.error('[voice]', msg);
   if (errorTimer) clearTimeout(errorTimer);
   set({ phase: 'error', error: msg });
+  emitOrbPhase('error', useVoiceInput.getState().trigger);
   errorTimer = setTimeout(() => {
     errorTimer = null;
     // Only auto-reset to idle if we're STILL in the error phase. Bug #1's
@@ -59,6 +83,7 @@ function flashError(set: (partial: Partial<VoiceInputState>) => void, msg: strin
     // closure below — see the `useVoiceInput` factory.
     if (useVoiceInput.getState().phase === 'error') {
       set({ phase: 'idle', error: null });
+      emitOrbPhase('idle', null);
     } else {
       // Phase already advanced (saveError non-fatal path) — just clear the
       // lingering error text so it doesn't show up next time.
@@ -70,11 +95,13 @@ function flashError(set: (partial: Partial<VoiceInputState>) => void, msg: strin
 export const useVoiceInput = create<VoiceInputState>((set, get) => ({
   phase: 'idle',
   error: null,
+  trigger: null,
 
-  start: async () => {
+  start: async (trigger: 'hotkey' | 'button' = 'button') => {
     if (get().phase !== 'idle') return;
     if (!onMac()) return;
-    set({ phase: 'recording', error: null });
+    set({ phase: 'recording', error: null, trigger });
+    emitOrbPhase('recording', trigger);
     // Bug #2 fix: pass the user's spoken-language locale so Apple Speech
     // routes recognition to the right engine. Empty string = None (system
     // default) — the dropdown always has a value, so this is defensive.
@@ -93,6 +120,7 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
     if (get().phase !== 'recording') return;
 
     set({ phase: 'transcribing', error: null });
+    emitOrbPhase('transcribing', get().trigger);
     const { saveSource, sourceDir, autoPolish, polishPrompt } = useVoiceStore.getState();
     const rawVaultPath = useVaultStore.getState().currentVault?.basePath ?? '';
 
@@ -147,6 +175,7 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
       useAiConfigStore.getState().chatApiKey.trim().length > 0;
     if (shouldPolish) {
       set({ phase: 'polishing' });
+      emitOrbPhase('polishing', get().trigger);
       // ponytail: runRigChat has no systemPrompt param (chat_stream hardcodes
       // a PREAMBLE). Prepend the polish prompt + transcript so the LLM gets
       // the instruction in-band; the polish prompt already ends with
@@ -182,13 +211,15 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
     }
 
     set({ phase: 'inserting' });
+    emitOrbPhase('inserting', get().trigger);
     try {
       await invoke('voice_insert_text', { text: finalText });
     } catch (err) {
       flashError(set, typeof err === 'string' ? err : String(err));
       return;
     }
-    set({ phase: 'idle' });
+    set({ phase: 'idle', trigger: null });
+    emitOrbPhase('idle', null);
   },
 
   clearError: () => {
@@ -196,6 +227,7 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
       clearTimeout(errorTimer);
       errorTimer = null;
     }
-    set({ phase: 'idle', error: null });
+    set({ phase: 'idle', error: null, trigger: null });
+    emitOrbPhase('idle', null);
   },
 }));

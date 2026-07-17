@@ -285,20 +285,22 @@ export default function App() {
     };
   }, []);
 
-  // ── Voice input: global push-to-talk hotkey ──
-  // PR4. Registers the persisted voice hotkey on mount (so the shortcut works
-  // before the user visits Voice Settings), and listens for `voice://hotkey-press`
-  // / `voice://hotkey-release` events from the `tauri-plugin-global-shortcut`
-  // handler in `lib.rs`. Press → `useVoiceInput.getState().start()`; release →
-  // `.stop()` → transcribe → polish → insert. Reuses the SAME flow as the mic
+  // ── Voice input: global toggle hotkey ──
+  // Registers the persisted voice hotkey on mount (so the shortcut works before
+  // the user visits Voice Settings), and listens for `voice://hotkey-toggle`
+  // events from the `tauri-plugin-global-shortcut` handler in `lib.rs`. Toggle
+  // semantics (mirrors openless `qa_hotkey.rs`): each press flips the state —
+  // idle → start, recording → stop → transcribe → polish → insert. Other
+  // phases (transcribing/polishing/inserting/error) are ignored by the guards
+  // already in `useVoiceInput.start`/`.stop`. Reuses the SAME flow as the mic
   // button (the hook owns the state machine) so the two entry points stay
   // unified. The hotkey is re-registered from VoiceSettings when the user
   // changes it; this effect only handles the mount-time bootstrap + event
   // routing. Non-Tauri/test envs skip.
   useEffect(() => {
     if (!isTauri()) return;
-    let unlistenPress: (() => void) | undefined;
-    let unlistenRelease: (() => void) | undefined;
+    let unlistenToggle: (() => void) | undefined;
+    let cancelled = false;
     (async () => {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
@@ -307,8 +309,13 @@ export default function App() {
         const { useVoiceInput } = await import('@/hooks/useVoiceInput');
 
         // Mount-time registration of the persisted hotkey (if any).
+        // StrictMode double-mounts this effect in dev: the first mount's
+        // cleanup runs before this `await` resolves, so we check `cancelled`
+        // after it to skip the (now-stale) register — the remount will run
+        // it again. Without this guard, the leaked first listener + the
+        // remount's listener both fire on one hotkey press → auto-stop.
         const { globalHotkey } = useVoiceStore.getState();
-        if (globalHotkey) {
+        if (globalHotkey && !cancelled) {
           try {
             await invoke('voice_set_global_hotkey', { accelerator: globalHotkey });
           } catch (err) {
@@ -316,21 +323,24 @@ export default function App() {
           }
         }
 
-        // Route press/release to the shared hook. The hook guards against
-        // double-start/double-stop, so a stray release while idle is a no-op.
-        unlistenPress = await listen('voice://hotkey-press', () => {
-          void useVoiceInput.getState().start();
-        });
-        unlistenRelease = await listen('voice://hotkey-release', () => {
-          void useVoiceInput.getState().stop();
+        // One event = one toggle. Read phase and flip; the hook's own guards
+        // make a stray toggle during transcribe/polish/insert a no-op.
+        unlistenToggle = await listen('voice://hotkey-toggle', () => {
+          const { phase, start, stop } = useVoiceInput.getState();
+          if (phase === 'idle') void start('hotkey');
+          else if (phase === 'recording') void stop();
         });
       } catch (err) {
         console.warn('[voice] hotkey listener setup failed:', err);
       }
+      // ponytail: StrictMode teardown-races-await canonical guard (mirrors
+      // VoiceOrbOverlay.tsx:76-98): if cleanup already ran while we were
+      // awaiting `listen`, drop the listener right now so it doesn't leak.
+      if (cancelled) unlistenToggle?.();
     })();
     return () => {
-      unlistenPress?.();
-      unlistenRelease?.();
+      cancelled = true;
+      unlistenToggle?.();
     };
   }, []);
 
