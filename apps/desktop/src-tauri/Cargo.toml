@@ -62,6 +62,11 @@ reqwest = { version = "0.13", default-features = false, features = ["rustls", "c
 # on the streaming response.
 rig-core = { version = "0.40", default-features = false, features = ["reqwest", "derive", "rustls"] }
 futures = "0.3"
+# tokio direct dep for the fetch-RPC bridge (`oneshot` channel between the
+# async URI scheme handler and the `plugin_rpc_respond` Tauri command; plus
+# `time` for the 30s response timeout). Regular dep — not just dev — because
+# the runtime path uses these APIs in the shipped binary.
+tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
 # Dev-only: RNG for the ed25519 signature round-trip tests (signs + verifies
 # with a real keypair). NOT linked into the release binary — only used in
 # `#[cfg(test)]` blocks.

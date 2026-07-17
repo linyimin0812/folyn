@@ -30,11 +30,24 @@ import { isTauri } from './utils/platform';
 import { pluginHost } from '@quill/plugin-host';
 import { sandboxLoader } from './services/plugin-host/sandboxLoader';
 import { trustedLoader } from './services/plugin-host/trustedLoader';
+import { attachToolWindowRpcListener } from './services/plugin-host/toolWindowRpcListener';
 
 registerBuiltinPlugins();
 // Seed the command palette's static commands (actions + panels/modes) once at
 // startup. File commands are sourced dynamically from the live vault tree.
 registerBuiltinCommands();
+
+// ponytail: register plugin loaders ONCE at module top-level, NOT inside the
+// plugin-host useEffect. React StrictMode (dev) mounts effects twice; both
+// mounts share the SAME `sandboxLoader`/`trustedLoader` module singletons, so
+// mount #1's cleanup disposing its `registerLoader` handle wipes the entry
+// mount #2 registered (dispose checks `loaders.get(tier) === loader` — true
+// for the shared singleton). The result: after StrictMode settles, the
+// loaders map is empty and `pluginHost.activate(id)` throws
+// "No loader registered for tier: sandbox". App-lifetime singletons don't
+// need disposal — they live for the whole session.
+pluginHost.registerLoader(sandboxLoader);
+pluginHost.registerLoader(trustedLoader);
 
 /** Hook to detect mobile viewport */
 function useIsMobile(breakpoint = 768) {
@@ -192,9 +205,8 @@ export default function App() {
     }
 
     (async () => {
-      // Register both loaders (disposable; cleaned up on unmount).
-      const sandboxDisposable = pluginHost.registerLoader(sandboxLoader);
-      const trustedDisposable = pluginHost.registerLoader(trustedLoader);
+      // Loaders are registered at module top-level (see file header) — they
+      // are app-lifetime singletons, not per-effect disposables.
 
       // Hydrate from disk: query the Rust side for installed plugins and
       // install + activate each one in the in-memory host.
@@ -262,19 +274,22 @@ export default function App() {
         }
       });
 
+      // Fetch-RPC listener: routes `quill-plugin://.../rpc` POSTs from tool
+      // windows back through the shared `dispatchPluginRpc` so the same
+      // permission checks / path resolution apply as the iframe bridge.
+      const unRpc = await attachToolWindowRpcListener();
+
       if (cancelled) {
         unInstall();
         unApprove();
         unUninstall();
-        sandboxDisposable.dispose();
-        trustedDisposable.dispose();
+        unRpc();
       } else {
         uninstalled = () => {
           unInstall();
           unApprove();
           unUninstall();
-          sandboxDisposable.dispose();
-          trustedDisposable.dispose();
+          unRpc();
         };
       }
     })();

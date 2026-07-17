@@ -332,156 +332,13 @@ export class RpcBridge {
 
   /** Dispatch an RPC method to the corresponding host capability. */
   private async dispatch(method: string, params: unknown): Promise<unknown> {
-    const perms = this.opts.manifest.permissions;
-
-    switch (method) {
-      // ── fs (scoped to plugin data dir) ──
-      case 'fs:read': {
-        const { path } = (params ?? {}) as { path?: string };
-        if (typeof path !== 'string') throw new Error('fs:read requires { path }');
-        if (!perms?.fs || !isPathInScope(path, perms.fs.scope)) {
-          throw new Error(`fs:read denied: path out of scope: ${path}`);
-        }
-        const abs = await this.resolvePath(path);
-        const { readTextFile } = await import('@tauri-apps/plugin-fs');
-        return readTextFile(abs);
-      }
-      case 'fs:write': {
-        const { path, content } = (params ?? {}) as { path?: string; content?: string };
-        if (typeof path !== 'string' || typeof content !== 'string') {
-          throw new Error('fs:write requires { path, content }');
-        }
-        if (!perms?.fs || !isPathInScope(path, perms.fs.scope)) {
-          throw new Error(`fs:write denied: path out of scope: ${path}`);
-        }
-        const abs = await this.resolvePath(path);
-        const { writeTextFile, mkdir } = await import('@tauri-apps/plugin-fs');
-        const { dirname } = await import('@tauri-apps/api/path');
-        const dir = await dirname(abs);
-        if (dir) await mkdir(dir, { recursive: true }).catch(() => {});
-        return writeTextFile(abs, content);
-      }
-      case 'fs:list': {
-        const { path } = (params ?? {}) as { path?: string };
-        if (typeof path !== 'string') throw new Error('fs:list requires { path }');
-        if (!perms?.fs || !isPathInScope(path, perms.fs.scope)) {
-          throw new Error(`fs:list denied: path out of scope: ${path}`);
-        }
-        const abs = await this.resolvePath(path);
-        const { readDir } = await import('@tauri-apps/plugin-fs');
-        return readDir(abs);
-      }
-
-      // ── http (origin allowlist) ──
-      //
-      // Routed through the Rust `plugin_http_fetch` command rather than a
-      // host-webview `fetch()`. The host webview's CSP `connect-src` does not
-      // include plugin-declared origins, so a direct `fetch()` is blocked in
-      // release (dev does not inject CSP, masking the bug). The JS-side
-      // `isOriginAllowed` fast-fails before the IPC hop; the Rust command
-      // re-checks against the on-disk `manifest.json` `permissions.http.origins`
-      // as defense-in-depth, then performs the request with `reqwest` (no CSP).
-      case 'http:fetch': {
-        const { url, init } = (params ?? {}) as { url?: string; init?: RequestInit };
-        if (typeof url !== 'string') throw new Error('http:fetch requires { url }');
-        if (!perms?.http || !isOriginAllowed(url, perms.http.origins)) {
-          throw new Error(`http:fetch denied: origin not allowed: ${url}`);
-        }
-        const { invoke } = await import('@tauri-apps/api/core');
-        const resp = await invoke<{ status: number; headers: Record<string, string>; body: string }>(
-          'plugin_http_fetch',
-          {
-            pluginId: this.opts.pluginId,
-            url,
-            method: typeof init?.method === 'string' ? init.method : undefined,
-            headers: normalizeHeaders(init?.headers),
-            body: typeof init?.body === 'string' ? init.body : undefined,
-          },
-        );
-        return { status: resp.status, headers: resp.headers, body: resp.body };
-      }
-
-      // ── clipboard ──
-      case 'clipboard:read': {
-        if (!hasPermission(this.opts.manifest, 'clipboard')) {
-          throw new Error('clipboard:read denied: clipboard permission not granted');
-        }
-        const { readText } = await import('@tauri-apps/plugin-clipboard-manager');
-        return readText();
-      }
-      case 'clipboard:write': {
-        const { text } = (params ?? {}) as { text?: string };
-        if (typeof text !== 'string') throw new Error('clipboard:write requires { text }');
-        if (!hasPermission(this.opts.manifest, 'clipboard')) {
-          throw new Error('clipboard:write denied: clipboard permission not granted');
-        }
-        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
-        return writeText(text);
-      }
-
-      // ── dialog ──
-      case 'dialog:open': {
-        if (!hasPermission(this.opts.manifest, 'dialog')) {
-          throw new Error('dialog:open denied: dialog permission not granted');
-        }
-        const { open } = await import('@tauri-apps/plugin-dialog');
-        return open();
-      }
-      case 'dialog:save': {
-        const { content } = (params ?? {}) as { content?: string };
-        if (typeof content !== 'string') throw new Error('dialog:save requires { content }');
-        if (!hasPermission(this.opts.manifest, 'dialog')) {
-          throw new Error('dialog:save denied: dialog permission not granted');
-        }
-        const { save } = await import('@tauri-apps/plugin-dialog');
-        const { writeTextFile } = await import('@tauri-apps/plugin-fs');
-        const filePath = await save();
-        if (!filePath) return null;
-        return writeTextFile(filePath, content);
-      }
-
-      // ── vault ──
-      case 'vault:read-active-doc': {
-        if (!hasPermission(this.opts.manifest, 'vault:read-active')) {
-          throw new Error('vault:read-active-doc denied: vault.readActive not granted');
-        }
-        const { useEditorStore } = await import('@/store/editorStore');
-        const store = useEditorStore.getState();
-        const activeTab = store.tabs.find((t) => t.id === store.activeTabId);
-        if (!activeTab) return null;
-        return { path: activeTab.path, content: activeTab.content };
-      }
-      case 'vault:insert-content': {
-        const { content } = (params ?? {}) as { content?: string };
-        if (typeof content !== 'string') throw new Error('vault:insert-content requires { content }');
-        if (!hasPermission(this.opts.manifest, 'vault:insert-content')) {
-          throw new Error('vault:insert-content denied: vault.insertContent not granted');
-        }
-        const { useEditorStore } = await import('@/store/editorStore');
-        const store = useEditorStore.getState();
-        const activeTab = store.tabs.find((t) => t.id === store.activeTabId);
-        if (!activeTab) throw new Error('no active tab to insert content into');
-        store.updateTabContent(activeTab.id, activeTab.content + '\n' + content);
-        return undefined;
-      }
-
-      // ── window (tool window) ──
-      case 'window:open': {
-        if (!hasPermission(this.opts.manifest, 'window')) {
-          throw new Error('window:open denied: window permission not granted');
-        }
-        const { toolId } = (params ?? {}) as { toolId?: string };
-        if (typeof toolId !== 'string') throw new Error('window:open requires { toolId }');
-        // MVP: the tool window is opened by the sandbox loader which has
-        // access to the iframe management layer. Here we just signal back so
-        // the host can decide how to render. The actual visible iframe is
-        // managed by the command/tool adapter, not the RPC bridge.
-        return { opened: true, toolId };
-      }
-
-      default:
-        throw new Error(`unknown RPC method: ${method}`);
-    }
+    return dispatchPluginRpc(
+      this.opts.manifest,
+      this.opts.pluginId,
+      method,
+      params,
+      (p) => this.resolvePath(p),
+    );
   }
 
   /** Resolve a plugin-relative path to an absolute filesystem path. */
@@ -492,5 +349,180 @@ export class RpcBridge {
     const { homeDir, join } = await import('@tauri-apps/api/path');
     const home = await homeDir();
     return join(home, '.quill', 'plugins', this.opts.pluginId, relativePath);
+  }
+}
+
+// ── Shared free-function dispatcher ──────────────────────────────────────────
+//
+// `dispatchPluginRpc` is the canonical host-side RPC method table. It is
+// called from two transports:
+//   1. `RpcBridge.dispatch` — iframe sandbox path (postMessage).
+//   2. `toolWindowRpcListener` — fetch-RPC path for tool windows (POST
+//      `quill-plugin://localhost/<id>/rpc`, see plugin_commands.rs).
+//
+// Keeping the table in one place ensures both transports enforce the same
+// permission checks and resolve paths the same way.
+
+/**
+ * Dispatch an RPC method to the matching host capability, gated by the
+ * plugin's declared `permissions`.
+ *
+ * @param manifest      The plugin manifest (source of permission declarations).
+ * @param pluginId      The plugin id (used for path resolution + logging).
+ * @param method        RPC method name (e.g. `vault:insert-content`).
+ * @param params        Method params object.
+ * @param resolvePath   Resolves a plugin-relative path to an absolute path.
+ *                      Both transports use `~/.quill/plugins/<pluginId>/<rel>`.
+ */
+export async function dispatchPluginRpc(
+  manifest: PluginManifest,
+  pluginId: string,
+  method: string,
+  params: unknown,
+  resolvePath: (relativePath: string) => Promise<string>,
+): Promise<unknown> {
+  const perms = manifest.permissions;
+
+  switch (method) {
+    // ── fs (scoped to plugin data dir) ──
+    case 'fs:read': {
+      const { path } = (params ?? {}) as { path?: string };
+      if (typeof path !== 'string') throw new Error('fs:read requires { path }');
+      if (!perms?.fs || !isPathInScope(path, perms.fs.scope)) {
+        throw new Error(`fs:read denied: path out of scope: ${path}`);
+      }
+      const abs = await resolvePath(path);
+      const { readTextFile } = await import('@tauri-apps/plugin-fs');
+      return readTextFile(abs);
+    }
+    case 'fs:write': {
+      const { path, content } = (params ?? {}) as { path?: string; content?: string };
+      if (typeof path !== 'string' || typeof content !== 'string') {
+        throw new Error('fs:write requires { path, content }');
+      }
+      if (!perms?.fs || !isPathInScope(path, perms.fs.scope)) {
+        throw new Error(`fs:write denied: path out of scope: ${path}`);
+      }
+      const abs = await resolvePath(path);
+      const { writeTextFile, mkdir } = await import('@tauri-apps/plugin-fs');
+      const { dirname } = await import('@tauri-apps/api/path');
+      const dir = await dirname(abs);
+      if (dir) await mkdir(dir, { recursive: true }).catch(() => {});
+      return writeTextFile(abs, content);
+    }
+    case 'fs:list': {
+      const { path } = (params ?? {}) as { path?: string };
+      if (typeof path !== 'string') throw new Error('fs:list requires { path }');
+      if (!perms?.fs || !isPathInScope(path, perms.fs.scope)) {
+        throw new Error(`fs:list denied: path out of scope: ${path}`);
+      }
+      const abs = await resolvePath(path);
+      const { readDir } = await import('@tauri-apps/plugin-fs');
+      return readDir(abs);
+    }
+
+    // ── http (origin allowlist) ──
+    //
+    // Routed through the Rust `plugin_http_fetch` command rather than a
+    // host-webview `fetch()`. The host webview's CSP `connect-src` does not
+    // include plugin-declared origins, so a direct `fetch()` is blocked in
+    // release (dev does not inject CSP, masking the bug). The JS-side
+    // `isOriginAllowed` fast-fails before the IPC hop; the Rust command
+    // re-checks against the on-disk `manifest.json` `permissions.http.origins`
+    // as defense-in-depth, then performs the request with `reqwest` (no CSP).
+    case 'http:fetch': {
+      const { url, init } = (params ?? {}) as { url?: string; init?: RequestInit };
+      if (typeof url !== 'string') throw new Error('http:fetch requires { url }');
+      if (!perms?.http || !isOriginAllowed(url, perms.http.origins)) {
+        throw new Error(`http:fetch denied: origin not allowed: ${url}`);
+      }
+      const { invoke } = await import('@tauri-apps/api/core');
+      const resp = await invoke<{ status: number; headers: Record<string, string>; body: string }>(
+        'plugin_http_fetch',
+        { pluginId, url, method: typeof init?.method === 'string' ? init.method : undefined, headers: normalizeHeaders(init?.headers), body: typeof init?.body === 'string' ? init.body : undefined },
+      );
+      return { status: resp.status, headers: resp.headers, body: resp.body };
+    }
+
+    // ── clipboard ──
+    case 'clipboard:read': {
+      if (!hasPermission(manifest, 'clipboard')) {
+        throw new Error('clipboard:read denied: clipboard permission not granted');
+      }
+      const { readText } = await import('@tauri-apps/plugin-clipboard-manager');
+      return readText();
+    }
+    case 'clipboard:write': {
+      const { text } = (params ?? {}) as { text?: string };
+      if (typeof text !== 'string') throw new Error('clipboard:write requires { text }');
+      if (!hasPermission(manifest, 'clipboard')) {
+        throw new Error('clipboard:write denied: clipboard permission not granted');
+      }
+      const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+      return writeText(text);
+    }
+
+    // ── dialog ──
+    case 'dialog:open': {
+      if (!hasPermission(manifest, 'dialog')) {
+        throw new Error('dialog:open denied: dialog permission not granted');
+      }
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      return open();
+    }
+    case 'dialog:save': {
+      const { content } = (params ?? {}) as { content?: string };
+      if (typeof content !== 'string') throw new Error('dialog:save requires { content }');
+      if (!hasPermission(manifest, 'dialog')) {
+        throw new Error('dialog:save denied: dialog permission not granted');
+      }
+      const { save } = await import('@tauri-apps/plugin-dialog');
+      const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+      const filePath = await save();
+      if (!filePath) return null;
+      return writeTextFile(filePath, content);
+    }
+
+    // ── vault ──
+    case 'vault:read-active-doc': {
+      if (!hasPermission(manifest, 'vault:read-active')) {
+        throw new Error('vault:read-active-doc denied: vault.readActive not granted');
+      }
+      const { useEditorStore } = await import('@/store/editorStore');
+      const store = useEditorStore.getState();
+      const activeTab = store.tabs.find((t) => t.id === store.activeTabId);
+      if (!activeTab) return null;
+      return { path: activeTab.path, content: activeTab.content };
+    }
+    case 'vault:insert-content': {
+      const { content } = (params ?? {}) as { content?: string };
+      if (typeof content !== 'string') throw new Error('vault:insert-content requires { content }');
+      if (!hasPermission(manifest, 'vault:insert-content')) {
+        throw new Error('vault:insert-content denied: vault.insertContent not granted');
+      }
+      const { useEditorStore } = await import('@/store/editorStore');
+      const store = useEditorStore.getState();
+      const activeTab = store.tabs.find((t) => t.id === store.activeTabId);
+      if (!activeTab) throw new Error('no active tab to insert content into');
+      store.updateTabContent(activeTab.id, activeTab.content + '\n' + content);
+      return { ok: true };
+    }
+
+    // ── window (tool window) ──
+    case 'window:open': {
+      if (!hasPermission(manifest, 'window')) {
+        throw new Error('window:open denied: window permission not granted');
+      }
+      const { toolId } = (params ?? {}) as { toolId?: string };
+      if (typeof toolId !== 'string') throw new Error('window:open requires { toolId }');
+      // Tool windows are opened by the host's toolWindowStore when the user
+      // runs the corresponding "Open: <tool>" command. The RPC method exists
+      // so plugins can request their own tool window programmatically; MVP
+      // returns a stub because the actual open is a host-side concern.
+      return { opened: true, toolId };
+    }
+
+    default:
+      throw new Error(`unknown RPC method: ${method}`);
   }
 }

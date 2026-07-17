@@ -193,36 +193,63 @@ pub fn run() {
         // ~/.quill/plugins/<id>/<file>. Each response carries a per-plugin CSP
         // header so sandbox plugins cannot reach the network or the host DOM
         // without going through the postMessage RPC bridge.
-        .register_uri_scheme_protocol("quill-plugin", |ctx, request| {
-            use plugin_commands::{content_type_for, parse_plugin_uri, plugins_dir, PLUGIN_CSP};
+        //
+        // POST `<id>/rpc` is the fetch-RPC endpoint for tool windows: plugin
+        // JS does `fetch('quill-plugin://localhost/<id>/rpc', { method:
+        // 'POST', body })` and the handler emits a `plugin-rpc-request` event
+        // that the main webview's `toolWindowRpcListener` dispatches through
+        // the shared `dispatchPluginRpc`. Async responder lets us wait for the
+        // round-trip without blocking the webview thread.
+        .register_asynchronous_uri_scheme_protocol("quill-plugin", |ctx, request, responder| {
+            use plugin_commands::{
+                content_type_for, handle_plugin_rpc_request, next_rpc_request_id,
+                parse_plugin_uri, plugins_dir, PLUGIN_CSP,
+            };
 
-            let uri_path = request.uri().path();
-            let (id, file_path) = match parse_plugin_uri(uri_path) {
+            let uri_path = request.uri().path().to_string();
+            let (id, file_path) = match parse_plugin_uri(&uri_path) {
                 Some(v) => v,
                 None => {
-                    return http::Response::builder()
-                        .status(400)
-                        .body(b"invalid plugin uri".to_vec())
-                        .unwrap_or_else(|_| {
-                            http::Response::new(b"invalid plugin uri".to_vec())
-                        });
+                    responder.respond(
+                        http::Response::builder()
+                            .status(400)
+                            .body(b"invalid plugin uri".to_vec())
+                            .unwrap_or_else(|_| http::Response::new(b"invalid plugin uri".to_vec())),
+                    );
+                    return;
                 }
             };
 
+            // POST `<id>/rpc` → fetch-RPC bridge.
+            if request.method() == "POST" && (file_path == "rpc" || file_path.ends_with("/rpc")) {
+                let body = String::from_utf8_lossy(request.body()).to_string();
+                let request_id = next_rpc_request_id();
+                let app = ctx.app_handle().clone();
+                handle_plugin_rpc_request(app, request_id, id, body, responder);
+                return;
+            }
+
+            // GET path: serve static asset from disk.
             if file_path.is_empty() {
-                return http::Response::builder()
-                    .status(404)
-                    .body(b"not found".to_vec())
-                    .unwrap_or_else(|_| http::Response::new(b"not found".to_vec()));
+                responder.respond(
+                    http::Response::builder()
+                        .status(404)
+                        .body(b"not found".to_vec())
+                        .unwrap_or_else(|_| http::Response::new(b"not found".to_vec())),
+                );
+                return;
             }
 
             let dir = match plugins_dir(ctx.app_handle()) {
                 Ok(d) => d,
                 Err(e) => {
-                    return http::Response::builder()
-                        .status(500)
-                        .body(e.as_bytes().to_vec())
-                        .unwrap_or_else(|_| http::Response::new(e.as_bytes().to_vec()));
+                    responder.respond(
+                        http::Response::builder()
+                            .status(500)
+                            .body(e.as_bytes().to_vec())
+                            .unwrap_or_else(|_| http::Response::new(e.as_bytes().to_vec())),
+                    );
+                    return;
                 }
             };
 
@@ -234,10 +261,13 @@ pub fn run() {
             let canonical = match file_full.canonicalize() {
                 Ok(c) => c,
                 Err(_) => {
-                    return http::Response::builder()
-                        .status(404)
-                        .body(b"not found".to_vec())
-                        .unwrap_or_else(|_| http::Response::new(b"not found".to_vec()));
+                    responder.respond(
+                        http::Response::builder()
+                            .status(404)
+                            .body(b"not found".to_vec())
+                            .unwrap_or_else(|_| http::Response::new(b"not found".to_vec())),
+                    );
+                    return;
                 }
             };
             let plugin_root = dir.join(&id);
@@ -246,29 +276,37 @@ pub fn run() {
                 Err(_) => dir.join(&id),
             };
             if !canonical.starts_with(&plugin_root) {
-                return http::Response::builder()
-                    .status(403)
-                    .body(b"forbidden".to_vec())
-                    .unwrap_or_else(|_| http::Response::new(b"forbidden".to_vec()));
+                responder.respond(
+                    http::Response::builder()
+                        .status(403)
+                        .body(b"forbidden".to_vec())
+                        .unwrap_or_else(|_| http::Response::new(b"forbidden".to_vec())),
+                );
+                return;
             }
 
             let bytes = match std::fs::read(&canonical) {
                 Ok(b) => b,
                 Err(_) => {
-                    return http::Response::builder()
-                        .status(404)
-                        .body(b"not found".to_vec())
-                        .unwrap_or_else(|_| http::Response::new(b"not found".to_vec()));
+                    responder.respond(
+                        http::Response::builder()
+                            .status(404)
+                            .body(b"not found".to_vec())
+                            .unwrap_or_else(|_| http::Response::new(b"not found".to_vec())),
+                    );
+                    return;
                 }
             };
 
             let ct = content_type_for(&file_path);
-            http::Response::builder()
-                .status(200)
-                .header("Content-Type", ct)
-                .header("Content-Security-Policy", PLUGIN_CSP)
-                .body(bytes)
-                .unwrap_or_else(|_| http::Response::new(b"error".to_vec()))
+            responder.respond(
+                http::Response::builder()
+                    .status(200)
+                    .header("Content-Type", ct)
+                    .header("Content-Security-Policy", PLUGIN_CSP)
+                    .body(bytes)
+                    .unwrap_or_else(|_| http::Response::new(b"error".to_vec())),
+            );
         })
         .plugin(tauri_plugin_shell::init())
         // OS native notifications (PRD pet-popup-bubble-notification: system
@@ -521,6 +559,7 @@ pub fn run() {
             plugin_commands::grant_plugin_capabilities,
             plugin_commands::verify_plugin_signature_cmd,
             plugin_commands::plugin_http_fetch,
+            plugin_commands::plugin_rpc_respond,
             voice::voice_start,
             voice::voice_stop,
             voice::voice_cancel,

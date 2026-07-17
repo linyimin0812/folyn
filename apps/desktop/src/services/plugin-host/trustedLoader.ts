@@ -51,6 +51,7 @@ import {
   registerPluginFileTypes,
   registerPluginContainers,
 } from './contributionAdapters';
+import { registerPluginTools } from './toolAdapter';
 
 export const trustedLoader: PluginLoader = {
   tier: 'trusted',
@@ -106,6 +107,7 @@ export const trustedLoader: PluginLoader = {
           registerTrustedPluginCommands(manifest, module),
           registerPluginFileTypes(manifest, module),
           registerPluginContainers(manifest, module),
+          registerPluginTools(manifest),
         ];
         for (const d of adapterDisposables) ctx.addDisposable(d);
 

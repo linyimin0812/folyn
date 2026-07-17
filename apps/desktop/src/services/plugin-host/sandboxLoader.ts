@@ -21,6 +21,7 @@ import type { Plugin, PluginContext, PluginLoader, PluginManifest } from '@quill
 import { disposable } from '@quill/plugin-host';
 import { RpcBridge } from './rpcBridge';
 import { registerPluginCommands } from './commandAdapter';
+import { registerPluginTools } from './toolAdapter';
 
 export const sandboxLoader: PluginLoader = {
   tier: 'sandbox',
@@ -41,6 +42,12 @@ export const sandboxLoader: PluginLoader = {
         // PluginHost reaps it on deactivate.
         const cmdDisposable = registerPluginCommands(manifest, bridge);
         ctx.addDisposable(cmdDisposable);
+
+        // Register contributed tools (full-window plugin UIs). Each tool
+        // becomes an "Open: <title>" command in ⌘P that opens a Tauri
+        // WebviewWindow loading the plugin's HTML entry.
+        const toolDisposable = registerPluginTools(manifest);
+        ctx.addDisposable(toolDisposable);
 
         // The iframe-destroy disposable: destroying the iframe is the
         // sandbox-tier "unload" path (ES module cache is evicted with the

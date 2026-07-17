@@ -1,0 +1,11 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Tech stack (Tauri 2 / React 18 / Zustand 5 / Vite 6) and key conventions (@/ alias, named exports, invoke() pattern) — anchors all frontend edits."}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "WebviewWindow creation, label conventions, ACL permission contract for @tauri-apps/api/webview-window, multi-window lifecycle — directly governs the new ToolWindowManager."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store conventions (granular selectors, no bare useStore, action/selector split) — new toolWindowStore must follow these."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component patterns + props composition + no default exports — governs any UI added (e.g. error fallback when a tool window fails to load)."}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "Where new files go (services/plugin-host vs store vs components) — keeps toolWindowStore + adapter in the right layer."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "No `any`, named exports, useEffect cleanup, file-size limits, review checklist — applies to all new TS/TSX."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Strict TS, type narrowing with `unknown` at boundaries — RPC request/response shape must be typed, not any-cast."}
+{"file": ".trellis/spec/container-plugins/frontend/index.md", "reason": "Plugin-host package conventions — confirms where registerPluginTools adapter sits in the contribution surface."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Frontend↔Rust boundary discipline — the /rpc POST handler touches Rust (plugin_commands.rs) + JS (editorStore); this guide governs the contract between layers."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Pre-Modification Rule: search before changing. rpcBridge.ts already has isPathInScope + permission checks — reuse, don't reimplement."}
+{"file": ".trellis/tasks/archive/2026-07/07-08-microkernel-plugin-architecture/research/utool-plugin-model.md", "reason": "uTools plugin model reference (manifest, full-window tool, isolation) — the UX target this task is matching."}

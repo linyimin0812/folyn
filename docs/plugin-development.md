@@ -10,6 +10,7 @@ development, and packaging. It references the two sample plugins in
 [`examples/plugins/`](../examples/plugins/).
 
 - [Quick start](#quick-start)
+- [At a glance: what the host provides](#at-a-glance-what-the-host-provides)
 - [The two tiers](#the-two-tiers)
 - [manifest.json schema](#manifestjson-schema)
 - [Contribution points](#contribution-points)
@@ -22,6 +23,100 @@ development, and packaging. It references the two sample plugins in
 - [Local development](#local-development)
 - [Packaging](#packaging)
 - [Reference: sample plugins](#reference-sample-plugins)
+
+---
+
+## At a glance: what the host provides
+
+A Quill plugin is a folder under `~/.quill/plugins/<id>/` with a
+`manifest.json` + assets. The host gives you five things:
+
+### 1. Two execution tiers
+
+| Tier | Isolation | Capability surface | Trust gate |
+|---|---|---|---|
+| `sandbox` | separate `WebviewWindow` or iframe, origin `quill-plugin://localhost` | host RPC bridge only — no Tauri APIs | none (sandbox IS the boundary) |
+| `trusted` | main webview realm (in-process) | full host realm + Zustand stores + Tauri | TOFU: user must **批准并授权** |
+
+### 2. Five contribution points
+
+Declared in `contributes` in the manifest; wired into host registries on
+activate; auto-unregistered on deactivate.
+
+| Point | Sandbox? | Trusted? | What it adds |
+|---|---|---|---|
+| `commands` | ✓ | ✓ | palette entry (⌘P) — `plugin.<pluginId>.<id>` |
+| `tools` (with `window: true`) | ✓ | ✓ | "Open: <title>" command → Tauri WebviewWindow |
+| `fileTypes` | ✗ | ✓ | file extension → handler mapping |
+| `containers` | ✗ | ✓ | `:::name` Markdown directive → React component |
+| `features` | ✗ | ✓ (stub) | side panel slot (MVP: registry only) |
+
+### 3. RPC method table (sandbox tier — host-mediated)
+
+Sandbox plugins call host capabilities via `postMessage` (iframe transport) or
+`fetch('quill-plugin://localhost/<id>/rpc', ...)` (tool-window transport). Both
+hit the same `dispatchPluginRpc` table — same permission checks, same path
+resolution.
+
+| Method | Params | Required permission | Returns |
+|---|---|---|---|
+| `fs:read` | `{ path }` | `fs.scope` (glob) | `string` (file contents) |
+| `fs:write` | `{ path, content }` | `fs.scope` | `void` → `{ ok: true }` |
+| `fs:list` | `{ path }` | `fs.scope` | `DirEntry[]` |
+| `http:fetch` | `{ url, init? }` | `http.origins` (allowlist) | `{ status, headers, body }` |
+| `clipboard:read` | `{}` | `clipboard: true` | `string \| null` |
+| `clipboard:write` | `{ text }` | `clipboard: true` | `void` → `{ ok: true }` |
+| `dialog:open` | `{}` | `dialog: true` | `string \| null` (file path) |
+| `dialog:save` | `{ content }` | `dialog: true` | `string \| null` |
+| `vault:read-active-doc` | `{}` | `vault.readActive: true` | `{ path, content } \| null` |
+| `vault:insert-content` | `{ content }` | `vault.insertContent: true` | `{ ok: true }` |
+| `window:open` | `{ toolId }` | `window: true` | `{ opened: true, toolId }` |
+
+**Response shape**: success → JSON object per the "Returns" column; failure →
+`{ "error": "<message>" }` with HTTP 200; timeout (30 s) → HTTP 504 with
+`{ "error": "rpc timeout" }`. Always check `json.error` before reading
+`json.result`-shape fields.
+
+### 4. Manifest validation rules (the spec authors must follow)
+
+- `id`: kebab-case, `^[a-z0-9]+(-[a-z0-9]+)+$` (at least one hyphen). Folder
+  name under `~/.quill/plugins/` MUST equal `id`.
+- `version`: non-empty string (semver-ish recommended).
+- `tier`: `"sandbox"` or `"trusted"`.
+- `main`: non-empty string (relative path to entry module).
+- `sandbox` tier requires `html` (HTML entry loaded into the iframe/window).
+- File integrity: per-file SHA-256 computed at install time; trusted tier
+  re-verifies `main`'s hash before `import()`. Tampering → activation refused.
+- Optional ed25519 `signature` + `publisherPublicKey` (MVP: not enforced;
+  scaffolding for future marketplace gate).
+
+### 5. CSP for sandbox plugins (what HTML/JS can do)
+
+Every `quill-plugin://localhost/<id>/<file>` response carries this CSP header:
+
+```
+default-src 'none';
+  script-src 'unsafe-inline' quill-plugin:;
+  style-src  'unsafe-inline';
+  connect-src quill-plugin:;
+```
+
+What this means for authors:
+
+- ✓ Inline `<script>` and inline `<style>` in your HTML.
+- ✓ `<script src="index.js">` (same-scheme, your plugin's own files).
+- ✓ `fetch('quill-plugin://localhost/<id>/rpc', ...)` (the RPC bridge).
+- ✗ No remote scripts, styles, fonts, images, or `connect-src` to any other
+  origin. If you need network access, declare `http.origins` and call
+  `http:fetch` — the host performs the request in Rust (no CSP).
+- ✗ No `iframe` embedding, no web workers from blob: (only `quill-plugin:`).
+- ✗ No `default-src` fallback — every directive is explicit.
+
+Note: `'self'` is intentionally NOT used. Chromium does not resolve `'self'`
+to the document origin for custom schemes like `quill-plugin://`, so the
+explicit scheme source `quill-plugin:` is required instead.
+
+---
 
 ---
 
@@ -208,9 +303,53 @@ adapts it into the matching app registry when the plugin activates.
 "tools": [{ "id": "hello", "title": "Hello Tool", "icon": "🛠", "window": true, "entry": "index.html" }]
 ```
 
-- `window: true` opens the tool in its own visible iframe window (sandbox) /
-  webview (trusted). `window: false` renders inline (MVP: window=true only).
-- `entry` is the HTML entry (sandbox) or component entry-ref (trusted).
+- `window: true` opens the tool in its own Tauri `WebviewWindow` that loads
+  the plugin's HTML entry from `quill-plugin://localhost/<id>/<entry>`. The
+  window's origin is `quill-plugin://localhost` (macOS/Linux) /
+  `http://quill-plugin.localhost` (Windows) — isolated from the main app.
+  `window: false` would render inline (MVP: `window: true` only; inline
+  panels are a follow-up).
+- `entry` is the HTML entry file (sandbox tier). Trusted tier uses a
+  component entry-ref (deferred — this MVP ships sandbox-only tool windows).
+- The host registers an "Open: <title>" command per tool, so ⌘P →
+  "Open: Hello Tool" creates a new window. Multi-instance: each invocation
+  opens a fresh window with a unique label.
+- The plugin's HTML reaches host capabilities via **fetch-RPC** over the
+  `quill-plugin://` scheme:
+
+  ```js
+  // POST quill-plugin://localhost/<plugin-id>/rpc
+  // body: { "method": "<rpc-method>", "params": { ... } }
+  // response: 200 with `<return-value>` (object/string/null per method) on
+  //           success, or 200 with `{ "error": "<msg>" }` on RPC failure,
+  //           or 504 with `{ "error": "rpc timeout" }` after 30s.
+  const res = await fetch('quill-plugin://localhost/<plugin-id>/rpc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ method: 'vault:insert-content', params: { content: '\nhello\n' } }),
+  });
+  const json = await res.json();           // { ok: true } on success
+  if (!res.ok || json?.error) {            // null-safe: success body may be a primitive
+    throw new Error(json?.error || `HTTP ${res.status}`);
+  }
+  ```
+
+  The Rust URI handler emits a `plugin-rpc-request` event that the main
+  webview dispatches through the shared `dispatchPluginRpc` (same permission
+  checks + path resolution as the iframe bridge). See "At a glance" above for
+  the method table and "Sandbox RPC protocol" below for protocol details. No
+  Tauri SDK dependency in the plugin bundle — plain `fetch()` only.
+- Closing the WebviewWindow (user OS-close or plugin deactivate) destroys
+  the window. Plugin deactivate closes ALL of that plugin's open tool
+  windows in the same dispose pass that unregisters commands.
+
+#### Reference: sample tool plugins
+
+- [`examples/plugins/hello-tool`](../examples/plugins/hello-tool) — minimal
+  sandbox tool that writes to the clipboard via the RPC bridge.
+- [`examples/plugins/markdown-table`](../examples/plugins/markdown-table) —
+  end-to-end demo: textarea → markdown table → Insert button →
+  `vault:insert-content` RPC → table appended to the active doc.
 
 ---
 

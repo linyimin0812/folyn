@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist + forbidden patterns + test expectations — gate the diff against these before marking complete."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Strict TS enforcement; verify no `any` slipped into RPC shapes or adapter wiring."}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "ACL contract + window lifecycle expectations — verify WebviewWindow creation/dispose follows the documented pattern, no leaked windows."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand selector hygiene — verify toolWindowStore uses granular selectors and dispose path cleans up subscriptions."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Confirm rpcBridge.ts validation logic was reused (not reimplemented) for the /rpc handler."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Confirm the frontend↔Rust boundary stays clean: types in @quill/plugin-host, no leaking Tauri internals across the layer."}
+{"file": ".trellis/tasks/archive/2026-07/07-08-microkernel-plugin-architecture/research/utool-plugin-model.md", "reason": "Reference for behavior expectations (full-window tool, isolation boundary) — final smoke test should match uTools' mental model."}
