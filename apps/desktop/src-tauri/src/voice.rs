@@ -330,20 +330,23 @@ fn show_voice_orb(app: &tauri::AppHandle) {
 }
 
 /// Show the orb via the NSPanel's `show()` (= `orderFrontRegardless`) —
-/// non-activating, non-key-stealing. Falls back to `window.show()` only if the
-/// panel handle isn't registered. See the ponytail note in `show_voice_orb`
-/// for why `window.show()` (which `makeKeyAndOrderFront:`s) breaks the
-/// cross-app paste.
+/// non-activating, non-key-stealing. If the panel handle isn't registered
+/// (convert failed at startup — should not happen), we log and bail: the orb
+/// won't show, but paste still works. We do NOT fall back to `window.show()`
+/// because it `makeKeyAndOrderFront:`s, which steals key focus from the
+/// foreground app the user is dictating into — that is the root cause of the
+/// "Cmd+V didn't paste anywhere" release-build bug.
 #[cfg(target_os = "macos")]
-fn show_voice_orb_no_activate(app: &tauri::AppHandle, window: &tauri::WebviewWindow) {
+fn show_voice_orb_no_activate(app: &tauri::AppHandle, _window: &tauri::WebviewWindow) {
     use tauri_nspanel::ManagerExt;
     match app.get_webview_panel("voice-orb") {
         Ok(panel) => panel.show(),
-        Err(_) => {
-            log::warn!(
-                "[voice] voice-orb panel not registered; falling back to window.show() (paste target may be wrong)"
+        Err(e) => {
+            log::error!(
+                "[voice] voice-orb panel not registered: {:?}. Orb won't show; \
+                 panel conversion must have failed at startup. Paste may still work.",
+                e
             );
-            let _ = window.show();
         }
     }
 }
@@ -629,6 +632,25 @@ pub async fn voice_cancel(_app: tauri::AppHandle) -> Result<(), String> {
 #[cfg(target_os = "macos")]
 #[tauri::command]
 pub async fn voice_insert_text(app: tauri::AppHandle, text: String) -> Result<(), String> {
+    // Hide the voice-orb BEFORE posting Cmd+V. The orb is a Dock-level
+    // non-activating NSPanel with `can_become_key_window: false` (see
+    // `QuillVoiceOrbPanel`), so it should never be the key window that
+    // receives the Cmd+V event — but hiding it first is defense-in-depth and
+    // matches openless `hide_capsule_window_if_present` before `inserter.insert`.
+    // `run_on_main_thread` is fire-and-forget on a non-main tokio worker; the
+    // 50 ms sleep gives the hide a chance to land on the run loop before the
+    // CGEvent post (the orb is non-activating, so hide doesn't restore focus
+    // to the user's dictation target, but removing the Dock-level overlay from
+    // the event-tap path is the fix).
+    let app_for_hide = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        if let Some(w) = app_for_hide.get_webview_window("voice-orb") {
+            let _ = w.hide();
+        }
+    });
+    // Brief yield so the hide actually lands on the run loop before paste.
+    std::thread::sleep(std::time::Duration::from_millis(50));
+
     // ponytail: clipboard read/write can block briefly (arboard locks the
     // pasteboard); run on a blocking worker so the async command doesn't
     // stall the tokio runtime. The CGEvent post is fast (microseconds) but

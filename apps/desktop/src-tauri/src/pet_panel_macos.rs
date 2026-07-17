@@ -58,6 +58,19 @@ tauri_panel! {
             can_become_main_window: false,
         }
     })
+    // ponytail: voice-orb is a pure-display WebGL waveform overlay (pointer
+    // events pass through to the app behind). It must NEVER become key —
+    // otherwise when Quill is the frontmost app the orb would intercept the
+    // post-recording CGEvent Cmd+V (no text field in the orb → paste lost).
+    // Pet/bubble panels keep `can_become_key_window: true` for cursor-on-hover;
+    // the orb has no hover interaction so it loses nothing by being non-key.
+    panel!(QuillVoiceOrbPanel {
+        config: {
+            is_floating_panel: true,
+            can_become_key_window: false,
+            can_become_main_window: false,
+        }
+    })
     // ponytail: empty delegate body — the mouse callbacks (on_cursor_update,
     // on_mouse_exited, etc.) are built into every panel_event! handler; we
     // just need the class to exist so we can attach it via set_event_handler.
@@ -173,7 +186,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
     // post-recording CGEvent Cmd+V lands in the right field). Transparent so
     // the WebGL canvas floats over the desktop without an opaque square.
     if let Some(window) = app.get_webview_window("voice-orb") {
-        if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
+        if let Ok(panel) = window.to_panel::<QuillVoiceOrbPanel>() {
             panel.set_level(PanelLevel::Dock.value());
             panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
             panel.set_collection_behavior(
