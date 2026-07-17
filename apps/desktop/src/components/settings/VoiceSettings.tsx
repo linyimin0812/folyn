@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useVoiceStore, DEFAULT_POLISH_PROMPT } from '@/store/voiceStore';
+import { useVoiceStore, DEFAULT_POLISH_PROMPT, SPOKEN_LANGUAGES } from '@/store/voiceStore';
 import { isTauri } from '@/utils/platform';
 
 function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
@@ -121,11 +121,13 @@ export function VoiceSettings() {
   const autoPolish = useVoiceStore((s) => s.autoPolish);
   const saveSource = useVoiceStore((s) => s.saveSource);
   const sourceDir = useVoiceStore((s) => s.sourceDir);
+  const spokenLanguage = useVoiceStore((s) => s.spokenLanguage);
 
   const setPolishPrompt = useVoiceStore((s) => s.setPolishPrompt);
   const setAutoPolish = useVoiceStore((s) => s.setAutoPolish);
   const setSaveSource = useVoiceStore((s) => s.setSaveSource);
   const setSourceDir = useVoiceStore((s) => s.setSourceDir);
+  const setSpokenLanguage = useVoiceStore((s) => s.setSpokenLanguage);
 
   const onMac = isTauri() && typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
 
@@ -181,6 +183,21 @@ export function VoiceSettings() {
           placeholder=".voice_input"
           style={{ fontSize: 'calc(var(--ui-font-size) - 2px)' }}
         />
+      </div>
+
+      <div className="mb-3.5">
+        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">识别语言</div>
+        <div className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 mb-2">Apple Speech 引擎按语言路由识别,中文语音请选「简体中文」;系统默认 locale 可能与实际说话语言不匹配,显式指定避免转写出空。</div>
+        <select
+          className="settings-input w-full"
+          value={spokenLanguage}
+          onChange={(e) => setSpokenLanguage(e.target.value)}
+          style={{ fontSize: 'calc(var(--ui-font-size) - 2px)' }}
+        >
+          {SPOKEN_LANGUAGES.map((lang) => (
+            <option key={lang.value} value={lang.value}>{lang.label}</option>
+          ))}
+        </select>
       </div>
 
       <div className="mb-3.5">

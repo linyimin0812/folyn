@@ -21,7 +21,33 @@ export const PERSIST_KEYS_VOICE = [
   'saveSource',
   'sourceDir',
   'globalHotkey',
+  'spokenLanguage',
 ] as const;
+
+/** Spoken-language options for the VoiceSettings dropdown. Values are raw
+ *  Apple locale identifiers passed straight to `voice_start(spokenLocale)` →
+ *  `AppleSpeechAsr::new(Some(...))`. Bug #2 root cause: an unspecified locale
+ *  fell back to the system default (often English on a Chinese-speaking user),
+ *  so Chinese speech was routed to the English Apple Speech engine → empty
+ *  transcript. Labels mirror `native_name_to_apple_locale` in
+ *  `apple_speech.rs` so the visible set tracks the Rust mapping. */
+export const SPOKEN_LANGUAGES: { label: string; value: string }[] = [
+  { label: '简体中文', value: 'zh-CN' },
+  { label: '繁體中文', value: 'zh-TW' },
+  { label: 'English', value: 'en-US' },
+  { label: '日本語', value: 'ja-JP' },
+  { label: '한국어', value: 'ko-KR' },
+  { label: 'Français', value: 'fr-FR' },
+  { label: 'Deutsch', value: 'de-DE' },
+  { label: 'Español', value: 'es-ES' },
+  { label: 'Italiano', value: 'it-IT' },
+  { label: 'Português', value: 'pt-BR' },
+  { label: 'Русский', value: 'ru-RU' },
+  { label: 'العربية', value: 'ar-SA' },
+  { label: 'Tiếng Việt', value: 'vi-VN' },
+  { label: 'ไทย', value: 'th-TH' },
+  { label: 'हिन्दी', value: 'hi-IN' },
+];
 
 export interface VoiceState {
   polishPrompt: string;
@@ -29,12 +55,14 @@ export interface VoiceState {
   saveSource: boolean;
   sourceDir: string;
   globalHotkey: string;
+  spokenLanguage: string;
 
   setPolishPrompt: (v: string) => void;
   setAutoPolish: (v: boolean) => void;
   setSaveSource: (v: boolean) => void;
   setSourceDir: (v: string) => void;
   setGlobalHotkey: (v: string) => void;
+  setSpokenLanguage: (v: string) => void;
 
   hydrate: (blob: Record<string, unknown>) => void;
 }
@@ -45,12 +73,14 @@ export const useVoiceStore = create<VoiceState>((set) => ({
   saveSource: false,
   sourceDir: '.voice_input',
   globalHotkey: '',
+  spokenLanguage: 'zh-CN',
 
   setPolishPrompt: (v) => { set({ polishPrompt: v }); schedulePersist(); },
   setAutoPolish: (v) => { set({ autoPolish: v }); schedulePersist(); },
   setSaveSource: (v) => { set({ saveSource: v }); schedulePersist(); },
   setSourceDir: (v) => { set({ sourceDir: v }); schedulePersist(); },
   setGlobalHotkey: (v) => { set({ globalHotkey: v }); schedulePersist(); },
+  setSpokenLanguage: (v) => { set({ spokenLanguage: v }); schedulePersist(); },
 
   hydrate: (blob) => {
     const patch: Partial<VoiceState> = {};
@@ -59,6 +89,7 @@ export const useVoiceStore = create<VoiceState>((set) => ({
     if (typeof blob.saveSource === 'boolean') patch.saveSource = blob.saveSource;
     if (typeof blob.sourceDir === 'string') patch.sourceDir = blob.sourceDir;
     if (typeof blob.globalHotkey === 'string') patch.globalHotkey = blob.globalHotkey;
+    if (typeof blob.spokenLanguage === 'string') patch.spokenLanguage = blob.spokenLanguage;
     if (Object.keys(patch).length > 0) set(patch);
   },
 }));

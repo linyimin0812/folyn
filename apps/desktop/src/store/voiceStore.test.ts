@@ -11,6 +11,7 @@ beforeEach(() => {
     saveSource: false,
     sourceDir: '.voice_input',
     globalHotkey: '',
+    spokenLanguage: 'zh-CN',
   });
 });
 
@@ -43,6 +44,11 @@ describe('useVoiceStore setters', () => {
     useVoiceStore.getState().setGlobalHotkey('Cmd+Shift+V');
     expect(useVoiceStore.getState().globalHotkey).toBe('Cmd+Shift+V');
   });
+
+  it('setSpokenLanguage updates value', () => {
+    useVoiceStore.getState().setSpokenLanguage('en-US');
+    expect(useVoiceStore.getState().spokenLanguage).toBe('en-US');
+  });
 });
 
 describe('useVoiceStore.hydrate', () => {
@@ -53,6 +59,7 @@ describe('useVoiceStore.hydrate', () => {
       saveSource: true,
       sourceDir: 'audio/voice',
       globalHotkey: 'Cmd+Shift+V',
+      spokenLanguage: 'en-US',
     });
     const s = useVoiceStore.getState();
     expect(s.polishPrompt).toBe('自定义润色');
@@ -60,6 +67,7 @@ describe('useVoiceStore.hydrate', () => {
     expect(s.saveSource).toBe(true);
     expect(s.sourceDir).toBe('audio/voice');
     expect(s.globalHotkey).toBe('Cmd+Shift+V');
+    expect(s.spokenLanguage).toBe('en-US');
   });
 
   it('ignores wrong-typed entries and keeps defaults', () => {
@@ -71,6 +79,7 @@ describe('useVoiceStore.hydrate', () => {
       saveSource: 'true', // wrong type
       sourceDir: null, // wrong type
       globalHotkey: {}, // wrong type
+      spokenLanguage: 42, // wrong type
     });
     const s = useVoiceStore.getState();
     expect(s.polishPrompt).toBe(DEFAULT_POLISH_PROMPT);
@@ -78,6 +87,7 @@ describe('useVoiceStore.hydrate', () => {
     expect(s.saveSource).toBe(false);
     expect(s.sourceDir).toBe('.voice_input');
     expect(s.globalHotkey).toBe('');
+    expect(s.spokenLanguage).toBe('zh-CN');
   });
 
   it('partial blob leaves unspecified fields at defaults', () => {
@@ -106,6 +116,7 @@ describe('PERSIST_KEYS_VOICE', () => {
       'saveSource',
       'sourceDir',
       'globalHotkey',
+      'spokenLanguage',
     ]);
   });
 });

@@ -70,15 +70,25 @@ export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
 
   const settingsUrl = phase === 'error' && error ? permissionSettingsUrl(error) : null;
 
+  // Bug #1: when `voice_stop` returns a non-fatal `saveError` (source WAV
+  // save failed — empty PCM, missing vault path, permission), the hook calls
+  // flashError and immediately advances phase to polishing/inserting (the
+  // insert must proceed). The phase is no longer 'error' after that, so the
+  // red error dot is gone — but `error` is still set (cleared 3s later by
+  // flashError's timer). Surface the saveError text in the busy-phase title
+  // so the user actually sees WHY the file is missing instead of just
+  // "语音处理中…".
   const title = !mac
     ? 'Windows 暂不支持语音输入'
     : recording
       ? '点击停止录音并插入'
-      : busy
-        ? '语音处理中…'
-        : phase === 'error' && error
-          ? error
-          : '语音输入';
+      : busy && error
+        ? error
+        : busy
+          ? '语音处理中…'
+          : phase === 'error' && error
+            ? error
+            : '语音输入';
 
   return (
     <span className="relative inline-flex">

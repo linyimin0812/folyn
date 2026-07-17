@@ -50,11 +50,18 @@ mod wav;
 /// "保存语音源文件" enabled — the WAV written under `<vault>/.voice_input/`.
 /// Empty transcript → empty string, not an error (user may have stayed
 /// silent); errors are returned via the `Err` side of the Tauri command.
+///
+/// `saveError` is a non-fatal warning: when the user asked to save the source
+/// WAV but the save failed (empty PCM, vault path missing, permission), the
+/// transcript is still returned via `transcript` and the insert flow proceeds;
+/// the frontend surfaces `saveError` as a brief inline error on the button
+/// (3s red dot) so the user knows the file is missing instead of wondering.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VoiceStopResult {
     pub transcript: String,
     pub audio_path: Option<String>,
+    pub save_error: Option<String>,
 }
 
 /// Shared state holding the active recording session. `None` = idle.
@@ -136,7 +143,7 @@ impl VoiceInner {
 
 #[cfg(target_os = "macos")]
 #[tauri::command]
-pub async fn voice_start(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result<(), String> {
     use std::sync::Arc;
     use apple_speech::AppleSpeechAsr;
     use recorder::{Recorder, RecorderError};
@@ -152,7 +159,18 @@ pub async fn voice_start(app: tauri::AppHandle) -> Result<(), String> {
     // the buffer on success, but a previous failed/cancelled session may have
     // left stale PCM (cancel keeps the buffer, see openless). A new Arc is
     // cheap and avoids cross-session leakage.
-    let asr = Arc::new(AppleSpeechAsr::new(None));
+    //
+    // Locale: empty string → None (system default). Otherwise pass the raw
+    // Apple locale identifier ("zh-CN", "en-US", …) the frontend picked from
+    // the VoiceSettings dropdown. Bug #2 root cause: None fell back to the
+    // SYSTEM locale (often English on a Chinese-speaking user), so Chinese
+    // speech was routed to the English Apple Speech engine → empty transcript.
+    let locale_arg = if spoken_locale.trim().is_empty() {
+        None
+    } else {
+        Some(spoken_locale)
+    };
+    let asr = Arc::new(AppleSpeechAsr::new(locale_arg));
     // Coerce to `Arc<dyn AudioConsumer>` for the recorder (the consumer trait
     // is what the cpal thread actually calls). A second `Arc<AppleSpeechAsr>`
     // is kept in state for `voice_stop`'s `transcribe()` call — the trait
@@ -220,18 +238,30 @@ pub async fn voice_stop(
     // PR3 source-file save: clone the PCM BEFORE `transcribe()` clears the
     // buffer on success. Failure paths keep the buffer (openless contract),
     // so the clone-or-not doesn't matter there — `transcribe()` clears only
-    // on Ok. Saving is best-effort: a write failure surfaces a warning but
-    // does NOT fail the whole stop (the transcript is still useful).
-    let audio_path = if save_source {
-        match save_source_wav(&asr.buffered_pcm(), &source_dir, &vault_path) {
-            Ok(p) => Some(p),
-            Err(err) => {
-                log::warn!("[voice] source audio save failed: {err}");
-                None
+    // on Ok. A save failure does NOT fail the whole stop (transcript is still
+    // useful); the error string is surfaced to the frontend via
+    // `VoiceStopResult.save_error` so it can flash a brief inline error.
+    //
+    // Bug #1: an empty `vault_path` previously fell through to
+    // `Path::new("").join(".voice_input")` = `.voice_input` (relative), which
+    // landed in the process CWD — wherever the .app was launched from — NOT
+    // the vault. The user couldn't find the file. Guard it: refuse the save
+    // and surface a clear error so the user knows why.
+    let (audio_path, save_error) = if save_source {
+        if vault_path.trim().is_empty() {
+            log::warn!("[voice] save_source requested but vault_path is empty");
+            (None, Some("未配置 vault 路径,无法保存语音源文件".to_string()))
+        } else {
+            match save_source_wav(&asr.buffered_pcm(), &source_dir, &vault_path) {
+                Ok(p) => (Some(p), None),
+                Err(err) => {
+                    log::warn!("[voice] source audio save failed: {err}");
+                    (None, Some(err))
+                }
             }
         }
     } else {
-        None
+        (None, None)
     };
 
     // `transcribe()` spawns a blocking objc runloop task; `.await` yields the
@@ -242,6 +272,7 @@ pub async fn voice_stop(
     Ok(VoiceStopResult {
         transcript: transcript.text,
         audio_path,
+        save_error,
     })
 }
 
@@ -351,7 +382,7 @@ pub async fn voice_cancel(app: tauri::AppHandle) -> Result<(), String> {
 
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
-pub async fn voice_start(_app: tauri::AppHandle) -> Result<(), String> {
+pub async fn voice_start(_app: tauri::AppHandle, _spoken_locale: String) -> Result<(), String> {
     Err("voice input is macOS-only".into())
 }
 

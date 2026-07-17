@@ -50,8 +50,19 @@ function flashError(set: (partial: Partial<VoiceInputState>) => void, msg: strin
   if (errorTimer) clearTimeout(errorTimer);
   set({ phase: 'error', error: msg });
   errorTimer = setTimeout(() => {
-    set({ phase: 'idle', error: null });
     errorTimer = null;
+    // Only auto-reset to idle if we're STILL in the error phase. Bug #1's
+    // saveError path calls flashError then immediately advances phase to
+    // 'polishing'/'inserting' (the insert must proceed). A bare
+    // `set({ phase: 'idle' })` here would regress that. `get` is captured by
+    // closure below — see the `useVoiceInput` factory.
+    if (useVoiceInput.getState().phase === 'error') {
+      set({ phase: 'idle', error: null });
+    } else {
+      // Phase already advanced (saveError non-fatal path) — just clear the
+      // lingering error text so it doesn't show up next time.
+      set({ error: null });
+    }
   }, 3000);
 }
 
@@ -63,8 +74,12 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
     if (get().phase !== 'idle') return;
     if (!onMac()) return;
     set({ phase: 'recording', error: null });
+    // Bug #2 fix: pass the user's spoken-language locale so Apple Speech
+    // routes recognition to the right engine. Empty string = None (system
+    // default) — the dropdown always has a value, so this is defensive.
+    const spokenLocale = useVoiceStore.getState().spokenLanguage ?? '';
     try {
-      await invoke('voice_start');
+      await invoke('voice_start', { spokenLocale });
     } catch (err) {
       flashError(set, typeof err === 'string' ? err : String(err));
     }
@@ -81,20 +96,37 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
     const vaultPath = useVaultStore.getState().currentVault?.basePath ?? '';
 
     let transcript: string;
+    let saveError: string | null = null;
     try {
-      const result = await invoke<{ transcript: string; audioPath: string | null }>(
-        'voice_stop',
-        { saveSource, sourceDir, vaultPath },
-      );
+      const result = await invoke<{
+        transcript: string;
+        audioPath: string | null;
+        saveError: string | null;
+      }>('voice_stop', { saveSource, sourceDir, vaultPath });
       transcript = (result?.transcript ?? '').trim();
+      saveError = result?.saveError ?? null;
     } catch (err) {
       flashError(set, typeof err === 'string' ? err : String(err));
       return;
     }
 
+    // Bug #1 fix: surface source-save failures as a brief inline error so the
+    // user knows the WAV is missing (instead of wondering). The transcript
+    // flow still proceeds — save failure is non-fatal, so we call flashError
+    // but DON'T return; the subsequent `set({ phase: 'polishing' })` overrides
+    // the phase, and the error dot surfaces in the title text. The flashError
+    // 3s timer only clears the error text — polish/insert phase transitions
+    // continue normally.
+    if (saveError) {
+      console.warn('[voice] source audio save error:', saveError);
+      flashError(set, saveError);
+    }
+
     if (!transcript) {
-      // Silent recording — return to idle without surfacing an error.
-      set({ phase: 'idle' });
+      // Bug #2 fix: silent return was the worst UX — the user couldn't tell
+      // if anything ran. Surface a brief "未识别到语音内容" error instead of
+      // disappearing to idle.
+      flashError(set, '未识别到语音内容,请重试');
       return;
     }
 
