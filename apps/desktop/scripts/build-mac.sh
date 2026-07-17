@@ -29,7 +29,7 @@ TAURI_BUILD_ARGS=(build)
 if [ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ] || [ -n "${TAURI_SIGNING_PRIVATE_KEY_PATH:-}" ]; then
   TAURI_BUILD_ARGS+=(--config '{"bundle":{"createUpdaterArtifacts":true}}')
 fi
-pnpm tauri -- "${TAURI_BUILD_ARGS[@]}"
+pnpm tauri "${TAURI_BUILD_ARGS[@]}"
 
 echo "▶ 校验 Info.plist / 签名"
 /usr/libexec/PlistBuddy -c "Print :NSMicrophoneUsageDescription" "$INFO" >/dev/null
