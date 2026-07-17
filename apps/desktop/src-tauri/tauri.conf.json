@@ -22,7 +22,8 @@
     ],
     "resources": [],
     "macOS": {
-      "infoPlist": "Info.plist"
+      "infoPlist": "Info.plist",
+      "entitlements": "Entitlements.plist"
     }
   },
   "app": {
