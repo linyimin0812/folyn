@@ -85,7 +85,13 @@ export class TauriVaultProvider implements VaultProvider {
     try {
       await remove(fullPath);
     } catch (err) {
-      throw new VaultError('NOT_FOUND', `Cannot delete: ${path}`);
+      // ponytail: surface the original fs error instead of swallowing it into
+      // a vague NOT_FOUND — the underlying remove() can fail for many reasons
+      // (scope ACL denial, EBUSY, ENOTEMPTY, EACCES, path resolution) and the
+      // caller needs the actual reason to debug. NOT_FOUND is misleading
+      // (suggests the file is gone) when the real cause is often a permission
+      // or scope issue on a file that definitely exists.
+      throw new VaultError('NOT_FOUND', `Cannot delete: ${path} (${err})`);
     }
   }
 
@@ -158,7 +164,12 @@ export class TauriVaultProvider implements VaultProvider {
     try {
       await remove(fullPath, { recursive: true });
     } catch (err) {
-      throw new VaultError('NOT_FOUND', `Cannot delete directory: ${path}`);
+      // ponytail: surface the original fs error — see deleteFile comment. The
+      // user's `.voice_input` delete failure was silently masked as NOT_FOUND,
+      // hiding the real reason (scope denial / EBUSY / open handle). Including
+      // `${err}` exposes the underlying plugin:fs|remove rejection string so
+      // the next iteration can actually root-cause instead of guessing.
+      throw new VaultError('NOT_FOUND', `Cannot delete directory: ${path} (${err})`);
     }
   }
 
