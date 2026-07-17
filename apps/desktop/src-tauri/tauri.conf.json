@@ -20,7 +20,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": []
+    "resources": [],
+    "macOS": {
+      "infoPlist": "Info.plist"
+    }
   },
   "app": {
     "macOSPrivateApi": true,

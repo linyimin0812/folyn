@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Quill 需要麦克风权限来录入你的语音并转成文字。</string>
+  <key>NSAccessibilityUsageDescription</key>
+  <string>Quill 需要辅助功能权限来模拟粘贴快捷键,把语音识别结果插入到当前光标所在输入框(支持其他应用)。</string>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>Quill 需要发送按键事件,把识别结果粘贴到当前光标位置。</string>
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>Quill 使用 macOS 系统语音识别(Apple Speech)在本地把你的语音转成文字。</string>
+</dict>
+</plist>
