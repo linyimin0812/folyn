@@ -212,11 +212,29 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
 
     set({ phase: 'inserting' });
     emitOrbPhase('inserting', get().trigger);
+    // Debug: capture frontmost app BEFORE and AFTER the insert to diagnose
+    // the "Cmd+V didn't paste anywhere" release-build bug. If isQuill=true
+    // before/after, the orb (or main window) is the frontmost app and the
+    // posted Cmd+V lands on a window with no text field. Errors are swallowed
+    // — this is diagnostic only, must never break the paste path. Remove
+    // once root cause is fixed.
+    try {
+      const before = await invoke<string>('voice_debug_frontmost');
+      console.log('[voice-paste] frontmost BEFORE insert:', before);
+    } catch (e) {
+      console.warn('[voice-paste] debug frontmost failed:', e);
+    }
     try {
       await invoke('voice_insert_text', { text: finalText });
     } catch (err) {
       flashError(set, typeof err === 'string' ? err : String(err));
       return;
+    }
+    try {
+      const after = await invoke<string>('voice_debug_frontmost');
+      console.log('[voice-paste] frontmost AFTER insert:', after);
+    } catch (e) {
+      console.warn('[voice-paste] debug frontmost failed:', e);
     }
     set({ phase: 'idle', trigger: null });
     emitOrbPhase('idle', null);

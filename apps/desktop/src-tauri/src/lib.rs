@@ -528,6 +528,7 @@ pub fn run() {
             voice::voice_request_accessibility,
             voice::voice_set_global_hotkey,
             voice::voice_orb_hide,
+            voice::voice_debug_frontmost,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

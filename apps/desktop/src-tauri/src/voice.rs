@@ -695,6 +695,77 @@ pub async fn voice_insert_text(_app: tauri::AppHandle, _text: String) -> Result<
     Err("voice input is macOS-only".into())
 }
 
+/// Debug helper: returns `bundle=<id> name=<name> pid=<pid> isQuill=<bool>`
+/// for the current frontmost app, so the frontend can call it before/after
+/// `voice_insert_text` to verify focus is on the user's dictation target and
+/// not Quill/the voice-orb. macOS-only: non-macOS returns the macOS-only error.
+///
+/// ponytail: this is diagnostic scaffolding for the "Cmd+V didn't paste
+/// anywhere" release-build bug — delete once root cause is fixed.
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub async fn voice_debug_frontmost() -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        use objc2::runtime::AnyClass;
+        use objc2::msg_send;
+
+        // SAFETY: all NSWorkspace / NSRunningApplication selectors used here
+        // are documented main-thread-safe (NSWorkspace is thread-safe; the
+        // running-app accessors are immutable snapshots). We hold no raw
+        // references across calls; nil returned by any accessor short-circuits
+        // to a graceful "unknown" string. The NSString pointers returned are
+        // autoreleased; we immediately copy to a Rust `String` so the brief
+        // lifetime is fine.
+        unsafe fn ns_string_to_rust(ns: *mut objc2::runtime::AnyObject) -> String {
+            if ns.is_null() {
+                return String::new();
+            }
+            let ptr: *const std::os::raw::c_char = msg_send![ns, UTF8String];
+            if ptr.is_null() {
+                return String::new();
+            }
+            std::ffi::CStr::from_ptr(ptr).to_string_lossy().into_owned()
+        }
+
+        let info: String = unsafe {
+            let cls = match AnyClass::get("NSWorkspace") {
+                Some(c) => c,
+                None => return Ok("NSWorkspace class unavailable".to_string()),
+            };
+            let ws: *mut objc2::runtime::AnyObject = msg_send![cls, sharedWorkspace];
+            if ws.is_null() {
+                return Ok("NSWorkspace.sharedWorkspace nil".to_string());
+            }
+            let app: *mut objc2::runtime::AnyObject = msg_send![ws, frontmostApplication];
+            if app.is_null() {
+                return Ok("frontmostApplication nil".to_string());
+            }
+            let bid: *mut objc2::runtime::AnyObject = msg_send![app, bundleIdentifier];
+            let name: *mut objc2::runtime::AnyObject = msg_send![app, localizedName];
+            let pid: i32 = msg_send![app, processIdentifier];
+            let bid_s = ns_string_to_rust(bid);
+            let name_s = ns_string_to_rust(name);
+            // Quill's own bundle id (matches the `[voice] module ready;
+            // bundle_id=com.quill.editor` beacon in lib.rs setup). Used to
+            // detect "the orb stole key focus" — if isQuill is true after
+            // the insert, the orb (or main window) was frontmost when the
+            // Cmd+V posted, which is the root cause of the no-paste bug.
+            const QUILL_BUNDLE: &str = "com.quill.editor";
+            let is_quill = bid_s == QUILL_BUNDLE;
+            format!("bundle={bid_s} name={name_s} pid={pid} isQuill={is_quill}")
+        };
+        Ok(info)
+    })
+    .await
+    .map_err(|e| format!("voice_debug_frontmost join failed: {e}"))?
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+pub async fn voice_debug_frontmost() -> Result<String, String> {
+    Err("voice input is macOS-only".into())
+}
+
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
 pub async fn voice_request_accessibility() -> Result<bool, String> {
