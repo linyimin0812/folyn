@@ -2,13 +2,14 @@
 // window (transparent, always-on-top, nonactivating NSPanel — declared in
 // tauri.conf.json `voice-orb` and converted in `pet_panel_macos::convert_windows`).
 //
-// This is the cross-app recording indicator: when the user presses the global
-// voice hotkey while another app (VS Code, browser) has focus, this window
-// appears at the bottom-center of the primary screen with the openless SiriGL
-// animation. The Rust `voice_start` command shows the window (see
-// `voice::show_voice_orb`); this frontend owns the HIDE (via
-// `invoke('voice_orb_hide')`) because the transcribing/polishing/inserting
-// phases are frontend-only state — Rust has no visibility into them.
+// This is the recording indicator for BOTH trigger paths: the global voice
+// hotkey (cross-app, when another app like VS Code / browser has focus) AND
+// the AI panel mic button. Both paths show the same bottom-center SiriGL
+// animation. The Rust `voice_start` command shows the window unconditionally
+// regardless of trigger (see `voice::show_voice_orb`); this frontend owns the
+// HIDE (via `invoke('voice_orb_hide')`) because the
+// transcribing/polishing/inserting phases are frontend-only state — Rust has
+// no visibility into them.
 //
 // Cross-window state: Tauri windows are separate JS realms, so the main
 // window's `useVoiceInput` store does NOT sync here. The main window emits
@@ -27,12 +28,11 @@ import { useEffect, useRef, useState } from 'react';
 import { isTauri } from '@/utils/platform';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import type { VoicePhase, VoiceTrigger, PolishSkippedReason } from '@/hooks/useVoiceInput';
+import type { VoicePhase, PolishSkippedReason } from '@/hooks/useVoiceInput';
 import { SiriGL, isWebGLAvailable, warmUpSiriShaders } from './SiriGL';
 
 interface OrbPhasePayload {
   phase: VoicePhase;
-  trigger: VoiceTrigger;
   polishSkippedReason?: PolishSkippedReason;
 }
 
@@ -86,7 +86,6 @@ function phaseToVisible(phase: VoicePhase): boolean {
 
 export function VoiceOrbApp(): JSX.Element {
   const [phase, setPhase] = useState<VoicePhase>('idle');
-  const [trigger, setTrigger] = useState<VoiceTrigger>(null);
   const [level, setLevel] = useState(0);
   const [polishSkippedReason, setPolishSkippedReason] = useState<PolishSkippedReason>(null);
   const orbPhaseHeardRef = useRef(false);
@@ -109,7 +108,7 @@ export function VoiceOrbApp(): JSX.Element {
   // `voice://orb-phase` listener — the main window's useVoiceInput store
   // emits this on every phase change (Tauri windows are separate JS realms;
   // the store does NOT sync across them). Local React state mirrors the
-  // payload so the canvas can read phase + trigger synchronously.
+  // payload so the canvas can read phase synchronously.
   useEffect(() => {
     if (!isTauri()) return;
     let unlistenPhase: (() => void) | undefined;
@@ -137,13 +136,9 @@ export function VoiceOrbApp(): JSX.Element {
       try {
         unlistenPhase = await listen<OrbPhasePayload>('voice://orb-phase', (e) => {
           const p = e.payload?.phase;
-          const t = e.payload?.trigger;
           if (typeof p === 'string') {
             setPhase(p);
             orbPhaseHeardRef.current = true;
-          }
-          if (t === 'hotkey' || t === 'button' || t === null) {
-            setTrigger(t);
           }
           setPolishSkippedReason(e.payload?.polishSkippedReason ?? null);
         });
@@ -187,11 +182,9 @@ export function VoiceOrbApp(): JSX.Element {
     void invoke('voice_orb_hide').catch(() => {});
   }, [phase]);
 
-  // The orb is the hotkey path's recording indicator. The mic-button path
-  // uses the button body itself (red bg + stop square) — its trigger is
-  // 'button', so we render nothing here and let the window body stay
-  // transparent (the user only asked for the cross-app hotkey animation).
-  if (trigger !== 'hotkey') return <></>;
+  // Both button and hotkey triggers render the orb. The mic-button path
+  // ALSO shows its own button-body feedback (red bg + stop square / spinner)
+  // — that's an independent channel and coexists with this window's animation.
   if (!phaseToVisible(phase)) return <></>;
 
   const isOrb = phase === 'transcribing' || phase === 'polishing' || phase === 'inserting';
