@@ -320,7 +320,7 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .code-copy-btn.copied { opacity: 1 !important; color: var(--green); }
 .md-preview blockquote { border-left: 3px solid var(--acc); padding: 4px 16px; margin: 12px 0; color: var(--t2); background: var(--surf); border-radius: 0 6px 6px 0; }
 .md-preview ul { padding-left: 24px; margin: 8px 0; list-style-type: disc; }
-.md-preview ol { padding-left: 24px; margin: 8px 0; list-style-type: decimal; counter-reset: list-item; }
+.md-preview ol { padding-left: 24px; margin: 8px 0; list-style-type: decimal; }
 .md-preview li { margin: 4px 0; }
 .md-preview li::marker { color: var(--t1); }
 .md-preview ul.contains-task-list { list-style-type: none; padding-left: 4px; }

@@ -13,6 +13,7 @@ export function DrawioEditor({ content, onChange }: EditorProps) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [ready, setReady] = useState(false);
 
   // loadedXml is the xml prop handed to DrawIoEmbed. The ref tracks the same
   // value without triggering re-renders. Two update sites:
@@ -60,13 +61,19 @@ export function DrawioEditor({ content, onChange }: EditorProps) {
   }, []);
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
+      {!ready && (
+        <div className="absolute inset-0 flex items-center justify-center text-sm text-zinc-500 dark:text-zinc-400">
+          加载中…
+        </div>
+      )}
       <DrawIoEmbed
         key={theme}
         autosave
         xml={loadedXml}
-        urlParameters={{ dark: theme === 'dark' }}
+        urlParameters={{ dark: theme === 'dark', spin: true }}
         onAutoSave={handleAutoSave}
+        onLoad={() => setReady(true)}
       />
     </div>
   );
