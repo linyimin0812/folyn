@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 64
+- **Total Sessions**: 65
 - **Last Active**: 2026-07-18
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~229 | Active |
+| `journal-2.md` | ~263 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 65 | 2026-07-18 | Remove Chat/Wiki/Clip tabs from AI Panel | `1431983` | `master` |
 | 64 | 2026-07-18 | Voice flow phases + API key prompt + orb UX polish | `746586f`, `f2622e6`, `09c1bd4`, `5e20e25`, `e7474cd`, `f4e4f88`, `814ff67`, `76feb1b` | `master` |
 | 63 | 2026-07-18 | 麦克风/语音识别权限接入设置页 | `50976cd` | `master` |
 | 62 | 2026-07-17 | Voice input: toggle hotkey + floating SiriGL orb + cross-app paste | `ca07ab1`, `9ac4c42`, `3b05d61`, `73b0983`, `76e8231`, `dc81f1a`, `ef5c3f2`, `d3e6f6d` | `master` |

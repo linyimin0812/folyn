@@ -227,3 +227,37 @@ Surfaced recording → transcribing → polishing → inserting phases on the vo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 65: Remove Chat/Wiki/Clip tabs from AI Panel
+
+**Date**: 2026-07-18
+**Task**: Remove Chat/Wiki/Clip tabs from AI Panel
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Stripped AiPanel tab bar + chatMode state machine + /clip slash branch + wiki/clip render branches; deleted 6 sub-components (WikiToolbar/ClipToolbar/WikiActivityLog/ReviewItemList/IngestDialog/DeepResearchDialog); dropped 3 mode.ai-* commands from commandRegistry; updated aiStore/featureAgentService tests. Sidebar wiki/clip entries untouched. tsc -b clean, 76 tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1431983` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
