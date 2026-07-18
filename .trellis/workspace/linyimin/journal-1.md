@@ -219,3 +219,37 @@ Architecture-rot assessment's 'three AI chat surfaces duplicate ToolCallBlock/Fi
 ### Next Steps
 
 - None - task complete
+
+
+## Session 7: Split Rust commands.rs into per-domain submodules
+
+**Date**: 2026-07-18
+**Task**: Split Rust commands.rs into per-domain submodules
+**Package**: api
+**Branch**: `calm-canyon`
+
+### Summary
+
+commands.rs (1412 lines, 37 Tauri commands across file/webview/project/pet + managed-state structs + pet helpers + menu consts) was the Rust-side god file. Split into commands/ module dir: file_commands, webview_commands, project_commands (named project not git since remove_dir/get_project_overview aren't git), pet_commands (the ~980-line bulk). commands/mod.rs re-exports via glob. lib.rs UNCHANGED — mod commands resolves to commands/mod.rs and glob re-exports keep every commands:: symbol resolving, including Tauri's generate_handler! __cmd__ helpers (initially feared glob wouldn't carry macro-generated items, but verified it does). PetSizeState's shared-type constraint preserved via re-export. Hit one slicing bug (webview slice included git_clone's first doc line → orphan doc → 16 cascade __cmd__ errors), fixed by trimming the slice. Verified cargo check clean (0 errors/0 warnings) vs clean baseline; lib.rs diff empty. Spec sync: tauri-window-patterns.md.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5ab8326` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

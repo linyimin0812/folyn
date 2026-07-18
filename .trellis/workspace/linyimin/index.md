@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 6
+- **Total Sessions**: 7
 - **Last Active**: 2026-07-18
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~221 | Active |
+| `journal-1.md` | ~255 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 7 | 2026-07-18 | Split Rust commands.rs into per-domain submodules | `5ab8326` | `calm-canyon` |
 | 6 | 2026-07-18 | Break ai↔chat cycle: move ToolCallBlock + FileImage into chat/ | `a032c0f` | `calm-canyon` |
 | 5 | 2026-07-18 | Split SettingsPage god file + useHotkeyRecording extraction | `78207b4`, `655677f` | `calm-canyon` |
 | 4 | 2026-07-05 | Desktop Pet Position & Drag Fix | `8d94f03` | `calm-meadow` |
