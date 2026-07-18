@@ -185,3 +185,37 @@ Architectural rot assessment identified SettingsPage.tsx (1468 lines) as the top
 ### Next Steps
 
 - None - task complete
+
+
+## Session 6: Break ai↔chat cycle: move ToolCallBlock + FileImage into chat/
+
+**Date**: 2026-07-18
+**Task**: Break ai↔chat cycle: move ToolCallBlock + FileImage into chat/
+**Package**: api
+**Branch**: `calm-canyon`
+
+### Summary
+
+Architecture-rot assessment's 'three AI chat surfaces duplicate ToolCallBlock/FileImage/FileIcon' claim was STALE — verified ChatMessageList is already the shared render layer (consumed by AiPanel + PetChat). Real debt was the TODO(PR2) at ChatMessageList.tsx:5: chat imported ToolCallBlock + FileImage from ../ai/, and since ai/ already imports chat/ (AiPanel→ChatMessageList, ChatInput→ChatInputBox), this was a bidirectional ai↔chat cycle (the TODO's 'one-directional' note was wrong). Fixed by git mv'ing both files into components/chat/ (sole consumer; chat-internal, not promoted to index.ts), updating ChatMessageList imports to ./, dropping the resolved TODO. FileIcon untouched (already in icons/). After: chat depends only on neutral layers, ai→chat one-way. Verified tsc clean + chat tests 66/66; full suite identical to baseline (same 21 pre-existing failures, zero regression). Spec sync: directory-structure ai/ + chat/ entries.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a032c0f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
