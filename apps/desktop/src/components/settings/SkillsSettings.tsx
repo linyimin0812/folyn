@@ -248,7 +248,7 @@ export function SkillsSettings() {
           <div className="mb-2.5">
             <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">ID</div>
             <input
-              className="fi2 w-full py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-xs outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
+              className="fi2 w-full py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
               value={newId}
               onChange={(e) => setNewId(slugify(e.target.value))}
               placeholder="my-custom-skill"
@@ -259,7 +259,7 @@ export function SkillsSettings() {
           <div className="mb-2.5">
             <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">名称</div>
             <input
-              className="fi2 w-full py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-xs outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
+              className="fi2 w-full py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
               value={newName}
               onChange={(e) => { setNewName(e.target.value); if (!newId) setNewId(slugify(e.target.value)); }}
               placeholder="My Custom Skill"
@@ -268,7 +268,7 @@ export function SkillsSettings() {
           <div className="mb-2.5">
             <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">描述</div>
             <input
-              className="fi2 w-full py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-xs outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
+              className="fi2 w-full py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
               placeholder="描述此 Skill 的用途"
@@ -277,7 +277,7 @@ export function SkillsSettings() {
           <div className="mb-2.5">
             <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">Prompt 模板</div>
             <textarea
-              className="w-full py-2 px-2.5 rounded-md border border-brd bg-inp text-t1 text-xs outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
+              className="w-full py-2 px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
               rows={8}
               style={{ resize: 'vertical', lineHeight: 1.6, tabSize: 2 }}
               value={newPrompt}
@@ -321,7 +321,7 @@ export function SkillsSettings() {
           <div className="mb-2.5">
             <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">名称</div>
             <input
-              className="fi2 w-full py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-xs outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
+              className="fi2 w-full py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             />
@@ -331,7 +331,7 @@ export function SkillsSettings() {
           <div className="mb-2.5">
             <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">描述</div>
             <input
-              className="fi2 w-full py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-xs outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
+              className="fi2 w-full py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             />
@@ -341,7 +341,7 @@ export function SkillsSettings() {
           <div className="mb-2.5">
             <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">Skill 内容</div>
             <textarea
-              className="w-full py-2 px-2.5 rounded-md border border-brd bg-inp text-t1 text-xs outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
+              className="w-full py-2 px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
               rows={12}
               style={{ resize: 'vertical', lineHeight: 1.6, tabSize: 2 }}
               value={form.content}
