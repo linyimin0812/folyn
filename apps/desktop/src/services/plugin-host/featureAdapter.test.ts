@@ -14,6 +14,7 @@ import type { PluginManifest } from '@quill/plugin-host';
 import type { PluginModule } from './contributionAdapters';
 import { registerPluginFeatures } from './featureAdapter';
 import { useFeaturePanelStore } from '@/store/featurePanelStore';
+import { useEditorStore } from '@/store/editorStore';
 
 const NullPanel: ComponentType = () => null;
 
@@ -47,10 +48,12 @@ function fakeModule(): PluginModule {
 
 beforeEach(() => {
   useFeaturePanelStore.setState({ panels: [], activePanelId: null });
+  useEditorStore.setState({ activePanel: 'files' });
 });
 
 afterEach(() => {
   useFeaturePanelStore.setState({ panels: [], activePanelId: null });
+  useEditorStore.setState({ activePanel: 'files' });
   vi.restoreAllMocks();
 });
 
@@ -210,6 +213,45 @@ describe('registerPluginFeatures', () => {
     const d = registerPluginFeatures(manifest(), fakeModule());
     d.dispose();
     expect(useFeaturePanelStore.getState().activePanelId).toBe('files');
+  });
+
+  it('dispose syncs editorStore.activePanel to files when the disposed panel was active (PR3)', () => {
+    // Pre-register 'files' built-in so the fallback target exists.
+    useFeaturePanelStore.getState().register({
+      id: 'files',
+      title: 'Files',
+      icon: null,
+      component: () => null,
+      order: 0,
+      visible: true,
+      builtin: true,
+    });
+    const d = registerPluginFeatures(manifest(), fakeModule());
+    // Simulate the user activating the plugin panel: editorStore is the
+    // source of truth (the mirror would normally propagate to featurePanelStore,
+    // but here we set both directly to assert dispose syncs editorStore).
+    useEditorStore.setState({ activePanel: 'my-panel' });
+    useFeaturePanelStore.getState().setActive('my-panel');
+    d.dispose();
+    expect(useFeaturePanelStore.getState().activePanelId).toBe('files');
+    expect(useEditorStore.getState().activePanel).toBe('files');
+  });
+
+  it('dispose does NOT touch editorStore when the disposed panel was NOT active', () => {
+    useFeaturePanelStore.getState().register({
+      id: 'files',
+      title: 'Files',
+      icon: null,
+      component: () => null,
+      order: 0,
+      visible: true,
+      builtin: true,
+    });
+    useEditorStore.setState({ activePanel: 'files' });
+    useFeaturePanelStore.getState().setActive('files');
+    const d = registerPluginFeatures(manifest(), fakeModule());
+    d.dispose();
+    expect(useEditorStore.getState().activePanel).toBe('files');
   });
 
   it('returns no-op disposable when no features are contributed', () => {

@@ -63,7 +63,7 @@ Trusted tier 插件还需额外点一次 **批准并授权**（见 [TOFU](#tofu-
 | `tools`（`window: true`） | ✓ | ✓ | "Open: <title>" 命令 → 弹出 Tauri WebviewWindow |
 | `fileTypes` | ✗ | ✓ | 文件扩展名 → handler 映射 |
 | `containers` | ✗ | ✓ | `:::name` Markdown 指令 → React 组件 |
-| `features` | ✗ | ✓（stub） | 侧边栏 slot（MVP：仅注册表） |
+| `features` | ✗ | ✓ | 侧边栏 panel slot（activity bar 图标 + 组件）—— MVP 仅 left |
 
 ### 3. RPC 方法表（sandbox tier —— host 中介）
 
@@ -194,7 +194,7 @@ default-src 'none';
     "commands":   [{ "id": "greet", "title": "Greet", "icon": "👋", "keywords": ["hi"], "run": "greet" }],
     "fileTypes":  [{ "id": "json", "extensions": [".json"], "handler": "default", "defaultViewMode": "edit" }],
     "containers": [{ "name": "callout", "icon": "💡", "label": "Callout", "category": "layout", "component": "callout", "template": ":::callout\n:::", "description": "A callout" }],
-    "features":   [{ "id": "my-panel", "panel": "right", "component": "my-panel" }],
+    "features":   [{ "id": "my-panel", "panel": "left", "component": "my-panel", "icon": "<svg>...</svg>", "title": "My Panel", "order": 50, "badge": "NEW" }],
     "tools":      [{ "id": "my-tool", "title": "My Tool", "icon": "🛠", "window": true, "entry": "index.html" }]
   },
 
@@ -265,17 +265,55 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
 - `category` 取 `layout` / `media` / `ai` / `data` / `custom`（slash 菜单分组）。
 - `template` 是用户从 `/` slash 菜单选择指令时插入的 Markdown。
 
-### features（仅 trusted；MVP stub）
+### features（仅 trusted；MVP 仅 left）
 
 ```jsonc
-"features": [{ "id": "my-panel", "panel": "right", "component": "my-panel" }]
+"features": [
+  {
+    "id": "my-panel",
+    "panel": "left",
+    "component": "my-panel",
+    "icon": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"><path d=\"...\"/></svg>",
+    "title": "My Panel",
+    "order": 50,
+    "badge": "NEW"
+  }
+]
 ```
 
-- `panel` 取 `left` / `right` / `bottom`。
-- `component` 是模块 `features` map 的 entry-ref。
-- **MVP 限制**：完整的 ActivityBar 集成（往 activity bar 加图标 + 路由）推迟。
-  PR4 在内存注册表（`getPluginFeaturePanels`）登记 panel，但尚未在 ActivityBar
-  渲染。后续会接上真实 slot。
+- `id` 是 panel 的本地 id；不得与保留的内置 id（`files` / `wiki` / `clips` /
+  `analyze` / `calendar`）冲突。冲突（与内置 id 或已注册的插件 panel）会打
+  warning 并拒绝第二次注册。
+- `panel` 取 `left` / `right` / `bottom`。**MVP 仅实现 `left`**——`right` 和
+  `bottom` 会打 warning 并跳过（right/bottom shell slot 是后续任务）。
+- `component` 是模块 `features` map 的 **entry-ref**（见下方 `PluginModule`
+  导出契约）。必须是 React 组件（渲染时包在 `PanelErrorBoundary` 内，插件
+  panel 抛错不会白屏整个侧边栏）。
+- `icon` **必填**。可以是原始内联 SVG 字符串（`<svg ...>...</svg>`），或
+  `ThemeIcon` 名（解析 host 的 `assets/icons/*.svg`）。内联 SVG 是插件作者
+  的自包含路径。
+- `title` 是 tooltip + 无障碍标签。缺省时为 `<pluginId>/<id>`。
+- `order` 可选。内置 id 占用 0（files）、10（wiki）、20（clips）、30（analyze）、
+  40（calendar）。未声明 `order` 的插件 panel 按注册顺序分配内置之后的槽位
+  （≥100）。Activity bar 按 `(order, 注册顺序)` 排序渲染。
+- `badge` 可选（`string | number`）。存在时在 activity bar 图标上渲染一个小的
+  accent 色文字点。可用于未读数 / 状态标记。
+- **仅 trusted tier**（决策 Q1）。sandbox 插件不能贡献侧边栏 panel——需要整页 UI
+  时请用 `tools`（工具窗口）。这是有意的不对称：sandbox 隔离无法挂载同 realm 的
+  React 组件。
+- **deactivate 回退**：插件 deactivate 时其 panel 被注销。如果该 panel 当时正
+  处于激活态，激活态回退到 `files`（同时同步 `editorStore.activePanel`，让
+  WorkArea 的 tab 过滤器跟上）。
+- **持久化激活态回退**：如果下次启动时 `editorStore.activePanel` 指向一个已卸载
+  插件的 panel id，`registerBuiltinPanels` 的镜像订阅会把它重路由到 `files`。
+
+#### 参考：示例 feature-panel 插件
+
+- [`examples/plugins/feature-panel-sample`](../examples/plugins/feature-panel-sample)
+  —— 最小的 trusted-tier 插件，贡献一个 left 侧边栏 panel（`notes-panel`，
+  内联 SVG 图标 + `order` + `badge`）+ 一个 **Notes: Open Panel** 命令（⌘P）。
+  panel 是个临时文本框，"Insert into doc" 按钮通过进程内 editor store 把内容
+  追加到当前 markdown 文档（trusted tier = 直接访问 store）。
 
 ### tools
 
@@ -586,5 +624,10 @@ ed25519 脚手架（见上）已为其就位。
 - [`examples/plugins/markdown-table`](../examples/plugins/markdown-table) ——
   sandbox tier。端到端 fetch-RPC demo：textarea 输入 → 生成 markdown 表格 →
   Insert 按钮 → `vault:insert-content` → 表格追加进当前文档。
+- [`examples/plugins/feature-panel-sample`](../examples/plugins/feature-panel-sample)
+  —— trusted tier。贡献一个 `features` 侧边栏 panel（`notes-panel`，left slot，
+  内联 SVG 图标 + `order` + `badge`）+ 一个 **Notes: Open Panel** 命令。演示
+  数据驱动的 activity bar / 侧边栏挂载路径，以及 panel 组件内进程内 editor
+  store 访问。
 
 三个都通过 Settings → Plugins → 从文件夹安装… 装，手动 QA 全流程。

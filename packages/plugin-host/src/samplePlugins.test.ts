@@ -63,6 +63,26 @@ describe('example plugins / manifest validation', () => {
     expect(contributes.commands).toHaveLength(1);
     expect((contributes.commands[0] as { id: string }).id).toBe('insert-todo');
   });
+
+  it('feature-panel-sample manifest validates (trusted tier)', () => {
+    const host = new PluginHost();
+    const manifest = readManifest('feature-panel-sample');
+    expect(() => host.validateManifest(manifest as never)).not.toThrow();
+  });
+
+  it('feature-panel-sample declares a left feature panel with required icon (trusted)', () => {
+    const manifest = readManifest('feature-panel-sample');
+    expect(manifest.tier).toBe('trusted');
+    const contributes = manifest.contributes as Record<string, unknown[]>;
+    expect(contributes.features).toHaveLength(1);
+    const feature = contributes.features[0] as Record<string, unknown>;
+    expect(feature.panel).toBe('left');
+    expect(feature.component).toBe('notes-panel');
+    expect(typeof feature.icon).toBe('string');
+    expect((feature.icon as string).trim().startsWith('<svg')).toBe(true);
+    expect(feature.order).toBe(50);
+    expect(feature.badge).toBe('NEW');
+  });
 });
 
 describe('example plugins / markdown-todo module exports', () => {
@@ -83,6 +103,27 @@ describe('example plugins / markdown-todo module exports', () => {
     expect(mod.commands).not.toBeNull();
     const commands = mod.commands as Record<string, unknown>;
     expect(typeof commands['insert-todo']).toBe('function');
+
+    expect(typeof mod.activate).toBe('function');
+    expect(typeof mod.deactivate).toBe('function');
+  });
+});
+
+describe('example plugins / feature-panel-sample module exports', () => {
+  it('exports features + commands + activate/deactivate matching PluginModule', async () => {
+    const modPath = path.join(EXAMPLES_DIR, 'feature-panel-sample', 'index.js');
+    const modUrl = pathToFileUrl(modPath);
+    const mod = (await import(modUrl)) as Record<string, unknown>;
+
+    expect(typeof mod.features).toBe('object');
+    expect(mod.features).not.toBeNull();
+    const features = mod.features as Record<string, unknown>;
+    expect(typeof features['notes-panel']).toBe('function');
+
+    expect(typeof mod.commands).toBe('object');
+    expect(mod.commands).not.toBeNull();
+    const commands = mod.commands as Record<string, unknown>;
+    expect(typeof commands['open-notes-panel']).toBe('function');
 
     expect(typeof mod.activate).toBe('function');
     expect(typeof mod.deactivate).toBe('function');

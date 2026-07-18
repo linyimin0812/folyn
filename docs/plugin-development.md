@@ -49,7 +49,7 @@ activate; auto-unregistered on deactivate.
 | `tools` (with `window: true`) | ✓ | ✓ | "Open: <title>" command → Tauri WebviewWindow |
 | `fileTypes` | ✗ | ✓ | file extension → handler mapping |
 | `containers` | ✗ | ✓ | `:::name` Markdown directive → React component |
-| `features` | ✗ | ✓ (stub) | side panel slot (MVP: registry only) |
+| `features` | ✗ | ✓ | sidebar panel slot (activity bar icon + component) — left only (MVP) |
 
 ### 3. RPC method table (sandbox tier — host-mediated)
 
@@ -206,7 +206,7 @@ Every plugin folder has a `manifest.json` at its root. Full schema:
     "commands":   [{ "id": "greet", "title": "Greet", "icon": "👋", "keywords": ["hi"], "run": "greet" }],
     "fileTypes":  [{ "id": "json", "extensions": [".json"], "handler": "default", "defaultViewMode": "edit" }],
     "containers": [{ "name": "callout", "icon": "💡", "label": "Callout", "category": "layout", "component": "callout", "template": ":::callout\n:::", "description": "A callout" }],
-    "features":   [{ "id": "my-panel", "panel": "right", "component": "my-panel" }],
+    "features":   [{ "id": "my-panel", "panel": "left", "component": "my-panel", "icon": "<svg>...</svg>", "title": "My Panel", "order": 50, "badge": "NEW" }],
     "tools":      [{ "id": "my-tool", "title": "My Tool", "icon": "🛠", "window": true, "entry": "index.html" }]
   },
 
@@ -284,18 +284,66 @@ adapts it into the matching app registry when the plugin activates.
 - `template` is the Markdown inserted when the user picks the directive from
   the `/` slash menu.
 
-### features (trusted only; MVP stub)
+### features (trusted only; left panel only in MVP)
 
 ```jsonc
-"features": [{ "id": "my-panel", "panel": "right", "component": "my-panel" }]
+"features": [
+  {
+    "id": "my-panel",
+    "panel": "left",
+    "component": "my-panel",
+    "icon": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"><path d=\"...\"/></svg>",
+    "title": "My Panel",
+    "order": 50,
+    "badge": "NEW"
+  }
+]
 ```
 
-- `panel` is `left` / `right` / `bottom`.
-- `component` is the entry-ref into the module's `features` map.
-- **MVP limitation**: the full ActivityBar integration (adding an icon to the
-  activity bar + routing) is deferred. PR4 registers panels in an in-memory
-  registry (`getPluginFeaturePanels`) but does not yet render them in the
-  ActivityBar. A follow-up wires the real slot.
+- `id` is the panel's local id; it must NOT collide with the reserved
+  built-in ids (`files`, `wiki`, `clips`, `analyze`, `calendar`). A collision
+  (with a built-in or an already-registered plugin panel) is logged and the
+  second registration is refused.
+- `panel` is `left` / `right` / `bottom`. **MVP implements `left` only** —
+  `right` and `bottom` declarations are logged + skipped (right/bottom shell
+  slots are a follow-up task).
+- `component` is the **entry-ref** into the module's `features` map (see the
+  `PluginModule` export contract below). The component must be a React
+  component (renders inside `PanelErrorBoundary`, so a throwing plugin panel
+  won't white-screen the sidebar).
+- `icon` is **required**. Either a raw inline SVG string
+  (`<svg ...>...</svg>`) or a `ThemeIcon` name resolved against the host's
+  `assets/icons/*.svg`. Raw SVG is the self-contained path for plugin authors.
+- `title` is the tooltip + accessibility label. Defaults to
+  `<pluginId>/<id>` if absent.
+- `order` is optional. Built-ins occupy slots 0 (files), 10 (wiki), 20
+  (clips), 30 (analyze), 40 (calendar). A plugin panel that omits `order` is
+  assigned the next-after-builtin slot (≥100) by registration order. The
+  activity bar renders panels sorted by `(order, registration seq)`.
+- `badge` is optional (`string | number`). When present it renders as a small
+  accent-colored text dot on the activity-bar icon. Useful for unread counts
+  or status flags.
+- **Trusted-tier only** (Decision Q1). Sandbox plugins cannot contribute
+  sidebar panels — they contribute `tools` (tool windows) for full-page UI
+  instead. The asymmetry is intentional: sandbox isolation can't mount a
+  same-realm React component.
+- **Deactivate fallback**: when the plugin deactivates, its panel is
+  unregistered. If the panel was active at deactivate time, the active panel
+  falls back to `files` (and `editorStore.activePanel` is synced so WorkArea's
+  tab filter follows).
+- **Persisted-active fallback**: if `editorStore.activePanel` points at an
+  uninstalled plugin's panel id on next launch, the `registerBuiltinPanels`
+  mirror re-routes it to `files`.
+
+#### Reference: sample feature-panel plugin
+
+- [`examples/plugins/feature-panel-sample`](../examples/plugins/feature-panel-sample)
+  — minimal trusted-tier plugin that contributes a left sidebar panel
+  (`notes-panel`) with a raw inline-SVG icon, an `order`, and a `badge`. The
+  panel is a scratchpad textarea; an "Insert into doc" button writes the
+  scratchpad into the active markdown doc via the in-process editor store
+  (trusted tier = direct store access). Also contributes a **Notes: Open
+  Panel** command (⌘P) that activates the panel.
 
 ### tools
 
@@ -646,6 +694,11 @@ above) is already in place for that.
   checkbox list) + a **Todo: Insert Checklist** command. Pure ESM, no
   bundler step needed (lazy-imports React + the editor store inside
   functions so the blob-URL `import()` loads cleanly).
+- [`examples/plugins/feature-panel-sample`](../examples/plugins/feature-panel-sample)
+  — trusted tier. Contributes a `features` sidebar panel (`notes-panel`,
+  left slot, inline-SVG icon, `order`, `badge`) + a **Notes: Open Panel**
+  command. Demonstrates the data-driven activity bar / sidebar mounting
+  path and the in-process editor-store access from a panel component.
 
 Install both via Settings → Plugins → 从文件夹安装… to manually QA the full
 pipeline.

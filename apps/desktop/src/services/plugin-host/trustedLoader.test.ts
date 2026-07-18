@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { ComponentType } from 'react';
 import type { PluginManifest, PluginContext } from '@quill/plugin-host';
 import { PluginHost } from '@quill/plugin-host';
 import {
@@ -20,6 +21,8 @@ import { getCommands, getCommand, clearCommands } from '@/services/commandRegist
 import { getAllHandlers, getHandlerByExtension } from '@/components/file-types/registry';
 import { HandlerRegistry } from '@/components/file-types/HandlerRegistry';
 import { ContainerRegistry } from '@quill/container-plugins';
+import { useFeaturePanelStore } from '@/store/featurePanelStore';
+import { useEditorStore } from '@/store/editorStore';
 
 // ── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -118,6 +121,8 @@ beforeEach(() => {
   const cr = ContainerRegistry.getInstance();
   for (const p of cr.getAll()) cr.unregister(p.name);
   resetFileRegistry();
+  useFeaturePanelStore.setState({ panels: [], activePanelId: null });
+  useEditorStore.setState({ activePanel: 'files' });
 });
 
 afterEach(() => {
@@ -126,6 +131,8 @@ afterEach(() => {
   const cr = ContainerRegistry.getInstance();
   for (const p of cr.getAll()) cr.unregister(p.name);
   resetFileRegistry();
+  useFeaturePanelStore.setState({ panels: [], activePanelId: null });
+  useEditorStore.setState({ activePanel: 'files' });
 });
 
 /** Reset the mocked file-types registry between tests. */
@@ -298,6 +305,102 @@ describe('trustedLoader / contribution adapters', () => {
     // File-type skipped (no handlers), but command/container/feature still work
     expect(getHandlerByExtension('.x')).toBeUndefined();
     expect(getCommand('plugin.demo-trusted.greet')).toBeDefined();
+  });
+});
+
+describe('trustedLoader / feature contribution', () => {
+  it('registers a plugin feature panel on activate; unregisters + falls back to files on deactivate', async () => {
+    await setupInvoke({ trusted: true });
+    const PanelComp = (() => null) as unknown as ComponentType;
+    const mod = fakeModule({ features: { 'my-panel': PanelComp } });
+    setModuleResolver(async () => mod as unknown as Record<string, unknown>);
+
+    const featureManifest = manifest({
+      contributes: {
+        features: [
+          {
+            id: 'my-panel',
+            panel: 'left',
+            component: 'my-panel',
+            icon: '<svg><rect/></svg>',
+            title: 'My Panel',
+          },
+        ],
+      },
+    });
+
+    const host = new PluginHost();
+    host.registerLoader(trustedLoader);
+    await host.install(featureManifest);
+    await host.activate('demo-trusted');
+
+    // Panel registered
+    const panels = useFeaturePanelStore.getState().panels;
+    expect(panels.some((p) => p.id === 'my-panel')).toBe(true);
+
+    // Simulate user activating the plugin panel (editorStore is the source of
+    // truth; the registerBuiltinPanels mirror is NOT wired here, so set both).
+    useEditorStore.setState({ activePanel: 'my-panel' });
+    useFeaturePanelStore.getState().setActive('my-panel');
+
+    await host.deactivate('demo-trusted');
+
+    // Panel unregistered + active falls back to files + editorStore synced
+    expect(
+      useFeaturePanelStore.getState().panels.some((p) => p.id === 'my-panel'),
+    ).toBe(false);
+    expect(useFeaturePanelStore.getState().activePanelId).toBe(null);
+    // editorStore.activePanel was the disposed panel id; the adapter's dispose
+    // path can't fall back to 'files' here because no 'files' built-in was
+    // registered in this test (registerBuiltinPanels not wired), so the guard
+    // clears featurePanelStore but leaves editorStore untouched. Assert that
+    // the adapter did not throw and the store converged to null.
+    expect(useEditorStore.getState().activePanel).toBe('my-panel');
+  });
+
+  it('dispose syncs editorStore to files when files is registered (PR3 editorStore sync)', async () => {
+    await setupInvoke({ trusted: true });
+    const PanelComp = (() => null) as unknown as ComponentType;
+    const mod = fakeModule({ features: { 'my-panel': PanelComp } });
+    setModuleResolver(async () => mod as unknown as Record<string, unknown>);
+
+    const featureManifest = manifest({
+      contributes: {
+        features: [
+          {
+            id: 'my-panel',
+            panel: 'left',
+            component: 'my-panel',
+            icon: '<svg><rect/></svg>',
+            title: 'My Panel',
+          },
+        ],
+      },
+    });
+
+    // Seed a 'files' built-in so the dispose fallback has a target.
+    useFeaturePanelStore.getState().register({
+      id: 'files',
+      title: 'Files',
+      icon: null,
+      component: () => null,
+      order: 0,
+      visible: true,
+      builtin: true,
+    });
+
+    const host = new PluginHost();
+    host.registerLoader(trustedLoader);
+    await host.install(featureManifest);
+    await host.activate('demo-trusted');
+
+    useEditorStore.setState({ activePanel: 'my-panel' });
+    useFeaturePanelStore.getState().setActive('my-panel');
+
+    await host.deactivate('demo-trusted');
+
+    expect(useFeaturePanelStore.getState().activePanelId).toBe('files');
+    expect(useEditorStore.getState().activePanel).toBe('files');
   });
 });
 

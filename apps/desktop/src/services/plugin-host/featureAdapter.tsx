@@ -29,6 +29,7 @@ import type { FeatureContribution } from '@quill/plugin-host';
 import { IconFromSvg } from '@/components/icons/IconFromSvg';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 import { useFeaturePanelStore } from '@/store/featurePanelStore';
+import { useEditorStore } from '@/store/editorStore';
 import type { PluginModule } from './contributionAdapters';
 
 /** Reserved built-in ids; plugins may not register these. */
@@ -118,11 +119,17 @@ export function registerPluginFeatures(
       // guard below (fall back to 'files' only if registered, else clear) is a
       // test-env safety net — tests that don't seed 'files' get null. In
       // production this always resolves to 'files'.
-      // TODO(PR3): when this adapter is wired into trustedLoader, ALSO call
-      // `useEditorStore.getState().setActivePanel('files')` on the wasActive
-      // path so editorStore.activePanel (and thus WorkArea's tab filter) stays
-      // in sync — the featurePanelStore mirror subscription only covers
-      // editorStore→featurePanelStore, not the reverse.
+      //
+      // editorStore sync: `editorStore.activePanel` is the persisted source
+      // of truth (the featurePanelStore mirror is one-way editorStore →
+      // featurePanelStore, set up in `registerBuiltinPanels`). When the
+      // disposed panel was active, we must ALSO call
+      // `useEditorStore.setActivePanel('files')` so editorStore stays in sync
+      // — otherwise editorStore still points at the now-gone plugin panel id,
+      // and WorkArea's tab `activity` filter would stay pointed at it. The
+      // mirror subscription would eventually re-route the invalid id to
+      // 'files' (via its invalid-active fallback), but setting editorStore
+      // directly is the clean, deterministic path.
       const filesRegistered = useFeaturePanelStore
         .getState()
         .panels.some((p) => p.id === 'files');
@@ -131,7 +138,12 @@ export function registerPluginFeatures(
         const wasActive = s.activePanelId === id;
         s.unregister(id);
         if (wasActive) {
-          s.setActive(filesRegistered ? 'files' : null);
+          if (filesRegistered) {
+            s.setActive('files');
+            useEditorStore.getState().setActivePanel('files');
+          } else {
+            s.setActive(null);
+          }
         }
       }
     },
