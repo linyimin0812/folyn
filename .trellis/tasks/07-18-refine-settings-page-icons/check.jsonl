@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist and forbidden patterns — verify the icon refactor meets the bar"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component conventions to verify against the new lucide imports"}

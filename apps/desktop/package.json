@@ -59,6 +59,7 @@
     "jsondiffpatch": "^0.7.6",
     "jsonpath-plus": "^10.4.0",
     "jsonrepair": "^3.15.0",
+    "lucide-react": "^1.25.0",
     "mermaid": "^11.15.0",
     "mind-elixir": "^5.14.0",
     "papaparse": "^5.5.4",

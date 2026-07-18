@@ -14,6 +14,7 @@ import { PetSettings } from '@/components/settings/PetSettings';
 import { NotificationsSettings } from '@/components/settings/NotificationsSettings';
 import { ShortcutEditor } from '@/components/settings/ShortcutEditor';
 import { Toggle, NAV_GROUPS } from '@/components/settings/primitives';
+import { Lightbulb, Home, Unlock, Sparkles, ClipboardCopy, RefreshCw } from 'lucide-react';
 
 export function SettingsPage() {
   const settingsTab = useNavStore((s) => s.settingsTab);
@@ -322,7 +323,7 @@ export function SettingsPage() {
               )}
             </div>
             <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3 px-3.5 flex gap-2.5 mt-4">
-              <div className="text-[17px] shrink-0 mt-px">💡</div>
+              <Lightbulb size={17} className="shrink-0 mt-px text-acc" />
               <div>
                 <h4 className="text-[12.5px] font-semibold text-t1 m-0 mb-0.5">使用说明</h4>
                 <p className="text-[11px] text-t3 leading-normal m-0">AI 工具通过调用本地 CLI（如 Claude Code）来编辑文档。请确保已安装对应的 CLI 工具。修改会以 Diff 形式展示，确认后再应用到文件。</p>
@@ -470,11 +471,11 @@ export function SettingsPage() {
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8, marginBottom: 16 }}>
-              <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3 px-3.5 flex gap-2.5"><div className="text-[17px] shrink-0 mt-px">🏠</div><div><h4 className="text-[12.5px] font-semibold text-t1 m-0 mb-0.5">本地优先</h4><p className="text-[11px] text-t3 leading-normal m-0">数据存储在你的设备上</p></div></div>
-              <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3 px-3.5 flex gap-2.5"><div className="text-[17px] shrink-0 mt-px">🔓</div><div><h4 className="text-[12.5px] font-semibold text-t1 m-0 mb-0.5">开放格式</h4><p className="text-[11px] text-t3 leading-normal m-0">标准 Markdown，无锁定</p></div></div>
-              <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3 px-3.5 flex gap-2.5"><div className="text-[17px] shrink-0 mt-px">✦</div><div><h4 className="text-[12.5px] font-semibold text-t1 m-0 mb-0.5">AI 辅助</h4><p className="text-[11px] text-t3 leading-normal m-0">本地 + 云端 LLM</p></div></div>
+              <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3 px-3.5 flex gap-2.5"><Home size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-semibold text-t1 m-0 mb-0.5">本地优先</h4><p className="text-[11px] text-t3 leading-normal m-0">数据存储在你的设备上</p></div></div>
+              <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3 px-3.5 flex gap-2.5"><Unlock size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-semibold text-t1 m-0 mb-0.5">开放格式</h4><p className="text-[11px] text-t3 leading-normal m-0">标准 Markdown，无锁定</p></div></div>
+              <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3 px-3.5 flex gap-2.5"><Sparkles size={17} className="shrink-0 mt-px text-acc" /><div><h4 className="text-[12.5px] font-semibold text-t1 m-0 mb-0.5">AI 辅助</h4><p className="text-[11px] text-t3 leading-normal m-0">本地 + 云端 LLM</p></div></div>
             </div>
-            <div style={{ display: 'flex', gap: 6 }}><button className="btn btn-g btn-sm">📋 复制版本信息</button><button className="btn btn-g btn-sm">🔄 检查更新</button></div>
+            <div style={{ display: 'flex', gap: 6 }}><button className="btn btn-g btn-sm inline-flex items-center gap-1.5"><ClipboardCopy size={13} /> 复制版本信息</button><button className="btn btn-g btn-sm inline-flex items-center gap-1.5"><RefreshCw size={13} /> 检查更新</button></div>
           </div>
         )}
       </div>

@@ -1,4 +1,6 @@
+import type { ReactNode } from 'react';
 import type { SettingsTab } from '@/store/navStore';
+import { Monitor, SquarePen, Keyboard, FileText, PawPrint, Bell, Puzzle, Sparkles, Mic, Zap, Info } from 'lucide-react';
 
 /**
  * Shared presentational primitives used across the settings tabs
@@ -15,22 +17,22 @@ export function Toggle({ value, onChange }: { value: boolean; onChange: (v: bool
   );
 }
 
-export const NAV_GROUPS = [
+export const NAV_GROUPS: { label: string; items: { id: SettingsTab; icon: ReactNode; name: string }[] }[] = [
   { label: '通用', items: [
-    { id: 'appearance' as SettingsTab, icon: '🖥', name: '外观' },
-    { id: 'editor' as SettingsTab, icon: '✏️', name: '编辑器' },
-    { id: 'shortcuts' as SettingsTab, icon: '⌨️', name: '快捷键' },
-    { id: 'templates' as SettingsTab, icon: '📄', name: '文件模板' },
-    { id: 'pet' as SettingsTab, icon: '🐾', name: '桌宠' },
-    { id: 'notifications' as SettingsTab, icon: '🔔', name: '通知' },
-    { id: 'plugins' as SettingsTab, icon: '🧩', name: '插件' },
+    { id: 'appearance', icon: <Monitor size={14} />, name: '外观' },
+    { id: 'editor', icon: <SquarePen size={14} />, name: '编辑器' },
+    { id: 'shortcuts', icon: <Keyboard size={14} />, name: '快捷键' },
+    { id: 'templates', icon: <FileText size={14} />, name: '文件模板' },
+    { id: 'pet', icon: <PawPrint size={14} />, name: '桌宠' },
+    { id: 'notifications', icon: <Bell size={14} />, name: '通知' },
+    { id: 'plugins', icon: <Puzzle size={14} />, name: '插件' },
   ]},
   { label: 'AI', items: [
-    { id: 'ai' as SettingsTab, icon: '✦', name: 'AI 工具' },
-    { id: 'voice' as SettingsTab, icon: '🎤', name: '语音输入' },
-    { id: 'skills' as SettingsTab, icon: '⚡', name: 'Skills' },
+    { id: 'ai', icon: <Sparkles size={14} />, name: 'AI 工具' },
+    { id: 'voice', icon: <Mic size={14} />, name: '语音输入' },
+    { id: 'skills', icon: <Zap size={14} />, name: 'Skills' },
   ]},
   { label: '关于', items: [
-    { id: 'about' as SettingsTab, icon: 'ℹ️', name: '关于 Quill' },
+    { id: 'about', icon: <Info size={14} />, name: '关于 Quill' },
   ]},
 ];

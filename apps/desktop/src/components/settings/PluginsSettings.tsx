@@ -24,6 +24,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { TriangleAlert } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import { usePluginStore, type PluginRow } from '@/store/pluginStore';
 
@@ -194,10 +195,11 @@ function ConsentModal() {
         </div>
 
         <div className="bg-amber/10 border border-amber/40 rounded-md p-2.5 mb-3">
-          <div className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
-            ⚠️ 可信插件运行在主进程中，拥有完整的宿主能力（可读写 vault、调用
+          <div className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed flex gap-1.5">
+            <TriangleAlert size={13} className="shrink-0 mt-0.5" />
+            <span>可信插件运行在主进程中，拥有完整的宿主能力（可读写 vault、调用
             Tauri 命令、访问所有 React 状态）。批准等同于完全信任——仅批准来自
-            你信任的来源的插件。卸载可随时移除其贡献点。
+            你信任的来源的插件。卸载可随时移除其贡献点。</span>
           </div>
         </div>
 
