@@ -88,6 +88,23 @@ export function VoiceOrbApp(): JSX.Element {
   const [phase, setPhase] = useState<VoicePhase>('idle');
   const [level, setLevel] = useState(0);
   const [polishSkippedReason, setPolishSkippedReason] = useState<PolishSkippedReason>(null);
+  // voice-orb is a separate Tauri window = separate JS realm; the main
+  // window's useAppearanceStore does NOT sync here. Use OS prefers-color-scheme
+  // directly so the caption stays legible on both light and dark desktops.
+  // Default true (dark): white-on-dark shadow survives more desktop backgrounds
+  // than the reverse when matchMedia is unavailable.
+  const [isDark, setIsDark] = useState<boolean>(() =>
+    typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+      : true,
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
   const orbPhaseHeardRef = useRef(false);
 
   // Lazy-warm the shaders on first mount so the first recording doesn't pay
@@ -190,6 +207,11 @@ export function VoiceOrbApp(): JSX.Element {
   const isOrb = phase === 'transcribing' || phase === 'polishing' || phase === 'inserting';
   const merging = phase === 'inserting';
   const caption = phaseCaption(phase);
+  const captionColor = isDark ? '#fff' : '#1a1a1a';
+  const captionShadow = isDark
+    ? '0 1px 4px rgba(0,0,0,0.6)'
+    : '0 1px 4px rgba(255,255,255,0.8), 0 0 1px rgba(0,0,0,0.4)';
+  const linkColor = isDark ? '#7AB7FF' : '#0066CC';
 
   return (
     <div
@@ -226,9 +248,9 @@ export function VoiceOrbApp(): JSX.Element {
             left: 0,
             right: 0,
             textAlign: 'center',
-            color: '#fff',
+            color: captionColor,
             fontSize: 12,
-            textShadow: '0 1px 4px rgba(0,0,0,0.6)',
+            textShadow: captionShadow,
             userSelect: 'none',
           }}
         >
@@ -247,7 +269,7 @@ export function VoiceOrbApp(): JSX.Element {
                   marginLeft: 6,
                   background: 'transparent',
                   border: 'none',
-                  color: '#7AB7FF',
+                  color: linkColor,
                   fontSize: 12,
                   cursor: 'pointer',
                   textDecoration: 'underline',
