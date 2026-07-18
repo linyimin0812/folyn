@@ -146,8 +146,10 @@ export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
                 : 'text-t3 bg-transparent hover:bg-hov hover:text-t1'
         }`}
         onClick={handleToggle}
+        onMouseDown={(e) => e.preventDefault()}
         disabled={isDisabled}
         title={title}
+        tabIndex={-1}
         aria-label={recording ? '停止录音' : '语音输入'}
       >
         {busy ? (
