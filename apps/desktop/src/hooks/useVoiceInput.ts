@@ -93,6 +93,20 @@ function emitOrbPhase(
   );
 }
 
+/** Re-show the voice-orb window after `voice_insert_text` hid it pre-paste.
+ *  Rust hides the orb before sending Cmd+V so the transparent NSPanel doesn't
+ *  sit on the event-tap path and interfere with the paste. Once insert returns,
+ *  the paste is done — re-show so the user can see the lingering caption +
+ *  "打开设置" link. No-op if the orb window doesn't exist (button-only path,
+ *  non-macOS, etc.). Swallows errors so a missing orb never breaks the flow. */
+function showVoiceOrbWindow(): void {
+  if (!isTauri()) return;
+  void import('@tauri-apps/api/webviewWindow')
+    .then(({ WebviewWindow }) => WebviewWindow.getByLabel('voice-orb'))
+    .then((orb) => orb?.show())
+    .catch((err) => console.warn('[voice] re-show voice-orb failed:', err));
+}
+
 function flashError(set: (partial: Partial<VoiceInputState>) => void, msg: string): void {
   console.error('[voice]', msg);
   if (errorTimer) clearTimeout(errorTimer);
@@ -285,6 +299,10 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
     // seconds so the prompt stays visible. Text is already inserted, so this
     // only extends the visual surface — no functional block.
     if (skipReason) {
+      // paste 已完成，重新 show orb 让用户能继续看到提示 + 链接。Rust 在
+      // voice_insert_text 里 pre-paste hide 了 orb 防 Cmd+V 干扰，到这里 paste
+      // 已落地，re-show 安全。
+      void showVoiceOrbWindow();
       if (idleNoticeTimer) clearTimeout(idleNoticeTimer);
       idleNoticeTimer = setTimeout(() => {
         idleNoticeTimer = null;
