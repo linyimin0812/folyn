@@ -212,6 +212,7 @@ export function VoiceOrbApp(): JSX.Element {
     ? '0 1px 4px rgba(0,0,0,0.6)'
     : '0 1px 4px rgba(255,255,255,0.8), 0 0 1px rgba(0,0,0,0.4)';
   const linkColor = isDark ? '#7AB7FF' : '#0066CC';
+  const pillBg = isDark ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.75)';
 
   return (
     <div
@@ -252,6 +253,11 @@ export function VoiceOrbApp(): JSX.Element {
             fontSize: 12,
             textShadow: captionShadow,
             userSelect: 'none',
+            background: pillBg,
+            borderRadius: 8,
+            padding: '4px 10px',
+            maxWidth: 'fit-content',
+            margin: '0 auto',
           }}
         >
           {caption}
