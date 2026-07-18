@@ -84,10 +84,65 @@ by concern over extracting helper files.
 | `searchStore` | Global search panel open/close state |
 | `wikiStore` | Wiki graph data, ingestion, querying |
 | `wikiGraphStore` | Wiki link graph visualization state |
+| `toolWindowStore` | Tool-window (uTool-style) lifecycle: open WebviewWindows per plugin, multi-instance |
+| `featurePanelStore` | Sidebar panel registry (built-ins + plugin panels) + activePanelId; reactive so ActivityBar/Sidebar re-render on plugin activate/deactivate |
 
 > The legacy `settingsStore` god-store was split into the 8 cohesive stores
 > above (`navStore`…`petStore`) + `boardColumns` folded into `scheduleStore`.
 > Do **not** re-merge concerns into one store; open a new store instead.
+
+---
+
+## Contribution registries: reactive store vs plain singleton
+
+Two contribution registries exist in the codebase. They look similar
+(both `register`/`unregister` plugin contributions) but use **different
+backends by design** — picking the wrong one is a subtle bug.
+
+| Registry | Backend | Why |
+|----------|---------|-----|
+| `ContainerRegistry` (`@quill/container-plugins`) | Plain singleton class, `getAll()` returns the current array | Container directives register **once at load** (`registerBuiltinPlugins()` in `App.tsx`); the preview pane reads them during render. No runtime add/remove → no reactivity needed. |
+| `featurePanelStore` / `toolWindowStore` (`store/`) | Zustand store | Panels/tool-windows **register and unregister at runtime** when plugins activate/deactivate. ActivityBar/Sidebar must re-render on those changes → reactive. |
+
+### Decision rule
+
+When adding a new contribution point, ask: **does the set of registered
+items change while the host UI is mounted?**
+
+- **No** (registered once at startup, never removed) → plain singleton
+  with a `getAll()` getter is fine. Reactors call it during render.
+  Example: `ContainerRegistry`.
+- **Yes** (plugins activate/deactivate at runtime) → Zustand store with
+  granular selectors. A plain singleton's `getAll()` is NOT subscribed,
+  so React never re-renders when a plugin registers/unregisters — the
+  panel/icon silently fails to appear or disappear.
+  Example: `featurePanelStore`.
+
+### Pattern
+
+```ts
+// store/featurePanelStore.ts — reactive registry
+interface State {
+  panels: PanelEntry[];
+  activePanelId: string | null;
+  register: (entry: PanelEntry) => void;   // id-collision guard: warn + refuse
+  unregister: (id: string) => void;
+  setActive: (id: string | null) => void;
+}
+
+// Referential-stable selector (see "Selector return values MUST be
+// referentially stable" — the empty path returns a module constant).
+export const useVisiblePanels = () =>
+  useFeaturePanelStore(useShallow((s) => {
+    const visible = s.panels.filter((p) => p.visible);
+    return visible.length === 0 ? EMPTY_PANELS : sortPanels(visible);
+  }));
+```
+
+The adapter that resolves a manifest contribution into store entries
+returns a `Disposable` (`registerPluginFeatures` / `registerPluginTools`)
+so `PluginHost` reaps the registration on deactivate — mirroring the
+command/file-type/container adapters in `contributionAdapters.ts`.
 
 ---
 
@@ -298,3 +353,4 @@ Helper files import from the store but are not stores themselves.
 - A persisted store setter that doesn't call `schedulePersist()` after `set(...)` — the field changes in memory but is never written to disk (silent data loss; the `toggleTheme` bug is the cautionary case)
 - Exposing an `update(partial: Partial<State>)` generic setter on a settings store — re-introduces the cross-concern god-store coupling (see "No `update(partial)` escape hatch")
 - Stale references to the deleted `settingsStore` in comments/imports after the split — grep `settingsStore` should return only provenance narrative, zero imports
+- Using a plain singleton registry (à la `ContainerRegistry`) for a contribution point that registers/unregisters at runtime (plugin panels, tool windows) — `getAll()` is not subscribed, so React never re-renders and the icon/panel silently fails to appear or disappear. Use a Zustand store instead (see "Contribution registries: reactive store vs plain singleton" above)

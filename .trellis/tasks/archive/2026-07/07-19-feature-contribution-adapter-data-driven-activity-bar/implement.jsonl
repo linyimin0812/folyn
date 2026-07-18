@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store patterns — featurePanelStore must follow granular selectors + persistence conventions"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Named exports, props, composition — ActivityBar/Sidebar rewrite patterns"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "FeatureContribution type changes (icon/order/badge), PluginModule.features map"}
+{"file": ".trellis/spec/container-plugins/frontend/component-guidelines.md", "reason": "ContainerRegistry singleton pattern analog — note our store diverges (reactive Zustand, not plain singleton)"}
+{"file": ".trellis/tasks/07-17-utools-style-plugin-tool-window/prd.md", "reason": "Direct sister implementation — toolAdapter + toolWindowStore + toolWindowRpcListener; featureAdapter should mirror this shape"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse toolAdapter/ContainerRegistry/theming instead of new abstractions"}

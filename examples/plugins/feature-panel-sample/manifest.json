@@ -1,0 +1,29 @@
+{
+  "id": "feature-panel-sample",
+  "name": "Feature Panel Sample",
+  "version": "1.0.0",
+  "author": "Quill Examples",
+  "quill": ">=0.1.0",
+  "tier": "trusted",
+  "main": "index.js",
+  "permissions": {
+    "vault": { "insertContent": true }
+  },
+  "contributes": {
+    "features": [
+      {
+        "id": "notes-panel",
+        "panel": "left",
+        "component": "notes-panel",
+        "icon": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"><path d=\"M3 2.5h7L13 5.5v8a.5.5 0 01-.5.5h-9a.5.5 0 01-.5-.5v-10a.5.5 0 01.5-.5z\"/><path d=\"M9.5 2.5V5h3.5\"/></svg>",
+        "title": "Notes (sample)",
+        "order": 50,
+        "badge": "NEW"
+      }
+    ],
+    "commands": [
+      { "id": "open-notes-panel", "title": "Notes: Open Panel", "icon": "📝", "run": "open-notes-panel" }
+    ]
+  },
+  "activation": { "onCommand": "open-notes-panel" }
+}

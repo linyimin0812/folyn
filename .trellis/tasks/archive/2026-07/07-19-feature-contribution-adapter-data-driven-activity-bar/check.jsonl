@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns + review checklist — verify no bare useStore, named exports, etc."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Type review — FeatureContribution required icon, manifest validation, no any"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store review — selectors, no store-as-React-state antipatterns"}
+{"file": ".trellis/tasks/07-17-utools-style-plugin-tool-window/prd.md", "reason": "Parity check — featureAdapter/dispose/fallback should match toolAdapter conventions"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Cross-layer review — manifest type → adapter → store → ActivityBar/Sidebar data flow"}

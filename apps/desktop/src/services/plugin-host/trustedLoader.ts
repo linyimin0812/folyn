@@ -6,7 +6,7 @@
  * the plugin's `manifest.main` ESM bundle, wraps it in a blob URL, and
  * `import()`-s it into the host realm. The module's named exports are then
  * wired into the app's contribution registries (file-types / containers /
- * commands) via the in-process adapters.
+ * commands / features / tools) via the in-process adapters.
  *
  * ## Design reality (READ THIS)
  *
@@ -52,6 +52,7 @@ import {
   registerPluginContainers,
 } from './contributionAdapters';
 import { registerPluginTools } from './toolAdapter';
+import { registerPluginFeatures } from './featureAdapter';
 
 export const trustedLoader: PluginLoader = {
   tier: 'trusted',
@@ -108,6 +109,7 @@ export const trustedLoader: PluginLoader = {
           registerPluginFileTypes(manifest, module),
           registerPluginContainers(manifest, module),
           registerPluginTools(manifest),
+          registerPluginFeatures(manifest, module),
         ];
         for (const d of adapterDisposables) ctx.addDisposable(d);
 
@@ -142,7 +144,7 @@ export const trustedLoader: PluginLoader = {
 /**
  * Normalize a raw `import()` result into a `PluginModule`. Unwraps a
  * `default` export if present, then copies the named plugin exports
- * (`handlers`, `containers`, `commands`, `activate`, `deactivate`) when
+ * (`handlers`, `containers`, `features`, `commands`, `activate`, `deactivate`) when
  * they exist on the module namespace.
  */
 function normalizeModule(mod: Record<string, unknown>): PluginModule {
@@ -150,6 +152,7 @@ function normalizeModule(mod: Record<string, unknown>): PluginModule {
   const src = (mod.default ?? mod) as Record<string, unknown>;
   if (src.handlers) out.handlers = src.handlers as PluginModule['handlers'];
   if (src.containers) out.containers = src.containers as PluginModule['containers'];
+  if (src.features) out.features = src.features as PluginModule['features'];
   if (src.commands) out.commands = src.commands as PluginModule['commands'];
   if (typeof src.activate === 'function') out.activate = src.activate as PluginModule['activate'];
   if (typeof src.deactivate === 'function') out.deactivate = src.deactivate as PluginModule['deactivate'];

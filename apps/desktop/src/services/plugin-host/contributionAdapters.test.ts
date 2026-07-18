@@ -33,7 +33,7 @@ function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
       containers: [
         { name: 'adt-block', icon: '📦', label: 'ADT', category: 'custom', component: 'block', template: ':::adt-block\n:::' },
       ],
-      features: [{ id: 'adt-panel', panel: 'right', component: 'panel' }],
+      features: [{ id: 'adt-panel', panel: 'right', component: 'panel', icon: '<svg/>' }],
     },
     ...overrides,
   };
