@@ -133,10 +133,27 @@ export interface ContainerContribution {
 
 export interface FeatureContribution {
   id: string;
-  /** Where the panel mounts: 'left' | 'right' | 'bottom'. */
+  /**
+   * Where the panel mounts: 'left' | 'right' | 'bottom'.
+   *
+   * MVP hosts `left` only; `right`/`bottom` are warned + skipped (see
+   * featureAdapter.ts). Right/bottom shell slots are a follow-up task.
+   */
   panel: 'left' | 'right' | 'bottom';
-  /** Entry ref to the panel component. */
+  /** Entry ref to the panel component (resolved via `PluginModule.features`). */
   component: string;
+  /**
+   * Panel icon — REQUIRED. Either a raw inline SVG string (`<svg ...>...</svg>`,
+   * rendered verbatim via `IconFromSvg`) or a `ThemeIcon` name (resolved against
+   * host `assets/icons/*.svg`).
+   */
+  icon: string;
+  /** Panel title (shown in the activity bar tooltip + accessibility label). */
+  title?: string;
+  /** Sort key within the activity bar. Built-ins: files=0, wiki=10, clips=20, analyze=30, calendar=40. */
+  order?: number;
+  /** Optional badge rendered as a small text dot when present. */
+  badge?: string | number;
 }
 
 export interface ToolContribution {

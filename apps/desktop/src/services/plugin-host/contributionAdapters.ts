@@ -50,6 +50,12 @@ export interface PluginModule {
   handlers?: Record<string, FileTypeHandler>;
   /** Entry-ref → React component. Keys match `contributes.containers[].component`. */
   containers?: Record<string, ComponentType<ContainerProps>>;
+  /**
+   * Entry-ref → React component. Keys match `contributes.features[].component`.
+   * Used by `registerPluginFeatures` (services/plugin-host/featureAdapter.ts)
+   * to mount trusted-tier sidebar panels.
+   */
+  features?: Record<string, ComponentType>;
   /** Entry-ref → command handler. Keys match `contributes.commands[].run`. */
   commands?: Record<string, () => void | Promise<void>>;
   /** Optional lifecycle hook; called by the trusted loader on activate. */
