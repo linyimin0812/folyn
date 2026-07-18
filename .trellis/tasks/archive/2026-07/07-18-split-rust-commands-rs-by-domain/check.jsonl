@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Verify the post-split Rust side still honors the managed-state (PetSizeState/PetShortcutState) + native-menu (PET_CTX_MENU_*) conventions documented here, and that lib.rs's command registration order is unchanged"}
