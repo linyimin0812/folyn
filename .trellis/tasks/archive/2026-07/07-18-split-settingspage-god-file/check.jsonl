@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns + review checklist — the primary spec for the check pass over the refactor diff"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify each extracted XxxSettings.tsx matches the named-export / composition conventions; ShortcutEditor + VoiceHotkeyRecorder thin shells still conform"}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "Verify useHotkeyRecording follows the hook structure pattern (effects w/ cleanup, no leaked listeners, return value+actions)"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify granular selectors preserved in thin shells — no bare useStore() regression introduced during the move"}
