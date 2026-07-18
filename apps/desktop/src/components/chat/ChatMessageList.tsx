@@ -2,13 +2,8 @@ import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
 import type { CliMessage } from '@quill/cli-adapter';
 import { isTauri } from '@/utils/platform';
 import { MessageContent } from './MessageContent';
-// TODO(PR2): relocate ToolCallBlock / FileImage / FileIcon into `components/chat/`
-// (or a shared `components/shared/`) so the chat package does not depend on
-// `components/ai/`. For PR1 we import directly to keep things working; the
-// types are stable and the coupling is one-directional (chat → ai, never
-// ai → chat).
-import { ToolCallBlock } from '../ai/ToolCallBlock';
-import { FileImage } from '../ai/FileImage';
+import { ToolCallBlock } from './ToolCallBlock';
+import { FileImage } from './FileImage';
 import { FileIcon } from '@/components/icons/FileIcon';
 
 export interface ChatMessageListProps {

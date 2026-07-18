@@ -14,17 +14,19 @@ apps/desktop/src/
 ├── vite-env.d.ts        # Vite type declarations
 │
 ├── components/
-│   ├── ai/              # AI panel host (AiPanel, ChatInput, DiffView, ToolCallBlock,
-│   │                    #   FileImage, ReviewItemList, DeepResearchDialog, IngestDialog,
-│   │                    #   adapterManager, inputModes, WikiToolbar, WikiActivityLog).
+│   ├── ai/              # AI panel host (AiPanel, ChatInput, DiffView, ReviewItemList,
+│   │                    #   DeepResearchDialog, IngestDialog, adapterManager, inputModes,
+│   │                    #   WikiToolbar, WikiActivityLog).
 │   │                    #   NOTE: ChatMessages + MessageContent were extracted into chat/
 │   │                    #   (see below) — AiPanel now composes the shared chat components.
 │   ├── chat/            # Shared presentational chat UI consumed by BOTH the AI panel
 │   │                    #   (main window) and the desktop-pet chat (secondary pet-panel
 │   │                    #   window). ChatMessageList, MessageContent (markdown + plaintext),
-│   │                    #   ChatInputBox (slot-based). See component-guidelines.md for the
-│   │                    #   slot pattern + the no-store-import rule for secondary-window
-│   │                    #   isolation.
+│   │                    #   ChatInputBox (slot-based), ToolCallBlock + FileImage (chat-
+│   │                    #   internal render parts — moved out of ai/ to keep chat/ from
+│   │                    #   depending on ai/, breaking the ai↔chat cycle). See
+│   │                    #   component-guidelines.md for the slot pattern + the
+│   │                    #   no-store-import rule for secondary-window isolation.
 │   ├── editor/          # Editor toolbar and overlays (SlashMenu, ExportMenu, DiffToolbar,
 │   │                    #   ImagePasteDialog, CodeBlockLangMenu, DailyDigest)
 │   ├── file-types/      # File type handler registry (markdown, code, image, pdf, web). The
