@@ -6,8 +6,7 @@ import { buildHighlightSegments, groupLabelZh } from './commandPaletteHelpers';
  * Unified command palette (⌘P / Ctrl+P).
  *
  * Renders only when {@link useCommandPaletteStore.isOpen} is true. Reuses the
- * existing `.dlg` overlay/dialog styling (see `IngestDialog`, `DeepResearchDialog`)
- * rather than introducing new overlay CSS.
+ * existing `.dlg` overlay/dialog styling rather than introducing new overlay CSS.
  *
  * Keyboard handling lives on the input element (stopPropagation so the global
  * `App.tsx` keydown handler does not double-trigger while the palette is open).

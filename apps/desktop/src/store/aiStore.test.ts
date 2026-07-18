@@ -51,7 +51,7 @@ function seedSession(overrides: Partial<AiSession> = {}): AiSession {
 }
 
 beforeEach(() => {
-  useAiStore.setState({ sessions: [], activeSessionId: null, studySessionId: null, chatMode: 'chat', inputMode: 'agent', pendingFileAttachments: [] });
+  useAiStore.setState({ sessions: [], activeSessionId: null, studySessionId: null, inputMode: 'agent', pendingFileAttachments: [] });
   useVaultStore.setState({ activeVaultId: null, currentVault: null } as never);
   vi.clearAllMocks();
 });
@@ -249,11 +249,6 @@ describe('useAiStore streaming + cli session + chat mode', () => {
     seedSession();
     useAiStore.getState().setCliSessionId('cli-1');
     expect(useAiStore.getState().sessions[0].cliSessionId).toBe('cli-1');
-  });
-
-  it('setChatMode updates the mode', () => {
-    useAiStore.getState().setChatMode('wiki');
-    expect(useAiStore.getState().chatMode).toBe('wiki');
   });
 
   it('setInputMode updates the input mode', () => {

@@ -2,32 +2,19 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import * as editorIoService from '@/services/editorIoService';
 import { useAiStore } from '@/store/aiStore';
-import type { AiChatMode } from '@/store/aiStore';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useVaultStore } from '@/store/vaultStore';
 import type { CliStreamEvent, MessageAttachment } from '@quill/cli-adapter';
 import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';
 import { flattenFileTree } from '@/utils/treeUtils';
 import { sessionAdapters, getAdapterForSession } from './adapterManager';
-import { WikiToolbar } from './WikiToolbar';
-import { WikiActivityLog } from './WikiActivityLog';
-import { ClipToolbar } from './ClipToolbar';
-import { ReviewItemList } from './ReviewItemList';
-import { IngestDialog } from './IngestDialog';
-import { DeepResearchDialog } from './DeepResearchDialog';
-import { useWikiStore } from '@/store/wikiStore';
-import { useClipStore } from '@/store/clipStore';
-import { runIngest } from '@/services/wikiIngestService';
-import { runWikiLint } from '@/services/wikiLintService';
-import { saveToWiki } from '@/services/wikiQueryService';
-import { runRigChat } from '@/services/rigChat';
 import { ChatMessageList } from '@/components/chat';
-import type { CliMessage } from '@quill/cli-adapter';
 import { ChatInput } from './ChatInput';
 import type { PendingAttachment } from './ChatInput';
 import { resolveSendOptions, isRigMode } from './inputModes';
 import { saveBlobs, buildReadInstructions } from '@/components/chat';
 import type { SavedAttachment } from '@/components/chat';
+import { runRigChat } from '@/services/rigChat';
 
 export function AiPanel() {
   const aiPanelVisible = useEditorViewStateStore((s) => s.aiPanelVisible);
@@ -51,57 +38,6 @@ export function AiPanel() {
   const isStreaming = activeSession?.isStreaming ?? false;
   const isStudySession = activeSession?.kind === 'study';
   const messages = activeSession?.messages ?? [];
-
-  const chatMode = useAiStore((s) => s.chatMode);
-  const setChatMode = useAiStore((s) => s.setChatMode);
-  const [showIngestDialog, setShowIngestDialog] = useState(false);
-  const [showDeepResearch, setShowDeepResearch] = useState(false);
-
-  // Track separate active session per mode (seed chat with current session)
-  const modeSessionRef = useRef<Record<AiChatMode, string | null>>({ chat: activeSessionId, wiki: null, clip: null });
-
-  const handleModeSwitch = useCallback((mode: AiChatMode) => {
-    if (mode === chatMode) return;
-    // Save current session for the old mode
-    modeSessionRef.current[chatMode] = activeSessionId;
-    // Restore or create session for the new mode
-    const savedId = modeSessionRef.current[mode];
-    if (savedId && sessions.some((s) => s.id === savedId)) {
-      switchSession(savedId);
-    } else {
-      const newId = createSession();
-      modeSessionRef.current[mode] = newId;
-    }
-    setChatMode(mode);
-  }, [chatMode, activeSessionId, sessions, switchSession, createSession, setChatMode]);
-
-  const handleIngest = async (filePaths: string[]) => {
-    setShowIngestDialog(false);
-    try {
-      await runIngest(filePaths);
-    } catch (err) {
-      console.error('Ingest failed:', err);
-    }
-  };
-
-  const handleLint = async () => {
-    const store = useWikiStore.getState();
-    store.setLinting(true);
-    store.pushActivity('info', '开始健康检查...');
-    try {
-      const items = await runWikiLint();
-      store.addReviewItems(items);
-      if (items.length > 0) {
-        store.pushActivity('success', `健康检查完成，发现 ${items.length} 个问题`);
-      } else {
-        store.pushActivity('success', '健康检查完成，一切正常');
-      }
-    } catch (err) {
-      store.pushActivity('error', `健康检查失败: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      store.setLinting(false);
-    }
-  };
 
   const [showSessionList, setShowSessionList] = useState(false);
   const sessionListRef = useRef<HTMLDivElement>(null);
@@ -156,46 +92,6 @@ export function AiPanel() {
 
   const handleSend = async (userText: string, currentAttachments: PendingAttachment[]) => {
     if ((!userText && currentAttachments.length === 0) || isStreaming) return;
-
-    // Handle /clip <url> and /clip! <url> commands in chat mode.
-    // `/clip <url>` is the default non-destructive path: if the URL was
-    // already clipped, open the existing note and reply in chat instead of
-    // re-clipping. `/clip! <url>` forces a re-clip and overwrites the
-    // existing file at its current path.
-    if (chatMode === 'chat' && (userText.startsWith('/clip ') || userText.startsWith('/clip! '))) {
-      const force = userText.startsWith('/clip! ');
-      const url = userText.slice(force ? 7 : 6).trim();
-      if (url) {
-        let sessionId = activeSessionId;
-        if (!sessionId) sessionId = createSession();
-        addMessage('user', userText, sessionId);
-
-        // Non-force mode: surface duplicate without re-clipping.
-        if (!force) {
-          await useClipStore.getState().loadClips();
-          const existing = useClipStore.getState().findClipByUrl(url);
-          if (existing) {
-            const fileName = existing.split('/').pop() || existing;
-            addMessage('assistant', `已剪藏过，已打开 [${fileName}]`, sessionId);
-            try {
-              await editorIoService.openFile(existing, fileName);
-            } catch (err) {
-              console.error('[AiPanel] openFile failed:', err);
-            }
-            return;
-          }
-        }
-
-        addMessage('assistant', `正在剪藏: ${url} ...`, sessionId);
-        try {
-          const filePath = await useClipStore.getState().clipUrl(url, undefined, undefined, { force });
-          appendToLastMessage(`\n\n剪藏完成: \`${filePath}\``, sessionId);
-        } catch (err) {
-          appendToLastMessage(`\n\n[错误] 剪藏失败: ${err instanceof Error ? err.message : String(err)}`, sessionId);
-        }
-      }
-      return;
-    }
 
     let sessionId = activeSessionId;
     if (!sessionId) {
@@ -365,15 +261,6 @@ export function AiPanel() {
     setSessionStreaming(activeSessionId, false);
   };
 
-  const handleSaveToWiki = async (content: string) => {
-    const title = content.split('\n')[0]?.replace(/^#+\s*/, '').slice(0, 50) || '综合分析';
-    const lastUserMsg = messages.filter((m) => m.role === 'user').pop();
-    const query = lastUserMsg?.content || '';
-    const path = await saveToWiki(title, content, query);
-    await useWikiStore.getState().refreshWikiFiles();
-    alert(`已保存到 wiki://${path}`);
-  };
-
   const handleNewSession = () => {
     createSession();
     setShowSessionList(false);
@@ -448,51 +335,12 @@ export function AiPanel() {
         </div>
       </div>
 
-      <div className="flex gap-0 px-3 border-b border-brd shrink-0">
-        <button
-          className={`flex-1 py-1.5 border-none bg-transparent text-[12px] cursor-pointer border-b-2 transition-[color,border-color] duration-150 hover:text-t1 ${chatMode === 'chat' ? 'text-acc border-b-acc font-semibold' : 'text-t3 font-medium border-b-transparent'}`}
-          onClick={() => handleModeSwitch('chat')}
-        >
-          Chat
-        </button>
-        <button
-          className={`flex-1 py-1.5 border-none bg-transparent text-[12px] cursor-pointer border-b-2 transition-[color,border-color] duration-150 hover:text-t1 ${chatMode === 'wiki' ? 'text-acc border-b-acc font-semibold' : 'text-t3 font-medium border-b-transparent'}`}
-          onClick={() => handleModeSwitch('wiki')}
-        >
-          Wiki
-        </button>
-        <button
-          className={`flex-1 py-1.5 border-none bg-transparent text-[12px] cursor-pointer border-b-2 transition-[color,border-color] duration-150 hover:text-t1 ${chatMode === 'clip' ? 'text-acc border-b-acc font-semibold' : 'text-t3 font-medium border-b-transparent'}`}
-          onClick={() => handleModeSwitch('clip')}
-        >
-          Clip
-        </button>
-      </div>
-
-      {chatMode === 'wiki' && (
-        <WikiToolbar
-          onIngest={() => setShowIngestDialog(true)}
-          onLint={handleLint}
-          onDeepResearch={() => setShowDeepResearch(true)}
-        />
-      )}
-
-      {chatMode === 'clip' && (
-        <ClipToolbar onClip={async (url) => {
-          await useClipStore.getState().clipUrl(url);
-        }} />
-      )}
-
       <ChatMessageList
         messages={messages}
         streaming={isStreaming}
         streamingIndicator="dots"
-        onSaveToWiki={chatMode === 'wiki' ? (msg: CliMessage) => handleSaveToWiki(msg.content) : undefined}
         className="p-3 gap-3"
       />
-
-      {chatMode === 'wiki' && <WikiActivityLog />}
-      {chatMode === 'wiki' && <ReviewItemList />}
 
       {isStudySession ? (
         <div className="flex items-center justify-between gap-2 py-2.5 px-3 border-t border-brd shrink-0 text-[12px] text-t2">
@@ -519,22 +367,6 @@ export function AiPanel() {
           onSend={handleSend}
           onStop={handleStop}
           isStreaming={isStreaming}
-        />
-      )}
-
-      {showIngestDialog && (
-        <IngestDialog
-          onConfirm={handleIngest}
-          onCancel={() => setShowIngestDialog(false)}
-        />
-      )}
-      {showDeepResearch && (
-        <DeepResearchDialog
-          onConfirm={(topic) => {
-            setShowDeepResearch(false);
-            console.log('Deep research topic:', topic);
-          }}
-          onCancel={() => setShowDeepResearch(false)}
         />
       )}
     </div>

@@ -143,7 +143,6 @@ beforeEach(() => {
     activeSessionId: null,
     studySessionId: null,
     isStreaming: false,
-    chatMode: 'chat',
     pendingFileAttachments: [],
   });
   useVaultStore.setState({

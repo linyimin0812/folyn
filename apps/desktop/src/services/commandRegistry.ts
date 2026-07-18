@@ -15,7 +15,6 @@ import { useNavStore } from '@/store/navStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
 import * as editorIoService from '@/services/editorIoService';
-import { useAiStore } from '@/store/aiStore';
 import { useSearchStore } from '@/store/searchStore';
 import type { ActivityPanel } from '@/components/shell/ActivityBar';
 import {
@@ -279,32 +278,6 @@ export function registerBuiltinCommands(): void {
       category: 'panel-mode',
       keywords: ['view', 'render'],
       run: () => useEditorStore.getState().setViewMode('preview'),
-    },
-
-    // ── AI chat modes ──
-    {
-      id: 'mode.ai-chat',
-      title: 'AI Chat: Chat',
-      category: 'panel-mode',
-      keywords: ['ai', 'assistant'],
-      enabled: () => appearance().showAiPanel,
-      run: () => useAiStore.getState().setChatMode('chat'),
-    },
-    {
-      id: 'mode.ai-wiki',
-      title: 'AI Chat: Wiki',
-      category: 'panel-mode',
-      keywords: ['ai', 'assistant'],
-      enabled: () => appearance().showAiPanel,
-      run: () => useAiStore.getState().setChatMode('wiki'),
-    },
-    {
-      id: 'mode.ai-clip',
-      title: 'AI Chat: Clip',
-      category: 'panel-mode',
-      keywords: ['ai', 'assistant'],
-      enabled: () => appearance().showAiPanel,
-      run: () => useAiStore.getState().setChatMode('clip'),
     },
   ]);
 }

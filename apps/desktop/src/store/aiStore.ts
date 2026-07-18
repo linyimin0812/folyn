@@ -31,8 +31,6 @@ export function getFileChangeApplier(): FileChangeApplier | null {
   return fileChangeApplier;
 }
 
-export type AiChatMode = 'chat' | 'wiki' | 'clip';
-
 /** 会话类型：普通聊天会话 vs 专用 study agent 会话（PR9）。
  * study 会话由 runFeatureAgent('study') 自动驱动，输入框不可手动编辑。 */
 export type AiSessionKind = 'chat' | 'study';
@@ -80,11 +78,8 @@ interface AiState {
   setCliSessionId: (sessionId: string, targetSessionId?: string) => void;
   clearMessages: () => void;
 
-  chatMode: AiChatMode;
-  setChatMode: (mode: AiChatMode) => void;
-
   /** AI panel 输入模式（ask/agent/…），全局共享，默认 'agent' 保持现状行为。
-   * 与 chatMode 正交：决定单次发送的 permission-mode/system-prompt 等。 */
+   * 决定单次发送的 permission-mode/system-prompt 等。 */
   inputMode: string;
   setInputMode: (mode: string) => void;
 
@@ -370,9 +365,6 @@ export const useAiStore = create<AiState>((set, get) => ({
     }));
     persistAiState();
   },
-
-  chatMode: 'chat' as AiChatMode,
-  setChatMode: (mode) => set({ chatMode: mode }),
 
   inputMode: 'agent',
   setInputMode: (mode) => set({ inputMode: mode }),
