@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "Confirms settings/ folder placement + pages/ shell layout convention — the convention being restored by this refactor"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Named-export / no-default-export rule + component composition patterns; each extracted XxxSettings.tsx must match PluginsSettings/VoiceSettings shape"}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "Hook structure pattern (read from stores, side effects w/ cleanup, return value+actions) — governs the new useHotkeyRecording extraction"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand granular-selector rule (usePrefsStore((s)=>s.updateShortcut) etc.) — preserved in the ShortcutEditor/VoiceHotkeyRecorder thin shells after hook extraction"}

@@ -150,3 +150,106 @@ Fixed pet clipped behind the macOS Dock (computeDefaultPetPosition now uses sepa
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: Split SettingsPage god file + useHotkeyRecording extraction
+
+**Date**: 2026-07-18
+**Task**: Split SettingsPage god file + useHotkeyRecording extraction
+**Package**: api
+**Branch**: `calm-canyon`
+
+### Summary
+
+Architectural rot assessment identified SettingsPage.tsx (1468 lines) as the top-ROI refactor. Split into per-tab components under components/settings/ (FileTemplates, Skills, Pet, Notifications + primitives + ShortcutEditor), matching the existing PluginsSettings/VoiceSettings convention — pure mechanical move, SettingsPage drops to ~440 lines. Then extracted useHotkeyRecording hook (recording state + capture-phase keydown + click-outside + optional conflict-timeout), refactored ShortcutEditor + VoiceHotkeyRecorder onto it as thin shells (keyshape/persistence/OS re-register stay in callers), removing ~30 lines of voice recorder duplication and resolving the self-noted debt at VoiceSettings.tsx:63-68. Two concrete consumers justify the hook (not speculative). Verified: tsc clean for changed files, 6 hook self-tests, settings-domain store tests 72/72, zero regression (21 pre-existing failures proven unrelated via stash).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `78207b4` | (see git log) |
+| `655677f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 6: Break ai↔chat cycle: move ToolCallBlock + FileImage into chat/
+
+**Date**: 2026-07-18
+**Task**: Break ai↔chat cycle: move ToolCallBlock + FileImage into chat/
+**Package**: api
+**Branch**: `calm-canyon`
+
+### Summary
+
+Architecture-rot assessment's 'three AI chat surfaces duplicate ToolCallBlock/FileImage/FileIcon' claim was STALE — verified ChatMessageList is already the shared render layer (consumed by AiPanel + PetChat). Real debt was the TODO(PR2) at ChatMessageList.tsx:5: chat imported ToolCallBlock + FileImage from ../ai/, and since ai/ already imports chat/ (AiPanel→ChatMessageList, ChatInput→ChatInputBox), this was a bidirectional ai↔chat cycle (the TODO's 'one-directional' note was wrong). Fixed by git mv'ing both files into components/chat/ (sole consumer; chat-internal, not promoted to index.ts), updating ChatMessageList imports to ./, dropping the resolved TODO. FileIcon untouched (already in icons/). After: chat depends only on neutral layers, ai→chat one-way. Verified tsc clean + chat tests 66/66; full suite identical to baseline (same 21 pre-existing failures, zero regression). Spec sync: directory-structure ai/ + chat/ entries.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a032c0f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 7: Split Rust commands.rs into per-domain submodules
+
+**Date**: 2026-07-18
+**Task**: Split Rust commands.rs into per-domain submodules
+**Package**: api
+**Branch**: `calm-canyon`
+
+### Summary
+
+commands.rs (1412 lines, 37 Tauri commands across file/webview/project/pet + managed-state structs + pet helpers + menu consts) was the Rust-side god file. Split into commands/ module dir: file_commands, webview_commands, project_commands (named project not git since remove_dir/get_project_overview aren't git), pet_commands (the ~980-line bulk). commands/mod.rs re-exports via glob. lib.rs UNCHANGED — mod commands resolves to commands/mod.rs and glob re-exports keep every commands:: symbol resolving, including Tauri's generate_handler! __cmd__ helpers (initially feared glob wouldn't carry macro-generated items, but verified it does). PetSizeState's shared-type constraint preserved via re-export. Hit one slicing bug (webview slice included git_clone's first doc line → orphan doc → 16 cascade __cmd__ errors), fixed by trimming the slice. Verified cargo check clean (0 errors/0 warnings) vs clean baseline; lib.rs diff empty. Spec sync: tauri-window-patterns.md.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5ab8326` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

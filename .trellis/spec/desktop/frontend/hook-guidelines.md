@@ -13,6 +13,7 @@
 | `useDragDrop` | `src/components/sidebar/useDragDrop.ts` | File tree drag-and-drop behavior |
 | `useSidebarActions` | `src/components/sidebar/SidebarActions.tsx` | Sidebar context menu actions |
 | `useIsMobile` | inline in `App.tsx` | Responsive breakpoint detection |
+| `useHotkeyRecording` | `src/components/settings/useHotkeyRecording.ts` | Shared hotkey-record behavior (recording state + capture-phase keydown + click-outside cancel + optional conflict-timeout hint); keyshape/persistence/OS re-register stay in the caller's `onCapture`. Consumers: `ShortcutEditor` (prefs symbol-array), `VoiceHotkeyRecorder` (voice accelerator string). Behavior shared via hook, presentation stays specialized — two divergent renders would outweigh a shared component. |
 
 ---
 
