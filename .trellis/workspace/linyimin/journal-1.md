@@ -150,3 +150,38 @@ Fixed pet clipped behind the macOS Dock (computeDefaultPetPosition now uses sepa
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: Split SettingsPage god file + useHotkeyRecording extraction
+
+**Date**: 2026-07-18
+**Task**: Split SettingsPage god file + useHotkeyRecording extraction
+**Package**: api
+**Branch**: `calm-canyon`
+
+### Summary
+
+Architectural rot assessment identified SettingsPage.tsx (1468 lines) as the top-ROI refactor. Split into per-tab components under components/settings/ (FileTemplates, Skills, Pet, Notifications + primitives + ShortcutEditor), matching the existing PluginsSettings/VoiceSettings convention — pure mechanical move, SettingsPage drops to ~440 lines. Then extracted useHotkeyRecording hook (recording state + capture-phase keydown + click-outside + optional conflict-timeout), refactored ShortcutEditor + VoiceHotkeyRecorder onto it as thin shells (keyshape/persistence/OS re-register stay in callers), removing ~30 lines of voice recorder duplication and resolving the self-noted debt at VoiceSettings.tsx:63-68. Two concrete consumers justify the hook (not speculative). Verified: tsc clean for changed files, 6 hook self-tests, settings-domain store tests 72/72, zero regression (21 pre-existing failures proven unrelated via stash).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `78207b4` | (see git log) |
+| `655677f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
