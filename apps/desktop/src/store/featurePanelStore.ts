@@ -118,9 +118,11 @@ export function useActivePanelId(): string | null {
   return useFeaturePanelStore((s) => s.activePanelId);
 }
 
-// TODO(PR2): reconcile activePanelId persistence currently in editorStore —
-// move/replace it here so persisted-active-falls-back-to-files-on-restart
-// (PRD acceptance: "Persisted activePanel pointing at an uninstalled plugin's
-// panel falls back to files on next launch"). Leave editorStore untouched in
-// PR1; the adapter's fallback guards the active-id-missing case via
-// `setActive(null)` when 'files' isn't registered yet.
+// PR2 reconciliation: `activePanelId` mirrors `editorStore.activePanel` (the
+// persisted source of truth + the field WorkArea reads to filter tabs by
+// `t.activity`). The mirror is a one-way editorStore → featurePanelStore
+// subscription set up in `registerBuiltinPanels.tsx`; `setActive` stays a pure
+// setter (no editorStore coupling) so this store and its PR1 tests stay
+// leaf-testable. Startup validation: if editorStore.activePanel isn't a
+// registered+visible panel (e.g. an uninstalled plugin's panel id),
+// `registerBuiltinPanels` re-routes to 'files'.

@@ -1,87 +1,99 @@
-import { useNavStore } from '@/store/navStore';
-import { useAppearanceStore } from '@/store/appearanceStore';
+/**
+ * Activity bar — the vertical icon strip on the far left of the editor.
+ *
+ * PR2 change: panel buttons are data-driven from {@link useVisiblePanels}
+ * (`useFeaturePanelStore`) instead of hardcoded to the 5 built-ins. Each
+ * visible panel entry renders one button; clicking calls `onPanelChange(id)`,
+ * which App.tsx routes to `editorStore.setActivePanel` + `setCurrentPage`;
+ * `registerBuiltinPanels`'s one-way editorStore→featurePanelStore subscription
+ * then mirrors the new id so the active button + Sidebar follow.
+ *
+ * The daily / study / settings page-nav buttons stay hardcoded (Decision Q3:
+ * page-nav data-driving is out of scope). Settings is pinned to the bottom via
+ * a `flex-1` spacer.
+ *
+ * Active-state rules:
+ * - Panel button: `active` when `activePanel === id` AND not on a page-nav
+ *   page (schedule/study) — mirrors the pre-PR2 `!onPage && ...` gate.
+ * - Page-nav button: `active` when `currentPage === 'schedule'|'study'`.
+ */
 
-export type ActivityPanel = 'files' | 'wiki' | 'clips' | 'analyze' | 'calendar';
+import { useNavStore } from '@/store/navStore';
+import { useVisiblePanels } from '@/store/featurePanelStore';
+
+/**
+ * Active panel id. Widened to `string` in PR2 — plugin panels contribute
+ * arbitrary ids (the old `'files'|'wiki'|'clips'|'analyze'|'calendar'` union
+ * is no longer adequate). The 5 built-in ids remain reserved.
+ */
+export type ActivityPanel = string;
 
 interface ActivityBarProps {
+  /** The currently active panel id (mirrors featurePanelStore / editorStore). */
   activePanel: ActivityPanel;
+  /** Click handler for panel buttons. Page-nav buttons use navStore directly. */
   onPanelChange: (panel: ActivityPanel) => void;
 }
 
 export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   const setCurrentPage = useNavStore((s) => s.setCurrentPage);
   const currentPage = useNavStore((s) => s.currentPage);
-  const enableWikiPanel = useAppearanceStore((s) => s.enableWikiPanel);
-  const enableClipsPanel = useAppearanceStore((s) => s.enableClipsPanel);
-  const enableAnalyzePanel = useAppearanceStore((s) => s.enableAnalyzePanel);
-  const enableDailyPanel = useAppearanceStore((s) => s.enableDailyPanel);
+
   const onSchedule = currentPage === 'schedule';
   const onStudy = currentPage === 'study';
   const onPage = onSchedule || onStudy;
 
+  // Visible panels sorted by (order, registration seq). The store selector
+  // returns a useShallow-stabilized array — re-renders only on real content
+  // change (no infinite loop on the empty path: EMPTY_PANELS constant).
+  const visiblePanels = useVisiblePanels();
+
   return (
     <div className="activity-bar">
+      {visiblePanels.map((p) => (
+        <button
+          key={p.id}
+          className={`activity-icon ${!onPage && activePanel === p.id ? 'active' : ''}`}
+          onClick={() => onPanelChange(p.id)}
+          title={p.title}
+        >
+          {p.icon}
+          {p.badge !== undefined && p.badge !== '' && (
+            <span
+              style={{
+                position: 'absolute',
+                top: 2,
+                right: 2,
+                minWidth: 12,
+                height: 12,
+                padding: '0 2px',
+                borderRadius: 6,
+                background: 'var(--acc, #6366f1)',
+                color: '#fff',
+                fontSize: 9,
+                lineHeight: '12px',
+                textAlign: 'center',
+                pointerEvents: 'none',
+              }}
+            >
+              {p.badge}
+            </span>
+          )}
+        </button>
+      ))}
+
       <button
-        className={`activity-icon ${!onPage && activePanel === 'files' ? 'active' : ''}`}
-        onClick={() => onPanelChange('files')}
-        title="文件"
+        className={`activity-icon ${onSchedule ? 'active' : ''}`}
+        onClick={() => setCurrentPage('schedule')}
+        title="日程工作台 (⌘D)"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-          <path d="M3 7V17a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
         </svg>
       </button>
-
-      {enableWikiPanel && (
-        <button
-          className={`activity-icon ${!onPage && activePanel === 'wiki' ? 'active' : ''}`}
-          onClick={() => onPanelChange('wiki')}
-          title="Wiki"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-            <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-          </svg>
-        </button>
-      )}
-
-      {enableClipsPanel && (
-        <button
-          className={`activity-icon ${!onPage && activePanel === 'clips' ? 'active' : ''}`}
-          onClick={() => onPanelChange('clips')}
-          title="Clips"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-            <path d="M5 3v18l7-4 7 4V3H5z" />
-          </svg>
-        </button>
-      )}
-
-      {enableAnalyzePanel && (
-        <button
-          className={`activity-icon ${!onPage && activePanel === 'analyze' ? 'active' : ''}`}
-          onClick={() => onPanelChange('analyze')}
-          title="项目分析"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-            <path d="M21 21H4.6c-.56 0-.84 0-1.054-.109a1 1 0 01-.437-.437C3 20.24 3 19.96 3 19.4V3" />
-            <path d="M7 14l4-4 4 4 6-6" />
-          </svg>
-        </button>
-      )}
-
-      {enableDailyPanel && (
-        <button
-          className={`activity-icon ${onSchedule ? 'active' : ''}`}
-          onClick={() => setCurrentPage('schedule')}
-          title="日程工作台 (⌘D)"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
-        </button>
-      )}
 
       <button
         className={`activity-icon ${onStudy ? 'active' : ''}`}

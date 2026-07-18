@@ -113,8 +113,16 @@ export function registerPluginFeatures(
 
   return {
     dispose: () => {
-      // 'files' is a built-in (registered in PR2) — invariant across this loop
-      // since we only unregister the plugin's own ids. Read once.
+      // PR2+: 'files' is a built-in registered at startup by
+      // `registerBuiltinPanels`, so it's always present in production. The
+      // guard below (fall back to 'files' only if registered, else clear) is a
+      // test-env safety net — tests that don't seed 'files' get null. In
+      // production this always resolves to 'files'.
+      // TODO(PR3): when this adapter is wired into trustedLoader, ALSO call
+      // `useEditorStore.getState().setActivePanel('files')` on the wasActive
+      // path so editorStore.activePanel (and thus WorkArea's tab filter) stays
+      // in sync — the featurePanelStore mirror subscription only covers
+      // editorStore→featurePanelStore, not the reverse.
       const filesRegistered = useFeaturePanelStore
         .getState()
         .panels.some((p) => p.id === 'files');
@@ -123,9 +131,6 @@ export function registerPluginFeatures(
         const wasActive = s.activePanelId === id;
         s.unregister(id);
         if (wasActive) {
-          // TODO(PR2): once 'files' is guaranteed registered at startup this
-          // becomes `setActive('files')`. Until then guard: fall back to
-          // 'files' only if it exists, else clear (PR1).
           s.setActive(filesRegistered ? 'files' : null);
         }
       }

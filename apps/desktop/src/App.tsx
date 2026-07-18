@@ -26,6 +26,7 @@ import { useCommandPaletteStore } from './store/commandPaletteStore';
 import { loadAiSessionsForVault } from './store/aiStore';
 import { registerBuiltinPlugins } from '@quill/container-plugins';
 import { registerBuiltinCommands } from './services/commandRegistry';
+import { registerBuiltinPanels } from './services/registerBuiltinPanels';
 import { isTauri } from './utils/platform';
 import { pluginHost } from '@quill/plugin-host';
 import { sandboxLoader } from './services/plugin-host/sandboxLoader';
@@ -36,6 +37,11 @@ registerBuiltinPlugins();
 // Seed the command palette's static commands (actions + panels/modes) once at
 // startup. File commands are sourced dynamically from the live vault tree.
 registerBuiltinCommands();
+// Register the 5 built-in sidebar panels (files/wiki/clips/analyze/calendar)
+// into featurePanelStore + wire visibility/active-panel sync. ActivityBar and
+// Sidebar are data-driven off the store; this must run before they mount.
+// (Plugin panels arrive later via featureAdapter — PR3.)
+registerBuiltinPanels();
 
 // ponytail: register plugin loaders ONCE at module top-level, NOT inside the
 // plugin-host useEffect. React StrictMode (dev) mounts effects twice; both
@@ -132,10 +138,9 @@ export default function App() {
   const showAiPanel = useAppearanceStore((state) => state.showAiPanel);
   const showStatusBar = useAppearanceStore((state) => state.showStatusBar);
   const fontSize = useAppearanceStore((state) => state.fontSize);
-  const enableWikiPanel = useAppearanceStore((state) => state.enableWikiPanel);
-  const enableClipsPanel = useAppearanceStore((state) => state.enableClipsPanel);
-  const enableAnalyzePanel = useAppearanceStore((state) => state.enableAnalyzePanel);
-  const enableDailyPanel = useAppearanceStore((state) => state.enableDailyPanel);
+  // enable*Panel flags are no longer read here post-PR2 — the visibility +
+  // active-panel fallback logic moved into registerBuiltinPanels (one general
+  // rule: if the active panel becomes invisible, re-route to 'files').
 
   // ── Vault initialization ──
   const vaultInitialized = useRef(false);
@@ -377,16 +382,6 @@ export default function App() {
     };
   }, []);
 
-  // ── Fall back to 'files' panel when the active feature is disabled ──
-  // If the user turns off a feature (in Settings) while its panel is active,
-  // we must not leave the UI on a now-hidden panel. Re-route to 'files'.
-  useEffect(() => {
-    if (activePanel === 'wiki' && !enableWikiPanel) setActivePanel('files');
-    else if (activePanel === 'clips' && !enableClipsPanel) setActivePanel('files');
-    else if (activePanel === 'analyze' && !enableAnalyzePanel) setActivePanel('files');
-    else if (activePanel === 'calendar' && !enableDailyPanel) setActivePanel('files');
-  }, [activePanel, enableWikiPanel, enableClipsPanel, enableAnalyzePanel, enableDailyPanel, setActivePanel]);
-
   // ── Global Ctrl+S / Cmd+S and Cmd+Shift+F ──
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -441,7 +436,7 @@ export default function App() {
             <div className="mobile-sidebar-overlay" onClick={closeMobileSidebar} />
           )}
           <div className={`sidebar-wrapper ${isMobile ? 'mobile' : ''} ${mobileSidebarOpen ? 'open' : ''}`}>
-            <Sidebar activePanel={activePanel} onFileSelect={isMobile ? closeMobileSidebar : undefined} />
+            <Sidebar onFileSelect={isMobile ? closeMobileSidebar : undefined} />
           </div>
           <WorkArea />
           {showAiPanel && <AiPanel />}
