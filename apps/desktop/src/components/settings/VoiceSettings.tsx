@@ -195,12 +195,12 @@ export function VoiceSettings() {
         <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">润色 Prompt</div>
         <div className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 mb-2">使用当前 AI 配置(见 AI 工具)对原始转录文本做润色。留空则跳过润色。</div>
         <textarea
-          className="settings-textarea w-full"
+          className="settings-textarea font-ui w-full"
           rows={8}
           value={polishPrompt}
           onChange={(e) => setPolishPrompt(e.target.value)}
           placeholder={DEFAULT_POLISH_PROMPT}
-          style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 'calc(var(--ui-font-size) - 2px)' }}
+          style={{ fontSize: 'calc(var(--ui-font-size) - 2px)' }}
         />
         <div className="flex justify-between items-center mt-1.5">
           <span className="text-[length:calc(var(--ui-font-size)-3px)] text-t3">{polishPrompt.length} 字符</span>

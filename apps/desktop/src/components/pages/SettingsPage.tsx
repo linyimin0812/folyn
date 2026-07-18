@@ -157,7 +157,7 @@ export function SettingsPage() {
               <textarea
                 className="fsel py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui w-full"
                 rows={6}
-                style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12, resize: 'vertical', lineHeight: 1.6, padding: '8px 10px' }}
+                style={{ fontSize: 12, resize: 'vertical', lineHeight: 1.6, padding: '8px 10px' }}
                 value={excludePatterns}
                 onChange={(e) => setExcludePatterns(e.target.value)}
                 onBlur={() => import('@/store/vaultStore').then(m => m.useVaultStore.getState().refreshFileTree())}
@@ -467,7 +467,7 @@ export function SettingsPage() {
               <img src={`${import.meta.env.BASE_URL}quill.svg`} alt="Quill" width="48" height="48" style={{ borderRadius: 5 }} />
               <div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--t1)', letterSpacing: '-.02em' }}>Quill<span style={{ color: 'var(--acc)' }}>.</span></div>
-                <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>v0.1.0-alpha · Local-first Markdown Editor</div>
+                <div className="font-mono" style={{ fontSize: 11, color: 'var(--t3)', marginTop: 2 }}>v0.1.0-alpha · Local-first Markdown Editor</div>
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8, marginBottom: 16 }}>
