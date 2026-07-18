@@ -186,3 +186,44 @@ Ported openless toggle-mode voice hotkey + verbatim SiriGL WebGL orb in a floati
 ### Next Steps
 
 - None - task complete
+
+
+## Session 64: Voice flow phases + API key prompt + orb UX polish
+
+**Date**: 2026-07-18
+**Task**: Voice flow phases + API key prompt + orb UX polish
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Surfaced recording → transcribing → polishing → inserting phases on the voice-orb (hotkey + button paths) + mic button title/color, with an inline 「未配置 API Key · 打开设置」 prompt when polish is skipped due to missing chatApiKey. Added a new 'open-ai-settings' PetMenuAction to fix a latent cross-realm navStore bug (secondary windows can't mutate main window's store) that affected VoiceOrbApp + PetChat + PetChatSessionHeader. Linger 5s on inserting phase so the prompt is clickable, with re-show of the orb window after Rust's hide-before-paste. Mic button no longer steals key focus (Cmd+V paste was landing in void). Swapped AI panel mic icon to theme-aware cwmMicOn svg pair. Orb caption adapts to OS prefers-color-scheme + has a semi-transparent pill background for any backdrop. Spec captured the cross-realm navStore pitfall in tauri-window-patterns.md.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `746586f` | (see git log) |
+| `f2622e6` | (see git log) |
+| `09c1bd4` | (see git log) |
+| `5e20e25` | (see git log) |
+| `e7474cd` | (see git log) |
+| `f4e4f88` | (see git log) |
+| `814ff67` | (see git log) |
+| `76feb1b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
