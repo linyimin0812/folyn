@@ -791,6 +791,40 @@ passed to `set_pet_position`.
 
 ---
 
+## Common Mistake: Secondary Window Calls `useNavStore` Directly Instead of Emitting a Menu-Action
+
+**Symptom**: a "打开设置" / "跳转到 X" button rendered in a secondary Tauri window (voice-orb, pet-panel, pet-bubble) calls `useNavStore.getState().setCurrentPage('settings')` + `setSettingsTab('ai')` and emits `pet://menu-action { action: 'show-main' }`. Clicking it focuses the main window but the main window stays on whatever page it was on — the user expected to land on Settings → AI tab.
+
+**Cause**: secondary Tauri windows are separate JS realms. Each realm gets its OWN instance of every Zustand store (Zustand is module-scoped, and each window has its own module graph). `useNavStore.getState().setCurrentPage('settings')` mutates the SECONDARY window's store instance, which has no UI consuming it — the main window's `useNavStore` is untouched. The `show-main` action in `routePetMenuAction` only calls `focusMain()`, it does not navigate, so the main window comes forward but stays put.
+
+This bug was latent in `PetChat.tsx` + `PetChatSessionHeader.tsx` (the "unconfigured AI" CTA) before being copy-pasted into `VoiceOrbApp.tsx` — three call sites all had the same wrong pattern.
+
+**Fix**: emit a dedicated `pet://menu-action` payload and let the main window's listener (in the main realm) perform the navStore mutation. Pattern:
+
+```ts
+// In a secondary window (voice-orb, pet-panel, pet-bubble) — DO NOT call useNavStore
+async function openAiSettingsFromOrb(): Promise<void> {
+  if (!isTauri()) return;
+  const { emit } = await import('@tauri-apps/api/event');
+  await emit('pet://menu-action', { action: 'open-ai-settings' });
+}
+```
+
+```ts
+// In petHostRouter.ts (runs in the main window's realm) — owns the navStore mutation
+case 'open-ai-settings':
+  useNavStore.getState().setCurrentPage('settings');
+  useNavStore.getState().setSettingsTab('ai');
+  await focusMain();
+  break;
+```
+
+Add the new action to the `PetMenuAction` union (`PetContextMenu.tsx`) so the type system catches future callers.
+
+**Prevention**: any secondary window that needs to mutate a store owned by the main window (navStore, editorStore, searchStore, etc.) MUST go through the `pet://menu-action` channel — never call the store from the secondary window's realm. If a new navigation target is needed, add a new `PetMenuAction` value + a new `case` in `routePetMenuAction` rather than reusing `show-main` + a direct store call. The `show-main` action is focus-only by design.
+
+---
+
 ## Scenario: Global Keyboard Shortcut (OS-wide, fires when app is unfocused)
 
 ### 1. Scope / Trigger

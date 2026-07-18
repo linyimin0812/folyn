@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
+import { useNavStore } from '@/store/navStore';
 import { isTauri } from '@/utils/platform';
 import { isWebGLAvailable } from './SiriGL';
 
@@ -58,6 +59,7 @@ export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
   const phase = useVoiceInput((s) => s.phase);
   const error = useVoiceInput((s) => s.error);
   const trigger = useVoiceInput((s) => s.trigger);
+  const polishSkippedReason = useVoiceInput((s) => s.polishSkippedReason);
   const start = useVoiceInput((s) => s.start);
   const stop = useVoiceInput((s) => s.stop);
 
@@ -91,15 +93,20 @@ export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
   };
 
   const settingsUrl = phase === 'error' && error ? permissionSettingsUrl(error) : null;
+  const showApiKeyPrompt = polishSkippedReason === 'no-api-key' && busy;
 
-  // Bug #1: when `voice_stop` returns a non-fatal `saveError` (source WAV
-  // save failed — empty PCM, missing vault path, permission), the hook calls
-  // flashError and immediately advances phase to polishing/inserting (the
-  // insert must proceed). The phase is no longer 'error' after that, so the
-  // red error dot is gone — but `error` is still set (cleared 3s later by
-  // flashError's timer). Surface the saveError text in the busy-phase title
-  // so the user actually sees WHY the file is missing instead of just
-  // "语音处理中…".
+  // Phase-specific busy label so the user can read which stage the flow is
+  // in (was a generic "语音处理中…" before). saveError from a non-fatal
+  // source-save failure still takes priority (matches the prior behavior).
+  const busyLabel =
+    phase === 'transcribing'
+      ? '语音转文字中…'
+      : phase === 'polishing'
+        ? 'LLM 优化中…'
+        : phase === 'inserting'
+          ? '插入中…'
+          : '语音处理中…';
+
   const title = !mac
     ? 'Windows 暂不支持语音输入'
     : recording
@@ -107,7 +114,7 @@ export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
       : busy && error
         ? error
         : busy
-          ? '语音处理中…'
+          ? busyLabel
           : phase === 'error' && error
             ? error
             : '语音输入';
@@ -133,7 +140,9 @@ export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
             ? 'bg-red text-white'
             : phase === 'error'
               ? 'text-red bg-transparent hover:bg-hov'
-              : 'text-t3 bg-transparent hover:bg-hov hover:text-t1'
+              : phase === 'polishing'
+                ? 'text-acc bg-transparent hover:bg-hov'
+                : 'text-t3 bg-transparent hover:bg-hov hover:text-t1'
         }`}
         onClick={handleToggle}
         disabled={isDisabled}
@@ -180,6 +189,32 @@ export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
           }}
         >
           打开系统设置
+        </span>
+      )}
+      {showApiKeyPrompt && !settingsUrl && (
+        // Inline "打开设置" link when polish was skipped due to no chatApiKey.
+        // Same visual slot as the permission link; navigates main window to
+        // Settings → AI tab. The link persists for the duration of the busy
+        // phase (clears on idle).
+        <span
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-0.5 text-[10px] text-acc whitespace-nowrap cursor-pointer hover:underline z-10"
+          role="link"
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            useNavStore.getState().setCurrentPage('settings');
+            useNavStore.getState().setSettingsTab('ai');
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              useNavStore.getState().setCurrentPage('settings');
+              useNavStore.getState().setSettingsTab('ai');
+            }
+          }}
+        >
+          未配置 API Key · 打开设置
         </span>
       )}
     </span>

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CliMessage } from '@quill/cli-adapter';
 import { isTauri } from '@/utils/platform';
-import { useNavStore } from '@/store/navStore';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { usePetChatStore } from '@/store/petChatStore';
 import type { PetChatMessage } from '@/store/petChatStore';
@@ -345,9 +344,7 @@ export function PetChat() {
   }, [activeSessionId, setStreaming]);
 
   const handleOpenSettings = useCallback(async () => {
-    useNavStore.getState().setCurrentPage('settings');
-    useNavStore.getState().setSettingsTab('ai');
-    await emitMenuAction('show-main');
+    await emitMenuAction('open-ai-settings');
   }, []);
 
   // ── Slot wiring ──

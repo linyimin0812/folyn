@@ -23,6 +23,12 @@ export type VoicePhase =
   | 'inserting'
   | 'error';
 
+/** Why the LLM polish was skipped — emitted alongside the phase so the orb
+ *  and button can surface a non-fatal prompt instead of silently degrading to
+ *  raw transcript. Currently only one reason; union keeps the door open for
+ *  'no-base-url' / 'network' etc. without a payload shape change. */
+export type PolishSkippedReason = 'no-api-key' | null;
+
 /** Which entry point kicked off the current recording. Drives UI: the
  *  SiriGL waveform overlay only shows for the global-hotkey path (bottom-
  *  center of the main window); the mic-button path uses the button body
@@ -33,6 +39,10 @@ export interface VoiceInputState {
   phase: VoicePhase;
   error: string | null;
   trigger: VoiceTrigger;
+  /** Set when polish was skipped (e.g. chatApiKey empty) — UI uses this to
+   *  render a non-fatal prompt instead of silently inserting raw text. Cleared
+   *  on idle/error. */
+  polishSkippedReason: PolishSkippedReason;
   /** Start recording. `trigger` labels the entry point so the overlay can
    *  gate on the hotkey path. No-op (returns) if not on macOS or already
    *  recording. */
@@ -55,6 +65,16 @@ function onMac(): boolean {
 // store action can clear/extend it across calls without exposing it.
 let errorTimer: ReturnType<typeof setTimeout> | null = null;
 
+// Internal: when polish was skipped (e.g. no chatApiKey), the orb/button
+// render an inline "打开设置" link. Without this delay, stop()'s immediate
+// `phase: 'idle'` emit hides the orb window (VoiceOrbApp sees idle →
+// voice_orb_hide) and unmounts the button's prompt before the user can click.
+// The text is already inserted (voice_insert_text succeeded), so lingering on
+// 'inserting' for 5s only blocks nothing — the user can keep typing. Cleared
+// on start()/clearError() to avoid a stale prompt across sessions.
+let idleNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+const IDLE_NOTICE_MS = 5000;
+
 /** Broadcast the current phase + trigger to the voice-orb window. The
  *  voice-orb is a SEPARATE Tauri window (separate JS realm) — its copy of
  *  `useVoiceInput` starts at `idle` and never receives the main window's
@@ -62,10 +82,14 @@ let errorTimer: ReturnType<typeof setTimeout> | null = null;
  *  `voice://orb-phase` listener (VoiceOrbApp.tsx) gets the source of truth
  *  for mode/resolved/merging. Swallows emit errors so a missing orb window
  *  never breaks the main flow. */
-function emitOrbPhase(phase: VoicePhase, trigger: VoiceTrigger): void {
+function emitOrbPhase(
+  phase: VoicePhase,
+  trigger: VoiceTrigger,
+  polishSkippedReason: PolishSkippedReason = null,
+): void {
   if (!isTauri()) return;
   void import('@tauri-apps/api/event').then(({ emit }) =>
-    emit('voice://orb-phase', { phase, trigger }).catch(() => {}),
+    emit('voice://orb-phase', { phase, trigger, polishSkippedReason }).catch(() => {}),
   );
 }
 
@@ -96,11 +120,20 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
   phase: 'idle',
   error: null,
   trigger: null,
+  polishSkippedReason: null,
 
   start: async (trigger: 'hotkey' | 'button' = 'button') => {
-    if (get().phase !== 'idle') return;
+    // Allow breaking out of the post-insert linger (idleNoticeTimer running
+    // after a no-API-key attempt). Without this, the user cannot start a new
+    // recording for ~5s after the linger started — phase stays 'inserting'
+    // and the bare idle guard rejects the new start().
+    if (get().phase !== 'idle' && !(get().phase === 'inserting' && idleNoticeTimer)) return;
     if (!onMac()) return;
-    set({ phase: 'recording', error: null, trigger });
+    if (idleNoticeTimer) {
+      clearTimeout(idleNoticeTimer);
+      idleNoticeTimer = null;
+    }
+    set({ phase: 'recording', error: null, trigger, polishSkippedReason: null });
     emitOrbPhase('recording', trigger);
     // Bug #2 fix: pass the user's spoken-language locale so Apple Speech
     // routes recognition to the right engine. Empty string = None (system
@@ -119,9 +152,19 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
     // guard).
     if (get().phase !== 'recording') return;
 
-    set({ phase: 'transcribing', error: null });
-    emitOrbPhase('transcribing', get().trigger);
+    // Compute the polish-skip reason UP FRONT so every phase emit during
+    // this stop() cycle carries it — the orb's caption + button's prompt stay
+    // visible from transcribing through inserting, not just for one frame.
     const { saveSource, sourceDir, autoPolish, polishPrompt } = useVoiceStore.getState();
+    const hasApiKey = useAiConfigStore.getState().chatApiKey.trim().length > 0;
+    const skipReason: PolishSkippedReason =
+      autoPolish && polishPrompt.trim().length > 0 && !hasApiKey
+        ? 'no-api-key'
+        : null;
+    if (skipReason) set({ polishSkippedReason: skipReason });
+
+    set({ phase: 'transcribing', error: null });
+    emitOrbPhase('transcribing', get().trigger, skipReason);
     const rawVaultPath = useVaultStore.getState().currentVault?.basePath ?? '';
 
     // Bug #1 fix: `currentVault.basePath` 可能是 `~/quill/default_vault`（默认
@@ -172,10 +215,10 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
     const shouldPolish =
       autoPolish &&
       polishPrompt.trim().length > 0 &&
-      useAiConfigStore.getState().chatApiKey.trim().length > 0;
+      hasApiKey;
     if (shouldPolish) {
       set({ phase: 'polishing' });
-      emitOrbPhase('polishing', get().trigger);
+      emitOrbPhase('polishing', get().trigger, skipReason);
       // ponytail: runRigChat has no systemPrompt param (chat_stream hardcodes
       // a PREAMBLE). Prepend the polish prompt + transcript so the LLM gets
       // the instruction in-band; the polish prompt already ends with
@@ -211,7 +254,7 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
     }
 
     set({ phase: 'inserting' });
-    emitOrbPhase('inserting', get().trigger);
+    emitOrbPhase('inserting', get().trigger, skipReason);
     // Debug: capture frontmost app BEFORE and AFTER the insert to diagnose
     // the "Cmd+V didn't paste anywhere" release-build bug. If isQuill=true
     // before/after, the orb (or main window) is the frontmost app and the
@@ -236,8 +279,22 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
     } catch (e) {
       console.warn('[voice-paste] debug frontmost failed:', e);
     }
-    set({ phase: 'idle', trigger: null });
-    emitOrbPhase('idle', null);
+    // When polish was skipped, the orb/button are showing an inline "打开
+    // 设置" link. Going idle immediately would hide the orb window and unmount
+    // the link before the user can click. Hold the 'inserting' phase for a few
+    // seconds so the prompt stays visible. Text is already inserted, so this
+    // only extends the visual surface — no functional block.
+    if (skipReason) {
+      if (idleNoticeTimer) clearTimeout(idleNoticeTimer);
+      idleNoticeTimer = setTimeout(() => {
+        idleNoticeTimer = null;
+        set({ phase: 'idle', trigger: null, polishSkippedReason: null });
+        emitOrbPhase('idle', null);
+      }, IDLE_NOTICE_MS);
+    } else {
+      set({ phase: 'idle', trigger: null, polishSkippedReason: null });
+      emitOrbPhase('idle', null);
+    }
   },
 
   clearError: () => {
@@ -245,7 +302,11 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
       clearTimeout(errorTimer);
       errorTimer = null;
     }
-    set({ phase: 'idle', error: null, trigger: null });
+    if (idleNoticeTimer) {
+      clearTimeout(idleNoticeTimer);
+      idleNoticeTimer = null;
+    }
+    set({ phase: 'idle', error: null, trigger: null, polishSkippedReason: null });
     emitOrbPhase('idle', null);
   },
 }));

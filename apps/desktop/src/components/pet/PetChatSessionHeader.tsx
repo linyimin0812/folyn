@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePetChatStore, MAX_SESSIONS } from '@/store/petChatStore';
-import { useNavStore } from '@/store/navStore';
 import { isTauri } from '@/utils/platform';
 import { stopPetChat, resetPetChatAdapter } from '@/services/petChatService';
 
@@ -162,24 +161,20 @@ export function PetChatSessionHeader() {
 
   const title = activeSession?.title || '新对话';
 
-  // Jump to main window's Settings → AI 工具 tab. Mirrors the
-  // `handleOpenSettings` in PetChat.tsx (used by the unconfigured-AI CTA):
-  // (1) setCurrentPage('settings') + setSettingsTab('ai') on the shared
-  // store (persists across windows), then (2) emit `pet://menu-action`
-  // `show-main` so App.tsx's listener focuses the main window, which
-  // re-renders with the new page/tab. ponytail: duplicates PetChat's
-  // 3-line emitMenuAction — the existing pattern is per-consumer (PetLauncher
-  // has its own copy too), so a shared helper would be a bigger diff than
-  // the duplication itself.
+  // Jump to main window's Settings → AI 工具 tab. The pet-panel is a
+  // separate Tauri window = separate JS realm, so it cannot touch the main
+  // window's navStore directly. Emit `pet://menu-action` `open-ai-settings`
+  // and let the main window's `routePetMenuAction` set the page/tab and focus
+  // main. ponytail: duplicates PetChat's emitMenuAction — the existing
+  // pattern is per-consumer (PetLauncher has its own copy too), so a shared
+  // helper would be a bigger diff than the duplication itself.
   const handleOpenSettings = useCallback(async () => {
-    useNavStore.getState().setCurrentPage('settings');
-    useNavStore.getState().setSettingsTab('ai');
     if (!isTauri()) return;
     try {
       const { emit } = await import('@tauri-apps/api/event');
-      await emit('pet://menu-action', { action: 'show-main' });
+      await emit('pet://menu-action', { action: 'open-ai-settings' });
     } catch (err) {
-      console.warn('[pet-chat-header] emit show-main failed:', err);
+      console.warn('[pet-chat-header] emit open-ai-settings failed:', err);
     }
   }, []);
 

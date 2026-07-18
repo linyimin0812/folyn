@@ -220,14 +220,17 @@ describe('PetChat', () => {
     expect(screen.getByText('未配置 AI')).toBeTruthy();
   });
 
-  it('CTA button emits show-main and navigates to AI settings', async () => {
+  it('CTA button emits open-ai-settings (routed by main window)', async () => {
     aiConfigState.cliPath = '';
     render(<PetChat />);
     await fireEvent.click(screen.getByText('打开 AI 设置'));
-    expect(navState.setCurrentPage).toHaveBeenCalledWith('settings');
-    expect(navState.setSettingsTab).toHaveBeenCalledWith('ai');
+    // PetChat no longer touches navStore directly — it emits
+    // `open-ai-settings` and the main window's routePetMenuAction sets the
+    // page/tab. The pet-panel is a separate JS realm.
+    expect(navState.setCurrentPage).not.toHaveBeenCalled();
+    expect(navState.setSettingsTab).not.toHaveBeenCalled();
     await waitFor(() =>
-      expect(emitMock).toHaveBeenCalledWith('pet://menu-action', { action: 'show-main' }),
+      expect(emitMock).toHaveBeenCalledWith('pet://menu-action', { action: 'open-ai-settings' }),
     );
   });
 
@@ -242,18 +245,18 @@ describe('PetChat', () => {
   });
 
   // ponytail: the new "AI 设置" button in PetChatSessionHeader duplicates the
-  // unconfigured-CTA's navigation logic (setCurrentPage + setSettingsTab +
-  // emit show-main). One check that clicks the new button and asserts the
-  // same effects — fails if the header button's wiring breaks, even though
-  // the underlying logic is shared with the (already-tested) CTA path.
-  it('header "AI 设置" button emits show-main and navigates to AI settings', async () => {
+  // unconfigured-CTA's emit logic (open-ai-settings). One check that clicks the
+  // new button and asserts the same effect — fails if the header button's
+  // wiring breaks, even though the underlying logic is shared with the
+  // (already-tested) CTA path.
+  it('header "AI 设置" button emits open-ai-settings (routed by main window)', async () => {
     render(<PetChat />);
     const headerSettingsBtn = screen.getByRole('button', { name: 'AI 设置' });
     await fireEvent.click(headerSettingsBtn);
-    expect(navState.setCurrentPage).toHaveBeenCalledWith('settings');
-    expect(navState.setSettingsTab).toHaveBeenCalledWith('ai');
+    expect(navState.setCurrentPage).not.toHaveBeenCalled();
+    expect(navState.setSettingsTab).not.toHaveBeenCalled();
     await waitFor(() =>
-      expect(emitMock).toHaveBeenCalledWith('pet://menu-action', { action: 'show-main' }),
+      expect(emitMock).toHaveBeenCalledWith('pet://menu-action', { action: 'open-ai-settings' }),
     );
   });
 

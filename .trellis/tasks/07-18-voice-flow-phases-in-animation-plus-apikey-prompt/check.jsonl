@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist + forbidden patterns to verify final diff against (no default exports, no bare useStore(), no inline magic strings without constants)."}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Verify orb caption layer respects transparent + pointerEvents:none + NSPanel non-activating constraints; no regressions to click-through behavior."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify Zustand usage: granular selectors, no bare useVoiceInput(), persisted slice unchanged, cross-window event payload extension follows documented patterns."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify component composition: named exports, props shape, Tailwind class conventions for the new caption layer + per-phase spinner color."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Verify reuse of permission-link precedent + existing voice://orb-phase channel rather than re-implementing a parallel toast/notification system."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Verify the payload extension flows correctly: main window emits → orb window consumes; no stale state across JS realms; no Rust-side changes needed."}

@@ -34,6 +34,12 @@
  * the native right-click menu, but the action strings are recognized by
  * `pet_ctx_menu_action` in `lib.rs` so the contract stays uniform and the
  * frontend↔Rust sync test (see PetContextMenu.test.tsx) covers the full set.
+ *
+ * `open-ai-settings` is dispatched by secondary windows (voice-orb caption
+ * link, pet-panel chat CTA / session-header "AI 设置" button) that cannot
+ * touch the main window's navStore directly (separate JS realm). The action
+ * is routed by `routePetMenuAction` in the MAIN window, which sets
+ * `currentPage='settings'` + `settingsTab='ai'` and focuses main.
  */
 export type PetMenuAction =
   | 'show-main'
@@ -46,7 +52,8 @@ export type PetMenuAction =
   | 'global-search'
   | 'clip-from-url'
   | 'command-palette'
-  | 'toggle-theme';
+  | 'toggle-theme'
+  | 'open-ai-settings';
 
 /** Payload for `pet://menu-action` events. `set-pet-size` carries the size
  *  level; all other actions use only `action`. */
@@ -81,6 +88,7 @@ export const PET_LAUNCHER_ACTIONS: readonly PetMenuAction[] = [
   'clip-from-url',
   'command-palette',
   'toggle-theme',
+  'open-ai-settings',
 ] as const;
 
 export const PET_MENU_ACTIONS: readonly PetMenuAction[] = [

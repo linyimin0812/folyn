@@ -41,13 +41,14 @@ describe('PetContextMenu (native popup + launcher contract)', () => {
     ]);
   });
 
-  it('PET_LAUNCHER_ACTIONS lists the five pet-panel launcher actions', () => {
+  it('PET_LAUNCHER_ACTIONS lists the pet-panel launcher actions', () => {
     expect(PET_LAUNCHER_ACTIONS).toEqual([
       'daily-note',
       'global-search',
       'clip-from-url',
       'command-palette',
       'toggle-theme',
+      'open-ai-settings',
     ]);
   });
 
@@ -64,6 +65,7 @@ describe('PetContextMenu (native popup + launcher contract)', () => {
       'clip-from-url',
       'command-palette',
       'toggle-theme',
+      'open-ai-settings',
     ]);
   });
 

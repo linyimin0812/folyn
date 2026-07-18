@@ -27,12 +27,44 @@ import { useEffect, useRef, useState } from 'react';
 import { isTauri } from '@/utils/platform';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import type { VoicePhase, VoiceTrigger } from '@/hooks/useVoiceInput';
+import type { VoicePhase, VoiceTrigger, PolishSkippedReason } from '@/hooks/useVoiceInput';
 import { SiriGL, isWebGLAvailable, warmUpSiriShaders } from './SiriGL';
 
 interface OrbPhasePayload {
   phase: VoicePhase;
   trigger: VoiceTrigger;
+  polishSkippedReason?: PolishSkippedReason;
+}
+
+/** Phase → caption label. Surfaced at the bottom of the orb window so the
+ *  user can read which stage the flow is in. `recording` has no caption
+ *  (the live waveform IS the indicator); the rest get a one-line label. */
+function phaseCaption(phase: VoicePhase): string | null {
+  switch (phase) {
+    case 'transcribing':
+      return '语音转文字中…';
+    case 'polishing':
+      return 'LLM 优化中…';
+    case 'inserting':
+      return '插入中…';
+    default:
+      return null;
+  }
+}
+
+/** Emit `pet://menu-action` `open-ai-settings` so the main window's listener
+ *  (usePetHostBridge → routePetMenuAction) sets navStore to Settings → AI tab
+ *  and focuses the main window. The orb is a separate Tauri window = separate
+ *  JS realm, so it cannot touch the main window's navStore directly; it must
+ *  hop through the `pet://menu-action` channel and let the main window route. */
+async function openAiSettingsFromOrb(): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    const { emit } = await import('@tauri-apps/api/event');
+    await emit('pet://menu-action', { action: 'open-ai-settings' });
+  } catch (err) {
+    console.warn('[voice-orb] emit open-ai-settings failed:', err);
+  }
 }
 
 /** Openless pill metrics — 460×180 (capsuleLayout.ts). Mirrors
@@ -56,6 +88,7 @@ export function VoiceOrbApp(): JSX.Element {
   const [phase, setPhase] = useState<VoicePhase>('idle');
   const [trigger, setTrigger] = useState<VoiceTrigger>(null);
   const [level, setLevel] = useState(0);
+  const [polishSkippedReason, setPolishSkippedReason] = useState<PolishSkippedReason>(null);
   const orbPhaseHeardRef = useRef(false);
 
   // Lazy-warm the shaders on first mount so the first recording doesn't pay
@@ -112,6 +145,7 @@ export function VoiceOrbApp(): JSX.Element {
           if (t === 'hotkey' || t === 'button' || t === null) {
             setTrigger(t);
           }
+          setPolishSkippedReason(e.payload?.polishSkippedReason ?? null);
         });
       } catch (err) {
         console.warn('[voice-orb] orb-phase listener setup failed:', err);
@@ -162,6 +196,7 @@ export function VoiceOrbApp(): JSX.Element {
 
   const isOrb = phase === 'transcribing' || phase === 'polishing' || phase === 'inserting';
   const merging = phase === 'inserting';
+  const caption = phaseCaption(phase);
 
   return (
     <div
@@ -182,6 +217,55 @@ export function VoiceOrbApp(): JSX.Element {
         merging={merging}
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
       />
+      {/* ponytail: caption is a pointer-events-none overlay; the
+          "打开设置" link re-enables pointerEvents on itself. NSPanel is
+          non-activating + focus:false — if clicks don't register here on
+          some macOS builds, fall back to reading the text and opening
+          Settings from the in-panel mic button. Upgrade path: register a
+          dedicated Tauri command (voice_open_ai_settings) that focuses
+          main + sets navStore in one Rust-side step if the
+          `open-ai-settings` emit proves flaky. */}
+      {caption && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            left: 0,
+            right: 0,
+            textAlign: 'center',
+            color: '#fff',
+            fontSize: 12,
+            textShadow: '0 1px 4px rgba(0,0,0,0.6)',
+            userSelect: 'none',
+          }}
+        >
+          {caption}
+          {polishSkippedReason === 'no-api-key' && (
+            <div style={{ marginTop: 2 }}>
+              <span style={{ opacity: 0.9 }}>未配置 API Key，跳过 LLM 优化</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void openAiSettingsFromOrb();
+                }}
+                style={{
+                  pointerEvents: 'auto',
+                  marginLeft: 6,
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#7AB7FF',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                打开设置
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

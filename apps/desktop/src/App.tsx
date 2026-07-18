@@ -353,9 +353,12 @@ export default function App() {
 
         // One event = one toggle. Read phase and flip; the hook's own guards
         // make a stray toggle during transcribe/polish/insert a no-op.
+        // 'inserting' is also allowed through to start() so the user can
+        // break out of the post-no-API-key linger (idleNoticeTimer running)
+        // — start() itself rejects the call if no linger is active.
         unlistenToggle = await listen('voice://hotkey-toggle', () => {
           const { phase, start, stop } = useVoiceInput.getState();
-          if (phase === 'idle') void start('hotkey');
+          if (phase === 'idle' || phase === 'inserting') void start('hotkey');
           else if (phase === 'recording') void stop();
         });
       } catch (err) {

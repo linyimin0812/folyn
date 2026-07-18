@@ -113,6 +113,15 @@ export async function routePetMenuAction(
       useAppearanceStore.getState().toggleTheme();
       await focusMain();
       break;
+    case 'open-ai-settings':
+      // Secondary windows (voice-orb caption link, pet-panel chat CTA) emit
+      // this because they cannot touch the main window's navStore directly
+      // (separate JS realm). Routing here in the main window sets the page
+      // + tab and focuses the editor so the user lands on AI settings.
+      useNavStore.getState().setCurrentPage('settings');
+      useNavStore.getState().setSettingsTab('ai');
+      await focusMain();
+      break;
   }
 }
 

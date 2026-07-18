@@ -119,6 +119,14 @@ describe('routePetMenuAction', () => {
     expect(useAppearanceStore.getState().theme).toBe('dark');
     expect(showMock).toHaveBeenCalledTimes(1);
   });
+
+  it('open-ai-settings sets navStore to settings/ai and focuses main', async () => {
+    useNavStore.setState({ currentPage: 'editor', settingsTab: 'general' });
+    await routePetMenuAction('open-ai-settings');
+    expect(useNavStore.getState().currentPage).toBe('settings');
+    expect(useNavStore.getState().settingsTab).toBe('ai');
+    expect(showMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('routePetBubbleAction', () => {
