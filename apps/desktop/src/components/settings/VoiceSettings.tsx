@@ -1,15 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useVoiceStore, DEFAULT_POLISH_PROMPT, SPOKEN_LANGUAGES } from '@/store/voiceStore';
 import { isTauri } from '@/utils/platform';
 import { invoke } from '@tauri-apps/api/core';
-
-function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className={`sw2 w-9 h-5 rounded-[10px] cursor-pointer relative transition-[background] duration-200 shrink-0 ${value ? 'bg-acc' : 'bg-brd2'}`} onClick={() => onChange(!value)}>
-      <div className={`absolute w-4 h-4 rounded-full bg-white top-0.5 left-0.5 transition-transform duration-200 ${value ? 'translate-x-4' : ''}`} />
-    </div>
-  );
-}
+import { Toggle } from '@/components/settings/primitives';
+import { useHotkeyRecording } from '@/components/settings/useHotkeyRecording';
 
 function Row({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
   return (
@@ -56,36 +50,26 @@ function PermissionRow({ title, desc, idleLabel, state, onClick }: {
  * keydown event, converts it to a Tauri accelerator string (`Cmd+Shift+V`),
  * and persists it to `voiceStore.globalHotkey`. An empty combo (Esc) clears
  * the hotkey. Re-registers with the OS via `voice_set_global_hotkey` so the
- * new combo takes effect system-wide immediately — mirrors the
- * `pet_panel_set_shortcut` re-registration in `ShortcutEditor`
- * (SettingsPage.tsx).
+ * new combo takes effect system-wide immediately.
  *
- * ponytail: the existing `ShortcutEditor` in SettingsPage is tied to
- * `prefsStore.updateShortcut` (a keys-array shape) and isn't easily reused
- * for the voiceStore's string field. This inline recorder is the same
- * keydown-capture pattern (~30 lines) without a shared-component extraction
- * — which would require generalizing ShortcutEditor to accept a custom
- * setter + keyshape. Add when a third consumer appears.
+ * Recording mechanics (capture-phase keydown listener, click-outside cancel)
+ * live in `useHotkeyRecording`, shared with `ShortcutEditor`. This shell owns
+ * the voice-specific bits: the accelerator-string keyshape, `setGlobalHotkey`
+ * persistence, Esc-clears semantics, and `voice_set_global_hotkey` re-register.
+ * Voice doesn't surface a conflict-occupied hint, so `conflictTimeoutMs` is
+ * omitted (unlike ShortcutEditor's 2500ms) — the hook degrades to no-timeout.
  */
 function VoiceHotkeyRecorder() {
   const globalHotkey = useVoiceStore((s) => s.globalHotkey);
   const setGlobalHotkey = useVoiceStore((s) => s.setGlobalHotkey);
-  const [recording, setRecording] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    // Esc clears the hotkey (unregister).
+  const onCapture = useCallback((event: KeyboardEvent) => {
+    // Esc clears the hotkey (unregister). Esc isn't a lone modifier, so the
+    // hook routes it through onCapture — handle before building the combo.
     if (event.key === 'Escape') {
       setGlobalHotkey('');
-      setRecording(false);
       return;
     }
-
-    // Ignore lone modifier presses — wait for the non-modifier key.
-    if (['Meta', 'Control', 'Alt', 'Shift'].includes(event.key)) return;
 
     const tokens: string[] = [];
     if (event.metaKey) tokens.push('Cmd');
@@ -98,7 +82,6 @@ function VoiceHotkeyRecorder() {
 
     const accelerator = tokens.join('+');
     setGlobalHotkey(accelerator);
-    setRecording(false);
 
     // Re-register with the OS so the new combo takes effect immediately.
     if (isTauri()) {
@@ -114,26 +97,10 @@ function VoiceHotkeyRecorder() {
     }
   }, [setGlobalHotkey]);
 
-  useEffect(() => {
-    if (!recording) return;
-    window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [recording, handleKeyDown]);
-
-  // Click-outside cancels recording without changing the hotkey.
-  useEffect(() => {
-    if (!recording) return;
-    const handleClick = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setRecording(false);
-      }
-    };
-    window.addEventListener('mousedown', handleClick);
-    return () => window.removeEventListener('mousedown', handleClick);
-  }, [recording]);
+  const { recording, start, containerRef } = useHotkeyRecording(onCapture);
 
   return (
-    <div ref={containerRef} className="sk-keys flex items-center gap-[3px] cursor-pointer" onClick={() => setRecording(true)}>
+    <div ref={containerRef} className="sk-keys flex items-center gap-[3px] cursor-pointer" onClick={start}>
       {recording ? (
         <span className="key bg-accdim border border-acc text-acc rounded px-1.5 py-0.5 text-[10.5px] font-mono shadow-[0_1px_0_var(--brd2)]">按下快捷键…（Esc 清除）</span>
       ) : globalHotkey ? (

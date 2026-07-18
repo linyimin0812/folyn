@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback } from 'react';
 import { usePrefsStore } from '@/store/prefsStore';
 import { isTauri } from '@/utils/platform';
+import { useHotkeyRecording } from '@/components/settings/useHotkeyRecording';
 
 /** Map keyboard event key to display symbol */
 function keyToSymbol(key: string): string {
@@ -12,26 +13,17 @@ function keyToSymbol(key: string): string {
   return key;
 }
 
+/**
+ * Shortcut editor for the prefs-store keybinds (symbol-array shape, e.g.
+ * `['⌘','Shift','P']`). The recording mechanics live in `useHotkeyRecording`;
+ * this shell owns the prefs-specific bits: the ⌘-symbol keyshape,
+ * `updateShortcut` persistence, and OS re-registration of the one global
+ * shortcut (`togglePetPanel` → `pet_panel_set_shortcut` Rust command).
+ */
 export function ShortcutEditor({ shortcutId, currentKeys }: { shortcutId: string; currentKeys: string[] }) {
-  const [recording, setRecording] = useState(false);
-  // True when recording started but no keydown was captured within the
-  // timeout window. App menu accelerators (e.g. Cmd+Shift+P → "Desktop Pet
-  // Mode") and macOS system shortcuts (Cmd+Q, Cmd+H, Cmd+M, Cmd+W) are
-  // consumed at the OS/menu layer BEFORE the webview's keydown fires — so
-  // the ShortcutEditor's `handleKeyDown` listener never sees them, recording
-  // stays open, and the user sees "按下快捷键…" forever with no feedback.
-  // This flag flips on timeout to surface "the combo you pressed is occupied".
-  const [conflictHint, setConflictHint] = useState(false);
   const updateShortcut = usePrefsStore((s) => s.updateShortcut);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    // Ignore lone modifier keys
-    if (['Meta', 'Control', 'Alt', 'Shift'].includes(event.key)) return;
-
+  const onCapture = useCallback((event: KeyboardEvent) => {
     const keys: string[] = [];
     if (event.metaKey) keys.push('⌘');
     if (event.ctrlKey) keys.push('Ctrl');
@@ -40,8 +32,6 @@ export function ShortcutEditor({ shortcutId, currentKeys }: { shortcutId: string
     keys.push(keyToSymbol(event.key));
 
     updateShortcut(shortcutId, keys);
-    setConflictHint(false);
-    setRecording(false);
 
     // Global shortcuts (currently only `togglePetPanel`) are registered with
     // the OS via the `pet_panel_set_shortcut` Rust command. Re-register on
@@ -64,43 +54,10 @@ export function ShortcutEditor({ shortcutId, currentKeys }: { shortcutId: string
     }
   }, [shortcutId, updateShortcut]);
 
-  useEffect(() => {
-    if (!recording) return;
-    window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [recording, handleKeyDown]);
-
-  // Conflict-detection timeout: if no keydown is captured within 2.5s of
-  // entering recording mode, flip `conflictHint` so the UI surfaces a message.
-  // The keydown listener above never fires for combos consumed by the app
-  // menu / macOS system (they're intercepted at the OS layer), so the only
-  // signal we have is "nothing arrived". The timer is cancelled on unmount
-  // or when recording exits (via capture or click-outside). 2.5s is long
-  // enough that a slow user won't trip it, short enough to feel responsive.
-  useEffect(() => {
-    if (!recording) {
-      setConflictHint(false);
-      return;
-    }
-    setConflictHint(false);
-    const id = window.setTimeout(() => setConflictHint(true), 2500);
-    return () => window.clearTimeout(id);
-  }, [recording]);
-
-  // Close on click outside
-  useEffect(() => {
-    if (!recording) return;
-    const handleClick = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setRecording(false);
-      }
-    };
-    window.addEventListener('mousedown', handleClick);
-    return () => window.removeEventListener('mousedown', handleClick);
-  }, [recording]);
+  const { recording, start, containerRef, conflictHint } = useHotkeyRecording(onCapture, { conflictTimeoutMs: 2500 });
 
   return (
-    <div ref={containerRef} className="sk-keys flex items-center gap-[3px] cursor-pointer" onClick={() => setRecording(true)}>
+    <div ref={containerRef} className="sk-keys flex items-center gap-[3px] cursor-pointer" onClick={start}>
       {recording ? (
         conflictHint ? (
           <span className="key bg-amber/10 border border-amber text-amber rounded px-1.5 py-0.5 text-[10px] shadow-[0_1px_0_var(--brd2)]">未捕获到按键 — 该组合可能被 app 菜单或系统占用（⌘Q / ⌘H / ⌘M / ⌘W / ⌘⇧P）</span>

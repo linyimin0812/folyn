@@ -39,6 +39,13 @@ apps/desktop/src/
 │   ├── pages/           # Full-page views (SettingsPage, VaultPage)
 │   ├── preview/         # Markdown preview renderer (unified/rehype pipeline)
 │   ├── search/          # Global search panel (GlobalSearchPanel)
+│   ├── settings/        # Per-tab settings components, one file per tab:
+│   │                    #   FileTemplatesSettings, SkillsSettings, PetSettings,
+│   │                    #   NotificationsSettings, PluginsSettings, VoiceSettings,
+│   │                    #   ShortcutEditor. `primitives.tsx` holds the shared
+│   │                    #   `Toggle` + `NAV_GROUPS`; `useHotkeyRecording.ts`
+│   │                    #   the shared hotkey-record hook. The shell that renders
+│   │                    #   them lives in `pages/SettingsPage.tsx`.
 │   ├── shell/           # App chrome (Topbar, ActivityBar, StatusBar)
 │   ├── sidebar/         # File tree sidebar (Sidebar, FileTreeItem, WikiFileTree,
 │   │                    #   CalendarPanel, ContextMenu, SidebarResizer, SidebarActions)
