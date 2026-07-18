@@ -37,7 +37,7 @@
   const isPet = window.location.hash.startsWith('#/pet');
   isPet ? <PetApp /> : <App />;
   ```
-- Rust commands (in `commands.rs`, registered in `lib.rs` `invoke_handler`) for anything the
+- Rust commands (in `commands/` — split by domain into `file_commands`/`webview_commands`/`project_commands`/`pet_commands.rs`, re-exported by `commands/mod.rs` so `lib.rs` references them as `commands::<name>`; registered in `lib.rs` `invoke_handler`) for anything the
   ACL cannot grant or that needs host logic (e.g. `toggle_pet_mode`, `set_pet_position`,
   `pet_cursor_probe`, `pet_show_context_menu`). Custom `invoke` commands are NOT gated by the
   ACL — only the built-in `core:*` plugin commands are.
