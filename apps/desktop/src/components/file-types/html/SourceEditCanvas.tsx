@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
@@ -17,7 +17,9 @@ import {
   closeBracketsKeymap,
   completionKeymap,
 } from '@codemirror/autocomplete';
-import { highlightSelectionMatches } from '@codemirror/search';
+import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
+import { EditorSearchBar } from '@/components/editor/EditorSearchBar';
+import { useSearchPanelState, buildSearchExtensions } from '@/components/editor/searchPanelState';
 
 interface SourceEditCanvasProps {
   content: string;
@@ -27,6 +29,8 @@ interface SourceEditCanvasProps {
 export function SourceEditCanvas({ content, onChange }: SourceEditCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const [view, setView] = useState<EditorView | null>(null);
+  const sp = useSearchPanelState();
   const onChangeRef = useRef(onChange);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isExternalUpdate = useRef(false);
@@ -38,6 +42,9 @@ export function SourceEditCanvas({ content, onChange }: SourceEditCanvasProps) {
     if (!containerRef.current) return;
 
     const updateListener = EditorView.updateListener.of((update) => {
+      if (update.docChanged || update.selectionSet) {
+        sp.setViewTick((t) => (t + 1) % 1_000_000);
+      }
       if (update.docChanged && !isExternalUpdate.current) {
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
@@ -53,6 +60,7 @@ export function SourceEditCanvas({ content, onChange }: SourceEditCanvasProps) {
         highlightActiveLine(),
         drawSelection(),
         highlightSelectionMatches(),
+        ...buildSearchExtensions(sp.toggleRef, sp.toggleReplaceRef),
         history(),
         bracketMatching(),
         closeBrackets(),
@@ -65,6 +73,7 @@ export function SourceEditCanvas({ content, onChange }: SourceEditCanvasProps) {
         keymap.of([
           ...closeBracketsKeymap,
           ...defaultKeymap,
+          ...searchKeymap,
           ...historyKeymap,
           ...completionKeymap,
           indentWithTab,
@@ -86,11 +95,13 @@ export function SourceEditCanvas({ content, onChange }: SourceEditCanvasProps) {
     });
 
     viewRef.current = view;
+    setView(view);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       view.destroy();
       viewRef.current = null;
+      setView(null);
     };
     // Only run on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -115,5 +126,16 @@ export function SourceEditCanvas({ content, onChange }: SourceEditCanvasProps) {
     }
   }, [content]);
 
-  return <div ref={containerRef} className="flex-1 overflow-hidden" />;
+  return (
+    <div ref={containerRef} className="flex-1 overflow-hidden relative">
+      <EditorSearchBar
+        view={view}
+        visible={sp.visible}
+        replaceOpen={sp.replaceOpen}
+        viewTick={sp.viewTick}
+        onClose={() => sp.setVisible(false)}
+        onToggleReplace={() => sp.setReplaceOpen((v) => !v)}
+      />
+    </div>
+  );
 }

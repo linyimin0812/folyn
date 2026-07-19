@@ -21,7 +21,7 @@
  * Theme: follows the system via the `dark` class on the editor's wrapper
  * div. The CM theme reconfigures on `prefers-color-scheme` change.
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { EditorState, Compartment } from '@codemirror/state';
 import {
   EditorView,
@@ -55,6 +55,8 @@ import {
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { lintKeymap, linter } from '@codemirror/lint';
 import { indentationMarkers } from '@replit/codemirror-indentation-markers';
+import { EditorSearchBar } from '@/components/editor/EditorSearchBar';
+import { useSearchPanelState, buildSearchExtensions } from '@/components/editor/searchPanelState';
 import { json5LintSource } from './extensions/json5Linter';
 import { jsonAutocomplete } from './extensions/jsonAutocomplete';
 import { errorInlineWidgetExtension } from './extensions/errorInlineWidget';
@@ -84,6 +86,8 @@ export function Json5CodeMirror({
 }: Json5CodeMirrorProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const [view, setView] = useState<EditorView | null>(null);
+  const sp = useSearchPanelState();
   const onChangeRef = useRef(onChange);
   const onSaveRef = useRef(onSave);
 
@@ -143,6 +147,9 @@ export function Json5CodeMirror({
     );
 
     const updateListener = EditorView.updateListener.of((update) => {
+      if (update.docChanged || update.selectionSet) {
+        sp.setViewTick((t) => (t + 1) % 1_000_000);
+      }
       if (update.docChanged) {
         onChangeRef.current?.(update.state.doc.toString());
       }
@@ -177,6 +184,7 @@ export function Json5CodeMirror({
         highlightActiveLine(),
         highlightSelectionMatches(),
         indentationMarkers(),
+        ...buildSearchExtensions(sp.toggleRef, sp.toggleReplaceRef),
         keymap.of([
           ...closeBracketsKeymap,
           ...defaultKeymap,
@@ -203,6 +211,7 @@ export function Json5CodeMirror({
 
     const view = new EditorView({ state, parent: hostRef.current });
     viewRef.current = view;
+    setView(view);
 
     // Reconfigure theme on system theme change.
     let mq: MediaQueryList | null = null;
@@ -224,6 +233,7 @@ export function Json5CodeMirror({
       if (mq) mq.removeEventListener('change', handleThemeChange);
       view.destroy();
       viewRef.current = null;
+      setView(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -256,7 +266,16 @@ export function Json5CodeMirror({
   return (
     <div
       ref={hostRef}
-      className="json5-cm-host min-h-0 flex-1 overflow-hidden bg-panel text-t1"
-    />
+      className="json5-cm-host min-h-0 flex-1 overflow-hidden bg-panel text-t1 relative"
+    >
+      <EditorSearchBar
+        view={view}
+        visible={sp.visible}
+        replaceOpen={sp.replaceOpen}
+        viewTick={sp.viewTick}
+        onClose={() => sp.setVisible(false)}
+        onToggleReplace={() => sp.setReplaceOpen((v) => !v)}
+      />
+    </div>
   );
 }

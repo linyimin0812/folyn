@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { EditorState, Compartment } from '@codemirror/state';
 import {
   EditorView,
@@ -32,6 +32,8 @@ import {
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { lintKeymap, linter, lintGutter, type Diagnostic } from '@codemirror/lint';
 import { indentationMarkers } from '@replit/codemirror-indentation-markers';
+import { EditorSearchBar } from '@/components/editor/EditorSearchBar';
+import { useSearchPanelState, buildSearchExtensions } from '@/components/editor/searchPanelState';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { usePrefsStore, type ShortcutItem } from '@/store/prefsStore';
@@ -160,6 +162,8 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
   function QuillEditor({ initialContent = '', filePath = '', initialCursorLine, initialCursorCol, onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste }, ref) {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
+    const [view, setView] = useState<EditorView | null>(null);
+    const sp = useSearchPanelState();
     const tabSizeCompartment = useRef(new Compartment());
     const markdownKeymapCompartment = useRef(new Compartment());
     const langCompartment = useRef(new Compartment());
@@ -198,6 +202,9 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
     const handleUpdate = useCallback(
       (update: any) => {
         try {
+          if (update.docChanged || update.selectionSet) {
+            sp.setViewTick((t) => (t + 1) % 1_000_000);
+          }
           if (update.docChanged) {
             const content = update.state.doc.toString();
             onChangeRef.current?.(content);
@@ -219,7 +226,7 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
           // Ignore errors during rapid edits (e.g. coordsAtPos with invalid position)
         }
       },
-      [setCursorPosition, setWordCount],
+      [setCursorPosition, setWordCount, sp.setViewTick],
     );
 
     useEffect(() => {
@@ -254,6 +261,7 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
         highlightActiveLine(),
         highlightSelectionMatches(),
         indentationMarkers(),
+        ...buildSearchExtensions(sp.toggleRef, sp.toggleReplaceRef),
         ...inlineDiffExtension,
         keymap.of([
           { key: 'Mod-a', run: selectAll },
@@ -310,6 +318,7 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
       });
 
       viewRef.current = view;
+      setView(view);
 
       // Restore cursor position if provided
       if (initialCursorLine && initialCursorLine > 0) {
@@ -367,6 +376,8 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
 
       return () => {
         view.destroy();
+        viewRef.current = null;
+        setView(null);
       };
     }, []);
 
@@ -398,7 +409,16 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
         ref={editorRef}
         className="cm-wrapper"
         style={{ fontFamily: editorFont, fontSize: `${editorFontSize}px` }}
-      />
+      >
+        <EditorSearchBar
+          view={view}
+          visible={sp.visible}
+          replaceOpen={sp.replaceOpen}
+          viewTick={sp.viewTick}
+          onClose={() => sp.setVisible(false)}
+          onToggleReplace={() => sp.setReplaceOpen((v) => !v)}
+        />
+      </div>
     );
   },
 );
