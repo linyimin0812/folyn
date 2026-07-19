@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useClipStore, type ClipFile, type BatchItemStatus } from '@/store/clipStore';
 import type { ClipMetadata, ClipLanguage } from '@/services/clipService';
 import type { StreamEvent } from '@/services/aiStreamUtils';
@@ -39,6 +40,7 @@ function getHostname(url: string): string {
 }
 
 function ClipCard({ clip, onDelete }: { clip: ClipFile; onDelete: () => void }) {
+  const { t } = useTranslation();
   const openFile = editorIoService.openFile;
   const openWebFromClip = useEditorStore((s) => s.openWebFromClip);
   const readFile = useVaultStore((s) => s.readFile);
@@ -98,7 +100,7 @@ function ClipCard({ clip, onDelete }: { clip: ClipFile; onDelete: () => void }) 
         <button
           className="shrink-0 w-5 h-5 rounded flex items-center justify-center bg-transparent border-none cursor-pointer text-t3 hover:bg-red-500/10 hover:text-red-500 transition-colors"
           onClick={handleDeleteClick}
-          title="删除"
+          title={t('sidebar:clips.delete')}
         >
           <ThemeIcon name="delete" size={12} />
         </button>
@@ -118,6 +120,7 @@ function TagEditor({
   allTags: string[];
   onChange: (tags: string[]) => void;
 }) {
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -164,7 +167,7 @@ function TagEditor({
             <button
               className="bg-transparent border-none cursor-pointer text-t3 hover:text-red-500 p-0 ml-0.5 leading-none transition-colors"
               onClick={() => handleRemove(tag)}
-              title="移除标签"
+              title={t('sidebar:clips.removeTag')}
             >
               <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M1 1l6 6M7 1l-6 6" strokeLinecap="round" />
@@ -176,7 +179,7 @@ function TagEditor({
           ref={inputRef}
           type="text"
           className="flex-1 min-w-[60px] bg-transparent border-none outline-none text-[11px] text-t1 placeholder:text-t3 py-0.5"
-          placeholder={tags.length === 0 ? '输入标签后回车添加...' : '添加...'}
+          placeholder={tags.length === 0 ? t('sidebar:clips.tagPlaceholderEmpty') : t('sidebar:clips.tagPlaceholderAdd')}
           value={inputValue}
           onChange={(e) => { setInputValue(e.target.value); setShowSuggestions(true); }}
           onFocus={() => setShowSuggestions(true)}
@@ -252,6 +255,7 @@ function StreamEventList({ events }: { events: StreamEvent[] }) {
 
 /** Progress display during clipping */
 function ClipProgress({ message, events }: { message: string; events?: StreamEvent[] }) {
+  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -264,7 +268,7 @@ function ClipProgress({ message, events }: { message: string; events?: StreamEve
     <div className="p-3 rounded-lg border border-acc/30 bg-surf flex flex-col gap-2">
       <div className="flex items-center gap-2.5">
         <span className="inline-block w-3.5 h-3.5 rounded-full border-[1.5px] border-brd border-t-acc animate-spin shrink-0" />
-        <span className="text-[12px] text-t2">{message || '准备中...'}</span>
+        <span className="text-[12px] text-t2">{message || t('sidebar:clips.progressDefault')}</span>
       </div>
       {events && events.length > 0 && (
         <div
@@ -292,6 +296,7 @@ function ClipConfirmation({
   onCancel: () => void;
   isSaving: boolean;
 }) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState(metadata.title);
   const [tags, setTags] = useState<string[]>(metadata.tags);
 
@@ -309,12 +314,12 @@ function ClipConfirmation({
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
           <path d="M3 2v12l5-3 5 3V2H3z" />
         </svg>
-        知识卡片预览
+        {t('sidebar:clips.preview.title')}
       </div>
 
       {/* Editable title */}
       <div className="flex flex-col gap-1">
-        <label className="text-[11px] text-t3 font-medium">标题</label>
+        <label className="text-[11px] text-t3 font-medium">{t('sidebar:clips.preview.titleLabel')}</label>
         <input
           type="text"
           className="w-full px-2 py-2 text-[13px] rounded-md border border-brd bg-bg text-t1 outline-none focus:border-acc transition-colors font-medium"
@@ -325,14 +330,14 @@ function ClipConfirmation({
 
       {/* Editable tags */}
       <div className="flex flex-col gap-1">
-        <label className="text-[11px] text-t3 font-medium">标签</label>
+        <label className="text-[11px] text-t3 font-medium">{t('sidebar:clips.preview.tagsLabel')}</label>
         <TagEditor tags={tags} allTags={allTags} onChange={setTags} />
       </div>
 
       {/* Suggested tags from AI */}
       {metadata.suggestedTags && metadata.suggestedTags.length > 0 && (
         <div className="flex flex-col gap-1">
-          <label className="text-[11px] text-t3 font-medium">推荐标签</label>
+          <label className="text-[11px] text-t3 font-medium">{t('sidebar:clips.preview.suggestedLabel')}</label>
           <div className="flex flex-wrap gap-1">
             {metadata.suggestedTags
               .filter((t) => !tags.includes(t))
@@ -352,7 +357,7 @@ function ClipConfirmation({
       {/* Read-only summary preview */}
       {metadata.summary && (
         <div className="flex flex-col gap-1">
-          <label className="text-[11px] text-t3 font-medium">摘要</label>
+          <label className="text-[11px] text-t3 font-medium">{t('sidebar:clips.preview.summaryLabel')}</label>
           <p className="text-[12px] text-t2 leading-relaxed m-0 bg-bg rounded-md p-2 border border-brd max-h-[120px] overflow-y-auto">
             {metadata.summary}
           </p>
@@ -361,7 +366,7 @@ function ClipConfirmation({
 
       {/* Source URL */}
       <div className="text-[11px] text-t3 truncate" title={metadata.url}>
-        来源: {getHostname(metadata.url)}
+        {t('sidebar:clips.preview.source', { host: getHostname(metadata.url) })}
       </div>
 
       {/* Actions */}
@@ -371,14 +376,14 @@ function ClipConfirmation({
           onClick={handleConfirm}
           disabled={isSaving}
         >
-          {isSaving ? '保存中...' : '确认保存'}
+          {isSaving ? t('sidebar:clips.saving') : t('sidebar:clips.save')}
         </button>
         <button
           className="px-3 py-2 text-[13px] rounded-md bg-bg text-t2 border border-brd cursor-pointer hover:bg-hov transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={onCancel}
           disabled={isSaving}
         >
-          取消
+          {t('sidebar:clips.cancel')}
         </button>
       </div>
     </div>
@@ -420,17 +425,18 @@ function TagSection({
   );
 }
 
-const BATCH_STATUS_STYLE: Record<BatchItemStatus, { label: string; className: string }> = {
-  pending: { label: '待处理', className: 'text-t3' },
-  running: { label: '运行中', className: 'text-acc' },
-  done: { label: '已完成', className: 'text-acc' },
-  skipped: { label: '已跳过', className: 'text-amber-600 dark:text-amber-400' },
-  failed: { label: '失败', className: 'text-red-500' },
-  cancelled: { label: '已取消', className: 'text-t3' },
+const BATCH_STATUS_KEYS: Record<BatchItemStatus, { labelKey: string; className: string }> = {
+  pending: { labelKey: 'sidebar:clips.status.pending', className: 'text-t3' },
+  running: { labelKey: 'sidebar:clips.status.running', className: 'text-acc' },
+  done: { labelKey: 'sidebar:clips.status.done', className: 'text-acc' },
+  skipped: { labelKey: 'sidebar:clips.status.skipped', className: 'text-amber-600 dark:text-amber-400' },
+  failed: { labelKey: 'sidebar:clips.status.failed', className: 'text-red-500' },
+  cancelled: { labelKey: 'sidebar:clips.status.cancelled', className: 'text-t3' },
 };
 
 /** Batch clipping mode: textarea of URLs, force/delay options, progress list. */
 function BatchClipView({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const batchItems = useClipStore((s) => s.batchItems);
   const isBatchRunning = useClipStore((s) => s.isBatchRunning);
   const batchSummaryPath = useClipStore((s) => s.batchSummaryPath);
@@ -484,12 +490,12 @@ function BatchClipView({ onClose }: { onClose: () => void }) {
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-acc shrink-0">
           <path d="M2 4h12M2 8h12M2 12h8" strokeLinecap="round" />
         </svg>
-        <span className="text-[12px] font-medium text-t1">批量剪藏</span>
+        <span className="text-[12px] font-medium text-t1">{t('sidebar:clips.batch.title')}</span>
         <button
           className="ml-auto w-5 h-5 rounded flex items-center justify-center bg-transparent border-none cursor-pointer text-t3 hover:bg-hov hover:text-t1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           onClick={handleClose}
           disabled={isBatchRunning}
-          title="关闭批量模式"
+          title={t('sidebar:clips.batch.close')}
         >
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M3 3l10 10M13 3L3 13" strokeLinecap="round" />
@@ -500,7 +506,7 @@ function BatchClipView({ onClose }: { onClose: () => void }) {
       {/* URL textarea */}
       <textarea
         className="w-full px-2.5 py-2 text-[12px] rounded-md border border-brd bg-bg text-t1 outline-none focus:border-acc transition-colors resize-y min-h-[80px] max-h-[200px] font-mono leading-relaxed"
-        placeholder={'一行一个 URL，例如：\nhttps://example.com/a\nhttps://example.com/b'}
+        placeholder={t('sidebar:clips.batch.placeholder')}
         value={text}
         onChange={(e) => setText(e.target.value)}
         disabled={isBatchRunning}
@@ -517,10 +523,10 @@ function BatchClipView({ onClose }: { onClose: () => void }) {
             onChange={(e) => setForce(e.target.checked)}
             disabled={isBatchRunning}
           />
-          强制重新剪藏
+          {t('sidebar:clips.batch.force')}
         </label>
         <label className="flex items-center gap-1.5 text-[11px] text-t2">
-          条间延迟
+          {t('sidebar:clips.batch.delay')}
           <input
             type="number"
             min={0}
@@ -532,7 +538,7 @@ function BatchClipView({ onClose }: { onClose: () => void }) {
           />
           ms
         </label>
-        <span className="text-[10px] text-t3 ml-auto">{urls.length} 条</span>
+        <span className="text-[10px] text-t3 ml-auto">{t('sidebar:clips.batch.count', { count: urls.length })}</span>
       </div>
 
       {/* Action buttons */}
@@ -543,14 +549,14 @@ function BatchClipView({ onClose }: { onClose: () => void }) {
             onClick={handleStart}
             disabled={urls.length === 0}
           >
-            开始批量剪藏
+            {t('sidebar:clips.batch.start')}
           </button>
         ) : (
           <button
             className="flex-1 py-2 text-[13px] rounded-md bg-amber-500 text-white border-none cursor-pointer hover:opacity-90 transition-opacity font-medium"
             onClick={handleCancel}
           >
-            取消（完成当前后停止）
+            {t('sidebar:clips.batch.cancelRunning')}
           </button>
         )}
       </div>
@@ -565,10 +571,10 @@ function BatchClipView({ onClose }: { onClose: () => void }) {
       {/* Progress summary */}
       {batchItems.length > 0 && (
         <div className="flex items-center gap-2 text-[10px] text-t3">
-          <span>共 {batchItems.length}</span>
-          <span className="text-acc">完成 {doneCount}</span>
-          <span className="text-amber-600 dark:text-amber-400">跳过 {skippedCount}</span>
-          <span className="text-red-500">失败 {failedCount}</span>
+          <span>{t('sidebar:clips.batch.summary.total', { count: batchItems.length })}</span>
+          <span className="text-acc">{t('sidebar:clips.batch.summary.done', { count: doneCount })}</span>
+          <span className="text-amber-600 dark:text-amber-400">{t('sidebar:clips.batch.summary.skipped', { count: skippedCount })}</span>
+          <span className="text-red-500">{t('sidebar:clips.batch.summary.failed', { count: failedCount })}</span>
         </div>
       )}
 
@@ -576,7 +582,7 @@ function BatchClipView({ onClose }: { onClose: () => void }) {
       {batchItems.length > 0 && (
         <div className="flex flex-col gap-0.5 max-h-[260px] overflow-y-auto rounded-md border border-brd bg-bg">
           {batchItems.map((item, idx) => {
-            const style = BATCH_STATUS_STYLE[item.status];
+            const style = BATCH_STATUS_KEYS[item.status];
             return (
               <div
                 key={`${idx}-${item.url}`}
@@ -586,7 +592,7 @@ function BatchClipView({ onClose }: { onClose: () => void }) {
                   {item.status === 'running' && (
                     <span className="inline-block w-2 h-2 rounded-full border-[1.5px] border-brd border-t-acc animate-spin mr-1 align-middle" />
                   )}
-                  {style.label}
+                  {t(style.labelKey)}
                 </span>
                 <div className="flex-1 min-w-0 flex flex-col">
                   <span className="text-[11px] text-t2 truncate" title={item.url}>
@@ -604,7 +610,7 @@ function BatchClipView({ onClose }: { onClose: () => void }) {
                     onClick={() => handleOpenPath(item.clipPath!)}
                     title={item.clipPath}
                   >
-                    打开
+                    {t('sidebar:clips.batch.open')}
                   </button>
                 )}
               </div>
@@ -620,7 +626,7 @@ function BatchClipView({ onClose }: { onClose: () => void }) {
           onClick={() => handleOpenPath(batchSummaryPath)}
           title={batchSummaryPath}
         >
-          打开批量汇总
+          {t('sidebar:clips.batch.openSummary')}
         </button>
       )}
     </div>
@@ -628,6 +634,7 @@ function BatchClipView({ onClose }: { onClose: () => void }) {
 }
 
 export function ClipsPanel() {
+  const { t } = useTranslation();
   const clipGroups = useClipStore((s) => s.clipGroups);
   const clips = useClipStore((s) => s.clips);
   const isLoading = useClipStore((s) => s.isLoading);
@@ -815,16 +822,16 @@ export function ClipsPanel() {
           <span
             className="ml-1 flex items-center gap-1 text-acc text-[10px] cursor-pointer hover:opacity-80"
             onClick={() => setShowInput(true)}
-            title="点击查看详情"
+            title={t('sidebar:clips.viewDetails')}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-acc animate-pulse" />
-            剪藏中
+            {t('sidebar:clips.clippingInProgress')}
           </span>
         )}
         <button
           className="ml-auto w-5 h-5 rounded flex items-center justify-center bg-transparent border-none cursor-pointer text-t2 hover:bg-hov hover:text-t1 transition-colors"
           onClick={() => setBatchMode((v) => !v)}
-          title={batchMode ? '退出批量模式' : '批量剪藏'}
+          title={batchMode ? t('sidebar:clips.batchModeExit') : t('sidebar:clips.batchModeEnter')}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M2 4h12M2 8h12M2 12h8" strokeLinecap="round" />
@@ -833,7 +840,7 @@ export function ClipsPanel() {
         <button
           className="w-5 h-5 rounded flex items-center justify-center bg-transparent border-none cursor-pointer text-t2 hover:bg-hov hover:text-t1 transition-colors"
           onClick={handleAdd}
-          title="添加剪藏"
+          title={t('sidebar:clips.addClip')}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
             <path d="M8 3v10M3 8h10" strokeLinecap="round" />
@@ -867,11 +874,11 @@ export function ClipsPanel() {
         ))}
         {clips.length === 0 && !isLoading && (
           <div className="p-4 text-center text-xs text-t3 leading-relaxed">
-            暂无剪藏。点击右上角 + 按钮开始剪藏。
+            {t('sidebar:clips.empty')}
           </div>
         )}
         {isLoading && (
-          <div className="p-4 text-center text-xs text-t3">加载中...</div>
+          <div className="p-4 text-center text-xs text-t3">{t('sidebar:clips.loading')}</div>
         )}
       </div>
 
@@ -884,7 +891,7 @@ export function ClipsPanel() {
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M3 2v12l5-3 5 3V2H3z" />
               </svg>
-              添加剪藏
+              {t('sidebar:clips.modalTitle')}
             </div>
 
             {/* Scrollable content area */}
@@ -896,7 +903,7 @@ export function ClipsPanel() {
                 <input
                   type="text"
                   className="w-full px-2.5 py-2 text-[13px] rounded-md border border-brd bg-bg text-t1 outline-none focus:border-acc transition-colors"
-                  placeholder="粘贴网址..."
+                  placeholder={t('sidebar:clips.urlPlaceholder')}
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -904,12 +911,12 @@ export function ClipsPanel() {
                   autoFocus
                 />
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-t3 shrink-0">语言</span>
+                  <span className="text-[11px] text-t3 shrink-0">{t('sidebar:clips.langLabel')}</span>
                   <div className="flex gap-1">
                     {([
-                      { value: 'en' as ClipLanguage, label: 'English' },
-                      { value: 'zh' as ClipLanguage, label: '中文' },
-                      { value: 'auto' as ClipLanguage, label: '自动' },
+                      { value: 'en' as ClipLanguage, label: t('sidebar:clips.langEn') },
+                      { value: 'zh' as ClipLanguage, label: t('sidebar:clips.langZh') },
+                      { value: 'auto' as ClipLanguage, label: t('sidebar:clips.langAuto') },
                     ]).map((opt) => (
                       <button
                         key={opt.value}
@@ -935,13 +942,13 @@ export function ClipsPanel() {
                     onClick={handleStartClip}
                     disabled={isClipping || !url.trim()}
                   >
-                    {isClipping ? '生成中...' : '剪藏'}
+                    {isClipping ? t('sidebar:clips.generating') : t('sidebar:clips.clipButton')}
                   </button>
                   <button
                     className="px-3 py-2 text-[13px] rounded-md bg-bg text-t2 border border-brd cursor-pointer hover:bg-hov transition-colors"
                     onClick={handleCloseModal}
                   >
-                    取消
+                    {t('sidebar:clips.cancel')}
                   </button>
                 </div>
               </div>
@@ -951,20 +958,20 @@ export function ClipsPanel() {
             {duplicateWarning && showInput && !showConfirmation && !showSaving && (
               <div className="p-3 rounded-lg border border-amber-500/40 bg-amber-500/8 flex flex-col gap-2.5">
                 <div className="text-[12px] text-amber-600 dark:text-amber-400 font-medium">
-                  该链接已经剪藏过
+                  {t('sidebar:clips.duplicate.title')}
                 </div>
                 <div className="text-[11px] text-t2 break-all bg-bg rounded-md px-2.5 py-1.5 border border-brd">
                   {duplicateWarning.url}
                 </div>
                 <div className="text-[12px] text-t2 leading-relaxed">
-                  是否重新生成并覆盖已有内容？
+                  {t('sidebar:clips.duplicate.prompt')}
                 </div>
                 <div className="flex gap-1.5">
                   <button
                     className="px-3 py-2 text-[13px] rounded-md bg-bg text-t2 border border-brd cursor-pointer hover:bg-hov transition-colors"
                     onClick={() => handleOpenExisting(duplicateWarning.existingPath)}
                   >
-                    打开已有
+                    {t('sidebar:clips.duplicate.openExisting')}
                   </button>
                   <button
                     className="flex-1 py-2 text-[13px] rounded-md bg-amber-500 text-white border-none cursor-pointer hover:opacity-90 transition-opacity font-medium"
@@ -980,13 +987,13 @@ export function ClipsPanel() {
                       }
                     }}
                   >
-                    重新生成
+                    {t('sidebar:clips.duplicate.regenerate')}
                   </button>
                   <button
                     className="px-3 py-2 text-[13px] rounded-md bg-bg text-t2 border border-brd cursor-pointer hover:bg-hov transition-colors"
                     onClick={() => setDuplicateWarning(null)}
                   >
-                    取消
+                    {t('sidebar:clips.cancel')}
                   </button>
                 </div>
               </div>
@@ -1010,7 +1017,7 @@ export function ClipsPanel() {
             {showSaving && (
               <div className="p-3 rounded-lg border border-acc/30 bg-surf flex items-center gap-2.5">
                 <span className="inline-block w-3.5 h-3.5 rounded-full border-[1.5px] border-brd border-t-acc animate-spin shrink-0" />
-                <span className="text-[12px] text-t2">正在保存文件...</span>
+                <span className="text-[12px] text-t2">{t('sidebar:clips.savingFile')}</span>
               </div>
             )}
 
@@ -1027,20 +1034,20 @@ export function ClipsPanel() {
           <div className="fixed inset-0 z-[9999] bg-black/35 flex items-center justify-center" onClick={() => setDeleteConfirm(null)}>
             <div className="bg-panel rounded-[10px] py-5 px-6 min-w-[300px] max-w-[400px] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd" onClick={(e) => e.stopPropagation()}>
               <div className="text-[15px] font-semibold text-t1 mb-2">
-                {isLastTag ? '确认删除' : '移除标签'}
+                {isLastTag ? t('sidebar:clips.deleteConfirm.titleDelete') : t('sidebar:clips.deleteConfirm.titleRemoveTag')}
               </div>
               <div className="text-[13px] text-t2 leading-relaxed mb-4">
                 {isLastTag ? (
-                  <>确定要删除剪藏 <strong>{clipTitle}</strong> 吗？</>
+                  <>{t('sidebar:clips.deleteConfirm.deletePrefix')}<strong>{clipTitle}</strong>{t('sidebar:clips.deleteConfirm.deleteSuffix')}</>
                 ) : (
-                  <>确定要从 <strong>{clipTitle}</strong> 中移除标签「<strong>{deleteConfirm.tag}</strong>」吗？<br />
-                  <span className="text-[11px] text-t3">该剪藏还有其他 {deleteConfirm.tagCount - 1} 个标签，文件不会被删除。</span></>
+                  <>{t('sidebar:clips.deleteConfirm.removeTagPrefix')}<strong>{clipTitle}</strong>{t('sidebar:clips.deleteConfirm.removeTagMiddle')}<strong>{deleteConfirm.tag}</strong>{t('sidebar:clips.deleteConfirm.removeTagSuffix')}<br />
+                  <span className="text-[11px] text-t3">{t('sidebar:clips.deleteConfirm.removeTagHint', { count: deleteConfirm.tagCount - 1 })}</span></>
                 )}
               </div>
               <div className="flex justify-end gap-2">
-                <button className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-brd font-ui transition-all duration-[140ms] bg-panel text-t2 hover:bg-hov" onClick={() => setDeleteConfirm(null)}>取消</button>
+                <button className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-brd font-ui transition-all duration-[140ms] bg-panel text-t2 hover:bg-hov" onClick={() => setDeleteConfirm(null)}>{t('sidebar:clips.cancel')}</button>
                 <button className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-[#e74c3c] font-ui transition-all duration-[140ms] bg-[#e74c3c] text-white hover:bg-[#c0392b] hover:border-[#c0392b]" onClick={confirmDelete}>
-                  {isLastTag ? '删除' : '移除标签'}
+                  {isLastTag ? t('sidebar:clips.delete') : t('sidebar:clips.deleteConfirm.titleRemoveTag')}
                 </button>
               </div>
             </div>

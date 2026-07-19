@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useCommandPaletteStore, type PaletteItem } from '@/store/commandPaletteStore';
 import { buildHighlightSegments, groupLabelZh } from './commandPaletteHelpers';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Unified command palette (⌘P / Ctrl+P).
@@ -14,6 +15,7 @@ import { buildHighlightSegments, groupLabelZh } from './commandPaletteHelpers';
  * handle that key combo.
  */
 export function CommandPalette() {
+  const { t } = useTranslation();
   const isOpen = useCommandPaletteStore((s) => s.isOpen);
   const query = useCommandPaletteStore((s) => s.query);
   const selectedIndex = useCommandPaletteStore((s) => s.selectedIndex);
@@ -72,7 +74,7 @@ export function CommandPalette() {
             ref={inputRef}
             className="dlg-input"
             style={{ borderRadius: 0, border: 'none', borderBottom: '1px solid var(--brd)' }}
-            placeholder="搜索命令或文件…"
+            placeholder={t('shell:commandPalette.placeholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -109,7 +111,7 @@ export function CommandPalette() {
             style={{ maxHeight: 'calc(70vh - 48px)' }}
           >
             {items.length === 0 ? (
-              <div className="py-6 px-4 text-center text-t2 text-[13px]">无匹配项</div>
+              <div className="py-6 px-4 text-center text-t2 text-[13px]">{t('shell:commandPalette.noMatch')}</div>
             ) : (
               groups.map((group) => {
                 if (group.items.length === 0) return null;

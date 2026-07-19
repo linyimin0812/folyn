@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { dueState } from '@/features/schedule/markdown';
 import { useBoardColumns } from '@/features/schedule/columns';
@@ -6,6 +7,7 @@ import { DayCalAside } from './DayCalAside';
 import { BoardColumn } from './BoardColumn';
 
 export function BoardView() {
+  const { t } = useTranslation();
   const tasks = useScheduleStore((s) => s.tasks);
   const moveTaskStatus = useScheduleStore((s) => s.moveTaskStatus);
   const removeBoardColumn = useScheduleStore((s) => s.removeBoardColumn);
@@ -74,10 +76,10 @@ export function BoardView() {
                     if (e.key === 'Enter') submitNew();
                     if (e.key === 'Escape') { setAdding(false); setNewName(''); }
                   }}
-                  placeholder="列名…"
+                  placeholder={t('schedule:boardView.columnNamePlaceholder')}
                 />
               ) : (
-                <button className="sw-col-add-btn" onClick={() => setAdding(true)}>+ 新列</button>
+                <button className="sw-col-add-btn" onClick={() => setAdding(true)}>{t('schedule:boardView.addColumn')}</button>
               )}
             </div>
           </div>

@@ -15,8 +15,10 @@ import { resolveSendOptions, isRigMode } from './inputModes';
 import { saveBlobs, buildReadInstructions } from '@/components/chat';
 import type { SavedAttachment } from '@/components/chat';
 import { runRigChat } from '@/services/rigChat';
+import { useTranslation } from 'react-i18next';
 
 export function AiPanel() {
+  const { t } = useTranslation();
   const aiPanelVisible = useEditorViewStateStore((s) => s.aiPanelVisible);
   const toggleAiPanel = useEditorViewStateStore((s) => s.toggleAiPanel);
 
@@ -105,7 +107,7 @@ export function AiPanel() {
       type: att.type,
       previewUrl: att.previewUrl,
     }));
-    addMessage('user', userText || '(附件)', sessionId, previewAttachments.length > 0 ? previewAttachments : undefined);
+    addMessage('user', userText || t('ai:panel.attachmentPlaceholder'), sessionId, previewAttachments.length > 0 ? previewAttachments : undefined);
     addMessage('assistant', '', sessionId);
     setSessionStreaming(sessionId, true);
 
@@ -171,7 +173,7 @@ export function AiPanel() {
     }
 
     if (attachSaveError) {
-      appendToLastMessage(`[错误] 附件保存失败: ${attachSaveError}`, sessionId);
+      appendToLastMessage(t('ai:errors.attachmentSaveFailed', { error: attachSaveError }), sessionId);
       setSessionStreaming(sessionId, false);
       return;
     }
@@ -203,7 +205,7 @@ export function AiPanel() {
           if (event.sessionId) setCliSessionId(event.sessionId, sid);
           break;
         case 'error':
-          if (event.content) appendToLastMessage(`\n\n[错误] ${event.content}`, sid);
+          if (event.content) appendToLastMessage(t('ai:errors.streamError', { error: event.content }), sid);
           break;
         case 'done':
           setSessionStreaming(sid, false);
@@ -243,7 +245,7 @@ export function AiPanel() {
         await adapter.send(prompt, sendOptions);
       }
     } catch (err) {
-      appendToLastMessage(`\n\n[错误] ${String(err)}`, sid);
+      appendToLastMessage(t('ai:errors.streamError', { error: String(err) }), sid);
       setSessionStreaming(sid, false);
       resumeWatcher();
     } finally {
@@ -269,7 +271,7 @@ export function AiPanel() {
   const handleDeleteSession = async () => {
     if (!activeSessionId) return;
     const { confirm } = await import('@tauri-apps/plugin-dialog');
-    const yes = await confirm('确定要删除当前会话吗？删除后无法恢复。', { title: '删除会话', kind: 'warning' });
+    const yes = await confirm(t('ai:panel.deleteConfirm'), { title: t('ai:panel.deleteConfirmTitle'), kind: 'warning' });
     if (yes) {
       sessionAdapters.delete(activeSessionId);
       deleteSession(activeSessionId);
@@ -293,7 +295,7 @@ export function AiPanel() {
             className="flex items-center gap-1 cursor-pointer bg-transparent border-none py-0.5 px-1.5 rounded max-w-full min-w-0 hover:bg-hov"
             onClick={() => setShowSessionList(!showSessionList)}
           >
-            <span className="text-[13px] font-bold text-acc truncate">✦ {activeSession?.title || '新会话'}</span>
+            <span className="text-[13px] font-bold text-acc truncate">✦ {activeSession?.title || t('ai:panel.title')}</span>
             <svg className="shrink-0 text-t3" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 12 15 18 9" />
             </svg>
@@ -310,24 +312,24 @@ export function AiPanel() {
                     {s.isStreaming && <span className="ai-session-streaming" />}
                     {s.title}
                   </span>
-                  <span className="shrink-0 text-[10px] text-t3">{s.messages.filter((m) => m.role === 'user').length} 条</span>
+                  <span className="shrink-0 text-[10px] text-t3">{s.messages.filter((m) => m.role === 'user').length} {t('ai:panel.messageCountSuffix')}</span>
                 </button>
               ))}
             </div>
           )}
         </div>
         <div className="flex gap-1 shrink-0">
-          <button className="w-6 h-6 flex items-center justify-center rounded text-[12px] text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1" onClick={handleNewSession} title="新建会话">
+          <button className="w-6 h-6 flex items-center justify-center rounded text-[12px] text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1" onClick={handleNewSession} title={t('ai:panel.newSession')}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
           </button>
-          <button className="w-6 h-6 flex items-center justify-center rounded text-[12px] text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1" onClick={handleDeleteSession} title="删除会话">
+          <button className="w-6 h-6 flex items-center justify-center rounded text-[12px] text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1" onClick={handleDeleteSession} title={t('ai:panel.deleteSession')}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
             </svg>
           </button>
-          <button className="w-6 h-6 flex items-center justify-center rounded text-[12px] text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1" onClick={toggleAiPanel} title="关闭">
+          <button className="w-6 h-6 flex items-center justify-center rounded text-[12px] text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1" onClick={toggleAiPanel} title={t('ai:panel.close')}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -347,14 +349,14 @@ export function AiPanel() {
           <span className="flex items-center gap-1.5 min-w-0">
             {isStreaming && <span className="ai-session-streaming shrink-0" />}
             <span className="truncate">
-              {isStreaming ? 'study agent 运行中…' : 'study agent 会话（不可手动输入）'}
+              {isStreaming ? t('ai:panel.studyStreaming') : t('ai:panel.studyIdle')}
             </span>
           </span>
           {isStreaming && (
             <button
               className="w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-all duration-[120ms] bg-red text-white hover:opacity-[.85] shrink-0"
               onClick={handleStop}
-              title="停止"
+              title={t('ai:panel.stop')}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="6" y="6" width="12" height="12" rx="2" />

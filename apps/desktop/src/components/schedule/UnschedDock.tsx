@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { setDragPayload } from '@/features/schedule/dnd';
-import { TASK_CATEGORY_LABEL } from '@/features/schedule/types';
+import type { TaskCategory } from '@/features/schedule/types';
 
 export function UnschedDock() {
+  const { t } = useTranslation();
   const tasks = useScheduleStore((s) => s.tasks);
   const list = tasks
     .filter((t) => !t.done && !t.scheduledDate)
@@ -15,22 +17,23 @@ export function UnschedDock() {
   return (
     <div className="sw-rail-block">
       <p className="sw-section-label">
-        待排程
+        {t('schedule:unschedDock.title')}
         <span style={{ color: 'var(--muted)', float: 'right', fontFamily: 'var(--font-mono)' }}>{list.length}</span>
       </p>
       <div className="sw-unsched-dock">
         {list.length === 0 ? (
-          <div className="sw-dock-empty">全部已排程 ✓</div>
+          <div className="sw-dock-empty">{t('schedule:unschedDock.allDone')}</div>
         ) : (
           list.map((t) => <DockChip key={t.id} taskId={t.id} title={t.title} prio={t.priority} cat={t.category} />)
         )}
       </div>
-      <p className="sw-section-hint">从这里拖到日历时间格即可排程</p>
+      <p className="sw-section-hint">{t('schedule:unschedDock.hint')}</p>
     </div>
   );
 }
 
-function DockChip({ taskId, title, prio, cat }: { taskId: string; title: string; prio: 'high' | 'med' | 'low'; cat: keyof typeof TASK_CATEGORY_LABEL }) {
+function DockChip({ taskId, title, prio, cat }: { taskId: string; title: string; prio: 'high' | 'med' | 'low'; cat: TaskCategory }) {
+  const { t } = useTranslation();
   const [dragging, setDragging] = useState(false);
   return (
     <div
@@ -44,18 +47,18 @@ function DockChip({ taskId, title, prio, cat }: { taskId: string; title: string;
         setDragging(false);
         document.querySelectorAll('.sw-day-col.drop-target, .sw-slot.drop-target').forEach((s) => s.classList.remove('drop-target'));
       }}
-      onClick={() => useScheduleStore.getState().toast('拖到日历时间格即可排程')}
+      onClick={() => useScheduleStore.getState().toast(t('schedule:unschedDock.dragToast'))}
     >
       <span className={`sw-prio ${prio}`} />
       <span className="sw-label">{title}</span>
-      <span className="sw-cat">{TASK_CATEGORY_LABEL[cat]}</span>
+      <span className="sw-cat">{t(`schedule:category.task.${cat}`)}</span>
       <button
         className="sw-dock-del"
         onClick={(e) => {
           e.stopPropagation();
           void useScheduleStore.getState().deleteTask(taskId);
         }}
-        aria-label="删除"
+        aria-label={t('schedule:unschedDock.delete')}
         type="button"
       >
         ✕

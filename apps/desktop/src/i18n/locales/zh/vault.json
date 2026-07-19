@@ -1,0 +1,30 @@
+{
+  "page": {
+    "tagline": "存储库",
+    "title": "Vault 管理",
+    "description": "管理本地知识库，切换工作上下文",
+    "newVault": "+ 新建 Vault",
+    "myVaults": "我的 VAULT",
+    "newVaultShort": "新建 Vault",
+    "current": "当前",
+    "typeSuffix": "类型",
+    "openEditor": "打开编辑器",
+    "switch": "切换",
+    "deleteTitle": "删除",
+    "fileBrowse": "文件浏览 — {{name}}",
+    "emptyFiles": "暂无文件，在编辑器中创建新文档",
+    "emptyFolder": "空文件夹"
+  },
+  "delete": {
+    "title": "确认删除",
+    "confirm": "确定要删除 Vault「{{name}}」吗？此操作不会删除磁盘上的文件。",
+    "delete": "删除",
+    "cancel": "取消"
+  },
+  "time": {
+    "justNow": "刚刚",
+    "minutesAgo": "{{count}} 分钟前",
+    "hoursAgo": "{{count}} 小时前",
+    "daysAgo": "{{count}} 天前"
+  }
+}

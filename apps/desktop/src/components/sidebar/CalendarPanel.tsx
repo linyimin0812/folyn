@@ -1,10 +1,9 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useVaultStore } from '@/store/vaultStore';
 import * as editorIoService from '@/services/editorIoService';
 import { usePrefsStore } from '@/store/prefsStore';
 import type { VaultEntry } from '@quill/vault-provider';
-
-const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
 function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
@@ -45,6 +44,7 @@ function extractDailyNoteDates(
 }
 
 export function CalendarPanel() {
+  const { t } = useTranslation();
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -95,12 +95,12 @@ export function CalendarPanel() {
       <div className="calendar-header">
         <button className="calendar-nav" onClick={handlePrevMonth}>‹</button>
         <span className="calendar-title">
-          {viewYear} 年 {viewMonth + 1} 月
+          {t('sidebar:calendar.title', { year: viewYear, month: viewMonth + 1 })}
         </span>
         <button className="calendar-nav" onClick={handleNextMonth}>›</button>
       </div>
       <div className="calendar-weekdays">
-        {WEEKDAYS.map((wd) => (
+        {(t('sidebar:calendar.weekdays', { returnObjects: true }) as string[]).map((wd) => (
           <span key={wd} className="calendar-wd">{wd}</span>
         ))}
       </div>
@@ -118,7 +118,7 @@ export function CalendarPanel() {
               key={dateStr}
               className={`calendar-cell ${isToday ? 'today' : ''} ${hasNote ? 'has-note' : ''}`}
               onClick={() => handleDayClick(day)}
-              title={hasNote ? `${dateStr} (有笔记)` : dateStr}
+              title={hasNote ? t('sidebar:calendar.hasNote', { date: dateStr }) : dateStr}
             >
               {day}
               {hasNote && <span className="calendar-dot" />}

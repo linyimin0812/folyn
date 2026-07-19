@@ -1,0 +1,6 @@
+{
+  "io": { "title": "File I/O error", "message": "Failed to handle file: {{detail}}" },
+  "notFound": { "title": "Not found", "message": "Not found: {{detail}}" },
+  "permission": { "title": "Permission denied", "message": "Permission denied: {{detail}}" },
+  "internal": { "title": "Internal error", "message": "Something went wrong: {{detail}}" }
+}

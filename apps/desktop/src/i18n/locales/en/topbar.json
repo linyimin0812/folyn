@@ -1,0 +1,17 @@
+{
+  "menu": "Menu",
+  "theme": {
+    "toggle": "Toggle theme"
+  },
+  "ai": {
+    "panel": "AI panel",
+    "planToday": "AI plan today"
+  },
+  "viewMode": {
+    "split": "Split",
+    "edit": "Edit",
+    "preview": "Preview",
+    "source": "Source",
+    "visual": "Visual"
+  }
+}

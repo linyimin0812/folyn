@@ -12,6 +12,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavStore } from '@/store/navStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
@@ -29,6 +30,7 @@ import type { ContextMenuData } from './ContextMenu';
 import { useSidebarContext } from './SidebarContext';
 
 export function FilesPanel(): React.JSX.Element {
+  const { t } = useTranslation();
   const { width, onFileSelect } = useSidebarContext();
   const vaultName = useAppearanceStore((state) => state.vaultName);
   const setCurrentPage = useNavStore((state) => state.setCurrentPage);
@@ -286,7 +288,7 @@ export function FilesPanel(): React.JSX.Element {
                 <NewItemInput
                   type={newItemType}
                   name={newItemName}
-                  placeholder={newItemType === 'dir' ? '文件夹名称' : newItemExtension ? `文件名（默认 .${newItemExtension}）` : '文件名（含扩展名）'}
+                  placeholder={newItemType === 'dir' ? t('sidebar:filesPanel.newItem.folderName') : newItemExtension ? t('sidebar:filesPanel.newItem.fileNameDefault', { ext: newItemExtension }) : t('sidebar:filesPanel.newItem.fileNameWithExt')}
                   depth={depth + 1}
                   inputRef={newItemInputRef}
                   onNameChange={setNewItemName}
@@ -336,57 +338,57 @@ export function FilesPanel(): React.JSX.Element {
           {/* Actions: new file / new folder / locate / refresh / expand / collapse */}
           {isCompact ? (
             <div className="flex items-center gap-0.5 ml-auto shrink-0 relative" ref={actionsMenuRef}>
-              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={locateActiveFile} data-tip="定位当前文件">
+              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={locateActiveFile} data-tip={t('sidebar:filesPanel.actions.locateActive')}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="1.5" x2="8" y2="6.5"/><line x1="8" y1="9.5" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="6.5" y2="8"/><line x1="9.5" y1="8" x2="14.5" y2="8"/></svg>
               </button>
-              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={() => useVaultStore.getState().refreshFileTree()} data-tip="刷新文件树">
+              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={() => useVaultStore.getState().refreshFileTree()} data-tip={t('sidebar:filesPanel.actions.refresh')}>
                 <ThemeIcon name="updateFolders" size={14} />
               </button>
-              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={() => setActionsMenuOpen((v) => !v)} data-tip="更多操作">
+              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={() => setActionsMenuOpen((v) => !v)} data-tip={t('sidebar:filesPanel.actions.more')}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13" r="1.5"/></svg>
               </button>
               {actionsMenuOpen && (
                 <div className="absolute top-full right-0 z-[100] min-w-[150px] p-1 bg-panel border border-brd rounded-md shadow-[0_4px_12px_rgba(0,0,0,.15)]">
                   <button className="flex items-center gap-2 w-full py-1.5 px-2.5 border-none rounded bg-transparent text-t1 text-xs cursor-pointer transition-colors duration-[120ms] whitespace-nowrap font-ui hover:bg-hov [&>svg]:shrink-0 [&>svg]:text-t2" onClick={() => { startNewItem('file'); setActionsMenuOpen(false); }}>
                     <ThemeIcon name="addFile" size={14} />
-                    <span>新建文件</span>
+                    <span>{t('sidebar:contextMenu.newFile')}</span>
                   </button>
                   <button className="flex items-center gap-2 w-full py-1.5 px-2.5 border-none rounded bg-transparent text-t1 text-xs cursor-pointer transition-colors duration-[120ms] whitespace-nowrap font-ui hover:bg-hov [&>svg]:shrink-0 [&>svg]:text-t2" onClick={() => { startNewItem('dir'); setActionsMenuOpen(false); }}>
                     <ThemeIcon name="newFolder" size={14} />
-                    <span>新建文件夹</span>
+                    <span>{t('sidebar:contextMenu.newFolder')}</span>
                   </button>
                   <button className="flex items-center gap-2 w-full py-1.5 px-2.5 border-none rounded bg-transparent text-t1 text-xs cursor-pointer transition-colors duration-[120ms] whitespace-nowrap font-ui hover:bg-hov [&>svg]:shrink-0 [&>svg]:text-t2" onClick={() => { expandAllDirs(); setActionsMenuOpen(false); }}>
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><polyline points="4,5 8,9 12,5" /><polyline points="4,9 8,13 12,9" /></svg>
-                    <span>展开全部</span>
+                    <span>{t('sidebar:filesPanel.actions.expandAll')}</span>
                   </button>
                   <button className="flex items-center gap-2 w-full py-1.5 px-2.5 border-none rounded bg-transparent text-t1 text-xs cursor-pointer transition-colors duration-[120ms] whitespace-nowrap font-ui hover:bg-hov [&>svg]:shrink-0 [&>svg]:text-t2" onClick={() => { collapseAllDirs(); setActionsMenuOpen(false); }}>
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><polyline points="4,9 8,5 12,9" /><polyline points="4,13 8,9 12,13" /></svg>
-                    <span>折叠全部</span>
+                    <span>{t('sidebar:filesPanel.actions.collapseAll')}</span>
                   </button>
                 </div>
               )}
             </div>
           ) : (
             <div className="flex items-center gap-0.5 ml-auto shrink-0 relative">
-              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={() => startNewItem('file')} data-tip="新建文件">
+              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={() => startNewItem('file')} data-tip={t('sidebar:contextMenu.newFile')}>
                 <ThemeIcon name="addFile" size={14} />
               </button>
-              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={() => startNewItem('dir')} data-tip="新建文件夹">
+              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={() => startNewItem('dir')} data-tip={t('sidebar:contextMenu.newFolder')}>
                 <ThemeIcon name="newFolder" size={14} />
               </button>
-              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={locateActiveFile} data-tip="定位当前文件">
+              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={locateActiveFile} data-tip={t('sidebar:filesPanel.actions.locateActive')}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="1.5" x2="8" y2="6.5"/><line x1="8" y1="9.5" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="6.5" y2="8"/><line x1="9.5" y1="8" x2="14.5" y2="8"/></svg>
               </button>
-              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={() => useVaultStore.getState().refreshFileTree()} data-tip="刷新文件树">
+              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={() => useVaultStore.getState().refreshFileTree()} data-tip={t('sidebar:filesPanel.actions.refresh')}>
                 <ThemeIcon name="updateFolders" size={14} />
               </button>
-              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={expandAllDirs} data-tip="展开全部文件夹">
+              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={expandAllDirs} data-tip={t('sidebar:filesPanel.actions.expandAllFolders')}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
                   <polyline points="4,5 8,9 12,5" />
                   <polyline points="4,9 8,13 12,9" />
                 </svg>
               </button>
-              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={collapseAllDirs} data-tip="折叠全部文件夹">
+              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={collapseAllDirs} data-tip={t('sidebar:filesPanel.actions.collapseAllFolders')}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
                   <polyline points="4,9 8,5 12,9" />
                   <polyline points="4,13 8,9 12,13" />
@@ -400,7 +402,7 @@ export function FilesPanel(): React.JSX.Element {
         <div className="mt-2">
           <input
             className="w-full py-[5px] px-2 rounded-[5px] border border-brd bg-inp text-t1 text-[calc(var(--ui-font-size)-3px)] outline-none transition-[border-color] duration-[140ms] font-ui focus:border-acc placeholder:text-t3"
-            placeholder="搜索文件..."
+            placeholder={t('sidebar:filesPanel.search.placeholder')}
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             autoCapitalize="off"
@@ -413,7 +415,7 @@ export function FilesPanel(): React.JSX.Element {
         <NewItemInput
           type={newItemType}
           name={newItemName}
-          placeholder={newItemType === 'dir' ? '文件夹名称' : '文件名称（默认 .md）'}
+          placeholder={newItemType === 'dir' ? t('sidebar:filesPanel.newItem.folderName') : t('sidebar:filesPanel.newItem.fileNameMd')}
           depth={0}
           inputRef={newItemInputRef}
           onNameChange={setNewItemName}
@@ -432,7 +434,7 @@ export function FilesPanel(): React.JSX.Element {
           <div className="py-4 px-3 text-center text-xs text-t3">
             {vaultError
               ? <span className="text-[#e05252]">{vaultError}</span>
-              : <span>暂无文件</span>
+              : <span>{t('sidebar:filesPanel.empty')}</span>
             }
           </div>
         )}

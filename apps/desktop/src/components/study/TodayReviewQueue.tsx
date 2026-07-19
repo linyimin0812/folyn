@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useStudyStore, collectDueAtoms, type DueAtomEntry } from '@/store/studyStore';
 import { reviewAtom } from '@/features/study/sm2';
 import { dateToString } from '@/features/schedule/dailyScan';
 import type { ReviewAtom, ReviewRating } from '@/features/study/types';
 
-const RATING_LABEL: { rating: ReviewRating; label: string }[] = [
-  { rating: 'again', label: '重来' },
-  { rating: 'hard', label: '困难' },
-  { rating: 'good', label: '良好' },
-  { rating: 'easy', label: '简单' },
+const RATING_KEYS: { rating: ReviewRating; key: string }[] = [
+  { rating: 'again', key: 'study:todayReview.ratings.again' },
+  { rating: 'hard', key: 'study:todayReview.ratings.hard' },
+  { rating: 'good', key: 'study:todayReview.ratings.good' },
+  { rating: 'easy', key: 'study:todayReview.ratings.easy' },
 ];
 
 /** 空态图标（庆祝）。 */
@@ -38,6 +39,7 @@ interface Props {
  * 可直接 4 按钮评级（按 slug 定位主题文档并回写）。卡片风格与复习区一致。
  */
 export function TodayReviewQueue({ onShowTopic }: Props) {
+  const { t } = useTranslation();
   const topics = useStudyStore((s) => s.topics);
   const rateAtomInTopic = useStudyStore((s) => s.rateAtomInTopic);
   const selectTopic = useStudyStore((s) => s.selectTopic);
@@ -86,17 +88,17 @@ export function TodayReviewQueue({ onShowTopic }: Props) {
   return (
     <section className="sw-study-section sw-today-review">
       <header className="sw-study-sec-head">
-        <h3><span className="sw-sec-icon" aria-hidden="true">{SECTION_ICON}</span>今日复习</h3>
+        <h3><span className="sw-sec-icon" aria-hidden="true">{SECTION_ICON}</span>{t('study:todayReview.sectionTitle')}</h3>
         <div className="sw-study-sec-actions">
-          <span className="sw-study-count" title="今日到期数">{ordered.length} 到期</span>
+          <span className="sw-study-count" title={t('study:todayReview.countTitle')}>{t('study:todayReview.dueLabel', { count: ordered.length })}</span>
         </div>
       </header>
 
       {ordered.length === 0 ? (
         <div className="sw-empty-state sw-empty-celebrate">
           <span className="sw-empty-icon">{SPARK_ICON}</span>
-          <span className="sw-empty-text">今天没有到期复习 🎉</span>
-          <span className="sw-empty-hint">稍后再来，或到各主题添加复习内容</span>
+          <span className="sw-empty-text">{t('study:todayReview.empty')}</span>
+          <span className="sw-empty-hint">{t('study:todayReview.emptyHint')}</span>
         </div>
       ) : (
         <ul className="sw-study-list">
@@ -106,7 +108,7 @@ export function TodayReviewQueue({ onShowTopic }: Props) {
               <li key={`${topicSlug}:${atom.id}`} className="sw-card sw-review-card due">
                 <button
                   className="sw-tag dev sw-review-topic"
-                  title={`来自主题：${topicTitle(topicSlug)}（点击切换）`}
+                  title={t('study:todayReview.fromTitle', { title: topicTitle(topicSlug) })}
                   onClick={() => {
                     selectTopic(topicSlug);
                     onShowTopic?.();
@@ -117,25 +119,25 @@ export function TodayReviewQueue({ onShowTopic }: Props) {
                 <div className="sw-study-item-body">
                   <div className="sw-study-item-title">{atom.summary}</div>
                   <div className="sw-card-meta sw-review-meta">
-                    <span className="sw-chip sw-due-chip" title="到期日">
+                    <span className="sw-chip sw-due-chip" title={t('study:todayReview.dueChip')}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-                      到期 {atom.next}
+                      {t('study:todayReview.dueText', { date: atom.next })}
                     </span>
-                    <span className="sw-chip" title="连续正确次数">rep {atom.rep}</span>
+                    <span className="sw-chip" title={t('study:todayReview.repChip')}>rep {atom.rep}</span>
                     <span className="sw-chip" title="ease factor">ef {atom.ef.toFixed(2)}</span>
-                    {atom.src && <span className="sw-chip sw-src-chip" title="来源">{atom.src}</span>}
+                    {atom.src && <span className="sw-chip sw-src-chip" title={t('study:todayReview.srcChip')}>{atom.src}</span>}
                   </div>
                 </div>
                 <div className="sw-review-btns">
-                  {RATING_LABEL.map(({ rating, label }) => (
+                  {RATING_KEYS.map(({ rating, key }) => (
                     <button
                       key={rating}
                       className={`sw-rate ${rating}`}
                       disabled={busyId === atom.id}
                       onClick={() => void rate(entry, rating)}
-                      aria-label={`${label}（评级）`}
+                      aria-label={t('study:todayReview.ratingAria', { label: t(key) })}
                     >
-                      {label}
+                      {t(key)}
                     </button>
                   ))}
                 </div>

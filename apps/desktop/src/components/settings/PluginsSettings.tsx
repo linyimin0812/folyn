@@ -25,6 +25,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { TriangleAlert } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import { isTauri } from '@/utils/platform';
 import { usePluginStore, type PluginRow } from '@/store/pluginStore';
 
@@ -45,22 +47,23 @@ function stateBadgeClass(state: PluginRow['state']): string {
 function stateLabel(state: PluginRow['state']): string {
   switch (state) {
     case 'active':
-      return '运行中';
+      return i18n.t('settings:plugins.state.active');
     case 'inactive':
-      return '已停用';
+      return i18n.t('settings:plugins.state.inactive');
     case 'failed':
-      return '失败';
+      return i18n.t('settings:plugins.state.failed');
     default:
-      return '已安装';
+      return i18n.t('settings:plugins.state.installed');
   }
 }
 
 function tierLabel(tier: PluginRow['entry']['tier']): string {
-  return tier === 'trusted' ? '可信层' : '沙箱层';
+  return i18n.t(tier === 'trusted' ? 'settings:plugins.tier.trusted' : 'settings:plugins.tier.sandbox');
 }
 
 /** A single plugin row with its action buttons. */
 function PluginRowCard({ row }: { row: PluginRow }) {
+  const { t } = useTranslation();
   const { entry, state, error } = row;
   const busy = usePluginStore(useShallow((s) => s.busy));
   const activate = usePluginStore((s) => s.activate);
@@ -103,7 +106,7 @@ function PluginRowCard({ row }: { row: PluginRow }) {
             </span>
             {entry.trusted && (
               <span className="text-[10px] px-1.5 py-0.5 rounded border border-acc/30 text-acc bg-accdim">
-                已批准
+                {t('settings:plugins.approved')}
               </span>
             )}
           </div>
@@ -116,7 +119,7 @@ function PluginRowCard({ row }: { row: PluginRow }) {
               disabled={anyBusy}
               onClick={handleApprove}
             >
-              {isApproveBusy ? '批准中…' : '批准并授权'}
+              {isApproveBusy ? t('settings:plugins.approving') : t('settings:plugins.approve')}
             </button>
           )}
           {canActivate && (
@@ -125,7 +128,7 @@ function PluginRowCard({ row }: { row: PluginRow }) {
               disabled={anyBusy}
               onClick={() => void activate(entry.id)}
             >
-              {isActivateBusy ? '启用中…' : '启用'}
+              {isActivateBusy ? t('settings:plugins.activating') : t('settings:plugins.activate')}
             </button>
           )}
           {canDeactivate && (
@@ -134,16 +137,16 @@ function PluginRowCard({ row }: { row: PluginRow }) {
               disabled={anyBusy}
               onClick={() => void deactivate(entry.id)}
             >
-              {isDeactivateBusy ? '停用中…' : '停用'}
+              {isDeactivateBusy ? t('settings:plugins.deactivating') : t('settings:plugins.deactivate')}
             </button>
           )}
           <button
             className="btn btn-g btn-sm"
             disabled={anyBusy}
             onClick={() => void uninstall(entry.id)}
-            title="卸载插件"
+            title={t('settings:plugins.uninstallTitle')}
           >
-            {isUninstallBusy ? '卸载中…' : '卸载'}
+            {isUninstallBusy ? t('settings:plugins.uninstalling') : t('settings:plugins.uninstall')}
           </button>
         </div>
       </div>
@@ -158,6 +161,7 @@ function PluginRowCard({ row }: { row: PluginRow }) {
 
 /** The consent modal — lists declared permissions + design-reality warning. */
 function ConsentModal() {
+  const { t } = useTranslation();
   const consent = usePluginStore((s) => s.consent);
   const approve = usePluginStore((s) => s.approve);
   const closeConsent = usePluginStore((s) => s.closeConsent);
@@ -175,16 +179,16 @@ function ConsentModal() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-1">
-          批准可信插件
+          {t('settings:plugins.consent.title')}
         </div>
         <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t2 mb-3">
-          即将批准 <span className="font-semibold text-t1">{consent.name}</span>。
+          {t('settings:plugins.consent.intro')} <span className="font-semibold text-t1">{consent.name}</span>。
         </div>
 
         <div className="bg-surf2 border border-brd2 rounded-md p-2.5 mb-3">
-          <div className="text-[11px] font-semibold text-t2 mb-1.5">声明的权限与贡献点：</div>
+          <div className="text-[11px] font-semibold text-t2 mb-1.5">{t('settings:plugins.consent.permissionsLabel')}</div>
           {consent.permissions.length === 0 ? (
-            <div className="text-[11px] text-t3">无</div>
+            <div className="text-[11px] text-t3">{t('settings:plugins.consent.noPermissions')}</div>
           ) : (
             <ul className="text-[11px] text-t2 space-y-0.5 list-disc list-inside">
               {consent.permissions.map((p) => (
@@ -197,22 +201,20 @@ function ConsentModal() {
         <div className="bg-amber/10 border border-amber/40 rounded-md p-2.5 mb-3">
           <div className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed flex gap-1.5">
             <TriangleAlert size={13} className="shrink-0 mt-0.5" />
-            <span>可信插件运行在主进程中，拥有完整的宿主能力（可读写 vault、调用
-            Tauri 命令、访问所有 React 状态）。批准等同于完全信任——仅批准来自
-            你信任的来源的插件。卸载可随时移除其贡献点。</span>
+            <span>{t('settings:plugins.consent.warning')}</span>
           </div>
         </div>
 
         <div className="flex justify-end gap-2">
           <button className="btn btn-g btn-sm" onClick={closeConsent}>
-            取消
+            {t('settings:plugins.consent.cancel')}
           </button>
           <button
             className="btn btn-p btn-sm"
             disabled={busy}
             onClick={() => void approve(consent.id)}
           >
-            {busy ? '批准中…' : '我了解，批准'}
+            {busy ? t('settings:plugins.approving') : t('settings:plugins.consent.confirm')}
           </button>
         </div>
       </div>
@@ -221,6 +223,7 @@ function ConsentModal() {
 }
 
 export function PluginsSettings() {
+  const { t } = useTranslation();
   const rows = usePluginStore((s) => s.rows);
   const refreshing = usePluginStore((s) => s.refreshing);
   const installing = usePluginStore((s) => s.installing);
@@ -257,10 +260,10 @@ export function PluginsSettings() {
   return (
     <div className="mb-[26px]">
       <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">
-        插件
+        {t('settings:plugins.title')}
       </div>
       <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">
-        安装、批准、启用或卸载第三方插件（微内核 + 插件 SDK）
+        {t('settings:plugins.description')}
       </div>
 
       <div className="flex items-center gap-2 mb-3">
@@ -269,10 +272,10 @@ export function PluginsSettings() {
           disabled={!!installing || folderOpen || !isTauri()}
           onClick={handleInstallFromFolder}
         >
-          {installing ? `安装中（${installing.id}）…` : '从文件夹安装…'}
+          {installing ? t('settings:plugins.installing', { id: installing.id }) : t('settings:plugins.installFromFolder')}
         </button>
         <button className="btn btn-g btn-sm" disabled={refreshing} onClick={() => void refresh()}>
-          {refreshing ? '刷新中…' : '刷新'}
+          {refreshing ? t('settings:plugins.refreshing') : t('settings:plugins.refresh')}
         </button>
       </div>
 
@@ -284,9 +287,9 @@ export function PluginsSettings() {
 
       {rows.length === 0 ? (
         <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
-          尚未安装任何插件。将插件文件夹放到任意位置，然后点"从文件夹安装"。
+          {t('settings:plugins.empty')}
           <br />
-          示例插件见仓库 <code className="font-mono text-t2">examples/plugins/</code>。
+          {t('settings:plugins.emptyExample')} <code className="font-mono text-t2">examples/plugins/</code>。
         </div>
       ) : (
         <div>

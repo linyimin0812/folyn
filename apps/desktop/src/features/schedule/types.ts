@@ -96,6 +96,12 @@ export const COLUMN_COLOR_PALETTE: string[] = [
   'var(--cyan)', 'var(--red)', 'var(--t3)',
 ];
 
+// ponytail: EVENT_CATEGORY_LABEL / TASK_CATEGORY_LABEL / DIFFICULTY_LABEL
+// are display-label maps retained for legacy callers (e.g. study/markdown.ts
+// which bakes difficulty labels into persisted markdown data). UI display
+// sites now use t('schedule:category.<id>') / t('study:difficulty.<id>')
+// directly. Lift the markdown.ts label to i18n when display-site refactor
+// (rendered label vs persisted data) is in scope.
 export const TASK_CATEGORY_LABEL: Record<TaskCategory, string> = {
   design: '设计',
   dev: '研发',

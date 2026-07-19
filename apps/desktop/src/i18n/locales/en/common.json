@@ -1,0 +1,27 @@
+{
+  "language": {
+    "zh": "中文",
+    "en": "English",
+    "switcher": {
+      "title": "Language",
+      "aria": "Switch language"
+    }
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "close": "Close",
+    "new": "New",
+    "open": "Open",
+    "edit": "Edit",
+    "preview": "Preview",
+    "loading": "Loading…",
+    "error": "Error",
+    "retry": "Retry",
+    "yes": "Yes",
+    "no": "No"
+  }
+}

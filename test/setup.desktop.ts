@@ -1,4 +1,11 @@
 import { vi } from 'vitest';
+import '@/i18n';
+import i18n from '@/i18n';
+
+// Default the test locale to zh so legacy Chinese-string assertions
+// (e.g. ActivityBar.test.tsx > getByTitle('设置')) keep passing. Per-test
+// overrides can still call i18n.changeLanguage('en').
+void i18n.changeLanguage('zh');
 
 // Avoid eagerly loading @excalidraw (pulled in via file-types/registry's
 // import.meta.glob({ eager: true })) during unit tests that don't render

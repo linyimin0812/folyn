@@ -1,0 +1,6 @@
+{
+  "io": { "title": "文件读写错误", "message": "处理文件时出错：{{detail}}" },
+  "notFound": { "title": "未找到", "message": "未找到目标：{{detail}}" },
+  "permission": { "title": "权限不足", "message": "没有权限：{{detail}}" },
+  "internal": { "title": "内部错误", "message": "发生错误：{{detail}}" }
+}

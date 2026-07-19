@@ -1,0 +1,376 @@
+{
+  "nav": {
+    "backToEditor": "返回编辑器"
+  },
+  "groups": {
+    "general": "通用",
+    "editor": "编辑器",
+    "ai": "AI",
+    "extensions": "扩展",
+    "about": "关于"
+  },
+  "tabs": {
+    "appearance": "外观",
+    "editor": "编辑器",
+    "shortcuts": "快捷键",
+    "ai": "AI 工具",
+    "voice": "语音输入",
+    "templates": "文件模板",
+    "skills": "Skills",
+    "pet": "桌宠",
+    "notifications": "通知",
+    "plugins": "插件",
+    "about": "关于"
+  },
+  "appearance": {
+    "title": "外观",
+    "description": "调整界面主题与字体显示",
+    "theme": {
+      "label": "界面主题",
+      "dark": "暗色",
+      "light": "亮色",
+      "system": "跟随系统"
+    },
+    "fontSize": {
+      "label": "界面字体大小",
+      "compact": "12px（紧凑）",
+      "default": "14px（默认）",
+      "comfortable": "16px（舒适）"
+    },
+    "panels": {
+      "ai": {
+        "label": "默认显示 AI 面板",
+        "description": "打开编辑器时自动展开 AI 对话面板"
+      },
+      "statusBar": {
+        "label": "状态栏",
+        "description": "底部显示字数、光标位置等信息"
+      },
+      "hiddenFiles": {
+        "label": "显示隐藏文件",
+        "description": "在文件树中显示以 . 开头的隐藏文件和文件夹"
+      },
+      "wiki": {
+        "label": "Wiki 面板",
+        "description": "在侧栏显示 Wiki 知识库入口"
+      },
+      "clips": {
+        "label": "Clips 面板",
+        "description": "在侧栏显示网页剪藏入口"
+      },
+      "analyze": {
+        "label": "项目分析面板",
+        "description": "在侧栏显示项目分析入口"
+      },
+      "daily": {
+        "label": "今日笔记面板",
+        "description": "在侧栏显示日历与今日笔记入口（禁用后 ⌘D 也不再打开）"
+      }
+    },
+    "excludePatterns": {
+      "label": "过滤文件/文件夹",
+      "description": "每行一个规则，匹配的文件或文件夹将在文件树中隐藏。支持 * 和 ? 通配符，# 开头为注释。"
+    }
+  },
+  "editor": {
+    "title": "编辑器",
+    "description": "配置编辑器行为与显示选项",
+    "font": {
+      "label": "编辑器字体"
+    },
+    "fontSize": {
+      "label": "字体大小"
+    },
+    "tabSize": {
+      "label": "Tab 大小",
+      "2": "2 空格",
+      "4": "4 空格"
+    },
+    "showLineNumbers": {
+      "label": "显示行号",
+      "description": "在编辑区左侧显示行号"
+    },
+    "autoSave": {
+      "label": "自动保存",
+      "description": "每 30 秒自动保存当前文档"
+    },
+    "linkOpenMode": {
+      "label": "链接打开方式",
+      "description": "点击链接时的默认打开方式",
+      "external": "外部浏览器",
+      "internal": "应用内打开"
+    },
+    "dailyNotes": {
+      "title": "Daily Notes",
+      "description": "配置每日笔记的存储目录与日期格式",
+      "dir": {
+        "label": "笔记目录"
+      },
+      "dateFormat": {
+        "label": "日期格式"
+      }
+    }
+  },
+  "shortcuts": {
+    "title": "快捷键",
+    "description": "点击快捷键区域可重新录入，按下新的组合键即可修改",
+    "reset": "恢复默认",
+    "editor": {
+      "recording": "按下快捷键…",
+      "conflictHint": "未捕获到按键 — 该组合可能被 app 菜单或系统占用（⌘Q / ⌘H / ⌘M / ⌘W / ⌘⇧P）"
+    }
+  },
+  "ai": {
+    "title": "AI 工具",
+    "description": "配置 AI CLI 工具，用于智能编辑文档",
+    "cliAdapter": "CLI 适配器",
+    "cliPath": {
+      "label": "CLI 路径",
+      "detect": "检测",
+      "detectTitle": "自动检测路径",
+      "hint": "CLI 可执行文件的路径或命令名，点击\"检测\"自动查找"
+    },
+    "test": {
+      "testing": "测试中…",
+      "label": "测试连接",
+      "success": "连接成功",
+      "exitCode": "退出码 {{code}}",
+      "cannotRun": "无法执行 CLI: {{error}}"
+    },
+    "usage": {
+      "title": "使用说明",
+      "description": "AI 工具通过调用本地 CLI（如 Claude Code）来编辑文档。请确保已安装对应的 CLI 工具。修改会以 Diff 形式展示，确认后再应用到文件。"
+    },
+    "chat": {
+      "title": "Chat 模式",
+      "description": "多轮对话，经 rig 直连 LLM（不经过 CLI，无工具/文件访问）。ask/agent 仍用上面的 CLI。",
+      "provider": {
+        "label": "Provider",
+        "anthropic": "Anthropic（Claude）",
+        "openai": "OpenAI",
+        "openaiCompatible": "OpenAI 兼容（自定义 baseUrl）"
+      },
+      "model": {
+        "label": "模型"
+      },
+      "apiKey": {
+        "label": "API Key",
+        "show": "显示 API Key",
+        "hide": "隐藏 API Key"
+      },
+      "baseUrl": {
+        "label": "Base URL（可选）",
+        "anthropicHint": "官方 Anthropic 留空；Anthropic 兼容端点",
+        "openaiHint": "官方 OpenAI 留空。",
+        "openaiCompatibleHint": "Ollama / vLLM / LM Studio 等必填；不以 /v1 结尾时会自动补 /v1。",
+        "placeholder": "留空用默认"
+      },
+      "test": {
+        "testing": "测试中…",
+        "label": "测试连接"
+      }
+    }
+  },
+  "about": {
+    "tagline": "v0.1.0-alpha · Local-first Markdown Editor",
+    "features": {
+      "localFirst": {
+        "title": "本地优先",
+        "description": "数据存储在你的设备上"
+      },
+      "openFormat": {
+        "title": "开放格式",
+        "description": "标准 Markdown，无锁定"
+      },
+      "ai": {
+        "title": "AI 辅助",
+        "description": "本地 + 云端 LLM"
+      }
+    },
+    "copyVersion": "复制版本信息",
+    "checkUpdate": "检查更新"
+  },
+  "plugins": {
+    "title": "插件",
+    "description": "安装、批准、启用或卸载第三方插件（微内核 + 插件 SDK）",
+    "installFromFolder": "从文件夹安装…",
+    "installing": "安装中（{{id}}）…",
+    "refresh": "刷新",
+    "refreshing": "刷新中…",
+    "empty": "尚未安装任何插件。将插件文件夹放到任意位置，然后点\"从文件夹安装\"。",
+    "emptyExample": "示例插件见仓库",
+    "state": {
+      "active": "运行中",
+      "inactive": "已停用",
+      "failed": "失败",
+      "installed": "已安装"
+    },
+    "tier": {
+      "trusted": "可信层",
+      "sandbox": "沙箱层"
+    },
+    "approved": "已批准",
+    "approve": "批准并授权",
+    "approving": "批准中…",
+    "activate": "启用",
+    "activating": "启用中…",
+    "deactivate": "停用",
+    "deactivating": "停用中…",
+    "uninstall": "卸载",
+    "uninstalling": "卸载中…",
+    "uninstallTitle": "卸载插件",
+    "consent": {
+      "title": "批准可信插件",
+      "intro": "即将批准",
+      "permissionsLabel": "声明的权限与贡献点：",
+      "noPermissions": "无",
+      "warning": "可信插件运行在主进程中，拥有完整的宿主能力（可读写 vault、调用 Tauri 命令、访问所有 React 状态）。批准等同于完全信任——仅批准来自你信任的来源的插件。卸载可随时移除其贡献点。",
+      "cancel": "取消",
+      "confirm": "我了解，批准"
+    }
+  },
+  "voice": {
+    "title": "语音输入",
+    "description": "在 AI 聊天框点 🎤 或按全局热键开始录音,语音转文字后润色并插入到光标所在输入框(支持其他应用)",
+    "windowsUnsupported": "。Windows 暂不支持语音输入",
+    "windowsUnsupportedBanner": "当前平台暂不支持语音输入。macOS 使用 Apple Speech (SFSpeechRecognizer)。",
+    "permission": {
+      "checking": "检查中…",
+      "granted": "已授权 ✓",
+      "denied": "仍未授权,点击重试"
+    },
+    "accessibility": {
+      "title": "辅助功能权限",
+      "desc": "跨应用插入文本需要辅助功能权限。点击按钮触发系统授权弹框;授权后需重启应用生效(TCC 缓存进程启动时的判定)。",
+      "action": "授权辅助功能"
+    },
+    "microphone": {
+      "title": "麦克风权限",
+      "desc": "录音需要麦克风权限。点击按钮触发系统授权弹框;若曾拒绝,需在 系统设置 → 隐私与安全性 → 麦克风 中允许 Quill 后再点重试。",
+      "action": "授权麦克风"
+    },
+    "speech": {
+      "title": "语音识别权限",
+      "desc": "Apple Speech 转写需要语音识别权限。点击按钮触发系统授权弹框;若曾拒绝,需在 系统设置 → 隐私与安全性 → 语音识别 中允许 Quill 后再点重试。",
+      "action": "授权语音识别"
+    },
+    "polishPrompt": {
+      "label": "润色 Prompt",
+      "desc": "使用当前 AI 配置(见 AI 工具)对原始转录文本做润色。留空则跳过润色。",
+      "charCount": "{{count}} 字符",
+      "reset": "恢复默认"
+    },
+    "autoPolish": {
+      "title": "自动润色",
+      "desc": "录音结束后自动用润色 Prompt 处理转录文本;关闭则直接输出原始转录"
+    },
+    "saveSource": {
+      "title": "保存语音源文件",
+      "desc": "把录音的原始音频(WAV)保存到 vault 下的指定目录"
+    },
+    "sourceDir": {
+      "label": "源文件目录",
+      "desc": "相对路径基于当前 vault 根目录;保存的文件形如 <dir>/<timestamp>.wav"
+    },
+    "spokenLanguage": {
+      "label": "识别语言",
+      "desc": "Apple Speech 引擎按语言路由识别,中文语音请选「简体中文」;系统默认 locale 可能与实际说话语言不匹配,显式指定避免转写出空。"
+    },
+    "globalHotkey": {
+      "label": "全局热键",
+      "desc": "留空则不启用全局热键;启用后按住热键即开始录音,松开结束并插入到当前焦点输入框(跨应用)。Esc 清除。",
+      "recording": "按下快捷键…（Esc 清除）",
+      "notSet": "未设置（点击录制）"
+    }
+  },
+  "templates": {
+    "title": "文件模板",
+    "description": "按文件扩展名配置新建文件时的默认模板内容。支持变量：{{title}}, {{filename}}, {{date}}, {{ext}}",
+    "empty": "(empty)",
+    "emptyState": "暂无模板配置",
+    "deleteTitle": "删除模板",
+    "add": "添加模板",
+    "editTitle": "编辑模板",
+    "save": "保存",
+    "cancel": "取消",
+    "extPlaceholder": "ext"
+  },
+  "skills": {
+    "title": "Skills",
+    "description": "配置 AI 技能模板，自定义 Prompt 以控制 AI 生成内容的格式和质量",
+    "new": "新建 Skill",
+    "import": "导入",
+    "export": "导出",
+    "empty": "暂无 Skill 配置",
+    "capability": {
+      "title": "功能绑定",
+      "desc": "为每个功能指定使用的 SKILL，Claude Code 将根据对应 SKILL 的指令完成任务",
+      "clip": "网页剪藏",
+      "githubAnalysis": "GitHub 分析"
+    },
+    "form": {
+      "newTitle": "新建 Skill",
+      "idLabel": "ID",
+      "idHint": "Slug 格式，仅小写字母、数字和连字符",
+      "nameLabel": "名称",
+      "descLabel": "描述",
+      "descPlaceholder": "描述此 Skill 的用途",
+      "promptLabel": "Prompt 模板",
+      "promptPlaceholder": "输入 Prompt 模板，使用 {{variableName}} 引用变量...",
+      "formatLabel": "输出格式",
+      "create": "创建",
+      "cancel": "取消",
+      "editTitle": "编辑",
+      "contentLabel": "Skill 内容",
+      "save": "保存",
+      "reset": "恢复默认",
+      "delete": "删除"
+    },
+    "confirmReset": "确定恢复默认设置？未保存的修改将丢失。",
+    "confirmDelete": "确定删除此 Skill？此操作不可撤销。",
+    "errorRequired": "ID 和名称为必填项",
+    "errorCreate": "创建失败",
+    "errorImport": "导入失败",
+    "errorExport": "导出失败"
+  },
+  "pet": {
+    "title": "桌宠",
+    "description": "配置桌面宠物图标与显示",
+    "showPet": {
+      "title": "显示桌宠",
+      "desc": "在屏幕上显示桌面宠物窗口（macOS）"
+    },
+    "icon": {
+      "title": "图标",
+      "desc": "默认使用内置 Quill 图标，或上传自定义图片",
+      "builtin": "默认",
+      "custom": "自定义",
+      "uploading": "上传中…",
+      "upload": "上传图标…",
+      "reset": "恢复默认",
+      "hint": "支持 png / jpg / webp / svg，≤ 1MB",
+      "alt": "自定义图标"
+    },
+    "errors": {
+      "desktopOnly": "桌面端功能，请在 Tauri 环境中使用",
+      "unsupportedFormat": "仅支持 png / jpg / webp / svg 格式",
+      "fileTooLarge": "文件大小不能超过 1MB（当前 {{kb}} KB）",
+      "uploadFailed": "上传失败",
+      "resetFailed": "重置失败"
+    }
+  },
+  "notifications": {
+    "title": "通知",
+    "description": "选择桌面宠物事件通知的形式",
+    "form": {
+      "title": "通知形式",
+      "desc": "气泡浮于宠物头顶；系统通知走 macOS 通知中心（失焦时仍可见）"
+    },
+    "options": {
+      "bubble": "宠物头顶气泡",
+      "system": "系统通知",
+      "both": "两者都发",
+      "off": "关闭"
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { StudyUnit } from '@/features/study/types';
 import type { ScheduleLink } from '@/features/study/scheduleLink';
 import { isAiAvailable } from '@/features/study/scheduleLink';
@@ -74,6 +75,7 @@ export function StudyPlanSection({
   const nextOrder = sorted.length ? Math.max(...sorted.map((u) => u.order)) + 1 : 1;
   const progress = useMemo(() => computePlanProgress(units), [units]);
   const aiAvailable = isAiAvailable();
+  const { t } = useTranslation();
 
   const submit = async () => {
     const title = draft.trim();
@@ -100,49 +102,49 @@ export function StudyPlanSection({
   return (
     <section className="sw-study-section">
       <header className="sw-study-sec-head">
-        <h3><span className="sw-sec-icon" aria-hidden="true">{SECTION_ICON}</span>计划</h3>
+        <h3><span className="sw-sec-icon" aria-hidden="true">{SECTION_ICON}</span>{t('study:plan.sectionTitle')}</h3>
         <div className="sw-study-sec-actions">
-          <span className="sw-study-progress-summary" title="已完成 / 总数">
+          <span className="sw-study-progress-summary" title={t('study:plan.progressSummary')}>
             <span className="sw-study-progress-summary-pct">{progress.percent}%</span>
             <span className="sw-study-count">{progress.done}/{progress.total}</span>
           </span>
           <button
             className="primary"
             disabled={!aiAvailable}
-            title={aiAvailable ? 'AI 拆解主题为有序学习单元（返回建议卡片）' : '未配置 AI 适配器'}
+            title={aiAvailable ? t('study:plan.aiTooltip') : t('study:materials.aiDisabled')}
             onClick={onGeneratePlan}
           >
-            AI 生成计划
+            {t('study:plan.aiGenerate')}
           </button>
         </div>
       </header>
 
-      <div className="sw-study-overall-progress" title="总体进度">
+      <div className="sw-study-overall-progress" title={t('study:topbar.progressTitle')}>
         <div className="sw-bar"><i style={{ width: `${progress.percent}%` }} /></div>
       </div>
 
       {suggestedUnits.length > 0 && (
         <div className="sw-study-suggestions">
-          <p className="sw-study-suggestions-title">AI 建议学习单元（逐条加入或忽略）</p>
+          <p className="sw-study-suggestions-title">{t('study:plan.suggestionsTitle')}</p>
           <ul className="sw-study-list">
             {suggestedUnits.map((u) => (
               <li key={u.id} className="sw-card sw-unit-card sw-suggestion-card">
                 <div className="sw-study-item-body">
                   <div className="sw-study-item-title">
-                    <span className="sw-unit-order" title="建议序号">{u.order}</span>
+                    <span className="sw-unit-order" title={t('study:plan.suggestionOrder')}>{u.order}</span>
                     <span className="sw-unit-title">{u.title}</span>
                   </div>
                   <div className="sw-card-meta sw-unit-meta">
                     {u.est && (
-                      <span className="sw-chip" title="估时">{u.est}</span>
+                      <span className="sw-chip" title={t('study:plan.estChip')}>{u.est}</span>
                     )}
                     {u.dep && u.dep !== '-' && (
-                      <span className="sw-chip" title="依赖单元">依赖 #{u.dep}</span>
+                      <span className="sw-chip" title={t('study:plan.depChip')}>依赖 #{u.dep}</span>
                     )}
                   </div>
                   <div className="sw-card-actions">
-                    <button className="sw-card-action primary" onClick={() => onAcceptUnitSuggestion(u)}>加入</button>
-                    <button className="sw-card-action ghost" onClick={() => onDismissUnitSuggestion(u.id)}>忽略</button>
+                    <button className="sw-card-action primary" onClick={() => onAcceptUnitSuggestion(u)}>{t('study:plan.accept')}</button>
+                    <button className="sw-card-action ghost" onClick={() => onDismissUnitSuggestion(u.id)}>{t('study:plan.dismiss')}</button>
                   </div>
                 </div>
               </li>
@@ -156,19 +158,19 @@ export function StudyPlanSection({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }}
-          placeholder={`第 ${nextOrder} 单元名…`}
+          placeholder={t('study:plan.inputPlaceholder', { order: nextOrder })}
         />
-        <input value={est} onChange={(e) => setEst(e.target.value)} placeholder="估时 2h" />
-        <button onClick={submit}>添加</button>
+        <input value={est} onChange={(e) => setEst(e.target.value)} placeholder={t('study:plan.estPlaceholder')} />
+        <button onClick={submit}>{t('study:plan.add')}</button>
       </div>
 
       {sorted.length === 0 ? (
         <div className="sw-empty-state">
           <span className="sw-empty-icon">{LIST_ICON}</span>
-          <span className="sw-empty-text">暂无学习单元</span>
-          <span className="sw-empty-hint">用 AI 生成计划，或手动添加第一个单元</span>
-          <button className="sw-empty-cta" disabled={!aiAvailable} onClick={onGeneratePlan} title={aiAvailable ? 'AI 拆解主题为有序学习单元' : '未配置 AI 适配器'}>
-            AI 生成计划
+          <span className="sw-empty-text">{t('study:plan.empty')}</span>
+          <span className="sw-empty-hint">{t('study:plan.emptyHint')}</span>
+          <button className="sw-empty-cta" disabled={!aiAvailable} onClick={onGeneratePlan} title={aiAvailable ? t('study:plan.emptyCtaTitle') : t('study:materials.aiDisabled')}>
+            {t('study:plan.aiGenerate')}
           </button>
         </div>
       ) : (
@@ -178,7 +180,7 @@ export function StudyPlanSection({
             const scheduled = !!link;
             return (
               <li key={u.id} className={`sw-card sw-unit-card${u.done ? ' done' : ''}`}>
-                <label className="sw-unit-check" title={u.done ? '标记未完成' : '标记完成'}>
+                <label className="sw-unit-check" title={u.done ? t('study:plan.markDone') : t('study:plan.markUndone')}>
                   <input
                     type="checkbox"
                     checked={u.done}
@@ -187,23 +189,23 @@ export function StudyPlanSection({
                 </label>
                 <div className="sw-study-item-body">
                   <div className="sw-study-item-title">
-                    <span className="sw-unit-order" title="单元序号">{u.order}</span>
+                    <span className="sw-unit-order" title={t('study:plan.unitOrder')}>{u.order}</span>
                     <span className="sw-unit-title">{u.title}</span>
                   </div>
                   <div className="sw-card-meta sw-unit-meta">
                     {u.est && (
-                      <span className="sw-chip" title="估时">
+                      <span className="sw-chip" title={t('study:plan.estChip')}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
                         {u.est}
                       </span>
                     )}
                     {u.dep && u.dep !== '-' && (
-                      <span className="sw-chip" title="依赖单元">依赖 #{u.dep}</span>
+                      <span className="sw-chip" title={t('study:plan.depChip')}>依赖 #{u.dep}</span>
                     )}
                     {scheduled && (
-                      <span className={`sw-chip sw-schedule-link ${link!.done ? 'done' : 'due'}`} title={`排期于 ${link!.noteDate}`}>
+                      <span className={`sw-chip sw-schedule-link ${link!.done ? 'done' : 'due'}`} title={t('study:plan.scheduleLinkTitle', { date: link!.noteDate })}>
                         {link!.done ? CHECK_CIRCLE_ICON : CALENDAR_ICON}
-                        {link!.done ? '日程已完成' : `已排期 ${link!.noteDate}${link!.due ? ` (due ${link!.due})` : ''}`}
+                        {link!.done ? t('study:plan.scheduleLinkDone') : t('study:plan.scheduleLinkDue', { date: link!.noteDate, due: link!.due ? ` (due ${link!.due})` : '' })}
                       </span>
                     )}
                   </div>
@@ -217,22 +219,22 @@ export function StudyPlanSection({
                         type="date"
                         value={scheduleDate}
                         onChange={(e) => setScheduleDate(e.target.value)}
-                        aria-label="排期日期"
+                        aria-label={t('study:plan.scheduleDateAria')}
                       />
-                      <button onClick={() => void schedule(u)}>排到日程</button>
-                      <button className="ghost" onClick={() => setSchedulingFor(null)}>取消</button>
+                      <button onClick={() => void schedule(u)}>{t('study:plan.schedule')}</button>
+                      <button className="ghost" onClick={() => setSchedulingFor(null)}>{t('study:plan.cancel')}</button>
                     </div>
                   ) : (
                     <div className="sw-card-actions">
                       <button
                         className="sw-card-action"
-                        title="把该单元写入目标日期 daily note 的任务段（带 study 回链）"
+                        title={t('study:plan.scheduleTooltip')}
                         onClick={() => {
                           setScheduleDate(dateToString(new Date()));
                           setSchedulingFor(u.order);
                         }}
                       >
-                        排到日程
+                        {t('study:plan.schedule')}
                       </button>
                     </div>
                   )}

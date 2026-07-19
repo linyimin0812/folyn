@@ -17,6 +17,7 @@
 // Multi-day planning (today only)".)
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { formatTime } from '@/features/schedule/markdown';
 import { computeOverlapGroups, type LayoutItem } from '@/features/schedule/layout';
@@ -204,6 +205,7 @@ export interface PlanMyDayPreviewProps {
 }
 
 export function PlanMyDayPreview({ plan, targetDate, onAccept, onReject }: PlanMyDayPreviewProps) {
+  const { t } = useTranslation();
   // Existing today events (context — confirmed, solid). Read via granular
   // selector so the overlay only re-renders when events change.
   const events = useScheduleStore((s) => s.events);
@@ -341,7 +343,7 @@ export function PlanMyDayPreview({ plan, targetDate, onAccept, onReject }: PlanM
     plan.newEvents.length === 0;
 
   return (
-    <div className="sw-plan-overlay" role="dialog" aria-label="AI 规划今日">
+    <div className="sw-plan-overlay" role="dialog" aria-label={t('schedule:plan.ariaLabel')}>
       <div className="sw-plan-backdrop" onClick={onReject} />
       <div className="sw-plan-panel">
         <header className="sw-plan-header">
@@ -349,13 +351,13 @@ export function PlanMyDayPreview({ plan, targetDate, onAccept, onReject }: PlanM
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
               <path d="M13.5 8.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z" />
             </svg>
-            <span>AI 规划今日</span>
+            <span>{t('schedule:plan.previewTitle')}</span>
             <span className="sw-plan-date">{targetDate}</span>
           </div>
           <div className="sw-plan-actions">
-            <button className="sw-plan-reject" onClick={onReject}>放弃</button>
+            <button className="sw-plan-reject" onClick={onReject}>{t('schedule:plan.discard')}</button>
             <button className="sw-plan-accept" onClick={handleAccept} disabled={empty}>
-              应用已选
+              {t('schedule:plan.applySelected')}
             </button>
           </div>
         </header>
@@ -363,7 +365,7 @@ export function PlanMyDayPreview({ plan, targetDate, onAccept, onReject }: PlanM
         {plan.notes && <p className="sw-plan-notes">{plan.notes}</p>}
 
         {empty && (
-          <p className="sw-plan-empty">近 7 天无未完成任务，AI 也没有提议新计划。</p>
+          <p className="sw-plan-empty">{t('schedule:plan.empty')}</p>
         )}
 
         <div className="sw-plan-timeline" ref={timelineRef}>
@@ -467,9 +469,9 @@ export function PlanMyDayPreview({ plan, targetDate, onAccept, onReject }: PlanM
         </div>
 
         <footer className="sw-plan-legend">
-          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-task)' }} />提议任务（拖动调整 / ✓✗ 选择）</span>
-          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-health)' }} />提议事件 / 休息</span>
-          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-work)' }} />已有事件（参考）</span>
+          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-task)' }} />{t('schedule:plan.legendTask')}</span>
+          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-health)' }} />{t('schedule:plan.legendEvent')}</span>
+          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-work)' }} />{t('schedule:plan.legendExisting')}</span>
         </footer>
       </div>
     </div>

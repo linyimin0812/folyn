@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useVoiceStore, DEFAULT_POLISH_PROMPT, SPOKEN_LANGUAGES } from '@/store/voiceStore';
 import { isTauri } from '@/utils/platform';
 import { invoke } from '@tauri-apps/api/core';
@@ -26,6 +27,7 @@ type PermState = 'idle' | 'checking' | 'granted' | 'denied';
 function PermissionRow({ title, desc, idleLabel, state, onClick }: {
   title: string; desc: string; idleLabel: string; state: PermState; onClick: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Row title={title} desc={desc}>
       <button
@@ -34,11 +36,11 @@ function PermissionRow({ title, desc, idleLabel, state, onClick }: {
         onClick={onClick}
       >
         {state === 'checking'
-          ? '检查中…'
+          ? t('settings:voice.permission.checking')
           : state === 'granted'
-            ? '已授权 ✓'
+            ? t('settings:voice.permission.granted')
             : state === 'denied'
-              ? '仍未授权,点击重试'
+              ? t('settings:voice.permission.denied')
               : idleLabel}
       </button>
     </Row>
@@ -60,6 +62,7 @@ function PermissionRow({ title, desc, idleLabel, state, onClick }: {
  * omitted (unlike ShortcutEditor's 2500ms) — the hook degrades to no-timeout.
  */
 function VoiceHotkeyRecorder() {
+  const { t } = useTranslation();
   const globalHotkey = useVoiceStore((s) => s.globalHotkey);
   const setGlobalHotkey = useVoiceStore((s) => s.setGlobalHotkey);
 
@@ -102,17 +105,18 @@ function VoiceHotkeyRecorder() {
   return (
     <div ref={containerRef} className="sk-keys flex items-center gap-[3px] cursor-pointer" onClick={start}>
       {recording ? (
-        <span className="key bg-accdim border border-acc text-acc rounded px-1.5 py-0.5 text-[10.5px] font-mono shadow-[0_1px_0_var(--brd2)]">按下快捷键…（Esc 清除）</span>
+        <span className="key bg-accdim border border-acc text-acc rounded px-1.5 py-0.5 text-[10.5px] font-mono shadow-[0_1px_0_var(--brd2)]">{t('settings:voice.globalHotkey.recording')}</span>
       ) : globalHotkey ? (
         <span className="key bg-surf2 border border-brd2 rounded px-1.5 py-0.5 text-[10.5px] font-mono text-t1 shadow-[0_1px_0_var(--brd2)]">{globalHotkey}</span>
       ) : (
-        <span className="text-t3 text-[10.5px]">未设置（点击录制）</span>
+        <span className="text-t3 text-[10.5px]">{t('settings:voice.globalHotkey.notSet')}</span>
       )}
     </div>
   );
 }
 
 export function VoiceSettings() {
+  const { t } = useTranslation();
   const polishPrompt = useVoiceStore((s) => s.polishPrompt);
   const autoPolish = useVoiceStore((s) => s.autoPolish);
   const saveSource = useVoiceStore((s) => s.saveSource);
@@ -154,37 +158,37 @@ export function VoiceSettings() {
 
   return (
     <div className="mb-[26px]">
-      <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">语音输入</div>
+      <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">{t('settings:voice.title')}</div>
       <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">
-        在 AI 聊天框点 🎤 或按全局热键开始录音,语音转文字后润色并插入到光标所在输入框(支持其他应用){!onMac && '。Windows 暂不支持语音输入'}
+        {t('settings:voice.description')}{!onMac && t('settings:voice.windowsUnsupported')}
       </div>
 
       {!onMac && (
         <div className="mb-3.5 px-3 py-2 rounded-md border border-brd bg-surf text-[length:calc(var(--ui-font-size)-2.5px)] text-t3">
-          当前平台暂不支持语音输入。macOS 使用 Apple Speech (SFSpeechRecognizer)。
+          {t('settings:voice.windowsUnsupportedBanner')}
         </div>
       )}
 
       {onMac && (
         <>
           <PermissionRow
-            title="辅助功能权限"
-            desc="跨应用插入文本需要辅助功能权限。点击按钮触发系统授权弹框;授权后需重启应用生效(TCC 缓存进程启动时的判定)。"
-            idleLabel="授权辅助功能"
+            title={t('settings:voice.accessibility.title')}
+            desc={t('settings:voice.accessibility.desc')}
+            idleLabel={t('settings:voice.accessibility.action')}
             state={axState}
             onClick={() => void requestPerm('voice_request_accessibility', setAxState)}
           />
           <PermissionRow
-            title="麦克风权限"
-            desc="录音需要麦克风权限。点击按钮触发系统授权弹框;若曾拒绝,需在 系统设置 → 隐私与安全性 → 麦克风 中允许 Quill 后再点重试。"
-            idleLabel="授权麦克风"
+            title={t('settings:voice.microphone.title')}
+            desc={t('settings:voice.microphone.desc')}
+            idleLabel={t('settings:voice.microphone.action')}
             state={micState}
             onClick={() => void requestPerm('voice_request_microphone', setMicState)}
           />
           <PermissionRow
-            title="语音识别权限"
-            desc="Apple Speech 转写需要语音识别权限。点击按钮触发系统授权弹框;若曾拒绝,需在 系统设置 → 隐私与安全性 → 语音识别 中允许 Quill 后再点重试。"
-            idleLabel="授权语音识别"
+            title={t('settings:voice.speech.title')}
+            desc={t('settings:voice.speech.desc')}
+            idleLabel={t('settings:voice.speech.action')}
             state={speechState}
             onClick={() => void requestPerm('voice_request_speech', setSpeechState)}
           />
@@ -192,8 +196,8 @@ export function VoiceSettings() {
       )}
 
       <div className="mb-3.5">
-        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">润色 Prompt</div>
-        <div className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 mb-2">使用当前 AI 配置(见 AI 工具)对原始转录文本做润色。留空则跳过润色。</div>
+        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:voice.polishPrompt.label')}</div>
+        <div className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 mb-2">{t('settings:voice.polishPrompt.desc')}</div>
         <textarea
           className="settings-textarea font-ui w-full"
           rows={8}
@@ -203,25 +207,25 @@ export function VoiceSettings() {
           style={{ fontSize: 'calc(var(--ui-font-size) - 2px)' }}
         />
         <div className="flex justify-between items-center mt-1.5">
-          <span className="text-[length:calc(var(--ui-font-size)-3px)] text-t3">{polishPrompt.length} 字符</span>
+          <span className="text-[length:calc(var(--ui-font-size)-3px)] text-t3">{t('settings:voice.polishPrompt.charCount', { count: polishPrompt.length })}</span>
           <button
             className="text-[length:calc(var(--ui-font-size)-2.5px)] text-t3 hover:text-acc bg-transparent border-none cursor-pointer underline-offset-2 hover:underline"
             onClick={() => setPolishPrompt(DEFAULT_POLISH_PROMPT)}
-          >恢复默认</button>
+          >{t('settings:voice.polishPrompt.reset')}</button>
         </div>
       </div>
 
-      <Row title="自动润色" desc="录音结束后自动用润色 Prompt 处理转录文本;关闭则直接输出原始转录">
+      <Row title={t('settings:voice.autoPolish.title')} desc={t('settings:voice.autoPolish.desc')}>
         <Toggle value={autoPolish} onChange={setAutoPolish} />
       </Row>
 
-      <Row title="保存语音源文件" desc="把录音的原始音频(WAV)保存到 vault 下的指定目录">
+      <Row title={t('settings:voice.saveSource.title')} desc={t('settings:voice.saveSource.desc')}>
         <Toggle value={saveSource} onChange={setSaveSource} />
       </Row>
 
       <div className="mb-3.5">
-        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">源文件目录</div>
-        <div className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 mb-2">相对路径基于当前 vault 根目录;保存的文件形如 &lt;dir&gt;/&lt;timestamp&gt;.wav</div>
+        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:voice.sourceDir.label')}</div>
+        <div className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 mb-2">{t('settings:voice.sourceDir.desc')}</div>
         <input
           className="settings-input w-full"
           value={sourceDir}
@@ -233,8 +237,8 @@ export function VoiceSettings() {
       </div>
 
       <div className="mb-3.5">
-        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">识别语言</div>
-        <div className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 mb-2">Apple Speech 引擎按语言路由识别,中文语音请选「简体中文」;系统默认 locale 可能与实际说话语言不匹配,显式指定避免转写出空。</div>
+        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:voice.spokenLanguage.label')}</div>
+        <div className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 mb-2">{t('settings:voice.spokenLanguage.desc')}</div>
         <select
           className="settings-input w-full"
           value={spokenLanguage}
@@ -248,8 +252,8 @@ export function VoiceSettings() {
       </div>
 
       <div className="mb-3.5">
-        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">全局热键</div>
-        <div className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 mb-2">留空则不启用全局热键;启用后按住热键即开始录音,松开结束并插入到当前焦点输入框(跨应用)。Esc 清除。</div>
+        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:voice.globalHotkey.label')}</div>
+        <div className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 mb-2">{t('settings:voice.globalHotkey.desc')}</div>
         <VoiceHotkeyRecorder />
       </div>
     </div>

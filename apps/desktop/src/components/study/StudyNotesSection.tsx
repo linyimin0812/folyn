@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ParsedStudy } from '@/features/study/types';
 import * as editorIoService from '@/services/editorIoService';
 import { useVaultStore } from '@/store/vaultStore';
@@ -69,6 +70,7 @@ const SECTION_ICON = (
  *  插入精细加工模板置顶；列出子文档 wiki 链接（可点击 chips）；
  *  AI 动作：费曼挑战（扮演 5 岁小孩追问，暴露盲区写入 :::callout{type="warning"}）。 */
 export function StudyNotesSection({ slug, path, topicName, parsed }: Props) {
+  const { t } = useTranslation();
   const openFile = editorIoService.openFile;
   const refresh = useStudyStore((s) => s.refresh);
   const fileTree = useVaultStore((s) => s.fileTree);
@@ -113,21 +115,21 @@ export function StudyNotesSection({ slug, path, topicName, parsed }: Props) {
   return (
     <section className="sw-study-section">
       <header className="sw-study-sec-head">
-        <h3><span className="sw-sec-icon" aria-hidden="true">{SECTION_ICON}</span>笔记</h3>
+        <h3><span className="sw-sec-icon" aria-hidden="true">{SECTION_ICON}</span>{t('study:notes.sectionTitle')}</h3>
         <div className="sw-study-sec-actions">
-          <button onClick={insertTemplate} disabled={inserting} title="在笔记段尾追加精细加工模板行">
-            {inserting ? '插入中…' : '+ 精细加工模板'}
+          <button onClick={insertTemplate} disabled={inserting} title={t('study:notes.insertTitle')}>
+            {inserting ? t('study:notes.inserting') : t('study:notes.insertTemplate')}
           </button>
           <button
             className="primary"
             disabled={!aiAvailable}
-            title={aiAvailable ? 'AI 扮演 5 岁小孩追问，暴露知识盲区' : '未配置 AI 适配器'}
+            title={aiAvailable ? t('study:notes.feynmanTitle') : t('study:materials.aiDisabled')}
             onClick={() => openStudyAiAction(path, buildStudyInstruction('feynman', { topicName, topicPath: path }))}
           >
-            费曼挑战
+            {t('study:notes.feynman')}
           </button>
-          <button className="ghost" onClick={() => openFile(path, path.split('/').pop() ?? path)} title="在编辑器自由编辑笔记段">
-            在编辑器中编辑
+          <button className="ghost" onClick={() => openFile(path, path.split('/').pop() ?? path)} title={t('study:notes.editInEditorTitle')}>
+            {t('study:notes.editInEditor')}
           </button>
         </div>
       </header>
@@ -135,8 +137,8 @@ export function StudyNotesSection({ slug, path, topicName, parsed }: Props) {
       {notesBody.trim() === '' ? (
         <div className="sw-empty-state">
           <span className="sw-empty-icon">{NOTE_ICON}</span>
-          <span className="sw-empty-text">笔记段为空</span>
-          <span className="sw-empty-hint">点"在编辑器中编辑"自由书写，或插入精细加工模板</span>
+          <span className="sw-empty-text">{t('study:notes.empty')}</span>
+          <span className="sw-empty-hint">{t('study:notes.emptyHint')}</span>
         </div>
       ) : (
         <div className="sw-study-notes-render md-preview">
@@ -146,11 +148,11 @@ export function StudyNotesSection({ slug, path, topicName, parsed }: Props) {
 
       <div className="sw-study-subdocs">
         <p className="sw-section-label">
-          知识库 · 子文档（[[wiki]] 链接）
+          {t('study:notes.subwiki')}
           <span className="sw-section-count">{subDocs.length}</span>
         </p>
         {subDocs.length === 0 ? (
-          <p className="sw-empty-hint">暂无挂接的子文档。在笔记里用 `[[子文档名]]` 链接原子笔记。</p>
+          <p className="sw-empty-hint">{t('study:notes.subwikiEmpty')}</p>
         ) : (
           <div className="sw-subdoc-chips">
             {subDocs.map((link) => {

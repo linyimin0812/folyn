@@ -1,0 +1,47 @@
+{
+  "chat": {
+    "noAiConfig": "AI not configured",
+    "noAiConfigHint": "Configure the CLI path in Settings to start chatting here.",
+    "openAiSettings": "Open AI Settings",
+    "emptyHint": "Ask the AI — replies stream in here.",
+    "inputPlaceholder": "Type a message, Enter to send",
+    "removeAttachment": "Remove attachment",
+    "attachFile": "Attach file",
+    "aiMode": "AI mode",
+    "attachmentSaveFailed": "Attachment save failed: {{error}}",
+    "errorPrefix": "[Error] {{message}}",
+    "sessionHeader": {
+      "toggleAria": "Switch session",
+      "openAiSettings": "AI Settings",
+      "confirmDelete": "Confirm delete?",
+      "deleteYes": "Yes",
+      "deleteNo": "No",
+      "renameAria": "Rename",
+      "deleteAria": "Delete",
+      "newSession": "New session",
+      "defaultTitle": "New chat",
+      "capHint": "Session cap reached ({{max}})"
+    }
+  },
+  "launcher": {
+    "newNote": "New note",
+    "dailyNote": "Today's note",
+    "clipFromUrl": "Clip from URL",
+    "globalSearch": "Global search",
+    "commandPalette": "Command palette",
+    "showMain": "Show main window",
+    "toggleTheme": "Toggle theme",
+    "disablePet": "Disable pet",
+    "clip": {
+      "emptyUrl": "Please enter a URL",
+      "running": "Clipping...",
+      "saved": "Saved: {{name}}",
+      "failed": "Clip failed",
+      "submit": "Clip",
+      "collapse": "Collapse"
+    }
+  },
+  "bubble": {
+    "closeAria": "Close"
+  }
+}

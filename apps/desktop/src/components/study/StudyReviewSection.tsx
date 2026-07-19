@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ParsedStudy, ReviewAtom, ReviewRating } from '@/features/study/types';
 import { DEFAULT_REVIEW_ATOM } from '@/features/study/types';
 import { reviewAtom, isDue } from '@/features/study/sm2';
@@ -16,11 +17,11 @@ interface Props {
   onAdd: (atom: ReviewAtom) => Promise<void>;
 }
 
-const RATING_LABEL: { rating: ReviewRating; label: string }[] = [
-  { rating: 'again', label: '重来' },
-  { rating: 'hard', label: '困难' },
-  { rating: 'good', label: '良好' },
-  { rating: 'easy', label: '简单' },
+const RATING_KEYS: { rating: ReviewRating; key: string }[] = [
+  { rating: 'again', key: 'study:review.ratings.again' },
+  { rating: 'hard', key: 'study:review.ratings.hard' },
+  { rating: 'good', key: 'study:review.ratings.good' },
+  { rating: 'easy', key: 'study:review.ratings.easy' },
 ];
 
 /** 复习空态图标。 */
@@ -45,6 +46,7 @@ const SECTION_ICON = (
 /** 复习区：列出 `## 复习` 段原子，卡片化 + 到期高亮置顶；4 按钮 SM-2 评级写回；
  *  手动添加；AI 动作：生成自测题（主动检索，答案折叠在 :::callout{type="tip"}）。 */
 export function StudyReviewSection({ slug, path, topicName, parsed, onRate, onAdd }: Props) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState('');
   const [src, setSrc] = useState('');
   const today = dateToString(new Date());
@@ -93,16 +95,16 @@ export function StudyReviewSection({ slug, path, topicName, parsed, onRate, onAd
   return (
     <section className="sw-study-section">
       <header className="sw-study-sec-head">
-        <h3><span className="sw-sec-icon" aria-hidden="true">{SECTION_ICON}</span>复习</h3>
+        <h3><span className="sw-sec-icon" aria-hidden="true">{SECTION_ICON}</span>{t('study:review.sectionTitle')}</h3>
         <div className="sw-study-sec-actions">
-          <span className="sw-study-count" title="今日到期数">{due.length} 到期</span>
+          <span className="sw-study-count" title={t('study:review.dueCount')}>{t('study:review.dueLabel', { count: due.length })}</span>
           <button
             className="primary"
             disabled={!aiAvailable}
-            title={aiAvailable ? 'AI 根据 ## 笔记生成 5 道回忆题（答案折叠）' : '未配置 AI 适配器'}
+            title={aiAvailable ? t('study:review.aiTitle') : t('study:materials.aiDisabled')}
             onClick={() => openStudyAiAction(path, buildStudyInstruction('selftest', { topicName, topicPath: path }))}
           >
-            生成自测题
+            {t('study:review.aiGenerate')}
           </button>
         </div>
       </header>
@@ -112,17 +114,17 @@ export function StudyReviewSection({ slug, path, topicName, parsed, onRate, onAd
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }}
-          placeholder="复习原子摘要…"
+          placeholder={t('study:review.inputPlaceholder')}
         />
-        <input value={src} onChange={(e) => setSrc(e.target.value)} placeholder="来源 [[子文档]]（可选）" />
-        <button onClick={submit}>添加</button>
+        <input value={src} onChange={(e) => setSrc(e.target.value)} placeholder={t('study:review.srcPlaceholder')} />
+        <button onClick={submit}>{t('study:review.add')}</button>
       </div>
 
       {due.length === 0 && upcoming.length === 0 ? (
         <div className="sw-empty-state">
           <span className="sw-empty-icon">{REPEAT_ICON}</span>
-          <span className="sw-empty-text">暂无复习原子</span>
-          <span className="sw-empty-hint">添加一条开始间隔重复</span>
+          <span className="sw-empty-text">{t('study:review.empty')}</span>
+          <span className="sw-empty-hint">{t('study:review.emptyHint')}</span>
         </div>
       ) : (
         <>
@@ -133,25 +135,25 @@ export function StudyReviewSection({ slug, path, topicName, parsed, onRate, onAd
                   <div className="sw-study-item-body">
                     <div className="sw-study-item-title">{a.summary}</div>
                     <div className="sw-card-meta sw-review-meta">
-                      <span className="sw-chip sw-due-chip" title="到期日">
+                      <span className="sw-chip sw-due-chip" title={t('study:review.dueChip')}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-                        到期 {a.next}
+                        {t('study:review.dueText', { date: a.next })}
                       </span>
-                      <span className="sw-chip" title="连续正确次数">rep {a.rep}</span>
+                      <span className="sw-chip" title={t('study:review.repChip')}>rep {a.rep}</span>
                       <span className="sw-chip" title="ease factor">ef {a.ef.toFixed(2)}</span>
-                      {a.lapses > 0 && <span className="sw-chip" title="遗忘次数">lapse {a.lapses}</span>}
-                      {a.src && <span className="sw-chip sw-src-chip" title="来源">{a.src}</span>}
+                      {a.lapses > 0 && <span className="sw-chip" title={t('study:review.lapseChip')}>lapse {a.lapses}</span>}
+                      {a.src && <span className="sw-chip sw-src-chip" title={t('study:review.srcChip')}>{a.src}</span>}
                     </div>
                   </div>
                   <div className="sw-review-btns">
-                    {RATING_LABEL.map(({ rating, label }) => (
+                    {RATING_KEYS.map(({ rating, key }) => (
                       <button
                         key={rating}
                         className={`sw-rate ${rating}`}
                         onClick={() => rate(a, rating)}
-                        aria-label={`${label}（评级）`}
+                        aria-label={t('study:review.ratingAria', { label: t(key) })}
                       >
-                        {label}
+                        {t(key)}
                       </button>
                     ))}
                   </div>
@@ -161,15 +163,15 @@ export function StudyReviewSection({ slug, path, topicName, parsed, onRate, onAd
           )}
           {upcoming.length > 0 && (
             <details className="sw-review-upcoming">
-              <summary>即将复习（{upcoming.length}）</summary>
+              <summary>{t('study:review.upcoming', { count: upcoming.length })}</summary>
               <ul className="sw-study-list">
                 {upcoming.map((a) => (
                   <li key={a.id} className="sw-card sw-review-card">
                     <div className="sw-study-item-body">
                       <div className="sw-study-item-title">{a.summary}</div>
                       <div className="sw-card-meta sw-review-meta">
-                        <span className="sw-chip" title="下次到期">下次 {a.next}</span>
-                        <span className="sw-chip" title="连续正确次数">rep {a.rep}</span>
+                        <span className="sw-chip" title={t('study:review.nextChip')}>{t('study:review.nextText', { date: a.next })}</span>
+                        <span className="sw-chip" title={t('study:review.repChip')}>rep {a.rep}</span>
                         <span className="sw-chip" title="ease factor">ef {a.ef.toFixed(2)}</span>
                       </div>
                     </div>

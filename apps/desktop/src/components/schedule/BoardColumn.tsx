@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ScheduleTask } from '@/features/schedule/types';
 import { TaskCard } from './TaskCard';
 
@@ -23,6 +24,7 @@ const EMPTY_ICON_SVG = (
 );
 
 export function BoardColumn({ id, name, color, isDone, tasks, onDropTask, onRename, onReorderColumns, onDelete }: Props) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
 
@@ -89,7 +91,7 @@ export function BoardColumn({ id, name, color, isDone, tasks, onDropTask, onRena
             <span
               className="sw-col-name"
               onDoubleClick={() => { setDraft(name); setEditing(true); }}
-              title="双击重命名"
+              title={t('schedule:boardColumn.renameHint')}
             >{name}</span>
           )}
           <span className="sw-col-count">{tasks.length}</span>
@@ -97,7 +99,7 @@ export function BoardColumn({ id, name, color, isDone, tasks, onDropTask, onRena
         {!isDone && (
           <button
             className="sw-col-del"
-            title="删除列"
+            title={t('schedule:boardColumn.deleteColumn')}
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
           >✕</button>
         )}
@@ -118,8 +120,8 @@ export function BoardColumn({ id, name, color, isDone, tasks, onDropTask, onRena
         {tasks.length === 0 && (
           <div className="sw-empty-state">
             <span className="sw-empty-icon">{EMPTY_ICON_SVG}</span>
-            <span className="sw-empty-text">当日无任务</span>
-            <span className="sw-empty-hint">拖动卡片到此列</span>
+            <span className="sw-empty-text">{t('schedule:boardColumn.empty')}</span>
+            <span className="sw-empty-hint">{t('schedule:boardColumn.emptyHint')}</span>
           </div>
         )}
       </div>

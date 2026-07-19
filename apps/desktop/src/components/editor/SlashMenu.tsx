@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ContainerRegistry } from '@quill/container-plugins';
 import type { ContainerPlugin, ContainerCategory } from '@quill/container-plugins';
 
-const CATEGORY_LABELS: Record<ContainerCategory, string> = {
-  layout: '布局',
-  media: '媒体',
-  ai: 'AI',
-  data: '数据',
-  custom: '自定义',
+const CATEGORY_KEYS: Record<ContainerCategory, string> = {
+  layout: 'editor:slashMenu.categories.layout',
+  media: 'editor:slashMenu.categories.media',
+  ai: 'editor:slashMenu.categories.ai',
+  data: 'editor:slashMenu.categories.data',
+  custom: 'editor:slashMenu.categories.custom',
 };
 
 interface SlashMenuProps {
@@ -19,6 +20,7 @@ interface SlashMenuProps {
 }
 
 export function SlashMenu({ visible, filter, position, onSelect, onClose }: SlashMenuProps) {
+  const { t } = useTranslation();
   const [activeIndex, setActiveIndex] = useState(0);
   const [adjustedPosition, setAdjustedPosition] = useState(position);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -123,7 +125,7 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
     >
       {Array.from(grouped.entries()).map(([category, plugins]) => (
         <div key={category} className="mb-1">
-          <div className="text-[9px] font-semibold text-t3 uppercase tracking-[.1em] py-1.5 px-2">{CATEGORY_LABELS[category]}</div>
+          <div className="text-[9px] font-semibold text-t3 uppercase tracking-[.1em] py-1.5 px-2">{t(CATEGORY_KEYS[category])}</div>
           {plugins.map((plugin) => {
             const currentIndex = itemIndex++;
             return (

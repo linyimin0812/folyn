@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useWikiStore } from '@/store/wikiStore';
 import * as editorIoService from '@/services/editorIoService';
 import type { WikiEntry } from '@/types/wiki';
@@ -42,6 +43,7 @@ function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
 }
 
 export function WikiFileTree() {
+  const { t } = useTranslation();
   const wikiFiles = useWikiStore((s) => s.wikiFiles);
   const isInitialized = useWikiStore((s) => s.isInitialized);
   const initWiki = useWikiStore((s) => s.initWiki);
@@ -69,7 +71,7 @@ export function WikiFileTree() {
         ))}
         {wikiFiles.length === 0 && (
           <div className="p-4 text-center text-xs text-t3 leading-relaxed">
-            Wiki 为空。在 AI 面板中摄入文件开始构建知识库。
+            {t('sidebar:wikiTree.empty')}
           </div>
         )}
       </div>

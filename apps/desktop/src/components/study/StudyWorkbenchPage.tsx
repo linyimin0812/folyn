@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useStudyStore, subscribeToFileTree } from '@/store/studyStore';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { useAiStore } from '@/store/aiStore';
@@ -21,6 +22,7 @@ export type StudyView = 'topic' | 'today';
  * PR6：四区卡片化重设计 + diff 审阅入口横幅（订阅 aiStore 当前会话的待审阅编辑）。
  */
 export function StudyWorkbenchPage() {
+  const { t } = useTranslation();
   const refresh = useStudyStore((s) => s.refresh);
   const scheduleRefresh = useScheduleStore((s) => s.refresh);
   const [view, setView] = useState<StudyView>('topic');
@@ -189,23 +191,23 @@ export function StudyWorkbenchPage() {
           <div className="sw-study-topbar">
             <div className="sw-study-topbar-left">
               <div className="sw-study-view-switch">
-                <button className={view === 'topic' ? 'active' : ''} onClick={() => setView('topic')} aria-pressed={view === 'topic'}>主题</button>
-                <button className={view === 'today' ? 'active' : ''} onClick={() => setView('today')} aria-pressed={view === 'today'}>今日复习</button>
+                <button className={view === 'topic' ? 'active' : ''} onClick={() => setView('topic')} aria-pressed={view === 'topic'}>{t('study:topbar.topicView')}</button>
+                <button className={view === 'today' ? 'active' : ''} onClick={() => setView('today')} aria-pressed={view === 'today'}>{t('study:topbar.todayView')}</button>
               </div>
               {active && view === 'topic' && planProgress && planProgress.total > 0 && (
-                <span className="sw-study-topbar-progress" title="计划总体进度">
+                <span className="sw-study-topbar-progress" title={t('study:topbar.progressTitle')}>
                   <span className="sw-study-topbar-progress-pct">{planProgress.percent}%</span>
                   <span className="sw-study-count">{planProgress.done}/{planProgress.total}</span>
                 </span>
               )}
             </div>
             {pendingDiffCount > 0 && (
-              <button className="sw-diff-banner" onClick={goReviewDiff} title="跳到编辑器审阅 AI 提议的编辑">
+              <button className="sw-diff-banner" onClick={goReviewDiff} title={t('study:topbar.diffBannerTitle')}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 20h9" />
                   <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
                 </svg>
-                AI 提议了 {pendingDiffCount} 处编辑，点击审阅
+                {t('study:topbar.diffBanner', { count: pendingDiffCount })}
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
               </button>
             )}
@@ -245,8 +247,8 @@ export function StudyWorkbenchPage() {
             </div>
           ) : (
             <div className="sw-study-placeholder">
-              <h2 className="sw-topbar-title">学习工作站</h2>
-              <p className="sw-empty-hint">选择或新建一个学习主题开始。</p>
+              <h2 className="sw-topbar-title">{t('study:title')}</h2>
+              <p className="sw-empty-hint">{t('study:empty')}</p>
             </div>
           )}
         </div>

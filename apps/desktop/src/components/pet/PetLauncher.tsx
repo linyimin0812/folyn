@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { isTauri } from '@/utils/platform';
 import { useClipStore } from '@/store/clipStore';
 import type { PetMenuAction } from './PetContextMenu';
@@ -57,6 +58,7 @@ type ClipStatus =
  *  close the panel or focus the main window — the entire flow stays in-panel
  *  per PRD R5. */
 function PetClipForm({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const [url, setUrl] = useState('');
   const [status, setStatus] = useState<ClipStatus>({ kind: 'idle' });
   const inputRef = useRef<HTMLInputElement>(null);
@@ -86,23 +88,23 @@ function PetClipForm({ onClose }: { onClose: () => void }) {
     e.preventDefault();
     const trimmed = url.trim();
     if (!trimmed) {
-      setStatus({ kind: 'error', message: '请输入网址' });
+      setStatus({ kind: 'error', message: t('pet:launcher.clip.emptyUrl') });
       clearStatusAfter(3000);
       return;
     }
-    setStatus({ kind: 'running', message: '正在剪藏...' });
+    setStatus({ kind: 'running', message: t('pet:launcher.clip.running') });
     try {
       const filePath = await useClipStore.getState().clipUrl(trimmed, (msg) => {
-        setStatus({ kind: 'running', message: msg || '正在剪藏...' });
+        setStatus({ kind: 'running', message: msg || t('pet:launcher.clip.running') });
       });
-      setStatus({ kind: 'success', message: `已保存：${filePath.split('/').pop() ?? filePath}` });
+      setStatus({ kind: 'success', message: t('pet:launcher.clip.saved', { name: filePath.split('/').pop() ?? filePath }) });
       clearStatusAfter(6000);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      setStatus({ kind: 'error', message: msg || '剪藏失败' });
+      setStatus({ kind: 'error', message: msg || t('pet:launcher.clip.failed') });
       clearStatusAfter(6000);
     }
-  }, [url, clearStatusAfter]);
+  }, [url, clearStatusAfter, t]);
 
   const isRunning = status.kind === 'running';
 
@@ -124,7 +126,7 @@ function PetClipForm({ onClose }: { onClose: () => void }) {
           className="pet-clip-submit"
           disabled={isRunning}
         >
-          {isRunning ? '…' : '剪藏'}
+          {isRunning ? '…' : t('pet:launcher.clip.submit')}
         </button>
       </form>
       {status.kind !== 'idle' && (
@@ -142,7 +144,7 @@ function PetClipForm({ onClose }: { onClose: () => void }) {
           onClick={onClose}
           disabled={isRunning}
         >
-          收起
+          {t('pet:launcher.clip.collapse')}
         </button>
       </div>
     </div>
@@ -151,7 +153,7 @@ function PetClipForm({ onClose }: { onClose: () => void }) {
 
 interface LauncherButtonDef {
   action: PetMenuAction;
-  label: string;
+  labelKey: string;
   icon: React.ReactNode;
   /** Whether to hide the panel after emitting the action. Defaults to true. */
   closeAfter?: boolean;
@@ -163,48 +165,49 @@ interface LauncherButtonDef {
 const LAUNCHER_BUTTONS: readonly LauncherButtonDef[] = [
   {
     action: 'new-note',
-    label: '新建笔记',
+    labelKey: 'pet:launcher.newNote',
     icon: <NewNoteIcon />,
   },
   {
     action: 'daily-note',
-    label: '今日日记',
+    labelKey: 'pet:launcher.dailyNote',
     icon: <DailyNoteIcon />,
   },
   {
     action: 'clip-from-url',
-    label: '网页剪藏',
+    labelKey: 'pet:launcher.clipFromUrl',
     icon: <ClipIcon />,
     closeAfter: false,
   },
   {
     action: 'global-search',
-    label: '全局搜索',
+    labelKey: 'pet:launcher.globalSearch',
     icon: <SearchIcon />,
   },
   {
     action: 'command-palette',
-    label: '命令面板',
+    labelKey: 'pet:launcher.commandPalette',
     icon: <PaletteIcon />,
   },
   {
     action: 'show-main',
-    label: '显示主窗',
+    labelKey: 'pet:launcher.showMain',
     icon: <WindowIcon />,
   },
   {
     action: 'toggle-theme',
-    label: '切换主题',
+    labelKey: 'pet:launcher.toggleTheme',
     icon: <ThemeIcon />,
   },
   {
     action: 'disable-pet',
-    label: '关闭宠物',
+    labelKey: 'pet:launcher.disablePet',
     icon: <DisableIcon />,
   },
 ] as const;
 
 export function PetLauncher() {
+  const { t } = useTranslation();
   const [clipFormOpen, setClipFormOpen] = useState(false);
 
   const handleButtonClick = useCallback(async (def: LauncherButtonDef) => {
@@ -225,17 +228,18 @@ export function PetLauncher() {
         {LAUNCHER_BUTTONS.map((def) => {
           const isClipToggle = def.action === 'clip-from-url';
           const isActiveClip = isClipToggle && clipFormOpen;
+          const label = t(def.labelKey);
           return (
             <button
               key={def.action}
               type="button"
               className={`pet-launcher-btn${isActiveClip ? ' is-active' : ''}`}
               onClick={() => void handleButtonClick(def)}
-              aria-label={def.label}
+              aria-label={label}
               aria-pressed={isActiveClip}
             >
               <span className="pet-launcher-icon">{def.icon}</span>
-              <span className="pet-launcher-label">{def.label}</span>
+              <span className="pet-launcher-label">{label}</span>
             </button>
           );
         })}

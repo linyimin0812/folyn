@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useVaultStore } from '@/store/vaultStore';
 import { useAiStore } from '@/store/aiStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
@@ -26,11 +27,11 @@ export interface ContextMenuProps {
   onTogglePin: (path: string) => void;
 }
 
-const fileTypeLabels: Record<string, string> = {
+const fileTypeLabelKeys: Record<string, string> = {
   markdown: 'Markdown',
   excalidraw: 'Excalidraw',
   html: 'HTML',
-  code: '代码文件',
+  code: 'sidebar:contextMenu.fileType.code',
 };
 
 export function ContextMenu({
@@ -42,6 +43,7 @@ export function ContextMenu({
   pinnedPaths,
   onTogglePin,
 }: ContextMenuProps): React.JSX.Element | null {
+  const { t } = useTranslation();
   const creatableTypes = useMemo(() => {
     const handlers = getAllHandlers();
     return handlers.filter((h) => h.supportedViewModes.includes('edit') && h.extensions.length > 0);
@@ -83,7 +85,7 @@ export function ContextMenu({
       {menu.type === 'dir' && (
         <>
           <div className="relative flex items-center justify-between w-full py-1.5 px-3.5 text-xs cursor-pointer bg-transparent border-none text-t1 hover:bg-hov group/sub">
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><ThemeIcon name="addFile" size={14} />新建文件</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><ThemeIcon name="addFile" size={14} />{t('sidebar:contextMenu.newFile')}</span>
             <span className="text-[10px] text-t3 ml-2">&#9656;</span>
             <div className="hidden group-hover/sub:block absolute left-full top-0 min-w-[180px] w-max py-1 bg-panel border border-brd rounded-lg shadow-[0_4px_16px_rgba(0,0,0,.12)] z-[1001]">
               {creatableTypes.map((handler) => (
@@ -96,7 +98,7 @@ export function ContextMenu({
                   }}
                 >
                   <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 4 }}>{handler.icon ?? <FileIcon filename={`file.${handler.extensions[0]}`} />}</span>
-                  {fileTypeLabels[handler.id] ?? handler.id} (.{handler.extensions[0]})
+                  {(fileTypeLabelKeys[handler.id] ? t(fileTypeLabelKeys[handler.id]) : handler.id)} (.{handler.extensions[0]})
                 </button>
               ))}
               <div className="h-px mx-2 my-1 bg-brd" />
@@ -108,31 +110,31 @@ export function ContextMenu({
                 }}
               >
                 <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 4 }}><FileIcon filename="file.txt" /></span>
-                其他（自定义扩展名）
+                {t('sidebar:contextMenu.newFileOther')}
               </button>
             </div>
           </div>
           <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onClose(); onStartNewItem('dir', menu.path); }}>
-            <ThemeIcon name="newFolder" size={14} /> 新建文件夹
+            <ThemeIcon name="newFolder" size={14} /> {t('sidebar:contextMenu.newFolder')}
           </button>
           <div className="h-px mx-2 my-1 bg-brd" />
         </>
       )}
       <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { copyToClipboard(menu.path); }}>
-        <ThemeIcon name="copyOfFolder" size={14} /> 复制相对路径
+        <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copyRelativePath')}
       </button>
       <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => {
         const vault = useVaultStore.getState().currentVault;
         const base = vault?.basePath || '';
         copyToClipboard(`${base}/${menu.path}`);
       }}>
-        <ThemeIcon name="copyOfFolder" size={14} /> 复制绝对路径
+        <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copyAbsolutePath')}
       </button>
       <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { copyToClipboard(menu.name); }}>
-        <ThemeIcon name="copyOfFolder" size={14} /> 复制文件名
+        <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copyFileName')}
       </button>
       <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onTogglePin(menu.path); onClose(); }}>
-        <ThemeIcon name="pin" size={14} /> {pinnedPaths.includes(menu.path) ? '取消置顶' : '置顶'}
+        <ThemeIcon name="pin" size={14} /> {pinnedPaths.includes(menu.path) ? t('sidebar:contextMenu.unpin') : t('sidebar:contextMenu.pin')}
       </button>
       {menu.type === 'file' && (
         <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => {
@@ -142,7 +144,7 @@ export function ContextMenu({
           onClose();
         }}>
           <span className="font-bold text-[11px] tracking-[-0.5px] leading-none">AI</span>
-          添加文件到对话
+          {t('sidebar:contextMenu.addToChat')}
         </button>
       )}
       {menu.path.endsWith('.md') && (
@@ -153,15 +155,15 @@ export function ContextMenu({
             onClose();
           }}
         >
-          摄入到 Wiki
+          {t('sidebar:contextMenu.ingestToWiki')}
         </button>
       )}
       <div className="h-px mx-2 my-1 bg-brd" />
       <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onClose(); onStartRename(menu.path, menu.name); }}>
-        <ThemeIcon name={menu.type === 'dir' ? 'editFolder' : 'edit'} size={14} /> 重命名
+        <ThemeIcon name={menu.type === 'dir' ? 'editFolder' : 'edit'} size={14} /> {t('sidebar:contextMenu.rename')}
       </button>
       <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-[#e05252] hover:bg-[rgba(224,82,82,.08)]" onClick={() => { onClose(); onDeleteItem(menu.path, menu.type); }}>
-        <ThemeIcon name="delete" size={14} /> 删除
+        <ThemeIcon name="delete" size={14} /> {t('sidebar:contextMenu.delete')}
       </button>
     </div>
   );

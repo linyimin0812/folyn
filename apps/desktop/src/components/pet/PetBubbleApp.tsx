@@ -20,6 +20,7 @@
 // for why we don't toggle ignore-cursor-events on a static window).
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { isTauri } from '@/utils/platform';
 import {
   computeBubblePosition,
@@ -124,6 +125,7 @@ async function hideBubble(): Promise<void> {
  * `pet://bubble-action` on title/action click.
  */
 export function PetBubbleApp(): JSX.Element {
+  const { t } = useTranslation();
   const [bubble, setBubble] = useState<PetBubblePayload | null>(null);
   const ttlRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -203,9 +205,9 @@ export function PetBubbleApp(): JSX.Element {
       <div className="pet-bubble-card">
         <button
           className="pet-bubble-close"
-          title="关闭"
+          title={t('pet:bubble.closeAria')}
           onClick={close}
-          aria-label="关闭"
+          aria-label={t('pet:bubble.closeAria')}
         >
           ✕
         </button>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePetChatStore, MAX_SESSIONS } from '@/store/petChatStore';
 import { isTauri } from '@/utils/platform';
 import { stopPetChat, resetPetChatAdapter } from '@/services/petChatService';
@@ -31,6 +32,7 @@ import { stopPetChat, resetPetChatAdapter } from '@/services/petChatService';
  * replaces the whole chat body — see PetChat.tsx).
  */
 export function PetChatSessionHeader() {
+  const { t } = useTranslation();
   const sessions = usePetChatStore((s) => s.sessions);
   const activeSessionId = usePetChatStore((s) => s.activeSessionId);
   const streaming = usePetChatStore((s) => s.streaming);
@@ -159,7 +161,7 @@ export function PetChatSessionHeader() {
     // active to a remaining (or auto-created) one — no extra switch needed.
   }, [streaming, activeSessionId, setStreaming, deleteSession]);
 
-  const title = activeSession?.title || '新对话';
+  const title = activeSession?.title || t('pet:chat.sessionHeader.defaultTitle');
 
   // Jump to main window's Settings → AI 工具 tab. The pet-panel is a
   // separate Tauri window = separate JS realm, so it cannot touch the main
@@ -190,7 +192,7 @@ export function PetChatSessionHeader() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="listbox"
-        aria-label="切换会话"
+        aria-label={t('pet:chat.sessionHeader.toggleAria')}
       >
         <span className="text-[12px] font-semibold text-acc truncate">{title}</span>
         <svg
@@ -213,7 +215,7 @@ export function PetChatSessionHeader() {
         className="py-[3px] px-2 border border-acc rounded-md bg-acc text-white text-[11px] cursor-pointer hover:opacity-[.85] transition-opacity"
         onClick={() => void handleOpenSettings()}
       >
-        AI 设置
+        {t('pet:chat.sessionHeader.openAiSettings')}
       </button>
 
       {open && (
@@ -232,21 +234,21 @@ export function PetChatSessionHeader() {
                   key={s.id}
                   className="flex items-center justify-between gap-2 py-1.5 px-2 rounded text-[12px] text-t2"
                 >
-                  <span className="truncate min-w-0">确认删除？</span>
+                  <span className="truncate min-w-0">{t('pet:chat.sessionHeader.confirmDelete')}</span>
                   <span className="shrink-0 flex gap-1">
                     <button
                       type="button"
                       className="py-0.5 px-2 rounded bg-red text-white text-[11px] cursor-pointer border-none"
                       onClick={() => void handleConfirmDelete(s.id)}
                     >
-                      是
+                      {t('pet:chat.sessionHeader.deleteYes')}
                     </button>
                     <button
                       type="button"
                       className="py-0.5 px-2 rounded bg-transparent border border-brd text-t2 text-[11px] cursor-pointer hover:bg-hov"
                       onClick={handleCancelDelete}
                     >
-                      否
+                      {t('pet:chat.sessionHeader.deleteNo')}
                     </button>
                   </span>
                 </div>
@@ -294,8 +296,8 @@ export function PetChatSessionHeader() {
                   <button
                     type="button"
                     className="w-5 h-5 flex items-center justify-center rounded text-t3 hover:bg-hov hover:text-t1 cursor-pointer bg-transparent border-none"
-                    title="重命名"
-                    aria-label="重命名"
+                    title={t('pet:chat.sessionHeader.renameAria')}
+                    aria-label={t('pet:chat.sessionHeader.renameAria')}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleStartRename(s.id, s.title);
@@ -309,8 +311,8 @@ export function PetChatSessionHeader() {
                   <button
                     type="button"
                     className="w-5 h-5 flex items-center justify-center rounded text-t3 hover:bg-hov hover:text-red cursor-pointer bg-transparent border-none"
-                    title="删除"
-                    aria-label="删除"
+                    title={t('pet:chat.sessionHeader.deleteAria')}
+                    aria-label={t('pet:chat.sessionHeader.deleteAria')}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleStartDelete(s.id);
@@ -330,7 +332,7 @@ export function PetChatSessionHeader() {
           <div className="mt-1 pt-1 border-t border-brd2 flex flex-col gap-0.5">
             {atCap && (
               <div className="py-1 px-2 text-[11px] text-t3">
-                {`会话数已达上限（${MAX_SESSIONS}）`}
+                {t('pet:chat.sessionHeader.capHint', { max: MAX_SESSIONS })}
               </div>
             )}
             <button
@@ -338,13 +340,13 @@ export function PetChatSessionHeader() {
               className="flex items-center gap-1.5 py-1.5 px-2 rounded text-[12px] text-t2 bg-transparent border-none cursor-pointer hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={handleNewSession}
               disabled={atCap}
-              title="新建会话"
+              title={t('pet:chat.sessionHeader.newSession')}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
-              新建会话
+              {t('pet:chat.sessionHeader.newSession')}
             </button>
           </div>
         </div>

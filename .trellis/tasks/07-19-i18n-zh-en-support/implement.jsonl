@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/07-19-i18n-zh-en-support/prd.md", "reason": "Source of truth for MVP scope, namespace list, switcher UX, Rust AppError approach, and PR plan — all implementation decisions trace back here"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "Where to place the new i18n/ module, localeStore, switcher component — follow the canonical src/ layout"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store + persist pattern for localeStore; mirrors appearanceStore (granular selectors, no bare useStore())"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Named exports, props, composition, Tailwind styling conventions for the LanguageSwitcher component and Settings row"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Strict TS patterns; i18n resource typing, AppError serde shape, invoke wrapper typing"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns + review checklist — avoid slop when wiring i18n across 399 files"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Quick reference: React 18, Vite 6, Zustand 5, Tailwind 3, @/ alias, isTauri guards — stack baseline for i18n init"}

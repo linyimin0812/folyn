@@ -1,7 +1,9 @@
 import { useState, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePrefsStore } from '@/store/prefsStore';
 
 export function FileTemplatesSettings() {
+  const { t } = useTranslation();
   const fileTemplates = usePrefsStore((s) => s.fileTemplates);
   const setFileTemplates = usePrefsStore((s) => s.setFileTemplates);
   const [editingExt, setEditingExt] = useState<string | null>(null);
@@ -45,9 +47,9 @@ export function FileTemplatesSettings() {
 
   return (
     <div className="mb-[26px]">
-      <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">File Templates</div>
+      <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">{t('settings:templates.title')}</div>
       <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">
-        按文件扩展名配置新建文件时的默认模板内容。支持变量：{'{{title}}'}, {'{{filename}}'}, {'{{date}}'}, {'{{ext}}'}
+        {t('settings:templates.description')}
       </div>
 
       {/* Template list */}
@@ -60,19 +62,19 @@ export function FileTemplatesSettings() {
           >
             <span className="text-xs font-mono font-semibold text-acc shrink-0">.{ext}</span>
             <span className="text-[11px] text-t3 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono">
-              {fileTemplates[ext] ? fileTemplates[ext].slice(0, 60).replace(/\n/g, '\\n') : '(empty)'}
+              {fileTemplates[ext] ? fileTemplates[ext].slice(0, 60).replace(/\n/g, '\\n') : t('settings:templates.empty')}
             </span>
             <button
               className="text-[10px] text-t3 hover:text-[#e53935] shrink-0 bg-transparent border-none cursor-pointer p-1"
               onClick={(e) => { e.stopPropagation(); removeTemplate(ext); }}
-              title="删除模板"
+              title={t('settings:templates.deleteTitle')}
             >
               ✕
             </button>
           </div>
         ))}
         {extensions.length === 0 && (
-          <div className="text-xs text-t3 py-2">暂无模板配置</div>
+          <div className="text-xs text-t3 py-2">{t('settings:templates.emptyState')}</div>
         )}
       </div>
 
@@ -86,17 +88,17 @@ export function FileTemplatesSettings() {
           value={newExt}
           onChange={(e) => setNewExt(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') addTemplate(); }}
-          placeholder="ext"
+          placeholder={t('settings:templates.extPlaceholder')}
           autoCapitalize="off"
         />
-        <button className="btn btn-p btn-sm" onClick={addTemplate}>添加模板</button>
+        <button className="btn btn-p btn-sm" onClick={addTemplate}>{t('settings:templates.add')}</button>
       </div>
 
       {/* Editor */}
       {editingExt !== null && (
         <div className="mb-3">
           <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">
-            编辑模板: <span className="font-mono text-acc">.{editingExt}</span>
+            {t('settings:templates.editTitle')}: <span className="font-mono text-acc">.{editingExt}</span>
           </div>
           <textarea
             className="w-full py-2 px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
@@ -106,8 +108,8 @@ export function FileTemplatesSettings() {
             onChange={(e) => setEditContent(e.target.value)}
           />
           <div className="flex gap-1.5 mt-2">
-            <button className="btn btn-p btn-sm" onClick={saveEdit}>保存</button>
-            <button className="btn btn-g btn-sm" onClick={cancelEdit}>取消</button>
+            <button className="btn btn-p btn-sm" onClick={saveEdit}>{t('settings:templates.save')}</button>
+            <button className="btn btn-g btn-sm" onClick={cancelEdit}>{t('settings:templates.cancel')}</button>
           </div>
         </div>
       )}

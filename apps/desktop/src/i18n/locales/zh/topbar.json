@@ -1,0 +1,17 @@
+{
+  "menu": "菜单",
+  "theme": {
+    "toggle": "切换主题"
+  },
+  "ai": {
+    "panel": "AI 面板",
+    "planToday": "AI 规划今日"
+  },
+  "viewMode": {
+    "split": "分屏",
+    "edit": "编辑",
+    "preview": "预览",
+    "source": "源码",
+    "visual": "可视化"
+  }
+}

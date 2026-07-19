@@ -17,22 +17,22 @@ export function Toggle({ value, onChange }: { value: boolean; onChange: (v: bool
   );
 }
 
-export const NAV_GROUPS: { label: string; items: { id: SettingsTab; icon: ReactNode; name: string }[] }[] = [
-  { label: '通用', items: [
-    { id: 'appearance', icon: <Monitor size={14} />, name: '外观' },
-    { id: 'editor', icon: <SquarePen size={14} />, name: '编辑器' },
-    { id: 'shortcuts', icon: <Keyboard size={14} />, name: '快捷键' },
-    { id: 'templates', icon: <FileText size={14} />, name: '文件模板' },
-    { id: 'pet', icon: <PawPrint size={14} />, name: '桌宠' },
-    { id: 'notifications', icon: <Bell size={14} />, name: '通知' },
-    { id: 'plugins', icon: <Puzzle size={14} />, name: '插件' },
+export const NAV_GROUPS: { labelKey: string; items: { id: SettingsTab; icon: ReactNode; nameKey: string }[] }[] = [
+  { labelKey: 'settings.groups.general', items: [
+    { id: 'appearance', icon: <Monitor size={14} />, nameKey: 'settings.tabs.appearance' },
+    { id: 'editor', icon: <SquarePen size={14} />, nameKey: 'settings.tabs.editor' },
+    { id: 'shortcuts', icon: <Keyboard size={14} />, nameKey: 'settings.tabs.shortcuts' },
+    { id: 'templates', icon: <FileText size={14} />, nameKey: 'settings.tabs.templates' },
+    { id: 'pet', icon: <PawPrint size={14} />, nameKey: 'settings.tabs.pet' },
+    { id: 'notifications', icon: <Bell size={14} />, nameKey: 'settings.tabs.notifications' },
+    { id: 'plugins', icon: <Puzzle size={14} />, nameKey: 'settings.tabs.plugins' },
   ]},
-  { label: 'AI', items: [
-    { id: 'ai', icon: <Sparkles size={14} />, name: 'AI 工具' },
-    { id: 'voice', icon: <Mic size={14} />, name: '语音输入' },
-    { id: 'skills', icon: <Zap size={14} />, name: 'Skills' },
+  { labelKey: 'settings.groups.ai', items: [
+    { id: 'ai', icon: <Sparkles size={14} />, nameKey: 'settings.tabs.ai' },
+    { id: 'voice', icon: <Mic size={14} />, nameKey: 'settings.tabs.voice' },
+    { id: 'skills', icon: <Zap size={14} />, nameKey: 'settings.tabs.skills' },
   ]},
-  { label: '关于', items: [
-    { id: 'about', icon: <Info size={14} />, name: '关于 Quill' },
+  { labelKey: 'settings.groups.about', items: [
+    { id: 'about', icon: <Info size={14} />, nameKey: 'settings.tabs.about' },
   ]},
 ];

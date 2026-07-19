@@ -1,0 +1,74 @@
+{
+  "export": {
+    "title": "Export",
+    "markdown": {
+      "label": "Markdown",
+      "description": "Export .md source file"
+    },
+    "html": {
+      "label": "HTML",
+      "description": "Export as rendered web page"
+    },
+    "pdf": {
+      "label": "PDF",
+      "description": "Export via print dialog"
+    },
+    "containerWarning": {
+      "title": "⚠️ Compatibility notice",
+      "body": "The current document uses Quill container syntax (callouts, tabs, collapsible blocks, etc.), which is a Quill extension. **Other Markdown editors may fail to render it correctly.**",
+      "hint": "To view in other editors, export as HTML instead.",
+      "cancel": "Cancel",
+      "confirm": "Export anyway"
+    }
+  },
+  "slashMenu": {
+    "categories": {
+      "layout": "Layout",
+      "media": "Media",
+      "ai": "AI",
+      "data": "Data",
+      "custom": "Custom"
+    }
+  },
+  "imagePaste": {
+    "title": "📷 Paste image",
+    "uploadMethod": "Upload method",
+    "comingSoon": "Coming soon",
+    "fileName": "Image name",
+    "fileNamePlaceholder": "Enter image name",
+    "directory": "Save directory",
+    "directoryPlaceholder": "Path relative to vault root",
+    "vaultHint": "🗄️ vault: {{root}}",
+    "format": "Image format",
+    "size": "Image size",
+    "width": "W",
+    "widthPlaceholder": "Width",
+    "height": "H",
+    "heightPlaceholder": "Height",
+    "lockRatio": "Lock aspect ratio",
+    "unlockRatio": "Unlock aspect ratio",
+    "resetSize": "Reset to original size",
+    "originalSize": "Original: {{w}} × {{h}} px",
+    "pathPreview": "📄 {{path}}",
+    "cancel": "Cancel",
+    "upload": "✓ Upload"
+  },
+  "dailyDigest": {
+    "title": "AI Daily Digest",
+    "generate": "Generate digest",
+    "hint": "AI will analyze today's writing activity and generate a digest",
+    "loading": "Generating digest...",
+    "insert": "Insert into note",
+    "generateFailed": "Generation failed: {{error}}",
+    "today": "Today: {{date}}",
+    "modifiedSection": "Today's modified documents",
+    "modifiedEmpty": "(no modifications)",
+    "recentDailySection": "Recent daily notes",
+    "recentDailyEmpty": "(no recent daily notes)"
+  },
+  "diffToolbar": {
+    "pendingCount": "{{count}} change(s) pending review",
+    "acceptAll": "Accept all",
+    "rejectAll": "Reject all"
+  }
+}

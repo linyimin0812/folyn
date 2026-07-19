@@ -1,0 +1,22 @@
+{
+  "nav": {
+    "schedule": "Schedule (⌘D)",
+    "study": "Study",
+    "settings": "Settings"
+  },
+  "statusBar": {
+    "aiReady": "✦ AI ready",
+    "markdown": "Markdown",
+    "viewMode": {
+      "split": "Split mode",
+      "edit": "Edit mode",
+      "preview": "Preview mode"
+    },
+    "lineCol": "Ln {{line}}, Col {{col}}",
+    "wordCount": "{{count}} words"
+  },
+  "commandPalette": {
+    "placeholder": "Search commands or files…",
+    "noMatch": "No matches"
+  }
+}

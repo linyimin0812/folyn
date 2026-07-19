@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { dueState } from '@/features/schedule/markdown';
-import { TASK_CATEGORY_LABEL } from '@/features/schedule/types';
 import type { ScheduleTask } from '@/features/schedule/types';
 
 export function TaskCard({ task }: { task: ScheduleTask }) {
+  const { t } = useTranslation();
   const [dragging, setDragging] = useState(false);
   const toast = useScheduleStore((s) => s.toast);
 
@@ -30,8 +31,8 @@ export function TaskCard({ task }: { task: ScheduleTask }) {
       onClick={() => { if (!dragging) toast(`「${task.title}」`); }}
     >
       <div className="sw-card-top">
-        <span className={`sw-tag ${task.category}`}>{TASK_CATEGORY_LABEL[task.category]}</span>
-        <span className={`sw-prio ${task.priority}`} title="优先级" />
+        <span className={`sw-tag ${task.category}`}>{t(`schedule:category.task.${task.category}`)}</span>
+        <span className={`sw-prio ${task.priority}`} title={t('schedule:taskCard.priorityTitle')} />
       </div>
       <h4>{task.title}</h4>
       <div className="sw-card-foot">
@@ -51,7 +52,7 @@ export function TaskCard({ task }: { task: ScheduleTask }) {
           {task.scheduledDate && (
             <span className="sw-chip">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-              已排程
+              {t('schedule:taskCard.scheduled')}
             </span>
           )}
         </div>

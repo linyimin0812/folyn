@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { useTranslation } from 'react-i18next';
 import { useSkillStore } from '@/store/skillStore';
 import { builtinSkills } from '@/services/skillDefaults';
 import type { SkillOutputFormat, SkillCapability } from '@/types/skill';
@@ -28,6 +29,7 @@ function formatBadge(format: string) {
 }
 
 export function SkillsSettings() {
+  const { t } = useTranslation();
   const allSkills = useSkillStore(useShallow((s) => s.getAllSkills()));
   const updateSkill = useSkillStore((s) => s.updateSkill);
   const resetSkill = useSkillStore((s) => s.resetSkill);
@@ -68,20 +70,20 @@ export function SkillsSettings() {
 
   const handleReset = useCallback(() => {
     if (!selectedId) return;
-    if (!window.confirm('确定恢复默认设置？未保存的修改将丢失。')) return;
+    if (!window.confirm(t('settings:skills.confirmReset'))) return;
     resetSkill(selectedId);
     const skill = builtinSkills[selectedId];
     if (skill) {
       setForm({ name: skill.name, description: skill.description, content: skill.content, outputFormat: skill.outputFormat });
     }
-  }, [selectedId, resetSkill]);
+  }, [selectedId, resetSkill, t]);
 
   const handleDelete = useCallback(() => {
     if (!selectedId) return;
-    if (!window.confirm('确定删除此 Skill？此操作不可撤销。')) return;
+    if (!window.confirm(t('settings:skills.confirmDelete'))) return;
     deleteSkill(selectedId);
     setSelectedId(null);
-  }, [selectedId, deleteSkill]);
+  }, [selectedId, deleteSkill, t]);
 
   const startCreate = useCallback(() => {
     setIsCreating(true);
@@ -102,7 +104,7 @@ export function SkillsSettings() {
   const confirmCreate = useCallback(() => {
     const id = newId.trim();
     if (!id || !newName.trim()) {
-      setErrorMsg('ID 和名称为必填项');
+      setErrorMsg(t('settings:skills.errorRequired'));
       return;
     }
     try {
@@ -120,9 +122,9 @@ export function SkillsSettings() {
       setSelectedId(id);
       setForm({ name: newName.trim(), description: newDesc.trim(), content: newPrompt, outputFormat: newFormat });
     } catch (e: unknown) {
-      setErrorMsg(e instanceof Error ? e.message : '创建失败');
+      setErrorMsg(e instanceof Error ? e.message : t('settings:skills.errorCreate'));
     }
-  }, [newId, newName, newDesc, newPrompt, newFormat, createSkill]);
+  }, [newId, newName, newDesc, newPrompt, newFormat, createSkill, t]);
 
   const handleImport = useCallback(async () => {
     setErrorMsg('');
@@ -136,9 +138,9 @@ export function SkillsSettings() {
         importSkill(content);
       }
     } catch (e: unknown) {
-      setErrorMsg(e instanceof Error ? e.message : '导入失败');
+      setErrorMsg(e instanceof Error ? e.message : t('settings:skills.errorImport'));
     }
-  }, [importSkill]);
+  }, [importSkill, t]);
 
   const handleExport = useCallback(async () => {
     if (!selectedId) return;
@@ -153,9 +155,9 @@ export function SkillsSettings() {
         await writeTextFile(filePath, json);
       }
     } catch (e: unknown) {
-      setErrorMsg(e instanceof Error ? e.message : '导出失败');
+      setErrorMsg(e instanceof Error ? e.message : t('settings:skills.errorExport'));
     }
-  }, [selectedId, exportSkill]);
+  }, [selectedId, exportSkill, t]);
 
   const slugify = useCallback((name: string) => {
     return name.toLowerCase().replace(/[^a-z0-9一-鿿]+/g, '-').replace(/^-+|-+$/g, '');
@@ -163,28 +165,28 @@ export function SkillsSettings() {
 
   return (
     <div className="mb-[26px]">
-      <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">Skills</div>
+      <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">{t('settings:skills.title')}</div>
       <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">
-        配置 AI 技能模板，自定义 Prompt 以控制 AI 生成内容的格式和质量
+        {t('settings:skills.description')}
       </div>
 
       {/* Action bar */}
       <div className="flex items-center gap-1.5 mb-3">
-        <button className="btn btn-p btn-sm" onClick={startCreate}>新建 Skill</button>
-        <button className="btn btn-g btn-sm" onClick={handleImport}>导入</button>
+        <button className="btn btn-p btn-sm" onClick={startCreate}>{t('settings:skills.new')}</button>
+        <button className="btn btn-g btn-sm" onClick={handleImport}>{t('settings:skills.import')}</button>
         {selectedId && !isCreating && (
-          <button className="btn btn-g btn-sm" onClick={handleExport}>导出</button>
+          <button className="btn btn-g btn-sm" onClick={handleExport}>{t('settings:skills.export')}</button>
         )}
       </div>
 
       {/* Capability Assignment */}
       <div className="mb-3 border border-brd rounded-md p-3">
-        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-2">功能绑定</div>
-        <div className="text-[10.5px] text-t3 mb-2.5">为每个功能指定使用的 SKILL，Claude Code 将根据对应 SKILL 的指令完成任务</div>
+        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-2">{t('settings:skills.capability.title')}</div>
+        <div className="text-[10.5px] text-t3 mb-2.5">{t('settings:skills.capability.desc')}</div>
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-t1 shrink-0" style={{ width: 100 }}>网页剪藏</span>
+            <span className="text-xs text-t1 shrink-0" style={{ width: 100 }}>{t('settings:skills.capability.clip')}</span>
             <select
               className="settings-select flex-1"
               value={capabilitySkills.clip || ''}
@@ -196,7 +198,7 @@ export function SkillsSettings() {
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-t1 shrink-0" style={{ width: 100 }}>GitHub 分析</span>
+            <span className="text-xs text-t1 shrink-0" style={{ width: 100 }}>{t('settings:skills.capability.githubAnalysis')}</span>
             <select
               className="settings-select flex-1"
               value={capabilitySkills['github-analysis'] || ''}
@@ -237,16 +239,16 @@ export function SkillsSettings() {
           </div>
         ))}
         {allSkills.length === 0 && (
-          <div className="text-xs text-t3 py-2">暂无 Skill 配置</div>
+          <div className="text-xs text-t3 py-2">{t('settings:skills.empty')}</div>
         )}
       </div>
 
       {/* New Skill creation form */}
       {isCreating && (
         <div className="border border-brd rounded-md p-3 mb-3">
-          <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-2.5">新建 Skill</div>
+          <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-2.5">{t('settings:skills.form.newTitle')}</div>
           <div className="mb-2.5">
-            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">ID</div>
+            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:skills.form.idLabel')}</div>
             <input
               className="fi2 w-full py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
               value={newId}
@@ -254,10 +256,10 @@ export function SkillsSettings() {
               placeholder="my-custom-skill"
               autoCapitalize="off"
             />
-            <div className="text-[10px] text-t3 mt-[2px]">Slug 格式，仅小写字母、数字和连字符</div>
+            <div className="text-[10px] text-t3 mt-[2px]">{t('settings:skills.form.idHint')}</div>
           </div>
           <div className="mb-2.5">
-            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">名称</div>
+            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:skills.form.nameLabel')}</div>
             <input
               className="fi2 w-full py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
               value={newName}
@@ -266,27 +268,27 @@ export function SkillsSettings() {
             />
           </div>
           <div className="mb-2.5">
-            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">描述</div>
+            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:skills.form.descLabel')}</div>
             <input
               className="fi2 w-full py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
-              placeholder="描述此 Skill 的用途"
+              placeholder={t('settings:skills.form.descPlaceholder')}
             />
           </div>
           <div className="mb-2.5">
-            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">Prompt 模板</div>
+            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:skills.form.promptLabel')}</div>
             <textarea
               className="w-full py-2 px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
               rows={8}
               style={{ resize: 'vertical', lineHeight: 1.6, tabSize: 2 }}
               value={newPrompt}
               onChange={(e) => setNewPrompt(e.target.value)}
-              placeholder="输入 Prompt 模板，使用 {{variableName}} 引用变量..."
+              placeholder={t('settings:skills.form.promptPlaceholder')}
             />
           </div>
           <div className="mb-2.5">
-            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">输出格式</div>
+            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:skills.form.formatLabel')}</div>
             <select
               className="settings-select"
               style={{ maxWidth: 200 }}
@@ -299,8 +301,8 @@ export function SkillsSettings() {
             </select>
           </div>
           <div className="flex gap-1.5 mt-2">
-            <button className="btn btn-p btn-sm" onClick={confirmCreate}>创建</button>
-            <button className="btn btn-g btn-sm" onClick={cancelCreate}>取消</button>
+            <button className="btn btn-p btn-sm" onClick={confirmCreate}>{t('settings:skills.form.create')}</button>
+            <button className="btn btn-g btn-sm" onClick={cancelCreate}>{t('settings:skills.form.cancel')}</button>
           </div>
         </div>
       )}
@@ -310,7 +312,7 @@ export function SkillsSettings() {
         <div className="border border-brd rounded-md p-3">
           <div className="flex items-center justify-between mb-2.5">
             <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2">
-              编辑: <span className="font-mono text-acc">{selectedSkill.id}</span>
+              {t('settings:skills.form.editTitle')}: <span className="font-mono text-acc">{selectedSkill.id}</span>
             </div>
             <span className={`text-[9.5px] font-medium px-1.5 py-[1px] rounded ${selectedSkill.builtin ? 'bg-surf2 text-t3' : 'bg-[#e8f5e9] text-[#2e7d32]'}`}>
               {selectedSkill.builtin ? 'Built-in' : 'Custom'}
@@ -319,7 +321,7 @@ export function SkillsSettings() {
 
           {/* Name */}
           <div className="mb-2.5">
-            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">名称</div>
+            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:skills.form.nameLabel')}</div>
             <input
               className="fi2 w-full py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
               value={form.name}
@@ -329,7 +331,7 @@ export function SkillsSettings() {
 
           {/* Description */}
           <div className="mb-2.5">
-            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">描述</div>
+            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:skills.form.descLabel')}</div>
             <input
               className="fi2 w-full py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
               value={form.description}
@@ -339,7 +341,7 @@ export function SkillsSettings() {
 
           {/* Skill Content */}
           <div className="mb-2.5">
-            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">Skill 内容</div>
+            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:skills.form.contentLabel')}</div>
             <textarea
               className="w-full py-2 px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
               rows={12}
@@ -351,7 +353,7 @@ export function SkillsSettings() {
 
           {/* Output Format */}
           <div className="mb-2.5">
-            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">输出格式</div>
+            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:skills.form.formatLabel')}</div>
             <select
               className="settings-select"
               style={{ maxWidth: 200 }}
@@ -366,15 +368,15 @@ export function SkillsSettings() {
 
           {/* Action buttons */}
           <div className="flex gap-1.5 mt-3">
-            <button className="btn btn-p btn-sm" onClick={handleSave}>保存</button>
+            <button className="btn btn-p btn-sm" onClick={handleSave}>{t('settings:skills.form.save')}</button>
             {selectedSkill.builtin && (
-              <button className="btn btn-g btn-sm" onClick={handleReset}>恢复默认</button>
+              <button className="btn btn-g btn-sm" onClick={handleReset}>{t('settings:skills.form.reset')}</button>
             )}
             {!selectedSkill.builtin && (
               <button
                 className="py-[5px] px-3 rounded-md text-[11px] font-ui cursor-pointer border transition-all duration-100 border-[#e53935] bg-transparent text-[#e53935] hover:bg-[#fce4ec]"
                 onClick={handleDelete}
-              >删除</button>
+              >{t('settings:skills.form.delete')}</button>
             )}
           </div>
         </div>

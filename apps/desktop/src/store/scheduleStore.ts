@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import i18n from '@/i18n';
 import { useVaultStore } from './vaultStore';
 import { usePrefsStore } from './prefsStore';
 import { registerPersistSlice, schedulePersist } from './settingsPersistence';
@@ -189,7 +190,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set((state) => {
       const palette = COLUMN_COLOR_PALETTE;
       const color = palette[state.boardColumns.length % palette.length];
-      return { boardColumns: [...state.boardColumns, { id, name: name || '新列', color }] };
+      return { boardColumns: [...state.boardColumns, { id, name: name || i18n.t('schedule:toast.newColumnDefault'), color }] };
     });
     schedulePersist();
     return id;
@@ -227,7 +228,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set((s) => ({
       events: [...s.events.filter((ev) => ev.noteDate !== noteDate), ...next.events],
     }));
-    get().toast('事件已添加到日历');
+    get().toast(i18n.t('schedule:toast.eventAdded'));
   },
 
   moveEvent: async (eventId, newNoteDate, newStart, newEnd) => {
@@ -273,7 +274,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         ],
       }));
     }
-    get().toast(`已移到 ${newNoteDate} ${formatTime(newStart)}`);
+    get().toast(i18n.t('schedule:toast.eventMoved', { date: newNoteDate, time: formatTime(newStart) }));
   },
 
   updateEvent: async (eventId, patch) => {
@@ -290,7 +291,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set((s) => ({
       events: [...s.events.filter((e) => e.noteDate !== noteDate), ...next.events],
     }));
-    get().toast('事件已更新');
+    get().toast(i18n.t('schedule:toast.eventUpdated'));
   },
 
   deleteEvent: async (eventId) => {
@@ -305,8 +306,8 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set((s) => ({
       events: [...s.events.filter((e) => e.noteDate !== ev.noteDate), ...next.events],
     }));
-    get().toast(`已删除「${removed.title}」`, {
-      label: '撤销',
+    get().toast(i18n.t('schedule:toast.eventDeleted', { title: removed.title }), {
+      label: i18n.t('schedule:toast.undo'),
       run: () => {
         void mutateNote(removed.noteDate, (parsed) => ({
           events: [...parsed.events, { ...removed, id: '', lineIndex: -1 }],
@@ -342,7 +343,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set((s) => ({
       tasks: [...s.tasks.filter((tk) => tk.noteDate !== noteDate), ...next.tasks],
     }));
-    get().toast('任务已添加');
+    get().toast(i18n.t('schedule:toast.taskAdded'));
   },
 
   quickAddTask: async (title) => {
@@ -380,7 +381,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set((s) => ({
       tasks: [...s.tasks.filter((tk) => tk.noteDate !== task.noteDate), ...next.tasks],
     }));
-    get().toast(task.done ? '已恢复' : '已标记完成');
+    get().toast(task.done ? i18n.t('schedule:toast.taskRestored') : i18n.t('schedule:toast.taskMarkedDone'));
   },
 
   moveTaskStatus: async (taskId, col) => {
@@ -435,7 +436,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set((s) => ({
       tasks: [...s.tasks.filter((tk) => tk.noteDate !== noteDate), ...next.tasks],
     }));
-    get().toast('任务已更新');
+    get().toast(i18n.t('schedule:toast.taskUpdated'));
   },
 
   unscheduleTask: async (taskId) => {
@@ -457,8 +458,8 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set((s) => ({
       tasks: [...s.tasks.filter((tk) => tk.noteDate !== task.noteDate), ...next.tasks],
     }));
-    get().toast('已取消排程', {
-      label: '撤销',
+    get().toast(i18n.t('schedule:toast.taskUnscheduled'), {
+      label: i18n.t('schedule:toast.undo'),
       run: () => { void get().scheduleTask(taskId, prevDate, prevStart, prevEnd); },
     });
   },
@@ -476,8 +477,8 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set((s) => ({
       tasks: [...s.tasks.filter((tk) => tk.noteDate !== noteDate), ...next.tasks],
     }));
-    get().toast(`已删除「${removed.title}」`, {
-      label: '撤销',
+    get().toast(i18n.t('schedule:toast.taskDeleted', { title: removed.title }), {
+      label: i18n.t('schedule:toast.undo'),
       run: () => {
         void mutateNote(noteDate, (parsed) => ({
           events: parsed.events,
@@ -514,7 +515,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     set((s) => ({
       tasks: [...s.tasks.filter((tk) => tk.noteDate !== task.noteDate), ...next.tasks],
     }));
-    get().toast(`截止日设为 ${dueMmDd}`);
+    get().toast(i18n.t('schedule:toast.dueDateSet', { date: dueMmDd }));
   },
 
   removeBoardColumn: async (id) => {
@@ -522,13 +523,13 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     const col = cols.find((c) => c.id === id);
     if (!col) return;
     if (col.isDone) {
-      get().toast('不能删除完成列');
+      get().toast(i18n.t('schedule:toast.cannotDeleteDoneColumn'));
       return;
     }
     const next = cols.filter((c) => c.id !== id);
     const fallback = next.find((c) => !c.isDone)?.id ?? next[0]?.id;
     if (!fallback) {
-      get().toast('至少保留一列');
+      get().toast(i18n.t('schedule:toast.mustKeepOneColumn'));
       return;
     }
     // 把该列所有任务重派到 fallback 列（按 noteDate 分组写回）
@@ -553,7 +554,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     }));
     // 从 scheduleStore 自身移除该列（boardColumns 已迁入 scheduleStore）
     useScheduleStore.getState().setBoardColumns(next);
-    get().toast(`已删除列「${col.name}」`);
+    get().toast(i18n.t('schedule:toast.columnDeleted', { name: col.name }));
   },
 
   pomoToggle: () =>
@@ -572,10 +573,10 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     // 一轮结束
     if (p.mode === 'work') {
       set({ pomo: { ...p, mode: 'break', remaining: POMO_BREAK, running: true } });
-      get().toast('工作时段结束，休息 5 分钟');
+      get().toast(i18n.t('schedule:toast.pomoWorkEnded'));
     } else {
       set({ pomo: { ...p, mode: 'work', remaining: POMO_WORK, round: p.round + 1, running: true } });
-      get().toast(`休息结束，开始第 ${p.round + 1} 轮`);
+      get().toast(i18n.t('schedule:toast.pomoRestEnded', { round: p.round + 1 }));
     }
   },
 

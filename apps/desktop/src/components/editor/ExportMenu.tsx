@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useExport, hasContainerSyntax } from '@/hooks/useExport';
+import { useTranslation } from 'react-i18next';
 
 export function ExportMenu() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [containerWarning, setContainerWarning] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -36,7 +38,7 @@ export function ExportMenu() {
   return (
     <>
       <div className="export-wrap relative" ref={menuRef}>
-        <button className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1" onClick={() => setOpen(!open)} title="导出">
+        <button className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1" onClick={() => setOpen(!open)} title={t('editor:export.title')}>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
             <path d="M8 2v8" /><path d="M4.5 5.5L8 2l3.5 3.5" />
             <path d="M2.5 10v2.5a1 1 0 001 1h9a1 1 0 001-1V10" />
@@ -47,8 +49,8 @@ export function ExportMenu() {
             <div className="flex items-center gap-2 py-2 px-2.5 rounded-[5px] cursor-pointer transition-[background] duration-100 hover:bg-hov" onClick={handleExportMarkdown}>
               <span className="text-base w-6 text-center shrink-0">📝</span>
               <div className="flex flex-col gap-px">
-                <span className="text-xs font-medium text-t1">Markdown</span>
-                <span className="text-[10px] text-t3">导出 .md 源文件</span>
+                <span className="text-xs font-medium text-t1">{t('editor:export.markdown.label')}</span>
+                <span className="text-[10px] text-t3">{t('editor:export.markdown.description')}</span>
               </div>
             </div>
             <div
@@ -57,8 +59,8 @@ export function ExportMenu() {
             >
               <span className="text-base w-6 text-center shrink-0">🌐</span>
               <div className="flex flex-col gap-px">
-                <span className="text-xs font-medium text-t1">HTML</span>
-                <span className="text-[10px] text-t3">导出为渲染后的网页</span>
+                <span className="text-xs font-medium text-t1">{t('editor:export.html.label')}</span>
+                <span className="text-[10px] text-t3">{t('editor:export.html.description')}</span>
               </div>
             </div>
             <div
@@ -67,8 +69,8 @@ export function ExportMenu() {
             >
               <span className="text-base w-6 text-center shrink-0">📄</span>
               <div className="flex flex-col gap-px">
-                <span className="text-xs font-medium text-t1">PDF</span>
-                <span className="text-[10px] text-t3">通过打印对话框导出</span>
+                <span className="text-xs font-medium text-t1">{t('editor:export.pdf.label')}</span>
+                <span className="text-[10px] text-t3">{t('editor:export.pdf.description')}</span>
               </div>
             </div>
           </div>
@@ -80,21 +82,20 @@ export function ExportMenu() {
         <div className="dlg-overlay" onClick={() => setContainerWarning(false)}>
           <div className="dlg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
             <div className="dlg-hd">
-              <h3>⚠️ 兼容性提示</h3>
+              <h3>{t('editor:export.containerWarning.title')}</h3>
               <button className="dlg-close" onClick={() => setContainerWarning(false)}>✕</button>
             </div>
             <div className="dlg-body">
               <p style={{ margin: '8px 0', lineHeight: 1.7 }}>
-                当前文档使用了 Quill 容器语法（如提示框、标签页、折叠面板等），
-                这些语法是 Quill 的扩展功能，<strong>在其他 Markdown 编辑器中打开预览可能无法正常渲染</strong>。
+                {t('editor:export.containerWarning.body')}
               </p>
               <p style={{ margin: '8px 0', lineHeight: 1.7, fontSize: 13, color: 'var(--t3)' }}>
-                如需在其他编辑器中查看，建议导出为 HTML 格式。
+                {t('editor:export.containerWarning.hint')}
               </p>
             </div>
             <div className="dlg-ft">
-              <button className="btn btn-g btn-sm" onClick={() => setContainerWarning(false)}>取消</button>
-              <button className="btn btn-p btn-sm" onClick={confirmExportMarkdown}>仍然导出</button>
+              <button className="btn btn-g btn-sm" onClick={() => setContainerWarning(false)}>{t('editor:export.containerWarning.cancel')}</button>
+              <button className="btn btn-p btn-sm" onClick={confirmExportMarkdown}>{t('editor:export.containerWarning.confirm')}</button>
             </div>
           </div>
         </div>

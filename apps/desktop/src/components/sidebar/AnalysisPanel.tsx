@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAnalysisStore, type ReportMeta } from '@/store/analysisStore';
 import * as editorIoService from '@/services/editorIoService';
 import type { ReportLanguage } from '@/services/githubAnalysisService';
@@ -83,6 +84,7 @@ interface ReportCardProps {
 }
 
 function ReportCard({ report, onDelete }: ReportCardProps) {
+  const { t } = useTranslation();
   const openFile = editorIoService.openFile;
 
   const handleOpen = useCallback(async () => {
@@ -126,7 +128,7 @@ function ReportCard({ report, onDelete }: ReportCardProps) {
           <button
             className="w-5 h-5 rounded flex items-center justify-center bg-transparent border-none cursor-pointer text-t3 hover:bg-red-500/10 hover:text-red-500 transition-colors"
             onClick={handleDeleteClick}
-            title="删除"
+            title={t('sidebar:analysis.delete')}
           >
             <ThemeIcon name="delete" size={12} />
           </button>
@@ -183,6 +185,7 @@ interface DeleteConfirmProps {
 }
 
 function DeleteConfirm({ report, tag, tagCount, onConfirm, onCancel }: DeleteConfirmProps) {
+  const { t } = useTranslation();
   const repoName = report.name.replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/\.html$/, '');
   const isLastTag = tagCount <= 1;
 
@@ -196,14 +199,14 @@ function DeleteConfirm({ report, tag, tagCount, onConfirm, onCancel }: DeleteCon
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-[15px] font-semibold text-t1 mb-2">
-          {isLastTag ? '确认删除' : '移除标签'}
+          {isLastTag ? t('sidebar:analysis.deleteConfirm.titleDelete') : t('sidebar:analysis.deleteConfirm.titleRemoveTag')}
         </div>
         <div className="text-[13px] text-t2 leading-relaxed mb-4">
           {isLastTag ? (
-            <>确定要删除分析报告 <strong>{repoName}</strong> 吗？</>
+            <>{t('sidebar:analysis.deleteConfirm.deletePrefix')}<strong>{repoName}</strong>{t('sidebar:analysis.deleteConfirm.deleteSuffix')}</>
           ) : (
-            <>确定要从 <strong>{repoName}</strong> 中移除标签「<strong>{tag}</strong>」吗？<br />
-            <span className="text-[11px] text-t3">该报告还有其他 {tagCount - 1} 个标签，文件不会被删除。</span></>
+            <>{t('sidebar:analysis.deleteConfirm.removeTagPrefix')}<strong>{repoName}</strong>{t('sidebar:analysis.deleteConfirm.removeTagMiddle')}<strong>{tag}</strong>{t('sidebar:analysis.deleteConfirm.removeTagSuffix')}<br />
+            <span className="text-[11px] text-t3">{t('sidebar:analysis.deleteConfirm.removeTagHint', { count: tagCount - 1 })}</span></>
           )}
         </div>
         <div className="flex justify-end gap-2">
@@ -211,13 +214,13 @@ function DeleteConfirm({ report, tag, tagCount, onConfirm, onCancel }: DeleteCon
             className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-brd font-ui transition-all duration-[140ms] bg-panel text-t2 hover:bg-hov"
             onClick={onCancel}
           >
-            取消
+            {t('sidebar:clips.cancel')}
           </button>
           <button
             className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-[#e74c3c] font-ui transition-all duration-[140ms] bg-[#e74c3c] text-white hover:bg-[#c0392b] hover:border-[#c0392b]"
             onClick={onConfirm}
           >
-            {isLastTag ? '删除' : '移除标签'}
+            {isLastTag ? t('sidebar:clips.delete') : t('sidebar:analysis.deleteConfirm.titleRemoveTag')}
           </button>
         </div>
       </div>
@@ -234,6 +237,7 @@ interface DedupWarningProps {
 }
 
 function DedupWarning({ existingReport, onRegenerate, onCancel }: DedupWarningProps) {
+  const { t } = useTranslation();
   const dateMatch = existingReport.name.match(/^(\d{4}-\d{2}-\d{2})/);
   const dateStr = dateMatch ? dateMatch[1] : '';
   const repoName = existingReport.name
@@ -250,7 +254,7 @@ function DedupWarning({ existingReport, onRegenerate, onCancel }: DedupWarningPr
         </svg>
         <div className="flex-1 min-w-0">
           <div className="text-[12px] text-t1 font-medium mb-0.5">
-            该项目已有分析报告
+            {t('sidebar:analysis.dedup.title')}
           </div>
           <div className="text-[11px] text-t2">
             {repoName}（{dateStr}）
@@ -262,13 +266,13 @@ function DedupWarning({ existingReport, onRegenerate, onCancel }: DedupWarningPr
           className="flex-1 py-2 text-[13px] rounded-md bg-acc text-white border-none cursor-pointer hover:opacity-90 transition-opacity font-medium"
           onClick={onRegenerate}
         >
-          重新生成
+          {t('sidebar:analysis.dedup.regenerate')}
         </button>
         <button
           className="px-4 py-2 text-[13px] rounded-md bg-bg text-t2 border border-brd cursor-pointer hover:bg-hov transition-colors"
           onClick={onCancel}
         >
-          取消
+          {t('sidebar:clips.cancel')}
         </button>
       </div>
     </div>
@@ -283,6 +287,7 @@ interface EditableTagChipsProps {
 }
 
 function EditableTagChips({ tags, onChange }: EditableTagChipsProps) {
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState('');
 
   const handleRemove = useCallback(
@@ -327,7 +332,7 @@ function EditableTagChips({ tags, onChange }: EditableTagChipsProps) {
       <input
         type="text"
         className="flex-1 min-w-[80px] bg-transparent border-none outline-none text-[11px] text-t1 placeholder:text-t3 py-0.5"
-        placeholder={tags.length === 0 ? '输入标签后按回车添加...' : '添加更多...'}
+        placeholder={tags.length === 0 ? t('sidebar:analysis.tagPlaceholderEmpty') : t('sidebar:analysis.tagPlaceholderMore')}
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -346,6 +351,7 @@ interface ConfirmationModeProps {
 }
 
 function ConfirmationMode({ pendingReport, isSaving, onConfirm, onCancel }: ConfirmationModeProps) {
+  const { t } = useTranslation();
   const [editedTags, setEditedTags] = useState<string[]>(pendingReport.tags);
   const htmlSizeKB = Math.round(pendingReport.html.length / 1024);
 
@@ -371,7 +377,7 @@ function ConfirmationMode({ pendingReport, isSaving, onConfirm, onCancel }: Conf
         </svg>
         <div className="flex-1 min-w-0">
           <div className="text-[12px] text-t1 font-medium">
-            分析完成 — {pendingReport.repo}
+            {t('sidebar:analysis.confirmation.success', { repo: pendingReport.repo })}
           </div>
           <div className="text-[10px] text-t3 truncate mt-0.5">
             {pendingReport.url}
@@ -382,7 +388,7 @@ function ConfirmationMode({ pendingReport, isSaving, onConfirm, onCancel }: Conf
       {/* HTML Preview */}
       <div className="flex flex-col gap-1.5">
         <label className="text-[11px] text-t3 font-medium">
-          报告预览
+          {t('sidebar:analysis.confirmation.previewLabel')}
         </label>
         <div className="rounded-md border border-brd overflow-hidden bg-white">
           <iframe
@@ -397,14 +403,14 @@ function ConfirmationMode({ pendingReport, isSaving, onConfirm, onCancel }: Conf
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
             <path d="M14 2v6h6" />
           </svg>
-          HTML {htmlSizeKB} KB · {pendingReport.tags.length} 个标签
+          {t('sidebar:analysis.confirmation.htmlSize', { kb: htmlSizeKB, count: pendingReport.tags.length })}
         </div>
       </div>
 
       {/* Tags editor */}
       <div className="flex flex-col gap-1.5">
         <label className="text-[11px] text-t3 font-medium">
-          标签（可编辑）
+          {t('sidebar:analysis.confirmation.tagsLabel')}
         </label>
         <EditableTagChips tags={editedTags} onChange={setEditedTags} />
       </div>
@@ -416,14 +422,14 @@ function ConfirmationMode({ pendingReport, isSaving, onConfirm, onCancel }: Conf
           onClick={handleConfirm}
           disabled={isSaving}
         >
-          {isSaving ? '保存中...' : '确认保存'}
+          {isSaving ? t('sidebar:clips.saving') : t('sidebar:clips.save')}
         </button>
         <button
           className="px-4 py-2 text-[13px] rounded-md bg-bg text-t2 border border-brd cursor-pointer hover:bg-hov transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={onCancel}
           disabled={isSaving}
         >
-          取消
+          {t('sidebar:clips.cancel')}
         </button>
       </div>
     </div>
@@ -437,6 +443,7 @@ function AnalysisDialog({
 }: {
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const isAnalyzing = useAnalysisStore((s) => s.isAnalyzing);
   const analysisProgress = useAnalysisStore((s) => s.analysisProgress);
   const error = useAnalysisStore((s) => s.error);
@@ -549,7 +556,7 @@ function AnalysisDialog({
             <path d="M21 21H4.6c-.56 0-.84 0-1.054-.109a1 1 0 01-.437-.437C3 20.24 3 19.96 3 19.4V3" />
             <path d="M7 14l4-4 4 4 6-6" />
           </svg>
-          <span className="text-[15px] font-semibold text-t1">新建项目分析</span>
+          <span className="text-[15px] font-semibold text-t1">{t('sidebar:analysis.dialog.title')}</span>
         </div>
 
         {/* Scrollable content area */}
@@ -560,11 +567,11 @@ function AnalysisDialog({
           <div className="flex flex-col gap-3">
             {/* URL input */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] text-t3 font-medium">GitHub 仓库链接</label>
+              <label className="text-[11px] text-t3 font-medium">{t('sidebar:analysis.dialog.urlLabel')}</label>
               <input
                 type="text"
                 className="w-full px-3 py-2 text-[13px] rounded-md border border-brd bg-bg text-t1 outline-none focus:border-acc transition-colors"
-                placeholder="https://github.com/owner/repo"
+                placeholder={t('sidebar:analysis.dialog.urlPlaceholder')}
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -574,13 +581,13 @@ function AnalysisDialog({
 
             {/* Language selector */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] text-t3 font-medium">报告语言</label>
+              <label className="text-[11px] text-t3 font-medium">{t('sidebar:analysis.dialog.langLabel')}</label>
               <div className="flex gap-1.5">
                 {(
                   [
-                    { value: 'zh' as ReportLanguage, label: '中文' },
-                    { value: 'en' as ReportLanguage, label: 'English' },
-                    { value: 'auto' as ReportLanguage, label: '自动检测' },
+                    { value: 'zh' as ReportLanguage, label: t('sidebar:analysis.dialog.langZh') },
+                    { value: 'en' as ReportLanguage, label: t('sidebar:analysis.dialog.langEn') },
+                    { value: 'auto' as ReportLanguage, label: t('sidebar:analysis.dialog.langAuto') },
                   ] as const
                 ).map((opt) => (
                   <button
@@ -612,13 +619,13 @@ function AnalysisDialog({
                 onClick={handleStart}
                 disabled={!url.trim()}
               >
-                开始分析
+                {t('sidebar:analysis.dialog.start')}
               </button>
               <button
                 className="px-4 py-2 text-[13px] rounded-md bg-bg text-t2 border border-brd cursor-pointer hover:bg-hov transition-colors"
                 onClick={onClose}
               >
-                取消
+                {t('sidebar:clips.cancel')}
               </button>
             </div>
           </div>
@@ -639,17 +646,17 @@ function AnalysisDialog({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <span className="inline-block w-5 h-5 rounded-full border-[2px] border-brd border-t-acc animate-spin" />
-                <span className="text-[13px] text-t2">{analysisProgress || '准备中...'}</span>
+                <span className="text-[13px] text-t2">{analysisProgress || t('sidebar:analysis.dialog.progressDefault')}</span>
               </div>
               <button
                 className="py-1 px-3 text-[12px] rounded-md bg-bg text-t2 border border-brd cursor-pointer hover:bg-hov transition-colors"
                 onClick={onClose}
               >
-                隐藏
+                {t('sidebar:analysis.dialog.hide')}
               </button>
             </div>
             {aiStreamEvents.length > 0 && <StreamDisplay events={aiStreamEvents} />}
-            <div className="text-[11px] text-t3 text-center">分析过程可能需要几分钟，请耐心等待</div>
+            <div className="text-[11px] text-t3 text-center">{t('sidebar:analysis.dialog.patience')}</div>
           </div>
         )}
 
@@ -672,6 +679,7 @@ function AnalysisDialog({
 // ── Main Panel ──
 
 export function AnalysisPanel() {
+  const { t } = useTranslation();
   const reports = useAnalysisStore((s) => s.reports);
   const isLoading = useAnalysisStore((s) => s.isLoading);
   const error = useAnalysisStore((s) => s.error);
@@ -772,7 +780,7 @@ export function AnalysisPanel() {
           <path d="M21 21H4.6c-.56 0-.84 0-1.054-.109a1 1 0 01-.437-.437C3 20.24 3 19.96 3 19.4V3" />
           <path d="M7 14l4-4 4 4 6-6" />
         </svg>
-        <span>项目分析</span>
+        <span>{t('sidebar:analysis.title')}</span>
         {hasAnyReports && (
           <span className="text-t3 font-normal">({reports.length})</span>
         )}
@@ -780,16 +788,16 @@ export function AnalysisPanel() {
           <span
             className="ml-1 flex items-center gap-1 text-acc text-[10px] cursor-pointer hover:opacity-80"
             onClick={() => setShowDialog(true)}
-            title="点击查看详情"
+            title={t('sidebar:analysis.viewDetails')}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-acc animate-pulse" />
-            分析中
+            {t('sidebar:analysis.analyzing')}
           </span>
         )}
         <button
           className="ml-auto w-5 h-5 rounded flex items-center justify-center bg-transparent border-none cursor-pointer text-t2 hover:bg-hov hover:text-t1 transition-colors"
           onClick={() => setShowDialog(true)}
-          title="新建分析"
+          title={t('sidebar:analysis.newAnalysis')}
         >
           <svg
             width="14"
@@ -834,7 +842,7 @@ export function AnalysisPanel() {
                 onClick={() => handleToggleTag('__uncategorized__')}
               >
                 <ThemeIcon name="folder" size={14} className="shrink-0 text-t3" />
-                <span className="text-[12px] text-t1 font-semibold truncate">未分类</span>
+                <span className="text-[12px] text-t1 font-semibold truncate">{t('sidebar:analysis.uncategorized')}</span>
                 <span className="text-[10px] text-t3 ml-auto shrink-0">{uncategorized.length}</span>
               </button>
             )}
@@ -855,11 +863,11 @@ export function AnalysisPanel() {
         {/* Empty state */}
         {!hasAnyReports && !isLoading && (
           <div className="p-4 text-center text-xs text-t3 leading-relaxed">
-            暂无分析报告。点击右上角 + 按钮开始分析。
+            {t('sidebar:analysis.empty')}
           </div>
         )}
         {isLoading && (
-          <div className="p-4 text-center text-xs text-t3">加载中...</div>
+          <div className="p-4 text-center text-xs text-t3">{t('sidebar:analysis.loading')}</div>
         )}
       </div>
 

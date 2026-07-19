@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePetStore } from '@/store/petStore';
 import { isTauri } from '@/utils/platform';
 import { Toggle } from '@/components/settings/primitives';
@@ -27,6 +28,7 @@ import { Toggle } from '@/components/settings/primitives';
  * needed for the upload/reset flows here.
  */
 export function PetSettings() {
+  const { t } = useTranslation();
   const petModeEnabled = usePetStore((s) => s.petModeEnabled);
   const setPetModeEnabled = usePetStore((s) => s.setPetModeEnabled);
   const petIconSource = usePetStore((s) => s.petIconSource);
@@ -64,7 +66,7 @@ export function PetSettings() {
     setBusy(true);
     try {
       if (!isTauri()) {
-        setErrorMsg('桌面端功能，请在 Tauri 环境中使用');
+        setErrorMsg(t('settings:pet.errors.desktopOnly'));
         return;
       }
       const { open } = await import('@tauri-apps/plugin-dialog');
@@ -84,7 +86,7 @@ export function PetSettings() {
       // bypass via "All files" on some platforms — defensive validate).
       const ext = (filePath.split('.').pop() || '').toLowerCase();
       if (!VALID_EXTS.includes(ext)) {
-        setErrorMsg('仅支持 png / jpg / webp / svg 格式');
+        setErrorMsg(t('settings:pet.errors.unsupportedFormat'));
         return;
       }
 
@@ -99,7 +101,7 @@ export function PetSettings() {
         size = 0;
       }
       if (size > MAX_ICON_BYTES) {
-        setErrorMsg(`文件大小不能超过 1MB（当前 ${(size / 1024).toFixed(0)} KB）`);
+        setErrorMsg(t('settings:pet.errors.fileTooLarge', { kb: (size / 1024).toFixed(0) }));
         return;
       }
 
@@ -124,18 +126,18 @@ export function PetSettings() {
       const bytes = await readFile(filePath);
       if (bytes.length > MAX_ICON_BYTES) {
         // Re-check after read in case stat underreported (defensive).
-        setErrorMsg(`文件大小不能超过 1MB（当前 ${(bytes.length / 1024).toFixed(0)} KB）`);
+        setErrorMsg(t('settings:pet.errors.fileTooLarge', { kb: (bytes.length / 1024).toFixed(0) }));
         return;
       }
       await writeFile(destPath, bytes);
       setPetIcon('custom', destPath);
       await emitIconChanged('custom', destPath);
     } catch (e: unknown) {
-      setErrorMsg(e instanceof Error ? e.message : '上传失败');
+      setErrorMsg(e instanceof Error ? e.message : t('settings:pet.errors.uploadFailed'));
     } finally {
       setBusy(false);
     }
-  }, [busy, setPetIcon, emitIconChanged]);
+  }, [busy, setPetIcon, emitIconChanged, t]);
 
   const handleTogglePetMode = useCallback(async (v: boolean) => {
     // Optimistic store update so the toggle feels snappy; then invoke the
@@ -182,9 +184,9 @@ export function PetSettings() {
       setPetIcon('builtin');
       await emitIconChanged('builtin', '');
     } catch (e: unknown) {
-      setErrorMsg(e instanceof Error ? e.message : '重置失败');
+      setErrorMsg(e instanceof Error ? e.message : t('settings:pet.errors.resetFailed'));
     }
-  }, [setPetIcon, emitIconChanged]);
+  }, [setPetIcon, emitIconChanged, t]);
 
   const handleSelectCustom = useCallback(() => {
     // Radio "自定义": if a custom icon is already uploaded, just switch
@@ -207,14 +209,14 @@ export function PetSettings() {
 
   return (
     <div className="mb-[26px]">
-      <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">桌宠</div>
-      <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">配置桌面宠物图标与显示</div>
+      <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">{t('settings:pet.title')}</div>
+      <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">{t('settings:pet.description')}</div>
 
       {/* 显示桌宠 toggle — reuses the existing petModeEnabled flag */}
       <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
         <div className="tr-info">
-          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">显示桌宠</h4>
-          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">在屏幕上显示桌面宠物窗口（macOS）</p>
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:pet.showPet.title')}</h4>
+          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:pet.showPet.desc')}</p>
         </div>
         <Toggle value={petModeEnabled} onChange={(v) => void handleTogglePetMode(v)} />
       </div>
@@ -222,8 +224,8 @@ export function PetSettings() {
       {/* 图标 source radio */}
       <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
         <div className="tr-info">
-          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">图标</h4>
-          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">默认使用内置 Quill 图标，或上传自定义图片</p>
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:pet.icon.title')}</h4>
+          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:pet.icon.desc')}</p>
         </div>
         <div className="flex gap-1">
           <button
@@ -232,11 +234,11 @@ export function PetSettings() {
               setPetIcon('builtin');
               void emitIconChanged('builtin', '');
             }}
-          >默认</button>
+          >{t('settings:pet.icon.builtin')}</button>
           <button
             className={`py-[5px] px-3 rounded-md text-[11px] font-ui cursor-pointer border transition-all duration-100 ${petIconSource === 'custom' ? 'border-acc bg-accdim text-acc' : 'border-brd bg-surf text-t2 hover:bg-hov hover:text-t1'}`}
             onClick={handleSelectCustom}
-          >自定义</button>
+          >{t('settings:pet.icon.custom')}</button>
         </div>
       </div>
 
@@ -258,14 +260,14 @@ export function PetSettings() {
               className="btn btn-g btn-sm"
               disabled={busy}
               onClick={() => void handleUploadIcon()}
-            >{busy ? '上传中…' : '上传图标…'}</button>
+            >{busy ? t('settings:pet.icon.uploading') : t('settings:pet.icon.upload')}</button>
             <button
               className="btn btn-g btn-sm"
               disabled={petIconSource === 'builtin' && !petIconPath}
               onClick={() => void handleResetIcon()}
-            >恢复默认</button>
+            >{t('settings:pet.icon.reset')}</button>
           </div>
-          <div className="text-[10.5px] text-t3">支持 png / jpg / webp / svg，≤ 1MB</div>
+          <div className="text-[10.5px] text-t3">{t('settings:pet.icon.hint')}</div>
         </div>
       </div>
 
@@ -289,6 +291,7 @@ interface CustomIconPreviewProps {
 }
 
 function CustomIconPreview({ path, onError }: CustomIconPreviewProps) {
+  const { t } = useTranslation();
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -309,7 +312,7 @@ function CustomIconPreview({ path, onError }: CustomIconPreviewProps) {
   return (
     <img
       src={src}
-      alt="自定义图标"
+      alt={t('settings:pet.icon.alt')}
       className="w-12 h-12"
       style={{ objectFit: 'contain' }}
       onError={onError}

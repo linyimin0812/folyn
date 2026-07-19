@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { isTauri } from '@/utils/platform';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
@@ -32,6 +33,7 @@ function onMac(): boolean {
 }
 
 export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
+  const { t } = useTranslation();
   const phase = useVoiceInput((s) => s.phase);
   const error = useVoiceInput((s) => s.error);
   const trigger = useVoiceInput((s) => s.trigger);
@@ -72,24 +74,24 @@ export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
   // source-save failure still takes priority (matches the prior behavior).
   const busyLabel =
     phase === 'transcribing'
-      ? '语音转文字中…'
+      ? t('ai:voice.phase.transcribing')
       : phase === 'polishing'
-        ? 'LLM 优化中…'
+        ? t('ai:voice.phase.polishing')
         : phase === 'inserting'
-          ? '插入中…'
-          : '语音处理中…';
+          ? t('ai:voice.phase.inserting')
+          : t('ai:voice.phase.processing');
 
   const title = !mac
-    ? 'Windows 暂不支持语音输入'
+    ? t('ai:voice.button.windowsUnsupported')
     : recording
-      ? '点击停止录音并插入'
+      ? t('ai:voice.button.clickToStop')
       : busy && error
         ? error
         : busy
           ? busyLabel
           : phase === 'error' && error
             ? error
-            : '语音输入';
+            : t('ai:voice.button.idle');
 
   return (
     <span className="relative inline-flex">
@@ -121,7 +123,7 @@ export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
         disabled={isDisabled}
         title={title}
         tabIndex={-1}
-        aria-label={recording ? '停止录音' : '语音输入'}
+        aria-label={recording ? t('ai:voice.button.stopRecordingLabel') : t('ai:voice.button.voiceInputLabel')}
       >
         {busy ? (
           // Spinner while transcribing / polishing / inserting.

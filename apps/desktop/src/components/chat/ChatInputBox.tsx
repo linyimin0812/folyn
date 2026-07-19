@@ -1,4 +1,5 @@
 import { useCallback, useRef, type ReactNode, type Ref } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface ChatInputBoxProps {
   value: string;
@@ -62,6 +63,7 @@ export function ChatInputBox({
   trailingSlot,
   className,
 }: ChatInputBoxProps) {
+  const { t } = useTranslation();
   const internalRef = useRef<HTMLTextAreaElement | null>(null);
   // Merge the internal ref (unused for reads today, kept for future use)
   // with the caller-provided `inputRef` so AiPanel's ChatInput can drive
@@ -106,7 +108,7 @@ export function ChatInputBox({
         <textarea
           ref={setTextareaRef}
           className="flex-1 resize-none border-none rounded-t-lg pt-2 px-2.5 pb-1 text-[12px] font-ui bg-transparent text-t1 outline-none placeholder:text-t3"
-          placeholder={placeholder ?? '输入指令...'}
+          placeholder={placeholder ?? t('ai:chat.placeholderFallback')}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -129,9 +131,9 @@ export function ChatInputBox({
               className="h-7 px-2 flex items-center justify-center rounded-md text-[11px] text-t3 cursor-pointer transition-all duration-[120ms] bg-transparent border-none hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={onClear}
               disabled={streaming}
-              title="清空对话"
+              title={t('ai:chat.clearTitle')}
             >
-              清空
+              {t('ai:chat.clear')}
             </button>
           )}
           {streaming && onStop ? (
@@ -139,8 +141,8 @@ export function ChatInputBox({
               type="button"
               className="w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-all duration-[120ms] bg-red text-white hover:opacity-[.85]"
               onClick={onStop}
-              title="停止"
-              aria-label="停止"
+              title={t('ai:chat.stop')}
+              aria-label={t('ai:chat.stop')}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="6" y="6" width="12" height="12" rx="2" />
@@ -152,8 +154,8 @@ export function ChatInputBox({
               className="w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-all duration-[120ms] bg-acc text-white hover:opacity-[.85] disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={onSend}
               disabled={!canSendNow}
-              title="发送"
-              aria-label="发送"
+              title={t('ai:chat.send')}
+              aria-label={t('ai:chat.send')}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13" />

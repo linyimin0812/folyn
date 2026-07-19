@@ -1,0 +1,190 @@
+{
+  "filesPanel": {
+    "actions": {
+      "locateActive": "定位当前文件",
+      "refresh": "刷新文件树",
+      "more": "更多操作",
+      "newFile": "新建文件",
+      "newFolder": "新建文件夹",
+      "expandAll": "展开全部",
+      "collapseAll": "折叠全部",
+      "expandAllFolders": "展开全部文件夹",
+      "collapseAllFolders": "折叠全部文件夹"
+    },
+    "search": {
+      "placeholder": "搜索文件..."
+    },
+    "newItem": {
+      "folderName": "文件夹名称",
+      "fileNameWithExt": "文件名（含扩展名）",
+      "fileNameDefault": "文件名（默认 .{{ext}}）",
+      "fileNameMd": "文件名称（默认 .md）"
+    },
+    "empty": "暂无文件"
+  },
+  "contextMenu": {
+    "fileType": {
+      "code": "代码文件"
+    },
+    "newFile": "新建文件",
+    "newFileOther": "其他（自定义扩展名）",
+    "newFolder": "新建文件夹",
+    "copyRelativePath": "复制相对路径",
+    "copyAbsolutePath": "复制绝对路径",
+    "copyFileName": "复制文件名",
+    "unpin": "取消置顶",
+    "pin": "置顶",
+    "addToChat": "添加文件到对话",
+    "ingestToWiki": "摄入到 Wiki",
+    "rename": "重命名",
+    "delete": "删除"
+  },
+  "sidebarActions": {
+    "deleteConfirm": {
+      "title": "确认删除",
+      "prefix": "确定要删除{{type}} ",
+      "suffix": " 吗？",
+      "typeFile": "文件",
+      "typeFolder": "文件夹",
+      "folderContentsHint": "文件夹内的所有内容也将被删除"
+    },
+    "cancel": "取消",
+    "delete": "删除"
+  },
+  "calendar": {
+    "weekdays": ["日", "一", "二", "三", "四", "五", "六"],
+    "title": "{{year}} 年 {{month}} 月",
+    "hasNote": "{{date}} (有笔记)"
+  },
+  "wikiTree": {
+    "empty": "Wiki 为空。在 AI 面板中摄入文件开始构建知识库。"
+  },
+  "clips": {
+    "title": "Clips",
+    "delete": "删除",
+    "removeTag": "移除标签",
+    "tagPlaceholderEmpty": "输入标签后回车添加...",
+    "tagPlaceholderAdd": "添加...",
+    "progressDefault": "准备中...",
+    "preview": {
+      "title": "知识卡片预览",
+      "titleLabel": "标题",
+      "tagsLabel": "标签",
+      "suggestedLabel": "推荐标签",
+      "summaryLabel": "摘要",
+      "source": "来源: {{host}}"
+    },
+    "save": "确认保存",
+    "saving": "保存中...",
+    "cancel": "取消",
+    "batch": {
+      "title": "批量剪藏",
+      "close": "关闭批量模式",
+      "placeholder": "一行一个 URL，例如：\nhttps://example.com/a\nhttps://example.com/b",
+      "force": "强制重新剪藏",
+      "delay": "条间延迟",
+      "count": "{{count}} 条",
+      "start": "开始批量剪藏",
+      "cancelRunning": "取消（完成当前后停止）",
+      "summary": {
+        "total": "共 {{count}}",
+        "done": "完成 {{count}}",
+        "skipped": "跳过 {{count}}",
+        "failed": "失败 {{count}}"
+      },
+      "open": "打开",
+      "openSummary": "打开批量汇总"
+    },
+    "status": {
+      "pending": "待处理",
+      "running": "运行中",
+      "done": "已完成",
+      "skipped": "已跳过",
+      "failed": "失败",
+      "cancelled": "已取消"
+    },
+    "clippingInProgress": "剪藏中",
+    "viewDetails": "点击查看详情",
+    "batchModeEnter": "批量剪藏",
+    "batchModeExit": "退出批量模式",
+    "addClip": "添加剪藏",
+    "empty": "暂无剪藏。点击右上角 + 按钮开始剪藏。",
+    "loading": "加载中...",
+    "modalTitle": "添加剪藏",
+    "urlPlaceholder": "粘贴网址...",
+    "langLabel": "语言",
+    "langEn": "English",
+    "langZh": "中文",
+    "langAuto": "自动",
+    "clipButton": "剪藏",
+    "generating": "生成中...",
+    "duplicate": {
+      "title": "该链接已经剪藏过",
+      "prompt": "是否重新生成并覆盖已有内容？",
+      "openExisting": "打开已有",
+      "regenerate": "重新生成"
+    },
+    "savingFile": "正在保存文件...",
+    "deleteConfirm": {
+      "titleDelete": "确认删除",
+      "titleRemoveTag": "移除标签",
+      "deletePrefix": "确定要删除剪藏 ",
+      "deleteSuffix": " 吗？",
+      "removeTagPrefix": "确定要从 ",
+      "removeTagMiddle": " 中移除标签「",
+      "removeTagSuffix": "」吗？",
+      "removeTagHint": "该剪藏还有其他 {{count}} 个标签，文件不会被删除。"
+    }
+  },
+  "analysis": {
+    "title": "项目分析",
+    "delete": "删除",
+    "viewDetails": "点击查看详情",
+    "analyzing": "分析中",
+    "newAnalysis": "新建分析",
+    "uncategorized": "未分类",
+    "empty": "暂无分析报告。点击右上角 + 按钮开始分析。",
+    "loading": "加载中...",
+    "deleteConfirm": {
+      "titleDelete": "确认删除",
+      "titleRemoveTag": "移除标签",
+      "deletePrefix": "确定要删除分析报告 ",
+      "deleteSuffix": " 吗？",
+      "removeTagPrefix": "确定要从 ",
+      "removeTagMiddle": " 中移除标签「",
+      "removeTagSuffix": "」吗？",
+      "removeTagHint": "该报告还有其他 {{count}} 个标签，文件不会被删除。"
+    },
+    "dedup": {
+      "title": "该项目已有分析报告",
+      "regenerate": "重新生成"
+    },
+    "tagPlaceholderEmpty": "输入标签后按回车添加...",
+    "tagPlaceholderMore": "添加更多...",
+    "confirmation": {
+      "success": "分析完成 — {{repo}}",
+      "previewLabel": "报告预览",
+      "htmlSize": "HTML {{kb}} KB · {{count}} 个标签",
+      "tagsLabel": "标签（可编辑）"
+    },
+    "dialog": {
+      "title": "新建项目分析",
+      "urlLabel": "GitHub 仓库链接",
+      "urlPlaceholder": "https://github.com/owner/repo",
+      "langLabel": "报告语言",
+      "langZh": "中文",
+      "langEn": "English",
+      "langAuto": "自动检测",
+      "start": "开始分析",
+      "progressDefault": "准备中...",
+      "hide": "隐藏",
+      "patience": "分析过程可能需要几分钟，请耐心等待"
+    }
+  },
+  "panelError": {
+    "failed": "面板加载失败"
+  },
+  "dragDrop": {
+    "itemsCount": "{{count}} 个项目"
+  }
+}

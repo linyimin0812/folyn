@@ -1,0 +1,376 @@
+{
+  "nav": {
+    "backToEditor": "Back to editor"
+  },
+  "groups": {
+    "general": "General",
+    "editor": "Editor",
+    "ai": "AI",
+    "extensions": "Extensions",
+    "about": "About"
+  },
+  "tabs": {
+    "appearance": "Appearance",
+    "editor": "Editor",
+    "shortcuts": "Shortcuts",
+    "ai": "AI Tools",
+    "voice": "Voice Input",
+    "templates": "File Templates",
+    "skills": "Skills",
+    "pet": "Pet",
+    "notifications": "Notifications",
+    "plugins": "Plugins",
+    "about": "About"
+  },
+  "appearance": {
+    "title": "Appearance",
+    "description": "Adjust UI theme and font display",
+    "theme": {
+      "label": "UI theme",
+      "dark": "Dark",
+      "light": "Light",
+      "system": "Follow system"
+    },
+    "fontSize": {
+      "label": "UI font size",
+      "compact": "12px (compact)",
+      "default": "14px (default)",
+      "comfortable": "16px (comfortable)"
+    },
+    "panels": {
+      "ai": {
+        "label": "Show AI panel by default",
+        "description": "Auto-expand AI chat panel when opening the editor"
+      },
+      "statusBar": {
+        "label": "Status bar",
+        "description": "Show word count, cursor position at the bottom"
+      },
+      "hiddenFiles": {
+        "label": "Show hidden files",
+        "description": "Show dotfiles and hidden folders in the file tree"
+      },
+      "wiki": {
+        "label": "Wiki panel",
+        "description": "Show Wiki entry in the sidebar"
+      },
+      "clips": {
+        "label": "Clips panel",
+        "description": "Show web-clips entry in the sidebar"
+      },
+      "analyze": {
+        "label": "Project analysis panel",
+        "description": "Show project-analysis entry in the sidebar"
+      },
+      "daily": {
+        "label": "Daily notes panel",
+        "description": "Show calendar and daily notes entry in the sidebar (disabling also disables ⌘D)"
+      }
+    },
+    "excludePatterns": {
+      "label": "Filter files/folders",
+      "description": "One rule per line; matched files/folders are hidden in the file tree. Supports * and ? wildcards; lines starting with # are comments."
+    }
+  },
+  "editor": {
+    "title": "Editor",
+    "description": "Configure editor behavior and display options",
+    "font": {
+      "label": "Editor font"
+    },
+    "fontSize": {
+      "label": "Font size"
+    },
+    "tabSize": {
+      "label": "Tab size",
+      "2": "2 spaces",
+      "4": "4 spaces"
+    },
+    "showLineNumbers": {
+      "label": "Show line numbers",
+      "description": "Show line numbers on the left of the editor"
+    },
+    "autoSave": {
+      "label": "Auto save",
+      "description": "Auto-save the current document every 30s"
+    },
+    "linkOpenMode": {
+      "label": "Link open mode",
+      "description": "Default behavior when clicking a link",
+      "external": "External browser",
+      "internal": "Open in app"
+    },
+    "dailyNotes": {
+      "title": "Daily Notes",
+      "description": "Configure storage directory and date format for daily notes",
+      "dir": {
+        "label": "Notes directory"
+      },
+      "dateFormat": {
+        "label": "Date format"
+      }
+    }
+  },
+  "shortcuts": {
+    "title": "Shortcuts",
+    "description": "Click a shortcut field to re-record; press a new key combo to change it",
+    "reset": "Reset to default",
+    "editor": {
+      "recording": "Press a shortcut…",
+      "conflictHint": "No key captured — this combo may be taken by the app menu or OS (⌘Q / ⌘H / ⌘M / ⌘W / ⌘⇧P)"
+    }
+  },
+  "ai": {
+    "title": "AI tools",
+    "description": "Configure AI CLI tools for smart document editing",
+    "cliAdapter": "CLI adapter",
+    "cliPath": {
+      "label": "CLI path",
+      "detect": "Detect",
+      "detectTitle": "Auto-detect path",
+      "hint": "Path or command name of the CLI executable; click \"Detect\" to auto-find"
+    },
+    "test": {
+      "testing": "Testing…",
+      "label": "Test connection",
+      "success": "Connected",
+      "exitCode": "Exit code {{code}}",
+      "cannotRun": "Cannot run CLI: {{error}}"
+    },
+    "usage": {
+      "title": "Usage",
+      "description": "AI tools edit documents by calling a local CLI (e.g. Claude Code). Make sure the corresponding CLI is installed. Edits are shown as diffs and applied after confirmation."
+    },
+    "chat": {
+      "title": "Chat mode",
+      "description": "Multi-turn chat via rig direct LLM (no CLI, no tool/file access). ask/agent still use the CLI above.",
+      "provider": {
+        "label": "Provider",
+        "anthropic": "Anthropic (Claude)",
+        "openai": "OpenAI",
+        "openaiCompatible": "OpenAI-compatible (custom baseUrl)"
+      },
+      "model": {
+        "label": "Model"
+      },
+      "apiKey": {
+        "label": "API Key",
+        "show": "Show API Key",
+        "hide": "Hide API Key"
+      },
+      "baseUrl": {
+        "label": "Base URL (optional)",
+        "anthropicHint": "Leave empty for official Anthropic; Anthropic-compatible endpoints",
+        "openaiHint": "Leave empty for official OpenAI.",
+        "openaiCompatibleHint": "Required for Ollama / vLLM / LM Studio etc.; /v1 is appended automatically if missing.",
+        "placeholder": "Leave empty for default"
+      },
+      "test": {
+        "testing": "Testing…",
+        "label": "Test connection"
+      }
+    }
+  },
+  "about": {
+    "tagline": "v0.1.0-alpha · Local-first Markdown Editor",
+    "features": {
+      "localFirst": {
+        "title": "Local-first",
+        "description": "Data is stored on your device"
+      },
+      "openFormat": {
+        "title": "Open format",
+        "description": "Standard Markdown, no lock-in"
+      },
+      "ai": {
+        "title": "AI-assisted",
+        "description": "Local + cloud LLM"
+      }
+    },
+    "copyVersion": "Copy version info",
+    "checkUpdate": "Check for updates"
+  },
+  "plugins": {
+    "title": "Plugins",
+    "description": "Install, approve, enable or uninstall third-party plugins (microkernel + plugin SDK)",
+    "installFromFolder": "Install from folder…",
+    "installing": "Installing ({{id}})…",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "empty": "No plugins installed yet. Place a plugin folder anywhere, then click \"Install from folder\".",
+    "emptyExample": "Sample plugins live in the repo at",
+    "state": {
+      "active": "Active",
+      "inactive": "Disabled",
+      "failed": "Failed",
+      "installed": "Installed"
+    },
+    "tier": {
+      "trusted": "Trusted tier",
+      "sandbox": "Sandbox tier"
+    },
+    "approved": "Approved",
+    "approve": "Approve & authorize",
+    "approving": "Approving…",
+    "activate": "Enable",
+    "activating": "Enabling…",
+    "deactivate": "Disable",
+    "deactivating": "Disabling…",
+    "uninstall": "Uninstall",
+    "uninstalling": "Uninstalling…",
+    "uninstallTitle": "Uninstall plugin",
+    "consent": {
+      "title": "Approve trusted plugin",
+      "intro": "About to approve",
+      "permissionsLabel": "Declared permissions & contribution points:",
+      "noPermissions": "None",
+      "warning": "Trusted plugins run in the main process and have full host capabilities (read/write the vault, invoke Tauri commands, access all React state). Approval equals full trust — only approve plugins from sources you trust. Uninstall removes its contribution points at any time.",
+      "cancel": "Cancel",
+      "confirm": "I understand, approve"
+    }
+  },
+  "voice": {
+    "title": "Voice input",
+    "description": "Click 🎤 in the AI chat or press the global hotkey to start recording; speech is transcribed, polished, and inserted into the focused input (works across apps).",
+    "windowsUnsupported": ". Voice input is not supported on Windows",
+    "windowsUnsupportedBanner": "Voice input is not supported on this platform. macOS uses Apple Speech (SFSpeechRecognizer).",
+    "permission": {
+      "checking": "Checking…",
+      "granted": "Granted ✓",
+      "denied": "Still not granted — click to retry"
+    },
+    "accessibility": {
+      "title": "Accessibility permission",
+      "desc": "Cross-app text insertion requires accessibility permission. Click the button to trigger the system prompt; restart the app after granting (TCC caches the decision at process start).",
+      "action": "Grant accessibility"
+    },
+    "microphone": {
+      "title": "Microphone permission",
+      "desc": "Recording requires microphone permission. Click the button to trigger the system prompt; if previously denied, allow Quill under System Settings → Privacy & Security → Microphone, then retry.",
+      "action": "Grant microphone"
+    },
+    "speech": {
+      "title": "Speech recognition permission",
+      "desc": "Apple Speech transcription requires speech recognition permission. Click the button to trigger the system prompt; if previously denied, allow Quill under System Settings → Privacy & Security → Speech Recognition, then retry.",
+      "action": "Grant speech recognition"
+    },
+    "polishPrompt": {
+      "label": "Polish prompt",
+      "desc": "Polish the raw transcript using the current AI config (see AI tools). Leave empty to skip polishing.",
+      "charCount": "{{count}} chars",
+      "reset": "Reset to default"
+    },
+    "autoPolish": {
+      "title": "Auto polish",
+      "desc": "After recording, automatically run the polish prompt on the transcript; disable to output raw transcript"
+    },
+    "saveSource": {
+      "title": "Save voice source file",
+      "desc": "Save the raw recording (WAV) to a specified directory under the vault"
+    },
+    "sourceDir": {
+      "label": "Source directory",
+      "desc": "Relative to the current vault root; saved file is <dir>/<timestamp>.wav"
+    },
+    "spokenLanguage": {
+      "label": "Recognition language",
+      "desc": "Apple Speech routes recognition by language; pick \"Simplified Chinese\" for Chinese speech. The system default locale may not match the spoken language; specify explicitly to avoid empty transcripts."
+    },
+    "globalHotkey": {
+      "label": "Global hotkey",
+      "desc": "Leave empty to disable; when set, hold the hotkey to start recording, release to finish and insert into the focused input (cross-app). Esc clears.",
+      "recording": "Press a shortcut… (Esc to clear)",
+      "notSet": "Not set (click to record)"
+    }
+  },
+  "templates": {
+    "title": "File Templates",
+    "description": "Configure the default template content for new files by extension. Variables: {{title}}, {{filename}}, {{date}}, {{ext}}",
+    "empty": "(empty)",
+    "emptyState": "No templates configured",
+    "deleteTitle": "Delete template",
+    "add": "Add template",
+    "editTitle": "Edit template",
+    "save": "Save",
+    "cancel": "Cancel",
+    "extPlaceholder": "ext"
+  },
+  "skills": {
+    "title": "Skills",
+    "description": "Configure AI skill templates; custom prompts control the format and quality of AI-generated content",
+    "new": "New skill",
+    "import": "Import",
+    "export": "Export",
+    "empty": "No skills configured",
+    "capability": {
+      "title": "Capability binding",
+      "desc": "Assign a skill to each capability; Claude Code follows the corresponding skill's instructions to complete the task.",
+      "clip": "Web clips",
+      "githubAnalysis": "GitHub analysis"
+    },
+    "form": {
+      "newTitle": "New skill",
+      "idLabel": "ID",
+      "idHint": "Slug format; lowercase letters, digits, and hyphens only",
+      "nameLabel": "Name",
+      "descLabel": "Description",
+      "descPlaceholder": "Describe this skill's purpose",
+      "promptLabel": "Prompt template",
+      "promptPlaceholder": "Enter a prompt template; use {{variableName}} for variables...",
+      "formatLabel": "Output format",
+      "create": "Create",
+      "cancel": "Cancel",
+      "editTitle": "Edit",
+      "contentLabel": "Skill content",
+      "save": "Save",
+      "reset": "Reset to default",
+      "delete": "Delete"
+    },
+    "confirmReset": "Reset to defaults? Unsaved changes will be lost.",
+    "confirmDelete": "Delete this skill? This cannot be undone.",
+    "errorRequired": "ID and name are required",
+    "errorCreate": "Failed to create",
+    "errorImport": "Failed to import",
+    "errorExport": "Failed to export"
+  },
+  "pet": {
+    "title": "Pet",
+    "description": "Configure the desktop pet icon and display",
+    "showPet": {
+      "title": "Show pet",
+      "desc": "Show the desktop pet window on screen (macOS)"
+    },
+    "icon": {
+      "title": "Icon",
+      "desc": "Use the built-in Quill icon, or upload a custom image",
+      "builtin": "Built-in",
+      "custom": "Custom",
+      "uploading": "Uploading…",
+      "upload": "Upload icon…",
+      "reset": "Reset to default",
+      "hint": "Supports png / jpg / webp / svg, ≤ 1MB",
+      "alt": "Custom icon"
+    },
+    "errors": {
+      "desktopOnly": "Desktop feature; please use in a Tauri environment",
+      "unsupportedFormat": "Only png / jpg / webp / svg formats are supported",
+      "fileTooLarge": "File must be ≤ 1MB (currently {{kb}} KB)",
+      "uploadFailed": "Upload failed",
+      "resetFailed": "Reset failed"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Choose the form of desktop pet event notifications",
+    "form": {
+      "title": "Notification form",
+      "desc": "Bubble floats above the pet; system notifications go through the macOS Notification Center (visible even when unfocused)"
+    },
+    "options": {
+      "bubble": "Bubble above pet",
+      "system": "System notification",
+      "both": "Both",
+      "off": "Off"
+    }
+  }
+}

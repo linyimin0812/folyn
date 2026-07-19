@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAiStore } from '@/store/aiStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
@@ -29,6 +30,7 @@ interface ChatInputProps {
 }
 
 export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [mentionMenu, setMentionMenu] = useState<{ visible: boolean; filter: string; anchorPos: number }>({ visible: false, filter: '', anchorPos: 0 });
@@ -273,7 +275,7 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
             <span className="inline-flex items-center shrink-0"><FileIcon filename={att.name} /></span>
           )}
           <span className="truncate min-w-0 flex-1">{att.name}</span>
-          <button className="w-3.5 h-3.5 flex items-center justify-center rounded-full text-[10px] text-t3 cursor-pointer shrink-0 transition-all duration-100 bg-transparent border-none hover:bg-hov hover:text-red" onClick={() => removeAttachment(att.id)} aria-label="移除附件">×</button>
+          <button className="w-3.5 h-3.5 flex items-center justify-center rounded-full text-[10px] text-t3 cursor-pointer shrink-0 transition-all duration-100 bg-transparent border-none hover:bg-hov hover:text-red" onClick={() => removeAttachment(att.id)} aria-label={t('ai:chat.removeAttachment')}>×</button>
         </div>
       ))}
     </div>
@@ -297,7 +299,7 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
   const leadingSlot = (
     <>
       <VoiceInputButton />
-      <button className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed" onClick={handleFileSelect} disabled={isStreaming} title="附加文件">
+      <button className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed" onClick={handleFileSelect} disabled={isStreaming} title={t('ai:chat.attachFile')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
         </svg>
@@ -346,7 +348,7 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
         onStop={onStop}
         streaming={isStreaming}
         canSend={input.trim().length > 0 || attachments.length > 0}
-        placeholder="输入指令，@ 引用文件..."
+        placeholder={t('ai:chat.placeholder')}
         textareaRows={2}
         onPaste={handlePaste}
         inputRef={textareaRef}

@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useScheduleStore } from '@/store/scheduleStore';
 
 export function QuickAdd() {
+  const { t } = useTranslation();
   const [text, setText] = useState('');
   const quickAddTask = useScheduleStore((s) => s.quickAddTask);
 
@@ -17,9 +19,9 @@ export function QuickAdd() {
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-        placeholder="添加任务，回车提交…"
+        placeholder={t('schedule:quickAdd.placeholder')}
       />
-      <button onClick={submit}>添加</button>
+      <button onClick={submit}>{t('schedule:quickAdd.submit')}</button>
     </div>
   );
 }

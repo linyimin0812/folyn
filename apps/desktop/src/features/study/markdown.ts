@@ -208,7 +208,10 @@ export function parseStudy(content: string, slug: string): ParsedStudy {
   return { rawLines, frontmatter, materials, units, reviewAtoms };
 }
 
-/** 序列化一条资料为规范行。books without url omit the trailing ` | <url>` segment so the line re-parses. */
+/** 序列化一条资料为规范行。books without url omit the trailing ` | <url>` segment so the line re-parses.
+ *  ponytail: DIFFICULTY_LABEL values are baked into persisted markdown
+ *  (`难度:易`), so this is data-level — translating it would corrupt daily
+ *  notes / topic files on round-trip. Translate at display sites instead. */
 export function buildMaterialLine(m: StudyMaterial): string {
   if (m.kind === 'book') {
     const diff = m.difficulty ? DIFFICULTY_LABEL[m.difficulty] : '中';

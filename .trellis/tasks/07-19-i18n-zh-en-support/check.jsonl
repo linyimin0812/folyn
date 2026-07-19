@@ -1,0 +1,5 @@
+{"file": ".trellis/tasks/07-19-i18n-zh-en-support/prd.md", "reason": "Acceptance criteria + Definition of Done live here — check runs against these"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist + forbidden patterns to grep for across the i18n changes"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Strict TS review: resource typing, AppError serde shape, no `any` leaks in invoke wrapper"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify localeStore follows the zustand + persist + granular-selector pattern"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify LanguageSwitcher + Settings row use named exports, proper props, Tailwind conventions"}

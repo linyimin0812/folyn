@@ -21,6 +21,8 @@ use serde::Serialize;
 use std::sync::Mutex;
 use tauri::{Emitter, Manager, PhysicalPosition};
 
+use crate::errors::AppError;
+
 // ponytail: diagnostic for the "Cmd+V didn't paste anywhere" release-build bug.
 // Quill has no tauri-plugin-log, so release `log::info!` is a no-op. This writes
 // the voice-paste trace to ~/Library/Logs/quill-voice-debug.log so the user can
@@ -168,7 +170,7 @@ impl VoiceInner {
 
 #[cfg(target_os = "macos")]
 #[tauri::command]
-pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result<(), String> {
+pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result<(), AppError> {
     use std::sync::Arc;
     use apple_speech::AppleSpeechAsr;
     use recorder::{Recorder, RecorderError};
@@ -221,7 +223,7 @@ pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result
     // 内请求——时序太晚（录完才弹）。现前置到此处，与麦克风、辅助功能一起在
     // 点击/快捷键时三框依次弹出，见下方两个检查。
     if let Err(err) = permissions::ensure_microphone() {
-        return Err(err);
+        return Err(err.into());
     }
     // Issue「权限在录完后才要」：语音识别 + 辅助功能也前置到 voice_start。
     // - 语音识别：`SFSpeechRecognizer.requestAuthorization`（系统模态框，同步等
@@ -232,7 +234,7 @@ pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result
     //   录完整段后粘贴会静默失败。`transcribe`/`post_cmd_v` 内仍各自保留一次
     //   调用作为兜底（已授权时即时通过，无副作用）。
     if let Err(err) = apple_speech::ensure_authorized() {
-        return Err(format!("{err:#}"));
+        return Err(format!("{err:#}").into());
     }
     if !permissions::check_accessibility() {
         permissions::request_accessibility();
@@ -256,7 +258,7 @@ pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result
             return Err("麦克风权限被拒绝，请在 系统设置 → 隐私与安全性 → 麦克风 中允许 Quill".into());
         }
         Err(RecorderError::EngineFailed(msg)) => {
-            return Err(format!("麦克风启动失败: {msg}"));
+            return Err(format!("麦克风启动失败: {msg}").into());
         }
     };
 
@@ -406,7 +408,7 @@ fn show_voice_orb(_app: &tauri::AppHandle) {
 /// the orb must stay visible for). Frontend owns the hide because the
 /// transcribing/polishing/inserting phases are frontend-only state.
 #[tauri::command]
-pub async fn voice_orb_hide(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn voice_orb_hide(app: tauri::AppHandle) -> Result<(), AppError> {
     let window = app
         .get_webview_window("voice-orb")
         .ok_or_else(|| "voice-orb window not found".to_string())?;
@@ -428,7 +430,7 @@ pub async fn voice_stop(
     save_source: bool,
     source_dir: String,
     vault_path: String,
-) -> Result<VoiceStopResult, String> {
+) -> Result<VoiceStopResult, AppError> {
     use std::sync::Arc;
 
     // Entry-point beacon: tells us (a) voice_stop was actually invoked from the
@@ -615,7 +617,7 @@ fn timestamp_filename() -> String {
 
 #[cfg(target_os = "macos")]
 #[tauri::command]
-pub async fn voice_cancel(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn voice_cancel(app: tauri::AppHandle) -> Result<(), AppError> {
     let state = app.state::<VoiceState>();
     let (recorder, asr) = {
         let mut inner = state.inner.lock().map_err(|e| format!("voice state poisoned: {e}"))?;
@@ -646,7 +648,7 @@ pub async fn voice_cancel(app: tauri::AppHandle) -> Result<(), String> {
 
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
-pub async fn voice_start(_app: tauri::AppHandle, _spoken_locale: String) -> Result<(), String> {
+pub async fn voice_start(_app: tauri::AppHandle, _spoken_locale: String) -> Result<(), AppError> {
     Err("voice input is macOS-only".into())
 }
 
@@ -657,13 +659,13 @@ pub async fn voice_stop(
     _save_source: bool,
     _source_dir: String,
     _vault_path: String,
-) -> Result<VoiceStopResult, String> {
+) -> Result<VoiceStopResult, AppError> {
     Err("voice input is macOS-only".into())
 }
 
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
-pub async fn voice_cancel(_app: tauri::AppHandle) -> Result<(), String> {
+pub async fn voice_cancel(_app: tauri::AppHandle) -> Result<(), AppError> {
     Err("voice input is macOS-only".into())
 }
 
@@ -672,7 +674,7 @@ pub async fn voice_cancel(_app: tauri::AppHandle) -> Result<(), String> {
 /// Requires Accessibility permission on macOS — see `voice::insertion`.
 #[cfg(target_os = "macos")]
 #[tauri::command]
-pub async fn voice_insert_text(app: tauri::AppHandle, text: String) -> Result<(), String> {
+pub async fn voice_insert_text(app: tauri::AppHandle, text: String) -> Result<(), AppError> {
     // Hide the voice-orb BEFORE posting Cmd+V. The orb is a Dock-level
     // non-activating NSPanel with `can_become_key_window: false` (see
     // `QuillVoiceOrbPanel`), so it should never be the key window that
@@ -699,6 +701,7 @@ pub async fn voice_insert_text(app: tauri::AppHandle, text: String) -> Result<()
     tauri::async_runtime::spawn_blocking(move || insertion::insert_text(&app, &text))
         .await
         .map_err(|e| format!("voice insert join failed: {e}"))?
+        .map_err(AppError::from)
 }
 
 /// Proactively request macOS Accessibility permission by popping the system
@@ -720,7 +723,7 @@ pub async fn voice_insert_text(app: tauri::AppHandle, text: String) -> Result<()
 /// hatch for "I dismissed the first prompt, let me try again".
 #[cfg(target_os = "macos")]
 #[tauri::command]
-pub async fn voice_request_accessibility() -> Result<bool, String> {
+pub async fn voice_request_accessibility() -> Result<bool, AppError> {
     tauri::async_runtime::spawn_blocking(|| {
         insertion::reset_accessibility_prompt_guard();
         permissions::request_accessibility();
@@ -728,6 +731,7 @@ pub async fn voice_request_accessibility() -> Result<bool, String> {
     })
     .await
     .map_err(|e| format!("voice_request_accessibility join failed: {e}"))?
+    .map_err(AppError::from)
 }
 
 /// 弹系统麦克风授权框并返回当前是否已授权。镜像 `voice_request_accessibility`:
@@ -735,7 +739,7 @@ pub async fn voice_request_accessibility() -> Result<bool, String> {
 /// 时弹框,Denied 时 Apple 不重复弹(需用户去系统设置手动开)——前端据返回值渲染状态。
 #[cfg(target_os = "macos")]
 #[tauri::command]
-pub async fn voice_request_microphone() -> Result<bool, String> {
+pub async fn voice_request_microphone() -> Result<bool, AppError> {
     tauri::async_runtime::spawn_blocking(|| {
         Ok::<bool, String>(matches!(
             permissions::request_microphone(),
@@ -744,6 +748,7 @@ pub async fn voice_request_microphone() -> Result<bool, String> {
     })
     .await
     .map_err(|e| format!("voice_request_microphone join failed: {e}"))?
+    .map_err(AppError::from)
 }
 
 /// 弹系统语音识别(SFSpeechRecognizer)授权框并返回当前是否已授权。镜像
@@ -751,17 +756,18 @@ pub async fn voice_request_microphone() -> Result<bool, String> {
 /// Denied 时 bail(不重复弹)——与麦克风同,拒绝后需去系统设置开启。
 #[cfg(target_os = "macos")]
 #[tauri::command]
-pub async fn voice_request_speech() -> Result<bool, String> {
+pub async fn voice_request_speech() -> Result<bool, AppError> {
     tauri::async_runtime::spawn_blocking(|| {
         Ok::<bool, String>(apple_speech::ensure_authorized().is_ok())
     })
     .await
     .map_err(|e| format!("voice_request_speech join failed: {e}"))?
+    .map_err(AppError::from)
 }
 
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
-pub async fn voice_insert_text(_app: tauri::AppHandle, _text: String) -> Result<(), String> {
+pub async fn voice_insert_text(_app: tauri::AppHandle, _text: String) -> Result<(), AppError> {
     Err("voice input is macOS-only".into())
 }
 
@@ -774,7 +780,7 @@ pub async fn voice_insert_text(_app: tauri::AppHandle, _text: String) -> Result<
 /// anywhere" release-build bug — delete once root cause is fixed.
 #[cfg(target_os = "macos")]
 #[tauri::command]
-pub async fn voice_debug_frontmost() -> Result<String, String> {
+pub async fn voice_debug_frontmost() -> Result<String, AppError> {
     tauri::async_runtime::spawn_blocking(|| {
         use objc2::runtime::AnyClass;
         use objc2::msg_send;
@@ -833,13 +839,13 @@ pub async fn voice_debug_frontmost() -> Result<String, String> {
 
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
-pub async fn voice_debug_frontmost() -> Result<String, String> {
+pub async fn voice_debug_frontmost() -> Result<String, AppError> {
     Err("voice input is macOS-only".into())
 }
 
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
-pub async fn voice_request_accessibility() -> Result<bool, String> {
+pub async fn voice_request_accessibility() -> Result<bool, AppError> {
     // Non-macOS: no Accessibility concept; report "not applicable" as false so
     // the frontend can short-circuit its permission UI the same way as a denied
     // macOS user (the voice flow is gated to macOS-only anyway).
@@ -848,13 +854,13 @@ pub async fn voice_request_accessibility() -> Result<bool, String> {
 
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
-pub async fn voice_request_microphone() -> Result<bool, String> {
+pub async fn voice_request_microphone() -> Result<bool, AppError> {
     Ok(false)
 }
 
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
-pub async fn voice_request_speech() -> Result<bool, String> {
+pub async fn voice_request_speech() -> Result<bool, AppError> {
     Ok(false)
 }
 
@@ -882,7 +888,7 @@ pub async fn voice_request_speech() -> Result<bool, String> {
 pub async fn voice_set_global_hotkey(
     app: tauri::AppHandle,
     accelerator: String,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     use tauri_plugin_global_shortcut::GlobalShortcutExt;
     use std::str::FromStr;
 

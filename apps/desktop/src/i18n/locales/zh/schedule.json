@@ -1,0 +1,176 @@
+{
+  "title": "日程工作台",
+  "new": "新建",
+  "views": {
+    "schedule": "日程",
+    "board": "任务看板"
+  },
+  "weekGrid": {
+    "today": "今天",
+    "weekRange": "{{y}} 年 {{ms}} 月 {{ds}} 日 – {{me}} 月 {{de}} 日",
+    "dow": ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
+    "selectDay": "选中此日",
+    "legend": {
+      "work": "工作",
+      "personal": "个人",
+      "family": "家庭",
+      "health": "健康",
+      "task": "任务"
+    },
+    "scheduledToast": "已排程到 {{day}} {{time}}"
+  },
+  "dayCal": {
+    "monthTitle": "{{y}} 年 {{m}} 月",
+    "prevMonth": "上月",
+    "nextMonth": "下月",
+    "today": "回到今天",
+    "legend": {
+      "selected": "选中日",
+      "today": "今日",
+      "overdue": "有逾期"
+    },
+    "dow": ["一", "二", "三", "四", "五", "六", "日"]
+  },
+  "miniCal": {
+    "monthTitle": "{{y}} 年 {{m}} 月",
+    "prevMonth": "上月",
+    "nextMonth": "下月",
+    "dow": ["一", "二", "三", "四", "五", "六", "日"]
+  },
+  "calendarCategory": {
+    "calendar": "日历",
+    "week": "本周",
+    "totalEvents": "事件总数",
+    "incompleteTasks": "未完成任务"
+  },
+  "category": {
+    "event": {
+      "work": "工作",
+      "personal": "个人",
+      "family": "家庭",
+      "health": "健康",
+      "task": "任务"
+    },
+    "task": {
+      "design": "设计",
+      "dev": "研发",
+      "bug": "Bug",
+      "growth": "增长",
+      "ops": "运维",
+      "calendar": "日历",
+      "learn": "学习"
+    }
+  },
+  "reminders": {
+    "upcoming": "即将到来",
+    "empty": "暂无即将到来的事项",
+    "dueBody": "<b>{{title}}</b> · 截止 · {{column}}"
+  },
+  "todayTaskList": {
+    "title": "今日任务",
+    "duePrefix": "截止 {{due}} · ",
+    "empty": "今日暂无任务"
+  },
+  "unschedDock": {
+    "title": "待排程",
+    "allDone": "全部已排程 ✓",
+    "hint": "从这里拖到日历时间格即可排程",
+    "dragToast": "拖到日历时间格即可排程",
+    "delete": "删除"
+  },
+  "pomodoro": {
+    "work": "工作时段 · 第 {{round}} 轮",
+    "rest": "休息 · 第 {{round}} 轮",
+    "label": "专注番茄",
+    "pause": "暂停",
+    "start": "开始",
+    "reset": "重置"
+  },
+  "boardColumn": {
+    "renameHint": "双击重命名",
+    "deleteColumn": "删除列",
+    "empty": "当日无任务",
+    "emptyHint": "拖动卡片到此列"
+  },
+  "boardView": {
+    "columnNamePlaceholder": "列名…",
+    "addColumn": "+ 新列"
+  },
+  "quickAdd": {
+    "placeholder": "添加任务，回车提交…",
+    "submit": "添加"
+  },
+  "taskCard": {
+    "priorityTitle": "优先级",
+    "scheduled": "已排程"
+  },
+  "modal": {
+    "titleEdit": "编辑{{kind}}",
+    "titleNew": "新建{{kind}}",
+    "kindEvent": "事件",
+    "kindTask": "任务",
+    "typeLabel": "类型",
+    "typeEvent": "日程事件",
+    "typeTask": "看板任务",
+    "titleLabel": "标题",
+    "titlePlaceholder": "例如：产品评审会",
+    "descLabel": "描述",
+    "descPlaceholder": "背景、验收标准、相关链接…",
+    "start": "开始",
+    "end": "结束",
+    "calendar": "日历",
+    "column": "所属列",
+    "columnDoneSuffix": "（完成）",
+    "category": "分类",
+    "priority": "优先级",
+    "priorityHigh": "高",
+    "priorityMed": "中",
+    "priorityLow": "低",
+    "cancel": "取消",
+    "close": "关闭",
+    "save": "保存",
+    "create": "创建",
+    "delete": "删除",
+    "unschedule": "取消排程",
+    "toastTitleRequired": "请填写标题",
+    "toastEndAfterStart": "结束时间需晚于开始"
+  },
+  "plan": {
+    "loading": "AI 正在规划今日…",
+    "errorClose": "关闭",
+    "errorRetry": "重试",
+    "resultApplied": "已应用 {{applied}} 项",
+    "resultFailed": "，失败 {{failed}} 项",
+    "resultDone": "完成",
+    "appliedToast": "已应用 {{count}} 项计划",
+    "appliedPartialToast": "应用 {{applied}} 项，失败 {{failed}} 项",
+    "previewTitle": "AI 规划今日",
+    "discard": "放弃",
+    "applySelected": "应用已选",
+    "empty": "近 7 天无未完成任务，AI 也没有提议新计划。",
+    "legendTask": "提议任务（拖动调整 / ✓✗ 选择）",
+    "legendEvent": "提议事件 / 休息",
+    "legendExisting": "已有事件（参考）",
+    "ariaLabel": "AI 规划今日"
+  },
+  "toast": {
+    "undo": "撤销",
+    "newColumnDefault": "新列",
+    "eventAdded": "事件已添加到日历",
+    "eventMoved": "已移到 {{date}} {{time}}",
+    "eventUpdated": "事件已更新",
+    "eventDeleted": "已删除「{{title}}」",
+    "taskAdded": "任务已添加",
+    "taskRestored": "已恢复",
+    "taskMarkedDone": "已标记完成",
+    "taskUpdated": "任务已更新",
+    "taskUnscheduled": "已取消排程",
+    "taskDeleted": "已删除「{{title}}」",
+    "dueDateSet": "截止日设为 {{date}}",
+    "cannotDeleteDoneColumn": "不能删除完成列",
+    "mustKeepOneColumn": "至少保留一列",
+    "columnDeleted": "已删除列「{{name}}」",
+    "pomoWorkEnded": "工作时段结束，休息 5 分钟",
+    "pomoRestEnded": "休息结束，开始第 {{round}} 轮"
+  }
+}

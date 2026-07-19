@@ -1,0 +1,47 @@
+{
+  "chat": {
+    "noAiConfig": "未配置 AI",
+    "noAiConfigHint": "在设置中配置 CLI 路径后即可在此对话。",
+    "openAiSettings": "打开 AI 设置",
+    "emptyHint": "向 AI 提问，回答会在此处流式显示。",
+    "inputPlaceholder": "输入消息，Enter 发送",
+    "removeAttachment": "移除附件",
+    "attachFile": "附加文件",
+    "aiMode": "AI 模式",
+    "attachmentSaveFailed": "附件保存失败: {{error}}",
+    "errorPrefix": "[错误] {{message}}",
+    "sessionHeader": {
+      "toggleAria": "切换会话",
+      "openAiSettings": "AI 设置",
+      "confirmDelete": "确认删除？",
+      "deleteYes": "是",
+      "deleteNo": "否",
+      "renameAria": "重命名",
+      "deleteAria": "删除",
+      "newSession": "新建会话",
+      "defaultTitle": "新对话",
+      "capHint": "会话数已达上限（{{max}}）"
+    }
+  },
+  "launcher": {
+    "newNote": "新建笔记",
+    "dailyNote": "今日日记",
+    "clipFromUrl": "网页剪藏",
+    "globalSearch": "全局搜索",
+    "commandPalette": "命令面板",
+    "showMain": "显示主窗",
+    "toggleTheme": "切换主题",
+    "disablePet": "关闭宠物",
+    "clip": {
+      "emptyUrl": "请输入网址",
+      "running": "正在剪藏...",
+      "saved": "已保存：{{name}}",
+      "failed": "剪藏失败",
+      "submit": "剪藏",
+      "collapse": "收起"
+    }
+  },
+  "bubble": {
+    "closeAria": "关闭"
+  }
+}

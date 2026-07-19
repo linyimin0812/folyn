@@ -1,7 +1,9 @@
+use crate::errors::AppError;
+
 /// Removes the target directory first if it already exists (for re-cloning).
 /// Includes network resilience configs for unstable connections.
 #[tauri::command]
-pub async fn git_clone(url: String, target_dir: String) -> Result<String, String> {
+pub async fn git_clone(url: String, target_dir: String) -> Result<String, AppError> {
     // Remove existing target directory for clean re-clone
     let _ = std::fs::remove_dir_all(&target_dir);
 
@@ -26,7 +28,7 @@ pub async fn git_clone(url: String, target_dir: String) -> Result<String, String
         let stderr = String::from_utf8_lossy(&output.stderr);
         // Cleanup failed clone attempt
         let _ = std::fs::remove_dir_all(&target_dir);
-        return Err(format!("克隆仓库失败: {}", stderr.trim()));
+        return Err(format!("克隆仓库失败: {}", stderr.trim()).into());
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -36,15 +38,15 @@ pub async fn git_clone(url: String, target_dir: String) -> Result<String, String
 /// Remove a directory and all its contents recursively.
 /// Used to clean up cloned repos after analysis.
 #[tauri::command]
-pub async fn remove_dir(path: String) -> Result<(), String> {
-    std::fs::remove_dir_all(&path).map_err(|e| format!("Failed to remove directory: {}", e))
+pub async fn remove_dir(path: String) -> Result<(), AppError> {
+    std::fs::remove_dir_all(&path).map_err(AppError::from)
 }
 
 /// Get a text overview of a project directory (file tree + basic stats).
 /// Excludes common noise directories (.git, node_modules, target, etc.).
 /// Limits output to 500 lines for manageable AI context.
 #[tauri::command]
-pub async fn get_project_overview(dir: String) -> Result<String, String> {
+pub async fn get_project_overview(dir: String) -> Result<String, AppError> {
     let tree_output = std::process::Command::new("find")
         .args([
             &dir,
@@ -60,7 +62,6 @@ pub async fn get_project_overview(dir: String) -> Result<String, String> {
         ])
         .output()
         .map_err(|e| format!("Failed to list files: {}", e))?;
-
     let tree = String::from_utf8_lossy(&tree_output.stdout);
 
     let total_lines = tree.lines().count();

@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
+import i18n from '@/i18n';
 
 interface UseDragDropOptions {
   selectedPaths: Set<string>;
@@ -73,7 +74,7 @@ export function useDragDrop({
         });
         ghost.textContent = state.paths.length === 1
           ? (state.paths[0].includes('/') ? state.paths[0].substring(state.paths[0].lastIndexOf('/') + 1) : state.paths[0])
-          : `${state.paths.length} 个项目`;
+          : i18n.t('sidebar:dragDrop.itemsCount', { count: state.paths.length });
         document.body.appendChild(ghost);
         state.ghost = ghost;
       }

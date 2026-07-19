@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { dateToString } from '@/features/schedule/dailyScan';
 import { formatTime } from '@/features/schedule/markdown';
 import { useBoardColumns } from '@/features/schedule/columns';
 import type { EventCategory, Priority, TaskCategory, TaskColumn } from '@/features/schedule/types';
-import { EVENT_CATEGORY_LABEL, TASK_CATEGORY_LABEL } from '@/features/schedule/types';
 
 export type ModalIntent =
   | { kind: 'event'; day: string; hour: number }
@@ -28,6 +28,7 @@ function toH(s: string): number {
 }
 
 export function ScheduleModal({ intent, onClose }: Props) {
+  const { t } = useTranslation();
   const addEvent = useScheduleStore((s) => s.addEvent);
   const addTask = useScheduleStore((s) => s.addTask);
   const updateEvent = useScheduleStore((s) => s.updateEvent);
@@ -92,14 +93,14 @@ export function ScheduleModal({ intent, onClose }: Props) {
 
   const save = async () => {
     if (!title.trim()) {
-      useScheduleStore.getState().toast('请填写标题');
+      useScheduleStore.getState().toast(t('schedule:modal.toastTitleRequired'));
       return;
     }
     if (type === 'event') {
       const s = toH(start);
       const e = toH(end);
       if (e <= s) {
-        useScheduleStore.getState().toast('结束时间需晚于开始');
+        useScheduleStore.getState().toast(t('schedule:modal.toastEndAfterStart'));
         return;
       }
       if (isEdit && editingEvent) {
@@ -124,7 +125,7 @@ export function ScheduleModal({ intent, onClose }: Props) {
         const s = toH(start);
         const e = toH(end);
         if (e <= s) {
-          useScheduleStore.getState().toast('结束时间需晚于开始');
+          useScheduleStore.getState().toast(t('schedule:modal.toastEndAfterStart'));
           return;
         }
         await updateTask(editingTask.id, {
@@ -154,43 +155,43 @@ export function ScheduleModal({ intent, onClose }: Props) {
   return (
     <div className="sw-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="sw-modal" role="dialog" aria-modal="true">
-        <h3>{isEdit ? (type === 'event' ? '编辑事件' : '编辑任务') : (type === 'event' ? '新建事件' : '新建任务')}</h3>
+        <h3>{isEdit ? t('schedule:modal.titleEdit', { kind: type === 'event' ? t('schedule:modal.kindEvent') : t('schedule:modal.kindTask') }) : t('schedule:modal.titleNew', { kind: type === 'event' ? t('schedule:modal.kindEvent') : t('schedule:modal.kindTask') })}</h3>
 
         <div className="sw-field">
-          <label>类型</label>
+          <label>{t('schedule:modal.typeLabel')}</label>
           <div className="sw-seg-inline">
-            {(['event', 'task'] as const).map((t) => (
-              <label key={t}>
+            {(['event', 'task'] as const).map((kind) => (
+              <label key={kind}>
                 <input
                   type="radio"
                   name="sw-type"
-                  checked={type === t}
-                  onChange={() => setType(t)}
+                  checked={type === kind}
+                  onChange={() => setType(kind)}
                   disabled={isEdit}
                 />
-                <span>{t === 'event' ? '日程事件' : '看板任务'}</span>
+                <span>{kind === 'event' ? t('schedule:modal.typeEvent') : t('schedule:modal.typeTask')}</span>
               </label>
             ))}
           </div>
         </div>
 
         <div className="sw-field">
-          <label>标题</label>
+          <label>{t('schedule:modal.titleLabel')}</label>
           <input
             id="sw-modal-title-input"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="例如：产品评审会"
+            placeholder={t('schedule:modal.titlePlaceholder')}
             onKeyDown={(e) => { if (e.key === 'Enter') save(); }}
           />
         </div>
 
         <div className="sw-field">
-          <label>描述</label>
+          <label>{t('schedule:modal.descLabel')}</label>
           <textarea
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
-            placeholder="背景、验收标准、相关链接…"
+            placeholder={t('schedule:modal.descPlaceholder')}
           />
         </div>
 
@@ -198,16 +199,16 @@ export function ScheduleModal({ intent, onClose }: Props) {
           <>
             <div className="sw-row2">
               <div className="sw-field">
-                <label>开始</label>
+                <label>{t('schedule:modal.start')}</label>
                 <input type="time" value={start} onChange={(e) => setStart(e.target.value)} />
               </div>
               <div className="sw-field">
-                <label>结束</label>
+                <label>{t('schedule:modal.end')}</label>
                 <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
               </div>
             </div>
             <div className="sw-field">
-              <label>日历</label>
+              <label>{t('schedule:modal.calendar')}</label>
               <div className="sw-seg-inline">
                 {EVENT_CATS.map((c) => (
                   <label key={c}>
@@ -217,7 +218,7 @@ export function ScheduleModal({ intent, onClose }: Props) {
                       checked={cal === c}
                       onChange={() => setCal(c)}
                     />
-                    <span>{EVENT_CATEGORY_LABEL[c]}</span>
+                    <span>{t(`schedule:category.event.${c}`)}</span>
                   </label>
                 ))}
               </div>
@@ -228,18 +229,18 @@ export function ScheduleModal({ intent, onClose }: Props) {
         {type === 'task' && (
           <>
             <div className="sw-field">
-              <label>所属列</label>
+              <label>{t('schedule:modal.column')}</label>
               <select
                 value={col}
                 onChange={(e) => setCol(e.target.value as TaskColumn)}
               >
                 {boardColumns.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}{c.isDone ? '（完成）' : ''}</option>
+                  <option key={c.id} value={c.id}>{c.name}{c.isDone ? t('schedule:modal.columnDoneSuffix') : ''}</option>
                 ))}
               </select>
             </div>
             <div className="sw-field">
-              <label>分类</label>
+              <label>{t('schedule:modal.category')}</label>
               <div className="sw-seg-inline">
                 {TASK_CATS.map((c) => (
                   <label key={c}>
@@ -249,7 +250,7 @@ export function ScheduleModal({ intent, onClose }: Props) {
                       checked={cat === c}
                       onChange={() => setCat(c)}
                     />
-                    <span>{TASK_CATEGORY_LABEL[c]}</span>
+                    <span>{t(`schedule:category.task.${c}`)}</span>
                   </label>
                 ))}
               </div>
@@ -258,7 +259,7 @@ export function ScheduleModal({ intent, onClose }: Props) {
         )}
 
         <div className="sw-field">
-          <label>优先级</label>
+          <label>{t('schedule:modal.priority')}</label>
           <div className="sw-seg-inline">
             {PRIOS.map((p) => (
               <label key={p}>
@@ -268,29 +269,29 @@ export function ScheduleModal({ intent, onClose }: Props) {
                   checked={prio === p}
                   onChange={() => setPrio(p)}
                 />
-                <span>{p === 'high' ? '高' : p === 'med' ? '中' : '低'}</span>
+                <span>{p === 'high' ? t('schedule:modal.priorityHigh') : p === 'med' ? t('schedule:modal.priorityMed') : t('schedule:modal.priorityLow')}</span>
               </label>
             ))}
           </div>
         </div>
 
         <div className="sw-actions">
-          <button className="sw-btn sw-btn-ghost" onClick={onClose}>{isEdit ? '关闭' : '取消'}</button>
-          <button className="sw-btn sw-btn-primary" onClick={save}>{isEdit ? '保存' : '创建'}</button>
+          <button className="sw-btn sw-btn-ghost" onClick={onClose}>{isEdit ? t('schedule:modal.close') : t('schedule:modal.cancel')}</button>
+          <button className="sw-btn sw-btn-primary" onClick={save}>{isEdit ? t('schedule:modal.save') : t('schedule:modal.create')}</button>
           {isEdit && (
             type === 'event' ? (
               <button
                 className="sw-btn sw-btn-danger"
                 onClick={async () => { if (editingEvent) await deleteEvent(editingEvent.id); onClose(); }}
               >
-                删除
+                {t('schedule:modal.delete')}
               </button>
             ) : (
               <button
                 className="sw-btn sw-btn-danger"
                 onClick={async () => { if (editingTask) await unscheduleTask(editingTask.id); onClose(); }}
               >
-                取消排程
+                {t('schedule:modal.unschedule')}
               </button>
             )
           )}

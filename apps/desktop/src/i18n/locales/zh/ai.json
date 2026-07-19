@@ -1,0 +1,48 @@
+{
+  "panel": {
+    "title": "新会话",
+    "newSession": "新建会话",
+    "deleteSession": "删除会话",
+    "close": "关闭",
+    "stop": "停止",
+    "messageCountSuffix": "条",
+    "studyStreaming": "study agent 运行中…",
+    "studyIdle": "study agent 会话（不可手动输入）",
+    "attachmentPlaceholder": "(附件)",
+    "deleteConfirmTitle": "删除会话",
+    "deleteConfirm": "确定要删除当前会话吗？删除后无法恢复。"
+  },
+  "chat": {
+    "placeholder": "输入指令，@ 引用文件...",
+    "placeholderFallback": "输入指令...",
+    "removeAttachment": "移除附件",
+    "attachFile": "附加文件",
+    "clear": "清空",
+    "clearTitle": "清空对话",
+    "send": "发送",
+    "stop": "停止"
+  },
+  "voice": {
+    "phase": {
+      "transcribing": "语音转文字中…",
+      "polishing": "LLM 优化中…",
+      "inserting": "插入中…",
+      "processing": "语音处理中…"
+    },
+    "button": {
+      "idle": "语音输入",
+      "windowsUnsupported": "Windows 暂不支持语音输入",
+      "clickToStop": "点击停止录音并插入",
+      "stopRecordingLabel": "停止录音",
+      "voiceInputLabel": "语音输入"
+    },
+    "orb": {
+      "noApiKey": "未配置 API Key，跳过 LLM 优化",
+      "openSettings": "打开设置"
+    }
+  },
+  "errors": {
+    "attachmentSaveFailed": "[错误] 附件保存失败: {{error}}",
+    "streamError": "[错误] {{error}}"
+  }
+}

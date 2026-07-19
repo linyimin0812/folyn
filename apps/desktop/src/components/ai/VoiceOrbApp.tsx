@@ -25,6 +25,7 @@
 //   idle/error          → hide the window (canvas unmounts → GL released)
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { isTauri } from '@/utils/platform';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -39,17 +40,20 @@ interface OrbPhasePayload {
 /** Phase → caption label. Surfaced at the bottom of the orb window so the
  *  user can read which stage the flow is in. `recording` has no caption
  *  (the live waveform IS the indicator); the rest get a one-line label. */
-function phaseCaption(phase: VoicePhase): string | null {
-  switch (phase) {
-    case 'transcribing':
-      return '语音转文字中…';
-    case 'polishing':
-      return 'LLM 优化中…';
-    case 'inserting':
-      return '插入中…';
-    default:
-      return null;
-  }
+function usePhaseCaption() {
+  const { t } = useTranslation();
+  return (phase: VoicePhase): string | null => {
+    switch (phase) {
+      case 'transcribing':
+        return t('ai:voice.phase.transcribing');
+      case 'polishing':
+        return t('ai:voice.phase.polishing');
+      case 'inserting':
+        return t('ai:voice.phase.inserting');
+      default:
+        return null;
+    }
+  };
 }
 
 /** Emit `pet://menu-action` `open-ai-settings` so the main window's listener
@@ -85,6 +89,8 @@ function phaseToVisible(phase: VoicePhase): boolean {
 }
 
 export function VoiceOrbApp(): JSX.Element {
+  const { t } = useTranslation();
+  const phaseCaption = usePhaseCaption();
   const [phase, setPhase] = useState<VoicePhase>('idle');
   const [level, setLevel] = useState(0);
   const [polishSkippedReason, setPolishSkippedReason] = useState<PolishSkippedReason>(null);
@@ -263,7 +269,7 @@ export function VoiceOrbApp(): JSX.Element {
           {caption}
           {polishSkippedReason === 'no-api-key' && (
             <div style={{ marginTop: 2 }}>
-              <span style={{ opacity: 0.9 }}>未配置 API Key，跳过 LLM 优化</span>
+              <span style={{ opacity: 0.9 }}>{t('ai:voice.orb.noApiKey')}</span>
               <button
                 type="button"
                 onClick={(e) => {
@@ -281,7 +287,7 @@ export function VoiceOrbApp(): JSX.Element {
                   textDecoration: 'underline',
                 }}
               >
-                打开设置
+                {t('ai:voice.orb.openSettings')}
               </button>
             </div>
           )}

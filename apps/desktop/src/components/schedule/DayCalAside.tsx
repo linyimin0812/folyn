@@ -1,10 +1,9 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { sameDay } from '@/features/schedule/dailyScan';
 import { dueState } from '@/features/schedule/markdown';
 import { hasDragPayload, readDragPayload } from '@/features/schedule/dnd';
-
-const DOW = ['一', '二', '三', '四', '五', '六', '日'];
 
 interface Props {
   anchorDate: Date;
@@ -12,6 +11,7 @@ interface Props {
 }
 
 export function DayCalAside({ anchorDate, onSelect }: Props) {
+  const { t } = useTranslation();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const [cursor, setCursor] = useState(() => new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1));
@@ -39,19 +39,20 @@ export function DayCalAside({ anchorDate, onSelect }: Props) {
   for (let i = 1; i <= trail; i++) cells.push(null);
 
   const shift = (n: number) => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + n, 1));
+  const dowArr = t('schedule:dayCal.dow', { returnObjects: true }) as string[];
 
   return (
     <aside className="sw-board-daycal">
       <div className="sw-daycal-head">
-        <span className="sw-daycal-month">{y} 年 {m + 1} 月</span>
+        <span className="sw-daycal-month">{t('schedule:dayCal.monthTitle', { y, m: m + 1 })}</span>
         <div className="sw-daycal-nav">
-          <button onClick={() => shift(-1)} aria-label="上月">‹</button>
-          <button onClick={() => { const t = new Date(); t.setHours(0, 0, 0, 0); setCursor(new Date(t.getFullYear(), t.getMonth(), 1)); onSelect(t); }} aria-label="回到今天">·</button>
-          <button onClick={() => shift(1)} aria-label="下月">›</button>
+          <button onClick={() => shift(-1)} aria-label={t('schedule:dayCal.prevMonth')}>‹</button>
+          <button onClick={() => { const t = new Date(); t.setHours(0, 0, 0, 0); setCursor(new Date(t.getFullYear(), t.getMonth(), 1)); onSelect(t); }} aria-label={t('schedule:dayCal.today')}>·</button>
+          <button onClick={() => shift(1)} aria-label={t('schedule:dayCal.nextMonth')}>›</button>
         </div>
       </div>
       <div className="sw-daycal-grid">
-        {DOW.map((d) => <div key={d} className="sw-dow">{d}</div>)}
+        {dowArr.map((d) => <div key={d} className="sw-dow">{d}</div>)}
         {cells.map((day, idx) => {
           if (day === null) {
             const isPrev = idx < startPad;
@@ -92,9 +93,9 @@ export function DayCalAside({ anchorDate, onSelect }: Props) {
         })}
       </div>
       <div className="sw-daycal-legend">
-        <div><span className="sw-lg-dot" style={{ background: 'var(--acc)' }} />选中日</div>
-        <div><span className="sw-lg-dot" style={{ background: 'var(--green)' }} />今日</div>
-        <div><span className="sw-lg-dot" style={{ background: 'var(--red)' }} />有逾期</div>
+        <div><span className="sw-lg-dot" style={{ background: 'var(--acc)' }} />{t('schedule:dayCal.legend.selected')}</div>
+        <div><span className="sw-lg-dot" style={{ background: 'var(--green)' }} />{t('schedule:dayCal.legend.today')}</div>
+        <div><span className="sw-lg-dot" style={{ background: 'var(--red)' }} />{t('schedule:dayCal.legend.overdue')}</div>
       </div>
     </aside>
   );

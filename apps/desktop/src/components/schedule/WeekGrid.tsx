@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { dateToString, startOfWeek, addDays, sameDay } from '@/features/schedule/dailyScan';
 import { formatTime } from '@/features/schedule/markdown';
@@ -6,8 +7,6 @@ import { buildDayLayout } from '@/features/schedule/layout';
 import { EventBlock } from './EventBlock';
 import { NowLine } from './NowLine';
 import type { ModalIntent } from './ScheduleModal';
-
-const DOW_CN = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
 interface Props {
   cursor: Date;
@@ -18,6 +17,7 @@ interface Props {
 }
 
 export function WeekGrid({ cursor, onCursorChange, selectedDate, onSelectDate, onOpenModal }: Props) {
+  const { t } = useTranslation();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -39,7 +39,13 @@ export function WeekGrid({ cursor, onCursorChange, selectedDate, onSelectDate, o
 
   const rangeLabel = () => {
     const end = addDays(ws, 6);
-    return `${ws.getFullYear()} 年 ${ws.getMonth() + 1} 月 ${ws.getDate()} 日 – ${end.getMonth() + 1} 月 ${end.getDate()} 日`;
+    return t('schedule:weekGrid.weekRange', {
+      y: ws.getFullYear(),
+      ms: ws.getMonth() + 1,
+      ds: ws.getDate(),
+      me: end.getMonth() + 1,
+      de: end.getDate(),
+    });
   };
 
   return (
@@ -47,16 +53,16 @@ export function WeekGrid({ cursor, onCursorChange, selectedDate, onSelectDate, o
       <div className="sw-cal-toolbar">
         <div className="sw-left">
           <button className="sw-nav-btn" onClick={() => go(-7)}>‹</button>
-          <button className="sw-today-btn" onClick={goToday}>今天</button>
+          <button className="sw-today-btn" onClick={goToday}>{t('schedule:weekGrid.today')}</button>
           <button className="sw-nav-btn" onClick={() => go(7)}>›</button>
           <div className="sw-range-label">{rangeLabel()}</div>
         </div>
         <div className="sw-right">
-          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-work)' }} />工作</span>
-          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-personal)' }} />个人</span>
-          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-family)' }} />家庭</span>
-          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-health)' }} />健康</span>
-          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-task)' }} />任务</span>
+          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-work)' }} />{t('schedule:weekGrid.legend.work')}</span>
+          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-personal)' }} />{t('schedule:weekGrid.legend.personal')}</span>
+          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-family)' }} />{t('schedule:weekGrid.legend.family')}</span>
+          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-health)' }} />{t('schedule:weekGrid.legend.health')}</span>
+          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-task)' }} />{t('schedule:weekGrid.legend.task')}</span>
         </div>
       </div>
 
@@ -72,9 +78,9 @@ export function WeekGrid({ cursor, onCursorChange, selectedDate, onSelectDate, o
                   className={cls}
                   onClick={() => onSelectDate(d)}
                   style={{ cursor: 'pointer' }}
-                  title="选中此日"
+                  title={t('schedule:weekGrid.selectDay')}
                 >
-                  <div className="sw-dow">{DOW_CN[(d.getDay() + 6) % 7]}</div>
+                  <div className="sw-dow">{(t('schedule:weekGrid.dow', { returnObjects: true }) as string[])[(d.getDay() + 6) % 7]}</div>
                   <div className="sw-dom">{d.getDate()}</div>
                 </div>
               );
@@ -137,7 +143,7 @@ export function WeekGrid({ cursor, onCursorChange, selectedDate, onSelectDate, o
                     moveEvent(p.id, dStr, finalStart, Math.min(finalStart + dur, 24));
                   } else if (p.kind === 'task' && p.id) {
                     scheduleTask(p.id, dStr, snapped, Math.min(snapped + 1, 24));
-                    useScheduleStore.getState().toast(`已排程到 ${DOW_CN[(d.getDay() + 6) % 7]} ${formatTime(snapped)}`);
+                    useScheduleStore.getState().toast(t('schedule:weekGrid.scheduledToast', { day: (t('schedule:weekGrid.dow', { returnObjects: true }) as string[])[(d.getDay() + 6) % 7], time: formatTime(snapped) }));
                   }
                 }}
               >

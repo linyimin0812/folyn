@@ -9,6 +9,7 @@
  */
 
 import React from 'react';
+import i18n from '@/i18n';
 
 interface PanelErrorBoundaryProps {
   children: React.ReactNode;
@@ -42,7 +43,7 @@ export class PanelErrorBoundary extends React.Component<
           className="panel-error-fallback"
           style={{ padding: 16, fontSize: 13, color: 'var(--t2, #3f3f46)' }}
         >
-          面板加载失败
+          {i18n.t('sidebar:panelError.failed')}
           <div style={{ marginTop: 8, fontSize: 12, color: 'var(--t3, #71717a)' }}>
             {this.props.panelId ? `[${this.props.panelId}] ` : ''}
             {this.state.error.message}

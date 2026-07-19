@@ -88,6 +88,10 @@ All settings are accessible from the in-app **Settings** page:
 
 Quill integrates with AI CLI tools through a pluggable adapter system. Out of the box it supports Claude Code — set the CLI path in Settings → AI, and use the side panel to chat, generate text, or apply code edits with full diff review.
 
+## Internationalization (i18n)
+
+UI strings are localized via `i18next` + `react-i18next`. zh and en are supported; the default follows `navigator.language`, persisted to `localStorage`. Switch language via the globe icon in the Topbar or the language row in Settings → Appearance.
+
 ## License
 
 MIT

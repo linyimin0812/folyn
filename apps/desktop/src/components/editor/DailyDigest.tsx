@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useVaultStore } from '@/store/vaultStore';
 import { usePrefsStore } from '@/store/prefsStore';
 import { useAiConfigStore } from '@/store/aiConfigStore';
@@ -30,6 +31,7 @@ interface DailyDigestProps {
 }
 
 export function DailyDigest({ currentFilePath, onInsertContent }: DailyDigestProps) {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [digest, setDigest] = useState('');
@@ -100,13 +102,13 @@ export function DailyDigest({ currentFilePath, onInsertContent }: DailyDigestPro
         }
       }
 
-      const prompt = `今日：${todayStr}
+      const prompt = `${t('editor:dailyDigest.today', { date: todayStr })}
 
-## 今日修改文档
-${fileSummaries || '(无修改记录)'}
+## ${t('editor:dailyDigest.modifiedSection')}
+${fileSummaries || t('editor:dailyDigest.modifiedEmpty')}
 
-## 最近日记
-${recentDailyContext || '(无历史日记)'}`;
+## ${t('editor:dailyDigest.recentDailySection')}
+${recentDailyContext || t('editor:dailyDigest.recentDailyEmpty')}`;
 
       let result = '';
 
@@ -127,7 +129,7 @@ ${recentDailyContext || '(无历史日记)'}`;
 
       setDigest(result.trim());
     } catch (err) {
-      setDigest(`生成失败: ${err}`);
+      setDigest(t('editor:dailyDigest.generateFailed', { error: String(err) }));
     } finally {
       setIsGenerating(false);
     }
@@ -142,7 +144,7 @@ ${recentDailyContext || '(无历史日记)'}`;
         onClick={() => setCollapsed((v) => !v)}
       >
         <span className="daily-digest-icon">{collapsed ? '▶' : '▼'}</span>
-        <span>AI Daily Digest</span>
+        <span>{t('editor:dailyDigest.title')}</span>
       </button>
 
       {!collapsed && (
@@ -153,15 +155,15 @@ ${recentDailyContext || '(无历史日记)'}`;
                 className="daily-digest-generate-btn"
                 onClick={generateDigest}
               >
-                生成回顾
+                {t('editor:dailyDigest.generate')}
               </button>
-              <span className="daily-digest-hint">AI 将分析今日的写作活动并生成回顾</span>
+              <span className="daily-digest-hint">{t('editor:dailyDigest.hint')}</span>
             </div>
           )}
 
           {isGenerating && (
             <div className="daily-digest-loading">
-              <span className="ft-spinner" /> 正在生成回顾...
+              <span className="ft-spinner" /> {t('editor:dailyDigest.loading')}
             </div>
           )}
 
@@ -172,7 +174,7 @@ ${recentDailyContext || '(无历史日记)'}`;
                 className="daily-digest-insert-btn"
                 onClick={() => onInsertContent(`\n\n---\n\n## AI Daily Digest\n\n${digest}\n`)}
               >
-                插入到笔记
+                {t('editor:dailyDigest.insert')}
               </button>
             </div>
           )}

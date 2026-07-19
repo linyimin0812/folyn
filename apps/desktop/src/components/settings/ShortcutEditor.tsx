@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePrefsStore } from '@/store/prefsStore';
 import { isTauri } from '@/utils/platform';
 import { useHotkeyRecording } from '@/components/settings/useHotkeyRecording';
@@ -21,6 +22,7 @@ function keyToSymbol(key: string): string {
  * shortcut (`togglePetPanel` → `pet_panel_set_shortcut` Rust command).
  */
 export function ShortcutEditor({ shortcutId, currentKeys }: { shortcutId: string; currentKeys: string[] }) {
+  const { t } = useTranslation();
   const updateShortcut = usePrefsStore((s) => s.updateShortcut);
 
   const onCapture = useCallback((event: KeyboardEvent) => {
@@ -60,9 +62,9 @@ export function ShortcutEditor({ shortcutId, currentKeys }: { shortcutId: string
     <div ref={containerRef} className="sk-keys flex items-center gap-[3px] cursor-pointer" onClick={start}>
       {recording ? (
         conflictHint ? (
-          <span className="key bg-amber/10 border border-amber text-amber rounded px-1.5 py-0.5 text-[10px] shadow-[0_1px_0_var(--brd2)]">未捕获到按键 — 该组合可能被 app 菜单或系统占用（⌘Q / ⌘H / ⌘M / ⌘W / ⌘⇧P）</span>
+          <span className="key bg-amber/10 border border-amber text-amber rounded px-1.5 py-0.5 text-[10px] shadow-[0_1px_0_var(--brd2)]">{t('settings:shortcuts.editor.conflictHint')}</span>
         ) : (
-          <span className="key bg-accdim border border-acc text-acc rounded px-1.5 py-0.5 text-[10.5px] font-mono shadow-[0_1px_0_var(--brd2)]">按下快捷键…</span>
+          <span className="key bg-accdim border border-acc text-acc rounded px-1.5 py-0.5 text-[10.5px] font-mono shadow-[0_1px_0_var(--brd2)]">{t('settings:shortcuts.editor.recording')}</span>
         )
       ) : (
         currentKeys.map((k, i) => (

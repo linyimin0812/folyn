@@ -3,7 +3,9 @@ import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useNavStore } from '@/store/navStore';
 import { useTheme } from '@/hooks/useTheme';
 import { ExportMenu } from '@/components/editor/ExportMenu';
+import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { requestPlanMyDay } from '@/services/planMyDayBridge';
+import { useTranslation } from 'react-i18next';
 
 /** File types that support meaningful multi-mode switching — show the view-mode segment. */
 const SHOW_VIEW_MODE_FILE_TYPES = new Set(['markdown', 'json', 'csv', 'mmap', 'dbml', 'html']);
@@ -40,17 +42,9 @@ const VIEW_MODE_ICONS: Record<ViewMode, React.ReactNode> = {
   ),
 };
 
-const VIEW_MODES: { key: ViewMode; label: string }[] = [
-  { key: 'split', label: '分屏' },
-  { key: 'edit', label: '编辑' },
-  { key: 'preview', label: '预览' },
-];
+const VIEW_MODES: ViewMode[] = ['split', 'edit', 'preview'];
 
-const HTML_MODES: { key: ViewMode; label: string }[] = [
-  { key: 'preview', label: '预览' },
-  { key: 'source', label: '源码' },
-  { key: 'visual', label: '可视化' },
-];
+const HTML_MODES: ViewMode[] = ['preview', 'source', 'visual'];
 
 interface TopbarProps {
   isMobile?: boolean;
@@ -58,6 +52,7 @@ interface TopbarProps {
 }
 
 export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
+  const { t } = useTranslation();
   const viewMode = useEditorStore((state) => state.viewMode);
   const setViewMode = useEditorStore((state) => state.setViewMode);
   const toggleAiPanel = useEditorViewStateStore((state) => state.toggleAiPanel);
@@ -76,7 +71,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
       {/* Left: Logo + mobile menu */}
       <div className="tb-left flex items-center h-full flex-1 overflow-hidden">
         {isMobile && (
-          <button className="tb-btn mobile-menu-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1" onClick={onToggleSidebar} title="菜单">
+          <button className="tb-btn mobile-menu-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1" onClick={onToggleSidebar} title={t('topbar:menu')}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <line x1="2" y1="4" x2="14" y2="4" />
               <line x1="2" y1="8" x2="14" y2="8" />
@@ -100,12 +95,12 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
           {modes.map((mode) => {
             return (
               <button
-                key={mode.key}
-                className={`vseg py-[3px] px-[9px] rounded text-[length:calc(var(--ui-font-size)-3px)] cursor-pointer transition-all duration-150 font-medium ${viewMode === mode.key ? 'text-acc bg-accdim' : 'text-t3 hover:text-t2 hover:bg-hov'}`}
-                onClick={() => setViewMode(mode.key)}
-                title={mode.label}
+                key={mode}
+                className={`vseg py-[3px] px-[9px] rounded text-[length:calc(var(--ui-font-size)-3px)] cursor-pointer transition-all duration-150 font-medium ${viewMode === mode ? 'text-acc bg-accdim' : 'text-t3 hover:text-t2 hover:bg-hov'}`}
+                onClick={() => setViewMode(mode)}
+                title={t(`topbar:viewMode.${mode}`)}
               >
-                {VIEW_MODE_ICONS[mode.key]}
+                {VIEW_MODE_ICONS[mode]}
               </button>
             );
           })}
@@ -120,11 +115,12 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
           } else {
             toggleAiPanel();
           }
-        }} title={currentPage === 'schedule' ? 'AI 规划今日' : 'AI 面板'}>
+        }} title={currentPage === 'schedule' ? t('topbar:ai.planToday') : t('topbar:ai.panel')}>
           AI
         </button>
         <ExportMenu />
-        <button className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1" onClick={toggleTheme} title="切换主题">
+        <LanguageSwitcher />
+        <button className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1" onClick={toggleTheme} title={t('topbar:theme.toggle')}>
           {theme === 'light' ? (
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
               <path d="M13.5 8.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z" />

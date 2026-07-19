@@ -1,6 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { useScheduleStore } from '@/store/scheduleStore';
 import type { EventCategory } from '@/features/schedule/types';
-import { EVENT_CATEGORY_LABEL } from '@/features/schedule/types';
 
 const CATS: { key: EventCategory; color: string }[] = [
   { key: 'work', color: 'var(--cal-work)' },
@@ -11,6 +11,7 @@ const CATS: { key: EventCategory; color: string }[] = [
 ];
 
 export function CalendarCategoryList() {
+  const { t } = useTranslation();
   const filter = useScheduleStore((s) => s.calendarFilter);
   const setFilter = useScheduleStore((s) => s.setCalendarFilter);
   const events = useScheduleStore((s) => s.events);
@@ -23,7 +24,7 @@ export function CalendarCategoryList() {
 
   return (
     <div className="sw-rail-block">
-      <p className="sw-section-label">日历</p>
+      <p className="sw-section-label">{t('schedule:calendarCategory.calendar')}</p>
       <div className="sw-cal-list">
         {CATS.map((c) => (
           <div
@@ -32,7 +33,7 @@ export function CalendarCategoryList() {
             onClick={() => setFilter(c.key, !filter[c.key])}
           >
             <span className="sw-cal-swatch" style={{ background: c.color }} />
-            {EVENT_CATEGORY_LABEL[c.key]}
+            {t(`schedule:category.event.${c.key}`)}
             <span className="sw-count">{count(c.key)}</span>
           </div>
         ))}
@@ -42,19 +43,20 @@ export function CalendarCategoryList() {
 }
 
 export function WeeklyStats() {
+  const { t } = useTranslation();
   const events = useScheduleStore((s) => s.events);
   const tasks = useScheduleStore((s) => s.tasks);
   return (
     <div className="sw-rail-block">
-      <p className="sw-section-label">本周</p>
+      <p className="sw-section-label">{t('schedule:calendarCategory.week')}</p>
       <div className="sw-stat-row">
         <div className="sw-stat-card accent">
           <div className="sw-v">{events.length}</div>
-          <div className="sw-l">事件总数</div>
+          <div className="sw-l">{t('schedule:calendarCategory.totalEvents')}</div>
         </div>
         <div className="sw-stat-card">
           <div className="sw-v">{tasks.filter((t) => !t.done).length}</div>
-          <div className="sw-l">未完成任务</div>
+          <div className="sw-l">{t('schedule:calendarCategory.incompleteTasks')}</div>
         </div>
       </div>
     </div>

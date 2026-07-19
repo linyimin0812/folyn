@@ -1,0 +1,30 @@
+{
+  "page": {
+    "tagline": "Storage",
+    "title": "Vault management",
+    "description": "Manage local knowledge bases and switch work contexts",
+    "newVault": "+ New Vault",
+    "myVaults": "My Vaults",
+    "newVaultShort": "New Vault",
+    "current": "Current",
+    "typeSuffix": "type",
+    "openEditor": "Open editor",
+    "switch": "Switch",
+    "deleteTitle": "Delete",
+    "fileBrowse": "File browser — {{name}}",
+    "emptyFiles": "No files yet; create a new document in the editor",
+    "emptyFolder": "Empty folder"
+  },
+  "delete": {
+    "title": "Confirm delete",
+    "confirm": "Delete Vault \"{{name}}\"? This will not delete the files on disk.",
+    "delete": "Delete",
+    "cancel": "Cancel"
+  },
+  "time": {
+    "justNow": "just now",
+    "minutesAgo": "{{count}} min ago",
+    "hoursAgo": "{{count}} hr ago",
+    "daysAgo": "{{count}} days ago"
+  }
+}

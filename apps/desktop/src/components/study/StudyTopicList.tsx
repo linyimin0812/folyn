@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useStudyStore } from '@/store/studyStore';
 import { isDue } from '@/features/study/sm2';
 import { dateToString } from '@/features/schedule/dailyScan';
@@ -12,6 +13,7 @@ interface StudyTopicListProps {
 
 /** 左侧主题列表：新建（弹窗）/ 切换 / 删除。对标 ScheduleSidebar 的轻量风格。 */
 export function StudyTopicList({ onCreated }: StudyTopicListProps) {
+  const { t } = useTranslation();
   const topics = useStudyStore((s) => s.topics);
   const activeSlug = useStudyStore((s) => s.activeSlug);
   const selectTopic = useStudyStore((s) => s.selectTopic);
@@ -33,8 +35,8 @@ export function StudyTopicList({ onCreated }: StudyTopicListProps) {
           <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
         </svg>
-        <span>学习主题</span>
-        <button className="sw-add-btn" onClick={() => setShowAdd(true)} title="新建主题">
+        <span>{t('study:topicList.title')}</span>
+        <button className="sw-add-btn" onClick={() => setShowAdd(true)} title={t('study:topicList.new')}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M12 5v14M5 12h14" />
           </svg>
@@ -50,32 +52,32 @@ export function StudyTopicList({ onCreated }: StudyTopicListProps) {
 
       <ul className="sw-nav-group">
         {topics.length === 0 && (
-          <li className="sw-empty-hint">暂无学习主题。点上方 + 新建一个。</li>
+          <li className="sw-empty-hint">{t('study:topicList.empty')}</li>
         )}
-        {topics.map((t) => {
-          const title = t.parsed.frontmatter.title ?? t.slug;
-          const unitCount = t.parsed.units.length;
+        {topics.map((tp) => {
+          const title = tp.parsed.frontmatter.title ?? tp.slug;
+          const unitCount = tp.parsed.units.length;
           const today = dateToString(new Date());
-          const dueCount = t.parsed.reviewAtoms.filter((a) => isDue(a.next, today)).length;
+          const dueCount = tp.parsed.reviewAtoms.filter((a) => isDue(a.next, today)).length;
           return (
             <li
-              key={t.slug}
-              className={`sw-nav-item ${t.slug === activeSlug ? 'active' : ''}`}
-              onClick={() => selectTopic(t.slug)}
+              key={tp.slug}
+              className={`sw-nav-item ${tp.slug === activeSlug ? 'active' : ''}`}
+              onClick={() => selectTopic(tp.slug)}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
               </svg>
               <span className="sw-topic-title">{title}</span>
-              <span className="sw-count">{dueCount > 0 ? `${dueCount} 复习` : `${unitCount} 单元`}</span>
+              <span className="sw-count">{dueCount > 0 ? t('study:topicList.reviewCount', { count: dueCount }) : t('study:topicList.unitCount', { count: unitCount })}</span>
               <button
                 className="sw-topic-del"
-                title="删除主题"
+                title={t('study:topicList.delete')}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (window.confirm(`删除主题「${title}」？该操作不可撤销。`)) {
-                    void deleteTopic(t.slug);
+                  if (window.confirm(t('study:topicList.deleteConfirm', { title }))) {
+                    void deleteTopic(tp.slug);
                   }
                 }}
               >

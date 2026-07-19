@@ -2,8 +2,10 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useSearchStore, type SearchResult } from '@/store/searchStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import * as editorIoService from '@/services/editorIoService';
+import { useTranslation } from 'react-i18next';
 
 export function GlobalSearchPanel() {
+  const { t } = useTranslation();
   const isOpen = useSearchStore((s) => s.isOpen);
   const query = useSearchStore((s) => s.query);
   const caseSensitive = useSearchStore((s) => s.caseSensitive);
@@ -82,7 +84,7 @@ export function GlobalSearchPanel() {
               ref={inputRef}
               className="w-full py-2 pr-2.5 pl-8 rounded-md border border-brd bg-inp text-t1 text-[13px] font-ui outline-none transition-[border-color] duration-150 focus:border-acc placeholder:text-t3"
               type="text"
-              placeholder="Search in vault..."
+              placeholder={t('search:placeholder')}
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
             />
@@ -90,14 +92,14 @@ export function GlobalSearchPanel() {
           <button
             className={`py-[5px] px-2 rounded-[5px] text-xs font-semibold border cursor-pointer transition-all duration-100 font-mono shrink-0 ${caseSensitive ? 'bg-accdim border-acc text-acc' : 'text-t3 bg-transparent border-brd hover:bg-hov hover:text-t2'}`}
             onClick={() => useSearchStore.getState().toggleCaseSensitive()}
-            title="Case Sensitive"
+            title={t('search:caseSensitive')}
           >
             Aa
           </button>
           <button
             className={`py-[5px] px-2 rounded-[5px] text-xs font-semibold border cursor-pointer transition-all duration-100 font-mono shrink-0 ${useRegex ? 'bg-accdim border-acc text-acc' : 'text-t3 bg-transparent border-brd hover:bg-hov hover:text-t2'}`}
             onClick={() => useSearchStore.getState().toggleUseRegex()}
-            title="Use Regex"
+            title={t('search:useRegex')}
           >
             .*
           </button>
@@ -106,13 +108,13 @@ export function GlobalSearchPanel() {
         {/* Results area */}
         <div className="gs-results flex-1 overflow-y-auto py-2 scrollbar-thin">
           {isSearching && (
-            <div className="py-6 px-4 text-center text-t3 text-[13px]">Searching...</div>
+            <div className="py-6 px-4 text-center text-t3 text-[13px]">{t('search:searching')}</div>
           )}
           {!isSearching && query.trim() && results.length === 0 && (
-            <div className="py-6 px-4 text-center text-t3 text-[13px]">No results found</div>
+            <div className="py-6 px-4 text-center text-t3 text-[13px]">{t('search:noResults')}</div>
           )}
           {!isSearching && !query.trim() && (
-            <div className="py-6 px-4 text-center text-t3 text-[13px]">Type to search across all files</div>
+            <div className="py-6 px-4 text-center text-t3 text-[13px]">{t('search:typeToSearch')}</div>
           )}
           {!isSearching && results.length > 0 && (
             <div className="flex flex-col">

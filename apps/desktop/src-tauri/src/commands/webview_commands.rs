@@ -1,5 +1,7 @@
 use tauri::Manager;
 
+use crate::errors::AppError;
+
 /// Create an embedded webview in the main window from Rust side.
 /// Uses initialization_script to inject JS on every page load (handles target="_blank" links).
 #[tauri::command]
@@ -12,7 +14,7 @@ pub async fn create_webview(
     width: f64,
     height: f64,
     user_agent: String,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     use tauri::webview::WebviewBuilder;
     use tauri::{LogicalPosition, LogicalSize};
 
@@ -118,21 +120,21 @@ pub async fn create_webview(
 
 /// Navigate an embedded webview (back / forward / reload).
 #[tauri::command]
-pub async fn navigate_webview(app: tauri::AppHandle, label: String, action: String) -> Result<(), String> {
+pub async fn navigate_webview(app: tauri::AppHandle, label: String, action: String) -> Result<(), AppError> {
     let wv = app.get_webview(&label)
         .ok_or_else(|| format!("Webview '{}' not found", label))?;
     let js = match action.as_str() {
         "back" => "history.back();",
         "forward" => "history.forward();",
         "reload" => "location.reload();",
-        _ => return Err(format!("Unknown action: {}", action)),
+        _ => return Err(format!("Unknown action: {}", action).into()),
     };
-    wv.eval(js).map_err(|e| e.to_string())
+    wv.eval(js).map_err(|e| AppError::from(e.to_string()))
 }
 
 /// Close an embedded webview by label.
 #[tauri::command]
-pub async fn close_webview(app: tauri::AppHandle, label: String) -> Result<(), String> {
+pub async fn close_webview(app: tauri::AppHandle, label: String) -> Result<(), AppError> {
     if let Some(wv) = app.get_webview(&label) {
         wv.close().map_err(|e| e.to_string())?;
     }
@@ -141,7 +143,7 @@ pub async fn close_webview(app: tauri::AppHandle, label: String) -> Result<(), S
 
 /// Hide an embedded webview by label (move off-screen to keep it alive but invisible).
 #[tauri::command]
-pub async fn hide_webview(app: tauri::AppHandle, label: String) -> Result<(), String> {
+pub async fn hide_webview(app: tauri::AppHandle, label: String) -> Result<(), AppError> {
     use tauri::LogicalPosition;
     use tauri::LogicalSize;
 
@@ -154,7 +156,7 @@ pub async fn hide_webview(app: tauri::AppHandle, label: String) -> Result<(), St
 
 /// Show an embedded webview by label (restore visibility - position will be set by frontend).
 #[tauri::command]
-pub async fn show_webview(app: tauri::AppHandle, label: String) -> Result<(), String> {
+pub async fn show_webview(app: tauri::AppHandle, label: String) -> Result<(), AppError> {
     if let Some(wv) = app.get_webview(&label) {
         // Just make it visible again - the frontend will call set_webview_position
         // to restore the correct position and size
@@ -172,7 +174,7 @@ pub async fn set_webview_position(
     y: f64,
     width: f64,
     height: f64,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     use tauri::LogicalPosition;
     use tauri::LogicalSize;
 
@@ -190,7 +192,7 @@ pub async fn on_webview_url_changed(
     label: String,
     url: String,
     title: String,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     use tauri::Emitter;
 
     app.emit("webview-url-changed", serde_json::json!({
@@ -205,7 +207,7 @@ pub async fn on_webview_url_changed(
 /// Accepts a list of labels from the frontend since child webviews are not
 /// enumerable via webview_windows() in Tauri v2.
 #[tauri::command]
-pub async fn hide_all_webviews(app: tauri::AppHandle, labels: Vec<String>) -> Result<(), String> {
+pub async fn hide_all_webviews(app: tauri::AppHandle, labels: Vec<String>) -> Result<(), AppError> {
     use tauri::LogicalPosition;
     use tauri::LogicalSize;
 

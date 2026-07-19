@@ -1,0 +1,48 @@
+{
+  "panel": {
+    "title": "New chat",
+    "newSession": "New chat",
+    "deleteSession": "Delete chat",
+    "close": "Close",
+    "stop": "Stop",
+    "messageCountSuffix": "msg",
+    "studyStreaming": "study agent running…",
+    "studyIdle": "study agent session (manual input disabled)",
+    "attachmentPlaceholder": "(attachment)",
+    "deleteConfirmTitle": "Delete chat",
+    "deleteConfirm": "Delete this chat? This cannot be undone."
+  },
+  "chat": {
+    "placeholder": "Type a message; @ to mention a file...",
+    "placeholderFallback": "Type a message...",
+    "removeAttachment": "Remove attachment",
+    "attachFile": "Attach file",
+    "clear": "Clear",
+    "clearTitle": "Clear chat",
+    "send": "Send",
+    "stop": "Stop"
+  },
+  "voice": {
+    "phase": {
+      "transcribing": "Transcribing…",
+      "polishing": "Polishing…",
+      "inserting": "Inserting…",
+      "processing": "Processing voice…"
+    },
+    "button": {
+      "idle": "Voice input",
+      "windowsUnsupported": "Voice input is not supported on Windows",
+      "clickToStop": "Click to stop recording and insert",
+      "stopRecordingLabel": "Stop recording",
+      "voiceInputLabel": "Voice input"
+    },
+    "orb": {
+      "noApiKey": "No API Key configured; LLM polish skipped",
+      "openSettings": "Open settings"
+    }
+  },
+  "errors": {
+    "attachmentSaveFailed": "[error] Failed to save attachments: {{error}}",
+    "streamError": "[error] {{error}}"
+  }
+}

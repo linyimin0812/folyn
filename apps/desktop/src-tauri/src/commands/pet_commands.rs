@@ -2,6 +2,8 @@ use std::sync::Mutex;
 use serde::Serialize;
 use tauri::{Emitter, Manager, PhysicalPosition, PhysicalSize};
 
+use crate::errors::AppError;
+
 /// Shared pet-size level state ("small"|"medium"|"large"). Synced from the
 /// frontend via the `set_pet_size` command and from `on_menu_event` when the
 /// user picks a size from the native submenu. Read by `pet_show_context_menu`
@@ -96,7 +98,7 @@ fn current_pet_size_level(app: &tauri::AppHandle) -> String {
 /// Also updates the shared `PetSizeState` so the next right-click menu
 /// build pre-selects the correct size radio item.
 #[tauri::command]
-pub async fn set_pet_size(app: tauri::AppHandle, level: String) -> Result<(), String> {
+pub async fn set_pet_size(app: tauri::AppHandle, level: String) -> Result<(), AppError> {
     use tauri::LogicalSize;
 
     let (w, h) = pet_size_to_px(&level)
@@ -119,7 +121,7 @@ pub async fn set_pet_size(app: tauri::AppHandle, level: String) -> Result<(), St
 /// the macOS app menu no longer hosts a checkable "Desktop Pet Mode" item
 /// (removed in favor of the dedicated settings tab).
 #[tauri::command]
-pub async fn toggle_pet_mode(app: tauri::AppHandle) -> Result<bool, String> {
+pub async fn toggle_pet_mode(app: tauri::AppHandle) -> Result<bool, AppError> {
     let pet = app
         .get_webview_window(PET_LABEL)
         .ok_or_else(|| "pet window not found".to_string())?;
@@ -142,12 +144,12 @@ pub async fn toggle_pet_mode(app: tauri::AppHandle) -> Result<bool, String> {
 
 /// Set the pet window's screen position (physical pixels).
 #[tauri::command]
-pub async fn set_pet_position(app: tauri::AppHandle, x: i32, y: i32) -> Result<(), String> {
+pub async fn set_pet_position(app: tauri::AppHandle, x: i32, y: i32) -> Result<(), AppError> {
     let pet = app
         .get_webview_window(PET_LABEL)
         .ok_or_else(|| "pet window not found".to_string())?;
     pet.set_position(PhysicalPosition::new(x, y))
-        .map_err(|e| e.to_string())
+        .map_err(|e| AppError::from(e.to_string()))
 }
 
 /// Get the pet window's current screen position (physical pixels).
@@ -158,7 +160,7 @@ pub struct PetPosition {
 }
 
 #[tauri::command]
-pub async fn get_pet_position(app: tauri::AppHandle) -> Result<PetPosition, String> {
+pub async fn get_pet_position(app: tauri::AppHandle) -> Result<PetPosition, AppError> {
     let pet = app
         .get_webview_window(PET_LABEL)
         .ok_or_else(|| "pet window not found".to_string())?;
@@ -186,7 +188,7 @@ pub struct PetCursorProbe {
 }
 
 #[tauri::command]
-pub async fn pet_cursor_probe(app: tauri::AppHandle) -> Result<PetCursorProbe, String> {
+pub async fn pet_cursor_probe(app: tauri::AppHandle) -> Result<PetCursorProbe, AppError> {
     let pet = app
         .get_webview_window(PET_LABEL)
         .ok_or_else(|| "pet window not found".to_string())?;
@@ -229,7 +231,7 @@ pub struct PetWorkArea {
 }
 
 #[tauri::command]
-pub async fn pet_get_work_area(_app: tauri::AppHandle) -> Result<PetWorkArea, String> {
+pub async fn pet_get_work_area(_app: tauri::AppHandle) -> Result<PetWorkArea, AppError> {
     #[cfg(target_os = "macos")]
     {
         use cocoa::appkit::NSScreen;
@@ -243,7 +245,7 @@ pub async fn pet_get_work_area(_app: tauri::AppHandle) -> Result<PetWorkArea, St
             // misleadingly implemented for `id` instances, not `&Class`).
             let screen: id = msg_send![objc::class!(NSScreen), mainScreen];
             if screen.is_null() {
-                return Err("NSScreen.mainScreen is null".to_string());
+                return Err("NSScreen.mainScreen is null".into());
             }
             // `visibleFrame` excludes the Dock and menu bar. NSRect uses
             // bottom-left origin; we convert to top-left origin below.
@@ -304,7 +306,7 @@ pub async fn pet_get_work_area(_app: tauri::AppHandle) -> Result<PetWorkArea, St
 /// cursor); reliable fix needs an `NSTrackingArea` with `NSTrackingActiveAlways`
 /// on the panel's content view, deferred until this proves insufficient.
 #[tauri::command]
-pub async fn pet_set_cursor(app: tauri::AppHandle, kind: String) -> Result<(), String> {
+pub async fn pet_set_cursor(app: tauri::AppHandle, kind: String) -> Result<(), AppError> {
     use cocoa::base::id;
     use objc::{class, msg_send, sel, sel_impl};
     let app2 = app.clone();
@@ -323,7 +325,7 @@ pub async fn pet_set_cursor(app: tauri::AppHandle, kind: String) -> Result<(), S
 }
 
 #[tauri::command]
-pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), AppError> {
     use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
     use tauri::Manager;
 
@@ -469,7 +471,7 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), String> 
 /// returning AppKit methods (`NSEvent::mouseLocation`, `NSWindow::frame`)
 /// through `msg_send!`, which is UB on ARM64 and crashes. Falls back to
 /// (0,0) if any of the calls fail (menu shows at the pet window's top-left).
-fn pet_cursor_pos_relative(pet: &tauri::WebviewWindow) -> Result<tauri::Position, String> {
+fn pet_cursor_pos_relative(pet: &tauri::WebviewWindow) -> Result<tauri::Position, AppError> {
     let cursor = pet.cursor_position().map_err(|e| e.to_string())?;
     let win = pet.outer_position().map_err(|e| e.to_string())?;
     let size = pet.outer_size().map_err(|e| e.to_string())?;
@@ -520,7 +522,7 @@ const PET_PANEL_LABEL: &str = "pet-panel";
 /// parent view, NOT the WKWebView), which routes `keyDown:` to the wrong
 /// target; we must target the WKWebView ns_view specifically.
 #[tauri::command]
-pub async fn pet_panel_show(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn pet_panel_show(app: tauri::AppHandle) -> Result<(), AppError> {
     let panel = app
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
@@ -569,7 +571,7 @@ pub async fn pet_panel_show(app: tauri::AppHandle) -> Result<(), String> {
 /// Hide the pet-panel window without closing it (the window stays alive for
 /// the next show). Used by the close button, Esc, and the second pet click.
 #[tauri::command]
-pub async fn pet_panel_hide(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn pet_panel_hide(app: tauri::AppHandle) -> Result<(), AppError> {
     let panel = app
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
@@ -647,7 +649,7 @@ impl Default for PetShortcutState {
 /// as `voice::voice_set_global_hotkey` — the two accelerators are now
 /// independent.
 #[tauri::command]
-pub async fn pet_panel_set_shortcut(app: tauri::AppHandle, accelerator: String) -> Result<(), String> {
+pub async fn pet_panel_set_shortcut(app: tauri::AppHandle, accelerator: String) -> Result<(), AppError> {
     use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
     use std::str::FromStr;
 
@@ -697,18 +699,18 @@ pub async fn pet_panel_set_position(
     app: tauri::AppHandle,
     x: i32,
     y: i32,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     let panel = app
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
     panel
         .set_position(PhysicalPosition::new(x, y))
-        .map_err(|e| e.to_string())
+        .map_err(|e| AppError::from(e.to_string()))
 }
 
 /// Get the pet-panel window's current screen position (physical pixels).
 #[tauri::command]
-pub async fn pet_panel_get_position(app: tauri::AppHandle) -> Result<PetPosition, String> {
+pub async fn pet_panel_get_position(app: tauri::AppHandle) -> Result<PetPosition, AppError> {
     let panel = app
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
@@ -724,20 +726,20 @@ pub async fn pet_panel_set_size(
     app: tauri::AppHandle,
     width: i32,
     height: i32,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     let panel = app
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
     panel
         .set_size(PhysicalSize::new(width, height))
-        .map_err(|e| e.to_string())
+        .map_err(|e| AppError::from(e.to_string()))
 }
 
 /// Get the pet-panel window's current size (physical pixels). Used by the
 /// panel frontend's periodic poller to detect a user-driven resize and
 /// persist the new size.
 #[tauri::command]
-pub async fn pet_panel_get_size(app: tauri::AppHandle) -> Result<PetPanelSize, String> {
+pub async fn pet_panel_get_size(app: tauri::AppHandle) -> Result<PetPanelSize, AppError> {
     let panel = app
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
@@ -751,11 +753,11 @@ pub async fn pet_panel_get_size(app: tauri::AppHandle) -> Result<PetPanelSize, S
 /// Returns whether the pet-panel window is currently visible. The pet
 /// frontend uses this for the toggle-on-second-click decision.
 #[tauri::command]
-pub async fn pet_panel_is_visible(app: tauri::AppHandle) -> Result<bool, String> {
+pub async fn pet_panel_is_visible(app: tauri::AppHandle) -> Result<bool, AppError> {
     let panel = app
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
-    panel.is_visible().map_err(|e| e.to_string())
+    panel.is_visible().map_err(|e| AppError::from(e.to_string()))
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -777,7 +779,7 @@ const PET_BUBBLE_LABEL: &str = "pet-bubble";
 /// without deactivating the foreground app). The caller sets position via
 /// `pet_bubble_set_position` first so the bubble appears above the pet.
 #[tauri::command]
-pub async fn pet_bubble_show(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn pet_bubble_show(app: tauri::AppHandle) -> Result<(), AppError> {
     let bubble = app
         .get_webview_window(PET_BUBBLE_LABEL)
         .ok_or_else(|| "pet-bubble window not found".to_string())?;
@@ -789,7 +791,7 @@ pub async fn pet_bubble_show(app: tauri::AppHandle) -> Result<(), String> {
 /// show). Used by the TTL auto-dismiss, the ✕ close button, and after an
 /// action button fires `pet://bubble-action`.
 #[tauri::command]
-pub async fn pet_bubble_hide(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn pet_bubble_hide(app: tauri::AppHandle) -> Result<(), AppError> {
     let bubble = app
         .get_webview_window(PET_BUBBLE_LABEL)
         .ok_or_else(|| "pet-bubble window not found".to_string())?;
@@ -805,13 +807,13 @@ pub async fn pet_bubble_set_position(
     app: tauri::AppHandle,
     x: i32,
     y: i32,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     let bubble = app
         .get_webview_window(PET_BUBBLE_LABEL)
         .ok_or_else(|| "pet-bubble window not found".to_string())?;
     bubble
         .set_position(PhysicalPosition::new(x, y))
-        .map_err(|e| e.to_string())
+        .map_err(|e| AppError::from(e.to_string()))
 }
 
 /// Raise a pet-managed window to the highest standard macOS window level so
@@ -843,7 +845,7 @@ pub async fn pet_bubble_set_position(
 /// We FFI that C function and pass the resolved number to `setLevel:`.
 #[cfg(target_os = "macos")]
 #[tauri::command]
-pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Result<(), String> {
+pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Result<(), AppError> {
     use objc::{msg_send, sel, sel_impl};
     use objc::runtime::Object;
 
@@ -918,7 +920,7 @@ pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Resu
 
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
-pub async fn pet_set_topmost_level(_app: tauri::AppHandle, _label: String) -> Result<(), String> {
+pub async fn pet_set_topmost_level(_app: tauri::AppHandle, _label: String) -> Result<(), AppError> {
     // Non-macOS: no equivalent level API; `alwaysOnTop: true` config is the
     // best available. Pet mode is macOS-only at present.
     Ok(())
@@ -959,7 +961,7 @@ pub async fn pet_set_topmost_level(_app: tauri::AppHandle, _label: String) -> Re
 /// no-op on other platforms.
 #[cfg(target_os = "macos")]
 #[tauri::command]
-pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Result<(), String> {
+pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Result<(), AppError> {
     use cocoa::base::{id, nil};
     use cocoa::foundation::NSString;
     use objc::runtime::Object;
@@ -1049,7 +1051,7 @@ pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Resul
 
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
-pub async fn pet_make_transparent(_app: tauri::AppHandle, _label: String) -> Result<(), String> {
+pub async fn pet_make_transparent(_app: tauri::AppHandle, _label: String) -> Result<(), AppError> {
     // Non-macOS: native transparency is platform-specific and pet mode is
     // macOS-only at present. Tauri's `transparent: true` config is the best
     // available on Windows/Linux.

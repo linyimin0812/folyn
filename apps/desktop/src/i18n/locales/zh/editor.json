@@ -1,0 +1,74 @@
+{
+  "export": {
+    "title": "导出",
+    "markdown": {
+      "label": "Markdown",
+      "description": "导出 .md 源文件"
+    },
+    "html": {
+      "label": "HTML",
+      "description": "导出为渲染后的网页"
+    },
+    "pdf": {
+      "label": "PDF",
+      "description": "通过打印对话框导出"
+    },
+    "containerWarning": {
+      "title": "⚠️ 兼容性提示",
+      "body": "当前文档使用了 Quill 容器语法（如提示框、标签页、折叠面板等），这些语法是 Quill 的扩展功能，**在其他 Markdown 编辑器中打开预览可能无法正常渲染**。",
+      "hint": "如需在其他编辑器中查看，建议导出为 HTML 格式。",
+      "cancel": "取消",
+      "confirm": "仍然导出"
+    }
+  },
+  "slashMenu": {
+    "categories": {
+      "layout": "布局",
+      "media": "媒体",
+      "ai": "AI",
+      "data": "数据",
+      "custom": "自定义"
+    }
+  },
+  "imagePaste": {
+    "title": "📷 粘贴图片",
+    "uploadMethod": "上传方式",
+    "comingSoon": "敬请期待",
+    "fileName": "图片名称",
+    "fileNamePlaceholder": "输入图片名称",
+    "directory": "保存目录",
+    "directoryPlaceholder": "相对于 Vault 根目录的路径",
+    "vaultHint": "🗄️ vault: {{root}}",
+    "format": "图片格式",
+    "size": "图片尺寸",
+    "width": "宽",
+    "widthPlaceholder": "宽度",
+    "height": "高",
+    "heightPlaceholder": "高度",
+    "lockRatio": "锁定比例",
+    "unlockRatio": "解锁比例",
+    "resetSize": "恢复原始尺寸",
+    "originalSize": "原始尺寸：{{w}} × {{h}} px",
+    "pathPreview": "📄 {{path}}",
+    "cancel": "取消",
+    "upload": "✓ 上传"
+  },
+  "dailyDigest": {
+    "title": "AI Daily Digest",
+    "generate": "生成回顾",
+    "hint": "AI 将分析今日的写作活动并生成回顾",
+    "loading": "正在生成回顾...",
+    "insert": "插入到笔记",
+    "generateFailed": "生成失败: {{error}}",
+    "today": "今日：{{date}}",
+    "modifiedSection": "今日修改文档",
+    "modifiedEmpty": "(无修改记录)",
+    "recentDailySection": "最近日记",
+    "recentDailyEmpty": "(无历史日记)"
+  },
+  "diffToolbar": {
+    "pendingCount": "{{count}} 处变更待审阅",
+    "acceptAll": "全部接受",
+    "rejectAll": "全部拒绝"
+  }
+}

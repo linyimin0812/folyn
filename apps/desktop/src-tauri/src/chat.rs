@@ -21,6 +21,8 @@ use rig_core::prelude::*; // brings StreamingChat (stream_chat) into scope
 use rig_core::providers::{anthropic, openai};
 use rig_core::streaming::StreamedAssistantContent;
 
+use crate::errors::AppError;
+
 const PREAMBLE: &str = "You are Quill's writing assistant. Reply concisely and helpfully.";
 
 /// One chunk pushed down the frontend `Channel`. Tagged so the JS side can
@@ -104,7 +106,7 @@ pub async fn chat_stream(
     app: AppHandle,
     params: ChatParams,
     on_event: Channel<ChatChunk>,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     if params.api_key.trim().is_empty() {
         on_event
             .send(ChatChunk::Error {

@@ -1,0 +1,27 @@
+{
+  "language": {
+    "zh": "中文",
+    "en": "English",
+    "switcher": {
+      "title": "语言",
+      "aria": "切换语言"
+    }
+  },
+  "common": {
+    "ok": "确定",
+    "cancel": "取消",
+    "save": "保存",
+    "delete": "删除",
+    "confirm": "确认",
+    "close": "关闭",
+    "new": "新建",
+    "open": "打开",
+    "edit": "编辑",
+    "preview": "预览",
+    "loading": "加载中…",
+    "error": "出错",
+    "retry": "重试",
+    "yes": "是",
+    "no": "否"
+  }
+}

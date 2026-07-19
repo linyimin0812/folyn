@@ -9,6 +9,7 @@
 #![allow(unexpected_cfgs)]
 
 mod commands;
+pub mod errors;
 mod plugin_commands;
 mod chat;
 mod voice;

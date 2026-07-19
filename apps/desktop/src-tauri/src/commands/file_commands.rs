@@ -1,14 +1,16 @@
 use std::fs;
 use serde::Serialize;
 
+use crate::errors::AppError;
+
 #[tauri::command]
-pub async fn open_file(path: String) -> Result<String, String> {
-    fs::read_to_string(&path).map_err(|e| e.to_string())
+pub async fn open_file(path: String) -> Result<String, AppError> {
+    fs::read_to_string(&path).map_err(AppError::from)
 }
 
 #[tauri::command]
-pub async fn save_file(path: String, content: String) -> Result<(), String> {
-    fs::write(&path, content).map_err(|e| e.to_string())
+pub async fn save_file(path: String, content: String) -> Result<(), AppError> {
+    fs::write(&path, content).map_err(AppError::from)
 }
 
 #[derive(Serialize)]

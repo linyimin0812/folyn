@@ -19,6 +19,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tauri::{Emitter, Manager};
 
+use crate::errors::AppError;
+
 // ── URI scheme handler ───────────────────────────────────────────────────────
 
 /// Parse a `quill-plugin://localhost/<id>/<path>` URI into `(plugin_id, file_path)`.
@@ -337,7 +339,7 @@ pub fn validate_manifest(manifest: &serde_json::Value) -> Result<(), String> {
         .as_str()
         .ok_or_else(|| "manifest.version is required".to_string())?;
     if version.is_empty() {
-        return Err("manifest.version must not be empty".to_string());
+        return Err("manifest.version must not be empty".into());
     }
 
     let tier = manifest["tier"]
@@ -351,7 +353,7 @@ pub fn validate_manifest(manifest: &serde_json::Value) -> Result<(), String> {
         .as_str()
         .ok_or_else(|| "manifest.main is required".to_string())?;
     if main.is_empty() {
-        return Err("manifest.main must not be empty".to_string());
+        return Err("manifest.main must not be empty".into());
     }
 
     if tier == "sandbox" {
@@ -359,7 +361,7 @@ pub fn validate_manifest(manifest: &serde_json::Value) -> Result<(), String> {
             .as_str()
             .ok_or_else(|| "sandbox plugins require manifest.html".to_string())?;
         if html.is_empty() {
-            return Err("sandbox plugins require manifest.html".to_string());
+            return Err("sandbox plugins require manifest.html".into());
         }
     }
 
@@ -450,14 +452,14 @@ pub async fn install_plugin(
     app: tauri::AppHandle,
     id: String,
     source_path: String,
-) -> Result<PluginEntry, String> {
+) -> Result<PluginEntry, AppError> {
     let src = PathBuf::from(&source_path);
     if !src.is_dir() {
-        return Err(format!("source_path must be an existing directory: {source_path}"));
+        return Err(format!("source_path must be an existing directory: {source_path}").into());
     }
     let manifest_path = src.join("manifest.json");
     if !manifest_path.exists() {
-        return Err(format!("source_path must contain manifest.json: {source_path}"));
+        return Err(format!("source_path must contain manifest.json: {source_path}").into());
     }
 
     // Read + validate manifest BEFORE copying.
@@ -473,7 +475,7 @@ pub async fn install_plugin(
     if manifest_id != id {
         return Err(format!(
             "manifest.id ({manifest_id}) does not match requested id ({id})"
-        ));
+        ).into());
     }
 
     let dir = plugins_dir(&app)?;
@@ -534,15 +536,15 @@ pub async fn install_plugin(
 
 /// List all installed plugins from `plugins.json`.
 #[tauri::command]
-pub async fn list_plugins(app: tauri::AppHandle) -> Result<Vec<PluginEntry>, String> {
+pub async fn list_plugins(app: tauri::AppHandle) -> Result<Vec<PluginEntry>, AppError> {
     let dir = plugins_dir(&app)?;
-    read_plugins_json(&dir)
+    read_plugins_json(&dir).map_err(AppError::from)
 }
 
 /// Uninstall a plugin: delete its directory, remove the entry from
 /// `plugins.json`, and emit `plugin://uninstalled`.
 #[tauri::command]
-pub async fn uninstall_plugin(app: tauri::AppHandle, id: String) -> Result<(), String> {
+pub async fn uninstall_plugin(app: tauri::AppHandle, id: String) -> Result<(), AppError> {
     let dir = plugins_dir(&app)?;
     let plugin_dir = dir.join(&id);
     if plugin_dir.exists() {
@@ -567,7 +569,7 @@ pub async fn uninstall_plugin(app: tauri::AppHandle, id: String) -> Result<(), S
 /// — the trusted loader refuses to `import()` a plugin until `approve_plugin`
 /// has been called. MVP: no settings UI yet; PR4 adds the consent prompt.
 #[tauri::command]
-pub async fn approve_plugin(app: tauri::AppHandle, id: String) -> Result<PluginEntry, String> {
+pub async fn approve_plugin(app: tauri::AppHandle, id: String) -> Result<PluginEntry, AppError> {
     let dir = plugins_dir(&app)?;
     let mut records = read_plugins_json(&dir)?;
     let entry = records
@@ -587,13 +589,14 @@ pub async fn approve_plugin(app: tauri::AppHandle, id: String) -> Result<PluginE
 /// `integrity`), or an error if not installed. The trusted loader calls this
 /// to read the TOFU gate state before `import()`.
 #[tauri::command]
-pub async fn get_plugin_record(app: tauri::AppHandle, id: String) -> Result<PluginEntry, String> {
+pub async fn get_plugin_record(app: tauri::AppHandle, id: String) -> Result<PluginEntry, AppError> {
     let dir = plugins_dir(&app)?;
     let records = read_plugins_json(&dir)?;
     records
         .into_iter()
         .find(|r| r.id == id)
         .ok_or_else(|| format!("plugin not found: {id}"))
+        .map_err(AppError::from)
 }
 
 /// Read a file from `~/.quill/plugins/<id>/<rel_path>` and return its contents
@@ -604,9 +607,9 @@ pub async fn read_plugin_file(
     app: tauri::AppHandle,
     id: String,
     path: String,
-) -> Result<String, String> {
+) -> Result<String, AppError> {
     if path.contains("..") {
-        return Err("path traversal rejected".to_string());
+        return Err("path traversal rejected".into());
     }
     let dir = plugins_dir(&app)?;
     let file = dir.join(&id).join(&path);
@@ -616,9 +619,9 @@ pub async fn read_plugin_file(
     let root = dir.join(&id);
     let root = root.canonicalize().unwrap_or_else(|_| dir.join(&id));
     if !canonical.starts_with(&root) {
-        return Err("path escapes plugin dir".to_string());
+        return Err("path escapes plugin dir".into());
     }
-    fs::read_to_string(&canonical).map_err(|e| e.to_string())
+    fs::read_to_string(&canonical).map_err(|e| AppError::from(e.to_string()))
 }
 
 /// Best-effort scoped capability grant for a trusted plugin.
@@ -642,7 +645,7 @@ pub async fn read_plugin_file(
 pub async fn grant_plugin_capabilities(
     app: tauri::AppHandle,
     id: String,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     use tauri::ipc::CapabilityBuilder;
 
     let dir = plugins_dir(&app)?;
@@ -691,7 +694,7 @@ pub async fn grant_plugin_capabilities(
         Ok(()) => Ok(()),
         Err(e) => {
             eprintln!("[plugin_commands] grant_plugin_capabilities failed for {id}: {e}");
-            Err(format!("grant failed (non-fatal, main caps still apply): {e}"))
+            Err(format!("grant failed (non-fatal, main caps still apply): {e}").into())
         }
     }
 }
@@ -705,7 +708,7 @@ pub async fn grant_plugin_capabilities(
 pub async fn verify_plugin_signature_cmd(
     app: tauri::AppHandle,
     id: String,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     let dir = plugins_dir(&app)?;
     let manifest_path = dir.join(&id).join("manifest.json");
     let manifest_str = fs::read_to_string(&manifest_path)
@@ -724,6 +727,7 @@ pub async fn verify_plugin_signature_cmd(
         entry.signature.as_deref(),
         entry.publisher_public_key.as_deref(),
     )
+    .map_err(AppError::from)
 }
 
 // ── sandbox http:fetch (CSP bypass via Rust) ─────────────────────────────────
@@ -856,7 +860,7 @@ pub async fn plugin_http_fetch(
     method: Option<String>,
     headers: Option<HashMap<String, String>>,
     body: Option<String>,
-) -> Result<HttpResponse, String> {
+) -> Result<HttpResponse, AppError> {
     // Load the plugin's manifest from disk and re-check the origin allowlist.
     // The JS rpcBridge already fast-fails on non-allowlisted origins; this is
     // the defense-in-depth layer that holds even if the JS bridge is bypassed.
@@ -864,7 +868,7 @@ pub async fn plugin_http_fetch(
     // cannot point at another plugin's manifest and read its declared origins.
     // `plugin_id` is a bare id segment (`<id>`, not a path).
     if !is_valid_plugin_id(&plugin_id) {
-        return Err(format!("http:fetch denied: invalid plugin id: {plugin_id}"));
+        return Err(format!("http:fetch denied: invalid plugin id: {plugin_id}").into());
     }
     let dir = plugins_dir(&app)?;
     let manifest_path = dir.join(&plugin_id).join("manifest.json");
@@ -985,7 +989,7 @@ pub async fn plugin_rpc_respond(
     request_id: String,
     result: Option<serde_json::Value>,
     error: Option<String>,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     let sender = {
         let mut map = RPC_PENDING.lock().map_err(|e| format!("rpc pending lock poisoned: {e}"))?;
         map.remove(&request_id)

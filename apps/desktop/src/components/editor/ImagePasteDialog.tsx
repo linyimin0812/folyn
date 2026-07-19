@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   getAllStrategies,
   generateDefaultFileName,
@@ -31,6 +32,7 @@ export function ImagePasteDialog({
   onConfirm,
   onCancel,
 }: ImagePasteDialogProps) {
+  const { t } = useTranslation();
   const strategies = getAllStrategies();
   const [selectedTarget, setSelectedTarget] = useState<UploadTarget>('local');
   const [fileName, setFileName] = useState('');
@@ -139,7 +141,7 @@ export function ImagePasteDialog({
       <div className="img-paste-dialog bg-panel border border-brd2 rounded-xl shadow-[0_16px_48px_rgba(0,0,0,.2)] w-[520px] max-w-[92vw] animate-[slideUp_.2s] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between py-3.5 px-[18px] border-b border-brd font-semibold text-sm">
-          <span>📷 粘贴图片</span>
+          <span>{t('editor:imagePaste.title')}</span>
           <button className="bg-none border-none text-t3 cursor-pointer text-sm py-0.5 px-1.5 rounded hover:bg-surf2 hover:text-t1" onClick={onCancel}>✕</button>
         </div>
 
@@ -150,7 +152,7 @@ export function ImagePasteDialog({
 
         {/* Upload target tabs */}
         <div className="py-1.5 px-[18px]">
-          <label className="block text-xs text-t3 mb-1 font-medium">上传方式</label>
+          <label className="block text-xs text-t3 mb-1 font-medium">{t('editor:imagePaste.uploadMethod')}</label>
           <div className="flex gap-2">
             {strategies.map((strategy) => (
               <button
@@ -161,7 +163,7 @@ export function ImagePasteDialog({
               >
                 <span className="text-lg">{strategy.icon}</span>
                 <span className="text-[11px] text-t1 font-medium">{strategy.label}</span>
-                {!strategy.enabled && <span className="text-[9px] text-t3 bg-surf2 px-[5px] py-px rounded mt-px">敬请期待</span>}
+                {!strategy.enabled && <span className="text-[9px] text-t3 bg-surf2 px-[5px] py-px rounded mt-px">{t('editor:imagePaste.comingSoon')}</span>}
               </button>
             ))}
           </div>
@@ -169,7 +171,7 @@ export function ImagePasteDialog({
 
         {/* File name */}
         <div className="py-1.5 px-[18px]">
-          <label className="block text-xs text-t3 mb-1 font-medium">图片名称</label>
+          <label className="block text-xs text-t3 mb-1 font-medium">{t('editor:imagePaste.fileName')}</label>
           <input
             ref={nameInputRef}
             type="text"
@@ -187,7 +189,7 @@ export function ImagePasteDialog({
                 setFileName(event.target.value.replace(/[^\w一-鿿㐀-䶿豈-﫿-]/g, ''));
               }
             }}
-            placeholder="输入图片名称"
+            placeholder={t('editor:imagePaste.fileNamePlaceholder')}
             autoCapitalize="off"
           />
         </div>
@@ -196,24 +198,24 @@ export function ImagePasteDialog({
         {selectedTarget === 'local' && (
           <>
             <div className="py-1.5 px-[18px]">
-              <label className="block text-xs text-t3 mb-1 font-medium">保存目录</label>
+              <label className="block text-xs text-t3 mb-1 font-medium">{t('editor:imagePaste.directory')}</label>
               <input
                 type="text"
                 className="img-paste-input w-full py-[7px] px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[13px] outline-none focus:border-acc focus:shadow-[0_0_0_2px_var(--accdim)]"
                 value={directory}
                 onChange={(event) => setDirectory(event.target.value)}
-                placeholder="相对于 Vault 根目录的路径"
+                placeholder={t('editor:imagePaste.directoryPlaceholder')}
                 autoCapitalize="off"
               />
               {vaultRoot && (
                 <div className="text-[11px] text-t3 mt-1 pl-0.5 font-mono break-all">
-                  🗄️ vault: {vaultRoot}
+                  {t('editor:imagePaste.vaultHint', { root: vaultRoot })}
                 </div>
               )}
             </div>
 
             <div className="py-1.5 px-[18px]">
-              <label className="block text-xs text-t3 mb-1 font-medium">图片格式</label>
+              <label className="block text-xs text-t3 mb-1 font-medium">{t('editor:imagePaste.format')}</label>
               <div className="flex gap-0 border border-brd2 rounded-md overflow-hidden">
                 {(['png', 'jpeg', 'webp'] as const).map((fmt) => (
                   <button
@@ -232,10 +234,10 @@ export function ImagePasteDialog({
 
         {/* Image size */}
         <div className="py-1.5 px-[18px]">
-          <label className="block text-xs text-t3 mb-1 font-medium">图片尺寸</label>
+          <label className="block text-xs text-t3 mb-1 font-medium">{t('editor:imagePaste.size')}</label>
           <div className="img-paste-size-row flex items-center gap-2">
             <div className="flex items-center gap-1 flex-1">
-              <span className="text-xs text-t3 font-medium shrink-0">宽</span>
+              <span className="text-xs text-t3 font-medium shrink-0">{t('editor:imagePaste.width')}</span>
               <input
                 type="number"
                 className="img-paste-input img-paste-size-input w-20 flex-1 text-center py-[7px] px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[13px] outline-none focus:border-acc focus:shadow-[0_0_0_2px_var(--accdim)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
@@ -245,7 +247,7 @@ export function ImagePasteDialog({
                   const value = event.target.value === '' ? '' : parseInt(event.target.value, 10);
                   handleWidthChange(value);
                 }}
-                placeholder="宽度"
+                placeholder={t('editor:imagePaste.widthPlaceholder')}
               />
               <span className="text-[11px] text-t3 shrink-0">px</span>
             </div>
@@ -258,12 +260,12 @@ export function ImagePasteDialog({
                   aspectRatio.current = width / height;
                 }
               }}
-              title={lockAspectRatio ? '解锁比例' : '锁定比例'}
+              title={lockAspectRatio ? t('editor:imagePaste.unlockRatio') : t('editor:imagePaste.lockRatio')}
             >
               {lockAspectRatio ? '🔗' : '🔓'}
             </button>
             <div className="flex items-center gap-1 flex-1">
-              <span className="text-xs text-t3 font-medium shrink-0">高</span>
+              <span className="text-xs text-t3 font-medium shrink-0">{t('editor:imagePaste.height')}</span>
               <input
                 type="number"
                 className="img-paste-input img-paste-size-input w-20 flex-1 text-center py-[7px] px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[13px] outline-none focus:border-acc focus:shadow-[0_0_0_2px_var(--accdim)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
@@ -273,31 +275,31 @@ export function ImagePasteDialog({
                   const value = event.target.value === '' ? '' : parseInt(event.target.value, 10);
                   handleHeightChange(value);
                 }}
-                placeholder="高度"
+                placeholder={t('editor:imagePaste.heightPlaceholder')}
               />
               <span className="text-[11px] text-t3 shrink-0">px</span>
             </div>
-            <button className="bg-none border border-brd2 rounded-md w-8 h-8 flex items-center justify-center cursor-pointer text-base shrink-0 text-t2 transition-all duration-150 hover:border-acc hover:bg-hov hover:text-acc" onClick={resetToOriginalSize} title="恢复原始尺寸">
+            <button className="bg-none border border-brd2 rounded-md w-8 h-8 flex items-center justify-center cursor-pointer text-base shrink-0 text-t2 transition-all duration-150 hover:border-acc hover:bg-hov hover:text-acc" onClick={resetToOriginalSize} title={t('editor:imagePaste.resetSize')}>
               ↺
             </button>
           </div>
           {originalWidth > 0 && (
             <div className="text-[11px] text-t3 mt-1 pl-0.5">
-              原始尺寸：{originalWidth} × {originalHeight} px
+              {t('editor:imagePaste.originalSize', { w: originalWidth, h: originalHeight })}
             </div>
           )}
         </div>
 
         {/* Path preview */}
         <div className="mx-[18px] my-2 py-2 px-3 bg-surf rounded-md text-xs text-t3 font-mono border border-dashed border-brd2 break-all">
-          📄 {fullPath}
+          {t('editor:imagePaste.pathPreview', { path: fullPath })}
         </div>
 
         {/* Actions */}
         <div className="flex justify-end gap-2 py-3 px-[18px] border-t border-brd mt-2">
-          <button className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-surf2 text-t2 hover:bg-brd" onClick={onCancel}>取消</button>
+          <button className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-surf2 text-t2 hover:bg-brd" onClick={onCancel}>{t('editor:imagePaste.cancel')}</button>
           <button className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-acc text-white hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleConfirm} disabled={!fileName.trim()}>
-            ✓ 上传
+            {t('editor:imagePaste.upload')}
           </button>
         </div>
       </div>

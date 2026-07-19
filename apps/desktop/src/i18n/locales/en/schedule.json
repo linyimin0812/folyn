@@ -1,0 +1,176 @@
+{
+  "title": "Schedule workbench",
+  "new": "New",
+  "views": {
+    "schedule": "Schedule",
+    "board": "Task board"
+  },
+  "weekGrid": {
+    "today": "Today",
+    "weekRange": "{{ms}}/{{ds}}/{{y}} – {{me}}/{{de}}",
+    "dow": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    "selectDay": "Select this day",
+    "legend": {
+      "work": "Work",
+      "personal": "Personal",
+      "family": "Family",
+      "health": "Health",
+      "task": "Task"
+    },
+    "scheduledToast": "Scheduled to {{day}} {{time}}"
+  },
+  "dayCal": {
+    "monthTitle": "{{m}}/{{y}}",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "today": "Back to today",
+    "legend": {
+      "selected": "Selected",
+      "today": "Today",
+      "overdue": "Overdue"
+    },
+    "dow": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+  },
+  "miniCal": {
+    "monthTitle": "{{m}}/{{y}}",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "dow": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+  },
+  "calendarCategory": {
+    "calendar": "Calendar",
+    "week": "This week",
+    "totalEvents": "Total events",
+    "incompleteTasks": "Incomplete tasks"
+  },
+  "category": {
+    "event": {
+      "work": "Work",
+      "personal": "Personal",
+      "family": "Family",
+      "health": "Health",
+      "task": "Task"
+    },
+    "task": {
+      "design": "Design",
+      "dev": "Dev",
+      "bug": "Bug",
+      "growth": "Growth",
+      "ops": "Ops",
+      "calendar": "Calendar",
+      "learn": "Learn"
+    }
+  },
+  "reminders": {
+    "upcoming": "Upcoming",
+    "empty": "No upcoming items",
+    "dueBody": "<b>{{title}}</b> · due · {{column}}"
+  },
+  "todayTaskList": {
+    "title": "Today's tasks",
+    "duePrefix": "Due {{due}} · ",
+    "empty": "No tasks today"
+  },
+  "unschedDock": {
+    "title": "To schedule",
+    "allDone": "All scheduled ✓",
+    "hint": "Drag from here to a calendar time slot to schedule",
+    "dragToast": "Drag to a calendar time slot to schedule",
+    "delete": "Delete"
+  },
+  "pomodoro": {
+    "work": "Work session · round {{round}}",
+    "rest": "Rest · round {{round}}",
+    "label": "Pomodoro focus",
+    "pause": "Pause",
+    "start": "Start",
+    "reset": "Reset"
+  },
+  "boardColumn": {
+    "renameHint": "Double-click to rename",
+    "deleteColumn": "Delete column",
+    "empty": "No tasks for today",
+    "emptyHint": "Drag cards to this column"
+  },
+  "boardView": {
+    "columnNamePlaceholder": "Column name…",
+    "addColumn": "+ New column"
+  },
+  "quickAdd": {
+    "placeholder": "Add a task, press Enter to submit…",
+    "submit": "Add"
+  },
+  "taskCard": {
+    "priorityTitle": "Priority",
+    "scheduled": "Scheduled"
+  },
+  "modal": {
+    "titleEdit": "Edit {{kind}}",
+    "titleNew": "New {{kind}}",
+    "kindEvent": "event",
+    "kindTask": "task",
+    "typeLabel": "Type",
+    "typeEvent": "Schedule event",
+    "typeTask": "Board task",
+    "titleLabel": "Title",
+    "titlePlaceholder": "e.g. Product review meeting",
+    "descLabel": "Description",
+    "descPlaceholder": "Background, acceptance criteria, related links…",
+    "start": "Start",
+    "end": "End",
+    "calendar": "Calendar",
+    "column": "Column",
+    "columnDoneSuffix": "(done)",
+    "category": "Category",
+    "priority": "Priority",
+    "priorityHigh": "High",
+    "priorityMed": "Medium",
+    "priorityLow": "Low",
+    "cancel": "Cancel",
+    "close": "Close",
+    "save": "Save",
+    "create": "Create",
+    "delete": "Delete",
+    "unschedule": "Unschedule",
+    "toastTitleRequired": "Please fill in the title",
+    "toastEndAfterStart": "End time must be after start time"
+  },
+  "plan": {
+    "loading": "AI is planning your day…",
+    "errorClose": "Close",
+    "errorRetry": "Retry",
+    "resultApplied": "Applied {{applied}} item(s)",
+    "resultFailed": ", failed {{failed}}",
+    "resultDone": "Done",
+    "appliedToast": "Applied {{count}} plan item(s)",
+    "appliedPartialToast": "Applied {{applied}}, failed {{failed}}",
+    "previewTitle": "AI plan for today",
+    "discard": "Discard",
+    "applySelected": "Apply selected",
+    "empty": "No outstanding tasks in the last 7 days, and the AI proposed no new plan.",
+    "legendTask": "Proposed tasks (drag to adjust / ✓✗ select)",
+    "legendEvent": "Proposed events / breaks",
+    "legendExisting": "Existing events (reference)",
+    "ariaLabel": "AI plan for today"
+  },
+  "toast": {
+    "undo": "Undo",
+    "newColumnDefault": "New column",
+    "eventAdded": "Event added to calendar",
+    "eventMoved": "Moved to {{date}} {{time}}",
+    "eventUpdated": "Event updated",
+    "eventDeleted": "Deleted \"{{title}}\"",
+    "taskAdded": "Task added",
+    "taskRestored": "Restored",
+    "taskMarkedDone": "Marked as done",
+    "taskUpdated": "Task updated",
+    "taskUnscheduled": "Unscheduled",
+    "taskDeleted": "Deleted \"{{title}}\"",
+    "dueDateSet": "Due date set to {{date}}",
+    "cannotDeleteDoneColumn": "Cannot delete the done column",
+    "mustKeepOneColumn": "Must keep at least one column",
+    "columnDeleted": "Deleted column \"{{name}}\"",
+    "pomoWorkEnded": "Work session ended, take a 5-minute break",
+    "pomoRestEnded": "Break over, starting round {{round}}"
+  }
+}

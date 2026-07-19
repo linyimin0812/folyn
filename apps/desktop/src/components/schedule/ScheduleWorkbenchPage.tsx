@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useScheduleStore, subscribeToFileTree } from '@/store/scheduleStore';
 import { dateToString } from '@/features/schedule/dailyScan';
 import { ScheduleSidebar } from './ScheduleSidebar';
@@ -27,6 +28,7 @@ type PlanStatus =
   | { kind: 'result'; applied: string[]; failed: { item: string; error: string }[] };
 
 export function ScheduleWorkbenchPage() {
+  const { t } = useTranslation();
   const [view, setView] = useState<WorkbenchView>('schedule');
   const [modalIntent, setModalIntent] = useState<ModalIntent | null>(null);
   const [planStatus, setPlanStatus] = useState<PlanStatus>({ kind: 'idle' });
@@ -107,9 +109,9 @@ export function ScheduleWorkbenchPage() {
         const result: ApplyResult = await applyPlan(planStatus.plan, accepted);
         setPlanStatus({ kind: 'result', applied: result.applied, failed: result.failed });
         if (result.failed.length === 0) {
-          toast(`已应用 ${result.applied.length} 项计划`);
+          toast(t('schedule:plan.appliedToast', { count: result.applied.length }));
         } else {
-          toast(`应用 ${result.applied.length} 项，失败 ${result.failed.length} 项`);
+          toast(t('schedule:plan.appliedPartialToast', { applied: result.applied.length, failed: result.failed.length }));
         }
       } catch (err) {
         setPlanStatus({ kind: 'error', message: String(err) });
@@ -143,23 +145,23 @@ export function ScheduleWorkbenchPage() {
       )}
 
       {planStatus.kind === 'loading' && (
-        <div className="sw-plan-overlay" role="dialog" aria-label="AI 规划今日">
+        <div className="sw-plan-overlay" role="dialog" aria-label={t('schedule:plan.ariaLabel')}>
           <div className="sw-plan-backdrop" />
           <div className="sw-plan-status">
             <span className="sw-plan-spinner" />
-            <span>AI 正在规划今日…</span>
+            <span>{t('schedule:plan.loading')}</span>
           </div>
         </div>
       )}
 
       {planStatus.kind === 'error' && (
-        <div className="sw-plan-overlay" role="dialog" aria-label="AI 规划今日">
+        <div className="sw-plan-overlay" role="dialog" aria-label={t('schedule:plan.ariaLabel')}>
           <div className="sw-plan-backdrop" onClick={handleReject} />
           <div className="sw-plan-status">
             <p className="sw-plan-error-msg">{planStatus.message}</p>
             <div className="sw-plan-actions">
-              <button className="sw-plan-reject" onClick={handleReject}>关闭</button>
-              <button className="sw-plan-accept" onClick={() => void runPlanMyDay()}>重试</button>
+              <button className="sw-plan-reject" onClick={handleReject}>{t('schedule:plan.errorClose')}</button>
+              <button className="sw-plan-accept" onClick={() => void runPlanMyDay()}>{t('schedule:plan.errorRetry')}</button>
             </div>
           </div>
         </div>
@@ -175,12 +177,12 @@ export function ScheduleWorkbenchPage() {
       )}
 
       {planStatus.kind === 'result' && (
-        <div className="sw-plan-overlay" role="dialog" aria-label="AI 规划今日">
+        <div className="sw-plan-overlay" role="dialog" aria-label={t('schedule:plan.ariaLabel')}>
           <div className="sw-plan-backdrop" onClick={handleReject} />
           <div className="sw-plan-status">
             <p className="sw-plan-result-msg">
-              已应用 {planStatus.applied.length} 项
-              {planStatus.failed.length > 0 && `，失败 ${planStatus.failed.length} 项`}
+              {t('schedule:plan.resultApplied', { applied: planStatus.applied.length })}
+              {planStatus.failed.length > 0 && t('schedule:plan.resultFailed', { failed: planStatus.failed.length })}
             </p>
             {planStatus.failed.length > 0 && (
               <ul className="sw-plan-failed">
@@ -190,7 +192,7 @@ export function ScheduleWorkbenchPage() {
               </ul>
             )}
             <div className="sw-plan-actions">
-              <button className="sw-plan-accept" onClick={handleReject}>完成</button>
+              <button className="sw-plan-accept" onClick={handleReject}>{t('schedule:plan.resultDone')}</button>
             </div>
           </div>
         </div>

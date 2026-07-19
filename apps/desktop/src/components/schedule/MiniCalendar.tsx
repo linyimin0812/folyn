@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { sameDay } from '@/features/schedule/dailyScan';
 
 interface Props {
@@ -6,9 +7,8 @@ interface Props {
   onSelect: (d: Date) => void;
 }
 
-const DOW = ['一', '二', '三', '四', '五', '六', '日'];
-
 export function MiniCalendar({ selectedDate, onSelect }: Props) {
+  const { t } = useTranslation();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const [cursor, setCursor] = useState(() => new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
@@ -28,18 +28,19 @@ export function MiniCalendar({ selectedDate, onSelect }: Props) {
   for (let i = 1; i <= trail; i++) cells.push(null);
 
   const shift = (n: number) => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + n, 1));
+  const dowArr = t('schedule:miniCal.dow', { returnObjects: true }) as string[];
 
   return (
     <div className="sw-rail-block">
       <div className="sw-mini-cal-head">
-        <span className="sw-mini-cal-month">{y} 年 {m + 1} 月</span>
+        <span className="sw-mini-cal-month">{t('schedule:miniCal.monthTitle', { y, m: m + 1 })}</span>
         <div className="sw-mini-cal-nav">
-          <button onClick={() => shift(-1)} aria-label="上月">‹</button>
-          <button onClick={() => shift(1)} aria-label="下月">›</button>
+          <button onClick={() => shift(-1)} aria-label={t('schedule:miniCal.prevMonth')}>‹</button>
+          <button onClick={() => shift(1)} aria-label={t('schedule:miniCal.nextMonth')}>›</button>
         </div>
       </div>
       <div className="sw-mini-cal-grid">
-        {DOW.map((d) => <div key={d} className="sw-dow">{d}</div>)}
+        {dowArr.map((d) => <div key={d} className="sw-dow">{d}</div>)}
         {cells.map((day, idx) => {
           if (day === null) {
             const isPrev = idx < startPad;

@@ -1,14 +1,10 @@
 import { useEditorStore } from '../../store/editorStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useAppearanceStore } from '@/store/appearanceStore';
-
-const VIEW_LABELS: Record<string, string> = {
-  split: '分屏模式',
-  edit: '编辑模式',
-  preview: '预览模式',
-};
+import { useTranslation } from 'react-i18next';
 
 export function StatusBar() {
+  const { t } = useTranslation();
   const viewMode = useEditorStore((state) => state.viewMode);
   const cursorLine = useEditorViewStateStore((state) => state.cursorLine);
   const cursorCol = useEditorViewStateStore((state) => state.cursorCol);
@@ -18,14 +14,14 @@ export function StatusBar() {
   return (
     <footer className="status-bar h-6 shrink-0 bg-panel border-t border-brd flex items-center justify-between px-3 text-[length:calc(var(--ui-font-size)-3px)] text-t3 font-mono">
       <div className="flex items-center gap-3">
-        <span className="flex items-center gap-1">✦ AI 就绪</span>
+        <span className="flex items-center gap-1">{t('shell:statusBar.aiReady')}</span>
         <span>{vaultName}</span>
       </div>
       <div className="flex items-center gap-3">
-        <span>Markdown</span>
-        <span>{VIEW_LABELS[viewMode]}</span>
-        <span>Ln {cursorLine}, Col {cursorCol}</span>
-        <span>{wordCount} 字</span>
+        <span>{t('shell:statusBar.markdown')}</span>
+        <span>{t(`shell:statusBar.viewMode.${viewMode}`, { defaultValue: viewMode })}</span>
+        <span>{t('shell:statusBar.lineCol', { line: cursorLine, col: cursorCol })}</span>
+        <span>{t('shell:statusBar.wordCount', { count: wordCount })}</span>
       </div>
     </footer>
   );

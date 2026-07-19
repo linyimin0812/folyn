@@ -1,9 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { dateToString } from '@/features/schedule/dailyScan';
 import { useBoardColumns } from '@/features/schedule/columns';
-import { TASK_CATEGORY_LABEL } from '@/features/schedule/types';
 
 export function TodayTaskList() {
+  const { t } = useTranslation();
   const tasks = useScheduleStore((s) => s.tasks);
   const toggleTask = useScheduleStore((s) => s.toggleTask);
   const { labelOf } = useBoardColumns();
@@ -18,29 +19,29 @@ export function TodayTaskList() {
   return (
     <div className="sw-rail-block">
       <p className="sw-section-label">
-        今日任务
+        {t('schedule:todayTaskList.title')}
         <span style={{ color: 'var(--muted)', float: 'right' }}>{done}/{tasks.length}</span>
       </p>
       <ul className="sw-task-list">
-        {todays.map((t) => (
+        {todays.map((task) => (
           <li
-            key={t.id}
-            className={`sw-task${t.done ? ' done' : ''}`}
-            onClick={() => toggleTask(t.id)}
+            key={task.id}
+            className={`sw-task${task.done ? ' done' : ''}`}
+            onClick={() => toggleTask(task.id)}
           >
             <span className="sw-check">✓</span>
             <span>
               <span className="sw-body">
-                {t.title}
-                <span className="sw-src">{TASK_CATEGORY_LABEL[t.category]}</span>
+                {task.title}
+                <span className="sw-src">{t(`schedule:category.task.${task.category}`)}</span>
               </span>
-              <span className="sw-meta">{t.due ? `截止 ${t.due} · ` : ''}{labelOf(t.column)}</span>
+              <span className="sw-meta">{task.due ? t('schedule:todayTaskList.duePrefix', { due: task.due }) : ''}{labelOf(task.column)}</span>
             </span>
-            <span className={`sw-prio ${t.priority}`} />
+            <span className={`sw-prio ${task.priority}`} />
           </li>
         ))}
         {todays.length === 0 && (
-          <li style={{ color: 'var(--muted)', fontSize: '12px', padding: '8px' }}>今日暂无任务</li>
+          <li style={{ color: 'var(--muted)', fontSize: '12px', padding: '8px' }}>{t('schedule:todayTaskList.empty')}</li>
         )}
       </ul>
     </div>

@@ -23,6 +23,7 @@ This directory contains guidelines for the `@quill/desktop` frontend — a Tauri
 | [Type Safety](./type-safety.md) | Type patterns, naming, validation | Filled |
 | [File Type Editors](./file-type-editors.md) | Custom editors, iframe bridge, serialization hygiene | Filled |
 | [Tauri Window & ACL Patterns](./tauri-window-patterns.md) | Multi-window features, transparent/click-through windows, native popup menus, close-to-tray, ACL permission contract | Filled |
+| [i18n Guidelines](./i18n-guidelines.md) | i18next + react-i18next namespaces, localeStore, Rust AppError contract, tauriInvoke wrapper | Filled |
 
 ---
 

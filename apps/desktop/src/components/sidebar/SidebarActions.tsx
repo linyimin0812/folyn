@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useEditorStore } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { usePrefsStore } from '@/store/prefsStore';
@@ -205,17 +206,19 @@ interface DeleteConfirmDialogProps {
 }
 
 export function DeleteConfirmDialog({ deleteConfirm, onCancel, onConfirm }: DeleteConfirmDialogProps): React.JSX.Element {
+  const { t } = useTranslation();
+  const typeLabel = deleteConfirm.type === 'dir' ? t('sidebar:sidebarActions.deleteConfirm.typeFolder') : t('sidebar:sidebarActions.deleteConfirm.typeFile');
   return (
     <div className="fixed inset-0 z-[9999] bg-black/35 flex items-center justify-center" onClick={onCancel}>
       <div className="bg-panel rounded-[10px] py-5 px-6 min-w-[300px] max-w-[400px] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd" onClick={(e) => e.stopPropagation()}>
-        <div className="text-[15px] font-semibold text-t1 mb-2">确认删除</div>
+        <div className="text-[15px] font-semibold text-t1 mb-2">{t('sidebar:sidebarActions.deleteConfirm.title')}</div>
         <div className="text-[13px] text-t2 leading-relaxed mb-4">
-          确定要删除{deleteConfirm.type === 'dir' ? '文件夹' : '文件'} <strong>{deleteConfirm.name}</strong> 吗？
-          {deleteConfirm.type === 'dir' && <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: 'var(--t3, #71717a)' }}>文件夹内的所有内容也将被删除</span>}
+          {t('sidebar:sidebarActions.deleteConfirm.prefix', { type: typeLabel })}<strong>{deleteConfirm.name}</strong>{t('sidebar:sidebarActions.deleteConfirm.suffix')}
+          {deleteConfirm.type === 'dir' && <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: 'var(--t3, #71717a)' }}>{t('sidebar:sidebarActions.deleteConfirm.folderContentsHint')}</span>}
         </div>
         <div className="flex justify-end gap-2">
-          <button className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-brd font-ui transition-all duration-[140ms] bg-panel text-t2 hover:bg-hov" onClick={onCancel}>取消</button>
-          <button className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-[#e74c3c] font-ui transition-all duration-[140ms] bg-[#e74c3c] text-white hover:bg-[#c0392b] hover:border-[#c0392b]" onClick={onConfirm}>删除</button>
+          <button className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-brd font-ui transition-all duration-[140ms] bg-panel text-t2 hover:bg-hov" onClick={onCancel}>{t('sidebar:sidebarActions.cancel')}</button>
+          <button className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-[#e74c3c] font-ui transition-all duration-[140ms] bg-[#e74c3c] text-white hover:bg-[#c0392b] hover:border-[#c0392b]" onClick={onConfirm}>{t('sidebar:sidebarActions.delete')}</button>
         </div>
       </div>
     </div>

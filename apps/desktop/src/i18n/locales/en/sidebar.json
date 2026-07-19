@@ -1,0 +1,190 @@
+{
+  "filesPanel": {
+    "actions": {
+      "locateActive": "Locate active file",
+      "refresh": "Refresh file tree",
+      "more": "More actions",
+      "newFile": "New file",
+      "newFolder": "New folder",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
+      "expandAllFolders": "Expand all folders",
+      "collapseAllFolders": "Collapse all folders"
+    },
+    "search": {
+      "placeholder": "Search files..."
+    },
+    "newItem": {
+      "folderName": "Folder name",
+      "fileNameWithExt": "File name (with extension)",
+      "fileNameDefault": "File name (default .{{ext}})",
+      "fileNameMd": "File name (default .md)"
+    },
+    "empty": "No files"
+  },
+  "contextMenu": {
+    "fileType": {
+      "code": "Code file"
+    },
+    "newFile": "New file",
+    "newFileOther": "Other (custom extension)",
+    "newFolder": "New folder",
+    "copyRelativePath": "Copy relative path",
+    "copyAbsolutePath": "Copy absolute path",
+    "copyFileName": "Copy file name",
+    "unpin": "Unpin",
+    "pin": "Pin",
+    "addToChat": "Add file to chat",
+    "ingestToWiki": "Ingest to Wiki",
+    "rename": "Rename",
+    "delete": "Delete"
+  },
+  "sidebarActions": {
+    "deleteConfirm": {
+      "title": "Confirm delete",
+      "prefix": "Delete {{type}} ",
+      "suffix": "?",
+      "typeFile": "file",
+      "typeFolder": "folder",
+      "folderContentsHint": "Everything inside the folder will also be deleted"
+    },
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "calendar": {
+    "weekdays": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    "title": "{{month}} {{year}}",
+    "hasNote": "{{date}} (has note)"
+  },
+  "wikiTree": {
+    "empty": "Wiki is empty. Ingest files from the AI panel to build the knowledge base."
+  },
+  "clips": {
+    "title": "Clips",
+    "delete": "Delete",
+    "removeTag": "Remove tag",
+    "tagPlaceholderEmpty": "Type a tag and press Enter...",
+    "tagPlaceholderAdd": "Add...",
+    "progressDefault": "Preparing...",
+    "preview": {
+      "title": "Knowledge card preview",
+      "titleLabel": "Title",
+      "tagsLabel": "Tags",
+      "suggestedLabel": "Suggested tags",
+      "summaryLabel": "Summary",
+      "source": "Source: {{host}}"
+    },
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "batch": {
+      "title": "Batch clip",
+      "close": "Close batch mode",
+      "placeholder": "One URL per line, e.g.:\nhttps://example.com/a\nhttps://example.com/b",
+      "force": "Force re-clip",
+      "delay": "Delay between items",
+      "count": "{{count}} item(s)",
+      "start": "Start batch clip",
+      "cancelRunning": "Cancel (stop after current)",
+      "summary": {
+        "total": "Total {{count}}",
+        "done": "Done {{count}}",
+        "skipped": "Skipped {{count}}",
+        "failed": "Failed {{count}}"
+      },
+      "open": "Open",
+      "openSummary": "Open batch summary"
+    },
+    "status": {
+      "pending": "Pending",
+      "running": "Running",
+      "done": "Done",
+      "skipped": "Skipped",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "clippingInProgress": "Clipping",
+    "viewDetails": "Click for details",
+    "batchModeEnter": "Batch clip",
+    "batchModeExit": "Exit batch mode",
+    "addClip": "Add clip",
+    "empty": "No clips yet. Click the + button to start.",
+    "loading": "Loading...",
+    "modalTitle": "Add clip",
+    "urlPlaceholder": "Paste URL...",
+    "langLabel": "Language",
+    "langEn": "English",
+    "langZh": "中文",
+    "langAuto": "Auto",
+    "clipButton": "Clip",
+    "generating": "Generating...",
+    "duplicate": {
+      "title": "This URL has already been clipped",
+      "prompt": "Regenerate and overwrite the existing content?",
+      "openExisting": "Open existing",
+      "regenerate": "Regenerate"
+    },
+    "savingFile": "Saving file...",
+    "deleteConfirm": {
+      "titleDelete": "Confirm delete",
+      "titleRemoveTag": "Remove tag",
+      "deletePrefix": "Delete clip ",
+      "deleteSuffix": "?",
+      "removeTagPrefix": "Remove tag \"",
+      "removeTagMiddle": "\" from ",
+      "removeTagSuffix": "?",
+      "removeTagHint": "This clip has {{count}} other tag(s); the file will not be deleted."
+    }
+  },
+  "analysis": {
+    "title": "Project analysis",
+    "delete": "Delete",
+    "viewDetails": "Click for details",
+    "analyzing": "Analyzing",
+    "newAnalysis": "New analysis",
+    "uncategorized": "Uncategorized",
+    "empty": "No analysis reports yet. Click the + button to start.",
+    "loading": "Loading...",
+    "deleteConfirm": {
+      "titleDelete": "Confirm delete",
+      "titleRemoveTag": "Remove tag",
+      "deletePrefix": "Delete analysis report ",
+      "deleteSuffix": "?",
+      "removeTagPrefix": "Remove tag \"",
+      "removeTagMiddle": "\" from ",
+      "removeTagSuffix": "?",
+      "removeTagHint": "This report has {{count}} other tag(s); the file will not be deleted."
+    },
+    "dedup": {
+      "title": "An analysis report already exists for this project",
+      "regenerate": "Regenerate"
+    },
+    "tagPlaceholderEmpty": "Type a tag and press Enter...",
+    "tagPlaceholderMore": "Add more...",
+    "confirmation": {
+      "success": "Analysis complete — {{repo}}",
+      "previewLabel": "Report preview",
+      "htmlSize": "HTML {{kb}} KB · {{count}} tag(s)",
+      "tagsLabel": "Tags (editable)"
+    },
+    "dialog": {
+      "title": "New project analysis",
+      "urlLabel": "GitHub repository URL",
+      "urlPlaceholder": "https://github.com/owner/repo",
+      "langLabel": "Report language",
+      "langZh": "中文",
+      "langEn": "English",
+      "langAuto": "Auto-detect",
+      "start": "Start analysis",
+      "progressDefault": "Preparing...",
+      "hide": "Hide",
+      "patience": "Analysis may take a few minutes; please wait."
+    }
+  },
+  "panelError": {
+    "failed": "Panel failed to load"
+  },
+  "dragDrop": {
+    "itemsCount": "{{count}} item(s)"
+  }
+}

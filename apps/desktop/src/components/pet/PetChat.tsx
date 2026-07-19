@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { CliMessage } from '@quill/cli-adapter';
 import { isTauri } from '@/utils/platform';
 import { useAiConfigStore } from '@/store/aiConfigStore';
@@ -128,6 +129,7 @@ function toCliMessages(
 }
 
 export function PetChat() {
+  const { t } = useTranslation();
   const activeSessionId = usePetChatStore((s) => s.activeSessionId);
   const messages = usePetChatStore(
     (s) => s.sessions.find((sess) => sess.id === s.activeSessionId)?.messages ?? EMPTY_MESSAGES,
@@ -292,7 +294,7 @@ export function PetChat() {
       const workingDir = await getPetChatWorkingDir();
       saved = await saveBlobs(attachments, workingDir, { subdir: ATTACHMENTS_SUBDIR });
     } catch (err) {
-      setRejectError(`附件保存失败: ${String(err)}`);
+      setRejectError(t('pet:chat.attachmentSaveFailed', { error: String(err) }));
       return;
     }
     const finalPrompt = buildReadInstructions(saved, prompt);
@@ -316,12 +318,12 @@ export function PetChat() {
           setStreaming(false);
         },
         onError: (message) => {
-          appendToLastMessage(sessionId, `\n\n[错误] ${message}`);
+          appendToLastMessage(sessionId, t('pet:chat.errorPrefix', { message }));
           setStreaming(false);
         },
       });
     } catch (err) {
-      appendToLastMessage(sessionId, `\n\n[错误] ${String(err)}`);
+      appendToLastMessage(sessionId, t('pet:chat.errorPrefix', { message: String(err) }));
       setStreaming(false);
     }
   }, [
@@ -373,7 +375,7 @@ export function PetChat() {
               type="button"
               className="w-3.5 h-3.5 flex items-center justify-center rounded-full text-[10px] text-t3 cursor-pointer shrink-0 transition-all duration-100 bg-transparent border-none hover:bg-hov hover:text-red"
               onClick={() => removeAttachment(att.id)}
-              aria-label="移除附件"
+              aria-label={t('pet:chat.removeAttachment')}
             >
               ×
             </button>
@@ -389,8 +391,8 @@ export function PetChat() {
         className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
         onClick={handleFileSelect}
         disabled={streaming}
-        title="附加文件"
-        aria-label="附加文件"
+        title={t('pet:chat.attachFile')}
+        aria-label={t('pet:chat.attachFile')}
       >
         <svg
           width="16"
@@ -414,7 +416,7 @@ export function PetChat() {
         onChange={(e) => setInputMode(e.target.value)}
         disabled={streaming}
         title={getInputModeDef(inputMode)?.description}
-        aria-label="AI 模式"
+        aria-label={t('pet:chat.aiMode')}
       >
         {listInputModes().map((m) => (
           <option key={m.id} value={m.id} title={m.description}>
@@ -433,14 +435,14 @@ export function PetChat() {
         className="flex flex-col items-center justify-center gap-2 px-2 py-4 text-center flex-1"
         role="status"
       >
-        <div className="text-[13px] font-semibold text-t1">未配置 AI</div>
-        <div className="text-[12px] text-t3">在设置中配置 CLI 路径后即可在此对话。</div>
+        <div className="text-[13px] font-semibold text-t1">{t('pet:chat.noAiConfig')}</div>
+        <div className="text-[12px] text-t3">{t('pet:chat.noAiConfigHint')}</div>
         <button
           type="button"
           className="mt-1 py-1.5 px-3 border border-acc rounded-md bg-acc text-white text-[12px] cursor-pointer hover:opacity-[.85] transition-opacity"
           onClick={() => void handleOpenSettings()}
         >
-          打开 AI 设置
+          {t('pet:chat.openAiSettings')}
         </button>
       </div>
     );
@@ -458,7 +460,7 @@ export function PetChat() {
         className="pt-2"
         emptyState={
           <div className="text-[12px] text-t3 text-center px-1 py-3">
-            向 AI 提问，回答会在此处流式显示。
+            {t('pet:chat.emptyHint')}
           </div>
         }
       />
@@ -469,7 +471,7 @@ export function PetChat() {
         streaming={streaming}
         onStop={handleStop}
         canSend={input.trim().length > 0 || attachments.length > 0}
-        placeholder="输入消息，Enter 发送"
+        placeholder={t('pet:chat.inputPlaceholder')}
         textareaRows={1}
         inputAriaLabel="Pet chat input"
         inputRef={textareaRef}
