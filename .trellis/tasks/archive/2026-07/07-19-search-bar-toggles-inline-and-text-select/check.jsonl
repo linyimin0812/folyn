@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Verify minimal diff + no forbidden patterns"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify component conventions still hold after restructure"}

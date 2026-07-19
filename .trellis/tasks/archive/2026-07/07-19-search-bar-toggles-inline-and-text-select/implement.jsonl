@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "JSX restructure of SearchBar input + toggles must follow named-export, props, composition conventions"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns / review checklist apply"}
