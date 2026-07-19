@@ -365,3 +365,37 @@ Built a custom React search/replace bar (EditorSearchBar) that replaces the defa
 ### Next Steps
 
 - None - task complete
+
+
+## Session 69: Find-input inline toggles + thin-line selection
+
+**Date**: 2026-07-19
+**Task**: Find-input inline toggles + thin-line selection
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Moved Aa/ab/.* toggles inside the find input (VS Code style, absolute-positioned with right padding on input). Find input selection styled as a thin accent-color underline (text-decoration in ::selection) instead of a solid background block. Native Cmd+A in find input selects only input text — CM's Mod-a keymap is bound to .cm-editor, a sibling of the SearchBar, so it doesn't intercept.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `056d6b1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
