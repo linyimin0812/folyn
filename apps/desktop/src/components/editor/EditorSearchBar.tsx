@@ -177,34 +177,36 @@ export function EditorSearchBar({
       </button>
       <div className="ed-search-rows">
         <div className="ed-search-row">
-          <input
-            ref={findInputRef}
-            className="ed-search-input"
-            value={queryText}
-            placeholder="Find"
-            spellCheck={false}
-            onChange={(e) => {
-              setQueryText(e.target.value);
-              dispatchQuery({ search: e.target.value });
-            }}
-            onKeyDown={onFindKeyDown}
-          />
-          <div className="ed-search-toggles">
-            <button
-              className={`ed-search-toggle${caseSensitive ? ' active' : ''}`}
-              onClick={() => { const v = !caseSensitive; setCaseSensitive(v); dispatchQuery({ caseSensitive: v }); }}
-              title="Match case"
-            >Aa</button>
-            <button
-              className={`ed-search-toggle${wholeWord ? ' active' : ''}`}
-              onClick={() => { const v = !wholeWord; setWholeWord(v); dispatchQuery({ wholeWord: v }); }}
-              title="Whole word"
-            >ab</button>
-            <button
-              className={`ed-search-toggle${regexp ? ' active' : ''}`}
-              onClick={() => { const v = !regexp; setRegexp(v); dispatchQuery({ regexp: v }); }}
-              title="Regular expression"
-            >.*</button>
+          <div className="ed-search-input-wrap">
+            <input
+              ref={findInputRef}
+              className="ed-search-input"
+              value={queryText}
+              placeholder="Find"
+              spellCheck={false}
+              onChange={(e) => {
+                setQueryText(e.target.value);
+                dispatchQuery({ search: e.target.value });
+              }}
+              onKeyDown={onFindKeyDown}
+            />
+            <div className="ed-search-toggles">
+              <button
+                className={`ed-search-toggle${caseSensitive ? ' active' : ''}`}
+                onClick={() => { const v = !caseSensitive; setCaseSensitive(v); dispatchQuery({ caseSensitive: v }); }}
+                title="Match case"
+              >Aa</button>
+              <button
+                className={`ed-search-toggle${wholeWord ? ' active' : ''}`}
+                onClick={() => { const v = !wholeWord; setWholeWord(v); dispatchQuery({ wholeWord: v }); }}
+                title="Whole word"
+              >ab</button>
+              <button
+                className={`ed-search-toggle${regexp ? ' active' : ''}`}
+                onClick={() => { const v = !regexp; setRegexp(v); dispatchQuery({ regexp: v }); }}
+                title="Regular expression"
+              >.*</button>
+            </div>
           </div>
           <span className="ed-search-count">
             {count === 0 ? '0 results' : `${currentIdx + 1} of ${count}`}

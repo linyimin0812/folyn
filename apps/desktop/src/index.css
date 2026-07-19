@@ -1105,15 +1105,38 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
   padding: 2px 4px; background: var(--panel);
   overflow: hidden;
 }
+.ed-search-input-wrap {
+  position: relative; flex: 1; min-width: 0;
+  display: flex; align-items: center;
+}
 .ed-search-input {
-  flex: 1; min-width: 0; border: 0; outline: none;
+  flex: 1; min-width: 0; width: 100%; border: 0; outline: none;
   background: transparent; color: var(--t1);
   font-family: var(--font-mono); font-size: 12px;
-  padding: 2px 4px; border-radius: 2px;
+  padding: 2px 4px; padding-right: 72px; border-radius: 2px;
 }
 .ed-search-input::placeholder { color: var(--t3); }
+.ed-search-input::selection {
+  background: transparent;
+  color: currentColor;
+  text-decoration: underline;
+  text-decoration-color: var(--acc);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 1px;
+}
+.ed-search-input *::selection {
+  background: transparent;
+  color: currentColor;
+  text-decoration: underline;
+  text-decoration-color: var(--acc);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 1px;
+}
 .ed-search-input:focus { box-shadow: 0 0 0 2px var(--accglow); }
-.ed-search-toggles { display: flex; gap: 2px; }
+.ed-search-toggles {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  display: flex; gap: 2px;
+}
 .ed-search-toggle {
   width: 20px; height: 20px; padding: 0;
   display: flex; align-items: center; justify-content: center;
