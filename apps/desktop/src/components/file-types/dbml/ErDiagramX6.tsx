@@ -111,22 +111,31 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
 
   // ponytail: persistence write-back plumbing. `contentRef` mirrors the
   // latest content prop so the debounced emit can read user-typed dbml text
-  // (preserving typing when preview appends meta). `lastEmittedMetaRef`
-  // suppresses feedback loops: if the freshly-built meta matches what we
-  // last emitted (or just read from source on parse), skip the onChange call.
-  // `hasParsedRef` gates the [showGrid,zoomPct] effect so the initial seed
-  // from meta doesn't trigger an immediate re-emit of identical content.
+  // (preserving typing when preview appends meta). `lastParsedDbmlRef` tracks
+  // the dbml-text portion we last successfully parsed — when content changes
+  // ONLY because we appended a new meta block, dbml text is unchanged and the
+  // parse effect skips entirely (no `clearCells()` graph rebuild). Seeding
+  // runtime refs from meta happens on first load only — re-seeding on every
+  // content change would clobber drag state because CodeMirror's doc carries
+  // a stale meta block (CodeMirror doesn't sync from content-prop updates;
+  // see file-type-editors.md "loadedXml + loadedXmlRef" pattern in drawio).
+  // `restoreZoomRef` carries the meta's saved zoom into the first-load zoom
+  // branch (restore vs. zoomToFit).
   const contentRef = useRef(content);
   contentRef.current = content;
-  const lastEmittedMetaRef = useRef<DbmlMeta | undefined>(undefined);
-  const hasParsedRef = useRef(false);
+  const lastParsedDbmlRef = useRef<string | null>(null);
+  const hasSeededFromMetaRef = useRef(false);
   const restoreZoomRef = useRef<number | null>(null);
 
   // Debounced meta write-back: read current content, strip old meta, append
   // new meta derived from runtime state, emit via onChange. Skipped when the
-  // new meta matches the last-emitted/read one (no-op round-trip). Each
-  // invocation replaces the pending timer so rapid drags collapse into one
-  // emit 500ms after the last change.
+  // content already carries this exact meta (no-op). Each invocation replaces
+  // the pending timer so rapid drags collapse into one emit 500ms after the
+  // last change. Comparing against the content's CURRENT meta (not a
+  // lastEmitted ref) handles the CodeMirror-stale-doc case: when user typing
+  // emits content with a stale meta block, this still emits the correct
+  // latest meta — and the resulting content change is meta-only, so the
+  // parse effect skips (no graph rebuild).
   const metaEmitTimerRef = useRef<number | null>(null);
   const scheduleMetaEmit = useCallback(() => {
     if (!onChange) return;
@@ -143,11 +152,8 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
       if (zoomPct !== 100) view.zoomPct = zoomPct;
       if (showGrid) view.showGrid = true;
       if (Object.keys(view).length > 0) meta.view = view;
-      const last = lastEmittedMetaRef.current;
-      const same = last && JSON.stringify(last) === JSON.stringify(meta);
-      if (same) return;
-      lastEmittedMetaRef.current = meta;
-      const { dbml } = extractDbmlMeta(contentRef.current);
+      const { dbml, meta: currentMeta } = extractDbmlMeta(contentRef.current);
+      if (JSON.stringify(currentMeta) === JSON.stringify(meta)) return;
       const next = withDbmlMeta(dbml, meta);
       if (next !== contentRef.current) onChange(next);
     }, 500);
@@ -391,30 +397,32 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
 
   // Debounced parse + layout. Re-runs on content change. Container size is
   // read live so d3-force centers against the current viewport.
+  // ponytail: SKIP when the dbml-text portion of content hasn't changed —
+  // this is the case when our own scheduleMetaEmit appended/replaced the
+  // meta block (drag, zoom, grid toggle). Skipping avoids `clearCells()`
+  // and the graph rebuild, which is the "动一下就刷新" UX bug. Real dbml
+  // edits (user typing in CodeMirror) change the dbml text and trigger a
+  // real parse. Seeding runtime refs from meta happens on FIRST load only;
+  // re-seeding on every content change would clobber drag state because
+  // CodeMirror's doc carries a stale meta block.
   useEffect(() => {
     const src = content ?? '';
-    // ponytail: seed runtime state from the persisted meta block BEFORE
-    // layout runs. `layoutEr` reads manualPositionsRef so dragged positions
-    // survive edits; showGrid/zoomPct are applied post-mount via the
-    // [showGrid, graphReady] effect and the first-load zoom restore below.
-    // Only seed on content that genuinely changed (skips our own write-back
-    // round-trip — lastEmittedMetaRef already reflects the source meta there).
-    const { meta } = extractDbmlMeta(src);
-    if (meta) {
-      manualPositionsRef.current = new Map(
-        Object.entries(meta.positions).map(([name, p]) => [name, { x: p.x, y: p.y } as Point]),
-      );
-      if (meta.view?.showGrid) setShowGrid(true);
-      if (meta.view?.zoomPct) {
-        setZoomPct(meta.view.zoomPct);
-        restoreZoomRef.current = meta.view.zoomPct;
+    const { dbml, meta } = extractDbmlMeta(src);
+    if (dbml === lastParsedDbmlRef.current) return;
+    lastParsedDbmlRef.current = dbml;
+    if (!hasSeededFromMetaRef.current) {
+      hasSeededFromMetaRef.current = true;
+      if (meta) {
+        manualPositionsRef.current = new Map(
+          Object.entries(meta.positions).map(([name, p]) => [name, { x: p.x, y: p.y } as Point]),
+        );
+        if (meta.view?.showGrid) setShowGrid(true);
+        if (meta.view?.zoomPct) {
+          setZoomPct(meta.view.zoomPct);
+          restoreZoomRef.current = meta.view.zoomPct;
+        }
       }
-      lastEmittedMetaRef.current = meta;
-    } else {
-      manualPositionsRef.current = new Map();
-      lastEmittedMetaRef.current = undefined;
     }
-    hasParsedRef.current = true;
     let cancelled = false;
     setState({ kind: 'loading' });
     const handle = setTimeout(async () => {
@@ -430,6 +438,12 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
       const layout = layoutEr(result.schema!, w, h, manualPositionsRef.current);
       if (cancelled) return;
       setState({ kind: 'ok', schema: result.schema!, layout });
+      // ponytail: after a real dbml-text change, re-merge runtime meta into
+      // content so the next disk save reflects current state (CodeMirror's
+      // doc may carry a stale meta block from before the edit). The resulting
+      // content change is meta-only — the parse effect skips above, no
+      // refresh.
+      scheduleMetaEmitRef.current?.();
     }, DEBOUNCE_MS);
     return () => {
       cancelled = true;
@@ -438,12 +452,12 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
   }, [content]);
 
   // ponytail: write-back effect for grid toggle + zoom. Fires on user-driven
-  // state changes after the initial parse seeded state from meta. The
-  // lastEmittedMetaRef compare inside scheduleMetaEmit suppresses no-op
-  // re-emits when the freshly-built meta matches the source (e.g. initial
-  // sync setting showGrid=true from meta, then this effect firing).
+  // state changes after the first parse seeded state from meta. The
+  // content-meta comparison inside scheduleMetaEmit suppresses no-op emits,
+  // and the parse effect's dbml-text-skip means the resulting content change
+  // does NOT trigger a graph rebuild.
   useEffect(() => {
-    if (!hasParsedRef.current) return;
+    if (!hasSeededFromMetaRef.current) return;
     scheduleMetaEmitRef.current?.();
   }, [showGrid, zoomPct]);
 
