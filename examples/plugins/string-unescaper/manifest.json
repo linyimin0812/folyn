@@ -1,0 +1,15 @@
+{
+  "id": "string-unescaper",
+  "name": "String Unescaper",
+  "version": "1.0.0",
+  "author": "Quill Examples",
+  "quill": ">=0.1.0",
+  "tier": "sandbox",
+  "main": "index.js",
+  "html": "index.html",
+  "contributes": {
+    "tools": [
+      { "id": "unescaper", "title": "String Unescaper", "icon": "🔤", "window": true, "entry": "index.html" }
+    ]
+  }
+}
