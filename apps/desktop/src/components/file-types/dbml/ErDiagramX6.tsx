@@ -792,13 +792,32 @@ function StyleSummaryButton({
   zoomPct: number;
   showGrid: boolean;
 }) {
+  // ponytail: distinguish click from drag-pan. The button sits on top of
+  // the pannable x6 canvas at bottom-center; without this guard, a drag
+  // that starts on the button and ends on the button fires onClick and
+  // toggles the popup unintentionally. Track mousedown coords; if mouseup
+  // moves more than 4px, treat as drag and skip toggle.
+  const downPosRef = useRef<{ x: number; y: number } | null>(null);
+  const handleMouseDown = (e: React.MouseEvent) => {
+    downPosRef.current = { x: e.clientX, y: e.clientY };
+  };
+  const handleMouseUp = (e: React.MouseEvent) => {
+    const down = downPosRef.current;
+    downPosRef.current = null;
+    if (!down) return;
+    const dx = e.clientX - down.x;
+    const dy = e.clientY - down.y;
+    if (dx * dx + dy * dy > 16) return;
+    onToggle();
+  };
   return (
     <>
       <button
         type="button"
-        onClick={onToggle}
-        title="查看已持久化的样式"
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
         aria-label="查看已持久化的样式"
+        aria-expanded={open}
         className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 h-6 px-2.5 bg-[var(--bg)] border border-[var(--brd)] rounded-md text-[11px] text-[var(--t2)] hover:bg-[var(--hov)] hover:text-[var(--t1)] shadow-sm transition-colors"
       >
         <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
