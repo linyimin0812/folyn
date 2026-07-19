@@ -59,7 +59,7 @@ function ToolCallItem({ tc }: { tc: ToolCallInfo }) {
                 <div className="text-[9px] font-semibold text-t3 uppercase mb-[3px]">Input</div>
                 <pre className="font-mono text-[10px] leading-normal bg-surf2 border border-brd rounded py-1.5 px-2 overflow-x-auto whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto text-t2">{(() => {
                   try {
-                    return safeText(JSON.stringify(tc.input, null, 2), 1000);
+                    return safeText(JSON.stringify(tc.input, null, 2), 10000);
                   } catch { return '[无法显示]'; }
                 })()}</pre>
               </div>
@@ -67,7 +67,7 @@ function ToolCallItem({ tc }: { tc: ToolCallInfo }) {
             {tc.output && (
               <div className="mt-1.5">
                 <div className="text-[9px] font-semibold text-t3 uppercase mb-[3px]">Output</div>
-                <pre className="font-mono text-[10px] leading-normal bg-surf2 border border-brd rounded py-1.5 px-2 overflow-x-auto whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto text-t2">{safeText(tc.output, 500)}</pre>
+                <pre className="font-mono text-[10px] leading-normal bg-surf2 border border-brd rounded py-1.5 px-2 overflow-x-auto whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto text-t2">{safeText(tc.output, 10000)}</pre>
               </div>
             )}
           </div>
