@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 67
+- **Total Sessions**: 68
 - **Last Active**: 2026-07-19
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~333 | Active |
+| `journal-2.md` | ~367 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 68 | 2026-07-19 | VS Code-style find/replace panel for CM editors | `da11729` | `master` |
 | 67 | 2026-07-19 | Plugin: string-unescaper sandbox tool | `0c96f93` | `master` |
 | 66 | 2026-07-19 | Settings page polish: icons + fonts | `8af84ec`, `b5137a8`, `6414037` | `master` |
 | 65 | 2026-07-18 | Remove Chat/Wiki/Clip tabs from AI Panel | `1431983` | `master` |

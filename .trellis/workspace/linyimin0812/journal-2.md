@@ -331,3 +331,37 @@ Sandbox-tier tool window plugin. Paste a string literal (with or without surroun
 ### Next Steps
 
 - None - task complete
+
+
+## Session 68: VS Code-style find/replace panel for CM editors
+
+**Date**: 2026-07-19
+**Task**: VS Code-style find/replace panel for CM editors
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Built a custom React search/replace bar (EditorSearchBar) that replaces the default CodeMirror search panel across markdown / json / html-source editors. Reuses the CM search() extension for query state + highlights + find/replace commands; only the UI layer is replaced. VS Code styling: case/word/regexp toggles, x-of-y count, prev/next, replace-single + replace-all, Cmd+F toggle, Cmd+Alt+F toggle replace row. Fixed-width panel (380px), gray panel bg + white input bg per user request.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `da11729` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
