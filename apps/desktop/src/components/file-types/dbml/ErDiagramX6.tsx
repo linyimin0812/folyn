@@ -111,19 +111,19 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
 
   // ponytail: persistence write-back plumbing. `contentRef` mirrors the
   // latest content prop so the debounced emit can read user-typed dbml text
-  // (preserving typing when preview appends meta). `lastParsedDbmlRef` tracks
-  // the dbml-text portion we last successfully parsed — when content changes
-  // ONLY because we appended a new meta block, dbml text is unchanged and the
-  // parse effect skips entirely (no `clearCells()` graph rebuild). Seeding
-  // runtime refs from meta happens on first load only — re-seeding on every
-  // content change would clobber drag state because CodeMirror's doc carries
-  // a stale meta block (CodeMirror doesn't sync from content-prop updates;
-  // see file-type-editors.md "loadedXml + loadedXmlRef" pattern in drawio).
-  // `restoreZoomRef` carries the meta's saved zoom into the first-load zoom
-  // branch (restore vs. zoomToFit).
+  // (preserving typing when preview appends meta). `lastCompletedDbmlRef`
+  // tracks the dbml-text portion of the LAST successfully completed parse —
+  // set inside the timer callback AFTER setState ok/error, so a content
+  // change that cancels a pending parse timer (e.g. user drags during the
+  // initial @dbml/core dynamic-import window) doesn't leave us stuck in
+  // the loading state with no future setState. Seeding runtime refs from
+  // meta happens on first load only — re-seeding on every content change
+  // would clobber drag state because CodeMirror's doc carries a stale meta
+  // block. `restoreZoomRef` carries the meta's saved zoom into the
+  // first-load zoom branch (restore vs. zoomToFit).
   const contentRef = useRef(content);
   contentRef.current = content;
-  const lastParsedDbmlRef = useRef<string | null>(null);
+  const lastCompletedDbmlRef = useRef<string | null>(null);
   const hasSeededFromMetaRef = useRef(false);
   const restoreZoomRef = useRef<number | null>(null);
 
@@ -397,19 +397,21 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
 
   // Debounced parse + layout. Re-runs on content change. Container size is
   // read live so d3-force centers against the current viewport.
-  // ponytail: SKIP when the dbml-text portion of content hasn't changed —
-  // this is the case when our own scheduleMetaEmit appended/replaced the
-  // meta block (drag, zoom, grid toggle). Skipping avoids `clearCells()`
-  // and the graph rebuild, which is the "动一下就刷新" UX bug. Real dbml
-  // edits (user typing in CodeMirror) change the dbml text and trigger a
-  // real parse. Seeding runtime refs from meta happens on FIRST load only;
-  // re-seeding on every content change would clobber drag state because
-  // CodeMirror's doc carries a stale meta block.
+  // ponytail: SKIP when the dbml-text portion of content matches the LAST
+  // COMPLETED parse — this is the case when our own scheduleMetaEmit
+  // appended/replaced the meta block (drag, zoom, grid toggle). Skipping
+  // avoids `clearCells()` and the graph rebuild, which is the "动一下就刷新"
+  // UX bug. The completed-parse marker is set INSIDE the timer callback
+  // after setState ok/error, NOT at effect entry — so a content change that
+  // cancels a pending parse timer doesn't strand us in the loading state
+  // forever. Real dbml edits (user typing in CodeMirror) change the dbml
+  // text and trigger a real parse. Seeding runtime refs from meta happens
+  // on FIRST load only; re-seeding on every content change would clobber
+  // drag state because CodeMirror's doc carries a stale meta block.
   useEffect(() => {
     const src = content ?? '';
     const { dbml, meta } = extractDbmlMeta(src);
-    if (dbml === lastParsedDbmlRef.current) return;
-    lastParsedDbmlRef.current = dbml;
+    if (dbml === lastCompletedDbmlRef.current) return;
     if (!hasSeededFromMetaRef.current) {
       hasSeededFromMetaRef.current = true;
       if (meta) {
@@ -430,6 +432,7 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
       if (cancelled) return;
       if (result.errors.length > 0) {
         setState({ kind: 'error', errors: result.errors });
+        lastCompletedDbmlRef.current = dbml;
         return;
       }
       const el = containerRef.current;
@@ -438,6 +441,7 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
       const layout = layoutEr(result.schema!, w, h, manualPositionsRef.current);
       if (cancelled) return;
       setState({ kind: 'ok', schema: result.schema!, layout });
+      lastCompletedDbmlRef.current = dbml;
       // ponytail: after a real dbml-text change, re-merge runtime meta into
       // content so the next disk save reflects current state (CodeMirror's
       // doc may carry a stale meta block from before the edit). The resulting
