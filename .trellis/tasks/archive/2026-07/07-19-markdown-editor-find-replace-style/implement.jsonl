@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "New SearchPanel React component must follow named-export, props, composition, and styling conventions"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns and review checklist apply to new component + editor wiring"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Typing for SearchPanel props, SearchQuery interop, EditorView ref handling"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Pattern for wiring shared editor extensions across markdown/json/html-source editors"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Three editors share the same panel — must avoid duplicating wiring; centralize in one component"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "SearchPanel holds local state; needs guidance on when local vs Zustand"}

@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist verifies no forbidden patterns, no unrequested abstractions, minimal diff"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Verify SearchPanel types and CM interop are sound under strict TS"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify component naming, props, and styling conventions"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Confirm SearchPanel is reused across all three editors without duplication"}
