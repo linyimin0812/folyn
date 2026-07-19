@@ -399,3 +399,37 @@ Moved Aa/ab/.* toggles inside the find input (VS Code style, absolute-positioned
 ### Next Steps
 
 - None - task complete
+
+
+## Session 70: Plugin AI capability: expose chat/agent to plugins via permissions.ai
+
+**Date**: 2026-07-19
+**Task**: Plugin AI capability: expose chat/agent to plugins via permissions.ai
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added permissions.ai = {chat?, agents?[]} manifest field; trusted PluginContext.ai.chat wraps runRigChat, ctx.ai.agent wraps runFeatureAgent; sandbox ai:chat RPC streams via ai-stream postMessage. Provider/model/apiKey never leave host. 23 new tests green; examples for both tiers + docs.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `548e61f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
