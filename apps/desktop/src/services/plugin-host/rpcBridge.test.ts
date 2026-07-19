@@ -1,9 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { RpcBridge, isPathInScope, isOriginAllowed, hasPermission } from './rpcBridge';
-import type { PluginManifest } from '@quill/plugin-host';
+import { RpcBridge, isPathInScope, isOriginAllowed, hasPermission, dispatchPluginRpc } from './rpcBridge';
+import type { PluginManifest, PluginAiStreamEvent } from '@quill/plugin-host';
 import { __internals as fsInternals } from '@tauri-apps/plugin-fs';
 import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { invoke } from '@tauri-apps/api/core';
+
+// ── AI capability mocks ─────────────────────────────────────────────────────
+const { runRigChatMock, aiConfigGetMock } = vi.hoisted(() => {
+  return {
+    runRigChatMock: vi.fn(),
+    aiConfigGetMock: vi.fn(),
+  };
+});
+vi.mock('@/services/rigChat', () => ({ runRigChat: runRigChatMock }));
+vi.mock('@/store/aiConfigStore', () => ({ useAiConfigStore: { getState: aiConfigGetMock } }));
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -40,6 +50,11 @@ function fakeTarget() {
 
 beforeEach(() => {
   fsInternals.reset();
+  runRigChatMock.mockReset();
+  aiConfigGetMock.mockReset();
+  aiConfigGetMock.mockReturnValue({
+    chatProvider: 'anthropic', chatModel: 'sonnet', chatApiKey: 'sk-test', chatBaseUrl: '',
+  });
 });
 
 // ── Pure helper tests ────────────────────────────────────────────────────────
@@ -515,6 +530,137 @@ describe('RpcBridge / clipboard gating', () => {
     expect(writeText).toHaveBeenCalledWith('hello');
     const resp = sent[0] as { result?: unknown };
     expect(resp.result).toBeUndefined();
+
+    bridge.dispose();
+  });
+});
+
+// ── ai:chat (sandbox streaming) ─────────────────────────────────────────────
+
+describe('dispatchPluginRpc / ai:chat', () => {
+  it('rejects when permissions.ai.chat not declared', async () => {
+    const manifest = sandboxManifest({ permissions: {} });
+    await expect(
+      dispatchPluginRpc(manifest, 'demo', 'ai:chat', { sessionId: 's', prompt: 'p' }, async (p) => p, () => {}),
+    ).rejects.toThrow(/permissions\.ai\.chat/);
+    expect(runRigChatMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects when stream transport absent (tool-window fetch path)', async () => {
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    await expect(
+      dispatchPluginRpc(manifest, 'demo', 'ai:chat', { sessionId: 's', prompt: 'p' }, async (p) => p),
+    ).rejects.toThrow(/streaming transport/);
+  });
+
+  it('rejects when chatApiKey missing', async () => {
+    aiConfigGetMock.mockReturnValue({ chatProvider: 'anthropic', chatModel: 'sonnet', chatApiKey: '', chatBaseUrl: '' });
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    await expect(
+      dispatchPluginRpc(manifest, 'demo', 'ai:chat', { sessionId: 's', prompt: 'p' }, async (p) => p, () => {}),
+    ).rejects.toThrow(/chatApiKey/);
+  });
+
+  it('pushes ai-stream events then resolves; filters tool/file_change', async () => {
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    runRigChatMock.mockImplementation(async (p: { onEvent: (e: { type: string; content?: string; toolName?: string }) => void }) => {
+      p.onEvent({ type: 'thinking', content: 'hmm' });
+      p.onEvent({ type: 'text', content: 'hello' });
+      p.onEvent({ type: 'tool_start', toolName: 'Read' });
+      p.onEvent({ type: 'text', content: ' world' });
+      p.onEvent({ type: 'file_change' });
+      p.onEvent({ type: 'done' });
+    });
+    const events: PluginAiStreamEvent[] = [];
+    const stream = (e: PluginAiStreamEvent) => events.push(e);
+    await dispatchPluginRpc(
+      manifest, 'demo', 'ai:chat',
+      { sessionId: 's', prompt: 'p' },
+      async (p) => p, stream,
+    );
+    expect(events.map((e) => `${e.type}:${e.content ?? ''}`)).toEqual([
+      'thinking:hmm',
+      'text:hello',
+      'text: world',
+      'done:',
+    ]);
+  });
+});
+
+describe('RpcBridge / ai:chat streaming end-to-end', () => {
+  it('sends ai-stream messages then final response', async () => {
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+      resolvePluginPath: async (p) => `/mock/${p}`,
+    });
+    runRigChatMock.mockImplementation(async (p: { onEvent: (e: { type: string; content?: string }) => void }) => {
+      p.onEvent({ type: 'text', content: 'hi' });
+      p.onEvent({ type: 'done' });
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'a1', method: 'ai:chat', params: { sessionId: 's', prompt: 'p' } },
+      target,
+    );
+    await Promise.resolve();
+
+    expect(sent.map((m) => (m as { type: string }).type)).toEqual(['ai-stream', 'ai-stream', 'response']);
+    expect((sent[0] as { event: PluginAiStreamEvent }).event).toEqual({ type: 'text', content: 'hi' });
+    expect((sent[1] as { event: PluginAiStreamEvent }).event).toEqual({ type: 'done' });
+    const finalResp = sent[2] as { id: string; result?: unknown; error?: string };
+    expect(finalResp.id).toBe('a1');
+    expect(finalResp.error).toBeUndefined();
+
+    bridge.dispose();
+  });
+
+  it('sends final response with error when runRigChat rejects', async () => {
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+      resolvePluginPath: async (p) => `/mock/${p}`,
+    });
+    runRigChatMock.mockRejectedValue(new Error('boom'));
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'a2', method: 'ai:chat', params: { sessionId: 's', prompt: 'p' } },
+      target,
+    );
+    await Promise.resolve();
+
+    const resp = sent[sent.length - 1] as { id: string; error?: string };
+    expect(resp.id).toBe('a2');
+    expect(resp.error).toBe('boom');
+
+    bridge.dispose();
+  });
+
+  it('rejects when permissions.ai.chat not declared (via bridge)', async () => {
+    const manifest = sandboxManifest({ permissions: {} });
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'a3', method: 'ai:chat', params: { sessionId: 's', prompt: 'p' } },
+      target,
+    );
+    await Promise.resolve();
+
+    const resp = sent[0] as { id: string; error?: string };
+    expect(resp.id).toBe('a3');
+    expect(resp.error).toMatch(/permissions\.ai\.chat/);
+    expect(runRigChatMock).not.toHaveBeenCalled();
 
     bridge.dispose();
   });

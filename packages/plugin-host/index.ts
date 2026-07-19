@@ -17,4 +17,10 @@ export type {
   FeatureContribution,
   ToolContribution,
   ActivationEvents,
+  PluginAiCapability,
+  PluginAiChatParams,
+  PluginAiAgentParams,
+  PluginAiStreamEvent,
+  PluginAiEventType,
+  PluginAiEventHandler,
 } from './src/types';

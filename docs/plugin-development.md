@@ -71,6 +71,7 @@ resolution.
 | `vault:read-active-doc` | `{}` | `vault.readActive: true` | `{ path, content } \| null` |
 | `vault:insert-content` | `{ content }` | `vault.insertContent: true` | `{ ok: true }` |
 | `window:open` | `{ toolId }` | `window: true` | `{ opened: true, toolId }` |
+| `ai:chat` | `{ sessionId, prompt }` | `ai.chat: true` | streams `ai-stream` events, final `response` (sandbox only — trusted uses `ctx.ai.chat`) |
 
 **Response shape**: success → JSON object per the "Returns" column; failure →
 `{ "error": "<message>" }` with HTTP 200; timeout (30 s) → HTTP 504 with
@@ -536,6 +537,81 @@ gate" trade-off, explicitly accepted for the trusted tier:
 
 Do NOT pretend `grant_plugin_capabilities` is a hard sandbox. If you need a
 hard boundary for a third-party plugin, use the **sandbox tier**.
+
+---
+
+## AI capability (`permissions.ai`)
+
+Quill's AI surface (chat via `runRigChat` + feature agents via
+`runFeatureAgent`) is exposed to plugins as a host-mediated capability. The
+host owns provider/model/apiKey; plugins never see credentials.
+
+### Permission declaration
+
+```json
+"permissions": {
+  "ai": { "chat": true, "agents": ["study"] }
+}
+```
+
+- `chat` (boolean) — required for `ctx.ai.chat` (trusted) or `ai:chat` RPC
+  (sandbox).
+- `agents` (string[]) — whitelist of feature names the plugin may drive via
+  `ctx.ai.agent`. Empty/absent = no agent calls. **Trusted tier only.**
+
+### Trusted tier — `PluginContext.ai`
+
+```ts
+ctx.ai.chat({
+  sessionId: 'my-plugin-session',   // plugin-owned; rig persists history by id
+  prompt: 'Summarize the active doc',
+  onEvent: (e) => { /* e.type ∈ 'text'|'thinking'|'error'|'done' */ },
+  useSharedSession: true,            // optional: also surface in aiPanel
+});
+
+ctx.ai.agent({
+  feature: 'study',                  // must be in permissions.ai.agents
+  instruction: 'Review my notes',
+  onEvent: (e) => { /* 'done' | 'error' */ },
+});
+```
+
+`onEvent` mirrors `CliStreamEvent` but filters out `tool_*` / `file_change`
+events — plugins see only text / thinking / error / done. Provider/model
+come from the host's `useAiConfigStore`; apiKey never appears in `ctx` or
+RPC params.
+
+### Sandbox tier — `ai:chat` RPC
+
+```js
+const id = crypto.randomUUID();
+window.addEventListener('message', (ev) => {
+  const m = ev.data;
+  if (m.id !== id) return;
+  if (m.type === 'ai-stream') {
+    // m.event: { type: 'text'|'thinking'|'error'|'done', content? }
+  } else if (m.type === 'response') {
+    // stream terminates — check m.error
+  }
+});
+window.parent.postMessage(
+  { type: 'request', id, method: 'ai:chat',
+    params: { sessionId: 's', prompt: 'hello' } },
+  '*',
+);
+```
+
+Sandbox plugins cannot call feature agents (canonical agent files live
+under the vault's `__<feature>__/` directory; sandbox isolation makes
+exposing them safely out-of-scope). Use the trusted tier if you need
+`ai.agent`.
+
+### Examples
+
+- `examples/plugins/ai-chat-demo/` — trusted, demonstrates `ctx.ai.chat` +
+  `ctx.ai.agent` (study).
+- `examples/plugins/ai-chat-sandbox-demo/` — sandbox, demonstrates `ai:chat`
+  RPC + `ai-stream` event consumption.
 
 ---
 

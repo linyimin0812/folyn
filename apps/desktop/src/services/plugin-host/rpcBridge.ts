@@ -15,7 +15,9 @@
  *   iframe → host: { type: 'invoke-result', id, result?, error? }
  */
 
-import type { PluginManifest, PluginPermissions } from '@quill/plugin-host';
+import type { PluginAiStreamEvent, PluginManifest, PluginPermissions } from '@quill/plugin-host';
+import type { CliStreamEvent } from '@quill/cli-adapter';
+import { runRigChat } from '@/services/rigChat';
 
 // ── Pure capability-checking helpers (exported for unit testing) ─────────────
 
@@ -107,6 +109,19 @@ function extractOrigin(url: string): string | null {
   }
 }
 
+/** Map host CliStreamEvent → plugin-visible event (drop tool/file_change). */
+function mapSandboxEvent(e: CliStreamEvent): PluginAiStreamEvent | null {
+  switch (e.type) {
+    case 'text':
+    case 'thinking':
+    case 'error':
+    case 'done':
+      return { type: e.type, content: e.content };
+    default:
+      return null;
+  }
+}
+
 /**
  * Normalize a `RequestInit.headers` value (which may be a `Headers`, a plain
  * `Record`, or an array of `[key, value]` tuples) into a plain string map for
@@ -193,7 +208,15 @@ export interface InvokeResultMessage {
   error?: string;
 }
 
-type PluginMessage = RpcRequest | RpcResponse | LifecycleMessage | InvokeMessage | InvokeResultMessage;
+/** Streaming AI event pushed from host to iframe (sandbox ai:chat). The final
+ * `RpcResponse` with the same `id` terminates the stream. */
+export interface AiStreamMessage {
+  type: 'ai-stream';
+  id: string;
+  event: PluginAiStreamEvent;
+}
+
+type PluginMessage = RpcRequest | RpcResponse | LifecycleMessage | InvokeMessage | InvokeResultMessage | AiStreamMessage;
 
 // ── RpcBridge ────────────────────────────────────────────────────────────────
 
@@ -322,23 +345,24 @@ export class RpcBridge {
   }
 
   private async handleRequest(req: RpcRequest): Promise<void> {
+    // Streaming methods push `ai-stream` messages keyed by req.id during
+    // their execution; the final `response` terminates the stream.
+    const stream = (event: PluginAiStreamEvent) => {
+      this.send({ type: 'ai-stream', id: req.id, event });
+    };
     try {
-      const result = await this.dispatch(req.method, req.params);
+      const result = await dispatchPluginRpc(
+        this.opts.manifest,
+        this.opts.pluginId,
+        req.method,
+        req.params,
+        (p) => this.resolvePath(p),
+        stream,
+      );
       this.sendResponse(req.id, result);
     } catch (err) {
       this.sendResponse(req.id, undefined, err instanceof Error ? err.message : String(err));
     }
-  }
-
-  /** Dispatch an RPC method to the corresponding host capability. */
-  private async dispatch(method: string, params: unknown): Promise<unknown> {
-    return dispatchPluginRpc(
-      this.opts.manifest,
-      this.opts.pluginId,
-      method,
-      params,
-      (p) => this.resolvePath(p),
-    );
   }
 
   /** Resolve a plugin-relative path to an absolute filesystem path. */
@@ -373,6 +397,10 @@ export class RpcBridge {
  * @param params        Method params object.
  * @param resolvePath   Resolves a plugin-relative path to an absolute path.
  *                      Both transports use `~/.quill/plugins/<pluginId>/<rel>`.
+ * @param stream        Streaming-event callback (sandbox iframe transport
+ *                      only). Pushed once per `PluginAiStreamEvent` during a
+ *                      long-running `ai:chat` call. Tool-window fetch transport
+ *                      passes `undefined` → `ai:chat` rejects.
  */
 export async function dispatchPluginRpc(
   manifest: PluginManifest,
@@ -380,6 +408,7 @@ export async function dispatchPluginRpc(
   method: string,
   params: unknown,
   resolvePath: (relativePath: string) => Promise<string>,
+  stream?: (event: PluginAiStreamEvent) => void,
 ): Promise<unknown> {
   const perms = manifest.permissions;
 
@@ -520,6 +549,38 @@ export async function dispatchPluginRpc(
       // so plugins can request their own tool window programmatically; MVP
       // returns a stub because the actual open is a host-side concern.
       return { opened: true, toolId };
+    }
+
+    // ── ai (sandbox streaming over postMessage; trusted uses PluginContext.ai) ──
+    case 'ai:chat': {
+      if (!perms?.ai?.chat) {
+        throw new Error('ai:chat denied: permissions.ai.chat not granted');
+      }
+      const { sessionId, prompt } = (params ?? {}) as { sessionId?: string; prompt?: string };
+      if (typeof sessionId !== 'string' || typeof prompt !== 'string') {
+        throw new Error('ai:chat requires { sessionId, prompt }');
+      }
+      if (!stream) {
+        throw new Error('ai:chat requires a streaming transport (sandbox iframe only)');
+      }
+      const { useAiConfigStore } = await import('@/store/aiConfigStore');
+      const { chatProvider, chatModel, chatApiKey, chatBaseUrl } = useAiConfigStore.getState();
+      if (!chatApiKey) {
+        throw new Error('host AI not configured — set chatApiKey in settings');
+      }
+      await runRigChat({
+        sessionId,
+        prompt,
+        provider: chatProvider,
+        model: chatModel,
+        apiKey: chatApiKey,
+        ...(chatBaseUrl ? { baseUrl: chatBaseUrl } : {}),
+        onEvent: (e: CliStreamEvent) => {
+          const mapped = mapSandboxEvent(e);
+          if (mapped) stream(mapped);
+        },
+      });
+      return undefined;
     }
 
     default:

@@ -139,6 +139,17 @@ export class PluginHost {
     if (manifest.tier === 'sandbox' && !manifest.html) {
       throw new Error('sandbox plugins require manifest.html');
     }
+    if (manifest.permissions?.ai) {
+      const { chat, agents } = manifest.permissions.ai;
+      if (chat !== undefined && typeof chat !== 'boolean') {
+        throw new Error('permissions.ai.chat must be a boolean');
+      }
+      if (agents !== undefined) {
+        if (!Array.isArray(agents) || agents.some((a) => typeof a !== 'string' || !a)) {
+          throw new Error('permissions.ai.agents must be a string[] of non-empty feature names');
+        }
+      }
+    }
   }
 
   private makeContext(record: PluginRecord): PluginContext {

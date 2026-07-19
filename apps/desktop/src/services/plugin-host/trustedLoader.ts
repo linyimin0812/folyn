@@ -53,6 +53,7 @@ import {
 } from './contributionAdapters';
 import { registerPluginTools } from './toolAdapter';
 import { registerPluginFeatures } from './featureAdapter';
+import { buildPluginAi } from './aiCapability';
 
 export const trustedLoader: PluginLoader = {
   tier: 'trusted',
@@ -123,7 +124,8 @@ export const trustedLoader: PluginLoader = {
 
         // Call the plugin's own activate hook if present.
         if (typeof module.activate === 'function') {
-          return module.activate(ctx);
+          const ai = buildPluginAi(manifest);
+          return module.activate({ ...ctx, ai });
         }
       },
       deactivate: (ctx: PluginContext) => {

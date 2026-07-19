@@ -1,0 +1,18 @@
+{
+  "id": "ai-chat-sandbox-demo",
+  "name": "AI Chat Demo (Sandbox)",
+  "version": "1.0.0",
+  "author": "Quill Examples",
+  "quill": ">=0.1.0",
+  "tier": "sandbox",
+  "main": "index.js",
+  "html": "index.html",
+  "permissions": {
+    "ai": { "chat": true }
+  },
+  "contributes": {
+    "tools": [
+      { "id": "ai-chat-sandbox", "title": "AI Chat (Sandbox Sample)", "icon": "🤖", "window": true, "entry": "index.html" }
+    ]
+  }
+}

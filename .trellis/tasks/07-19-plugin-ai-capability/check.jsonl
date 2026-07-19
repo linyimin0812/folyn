@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/07-19-plugin-ai-capability/prd.md", "reason": "acceptance criteria — what must pass"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "forbidden patterns + review checklist"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "type-naming + validation rules for new manifest field"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "aiStore session reuse must follow granular selector rules"}
+{"file": ".trellis/spec/desktop/frontend/feature-agents.md", "reason": "feature agent validation matrix — ai.agent must respect graceful degradation contract"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "verify no duplicate AI service / new chokepoint was created"}
+{"file": "docs/plugin-development.md", "reason": "verify docs chapter matches existing permissions/contribution conventions"}

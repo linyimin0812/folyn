@@ -36,6 +36,13 @@ export interface PluginContext {
   readonly manifest: PluginManifest;
   /** Register a disposable for automatic cleanup. Idempotent. */
   addDisposable(d: Disposable): void;
+  /**
+   * Host-mediated AI capability. Present when the host wires it (trusted
+   * tier in PR2; sandbox via rpcBridge in PR3). Plugins must declare
+   * `permissions.ai` in manifest; calls throw otherwise. `undefined` on
+   * tiers that do not provide AI access.
+   */
+  readonly ai?: PluginAiCapability;
   // Capability RPC + UI contribution adapters are layered on in PR2 (sandbox)
   // and PR3 (trusted); kept out of PR1 so the kernel is testable in isolation.
 }
@@ -93,6 +100,61 @@ export interface PluginPermissions {
   dialog?: boolean;
   window?: boolean;
   vault?: { readActive?: boolean; insertContent?: boolean };
+  /**
+   * AI capability grant. Host mediates all AI access (chat_stream + feature
+   * agents) through this declaration; undeclared `ai.*` calls throw.
+   *
+   * - `chat`: allow `PluginContext.ai.chat` (sandbox + trusted).
+   * - `agents`: whitelist of feature names the plugin may drive via
+   *   `PluginContext.ai.agent` (trusted only — sandbox cannot reach feature
+   *   agents). Empty/absent = no agent calls.
+   */
+  ai?: { chat?: boolean; agents?: string[] };
+}
+
+// ── AI capability (host-mediated) ─────────────────────────────────────────────
+//
+// Plugin authors call `ctx.ai.chat` / `ctx.ai.agent`. The host implementation
+// (PR2: trusted — wraps runRigChat / runFeatureAgent; PR3: sandbox — same
+// methods over rpcBridge postMessage) enforces manifest.permissions.ai before
+// forwarding to the shared AI chokepoints. Provider/model/apiKey are never
+// exposed — host uses the user's configured defaults.
+
+/** Subset of {@link CliStreamEvent} a plugin may observe. Tool / file-change
+ * events are filtered out by the host before delivery. */
+export type PluginAiEventType = 'text' | 'thinking' | 'error' | 'done';
+
+export interface PluginAiStreamEvent {
+  type: PluginAiEventType;
+  content?: string;
+}
+
+export type PluginAiEventHandler = (event: PluginAiStreamEvent) => void;
+
+export interface PluginAiChatParams {
+  /** Plugin-managed session id (plugin owns persistence/history). */
+  sessionId: string;
+  prompt: string;
+  onEvent: PluginAiEventHandler;
+  /** When true, the host also surfaces the turn in aiPanel (aiStore session).
+   * Defaults to false (plugin-only, not in UI). */
+  useSharedSession?: boolean;
+}
+
+export interface PluginAiAgentParams {
+  /** Feature name — must be in `permissions.ai.agents` whitelist. */
+  feature: string;
+  instruction: string;
+  onEvent: PluginAiEventHandler;
+}
+
+export interface PluginAiCapability {
+  /** Stream a multi-turn chat turn through the host's configured provider.
+   * Rejects if `permissions.ai.chat` is not declared. */
+  chat(params: PluginAiChatParams): Promise<void>;
+  /** Drive a registered feature agent (trusted tier only). Rejects if the
+   * feature is not in `permissions.ai.agents`. */
+  agent(params: PluginAiAgentParams): Promise<void>;
 }
 
 // ── Contribution points ────────────────────────────────────────────────────
