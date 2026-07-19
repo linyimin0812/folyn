@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 65
-- **Last Active**: 2026-07-18
+- **Total Sessions**: 66
+- **Last Active**: 2026-07-19
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~263 | Active |
+| `journal-2.md` | ~299 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 66 | 2026-07-19 | Settings page polish: icons + fonts | `8af84ec`, `b5137a8`, `6414037` | `master` |
 | 65 | 2026-07-18 | Remove Chat/Wiki/Clip tabs from AI Panel | `1431983` | `master` |
 | 64 | 2026-07-18 | Voice flow phases + API key prompt + orb UX polish | `746586f`, `f2622e6`, `09c1bd4`, `5e20e25`, `e7474cd`, `f4e4f88`, `814ff67`, `76feb1b` | `master` |
 | 63 | 2026-07-18 | 麦克风/语音识别权限接入设置页 | `50976cd` | `master` |

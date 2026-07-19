@@ -261,3 +261,39 @@ Stripped AiPanel tab bar + chatMode state machine + /clip slash branch + wiki/cl
 ### Next Steps
 
 - None - task complete
+
+
+## Session 66: Settings page polish: icons + fonts
+
+**Date**: 2026-07-19
+**Task**: Settings page polish: icons + fonts
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Replaced emoji icons on settings page with lucide-react stroke icons (18 emoji -> 14px/17px currentColor line icons across NAV_GROUPS, SettingsPage about/notice cards, PluginsSettings warning). Unified editable control fonts: font-mono -> font-ui on inputs in Skills/FileTemplates, dropped inline fontFamily overrides. Unified font sizes: hardcoded text-xs -> var(--ui-font-size) formula on 9 editable controls so they scale with UI font-size setting. Also fixed earlier: drawio loading placeholder + markdown ordered list start=3 rendering (counter-reset: list-item CSS bug).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8af84ec` | (see git log) |
+| `b5137a8` | (see git log) |
+| `6414037` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
