@@ -622,7 +622,9 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
       const saved = restoreZoomRef.current;
       restoreZoomRef.current = null;
       requestAnimationFrame(() => {
-        if (saved != null) graph.zoom(saved / 100);
+        // ponytail: zoomTo is the ABSOLUTE scale setter (zoom(factor) is a
+        // relative delta — saved 85% via zoom(0.85) would land at 185%).
+        if (saved != null) graph.zoomTo(saved / 100);
         else graph.zoomToFit({ padding: 40 });
       });
     }
