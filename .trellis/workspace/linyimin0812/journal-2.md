@@ -297,3 +297,37 @@ Replaced emoji icons on settings page with lucide-react stroke icons (18 emoji -
 ### Next Steps
 
 - None - task complete
+
+
+## Session 67: Plugin: string-unescaper sandbox tool
+
+**Date**: 2026-07-19
+**Task**: Plugin: string-unescaper sandbox tool
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Sandbox-tier tool window plugin. Paste a string literal (with or without surrounding quotes), get live unescape (\n \t \uXXXX \xXX etc.) + Markdown-rendered preview. No permissions, no RPC. Theme follows OS via prefers-color-scheme (sandbox iframe can't read host [data-theme], same approach as VoiceOrbApp). Cmd/Ctrl+A explicit keydown handler so Tauri menu accelerators don't intercept select-all. Autocapitalize/spellcheck off on input.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0c96f93` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
