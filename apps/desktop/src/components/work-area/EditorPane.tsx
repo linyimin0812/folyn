@@ -10,6 +10,7 @@ import { getStrategy, fileToBase64, convertImageFormat } from '@/utils/imageUplo
 import type { ContainerPlugin } from '@quill/container-plugins';
 import type { FileTab } from '@/store/editorStore';
 import { DiffReviewBar } from './DiffReviewBar';
+import { DbmlStyleStatusButton } from '../file-types/dbml/DbmlStyleStatusButton';
 
 interface EditorPaneProps {
   activeTab: FileTab | undefined;
@@ -219,6 +220,15 @@ export const EditorPane = forwardRef<QuillEditorHandle, EditorPaneProps>(
             onConfirm={handleImageConfirm}
             onCancel={handleImageCancel}
           />
+          {/* ponytail: bottom-of-editor status button for dbml persisted
+              style state. Reads the trailing `<!-- dbml:meta -->` block
+              straight from activeTab.content — no shared runtime state with
+              ErDiagramX6, read-only display only. Shown only for .dbml
+              tabs. Positioned at the bottom-right of the editor pane,
+              matching mmap's bottom-of-editor button placement. */}
+          {activeTab?.fileType === 'dbml' && (
+            <DbmlStyleStatusButton content={activeTab.content ?? ''} />
+          )}
         </div>
       </div>
     );

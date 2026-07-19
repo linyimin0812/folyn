@@ -86,7 +86,6 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
   const [graphReady, setGraphReady] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [zoomPct, setZoomPct] = useState(100);
-  const [summaryOpen, setSummaryOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<Graph | null>(null);
@@ -674,13 +673,6 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
         onFit={onFit}
         onToggleGrid={onToggleGrid}
       />
-      <StyleSummaryButton
-        open={summaryOpen}
-        onToggle={() => setSummaryOpen((v) => !v)}
-        positionsCount={manualPositionsRef.current.size}
-        zoomPct={zoomPct}
-        showGrid={showGrid}
-      />
     </div>
   );
 }
@@ -770,85 +762,6 @@ function Toolbar({
         </svg>
       </button>
     </div>
-  );
-}
-
-// ponytail: bottom-center floating button opening a read-only summary of the
-// currently-persisted style state (positions count, zoom, grid). Mirrors
-// mmap's right-edge vertical toolbar + floating CanvasStylePanel pattern,
-// collapsed into a single button + panel because there's nothing to edit
-// here — display only. The actual write-back is driven by ErDiagramX6's
-// refs/state via the debounced scheduleMetaEmit; this component just reports.
-function StyleSummaryButton({
-  open,
-  onToggle,
-  positionsCount,
-  zoomPct,
-  showGrid,
-}: {
-  open: boolean;
-  onToggle: () => void;
-  positionsCount: number;
-  zoomPct: number;
-  showGrid: boolean;
-}) {
-  // ponytail: distinguish click from drag-pan. The button sits on top of
-  // the pannable x6 canvas at bottom-center; without this guard, a drag
-  // that starts on the button and ends on the button fires onClick and
-  // toggles the popup unintentionally. Track mousedown coords; if mouseup
-  // moves more than 4px, treat as drag and skip toggle.
-  const downPosRef = useRef<{ x: number; y: number } | null>(null);
-  const handleMouseDown = (e: React.MouseEvent) => {
-    downPosRef.current = { x: e.clientX, y: e.clientY };
-  };
-  const handleMouseUp = (e: React.MouseEvent) => {
-    const down = downPosRef.current;
-    downPosRef.current = null;
-    if (!down) return;
-    const dx = e.clientX - down.x;
-    const dy = e.clientY - down.y;
-    if (dx * dx + dy * dy > 16) return;
-    onToggle();
-  };
-  return (
-    <>
-      <button
-        type="button"
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        aria-label="查看已持久化的样式"
-        aria-expanded={open}
-        className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 h-6 px-2.5 bg-[var(--bg)] border border-[var(--brd)] rounded-md text-[11px] text-[var(--t2)] hover:bg-[var(--hov)] hover:text-[var(--t1)] shadow-sm transition-colors"
-      >
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-          <circle cx="8" cy="8" r="6" />
-          <path d="M8 5v6M5 8h6" />
-        </svg>
-        <span>样式</span>
-      </button>
-      {open && (
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 w-[240px] bg-[var(--bg)] border border-[var(--brd)] rounded-md shadow-md text-[12px] text-[var(--t1)] py-2 px-3">
-          <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-[0.08em] mb-1.5">已持久化样式</div>
-          <dl className="flex flex-col gap-1">
-            <div className="flex justify-between">
-              <dt className="text-[var(--t3)]">节点位置</dt>
-              <dd className="tabular-nums">{positionsCount} 个</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-[var(--t3)]">缩放</dt>
-              <dd className="tabular-nums">{zoomPct}%</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-[var(--t3)]">网格</dt>
-              <dd>{showGrid ? '显示' : '隐藏'}</dd>
-            </div>
-          </dl>
-          <div className="mt-2 pt-1.5 border-t border-[var(--brd)] text-[10px] text-[var(--t3)] leading-[1.5]">
-            拖动节点、缩放或切换网格后，会自动写入文件末尾的 <code className="text-[var(--t2)]">&lt;!-- dbml:meta --&gt;</code> 注释块。
-          </div>
-        </div>
-      )}
-    </>
   );
 }
 
@@ -967,13 +880,31 @@ function TableCardNode({ node }: { node: Node }) {
   }, [clearCloseTimer]);
   const openTable = useCallback(() => {
     clearCloseTimer();
-    setPopover({ kind: 'table' });
+    setPopover((p) => (p?.kind === 'table' ? null : { kind: 'table' }));
   }, [clearCloseTimer]);
   const openField = useCallback((idx: number) => {
     clearCloseTimer();
     setPopover((p) =>
-      p?.kind === 'field' && p.idx === idx ? p : { kind: 'field', idx });
+      p?.kind === 'field' && p.idx === idx ? null : { kind: 'field', idx });
   }, [clearCloseTimer]);
+  // ponytail: click-vs-drag guard for the header/field hover-catchers.
+  // The card sits on the pannable x6 canvas; without this, a drag-pan that
+  // starts on a header or field row would fire onClick (now that we
+  // switched from onMouseEnter) and unintentionally open popovers. Track
+  // mousedown coords; if mouseup moved >4px, skip the toggle.
+  const downPosRef = useRef<{ x: number; y: number } | null>(null);
+  const onCardDown = (e: React.MouseEvent) => {
+    downPosRef.current = { x: e.clientX, y: e.clientY };
+  };
+  const makeCardUp = (fn: () => void) => (e: React.MouseEvent) => {
+    const down = downPosRef.current;
+    downPosRef.current = null;
+    if (!down) return;
+    const dx = e.clientX - down.x;
+    const dy = e.clientY - down.y;
+    if (dx * dx + dy * dy > 16) return;
+    fn();
+  };
   useEffect(() => {
     if (!popover) return;
     // Bring the whole card to the front so the popover (now portaled into the
@@ -1068,12 +999,16 @@ function TableCardNode({ node }: { node: Node }) {
         strokeWidth={1}
       />
       {/* header — darker neutral band by default; DBML `headerColor` overrides.
-          Hover on the header opens the table-info popover beside the card. */}
+          Click on the header opens the table-info popover beside the card.
+          ponytail: onMouseDown+onMouseUp with drag detection replaces the
+          previous onMouseEnter — no more hover popovers, and drag-pans
+          starting on the header don't trigger the popover. */}
       <path
         d={`M 6 0 H ${width - 6} A 6 6 0 0 1 ${width} 6 V ${HEADER_H} H 0 V 6 A 6 6 0 0 1 6 0 Z`}
         fill={headerColor ?? 'var(--brd2)'}
-        style={hasInfo ? { cursor: 'help' } : undefined}
-        onMouseEnter={hasInfo ? openTable : undefined}
+        style={hasInfo ? { cursor: 'pointer' } : undefined}
+        onMouseDown={hasInfo ? onCardDown : undefined}
+        onMouseUp={hasInfo ? makeCardUp(openTable) : undefined}
         onMouseLeave={hasInfo ? scheduleClose : undefined}
       />
       <text
@@ -1134,12 +1069,14 @@ function TableCardNode({ node }: { node: Node }) {
             >
               {f.type}
             </text>
-            {/* Hover catcher for the field-info popover. Transparent rect over
+            {/* Click catcher for the field-info popover. Transparent rect over
                 the full row, last in DOM so it's on top and catches pointer
                 events across the whole row width (text/icons below are
                 pointer-events:none or just sit under it). Only fields with a
                 note get a popover — gating avoids a header-only popover that
-                just echoes the inline name/type. */}
+                just echoes the inline name/type. ponytail: onMouseDown+
+                onMouseUp with drag detection — no hover trigger, drag-pan
+                on the row doesn't open the popover. */}
             {f.note && (
               <rect
                 x={0}
@@ -1147,8 +1084,9 @@ function TableCardNode({ node }: { node: Node }) {
                 width={width}
                 height={fieldRowH}
                 fill="transparent"
-                style={{ cursor: 'help' }}
-                onMouseEnter={() => openField(i)}
+                style={{ cursor: 'pointer' }}
+                onMouseDown={onCardDown}
+                onMouseUp={makeCardUp(() => openField(i))}
                 onMouseLeave={scheduleClose}
               />
             )}
@@ -1232,8 +1170,22 @@ function EnumCardNode({ node }: { node: Node }) {
   }, [clearCloseTimer]);
   const openValue = useCallback((idx: number) => {
     clearCloseTimer();
-    setPopover((p) => (p?.idx === idx ? p : { idx }));
+    setPopover((p) => (p?.idx === idx ? null : { idx }));
   }, [clearCloseTimer]);
+  // ponytail: click-vs-drag guard — see TableCardNode's makeCardUp/onCardDown.
+  const downPosRef = useRef<{ x: number; y: number } | null>(null);
+  const onCardDown = (e: React.MouseEvent) => {
+    downPosRef.current = { x: e.clientX, y: e.clientY };
+  };
+  const makeCardUp = (fn: () => void) => (e: React.MouseEvent) => {
+    const down = downPosRef.current;
+    downPosRef.current = null;
+    if (!down) return;
+    const dx = e.clientX - down.x;
+    const dy = e.clientY - down.y;
+    if (dx * dx + dy * dy > 16) return;
+    fn();
+  };
   useEffect(() => {
     if (!popover) return;
     node.toFront();
@@ -1338,7 +1290,7 @@ function EnumCardNode({ node }: { node: Node }) {
             >
               {v.name}
             </text>
-            {/* Hover catcher for the value-info popover — same pattern as
+            {/* Click catcher for the value-info popover — same pattern as
                 table field rows. Only values with a note get a popover. */}
             {v.note && (
               <rect
@@ -1347,8 +1299,9 @@ function EnumCardNode({ node }: { node: Node }) {
                 width={width}
                 height={valueRowH}
                 fill="transparent"
-                style={{ cursor: 'help' }}
-                onMouseEnter={() => openValue(i)}
+                style={{ cursor: 'pointer' }}
+                onMouseDown={onCardDown}
+                onMouseUp={makeCardUp(() => openValue(i))}
                 onMouseLeave={scheduleClose}
               />
             )}
