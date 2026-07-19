@@ -4,6 +4,11 @@ import type { Edge, Graph, Node } from '@antv/x6';
 import type { PreviewProps } from '../types';
 import { parseDbml, type ErSchema, type ErParseError } from './parseDbml';
 import {
+  extractDbmlMeta,
+  withDbmlMeta,
+  type DbmlMeta,
+} from './parseDbml';
+import {
   layoutEr,
   boxesTooClose,
   HEADER_H,
@@ -76,11 +81,12 @@ const overlayByGraph = new WeakMap<Graph, HTMLDivElement>();
  * loads only when a .dbml preview is first opened (mirrors parseDbml's
  * dynamic-import of @dbml/core).
  */
-export default function ErDiagramX6({ content }: PreviewProps) {
+export default function ErDiagramX6({ content, onChange }: PreviewProps) {
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [graphReady, setGraphReady] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [zoomPct, setZoomPct] = useState(100);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<Graph | null>(null);
@@ -102,6 +108,52 @@ export default function ErDiagramX6({ content }: PreviewProps) {
   // so the first .dbml view centers content, but subsequent re-parses
   // (edits) don't override the user's manual pan/zoom.
   const firstLoadRef = useRef(true);
+
+  // ponytail: persistence write-back plumbing. `contentRef` mirrors the
+  // latest content prop so the debounced emit can read user-typed dbml text
+  // (preserving typing when preview appends meta). `lastEmittedMetaRef`
+  // suppresses feedback loops: if the freshly-built meta matches what we
+  // last emitted (or just read from source on parse), skip the onChange call.
+  // `hasParsedRef` gates the [showGrid,zoomPct] effect so the initial seed
+  // from meta doesn't trigger an immediate re-emit of identical content.
+  const contentRef = useRef(content);
+  contentRef.current = content;
+  const lastEmittedMetaRef = useRef<DbmlMeta | undefined>(undefined);
+  const hasParsedRef = useRef(false);
+  const restoreZoomRef = useRef<number | null>(null);
+
+  // Debounced meta write-back: read current content, strip old meta, append
+  // new meta derived from runtime state, emit via onChange. Skipped when the
+  // new meta matches the last-emitted/read one (no-op round-trip). Each
+  // invocation replaces the pending timer so rapid drags collapse into one
+  // emit 500ms after the last change.
+  const metaEmitTimerRef = useRef<number | null>(null);
+  const scheduleMetaEmit = useCallback(() => {
+    if (!onChange) return;
+    if (metaEmitTimerRef.current != null) {
+      window.clearTimeout(metaEmitTimerRef.current);
+    }
+    metaEmitTimerRef.current = window.setTimeout(() => {
+      metaEmitTimerRef.current = null;
+      const meta: DbmlMeta = { positions: {} };
+      for (const [name, p] of manualPositionsRef.current.entries()) {
+        meta.positions[name] = { x: Math.round(p.x), y: Math.round(p.y) };
+      }
+      const view: { zoomPct?: number; showGrid?: boolean } = {};
+      if (zoomPct !== 100) view.zoomPct = zoomPct;
+      if (showGrid) view.showGrid = true;
+      if (Object.keys(view).length > 0) meta.view = view;
+      const last = lastEmittedMetaRef.current;
+      const same = last && JSON.stringify(last) === JSON.stringify(meta);
+      if (same) return;
+      lastEmittedMetaRef.current = meta;
+      const { dbml } = extractDbmlMeta(contentRef.current);
+      const next = withDbmlMeta(dbml, meta);
+      if (next !== contentRef.current) onChange(next);
+    }, 500);
+  }, [onChange, zoomPct, showGrid]);
+  const scheduleMetaEmitRef = useRef(scheduleMetaEmit);
+  scheduleMetaEmitRef.current = scheduleMetaEmit;
 
   // Mount: lazy-load x6 + react-shape, register shapes + markers, create graph.
   useEffect(() => {
@@ -293,6 +345,7 @@ export default function ErDiagramX6({ content }: PreviewProps) {
         }
         lastValidPositionsRef.current.set(id, { x: pos.x, y: pos.y });
         manualPositionsRef.current.set(id, { x: pos.x, y: pos.y });
+        scheduleMetaEmitRef.current?.();
       });
       graph.on('scale', ({ sx }: { sx: number }) => setZoomPct(Math.round(sx * 100)));
       // Click-to-highlight a relationship line — see `nextSelectedEdgeId` /
@@ -340,6 +393,28 @@ export default function ErDiagramX6({ content }: PreviewProps) {
   // read live so d3-force centers against the current viewport.
   useEffect(() => {
     const src = content ?? '';
+    // ponytail: seed runtime state from the persisted meta block BEFORE
+    // layout runs. `layoutEr` reads manualPositionsRef so dragged positions
+    // survive edits; showGrid/zoomPct are applied post-mount via the
+    // [showGrid, graphReady] effect and the first-load zoom restore below.
+    // Only seed on content that genuinely changed (skips our own write-back
+    // round-trip — lastEmittedMetaRef already reflects the source meta there).
+    const { meta } = extractDbmlMeta(src);
+    if (meta) {
+      manualPositionsRef.current = new Map(
+        Object.entries(meta.positions).map(([name, p]) => [name, { x: p.x, y: p.y } as Point]),
+      );
+      if (meta.view?.showGrid) setShowGrid(true);
+      if (meta.view?.zoomPct) {
+        setZoomPct(meta.view.zoomPct);
+        restoreZoomRef.current = meta.view.zoomPct;
+      }
+      lastEmittedMetaRef.current = meta;
+    } else {
+      manualPositionsRef.current = new Map();
+      lastEmittedMetaRef.current = undefined;
+    }
+    hasParsedRef.current = true;
     let cancelled = false;
     setState({ kind: 'loading' });
     const handle = setTimeout(async () => {
@@ -361,6 +436,34 @@ export default function ErDiagramX6({ content }: PreviewProps) {
       clearTimeout(handle);
     };
   }, [content]);
+
+  // ponytail: write-back effect for grid toggle + zoom. Fires on user-driven
+  // state changes after the initial parse seeded state from meta. The
+  // lastEmittedMetaRef compare inside scheduleMetaEmit suppresses no-op
+  // re-emits when the freshly-built meta matches the source (e.g. initial
+  // sync setting showGrid=true from meta, then this effect firing).
+  useEffect(() => {
+    if (!hasParsedRef.current) return;
+    scheduleMetaEmitRef.current?.();
+  }, [showGrid, zoomPct]);
+
+  // Apply showGrid to the graph whenever it or graphReady changes.
+  useEffect(() => {
+    const g = graphRef.current;
+    if (!g || !graphReady) return;
+    if (showGrid) g.showGrid();
+    else g.hideGrid();
+  }, [showGrid, graphReady]);
+
+  // Clear any pending meta-emit timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (metaEmitTimerRef.current != null) {
+        window.clearTimeout(metaEmitTimerRef.current);
+        metaEmitTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // Sync state → graph: rebuild nodes + edges whenever a new layout arrives.
   useEffect(() => {
@@ -494,9 +597,17 @@ export default function ErDiagramX6({ content }: PreviewProps) {
 
     // First content load: fit all content into view so the user starts
     // centered. Subsequent re-parses (content edits) leave pan/zoom alone.
+    // ponytail: if the source meta carried a saved zoomPct, restore it
+    // instead of zoomToFit — preserves the user's saved zoom level across
+    // file reopens.
     if (firstLoadRef.current) {
       firstLoadRef.current = false;
-      requestAnimationFrame(() => graph.zoomToFit({ padding: 40 }));
+      const saved = restoreZoomRef.current;
+      restoreZoomRef.current = null;
+      requestAnimationFrame(() => {
+        if (saved != null) graph.zoom(saved / 100);
+        else graph.zoomToFit({ padding: 40 });
+      });
     }
   }, [state, graphReady]);
 
@@ -544,6 +655,13 @@ export default function ErDiagramX6({ content }: PreviewProps) {
         onZoomOut={onZoomOut}
         onFit={onFit}
         onToggleGrid={onToggleGrid}
+      />
+      <StyleSummaryButton
+        open={summaryOpen}
+        onToggle={() => setSummaryOpen((v) => !v)}
+        positionsCount={manualPositionsRef.current.size}
+        zoomPct={zoomPct}
+        showGrid={showGrid}
       />
     </div>
   );
@@ -634,6 +752,66 @@ function Toolbar({
         </svg>
       </button>
     </div>
+  );
+}
+
+// ponytail: bottom-center floating button opening a read-only summary of the
+// currently-persisted style state (positions count, zoom, grid). Mirrors
+// mmap's right-edge vertical toolbar + floating CanvasStylePanel pattern,
+// collapsed into a single button + panel because there's nothing to edit
+// here — display only. The actual write-back is driven by ErDiagramX6's
+// refs/state via the debounced scheduleMetaEmit; this component just reports.
+function StyleSummaryButton({
+  open,
+  onToggle,
+  positionsCount,
+  zoomPct,
+  showGrid,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  positionsCount: number;
+  zoomPct: number;
+  showGrid: boolean;
+}) {
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onToggle}
+        title="查看已持久化的样式"
+        aria-label="查看已持久化的样式"
+        className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 h-6 px-2.5 bg-[var(--bg)] border border-[var(--brd)] rounded-md text-[11px] text-[var(--t2)] hover:bg-[var(--hov)] hover:text-[var(--t1)] shadow-sm transition-colors"
+      >
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+          <circle cx="8" cy="8" r="6" />
+          <path d="M8 5v6M5 8h6" />
+        </svg>
+        <span>样式</span>
+      </button>
+      {open && (
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 w-[240px] bg-[var(--bg)] border border-[var(--brd)] rounded-md shadow-md text-[12px] text-[var(--t1)] py-2 px-3">
+          <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-[0.08em] mb-1.5">已持久化样式</div>
+          <dl className="flex flex-col gap-1">
+            <div className="flex justify-between">
+              <dt className="text-[var(--t3)]">节点位置</dt>
+              <dd className="tabular-nums">{positionsCount} 个</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[var(--t3)]">缩放</dt>
+              <dd className="tabular-nums">{zoomPct}%</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[var(--t3)]">网格</dt>
+              <dd>{showGrid ? '显示' : '隐藏'}</dd>
+            </div>
+          </dl>
+          <div className="mt-2 pt-1.5 border-t border-[var(--brd)] text-[10px] text-[var(--t3)] leading-[1.5]">
+            拖动节点、缩放或切换网格后，会自动写入文件末尾的 <code className="text-[var(--t2)]">&lt;!-- dbml:meta --&gt;</code> 注释块。
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

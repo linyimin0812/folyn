@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Defines the PreviewProps.onChange contract, file-type handler shape, and serialization hygiene patterns we mimic for dbml meta-block write-back"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Named function exports, no default exports except App, Tailwind + CSS var theming, composition patterns for the floating bottom button + summary panel"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "editorStore.updateTabContent flow that onChange routes through; local vs persisted state boundaries; ref vs state guidance"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns and review checklist — avoid speculative abstractions, ponytail-aligned rules for minimal diff"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Strict TS patterns for meta-block parsing/serialization types (no any, branded interfaces for the meta block)"}
