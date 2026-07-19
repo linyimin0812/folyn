@@ -80,10 +80,10 @@ interface FrontmatterMeta {
   [key: string]: string | undefined;
 }
 
-function parseFrontmatter(content: string): { meta: FrontmatterMeta | null; body: string } {
+function parseFrontmatter(content: string): { meta: FrontmatterMeta | null; body: string; frontmatterLineCount: number } {
   const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n?/;
   const match = content.match(frontmatterRegex);
-  if (!match) return { meta: null, body: content };
+  if (!match) return { meta: null, body: content, frontmatterLineCount: 0 };
 
   const yamlBlock = match[1];
   const meta: FrontmatterMeta = {};
@@ -106,7 +106,11 @@ function parseFrontmatter(content: string): { meta: FrontmatterMeta | null; body
     meta[currentKey] = currentValue.trim();
   }
 
-  return { meta: Object.keys(meta).length > 0 ? meta : null, body: content.slice(match[0].length) };
+  // ponytail: count newlines in the frontmatter match (incl. closing --- line) so
+  // rehypeSourceLine can offset anchor source lines to match editor content lines.
+  const frontmatterLineCount = (match[0].match(/\n/g) ?? []).length;
+
+  return { meta: Object.keys(meta).length > 0 ? meta : null, body: content.slice(match[0].length), frontmatterLineCount };
 }
 
 /** Render SKILL frontmatter meta as a styled card */
@@ -300,7 +304,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot }: import('../typ
     return map;
   }, [filePath, vaultRoot, resolvedVaultRoot]);
 
-  const { meta, body } = useMemo(() => parseFrontmatter(content), [content]);
+  const { meta, body, frontmatterLineCount } = useMemo(() => parseFrontmatter(content), [content]);
 
   const reactContent = useMemo(() => {
     try {
@@ -314,7 +318,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot }: import('../typ
         .use(rehypeRaw)
         .use(rehypeHighlight, { ignoreMissing: true } as any)
         .use(rehypeRemoveCodeBreaks)
-        .use(rehypeSourceLine)
+        .use(rehypeSourceLine, { offset: frontmatterLineCount })
         .use(rehypeReact, {
           jsx,
           jsxs,
@@ -328,7 +332,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot }: import('../typ
       console.error('[MarkdownPreview] render error:', error);
       return createElement('p', null, '渲染错误');
     }
-  }, [body, componentMap]);
+  }, [body, componentMap, frontmatterLineCount]);
 
   return (
     <div className="md-preview" ref={containerRef}>

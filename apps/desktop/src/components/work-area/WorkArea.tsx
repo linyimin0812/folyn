@@ -118,16 +118,19 @@ export function WorkArea() {
   useEffect(() => {
     if (viewMode !== 'split' || activeTab?.fileType !== 'markdown') return;
 
-    const scrollDOM = editorRef.current?.getScrollDOM();
-    const previewDOM = prevBodyRef.current;
-    if (!scrollDOM || !previewDOM) return;
+    // ponytail: prefs (editorFont/fontSize/showLineNumbers/tabSize/wrapColumn)
+    // hydrate async after first mount and are part of QuillEditor's `key`, so
+    // QuillEditor remounts on hydration — destroying the EditorView (and its
+    // .cm-scroller) the first attach pointed at. To survive that race we don't
+    // cache the scroller/preview nodes in closure vars; we read them live from
+    // refs inside the document-level capture listener. That way, whatever the
+    // current scroller is, the listener uses it. Effect deps intentionally
+    // exclude prefs so we don't churn listeners on hydration.
+    let editorRaf = 0;
+    let previewRaf = 0;
 
-    function resetScrollSource() {
-      if (scrollResetTimer.current) clearTimeout(scrollResetTimer.current);
-      scrollResetTimer.current = setTimeout(() => {
-        scrollSourceRef.current = null;
-      }, 150);
-    }
+    const getEditorScrollDOM = () => editorRef.current?.getScrollDOM() ?? null;
+    const getPreviewDOM = () => prevBodyRef.current;
 
     function handleEditorScroll() {
       if (scrollSourceRef.current === 'preview') return;
@@ -135,9 +138,11 @@ export function WorkArea() {
       resetScrollSource();
 
       const view = editorRef.current?.getView();
-      if (!view || !previewDOM) return;
+      const scrollDOM = getEditorScrollDOM();
+      const previewDOM = getPreviewDOM();
+      if (!view || !scrollDOM || !previewDOM) return;
 
-      const topBlock = view.lineBlockAtHeight(scrollDOM!.scrollTop);
+      const topBlock = view.lineBlockAtHeight(scrollDOM.scrollTop);
       const topLine = view.state.doc.lineAt(topBlock.from).number;
 
       const anchors = previewDOM.querySelectorAll<HTMLElement>('[data-source-line]');
@@ -156,9 +161,16 @@ export function WorkArea() {
       if (lo + 1 < anchors.length) {
         const nextEl = anchors[lo + 1];
         const nextLine = parseInt(nextEl.dataset.sourceLine!);
+        // ponytail: clamp progress to [0,1]. When the editor's topLine is
+        // below the first block anchor (body starts with blank lines / non-block
+        // content), anchorLine > topLine → negative progress → preview jumps to
+        // top. Clamp keeps preview at the nearest anchor instead.
         const progress = nextLine > anchorLine
-          ? (topLine - anchorLine) / (nextLine - anchorLine)
+          ? Math.max(0, Math.min(1, (topLine - anchorLine) / (nextLine - anchorLine)))
           : 0;
+        // ponytail: anchorEl.offsetTop is relative to its offsetParent
+        // (PreviewPane root, position:relative), which sits at the .prev-body's
+        // 0,0 — same coordinate origin as scrollTop. So direct assignment works.
         const anchorTop = anchorEl.offsetTop;
         const nextTop = nextEl.offsetTop;
         previewDOM.scrollTop = anchorTop + (nextTop - anchorTop) * progress;
@@ -173,7 +185,9 @@ export function WorkArea() {
       resetScrollSource();
 
       const view = editorRef.current?.getView();
-      if (!view || !previewDOM) return;
+      const scrollDOM = getEditorScrollDOM();
+      const previewDOM = getPreviewDOM();
+      if (!view || !scrollDOM || !previewDOM) return;
 
       const scrollTop = previewDOM.scrollTop;
       const anchors = previewDOM.querySelectorAll<HTMLElement>('[data-source-line]');
@@ -192,30 +206,40 @@ export function WorkArea() {
 
       const lineInfo = view.state.doc.line(targetLine);
       const block = view.lineBlockAt(lineInfo.from);
-      scrollDOM!.scrollTop = block.top;
+      scrollDOM.scrollTop = block.top;
     }
 
-    let editorRaf = 0;
-    let previewRaf = 0;
+    function resetScrollSource() {
+      if (scrollResetTimer.current) clearTimeout(scrollResetTimer.current);
+      scrollResetTimer.current = setTimeout(() => {
+        scrollSourceRef.current = null;
+      }, 150);
+    }
 
-    const onEditorScroll = () => {
-      cancelAnimationFrame(editorRaf);
-      editorRaf = requestAnimationFrame(handleEditorScroll);
+    // ponytail: scroll events don't bubble. Capture-phase listener on document
+    // catches all descendant scroll events; filter by target containment
+    // against the *current* scroller nodes (read live from refs each event so
+    // QuillEditor remounts don't strand us on a detached scroller).
+    const onDocScrollCapture = (e: Event) => {
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      const scrollDOM = getEditorScrollDOM();
+      const previewDOM = getPreviewDOM();
+      if (scrollDOM && (t === scrollDOM || scrollDOM.contains(t))) {
+        cancelAnimationFrame(editorRaf);
+        editorRaf = requestAnimationFrame(handleEditorScroll);
+      } else if (previewDOM && (t === previewDOM || previewDOM.contains(t))) {
+        cancelAnimationFrame(previewRaf);
+        previewRaf = requestAnimationFrame(handlePreviewScroll);
+      }
     };
-    const onPreviewScroll = () => {
-      cancelAnimationFrame(previewRaf);
-      previewRaf = requestAnimationFrame(handlePreviewScroll);
-    };
-
-    scrollDOM.addEventListener('scroll', onEditorScroll, { passive: true });
-    previewDOM.addEventListener('scroll', onPreviewScroll, { passive: true });
+    document.addEventListener('scroll', onDocScrollCapture, true);
 
     return () => {
-      scrollDOM.removeEventListener('scroll', onEditorScroll);
-      previewDOM.removeEventListener('scroll', onPreviewScroll);
       cancelAnimationFrame(editorRaf);
       cancelAnimationFrame(previewRaf);
       if (scrollResetTimer.current) clearTimeout(scrollResetTimer.current);
+      document.removeEventListener('scroll', onDocScrollCapture, true);
     };
   }, [viewMode, activeTab?.fileType, activeTabId]);
 

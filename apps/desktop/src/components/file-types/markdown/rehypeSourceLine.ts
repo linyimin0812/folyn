@@ -3,7 +3,8 @@ const BLOCK_TAGS = new Set([
   'blockquote', 'pre', 'ul', 'ol', 'table', 'hr', 'div',
 ]);
 
-export function rehypeSourceLine() {
+export function rehypeSourceLine(options: { offset?: number } = {}) {
+  const offset = options.offset ?? 0;
   return (tree: any) => {
     function walk(node: any) {
       if (
@@ -12,7 +13,7 @@ export function rehypeSourceLine() {
         node.position?.start?.line
       ) {
         node.properties = node.properties || {};
-        node.properties['dataSourceLine'] = node.position.start.line;
+        node.properties['data-source-line'] = node.position.start.line + offset;
       }
       if (node.children) {
         for (const child of node.children) walk(child);
