@@ -25,6 +25,7 @@
 - 兜底 UI 显示"此类型暂无预览" + "跳转到源文件 ↗"按钮 + 默认收起的"显示源码"折叠区（点击展开后 `<pre>` dump 源码）。
 - 有 Preview handler 的类型（md / dbml / csv / code / json / html / image / mmap / ...）行为不变。
 - 加载中、错误、未指定 src 等现有分支保持不变。
+- `src="..."` 的 autocomplete：当 partial 是目录路径（含 `/`，含 `./` / `../` / 裸路径如 `分享/`）时，列出该目录下的直接子项（文件 + 目录，目录 `apply` 末尾带 `/` 便于继续钻取）；partial 末尾的段作为文件名过滤。无 `/` 时保持现有"全 vault 子串过滤"行为。
 
 ## Acceptance Criteria (evolving)
 
@@ -35,6 +36,10 @@
 - [ ] `:::file-preview{src="some.md"}` 仍正常渲染 markdown 预览（无回归）——需手动验证。
 - [ ] `:::file-preview{src="不存在的文件.md"}` 仍显示读取错误（无回归）——需手动验证。
 - [x] header 中文件名前的图标按文件扩展名解析（通过 `VaultContext.getFileIcon`），未提供 resolver 时回退到 `📄` emoji。
+- [ ] `:::file-preview{src="./"}` 在编辑器里光标在引号内时，弹出当前文档所在目录的直接子项列表（文件 + 目录）。——需手动验证。
+- [ ] 选中目录项后 `src` 自动补到 `src="./<dir>/"`，光标继续在引号内时可继续钻取。——需手动验证。
+- [ ] `src="分享/"` 列出 `分享/` 目录的直接子项。——需手动验证。
+- [ ] `src="分享/dr"` 只列出 `分享/` 下以 `dr` 开头的子项。——需手动验证。
 
 ## Definition of Done
 
