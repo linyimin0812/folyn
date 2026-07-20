@@ -142,6 +142,15 @@ def should_skip_injection() -> bool:
     return any(os.environ.get(var) == "1" for var in non_interactive_vars)
 
 
+def log(message: str) -> None:
+    # ponytail: append-only debug log, no rotation — hook runs once per session
+    try:
+        with open("/tmp/trellis-debug.log", "a", encoding="utf-8") as handle:
+            handle.write(f"{message}\n")
+    except OSError:
+        pass
+
+
 def read_file(path: Path, fallback: str = "") -> str:
     try:
         return path.read_text(encoding="utf-8")
@@ -788,6 +797,8 @@ If a task is READY, execute its Next required action without asking whether to c
         # Cursor sessionStart format (top-level snake_case per Cursor docs)
         "additional_context": context_text,
     }
+
+    log(context_text)
 
     # Output JSON - stdout is already configured for UTF-8
     print(json.dumps(result, ensure_ascii=False), flush=True)
