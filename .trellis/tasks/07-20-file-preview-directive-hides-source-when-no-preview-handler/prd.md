@@ -46,7 +46,7 @@
 - [ ] 选中目录项后 `src` 自动补到 `src="./<dir>/"`，光标继续在引号内时可继续钻取。——需手动验证。
 - [ ] `src="分享/"` 列出 `分享/` 目录的直接子项。——需手动验证。
 - [ ] `src="分享/dr"` 只列出 `分享/` 下以 `dr` 开头的子项。——需手动验证。
-- [ ] 在 dev server 写 `:::file-preview{src="分享/test.drawio"}`，默认显示"此类型暂无预览"；点 code 图标切换到源码视图显示 drawio XML；点 external-link 图标在编辑器打开该文件；点 code 图标切回无预览提示。——需手动验证。
+- [ ] 在 dev server 写 `:::file-preview{src="分享/test.drawio"}`，默认显示 drawio 图形（chromeless 只读 viewer）；点 code 图标切换到源码视图显示 drawio XML；点 external-link 图标在编辑器打开该文件；点 code 图标切回预览。——需手动验证。
 
 ## Definition of Done
 
@@ -60,6 +60,7 @@
 - 不改 `renderFile` 的接口契约（保持 `null` 表示无 handler）。
 - 不动 mermaid / excalidraw 这类已经在别的路径渲染的流程。
 - 不加文件元信息展示（方案 C 已拒绝）。
+- ~~不给 drawio 新增 Preview 组件~~（已撤销：drawio 现在加 Preview，渲染 chromeless 只读图形）。
 
 ## Technical Notes
 
