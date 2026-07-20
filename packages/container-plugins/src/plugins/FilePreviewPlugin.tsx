@@ -175,6 +175,6 @@ export const filePreviewPlugin: ContainerPlugin = {
   label: '文件预览',
   category: 'media',
   component: FilePreviewComponent,
-  template: ':::file-preview{src="path/to/file.md"}\n:::',
+  template: ':::file-preview{src=""}\n:::',
   description: '内联展示 Vault 中的文件内容',
 };
