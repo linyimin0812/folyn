@@ -1169,3 +1169,8 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
   opacity: .4; cursor: default;
 }
 .ed-search-close { margin-left: 2px; }
+
+/* ponytail: hide mind-elixir's built-in direction toolbar (.lt). The preview
+   has its own React direction buttons (right-edge vertical strip); the
+   library's bundled toolbar would duplicate them. */
+.mind-elixir-toolbar.lt { display: none !important; }

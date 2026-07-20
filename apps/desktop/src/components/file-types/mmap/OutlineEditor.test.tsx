@@ -150,3 +150,89 @@ describe('OutlineEditor keyboard', () => {
     expect(ta.value).toBe('Hello\nWorld');
   });
 });
+
+describe('OutlineEditor undo/redo', () => {
+  afterEach(cleanup);
+
+  // ponytail: Cmd+Z undoes the last edit. The native textarea undo stack
+  // can't span structural edits (Enter split moves focus to a new row), so
+  // the lines-level history must cover Enter. This test pins that.
+  it('Cmd+Z undoes an Enter split (structural edit)', () => {
+    const src = '- RootNode';
+    const { onChange } = setup(src);
+    const ta = textareas()[0];
+    ta.focus();
+    ta.setSelectionRange(4, 4);
+    fireEvent.keyDown(ta, { key: 'Enter' });
+    expect(onChange.mock.calls[0][0] as string).toBe('- Root\n  - Node');
+    // Cmd+Z → undo the split → back to single row "- RootNode".
+    fireEvent.keyDown(ta, { key: 'z', metaKey: true });
+    expect(onChange.mock.calls[1][0] as string).toBe('- RootNode');
+  });
+
+  it('Cmd+Shift+Z redoes after an undo', () => {
+    const src = '- RootNode';
+    const { onChange } = setup(src);
+    const ta = textareas()[0];
+    ta.focus();
+    ta.setSelectionRange(4, 4);
+    fireEvent.keyDown(ta, { key: 'Enter' });
+    fireEvent.keyDown(ta, { key: 'z', metaKey: true }); // undo
+    fireEvent.keyDown(ta, { key: 'z', metaKey: true, shiftKey: true }); // redo
+    expect(onChange.mock.calls[onChange.mock.calls.length - 1][0] as string).toBe(
+      '- Root\n  - Node',
+    );
+  });
+
+  it('Cmd+Z undoes a Tab indent (structural edit)', () => {
+    const src = '- Root\n  - A';
+    const { onChange } = setup(src);
+    const ta = textareas()[1];
+    ta.focus();
+    fireEvent.keyDown(ta, { key: 'Tab' });
+    expect(onChange.mock.calls[0][0] as string).toBe('- Root\n    - A');
+    fireEvent.keyDown(ta, { key: 'z', metaKey: true });
+    expect(onChange.mock.calls[1][0] as string).toBe('- Root\n  - A');
+  });
+
+  it('Cmd+Z with empty history is a no-op (no emit, no crash)', () => {
+    const src = '- Root\n  - A';
+    const { onChange } = setup(src);
+    const ta = textareas()[0];
+    ta.focus();
+    fireEvent.keyDown(ta, { key: 'z', metaKey: true });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('Cmd+Y is an alias for redo', () => {
+    const src = '- RootNode';
+    const { onChange } = setup(src);
+    const ta = textareas()[0];
+    ta.focus();
+    ta.setSelectionRange(4, 4);
+    fireEvent.keyDown(ta, { key: 'Enter' });
+    fireEvent.keyDown(ta, { key: 'z', metaKey: true }); // undo
+    fireEvent.keyDown(ta, { key: 'y', metaKey: true }); // redo via Cmd+Y
+    expect(onChange.mock.calls[onChange.mock.calls.length - 1][0] as string).toBe(
+      '- Root\n  - Node',
+    );
+  });
+
+  // ponytail: coalescing — consecutive text edits to the same row within
+  // 500ms collapse into ONE undo step. Without coalescing, every keystroke
+  // would be its own undo step, making the undo stack useless for typing.
+  it('coalesces consecutive text edits to the same row into one undo step', () => {
+    const src = '- abc';
+    const { onChange } = setup(src);
+    const ta = textareas()[0];
+    ta.focus();
+    ta.setSelectionRange(4, 4);
+    fireEvent.change(ta, { target: { value: 'abcd' } });
+    fireEvent.change(ta, { target: { value: 'abcde' } });
+    // One Cmd+Z reverses both chars → back to "abc".
+    fireEvent.keyDown(ta, { key: 'z', metaKey: true });
+    expect(onChange.mock.calls[onChange.mock.calls.length - 1][0] as string).toBe(
+      '- abc',
+    );
+  });
+});

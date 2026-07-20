@@ -6,14 +6,15 @@ import type { PreviewProps } from '../types';
 afterEach(() => { cleanup(); });
 beforeEach(() => { cleanup(); });
 
-// ponytail: regression test for the "画布" trigger button. The button is a
-// SIBLING of the mind-elixir mount target (elRef), not a descendant — so
-// mind-elixir's own pointer/click listeners never see clicks on the button.
-// An earlier version had `onClickCapture={(e) => e.stopPropagation()}` on
-// the button, which stopped the native click at the target in the capture
+// ponytail: regression test for the merged "样式" trigger button. The button
+// is a SIBLING of the mind-elixir mount target (elRef), not a descendant —
+// so mind-elixir's own pointer/click listeners never see clicks on the
+// button. An earlier version had `onClickCapture={(e) => e.stopPropagation()}`
+// on the button, which stopped the native click at the target in the capture
 // phase; since React 18 attaches onClick via a root-level bubble delegate,
 // the event never bubbled back to the root and onClick never fired — the
-// panel never opened. This test pins the fix: a click toggles the panel.
+// panel never opened. This test pins the fix: a click toggles the merged
+// StylePanel (default tab is 画布样式, which renders <select> controls).
 afterEach(() => { cleanup(); });
 
 const props: PreviewProps = {
@@ -22,8 +23,8 @@ const props: PreviewProps = {
   vaultRoot: '/tmp',
 };
 
-describe('MindMapCanvas 画布 trigger button', () => {
-  it('click opens the canvas style panel; a second click closes it', async () => {
+describe('MindMapCanvas 样式 trigger button', () => {
+  it('click opens the style panel; a second click closes it', async () => {
     // Suppress mind-elixir's jsdom noise (getScreenCTM / createSVGMatrix are
     // not implemented) — the button click works regardless of whether the
     // canvas fully initializes, because the button is React-rendered.
@@ -45,11 +46,11 @@ describe('MindMapCanvas 画布 trigger button', () => {
         expect(container.querySelector('.map-container')).not.toBeNull();
       });
 
-      const btn = screen.getByTitle('画布样式') as HTMLButtonElement;
-      // No <select> (CanvasStylePanel) before clicking.
+      const btn = screen.getByTitle('样式') as HTMLButtonElement;
+      // No <select> (StylePanel default tab = 画布样式) before clicking.
       expect(container.querySelector('select')).toBeNull();
 
-      // First click → panel appears (CanvasStylePanel renders <select> controls).
+      // First click → panel appears (画布样式 tab renders <select> controls).
       fireEvent.click(btn);
       await waitFor(() => {
         expect(container.querySelector('select')).not.toBeNull();

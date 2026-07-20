@@ -273,10 +273,27 @@ export function OutlineEditor({ content, filePath, onChange }: EditorProps) {
   // inserted at once the user confirms the upload dialog.
   const pasteTargetRef = useRef<{ idx: number; caret: number }>({ idx: 0, caret: 0 });
 
+  // ponytail: undo/redo history ref. The undo/redo callbacks themselves are
+  // defined after `emit` (below) because they call it — keep just the ref
+  // here so the order is: ref → emit → undo/redo.
+  type Snapshot = { lines: OutlineLine[]; idx: number; caret: number };
+  const historyRef = useRef<{
+    past: Snapshot[];
+    future: Snapshot[];
+    lastEdit: { idx: number; ts: number } | null;
+  }>({ past: [], future: [], lastEdit: null });
+
   // External content change → re-parse unless we just emitted it (feedback
   // loop guard mirroring MindMapCanvas).
   useEffect(() => {
     if (content === lastEmittedRef.current) return;
+    // ponytail: external content change (e.g., the canvas pane edited the
+    // outline, or the file was reloaded from disk). History is now stale —
+    // snapshots reference a lines array that no longer matches the DOM.
+    // Drop everything so Cmd+Z doesn't restore a stale state.
+    historyRef.current.past.length = 0;
+    historyRef.current.future.length = 0;
+    historyRef.current.lastEdit = null;
     setLines(parseOutline(content));
   }, [content]);
 
@@ -288,6 +305,75 @@ export function OutlineEditor({ content, filePath, onChange }: EditorProps) {
     },
     [onChange],
   );
+
+  // ponytail: undo/redo history. Native textarea undo has a per-textarea
+  // stack — it can't reverse a structural edit (Enter split, Backspace
+  // merge, Tab indent) that already moved focus to a different row, nor an
+  // image-paste insert that mutated `lines` outside the textarea's value
+  // pipeline. So we keep a lines-level history with one snapshot per
+  // "logical" edit, and intercept Cmd+Z / Cmd+Shift+Z / Cmd+Y in the
+  // textarea keydown to dispatch our undo/redo.
+  //
+  // Coalescing: consecutive TEXT edits to the same row within 500ms are
+  // one undo step (matches native textarea undo's keystroke grouping).
+  // Structural edits never coalesce — each is its own step. Image paste
+  // never coalesces (it inserts a multi-char markdown blob in one shot).
+  //
+  // Ceiling: caret restoration on undo/redo is best-effort — we snapshot
+  // {idx, selectionStart} when pushing, restore it after `setLines`. If the
+  // restored row's textarea value is shorter than the snapshot's caret
+  // (e.g., a structural edit shrank the row), the existing
+  // `setSelectionRange` try/catch clamps and leaves the caret at end. Good
+  // enough for MVP; richer caret semantics (e.g., restore the post-edit
+  // selection span across rows) would need a per-snapshot selection range.
+  const captureCaret = useCallback((): { idx: number; caret: number } => {
+    const idx = focusIdxRef.current;
+    const ta = taRefs.current[idx];
+    return { idx, caret: ta?.selectionStart ?? 0 };
+  }, []);
+
+  const pushHistory = useCallback((prevLines: OutlineLine[], isText: boolean) => {
+    const h = historyRef.current;
+    const { idx, caret } = captureCaret();
+    if (
+      isText &&
+      h.lastEdit?.idx === idx &&
+      Date.now() - h.lastEdit.ts < 500
+    ) {
+      h.lastEdit.ts = Date.now();
+      return;
+    }
+    h.past.push({ lines: prevLines, idx, caret });
+    if (h.past.length > 100) h.past.shift();
+    h.future.length = 0;
+    h.lastEdit = { idx, ts: Date.now() };
+  }, [captureCaret]);
+
+  const undo = useCallback(() => {
+    const h = historyRef.current;
+    if (h.past.length === 0) return;
+    const snap = h.past.pop()!;
+    const cur = captureCaret();
+    h.future.push({ lines, idx: cur.idx, caret: cur.caret });
+    h.lastEdit = null;
+    focusIdxRef.current = snap.idx;
+    focusCaretRef.current = snap.caret;
+    setLines(snap.lines);
+    emit(snap.lines);
+  }, [lines, emit, captureCaret]);
+
+  const redo = useCallback(() => {
+    const h = historyRef.current;
+    if (h.future.length === 0) return;
+    const snap = h.future.pop()!;
+    const cur = captureCaret();
+    h.past.push({ lines, idx: cur.idx, caret: cur.caret });
+    h.lastEdit = null;
+    focusIdxRef.current = snap.idx;
+    focusCaretRef.current = snap.caret;
+    setLines(snap.lines);
+    emit(snap.lines);
+  }, [lines, emit, captureCaret]);
 
   // Re-size all textareas whenever line texts change.
   useLayoutEffect(() => {
@@ -324,7 +410,8 @@ export function OutlineEditor({ content, filePath, onChange }: EditorProps) {
   // (default textarea behavior — not intercepted here); Enter (no shift) is
   // intercepted and calls splitLine. updateLineText splits the new value on
   // the first `\n`: head → text, tail (joined with `\n`) → note.
-  const updateLineText = (idx: number, value: string) => {
+  const updateLineText = (idx: number, value: string, isText = true) => {
+    pushHistory(lines, isText);
     const [text, ...rest] = value.split('\n');
     const note = rest.length ? rest.join('\n') : undefined;
     const next = lines.slice();
@@ -341,6 +428,7 @@ export function OutlineEditor({ content, filePath, onChange }: EditorProps) {
     const cur = lines[idx];
     const newDepth = Math.max(1, Math.min(20, cur.depth + delta));
     if (newDepth === cur.depth) return;
+    pushHistory(lines, false);
     const next = lines.slice();
     next[idx] = { ...cur, depth: newDepth };
     setLines(next);
@@ -361,6 +449,7 @@ export function OutlineEditor({ content, filePath, onChange }: EditorProps) {
     const [afterText, ...afterRest] = after.split('\n');
     const beforeNote = beforeRest.length ? beforeRest.join('\n') : undefined;
     const afterNote = afterRest.length ? afterRest.join('\n') : undefined;
+    pushHistory(lines, false);
     const next = lines.slice();
     next[idx] = { ...cur, text: beforeText, note: beforeNote };
     // ponytail: root (depth 0) is a unique implicit container — WorkFlowy
@@ -401,6 +490,7 @@ export function OutlineEditor({ content, filePath, onChange }: EditorProps) {
     if (prevIdx < 0) return; // root — no-op
     const cur = lines[idx];
     const prevRow = lines[prevIdx];
+    pushHistory(lines, false);
     const next = lines.slice();
     const prevFull = prevRow.text + (prevRow.note ? '\n' + prevRow.note : '');
     const curFull = cur.text + (cur.note ? '\n' + cur.note : '');
@@ -446,7 +536,7 @@ export function OutlineEditor({ content, filePath, onChange }: EditorProps) {
         // markdown after the next paint.
         focusIdxRef.current = idx;
         focusCaretRef.current = caret + imageMarkdown.length;
-        updateLineText(idx, newText);
+        updateLineText(idx, newText, false);
       } catch (error) {
         console.error('[ImageUpload] Failed:', error);
       } finally {
@@ -624,6 +714,28 @@ export function OutlineEditor({ content, filePath, onChange }: EditorProps) {
                   }
                 }}
                 onKeyDown={(e) => {
+                  // ponytail: Cmd/Ctrl+Z = undo, Cmd/Ctrl+Shift+Z or Cmd/Ctrl+Y
+                  // = redo. We override the textarea's native undo here — its
+                  // per-textarea stack doesn't span structural edits (Enter
+                  // split, Backspace merge, Tab indent) or image-paste inserts,
+                  // so the native "undo" would silently skip those actions
+                  // and confuse the user. Our lines-level history covers all
+                  // edit kinds.
+                  const mod = e.metaKey || e.ctrlKey;
+                  if (mod && !e.altKey) {
+                    const k = e.key.toLowerCase();
+                    if (k === 'z') {
+                      e.preventDefault();
+                      if (e.shiftKey) redo();
+                      else undo();
+                      return;
+                    }
+                    if (k === 'y') {
+                      e.preventDefault();
+                      redo();
+                      return;
+                    }
+                  }
                   if (e.key === 'Tab') {
                     e.preventDefault();
                     changeDepth(idx, e.shiftKey ? -1 : 1);

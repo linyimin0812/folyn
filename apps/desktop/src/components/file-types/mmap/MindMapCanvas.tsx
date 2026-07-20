@@ -1,8 +1,21 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { Settings2 } from 'lucide-react';
 import { DARK_THEME, THEME } from 'mind-elixir';
 import type { MindElixirInstance } from 'mind-elixir';
 import type { PreviewProps } from '../types';
 import { createTopicMarkdown } from './topicMarkdown';
+
+// ponytail: mind-elixir's own direction toolbar SVGs (tbltl/tbltr/tblts).
+// Lifted verbatim from mind-elixir's bundled HTML so the preview uses the
+// same icons the library itself uses — no new icon set, no guessing.
+const DIR_ICON_PATHS: Record<'left' | 'right' | 'side', string> = {
+  left:
+    'M639 463.3L639 285.1c0-36.9-26.4-68.5-61.3-68.5l-150.2 0c-1.5 0-3 0.1-4.5 0.3-10.2-38.7-45.5-67.3-87.5-67.3-50 0-90.5 40.5-90.5 90.5s40.5 90.5 90.5 90.5c42 0 77.3-28.6 87.5-67.4 1.4 0.3 2.9 0.4 4.5 0.4L577.7 263.6c6.8 0 14.3 8.9 14.3 21.5l0 427c0 12.7-7.4 21.5-14.3 21.5l-150.2 0c-1.5 0-3 0.2-4.5 0.4-10.2-38.8-45.5-67.3-87.5-67.3-50 0-90.5 40.5-90.5 90.4 0 49.9 40.5 90.6 90.5 90.6 42 0 77.3-28.6 87.5-67.4 1.4 0.2 2.9 0.4 4.5 0.4L577.7 780.7c34.8 0 61.3-31.6 61.3-68.5L639 510.3l79.1 0c10.4 38.5 45.5 67 87.4 67 50 0 90.5-40.5 90.5-90.5s-40.5-90.5-90.5-90.5c-41.8 0-77 28.4-87.4 67L639 463.3z',
+  right:
+    'M385 560.7L385 738.9c0 36.9 26.4 68.5 61.3 68.5l150.2 0c1.5 0 3-0.1 4.5-0.3 10.2 38.7 45.5 67.3 87.5 67.3 50 0 90.5-40.5 90.5-90.5s-40.5-90.5-90.5-90.5c-42 0-77.3 28.6-87.5 67.4-1.4-0.3-2.9-0.4-4.5-0.4L446.3 760.4c-6.8 0-14.3-8.9-14.3-21.5l0-427c0-12.7 7.4-21.5 14.3-21.5l150.2 0c1.5 0 3-0.2 4.5-0.4 10.2 38.8 45.5 67.3 87.5 67.3 50 0 90.5-40.5 90.5-90.4 0-49.9-40.5-90.6-90.5-90.6-42 0-77.3 28.6-87.5 67.4-1.4-0.2-2.9-0.4-4.5-0.4L446.3 243.3c-34.8 0-61.3 31.6-61.3 68.5L385 513.7l-79.1 0c-10.4-38.5-45.5-67-87.4-67-50 0-90.5 40.5-90.5 90.5s40.5 90.5 90.5 90.5c41.8 0 77-28.4 87.4-67L385 560.7z',
+  side:
+    'M851.9 328.5c-60 0-108.6 48.5-108.9 108.4l-137.9 38.4a109.1 109.1 0 0 0-63.5-46.6l1.4-137.1c47.3-11.9 82.3-54.7 82.3-105.6 0-60.2-48.8-108.9-108.9-108.9s-108.9 48.8-108.9 108.9c0 49.2 32.6 90.8 77.4 104.3l-1.4 138.9a109.2 109.2 0 0 0-63.5 48.6l-138.9-39.5 0-0.7c0-60.2-48.8-108.9-108.9-108.9s-108.9 48.8-108.9 108.9c0 60.2 48.8 108.9 108.9 108.9 39.4 0 73.9-20.9 93-52.2l139.2 39.6 0 0.2c0 25.8 9 49.6 24 68.2l-90.1 132.6a108.7 108.7 0 0 0-34.3-5.5c-60.2 0-108.9 48.8-108.9 108.9 0 60.2 48.8 108.9 108.9 108.9 60.2 0 108.9-48.8 108.9-108.9 0-27.1-9.9-52-26.4-71l89-131a108.5 108.5 0 0 0 37.7 6.7 108.7 108.7 0 0 0 36.5-6.3l93.1 132.6a108.5 108.5 0 0 0-24.7 69.1c0 60.2 48.8 108.9 108.9 108.9 60.2 0 108.9-48.8 108.9-108.9 0-60.1-48.8-108.9-108.9-108.9a108.8 108.8 0 0 0-36.7 6.3l-93.1-132.5a108.5 108.5 0 0 0 24.8-72.2l136.1-37.9c19 31.9 53.8 53.4 93.7 53.4 60.2 0 108.9-48.8 108.9-108.9-0-60.2-48.8-108.9-108.9-108.9z',
+};
 import {
   outlineToMindElixirData,
   mindElixirDataToOutline,
@@ -72,8 +85,16 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
   // the latest without re-binding the operation listener.
   const [canvasStyle, setCanvasStyle] = useState<MmapMapStyle>({});
   const canvasStyleRef = useRef<MmapMapStyle>({});
-  const [showCanvasPanel, setShowCanvasPanel] = useState(false);
-  const [showNodePanelHint, setShowNodePanelHint] = useState(false);
+  // ponytail: single merged "样式" panel with two tabs (画布样式 / 节点样式).
+  // Replaces the old `showCanvasPanel` + `showNodePanel` pair. The panel
+  // only opens via the toolbar button — node clicks don't auto-open it
+  // (matching the previous no-pop-on-click contract). Once open, the panel
+  // stays open across node clicks: the node tab's content refreshes for
+  // the new selection, the canvas tab is unaffected. Default tab is
+  // 'canvas' because it works without a node selection; user switches to
+  // 'node' to style the currently-selected node.
+  const [showStylePanel, setShowStylePanel] = useState(false);
+  const [activeStyleTab, setActiveStyleTab] = useState<'canvas' | 'node'>('canvas');
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const [notePopover, setNotePopover] = useState<{ text: string; x: number; y: number } | null>(null);
   // Track the currently-selected node's id + a tick to force a re-read of
@@ -619,66 +640,56 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
   const liveCompact = instRef.current?.compact ?? false;
 
   return (
-    <>
-      <div ref={elRef} className="w-full h-full overflow-hidden" />
-      {/* ponytail: vertical config toolbar pinned to right edge of canvas.
-          Consolidates all config entry points (canvas style + node style)
-          into one icon strip — replaces the old floating "画布" text button.
-          A SIBLING of elRef (the mind-elixir mount target), NOT a descendant —
-          so mind-elixir's own pointer/click listeners on its container never
-          see clicks on the buttons. The onPointerDown stopPropagation is
-          belt-and-braces in case a future refactor nests the toolbar inside
-          the canvas. Do NOT add onClickCapture with stopPropagation here —
-          React 18 attaches onClick via a root-level bubble delegate; a
-          capture-phase stopPropagation on the target kills the native event
-          before it can bubble back to the root, so onClick never fires. */}
+    <div className="flex w-full h-full overflow-hidden">
+      <div className="relative flex-1 min-w-0 overflow-hidden">
+        <div ref={elRef} className="w-full h-full overflow-hidden" />
+      {/* ponytail: config toolbar pinned to right edge, vertically centered.
+          Vertical strip — Settings2 on top, then 3 direction buttons (向左/
+          向右/双侧). Direction icons are mind-elixir's own bundled SVGs
+          (tbltl/tbltr/tblts), lifted verbatim — no new icon set. A SIBLING
+          of elRef, not a descendant, so mind-elixir's own listeners never
+          see clicks here. */}
       <div
-        className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1 z-[800]"
+        className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 z-[800]"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
-          className={`h-8 w-8 rounded border border-brd bg-panel text-t1 hover:bg-hov shadow-sm flex items-center justify-center ${showCanvasPanel ? 'border-acc text-acc' : ''}`}
-          onClick={() => setShowCanvasPanel((v) => !v)}
-          title="画布样式"
+          className={`h-8 w-8 rounded border border-brd bg-panel text-t1 hover:bg-hov shadow-sm flex items-center justify-center ${showStylePanel ? 'border-acc text-acc' : ''}`}
+          onClick={() => setShowStylePanel((v) => !v)}
+          title="样式"
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-            <path d="M8 1.5C4.4 1.5 1.5 4.4 1.5 8s2.9 6.5 6.5 6.5c.6 0 1-.4 1-1 0-.3-.1-.5-.3-.7-.2-.2-.3-.4-.3-.7 0-.6.4-1 1-1h1.2c1.6 0 2.9-1.3 2.9-2.9 0-3.6-2.9-6.2-6.5-6.2z" />
-            <circle cx="4.5" cy="6" r=".8" fill="currentColor" stroke="none" />
-            <circle cx="6.5" cy="3.5" r=".8" fill="currentColor" stroke="none" />
-            <circle cx="10" cy="3.5" r=".8" fill="currentColor" stroke="none" />
-            <circle cx="12" cy="6" r=".8" fill="currentColor" stroke="none" />
-          </svg>
+          <Settings2 size={14} />
         </button>
-        <button
-          type="button"
-          className={`h-8 w-8 rounded border border-brd bg-panel text-t1 hover:bg-hov shadow-sm flex items-center justify-center ${selectedNodeId ? 'border-acc text-acc' : ''}`}
-          onClick={() => {
-            // ponytail: StylingPanel auto-shows on node select. This button is
-            // a manual trigger: with a selection it's a no-op (panel already
-            // visible, button just reflects active state); without one, flash
-            // a hint to select a node first. Auto-hides after 2s.
-            if (!selectedNodeId) {
-              setShowNodePanelHint(true);
-              window.setTimeout(() => setShowNodePanelHint(false), 2000);
-            }
-          }}
-          title="节点样式"
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" strokeLinecap="round">
-            <path d="M11.5 1.5l3 3-8 8-3.5.5.5-3.5z" />
-            <path d="M3 13c-1 0-1.5 1-1.5 2 1 0 2-.5 2-1.5" />
-          </svg>
-        </button>
-        {showNodePanelHint && (
-          <div className="absolute right-full top-1/2 -translate-y-1/2 mr-1 whitespace-nowrap rounded bg-surf border border-brd text-t1 text-[11px] px-2 py-1 shadow-lg pointer-events-none">
-            请先选中一个节点
-          </div>
-        )}
+        {([
+          { d: 0 as MmapDirection, key: 'left' as const, label: '向左' },
+          { d: 1 as MmapDirection, key: 'right' as const, label: '向右' },
+          { d: 2 as MmapDirection, key: 'side' as const, label: '双侧' },
+        ]).map(({ d, key, label }) => {
+          const active = liveDirection === d;
+          return (
+            <button
+              key={d}
+              type="button"
+              className={`h-8 w-8 rounded border border-brd bg-panel shadow-sm flex items-center justify-center ${active ? 'border-acc text-acc' : 'text-t1 hover:bg-hov'}`}
+              onClick={() => setDirection(d)}
+              title={`方向：${label}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 1024 1024" fill="currentColor">
+                <path d={DIR_ICON_PATHS[key]} />
+              </svg>
+            </button>
+          );
+        })}
       </div>
-      {showCanvasPanel && (
-        <CanvasStylePanel
+      </div>
+      {showStylePanel && (
+        <StylePanel
+          activeTab={activeStyleTab}
+          onTabChange={setActiveStyleTab}
+          onClose={() => setShowStylePanel(false)}
+          // canvas-tab props
           mapStyle={canvasStyle}
           direction={liveDirection}
           compact={liveCompact}
@@ -688,7 +699,13 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
           onBackground={setCanvasBackground}
           onAlignment={setAlignment}
           onTopicSpacing={setTopicSpacing}
-          onClose={() => setShowCanvasPanel(false)}
+          // node-tab props
+          hasSelection={!!selectedNodeId}
+          nodeStyle={selectedStyle}
+          onPatchNode={patchStyleField}
+          onReplaceNode={applyStyleToSelected}
+          onResetNode={() => applyStyleToSelected(undefined)}
+          onRainbowToggle={() => setRainbow(!rainbowOn)}
         />
       )}
       {previewSrc && (
@@ -712,17 +729,7 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
           {notePopover.text}
         </div>
       )}
-      {selectedNodeId && (
-        <StylingPanel
-          style={selectedStyle}
-          rainbowOn={rainbowOn}
-          onPatch={patchStyleField}
-          onReplace={applyStyleToSelected}
-          onReset={() => applyStyleToSelected(undefined)}
-          onRainbowToggle={() => setRainbow(!rainbowOn)}
-        />
-      )}
-    </>
+    </div>
   );
 }
 
@@ -787,15 +794,7 @@ function StylingPanel({
   };
 
   return (
-    <div
-      className="absolute top-1/2 right-12 -translate-y-1/2 z-[900] w-[220px] max-h-[calc(100%-24px)] overflow-auto rounded-lg border border-brd bg-panel shadow-lg text-t1"
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="px-2.5 py-2 border-b border-brd text-[11px] font-semibold text-t2">
-        画布样式 / 主题样式
-      </div>
-
+    <>
       <div className="px-2.5 py-2 flex flex-col gap-1.5 border-b border-brd">
         <div className={rowCls}>
           <span className={labelCls}>字体</span>
@@ -957,7 +956,7 @@ function StylingPanel({
           重置样式
         </button>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -982,6 +981,107 @@ function StylingPanel({
 //    No "free layout" mode. Disabled checkbox.
 //  - 水印 (watermark): mind-elixir has no watermark API. Omitted entirely
 //    (not even rendered as a disabled control — would be pure theater).
+
+// ponytail: StylePanel — single merged panel replacing the old split
+// CanvasStylePanel + StylingPanel. Tabs header switches between 画布样式
+// (canvas-level palette/background/alignment/topicSpacing/direction) and
+// 节点样式 (per-node font/fill/border/presets). The two bodies are the
+// existing CanvasStylePanel + StylingPanel components, refactored to
+// header-less fragments (this wrapper provides the absolute container +
+// tabs + close X so the bodies don't need their own). When the user
+// switches to 节点样式 without a selection, we render a placeholder
+// instead of the body so the panel doesn't flash empty controls.
+interface StylePanelProps extends CanvasStylePanelProps {
+  activeTab: 'canvas' | 'node';
+  onTabChange: (tab: 'canvas' | 'node') => void;
+  onClose: () => void;
+  hasSelection: boolean;
+  nodeStyle: MmapNodeStyle;
+  onPatchNode: (patch: MmapNodeStyle) => void;
+  onReplaceNode: (style: MmapNodeStyle) => void;
+  onResetNode: () => void;
+  onRainbowToggle: () => void;
+}
+
+function StylePanel(props: StylePanelProps) {
+  const {
+    activeTab,
+    onTabChange,
+    onClose,
+    hasSelection,
+    // node-tab props
+    nodeStyle,
+    onPatchNode,
+    onReplaceNode,
+    onResetNode,
+    onRainbowToggle,
+    // canvas-tab props (spread remainder)
+    ...canvasProps
+  } = props;
+  const tabBtnCls = (active: boolean) =>
+    `flex-1 px-2 py-1.5 text-[11px] font-medium border-b-2 ${
+      active
+        ? 'border-acc text-acc'
+        : 'border-transparent text-t3 hover:text-t1'
+    }`;
+  return (
+    <div
+      className="w-[240px] shrink-0 h-full flex flex-col border-l border-brd bg-panel text-t1"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-center border-b border-brd shrink-0">
+        <button
+          type="button"
+          className={tabBtnCls(activeTab === 'canvas')}
+          onClick={() => onTabChange('canvas')}
+        >
+          画布样式
+        </button>
+        <button
+          type="button"
+          className={tabBtnCls(activeTab === 'node')}
+          onClick={() => onTabChange('node')}
+        >
+          节点样式
+        </button>
+        <button
+          type="button"
+          className="text-t3 hover:text-t1 text-[14px] leading-none px-2"
+          onClick={onClose}
+          title="关闭"
+        >
+          ×
+        </button>
+      </div>
+      <div className="flex-1 overflow-auto">
+        {activeTab === 'canvas' ? (
+          <CanvasStylePanel {...canvasProps} />
+        ) : (
+          // ponytail: when no node is selected, render the StylingPanel body
+          // disabled+greyed rather than a placeholder. `<fieldset disabled>`
+          // natively disables every form control inside; opacity-60 signals
+          // the state visually. Keeps the layout stable so toggling
+          // selection doesn't reflow the sidebar.
+          <fieldset
+            disabled={!hasSelection}
+            className={`border-0 p-0 m-0 min-w-0 ${!hasSelection ? 'opacity-60 pointer-events-none' : ''}`}
+          >
+            <StylingPanel
+              style={nodeStyle}
+              rainbowOn={props.rainbowOn}
+              onPatch={onPatchNode}
+              onReplace={onReplaceNode}
+              onReset={onResetNode}
+              onRainbowToggle={onRainbowToggle}
+            />
+          </fieldset>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface CanvasStylePanelProps {
   mapStyle: MmapMapStyle;
   direction: MmapDirection;
@@ -992,7 +1092,6 @@ interface CanvasStylePanelProps {
   onBackground: (bg: string | undefined) => void;
   onAlignment: (mode: 'root' | 'nodes') => void;
   onTopicSpacing: (px: number | undefined) => void;
-  onClose: () => void;
 }
 
 function CanvasStylePanel({
@@ -1005,7 +1104,6 @@ function CanvasStylePanel({
   onBackground,
   onAlignment,
   onTopicSpacing,
-  onClose,
 }: CanvasStylePanelProps) {
   const labelCls = 'text-t3 text-[11px] font-medium w-[52px] shrink-0';
   const rowCls = 'flex items-center gap-1.5';
@@ -1019,23 +1117,7 @@ function CanvasStylePanel({
   const spacingDisabled = compact;
 
   return (
-    <div
-      className="absolute top-1/2 right-12 -translate-y-1/2 z-[850] w-[230px] max-h-[calc(100%-24px)] overflow-auto rounded-lg border border-brd bg-panel shadow-lg text-t1"
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="px-2.5 py-2 border-b border-brd text-[11px] font-semibold text-t2 flex items-center justify-between">
-        <span>画布样式</span>
-        <button
-          type="button"
-          className="text-t3 hover:text-t1 text-[14px] leading-none"
-          onClick={onClose}
-          title="关闭"
-        >
-          ×
-        </button>
-      </div>
-
+    <>
       <div className="px-2.5 py-2 flex flex-col gap-1.5 border-b border-brd">
         <div className="text-t3 text-[11px] font-medium">主题样式</div>
         <div className={rowCls} title="骨架类型 — mind-elixir 仅支持基础思维导图">
@@ -1140,6 +1222,6 @@ function CanvasStylePanel({
           <span className="text-t3 text-[10px]">px</span>
         </div>
       </div>
-    </div>
+    </>
   );
 }
