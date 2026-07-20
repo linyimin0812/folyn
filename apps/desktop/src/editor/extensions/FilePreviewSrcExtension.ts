@@ -1,4 +1,5 @@
 import { type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
+import type { EditorState } from '@codemirror/state';
 import { useVaultStore } from '@/store/vaultStore';
 import { flattenFileTree } from '@/utils/treeUtils';
 import type { VaultEntry } from '@quill/vault-provider';
@@ -44,7 +45,15 @@ export function createFilePreviewSrcCompletion(filePath: string) {
         apply: f.path,
         type: 'file' as const,
       }));
-      return { from: partialStart, to: ctx.pos, options, validFor: /[^"\s{}=]*/ };
+      // ponytail: invalidate the moment the partial grows a `/` — that
+      // transitions to the directory-children branch below, which needs a
+      // fresh query (different options, different `from`).
+      return {
+        from: partialStart,
+        to: ctx.pos,
+        options,
+        validFor: (text: string) => !/[/\\]/.test(text),
+      };
     }
 
     const dirPart = partial.slice(0, slashIdx + 1);
@@ -61,13 +70,26 @@ export function createFilePreviewSrcCompletion(filePath: string) {
       ? children.filter((c) => c.name.toLowerCase().includes(lower))
       : children;
     // ponytail: cap at 50 matches — same reasoning as the no-`/` branch above.
+    // ponytail: `from` is the position AFTER the last `/` in the partial, so
+    // CodeMirror's fuzzy matcher uses just the filename filter as the pattern
+    // (not the full `./<dir>/filter`), which actually matches the child-name
+    // labels. `apply` is the bare child name so picking replaces only the
+    // filter text and preserves the typed directory prefix (e.g. `./<dir>/`).
+    const filterStart = partialStart + slashIdx + 1;
     const options = filtered.slice(0, 50).map((c) =>
       c.type === 'dir'
-        ? { label: c.name + '/', detail: c.path, apply: c.path + '/', type: 'dir' as const }
-        : { label: c.name, detail: c.path, apply: c.path, type: 'file' as const },
+        ? { label: c.name + '/', detail: c.path, apply: c.name + '/', type: 'dir' as const }
+        : { label: c.name, detail: c.path, apply: c.name, type: 'file' as const },
     );
-
-    return { from: partialStart, to: ctx.pos, options, validFor: /[^"\s{}=]*/ };
+    // ponytail: invalidate when the directory part of the partial changes
+    // (drilling into a subdir must re-query). Filter-only typing within the
+    // same dir keeps the result, so the popup doesn't flicker per keystroke.
+    const validFor = (_text: string, _from: number, to: number, state: EditorState) => {
+      const currentPartial = state.sliceDoc(partialStart, to);
+      const newSlash = Math.max(currentPartial.lastIndexOf('/'), currentPartial.lastIndexOf('\\'));
+      return currentPartial.slice(0, newSlash + 1) === dirPart;
+    };
+    return { from: filterStart, to: ctx.pos, options, validFor };
   };
 }
 
