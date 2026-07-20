@@ -117,54 +117,66 @@ export function ContextMenu({
           <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onClose(); onStartNewItem('dir', menu.path); }}>
             <ThemeIcon name="newFolder" size={14} /> {t('sidebar:contextMenu.newFolder')}
           </button>
-          <div className="h-px mx-2 my-1 bg-brd" />
+          {menu.path === '' && (
+            <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => {
+              const vault = useVaultStore.getState().currentVault;
+              copyToClipboard(vault?.basePath || '');
+            }}>
+              <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copyVaultPath')}
+            </button>
+          )}
+          {menu.path && <div className="h-px mx-2 my-1 bg-brd" />}
         </>
       )}
-      <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { copyToClipboard(menu.path); }}>
-        <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copyRelativePath')}
-      </button>
-      <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => {
-        const vault = useVaultStore.getState().currentVault;
-        const base = vault?.basePath || '';
-        copyToClipboard(`${base}/${menu.path}`);
-      }}>
-        <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copyAbsolutePath')}
-      </button>
-      <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { copyToClipboard(menu.name); }}>
-        <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copyFileName')}
-      </button>
-      <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onTogglePin(menu.path); onClose(); }}>
-        <ThemeIcon name="pin" size={14} /> {pinnedPaths.includes(menu.path) ? t('sidebar:contextMenu.unpin') : t('sidebar:contextMenu.pin')}
-      </button>
-      {menu.type === 'file' && (
-        <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => {
-          useAiStore.getState().addFileToChat(menu.name, menu.path);
-          useAppearanceStore.getState().setShowAiPanel(true);
-          useEditorViewStateStore.setState({ aiPanelVisible: true });
-          onClose();
-        }}>
-          <span className="font-bold text-[11px] tracking-[-0.5px] leading-none">AI</span>
-          {t('sidebar:contextMenu.addToChat')}
-        </button>
+      {menu.path && (
+        <>
+          <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { copyToClipboard(menu.path); }}>
+            <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copyRelativePath')}
+          </button>
+          <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => {
+            const vault = useVaultStore.getState().currentVault;
+            const base = vault?.basePath || '';
+            copyToClipboard(`${base}/${menu.path}`);
+          }}>
+            <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copyAbsolutePath')}
+          </button>
+          <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { copyToClipboard(menu.name); }}>
+            <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copyFileName')}
+          </button>
+          <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onTogglePin(menu.path); onClose(); }}>
+            <ThemeIcon name="pin" size={14} /> {pinnedPaths.includes(menu.path) ? t('sidebar:contextMenu.unpin') : t('sidebar:contextMenu.pin')}
+          </button>
+          {menu.type === 'file' && (
+            <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => {
+              useAiStore.getState().addFileToChat(menu.name, menu.path);
+              useAppearanceStore.getState().setShowAiPanel(true);
+              useEditorViewStateStore.setState({ aiPanelVisible: true });
+              onClose();
+            }}>
+              <span className="font-bold text-[11px] tracking-[-0.5px] leading-none">AI</span>
+              {t('sidebar:contextMenu.addToChat')}
+            </button>
+          )}
+          {menu.path.endsWith('.md') && (
+            <button
+              className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov"
+              onClick={() => {
+                runIngest([menu.path]).catch(console.error);
+                onClose();
+              }}
+            >
+              {t('sidebar:contextMenu.ingestToWiki')}
+            </button>
+          )}
+          <div className="h-px mx-2 my-1 bg-brd" />
+          <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onClose(); onStartRename(menu.path, menu.name); }}>
+            <ThemeIcon name={menu.type === 'dir' ? 'editFolder' : 'edit'} size={14} /> {t('sidebar:contextMenu.rename')}
+          </button>
+          <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-[#e05252] hover:bg-[rgba(224,82,82,.08)]" onClick={() => { onClose(); onDeleteItem(menu.path, menu.type); }}>
+            <ThemeIcon name="delete" size={14} /> {t('sidebar:contextMenu.delete')}
+          </button>
+        </>
       )}
-      {menu.path.endsWith('.md') && (
-        <button
-          className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov"
-          onClick={() => {
-            runIngest([menu.path]).catch(console.error);
-            onClose();
-          }}
-        >
-          {t('sidebar:contextMenu.ingestToWiki')}
-        </button>
-      )}
-      <div className="h-px mx-2 my-1 bg-brd" />
-      <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onClose(); onStartRename(menu.path, menu.name); }}>
-        <ThemeIcon name={menu.type === 'dir' ? 'editFolder' : 'edit'} size={14} /> {t('sidebar:contextMenu.rename')}
-      </button>
-      <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-[#e05252] hover:bg-[rgba(224,82,82,.08)]" onClick={() => { onClose(); onDeleteItem(menu.path, menu.type); }}>
-        <ThemeIcon name="delete" size={14} /> {t('sidebar:contextMenu.delete')}
-      </button>
     </div>
   );
 }

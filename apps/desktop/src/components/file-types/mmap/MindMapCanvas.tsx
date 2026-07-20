@@ -291,6 +291,18 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
   useEffect(() => {
     let disposed = false;
 
+    // ponytail: image-load re-link (defined here, before async block, so the
+    // cleanup closure can see it). me-tpc > img is `display:block`, so a
+    // late-loading image resizes its topic AFTER linkDiv() already drew
+    // branches against the pre-image offsetHeight — lines miss the node.
+    // img `load` doesn't bubble, so capture phase on the container catches
+    // every <img> mind-elixir re-renders via innerHTML. rAF so the new
+    // layout is committed before we re-read offsets.
+    const onImgLoad = (e: Event) => {
+      if ((e.target as HTMLElement | null)?.tagName !== 'IMG') return;
+      requestAnimationFrame(() => instRef.current?.linkDiv());
+    };
+
     (async () => {
       const [{ default: MindElixir }, resolvedVaultRoot] = await Promise.all([
         import('mind-elixir'),
@@ -396,10 +408,19 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
       setCanvasStyle(runtimeMs);
       applyCanvasMapStyle(runtimeMs);
       instRef.current = inst;
+
+      el.addEventListener('load', onImgLoad, true);
+      // Catch font swaps (e.g. Microsoft YaHei fallback → real face) which
+      // also shift topic heights after linkDiv ran.
+      (document as Document & { fonts?: FontFaceSet }).fonts?.ready.then(
+        () => requestAnimationFrame(() => instRef.current?.linkDiv()),
+      );
     })();
 
     return () => {
       disposed = true;
+      const elCleanup = elRef.current;
+      if (elCleanup) elCleanup.removeEventListener('load', onImgLoad, true);
       instRef.current?.destroy();
       instRef.current = null;
     };

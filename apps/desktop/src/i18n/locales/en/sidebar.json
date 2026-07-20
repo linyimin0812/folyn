@@ -32,6 +32,7 @@
     "copyRelativePath": "Copy relative path",
     "copyAbsolutePath": "Copy absolute path",
     "copyFileName": "Copy file name",
+    "copyVaultPath": "Copy vault path",
     "unpin": "Unpin",
     "pin": "Pin",
     "addToChat": "Add file to chat",

@@ -209,6 +209,12 @@ export function FilesPanel(): React.JSX.Element {
     setContextMenu({ x: e.clientX, y: e.clientY, path, name, type });
   }, []);
 
+  const handleEmptyAreaContextMenu = useCallback((e: React.MouseEvent) => {
+    if (e.target !== e.currentTarget) return;
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, path: '', name: '', type: 'dir' });
+  }, []);
+
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
   /** Collect all directory paths from the file tree */
@@ -428,6 +434,7 @@ export function FilesPanel(): React.JSX.Element {
       <div
         className={`sb-body flex-1 overflow-y-auto py-1 transition-colors duration-[120ms] [scrollbar-width:none] hover:[scrollbar-width:thin] [&::-webkit-scrollbar]:w-0 [&:hover::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-t4 [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-track]:bg-transparent${dragOverDir === '' ? ' bg-accglow' : ''}`}
         ref={fileTreeRef}
+        onContextMenu={handleEmptyAreaContextMenu}
       >
         {renderFileTree(fileTree)}
         {fileTree.length === 0 && !newItemType && (
