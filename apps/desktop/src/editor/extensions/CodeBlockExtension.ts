@@ -11,7 +11,9 @@ let cachedLanguages: LanguageEntry[] | null = null;
 
 function getAllLanguages(): LanguageEntry[] {
   if (!cachedLanguages) {
-    cachedLanguages = hljs.listLanguages().sort().map((name) => ({ name, label: name }));
+    // ponytail: mermaid isn't a highlight.js language, prepend so it shows in autocomplete
+    const extras: LanguageEntry[] = [{ name: 'mermaid', label: 'mermaid' }];
+    cachedLanguages = [...extras, ...hljs.listLanguages().sort().map((name) => ({ name, label: name }))];
   }
   return cachedLanguages;
 }
