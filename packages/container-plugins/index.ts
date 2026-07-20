@@ -4,6 +4,8 @@ export type {
   ContainerCategory,
 } from './src/ContainerPlugin';
 export { ContainerRegistry } from './src/ContainerRegistry';
+export { VaultContext, useVaultContext } from './src/VaultContext';
+export type { VaultContextValue } from './src/VaultContext';
 
 // Built-in plugins
 export { calloutPlugin } from './src/plugins/CalloutPlugin';

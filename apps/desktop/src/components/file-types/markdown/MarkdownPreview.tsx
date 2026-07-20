@@ -11,13 +11,16 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 import { rehypeSourceLine } from './rehypeSourceLine';
-import { ContainerRegistry, registerBuiltinPlugins, MermaidBlock } from '@quill/container-plugins';
+import { ContainerRegistry, registerBuiltinPlugins, MermaidBlock, VaultContext } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
+import { useVaultStore } from '@/store/vaultStore';
+import { getHandlerByExtension } from '@/components/file-types/registry';
 import { isTauri } from '@/utils/platform';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
 import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview';
+import { FileIcon } from '@/components/icons/FileIcon';
 /**
  * Rehype plugin: remove <br> nodes inside <code> elements (within <pre> blocks).
  * remark-breaks converts soft line breaks to <br> in paragraphs,
@@ -214,6 +217,20 @@ export function MarkdownPreview({ content, filePath, vaultRoot }: import('../typ
     });
   }, [vaultRoot]);
 
+  const renderFile = useCallback((path: string, content: string) => {
+    const ext = path.toLowerCase().match(/\.([^.]+)$/)?.[1] || '';
+    const handler = ext ? getHandlerByExtension(ext) : undefined;
+    if (!handler?.Preview) return null;
+    // ponytail: no recursion-depth guard — a markdown file that embeds itself
+    // via :::file-preview will stack-overflow. Add a depth counter if it bites.
+    return createElement(handler.Preview, { content, filePath: path, vaultRoot: resolvedVaultRoot });
+  }, [resolvedVaultRoot]);
+
+  const openFile = useCallback((path: string) => {
+    const name = path.substring(path.lastIndexOf('/') + 1) || path;
+    void import('@/services/editorIoService').then(({ openFile: open }) => open(path, name));
+  }, []);
+
   const componentMap = useMemo(() => {
     const map = buildComponentMap();
     // Add heading components with auto-generated id anchors for outline navigation
@@ -334,9 +351,18 @@ export function MarkdownPreview({ content, filePath, vaultRoot }: import('../typ
   }, [body, componentMap, frontmatterLineCount]);
 
   return (
-    <div className="md-preview" ref={containerRef}>
-      {meta && <SkillMetaCard meta={meta} />}
-      {reactContent}
-    </div>
+    <VaultContext.Provider value={{
+      vaultRoot: resolvedVaultRoot,
+      filePath,
+      readFile: (p) => useVaultStore.getState().readFile(p),
+      renderFile,
+      openFile,
+      getFileIcon: (path) => createElement(FileIcon, { filename: path }),
+    }}>
+      <div className="md-preview" ref={containerRef}>
+        {meta && <SkillMetaCard meta={meta} />}
+        {reactContent}
+      </div>
+    </VaultContext.Provider>
   );
 }

@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/container-plugins/frontend/quality-guidelines.md", "reason": "Quality bar for the modified plugin file."}
+{"file": ".trellis/spec/container-plugins/frontend/type-safety.md", "reason": "ContainerProps / VaultContext typing — ensure the new branch is typed correctly."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Host-side (MarkdownPreview) quality bar, in case renderFile contract is questioned."}

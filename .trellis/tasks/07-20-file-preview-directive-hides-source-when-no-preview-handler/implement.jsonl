@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/container-plugins/frontend/index.md", "reason": "Plugin being modified lives in this package; need package-local conventions."}
+{"file": ".trellis/spec/container-plugins/frontend/component-guidelines.md", "reason": "FilePreviewComponent is a React component in this package; adding useState + conditional render must follow local component patterns."}
+{"file": ".trellis/spec/container-plugins/frontend/state-management.md", "reason": "Adding a useState toggle for the collapse; check local rules for when useState is acceptable."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "MarkdownPreview.tsx (the host that wires VaultContext.renderFile) lives in apps/desktop; need to confirm we do not need to touch it."}

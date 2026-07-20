@@ -47,6 +47,7 @@ import {
   codeBlockMenuField,
   type CodeBlockMenuState,
 } from './extensions/CodeBlockExtension';
+import { filePreviewSrcCompletion } from './extensions/FilePreviewSrcExtension';
 import { orderedListExtension } from './extensions/OrderedListExtension';
 import { inlineDiffExtension } from './extensions/InlineDiffExtension';
 import { json as jsonLanguage } from '@codemirror/lang-json';
@@ -255,7 +256,7 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
         bracketMatching(),
         closeBrackets(),
-        autocompletion(),
+        autocompletion({ override: [filePreviewSrcCompletion] }),
         rectangularSelection(),
         crosshairCursor(),
         highlightActiveLine(),
