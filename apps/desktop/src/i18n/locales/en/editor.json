@@ -9,10 +9,6 @@
       "label": "HTML",
       "description": "Export as rendered web page"
     },
-    "pdf": {
-      "label": "PDF",
-      "description": "Export via print dialog"
-    },
     "containerWarning": {
       "title": "⚠️ Compatibility notice",
       "body": "The current document uses Quill container syntax (callouts, tabs, collapsible blocks, etc.), which is a Quill extension. **Other Markdown editors may fail to render it correctly.**",

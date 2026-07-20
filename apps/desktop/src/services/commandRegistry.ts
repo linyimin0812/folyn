@@ -20,7 +20,6 @@ import type { ActivityPanel } from '@/components/shell/ActivityBar';
 import {
   exportActiveMarkdown,
   exportActiveHtml,
-  exportActivePdf,
 } from '@/hooks/useExport';
 import { requestNewItem } from './newItemBridge';
 import { requestPlanMyDay } from './planMyDayBridge';
@@ -178,15 +177,6 @@ export function registerBuiltinCommands(): void {
       keywords: ['download', 'web', 'page'],
       run: () => {
         void exportActiveHtml();
-      },
-    },
-    {
-      id: 'action.export-pdf',
-      title: 'Export as PDF',
-      category: 'action',
-      keywords: ['download', 'print', 'document'],
-      run: () => {
-        void exportActivePdf();
       },
     },
     {

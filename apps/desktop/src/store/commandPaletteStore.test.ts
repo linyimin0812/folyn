@@ -62,7 +62,6 @@ vi.mock('@/store/searchStore', () => ({
 vi.mock('@/hooks/useExport', () => ({
   exportActiveMarkdown: vi.fn(),
   exportActiveHtml: vi.fn(),
-  exportActivePdf: vi.fn(),
 }));
 vi.mock('@/services/newItemBridge', () => ({ requestNewItem: vi.fn() }));
 

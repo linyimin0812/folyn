@@ -53,7 +53,6 @@
     "grapesjs-plugin-forms": "^2.0.6",
     "grapesjs-tui-image-editor": "^1.0.2",
     "highlight.js": "^11.10.0",
-    "html2pdf.js": "^0.14.0",
     "i18next": "^26.3.6",
     "jq-wasm": "2.0.0-jq-1.8.2",
     "json5": "^2.2.3",

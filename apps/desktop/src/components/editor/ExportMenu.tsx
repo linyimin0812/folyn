@@ -7,7 +7,7 @@ export function ExportMenu() {
   const [open, setOpen] = useState(false);
   const [containerWarning, setContainerWarning] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { exportMarkdown, exportHtml, exportPdf, getActiveContent } = useExport();
+  const { exportMarkdown, exportHtml, getActiveContent } = useExport();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -61,16 +61,6 @@ export function ExportMenu() {
               <div className="flex flex-col gap-px">
                 <span className="text-xs font-medium text-t1">{t('editor:export.html.label')}</span>
                 <span className="text-[10px] text-t3">{t('editor:export.html.description')}</span>
-              </div>
-            </div>
-            <div
-              className="flex items-center gap-2 py-2 px-2.5 rounded-[5px] cursor-pointer transition-[background] duration-100 hover:bg-hov"
-              onClick={() => { exportPdf(); setOpen(false); }}
-            >
-              <span className="text-base w-6 text-center shrink-0">📄</span>
-              <div className="flex flex-col gap-px">
-                <span className="text-xs font-medium text-t1">{t('editor:export.pdf.label')}</span>
-                <span className="text-[10px] text-t3">{t('editor:export.pdf.description')}</span>
               </div>
             </div>
           </div>

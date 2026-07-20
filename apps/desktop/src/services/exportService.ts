@@ -19,7 +19,7 @@ import { resolveBasePath } from '@/utils/pathResolver';
 // Ensure built-in plugins are registered once
 registerBuiltinPlugins();
 
-export type ExportFormat = 'markdown' | 'html' | 'pdf';
+export type ExportFormat = 'markdown' | 'html';
 
 /** Regex that matches Quill container directive syntax (:::) */
 const CONTAINER_SYNTAX_REGEX = /^:{3,}\s*\w+/m;

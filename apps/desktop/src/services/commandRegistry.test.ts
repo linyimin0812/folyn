@@ -25,7 +25,6 @@ const {
   openPanelMock,
   exportMarkdownMock,
   exportHtmlMock,
-  exportPdfMock,
   requestNewItemMock,
   requestPlanMyDayMock,
 } = vi.hoisted(() => ({
@@ -38,7 +37,6 @@ const {
   openPanelMock: vi.fn(),
   exportMarkdownMock: vi.fn(),
   exportHtmlMock: vi.fn(),
-  exportPdfMock: vi.fn(),
   requestNewItemMock: vi.fn(),
   requestPlanMyDayMock: vi.fn(),
 }));
@@ -89,7 +87,6 @@ vi.mock('@/store/searchStore', () => ({
 vi.mock('@/hooks/useExport', () => ({
   exportActiveMarkdown: exportMarkdownMock,
   exportActiveHtml: exportHtmlMock,
-  exportActivePdf: exportPdfMock,
 }));
 
 vi.mock('./newItemBridge', () => ({
@@ -115,7 +112,6 @@ beforeEach(() => {
   openPanelMock.mockClear();
   exportMarkdownMock.mockClear();
   exportHtmlMock.mockClear();
-  exportPdfMock.mockClear();
   requestNewItemMock.mockClear();
   requestPlanMyDayMock.mockClear();
 });
@@ -186,7 +182,6 @@ describe('commandRegistry — registerBuiltinCommands', () => {
       'action.open-daily-note',
       'action.export-markdown',
       'action.export-html',
-      'action.export-pdf',
       'action.open-global-search',
       'action.plan-my-day',
     ]);
@@ -231,12 +226,6 @@ describe('commandRegistry — registerBuiltinCommands', () => {
     expect(setCurrentPageMock).toHaveBeenCalledWith('editor');
     expect(setActivePanelMock).toHaveBeenCalledWith('files');
     expect(requestNewItemMock).toHaveBeenCalledWith('file');
-  });
-
-  it('action.export-pdf invokes exportActivePdf', async () => {
-    registerBuiltinCommands();
-    await runCommand('action.export-pdf');
-    expect(exportPdfMock).toHaveBeenCalledTimes(1);
   });
 
   it('action.open-global-search opens the search panel', async () => {
