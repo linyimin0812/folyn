@@ -419,8 +419,15 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
         );
         if (meta.view?.showGrid) setShowGrid(true);
         if (meta.view?.zoomPct) {
-          setZoomPct(meta.view.zoomPct);
-          restoreZoomRef.current = meta.view.zoomPct;
+          const z = meta.view.zoomPct;
+          // ponytail: clamp saved zoom to a sane range — the pre-zoomTo
+          // bug multiplied saved values by ~1.85 each reopen (85 → 185 →
+          // 336 → …), so out-of-range saved values are corrupted, not intent.
+          const safe = z >= 25 && z <= 200 ? z : null;
+          if (safe != null) {
+            setZoomPct(safe);
+            restoreZoomRef.current = safe;
+          }
         }
       }
     }
