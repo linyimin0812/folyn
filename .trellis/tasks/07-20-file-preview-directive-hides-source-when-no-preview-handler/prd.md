@@ -27,6 +27,7 @@
 - 无 Preview handler 的类型默认显示"此类型暂无预览"提示；用户可点 code 图标切到源码视图。
 - header 中文件 icon 与文件名垂直居中对齐。
 - 加载中、错误、未指定 src 等现有分支保持不变。
+- `:::file-preview` 支持所有文件类型：handler 有 Preview 用 Preview；handler 无 Preview（如 `code` / 某些插件）回退到通用 `CodeFileViewer`（基于 highlight.js 的语法高亮只读 viewer）。插件 handler 通过 `registerFileTypeHandler` 注册的 Preview 自动生效，无需新抽象。
 - `src="..."` 的 autocomplete：当 partial 是目录路径（含 `/`，含 `./` / `../` / 裸路径如 `分享/`）时，列出该目录下的直接子项（文件 + 目录，目录 `apply` 末尾带 `/` 便于继续钻取）；partial 末尾的段作为文件名过滤。无 `/` 时保持现有"全 vault 子串过滤"行为。
 
 ## Acceptance Criteria (evolving)

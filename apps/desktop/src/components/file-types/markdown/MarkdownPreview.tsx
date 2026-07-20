@@ -14,7 +14,7 @@ import { rehypeSourceLine } from './rehypeSourceLine';
 import { ContainerRegistry, registerBuiltinPlugins, MermaidBlock, VaultContext } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
 import { useVaultStore } from '@/store/vaultStore';
-import { getHandlerByExtension } from '@/components/file-types/registry';
+import { getHandlerByExtension, getHandlerById } from '@/components/file-types/registry';
 import { isTauri } from '@/utils/platform';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useAppearanceStore } from '@/store/appearanceStore';
@@ -220,10 +220,11 @@ export function MarkdownPreview({ content, filePath, vaultRoot }: import('../typ
   const renderFile = useCallback((path: string, content: string) => {
     const ext = path.toLowerCase().match(/\.([^.]+)$/)?.[1] || '';
     const handler = ext ? getHandlerByExtension(ext) : undefined;
-    if (!handler?.Preview) return null;
+    const Preview = handler?.Preview ?? getHandlerById('code')?.Preview;
+    if (!Preview) return null;
     // ponytail: no recursion-depth guard — a markdown file that embeds itself
     // via :::file-preview will stack-overflow. Add a depth counter if it bites.
-    return createElement(handler.Preview, { content, filePath: path, vaultRoot: resolvedVaultRoot });
+    return createElement(Preview, { content, filePath: path, vaultRoot: resolvedVaultRoot });
   }, [resolvedVaultRoot]);
 
   const openFile = useCallback((path: string) => {
