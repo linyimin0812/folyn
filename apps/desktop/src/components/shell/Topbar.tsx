@@ -6,6 +6,7 @@ import { ExportMenu } from '@/components/editor/ExportMenu';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { requestPlanMyDay } from '@/services/planMyDayBridge';
 import { useTranslation } from 'react-i18next';
+import { Sun, Moon } from 'lucide-react';
 
 /** File types that support meaningful multi-mode switching — show the view-mode segment. */
 const SHOW_VIEW_MODE_FILE_TYPES = new Set(['markdown', 'json', 'csv', 'mmap', 'dbml', 'html']);
@@ -121,19 +122,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
         <ExportMenu />
         <LanguageSwitcher />
         <button className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1" onClick={toggleTheme} title={t('topbar:theme.toggle')}>
-          {theme === 'light' ? (
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-              <path d="M13.5 8.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z" />
-            </svg>
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-              <circle cx="8" cy="8" r="3" />
-              <line x1="8" y1="1" x2="8" y2="5" /><line x1="8" y1="11" x2="8" y2="15" />
-              <line x1="1" y1="8" x2="5" y2="8" /><line x1="11" y1="8" x2="15" y2="8" />
-              <line x1="3.05" y1="3.05" x2="5.88" y2="5.88" /><line x1="10.12" y1="10.12" x2="12.95" y2="12.95" />
-              <line x1="3.05" y1="12.95" x2="5.88" y2="10.12" /><line x1="10.12" y1="5.88" x2="12.95" y2="3.05" />
-            </svg>
-          )}
+          {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
         </button>
 
       </div>
