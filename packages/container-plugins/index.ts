@@ -8,7 +8,7 @@ export { ContainerRegistry } from './src/ContainerRegistry';
 // Built-in plugins
 export { calloutPlugin } from './src/plugins/CalloutPlugin';
 export { tabsPlugin, tabPlugin } from './src/plugins/TabsPlugin';
-export { mermaidPlugin } from './src/plugins/MermaidPlugin';
+export { mermaidPlugin, MermaidBlock } from './src/plugins/MermaidPlugin';
 export { aiResultPlugin } from './src/plugins/AiResultPlugin';
 export { statusTagPlugin } from './src/plugins/StatusTagPlugin';
 export { timelinePlugin } from './src/plugins/TimelinePlugin';

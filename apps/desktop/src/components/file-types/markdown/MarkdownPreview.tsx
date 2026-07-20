@@ -11,14 +11,13 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 import { rehypeSourceLine } from './rehypeSourceLine';
-import { ContainerRegistry, registerBuiltinPlugins } from '@quill/container-plugins';
+import { ContainerRegistry, registerBuiltinPlugins, MermaidBlock } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
 import { isTauri } from '@/utils/platform';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
 import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview';
-import { MermaidBlock } from './MermaidBlock';
 /**
  * Rehype plugin: remove <br> nodes inside <code> elements (within <pre> blocks).
  * remark-breaks converts soft line breaks to <br> in paragraphs,
