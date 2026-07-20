@@ -433,3 +433,38 @@ Added permissions.ai = {chat?, agents?[]} manifest field; trusted PluginContext.
 ### Next Steps
 
 - None - task complete
+
+
+## Session 71: i18n zh/en support — full sweep with Rust AppError
+
+**Date**: 2026-07-20
+**Task**: i18n zh/en support — full sweep with Rust AppError
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added zh/en i18n across Quill desktop: i18next + react-i18next init with 14 namespaces, localeStore (dedicated quill:locale localStorage key for sync init), LanguageSwitcher in Topbar + Settings. Extracted all visible UI strings across shell/sidebar/editor chrome/search/AI/settings page + 7 sub-pages/vault/schedule (16 components + store toasts)/study (8 components)/pet windows. Rust: AppError enum (Io/NotFound/Permission/Internal) serde'd as {category, detail}; ~40 user-visible invoke commands flipped to Result<T, AppError>. Frontend tauriInvoke wrapper translates via rustErrors namespace. 25 new tests (localeStore, namespace parity, tauriInvoke); 1551/23 baseline holds. Spec: new .trellis/spec/desktop/frontend/i18n-guidelines.md. Bug fix in 67d1e27: NAV_GROUPS bare-key bug (missing nsSeparator) caused Settings tabs to show raw keys.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c9285e2` | (see git log) |
+| `67d1e27` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

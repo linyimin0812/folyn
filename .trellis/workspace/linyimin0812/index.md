@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 70
-- **Last Active**: 2026-07-19
+- **Total Sessions**: 71
+- **Last Active**: 2026-07-20
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~435 | Active |
+| `journal-2.md` | ~470 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 71 | 2026-07-20 | i18n zh/en support — full sweep with Rust AppError | `c9285e2`, `67d1e27` | `master` |
 | 70 | 2026-07-19 | Plugin AI capability: expose chat/agent to plugins via permissions.ai | `548e61f` | `master` |
 | 69 | 2026-07-19 | Find-input inline toggles + thin-line selection | `056d6b1` | `master` |
 | 68 | 2026-07-19 | VS Code-style find/replace panel for CM editors | `da11729` | `master` |
