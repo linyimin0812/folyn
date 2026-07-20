@@ -18,21 +18,21 @@ export function Toggle({ value, onChange }: { value: boolean; onChange: (v: bool
 }
 
 export const NAV_GROUPS: { labelKey: string; items: { id: SettingsTab; icon: ReactNode; nameKey: string }[] }[] = [
-  { labelKey: 'settings.groups.general', items: [
-    { id: 'appearance', icon: <Monitor size={14} />, nameKey: 'settings.tabs.appearance' },
-    { id: 'editor', icon: <SquarePen size={14} />, nameKey: 'settings.tabs.editor' },
-    { id: 'shortcuts', icon: <Keyboard size={14} />, nameKey: 'settings.tabs.shortcuts' },
-    { id: 'templates', icon: <FileText size={14} />, nameKey: 'settings.tabs.templates' },
-    { id: 'pet', icon: <PawPrint size={14} />, nameKey: 'settings.tabs.pet' },
-    { id: 'notifications', icon: <Bell size={14} />, nameKey: 'settings.tabs.notifications' },
-    { id: 'plugins', icon: <Puzzle size={14} />, nameKey: 'settings.tabs.plugins' },
+  { labelKey: 'settings:groups.general', items: [
+    { id: 'appearance', icon: <Monitor size={14} />, nameKey: 'settings:tabs.appearance' },
+    { id: 'editor', icon: <SquarePen size={14} />, nameKey: 'settings:tabs.editor' },
+    { id: 'shortcuts', icon: <Keyboard size={14} />, nameKey: 'settings:tabs.shortcuts' },
+    { id: 'templates', icon: <FileText size={14} />, nameKey: 'settings:tabs.templates' },
+    { id: 'pet', icon: <PawPrint size={14} />, nameKey: 'settings:tabs.pet' },
+    { id: 'notifications', icon: <Bell size={14} />, nameKey: 'settings:tabs.notifications' },
+    { id: 'plugins', icon: <Puzzle size={14} />, nameKey: 'settings:tabs.plugins' },
   ]},
-  { labelKey: 'settings.groups.ai', items: [
-    { id: 'ai', icon: <Sparkles size={14} />, nameKey: 'settings.tabs.ai' },
-    { id: 'voice', icon: <Mic size={14} />, nameKey: 'settings.tabs.voice' },
-    { id: 'skills', icon: <Zap size={14} />, nameKey: 'settings.tabs.skills' },
+  { labelKey: 'settings:groups.ai', items: [
+    { id: 'ai', icon: <Sparkles size={14} />, nameKey: 'settings:tabs.ai' },
+    { id: 'voice', icon: <Mic size={14} />, nameKey: 'settings:tabs.voice' },
+    { id: 'skills', icon: <Zap size={14} />, nameKey: 'settings:tabs.skills' },
   ]},
-  { labelKey: 'settings.groups.about', items: [
-    { id: 'about', icon: <Info size={14} />, nameKey: 'settings.tabs.about' },
+  { labelKey: 'settings:groups.about', items: [
+    { id: 'about', icon: <Info size={14} />, nameKey: 'settings:tabs.about' },
   ]},
 ];
