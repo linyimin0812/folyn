@@ -40,7 +40,7 @@ export function getActiveDocument(): ActiveDocument {
 export function exportActiveMarkdown(): void {
   const { name, content } = getActiveDocument();
   const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
-  downloadBlob(blob, name);
+  downloadBlob(blob, name, ['md']);
 }
 
 /** Export the active document as a standalone HTML file. Imperative. */
@@ -61,7 +61,7 @@ ${inlinedBody}
 </body>
 </html>`;
   const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-  downloadBlob(blob, name.replace(/\.md$/, '.html'));
+  downloadBlob(blob, name.replace(/\.md$/, '.html'), ['html']);
 }
 
 /**

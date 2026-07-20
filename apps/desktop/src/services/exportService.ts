@@ -256,15 +256,17 @@ export const HTML_STYLES = `
     }
 `;
 
-export async function downloadBlob(blob: Blob, filename: string) {
+export async function downloadBlob(blob: Blob, filename: string, extensions?: string[]) {
   const { isTauri } = await import('@/utils/platform');
   if (isTauri()) {
     try {
       const { save } = await import('@tauri-apps/plugin-dialog');
       const { writeFile } = await import('@tauri-apps/plugin-fs');
+      const ext = extensions ?? [filename.split('.').pop() ?? '*'];
+      const label = ext[0] === '*' ? 'All Files' : ext[0].toUpperCase();
       const filePath = await save({
         defaultPath: filename,
-        filters: [{ name: 'All Files', extensions: ['*'] }],
+        filters: [{ name: label, extensions: ext }],
       });
       if (filePath) {
         const arrayBuffer = await blob.arrayBuffer();
