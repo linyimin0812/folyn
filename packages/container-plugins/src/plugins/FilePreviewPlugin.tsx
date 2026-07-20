@@ -82,7 +82,7 @@ function FilePreviewComponent({ attributes }: ContainerProps) {
   // ponytail: called every render — renderFile is a pure lookup (ext regex +
   // handler.Preview + createElement), not hot enough to memoize. Revisit if
   // a no-preview file preview block appears in a tight list.
-  const previewEl = content && ctx?.renderFile ? (ctx.renderFile(src, content) ?? null) : null;
+  const previewEl = content && ctx?.renderFile ? (ctx.renderFile(resolveVaultPath(src, ctx.filePath), content) ?? null) : null;
 
   return (
     <div style={{
