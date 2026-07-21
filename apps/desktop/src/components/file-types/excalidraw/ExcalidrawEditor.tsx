@@ -2,6 +2,10 @@ import { useRef, useCallback, useEffect, useState } from 'react';
 import { Excalidraw } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
 import { useAppearanceStore } from '@/store/appearanceStore';
+import {
+  installAnchorDownloadInterceptor,
+  installClipboardImageWritePatch,
+} from '@/services/tauriBrowserShim';
 import type { EditorProps } from '../types';
 
 function parseContent(content: string) {
@@ -53,6 +57,14 @@ export function ExcalidrawEditor({ content, tabId, onChange }: EditorProps) {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
+  }, []);
+
+  useEffect(() => {
+    const cleanups = [
+      installAnchorDownloadInterceptor(),
+      installClipboardImageWritePatch(),
+    ];
+    return () => cleanups.forEach((c) => c());
   }, []);
 
   return (
