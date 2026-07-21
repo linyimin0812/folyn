@@ -2,11 +2,12 @@ import { useCallback } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
 import {
-  renderMarkdownToHtml,
+  renderMarkdownToHtmlViaDom,
   inlineImages,
   downloadBlob,
   escapeHtml,
   HTML_STYLES,
+  LIGHT_THEME_VARS,
 } from '@/services/exportService';
 
 export type { ExportFormat } from '@/services/exportService';
@@ -46,15 +47,15 @@ export function exportActiveMarkdown(): void {
 /** Export the active document as a standalone HTML file. Imperative. */
 export async function exportActiveHtml(): Promise<void> {
   const { name, content, path, vaultRoot } = getActiveDocument();
-  const renderedBody = renderMarkdownToHtml(content);
+  const { html: renderedBody, css } = await renderMarkdownToHtmlViaDom(content, path, vaultRoot);
   const inlinedBody = await inlineImages(renderedBody, vaultRoot, path);
   const htmlContent = `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(name.replace(/\.md$/, ''))}</title>
-  <style>${HTML_STYLES}</style>
+  <style>${HTML_STYLES}\n${LIGHT_THEME_VARS}\n${css}</style>
 </head>
 <body>
 ${inlinedBody}

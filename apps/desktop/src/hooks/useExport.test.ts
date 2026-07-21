@@ -18,12 +18,23 @@ vi.mock('@/services/exportService', async (importOriginal) => {
   return {
     ...actual,
     renderMarkdownToHtml: vi.fn((md: string) => `<rendered>${md}</rendered>`),
+    renderMarkdownToHtmlViaDom: vi.fn(async (md: string, _path: string, _root: string) => ({
+      html: `<rendered>${md}</rendered>`,
+      css: '/* css */',
+    })),
     inlineImages: vi.fn(async (html: string) => html),
     downloadBlob: vi.fn(),
   };
 });
 
-import { escapeHtml, HTML_STYLES, renderMarkdownToHtml, inlineImages, downloadBlob } from '@/services/exportService';
+import {
+  escapeHtml,
+  HTML_STYLES,
+  LIGHT_THEME_VARS,
+  renderMarkdownToHtmlViaDom,
+  inlineImages,
+  downloadBlob,
+} from '@/services/exportService';
 import type { FileTab } from '@/store/editorStore';
 
 function makeTab(overrides: Partial<FileTab>): FileTab {
@@ -63,15 +74,15 @@ async function exportHtml(
   vaultRoot: string,
 ) {
   const { name, content, path } = getActiveContent(tabs, activeTabId);
-  const renderedBody = renderMarkdownToHtml(content);
+  const { html: renderedBody, css } = await renderMarkdownToHtmlViaDom(content, path, vaultRoot);
   const inlinedBody = await inlineImages(renderedBody, vaultRoot, path);
   const htmlContent = `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(name.replace(/\.md$/, ''))}</title>
-  <style>${HTML_STYLES}</style>
+  <style>${HTML_STYLES}\n${LIGHT_THEME_VARS}\n${css}</style>
 </head>
 <body>
 ${inlinedBody}
@@ -126,7 +137,7 @@ describe('useExport — exportHtml', () => {
     const tabs = [makeTab({ id: 'a', name: 'report.md', content: '# Report', path: 'r/report.md' })];
     await exportHtml(tabs, 'a', '/vault');
 
-    expect(renderMarkdownToHtml).toHaveBeenCalledWith('# Report');
+    expect(renderMarkdownToHtmlViaDom).toHaveBeenCalledWith('# Report', 'r/report.md', '/vault');
     expect(inlineImages).toHaveBeenCalledWith(expect.any(String), '/vault', 'r/report.md');
 
     const [blob, name] = (downloadBlob as unknown as (b: unknown, n: string) => void).mock.calls[0] as [
@@ -138,7 +149,9 @@ describe('useExport — exportHtml', () => {
     const html = blob.content;
     expect(html).toContain('<!DOCTYPE html>');
     expect(html).toContain('<title>report</title>');
-    expect(html).toContain(`<style>${HTML_STYLES}</style>`);
+    expect(html).toContain(`<style>${HTML_STYLES}`);
+    expect(html).toContain(LIGHT_THEME_VARS);
+    expect(html).toContain('/* css */');
     expect(html).toContain('<rendered># Report</rendered>');
   });
 

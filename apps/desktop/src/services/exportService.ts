@@ -1,4 +1,5 @@
 import { createElement, Fragment } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
@@ -92,6 +93,178 @@ export function renderMarkdownToHtml(markdown: string, _vaultRoot?: string): str
   // result.result is a React element tree; render it to static HTML
   const html = renderToStaticMarkup(result.result as React.ReactElement);
   return html;
+}
+
+// ponytail: light-theme token block — mirrors [data-theme="light"] in
+// apps/desktop/src/index.css:80-92. Dumped app CSS uses var(--t1) etc., which
+// won't resolve in a standalone HTML file without :root defining them. Dark
+// theme export is a known limitation; add a theme variant if needed.
+export const LIGHT_THEME_VARS = `
+[data-theme="light"], :root {
+  --bg: #f0f2f8; --panel: #fff; --surf: #f8f9fd; --surf2: #eef0f8;
+  --hov: #e8ecf8; --act: #dde3f5; --brd: #dde2f0; --brd2: #c8d0e8;
+  --t1: #1a2040; --t2: #4a5580; --t3: #8892b0; --t4: #c0c8e0;
+  --acc: #3a6ef0; --acc2: #6a3af0; --accdim: #dce8ff; --accglow: rgba(58,110,240,.08);
+  --green: #22a863; --gdim: #dcf5e8; --amber: #d4820a; --red: #d94040;
+  --cyan: #0a8ab8; --purple: #8040d0; --card: #fff; --inp: #f4f5f8;
+  --font-ui: 'Sora', sans-serif; --font-mono: 'DM Mono', monospace; --ui-font-size: 14px;
+}
+`;
+
+/**
+ * Concatenate all CSS rules currently loaded in the document. Cross-origin
+ * sheets throw on cssRules access and are skipped. Used so exported HTML
+ * renders identically to the in-app preview (Tailwind utilities, container-
+ * plugin classes, file-type Preview styles all rely on this).
+ */
+export function collectAppCss(): string {
+  const rules: string[] = [];
+  for (const sheet of Array.from(document.styleSheets)) {
+    try {
+      const cssRules = sheet.cssRules;
+      if (!cssRules) continue;
+      for (const rule of Array.from(cssRules)) {
+        rules.push(rule.cssText);
+      }
+    } catch {
+      // cross-origin — skip
+    }
+  }
+  return rules.join('\n');
+}
+
+// Loading-state placeholder strings that must disappear before export is
+// ready. Covers mermaid ("渲染图表中..."), file-preview ("加载中..."), and
+// the lazy ER renderer ("正在加载 ER 渲染器…"). Any of these present means
+// an async render is still pending.
+const LOADING_MARKERS = ['加载中', '渲染图表中', '正在加载', '渲染中', '正在加载 ER 渲染器'];
+
+/**
+ * Mount the actual MarkdownPreview in a hidden DOM, wait for async effects
+ * (mermaid.render, ctx.readFile, x6 graph mount) to settle, then extract
+ * innerHTML. This is the export's source of truth — identical pipeline to the
+ * in-app preview, so output matches what the user sees.
+ *
+ * Returns { html, css }: the rendered body HTML and the app's CSS rules (so
+ * the standalone file has the classes referenced by the rendered DOM).
+ */
+export async function renderMarkdownToHtmlViaDom(
+  content: string,
+  filePath: string,
+  vaultRoot: string,
+): Promise<{ html: string; css: string }> {
+  // Lazy import: MarkdownPreview pulls in Excalidraw + x6 which need a real
+  // DOM (canvas getContext). Keeps this module importable in test (jsdom).
+  const { MarkdownPreview } = await import('@/components/file-types/markdown/MarkdownPreview');
+
+  const container = document.createElement('div');
+  container.setAttribute('data-export-root', '');
+  container.style.cssText =
+    'position:absolute;left:-9999px;top:0;width:800px;height:auto;background:#fff;color:#1a2040;visibility:hidden;';
+  document.body.appendChild(container);
+
+  const root = createRoot(container);
+  await new Promise<void>((resolve) => {
+    root.render(createElement(MarkdownPreview, { content, filePath, vaultRoot }));
+    resolve();
+  });
+
+  // Inline <img> srcs (Tauri asset URLs) as base64 data URLs so the exported
+  // file is self-contained. Done in-DOM before extracting innerHTML so we
+  // don't have to parse HTML strings later.
+  await inlineContainerImages(container);
+
+  // Poll for stability: no loading markers visible, with a hard 10s ceiling.
+  const startedAt = Date.now();
+  const TIMEOUT_MS = 10000;
+  const POLL_MS = 150;
+  let stableSince = 0;
+  await new Promise<void>((resolve) => {
+    const tick = () => {
+      const text = container.textContent ?? '';
+      const hasLoading = LOADING_MARKERS.some((m) => text.includes(m));
+      const elapsed = Date.now() - startedAt;
+      if (!hasLoading) {
+        if (stableSince === 0) stableSince = Date.now();
+        // 500ms grace past first stability so late async (x6 lazy chunk
+        // load, mermaid retry) doesn't get cut off mid-render.
+        if (Date.now() - stableSince >= 500 || elapsed >= TIMEOUT_MS) {
+          resolve();
+          return;
+        }
+      } else {
+        stableSince = 0;
+      }
+      if (elapsed >= TIMEOUT_MS) resolve();
+      else setTimeout(tick, POLL_MS);
+    };
+    setTimeout(tick, POLL_MS);
+  });
+
+  // ponytail: post-process file-preview blocks AFTER stabilization — keep SVG
+  // when the embedded preview rendered one (dbml x6); otherwise swap the
+  // body for a filename card. Canvas-only previews (excalidraw/mmap) and
+  // still-empty bodies land in the filename branch. Done before innerHTML
+  // extraction so the export captures the post-processed DOM.
+  processFilePreviews(container);
+
+  const html = container.innerHTML;
+  const css = collectAppCss();
+  root.unmount();
+  container.remove();
+  return { html, css };
+}
+
+/**
+ * Walk each `[data-file-preview]` block in the rendered DOM and decide what
+ * to keep in the export:
+ *   - If the body contains an `<svg>` (dbml x6 output, mermaid, etc.) → keep.
+ *   - Otherwise (canvas-only previews like excalidraw/mmap, or still-empty
+ *     bodies) → replace body innerHTML with a filename card.
+ * Action buttons are stripped — they don't work in static HTML.
+ */
+function processFilePreviews(container: HTMLElement): void {
+  const blocks = container.querySelectorAll<HTMLElement>('[data-file-preview]');
+  for (const block of Array.from(blocks)) {
+    // Strip action buttons (no-ops in static HTML).
+    for (const btn of Array.from(block.querySelectorAll('button'))) btn.remove();
+
+    const body = block.querySelector<HTMLElement>('[data-file-preview-body]');
+    if (!body) continue;
+    if (body.querySelector('svg')) continue;
+
+    const name = block.getAttribute('data-file-preview-name') || '';
+    // ponytail: filename fallback — mirrors the file-preview card aesthetic
+    // (surf bg, mono font, centered). SVG-bearing blocks keep their render.
+    body.innerHTML = `<div style="font-family:var(--font-mono,'DM Mono',monospace);font-size:13px;color:var(--t2,#4a5580);text-align:center;padding:32px 0;word-break:break-all">${escapeHtml(name)}</div>`;
+  }
+}
+
+/**
+ * Walk all <img> elements in a container and replace Tauri asset URLs with
+ * base64 data URLs. Skips http(s) and data: URLs. Mutates the DOM in place.
+ */
+async function inlineContainerImages(container: HTMLElement): Promise<void> {
+  const imgs = Array.from(container.querySelectorAll('img'));
+  await Promise.all(
+    imgs.map(async (img) => {
+      const src = img.getAttribute('src') ?? '';
+      if (!src || src.startsWith('data:') || src.startsWith('http')) return;
+      try {
+        const res = await fetch(src);
+        const blob = await res.blob();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(fr.result as string);
+          fr.onerror = () => reject(fr.error);
+          fr.readAsDataURL(blob);
+        });
+        img.setAttribute('src', dataUrl);
+      } catch {
+        // leave the original src — better a broken img than a failed export
+      }
+    }),
+  );
 }
 
 /**

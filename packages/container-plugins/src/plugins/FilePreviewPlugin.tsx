@@ -58,6 +58,9 @@ function FilePreviewComponent({ attributes }: ContainerProps) {
   // if users get confused seeing source view from a stale file on a new one.
   const [viewMode, setViewMode] = useState<'preview' | 'source'>('preview');
 
+  // ponytail: basename for export fallback / a11y — derived, no memo needed.
+  const basename = src ? src.replace(/\\/g, '/').split('/').pop() : '';
+
   useEffect(() => {
     if (!src) {
       setContent(null);
@@ -91,13 +94,17 @@ function FilePreviewComponent({ attributes }: ContainerProps) {
   const previewEl = content && ctx?.renderFile ? (ctx.renderFile(resolveVaultPath(src, ctx.filePath), content) ?? null) : null;
 
   return (
-    <div style={{
-      padding: '12px 16px',
-      background: 'var(--surf, #f8f9fd)',
-      borderRadius: '8px',
-      border: '1px solid var(--brd, #dde2f0)',
-      margin: '12px 0',
-    }}>
+    <div
+      data-file-preview=""
+      data-file-preview-name={basename}
+      style={{
+        padding: '12px 16px',
+        background: 'var(--surf, #f8f9fd)',
+        borderRadius: '8px',
+        border: '1px solid var(--brd, #dde2f0)',
+        margin: '12px 0',
+      }}
+    >
       <div style={{
         display: 'flex', alignItems: 'center', gap: '8px',
         fontSize: '11px', color: 'var(--t3, #8892b0)', marginBottom: '8px',
@@ -159,12 +166,12 @@ function FilePreviewComponent({ attributes }: ContainerProps) {
         // ER diagram use h-full (height:100%), and percentage heights need a
         // real `height` on the parent (min-height is not enough). Markdown
         // flow content scrolls within this box; adjust if it bites.
-        <div style={{ height: 420, overflow: 'auto' }}>
+        <div data-file-preview-body="" style={{ height: 420, overflow: 'auto' }}>
           {previewEl}
         </div>
       )}
       {content && viewMode === 'preview' && !previewEl && (
-        <div style={{ fontSize: '12px', color: 'var(--t3, #8892b0)', marginBottom: '8px' }}>
+        <div data-file-preview-body="" style={{ fontSize: '12px', color: 'var(--t3, #8892b0)', marginBottom: '8px' }}>
           此类型暂无预览，可点击右上 code 图标查看源码
         </div>
       )}
