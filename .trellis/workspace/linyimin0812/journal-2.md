@@ -468,3 +468,37 @@ Added zh/en i18n across Quill desktop: i18next + react-i18next init with 14 name
 ### Next Steps
 
 - None - task complete
+
+
+## Session 72: Excalidraw export image + clipboard copy via Tauri shim
+
+**Date**: 2026-07-21
+**Task**: Excalidraw export image + clipboard copy via Tauri shim
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Excalidraw 的 Save to disk / Copy to clipboard 在 Tauri WKWebView 下静默失败。根因是 browser-fs-access legacy fallback 创建孤儿 anchor + 调 .click()，事件不冒泡到 document；navigator.clipboard.write 对 image/png 不可靠。修法：新建 services/tauriBrowserShim.ts，patch HTMLAnchorElement.prototype.click + Clipboard.prototype.write，ExcalidrawEditor useEffect 装载/卸载；capabilities/default.json 加 clipboard-manager:allow-write-image。PNG 走 canvas -> RGBA -> Image.new -> writeImage 路径（无 image-png Cargo feature）。5 个测试全绿，typecheck 干净。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `846df65` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
