@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Final review checklist — verify monkey-patch is properly scoped with mount/unmount cleanup, no global side effects leak, no forbidden patterns."}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "ACL verification — confirm allow-write-image permission is properly scoped to the main window in capabilities/default.json, and that the grep-based check passes (capability file has the permission, frontend invokes the gated command)."}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Verify ExcalidrawEditor still conforms to the EditorProps contract and the mount-once / effect-scoping patterns described in the spec."}
