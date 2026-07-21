@@ -16,6 +16,7 @@ import { ContainerRegistry, registerBuiltinPlugins } from '@quill/container-plug
 import type { ContainerProps } from '@quill/container-plugins';
 import { readFile } from '@tauri-apps/plugin-fs';
 import { resolveBasePath } from '@/utils/pathResolver';
+import { useVaultStore } from '@/store/vaultStore';
 
 // Ensure built-in plugins are registered once
 registerBuiltinPlugins();
@@ -158,16 +159,23 @@ export async function renderMarkdownToHtmlViaDom(
   const { MarkdownPreview } = await import('@/components/file-types/markdown/MarkdownPreview');
 
   const container = document.createElement('div');
+  // data-theme="light" scopes the light-theme CSS variables to this subtree
+  // so the rendered HTML bakes in light-theme values regardless of the app's
+  // current theme. visibility:hidden keeps it off-screen but layout still
+  // computes — x6 needs real offsetWidth/Height to mount the graph.
   container.setAttribute('data-export-root', '');
+  container.setAttribute('data-theme', 'light');
   container.style.cssText =
     'position:absolute;left:-9999px;top:0;width:800px;height:auto;background:#fff;color:#1a2040;visibility:hidden;';
   document.body.appendChild(container);
 
   const root = createRoot(container);
-  await new Promise<void>((resolve) => {
-    root.render(createElement(MarkdownPreview, { content, filePath, vaultRoot }));
-    resolve();
-  });
+  // ponytail: no flushSync — it forces ALL pending passive effects in the
+  // document to flush, including the editor pane's ErDiagramX6 if it has
+  // pending work, which triggers x6-react-shape's sync unmount during
+  // React's commit phase and logs a warning. Natural async render + the
+  // 150ms poll start gives React time to commit the first frame.
+  root.render(createElement(MarkdownPreview, { content, filePath, vaultRoot }));
 
   // Inline <img> srcs (Tauri asset URLs) as base64 data URLs so the exported
   // file is self-contained. Done in-DOM before extracting innerHTML so we
@@ -201,43 +209,390 @@ export async function renderMarkdownToHtmlViaDom(
     setTimeout(tick, POLL_MS);
   });
 
-  // ponytail: post-process file-preview blocks AFTER stabilization — keep SVG
-  // when the embedded preview rendered one (dbml x6); otherwise swap the
-  // body for a filename card. Canvas-only previews (excalidraw/mmap) and
-  // still-empty bodies land in the filename branch. Done before innerHTML
-  // extraction so the export captures the post-processed DOM.
-  processFilePreviews(container);
+  // ponytail: post-process file-preview blocks AFTER stabilization — per
+  // file type, render a self-contained SVG for export (excalidraw/drawio
+  // can't be captured from the in-DOM canvas/iframe; x6 ER needs viewBox
+  // scaling; mmap keeps its in-DOM render). Done before innerHTML extraction
+  // so the export captures the post-processed DOM.
+  await processFilePreviews(container, filePath);
 
   const html = container.innerHTML;
   const css = collectAppCss();
-  root.unmount();
-  container.remove();
+  // ponytail: defer unmount out of the current render cycle. x6-react-shape
+  // calls unmountComponentAtNode synchronously during React's commit phase,
+  // which races with React 18's own unmount and logs a warning. setTimeout(0)
+  // pushes cleanup past the current task so no render is in flight. Errors
+  // are swallowed — we've already extracted what we need.
+  setTimeout(() => {
+    try { root.unmount(); } catch { /* already torn down */ }
+    container.remove();
+  }, 0);
   return { html, css };
 }
 
+// ponytail: duplicated 5-line resolveVaultPath from FilePreviewPlugin.tsx.
+// Two packages, different build graphs, sharing it isn't worth a new dep.
+function resolveVaultPath(src: string, filePath: string): string {
+  if (src.startsWith('/') || src.startsWith('~')) return src;
+  if (!src.startsWith('./') && !src.startsWith('.\\') && !src.startsWith('../') && !src.startsWith('..\\')) {
+    return src;
+  }
+  const fileDir = filePath ? filePath.substring(0, filePath.lastIndexOf('/')) : '';
+  const segments = fileDir.split('/').filter(Boolean);
+  const parts = src.replace(/\\/g, '/').split('/').filter((s) => s !== '.' && s !== '');
+  for (const seg of parts) {
+    if (seg === '..') segments.pop();
+    else segments.push(seg);
+  }
+  return segments.join('/');
+}
+
 /**
- * Walk each `[data-file-preview]` block in the rendered DOM and decide what
- * to keep in the export:
- *   - If the body contains an `<svg>` (dbml x6 output, mermaid, etc.) → keep.
- *   - Otherwise (canvas-only previews like excalidraw/mmap, or still-empty
- *     bodies) → replace body innerHTML with a filename card.
+ * Walk each `[data-file-preview]` block in the rendered DOM and produce an
+ * export-ready body per file type:
+ *   - .dbml  → call x6's Export plugin (graph.toSVG) to produce a static,
+ *     self-contained SVG with styles inlined; size to fit card width.
+ *   - .excalidraw → call @excalidraw/excalidraw.exportToSvg, inject SVG.
+ *   - .drawio → postMessage the drawio iframe to export SVG, inject it.
+ *   - .mmap   → keep mind-elixir's in-DOM render (custom elements + SVGs).
+ *   - others  → if body has an SVG, keep; else filename fallback card.
  * Action buttons are stripped — they don't work in static HTML.
  */
-function processFilePreviews(container: HTMLElement): void {
+async function processFilePreviews(container: HTMLElement, filePath: string): Promise<void> {
   const blocks = container.querySelectorAll<HTMLElement>('[data-file-preview]');
-  for (const block of Array.from(blocks)) {
+  await Promise.all(Array.from(blocks).map(async (block) => {
     // Strip action buttons (no-ops in static HTML).
     for (const btn of Array.from(block.querySelectorAll('button'))) btn.remove();
 
     const body = block.querySelector<HTMLElement>('[data-file-preview-body]');
-    if (!body) continue;
-    if (body.querySelector('svg')) continue;
+    if (!body) return;
 
+    const src = block.getAttribute('data-file-preview-src') || '';
     const name = block.getAttribute('data-file-preview-name') || '';
-    // ponytail: filename fallback — mirrors the file-preview card aesthetic
-    // (surf bg, mono font, centered). SVG-bearing blocks keep their render.
+    const ext = name.toLowerCase().match(/\.([^.]+)$/)?.[1] || '';
+
+    if (ext === 'dbml' || body.querySelector('.x6-graph-svg-viewport')) {
+      await enhanceX6Block(body, src, filePath).catch(() => {});
+      return;
+    }
+    if (ext === 'excalidraw') {
+      await enhanceExcalidrawBlock(body, src, filePath).catch(() => {});
+      return;
+    }
+    if (ext === 'drawio') {
+      await enhanceDrawioBlock(body).catch(() => {});
+      return;
+    }
+    // .mmap and other types: keep in-DOM content if it has an SVG; else
+    // fall back to a filename card.
+    if (body.querySelector('svg')) return;
     body.innerHTML = `<div style="font-family:var(--font-mono,'DM Mono',monospace);font-size:13px;color:var(--t2,#4a5580);text-align:center;padding:32px 0;word-break:break-all">${escapeHtml(name)}</div>`;
+  }));
+}
+
+/**
+ * Replace the dbml file-preview body with a freshly-rendered static SVG.
+ * Reads the .dbml file, parses via parseDbml, lays out via layoutEr, and
+ * renders an SVG from the layout — does NOT depend on x6 having mounted
+ * in the export container. The in-app preview uses x6 + react-shape; for
+ * export we re-render in pure SVG so the output is self-contained and
+ * doesn't depend on x6's runtime stylesheets or foreignObject content.
+ */
+async function enhanceX6Block(body: HTMLElement, src: string, filePath: string): Promise<void> {
+  if (!src) return;
+  const vaultRelPath = resolveVaultPath(src, filePath);
+  let content: string;
+  try {
+    content = await useVaultStore.getState().readFile(vaultRelPath);
+  } catch { return; }
+  const { parseDbml } = await import('@/components/file-types/dbml/parseDbml');
+  const { layoutEr } = await import('@/components/file-types/dbml/erLayout');
+  const result = await parseDbml(content);
+  if (result.errors.length > 0 || !result.schema) return;
+  const layout = layoutEr(result.schema, 800, 600);
+  const svgString = renderErLayoutToSvg(layout);
+  body.innerHTML = svgString;
+  const svgEl = body.querySelector<SVGSVGElement>('svg');
+  if (svgEl) {
+    svgEl.style.display = 'block';
+    svgEl.style.margin = '0 auto';
+    svgEl.style.maxWidth = '100%';
   }
+  body.style.height = '420px';
+  body.style.minHeight = '420px';
+  body.style.overflow = 'hidden';
+}
+
+// ponytail: duplicated from erLayout.ts (ER_HEADER_H=38, ER_ROW_H=28). The
+// constants are stable layout sizing — duplicate beats a static import
+// that would pull d3-force into the main bundle. Revisit if they drift.
+const ER_HEADER_H = 38;
+const ER_ROW_H = 28;
+
+// ponytail: standalone ER→SVG renderer. Mirrors the layout coordinates from
+// erLayout (header / row heights already agree with the in-app x6 render).
+// Drops x6-specific styling (drag handles, popovers, grid). Add when an
+// export needs closer visual parity with the in-app preview.
+function renderErLayoutToSvg(layout: import('@/components/file-types/dbml/erLayout').ErLayout): string {
+  const { tables, enums, refs } = layout;
+  if (tables.length === 0 && enums.length === 0) return '';
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const bounds = (x: number, y: number, w: number, h: number) => {
+    minX = Math.min(minX, x); minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h);
+  };
+  for (const t of tables) bounds(t.x, t.y, t.width, t.height);
+  for (const e of enums) bounds(e.x, e.y, e.width, e.height);
+  const PAD = 40;
+  const vbX = minX - PAD, vbY = minY - PAD;
+  const vbW = (maxX - minX) + PAD * 2, vbH = (maxY - minY) + PAD * 2;
+
+  const parts: string[] = [];
+  parts.push(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"`,
+    ` viewBox="${vbX} ${vbY} ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet">`,
+  );
+  // Edges first so cards draw on top.
+  const tableByName = new Map(tables.map((t) => [t.name, t]));
+  for (const r of refs) {
+    const from = tableByName.get(r.fromTable);
+    const to = tableByName.get(r.toTable);
+    if (!from || !to) continue;
+    // Exit point: midpoint of the facing side of `from` → facing side of `to`.
+    const fx = from.x + (to.x + to.width / 2 >= from.x + from.width / 2 ? from.width : 0);
+    const fy = from.y + from.height / 2;
+    const tx = to.x + (from.x + from.width / 2 >= to.x + to.width / 2 ? to.width : 0);
+    const ty = to.y + to.height / 2;
+    const mx = (fx + tx) / 2;
+    parts.push(
+      `<polyline points="${fx},${fy} ${mx},${fy} ${mx},${ty} ${tx},${ty}"`,
+      ` fill="none" stroke="var(--t3)" stroke-width="1.4" stroke-dasharray="0" />`,
+    );
+  }
+  for (const t of tables) parts.push(renderTableCardSvg(t));
+  for (const e of enums) parts.push(renderEnumCardSvg(e));
+  parts.push('</svg>');
+  return parts.join('');
+}
+
+function escapeXml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function renderTableCardSvg(t: import('@/components/file-types/dbml/erLayout').PositionedTable): string {
+  const parts: string[] = [];
+  parts.push('<g>');
+  // Card body
+  parts.push(
+    `<rect x="${t.x}" y="${t.y}" width="${t.width}" height="${t.height}" rx="6" ry="6"`,
+    ` fill="var(--surf)" stroke="var(--brd)" stroke-width="1" />`,
+  );
+  // Header band (top rounded)
+  parts.push(
+    `<path d="M ${t.x + 6} ${t.y} H ${t.x + t.width - 6} A 6 6 0 0 1 ${t.x + t.width} ${t.y + 6} V ${t.y + ER_HEADER_H} H ${t.x} V ${t.y + 6} A 6 6 0 0 1 ${t.x + 6} ${t.y} Z"`,
+    ` fill="var(--hov)" />`,
+  );
+  parts.push(
+    `<text x="${t.x + 14}" y="${t.y + ER_HEADER_H / 2}" dominant-baseline="central"`,
+    ` font-family="var(--font-ui,'Sora',sans-serif)" font-size="15" font-weight="700" fill="var(--t1)">${escapeXml(t.name)}</text>`,
+  );
+  // Divider
+  parts.push(
+    `<line x1="${t.x}" y1="${t.y + ER_HEADER_H}" x2="${t.x + t.width}" y2="${t.y + ER_HEADER_H}"`,
+    ` stroke="var(--brd2)" stroke-width="1" />`,
+  );
+  // Fields
+  t.fields.forEach((f, i) => {
+    const ry = t.y + ER_HEADER_H + i * ER_ROW_H + ER_ROW_H / 2;
+    if (f.pk) {
+      parts.push(
+        `<circle cx="${t.x + 10}" cy="${ry}" r="3" fill="var(--acc)" />`,
+      );
+    }
+    parts.push(
+      `<text x="${t.x + 22}" y="${ry}" dominant-baseline="central"`,
+      ` font-family="var(--font-ui,'Sora',sans-serif)" font-size="13" fill="var(--t1)">${escapeXml(f.name)}</text>`,
+    );
+    parts.push(
+      `<text x="${t.x + t.width - 14}" y="${ry}" text-anchor="end" dominant-baseline="central"`,
+      ` font-family="var(--font-mono,'DM Mono',monospace)" font-size="12" fill="var(--t3)">${escapeXml(f.type)}</text>`,
+    );
+  });
+  parts.push('</g>');
+  return parts.join('');
+}
+
+function renderEnumCardSvg(e: import('@/components/file-types/dbml/erLayout').PositionedEnum): string {
+  const parts: string[] = [];
+  parts.push('<g>');
+  parts.push(
+    `<rect x="${e.x}" y="${e.y}" width="${e.width}" height="${e.height}" rx="6" ry="6"`,
+    ` fill="var(--surf)" stroke="var(--brd)" stroke-width="1" stroke-dasharray="3 2" />`,
+  );
+  parts.push(
+    `<path d="M ${e.x + 6} ${e.y} H ${e.x + e.width - 6} A 6 6 0 0 1 ${e.x + e.width} ${e.y + 6} V ${e.y + ER_HEADER_H} H ${e.x} V ${e.y + 6} A 6 6 0 0 1 ${e.x + 6} ${e.y} Z"`,
+    ` fill="var(--brd2)" />`,
+  );
+  parts.push(
+    `<text x="${e.x + 14}" y="${e.y + ER_HEADER_H / 2}" dominant-baseline="central"`,
+    ` font-family="var(--font-ui,'Sora',sans-serif)" font-size="12" fill="var(--t3)">«enum»</text>`,
+  );
+  parts.push(
+    `<text x="${e.x + 62}" y="${e.y + ER_HEADER_H / 2}" dominant-baseline="central"`,
+    ` font-family="var(--font-ui,'Sora',sans-serif)" font-size="15" font-weight="700" fill="var(--t1)">${escapeXml(e.name)}</text>`,
+  );
+  e.values.forEach((v, i) => {
+    const ry = e.y + ER_HEADER_H + i * ER_ROW_H + ER_ROW_H / 2;
+    parts.push(
+      `<text x="${e.x + 22}" y="${ry}" dominant-baseline="central"`,
+      ` font-family="var(--font-ui,'Sora',sans-serif)" font-size="13" fill="var(--t1)">${escapeXml(v.name)}</text>`,
+    );
+  });
+  parts.push('</g>');
+  return parts.join('');
+}
+
+/**
+ * Replace an excalidraw file-preview body with an SVG exported via the
+ * excalidraw library's exportToSvg API. Reads the .excalidraw file fresh,
+ * parses elements/appState/files, and calls the library. Falls back to
+ * filename card on any error.
+ */
+async function enhanceExcalidrawBlock(body: HTMLElement, src: string, filePath: string): Promise<void> {
+  if (!src) return;
+  const vaultRelPath = resolveVaultPath(src, filePath);
+  const json = await useVaultStore.getState().readFile(vaultRelPath);
+  let parsed: { elements?: any[]; appState?: any; files?: any };
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    return;
+  }
+  const { exportToSvg } = await import('@excalidraw/excalidraw');
+  const svg = await exportToSvg({
+    elements: parsed.elements ?? [],
+    appState: { ...parsed.appState, exportWithDarkMode: false },
+    files: parsed.files,
+  });
+  const svgString = new XMLSerializer().serializeToString(svg);
+  body.innerHTML = svgString;
+  // Inline the SVG so it scales to body width.
+  const svgEl = body.querySelector('svg');
+  if (svgEl) {
+    svgEl.setAttribute('width', '100%');
+    svgEl.setAttribute('height', '100%');
+    svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svgEl.style.maxWidth = '100%';
+    svgEl.style.display = 'block';
+    svgEl.style.margin = '0 auto';
+  }
+  body.style.height = '420px';
+  body.style.minHeight = '420px';
+  body.style.overflow = 'hidden';
+}
+
+/**
+ * Decode a drawio export payload to a raw SVG string. Accepts:
+ *   - `data:image/svg+xml;base64,...` (drawio's usual form)
+ *   - `data:image/svg+xml;utf8,...` or URL-encoded data URI
+ *   - raw base64 (no prefix) — atob and check it starts with `<svg`
+ *   - raw SVG string (starts with `<svg`) — pass through
+ * Returns '' for unrecognized / malformed payloads.
+ */
+function decodeDataUriSvg(data: string): string {
+  if (!data) return '';
+  if (data.startsWith('<svg')) return data;
+  const decodeBase64Svg = (b64: string): string => {
+    try {
+      // ponytail: atob returns a binary string (Latin-1 chars = bytes).
+      // SVG content can contain non-ASCII (e.g. user-entered Chinese
+      // labels); TextDecoder('utf-8') turns the byte sequence back into
+      // a proper UTF-8 string. Without this, multi-byte chars render as
+      // mojibake (e.g. "开始" → "å¼å§").
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const decoded = new TextDecoder('utf-8').decode(bytes);
+      return decoded.startsWith('<svg') ? decoded : '';
+    } catch { return ''; }
+  };
+  if (data.startsWith('data:image/svg+xml')) {
+    const commaIdx = data.indexOf(',');
+    if (commaIdx < 0) return '';
+    const meta = data.slice(0, commaIdx);
+    const body = data.slice(commaIdx + 1);
+    if (meta.includes(';base64')) return decodeBase64Svg(body);
+    try { return decodeURIComponent(body); } catch { return body; }
+  }
+  return decodeBase64Svg(data);
+}
+
+/**
+ * Replace a drawio file-preview body with an SVG exported by the diagrams.net
+ * iframe via postMessage. The iframe loads from https://embed.diagrams.net
+ * (cross-origin) so we can't read its DOM, but the embed protocol supports
+ * an `export` action that posts back the SVG. Falls back silently (the body
+ * keeps its filename card / prior content) on timeout.
+ *
+ * Format is `xmlsvg` (matches react-drawio's default — plain `svg` is not a
+ * valid drawio export format and yields no response). The message is
+ * JSON-stringified to match react-drawio's protocol; drawio's embed accepts
+ * both but stringified is the documented form.
+ */
+async function enhanceDrawioBlock(body: HTMLElement): Promise<void> {
+  const iframe = body.querySelector('iframe');
+  const cw = iframe?.contentWindow;
+  if (!iframe || !cw) return;
+  // ponytail: skip cross-origin document.readyState check — accessing
+  // .document on a cross-origin iframe throws SecurityError, which the ?.
+  // operator doesn't catch. The export stabilization loop already waited
+  // for "加载中…" to disappear (DrawioPreview's loading state), so by the
+  // time we get here the iframe has processed the load action and is ready
+  // to receive export.
+  await new Promise<void>((resolve) => {
+    let settled = false;
+    const handler = (e: MessageEvent) => {
+      // drawio posts back a JSON-stringified payload (react-drawio does
+      // JSON.parse(event.data)); accept both string and object forms.
+      let payload: any = e.data;
+      if (typeof payload === 'string') {
+        try { payload = JSON.parse(payload); } catch { return; }
+      }
+      if (payload?.event !== 'export') return;
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('message', handler);
+      clearTimeout(timer);
+      const raw = typeof payload.data === 'string' ? payload.data : '';
+      // drawio returns the SVG as a data URI (`data:image/svg+xml;base64,…`
+      // or `data:image/svg+xml;utf8,…`), not as a raw SVG string. Decode
+      // so we inject a real <svg> element (scalable, styleable) rather
+      // than dumping the URI as text.
+      const svgText = decodeDataUriSvg(raw);
+      if (svgText) body.innerHTML = svgText;
+      resolve();
+    };
+    window.addEventListener('message', handler);
+    cw.postMessage(JSON.stringify({ action: 'export', format: 'xmlsvg', spinKey: 'export' }), '*');
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('message', handler);
+      resolve();
+    }, 8000);
+  });
+  const svgEl = body.querySelector('svg');
+  if (svgEl) {
+    svgEl.setAttribute('width', '100%');
+    svgEl.setAttribute('height', '100%');
+    svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svgEl.style.maxWidth = '100%';
+    svgEl.style.display = 'block';
+    svgEl.style.margin = '0 auto';
+  }
+  body.style.height = '420px';
+  body.style.minHeight = '420px';
+  body.style.overflow = 'hidden';
 }
 
 /**

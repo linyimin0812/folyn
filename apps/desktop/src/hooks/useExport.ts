@@ -55,7 +55,7 @@ export async function exportActiveHtml(): Promise<void> {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(name.replace(/\.md$/, ''))}</title>
-  <style>${HTML_STYLES}\n${LIGHT_THEME_VARS}\n${css}</style>
+  <style>${HTML_STYLES}\n${LIGHT_THEME_VARS}\n${css}\n/* ponytail: app CSS dumps html,body{overflow:hidden;height:100%} because the app uses internal scroll containers. Override so the exported page scrolls natively. */\nhtml, body { height: auto !important; min-height: 0 !important; overflow: auto !important; }\n</style>
 </head>
 <body>
 ${inlinedBody}

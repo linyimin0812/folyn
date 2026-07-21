@@ -96,6 +96,7 @@ function FilePreviewComponent({ attributes }: ContainerProps) {
   return (
     <div
       data-file-preview=""
+      data-file-preview-src={src}
       data-file-preview-name={basename}
       style={{
         padding: '12px 16px',
