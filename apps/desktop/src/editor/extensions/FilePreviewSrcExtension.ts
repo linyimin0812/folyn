@@ -39,12 +39,17 @@ export function createFilePreviewSrcCompletion(filePath: string) {
       // ponytail: cap at 50 matches — vault can have thousands of files, the
       // dropdown is unusable past that. Replace with ranked/scored search
       // (fuzzy, recency) if/when the cap bites.
-      const options = filtered.slice(0, 50).map((f) => ({
-        label: f.name,
-        detail: f.path,
-        apply: f.path,
-        type: 'file' as const,
-      }));
+      const options = filtered.slice(0, 50).map((f) => {
+        // ponytail: detail = parent dir only — full path ends with `name`, so
+        // label+detail would show the filename twice per row.
+        const lastSlash = f.path.lastIndexOf('/');
+        return {
+          label: f.name,
+          detail: lastSlash === -1 ? '' : f.path.slice(0, lastSlash),
+          apply: f.path,
+          type: 'file' as const,
+        };
+      });
       // ponytail: invalidate the moment the partial grows a `/` — that
       // transitions to the directory-children branch below, which needs a
       // fresh query (different options, different `from`).
@@ -77,9 +82,11 @@ export function createFilePreviewSrcCompletion(filePath: string) {
     // filter text and preserves the typed directory prefix (e.g. `./<dir>/`).
     const filterStart = partialStart + slashIdx + 1;
     const options = filtered.slice(0, 50).map((c) =>
+      // ponytail: detail = resolved dir (same for every row) — full path would
+      // repeat the filename from `label`.
       c.type === 'dir'
-        ? { label: c.name + '/', detail: c.path, apply: c.name + '/', type: 'dir' as const }
-        : { label: c.name, detail: c.path, apply: c.name, type: 'file' as const },
+        ? { label: c.name + '/', detail: dirPath, apply: c.name + '/', type: 'dir' as const }
+        : { label: c.name, detail: dirPath, apply: c.name, type: 'file' as const },
     );
     // ponytail: invalidate when the directory part of the partial changes
     // (drilling into a subdir must re-query). Filter-only typing within the
@@ -95,26 +102,30 @@ export function createFilePreviewSrcCompletion(filePath: string) {
 
 /**
  * Resolve a `dirPart` (with trailing `/`) to a vault-relative directory path.
- * Returns null for outside-vault paths (absolute `/` or `~`-prefixed).
+ * Returns null for absolute `/` or `~`-prefixed paths (no vault-inside-home
+ * completion — matches the existing early-return).
  *
- * ponytail: single-level `../` only — nested parents need a loop if needed.
- * Matches the same limit in FilePreviewPlugin.tsx:resolveVaultPath.
+ * ponytail: segment-walk loop — handles N-level `../../`, replacing the old
+ * single-level `../` slice. Bare paths (no `./` or `../` prefix) stay
+ * vault-relative, matching the runtime resolver in FilePreviewPlugin.tsx.
  */
 function resolveDirPart(dirPart: string, filePath: string): string | null {
+  if (dirPart.startsWith('/') || dirPart.startsWith('~')) return null;
+  // Bare path (no ./ ../ prefix) → vault-relative.
+  if (
+    !dirPart.startsWith('./') && !dirPart.startsWith('.\\') &&
+    !dirPart.startsWith('../') && !dirPart.startsWith('..\\')
+  ) {
+    return dirPart;
+  }
   const fileDir = filePath ? filePath.substring(0, filePath.lastIndexOf('/')) : '';
-  if (dirPart.startsWith('./') || dirPart.startsWith('.\\')) {
-    const raw = dirPart.slice(2);
-    return fileDir ? `${fileDir}/${raw}` : raw;
+  const segments = fileDir.split('/').filter(Boolean);
+  const parts = dirPart.replace(/\\/g, '/').split('/').filter((s) => s !== '.' && s !== '');
+  for (const seg of parts) {
+    if (seg === '..') segments.pop();
+    else segments.push(seg);
   }
-  if (dirPart.startsWith('../') || dirPart.startsWith('..\\')) {
-    const raw = dirPart.slice(3);
-    const parentDir = fileDir ? fileDir.substring(0, fileDir.lastIndexOf('/')) : '';
-    return parentDir ? `${parentDir}/${raw}` : raw;
-  }
-  if (dirPart.startsWith('/') || dirPart.startsWith('~')) {
-    return null;
-  }
-  return dirPart;
+  return segments.join('/');
 }
 
 /** Walk `tree` by `/`-separated segments to find the target directory's

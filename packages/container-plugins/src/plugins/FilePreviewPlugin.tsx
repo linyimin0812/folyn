@@ -25,22 +25,28 @@ function resolveVaultPath(src: string, filePath: string): string {
   // Returns a vault-relative path. VaultManager.readFile joins this with the
   // vault base path, so we must NOT pass absolute paths (they'd get doubled).
   if (src.startsWith('/') || src.startsWith('~')) return src;
+  // Bare path (no ./ ../ prefix) → vault-relative (Obsidian/wikilink convention,
+  // matches the paths the autocomplete source returns).
+  if (
+    !src.startsWith('./') && !src.startsWith('.\\') &&
+    !src.startsWith('../') && !src.startsWith('..\\')
+  ) {
+    return src;
+  }
+  // ./ and ../ → resolve relative to the current document's directory
+  // (markdown image convention). Walk segments: '.' is no-op, '..' pops one
+  // level, otherwise descend. Handles N-level `../../`, matching the
+  // completion source's resolveDirPart so picked entries actually resolve.
+  // ponytail: duplicated 5-line loop from FilePreviewSrcExtension.ts:resolveDirPart —
+  // two packages, different build graphs, sharing it isn't worth a new dep.
   const fileDir = filePath ? filePath.substring(0, filePath.lastIndexOf('/')) : '';
-  // `./` and `../` → resolve relative to the current document's directory
-  // (markdown image convention).
-  if (src.startsWith('./') || src.startsWith('.\\')) {
-    const raw = src.slice(2);
-    return fileDir ? `${fileDir}/${raw}` : raw;
+  const segments = fileDir.split('/').filter(Boolean);
+  const parts = src.replace(/\\/g, '/').split('/').filter((s) => s !== '.' && s !== '');
+  for (const seg of parts) {
+    if (seg === '..') segments.pop();
+    else segments.push(seg);
   }
-  if (src.startsWith('../') || src.startsWith('..\\')) {
-    // ponytail: single-level `../` only — nested parents need a loop if needed.
-    const raw = src.slice(3);
-    const parentDir = fileDir ? fileDir.substring(0, fileDir.lastIndexOf('/')) : '';
-    return parentDir ? `${parentDir}/${raw}` : raw;
-  }
-  // No prefix → vault-relative (Obsidian/wikilink convention, matches the
-  // paths the autocomplete source returns).
-  return src;
+  return segments.join('/');
 }
 
 function FilePreviewComponent({ attributes }: ContainerProps) {
