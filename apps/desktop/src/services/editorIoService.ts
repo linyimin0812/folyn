@@ -317,25 +317,31 @@ export async function checkDiskChanges(): Promise<void> {
     return !!handler?.needsFileContent;
   });
 
-  await Promise.allSettled(candidates.map(async (tab) => {
+    await Promise.allSettled(candidates.map(async (tab) => {
     const handler = getHandlerById(tab.fileType);
     const raw = await useVaultStore.getState().readFile(tab.path);
     const diskContent = handler!.deserialize ? handler!.deserialize(raw) : raw;
-    if (diskContent !== tab.content) {
-      if (tab.id === activeTabId) {
+    const isActive = tab.id === activeTabId;
+    // ponytail: CodeMirror editors show a diff-review banner on the active tab
+    // (accept/reject), so they need the differs-check + enterDiffReview. Custom
+    // editors (excalidraw/drawio/mmap/clip) have no diff UI — just reload from
+    // disk unconditionally: update content + bump version → WorkArea remounts
+    // the editor with fresh initialData.
+    if (isActive && handler?.useCodeMirror) {
+      if (diskContent !== tab.content) {
         useDiffReviewStore
           .getState()
           .enterDiffReview(tab.path, tab.content, diskContent);
-      } else {
-        set((state) => ({
-          tabs: state.tabs.map((t) =>
-            t.id === tab.id ? { ...t, content: diskContent, isDirty: false } : t,
-          ),
-        }));
-        useDiffReviewStore.setState((s) => ({
-          externalContentVersion: s.externalContentVersion + 1,
-        }));
       }
+    } else {
+      set((state) => ({
+        tabs: state.tabs.map((t) =>
+          t.id === tab.id ? { ...t, content: diskContent, isDirty: false } : t,
+        ),
+      }));
+      useDiffReviewStore.setState((s) => ({
+        externalContentVersion: s.externalContentVersion + 1,
+      }));
     }
   }));
 }

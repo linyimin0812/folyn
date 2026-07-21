@@ -88,15 +88,15 @@ describe('EditorFileChangeApplier routing', () => {
     expect(diffReviewState.setContentExternal).not.toHaveBeenCalled();
   });
 
-  it('routes non-useCodeMirror files to editorStore.updateTabContent only (NOT setContentExternal)', () => {
+  it('routes non-useCodeMirror files to diffReviewStore.setContentExternal (version bump + updateTabContent)', () => {
     editorState.tabs = [{ id: 'vault-1:diagrams/x.drawio', fileType: 'drawio' }];
     getHandlerByIdMock.mockReturnValue({ id: 'drawio', useCodeMirror: false });
     new EditorFileChangeApplier().apply(change({ path: 'diagrams/x.drawio' }));
 
-    expect(editorState.updateTabContent).toHaveBeenCalledWith('vault-1:diagrams/x.drawio', 'new');
-    // The PRD prose listed setContentExternal here, but the old aiStore branch
-    // intentionally omits it (iframe remount). Zero-regression = no call.
-    expect(diffReviewState.setContentExternal).not.toHaveBeenCalled();
+    expect(diffReviewState.setContentExternal).toHaveBeenCalledWith('vault-1:diagrams/x.drawio', 'new');
+    // setContentExternal (real impl) delegates to updateTabContent; the mock
+    // doesn't simulate that, so we assert only the routing entrypoint here.
+    // No diff-review banner for custom editors.
     expect(diffReviewState.enterDiffReview).not.toHaveBeenCalled();
   });
 
@@ -105,7 +105,7 @@ describe('EditorFileChangeApplier routing', () => {
     getHandlerByIdMock.mockReturnValue({ id: 'web' }); // no useCodeMirror
     new EditorFileChangeApplier().apply(change({ path: 'p.webm' }));
 
-    expect(editorState.updateTabContent).toHaveBeenCalledWith('vault-1:p.webm', 'new');
+    expect(diffReviewState.setContentExternal).toHaveBeenCalledWith('vault-1:p.webm', 'new');
     expect(diffReviewState.enterDiffReview).not.toHaveBeenCalled();
   });
 
@@ -115,7 +115,7 @@ describe('EditorFileChangeApplier routing', () => {
     new EditorFileChangeApplier().apply(change({ path: 'notes/absent.md' }));
 
     expect(diffReviewState.enterDiffReview).not.toHaveBeenCalled();
-    expect(editorState.updateTabContent).not.toHaveBeenCalled();
+    expect(diffReviewState.setContentExternal).not.toHaveBeenCalled();
   });
 
   it('is a no-op for a non-pending change', () => {
@@ -124,7 +124,7 @@ describe('EditorFileChangeApplier routing', () => {
     new EditorFileChangeApplier().apply(change({ status: 'accepted' }));
 
     expect(diffReviewState.enterDiffReview).not.toHaveBeenCalled();
-    expect(editorState.updateTabContent).not.toHaveBeenCalled();
+    expect(diffReviewState.setContentExternal).not.toHaveBeenCalled();
   });
 
   it('parses the tabId as `${vaultId}:${path}` (vault id leak from aiStore removed)', () => {
@@ -230,16 +230,16 @@ describe('aiStore.addFileChange end-to-end (via registered applier)', () => {
     expect(session?.fileChanges[0].path).toBe('notes/a.md');
   });
 
-  it('routes a non-useCodeMirror file change to editorStore.updateTabContent only', () => {
+  it('routes a non-useCodeMirror file change to diffReviewStore.setContentExternal (version bump + updateTabContent)', () => {
     editorState.tabs = [{ id: 'vault-1:diagrams/x.drawio', fileType: 'drawio' }];
     getHandlerByIdMock.mockReturnValue({ id: 'drawio', useCodeMirror: false });
 
     useAiStore.getState().addFileChange(change({ path: 'diagrams/x.drawio' }));
 
-    expect(editorState.updateTabContent).toHaveBeenCalledWith('vault-1:diagrams/x.drawio', 'new');
-    // Matches the old aiStore.ts:282 branch — no setContentExternal (iframe
-    // remount), no enterDiffReview.
-    expect(diffReviewState.setContentExternal).not.toHaveBeenCalled();
+    expect(diffReviewState.setContentExternal).toHaveBeenCalledWith('vault-1:diagrams/x.drawio', 'new');
+    // setContentExternal (real impl) delegates tab mutation to updateTabContent;
+    // the mock doesn't simulate that, so we only assert the routing entrypoint.
+    // No diff-review banner for custom editors.
     expect(diffReviewState.enterDiffReview).not.toHaveBeenCalled();
   });
 

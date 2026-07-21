@@ -69,12 +69,15 @@ export class EditorFileChangeApplier implements FileChangeApplier {
         .getState()
         .enterDiffReview(change.path, change.oldContent, change.newContent);
     } else {
-      // ponytail: matches the old aiStore branch — updateTabContent ONLY (not
-      // setContentExternal). Custom-editor iframes (drawio, excalidraw, mmap, …)
-      // live-reload via their content-prop effect, and a version bump would
-      // remount the iframe. Zero-regression mandates matching the old branch.
-      // The accept path (acceptEditorChange) is where setContentExternal fires.
-      useEditorStore.getState().updateTabContent(tabId, change.newContent);
+      // setContentExternal bumps externalContentVersion + updateTabContent.
+      // Version bump forces WorkArea to remount the editor via
+      // `key={tabId-externalContentVersion}`, required for custom editors
+      // whose content prop is mount-only (excalidraw's `initialData` has no
+      // internal reload effect, unlike DrawIoEmbed's `xml`). Editors with
+      // their own reload mechanism (drawio, mmap) still work — the remount
+      // is redundant but harmless; useState(content) init handles the new
+      // content on remount.
+      useDiffReviewStore.getState().setContentExternal(tabId, change.newContent);
     }
   }
 
