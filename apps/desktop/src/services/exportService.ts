@@ -297,9 +297,13 @@ async function processFilePreviews(container: HTMLElement, filePath: string): Pr
       return;
     }
     // .mmap and other types: keep in-DOM content if it has an SVG; else
-    // fall back to a filename card.
+    // fall back to a filename card. Reset the body's fixed 420px height
+    // so the card shrinks to content instead of leaving a huge empty box.
     if (body.querySelector('svg')) return;
-    body.innerHTML = `<div style="font-family:var(--font-mono,'DM Mono',monospace);font-size:13px;color:var(--t2,#4a5580);text-align:center;padding:32px 0;word-break:break-all">${escapeHtml(name)}</div>`;
+    body.innerHTML = `<div style="font-family:var(--font-ui,'Sora',sans-serif);font-size:13px;color:var(--t3,#8892b0);text-align:center;padding:20px 0">此文件类型内容不支持导出</div>`;
+    body.style.height = 'auto';
+    body.style.minHeight = '0';
+    body.style.overflow = 'visible';
   }));
 }
 
