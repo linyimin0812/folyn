@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 72
+- **Total Sessions**: 73
 - **Last Active**: 2026-07-21
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~504 | Active |
+| `journal-2.md` | ~539 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 73 | 2026-07-21 | Excalidraw preview layout + mmap export fixes + exportService refactor | `8ea11f0`, `9c90f16` | `master` |
 | 72 | 2026-07-21 | Excalidraw export image + clipboard copy via Tauri shim | `846df65` | `master` |
 | 71 | 2026-07-20 | i18n zh/en support — full sweep with Rust AppError | `c9285e2`, `67d1e27` | `master` |
 | 70 | 2026-07-19 | Plugin AI capability: expose chat/agent to plugins via permissions.ai | `548e61f` | `master` |

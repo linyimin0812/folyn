@@ -502,3 +502,38 @@ Excalidraw 的 Save to disk / Copy to clipboard 在 Tauri WKWebView 下静默失
 ### Next Steps
 
 - None - task complete
+
+
+## Session 73: Excalidraw preview layout + mmap export fixes + exportService refactor
+
+**Date**: 2026-07-21
+**Task**: Excalidraw preview layout + mmap export fixes + exportService refactor
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Three export pipeline changes across two sessions. (1) Aligned ExcalidrawPreview's inline file-preview wrapper with ExcalidrawEditor (w-full h-full relative, no extra style override) so preview matches the opened-file layout. (2) Fixed mind-elixir mmap export: image-node text foreignObject was spanning me-tpc's full content area, putting text ABOVE image (reversed from in-app); post-process SVG string to swap image to content top + foreignObject below image with 8px margin, plus a scoped <style> for foreignObject text centering (height:100% + flex column + line-height:1.5 + text-align:center). PNG scale 2→3. (3) Refactored 1159-line exportService.ts into services/export/{dbml,excalidraw,drawio,mmap,shared}.ts with uniform enhance(body, ctx) signature; exportService becomes HTML main pipeline + REGISTRY map dispatch (processFilePreviews is a lookup, not if/else); renderFilePreviewToSvg breaks the exportService↔shared ESM cycle via dynamic import (TDZ-safe, matches editorStore↔editorIoService pattern). useExport.ts + exportService.test.ts import shared utils from ./export/shared directly. tsc clean. Test failures pre-existing (open-color.json import attribute, Node 22+ × roughjs).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8ea11f0` | (see git log) |
+| `9c90f16` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
