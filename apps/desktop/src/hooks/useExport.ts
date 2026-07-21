@@ -8,6 +8,7 @@ import {
   escapeHtml,
   HTML_STYLES,
   LIGHT_THEME_VARS,
+  DARK_THEME_VARS,
 } from '@/services/exportService';
 
 export type { ExportFormat } from '@/services/exportService';
@@ -48,15 +49,22 @@ export function exportActiveMarkdown(onBeforeDialog?: () => void): void {
 /** Export the active document as a standalone HTML file. Imperative. */
 export async function exportActiveHtml(onBeforeDialog?: () => void): Promise<void> {
   const { name, content, path, vaultRoot } = getActiveDocument();
-  const { html: renderedBody, css } = await renderMarkdownToHtmlViaDom(content, path, vaultRoot);
+  // Resolve app theme to light/dark at call time — appearanceStore.theme can
+  // be 'system', so we look at documentElement.dataset.theme which the store
+  // has already resolved to the actual applied theme.
+  const theme: 'light' | 'dark' =
+    (document.documentElement.dataset.theme as 'light' | 'dark') === 'dark' ? 'dark' : 'light';
+  const themeVars = theme === 'dark' ? DARK_THEME_VARS : LIGHT_THEME_VARS;
+  const { html: renderedBody, css } = await renderMarkdownToHtmlViaDom(content, path, vaultRoot, theme);
   const inlinedBody = await inlineImages(renderedBody, vaultRoot, path);
+  const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
   const htmlContent = `<!DOCTYPE html>
-<html lang="zh-CN" data-theme="light">
+<html lang="zh-CN" data-theme="${theme}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(name.replace(/\.md$/, ''))}</title>
-  <style>${HTML_STYLES}\n${LIGHT_THEME_VARS}\n${css}\n/* ponytail: app CSS dumps html,body{overflow:hidden;height:100%;background:var(--bg)} — override so the exported page scrolls natively and the 800px column is centered on a white viewport. Body becomes a flex container so .md-preview is the centered card. */\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: #fff !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n</style>
+  <style>${HTML_STYLES}\n${themeVars}\n${css}\n/* ponytail: app CSS dumps html,body{overflow:hidden;height:100%;background:var(--bg)} — override so the exported page scrolls natively and the 800px column is centered against the theme's viewport bg. */\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n</style>
 </head>
 <body>
 ${inlinedBody}

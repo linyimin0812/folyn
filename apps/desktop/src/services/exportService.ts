@@ -98,8 +98,9 @@ export function renderMarkdownToHtml(markdown: string, _vaultRoot?: string): str
 
 // ponytail: light-theme token block — mirrors [data-theme="light"] in
 // apps/desktop/src/index.css:80-92. Dumped app CSS uses var(--t1) etc., which
-// won't resolve in a standalone HTML file without :root defining them. Dark
-// theme export is a known limitation; add a theme variant if needed.
+// won't resolve in a standalone HTML file without :root defining them.
+// Vars mirror index.css light ([data-theme="light"],:root) and dark
+// ([data-theme="dark"]) blocks — keep in sync if those change.
 export const LIGHT_THEME_VARS = `
 [data-theme="light"], :root {
   --bg: #f0f2f8; --panel: #fff; --surf: #f8f9fd; --surf2: #eef0f8;
@@ -108,6 +109,18 @@ export const LIGHT_THEME_VARS = `
   --acc: #3a6ef0; --acc2: #6a3af0; --accdim: #dce8ff; --accglow: rgba(58,110,240,.08);
   --green: #22a863; --gdim: #dcf5e8; --amber: #d4820a; --red: #d94040;
   --cyan: #0a8ab8; --purple: #8040d0; --card: #fff; --inp: #f4f5f8;
+  --font-ui: 'Sora', sans-serif; --font-mono: 'DM Mono', monospace; --ui-font-size: 14px;
+}
+`;
+
+export const DARK_THEME_VARS = `
+[data-theme="dark"], :root {
+  --bg: #0b0d14; --panel: #0f1219; --surf: #13161f; --surf2: #181c28;
+  --hov: #1b1f2e; --act: #1e2438; --brd: #1c2136; --brd2: #252d4a;
+  --t1: #e2e8f8; --t2: #9aa5c0; --t3: #6b7a96; --t4: #3a4560;
+  --acc: #5b8af5; --acc2: #7c5bf5; --accdim: #131d42; --accglow: rgba(91,138,245,.1);
+  --green: #3dd68c; --gdim: #0b2418; --amber: #f5a623; --red: #f06a6a;
+  --cyan: #5dd8f5; --purple: #b87cf5; --card: #111420; --inp: #0f1219;
   --font-ui: 'Sora', sans-serif; --font-mono: 'DM Mono', monospace; --ui-font-size: 14px;
 }
 `;
@@ -153,20 +166,22 @@ export async function renderMarkdownToHtmlViaDom(
   content: string,
   filePath: string,
   vaultRoot: string,
+  theme: 'light' | 'dark' = 'light',
 ): Promise<{ html: string; css: string }> {
   // Lazy import: MarkdownPreview pulls in Excalidraw + x6 which need a real
   // DOM (canvas getContext). Keeps this module importable in test (jsdom).
   const { MarkdownPreview } = await import('@/components/file-types/markdown/MarkdownPreview');
 
   const container = document.createElement('div');
-  // data-theme="light" scopes the light-theme CSS variables to this subtree
-  // so the rendered HTML bakes in light-theme values regardless of the app's
-  // current theme. visibility:hidden keeps it off-screen but layout still
-  // computes — x6 needs real offsetWidth/Height to mount the graph.
+  // data-theme scopes the theme CSS variables to this subtree so the rendered
+  // HTML bakes in the matching palette. visibility:hidden keeps it off-screen
+  // but layout still computes — x6 needs real offsetWidth/Height to mount.
   container.setAttribute('data-export-root', '');
-  container.setAttribute('data-theme', 'light');
+  container.setAttribute('data-theme', theme);
+  const bg = theme === 'dark' ? '#0b0d14' : '#fff';
+  const fg = theme === 'dark' ? '#e2e8f8' : '#1a2040';
   container.style.cssText =
-    'position:absolute;left:-9999px;top:0;width:800px;height:auto;background:#fff;color:#1a2040;visibility:hidden;';
+    `position:absolute;left:-9999px;top:0;width:800px;height:auto;background:${bg};color:${fg};visibility:hidden;`;
   document.body.appendChild(container);
 
   const root = createRoot(container);
