@@ -415,12 +415,26 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
       (document as Document & { fonts?: FontFaceSet }).fonts?.ready.then(
         () => requestAnimationFrame(() => instRef.current?.linkDiv()),
       );
+      // ponytail: expose the mind-elixir instance on the host element so
+      // HTML export can call inst.exportSvg() and grab the live render
+      // instead of mounting a parallel instance. mind-elixir's exportSvg
+      // serializes the live DOM (nodes + branch lines + summaries), so
+      // going through the same instance the user sees is more faithful
+      // than re-mounting with default theme.
+      if (elRef.current) {
+        (elRef.current as any).__mindElixir = inst;
+        elRef.current.setAttribute('data-mmap-instance-host', '');
+      }
     })();
 
     return () => {
       disposed = true;
       const elCleanup = elRef.current;
-      if (elCleanup) elCleanup.removeEventListener('load', onImgLoad, true);
+      if (elCleanup) {
+        delete (elCleanup as any).__mindElixir;
+        elCleanup.removeAttribute('data-mmap-instance-host');
+        elCleanup.removeEventListener('load', onImgLoad, true);
+      }
       instRef.current?.destroy();
       instRef.current = null;
     };

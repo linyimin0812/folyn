@@ -182,7 +182,11 @@ export async function renderMarkdownToHtmlViaDom(
   // don't have to parse HTML strings later.
   await inlineContainerImages(container);
 
-  // Poll for stability: no loading markers visible, with a hard 10s ceiling.
+  // Poll for stability: no loading markers visible AND any mmap file-preview
+  // block has its mind-elixir instance mounted (data-mmap-instance-host
+  // attribute). The latter matters because MindMapCanvas has no internal
+  // loading state during the lazy mind-elixir chunk load + init — without
+  // this check the loop can exit before inst.exportSvg is callable.
   const startedAt = Date.now();
   const TIMEOUT_MS = 10000;
   const POLL_MS = 150;
@@ -191,11 +195,16 @@ export async function renderMarkdownToHtmlViaDom(
     const tick = () => {
       const text = container.textContent ?? '';
       const hasLoading = LOADING_MARKERS.some((m) => text.includes(m));
+      const mmapBlocks = container.querySelectorAll('[data-file-preview-src]');
+      let pendingMmap = false;
+      for (const b of Array.from(mmapBlocks)) {
+        const name = (b.getAttribute('data-file-preview-name') || '').toLowerCase();
+        if (!name.endsWith('.mmap')) continue;
+        if (!b.querySelector('[data-mmap-instance-host]')) { pendingMmap = true; break; }
+      }
       const elapsed = Date.now() - startedAt;
-      if (!hasLoading) {
+      if (!hasLoading && !pendingMmap) {
         if (stableSince === 0) stableSince = Date.now();
-        // 500ms grace past first stability so late async (x6 lazy chunk
-        // load, mermaid retry) doesn't get cut off mid-render.
         if (Date.now() - stableSince >= 500 || elapsed >= TIMEOUT_MS) {
           resolve();
           return;
@@ -281,6 +290,10 @@ async function processFilePreviews(container: HTMLElement, filePath: string): Pr
     }
     if (ext === 'drawio') {
       await enhanceDrawioBlock(body).catch(() => {});
+      return;
+    }
+    if (ext === 'mmap') {
+      await enhanceMmapBlock(body).catch(() => {});
       return;
     }
     // .mmap and other types: keep in-DOM content if it has an SVG; else
@@ -593,6 +606,92 @@ async function enhanceDrawioBlock(body: HTMLElement): Promise<void> {
   body.style.height = '420px';
   body.style.minHeight = '420px';
   body.style.overflow = 'hidden';
+}
+
+/**
+ * Replace an mmap file-preview body with an SVG produced by mind-elixir's
+ * `exportSvg()` on the live instance. The export container's MindMapCanvas
+ * already mounted mind-elixir and exposed the instance on the host element
+ * (data-mmap-instance-host); we just call its exportSvg and inject the
+ * resulting SVG. Falls back silently on any error.
+ *
+ * `exportSvg` returns a Blob (SVG type); we read it as text. The exported
+ * SVG has its own inline styles so it renders standalone.
+ */
+async function enhanceMmapBlock(body: HTMLElement): Promise<void> {
+  const host = body.querySelector<HTMLElement>('[data-mmap-instance-host]');
+  const inst = host && (host as any).__mindElixir;
+  if (!inst || typeof inst.exportSvg !== 'function') return;
+  // Wait for layout + font-swaps to settle (mind-elixir's linkDiv runs on
+  // fonts.ready + rAF; without this, exportSvg can capture mid-link state).
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  let blob: Blob | null = null;
+  try {
+    blob = inst.exportSvg(false, '');
+  } catch { return; }
+  if (!blob) return;
+  const svgString = await blob.text();
+  if (!svgString) return;
+  body.innerHTML = svgString;
+  // Inline <image> hrefs (Tauri asset URLs) as base64 — mind-elixir's
+  // exportSvg copies img.src into <image href="...">, but the app's
+  // inlineContainerImages pass runs BEFORE mind-elixir mounts, so those
+  // URLs never got inlined. Without this, images break in standalone HTML.
+  await inlineSvgImages(body);
+  const svgEl = body.querySelector<SVGSVGElement>('svg');
+  if (svgEl) {
+    // mind-elixir's exportSvg emits width/height as pixel strings (e.g.
+    // "640px" × "480px") but no viewBox — without one, width:100% just
+    // shrinks the canvas while content stays at native coords, so only
+    // the top-left corner shows. Synthesize viewBox from width/height
+    // so preserveAspectRatio meet scales the content to fit the body.
+    const wAttr = svgEl.getAttribute('width') ?? '';
+    const hAttr = svgEl.getAttribute('height') ?? '';
+    const w = parseInt(wAttr, 10);
+    const h = parseInt(hAttr, 10);
+    if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
+      svgEl.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    }
+    svgEl.setAttribute('width', '100%');
+    svgEl.setAttribute('height', '100%');
+    svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svgEl.style.maxWidth = '100%';
+    svgEl.style.display = 'block';
+    svgEl.style.margin = '0 auto';
+  }
+  body.style.height = '420px';
+  body.style.minHeight = '420px';
+  body.style.overflow = 'hidden';
+}
+
+/**
+ * Walk all <image> elements (SVG namespace) inside `container` and replace
+ * Tauri asset URLs (any non-data, non-http src) in both `href` and
+ * `xlink:href` with base64 data URLs via fetch + FileReader. Mutates in
+ * place; failures leave the original href. Used to inline images inside
+ * mind-elixir's exported SVG (inlineContainerImages runs before mind-elixir
+ * mounts, so it misses the mmap image elements).
+ */
+async function inlineSvgImages(container: HTMLElement): Promise<void> {
+  const imgs = Array.from(container.querySelectorAll('image'));
+  await Promise.all(
+    imgs.map(async (img) => {
+      const href = img.getAttribute('href') ?? img.getAttributeNS('http://www.w3.org/1999/xlink', 'href') ?? '';
+      if (!href || href.startsWith('data:') || href.startsWith('http')) return;
+      try {
+        const res = await fetch(href);
+        const blob = await res.blob();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(fr.result as string);
+          fr.onerror = () => reject(fr.error);
+          fr.readAsDataURL(blob);
+        });
+        img.setAttribute('href', dataUrl);
+        img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', dataUrl);
+      } catch { /* leave original href */ }
+    }),
+  );
 }
 
 /**
