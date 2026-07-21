@@ -375,10 +375,14 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
     })();
     return () => {
       cancelled = true;
-      if (graphRef.current) overlayByGraph.delete(graphRef.current);
-      graphRef.current?.dispose();
+      const g = graphRef.current;
+      if (g) overlayByGraph.delete(g);
       graphRef.current = null;
       setGraphReady(false);
+      // ponytail: defer dispose out of React's passive-unmount phase — x6-react-shape
+      // synchronously calls root.unmount() on model reset, which races with the
+      // in-flight render. Scheduling on next tick avoids the warning.
+      if (g) setTimeout(() => g.dispose(), 0);
     };
   }, []);
 
