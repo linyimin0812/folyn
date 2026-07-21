@@ -680,13 +680,40 @@ async function enhanceMmapBlock(body: HTMLElement): Promise<void> {
   if (!blob) return;
   let svgString = await blob.text();
   if (!svgString) return;
-  // Inject `line-height:1.5;` right after each foreignObject div's
-  // `style="` opening. Mind-elixir's div style string starts with
-  // `font-family:...`, so this is a safe anchor.
-  svgString = svgString.replace(
-    /(<div[^>]*style=")(font-family:)/g,
-    '$1line-height: 1.5; $2',
-  );
+  // Inject a <style> block right after <svg> opening tag. Targets all
+  // descendants of foreignObject (mind-elixir nests text in a div, possibly
+  // with child spans). !important overrides any inline style mind-elixir
+  // emits on those elements.
+  //
+  // Goals:
+  //  - No wrapping: white-space:nowrap keeps each node's text on one line,
+  //    overflowing the foreignObject width (SVG doesn't clip foreignObject
+  //    content by default, so the text renders past the boundary). User
+  //    wants single-line display regardless of length.
+  //  - Vertical centering: the div's text block (1 line × line-height:1.5)
+  //    is centered on the foreignObject's vertical axis via flex-direction:
+  //    column + justify-content:center. height:100% lets the div fill the
+  //    (post-image-swap) foreignObject so flex centering actually moves
+  //    the text. (Plain flex without height:100% centers within the div's
+  //    auto content height — no effect.)
+  //  - Horizontal centering: text-align:center on the single line.
+  const foStyle = `<style>foreignObject div, foreignObject span, foreignObject p { height: 100% !important; display: flex !important; flex-direction: column !important; justify-content: center !important; line-height: 1.5 !important; text-align: center !important; }</style>`;
+  svgString = svgString.replace(/<svg\b([^>]*)>/, `<svg$1>${foStyle}`);
+  // ponytail: fix image-node layout. mind-elixir's exportSvg has a bug
+  // where for image nodes (me-tpc with img child), the text
+  // foreignObject spans me-tpc's full content area (because
+  // getComputedStyle(.text).height returns me-tpc.content height, not
+  // .text's own content height). The foreignObject is positioned at
+  // me-tpc.content top, so text renders ABOVE the image instead of
+  // below. Visually: text at top, image below — reversed from the
+  // in-app DOM layout (image at top, text below).
+  // Fix: for each <image>, find the containing foreignObject (the one
+  // whose bbox contains the image), then swap — move image to
+  // foreignObject's top, move foreignObject to below image with 8px
+  // margin (mind-elixir's img margin-bottom). foreignObject.height
+  // becomes the remaining content area; line-height:1.5 + the div's
+  // natural line-box centering handles vertical centering within.
+  svgString = fixImageNodeLayout(svgString);
   body.innerHTML = svgString;
   // Inline <image> hrefs (Tauri asset URLs) as base64 — mind-elixir's
   // exportSvg copies img.src into <image href="...">, but the app's
@@ -717,6 +744,52 @@ async function enhanceMmapBlock(body: HTMLElement): Promise<void> {
   body.style.height = '420px';
   body.style.minHeight = '420px';
   body.style.overflow = 'hidden';
+}
+
+/**
+ * Fix mind-elixir's image-node export layout. For nodes with both an image
+ * and text, mind-elixir's exportSvg sets the text foreignObject to span
+ * me-tpc's full content area (because getComputedStyle(.text).height returns
+ * me-tpc.content height for image nodes), and the image ends up positioned
+ * below the text — reversed from the in-app DOM layout (image at top, text
+ * below). This post-processes the SVG string to swap positions: move image
+ * to content top, move foreignObject below image with 8px margin (matching
+ * me-tpc > img { margin-bottom: 8px } in mind-elixir's CSS).
+ */
+function fixImageNodeLayout(svgString: string): string {
+  const doc = new DOMParser().parseFromString(svgString, 'image/svg+xml');
+  const images = Array.from(doc.querySelectorAll('image'));
+  for (const img of Array.from(images)) {
+    const ix = parseFloat(img.getAttribute('x') ?? '0');
+    const iy = parseFloat(img.getAttribute('y') ?? '0');
+    const iw = parseFloat(img.getAttribute('width') ?? '0');
+    const ih = parseFloat(img.getAttribute('height') ?? '0');
+    if (!ix && !iy && !iw && !ih) continue;
+    // Find the foreignObject whose bbox contains the image (same me-tpc).
+    const foreignObjects = Array.from(doc.querySelectorAll('foreignObject'));
+    const fo = foreignObjects.find((f) => {
+      const fx = parseFloat(f.getAttribute('x') ?? '0');
+      const fy = parseFloat(f.getAttribute('y') ?? '0');
+      const fw = parseFloat(f.getAttribute('width') ?? '0');
+      const fh = parseFloat(f.getAttribute('height') ?? '0');
+      return ix >= fx - 0.5 && ix + iw <= fx + fw + 0.5
+        && iy >= fy - 0.5 && iy + ih <= fy + fh + 0.5;
+    });
+    if (!fo) continue;
+    const fy = parseFloat(fo.getAttribute('y') ?? '0');
+    const fh = parseFloat(fo.getAttribute('height') ?? '0');
+    const foBottom = fy + fh;  // me-tpc.content bottom
+    // Move image to top of content area (foreignObject's current y).
+    img.setAttribute('y', String(fy));
+    // Move foreignObject below image + 8px margin.
+    const newFy = fy + ih + 8;
+    fo.setAttribute('y', String(newFy));
+    // Height = remaining content area; foreignObject div has line-height:1.5
+    // so text fills its line box and centers within. Avoids overflow beyond
+    // me-tpc since (newFy + newFh) = foBottom.
+    fo.setAttribute('height', String(Math.max(0, foBottom - newFy)));
+  }
+  return new XMLSerializer().serializeToString(doc);
 }
 
 /**

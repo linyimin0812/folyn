@@ -77,7 +77,7 @@ export async function exportActivePng(onBeforeDialog?: () => void): Promise<void
   const { name, path, vaultRoot } = getActiveDocument();
   const svg = await renderFilePreviewToSvg(path, vaultRoot);
   if (!svg) return;
-  const png = await svgToPngBlob(svg, 2);
+  const png = await svgToPngBlob(svg, 3);
   if (!png) return;
   onBeforeDialog?.();
   const baseName = name.replace(/\.[^.]+$/, '');
