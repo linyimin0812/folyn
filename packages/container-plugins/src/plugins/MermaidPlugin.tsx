@@ -1,4 +1,4 @@
-import { useEffect, useState, useId } from 'react';
+import { useEffect, useState, useId, useSyncExternalStore } from 'react';
 import mermaid from 'mermaid';
 import type { ContainerPlugin, ContainerProps } from '../ContainerPlugin';
 
@@ -8,25 +8,48 @@ mermaid.initialize({
   securityLevel: 'loose',
 });
 
+// Reactive <html data-theme>. Mermaid's theme is picked at render time, so we
+// need to re-render when the user toggles themes. MutationObserver is the
+// cheapest bridge from this plugin package to the app's appearance store,
+// which always mutates documentElement.dataset.theme on toggle.
+function useHtmlTheme(): string {
+  return useSyncExternalStore(
+    (onChange) => {
+      const obs = new MutationObserver(onChange);
+      obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      return () => obs.disconnect();
+    },
+    () => document.documentElement.dataset.theme || 'light',
+    () => 'light',
+  );
+}
+
 export function MermaidBlock({ children }: { children?: React.ReactNode }) {
   const [svg, setSvg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const id = useId().replace(/:/g, '-');
 
   const source = extractText(children);
+  const theme = useHtmlTheme();
+  const isDark = theme === 'dark';
 
   useEffect(() => {
     if (!source.trim()) return;
 
-    const isDark = document.documentElement.dataset.theme === 'dark';
+    // In dark mode, render with the light 'default' theme, then invert the
+    // SVG via CSS filter. This sidesteps mermaid's 'dark' theme (which left
+    // edge labels / clusters on light defaults, making text unreadable) and
+    // any themeVariables coverage gaps. invert(0.92) keeps a small amount of
+    // original brightness; hue-rotate(180deg) restores approximate hues so
+    // colored nodes stay recognisable.
     mermaid.initialize({
       startOnLoad: false,
-      theme: isDark ? 'dark' : 'default',
+      theme: 'default',
       securityLevel: 'loose',
     });
 
     let cancelled = false;
-    mermaid.render(`mermaid-${id}`, source.trim()).then(
+    mermaid.render(`mermaid-${id}-${theme}`, source.trim()).then(
       ({ svg: rendered }) => {
         if (!cancelled) {
           setSvg(rendered);
@@ -42,7 +65,7 @@ export function MermaidBlock({ children }: { children?: React.ReactNode }) {
     );
 
     return () => { cancelled = true; };
-  }, [source, id]);
+  }, [source, id, theme]);
 
   if (error) {
     return (
@@ -56,9 +79,17 @@ export function MermaidBlock({ children }: { children?: React.ReactNode }) {
   if (svg) {
     return (
       <div
-        className="flex justify-center py-4 overflow-x-auto [&_svg]:max-w-full [&_svg]:h-auto"
-        dangerouslySetInnerHTML={{ __html: svg }}
-      />
+        className="flex justify-center py-4 px-3 my-2 overflow-x-auto rounded-lg"
+        style={{ background: isDark ? 'var(--surf)' : 'transparent' }}
+      >
+        <div
+          className="[&_svg]:max-w-full [&_svg]:h-auto"
+          // ponytail: invert the light-themed SVG in dark mode. Filter is on
+          // an inner wrapper so it doesn't flip the outer surface background.
+          style={isDark ? { filter: 'invert(0.92) hue-rotate(180deg)' } : undefined}
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+      </div>
     );
   }
 
