@@ -55,7 +55,7 @@ export async function exportActiveHtml(): Promise<void> {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(name.replace(/\.md$/, ''))}</title>
-  <style>${HTML_STYLES}\n${LIGHT_THEME_VARS}\n${css}\n/* ponytail: app CSS dumps html,body{overflow:hidden;height:100%} because the app uses internal scroll containers. Override so the exported page scrolls natively. */\nhtml, body { height: auto !important; min-height: 0 !important; overflow: auto !important; }\n</style>
+  <style>${HTML_STYLES}\n${LIGHT_THEME_VARS}\n${css}\n/* ponytail: app CSS dumps html,body{overflow:hidden;height:100%;background:var(--bg)} — override so the exported page scrolls natively and the 800px column is centered on a white viewport. Body becomes a flex container so .md-preview is the centered card. */\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: #fff !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n</style>
 </head>
 <body>
 ${inlinedBody}
