@@ -15,6 +15,10 @@
       "hint": "如需在其他编辑器中查看，建议导出为 HTML 格式。",
       "cancel": "取消",
       "confirm": "仍然导出"
+    },
+    "processing": {
+      "title": "正在导出",
+      "hint": "正在准备内容，请稍候…"
     }
   },
   "slashMenu": {

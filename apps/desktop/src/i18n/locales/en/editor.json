@@ -15,6 +15,10 @@
       "hint": "To view in other editors, export as HTML instead.",
       "cancel": "Cancel",
       "confirm": "Export anyway"
+    },
+    "processing": {
+      "title": "Exporting",
+      "hint": "Preparing content, please wait…"
     }
   },
   "slashMenu": {

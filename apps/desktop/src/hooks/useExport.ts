@@ -38,14 +38,15 @@ export function getActiveDocument(): ActiveDocument {
 }
 
 /** Export the active document as Markdown. Imperative; callable outside React. */
-export function exportActiveMarkdown(): void {
+export function exportActiveMarkdown(onBeforeDialog?: () => void): void {
   const { name, content } = getActiveDocument();
   const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
-  downloadBlob(blob, name, ['md']);
+  onBeforeDialog?.();
+  void downloadBlob(blob, name, ['md']);
 }
 
 /** Export the active document as a standalone HTML file. Imperative. */
-export async function exportActiveHtml(): Promise<void> {
+export async function exportActiveHtml(onBeforeDialog?: () => void): Promise<void> {
   const { name, content, path, vaultRoot } = getActiveDocument();
   const { html: renderedBody, css } = await renderMarkdownToHtmlViaDom(content, path, vaultRoot);
   const inlinedBody = await inlineImages(renderedBody, vaultRoot, path);
@@ -62,7 +63,8 @@ ${inlinedBody}
 </body>
 </html>`;
   const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-  downloadBlob(blob, name.replace(/\.md$/, '.html'), ['html']);
+  onBeforeDialog?.();
+  await downloadBlob(blob, name.replace(/\.md$/, '.html'), ['html']);
 }
 
 /**
@@ -72,10 +74,8 @@ ${inlinedBody}
  * consumers (e.g. {@link ExportMenu}) that prefer hook-style access.
  */
 export function useExport() {
-  const exportMarkdown = useCallback(() => exportActiveMarkdown(), []);
-  const exportHtml = useCallback(() => {
-    void exportActiveHtml();
-  }, []);
+  const exportMarkdown = useCallback((onBeforeDialog?: () => void) => exportActiveMarkdown(onBeforeDialog), []);
+  const exportHtml = useCallback((onBeforeDialog?: () => void) => exportActiveHtml(onBeforeDialog), []);
   const getActiveContent = useCallback(
     () => {
       const { name, content, path } = getActiveDocument();
