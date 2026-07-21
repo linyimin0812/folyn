@@ -182,6 +182,21 @@ export async function renderMarkdownToHtmlViaDom(
   const fg = theme === 'dark' ? '#e2e8f8' : '#1a2040';
   container.style.cssText =
     `position:absolute;left:-9999px;top:0;width:800px;height:auto;background:${bg};color:${fg};visibility:hidden;`;
+  // ponytail: center image + text inside mind-elixir topic boxes during
+  // export. mind-elixir left-aligns me-tpc > img (block, no auto margin)
+  // and .text (inline-block). text-align:center on me-tpc + margin:auto
+  // on img centers both. Scoped to export root so the in-app preview is
+  // unaffected. inst.exportSvg reads offsets from the live DOM, so these
+  // shifts propagate to the exported SVG coordinates.
+  // (The foreignObject-div fix for 偏上 is injected into the SVG itself
+  // via the second arg to inst.exportSvg in enhanceMmapBlock — CSS here
+  // doesn't reach the standalone exported SVG.)
+  const style = document.createElement('style');
+  style.textContent = `
+    [data-export-root] me-tpc { text-align: center !important; }
+    [data-export-root] me-tpc > img { margin-left: auto !important; margin-right: auto !important; }
+  `;
+  container.appendChild(style);
   document.body.appendChild(container);
 
   const root = createRoot(container);
@@ -644,13 +659,34 @@ async function enhanceMmapBlock(body: HTMLElement): Promise<void> {
   // Wait for layout + font-swaps to settle (mind-elixir's linkDiv runs on
   // fonts.ready + rAF; without this, exportSvg can capture mid-link state).
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  // ponytail: post-process the exported SVG to fix the foreignObject div
+  // styling directly. mind-elixir's exportSvg 2nd-arg CSS injection
+  // (insertAdjacentHTML on an SVG element) doesn't reliably apply to
+  // foreignObject's HTML content in standalone SVG viewers — namespace
+  // mismatch between HTML <style> and SVG. Patching the div's inline
+  // style bypasses that: inject `line-height:1.5` so the div's text
+  // matches the foreignObject's height (which came from
+  // getComputedStyle(.text) inheriting body's line-height 1.5). Without
+  // this, the div's text uses browser default "normal" ≈ 1.2 — shorter
+  // than foreignObject, top-anchored → 偏上. Adding line-height makes
+  // the text fill the foreignObject height. We don't use display:flex
+  // because flex shrink on narrow foreignObjects forces 2-char Chinese
+  // nodes to wrap to 2 lines, then the (1-line tall) foreignObject
+  // clips the 2nd line → 显示不全.
   let blob: Blob | null = null;
   try {
     blob = inst.exportSvg(false, '');
   } catch { return; }
   if (!blob) return;
-  const svgString = await blob.text();
+  let svgString = await blob.text();
   if (!svgString) return;
+  // Inject `line-height:1.5;` right after each foreignObject div's
+  // `style="` opening. Mind-elixir's div style string starts with
+  // `font-family:...`, so this is a safe anchor.
+  svgString = svgString.replace(
+    /(<div[^>]*style=")(font-family:)/g,
+    '$1line-height: 1.5; $2',
+  );
   body.innerHTML = svgString;
   // Inline <image> hrefs (Tauri asset URLs) as base64 — mind-elixir's
   // exportSvg copies img.src into <image href="...">, but the app's
@@ -901,6 +937,92 @@ export const HTML_STYLES = `
       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
 `;
+
+// ponytail: rasterize an SVG string to a PNG Blob via canvas. Parses
+// width/height (or viewBox fallback) since exported SVGs use width="100%"
+// which yields naturalWidth=0 when loaded into an Image.
+export async function svgToPngBlob(svg: string, scale = 2): Promise<Blob | null> {
+  const wMatch = svg.match(/\bwidth="([^"]+)"/);
+  const hMatch = svg.match(/\bheight="([^"]+)"/);
+  let w = wMatch ? parseInt(wMatch[1], 10) || 0 : 0;
+  let h = hMatch ? parseInt(hMatch[1], 10) || 0 : 0;
+  if (!w || !h) {
+    const vb = svg.match(/viewBox="([^"]+)"/);
+    if (vb) {
+      const parts = vb[1].split(/[\s,]+/).map(Number);
+      w = w || parts[2] || 0;
+      h = h || parts[3] || 0;
+    }
+  }
+  w = w || 800;
+  h = h || 600;
+  const sizedSvg = svg
+    .replace(/\bwidth="[^"]*"/, `width="${w}"`)
+    .replace(/\bheight="[^"]*"/, `height="${h}"`);
+  const blob = new Blob([sizedSvg], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('svg load failed'));
+      img.src = url;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = w * scale;
+    canvas.height = h * scale;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), 'image/png'),
+    );
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/**
+ * Render a non-markdown file (dbml/excalidraw/drawio/mmap) to a standalone
+ * SVG string. Builds a synthetic one-block markdown with a file-preview
+ * directive pointing at the file, then runs the existing
+ * renderMarkdownToHtmlViaDom pipeline (which mounts the preview, stabilizes
+ * async effects, and converts the body to SVG via processFilePreviews).
+ * Extracts the resulting <svg> from the rendered HTML.
+ */
+export async function renderFilePreviewToSvg(
+  filePath: string,
+  vaultRoot: string,
+): Promise<string> {
+  const fileName = filePath.split('/').pop() ?? '';
+  if (!fileName) return '';
+  // src is resolved by FilePreviewPlugin relative to filePath's directory,
+  // so "./filename" + the file's own path resolves back to itself.
+  const syntheticMd = `:::file-preview{src="./${fileName}"}\n:::\n`;
+  const { html } = await renderMarkdownToHtmlViaDom(syntheticMd, filePath, vaultRoot);
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const svgEl = doc.querySelector('[data-file-preview-body] svg');
+  if (!svgEl) return '';
+  let svgString = svgEl.outerHTML;
+  // ponytail: mind-elixir's exportSvg emits <image xlink:href="..."> without
+  // declaring xmlns:xlink on the root <svg>, so standalone XML parsers reject
+  // it ("Namespace prefix xlink for href on image is not defined"). HTML
+  // rendering is unaffected — only standalone .svg files break. Inject the
+  // namespace declaration on the root when xlink: is referenced but missing.
+  if (svgString.includes('xlink:') && !/\bxmlns:xlink=/.test(svgString)) {
+    svgString = svgString.replace(
+      /<svg\b([^>]*)>/,
+      '<svg xmlns:xlink="http://www.w3.org/1999/xlink"$1>',
+    );
+  }
+  if (!/\bxmlns=/.test(svgString)) {
+    svgString = svgString.replace(
+      /<svg\b([^>]*)>/,
+      '<svg xmlns="http://www.w3.org/2000/svg"$1>',
+    );
+  }
+  return svgString;
+}
 
 export async function downloadBlob(blob: Blob, filename: string, extensions?: string[]) {
   const { isTauri } = await import('@/utils/platform');

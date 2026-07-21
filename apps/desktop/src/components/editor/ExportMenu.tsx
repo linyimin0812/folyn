@@ -1,6 +1,22 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
+import { ImageDown } from 'lucide-react';
 import { useExport, hasContainerSyntax } from '@/hooks/useExport';
+import { useEditorStore, detectFileType } from '@/store/editorStore';
+import { FileIcon } from '@/components/icons/FileIcon';
 import { useTranslation } from 'react-i18next';
+
+// File types that ship a canvas → SVG/PNG export. Markdown goes HTML instead.
+const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'mmap']);
+// File types with a per-type source label. Others fall back to "default".
+const KNOWN_SOURCE_TYPES = new Set(['markdown', ...CANVAS_TYPES]);
+
+interface Item {
+  key: string;
+  icon: ReactNode;
+  label: string;
+  description: string;
+  run: () => void;
+}
 
 export function ExportMenu() {
   const { t } = useTranslation();
@@ -8,7 +24,16 @@ export function ExportMenu() {
   const [containerWarning, setContainerWarning] = useState(false);
   const [exporting, setExporting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { exportMarkdown, exportHtml, getActiveContent } = useExport();
+  const { exportSource, exportHtml, exportSvg, exportPng, getActiveContent } = useExport();
+
+  const fileType = useEditorStore((s) => {
+    const tab = s.tabs.find((t) => t.id === s.activeTabId);
+    return tab?.fileType ?? detectFileType(tab?.path ?? '');
+  });
+  const tabName = useEditorStore((s) => {
+    const tab = s.tabs.find((t) => t.id === s.activeTabId);
+    return tab?.name ?? '';
+  });
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -20,29 +45,77 @@ export function ExportMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
 
-  const handleExportMarkdown = useCallback(() => {
-    const { content } = getActiveContent();
-    if (hasContainerSyntax(content)) {
-      setContainerWarning(true);
-      setOpen(false);
-      return;
+  const runWithOverlay = useCallback((fn: () => void | Promise<void>) => {
+    setOpen(false);
+    setExporting(true);
+    Promise.resolve(fn()).catch(() => {}).finally(() => setExporting(false));
+  }, []);
+
+  const handleSource = useCallback(() => {
+    if (fileType === 'markdown') {
+      const { content } = getActiveContent();
+      if (hasContainerSyntax(content)) {
+        setContainerWarning(true);
+        setOpen(false);
+        return;
+      }
     }
-    setOpen(false);
-    setExporting(true);
-    exportMarkdown(() => setExporting(false));
-  }, [getActiveContent, exportMarkdown]);
+    runWithOverlay(() => exportSource());
+  }, [fileType, getActiveContent, exportSource, runWithOverlay]);
 
-  const confirmExportMarkdown = useCallback(() => {
+  const confirmExportSource = useCallback(() => {
     setContainerWarning(false);
-    setExporting(true);
-    exportMarkdown(() => setExporting(false));
-  }, [exportMarkdown]);
+    runWithOverlay(() => exportSource());
+  }, [exportSource, runWithOverlay]);
 
-  const handleExportHtml = useCallback(() => {
-    setOpen(false);
-    setExporting(true);
-    exportHtml(() => setExporting(false)).catch(() => setExporting(false));
-  }, [exportHtml]);
+  const handleHtml = useCallback(() => {
+    runWithOverlay(() => exportHtml());
+  }, [exportHtml, runWithOverlay]);
+
+  const handleSvg = useCallback(() => {
+    runWithOverlay(() => exportSvg());
+  }, [exportSvg, runWithOverlay]);
+
+  const handlePng = useCallback(() => {
+    runWithOverlay(() => exportPng());
+  }, [exportPng, runWithOverlay]);
+
+  const sourceKey = KNOWN_SOURCE_TYPES.has(fileType) ? fileType : 'default';
+  const items: Item[] = [
+    {
+      key: 'source',
+      icon: <span className="text-base w-6 flex justify-center shrink-0"><FileIcon filename={tabName || `doc.${fileType}`} /></span>,
+      label: t(`editor:export.source.${sourceKey}.label`),
+      description: t(`editor:export.source.${sourceKey}.description`),
+      run: handleSource,
+    },
+  ];
+  if (fileType === 'markdown') {
+    items.push({
+      key: 'html',
+      icon: <span className="text-base w-6 text-center shrink-0">🌐</span>,
+      label: t('editor:export.html.label'),
+      description: t('editor:export.html.description'),
+      run: handleHtml,
+    });
+  } else if (CANVAS_TYPES.has(fileType)) {
+    items.push(
+      {
+        key: 'svg',
+        icon: <ImageDown size={16} className="w-6 flex justify-center shrink-0" />,
+        label: t('editor:export.svg.label'),
+        description: t('editor:export.svg.description'),
+        run: handleSvg,
+      },
+      {
+        key: 'png',
+        icon: <ImageDown size={16} className="w-6 flex justify-center shrink-0" />,
+        label: t('editor:export.png.label'),
+        description: t('editor:export.png.description'),
+        run: handlePng,
+      },
+    );
+  }
 
   return (
     <>
@@ -55,23 +128,19 @@ export function ExportMenu() {
         </button>
         {open && (
           <div className="export-menu absolute top-full right-0 z-50 bg-panel border border-brd2 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,.12)] min-w-[200px] p-1.5 mt-1 animate-[fadeIn_.12s]">
-            <div className="flex items-center gap-2 py-2 px-2.5 rounded-[5px] cursor-pointer transition-[background] duration-100 hover:bg-hov" onClick={handleExportMarkdown}>
-              <span className="text-base w-6 text-center shrink-0">📝</span>
-              <div className="flex flex-col gap-px">
-                <span className="text-xs font-medium text-t1">{t('editor:export.markdown.label')}</span>
-                <span className="text-[10px] text-t3">{t('editor:export.markdown.description')}</span>
+            {items.map((item) => (
+              <div
+                key={item.key}
+                className="flex items-center gap-2 py-2 px-2.5 rounded-[5px] cursor-pointer transition-[background] duration-100 hover:bg-hov"
+                onClick={item.run}
+              >
+                {item.icon}
+                <div className="flex flex-col gap-px">
+                  <span className="text-xs font-medium text-t1">{item.label}</span>
+                  <span className="text-[10px] text-t3">{item.description}</span>
+                </div>
               </div>
-            </div>
-            <div
-              className="flex items-center gap-2 py-2 px-2.5 rounded-[5px] cursor-pointer transition-[background] duration-100 hover:bg-hov"
-              onClick={handleExportHtml}
-            >
-              <span className="text-base w-6 text-center shrink-0">🌐</span>
-              <div className="flex flex-col gap-px">
-                <span className="text-xs font-medium text-t1">{t('editor:export.html.label')}</span>
-                <span className="text-[10px] text-t3">{t('editor:export.html.description')}</span>
-              </div>
-            </div>
+            ))}
           </div>
         )}
       </div>
@@ -94,7 +163,7 @@ export function ExportMenu() {
             </div>
             <div className="dlg-ft">
               <button className="btn btn-g btn-sm" onClick={() => setContainerWarning(false)}>{t('editor:export.containerWarning.cancel')}</button>
-              <button className="btn btn-p btn-sm" onClick={confirmExportMarkdown}>{t('editor:export.containerWarning.confirm')}</button>
+              <button className="btn btn-p btn-sm" onClick={confirmExportSource}>{t('editor:export.containerWarning.confirm')}</button>
             </div>
           </div>
         </div>

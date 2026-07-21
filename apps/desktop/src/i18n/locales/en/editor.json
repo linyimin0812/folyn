@@ -1,13 +1,25 @@
 {
   "export": {
     "title": "Export",
-    "markdown": {
-      "label": "Markdown",
-      "description": "Export .md source file"
+    "source": {
+      "markdown": { "label": "Markdown", "description": "Export .md source file" },
+      "dbml": { "label": "DBML", "description": "Export .dbml source file" },
+      "excalidraw": { "label": "Excalidraw", "description": "Export .excalidraw source file" },
+      "drawio": { "label": "Drawio", "description": "Export .drawio source file" },
+      "mmap": { "label": "Mind Map", "description": "Export .mmap source file" },
+      "default": { "label": "Source File", "description": "Export raw file" }
     },
     "html": {
       "label": "HTML",
       "description": "Export as rendered web page"
+    },
+    "svg": {
+      "label": "SVG",
+      "description": "Export as vector image"
+    },
+    "png": {
+      "label": "PNG",
+      "description": "Export as raster image"
     },
     "containerWarning": {
       "title": "⚠️ Compatibility notice",

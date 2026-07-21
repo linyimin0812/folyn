@@ -9,6 +9,8 @@ import {
   HTML_STYLES,
   LIGHT_THEME_VARS,
   DARK_THEME_VARS,
+  renderFilePreviewToSvg,
+  svgToPngBlob,
 } from '@/services/exportService';
 
 export type { ExportFormat } from '@/services/exportService';
@@ -44,6 +46,42 @@ export function exportActiveMarkdown(onBeforeDialog?: () => void): void {
   const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
   onBeforeDialog?.();
   void downloadBlob(blob, name, ['md']);
+}
+
+/**
+ * Export the active document as its raw source — works for any text-based
+ * file type. Downloads with the original filename and extension.
+ */
+export function exportActiveSource(onBeforeDialog?: () => void): void {
+  const { name, content } = getActiveDocument();
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  const mime = ext === 'json' ? 'application/json;charset=utf-8' : 'text/plain;charset=utf-8';
+  const blob = new Blob([content], { type: mime });
+  onBeforeDialog?.();
+  void downloadBlob(blob, name, ext ? [ext] : undefined);
+}
+
+/** Export a canvas-backed file (dbml/excalidraw/drawio/mmap) as SVG. */
+export async function exportActiveSvg(onBeforeDialog?: () => void): Promise<void> {
+  const { name, path, vaultRoot } = getActiveDocument();
+  const svg = await renderFilePreviewToSvg(path, vaultRoot);
+  if (!svg) return;
+  const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+  onBeforeDialog?.();
+  const baseName = name.replace(/\.[^.]+$/, '');
+  await downloadBlob(blob, `${baseName}.svg`, ['svg']);
+}
+
+/** Export a canvas-backed file (dbml/excalidraw/drawio/mmap) as PNG. */
+export async function exportActivePng(onBeforeDialog?: () => void): Promise<void> {
+  const { name, path, vaultRoot } = getActiveDocument();
+  const svg = await renderFilePreviewToSvg(path, vaultRoot);
+  if (!svg) return;
+  const png = await svgToPngBlob(svg, 2);
+  if (!png) return;
+  onBeforeDialog?.();
+  const baseName = name.replace(/\.[^.]+$/, '');
+  await downloadBlob(png, `${baseName}.png`, ['png']);
 }
 
 /** Export the active document as a standalone HTML file. Imperative. */
@@ -83,7 +121,10 @@ ${inlinedBody}
  */
 export function useExport() {
   const exportMarkdown = useCallback((onBeforeDialog?: () => void) => exportActiveMarkdown(onBeforeDialog), []);
+  const exportSource = useCallback((onBeforeDialog?: () => void) => exportActiveSource(onBeforeDialog), []);
   const exportHtml = useCallback((onBeforeDialog?: () => void) => exportActiveHtml(onBeforeDialog), []);
+  const exportSvg = useCallback((onBeforeDialog?: () => void) => exportActiveSvg(onBeforeDialog), []);
+  const exportPng = useCallback((onBeforeDialog?: () => void) => exportActivePng(onBeforeDialog), []);
   const getActiveContent = useCallback(
     () => {
       const { name, content, path } = getActiveDocument();
@@ -91,5 +132,5 @@ export function useExport() {
     },
     [],
   );
-  return { exportMarkdown, exportHtml, getActiveContent };
+  return { exportMarkdown, exportSource, exportHtml, exportSvg, exportPng, getActiveContent };
 }
