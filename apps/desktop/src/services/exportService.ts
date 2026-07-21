@@ -14,9 +14,13 @@ import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 import { ContainerRegistry, registerBuiltinPlugins } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
-import { readFile } from '@tauri-apps/plugin-fs';
-import { resolveBasePath } from '@/utils/pathResolver';
-import { useVaultStore } from '@/store/vaultStore';
+
+import * as dbmlExporter from './export/dbml';
+import * as excalidrawExporter from './export/excalidraw';
+import * as drawioExporter from './export/drawio';
+import * as mmapExporter from './export/mmap';
+import { inlineContainerImages } from './export/shared';
+import type { EnhanceCtx } from './export/dbml';
 
 // Ensure built-in plugins are registered once
 registerBuiltinPlugins();
@@ -156,8 +160,8 @@ const LOADING_MARKERS = ['加载中', '渲染图表中', '正在加载', '渲染
 /**
  * Mount the actual MarkdownPreview in a hidden DOM, wait for async effects
  * (mermaid.render, ctx.readFile, x6 graph mount) to settle, then extract
- * innerHTML. This is the export's source of truth — identical pipeline to the
- * in-app preview, so output matches what the user sees.
+ * innerHTML. This is the export's source of truth — identical pipeline to
+ * the in-app preview, so output matches what the user sees.
  *
  * Returns { html, css }: the rendered body HTML and the app's CSS rules (so
  * the standalone file has the classes referenced by the rendered DOM).
@@ -253,7 +257,7 @@ export async function renderMarkdownToHtmlViaDom(
   // can't be captured from the in-DOM canvas/iframe; x6 ER needs viewBox
   // scaling; mmap keeps its in-DOM render). Done before innerHTML extraction
   // so the export captures the post-processed DOM.
-  await processFilePreviews(container, filePath);
+  await processFilePreviews(container, filePath, vaultRoot);
 
   const html = container.innerHTML;
   const css = collectAppCss();
@@ -269,35 +273,31 @@ export async function renderMarkdownToHtmlViaDom(
   return { html, css };
 }
 
-// ponytail: duplicated 5-line resolveVaultPath from FilePreviewPlugin.tsx.
-// Two packages, different build graphs, sharing it isn't worth a new dep.
-function resolveVaultPath(src: string, filePath: string): string {
-  if (src.startsWith('/') || src.startsWith('~')) return src;
-  if (!src.startsWith('./') && !src.startsWith('.\\') && !src.startsWith('../') && !src.startsWith('..\\')) {
-    return src;
-  }
-  const fileDir = filePath ? filePath.substring(0, filePath.lastIndexOf('/')) : '';
-  const segments = fileDir.split('/').filter(Boolean);
-  const parts = src.replace(/\\/g, '/').split('/').filter((s) => s !== '.' && s !== '');
-  for (const seg of parts) {
-    if (seg === '..') segments.pop();
-    else segments.push(seg);
-  }
-  return segments.join('/');
-}
+/**
+ * Per-file-type export enhancer registry. Each entry takes a rendered
+ * [data-file-preview] body and replaces its content with a self-contained
+ * SVG suitable for standalone HTML export. Adding a new file type = add
+ * a module under services/export/<type>.ts and register it here.
+ */
+type EnhanceFn = (body: HTMLElement, ctx: EnhanceCtx) => Promise<void>;
+
+const REGISTRY: Record<string, EnhanceFn> = {
+  dbml: dbmlExporter.enhance,
+  excalidraw: excalidrawExporter.enhance,
+  drawio: drawioExporter.enhance,
+  mmap: mmapExporter.enhance,
+};
 
 /**
  * Walk each `[data-file-preview]` block in the rendered DOM and produce an
- * export-ready body per file type:
- *   - .dbml  → call x6's Export plugin (graph.toSVG) to produce a static,
- *     self-contained SVG with styles inlined; size to fit card width.
- *   - .excalidraw → call @excalidraw/excalidraw.exportToSvg, inject SVG.
- *   - .drawio → postMessage the drawio iframe to export SVG, inject it.
- *   - .mmap   → keep mind-elixir's in-DOM render (custom elements + SVGs).
- *   - others  → if body has an SVG, keep; else filename fallback card.
- * Action buttons are stripped — they don't work in static HTML.
+ * export-ready body per file type via the REGISTRY. Falls back to keeping
+ * in-DOM content if it has an SVG; otherwise shows a filename card.
  */
-async function processFilePreviews(container: HTMLElement, filePath: string): Promise<void> {
+async function processFilePreviews(
+  container: HTMLElement,
+  filePath: string,
+  vaultRoot: string,
+): Promise<void> {
   const blocks = container.querySelectorAll<HTMLElement>('[data-file-preview]');
   await Promise.all(Array.from(blocks).map(async (block) => {
     // Strip action buttons (no-ops in static HTML).
@@ -310,20 +310,14 @@ async function processFilePreviews(container: HTMLElement, filePath: string): Pr
     const name = block.getAttribute('data-file-preview-name') || '';
     const ext = name.toLowerCase().match(/\.([^.]+)$/)?.[1] || '';
 
-    if (ext === 'dbml' || body.querySelector('.x6-graph-svg-viewport')) {
-      await enhanceX6Block(body, src, filePath).catch(() => {});
-      return;
-    }
-    if (ext === 'excalidraw') {
-      await enhanceExcalidrawBlock(body, src, filePath).catch(() => {});
-      return;
-    }
-    if (ext === 'drawio') {
-      await enhanceDrawioBlock(body).catch(() => {});
-      return;
-    }
-    if (ext === 'mmap') {
-      await enhanceMmapBlock(body).catch(() => {});
+    // dbml blocks also match via the x6-graph-svg-viewport class (in case
+    // x6 mounted but the name attr is missing).
+    const fn = ext === 'dbml' && body.querySelector('.x6-graph-svg-viewport')
+      ? REGISTRY['dbml']
+      : REGISTRY[ext];
+
+    if (fn) {
+      await fn(body, { src, filePath, vaultRoot }).catch(() => {});
       return;
     }
     // .mmap and other types: keep in-DOM content if it has an SVG; else
@@ -335,572 +329,6 @@ async function processFilePreviews(container: HTMLElement, filePath: string): Pr
     body.style.minHeight = '0';
     body.style.overflow = 'visible';
   }));
-}
-
-/**
- * Replace the dbml file-preview body with a freshly-rendered static SVG.
- * Reads the .dbml file, parses via parseDbml, lays out via layoutEr, and
- * renders an SVG from the layout — does NOT depend on x6 having mounted
- * in the export container. The in-app preview uses x6 + react-shape; for
- * export we re-render in pure SVG so the output is self-contained and
- * doesn't depend on x6's runtime stylesheets or foreignObject content.
- */
-async function enhanceX6Block(body: HTMLElement, src: string, filePath: string): Promise<void> {
-  if (!src) return;
-  const vaultRelPath = resolveVaultPath(src, filePath);
-  let content: string;
-  try {
-    content = await useVaultStore.getState().readFile(vaultRelPath);
-  } catch { return; }
-  const { parseDbml } = await import('@/components/file-types/dbml/parseDbml');
-  const { layoutEr } = await import('@/components/file-types/dbml/erLayout');
-  const result = await parseDbml(content);
-  if (result.errors.length > 0 || !result.schema) return;
-  const layout = layoutEr(result.schema, 800, 600);
-  const svgString = renderErLayoutToSvg(layout);
-  body.innerHTML = svgString;
-  const svgEl = body.querySelector<SVGSVGElement>('svg');
-  if (svgEl) {
-    svgEl.style.display = 'block';
-    svgEl.style.margin = '0 auto';
-    svgEl.style.maxWidth = '100%';
-  }
-  body.style.height = '420px';
-  body.style.minHeight = '420px';
-  body.style.overflow = 'hidden';
-}
-
-// ponytail: duplicated from erLayout.ts (ER_HEADER_H=38, ER_ROW_H=28). The
-// constants are stable layout sizing — duplicate beats a static import
-// that would pull d3-force into the main bundle. Revisit if they drift.
-const ER_HEADER_H = 38;
-const ER_ROW_H = 28;
-
-// ponytail: standalone ER→SVG renderer. Mirrors the layout coordinates from
-// erLayout (header / row heights already agree with the in-app x6 render).
-// Drops x6-specific styling (drag handles, popovers, grid). Add when an
-// export needs closer visual parity with the in-app preview.
-function renderErLayoutToSvg(layout: import('@/components/file-types/dbml/erLayout').ErLayout): string {
-  const { tables, enums, refs } = layout;
-  if (tables.length === 0 && enums.length === 0) return '';
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  const bounds = (x: number, y: number, w: number, h: number) => {
-    minX = Math.min(minX, x); minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h);
-  };
-  for (const t of tables) bounds(t.x, t.y, t.width, t.height);
-  for (const e of enums) bounds(e.x, e.y, e.width, e.height);
-  const PAD = 40;
-  const vbX = minX - PAD, vbY = minY - PAD;
-  const vbW = (maxX - minX) + PAD * 2, vbH = (maxY - minY) + PAD * 2;
-
-  const parts: string[] = [];
-  parts.push(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"`,
-    ` viewBox="${vbX} ${vbY} ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet">`,
-  );
-  // Edges first so cards draw on top.
-  const tableByName = new Map(tables.map((t) => [t.name, t]));
-  for (const r of refs) {
-    const from = tableByName.get(r.fromTable);
-    const to = tableByName.get(r.toTable);
-    if (!from || !to) continue;
-    // Exit point: midpoint of the facing side of `from` → facing side of `to`.
-    const fx = from.x + (to.x + to.width / 2 >= from.x + from.width / 2 ? from.width : 0);
-    const fy = from.y + from.height / 2;
-    const tx = to.x + (from.x + from.width / 2 >= to.x + to.width / 2 ? to.width : 0);
-    const ty = to.y + to.height / 2;
-    const mx = (fx + tx) / 2;
-    parts.push(
-      `<polyline points="${fx},${fy} ${mx},${fy} ${mx},${ty} ${tx},${ty}"`,
-      ` fill="none" stroke="var(--t3)" stroke-width="1.4" stroke-dasharray="0" />`,
-    );
-  }
-  for (const t of tables) parts.push(renderTableCardSvg(t));
-  for (const e of enums) parts.push(renderEnumCardSvg(e));
-  parts.push('</svg>');
-  return parts.join('');
-}
-
-function escapeXml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function renderTableCardSvg(t: import('@/components/file-types/dbml/erLayout').PositionedTable): string {
-  const parts: string[] = [];
-  parts.push('<g>');
-  // Card body
-  parts.push(
-    `<rect x="${t.x}" y="${t.y}" width="${t.width}" height="${t.height}" rx="6" ry="6"`,
-    ` fill="var(--surf)" stroke="var(--brd)" stroke-width="1" />`,
-  );
-  // Header band (top rounded)
-  parts.push(
-    `<path d="M ${t.x + 6} ${t.y} H ${t.x + t.width - 6} A 6 6 0 0 1 ${t.x + t.width} ${t.y + 6} V ${t.y + ER_HEADER_H} H ${t.x} V ${t.y + 6} A 6 6 0 0 1 ${t.x + 6} ${t.y} Z"`,
-    ` fill="var(--hov)" />`,
-  );
-  parts.push(
-    `<text x="${t.x + 14}" y="${t.y + ER_HEADER_H / 2}" dominant-baseline="central"`,
-    ` font-family="var(--font-ui,'Sora',sans-serif)" font-size="15" font-weight="700" fill="var(--t1)">${escapeXml(t.name)}</text>`,
-  );
-  // Divider
-  parts.push(
-    `<line x1="${t.x}" y1="${t.y + ER_HEADER_H}" x2="${t.x + t.width}" y2="${t.y + ER_HEADER_H}"`,
-    ` stroke="var(--brd2)" stroke-width="1" />`,
-  );
-  // Fields
-  t.fields.forEach((f, i) => {
-    const ry = t.y + ER_HEADER_H + i * ER_ROW_H + ER_ROW_H / 2;
-    if (f.pk) {
-      parts.push(
-        `<circle cx="${t.x + 10}" cy="${ry}" r="3" fill="var(--acc)" />`,
-      );
-    }
-    parts.push(
-      `<text x="${t.x + 22}" y="${ry}" dominant-baseline="central"`,
-      ` font-family="var(--font-ui,'Sora',sans-serif)" font-size="13" fill="var(--t1)">${escapeXml(f.name)}</text>`,
-    );
-    parts.push(
-      `<text x="${t.x + t.width - 14}" y="${ry}" text-anchor="end" dominant-baseline="central"`,
-      ` font-family="var(--font-mono,'DM Mono',monospace)" font-size="12" fill="var(--t3)">${escapeXml(f.type)}</text>`,
-    );
-  });
-  parts.push('</g>');
-  return parts.join('');
-}
-
-function renderEnumCardSvg(e: import('@/components/file-types/dbml/erLayout').PositionedEnum): string {
-  const parts: string[] = [];
-  parts.push('<g>');
-  parts.push(
-    `<rect x="${e.x}" y="${e.y}" width="${e.width}" height="${e.height}" rx="6" ry="6"`,
-    ` fill="var(--surf)" stroke="var(--brd)" stroke-width="1" stroke-dasharray="3 2" />`,
-  );
-  parts.push(
-    `<path d="M ${e.x + 6} ${e.y} H ${e.x + e.width - 6} A 6 6 0 0 1 ${e.x + e.width} ${e.y + 6} V ${e.y + ER_HEADER_H} H ${e.x} V ${e.y + 6} A 6 6 0 0 1 ${e.x + 6} ${e.y} Z"`,
-    ` fill="var(--brd2)" />`,
-  );
-  parts.push(
-    `<text x="${e.x + 14}" y="${e.y + ER_HEADER_H / 2}" dominant-baseline="central"`,
-    ` font-family="var(--font-ui,'Sora',sans-serif)" font-size="12" fill="var(--t3)">«enum»</text>`,
-  );
-  parts.push(
-    `<text x="${e.x + 62}" y="${e.y + ER_HEADER_H / 2}" dominant-baseline="central"`,
-    ` font-family="var(--font-ui,'Sora',sans-serif)" font-size="15" font-weight="700" fill="var(--t1)">${escapeXml(e.name)}</text>`,
-  );
-  e.values.forEach((v, i) => {
-    const ry = e.y + ER_HEADER_H + i * ER_ROW_H + ER_ROW_H / 2;
-    parts.push(
-      `<text x="${e.x + 22}" y="${ry}" dominant-baseline="central"`,
-      ` font-family="var(--font-ui,'Sora',sans-serif)" font-size="13" fill="var(--t1)">${escapeXml(v.name)}</text>`,
-    );
-  });
-  parts.push('</g>');
-  return parts.join('');
-}
-
-/**
- * Replace an excalidraw file-preview body with an SVG exported via the
- * excalidraw library's exportToSvg API. Reads the .excalidraw file fresh,
- * parses elements/appState/files, and calls the library. Falls back to
- * filename card on any error.
- */
-async function enhanceExcalidrawBlock(body: HTMLElement, src: string, filePath: string): Promise<void> {
-  if (!src) return;
-  const vaultRelPath = resolveVaultPath(src, filePath);
-  const json = await useVaultStore.getState().readFile(vaultRelPath);
-  let parsed: { elements?: any[]; appState?: any; files?: any };
-  try {
-    parsed = JSON.parse(json);
-  } catch {
-    return;
-  }
-  const { exportToSvg } = await import('@excalidraw/excalidraw');
-  const svg = await exportToSvg({
-    elements: parsed.elements ?? [],
-    appState: { ...parsed.appState, exportWithDarkMode: false },
-    files: parsed.files,
-  });
-  const svgString = new XMLSerializer().serializeToString(svg);
-  body.innerHTML = svgString;
-  // Inline the SVG so it scales to body width.
-  const svgEl = body.querySelector('svg');
-  if (svgEl) {
-    svgEl.setAttribute('width', '100%');
-    svgEl.setAttribute('height', '100%');
-    svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-    svgEl.style.maxWidth = '100%';
-    svgEl.style.display = 'block';
-    svgEl.style.margin = '0 auto';
-  }
-  body.style.height = '420px';
-  body.style.minHeight = '420px';
-  body.style.overflow = 'hidden';
-}
-
-/**
- * Decode a drawio export payload to a raw SVG string. Accepts:
- *   - `data:image/svg+xml;base64,...` (drawio's usual form)
- *   - `data:image/svg+xml;utf8,...` or URL-encoded data URI
- *   - raw base64 (no prefix) — atob and check it starts with `<svg`
- *   - raw SVG string (starts with `<svg`) — pass through
- * Returns '' for unrecognized / malformed payloads.
- */
-function decodeDataUriSvg(data: string): string {
-  if (!data) return '';
-  if (data.startsWith('<svg')) return data;
-  const decodeBase64Svg = (b64: string): string => {
-    try {
-      // ponytail: atob returns a binary string (Latin-1 chars = bytes).
-      // SVG content can contain non-ASCII (e.g. user-entered Chinese
-      // labels); TextDecoder('utf-8') turns the byte sequence back into
-      // a proper UTF-8 string. Without this, multi-byte chars render as
-      // mojibake (e.g. "开始" → "å¼å§").
-      const bin = atob(b64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const decoded = new TextDecoder('utf-8').decode(bytes);
-      return decoded.startsWith('<svg') ? decoded : '';
-    } catch { return ''; }
-  };
-  if (data.startsWith('data:image/svg+xml')) {
-    const commaIdx = data.indexOf(',');
-    if (commaIdx < 0) return '';
-    const meta = data.slice(0, commaIdx);
-    const body = data.slice(commaIdx + 1);
-    if (meta.includes(';base64')) return decodeBase64Svg(body);
-    try { return decodeURIComponent(body); } catch { return body; }
-  }
-  return decodeBase64Svg(data);
-}
-
-/**
- * Replace a drawio file-preview body with an SVG exported by the diagrams.net
- * iframe via postMessage. The iframe loads from https://embed.diagrams.net
- * (cross-origin) so we can't read its DOM, but the embed protocol supports
- * an `export` action that posts back the SVG. Falls back silently (the body
- * keeps its filename card / prior content) on timeout.
- *
- * Format is `xmlsvg` (matches react-drawio's default — plain `svg` is not a
- * valid drawio export format and yields no response). The message is
- * JSON-stringified to match react-drawio's protocol; drawio's embed accepts
- * both but stringified is the documented form.
- */
-async function enhanceDrawioBlock(body: HTMLElement): Promise<void> {
-  const iframe = body.querySelector('iframe');
-  const cw = iframe?.contentWindow;
-  if (!iframe || !cw) return;
-  // ponytail: skip cross-origin document.readyState check — accessing
-  // .document on a cross-origin iframe throws SecurityError, which the ?.
-  // operator doesn't catch. The export stabilization loop already waited
-  // for "加载中…" to disappear (DrawioPreview's loading state), so by the
-  // time we get here the iframe has processed the load action and is ready
-  // to receive export.
-  await new Promise<void>((resolve) => {
-    let settled = false;
-    const handler = (e: MessageEvent) => {
-      // drawio posts back a JSON-stringified payload (react-drawio does
-      // JSON.parse(event.data)); accept both string and object forms.
-      let payload: any = e.data;
-      if (typeof payload === 'string') {
-        try { payload = JSON.parse(payload); } catch { return; }
-      }
-      if (payload?.event !== 'export') return;
-      if (settled) return;
-      settled = true;
-      window.removeEventListener('message', handler);
-      clearTimeout(timer);
-      const raw = typeof payload.data === 'string' ? payload.data : '';
-      // drawio returns the SVG as a data URI (`data:image/svg+xml;base64,…`
-      // or `data:image/svg+xml;utf8,…`), not as a raw SVG string. Decode
-      // so we inject a real <svg> element (scalable, styleable) rather
-      // than dumping the URI as text.
-      const svgText = decodeDataUriSvg(raw);
-      if (svgText) body.innerHTML = svgText;
-      resolve();
-    };
-    window.addEventListener('message', handler);
-    cw.postMessage(JSON.stringify({ action: 'export', format: 'xmlsvg', spinKey: 'export' }), '*');
-    const timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      window.removeEventListener('message', handler);
-      resolve();
-    }, 8000);
-  });
-  const svgEl = body.querySelector('svg');
-  if (svgEl) {
-    svgEl.setAttribute('width', '100%');
-    svgEl.setAttribute('height', '100%');
-    svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-    svgEl.style.maxWidth = '100%';
-    svgEl.style.display = 'block';
-    svgEl.style.margin = '0 auto';
-  }
-  body.style.height = '420px';
-  body.style.minHeight = '420px';
-  body.style.overflow = 'hidden';
-}
-
-/**
- * Replace an mmap file-preview body with an SVG produced by mind-elixir's
- * `exportSvg()` on the live instance. The export container's MindMapCanvas
- * already mounted mind-elixir and exposed the instance on the host element
- * (data-mmap-instance-host); we just call its exportSvg and inject the
- * resulting SVG. Falls back silently on any error.
- *
- * `exportSvg` returns a Blob (SVG type); we read it as text. The exported
- * SVG has its own inline styles so it renders standalone.
- */
-async function enhanceMmapBlock(body: HTMLElement): Promise<void> {
-  const host = body.querySelector<HTMLElement>('[data-mmap-instance-host]');
-  const inst = host && (host as any).__mindElixir;
-  if (!inst || typeof inst.exportSvg !== 'function') return;
-  // Wait for layout + font-swaps to settle (mind-elixir's linkDiv runs on
-  // fonts.ready + rAF; without this, exportSvg can capture mid-link state).
-  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-  // ponytail: post-process the exported SVG to fix the foreignObject div
-  // styling directly. mind-elixir's exportSvg 2nd-arg CSS injection
-  // (insertAdjacentHTML on an SVG element) doesn't reliably apply to
-  // foreignObject's HTML content in standalone SVG viewers — namespace
-  // mismatch between HTML <style> and SVG. Patching the div's inline
-  // style bypasses that: inject `line-height:1.5` so the div's text
-  // matches the foreignObject's height (which came from
-  // getComputedStyle(.text) inheriting body's line-height 1.5). Without
-  // this, the div's text uses browser default "normal" ≈ 1.2 — shorter
-  // than foreignObject, top-anchored → 偏上. Adding line-height makes
-  // the text fill the foreignObject height. We don't use display:flex
-  // because flex shrink on narrow foreignObjects forces 2-char Chinese
-  // nodes to wrap to 2 lines, then the (1-line tall) foreignObject
-  // clips the 2nd line → 显示不全.
-  let blob: Blob | null = null;
-  try {
-    blob = inst.exportSvg(false, '');
-  } catch { return; }
-  if (!blob) return;
-  let svgString = await blob.text();
-  if (!svgString) return;
-  // Inject a <style> block right after <svg> opening tag. Targets all
-  // descendants of foreignObject (mind-elixir nests text in a div, possibly
-  // with child spans). !important overrides any inline style mind-elixir
-  // emits on those elements.
-  //
-  // Goals:
-  //  - No wrapping: white-space:nowrap keeps each node's text on one line,
-  //    overflowing the foreignObject width (SVG doesn't clip foreignObject
-  //    content by default, so the text renders past the boundary). User
-  //    wants single-line display regardless of length.
-  //  - Vertical centering: the div's text block (1 line × line-height:1.5)
-  //    is centered on the foreignObject's vertical axis via flex-direction:
-  //    column + justify-content:center. height:100% lets the div fill the
-  //    (post-image-swap) foreignObject so flex centering actually moves
-  //    the text. (Plain flex without height:100% centers within the div's
-  //    auto content height — no effect.)
-  //  - Horizontal centering: text-align:center on the single line.
-  const foStyle = `<style>foreignObject div, foreignObject span, foreignObject p { height: 100% !important; display: flex !important; flex-direction: column !important; justify-content: center !important; line-height: 1.5 !important; text-align: center !important; }</style>`;
-  svgString = svgString.replace(/<svg\b([^>]*)>/, `<svg$1>${foStyle}`);
-  // ponytail: fix image-node layout. mind-elixir's exportSvg has a bug
-  // where for image nodes (me-tpc with img child), the text
-  // foreignObject spans me-tpc's full content area (because
-  // getComputedStyle(.text).height returns me-tpc.content height, not
-  // .text's own content height). The foreignObject is positioned at
-  // me-tpc.content top, so text renders ABOVE the image instead of
-  // below. Visually: text at top, image below — reversed from the
-  // in-app DOM layout (image at top, text below).
-  // Fix: for each <image>, find the containing foreignObject (the one
-  // whose bbox contains the image), then swap — move image to
-  // foreignObject's top, move foreignObject to below image with 8px
-  // margin (mind-elixir's img margin-bottom). foreignObject.height
-  // becomes the remaining content area; line-height:1.5 + the div's
-  // natural line-box centering handles vertical centering within.
-  svgString = fixImageNodeLayout(svgString);
-  body.innerHTML = svgString;
-  // Inline <image> hrefs (Tauri asset URLs) as base64 — mind-elixir's
-  // exportSvg copies img.src into <image href="...">, but the app's
-  // inlineContainerImages pass runs BEFORE mind-elixir mounts, so those
-  // URLs never got inlined. Without this, images break in standalone HTML.
-  await inlineSvgImages(body);
-  const svgEl = body.querySelector<SVGSVGElement>('svg');
-  if (svgEl) {
-    // mind-elixir's exportSvg emits width/height as pixel strings (e.g.
-    // "640px" × "480px") but no viewBox — without one, width:100% just
-    // shrinks the canvas while content stays at native coords, so only
-    // the top-left corner shows. Synthesize viewBox from width/height
-    // so preserveAspectRatio meet scales the content to fit the body.
-    const wAttr = svgEl.getAttribute('width') ?? '';
-    const hAttr = svgEl.getAttribute('height') ?? '';
-    const w = parseInt(wAttr, 10);
-    const h = parseInt(hAttr, 10);
-    if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
-      svgEl.setAttribute('viewBox', `0 0 ${w} ${h}`);
-    }
-    svgEl.setAttribute('width', '100%');
-    svgEl.setAttribute('height', '100%');
-    svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-    svgEl.style.maxWidth = '100%';
-    svgEl.style.display = 'block';
-    svgEl.style.margin = '0 auto';
-  }
-  body.style.height = '420px';
-  body.style.minHeight = '420px';
-  body.style.overflow = 'hidden';
-}
-
-/**
- * Fix mind-elixir's image-node export layout. For nodes with both an image
- * and text, mind-elixir's exportSvg sets the text foreignObject to span
- * me-tpc's full content area (because getComputedStyle(.text).height returns
- * me-tpc.content height for image nodes), and the image ends up positioned
- * below the text — reversed from the in-app DOM layout (image at top, text
- * below). This post-processes the SVG string to swap positions: move image
- * to content top, move foreignObject below image with 8px margin (matching
- * me-tpc > img { margin-bottom: 8px } in mind-elixir's CSS).
- */
-function fixImageNodeLayout(svgString: string): string {
-  const doc = new DOMParser().parseFromString(svgString, 'image/svg+xml');
-  const images = Array.from(doc.querySelectorAll('image'));
-  for (const img of Array.from(images)) {
-    const ix = parseFloat(img.getAttribute('x') ?? '0');
-    const iy = parseFloat(img.getAttribute('y') ?? '0');
-    const iw = parseFloat(img.getAttribute('width') ?? '0');
-    const ih = parseFloat(img.getAttribute('height') ?? '0');
-    if (!ix && !iy && !iw && !ih) continue;
-    // Find the foreignObject whose bbox contains the image (same me-tpc).
-    const foreignObjects = Array.from(doc.querySelectorAll('foreignObject'));
-    const fo = foreignObjects.find((f) => {
-      const fx = parseFloat(f.getAttribute('x') ?? '0');
-      const fy = parseFloat(f.getAttribute('y') ?? '0');
-      const fw = parseFloat(f.getAttribute('width') ?? '0');
-      const fh = parseFloat(f.getAttribute('height') ?? '0');
-      return ix >= fx - 0.5 && ix + iw <= fx + fw + 0.5
-        && iy >= fy - 0.5 && iy + ih <= fy + fh + 0.5;
-    });
-    if (!fo) continue;
-    const fy = parseFloat(fo.getAttribute('y') ?? '0');
-    const fh = parseFloat(fo.getAttribute('height') ?? '0');
-    const foBottom = fy + fh;  // me-tpc.content bottom
-    // Move image to top of content area (foreignObject's current y).
-    img.setAttribute('y', String(fy));
-    // Move foreignObject below image + 8px margin.
-    const newFy = fy + ih + 8;
-    fo.setAttribute('y', String(newFy));
-    // Height = remaining content area; foreignObject div has line-height:1.5
-    // so text fills its line box and centers within. Avoids overflow beyond
-    // me-tpc since (newFy + newFh) = foBottom.
-    fo.setAttribute('height', String(Math.max(0, foBottom - newFy)));
-  }
-  return new XMLSerializer().serializeToString(doc);
-}
-
-/**
- * Walk all <image> elements (SVG namespace) inside `container` and replace
- * Tauri asset URLs (any non-data, non-http src) in both `href` and
- * `xlink:href` with base64 data URLs via fetch + FileReader. Mutates in
- * place; failures leave the original href. Used to inline images inside
- * mind-elixir's exported SVG (inlineContainerImages runs before mind-elixir
- * mounts, so it misses the mmap image elements).
- */
-async function inlineSvgImages(container: HTMLElement): Promise<void> {
-  const imgs = Array.from(container.querySelectorAll('image'));
-  await Promise.all(
-    imgs.map(async (img) => {
-      const href = img.getAttribute('href') ?? img.getAttributeNS('http://www.w3.org/1999/xlink', 'href') ?? '';
-      if (!href || href.startsWith('data:') || href.startsWith('http')) return;
-      try {
-        const res = await fetch(href);
-        const blob = await res.blob();
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const fr = new FileReader();
-          fr.onload = () => resolve(fr.result as string);
-          fr.onerror = () => reject(fr.error);
-          fr.readAsDataURL(blob);
-        });
-        img.setAttribute('href', dataUrl);
-        img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', dataUrl);
-      } catch { /* leave original href */ }
-    }),
-  );
-}
-
-/**
- * Walk all <img> elements in a container and replace Tauri asset URLs with
- * base64 data URLs. Skips http(s) and data: URLs. Mutates the DOM in place.
- */
-async function inlineContainerImages(container: HTMLElement): Promise<void> {
-  const imgs = Array.from(container.querySelectorAll('img'));
-  await Promise.all(
-    imgs.map(async (img) => {
-      const src = img.getAttribute('src') ?? '';
-      if (!src || src.startsWith('data:') || src.startsWith('http')) return;
-      try {
-        const res = await fetch(src);
-        const blob = await res.blob();
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const fr = new FileReader();
-          fr.onload = () => resolve(fr.result as string);
-          fr.onerror = () => reject(fr.error);
-          fr.readAsDataURL(blob);
-        });
-        img.setAttribute('src', dataUrl);
-      } catch {
-        // leave the original src — better a broken img than a failed export
-      }
-    }),
-  );
-}
-
-/**
- * Read a local image file and return it as a base64 data URL.
- */
-export async function readImageAsDataUrl(filePath: string): Promise<string> {
-  try {
-    const bytes = await readFile(filePath);
-    const ext = filePath.split('.').pop()?.toLowerCase() ?? 'png';
-    const mimeMap: Record<string, string> = {
-      png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
-      gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp',
-    };
-    const mime = mimeMap[ext] || 'image/png';
-    const binary = Array.from(bytes).map((b) => String.fromCharCode(b)).join('');
-    const base64 = btoa(binary);
-    return `data:${mime};base64,${base64}`;
-  } catch {
-    return '';
-  }
-}
-
-/**
- * Replace all vault-file:// image references with base64 data URLs
- * so the exported HTML is fully self-contained.
- * Image paths are resolved relative to the current document's directory.
- */
-export async function inlineImages(html: string, vaultRoot: string, currentFilePath?: string): Promise<string> {
-  const imgRegex = /<img\s[^>]*?src="vault-file:\/\/([^"]+?)"[^>]*?\/?>/gi;
-  const matches = [...html.matchAll(imgRegex)];
-  if (matches.length === 0) return html;
-
-  const resolvedRoot = await resolveBasePath(vaultRoot);
-  const fileDir = currentFilePath
-    ? currentFilePath.substring(0, currentFilePath.lastIndexOf('/'))
-    : '';
-  const uniquePaths = [...new Set(matches.map((m) => m[1]))];
-
-  const { join } = await import('@tauri-apps/api/path');
-  const replacements = await Promise.all(
-    uniquePaths.map(async (relativePath) => {
-      const decoded = decodeURIComponent(relativePath.replace(/&amp;/g, '&'));
-      const basePath = fileDir ? await join(resolvedRoot, fileDir) : resolvedRoot;
-      const absPath = await join(basePath, decoded);
-      const dataUrl = await readImageAsDataUrl(absPath);
-      return { original: `vault-file://${relativePath}`, dataUrl };
-    }),
-  );
-
-  let result = html;
-  for (const { original, dataUrl } of replacements) {
-    if (dataUrl) result = result.replaceAll(original, dataUrl);
-  }
-  return result;
 }
 
 /**
@@ -1010,150 +438,3 @@ export const HTML_STYLES = `
       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
 `;
-
-// ponytail: rasterize an SVG string to a PNG Blob via canvas. Parses
-// width/height (or viewBox fallback) since exported SVGs use width="100%"
-// which yields naturalWidth=0 when loaded into an Image.
-export async function svgToPngBlob(svg: string, scale = 2): Promise<Blob | null> {
-  const wMatch = svg.match(/\bwidth="([^"]+)"/);
-  const hMatch = svg.match(/\bheight="([^"]+)"/);
-  let w = wMatch ? parseInt(wMatch[1], 10) || 0 : 0;
-  let h = hMatch ? parseInt(hMatch[1], 10) || 0 : 0;
-  if (!w || !h) {
-    const vb = svg.match(/viewBox="([^"]+)"/);
-    if (vb) {
-      const parts = vb[1].split(/[\s,]+/).map(Number);
-      w = w || parts[2] || 0;
-      h = h || parts[3] || 0;
-    }
-  }
-  w = w || 800;
-  h = h || 600;
-  const sizedSvg = svg
-    .replace(/\bwidth="[^"]*"/, `width="${w}"`)
-    .replace(/\bheight="[^"]*"/, `height="${h}"`);
-  const blob = new Blob([sizedSvg], { type: 'image/svg+xml;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  try {
-    const img = new Image();
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = () => reject(new Error('svg load failed'));
-      img.src = url;
-    });
-    const canvas = document.createElement('canvas');
-    canvas.width = w * scale;
-    canvas.height = h * scale;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob((b) => resolve(b), 'image/png'),
-    );
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-/**
- * Render a non-markdown file (dbml/excalidraw/drawio/mmap) to a standalone
- * SVG string. Builds a synthetic one-block markdown with a file-preview
- * directive pointing at the file, then runs the existing
- * renderMarkdownToHtmlViaDom pipeline (which mounts the preview, stabilizes
- * async effects, and converts the body to SVG via processFilePreviews).
- * Extracts the resulting <svg> from the rendered HTML.
- */
-export async function renderFilePreviewToSvg(
-  filePath: string,
-  vaultRoot: string,
-): Promise<string> {
-  const fileName = filePath.split('/').pop() ?? '';
-  if (!fileName) return '';
-  // src is resolved by FilePreviewPlugin relative to filePath's directory,
-  // so "./filename" + the file's own path resolves back to itself.
-  const syntheticMd = `:::file-preview{src="./${fileName}"}\n:::\n`;
-  const { html } = await renderMarkdownToHtmlViaDom(syntheticMd, filePath, vaultRoot);
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const svgEl = doc.querySelector('[data-file-preview-body] svg');
-  if (!svgEl) return '';
-  let svgString = svgEl.outerHTML;
-  // ponytail: mind-elixir's exportSvg emits <image xlink:href="..."> without
-  // declaring xmlns:xlink on the root <svg>, so standalone XML parsers reject
-  // it ("Namespace prefix xlink for href on image is not defined"). HTML
-  // rendering is unaffected — only standalone .svg files break. Inject the
-  // namespace declaration on the root when xlink: is referenced but missing.
-  if (svgString.includes('xlink:') && !/\bxmlns:xlink=/.test(svgString)) {
-    svgString = svgString.replace(
-      /<svg\b([^>]*)>/,
-      '<svg xmlns:xlink="http://www.w3.org/1999/xlink"$1>',
-    );
-  }
-  if (!/\bxmlns=/.test(svgString)) {
-    svgString = svgString.replace(
-      /<svg\b([^>]*)>/,
-      '<svg xmlns="http://www.w3.org/2000/svg"$1>',
-    );
-  }
-  return svgString;
-}
-
-export async function downloadBlob(blob: Blob, filename: string, extensions?: string[]) {
-  const { isTauri } = await import('@/utils/platform');
-  if (isTauri()) {
-    try {
-      const { save } = await import('@tauri-apps/plugin-dialog');
-      const { writeFile } = await import('@tauri-apps/plugin-fs');
-      const ext = extensions ?? [filename.split('.').pop() ?? '*'];
-      const label = ext[0] === '*' ? 'All Files' : ext[0].toUpperCase();
-      const filePath = await save({
-        defaultPath: filename,
-        filters: [{ name: label, extensions: ext }],
-      });
-      if (filePath) {
-        const arrayBuffer = await blob.arrayBuffer();
-        await writeFile(filePath, new Uint8Array(arrayBuffer));
-        // Show a brief success notification
-        showExportNotification(`已保存到 ${filePath}`);
-      }
-    } catch (error) {
-      console.error('[Export] Save failed:', error);
-    }
-    return;
-  }
-  // Browser fallback
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-export function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-/** Show a temporary toast notification for export success */
-function showExportNotification(message: string) {
-  const toast = document.createElement('div');
-  toast.textContent = message;
-  toast.style.cssText = `
-    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
-    background: var(--surf2, #2a2d3e); color: var(--t1, #cdd6f4);
-    padding: 10px 20px; border-radius: 8px; font-size: 13px;
-    box-shadow: 0 4px 16px rgba(0,0,0,.3); z-index: 9999;
-    animation: toast-in .3s ease;
-  `;
-  document.body.appendChild(toast);
-  setTimeout(() => {
-    toast.style.transition = 'opacity .3s';
-    toast.style.opacity = '0';
-    setTimeout(() => document.body.removeChild(toast), 300);
-  }, 2500);
-}

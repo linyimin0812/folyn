@@ -3,18 +3,22 @@ import { useEditorStore } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
 import {
   renderMarkdownToHtmlViaDom,
-  inlineImages,
-  downloadBlob,
-  escapeHtml,
   HTML_STYLES,
   LIGHT_THEME_VARS,
   DARK_THEME_VARS,
+  hasContainerSyntax,
+} from '@/services/exportService';
+import type { ExportFormat } from '@/services/exportService';
+import {
+  inlineImages,
+  downloadBlob,
+  escapeHtml,
   renderFilePreviewToSvg,
   svgToPngBlob,
-} from '@/services/exportService';
+} from '@/services/export/shared';
 
-export type { ExportFormat } from '@/services/exportService';
-export { hasContainerSyntax } from '@/services/exportService';
+export type { ExportFormat };
+export { hasContainerSyntax };
 
 export interface ActiveDocument {
   name: string;

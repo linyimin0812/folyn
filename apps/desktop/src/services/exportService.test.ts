@@ -3,9 +3,11 @@ import {
   hasContainerSyntax,
   HTML_STYLES,
   renderMarkdownToHtml,
+} from './exportService';
+import {
   readImageAsDataUrl,
   inlineImages,
-} from './exportService';
+} from './export/shared';
 import { writeFile } from '@tauri-apps/plugin-fs';
 
 describe('hasContainerSyntax', () => {
