@@ -89,6 +89,11 @@ aside button[data-tip]::after { bottom: auto; top: 100%; margin-bottom: 0; margi
   --ic-ts: #3178c6; --ic-js: #e8b800; --ic-js-fg: #1a1a1a; --ic-json: #a67c2e;
   --ic-css: #663399; --ic-yaml: #b45309; --ic-py: #3572a5; --ic-sql: #0d7d72;
   --ic-pdf: #d93030;
+  /* CodeMirror token colors — light values match defaultHighlightStyle */
+  --cm-meta: #404740; --cm-keyword: #708; --cm-atom: #219; --cm-number: #164;
+  --cm-string: #a11; --cm-regexp: #e40; --cm-var-def: #00f; --cm-var-local: #30a;
+  --cm-type: #085; --cm-class: #167; --cm-var-special: #256; --cm-prop: #00c;
+  --cm-comment: #940; --cm-invalid: #f00;
 }
 [data-theme="dark"] {
   --bg: #0b0d14; --panel: #0f1219; --surf: #13161f; --surf2: #181c28;
@@ -102,6 +107,11 @@ aside button[data-tip]::after { bottom: auto; top: 100%; margin-bottom: 0; margi
   --ic-ts: #60a5fa; --ic-js: #facc15; --ic-js-fg: #1a1a1a; --ic-json: #fbbf24;
   --ic-css: #a78bfa; --ic-yaml: #f59e0b; --ic-py: #60a5fa; --ic-sql: #2dd4bf;
   --ic-pdf: #f87171;
+  /* CodeMirror token colors — dark values matched to .hljs dark palette */
+  --cm-meta: #bbb529; --cm-keyword: #cc7832; --cm-atom: #6897bb; --cm-number: #6897bb;
+  --cm-string: #6a8759; --cm-regexp: #e40; --cm-var-def: #ffc66d; --cm-var-local: #9876aa;
+  --cm-type: #ffc66d; --cm-class: #e8bf6a; --cm-var-special: #9876aa; --cm-prop: #9876aa;
+  --cm-comment: #a9b7c6; --cm-invalid: #f06a6a;
 }
 
 /* ── Base ── */

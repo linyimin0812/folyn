@@ -4,13 +4,12 @@ import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection } f
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { html } from '@codemirror/lang-html';
 import {
-  syntaxHighlighting,
-  defaultHighlightStyle,
   bracketMatching,
   foldGutter,
   indentOnInput,
   indentUnit,
 } from '@codemirror/language';
+import { quillHighlighting } from '@/editor/highlightStyle';
 import {
   autocompletion,
   closeBrackets,
@@ -68,7 +67,7 @@ export function SourceEditCanvas({ content, onChange }: SourceEditCanvasProps) {
         foldGutter(),
         indentOnInput(),
         indentUnit.of('  '),
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        quillHighlighting(),
         html(),
         keymap.of([
           ...closeBracketsKeymap,

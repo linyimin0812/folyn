@@ -40,12 +40,11 @@ import {
 } from '@codemirror/commands';
 import { json as jsonLanguage } from '@codemirror/lang-json';
 import {
-  syntaxHighlighting,
-  defaultHighlightStyle,
   bracketMatching,
   indentOnInput,
   indentUnit,
 } from '@codemirror/language';
+import { quillHighlighting } from '@/editor/highlightStyle';
 import {
   autocompletion,
   closeBrackets,
@@ -175,7 +174,7 @@ export function Json5CodeMirror({
         EditorState.tabSize.of(2),
         indentUnit.of('  '),
         indentOnInput(),
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        quillHighlighting(),
         bracketMatching(),
         closeBrackets(),
         autocompletion({ override: [jsonAutocomplete] }),

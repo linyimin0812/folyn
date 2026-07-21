@@ -98,6 +98,9 @@ importers:
       '@file-viewer/react':
         specifier: ^2.1.17
         version: 2.1.17(react@18.3.1)
+      '@lezer/highlight':
+        specifier: ^1.2.3
+        version: 1.2.3
       '@quill/cli-adapter':
         specifier: workspace:*
         version: link:../../packages/cli-adapter

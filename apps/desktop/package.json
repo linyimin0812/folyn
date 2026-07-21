@@ -32,6 +32,7 @@
     "@file-viewer/preset-all": "2.1.17",
     "@file-viewer/preset-office": "^2.1.30",
     "@file-viewer/react": "^2.1.17",
+    "@lezer/highlight": "^1.2.3",
     "@quill/cli-adapter": "workspace:*",
     "@quill/container-plugins": "workspace:*",
     "@quill/plugin-host": "workspace:*",

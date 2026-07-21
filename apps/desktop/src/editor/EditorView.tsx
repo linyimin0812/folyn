@@ -15,14 +15,22 @@ import { defaultKeymap, history, historyKeymap, indentWithTab, selectAll } from 
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
 import {
-  syntaxHighlighting,
-  defaultHighlightStyle,
   bracketMatching,
   foldGutter,
   indentOnInput,
   indentUnit,
   LanguageDescription,
 } from '@codemirror/language';
+import { quillHighlighting } from './highlightStyle';
+
+// ponytail: @codemirror/language-data has no mermaid; supply a tiny StreamLanguage
+// so fenced ```mermaid blocks get syntax highlighting in the editor.
+const mermaidDesc = LanguageDescription.of({
+  name: 'mermaid',
+  extensions: ['mermaid'],
+  load: async () => (await import('./extensions/mermaidLanguage')).mermaid(),
+});
+const codeLanguages = [mermaidDesc, ...languages];
 import {
   autocompletion,
   closeBrackets,
@@ -253,7 +261,7 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
           indentUnit.of(' '.repeat(settingsTabSize)),
         ]),
         indentOnInput(),
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        quillHighlighting(),
         bracketMatching(),
         closeBrackets(),
         autocompletion({ override: [createFilePreviewSrcCompletion(filePath)] }),
@@ -283,7 +291,7 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
         markdownKeymapCompartment.current.of(
           keymap.of(buildMarkdownKeymap(shortcuts, onSaveRef)),
         ),
-        markdown({ base: markdownLanguage, codeLanguages: languages }),
+        markdown({ base: markdownLanguage, codeLanguages }),
         ...slashCommandExtension,
         ...codeBlockExtension,
         ...orderedListExtension,
