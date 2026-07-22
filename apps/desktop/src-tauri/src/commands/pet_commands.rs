@@ -306,10 +306,17 @@ pub async fn set_pet_size(app: tauri::AppHandle, level: String) -> Result<(), Ap
     Ok(())
 }
 
-/// Map an opacity level string ("25"|"50"|"75"|"100") to the f32 alpha
-/// value NSWindow `setAlphaValue:` expects (0.0–1.0). Mirrors the frontend
+/// Map an opacity level string ("25"|"50"|"75"|"100") to the f64 alpha
+/// value NSWindow `setAlphaValue:` expects (CGFloat = c_double on 64-bit).
+/// MUST be f64, not f32: the objc 0.2 crate encodes f32 as ObjC 'f' (float)
+/// and f64 as 'd' (double); `setAlphaValue:`'s parameter is CGFloat = 'd'.
+/// Passing f32 mismatches the runtime signature — on arm64 the float is
+/// written to the low 32 bits of v0 and the high 32 bits are undefined per
+/// AAPCS, so the callee reads a garbage double, frequently ≈0 → the window
+/// goes fully transparent at any level <100% (and 100% only "works" because
+/// PetApp skips the invoke at the default level). Mirrors the frontend
 /// `PetOpacity` type. Used by `set_pet_opacity`.
-fn pet_opacity_to_alpha(level: &str) -> Option<f32> {
+fn pet_opacity_to_alpha(level: &str) -> Option<f64> {
     match level {
         "25" => Some(0.25),
         "50" => Some(0.50),
