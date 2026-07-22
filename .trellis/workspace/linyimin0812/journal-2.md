@@ -605,3 +605,37 @@ Diagnosed and fixed pet landing at wrong position on startup in multi-monitor se
 ### Next Steps
 
 - None - task complete
+
+
+## Session 76: Pet right-click menu + app menu bar i18n
+
+**Date**: 2026-07-22
+**Task**: Pet right-click menu + app menu bar i18n
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Rust-side zh/en label table (PetMenuLabel/AppMenuLabel). pet_show_context_menu takes locale arg; new pet_rebuild_app_menu command rebuilds macOS app menu bar on locale switch. Frontend localeStore.setLocale emits locale://changed so secondary Tauri windows (separate JS realms, own i18next instance) can sync via PetApp listener; openPetContextMenu reads i18n.language to pass to Rust. Spec: i18n-guidelines gains Cross-window locale sync section.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `46ccab9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

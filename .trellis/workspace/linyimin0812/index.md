@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 75
+- **Total Sessions**: 76
 - **Last Active**: 2026-07-22
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~607 | Active |
+| `journal-2.md` | ~641 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 76 | 2026-07-22 | Pet right-click menu + app menu bar i18n | `46ccab9` | `master` |
 | 75 | 2026-07-22 | Fix pet not at bottom-right on multi-monitor startup | `07b61ad` | `master` |
 | 74 | 2026-07-22 | drawio 嵌入 SVG 导出修复 | `20d6313` | `master` |
 | 73 | 2026-07-21 | Excalidraw preview layout + mmap export fixes + exportService refactor | `8ea11f0`, `9c90f16` | `master` |
