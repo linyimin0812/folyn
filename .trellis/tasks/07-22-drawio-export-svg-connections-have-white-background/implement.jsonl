@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality bar for the modified drawio.ts."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Ensure no any-leaks in the post-process + sizing logic."}

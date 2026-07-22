@@ -44,7 +44,17 @@ export async function enhance(body: HTMLElement, _ctx: EnhanceCtx): Promise<void
       // so we inject a real <svg> element (scalable, styleable) rather
       // than dumping the URI as text.
       const svgText = decodeDataUriSvg(raw);
-      if (svgText) body.innerHTML = svgText;
+      if (svgText) {
+        // ponytail: strip edge-label white backgrounds. drawio defaults
+        // edge labels to `background-color: #ffffff` (and a
+        // `--ge-adaptive-bg` fallback) so text is readable over crossing
+        // edges in-app. In standalone export this renders as white boxes
+        // on the connections. Node label divs don't carry background-color,
+        // so this only hits edge labels.
+        body.innerHTML = svgText
+          .replace(/background-color:\s*#ffffff/g, 'background-color: transparent')
+          .replace(/background-color:\s*var\(--ge-adaptive-bg,\s*#ffffff\)/g, 'background-color: transparent');
+      }
       resolve();
     };
     window.addEventListener('message', handler);
@@ -58,16 +68,24 @@ export async function enhance(body: HTMLElement, _ctx: EnhanceCtx): Promise<void
   });
   const svgEl = body.querySelector('svg');
   if (svgEl) {
+    // ponytail: don't force height: 100% — drawio's SVG viewBox spans the
+    // full diagram (often very tall, e.g. 452×1432). Forcing into a 420px
+    // body with preserveAspectRatio: meet scales content ~0.29x, making
+    // 14px text ~4px and unreadable. Drop the height attr so the SVG
+    // auto-sizes by viewBox aspect ratio (matches the in-app iframe's
+    // natural-size-with-scroll behavior). Body scrolls vertically with
+    // a max-height cap so very tall diagrams don't blow up the page.
     svgEl.setAttribute('width', '100%');
-    svgEl.setAttribute('height', '100%');
+    svgEl.removeAttribute('height');
     svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     svgEl.style.maxWidth = '100%';
     svgEl.style.display = 'block';
     svgEl.style.margin = '0 auto';
   }
-  body.style.height = '420px';
-  body.style.minHeight = '420px';
-  body.style.overflow = 'hidden';
+  body.style.height = 'auto';
+  body.style.minHeight = '200px';
+  body.style.maxHeight = '600px';
+  body.style.overflow = 'auto';
 }
 
 /**
