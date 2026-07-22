@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Pet-panel window contract: show/hide/position commands, visible:false conf, NSPanel conversion patterns. The fix adds a hide() call after to_panel() — must verify it doesn't conflict with the show/hide command contract."}

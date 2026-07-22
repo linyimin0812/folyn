@@ -571,3 +571,37 @@ drawio file-preview 嵌入到 HTML 导出后 SVG 仍然文字不可见、连接�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 75: Fix pet not at bottom-right on multi-monitor startup
+
+**Date**: 2026-07-22
+**Task**: Fix pet not at bottom-right on multi-monitor startup
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Diagnosed and fixed pet landing at wrong position on startup in multi-monitor setups where the primary monitor sits at negative global coords. Four related fixes: (A) show_pet_if_hidden Rust command replaces toggle_pet_mode in launch-restore to eliminate the show-before-position race; (B) NSPanel-aware set_pet_position path that directly calls NSWindow.setFrameOrigin: with per-screen AppKit bottom-left coords, bypassing Tauri's broken WebviewWindow::set_position Y-flip across monitors; (C) use pet.scale_factor() instead of monitor.scale_factor() for window-size physical→logical conversion, since the pet window may be on a different monitor than the target point (retina laptop scale=2 vs non-retina external scale=1); (D) restored the already_visible gate in pet_set_topmost_level that was lost in a prior trellis-check over-revert. Verified on user's external 1920x1080 + retina laptop 1680x1050 setup with primary at (-281,-1080).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `07b61ad` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
