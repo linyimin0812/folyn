@@ -45,15 +45,7 @@ export async function enhance(body: HTMLElement, _ctx: EnhanceCtx): Promise<void
       // than dumping the URI as text.
       const svgText = decodeDataUriSvg(raw);
       if (svgText) {
-        // ponytail: strip edge-label white backgrounds. drawio defaults
-        // edge labels to `background-color: #ffffff` (and a
-        // `--ge-adaptive-bg` fallback) so text is readable over crossing
-        // edges in-app. In standalone export this renders as white boxes
-        // on the connections. Node label divs don't carry background-color,
-        // so this only hits edge labels.
-        body.innerHTML = svgText
-          .replace(/background-color:\s*#ffffff/g, 'background-color: transparent')
-          .replace(/background-color:\s*var\(--ge-adaptive-bg,\s*#ffffff\)/g, 'background-color: transparent');
+        body.innerHTML = normalizeDrawioSvgStyles(svgText);
       }
       resolve();
     };
@@ -86,6 +78,50 @@ export async function enhance(body: HTMLElement, _ctx: EnhanceCtx): Promise<void
   body.style.minHeight = '200px';
   body.style.maxHeight = '600px';
   body.style.overflow = 'auto';
+}
+
+/**
+ * Normalize drawio's exported SVG so it renders correctly in the host HTML
+ * context (file-preview body). Three issues:
+ *
+ * 1. `color-scheme: light dark` on root + `light-dark(A, B)` calls
+ *    throughout inline styles — drawio expects standalone SVG context
+ *    where the browser picks OS theme consistently. Injected into HTML,
+ *    the host page's color-scheme may mismatch, making `light-dark()`
+ *    return dark values (e.g. white text) on light backgrounds — text
+ *    becomes invisible. Force light values by stripping `color-scheme`
+ *    and replacing `light-dark(A, B)` with `A`. Matches excalidraw's
+ *    `exportWithDarkMode: false` pattern.
+ *
+ * 2. `<style>` block at the top defines `--ge-adaptive-bg` via
+ *    `@supports (color: light-dark(...))`. Strip it so the var falls
+ *    back to its inline fallback (then we strip that too).
+ *
+ * 3. Edge label divs have inline `background-color: #ffffff` (and a
+ *    `--ge-adaptive-bg, #ffffff` fallback) so text is readable over
+ *    crossing edges in-app. In standalone export this renders as white
+ *    boxes on connections. Replace both with transparent. Node label
+ *    divs don't carry background-color, so this only hits edge labels.
+ *
+ * ponytail: the `light-dark(A, B)` regex handles one level of nested
+ * parens (e.g., `var(--ge-dark-color, #121212)` as the dark arg).
+ * Drawio doesn't double-nest. Revisit if a future format does.
+ */
+function normalizeDrawioSvgStyles(svg: string): string {
+  return svg
+    // Strip the @supports style block at the top (defines --ge-adaptive-bg).
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/g, '')
+    // Strip `color-scheme: light dark` from inline style attributes.
+    .replace(/color-scheme:\s*light dark\s*;?/g, '')
+    // Replace `light-dark(A, B)` with A (light value). The two args are
+    // balanced for one level of nested parens via the inner (?:...) group.
+    .replace(
+      /light-dark\(\s*((?:[^()]|\([^()]*\))*)\s*,\s*((?:[^()]|\([^()]*\))*)\s*\)/g,
+      '$1',
+    )
+    // Strip edge-label white backgrounds (node divs don't carry bg).
+    .replace(/background-color:\s*#ffffff/g, 'background-color: transparent')
+    .replace(/background-color:\s*var\(--ge-adaptive-bg,\s*#ffffff\)/g, 'background-color: transparent');
 }
 
 /**
