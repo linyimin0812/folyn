@@ -244,24 +244,26 @@ export function PetSettings() {
   const builtinPreviewSrc = `${import.meta.env.BASE_URL}quill.svg`;
 
   return (
-    <div className="mb-[26px]">
-      <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">{t('settings:pet.title')}</div>
-      <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">{t('settings:pet.description')}</div>
+    <div className="mb-8">
+      <div className="pb-3 mb-5 border-b border-brd2">
+        <div className="text-[length:calc(var(--ui-font-size)+3px)] font-bold text-t1 tracking-[-0.01em]">{t('settings:pet.title')}</div>
+        <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3 mt-1.5">{t('settings:pet.description')}</div>
+      </div>
 
       {/* 显示桌宠 toggle — reuses the existing petModeEnabled flag */}
-      <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
+      <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
         <div className="tr-info">
-          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:pet.showPet.title')}</h4>
-          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:pet.showPet.desc')}</p>
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:pet.showPet.title')}</h4>
+          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:pet.showPet.desc')}</p>
         </div>
         <Toggle value={petModeEnabled} onChange={(v) => void handleTogglePetMode(v)} />
       </div>
 
       {/* 图标 source radio */}
-      <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
+      <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
         <div className="tr-info">
-          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:pet.icon.title')}</h4>
-          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:pet.icon.desc')}</p>
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:pet.icon.title')}</h4>
+          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:pet.icon.desc')}</p>
         </div>
         <div className="flex gap-1">
           <button
@@ -279,7 +281,7 @@ export function PetSettings() {
       </div>
 
       {/* Preview + upload / reset actions */}
-      <div className="flex items-center gap-3 mt-3">
+      <div className="flex items-center gap-4 mt-5">
         <div className="w-14 h-14 rounded-md border border-brd2 bg-surf2 flex items-center justify-center overflow-hidden shrink-0">
           {petIconSource === 'custom' && petIconPath && isTauri() ? (
             <CustomIconPreview path={petIconPath} onError={() => {
@@ -290,8 +292,8 @@ export function PetSettings() {
             <img src={builtinPreviewSrc} alt="Quill" className="w-12 h-12" />
           )}
         </div>
-        <div className="flex flex-col gap-1.5">
-          <div className="flex gap-1.5">
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
             <button
               className="btn btn-g btn-sm"
               disabled={busy}
@@ -303,21 +305,21 @@ export function PetSettings() {
               onClick={() => void handleResetIcon()}
             >{t('settings:pet.icon.reset')}</button>
           </div>
-          <div className="text-[10.5px] text-t3">{t('settings:pet.icon.hint')}</div>
+        <div className="text-[10.5px] text-t3 mt-1">{t('settings:pet.icon.hint')}</div>
         </div>
       </div>
 
       <PetExternalApiBlock />
 
       {errorMsg && (
-        <div className="text-[11px] text-[#e53935] mt-2">{errorMsg}</div>
+        <div className="text-[11px] text-[#e53935] mt-3">{errorMsg}</div>
       )}
 
       {/* 透明度 radio — 4 percentage levels, applies NSWindow setAlphaValue */}
-      <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
+      <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
         <div className="tr-info">
-          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:pet.opacity.title')}</h4>
-          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:pet.opacity.desc')}</p>
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:pet.opacity.title')}</h4>
+          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:pet.opacity.desc')}</p>
         </div>
         <div className="flex gap-1">
           {(['25', '50', '75', '100'] as PetOpacity[]).map((level) => (
@@ -331,10 +333,10 @@ export function PetSettings() {
       </div>
 
       {/* 桌宠穿透 toggle — setIgnoreCursorEvents on the pet window */}
-      <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
+      <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
         <div className="tr-info">
-          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:pet.clickThrough.title')}</h4>
-          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:pet.clickThrough.desc')}</p>
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:pet.clickThrough.title')}</h4>
+          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:pet.clickThrough.desc')}</p>
         </div>
         <Toggle value={petClickThrough} onChange={(v) => void handleToggleClickThrough(v)} />
       </div>
@@ -397,10 +399,10 @@ function PetExternalApiBlock() {
   if (!info || !info.enabled || info.port == null) return null;
 
   return (
-    <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
+    <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
       <div className="tr-info">
-        <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:pet.api.title')}</h4>
-        <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">
+        <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:pet.api.title')}</h4>
+        <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">
           {t('settings:pet.api.desc', { port: info.port })}
         </p>
         <code className="block mt-1.5 text-[10.5px] text-t3 bg-surf2 rounded px-1.5 py-1 break-all">{curl}</code>
