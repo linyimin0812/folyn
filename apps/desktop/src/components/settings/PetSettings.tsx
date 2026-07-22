@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePetStore, type PetOpacity } from '@/store/petStore';
 import { isTauri } from '@/utils/platform';
+import { invoke } from '@tauri-apps/api/core';
 import { Toggle } from '@/components/settings/primitives';
 
 /**
@@ -306,6 +307,8 @@ export function PetSettings() {
         </div>
       </div>
 
+      <PetExternalApiBlock />
+
       {errorMsg && (
         <div className="text-[11px] text-[#e53935] mt-2">{errorMsg}</div>
       )}
@@ -335,6 +338,77 @@ export function PetSettings() {
         </div>
         <Toggle value={petClickThrough} onChange={(v) => void handleToggleClickThrough(v)} />
       </div>
+    </div>
+  );
+}
+
+/**
+ * External notify API info block (PRD: pet-external-notify-api). Fetches the
+ * live server info (`get_pet_api_info`) and shows the actual bound port + a
+ * ready-to-copy curl example. Hidden entirely in non-Tauri envs and when the
+ * server failed to bind (`enabled: false`) — the rest of the settings tab is
+ * still usable.
+ */
+interface PetApiInfo {
+  enabled: boolean;
+  port: number | null;
+  endpoints: string[];
+}
+
+function PetExternalApiBlock() {
+  const { t } = useTranslation();
+  const [info, setInfo] = useState<PetApiInfo | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await invoke<PetApiInfo>('get_pet_api_info');
+        if (!cancelled) setInfo(res);
+      } catch {
+        // Non-fatal — block stays hidden (info null).
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ponytail: compute curl inline + useCallback must run before the early
+  // return (Rules of Hooks). When info is null the values are inert.
+  const port = info?.enabled ? info.port : null;
+  const curl =
+    port != null
+      ? `curl -XPOST 127.0.0.1:${port}/pet/action -d '{"action":"notify","kind":"info","text":"hi"}'`
+      : '';
+  const handleCopy = useCallback(async () => {
+    if (!curl) return;
+    try {
+      await navigator.clipboard.writeText(curl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Non-fatal — the inline text remains selectable.
+    }
+  }, [curl]);
+
+  if (!info || !info.enabled || info.port == null) return null;
+
+  return (
+    <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
+      <div className="tr-info">
+        <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:pet.api.title')}</h4>
+        <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">
+          {t('settings:pet.api.desc', { port: info.port })}
+        </p>
+        <code className="block mt-1.5 text-[10.5px] text-t3 bg-surf2 rounded px-1.5 py-1 break-all">{curl}</code>
+      </div>
+      <button
+        className="btn btn-g btn-sm shrink-0"
+        onClick={() => void handleCopy()}
+      >{copied ? t('settings:pet.api.copied') : t('settings:pet.api.copy')}</button>
     </div>
   );
 }

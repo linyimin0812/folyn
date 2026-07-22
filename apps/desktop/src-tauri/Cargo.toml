@@ -67,6 +67,11 @@ futures = "0.3"
 # `time` for the 30s response timeout). Regular dep — not just dev — because
 # the runtime path uses these APIs in the shipped binary.
 tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
+# Local HTTP API for the desktop pet (pet-external-notify-api). tiny_http is
+# sync + threaded — does NOT need tokio's `net` feature (unlike axum/hyper),
+# so it adds the smallest dependency footprint for a single localhost
+# endpoint. See .trellis/tasks/07-22-pet-external-notify-api/research/rust-http-server.md.
+tiny_http = "0.12"
 # Dev-only: RNG for the ed25519 signature round-trip tests (signs + verifies
 # with a real keypair). NOT linked into the release binary — only used in
 # `#[cfg(test)]` blocks.

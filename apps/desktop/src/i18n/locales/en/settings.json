@@ -369,6 +369,12 @@
     "clickThrough": {
       "title": "Click through",
       "desc": "When enabled, the pet window ignores pointer events and clicks pass through to apps behind it"
+    },
+    "api": {
+      "title": "External notify API",
+      "desc": "Other apps can POST to localhost port {{port}} to trigger pet notifications",
+      "copy": "Copy curl",
+      "copied": "Copied"
     }
   },
   "notifications": {

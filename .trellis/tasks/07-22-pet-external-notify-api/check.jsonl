@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "check 阶段对照禁用模式、review checklist、命名/校验规范核验 Rust+前端改动。"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "核验 pet://notify emit 契约、ACL 权限、命令注册是否符合现有模式。"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "核验 pet.api.* 命名空间是否 zh+en 对齐、tauriInvoke 包装是否正确。"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "核验 PetApiInfo / 请求 body 类型与校验、unknown 收窄。"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "核验是否复用现有 dispatcher/emit 路径而非重复实现通知逻辑。"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "核验 HTTP→emit→dispatcher 跨层数据流一致性(PetBubblePayload 契约)。"}
+{"file": ".trellis/tasks/07-22-pet-external-notify-api/prd.md", "reason": "check 对照验收标准与范围逐条验证。"}

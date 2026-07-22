@@ -13,6 +13,7 @@ pub mod errors;
 mod plugin_commands;
 mod chat;
 mod voice;
+mod pet_api;
 
 #[cfg(target_os = "macos")]
 mod pet_panel_macos;
@@ -577,6 +578,13 @@ pub fn run() {
             // the wrong process name (dev .app's executable is `quill`, lowercase).
             log::info!("[voice] module ready; bundle_id={}", "com.quill.editor");
 
+            // External pet notify API (pet-external-notify-api). Local HTTP
+            // server on 127.0.0.1; reuses the `pet://notify` dispatcher. State
+            // holds the actual bound port for the settings-page UI; the server
+            // thread writes it on bind. Non-fatal if no port is free.
+            app.manage(pet_api::PetApiState(std::sync::Mutex::new(None)));
+            pet_api::spawn(app.handle().clone());
+
             // ponytail: app menu bar built via `commands::build_app_menu` so
             // the same path serves the bootstrap build (here, locale="en") and
             // the locale-switch rebuild (`pet_rebuild_app_menu`). The frontend
@@ -653,6 +661,7 @@ pub fn run() {
             commands::set_pet_opacity,
             commands::set_pet_click_through,
             commands::exit_app,
+            pet_api::get_pet_api_info,
             chat::chat_stream,
             plugin_commands::install_plugin,
             plugin_commands::list_plugins,

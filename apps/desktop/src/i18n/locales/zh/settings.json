@@ -369,6 +369,12 @@
     "clickThrough": {
       "title": "桌宠穿透",
       "desc": "启用后桌宠不拦截鼠标事件，点击直接穿透到下方的应用窗口"
+    },
+    "api": {
+      "title": "外部通知 API",
+      "desc": "其他应用可 POST 到本机端口 {{port}} 触发桌宠通知",
+      "copy": "复制 curl",
+      "copied": "已复制"
     }
   },
   "notifications": {
