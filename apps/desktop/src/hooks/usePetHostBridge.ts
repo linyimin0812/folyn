@@ -102,8 +102,14 @@ export function usePetHostBridge(): void {
       if (petModeEnabled) {
         try {
           const { invoke } = await import('@tauri-apps/api/core');
-          // The pet window starts hidden; toggle → show.
-          await invoke('toggle_pet_mode');
+          // Idempotent show — never hides. `toggle_pet_mode` would race
+          // with `PetApp`'s mount-time position+show, leaving the first
+          // frame at the OS-chosen default (off-screen on multi-monitor
+          // setups where the primary monitor is at negative global coords).
+          // `show_pet_if_hidden` lets `PetApp`'s mount effect own the
+          // position+show ordering; if the pet is already visible by the
+          // time this runs, it's a no-op.
+          await invoke('show_pet_if_hidden');
         } catch {
           // Non-fatal.
         }

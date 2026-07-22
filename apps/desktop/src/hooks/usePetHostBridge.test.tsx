@@ -91,16 +91,16 @@ describe('usePetHostBridge — lifecycle', () => {
     makeUnlistenSpies(4);
     render(<Harness />);
     await vi.waitFor(() => expect(listenMock).toHaveBeenCalledTimes(4));
-    expect(invokeMock).toHaveBeenCalledWith('toggle_pet_mode');
+    expect(invokeMock).toHaveBeenCalledWith('show_pet_if_hidden');
     cleanup();
   });
 
-  it('launch-restore skips toggle_pet_mode when pet mode was off', async () => {
+  it('launch-restore skips show_pet_if_hidden when pet mode was off', async () => {
     usePetStore.setState({ petModeEnabled: false });
     makeUnlistenSpies(4);
     render(<Harness />);
     await vi.waitFor(() => expect(listenMock).toHaveBeenCalledTimes(4));
-    expect(invokeMock).not.toHaveBeenCalledWith('toggle_pet_mode');
+    expect(invokeMock).not.toHaveBeenCalledWith('show_pet_if_hidden');
     cleanup();
   });
 });

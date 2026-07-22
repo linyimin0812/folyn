@@ -605,6 +605,7 @@ pub fn run() {
             commands::get_project_overview,
             commands::remove_dir,
             commands::toggle_pet_mode,
+            commands::show_pet_if_hidden,
             commands::set_pet_position,
             commands::get_pet_position,
             commands::pet_cursor_probe,

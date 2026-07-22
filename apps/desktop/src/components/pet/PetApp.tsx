@@ -482,6 +482,18 @@ export function PetApp() {
       const { getCurrentWindow } = await import('@tauri-apps/api/window');
       const { invoke } = await import('@tauri-apps/api/core');
 
+      // ponytail: hoist the resolved physical position so the post-show
+      // re-assert (step 2) can re-invoke `set_pet_position` after `show()`.
+      // `show()` can reset the NSWindow frame to the conf default on a
+      // hidden panel, and `set_position` on a hidden NSWindow can be
+      // deferred — re-asserting after show mirrors the existing
+      // `set_pet_size` post-show re-assert below. On multi-monitor setups
+      // where the primary monitor sits at negative global coords, the
+      // pre-show `set_position` may not move the panel off its current
+      // screen; the post-show re-assert corrects it.
+      let physicalX: number | null = null;
+      let physicalY: number | null = null;
+
       // 1. Resolve and apply the initial position BEFORE show() so the first
       //    visible frame is already at the right spot (no centered flash).
       try {
@@ -562,8 +574,8 @@ export function PetApp() {
           // WebviewWindow creation), fall back to the standard `setPosition()`
           // API — both are valid paths, belt-and-suspenders so a silent invoke
           // failure cannot leave the window centered.
-          const physicalX = Math.round(resolved.x * sf);
-          const physicalY = Math.round(resolved.y * sf);
+          physicalX = Math.round(resolved.x * sf);
+          physicalY = Math.round(resolved.y * sf);
           try {
             await invoke('set_pet_position', { x: physicalX, y: physicalY });
           } catch (err) {
@@ -594,6 +606,20 @@ export function PetApp() {
       // 2. Show the window at the now-correct position.
       try {
         await getCurrentWindow().show();
+        // Re-assert the position AFTER show(). `show()` can reset the
+        // NSWindow frame to the conf default, and `set_position` on a hidden
+        // NSWindow may be deferred — re-invoke `set_pet_position` so a
+        // pre-show position set on the wrong screen (multi-monitor setups
+        // where the primary monitor is at negative global coords) is
+        // corrected once the window is visible. Mirrors the existing
+        // `set_pet_size` post-show re-assert below.
+        if (physicalX !== null && physicalY !== null) {
+          try {
+            await invoke('set_pet_position', { x: physicalX, y: physicalY });
+          } catch (err) {
+            console.warn('[pet] set_pet_position post-show re-assert failed:', err);
+          }
+        }
         // Re-assert the pet size AFTER show(). macOS can defer `set_size` on
         // a HIDDEN NSWindow and `show()` may reset the frame to the conf
         // default (96×96 medium). If the user saved small/large, the

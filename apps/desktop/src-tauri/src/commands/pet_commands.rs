@@ -178,14 +178,189 @@ pub async fn toggle_pet_mode(app: tauri::AppHandle) -> Result<bool, AppError> {
     Ok(next)
 }
 
-/// Set the pet window's screen position (physical pixels).
+/// Idempotent show: only calls `panel.show()` when the pet is currently
+/// hidden; never hides. Used by the launch-restore path in
+/// `usePetHostBridge.ts` so a `petModeEnabled=true` launch does not race with
+/// `PetApp`'s mount-time position+show — `toggle_pet_mode` would flip the
+/// pet visible before `set_pet_position` runs, leaving the first frame at
+/// the OS-chosen default (off-screen on multi-monitor setups where the
+/// primary monitor sits at negative global coords). User-driven toggles
+/// (settings tab / `petHostRouter`) still use `toggle_pet_mode`.
+#[tauri::command]
+pub async fn show_pet_if_hidden(app: tauri::AppHandle) -> Result<bool, AppError> {
+    let pet = app
+        .get_webview_window(PET_LABEL)
+        .ok_or_else(|| "pet window not found".to_string())?;
+    let currently_visible = pet.is_visible().map_err(|e| e.to_string())?;
+    if currently_visible {
+        return Ok(true);
+    }
+    #[cfg(target_os = "macos")]
+    {
+        use tauri_nspanel::WebviewWindowExt;
+        let app2 = app.clone();
+        let showed_via_panel: std::sync::Arc<std::sync::atomic::AtomicBool> =
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let showed_clone = showed_via_panel.clone();
+        app.run_on_main_thread(move || {
+            let Some(window) = app2.get_webview_window(PET_LABEL) else {
+                return;
+            };
+            if let Ok(panel) =
+                window.to_panel::<crate::pet_panel_macos::QuillPetPanel>()
+            {
+                panel.show();
+                showed_clone.store(true, std::sync::atomic::Ordering::SeqCst);
+            }
+        })
+        .map_err(|e| e.to_string())?;
+        if !showed_via_panel.load(std::sync::atomic::Ordering::SeqCst) {
+            pet.show().map_err(|e| e.to_string())?;
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        pet.show().map_err(|e| e.to_string())?;
+    }
+    let _ = app.emit("pet://visibility-changed", true);
+    Ok(true)
+}
+
+/// Set the pet window's screen position (physical pixels, top-left origin).
+///
+/// ponytail: when the NSPanel backend is active, bypass Tauri's
+/// `WebviewWindow::set_position` — its top-left→bottom-left Y-flip uses
+/// `NSScreen.mainScreen`'s height even when the target point is on a
+/// DIFFERENT monitor, so on multi-monitor setups where the primary sits at
+/// negative global coords (e.g. `(-281, -1020)`), `set_position((1535,
+/// -114))` leaves the panel at `(1584, 920)` on the wrong screen (task
+/// 07-22-fix-pet-not-at-bottom-right-on-startup-multi-monitor). We instead
+/// call `NSWindow.setFrameOrigin:` directly with the AppKit bottom-left
+/// coordinate computed from the NSScreen that actually contains the target
+/// point (matched to the Tauri monitor by size + scale). The legacy
+/// backend falls through to Tauri's stock path.
 #[tauri::command]
 pub async fn set_pet_position(app: tauri::AppHandle, x: i32, y: i32) -> Result<(), AppError> {
     let pet = app
         .get_webview_window(PET_LABEL)
         .ok_or_else(|| "pet window not found".to_string())?;
+    #[cfg(target_os = "macos")]
+    {
+        if crate::pet_panel_macos::backend_is_nspanel() {
+            if let Some(appkit_origin) =
+                nspanel_target_appkit_origin(&app, &pet, x, y)
+            {
+                let ns_window = pet.ns_window().map_err(|e| e.to_string())?;
+                let ns_ptr = ns_window as usize;
+                let placed: std::sync::Arc<std::sync::atomic::AtomicBool> =
+                    std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+                let placed_clone = placed.clone();
+                app.run_on_main_thread(move || {
+                    use objc::{msg_send, sel, sel_impl};
+                    unsafe {
+                        let ns_ptr = ns_ptr as *mut objc::runtime::Object;
+                        let _: () =
+                            msg_send![ns_ptr, setFrameOrigin: appkit_origin];
+                    }
+                    placed_clone.store(true, std::sync::atomic::Ordering::SeqCst);
+                })
+                .map_err(|e| e.to_string())?;
+                if placed.load(std::sync::atomic::Ordering::SeqCst) {
+                    return Ok(());
+                }
+            }
+            // Fall through to Tauri set_position if the NSScreen match failed
+            // (best-effort fallback).
+        }
+    }
     pet.set_position(PhysicalPosition::new(x, y))
         .map_err(|e| AppError::from(e.to_string()))
+}
+
+/// Compute the AppKit bottom-left origin (logical points) for the pet
+/// window's top-left `(x, y)` (physical px, top-left origin) when the
+/// NSPanel backend is active. Finds the Tauri monitor containing the
+/// target point, matches it to an `NSScreen` by size + scale, then flips
+/// Y using that screen's own `frame` (not `mainScreen`'s frame — the
+/// root cause of Tauri's `set_position` bug). Returns `None` if no
+/// matching monitor/screen pair is found (caller falls back to Tauri).
+#[cfg(target_os = "macos")]
+fn nspanel_target_appkit_origin(
+    app: &tauri::AppHandle,
+    pet: &tauri::WebviewWindow,
+    x: i32,
+    y: i32,
+) -> Option<cocoa::foundation::NSPoint> {
+    use cocoa::appkit::NSScreen;
+    use cocoa::base::id;
+    use cocoa::foundation::{NSPoint, NSRect};
+    use objc::{class, msg_send, sel, sel_impl};
+
+    // Find the Tauri monitor containing the target point.
+    let monitors = app.available_monitors().ok()?;
+    let monitor = monitors.into_iter().find(|m| {
+        let pos = m.position();
+        let size = m.size();
+        x >= pos.x
+            && x < pos.x + size.width as i32
+            && y >= pos.y
+            && y < pos.y + size.height as i32
+    })?;
+    let m_pos = monitor.position();
+    let m_size = monitor.size();
+    let scale = monitor.scale_factor();
+    // Pet window may currently be on a different monitor than the target
+    // point (e.g., window on retina laptop while target is on non-retina
+    // external). For window-size physical→logical conversion, use the
+    // WINDOW's own scale_factor, not the monitor's. Other conversions
+    // (target point, monitor position) keep using the monitor's scale.
+    let win_scale = pet.scale_factor().unwrap_or(scale);
+
+    // Window's logical height: NSPanel's frame is in logical points, so
+    // derive from Tauri's `outer_size()` (physical) / window's own scale.
+    let win_size = pet.outer_size().ok()?;
+    let win_h_logical = win_size.height as f64 / win_scale;
+
+    let target_x_logical = x as f64 / scale;
+    let target_y_logical = y as f64 / scale;
+    let mx_logical = m_pos.x as f64 / scale;
+    let my_logical = m_pos.y as f64 / scale;
+
+    unsafe {
+        let screens: id = msg_send![class!(NSScreen), screens];
+        if screens.is_null() {
+            return None;
+        }
+        let count: usize = msg_send![screens, count];
+        // Match by size (logical) — Tauri monitor size / scale should equal
+        // NSScreen frame.size. ponytail: if two screens share size, the
+        // first match wins; upgrade to position-matching if that bites.
+        for i in 0..count {
+            let screen: id = msg_send![screens, objectAtIndex: i];
+            let frame: NSRect = NSScreen::frame(screen);
+            let size_match =
+                (frame.size.width - m_size.width as f64 / scale).abs() < 1.0
+                    && (frame.size.height - m_size.height as f64 / scale).abs() < 1.0;
+            if !size_match {
+                continue;
+            }
+            let ax = frame.origin.x;
+            let ay = frame.origin.y;
+            let ah = frame.size.height;
+            // Offset from monitor's top-left (Tauri, top-down) → offset
+            // from monitor's bottom-left (AppKit, bottom-up). Y-flip is
+            // local to the screen, so mainScreen's height is irrelevant.
+            let offset_x_logical = target_x_logical - mx_logical;
+            let offset_y_from_top_logical = target_y_logical - my_logical;
+            let appkit_y =
+                ay + ah - offset_y_from_top_logical - win_h_logical;
+            return Some(NSPoint {
+                x: ax + offset_x_logical,
+                y: appkit_y,
+            });
+        }
+    }
+    None
 }
 
 /// Get the pet window's current screen position (physical pixels).
@@ -296,19 +471,19 @@ pub async fn pet_get_work_area(_app: tauri::AppHandle) -> Result<PetWorkArea, Ap
             // the set_pet_position / outerPosition() boundary.
             let scale_factor: f64 = msg_send![screen, backingScaleFactor];
 
-            Ok(PetWorkArea {
+            let result = PetWorkArea {
                 x: vis_rect.origin.x as i32,
                 y: flip_y as i32,
                 width: vis_rect.size.width as i32,
                 height: vis_rect.size.height as i32,
                 scale_factor,
-            })
+            };
+            Ok(result)
         }
     }
 
     #[cfg(not(target_os = "macos"))]
-    {
-        let monitor = _app
+    {        let monitor = _app
             .primary_monitor()
             .map_err(|e| e.to_string())?
             .ok_or_else(|| "no primary monitor".to_string())?;
@@ -887,9 +1062,21 @@ pub async fn pet_bubble_set_position(
 #[tauri::command]
 pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Result<(), AppError> {
     if crate::pet_panel_macos::backend_is_nspanel() {
-        // NSPanel backend: re-apply the BongoCat recipe (show + Dock level +
+        // NSPanel backend: re-apply the BongoCat recipe (Dock level +
         // collectionBehavior). `to_panel()` on an already-converted window
         // re-asserts the class + level + behavior idempotently.
+        //
+        // ponytail: gate `panel.show()` on `window.is_visible()` —
+        // mount-time `pet_set_topmost_level` is called for `pet` /
+        // `pet-panel` / `pet-bubble` / `voice-orb` to re-assert the topmost
+        // level; calling `panel.show()` (orderFrontRegardless) on a HIDDEN
+        // panel would promote it to visible before its webview loads → the
+        // user sees a blank 440×620 frame on startup (task
+        // 07-22-pet-panel-empty-box-shown-on-startup-after-nspanel-convert).
+        // For `pet` (mascot), visibility is owned by `toggle_pet_mode` /
+        // `show_pet_if_hidden`; re-asserting level on a hidden pet is a
+        // no-op anyway. `set_level` + `set_collection_behavior` still run
+        // unconditionally — those configure the panel tier, not visibility.
         use tauri_nspanel::{CollectionBehavior, PanelLevel, WebviewWindowExt};
         let app2 = app.clone();
         let label2 = label.clone();
@@ -897,12 +1084,13 @@ pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Resu
             let Some(window) = app2.get_webview_window(&label2) else {
                 return;
             };
+            let already_visible = window.is_visible().unwrap_or(false);
             if let Ok(panel) =
                 window.to_panel::<crate::pet_panel_macos::QuillPetPanel>()
             {
-                // orderFrontRegardless — promotes the panel above other apps'
-                // frontmost windows (mirrors `toggle_pet_mode` show branch).
-                panel.show();
+                if already_visible {
+                    panel.show();
+                }
                 panel.set_level(PanelLevel::Dock.value());
                 panel.set_collection_behavior(
                     CollectionBehavior::new()
