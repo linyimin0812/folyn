@@ -159,15 +159,10 @@ interface LauncherButtonDef {
   closeAfter?: boolean;
 }
 
-/** The 8 MVP launcher buttons (PRD Q4). Each dispatches via `pet://menu-action`
- *  unless it's the special Clip-from-URL toggle. Disable Pet also emits
- *  `disable-pet` and hides. */
+/** The 6 MVP launcher buttons (PRD Q4 — slimmed after the right-click menu
+ *  refactor dropped `new-note` + `disable-pet`). Each dispatches via
+ *  `pet://menu-action` unless it's the special Clip-from-URL toggle. */
 const LAUNCHER_BUTTONS: readonly LauncherButtonDef[] = [
-  {
-    action: 'new-note',
-    labelKey: 'pet:launcher.newNote',
-    icon: <NewNoteIcon />,
-  },
   {
     action: 'daily-note',
     labelKey: 'pet:launcher.dailyNote',
@@ -198,11 +193,6 @@ const LAUNCHER_BUTTONS: readonly LauncherButtonDef[] = [
     action: 'toggle-theme',
     labelKey: 'pet:launcher.toggleTheme',
     icon: <ThemeIcon />,
-  },
-  {
-    action: 'disable-pet',
-    labelKey: 'pet:launcher.disablePet',
-    icon: <DisableIcon />,
   },
 ] as const;
 
@@ -252,15 +242,6 @@ export function PetLauncher() {
 // ── Inline SVG icons ───────────────────────────────────────────────────────
 // Kept inline (no icon library) per component-guidelines.md. Each is a simple
 // 16×16 stroke glyph on currentColor so it inherits `--t1`/`--acc`.
-
-function NewNoteIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M11.5 2.5h-7a1.5 1.5 0 0 0-1.5 1.5v8a1.5 1.5 0 0 0 1.5 1.5h7a1.5 1.5 0 0 0 1.5-1.5V4a1.5 1.5 0 0 0-1.5-1.5z" />
-      <path d="M8 7v4M6 9h4" />
-    </svg>
-  );
-}
 
 function DailyNoteIcon() {
   return (
@@ -315,15 +296,6 @@ function ThemeIcon() {
     <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
       <path d="M8 1.5A6.5 6.5 0 1 0 14.5 8c0-.4-.3-.7-.7-.7H10a1.5 1.5 0 0 1-1.5-1.5V2.2c0-.4-.3-.7-.7-.7H8z" />
       <path d="M10.5 5.5l.5.5M11.5 8l.5.5" />
-    </svg>
-  );
-}
-
-function DisableIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="8" cy="8" r="6" />
-      <path d="M3.8 3.8l8.4 8.4" />
     </svg>
   );
 }

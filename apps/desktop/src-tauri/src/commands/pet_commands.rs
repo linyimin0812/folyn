@@ -35,6 +35,49 @@ impl PetSizeState {
     }
 }
 
+/// Shared pet-opacity level state ("25"|"50"|"75"|"100"). Same pattern as
+/// `PetSizeState`: synced from the frontend (`set_pet_opacity`) and from
+/// `on_menu_event` on a submenu pick; read by `pet_show_context_menu` to
+/// pre-check the current opacity radio item. Defaults to `"100"` (fully
+/// opaque) so existing users keep the pre-opacity-feature look on first
+/// right-click.
+pub struct PetOpacityState(pub Mutex<String>);
+
+impl PetOpacityState {
+    pub const DEFAULT_LEVEL: &'static str = "100";
+
+    pub fn level(&self) -> String {
+        self.0.lock().map(|g| g.clone()).unwrap_or_else(|_| Self::DEFAULT_LEVEL.to_string())
+    }
+
+    pub fn set_level(&self, level: &str) {
+        if let Ok(mut guard) = self.0.lock() {
+            *guard = level.to_string();
+        }
+    }
+}
+
+/// Shared pet-click-through flag. When true, the pet Tauri window has
+/// `setIgnoreCursorEvents(true)` so clicks fall through to apps behind.
+/// Same pattern as `PetSizeState`/`PetOpacityState`. Defaults to `false`
+/// (pet receives clicks — the pre-feature behavior). Read by
+/// `pet_show_context_menu` to pre-check the click-through menu item.
+pub struct PetClickThroughState(pub Mutex<bool>);
+
+impl PetClickThroughState {
+    pub const DEFAULT: bool = false;
+
+    pub fn enabled(&self) -> bool {
+        self.0.lock().map(|g| *g).unwrap_or(Self::DEFAULT)
+    }
+
+    pub fn set_enabled(&self, enabled: bool) {
+        if let Ok(mut guard) = self.0.lock() {
+            *guard = enabled;
+        }
+    }
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Desktop Pet Mode commands (macOS MVP).
 //
@@ -54,15 +97,18 @@ const PET_LABEL: &str = "pet";
 /// sides in sync. (IDs are stable strings so the Rust menu builder and the
 /// event handler can share them across crate modules.)
 pub const PET_CTX_MENU_SHOW_MAIN: &str = "pet-ctx-show-main";
-pub const PET_CTX_MENU_NEW_NOTE: &str = "pet-ctx-new-note";
-pub const PET_CTX_MENU_TOGGLE_AI: &str = "pet-ctx-toggle-ai";
 pub const PET_CTX_MENU_HIDE_PET: &str = "pet-ctx-hide-pet";
 pub const PET_CTX_MENU_SIZE_50: &str = "pet-ctx-size-50";
 pub const PET_CTX_MENU_SIZE_75: &str = "pet-ctx-size-75";
 pub const PET_CTX_MENU_SIZE_100: &str = "pet-ctx-size-100";
 pub const PET_CTX_MENU_SIZE_125: &str = "pet-ctx-size-125";
 pub const PET_CTX_MENU_SIZE_150: &str = "pet-ctx-size-150";
-pub const PET_CTX_MENU_DISABLE_PET: &str = "pet-ctx-disable-pet";
+pub const PET_CTX_MENU_OPACITY_25: &str = "pet-ctx-opacity-25";
+pub const PET_CTX_MENU_OPACITY_50: &str = "pet-ctx-opacity-50";
+pub const PET_CTX_MENU_OPACITY_75: &str = "pet-ctx-opacity-75";
+pub const PET_CTX_MENU_OPACITY_100: &str = "pet-ctx-opacity-100";
+pub const PET_CTX_MENU_CLICK_THROUGH: &str = "pet-ctx-click-through";
+pub const PET_CTX_MENU_EXIT_APP: &str = "pet-ctx-exit-app";
 /// Native context-menu item that fires the demo bubble notification (PRD:
 /// pet-popup-bubble-notification). `on_menu_event` in `lib.rs` maps this id
 /// to a `pet://notify` emit with a demo payload; the main window's dispatcher
@@ -78,8 +124,6 @@ pub const PET_CTX_MENU_TEST_BUBBLE: &str = "pet-ctx-test-bubble";
 #[derive(Copy, Clone)]
 pub enum PetMenuLabel {
     ShowMain,
-    NewNote,
-    ToggleAi,
     HidePet,
     SizeSubmenu,
     Size50,
@@ -87,7 +131,13 @@ pub enum PetMenuLabel {
     Size100,
     Size125,
     Size150,
-    DisablePet,
+    OpacitySubmenu,
+    Opacity25,
+    Opacity50,
+    Opacity75,
+    Opacity100,
+    ClickThrough,
+    ExitApp,
     TestBubble,
 }
 
@@ -99,8 +149,6 @@ pub fn pet_menu_label(locale: &str, key: PetMenuLabel) -> &'static str {
     match locale {
         "zh" => match key {
             PetMenuLabel::ShowMain => "显示主窗口",
-            PetMenuLabel::NewNote => "新建笔记",
-            PetMenuLabel::ToggleAi => "切换 AI 面板",
             PetMenuLabel::HidePet => "隐藏桌宠图标",
             PetMenuLabel::SizeSubmenu => "桌宠大小",
             PetMenuLabel::Size50 => "50%",
@@ -108,13 +156,17 @@ pub fn pet_menu_label(locale: &str, key: PetMenuLabel) -> &'static str {
             PetMenuLabel::Size100 => "100%",
             PetMenuLabel::Size125 => "125%",
             PetMenuLabel::Size150 => "150%",
-            PetMenuLabel::DisablePet => "禁用桌宠模式",
+            PetMenuLabel::OpacitySubmenu => "桌宠透明度",
+            PetMenuLabel::Opacity25 => "25%",
+            PetMenuLabel::Opacity50 => "50%",
+            PetMenuLabel::Opacity75 => "75%",
+            PetMenuLabel::Opacity100 => "100%",
+            PetMenuLabel::ClickThrough => "桌宠穿透",
+            PetMenuLabel::ExitApp => "退出应用",
             PetMenuLabel::TestBubble => "测试气泡通知",
         },
         _ => match key {
             PetMenuLabel::ShowMain => "Show Main Window",
-            PetMenuLabel::NewNote => "New Note",
-            PetMenuLabel::ToggleAi => "Toggle AI Panel",
             PetMenuLabel::HidePet => "Hide Pet Icon",
             PetMenuLabel::SizeSubmenu => "Pet Size",
             PetMenuLabel::Size50 => "50%",
@@ -122,7 +174,13 @@ pub fn pet_menu_label(locale: &str, key: PetMenuLabel) -> &'static str {
             PetMenuLabel::Size100 => "100%",
             PetMenuLabel::Size125 => "125%",
             PetMenuLabel::Size150 => "150%",
-            PetMenuLabel::DisablePet => "Disable Pet Mode",
+            PetMenuLabel::OpacitySubmenu => "Pet Opacity",
+            PetMenuLabel::Opacity25 => "25%",
+            PetMenuLabel::Opacity50 => "50%",
+            PetMenuLabel::Opacity75 => "75%",
+            PetMenuLabel::Opacity100 => "100%",
+            PetMenuLabel::ClickThrough => "Click Through",
+            PetMenuLabel::ExitApp => "Exit App",
             PetMenuLabel::TestBubble => "Test Bubble Notification",
         },
     }
@@ -245,6 +303,93 @@ pub async fn set_pet_size(app: tauri::AppHandle, level: String) -> Result<(), Ap
         .ok_or_else(|| "pet window not found".to_string())?;
     pet.set_size(LogicalSize::new(w as f64, h as f64))
         .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Map an opacity level string ("25"|"50"|"75"|"100") to the f32 alpha
+/// value NSWindow `setAlphaValue:` expects (0.0–1.0). Mirrors the frontend
+/// `PetOpacity` type. Used by `set_pet_opacity`.
+fn pet_opacity_to_alpha(level: &str) -> Option<f32> {
+    match level {
+        "25" => Some(0.25),
+        "50" => Some(0.50),
+        "75" => Some(0.75),
+        "100" => Some(1.00),
+        _ => None,
+    }
+}
+
+/// Set the pet window's alpha. The level string is validated against the
+/// four known values; any other value returns an error so a corrupt
+/// frontend payload cannot set alpha to 0 (invisible pet). Calls NSWindow
+/// `setAlphaValue:` on macOS; no-op on other platforms (pet mode is
+/// macOS-only anyway). Updates `PetOpacityState` so the next right-click
+/// menu build pre-checks the new opacity radio item.
+#[tauri::command]
+pub async fn set_pet_opacity(app: tauri::AppHandle, level: String) -> Result<(), AppError> {
+    let alpha = pet_opacity_to_alpha(&level)
+        .ok_or_else(|| format!("unknown pet opacity level: {}", level))?;
+    app.state::<PetOpacityState>().set_level(&level);
+
+    #[cfg(target_os = "macos")]
+    {
+        use objc::runtime::Object;
+        use objc::{msg_send, sel, sel_impl};
+        // `setAlphaValue:` is main-thread-only; dispatch via run_on_main_thread
+        // and capture the NSWindow pointer fresh (do NOT cross threads with
+        // a raw pointer — re-fetch inside the closure).
+        let app2 = app.clone();
+        app.run_on_main_thread(move || {
+            let Some(window) = app2.get_webview_window(PET_LABEL) else {
+                return;
+            };
+            let Ok(ns_window) = window.ns_window() else {
+                return;
+            };
+            let ns = ns_window as *mut Object;
+            if ns.is_null() {
+                return;
+            }
+            unsafe { let _: () = msg_send![ns, setAlphaValue: alpha]; }
+        })
+        .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        // Pet mode is macOS-only; opacity has no effect on other platforms.
+        let _ = app;
+    }
+    Ok(())
+}
+
+/// Toggle the pet window's click-through. When `enabled` is true, the pet
+/// window calls `setIgnoreCursorEvents(true)` so all cursor events fall
+/// through to apps behind — the pet is visible but non-interactive. When
+/// false, the pet receives clicks as usual (the pre-feature behavior).
+/// Updates `PetClickThroughState` so the next right-click menu build
+/// pre-checks the click-through menu item.
+#[tauri::command]
+pub async fn set_pet_click_through(
+    app: tauri::AppHandle,
+    enabled: bool,
+) -> Result<(), AppError> {
+    app.state::<PetClickThroughState>().set_enabled(enabled);
+    let pet = app
+        .get_webview_window(PET_LABEL)
+        .ok_or_else(|| "pet window not found".to_string())?;
+    pet.set_ignore_cursor_events(enabled)
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Quit the whole app. Surfaced by the pet right-click menu's "退出应用"
+/// item. The frontend never awaits the result — `app.exit(0)` terminates
+/// the process before the reply can be delivered. Kept async + returning
+/// `Result` so it slots into `tauri::generate_handler!` like the other
+/// commands; the `Ok(())` is unreachable but satisfies the type checker.
+#[tauri::command]
+pub async fn exit_app(app: tauri::AppHandle) -> Result<(), AppError> {
+    app.exit(0);
     Ok(())
 }
 
@@ -697,26 +842,11 @@ pub async fn pet_show_context_menu(
         None::<&str>,
     )
     .map_err(|e| e.to_string())?;
-    let new_note = MenuItem::with_id(
-        &app,
-        PET_CTX_MENU_NEW_NOTE,
-        pet_menu_label(loc, PetMenuLabel::NewNote),
-        true,
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
-    let toggle_ai = MenuItem::with_id(
-        &app,
-        PET_CTX_MENU_TOGGLE_AI,
-        pet_menu_label(loc, PetMenuLabel::ToggleAi),
-        true,
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
 
-    // Hide pet icon — Chinese-labeled sibling of "Disable Pet Mode" (same
-    // behavior, distinct label). D1 in PRD: coexists with Disable per user
-    // decision.
+    // Hide pet icon — sole "hide the pet" entry (the old `disable-pet`
+    // sibling was dropped from the right-click menu; the pet-panel launcher
+    // grid also dropped its `disable-pet` button, so `hide-pet` is the only
+    // remaining path that turns the pet off).
     let hide_pet = MenuItem::with_id(
         &app,
         PET_CTX_MENU_HIDE_PET,
@@ -784,11 +914,75 @@ pub async fn pet_show_context_menu(
     )
     .map_err(|e| e.to_string())?;
 
-    let sep = PredefinedMenuItem::separator(&app).map_err(|e| e.to_string())?;
-    let disable = MenuItem::with_id(
+    // Pet opacity submenu — four radio items (25/50/75/100%), the current
+    // opacity pre-checked. Mirrors the size submenu pattern; reads the
+    // shared `PetOpacityState` (synced from frontend via `set_pet_opacity`
+    // and from `on_menu_event` on a submenu pick).
+    let current_opacity = app.state::<PetOpacityState>().level();
+    let opacity_25 = CheckMenuItem::with_id(
         &app,
-        PET_CTX_MENU_DISABLE_PET,
-        pet_menu_label(loc, PetMenuLabel::DisablePet),
+        PET_CTX_MENU_OPACITY_25,
+        pet_menu_label(loc, PetMenuLabel::Opacity25),
+        true,
+        current_opacity == "25",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let opacity_50 = CheckMenuItem::with_id(
+        &app,
+        PET_CTX_MENU_OPACITY_50,
+        pet_menu_label(loc, PetMenuLabel::Opacity50),
+        true,
+        current_opacity == "50",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let opacity_75 = CheckMenuItem::with_id(
+        &app,
+        PET_CTX_MENU_OPACITY_75,
+        pet_menu_label(loc, PetMenuLabel::Opacity75),
+        true,
+        current_opacity == "75",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let opacity_100 = CheckMenuItem::with_id(
+        &app,
+        PET_CTX_MENU_OPACITY_100,
+        pet_menu_label(loc, PetMenuLabel::Opacity100),
+        true,
+        current_opacity == "100",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let opacity_submenu = Submenu::with_items(
+        &app,
+        pet_menu_label(loc, PetMenuLabel::OpacitySubmenu),
+        true,
+        &[&opacity_25, &opacity_50, &opacity_75, &opacity_100],
+    )
+    .map_err(|e| e.to_string())?;
+
+    // Pet click-through toggle — when checked, the pet window ignores all
+    // cursor events so clicks fall through to apps behind. The pet itself
+    // becomes non-interactive, so the user toggles it OFF from the Pet
+    // settings tab (the settings page is in the main window, always
+    // clickable). Pre-checked from the shared `PetClickThroughState`.
+    let click_through = CheckMenuItem::with_id(
+        &app,
+        PET_CTX_MENU_CLICK_THROUGH,
+        pet_menu_label(loc, PetMenuLabel::ClickThrough),
+        true,
+        app.state::<PetClickThroughState>().enabled(),
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+
+    let sep = PredefinedMenuItem::separator(&app).map_err(|e| e.to_string())?;
+    let exit_app = MenuItem::with_id(
+        &app,
+        PET_CTX_MENU_EXIT_APP,
+        pet_menu_label(loc, PetMenuLabel::ExitApp),
         true,
         None::<&str>,
     )
@@ -809,13 +1003,13 @@ pub async fn pet_show_context_menu(
         &app,
         &[
             &show_main,
-            &new_note,
-            &toggle_ai,
             &hide_pet,
             &size_submenu,
+            &opacity_submenu,
+            &click_through,
             &sep,
+            &exit_app,
             &test_bubble,
-            &disable,
         ],
     )
     .map_err(|e| e.to_string())?;
@@ -1494,8 +1688,6 @@ mod tests {
     fn pet_menu_labels_cover_all_keys_in_both_locales() {
         let keys = [
             PetMenuLabel::ShowMain,
-            PetMenuLabel::NewNote,
-            PetMenuLabel::ToggleAi,
             PetMenuLabel::HidePet,
             PetMenuLabel::SizeSubmenu,
             PetMenuLabel::Size50,
@@ -1503,7 +1695,13 @@ mod tests {
             PetMenuLabel::Size100,
             PetMenuLabel::Size125,
             PetMenuLabel::Size150,
-            PetMenuLabel::DisablePet,
+            PetMenuLabel::OpacitySubmenu,
+            PetMenuLabel::Opacity25,
+            PetMenuLabel::Opacity50,
+            PetMenuLabel::Opacity75,
+            PetMenuLabel::Opacity100,
+            PetMenuLabel::ClickThrough,
+            PetMenuLabel::ExitApp,
             PetMenuLabel::TestBubble,
         ];
         for key in keys {

@@ -16,10 +16,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 // also includes the 5 launcher-only actions dispatched by the pet-panel
 // launcher grid (daily-note, global-search, clip-from-url, command-palette,
 // toggle-theme). The native right-click menu surfaces the first six
-// (`PET_NATIVE_MENU_ACTIONS`: show-main, new-note, toggle-ai, hide-pet,
-// set-pet-size, disable-pet); the launcher dispatches the rest.
-// `hide-pet` is the Chinese-labeled sibling of `disable-pet` (same behavior);
-// `set-pet-size` carries a `{ size }` payload on the event.
+// (`PET_NATIVE_MENU_ACTIONS`: show-main, hide-pet, set-pet-size,
+// set-pet-opacity, toggle-pet-click-through, exit-app); the launcher
+// dispatches the rest. `hide-pet` is the sole "turn the pet off" entry —
+// the old `new-note` / `toggle-ai` / `disable-pet` were dropped from the
+// native menu (and `new-note` + `disable-pet` also from the launcher grid).
 //
 // `@tauri-apps/api/core` is mocked globally via vitest.workspace.ts alias
 // (test/mocks/@tauri-apps/api/core.ts) and reset in beforeEach.
@@ -45,11 +46,11 @@ describe('PetContextMenu (native popup + launcher contract)', () => {
   it('PET_NATIVE_MENU_ACTIONS lists the six native right-click actions', () => {
     expect(PET_NATIVE_MENU_ACTIONS).toEqual([
       'show-main',
-      'new-note',
-      'toggle-ai',
       'hide-pet',
       'set-pet-size',
-      'disable-pet',
+      'set-pet-opacity',
+      'toggle-pet-click-through',
+      'exit-app',
     ]);
   });
 
@@ -67,11 +68,11 @@ describe('PetContextMenu (native popup + launcher contract)', () => {
   it('PET_MENU_ACTIONS is the union of native + launcher actions', () => {
     expect(PET_MENU_ACTIONS).toEqual([
       'show-main',
-      'new-note',
-      'toggle-ai',
       'hide-pet',
       'set-pet-size',
-      'disable-pet',
+      'set-pet-opacity',
+      'toggle-pet-click-through',
+      'exit-app',
       'daily-note',
       'global-search',
       'clip-from-url',

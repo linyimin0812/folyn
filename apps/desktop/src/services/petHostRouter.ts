@@ -6,7 +6,7 @@
 // unchanged; App.tsx still owns the inline copy until PR2 swaps it for
 // `usePetHostBridge()`. The router is main-window-only — it reads
 // navStore/petStore/editorStore/etc. and calls main-window services
-// (editorIoService, requestNewItem) that secondary windows do not own.
+// (editorIoService) that secondary windows do not own.
 //
 // Spec: tauri-window-patterns.md (pet:// event channels, window isolation),
 // hook-guidelines.md (data fetching via store getState + service functions).
@@ -15,13 +15,11 @@ import type { PetMenuAction } from '@/components/pet/PetContextMenu';
 import type { PetBubbleActionEvent } from '@/components/pet/PetBubbleApp';
 import { useNavStore } from '@/store/navStore';
 import { usePetStore } from '@/store/petStore';
-import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useSearchStore } from '@/store/searchStore';
 import { useCommandPaletteStore } from '@/store/commandPaletteStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { usePetChatStore } from '@/store/petChatStore';
 import * as editorIoService from './editorIoService';
-import { requestNewItem } from './newItemBridge';
 
 /** Focus the main editor window (show + setFocus). Swallows errors so a
  *  missing `core:window:allow-*` permission or a non-Tauri env does not
@@ -43,23 +41,16 @@ async function focusMain(): Promise<void> {
 export async function routePetMenuAction(
   action: PetMenuAction,
   size?: '50' | '75' | '100' | '125' | '150',
+  opacity?: '25' | '50' | '75' | '100',
+  clickThrough?: boolean,
 ): Promise<void> {
   switch (action) {
     case 'show-main':
       await focusMain();
       break;
-    case 'new-note':
-      requestNewItem('file');
-      await focusMain();
-      break;
-    case 'toggle-ai':
-      useEditorViewStateStore.getState().toggleAiPanel();
-      await focusMain();
-      break;
     case 'hide-pet':
-      // Chinese-labeled sibling of `disable-pet` (PRD D1): same behavior,
-      // distinct label. Falls through to the disable-pet branch.
-    case 'disable-pet':
+      // Sole "turn the pet off" entry — the old `disable-pet` sibling was
+      // dropped from the right-click menu and the pet-panel launcher grid.
       usePetStore.getState().setPetModeEnabled(false);
       try {
         const { invoke } = await import('@tauri-apps/api/core');
@@ -86,6 +77,41 @@ export async function routePetMenuAction(
       }
       break;
     }
+    case 'set-pet-opacity': {
+      const level = opacity ?? '100';
+      usePetStore.getState().setPetOpacity(level);
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        // Rust sets the pet NSWindow alpha + updates the shared opacity
+        // state so the next right-click menu pre-checks the new radio item.
+        await invoke('set_pet_opacity', { level });
+      } catch {
+        // Non-fatal; the settings still persisted, next launch restores.
+      }
+      break;
+    }
+    case 'toggle-pet-click-through': {
+      const next = clickThrough ?? !usePetStore.getState().petClickThrough;
+      usePetStore.getState().setPetClickThrough(next);
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('set_pet_click_through', { enabled: next });
+      } catch {
+        // Non-fatal; the settings still persisted, next launch restores.
+      }
+      break;
+    }
+    case 'exit-app':
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        // Rust `exit_app` calls `app.exit(0)` — the process terminates
+        // before the reply can be delivered, so this await never resolves.
+        await invoke('exit_app');
+      } catch {
+        // Non-fatal; the user can still quit via the macOS app menu bar
+        // (Quill → Quit Quill) if the invoke fails.
+      }
+      break;
     // ── Pet-panel launcher actions (PR1). Dispatched by the pet-panel
     // launcher grid via the same `pet://menu-action` channel. Each action
     // that targets the main editor focuses it so the editor comes forward.

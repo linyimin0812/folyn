@@ -24,14 +24,12 @@
     }
   },
   "launcher": {
-    "newNote": "新建笔记",
     "dailyNote": "今日日记",
     "clipFromUrl": "网页剪藏",
     "globalSearch": "全局搜索",
     "commandPalette": "命令面板",
     "showMain": "显示主窗",
     "toggleTheme": "切换主题",
-    "disablePet": "关闭宠物",
     "clip": {
       "emptyUrl": "请输入网址",
       "running": "正在剪藏...",

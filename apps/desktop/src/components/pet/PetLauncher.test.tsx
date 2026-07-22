@@ -36,28 +36,23 @@ afterEach(() => {
 });
 
 describe('PetLauncher', () => {
-  it('renders all 8 launcher buttons', () => {
+  it('renders all 6 launcher buttons', () => {
     render(<PetLauncher />);
-    const labels = ['新建笔记', '今日日记', '网页剪藏', '全局搜索', '命令面板', '显示主窗', '切换主题', '关闭宠物'];
+    const labels = ['今日日记', '网页剪藏', '全局搜索', '命令面板', '显示主窗', '切换主题'];
     for (const label of labels) {
       expect(screen.getByLabelText(label)).toBeTruthy();
     }
+    // The removed buttons (new-note / disable-pet) are no longer rendered.
+    expect(screen.queryByLabelText('新建笔记')).toBeNull();
+    expect(screen.queryByLabelText('关闭宠物')).toBeNull();
   });
 
   it('emits pet://menu-action and hides the panel for main-window actions', async () => {
     render(<PetLauncher />);
-    const btn = screen.getByLabelText('新建笔记');
+    const btn = screen.getByLabelText('今日日记');
     await fireEvent.click(btn);
     await waitFor(() => expect(emitMock).toHaveBeenCalledTimes(1));
-    expect(emitMock).toHaveBeenCalledWith('pet://menu-action', { action: 'new-note' });
-    expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide');
-  });
-
-  it('emits disable-pet and hides the panel', async () => {
-    render(<PetLauncher />);
-    await fireEvent.click(screen.getByLabelText('关闭宠物'));
-    await waitFor(() => expect(emitMock).toHaveBeenCalledTimes(1));
-    expect(emitMock).toHaveBeenCalledWith('pet://menu-action', { action: 'disable-pet' });
+    expect(emitMock).toHaveBeenCalledWith('pet://menu-action', { action: 'daily-note' });
     expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide');
   });
 

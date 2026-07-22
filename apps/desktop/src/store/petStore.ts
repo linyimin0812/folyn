@@ -17,6 +17,9 @@ export type PetIconSource = 'builtin' | 'custom';
  *  `'system'` routes through `tauri-plugin-notification`, `'both'` shows both,
  *  `'off'` drops the notification entirely. */
 export type NotificationForm = 'bubble' | 'system' | 'both' | 'off';
+/** Pet window opacity level (percent). Mirrors the Rust `set_pet_opacity`
+ *  command + `PET_CTX_MENU_OPACITY_*` menu ids. `'100'` = fully opaque. */
+export type PetOpacity = '25' | '50' | '75' | '100';
 
 // Re-export so consumers can import pet-size constants from the store if they
 // already hold a store import — but the canonical site remains petPosition.ts.
@@ -36,6 +39,8 @@ export const PERSIST_KEYS_PET = [
   'petIconPath',
   'petSizeVersion',
   'petSize',
+  'petOpacity',
+  'petClickThrough',
   'notificationForm',
 ] as const;
 
@@ -53,6 +58,8 @@ export interface PetState {
   petIconPath: string;
   petSizeVersion: number;
   petSize: PetSize;
+  petOpacity: PetOpacity;
+  petClickThrough: boolean;
   notificationForm: NotificationForm;
 
   setPetModeEnabled: (enabled: boolean) => void;
@@ -62,6 +69,8 @@ export interface PetState {
   setPetPanelSizeVersion: (version: number) => void;
   setPetIcon: (source: PetIconSource, path?: string) => void;
   setPetSize: (size: PetSize) => void;
+  setPetOpacity: (opacity: PetOpacity) => void;
+  setPetClickThrough: (enabled: boolean) => void;
   setNotificationForm: (form: NotificationForm) => void;
 
   /** Load this store's slice from the persisted `settings:all` blob. */
@@ -74,6 +83,10 @@ function isPetIconSource(v: unknown): v is PetIconSource {
 
 function isPetSize(v: unknown): v is PetSize {
   return v === '50' || v === '75' || v === '100' || v === '125' || v === '150';
+}
+
+function isPetOpacity(v: unknown): v is PetOpacity {
+  return v === '25' || v === '50' || v === '75' || v === '100';
 }
 
 function isNotificationForm(v: unknown): v is NotificationForm {
@@ -94,6 +107,8 @@ export const usePetStore = create<PetState>((set, get) => ({
   petIconPath: '',
   petSizeVersion: 0,
   petSize: PET_SIZE_DEFAULT,
+  petOpacity: '100',
+  petClickThrough: false,
   notificationForm: 'bubble',
 
   setPetModeEnabled: (enabled) => { set({ petModeEnabled: enabled }); schedulePersist(); },
@@ -125,6 +140,10 @@ export const usePetStore = create<PetState>((set, get) => ({
   },
 
   setPetSize: (size) => { set({ petSize: size }); schedulePersist(); },
+
+  setPetOpacity: (opacity) => { set({ petOpacity: opacity }); schedulePersist(); },
+
+  setPetClickThrough: (enabled) => { set({ petClickThrough: enabled }); schedulePersist(); },
 
   setNotificationForm: (form) => { set({ notificationForm: form }); schedulePersist(); },
 
@@ -181,6 +200,17 @@ export const usePetStore = create<PetState>((set, get) => ({
     // persisted state from before this feature would otherwise have
     // `undefined`, crashing the `PET_SIZE_TO_PX` lookup).
     if (!isPetSize(saved.petSize)) saved.petSize = PET_SIZE_DEFAULT;
+
+    // Coerce a missing/invalid `petOpacity` to the default (defensive — a
+    // persisted state from before this feature would otherwise have
+    // `undefined`, which the Rust `set_pet_opacity` validation would reject).
+    if (!isPetOpacity(saved.petOpacity)) saved.petOpacity = '100';
+
+    // Coerce a missing `petClickThrough` to the default `false` (defensive
+    // — a persisted state from before this feature would otherwise have
+    // `undefined`, which the Rust `set_pet_click_through` would treat as
+    // falsy anyway, but the store type expects a strict boolean).
+    if (typeof saved.petClickThrough !== 'boolean') saved.petClickThrough = false;
 
     // Coerce a missing/invalid `notificationForm` to the default `'bubble'`
     // (defensive — a persisted state from before this feature would otherwise

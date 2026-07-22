@@ -24,14 +24,12 @@
     }
   },
   "launcher": {
-    "newNote": "New note",
     "dailyNote": "Today's note",
     "clipFromUrl": "Clip from URL",
     "globalSearch": "Global search",
     "commandPalette": "Command palette",
     "showMain": "Show main window",
     "toggleTheme": "Toggle theme",
-    "disablePet": "Disable pet",
     "clip": {
       "emptyUrl": "Please enter a URL",
       "running": "Clipping...",

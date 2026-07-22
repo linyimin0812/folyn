@@ -635,6 +635,31 @@ export function PetApp() {
             console.warn('[pet] set_pet_size post-show re-assert failed:', err);
           }
         }
+        // Re-apply persisted pet opacity + click-through. These are
+        // window-level effects (NSWindow alpha, cursor-events ignore) so
+        // the Rust command finds the `pet` window by label and applies
+        // directly; the main window's settings page invokes the same
+        // commands, but if the pet was hidden at the time, the calls were
+        // no-ops on a missing window — re-assert here on mount so the
+        // persisted values reliably take effect on first launch.
+        const {
+          petOpacity: savedOpacity,
+          petClickThrough: savedClickThrough,
+        } = (await import('@/store/petStore')).usePetStore.getState();
+        if (savedOpacity !== '100') {
+          try {
+            await invoke('set_pet_opacity', { level: savedOpacity });
+          } catch (err) {
+            console.warn('[pet] set_pet_opacity post-show re-assert failed:', err);
+          }
+        }
+        if (savedClickThrough) {
+          try {
+            await invoke('set_pet_click_through', { enabled: true });
+          } catch (err) {
+            console.warn('[pet] set_pet_click_through post-show re-assert failed:', err);
+          }
+        }
         await invoke('pet_set_topmost_level', { label: 'pet' });
         // Native transparency: Tauri's `transparent: true` config doesn't
         // reliably disable the macOS WKWebView's opaque background on all

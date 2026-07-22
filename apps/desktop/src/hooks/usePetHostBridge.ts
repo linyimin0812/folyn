@@ -116,10 +116,22 @@ export function usePetHostBridge(): void {
       }
       // Event listener for pet → main window actions.
       const { listen } = await import('@tauri-apps/api/event');
-      const unAction = await listen<{ action: PetMenuAction; size?: '50' | '75' | '100' | '125' | '150' }>(
+      const unAction = await listen<{
+        action: PetMenuAction;
+        size?: '50' | '75' | '100' | '125' | '150';
+        opacity?: '25' | '50' | '75' | '100';
+        clickThrough?: boolean;
+      }>(
         'pet://menu-action',
         (event) => {
-          if (event.payload?.action) void routePetMenuAction(event.payload.action, event.payload?.size);
+          if (event.payload?.action) {
+            void routePetMenuAction(
+              event.payload.action,
+              event.payload?.size,
+              event.payload?.opacity,
+              event.payload?.clickThrough,
+            );
+          }
         },
       );
       // Visibility sync: when the pet is toggled via the menu bar / keyboard

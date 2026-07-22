@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { usePetStore } from '@/store/petStore';
+import { usePetStore, type PetOpacity } from '@/store/petStore';
 import { isTauri } from '@/utils/platform';
 import { Toggle } from '@/components/settings/primitives';
 
@@ -34,6 +34,10 @@ export function PetSettings() {
   const petIconSource = usePetStore((s) => s.petIconSource);
   const petIconPath = usePetStore((s) => s.petIconPath);
   const setPetIcon = usePetStore((s) => s.setPetIcon);
+  const petOpacity = usePetStore((s) => s.petOpacity);
+  const setPetOpacity = usePetStore((s) => s.setPetOpacity);
+  const petClickThrough = usePetStore((s) => s.petClickThrough);
+  const setPetClickThrough = usePetStore((s) => s.setPetClickThrough);
   const [errorMsg, setErrorMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -200,6 +204,37 @@ export function PetSettings() {
     }
   }, [petIconPath, setPetIcon, handleUploadIcon, emitIconChanged]);
 
+  // Opacity radio: optimistic store update + Rust `set_pet_opacity` (finds
+  // the `pet` window by label and sets NSWindow `setAlphaValue:`). The
+  // command is no-op if the pet window isn't currently shown; on next pet
+  // mount, `PetApp.tsx` re-applies the persisted opacity.
+  const handleOpacityChange = useCallback(async (level: PetOpacity) => {
+    setPetOpacity(level);
+    if (!isTauri()) return;
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('set_pet_opacity', { level });
+    } catch {
+      // Non-fatal; persisted value re-applies on next pet mount.
+    }
+  }, [setPetOpacity]);
+
+  // Click-through toggle: optimistic store update + Rust
+  // `set_pet_click_through` (Tauri `setIgnoreCursorEvents`). When ON, the
+  // pet window becomes click-through — including right-click, so the user
+  // toggles it OFF from this settings page (the only always-clickable path
+  // once the pet is non-interactive).
+  const handleToggleClickThrough = useCallback(async (v: boolean) => {
+    setPetClickThrough(v);
+    if (!isTauri()) return;
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('set_pet_click_through', { enabled: v });
+    } catch {
+      // Non-fatal; persisted value re-applies on next pet mount.
+    }
+  }, [setPetClickThrough]);
+
   // Preview thumbnail: builtin quill.svg (served from the app's public dir)
   // or the custom image via `convertFileSrc` (resolved in `CustomIconPreview`
   // so the Tauri-only module is only imported when actually rendering a
@@ -274,6 +309,32 @@ export function PetSettings() {
       {errorMsg && (
         <div className="text-[11px] text-[#e53935] mt-2">{errorMsg}</div>
       )}
+
+      {/* 透明度 radio — 4 percentage levels, applies NSWindow setAlphaValue */}
+      <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
+        <div className="tr-info">
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:pet.opacity.title')}</h4>
+          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:pet.opacity.desc')}</p>
+        </div>
+        <div className="flex gap-1">
+          {(['25', '50', '75', '100'] as PetOpacity[]).map((level) => (
+            <button
+              key={level}
+              className={`py-[5px] px-3 rounded-md text-[11px] font-ui cursor-pointer border transition-all duration-100 ${petOpacity === level ? 'border-acc bg-accdim text-acc' : 'border-brd bg-surf text-t2 hover:bg-hov hover:text-t1'}`}
+              onClick={() => void handleOpacityChange(level)}
+            >{t(`settings:pet.opacity.level${level}`)}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* 桌宠穿透 toggle — setIgnoreCursorEvents on the pet window */}
+      <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
+        <div className="tr-info">
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:pet.clickThrough.title')}</h4>
+          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:pet.clickThrough.desc')}</p>
+        </div>
+        <Toggle value={petClickThrough} onChange={(v) => void handleToggleClickThrough(v)} />
+      </div>
     </div>
   );
 }

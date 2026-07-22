@@ -357,6 +357,18 @@
       "fileTooLarge": "文件大小不能超过 10MB（当前 {{kb}} KB）",
       "uploadFailed": "上传失败",
       "resetFailed": "重置失败"
+    },
+    "opacity": {
+      "title": "桌宠透明度",
+      "desc": "调整桌宠窗口的整体不透明度（25% / 50% / 75% / 100%）",
+      "level25": "25%",
+      "level50": "50%",
+      "level75": "75%",
+      "level100": "100%"
+    },
+    "clickThrough": {
+      "title": "桌宠穿透",
+      "desc": "启用后桌宠不拦截鼠标事件，点击直接穿透到下方的应用窗口"
     }
   },
   "notifications": {

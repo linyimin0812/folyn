@@ -34,15 +34,18 @@ use tauri::{Emitter, WindowEvent};
 fn pet_ctx_menu_action(id: &str) -> Option<&'static str> {
     match id {
         commands::PET_CTX_MENU_SHOW_MAIN => Some("show-main"),
-        commands::PET_CTX_MENU_NEW_NOTE => Some("new-note"),
-        commands::PET_CTX_MENU_TOGGLE_AI => Some("toggle-ai"),
         commands::PET_CTX_MENU_HIDE_PET => Some("hide-pet"),
         commands::PET_CTX_MENU_SIZE_50 => Some("set-pet-size"),
         commands::PET_CTX_MENU_SIZE_75 => Some("set-pet-size"),
         commands::PET_CTX_MENU_SIZE_100 => Some("set-pet-size"),
         commands::PET_CTX_MENU_SIZE_125 => Some("set-pet-size"),
         commands::PET_CTX_MENU_SIZE_150 => Some("set-pet-size"),
-        commands::PET_CTX_MENU_DISABLE_PET => Some("disable-pet"),
+        commands::PET_CTX_MENU_OPACITY_25 => Some("set-pet-opacity"),
+        commands::PET_CTX_MENU_OPACITY_50 => Some("set-pet-opacity"),
+        commands::PET_CTX_MENU_OPACITY_75 => Some("set-pet-opacity"),
+        commands::PET_CTX_MENU_OPACITY_100 => Some("set-pet-opacity"),
+        commands::PET_CTX_MENU_CLICK_THROUGH => Some("toggle-pet-click-through"),
+        commands::PET_CTX_MENU_EXIT_APP => Some("exit-app"),
         // Launcher-only actions (pet-panel buttons, not native menu items).
         // Recognized here so the action-string contract stays uniform.
         "pet-ctx-daily-note" => Some("daily-note"),
@@ -65,6 +68,19 @@ fn pet_ctx_menu_size_level(id: &str) -> Option<&'static str> {
         commands::PET_CTX_MENU_SIZE_100 => Some("100"),
         commands::PET_CTX_MENU_SIZE_125 => Some("125"),
         commands::PET_CTX_MENU_SIZE_150 => Some("150"),
+        _ => None,
+    }
+}
+
+/// Resolve the opacity level string ("25"|"50"|"75"|"100") from a native
+/// menu item id. Returns `None` for non-opacity ids. Used by `on_menu_event`
+/// to attach the `{ opacity }` payload to `set-pet-opacity` actions.
+fn pet_ctx_menu_opacity_level(id: &str) -> Option<&'static str> {
+    match id {
+        commands::PET_CTX_MENU_OPACITY_25 => Some("25"),
+        commands::PET_CTX_MENU_OPACITY_50 => Some("50"),
+        commands::PET_CTX_MENU_OPACITY_75 => Some("75"),
+        commands::PET_CTX_MENU_OPACITY_100 => Some("100"),
         _ => None,
     }
 }
@@ -449,6 +465,26 @@ pub fn run() {
                             serde_json::json!({ "action": action, "size": level }),
                         );
                     }
+                } else if action == "set-pet-opacity" {
+                    if let Some(level) = pet_ctx_menu_opacity_level(id) {
+                        // Update the shared state so the next menu build
+                        // pre-checks the new opacity radio item even before
+                        // the frontend's `set_pet_opacity` invoke lands.
+                        app.state::<commands::PetOpacityState>().set_level(level);
+                        let _ = app.emit(
+                            "pet://menu-action",
+                            serde_json::json!({ "action": action, "opacity": level }),
+                        );
+                    }
+                } else if action == "toggle-pet-click-through" {
+                    // Toggle the shared bool so the next menu build flips
+                    // the checkmark even before the frontend's invoke lands.
+                    let next = !app.state::<commands::PetClickThroughState>().enabled();
+                    app.state::<commands::PetClickThroughState>().set_enabled(next);
+                    let _ = app.emit(
+                        "pet://menu-action",
+                        serde_json::json!({ "action": action, "clickThrough": next }),
+                    );
                 } else {
                     let _ = app.emit(
                         "pet://menu-action",
@@ -509,6 +545,19 @@ pub fn run() {
             // so existing users keep the 96×96 layout on first right-click.
             app.manage(commands::PetSizeState(std::sync::Mutex::new(
                 commands::PetSizeState::DEFAULT_LEVEL.to_string(),
+            )));
+
+            // Shared pet-opacity state ("25"|"50"|"75"|"100"). Same pattern
+            // as `PetSizeState`: defaults to "100" (fully opaque) so existing
+            // users keep the pre-opacity look on first right-click.
+            app.manage(commands::PetOpacityState(std::sync::Mutex::new(
+                commands::PetOpacityState::DEFAULT_LEVEL.to_string(),
+            )));
+
+            // Shared pet-click-through flag (bool). Defaults to `false` so
+            // the pet receives clicks (pre-feature behavior) on first launch.
+            app.manage(commands::PetClickThroughState(std::sync::Mutex::new(
+                commands::PetClickThroughState::DEFAULT,
             )));
 
             // Pet-panel global-shortcut state. Holds the currently-registered
@@ -601,6 +650,9 @@ pub fn run() {
             commands::pet_set_topmost_level,
             commands::pet_make_transparent,
             commands::set_pet_size,
+            commands::set_pet_opacity,
+            commands::set_pet_click_through,
+            commands::exit_app,
             chat::chat_stream,
             plugin_commands::install_plugin,
             plugin_commands::list_plugins,

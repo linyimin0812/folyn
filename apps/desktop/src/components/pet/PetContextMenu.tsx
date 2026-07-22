@@ -13,27 +13,29 @@
 // frontend to call on right-click. App.tsx's listener needs no change.
 
 /**
- * Quick-action menu/launcher actions. The first six (`show-main`,
- * `new-note`, `toggle-ai`, `hide-pet`, `set-pet-size`, `disable-pet`) are
- * surfaced by the native pet right-click context menu (built Rust-side in
- * `commands::pet_show_context_menu`).
+ * Quick-action menu/launcher actions. The native pet right-click context
+ * menu (built Rust-side in `commands::pet_show_context_menu`) surfaces six
+ * items: `show-main`, `hide-pet`, `set-pet-size`, `set-pet-opacity`,
+ * `toggle-pet-click-through`, `exit-app`.
  *
- * `hide-pet` is a Chinese-labeled sibling of `disable-pet` — same behavior
- * (hide pet window + `setPetModeEnabled(false)`), distinct label. Both
- * dispatch through the same `pet://menu-action` channel; `App.tsx`
- * `handleAction` routes `hide-pet` to the same logic as `disable-pet`.
+ * `hide-pet` is the sole "turn the pet off" entry — the old `disable-pet`
+ * sibling was dropped from the right-click menu AND the pet-panel launcher
+ * grid. `App.tsx` `handleAction` routes `hide-pet` to the same logic
+ * (`setPetModeEnabled(false)` + `toggle_pet_mode`).
  *
- * `set-pet-size` carries a `{ size: '50'|'75'|'100'|'125'|'150' }` payload on
- * the event (see `App.tsx` listener) so the handler can apply the size
- * without re-parsing the menu id; the Rust `pet_ctx_menu_action` mapping
- * emits the action string and the size payload is attached separately.
+ * `set-pet-size` carries `{ size: '50'|'75'|'100'|'125'|'150' }` on the event,
+ * `set-pet-opacity` carries `{ opacity: '25'|'50'|'75'|'100' }`, and
+ * `toggle-pet-click-through` carries `{ clickThrough: boolean }`. The Rust
+ * `pet_ctx_menu_action` mapping emits the action string and the payload is
+ * attached separately in `lib.rs::on_menu_event`.
  *
- * The remaining five (`daily-note`, `global-search`, `clip-from-url`,
- * `command-palette`, `toggle-theme`) are dispatched by the pet-panel launcher
- * grid (PR2) via the same `pet://menu-action` event channel — they are NOT in
- * the native right-click menu, but the action strings are recognized by
- * `pet_ctx_menu_action` in `lib.rs` so the contract stays uniform and the
- * frontend↔Rust sync test (see PetContextMenu.test.tsx) covers the full set.
+ * The remaining five launcher-only actions (`daily-note`, `global-search`,
+ * `clip-from-url`, `command-palette`, `toggle-theme`) are dispatched by the
+ * pet-panel launcher grid via the same `pet://menu-action` event channel —
+ * they are NOT in the native right-click menu, but the action strings are
+ * recognized by `pet_ctx_menu_action` in `lib.rs` so the contract stays
+ * uniform and the frontend↔Rust sync test (see PetContextMenu.test.tsx)
+ * covers the full set.
  *
  * `open-ai-settings` is dispatched by secondary windows (voice-orb caption
  * link, pet-panel chat CTA / session-header "AI 设置" button) that cannot
@@ -43,11 +45,11 @@
  */
 export type PetMenuAction =
   | 'show-main'
-  | 'new-note'
-  | 'toggle-ai'
   | 'hide-pet'
   | 'set-pet-size'
-  | 'disable-pet'
+  | 'set-pet-opacity'
+  | 'toggle-pet-click-through'
+  | 'exit-app'
   | 'daily-note'
   | 'global-search'
   | 'clip-from-url'
@@ -56,10 +58,13 @@ export type PetMenuAction =
   | 'open-ai-settings';
 
 /** Payload for `pet://menu-action` events. `set-pet-size` carries the size
- *  level; all other actions use only `action`. */
+ *  level, `set-pet-opacity` the opacity level, `toggle-pet-click-through`
+ *  the next bool; all other actions use only `action`. */
 export interface PetMenuActionPayload {
   action: PetMenuAction;
   size?: '50' | '75' | '100' | '125' | '150';
+  opacity?: '25' | '50' | '75' | '100';
+  clickThrough?: boolean;
 }
 
 /**
@@ -75,11 +80,11 @@ export interface PetMenuActionPayload {
  */
 export const PET_NATIVE_MENU_ACTIONS: readonly PetMenuAction[] = [
   'show-main',
-  'new-note',
-  'toggle-ai',
   'hide-pet',
   'set-pet-size',
-  'disable-pet',
+  'set-pet-opacity',
+  'toggle-pet-click-through',
+  'exit-app',
 ] as const;
 
 export const PET_LAUNCHER_ACTIONS: readonly PetMenuAction[] = [

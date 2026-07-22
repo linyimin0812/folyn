@@ -5,13 +5,11 @@ import { invoke } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
 import { useNavStore } from '@/store/navStore';
 import { usePetStore } from '@/store/petStore';
-import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useSearchStore } from '@/store/searchStore';
 import { useCommandPaletteStore } from '@/store/commandPaletteStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { usePetChatStore } from '@/store/petChatStore';
 import * as editorIoService from '@/services/editorIoService';
-import * as newItemBridge from '@/services/newItemBridge';
 import { routePetMenuAction, routePetBubbleAction } from './petHostRouter';
 import type { PetBubbleActionEvent } from '@/components/pet/PetBubbleApp';
 
@@ -43,29 +41,7 @@ describe('routePetMenuAction', () => {
     expect(invokeMock).not.toHaveBeenCalled();
   });
 
-  it('new-note requests a new file and focuses main', async () => {
-    const requestSpy = vi.spyOn(newItemBridge, 'requestNewItem');
-    await routePetMenuAction('new-note');
-    expect(requestSpy).toHaveBeenCalledWith('file');
-    expect(showMock).toHaveBeenCalledTimes(1);
-    requestSpy.mockRestore();
-  });
-
-  it('toggle-ai toggles the AI panel and focuses main', async () => {
-    const before = useEditorViewStateStore.getState().aiPanelVisible;
-    await routePetMenuAction('toggle-ai');
-    expect(useEditorViewStateStore.getState().aiPanelVisible).toBe(!before);
-    expect(showMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('disable-pet clears pet mode and invokes toggle_pet_mode', async () => {
-    usePetStore.setState({ petModeEnabled: true });
-    await routePetMenuAction('disable-pet');
-    expect(usePetStore.getState().petModeEnabled).toBe(false);
-    expect(invokeMock).toHaveBeenCalledWith('toggle_pet_mode');
-  });
-
-  it('hide-pet behaves like disable-pet (same branch, distinct label)', async () => {
+  it('hide-pet clears pet mode and invokes toggle_pet_mode', async () => {
     usePetStore.setState({ petModeEnabled: true });
     await routePetMenuAction('hide-pet');
     expect(usePetStore.getState().petModeEnabled).toBe(false);
@@ -83,6 +59,37 @@ describe('routePetMenuAction', () => {
     await routePetMenuAction('set-pet-size');
     expect(usePetStore.getState().petSize).toBe('100');
     expect(invokeMock).toHaveBeenCalledWith('set_pet_size', { level: '100' });
+  });
+
+  it('set-pet-opacity persists opacity and invokes set_pet_opacity', async () => {
+    await routePetMenuAction('set-pet-opacity', undefined, '50');
+    expect(usePetStore.getState().petOpacity).toBe('50');
+    expect(invokeMock).toHaveBeenCalledWith('set_pet_opacity', { level: '50' });
+  });
+
+  it('set-pet-opacity defaults to 100 when opacity omitted', async () => {
+    await routePetMenuAction('set-pet-opacity');
+    expect(usePetStore.getState().petOpacity).toBe('100');
+    expect(invokeMock).toHaveBeenCalledWith('set_pet_opacity', { level: '100' });
+  });
+
+  it('toggle-pet-click-through flips the flag and invokes set_pet_click_through', async () => {
+    usePetStore.setState({ petClickThrough: false });
+    await routePetMenuAction('toggle-pet-click-through');
+    expect(usePetStore.getState().petClickThrough).toBe(true);
+    expect(invokeMock).toHaveBeenCalledWith('set_pet_click_through', { enabled: true });
+  });
+
+  it('toggle-pet-click-through applies an explicit clickThrough payload', async () => {
+    usePetStore.setState({ petClickThrough: true });
+    await routePetMenuAction('toggle-pet-click-through', undefined, undefined, false);
+    expect(usePetStore.getState().petClickThrough).toBe(false);
+    expect(invokeMock).toHaveBeenCalledWith('set_pet_click_through', { enabled: false });
+  });
+
+  it('exit-app invokes exit_app', async () => {
+    await routePetMenuAction('exit-app');
+    expect(invokeMock).toHaveBeenCalledWith('exit_app');
   });
 
   it('daily-note opens the daily note and focuses main', async () => {

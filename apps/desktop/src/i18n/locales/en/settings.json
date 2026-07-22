@@ -357,6 +357,18 @@
       "fileTooLarge": "File must be ≤ 10MB (currently {{kb}} KB)",
       "uploadFailed": "Upload failed",
       "resetFailed": "Reset failed"
+    },
+    "opacity": {
+      "title": "Pet opacity",
+      "desc": "Adjust the pet window's overall opacity (25% / 50% / 75% / 100%)",
+      "level25": "25%",
+      "level50": "50%",
+      "level75": "75%",
+      "level100": "100%"
+    },
+    "clickThrough": {
+      "title": "Click through",
+      "desc": "When enabled, the pet window ignores pointer events and clicks pass through to apps behind it"
     }
   },
   "notifications": {
