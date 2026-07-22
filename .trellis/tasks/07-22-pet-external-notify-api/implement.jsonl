@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "pet:// 事件通道契约、Rust→webview emit 路径、ACL 权限模型——HTTP handler emit pet://notify 和注册 get_pet_api_info 命令都依此。"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "新增 settings:pet.api.* 命名空间(zh+en)、tauriInvoke 包装、AppError 契约——PetSettings 区块拉取端口时遵循。"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "PetSettings.tsx 新增'外部 API'区块的组件/props/styling 模式(命名导出、Tailwind+CSS 变量)。"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "禁用模式、review checklist、命名/校验规范——Rust dispatch 纯函数与前端区块都要符合。"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "技术栈与关键模式速查(isTauri 守卫、invoke、@/ 别名、Zustand 细粒度 selector)。"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "本特性跨 Rust HTTP→emit→TS dispatcher 多层,数据格式(PetBubblePayload)在层间流转,需按此核对。"}
+{"file": ".trellis/tasks/07-22-pet-external-notify-api/research/rust-http-server.md", "reason": "tiny_http 选型结论 + 最小示例代码(bind 重试、AppHandle clone 进线程、emit pet://notify),实现直接照搬。"}

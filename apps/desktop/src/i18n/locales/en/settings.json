@@ -357,6 +357,12 @@
       "fileTooLarge": "File must be ≤ 1MB (currently {{kb}} KB)",
       "uploadFailed": "Upload failed",
       "resetFailed": "Reset failed"
+    },
+    "api": {
+      "title": "External notify API",
+      "desc": "Other apps can POST to localhost port {{port}} to trigger pet notifications",
+      "copy": "Copy curl",
+      "copied": "Copied"
     }
   },
   "notifications": {
