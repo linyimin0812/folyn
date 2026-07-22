@@ -537,3 +537,37 @@ Three export pipeline changes across two sessions. (1) Aligned ExcalidrawPreview
 ### Next Steps
 
 - None - task complete
+
+
+## Session 74: drawio 嵌入 SVG 导出修复
+
+**Date**: 2026-07-22
+**Task**: drawio 嵌入 SVG 导出修复
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+drawio file-preview 嵌入到 HTML 导出后 SVG 仍然文字不可见、连接线白块、尺寸错乱。根因是内联 SVG 在 HTML 中会继承 body 的 line-height:1.8/font-family 到 foreignObject divs，破坏 drawio 文字布局（独立 .svg 文件无此泄漏，所以独立导出正常）。修复：(1) 用 drawio 原生导出选项 transparent:true + keepTheme:false 从源头去掉白底和 color-scheme:light dark（替代不工作的 regex 后处理，regex 保留为兜底并加固匹配变体）；(2) SVG 改为 <img src=data:image/svg+xml;utf8,…> 嵌入实现 CSS 隔离，img 上下文渲染与独立 .svg 文件完全一致——这是真正的两条路径共用一套逻辑；(3) renderFilePreviewToSvg 加了从 img data URL 提取 raw SVG 的分支以支持独立 .svg/.png 导出，其它类型保留 inline <svg>；(4) body 420px overflow:hidden + object-fit:contain 无滚动适配文件框尺寸。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `20d6313` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
