@@ -39,8 +39,8 @@ export function PetSettings() {
 
   /** Accepted image extensions for the custom icon (PRD: png/jpg/webp/svg). */
   const VALID_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'svg'];
-  /** File-size cap: 1MB (PRD). Rejected oversized files instead of resizing. */
-  const MAX_ICON_BYTES = 1024 * 1024;
+  /** File-size cap: 10MB. Rejected oversized files instead of resizing. */
+  const MAX_ICON_BYTES = 10 * 1024 * 1024;
 
   // Cross-window icon-change broadcast. The `pet` Tauri window has its own
   // JS context + its own Zustand store instance; `storageClient`'s in-memory

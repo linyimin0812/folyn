@@ -348,13 +348,13 @@
       "uploading": "Uploading…",
       "upload": "Upload icon…",
       "reset": "Reset to default",
-      "hint": "Supports png / jpg / webp / svg, ≤ 1MB",
+      "hint": "Supports png / jpg / webp / svg, ≤ 10MB",
       "alt": "Custom icon"
     },
     "errors": {
       "desktopOnly": "Desktop feature; please use in a Tauri environment",
       "unsupportedFormat": "Only png / jpg / webp / svg formats are supported",
-      "fileTooLarge": "File must be ≤ 1MB (currently {{kb}} KB)",
+      "fileTooLarge": "File must be ≤ 10MB (currently {{kb}} KB)",
       "uploadFailed": "Upload failed",
       "resetFailed": "Reset failed"
     }
