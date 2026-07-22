@@ -121,26 +121,29 @@ pub fn convert_windows(app: &AppHandle) -> usize {
         if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
             panel.set_level(PanelLevel::Dock.value());
             panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
+            // ponytail: `move_to_active_space` (not `can_join_all_spaces`) —
+            // matches BongoCat `core/setup/macos.rs:41-46`. The
+            // `moveToActiveSpace` flag (1<<7=128) routes the panel through
+            // AppKit's active-space re-evaluation, which has a z-order re-
+            // evaluation side-effect on app-switch. Combo value:
+            // stationary(2) | move_to_active_space(128) | full_screen_auxiliary(256)
+            // = 386.
             panel.set_collection_behavior(
                 CollectionBehavior::new()
                     .stationary()
-                    .can_join_all_spaces()
+                    .move_to_active_space()
                     .full_screen_auxiliary()
                     .into(),
             );
-            // ponytail: cursor handlers + NSTrackingArea + acceptsMouseMovedEvents
-            // all REVERTED. The cursor-on-hover-when-not-frontmost path
-            // (cursorUpdate → [NSCursor set]) crashed with "Rust cannot catch
-            // foreign exceptions" — `NSCursor::pointingHandCursor()` returns
-            // `Retained<NSCursor>` and the high-frequency retain/release churn
-            // (cursorUpdate/mouseMoved fire on every pixel of cursor motion
-            // within the TA) triggered an ObjC exception Rust can't catch.
-            // The user accepted the macOS limitation: hand cursor works via
-            // CSS `cursor: pointer` (pet.css) when Quill is frontmost (or after
-            // a click makes the panel key), and does NOT work on first hover
-            // when another app is frontmost. No cursor code = no crash path.
-            // The `pet_set_cursor` Rust command is kept as a fallback if a
-            // future need arises.
+            // ponytail: attach the (empty-body) delegate — BongoCat
+            // `core/setup/macos.rs:91`. Without a delegate attached via
+            // `set_event_handler`, the swizzled NSPanel subclass's override
+            // methods (which make `is_floating_panel: true` +
+            // `can_become_key_window: true` actually take effect on a swizzled
+            // class) may not route correctly; the float-on-deactivate behavior
+            // is partly delegate-driven.
+            let handler = QuillPetEventHandler::new();
+            panel.set_event_handler(Some(handler.as_ref()));
             count += 1;
         }
     }

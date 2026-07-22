@@ -128,7 +128,43 @@ pub async fn toggle_pet_mode(app: tauri::AppHandle) -> Result<bool, AppError> {
     let currently_visible = pet.is_visible().map_err(|e| e.to_string())?;
     let next = !currently_visible;
     if next {
-        pet.show().map_err(|e| e.to_string())?;
+        // ponytail: on the NSPanel backend, call `panel.show()`
+        // (`orderFrontRegardless`) — BongoCat `plugins/window/src/commands/
+        // macos.rs:28` SHOW path. Stock `pet.show()` maps to `orderFront:`
+        // which respects window-server ordering and may not promote the
+        // panel above other apps' frontmost windows — the root cause of
+        // "always-on-top not effective until clicked". Fallback to
+        // `pet.show()` when the panel conversion is unavailable (legacy
+        // backend / pre-convert). AppKit calls are main-thread-only; the
+        // command runs on the async runtime thread, so dispatch via
+        // `run_on_main_thread` (mirrors `pet_set_always_on_top`).
+        #[cfg(target_os = "macos")]
+        {
+            use tauri_nspanel::WebviewWindowExt;
+            let app2 = app.clone();
+            let showed_via_panel: std::sync::Arc<std::sync::atomic::AtomicBool> =
+                std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let showed_clone = showed_via_panel.clone();
+            app.run_on_main_thread(move || {
+                let Some(window) = app2.get_webview_window(PET_LABEL) else {
+                    return;
+                };
+                if let Ok(panel) =
+                    window.to_panel::<crate::pet_panel_macos::QuillPetPanel>()
+                {
+                    panel.show();
+                    showed_clone.store(true, std::sync::atomic::Ordering::SeqCst);
+                }
+            })
+            .map_err(|e| e.to_string())?;
+            if !showed_via_panel.load(std::sync::atomic::Ordering::SeqCst) {
+                pet.show().map_err(|e| e.to_string())?;
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            pet.show().map_err(|e| e.to_string())?;
+        }
         // Do not steal focus from the editor when summoning the pet.
         // `focus:false` in tauri.conf.json controls focus-on-creation; for
         // subsequent show() calls we rely on the window being non-activating

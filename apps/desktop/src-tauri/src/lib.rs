@@ -139,15 +139,16 @@ fn reapply_pet_topmost(_app: &tauri::AppHandle) {
 ///   - Legacy (`QUILL_PET_PANEL_BACKEND=legacy`): the old NSWindow +
 ///     ScreenSaver-level + behavior-780 re-apply (`reapply_pet_topmost`).
 ///
-/// Both paths schedule their NSWindow API calls on the macOS main thread via
-/// `run_on_main_thread` (NSWindow API is main-thread-only). No-op on non-macOS.
+/// The NSPanel path runs SYNCHRONOUSLY (`.setup()` is already on the macOS
+/// main thread — matches BongoCat `core/setup/macos.rs:37`, removing the
+/// run-loop-tick gap where the pet existed as a stock NSWindow with
+/// `alwaysOnTop: false`). The legacy path still dispatches via
+/// `run_on_main_thread` to minimize blast radius (its reapply thread expects
+/// main-thread scheduling). No-op on non-macOS.
 #[cfg(target_os = "macos")]
 fn apply_pet_backend_init(app: &tauri::AppHandle) {
     if pet_panel_macos::backend_is_nspanel() {
-        let app2 = app.clone();
-        let _ = app.run_on_main_thread(move || {
-            pet_panel_macos::convert_windows(&app2);
-        });
+        pet_panel_macos::convert_windows(app);
     } else {
         let app2 = app.clone();
         let _ = app.run_on_main_thread(move || {
@@ -500,6 +501,18 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 window.open_devtools();
             }
+
+            // ponytail: hide the Dock icon — puts Quill into accessory
+            // activation policy (no Dock icon, app stays in background).
+            // AppKit demotes a regular-app floating NSPanel on
+            // `applicationDidResignActive:`; an accessory app's panels stay
+            // at Dock level across app-switch, so the pet floats over VS Code
+            // without a click. Mirrors BongoCat
+            // `core/setup/macos.rs:35` (`app.set_dock_visibility(false)`).
+            // Side effects: no Dock icon, app absent from the ⌘Tab list;
+            // main window still shown via `show()` / tray.
+            #[cfg(target_os = "macos")]
+            let _ = app.handle().set_dock_visibility(false);
 
             // Apply the pet window's topmost backend at creation (before the
             // first show) so macOS evaluates space membership with the flags

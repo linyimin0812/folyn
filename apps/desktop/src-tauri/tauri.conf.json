@@ -52,6 +52,7 @@
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": false,
+        "acceptFirstMouse": true,
         "skipTaskbar": true,
         "shadow": false,
         "visible": false,
