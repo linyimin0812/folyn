@@ -10,6 +10,20 @@
  * valid drawio export format and yields no response). The message is
  * JSON-stringified to match react-drawio's protocol; drawio's embed accepts
  * both but stringified is the documented form.
+ *
+ * Two native drawio export options are passed (per react-drawio's
+ * ActionExport type): `transparent: true` skips the white bg on edge labels
+ * (replaces the previous regex strip — drawio now omits it at source);
+ * `keepTheme: false` forces light theme so no `color-scheme: light dark`
+ * or `light-dark()` calls land in the output. normalizeDrawioSvgStyles is
+ * kept as a fallback for older drawio versions that may ignore these opts.
+ *
+ * The SVG is embedded as `<img src="data:image/svg+xml;utf8,…">` rather
+ * than inline `<svg>`. Inline SVG in HTML inherits host CSS (body
+ * line-height: 1.8, font-family, etc.) into foreignObject divs and breaks
+ * drawio's text layout — img-loaded SVG renders in its own image context,
+ * matching standalone .svg file rendering. renderFilePreviewToSvg extracts
+ * the raw SVG from the img src for standalone .svg / .png export.
  */
 
 import type { EnhanceCtx } from './dbml';
@@ -41,16 +55,43 @@ export async function enhance(body: HTMLElement, _ctx: EnhanceCtx): Promise<void
       const raw = typeof payload.data === 'string' ? payload.data : '';
       // drawio returns the SVG as a data URI (`data:image/svg+xml;base64,…`
       // or `data:image/svg+xml;utf8,…`), not as a raw SVG string. Decode
-      // so we inject a real <svg> element (scalable, styleable) rather
-      // than dumping the URI as text.
+      // so we embed a real <svg> via the img data URL (rather than nesting
+      // the data URI inside another data URI).
       const svgText = decodeDataUriSvg(raw);
       if (svgText) {
-        body.innerHTML = normalizeDrawioSvgStyles(svgText);
+        const normalized = normalizeDrawioSvgStyles(svgText);
+        // ponytail: embed as <img> with data URL for CSS isolation. Inline
+        // SVG in HTML inherits body's line-height: 1.8, font-family, etc.
+        // into foreignObject divs, breaking drawio's text layout. img-
+        // loaded SVG renders in an isolated image context — same as a
+        // standalone .svg file opened in a browser. renderFilePreviewToSvg
+        // (services/export/shared.ts) extracts the raw SVG from the img
+        // src for standalone .svg / .png export.
+        const dataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(normalized)}`;
+        // ponytail: img fills the file-preview body (420px tall, full width)
+        // and object-fit:contain scales the SVG to fit inside preserving
+        // aspect ratio — no scroll, no clipping. Matches dbml/excalidraw/
+        // mmap body sizing (420px overflow:hidden).
+        body.innerHTML =
+          `<img src="${dataUrl}" alt="" style="display:block;width:100%;height:100%;object-fit:contain;margin:0 auto;">`;
       }
       resolve();
     };
     window.addEventListener('message', handler);
-    cw.postMessage(JSON.stringify({ action: 'export', format: 'xmlsvg', spinKey: 'export' }), '*');
+    cw.postMessage(JSON.stringify({
+      action: 'export',
+      format: 'xmlsvg',
+      spinKey: 'export',
+      // Native drawio export options (per react-drawio ActionExport type):
+      //   transparent: true  — skip white bg on edge labels (replaces
+      //                        regex strip of background-color: #ffffff).
+      //   keepTheme: false   — force light theme, so no color-scheme: light
+      //                        dark or light-dark() in the output.
+      // More robust than regex-stripping after the fact; normalizeDrawioSvgStyles
+      // is kept as a fallback in case the drawio version ignores these.
+      transparent: true,
+      keepTheme: false,
+    }), '*');
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
@@ -58,50 +99,27 @@ export async function enhance(body: HTMLElement, _ctx: EnhanceCtx): Promise<void
       resolve();
     }, 8000);
   });
-  const svgEl = body.querySelector('svg');
-  if (svgEl) {
-    // ponytail: don't force height: 100% — drawio's SVG viewBox spans the
-    // full diagram (often very tall, e.g. 452×1432). Forcing into a 420px
-    // body with preserveAspectRatio: meet scales content ~0.29x, making
-    // 14px text ~4px and unreadable. Drop the height attr so the SVG
-    // auto-sizes by viewBox aspect ratio (matches the in-app iframe's
-    // natural-size-with-scroll behavior). Body scrolls vertically with
-    // a max-height cap so very tall diagrams don't blow up the page.
-    svgEl.setAttribute('width', '100%');
-    svgEl.removeAttribute('height');
-    svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-    svgEl.style.maxWidth = '100%';
-    svgEl.style.display = 'block';
-    svgEl.style.margin = '0 auto';
-  }
-  body.style.height = 'auto';
-  body.style.minHeight = '200px';
-  body.style.maxHeight = '600px';
-  body.style.overflow = 'auto';
+  body.style.height = '420px';
+  body.style.minHeight = '0';
+  body.style.maxHeight = 'none';
+  body.style.overflow = 'hidden';
 }
 
 /**
- * Normalize drawio's exported SVG so it renders correctly in the host HTML
- * context (file-preview body). Three issues:
+ * Normalize drawio's exported SVG as a fallback for older drawio versions
+ * that may ignore the `transparent` / `keepTheme` export options. With
+ * current drawio (transparent: true, keepTheme: false), the regexes are
+ * no-ops — drawio omits these constructs at source.
  *
  * 1. `color-scheme: light dark` on root + `light-dark(A, B)` calls
- *    throughout inline styles — drawio expects standalone SVG context
- *    where the browser picks OS theme consistently. Injected into HTML,
- *    the host page's color-scheme may mismatch, making `light-dark()`
- *    return dark values (e.g. white text) on light backgrounds — text
- *    becomes invisible. Force light values by stripping `color-scheme`
- *    and replacing `light-dark(A, B)` with `A`. Matches excalidraw's
- *    `exportWithDarkMode: false` pattern.
- *
- * 2. `<style>` block at the top defines `--ge-adaptive-bg` via
+ *    throughout inline styles — strip and replace with A (light value).
+ * 2. `<style>` block at the top defining `--ge-adaptive-bg` via
  *    `@supports (color: light-dark(...))`. Strip it so the var falls
  *    back to its inline fallback (then we strip that too).
- *
- * 3. Edge label divs have inline `background-color: #ffffff` (and a
- *    `--ge-adaptive-bg, #ffffff` fallback) so text is readable over
- *    crossing edges in-app. In standalone export this renders as white
- *    boxes on connections. Replace both with transparent. Node label
- *    divs don't carry background-color, so this only hits edge labels.
+ * 3. Edge label divs with `background-color: #ffffff` (or the
+ *    `--ge-adaptive-bg` var fallback, with or without space after comma,
+ *    or `background:` shorthand, or `#fff` shorthand). Replace with
+ *    transparent.
  *
  * ponytail: the `light-dark(A, B)` regex handles one level of nested
  * parens (e.g., `var(--ge-dark-color, #121212)` as the dark arg).
@@ -119,9 +137,13 @@ function normalizeDrawioSvgStyles(svg: string): string {
       /light-dark\(\s*((?:[^()]|\([^()]*\))*)\s*,\s*((?:[^()]|\([^()]*\))*)\s*\)/g,
       '$1',
     )
-    // Strip edge-label white backgrounds (node divs don't carry bg).
-    .replace(/background-color:\s*#ffffff/g, 'background-color: transparent')
-    .replace(/background-color:\s*var\(--ge-adaptive-bg,\s*#ffffff\)/g, 'background-color: transparent');
+    // Strip edge-label white bg in all forms drawio emits: #ffffff / #fff,
+    // var(--ge-adaptive-bg, ...) with or without space after comma, with
+    // or without fallback, plus the `background:` shorthand.
+    .replace(
+      /background(-color)?:\s*(?:#fff(?:fff)?|var\(--ge-adaptive-bg(?:\s*,\s*[^)]*)?\))\s*;?/g,
+      (_m, g1) => `background${g1 || ''}: transparent;`,
+    );
 }
 
 /**

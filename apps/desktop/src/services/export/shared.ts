@@ -254,9 +254,30 @@ export async function renderFilePreviewToSvg(
   const { renderMarkdownToHtmlViaDom } = await import('../exportService');
   const { html } = await renderMarkdownToHtmlViaDom(syntheticMd, filePath, vaultRoot);
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const svgEl = doc.querySelector('[data-file-preview-body] svg');
-  if (!svgEl) return '';
-  let svgString = svgEl.outerHTML;
+  const bodyEl = doc.querySelector('[data-file-preview-body]');
+  if (!bodyEl) return '';
+  // ponytail: drawio embeds its SVG as <img src="data:image/svg+xml;utf8,…">
+  // for CSS isolation (inline SVG in HTML inherits host CSS into
+  // foreignObject divs and breaks drawio's text layout — see
+  // services/export/drawio.ts). Extract the raw SVG from the img src for
+  // standalone .svg / .png export. Other types (mmap, excalidraw, dbml)
+  // keep inline <svg>; fall through.
+  let svgString = '';
+  const imgEl = bodyEl.querySelector('img[src^="data:image/svg+xml"]');
+  if (imgEl) {
+    const src = imgEl.getAttribute('src') || '';
+    const commaIdx = src.indexOf(',');
+    if (commaIdx >= 0) {
+      const dataBody = src.slice(commaIdx + 1);
+      try { svgString = decodeURIComponent(dataBody); }
+      catch { svgString = dataBody; }
+    }
+  }
+  if (!svgString) {
+    const svgEl = bodyEl.querySelector('svg');
+    if (!svgEl) return '';
+    svgString = svgEl.outerHTML;
+  }
   // ponytail: mind-elixir's exportSvg emits <image xlink:href="..."> without
   // declaring xmlns:xlink on the root <svg>, so standalone XML parsers reject
   // it ("Namespace prefix xlink for href on image is not defined"). HTML
