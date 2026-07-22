@@ -253,3 +253,38 @@ commands.rs (1412 lines, 37 Tauri commands across file/webview/project/pet + man
 ### Next Steps
 
 - None - task complete
+
+
+## Session 8: 桌宠外部通知 HTTP API
+
+**Date**: 2026-07-22
+**Task**: 桌宠外部通知 HTTP API
+**Package**: api
+**Branch**: `clever-desert`
+
+### Summary
+
+为桌宠新增本地 HTTP API(tiny_http,仅 127.0.0.1,无鉴权):POST /pet/action 触发 pet://notify 复用现有 dispatcher;GET /health 探活。默认端口 17382+重试,实际端口存内存并在桌宠设置页显示+curl 示例。Rust pet_api 模块(dispatch 纯函数 13 单测),前端 PetSettings 外部 API 区块,i18n zh/en,docs。trellis-check 自修了 React Hooks 顺序 bug。合并 master 时解决了 lib.rs(菜单重构)与 settings.json(pet.opacity/clickThrough 与 pet.api 同对象)冲突。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `32da186` | (see git log) |
+| `2c21d73` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
