@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "校对 i18n key 命名 / 翻译文件位置是否符合规范"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "检查代码质量、类型安全、测试要求"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "校对 Rust 命令签名 / 事件 emit 模式是否符合既定模式"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop frontend 总入口，整体规范校对"}

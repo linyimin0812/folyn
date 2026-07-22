@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "前端 i18n 规范，确认 locale store / key 命名 / 翻译文件位置约定"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Rust↔frontend 命令调用、事件 emit 的既定模式（pet_show_context_menu / on_menu_event）"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "localeStore 的 zustand 模式，setLocale 触发 Rust 同步的接入点"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop frontend 总入口，确认相关 spec 索引"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "本次是 frontend↔Rust 跨层状态同步（locale），需要遵循跨层思考指南"}
