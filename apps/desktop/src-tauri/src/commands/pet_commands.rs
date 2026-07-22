@@ -852,25 +852,29 @@ pub async fn pet_bubble_set_position(
         .map_err(|e| AppError::from(e.to_string()))
 }
 
-/// Raise a pet-managed window to the highest standard macOS window level so
-/// it stays visible over every other always-on-top app (VS Code, etc.).
+/// Re-assert the pet window's topmost level + collection behavior.
 ///
-/// Why: Tauri 2.11's `WebviewWindow::set_always_on_top(true)` (and the
-/// `alwaysOnTop: true` config flag) only sets the NSWindow level to
-/// `NSFloatingWindowLevel` (kCGFloatingWindowLevelKey = 5). Other always-
-/// on-top apps that sit at Floating or higher can cover the pet. The user
-/// wants the pet visible everywhere, so we override the level to the
-/// ScreenSaver level — the highest standard level, above the Dock, menu
-/// bar, pop-up menus, and any always-on-top app window.
+/// Why: Tauri 2.11's stock `WebviewWindow::show()` (run from `PetApp.tsx`'s
+/// mount effect and on re-show) resets the NSPanel's level to `Floating` (5).
+/// Other always-on-top apps (VS Code) at Floating or higher then cover the
+/// pet. The frontend polls this command every ~800ms and on every
+/// `tauri://blur` — both NO-OP'd on the NSPanel backend before this fix, so
+/// nothing re-asserted the Dock level (20) after AppKit demoted it.
 ///
-/// This is a raw `setLevel:` on the underlying NSWindow (obtained via
-/// `WebviewWindow::ns_window`). It is macOS-only; on other platforms the
-/// command is a no-op (Tauri's `alwaysOnTop: true` config is the best
-/// available and pet mode is macOS-only at present). Custom `invoke`
-/// commands bypass the ACL, so no capability entry is needed.
+/// macOS has two backends:
+///   - NSPanel (default): re-apply `panel.show()` (orderFrontRegardless, the
+///     kick that promotes the panel above other apps' frontmost windows) +
+///     `set_level(PanelLevel::Dock)` + `set_collection_behavior(stationary |
+///     move_to_active_space | full_screen_auxiliary)` — mirrors
+///     `pet_panel_macos::convert_windows`.
+///   - Legacy (`QUILL_PET_PANEL_BACKEND=legacy`): raw `NSWindow.setLevel:` at
+///     the ScreenSaver level + `setCollectionBehavior:` (moveToActiveSpace |
+///     fullScreenAuxiliary | fullScreenAllowsTiling = 770) via the raw
+///     NSWindow pointer.
 ///
-/// Call once on mount from `PetApp` and `PetPanelApp` (the level persists
-/// across show/hide for the lifetime of the window).
+/// Both branches run on the macOS main thread via `run_on_main_thread`
+/// (NSWindow/NSPanel API is main-thread-only; this is an async command).
+/// Non-macOS: no-op. Custom `invoke` commands bypass the ACL.
 ///
 /// NOTE: `NSWindow.setLevel:` takes a `CGWindowLevel` (the actual level
 /// NUMBER), not a `CGWindowLevelKey` enum value. `kCGScreenSaverWindowLevelKey`
@@ -882,18 +886,40 @@ pub async fn pet_bubble_set_position(
 #[cfg(target_os = "macos")]
 #[tauri::command]
 pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Result<(), AppError> {
-    use objc::{msg_send, sel, sel_impl};
-    use objc::runtime::Object;
-
-    // NSPanel backend owns the window's level (Dock) + collectionBehavior
-    // (273). The legacy ScreenSaver-level re-apply below would overwrite the
-    // panel's Dock level and break fullscreen-overlay visibility, so it is a
-    // no-op in NSPanel mode. The frontend's ~800ms poll still calls this
-    // command, which is harmless (returns immediately).
     if crate::pet_panel_macos::backend_is_nspanel() {
+        // NSPanel backend: re-apply the BongoCat recipe (show + Dock level +
+        // collectionBehavior). `to_panel()` on an already-converted window
+        // re-asserts the class + level + behavior idempotently.
+        use tauri_nspanel::{CollectionBehavior, PanelLevel, WebviewWindowExt};
+        let app2 = app.clone();
+        let label2 = label.clone();
+        app.run_on_main_thread(move || {
+            let Some(window) = app2.get_webview_window(&label2) else {
+                return;
+            };
+            if let Ok(panel) =
+                window.to_panel::<crate::pet_panel_macos::QuillPetPanel>()
+            {
+                // orderFrontRegardless — promotes the panel above other apps'
+                // frontmost windows (mirrors `toggle_pet_mode` show branch).
+                panel.show();
+                panel.set_level(PanelLevel::Dock.value());
+                panel.set_collection_behavior(
+                    CollectionBehavior::new()
+                        .stationary()
+                        .move_to_active_space()
+                        .full_screen_auxiliary()
+                        .into(),
+                );
+            }
+        })
+        .map_err(|e| e.to_string())?;
         return Ok(());
     }
 
+    // Legacy backend: raw NSWindow setLevel: at the ScreenSaver level.
+    use objc::{msg_send, sel, sel_impl};
+    use objc::runtime::Object;
     // kCGScreenSaverWindowLevelKey = 13 is the enum KEY, not the level
     // number. NSWindow.setLevel: takes the actual CGWindowLevel number,
     // which on modern macOS is resolved from the key via
@@ -937,11 +963,6 @@ pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Resu
             //   NSWindowCollectionBehaviorFullScreenAllowsTiling= 1 << 9  (512)
             // Combined = 2 | 256 | 512 = 770. Passed as NSUInteger (isize on
             // 64-bit) to `setCollectionBehavior:`.
-            // moveToActiveSpace(2) — the window follows the active Space;
-            // when the user switches to VS Code's fullscreen Space, the pet
-            // window moves there. canJoinAllSpaces(1) was tried first but
-            // didn't take effect (isOnActiveSpace stayed false over
-            // fullscreen VS Code).
             const CB_MOVE_TO_ACTIVE_SPACE: isize = 1 << 1;
             const CB_FULLSCREEN_AUXILIARY: isize = 1 << 8;
             const CB_FULLSCREEN_ALLOWS_TILING: isize = 1 << 9;
