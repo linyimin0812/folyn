@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "window/fullscreen patterns and set_dock_visibility context"}
+{"file": "apps/desktop/src-tauri/src/lib.rs", "reason": "set_dock_visibility(false) at line 577, invoke_handler list at 592+, menu builder at 546-558"}
+{"file": "apps/desktop/src-tauri/src/commands/pet_commands.rs", "reason": "is_fullscreen() API example at line 410; command pattern reference"}
+{"file": "apps/desktop/src/App.tsx", "reason": "keydown handler at lines 400-428; invoke() pattern at 184"}
+{"file": "apps/desktop/src-tauri/tauri.conf.json", "reason": "main window config; no fullscreen:false lock"}
+{"file": ".trellis/tasks/07-22-fullscreen-button-not-working/prd.md", "reason": "root cause + chosen approach B"}

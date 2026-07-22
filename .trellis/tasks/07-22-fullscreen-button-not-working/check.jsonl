@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "verify command pattern, invoke_handler registration, known-limitations section to update"}
+{"file": ".trellis/tasks/07-22-fullscreen-button-not-working/prd.md", "reason": "verify chosen approach B scope, out-of-scope items, verification criteria"}
