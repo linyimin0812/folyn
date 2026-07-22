@@ -23,7 +23,7 @@
  * dispatch through the same `pet://menu-action` channel; `App.tsx`
  * `handleAction` routes `hide-pet` to the same logic as `disable-pet`.
  *
- * `set-pet-size` carries a `{ size: 'small'|'medium'|'large' }` payload on
+ * `set-pet-size` carries a `{ size: '50'|'75'|'100'|'125'|'150' }` payload on
  * the event (see `App.tsx` listener) so the handler can apply the size
  * without re-parsing the menu id; the Rust `pet_ctx_menu_action` mapping
  * emits the action string and the size payload is attached separately.
@@ -59,7 +59,7 @@ export type PetMenuAction =
  *  level; all other actions use only `action`. */
 export interface PetMenuActionPayload {
   action: PetMenuAction;
-  size?: 'small' | 'medium' | 'large';
+  size?: '50' | '75' | '100' | '125' | '150';
 }
 
 /**

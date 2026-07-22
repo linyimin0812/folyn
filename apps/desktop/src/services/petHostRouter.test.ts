@@ -73,16 +73,16 @@ describe('routePetMenuAction', () => {
   });
 
   it('set-pet-size persists size, invokes set_pet_size, and emits pet://size-changed', async () => {
-    await routePetMenuAction('set-pet-size', 'large');
-    expect(usePetStore.getState().petSize).toBe('large');
-    expect(invokeMock).toHaveBeenCalledWith('set_pet_size', { level: 'large' });
-    expect(emitMock).toHaveBeenCalledWith('pet://size-changed', { size: 'large' });
+    await routePetMenuAction('set-pet-size', '150');
+    expect(usePetStore.getState().petSize).toBe('150');
+    expect(invokeMock).toHaveBeenCalledWith('set_pet_size', { level: '150' });
+    expect(emitMock).toHaveBeenCalledWith('pet://size-changed', { size: '150' });
   });
 
-  it('set-pet-size defaults to medium when size omitted', async () => {
+  it('set-pet-size defaults to 100 when size omitted', async () => {
     await routePetMenuAction('set-pet-size');
-    expect(usePetStore.getState().petSize).toBe('medium');
-    expect(invokeMock).toHaveBeenCalledWith('set_pet_size', { level: 'medium' });
+    expect(usePetStore.getState().petSize).toBe('100');
+    expect(invokeMock).toHaveBeenCalledWith('set_pet_size', { level: '100' });
   });
 
   it('daily-note opens the daily note and focuses main', async () => {

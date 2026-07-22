@@ -42,7 +42,7 @@ async function focusMain(): Promise<void> {
  *  the main editor so it comes forward. */
 export async function routePetMenuAction(
   action: PetMenuAction,
-  size?: 'small' | 'medium' | 'large',
+  size?: '50' | '75' | '100' | '125' | '150',
 ): Promise<void> {
   switch (action) {
     case 'show-main':
@@ -69,7 +69,7 @@ export async function routePetMenuAction(
       }
       break;
     case 'set-pet-size': {
-      const level = size ?? 'medium';
+      const level = size ?? '100';
       usePetStore.getState().setPetSize(level);
       try {
         const { invoke } = await import('@tauri-apps/api/core');

@@ -37,9 +37,11 @@ fn pet_ctx_menu_action(id: &str) -> Option<&'static str> {
         commands::PET_CTX_MENU_NEW_NOTE => Some("new-note"),
         commands::PET_CTX_MENU_TOGGLE_AI => Some("toggle-ai"),
         commands::PET_CTX_MENU_HIDE_PET => Some("hide-pet"),
-        commands::PET_CTX_MENU_SIZE_SMALL => Some("set-pet-size"),
-        commands::PET_CTX_MENU_SIZE_MEDIUM => Some("set-pet-size"),
-        commands::PET_CTX_MENU_SIZE_LARGE => Some("set-pet-size"),
+        commands::PET_CTX_MENU_SIZE_50 => Some("set-pet-size"),
+        commands::PET_CTX_MENU_SIZE_75 => Some("set-pet-size"),
+        commands::PET_CTX_MENU_SIZE_100 => Some("set-pet-size"),
+        commands::PET_CTX_MENU_SIZE_125 => Some("set-pet-size"),
+        commands::PET_CTX_MENU_SIZE_150 => Some("set-pet-size"),
         commands::PET_CTX_MENU_DISABLE_PET => Some("disable-pet"),
         // Launcher-only actions (pet-panel buttons, not native menu items).
         // Recognized here so the action-string contract stays uniform.
@@ -58,9 +60,11 @@ fn pet_ctx_menu_action(id: &str) -> Option<&'static str> {
 /// correct size without re-parsing the menu id.
 fn pet_ctx_menu_size_level(id: &str) -> Option<&'static str> {
     match id {
-        commands::PET_CTX_MENU_SIZE_SMALL => Some("small"),
-        commands::PET_CTX_MENU_SIZE_MEDIUM => Some("medium"),
-        commands::PET_CTX_MENU_SIZE_LARGE => Some("large"),
+        commands::PET_CTX_MENU_SIZE_50 => Some("50"),
+        commands::PET_CTX_MENU_SIZE_75 => Some("75"),
+        commands::PET_CTX_MENU_SIZE_100 => Some("100"),
+        commands::PET_CTX_MENU_SIZE_125 => Some("125"),
+        commands::PET_CTX_MENU_SIZE_150 => Some("150"),
         _ => None,
     }
 }
@@ -498,10 +502,10 @@ pub fn run() {
             }
         })
         .setup(|app| {
-            // Shared pet-size state ("small"|"medium"|"large"). Synced from
+            // Shared pet-size state ("50"|"75"|"100"|"125"|"150"). Synced from
             // the frontend via `set_pet_size` and from `on_menu_event` on a
             // native submenu pick. Read by `pet_show_context_menu` to
-            // pre-check the current size radio item. Defaults to `"medium"`
+            // pre-check the current size radio item. Defaults to `"100"`
             // so existing users keep the 96×96 layout on first right-click.
             app.manage(commands::PetSizeState(std::sync::Mutex::new(
                 commands::PetSizeState::DEFAULT_LEVEL.to_string(),

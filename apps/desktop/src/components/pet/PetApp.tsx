@@ -47,12 +47,12 @@ import { usePetStore } from '@/store/petStore';
 
 type PetState = 'idle' | 'hover' | 'drag' | 'click';
 
-/** Pet window size is now user-selectable (small/medium/large). The sprite
+/** Pet window size is user-selectable (50/75/100/125/150 %). The sprite
  *  layer reads `petSize` from petStore and scales to match the Tauri
  *  window size (kept in sync by the Rust `set_pet_size` command). The
  *  mascot SVG inside is 75% of this value (see `mascotSizeForPetSize`).
  *  MUST stay in sync with `PET_SIZE_TO_PX` in `petPosition.ts` and the
- *  `pet` window size in `tauri.conf.json` (which is the medium default,
+ *  `pet` window size in `tauri.conf.json` (which is the 100 default,
  *  overridden at mount via `set_pet_size`). */
 const SPRITE_OFFSET = 0;
 const POSITION_PERSIST_INTERVAL_MS = 800;
@@ -622,13 +622,13 @@ export function PetApp() {
         }
         // Re-assert the pet size AFTER show(). macOS can defer `set_size` on
         // a HIDDEN NSWindow and `show()` may reset the frame to the conf
-        // default (96×96 medium). If the user saved small/large, the
-        // pre-show `set_pet_size` (step 1) may have been clobbered by show()
-        // — re-assert here so a non-medium size reliably takes effect on
-        // first launch. Mirrors the pet-panel post-show re-assert pattern
-        // (see tauri-window-patterns.md "Secondary Opaque Panel Window").
+        // default (96×96, i.e. the `100` level). If the user saved a non-100
+        // size, the pre-show `set_pet_size` (step 1) may have been clobbered
+        // by show() — re-assert here so a non-default size reliably takes
+        // effect on first launch. Mirrors the pet-panel post-show re-assert
+        // pattern (see tauri-window-patterns.md "Secondary Opaque Panel Window").
         const { petSize: savedSize } = (await import('@/store/petStore')).usePetStore.getState();
-        if (savedSize !== 'medium') {
+        if (savedSize !== '100') {
           try {
             await invoke('set_pet_size', { level: savedSize });
           } catch (err) {
@@ -830,11 +830,11 @@ export function PetApp() {
         const { listen } = await import('@tauri-apps/api/event');
         const { invoke } = await import('@tauri-apps/api/core');
         const { getCurrentWindow } = await import('@tauri-apps/api/window');
-        unlisten = await listen<{ size: 'small' | 'medium' | 'large' }>(
+        unlisten = await listen<{ size: '50' | '75' | '100' | '125' | '150' }>(
           'pet://size-changed',
           async (event) => {
             const size = event.payload?.size;
-            if (size !== 'small' && size !== 'medium' && size !== 'large') return;
+            if (size !== '50' && size !== '75' && size !== '100' && size !== '125' && size !== '150') return;
             const { usePetStore } = await import('@/store/petStore');
             usePetStore.setState({ petSize: size });
             // Re-clamp the current position with the new size so a larger

@@ -73,7 +73,7 @@ function isPetIconSource(v: unknown): v is PetIconSource {
 }
 
 function isPetSize(v: unknown): v is PetSize {
-  return v === 'small' || v === 'medium' || v === 'large';
+  return v === '50' || v === '75' || v === '100' || v === '125' || v === '150';
 }
 
 function isNotificationForm(v: unknown): v is NotificationForm {

@@ -4,10 +4,10 @@ use tauri::{Emitter, Manager, PhysicalPosition, PhysicalSize};
 
 use crate::errors::AppError;
 
-/// Shared pet-size level state ("small"|"medium"|"large"). Synced from the
-/// frontend via the `set_pet_size` command and from `on_menu_event` when the
-/// user picks a size from the native submenu. Read by `pet_show_context_menu`
-/// to pre-check the current size radio item. Defaults to `"medium"` so
+/// Shared pet-size level state ("50"|"75"|"100"|"125"|"150"). Synced from
+/// the frontend via the `set_pet_size` command and from `on_menu_event` when
+/// the user picks a size from the native submenu. Read by `pet_show_context_menu`
+/// to pre-check the current size radio item. Defaults to `"100"` so
 /// existing users keep the 96×96 layout on first right-click.
 ///
 /// Defined here (not in `lib.rs`) so both `commands.rs` and `lib.rs` share
@@ -18,7 +18,7 @@ pub struct PetSizeState(pub Mutex<String>);
 impl PetSizeState {
     /// The default size level — matches `PET_SIZE_DEFAULT` in
     /// `petPosition.ts` and the `PET_WINDOW_SIZE` (96) default.
-    pub const DEFAULT_LEVEL: &'static str = "medium";
+    pub const DEFAULT_LEVEL: &'static str = "100";
 
     /// Read the current level. Returns the default if the mutex is poisoned
     /// (shouldn't happen — only a panic while holding the lock would poison
@@ -57,9 +57,11 @@ pub const PET_CTX_MENU_SHOW_MAIN: &str = "pet-ctx-show-main";
 pub const PET_CTX_MENU_NEW_NOTE: &str = "pet-ctx-new-note";
 pub const PET_CTX_MENU_TOGGLE_AI: &str = "pet-ctx-toggle-ai";
 pub const PET_CTX_MENU_HIDE_PET: &str = "pet-ctx-hide-pet";
-pub const PET_CTX_MENU_SIZE_SMALL: &str = "pet-ctx-size-small";
-pub const PET_CTX_MENU_SIZE_MEDIUM: &str = "pet-ctx-size-medium";
-pub const PET_CTX_MENU_SIZE_LARGE: &str = "pet-ctx-size-large";
+pub const PET_CTX_MENU_SIZE_50: &str = "pet-ctx-size-50";
+pub const PET_CTX_MENU_SIZE_75: &str = "pet-ctx-size-75";
+pub const PET_CTX_MENU_SIZE_100: &str = "pet-ctx-size-100";
+pub const PET_CTX_MENU_SIZE_125: &str = "pet-ctx-size-125";
+pub const PET_CTX_MENU_SIZE_150: &str = "pet-ctx-size-150";
 pub const PET_CTX_MENU_DISABLE_PET: &str = "pet-ctx-disable-pet";
 /// Native context-menu item that fires the demo bubble notification (PRD:
 /// pet-popup-bubble-notification). `on_menu_event` in `lib.rs` maps this id
@@ -80,9 +82,11 @@ pub enum PetMenuLabel {
     ToggleAi,
     HidePet,
     SizeSubmenu,
-    SizeSmall,
-    SizeMedium,
-    SizeLarge,
+    Size50,
+    Size75,
+    Size100,
+    Size125,
+    Size150,
     DisablePet,
     TestBubble,
 }
@@ -99,9 +103,11 @@ pub fn pet_menu_label(locale: &str, key: PetMenuLabel) -> &'static str {
             PetMenuLabel::ToggleAi => "切换 AI 面板",
             PetMenuLabel::HidePet => "隐藏桌宠图标",
             PetMenuLabel::SizeSubmenu => "桌宠大小",
-            PetMenuLabel::SizeSmall => "小",
-            PetMenuLabel::SizeMedium => "中",
-            PetMenuLabel::SizeLarge => "大",
+            PetMenuLabel::Size50 => "50%",
+            PetMenuLabel::Size75 => "75%",
+            PetMenuLabel::Size100 => "100%",
+            PetMenuLabel::Size125 => "125%",
+            PetMenuLabel::Size150 => "150%",
             PetMenuLabel::DisablePet => "禁用桌宠模式",
             PetMenuLabel::TestBubble => "测试气泡通知",
         },
@@ -111,9 +117,11 @@ pub fn pet_menu_label(locale: &str, key: PetMenuLabel) -> &'static str {
             PetMenuLabel::ToggleAi => "Toggle AI Panel",
             PetMenuLabel::HidePet => "Hide Pet Icon",
             PetMenuLabel::SizeSubmenu => "Pet Size",
-            PetMenuLabel::SizeSmall => "Small",
-            PetMenuLabel::SizeMedium => "Medium",
-            PetMenuLabel::SizeLarge => "Large",
+            PetMenuLabel::Size50 => "50%",
+            PetMenuLabel::Size75 => "75%",
+            PetMenuLabel::Size100 => "100%",
+            PetMenuLabel::Size125 => "125%",
+            PetMenuLabel::Size150 => "150%",
             PetMenuLabel::DisablePet => "Disable Pet Mode",
             PetMenuLabel::TestBubble => "Test Bubble Notification",
         },
@@ -191,31 +199,33 @@ pub fn build_app_menu(app: &tauri::AppHandle, locale: &str) -> Result<(), AppErr
     Ok(())
 }
 
-/// Map a `PetSize` level string ("small"|"medium"|"large") to the logical
+/// Map a `PetSize` level string ("50"|"75"|"100"|"125"|"150") to the logical
 /// pixel footprint of the pet window. Mirrors `PET_SIZE_TO_PX` in
 /// `petPosition.ts` — keep both in sync. Used by `set_pet_size` to resolve
 /// the level to a `LogicalSize`.
 fn pet_size_to_px(level: &str) -> Option<(u32, u32)> {
     match level {
-        "small" => Some((64, 64)),
-        "medium" => Some((96, 96)),
-        "large" => Some((128, 128)),
+        "50" => Some((48, 48)),
+        "75" => Some((72, 72)),
+        "100" => Some((96, 96)),
+        "125" => Some((120, 120)),
+        "150" => Some((144, 144)),
         _ => None,
     }
 }
 
 /// Resolve the current pet size level from the app's shared `PetSizeState`.
-/// Returns `"medium"` (the default) when the state is unset, which preserves
+/// Returns `"100"` (the default) when the state is unset, which preserves
 /// the pre-feature 96×96 layout for existing users on first right-click.
 fn current_pet_size_level(app: &tauri::AppHandle) -> String {
     app.state::<PetSizeState>().level()
 }
 
 /// Resize the pet Tauri window to the given size level. The level string is
-/// validated against the three known values (`"small"|"medium"|"large"`);
-/// any other value returns an error so a corrupt frontend payload cannot
-/// shrink the window to 0×0. The window's `transparent`/`decorations` flags
-/// are unaffected — only `setSize` is called.
+/// validated against the five known values (`"50".."150"`); any other value
+/// returns an error so a corrupt frontend payload cannot shrink the window
+/// to 0×0. The window's `transparent`/`decorations` flags are unaffected —
+/// only `setSize` is called.
 ///
 /// Also updates the shared `PetSizeState` so the next right-click menu
 /// build pre-selects the correct size radio item.
@@ -716,35 +726,53 @@ pub async fn pet_show_context_menu(
     )
     .map_err(|e| e.to_string())?;
 
-    // Pet size submenu — three radio items (小/中/大), the current size
-    // pre-checked. Reads the shared `PetSizeState` (synced from frontend
-    // via `set_pet_size` / `set_pet_size_state`) so the checkmark reflects
-    // the last-applied size.
+    // Pet size submenu — five radio items (50%/75%/100%/125%/150%), the
+    // current size pre-checked. Reads the shared `PetSizeState` (synced from
+    // frontend via `set_pet_size` / `set_pet_size_state`) so the checkmark
+    // reflects the last-applied size.
     let current_level = current_pet_size_level(&app);
-    let size_small = CheckMenuItem::with_id(
+    let size_50 = CheckMenuItem::with_id(
         &app,
-        PET_CTX_MENU_SIZE_SMALL,
-        pet_menu_label(loc, PetMenuLabel::SizeSmall),
+        PET_CTX_MENU_SIZE_50,
+        pet_menu_label(loc, PetMenuLabel::Size50),
         true,
-        current_level == "small",
+        current_level == "50",
         None::<&str>,
     )
     .map_err(|e| e.to_string())?;
-    let size_medium = CheckMenuItem::with_id(
+    let size_75 = CheckMenuItem::with_id(
         &app,
-        PET_CTX_MENU_SIZE_MEDIUM,
-        pet_menu_label(loc, PetMenuLabel::SizeMedium),
+        PET_CTX_MENU_SIZE_75,
+        pet_menu_label(loc, PetMenuLabel::Size75),
         true,
-        current_level == "medium",
+        current_level == "75",
         None::<&str>,
     )
     .map_err(|e| e.to_string())?;
-    let size_large = CheckMenuItem::with_id(
+    let size_100 = CheckMenuItem::with_id(
         &app,
-        PET_CTX_MENU_SIZE_LARGE,
-        pet_menu_label(loc, PetMenuLabel::SizeLarge),
+        PET_CTX_MENU_SIZE_100,
+        pet_menu_label(loc, PetMenuLabel::Size100),
         true,
-        current_level == "large",
+        current_level == "100",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let size_125 = CheckMenuItem::with_id(
+        &app,
+        PET_CTX_MENU_SIZE_125,
+        pet_menu_label(loc, PetMenuLabel::Size125),
+        true,
+        current_level == "125",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let size_150 = CheckMenuItem::with_id(
+        &app,
+        PET_CTX_MENU_SIZE_150,
+        pet_menu_label(loc, PetMenuLabel::Size150),
+        true,
+        current_level == "150",
         None::<&str>,
     )
     .map_err(|e| e.to_string())?;
@@ -752,7 +780,7 @@ pub async fn pet_show_context_menu(
         &app,
         pet_menu_label(loc, PetMenuLabel::SizeSubmenu),
         true,
-        &[&size_small, &size_medium, &size_large],
+        &[&size_50, &size_75, &size_100, &size_125, &size_150],
     )
     .map_err(|e| e.to_string())?;
 
@@ -1458,9 +1486,10 @@ pub async fn pet_make_transparent(_app: tauri::AppHandle, _label: String) -> Res
 mod tests {
     use super::*;
 
-    /// Every `PetMenuLabel` key resolves to a non-empty string in both zh and
-    /// en, and the two locales produce different text for each key. Catches
-    /// a future key added to the enum but forgotten in one of the match arms.
+    /// Every `PetMenuLabel` key resolves to a non-empty string in both zh
+    /// and en. Catches a future key added to the enum but forgotten in one
+    /// of the match arms. (Size labels are locale-neutral "50%" etc., so the
+    /// zh≠en assertion is dropped — only non-empty is asserted.)
     #[test]
     fn pet_menu_labels_cover_all_keys_in_both_locales() {
         let keys = [
@@ -1469,9 +1498,11 @@ mod tests {
             PetMenuLabel::ToggleAi,
             PetMenuLabel::HidePet,
             PetMenuLabel::SizeSubmenu,
-            PetMenuLabel::SizeSmall,
-            PetMenuLabel::SizeMedium,
-            PetMenuLabel::SizeLarge,
+            PetMenuLabel::Size50,
+            PetMenuLabel::Size75,
+            PetMenuLabel::Size100,
+            PetMenuLabel::Size125,
+            PetMenuLabel::Size150,
             PetMenuLabel::DisablePet,
             PetMenuLabel::TestBubble,
         ];
@@ -1480,7 +1511,6 @@ mod tests {
             let en = pet_menu_label("en", key);
             assert!(!zh.is_empty(), "zh label empty for key");
             assert!(!en.is_empty(), "en label empty for key");
-            assert_ne!(zh, en, "zh and en labels identical for a key");
         }
     }
 

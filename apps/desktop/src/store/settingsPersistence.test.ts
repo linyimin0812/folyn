@@ -54,7 +54,7 @@ function resetAllDefaults() {
     petModeEnabled: false, petPositionX: -1, petPositionY: -1,
     petPanelX: -1, petPanelY: -1, petPanelWidth: -1, petPanelHeight: -1,
     petPanelSizeVersion: 0, petPosVersion: 1, petIconSource: 'builtin',
-    petIconPath: '', petSizeVersion: 0, petSize: 'medium', notificationForm: 'bubble',
+    petIconPath: '', petSizeVersion: 0, petSize: '100', notificationForm: 'bubble',
   }, false);
 }
 
@@ -69,7 +69,7 @@ describe('settingsPersistence round-trip', () => {
     useSyncStore.getState().setSyncBucket('rt-bucket');
     useAiConfigStore.getState().setChatModel('rt-model');
     usePrefsStore.getState().setDailyNoteDateFormat('DD/MM');
-    usePetStore.getState().setPetSize('large');
+    usePetStore.getState().setPetSize('150');
 
     // Flush the debounced persist.
     vi.advanceTimersByTime(400);
@@ -84,7 +84,7 @@ describe('settingsPersistence round-trip', () => {
     expect(useSyncStore.getState().syncBucket).toBe('rt-bucket');
     expect(useAiConfigStore.getState().chatModel).toBe('rt-model');
     expect(usePrefsStore.getState().dailyNoteDateFormat).toBe('DD/MM');
-    expect(usePetStore.getState().petSize).toBe('large');
+    expect(usePetStore.getState().petSize).toBe('150');
   });
 
   it('missing fields keep defaults on load', async () => {
@@ -174,8 +174,8 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
       petPosVersion: 1,
       petIconSource: 'custom',
       petIconPath: '/abs/pet.png',
-      petSizeVersion: 2, // matches PET_SIZE_VERSION
-      petSize: 'large',
+      petSizeVersion: 3, // matches PET_SIZE_VERSION
+      petSize: '150',
       notificationForm: 'both',
     };
 
@@ -216,7 +216,7 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
     expect(usePetStore.getState().petModeEnabled).toBe(true);
     expect(usePetStore.getState().petPositionX).toBe(250);
     expect(usePetStore.getState().petIconSource).toBe('custom');
-    expect(usePetStore.getState().petSize).toBe('large');
+    expect(usePetStore.getState().petSize).toBe('150');
     expect(usePetStore.getState().notificationForm).toBe('both');
 
     // scheduleStore boardColumns
@@ -282,7 +282,7 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
     expect(pet.petSizeVersion).toBe(PET_SIZE_VERSION);
     expect(pet.petIconSource).toBe('builtin');
     expect(pet.petIconPath).toBe('');
-    expect(['small', 'medium', 'large']).toContain(pet.petSize);
+    expect(['50', '75', '100', '125', '150']).toContain(pet.petSize);
     expect(pet.notificationForm).toBe('bubble');
   });
 });
@@ -294,14 +294,14 @@ describe('settingsPersistence single writer', () => {
     const setSpy = vi.spyOn(storageClient, 'set');
     useAppearanceStore.getState().setVaultName('a');
     useSyncStore.getState().setSyncBucket('b');
-    usePetStore.getState().setPetSize('large');
+    usePetStore.getState().setPetSize('150');
     vi.advanceTimersByTime(400);
     // One debounced flush → one storageClient.set call for the whole blob.
     expect(setSpy).toHaveBeenCalledTimes(1);
     const payload = setSpy.mock.calls[0][1] as Record<string, unknown>;
     expect(payload.vaultName).toBe('a');
     expect(payload.syncBucket).toBe('b');
-    expect(payload.petSize).toBe('large');
+    expect(payload.petSize).toBe('150');
     setSpy.mockRestore();
   });
 });

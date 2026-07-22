@@ -23,10 +23,11 @@
 /** Pet window footprint (matches `tauri.conf.json` `pet` window size). */
 export const PET_WINDOW_SIZE = 96;
 
-/** User-selectable pet size levels. Synced with Rust `set_pet_size` command
- *  and `PET_CTX_MENU_SIZE_*` menu ids. The medium level matches the default
- *  `PET_WINDOW_SIZE` (96) so existing users keep their layout. */
-export type PetSize = 'small' | 'medium' | 'large';
+/** User-selectable pet size levels (percentage of the 96px base footprint).
+ *  Synced with Rust `set_pet_size` command and `PET_CTX_MENU_SIZE_*` menu ids.
+ *  `100` matches the default `PET_WINDOW_SIZE` (96) so existing users keep
+ *  their layout. */
+export type PetSize = '50' | '75' | '100' | '125' | '150';
 
 /** Pixel footprint for each `PetSize` (logical points, matches the work-area
  *  unit). The mascot SVG and the sprite layer both scale to this value via
@@ -34,22 +35,24 @@ export type PetSize = 'small' | 'medium' | 'large';
  *  resized Rust-side by `set_pet_size`. MUST stay in sync with the Rust
  *  `pet_size_to_px` mapping in `commands.rs`. */
 export const PET_SIZE_TO_PX: Record<PetSize, number> = {
-  small: 64,
-  medium: 96,
-  large: 128,
+  '50': 48,
+  '75': 72,
+  '100': 96,
+  '125': 120,
+  '150': 144,
 };
 
 /** Default pet size level (used when the persisted value is missing / invalid
  *  on hydrate). Matches `PET_WINDOW_SIZE` so the pre-size-feature layout is
  *  preserved. */
-export const PET_SIZE_DEFAULT: PetSize = 'medium';
+export const PET_SIZE_DEFAULT: PetSize = '100';
 
 /**
  * Resolve a `PetSize` to its pixel footprint. Falls back to the default for
  * unknown values (defensive — a corrupt persisted string would otherwise crash
  * the renderer). */
 export function petSizeToPx(size: PetSize | string | undefined): number {
-  if (size === 'small' || size === 'medium' || size === 'large') {
+  if (size === '50' || size === '75' || size === '100' || size === '125' || size === '150') {
     return PET_SIZE_TO_PX[size];
   }
   return PET_SIZE_TO_PX[PET_SIZE_DEFAULT];
@@ -65,7 +68,7 @@ export function petSizeToPx(size: PetSize | string | undefined): number {
  *
  * The mascot is 75% of the window (72/96), leaving a ~12% transparent
  * margin on each side for the breathing `scale` self-pulse. The ratio is
- * preserved across all three `PetSize` levels — `mascotSizeForPetSize(s)`
+ * preserved across all `PetSize` levels — `mascotSizeForPetSize(s)`
  * returns `PET_SIZE_TO_PX[s] * 0.75`.
  *
  * MUST stay in sync with `.pet-mascot` width/height in `pet.css` for the
@@ -100,8 +103,12 @@ export function mascotSizeForPetSize(size: PetSize | string | undefined): number
  *
  * History: `1` = the original 120×120 window / 88×88 mascot era. `2` = the
  * shrunk 96×96 window / 72×72 mascot (PRD `settings-pet-tab-and-custom-icon`).
+ * `3` = size levels switched from small/medium/large (64/96/128) to
+ * percentage-based 50/75/100/125/150 (48/72/96/120/144); old persisted
+ * `petSize` strings (`small`/`medium`/`large`) no longer validate and fall
+ * back to `100` on hydrate.
  */
-export const PET_SIZE_VERSION = 2;
+export const PET_SIZE_VERSION = 3;
 
 /**
  * Margins kept between the pet window's edges and the work-area's physical

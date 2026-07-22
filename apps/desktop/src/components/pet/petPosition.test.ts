@@ -564,10 +564,10 @@ describe('computeBubblePosition', () => {
 
   it('keeps the bubble inside the work area when the pet is small', () => {
     const petPos = { x: 20, y: 40 };
-    const pos = computeBubblePosition(petPos, workArea, 'small');
-    // small pet = 64px; petCenterX = 20+32 = 52 → raw x = 52-160 = -108 → clamped to 0.
+    const pos = computeBubblePosition(petPos, workArea, '50');
+    // 50% pet = 48px; petCenterX = 20+24 = 44 → raw x = 44-160 = -116 → clamped to 0.
     expect(pos.x).toBe(0);
-    // aboveY = 40 - 6 - 120 = -86 < 25 → below = 40 + 64 + 6 = 110.
-    expect(pos.y).toBe(110);
+    // aboveY = 40 - 6 - 120 = -86 < 25 → below = 40 + 48 + 6 = 94.
+    expect(pos.y).toBe(94);
   });
 });

@@ -75,8 +75,8 @@ describe('usePetStore setters', () => {
   });
 
   it('setPetSize updates', () => {
-    usePetStore.getState().setPetSize('large');
-    expect(usePetStore.getState().petSize).toBe('large');
+    usePetStore.getState().setPetSize('150');
+    expect(usePetStore.getState().petSize).toBe('150');
   });
 
   it('setNotificationForm updates', () => {
@@ -145,7 +145,7 @@ describe('usePetStore.hydrate', () => {
       petModeEnabled: true,
       petIconSource: 'custom',
       petIconPath: '/abs/pet.png',
-      petSize: 'large',
+      petSize: '150',
       notificationForm: 'both',
     });
     const s = usePetStore.getState();
@@ -159,7 +159,7 @@ describe('usePetStore.hydrate', () => {
     expect(s.petModeEnabled).toBe(true);
     expect(s.petIconSource).toBe('custom');
     expect(s.petIconPath).toBe('/abs/pet.png');
-    expect(s.petSize).toBe('large');
+    expect(s.petSize).toBe('150');
     expect(s.notificationForm).toBe('both');
   });
 });

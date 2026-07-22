@@ -116,7 +116,7 @@ export function usePetHostBridge(): void {
       }
       // Event listener for pet → main window actions.
       const { listen } = await import('@tauri-apps/api/event');
-      const unAction = await listen<{ action: PetMenuAction; size?: 'small' | 'medium' | 'large' }>(
+      const unAction = await listen<{ action: PetMenuAction; size?: '50' | '75' | '100' | '125' | '150' }>(
         'pet://menu-action',
         (event) => {
           if (event.payload?.action) void routePetMenuAction(event.payload.action, event.payload?.size);
