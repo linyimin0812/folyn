@@ -81,10 +81,14 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
   return blob;
 }
 
-// Eagerly kick off the load on module import — this is the app's single
-// startup hydration entry. The pre-split settingsStore did the same
-// (`storageClient.get(...).then(...)` at module bottom); after the split this
-// module owns that responsibility exclusively (no other module eager-loads
-// the settings blob). Errors are swallowed — a missing blob is the normal
-// first-launch case.
-void loadSettings().catch(() => {});
+// ponytail: eager-load promise is the single await point for "is hydration
+// done yet?". Callers that read persisted state at startup (e.g. the pet-icon
+// orphan sweep in usePetHostBridge) MUST await this before touching the store
+// — otherwise they read default state and clobber the persisted value.
+export const settingsLoadDone: Promise<void> = loadSettings().then(() => undefined, () => undefined);
+
+// ponytail: `settingsLoadDone` (above) is the single eager-load entry — a
+// top-level const starts the promise at module import. The pre-split
+// settingsStore did the same with `storageClient.get(...).then(...)` at module
+// bottom. Errors are swallowed — a missing blob is the normal first-launch
+// case.

@@ -14,6 +14,7 @@
 import { useEffect } from 'react';
 import { isTauri } from '@/utils/platform';
 import { usePetStore } from '@/store/petStore';
+import { settingsLoadDone } from '@/store/settingsPersistence';
 import {
   dispatchNotification,
   startNotificationClickListener,
@@ -41,6 +42,13 @@ export function usePetHostBridge(): void {
     let cancelled = false;
     (async () => {
       try {
+        // ponytail: wait for hydration before reading the store — otherwise
+        // the default `petIconSource='builtin'` sends this effect down the
+        // orphan-sweep branch, which deletes the user's `pet-icon.<ext>`
+        // file before hydrate restores the `custom/path` state. The mascot's
+        // `<img>` onError then clears the flag, and persistence is lost.
+        await settingsLoadDone;
+        if (cancelled) return;
         const { exists, remove, readDir } = await import('@tauri-apps/plugin-fs');
         const { appDataDir, join } = await import('@tauri-apps/api/path');
         const appData = await appDataDir();
