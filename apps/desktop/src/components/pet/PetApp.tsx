@@ -780,6 +780,40 @@ export function PetApp() {
     };
   }, []);
 
+  // ── Cross-window locale change sync ──
+  // The main window's `localeStore.setLocale` emits `locale://changed` so
+  // other Tauri windows (pet / pet-panel / …) — each a separate JS realm
+  // with its own i18next + localeStore instance — can apply the new locale
+  // without a reload. `openPetContextMenu` reads `i18n.language` to pick
+  // Rust-side menu labels, so without this listener the pet's right-click
+  // menu would lag the user's last locale switch. Mirrors `pet://icon-changed`.
+  // Wrapped in isTauri + try/catch so non-Tauri/test envs skip it.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        const i18n = (await import('@/i18n')).default;
+        const { useLocaleStore } = await import('@/store/localeStore');
+        unlisten = await listen<{ locale: 'zh' | 'en' }>(
+          'locale://changed',
+          (event) => {
+            const lg = event.payload?.locale;
+            if (lg !== 'zh' && lg !== 'en') return;
+            void i18n.changeLanguage(lg);
+            useLocaleStore.setState({ locale: lg });
+          },
+        );
+      } catch (err) {
+        console.warn('[pet] locale-changed listener setup failed:', err);
+      }
+    })();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
   // ── Cross-window size change sync ──
   // The main window's `handleAction('set-pet-size')` (App.tsx) calls Rust
   // `set_pet_size` (which resizes the pet window) AND emits `pet://size-changed`

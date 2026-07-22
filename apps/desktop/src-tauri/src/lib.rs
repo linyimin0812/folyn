@@ -18,7 +18,6 @@ mod voice;
 mod pet_panel_macos;
 
 use tauri::Manager;
-use tauri::menu::{MenuBuilder, SubmenuBuilder};
 use tauri::{Emitter, WindowEvent};
 
 /// Maps a pet context-menu item id (see `commands::PET_CTX_MENU_*`) to the
@@ -525,39 +524,13 @@ pub fn run() {
             // the wrong process name (dev .app's executable is `quill`, lowercase).
             log::info!("[voice] module ready; bundle_id={}", "com.quill.editor");
 
-            let app_menu = SubmenuBuilder::new(app, "Quill")
-                .about(None)
-                .separator()
-                .services()
-                .separator()
-                .hide()
-                .hide_others()
-                .show_all()
-                .separator()
-                .quit()
-                .build()?;
-
-            let edit_menu = SubmenuBuilder::new(app, "Edit")
-                .cut()
-                .copy()
-                .paste()
-                .build()?;
-
-            let window_menu = SubmenuBuilder::new(app, "Window")
-                .minimize()
-                .maximize()
-                .close_window()
-                .separator()
-                .fullscreen()
-                .build()?;
-
-            let menu = MenuBuilder::new(app)
-                .item(&app_menu)
-                .item(&edit_menu)
-                .item(&window_menu)
-                .build()?;
-
-            app.set_menu(menu)?;
+            // ponytail: app menu bar built via `commands::build_app_menu` so
+            // the same path serves the bootstrap build (here, locale="en") and
+            // the locale-switch rebuild (`pet_rebuild_app_menu`). The frontend
+            // hydrates `localeStore` after the JS realm starts and calls
+            // `pet_rebuild_app_menu` with the user's actual locale; until then
+            // the menu bar shows the English defaults.
+            commands::build_app_menu(app.handle(), "en")?;
 
             #[cfg(debug_assertions)]
             if let Some(window) = app.get_webview_window("main") {
@@ -607,6 +580,7 @@ pub fn run() {
             commands::get_pet_position,
             commands::pet_cursor_probe,
             commands::pet_show_context_menu,
+            commands::pet_rebuild_app_menu,
             commands::pet_set_cursor,
             commands::pet_get_work_area,
             commands::pet_panel_show,

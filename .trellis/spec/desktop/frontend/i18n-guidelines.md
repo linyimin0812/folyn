@@ -46,6 +46,18 @@ export const useLocaleStore = create<LocaleState>((set, get) => ({
 }));
 ```
 
+### Cross-window locale sync (non-obvious)
+
+Each Tauri webview window (`pet` / `pet-panel` / `pet-bubble` / `voice-orb` / `main`) is a **separate JS realm with its own i18next + localeStore instance**. `setLocale` in the main window updates only the main window's store/i18n — secondary windows stay at their module-load locale until explicitly notified.
+
+**Pattern**: `setLocale` emits a `locale://changed` event (Tauri 2 `emit` is global — reaches all windows); secondary windows listen and call `i18n.changeLanguage(lg)` + `useLocaleStore.setState({ locale: lg })` on their own instance. Mirrors the `pet://icon-changed` cross-window sync pattern (see `tauri-window-patterns.md`).
+
+**Why not just read localStorage**: secondary windows DO share localStorage with main on macOS WKWebView (same `WKWebsiteDataStore`), but the i18next instance is already initialized at module load with the then-current locale; `i18n.language` won't refresh without an explicit `changeLanguage` call. The event broadcast is what triggers that call.
+
+**Consumers that read `i18n.language` in a secondary window** (e.g. `openPetContextMenu` passing locale to Rust for native menu localization) rely on this listener being mounted. Without it, the right-click menu would lag the user's last locale switch until the pet window reloads.
+
+**Reference impl**: `localeStore.ts::emitLocaleChanged` + `PetApp.tsx` listener (mirrored by `PetPanelApp` / `PetBubbleApp` / `VoiceOrbApp` if they need localized strings).
+
 ### Resource JSON
 
 `apps/desktop/src/i18n/locales/{zh,en}/<namespace>.json` — flat key trees per namespace. zh and en MUST have identical key trees. Enforced by `apps/desktop/src/i18n/extracted-namespaces.test.ts` (recursive key-path parity check across every namespace in `NAMESPACES`).

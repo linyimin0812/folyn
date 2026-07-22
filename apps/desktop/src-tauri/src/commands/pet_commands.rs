@@ -69,6 +69,128 @@ pub const PET_CTX_MENU_DISABLE_PET: &str = "pet-ctx-disable-pet";
 /// source wired up yet.
 pub const PET_CTX_MENU_TEST_BUBBLE: &str = "pet-ctx-test-bubble";
 
+/// Localized label keys for the pet right-click context menu. One enum entry
+/// per `PET_CTX_MENU_*` id that has a user-visible label (separators have
+/// none). Translations live in `pet_menu_label`; IDs and `PetMenuAction`
+/// strings stay locale-independent.
+#[derive(Copy, Clone)]
+pub enum PetMenuLabel {
+    ShowMain,
+    NewNote,
+    ToggleAi,
+    HidePet,
+    SizeSubmenu,
+    SizeSmall,
+    SizeMedium,
+    SizeLarge,
+    DisablePet,
+    TestBubble,
+}
+
+/// Resolve a pet context-menu label for the given locale. `zh` → Chinese;
+/// any other value (including unknown locales) falls back to English. The
+/// frontend passes its `localeStore` value (`zh` / `en`) when invoking
+/// `pet_show_context_menu`.
+pub fn pet_menu_label(locale: &str, key: PetMenuLabel) -> &'static str {
+    match locale {
+        "zh" => match key {
+            PetMenuLabel::ShowMain => "显示主窗口",
+            PetMenuLabel::NewNote => "新建笔记",
+            PetMenuLabel::ToggleAi => "切换 AI 面板",
+            PetMenuLabel::HidePet => "隐藏桌宠图标",
+            PetMenuLabel::SizeSubmenu => "桌宠大小",
+            PetMenuLabel::SizeSmall => "小",
+            PetMenuLabel::SizeMedium => "中",
+            PetMenuLabel::SizeLarge => "大",
+            PetMenuLabel::DisablePet => "禁用桌宠模式",
+            PetMenuLabel::TestBubble => "测试气泡通知",
+        },
+        _ => match key {
+            PetMenuLabel::ShowMain => "Show Main Window",
+            PetMenuLabel::NewNote => "New Note",
+            PetMenuLabel::ToggleAi => "Toggle AI Panel",
+            PetMenuLabel::HidePet => "Hide Pet Icon",
+            PetMenuLabel::SizeSubmenu => "Pet Size",
+            PetMenuLabel::SizeSmall => "Small",
+            PetMenuLabel::SizeMedium => "Medium",
+            PetMenuLabel::SizeLarge => "Large",
+            PetMenuLabel::DisablePet => "Disable Pet Mode",
+            PetMenuLabel::TestBubble => "Test Bubble Notification",
+        },
+    }
+}
+
+/// Localized label keys for the macOS app menu bar submenus. "Quill" is a
+/// brand name and stays untranslated; `PredefinedMenuItem` (Cut/Copy/Paste
+/// /About/…) is OS-localized and untouched.
+#[derive(Copy, Clone)]
+pub enum AppMenuLabel {
+    Edit,
+    Window,
+}
+
+pub fn app_menu_label(locale: &str, key: AppMenuLabel) -> &'static str {
+    match locale {
+        "zh" => match key {
+            AppMenuLabel::Edit => "编辑",
+            AppMenuLabel::Window => "窗口",
+        },
+        _ => match key {
+            AppMenuLabel::Edit => "Edit",
+            AppMenuLabel::Window => "Window",
+        },
+    }
+}
+
+/// Build and install the macOS app menu bar (Quill / Edit / Window submenus)
+/// with titles localized for `locale`. Called once from `lib.rs::setup` (with
+/// `"en"` as the bootstrap default — frontend hydrates `localeStore` and
+/// calls `pet_rebuild_app_menu` to sync the user's actual locale) and again
+/// whenever the user switches locale. The `Quill` submenu title is a brand
+/// name and never translated; `Edit`/`Window` use `app_menu_label`.
+pub fn build_app_menu(app: &tauri::AppHandle, locale: &str) -> Result<(), AppError> {
+    use tauri::menu::{MenuBuilder, SubmenuBuilder};
+
+    let app_menu = SubmenuBuilder::new(app, "Quill")
+        .about(None)
+        .separator()
+        .services()
+        .separator()
+        .hide()
+        .hide_others()
+        .show_all()
+        .separator()
+        .quit()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let edit_menu = SubmenuBuilder::new(app, app_menu_label(locale, AppMenuLabel::Edit))
+        .cut()
+        .copy()
+        .paste()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let window_menu = SubmenuBuilder::new(app, app_menu_label(locale, AppMenuLabel::Window))
+        .minimize()
+        .maximize()
+        .close_window()
+        .separator()
+        .fullscreen()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let menu = MenuBuilder::new(app)
+        .item(&app_menu)
+        .item(&edit_menu)
+        .item(&window_menu)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    app.set_menu(menu).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Map a `PetSize` level string ("small"|"medium"|"large") to the logical
 /// pixel footprint of the pet window. Mirrors `PET_SIZE_TO_PX` in
 /// `petPosition.ts` — keep both in sync. Used by `set_pet_size` to resolve
@@ -536,7 +658,10 @@ pub async fn pet_set_cursor(app: tauri::AppHandle, kind: String) -> Result<(), A
 }
 
 #[tauri::command]
-pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), AppError> {
+pub async fn pet_show_context_menu(
+    app: tauri::AppHandle,
+    locale: String,
+) -> Result<(), AppError> {
     use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
     use tauri::Manager;
 
@@ -553,10 +678,11 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), AppError
         .get_webview_window(PET_LABEL)
         .ok_or_else(|| "pet window not found".to_string())?;
 
+    let loc = locale.as_str();
     let show_main = MenuItem::with_id(
         &app,
         PET_CTX_MENU_SHOW_MAIN,
-        "Show Main Window",
+        pet_menu_label(loc, PetMenuLabel::ShowMain),
         true,
         None::<&str>,
     )
@@ -564,7 +690,7 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), AppError
     let new_note = MenuItem::with_id(
         &app,
         PET_CTX_MENU_NEW_NOTE,
-        "New Note",
+        pet_menu_label(loc, PetMenuLabel::NewNote),
         true,
         None::<&str>,
     )
@@ -572,7 +698,7 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), AppError
     let toggle_ai = MenuItem::with_id(
         &app,
         PET_CTX_MENU_TOGGLE_AI,
-        "Toggle AI Panel",
+        pet_menu_label(loc, PetMenuLabel::ToggleAi),
         true,
         None::<&str>,
     )
@@ -584,7 +710,7 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), AppError
     let hide_pet = MenuItem::with_id(
         &app,
         PET_CTX_MENU_HIDE_PET,
-        "隐藏桌宠图标",
+        pet_menu_label(loc, PetMenuLabel::HidePet),
         true,
         None::<&str>,
     )
@@ -598,7 +724,7 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), AppError
     let size_small = CheckMenuItem::with_id(
         &app,
         PET_CTX_MENU_SIZE_SMALL,
-        "小",
+        pet_menu_label(loc, PetMenuLabel::SizeSmall),
         true,
         current_level == "small",
         None::<&str>,
@@ -607,7 +733,7 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), AppError
     let size_medium = CheckMenuItem::with_id(
         &app,
         PET_CTX_MENU_SIZE_MEDIUM,
-        "中",
+        pet_menu_label(loc, PetMenuLabel::SizeMedium),
         true,
         current_level == "medium",
         None::<&str>,
@@ -616,7 +742,7 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), AppError
     let size_large = CheckMenuItem::with_id(
         &app,
         PET_CTX_MENU_SIZE_LARGE,
-        "大",
+        pet_menu_label(loc, PetMenuLabel::SizeLarge),
         true,
         current_level == "large",
         None::<&str>,
@@ -624,7 +750,7 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), AppError
     .map_err(|e| e.to_string())?;
     let size_submenu = Submenu::with_items(
         &app,
-        "桌宠大小",
+        pet_menu_label(loc, PetMenuLabel::SizeSubmenu),
         true,
         &[&size_small, &size_medium, &size_large],
     )
@@ -634,7 +760,7 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), AppError
     let disable = MenuItem::with_id(
         &app,
         PET_CTX_MENU_DISABLE_PET,
-        "Disable Pet Mode",
+        pet_menu_label(loc, PetMenuLabel::DisablePet),
         true,
         None::<&str>,
     )
@@ -645,7 +771,7 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), AppError
     let test_bubble = MenuItem::with_id(
         &app,
         PET_CTX_MENU_TEST_BUBBLE,
-        "测试气泡通知",
+        pet_menu_label(loc, PetMenuLabel::TestBubble),
         true,
         None::<&str>,
     )
@@ -672,6 +798,31 @@ pub async fn pet_show_context_menu(app: tauri::AppHandle) -> Result<(), AppError
     // origin (logical points). muda flips Y to the NSView's bottom-left.
     let popup_pos = pet_cursor_pos_relative(&pet)?;
     pet.popup_menu_at(&menu, popup_pos).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Rebuild the macOS app menu bar with labels localized for `locale`. The
+/// menu bar is built once at `lib.rs::setup` (bootstrap locale `"en"`); the
+/// frontend calls this command after `localeStore` hydrates and whenever the
+/// user switches locale. `set_menu` must run on the main thread, so we marshal
+/// via `run_on_main_thread`; the closure reports failure through a channel so
+/// the command surfaces a real error instead of swallowing it.
+#[tauri::command]
+pub async fn pet_rebuild_app_menu(
+    app: tauri::AppHandle,
+    locale: String,
+) -> Result<(), AppError> {
+    use std::sync::mpsc::channel;
+    let (tx, rx) = channel::<Result<(), String>>();
+    let app2 = app.clone();
+    app.run_on_main_thread(move || {
+        let res = build_app_menu(&app2, &locale).map_err(|e| e.to_string());
+        let _ = tx.send(res);
+    })
+    .map_err(|e| e.to_string())?;
+    rx.recv()
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -1301,4 +1452,50 @@ pub async fn pet_make_transparent(_app: tauri::AppHandle, _label: String) -> Res
     // macOS-only at present. Tauri's `transparent: true` config is the best
     // available on Windows/Linux.
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every `PetMenuLabel` key resolves to a non-empty string in both zh and
+    /// en, and the two locales produce different text for each key. Catches
+    /// a future key added to the enum but forgotten in one of the match arms.
+    #[test]
+    fn pet_menu_labels_cover_all_keys_in_both_locales() {
+        let keys = [
+            PetMenuLabel::ShowMain,
+            PetMenuLabel::NewNote,
+            PetMenuLabel::ToggleAi,
+            PetMenuLabel::HidePet,
+            PetMenuLabel::SizeSubmenu,
+            PetMenuLabel::SizeSmall,
+            PetMenuLabel::SizeMedium,
+            PetMenuLabel::SizeLarge,
+            PetMenuLabel::DisablePet,
+            PetMenuLabel::TestBubble,
+        ];
+        for key in keys {
+            let zh = pet_menu_label("zh", key);
+            let en = pet_menu_label("en", key);
+            assert!(!zh.is_empty(), "zh label empty for key");
+            assert!(!en.is_empty(), "en label empty for key");
+            assert_ne!(zh, en, "zh and en labels identical for a key");
+        }
+    }
+
+    /// Unknown locale falls back to en (not panic, not empty).
+    #[test]
+    fn pet_menu_label_unknown_locale_falls_back_to_en() {
+        assert_eq!(pet_menu_label("fr", PetMenuLabel::ShowMain), "Show Main Window");
+    }
+
+    #[test]
+    fn app_menu_labels_cover_all_keys_in_both_locales() {
+        assert_eq!(app_menu_label("zh", AppMenuLabel::Edit), "编辑");
+        assert_eq!(app_menu_label("zh", AppMenuLabel::Window), "窗口");
+        assert_eq!(app_menu_label("en", AppMenuLabel::Edit), "Edit");
+        assert_eq!(app_menu_label("en", AppMenuLabel::Window), "Window");
+        assert_eq!(app_menu_label("fr", AppMenuLabel::Edit), "Edit");
+    }
 }

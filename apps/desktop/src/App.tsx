@@ -28,6 +28,7 @@ import { registerBuiltinPlugins } from '@quill/container-plugins';
 import { registerBuiltinCommands } from './services/commandRegistry';
 import { registerBuiltinPanels } from './services/registerBuiltinPanels';
 import { isTauri } from './utils/platform';
+import { useLocaleStore } from '@/store/localeStore';
 import { pluginHost } from '@quill/plugin-host';
 import { sandboxLoader } from './services/plugin-host/sandboxLoader';
 import { trustedLoader } from './services/plugin-host/trustedLoader';
@@ -426,6 +427,17 @@ export default function App() {
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // ponytail: on Tauri startup, push the persisted locale to Rust so the
+  // macOS app menu bar (built with locale="en" at app boot before JS
+  // started) rebuilds with the user's actual language. Fire-and-forget;
+  // a rebuild failure leaves the English menu visible, not a crash. The
+  // localeStore's `hydrate` already calls `syncAppMenuLocale` — invoking
+  // it here also re-applies i18n if module-load order left a stale state.
+  useEffect(() => {
+    if (!isTauri()) return;
+    useLocaleStore.getState().hydrate();
   }, []);
 
   return (

@@ -102,8 +102,18 @@ export const PET_MENU_ACTIONS: readonly PetMenuAction[] = [
  * small to host an HTML menu. Resolves after the user picks an item or
  * dismisses the menu; the chosen action is delivered separately via the
  * `pet://menu-action` event (listened to in `App.tsx`).
+ *
+ * Reads the current locale from `i18n.language`. The pet window is a
+ * separate JS realm with its own i18next instance; the main window's
+ * `setLocale` emits `locale://changed` (see `localeStore.ts`), and a
+ * listener in `PetApp.tsx` calls `i18n.changeLanguage` on this window's
+ * own instance — so `i18n.language` here tracks the user's choice
+ * without the caller threading locale through. The Rust side falls back
+ * to English for unknown locales.
  */
 export async function openPetContextMenu(): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
-  await invoke('pet_show_context_menu');
+  const i18n = (await import('@/i18n')).default;
+  const locale = i18n.language || 'en';
+  await invoke('pet_show_context_menu', { locale });
 }

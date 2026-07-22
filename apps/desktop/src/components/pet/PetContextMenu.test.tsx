@@ -1,12 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 // Pet context menu is now a *native* OS popup built Rust-side (issue #1 fix:
 // the 120x120 pet window clipped the HTML menu). The frontend contract is:
 //   (1) `PET_MENU_ACTIONS` lists exactly the actions that the Rust side
 //       recognizes (kept in sync with `pet_ctx_menu_action` in lib.rs),
 //   (2) `openPetContextMenu()` invokes the `pet_show_context_menu` Tauri
-//       command, which shows the native menu; selections are delivered via
-//       the `pet://menu-action` event (listened to in App.tsx).
+//       command with the current locale read from `i18n.language`. The pet
+//       window is a separate JS realm with its own i18next instance; the
+//       main window's `setLocale` emits `locale://changed`, a listener in
+//       `PetApp.tsx` applies the new locale to this realm's i18next, so
+//       `i18n.language` stays current. Selections are delivered via the
+//       `pet://menu-action` event.
 //
 // PR1 of the pet-quick-action-panel task extends the contract: the union now
 // also includes the 5 launcher-only actions dispatched by the pet-panel
@@ -21,6 +25,7 @@ import { describe, it, expect } from 'vitest';
 // (test/mocks/@tauri-apps/api/core.ts) and reset in beforeEach.
 
 import { invoke } from '@tauri-apps/api/core';
+import i18n from '@/i18n';
 import {
   PET_MENU_ACTIONS,
   PET_NATIVE_MENU_ACTIONS,
@@ -30,6 +35,13 @@ import {
 } from './PetContextMenu';
 
 describe('PetContextMenu (native popup + launcher contract)', () => {
+  beforeEach(() => {
+    // `openPetContextMenu` reads `i18n.language`; pin it here so the invoke
+    // payload is deterministic. i18next is a shared singleton across the
+    // test file, so we restore it after each test.
+    void i18n.changeLanguage('zh');
+  });
+
   it('PET_NATIVE_MENU_ACTIONS lists the six native right-click actions', () => {
     expect(PET_NATIVE_MENU_ACTIONS).toEqual([
       'show-main',
@@ -85,9 +97,15 @@ describe('PetContextMenu (native popup + launcher contract)', () => {
     }
   });
 
-  it('openPetContextMenu invokes the pet_show_context_menu Tauri command', async () => {
+  it('openPetContextMenu invokes pet_show_context_menu with the current locale', async () => {
     await openPetContextMenu();
     expect(invoke).toHaveBeenCalledTimes(1);
-    expect(invoke).toHaveBeenCalledWith('pet_show_context_menu');
+    expect(invoke).toHaveBeenCalledWith('pet_show_context_menu', { locale: 'zh' });
+  });
+
+  it('openPetContextMenu tracks locale changes through i18n.language', async () => {
+    void i18n.changeLanguage('en');
+    await openPetContextMenu();
+    expect(invoke).toHaveBeenCalledWith('pet_show_context_menu', { locale: 'en' });
   });
 });
