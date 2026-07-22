@@ -135,6 +135,15 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                     .full_screen_auxiliary()
                     .into(),
             );
+            // ponytail: `setHidesOnDeactivate:NO` — the nspanel Panel trait
+            // method (src/panel.rs:438). `nonactivating_panel` only controls
+            // focus stealing, NOT hide-on-deactivate: AppKit still hides a
+            // panel by default on `NSApplicationDidResignActive`, which is the
+            // source of the "click to bring pet back" delay. Disabling it
+            // keeps the pet visible across app-switches; the resign-active
+            // observer then only re-asserts level/behavior (a run-loop tick,
+            // not a window-server draw cycle).
+            panel.set_hides_on_deactivate(false);
             // ponytail: attach the (empty-body) delegate — BongoCat
             // `core/setup/macos.rs:91`. Without a delegate attached via
             // `set_event_handler`, the swizzled NSPanel subclass's override

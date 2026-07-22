@@ -132,12 +132,49 @@ fn reapply_pet_topmost(_app: &tauri::AppHandle) {
     // Non-macOS: no equivalent level API; pet mode is macOS-only at present.
 }
 
+/// Re-assert the NSPanel backend's Dock level + collection behavior on the
+/// `pet` window. Called from a Rust reapply thread (NOT throttled by
+/// WKWebView like the frontend poll) so the pet re-floats over a newly
+/// frontmost app within ~one tick of the thread interval. No `panel.show()`
+/// — re-ordering an already-shown panel triggers a WKWebView re-composite
+/// stall (the original "pet shows late" lag). Mirrors the BongoCat recipe
+/// baked into `convert_windows`, but driven periodically instead of once.
+#[cfg(target_os = "macos")]
+fn reapply_pet_nspanel_level(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    use tauri_nspanel::{CollectionBehavior, PanelLevel, WebviewWindowExt};
+
+    let Some(window) = app.get_webview_window("pet") else {
+        return;
+    };
+    let Ok(panel) = window.to_panel::<crate::pet_panel_macos::QuillPetPanel>() else {
+        return;
+    };
+    panel.set_hides_on_deactivate(false);
+    panel.set_level(PanelLevel::Dock.value());
+    panel.set_collection_behavior(
+        CollectionBehavior::new()
+            .stationary()
+            .move_to_active_space()
+            .full_screen_auxiliary()
+            .into(),
+    );
+}
+
+#[cfg(not(target_os = "macos"))]
+fn reapply_pet_nspanel_level(_app: &tauri::AppHandle) {}
+
 /// Apply the pet window's topmost backend once at startup. Two paths:
 ///   - NSPanel (default): convert the `pet` window to a real NSPanel
-///     (`Dock` level + `nonactivating_panel` + `can_join_all_spaces |
-///     full_screen_auxiliary`) so it floats over fullscreen apps.
+///     (`Dock` level + `nonactivating_panel` + `stationary |
+///     move_to_active_space | full_screen_auxiliary`) so it floats over
+///     fullscreen apps, AND spawn the 200ms Rust reapply thread
+///     (`spawn_nspanel_reapply_thread`) because the resign-active /
+///     NSWorkspace observers do NOT fire in accessory mode
+///     (`set_dock_visibility(false)`) — only a Rust-thread poll reliably
+///     re-asserts the level after app-switch.
 ///   - Legacy (`QUILL_PET_PANEL_BACKEND=legacy`): the old NSWindow +
-///     ScreenSaver-level + behavior-780 re-apply (`reapply_pet_topmost`).
+///     ScreenSaver-level + behavior-770 re-apply (`reapply_pet_topmost`).
 ///
 /// The NSPanel path runs SYNCHRONOUSLY (`.setup()` is already on the macOS
 /// main thread — matches BongoCat `core/setup/macos.rs:37`, removing the
@@ -149,6 +186,7 @@ fn reapply_pet_topmost(_app: &tauri::AppHandle) {
 fn apply_pet_backend_init(app: &tauri::AppHandle) {
     if pet_panel_macos::backend_is_nspanel() {
         pet_panel_macos::convert_windows(app);
+        spawn_nspanel_reapply_thread(app.clone());
     } else {
         let app2 = app.clone();
         let _ = app.run_on_main_thread(move || {
@@ -163,9 +201,8 @@ fn apply_pet_backend_init(_app: &tauri::AppHandle) {}
 /// Spawn the 500ms re-apply thread for the LEGACY path only. WKWebView
 /// throttles `setInterval` when backgrounded, so the frontend's ~800ms poll
 /// is unreliable; a Rust thread keeps re-asserting the ScreenSaver level that
-/// macOS can reset on app deactivation. The NSPanel path does NOT need this
-/// (Dock level + `nonactivating_panel` + `hidesOnDeactivate`-default is
-/// stable across activation changes). No-op on non-macOS.
+/// macOS can reset on app deactivation. The NSPanel path has its own
+/// `spawn_nspanel_reapply_thread` (200ms). No-op on non-macOS.
 #[cfg(target_os = "macos")]
 fn spawn_legacy_reapply_thread(app: tauri::AppHandle) {
     if pet_panel_macos::backend_is_nspanel() {
@@ -184,6 +221,31 @@ fn spawn_legacy_reapply_thread(app: tauri::AppHandle) {
 
 #[cfg(not(target_os = "macos"))]
 fn spawn_legacy_reapply_thread(_app: tauri::AppHandle) {}
+
+/// Spawn the 200ms re-apply thread for the NSPanel path. In accessory mode
+/// (`set_dock_visibility(false)`) neither `NSApplicationDidResignActive` nor
+/// `NSWorkspaceDidActivateApplication` reliably fires, so the only stable
+/// re-assert signal is a Rust-thread poll (not throttled by WKWebView like
+/// the frontend `setInterval`). 200ms keeps visible post-switch delay under
+/// ~one tick of human perception. No-op on non-macOS / legacy backend.
+#[cfg(target_os = "macos")]
+fn spawn_nspanel_reapply_thread(app: tauri::AppHandle) {
+    if !pet_panel_macos::backend_is_nspanel() {
+        return;
+    }
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            let app_for_closure = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                reapply_pet_nspanel_level(&app_for_closure);
+            });
+        }
+    });
+}
+
+#[cfg(not(target_os = "macos"))]
+fn spawn_nspanel_reapply_thread(_app: tauri::AppHandle) {}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
