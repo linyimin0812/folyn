@@ -86,6 +86,7 @@ export function SettingsPage() {
   // (and vice versa) via the auto-clear setTimeout.
   const [chatTestStatus, setChatTestStatus] = useState<{ testing: boolean; result?: { success: boolean; message: string } }>({ testing: false });
   const [showChatKey, setShowChatKey] = useState(false);
+  const [excludeInput, setExcludeInput] = useState<{ value: string } | null>(null);
 
   return (
     <div className="settings-page flex flex-row max-w-none h-full">
@@ -121,9 +122,11 @@ export function SettingsPage() {
       <div className="sc2 w-[50vw] overflow-y-auto py-[22px] px-[26px]">
         {/* -- 外观 -- */}
         {settingsTab === 'appearance' && (
-          <div className="mb-[26px]">
-            <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">{t('settings:appearance.title')}</div>
-            <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">{t('settings:appearance.description')}</div>
+          <div className="mb-8">
+            <div className="pb-3 mb-5 border-b border-brd2 flex items-baseline gap-2">
+              <div className="text-[length:calc(var(--ui-font-size)+3px)] font-bold text-t1 tracking-[-0.01em]">{t('settings:appearance.title')}</div>
+              <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3">{t('settings:appearance.description')}</div>
+            </div>
             <div className="mb-3.5">
               <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:appearance.theme.label')}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
@@ -141,35 +144,86 @@ export function SettingsPage() {
                 </div>
               </div>
             </div>
+            <div className="border-t border-brd2 my-3.5" />
             <LanguageSwitcher variant="row" />
-            <div className="mb-3.5">
-              <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:appearance.fontSize.label')}</div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
+              <div className="tr-info">
+                <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.fontSize.label')}</h4>
+              </div>
               <select className="settings-select" style={{ maxWidth: 180 }} value={`${fontSize}px`} onChange={(e) => setFontSize(parseInt(e.target.value))}>
                 <option value="12px">{t('settings:appearance.fontSize.compact')}</option>
                 <option value="14px">{t('settings:appearance.fontSize.default')}</option>
                 <option value="16px">{t('settings:appearance.fontSize.comfortable')}</option>
               </select>
             </div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:appearance.panels.ai.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:appearance.panels.ai.description')}</p></div><Toggle value={showAiPanel} onChange={(v) => setShowAiPanel(v)} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:appearance.panels.statusBar.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:appearance.panels.statusBar.description')}</p></div><Toggle value={showStatusBar} onChange={(v) => setShowStatusBar(v)} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:appearance.panels.hiddenFiles.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:appearance.panels.hiddenFiles.description')}</p></div><Toggle value={showHiddenFiles} onChange={(v) => { setShowHiddenFiles(v); import('@/store/vaultStore').then(m => m.useVaultStore.getState().refreshFileTree()); }} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:appearance.panels.wiki.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:appearance.panels.wiki.description')}</p></div><Toggle value={enableWikiPanel} onChange={(v) => setEnableWikiPanel(v)} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:appearance.panels.clips.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:appearance.panels.clips.description')}</p></div><Toggle value={enableClipsPanel} onChange={(v) => setEnableClipsPanel(v)} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:appearance.panels.analyze.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:appearance.panels.analyze.description')}</p></div><Toggle value={enableAnalyzePanel} onChange={(v) => setEnableAnalyzePanel(v)} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:appearance.panels.daily.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:appearance.panels.daily.description')}</p></div><Toggle value={enableDailyPanel} onChange={(v) => setEnableDailyPanel(v)} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:appearance.panels.tray.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:appearance.panels.tray.description')}</p></div><Toggle value={showTrayIcon} onChange={(v) => setShowTrayIcon(v)} /></div>
-            <div className="mb-3.5 flex flex-col items-stretch gap-1.5">
-              <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:appearance.excludePatterns.label')}</div>
-              <p style={{ fontSize: 11, color: 'var(--t3)', margin: 0 }}>{t('settings:appearance.excludePatterns.description')}</p>
-              <textarea
-                className="fsel py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui w-full"
-                rows={6}
-                style={{ fontSize: 12, resize: 'vertical', lineHeight: 1.6, padding: '8px 10px' }}
-                value={excludePatterns}
-                onChange={(e) => setExcludePatterns(e.target.value)}
-                onBlur={() => import('@/store/vaultStore').then(m => m.useVaultStore.getState().refreshFileTree())}
-                placeholder={'node_modules\n.git\n.DS_Store\n*.log'}
-              />
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.ai.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.ai.description')}</p></div><Toggle value={showAiPanel} onChange={(v) => setShowAiPanel(v)} /></div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.statusBar.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.statusBar.description')}</p></div><Toggle value={showStatusBar} onChange={(v) => setShowStatusBar(v)} /></div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.hiddenFiles.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.hiddenFiles.description')}</p></div><Toggle value={showHiddenFiles} onChange={(v) => { setShowHiddenFiles(v); import('@/store/vaultStore').then(m => m.useVaultStore.getState().refreshFileTree()); }} /></div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.wiki.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.wiki.description')}</p></div><Toggle value={enableWikiPanel} onChange={(v) => setEnableWikiPanel(v)} /></div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.clips.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.clips.description')}</p></div><Toggle value={enableClipsPanel} onChange={(v) => setEnableClipsPanel(v)} /></div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.analyze.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.analyze.description')}</p></div><Toggle value={enableAnalyzePanel} onChange={(v) => setEnableAnalyzePanel(v)} /></div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.daily.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.daily.description')}</p></div><Toggle value={enableDailyPanel} onChange={(v) => setEnableDailyPanel(v)} /></div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.tray.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.tray.description')}</p></div><Toggle value={showTrayIcon} onChange={(v) => setShowTrayIcon(v)} /></div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
+              <div className="tr-info">
+                <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.excludePatterns.label')}</h4>
+                <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.excludePatterns.description')}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 py-3.5 border-b border-brd">
+              {excludeInput ? (
+                <input
+                  autoFocus
+                  className="py-[5px] px-2.5 rounded-md text-[11px] font-ui border border-acc bg-inp text-t1 outline-none w-[180px]"
+                  placeholder={t('settings:appearance.excludePatterns.prompt')}
+                  value={excludeInput.value}
+                  onChange={(e) => setExcludeInput({ value: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const v = excludeInput.value.trim();
+                      if (v) {
+                        const next = excludePatterns.trim() ? `${excludePatterns.trimEnd()}\n${v}` : v;
+                        setExcludePatterns(next);
+                        import('@/store/vaultStore').then(m => m.useVaultStore.getState().refreshFileTree());
+                      }
+                      setExcludeInput(null);
+                    } else if (e.key === 'Escape') {
+                      setExcludeInput(null);
+                    }
+                  }}
+                  onBlur={() => {
+                    const v = excludeInput.value.trim();
+                    if (v) {
+                      const next = excludePatterns.trim() ? `${excludePatterns.trimEnd()}\n${v}` : v;
+                      setExcludePatterns(next);
+                      import('@/store/vaultStore').then(m => m.useVaultStore.getState().refreshFileTree());
+                    }
+                    setExcludeInput(null);
+                  }}
+                />
+              ) : (
+                <button
+                  className="inline-flex items-center gap-1 h-[26px] px-2.5 rounded-md text-[11px] font-ui cursor-pointer border border-dashed border-brd2 text-t3 hover:border-acc hover:text-acc transition-all duration-100 bg-transparent"
+                  onClick={() => setExcludeInput({ value: '' })}
+                >+ {t('settings:appearance.excludePatterns.add')}</button>
+              )}
+              {excludePatterns.split('\n').map(s => s.trim()).filter(s => s && !s.startsWith('#')).length === 0 && !excludeInput && (
+                <span className="text-[11px] text-t3 italic">{t('settings:appearance.excludePatterns.empty')}</span>
+              )}
+              {excludePatterns.split('\n').map(s => s.trim()).filter(s => s && !s.startsWith('#')).map((p) => (
+                <span key={p} className="inline-flex items-center gap-1 h-[26px] pl-2.5 pr-1 rounded-md text-[11px] font-ui bg-accdim text-t1 border border-brd2">
+                  <span className="font-mono leading-none">{p}</span>
+                  <button
+                    className="w-[18px] h-[18px] flex items-center justify-center rounded text-t3 hover:text-[#f06a6a] hover:bg-hov transition-colors leading-none"
+                    onClick={() => {
+                      const next = excludePatterns.split('\n').map(s => s.trim()).filter(s => s !== p).join('\n');
+                      setExcludePatterns(next);
+                      import('@/store/vaultStore').then(m => m.useVaultStore.getState().refreshFileTree());
+                    }}
+                    aria-label={t('settings:appearance.excludePatterns.add')}
+                  >×</button>
+                </span>
+              ))}
             </div>
           </div>
         )}

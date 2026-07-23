@@ -37,9 +37,9 @@ export function LanguageSwitcher({ variant = 'compact' }: LanguageSwitcherProps)
 
   if (variant === 'row') {
     return (
-      <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
+      <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
         <div className="tr-info">
-          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">
             {t('language.switcher.title')}
           </h4>
         </div>

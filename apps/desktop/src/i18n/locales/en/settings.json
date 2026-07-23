@@ -73,7 +73,10 @@
     },
     "excludePatterns": {
       "label": "Filter files/folders",
-      "description": "One rule per line; matched files/folders are hidden in the file tree. Supports * and ? wildcards; lines starting with # are comments."
+      "description": "Matched files/folders are hidden in the file tree. Supports * and ? wildcards.",
+      "add": "Add",
+      "prompt": "Enter a filter pattern (supports * and ? wildcards)",
+      "empty": "No filter rules"
     }
   },
   "editor": {
