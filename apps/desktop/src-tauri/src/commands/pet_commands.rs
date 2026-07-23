@@ -78,6 +78,16 @@ impl PetClickThroughState {
     }
 }
 
+/// Shared handle to the tray menu's `hide_pet` `CheckMenuItem`. The tray menu
+/// is built once at `tray_set_enabled` time; muda does NOT auto-toggle the
+/// checkmark on click, so without `set_checked` the checkmark would go stale
+/// after the first toggle. `tray_set_enabled(true)` clones the `CheckMenuItem`
+/// (Arc-backed — cheap) into this state; `toggle_pet_mode` /
+/// `show_pet_if_hidden` call `set_checked` on it so the checkmark tracks pet
+/// visibility across all toggle paths (tray click, settings tab, pet
+/// right-click popup). `None` when the tray is disabled or not yet built.
+pub struct TrayHidePetItemState(pub Mutex<Option<tauri::menu::CheckMenuItem<tauri::Wry>>>);
+
 // ────────────────────────────────────────────────────────────────────────────
 // Desktop Pet Mode commands (macOS MVP).
 //
@@ -459,6 +469,14 @@ pub async fn toggle_pet_mode(app: tauri::AppHandle) -> Result<bool, AppError> {
     // Notify the frontend so settingsStore.petModeEnabled stays in sync with
     // the actual window visibility (covers the frontend-driven toggle path).
     let _ = app.emit("pet://visibility-changed", next);
+    // Sync the tray menu's `hide_pet` CheckMenuItem so the checkmark tracks
+    // the new visibility. `set_checked` is a no-op when the tray is disabled
+    // (state is `None`) — see `TrayHidePetItemState`.
+    if let Ok(guard) = app.state::<TrayHidePetItemState>().0.lock() {
+        if let Some(item) = guard.as_ref() {
+            let _ = item.set_checked(next);
+        }
+    }
     Ok(next)
 }
 
@@ -507,6 +525,13 @@ pub async fn show_pet_if_hidden(app: tauri::AppHandle) -> Result<bool, AppError>
         pet.show().map_err(|e| e.to_string())?;
     }
     let _ = app.emit("pet://visibility-changed", true);
+    // Sync the tray menu's `hide_pet` CheckMenuItem (checked = pet visible).
+    // `set_checked` is a no-op when the tray is disabled (state is `None`).
+    if let Ok(guard) = app.state::<TrayHidePetItemState>().0.lock() {
+        if let Some(item) = guard.as_ref() {
+            let _ = item.set_checked(true);
+        }
+    }
     Ok(true)
 }
 
@@ -819,12 +844,268 @@ pub async fn pet_set_cursor(app: tauri::AppHandle, kind: String) -> Result<(), A
     Ok(())
 }
 
+/// Build the pet quick-action native menu (show-main / hide-pet / size
+/// submenu / opacity submenu / click-through toggle / separator / exit-app,
+/// plus the `test-bubble` demo item when `include_test_bubble` is true).
+///
+/// Shared between two callers so the item ids — and therefore the
+/// `pet://menu-action` routing in `lib.rs::on_menu_event` — stay identical:
+///   - `pet_show_context_menu` (right-click popup): includes `test-bubble`,
+///     `hide_pet` is a plain `MenuItem` (single-shot hide — you can't
+///     right-click a hidden pet, so a toggle would be dead state).
+///   - `tray_set_enabled` (system tray menu): excludes `test-bubble`,
+///     `hide_pet` is a `CheckMenuItem` pre-checked from the pet window's
+///     current visibility (checked = pet hidden) so the user can toggle
+///     the pet on/off from the tray even when the pet is already hidden.
+///
+/// Item ids are the `PET_CTX_MENU_*` constants; `lib.rs::pet_ctx_menu_action`
+/// maps each to the `PetMenuAction` payload the main window expects. The
+/// `hide-pet` frontend handler is a real toggle (`toggle_pet_mode` reads
+/// `pet.is_visible()` and flips), so the same id routes both the popup's
+/// single-shot hide and the tray's checkable toggle.
+fn build_pet_context_menu(
+    app: &tauri::AppHandle,
+    locale: &str,
+    include_test_bubble: bool,
+    hide_pet_as_toggle: bool,
+) -> Result<tauri::menu::Menu<tauri::Wry>, AppError> {
+    use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
+    use tauri::Manager;
+
+    let show_main = MenuItem::with_id(
+        app,
+        PET_CTX_MENU_SHOW_MAIN,
+        pet_menu_label(locale, PetMenuLabel::ShowMain),
+        true,
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+
+    // Hide pet icon. In the tray variant this is a `CheckMenuItem` pre-checked
+    // from the pet window's current visibility (checked = pet VISIBLE — the
+    // macOS "Show X" convention: a checked "Show Toolbar" means toolbar is
+    // shown, so a checked "Hide Pet Icon" reads as "pet is currently shown,
+    // click to hide"). The popup variant keeps a plain `MenuItem` because
+    // right-clicking a hidden pet is impossible, so the checkmark state would
+    // never visibly flip from the popup.
+    //
+    // ponytail: `CheckMenuItem` and `MenuItem` are distinct concrete types,
+    // so the two branches can't share a single `let`. Box them behind a
+    // trait object — `Menu::with_items` takes `&[&dyn IsMenuItem<R>]` so a
+    // boxed trait object slots in alongside the other `&show_main` etc.
+    // references. The Box lives as a local; `Menu::with_items` borrows it
+    // for the duration of the call.
+    //
+    // The tray menu is built once at `tray_set_enabled` time — muda does NOT
+    // auto-toggle the checkmark on click, so without `set_checked` the
+    // checkmark would go stale after the first toggle. `tray_set_enabled`
+    // extracts the `CheckMenuItem` handle via `Menu::get` + `as_check_menuitem`
+    // and stashes it in `TrayHidePetItemState`; `toggle_pet_mode` /
+    // `show_pet_if_hidden` call `set_checked` on it so the checkmark tracks
+    // pet visibility across all toggle paths (tray click, settings tab,
+    // pet right-click popup).
+    let pet_visible = app
+        .get_webview_window(PET_LABEL)
+        .and_then(|p| p.is_visible().ok())
+        .unwrap_or(false);
+    let hide_pet: Box<dyn tauri::menu::IsMenuItem<tauri::Wry>> = if hide_pet_as_toggle {
+        Box::new(
+            CheckMenuItem::with_id(
+                app,
+                PET_CTX_MENU_HIDE_PET,
+                pet_menu_label(locale, PetMenuLabel::HidePet),
+                true,
+                pet_visible,
+                None::<&str>,
+            )
+            .map_err(|e| e.to_string())?,
+        )
+    } else {
+        Box::new(
+            MenuItem::with_id(
+                app,
+                PET_CTX_MENU_HIDE_PET,
+                pet_menu_label(locale, PetMenuLabel::HidePet),
+                true,
+                None::<&str>,
+            )
+            .map_err(|e| e.to_string())?,
+        )
+    };
+
+    // Pet size submenu — five radio items (50%/75%/100%/125%/150%), the
+    // current size pre-checked. Reads the shared `PetSizeState` (synced from
+    // frontend via `set_pet_size` / `set_pet_size_state`) so the checkmark
+    // reflects the last-applied size.
+    let current_level = current_pet_size_level(app);
+    let size_50 = CheckMenuItem::with_id(
+        app,
+        PET_CTX_MENU_SIZE_50,
+        pet_menu_label(locale, PetMenuLabel::Size50),
+        true,
+        current_level == "50",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let size_75 = CheckMenuItem::with_id(
+        app,
+        PET_CTX_MENU_SIZE_75,
+        pet_menu_label(locale, PetMenuLabel::Size75),
+        true,
+        current_level == "75",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let size_100 = CheckMenuItem::with_id(
+        app,
+        PET_CTX_MENU_SIZE_100,
+        pet_menu_label(locale, PetMenuLabel::Size100),
+        true,
+        current_level == "100",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let size_125 = CheckMenuItem::with_id(
+        app,
+        PET_CTX_MENU_SIZE_125,
+        pet_menu_label(locale, PetMenuLabel::Size125),
+        true,
+        current_level == "125",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let size_150 = CheckMenuItem::with_id(
+        app,
+        PET_CTX_MENU_SIZE_150,
+        pet_menu_label(locale, PetMenuLabel::Size150),
+        true,
+        current_level == "150",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let size_submenu = Submenu::with_items(
+        app,
+        pet_menu_label(locale, PetMenuLabel::SizeSubmenu),
+        true,
+        &[&size_50, &size_75, &size_100, &size_125, &size_150],
+    )
+    .map_err(|e| e.to_string())?;
+
+    // Pet opacity submenu — four radio items (25/50/75/100%), the current
+    // opacity pre-checked. Mirrors the size submenu pattern; reads the
+    // shared `PetOpacityState` (synced from frontend via `set_pet_opacity`
+    // and from `on_menu_event` on a submenu pick).
+    let current_opacity = app.state::<PetOpacityState>().level();
+    let opacity_25 = CheckMenuItem::with_id(
+        app,
+        PET_CTX_MENU_OPACITY_25,
+        pet_menu_label(locale, PetMenuLabel::Opacity25),
+        true,
+        current_opacity == "25",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let opacity_50 = CheckMenuItem::with_id(
+        app,
+        PET_CTX_MENU_OPACITY_50,
+        pet_menu_label(locale, PetMenuLabel::Opacity50),
+        true,
+        current_opacity == "50",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let opacity_75 = CheckMenuItem::with_id(
+        app,
+        PET_CTX_MENU_OPACITY_75,
+        pet_menu_label(locale, PetMenuLabel::Opacity75),
+        true,
+        current_opacity == "75",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let opacity_100 = CheckMenuItem::with_id(
+        app,
+        PET_CTX_MENU_OPACITY_100,
+        pet_menu_label(locale, PetMenuLabel::Opacity100),
+        true,
+        current_opacity == "100",
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let opacity_submenu = Submenu::with_items(
+        app,
+        pet_menu_label(locale, PetMenuLabel::OpacitySubmenu),
+        true,
+        &[&opacity_25, &opacity_50, &opacity_75, &opacity_100],
+    )
+    .map_err(|e| e.to_string())?;
+
+    // Pet click-through toggle — when checked, the pet window ignores all
+    // cursor events so clicks fall through to apps behind. The pet itself
+    // becomes non-interactive, so the user toggles it OFF from the Pet
+    // settings tab (the settings page is in the main window, always
+    // clickable). Pre-checked from the shared `PetClickThroughState`.
+    let click_through = CheckMenuItem::with_id(
+        app,
+        PET_CTX_MENU_CLICK_THROUGH,
+        pet_menu_label(locale, PetMenuLabel::ClickThrough),
+        true,
+        app.state::<PetClickThroughState>().enabled(),
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+
+    let sep = PredefinedMenuItem::separator(app).map_err(|e| e.to_string())?;
+    let exit_app = MenuItem::with_id(
+        app,
+        PET_CTX_MENU_EXIT_APP,
+        pet_menu_label(locale, PetMenuLabel::ExitApp),
+        true,
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+
+    // ponytail: build a `&[&dyn IsMenuItem]` slice — `MenuItem` and
+    // `CheckMenuItem` and `PredefinedMenuItem` and `Submenu` all implement
+    // `IsMenuItem`, so a heterogeneous slice works without boxing. The
+    // previous inline version spelled each item out by name; `build_pet_context_menu`
+    // is called twice (popup + tray), so this is the one place the slice
+    // gets assembled.
+    let mut items: Vec<&dyn tauri::menu::IsMenuItem<tauri::Wry>> = vec![
+        &show_main,
+        &*hide_pet,
+        &size_submenu,
+        &opacity_submenu,
+        &click_through,
+        &sep,
+        &exit_app,
+    ];
+    // Demo: fire a test bubble notification (PRD pet-popup-bubble-notification).
+    // Routed in `lib.rs` `on_menu_event` to a `pet://notify` emit (the main
+    // window's dispatcher routes it by `notificationForm`). Only included in
+    // the pet right-click popup, not the tray menu (debug surface).
+    let test_bubble;
+    if include_test_bubble {
+        test_bubble = MenuItem::with_id(
+            app,
+            PET_CTX_MENU_TEST_BUBBLE,
+            pet_menu_label(locale, PetMenuLabel::TestBubble),
+            true,
+            None::<&str>,
+        )
+        .map_err(|e| e.to_string())?;
+        items.push(&test_bubble);
+    }
+
+    let menu = Menu::with_items(app, &items).map_err(|e| e.to_string())?;
+    Ok(menu)
+}
+
 #[tauri::command]
 pub async fn pet_show_context_menu(
     app: tauri::AppHandle,
     locale: String,
 ) -> Result<(), AppError> {
-    use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
     use tauri::Manager;
 
     // ponytail: popup the menu attached to the pet NSPanel's own ns_view, with
@@ -840,193 +1121,82 @@ pub async fn pet_show_context_menu(
         .get_webview_window(PET_LABEL)
         .ok_or_else(|| "pet window not found".to_string())?;
 
-    let loc = locale.as_str();
-    let show_main = MenuItem::with_id(
-        &app,
-        PET_CTX_MENU_SHOW_MAIN,
-        pet_menu_label(loc, PetMenuLabel::ShowMain),
-        true,
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
-
-    // Hide pet icon — sole "hide the pet" entry (the old `disable-pet`
-    // sibling was dropped from the right-click menu; the pet-panel launcher
-    // grid also dropped its `disable-pet` button, so `hide-pet` is the only
-    // remaining path that turns the pet off).
-    let hide_pet = MenuItem::with_id(
-        &app,
-        PET_CTX_MENU_HIDE_PET,
-        pet_menu_label(loc, PetMenuLabel::HidePet),
-        true,
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
-
-    // Pet size submenu — five radio items (50%/75%/100%/125%/150%), the
-    // current size pre-checked. Reads the shared `PetSizeState` (synced from
-    // frontend via `set_pet_size` / `set_pet_size_state`) so the checkmark
-    // reflects the last-applied size.
-    let current_level = current_pet_size_level(&app);
-    let size_50 = CheckMenuItem::with_id(
-        &app,
-        PET_CTX_MENU_SIZE_50,
-        pet_menu_label(loc, PetMenuLabel::Size50),
-        true,
-        current_level == "50",
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
-    let size_75 = CheckMenuItem::with_id(
-        &app,
-        PET_CTX_MENU_SIZE_75,
-        pet_menu_label(loc, PetMenuLabel::Size75),
-        true,
-        current_level == "75",
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
-    let size_100 = CheckMenuItem::with_id(
-        &app,
-        PET_CTX_MENU_SIZE_100,
-        pet_menu_label(loc, PetMenuLabel::Size100),
-        true,
-        current_level == "100",
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
-    let size_125 = CheckMenuItem::with_id(
-        &app,
-        PET_CTX_MENU_SIZE_125,
-        pet_menu_label(loc, PetMenuLabel::Size125),
-        true,
-        current_level == "125",
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
-    let size_150 = CheckMenuItem::with_id(
-        &app,
-        PET_CTX_MENU_SIZE_150,
-        pet_menu_label(loc, PetMenuLabel::Size150),
-        true,
-        current_level == "150",
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
-    let size_submenu = Submenu::with_items(
-        &app,
-        pet_menu_label(loc, PetMenuLabel::SizeSubmenu),
-        true,
-        &[&size_50, &size_75, &size_100, &size_125, &size_150],
-    )
-    .map_err(|e| e.to_string())?;
-
-    // Pet opacity submenu — four radio items (25/50/75/100%), the current
-    // opacity pre-checked. Mirrors the size submenu pattern; reads the
-    // shared `PetOpacityState` (synced from frontend via `set_pet_opacity`
-    // and from `on_menu_event` on a submenu pick).
-    let current_opacity = app.state::<PetOpacityState>().level();
-    let opacity_25 = CheckMenuItem::with_id(
-        &app,
-        PET_CTX_MENU_OPACITY_25,
-        pet_menu_label(loc, PetMenuLabel::Opacity25),
-        true,
-        current_opacity == "25",
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
-    let opacity_50 = CheckMenuItem::with_id(
-        &app,
-        PET_CTX_MENU_OPACITY_50,
-        pet_menu_label(loc, PetMenuLabel::Opacity50),
-        true,
-        current_opacity == "50",
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
-    let opacity_75 = CheckMenuItem::with_id(
-        &app,
-        PET_CTX_MENU_OPACITY_75,
-        pet_menu_label(loc, PetMenuLabel::Opacity75),
-        true,
-        current_opacity == "75",
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
-    let opacity_100 = CheckMenuItem::with_id(
-        &app,
-        PET_CTX_MENU_OPACITY_100,
-        pet_menu_label(loc, PetMenuLabel::Opacity100),
-        true,
-        current_opacity == "100",
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
-    let opacity_submenu = Submenu::with_items(
-        &app,
-        pet_menu_label(loc, PetMenuLabel::OpacitySubmenu),
-        true,
-        &[&opacity_25, &opacity_50, &opacity_75, &opacity_100],
-    )
-    .map_err(|e| e.to_string())?;
-
-    // Pet click-through toggle — when checked, the pet window ignores all
-    // cursor events so clicks fall through to apps behind. The pet itself
-    // becomes non-interactive, so the user toggles it OFF from the Pet
-    // settings tab (the settings page is in the main window, always
-    // clickable). Pre-checked from the shared `PetClickThroughState`.
-    let click_through = CheckMenuItem::with_id(
-        &app,
-        PET_CTX_MENU_CLICK_THROUGH,
-        pet_menu_label(loc, PetMenuLabel::ClickThrough),
-        true,
-        app.state::<PetClickThroughState>().enabled(),
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
-
-    let sep = PredefinedMenuItem::separator(&app).map_err(|e| e.to_string())?;
-    let exit_app = MenuItem::with_id(
-        &app,
-        PET_CTX_MENU_EXIT_APP,
-        pet_menu_label(loc, PetMenuLabel::ExitApp),
-        true,
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
-    // Demo: fire a test bubble notification (PRD pet-popup-bubble-notification).
-    // Routed in `lib.rs` `on_menu_event` to a `pet://notify` emit (the main
-    // window's dispatcher routes it by `notificationForm`).
-    let test_bubble = MenuItem::with_id(
-        &app,
-        PET_CTX_MENU_TEST_BUBBLE,
-        pet_menu_label(loc, PetMenuLabel::TestBubble),
-        true,
-        None::<&str>,
-    )
-    .map_err(|e| e.to_string())?;
-
-    let menu = Menu::with_items(
-        &app,
-        &[
-            &show_main,
-            &hide_pet,
-            &size_submenu,
-            &opacity_submenu,
-            &click_through,
-            &sep,
-            &exit_app,
-            &test_bubble,
-        ],
-    )
-    .map_err(|e| e.to_string())?;
-
+    let menu = build_pet_context_menu(&app, &locale, true, false)?;
     // popup_menu_at anchors the menu to `pet`'s ns_view (so NSMenu opens on
     // the pet panel's Space — visible even when the frontmost app is
     // fullscreen) at the cursor position expressed in the view's top-left
     // origin (logical points). muda flips Y to the NSView's bottom-left.
     let popup_pos = pet_cursor_pos_relative(&pet)?;
     pet.popup_menu_at(&menu, popup_pos).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Tray icon id — stable so `tray_by_id` lookups (for destroy / show_menu)
+/// always find the same icon regardless of how many times the user toggles
+/// the setting on/off-on.
+const TRAY_ID: &str = "quill-tray";
+
+/// Toggle the macOS system tray icon. When `enabled`, builds a tray with:
+///   - the app's bundled default window icon (no new asset needed)
+///   - the shared pet context menu (`build_pet_context_menu` with
+///     `include_test_bubble=false` — the tray menu is a user-facing entry
+///     point, not a debug surface)
+///   - a left-click handler that pops the menu (macOS Tauri 2 tray icons
+///     only show the menu on right-click by default; the user explicitly
+///     asked for click-to-show-menu)
+///
+/// When disabled, destroys any existing tray icon. Menu item selections
+/// route through the SAME `on_menu_event` handler in `lib.rs` because the
+/// item ids are the same `PET_CTX_MENU_*` constants — zero new routing
+/// code. Idempotent: toggling on when already on replaces the icon (rebuild
+/// for locale switches); toggling off when off is a no-op.
+#[tauri::command]
+pub async fn tray_set_enabled(
+    app: tauri::AppHandle,
+    enabled: bool,
+    locale: String,
+) -> Result<(), AppError> {
+    use tauri::tray::TrayIconBuilder;
+
+    // Destroy any existing tray icon first so the rebuild path (locale
+    // switch, re-enable) is the same as the enable path. Idempotent for the
+    // disable case: `remove_tray_by_id` is a no-op when no tray exists.
+    app.remove_tray_by_id(TRAY_ID);
+    // Clear the stashed CheckMenuItem handle — the old tray's menu is gone,
+    // so `set_checked` on it would be a no-op or UB. Re-populated below when
+    // the new menu is built.
+    if let Ok(mut guard) = app.state::<TrayHidePetItemState>().0.lock() {
+        *guard = None;
+    }
+    if !enabled {
+        return Ok(());
+    }
+
+    let menu = build_pet_context_menu(&app, &locale, false, true)?;
+    // Extract the `hide_pet` CheckMenuItem handle and stash it in
+    // `TrayHidePetItemState` so `toggle_pet_mode` / `show_pet_if_hidden`
+    // can call `set_checked` on it after each visibility flip. Without this,
+    // the tray menu (built once) would show a stale checkmark after the
+    // first toggle. `Menu::get(id)` → `MenuItemKind::as_check_menuitem()`.
+    if let Some(kind) = menu.get(PET_CTX_MENU_HIDE_PET) {
+        if let Some(check_item) = kind.as_check_menuitem() {
+            if let Ok(mut guard) = app.state::<TrayHidePetItemState>().0.lock() {
+                *guard = Some(check_item.clone());
+            }
+        }
+    }
+    let icon = app
+        .default_window_icon()
+        .ok_or_else(|| "default window icon not found".to_string())?;
+    let _tray = TrayIconBuilder::with_id(TRAY_ID)
+        .icon(icon.clone())
+        .menu(&menu)
+        // macOS Tauri 2 tray icons default to right-click-only for menu; the
+        // user asked for click-to-show-menu, so flip this. `show_menu_on_left_click`
+        // makes the OS pop the menu on left-click without a JS-side handler.
+        .show_menu_on_left_click(true)
+        .build(&app)
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 

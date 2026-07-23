@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Tray icon + menu builder 重构需遵循 Tauri 窗口/菜单的既有约定（NSPanel 旁路、popup_menu_at、on_menu_event 路由）"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "appearanceStore 新增 showTrayIcon 字段 + schedulePersist 持久化 key 需匹配现有 persist 列表模式"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "SettingsPage 外观 tab 的 Toggle 行需复用 primitives + 现有行模式"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "托盘菜单文案复用 pet_menu_label (Rust 侧本地化)；前端 Toggle 标签需加 i18n key"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "核心目标就是与桌宠右键菜单共用 builder + action 路由，避免重复实现"}

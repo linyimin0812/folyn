@@ -561,6 +561,13 @@ pub fn run() {
                 commands::PetClickThroughState::DEFAULT,
             )));
 
+            // Shared handle to the tray menu's `hide_pet` CheckMenuItem so
+            // `toggle_pet_mode` / `show_pet_if_hidden` can `set_checked` after
+            // each visibility flip — the tray menu is built once at
+            // `tray_set_enabled` time and muda does not auto-toggle the
+            // checkmark on click. `None` until `tray_set_enabled(true)` runs.
+            app.manage(commands::TrayHidePetItemState(std::sync::Mutex::new(None)));
+
             // Pet-panel global-shortcut state. Holds the currently-registered
             // pet HotKey so `pet_panel_set_shortcut` can do a TARGETED
             // unregister (not `unregister_all`, which would wipe the voice
@@ -661,6 +668,7 @@ pub fn run() {
             commands::set_pet_opacity,
             commands::set_pet_click_through,
             commands::exit_app,
+            commands::tray_set_enabled,
             pet_api::get_pet_api_info,
             chat::chat_stream,
             plugin_commands::install_plugin,

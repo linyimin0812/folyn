@@ -46,6 +46,8 @@ export function SettingsPage() {
   const setExcludePatterns = useAppearanceStore((s) => s.setExcludePatterns);
   const linkOpenMode = useAppearanceStore((s) => s.linkOpenMode);
   const setLinkOpenMode = useAppearanceStore((s) => s.setLinkOpenMode);
+  const showTrayIcon = useAppearanceStore((s) => s.showTrayIcon);
+  const setShowTrayIcon = useAppearanceStore((s) => s.setShowTrayIcon);
 
   const editorFont = useEditorPrefsStore((s) => s.editorFont);
   const editorFontSize = useEditorPrefsStore((s) => s.editorFontSize);
@@ -155,6 +157,7 @@ export function SettingsPage() {
             <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:appearance.panels.clips.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:appearance.panels.clips.description')}</p></div><Toggle value={enableClipsPanel} onChange={(v) => setEnableClipsPanel(v)} /></div>
             <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:appearance.panels.analyze.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:appearance.panels.analyze.description')}</p></div><Toggle value={enableAnalyzePanel} onChange={(v) => setEnableAnalyzePanel(v)} /></div>
             <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:appearance.panels.daily.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:appearance.panels.daily.description')}</p></div><Toggle value={enableDailyPanel} onChange={(v) => setEnableDailyPanel(v)} /></div>
+            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:appearance.panels.tray.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:appearance.panels.tray.description')}</p></div><Toggle value={showTrayIcon} onChange={(v) => setShowTrayIcon(v)} /></div>
             <div className="mb-3.5 flex flex-col items-stretch gap-1.5">
               <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:appearance.excludePatterns.label')}</div>
               <p style={{ fontSize: 11, color: 'var(--t3)', margin: 0 }}>{t('settings:appearance.excludePatterns.description')}</p>

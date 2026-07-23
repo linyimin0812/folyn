@@ -49,14 +49,23 @@ export async function routePetMenuAction(
       await focusMain();
       break;
     case 'hide-pet':
-      // Sole "turn the pet off" entry — the old `disable-pet` sibling was
-      // dropped from the right-click menu and the pet-panel launcher grid.
-      usePetStore.getState().setPetModeEnabled(false);
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('toggle_pet_mode');
-      } catch {
-        // Non-fatal; the menu bar item can still toggle it off.
+      // Toggle the pet visibility. The tray menu surfaces this as a
+      // `CheckMenuItem` (checked = pet hidden) — mirroring the click-through
+      // toggle pattern; the pet right-click popup uses a plain `MenuItem`
+      // because you can't right-click a hidden pet. Both paths route through
+      // this single handler. `toggle_pet_mode` (Rust) reads `pet.is_visible()`
+      // and flips it, then emits `pet://visibility-changed` which syncs the
+      // store. The optimistic `setPetModeEnabled` below mirrors the flip so
+      // the UI updates before the round-trip lands.
+      {
+        const currentlyVisible = usePetStore.getState().petModeEnabled;
+        usePetStore.getState().setPetModeEnabled(!currentlyVisible);
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          await invoke('toggle_pet_mode');
+        } catch {
+          // Non-fatal; the menu bar item can still toggle it off.
+        }
       }
       break;
     case 'set-pet-size': {

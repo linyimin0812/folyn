@@ -49,6 +49,7 @@ export const PERSIST_KEYS_APPEARANCE = [
   'excludePatterns',
   'linkOpenMode',
   'vaultName',
+  'showTrayIcon',
 ] as const;
 
 export interface AppearanceState {
@@ -65,6 +66,7 @@ export interface AppearanceState {
   excludePatterns: string;
   linkOpenMode: LinkOpenMode;
   vaultName: string;
+  showTrayIcon: boolean;
 
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
@@ -80,6 +82,7 @@ export interface AppearanceState {
   setExcludePatterns: (v: string) => void;
   setLinkOpenMode: (v: LinkOpenMode) => void;
   setVaultName: (name: string) => void;
+  setShowTrayIcon: (v: boolean) => void;
 
   /** Load this store's slice from the persisted `settings:all` blob. */
   hydrate: (blob: Record<string, unknown>) => void;
@@ -99,6 +102,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   excludePatterns: DEFAULT_EXCLUDE_PATTERNS,
   linkOpenMode: 'external' as LinkOpenMode,
   vaultName: 'my-vault',
+  showTrayIcon: false,
 
   setTheme: (theme) => {
     const actual = theme === 'system'
@@ -139,6 +143,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   setExcludePatterns: (v) => { set({ excludePatterns: v }); schedulePersist(); },
   setLinkOpenMode: (v) => { set({ linkOpenMode: v }); schedulePersist(); },
   setVaultName: (name) => { set({ vaultName: name }); schedulePersist(); },
+  setShowTrayIcon: (v) => { set({ showTrayIcon: v }); schedulePersist(); },
 
   hydrate: (blob) => {
     const patch: Partial<AppearanceState> = {};
@@ -154,6 +159,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
     if (blob.enableDailyPanel !== undefined) patch.enableDailyPanel = blob.enableDailyPanel as boolean;
     if (blob.linkOpenMode !== undefined) patch.linkOpenMode = blob.linkOpenMode as LinkOpenMode;
     if (blob.vaultName !== undefined) patch.vaultName = blob.vaultName as string;
+    if (blob.showTrayIcon !== undefined) patch.showTrayIcon = blob.showTrayIcon as boolean;
     if (blob.excludePatterns !== undefined) {
       // Per-dir backfill: append each missing built-in managed dir without
       // duplicating ones already present. Mirrors the legacy settingsStore
