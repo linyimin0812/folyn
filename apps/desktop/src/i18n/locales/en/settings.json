@@ -271,6 +271,10 @@
       "title": "Auto polish",
       "desc": "After recording, automatically run the polish prompt on the transcript; disable to output raw transcript"
     },
+    "autoPaste": {
+      "title": "Auto paste",
+      "desc": "Automatically paste the recognized text at the cursor position; requires Accessibility permission"
+    },
     "saveSource": {
       "title": "Save voice source file",
       "desc": "Save the raw recording (WAV) to a specified directory under the vault"

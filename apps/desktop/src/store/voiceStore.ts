@@ -18,6 +18,7 @@ export const DEFAULT_POLISH_PROMPT = `你是一个语音转文字的润色助手
 export const PERSIST_KEYS_VOICE = [
   'polishPrompt',
   'autoPolish',
+  'autoPaste',
   'saveSource',
   'sourceDir',
   'globalHotkey',
@@ -52,6 +53,7 @@ export const SPOKEN_LANGUAGES: { label: string; value: string }[] = [
 export interface VoiceState {
   polishPrompt: string;
   autoPolish: boolean;
+  autoPaste: boolean;
   saveSource: boolean;
   sourceDir: string;
   globalHotkey: string;
@@ -59,6 +61,7 @@ export interface VoiceState {
 
   setPolishPrompt: (v: string) => void;
   setAutoPolish: (v: boolean) => void;
+  setAutoPaste: (v: boolean) => void;
   setSaveSource: (v: boolean) => void;
   setSourceDir: (v: string) => void;
   setGlobalHotkey: (v: string) => void;
@@ -70,6 +73,7 @@ export interface VoiceState {
 export const useVoiceStore = create<VoiceState>((set) => ({
   polishPrompt: DEFAULT_POLISH_PROMPT,
   autoPolish: true,
+  autoPaste: false,
   saveSource: false,
   sourceDir: '.voice_input',
   globalHotkey: '',
@@ -77,6 +81,7 @@ export const useVoiceStore = create<VoiceState>((set) => ({
 
   setPolishPrompt: (v) => { set({ polishPrompt: v }); schedulePersist(); },
   setAutoPolish: (v) => { set({ autoPolish: v }); schedulePersist(); },
+  setAutoPaste: (v) => { set({ autoPaste: v }); schedulePersist(); },
   setSaveSource: (v) => { set({ saveSource: v }); schedulePersist(); },
   setSourceDir: (v) => { set({ sourceDir: v }); schedulePersist(); },
   setGlobalHotkey: (v) => { set({ globalHotkey: v }); schedulePersist(); },
@@ -86,6 +91,7 @@ export const useVoiceStore = create<VoiceState>((set) => ({
     const patch: Partial<VoiceState> = {};
     if (typeof blob.polishPrompt === 'string') patch.polishPrompt = blob.polishPrompt;
     if (typeof blob.autoPolish === 'boolean') patch.autoPolish = blob.autoPolish;
+    if (typeof blob.autoPaste === 'boolean') patch.autoPaste = blob.autoPaste;
     if (typeof blob.saveSource === 'boolean') patch.saveSource = blob.saveSource;
     if (typeof blob.sourceDir === 'string') patch.sourceDir = blob.sourceDir;
     if (typeof blob.globalHotkey === 'string') patch.globalHotkey = blob.globalHotkey;

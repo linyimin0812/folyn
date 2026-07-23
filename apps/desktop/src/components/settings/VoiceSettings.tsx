@@ -5,13 +5,14 @@ import { isTauri } from '@/utils/platform';
 import { invoke } from '@tauri-apps/api/core';
 import { Toggle } from '@/components/settings/primitives';
 import { useHotkeyRecording } from '@/components/settings/useHotkeyRecording';
+import { ThemeIcon } from '@/components/icons/ThemeIcon';
 
 function Row({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
   return (
-    <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
+    <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
       <div className="tr-info">
-        <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{title}</h4>
-        {desc && <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{desc}</p>}
+        <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{title}</h4>
+        {desc && <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{desc}</p>}
       </div>
       {children}
     </div>
@@ -31,7 +32,7 @@ function PermissionRow({ title, desc, idleLabel, state, onClick }: {
   return (
     <Row title={title} desc={desc}>
       <button
-        className="text-[length:calc(var(--ui-font-size)-2.5px)] px-2.5 py-1 rounded-md border border-brd2 bg-surf2 text-t1 hover:bg-hov cursor-pointer disabled:opacity-50 disabled:cursor-default"
+        className="btn btn-g btn-sm"
         disabled={state === 'checking'}
         onClick={onClick}
       >
@@ -119,12 +120,14 @@ export function VoiceSettings() {
   const { t } = useTranslation();
   const polishPrompt = useVoiceStore((s) => s.polishPrompt);
   const autoPolish = useVoiceStore((s) => s.autoPolish);
+  const autoPaste = useVoiceStore((s) => s.autoPaste);
   const saveSource = useVoiceStore((s) => s.saveSource);
   const sourceDir = useVoiceStore((s) => s.sourceDir);
   const spokenLanguage = useVoiceStore((s) => s.spokenLanguage);
 
   const setPolishPrompt = useVoiceStore((s) => s.setPolishPrompt);
   const setAutoPolish = useVoiceStore((s) => s.setAutoPolish);
+  const setAutoPaste = useVoiceStore((s) => s.setAutoPaste);
   const setSaveSource = useVoiceStore((s) => s.setSaveSource);
   const setSourceDir = useVoiceStore((s) => s.setSourceDir);
   const setSpokenLanguage = useVoiceStore((s) => s.setSpokenLanguage);
@@ -157,10 +160,19 @@ export function VoiceSettings() {
   );
 
   return (
-    <div className="mb-[26px]">
-      <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">{t('settings:voice.title')}</div>
-      <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">
-        {t('settings:voice.description')}{!onMac && t('settings:voice.windowsUnsupported')}
+    <div className="mb-8 whitespace-nowrap">
+      <div className="pb-3 mb-5 border-b border-brd2 flex items-baseline gap-2">
+        <div className="text-[length:calc(var(--ui-font-size)+3px)] font-bold text-t1 tracking-[-0.01em]">{t('settings:voice.title')}</div>
+        <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3 flex items-center gap-1">
+          {(() => {
+            const desc = t('settings:voice.description');
+            const idx = desc.indexOf('🎤');
+            if (idx < 0) return <>{desc}{!onMac && t('settings:voice.windowsUnsupported')}</>;
+            const before = desc.slice(0, idx);
+            const after = desc.slice(idx + 2);
+            return <>{before}<ThemeIcon name="cwmMicOn" size={12} className="inline-block align-middle" />{after}{!onMac && t('settings:voice.windowsUnsupported')}</>;
+          })()}
+        </div>
       </div>
 
       {!onMac && (
@@ -172,78 +184,49 @@ export function VoiceSettings() {
       {onMac && (
         <>
           <PermissionRow
-            title={t('settings:voice.accessibility.title')}
-            desc={t('settings:voice.accessibility.desc')}
-            idleLabel={t('settings:voice.accessibility.action')}
-            state={axState}
-            onClick={() => void requestPerm('voice_request_accessibility', setAxState)}
-          />
-          <PermissionRow
             title={t('settings:voice.microphone.title')}
             desc={t('settings:voice.microphone.desc')}
             idleLabel={t('settings:voice.microphone.action')}
             state={micState}
             onClick={() => void requestPerm('voice_request_microphone', setMicState)}
           />
-          <PermissionRow
-            title={t('settings:voice.speech.title')}
-            desc={t('settings:voice.speech.desc')}
-            idleLabel={t('settings:voice.speech.action')}
-            state={speechState}
-            onClick={() => void requestPerm('voice_request_speech', setSpeechState)}
-          />
         </>
       )}
-
-      <div className="mb-3.5">
-        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:voice.polishPrompt.label')}</div>
-        <div className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 mb-2">{t('settings:voice.polishPrompt.desc')}</div>
-        <textarea
-          className="settings-textarea font-ui w-full"
-          rows={8}
-          value={polishPrompt}
-          onChange={(e) => setPolishPrompt(e.target.value)}
-          placeholder={DEFAULT_POLISH_PROMPT}
-          style={{ fontSize: 'calc(var(--ui-font-size) - 2px)' }}
-        />
-        <div className="flex justify-between items-center mt-1.5">
-          <span className="text-[length:calc(var(--ui-font-size)-3px)] text-t3">{t('settings:voice.polishPrompt.charCount', { count: polishPrompt.length })}</span>
-          <button
-            className="text-[length:calc(var(--ui-font-size)-2.5px)] text-t3 hover:text-acc bg-transparent border-none cursor-pointer underline-offset-2 hover:underline"
-            onClick={() => setPolishPrompt(DEFAULT_POLISH_PROMPT)}
-          >{t('settings:voice.polishPrompt.reset')}</button>
-        </div>
-      </div>
-
-      <Row title={t('settings:voice.autoPolish.title')} desc={t('settings:voice.autoPolish.desc')}>
-        <Toggle value={autoPolish} onChange={setAutoPolish} />
-      </Row>
 
       <Row title={t('settings:voice.saveSource.title')} desc={t('settings:voice.saveSource.desc')}>
         <Toggle value={saveSource} onChange={setSaveSource} />
       </Row>
 
-      <div className="mb-3.5">
-        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:voice.sourceDir.label')}</div>
-        <div className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 mb-2">{t('settings:voice.sourceDir.desc')}</div>
-        <input
-          className="settings-input w-full"
-          value={sourceDir}
-          onChange={(e) => setSourceDir(e.target.value)}
-          disabled={!saveSource}
-          placeholder=".voice_input"
-          style={{ fontSize: 'calc(var(--ui-font-size) - 2px)' }}
-        />
-      </div>
+      {saveSource && (
+        <div className="py-3.5 border-b border-brd">
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:voice.sourceDir.label')}</h4>
+          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 mb-2 leading-relaxed">{t('settings:voice.sourceDir.desc')}</p>
+          <input
+            className="w-full h-[34px] py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
+            value={sourceDir}
+            onChange={(e) => setSourceDir(e.target.value)}
+            placeholder=".voice_input"
+          />
+        </div>
+      )}
 
-      <div className="mb-3.5">
-        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:voice.spokenLanguage.label')}</div>
-        <div className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 mb-2">{t('settings:voice.spokenLanguage.desc')}</div>
+      {onMac && (
+        <PermissionRow
+          title={t('settings:voice.speech.title')}
+          desc={t('settings:voice.speech.desc')}
+          idleLabel={t('settings:voice.speech.action')}
+          state={speechState}
+          onClick={() => void requestPerm('voice_request_speech', setSpeechState)}
+        />
+      )}
+
+      <div className="py-3.5 border-b border-brd">
+        <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:voice.spokenLanguage.label')}</h4>
+        <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 mb-2 leading-relaxed">{t('settings:voice.spokenLanguage.desc')}</p>
         <select
-          className="settings-input w-full"
+          className="w-full h-[34px] py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
           value={spokenLanguage}
           onChange={(e) => setSpokenLanguage(e.target.value)}
-          style={{ fontSize: 'calc(var(--ui-font-size) - 2px)' }}
         >
           {SPOKEN_LANGUAGES.map((lang) => (
             <option key={lang.value} value={lang.value}>{lang.label}</option>
@@ -251,9 +234,48 @@ export function VoiceSettings() {
         </select>
       </div>
 
-      <div className="mb-3.5">
-        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:voice.globalHotkey.label')}</div>
-        <div className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 mb-2">{t('settings:voice.globalHotkey.desc')}</div>
+      <Row title={t('settings:voice.autoPolish.title')} desc={t('settings:voice.autoPolish.desc')}>
+        <Toggle value={autoPolish} onChange={setAutoPolish} />
+      </Row>
+
+      {autoPolish && (
+        <div className="py-3.5 border-b border-brd">
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:voice.polishPrompt.label')}</h4>
+          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 mb-2 leading-relaxed">{t('settings:voice.polishPrompt.desc')}</p>
+          <textarea
+            className="w-full py-2 px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
+            rows={8}
+            value={polishPrompt}
+            onChange={(e) => setPolishPrompt(e.target.value)}
+            placeholder={DEFAULT_POLISH_PROMPT}
+          />
+          <div className="flex justify-between items-center mt-1.5">
+            <span className="text-[length:calc(var(--ui-font-size)-3px)] text-t3">{t('settings:voice.polishPrompt.charCount', { count: polishPrompt.length })}</span>
+            <button
+              className="text-[length:calc(var(--ui-font-size)-2.5px)] text-t3 hover:text-acc bg-transparent border-none cursor-pointer underline-offset-2 hover:underline"
+              onClick={() => setPolishPrompt(DEFAULT_POLISH_PROMPT)}
+            >{t('settings:voice.polishPrompt.reset')}</button>
+          </div>
+        </div>
+      )}
+
+      <Row title={t('settings:voice.autoPaste.title')} desc={t('settings:voice.autoPaste.desc')}>
+        <Toggle value={autoPaste} onChange={setAutoPaste} />
+      </Row>
+
+      {onMac && autoPaste && (
+        <PermissionRow
+          title={t('settings:voice.accessibility.title')}
+          desc={t('settings:voice.accessibility.desc')}
+          idleLabel={t('settings:voice.accessibility.action')}
+          state={axState}
+          onClick={() => void requestPerm('voice_request_accessibility', setAxState)}
+        />
+      )}
+
+      <div className="py-3.5 border-b border-brd">
+        <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:voice.globalHotkey.label')}</h4>
+        <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 mb-2 leading-relaxed">{t('settings:voice.globalHotkey.desc')}</p>
         <VoiceHotkeyRecorder />
       </div>
     </div>

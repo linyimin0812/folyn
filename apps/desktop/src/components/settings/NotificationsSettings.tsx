@@ -12,9 +12,11 @@ export function NotificationsSettings() {
     { value: 'off', label: t('settings:notifications.options.off') },
   ];
   return (
-    <div className="mb-[26px]">
-      <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">{t('settings:notifications.title')}</div>
-      <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">{t('settings:notifications.description')}</div>
+    <div className="mb-8">
+      <div className="pb-3 mb-5 border-b border-brd2 flex items-baseline gap-2">
+        <div className="text-[length:calc(var(--ui-font-size)+3px)] font-bold text-t1 tracking-[-0.01em]">{t('settings:notifications.title')}</div>
+        <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3">{t('settings:notifications.description')}</div>
+      </div>
       <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
         <div className="tr-info">
           <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:notifications.form.title')}</h4>

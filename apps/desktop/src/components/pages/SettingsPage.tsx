@@ -115,7 +115,7 @@ export function SettingsPage() {
       </nav>
 
       {/* Right panel */}
-      <div className="sc2 w-[50vw] overflow-y-auto py-[22px] px-[26px]">
+      <div className={`sc2 overflow-y-auto py-[22px] px-[26px] ${settingsTab === 'ai' || settingsTab === 'voice' ? 'w-fit min-w-[50vw] shrink-0' : 'w-[50vw]'}`}>
         {/* -- 外观 -- */}
         {settingsTab === 'appearance' && (
           <div className="mb-8">
@@ -278,9 +278,11 @@ export function SettingsPage() {
 
         {/* -- AI 工具 -- */}
         {settingsTab === 'ai' && (
-          <div className="mb-[26px]">
-            <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">{t('settings:ai.title')}</div>
-            <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">{t('settings:ai.description')}</div>
+          <div className="mb-8 whitespace-nowrap">
+            <div className="pb-3 mb-5 border-b border-brd2 flex items-baseline gap-2">
+              <div className="text-[length:calc(var(--ui-font-size)+3px)] font-bold text-t1 tracking-[-0.01em]">{t('settings:ai.title')}</div>
+              <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3">{t('settings:ai.description')}</div>
+            </div>
             <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-2 flex items-center gap-1.5">{t('settings:ai.cliAdapter')}</div>
             <div className="ml flex flex-col gap-1">
               {listAdapters().map((a) => (
@@ -365,7 +367,7 @@ export function SettingsPage() {
               <div className="mb-3.5">
                 <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:ai.chat.provider.label')}</div>
                 <select
-                  className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                  className="fi2 w-full h-[34px] py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
                   value={chatProvider}
                   onChange={(e) => setChatProvider(e.target.value as 'anthropic' | 'openai' | 'openai-compatible')}
                 >

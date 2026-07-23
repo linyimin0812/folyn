@@ -258,12 +258,14 @@ export function PluginsSettings() {
   }, [folderOpen, installFromFolder, clearError]);
 
   return (
-    <div className="mb-[26px]">
-      <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">
-        {t('settings:plugins.title')}
-      </div>
-      <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">
-        {t('settings:plugins.description')}
+    <div className="mb-8">
+      <div className="pb-3 mb-5 border-b border-brd2 flex items-baseline gap-2">
+        <div className="text-[length:calc(var(--ui-font-size)+3px)] font-bold text-t1 tracking-[-0.01em]">
+          {t('settings:plugins.title')}
+        </div>
+        <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3">
+          {t('settings:plugins.description')}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 mb-3">
