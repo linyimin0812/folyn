@@ -60,11 +60,7 @@ export function SettingsPage() {
   const setShowLineNumbers = useEditorPrefsStore((s) => s.setShowLineNumbers);
   const setAutoSave = useEditorPrefsStore((s) => s.setAutoSave);
 
-  const dailyNotesDir = usePrefsStore((s) => s.dailyNotesDir);
-  const dailyNoteDateFormat = usePrefsStore((s) => s.dailyNoteDateFormat);
   const shortcuts = usePrefsStore((s) => s.shortcuts);
-  const setDailyNotesDir = usePrefsStore((s) => s.setDailyNotesDir);
-  const setDailyNoteDateFormat = usePrefsStore((s) => s.setDailyNoteDateFormat);
   const resetShortcuts = usePrefsStore((s) => s.resetShortcuts);
 
   const cliAdapter = useAiConfigStore((s) => s.cliAdapter);
@@ -230,20 +226,20 @@ export function SettingsPage() {
 
         {/* -- 编辑器 -- */}
         {settingsTab === 'editor' && (
-          <div className="mb-[26px]">
-            <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">{t('settings:editor.title')}</div>
-            <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">{t('settings:editor.description')}</div>
-            <div className="grid grid-cols-3 gap-3 mb-3.5">
-              <div><div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:editor.font.label')}</div><select className="settings-select" value={editorFont} onChange={(e) => setEditorFont(e.target.value)}><option>DM Mono</option><option>JetBrains Mono</option><option>Fira Code</option></select></div>
-              <div><div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:editor.fontSize.label')}</div><select className="settings-select" value={`${editorFontSize}px`} onChange={(e) => setEditorFontSize(parseInt(e.target.value))}><option value="12px">12px</option><option value="13px">13px</option><option value="14px">14px</option><option value="16px">16px</option></select></div>
-              <div><div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:editor.tabSize.label')}</div><select className="settings-select" value={tabSize} onChange={(e) => setTabSize(parseInt(e.target.value))}><option value={2}>{t('settings:editor.tabSize.2')}</option><option value={4}>{t('settings:editor.tabSize.4')}</option></select></div>
+          <div className="mb-8">
+            <div className="pb-3 mb-5 border-b border-brd2 flex items-baseline gap-2">
+              <div className="text-[length:calc(var(--ui-font-size)+3px)] font-bold text-t1 tracking-[-0.01em]">{t('settings:editor.title')}</div>
+              <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3">{t('settings:editor.description')}</div>
             </div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:editor.showLineNumbers.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:editor.showLineNumbers.description')}</p></div><Toggle value={showLineNumbers} onChange={(v) => setShowLineNumbers(v)} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:editor.autoSave.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:editor.autoSave.description')}</p></div><Toggle value={autoSave} onChange={(v) => setAutoSave(v)} /></div>
-            <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.font.label')}</h4></div><select className="settings-select" style={{ maxWidth: 180 }} value={editorFont} onChange={(e) => setEditorFont(e.target.value)}><option>DM Mono</option><option>JetBrains Mono</option><option>Fira Code</option></select></div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.fontSize.label')}</h4></div><select className="settings-select" style={{ maxWidth: 180 }} value={`${editorFontSize}px`} onChange={(e) => setEditorFontSize(parseInt(e.target.value))}><option value="12px">12px</option><option value="13px">13px</option><option value="14px">14px</option><option value="16px">16px</option></select></div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.tabSize.label')}</h4></div><select className="settings-select" style={{ maxWidth: 180 }} value={tabSize} onChange={(e) => setTabSize(parseInt(e.target.value))}><option value={2}>{t('settings:editor.tabSize.2')}</option><option value={4}>{t('settings:editor.tabSize.4')}</option></select></div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.showLineNumbers.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:editor.showLineNumbers.description')}</p></div><Toggle value={showLineNumbers} onChange={(v) => setShowLineNumbers(v)} /></div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.autoSave.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:editor.autoSave.description')}</p></div><Toggle value={autoSave} onChange={(v) => setAutoSave(v)} /></div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
               <div className="tr-info">
-                <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:editor.linkOpenMode.label')}</h4>
-                <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:editor.linkOpenMode.description')}</p>
+                <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.linkOpenMode.label')}</h4>
+                <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:editor.linkOpenMode.description')}</p>
               </div>
               <div className="flex gap-1">
                 <button
@@ -255,38 +251,6 @@ export function SettingsPage() {
                   onClick={() => setLinkOpenMode('internal')}
                 >{t('settings:editor.linkOpenMode.internal')}</button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* -- 编辑器 -- Daily Notes section (appended below editor settings) */}
-        {settingsTab === 'editor' && (
-          <div className="mb-[26px]">
-            <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">{t('settings:editor.dailyNotes.title')}</div>
-            <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">{t('settings:editor.dailyNotes.description')}</div>
-            <div className="mb-3.5">
-              <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:editor.dailyNotes.dir.label')}</div>
-              <input
-                className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
-                style={{ maxWidth: 240 }}
-                value={dailyNotesDir}
-                onChange={(e) => setDailyNotesDir(e.target.value)}
-                placeholder="daily"
-                autoCapitalize="off"
-              />
-            </div>
-            <div className="mb-3.5">
-              <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">{t('settings:editor.dailyNotes.dateFormat.label')}</div>
-              <select
-                className="settings-select"
-                style={{ maxWidth: 240 }}
-                value={dailyNoteDateFormat}
-                onChange={(e) => setDailyNoteDateFormat(e.target.value)}
-              >
-                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                <option value="YYYY.MM.DD">YYYY.MM.DD</option>
-                <option value="YYYYMMDD">YYYYMMDD</option>
-              </select>
             </div>
           </div>
         )}
