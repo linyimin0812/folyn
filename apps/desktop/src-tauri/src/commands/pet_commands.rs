@@ -474,7 +474,7 @@ pub async fn toggle_pet_mode(app: tauri::AppHandle) -> Result<bool, AppError> {
     // (state is `None`) — see `TrayHidePetItemState`.
     if let Ok(guard) = app.state::<TrayHidePetItemState>().0.lock() {
         if let Some(item) = guard.as_ref() {
-            let _ = item.set_checked(next);
+            let _ = item.set_checked(!next);
         }
     }
     Ok(next)
@@ -525,11 +525,11 @@ pub async fn show_pet_if_hidden(app: tauri::AppHandle) -> Result<bool, AppError>
         pet.show().map_err(|e| e.to_string())?;
     }
     let _ = app.emit("pet://visibility-changed", true);
-    // Sync the tray menu's `hide_pet` CheckMenuItem (checked = pet visible).
+    // Sync the tray menu's `hide_pet` CheckMenuItem (checked = pet hidden).
     // `set_checked` is a no-op when the tray is disabled (state is `None`).
     if let Ok(guard) = app.state::<TrayHidePetItemState>().0.lock() {
         if let Some(item) = guard.as_ref() {
-            let _ = item.set_checked(true);
+            let _ = item.set_checked(false);
         }
     }
     Ok(true)
@@ -882,12 +882,12 @@ fn build_pet_context_menu(
     .map_err(|e| e.to_string())?;
 
     // Hide pet icon. In the tray variant this is a `CheckMenuItem` pre-checked
-    // from the pet window's current visibility (checked = pet VISIBLE — the
-    // macOS "Show X" convention: a checked "Show Toolbar" means toolbar is
-    // shown, so a checked "Hide Pet Icon" reads as "pet is currently shown,
-    // click to hide"). The popup variant keeps a plain `MenuItem` because
-    // right-clicking a hidden pet is impossible, so the checkmark state would
-    // never visibly flip from the popup.
+    // from the pet window's current visibility (checked = pet hidden — the
+    // click-through toggle convention where a checked "Hide pet icon" means the
+    // hide-pet action is in effect, i.e. the pet is currently hidden). The
+    // popup variant keeps a plain `MenuItem` because right-clicking a hidden
+    // pet is impossible, so the checkmark state would never visibly flip from
+    // the popup.
     //
     // ponytail: `CheckMenuItem` and `MenuItem` are distinct concrete types,
     // so the two branches can't share a single `let`. Box them behind a
@@ -904,7 +904,7 @@ fn build_pet_context_menu(
     // `show_pet_if_hidden` call `set_checked` on it so the checkmark tracks
     // pet visibility across all toggle paths (tray click, settings tab,
     // pet right-click popup).
-    let pet_visible = app
+    let pet_hidden = !app
         .get_webview_window(PET_LABEL)
         .and_then(|p| p.is_visible().ok())
         .unwrap_or(false);
@@ -915,7 +915,7 @@ fn build_pet_context_menu(
                 PET_CTX_MENU_HIDE_PET,
                 pet_menu_label(locale, PetMenuLabel::HidePet),
                 true,
-                pet_visible,
+                pet_hidden,
                 None::<&str>,
             )
             .map_err(|e| e.to_string())?,
