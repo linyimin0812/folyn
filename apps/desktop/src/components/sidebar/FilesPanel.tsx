@@ -13,6 +13,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PanelLeftClose } from 'lucide-react';
 import { useNavStore } from '@/store/navStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
@@ -31,7 +32,7 @@ import { useSidebarContext } from './SidebarContext';
 
 export function FilesPanel(): React.JSX.Element {
   const { t } = useTranslation();
-  const { width, onFileSelect } = useSidebarContext();
+  const { width, onFileSelect, onCollapse } = useSidebarContext();
   const vaultName = useAppearanceStore((state) => state.vaultName);
   const setCurrentPage = useNavStore((state) => state.setCurrentPage);
   const activeTabId = useEditorStore((state) => state.activeTabId);
@@ -350,6 +351,11 @@ export function FilesPanel(): React.JSX.Element {
               <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={() => useVaultStore.getState().refreshFileTree()} data-tip={t('sidebar:filesPanel.actions.refresh')}>
                 <ThemeIcon name="updateFolders" size={14} />
               </button>
+              {onCollapse && (
+                <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={onCollapse} data-tip={t('sidebar:filesPanel.actions.hideSidebar')}>
+                  <PanelLeftClose size={14} />
+                </button>
+              )}
               <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={() => setActionsMenuOpen((v) => !v)} data-tip={t('sidebar:filesPanel.actions.more')}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13" r="1.5"/></svg>
               </button>
@@ -400,6 +406,11 @@ export function FilesPanel(): React.JSX.Element {
                   <polyline points="4,13 8,9 12,13" />
                 </svg>
               </button>
+              {onCollapse && (
+                <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={onCollapse} data-tip={t('sidebar:filesPanel.actions.hideSidebar')}>
+                  <PanelLeftClose size={14} />
+                </button>
+              )}
             </div>
           )}
         </div>

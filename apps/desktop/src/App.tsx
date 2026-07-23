@@ -114,15 +114,18 @@ export default function App() {
 
   const isMobile = useIsMobile();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const activePanel = useEditorStore((s) => s.activePanel);
   const setActivePanel = useEditorStore((s) => s.setActivePanel);
   const setCurrentPage = useNavStore((s) => s.setCurrentPage);
 
-  // 切换 activity 面板时同时回到 editor 页（从 schedule 页点面板按钮可返回）。
+  // 切换 activity 面板时同时回到 editor 页（从 schedule 页点面板按钮可返回），
+  // 并展开侧边栏（若之前被隐藏）。
   const handlePanelChange = useCallback(
     (panel: typeof activePanel) => {
       setActivePanel(panel);
       setCurrentPage('editor');
+      setSidebarCollapsed(false);
     },
     [setActivePanel, setCurrentPage],
   );
@@ -484,7 +487,11 @@ export default function App() {
             <div className="mobile-sidebar-overlay" onClick={closeMobileSidebar} />
           )}
           <div className={`sidebar-wrapper ${isMobile ? 'mobile' : ''} ${mobileSidebarOpen ? 'open' : ''}`}>
-            <Sidebar onFileSelect={isMobile ? closeMobileSidebar : undefined} />
+            <Sidebar
+              collapsed={sidebarCollapsed}
+              onCollapsedChange={setSidebarCollapsed}
+              onFileSelect={isMobile ? closeMobileSidebar : undefined}
+            />
           </div>
           <WorkArea />
           {showAiPanel && <AiPanel />}

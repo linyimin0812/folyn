@@ -9,7 +9,8 @@
       "expandAll": "Expand all",
       "collapseAll": "Collapse all",
       "expandAllFolders": "Expand all folders",
-      "collapseAllFolders": "Collapse all folders"
+      "collapseAllFolders": "Collapse all folders",
+      "hideSidebar": "Hide sidebar"
     },
     "search": {
       "placeholder": "Search files..."

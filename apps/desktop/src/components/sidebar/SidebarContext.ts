@@ -23,6 +23,8 @@ export interface SidebarContextValue {
   width: number;
   /** Mobile-only: called after a file is opened so the sidebar overlay closes. */
   onFileSelect?: () => void;
+  /** Called by panel headers (e.g. files panel hide button) to collapse the sidebar. */
+  onCollapse?: () => void;
 }
 
 export const SidebarContext = createContext<SidebarContextValue>({ width: 224 });

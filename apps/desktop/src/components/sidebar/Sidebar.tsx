@@ -23,13 +23,15 @@ import { SidebarContext, type SidebarContextValue } from './SidebarContext';
 const DEFAULT_WIDTH = 224;
 
 interface SidebarProps {
+  /** Whether the sidebar is collapsed (hidden). Lifted to App so panel clicks can expand. */
+  collapsed: boolean;
+  onCollapsedChange: (collapsed: boolean) => void;
   /** Mobile-only: called after a file is opened so the overlay closes. */
   onFileSelect?: () => void;
 }
 
-export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
+export function Sidebar({ collapsed, onCollapsedChange, onFileSelect }: SidebarProps): React.JSX.Element {
   const [width, setWidth] = useState(DEFAULT_WIDTH);
-  const [collapsed, setCollapsed] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
 
   // Active panel entry — stable ref (found object or null). The store's
@@ -41,7 +43,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
   });
   const ActiveComponent = entry?.component;
 
-  const ctx: SidebarContextValue = { width, onFileSelect };
+  const ctx: SidebarContextValue = { width, onFileSelect, onCollapse: () => onCollapsedChange(true) };
 
   return (
     <>
@@ -73,7 +75,7 @@ export function Sidebar({ onFileSelect }: SidebarProps): React.JSX.Element {
       {/* Resize handle with collapse/expand toggle */}
       <SidebarResizer
         collapsed={collapsed}
-        onCollapsedChange={setCollapsed}
+        onCollapsedChange={onCollapsedChange}
         width={width}
         onWidthChange={setWidth}
         onResizingChange={setIsResizing}
