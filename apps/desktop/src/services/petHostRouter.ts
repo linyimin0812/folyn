@@ -160,13 +160,30 @@ export async function routePetMenuAction(
   }
 }
 
-/** Route a `pet://bubble-action` jump. Verbatim port of App.tsx
- *  `handleBubbleAction` (:350-378): routes by `target.kind` to the schedule
- *  page / pet-panel chat session / editor file tab and brings the target
- *  window forward. */
+/** Route a `pet://bubble-action` jump. Handles four event types:
+ *  - `navigate`: title click with a target → main-window navigation.
+ *  - `action`: named action button → caller-defined behavior (the main window
+ *    routes by `target.kind` to schedule/chat/file).
+ *  - `launch`: open an external URL or macOS app via `open_external`. If the
+ *    app isn't on the whitelist, the Rust command returns `not_in_whitelist`
+ *    and we emit `pet://bubble-authorize-request` so the bubble shows its
+ *    authorize UI.
+ *  - `authorize`: user approved an unwhitelisted app. `mode = 'whitelist'`
+ *    writes the app to the store; both modes retry the launch with the app
+ *    in the effective whitelist for this one call. */
 export async function routePetBubbleAction(
   event: PetBubbleActionEvent,
 ): Promise<void> {
+  // ponytail: branch on type first. Launch + authorize don't carry target,
+  // so the legacy target.kind routing is only for navigate/action.
+  if (event.type === 'launch') {
+    await handleLaunch(event);
+    return;
+  }
+  if (event.type === 'authorize') {
+    await handleAuthorize(event);
+    return;
+  }
   const target = event.target;
   if (!target) {
     await focusMain();
@@ -193,5 +210,52 @@ export async function routePetBubbleAction(
       await focusMain();
       break;
     }
+  }
+}
+
+/** Invoke `open_external` and emit an authorize-request back to the bubble if
+ *  the app isn't whitelisted. Swallows errors so a non-Tauri env doesn't
+ *  crash the routing path. */
+async function handleLaunch(event: PetBubbleActionEvent): Promise<void> {
+  if (!event.launch) return;
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const { emit } = await import('@tauri-apps/api/event');
+    const whitelist = usePetStore.getState().bubbleAppWhitelist;
+    const result = await invoke<{ status: string; app?: string; reason?: string }>(
+      'open_external',
+      { target: event.launch, whitelist },
+    );
+    if (result.status === 'not_in_whitelist' && result.app) {
+      await emit('pet://bubble-authorize-request', {
+        app: result.app,
+        launch: event.launch,
+        source: event.source,
+      });
+    }
+  } catch {
+    // Non-fatal — the bubble stays open; user can retry.
+  }
+}
+
+/** Authorize an unwhitelisted app, then retry the launch with the app in the
+ *  effective whitelist for this one call. `mode = 'whitelist'` also writes
+ *  to the store so future launches succeed without re-authorizing. */
+async function handleAuthorize(event: PetBubbleActionEvent): Promise<void> {
+  if (!event.authorize || !event.launch) return;
+  const { app, mode } = event.authorize;
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    // For 'once' mode we still need to allow this one attempt — pass the app
+    // in the whitelist for this call only. For 'whitelist' mode we persist
+    // AND pass in this call.
+    const current = usePetStore.getState().bubbleAppWhitelist;
+    const effective = current.includes(app) ? current : [...current, app];
+    await invoke('open_external', { target: event.launch, whitelist: effective });
+    if (mode === 'whitelist') {
+      usePetStore.getState().addBubbleAppToWhitelist(app);
+    }
+  } catch {
+    // Non-fatal — the bubble stays open; user can retry.
   }
 }

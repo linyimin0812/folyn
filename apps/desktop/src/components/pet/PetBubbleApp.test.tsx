@@ -12,6 +12,8 @@ const invokeMock = invoke as unknown as import('vitest').Mock;
 const listenMock = listen as unknown as import('vitest').Mock;
 const emitMock = emit as unknown as import('vitest').Mock;
 
+type AuthorizeReq = { app: string; launch: { type: string; value: string } };
+
 // `get_pet_position` / `pet_get_work_area` need real-shaped returns so
 // `positionAndShowBubble` doesn't throw on `.x` / `.scale_factor` reads.
 function stubInvokeResults() {
@@ -186,5 +188,92 @@ describe('PetBubbleApp', () => {
     await act(async () => {});
     expect(countHideCalls()).toBe(1);
     expect(screen.queryByText('第二条')).toBeNull();
+  });
+
+  it('emits a launch event when payload.launch is set and the body is clicked', async () => {
+    render(<PetBubbleApp />);
+    await waitForListener();
+    const handler = getBubbleShowHandler();
+    const payload: PetBubblePayload = {
+      text: 'click me',
+      kind: 'info',
+      launch: { type: 'url', value: 'https://example.com' },
+    };
+    await act(async () => {
+      handler({ payload });
+    });
+    // Click on the bubble-text (no [data-action]) → top-level launch fires.
+    await act(async () => {
+      fireEvent.click(screen.getByText('click me'));
+    });
+    await waitFor(() =>
+      expect(emitMock).toHaveBeenCalledWith(
+        'pet://bubble-action',
+        expect.objectContaining({
+          type: 'launch',
+          launch: { type: 'url', value: 'https://example.com' },
+        }),
+      ),
+    );
+  });
+
+  it('shows the authorize UI when pet://bubble-authorize-request arrives', async () => {
+    render(<PetBubbleApp />);
+    await waitForListener();
+    const handler = getBubbleShowHandler();
+    await act(async () => {
+      handler({ payload: samplePayload });
+    });
+    // Simulate the main-window emit path: find the registered authorize
+    // listener and fire it with an unwhitelisted app.
+    const authCall = listenMock.mock.calls.find(
+      ([ch]: [string]) => ch === 'pet://bubble-authorize-request',
+    );
+    expect(authCall).toBeTruthy();
+    const authHandler = authCall![1] as (e: { payload: AuthorizeReq }) => void;
+    await act(async () => {
+      authHandler({
+        payload: {
+          app: 'Xcode',
+          launch: { type: 'app', value: 'Xcode' },
+        },
+      });
+    });
+    expect(screen.getByText(/未授权应用/)).toBeTruthy();
+    expect(screen.getByText(/Xcode/)).toBeTruthy();
+  });
+
+  it('emits authorize with whitelist mode when the user approves', async () => {
+    render(<PetBubbleApp />);
+    await waitForListener();
+    const handler = getBubbleShowHandler();
+    await act(async () => {
+      handler({ payload: samplePayload });
+    });
+    const authCall = listenMock.mock.calls.find(
+      ([ch]: [string]) => ch === 'pet://bubble-authorize-request',
+    );
+    const authHandler = authCall![1] as (e: { payload: AuthorizeReq }) => void;
+    await act(async () => {
+      authHandler({
+        payload: {
+          app: 'Xcode',
+          launch: { type: 'app', value: 'Xcode' },
+        },
+      });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('允许并加入白名单'));
+    });
+    await waitFor(() =>
+      expect(emitMock).toHaveBeenCalledWith(
+        'pet://bubble-action',
+        expect.objectContaining({
+          type: 'authorize',
+          authorize: { app: 'Xcode', mode: 'whitelist' },
+          launch: { type: 'app', value: 'Xcode' },
+        }),
+      ),
+    );
   });
 });

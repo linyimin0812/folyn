@@ -25,6 +25,8 @@ use tiny_http::{Header, Response, Server};
 
 pub mod dispatch;
 
+pub use dispatch::LaunchSpec;
+
 /// First port tried for the pet API. Documented to external callers; if it's
 /// free this is the port they should use.
 pub const BASE_PORT: u16 = 17382;
@@ -58,6 +60,73 @@ pub fn get_pet_api_info(state: State<'_, PetApiState>) -> PetApiInfo {
         .lock()
         .map(|g| g.clone().unwrap_or_default())
         .unwrap_or_default()
+}
+
+/// Outcome of `open_external` for the frontend to act on. `Opened` = done;
+/// `NotInWhitelist` = the app name needs user authorization (the bubble
+/// switches to its authorize UI); `Invalid` = the spec failed validation
+/// (already validated in `dispatch::parse_launch`, but defense-in-depth here
+/// so the command is safe to call even with hand-built args).
+#[derive(Serialize, Clone, Debug)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum OpenExternalResult {
+    Opened,
+    NotInWhitelist { app: String },
+    Invalid { reason: String },
+    Failed { reason: String },
+}
+
+/// Tauri command: open an external URL or macOS app. URLs (http/https) open
+/// in the default browser with no whitelist check. Apps open via
+/// `open -a <name>` only if the name is in `whitelist` (a Vec<String> the
+/// frontend passes from `petStore.bubbleAppWhitelist`). The command never
+/// shells out — `std::process::Command` separates args so `value` cannot
+/// inject flags.
+#[tauri::command]
+pub fn open_external(target: LaunchSpec, whitelist: Vec<String>) -> OpenExternalResult {
+    match target.kind.as_str() {
+        "url" => {
+            if !target.value.starts_with("http://") && !target.value.starts_with("https://") {
+                return OpenExternalResult::Invalid {
+                    reason: "url must be http(s)".into(),
+                };
+            }
+            match std::process::Command::new("open").arg(&target.value).status() {
+                Ok(_) => OpenExternalResult::Opened,
+                Err(e) => OpenExternalResult::Failed {
+                    reason: e.to_string(),
+                },
+            }
+        }
+        "app" => {
+            if target.value.is_empty() {
+                return OpenExternalResult::Invalid {
+                    reason: "empty app name".into(),
+                };
+            }
+            if !whitelist.iter().any(|w| w == &target.value) {
+                return OpenExternalResult::NotInWhitelist {
+                    app: target.value.clone(),
+                };
+            }
+            match std::process::Command::new("open")
+                .arg("-a")
+                .arg(&target.value)
+                .status()
+            {
+                Ok(s) if s.success() => OpenExternalResult::Opened,
+                Ok(s) => OpenExternalResult::Failed {
+                    reason: format!("exit: {}", s.code().unwrap_or(-1)),
+                },
+                Err(e) => OpenExternalResult::Failed {
+                    reason: e.to_string(),
+                },
+            }
+        }
+        other => OpenExternalResult::Invalid {
+            reason: format!("unknown launch type: {}", other),
+        },
+    }
 }
 
 /// Spawn the HTTP server on a background thread. Tries `BASE_PORT`..=

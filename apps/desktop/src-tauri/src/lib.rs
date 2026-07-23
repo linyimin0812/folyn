@@ -670,6 +670,7 @@ pub fn run() {
             commands::exit_app,
             commands::tray_set_enabled,
             pet_api::get_pet_api_info,
+            pet_api::open_external,
             chat::chat_stream,
             plugin_commands::install_plugin,
             plugin_commands::list_plugins,

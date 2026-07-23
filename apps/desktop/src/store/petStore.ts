@@ -6,6 +6,7 @@ import {
   PET_SIZE_TO_PX,
   type PetSize,
 } from '@/components/pet/petPosition';
+import type { BubbleTemplate } from '@/components/pet/bubbleTemplate';
 
 // ponytail: PET_SIZE_VERSION / PET_SIZE_DEFAULT / PET_SIZE_TO_PX / PetSize are
 // owned by petPosition.ts (the pure-math module). petStore imports them — this
@@ -42,6 +43,9 @@ export const PERSIST_KEYS_PET = [
   'petOpacity',
   'petClickThrough',
   'notificationForm',
+  'bubbleUserTemplates',
+  'bubbleActiveTemplateId',
+  'bubbleAppWhitelist',
 ] as const;
 
 export interface PetState {
@@ -64,6 +68,14 @@ export interface PetState {
   petOpacity: PetOpacity;
   petClickThrough: boolean;
   notificationForm: NotificationForm;
+  /** User-uploaded bubble templates. Built-ins (`BUILT_IN_TEMPLATES`) are
+   *  injected from code at runtime, not persisted, so upgrades replace them
+   *  without a migration. Runtime list = built-ins + these. */
+  bubbleUserTemplates: BubbleTemplate[];
+  /** Active template id. Resolves against built-ins + user templates. */
+  bubbleActiveTemplateId: string;
+  /** Whitelist of macOS app names approved for `launch.type = "app"`. */
+  bubbleAppWhitelist: string[];
 
   setPetModeEnabled: (enabled: boolean) => void;
   setPetPosition: (x: number, y: number) => void;
@@ -78,6 +90,11 @@ export interface PetState {
   setPetOpacity: (opacity: PetOpacity) => void;
   setPetClickThrough: (enabled: boolean) => void;
   setNotificationForm: (form: NotificationForm) => void;
+  addBubbleUserTemplate: (template: BubbleTemplate) => void;
+  removeBubbleUserTemplate: (id: string) => void;
+  setBubbleActiveTemplateId: (id: string) => void;
+  addBubbleAppToWhitelist: (app: string) => void;
+  removeBubbleAppFromWhitelist: (app: string) => void;
 
   /** Load this store's slice from the persisted `settings:all` blob. */
   hydrate: (blob: Record<string, unknown>) => void;
@@ -117,6 +134,9 @@ export const usePetStore = create<PetState>((set, get) => ({
   petOpacity: '100',
   petClickThrough: false,
   notificationForm: 'bubble',
+  bubbleUserTemplates: [],
+  bubbleActiveTemplateId: 'default',
+  bubbleAppWhitelist: [],
 
   setPetModeEnabled: (enabled) => { set({ petModeEnabled: enabled }); schedulePersist(); },
 
@@ -191,6 +211,50 @@ export const usePetStore = create<PetState>((set, get) => ({
   setPetClickThrough: (enabled) => { set({ petClickThrough: enabled }); schedulePersist(); },
 
   setNotificationForm: (form) => { set({ notificationForm: form }); schedulePersist(); },
+
+  addBubbleUserTemplate: (template) => {
+    // ponytail: replace by id — importing the same id twice is an update, not
+    // a duplicate. Reject ids that collide with built-in ids by silently
+    // prefixing `user:` — caller (settings UI) should pre-check, but this is
+    // the safety net so a malicious import can't shadow built-ins.
+    const builtInIds = ['default', 'glass', 'dark', 'minimal', 'colorful'];
+    const id = builtInIds.includes(template.id) ? `user:${template.id}` : template.id;
+    const cur = get().bubbleUserTemplates;
+    const next = [...cur.filter((t) => t.id !== id), { ...template, id }];
+    set({ bubbleUserTemplates: next });
+    schedulePersist();
+  },
+
+  removeBubbleUserTemplate: (id) => {
+    const cur = get().bubbleUserTemplates;
+    const next = cur.filter((t) => t.id !== id);
+    set({ bubbleUserTemplates: next });
+    // If the active template was removed, fall back to default.
+    if (get().bubbleActiveTemplateId === id) {
+      set({ bubbleActiveTemplateId: 'default' });
+    }
+    schedulePersist();
+  },
+
+  setBubbleActiveTemplateId: (id) => {
+    set({ bubbleActiveTemplateId: id });
+    schedulePersist();
+  },
+
+  addBubbleAppToWhitelist: (app) => {
+    const cur = get().bubbleAppWhitelist;
+    const trimmed = app.trim();
+    if (!trimmed) return;
+    if (cur.includes(trimmed)) return;
+    set({ bubbleAppWhitelist: [...cur, trimmed] });
+    schedulePersist();
+  },
+
+  removeBubbleAppFromWhitelist: (app) => {
+    const cur = get().bubbleAppWhitelist;
+    set({ bubbleAppWhitelist: cur.filter((a) => a !== app) });
+    schedulePersist();
+  },
 
   hydrate: (blob) => {
     // Mirror the legacy settingsStore hydrate: build a working copy of the
@@ -282,6 +346,35 @@ export const usePetStore = create<PetState>((set, get) => ({
     // (defensive — a persisted state from before this feature would otherwise
     // have `undefined`, which would break the dispatcher's switch).
     if (!isNotificationForm(saved.notificationForm)) saved.notificationForm = 'bubble';
+
+    // Coerce `bubbleUserTemplates` to BubbleTemplate[] (defensive — a corrupt
+    // blob could have non-object entries or missing fields). Drop entries
+    // missing `id`/`html` rather than failing the whole hydrate.
+    if (!Array.isArray(saved.bubbleUserTemplates)) {
+      saved.bubbleUserTemplates = [];
+    } else {
+      saved.bubbleUserTemplates = saved.bubbleUserTemplates.filter(
+        (t: unknown): t is BubbleTemplate => {
+          if (typeof t !== 'object' || t === null) return false;
+          const o = t as Record<string, unknown>;
+          return typeof o.id === 'string' && typeof o.html === 'string' && typeof o.css === 'string';
+        },
+      );
+    }
+
+    // Coerce `bubbleActiveTemplateId` to a string (default `'default'`).
+    if (typeof saved.bubbleActiveTemplateId !== 'string') {
+      saved.bubbleActiveTemplateId = 'default';
+    }
+
+    // Coerce `bubbleAppWhitelist` to a string[].
+    if (!Array.isArray(saved.bubbleAppWhitelist)) {
+      saved.bubbleAppWhitelist = [];
+    } else {
+      saved.bubbleAppWhitelist = saved.bubbleAppWhitelist.filter(
+        (a: unknown): a is string => typeof a === 'string',
+      );
+    }
 
     // Apply the migrated working copy as a patch. The cast is safe — every
     // key in `saved` came from PERSIST_KEYS_PET (typed fields).

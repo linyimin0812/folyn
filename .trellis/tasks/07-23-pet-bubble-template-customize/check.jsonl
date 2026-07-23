@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "forbidden patterns + review checklist to verify tokenizer/sanitize/whitelist code meets quality bar"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "verify petStore slice registration + persist keys + hydrate follow established patterns"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "verify BubbleTemplate/LaunchSpec/PetBubblePayload types are strict and invoke wrapper is typed"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "verify CSP meta injection + event routing between pet-bubble and main window is consistent with existing patterns"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "verify Rust→frontend contract for data/source/template/launch passthrough and error paths"}

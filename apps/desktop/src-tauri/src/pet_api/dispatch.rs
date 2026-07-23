@@ -7,7 +7,7 @@
 // status codes (200 / 400 / 501). Keeping parsing out of the server thread's
 // I/O path lets `route_action` be exercised with plain `&str` bodies.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// A validated `notify` payload mirroring the TS `PetBubblePayload` contract
@@ -20,7 +20,17 @@ pub struct PetNotifyPayload {
     pub text: String,
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub template: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub target: Option<PetTarget>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub launch: Option<LaunchSpec>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub actions: Option<Vec<Value>>,
 }
 
 /// `target` mirror of the TS `PetBubbleTarget` — flat `{ kind, id }`. The
@@ -36,6 +46,18 @@ pub enum PetTarget {
     File { id: String },
 }
 
+/// External-launch spec carried by `notify` payloads. `type = "url"` opens
+/// http(s) links in the default browser; `type = "app"` opens a macOS app by
+/// name (subject to a user-maintained whitelist — enforced by the
+/// `open_external` command, not here). Rust never shells out —
+/// `std::process::Command` separates args, so `value` cannot inject flags.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct LaunchSpec {
+    #[serde(rename = "type")]
+    pub kind: String,
+    pub value: String,
+}
+
 /// Whitelist for `kind` — matches the TS `PetBubbleKind` union.
 const VALID_KINDS: [&str; 4] = ["info", "reminder", "message", "event"];
 
@@ -43,6 +65,12 @@ const VALID_KINDS: [&str; 4] = ["info", "reminder", "message", "event"];
 /// that a caller can't use the API as a memory sink. Mirrors a sane display
 /// ceiling; the bubble UI truncates visually anyway.
 pub const MAX_TEXT_CHARS: usize = 4096;
+/// Max length of the `source` field. Caller identity string — short label.
+pub const MAX_SOURCE_CHARS: usize = 128;
+/// Max length of the `template` field (template id). Short identifier.
+pub const MAX_TEMPLATE_CHARS: usize = 64;
+/// Max length of `launch.value`. URL or app name; well under this in practice.
+pub const MAX_LAUNCH_VALUE_CHARS: usize = 512;
 
 /// Outcome of routing a request body. Pure value — the caller decides the
 /// side effect (emit) and the HTTP status.
@@ -100,11 +128,38 @@ fn build_notify(v: &Value) -> Result<PetNotifyPayload, String> {
         .filter(|s| !s.is_empty())
         .map(String::from);
     let target = v.get("target").map(parse_target).transpose()?;
+    let source = v
+        .get("source")
+        .and_then(|x| x.as_str())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.chars().take(MAX_SOURCE_CHARS).collect::<String>());
+    let data = v.get("data").filter(|x| x.is_object()).cloned();
+    let template = v
+        .get("template")
+        .and_then(|x| x.as_str())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.chars().take(MAX_TEMPLATE_CHARS).collect::<String>());
+    let launch = v.get("launch").map(parse_launch).transpose()?;
+    // Pass through actions array as opaque Values — the bubble renderer +
+    // DOMPurify handle the inner HTML. We only sanity-check it's an array.
+    let actions = v
+        .get("actions")
+        .filter(|x| x.is_array())
+        .and_then(|x| x.as_array().map(|a| a.clone().into_iter().collect::<Vec<_>>()));
     Ok(PetNotifyPayload {
         title,
         text: text.into(),
         kind: kind.into(),
+        source,
+        data,
+        template,
         target,
+        launch,
+        actions: if actions.as_ref().map(|a| a.is_empty()).unwrap_or(true) {
+            None
+        } else {
+            actions
+        },
     })
 }
 
@@ -128,6 +183,55 @@ fn parse_target(v: &Value) -> Result<PetTarget, String> {
         "task" => Ok(PetTarget::Task { id: id.into() }),
         "file" => Ok(PetTarget::File { id: id.into() }),
         _ => Err(format!("invalid target kind: {}", kind)),
+    }
+}
+
+/// Parse the optional `launch` object. `type` must be `"url"` or `"app"`;
+/// `value` must be non-empty and under `MAX_LAUNCH_VALUE_CHARS`. URL values
+/// must start with `http://` or `https://`; app values must match
+/// `[A-Za-z0-9 .\-]+` and contain no path separators (defense-in-depth —
+/// the actual open() call uses arg separation, but we reject early so
+/// malformed requests never reach the bubble's launch UI).
+fn parse_launch(v: &Value) -> Result<LaunchSpec, String> {
+    let kind = v
+        .get("type")
+        .and_then(|x| x.as_str())
+        .ok_or_else(|| "launch missing type".to_string())?;
+    let value = v
+        .get("value")
+        .and_then(|x| x.as_str())
+        .ok_or_else(|| "launch missing value".to_string())?;
+    if value.is_empty() {
+        return Err("launch empty value".into());
+    }
+    if value.chars().count() > MAX_LAUNCH_VALUE_CHARS {
+        return Err("launch value too long".into());
+    }
+    match kind {
+        "url" => {
+            if !value.starts_with("http://") && !value.starts_with("https://") {
+                return Err("launch url must be http(s)".into());
+            }
+            Ok(LaunchSpec {
+                kind: "url".into(),
+                value: value.into(),
+            })
+        }
+        "app" => {
+            // App name: alphanumerics, space, dot, dash only. No path
+            // separators — prevents `../`, absolute paths, shell metachars.
+            if !value
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == ' ' || c == '.' || c == '-')
+            {
+                return Err("launch app name has invalid characters".into());
+            }
+            Ok(LaunchSpec {
+                kind: "app".into(),
+                value: value.into(),
+            })
+        }
+        _ => Err(format!("invalid launch type: {}", kind)),
     }
 }
 
@@ -253,5 +357,95 @@ mod tests {
             assert_eq!(json["target"]["kind"], "file");
             assert_eq!(json["target"]["id"], "f");
         }
+    }
+
+    #[test]
+    fn passthrough_data_source_template_fields() {
+        let body = r#"{"action":"notify","text":"x","source":"github","template":"glass","data":{"repo":"quill","runId":42}}"#;
+        let p = match route_action(body) {
+            DispatchOutcome::Notify(p) => p,
+            _ => panic!("expected Notify"),
+        };
+        assert_eq!(p.source.as_deref(), Some("github"));
+        assert_eq!(p.template.as_deref(), Some("glass"));
+        let data = p.data.expect("data passthrough");
+        assert_eq!(data["repo"], "quill");
+        assert_eq!(data["runId"], 42);
+    }
+
+    #[test]
+    fn passthrough_launch_url() {
+        let body = r#"{"action":"notify","text":"x","launch":{"type":"url","value":"https://ci.example.com/r/1"}}"#;
+        let p = match route_action(body) {
+            DispatchOutcome::Notify(p) => p,
+            _ => panic!("expected Notify"),
+        };
+        let l = p.launch.expect("launch");
+        assert_eq!(l.kind, "url");
+        assert_eq!(l.value, "https://ci.example.com/r/1");
+    }
+
+    #[test]
+    fn passthrough_launch_app() {
+        let body = r#"{"action":"notify","text":"x","launch":{"type":"app","value":"Xcode"}}"#;
+        let p = match route_action(body) {
+            DispatchOutcome::Notify(p) => p,
+            _ => panic!("expected Notify"),
+        };
+        let l = p.launch.expect("launch");
+        assert_eq!(l.kind, "app");
+        assert_eq!(l.value, "Xcode");
+    }
+
+    #[test]
+    fn rejects_launch_url_non_http() {
+        let body = r#"{"action":"notify","text":"x","launch":{"type":"url","value":"file:///etc/passwd"}}"#;
+        assert!(matches!(route_action(body), DispatchOutcome::BadRequest(_)));
+    }
+
+    #[test]
+    fn rejects_launch_app_with_path_separator() {
+        let body = r#"{"action":"notify","text":"x","launch":{"type":"app","value":"a/b"}}"#;
+        assert!(matches!(route_action(body), DispatchOutcome::BadRequest(_)));
+    }
+
+    #[test]
+    fn rejects_launch_app_with_shell_metachar() {
+        let body = r#"{"action":"notify","text":"x","launch":{"type":"app","value":"a;rm -rf"}}"#;
+        assert!(matches!(route_action(body), DispatchOutcome::BadRequest(_)));
+    }
+
+    #[test]
+    fn rejects_launch_bad_type() {
+        let body = r#"{"action":"notify","text":"x","launch":{"type":"shell","value":"ls"}}"#;
+        assert!(matches!(route_action(body), DispatchOutcome::BadRequest(_)));
+    }
+
+    #[test]
+    fn rejects_launch_missing_value() {
+        let body = r#"{"action":"notify","text":"x","launch":{"type":"url"}}"#;
+        assert!(matches!(route_action(body), DispatchOutcome::BadRequest(_)));
+    }
+
+    #[test]
+    fn passthrough_actions_array() {
+        let body = r#"{"action":"notify","text":"x","actions":[{"id":"view","label":"查看"},{"id":"open","label":"打开"}]}"#;
+        let p = match route_action(body) {
+            DispatchOutcome::Notify(p) => p,
+            _ => panic!("expected Notify"),
+        };
+        let actions = p.actions.expect("actions");
+        assert_eq!(actions.len(), 2);
+        assert_eq!(actions[0]["id"], "view");
+    }
+
+    #[test]
+    fn empty_actions_array_serialized_as_none() {
+        let body = r#"{"action":"notify","text":"x","actions":[]}"#;
+        let p = match route_action(body) {
+            DispatchOutcome::Notify(p) => p,
+            _ => panic!("expected Notify"),
+        };
+        assert!(p.actions.is_none(), "empty actions should be None");
     }
 }

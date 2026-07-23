@@ -4,6 +4,7 @@ import { usePetStore, type PetOpacity } from '@/store/petStore';
 import { isTauri } from '@/utils/platform';
 import { invoke } from '@tauri-apps/api/core';
 import { Toggle } from '@/components/settings/primitives';
+import { BUILT_IN_TEMPLATES, type BubbleTemplate } from '@/components/pet/bubbleTemplate';
 
 /**
  * Pet settings tab (PRD: settings-pet-tab-and-custom-icon). Surfaces:
@@ -427,6 +428,8 @@ export function PetSettings() {
       </div>
 
       <PetExternalApiBlock />
+      <BubbleTemplateBlock />
+      <BubbleAppWhitelistBlock />
     </div>
   );
 }
@@ -569,5 +572,234 @@ function CustomIconPreview({ path, onError }: CustomIconPreviewProps) {
       style={{ objectFit: 'contain' }}
       onError={onError}
     />
+  );
+}
+
+/**
+ * Bubble template customization block (PRD: pet-bubble-template-customize).
+ * Lists built-in + user-uploaded templates, lets the user activate one,
+ * import a new template (file picker or paste), delete user templates,
+ * and preview each by emitting a sample `pet://bubble-show`.
+ */
+function BubbleTemplateBlock() {
+  const { t } = useTranslation();
+  const userTemplates = usePetStore((s) => s.bubbleUserTemplates);
+  const activeTemplateId = usePetStore((s) => s.bubbleActiveTemplateId);
+  const addTemplate = usePetStore((s) => s.addBubbleUserTemplate);
+  const removeTemplate = usePetStore((s) => s.removeBubbleUserTemplate);
+  const setActive = usePetStore((s) => s.setBubbleActiveTemplateId);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [error, setError] = useState('');
+
+  const allTemplates = [...BUILT_IN_TEMPLATES, ...userTemplates];
+
+  const emitPreview = useCallback(async (tplId: string) => {
+    if (!isTauri()) return;
+    try {
+      const { emit } = await import('@tauri-apps/api/event');
+      await emit('pet://bubble-show', {
+        text: '预览：这是一条示例通知',
+        title: '预览标题',
+        kind: 'info',
+        template: tplId,
+        actions: [{ id: 'view', label: '查看', kind: 'primary' }],
+      });
+    } catch {
+      // Non-fatal — preview just doesn't fire.
+    }
+  }, []);
+
+  const handleImportFile = useCallback(async () => {
+    setError('');
+    if (!isTauri()) {
+      setError(t('settings:pet.templates.invalidJson'));
+      return;
+    }
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const { readTextFile } = await import('@tauri-apps/plugin-fs');
+      const picked = await open({
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+        multiple: false,
+      });
+      if (!picked || Array.isArray(picked)) return;
+      const text = await readTextFile(picked as string);
+      tryImport(text);
+    } catch {
+      setError(t('settings:pet.templates.invalidJson'));
+    }
+  }, [t]);
+
+  const tryImport = useCallback((text: string) => {
+    setError('');
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      setError(t('settings:pet.templates.invalidJson'));
+      return;
+    }
+    if (typeof parsed !== 'object' || parsed === null) {
+      setError(t('settings:pet.templates.missingFields'));
+      return;
+    }
+    const o = parsed as Record<string, unknown>;
+    if (typeof o.id !== 'string' || typeof o.name !== 'string' ||
+        typeof o.html !== 'string' || typeof o.css !== 'string') {
+      setError(t('settings:pet.templates.missingFields'));
+      return;
+    }
+    const tpl: BubbleTemplate = {
+      id: o.id,
+      name: o.name,
+      html: o.html,
+      css: o.css,
+      fields: Array.isArray(o.fields) ? o.fields.filter((f) => typeof f === 'string') : undefined,
+    };
+    const collision = BUILT_IN_TEMPLATES.some((b) => b.id === tpl.id);
+    addTemplate(tpl);
+    if (collision) setError(t('settings:pet.templates.idCollision'));
+    setPasteOpen(false);
+    setPasteText('');
+  }, [addTemplate, t]);
+
+  return (
+    <div className="tr flex flex-col gap-3 py-3.5 border-b border-brd mt-3.5">
+      <div className="tr-info">
+        <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:pet.templates.title')}</h4>
+        <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:pet.templates.desc')}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {allTemplates.map((tpl) => {
+          const isActive = activeTemplateId === tpl.id;
+          const isBuiltin = BUILT_IN_TEMPLATES.some((b) => b.id === tpl.id);
+          return (
+            <div
+              key={tpl.id}
+              className={`rounded-md border p-2 text-[11px] flex flex-col gap-1.5 ${isActive ? 'border-acc bg-accdim' : 'border-brd bg-surf'}`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-ui font-semibold text-t1">{tpl.name}</span>
+                <span className="text-[9px] px-1 rounded bg-surf2 text-t3">
+                  {isBuiltin ? t('settings:pet.templates.builtin') : t('settings:pet.templates.custom')}
+                </span>
+              </div>
+              <div className="flex gap-1">
+                {!isActive && (
+                  <button
+                    className="btn btn-g btn-sm flex-1 justify-center"
+                    onClick={() => setActive(tpl.id)}
+                  >{t('settings:pet.templates.activate')}</button>
+                )}
+                {isActive && (
+                  <span className="text-[10px] text-acc flex-1 text-center self-center">{t('settings:pet.templates.active')}</span>
+                )}
+                <button
+                  className="btn btn-g btn-sm"
+                  onClick={() => void emitPreview(tpl.id)}
+                >{t('settings:pet.templates.preview')}</button>
+                {!isBuiltin && (
+                  <button
+                    className="btn btn-g btn-sm"
+                    onClick={() => removeTemplate(tpl.id)}
+                  >{t('settings:pet.templates.delete')}</button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-2">
+        <button className="btn btn-g btn-sm" onClick={() => void handleImportFile()}>
+          {t('settings:pet.templates.importFile')}
+        </button>
+        <button
+          className="btn btn-g btn-sm"
+          onClick={() => { setPasteOpen(!pasteOpen); setError(''); }}
+        >{t('settings:pet.templates.importPaste')}</button>
+      </div>
+      {pasteOpen && (
+        <div className="flex flex-col gap-2">
+          <textarea
+            className="border border-brd rounded p-2 text-[11px] font-mono h-24 bg-surf"
+            placeholder={t('settings:pet.templates.pastePlaceholder')}
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <button
+              className="btn btn-g btn-sm"
+              onClick={() => tryImport(pasteText)}
+            >{t('settings:pet.templates.import')}</button>
+            <button
+              className="btn btn-g btn-sm"
+              onClick={() => { setPasteOpen(false); setPasteText(''); setError(''); }}
+            >{t('settings:pet.templates.cancel')}</button>
+          </div>
+        </div>
+      )}
+      {error && <div className="text-[11px] text-[#e53935]">{error}</div>}
+    </div>
+  );
+}
+
+/**
+ * macOS app whitelist for `launch.type = "app"`. Apps not on this list
+ * trigger an authorize-UI flow in the bubble (PR4). Managed here so the
+ * user can also add/remove apps out-of-band.
+ */
+function BubbleAppWhitelistBlock() {
+  const { t } = useTranslation();
+  const whitelist = usePetStore((s) => s.bubbleAppWhitelist);
+  const add = usePetStore((s) => s.addBubbleAppToWhitelist);
+  const remove = usePetStore((s) => s.removeBubbleAppFromWhitelist);
+  const [input, setInput] = useState('');
+
+  const handleAdd = () => {
+    if (!input.trim()) return;
+    add(input);
+    setInput('');
+  };
+
+  return (
+    <div className="tr flex flex-col gap-2 py-3.5 border-b border-brd">
+      <div className="tr-info">
+        <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:pet.whitelist.title')}</h4>
+        <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:pet.whitelist.desc')}</p>
+      </div>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          className="flex-1 border border-brd rounded px-2 py-1 text-[11px] bg-surf"
+          placeholder={t('settings:pet.whitelist.placeholder')}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+        />
+        <button className="btn btn-g btn-sm" onClick={handleAdd}>
+          {t('settings:pet.whitelist.add')}
+        </button>
+      </div>
+      {whitelist.length === 0 ? (
+        <div className="text-[11px] text-t3">{t('settings:pet.whitelist.empty')}</div>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {whitelist.map((app) => (
+            <div
+              key={app}
+              className="flex items-center gap-1 rounded border border-brd bg-surf2 px-1.5 py-0.5 text-[11px]"
+            >
+              <span>{app}</span>
+              <button
+                className="text-t3 hover:text-[#e53935] text-[10px] leading-none"
+                onClick={() => remove(app)}
+                aria-label={t('settings:pet.whitelist.remove')}
+              >×</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

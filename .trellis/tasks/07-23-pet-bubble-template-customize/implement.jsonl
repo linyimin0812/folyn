@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "main frontend spec for @quill/desktop (React 18 + Tauri 2 + Zustand 5 + TS strict) — entry to sub-guides"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store patterns + persistence slice registration; needed for petStore bubbleTemplates/bubbleAppWhitelist slices"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "multi-window + transparent/click-through patterns for pet-bubble window; CSP injection and event routing between pet and main windows"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "named exports, no default export except App, Tailwind+CSS var styling conventions for BubbleTemplateEditor/whitelist UI"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "TS strict patterns for BubbleTemplate / LaunchSpec / PetBubblePayload types + Tauri invoke wrapper"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "feature spans Rust pet_api + frontend PetBubbleApp + petStore + settings UI; cross-layer data flow checklist"}

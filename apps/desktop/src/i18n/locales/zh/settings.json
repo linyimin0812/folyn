@@ -391,6 +391,32 @@
       "copied": "已复制",
       "test": "测试",
       "testing": "已发送"
+    },
+    "templates": {
+      "title": "弹窗样式",
+      "desc": "选择桌宠弹窗模板。内置 4 套预设，也可上传自定义 HTML+CSS 模板",
+      "active": "当前",
+      "activate": "使用",
+      "importFile": "导入模板文件",
+      "importPaste": "粘贴模板 JSON",
+      "pastePlaceholder": "在此粘贴模板 JSON：{\"id\":\"…\",\"name\":\"…\",\"html\":\"…\",\"css\":\"…\"}",
+      "import": "导入",
+      "cancel": "取消",
+      "delete": "删除",
+      "preview": "预览",
+      "builtin": "内置",
+      "custom": "自定义",
+      "invalidJson": "JSON 解析失败",
+      "missingFields": "缺少必需字段：id / name / html / css",
+      "idCollision": "模板 id 与内置冲突，已自动加前缀 user:"
+    },
+    "whitelist": {
+      "title": "外部应用白名单",
+      "desc": "通知里 {{launch.type}} 指定的 macOS 应用必须在此名单内才可启动",
+      "add": "添加",
+      "placeholder": "应用名，如 Terminal / Xcode",
+      "empty": "暂无白名单应用",
+      "remove": "移除"
     }
   },
   "notifications": {
