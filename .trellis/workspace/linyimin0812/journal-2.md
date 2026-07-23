@@ -676,3 +676,37 @@ Added macOS system tray icon whose menu is the same native pet context menu (ext
 ### Next Steps
 
 - None - task complete
+
+
+## Session 78: Refactor pet_commands.rs into 5 feature-domain files
+
+**Date**: 2026-07-23
+**Task**: Refactor pet_commands.rs into 5 feature-domain files
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Split 1908-line pet_commands.rs along natural seams into pet_common (state/consts/labels/helpers/structs/tests), pet_menu (build_app_menu/build_pet_context_menu/tray/pet_show_context_menu/pet_rebuild_app_menu), pet_panel (panel commands + PetShortcutState), pet_bubble (bubble commands), pet_commands (core pet window commands only). mod.rs re-exports all 5 submodules; external commands::* namespace unchanged; lib.rs untouched. cargo check + clippy + 136 tests green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `57afc46` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
