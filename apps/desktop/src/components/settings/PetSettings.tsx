@@ -289,9 +289,9 @@ export function PetSettings() {
 
   return (
     <div className="mb-8">
-      <div className="pb-3 mb-5 border-b border-brd2">
+      <div className="pb-3 mb-5 border-b border-brd2 flex items-baseline gap-2">
         <div className="text-[length:calc(var(--ui-font-size)+3px)] font-bold text-t1 tracking-[-0.01em]">{t('settings:pet.title')}</div>
-        <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3 mt-1.5">{t('settings:pet.description')}</div>
+        <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3">{t('settings:pet.description')}</div>
       </div>
 
       {/* 显示桌宠 toggle — reuses the existing petModeEnabled flag */}
@@ -448,6 +448,7 @@ function PetExternalApiBlock() {
   const { t } = useTranslation();
   const [info, setInfo] = useState<PetApiInfo | null>(null);
   const [copied, setCopied] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -483,10 +484,30 @@ function PetExternalApiBlock() {
     }
   }, [curl]);
 
+  // ponytail: no-cors fetch — we only need to fire the request, the pet
+  // bubble is the visual feedback. Opaque response is fine. Avoids adding
+  // CORS support to the tiny_http server or a Tauri HTTP plugin.
+  const handleTest = useCallback(async () => {
+    if (!port) return;
+    setTesting(true);
+    try {
+      await fetch(`http://127.0.0.1:${port}/pet/action`, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: `{"action":"notify","kind":"info","text":"hi"}`,
+      });
+    } catch {
+      // Network error — still surface the test-done state; the pet may or
+      // may not have shown. The user can retest.
+    } finally {
+      setTimeout(() => setTesting(false), 1500);
+    }
+  }, [port]);
+
   if (!info || !info.enabled || info.port == null) return null;
 
   return (
-    <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
+    <div className="tr flex items-center justify-between py-3.5 border-y border-brd mt-3.5">
       <div className="tr-info">
         <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:pet.api.title')}</h4>
         <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">
@@ -494,10 +515,17 @@ function PetExternalApiBlock() {
         </p>
         <code className="block mt-1.5 text-[10.5px] text-t3 bg-surf2 rounded px-1.5 py-1 break-all">{curl}</code>
       </div>
-      <button
-        className="btn btn-g btn-sm shrink-0"
-        onClick={() => void handleCopy()}
-      >{copied ? t('settings:pet.api.copied') : t('settings:pet.api.copy')}</button>
+      <div className="flex flex-col gap-1.5 items-center shrink-0">
+        <button
+          className="btn btn-g btn-sm w-full justify-center"
+          onClick={() => void handleTest()}
+          disabled={testing}
+        >{testing ? t('settings:pet.api.testing') : t('settings:pet.api.test')}</button>
+        <button
+          className="btn btn-g btn-sm w-full justify-center"
+          onClick={() => void handleCopy()}
+        >{copied ? t('settings:pet.api.copied') : t('settings:pet.api.copy')}</button>
+      </div>
     </div>
   );
 }

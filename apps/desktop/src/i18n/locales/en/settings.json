@@ -381,7 +381,9 @@
       "title": "External notify API",
       "desc": "Other apps can POST to localhost port {{port}} to trigger pet notifications",
       "copy": "Copy curl",
-      "copied": "Copied"
+      "copied": "Copied",
+      "test": "Test",
+      "testing": "Sent"
     }
   },
   "notifications": {
