@@ -68,7 +68,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header data-tauri-drag-region className="topbar h-[36px] shrink-0 bg-panel border-b border-brd flex items-center justify-between px-2.5 gap-[3px] z-50">
+    <header data-tauri-drag-region className="topbar h-[36px] shrink-0 bg-panel border-b border-brd flex items-center justify-between pl-0 pr-2.5 gap-[3px] z-50">
       {/* Left: Logo + mobile menu */}
       <div className="tb-left flex items-center h-full flex-1 overflow-hidden">
         {isMobile && (
@@ -80,8 +80,10 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
             </svg>
           </button>
         )}
-        <div data-tauri-drag-region={false} className="logo flex items-center gap-[7px] py-1 px-2 rounded-[5px] cursor-pointer shrink-0 transition-[background] duration-150 hover:bg-hov" onClick={() => setCurrentPage('editor')}>
-          <img src={`${import.meta.env.BASE_URL}quill.svg`} alt="Quill" width="24" height="24" style={{ borderRadius: 5 }} />
+        <div data-tauri-drag-region={false} className="logo flex items-center gap-[7px] py-1 pl-0 pr-2 rounded-[5px] cursor-pointer shrink-0 transition-[background] duration-150 hover:bg-hov" onClick={() => setCurrentPage('editor')}>
+          <div className="w-[36px] h-full flex items-center justify-center">
+            <img src={`${import.meta.env.BASE_URL}quill.svg`} alt="Quill" width="24" height="24" style={{ borderRadius: 5 }} />
+          </div>
           <span className="logo-name font-bold text-[length:var(--ui-font-size)]">
             Qu<em className="text-acc not-italic">ill</em>
           </span>
