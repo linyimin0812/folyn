@@ -37,6 +37,7 @@
     "shell:allow-stdin-write",
     "shell:allow-kill",
     "dialog:default",
+    "dialog:allow-confirm",
     "clipboard-manager:allow-write-text",
     "clipboard-manager:allow-write-image",
     "notification:default",

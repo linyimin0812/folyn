@@ -349,7 +349,10 @@
       "upload": "上传图标…",
       "reset": "恢复默认",
       "hint": "支持 png / jpg / webp / svg，≤ 10MB",
-      "alt": "自定义图标"
+      "alt": "自定义图标",
+      "select": "选择此图标",
+      "delete": "删除此图标",
+      "confirmDelete": "删除此自定义图标?"
     },
     "errors": {
       "desktopOnly": "桌面端功能，请在 Tauri 环境中使用",

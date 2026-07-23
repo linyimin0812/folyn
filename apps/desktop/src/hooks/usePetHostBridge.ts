@@ -31,12 +31,12 @@ import type { PetBubbleActionEvent, PetBubblePayload } from '@/components/pet/Pe
  * notification click listener. No-op (returns nothing) outside Tauri.
  */
 export function usePetHostBridge(): void {
-  // ── Pet icon orphan sweep + fallback (PRD: settings-pet-tab-and-custom-icon) ──
-  // On startup, reconcile the persisted `petIconSource` / `petIconPath` with
-  // the actual files under appDataDir. Lives in the MAIN window (not PetApp)
-  // because the fs plugin calls require ACL permissions the main window has
-  // but the pet window does not. Wrapped in isTauri + try/catch so non-Tauri
-  // / test envs skip it.
+  // ── Pet icon library reconcile + orphan sweep (PRD: settings-pet-tab-and-custom-icon) ──
+  // On startup, reconcile the persisted `petIcons` library + active
+  // `petIconPath` with the actual files under appDataDir. Lives in the MAIN
+  // window (not PetApp) because the fs plugin calls require ACL permissions
+  // the main window has but the pet window does not. Wrapped in isTauri +
+  // try/catch so non-Tauri / test envs skip it.
   useEffect(() => {
     if (!isTauri()) return;
     let cancelled = false;
@@ -52,30 +52,34 @@ export function usePetHostBridge(): void {
         const { exists, remove, readDir } = await import('@tauri-apps/plugin-fs');
         const { appDataDir, join } = await import('@tauri-apps/api/path');
         const appData = await appDataDir();
-        const { petIconSource, petIconPath } = usePetStore.getState();
+        const { petIconSource, petIconPath, petIcons } = usePetStore.getState();
 
+        // Verify every library entry + the active path (if custom). Drop
+        // any whose file is missing — `removePetIcon` handles the
+        // active-fallback (picks first survivor, or reverts to builtin if
+        // the library is now empty).
         if (petIconSource === 'custom' && petIconPath) {
-          // Fallback: custom flag set but file missing → clear flag.
-          let fileExists = false;
-          try {
-            fileExists = await exists(petIconPath);
-          } catch {
-            // exists() can throw on permission errors; treat as "missing"
-            // so the flag clears and the pet doesn't render a broken icon.
-            fileExists = false;
+          const paths = Array.from(new Set([petIconPath, ...petIcons]));
+          for (const p of paths) {
+            if (cancelled) break;
+            let ok = false;
+            try { ok = await exists(p); } catch { ok = false; }
+            if (!ok && !cancelled) {
+              console.warn('[App] pet custom icon file missing, dropping:', p);
+              usePetStore.getState().removePetIcon(p);
+            }
           }
-          if (!fileExists && !cancelled) {
-            console.warn('[App] pet custom icon file missing, clearing flag:', petIconPath);
-            usePetStore.getState().setPetIcon('builtin');
-          }
-        } else {
-          // Orphan sweep: delete any leftover pet-icon.<ext> files in
-          // appDataDir so they don't accumulate across reset cycles.
+        } else if (petIcons.length === 0) {
+          // Orphan sweep: only when the library is empty (no entries to
+          // preserve — covers the legacy single-icon schema and any reset
+          // that failed mid-delete). Matches the old `!(custom && path)`
+          // gate, scoped to the new multi-icon library model. Builtin view
+          // WITH a non-empty library skips this so saved icons survive.
           try {
             const entries = await readDir(appData);
             for (const e of entries) {
               if (cancelled) break;
-              if (!e.name.startsWith('pet-icon.')) continue;
+              if (!e.name.startsWith('pet-icon')) continue;
               try {
                 await remove(await join(appData, e.name));
               } catch {

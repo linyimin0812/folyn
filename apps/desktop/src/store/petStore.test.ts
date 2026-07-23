@@ -18,6 +18,7 @@ beforeEach(() => {
     petPosVersion: 1,
     petIconSource: 'builtin',
     petIconPath: '',
+    petIcons: [],
     petSizeVersion: 0,
     petSize: PET_SIZE_DEFAULT,
     notificationForm: 'bubble',
@@ -74,6 +75,54 @@ describe('usePetStore setters', () => {
     expect(usePetStore.getState().petIconPath).toBe('/abs/path/icon.png');
   });
 
+  it('addPetIcon appends to library and selects', () => {
+    usePetStore.getState().addPetIcon('/a.png');
+    expect(usePetStore.getState().petIcons).toEqual(['/a.png']);
+    expect(usePetStore.getState().petIconSource).toBe('custom');
+    expect(usePetStore.getState().petIconPath).toBe('/a.png');
+    // Adding the same path does not duplicate.
+    usePetStore.getState().addPetIcon('/a.png');
+    expect(usePetStore.getState().petIcons).toEqual(['/a.png']);
+    // A second upload selects it and appends.
+    usePetStore.getState().addPetIcon('/b.png');
+    expect(usePetStore.getState().petIcons).toEqual(['/a.png', '/b.png']);
+    expect(usePetStore.getState().petIconPath).toBe('/b.png');
+  });
+
+  it('removePetIcon falls back to first survivor when active is removed', () => {
+    usePetStore.getState().addPetIcon('/a.png');
+    usePetStore.getState().addPetIcon('/b.png');
+    usePetStore.getState().removePetIcon('/b.png');
+    expect(usePetStore.getState().petIcons).toEqual(['/a.png']);
+    expect(usePetStore.getState().petIconSource).toBe('custom');
+    expect(usePetStore.getState().petIconPath).toBe('/a.png');
+  });
+
+  it('removePetIcon reverts to builtin when library empties', () => {
+    usePetStore.getState().addPetIcon('/a.png');
+    usePetStore.getState().removePetIcon('/a.png');
+    expect(usePetStore.getState().petIcons).toEqual([]);
+    expect(usePetStore.getState().petIconSource).toBe('builtin');
+    expect(usePetStore.getState().petIconPath).toBe('');
+  });
+
+  it('resetPetIcons clears library and active selection', () => {
+    usePetStore.getState().addPetIcon('/a.png');
+    usePetStore.getState().addPetIcon('/b.png');
+    usePetStore.getState().resetPetIcons();
+    expect(usePetStore.getState().petIcons).toEqual([]);
+    expect(usePetStore.getState().petIconSource).toBe('builtin');
+    expect(usePetStore.getState().petIconPath).toBe('');
+  });
+
+  it('setPetIcon builtin preserves the library', () => {
+    usePetStore.getState().addPetIcon('/a.png');
+    usePetStore.getState().setPetIcon('builtin');
+    expect(usePetStore.getState().petIconSource).toBe('builtin');
+    expect(usePetStore.getState().petIconPath).toBe('');
+    expect(usePetStore.getState().petIcons).toEqual(['/a.png']);
+  });
+
   it('setPetSize updates', () => {
     usePetStore.getState().setPetSize('150');
     expect(usePetStore.getState().petSize).toBe('150');
@@ -119,6 +168,25 @@ describe('usePetStore.hydrate', () => {
     usePetStore.getState().hydrate({ petIconSource: 'bogus', petIconPath: '/x' });
     expect(usePetStore.getState().petIconSource).toBe('builtin');
     expect(usePetStore.getState().petIconPath).toBe('');
+  });
+
+  it('coerces non-array petIcons to empty', () => {
+    usePetStore.getState().hydrate({ petIcons: 'not-an-array' });
+    expect(usePetStore.getState().petIcons).toEqual([]);
+  });
+
+  it('drops non-string entries from petIcons', () => {
+    usePetStore.getState().hydrate({ petIcons: ['/a.png', 7, null, '/b.png'] });
+    expect(usePetStore.getState().petIcons).toEqual(['/a.png', '/b.png']);
+  });
+
+  it('migrates a legacy single-icon path into the library', () => {
+    usePetStore.getState().hydrate({
+      petIconSource: 'custom',
+      petIconPath: '/abs/pet-icon.png',
+    });
+    expect(usePetStore.getState().petIcons).toEqual(['/abs/pet-icon.png']);
+    expect(usePetStore.getState().petIconPath).toBe('/abs/pet-icon.png');
   });
 
   it('coerces invalid petSize to default', () => {

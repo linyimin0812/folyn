@@ -349,7 +349,10 @@
       "upload": "Upload icon…",
       "reset": "Reset to default",
       "hint": "Supports png / jpg / webp / svg, ≤ 10MB",
-      "alt": "Custom icon"
+      "alt": "Custom icon",
+      "select": "Select this icon",
+      "delete": "Delete this icon",
+      "confirmDelete": "Delete this custom icon?"
     },
     "errors": {
       "desktopOnly": "Desktop feature; please use in a Tauri environment",

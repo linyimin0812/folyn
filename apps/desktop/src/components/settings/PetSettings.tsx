@@ -34,7 +34,11 @@ export function PetSettings() {
   const setPetModeEnabled = usePetStore((s) => s.setPetModeEnabled);
   const petIconSource = usePetStore((s) => s.petIconSource);
   const petIconPath = usePetStore((s) => s.petIconPath);
+  const petIcons = usePetStore((s) => s.petIcons);
   const setPetIcon = usePetStore((s) => s.setPetIcon);
+  const addPetIcon = usePetStore((s) => s.addPetIcon);
+  const removePetIcon = usePetStore((s) => s.removePetIcon);
+  const resetPetIcons = usePetStore((s) => s.resetPetIcons);
   const petOpacity = usePetStore((s) => s.petOpacity);
   const setPetOpacity = usePetStore((s) => s.setPetOpacity);
   const petClickThrough = usePetStore((s) => s.petClickThrough);
@@ -54,12 +58,17 @@ export function PetSettings() {
   // rendering the stale icon until next launch. Emit `pet://icon-changed` so
   // `PetApp.tsx`'s listener can `setState` on its own store instance. Guarded
   // with `isTauri()` so non-Tauri/test envs skip the dynamic import. The
-  // payload shape is `{ source, path }` so the listener can blindly apply it.
-  const emitIconChanged = useCallback(async (source: 'builtin' | 'custom', path: string) => {
+  // payload shape mirrors the relevant pet-icon slice (`source`, `path`,
+  // `icons`) so the listener can apply it blindly. Reading from
+  // `usePetStore.getState()` (rather than taking args) means every call site
+  // emits the latest state with no per-call wiring — Zustand's setState is
+  // synchronous, so by the time this async runs the state is already settled.
+  const emitIconChanged = useCallback(async () => {
     if (!isTauri()) return;
     try {
       const { emit } = await import('@tauri-apps/api/event');
-      await emit('pet://icon-changed', { source, path });
+      const { petIconSource: source, petIconPath: path, petIcons: icons } = usePetStore.getState();
+      await emit('pet://icon-changed', { source, path, icons });
     } catch {
       // Non-fatal — the pet window will pick up the change on next launch.
     }
@@ -75,7 +84,7 @@ export function PetSettings() {
         return;
       }
       const { open } = await import('@tauri-apps/plugin-dialog');
-      const { readFile, writeFile, stat, remove, readDir } = await import('@tauri-apps/plugin-fs');
+      const { readFile, writeFile, stat } = await import('@tauri-apps/plugin-fs');
       const { appDataDir, join } = await import('@tauri-apps/api/path');
 
       const picked = await open({
@@ -110,23 +119,13 @@ export function PetSettings() {
         return;
       }
 
-      // Copy file to appDataDir/pet-icon.<ext>. The appDataDir is created
-      // on demand by `writeFile` (fs plugin creates parent dirs). Delete
-      // any prior pet-icon.<ext> with a DIFFERENT extension first so the
-      // orphan doesn't linger (same-extension writes overwrite directly).
+      // Copy file to appDataDir/pet-icon-<timestamp>.<ext>. The timestamp
+      // disambiguates multiple saved icons (PRD: multi-icon library). The
+      // appDataDir is created on demand by `writeFile` (fs plugin creates
+      // parent dirs). No deletion of prior files — every upload is a new
+      // library entry; reset clears them all.
       const appData = await appDataDir();
-      const destPath = await join(appData, `pet-icon.${ext}`);
-      try {
-        const entries = await readDir(appData);
-        for (const e of entries) {
-          if (e.name.startsWith('pet-icon.') && e.name !== `pet-icon.${ext}`) {
-            try { await remove(await join(appData, e.name)); } catch {}
-          }
-        }
-      } catch {
-        // readDir on appDataDir can fail on first launch (dir doesn't
-        // exist yet) — non-fatal, writeFile creates it.
-      }
+      const destPath = await join(appData, `pet-icon-${Date.now()}.${ext}`);
 
       const bytes = await readFile(filePath);
       if (bytes.length > MAX_ICON_BYTES) {
@@ -135,14 +134,14 @@ export function PetSettings() {
         return;
       }
       await writeFile(destPath, bytes);
-      setPetIcon('custom', destPath);
-      await emitIconChanged('custom', destPath);
+      addPetIcon(destPath);
+      await emitIconChanged();
     } catch (e: unknown) {
       setErrorMsg(e instanceof Error ? e.message : t('settings:pet.errors.uploadFailed'));
     } finally {
       setBusy(false);
     }
-  }, [busy, setPetIcon, emitIconChanged, t]);
+  }, [busy, addPetIcon, emitIconChanged, t]);
 
   const handleTogglePetMode = useCallback(async (v: boolean) => {
     // Optimistic store update so the toggle feels snappy; then invoke the
@@ -167,43 +166,88 @@ export function PetSettings() {
     setErrorMsg('');
     try {
       if (!isTauri()) {
-        setPetIcon('builtin');
-        await emitIconChanged('builtin', '');
+        resetPetIcons();
+        await emitIconChanged();
         return;
       }
       const { remove, readDir } = await import('@tauri-apps/plugin-fs');
       const { appDataDir, join } = await import('@tauri-apps/api/path');
       const appData = await appDataDir();
-      // Delete any pet-icon.<ext> files in appDataDir (covers all extensions
-      // so a switch from png → svg → reset doesn't leave the png behind).
+      // Delete any pet-icon* files in appDataDir (covers `pet-icon.<ext>`
+      // from the legacy single-icon schema and `pet-icon-<ts>.<ext>` from
+      // the current multi-icon schema).
       try {
         const entries = await readDir(appData);
         for (const e of entries) {
-          if (e.name.startsWith('pet-icon.')) {
+          if (e.name.startsWith('pet-icon')) {
             try { await remove(await join(appData, e.name)); } catch {}
           }
         }
       } catch {
         // Non-fatal; the flag still clears.
       }
-      setPetIcon('builtin');
-      await emitIconChanged('builtin', '');
+      resetPetIcons();
+      await emitIconChanged();
     } catch (e: unknown) {
       setErrorMsg(e instanceof Error ? e.message : t('settings:pet.errors.resetFailed'));
     }
-  }, [setPetIcon, emitIconChanged, t]);
+  }, [resetPetIcons, emitIconChanged, t]);
+
+  // Per-icon delete: confirm first (deleting a saved icon is destructive),
+  // then remove the file from disk + drop from the library. The store's
+  // `removePetIcon` handles the active-selection fallback; this handler
+  // also deletes the underlying file so it doesn't linger in appDataDir.
+  // File-delete failures are non-fatal (store still updates).
+  //
+  // Uses `@tauri-apps/plugin-dialog`'s `confirm()` rather than
+  // `window.confirm` — browser-extension userscripts (Stay/Tampermonkey)
+  // can intercept `window.confirm` and route it through a non-existent
+  // `dialog.confirm` command, surfacing as "Command not found". The Tauri
+  // plugin's `confirm()` goes through the IPC layer directly and isn't
+  // affected. Non-Tauri envs (tests, web preview) fall back to
+  // `window.confirm` (no userscript interception there).
+  const handleDeleteIcon = useCallback(async (path: string) => {
+    let ok = true;
+    if (isTauri()) {
+      try {
+        const { confirm } = await import('@tauri-apps/plugin-dialog');
+        ok = await confirm(t('settings:pet.icon.confirmDelete'), { kind: 'warning' });
+      } catch {
+        // Non-fatal — if the dialog somehow fails, default to proceeding
+        // (the user already clicked ×, so intent is clear).
+        ok = true;
+      }
+    } else {
+      ok = window.confirm(t('settings:pet.icon.confirmDelete'));
+    }
+    if (!ok) return;
+    try {
+      if (isTauri()) {
+        const { remove } = await import('@tauri-apps/plugin-fs');
+        try { await remove(path); } catch {}
+      }
+    } catch {
+      // Non-fatal — the store update is the source of truth.
+    }
+    removePetIcon(path);
+    await emitIconChanged();
+  }, [removePetIcon, emitIconChanged, t]);
 
   const handleSelectCustom = useCallback(() => {
-    // Radio "自定义": if a custom icon is already uploaded, just switch
-    // the source flag; if not, trigger the upload picker so the user can
-    // pick one (selecting "自定义" with no path would render nothing).
+    // Radio "自定义": if a custom icon is already uploaded, switch to it
+    // (pick the most recent if no active path); if the library is empty,
+    // trigger the upload picker so the user can pick one (selecting
+    // "自定义" with no path would render nothing).
     if (petIconPath) {
       setPetIcon('custom', petIconPath);
-      void emitIconChanged('custom', petIconPath);
+      void emitIconChanged();
+    } else if (petIcons.length > 0) {
+      setPetIcon('custom', petIcons[petIcons.length - 1]);
+      void emitIconChanged();
     } else {
       void handleUploadIcon();
     }
-  }, [petIconPath, setPetIcon, handleUploadIcon, emitIconChanged]);
+  }, [petIconPath, petIcons, setPetIcon, handleUploadIcon, emitIconChanged]);
 
   // Opacity radio: optimistic store update + Rust `set_pet_opacity` (finds
   // the `pet` window by label and sets NSWindow `setAlphaValue:`). The
@@ -270,7 +314,7 @@ export function PetSettings() {
             className={`py-[5px] px-3 rounded-md text-[11px] font-ui cursor-pointer border transition-all duration-100 ${petIconSource === 'builtin' ? 'border-acc bg-accdim text-acc' : 'border-brd bg-surf text-t2 hover:bg-hov hover:text-t1'}`}
             onClick={() => {
               setPetIcon('builtin');
-              void emitIconChanged('builtin', '');
+              void emitIconChanged();
             }}
           >{t('settings:pet.icon.builtin')}</button>
           <button
@@ -286,7 +330,7 @@ export function PetSettings() {
           {petIconSource === 'custom' && petIconPath && isTauri() ? (
             <CustomIconPreview path={petIconPath} onError={() => {
               setPetIcon('builtin');
-              void emitIconChanged('builtin', '');
+              void emitIconChanged();
             }} />
           ) : (
             <img src={builtinPreviewSrc} alt="Quill" className="w-12 h-12" />
@@ -301,13 +345,56 @@ export function PetSettings() {
             >{busy ? t('settings:pet.icon.uploading') : t('settings:pet.icon.upload')}</button>
             <button
               className="btn btn-g btn-sm"
-              disabled={petIconSource === 'builtin' && !petIconPath}
+              disabled={petIcons.length === 0 && petIconSource === 'builtin'}
               onClick={() => void handleResetIcon()}
             >{t('settings:pet.icon.reset')}</button>
           </div>
         <div className="text-[10.5px] text-t3 mt-1">{t('settings:pet.icon.hint')}</div>
         </div>
       </div>
+
+      {/* Library strip — thumbnails of all saved custom icons. Click to
+          select as active, × to delete (with confirm). Hidden when the
+          library is empty. The active thumbnail is marked three ways —
+          thicker accent border, accent-dim background, and a ✓ badge in
+          the top-left corner (mirrors the × in the top-right) — so the
+          selection reads at a glance even on bright/icon-heavy thumbnails
+          where a border alone blends in. */}
+      {petIcons.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-3">
+          {petIcons.map((p) => {
+            const active = petIconSource === 'custom' && petIconPath === p;
+            return (
+              <div key={p} className="relative">
+                <button
+                  className={`w-20 h-20 rounded-md border-2 overflow-hidden flex items-center justify-center transition-colors ${active ? 'border-acc bg-accdim' : 'border-brd2 hover:border-brd'}`}
+                  onClick={() => {
+                    setPetIcon('custom', p);
+                    void emitIconChanged();
+                  }}
+                  aria-label={t('settings:pet.icon.select')}
+                >
+                  <CustomIconPreview path={p} onError={() => {
+                    // Broken thumbnail — drop from the library silently
+                    // (no confirm: the file is already gone/unreadable,
+                    // prompting would just confuse the user).
+                    removePetIcon(p);
+                    void emitIconChanged();
+                  }} />
+                </button>
+                {active && (
+                  <div className="absolute -top-1.5 -left-1.5 w-4 h-4 rounded-full bg-acc text-white text-[10px] leading-none flex items-center justify-center pointer-events-center shadow-sm" aria-hidden="true">✓</div>
+                )}
+                <button
+                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-surf2 border border-brd2 text-t2 text-[10px] leading-none flex items-center justify-center hover:bg-hov hover:text-t1 shadow-sm"
+                  onClick={() => void handleDeleteIcon(p)}
+                  aria-label={t('settings:pet.icon.delete')}
+                >×</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <PetExternalApiBlock />
 
@@ -443,14 +530,14 @@ function CustomIconPreview({ path, onError }: CustomIconPreviewProps) {
     return () => { cancelled = true; };
   }, [path, onError]);
   if (!src) {
-    // Placeholder while the lazy import resolves — 48×48 transparent box.
-    return <div className="w-12 h-12" />;
+    // Placeholder while the lazy import resolves — fills the parent button.
+    return <div className="w-full h-full" />;
   }
   return (
     <img
       src={src}
       alt={t('settings:pet.icon.alt')}
-      className="w-12 h-12"
+      className="w-full h-full"
       style={{ objectFit: 'contain' }}
       onError={onError}
     />

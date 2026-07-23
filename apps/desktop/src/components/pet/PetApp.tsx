@@ -772,12 +772,16 @@ export function PetApp() {
   // The `pet` Tauri window has its own JS context + its own Zustand store
   // instance; `storageClient`'s in-memory cache is per-window with no cross-
   // window invalidation. When the main window's PetSettings calls
-  // `setPetIcon(...)`, only the main window's store updates — this pet window
-  // would keep rendering the stale icon until next launch. The main window
-  // emits `pet://icon-changed` after every `setPetIcon` call; this listener
-  // applies the payload to the pet window's own store instance so the mascot
-  // re-renders live. Pattern mirrors the `pet://visibility-changed` listener
-  // in App.tsx. Wrapped in isTauri + try/catch so non-Tauri/test envs skip it.
+  // `setPetIcon(...)` / `addPetIcon` / `removePetIcon` / `resetPetIcons`,
+  // only the main window's store updates — this pet window would keep
+  // rendering the stale icon until next launch. The main window emits
+  // `pet://icon-changed` after every store mutation; this listener applies
+  // the payload to the pet window's own store instance so the mascot
+  // re-renders live. The payload carries `source` + `path` (the active
+  // selection) and `icons` (the full library) so the thumbnail strip + the
+  // mascot both stay in sync. Pattern mirrors the `pet://visibility-changed`
+  // listener in App.tsx. Wrapped in isTauri + try/catch so non-Tauri/test
+  // envs skip it.
   useEffect(() => {
     if (!isTauri()) return;
     let unlisten: (() => void) | undefined;
@@ -785,14 +789,23 @@ export function PetApp() {
       try {
         const { listen } = await import('@tauri-apps/api/event');
         const { usePetStore } = await import('@/store/petStore');
-        unlisten = await listen<{ source: 'builtin' | 'custom'; path: string }>(
+        unlisten = await listen<{
+          source: 'builtin' | 'custom';
+          path: string;
+          icons?: unknown;
+        }>(
           'pet://icon-changed',
           (event) => {
-            const { source, path } = event.payload ?? {};
+            const { source, path, icons } = event.payload ?? {};
             if (source !== 'builtin' && source !== 'custom') return;
+            const cur = usePetStore.getState().petIcons;
+            const nextIcons = Array.isArray(icons)
+              ? icons.filter((p: unknown): p is string => typeof p === 'string')
+              : cur;
             usePetStore.setState({
               petIconSource: source,
               petIconPath: typeof path === 'string' ? path : '',
+              petIcons: nextIcons,
             });
           },
         );

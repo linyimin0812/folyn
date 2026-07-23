@@ -37,6 +37,7 @@ export const PERSIST_KEYS_PET = [
   'petPosVersion',
   'petIconSource',
   'petIconPath',
+  'petIcons',
   'petSizeVersion',
   'petSize',
   'petOpacity',
@@ -56,6 +57,9 @@ export interface PetState {
   petPosVersion: number;
   petIconSource: PetIconSource;
   petIconPath: string;
+  /** All saved custom icon paths. `petIconPath` is the active selection
+   *  from this list (or '' when source is `'builtin'`). */
+  petIcons: string[];
   petSizeVersion: number;
   petSize: PetSize;
   petOpacity: PetOpacity;
@@ -68,6 +72,9 @@ export interface PetState {
   setPetPanelSize: (width: number, height: number) => void;
   setPetPanelSizeVersion: (version: number) => void;
   setPetIcon: (source: PetIconSource, path?: string) => void;
+  addPetIcon: (path: string) => void;
+  removePetIcon: (path: string) => void;
+  resetPetIcons: () => void;
   setPetSize: (size: PetSize) => void;
   setPetOpacity: (opacity: PetOpacity) => void;
   setPetClickThrough: (enabled: boolean) => void;
@@ -105,6 +112,7 @@ export const usePetStore = create<PetState>((set, get) => ({
   petPosVersion: 1,
   petIconSource: 'builtin',
   petIconPath: '',
+  petIcons: [],
   petSizeVersion: 0,
   petSize: PET_SIZE_DEFAULT,
   petOpacity: '100',
@@ -127,7 +135,8 @@ export const usePetStore = create<PetState>((set, get) => ({
     // omitted, keep the existing path (defensive — the upload flow always
     // passes the new path, but a stale `'custom'` flag without a path would
     // render nothing, so the PetMascot `<img>` onError falls back to builtin
-    // at render time).
+    // at render time). The `petIcons` library is untouched — switching the
+    // active source does not delete saved icons.
     if (source === 'builtin') {
       set({ petIconSource: 'builtin', petIconPath: '' });
     } else {
@@ -136,6 +145,43 @@ export const usePetStore = create<PetState>((set, get) => ({
         petIconPath: path !== undefined ? path : get().petIconPath,
       });
     }
+    schedulePersist();
+  },
+
+  addPetIcon: (path) => {
+    // Append to the library (deduped) and select the new icon in one step —
+    // the upload flow expects "I just uploaded this, show it" semantics.
+    const cur = get().petIcons;
+    const next = cur.includes(path) ? cur : [...cur, path];
+    set({ petIcons: next, petIconSource: 'custom', petIconPath: path });
+    schedulePersist();
+  },
+
+  removePetIcon: (path) => {
+    // Drop from the library. If the removed path was the active selection,
+    // fall back to the first remaining icon (keeps source='custom'); if the
+    // library is now empty, revert to builtin so PetMascot doesn't render a
+    // broken <img> with an empty src.
+    const cur = get().petIcons;
+    const next = cur.filter((p) => p !== path);
+    const { petIconPath } = get();
+    if (petIconPath === path) {
+      if (next.length > 0) {
+        set({ petIcons: next, petIconPath: next[0] });
+      } else {
+        set({ petIcons: [], petIconSource: 'builtin', petIconPath: '' });
+      }
+    } else {
+      set({ petIcons: next });
+    }
+    schedulePersist();
+  },
+
+  resetPetIcons: () => {
+    // "恢复默认" — clear the library AND the active selection in one shot.
+    // Distinct from `setPetIcon('builtin')` which only flips the active
+    // source (the library survives a temporary switch to builtin).
+    set({ petIcons: [], petIconSource: 'builtin', petIconPath: '' });
     schedulePersist();
   },
 
@@ -194,6 +240,27 @@ export const usePetStore = create<PetState>((set, get) => ({
     } else {
       saved.petIconSource = 'builtin';
       saved.petIconPath = '';
+    }
+
+    // Coerce `petIcons` to a string[] (defensive — a persisted state from
+    // before this feature would have `undefined`, and a corrupt blob could
+    // have non-array/non-string entries). Drops non-string entries rather
+    // than failing the whole hydrate.
+    if (!Array.isArray(saved.petIcons)) {
+      saved.petIcons = [];
+    } else {
+      saved.petIcons = saved.petIcons.filter(
+        (p: unknown): p is string => typeof p === 'string',
+      );
+    }
+
+    // Legacy single-icon migration: a persisted state from before the
+    // multi-icon library had `petIconPath` set without a `petIcons` array.
+    // Fold the active path into the library so it shows up in the thumbnail
+    // strip instead of being an "invisible active custom icon".
+    if (typeof saved.petIconPath === 'string' && saved.petIconPath &&
+        Array.isArray(saved.petIcons) && !saved.petIcons.includes(saved.petIconPath)) {
+      saved.petIcons = [...saved.petIcons, saved.petIconPath];
     }
 
     // Coerce a missing/invalid `petSize` to the default (defensive — a
