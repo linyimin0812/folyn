@@ -710,3 +710,37 @@ Split 1908-line pet_commands.rs along natural seams into pet_common (state/const
 ### Next Steps
 
 - None - task complete
+
+
+## Session 79: Pet bubble template customization + external launch
+
+**Date**: 2026-07-23
+**Task**: Pet bubble template customization + external launch
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Implemented user-uploadable HTML+CSS bubble templates with HTTP passthrough for data/source/template/launch fields. Three-layer XSS defense (HTML-escape → DOMPurify → CSP meta). 5 built-in templates. launch field supports opening URL (no whitelist) or macOS app (user whitelist + per-app authorize flow). Added open_external Tauri command using std::process::Command for arg separation. 25 template engine tests + 3 launch/authorize tests + 10 Rust dispatch tests.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cefa65c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
