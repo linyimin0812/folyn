@@ -101,7 +101,7 @@ function isNotificationForm(v: unknown): v is NotificationForm {
 }
 
 export const usePetStore = create<PetState>((set, get) => ({
-  petModeEnabled: false,
+  petModeEnabled: true,
   petPositionX: -1,
   petPositionY: -1,
   petPanelX: -1,

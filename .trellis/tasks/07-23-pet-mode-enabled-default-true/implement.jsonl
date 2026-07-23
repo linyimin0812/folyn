@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "zustand store 默认值 + 持久化 hydrate 的既有模式（默认值只在首次启动或无持久化值时生效）"}

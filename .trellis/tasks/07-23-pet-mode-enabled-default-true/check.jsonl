@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "1-line 默认值变更后自检：无回归、tsc 通过、petStore 测试不破"}
