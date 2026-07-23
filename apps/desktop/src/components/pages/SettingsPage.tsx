@@ -257,16 +257,20 @@ export function SettingsPage() {
 
         {/* -- 快捷键 -- */}
         {settingsTab === 'shortcuts' && (
-          <div className="mb-[26px]">
-            <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-[3px] tracking-[-0.01em]">{t('settings:shortcuts.title')}</div>
-            <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3.5">{t('settings:shortcuts.description')}</div>
+          <div className="mb-8">
+            <div className="pb-3 mb-5 border-b border-brd2 flex items-baseline gap-2">
+              <div className="text-[length:calc(var(--ui-font-size)+3px)] font-bold text-t1 tracking-[-0.01em]">{t('settings:shortcuts.title')}</div>
+              <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3">{t('settings:shortcuts.description')}</div>
+            </div>
             {shortcuts.map((shortcut) => (
-              <div className="sk-row flex items-center justify-between py-2 border-b border-brd last:border-b-0" key={shortcut.id}>
-                <span className="text-xs text-t2">{shortcut.name}</span>
+              <div className="tr flex items-center justify-between py-3.5 border-b border-brd" key={shortcut.id}>
+                <div className="tr-info">
+                  <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{shortcut.name}</h4>
+                </div>
                 <ShortcutEditor shortcutId={shortcut.id} currentKeys={shortcut.keys} />
               </div>
             ))}
-            <div style={{ marginTop: 14, display: 'flex', gap: 7 }}>
+            <div className="flex gap-2 mt-4">
               <button className="btn btn-g btn-sm" onClick={() => resetShortcuts()}>{t('settings:shortcuts.reset')}</button>
             </div>
           </div>
