@@ -26,7 +26,6 @@ export type PetOpacity = '25' | '50' | '75' | '100';
 export { PET_SIZE_VERSION, PET_SIZE_DEFAULT, PET_SIZE_TO_PX, type PetSize };
 
 export const PERSIST_KEYS_PET = [
-  'petModeEnabled',
   'petPositionX',
   'petPositionY',
   'petPanelX',
