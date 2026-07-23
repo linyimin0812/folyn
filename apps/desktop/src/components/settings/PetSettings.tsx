@@ -396,14 +396,12 @@ export function PetSettings() {
         </div>
       )}
 
-      <PetExternalApiBlock />
-
       {errorMsg && (
         <div className="text-[11px] text-[#e53935] mt-3">{errorMsg}</div>
       )}
 
       {/* 透明度 radio — 4 percentage levels, applies NSWindow setAlphaValue */}
-      <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
+      <div className="tr flex items-center justify-between py-3.5 border-y border-brd mt-3.5">
         <div className="tr-info">
           <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:pet.opacity.title')}</h4>
           <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:pet.opacity.desc')}</p>
@@ -427,6 +425,8 @@ export function PetSettings() {
         </div>
         <Toggle value={petClickThrough} onChange={(v) => void handleToggleClickThrough(v)} />
       </div>
+
+      <PetExternalApiBlock />
     </div>
   );
 }
@@ -507,7 +507,7 @@ function PetExternalApiBlock() {
   if (!info || !info.enabled || info.port == null) return null;
 
   return (
-    <div className="tr flex items-center justify-between py-3.5 border-y border-brd mt-3.5">
+    <div className="tr flex items-center justify-between py-3.5 border-b border-brd mt-3.5">
       <div className="tr-info">
         <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:pet.api.title')}</h4>
         <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">
