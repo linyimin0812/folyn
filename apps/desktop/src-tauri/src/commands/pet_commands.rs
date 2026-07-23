@@ -1185,11 +1185,13 @@ pub async fn tray_set_enabled(
             }
         }
     }
-    let icon = app
-        .default_window_icon()
-        .ok_or_else(|| "default window icon not found".to_string())?;
+    // Dedicated tray icon: the app icon has a dark rounded-square background
+    // that vanishes into the macOS menubar. This PNG is the feather + ink
+    // drop on transparent background, enlarged to fill the canvas. Embedded
+    // at compile time via `include_image!` (raw RGBA, 64x64 = 16KB).
+    let icon = tauri::include_image!("icons/tray-icon.png");
     let _tray = TrayIconBuilder::with_id(TRAY_ID)
-        .icon(icon.clone())
+        .icon(icon)
         .menu(&menu)
         // macOS Tauri 2 tray icons default to right-click-only for menu; the
         // user asked for click-to-show-menu, so flip this. `show_menu_on_left_click`
