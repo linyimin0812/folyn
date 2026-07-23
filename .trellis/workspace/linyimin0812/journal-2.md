@@ -639,3 +639,40 @@ Rust-side zh/en label table (PetMenuLabel/AppMenuLabel). pet_show_context_menu t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 77: Tray icon with shared pet menu + petModeEnabled default fix
+
+**Date**: 2026-07-23
+**Task**: Tray icon with shared pet menu + petModeEnabled default fix
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added macOS system tray icon whose menu is the same native pet context menu (extracted into build_pet_context_menu), so item ids and pet://menu-action routing stay unchanged. Tray variant drops the test-bubble debug item and uses a CheckMenuItem for hide-pet (checked = pet hidden, click-through convention). TrayHidePetItemState shared handle + set_checked calls in toggle_pet_mode / show_pet_if_hidden keep the checkmark fresh (muda does not auto-toggle on click; menu built once). hide-pet frontend handler became a real toggle. Appearance store persists showTrayIcon; App.tsx subscribes + invokes tray_set_enabled on hydrate + change (mirrors voice hotkey pattern). Cargo.toml enables tauri tray-icon feature. Separately: petModeEnabled default flipped false→true and removed from PERSIST_KEYS_PET so the default always wins on launch (PetApp mounts and calls show() unconditionally, so pet is always visible at launch; persisting the flag created a UI/reality mismatch for users with previously-persisted false).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a6f962d` | (see git log) |
+| `633bfe6` | (see git log) |
+| `d261879` | (see git log) |
+| `01f1999` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
