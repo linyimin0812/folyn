@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 79
-- **Last Active**: 2026-07-23
+- **Total Sessions**: 80
+- **Last Active**: 2026-07-24
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~746 | Active |
+| `journal-2.md` | ~780 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 80 | 2026-07-24 | Cloudia bubble template + dynamic window size | `d67425a` | `master` |
 | 79 | 2026-07-23 | Pet bubble template customization + external launch | `cefa65c` | `master` |
 | 78 | 2026-07-23 | Refactor pet_commands.rs into 5 feature-domain files | `57afc46` | `master` |
 | 77 | 2026-07-23 | Tray icon with shared pet menu + petModeEnabled default fix | `a6f962d`, `633bfe6`, `d261879`, `01f1999` | `master` |

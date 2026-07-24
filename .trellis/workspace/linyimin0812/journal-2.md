@@ -744,3 +744,37 @@ Implemented user-uploadable HTML+CSS bubble templates with HTTP passthrough for 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 80: Cloudia bubble template + dynamic window size
+
+**Date**: 2026-07-24
+**Task**: Cloudia bubble template + dynamic window size
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added the cloudia built-in bubble template (Cloudia mascot SVG + cream card + peach/orange gradient button, scaled 0.7x from the 540x320 reference to 378x224). Added optional BubbleTemplate.size field so templates can declare their own window size; missing falls back to 320x120 so existing templates are untouched. New Rust pet_bubble_set_size command; PetBubbleApp resolves the active template size, resizes the window to physical px, and passes the actual size to computeBubblePosition so flip/clamp math tracks the real card. pet-bubble window shadow: false — the card's own box-shadow + transparent bg are enough; macOS system shadow was drawing a square frame around the rounded card.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d67425a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
