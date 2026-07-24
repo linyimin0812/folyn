@@ -124,4 +124,35 @@ describe('runRigChat', () => {
     expect(events).toContainEqual<CliStreamEvent>({ type: 'thinking', content: 'hmm' });
     expect(events.at(-1)).toEqual<CliStreamEvent>({ type: 'done' });
   });
+
+  it('forwards images param to invoke when provided', async () => {
+    invokeMock.mockImplementation(async (_cmd: string, _args: { onEvent: { onmessage?: (c: unknown) => void } }) => {});
+    await runRigChat({
+      sessionId: 'sess-img',
+      prompt: 'describe this',
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+      apiKey: 'sk-test',
+      images: [{ data: 'AAAA', mediaType: 'image/png' }],
+      onEvent: () => {},
+    });
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    const args = invokeMock.mock.calls[0][1] as { params: { images?: Array<{ data: string; mediaType: string }> } };
+    expect(args.params.images).toEqual([{ data: 'AAAA', mediaType: 'image/png' }]);
+  });
+
+  it('omits images when the array is empty', async () => {
+    invokeMock.mockImplementation(async () => {});
+    await runRigChat({
+      sessionId: 'sess-empty',
+      prompt: 'ping',
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+      apiKey: 'sk-test',
+      images: [],
+      onEvent: () => {},
+    });
+    const args = invokeMock.mock.calls[0][1] as { params: { images?: unknown } };
+    expect(args.params.images).toBeNull();
+  });
 });

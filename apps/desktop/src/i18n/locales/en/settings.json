@@ -391,6 +391,33 @@
       "copied": "Copied",
       "test": "Test",
       "testing": "Sent"
+    },
+    "templates": {
+      "ai": {
+        "generate": "AI Generate",
+        "title": "AI Bubble Template Generator",
+        "close": "Close",
+        "clear": "Clear",
+        "unconfigured": "Configure chatProvider / chatModel / chatApiKey in AI settings first",
+        "importTemplate": "Import this template",
+        "inputPlaceholder": "Describe the bubble template you want, e.g., birthday reminder card",
+        "paperclip": "Attach file",
+        "unsupportedFile": "Only .html / .htm / image files are supported",
+        "fileReadFailed": "Failed to read file",
+        "htmlAttached": "HTML attached: {{name}}",
+        "htmlWrapPrefix": "Adapt the following HTML into a BubbleTemplate (must pass DOMPurify, on* attrs stripped, no external resources):",
+        "imageWrapPrefix": "Generate a BubbleTemplate (html + css) that visually matches the attached image. Use the image's layout, colors, and text as the design reference.",
+        "imageAttached": "Image attached: {{name}}",
+        "removeAttachment": "Remove attachment",
+        "preview": "Preview",
+        "newSession": "New session",
+        "sessionSelect": "Select session",
+        "untitled": "Untitled session",
+        "loading": "Loading…",
+        "error": "AI returned an error",
+        "emptyResponse": "AI returned no content. Please retry.",
+        "confirmDelete": "Delete?"
+      }
     }
   },
   "notifications": {

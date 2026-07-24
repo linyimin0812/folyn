@@ -19,6 +19,13 @@ interface ChatChunk {
   message?: string;
 }
 
+export interface RigChatImage {
+  /** Base64 image bytes (no `data:` URL prefix). */
+  data: string;
+  /** MIME type, e.g. `"image/png"`. */
+  mediaType: string;
+}
+
 export interface RigChatParams {
   /** App session id — rig persists history to `~/.quill/chat-sessions/<id>.json`. */
   sessionId: string;
@@ -28,6 +35,14 @@ export interface RigChatParams {
   apiKey: string;
   /** Empty/undefined => provider default base URL. */
   baseUrl?: string;
+  /** Optional preamble (system prompt) override. When omitted, the rig
+   *  backend uses its built-in default. The Bubble Template AI Agent
+   *  passes its feature-specific preamble here. */
+  preamble?: string;
+  /** Optional image content blocks attached to this user turn. Rig's
+   *  image content is provider-agnostic — Anthropic and OpenAI
+   *  serialization is handled inside rig. */
+  images?: RigChatImage[];
   /** Receives `text` / `done` / `error` events, same as a CLI adapter handler. */
   onEvent: (event: CliStreamEvent) => void;
 }
@@ -60,6 +75,8 @@ export async function runRigChat(p: RigChatParams): Promise<void> {
       apiKey: p.apiKey,
       baseUrl: p.baseUrl ? p.baseUrl : null,
       prompt: p.prompt,
+      preamble: p.preamble ?? null,
+      images: p.images && p.images.length > 0 ? p.images : null,
     },
     onEvent: channel,
   });

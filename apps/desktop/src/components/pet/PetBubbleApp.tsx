@@ -85,6 +85,11 @@ export interface PetBubblePayload {
   /** Template id for this single notification; overrides the global
    *  `activeTemplateId`. Missing → fall back to active, then to `default`. */
   template?: string;
+  /** Inline template draft for "preview before import" — when present, used
+   *  directly instead of looking up `template` / active / default. Lets the
+   *  BubbleTemplate AI Agent preview an unsaved draft without polluting
+   *  userTemplates. */
+  templateDraft?: BubbleTemplate;
   /** Placement override for this single notification; overrides the global
    *  `bubblePlacement`. Missing → fall back to `bubblePlacement`, then to
    *  `'top'`. 12 antd-style placements; see `Placement` in `petPosition.ts`. */
@@ -205,6 +210,9 @@ async function hideBubble(): Promise<void> {
 export function PetBubbleApp(): JSX.Element {
   const [bubble, setBubble] = useState<PetBubblePayload | null>(null);
   const [authorize, setAuthorize] = useState<AuthorizeRequest | null>(null);
+  // Inline draft template (preview-before-import). Cleared on close and on
+  // any subsequent bubble-show without a draft.
+  const [draftTemplate, setDraftTemplate] = useState<BubbleTemplate | null>(null);
   const ttlRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // ponytail: subscribe to user templates + active id. The bubble is a
   // separate window but petStore's storage backend (appDataDir/storage.json)
@@ -226,6 +234,7 @@ export function PetBubbleApp(): JSX.Element {
     clearTtl();
     setBubble(null);
     setAuthorize(null);
+    setDraftTemplate(null);
     void hideBubble();
   };
 
@@ -295,10 +304,14 @@ export function PetBubbleApp(): JSX.Element {
         // effect.
         const store = usePetStore.getState();
         const templates = [...BUILT_IN_TEMPLATES, ...store.bubbleUserTemplates];
-        const tpl = getTemplateById(
+        // ponytail: a draft template (preview-before-import) bypasses the ID
+        // lookup entirely — used directly for sizing + render so the preview
+        // shows the unsaved JSON without polluting userTemplates.
+        const tpl = payload.templateDraft ?? getTemplateById(
           payload.template ?? store.bubbleActiveTemplateId,
           templates,
         );
+        setDraftTemplate(payload.templateDraft ?? null);
         const size = tpl.size ?? { width: 320, height: 120 };
         // Placement resolution: payload.placement → 'top'. Reading from
         // `.getState()` so this closure always sees the latest global default
@@ -361,7 +374,10 @@ export function PetBubbleApp(): JSX.Element {
   // in a single <style id="pet-bubble-template-css"> element so we replace
   // rather than stack.
   const allTemplates = [...BUILT_IN_TEMPLATES, ...userTemplates];
-  const activeTemplate: BubbleTemplate = getTemplateById(
+  // ponytail: preview draft takes precedence over the ID lookup so an
+  // unsaved draft from the AI Agent chat renders without being added to
+  // userTemplates.
+  const activeTemplate: BubbleTemplate = draftTemplate ?? getTemplateById(
     bubble?.template ?? activeTemplateId,
     allTemplates,
   );

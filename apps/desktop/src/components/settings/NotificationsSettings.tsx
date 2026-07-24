@@ -9,6 +9,7 @@ import {
 import { isTauri } from '@/utils/platform';
 import { invoke } from '@tauri-apps/api/core';
 import { BUILT_IN_TEMPLATES, type BubbleTemplate } from '@/components/pet/bubbleTemplate';
+import { BubbleTemplateAIChatModal } from './BubbleTemplateAIChatModal';
 
 const CORNERS: CornerPlacement[] = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
 
@@ -204,6 +205,7 @@ function BubbleTemplateBlock() {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [error, setError] = useState('');
+  const [aiOpen, setAiOpen] = useState(false);
 
   const allTemplates = [...BUILT_IN_TEMPLATES, ...userTemplates];
 
@@ -244,38 +246,78 @@ function BubbleTemplateBlock() {
     }
   }, [t]);
 
-  const tryImport = useCallback((text: string) => {
-    setError('');
+  const parseTemplate = useCallback((text: string): { ok: true; tpl: BubbleTemplate } | { ok: false; error: string } => {
     let parsed: unknown;
     try {
       parsed = JSON.parse(text);
     } catch {
-      setError(t('settings:pet.templates.invalidJson'));
-      return;
+      return { ok: false, error: t('settings:pet.templates.invalidJson') };
     }
     if (typeof parsed !== 'object' || parsed === null) {
-      setError(t('settings:pet.templates.missingFields'));
-      return;
+      return { ok: false, error: t('settings:pet.templates.missingFields') };
     }
     const o = parsed as Record<string, unknown>;
     if (typeof o.id !== 'string' || typeof o.name !== 'string' ||
         typeof o.html !== 'string' || typeof o.css !== 'string') {
-      setError(t('settings:pet.templates.missingFields'));
-      return;
+      return { ok: false, error: t('settings:pet.templates.missingFields') };
     }
-    const tpl: BubbleTemplate = {
-      id: o.id,
-      name: o.name,
-      html: o.html,
-      css: o.css,
-      fields: Array.isArray(o.fields) ? o.fields.filter((f) => typeof f === 'string') : undefined,
+    return {
+      ok: true,
+      tpl: {
+        id: o.id,
+        name: o.name,
+        html: o.html,
+        css: o.css,
+        fields: Array.isArray(o.fields) ? o.fields.filter((f) => typeof f === 'string') : undefined,
+      },
     };
-    const collision = BUILT_IN_TEMPLATES.some((b) => b.id === tpl.id);
-    addTemplate(tpl);
-    if (collision) setError(t('settings:pet.templates.idCollision'));
+  }, [t]);
+
+  const tryImport = useCallback((text: string): { ok: boolean; error?: string } => {
+    setError('');
+    const r = parseTemplate(text);
+    if (!r.ok) {
+      setError(r.error);
+      return { ok: false, error: r.error };
+    }
+    const collision = BUILT_IN_TEMPLATES.some((b) => b.id === r.tpl.id);
+    addTemplate(r.tpl);
+    if (collision) {
+      const msg = t('settings:pet.templates.idCollision');
+      setError(msg);
+    }
     setPasteOpen(false);
     setPasteText('');
-  }, [addTemplate, t]);
+    return { ok: true };
+  }, [parseTemplate, addTemplate, t]);
+
+  // ponytail: preview fires pet://bubble-show with templateDraft so the pet
+  // window renders the unsaved template without polluting userTemplates.
+  // Reuses parseTemplate — same validation as import, just diverges at the end.
+  const handlePreview = useCallback((text: string): { ok: boolean; error?: string } => {
+    setError('');
+    const r = parseTemplate(text);
+    if (!r.ok) {
+      setError(r.error);
+      return { ok: false, error: r.error };
+    }
+    if (!isTauri()) return { ok: true };
+    (async () => {
+      try {
+        const { emit } = await import('@tauri-apps/api/event');
+        await emit('pet://bubble-show', {
+          text: '预览：这是一条示例通知',
+          title: '预览标题',
+          kind: 'info',
+          templateDraft: r.tpl,
+          actions: [{ id: 'view', label: '查看', kind: 'primary' }],
+        });
+      } catch {
+        // Non-fatal — preview just doesn't fire.
+      }
+    })();
+    return { ok: true };
+  }, [parseTemplate, t]);
 
   return (
     <div className="tr flex flex-col gap-3 py-3.5 border-b border-brd mt-3.5">
@@ -331,6 +373,10 @@ function BubbleTemplateBlock() {
           className="btn btn-g btn-sm"
           onClick={() => { setPasteOpen(!pasteOpen); setError(''); }}
         >{t('settings:pet.templates.importPaste')}</button>
+        <button
+          className="btn btn-g btn-sm"
+          onClick={() => { setAiOpen(true); setError(''); }}
+        >{t('settings:pet.templates.ai.generate')}</button>
       </div>
       {pasteOpen && (
         <div className="flex flex-col gap-2">
@@ -353,6 +399,12 @@ function BubbleTemplateBlock() {
         </div>
       )}
       {error && <div className="text-[11px] text-[#e53935]">{error}</div>}
+      <BubbleTemplateAIChatModal
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        onImport={(jsonText) => tryImport(jsonText)}
+        onPreview={(jsonText) => handlePreview(jsonText)}
+      />
     </div>
   );
 }

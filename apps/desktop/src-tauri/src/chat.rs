@@ -16,6 +16,7 @@ use tauri::{AppHandle, Manager};
 
 use rig_core::agent::MultiTurnStreamItem;
 use rig_core::client::CompletionClient;
+use rig_core::completion::message::{ImageMediaType, MimeType, UserContent};
 use rig_core::message::{Message, ReasoningContent, Text};
 use rig_core::prelude::*; // brings StreamingChat (stream_chat) into scope
 use rig_core::providers::{anthropic, openai};
@@ -45,6 +46,15 @@ pub enum ChatChunk {
     },
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageInput {
+    /// Base64-encoded image bytes (no `data:` URL prefix).
+    pub data: String,
+    /// MIME type, e.g. `"image/png"`, `"image/jpeg"`.
+    pub media_type: String,
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatParams {
@@ -54,18 +64,60 @@ pub struct ChatParams {
     /// sends the preamble as a system *message* so compatible servers don't
     /// drop it.
     pub provider: String,
+    /// Optional preamble override. When `None`, the default `PREAMBLE` is
+    /// used. The bubble-template AI Agent passes a feature-specific preamble
+    /// (schema + syntax + sanitization + id constraint + size guidance).
+    pub preamble: Option<String>,
     pub model: String,
     pub api_key: String,
     pub base_url: Option<String>,
     pub prompt: String,
+    /// Optional image content blocks attached to this user turn. Rig's
+    /// `UserContent::Image` is provider-agnostic — Anthropic and OpenAI
+    /// serialization is handled inside rig. Empty vec / None means text-only.
+    pub images: Option<Vec<ImageInput>>,
 }
 
 /// One turn on disk. Decoupled from rig's `Message` so the on-disk format
-/// stays stable if rig's enums shift between versions.
+/// stays stable if rig's enums shift between versions. `images` is optional
+/// so pre-image session files (just `{role, content}`) deserialize cleanly.
 #[derive(Serialize, Deserialize, Clone)]
 struct HistoryMsg {
     role: String,
     content: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    images: Option<Vec<ImageInput>>,
+}
+
+/// Build a rig `Message::User` carrying text + (optional) image content
+/// blocks. Used for both the live prompt and history reconstruction so the
+/// provider sees the same shape either way. Unknown MIME types are skipped
+/// (logged via `ChatChunk::Error` so the user knows).
+fn build_user_message(
+    prompt: &str,
+    images: Option<&[ImageInput]>,
+    on_event: &Channel<ChatChunk>,
+) -> Message {
+    let mut content = rig_core::one_or_many::OneOrMany::one(UserContent::text(prompt));
+    if let Some(imgs) = images {
+        for img in imgs {
+            match ImageMediaType::from_mime_type(&img.media_type) {
+                Some(mt) => content.push(UserContent::image_base64(
+                    &img.data,
+                    Some(mt),
+                    None,
+                )),
+                None => {
+                    on_event
+                        .send(ChatChunk::Error {
+                            message: format!("unsupported image media type: {}", img.media_type),
+                        })
+                        .ok();
+                }
+            }
+        }
+    }
+    Message::User { content }
 }
 
 /// `~/.quill/chat-sessions/`, created if missing. Mirrors `plugins_dir` in
@@ -117,11 +169,13 @@ pub async fn chat_stream(
     }
 
     // Build the rig history from disk: user/assistant turns only. The system
-    // preamble is set on the agent, not stored per-session.
+    // preamble is set on the agent, not stored per-session. User turns carry
+    // their original image content blocks so multi-turn visual context
+    // survives across reopens.
     let history: Vec<Message> = load_history(&app, &params.session_id)?
         .into_iter()
         .filter_map(|m| match m.role.as_str() {
-            "user" => Some(Message::user(m.content)),
+            "user" => Some(build_user_message(&m.content, m.images.as_deref(), &on_event)),
             "assistant" => Some(Message::assistant(m.content)),
             _ => None,
         })
@@ -133,6 +187,11 @@ pub async fn chat_stream(
     // and cache invalidation adds more complexity than the saved TLS handshake
     // is worth at chat cadence. Add the cache if latency shows up.
     let prompt_str = params.prompt.as_str();
+    let prompt_msg = build_user_message(
+        prompt_str,
+        params.images.as_deref(),
+        &on_event,
+    );
     // ponytail: drain loop is duplicated across the two provider branches
     // because the concrete stream type (`StreamingResult<OpenAIResp>` vs
     // `<AnthropicResp>`) can't share a variable, and naming it for a generic
@@ -151,12 +210,12 @@ pub async fn chat_stream(
                 .build()
                 .map_err(|e| e.to_string())?
                 .agent(params.model.as_str())
-                .preamble(PREAMBLE)
+                .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
                 .max_tokens(4096)
                 .build();
             // `.await` yields the stream directly (no Result wrapper); stream
             // setup/connection errors surface as `Err` items below.
-            let mut stream = agent.stream_chat(prompt_str, &history).await;
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
             drain_loop(&mut stream, &on_event).await?
         }
         _ => {
@@ -181,9 +240,9 @@ pub async fn chat_stream(
                 .with_system_instructions_as_messages();
             let agent = client
                 .agent(params.model.as_str())
-                .preamble(PREAMBLE)
+                .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
                 .build();
-            let mut stream = agent.stream_chat(prompt_str, &history).await;
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
             drain_loop(&mut stream, &on_event).await?
         }
     };
@@ -200,10 +259,12 @@ pub async fn chat_stream(
     hist.push(HistoryMsg {
         role: "user".into(),
         content: params.prompt,
+        images: params.images.clone(),
     });
     hist.push(HistoryMsg {
         role: "assistant".into(),
         content: full,
+        images: None,
     });
     save_history(&app, &params.session_id, &hist)?;
 
