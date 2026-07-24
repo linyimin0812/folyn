@@ -1,18 +1,14 @@
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   usePetStore,
   type NotificationForm,
-  type Placement,
   type CornerPlacement,
   type CornerTtlMs,
 } from '@/store/petStore';
-
-const PLACEMENTS: Placement[] = [
-  'top', 'topLeft', 'topRight',
-  'bottom', 'bottomLeft', 'bottomRight',
-  'left', 'leftTop', 'leftBottom',
-  'right', 'rightTop', 'rightBottom',
-];
+import { isTauri } from '@/utils/platform';
+import { invoke } from '@tauri-apps/api/core';
+import { BUILT_IN_TEMPLATES, type BubbleTemplate } from '@/components/pet/bubbleTemplate';
 
 const CORNERS: CornerPlacement[] = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
 
@@ -22,8 +18,6 @@ export function NotificationsSettings() {
   const { t } = useTranslation();
   const notificationForm = usePetStore((s) => s.notificationForm);
   const setNotificationForm = usePetStore((s) => s.setNotificationForm);
-  const bubblePlacement = usePetStore((s) => s.bubblePlacement);
-  const setBubblePlacement = usePetStore((s) => s.setBubblePlacement);
   const cornerPlacement = usePetStore((s) => s.cornerPlacement);
   const setCornerPlacement = usePetStore((s) => s.setCornerPlacement);
   const cornerTtlMs = usePetStore((s) => s.cornerTtlMs);
@@ -32,7 +26,6 @@ export function NotificationsSettings() {
   const formOptions: { value: NotificationForm; label: string }[] = [
     { value: 'bubble', label: t('settings:notifications.options.bubble') },
     { value: 'corner', label: t('settings:notifications.options.corner') },
-    { value: 'both', label: t('settings:notifications.options.both') },
     { value: 'off', label: t('settings:notifications.options.off') },
   ];
 
@@ -42,6 +35,7 @@ export function NotificationsSettings() {
         <div className="text-[length:calc(var(--ui-font-size)+3px)] font-bold text-t1 tracking-[-0.01em]">{t('settings:notifications.title')}</div>
         <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3">{t('settings:notifications.description')}</div>
       </div>
+      <PetExternalApiBlock />
       <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
         <div className="tr-info">
           <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:notifications.form.title')}</h4>
@@ -58,38 +52,24 @@ export function NotificationsSettings() {
           ))}
         </select>
       </div>
-      <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
-        <div className="tr-info">
-          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:notifications.bubblePlacement.title')}</h4>
-          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:notifications.bubblePlacement.desc')}</p>
+      {notificationForm === 'corner' && (
+        <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
+          <div className="tr-info">
+            <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:notifications.cornerPlacement.title')}</h4>
+            <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:notifications.cornerPlacement.desc')}</p>
+          </div>
+          <select
+            className="settings-select"
+            style={{ maxWidth: 200 }}
+            value={cornerPlacement}
+            onChange={(e) => setCornerPlacement(e.target.value as CornerPlacement)}
+          >
+            {CORNERS.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </div>
-        <select
-          className="settings-select"
-          style={{ maxWidth: 200 }}
-          value={bubblePlacement}
-          onChange={(e) => setBubblePlacement(e.target.value as Placement)}
-        >
-          {PLACEMENTS.map((p) => (
-            <option key={p} value={p}>{p}</option>
-          ))}
-        </select>
-      </div>
-      <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
-        <div className="tr-info">
-          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:notifications.cornerPlacement.title')}</h4>
-          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-normal">{t('settings:notifications.cornerPlacement.desc')}</p>
-        </div>
-        <select
-          className="settings-select"
-          style={{ maxWidth: 200 }}
-          value={cornerPlacement}
-          onChange={(e) => setCornerPlacement(e.target.value as CornerPlacement)}
-        >
-          {CORNERS.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-      </div>
+      )}
       <div className="tr flex items-center justify-between py-2.5 border-b border-brd">
         <div className="tr-info">
           <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-0.5">{t('settings:notifications.cornerTtlMs.title')}</h4>
@@ -115,6 +95,319 @@ export function NotificationsSettings() {
           })}
         </select>
       </div>
+
+      <BubbleTemplateBlock />
+      <BubbleAppWhitelistBlock />
+    </div>
+  );
+}
+
+interface PetApiInfo {
+  enabled: boolean;
+  port: number | null;
+  endpoints: string[];
+}
+
+function PetExternalApiBlock() {
+  const { t } = useTranslation();
+  const [info, setInfo] = useState<PetApiInfo | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await invoke<PetApiInfo>('get_pet_api_info');
+        if (!cancelled) setInfo(res);
+      } catch {
+        // Non-fatal — block stays hidden (info null).
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ponytail: compute curl inline + useCallback must run before the early
+  // return (Rules of Hooks). When info is null the values are inert.
+  const port = info?.enabled ? info.port : null;
+  const curl =
+    port != null
+      ? `curl -XPOST 127.0.0.1:${port}/pet/action -d '{"action":"notify","kind":"info","text":"hi"}'`
+      : '';
+  const handleCopy = useCallback(async () => {
+    if (!curl) return;
+    try {
+      await navigator.clipboard.writeText(curl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Non-fatal — the inline text remains selectable.
+    }
+  }, [curl]);
+
+  // ponytail: no-cors fetch — we only need to fire the request, the pet
+  // bubble is the visual feedback. Opaque response is fine. Avoids adding
+  // CORS support to the tiny_http server or a Tauri HTTP plugin.
+  const handleTest = useCallback(async () => {
+    if (!port) return;
+    setTesting(true);
+    try {
+      await fetch(`http://127.0.0.1:${port}/pet/action`, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: `{"action":"notify","kind":"info","text":"hi"}`,
+      });
+    } catch {
+      // Network error — still surface the test-done state; the pet may or
+      // may not have shown. The user can retest.
+    } finally {
+      setTimeout(() => setTesting(false), 1500);
+    }
+  }, [port]);
+
+  if (!info || !info.enabled || info.port == null) return null;
+
+  return (
+    <div className="tr flex items-center justify-between py-3.5 border-b border-brd mt-3.5">
+      <div className="tr-info">
+        <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:pet.api.title')}</h4>
+        <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">
+          {t('settings:pet.api.desc', { port: info.port })}
+        </p>
+        <code className="block mt-1.5 text-[10.5px] text-t3 bg-surf2 rounded px-1.5 py-1 break-all">{curl}</code>
+      </div>
+      <div className="flex flex-col gap-1.5 items-center shrink-0">
+        <button
+          className="btn btn-g btn-sm w-full justify-center"
+          onClick={() => void handleTest()}
+          disabled={testing}
+        >{testing ? t('settings:pet.api.testing') : t('settings:pet.api.test')}</button>
+        <button
+          className="btn btn-g btn-sm w-full justify-center"
+          onClick={() => void handleCopy()}
+        >{copied ? t('settings:pet.api.copied') : t('settings:pet.api.copy')}</button>
+      </div>
+    </div>
+  );
+}
+
+function BubbleTemplateBlock() {
+  const { t } = useTranslation();
+  const userTemplates = usePetStore((s) => s.bubbleUserTemplates);
+  const activeTemplateId = usePetStore((s) => s.bubbleActiveTemplateId);
+  const addTemplate = usePetStore((s) => s.addBubbleUserTemplate);
+  const removeTemplate = usePetStore((s) => s.removeBubbleUserTemplate);
+  const setActive = usePetStore((s) => s.setBubbleActiveTemplateId);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [error, setError] = useState('');
+
+  const allTemplates = [...BUILT_IN_TEMPLATES, ...userTemplates];
+
+  const emitPreview = useCallback(async (tplId: string) => {
+    if (!isTauri()) return;
+    try {
+      const { emit } = await import('@tauri-apps/api/event');
+      await emit('pet://bubble-show', {
+        text: '预览：这是一条示例通知',
+        title: '预览标题',
+        kind: 'info',
+        template: tplId,
+        actions: [{ id: 'view', label: '查看', kind: 'primary' }],
+      });
+    } catch {
+      // Non-fatal — preview just doesn't fire.
+    }
+  }, []);
+
+  const handleImportFile = useCallback(async () => {
+    setError('');
+    if (!isTauri()) {
+      setError(t('settings:pet.templates.invalidJson'));
+      return;
+    }
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const { readTextFile } = await import('@tauri-apps/plugin-fs');
+      const picked = await open({
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+        multiple: false,
+      });
+      if (!picked || Array.isArray(picked)) return;
+      const text = await readTextFile(picked as string);
+      tryImport(text);
+    } catch {
+      setError(t('settings:pet.templates.invalidJson'));
+    }
+  }, [t]);
+
+  const tryImport = useCallback((text: string) => {
+    setError('');
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      setError(t('settings:pet.templates.invalidJson'));
+      return;
+    }
+    if (typeof parsed !== 'object' || parsed === null) {
+      setError(t('settings:pet.templates.missingFields'));
+      return;
+    }
+    const o = parsed as Record<string, unknown>;
+    if (typeof o.id !== 'string' || typeof o.name !== 'string' ||
+        typeof o.html !== 'string' || typeof o.css !== 'string') {
+      setError(t('settings:pet.templates.missingFields'));
+      return;
+    }
+    const tpl: BubbleTemplate = {
+      id: o.id,
+      name: o.name,
+      html: o.html,
+      css: o.css,
+      fields: Array.isArray(o.fields) ? o.fields.filter((f) => typeof f === 'string') : undefined,
+    };
+    const collision = BUILT_IN_TEMPLATES.some((b) => b.id === tpl.id);
+    addTemplate(tpl);
+    if (collision) setError(t('settings:pet.templates.idCollision'));
+    setPasteOpen(false);
+    setPasteText('');
+  }, [addTemplate, t]);
+
+  return (
+    <div className="tr flex flex-col gap-3 py-3.5 border-b border-brd mt-3.5">
+      <div className="tr-info">
+        <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:pet.templates.title')}</h4>
+        <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:pet.templates.desc')}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {allTemplates.map((tpl) => {
+          const isActive = activeTemplateId === tpl.id;
+          const isBuiltin = BUILT_IN_TEMPLATES.some((b) => b.id === tpl.id);
+          return (
+            <div
+              key={tpl.id}
+              className={`rounded-md border p-2 text-[11px] flex flex-col gap-1.5 ${isActive ? 'border-acc bg-accdim' : 'border-brd bg-surf'}`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-ui font-semibold text-t1">{tpl.name}</span>
+                <span className="text-[9px] px-1 rounded bg-surf2 text-t3">
+                  {isBuiltin ? t('settings:pet.templates.builtin') : t('settings:pet.templates.custom')}
+                </span>
+              </div>
+              <div className="flex gap-1">
+                {!isActive && (
+                  <button
+                    className="btn btn-g btn-sm flex-1 justify-center"
+                    onClick={() => setActive(tpl.id)}
+                  >{t('settings:pet.templates.activate')}</button>
+                )}
+                {isActive && (
+                  <span className="text-[10px] text-acc flex-1 text-center self-center">{t('settings:pet.templates.active')}</span>
+                )}
+                <button
+                  className="btn btn-g btn-sm"
+                  onClick={() => void emitPreview(tpl.id)}
+                >{t('settings:pet.templates.preview')}</button>
+                {!isBuiltin && (
+                  <button
+                    className="btn btn-g btn-sm"
+                    onClick={() => removeTemplate(tpl.id)}
+                  >{t('settings:pet.templates.delete')}</button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-2">
+        <button className="btn btn-g btn-sm" onClick={() => void handleImportFile()}>
+          {t('settings:pet.templates.importFile')}
+        </button>
+        <button
+          className="btn btn-g btn-sm"
+          onClick={() => { setPasteOpen(!pasteOpen); setError(''); }}
+        >{t('settings:pet.templates.importPaste')}</button>
+      </div>
+      {pasteOpen && (
+        <div className="flex flex-col gap-2">
+          <textarea
+            className="border border-brd rounded p-2 text-[11px] font-mono h-24 bg-surf"
+            placeholder={t('settings:pet.templates.pastePlaceholder')}
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <button
+              className="btn btn-g btn-sm"
+              onClick={() => tryImport(pasteText)}
+            >{t('settings:pet.templates.import')}</button>
+            <button
+              className="btn btn-g btn-sm"
+              onClick={() => { setPasteOpen(false); setPasteText(''); setError(''); }}
+            >{t('settings:pet.templates.cancel')}</button>
+          </div>
+        </div>
+      )}
+      {error && <div className="text-[11px] text-[#e53935]">{error}</div>}
+    </div>
+  );
+}
+
+function BubbleAppWhitelistBlock() {
+  const { t } = useTranslation();
+  const whitelist = usePetStore((s) => s.bubbleAppWhitelist);
+  const add = usePetStore((s) => s.addBubbleAppToWhitelist);
+  const remove = usePetStore((s) => s.removeBubbleAppFromWhitelist);
+  const [input, setInput] = useState('');
+
+  const handleAdd = () => {
+    if (!input.trim()) return;
+    add(input);
+    setInput('');
+  };
+
+  return (
+    <div className="tr flex flex-col gap-2 py-3.5 border-b border-brd">
+      <div className="tr-info">
+        <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:pet.whitelist.title')}</h4>
+        <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:pet.whitelist.desc')}</p>
+      </div>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          className="flex-1 border border-brd rounded px-2 py-1 text-[11px] bg-surf"
+          placeholder={t('settings:pet.whitelist.placeholder')}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+        />
+        <button className="btn btn-g btn-sm" onClick={handleAdd}>
+          {t('settings:pet.whitelist.add')}
+        </button>
+      </div>
+      {whitelist.length === 0 ? (
+        <div className="text-[11px] text-t3">{t('settings:pet.whitelist.empty')}</div>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {whitelist.map((app) => (
+            <div
+              key={app}
+              className="flex items-center gap-1 rounded border border-brd bg-surf2 px-1.5 py-0.5 text-[11px]"
+            >
+              <span>{app}</span>
+              <button
+                className="text-t3 hover:text-[#e53935] text-[10px] leading-none"
+                onClick={() => remove(app)}
+                aria-label={t('settings:pet.whitelist.remove')}
+              >×</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

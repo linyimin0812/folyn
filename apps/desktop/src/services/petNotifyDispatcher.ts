@@ -5,7 +5,6 @@
 // `petStore.notificationForm` and routes the payload to:
 //   - `'bubble'`  → re-emits `pet://bubble-show` (the `pet-bubble` window shows the in-app Popover card)
 //   - `'corner'`  → re-emits `pet://corner-show` (the new `pet-corner` window shows the in-app corner toast stack)
-//   - `'both'`    → bubble + corner toast
 //   - `'off'`     → dropped
 //
 // The OS-native notification path (`@tauri-apps/plugin-notification`) was
@@ -31,8 +30,6 @@ export function decideNotification(
       return { bubble: true, corner: false };
     case 'corner':
       return { bubble: false, corner: true };
-    case 'both':
-      return { bubble: true, corner: true };
     case 'off':
       return { bubble: false, corner: false };
   }

@@ -17,9 +17,9 @@ export type PetIconSource = 'builtin' | 'custom';
 /** Global notification routing (PRD pet-popover-corner). `'bubble'` routes to
  *  the in-app pet-bubble Popover card; `'corner'` routes to the new in-app
  *  corner toast (replaces the old `'system'` OS-native path — see Decision
- *  Log D1 in `.trellis/tasks/07-24-pet-popover-corner/prd.md`); `'both'` shows
- *  both; `'off'` drops the notification entirely. */
-export type NotificationForm = 'bubble' | 'corner' | 'both' | 'off';
+ *  Log D1 in `.trellis/tasks/07-24-pet-popover-corner/prd.md`); `'off'` drops
+ *  the notification entirely. */
+export type NotificationForm = 'bubble' | 'corner' | 'off';
 /** Screen corner for the corner toast stack (PRD pet-popover-corner). */
 export type CornerPlacement = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
 /** Corner toast TTL. `number` = milliseconds; `'never'` = sticky until
@@ -50,7 +50,6 @@ export const PERSIST_KEYS_PET = [
   'petOpacity',
   'petClickThrough',
   'notificationForm',
-  'bubblePlacement',
   'cornerPlacement',
   'cornerTtlMs',
   'bubbleUserTemplates',
@@ -78,11 +77,6 @@ export interface PetState {
   petOpacity: PetOpacity;
   petClickThrough: boolean;
   notificationForm: NotificationForm;
-  /** Default placement for the pet bubble when `PetBubblePayload.placement`
-   *  is unset. Per-notification `placement` overrides this (PRD
-   *  pet-popover-corner, Decision C). Default `'top'` preserves legacy
-   *  behavior. */
-  bubblePlacement: Placement;
   /** Screen corner the corner-toast stack attaches to (PRD
    *  pet-popover-corner). Default `'bottomRight'` (matches Windows). */
   cornerPlacement: CornerPlacement;
@@ -110,7 +104,6 @@ export interface PetState {
   setPetOpacity: (opacity: PetOpacity) => void;
   setPetClickThrough: (enabled: boolean) => void;
   setNotificationForm: (form: NotificationForm) => void;
-  setBubblePlacement: (placement: Placement) => void;
   setCornerPlacement: (placement: CornerPlacement) => void;
   setCornerTtlMs: (ttl: CornerTtlMs) => void;
   addBubbleUserTemplate: (template: BubbleTemplate) => void;
@@ -136,7 +129,7 @@ function isPetOpacity(v: unknown): v is PetOpacity {
 }
 
 function isNotificationForm(v: unknown): v is NotificationForm {
-  return v === 'bubble' || v === 'corner' || v === 'both' || v === 'off';
+  return v === 'bubble' || v === 'corner' || v === 'off';
 }
 
 function isCornerPlacement(v: unknown): v is CornerPlacement {
@@ -145,14 +138,6 @@ function isCornerPlacement(v: unknown): v is CornerPlacement {
 
 function isCornerTtlMs(v: unknown): v is CornerTtlMs {
   return v === 'never' || (typeof v === 'number' && Number.isFinite(v) && v >= 0);
-}
-
-/** Placement validation — accept any of the 12 antd-style values. */
-function isPlacement(v: unknown): v is Placement {
-  return v === 'top' || v === 'topLeft' || v === 'topRight'
-      || v === 'bottom' || v === 'bottomLeft' || v === 'bottomRight'
-      || v === 'left' || v === 'leftTop' || v === 'leftBottom'
-      || v === 'right' || v === 'rightTop' || v === 'rightBottom';
 }
 
 export const usePetStore = create<PetState>((set, get) => ({
@@ -173,7 +158,6 @@ export const usePetStore = create<PetState>((set, get) => ({
   petOpacity: '100',
   petClickThrough: false,
   notificationForm: 'bubble',
-  bubblePlacement: 'top',
   cornerPlacement: 'bottomRight',
   cornerTtlMs: 10000,
   bubbleUserTemplates: [],
@@ -253,8 +237,6 @@ export const usePetStore = create<PetState>((set, get) => ({
   setPetClickThrough: (enabled) => { set({ petClickThrough: enabled }); schedulePersist(); },
 
   setNotificationForm: (form) => { set({ notificationForm: form }); schedulePersist(); },
-
-  setBubblePlacement: (placement) => { set({ bubblePlacement: placement }); schedulePersist(); },
 
   setCornerPlacement: (placement) => { set({ cornerPlacement: placement }); schedulePersist(); },
 
@@ -398,9 +380,6 @@ export const usePetStore = create<PetState>((set, get) => ({
     // preserving user intent for "non-bubble" notifications.
     if (saved.notificationForm === 'system') saved.notificationForm = 'corner';
     if (!isNotificationForm(saved.notificationForm)) saved.notificationForm = 'bubble';
-
-    // Coerce `bubblePlacement` to a valid Placement (default `'top'`).
-    if (!isPlacement(saved.bubblePlacement)) saved.bubblePlacement = 'top';
 
     // Coerce `cornerPlacement` to a valid CornerPlacement (default
     // `'bottomRight'`).

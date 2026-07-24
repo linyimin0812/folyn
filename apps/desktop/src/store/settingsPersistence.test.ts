@@ -176,7 +176,7 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
       petIconPath: '/abs/pet.png',
       petSizeVersion: 3, // matches PET_SIZE_VERSION
       petSize: '150',
-      notificationForm: 'both',
+      notificationForm: 'corner',
     };
 
     hydrateAllStores(legacyBlob);
@@ -217,7 +217,7 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
     expect(usePetStore.getState().petPositionX).toBe(250);
     expect(usePetStore.getState().petIconSource).toBe('custom');
     expect(usePetStore.getState().petSize).toBe('150');
-    expect(usePetStore.getState().notificationForm).toBe('both');
+    expect(usePetStore.getState().notificationForm).toBe('corner');
 
     // scheduleStore boardColumns
     expect(useScheduleStore.getState().boardColumns.length).toBe(2);

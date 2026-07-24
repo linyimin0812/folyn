@@ -429,20 +429,15 @@
     "options": {
       "bubble": "宠物 Popover 卡片",
       "corner": "屏幕角落提醒",
-      "both": "两者都发",
       "off": "关闭"
-    },
-    "bubblePlacement": {
-      "title": "Popover 默认位置",
-      "desc": "通知未带 placement 时使用此默认值"
     },
     "cornerPlacement": {
       "title": "角落位置",
       "desc": "堆叠 toast 固定在屏幕的某个角"
     },
     "cornerTtlMs": {
-      "title": "角落提醒停留时长",
-      "desc": "到点后自动消失；选\"常驻\"则需手动关闭",
+      "title": "提醒停留时长",
+      "desc": "到点后自动消失；选\"常驻\"则需手动关闭（同时控制 Popover 卡片与角落 toast）",
       "never": "常驻",
       "seconds": "{{seconds}} 秒"
     }

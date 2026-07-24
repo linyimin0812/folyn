@@ -214,7 +214,7 @@ describe('usePetStore.hydrate', () => {
       petIconSource: 'custom',
       petIconPath: '/abs/pet.png',
       petSize: '150',
-      notificationForm: 'both',
+      notificationForm: 'corner',
     });
     const s = usePetStore.getState();
     expect(s.petPositionX).toBe(250);
@@ -228,6 +228,6 @@ describe('usePetStore.hydrate', () => {
     expect(s.petIconSource).toBe('custom');
     expect(s.petIconPath).toBe('/abs/pet.png');
     expect(s.petSize).toBe('150');
-    expect(s.notificationForm).toBe('both');
+    expect(s.notificationForm).toBe('corner');
   });
 });

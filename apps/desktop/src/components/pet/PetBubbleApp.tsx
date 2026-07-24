@@ -114,10 +114,6 @@ export interface PetBubbleActionEvent {
   authorize?: { app: string; mode: 'once' | 'whitelist' };
 }
 
-/** Auto-dismiss TTL. Slightly longer than the original 5s skeleton because the
- *  bubble now carries interactive actions the user may want to read first. */
-export const BUBBLE_TTL_MS = 6000;
-
 /** State held while the bubble waits for the user to authorize an unwhitelisted
  *  app. `source` lets the authorize event echo it back so downstream
  *  consumers preserve the original trigger attribution. */
@@ -298,17 +294,20 @@ export function PetBubbleApp(): JSX.Element {
           templates,
         );
         const size = tpl.size ?? { width: 320, height: 120 };
-        // Placement resolution: payload.placement → store.bubblePlacement →
-        // 'top'. Reading from `.getState()` so this closure always sees the
-        // latest global default without re-subscribing the effect.
-        const placement = payload.placement ?? store.bubblePlacement ?? 'top';
+        // Placement resolution: payload.placement → 'top'. Reading from
+        // `.getState()` so this closure always sees the latest global default
+        // without re-subscribing the effect.
+        const placement = payload.placement ?? 'top';
         // petSize from the live store so the bubble math tracks the actual
         // mascot footprint — passing PET_SIZE_DEFAULT left larger pets ('125'
         // / '150') occluded by the bubble when shown below, because the gap
         // math used the smaller default window size.
         const petSize = store.petSize ?? PET_SIZE_DEFAULT;
         void positionAndShowBubble(size, placement, petSize);
-        ttlRef.current = setTimeout(() => close(), BUBBLE_TTL_MS);
+        // ponytail: TTL shared with corner toast via store.cornerTtlMs. 'never'
+        // = sticky (no auto-dismiss). Authorize flow doubles the TTL.
+        const ttl = store.cornerTtlMs;
+        if (ttl !== 'never') ttlRef.current = setTimeout(() => close(), ttl);
       });
       // Authorize channel: main window emits when an unwhitelisted app needs
       // user approval. The bubble switches to the authorize UI; the regular
@@ -320,9 +319,9 @@ export function PetBubbleApp(): JSX.Element {
           if (!req?.app || !req?.launch) return;
           clearTtl();
           setAuthorize(req);
-          // Extend TTL so the user has time to decide; otherwise the 6s
-          // default would close the bubble mid-decision.
-          ttlRef.current = setTimeout(() => close(), BUBBLE_TTL_MS * 2);
+          // Extend TTL so the user has time to decide; 'never' stays sticky.
+          const ttl = usePetStore.getState().cornerTtlMs;
+          if (ttl !== 'never') ttlRef.current = setTimeout(() => close(), ttl * 2);
         },
       );
       // Cross-window settings sync (mirrors PetCornerApp). The bubble

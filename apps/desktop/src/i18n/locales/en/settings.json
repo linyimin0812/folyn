@@ -403,20 +403,15 @@
     "options": {
       "bubble": "Pet popover card",
       "corner": "Screen corner toast",
-      "both": "Both",
       "off": "Off"
-    },
-    "bubblePlacement": {
-      "title": "Popover default placement",
-      "desc": "Used when a notification has no per-payload placement"
     },
     "cornerPlacement": {
       "title": "Corner placement",
       "desc": "The screen corner where the toast stack attaches"
     },
     "cornerTtlMs": {
-      "title": "Corner toast TTL",
-      "desc": "Auto-dismisses at TTL; \"never\" requires manual close",
+      "title": "Notification TTL",
+      "desc": "Auto-dismisses at TTL; \"never\" requires manual close (applies to both popover card and corner toast)",
       "never": "Never",
       "seconds": "{{seconds}}s"
     }

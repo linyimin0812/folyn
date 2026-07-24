@@ -24,9 +24,6 @@ describe('decideNotification', () => {
   it('routes corner-only for corner', () => {
     expect(decideNotification('corner')).toEqual({ bubble: false, corner: true });
   });
-  it('routes both for both', () => {
-    expect(decideNotification('both')).toEqual({ bubble: true, corner: true });
-  });
   it('routes neither for off', () => {
     expect(decideNotification('off')).toEqual({ bubble: false, corner: false });
   });
@@ -51,13 +48,6 @@ describe('dispatchNotification', () => {
     expect(emitMock).not.toHaveBeenCalledWith('pet://bubble-show', samplePayload);
   });
 
-  it('emits both bubble and corner when form is both', async () => {
-    usePetStore.setState({ notificationForm: 'both' });
-    await dispatchNotification(samplePayload);
-    expect(emitMock).toHaveBeenCalledWith('pet://bubble-show', samplePayload);
-    expect(emitMock).toHaveBeenCalledWith('pet://corner-show', samplePayload);
-  });
-
   it('drops the payload when form is off', async () => {
     usePetStore.setState({ notificationForm: 'off' });
     await dispatchNotification(samplePayload);
@@ -65,7 +55,7 @@ describe('dispatchNotification', () => {
   });
 
   it('drops payloads with empty text', async () => {
-    usePetStore.setState({ notificationForm: 'both' });
+    usePetStore.setState({ notificationForm: 'bubble' });
     await dispatchNotification({ ...samplePayload, text: '' });
     expect(emitMock).not.toHaveBeenCalled();
   });

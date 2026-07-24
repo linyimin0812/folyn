@@ -6,7 +6,8 @@ import { render, screen, fireEvent, cleanup, act, waitFor } from '@testing-libra
 // monorepo root so the workspace file is discovered).
 import { invoke } from '@tauri-apps/api/core';
 import { listen, emit } from '@tauri-apps/api/event';
-import { PetBubbleApp, BUBBLE_TTL_MS, type PetBubblePayload } from './PetBubbleApp';
+import { PetBubbleApp, type PetBubblePayload } from './PetBubbleApp';
+import { usePetStore } from '@/store/petStore';
 
 const invokeMock = invoke as unknown as import('vitest').Mock;
 const listenMock = listen as unknown as import('vitest').Mock;
@@ -156,8 +157,9 @@ describe('PetBubbleApp', () => {
     });
     expect(screen.getByText('这是一条气泡通知示例')).toBeTruthy();
     expect(countHideCalls()).toBe(0);
+    const ttl = usePetStore.getState().cornerTtlMs as number;
     await act(async () => {
-      vi.advanceTimersByTime(BUBBLE_TTL_MS);
+      vi.advanceTimersByTime(ttl);
     });
     // Flush the async hideBubble() microtasks the TTL callback scheduled.
     await act(async () => {});
@@ -182,8 +184,9 @@ describe('PetBubbleApp', () => {
     expect(countHideCalls()).toBe(0);
     // Advancing past one TTL dismisses the second bubble exactly once — the
     // first TTL was cleared when the second show arrived (no late dismiss).
+    const ttl = usePetStore.getState().cornerTtlMs as number;
     await act(async () => {
-      vi.advanceTimersByTime(BUBBLE_TTL_MS);
+      vi.advanceTimersByTime(ttl);
     });
     await act(async () => {});
     expect(countHideCalls()).toBe(1);
