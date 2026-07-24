@@ -92,6 +92,21 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
   const blob = await storageClient.get<Record<string, unknown>>(SETTINGS_STORAGE_KEY);
   if (!blob) return null;
   hydrateAllStores(blob);
+  // Broadcast to secondary Tauri windows (pet-bubble / pet-corner /
+  // pet-panel) which hold their own store instances but lack fs-plugin ACL
+  // perms to re-read storage.json themselves. Without this, the bubble
+  // window's petStore stays at defaults (petSize='100') on startup —
+  // `computeBubblePosition` then sizes the gap against the wrong pet
+  // footprint, and larger pets ('125' / '150') get the bubble window's top
+  // inside the pet window → pet occludes the bubble on `bottom` placement.
+  // The same `pet://settings-updated` channel is also emitted by
+  // `debouncedPersist` on every setter, so subsequent changes propagate.
+  try {
+    const { emit } = await import('@tauri-apps/api/event');
+    await emit('pet://settings-updated', blob);
+  } catch {
+    // Non-tauri (tests) or emit failed — non-fatal.
+  }
   return blob;
 }
 

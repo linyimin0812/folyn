@@ -24,6 +24,7 @@ import { isTauri } from '@/utils/platform';
 import {
   computeBubblePosition,
   PET_SIZE_DEFAULT,
+  type PetSize,
   type PetWorkArea,
   type Placement,
 } from './petPosition';
@@ -35,6 +36,7 @@ import {
   type BubbleTemplate,
 } from './bubbleTemplate';
 import { usePetStore } from '@/store/petStore';
+import { hydrateAllStores } from '@/store/settingsPersistence';
 
 /** Bubble kind — drives the accent color of the card. */
 export type PetBubbleKind = 'info' | 'reminder' | 'message' | 'event';
@@ -149,6 +151,7 @@ interface PetPositionResult {
 async function positionAndShowBubble(
   bubbleSize: { width: number; height: number },
   placement: Placement,
+  petSize: PetSize,
 ): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
   const [petPos, workArea] = await Promise.all([
@@ -162,7 +165,7 @@ async function positionAndShowBubble(
   const posLogical = computeBubblePosition(
     petPosLogical,
     workArea,
-    PET_SIZE_DEFAULT,
+    petSize,
     bubbleSize,
     placement,
   );
@@ -263,6 +266,7 @@ export function PetBubbleApp(): JSX.Element {
     if (!isTauri()) return;
     let unlistenShow: (() => void) | null = null;
     let unlistenAuth: (() => void) | null = null;
+    let unlistenSettings: (() => void) | null = null;
     let cancelled = false;
 
     (async () => {
@@ -298,7 +302,12 @@ export function PetBubbleApp(): JSX.Element {
         // 'top'. Reading from `.getState()` so this closure always sees the
         // latest global default without re-subscribing the effect.
         const placement = payload.placement ?? store.bubblePlacement ?? 'top';
-        void positionAndShowBubble(size, placement);
+        // petSize from the live store so the bubble math tracks the actual
+        // mascot footprint — passing PET_SIZE_DEFAULT left larger pets ('125'
+        // / '150') occluded by the bubble when shown below, because the gap
+        // math used the smaller default window size.
+        const petSize = store.petSize ?? PET_SIZE_DEFAULT;
+        void positionAndShowBubble(size, placement, petSize);
         ttlRef.current = setTimeout(() => close(), BUBBLE_TTL_MS);
       });
       // Authorize channel: main window emits when an unwhitelisted app needs
@@ -316,9 +325,20 @@ export function PetBubbleApp(): JSX.Element {
           ttlRef.current = setTimeout(() => close(), BUBBLE_TTL_MS * 2);
         },
       );
+      // Cross-window settings sync (mirrors PetCornerApp). The bubble
+      // window holds its own petStore instance; without this listener it
+      // would read default `petSize='100'` forever — see `loadSettings`
+      // in settingsPersistence.ts for why this matters for the gap math.
+      unlistenSettings = await listen<Record<string, unknown>>(
+        'pet://settings-updated',
+        (event) => {
+          if (event.payload) hydrateAllStores(event.payload);
+        },
+      );
       if (cancelled) {
         unlistenShow();
         unlistenAuth();
+        unlistenSettings?.();
       }
     })();
 
@@ -327,6 +347,7 @@ export function PetBubbleApp(): JSX.Element {
       clearTtl();
       unlistenShow?.();
       unlistenAuth?.();
+      unlistenSettings?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
