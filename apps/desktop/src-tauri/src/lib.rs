@@ -662,6 +662,7 @@ pub fn run() {
             commands::pet_bubble_show,
             commands::pet_bubble_hide,
             commands::pet_bubble_set_position,
+            commands::pet_bubble_set_size,
             commands::pet_set_topmost_level,
             commands::pet_make_transparent,
             commands::set_pet_size,

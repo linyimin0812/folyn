@@ -570,4 +570,31 @@ describe('computeBubblePosition', () => {
     // aboveY = 40 - 6 - 120 = -86 < 25 → below = 40 + 48 + 6 = 94.
     expect(pos.y).toBe(94);
   });
+
+  it('honors a custom bubbleSize (e.g. 540×280 Cloudia card) for clamp + flip', () => {
+    // Pet at bottom-right; the 540×280 card centers on the pet and clamps to
+    // the right edge of the work area.
+    const petPos = { x: 1344, y: 731 }; // petCenterX = 1392
+    const pos = computeBubblePosition(petPos, workArea, '100', {
+      width: 540,
+      height: 280,
+    });
+    // maxX = 1440 - 540 = 900 → raw x = 1392 - 270 = 1122 → clamped to 900.
+    expect(pos.x).toBe(900);
+    // aboveY = 731 - 6 - 280 = 445 (>= 25, so above).
+    expect(pos.y).toBe(445);
+  });
+
+  it('flips below for a tall custom bubble when above has no room', () => {
+    // Pet near the menu bar; a 280-tall card cannot fit above.
+    const petPos = { x: 600, y: 30 };
+    const pos = computeBubblePosition(petPos, workArea, '100', {
+      width: 540,
+      height: 280,
+    });
+    // X centered: 648 - 270 = 378, within [0, 900].
+    expect(pos.x).toBe(378);
+    // aboveY = 30 - 6 - 280 = -256 < 25 → below = 30 + 96 + 6 = 132.
+    expect(pos.y).toBe(132);
+  });
 });

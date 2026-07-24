@@ -125,13 +125,22 @@ interface PetPositionResult {
 }
 
 /**
- * Show the bubble: position it above the pet, then reveal. Reads the pet's
- * physical position + the work area, computes a clamped logical position
- * (above the pet, flipped below if no room), converts to physical, and sets
- * it before `pet_bubble_show` so the bubble appears at the right spot in one
- * frame (no flash at the default origin — mirrors the `pet-panel` open path).
+ * Show the bubble: size to the template's preferred card, position it above
+ * the pet, then reveal. Reads the pet's physical position + the work area,
+ * computes a clamped logical position (above the pet, flipped below if no
+ * room), converts to physical, and sets it before `pet_bubble_show` so the
+ * bubble appears at the right spot in one frame (no flash at the default
+ * origin — mirrors the `pet-panel` open path).
+ *
+ * `bubbleSize` is the template's declared logical size (or the 320×120
+ * default). The window is resized to that size in physical px before
+ * `computeBubblePosition` runs so the flip/clamp math tracks the actual
+ * card. The position math also uses the actual size so a tall Cloudia card
+ * still clears the menu bar / flips below when needed.
  */
-async function positionAndShowBubble(): Promise<void> {
+async function positionAndShowBubble(
+  bubbleSize: { width: number; height: number },
+): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
   const [petPos, workArea] = await Promise.all([
     invoke<PetPositionResult>('get_pet_position'),
@@ -141,12 +150,20 @@ async function positionAndShowBubble(): Promise<void> {
   // petPos is PHYSICAL px → logical for the math, then × sf back to physical
   // for pet_bubble_set_position. See petPosition.ts unit contract.
   const petPosLogical = { x: petPos.x / sf, y: petPos.y / sf };
-  const posLogical = computeBubblePosition(petPosLogical, workArea, PET_SIZE_DEFAULT);
-  const posPhysical = {
+  const posLogical = computeBubblePosition(
+    petPosLogical,
+    workArea,
+    PET_SIZE_DEFAULT,
+    bubbleSize,
+  );
+  await invoke('pet_bubble_set_size', {
+    width: Math.round(bubbleSize.width * sf),
+    height: Math.round(bubbleSize.height * sf),
+  });
+  await invoke('pet_bubble_set_position', {
     x: Math.round(posLogical.x * sf),
     y: Math.round(posLogical.y * sf),
-  };
-  await invoke('pet_bubble_set_position', posPhysical);
+  });
   await invoke('pet_bubble_show');
 }
 
@@ -255,7 +272,19 @@ export function PetBubbleApp(): JSX.Element {
         clearTtl();
         setAuthorize(null);
         setBubble(payload);
-        void positionAndShowBubble();
+        // Resolve the template's preferred size (or the 320×120 default) so
+        // the window matches the rendered card. Reading from petStore
+        // `.getState()` (not the hook selector) so this closure always sees
+        // the latest user templates + active id without re-subscribing the
+        // effect.
+        const store = usePetStore.getState();
+        const templates = [...BUILT_IN_TEMPLATES, ...store.bubbleUserTemplates];
+        const tpl = getTemplateById(
+          payload.template ?? store.bubbleActiveTemplateId,
+          templates,
+        );
+        const size = tpl.size ?? { width: 320, height: 120 };
+        void positionAndShowBubble(size);
         ttlRef.current = setTimeout(() => close(), BUBBLE_TTL_MS);
       });
       // Authorize channel: main window emits when an unwhitelisted app needs

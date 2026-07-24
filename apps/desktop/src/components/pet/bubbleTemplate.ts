@@ -25,6 +25,11 @@ export interface BubbleTemplate {
   /** Declared placeholders — informational only, not enforced. Used by the
    *  settings UI to hint which fields the template expects. */
   fields?: string[];
+  /** Preferred bubble window size in LOGICAL points. Missing → default
+   *  320×120 (matches `tauri.conf.json` `pet-bubble` window). When present,
+   *  `PetBubbleApp` invokes `pet_bubble_set_size` with the physical-pixel
+   *  equivalent before `pet_bubble_show` so the window matches the card. */
+  size?: { width: number; height: number };
 }
 
 /** Tokenize a template against a payload. Returns final HTML string. */
@@ -221,6 +226,48 @@ export const BUILT_IN_TEMPLATES: BubbleTemplate[] = [
       '.colorful-bubble .bubble-text { font-size: 12px; color: #78350f; line-height: 1.3; }' +
       '.colorful-bubble .bubble-btn { background: var(--bubble-accent, #f59e0b); color: white; border: none; border-radius: 6px; padding: 3px 10px; font-size: 11px; cursor: pointer; }' +
       '.colorful-bubble .bubble-close-min { background: none; border: none; color: #92400e; font-size: 11px; cursor: pointer; padding: 0; }',
+    fields: ['title', 'text', 'actions'],
+  },
+  {
+    id: 'cloudia',
+    name: 'Cloudia 卡片',
+    // ponytail: 378×224 = 540×320 × 0.7 — shrunk proportionally because the
+    // natural 540×320 read too large in the bubble tier. All inner CSS
+    // values (padding / font-size / mascot / gap / radius) scaled by 0.7
+    // to match. To tweak, change `size` AND the CSS values together.
+    size: { width: 378, height: 224 },
+    html:
+      '<div class="cloudia-card">' +
+        '<div class="cloudia-header">' +
+          '<svg class="cloudia-mascot" width="40" height="30" viewBox="0 0 64 48" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+            '<defs>' +
+              '<linearGradient id="cloudGrad" x1="0%" y1="0%" x2="100%" y2="100%">' +
+                '<stop offset="0%" stop-color="#ffffff"/>' +
+                '<stop offset="50%" stop-color="#e6f0fa"/>' +
+                '<stop offset="100%" stop-color="#f8e1d5"/>' +
+              '</linearGradient>' +
+            '</defs>' +
+            '<path d="M16 40 C 4 40, 4 28, 12 24 C 14 16, 22 14, 26 16 C 30 6, 46 6, 52 14 C 60 16, 64 28, 56 36 C 54 40, 46 40, 40 40 Z" fill="url(#cloudGrad)" stroke="#8aa6c4" stroke-width="2.5" stroke-linejoin="round"/>' +
+            '<path d="M 22 28 Q 24 25 26 28" stroke="#4a5568" stroke-width="2" stroke-linecap="round" fill="none"/>' +
+            '<path d="M 40 28 Q 42 25 44 28" stroke="#4a5568" stroke-width="2" stroke-linecap="round" fill="none"/>' +
+            '<ellipse cx="19" cy="32" rx="3.5" ry="2.5" fill="#ffb3c6" opacity="0.85"/>' +
+            '<ellipse cx="47" cy="32" rx="3.5" ry="2.5" fill="#ffb3c6" opacity="0.85"/>' +
+            '<path d="M 31 32 Q 33 35 35 32" stroke="#4a5568" stroke-width="2" stroke-linecap="round" fill="none"/>' +
+          '</svg>' +
+          '{{#title}}<h2 class="cloudia-title">{{title}}</h2>{{/title}}' +
+        '</div>' +
+        '<p class="cloudia-text">{{text}}</p>' +
+        '{{#actions}}<div class="cloudia-actions"><button class="cloudia-btn" data-action="{{id}}">{{label}}</button></div>{{/actions}}' +
+      '</div>',
+    css:
+      '.cloudia-card { position: absolute; inset: 6px; background: #fdfaef; border-radius: 22px; padding: 22px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.6); font-family: "Quicksand", "Nunito", "M PLUS Rounded 1c", system-ui, -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; overflow: hidden; display: flex; flex-direction: column; }' +
+      '.cloudia-header { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; flex-shrink: 0; }' +
+      '.cloudia-mascot { flex-shrink: 0; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.05)); }' +
+      '.cloudia-title { margin: 0; color: #6c91bf; font-size: 21px; line-height: 25px; font-weight: 700; letter-spacing: -0.025em; }' +
+      '.cloudia-text { margin: 0 0 22px; color: #3b4145; font-size: 15px; font-weight: 500; line-height: 1.4; flex: 1; }' +
+      '.cloudia-actions { display: flex; gap: 8px; flex-shrink: 0; }' +
+      '.cloudia-btn { flex: 1; display: block; text-align: center; border: none; border-radius: 9999px; background: linear-gradient(to right, #f7c2a5, #fba184); color: #ffffff; font-size: 17px; line-height: 22px; font-weight: 700; padding: 13px 0; cursor: pointer; box-shadow: 0 12px 24px -8px rgba(251,161,132,0.5); text-shadow: 0 2px 4px rgba(0,0,0,0.12); transition: transform 0.3s ease-out, box-shadow 0.3s ease-out; font-family: inherit; }' +
+      '.cloudia-btn:hover { transform: scale(1.03); box-shadow: 0 25px 50px -12px rgba(251,161,132,0.4); }',
     fields: ['title', 'text', 'actions'],
   },
 ];

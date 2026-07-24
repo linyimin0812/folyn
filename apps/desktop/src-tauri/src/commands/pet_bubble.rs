@@ -1,4 +1,4 @@
-use tauri::{Manager, PhysicalPosition};
+use tauri::{Manager, PhysicalPosition, PhysicalSize};
 
 use crate::commands::pet_common::*;
 use crate::errors::AppError;
@@ -42,5 +42,24 @@ pub async fn pet_bubble_set_position(
         .ok_or_else(|| "pet-bubble window not found".to_string())?;
     bubble
         .set_position(PhysicalPosition::new(x, y))
+        .map_err(|e| AppError::from(e.to_string()))
+}
+
+/// Set the pet-bubble window's size (physical pixels). Each built-in template
+/// declares its own logical size; the frontend converts to physical and calls
+/// this before `pet_bubble_show` so the window matches the rendered card
+/// exactly (a 540×280 Cloudia card needs a 540×280 window — the default
+/// 320×120 would clip it). Mirrors `pet_panel_set_size`.
+#[tauri::command]
+pub async fn pet_bubble_set_size(
+    app: tauri::AppHandle,
+    width: i32,
+    height: i32,
+) -> Result<(), AppError> {
+    let bubble = app
+        .get_webview_window(PET_BUBBLE_LABEL)
+        .ok_or_else(|| "pet-bubble window not found".to_string())?;
+    bubble
+        .set_size(PhysicalSize::new(width, height))
         .map_err(|e| AppError::from(e.to_string()))
 }

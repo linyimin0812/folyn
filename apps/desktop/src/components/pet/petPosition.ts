@@ -472,18 +472,24 @@ export const PET_BUBBLE_GAP = 6;
  * `petPos` is the pet window's top-left in LOGICAL points (caller converts
  * from `get_pet_position`'s physical px via `÷ scale_factor`). `petSize`
  * defaults to `PET_SIZE_DEFAULT` so the bubble tracks the actual mascot
- * bounds (a small/large pet shifts the center). The bubble size is fixed at
- * `PET_BUBBLE_WIDTH`×`PET_BUBBLE_HEIGHT` (non-resizable window).
+ * bounds (a small/large pet shifts the center). `bubbleSize` defaults to
+ * the legacy 320×120 — templates that declare their own `size` pass it here
+ * so the flip/clamp math tracks the actual card (e.g. the 540×280 Cloudia
+ * card needs more vertical room above the pet than 120 would).
  */
 export function computeBubblePosition(
   petPos: PetPosition,
   workArea: PetWorkArea,
   petSize: PetSize = PET_SIZE_DEFAULT,
+  bubbleSize: { width: number; height: number } = {
+    width: PET_BUBBLE_WIDTH,
+    height: PET_BUBBLE_HEIGHT,
+  },
 ): PetPosition {
   const petWindowSize = petSizeToPx(petSize);
   const petCenterX = petPos.x + petWindowSize / 2;
-  const bubbleW = PET_BUBBLE_WIDTH;
-  const bubbleH = PET_BUBBLE_HEIGHT;
+  const bubbleW = bubbleSize.width;
+  const bubbleH = bubbleSize.height;
 
   // X: center the bubble on the pet, clamped into the work area.
   const maxX = workArea.x + Math.max(0, workArea.width - bubbleW);
