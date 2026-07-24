@@ -629,11 +629,15 @@ export function computeBubblePosition(
 // the unit contract.
 // ────────────────────────────────────────────────────────────────────────────
 
-/** Corner toast card size (logical points). Matches the `pet-corner` window's
- *  declared `width` in `tauri.conf.json`. The card height is fixed so the
- *  stack height is a pure function of stack count. */
+/** Corner toast card width (logical points). Matches the `pet-corner`
+ *  window's declared `width` in `tauri.conf.json`. Fixed — the card
+ *  never wraps horizontally (text uses `-webkit-line-clamp`). */
 export const PET_CORNER_CARD_WIDTH = 320;
-export const PET_CORNER_CARD_HEIGHT = 80;
+/** Card min height (logical points). Floor so a card with only a short
+ *  single-line text still has tap area. The actual card height is
+ *  content-driven (`height: auto` in CSS) and measured at runtime by
+ *  `PetCornerApp`'s ResizeObserver; this constant is only the floor. */
+export const PET_CORNER_CARD_MIN_HEIGHT = 48;
 /** Gap between stacked toasts (logical points). */
 export const PET_CORNER_CARD_GAP = 8;
 /** Margin from the screen corner to the first toast's outer edge (logical
@@ -649,29 +653,28 @@ export const PET_CORNER_MAX_VISIBLE = 3;
 export type CornerPlacement = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
 
 /** Compute the pet-corner window's top-left position (logical points,
- *  absolute screen coords) for a stack of `count` toasts at the given
- *  corner. Window width is constant (`PET_CORNER_CARD_WIDTH`); window height
- *  is `count × CARD_HEIGHT + (count − 1) × GAP`. For `count = 0` the
- *  window is hidden by the caller (no position math needed).
+ *  absolute screen coords) for a stack of total height `stackHeight`
+ *  (logical points, already including per-card heights + inter-card
+ *  gaps — caller measures the rendered stack). Window width is constant
+ *  (`PET_CORNER_CARD_WIDTH`). For `stackHeight = 0` the window is hidden
+ *  by the caller (no position math needed).
  *
  *  `bottomRight`: x = workArea.right − width − margin; y = workArea.bottom
  *  − stackHeight − margin (stack grows upward from the bottom corner).
  *  `topLeft`: x = workArea.left + margin; y = workArea.top + margin
  *  (stack grows downward from the top corner).
- *  `topRight`/`bottomLeft` mix the X/Y of the above.
- */
+ *  `topRight`/`bottomLeft` mix the X/Y of the above. */
 export function computeCornerToastPosition(
   corner: CornerPlacement,
   workArea: PetWorkArea,
-  count: number,
+  stackHeight: number,
 ): PetPosition {
-  if (count <= 0) {
+  if (stackHeight <= 0) {
     // Caller should hide the window; return the work-area origin as a safe
-    // fallback so a stray show with count=0 doesn't flash mid-screen.
+    // fallback so a stray show with stackHeight=0 doesn't flash mid-screen.
     return { x: workArea.x, y: workArea.y };
   }
   const width = PET_CORNER_CARD_WIDTH;
-  const stackHeight = count * PET_CORNER_CARD_HEIGHT + (count - 1) * PET_CORNER_CARD_GAP;
   const waLeft = workArea.x;
   const waRight = workArea.x + workArea.width;
   const waTop = workArea.y;

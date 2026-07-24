@@ -646,7 +646,14 @@ html.is-pet-panel-window body {
 
 .pet-corner-root {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* `bottom` intentionally unset: root height follows content so the
+   * window can be sized to the actual stack height (measured via
+   * ResizeObserver in PetCornerApp). With `bottom: 0` the root would
+   * stretch to fill the window and `scrollHeight` would mirror the
+   * window, not the content. */
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -668,11 +675,16 @@ html.is-pet-panel-window body {
   position: relative;
   flex-shrink: 0;
   width: 320px;
-  height: 80px;
+  min-height: 48px;
+  /* `height: auto` — card grows to fit title + 2-line text + actions.
+   * Text is capped at 2 lines via -webkit-line-clamp so the natural
+   * height is bounded (~74px max). The window is resized to the actual
+   * stack height after measure (PetCornerApp's ResizeObserver). */
+  height: auto;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px 10px 8px 12px;
+  padding: 6px 10px 6px 12px;
   background: var(--panel, #ffffff);
   border-radius: 8px;
   box-shadow: inset 3px 0 0 0 var(--bubble-accent, #3a6ef0),
@@ -711,7 +723,7 @@ html.is-pet-panel-window body {
 
 .pet-corner-title {
   font-weight: 600;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--t1, #1f2330);
   padding-right: 18px; /* clear the ✕ */
   white-space: nowrap;
@@ -722,12 +734,13 @@ html.is-pet-panel-window body {
 .pet-corner-text {
   flex: 1;
   font-size: 11px;
-  line-height: 1.35;
+  line-height: 1.25;
   color: var(--t2, #4a4f5c);
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  padding-right: 10px; /* clear the ✕ when no title above */
 }
 
 .pet-corner-actions {
@@ -739,7 +752,7 @@ html.is-pet-panel-window body {
 .pet-corner-btn {
   border: none;
   border-radius: 4px;
-  padding: 2px 8px;
+  padding: 1px 8px;
   font-size: 11px;
   cursor: pointer;
   font-family: inherit;

@@ -48,9 +48,23 @@ function collectPersistedBlob(): Record<string, unknown> {
 
 /** Debounced persist — single writer, 300ms trailing edge. Matches the
  *  legacy settingsStore `debouncedPersist` (same delay, same single-writer
- *  contract, same storageClient.set call shape). */
+ *  contract, same storageClient.set call shape). After the write lands,
+ *  emits `pet://settings-updated` with the blob as payload so secondary
+ *  Tauri windows (pet-corner, pet-bubble, pet-panel) — which hold their
+ *  own store instances and don't see in-memory `set()` calls from the
+ *  main window, and which lack fs-plugin ACL perms to re-read storage.json
+ *  themselves — can hydrate directly from the payload. */
 const debouncedPersist = debounce(() => {
-  void storageClient.set(SETTINGS_STORAGE_KEY, collectPersistedBlob());
+  const blob = collectPersistedBlob();
+  void storageClient.set(SETTINGS_STORAGE_KEY, blob);
+  void (async () => {
+    try {
+      const { emit } = await import('@tauri-apps/api/event');
+      await emit('pet://settings-updated', blob);
+    } catch {
+      // Non-tauri (tests) or emit failed — non-fatal.
+    }
+  })();
 }, 300);
 
 /** Called by every persisted store's setter to schedule a debounced write.

@@ -26,16 +26,15 @@
 // (the dispatcher never routes authorize to corner — only the bubble
 // listens on `pet://bubble-authorize-request`).
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { isTauri } from '@/utils/platform';
 import {
   computeCornerToastPosition,
   PET_CORNER_CARD_WIDTH,
-  PET_CORNER_CARD_HEIGHT,
-  PET_CORNER_CARD_GAP,
   PET_CORNER_MAX_VISIBLE,
 } from './petPosition';
 import { usePetStore, type CornerPlacement } from '@/store/petStore';
+import { hydrateAllStores } from '@/store/settingsPersistence';
 import type {
   PetBubblePayload,
   PetBubbleActionEvent,
@@ -63,21 +62,24 @@ interface CornerToast {
 let nextToastId = 1;
 
 /** Recompute size + position of the corner window for the current stack,
- *  then show or hide. Reads `petStore.cornerPlacement` for the corner;
- *  `count` drives the window height (`count × CARD_HEIGHT + (count−1) ×
- *  GAP`). When `count === 0`, hides the window. */
-async function syncCornerWindow(count: number, corner: CornerPlacement): Promise<void> {
+ *  then show or hide. `stackHeight` is the MEASURED rendered height of the
+ *  stack (logical points, already including per-card heights + inter-card
+ *  gaps — the caller observes the root via ResizeObserver and passes the
+ *  sum). When `stackHeight <= 0`, hides the window. */
+async function syncCornerWindow(
+  stackHeight: number,
+  corner: CornerPlacement,
+): Promise<void> {
   if (!isTauri()) return;
   try {
     const { invoke } = await import('@tauri-apps/api/core');
-    if (count <= 0) {
+    if (stackHeight <= 0) {
       await invoke('pet_corner_hide');
       return;
     }
     const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
     const sf = workArea.scale_factor || 1;
-    const posLogical = computeCornerToastPosition(corner, workArea, count);
-    const stackHeight = count * PET_CORNER_CARD_HEIGHT + (count - 1) * PET_CORNER_CARD_GAP;
+    const posLogical = computeCornerToastPosition(corner, workArea, stackHeight);
     await invoke('pet_corner_set_size', {
       width: Math.round(PET_CORNER_CARD_WIDTH * sf),
       height: Math.round(stackHeight * sf),
@@ -117,6 +119,12 @@ export function PetCornerApp(): JSX.Element {
   // Per-toast TTL timers. Ref so the listener (which is set up once) can add
   // / clear timers without re-subscribing.
   const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  // Measured rendered height of the stack (logical px). Drives the window
+  // size so the card can be content-driven (`height: auto`) — root is
+  // observed by a ResizeObserver below, and the value reflows the window
+  // via the `[stackHeight, corner]` effect.
+  const [stackHeight, setStackHeight] = useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const corner = usePetStore((s) => s.cornerPlacement);
 
@@ -128,11 +136,10 @@ export function PetCornerApp(): JSX.Element {
       clearTimeout(timer);
       timersRef.current.delete(id);
     }
-    setToasts((prev) => {
-      const next = prev.filter((t) => t.id !== id);
-      void syncCornerWindow(next.length, usePetStore.getState().cornerPlacement);
-      return next;
-    });
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+    // Window sync is driven by the `[stackHeight, corner]` effect after the
+    // ResizeObserver fires with the new measured height — no explicit call
+    // here.
   };
 
   /** Fire a jump: emit `pet://bubble-action` to the main window, then dismiss
@@ -166,6 +173,7 @@ export function PetCornerApp(): JSX.Element {
   useEffect(() => {
     if (!isTauri()) return;
     let unlistenShow: (() => void) | null = null;
+    let unlistenSettings: (() => void) | null = null;
     let cancelled = false;
 
     (async () => {
@@ -199,16 +207,33 @@ export function PetCornerApp(): JSX.Element {
               }
             }
           }
-          void syncCornerWindow(trimmed.length, store.cornerPlacement);
           return trimmed;
         });
+        // Window sync fires from the `[stackHeight, corner]` effect after the
+        // ResizeObserver measures the new rendered height — no explicit call.
         if (ttl !== 'never') {
           const timer = setTimeout(() => dismissToast(id), ttl);
           timersRef.current.set(id, timer);
         }
       });
+      // Cross-window settings sync: the main window's `schedulePersist`
+      // emits `pet://settings-updated` with the fresh blob as payload
+      // after every debounced write. This window holds its own `petStore`
+      // instance (separate JS context) so in-memory `set()` calls in the
+      // main window never reach here — hydrate from the event payload
+      // directly (the pet-corner ACL doesn't grant fs perms, so re-reading
+      // storage.json via `loadSettings` would be silently rejected).
+      // After hydrate, the existing `[toasts, corner]` effect re-fires
+      // with the new `corner` and repositions the visible stack.
+      unlistenSettings = await listen<Record<string, unknown>>(
+        'pet://settings-updated',
+        (event) => {
+          if (event.payload) hydrateAllStores(event.payload);
+        },
+      );
       if (cancelled) {
         unlistenShow();
+        unlistenSettings?.();
       }
     })();
 
@@ -220,23 +245,51 @@ export function PetCornerApp(): JSX.Element {
       }
       timersRef.current.clear();
       unlistenShow?.();
+      unlistenSettings?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // When the stack empties (or is empty on mount), keep the window hidden.
+  // Measure the rendered stack height whenever the toast list changes.
+  // The card is `height: auto` (content-driven) so the only way to know
+  // the real footprint is to read it from the DOM. `useLayoutEffect`
+  // runs before paint so the window is sized correctly for the first
+  // frame; `ResizeObserver` catches late reflows (font load, CSS
+  // variable resolution) without a re-render.
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) {
+      setStackHeight(0);
+      return;
+    }
+    const measure = (): void => {
+      // Offset height = border-box; root has no border/padding, so ==
+      // scrollHeight of the flex column = stack height.
+      const h = Math.ceil(root.getBoundingClientRect().height);
+      setStackHeight((prev) => (prev === h ? prev : h));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(root);
+    return () => ro.disconnect();
+  }, [toasts]);
+
+  // Drive the window size + position from the MEASURED stack height +
+  // corner. When the stack empties (or is empty on mount), hide the
+  // window. Otherwise the ResizeObserver will keep the window tracking
+  // the content on every reflow.
   useEffect(() => {
-    if (toasts.length === 0) {
+    if (stackHeight <= 0) {
       void hideCorner();
     } else {
-      void syncCornerWindow(toasts.length, corner);
+      void syncCornerWindow(stackHeight, corner);
     }
-  }, [toasts, corner]);
+  }, [stackHeight, corner]);
 
   if (toasts.length === 0) return <></>;
 
   return (
-    <div className="pet-corner-root">
+    <div className="pet-corner-root" ref={rootRef}>
       {toasts.map((toast) => {
         const kind = toast.payload.kind ?? 'info';
         const kindClass = `pet-corner--${kind}`;
