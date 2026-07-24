@@ -229,7 +229,13 @@ export function PetBubbleApp(): JSX.Element {
     void hideBubble();
   };
 
-  // Fire a jump: emit `pet://bubble-action` to the main window, then close.
+  // Fire a jump: emit `pet://bubble-action` to the main window. For launch
+  // we keep the bubble open — if the app isn't whitelisted, the main window
+  // emits `pet://bubble-authorize-request` back and the authorize UI must
+  // render over the still-visible card (closing here would null `bubble`
+  // and the `!bubble` short-circuit hides the authorize prompt — user sees
+  // nothing and assumes the click did nothing). Success has no return
+  // signal, so TTL or the ✕ button closes.
   const fireAction = async (event: PetBubbleActionEvent) => {
     try {
       const { emit } = await import('@tauri-apps/api/event');
@@ -237,7 +243,7 @@ export function PetBubbleApp(): JSX.Element {
     } catch {
       // Non-fatal — still close so the bubble doesn't stick.
     }
-    close();
+    if (event.type !== 'launch') close();
   };
 
   // Inject the CSP meta + the template's CSS into the bubble document head.

@@ -638,6 +638,43 @@ html.is-pet-panel-window body {
   background: var(--hover, rgba(0, 0, 0, 0.06));
 }
 
+/* Authorize card overrides — the default bubble styles are sized for 320×120;
+ * inside the Cloudia 378×224 window they leave too much whitespace with tiny
+ * fonts. Scale padding/fonts/radii up for the authorize prompt. */
+.pet-bubble-authorize {
+  padding: 22px 24px 20px;
+  gap: 12px;
+  justify-content: center;
+  border-radius: 22px;
+  box-shadow: inset 4px 0 0 0 var(--bubble-accent, #3a6ef0);
+}
+.pet-bubble-authorize .pet-bubble-close {
+  top: 12px;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+  border-radius: 50%;
+}
+.pet-bubble-authorize .pet-bubble-title {
+  font-size: 18px;
+  padding-right: 28px;
+}
+.pet-bubble-authorize .pet-bubble-text {
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-line-clamp: 3;
+}
+.pet-bubble-authorize .pet-bubble-actions {
+  justify-content: center;
+  gap: 10px;
+}
+.pet-bubble-authorize .pet-bubble-btn {
+  padding: 9px 18px;
+  font-size: 14px;
+  border-radius: 9999px;
+}
+
 /* ─── Pet corner toast stack (`pet-corner` window) ──────────────────────────
  * Compact stacked cards at a screen corner. 320×80 logical per card; gap
  * 8px. Newest on top (first child = newest in the DOM order the component

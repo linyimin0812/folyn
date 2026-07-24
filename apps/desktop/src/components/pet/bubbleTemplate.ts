@@ -140,6 +140,7 @@ export const BUILT_IN_TEMPLATES: BubbleTemplate[] = [
     size: { width: 378, height: 224 },
     html:
       '<div class="cloudia-card">' +
+        '<button class="cloudia-close" data-action="close" aria-label="关闭">✕</button>' +
         '<div class="cloudia-header">' +
           '<svg class="cloudia-mascot" width="40" height="30" viewBox="0 0 64 48" fill="none" xmlns="http://www.w3.org/2000/svg">' +
             '<defs>' +
@@ -163,6 +164,8 @@ export const BUILT_IN_TEMPLATES: BubbleTemplate[] = [
       '</div>',
     css:
       '.cloudia-card { position: absolute; inset: 6px; background: #fdfaef; border-radius: 22px; padding: 22px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.6); font-family: "Quicksand", "Nunito", "M PLUS Rounded 1c", system-ui, -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; overflow: hidden; display: flex; flex-direction: column; }' +
+      '.cloudia-close { position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; border: none; border-radius: 50%; background: rgba(108,145,191,0.12); color: #6c91bf; font-size: 13px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; z-index: 2; transition: background 0.2s; }' +
+      '.cloudia-close:hover { background: rgba(108,145,191,0.22); }' +
       '.cloudia-header { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; flex-shrink: 0; }' +
       '.cloudia-mascot { flex-shrink: 0; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.05)); }' +
       '.cloudia-title { margin: 0; color: #6c91bf; font-size: 21px; line-height: 25px; font-weight: 700; letter-spacing: -0.025em; }' +
