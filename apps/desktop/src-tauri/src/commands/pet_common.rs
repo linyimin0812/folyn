@@ -463,6 +463,20 @@ pub(crate) const PET_PANEL_LABEL: &str = "pet-panel";
 
 pub(crate) const PET_BUBBLE_LABEL: &str = "pet-bubble";
 
+// ────────────────────────────────────────────────────────────────────────────
+// Pet corner toast window (`pet-corner`).
+//
+// A transparent, decorations:false, skipTaskbar NSPanel window that stacks
+// passive notification toasts at a screen corner on `pet://corner-show`.
+// Mirrors the `pet-bubble` panel pattern: shown/hidden/positioned/sized via
+// custom invoke commands so the frontend bypasses the ACL. The window's own
+// capability file grants only `core:event` (listen for `pet://corner-show`,
+// emit `pet://bubble-action` — click → jump reuses the bubble's action
+// channel so App.tsx's jump router is unchanged).
+// ────────────────────────────────────────────────────────────────────────────
+
+pub(crate) const PET_CORNER_LABEL: &str = "pet-corner";
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -8,6 +8,7 @@ import {
   clampPanelSize,
   resolvePanelSize,
   computeBubblePosition,
+  computeCornerToastPosition,
   PET_WINDOW_SIZE,
   PET_MASCOT_SIZE,
   PET_RIGHT_MARGIN,
@@ -22,8 +23,14 @@ import {
   PET_BUBBLE_WIDTH,
   PET_BUBBLE_HEIGHT,
   PET_BUBBLE_GAP,
+  PET_CORNER_CARD_WIDTH,
+  PET_CORNER_CARD_HEIGHT,
+  PET_CORNER_CARD_GAP,
+  PET_CORNER_MARGIN,
+  PET_CORNER_MAX_VISIBLE,
   type PetWorkArea,
   type Placement,
+  type CornerPlacement,
 } from './petPosition';
 
 describe('computeDefaultPetPosition', () => {
@@ -776,5 +783,60 @@ describe('computeBubblePosition', () => {
       expect(pos.x).toBe(702);
       expect(pos.y).toBe(376);
     });
+  });
+});
+
+describe('computeCornerToastPosition', () => {
+  // Work area mirrors a 1440×875 desktop minus menu bar.
+  const workArea: PetWorkArea = { x: 0, y: 25, width: 1440, height: 875, scale_factor: 2 };
+
+  it('places the bottom-right corner: x = right − width − margin, y = bottom − stack − margin', () => {
+    const pos = computeCornerToastPosition('bottomRight', workArea, 1);
+    // x = 0 + 1440 - 320 - 16 = 1104.
+    expect(pos.x).toBe(1104);
+    // y = 25 + 875 - 80 - 16 = 804.
+    expect(pos.y).toBe(804);
+  });
+
+  it('places the top-left corner: x = left + margin, y = top + margin', () => {
+    const pos = computeCornerToastPosition('topLeft', workArea, 1);
+    expect(pos.x).toBe(16);
+    expect(pos.y).toBe(25 + 16); // 41
+  });
+
+  it('places the top-right corner: right-side x, top-side y', () => {
+    const pos = computeCornerToastPosition('topRight', workArea, 2);
+    // x = 1440 - 320 - 16 = 1104; y = 25 + 16 = 41.
+    expect(pos.x).toBe(1104);
+    expect(pos.y).toBe(41);
+  });
+
+  it('places the bottom-left corner: left-side x, bottom-side y', () => {
+    const pos = computeCornerToastPosition('bottomLeft', workArea, 2);
+    // x = 0 + 16 = 16.
+    expect(pos.x).toBe(16);
+    // stackHeight = 2*80 + 1*8 = 168; y = 25 + 875 - 168 - 16 = 716.
+    expect(pos.y).toBe(716);
+  });
+
+  it('stack height grows with count: 3 toasts at bottomRight', () => {
+    const pos = computeCornerToastPosition('bottomRight', workArea, PET_CORNER_MAX_VISIBLE);
+    // stackHeight = 3*80 + 2*8 = 256; y = 25 + 875 - 256 - 16 = 628.
+    expect(pos.y).toBe(628);
+    // x unchanged.
+    expect(pos.x).toBe(1104);
+  });
+
+  it('returns the work-area origin for count = 0 (caller hides the window)', () => {
+    const pos = computeCornerToastPosition('bottomRight', workArea, 0);
+    expect(pos).toEqual({ x: 0, y: 25 });
+  });
+
+  it('respects a nonzero work-area origin', () => {
+    const wa: PetWorkArea = { x: 100, y: 50, width: 1000, height: 600 };
+    const pos = computeCornerToastPosition('bottomRight', wa, 1);
+    // x = 100 + 1000 - 320 - 16 = 764; y = 50 + 600 - 80 - 16 = 554.
+    expect(pos.x).toBe(764);
+    expect(pos.y).toBe(554);
   });
 });

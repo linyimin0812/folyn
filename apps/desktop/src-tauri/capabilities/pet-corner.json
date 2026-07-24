@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/tooling/cli/schema.json",
+  "identifier": "pet-corner",
+  "description": "Capabilities for the desktop pet corner toast stack (passive notifications at a screen corner). All window mutation (show/hide/position/size) goes through custom `pet_corner_*` invoke commands which bypass the ACL, so no `core:window:*` perms are needed here. The corner toast only needs event access: `listen` for `pet://corner-show` (render stack + TTL) and `emit` for `pet://bubble-action` (card/action click → main window routes the jump, reusing the bubble's action channel).",
+  "windows": ["pet-corner"],
+  "permissions": [
+    "core:default",
+    "core:event:allow-listen",
+    "core:event:allow-emit"
+  ]
+}

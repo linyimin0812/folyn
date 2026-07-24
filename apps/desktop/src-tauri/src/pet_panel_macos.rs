@@ -88,21 +88,21 @@ pub fn backend_is_nspanel() -> bool {
     }
 }
 
-/// Convert the `pet`, `pet-panel`, and `pet-bubble` windows into NSPanels with the
-/// fullscreen-overlay configuration. Must run on the macOS main thread
-/// (NSWindow API is main-thread-only). `to_panel()` swaps the window's class
-/// in place; calling it again on an already-converted window re-asserts the
-/// class and re-applies level/style/behavior. Returns the count of windows
-/// successfully converted.
+/// Convert the `pet`, `pet-panel`, `pet-bubble`, and `pet-corner` windows into
+/// NSPanels with the fullscreen-overlay configuration. Must run on the macOS
+/// main thread (NSWindow API is main-thread-only). `to_panel()` swaps the
+/// window's class in place; calling it again on an already-converted window
+/// re-asserts the class and re-applies level/style/behavior. Returns the
+/// count of windows successfully converted.
 ///
-/// Two panel types are used: `QuillPetPanel` for the `pet` mascot and
-/// `pet-bubble` (no keyboard interaction; `can_become_key_window: true` so
-/// the webview can become key for CSS cursor updates after a click — plain
-/// hover doesn't update the cursor without a click on macOS because the
-/// panel isn't key until clicked), and `QuillPanelWindow` for the
-/// `pet-panel`, which needs keyboard focus for its Esc keydown listener
-/// (`pet_panel_show` calls Tauri's `set_focus()`, which activates the Quill
-/// app and makes the panel key).
+/// Two panel types are used: `QuillPetPanel` for the `pet` mascot,
+/// `pet-bubble`, and `pet-corner` (no keyboard interaction;
+/// `can_become_key_window: true` so the webview can become key for CSS
+/// cursor updates after a click — plain hover doesn't update the cursor
+/// without a click on macOS because the panel isn't key until clicked), and
+/// `QuillPanelWindow` for the `pet-panel`, which needs keyboard focus for
+/// its Esc keydown listener (`pet_panel_show` calls Tauri's `set_focus()`,
+/// which activates the Quill app and makes the panel key).
 /// Both get the same level/style/collection recipe: `Dock` level +
 /// `nonactivating_panel` + `stationary | can_join_all_spaces |
 /// full_screen_auxiliary` (273). The `pet-panel` is opaque (not transparent)
@@ -177,6 +177,24 @@ pub fn convert_windows(app: &AppHandle) -> usize {
     // non-key panel as the mascot so first clicks on action buttons deliver
     // immediately.
     if let Some(window) = app.get_webview_window("pet-bubble") {
+        if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
+            panel.set_level(PanelLevel::Dock.value());
+            panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
+            panel.set_collection_behavior(
+                CollectionBehavior::new()
+                    .stationary()
+                    .can_join_all_spaces()
+                    .full_screen_auxiliary()
+                    .into(),
+            );
+            count += 1;
+        }
+    }
+
+    // Pet-corner — passive notification toast stack at a screen corner; same
+    // non-key panel as the mascot and bubble so first clicks on action
+    // buttons deliver immediately.
+    if let Some(window) = app.get_webview_window("pet-corner") {
         if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
             panel.set_level(PanelLevel::Dock.value());
             panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());

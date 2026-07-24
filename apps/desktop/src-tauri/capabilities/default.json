@@ -40,7 +40,6 @@
     "dialog:allow-confirm",
     "clipboard-manager:allow-write-text",
     "clipboard-manager:allow-write-image",
-    "notification:default",
     "fs:default",
     "fs:allow-read",
     "fs:allow-write",

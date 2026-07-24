@@ -618,3 +618,73 @@ export function computeBubblePosition(
 
   return { x: Math.round(x), y: Math.round(y) };
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Pet corner toast stack (`pet-corner`).
+//
+// A transparent NSPanel window that stacks up to N toasts at one of the four
+// screen corners. Position math runs in LOGICAL points (same unit as the work
+// area); the caller multiplies the result by `scale_factor` before
+// `pet_corner_set_position` (physical px). See `tauri-window-patterns.md` for
+// the unit contract.
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Corner toast card size (logical points). Matches the `pet-corner` window's
+ *  declared `width` in `tauri.conf.json`. The card height is fixed so the
+ *  stack height is a pure function of stack count. */
+export const PET_CORNER_CARD_WIDTH = 320;
+export const PET_CORNER_CARD_HEIGHT = 80;
+/** Gap between stacked toasts (logical points). */
+export const PET_CORNER_CARD_GAP = 8;
+/** Margin from the screen corner to the first toast's outer edge (logical
+ *  points). Sits inside the work area (which already excludes Dock + menu
+ *  bar) as a small breathing inset. */
+export const PET_CORNER_MARGIN = 16;
+/** Max simultaneously-visible toasts. Overflow hides the oldest. PRD
+ *  pet-popover-corner, Decision D5. */
+export const PET_CORNER_MAX_VISIBLE = 3;
+
+/** Screen corner the toast stack attaches to. Mirrors
+ *  `petStore.cornerPlacement`. */
+export type CornerPlacement = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
+
+/** Compute the pet-corner window's top-left position (logical points,
+ *  absolute screen coords) for a stack of `count` toasts at the given
+ *  corner. Window width is constant (`PET_CORNER_CARD_WIDTH`); window height
+ *  is `count × CARD_HEIGHT + (count − 1) × GAP`. For `count = 0` the
+ *  window is hidden by the caller (no position math needed).
+ *
+ *  `bottomRight`: x = workArea.right − width − margin; y = workArea.bottom
+ *  − stackHeight − margin (stack grows upward from the bottom corner).
+ *  `topLeft`: x = workArea.left + margin; y = workArea.top + margin
+ *  (stack grows downward from the top corner).
+ *  `topRight`/`bottomLeft` mix the X/Y of the above.
+ */
+export function computeCornerToastPosition(
+  corner: CornerPlacement,
+  workArea: PetWorkArea,
+  count: number,
+): PetPosition {
+  if (count <= 0) {
+    // Caller should hide the window; return the work-area origin as a safe
+    // fallback so a stray show with count=0 doesn't flash mid-screen.
+    return { x: workArea.x, y: workArea.y };
+  }
+  const width = PET_CORNER_CARD_WIDTH;
+  const stackHeight = count * PET_CORNER_CARD_HEIGHT + (count - 1) * PET_CORNER_CARD_GAP;
+  const waLeft = workArea.x;
+  const waRight = workArea.x + workArea.width;
+  const waTop = workArea.y;
+  const waBottom = workArea.y + workArea.height;
+
+  const x =
+    corner === 'topLeft' || corner === 'bottomLeft'
+      ? waLeft + PET_CORNER_MARGIN
+      : waRight - width - PET_CORNER_MARGIN;
+  const y =
+    corner === 'topLeft' || corner === 'topRight'
+      ? waTop + PET_CORNER_MARGIN
+      : waBottom - stackHeight - PET_CORNER_MARGIN;
+
+  return { x: Math.round(x), y: Math.round(y) };
+}

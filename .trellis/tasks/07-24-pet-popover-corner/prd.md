@@ -2,23 +2,18 @@
 
 ## Status (2026-07-24)
 
-**Part 1 done, Part 2 deferred.** Committed incrementally because the two
-parts are independent: Part 1 is a complete, type-check-passing,
-test-covered refactor of the existing bubble + notification routing. Part 2
-(corner toast) is a new component and can be built against the stable
-contract Part 1 leaves behind (the `pet://corner-show` event is already
-emitted by the dispatcher; the corner toast just needs to listen for it).
+**Done.** Both parts landed in two commits (`2380cfd` for Part 1, this commit
+for Part 2).
 
-- **Done (this commit):** Popover card 12-placement refactor, `NotificationForm`
-  `'system'` → `'corner'` routing change, OS native notification path
-  removal, settings UI, i18n, all related tests.
-- **Deferred (follow-up):** `pet-corner` NSPanel window + `PetCornerApp.tsx`
-  + Rust `pet_corner_*` commands + CSS + `main.tsx` route. The
-  `pet://corner-show` event is emitted but has no listener until Part 2
-  lands — `notificationForm = 'corner'` will silently drop notifications
-  until then. `@tauri-apps/plugin-notification` dependency removal is also
-  deferred to Part 2 (so Part 1's diff stays focused on the routing
-  rewrite, not the package.json churn).
+- **Part 1 (commit `2380cfd`):** Popover card 12-placement refactor,
+  `NotificationForm` `'system'` → `'corner'` routing change, OS native
+  notification path removal, settings UI, i18n, all related tests.
+- **Part 2 (this commit):** `pet-corner` NSPanel window + Rust
+  `pet_corner_*` commands + `PetCornerApp.tsx` + `main.tsx` `#/pet-corner`
+  route + `pet.css` corner toast styles + `computeCornerToastPosition` pure
+  function + 7 new position tests. Removed `@tauri-apps/plugin-notification`
+  from `package.json` + `Cargo.toml` + `lib.rs` + `capabilities/default.json`
+  + the vitest mock file.
 
 ## Goal
 

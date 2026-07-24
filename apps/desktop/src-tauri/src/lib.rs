@@ -396,9 +396,6 @@ pub fn run() {
         // OS native notifications (PRD pet-popup-bubble-notification: system
         // notification form). The main window's dispatcher calls the plugin's
         // JS API (`sendNotification`/`registerActionTypes`/`onAction`);
-        // `notification:default` is granted on the `main` window in
-        // `capabilities/default.json`.
-        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -663,6 +660,10 @@ pub fn run() {
             commands::pet_bubble_hide,
             commands::pet_bubble_set_position,
             commands::pet_bubble_set_size,
+            commands::pet_corner_show,
+            commands::pet_corner_hide,
+            commands::pet_corner_set_position,
+            commands::pet_corner_set_size,
             commands::pet_set_topmost_level,
             commands::pet_make_transparent,
             commands::set_pet_size,
