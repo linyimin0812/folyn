@@ -247,7 +247,9 @@ export const usePetStore = create<PetState>((set, get) => ({
     // a duplicate. Reject ids that collide with built-in ids by silently
     // prefixing `user:` — caller (settings UI) should pre-check, but this is
     // the safety net so a malicious import can't shadow built-ins.
-    const builtInIds = ['default', 'glass', 'dark', 'minimal', 'colorful'];
+    // ponytail: 'default' is the only built-in (Cloudia). The collision
+    // guard stops a user upload from shadowing it.
+    const builtInIds = ['default'];
     const id = builtInIds.includes(template.id) ? `user:${template.id}` : template.id;
     const cur = get().bubbleUserTemplates;
     const next = [...cur.filter((t) => t.id !== id), { ...template, id }];

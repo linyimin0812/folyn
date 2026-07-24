@@ -143,7 +143,7 @@ describe('sanitizeBubbleHtml', () => {
 
 describe('getTemplateById', () => {
   it('returns the named template', () => {
-    expect(getTemplateById('glass', BUILT_IN_TEMPLATES).id).toBe('glass');
+    expect(getTemplateById('default', BUILT_IN_TEMPLATES).id).toBe('default');
   });
 
   it('falls back to default when id is missing', () => {
