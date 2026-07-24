@@ -15,10 +15,7 @@ import { useEffect } from 'react';
 import { isTauri } from '@/utils/platform';
 import { usePetStore } from '@/store/petStore';
 import { settingsLoadDone } from '@/store/settingsPersistence';
-import {
-  dispatchNotification,
-  startNotificationClickListener,
-} from '@/services/petNotifyDispatcher';
+import { dispatchNotification } from '@/services/petNotifyDispatcher';
 import { routePetMenuAction, routePetBubbleAction } from '@/services/petHostRouter';
 import type { PetMenuAction } from '@/components/pet/PetContextMenu';
 import type { PetBubbleActionEvent, PetBubblePayload } from '@/components/pet/PetBubbleApp';
@@ -27,8 +24,8 @@ import type { PetBubbleActionEvent, PetBubblePayload } from '@/components/pet/Pe
  * Assemble the desktop-pet host bridge in the main window. Wires the
  * `pet://menu-action` / `pet://bubble-action` / `pet://visibility-changed` /
  * `pet://notify` listeners, re-shows the pet window on launch if pet mode
- * was left on, sweeps orphaned pet-icon files, and starts the OS
- * notification click listener. No-op (returns nothing) outside Tauri.
+ * was left on, and sweeps orphaned pet-icon files. No-op (returns nothing)
+ * outside Tauri.
  */
 export function usePetHostBridge(): void {
   // ── Pet icon library reconcile + orphan sweep (PRD: settings-pet-tab-and-custom-icon) ──
@@ -158,29 +155,23 @@ export function usePetHostBridge(): void {
       });
       // Unified notification entry: trigger sources emit `pet://notify` with
       // a PetBubblePayload; the dispatcher routes it by
-      // `petStore.notificationForm` to the in-app bubble and/or an OS native
-      // notification. The OS notification click→jump reuses
-      // `pet://bubble-action` above.
+      // `petStore.notificationForm` to the in-app bubble and/or the in-app
+      // corner toast. Both re-emit the same `pet://bubble-action` on click
+      // → jump, handled by `unBubble` above.
       const unNotify = await listen<PetBubblePayload>('pet://notify', (event) => {
         if (event.payload) void dispatchNotification(event.payload);
       });
-      // OS notification click listener: maps `notification.id` → target →
-      // emits `pet://bubble-action` (handled by `unBubble` above). Registered
-      // once for the main window's lifetime.
-      const unNotifClick = await startNotificationClickListener();
       if (cancelled) {
         unAction();
         unVis();
         unBubble();
         unNotify();
-        unNotifClick();
       } else {
         unlisten = () => {
           unAction();
           unVis();
           unBubble();
           unNotify();
-          unNotifClick();
         };
       }
     })();

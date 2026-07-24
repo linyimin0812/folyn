@@ -460,22 +460,64 @@ export const PET_BUBBLE_HEIGHT = 120;
 export const PET_BUBBLE_GAP = 6;
 
 /**
- * Compute the bubble position (logical points, absolute screen coords) so the
- * bubble sits ABOVE the pet, horizontally centered on the pet window. The
- * bubble's bottom edge is `PET_BUBBLE_GAP` above the pet's top edge. If that
- * would push the bubble above the work-area top (menu bar / no room), the
- * bubble flips to BELOW the pet (`PET_BUBBLE_GAP` below the pet's bottom
- * edge). X is clamped into the work area so the bubble never overflows the
- * left/right screen edge (it may extend past the pet's centerline on a
- * near-edge pet — that's fine, the bubble is wider than the pet).
+ * Placement of the bubble relative to the pet (antd-style 12 placements).
+ *
+ * - `top`/`bottom`/`left`/`right` — single direction, centered on cross-axis,
+ *   auto-shift (clamp) into the work area when the pet is near the edge.
+ * - `topLeft`/`topRight`/`bottomLeft`/`bottomRight` — corner-aligned, NO
+ *   auto-shift; if the cross-axis overflows, flip to the opposite corner
+ *   (preserving the primary axis).
+ * - `leftTop`/`leftBottom`/`rightTop`/`rightBottom` — side + vertical-align,
+ *   same flip rule as corner placements.
+ *
+ * Default `'top'` preserves the legacy 2-direction behavior (above → flip
+ * below when no room); existing callers that omit `placement` see no change.
+ */
+export type Placement =
+  | 'top' | 'topLeft' | 'topRight'
+  | 'bottom' | 'bottomLeft' | 'bottomRight'
+  | 'left' | 'leftTop' | 'leftBottom'
+  | 'right' | 'rightTop' | 'rightBottom';
+
+/** Internal: per-placement decomposition into primary axis + cross-alignment. */
+interface PlacementSpec {
+  /** Axis the bubble extends from the pet on. */
+  primaryAxis: 'v' | 'h';
+  /** Direction on the primary axis: `before` = top/left, `after` = bottom/right. */
+  primaryDir: 'before' | 'after';
+  /** Alignment on the cross-axis. `center` = single direction (auto-shift);
+   *  `start`/`end` = corner placement (flip on overflow, no auto-shift). */
+  crossAlign: 'start' | 'center' | 'end';
+}
+
+/** Placement → spec lookup. `crossAlign: 'center'` marks the four single
+ *  directions; `start`/`end` mark the eight corner/side-aligned placements. */
+const PLACEMENT_SPEC: Record<Placement, PlacementSpec> = {
+  top:         { primaryAxis: 'v', primaryDir: 'before', crossAlign: 'center' },
+  topLeft:     { primaryAxis: 'v', primaryDir: 'before', crossAlign: 'start' },
+  topRight:    { primaryAxis: 'v', primaryDir: 'before', crossAlign: 'end' },
+  bottom:      { primaryAxis: 'v', primaryDir: 'after',  crossAlign: 'center' },
+  bottomLeft:  { primaryAxis: 'v', primaryDir: 'after',  crossAlign: 'start' },
+  bottomRight: { primaryAxis: 'v', primaryDir: 'after',  crossAlign: 'end' },
+  left:        { primaryAxis: 'h', primaryDir: 'before', crossAlign: 'center' },
+  leftTop:     { primaryAxis: 'h', primaryDir: 'before', crossAlign: 'start' },
+  leftBottom:  { primaryAxis: 'h', primaryDir: 'before', crossAlign: 'end' },
+  right:       { primaryAxis: 'h', primaryDir: 'after',  crossAlign: 'center' },
+  rightTop:    { primaryAxis: 'h', primaryDir: 'after',  crossAlign: 'start' },
+  rightBottom: { primaryAxis: 'h', primaryDir: 'after',  crossAlign: 'end' },
+};
+
+/**
+ * Compute the bubble position (logical points, absolute screen coords) for the
+ * given `placement` relative to the pet. See `Placement` doc for the 12
+ * placements + flip + auto-shift rules.
  *
  * `petPos` is the pet window's top-left in LOGICAL points (caller converts
  * from `get_pet_position`'s physical px via `÷ scale_factor`). `petSize`
  * defaults to `PET_SIZE_DEFAULT` so the bubble tracks the actual mascot
- * bounds (a small/large pet shifts the center). `bubbleSize` defaults to
- * the legacy 320×120 — templates that declare their own `size` pass it here
- * so the flip/clamp math tracks the actual card (e.g. the 540×280 Cloudia
- * card needs more vertical room above the pet than 120 would).
+ * bounds. `bubbleSize` defaults to the legacy 320×120 — templates that
+ * declare their own `size` pass it here so the flip/clamp math tracks the
+ * actual card. `placement` defaults to `'top'` (legacy behavior).
  */
 export function computeBubblePosition(
   petPos: PetPosition,
@@ -485,20 +527,94 @@ export function computeBubblePosition(
     width: PET_BUBBLE_WIDTH,
     height: PET_BUBBLE_HEIGHT,
   },
+  placement: Placement = 'top',
 ): PetPosition {
   const petWindowSize = petSizeToPx(petSize);
-  const petCenterX = petPos.x + petWindowSize / 2;
   const bubbleW = bubbleSize.width;
   const bubbleH = bubbleSize.height;
+  const petLeft = petPos.x;
+  const petRight = petPos.x + petWindowSize;
+  const petTop = petPos.y;
+  const petBottom = petPos.y + petWindowSize;
+  const petCenterX = petPos.x + petWindowSize / 2;
+  const petCenterY = petPos.y + petWindowSize / 2;
+  const waLeft = workArea.x;
+  const waRight = workArea.x + workArea.width;
+  const waTop = workArea.y;
+  const waBottom = workArea.y + workArea.height;
 
-  // X: center the bubble on the pet, clamped into the work area.
-  const maxX = workArea.x + Math.max(0, workArea.width - bubbleW);
-  const x = Math.min(Math.max(workArea.x, petCenterX - bubbleW / 2), maxX);
+  const spec = PLACEMENT_SPEC[placement];
 
-  // Y: prefer above the pet; flip below if there's no room above.
-  const aboveY = petPos.y - PET_BUBBLE_GAP - bubbleH;
-  const belowY = petPos.y + petWindowSize + PET_BUBBLE_GAP;
-  const y = aboveY >= workArea.y ? aboveY : belowY;
+  // Primary axis: compute the bubble's position for BOTH directions, check
+  // fit for both, then pick the preferred if it fits, else flip if the
+  // other fits, else keep the preferred (degenerate — overflow sticks to
+  // the pet, mirroring the legacy fallback for tiny work areas).
+  const beforePos = spec.primaryAxis === 'v'
+    ? petTop - PET_BUBBLE_GAP - bubbleH
+    : petLeft - PET_BUBBLE_GAP - bubbleW;
+  const afterPos = spec.primaryAxis === 'v'
+    ? petBottom + PET_BUBBLE_GAP
+    : petRight + PET_BUBBLE_GAP;
+  const fitsBefore = spec.primaryAxis === 'v'
+    ? beforePos >= waTop
+    : beforePos >= waLeft;
+  const fitsAfter = spec.primaryAxis === 'v'
+    ? afterPos + bubbleH <= waBottom
+    : afterPos + bubbleW <= waRight;
+  let primaryDir = spec.primaryDir;
+  if (spec.primaryDir === 'before' && !fitsBefore && fitsAfter) {
+    primaryDir = 'after';
+  } else if (spec.primaryDir === 'after' && !fitsAfter && fitsBefore) {
+    primaryDir = 'before';
+  }
+  const primaryPos = primaryDir === 'before' ? beforePos : afterPos;
+
+  // Initialize both axes; the primary-axis assignment + cross-axis assignment
+  // below will overwrite exactly one of them, leaving the other to be set by
+  // the cross-axis branch. TS can't prove exhaustiveness across the two
+  // branches, so we initialize to 0 and let later assignments win.
+  let x = 0;
+  let y = 0;
+  if (spec.primaryAxis === 'v') {
+    y = primaryPos;
+  } else {
+    x = primaryPos;
+  }
+
+  // Cross-axis: depends on the (possibly flipped) primary axis + cross-align.
+  if (spec.primaryAxis === 'v') {
+    // Cross = X.
+    if (spec.crossAlign === 'center') {
+      // Single direction (top/bottom): centered + auto-shift (clamp).
+      const maxX = Math.max(waLeft, waRight - bubbleW);
+      x = Math.min(Math.max(waLeft, petCenterX - bubbleW / 2), maxX);
+    } else if (spec.crossAlign === 'start') {
+      // Corner (topLeft/bottomLeft): left edge aligns to pet left. If the
+      // bubble would overflow the right edge, flip to 'end' (right-aligned).
+      const tryX = petLeft;
+      x = tryX + bubbleW > waRight ? petRight - bubbleW : tryX;
+    } else {
+      // 'end' (topRight/bottomRight): right edge aligns to pet right. Flip
+      // to 'start' if overflow on the left.
+      const tryX = petRight - bubbleW;
+      x = tryX < waLeft ? petLeft : tryX;
+    }
+  } else {
+    // Cross = Y, primary axis horizontal.
+    if (spec.crossAlign === 'center') {
+      // Single direction (left/right): centered + auto-shift.
+      const maxY = Math.max(waTop, waBottom - bubbleH);
+      y = Math.min(Math.max(waTop, petCenterY - bubbleH / 2), maxY);
+    } else if (spec.crossAlign === 'start') {
+      // leftTop/rightTop: top edge aligns to pet top. Flip to 'end' on overflow.
+      const tryY = petTop;
+      y = tryY + bubbleH > waBottom ? petBottom - bubbleH : tryY;
+    } else {
+      // leftBottom/rightBottom: bottom edge aligns to pet bottom. Flip on overflow.
+      const tryY = petBottom - bubbleH;
+      y = tryY < waTop ? petTop : tryY;
+    }
+  }
 
   return { x: Math.round(x), y: Math.round(y) };
 }

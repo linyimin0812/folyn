@@ -25,6 +25,7 @@ import {
   computeBubblePosition,
   PET_SIZE_DEFAULT,
   type PetWorkArea,
+  type Placement,
 } from './petPosition';
 import {
   BUILT_IN_TEMPLATES,
@@ -68,7 +69,9 @@ export interface PetBubbleAction {
 /** Payload for `pet://bubble-show`. Emitted by trigger sources (currently the
  *  Rust demo menu item; future: schedule reminder, pet-chat new message, task
  *  events, external push). `title` is optional but, when present, is clickable
- *  and jumps to `target`. `actions` are rendered as buttons. */
+ *  and jumps to `target`. `actions` are rendered as buttons. `placement`
+ *  overrides `petStore.bubblePlacement` for this single notification (PRD
+ *  pet-popover-corner, Decision C). */
 export interface PetBubblePayload {
   text: string;
   title?: string;
@@ -80,6 +83,10 @@ export interface PetBubblePayload {
   /** Template id for this single notification; overrides the global
    *  `activeTemplateId`. Missing → fall back to active, then to `default`. */
   template?: string;
+  /** Placement override for this single notification; overrides the global
+   *  `bubblePlacement`. Missing → fall back to `bubblePlacement`, then to
+   *  `'top'`. 12 antd-style placements; see `Placement` in `petPosition.ts`. */
+  placement?: Placement;
   target?: PetBubbleTarget;
   /** Top-level launch: clicking anywhere on the bubble (except close and
    *  action buttons) triggers it. */
@@ -125,12 +132,13 @@ interface PetPositionResult {
 }
 
 /**
- * Show the bubble: size to the template's preferred card, position it above
- * the pet, then reveal. Reads the pet's physical position + the work area,
- * computes a clamped logical position (above the pet, flipped below if no
- * room), converts to physical, and sets it before `pet_bubble_show` so the
- * bubble appears at the right spot in one frame (no flash at the default
- * origin — mirrors the `pet-panel` open path).
+ * Show the bubble: size to the template's preferred card, position it per
+ * the resolved placement above/beside the pet, then reveal. Reads the pet's
+ * physical position + the work area, computes a placement-aware logical
+ * position (flipping/clamping per the 12 antd-style placements), converts to
+ * physical, and sets it before `pet_bubble_show` so the bubble appears at the
+ * right spot in one frame (no flash at the default origin — mirrors the
+ * `pet-panel` open path).
  *
  * `bubbleSize` is the template's declared logical size (or the 320×120
  * default). The window is resized to that size in physical px before
@@ -140,6 +148,7 @@ interface PetPositionResult {
  */
 async function positionAndShowBubble(
   bubbleSize: { width: number; height: number },
+  placement: Placement,
 ): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
   const [petPos, workArea] = await Promise.all([
@@ -155,6 +164,7 @@ async function positionAndShowBubble(
     workArea,
     PET_SIZE_DEFAULT,
     bubbleSize,
+    placement,
   );
   await invoke('pet_bubble_set_size', {
     width: Math.round(bubbleSize.width * sf),
@@ -284,7 +294,11 @@ export function PetBubbleApp(): JSX.Element {
           templates,
         );
         const size = tpl.size ?? { width: 320, height: 120 };
-        void positionAndShowBubble(size);
+        // Placement resolution: payload.placement → store.bubblePlacement →
+        // 'top'. Reading from `.getState()` so this closure always sees the
+        // latest global default without re-subscribing the effect.
+        const placement = payload.placement ?? store.bubblePlacement ?? 'top';
+        void positionAndShowBubble(size, placement);
         ttlRef.current = setTimeout(() => close(), BUBBLE_TTL_MS);
       });
       // Authorize channel: main window emits when an unwhitelisted app needs

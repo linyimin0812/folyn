@@ -7,7 +7,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { usePetStore } from '@/store/petStore';
 import { usePetHostBridge } from '@/hooks/usePetHostBridge';
-import { dispatchNotification, startNotificationClickListener } from '@/services/petNotifyDispatcher';
+import { dispatchNotification } from '@/services/petNotifyDispatcher';
 
 // `@tauri-apps/api/window` is the real installed package (not aliased); mock
 // it so focusMain's show/setFocus don't hit a non-Tauri runtime.
@@ -19,12 +19,10 @@ vi.mock('@tauri-apps/api/window', () => ({
 // test stays focused on listen-lifecycle (mount/unlisten).
 vi.mock('@/services/petNotifyDispatcher', () => ({
   dispatchNotification: vi.fn(async () => undefined),
-  startNotificationClickListener: vi.fn(async () => vi.fn(async () => undefined)),
 }));
 
 const invokeMock = invoke as unknown as import('vitest').Mock;
 const listenMock = listen as unknown as import('vitest').Mock;
-const startClickMock = startNotificationClickListener as unknown as import('vitest').Mock;
 
 /** Component that calls the hook once so we can mount/unmount it. */
 function Harness() {
@@ -43,8 +41,6 @@ beforeEach(() => {
   invokeMock.mockClear();
   invokeMock.mockResolvedValue(undefined);
   listenMock.mockClear();
-  startClickMock.mockClear();
-  startClickMock.mockResolvedValue(vi.fn(async () => undefined));
 });
 
 describe('usePetHostBridge — lifecycle', () => {
@@ -63,18 +59,8 @@ describe('usePetHostBridge — lifecycle', () => {
     expect(channels).toContain('pet://notify');
   });
 
-  it('starts the OS notification click listener on mount', async () => {
-    makeUnlistenSpies(4);
-    render(<Harness />);
-    await vi.waitFor(() => {
-      expect(startClickMock).toHaveBeenCalledTimes(1);
-    });
-  });
-
   it('disconnects every listener on unmount', async () => {
     const spies = makeUnlistenSpies(4);
-    const clickUnlisten = vi.fn(async () => undefined);
-    startClickMock.mockResolvedValue(clickUnlisten);
     const { unmount } = render(<Harness />);
     await vi.waitFor(() => expect(listenMock).toHaveBeenCalledTimes(4));
     unmount();
@@ -83,7 +69,6 @@ describe('usePetHostBridge — lifecycle', () => {
     for (const spy of spies) {
       expect(spy).toHaveBeenCalledTimes(1);
     }
-    expect(clickUnlisten).toHaveBeenCalledTimes(1);
   });
 
   it('launch-restore re-shows the pet window only when pet mode was enabled', async () => {

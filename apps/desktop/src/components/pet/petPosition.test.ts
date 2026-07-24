@@ -23,6 +23,7 @@ import {
   PET_BUBBLE_HEIGHT,
   PET_BUBBLE_GAP,
   type PetWorkArea,
+  type Placement,
 } from './petPosition';
 
 describe('computeDefaultPetPosition', () => {
@@ -596,5 +597,184 @@ describe('computeBubblePosition', () => {
     expect(pos.x).toBe(378);
     // aboveY = 30 - 6 - 280 = -256 < 25 → below = 30 + 96 + 6 = 132.
     expect(pos.y).toBe(132);
+  });
+
+  // ── Placement-aware behavior (PRD: pet-popover-corner) ───────────────────
+  // 12 antd-style placements. Default 'top' preserves the legacy behavior
+  // proven by the tests above; the cases below cover the other 11 placements
+  // + flip + auto-shift rules.
+
+  describe('placement: bottom', () => {
+    it('places the bubble below the pet, centered (default pet size)', () => {
+      const petPos = { x: 600, y: 400 };
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'bottom');
+      // X centered: 648 - 160 = 488.
+      expect(pos.x).toBe(488);
+      // Y = petTop + petSize + gap = 400 + 96 + 6 = 502.
+      expect(pos.y).toBe(502);
+    });
+
+    it('flips above when there is no room below (pet at screen bottom)', () => {
+      const petPos = { x: 600, y: 850 }; // belowY = 850 + 96 + 6 = 952 > 25+875 = 900
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'bottom');
+      // Y above = 850 - 6 - 120 = 724 (>= 25, fits).
+      expect(pos.y).toBe(724);
+    });
+
+    it('clamps X to the work-area left edge when pet near left edge', () => {
+      const petPos = { x: 0, y: 400 }; // petCenterX = 48 → raw x = -112
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'bottom');
+      expect(pos.x).toBe(0);
+    });
+  });
+
+  describe('placement: topLeft / topRight / bottomLeft / bottomRight', () => {
+    it('topLeft: bubble left edge aligns to pet left, bubble above pet', () => {
+      const petPos = { x: 600, y: 400 };
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'topLeft');
+      // X: bubble left = pet left = 600.
+      expect(pos.x).toBe(600);
+      // Y = petTop - gap - bubbleH = 400 - 6 - 120 = 274.
+      expect(pos.y).toBe(274);
+    });
+
+    it('topLeft flips vertically to bottomLeft when above has no room', () => {
+      const petPos = { x: 600, y: 30 }; // aboveY = 30 - 6 - 120 = -96 < 25
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'topLeft');
+      // X preserved: 600.
+      expect(pos.x).toBe(600);
+      // Y = 30 + 96 + 6 = 132.
+      expect(pos.y).toBe(132);
+    });
+
+    it('topRight: bubble right edge aligns to pet right, bubble above pet', () => {
+      const petPos = { x: 600, y: 400 };
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'topRight');
+      // X: bubble right = pet right = 600 + 96 = 696 → bubble left = 696 - 320 = 376.
+      expect(pos.x).toBe(376);
+      // Y = 274 (same as topLeft).
+      expect(pos.y).toBe(274);
+    });
+
+    it('topRight flips vertically to bottomRight when above has no room', () => {
+      const petPos = { x: 600, y: 30 };
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'topRight');
+      expect(pos.x).toBe(376);
+      expect(pos.y).toBe(132);
+    });
+
+    it('bottomLeft: bubble left edge aligns to pet left, bubble below pet', () => {
+      const petPos = { x: 600, y: 400 };
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'bottomLeft');
+      expect(pos.x).toBe(600);
+      expect(pos.y).toBe(502);
+    });
+
+    it('bottomLeft flips vertically to topLeft when below has no room', () => {
+      const petPos = { x: 600, y: 850 };
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'bottomLeft');
+      expect(pos.x).toBe(600);
+      expect(pos.y).toBe(724);
+    });
+
+    it('bottomRight: bubble right edge aligns to pet right, bubble below pet', () => {
+      const petPos = { x: 600, y: 400 };
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'bottomRight');
+      expect(pos.x).toBe(376);
+      expect(pos.y).toBe(502);
+    });
+  });
+
+  describe('placement: left / right (single direction, Y auto-shift)', () => {
+    it('left: bubble to the left of pet, vertically centered on pet', () => {
+      const petPos = { x: 600, y: 400 };
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'left');
+      // X = petLeft - gap - bubbleW = 600 - 6 - 320 = 274.
+      expect(pos.x).toBe(274);
+      // Y centered: petCenterY - bubbleH/2 = 448 - 60 = 388.
+      expect(pos.y).toBe(388);
+    });
+
+    it('left flips to right when there is no room on the left (pet at left edge)', () => {
+      const petPos = { x: 100, y: 400 }; // leftX = 100 - 6 - 320 = -226 < 0
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'left');
+      // X = petRight + gap = 100 + 96 + 6 = 202.
+      expect(pos.x).toBe(202);
+      expect(pos.y).toBe(388);
+    });
+
+    it('left clamps Y to work-area top when pet near top', () => {
+      const petPos = { x: 600, y: 25 }; // petCenterY = 73 → raw y = 13 < 25
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'left');
+      expect(pos.x).toBe(274);
+      expect(pos.y).toBe(25); // clamped to workArea.y
+    });
+
+    it('left clamps Y to work-area bottom when pet near bottom', () => {
+      const petPos = { x: 600, y: 850 }; // petCenterY = 898 → raw y = 838 → 838+120=958 > 900 → clamp
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'left');
+      expect(pos.x).toBe(274);
+      // maxY = 25 + 875 - 120 = 780.
+      expect(pos.y).toBe(780);
+    });
+
+    it('right: bubble to the right of pet, vertically centered on pet', () => {
+      const petPos = { x: 600, y: 400 };
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'right');
+      // X = petRight + gap = 696 + 6 = 702.
+      expect(pos.x).toBe(702);
+      expect(pos.y).toBe(388);
+    });
+
+    it('right flips to left when there is no room on the right (pet at right edge)', () => {
+      const petPos = { x: 1300, y: 400 }; // rightX = 1300 + 96 + 6 = 1402 → 1402+320=1722 > 1440
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'right');
+      // X = petLeft - gap - bubbleW = 1300 - 6 - 320 = 974.
+      expect(pos.x).toBe(974);
+      expect(pos.y).toBe(388);
+    });
+  });
+
+  describe('placement: leftTop / leftBottom / rightTop / rightBottom', () => {
+    it('leftTop: bubble top edge aligns to pet top, bubble left of pet', () => {
+      const petPos = { x: 600, y: 400 };
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'leftTop');
+      // X = petLeft - gap - bubbleW = 274.
+      expect(pos.x).toBe(274);
+      // Y = petTop = 400.
+      expect(pos.y).toBe(400);
+    });
+
+    it('leftTop flips horizontally to rightTop when left has no room', () => {
+      const petPos = { x: 100, y: 400 };
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'leftTop');
+      // X = petRight + gap = 100 + 96 + 6 = 202.
+      expect(pos.x).toBe(202);
+      // Y preserved: 400.
+      expect(pos.y).toBe(400);
+    });
+
+    it('leftBottom: bubble bottom edge aligns to pet bottom, bubble left of pet', () => {
+      const petPos = { x: 600, y: 400 };
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'leftBottom');
+      expect(pos.x).toBe(274);
+      // Y = petBottom - bubbleH = 400 + 96 - 120 = 376.
+      expect(pos.y).toBe(376);
+    });
+
+    it('rightTop: bubble top edge aligns to pet top, bubble right of pet', () => {
+      const petPos = { x: 600, y: 400 };
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'rightTop');
+      // X = petRight + gap = 702.
+      expect(pos.x).toBe(702);
+      expect(pos.y).toBe(400);
+    });
+
+    it('rightBottom: bubble bottom edge aligns to pet bottom, bubble right of pet', () => {
+      const petPos = { x: 600, y: 400 };
+      const pos = computeBubblePosition(petPos, workArea, '100', undefined, 'rightBottom');
+      expect(pos.x).toBe(702);
+      expect(pos.y).toBe(376);
+    });
   });
 });

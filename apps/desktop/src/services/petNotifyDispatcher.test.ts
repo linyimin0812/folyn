@@ -1,33 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Tauri APIs are aliased to vi.fn mocks via vitest.workspace.ts (run from the
-// monorepo root so the workspace file is discovered). Mirrors the
-// PetBubbleApp.test.tsx mock usage.
+// monorepo root so the workspace file is discovered).
 import { emit } from '@tauri-apps/api/event';
-import {
-  isPermissionGranted,
-  requestPermission,
-  sendNotification,
-  registerActionTypes,
-  onAction,
-  __fireAction,
-} from '@tauri-apps/plugin-notification';
 import { usePetStore } from '@/store/petStore';
-import {
-  decideNotification,
-  osNotify,
-  dispatchNotification,
-  startNotificationClickListener,
-  __resetForTesting,
-} from './petNotifyDispatcher';
+import { decideNotification, dispatchNotification } from './petNotifyDispatcher';
 import type { PetBubblePayload } from '@/components/pet/PetBubbleApp';
 
 const emitMock = emit as unknown as import('vitest').Mock;
-const isPermissionGrantedMock = isPermissionGranted as unknown as import('vitest').Mock;
-const requestPermissionMock = requestPermission as unknown as import('vitest').Mock;
-const sendNotificationMock = sendNotification as unknown as import('vitest').Mock;
-const registerActionTypesMock = registerActionTypes as unknown as import('vitest').Mock;
-const onActionMock = onAction as unknown as import('vitest').Mock;
 
 const samplePayload: PetBubblePayload = {
   title: '提醒',
@@ -39,125 +19,54 @@ const samplePayload: PetBubblePayload = {
 
 describe('decideNotification', () => {
   it('routes bubble-only for bubble', () => {
-    expect(decideNotification('bubble')).toEqual({ bubble: true, system: false });
+    expect(decideNotification('bubble')).toEqual({ bubble: true, corner: false });
   });
-  it('routes system-only for system', () => {
-    expect(decideNotification('system')).toEqual({ bubble: false, system: true });
+  it('routes corner-only for corner', () => {
+    expect(decideNotification('corner')).toEqual({ bubble: false, corner: true });
   });
   it('routes both for both', () => {
-    expect(decideNotification('both')).toEqual({ bubble: true, system: true });
+    expect(decideNotification('both')).toEqual({ bubble: true, corner: true });
   });
   it('routes neither for off', () => {
-    expect(decideNotification('off')).toEqual({ bubble: false, system: false });
+    expect(decideNotification('off')).toEqual({ bubble: false, corner: false });
   });
 });
 
 describe('dispatchNotification', () => {
   beforeEach(() => {
     emitMock.mockClear();
-    sendNotificationMock.mockClear();
-    isPermissionGrantedMock.mockClear();
-    requestPermissionMock.mockClear();
-    isPermissionGrantedMock.mockResolvedValue(true);
   });
 
-  it('emits pet://bubble-show and no OS notification when form is bubble', async () => {
+  it('emits pet://bubble-show and no corner when form is bubble', async () => {
     usePetStore.setState({ notificationForm: 'bubble' });
     await dispatchNotification(samplePayload);
     expect(emitMock).toHaveBeenCalledWith('pet://bubble-show', samplePayload);
-    expect(sendNotificationMock).not.toHaveBeenCalled();
+    expect(emitMock).not.toHaveBeenCalledWith('pet://corner-show', samplePayload);
   });
 
-  it('sends an OS notification and no bubble when form is system', async () => {
-    usePetStore.setState({ notificationForm: 'system' });
+  it('emits pet://corner-show and no bubble when form is corner', async () => {
+    usePetStore.setState({ notificationForm: 'corner' });
     await dispatchNotification(samplePayload);
-    expect(emitMock).not.toHaveBeenCalled();
-    expect(sendNotificationMock).toHaveBeenCalledTimes(1);
-    const opts = sendNotificationMock.mock.calls[0][0] as Record<string, unknown>;
-    expect(opts.title).toBe('提醒');
-    expect(opts.body).toBe('这是一条气泡通知示例');
-    expect(typeof opts.id).toBe('number');
+    expect(emitMock).toHaveBeenCalledWith('pet://corner-show', samplePayload);
+    expect(emitMock).not.toHaveBeenCalledWith('pet://bubble-show', samplePayload);
   });
 
-  it('sends both bubble and OS notification when form is both', async () => {
+  it('emits both bubble and corner when form is both', async () => {
     usePetStore.setState({ notificationForm: 'both' });
     await dispatchNotification(samplePayload);
     expect(emitMock).toHaveBeenCalledWith('pet://bubble-show', samplePayload);
-    expect(sendNotificationMock).toHaveBeenCalledTimes(1);
+    expect(emitMock).toHaveBeenCalledWith('pet://corner-show', samplePayload);
   });
 
   it('drops the payload when form is off', async () => {
     usePetStore.setState({ notificationForm: 'off' });
     await dispatchNotification(samplePayload);
     expect(emitMock).not.toHaveBeenCalled();
-    expect(sendNotificationMock).not.toHaveBeenCalled();
-  });
-});
-
-describe('osNotify + click→jump', () => {
-  beforeEach(() => {
-    __resetForTesting();
-    sendNotificationMock.mockClear();
-    emitMock.mockClear();
-    isPermissionGrantedMock.mockClear();
-    requestPermissionMock.mockClear();
-    registerActionTypesMock.mockClear();
-    isPermissionGrantedMock.mockResolvedValue(true);
   });
 
-  it('requests permission when not granted', async () => {
-    isPermissionGrantedMock.mockResolvedValue(false);
-    requestPermissionMock.mockResolvedValue('granted');
-    await osNotify(samplePayload);
-    expect(requestPermissionMock).toHaveBeenCalled();
-    expect(sendNotificationMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('skips sending when permission is denied', async () => {
-    isPermissionGrantedMock.mockResolvedValue(false);
-    requestPermissionMock.mockResolvedValue('denied');
-    await osNotify(samplePayload);
-    expect(sendNotificationMock).not.toHaveBeenCalled();
-  });
-
-  it('registers the action type once, then reuses on subsequent calls', async () => {
-    await osNotify(samplePayload);
-    await osNotify(samplePayload);
-    expect(registerActionTypesMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('click listener looks up target by notification id and emits pet://bubble-action', async () => {
-    // Start the click listener.
-    const unlisten = await startNotificationClickListener();
-    expect(onActionMock).toHaveBeenCalledTimes(1);
-
-    // Send a notification (this stashes the target under the assigned id).
-    await osNotify(samplePayload);
-    const opts = sendNotificationMock.mock.calls[0][0] as { id: number };
-    const id = opts.id;
-
-    // Simulate the OS firing a click action for that notification id.
-    emitMock.mockClear();
-    __fireAction({ id });
-    // The click handler does a dynamic `import('@tauri-apps/api/event')` then
-    // emits — flush the microtask chain.
-    await vi.waitFor(() => {
-      expect(emitMock).toHaveBeenCalledWith(
-        'pet://bubble-action',
-        expect.objectContaining({
-          type: 'navigate',
-          target: { kind: 'schedule', id: 'demo' },
-        }),
-      );
-    });
-
-    // A second click for the same id finds nothing (one-shot lookup).
-    emitMock.mockClear();
-    __fireAction({ id });
-    await Promise.resolve();
-    await Promise.resolve();
+  it('drops payloads with empty text', async () => {
+    usePetStore.setState({ notificationForm: 'both' });
+    await dispatchNotification({ ...samplePayload, text: '' });
     expect(emitMock).not.toHaveBeenCalled();
-
-    await unlisten();
   });
 });

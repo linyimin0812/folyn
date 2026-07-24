@@ -5,6 +5,7 @@ import {
   PET_SIZE_DEFAULT,
   PET_SIZE_TO_PX,
   type PetSize,
+  type Placement,
 } from '@/components/pet/petPosition';
 import type { BubbleTemplate } from '@/components/pet/bubbleTemplate';
 
@@ -13,18 +14,24 @@ import type { BubbleTemplate } from '@/components/pet/bubbleTemplate';
 // matches the legacy settingsStore which also imported them from petPosition.
 
 export type PetIconSource = 'builtin' | 'custom';
-/** Global notification form (PRD pet-popup-bubble-notification). `'bubble'`
- *  is the default so existing users keep the in-app bubble behavior;
- *  `'system'` routes through `tauri-plugin-notification`, `'both'` shows both,
- *  `'off'` drops the notification entirely. */
-export type NotificationForm = 'bubble' | 'system' | 'both' | 'off';
+/** Global notification routing (PRD pet-popover-corner). `'bubble'` routes to
+ *  the in-app pet-bubble Popover card; `'corner'` routes to the new in-app
+ *  corner toast (replaces the old `'system'` OS-native path — see Decision
+ *  Log D1 in `.trellis/tasks/07-24-pet-popover-corner/prd.md`); `'both'` shows
+ *  both; `'off'` drops the notification entirely. */
+export type NotificationForm = 'bubble' | 'corner' | 'both' | 'off';
+/** Screen corner for the corner toast stack (PRD pet-popover-corner). */
+export type CornerPlacement = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
+/** Corner toast TTL. `number` = milliseconds; `'never'` = sticky until
+ *  user-dismissed (PRD pet-popover-corner). */
+export type CornerTtlMs = number | 'never';
 /** Pet window opacity level (percent). Mirrors the Rust `set_pet_opacity`
  *  command + `PET_CTX_MENU_OPACITY_*` menu ids. `'100'` = fully opaque. */
 export type PetOpacity = '25' | '50' | '75' | '100';
 
 // Re-export so consumers can import pet-size constants from the store if they
 // already hold a store import — but the canonical site remains petPosition.ts.
-export { PET_SIZE_VERSION, PET_SIZE_DEFAULT, PET_SIZE_TO_PX, type PetSize };
+export { PET_SIZE_VERSION, PET_SIZE_DEFAULT, PET_SIZE_TO_PX, type PetSize, type Placement };
 
 export const PERSIST_KEYS_PET = [
   'petPositionX',
@@ -43,6 +50,9 @@ export const PERSIST_KEYS_PET = [
   'petOpacity',
   'petClickThrough',
   'notificationForm',
+  'bubblePlacement',
+  'cornerPlacement',
+  'cornerTtlMs',
   'bubbleUserTemplates',
   'bubbleActiveTemplateId',
   'bubbleAppWhitelist',
@@ -68,6 +78,16 @@ export interface PetState {
   petOpacity: PetOpacity;
   petClickThrough: boolean;
   notificationForm: NotificationForm;
+  /** Default placement for the pet bubble when `PetBubblePayload.placement`
+   *  is unset. Per-notification `placement` overrides this (PRD
+   *  pet-popover-corner, Decision C). Default `'top'` preserves legacy
+   *  behavior. */
+  bubblePlacement: Placement;
+  /** Screen corner the corner-toast stack attaches to (PRD
+   *  pet-popover-corner). Default `'bottomRight'` (matches Windows). */
+  cornerPlacement: CornerPlacement;
+  /** Corner-toast TTL in ms, or `'never'` for sticky. Default 10000. */
+  cornerTtlMs: CornerTtlMs;
   /** User-uploaded bubble templates. Built-ins (`BUILT_IN_TEMPLATES`) are
    *  injected from code at runtime, not persisted, so upgrades replace them
    *  without a migration. Runtime list = built-ins + these. */
@@ -90,6 +110,9 @@ export interface PetState {
   setPetOpacity: (opacity: PetOpacity) => void;
   setPetClickThrough: (enabled: boolean) => void;
   setNotificationForm: (form: NotificationForm) => void;
+  setBubblePlacement: (placement: Placement) => void;
+  setCornerPlacement: (placement: CornerPlacement) => void;
+  setCornerTtlMs: (ttl: CornerTtlMs) => void;
   addBubbleUserTemplate: (template: BubbleTemplate) => void;
   removeBubbleUserTemplate: (id: string) => void;
   setBubbleActiveTemplateId: (id: string) => void;
@@ -113,7 +136,23 @@ function isPetOpacity(v: unknown): v is PetOpacity {
 }
 
 function isNotificationForm(v: unknown): v is NotificationForm {
-  return v === 'bubble' || v === 'system' || v === 'both' || v === 'off';
+  return v === 'bubble' || v === 'corner' || v === 'both' || v === 'off';
+}
+
+function isCornerPlacement(v: unknown): v is CornerPlacement {
+  return v === 'topLeft' || v === 'topRight' || v === 'bottomLeft' || v === 'bottomRight';
+}
+
+function isCornerTtlMs(v: unknown): v is CornerTtlMs {
+  return v === 'never' || (typeof v === 'number' && Number.isFinite(v) && v >= 0);
+}
+
+/** Placement validation — accept any of the 12 antd-style values. */
+function isPlacement(v: unknown): v is Placement {
+  return v === 'top' || v === 'topLeft' || v === 'topRight'
+      || v === 'bottom' || v === 'bottomLeft' || v === 'bottomRight'
+      || v === 'left' || v === 'leftTop' || v === 'leftBottom'
+      || v === 'right' || v === 'rightTop' || v === 'rightBottom';
 }
 
 export const usePetStore = create<PetState>((set, get) => ({
@@ -134,6 +173,9 @@ export const usePetStore = create<PetState>((set, get) => ({
   petOpacity: '100',
   petClickThrough: false,
   notificationForm: 'bubble',
+  bubblePlacement: 'top',
+  cornerPlacement: 'bottomRight',
+  cornerTtlMs: 10000,
   bubbleUserTemplates: [],
   bubbleActiveTemplateId: 'default',
   bubbleAppWhitelist: [],
@@ -211,6 +253,12 @@ export const usePetStore = create<PetState>((set, get) => ({
   setPetClickThrough: (enabled) => { set({ petClickThrough: enabled }); schedulePersist(); },
 
   setNotificationForm: (form) => { set({ notificationForm: form }); schedulePersist(); },
+
+  setBubblePlacement: (placement) => { set({ bubblePlacement: placement }); schedulePersist(); },
+
+  setCornerPlacement: (placement) => { set({ cornerPlacement: placement }); schedulePersist(); },
+
+  setCornerTtlMs: (ttl) => { set({ cornerTtlMs: ttl }); schedulePersist(); },
 
   addBubbleUserTemplate: (template) => {
     // ponytail: replace by id — importing the same id twice is an update, not
@@ -344,8 +392,22 @@ export const usePetStore = create<PetState>((set, get) => ({
 
     // Coerce a missing/invalid `notificationForm` to the default `'bubble'`
     // (defensive — a persisted state from before this feature would otherwise
-    // have `undefined`, which would break the dispatcher's switch).
+    // have `undefined`, which would break the dispatcher's switch). A
+    // persisted `'system'` (removed in PRD pet-popover-corner — OS native
+    // was replaced by the in-app corner toast) is migrated to `'corner'`,
+    // preserving user intent for "non-bubble" notifications.
+    if (saved.notificationForm === 'system') saved.notificationForm = 'corner';
     if (!isNotificationForm(saved.notificationForm)) saved.notificationForm = 'bubble';
+
+    // Coerce `bubblePlacement` to a valid Placement (default `'top'`).
+    if (!isPlacement(saved.bubblePlacement)) saved.bubblePlacement = 'top';
+
+    // Coerce `cornerPlacement` to a valid CornerPlacement (default
+    // `'bottomRight'`).
+    if (!isCornerPlacement(saved.cornerPlacement)) saved.cornerPlacement = 'bottomRight';
+
+    // Coerce `cornerTtlMs` to a valid CornerTtlMs (default 10000).
+    if (!isCornerTtlMs(saved.cornerTtlMs)) saved.cornerTtlMs = 10000;
 
     // Coerce `bubbleUserTemplates` to BubbleTemplate[] (defensive — a corrupt
     // blob could have non-object entries or missing fields). Drop entries

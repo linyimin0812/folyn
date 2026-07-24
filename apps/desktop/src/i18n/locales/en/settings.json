@@ -398,13 +398,27 @@
     "description": "Choose the form of desktop pet event notifications",
     "form": {
       "title": "Notification form",
-      "desc": "Bubble floats above the pet; system notifications go through the macOS Notification Center (visible even when unfocused)"
+      "desc": "Popover card anchors to the pet; corner toast stacks at a screen corner (passive, no focus steal)"
     },
     "options": {
-      "bubble": "Bubble above pet",
-      "system": "System notification",
+      "bubble": "Pet popover card",
+      "corner": "Screen corner toast",
       "both": "Both",
       "off": "Off"
+    },
+    "bubblePlacement": {
+      "title": "Popover default placement",
+      "desc": "Used when a notification has no per-payload placement"
+    },
+    "cornerPlacement": {
+      "title": "Corner placement",
+      "desc": "The screen corner where the toast stack attaches"
+    },
+    "cornerTtlMs": {
+      "title": "Corner toast TTL",
+      "desc": "Auto-dismisses at TTL; \"never\" requires manual close",
+      "never": "Never",
+      "seconds": "{{seconds}}s"
     }
   }
 }

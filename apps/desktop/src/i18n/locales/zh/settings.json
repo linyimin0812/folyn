@@ -424,13 +424,27 @@
     "description": "选择桌面宠物事件通知的形式",
     "form": {
       "title": "通知形式",
-      "desc": "气泡浮于宠物头顶；系统通知走 macOS 通知中心（失焦时仍可见）"
+      "desc": "气泡为锚定宠生的 Popover 卡片；角落提醒为屏幕角的堆叠 toast（被动展示，不抢焦点）"
     },
     "options": {
-      "bubble": "宠物头顶气泡",
-      "system": "系统通知",
+      "bubble": "宠物 Popover 卡片",
+      "corner": "屏幕角落提醒",
       "both": "两者都发",
       "off": "关闭"
+    },
+    "bubblePlacement": {
+      "title": "Popover 默认位置",
+      "desc": "通知未带 placement 时使用此默认值"
+    },
+    "cornerPlacement": {
+      "title": "角落位置",
+      "desc": "堆叠 toast 固定在屏幕的某个角"
+    },
+    "cornerTtlMs": {
+      "title": "角落提醒停留时长",
+      "desc": "到点后自动消失；选\"常驻\"则需手动关闭",
+      "never": "常驻",
+      "seconds": "{{seconds}} 秒"
     }
   }
 }
