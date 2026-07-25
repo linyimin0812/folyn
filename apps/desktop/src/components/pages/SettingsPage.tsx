@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavStore } from '@/store/navStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
@@ -12,7 +12,8 @@ import {
   providersByCategory,
   getProviderEntry,
 } from '@/services/providers/catalog';
-import { fetchModels, canFetchModels, isSelectedModelInList } from '@/services/modelRegistry/fetchModels';
+import { isSelectedModelInList } from '@/services/modelRegistry/fetchModels';
+import { useModelRegistryStore, canFetchModelsFromStore } from '@/store/modelRegistryStore';
 import type { Model } from '@/services/modelRegistry/types';
 import { PluginsSettings } from '@/components/settings/PluginsSettings';
 import { VoiceSettings } from '@/components/settings/VoiceSettings';
@@ -28,8 +29,7 @@ import { useTranslation } from 'react-i18next';
 
 // ponytail: option labels can't host styled children, so badges are plain
 // text appended to the id. Pricing goes in the title attr (hover).
-function modelOptionLabel(m: Model, t: (k: string) => string): string {
-  const caps = m.capabilities.map((c) => t(`settings:ai.chat.capability.${c}`)).filter(Boolean);
+function modelOptionLabel(m: Model, t: (k: string) => string): string {  const caps = m.capabilities.map((c) => t(`settings:ai.chat.capability.${c}`)).filter(Boolean);
   const parts = [m.id];
   if (caps.length > 0) parts.push(caps.join(' · '));
   if (m.pricing) {
@@ -46,6 +46,27 @@ function modelOptionTitle(m: Model): string {
   const outPrice = m.pricing?.outputPerMtok;
   if (inPrice === undefined && outPrice === undefined) return '';
   return `Input: $${inPrice ?? '—'} / Output: $${outPrice ?? '—'} per million tokens`;
+}
+
+// ponytail: tiny status dot — grey/idle, yellow/loading, green/success,
+// red/error. Title attr carries the error message for hover. Inlined
+// here (vs a separate component file) because it's used in one place.
+function FetchStatusDot({ status, error }: { status: 'idle' | 'loading' | 'success' | 'error'; error?: string | null }) {
+  if (status === 'idle') return null;
+  const color =
+    status === 'loading' ? 'var(--yellow, #f5c518)'
+    : status === 'success' ? 'var(--green, #22a863)'
+    : 'var(--red, #f06a6a)';
+  const title =
+    status === 'error' ? (error ?? 'error')
+    : status === 'loading' ? 'fetching…'
+    : 'fetched';
+  return (
+    <span
+      title={title}
+      style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: color }}
+    />
+  );
 }
 
 export function SettingsPage() {
@@ -117,18 +138,17 @@ export function SettingsPage() {
   const [chatTestStatus, setChatTestStatus] = useState<{ testing: boolean; result?: { success: boolean; message: string } }>({ testing: false });
   const [showChatKey, setShowChatKey] = useState(false);
   const [excludeInput, setExcludeInput] = useState<{ value: string } | null>(null);
-  // T02c: model list per-provider fetched on demand. Reset on provider change.
-  const [fetchedModels, setFetchedModels] = useState<Model[] | null>(null);
-  const [fetchingModels, setFetchingModels] = useState(false);
-  const [fetchModelError, setFetchModelError] = useState<string | null>(null);
-  // ponytail: switching provider invalidates the fetched list — the previous
-  // provider's models don't apply to the new one, and showing them in the
-  // dropdown would be misleading. Effect-only (vs scattering setFetchedModels
-  // calls in every provider-change handler).
-  useEffect(() => {
-    setFetchedModels(null);
-    setFetchModelError(null);
-  }, [chatProvider]);
+  // T04: model list per-provider, persisted via modelRegistryStore. No
+  // component state to reset on provider change — the store keys by
+  // providerId naturally. Two-store selector pattern: chatProvider comes
+  // from aiConfigStore, the lists come from modelRegistryStore keyed by
+  // that provider.
+  const modelsForCurrent = useModelRegistryStore((s) => s.modelsByProvider[chatProvider] ?? []);
+  const fetchStatusForCurrent = useModelRegistryStore((s) => s.fetchStatusByProvider[chatProvider] ?? 'idle');
+  const fetchErrorForCurrent = useModelRegistryStore((s) => s.fetchErrorByProvider[chatProvider] ?? null);
+  const fetchModelsForProvider = useModelRegistryStore((s) => s.fetchModelsForProvider);
+  const refetchAll = useModelRegistryStore((s) => s.refetchAll);
+  const [refetchAllStatus, setRefetchAllStatus] = useState<{ running: boolean; summary?: string }>({ running: false });
 
   return (
     <div className="settings-page flex flex-row max-w-none h-full">
@@ -408,7 +428,47 @@ export function SettingsPage() {
             </div>
             {/* -- Chat 模式（rig 直连 LLM）-- */}
             <div className="mt-5 pt-4 border-t border-brd2">
-              <div className="text-[length:calc(var(--ui-font-size)-1px)] font-bold text-t1 mb-[3px]">{t('settings:ai.chat.title')}</div>
+              <div className="flex items-center justify-between mb-[3px]">
+                <div className="text-[length:calc(var(--ui-font-size)-1px)] font-bold text-t1">{t('settings:ai.chat.title')}</div>
+                <div className="flex items-center gap-2">
+                  {/* ponytail: per-provider status dot. Minimal T04 only the
+                      current provider has a status (single-provider config
+                      model); a future ticket that refactors aiConfigStore to
+                      per-provider config will expand this to a per-provider
+                      grid. */}
+                  <FetchStatusDot status={fetchStatusForCurrent} error={fetchErrorForCurrent} />
+                  <button
+                    type="button"
+                    className="text-[10.5px] text-acc hover:underline disabled:text-t3 disabled:no-underline disabled:cursor-not-allowed"
+                    disabled={!canFetchModelsFromStore(chatProvider, chatApiKey) || refetchAllStatus.running}
+                    title={canFetchModelsFromStore(chatProvider, chatApiKey) ? '' : t('settings:ai.chat.refetchAllHint')}
+                    onClick={async () => {
+                      setRefetchAllStatus({ running: true });
+                      const result = await refetchAll([
+                        {
+                          providerId: chatProvider,
+                          apiKey: chatApiKey,
+                          baseUrl: chatBaseUrl || undefined,
+                          azureApiVersion: chatAzureApiVersion || undefined,
+                        },
+                      ]);
+                      const summary = t('settings:ai.chat.refetchAllSummary', {
+                        success: result.success,
+                        failed: result.failed,
+                      });
+                      setRefetchAllStatus({ running: false, summary });
+                      setTimeout(() => setRefetchAllStatus((s) => ({ ...s, summary: undefined })), 6000);
+                    }}
+                  >
+                    {refetchAllStatus.running
+                      ? t('settings:ai.chat.refetchAllRunning')
+                      : t('settings:ai.chat.refetchAll')}
+                  </button>
+                </div>
+              </div>
+              {refetchAllStatus.summary && (
+                <div className="text-[10.5px] mb-2" style={{ color: 'var(--green, #22a863)' }}>{refetchAllStatus.summary}</div>
+              )}
               <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3">{t('settings:ai.chat.description')}</div>
               {(() => {
                 const entry = getProviderEntry(chatProvider) ?? PROVIDER_CATALOG[0];
@@ -440,40 +500,31 @@ export function SettingsPage() {
                         <button
                           type="button"
                           className="text-[10.5px] text-acc hover:underline disabled:text-t3 disabled:no-underline disabled:cursor-not-allowed"
-                          disabled={!canFetchModels(chatProvider, chatApiKey) || fetchingModels}
-                          onClick={async () => {
-                            setFetchingModels(true);
-                            setFetchModelError(null);
-                            try {
-                              const result = await fetchModels({
-                                provider: chatProvider,
-                                apiKey: chatApiKey,
-                                baseUrl: chatBaseUrl || undefined,
-                                azureApiVersion: chatAzureApiVersion || undefined,
-                              });
-                              setFetchedModels(result.models);
-                              if (result.empty) setFetchModelError(t('settings:ai.chat.fetchModels.empty'));
-                            } catch (e) {
-                              setFetchedModels(null);
-                              setFetchModelError(String(e));
-                            } finally {
-                              setFetchingModels(false);
-                            }
+                          disabled={!canFetchModelsFromStore(chatProvider, chatApiKey) || fetchStatusForCurrent === 'loading'}
+                          onClick={() => {
+                            void fetchModelsForProvider(
+                              chatProvider,
+                              chatApiKey,
+                              chatBaseUrl || undefined,
+                              chatAzureApiVersion || undefined,
+                            );
                           }}
                         >
-                          {fetchingModels ? t('settings:ai.chat.fetchModels.fetching') : t('settings:ai.chat.fetchModels.label')}
+                          {fetchStatusForCurrent === 'loading'
+                            ? t('settings:ai.chat.fetchModels.fetching')
+                            : t('settings:ai.chat.fetchModels.label')}
                         </button>
                       </div>
-                      {fetchedModels && fetchedModels.length > 0 ? (
+                      {modelsForCurrent.length > 0 ? (
                         <select
                           className="fi2 w-full h-[34px] py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
                           value={chatModel}
                           onChange={(e) => setChatModel(e.target.value as string)}
                         >
-                          {chatModel && !isSelectedModelInList(chatModel, fetchedModels) && (
+                          {chatModel && !isSelectedModelInList(chatModel, modelsForCurrent) && (
                             <option value={chatModel}>⚠ {chatModel} · {t('settings:ai.chat.fetchModels.orphan')}</option>
                           )}
-                          {fetchedModels.map((m) => (
+                          {modelsForCurrent.map((m) => (
                             <option key={m.id} value={m.id} title={modelOptionTitle(m)}>
                               {modelOptionLabel(m, t)}
                             </option>
@@ -488,8 +539,11 @@ export function SettingsPage() {
                             placeholder={entry.placeholderModel}
                             autoCapitalize="off"
                           />
-                          {fetchModelError && (
-                            <div className="text-[10.5px] mt-1" style={{ color: 'var(--red, #f06a6a)' }}>{fetchModelError}</div>
+                          {fetchStatusForCurrent === 'error' && fetchErrorForCurrent && (
+                            <div className="text-[10.5px] mt-1" style={{ color: 'var(--red, #f06a6a)' }}>{fetchErrorForCurrent}</div>
+                          )}
+                          {fetchStatusForCurrent === 'success' && modelsForCurrent.length === 0 && (
+                            <div className="text-[10.5px] mt-1 text-t3">{t('settings:ai.chat.fetchModels.empty')}</div>
                           )}
                         </>
                       )}

@@ -153,6 +153,8 @@
       "description": "Multi-turn chat via rig direct LLM (no CLI, no tool/file access). ask/agent still use the CLI above.",
       "refetchAll": "Refetch all models",
       "refetchAllHint": "Configure at least one provider first",
+      "refetchAllRunning": "Refetching…",
+      "refetchAllSummary": "{{success}} succeeded, {{failed}} failed",
       "backendNotReady": "Backend not wired yet — use another provider",
       "category": {
         "native": "Native",

@@ -153,7 +153,9 @@
       "description": "多轮对话，经 rig 直连 LLM（不经过 CLI，无工具/文件访问）。ask/agent 仍用上面的 CLI。",
       "refetchAll": "重新拉取全部",
       "refetchAllHint": "请先配置至少一个 provider",
-      "backendNotReady": "Backend 待接入，请使用其他 provider",
+      "refetchAllRunning": "拉取中…",
+      "refetchAllSummary": "{{success}} 成功,{{failed}} 失败",
+      "backendNotReady": "Backend 待接入,请使用其他 provider",
       "category": {
         "native": "原生",
         "compat": "兼容",
