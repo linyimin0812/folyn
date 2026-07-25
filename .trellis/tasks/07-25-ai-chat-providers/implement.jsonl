@@ -1,1 +1,6 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Frontend dev guide index — T02 spans SettingsPage, services, store, all under apps/desktop frontend."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand patterns — aiConfigStore extended with Azure fields + 20-provider enum; modelRegistryStore to be added in T04."}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "i18next namespace conventions — 17 new provider keys + 4 category + 4 capability + fetchModels keys across en + zh locales."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Code standards + forbidden patterns — chat.rs / list_models.rs / fetchModels.ts must follow."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Type patterns — ChatProvider union widened to 20 ids; Model type shape; manual type guards in loader.ts (no zod dep)."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared thinking guides — cross-layer reasoning for the catalog→store→UI→Rust pipeline."}

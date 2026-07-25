@@ -1,1 +1,5 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality standards + review checklist — verify chat.rs / list_models.rs / fetchModels.ts against forbidden patterns."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Type patterns — verify ChatProvider union, Model shape, manual type guards hold up under hydration + persist round-trips."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand persistence + hydration patterns — aiConfigStore hydrate must accept all 20 ids + Azure fields, no migration for legacy 3."}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "i18n key conventions — verify namespace + key shape for 17 new provider labels + 4 category + 4 capability + fetchModels."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared thinking guides — cross-layer checks for catalog→store→UI→Rust data flow."}

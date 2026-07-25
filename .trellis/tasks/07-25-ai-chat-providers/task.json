@@ -3,7 +3,7 @@
   "name": "ai-chat-providers",
   "title": "AI Chat Provider Catalog & Model Registry",
   "description": "",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "api",
