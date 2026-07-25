@@ -19,7 +19,7 @@ use rig_core::client::CompletionClient;
 use rig_core::completion::message::{ImageMediaType, MimeType, UserContent};
 use rig_core::message::{Message, ReasoningContent, Text};
 use rig_core::prelude::*; // brings StreamingChat (stream_chat) into scope
-use rig_core::providers::{anthropic, openai};
+use rig_core::providers::{anthropic, gemini, openai};
 use rig_core::streaming::StreamedAssistantContent;
 
 use crate::errors::AppError;
@@ -200,7 +200,7 @@ pub async fn chat_stream(
     // (`Pin<Box<dyn Stream<Item = Result<Option<String>, String>> + Send>>`)
     // if a 3rd provider lands.
     let full: String = match params.provider.as_str() {
-        "anthropic" => {
+        "anthropic" | "anthropic-compatible" => {
             let mut b = anthropic::Client::builder().api_key(params.api_key);
             if let Some(url) = params.base_url {
                 b = b.base_url(url);
@@ -218,20 +218,34 @@ pub async fn chat_stream(
             let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
             drain_loop(&mut stream, &on_event).await?
         }
+        "gemini" => {
+            let mut b = gemini::Client::builder().api_key(params.api_key);
+            if let Some(url) = params.base_url {
+                b = b.base_url(url);
+            }
+            let agent = b
+                .build()
+                .map_err(|e| e.to_string())?
+                .agent(params.model.as_str())
+                .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
+                .build();
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
+            drain_loop(&mut stream, &on_event).await?
+        }
         _ => {
-            // "openai" and "openai-compatible". Any non-default base_url needs
+            // "openai" + "openai-compatible" + 11 OpenAI-compat family
+            // (deepseek/groq/hyperbolic/mira/moonshot/openrouter/perplexity/
+            // together/xai/galadriel/eternalai). Any non-default base_url needs
             // `with_system_instructions_as_messages()` or the preamble silently
             // vanishes on compatible servers; harmless for real OpenAI.
-            // ponytail: ensure baseUrl ends with /v1 so rig appends /chat/completions to .../v1/chat/completions. Ollama/vLLM/LM Studio all use /v1; a server with a non-/v1 version root would still 404 — add an explicit /v1 in that case.
-            let mut base = params
+            let base = params
                 .base_url
                 .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
-            while base.ends_with('/') {
-                base.pop();
-            }
-            if !base.ends_with("/v1") {
-                base.push_str("/v1");
-            }
+            // ponytail: /v1 auto-append dropped — catalog defaultBaseUrl values
+            // already include the correct path (e.g. https://api.groq.com/openai/v1).
+            // User-supplied base_url is used as-is; if a user types a bare host
+            // without /v1, the request will 404 — better to surface that than to
+            // silently mutate their input.
             let client = openai::Client::builder()
                 .api_key(params.api_key)
                 .base_url(base)

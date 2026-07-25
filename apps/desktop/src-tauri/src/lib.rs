@@ -12,6 +12,7 @@ mod commands;
 pub mod errors;
 mod plugin_commands;
 mod chat;
+mod list_models;
 mod voice;
 mod pet_api;
 
@@ -674,6 +675,7 @@ pub fn run() {
             pet_api::get_pet_api_info,
             pet_api::open_external,
             chat::chat_stream,
+            list_models::list_models,
             plugin_commands::install_plugin,
             plugin_commands::list_plugins,
             plugin_commands::uninstall_plugin,
