@@ -9,6 +9,7 @@ import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useModelRegistryStore } from '@/store/modelRegistryStore';
 import { findModelInCatalog } from '@/services/modelRegistry/loader';
 import { isVisionModel } from '@/services/modelRegistry/merge';
+import type { Model } from '@/services/modelRegistry/types';
 import { useBubbleTemplateChatStore } from '@/store/bubbleTemplateChatStore';
 import { generateId } from '@/utils/idGenerator';
 import { extractLastJsonFence } from '@/components/pet/extractLastJsonFence';
@@ -65,6 +66,12 @@ function readChatConfig(): ChatConfig | null {
  *  Returning this constant keeps the not-found path referentially stable. */
 const EMPTY_MESSAGES: CliMessage[] = [];
 
+/** Same pitfall as EMPTY_MESSAGES: `s.modelsByProvider[chatProvider] ?? []`
+ *  creates a new array on every selector call when the provider has no
+ *  fetched models yet, which sends useSyncExternalStore into an infinite
+ *  re-render loop. Return this constant instead. */
+const EMPTY_MODELS: Model[] = [];
+
 
 /** Read an image File into {data, mediaType, previewUrl} via FileReader. */
 function readImageFile(file: File): Promise<{ data: string; mediaType: string; previewUrl: string }> {
@@ -118,7 +125,7 @@ export function BubbleTemplateAIChatModal({
   // provider reject it. Better than pre-blocking with a wrong guess.
   const chatProvider = useAiConfigStore((s) => s.chatProvider);
   const chatModel = useAiConfigStore((s) => s.chatModel);
-  const fetchedModels = useModelRegistryStore((s) => s.modelsByProvider[chatProvider] ?? []);
+  const fetchedModels = useModelRegistryStore((s) => s.modelsByProvider[chatProvider] ?? EMPTY_MODELS);
   const selectedModel = findModelInCatalog(chatProvider, chatModel) ?? fetchedModels.find((m) => m.id === chatModel);
   const visionOk = !selectedModel || isVisionModel(selectedModel);
 

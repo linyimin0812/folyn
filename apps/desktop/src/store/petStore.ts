@@ -8,6 +8,20 @@ import {
   type Placement,
 } from '@/components/pet/petPosition';
 import type { BubbleTemplate } from '@/components/pet/bubbleTemplate';
+import type { PetBubblePayload } from '@/components/pet/PetBubbleApp';
+
+/** A received notification snapshot persisted to the inbox tab. `payload`
+ *  is the original `PetBubblePayload` so the inbox row can render the same
+ *  title/text/kind and re-fire the same jump on click. */
+export interface InboxItem {
+  id: string;
+  receivedAt: number;
+  payload: PetBubblePayload;
+}
+
+/** Cap on persisted inbox items. Older entries are dropped on add. Prevents
+ *  unbounded growth from a chatty source. */
+export const INBOX_MAX_ITEMS = 100;
 
 // ponytail: PET_SIZE_VERSION / PET_SIZE_DEFAULT / PET_SIZE_TO_PX / PetSize are
 // owned by petPosition.ts (the pure-math module). petStore imports them — this
@@ -55,6 +69,7 @@ export const PERSIST_KEYS_PET = [
   'bubbleUserTemplates',
   'bubbleActiveTemplateId',
   'bubbleAppWhitelist',
+  'inboxItems',
 ] as const;
 
 export interface PetState {
@@ -90,6 +105,9 @@ export interface PetState {
   bubbleActiveTemplateId: string;
   /** Whitelist of macOS app names approved for `launch.type = "app"`. */
   bubbleAppWhitelist: string[];
+  /** Persisted received-notification snapshots for the Inbox tab. Capped to
+   *  INBOX_MAX_ITEMS; newest first. */
+  inboxItems: InboxItem[];
 
   setPetModeEnabled: (enabled: boolean) => void;
   setPetPosition: (x: number, y: number) => void;
@@ -111,6 +129,9 @@ export interface PetState {
   setBubbleActiveTemplateId: (id: string) => void;
   addBubbleAppToWhitelist: (app: string) => void;
   removeBubbleAppFromWhitelist: (app: string) => void;
+  addInboxItem: (payload: PetBubblePayload) => void;
+  removeInboxItem: (id: string) => void;
+  clearInbox: () => void;
 
   /** Load this store's slice from the persisted `settings:all` blob. */
   hydrate: (blob: Record<string, unknown>) => void;
@@ -163,6 +184,7 @@ export const usePetStore = create<PetState>((set, get) => ({
   bubbleUserTemplates: [],
   bubbleActiveTemplateId: 'default',
   bubbleAppWhitelist: [],
+  inboxItems: [],
 
   setPetModeEnabled: (enabled) => { set({ petModeEnabled: enabled }); schedulePersist(); },
 
@@ -285,6 +307,33 @@ export const usePetStore = create<PetState>((set, get) => ({
   removeBubbleAppFromWhitelist: (app) => {
     const cur = get().bubbleAppWhitelist;
     set({ bubbleAppWhitelist: cur.filter((a) => a !== app) });
+    schedulePersist();
+  },
+
+  addInboxItem: (payload) => {
+    // ponytail: snapshot the payload as-is so the inbox row renders the same
+    // title/text/kind and re-fires the same jump on click. Cap to
+    // INBOX_MAX_ITEMS, dropping the oldest — a chatty source shouldn't grow
+    // storage unbounded. Newest first (index 0 = most recent).
+    const item: InboxItem = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      receivedAt: Date.now(),
+      payload,
+    };
+    const cur = get().inboxItems;
+    const next = [item, ...cur].slice(0, INBOX_MAX_ITEMS);
+    set({ inboxItems: next });
+    schedulePersist();
+  },
+
+  removeInboxItem: (id) => {
+    set({ inboxItems: get().inboxItems.filter((i) => i.id !== id) });
+    schedulePersist();
+  },
+
+  clearInbox: () => {
+    if (get().inboxItems.length === 0) return;
+    set({ inboxItems: [] });
     schedulePersist();
   },
 
@@ -416,6 +465,25 @@ export const usePetStore = create<PetState>((set, get) => ({
     } else {
       saved.bubbleAppWhitelist = saved.bubbleAppWhitelist.filter(
         (a: unknown): a is string => typeof a === 'string',
+      );
+    }
+
+    // Coerce `inboxItems` to InboxItem[]. Drop entries missing id/receivedAt
+    // or with a non-object payload — a corrupt blob shouldn't fail the whole
+    // hydrate. `payload.text` is the only required field on PetBubblePayload,
+    // so require it for kept entries.
+    if (!Array.isArray(saved.inboxItems)) {
+      saved.inboxItems = [];
+    } else {
+      saved.inboxItems = saved.inboxItems.filter(
+        (i: unknown): i is InboxItem => {
+          if (typeof i !== 'object' || i === null) return false;
+          const o = i as Record<string, unknown>;
+          return typeof o.id === 'string' &&
+            typeof o.receivedAt === 'number' &&
+            typeof o.payload === 'object' && o.payload !== null &&
+            typeof (o.payload as { text?: unknown }).text === 'string';
+        },
       );
     }
 
