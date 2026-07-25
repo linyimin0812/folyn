@@ -213,6 +213,7 @@ export async function sendPetChatMessage(
         model: aiConfig.chatModel,
         apiKey: aiConfig.chatApiKey,
         baseUrl: aiConfig.chatBaseUrl,
+        thinkingBudget: aiConfig.chatThinkingBudget,
         onEvent: handler,
       });
     } catch (err) {

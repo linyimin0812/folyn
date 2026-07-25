@@ -31,6 +31,7 @@ interface ChatConfig {
   model: string;
   apiKey: string;
   baseUrl?: string;
+  thinkingBudget?: number | null;
 }
 
 interface PendingAttachment {
@@ -47,11 +48,12 @@ interface PendingAttachment {
 }
 
 function readChatConfig(): ChatConfig | null {
-  const { chatProvider, chatModel, chatApiKey, chatBaseUrl } =
+  const { chatProvider, chatModel, chatApiKey, chatBaseUrl, chatThinkingBudget } =
     useAiConfigStore.getState();
   if (!chatProvider || !chatModel || !chatApiKey) return null;
   const cfg: ChatConfig = { provider: chatProvider, model: chatModel, apiKey: chatApiKey };
   if (chatBaseUrl) cfg.baseUrl = chatBaseUrl;
+  if (chatThinkingBudget != null) cfg.thinkingBudget = chatThinkingBudget;
   return cfg;
 }
 
@@ -292,6 +294,7 @@ export function BubbleTemplateAIChatModal({
         model: cfg.model,
         apiKey: cfg.apiKey,
         ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}),
+        ...(cfg.thinkingBudget != null ? { thinkingBudget: cfg.thinkingBudget } : {}),
         preamble,
         ...(images ? { images } : {}),
         onEvent: (event) => {

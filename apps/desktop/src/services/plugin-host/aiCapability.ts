@@ -60,7 +60,7 @@ export function buildPluginAi(manifest: PluginManifest): PluginAiCapability {
         import('@/store/aiConfigStore'),
         import('@/store/aiStore'),
       ]);
-      const { chatProvider, chatModel, chatApiKey, chatBaseUrl } = useAiConfigStore.getState();
+      const { chatProvider, chatModel, chatApiKey, chatBaseUrl, chatThinkingBudget } = useAiConfigStore.getState();
       if (!chatApiKey) {
         throw new Error('host AI not configured — set chatApiKey in settings');
       }
@@ -85,6 +85,7 @@ export function buildPluginAi(manifest: PluginManifest): PluginAiCapability {
           model: chatModel,
           apiKey: chatApiKey,
           ...(chatBaseUrl ? { baseUrl: chatBaseUrl } : {}),
+          ...(chatThinkingBudget != null ? { thinkingBudget: chatThinkingBudget } : {}),
           onEvent: (event: CliStreamEvent) => {
             const mapped = mapEvent(event);
             if (!mapped) return;

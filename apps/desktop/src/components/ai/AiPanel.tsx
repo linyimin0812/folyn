@@ -236,6 +236,9 @@ export function AiPanel() {
           model: aiConfig.chatModel,
           apiKey: aiConfig.chatApiKey,
           baseUrl: aiConfig.chatBaseUrl,
+          // T07: forward reasoning budget. rig applies it via per-provider
+          // additional_params; non-reasoning models silently ignore.
+          thinkingBudget: aiConfig.chatThinkingBudget,
           onEvent: eventHandler,
         });
       } else {

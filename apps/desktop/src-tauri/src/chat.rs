@@ -11,6 +11,7 @@ use std::fs;
 
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager};
 
@@ -18,7 +19,8 @@ use rig_core::agent::MultiTurnStreamItem;
 use rig_core::client::CompletionClient;
 use rig_core::completion::message::{ImageMediaType, MimeType, UserContent};
 use rig_core::message::{Message, ReasoningContent, Text};
-use rig_core::prelude::*; // brings StreamingChat (stream_chat) into scope
+use rig_core::prelude::*;
+use rig_core::agent::AgentBuilder;
 use rig_core::providers::{anthropic, azure, cohere, gemini, huggingface, ollama, openai};
 use rig_core::client::Nothing;
 use rig_core::streaming::StreamedAssistantContent;
@@ -83,17 +85,57 @@ pub struct ChatParams {
     /// Azure-only: e.g. "2024-10-21". Required when provider = azure-openai.
     #[serde(default)]
     pub azure_api_version: Option<String>,
-    /// T05: reasoning token budget for reasoning-capable models.
-    /// ponytail: ACCEPTED but NOT YET APPLIED to the rig agent. rig 0.40's
-    /// AgentBuilder has no uniform `.reasoning()` / `.thinking_budget()`
-    /// method — reasoning is provider-specific (Anthropic extended thinking
-    /// via `thinking` field, OpenAI `reasoning_effort`, xAI `reasoning`
-    /// string, Gemini `thinkingBudget`). Per-provider application is a
-    /// follow-up; the field is plumbed end-to-end (TS → invoke → Rust) so
-    /// adding it later touches one arm per provider, not the whole stack.
+    /// T07: reasoning token budget for reasoning-capable models. Applied
+    /// per-provider via `AgentBuilder::additional_params()`:
+    ///   Anthropic → `{"thinking": {"type": "enabled", "budget_tokens": N}}`
+    ///   OpenAI / Azure → `{"reasoning_effort": "low"|"medium"|"high"}`
+    ///     (budget < 2000 → "low", < 8000 → "medium", else "high")
+    ///   Gemini → `{"generationConfig": {"thinkingConfig": {"thinkingBudget": N}}}`
+    ///   xAI → `{"reasoning": true}` (on/off, no budget concept)
+    ///   Cohere / HuggingFace / Ollama / OpenAI-compat family → not applied
+    ///     (provider doesn't support reasoning, silently skipped)
     #[serde(default)]
-    #[allow(dead_code)] // plumbed end-to-end, not yet applied — see ponytail note.
     pub thinking_budget: Option<u32>,
+}
+
+/// Build the provider-specific additional_params JSON for reasoning. Returns
+/// None when the provider doesn't support reasoning (silently skip per the
+/// ticket's "non-reasoning silently ignores" rule). Pure function — unit
+/// tested below.
+fn thinking_params(provider: &str, thinking_budget: Option<u32>) -> Option<serde_json::Value> {
+    let budget = thinking_budget?;
+    match provider {
+        "anthropic" | "anthropic-compatible" => Some(json!({
+            "thinking": {"type": "enabled", "budget_tokens": budget}
+        })),
+        "openai" | "azure-openai" => {
+            let effort = if budget < 2000 { "low" } else if budget < 8000 { "medium" } else { "high" };
+            Some(json!({"reasoning_effort": effort}))
+        },
+        "gemini" => Some(json!({
+            "generationConfig": {"thinkingConfig": {"thinkingBudget": budget}}
+        })),
+        "xai" => Some(json!({"reasoning": true})),
+        _ => None,
+    }
+}
+
+/// Apply thinking_params to an agent builder if the provider supports it.
+/// Generic over M (completion model) and S (tool state) — the AgentBuilder
+/// is the same concrete struct across providers, just with different M.
+/// ponytail: helper avoids 5× duplicated `if let Some(p) = ...` blocks.
+fn with_thinking<M, S>(
+    b: AgentBuilder<M, S>,
+    provider: &str,
+    budget: Option<u32>,
+) -> AgentBuilder<M, S>
+where
+    M: rig_core::completion::CompletionModel,
+{
+    match thinking_params(provider, budget) {
+        Some(p) => b.additional_params(p),
+        None => b,
+    }
 }
 
 /// One turn on disk. Decoupled from rig's `Message` so the on-disk format
@@ -231,13 +273,15 @@ pub async fn chat_stream(
                 b = b.base_url(url);
             }
             // ponytail: Anthropic requires max_tokens (no default); 4096 fits most chat turns. Bump to 8192 if a user hits truncation on long responses.
-            let agent = b
-                .build()
-                .map_err(|e| e.to_string())?
-                .agent(params.model.as_str())
-                .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
-                .max_tokens(4096)
-                .build();
+            let agent = with_thinking(
+                b.build()
+                    .map_err(|e| e.to_string())?
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
+                    .max_tokens(4096),
+                "anthropic",
+                params.thinking_budget,
+            ).build();
             // `.await` yields the stream directly (no Result wrapper); stream
             // setup/connection errors surface as `Err` items below.
             let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
@@ -248,12 +292,14 @@ pub async fn chat_stream(
             if let Some(url) = params.base_url {
                 b = b.base_url(url);
             }
-            let agent = b
-                .build()
-                .map_err(|e| e.to_string())?
-                .agent(params.model.as_str())
-                .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
-                .build();
+            let agent = with_thinking(
+                b.build()
+                    .map_err(|e| e.to_string())?
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                "gemini",
+                params.thinking_budget,
+            ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
             drain_loop(&mut stream, &on_event).await?
         }
@@ -280,10 +326,13 @@ pub async fn chat_stream(
                 .api_version(&api_version)
                 .build()
                 .map_err(|e| e.to_string())?;
-            let agent = client
-                .agent(deployment_id.as_str())
-                .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
-                .build();
+            let agent = with_thinking(
+                client
+                    .agent(deployment_id.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                "azure-openai",
+                params.thinking_budget,
+            ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
             drain_loop(&mut stream, &on_event).await?
         }
@@ -292,12 +341,17 @@ pub async fn chat_stream(
             if let Some(url) = params.base_url {
                 b = b.base_url(url);
             }
-            let agent = b
-                .build()
-                .map_err(|e| e.to_string())?
-                .agent(params.model.as_str())
-                .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
-                .build();
+            // ponytail: cohere doesn't support reasoning — with_thinking is a
+            // no-op (thinking_params returns None). Kept in the chain for
+            // symmetry + future-compat if cohere adds reasoning later.
+            let agent = with_thinking(
+                b.build()
+                    .map_err(|e| e.to_string())?
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                "cohere",
+                params.thinking_budget,
+            ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
             drain_loop(&mut stream, &on_event).await?
         }
@@ -306,12 +360,14 @@ pub async fn chat_stream(
             if let Some(url) = params.base_url {
                 b = b.base_url(url);
             }
-            let agent = b
-                .build()
-                .map_err(|e| e.to_string())?
-                .agent(params.model.as_str())
-                .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
-                .build();
+            let agent = with_thinking(
+                b.build()
+                    .map_err(|e| e.to_string())?
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                "huggingface",
+                params.thinking_budget,
+            ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
             drain_loop(&mut stream, &on_event).await?
         }
@@ -327,10 +383,13 @@ pub async fn chat_stream(
                 .base_url(base)
                 .build()
                 .map_err(|e| e.to_string())?;
-            let agent = client
-                .agent(params.model.as_str())
-                .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
-                .build();
+            let agent = with_thinking(
+                client
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                "ollama",
+                params.thinking_budget,
+            ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
             drain_loop(&mut stream, &on_event).await?
         }
@@ -354,10 +413,18 @@ pub async fn chat_stream(
                 .build()
                 .map_err(|e| e.to_string())?
                 .with_system_instructions_as_messages();
-            let agent = client
-                .agent(params.model.as_str())
-                .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
-                .build();
+            // T07: pass the actual provider id (openai / xai / etc.) so
+            // thinking_params dispatches correctly. 11 OpenAI-compat family
+            // providers (deepseek/groq/hyperbolic/mira/moonshot/openrouter/
+            // perplexity/together/galadriel/eternalai + openai-compatible
+            // escape hatch) return None — silently skipped.
+            let agent = with_thinking(
+                client
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                params.provider.as_str(),
+                params.thinking_budget,
+            ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
             drain_loop(&mut stream, &on_event).await?
         }
@@ -448,4 +515,69 @@ where
     // Send Done so the frontend still terminates the turn cleanly.
     on_event.send(ChatChunk::Done).ok();
     Ok(full)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // T07: thinking_params pure function — provider dispatch + JSON shape.
+    #[test]
+    fn thinking_params_anthropic() {
+        let p = thinking_params("anthropic", Some(2048)).unwrap();
+        assert_eq!(p["thinking"]["type"], "enabled");
+        assert_eq!(p["thinking"]["budget_tokens"], 2048);
+    }
+
+    #[test]
+    fn thinking_params_anthropic_compatible_alias() {
+        // anthropic-compatible uses the same arm — its reasoning API is shared.
+        let p = thinking_params("anthropic-compatible", Some(1024)).unwrap();
+        assert_eq!(p["thinking"]["type"], "enabled");
+    }
+
+    #[test]
+    fn thinking_params_openai_effort_buckets() {
+        assert_eq!(thinking_params("openai", Some(0)).unwrap()["reasoning_effort"], "low");
+        assert_eq!(thinking_params("openai", Some(1999)).unwrap()["reasoning_effort"], "low");
+        assert_eq!(thinking_params("openai", Some(2000)).unwrap()["reasoning_effort"], "medium");
+        assert_eq!(thinking_params("openai", Some(7999)).unwrap()["reasoning_effort"], "medium");
+        assert_eq!(thinking_params("openai", Some(8000)).unwrap()["reasoning_effort"], "high");
+        assert_eq!(thinking_params("openai", Some(99999)).unwrap()["reasoning_effort"], "high");
+    }
+
+    #[test]
+    fn thinking_params_azure_uses_openai_effort() {
+        assert_eq!(thinking_params("azure-openai", Some(5000)).unwrap()["reasoning_effort"], "medium");
+    }
+
+    #[test]
+    fn thinking_params_gemini_budget() {
+        let p = thinking_params("gemini", Some(8192)).unwrap();
+        assert_eq!(p["generationConfig"]["thinkingConfig"]["thinkingBudget"], 8192);
+    }
+
+    #[test]
+    fn thinking_params_xai_toggle() {
+        let p = thinking_params("xai", Some(1)).unwrap();
+        assert_eq!(p["reasoning"], true);
+    }
+
+    #[test]
+    fn thinking_params_none_for_unsupported_providers() {
+        // Cohere / HuggingFace / Ollama don't support reasoning — None.
+        assert!(thinking_params("cohere", Some(1024)).is_none());
+        assert!(thinking_params("huggingface", Some(1024)).is_none());
+        assert!(thinking_params("ollama", Some(1024)).is_none());
+        // OpenAI-compat family (11) — None.
+        for pid in ["deepseek", "groq", "hyperbolic", "mira", "moonshot", "openrouter", "perplexity", "together", "galadriel", "eternalai", "openai-compatible"] {
+            assert!(thinking_params(pid, Some(1024)).is_none(), "{} should return None", pid);
+        }
+    }
+
+    #[test]
+    fn thinking_params_none_when_budget_is_none() {
+        assert!(thinking_params("anthropic", None).is_none());
+        assert!(thinking_params("openai", None).is_none());
+    }
 }

@@ -564,7 +564,7 @@ export async function dispatchPluginRpc(
         throw new Error('ai:chat requires a streaming transport (sandbox iframe only)');
       }
       const { useAiConfigStore } = await import('@/store/aiConfigStore');
-      const { chatProvider, chatModel, chatApiKey, chatBaseUrl } = useAiConfigStore.getState();
+      const { chatProvider, chatModel, chatApiKey, chatBaseUrl, chatThinkingBudget } = useAiConfigStore.getState();
       if (!chatApiKey) {
         throw new Error('host AI not configured — set chatApiKey in settings');
       }
@@ -575,6 +575,7 @@ export async function dispatchPluginRpc(
         model: chatModel,
         apiKey: chatApiKey,
         ...(chatBaseUrl ? { baseUrl: chatBaseUrl } : {}),
+        ...(chatThinkingBudget != null ? { thinkingBudget: chatThinkingBudget } : {}),
         onEvent: (e: CliStreamEvent) => {
           const mapped = mapSandboxEvent(e);
           if (mapped) stream(mapped);
