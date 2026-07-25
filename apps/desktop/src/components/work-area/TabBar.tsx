@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
 import type { FileTab } from '@/store/editorStore';
-import { getHandlerById } from '../file-types/registry';
 import { FileIcon } from '@/components/icons/FileIcon';
 
 interface TabBarProps {
@@ -29,7 +28,6 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
     <div className="flex items-stretch h-[34px] shrink-0 border-b border-brd bg-panel">
       <div className="flex items-stretch flex-1 min-w-0 overflow-x-auto overflow-y-hidden gap-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map((tab) => {
-          const tabHandler = getHandlerById(tab.fileType);
           return (
             <div
               key={tab.id}
@@ -37,7 +35,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
               onClick={() => onSelectTab(tab.id)}
             >
               {tab.isDirty && <span className="w-[5px] h-[5px] rounded-full bg-amber shrink-0" />}
-              <span className="shrink-0 flex items-center">{tabHandler?.icon ?? <FileIcon filename={tab.name} />}</span>
+              <span className="shrink-0 flex items-center"><FileIcon filename={tab.name} /></span>
               <span className="max-w-[110px] overflow-hidden text-ellipsis">{tab.name}</span>
               <span
                 className="opacity-0 text-[10px] shrink-0 w-[14px] h-[14px] flex items-center justify-center rounded-[3px] transition-[opacity,background] duration-100 group-hover:opacity-50 hover:!opacity-100 hover:bg-hov hover:text-red"
@@ -65,14 +63,13 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
         {tabListOpen && (
           <div className="absolute top-full right-0 z-[100] max-h-[300px] overflow-y-auto bg-surf border border-brd rounded-[6px] shadow-[0_4px_16px_rgba(0,0,0,0.12)] py-1">
             {tabs.map((tab) => {
-              const tabHandler = getHandlerById(tab.fileType);
               return (
                 <div
                   key={tab.id}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-[calc(var(--ui-font-size)-2px)] text-t2 cursor-pointer whitespace-nowrap transition-[background] duration-[120ms] hover:bg-hov ${activeTabId === tab.id ? '!text-acc bg-hov' : ''}`}
                   onClick={() => { onSelectTab(tab.id); setTabListOpen(false); }}
                 >
-                  <span className="shrink-0 flex items-center">{tabHandler?.icon ?? <FileIcon filename={tab.name} />}</span>
+                  <span className="shrink-0 flex items-center"><FileIcon filename={tab.name} /></span>
                   <span className="flex-1">{tab.name}</span>
                   {tab.isDirty && <span className="w-[5px] h-[5px] rounded-full bg-amber shrink-0" />}
                   <span
