@@ -83,6 +83,17 @@ pub struct ChatParams {
     /// Azure-only: e.g. "2024-10-21". Required when provider = azure-openai.
     #[serde(default)]
     pub azure_api_version: Option<String>,
+    /// T05: reasoning token budget for reasoning-capable models.
+    /// ponytail: ACCEPTED but NOT YET APPLIED to the rig agent. rig 0.40's
+    /// AgentBuilder has no uniform `.reasoning()` / `.thinking_budget()`
+    /// method — reasoning is provider-specific (Anthropic extended thinking
+    /// via `thinking` field, OpenAI `reasoning_effort`, xAI `reasoning`
+    /// string, Gemini `thinkingBudget`). Per-provider application is a
+    /// follow-up; the field is plumbed end-to-end (TS → invoke → Rust) so
+    /// adding it later touches one arm per provider, not the whole stack.
+    #[serde(default)]
+    #[allow(dead_code)] // plumbed end-to-end, not yet applied — see ponytail note.
+    pub thinking_budget: Option<u32>,
 }
 
 /// One turn on disk. Decoupled from rig's `Message` so the on-disk format

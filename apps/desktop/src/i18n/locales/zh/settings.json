@@ -225,6 +225,10 @@
         "fetching": "获取中…",
         "empty": "未获取到模型",
         "orphan": "已不在可用列表"
+      },
+      "thinkingBudget": {
+        "label": "Thinking 预算(tokens)",
+        "hint": "仅对支持推理的模型生效;非推理模型忽略此值。"
       }
     }
   },
@@ -470,6 +474,7 @@
         "paperclip": "附件",
         "unsupportedFile": "仅支持 .html / .htm / 图片 文件",
         "fileReadFailed": "文件读取失败",
+        "imageNotSupported": "当前模型不支持图片输入 — 请切换到支持视觉的模型,或改传 HTML",
         "htmlAttached": "已附 HTML：{{name}}",
         "htmlWrapPrefix": "把以下 HTML 改造成 BubbleTemplate（须过 DOMPurify、剥 on*、不能引用外链资源）：",
         "imageWrapPrefix": "根据附带的图片生成一个视觉上匹配的 BubbleTemplate（html + css）。参考图片的布局、配色和文字作为设计依据。",

@@ -40,6 +40,11 @@ export interface RigChatParams {
   azureDeploymentId?: string;
   /** Azure-only: e.g. "2024-10-21". Required when provider = azure-openai. */
   azureApiVersion?: string;
+  /** T05: reasoning token budget. Accepted by chat_stream but currently
+   *  NOT applied — rig 0.40's agent builder has no uniform reasoning API;
+   *  per-provider application is a follow-up. The field is plumbed so the
+   *  follow-up touches one arm per provider. */
+  thinkingBudget?: number | null;
   /** Optional preamble (system prompt) override. When omitted, the rig
    *  backend uses its built-in default. The Bubble Template AI Agent
    *  passes its feature-specific preamble here. */
@@ -81,6 +86,7 @@ export async function runRigChat(p: RigChatParams): Promise<void> {
       baseUrl: p.baseUrl ? p.baseUrl : null,
       azureDeploymentId: p.azureDeploymentId ?? null,
       azureApiVersion: p.azureApiVersion ?? null,
+      thinkingBudget: p.thinkingBudget ?? null,
       prompt: p.prompt,
       preamble: p.preamble ?? null,
       images: p.images && p.images.length > 0 ? p.images : null,

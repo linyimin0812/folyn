@@ -57,6 +57,13 @@ describe('useAiConfigStore setters', () => {
     useAiConfigStore.getState().setChatAzureApiVersion('2024-10-21');
     expect(useAiConfigStore.getState().chatAzureApiVersion).toBe('2024-10-21');
   });
+
+  it('setChatThinkingBudget updates + persists', () => {
+    useAiConfigStore.getState().setChatThinkingBudget(2048);
+    expect(useAiConfigStore.getState().chatThinkingBudget).toBe(2048);
+    useAiConfigStore.getState().setChatThinkingBudget(null);
+    expect(useAiConfigStore.getState().chatThinkingBudget).toBeNull();
+  });
 });
 
 describe('useAiConfigStore.hydrate', () => {
@@ -115,6 +122,26 @@ describe('useAiConfigStore.hydrate', () => {
   it('PERSIST_KEYS_AI_CONFIG includes azure fields', () => {
     expect(PERSIST_KEYS_AI_CONFIG).toContain('chatAzureDeploymentId');
     expect(PERSIST_KEYS_AI_CONFIG).toContain('chatAzureApiVersion');
+  });
+
+  it('PERSIST_KEYS_AI_CONFIG includes thinkingBudget', () => {
+    expect(PERSIST_KEYS_AI_CONFIG).toContain('chatThinkingBudget');
+  });
+
+  it('hydrates chatThinkingBudget (number and null)', () => {
+    useAiConfigStore.getState().setChatThinkingBudget(1024);
+    useAiConfigStore.getState().hydrate({ chatThinkingBudget: 4096 });
+    expect(useAiConfigStore.getState().chatThinkingBudget).toBe(4096);
+    useAiConfigStore.getState().hydrate({ chatThinkingBudget: null });
+    expect(useAiConfigStore.getState().chatThinkingBudget).toBeNull();
+  });
+
+  it('ignores invalid chatThinkingBudget values', () => {
+    useAiConfigStore.getState().setChatThinkingBudget(1024);
+    useAiConfigStore.getState().hydrate({ chatThinkingBudget: 'oops' });
+    expect(useAiConfigStore.getState().chatThinkingBudget).toBe(1024);
+    useAiConfigStore.getState().hydrate({ chatThinkingBudget: -1 });
+    expect(useAiConfigStore.getState().chatThinkingBudget).toBe(1024);
   });
 
   it('PROVIDER_IDS has 20 entries (18 rig + 2 compat)', () => {

@@ -14,6 +14,8 @@ import {
 } from '@/services/providers/catalog';
 import { isSelectedModelInList } from '@/services/modelRegistry/fetchModels';
 import { useModelRegistryStore, canFetchModelsFromStore } from '@/store/modelRegistryStore';
+import { findModelInCatalog } from '@/services/modelRegistry/loader';
+import { isReasoningModel } from '@/services/modelRegistry/merge';
 import type { Model } from '@/services/modelRegistry/types';
 import { PluginsSettings } from '@/components/settings/PluginsSettings';
 import { VoiceSettings } from '@/components/settings/VoiceSettings';
@@ -122,6 +124,7 @@ export function SettingsPage() {
   const chatBaseUrl = useAiConfigStore((s) => s.chatBaseUrl);
   const chatAzureDeploymentId = useAiConfigStore((s) => s.chatAzureDeploymentId);
   const chatAzureApiVersion = useAiConfigStore((s) => s.chatAzureApiVersion);
+  const chatThinkingBudget = useAiConfigStore((s) => s.chatThinkingBudget);
   const setCliAdapter = useAiConfigStore((s) => s.setCliAdapter);
   const setCliPath = useAiConfigStore((s) => s.setCliPath);
   const setChatProvider = useAiConfigStore((s) => s.setChatProvider);
@@ -130,6 +133,7 @@ export function SettingsPage() {
   const setChatBaseUrl = useAiConfigStore((s) => s.setChatBaseUrl);
   const setChatAzureDeploymentId = useAiConfigStore((s) => s.setChatAzureDeploymentId);
   const setChatAzureApiVersion = useAiConfigStore((s) => s.setChatAzureApiVersion);
+  const setChatThinkingBudget = useAiConfigStore((s) => s.setChatThinkingBudget);
   const [testStatus, setTestStatus] = useState<{ testing: boolean; result?: { success: boolean; message: string } }>({ testing: false });
   // ponytail: reuse the same state shape as `testStatus` for the Chat-mode ping
   // test. Separate state because both sections render simultaneously inside the
@@ -144,6 +148,12 @@ export function SettingsPage() {
   // from aiConfigStore, the lists come from modelRegistryStore keyed by
   // that provider.
   const modelsForCurrent = useModelRegistryStore((s) => s.modelsByProvider[chatProvider] ?? []);
+  // T05: selectedModel = catalog entry or fetched-list entry for the current
+  // chatModel. Unknown (orphan / never-fetched) → undefined → reasoning UI
+  // hidden (no model to reason about). Catalog-driven so the UI updates even
+  // before the user clicks "获取模型".
+  const selectedModel = findModelInCatalog(chatProvider, chatModel) ?? modelsForCurrent.find((m) => m.id === chatModel);
+  const showThinkingBudget = selectedModel ? isReasoningModel(selectedModel) : false;
   const fetchStatusForCurrent = useModelRegistryStore((s) => s.fetchStatusByProvider[chatProvider] ?? 'idle');
   const fetchErrorForCurrent = useModelRegistryStore((s) => s.fetchErrorByProvider[chatProvider] ?? null);
   const fetchModelsForProvider = useModelRegistryStore((s) => s.fetchModelsForProvider);
@@ -618,6 +628,24 @@ export function SettingsPage() {
                           />
                         </div>
                       </>
+                    )}
+                    {showThinkingBudget && (
+                      <div className="mb-3.5">
+                        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:ai.chat.thinkingBudget.label')}</div>
+                        <input
+                          type="number"
+                          min={0}
+                          className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                          value={chatThinkingBudget ?? ''}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setChatThinkingBudget(v === '' ? null : Math.max(0, Math.floor(Number(v))));
+                          }}
+                          placeholder="1024"
+                          autoCapitalize="off"
+                        />
+                        <div className="text-[10.5px] text-t3 mt-1">{t('settings:ai.chat.thinkingBudget.hint')}</div>
+                      </div>
                     )}
                     <div className="mb-1">
                       <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:ai.chat.baseUrl.label')}</div>

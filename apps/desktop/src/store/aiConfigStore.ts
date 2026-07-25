@@ -16,6 +16,7 @@ export const PERSIST_KEYS_AI_CONFIG = [
   'chatBaseUrl',
   'chatAzureDeploymentId',
   'chatAzureApiVersion',
+  'chatThinkingBudget',
 ] as const;
 
 export interface AiConfigState {
@@ -27,6 +28,10 @@ export interface AiConfigState {
   chatBaseUrl: string;
   chatAzureDeploymentId: string;
   chatAzureApiVersion: string;
+  /** T05: reasoning token budget for reasoning-capable models. Persisted so
+   *  switching away and back keeps the value; only applied when the current
+   *  model `isReasoningModel()`. `null` = use provider default. */
+  chatThinkingBudget: number | null;
 
   setCliAdapter: (v: string) => void;
   setCliPath: (v: string) => void;
@@ -36,6 +41,7 @@ export interface AiConfigState {
   setChatBaseUrl: (v: string) => void;
   setChatAzureDeploymentId: (v: string) => void;
   setChatAzureApiVersion: (v: string) => void;
+  setChatThinkingBudget: (v: number | null) => void;
 
   /** Load this store's slice from the persisted `settings:all` blob. */
   hydrate: (blob: Record<string, unknown>) => void;
@@ -44,6 +50,10 @@ export interface AiConfigState {
 const PROVIDER_ID_SET = new Set<string>(PROVIDER_IDS);
 function isChatProvider(v: unknown): v is ChatProvider {
   return typeof v === 'string' && PROVIDER_ID_SET.has(v);
+}
+
+function isThinkingBudget(v: unknown): v is number | null {
+  return v === null || (typeof v === 'number' && Number.isFinite(v) && v >= 0);
 }
 
 export const useAiConfigStore = create<AiConfigState>((set) => ({
@@ -55,6 +65,7 @@ export const useAiConfigStore = create<AiConfigState>((set) => ({
   chatBaseUrl: '',
   chatAzureDeploymentId: '',
   chatAzureApiVersion: '',
+  chatThinkingBudget: 1024,
 
   setCliAdapter: (v) => { set({ cliAdapter: v }); schedulePersist(); },
   setCliPath: (v) => { set({ cliPath: v }); schedulePersist(); },
@@ -64,6 +75,7 @@ export const useAiConfigStore = create<AiConfigState>((set) => ({
   setChatBaseUrl: (v) => { set({ chatBaseUrl: v }); schedulePersist(); },
   setChatAzureDeploymentId: (v) => { set({ chatAzureDeploymentId: v }); schedulePersist(); },
   setChatAzureApiVersion: (v) => { set({ chatAzureApiVersion: v }); schedulePersist(); },
+  setChatThinkingBudget: (v) => { set({ chatThinkingBudget: v }); schedulePersist(); },
 
   hydrate: (blob) => {
     const patch: Partial<AiConfigState> = {};
@@ -75,6 +87,7 @@ export const useAiConfigStore = create<AiConfigState>((set) => ({
     if (blob.chatBaseUrl !== undefined) patch.chatBaseUrl = blob.chatBaseUrl as string;
     if (blob.chatAzureDeploymentId !== undefined) patch.chatAzureDeploymentId = blob.chatAzureDeploymentId as string;
     if (blob.chatAzureApiVersion !== undefined) patch.chatAzureApiVersion = blob.chatAzureApiVersion as string;
+    if (isThinkingBudget(blob.chatThinkingBudget)) patch.chatThinkingBudget = blob.chatThinkingBudget;
     if (Object.keys(patch).length > 0) set(patch);
   },
 }));

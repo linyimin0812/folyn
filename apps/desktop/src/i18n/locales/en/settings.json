@@ -225,6 +225,10 @@
         "fetching": "Fetching…",
         "empty": "No models returned",
         "orphan": "not in fetched list"
+      },
+      "thinkingBudget": {
+        "label": "Thinking budget (tokens)",
+        "hint": "Applied to reasoning-capable models; non-reasoning models ignore this."
       }
     }
   },
@@ -454,6 +458,7 @@
         "paperclip": "Attach file",
         "unsupportedFile": "Only .html / .htm / image files are supported",
         "fileReadFailed": "Failed to read file",
+        "imageNotSupported": "Current model doesn't support image input — switch to a vision model or upload HTML instead",
         "htmlAttached": "HTML attached: {{name}}",
         "htmlWrapPrefix": "Adapt the following HTML into a BubbleTemplate (must pass DOMPurify, on* attrs stripped, no external resources):",
         "imageWrapPrefix": "Generate a BubbleTemplate (html + css) that visually matches the attached image. Use the image's layout, colors, and text as the design reference.",

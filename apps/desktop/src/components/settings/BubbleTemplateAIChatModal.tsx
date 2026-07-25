@@ -6,6 +6,9 @@ import { VoiceInputButton } from '@/components/ai/VoiceInputButton';
 import type { CliMessage } from '@quill/cli-adapter';
 import { runRigChat } from '@/services/rigChat';
 import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useModelRegistryStore } from '@/store/modelRegistryStore';
+import { findModelInCatalog } from '@/services/modelRegistry/loader';
+import { isVisionModel } from '@/services/modelRegistry/merge';
 import { useBubbleTemplateChatStore } from '@/store/bubbleTemplateChatStore';
 import { generateId } from '@/utils/idGenerator';
 import { extractLastJsonFence } from '@/components/pet/extractLastJsonFence';
@@ -107,6 +110,16 @@ export function BubbleTemplateAIChatModal({
     (s) => s.sessions.find((sess) => sess.id === s.activeSessionId)?.messages ?? EMPTY_MESSAGES,
   );
 
+  // T05: vision gate. selectedModel is the Model object for the current
+  // chatProvider + chatModel (from catalog + fetched list). Unknown model
+  // (not in catalog, not fetched) is optimistic — allow upload, let the
+  // provider reject it. Better than pre-blocking with a wrong guess.
+  const chatProvider = useAiConfigStore((s) => s.chatProvider);
+  const chatModel = useAiConfigStore((s) => s.chatModel);
+  const fetchedModels = useModelRegistryStore((s) => s.modelsByProvider[chatProvider] ?? []);
+  const selectedModel = findModelInCatalog(chatProvider, chatModel) ?? fetchedModels.find((m) => m.id === chatModel);
+  const visionOk = !selectedModel || isVisionModel(selectedModel);
+
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
   const [pending, setPending] = useState<PendingAttachment | null>(null);
@@ -165,6 +178,13 @@ export function BubbleTemplateAIChatModal({
     if (!file) return;
     try {
       if (file.type.startsWith('image/')) {
+        // T05: gate image upload on vision capability. HTML upload is
+        // unaffected — the paperclip's `accept` shrinks to .html-only when
+        // !visionOk, but drag/drop/paste can still bypass it.
+        if (!visionOk) {
+          setError(t('settings:pet.templates.ai.imageNotSupported'));
+          return;
+        }
         const { data, mediaType, previewUrl } = await readImageFile(file);
         setPending({ kind: 'image', name: file.name, data, mediaType, previewUrl });
       } else if (file.type === 'text/html' || /\.html?$/i.test(file.name)) {
@@ -178,7 +198,7 @@ export function BubbleTemplateAIChatModal({
     } catch {
       setError(t('settings:pet.templates.ai.fileReadFailed'));
     }
-  }, [t]);
+  }, [t, visionOk]);
 
   const handlePaste = useCallback(async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     // Only react to clipboard items that are images; let plain-text paste
@@ -193,6 +213,10 @@ export function BubbleTemplateAIChatModal({
     }
     if (!imgFile) return;
     e.preventDefault();
+    if (!visionOk) {
+      setError(t('settings:pet.templates.ai.imageNotSupported'));
+      return;
+    }
     try {
       const { data, mediaType, previewUrl } = await readImageFile(imgFile);
       setPending({ kind: 'image', name: imgFile.name || 'pasted.png', data, mediaType, previewUrl });
@@ -200,7 +224,7 @@ export function BubbleTemplateAIChatModal({
     } catch {
       setError(t('settings:pet.templates.ai.fileReadFailed'));
     }
-  }, [t]);
+  }, [t, visionOk]);
 
   const handleRemovePending = useCallback(() => {
     setPending(null);
@@ -366,7 +390,9 @@ export function BubbleTemplateAIChatModal({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".html,.htm,image/*"
+        // T05: shrink accept when the current model lacks vision — HTML
+        // upload still works, image picker is hidden at the OS level.
+        accept={visionOk ? '.html,.htm,image/*' : '.html,.htm'}
         className="hidden"
         aria-label={t('settings:pet.templates.ai.paperclip')}
         onChange={(e) => void handleFileChange(e)}
@@ -374,7 +400,11 @@ export function BubbleTemplateAIChatModal({
       <button
         className="text-t3 hover:text-t1 px-1"
         onClick={() => fileInputRef.current?.click()}
-        title={t('settings:pet.templates.ai.paperclip')}
+        title={
+          visionOk
+            ? t('settings:pet.templates.ai.paperclip')
+            : t('settings:pet.templates.ai.imageNotSupported')
+        }
       ><Paperclip className="w-[16px] h-[16px]" /></button>
     </>
   );
