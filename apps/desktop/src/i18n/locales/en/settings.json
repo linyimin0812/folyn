@@ -217,6 +217,12 @@
       "test": {
         "testing": "Testing…",
         "label": "Test connection"
+      },
+      "fetchModels": {
+        "label": "Fetch models",
+        "fetching": "Fetching…",
+        "empty": "No models returned",
+        "orphan": "not in fetched list"
       }
     }
   },

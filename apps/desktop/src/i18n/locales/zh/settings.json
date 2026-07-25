@@ -217,6 +217,12 @@
       "test": {
         "testing": "测试中…",
         "label": "测试连接"
+      },
+      "fetchModels": {
+        "label": "获取模型",
+        "fetching": "获取中…",
+        "empty": "未获取到模型",
+        "orphan": "已不在可用列表"
       }
     }
   },

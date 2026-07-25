@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavStore } from '@/store/navStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
@@ -12,6 +12,8 @@ import {
   providersByCategory,
   getProviderEntry,
 } from '@/services/providers/catalog';
+import { fetchModels, canFetchModels, isSelectedModelInList } from '@/services/modelRegistry/fetchModels';
+import type { Model } from '@/services/modelRegistry/types';
 import { PluginsSettings } from '@/components/settings/PluginsSettings';
 import { VoiceSettings } from '@/components/settings/VoiceSettings';
 import { FileTemplatesSettings } from '@/components/settings/FileTemplatesSettings';
@@ -23,6 +25,28 @@ import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { Toggle, NAV_GROUPS } from '@/components/settings/primitives';
 import { Lightbulb, Home, Unlock, Sparkles, ClipboardCopy, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+
+// ponytail: option labels can't host styled children, so badges are plain
+// text appended to the id. Pricing goes in the title attr (hover).
+function modelOptionLabel(m: Model, t: (k: string) => string): string {
+  const caps = m.capabilities.map((c) => t(`settings:ai.chat.capability.${c}`)).filter(Boolean);
+  const parts = [m.id];
+  if (caps.length > 0) parts.push(caps.join(' · '));
+  if (m.pricing) {
+    const inPrice = m.pricing.inputPerMtok !== undefined ? `$${m.pricing.inputPerMtok}/M` : '';
+    const outPrice = m.pricing.outputPerMtok !== undefined ? `$${m.pricing.outputPerMtok}/M` : '';
+    const priceStr = [inPrice, outPrice].filter(Boolean).join(' in / ');
+    if (priceStr) parts.push(priceStr);
+  }
+  return parts.join(' · ');
+}
+
+function modelOptionTitle(m: Model): string {
+  const inPrice = m.pricing?.inputPerMtok;
+  const outPrice = m.pricing?.outputPerMtok;
+  if (inPrice === undefined && outPrice === undefined) return '';
+  return `Input: $${inPrice ?? '—'} / Output: $${outPrice ?? '—'} per million tokens`;
+}
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -93,6 +117,18 @@ export function SettingsPage() {
   const [chatTestStatus, setChatTestStatus] = useState<{ testing: boolean; result?: { success: boolean; message: string } }>({ testing: false });
   const [showChatKey, setShowChatKey] = useState(false);
   const [excludeInput, setExcludeInput] = useState<{ value: string } | null>(null);
+  // T02c: model list per-provider fetched on demand. Reset on provider change.
+  const [fetchedModels, setFetchedModels] = useState<Model[] | null>(null);
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [fetchModelError, setFetchModelError] = useState<string | null>(null);
+  // ponytail: switching provider invalidates the fetched list — the previous
+  // provider's models don't apply to the new one, and showing them in the
+  // dropdown would be misleading. Effect-only (vs scattering setFetchedModels
+  // calls in every provider-change handler).
+  useEffect(() => {
+    setFetchedModels(null);
+    setFetchModelError(null);
+  }, [chatProvider]);
 
   return (
     <div className="settings-page flex flex-row max-w-none h-full">
@@ -399,14 +435,64 @@ export function SettingsPage() {
                       </select>
                     </div>
                     <div className="mb-3.5">
-                      <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:ai.chat.model.label')}</div>
-                      <input
-                        className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-                        value={chatModel}
-                        onChange={(e) => setChatModel(e.target.value)}
-                        placeholder={entry.placeholderModel}
-                        autoCapitalize="off"
-                      />
+                      <div className="flex items-center justify-between mb-[5px]">
+                        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2">{t('settings:ai.chat.model.label')}</div>
+                        <button
+                          type="button"
+                          className="text-[10.5px] text-acc hover:underline disabled:text-t3 disabled:no-underline disabled:cursor-not-allowed"
+                          disabled={!canFetchModels(chatProvider, chatApiKey) || fetchingModels}
+                          onClick={async () => {
+                            setFetchingModels(true);
+                            setFetchModelError(null);
+                            try {
+                              const result = await fetchModels({
+                                provider: chatProvider,
+                                apiKey: chatApiKey,
+                                baseUrl: chatBaseUrl || undefined,
+                                azureApiVersion: chatAzureApiVersion || undefined,
+                              });
+                              setFetchedModels(result.models);
+                              if (result.empty) setFetchModelError(t('settings:ai.chat.fetchModels.empty'));
+                            } catch (e) {
+                              setFetchedModels(null);
+                              setFetchModelError(String(e));
+                            } finally {
+                              setFetchingModels(false);
+                            }
+                          }}
+                        >
+                          {fetchingModels ? t('settings:ai.chat.fetchModels.fetching') : t('settings:ai.chat.fetchModels.label')}
+                        </button>
+                      </div>
+                      {fetchedModels && fetchedModels.length > 0 ? (
+                        <select
+                          className="fi2 w-full h-[34px] py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                          value={chatModel}
+                          onChange={(e) => setChatModel(e.target.value as string)}
+                        >
+                          {chatModel && !isSelectedModelInList(chatModel, fetchedModels) && (
+                            <option value={chatModel}>⚠ {chatModel} · {t('settings:ai.chat.fetchModels.orphan')}</option>
+                          )}
+                          {fetchedModels.map((m) => (
+                            <option key={m.id} value={m.id} title={modelOptionTitle(m)}>
+                              {modelOptionLabel(m, t)}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <>
+                          <input
+                            className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                            value={chatModel}
+                            onChange={(e) => setChatModel(e.target.value)}
+                            placeholder={entry.placeholderModel}
+                            autoCapitalize="off"
+                          />
+                          {fetchModelError && (
+                            <div className="text-[10.5px] mt-1" style={{ color: 'var(--red, #f06a6a)' }}>{fetchModelError}</div>
+                          )}
+                        </>
+                      )}
                     </div>
                     {entry.requiresApiKey && (
                       <div className="mb-3.5">
