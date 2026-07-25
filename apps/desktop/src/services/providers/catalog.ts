@@ -7,11 +7,10 @@
  * nothing Rust doesn't need. `rigClientKind` is mirrored in Rust as a routing
  * hint; do not duplicate other fields there.
  *
- * backendReady is a T01-only flag: false for the 5 natives whose Rust arm
- * isn't wired yet (azure / cohere / gemini / huggingface / ollama). T03
- * flips these to true. The 15 OpenAI-compatible-family + Anthropic + OpenAI
- * + 2 compat entries are true from day one — they route through the
- * existing chat.rs arms.
+ * All 20 providers are backendReady=true after T03 — chat.rs has all native
+ * arms wired (anthropic / anthropic-compatible / gemini / azure-openai /
+ * cohere / huggingface / ollama) + the openai-compat fallback for the 11
+ * OpenAI-compat family.
  */
 
 export type ProviderCategory =
@@ -49,8 +48,11 @@ export interface ProviderCatalogEntry {
   /** Routing hint mirrored in Rust. */
   rigClientKind: RigClientKind;
   /**
-   * T01 marker: false for the 5 natives whose chat.rs arm isn't wired yet.
-   * Test/chat shows "backend 待接入" message instead of invoking chat_stream.
+   * All 20 providers have chat.rs arms wired (T01 shipped 15/20, T02 added
+   * Gemini, T03 added Azure/Cohere/HuggingFace/Ollama). The flag remains in
+   * the catalog as a forward-compatibility hook — a future provider can ship
+   * in the dropdown before its chat.rs arm lands, and the test button will
+   * show "backend 待接入" instead of failing with a raw rig error.
    */
   backendReady: boolean;
 }
@@ -91,7 +93,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
     requiresApiKey: true,
     requiresAzureFields: true,
     rigClientKind: 'azure',
-    backendReady: false,
+    backendReady: true,
   },
   {
     id: 'cohere',
@@ -103,7 +105,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
     requiresApiKey: true,
     requiresAzureFields: false,
     rigClientKind: 'cohere',
-    backendReady: false,
+    backendReady: true,
   },
   {
     id: 'gemini',
@@ -115,7 +117,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
     requiresApiKey: true,
     requiresAzureFields: false,
     rigClientKind: 'gemini',
-    backendReady: false,
+    backendReady: true,
   },
   {
     id: 'huggingface',
@@ -127,7 +129,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
     requiresApiKey: true,
     requiresAzureFields: false,
     rigClientKind: 'huggingface',
-    backendReady: false,
+    backendReady: true,
   },
   {
     id: 'ollama',
@@ -139,7 +141,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
     requiresApiKey: false,
     requiresAzureFields: false,
     rigClientKind: 'ollama',
-    backendReady: false,
+    backendReady: true,
   },
   // ── 兼容 (compat escape hatches) ──────────────────────────────
   {

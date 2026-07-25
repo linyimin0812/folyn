@@ -592,6 +592,8 @@ export function SettingsPage() {
                               model: chatModel || entry.placeholderModel,
                               apiKey: chatApiKey,
                               baseUrl: chatBaseUrl || undefined,
+                              azureDeploymentId: chatAzureDeploymentId || undefined,
+                              azureApiVersion: chatAzureApiVersion || undefined,
                             });
                             setChatTestStatus({ testing: false, result });
                             setTimeout(() => setChatTestStatus((s) => ({ ...s, result: undefined })), 6000);

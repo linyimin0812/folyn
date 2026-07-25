@@ -35,6 +35,11 @@ export interface RigChatParams {
   apiKey: string;
   /** Empty/undefined => provider default base URL. */
   baseUrl?: string;
+  /** Azure-only: deployment id (used in Azure URL, not as model name).
+   *  Falls back to `model` if absent. */
+  azureDeploymentId?: string;
+  /** Azure-only: e.g. "2024-10-21". Required when provider = azure-openai. */
+  azureApiVersion?: string;
   /** Optional preamble (system prompt) override. When omitted, the rig
    *  backend uses its built-in default. The Bubble Template AI Agent
    *  passes its feature-specific preamble here. */
@@ -74,6 +79,8 @@ export async function runRigChat(p: RigChatParams): Promise<void> {
       model: p.model,
       apiKey: p.apiKey,
       baseUrl: p.baseUrl ? p.baseUrl : null,
+      azureDeploymentId: p.azureDeploymentId ?? null,
+      azureApiVersion: p.azureApiVersion ?? null,
       prompt: p.prompt,
       preamble: p.preamble ?? null,
       images: p.images && p.images.length > 0 ? p.images : null,
@@ -102,9 +109,11 @@ export async function testChatConnection(params: {
   model: string;
   apiKey: string;
   baseUrl?: string;
+  azureDeploymentId?: string;
+  azureApiVersion?: string;
   timeoutMs?: number;
 }): Promise<ChatTestResult> {
-  const { provider, model, apiKey, baseUrl, timeoutMs = 10000 } = params;
+  const { provider, model, apiKey, baseUrl, azureDeploymentId, azureApiVersion, timeoutMs = 10000 } = params;
   let settled = false;
   return new Promise<ChatTestResult>((resolve) => {
     const timer = setTimeout(() => {
@@ -120,6 +129,8 @@ export async function testChatConnection(params: {
       model,
       apiKey,
       baseUrl,
+      azureDeploymentId,
+      azureApiVersion,
       onEvent: (e) => {
         if (settled) return;
         if (e.type === 'done') {

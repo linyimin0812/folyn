@@ -19,7 +19,8 @@ use rig_core::client::CompletionClient;
 use rig_core::completion::message::{ImageMediaType, MimeType, UserContent};
 use rig_core::message::{Message, ReasoningContent, Text};
 use rig_core::prelude::*; // brings StreamingChat (stream_chat) into scope
-use rig_core::providers::{anthropic, gemini, openai};
+use rig_core::providers::{anthropic, azure, cohere, gemini, huggingface, ollama, openai};
+use rig_core::client::Nothing;
 use rig_core::streaming::StreamedAssistantContent;
 
 use crate::errors::AppError;
@@ -59,10 +60,9 @@ pub struct ImageInput {
 #[serde(rename_all = "camelCase")]
 pub struct ChatParams {
     pub session_id: String,
-    /// `"anthropic" | "openai" | "openai-compatible"`. The last two both use
-    /// the OpenAI client flavor; `openai-compatible` (and any custom base_url)
-    /// sends the preamble as a system *message* so compatible servers don't
-    /// drop it.
+    /// 20 catalog ids. Routes to the correct rig provider client via the
+    /// `match params.provider.as_str()` below. Unknown ids fall through to
+    /// the openai-compat arm.
     pub provider: String,
     /// Optional preamble override. When `None`, the default `PREAMBLE` is
     /// used. The bubble-template AI Agent passes a feature-specific preamble
@@ -76,6 +76,13 @@ pub struct ChatParams {
     /// `UserContent::Image` is provider-agnostic — Anthropic and OpenAI
     /// serialization is handled inside rig. Empty vec / None means text-only.
     pub images: Option<Vec<ImageInput>>,
+    /// Azure-only: deployment id (Azure uses this in the URL, not the model
+    /// name). Falls back to `model` if absent.
+    #[serde(default)]
+    pub azure_deployment_id: Option<String>,
+    /// Azure-only: e.g. "2024-10-21". Required when provider = azure-openai.
+    #[serde(default)]
+    pub azure_api_version: Option<String>,
 }
 
 /// One turn on disk. Decoupled from rig's `Message` so the on-disk format
@@ -159,7 +166,10 @@ pub async fn chat_stream(
     params: ChatParams,
     on_event: Channel<ChatChunk>,
 ) -> Result<(), AppError> {
-    if params.api_key.trim().is_empty() {
+    // ponytail: Ollama runs locally without auth; skip the empty-key guard.
+    // The frontend also gates on `requiresApiKey`, so this is defense-in-depth.
+    let requires_key = params.provider != "ollama";
+    if requires_key && params.api_key.trim().is_empty() {
         on_event
             .send(ChatChunk::Error {
                 message: "Missing API key".into(),
@@ -192,13 +202,17 @@ pub async fn chat_stream(
         params.images.as_deref(),
         &on_event,
     );
-    // ponytail: drain loop is duplicated across the two provider branches
-    // because the concrete stream type (`StreamingResult<OpenAIResp>` vs
-    // `<AnthropicResp>`) can't share a variable, and naming it for a generic
-    // helper hits rig's `pub(crate)` `prompt_request` module. Inference inside
-    // each branch sidesteps both. Factor into a trait-object box
-    // (`Pin<Box<dyn Stream<Item = Result<Option<String>, String>> + Send>>`)
-    // if a 3rd provider lands.
+    // ponytail: drain_loop is duplicated across the 7 native arms (anthropic,
+    // anthropic-compatible, gemini, azure-openai, cohere, huggingface, ollama)
+    // + the openai-compat fallback. The concrete stream type
+    // (`StreamingResult<OpenAIResp>` vs `<AnthropicResp>` vs ...) can't share
+    // a variable, and the original plan was to box into
+    // `Pin<Box<dyn Stream<Item = Result<Option<String>, String>> + Send>>`
+    // once a 3rd provider landed. We didn't — the box would flatten
+    // MultiTurnStreamItem variants to a single `Option<String>`, losing the
+    // Delta vs Thinking distinction that drain_loop relies on. Keeping the
+    // ~5-line duplication per arm is cheaper than a boxed enum + 7 mapping
+    // closures. Re-evaluate if provider count doubles.
     let full: String = match params.provider.as_str() {
         "anthropic" | "anthropic-compatible" => {
             let mut b = anthropic::Client::builder().api_key(params.api_key);
@@ -226,6 +240,83 @@ pub async fn chat_stream(
             let agent = b
                 .build()
                 .map_err(|e| e.to_string())?
+                .agent(params.model.as_str())
+                .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
+                .build();
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
+            drain_loop(&mut stream, &on_event).await?
+        }
+        "azure-openai" => {
+            // Azure uses deployment_id in the URL, not the model name. rig's
+            // azure::Client::agent(deployment_id) treats the string as the
+            // deployment id. Fall back to `model` if the user didn't fill the
+            // dedicated deployment_id field.
+            let endpoint = params
+                .base_url
+                .clone()
+                .ok_or_else(|| "base_url (Azure endpoint) required".to_string())?;
+            let api_version = params
+                .azure_api_version
+                .clone()
+                .ok_or_else(|| "azure_api_version required".to_string())?;
+            let deployment_id = params
+                .azure_deployment_id
+                .clone()
+                .unwrap_or_else(|| params.model.clone());
+            let client = azure::Client::builder()
+                .api_key(params.api_key)
+                .azure_endpoint(endpoint)
+                .api_version(&api_version)
+                .build()
+                .map_err(|e| e.to_string())?;
+            let agent = client
+                .agent(deployment_id.as_str())
+                .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
+                .build();
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
+            drain_loop(&mut stream, &on_event).await?
+        }
+        "cohere" => {
+            let mut b = cohere::Client::builder().api_key(params.api_key);
+            if let Some(url) = params.base_url {
+                b = b.base_url(url);
+            }
+            let agent = b
+                .build()
+                .map_err(|e| e.to_string())?
+                .agent(params.model.as_str())
+                .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
+                .build();
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
+            drain_loop(&mut stream, &on_event).await?
+        }
+        "huggingface" => {
+            let mut b = huggingface::Client::builder().api_key(params.api_key);
+            if let Some(url) = params.base_url {
+                b = b.base_url(url);
+            }
+            let agent = b
+                .build()
+                .map_err(|e| e.to_string())?
+                .agent(params.model.as_str())
+                .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
+                .build();
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
+            drain_loop(&mut stream, &on_event).await?
+        }
+        "ollama" => {
+            let base = params
+                .base_url
+                .clone()
+                .unwrap_or_else(|| "http://localhost:11434/v1".to_string());
+            // ponytail: ollama has no api_key — `Nothing` is rig's marker for
+            // "no auth". Skipping the empty-key guard above lets this arm run.
+            let client = ollama::Client::builder()
+                .api_key(Nothing)
+                .base_url(base)
+                .build()
+                .map_err(|e| e.to_string())?;
+            let agent = client
                 .agent(params.model.as_str())
                 .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
                 .build();
