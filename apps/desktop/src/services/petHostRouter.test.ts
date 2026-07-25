@@ -127,11 +127,11 @@ describe('routePetMenuAction', () => {
     expect(showMock).toHaveBeenCalledTimes(1);
   });
 
-  it('open-ai-settings sets navStore to settings/ai and focuses main', async () => {
-    useNavStore.setState({ currentPage: 'editor', settingsTab: 'general' });
+  it('open-ai-settings sets navStore to settings/models and focuses main', async () => {
+    useNavStore.setState({ currentPage: 'editor', settingsTab: 'appearance' });
     await routePetMenuAction('open-ai-settings');
     expect(useNavStore.getState().currentPage).toBe('settings');
-    expect(useNavStore.getState().settingsTab).toBe('ai');
+    expect(useNavStore.getState().settingsTab).toBe('models');
     expect(showMock).toHaveBeenCalledTimes(1);
   });
 });

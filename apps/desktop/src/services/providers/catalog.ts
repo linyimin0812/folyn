@@ -33,7 +33,7 @@ export type RigClientKind =
 export interface ProviderCatalogEntry {
   id: string;
   category: ProviderCategory;
-  /** i18n key under `settings:ai.chat.provider.<id>` for the display label. */
+  /** i18n key under `settings:models.provider.<id>` for the display label. */
   i18nKey: string;
   /** Default base URL baked in (null = no default, user must fill). */
   defaultBaseUrl: string | null;
@@ -62,7 +62,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'anthropic',
     category: 'native',
-    i18nKey: 'settings:ai.chat.provider.anthropic',
+    i18nKey: 'settings:models.provider.anthropic',
     defaultBaseUrl: null,
     placeholderModel: 'claude-sonnet-4-6',
     apiKeyUrl: 'https://console.anthropic.com/settings/keys',
@@ -74,7 +74,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'openai',
     category: 'native',
-    i18nKey: 'settings:ai.chat.provider.openai',
+    i18nKey: 'settings:models.provider.openai',
     defaultBaseUrl: null,
     placeholderModel: 'gpt-5.2',
     apiKeyUrl: 'https://platform.openai.com/api-keys',
@@ -86,7 +86,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'azure-openai',
     category: 'native',
-    i18nKey: 'settings:ai.chat.provider.azure-openai',
+    i18nKey: 'settings:models.provider.azure-openai',
     defaultBaseUrl: null,
     placeholderModel: 'gpt-4o',
     apiKeyUrl: 'https://portal.azure.com',
@@ -98,7 +98,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'cohere',
     category: 'native',
-    i18nKey: 'settings:ai.chat.provider.cohere',
+    i18nKey: 'settings:models.provider.cohere',
     defaultBaseUrl: null,
     placeholderModel: 'command-r-plus',
     apiKeyUrl: 'https://dashboard.cohere.com/api-keys',
@@ -110,7 +110,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'gemini',
     category: 'native',
-    i18nKey: 'settings:ai.chat.provider.gemini',
+    i18nKey: 'settings:models.provider.gemini',
     defaultBaseUrl: null,
     placeholderModel: 'gemini-1.5-pro',
     apiKeyUrl: 'https://aistudio.google.com/apikey',
@@ -122,7 +122,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'huggingface',
     category: 'native',
-    i18nKey: 'settings:ai.chat.provider.huggingface',
+    i18nKey: 'settings:models.provider.huggingface',
     defaultBaseUrl: null,
     placeholderModel: 'meta-llama/Meta-Llama-3-70B',
     apiKeyUrl: 'https://huggingface.co/settings/tokens',
@@ -134,7 +134,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'ollama',
     category: 'local',
-    i18nKey: 'settings:ai.chat.provider.ollama',
+    i18nKey: 'settings:models.provider.ollama',
     defaultBaseUrl: 'http://localhost:11434/v1',
     placeholderModel: 'llama3.2',
     apiKeyUrl: null,
@@ -147,7 +147,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'openai-compatible',
     category: 'compat',
-    i18nKey: 'settings:ai.chat.provider.openai-compatible',
+    i18nKey: 'settings:models.provider.openai-compatible',
     defaultBaseUrl: null,
     placeholderModel: 'gpt-4o-mini',
     apiKeyUrl: null,
@@ -159,7 +159,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'anthropic-compatible',
     category: 'compat',
-    i18nKey: 'settings:ai.chat.provider.anthropic-compatible',
+    i18nKey: 'settings:models.provider.anthropic-compatible',
     defaultBaseUrl: null,
     placeholderModel: 'claude-sonnet-4-6',
     apiKeyUrl: null,
@@ -172,7 +172,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'deepseek',
     category: 'openai-family',
-    i18nKey: 'settings:ai.chat.provider.deepseek',
+    i18nKey: 'settings:models.provider.deepseek',
     defaultBaseUrl: 'https://api.deepseek.com',
     placeholderModel: 'deepseek-chat',
     apiKeyUrl: 'https://platform.deepseek.com/api_keys',
@@ -184,7 +184,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'eternalai',
     category: 'openai-family',
-    i18nKey: 'settings:ai.chat.provider.eternalai',
+    i18nKey: 'settings:models.provider.eternalai',
     defaultBaseUrl: 'https://api.eternalai.org/v1',
     placeholderModel: 'llama-3.1-70b',
     apiKeyUrl: 'https://eternalai.org',
@@ -196,7 +196,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'galadriel',
     category: 'openai-family',
-    i18nKey: 'settings:ai.chat.provider.galadriel',
+    i18nKey: 'settings:models.provider.galadriel',
     defaultBaseUrl: 'https://api.galadriel.com/v1',
     placeholderModel: 'galadriel',
     apiKeyUrl: 'https://galadriel.ai',
@@ -208,7 +208,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'groq',
     category: 'openai-family',
-    i18nKey: 'settings:ai.chat.provider.groq',
+    i18nKey: 'settings:models.provider.groq',
     defaultBaseUrl: 'https://api.groq.com/openai/v1',
     placeholderModel: 'llama-3.3-70b-versatile',
     apiKeyUrl: 'https://console.groq.com/keys',
@@ -220,7 +220,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'hyperbolic',
     category: 'openai-family',
-    i18nKey: 'settings:ai.chat.provider.hyperbolic',
+    i18nKey: 'settings:models.provider.hyperbolic',
     defaultBaseUrl: 'https://api.hyperbolic.xyz/v1',
     placeholderModel: 'llama-3.3-70b',
     apiKeyUrl: 'https://hyperbolic.xyz/settings/keys',
@@ -232,7 +232,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'mira',
     category: 'openai-family',
-    i18nKey: 'settings:ai.chat.provider.mira',
+    i18nKey: 'settings:models.provider.mira',
     defaultBaseUrl: 'https://api.mira.network/v1',
     placeholderModel: 'Mira-3',
     apiKeyUrl: 'https://mira.network',
@@ -244,7 +244,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'moonshot',
     category: 'openai-family',
-    i18nKey: 'settings:ai.chat.provider.moonshot',
+    i18nKey: 'settings:models.provider.moonshot',
     defaultBaseUrl: 'https://api.moonshot.cn/v1',
     placeholderModel: 'moonshot-v1-8k',
     apiKeyUrl: 'https://platform.moonshot.cn/console/api-keys',
@@ -256,7 +256,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'openrouter',
     category: 'openai-family',
-    i18nKey: 'settings:ai.chat.provider.openrouter',
+    i18nKey: 'settings:models.provider.openrouter',
     defaultBaseUrl: 'https://openrouter.ai/api/v1',
     placeholderModel: 'anthropic/claude-3.5-sonnet',
     apiKeyUrl: 'https://openrouter.ai/keys',
@@ -268,7 +268,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'perplexity',
     category: 'openai-family',
-    i18nKey: 'settings:ai.chat.provider.perplexity',
+    i18nKey: 'settings:models.provider.perplexity',
     defaultBaseUrl: 'https://api.perplexity.ai',
     placeholderModel: 'sonar-pro',
     apiKeyUrl: 'https://www.perplexity.ai/settings/api',
@@ -280,7 +280,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'together',
     category: 'openai-family',
-    i18nKey: 'settings:ai.chat.provider.together',
+    i18nKey: 'settings:models.provider.together',
     defaultBaseUrl: 'https://api.together.xyz/v1',
     placeholderModel: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
     apiKeyUrl: 'https://api.together.xyz/settings/api-keys',
@@ -292,7 +292,7 @@ export const PROVIDER_CATALOG: readonly ProviderCatalogEntry[] = [
   {
     id: 'xai',
     category: 'openai-family',
-    i18nKey: 'settings:ai.chat.provider.xai',
+    i18nKey: 'settings:models.provider.xai',
     defaultBaseUrl: 'https://api.x.ai/v1',
     placeholderModel: 'grok-2',
     apiKeyUrl: 'https://console.x.ai',

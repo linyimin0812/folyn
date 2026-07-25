@@ -152,9 +152,10 @@ export async function routePetMenuAction(
       // Secondary windows (voice-orb caption link, pet-panel chat CTA) emit
       // this because they cannot touch the main window's navStore directly
       // (separate JS realm). Routing here in the main window sets the page
-      // + tab and focuses the editor so the user lands on AI settings.
+      // + tab and focuses the editor so the user lands on model-services
+      // settings (the chat/LLM tab — pet/voice CTAs are about chat config).
       useNavStore.getState().setCurrentPage('settings');
-      useNavStore.getState().setSettingsTab('ai');
+      useNavStore.getState().setSettingsTab('models');
       await focusMain();
       break;
   }
