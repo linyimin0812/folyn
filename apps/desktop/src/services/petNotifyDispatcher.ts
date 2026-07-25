@@ -39,6 +39,11 @@ export function decideNotification(
  *  This is the entry point the main-window `pet://notify` listener calls. */
 export async function dispatchNotification(payload: PetBubblePayload): Promise<void> {
   if (!payload?.text) return;
+  // ponytail: capture every dispatched payload into the inbox regardless of
+  // routing (bubble / corner / off) — the inbox is the persistent record of
+  // what came in, separate from the ephemeral toast. Single chokepoint so
+  // every trigger source (HTTP, schedule, chat) lands here.
+  usePetStore.getState().addInboxItem(payload);
   const form = usePetStore.getState().notificationForm;
   const { bubble, corner } = decideNotification(form);
   if (bubble) {

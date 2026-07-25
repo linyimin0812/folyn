@@ -41,5 +41,20 @@
   },
   "bubble": {
     "closeAria": "Close"
+  },
+  "tabs": {
+    "chat": "Chat",
+    "actions": "Actions",
+    "inbox": "Inbox"
+  },
+  "inbox": {
+    "empty": "No notifications",
+    "clear": "Clear",
+    "kind": {
+      "info": "info",
+      "reminder": "reminder",
+      "message": "message",
+      "event": "event"
+    }
   }
 }

@@ -41,5 +41,20 @@
   },
   "bubble": {
     "closeAria": "关闭"
+  },
+  "tabs": {
+    "chat": "对话",
+    "actions": "操作",
+    "inbox": "收件箱"
+  },
+  "inbox": {
+    "empty": "暂无通知",
+    "clear": "清空",
+    "kind": {
+      "info": "信息",
+      "reminder": "提醒",
+      "message": "消息",
+      "event": "事件"
+    }
   }
 }

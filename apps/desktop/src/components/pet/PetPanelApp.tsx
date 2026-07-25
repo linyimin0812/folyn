@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { isTauri } from '@/utils/platform';
 import { usePetStore } from '@/store/petStore';
+import { hydrateAllStores } from '@/store/settingsPersistence';
 import {
   clampPanelPosition,
   computePanelPosition,
@@ -10,8 +12,9 @@ import {
 } from './petPosition';
 import { PetLauncher } from './PetLauncher';
 import { PetChat } from './PetChat';
+import { PetInbox } from './PetInbox';
 
-type PetPanelTab = 'actions' | 'chat';
+type PetPanelTab = 'actions' | 'chat' | 'inbox';
 
 interface PetCursorProbeResult {
   cursor_x: number;
@@ -72,6 +75,7 @@ export function PetPanelApp() {
   // flips `is-visible` on → CSS transitions opacity 0→1 + scale 0.98→1 over
   // 180ms from the stable final frame.
   const [isVisible, setVisible] = useState(false);
+  const { t } = useTranslation();
   const setPetPanelPosition = usePetStore((s) => s.setPetPanelPosition);
   const setPetPanelSize = usePetStore((s) => s.setPetPanelSize);
 
@@ -146,6 +150,36 @@ export function PetPanelApp() {
         });
       } catch (err) {
         console.warn('[pet-panel] panel-fade-in listener failed:', err);
+      }
+    })();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  // ── Cross-window settings sync ──
+  // The panel window holds its own petStore instance; without this listener
+  // it would never see writes from the main window (e.g. `addInboxItem` on
+  // `pet://notify`) because those only update the main window's store and
+  // broadcast via `pet://settings-updated`. Mirrors the listener in
+  // PetBubbleApp / PetCornerApp — same channel, same `hydrateAllStores` call.
+  // Without this, the Inbox tab stays empty even after a curl triggers a
+  // notification: the main window recorded the item, but the panel's
+  // petStore.inboxItems was never updated.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        unlisten = await listen<Record<string, unknown>>(
+          'pet://settings-updated',
+          (event) => {
+            if (event.payload) hydrateAllStores(event.payload);
+          },
+        );
+      } catch (err) {
+        console.warn('[pet-panel] settings-updated listener failed:', err);
       }
     })();
     return () => {
@@ -427,7 +461,7 @@ export function PetPanelApp() {
             className={`pet-panel-tab${tab === 'chat' ? ' is-active' : ''}`}
             onClick={() => setTab('chat')}
           >
-            Chat
+            {t('pet:tabs.chat')}
           </button>
           <button
             type="button"
@@ -436,7 +470,16 @@ export function PetPanelApp() {
             className={`pet-panel-tab${tab === 'actions' ? ' is-active' : ''}`}
             onClick={() => setTab('actions')}
           >
-            Actions
+            {t('pet:tabs.actions')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'inbox'}
+            className={`pet-panel-tab${tab === 'inbox' ? ' is-active' : ''}`}
+            onClick={() => setTab('inbox')}
+          >
+            {t('pet:tabs.inbox')}
           </button>
         </nav>
         <button
@@ -450,7 +493,7 @@ export function PetPanelApp() {
         </button>
       </header>
       <main className="pet-panel-body">
-        {tab === 'chat' ? <PetChat /> : <PetLauncher />}
+        {tab === 'chat' ? <PetChat /> : tab === 'actions' ? <PetLauncher /> : <PetInbox />}
       </main>
     </div>
   );

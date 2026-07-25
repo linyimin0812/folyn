@@ -361,6 +361,118 @@ html.is-pet-panel-window body {
   font-size: 13px;
 }
 
+/* ── Inbox tab ──
+ * Scrollable list of received-notification snapshots. Each row is a button
+ * that re-fires the original payload's jump. Toolbar holds a count + Clear. */
+.pet-inbox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+.pet-inbox-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--t2, #5a6275);
+}
+.pet-inbox-clear {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--brd, #e2e5ee);
+  border-radius: 6px;
+  color: var(--t2, #5a6275);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.pet-inbox-clear:hover {
+  background: var(--hov, #eef0f5);
+  color: var(--t1, #1f2330);
+}
+.pet-inbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: auto;
+  min-height: 0;
+  padding-right: 2px;
+}
+.pet-inbox-row {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--brd, #e2e5ee);
+  border-radius: 8px;
+  background: var(--panel, #ffffff);
+  color: var(--t1, #1f2330);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: default;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.pet-inbox-row.is-clickable {
+  cursor: pointer;
+}
+.pet-inbox-row.is-clickable:hover {
+  background: var(--hov, #eef0f5);
+  border-color: var(--acc, #3a6ef0);
+}
+.pet-inbox-row:disabled {
+  cursor: default;
+  color: var(--t2, #5a6275);
+}
+.pet-inbox-row-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.pet-inbox-title {
+  flex: 1;
+  font-weight: 600;
+  color: var(--t1, #1f2330);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pet-inbox-time {
+  color: var(--t3, #8a92a3);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.pet-inbox-kind {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--hov, #eef0f5);
+  color: var(--t2, #5a6275);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pet-inbox-text {
+  color: var(--t2, #5a6275);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pet-inbox-empty {
+  color: var(--t3, #8a92a3);
+  font-size: 13px;
+  padding: 24px 0;
+  text-align: center;
+}
+
 /* ── Launcher grid (PR2) ──
  * 8 buttons in a 2-column × 4-row grid. Each button is a vertical stack of
  * icon + label. Fits the 600×840 panel with room below for the chat slot. */
