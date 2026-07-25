@@ -51,21 +51,31 @@ function modelOptionTitle(m: Model): string {
 }
 
 // ponytail: tiny status dot — grey/idle, yellow/loading, green/success,
-// red/error. Title attr carries the error message for hover. Inlined
-// here (vs a separate component file) because it's used in one place.
-function FetchStatusDot({ status, error }: { status: 'idle' | 'loading' | 'success' | 'error'; error?: string | null }) {
+// red/error. Title attr carries the provider id + error message for hover.
+// Inlined here (vs a separate component file) because it's used in one place.
+function FetchStatusDot({
+  status,
+  error,
+  label,
+}: {
+  status: 'idle' | 'loading' | 'success' | 'error';
+  error?: string | null;
+  label?: string;
+}) {
   if (status === 'idle') return null;
   const color =
     status === 'loading' ? 'var(--yellow, #f5c518)'
     : status === 'success' ? 'var(--green, #22a863)'
     : 'var(--red, #f06a6a)';
-  const title =
+  const parts = [
+    label,
     status === 'error' ? (error ?? 'error')
     : status === 'loading' ? 'fetching…'
-    : 'fetched';
+    : 'fetched',
+  ].filter(Boolean);
   return (
     <span
-      title={title}
+      title={parts.join(' · ')}
       style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: color }}
     />
   );
@@ -157,7 +167,30 @@ export function SettingsPage() {
   const fetchStatusForCurrent = useModelRegistryStore((s) => s.fetchStatusByProvider[chatProvider] ?? 'idle');
   const fetchErrorForCurrent = useModelRegistryStore((s) => s.fetchErrorByProvider[chatProvider] ?? null);
   const fetchModelsForProvider = useModelRegistryStore((s) => s.fetchModelsForProvider);
+  // T06: subscribe to the per-provider config map so we can iterate
+  // configured providers in the "重新拉取全部" button. chatProvider is the
+  // "current" slot; providerConfigs holds all the others.
+  const providerConfigs = useAiConfigStore((s) => s.providerConfigs);
+  // T06: per-provider status grid. Map of providerId → fetch status, for
+  // every provider the user has configured (or whose status is non-idle).
+  const fetchStatusMap = useModelRegistryStore((s) => s.fetchStatusByProvider);
+  const fetchErrorMap = useModelRegistryStore((s) => s.fetchErrorByProvider);
   const refetchAll = useModelRegistryStore((s) => s.refetchAll);
+  // T06: compute the configured-provider list inline (O(20), no memoization
+  // needed). Reactive: depends on chatProvider + providerConfigs (both
+  // subscribed above). Used by the dot grid + the refetch button's disabled.
+  const configuredIds: string[] = [];
+  for (const entry of PROVIDER_CATALOG) {
+    if (!entry.requiresApiKey) {
+      if (chatProvider === entry.id || providerConfigs[entry.id]) {
+        configuredIds.push(entry.id);
+      }
+      continue;
+    }
+    const slot = providerConfigs[entry.id];
+    if (slot && slot.apiKey.trim() !== '') configuredIds.push(entry.id);
+  }
+  const hasConfiguredProviders = configuredIds.length > 0;
   const [refetchAllStatus, setRefetchAllStatus] = useState<{ running: boolean; summary?: string }>({ running: false });
 
   return (
@@ -441,27 +474,40 @@ export function SettingsPage() {
               <div className="flex items-center justify-between mb-[3px]">
                 <div className="text-[length:calc(var(--ui-font-size)-1px)] font-bold text-t1">{t('settings:ai.chat.title')}</div>
                 <div className="flex items-center gap-2">
-                  {/* ponytail: per-provider status dot. Minimal T04 only the
-                      current provider has a status (single-provider config
-                      model); a future ticket that refactors aiConfigStore to
-                      per-provider config will expand this to a per-provider
-                      grid. */}
-                  <FetchStatusDot status={fetchStatusForCurrent} error={fetchErrorForCurrent} />
+                  {/* T06: per-provider status dot grid — one dot per
+                      configured provider (those with api_key, or Ollama
+                      when it's been picked). Idle providers (never
+                      configured) are omitted. */}
+                  {configuredIds.map((pid) => (
+                    <FetchStatusDot
+                      key={pid}
+                      status={fetchStatusMap[pid] ?? 'idle'}
+                      error={fetchErrorMap[pid] ?? null}
+                      label={pid}
+                    />
+                  ))}
                   <button
                     type="button"
                     className="text-[10.5px] text-acc hover:underline disabled:text-t3 disabled:no-underline disabled:cursor-not-allowed"
-                    disabled={!canFetchModelsFromStore(chatProvider, chatApiKey) || refetchAllStatus.running}
-                    title={canFetchModelsFromStore(chatProvider, chatApiKey) ? '' : t('settings:ai.chat.refetchAllHint')}
+                    disabled={!hasConfiguredProviders || refetchAllStatus.running}
+                    title={!hasConfiguredProviders ? t('settings:ai.chat.refetchAllHint') : ''}
                     onClick={async () => {
+                      const ids = useAiConfigStore.getState().configuredProviderIds();
+                      if (ids.length === 0) return;
                       setRefetchAllStatus({ running: true });
-                      const result = await refetchAll([
-                        {
-                          providerId: chatProvider,
-                          apiKey: chatApiKey,
-                          baseUrl: chatBaseUrl || undefined,
-                          azureApiVersion: chatAzureApiVersion || undefined,
-                        },
-                      ]);
+                      // Build the configured list from providerConfigs slots.
+                      // Ollama (no api_key) sends an empty string — the
+                      // Rust side skips the empty-key check for ollama.
+                      const configured = ids.map((pid) => {
+                        const slot = useAiConfigStore.getState().providerConfigs[pid];
+                        return {
+                          providerId: pid,
+                          apiKey: slot?.apiKey ?? '',
+                          baseUrl: slot?.baseUrl || undefined,
+                          azureApiVersion: slot?.azureApiVersion || undefined,
+                        };
+                      });
+                      const result = await refetchAll(configured);
                       const summary = t('settings:ai.chat.refetchAllSummary', {
                         success: result.success,
                         failed: result.failed,

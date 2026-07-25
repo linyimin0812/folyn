@@ -15,6 +15,8 @@ beforeEach(() => {
     chatBaseUrl: '',
     chatAzureDeploymentId: '',
     chatAzureApiVersion: '',
+    chatThinkingBudget: 1024,
+    providerConfigs: {},
   });
 });
 
@@ -146,5 +148,121 @@ describe('useAiConfigStore.hydrate', () => {
 
   it('PROVIDER_IDS has 20 entries (18 rig + 2 compat)', () => {
     expect(PROVIDER_IDS).toHaveLength(20);
+  });
+});
+
+// T06: per-provider config slots.
+describe('useAiConfigStore per-provider config (T06)', () => {
+  it('setChatApiKey writes into providerConfigs[currentProvider]', () => {
+    useAiConfigStore.getState().setChatApiKey('sk-abc');
+    const s = useAiConfigStore.getState();
+    expect(s.chatApiKey).toBe('sk-abc');
+    expect(s.providerConfigs.anthropic?.apiKey).toBe('sk-abc');
+  });
+
+  it('setChatProvider saves current slot, loads new slot', () => {
+    useAiConfigStore.getState().setChatApiKey('sk-anth');
+    useAiConfigStore.getState().setChatProvider('openai');
+    const afterSwitch = useAiConfigStore.getState();
+    expect(afterSwitch.chatProvider).toBe('openai');
+    // Old slot preserved under anthropic
+    expect(afterSwitch.providerConfigs.anthropic?.apiKey).toBe('sk-anth');
+    // New slot's flat mirror is empty (openai had no slot)
+    expect(afterSwitch.chatApiKey).toBe('');
+  });
+
+  it('switching back restores the saved slot', () => {
+    useAiConfigStore.getState().setChatApiKey('sk-anth');
+    useAiConfigStore.getState().setChatBaseUrl('https://anthropic.example');
+    useAiConfigStore.getState().setChatThinkingBudget(2048);
+    useAiConfigStore.getState().setChatProvider('openai');
+    // Set OpenAI's slot
+    useAiConfigStore.getState().setChatApiKey('sk-openai');
+    // Switch back
+    useAiConfigStore.getState().setChatProvider('anthropic');
+    const s = useAiConfigStore.getState();
+    expect(s.chatApiKey).toBe('sk-anth');
+    expect(s.chatBaseUrl).toBe('https://anthropic.example');
+    expect(s.chatThinkingBudget).toBe(2048);
+    // OpenAI's slot preserved even though we're not on it
+    expect(s.providerConfigs.openai?.apiKey).toBe('sk-openai');
+  });
+
+  it('setChatThinkingBudget writes into the current slot', () => {
+    useAiConfigStore.getState().setChatThinkingBudget(4096);
+    expect(useAiConfigStore.getState().providerConfigs.anthropic?.thinkingBudget).toBe(4096);
+  });
+
+  it('configuredProviderIds returns providers with non-empty apiKey', () => {
+    useAiConfigStore.getState().setChatApiKey('sk-anth');
+    // Switch to openai, set key
+    useAiConfigStore.getState().setChatProvider('openai');
+    useAiConfigStore.getState().setChatApiKey('sk-openai');
+    const ids = useAiConfigStore.getState().configuredProviderIds();
+    expect(ids).toContain('anthropic');
+    expect(ids).toContain('openai');
+    expect(ids).toHaveLength(2);
+  });
+
+  it('configuredProviderIds includes Ollama only when it has a slot or is current', () => {
+    // Ollama has requiresApiKey=false — only included if user picked it or set a slot
+    useAiConfigStore.getState().setChatApiKey('sk-anth');
+    expect(useAiConfigStore.getState().configuredProviderIds()).toEqual(['anthropic']);
+    // Set chatProvider=ollama once → included
+    useAiConfigStore.getState().setChatProvider('ollama');
+    const ids = useAiConfigStore.getState().configuredProviderIds();
+    expect(ids).toContain('ollama');
+    expect(ids).toContain('anthropic');
+  });
+
+  it('hydrates old flat-key blob into providerConfigs[legacyId]', () => {
+    // Simulate a pre-T06 blob: flat chatApiKey/chatBaseUrl/etc + chatProvider=anthropic
+    useAiConfigStore.getState().hydrate({
+      chatProvider: 'anthropic',
+      chatApiKey: 'sk-legacy',
+      chatBaseUrl: 'https://legacy.example',
+      chatAzureDeploymentId: 'legacy-deploy',
+      chatAzureApiVersion: '2024-01-01',
+      chatThinkingBudget: 512,
+    });
+    const s = useAiConfigStore.getState();
+    expect(s.providerConfigs.anthropic?.apiKey).toBe('sk-legacy');
+    expect(s.providerConfigs.anthropic?.baseUrl).toBe('https://legacy.example');
+    expect(s.providerConfigs.anthropic?.azureDeploymentId).toBe('legacy-deploy');
+    expect(s.providerConfigs.anthropic?.azureApiVersion).toBe('2024-01-01');
+    expect(s.providerConfigs.anthropic?.thinkingBudget).toBe(512);
+    // Flat mirrors populated from the slot
+    expect(s.chatApiKey).toBe('sk-legacy');
+  });
+
+  it('hydrates new providerConfigs blob as-is', () => {
+    useAiConfigStore.getState().hydrate({
+      chatProvider: 'openai',
+      providerConfigs: {
+        openai: {
+          apiKey: 'sk-new',
+          baseUrl: '',
+          azureDeploymentId: '',
+          azureApiVersion: '',
+          thinkingBudget: 8192,
+        },
+      },
+    });
+    const s = useAiConfigStore.getState();
+    expect(s.chatProvider).toBe('openai');
+    expect(s.providerConfigs.openai?.apiKey).toBe('sk-new');
+    expect(s.chatApiKey).toBe('sk-new');
+    expect(s.chatThinkingBudget).toBe(8192);
+  });
+
+  it('persists providerConfigs key', () => {
+    const setSpy = vi.spyOn(storageClient, 'set');
+    useAiConfigStore.getState().setChatApiKey('sk-persist');
+    vi.advanceTimersByTime(400);
+    const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1] as Record<string, unknown>;
+    expect(payload.providerConfigs).toBeDefined();
+    const pc = payload.providerConfigs as Record<string, unknown>;
+    expect(pc.anthropic).toBeDefined();
+    setSpy.mockRestore();
   });
 });
