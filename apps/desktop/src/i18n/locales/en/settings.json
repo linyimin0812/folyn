@@ -151,11 +151,44 @@
     "chat": {
       "title": "Chat mode",
       "description": "Multi-turn chat via rig direct LLM (no CLI, no tool/file access). ask/agent still use the CLI above.",
+      "refetchAll": "Refetch all models",
+      "refetchAllHint": "Configure at least one provider first",
+      "backendNotReady": "Backend not wired yet — use another provider",
+      "category": {
+        "native": "Native",
+        "compat": "Compatible",
+        "openai-family": "OpenAI-compatible family",
+        "local": "Local"
+      },
+      "capability": {
+        "vision": "vision",
+        "reasoning": "reasoning",
+        "web-search": "web",
+        "function-call": "tools"
+      },
       "provider": {
         "label": "Provider",
         "anthropic": "Anthropic (Claude)",
         "openai": "OpenAI",
-        "openaiCompatible": "OpenAI-compatible (custom baseUrl)"
+        "openaiCompatible": "OpenAI-compatible (custom baseUrl)",
+        "azure-openai": "Azure OpenAI",
+        "cohere": "Cohere",
+        "gemini": "Google Gemini",
+        "huggingface": "HuggingFace",
+        "ollama": "Ollama (local)",
+        "openai-compatible": "OpenAI-compatible (custom baseUrl)",
+        "anthropic-compatible": "Anthropic-compatible (custom baseUrl)",
+        "deepseek": "DeepSeek",
+        "eternalai": "EternalAI",
+        "galadriel": "Galadriel",
+        "groq": "Groq",
+        "hyperbolic": "Hyperbolic",
+        "mira": "Mira",
+        "moonshot": "Moonshot",
+        "openrouter": "OpenRouter",
+        "perplexity": "Perplexity",
+        "together": "TogetherAI",
+        "xai": "xAI"
       },
       "model": {
         "label": "Model"
@@ -163,7 +196,16 @@
       "apiKey": {
         "label": "API Key",
         "show": "Show API Key",
-        "hide": "Hide API Key"
+        "hide": "Hide API Key",
+        "getKey": "Get API key →"
+      },
+      "azure": {
+        "deploymentId": {
+          "label": "Deployment ID"
+        },
+        "apiVersion": {
+          "label": "API Version"
+        }
       },
       "baseUrl": {
         "label": "Base URL (optional)",

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { useAiConfigStore } from './aiConfigStore';
+import { useAiConfigStore, PERSIST_KEYS_AI_CONFIG, type ChatProvider } from './aiConfigStore';
 import { storageClient } from '@/utils/storageClient';
+import { PROVIDER_CATALOG, PROVIDER_IDS } from '@/services/providers/catalog';
 
 beforeEach(() => {
   storageClient.__resetForTesting();
@@ -12,6 +13,8 @@ beforeEach(() => {
     chatModel: 'claude-sonnet-4-6',
     chatApiKey: '',
     chatBaseUrl: '',
+    chatAzureDeploymentId: '',
+    chatAzureApiVersion: '',
   });
 });
 
@@ -39,6 +42,21 @@ describe('useAiConfigStore setters', () => {
     useAiConfigStore.getState().setChatApiKey('sk-xxx');
     expect(useAiConfigStore.getState().chatApiKey).toBe('sk-xxx');
   });
+
+  it('setChatAzureDeploymentId updates + persists', () => {
+    const setSpy = vi.spyOn(storageClient, 'set');
+    useAiConfigStore.getState().setChatAzureDeploymentId('my-deploy');
+    expect(useAiConfigStore.getState().chatAzureDeploymentId).toBe('my-deploy');
+    vi.advanceTimersByTime(400);
+    const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1] as Record<string, unknown>;
+    expect(payload.chatAzureDeploymentId).toBe('my-deploy');
+    setSpy.mockRestore();
+  });
+
+  it('setChatAzureApiVersion updates + persists', () => {
+    useAiConfigStore.getState().setChatAzureApiVersion('2024-10-21');
+    expect(useAiConfigStore.getState().chatAzureApiVersion).toBe('2024-10-21');
+  });
 });
 
 describe('useAiConfigStore.hydrate', () => {
@@ -50,6 +68,8 @@ describe('useAiConfigStore.hydrate', () => {
       chatModel: 'gpt-4o',
       chatApiKey: 'sk-hydrated',
       chatBaseUrl: 'https://api.example.com',
+      chatAzureDeploymentId: 'deploy-x',
+      chatAzureApiVersion: '2024-10-21',
     });
     const s = useAiConfigStore.getState();
     expect(s.cliAdapter).toBe('gemini');
@@ -58,6 +78,8 @@ describe('useAiConfigStore.hydrate', () => {
     expect(s.chatModel).toBe('gpt-4o');
     expect(s.chatApiKey).toBe('sk-hydrated');
     expect(s.chatBaseUrl).toBe('https://api.example.com');
+    expect(s.chatAzureDeploymentId).toBe('deploy-x');
+    expect(s.chatAzureApiVersion).toBe('2024-10-21');
   });
 
   it('coerces invalid chatProvider to default (keeps anthropic)', () => {
@@ -69,5 +91,33 @@ describe('useAiConfigStore.hydrate', () => {
     useAiConfigStore.getState().hydrate({ chatModel: 'gpt-4' });
     expect(useAiConfigStore.getState().cliAdapter).toBe('claude');
     expect(useAiConfigStore.getState().chatModel).toBe('gpt-4');
+  });
+
+  // Regression: the three old ids must hydrate verbatim, no migration.
+  it('hydrates the three legacy ids verbatim', () => {
+    for (const id of ['anthropic', 'openai', 'openai-compatible'] as const) {
+      useAiConfigStore.setState({ chatProvider: 'anthropic' });
+      useAiConfigStore.getState().hydrate({ chatProvider: id });
+      expect(useAiConfigStore.getState().chatProvider).toBe(id);
+    }
+  });
+
+  // Parameterized: every catalog id must hydrate.
+  it.each(PROVIDER_CATALOG.map((p) => [p.id] as [string]))(
+    'hydrates catalog id %s',
+    (id) => {
+      useAiConfigStore.setState({ chatProvider: 'anthropic' });
+      useAiConfigStore.getState().hydrate({ chatProvider: id });
+      expect(useAiConfigStore.getState().chatProvider).toBe(id as ChatProvider);
+    },
+  );
+
+  it('PERSIST_KEYS_AI_CONFIG includes azure fields', () => {
+    expect(PERSIST_KEYS_AI_CONFIG).toContain('chatAzureDeploymentId');
+    expect(PERSIST_KEYS_AI_CONFIG).toContain('chatAzureApiVersion');
+  });
+
+  it('PROVIDER_IDS has 20 entries (18 rig + 2 compat)', () => {
+    expect(PROVIDER_IDS).toHaveLength(20);
   });
 });

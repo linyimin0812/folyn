@@ -151,11 +151,44 @@
     "chat": {
       "title": "Chat 模式",
       "description": "多轮对话，经 rig 直连 LLM（不经过 CLI，无工具/文件访问）。ask/agent 仍用上面的 CLI。",
+      "refetchAll": "重新拉取全部",
+      "refetchAllHint": "请先配置至少一个 provider",
+      "backendNotReady": "Backend 待接入，请使用其他 provider",
+      "category": {
+        "native": "原生",
+        "compat": "兼容",
+        "openai-family": "OpenAI 兼容家族",
+        "local": "本地"
+      },
+      "capability": {
+        "vision": "视觉",
+        "reasoning": "推理",
+        "web-search": "联网",
+        "function-call": "工具"
+      },
       "provider": {
         "label": "Provider",
         "anthropic": "Anthropic（Claude）",
         "openai": "OpenAI",
-        "openaiCompatible": "OpenAI 兼容（自定义 baseUrl）"
+        "openaiCompatible": "OpenAI 兼容（自定义 baseUrl）",
+        "azure-openai": "Azure OpenAI",
+        "cohere": "Cohere",
+        "gemini": "Google Gemini",
+        "huggingface": "HuggingFace",
+        "ollama": "Ollama（本地）",
+        "openai-compatible": "OpenAI 兼容（自定义 baseUrl）",
+        "anthropic-compatible": "Anthropic 兼容（自定义 baseUrl）",
+        "deepseek": "DeepSeek",
+        "eternalai": "EternalAI",
+        "galadriel": "Galadriel",
+        "groq": "Groq",
+        "hyperbolic": "Hyperbolic",
+        "mira": "Mira",
+        "moonshot": "Moonshot",
+        "openrouter": "OpenRouter",
+        "perplexity": "Perplexity",
+        "together": "TogetherAI",
+        "xai": "xAI"
       },
       "model": {
         "label": "模型"
@@ -163,7 +196,16 @@
       "apiKey": {
         "label": "API Key",
         "show": "显示 API Key",
-        "hide": "隐藏 API Key"
+        "hide": "隐藏 API Key",
+        "getKey": "获取 API key →"
+      },
+      "azure": {
+        "deploymentId": {
+          "label": "Deployment ID"
+        },
+        "apiVersion": {
+          "label": "API Version"
+        }
       },
       "baseUrl": {
         "label": "Base URL（可选）",

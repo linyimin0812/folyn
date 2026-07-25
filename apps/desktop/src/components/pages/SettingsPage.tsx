@@ -2,10 +2,16 @@ import { useState } from 'react';
 import { useNavStore } from '@/store/navStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
-import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useAiConfigStore, type ChatProvider } from '@/store/aiConfigStore';
 import { usePrefsStore } from '@/store/prefsStore';
 import { listAdapters } from '@quill/cli-adapter';
 import { testChatConnection } from '@/services/rigChat';
+import {
+  PROVIDER_CATALOG,
+  PROVIDER_CATEGORY_ORDER,
+  providersByCategory,
+  getProviderEntry,
+} from '@/services/providers/catalog';
 import { PluginsSettings } from '@/components/settings/PluginsSettings';
 import { VoiceSettings } from '@/components/settings/VoiceSettings';
 import { FileTemplatesSettings } from '@/components/settings/FileTemplatesSettings';
@@ -69,12 +75,16 @@ export function SettingsPage() {
   const chatModel = useAiConfigStore((s) => s.chatModel);
   const chatApiKey = useAiConfigStore((s) => s.chatApiKey);
   const chatBaseUrl = useAiConfigStore((s) => s.chatBaseUrl);
+  const chatAzureDeploymentId = useAiConfigStore((s) => s.chatAzureDeploymentId);
+  const chatAzureApiVersion = useAiConfigStore((s) => s.chatAzureApiVersion);
   const setCliAdapter = useAiConfigStore((s) => s.setCliAdapter);
   const setCliPath = useAiConfigStore((s) => s.setCliPath);
   const setChatProvider = useAiConfigStore((s) => s.setChatProvider);
   const setChatModel = useAiConfigStore((s) => s.setChatModel);
   const setChatApiKey = useAiConfigStore((s) => s.setChatApiKey);
   const setChatBaseUrl = useAiConfigStore((s) => s.setChatBaseUrl);
+  const setChatAzureDeploymentId = useAiConfigStore((s) => s.setChatAzureDeploymentId);
+  const setChatAzureApiVersion = useAiConfigStore((s) => s.setChatAzureApiVersion);
   const [testStatus, setTestStatus] = useState<{ testing: boolean; result?: { success: boolean; message: string } }>({ testing: false });
   // ponytail: reuse the same state shape as `testStatus` for the Chat-mode ping
   // test. Separate state because both sections render simultaneously inside the
@@ -364,99 +374,156 @@ export function SettingsPage() {
             <div className="mt-5 pt-4 border-t border-brd2">
               <div className="text-[length:calc(var(--ui-font-size)-1px)] font-bold text-t1 mb-[3px]">{t('settings:ai.chat.title')}</div>
               <div className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 mb-3">{t('settings:ai.chat.description')}</div>
-              <div className="mb-3.5">
-                <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:ai.chat.provider.label')}</div>
-                <select
-                  className="fi2 w-full h-[34px] py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-                  value={chatProvider}
-                  onChange={(e) => setChatProvider(e.target.value as 'anthropic' | 'openai' | 'openai-compatible')}
-                >
-                  <option value="anthropic">{t('settings:ai.chat.provider.anthropic')}</option>
-                  <option value="openai">{t('settings:ai.chat.provider.openai')}</option>
-                  <option value="openai-compatible">{t('settings:ai.chat.provider.openaiCompatible')}</option>
-                </select>
-              </div>
-              <div className="mb-3.5">
-                <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:ai.chat.model.label')}</div>
-                <input
-                  className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-                  value={chatModel}
-                  onChange={(e) => setChatModel(e.target.value)}
-                  placeholder={chatProvider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-5.2'}
-                  autoCapitalize="off"
-                />
-              </div>
-              <div className="mb-3.5">
-                <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:ai.chat.apiKey.label')}</div>
-                <div className="relative">
-                  <input
-                    type={showChatKey ? 'text' : 'password'}
-                    className="fi2 w-full py-[7px] px-2.5 pr-[34px] rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-                    value={chatApiKey}
-                    onChange={(e) => setChatApiKey(e.target.value)}
-                    placeholder="sk-…"
-                    autoCapitalize="off"
-                    autoComplete="off"
-                  />
-                  <button
-                    type="button"
-                    aria-label={showChatKey ? t('settings:ai.chat.apiKey.hide') : t('settings:ai.chat.apiKey.show')}
-                    title={showChatKey ? t('settings:ai.chat.apiKey.hide') : t('settings:ai.chat.apiKey.show')}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 w-[26px] h-[26px] flex items-center justify-center rounded bg-transparent border-none text-t3 cursor-pointer hover:bg-hov hover:text-t1"
-                    onClick={() => setShowChatKey((v) => !v)}
-                  >
-                    {showChatKey ? (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                        <line x1="1" y1="1" x2="23" y2="23" />
-                      </svg>
-                    ) : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
+              {(() => {
+                const entry = getProviderEntry(chatProvider) ?? PROVIDER_CATALOG[0];
+                return (
+                  <>
+                    <div className="mb-3.5">
+                      <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:ai.chat.provider.label')}</div>
+                      <select
+                        className="fi2 w-full h-[34px] py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                        value={chatProvider}
+                        onChange={(e) => setChatProvider(e.target.value as ChatProvider)}
+                      >
+                        {PROVIDER_CATEGORY_ORDER.map((cat) => {
+                          const items = providersByCategory(cat);
+                          if (items.length === 0) return null;
+                          return (
+                            <optgroup key={cat} label={t(`settings:ai.chat.category.${cat}`)}>
+                              {items.map((p) => (
+                                <option key={p.id} value={p.id}>{t(p.i18nKey)}</option>
+                              ))}
+                            </optgroup>
+                          );
+                        })}
+                      </select>
+                    </div>
+                    <div className="mb-3.5">
+                      <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:ai.chat.model.label')}</div>
+                      <input
+                        className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                        value={chatModel}
+                        onChange={(e) => setChatModel(e.target.value)}
+                        placeholder={entry.placeholderModel}
+                        autoCapitalize="off"
+                      />
+                    </div>
+                    {entry.requiresApiKey && (
+                      <div className="mb-3.5">
+                        <div className="flex items-center justify-between mb-[5px]">
+                          <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2">{t('settings:ai.chat.apiKey.label')}</div>
+                          {entry.apiKeyUrl && (
+                            <a
+                              href={entry.apiKeyUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10.5px] text-acc hover:underline"
+                            >
+                              {t('settings:ai.chat.apiKey.getKey')}
+                            </a>
+                          )}
+                        </div>
+                        <div className="relative">
+                          <input
+                            type={showChatKey ? 'text' : 'password'}
+                            className="fi2 w-full py-[7px] px-2.5 pr-[34px] rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                            value={chatApiKey}
+                            onChange={(e) => setChatApiKey(e.target.value)}
+                            placeholder="sk-…"
+                            autoCapitalize="off"
+                            autoComplete="off"
+                          />
+                          <button
+                            type="button"
+                            aria-label={showChatKey ? t('settings:ai.chat.apiKey.hide') : t('settings:ai.chat.apiKey.show')}
+                            title={showChatKey ? t('settings:ai.chat.apiKey.hide') : t('settings:ai.chat.apiKey.show')}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 w-[26px] h-[26px] flex items-center justify-center rounded bg-transparent border-none text-t3 cursor-pointer hover:bg-hov hover:text-t1"
+                            onClick={() => setShowChatKey((v) => !v)}
+                          >
+                            {showChatKey ? (
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                                <line x1="1" y1="1" x2="23" y2="23" />
+                              </svg>
+                            ) : (
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      </div>
                     )}
-                  </button>
-                </div>
-              </div>
-              <div className="mb-1">
-                <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:ai.chat.baseUrl.label')}</div>
-                <input
-                  className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-                  value={chatBaseUrl}
-                  onChange={(e) => setChatBaseUrl(e.target.value)}
-                  placeholder={chatProvider === 'openai-compatible' ? 'http://localhost:11434/v1' : t('settings:ai.chat.baseUrl.placeholder')}
-                  autoCapitalize="off"
-                />
-                <div className="text-[10.5px] text-t3 mt-1">{chatProvider === 'anthropic' ? t('settings:ai.chat.baseUrl.anthropicHint') : chatProvider === 'openai' ? t('settings:ai.chat.baseUrl.openaiHint') : t('settings:ai.chat.baseUrl.openaiCompatibleHint')}</div>
-              </div>
-              <div style={{ display: 'flex', gap: 7, alignItems: 'center', marginTop: 8 }}>
-                <button
-                  className="btn btn-g btn-sm"
-                  disabled={chatTestStatus.testing || !chatApiKey}
-                  onClick={async () => {
-                    setChatTestStatus({ testing: true });
-                    try {
-                      const result = await testChatConnection({
-                        provider: chatProvider,
-                        model: chatModel || (chatProvider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-4o-mini'),
-                        apiKey: chatApiKey,
-                        baseUrl: chatBaseUrl || undefined,
-                      });
-                      setChatTestStatus({ testing: false, result });
-                      setTimeout(() => setChatTestStatus((s) => ({ ...s, result: undefined })), 6000);
-                    } catch (err) {
-                      setChatTestStatus({ testing: false, result: { success: false, message: String(err) } });
-                      setTimeout(() => setChatTestStatus((s) => ({ ...s, result: undefined })), 6000);
-                    }
-                  }}
-                >{chatTestStatus.testing ? t('settings:ai.chat.test.testing') : t('settings:ai.chat.test.label')}</button>
-                {chatTestStatus.result && (
-                  <span style={{ fontSize: 11, color: chatTestStatus.result.success ? 'var(--green, #22a863)' : 'var(--red, #f06a6a)' }}>
-                    {chatTestStatus.result.success ? '✓ ' : '✗ '}{chatTestStatus.result.message}
-                  </span>
-                )}
-              </div>
+                    {entry.requiresAzureFields && (
+                      <>
+                        <div className="mb-3.5">
+                          <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:ai.chat.azure.deploymentId.label')}</div>
+                          <input
+                            className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                            value={chatAzureDeploymentId}
+                            onChange={(e) => setChatAzureDeploymentId(e.target.value)}
+                            placeholder="my-deployment"
+                            autoCapitalize="off"
+                          />
+                        </div>
+                        <div className="mb-3.5">
+                          <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:ai.chat.azure.apiVersion.label')}</div>
+                          <input
+                            className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                            value={chatAzureApiVersion}
+                            onChange={(e) => setChatAzureApiVersion(e.target.value)}
+                            placeholder="2024-10-21"
+                            autoCapitalize="off"
+                          />
+                        </div>
+                      </>
+                    )}
+                    <div className="mb-1">
+                      <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:ai.chat.baseUrl.label')}</div>
+                      <input
+                        className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                        value={chatBaseUrl}
+                        onChange={(e) => setChatBaseUrl(e.target.value)}
+                        placeholder={entry.defaultBaseUrl ?? t('settings:ai.chat.baseUrl.placeholder')}
+                        autoCapitalize="off"
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: 7, alignItems: 'center', marginTop: 8 }}>
+                      <button
+                        className="btn btn-g btn-sm"
+                        disabled={chatTestStatus.testing || (entry.requiresApiKey && !chatApiKey) || !entry.backendReady}
+                        onClick={async () => {
+                          if (!entry.backendReady) {
+                            setChatTestStatus({ testing: false, result: { success: false, message: t('settings:ai.chat.backendNotReady') } });
+                            setTimeout(() => setChatTestStatus((s) => ({ ...s, result: undefined })), 6000);
+                            return;
+                          }
+                          setChatTestStatus({ testing: true });
+                          try {
+                            const result = await testChatConnection({
+                              provider: chatProvider,
+                              model: chatModel || entry.placeholderModel,
+                              apiKey: chatApiKey,
+                              baseUrl: chatBaseUrl || undefined,
+                            });
+                            setChatTestStatus({ testing: false, result });
+                            setTimeout(() => setChatTestStatus((s) => ({ ...s, result: undefined })), 6000);
+                          } catch (err) {
+                            setChatTestStatus({ testing: false, result: { success: false, message: String(err) } });
+                            setTimeout(() => setChatTestStatus((s) => ({ ...s, result: undefined })), 6000);
+                          }
+                        }}
+                      >{chatTestStatus.testing ? t('settings:ai.chat.test.testing') : t('settings:ai.chat.test.label')}</button>
+                      {chatTestStatus.result && (
+                        <span style={{ fontSize: 11, color: chatTestStatus.result.success ? 'var(--green, #22a863)' : 'var(--red, #f06a6a)' }}>
+                          {chatTestStatus.result.success ? '✓ ' : '✗ '}{chatTestStatus.result.message}
+                        </span>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}
