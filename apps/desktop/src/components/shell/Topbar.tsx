@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { Sun, Moon } from 'lucide-react';
 
 /** File types that support meaningful multi-mode switching — show the view-mode segment. */
-const SHOW_VIEW_MODE_FILE_TYPES = new Set(['markdown', 'json', 'csv', 'mmap', 'dbml', 'html']);
+const SHOW_VIEW_MODE_FILE_TYPES = new Set(['markdown', 'json', 'csv', 'mmap', 'dbml', 'html', 'svg']);
 
 const VIEW_MODE_ICONS: Record<ViewMode, React.ReactNode> = {
   split: (
