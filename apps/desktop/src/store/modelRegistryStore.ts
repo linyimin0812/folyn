@@ -101,7 +101,12 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
       schedulePersist();
       return { ok: true };
     } catch (e) {
-      const msg = String(e);
+      // ponytail: Tauri rejects with the serialized AppError object
+      // {category, detail}; String(obj) would yield "[object Object]".
+      // Pull `detail` when present, else fall back to String(e).
+      const msg = typeof e === 'object' && e && 'detail' in e
+        ? String((e as { detail: unknown }).detail ?? e)
+        : String(e);
       set((s) => ({
         fetchStatusByProvider: { ...s.fetchStatusByProvider, [providerId]: 'error' },
         fetchErrorByProvider: { ...s.fetchErrorByProvider, [providerId]: msg },

@@ -81,6 +81,8 @@ function FetchStatusDot({
   );
 }
 
+const EMPTY_MODELS: Model[] = [];
+
 export function SettingsPage() {
   const { t } = useTranslation();
   const settingsTab = useNavStore((s) => s.settingsTab);
@@ -157,7 +159,9 @@ export function SettingsPage() {
   // providerId naturally. Two-store selector pattern: chatProvider comes
   // from aiConfigStore, the lists come from modelRegistryStore keyed by
   // that provider.
-  const modelsForCurrent = useModelRegistryStore((s) => s.modelsByProvider[chatProvider] ?? []);
+  // ponytail: stable empty array so the selector returns the same reference
+  // when the provider key is absent — otherwise useSyncExternalStore loops.
+  const modelsForCurrent = useModelRegistryStore((s) => s.modelsByProvider[chatProvider] ?? EMPTY_MODELS);
   // T05: selectedModel = catalog entry or fetched-list entry for the current
   // chatModel. Unknown (orphan / never-fetched) → undefined → reasoning UI
   // hidden (no model to reason about). Catalog-driven so the UI updates even
