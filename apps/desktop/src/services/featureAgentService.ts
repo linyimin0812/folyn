@@ -64,6 +64,11 @@ export interface FeatureAgentEntry {
   claudeDoc: string;
   /** 调用时是否额外传 `--add-dir <vault>`（schedule 需要跨目录访问 `__daily__/`）。 */
   addVaultDir?: boolean;
+  /** 本 feature agent 跑在哪个 CLI adapter 上（impl-decided，不受用户选器影响）。
+   *  缺省 `'claude'`。scope A：v1 全部留 claude；`'pi'` 时 seedAgentFiles 额外播
+   *  `<vault>/__{feature}__/AGENTS.md`（pi 在 cwd 自动发现）。
+   *  pi 路径的 web/addDir 缺口在切该 feature 到 pi 时再处理。 */
+  adapterId?: 'claude' | 'pi';
 }
 
 /**
@@ -132,6 +137,23 @@ export function agentFilePathOf(feature: string): string | null {
 export function claudeMdPathOf(feature: string): string | null {
   const entry = getFeatureAgentEntry(feature);
   return entry ? claudeMdPath(entry.feature) : null;
+}
+
+/** pi feature-agent 上下文文件路径：`<vault>/__{feature}__/AGENTS.md`。
+ *  pi 在 cwd 自动发现 `AGENTS.md`（等价于 claude 发现 `.claude/CLAUDE.md`）。
+ *  未注册返回 null。 */
+export function piContextFilePath(feature: string): string | null {
+  const entry = getFeatureAgentEntry(feature);
+  return entry ? `${featureDir(entry.feature)}/AGENTS.md` : null;
+}
+
+/** pi 侧播种目标（仅当 entry.adapterId==='pi'）：写 `<vault>/__{feature}__/AGENTS.md`，
+ *  内容为 canonical CLAUDE.md（feature 上下文散文，工具无关，复用，不另起 pi 原生资产）。
+ *  adapterId!='pi' → 空数组（claude 路径不走 pi 上下文播种）。 */
+export function piSeedTargets(entry: FeatureAgentEntry): { path: string; content: string }[] {
+  if ((entry.adapterId ?? 'claude') !== 'pi') return [];
+  const path = piContextFilePath(entry.feature);
+  return path ? [{ path, content: entry.claudeDoc }] : [];
 }
 
 /**
@@ -228,6 +250,25 @@ export async function seedAgentFiles(manager: VaultManager): Promise<SeedAgentRe
         const msg = err instanceof Error ? err.message : String(err);
         console.warn(`[featureAgent] seed agent failed for "${entry.feature}" at ${agentPath}:`, err);
         results.push({ feature: entry.feature, path: agentPath, status: 'failed', error: msg });
+      }
+    }
+
+    // pi feature-agent 上下文：adapterId='pi' 时额外写 `<vault>/__{feature}__/AGENTS.md`
+    // （pi 在 cwd 自动发现 AGENTS.md）。write-if-missing，与 claude 路径同策略。
+    // scope A：无 entry 设 adapterId='pi' → piSeedTargets 返 []，本块为 no-op。
+    for (const target of piSeedTargets(entry)) {
+      try {
+        await manager.readFile(target.path);
+        results.push({ feature: entry.feature, path: target.path, status: 'exists' });
+      } catch {
+        try {
+          await manager.writeFile(target.path, target.content);
+          results.push({ feature: entry.feature, path: target.path, status: 'seeded' });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn(`[featureAgent] seed pi context failed for "${entry.feature}" at ${target.path}:`, err);
+          results.push({ feature: entry.feature, path: target.path, status: 'failed', error: msg });
+        }
       }
     }
   }

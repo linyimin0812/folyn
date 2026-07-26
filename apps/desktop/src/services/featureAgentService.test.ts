@@ -80,6 +80,8 @@ import {
   getFeatureAgentSendOptions,
   agentFilePathOf,
   claudeMdPathOf,
+  piContextFilePath,
+  piSeedTargets,
 } from './featureAgentService';
 
 /** Feature 内 agent 文件路径（与 SUT 内部一致，用于 fake manager 文件键）。 */
@@ -228,6 +230,33 @@ describe('agentFilePathOf / claudeMdPathOf', () => {
   it('未注册的 feature 返回 null', () => {
     expect(agentFilePathOf('daily')).toBeNull();
     expect(claudeMdPathOf('daily')).toBeNull();
+  });
+});
+
+describe('piContextFilePath / piSeedTargets (pi feature-agent context)', () => {
+  it('piContextFilePath 返回 __{feature}__/AGENTS.md（pi 在 cwd 自动发现）', () => {
+    expect(piContextFilePath('study')).toBe('__study__/AGENTS.md');
+    expect(piContextFilePath('wiki')).toBe('__wiki__/AGENTS.md');
+  });
+
+  it('piSeedTargets: adapterId=pi 的 entry → AGENTS.md（内容为 canonical CLAUDE.md）', () => {
+    const entry = getFeatureAgentEntry('study')!;
+    const piEntry = { ...entry, adapterId: 'pi' as const };
+    const targets = piSeedTargets(piEntry);
+    expect(targets).toHaveLength(1);
+    expect(targets[0].path).toBe('__study__/AGENTS.md');
+    expect(targets[0].content).toBe(entry.claudeDoc);
+  });
+
+  it('piSeedTargets: adapterId=claude 的 entry → 空数组（不播 pi 上下文）', () => {
+    const entry = getFeatureAgentEntry('study')!;
+    expect(piSeedTargets(entry)).toEqual([]);
+  });
+
+  it('FEATURE_AGENTS 默认 adapterId=claude（scope A：无 feature 跑 pi）', () => {
+    for (const e of FEATURE_AGENTS) {
+      expect(e.adapterId ?? 'claude').toBe('claude');
+    }
   });
 });
 
