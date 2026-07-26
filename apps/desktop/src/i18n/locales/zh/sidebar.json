@@ -39,7 +39,8 @@
     "addToChat": "添加文件到对话",
     "ingestToWiki": "摄入到 Wiki",
     "rename": "重命名",
-    "delete": "删除"
+    "delete": "删除",
+    "move": "移动到..."
   },
   "sidebarActions": {
     "deleteConfirm": {
@@ -51,7 +52,13 @@
       "folderContentsHint": "文件夹内的所有内容也将被删除"
     },
     "cancel": "取消",
-    "delete": "删除"
+    "delete": "删除",
+    "moveDialog": {
+      "title": "移动到",
+      "confirm": "移动",
+      "noTargets": "没有其他可移动到的文件夹",
+      "vaultRoot": "仓库根目录"
+    }
   },
   "calendar": {
     "weekdays": ["日", "一", "二", "三", "四", "五", "六"],

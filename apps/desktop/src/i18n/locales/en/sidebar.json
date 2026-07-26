@@ -39,7 +39,8 @@
     "addToChat": "Add file to chat",
     "ingestToWiki": "Ingest to Wiki",
     "rename": "Rename",
-    "delete": "Delete"
+    "delete": "Delete",
+    "move": "Move to..."
   },
   "sidebarActions": {
     "deleteConfirm": {
@@ -51,7 +52,13 @@
       "folderContentsHint": "Everything inside the folder will also be deleted"
     },
     "cancel": "Cancel",
-    "delete": "Delete"
+    "delete": "Delete",
+    "moveDialog": {
+      "title": "Move to",
+      "confirm": "Move",
+      "noTargets": "No other folders to move to",
+      "vaultRoot": "Vault root"
+    }
   },
   "calendar": {
     "weekdays": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],

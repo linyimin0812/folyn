@@ -1,9 +1,10 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useEditorStore } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { usePrefsStore } from '@/store/prefsStore';
 import { FileIcon } from '@/components/icons/FileIcon';
+import type { VaultEntry } from '@quill/vault-provider';
 
 /* -------------------------------------------------------------------------- */
 /*  useSidebarActions hook                                                     */
@@ -193,6 +194,114 @@ export function useSidebarActions({ handleFileClick, setExpandedDirs }: UseSideb
     confirmDelete,
     deleteItem,
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  MoveDialog                                                                 */
+/* -------------------------------------------------------------------------- */
+
+interface MoveDialogProps {
+  source: { path: string; type: 'file' | 'dir'; name: string };
+  fileTree: VaultEntry[];
+  onCancel: () => void;
+  onConfirm: (targetDir: string) => Promise<void>;
+}
+
+interface DirRow {
+  path: string;
+  name: string;
+  depth: number;
+}
+
+function collectDirs(entries: VaultEntry[], depth = 0, acc: DirRow[] = []): DirRow[] {
+  for (const entry of entries) {
+    if (entry.type === 'dir') {
+      acc.push({ path: entry.path, name: entry.name, depth });
+      if (entry.children) collectDirs(entry.children, depth + 1, acc);
+    }
+  }
+  return acc;
+}
+
+export function MoveDialog({ source, fileTree, onCancel, onConfirm }: MoveDialogProps): React.JSX.Element {
+  const { t } = useTranslation();
+  const [selected, setSelected] = useState<string | null>(null);
+  const [moving, setMoving] = useState(false);
+
+  const dirs = useMemo(() => collectDirs(fileTree), [fileTree]);
+
+  // ponytail: vault root is also a valid target — represent it as the empty
+  // path '' so moveFiles writes the file to root. Source's own parent is a
+  // no-op, the source itself (if dir) and its descendants are illegal.
+  const parentDir = source.path.includes('/') ? source.path.substring(0, source.path.lastIndexOf('/')) : '';
+
+  const isDisabled = (dirPath: string): boolean => {
+    if (dirPath === parentDir) return true;
+    if (source.type === 'dir') {
+      if (dirPath === source.path) return true;
+      if (dirPath.startsWith(source.path + '/')) return true;
+    }
+    return false;
+  };
+
+  const handleConfirm = useCallback(async () => {
+    if (selected === null || moving) return;
+    setMoving(true);
+    await onConfirm(selected);
+    setMoving(false);
+  }, [selected, moving, onConfirm]);
+
+  const hasValidTargets = dirs.some((d) => !isDisabled(d.path)) || !isDisabled('');
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/35 flex items-center justify-center" onClick={onCancel}>
+      <div className="bg-panel rounded-[10px] py-5 px-6 min-w-[320px] max-w-[420px] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="text-[15px] font-semibold text-t1 mb-3">{t('sidebar:sidebarActions.moveDialog.title')}</div>
+        {hasValidTargets ? (
+          <div className="max-h-[55vh] overflow-y-auto py-1 mb-4 border border-brd rounded-md">
+            <button
+              type="button"
+              disabled={isDisabled('')}
+              className={`w-full text-left py-1 px-3 text-[12px] cursor-pointer border-none ${selected === '' ? 'bg-act text-t1' : isDisabled('') ? 'text-t3 cursor-not-allowed' : 'text-t2 hover:bg-hov hover:text-t1'}`}
+              style={{ paddingLeft: '12px' }}
+              onClick={() => !isDisabled('') && setSelected('')}
+            >
+              <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 6 }}><FileIcon filename="" isDir /></span>
+              {t('sidebar:sidebarActions.moveDialog.vaultRoot')}
+            </button>
+            {dirs.map((d) => {
+              const disabled = isDisabled(d.path);
+              return (
+                <button
+                  key={d.path}
+                  type="button"
+                  disabled={disabled}
+                  className={`w-full text-left py-1 px-3 text-[12px] cursor-pointer border-none ${selected === d.path ? 'bg-act text-t1' : disabled ? 'text-t3 cursor-not-allowed' : 'text-t2 hover:bg-hov hover:text-t1'}`}
+                  style={{ paddingLeft: `${12 + d.depth * 14}px` }}
+                  onClick={() => !disabled && setSelected(d.path)}
+                >
+                  <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 6 }}><FileIcon filename="" isDir /></span>
+                  {d.name}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-[13px] text-t3 mb-4">{t('sidebar:sidebarActions.moveDialog.noTargets')}</div>
+        )}
+        <div className="flex justify-end gap-2">
+          <button className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-brd font-ui transition-all duration-[140ms] bg-panel text-t2 hover:bg-hov" onClick={onCancel}>{t('sidebar:sidebarActions.cancel')}</button>
+          <button
+            className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-acc font-ui transition-all duration-[140ms] bg-acc text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={selected === null || moving || !hasValidTargets}
+            onClick={handleConfirm}
+          >
+            {t('sidebar:sidebarActions.moveDialog.confirm')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /* -------------------------------------------------------------------------- */

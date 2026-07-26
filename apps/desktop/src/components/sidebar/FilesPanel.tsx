@@ -25,7 +25,7 @@ import { setNewItemStarter } from '@/services/newItemBridge';
 import { flattenTree } from '@/utils/treeUtils';
 import { useDragDrop } from './useDragDrop';
 import { FileTreeItem } from './FileTreeItem';
-import { useSidebarActions, DeleteConfirmDialog, NewItemInput } from './SidebarActions';
+import { useSidebarActions, DeleteConfirmDialog, MoveDialog, NewItemInput } from './SidebarActions';
 import { ContextMenu } from './ContextMenu';
 import type { ContextMenuData } from './ContextMenu';
 import { useSidebarContext } from './SidebarContext';
@@ -203,6 +203,7 @@ export function FilesPanel(): React.JSX.Element {
   }, [activeTabId, tabs]);
 
   const [contextMenu, setContextMenu] = useState<ContextMenuData | null>(null);
+  const [moveSource, setMoveSource] = useState<{ path: string; type: 'file' | 'dir'; name: string } | null>(null);
 
   const handleContextMenu = useCallback((e: React.MouseEvent, path: string, name: string, type: 'file' | 'dir') => {
     e.preventDefault();
@@ -468,6 +469,20 @@ export function FilesPanel(): React.JSX.Element {
         />
       )}
 
+      {/* Move dialog */}
+      {moveSource && (
+        <MoveDialog
+          source={moveSource}
+          fileTree={fileTree}
+          onCancel={() => setMoveSource(null)}
+          onConfirm={async (targetDir) => {
+            await vaultMoveFiles([moveSource.path], targetDir);
+            setSelectedPaths(new Set());
+            setMoveSource(null);
+          }}
+        />
+      )}
+
       {/* Context menu */}
       <ContextMenu
         menu={contextMenu}
@@ -475,6 +490,10 @@ export function FilesPanel(): React.JSX.Element {
         onStartRename={startRename}
         onDeleteItem={deleteItem}
         onStartNewItem={startNewItem}
+        onStartMove={(path, type) => {
+          const name = path.includes('/') ? path.substring(path.lastIndexOf('/') + 1) : path;
+          setMoveSource({ path, type, name });
+        }}
         pinnedPaths={pinnedPaths}
         onTogglePin={togglePin}
       />
