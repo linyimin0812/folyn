@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useAiConfigStore, PERSIST_KEYS_AI_CONFIG, type ChatProvider } from './aiConfigStore';
 import { storageClient } from '@/utils/storageClient';
-import { PROVIDER_CATALOG, PROVIDER_IDS } from '@/services/providers/catalog';
+import { PROVIDER_CATALOG, PROVIDER_IDS, type CustomProvider } from '@/services/providers/catalog';
 
 beforeEach(() => {
   storageClient.__resetForTesting();
@@ -17,6 +17,8 @@ beforeEach(() => {
     chatAzureApiVersion: '',
     chatThinkingBudget: 1024,
     providerConfigs: {},
+    customProviders: [],
+    enabledProviders: {},
   });
 });
 
@@ -146,8 +148,8 @@ describe('useAiConfigStore.hydrate', () => {
     expect(useAiConfigStore.getState().chatThinkingBudget).toBe(1024);
   });
 
-  it('PROVIDER_IDS has 20 entries (18 rig + 2 compat)', () => {
-    expect(PROVIDER_IDS).toHaveLength(20);
+  it('PROVIDER_IDS has 16 entries (14 rig + 2 compat)', () => {
+    expect(PROVIDER_IDS).toHaveLength(16);
   });
 });
 
@@ -264,5 +266,130 @@ describe('useAiConfigStore per-provider config (T06)', () => {
     const pc = payload.providerConfigs as Record<string, unknown>;
     expect(pc.anthropic).toBeDefined();
     setSpy.mockRestore();
+  });
+});
+
+describe('useAiConfigStore custom providers (T08)', () => {
+  it('addCustomProvider creates an entry with a custom- id, appends to customProviders', () => {
+    const id = useAiConfigStore.getState().addCustomProvider({
+      displayName: 'My Provider',
+      baseUrl: 'https://example.com/v1',
+      apiKeyUrl: null,
+      category: 'openai',
+    });
+    expect(id).toMatch(/^custom-/);
+    const s = useAiConfigStore.getState();
+    const cp = s.customProviders.find((p) => p.id === id);
+    expect(cp?.displayName).toBe('My Provider');
+    expect(cp?.baseUrl).toBe('https://example.com/v1');
+    expect(cp?.category).toBe('openai');
+    expect(cp?.createdAt).toBeTypeOf('number');
+  });
+
+  it('addCustomProvider trims displayName + baseUrl; empty name defaults to "Custom"', () => {
+    const id = useAiConfigStore.getState().addCustomProvider({
+      displayName: '  ',
+      baseUrl: '  https://x.com/v1  ',
+      category: 'gemini',
+    });
+    const cp = useAiConfigStore.getState().customProviders.find((p) => p.id === id);
+    expect(cp?.displayName).toBe('Custom');
+    expect(cp?.baseUrl).toBe('https://x.com/v1');
+  });
+
+  it('updateCustomProvider patches fields without changing id/createdAt', () => {
+    const id = useAiConfigStore.getState().addCustomProvider({
+      displayName: 'A',
+      baseUrl: 'https://a.com',
+      category: 'openai',
+    });
+    const before = useAiConfigStore.getState().customProviders.find((p) => p.id === id);
+    useAiConfigStore.getState().updateCustomProvider(id, { displayName: 'B', baseUrl: 'https://b.com' });
+    const after = useAiConfigStore.getState().customProviders.find((p) => p.id === id);
+    expect(after?.displayName).toBe('B');
+    expect(after?.baseUrl).toBe('https://b.com');
+    expect(after?.createdAt).toBe(before?.createdAt);
+  });
+
+  it('removeCustomProvider deletes entry + cleans enabledProviders + providerConfigs slot', () => {
+    const id = useAiConfigStore.getState().addCustomProvider({
+      displayName: 'A',
+      baseUrl: 'https://a.com',
+      category: 'openai',
+    });
+    useAiConfigStore.getState().setProviderEnabled(id, true);
+    useAiConfigStore.getState().setChatApiKey('sk-xxx');
+    useAiConfigStore.getState().setChatProvider(id as ChatProvider);
+    useAiConfigStore.getState().removeCustomProvider(id);
+    const s = useAiConfigStore.getState();
+    expect(s.customProviders.find((p) => p.id === id)).toBeUndefined();
+    expect(s.enabledProviders[id]).toBeUndefined();
+    expect(s.providerConfigs[id]).toBeUndefined();
+    // Removing the active chatProvider falls back to 'anthropic'.
+    expect(s.chatProvider).toBe('anthropic');
+  });
+
+  it('removeCustomProvider is a no-op for an unknown id', () => {
+    const before = useAiConfigStore.getState().customProviders.length;
+    useAiConfigStore.getState().removeCustomProvider('custom-does-not-exist');
+    expect(useAiConfigStore.getState().customProviders.length).toBe(before);
+  });
+
+  it('setProviderEnabled toggles the flag', () => {
+    useAiConfigStore.getState().setProviderEnabled('openai', true);
+    expect(useAiConfigStore.getState().enabledProviders.openai).toBe(true);
+    useAiConfigStore.getState().setProviderEnabled('openai', false);
+    expect(useAiConfigStore.getState().enabledProviders.openai).toBe(false);
+  });
+});
+
+describe('useAiConfigStore hydrate migration (T08)', () => {
+  it('pre-T08 blob without enabledProviders gets chatProvider enabled', () => {
+    useAiConfigStore.getState().hydrate({
+      chatProvider: 'openai',
+      chatModel: 'gpt-5.2',
+      chatApiKey: 'sk-xxx',
+    });
+    const s = useAiConfigStore.getState();
+    expect(s.chatProvider).toBe('openai');
+    expect(s.enabledProviders).toEqual({ openai: true });
+    expect(s.customProviders).toEqual([]);
+  });
+
+  it('blob with enabledProviders preserves them', () => {
+    useAiConfigStore.getState().hydrate({
+      chatProvider: 'openai',
+      enabledProviders: { openai: true, anthropic: true, deepseek: false },
+    });
+    expect(useAiConfigStore.getState().enabledProviders).toEqual({
+      openai: true,
+      anthropic: true,
+      deepseek: false,
+    });
+  });
+
+  it('blob with customProviders preserves them', () => {
+    const cp: CustomProvider = {
+      id: 'custom-test',
+      displayName: 'Test',
+      baseUrl: 'https://test.com/v1',
+      apiKeyUrl: null,
+      category: 'openai',
+      createdAt: 1234,
+    };
+    useAiConfigStore.getState().hydrate({
+      chatProvider: 'anthropic',
+      customProviders: [cp],
+    });
+    const s = useAiConfigStore.getState();
+    expect(s.customProviders).toEqual([cp]);
+  });
+
+  it('blob with malformed customProviders falls back to empty array', () => {
+    useAiConfigStore.getState().hydrate({
+      chatProvider: 'anthropic',
+      customProviders: [{ id: 123, displayName: 'bad' }],
+    });
+    expect(useAiConfigStore.getState().customProviders).toEqual([]);
   });
 });

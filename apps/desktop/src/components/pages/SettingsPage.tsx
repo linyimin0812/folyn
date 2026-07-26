@@ -95,7 +95,7 @@ export function SettingsPage() {
       </nav>
 
       {/* Right panel */}
-      <div className={`sc2 overflow-y-auto py-[22px] px-[26px] ${settingsTab === 'cli' || settingsTab === 'models' || settingsTab === 'voice' ? 'w-fit min-w-[50vw] shrink-0' : 'w-[50vw]'}`}>
+      <div className={`sc2 overflow-y-auto pt-[22px] pb-2 px-[26px] ${settingsTab === 'cli' || settingsTab === 'models' || settingsTab === 'voice' ? 'w-fit min-w-[60vw] shrink-0' : 'w-[50vw]'}`}>
         {/* -- 外观 -- */}
         {settingsTab === 'appearance' && (
           <div className="mb-8">

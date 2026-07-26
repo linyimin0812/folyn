@@ -166,7 +166,14 @@
       "native": "Native",
       "compat": "Compatible",
       "openai-family": "OpenAI-compatible family",
-      "local": "Local"
+      "local": "Local",
+      "openai": "OpenAI",
+      "openai-response": "OpenAI-Response",
+      "gemini": "Gemini",
+      "anthropic": "Anthropic",
+      "azure-openai": "Azure OpenAI",
+      "new-api": "New API",
+      "ollama": "Ollama"
     },
     "capability": {
       "vision": "vision",
@@ -187,11 +194,7 @@
       "openai-compatible": "OpenAI-compatible (custom baseUrl)",
       "anthropic-compatible": "Anthropic-compatible (custom baseUrl)",
       "deepseek": "DeepSeek",
-      "eternalai": "EternalAI",
-      "galadriel": "Galadriel",
       "groq": "Groq",
-      "hyperbolic": "Hyperbolic",
-      "mira": "Mira",
       "moonshot": "Moonshot",
       "openrouter": "OpenRouter",
       "perplexity": "Perplexity",
@@ -205,7 +208,7 @@
       "label": "API Key",
       "show": "Show API Key",
       "hide": "Hide API Key",
-      "getKey": "Get API key →"
+      "getKey": "Get API key"
     },
     "azure": {
       "deploymentId": {
@@ -216,15 +219,15 @@
       }
     },
     "baseUrl": {
-      "label": "Base URL (optional)",
+      "label": "API URL",
       "anthropicHint": "Leave empty for official Anthropic; Anthropic-compatible endpoints",
       "openaiHint": "Leave empty for official OpenAI.",
       "openaiCompatibleHint": "Required for Ollama / vLLM / LM Studio etc.; /v1 is appended automatically if missing.",
       "placeholder": "Leave empty for default"
     },
     "test": {
-      "testing": "Testing…",
-      "label": "Test connection"
+      "testing": "Detecting…",
+      "label": "Detect"
     },
     "fetchModels": {
       "label": "Fetch models",
@@ -235,6 +238,44 @@
     "thinkingBudget": {
       "label": "Thinking budget (tokens)",
       "hint": "Applied to reasoning-capable models; non-reasoning models ignore this."
+    },
+    "searchPlaceholder": "Search providers...",
+    "searchModelPlaceholder": "Search models...",
+    "filterAll": "All",
+    "filterEnabled": "Enabled",
+    "picker": {
+      "open": "Pick model",
+      "empty": "Click to pick a model",
+      "close": "Close",
+      "searchPlaceholder": "Search by model ID or name",
+      "select": "Select",
+      "selected": "Selected",
+      "sort": "Sort"
+    },
+    "addCustom": "Add",
+    "editCustom": "Edit",
+    "deleteCustom": "Delete",
+    "confirmDelete": "Delete this custom provider?",
+    "setAsChat": "Set as chat provider",
+    "activeBadge": "ON",
+    "displayNameLabel": "Name",
+    "baseUrlLabel": "API URL",
+    "apiKeyUrlLabel": "API key URL",
+    "categoryLabel": "Provider type",
+    "modelCount": "{{count}} models",
+    "addCustomTitle": "Add custom provider",
+    "editCustomTitle": "Edit provider",
+    "customNamePlaceholder": "My Provider",
+    "customBaseUrlPlaceholder": "https://your-endpoint/v1",
+    "customApiKeyUrlPlaceholder": "https://...  (optional)",
+    "save": "Save",
+    "cancel": "Cancel",
+    "preview": "Preview: {{baseUrl}}/v1/messages",
+    "addManual": {
+      "title": "Add model",
+      "idLabel": "Model ID",
+      "nameLabel": "Display name",
+      "groupLabel": "Group name"
     }
   },
   "about": {

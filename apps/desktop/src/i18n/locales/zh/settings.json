@@ -166,7 +166,14 @@
       "native": "原生",
       "compat": "兼容",
       "openai-family": "OpenAI 兼容家族",
-      "local": "本地"
+      "local": "本地",
+      "openai": "OpenAI",
+      "openai-response": "OpenAI-Response",
+      "gemini": "Gemini",
+      "anthropic": "Anthropic",
+      "azure-openai": "Azure OpenAI",
+      "new-api": "New API",
+      "ollama": "Ollama"
     },
     "capability": {
       "vision": "视觉",
@@ -187,11 +194,7 @@
       "openai-compatible": "OpenAI 兼容（自定义 baseUrl）",
       "anthropic-compatible": "Anthropic 兼容（自定义 baseUrl）",
       "deepseek": "DeepSeek",
-      "eternalai": "EternalAI",
-      "galadriel": "Galadriel",
       "groq": "Groq",
-      "hyperbolic": "Hyperbolic",
-      "mira": "Mira",
       "moonshot": "Moonshot",
       "openrouter": "OpenRouter",
       "perplexity": "Perplexity",
@@ -205,7 +208,7 @@
       "label": "API Key",
       "show": "显示 API Key",
       "hide": "隐藏 API Key",
-      "getKey": "获取 API key →"
+      "getKey": "获取 API key"
     },
     "azure": {
       "deploymentId": {
@@ -216,15 +219,15 @@
       }
     },
     "baseUrl": {
-      "label": "Base URL（可选）",
+      "label": "API地址",
       "anthropicHint": "官方 Anthropic 留空；Anthropic 兼容端点",
       "openaiHint": "官方 OpenAI 留空。",
       "openaiCompatibleHint": "Ollama / vLLM / LM Studio 等必填；不以 /v1 结尾时会自动补 /v1。",
       "placeholder": "留空用默认"
     },
     "test": {
-      "testing": "测试中…",
-      "label": "测试连接"
+      "testing": "检测中…",
+      "label": "检测"
     },
     "fetchModels": {
       "label": "获取模型",
@@ -235,6 +238,44 @@
     "thinkingBudget": {
       "label": "Thinking 预算(tokens)",
       "hint": "仅对支持推理的模型生效;非推理模型忽略此值。"
+    },
+    "searchPlaceholder": "搜索模型平台...",
+    "searchModelPlaceholder": "搜索模型...",
+    "filterAll": "全部",
+    "filterEnabled": "已启用",
+    "picker": {
+      "open": "选择模型",
+      "empty": "点击选择模型",
+      "close": "关闭",
+      "searchPlaceholder": "搜索模型 ID 或名称",
+      "select": "选择",
+      "selected": "已选中",
+      "sort": "排序"
+    },
+    "addCustom": "添加",
+    "editCustom": "编辑",
+    "deleteCustom": "删除",
+    "confirmDelete": "确认删除该自定义 provider？",
+    "setAsChat": "设为聊天 Provider",
+    "activeBadge": "ON",
+    "displayNameLabel": "名称",
+    "baseUrlLabel": "API 地址",
+    "apiKeyUrlLabel": "API Key 获取地址",
+    "categoryLabel": "提供商类型",
+    "modelCount": "{{count}} 个模型",
+    "addCustomTitle": "添加自定义 Provider",
+    "editCustomTitle": "编辑 Provider",
+    "customNamePlaceholder": "My Provider",
+    "customBaseUrlPlaceholder": "https://your-endpoint/v1",
+    "customApiKeyUrlPlaceholder": "https://...  (可选)",
+    "save": "保存",
+    "cancel": "取消",
+    "preview": "预览：{{baseUrl}}/v1/messages",
+    "addManual": {
+      "title": "添加模型",
+      "idLabel": "模型 ID",
+      "nameLabel": "模型名称",
+      "groupLabel": "分组名称"
     }
   },
   "about": {

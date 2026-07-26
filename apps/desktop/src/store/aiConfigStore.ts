@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import { registerPersistSlice, schedulePersist } from './settingsPersistence';
-import { PROVIDER_CATALOG, PROVIDER_IDS, type ChatProviderId, getProviderEntry } from '@/services/providers/catalog';
+import {
+  PROVIDER_CATALOG,
+  PROVIDER_IDS,
+  type ChatProviderId,
+  type CustomProvider,
+  type CustomProviderType,
+  getProviderEntry,
+} from '@/services/providers/catalog';
 
 // ponytail: ChatProvider is a string literal union of the 20 catalog ids.
 // The 3 old ids ('anthropic' | 'openai' | 'openai-compatible') are kept
@@ -30,6 +37,18 @@ export interface ProviderConfig {
   thinkingBudget: number | null;
 }
 
+/**
+ * Manually-added model entry. Stored per-provider; merged into the picker
+ * list alongside fetched models. `id` becomes the chatModel value;
+ * `displayName`/`group` override the picker's id-derived defaults.
+ */
+export interface ManualModel {
+  id: string;
+  displayName: string;
+  group: string;
+  createdAt: number;
+}
+
 function emptyConfig(): ProviderConfig {
   return {
     apiKey: '',
@@ -56,6 +75,14 @@ export const PERSIST_KEYS_AI_CONFIG = [
   'chatAzureDeploymentId',
   'chatAzureApiVersion',
   'chatThinkingBudget',
+  // T08: cherry-studio-style provider list. customProviders holds
+  // user-defined entries; enabledProviders is multi-active enable flag
+  // (decoupled from chatProvider). Display sort (enabled-first, then
+  // alphabetical) is applied at the consumer; no persisted order.
+  'customProviders',
+  'enabledProviders',
+  // Manually-added models per provider (Record<providerId, ManualModel[]>).
+  'manualModels',
 ] as const;
 
 export interface AiConfigState {
@@ -72,6 +99,11 @@ export interface AiConfigState {
   chatThinkingBudget: number | null;
   // T06 source-of-truth: per-provider config slots.
   providerConfigs: Record<string, ProviderConfig>;
+  // T08: user-defined providers + per-provider enable.
+  customProviders: CustomProvider[];
+  enabledProviders: Record<string, boolean>;
+  // Per-provider manually-added models (merged into the picker list).
+  manualModels: Record<string, ManualModel[]>;
 
   setCliAdapter: (v: string) => void;
   setCliPath: (v: string) => void;
@@ -82,6 +114,27 @@ export interface AiConfigState {
   setChatAzureDeploymentId: (v: string) => void;
   setChatAzureApiVersion: (v: string) => void;
   setChatThinkingBudget: (v: number | null) => void;
+
+  /** T08: create a custom provider. Returns the new id. */
+  addCustomProvider: (input: {
+    displayName: string;
+    baseUrl: string;
+    apiKeyUrl?: string | null;
+    category: CustomProviderType;
+  }) => string;
+  /** T08: patch a custom provider's fields (not id/createdAt). */
+  updateCustomProvider: (
+    id: string,
+    patch: Partial<Omit<CustomProvider, 'id' | 'createdAt'>>,
+  ) => void;
+  /** T08: delete a custom provider. Cleans up enabledProviders /
+   *  providerConfigs slots. If it was chatProvider, falls back to 'anthropic'. */
+  removeCustomProvider: (id: string) => void;
+  /** T08: toggle enable flag for a provider. */
+  setProviderEnabled: (id: string, enabled: boolean) => void;
+
+  /** Add a manually-defined model under a provider (for the picker). */
+  addManualModel: (providerId: string, model: Omit<ManualModel, 'createdAt'>) => void;
 
   /** T06: returns provider ids that have a non-empty apiKey (or don't
    *  require one — Ollama). Used by the "重新拉取全部" button to iterate
@@ -119,6 +172,52 @@ function isProviderConfigRecord(v: unknown): v is Record<string, ProviderConfig>
   return true;
 }
 
+const CUSTOM_PROVIDER_TYPES: readonly CustomProviderType[] = [
+  'openai', 'openai-response', 'gemini', 'anthropic',
+  'azure-openai', 'new-api', 'ollama',
+];
+
+function isCustomProvider(v: unknown): v is CustomProvider {
+  if (!v || typeof v !== 'object') return false;
+  const r = v as Record<string, unknown>;
+  return typeof r.id === 'string'
+    && typeof r.displayName === 'string'
+    && typeof r.baseUrl === 'string'
+    && (r.apiKeyUrl === null || typeof r.apiKeyUrl === 'string')
+    && typeof r.category === 'string'
+    && (CUSTOM_PROVIDER_TYPES as readonly string[]).includes(r.category)
+    && typeof r.createdAt === 'number';
+}
+
+function isCustomProviderArray(v: unknown): v is CustomProvider[] {
+  return Array.isArray(v) && v.every(isCustomProvider);
+}
+
+function isBooleanRecord(v: unknown): v is Record<string, boolean> {
+  if (!v || typeof v !== 'object') return false;
+  for (const val of Object.values(v as Record<string, unknown>)) {
+    if (typeof val !== 'boolean') return false;
+  }
+  return true;
+}
+
+function isManualModel(v: unknown): v is ManualModel {
+  if (!v || typeof v !== 'object') return false;
+  const r = v as Record<string, unknown>;
+  return typeof r.id === 'string'
+    && typeof r.displayName === 'string'
+    && typeof r.group === 'string'
+    && typeof r.createdAt === 'number';
+}
+
+function isManualModelsMap(v: unknown): v is Record<string, ManualModel[]> {
+  if (!v || typeof v !== 'object') return false;
+  for (const val of Object.values(v as Record<string, unknown>)) {
+    if (!Array.isArray(val) || !val.every(isManualModel)) return false;
+  }
+  return true;
+}
+
 /** Apply a partial patch to a single provider's config slot. Returns the
  *  new `providerConfigs` map (immutable). */
 function patchSlot(
@@ -141,6 +240,9 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   chatAzureApiVersion: '',
   chatThinkingBudget: 1024,
   providerConfigs: {},
+  customProviders: [],
+  enabledProviders: {},
+  manualModels: {},
 
   setCliAdapter: (v) => { set({ cliAdapter: v }); schedulePersist(); },
   setCliPath: (v) => { set({ cliPath: v }); schedulePersist(); },
@@ -235,6 +337,68 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     return out;
   },
 
+  addCustomProvider: (input) => {
+    const id = `custom-${crypto.randomUUID()}`;
+    const provider: CustomProvider = {
+      id,
+      displayName: input.displayName.trim() || 'Custom',
+      baseUrl: input.baseUrl.trim(),
+      apiKeyUrl: input.apiKeyUrl ?? null,
+      category: input.category,
+      createdAt: Date.now(),
+    };
+    set((s) => ({
+      customProviders: [...s.customProviders, provider],
+    }));
+    schedulePersist();
+    return id;
+  },
+
+  updateCustomProvider: (id, patch) => {
+    set((s) => ({
+      customProviders: s.customProviders.map((p) =>
+        p.id === id ? { ...p, ...patch } : p,
+      ),
+    }));
+    schedulePersist();
+  },
+
+  removeCustomProvider: (id) => {
+    set((s) => {
+      if (!s.customProviders.some((p) => p.id === id)) return s;
+      const nextConfigs = { ...s.providerConfigs };
+      delete nextConfigs[id];
+      const { [id]: _omit, ...nextEnabled } = s.enabledProviders;
+      return {
+        customProviders: s.customProviders.filter((p) => p.id !== id),
+        enabledProviders: nextEnabled,
+        providerConfigs: nextConfigs,
+        chatProvider: s.chatProvider === id ? 'anthropic' : s.chatProvider,
+      };
+    });
+    schedulePersist();
+  },
+
+  setProviderEnabled: (id, enabled) => {
+    set((s) => ({
+      enabledProviders: { ...s.enabledProviders, [id]: enabled },
+    }));
+    schedulePersist();
+  },
+
+  addManualModel: (providerId, model) => {
+    const entry: ManualModel = { ...model, createdAt: Date.now() };
+    set((s) => {
+      const list = s.manualModels[providerId] ?? [];
+      // Avoid duplicate ids within the same provider.
+      if (list.some((m) => m.id === entry.id)) return s;
+      return {
+        manualModels: { ...s.manualModels, [providerId]: [...list, entry] },
+      };
+    });
+    schedulePersist();
+  },
+
   hydrate: (blob) => {
     const patch: Partial<AiConfigState> = {};
     if (blob.cliAdapter !== undefined) patch.cliAdapter = blob.cliAdapter as string;
@@ -278,6 +442,23 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     patch.chatAzureDeploymentId = currentSlot.azureDeploymentId;
     patch.chatAzureApiVersion = currentSlot.azureApiVersion;
     patch.chatThinkingBudget = currentSlot.thinkingBudget;
+
+    // T08: custom providers + enable flags. customProviders defaults to
+    // empty array; enabledProviders defaults to {chatProvider: true} so a
+    // pre-T08 blob hydrates into a sensible state without surprising the user.
+    patch.customProviders = isCustomProviderArray(blob.customProviders)
+      ? [...blob.customProviders]
+      : [];
+    if (isBooleanRecord(blob.enabledProviders)) {
+      patch.enabledProviders = { ...blob.enabledProviders };
+    } else {
+      // Migration: pre-T08 blob — treat the current chatProvider as enabled.
+      patch.enabledProviders = { [providerId]: true };
+    }
+
+    patch.manualModels = isManualModelsMap(blob.manualModels)
+      ? blob.manualModels
+      : {};
 
     if (Object.keys(patch).length > 0) set(patch);
   },

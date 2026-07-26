@@ -26,6 +26,10 @@ export interface Model {
   capabilities: Capability[];
   inputModalities: string[];
   pricing?: ModelPricing;
+  /** Display name override (used by manually-added models). Falls back to id. */
+  displayName?: string;
+  /** Group header override (used by manually-added models). Falls back to familyGroup(id). */
+  group?: string;
 }
 
 /** Shape of `apps/desktop/src/services/modelRegistry/data/models-catalog.json`. */
