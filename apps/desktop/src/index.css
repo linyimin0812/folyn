@@ -486,6 +486,20 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 @media (pointer: coarse) {
   .ft-item { padding: 8px 12px; min-height: 40px; }
 }
+/* ponytail: during a file-tree drag (and the brief post-drop window),
+   rows must not light up on :hover and must not fade bg in/out — the
+   drop-target highlight (wrapper bg-accglow + dir row's isDragOver)
+   should be the only visual signal. pointer-events:none also makes
+   elementFromPoint skip rows and hit the wrapper (which carries
+   data-dirpath), so drop targeting keeps working. */
+.sb-body[data-dragging] .ft-item {
+  pointer-events: none !important;
+  transition: none !important;
+}
+.sb-body[data-dragging] .ft-item:hover {
+  background-color: transparent !important;
+  color: inherit !important;
+}
 @supports (padding: env(safe-area-inset-top)) {
   .sidebar-wrapper.mobile { padding-left: env(safe-area-inset-left); }
 }

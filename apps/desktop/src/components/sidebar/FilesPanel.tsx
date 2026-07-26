@@ -89,7 +89,7 @@ export function FilesPanel(): React.JSX.Element {
 
   const fileTreeRef = useRef<HTMLDivElement>(null);
 
-  const { dragOverDir, handleItemMouseDown } = useDragDrop({
+  const { dragOverDir, suppressHover, handleItemMouseDown } = useDragDrop({
     selectedPaths,
     moveFiles: vaultMoveFiles,
     onSelectionClear: useCallback(() => setSelectedPaths(new Set()), []),
@@ -272,7 +272,7 @@ export function FilesPanel(): React.JSX.Element {
           const isDirSelected = selectedPaths.has(item.path);
           const isDragOver = dragOverDir === item.path;
           return (
-            <div key={item.path}>
+            <div key={item.path} data-dirpath={item.path} className={dragOverDir === item.path ? 'bg-accglow' : ''}>
               <FileTreeItem
                 item={item}
                 depth={depth}
@@ -444,6 +444,7 @@ export function FilesPanel(): React.JSX.Element {
       {/* File tree */}
       <div
         className={`sb-body flex-1 overflow-y-auto py-1 transition-colors duration-[120ms] [scrollbar-width:none] hover:[scrollbar-width:thin] [&::-webkit-scrollbar]:w-0 [&:hover::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-t4 [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-track]:bg-transparent${dragOverDir === '' ? ' bg-accglow' : ''}`}
+        data-dragging={dragOverDir !== null || suppressHover ? '' : undefined}
         ref={fileTreeRef}
         onContextMenu={handleEmptyAreaContextMenu}
       >
