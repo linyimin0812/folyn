@@ -100,6 +100,19 @@ export function mapClaudeToolsToPi(tools: string[] | undefined | null): string[]
   return out;
 }
 
+/** Build the shell command a settings UI uses to self-test an adapter
+ * (e.g. `<cliPath> --version`). For pi with an absolute cliPath, reuse the
+ * sibling-node invocation from buildPiShellCommand so the test runs on the
+ * same node the spawn will use (not the stale `env node` the GUI app PATH
+ * resolves). For claude (standalone binary) / unknown adapters, just
+ * `exec <cliPath> --version`. */
+export function buildAdapterVersionCommand(adapterId: string, cliPath: string): string {
+  if (adapterId === 'pi') {
+    return buildPiShellCommand(cliPath, '', ['--version']);
+  }
+  return `exec ${quoteShellArg(cliPath)} ${quoteShellArg('--version')}`;
+}
+
 /** Build the `pi --mode rpc ...` spawn arg vector from send options.
  *
  * pi's rpc mode is a long-lived process: `system-prompt`/`tools`/`session` are

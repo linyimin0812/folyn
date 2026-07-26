@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Lightbulb } from 'lucide-react';
 import { useAiConfigStore } from '@/store/aiConfigStore';
-import { listAdapters } from '@quill/cli-adapter';
+import { listAdapters, buildAdapterVersionCommand } from '@quill/cli-adapter';
 
 export function CliSettings() {
   const { t } = useTranslation();
@@ -76,8 +76,12 @@ export function CliSettings() {
             setTestStatus({ testing: true });
             try {
               const { Command } = await import('@tauri-apps/plugin-shell');
+              const adapterId = useAiConfigStore.getState().cliAdapter;
               const cliPath = useAiConfigStore.getState().cliPath || 'claude';
-              const cmd = Command.create('claude-cli', ['-l', '-c', `${cliPath} --version`]);
+              // Adapter-specific: pi (a Node script) must be invoked via its
+              // sibling node under the GUI app PATH (buildAdapterVersionCommand);
+              // claude is a standalone binary.
+              const cmd = Command.create('claude-cli', ['-l', '-c', buildAdapterVersionCommand(adapterId, cliPath)]);
               const output = await cmd.execute();
               if (output.code === 0) {
                 const version = output.stdout.trim().split('\n')[0];

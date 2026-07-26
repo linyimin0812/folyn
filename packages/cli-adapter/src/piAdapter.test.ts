@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { translatePiEvent, mapClaudeToolsToPi, buildPiSpawnArgs, buildPromptCommand, buildPiShellCommand, PiAdapter, splitJsonlLines } from './piAdapter';
+import { translatePiEvent, mapClaudeToolsToPi, buildPiSpawnArgs, buildPromptCommand, buildPiShellCommand, splitJsonlLines, PiAdapter, buildAdapterVersionCommand } from './piAdapter';
 import type { CliStreamEvent } from './types';
 
 describe('translatePiEvent (pi JSONL → CliStreamEvent)', () => {
@@ -158,6 +158,27 @@ describe('buildPiShellCommand (cd + exec, stdin kept open for rpc)', () => {
     expect(cmd).toContain("'/Users/x/bin/node'");
     expect(cmd).not.toContain('cd ');
     expect(cmd).not.toContain('< /dev/null');
+  });
+});
+
+describe('buildAdapterVersionCommand (settings self-test: --version via sibling node for pi)', () => {
+  it('pi + absolute cliPath: --version via sibling node (same fix as spawn)', () => {
+    const cmd = buildAdapterVersionCommand('pi', '/Users/x/.nvm/versions/node/v25.9.0/bin/pi');
+    expect(cmd).toContain("'/Users/x/.nvm/versions/node/v25.9.0/bin/node'");
+    expect(cmd).toContain("'/Users/x/.nvm/versions/node/v25.9.0/bin/pi'");
+    expect(cmd).toContain('--version');
+  });
+
+  it('pi + bare cliPath "pi": --version invoking pi directly (PATH/shebang)', () => {
+    expect(buildAdapterVersionCommand('pi', 'pi')).toBe("exec 'pi' '--version'");
+  });
+
+  it('claude: --version invoking cliPath directly (standalone binary, no node)', () => {
+    expect(buildAdapterVersionCommand('claude', 'claude')).toBe("exec 'claude' '--version'");
+  });
+
+  it('unknown adapter: falls back to <cliPath> --version', () => {
+    expect(buildAdapterVersionCommand('nope', 'x')).toBe("exec 'x' '--version'");
   });
 });
 

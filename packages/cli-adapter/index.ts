@@ -14,5 +14,5 @@ export type {
 } from './src/types';
 
 export { ClaudeAdapter } from './src/claudeAdapter';
-export { PiAdapter, translatePiEvent, mapClaudeToolsToPi, buildPiSpawnArgs, buildPromptCommand, buildPiShellCommand, splitJsonlLines } from './src/piAdapter';
+export { PiAdapter, translatePiEvent, mapClaudeToolsToPi, buildPiSpawnArgs, buildPromptCommand, buildPiShellCommand, buildAdapterVersionCommand, splitJsonlLines } from './src/piAdapter';
 export { createAdapter, listAdapters } from './src/registry';
