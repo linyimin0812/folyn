@@ -1,0 +1,219 @@
+import { describe, it, expect } from 'vitest';
+import { translatePiEvent, mapClaudeToolsToPi, buildPiSpawnArgs, buildPromptCommand, buildPiShellCommand, PiAdapter, splitJsonlLines } from './piAdapter';
+import type { CliStreamEvent } from './types';
+
+describe('translatePiEvent (pi JSONL → CliStreamEvent)', () => {
+  it('message_update text_delta → text event', () => {
+    const pi = {
+      type: 'message_update',
+      assistantMessageEvent: { type: 'text_delta', delta: 'Hello ', contentIndex: 0 },
+    };
+    expect(translatePiEvent(pi)).toEqual<CliStreamEvent[]>([
+      { type: 'text', content: 'Hello ' },
+    ]);
+  });
+
+  it('message_update thinking_delta → thinking event', () => {
+    const pi = {
+      type: 'message_update',
+      assistantMessageEvent: { type: 'thinking_delta', delta: 'hmm', contentIndex: 0 },
+    };
+    expect(translatePiEvent(pi)).toEqual<CliStreamEvent[]>([
+      { type: 'thinking', content: 'hmm' },
+    ]);
+  });
+
+  it('tool_execution_start → tool_start event', () => {
+    const pi = {
+      type: 'tool_execution_start',
+      toolCallId: 'call_abc123',
+      toolName: 'bash',
+      args: { command: 'ls -la' },
+    };
+    expect(translatePiEvent(pi)).toEqual<CliStreamEvent[]>([
+      { type: 'tool_start', toolName: 'bash', toolId: 'call_abc123', toolInput: { command: 'ls -la' } },
+    ]);
+  });
+
+  it('tool_execution_end → tool_end event (joins text content blocks)', () => {
+    const pi = {
+      type: 'tool_execution_end',
+      toolCallId: 'call_abc123',
+      toolName: 'bash',
+      result: { content: [{ type: 'text', text: 'total 48\n' }] },
+      isError: false,
+    };
+    expect(translatePiEvent(pi)).toEqual<CliStreamEvent[]>([
+      { type: 'tool_end', toolId: 'call_abc123', toolOutput: 'total 48\n' },
+    ]);
+  });
+
+  it('agent_settled → done event', () => {
+    expect(translatePiEvent({ type: 'agent_settled' })).toEqual<CliStreamEvent[]>([
+      { type: 'done' },
+    ]);
+  });
+
+  it('agent_end → no event (run may retry/compact; settled is the real done)', () => {
+    expect(translatePiEvent({ type: 'agent_end', messages: [] })).toEqual<CliStreamEvent[]>([]);
+  });
+
+  it('session header → session_id event', () => {
+    const pi = { type: 'session', version: 3, id: 'abc-123', timestamp: '2024-01-01T00:00:00Z', cwd: '/p' };
+    expect(translatePiEvent(pi)).toEqual<CliStreamEvent[]>([
+      { type: 'session_id', sessionId: 'abc-123' },
+    ]);
+  });
+
+  it('extension_error → error event', () => {
+    const pi = { type: 'extension_error', extensionPath: '/x.ts', event: 'tool_call', error: 'boom' };
+    expect(translatePiEvent(pi)).toEqual<CliStreamEvent[]>([
+      { type: 'error', content: 'boom' },
+    ]);
+  });
+
+  it('unmapped events (turn_start / queue_update / compaction_start) → no event', () => {
+    expect(translatePiEvent({ type: 'turn_start' })).toEqual<CliStreamEvent[]>([]);
+    expect(translatePiEvent({ type: 'queue_update', steering: [], followUp: [] })).toEqual<CliStreamEvent[]>([]);
+    expect(translatePiEvent({ type: 'compaction_start', reason: 'threshold' })).toEqual<CliStreamEvent[]>([]);
+  });
+
+  it('non-object / null input → no event (defensive)', () => {
+    expect(translatePiEvent(null)).toEqual<CliStreamEvent[]>([]);
+    expect(translatePiEvent('not-an-object')).toEqual<CliStreamEvent[]>([]);
+    expect(translatePiEvent(undefined)).toEqual<CliStreamEvent[]>([]);
+  });
+});
+
+describe('mapClaudeToolsToPi (claude tool whitelist → pi tool names)', () => {
+  it('maps known tools and drops unmapped ones (WebSearch/WebFetch have no pi builtin)', () => {
+    expect(mapClaudeToolsToPi(['Read', 'Edit', 'Write', 'Grep', 'Glob', 'WebSearch', 'WebFetch'])).toEqual([
+      'read', 'edit', 'write', 'grep', 'find',
+    ]);
+  });
+});
+
+describe('buildPiSpawnArgs (pi --mode rpc arg vector)', () => {
+  it('base: --mode rpc --no-session --approve, nothing else', () => {
+    expect(buildPiSpawnArgs()).toEqual(['--mode', 'rpc', '--no-session', '--approve']);
+  });
+
+  it('general chat: systemPrompt → --append-system-prompt (v1 exercised path)', () => {
+    const args = buildPiSpawnArgs({ systemPrompt: 'be concise' });
+    const spIdx = args.indexOf('--append-system-prompt');
+    expect(spIdx).toBeGreaterThan(-1);
+    expect(args[spIdx + 1]).toBe('be concise');
+    expect(args).toContain('--no-session');
+    expect(args).toContain('--approve');
+    expect(args).not.toContain('--tools');
+  });
+
+  it('feature agent: agents[name].prompt → --append-system-prompt, agents[name].tools → --tools', () => {
+    const args = buildPiSpawnArgs({
+      agent: 'study',
+      agents: { study: { prompt: 'be study', tools: ['Read', 'Edit', 'WebSearch'] } },
+    });
+    expect(args[args.indexOf('--append-system-prompt') + 1]).toBe('be study');
+    expect(args[args.indexOf('--tools') + 1]).toBe('read,edit');
+  });
+
+  it('resumeSessionId → --session-id (no --no-session)', () => {
+    const args = buildPiSpawnArgs({ resumeSessionId: 'rs-1' });
+    expect(args).not.toContain('--no-session');
+    expect(args[args.indexOf('--session-id') + 1]).toBe('rs-1');
+  });
+});
+
+describe('buildPromptCommand (stdin JSONL for pi rpc prompt)', () => {
+  it('builds a {type:prompt, message} object (adapter appends \\n)', () => {
+    expect(buildPromptCommand('hi')).toEqual({ type: 'prompt', message: 'hi' });
+  });
+});
+
+describe('buildPiShellCommand (cd + exec, stdin kept open for rpc)', () => {
+  it('with workingDir: cd <dir> && exec <cliPath> <args>', () => {
+    const cmd = buildPiShellCommand('pi', '/vault', ['--mode', 'rpc']);
+    expect(cmd.startsWith("cd '/vault' && exec ")).toBe(true);
+    expect(cmd).toContain("--mode");
+    // CRITICAL: pi rpc reads stdin for prompt commands — must NOT redirect /dev/null.
+    expect(cmd).not.toContain('< /dev/null');
+  });
+
+  it('no workingDir: just exec <cliPath> <args>', () => {
+    const cmd = buildPiShellCommand('pi', '', ['--mode', 'rpc']);
+    expect(cmd.startsWith('exec ')).toBe(true);
+    expect(cmd).not.toContain('cd ');
+    expect(cmd).not.toContain('< /dev/null');
+  });
+});
+
+describe('PiAdapter lifecycle (no spawn)', () => {
+  it('id/displayName/description are set', () => {
+    const a = new PiAdapter();
+    expect(a.id).toBe('pi');
+    expect(a.displayName).toBe('Pi');
+    expect(a.description.length).toBeGreaterThan(0);
+  });
+
+  it('is not running until send; start sets config without running', async () => {
+    const a = new PiAdapter();
+    expect(a.isRunning()).toBe(false);
+    await a.start({ cliPath: 'pi', workingDir: '/tmp' });
+    expect(a.isRunning()).toBe(false);
+  });
+
+  it('stop clears running flag', async () => {
+    const a = new PiAdapter();
+    await a.start({ cliPath: 'pi', workingDir: '/tmp' });
+    await a.stop();
+    expect(a.isRunning()).toBe(false);
+  });
+
+  it('send throws if not started', async () => {
+    const a = new PiAdapter();
+    await expect(a.send('hi')).rejects.toThrow(/not started/i);
+  });
+});
+
+describe('PiAdapter event bus', () => {
+  it('delivers events to registered handlers and removes them on offEvent', () => {
+    const a = new PiAdapter();
+    const received: string[] = [];
+    const handler = (e: { type: string }) => received.push(e.type);
+    a.onEvent(handler);
+    (a as unknown as { emit: (e: { type: string }) => void }).emit({ type: 'text' });
+    (a as unknown as { emit: (e: { type: string }) => void }).emit({ type: 'done' });
+    expect(received).toEqual(['text', 'done']);
+    a.offEvent(handler);
+    (a as unknown as { emit: (e: { type: string }) => void }).emit({ type: 'error' });
+    expect(received).toEqual(['text', 'done']);
+  });
+});
+
+describe('splitJsonlLines (\\n-only framing, per rpc.md)', () => {
+  // rpc.md: "Do not use generic line readers like Node readline, which also
+  // split on Unicode separators inside JSON payloads." split('\n') is safe.
+  it('splits complete lines and keeps the trailing remainder in the buffer', () => {
+    const out = splitJsonlLines('', '{"a":1}\n{"b":2}\npartial');
+    expect(out.lines).toEqual(['{"a":1}', '{"b":2}']);
+    expect(out.buffer).toBe('partial');
+  });
+
+  it('does NOT split on U+2028 / U+2029 inside JSON strings', () => {
+    const ls = '\u2028';
+    const ps = '\u2029';
+    const chunk = `{"text":"a${ls}b${ps}c"}\n`;
+    const out = splitJsonlLines('', chunk);
+    expect(out.lines).toHaveLength(1);
+    expect(out.buffer).toBe('');
+    // The single line still contains the separators (they are valid in JSON).
+    expect(out.lines[0]).toContain(ls);
+    expect(out.lines[0]).toContain(ps);
+  });
+
+  it('handles a chunk with no newline (all remains buffered)', () => {
+    const out = splitJsonlLines('', 'no-newline-here');
+    expect(out.lines).toEqual([]);
+    expect(out.buffer).toBe('no-newline-here');
+  });
+});

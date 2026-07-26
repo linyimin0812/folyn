@@ -21,6 +21,11 @@
           "name": "claude-cli",
           "cmd": "/bin/sh",
           "args": true
+        },
+        {
+          "name": "pi-cli",
+          "cmd": "/bin/sh",
+          "args": true
         }
       ]
     },
@@ -29,6 +34,11 @@
       "allow": [
         {
           "name": "claude-cli",
+          "cmd": "/bin/sh",
+          "args": true
+        },
+        {
+          "name": "pi-cli",
           "cmd": "/bin/sh",
           "args": true
         }

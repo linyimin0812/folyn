@@ -1,5 +1,6 @@
 import type { CliAdapter } from './types';
 import { ClaudeAdapter } from './claudeAdapter';
+import { PiAdapter } from './piAdapter';
 
 type AdapterDescriptor = {
   displayName: string;
@@ -12,6 +13,11 @@ const ADAPTERS: Record<string, AdapterDescriptor> = {
     displayName: 'Claude Code',
     description: 'Anthropic 官方 CLI 工具，支持对话式编辑与多工具调用',
     factory: () => new ClaudeAdapter(),
+  },
+  pi: {
+    displayName: 'Pi',
+    description: 'pi 代码 Agent（@earendil-works/pi-coding-agent），read/bash/edit/write 工具，rpc 多轮会话',
+    factory: () => new PiAdapter(),
   },
 };
 
