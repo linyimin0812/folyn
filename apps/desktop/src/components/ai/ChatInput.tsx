@@ -6,6 +6,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { flattenFileTree } from '@/utils/treeUtils';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { listInputModes } from './inputModes';
+import { AdapterSelector } from './AdapterSelector';
 import { ChatInputBox } from '@/components/chat';
 import type { PendingAttachment } from '@/components/chat';
 import {
@@ -52,6 +53,10 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
   const inputMode = useAiStore((s) => s.inputMode);
   const setInputMode = useAiStore((s) => s.setInputMode);
   const inputModes = useMemo(() => listInputModes(), []);
+  // Feature-agent sessions (kind='study') pick their own adapter at impl
+  // time and ignore the user-facing adapter selector; only general chat
+  // sessions show it.
+  const sessionKind = useAiStore((s) => s.sessions?.find((x) => x.id === s.activeSessionId)?.kind);
   const currentModeDef = useMemo(
     () => inputModes.find((m) => m.id === inputMode),
     [inputMode, inputModes],
@@ -299,6 +304,7 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
   const leadingSlot = (
     <>
       <VoiceInputButton />
+      {sessionKind !== 'study' && <AdapterSelector disabled={isStreaming} />}
       <button className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed" onClick={handleFileSelect} disabled={isStreaming} title={t('ai:chat.attachFile')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />

@@ -101,11 +101,16 @@ vi.mock('@/services/petChatService', () => ({
 const aiConfigState = {
   cliAdapter: 'claude',
   cliPath: 'claude',
+  setCliAdapter: vi.fn(),
 };
+// Support both call forms zustand supports: `useAiConfigStore(selector)`
+// (component selector) and `useAiConfigStore.getState()` (imperative).
 vi.mock('@/store/aiConfigStore', () => ({
-  useAiConfigStore: {
-    getState: () => aiConfigState,
-  },
+  useAiConfigStore: Object.assign(
+    (selector?: (s: typeof aiConfigState) => unknown) =>
+      selector ? selector(aiConfigState) : aiConfigState,
+    { getState: () => aiConfigState },
+  ),
 }));
 
 const navState = {

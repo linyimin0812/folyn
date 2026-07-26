@@ -1,4 +1,4 @@
-import type { CliAdapterConfig, CliEventHandler, CliSendOptions, CliStreamEvent, FileChange } from './types';
+import type { CliAdapterConfig, CliSendOptions, FileChange } from './types';
 import { Command } from '@tauri-apps/plugin-shell';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { BaseCliAdapter } from './baseAdapter';
