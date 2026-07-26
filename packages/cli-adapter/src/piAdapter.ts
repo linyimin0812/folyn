@@ -153,11 +153,24 @@ export function buildPromptCommand(prompt: string): { type: 'prompt'; message: s
 }
 
 /** Compose the shell command: optionally `cd` into workingDir, then
- * `exec <cliPath> <args>`. Each arg is shell-quoted. Unlike claude's
- * one-shot `-p`, pi `--mode rpc` reads prompt commands from stdin, so stdin
- * is NOT redirected to /dev/null. */
+ * `exec <node> <cliPath> <args>` (or `exec <cliPath> <args>` for a bare
+ * cliPath). Each arg is shell-quoted. Unlike claude's one-shot `-p`, pi
+ * `--mode rpc` reads prompt commands from stdin, so stdin is NOT
+ * redirected to /dev/null.
+ *
+ * Sibling-node invocation: when `cliPath` looks like an absolute path (a
+ * `/`-containing bin, e.g. an nvm install `~/.nvm/versions/node/vX/bin/pi`),
+ * invoke pi via `dirname(cliPath)/node` instead of letting pi's
+ * `#!/usr/bin/env node` shebang resolve `node` off PATH. A Tauri GUI app's
+ * login shell (`/bin/sh -l -c`) does NOT source nvm, so `env node` resolves
+ * to a stale system Node (e.g. v14) that can't parse the current pi dist
+ * (`??=` SyntaxError). The nvm node sits next to the pi bin, so dirname +
+ * `/node` bypasses PATH entirely. Falls back to invoking `cliPath` directly
+ * when it has no path separator (bare `pi`). */
 export function buildPiShellCommand(cliPath: string, workingDir: string, args: string[]): string {
-  const cliCmd = [cliPath, ...args].map(quoteShellArg).join(' ');
+  const useSiblingNode = cliPath.includes('/');
+  const entry = useSiblingNode ? [`${cliPath.slice(0, cliPath.lastIndexOf('/'))}/node`, cliPath] : [cliPath];
+  const cliCmd = [...entry, ...args].map(quoteShellArg).join(' ');
   return workingDir ? `cd ${quoteShellArg(workingDir)} && exec ${cliCmd}` : `exec ${cliCmd}`;
 }
 

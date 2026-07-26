@@ -131,17 +131,31 @@ describe('buildPromptCommand (stdin JSONL for pi rpc prompt)', () => {
 });
 
 describe('buildPiShellCommand (cd + exec, stdin kept open for rpc)', () => {
-  it('with workingDir: cd <dir> && exec <cliPath> <args>', () => {
-    const cmd = buildPiShellCommand('pi', '/vault', ['--mode', 'rpc']);
+  it('absolute cliPath (nvm install): invokes pi via its sibling node to bypass the #!/usr/bin/env node shebang resolving a stale node under the GUI app PATH', () => {
+    // Regression: /bin/sh -l resolved `node` to a stale Node 14 (nvm not on
+    // the login-shell PATH), so pi's shebang ran on Node 14 and crashed on
+    // `??=`. Invoke the nvm node sitting next to the pi bin instead.
+    const cmd = buildPiShellCommand('/Users/x/.nvm/versions/node/v25.9.0/bin/pi', '/vault', ['--mode', 'rpc']);
     expect(cmd.startsWith("cd '/vault' && exec ")).toBe(true);
-    expect(cmd).toContain("--mode");
-    // CRITICAL: pi rpc reads stdin for prompt commands — must NOT redirect /dev/null.
+    // sibling node is dirname(cliPath)/node
+    expect(cmd).toContain("'/Users/x/.nvm/versions/node/v25.9.0/bin/node'");
+    expect(cmd).toContain("'/Users/x/.nvm/versions/node/v25.9.0/bin/pi'");
+    expect(cmd).toContain('--mode');
     expect(cmd).not.toContain('< /dev/null');
   });
 
-  it('no workingDir: just exec <cliPath> <args>', () => {
-    const cmd = buildPiShellCommand('pi', '', ['--mode', 'rpc']);
+  it('bare cliPath (no path separator, e.g. "pi"): falls back to invoking pi directly (relies on PATH/node shebang)', () => {
+    const cmd = buildPiShellCommand('pi', '/vault', ['--mode', 'rpc']);
+    expect(cmd.startsWith("cd '/vault' && exec ")).toBe(true);
+    expect(cmd).toContain("'pi'");
+    expect(cmd).not.toContain('/node');
+    expect(cmd).not.toContain('< /dev/null');
+  });
+
+  it('no workingDir: just exec (sibling node for absolute cliPath)', () => {
+    const cmd = buildPiShellCommand('/Users/x/bin/pi', '', ['--mode', 'rpc']);
     expect(cmd.startsWith('exec ')).toBe(true);
+    expect(cmd).toContain("'/Users/x/bin/node'");
     expect(cmd).not.toContain('cd ');
     expect(cmd).not.toContain('< /dev/null');
   });
