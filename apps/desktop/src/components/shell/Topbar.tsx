@@ -1,12 +1,18 @@
+import { useState } from 'react';
 import { useEditorStore, type ViewMode } from '@/store/editorStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useNavStore } from '@/store/navStore';
+import { useVaultStore } from '@/store/vaultStore';
+import { isExternalPath } from '@/utils/isExternalPath';
+import * as editorIoService from '@/services/editorIoService';
+import { requestRevealPath } from '@/services/revealPathBridge';
 import { useTheme } from '@/hooks/useTheme';
 import { ExportMenu } from '@/components/editor/ExportMenu';
+import { MoveDialog } from '@/components/sidebar/SidebarActions';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { requestPlanMyDay } from '@/services/planMyDayBridge';
 import { useTranslation } from 'react-i18next';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, FolderInput } from 'lucide-react';
 
 /** File types that support meaningful multi-mode switching — show the view-mode segment. */
 const SHOW_VIEW_MODE_FILE_TYPES = new Set(['markdown', 'json', 'csv', 'mmap', 'dbml', 'html', 'svg']);
@@ -61,11 +67,20 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
     const tabs = state.tabs;
     return tabs.find((t) => t.id === state.activeTabId);
   });
+  const fileTree = useVaultStore((state) => state.fileTree);
+  const copyExternalFileToVault = useVaultStore((state) => state.copyExternalFileToVault);
+  const [copyToVaultSource, setCopyToVaultSource] = useState<{ path: string; name: string } | null>(null);
+  const { theme, toggleTheme } = useTheme();
+  // The "copy external file into the vault" entry point: only an external
+  // file tab (absolute / `~` path, not a web tab) has no vault home, so it is
+  // the only context where this action is meaningful.
+  const isExternalFileActive = !!activeTab
+    && activeTab.fileType !== 'web'
+    && isExternalPath(activeTab.path);
   const showViewMode = activeTab ? SHOW_VIEW_MODE_FILE_TYPES.has(activeTab.fileType) : false;
   const modes = activeTab?.fileType === 'html' ? HTML_MODES : VIEW_MODES;
   const setCurrentPage = useNavStore((state) => state.setCurrentPage);
   const currentPage = useNavStore((state) => state.currentPage);
-  const { theme, toggleTheme } = useTheme();
 
   return (
     <header data-tauri-drag-region className="topbar h-[36px] shrink-0 bg-panel border-b border-brd flex items-center justify-between pl-0 pr-2.5 gap-[3px] z-50">
@@ -122,6 +137,32 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
           AI
         </button>
         <ExportMenu />
+        {isExternalFileActive && activeTab && (
+          <button
+            className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1"
+            onClick={() => setCopyToVaultSource({ path: activeTab.path, name: activeTab.name })}
+            title={t('topbar:copyToVault')}
+          >
+            <FolderInput size={14} />
+          </button>
+        )}
+        {copyToVaultSource && (
+          <MoveDialog
+            mode="copy"
+            source={{ path: copyToVaultSource.path, type: 'file', name: copyToVaultSource.name }}
+            fileTree={fileTree}
+            onCancel={() => setCopyToVaultSource(null)}
+            onConfirm={async (targetDir) => {
+              const newPath = await copyExternalFileToVault(copyToVaultSource.path, targetDir);
+              setCopyToVaultSource(null);
+              const name = newPath.includes('/') ? newPath.substring(newPath.lastIndexOf('/') + 1) : newPath;
+              await editorIoService.openFile(newPath, name);
+              // Reveal + select the new vault file in the sidebar tree. The
+              // bridge queues the request if the Sidebar isn't mounted yet.
+              requestRevealPath(newPath);
+            }}
+          />
+        )}
         <LanguageSwitcher />
         <button className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1" onClick={toggleTheme} title={t('topbar:theme.toggle')}>
           {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}

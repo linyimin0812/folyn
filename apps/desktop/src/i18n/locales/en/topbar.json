@@ -1,5 +1,6 @@
 {
   "menu": "Menu",
+  "copyToVault": "Copy to vault",
   "theme": {
     "toggle": "Toggle theme"
   },

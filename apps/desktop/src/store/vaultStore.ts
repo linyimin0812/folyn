@@ -14,6 +14,7 @@ import { generateShortId as generateId } from '@/utils/idGenerator';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { seedAgentFiles } from '@/services/featureAgentService';
 import { isExternalPath } from '@/utils/isExternalPath';
+import { externalFileProvider } from '@/services/externalFileProvider';
 
 async function startWatcherForVault(config: VaultConfig) {
   if (config.providerType !== 'tauri') return;
@@ -90,6 +91,13 @@ interface VaultState {
   renameFile: (oldPath: string, newPath: string) => Promise<void>;
   moveFiles: (paths: string[], targetDir: string) => Promise<void>;
   copyPath: (srcPath: string, srcType: 'file' | 'dir', targetDir: string) => Promise<void>;
+  /** Copy an external (absolute / `~` / `$HOME`) file into a vault directory.
+   *  Reads the source via `externalFileProvider` (direct Tauri fs, `$HOME`-
+   *  scoped) and writes it through the vault manager, so unlike `copyPath` it
+   *  works for sources outside the vault. Resolves a non-colliding name
+   *  (original name first, ` 副本` suffix on collision). Returns the new
+   *  vault-relative path so the caller can open + reveal it. */
+  copyExternalFileToVault: (srcExternalPath: string, targetDir: string) => Promise<string>;
 }
 
 /** Insert `suffix` before the file extension (or append for dirs/extensionless names). */
@@ -496,6 +504,26 @@ export const useVaultStore = create<VaultState>()(
           }
 
           await get().refreshFileTree();
+        },
+
+        copyExternalFileToVault: async (srcExternalPath, targetDir) => {
+          // Read the external source at its true location (asserts within $HOME,
+          // resolves `~` / `$HOME`). The vault manager's readFile would
+          // `join(basePath, path)` and corrupt an absolute path, so external
+          // sources must go through externalFileProvider.
+          const content = await externalFileProvider.readFile(srcExternalPath);
+          const baseName = srcExternalPath.includes('/')
+            ? srcExternalPath.substring(srcExternalPath.lastIndexOf('/') + 1)
+            : srcExternalPath;
+          // External→vault is always a cross-dir copy (the source lives outside
+          // the vault), so sameDir=false: try the original name first, then
+          // ` 副本` suffixes on collision.
+          const manager = get().manager;
+          const targetName = await resolveCopyName(manager, targetDir, baseName, false);
+          const targetPath = targetDir ? `${targetDir}/${targetName}` : targetName;
+          await manager.writeFile(targetPath, content);
+          await get().refreshFileTree();
+          return targetPath;
         },
       };
     },

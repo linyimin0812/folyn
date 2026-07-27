@@ -22,6 +22,7 @@ import { useVaultStore } from '@/store/vaultStore';
 import type { VaultEntry } from '@quill/vault-provider';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 import { setNewItemStarter } from '@/services/newItemBridge';
+import { setRevealPathStarter } from '@/services/revealPathBridge';
 import { flattenTree } from '@/utils/treeUtils';
 import { useDragDrop } from './useDragDrop';
 import { FileTreeItem } from './FileTreeItem';
@@ -177,12 +178,10 @@ export function FilesPanel(): React.JSX.Element {
     [flatPaths, handleFileClick, handleToggleDir],
   );
 
-  /** Expand all parent directories of the active file and scroll it into view */
-  const locateActiveFile = useCallback(async () => {
-    const activeTab = tabs.find((t) => t.id === activeTabId);
-    if (!activeTab) return;
-
-    const filePath = activeTab.path;
+  /** Expand all parent directories of `filePath`, scroll it into view, and
+   *  select its row. Shared by the "locate active" button and the
+   *  revealPathBridge starter. */
+  const revealPath = useCallback((filePath: string) => {
     // Expand all parent directories
     const parts = filePath.split('/');
     const dirsToExpand: string[] = [];
@@ -190,12 +189,13 @@ export function FilesPanel(): React.JSX.Element {
       dirsToExpand.push(parts.slice(0, i).join('/'));
     }
 
-    // Expand all parent directories
     setExpandedDirs((prev) => {
       const next = new Set(prev);
       for (const dir of dirsToExpand) next.add(dir);
       return next;
     });
+
+    setSelectedPaths(new Set([filePath]));
 
     // Scroll to the file element after DOM update
     requestAnimationFrame(() => {
@@ -206,7 +206,22 @@ export function FilesPanel(): React.JSX.Element {
         fileElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
     });
-  }, [activeTabId, tabs]);
+  }, []);
+
+  /** Expand all parent directories of the active file and scroll it into view */
+  const locateActiveFile = useCallback(async () => {
+    const activeTab = tabs.find((t) => t.id === activeTabId);
+    if (!activeTab) return;
+    revealPath(activeTab.path);
+  }, [activeTabId, tabs, revealPath]);
+
+  // Register the reveal-and-select bridge so non-sidebar callers (e.g. the
+  // Topbar "copy external file to vault" action) can ask this panel to reveal
+  // a freshly-created vault file. Mirrors the newItemStarter bridge.
+  useEffect(() => {
+    setRevealPathStarter((path) => revealPath(path));
+    return () => setRevealPathStarter(null);
+  }, [revealPath]);
 
   const [contextMenu, setContextMenu] = useState<ContextMenuData | null>(null);
   const [moveSource, setMoveSource] = useState<{ path: string; type: 'file' | 'dir'; name: string } | null>(null);

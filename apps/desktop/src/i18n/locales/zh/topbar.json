@@ -1,5 +1,6 @@
 {
   "menu": "菜单",
+  "copyToVault": "复制到仓库",
   "theme": {
     "toggle": "切换主题"
   },

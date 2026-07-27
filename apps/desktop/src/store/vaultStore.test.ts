@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useVaultStore } from './vaultStore';
+import { externalFileProvider } from '@/services/externalFileProvider';
 import { useAppearanceStore } from './appearanceStore';
 import { usePrefsStore } from './prefsStore';
 import { storageClient } from '@/utils/storageClient';
@@ -17,6 +18,19 @@ vi.mock('@/utils/fileWatcher', () => ({
 // Stub path resolver so ~ expansion is predictable.
 vi.mock('@/utils/pathResolver', () => ({
   resolveBasePath: vi.fn(async (p: string) => p.replace(/\/+$/, '')),
+}));
+
+// Stub the external-file provider so copyExternalFileToVault never touches
+// Tauri fs. The readFile spy is configured per-test; writeFile/exists are
+// unused by the store action but kept here so other imports stay happy.
+vi.mock('@/services/externalFileProvider', () => ({
+  externalFileProvider: {
+    readFile: vi.fn(async (p: string) => `content-for:${p}`),
+    writeFile: vi.fn(async () => {}),
+    exists: vi.fn(async () => false),
+  },
+  resolveAbsolutePath: vi.fn(async (p: string) => p),
+  isWithinHome: vi.fn(async () => true),
 }));
 
 /** A minimal in-memory fake of VaultManager used to drive store actions. */
@@ -322,6 +336,91 @@ describe('useVaultStore.copyPath', () => {
     expect(m.createDir).toHaveBeenCalledWith('folder 副本/sub');
     expect(m.writeFile).toHaveBeenCalledWith('folder 副本/a.md', 'A');
     expect(m.writeFile).toHaveBeenCalledWith('folder 副本/sub/b.md', 'B');
+  });
+});
+
+describe('useVaultStore.copyExternalFileToVault', () => {
+  /** Fake manager — only listFiles + writeFile matter here; the external
+   *  source is read via the mocked externalFileProvider, not the manager. */
+  function createFakeManager() {
+    const files = new Map<string, string>();
+    const dirs = new Set<string>();
+    const splitPath = (p: string) => {
+      const idx = p.lastIndexOf('/');
+      return idx >= 0 ? { dir: p.slice(0, idx), base: p.slice(idx + 1) } : { dir: '', base: p };
+    };
+    return {
+      files,
+      dirs,
+      listFiles: vi.fn(async (path: string) => {
+        const out: VaultEntry[] = [];
+        for (const [p] of files) {
+          const { dir, base } = splitPath(p);
+          if (dir === path) out.push({ path: p, name: base, type: 'file' });
+        }
+        for (const d of dirs) {
+          if (d === path) continue;
+          const { dir, base } = splitPath(d);
+          if (dir === path) out.push({ path: d, name: base, type: 'dir' });
+        }
+        return out;
+      }),
+      writeFile: vi.fn(async (path: string, content: string) => { files.set(path, content); }),
+      createDir: vi.fn(async () => {}),
+      readFile: vi.fn(async () => { throw new Error('should not read via manager'); }),
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useVaultStore.setState({
+      manager: createFakeManager() as never,
+      currentVault: { id: 'v1', name: 'a', providerType: 'tauri', basePath: '/a' },
+      fileTree: [],
+    } as never);
+  });
+
+  it('reads the external source and writes it to the target dir under its original name', async () => {
+    const m = useVaultStore.getState().manager as ReturnType<typeof createFakeManager>;
+    m.dirs.add('notes');
+
+    const newPath = await useVaultStore.getState().copyExternalFileToVault('~/Desktop/report.md', 'notes');
+
+    expect(externalFileProvider.readFile).toHaveBeenCalledWith('~/Desktop/report.md');
+    expect(m.writeFile).toHaveBeenCalledWith('notes/report.md', 'content-for:~/Desktop/report.md');
+    expect(newPath).toBe('notes/report.md');
+  });
+
+  it('falls back to ` 副本` when the target name already exists', async () => {
+    const m = useVaultStore.getState().manager as ReturnType<typeof createFakeManager>;
+    m.dirs.add('notes');
+    m.files.set('notes/report.md', 'existing');
+
+    const newPath = await useVaultStore.getState().copyExternalFileToVault('/abs/report.md', 'notes');
+
+    expect(m.writeFile).toHaveBeenCalledWith('notes/report 副本.md', 'content-for:/abs/report.md');
+    expect(newPath).toBe('notes/report 副本.md');
+  });
+
+  it('appends ` 副本 2` on a second collision', async () => {
+    const m = useVaultStore.getState().manager as ReturnType<typeof createFakeManager>;
+    m.dirs.add('');
+    m.files.set('report.md', 'one');
+    m.files.set('report 副本.md', 'two');
+
+    const newPath = await useVaultStore.getState().copyExternalFileToVault('/abs/report.md', '');
+
+    expect(m.writeFile).toHaveBeenCalledWith('report 副本 2.md', 'content-for:/abs/report.md');
+    expect(newPath).toBe('report 副本 2.md');
+  });
+
+  it('never reads the source through the vault manager', async () => {
+    const m = useVaultStore.getState().manager as ReturnType<typeof createFakeManager>;
+    m.dirs.add('');
+
+    await useVaultStore.getState().copyExternalFileToVault('~/x.md', '');
+
+    expect(m.readFile).not.toHaveBeenCalled();
   });
 });
 
