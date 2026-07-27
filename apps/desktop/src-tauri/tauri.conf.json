@@ -21,6 +21,20 @@
       "icons/icon.ico"
     ],
     "resources": [],
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown", "mdx", "mdown", "mkd"],
+        "name": "Quill Markdown",
+        "role": "Editor",
+        "mimeType": "text/markdown"
+      },
+      {
+        "ext": ["txt", "text", "log", "csv", "tsv", "json", "json5", "yaml", "yml", "xml", "html", "htm", "css", "js", "ts", "toml", "ini", "rst", "tex"],
+        "name": "Quill Text",
+        "role": "Viewer",
+        "mimeType": "text/plain"
+      }
+    ],
     "macOS": {
       "signingIdentity": "-",
       "infoPlist": "Info.plist",

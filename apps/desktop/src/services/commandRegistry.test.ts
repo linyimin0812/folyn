@@ -180,6 +180,7 @@ describe('commandRegistry — registerBuiltinCommands', () => {
       'action.new-file',
       'action.new-folder',
       'action.open-daily-note',
+      'action.open-external-file',
       'action.export-markdown',
       'action.export-html',
       'action.open-global-search',

@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { readFile } from '@tauri-apps/plugin-fs';
-import { join } from '@tauri-apps/api/path';
 import FileViewer from '@file-viewer/react';
 import { isTauri } from '@/utils/platform';
-import { resolveBasePath } from '@/utils/pathResolver';
+import { resolvePreviewPath } from '../previewPath';
 import { useResolvedTheme } from '@/hooks/useTheme';
 import type { PreviewProps } from '../types';
 
@@ -121,8 +120,7 @@ export function OfficeFileViewer({ filePath, vaultRoot }: PreviewProps) {
 
     (async () => {
       try {
-        const base = await resolveBasePath(vaultRoot);
-        const abs = await join(base, filePath);
+        const abs = await resolvePreviewPath(filePath, vaultRoot);
         const bytes = await readFile(abs);
         if (cancelled) return;
         const name = filePath.split('/').pop() || 'file';

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Excalidraw } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
-import { useVaultStore } from '@/store/vaultStore';
 import { useDiffReviewStore } from '@/store/diffReviewStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
+import { readFileByRoute } from '@/services/editorIoService';
 
 interface ExcalidrawPreviewProps {
   filePath: string;
@@ -20,7 +20,7 @@ export function ExcalidrawPreview({ filePath }: ExcalidrawPreviewProps) {
     let cancelled = false;
     (async () => {
       try {
-        const json = await useVaultStore.getState().readFile(filePath);
+        const json = await readFileByRoute(filePath);
         const parsed = JSON.parse(json);
         if (!cancelled) {
           setData({

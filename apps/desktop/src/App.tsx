@@ -476,6 +476,81 @@ export default function App() {
     };
   }, []);
 
+  // ── OS file drag-and-drop onto the window (best-effort, macOS) ──
+  // When the user drags a file from Finder onto the window, the webview
+  // receives an HTML5 `drop` event. WebKit (WKWebView) exposes the real path
+  // on the dropped `File` object (`.path`); if present, we open it as an
+  // external (vault-independent) tab. We deliberately do NOT flip the Tauri
+  // `dragDropEnabled` window flag (which would give us reliable `tauri://drag`
+  // events with paths) because doing so also disables HTML5 drag-and-drop on
+  // Windows — which the schedule board DnD relies on. So this is best-effort:
+  // works on macOS where `.path` is populated, silently no-ops elsewhere.
+  useEffect(() => {
+    if (!isTauri()) return;
+    const onDrop = (e: DragEvent) => {
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+      let opened = false;
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i] as unknown as { path?: string };
+        const p = f.path;
+        if (!p) continue;
+        const name = p.includes('/') ? p.substring(p.lastIndexOf('/') + 1) : p;
+        void editorIoService.openFile(p, name);
+        opened = true;
+      }
+      if (opened) {
+        e.preventDefault();
+        useNavStore.getState().setCurrentPage('editor');
+      }
+    };
+    const onDragOver = (e: DragEvent) => {
+    // Allow a drop (default is to deny). Only signal allow when there are
+      // files so we don't interfere with in-app HTML5 DnD (board cards).
+      if (e.dataTransfer?.types?.includes('Files')) e.preventDefault();
+    };
+    window.addEventListener('drop', onDrop);
+    window.addEventListener('dragover', onDragOver);
+    return () => {
+      window.removeEventListener('drop', onDrop);
+      window.removeEventListener('dragover', onDragOver);
+    };
+  }, []);
+
+  // ── OS "Open With" / file-association launch ──
+  // When the OS launches Quill to open a file (right-click → Open With →
+  // Quill, or double-click an associated file), the Rust `RunEvent::Opened`
+  // handler converts the `file://` URL to a path and emits it here. We open
+  // it as a vault-independent external tab. Safe to fire before
+  // `restoreOpenTabs` completes — `openFile` is idempotent on the tab id.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        unlisten = await listen<string[]>('app://open-external-file', (e) => {
+          const paths = e.payload ?? [];
+          for (const p of paths) {
+            const name = p.includes('/') ? p.substring(p.lastIndexOf('/') + 1) : p;
+            void editorIoService.openFile(p, name);
+          }
+          if (paths.length > 0) {
+            useNavStore.getState().setCurrentPage('editor');
+          }
+        });
+      } catch (err) {
+        console.warn('[App] open-external-file listener setup failed:', err);
+      }
+      if (cancelled) unlisten?.();
+    })();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
+
   return (
     <div className="shell flex flex-col h-dvh" style={{ '--ui-font-size': `${fontSize}px` } as any}>
       <Topbar isMobile={isMobile} onToggleSidebar={toggleMobileSidebar} />

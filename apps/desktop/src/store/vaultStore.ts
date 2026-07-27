@@ -13,6 +13,7 @@ import { startVaultWatcher, stopVaultWatcher } from '@/utils/fileWatcher';
 import { generateShortId as generateId } from '@/utils/idGenerator';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { seedAgentFiles } from '@/services/featureAgentService';
+import { isExternalPath } from '@/utils/isExternalPath';
 
 async function startWatcherForVault(config: VaultConfig) {
   if (config.providerType !== 'tauri') return;
@@ -238,7 +239,12 @@ export const useVaultStore = create<VaultState>()(
             const pinned = await storageClient.get<string[]>(`vault:pinned:${config.id}`);
             set({ pinnedPaths: pinned || [] });
 
-            useEditorStore.setState({ tabs: [], activeTabId: null });
+            useEditorStore.setState((state) => ({
+              // Preserve vault-independent external tabs across vault switches;
+              // drop only the outgoing vault's relative-path tabs.
+              tabs: state.tabs.filter((t) => isExternalPath(t.path)),
+              activeTabId: null,
+            }));
 
             // Seed canonical feature agent files into <vault>/.claude/agents/ (write-if-missing).
             // 提前到 manager 连接后、migrateSpecialDirs/refreshFileTree 之前——

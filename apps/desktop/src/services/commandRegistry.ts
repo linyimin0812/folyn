@@ -164,6 +164,15 @@ export function registerBuiltinCommands(): void {
       run: () => editorIoService.openDailyNote(),
     },
     {
+      id: 'action.open-external-file',
+      title: 'Open External File…',
+      category: 'action',
+      keywords: ['open', 'external', 'outside', 'vault', 'disk', 'browse'],
+      run: () => {
+        void editorIoService.openExternalFile();
+      },
+    },
+    {
       id: 'action.export-markdown',
       title: 'Export as Markdown',
       category: 'action',

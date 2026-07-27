@@ -699,5 +699,25 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|_app, _event| {});
+        .run(|app, event| {
+            // OS "Open With" / file-association launch (macOS/iOS/Android).
+            // When the user opens a file with Quill from Finder/Explorer, the
+            // OS hands us the resource as a `file://` URL here. Convert to a
+            // filesystem path and emit it to the frontend, which opens it as
+            // an external (vault-independent) editor tab. Also surface the
+            // main window in case the app was backgrounded.
+            if let tauri::RunEvent::Opened { urls } = event {
+                let paths: Vec<String> = urls
+                    .into_iter()
+                    .filter_map(|u| u.to_file_path().ok().map(|p| p.to_string_lossy().into_owned()))
+                    .collect();
+                if !paths.is_empty() {
+                    if let Some(main) = app.get_webview_window("main") {
+                        let _ = main.show();
+                        let _ = main.set_focus();
+                    }
+                    let _ = app.emit("app://open-external-file", paths);
+                }
+            }
+        });
 }

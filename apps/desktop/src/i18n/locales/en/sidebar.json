@@ -2,6 +2,7 @@
   "filesPanel": {
     "actions": {
       "locateActive": "Locate active file",
+      "openExternal": "Open external file…",
       "refresh": "Refresh file tree",
       "more": "More actions",
       "newFile": "New file",

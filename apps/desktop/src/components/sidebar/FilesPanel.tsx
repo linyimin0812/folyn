@@ -13,7 +13,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PanelLeftClose } from 'lucide-react';
+import { PanelLeftClose, SquareArrowOutUpRight } from 'lucide-react';
 import { useNavStore } from '@/store/navStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
@@ -102,6 +102,11 @@ export function FilesPanel(): React.JSX.Element {
     },
     [openFile, onFileSelect],
   );
+
+  const handleOpenExternal = useCallback(() => {
+    void editorIoService.openExternalFile();
+    onFileSelect?.();
+  }, [onFileSelect]);
 
   const handleToggleDir = useCallback((dirPath: string) => {
     setExpandedDirs((prev) => {
@@ -416,15 +421,24 @@ export function FilesPanel(): React.JSX.Element {
           )}
         </div>
 
-        {/* Search */}
-        <div className="mt-2">
+        {/* Search + browse external file — a single joined control: same
+            bg, rounded as one, divided by a 1px rule, so the browse button
+            reads as an appendage of the search field. */}
+        <div className="mt-2 flex items-stretch rounded-[5px] border border-brd bg-inp transition-[border-color] duration-[140ms] focus-within:border-acc overflow-hidden">
           <input
-            className="w-full py-[5px] px-2 rounded-[5px] border border-brd bg-inp text-t1 text-[calc(var(--ui-font-size)-3px)] outline-none transition-[border-color] duration-[140ms] font-ui focus:border-acc placeholder:text-t3"
+            className="flex-1 min-w-0 py-[5px] px-2 bg-transparent text-t1 text-[calc(var(--ui-font-size)-3px)] outline-none font-ui placeholder:text-t3 border-none"
             placeholder={t('sidebar:filesPanel.search.placeholder')}
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             autoCapitalize="off"
           />
+          <button
+            className="shrink-0 flex items-center justify-center w-7 h-[26px] bg-transparent border-none text-t2 cursor-pointer transition-colors duration-[140ms] hover:bg-hov hover:text-t1"
+            onClick={handleOpenExternal}
+            title={t('sidebar:filesPanel.actions.openExternal')}
+          >
+            <SquareArrowOutUpRight size={14} />
+          </button>
         </div>
       </div>
 

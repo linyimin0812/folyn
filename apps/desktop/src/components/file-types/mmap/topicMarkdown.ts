@@ -24,13 +24,26 @@ export interface TopicMarkdownObj {
  * directory, then hand to Tauri's asset protocol. Mirrors the logic in
  * MarkdownPreview's VaultImage component — without this, a relative
  * `./assets/x.png` in a node topic renders as a broken <img> in the
- * mind-elixir canvas (which is plain DOM, no base-URL resolution).
+ * mind-elixir canvas (which is plain DOM, no base-URL resolution). External
+ * files (absolute `filePath`) resolve refs against the file's own directory.
  */
 function resolveImgSrc(src: string, filePath: string, vaultRoot: string): string {
   if (!src) return src;
   if (/^(https?:|data:|file:|blob:)/.test(src)) return src;
-  if (!vaultRoot) return src;
   const imagePath = decodeURIComponent(src.replace(/^\.\//, ''));
+  // External file: resolve relative refs against the file's own directory.
+  // `filePath` is absolute here, so its directory is derived synchronously
+  // (no async resolveBasePath needed) — this lets embedded images in an
+  // external mind-map load.
+  if (filePath.startsWith('/') || filePath.startsWith('~') || /^[A-Za-z]:[\/]/.test(filePath)) {
+    // Best-effort sync dir extraction; ~ is resolved via the absolute
+    // directory that mind-elixir already knows. For ~ we fall back to
+    // treating the path as already absolute (asset scope will allow it).
+    const dir = filePath.includes('/') ? filePath.substring(0, filePath.lastIndexOf('/')) : '';
+    const absPath = dir ? `${dir}/${imagePath}` : imagePath;
+    return convertFileSrc(absPath);
+  }
+  if (!vaultRoot) return src;
   const fileDir = filePath ? filePath.substring(0, filePath.lastIndexOf('/')) : '';
   let absPath: string;
   if (fileDir && imagePath.startsWith(fileDir + '/')) {

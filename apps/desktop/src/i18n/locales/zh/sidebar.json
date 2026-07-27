@@ -2,6 +2,7 @@
   "filesPanel": {
     "actions": {
       "locateActive": "定位当前文件",
+      "openExternal": "打开外部文件…",
       "refresh": "刷新文件树",
       "more": "更多操作",
       "newFile": "新建文件",

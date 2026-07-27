@@ -13,11 +13,11 @@ import { jsx, jsxs } from 'react/jsx-runtime';
 import { rehypeSourceLine } from './rehypeSourceLine';
 import { ContainerRegistry, registerBuiltinPlugins, MermaidBlock, VaultContext } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
-import { useVaultStore } from '@/store/vaultStore';
 import { getHandlerByExtension, getHandlerById } from '@/components/file-types/registry';
 import { isTauri } from '@/utils/platform';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useAppearanceStore } from '@/store/appearanceStore';
+import { readFileByRoute } from '@/services/editorIoService';
 import { useEditorStore } from '@/store/editorStore';
 import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview';
 import { FileIcon } from '@/components/icons/FileIcon';
@@ -205,6 +205,7 @@ function CodeBlockWrapper({ children, node, ...rest }: any) {
 export function MarkdownPreview({ content, filePath, vaultRoot }: import('../types').PreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [resolvedVaultRoot, setResolvedVaultRoot] = useState('');
+  const [assetBase, setAssetBase] = useState('');
 
   useEffect(() => {
     if (!vaultRoot) return;
@@ -216,6 +217,20 @@ export function MarkdownPreview({ content, filePath, vaultRoot }: import('../typ
       }
     });
   }, [vaultRoot]);
+
+  // ponytail: precompute the directory that relative asset references
+  // (e.g. `![](pic.png)`) should resolve against. For vault files this is
+  // `<vaultRoot>/<fileDir>` (legacy); for EXTERNAL files it's the file's own
+  // directory — so images embedded next to an external markdown file load.
+  useEffect(() => {
+    let cancelled = false;
+    import('../previewPath').then(({ resolveAssetBase }) =>
+      resolveAssetBase(filePath, vaultRoot).then((base) => {
+        if (!cancelled) setAssetBase(base.replace(/\/+$/, ''));
+      }),
+    );
+    return () => { cancelled = true; };
+  }, [filePath, vaultRoot]);
 
   const renderFile = useCallback((path: string, content: string) => {
     const ext = path.toLowerCase().match(/\.([^.]+)$/)?.[1] || '';
@@ -289,18 +304,8 @@ export function MarkdownPreview({ content, filePath, vaultRoot }: import('../typ
         return createElement(ExcalidrawPreview, { filePath: vaultPath, alt });
       }
 
-      if (resolvedVaultRoot) {
-        const fileDir = filePath
-          ? filePath.substring(0, filePath.lastIndexOf('/'))
-          : '';
-        let absPath: string;
-        if (fileDir && imagePath.startsWith(fileDir + '/')) {
-          absPath = resolvedVaultRoot + '/' + imagePath;
-        } else if (fileDir) {
-          absPath = resolvedVaultRoot + '/' + fileDir + '/' + imagePath;
-        } else {
-          absPath = resolvedVaultRoot + '/' + imagePath;
-        }
+      if (assetBase) {
+        const absPath = `${assetBase}/${imagePath}`;
         const imageUrl = convertFileSrc(absPath);
         return createElement('img', { src: imageUrl, alt, loading: 'lazy', ...rest });
       }
@@ -355,7 +360,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot }: import('../typ
     <VaultContext.Provider value={{
       vaultRoot: resolvedVaultRoot,
       filePath,
-      readFile: (p) => useVaultStore.getState().readFile(p),
+      readFile: (p) => readFileByRoute(p),
       renderFile,
       openFile,
       getFileIcon: (path) => createElement(FileIcon, { filename: path }),
