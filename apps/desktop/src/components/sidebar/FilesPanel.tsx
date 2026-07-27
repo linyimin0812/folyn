@@ -86,6 +86,7 @@ export function FilesPanel(): React.JSX.Element {
   const flatPaths = useMemo(() => flattenTree(fileTree), [fileTree]);
 
   const vaultMoveFiles = useVaultStore((state) => state.moveFiles);
+  const vaultCopyPath = useVaultStore((state) => state.copyPath);
 
   const fileTreeRef = useRef<HTMLDivElement>(null);
 
@@ -209,6 +210,7 @@ export function FilesPanel(): React.JSX.Element {
 
   const [contextMenu, setContextMenu] = useState<ContextMenuData | null>(null);
   const [moveSource, setMoveSource] = useState<{ path: string; type: 'file' | 'dir'; name: string } | null>(null);
+  const [copySource, setCopySource] = useState<{ path: string; type: 'file' | 'dir'; name: string } | null>(null);
 
   const handleContextMenu = useCallback((e: React.MouseEvent, path: string, name: string, type: 'file' | 'dir') => {
     e.preventDefault();
@@ -497,6 +499,20 @@ export function FilesPanel(): React.JSX.Element {
         />
       )}
 
+      {/* Copy dialog */}
+      {copySource && (
+        <MoveDialog
+          mode="copy"
+          source={copySource}
+          fileTree={fileTree}
+          onCancel={() => setCopySource(null)}
+          onConfirm={async (targetDir) => {
+            await vaultCopyPath(copySource.path, copySource.type, targetDir);
+            setCopySource(null);
+          }}
+        />
+      )}
+
       {/* Context menu */}
       <ContextMenu
         menu={contextMenu}
@@ -507,6 +523,10 @@ export function FilesPanel(): React.JSX.Element {
         onStartMove={(path, type) => {
           const name = path.includes('/') ? path.substring(path.lastIndexOf('/') + 1) : path;
           setMoveSource({ path, type, name });
+        }}
+        onStartCopy={(path, type) => {
+          const name = path.includes('/') ? path.substring(path.lastIndexOf('/') + 1) : path;
+          setCopySource({ path, type, name });
         }}
         pinnedPaths={pinnedPaths}
         onTogglePin={togglePin}

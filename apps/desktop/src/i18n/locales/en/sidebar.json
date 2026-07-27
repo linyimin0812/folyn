@@ -41,7 +41,8 @@
     "ingestToWiki": "Ingest to Wiki",
     "rename": "Rename",
     "delete": "Delete",
-    "move": "Move to..."
+    "move": "Move to...",
+    "copy": "Copy"
   },
   "sidebarActions": {
     "deleteConfirm": {
@@ -59,6 +60,10 @@
       "confirm": "Move",
       "noTargets": "No other folders to move to",
       "vaultRoot": "Vault root"
+    },
+    "copyDialog": {
+      "title": "Copy to",
+      "confirm": "Copy"
     }
   },
   "calendar": {

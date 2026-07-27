@@ -89,6 +89,63 @@ interface VaultState {
   deleteDir: (path: string) => Promise<void>;
   renameFile: (oldPath: string, newPath: string) => Promise<void>;
   moveFiles: (paths: string[], targetDir: string) => Promise<void>;
+  copyPath: (srcPath: string, srcType: 'file' | 'dir', targetDir: string) => Promise<void>;
+}
+
+/** Insert `suffix` before the file extension (or append for dirs/extensionless names). */
+function addCopySuffix(name: string, suffix: string): string {
+  const dot = name.lastIndexOf('.');
+  if (dot > 0) return name.slice(0, dot) + suffix + name.slice(dot);
+  return name + suffix;
+}
+
+/** Lazily yield copy-name candidates: same-dir starts at `<name> 副本`; other-dir starts at the original name. Collisions append ` 2`, ` 3`, ... */
+function* copyNameCandidates(baseName: string, sameDir: boolean): Generator<string> {
+  if (!sameDir) yield baseName;
+  yield addCopySuffix(baseName, ' 副本');
+  for (let n = 2; ; n++) yield addCopySuffix(baseName, ` 副本 ${n}`);
+}
+
+/** Resolve a non-colliding target name in `targetDir` based on the copy rules. */
+async function resolveCopyName(
+  manager: { listFiles: (path: string, recursive?: boolean, showHidden?: boolean) => Promise<VaultEntry[]> },
+  targetDir: string,
+  baseName: string,
+  sameDir: boolean,
+): Promise<string> {
+  let existing: Set<string>;
+  try {
+    const entries = await manager.listFiles(targetDir, false, true);
+    existing = new Set(entries.map((e) => e.name));
+  } catch {
+    existing = new Set();
+  }
+  let i = 0;
+  for (const candidate of copyNameCandidates(baseName, sameDir)) {
+    if (!existing.has(candidate)) return candidate;
+    if (++i > 1000) throw new Error('Could not find a non-colliding copy name');
+  }
+  return baseName;
+}
+
+/** Recursively copy a directory's contents from srcPath into destPath. */
+async function copyDirRecursive(
+  manager: { listFiles: (path: string, recursive?: boolean, showHidden?: boolean) => Promise<VaultEntry[]>; createDir: (path: string) => Promise<void>; readFile: (path: string) => Promise<string>; writeFile: (path: string, content: string) => Promise<void> },
+  srcPath: string,
+  destPath: string,
+): Promise<void> {
+  await manager.createDir(destPath);
+  const entries = await manager.listFiles(srcPath, false, true);
+  for (const entry of entries) {
+    const srcChild = `${srcPath}/${entry.name}`;
+    const destChild = `${destPath}/${entry.name}`;
+    if (entry.type === 'dir') {
+      await copyDirRecursive(manager, srcChild, destChild);
+    } else {
+      const content = await manager.readFile(srcChild);
+      await manager.writeFile(destChild, content);
+    }
+  }
 }
 
 /** Sync vault info to vaultConfigStore / appearanceStore */
@@ -417,6 +474,25 @@ export const useVaultStore = create<VaultState>()(
               return tab;
             });
             useEditorStore.setState({ tabs: updatedTabs });
+          }
+
+          await get().refreshFileTree();
+        },
+
+        copyPath: async (srcPath, srcType, targetDir) => {
+          const manager = get().manager;
+          const basename = srcPath.includes('/') ? srcPath.substring(srcPath.lastIndexOf('/') + 1) : srcPath;
+          const parentDir = srcPath.includes('/') ? srcPath.substring(0, srcPath.lastIndexOf('/')) : '';
+          const sameDir = parentDir === targetDir;
+
+          const targetName = await resolveCopyName(manager, targetDir, basename, sameDir);
+          const targetPath = targetDir ? `${targetDir}/${targetName}` : targetName;
+
+          if (srcType === 'file') {
+            const content = await manager.readFile(srcPath);
+            await manager.writeFile(targetPath, content);
+          } else {
+            await copyDirRecursive(manager, srcPath, targetPath);
           }
 
           await get().refreshFileTree();

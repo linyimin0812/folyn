@@ -216,6 +216,115 @@ describe('useVaultStore file CRUD (via injected manager)', () => {
   });
 });
 
+describe('useVaultStore.copyPath', () => {
+  /** Fake manager with path-aware listFiles so copyPath collision logic can be exercised. */
+  function createCopyFakeManager() {
+    const files = new Map<string, string>();
+    const dirs = new Set<string>(); // normalized paths that exist as dirs
+    const norm = (p: string) => p.replace(/\/+$/, '');
+    const splitPath = (p: string) => {
+      const n = norm(p);
+      const idx = n.lastIndexOf('/');
+      return { dir: idx >= 0 ? n.slice(0, idx) : '', base: idx >= 0 ? n.slice(idx + 1) : n };
+    };
+    return {
+      files,
+      dirs,
+      listFiles: vi.fn(async (path: string) => {
+        const target = norm(path);
+        const out: VaultEntry[] = [];
+        for (const [p] of files) {
+          const { dir, base } = splitPath(p);
+          if (dir === target) out.push({ path: p, name: base, type: 'file' });
+        }
+        for (const d of dirs) {
+          if (d === target) continue;
+          const { dir, base } = splitPath(d);
+          if (dir === target) out.push({ path: d, name: base, type: 'dir' });
+        }
+        return out;
+      }),
+      createDir: vi.fn(async (path: string) => { dirs.add(norm(path)); }),
+      readFile: vi.fn(async (path: string) => {
+        if (!files.has(path)) throw new Error(`File not found: ${path}`);
+        return files.get(path) as string;
+      }),
+      writeFile: vi.fn(async (path: string, content: string) => {
+        files.set(path, content);
+        const { dir } = splitPath(path);
+        if (dir) dirs.add(dir); // parent dirs implicitly exist
+      }),
+    };
+  }
+
+  beforeEach(() => {
+    useVaultStore.setState({
+      manager: createCopyFakeManager() as never,
+      currentVault: { id: 'v1', name: 'a', providerType: 'tauri', basePath: '/a' },
+    } as never);
+  });
+
+  it('same-dir copy appends `副本` suffix', async () => {
+    const m = useVaultStore.getState().manager as ReturnType<typeof createCopyFakeManager>;
+    m.files.set('note.md', 'body');
+    m.dirs.add('');
+
+    await useVaultStore.getState().copyPath('note.md', 'file', '');
+
+    expect(m.writeFile).toHaveBeenCalledWith('note 副本.md', 'body');
+  });
+
+  it('same-dir copy with collision appends `副本 2`', async () => {
+    const m = useVaultStore.getState().manager as ReturnType<typeof createCopyFakeManager>;
+    m.files.set('note.md', 'body');
+    m.files.set('note 副本.md', 'existing');
+    m.dirs.add('');
+
+    await useVaultStore.getState().copyPath('note.md', 'file', '');
+
+    expect(m.writeFile).toHaveBeenCalledWith('note 副本 2.md', 'body');
+  });
+
+  it('cross-dir copy uses the original name when no collision', async () => {
+    const m = useVaultStore.getState().manager as ReturnType<typeof createCopyFakeManager>;
+    m.files.set('src/note.md', 'body');
+    m.dirs.add('src');
+    m.dirs.add('dest');
+
+    await useVaultStore.getState().copyPath('src/note.md', 'file', 'dest');
+
+    expect(m.writeFile).toHaveBeenCalledWith('dest/note.md', 'body');
+  });
+
+  it('cross-dir copy falls back to `副本` when the target name exists', async () => {
+    const m = useVaultStore.getState().manager as ReturnType<typeof createCopyFakeManager>;
+    m.files.set('src/note.md', 'body');
+    m.files.set('dest/note.md', 'existing');
+    m.dirs.add('src');
+    m.dirs.add('dest');
+
+    await useVaultStore.getState().copyPath('src/note.md', 'file', 'dest');
+
+    expect(m.writeFile).toHaveBeenCalledWith('dest/note 副本.md', 'body');
+  });
+
+  it('directory copy recurses into subdirs', async () => {
+    const m = useVaultStore.getState().manager as ReturnType<typeof createCopyFakeManager>;
+    m.dirs.add('');
+    m.dirs.add('folder');
+    m.dirs.add('folder/sub');
+    m.files.set('folder/a.md', 'A');
+    m.files.set('folder/sub/b.md', 'B');
+
+    await useVaultStore.getState().copyPath('folder', 'dir', '');
+
+    expect(m.createDir).toHaveBeenCalledWith('folder 副本');
+    expect(m.createDir).toHaveBeenCalledWith('folder 副本/sub');
+    expect(m.writeFile).toHaveBeenCalledWith('folder 副本/a.md', 'A');
+    expect(m.writeFile).toHaveBeenCalledWith('folder 副本/sub/b.md', 'B');
+  });
+});
+
 describe('useVaultStore.refreshFileTree', () => {
   let manager: FakeManager;
 

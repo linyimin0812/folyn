@@ -41,7 +41,8 @@
     "ingestToWiki": "摄入到 Wiki",
     "rename": "重命名",
     "delete": "删除",
-    "move": "移动到..."
+    "move": "移动到...",
+    "copy": "复制"
   },
   "sidebarActions": {
     "deleteConfirm": {
@@ -59,6 +60,10 @@
       "confirm": "移动",
       "noTargets": "没有其他可移动到的文件夹",
       "vaultRoot": "仓库根目录"
+    },
+    "copyDialog": {
+      "title": "复制到",
+      "confirm": "复制"
     }
   },
   "calendar": {

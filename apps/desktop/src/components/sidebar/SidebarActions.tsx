@@ -205,6 +205,8 @@ interface MoveDialogProps {
   fileTree: VaultEntry[];
   onCancel: () => void;
   onConfirm: (targetDir: string) => Promise<void>;
+  /** 'move' (default) disables the source's parent dir as a no-op target; 'copy' allows it (same-dir copy creates a 副本). */
+  mode?: 'move' | 'copy';
 }
 
 interface DirRow {
@@ -223,7 +225,7 @@ function collectDirs(entries: VaultEntry[], depth = 0, acc: DirRow[] = []): DirR
   return acc;
 }
 
-export function MoveDialog({ source, fileTree, onCancel, onConfirm }: MoveDialogProps): React.JSX.Element {
+export function MoveDialog({ source, fileTree, onCancel, onConfirm, mode = 'move' }: MoveDialogProps): React.JSX.Element {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
@@ -231,12 +233,14 @@ export function MoveDialog({ source, fileTree, onCancel, onConfirm }: MoveDialog
   const dirs = useMemo(() => collectDirs(fileTree), [fileTree]);
 
   // ponytail: vault root is also a valid target — represent it as the empty
-  // path '' so moveFiles writes the file to root. Source's own parent is a
-  // no-op, the source itself (if dir) and its descendants are illegal.
+  // path '' so moveFiles writes the file to root. For `move`, the source's own
+  // parent is a no-op and is disabled; for `copy`, same-dir is allowed (a
+  // 副本 is produced). The source itself (if dir) and its descendants are
+  // always illegal targets.
   const parentDir = source.path.includes('/') ? source.path.substring(0, source.path.lastIndexOf('/')) : '';
 
   const isDisabled = (dirPath: string): boolean => {
-    if (dirPath === parentDir) return true;
+    if (mode === 'move' && dirPath === parentDir) return true;
     if (source.type === 'dir') {
       if (dirPath === source.path) return true;
       if (dirPath.startsWith(source.path + '/')) return true;
@@ -253,10 +257,13 @@ export function MoveDialog({ source, fileTree, onCancel, onConfirm }: MoveDialog
 
   const hasValidTargets = dirs.some((d) => !isDisabled(d.path)) || !isDisabled('');
 
+  const titleKey = mode === 'copy' ? 'sidebar:sidebarActions.copyDialog.title' : 'sidebar:sidebarActions.moveDialog.title';
+  const confirmKey = mode === 'copy' ? 'sidebar:sidebarActions.copyDialog.confirm' : 'sidebar:sidebarActions.moveDialog.confirm';
+
   return (
     <div className="fixed inset-0 z-[9999] bg-black/35 flex items-center justify-center" onClick={onCancel}>
       <div className="bg-panel rounded-[10px] py-5 px-6 min-w-[320px] max-w-[420px] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="text-[15px] font-semibold text-t1 mb-3">{t('sidebar:sidebarActions.moveDialog.title')}</div>
+        <div className="text-[15px] font-semibold text-t1 mb-3">{t(titleKey)}</div>
         {hasValidTargets ? (
           <div className="max-h-[55vh] overflow-y-auto py-1 mb-4 border border-brd rounded-md">
             <button
@@ -296,7 +303,7 @@ export function MoveDialog({ source, fileTree, onCancel, onConfirm }: MoveDialog
             disabled={selected === null || moving || !hasValidTargets}
             onClick={handleConfirm}
           >
-            {t('sidebar:sidebarActions.moveDialog.confirm')}
+            {t(confirmKey)}
           </button>
         </div>
       </div>

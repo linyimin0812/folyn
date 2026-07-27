@@ -24,6 +24,7 @@ export interface ContextMenuProps {
   onDeleteItem: (path: string, type: 'file' | 'dir') => void;
   onStartNewItem: (type: 'file' | 'dir', parentDir?: string, ext?: string) => void;
   onStartMove: (path: string, type: 'file' | 'dir') => void;
+  onStartCopy: (path: string, type: 'file' | 'dir') => void;
   pinnedPaths: string[];
   onTogglePin: (path: string) => void;
 }
@@ -42,6 +43,7 @@ export function ContextMenu({
   onDeleteItem,
   onStartNewItem,
   onStartMove,
+  onStartCopy,
   pinnedPaths,
   onTogglePin,
 }: ContextMenuProps): React.JSX.Element | null {
@@ -176,6 +178,9 @@ export function ContextMenu({
           </button>
           <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onClose(); onStartMove(menu.path, menu.type); }}>
             <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.move')}
+          </button>
+          <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onClose(); onStartCopy(menu.path, menu.type); }}>
+            <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copy')}
           </button>
           <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-[#e05252] hover:bg-[rgba(224,82,82,.08)]" onClick={() => { onClose(); onDeleteItem(menu.path, menu.type); }}>
             <ThemeIcon name="delete" size={14} /> {t('sidebar:contextMenu.delete')}
