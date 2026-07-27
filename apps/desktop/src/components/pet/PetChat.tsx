@@ -388,7 +388,6 @@ export function PetChat() {
 
   const leadingSlot = (
     <>
-      <AdapterSelector disabled={streaming} />
       {/* Mode picker (chat / ask / agent). Native <select> — zero JS for the
         open/close the AI panel's custom dropdown needs, and the pet panel is
         compact. chat routes to the rig backend; ask/agent to the claude CLI. */}
@@ -406,6 +405,7 @@ export function PetChat() {
           </option>
         ))}
       </select>
+      <AdapterSelector disabled={streaming} />
       <button
         type="button"
         className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
