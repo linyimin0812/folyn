@@ -9,6 +9,7 @@ beforeEach(() => {
   useAiConfigStore.setState({
     cliAdapter: 'claude',
     cliPath: 'claude',
+    cliPaths: {},
     chatProvider: 'anthropic',
     chatModel: 'claude-sonnet-4-6',
     chatApiKey: '',
@@ -391,5 +392,50 @@ describe('useAiConfigStore hydrate migration (T08)', () => {
       customProviders: [{ id: 123, displayName: 'bad' }],
     });
     expect(useAiConfigStore.getState().customProviders).toEqual([]);
+  });
+});
+
+describe('per-adapter cliPath (A: each adapter owns its binary path)', () => {
+  it('setCliPath writes the active cliPath AND cliPaths[active adapter]', () => {
+    useAiConfigStore.getState().setCliPath('/usr/local/bin/claude');
+    const s = useAiConfigStore.getState();
+    expect(s.cliPath).toBe('/usr/local/bin/claude');
+    expect(s.cliPaths.claude).toBe('/usr/local/bin/claude');
+  });
+
+  it('setCliAdapter swaps the active cliPath to the target adapter stored path', () => {
+    // seed pi's path while pi is active
+    useAiConfigStore.getState().setCliAdapter('pi');
+    useAiConfigStore.getState().setCliPath('/Users/x/.nvm/.../bin/pi');
+    expect(useAiConfigStore.getState().cliPath).toBe('/Users/x/.nvm/.../bin/pi');
+    // switch to claude (no stored claude path yet) -> falls back to default
+    useAiConfigStore.getState().setCliAdapter('claude');
+    expect(useAiConfigStore.getState().cliAdapter).toBe('claude');
+    // claude default 'claude' (cliPaths.claude unset)
+    expect(useAiConfigStore.getState().cliPath).toBe('claude');
+    // switching back to pi restores the stored pi path
+    useAiConfigStore.getState().setCliAdapter('pi');
+    expect(useAiConfigStore.getState().cliPath).toBe('/Users/x/.nvm/.../bin/pi');
+  });
+
+  it('setCliAdapter preserves each adapter independently', () => {
+    useAiConfigStore.getState().setCliAdapter('claude');
+    useAiConfigStore.getState().setCliPath('/claude/bin');
+    useAiConfigStore.getState().setCliAdapter('pi');
+    useAiConfigStore.getState().setCliPath('/pi/bin');
+    // both stored
+    expect(useAiConfigStore.getState().cliPaths).toEqual({ claude: '/claude/bin', pi: '/pi/bin' });
+    // switch back and forth, each restores its own
+    useAiConfigStore.getState().setCliAdapter('claude');
+    expect(useAiConfigStore.getState().cliPath).toBe('/claude/bin');
+    useAiConfigStore.getState().setCliAdapter('pi');
+    expect(useAiConfigStore.getState().cliPath).toBe('/pi/bin');
+  });
+
+  it('hydrates a legacy single cliPath blob into cliPaths.claude', () => {
+    useAiConfigStore.getState().hydrate({ cliPath: '/old/claude' });
+    const s = useAiConfigStore.getState();
+    expect(s.cliPath).toBe('/old/claude');
+    expect(s.cliPaths.claude).toBe('/old/claude');
   });
 });

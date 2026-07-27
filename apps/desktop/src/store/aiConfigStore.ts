@@ -62,6 +62,7 @@ function emptyConfig(): ProviderConfig {
 export const PERSIST_KEYS_AI_CONFIG = [
   'cliAdapter',
   'cliPath',
+  'cliPaths',
   'chatProvider',
   'chatModel',
   'providerConfigs',
@@ -88,6 +89,9 @@ export const PERSIST_KEYS_AI_CONFIG = [
 export interface AiConfigState {
   cliAdapter: string;
   cliPath: string;
+  /** Per-adapter binary path. `cliPath` mirrors `cliPaths[cliAdapter]`
+   *  so the many callers reading `aiConfig.cliPath` need no change. */
+  cliPaths: Record<string, string>;
   chatProvider: ChatProvider;
   chatModel: string;
   // Flat mirrors of providerConfigs[chatProvider] — kept for caller
@@ -106,8 +110,7 @@ export interface AiConfigState {
   manualModels: Record<string, ManualModel[]>;
 
   setCliAdapter: (v: string) => void;
-  setCliPath: (v: string) => void;
-  setChatProvider: (v: ChatProvider) => void;
+  setCliPath: (v: string) => void;  setChatProvider: (v: ChatProvider) => void;
   setChatModel: (v: string) => void;
   setChatApiKey: (v: string) => void;
   setChatBaseUrl: (v: string) => void;
@@ -162,6 +165,11 @@ function isProviderConfig(v: unknown): v is ProviderConfig {
     && typeof r.azureDeploymentId === 'string'
     && typeof r.azureApiVersion === 'string'
     && isThinkingBudget(r.thinkingBudget);
+}
+
+/** Per-adapter cliPath Record guard for the persisted blob. */
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
 function isProviderConfigRecord(v: unknown): v is Record<string, ProviderConfig> {
@@ -232,6 +240,7 @@ function patchSlot(
 export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   cliAdapter: 'claude',
   cliPath: 'claude',
+  cliPaths: {},
   chatProvider: 'anthropic',
   chatModel: 'claude-sonnet-4-6',
   chatApiKey: '',
@@ -244,8 +253,30 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   enabledProviders: {},
   manualModels: {},
 
-  setCliAdapter: (v) => { set({ cliAdapter: v }); schedulePersist(); },
-  setCliPath: (v) => { set({ cliPath: v }); schedulePersist(); },
+  setCliAdapter: (v) => {
+    // A: each adapter owns its binary path. On switch, remember the current
+    // cliPath under the old adapter, then restore (or default) the new one.
+    set((s) => {
+      const prev = s.cliAdapter;
+      const prevPath = s.cliPath;
+      const storedNew = s.cliPaths[v];
+      const defaultFor = (id: string) => id;
+      const newPaths = { ...s.cliPaths, [prev]: prevPath };
+      return {
+        cliAdapter: v,
+        cliPaths: newPaths,
+        cliPath: storedNew ?? defaultFor(v),
+      };
+    });
+    schedulePersist();
+  },
+  setCliPath: (v) => {
+    set((s) => ({
+      cliPath: v,
+      cliPaths: { ...s.cliPaths, [s.cliAdapter]: v },
+    }));
+    schedulePersist();
+  },
   setChatProvider: (v) => {
     const s = get();
     // Save current flat fields back to the OLD provider's slot before
@@ -402,7 +433,19 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   hydrate: (blob) => {
     const patch: Partial<AiConfigState> = {};
     if (blob.cliAdapter !== undefined) patch.cliAdapter = blob.cliAdapter as string;
-    if (blob.cliPath !== undefined) patch.cliPath = blob.cliPath as string;
+    // Per-adapter cliPath: hydrate the Record; migrate a legacy single
+    // `cliPath` blob into cliPaths.claude so old installs keep working.
+    let cliPaths: Record<string, string> = {};
+    if (isRecord(blob.cliPaths)) {
+      for (const [k, val] of Object.entries(blob.cliPaths)) {
+        if (typeof val === 'string') cliPaths[k] = val;
+      }
+    }
+    if (typeof blob.cliPath === 'string') {
+      patch.cliPath = blob.cliPath;
+      if (!cliPaths.claude) cliPaths.claude = blob.cliPath;
+    }
+    patch.cliPaths = cliPaths;
     const providerId = isChatProvider(blob.chatProvider) ? blob.chatProvider : 'anthropic';
     patch.chatProvider = providerId;
     if (blob.chatModel !== undefined) patch.chatModel = blob.chatModel as string;
