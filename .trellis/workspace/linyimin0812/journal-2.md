@@ -778,3 +778,37 @@ Added the cloudia built-in bubble template (Cloudia mascot SVG + cream card + pe
 ### Next Steps
 
 - None - task complete
+
+
+## Session 81: Sidebar context menu: copy file/folder with target picker
+
+**Date**: 2026-07-27
+**Task**: Sidebar context menu: copy file/folder with target picker
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added a '复制' item to the left file panel context menu. Reuses MoveDialog with a new mode=copy prop (allows same-dir target → appends '副本' suffix). vaultStore gains copyPath(srcPath, srcType, targetDir) which composes readFile/writeFile/createDir/listFiles (recursive for dirs) plus a 副本/副本 N name resolver. Files & dirs supported. Added 5 unit tests for the naming logic. i18n keys added for zh/en.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0e912ae` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 80
-- **Last Active**: 2026-07-24
+- **Total Sessions**: 81
+- **Last Active**: 2026-07-27
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~780 | Active |
+| `journal-2.md` | ~814 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 81 | 2026-07-27 | Sidebar context menu: copy file/folder with target picker | `0e912ae` | `master` |
 | 80 | 2026-07-24 | Cloudia bubble template + dynamic window size | `d67425a` | `master` |
 | 79 | 2026-07-23 | Pet bubble template customization + external launch | `cefa65c` | `master` |
 | 78 | 2026-07-23 | Refactor pet_commands.rs into 5 feature-domain files | `57afc46` | `master` |
