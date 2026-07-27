@@ -121,7 +121,7 @@ export function ChatInputBox({
           spellCheck={false}
         />
 
-        <div className="flex items-center gap-px py-0.5 px-1.5 pb-1.5">
+        <div className="flex items-center gap-0 py-0.5 px-1.5 pb-1.5">
           {leadingSlot}
           <div className="flex-1" />
           {trailingSlot}
