@@ -54,6 +54,17 @@ export const externalFileProvider = {
     return readTextFile(abs);
   },
 
+  /** Read an external file as raw bytes. Use this (not `readFile`) when the
+   *  caller must preserve the exact bytes — binary copies (zip / xlsx /
+   *  images / any non-text file) round-trip through `readFile`'s UTF-8
+   *  decode/encode and corrupt non-text byte sequences. */
+  async readFileBytes(rawPath: string): Promise<Uint8Array> {
+    const abs = await resolveAbsolutePath(rawPath);
+    await assertWithinHome(abs);
+    const { readFile } = await import('@tauri-apps/plugin-fs');
+    return readFile(abs);
+  },
+
   /** Write content to an external file (create or overwrite). */
   async writeFile(rawPath: string, content: string): Promise<void> {
     const abs = await resolveAbsolutePath(rawPath);

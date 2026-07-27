@@ -64,6 +64,20 @@ export class VaultManager {
     return this.getProvider().writeFile(path, content);
   }
 
+  /** Write raw bytes — byte-preserving binary write. Falls back to the text
+   *  `writeFile` for providers that don't implement `writeFileBytes` (the
+   *  string is UTF-8-decoded from the bytes first, which is lossy for
+   *  non-text — callers copying binary files should ensure the active
+   *  provider implements this). */
+  async writeFileBytes(path: string, bytes: Uint8Array): Promise<void> {
+    const provider = this.getProvider();
+    if (provider.writeFileBytes) {
+      return provider.writeFileBytes(path, bytes);
+    }
+    // Lossy fallback — only reached for non-binary providers.
+    return provider.writeFile(path, new TextDecoder().decode(bytes));
+  }
+
   async deleteFile(path: string): Promise<void> {
     return this.getProvider().deleteFile(path);
   }

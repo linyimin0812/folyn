@@ -4,6 +4,7 @@ import { VaultError } from '../types';
 import {
   readTextFile,
   writeTextFile,
+  writeFile as writeFileBytes,
   remove,
   mkdir,
   readDir,
@@ -78,6 +79,19 @@ export class TauriVaultProvider implements VaultProvider {
       await mkdir(parentDir, { recursive: true });
     }
     await writeTextFile(fullPath, content);
+  }
+
+  /** Write raw bytes — byte-preserving (binary) write. Mirrors `writeFile`'s
+   *  parent-dir creation. Use for binary copies where a UTF-8 string
+   *  round-trip would corrupt non-text bytes. */
+  async writeFileBytes(path: string, bytes: Uint8Array): Promise<void> {
+    const fullPath = await this.resolve(path);
+    const parentDir = fullPath.substring(0, fullPath.lastIndexOf('/'));
+    const parentExists = await exists(parentDir);
+    if (!parentExists) {
+      await mkdir(parentDir, { recursive: true });
+    }
+    await writeFileBytes(fullPath, bytes);
   }
 
   async deleteFile(path: string): Promise<void> {

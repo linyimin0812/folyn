@@ -21,11 +21,16 @@ vi.mock('@/utils/pathResolver', () => ({
 }));
 
 // Stub the external-file provider so copyExternalFileToVault never touches
-// Tauri fs. The readFile spy is configured per-test; writeFile/exists are
+// Tauri fs. The readFileBytes spy is configured per-test; writeFile/exists are
 // unused by the store action but kept here so other imports stay happy.
 vi.mock('@/services/externalFileProvider', () => ({
   externalFileProvider: {
     readFile: vi.fn(async (p: string) => `content-for:${p}`),
+    readFileBytes: vi.fn(async (p: string) => {
+      // Encode the default text body as UTF-8 so the binary path and the
+      // legacy text path carry the same payload in the common (.md) case.
+      return new TextEncoder().encode(`content-for:${p}`);
+    }),
     writeFile: vi.fn(async () => {}),
     exists: vi.fn(async () => false),
   },
@@ -366,6 +371,7 @@ describe('useVaultStore.copyExternalFileToVault', () => {
         return out;
       }),
       writeFile: vi.fn(async (path: string, content: string) => { files.set(path, content); }),
+      writeFileBytes: vi.fn(async (path: string, bytes: Uint8Array) => { files.set(path, bytes); }),
       createDir: vi.fn(async () => {}),
       readFile: vi.fn(async () => { throw new Error('should not read via manager'); }),
     };
@@ -386,8 +392,8 @@ describe('useVaultStore.copyExternalFileToVault', () => {
 
     const newPath = await useVaultStore.getState().copyExternalFileToVault('~/Desktop/report.md', 'notes');
 
-    expect(externalFileProvider.readFile).toHaveBeenCalledWith('~/Desktop/report.md');
-    expect(m.writeFile).toHaveBeenCalledWith('notes/report.md', 'content-for:~/Desktop/report.md');
+    expect(externalFileProvider.readFileBytes).toHaveBeenCalledWith('~/Desktop/report.md');
+    expect(m.writeFileBytes).toHaveBeenCalledWith('notes/report.md', new TextEncoder().encode('content-for:~/Desktop/report.md'));
     expect(newPath).toBe('notes/report.md');
   });
 
@@ -398,7 +404,7 @@ describe('useVaultStore.copyExternalFileToVault', () => {
 
     const newPath = await useVaultStore.getState().copyExternalFileToVault('/abs/report.md', 'notes');
 
-    expect(m.writeFile).toHaveBeenCalledWith('notes/report 副本.md', 'content-for:/abs/report.md');
+    expect(m.writeFileBytes).toHaveBeenCalledWith('notes/report 副本.md', new TextEncoder().encode('content-for:/abs/report.md'));
     expect(newPath).toBe('notes/report 副本.md');
   });
 
@@ -410,7 +416,7 @@ describe('useVaultStore.copyExternalFileToVault', () => {
 
     const newPath = await useVaultStore.getState().copyExternalFileToVault('/abs/report.md', '');
 
-    expect(m.writeFile).toHaveBeenCalledWith('report 副本 2.md', 'content-for:/abs/report.md');
+    expect(m.writeFileBytes).toHaveBeenCalledWith('report 副本 2.md', new TextEncoder().encode('content-for:/abs/report.md'));
     expect(newPath).toBe('report 副本 2.md');
   });
 
@@ -421,6 +427,26 @@ describe('useVaultStore.copyExternalFileToVault', () => {
     await useVaultStore.getState().copyExternalFileToVault('~/x.md', '');
 
     expect(m.readFile).not.toHaveBeenCalled();
+  });
+
+  it('preserves bytes that are not valid UTF-8 (binary fidelity)', async () => {
+    // Regression for the "Corrupted zip" bug: the copy must go through a
+    // byte-preserving (binary) read→write path, not a UTF-8 text round-trip,
+    // because non-text bytes (zip / xlsx / image payloads) are not valid
+    // UTF-8 and get mangled by decode→encode.
+    const m = useVaultStore.getState().manager as ReturnType<typeof createFakeManager>;
+    m.dirs.add('bin');
+    // Bytes that are NOT valid UTF-8: 0x80/0xff lone continuation, 0xc3 0x28
+    // is an overlong/invalid sequence, 0x00 in the middle.
+    const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x80, 0xff, 0x00, 0x7f, 0xc3, 0x28, 0xed, 0xa0, 0x80]);
+    (externalFileProvider.readFileBytes as ReturnType<typeof vi.fn>).mockResolvedValueOnce(bytes);
+
+    await useVaultStore.getState().copyExternalFileToVault('/abs/blob.xlsx', 'bin');
+
+    expect(m.writeFileBytes).toHaveBeenCalledTimes(1);
+    const [, written] = (m.writeFileBytes as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(written).toBeInstanceOf(Uint8Array);
+    expect(Array.from(written as Uint8Array)).toEqual(Array.from(bytes));
   });
 });
 

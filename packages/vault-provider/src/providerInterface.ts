@@ -45,6 +45,11 @@ export interface VaultProvider {
   /** Write content to a file (create or overwrite) */
   writeFile(path: string, content: string): Promise<void>;
 
+  /** Write raw bytes to a file (byte-preserving, for binary copies).
+   *  Optional — providers that don't support binary write leave this
+   *  undefined and callers fall back to the text `writeFile`. */
+  writeFileBytes?(path: string, bytes: Uint8Array): Promise<void>;
+
   /** Delete a file */
   deleteFile(path: string): Promise<void>;
 

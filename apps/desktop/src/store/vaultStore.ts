@@ -507,11 +507,12 @@ export const useVaultStore = create<VaultState>()(
         },
 
         copyExternalFileToVault: async (srcExternalPath, targetDir) => {
-          // Read the external source at its true location (asserts within $HOME,
-          // resolves `~` / `$HOME`). The vault manager's readFile would
-          // `join(basePath, path)` and corrupt an absolute path, so external
-          // sources must go through externalFileProvider.
-          const content = await externalFileProvider.readFile(srcExternalPath);
+          // Read the external source as raw bytes (binary). The earlier text
+          // path (readFile → writeTextFile) went through a UTF-8 string
+          // round-trip that corrupted non-text files — e.g. a copied .xlsx
+          // / zip arrived truncated ("Corrupted zip" error in @file-viewer).
+          // Binary read+write preserves bytes for any file type.
+          const bytes = await externalFileProvider.readFileBytes(srcExternalPath);
           const baseName = srcExternalPath.includes('/')
             ? srcExternalPath.substring(srcExternalPath.lastIndexOf('/') + 1)
             : srcExternalPath;
@@ -521,7 +522,7 @@ export const useVaultStore = create<VaultState>()(
           const manager = get().manager;
           const targetName = await resolveCopyName(manager, targetDir, baseName, false);
           const targetPath = targetDir ? `${targetDir}/${targetName}` : targetName;
-          await manager.writeFile(targetPath, content);
+          await manager.writeFileBytes(targetPath, bytes);
           await get().refreshFileTree();
           return targetPath;
         },
