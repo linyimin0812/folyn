@@ -319,9 +319,6 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
             title={currentModeDef?.description}
           >
             <span>{currentModeDef?.label ?? inputMode}</span>
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 6 L8 10 L12 6" />
-            </svg>
           </button>
           {modeMenuOpen && (
             <div className="absolute bottom-full left-0 mb-1 min-w-[120px] bg-panel border border-brd rounded-md shadow-[0_4px_16px_rgba(0,0,0,.12)] z-[100] py-0.5">
