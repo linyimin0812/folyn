@@ -393,7 +393,7 @@ export function PetChat() {
         open/close the AI panel's custom dropdown needs, and the pet panel is
         compact. chat routes to the rig backend; ask/agent to the claude CLI. */}
       <select
-        className="ml-0.5 h-7 max-w-[96px] text-[11px] bg-transparent text-t3 border-none cursor-pointer outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+        className="ml-0.5 h-7 max-w-[96px] text-[11px] bg-transparent text-t3 border-none cursor-pointer outline-none appearance-none disabled:opacity-40 disabled:cursor-not-allowed"
         value={inputMode}
         onChange={(e) => setInputMode(e.target.value)}
         disabled={streaming}
