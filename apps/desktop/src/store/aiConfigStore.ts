@@ -110,7 +110,11 @@ export interface AiConfigState {
   manualModels: Record<string, ManualModel[]>;
 
   setCliAdapter: (v: string) => void;
-  setCliPath: (v: string) => void;  setChatProvider: (v: ChatProvider) => void;
+  setCliPath: (v: string) => void;
+  /** Set the binary path for a SPECIFIC adapter (used by the per-adapter
+   *  path rows in CliSettings). Also keeps the active `cliPath` mirror in
+   *  sync when editing the currently-selected adapter. */
+  setCliPathFor: (adapterId: string, path: string) => void;  setChatProvider: (v: ChatProvider) => void;
   setChatModel: (v: string) => void;
   setChatApiKey: (v: string) => void;
   setChatBaseUrl: (v: string) => void;
@@ -275,6 +279,15 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
       cliPath: v,
       cliPaths: { ...s.cliPaths, [s.cliAdapter]: v },
     }));
+    schedulePersist();
+  },
+  setCliPathFor: (adapterId, path) => {
+    set((s) => {
+      const cliPaths = { ...s.cliPaths, [adapterId]: path };
+      // Keep the active mirror in sync when editing the selected adapter.
+      const cliPath = adapterId === s.cliAdapter ? path : s.cliPath;
+      return { cliPaths, cliPath };
+    });
     schedulePersist();
   },
   setChatProvider: (v) => {

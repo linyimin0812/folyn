@@ -438,4 +438,16 @@ describe('per-adapter cliPath (A: each adapter owns its binary path)', () => {
     expect(s.cliPath).toBe('/old/claude');
     expect(s.cliPaths.claude).toBe('/old/claude');
   });
+
+  it('setCliPathFor writes a specific adapter slot and keeps the active mirror in sync when editing the selected adapter', () => {
+    // pi is active; editing pi's slot updates both the slot and the mirror
+    useAiConfigStore.getState().setCliAdapter('pi');
+    useAiConfigStore.getState().setCliPathFor('pi', '/pi/bin');
+    expect(useAiConfigStore.getState().cliPaths.pi).toBe('/pi/bin');
+    expect(useAiConfigStore.getState().cliPath).toBe('/pi/bin');
+    // editing a NON-active adapter slot (claude, while pi active) leaves the active mirror untouched
+    useAiConfigStore.getState().setCliPathFor('claude', '/claude/bin');
+    expect(useAiConfigStore.getState().cliPaths.claude).toBe('/claude/bin');
+    expect(useAiConfigStore.getState().cliPath).toBe('/pi/bin'); // still pi
+  });
 });
