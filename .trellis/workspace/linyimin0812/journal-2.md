@@ -812,3 +812,42 @@ Added a '复制' item to the left file panel context menu. Reuses MoveDialog wit
 ### Next Steps
 
 - None - task complete
+
+
+## Session 82: AI Panel & 桌宠 Chat 输入框 leadingSlot 调整
+
+**Date**: 2026-07-27
+**Task**: AI Panel & 桌宠 Chat 输入框 leadingSlot 调整
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+CLI 选择器从纯文字改为图标（折叠态只显图标，下拉显示图标+名称）；leadingSlot 重排为 Mode → CLI → File → Voice；PetChat 加 VoiceInputButton；删除 CLI/Mode 按钮的 chevron 与 PetChat select 的 OS 箭头；图标间距从混合 4px/2px 收紧到 0px。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dc2c8f0` | (see git log) |
+| `01d575a` | (see git log) |
+| `2d0c071` | (see git log) |
+| `90e0df1` | (see git log) |
+| `843a125` | (see git log) |
+| `d4ad200` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
