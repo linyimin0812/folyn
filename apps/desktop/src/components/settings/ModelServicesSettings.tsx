@@ -237,6 +237,11 @@ export function ModelServicesSettings() {
   const [showChatKey, setShowChatKey] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const pendingDeleteProvider = useMemo(
+    () => customProviders.find((p) => p.id === deleteConfirmId) ?? null,
+    [customProviders, deleteConfirmId],
+  );
 
   // ── derived ─────────────────────────────────────────────────
   const providers = useMemo(
@@ -330,9 +335,7 @@ export function ModelServicesSettings() {
                         title={t('settings:models.deleteCustom')}
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (confirm(t('settings:models.confirmDelete'))) {
-                            removeCustomProvider(p.id);
-                          }
+                          setDeleteConfirmId(p.id);
                         }}
                         className="opacity-0 group-hover:opacity-100 text-t3 hover:text-[#f06a6a] transition-opacity"
                       >
@@ -696,6 +699,29 @@ export function ModelServicesSettings() {
             setManualModalOpen(false);
           }}
         />
+      )}
+
+      {pendingDeleteProvider && (
+        <div className="fixed inset-0 z-[9999] bg-black/35 flex items-center justify-center" onClick={() => setDeleteConfirmId(null)}>
+          <div className="bg-panel rounded-[10px] py-5 px-6 min-w-[300px] max-w-[400px] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd" onClick={(e) => e.stopPropagation()}>
+            <div className="text-[15px] font-semibold text-t1 mb-2">{t('settings:models.confirmDelete')}</div>
+            <div className="text-[13px] text-t2 leading-relaxed mb-4">
+              <strong>{pendingDeleteProvider.displayName || pendingDeleteProvider.id}</strong>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-brd font-ui transition-all duration-[140ms] bg-panel text-t2 hover:bg-hov" onClick={() => setDeleteConfirmId(null)}>{t('settings:models.cancel')}</button>
+              <button
+                className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-[#e74c3c] font-ui transition-all duration-[140ms] bg-[#e74c3c] text-white hover:bg-[#c0392b] hover:border-[#c0392b]"
+                onClick={() => {
+                  removeCustomProvider(pendingDeleteProvider.id);
+                  setDeleteConfirmId(null);
+                }}
+              >
+                {t('settings:models.deleteCustom')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
