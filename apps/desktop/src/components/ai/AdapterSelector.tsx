@@ -14,6 +14,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { listAdapters } from '@quill/cli-adapter';
+import claudeIcon from '@/assets/agents/claude_code.svg';
+import piIcon from '@/assets/agents/pi.svg';
+
+const ADAPTER_ICON: Record<string, string> = {
+  claude: claudeIcon,
+  pi: piIcon,
+};
 
 export function AdapterSelector({ disabled }: { disabled?: boolean }) {
   const cliAdapter = useAiConfigStore((s) => s.cliAdapter);
@@ -44,7 +51,7 @@ export function AdapterSelector({ disabled }: { disabled?: boolean }) {
         disabled={disabled}
         title={current?.description}
       >
-        <span>{current?.displayName}</span>
+        <img src={ADAPTER_ICON[current.id]} alt={current?.displayName} className="w-4 h-4" />
         <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M4 6 L8 10 L12 6" />
         </svg>
@@ -56,11 +63,12 @@ export function AdapterSelector({ disabled }: { disabled?: boolean }) {
             return (
               <div
                 key={a.id}
-                className={`py-1.5 px-3 text-[12px] cursor-pointer whitespace-nowrap ${active ? 'bg-accdim text-acc font-semibold' : 'text-t2 hover:bg-hov hover:text-t1'}`}
+                className={`flex items-center gap-1.5 py-1.5 px-3 text-[12px] cursor-pointer whitespace-nowrap ${active ? 'bg-accdim text-acc font-semibold' : 'text-t2 hover:bg-hov hover:text-t1'}`}
                 title={a.description}
                 onMouseDown={(e) => { e.preventDefault(); setCliAdapter(a.id); setOpen(false); }}
               >
-                {a.displayName}
+                <img src={ADAPTER_ICON[a.id]} alt={a.displayName} className="w-4 h-4" />
+                <span>{a.displayName}</span>
               </div>
             );
           })}
