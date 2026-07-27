@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EyeOff } from 'lucide-react';
 import { useVaultStore } from '@/store/vaultStore';
 import { useAiStore } from '@/store/aiStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
@@ -184,6 +185,16 @@ export function ContextMenu({
           </button>
           <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-[#e05252] hover:bg-[rgba(224,82,82,.08)]" onClick={() => { onClose(); onDeleteItem(menu.path, menu.type); }}>
             <ThemeIcon name="delete" size={14} /> {t('sidebar:contextMenu.delete')}
+          </button>
+          <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => {
+            onClose();
+            const appearance = useAppearanceStore.getState();
+            const lines = appearance.excludePatterns.split('\n').map((s) => s.trim()).filter((s) => s.length > 0 && !s.startsWith('#'));
+            if (lines.includes(menu.name)) return;
+            appearance.setExcludePatterns([...lines, menu.name].join('\n'));
+            useVaultStore.getState().refreshFileTree();
+          }}>
+            <EyeOff size={14} className="text-t3" /> {t('sidebar:contextMenu.hide')}
           </button>
         </>
       )}

@@ -42,7 +42,8 @@
     "rename": "重命名",
     "delete": "删除",
     "move": "移动到...",
-    "copy": "复制"
+    "copy": "复制",
+    "hide": "隐藏"
   },
   "sidebarActions": {
     "deleteConfirm": {

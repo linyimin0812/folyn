@@ -42,7 +42,8 @@
     "rename": "Rename",
     "delete": "Delete",
     "move": "Move to...",
-    "copy": "Copy"
+    "copy": "Copy",
+    "hide": "Hide"
   },
   "sidebarActions": {
     "deleteConfirm": {
