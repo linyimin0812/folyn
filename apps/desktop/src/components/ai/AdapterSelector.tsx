@@ -44,7 +44,7 @@ export function AdapterSelector({ disabled }: { disabled?: boolean }) {
   const current = adapters.find((a) => a.id === cliAdapter) ?? adapters[0];
 
   return (
-    <div className="relative ml-0.5" ref={ref}>
+    <div className="relative" ref={ref}>
       <button
         className="px-1.5 h-7 flex items-center gap-1 rounded text-[11px] cursor-pointer border-none transition-all duration-[120ms] bg-transparent text-t3 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
         onClick={() => setOpen((v) => !v)}

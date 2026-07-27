@@ -311,7 +311,7 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
     <>
       {sessionKind !== 'study' && <AdapterSelector disabled={isStreaming || sessionLocked} />}
       {inputModes.length > 1 && (
-        <div className="relative ml-0.5" ref={modeMenuRef}>
+        <div className="relative" ref={modeMenuRef}>
           <button
             className="px-1.5 h-7 flex items-center gap-1 rounded text-[11px] cursor-pointer border-none transition-all duration-[120ms] bg-transparent text-t3 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={() => setModeMenuOpen((v) => !v)}
