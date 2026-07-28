@@ -1,0 +1,481 @@
+{
+    "anthropic": {
+        "defaultChatEndpoint": "anthropic-messages",
+        "description": "Anthropic - AI model provider",
+        "endpointConfigs": {
+            "anthropic-messages": {
+                "adapterFamily": "anthropic",
+                "baseUrl": "https://api.anthropic.com"
+            }
+        },
+        "id": "anthropic",
+        "metadata": {
+            "website": {
+                "apiKey": "https://console.anthropic.com/settings/keys",
+                "docs": "https://docs.anthropic.com/en/docs",
+                "models": "https://docs.anthropic.com/en/docs/about-claude/models",
+                "official": "https://anthropic.com/"
+            }
+        },
+        "name": "Anthropic"
+    },
+    "azure": {
+        "defaultChatEndpoint": "openai-chat-completions",
+        "description": "Azure OpenAI - AI model provider",
+        "endpointConfigs": {
+            "openai-chat-completions": {
+                "adapterFamily": "azure"
+            },
+            "openai-responses": {
+                "adapterFamily": "azure-responses"
+            }
+        },
+        "id": "azure",
+        "metadata": {
+            "website": {
+                "apiKey": "https://portal.azure.com/",
+                "docs": "https://learn.microsoft.com/en-us/azure/ai-services/openai/",
+                "models": "https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models",
+                "official": "https://azure.microsoft.com/en-us/products/ai-services/openai-service"
+            }
+        },
+        "name": "Azure OpenAI"
+    },
+    "cohere": {
+        "defaultChatEndpoint": "anthropic-messages",
+        "description": "Cohere - allows you to implement language AI into your product",
+        "endpointConfigs": {
+            "anthropic-messages": {
+                "adapterFamily": "anthropic",
+                "baseUrl": "https://api.cohere.com"
+            }
+        },
+        "id": "cohere",
+        "metadata": {
+            "website": {
+                "apiKey": "https://dashboard.cohere.com/api-keys",
+                "docs": "https://docs.cohere.com/",
+                "models": "https://docs.cohere.com/docs/models",
+                "official": "https://cohere.com/"
+            }
+        },
+        "name": "Cohere"
+    },
+    "deepseek": {
+      "apiFeatures": {
+        "arrayContent": false
+      },
+      "defaultChatEndpoint": "openai-chat-completions",
+      "description": "deepseek - AI model provider",
+      "endpointConfigs": {
+        "anthropic-messages": {
+          "adapterFamily": "anthropic",
+          "baseUrl": "https://api.deepseek.com/anthropic"
+        },
+        "openai-chat-completions": {
+          "adapterFamily": "deepseek",
+          "baseUrl": "https://api.deepseek.com",
+          "reasoningFormat": {
+            "type": "openai-chat",
+            "wire": {
+              "auto": {
+                "operations": [
+                  {
+                    "target": "thinking.type",
+                    "value": {
+                      "source": "literal",
+                      "value": "auto"
+                    }
+                  }
+                ]
+              },
+              "effort": {
+                "operations": [
+                  {
+                    "target": "thinking.type",
+                    "value": {
+                      "source": "literal",
+                      "value": "enabled"
+                    }
+                  }
+                ]
+              },
+              "off": {
+                "operations": [
+                  {
+                    "target": "thinking.type",
+                    "value": {
+                      "source": "literal",
+                      "value": "disabled"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "id": "deepseek",
+      "metadata": {
+        "website": {
+          "apiKey": "https://platform.deepseek.com/api_keys",
+          "docs": "https://platform.deepseek.com/api-docs/",
+          "models": "https://platform.deepseek.com/api-docs/",
+          "official": "https://deepseek.com/"
+        }
+      },
+      "name": "deepseek"
+    },
+    "google": {
+      "defaultChatEndpoint": "google-generate-content",
+      "description": "Gemini - AI model provider",
+      "endpointConfigs": {
+        "google-generate-content": {
+          "adapterFamily": "google",
+          "baseUrl": "https://generativelanguage.googleapis.com"
+        }
+      },
+      "id": "google",
+      "metadata": {
+        "website": {
+          "apiKey": "https://aistudio.google.com/app/apikey",
+          "docs": "https://ai.google.dev/gemini-api/docs",
+          "models": "https://ai.google.dev/gemini-api/docs/models/gemini",
+          "official": "https://gemini.google.com/"
+        }
+      },
+      "name": "Google Gemini"
+    },
+    "groq": {
+      "apiFeatures": {
+        "serviceTier": true
+      },
+      "defaultChatEndpoint": "openai-chat-completions",
+      "description": "Groq - AI model provider",
+      "endpointConfigs": {
+        "openai-chat-completions": {
+          "adapterFamily": "groq",
+          "baseUrl": "https://api.groq.com/openai",
+          "reasoningFormat": {
+            "type": "none"
+          }
+        }
+      },
+      "id": "groq",
+      "metadata": {
+        "website": {
+          "apiKey": "https://console.groq.com/keys",
+          "docs": "https://console.groq.com/docs/quickstart",
+          "models": "https://console.groq.com/docs/models",
+          "official": "https://groq.com/"
+        }
+      },
+      "name": "Groq"
+    },
+    "huggingface": {
+      "defaultChatEndpoint": "openai-responses",
+      "description": "Hugging Face - AI model provider",
+      "endpointConfigs": {
+        "openai-responses": {
+          "adapterFamily": "huggingface",
+          "baseUrl": "https://router.huggingface.co/v1/"
+        }
+      },
+      "id": "huggingface",
+      "metadata": {
+        "website": {
+          "apiKey": "https://huggingface.co/settings/tokens",
+          "docs": "https://huggingface.co/docs",
+          "models": "https://huggingface.co/models",
+          "official": "https://huggingface.co/"
+        }
+      },
+      "name": "Hugging Face"
+    },
+    "moonshotai": {
+      "defaultChatEndpoint": "openai-chat-completions",
+      "description": "Moonshot AI - AI model provider",
+      "endpointConfigs": {
+        "anthropic-messages": {
+          "adapterFamily": "anthropic",
+          "baseUrl": "https://api.moonshot.cn/anthropic"
+        },
+        "openai-chat-completions": {
+          "adapterFamily": "openai-compatible",
+          "baseUrl": "https://api.moonshot.cn",
+          "reasoningFormat": {
+            "type": "openai-chat",
+            "wire": {
+              "auto": {
+                "operations": [
+                  {
+                    "target": "thinking.type",
+                    "value": {
+                      "source": "literal",
+                      "value": "auto"
+                    }
+                  }
+                ]
+              },
+              "effort": {
+                "operations": [
+                  {
+                    "target": "thinking.type",
+                    "value": {
+                      "source": "literal",
+                      "value": "enabled"
+                    }
+                  }
+                ]
+              },
+              "off": {
+                "operations": [
+                  {
+                    "target": "thinking.type",
+                    "value": {
+                      "source": "literal",
+                      "value": "disabled"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "id": "moonshotai",
+      "metadata": {
+        "website": {
+          "apiKey": "https://platform.moonshot.cn/console/api-keys",
+          "docs": "https://platform.moonshot.cn/docs/",
+          "models": "https://platform.moonshot.cn/docs/",
+          "official": "https://www.moonshot.cn/"
+        }
+      },
+      "name": "Moonshot AI"
+    },
+    "ollama": {
+      "authOptional": true,
+      "description": "Ollama - AI model provider",
+      "endpointConfigs": {
+        "anthropic-messages": {
+          "adapterFamily": "anthropic",
+          "baseUrl": "http://localhost:11434"
+        },
+        "ollama-chat": {
+          "adapterFamily": "ollama",
+          "baseUrl": "http://localhost:11434",
+          "reasoningFormat": {
+            "type": "ollama"
+          }
+        }
+      },
+      "id": "ollama",
+      "metadata": {
+        "website": {
+          "docs": "https://github.com/ollama/ollama/tree/main/docs",
+          "models": "https://ollama.com/library",
+          "official": "https://ollama.com/"
+        }
+      },
+      "name": "Ollama"
+    },
+    "openai": {
+      "apiFeatures": {
+        "serviceTier": true
+      },
+      "defaultChatEndpoint": "openai-responses",
+      "description": "OpenAI - AI model provider",
+      "endpointConfigs": {
+        "openai-responses": {
+          "adapterFamily": "openai",
+          "baseUrl": "https://api.openai.com"
+        }
+      },
+      "id": "openai",
+      "metadata": {
+        "website": {
+          "apiKey": "https://platform.openai.com/api-keys",
+          "docs": "https://platform.openai.com/docs",
+          "models": "https://platform.openai.com/docs/models",
+          "official": "https://openai.com/"
+        }
+      },
+      "name": "OpenAI"
+    },
+    "openrouter": {
+      "defaultChatEndpoint": "openai-chat-completions",
+      "description": "OpenRouter - AI model provider",
+      "endpointConfigs": {
+        "anthropic-messages": {
+          "adapterFamily": "openrouter",
+          "baseUrl": "https://openrouter.ai/api"
+        },
+        "openai-chat-completions": {
+          "adapterFamily": "openrouter",
+          "baseUrl": "https://openrouter.ai/api/v1/",
+          "modelsApiUrls": {
+            "default": "https://openrouter.ai/api/v1/models",
+            "embedding": "https://openrouter.ai/api/v1/embeddings/models",
+            "image": "https://openrouter.ai/api/v1/images/models"
+          },
+          "reasoningFormat": {
+            "type": "openai-chat",
+            "wire": {
+              "auto": {
+                "operations": [
+                  {
+                    "target": "reasoning.effort",
+                    "value": {
+                      "source": "literal",
+                      "value": "medium"
+                    }
+                  }
+                ]
+              },
+              "effort": {
+                "operations": [
+                  {
+                    "target": "reasoning.effort",
+                    "value": {
+                      "source": "effort"
+                    }
+                  }
+                ]
+              },
+              "off": {
+                "operations": [
+                  {
+                    "target": "reasoning.effort",
+                    "value": {
+                      "source": "literal",
+                      "value": "none"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "openai-image-generation": {
+          "adapterFamily": "openrouter",
+          "baseUrl": "https://openrouter.ai/api/v1/"
+        }
+      },
+      "id": "openrouter",
+      "metadata": {
+        "website": {
+          "apiKey": "https://openrouter.ai/settings/keys",
+          "docs": "https://openrouter.ai/docs/quick-start",
+          "models": "https://openrouter.ai/models",
+          "official": "https://openrouter.ai/"
+        }
+      },
+      "name": "OpenRouter"
+    },
+    "perplexity": {
+      "defaultChatEndpoint": "openai-chat-completions",
+      "description": "Perplexity - AI model provider",
+      "endpointConfigs": {
+        "openai-chat-completions": {
+          "adapterFamily": "perplexity",
+          "baseUrl": "https://api.perplexity.ai/"
+        }
+      },
+      "id": "perplexity",
+      "metadata": {
+        "website": {
+          "apiKey": "https://www.perplexity.ai/settings/api",
+          "docs": "https://docs.perplexity.ai/home",
+          "models": "https://docs.perplexity.ai/guides/model-cards",
+          "official": "https://perplexity.ai/"
+        }
+      },
+      "name": "Perplexity"
+    },
+    "togetherai": {
+      "defaultChatEndpoint": "openai-chat-completions",
+      "description": "Together - AI model provider",
+      "endpointConfigs": {
+        "openai-chat-completions": {
+          "adapterFamily": "togetherai",
+          "baseUrl": "https://api.together.ai",
+          "reasoningFormat": {
+            "type": "openai-chat"
+          }
+        }
+      },
+      "id": "togetherai",
+      "metadata": {
+        "website": {
+          "apiKey": "https://api.together.ai/settings/projects/~current/api-keys",
+          "docs": "https://docs.together.ai/intro",
+          "models": "https://docs.together.ai/docs/serverless/models",
+          "official": "https://www.together.ai"
+        }
+      },
+      "name": "TogetherAI"
+    },
+    "xai": {
+      "defaultChatEndpoint": "openai-responses",
+      "description": "xAI - AI model provider",
+      "endpointConfigs": {
+        "openai-chat-completions": {
+          "adapterFamily": "xai",
+          "baseUrl": "https://api.x.ai"
+        },
+        "openai-responses": {
+          "adapterFamily": "xai-responses",
+          "baseUrl": "https://api.x.ai/v1",
+          "reasoningFormat": {
+            "type": "openai-responses",
+            "wire": {
+              "auto": {
+                "effortMap": {
+                  "auto": "medium"
+                },
+                "operations": [
+                  {
+                    "target": "reasoningEffort",
+                    "value": {
+                      "source": "effort"
+                    }
+                  }
+                ]
+              },
+              "effort": {
+                "operations": [
+                  {
+                    "target": "reasoningEffort",
+                    "value": {
+                      "source": "effort"
+                    }
+                  }
+                ]
+              },
+              "off": {
+                "operations": [
+                  {
+                    "target": "reasoningEffort",
+                    "value": {
+                      "source": "literal",
+                      "value": "none"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "id": "xai",
+      "metadata": {
+        "website": {
+          "docs": "https://docs.x.ai/",
+          "models": "https://docs.x.ai/docs/models",
+          "official": "https://x.ai/"
+        }
+      },
+      "name": "xAI"
+    }
+}
