@@ -11,7 +11,8 @@
       "collapseAll": "Collapse all",
       "expandAllFolders": "Expand all folders",
       "collapseAllFolders": "Collapse all folders",
-      "hideSidebar": "Hide sidebar"
+      "hideSidebar": "Hide sidebar",
+      "newRichText": "New Rich Text"
     },
     "search": {
       "placeholder": "Search files..."
@@ -26,7 +27,8 @@
   },
   "contextMenu": {
     "fileType": {
-      "code": "Code file"
+      "code": "Code file",
+      "richText": "Rich Text"
     },
     "newFile": "New file",
     "newFileOther": "Other (custom extension)",
@@ -68,7 +70,15 @@
     }
   },
   "calendar": {
-    "weekdays": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    "weekdays": [
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ],
     "title": "{{month}} {{year}}",
     "hasNote": "{{date}} (has note)"
   },

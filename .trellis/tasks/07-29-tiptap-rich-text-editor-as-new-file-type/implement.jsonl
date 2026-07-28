@@ -1,0 +1,10 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "custom Editor contract, anti-write-back-loop pattern, AI routing branch, view-mode hiding, persistence stack — canonical for this task"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "tech stack + key patterns (named exports, Zustand granular selectors, @/ alias, Tauri invoke)"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "where file-types/<type>/ lives and module layout"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "component patterns, props, composition, styling"}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "useEditor/useGrapesEditor-style mount-once hook patterns"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store usage, updateTabContent flow"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "forbidden patterns, review checklist"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "type patterns and naming"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "reuse existing handler patterns (excalidraw/drawio/html) before re-implementing"}

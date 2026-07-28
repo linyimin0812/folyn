@@ -34,6 +34,7 @@ const fileTypeLabelKeys: Record<string, string> = {
   markdown: 'Markdown',
   excalidraw: 'Excalidraw',
   html: 'HTML',
+  'rich-text': 'sidebar:contextMenu.fileType.richText',
   code: 'sidebar:contextMenu.fileType.code',
 };
 

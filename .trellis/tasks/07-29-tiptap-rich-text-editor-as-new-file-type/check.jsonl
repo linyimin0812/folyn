@@ -1,0 +1,5 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/tasks/07-29-tiptap-rich-text-editor-as-new-file-type/prd.md", "reason": "acceptance criteria + DoD to verify against"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "verify conformance: anti-loop, view-mode hide, AI routing, persistence"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "review checklist + forbidden patterns"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "type safety verification"}

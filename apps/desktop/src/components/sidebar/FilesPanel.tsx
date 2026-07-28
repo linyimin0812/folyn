@@ -13,7 +13,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PanelLeftClose, SquareArrowOutUpRight } from 'lucide-react';
+import { PanelLeftClose, SquareArrowOutUpRight, FileText } from 'lucide-react';
 import { useNavStore } from '@/store/navStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
@@ -388,6 +388,10 @@ export function FilesPanel(): React.JSX.Element {
                     <ThemeIcon name="addFile" size={14} />
                     <span>{t('sidebar:contextMenu.newFile')}</span>
                   </button>
+                  <button className="flex items-center gap-2 w-full py-1.5 px-2.5 border-none rounded bg-transparent text-t1 text-xs cursor-pointer transition-colors duration-[120ms] whitespace-nowrap font-ui hover:bg-hov [&>svg]:shrink-0 [&>svg]:text-t2" onClick={() => { startNewItem('file', undefined, 'rt'); setActionsMenuOpen(false); }}>
+                    <FileText size={14} />
+                    <span>{t('sidebar:filesPanel.actions.newRichText')}</span>
+                  </button>
                   <button className="flex items-center gap-2 w-full py-1.5 px-2.5 border-none rounded bg-transparent text-t1 text-xs cursor-pointer transition-colors duration-[120ms] whitespace-nowrap font-ui hover:bg-hov [&>svg]:shrink-0 [&>svg]:text-t2" onClick={() => { startNewItem('dir'); setActionsMenuOpen(false); }}>
                     <ThemeIcon name="newFolder" size={14} />
                     <span>{t('sidebar:contextMenu.newFolder')}</span>
@@ -407,6 +411,9 @@ export function FilesPanel(): React.JSX.Element {
             <div className="flex items-center gap-0.5 ml-auto shrink-0 relative">
               <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={() => startNewItem('file')} data-tip={t('sidebar:contextMenu.newFile')}>
                 <ThemeIcon name="addFile" size={14} />
+              </button>
+              <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={() => startNewItem('file', undefined, 'rt')} data-tip={t('sidebar:filesPanel.actions.newRichText')}>
+                <FileText size={14} />
               </button>
               <button className="flex items-center justify-center w-7 h-6 rounded text-[11px] cursor-pointer transition-colors duration-[120ms] bg-transparent text-t2 border-none hover:bg-hov hover:text-t1" onClick={() => startNewItem('dir')} data-tip={t('sidebar:contextMenu.newFolder')}>
                 <ThemeIcon name="newFolder" size={14} />
