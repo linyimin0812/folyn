@@ -288,3 +288,39 @@ commands.rs (1412 lines, 37 Tauri commands across file/webview/project/pet + man
 ### Next Steps
 
 - None - task complete
+
+
+## Session 9: Tiptap rich-text editor (.rt) as new file type
+
+**Date**: 2026-07-29
+**Task**: Tiptap rich-text editor (.rt) as new file type
+**Package**: api
+**Branch**: `bold-desert`
+
+### Summary
+
+Added a .rt rich-text file type backed by tiptap, distinct from the existing Markdown/CodeMirror editor. 3-PR MVP: PR1 scaffolded the file-type handler (auto-registry, .rt extension, sidebar quick button + other-type menu, view-mode auto-hide via allow-list); PR2 built the WYSIWYG editor (StarterKit + TaskList, self-drawn toolbar, JSON round-trip, drawio-style anti-write-back-loop guard with setContent({emitUpdate:false}) + race guard + stableStringify key-order normalization); PR3 added Image (vault assets via reused imageUploader/convertFileSrc, hash-named, vault-relative src persisted) + TableKit + a UrlModal replacing window.prompt, plus pure path-resolution helpers and a spec section in file-type-editors.md. 29 tests, tsc green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `82173e4` | (see git log) |
+| `eaec783` | (see git log) |
+| `2f8fcd3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

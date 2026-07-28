@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 8
-- **Last Active**: 2026-07-22
+- **Total Sessions**: 9
+- **Last Active**: 2026-07-29
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~290 | Active |
+| `journal-1.md` | ~326 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 9 | 2026-07-29 | Tiptap rich-text editor (.rt) as new file type | `82173e4`, `eaec783`, `2f8fcd3` | `bold-desert` |
 | 8 | 2026-07-22 | 桌宠外部通知 HTTP API | `32da186`, `2c21d73` | `clever-desert` |
 | 7 | 2026-07-18 | Split Rust commands.rs into per-domain submodules | `5ab8326` | `calm-canyon` |
 | 6 | 2026-07-18 | Break ai↔chat cycle: move ToolCallBlock + FileImage into chat/ | `a032c0f` | `calm-canyon` |
