@@ -1,4 +1,5 @@
 import type { JSONContent } from '@tiptap/react';
+import { isExternalPath } from '@/utils/isExternalPath';
 
 // ponytail: disk format = tiptap native JSON string. serialize/deserialize
 // are identity on the string layer, but split out as pure functions so
@@ -77,4 +78,53 @@ export function shouldApplyExternalContent(
   // One side blank, the other not → real change.
   if (incoming === undefined || loaded === undefined) return true;
   return stableStringify(incoming) !== stableStringify(loaded);
+}
+
+/**
+ * True if `src` carries a URL scheme that loads directly in an `<img>` — no
+ * `convertFileSrc` translation. Used by the Image NodeView to decide whether
+ * to pass `src` through (http/https/data/asset/tauri/blob) or resolve it
+ * against the vault root and feed the absolute path to `convertFileSrc`
+ * (vault-relative `assets/...` and absolute filesystem paths). Mirrors the
+ * `src.startsWith('http') || src.startsWith('data:')` short-circuit in
+ * MarkdownPreview's `VaultImage`. Pure so it's unit-testable.
+ */
+export function isLoadableUrlScheme(src: string): boolean {
+  return (
+    src.startsWith('http://') ||
+    src.startsWith('https://') ||
+    src.startsWith('data:') ||
+    src.startsWith('asset:') ||
+    src.startsWith('tauri:') ||
+    src.startsWith('blob:')
+  );
+}
+
+/**
+ * Resolve an Image node `src` (persisted vault-relative, e.g.
+ * `assets/images/<hash>.png`) to an on-disk absolute path, so the editor can
+ * feed it to `convertFileSrc(...)` → a loadable `asset://` URL (the same
+ * mechanism MarkdownPreview uses for `![](pic.png)` — see MarkdownPreview's
+ * `VaultImage` + `convertFileSrc`).
+ *
+ * `resolvedVaultRoot` MUST already be resolved (no `~`/`$HOME` — the caller
+ * runs it through `resolveBasePath` first, mirroring MarkdownPreview). Pure +
+ * synchronous so it's unit-testable without Tauri / jsdom ceilings.
+ *
+ * - Already-absolute / `~` / `$HOME` / `http(s)://` / `data:` / `asset:` /
+ *   `blob:` srcs pass through unchanged (external image links and data URLs
+ *   are stored verbatim, not vault-written).
+ * - `./` prefix is stripped before joining (markdown-style relative refs).
+ * - Empty src → empty string (the NodeView renders its placeholder).
+ */
+export function resolveVaultRelativePath(
+  src: string,
+  resolvedVaultRoot: string,
+): string {
+  if (!src) return '';
+  if (isExternalPath(src)) return src;
+  if (isLoadableUrlScheme(src)) return src;
+  if (!resolvedVaultRoot) return src; // ponytail: can't resolve without root; show raw src (won't load, but no crash). Upgrade: surface a broken-image state.
+  const base = resolvedVaultRoot.replace(/\/+$/, '');
+  return `${base}/${src.replace(/^\.\//, '').replace(/^\/+/, '')}`;
 }

@@ -110,3 +110,65 @@ describe('shouldApplyExternalContent (anti-loop predicate)', () => {
     expect(shouldApplyExternalContent('garbage', { current: 'also-garbage' })).toBe(false);
   });
 });
+
+// ponytail: image + table nodes are just JSON — the identity serialize/
+// deserialize round-trip is automatic. The test below pins that an AI (or
+// tiptap getJSON) emitting image/table nodes survives a disk round-trip
+// byte-for-byte, so the anti-loop predicate's stableStringify comparison
+// won't false-fire on these node types.
+describe('image + table node round-trip', () => {
+  it('round-trips a doc with an image node (vault-relative src)', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'image',
+          attrs: { src: 'assets/images/abc123.png', alt: 'pic', title: null },
+        },
+      ],
+    };
+    expect(deserializeToContent(serializeToDisk(doc))).toEqual(doc);
+  });
+
+  it('round-trips a doc with an external image URL src (verbatim, no vault write)', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'image',
+          attrs: { src: 'https://example.com/x.png', alt: null, title: null },
+        },
+      ],
+    };
+    expect(deserializeToContent(serializeToDisk(doc))).toEqual(doc);
+  });
+
+  it('round-trips a doc with a table (header row + cells)', () => {
+    const cell = (text: string) => ({
+      type: 'tableCell',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+    });
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [
+            {
+              type: 'tableRow',
+              content: [
+                { type: 'tableHeader', content: [cell('A')] },
+                { type: 'tableHeader', content: [cell('B')] },
+              ],
+            },
+            {
+              type: 'tableRow',
+              content: [cell('1'), cell('2')],
+            },
+          ],
+        },
+      ],
+    };
+    expect(deserializeToContent(serializeToDisk(doc))).toEqual(doc);
+  });
+});

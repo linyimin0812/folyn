@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bold,
- Italic,
+  Italic,
   Underline,
   Strikethrough,
   Heading1,
@@ -16,15 +17,26 @@ import {
   Code2,
   Minus,
   Link as LinkIcon,
+  Image as ImageIcon,
+  Table as TableIcon,
+  Plus,
+  Trash2,
   Undo,
   Redo,
 } from 'lucide-react';
+import { isTauri } from '@/utils/platform';
+import { persistImageBytes } from './RichTextImage';
 
 // ponytail: icon-only buttons with title= attributes — no visible text, so
 // no i18n namespace sprawl. Active state via editor.isActive(); disabled
 // when the command is unavailable (no selection / not editable). One row,
 // wraps on narrow widths. Matches the host-drawn toolbar pattern from
 // file-type-editors.md (GrapesJS: panels disabled, host self-draws).
+//
+// Link + image-by-URL entry use a small inline modal (local useState) instead
+// of window.prompt — userscripts can intercept window.prompt and the codebase
+// avoids it (see PetSettings.tsx). Tauri-only bits (file picker, fs read) are
+// gated on isTauri().
 
 interface RichTextToolbarProps {
   editor: Editor;
@@ -38,151 +50,203 @@ interface ToolButton {
   onClick: () => void;
 }
 
+type ModalKind = 'link' | null;
+
+// ponytail: one modal serves both link and image-URL entry — same shape (a URL
+// input + OK/Cancel). title + placeholder differ. Reused rather than forked.
+function UrlModal({
+  title,
+  placeholder,
+  initial,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  placeholder: string;
+  initial: string;
+  onConfirm: (value: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(initial);
+  const submit = () => {
+    onConfirm(value.trim());
+  };
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30" onClick={onCancel}>
+      <div
+        className="w-[360px] rounded-lg border border-brd bg-panel shadow-lg p-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="text-[length:calc(var(--ui-font-size)+1px)] font-semibold text-t1 mb-2">{title}</div>
+        <input
+          autoFocus
+          type="url"
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              submit();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              onCancel();
+            }
+          }}
+          className="w-full px-2 py-1.5 rounded border border-brd2 bg-surf text-t1 text-[length:var(--ui-font-size)] outline-none focus:border-acc"
+        />
+        <div className="flex justify-end gap-2 mt-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-3 py-1 rounded text-t2 hover:bg-hov text-[length:var(--ui-font-size)]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!value}
+            className="px-3 py-1 rounded bg-acc text-white hover:opacity-90 disabled:opacity-40 text-[length:var(--ui-font-size)]"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function RichTextToolbar({ editor }: RichTextToolbarProps) {
+  const [modal, setModal] = useState<ModalKind>(null);
+  // The initial URL the modal opens with (prev link href, or '' for image).
+  const [modalInitial, setModalInitial] = useState('');
+
+  const openLinkModal = () => {
+    setModalInitial((editor.getAttributes('link').href as string | undefined) ?? '');
+    setModal('link');
+  };
+  const confirmLink = (url: string) => {
+    setModal(null);
+    if (!url) {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      return;
+    }
+    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+  };
+
+  // ponytail: native file picker for image insertion. Reads the picked file's
+  // bytes via @tauri-apps/plugin-fs, hash-names, writes to the vault, inserts
+  // a vault-relative-src Image node. Shares persistImageBytes with paste/drop.
+  // isTauri() gate: no-op outside Tauri (browser dev) — paste/drop still work.
+  // Image-by-URL entry is covered by the paste plugin's bare-URL detection
+  // (RichTextImage.tsx), so no separate URL modal here.
+  const pickImageFile = async () => {
+    if (!isTauri()) return;
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const picked = await open({
+        multiple: false,
+        filters: [
+          { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif'] },
+        ],
+      });
+      if (!picked || Array.isArray(picked)) return;
+      const { readFile } = await import('@tauri-apps/plugin-fs');
+      const bytes = new Uint8Array(await readFile(picked as string));
+      const ext = (picked as string).toLowerCase().match(/\.([^.]+)$/)?.[1] ?? 'png';
+      const relPath = await persistImageBytes(bytes, ext);
+      editor.chain().focus().setImage({ src: relPath }).run();
+    } catch (err) {
+      console.warn('[rich-text] image pick failed:', err);
+    }
+  };
+
+  const inTable = editor.isActive('table');
+
   const buttons: ToolButton[] = [
-    {
-      icon: Bold,
-      title: 'Bold',
-      active: editor.isActive('bold'),
-      disabled: !editor.can().toggleBold(),
-      onClick: () => editor.chain().focus().toggleBold().run(),
-    },
-    {
-      icon: Italic,
-      title: 'Italic',
-      active: editor.isActive('italic'),
-      disabled: !editor.can().toggleItalic(),
-      onClick: () => editor.chain().focus().toggleItalic().run(),
-    },
-    {
-      icon: Underline,
-      title: 'Underline',
-      active: editor.isActive('underline'),
-      disabled: !editor.can().toggleUnderline(),
-      onClick: () => editor.chain().focus().toggleUnderline().run(),
-    },
-    {
-      icon: Strikethrough,
-      title: 'Strikethrough',
-      active: editor.isActive('strike'),
-      disabled: !editor.can().toggleStrike(),
-      onClick: () => editor.chain().focus().toggleStrike().run(),
-    },
-    {
-      icon: Heading1,
-      title: 'Heading 1',
-      active: editor.isActive('heading', { level: 1 }),
-      disabled: !editor.can().toggleHeading({ level: 1 }),
-      onClick: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
-    },
-    {
-      icon: Heading2,
-      title: 'Heading 2',
-      active: editor.isActive('heading', { level: 2 }),
-      disabled: !editor.can().toggleHeading({ level: 2 }),
-      onClick: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
-    },
-    {
-      icon: Heading3,
-      title: 'Heading 3',
-      active: editor.isActive('heading', { level: 3 }),
-      disabled: !editor.can().toggleHeading({ level: 3 }),
-      onClick: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
-    },
-    {
-      icon: List,
-      title: 'Bullet list',
-      active: editor.isActive('bulletList'),
-      disabled: !editor.can().toggleBulletList(),
-      onClick: () => editor.chain().focus().toggleBulletList().run(),
-    },
-    {
-      icon: ListOrdered,
-      title: 'Ordered list',
-      active: editor.isActive('orderedList'),
-      disabled: !editor.can().toggleOrderedList(),
-      onClick: () => editor.chain().focus().toggleOrderedList().run(),
-    },
-    {
-      icon: ListChecks,
-      title: 'Task list',
-      active: editor.isActive('taskList'),
-      disabled: !editor.can().toggleTaskList(),
-      onClick: () => editor.chain().focus().toggleTaskList().run(),
-    },
-    {
-      icon: Quote,
-      title: 'Blockquote',
-      active: editor.isActive('blockquote'),
-      disabled: !editor.can().toggleBlockquote(),
-      onClick: () => editor.chain().focus().toggleBlockquote().run(),
-    },
-    {
-      icon: Code,
-      title: 'Inline code',
-      active: editor.isActive('code'),
-      disabled: !editor.can().toggleCode(),
-      onClick: () => editor.chain().focus().toggleCode().run(),
-    },
-    {
-      icon: Code2,
-      title: 'Code block',
-      active: editor.isActive('codeBlock'),
-      disabled: !editor.can().toggleCodeBlock(),
-      onClick: () => editor.chain().focus().toggleCodeBlock().run(),
-    },
-    {
-      icon: Minus,
-      title: 'Horizontal rule',
-      disabled: !editor.can().setHorizontalRule(),
-      onClick: () => editor.chain().focus().setHorizontalRule().run(),
-    },
-    {
-      icon: LinkIcon,
-      title: 'Link',
-      active: editor.isActive('link'),
-      disabled: !editor.can().toggleLink({ href: '' }),
-      onClick: () => {
-        const prev = editor.getAttributes('link').href as string | undefined;
-        const url = typeof window !== 'undefined' ? window.prompt('URL', prev ?? '') : prev ?? '';
-        if (url === null) return;
-        if (url === '') {
-          editor.chain().focus().extendMarkRange('link').unsetLink().run();
-          return;
-        }
-        editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-      },
-    },
-    {
-      icon: Undo,
-      title: 'Undo',
-      disabled: !editor.can().undo(),
-      onClick: () => editor.chain().focus().undo().run(),
-    },
-    {
-      icon: Redo,
-      title: 'Redo',
-      disabled: !editor.can().redo(),
-      onClick: () => editor.chain().focus().redo().run(),
-    },
+    { icon: Bold, title: 'Bold', active: editor.isActive('bold'), disabled: !editor.can().toggleBold(), onClick: () => editor.chain().focus().toggleBold().run() },
+    { icon: Italic, title: 'Italic', active: editor.isActive('italic'), disabled: !editor.can().toggleItalic(), onClick: () => editor.chain().focus().toggleItalic().run() },
+    { icon: Underline, title: 'Underline', active: editor.isActive('underline'), disabled: !editor.can().toggleUnderline(), onClick: () => editor.chain().focus().toggleUnderline().run() },
+    { icon: Strikethrough, title: 'Strikethrough', active: editor.isActive('strike'), disabled: !editor.can().toggleStrike(), onClick: () => editor.chain().focus().toggleStrike().run() },
+    { icon: Heading1, title: 'Heading 1', active: editor.isActive('heading', { level: 1 }), disabled: !editor.can().toggleHeading({ level: 1 }), onClick: () => editor.chain().focus().toggleHeading({ level: 1 }).run() },
+    { icon: Heading2, title: 'Heading 2', active: editor.isActive('heading', { level: 2 }), disabled: !editor.can().toggleHeading({ level: 2 }), onClick: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
+    { icon: Heading3, title: 'Heading 3', active: editor.isActive('heading', { level: 3 }), disabled: !editor.can().toggleHeading({ level: 3 }), onClick: () => editor.chain().focus().toggleHeading({ level: 3 }).run() },
+    { icon: List, title: 'Bullet list', active: editor.isActive('bulletList'), disabled: !editor.can().toggleBulletList(), onClick: () => editor.chain().focus().toggleBulletList().run() },
+    { icon: ListOrdered, title: 'Ordered list', active: editor.isActive('orderedList'), disabled: !editor.can().toggleOrderedList(), onClick: () => editor.chain().focus().toggleOrderedList().run() },
+    { icon: ListChecks, title: 'Task list', active: editor.isActive('taskList'), disabled: !editor.can().toggleTaskList(), onClick: () => editor.chain().focus().toggleTaskList().run() },
+    { icon: Quote, title: 'Blockquote', active: editor.isActive('blockquote'), disabled: !editor.can().toggleBlockquote(), onClick: () => editor.chain().focus().toggleBlockquote().run() },
+    { icon: Code, title: 'Inline code', active: editor.isActive('code'), disabled: !editor.can().toggleCode(), onClick: () => editor.chain().focus().toggleCode().run() },
+    { icon: Code2, title: 'Code block', active: editor.isActive('codeBlock'), disabled: !editor.can().toggleCodeBlock(), onClick: () => editor.chain().focus().toggleCodeBlock().run() },
+    { icon: Minus, title: 'Horizontal rule', disabled: !editor.can().setHorizontalRule(), onClick: () => editor.chain().focus().setHorizontalRule().run() },
+    { icon: LinkIcon, title: 'Link', active: editor.isActive('link'), disabled: !editor.can().toggleLink({ href: '' }), onClick: openLinkModal },
+    { icon: ImageIcon, title: 'Insert image', onClick: () => { void pickImageFile(); } },
+    { icon: TableIcon, title: 'Insert table', onClick: () => editor.chain().focus().insertTable({ rows: 2, cols: 2, withHeaderRow: true }).run() },
+    { icon: Undo, title: 'Undo', disabled: !editor.can().undo(), onClick: () => editor.chain().focus().undo().run() },
+    { icon: Redo, title: 'Redo', disabled: !editor.can().redo(), onClick: () => editor.chain().focus().redo().run() },
   ];
 
+  // ponytail: table cell-context controls — shown only when the cursor is
+  // inside a table, so the toolbar stays uncluttered the rest of the time.
+  // Minimal viable set (add/del col/row + toggle header + delete table). A
+  // full cell-merge UI is out of MVP scope.
+  const tableButtons: ToolButton[] = inTable
+    ? [
+        { icon: Plus, title: 'Add column before', onClick: () => editor.chain().focus().addColumnBefore().run() },
+        { icon: Plus, title: 'Add column after', onClick: () => editor.chain().focus().addColumnAfter().run() },
+        { icon: Plus, title: 'Add row before', onClick: () => editor.chain().focus().addRowBefore().run() },
+        { icon: Plus, title: 'Add row after', onClick: () => editor.chain().focus().addRowAfter().run() },
+        { icon: Minus, title: 'Delete column', onClick: () => editor.chain().focus().deleteColumn().run() },
+        { icon: Minus, title: 'Delete row', onClick: () => editor.chain().focus().deleteRow().run() },
+        { icon: TableIcon, title: 'Toggle header row', onClick: () => editor.chain().focus().toggleHeaderRow().run() },
+        { icon: Trash2, title: 'Delete table', onClick: () => editor.chain().focus().deleteTable().run() },
+      ]
+    : [];
+
   return (
-    <div className="flex flex-wrap items-center gap-[2px] px-2 py-1 border-b border-brd bg-surf2">
-      {buttons.map((b, i) => (
-        <button
-          key={i}
-          type="button"
-          title={b.title}
-          disabled={b.disabled}
-          onClick={b.onClick}
-          className={`inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-default ${
-            b.active ? 'bg-accdim text-acc' : ''
-          }`}
-        >
-          <b.icon size={15} strokeWidth={1.6} />
-        </button>
-      ))}
-    </div>
+    <>
+      <div className="flex flex-wrap items-center gap-[2px] px-2 py-1 border-b border-brd bg-surf2">
+        {buttons.map((b, i) => (
+          <button
+            key={i}
+            type="button"
+            title={b.title}
+            disabled={b.disabled}
+            onClick={b.onClick}
+            className={`inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-default ${
+              b.active ? 'bg-accdim text-acc' : ''
+            }`}
+          >
+            <b.icon size={15} strokeWidth={1.6} />
+          </button>
+        ))}
+        {tableButtons.length > 0 && (
+          <>
+            <span className="mx-1 h-5 w-px bg-brd" aria-hidden />
+            {tableButtons.map((b, i) => (
+              <button
+                key={`tb-${i}`}
+                type="button"
+                title={b.title}
+                disabled={b.disabled}
+                onClick={b.onClick}
+                className="inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-default"
+              >
+                <b.icon size={15} strokeWidth={1.6} />
+              </button>
+            ))}
+          </>
+        )}
+      </div>
+      {modal === 'link' && (
+        <UrlModal
+          title="Link URL"
+          placeholder="https://"
+          initial={modalInitial}
+          onConfirm={confirmLink}
+          onCancel={() => setModal(null)}
+        />
+      )}
+    </>
   );
 }

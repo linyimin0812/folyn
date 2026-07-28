@@ -422,3 +422,143 @@ For per-edge interaction feedback (e.g. click-to-highlight with a "flowing dashe
 - `TableGroup` / `StickyNote` / `Enum` dedicated visualization
 - DBML → SQL DDL generation; reverse engineering from a live database
 - Precise DBML Lezer grammar (SQL fallback is accepted)
+
+---
+
+## Tiptap Rich Text Editor (`.rt`)
+
+`.rt` files are tiptap/ProseMirror WYSIWYG documents stored as **tiptap native JSON** (`JSON.stringify(editor.getJSON())` on disk). They register a custom `Editor` handler (`useCodeMirror: false`) and are physically isolated from Markdown (CodeMirror) — a `.md` file never routes here. Persistence is owned by Quill's editor store (`onChange` → `updateTabContent` → autosave → `vault.writeFile`); tiptap's own `storageManager` is not wired.
+
+```typescript
+// apps/desktop/src/components/file-types/rich-text/index.ts
+const handler: FileTypeHandler = {
+  id: 'rich-text',
+  extensions: ['rt'],
+  supportedViewModes: ['edit'],
+  defaultViewMode: 'edit',
+  needsFileContent: true,
+  useCodeMirror: false,
+  Editor: RichTextEditor,
+};
+```
+
+`'rich-text'` is added to `HIDE_VIEW_MODE_FILE_TYPES` in `Topbar.tsx` so the split/edit/preview toggle is hidden (WYSIWYG-only). New files are created via two sidebar entry points (extension-trigger in the new-file dialog + a sidebar quick-action button).
+
+### Disk format & serialize/deserialize (identity)
+
+```ts
+// richTextContent.ts
+export function deserializeToContent(raw: string): JSONContent | undefined {
+  if (!raw || !raw.trim()) return undefined;
+  try {
+    const json = JSON.parse(raw);
+    return json && typeof json === 'object' ? (json as JSONContent) : undefined;
+  } catch { return undefined; }
+}
+export function serializeToDisk(json: JSONContent): string { return JSON.stringify(json); }
+export function emptyDoc(): JSONContent { return { type: 'doc', content: [{ type: 'paragraph' }] }; }
+```
+
+Serialize/deserialize are identity at the JSON layer — split out as pure functions so the round-trip and the anti-loop predicate are unit-testable without a live prosemirror view (jsdom can't host one — same ceiling as the DBML `ErDiagramX6`; see below). The empty-doc fallback keeps `setContent` from choking on a blank file.
+
+### Anti-write-back-loop guard (drawio `loadedXml`+`loadedXmlRef`, adapted to JSON)
+
+Naively passing the doc back into the editor on every `onChange` round-trip would loop: user edits → `onUpdate` → `onChange(json)` → `updateTabContent` → `content` prop changes → reload → clobber cursor + undo history. The fix is the drawio pattern: a ref tracking "what we last handed to the editor".
+
+```tsx
+// RichTextEditor.tsx
+const loadedContentRef = useRef(content);
+const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+const editor = useEditor({
+  content: deserializeToContent(content) ?? emptyDoc(),
+  onUpdate: ({ editor }) => {
+    // User edit: update ref ONLY (no setLoadedContent). When our own onChange
+    // flows back via updateTabContent → content prop, the effect below sees
+    // content === loadedContentRef.current → no reload.
+    const json = serializeToDisk(editor.getJSON());
+    loadedContentRef.current = json;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => onChangeRef.current(json), 500);
+  },
+});
+
+// External content change (AI apply/reject-revert, file watcher): apply in
+// place WITHOUT remounting. emitUpdate:false breaks the loop.
+useEffect(() => {
+  if (!editor) return;
+  if (!shouldApplyExternalContent(content, loadedContentRef)) return;
+  if (saveTimerRef.current) clearTimeout(saveTimerRef.current); // race guard
+  const parsed = deserializeToContent(content) ?? emptyDoc();
+  editor.commands.setContent(parsed, { emitUpdate: false });
+  loadedContentRef.current = content;
+}, [content, editor]);
+```
+
+**Why in-place `setContent` not remount (vs excalidraw/drawio)**: a remount destroys tiptap cursor + undo history on every external change. The `RichTextEditor` `key` is `${tabId}-${externalContentVersion}` (WorkArea); `updateTabContent` (used by AI reject-revert) deliberately does NOT bump `externalContentVersion`, so the effect above fires and applies in place. The accept path bumps the version and remounts — also fine (fresh mount initializes the ref from `content`, effect no-ops).
+
+**Key-order normalization (`stableStringify`)**: the anti-loop predicate compares two JSON docs structurally, NOT byte-for-byte. An AI's Write tool may emit keys in a different order than tiptap's `getJSON`, which would otherwise false-trigger a reload (clobbering cursor + undo history on the user's own save flowing back). `shouldApplyExternalContent` normalizes both sides via `stableStringify` (keys sorted at every level) before comparing; whitespace/key-order-only diffs return `false`.
+
+**Race guard**: an external content change arriving while the user's 500ms autosave debounce is pending must clear `saveTimerRef` BEFORE `setContent`, or the stale timer fires `onChange(staleJson)` after the iframe-less editor reloaded with the new content — overwriting the AI's change on disk (the drawio `ponytail:` ceiling, avoided here).
+
+**AI routing**: `useCodeMirror:false` makes `aiStore.addFileChange` take the `updateTabContent` branch automatically (see "AI File-Change Routing for Custom Editors"); no per-type code. Non-CodeMirror editors have no accept/reject diff UI; AI changes auto-apply (users undo in-editor). A per-type diff UI is the upgrade path.
+
+### Image vault-asset persistence
+
+Pasted/dropped image **files** are written to the vault under the configured `imagePath` (`useVaultConfigStore.imagePath`, default `assets/images/`), **hash-named** (SHA-1 of bytes) for dedup. The Image node's `src` attribute stores the **vault-relative path** (`assets/images/<sha1>.<ext>`) so the doc is portable across vault-root moves; an external image **URL** (http link) is stored verbatim (no vault write).
+
+The persistence path mirrors `utils/imageUploader.ts`'s `LocalFileStrategy`: resolve the vault root (`resolveBasePath` — handles `~`/`$HOME`), `join(root, relPath)` → absolute, `@tauri-apps/plugin-fs` `mkdir({recursive})` + `writeFile(abs, bytes)`. It writes raw bytes directly (no base64/canvas round-trip) so non-raster formats (GIF/SVG) survive intact. The file tree refreshes via the existing fs watcher.
+
+```ts
+// RichTextImage.tsx — exports the pure path resolver + the persist helper
+export function resolveVaultRelativePath(src: string, resolvedVaultRoot: string): string {
+  if (!src) return '';
+  if (isExternalPath(src)) return src;            // absolute / ~/ / $HOME
+  if (isLoadableUrlScheme(src)) return src;      // http(s)/data/asset/tauri/blob
+  if (!resolvedVaultRoot) return src;             // can't resolve; raw src (won't load, no crash)
+  return `${resolvedVaultRoot.replace(/\/+$/, '')}/${src.replace(/^\.\//, '').replace(/^\/+/, '')}`;
+}
+// NodeView: URL-scheme srcs render directly; only filesystem paths hit convertFileSrc.
+if (isLoadableUrlScheme(src)) return src;
+const abs = resolveVaultRelativePath(src, resolvedRoot);
+return isTauri() ? convertFileSrc(abs) : abs;
+```
+
+**Render-time src resolution**: the `src` persisted in JSON is vault-relative, but the editor's `<img>` needs a loadable URL. A React **NodeView** (`ReactNodeViewRenderer`) resolves vault-relative `src` → absolute path → `convertFileSrc(absPath)` (`asset://` URL) — the SAME mechanism `MarkdownPreview`'s `VaultImage` uses for `![](pic.png)`. The NodeView reads `useVaultStore.currentVault.basePath` reactively and resolves `~`/`$HOME` async via `resolveBasePath` (state); `convertFileSrc` is Tauri-only. A `renderHTML` closure can't reactively re-resolve on a vault switch (no re-render trigger), so the NodeView is required.
+
+> **Gotcha — `convertFileSrc` must NOT be applied to URL-scheme srcs**: a bare image-URL paste stores `https://example.com/x.png` verbatim in `src`. `convertFileSrc` is a filesystem-path → `asset://` translator; calling it on an http URL mangles it into `asset://localhost/https%3A%2F%2F...` and the image breaks. The NodeView short-circuits URL schemes (`http`/`https`/`data`/`asset`/`tauri`/`blob`) via the pure `isLoadableUrlScheme(src)` helper (in `richTextContent.ts`, unit-tested) and returns the src directly — only vault-relative `assets/...` and absolute filesystem paths go through `convertFileSrc`. This mirrors MarkdownPreview's `VaultImage` (`src.startsWith('http') || src.startsWith('data:')` → render as-is).
+
+**Paste/drop plugin**: a ProseMirror plugin (`addProseMirrorPlugins` — NOTE: tiptap v3 renamed v2's `addProsePlugins` to `addProseMirrorPlugins`) wires `handlePaste`/`handleDrop`: scans `clipboardData.items`/`dataTransfer.files` for `image/*`, persists each, and inserts an Image node via `view.dispatch(tr.insert(pos, schema.nodes.image.create({src})))`. `handleDrop` resolves the drop position via `view.posAtCoords({left, top})`. A bare image-URL paste (regex-matched `https?://.../<ext>`) inserts an Image node with the URL verbatim.
+
+**File-picker insert**: the toolbar "Insert image" button uses `@tauri-apps/plugin-dialog` `open({ filters })` + `@tauri-apps/plugin-fs` `readFile`, then the shared `persistImageBytes`.
+
+> **Gotcha — `crypto.subtle.digest` TS typing**: the TS lib types `BufferSource` as `ArrayBufferView<ArrayBuffer>`; `Uint8Array<ArrayBufferLike>` (SharedArrayBuffer-bearing) doesn't satisfy. Copy the digest input into a fresh `ArrayBuffer` (`new ArrayBuffer(byteLength); new Uint8Array(ab).set(bytes)`) rather than a type-unsafe cast — negligible per-image cost.
+
+> **Gotcha — `addProsePlugins` renamed**: tiptap v3 removed v2's `addProsePlugins`; the method is `addProseMirrorPlugins` (see `@tiptap/extensions` `CharacterCount`/`Dropcursor`). Using the v2 name silently no-ops (plugins never register) — the paste/drop handler just doesn't fire.
+
+### Table extension
+
+`@tiptap/extension-table` ships a `TableKit` (bundles Table + TableRow + TableCell + TableHeader). Configure `{ table: { allowTableNodeSelection: true } }` (note the nested `table:` — `TableKitOptions` is `{ table, tableCell, tableHeader, tableRow }`, NOT flat). Toolbar buttons: a always-visible "Insert table" (`insertTable({ rows: 2, cols: 2, withHeaderRow: true })`) + a small cell-context set (add/del col/row, toggle header row, delete table) shown only when `editor.isActive('table')`. Table styling via `[&_.ProseMirror_table]` Tailwind arbitrary selectors (borders, `border-collapse`, cell padding, header `bg-surf2`).
+
+### Link modal (no `window.prompt`)
+
+The link button uses a small inline React modal (local `useState` + a URL input + OK/Cancel), NOT `window.prompt` — userscripts can intercept `window.prompt` and the codebase avoids it (see `PetSettings.tsx`). Tauri-only bits (file picker, fs read) are gated on `isTauri()`.
+
+### jsdom ceiling
+
+`@tiptap/react`'s `useEditor` mounts a real prosemirror `EditorView` which calls DOM/selection APIs jsdom doesn't implement (same ceiling as `@antv/x6` in the DBML section). Don't write vitest tests that mount an actual editor — extract testable logic into pure functions (`richTextContent.ts`: `serializeToDisk`/`deserializeToContent`/`shouldApplyExternalContent`/`resolveVaultRelativePath`/`emptyDoc`) and unit-test those; verify actual editing/paste/drop/render by opening a `.rt` file in the running app.
+
+### Bundle
+
+tiptap is tree-shakeable per-extension; `@tiptap/starter-kit` + `extension-task-list/item` + `extension-table` family + `extension-image` are direct deps. `@dbml/core`'s 15MB chunk still dominates the bundle; tiptap additions are negligible by comparison, so no `React.lazy` is wired yet (upgrade path: `React.lazy(() => import('./RichTextEditor'))` + Suspense if first-paint regresses).
+
+Reference: `apps/desktop/src/components/file-types/rich-text/RichTextEditor.tsx`, `RichTextToolbar.tsx`, `RichTextImage.tsx`, `richTextContent.ts`, `index.ts`; `apps/desktop/src/utils/imageUploader.ts` (LocalFileStrategy precedent), `apps/desktop/src/components/file-types/markdown/MarkdownPreview.tsx` (`VaultImage` + `convertFileSrc`), `apps/desktop/src/components/file-types/previewPath.ts` (`resolveAssetBase`), `apps/desktop/src/store/vaultConfigStore.ts` (`imagePath`).
+
+### Out of scope (explicit MVP boundary)
+
+- Markdown ↔ rich-text conversion / import-export.
+- Collaboration / multi-user / real-time sync.
+- Image cropping/recompression (only original bytes persisted).
+- Color/highlight/Mention/Timeline beyond Tier 1+2+3+Image+Table.
+- Per-type accept/reject diff UI for AI changes (auto-apply; users undo in-editor).
+- tiptap offline bundling (no online dependency — unlike drawio's embed CDN).
