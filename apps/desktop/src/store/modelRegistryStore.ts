@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { registerPersistSlice, schedulePersist } from './settingsPersistence';
 import { fetchModels as fetchModelsRaw } from '@/services/modelRegistry/fetchModels';
-import { getProviderEntry } from '@/services/providers/catalog';
+import { getProviderEntry, providerRequiresApiKey } from '@/services/providers/catalog';
 import type { Model } from '@/services/modelRegistry/types';
 
 /**
@@ -178,6 +178,6 @@ export function canFetchModelsFromStore(providerId: string, apiKey: string): boo
   const entry = getProviderEntry(providerId);
   if (!entry) return false;
   if (!entry.backendReady) return false;
-  if (entry.requiresApiKey && !apiKey) return false;
+  if (providerRequiresApiKey(entry) && !apiKey) return false;
   return true;
 }

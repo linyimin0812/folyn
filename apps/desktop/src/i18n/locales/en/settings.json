@@ -223,7 +223,8 @@
       "anthropicHint": "Leave empty for official Anthropic; Anthropic-compatible endpoints",
       "openaiHint": "Leave empty for official OpenAI.",
       "openaiCompatibleHint": "Required for Ollama / vLLM / LM Studio etc.; /v1 is appended automatically if missing.",
-      "placeholder": "Leave empty for default"
+      "placeholder": "Leave empty for default",
+      "reset": "Reset"
     },
     "test": {
       "testing": "Detecting…",
@@ -245,6 +246,13 @@
     "refetchModelsDevLoading": "Syncing...",
     "refetchModelsDevOk": "Model sync complete",
     "refetchModelsDevErr": "Sync failed: {{message}}",
+    "infoLinks": {
+      "prefix": "View",
+      "docs": "provider docs",
+      "models": "models",
+      "and": "and",
+      "suffix": "for more information"
+    },
     "filterAll": "All",
     "filterEnabled": "Enabled",
     "picker": {
@@ -274,7 +282,7 @@
     "customApiKeyUrlPlaceholder": "https://...  (optional)",
     "save": "Save",
     "cancel": "Cancel",
-    "preview": "Preview: {{baseUrl}}/v1/messages",
+    "preview": "Preview: {{url}}",
     "addManual": {
       "title": "Add model",
       "idLabel": "Model ID",

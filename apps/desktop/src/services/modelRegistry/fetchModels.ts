@@ -14,7 +14,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { catalogModelsForProvider } from './loader';
 import { mergeProviderModelsWithRegistry } from './merge';
 import type { Model } from './types';
-import { getProviderEntry } from '@/services/providers/catalog';
+import { getProviderEntry, providerRequiresApiKey } from '@/services/providers/catalog';
 
 export interface FetchModelsParams {
   provider: string;
@@ -35,8 +35,8 @@ interface ModelDto {
 
 export async function fetchModels(params: FetchModelsParams): Promise<FetchModelsResult> {
   const { provider, apiKey, baseUrl, azureApiVersion } = params;
-  // ponytail: catalog declares `requiresApiKey` and `defaultBaseUrl`; we trust
-  // the caller (SettingsPage) to have already gated the button on those.
+  // ponytail: catalog derives `requiresApiKey` from providers.json; we trust
+  // the caller (SettingsPage) to have already gated the button on that.
   // Here we just forward to Rust.
   const remote = await invoke<ModelDto[]>('list_models', {
     params: {
@@ -65,6 +65,6 @@ export function canFetchModels(providerId: string, apiKey: string): boolean {
   const entry = getProviderEntry(providerId);
   if (!entry) return false;
   if (!entry.backendReady) return false;
-  if (entry.requiresApiKey && !apiKey) return false;
+  if (providerRequiresApiKey(entry) && !apiKey) return false;
   return true;
 }

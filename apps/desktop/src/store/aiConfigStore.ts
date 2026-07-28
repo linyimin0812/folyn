@@ -7,6 +7,7 @@ import {
   type CustomProvider,
   type CustomProviderType,
   getProviderEntry,
+  providerRequiresApiKey,
 } from '@/services/providers/catalog';
 
 // ponytail: ChatProvider is a string literal union of the 20 catalog ids.
@@ -366,7 +367,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     const s = get();
     const out: string[] = [];
     for (const entry of PROVIDER_CATALOG) {
-      if (!entry.requiresApiKey) {
+      if (!providerRequiresApiKey(entry)) {
         // Ollama — always "configured" (no key needed). But only include
         // if the user has actually picked it at least once OR has a slot.
         // Avoids refetching Ollama for users who never use it.

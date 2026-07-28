@@ -255,9 +255,14 @@
       "name": "Moonshot AI"
     },
     "ollama": {
+      "defaultChatEndpoint": "ollama",
       "authOptional": true,
       "description": "Ollama - AI model provider",
       "endpointConfigs": {
+        "ollama": {
+          "adapterFamily": "anthropic",
+          "baseUrl": "http://localhost:11434"
+        },
         "anthropic-messages": {
           "adapterFamily": "anthropic",
           "baseUrl": "http://localhost:11434"
@@ -477,5 +482,36 @@
         }
       },
       "name": "xAI"
+    },
+    "new-api": {
+      "description": "New API - AI model provider",
+      "defaultChatEndpoint": "openai-chat-completions",
+      "endpointConfigs": {
+        "anthropic-messages": {
+          "adapterFamily": "newapi",
+          "baseUrl": "http://localhost:3000"
+        },
+        "google-generate-content": {
+          "baseUrl": "http://localhost:3000"
+        },
+        "openai-chat-completions": {
+          "adapterFamily": "newapi",
+          "baseUrl": "http://localhost:3000",
+          "reasoningFormat": {
+            "type": "openai-chat"
+          }
+        },
+        "openai-responses": {
+          "baseUrl": "http://localhost:3000"
+        }
+      },
+      "id": "new-api",
+      "metadata": {
+        "website": {
+          "docs": "https://docs.newapi.pro",
+          "official": "https://docs.newapi.pro/"
+        }
+      },
+      "name": "New API"
     }
 }

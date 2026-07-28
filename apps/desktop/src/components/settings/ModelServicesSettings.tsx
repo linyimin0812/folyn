@@ -37,11 +37,15 @@ import {
 import { isSelectedModelInList } from '@/services/modelRegistry/fetchModels';
 import { refetchAllFromModelsDev } from '@/services/modelRegistry/userProvidersCatalog';
 import { useModelRegistryStore, canFetchModelsFromStore } from '@/store/modelRegistryStore';
-import { findModelInCatalog } from '@/services/modelRegistry/loader';
-import { isReasoningModel } from '@/services/modelRegistry/merge';
 import type { Capability, Model } from '@/services/modelRegistry/types';
 import { Toggle } from './primitives';
 import { providerIconUrl } from '@/services/providers/icon';
+import {
+  getProviderApiPath,
+  getProviderDocsUrl,
+  getProviderModelsUrl,
+  buildPreviewUrl,
+} from '@/services/providers/providersCatalog';
 import { SquarePen, Trash2, Plus, ListRestart, Loader2, Check } from 'lucide-react';
 
 // ponytail: model row hover tooltip shows pricing when available.
@@ -191,14 +195,12 @@ export function ModelServicesSettings() {
   const chatBaseUrl = useAiConfigStore((s) => s.chatBaseUrl);
   const chatAzureDeploymentId = useAiConfigStore((s) => s.chatAzureDeploymentId);
   const chatAzureApiVersion = useAiConfigStore((s) => s.chatAzureApiVersion);
-  const chatThinkingBudget = useAiConfigStore((s) => s.chatThinkingBudget);
   const setChatProvider = useAiConfigStore((s) => s.setChatProvider);
   const setChatModel = useAiConfigStore((s) => s.setChatModel);
   const setChatApiKey = useAiConfigStore((s) => s.setChatApiKey);
   const setChatBaseUrl = useAiConfigStore((s) => s.setChatBaseUrl);
   const setChatAzureDeploymentId = useAiConfigStore((s) => s.setChatAzureDeploymentId);
   const setChatAzureApiVersion = useAiConfigStore((s) => s.setChatAzureApiVersion);
-  const setChatThinkingBudget = useAiConfigStore((s) => s.setChatThinkingBudget);
 
   const customProviders = useAiConfigStore((s) => s.customProviders);
   const enabledProviders = useAiConfigStore((s) => s.enabledProviders);
@@ -225,8 +227,6 @@ export function ModelServicesSettings() {
     }));
     return [...fetchedModels, ...manual.filter((m) => !existingIds.has(m.id))];
   }, [fetchedModels, manualForCurrent, chatProvider]);
-  const selectedModel = findModelInCatalog(chatProvider, chatModel) ?? modelsForCurrent.find((m) => m.id === chatModel);
-  const showThinkingBudget = selectedModel ? isReasoningModel(selectedModel) : false;
   const fetchStatusForCurrent = useModelRegistryStore((s) => s.fetchStatusByProvider[chatProvider] ?? 'idle');
   const fetchErrorForCurrent = useModelRegistryStore((s) => s.fetchErrorByProvider[chatProvider] ?? null);
   const fetchModelsForProvider = useModelRegistryStore((s) => s.fetchModelsForProvider);
@@ -282,7 +282,10 @@ export function ModelServicesSettings() {
   const requiresApiKey = providerRequiresApiKey(entry);
   const requiresAzureFields = providerRequiresAzureFields(entry);
   const apiKeyUrl = providerApiKeyUrl(entry);
-  const defaultBaseUrl = providerBaseUrl(entry);
+  const providersJsonBaseUrl = providerBaseUrl(entry);
+  const providersJsonPath = getProviderApiPath(entry.id);
+  const docsUrl = getProviderDocsUrl(entry.id);
+  const modelsUrl = getProviderModelsUrl(entry.id);
   const placeholderModel = providerPlaceholderModel(entry);
   const isCustom = isCustomProvider(entry);
   const entryEnabled = enabledProviders[entry.id] === true;
@@ -426,11 +429,11 @@ export function ModelServicesSettings() {
           {requiresApiKey && (
             <div className="mb-3.5">
               <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:models.apiKey.label')}</div>
-              <div className="flex gap-2">
+              <div className="flex">
                 <div className="relative flex-1">
                   <input
                     type={showChatKey ? 'text' : 'password'}
-                    className="fi2 w-full py-[7px] px-2.5 pr-[34px] rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                    className="fi2 w-full py-[7px] px-2.5 pr-[34px] rounded-l-md border border-r-0 border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
                     value={chatApiKey}
                     onChange={(e) => setChatApiKey(e.target.value)}
                     placeholder="sk-…"
@@ -458,7 +461,8 @@ export function ModelServicesSettings() {
                   </button>
                 </div>
                 <button
-                  className="btn btn-g btn-sm shrink-0"
+                  className="shrink-0 px-3 rounded-r-md border border-brd text-white text-[length:calc(var(--ui-font-size)-2px)] font-ui transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ background: 'var(--acc, #3a6ef0)' }}
                   disabled={chatTestStatus.testing || !chatApiKey || (!PROVIDER_CATALOG.some((p) => p.id === chatProvider) && !isCustom)}
                   onClick={async () => {
                     // ponytail: custom providers route via chat.rs `_` fallback arm.
@@ -527,39 +531,37 @@ export function ModelServicesSettings() {
             </>
           )}
 
-          {/* Thinking budget */}
-          {showThinkingBudget && (
-            <div className="mb-3.5">
-              <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:models.thinkingBudget.label')}</div>
-              <input
-                type="number"
-                min={0}
-                className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-                value={chatThinkingBudget ?? ''}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setChatThinkingBudget(v === '' ? null : Math.max(0, Math.floor(Number(v))));
-                }}
-                placeholder="1024"
-                autoCapitalize="off"
-              />
-              <div className="text-[10.5px] text-t3 mt-1">{t('settings:models.thinkingBudget.hint')}</div>
-            </div>
-          )}
-
           {/* Base URL */}
           <div className="mb-3.5">
             <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:models.baseUrl.label')}</div>
-            <input
-              className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-              value={chatBaseUrl}
-              onChange={(e) => setChatBaseUrl(e.target.value)}
-              placeholder={defaultBaseUrl ?? t('settings:models.baseUrl.placeholder')}
-              autoCapitalize="off"
-            />
-            {chatBaseUrl && (
-              <div className="text-[10.5px] text-t3 mt-1 break-all">{t('settings:models.preview', { baseUrl: chatBaseUrl })}</div>
-            )}
+            <div className="flex">
+              <input
+                className={`fi2 flex-1 py-[7px] px-2.5 border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui ${!isCustom && providersJsonBaseUrl && chatBaseUrl !== '' ? 'rounded-l-md border-r-0' : 'rounded-md'}`}
+                value={chatBaseUrl}
+                onChange={(e) => setChatBaseUrl(e.target.value)}
+                placeholder={providersJsonBaseUrl ?? t('settings:models.baseUrl.placeholder')}
+                autoCapitalize="off"
+              />
+              {!isCustom && providersJsonBaseUrl && chatBaseUrl !== '' && (
+                <button
+                  type="button"
+                  onClick={() => setChatBaseUrl('')}
+                  className="shrink-0 px-3 rounded-r-md border border-brd text-white text-[length:calc(var(--ui-font-size)-2px)] font-ui transition-opacity hover:opacity-90"
+                  style={{ background: 'var(--red, #f06a6a)' }}
+                >
+                  {t('settings:models.baseUrl.reset')}
+                </button>
+              )}
+            </div>
+            {(() => {
+              const base = chatBaseUrl || providersJsonBaseUrl;
+              if (!base || !providersJsonPath) return null;
+              return (
+                <div className="text-[10.5px] text-t3 mt-1 break-all">
+                  {t('settings:models.preview', { url: buildPreviewUrl(base, providersJsonPath) })}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Model list */}
@@ -660,6 +662,27 @@ export function ModelServicesSettings() {
               <div className="text-[10.5px] mt-1 text-t3">{t('settings:models.fetchModels.empty')}</div>
             )}
           </div>
+
+          {/* Info links — docs + models from providers.json metadata */}
+          {(docsUrl || modelsUrl) && (
+            <div className="mt-1 text-[11px] text-t3 flex flex-wrap items-center gap-x-1 gap-y-1">
+              <span>{t('settings:models.infoLinks.prefix')}</span>
+              {docsUrl && (
+                <>
+                  <a href={docsUrl} target="_blank" rel="noopener noreferrer" className="text-acc hover:underline">
+                      {t('settings:models.infoLinks.docs')}
+                  </a>
+                  {modelsUrl && <span>{t('settings:models.infoLinks.and')}</span>}
+                </>
+              )}
+              {modelsUrl && (
+                <a href={modelsUrl} target="_blank" rel="noopener noreferrer" className="text-acc hover:underline">
+                  {t('settings:models.infoLinks.models')}
+                </a>
+              )}
+              <span>{t('settings:models.infoLinks.suffix')}</span>
+            </div>
+          )}
 
           {/* Set as chat provider button (only when current entry isn't the chatProvider) */}
           {entry.id !== chatProvider && (
@@ -851,7 +874,7 @@ function CustomProviderDrawer({
               value={category}
               onChange={(e) => setCategory(e.target.value as CustomProviderType)}
             >
-              {(['openai', 'openai-response', 'gemini', 'anthropic', 'azure-openai', 'new-api', 'ollama'] as const).map((c) => (
+              {(['openai-chat-completions', 'openai-response', 'anthropic-messages', 'new-api', 'ollama'] as const).map((c) => (
                 <option key={c} value={c}>{t(`settings:models.category.${c}`)}</option>
               ))}
             </select>
