@@ -234,7 +234,9 @@
       "label": "Fetch models",
       "fetching": "Fetching…",
       "empty": "No models returned",
-      "orphan": "not in fetched list"
+      "orphan": "not in fetched list",
+      "errorTitle": "Failed to fetch models",
+      "errorClose": "Close"
     },
     "thinkingBudget": {
       "label": "Thinking budget (tokens)",
@@ -262,7 +264,9 @@
       "searchPlaceholder": "Search by model ID or name",
       "select": "Select",
       "selected": "Selected",
-      "sort": "Sort"
+      "sort": "Sort",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing…"
     },
     "addCustom": "Add",
     "editCustom": "Edit",

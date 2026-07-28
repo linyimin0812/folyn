@@ -49,7 +49,6 @@ interface ProviderConfig {
 }
 
 function lookup(catalogId: string): ProviderConfig | null {
-  console.log("catalogId: " + catalogId);
   const jsonId = CATALOG_TO_JSON_ID[catalogId] ?? catalogId;
   return (providersJson as Record<string, ProviderConfig>)[jsonId] ?? null;
 }

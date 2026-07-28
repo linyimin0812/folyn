@@ -1,47 +1,14 @@
-//! Model list fetcher — routes a provider id to the appropriate fetcher
-//! (rig `ModelListingClient::list_models()` where supported, raw HTTP
-//! `/v1/models` for the OpenAI-compatible family, raw HTTP with `api-key`
-//! header for Azure). Returns `Vec<ModelDto>` to the frontend.
+//! Model list fetcher — per-provider raw HTTP. Each provider has its own
+//! path, auth header style, and response parser. Returns `Vec<ModelDto>` to
+//! the frontend.
 //!
-//! Routing lives in the `fetcher_kind` pure function so it can be unit-tested
-//! without HTTP. The `list_models` Tauri command dispatches by FetcherKind.
+//! ponytail: replaced the rig_core dispatch (7 providers + OpenAICompat +
+//! Azure) with raw HTTP for all 14 providers — matches the user's curl
+//! specs exactly, drops one moving part. rig_core is still used by chat.rs.
 
-use rig_core::client::{ModelListingClient, Nothing};
-use rig_core::providers::{anthropic, deepseek, gemini, mira, ollama, openai, openrouter};
 use serde::{Deserialize, Serialize};
 
 use crate::errors::AppError;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FetcherKind {
-    RigAnthropic,
-    RigOpenAI,
-    RigGemini,
-    RigDeepSeek,
-    RigOllama,
-    RigOpenRouter,
-    RigMira,
-    OpenAICompat,
-    Azure,
-}
-
-/// Pure routing function — no IO, table-testable. Mirrors the TS catalog's
-/// `rigClientKind` field. Unknown ids fall through to `OpenAICompat` (raw
-/// HTTP `/v1/models` is the safest guess for unknown OpenAI-shaped providers).
-pub fn fetcher_kind(provider_id: &str) -> FetcherKind {
-    match provider_id {
-        "anthropic" | "anthropic-compatible" => FetcherKind::RigAnthropic,
-        "openai" => FetcherKind::RigOpenAI,
-        "gemini" => FetcherKind::RigGemini,
-        "deepseek" => FetcherKind::RigDeepSeek,
-        "ollama" => FetcherKind::RigOllama,
-        "openrouter" => FetcherKind::RigOpenRouter,
-        "mira" => FetcherKind::RigMira,
-        "azure-openai" => FetcherKind::Azure,
-        // openai-compatible + 11 OpenAI-compat family + any future unknown
-        _ => FetcherKind::OpenAICompat,
-    }
-}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -49,10 +16,9 @@ pub struct ListModelsParams {
     pub provider: String,
     pub api_key: String,
     pub base_url: Option<String>,
-    // ponytail: azure_deployment_id is NOT accepted here — list_models only
-    // needs api_version to call /openai/models, not the deployment id.
-    // chat.rs keeps its own ChatParams with both Azure fields.
-    pub azure_api_version: Option<String>,
+    // ponytail: azure_api_version dropped — list_models uses Bearer +
+    // /openai/v1/models per the user's curl, no api-version query param.
+    // Frontend still passes azureApiVersion; serde ignores unknown fields.
 }
 
 #[derive(Serialize, Clone)]
@@ -62,276 +28,213 @@ pub struct ModelDto {
 
 #[tauri::command]
 pub async fn list_models(params: ListModelsParams) -> Result<Vec<ModelDto>, AppError> {
-    let kind = fetcher_kind(&params.provider);
-    let ids = match kind {
-        FetcherKind::RigAnthropic => list_via_rig_anthropic(&params).await?,
-        FetcherKind::RigOpenAI => list_via_rig_openai(&params).await?,
-        FetcherKind::RigGemini => list_via_rig_gemini(&params).await?,
-        FetcherKind::RigDeepSeek => list_via_rig_deepseek(&params).await?,
-        FetcherKind::RigOllama => list_via_rig_ollama(&params).await?,
-        FetcherKind::RigOpenRouter => list_via_rig_openrouter(&params).await?,
-        FetcherKind::RigMira => list_via_rig_mira(&params).await?,
-        FetcherKind::OpenAICompat => list_via_openai_compat(&params).await?,
-        FetcherKind::Azure => list_via_azure(&params).await?,
+    let ids = match params.provider.as_str() {
+        "anthropic" | "anthropic-compatible" => list_anthropic(&params).await?,
+        "azure-openai" => list_azure(&params).await?,
+        "cohere" => list_cohere(&params).await?,
+        "deepseek" => list_openai_shape(&params, "v1/models").await?,
+        "gemini" | "google" => list_google(&params).await?,
+        "groq" => list_openai_shape(&params, "v1/models").await?,
+        "huggingface" => list_openai_shape(&params, "models").await?,
+        "moonshot" | "moonshotai" => list_openai_shape(&params, "v1/models").await?,
+        "ollama" => list_ollama(&params).await?,
+        "openai" => list_openai_shape(&params, "v1/models").await?,
+        "openrouter" => list_openai_shape(&params, "models").await?,
+        "perplexity" => list_openai_shape(&params, "v1/models").await?,
+        "together" | "togetherai" => list_together(&params).await?,
+        "xai" => list_openai_shape(&params, "models").await?,
+        // new-api, openai-compatible, future unknown — try OpenAI shape.
+        _ => list_openai_shape(&params, "v1/models").await?,
     };
     Ok(ids.into_iter().map(|id| ModelDto { id }).collect())
 }
 
-// ponytail: 7 separate `list_via_rig_*` helpers instead of one generic
-// `list_via_rig<C: ModelListingClient>()` because each rig provider Client
-// is a distinct concrete type — the trait's `list_models` returns
-// `impl Future<...>` (not dyn-compatible), so we cannot box them uniformly.
-// Each helper is ~5 lines; total < 50 lines.
-
-async fn list_via_rig_anthropic(p: &ListModelsParams) -> Result<Vec<String>, AppError> {
-    let mut b = anthropic::Client::builder().api_key(p.api_key.clone());
-    if let Some(url) = &p.base_url {
-        b = b.base_url(url.clone());
-    }
-    let client = b.build().map_err(|e| e.to_string())?;
-    let list = client.list_models().await.map_err(|e| e.to_string())?;
-    Ok(list.data.into_iter().map(|m| m.id).collect())
+/// Concatenate base + path, trimming trailing slash on base. Per-provider
+/// path is chosen so it correctly extends the providers.json baseUrl —
+/// e.g. huggingface/openrouter/xai have `/v1` in the base, so their path
+/// is just `models`; openai/groq/deepseek base has no `/v1`, so path is
+/// `v1/models`.
+fn join_url(base: &str, path: &str) -> String {
+    format!("{}/{}", base.trim_end_matches('/'), path)
 }
 
-async fn list_via_rig_openai(p: &ListModelsParams) -> Result<Vec<String>, AppError> {
-    let base = p
-        .base_url
-        .clone()
-        .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
-    let client = openai::Client::builder()
-        .api_key(p.api_key.clone())
-        .base_url(base)
-        .build()
-        .map_err(|e| e.to_string())?;
-    let list = client.list_models().await.map_err(|e| e.to_string())?;
-    Ok(list.data.into_iter().map(|m| m.id).collect())
-}
-
-async fn list_via_rig_gemini(p: &ListModelsParams) -> Result<Vec<String>, AppError> {
-    let mut b = gemini::Client::builder().api_key(p.api_key.clone());
-    if let Some(url) = &p.base_url {
-        b = b.base_url(url.clone());
-    }
-    let client = b.build().map_err(|e| e.to_string())?;
-    let list = client.list_models().await.map_err(|e| e.to_string())?;
-    Ok(list.data.into_iter().map(|m| m.id).collect())
-}
-
-async fn list_via_rig_deepseek(p: &ListModelsParams) -> Result<Vec<String>, AppError> {
-    let base = p
-        .base_url
-        .clone()
-        .unwrap_or_else(|| "https://api.deepseek.com".to_string());
-    let client = deepseek::Client::builder()
-        .api_key(p.api_key.clone())
-        .base_url(base)
-        .build()
-        .map_err(|e| e.to_string())?;
-    let list = client.list_models().await.map_err(|e| e.to_string())?;
-    Ok(list.data.into_iter().map(|m| m.id).collect())
-}
-
-async fn list_via_rig_ollama(p: &ListModelsParams) -> Result<Vec<String>, AppError> {
-    let base = p
-        .base_url
-        .clone()
-        .unwrap_or_else(|| "http://localhost:11434/v1".to_string());
-    let client = ollama::Client::builder()
-        .api_key(Nothing)
-        .base_url(base)
-        .build()
-        .map_err(|e| e.to_string())?;
-    let list = client.list_models().await.map_err(|e| e.to_string())?;
-    Ok(list.data.into_iter().map(|m| m.id).collect())
-}
-
-async fn list_via_rig_openrouter(p: &ListModelsParams) -> Result<Vec<String>, AppError> {
-    let base = p
-        .base_url
-        .clone()
-        .unwrap_or_else(|| "https://openrouter.ai/api/v1".to_string());
-    let client = openrouter::Client::builder()
-        .api_key(p.api_key.clone())
-        .base_url(base)
-        .build()
-        .map_err(|e| e.to_string())?;
-    let list = client.list_models().await.map_err(|e| e.to_string())?;
-    Ok(list.data.into_iter().map(|m| m.id).collect())
-}
-
-async fn list_via_rig_mira(p: &ListModelsParams) -> Result<Vec<String>, AppError> {
-    // ponytail: mira has its own `list_models` method returning `Vec<String>`
-    // directly (not the trait), because its `ModelListing = Nothing` per rig
-    // 0.40. Calling the method directly is the simplest path.
-    let base = p
-        .base_url
-        .clone()
-        .unwrap_or_else(|| "https://api.mira.network/v1".to_string());
-    let client = mira::Client::builder()
-        .api_key(p.api_key.clone())
-        .base_url(base)
-        .build()
-        .map_err(|e| e.to_string())?;
-    let ids = client.list_models().await.map_err(|e| e.to_string())?;
-    Ok(ids)
-}
-
-/// OpenAI-compat raw HTTP fetcher — handles 11 OpenAI-compat family +
-/// `openai-compatible` escape hatch. GET `<base_url>/models` with
-/// `Authorization: Bearer <key>`, parse `{data: [{id: ...}]}`.
-///
-/// ponytail: does NOT append `/v1` — catalog `defaultBaseUrl` values already
-/// include the correct path (e.g. `https://api.groq.com/openai/v1`). The
-/// `openai-compatible` escape hatch requires the user to type the full path
-/// including `/v1`; if they don't, the request 404s and surfaces that error
-/// instead of silently mutating their input.
-async fn list_via_openai_compat(p: &ListModelsParams) -> Result<Vec<String>, AppError> {
-    let base = p
-        .base_url
-        .clone()
-        .ok_or_else(|| "base_url required for OpenAI-compatible provider".to_string())?;
-    let url = openai_compat_models_url(&base);
-    let resp = reqwest::Client::new()
-        .get(&url)
-        .bearer_auth(&p.api_key)
+/// GET url with headers, parse JSON. Errors surface HTTP status + URL.
+async fn http_get_json<T, F>(url: &str, apply_headers: F) -> Result<T, AppError>
+where
+    T: serde::de::DeserializeOwned,
+    F: FnOnce(reqwest::RequestBuilder) -> reqwest::RequestBuilder,
+{
+    let resp = apply_headers(reqwest::Client::new().get(url))
         .send()
         .await
         .map_err(|e| e.to_string())?;
     if !resp.status().is_success() {
         return Err(format!("HTTP {}: {}", resp.status(), url).into());
     }
-    let body: ModelsResponse = resp.json().await.map_err(|e| e.to_string())?;
+    resp.json().await.map_err(|e| e.to_string().into())
+}
+
+// Response shapes — four total across all providers.
+#[derive(Deserialize)]
+struct IdList {
+    data: Vec<IdItem>,
+}
+#[derive(Deserialize)]
+struct IdItem {
+    id: String,
+}
+#[derive(Deserialize)]
+struct NameList {
+    models: Vec<NameItem>,
+}
+#[derive(Deserialize)]
+struct NameItem {
+    name: String,
+}
+
+fn bearer(key: &str) -> String {
+    format!("Bearer {}", key)
+}
+
+// anthropic: GET {base}/v1/models?limit=1000 with x-api-key + anthropic-version.
+async fn list_anthropic(p: &ListModelsParams) -> Result<Vec<String>, AppError> {
+    let base = p
+        .base_url
+        .clone()
+        .unwrap_or_else(|| "https://api.anthropic.com".to_string());
+    let url = join_url(&base, "v1/models?limit=1000");
+    let key = p.api_key.clone();
+    let body: IdList = http_get_json(&url, |r| {
+        r.header("x-api-key", &key)
+            .header("anthropic-version", "2023-06-01")
+    })
+    .await?;
     Ok(body.data.into_iter().map(|m| m.id).collect())
 }
 
-/// Azure raw HTTP fetcher. GET `<base_url>/openai/models?api-version=<X>`
-/// with `api-key: <key>` header (NOT Bearer — Azure uses a custom header).
-async fn list_via_azure(p: &ListModelsParams) -> Result<Vec<String>, AppError> {
-    let endpoint = p
+// azure: GET {base}/openai/v1/models with Authorization: Bearer.
+// ponytail: strip trailing `/openai` from base — users paste Azure portal
+// endpoint URLs that already include `/openai`, which would otherwise
+// double to `/openai/openai/v1/models`.
+async fn list_azure(p: &ListModelsParams) -> Result<Vec<String>, AppError> {
+    let base = p
         .base_url
         .clone()
         .ok_or_else(|| "base_url (Azure endpoint) required".to_string())?;
-    let api_version = p
-        .azure_api_version
-        .clone()
-        .ok_or_else(|| "azure_api_version required".to_string())?;
-    let url = azure_models_url(&endpoint, &api_version);
-    let resp = reqwest::Client::new()
-        .get(&url)
-        .header("api-key", p.api_key.clone())
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    if !resp.status().is_success() {
-        return Err(format!("HTTP {}: {}", resp.status(), url).into());
-    }
-    let body: ModelsResponse = resp.json().await.map_err(|e| e.to_string())?;
+    let url = azure_models_url(&base);
+    let auth = bearer(&p.api_key);
+    let body: IdList = http_get_json(&url, |r| r.header("Authorization", &auth)).await?;
     Ok(body.data.into_iter().map(|m| m.id).collect())
 }
 
-/// Pure URL constructors — extracted so tests can verify the path shape
-/// without HTTP. The catalog's `defaultBaseUrl` is treated as authoritative;
-/// we trim trailing `/` and append the documented path.
-fn openai_compat_models_url(base: &str) -> String {
-    format!("{}/models", base.trim_end_matches('/'))
+fn azure_models_url(base: &str) -> String {
+    let stripped = base.trim_end_matches('/').trim_end_matches("/openai");
+    format!("{}/openai/v1/models", stripped)
 }
 
-fn azure_models_url(endpoint: &str, api_version: &str) -> String {
-    format!(
-        "{}/openai/models?api-version={}",
-        endpoint.trim_end_matches('/'),
-        api_version
-    )
+// cohere: GET {base}/v1/models with Bearer, parse {models:[{name}]}.
+async fn list_cohere(p: &ListModelsParams) -> Result<Vec<String>, AppError> {
+    let base = p
+        .base_url
+        .clone()
+        .unwrap_or_else(|| "https://api.cohere.com".to_string());
+    let url = join_url(&base, "v1/models");
+    let auth = bearer(&p.api_key);
+    let body: NameList = http_get_json(&url, |r| r.header("Authorization", &auth)).await?;
+    Ok(body.models.into_iter().map(|m| m.name).collect())
 }
 
-#[derive(Deserialize)]
-struct ModelsResponse {
-    data: Vec<ModelsResponseItem>,
+// google: GET {base}/v1beta/models?key=<key>&pageSize=1000, strip "models/".
+async fn list_google(p: &ListModelsParams) -> Result<Vec<String>, AppError> {
+    let base = p
+        .base_url
+        .clone()
+        .unwrap_or_else(|| "https://generativelanguage.googleapis.com".to_string());
+    let url = join_url(&base, &format!("v1beta/models?key={}&pageSize=1000", p.api_key));
+    let body: NameList = http_get_json(&url, |r| r).await?;
+    Ok(body
+        .models
+        .into_iter()
+        .map(|m| m.name.strip_prefix("models/").map(|s| s.to_string()).unwrap_or(m.name))
+        .collect())
 }
 
-#[derive(Deserialize)]
-struct ModelsResponseItem {
-    id: String,
+// ollama: GET {base}/api/tags, no auth, parse {models:[{name}]}.
+async fn list_ollama(p: &ListModelsParams) -> Result<Vec<String>, AppError> {
+    let base = p
+        .base_url
+        .clone()
+        .unwrap_or_else(|| "http://localhost:11434".to_string());
+    let url = join_url(&base, "api/tags");
+    let body: NameList = http_get_json(&url, |r| r).await?;
+    Ok(body.models.into_iter().map(|m| m.name).collect())
+}
+
+// togetherai: GET {base}/v1/models with Bearer, parse [{id}] (array directly).
+async fn list_together(p: &ListModelsParams) -> Result<Vec<String>, AppError> {
+    let base = p
+        .base_url
+        .clone()
+        .unwrap_or_else(|| "https://api.together.ai".to_string());
+    let url = join_url(&base, "v1/models");
+    let auth = bearer(&p.api_key);
+    let body: Vec<IdItem> = http_get_json(&url, |r| r.header("Authorization", &auth)).await?;
+    Ok(body.into_iter().map(|m| m.id).collect())
+}
+
+// OpenAI-shaped: GET {base}/<path> with Bearer, parse {data:[{id}]}.
+async fn list_openai_shape(p: &ListModelsParams, path: &str) -> Result<Vec<String>, AppError> {
+    let base = p
+        .base_url
+        .clone()
+        .ok_or_else(|| "base_url required".to_string())?;
+    let url = join_url(&base, path);
+    let auth = bearer(&p.api_key);
+    let body: IdList = http_get_json(&url, |r| r.header("Authorization", &auth)).await?;
+    Ok(body.data.into_iter().map(|m| m.id).collect())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // Table-driven routing test — all 20 catalog ids + 1 unknown.
     #[test]
-    fn fetcher_kind_routes_all_catalog_ids() {
-        // Native Rig-implementing (7)
-        assert_eq!(fetcher_kind("anthropic"), FetcherKind::RigAnthropic);
-        assert_eq!(fetcher_kind("openai"), FetcherKind::RigOpenAI);
-        assert_eq!(fetcher_kind("gemini"), FetcherKind::RigGemini);
-        assert_eq!(fetcher_kind("deepseek"), FetcherKind::RigDeepSeek);
-        assert_eq!(fetcher_kind("ollama"), FetcherKind::RigOllama);
-        assert_eq!(fetcher_kind("openrouter"), FetcherKind::RigOpenRouter);
-        assert_eq!(fetcher_kind("mira"), FetcherKind::RigMira);
-
-        // Azure special
-        assert_eq!(fetcher_kind("azure-openai"), FetcherKind::Azure);
-
-        // Compat escape hatches
+    fn join_url_trims_trailing_slash() {
         assert_eq!(
-            fetcher_kind("openai-compatible"),
-            FetcherKind::OpenAICompat
+            join_url("https://router.huggingface.co/v1/", "models"),
+            "https://router.huggingface.co/v1/models"
         );
         assert_eq!(
-            fetcher_kind("anthropic-compatible"),
-            FetcherKind::RigAnthropic
+            join_url("https://api.openai.com", "v1/models"),
+            "https://api.openai.com/v1/models"
         );
-
-        // 11 OpenAI-compat family — all fall through to OpenAICompat
-        for id in [
-            "eternalai",
-            "galadriel",
-            "groq",
-            "hyperbolic",
-            "moonshot",
-            "perplexity",
-            "together",
-            "xai",
-        ] {
-            assert_eq!(fetcher_kind(id), FetcherKind::OpenAICompat, "id={}", id);
-        }
+        // xai base already has /v1 — per-provider path is just `models`.
+        assert_eq!(join_url("https://api.x.ai/v1", "models"), "https://api.x.ai/v1/models");
     }
 
     #[test]
-    fn fetcher_kind_unknown_routes_to_openai_compat() {
-        assert_eq!(fetcher_kind("some-new-provider"), FetcherKind::OpenAICompat);
-        assert_eq!(fetcher_kind(""), FetcherKind::OpenAICompat);
+    fn azure_url_strips_existing_openai_suffix() {
+        // User pasted Azure portal endpoint that already includes `/openai`.
+        let url = azure_models_url("https://linyimin-dev.openai.azure.com/openai");
+        assert_eq!(url, "https://linyimin-dev.openai.azure.com/openai/v1/models");
+        // Bare endpoint — `/openai` gets prepended.
+        let url = azure_models_url("https://linyimin-dev.openai.azure.com");
+        assert_eq!(url, "https://linyimin-dev.openai.azure.com/openai/v1/models");
+        // Trailing slash trimmed.
+        let url = azure_models_url("https://linyimin-dev.openai.azure.com/openai/");
+        assert_eq!(url, "https://linyimin-dev.openai.azure.com/openai/v1/models");
     }
 
     #[test]
-    fn openai_compat_models_url_appends_models_path() {
-        // Catalog defaultBaseUrl already includes /v1 where the provider needs it.
-        assert_eq!(
-            openai_compat_models_url("https://api.groq.com/openai/v1"),
-            "https://api.groq.com/openai/v1/models"
-        );
-        assert_eq!(
-            openai_compat_models_url("https://api.deepseek.com"),
-            "https://api.deepseek.com/models"
-        );
-        // Trailing slash is trimmed.
-        assert_eq!(
-            openai_compat_models_url("https://api.deepseek.com/"),
-            "https://api.deepseek.com/models"
-        );
-    }
+    fn parsers_cover_all_response_shapes() {
+        let openai_shape = serde_json::from_str::<IdList>(r#"{"data":[{"id":"gpt-4"}]}"#).unwrap();
+        assert_eq!(openai_shape.data[0].id, "gpt-4");
 
-    #[test]
-    fn azure_models_url_builds_correct_path() {
-        assert_eq!(
-            azure_models_url("https://my-resource.openai.azure.com", "2024-10-21"),
-            "https://my-resource.openai.azure.com/openai/models?api-version=2024-10-21"
-        );
-        // Trailing slash is trimmed.
-        assert_eq!(
-            azure_models_url("https://my-resource.openai.azure.com/", "2024-10-21"),
-            "https://my-resource.openai.azure.com/openai/models?api-version=2024-10-21"
-        );
+        let cohere_shape = serde_json::from_str::<NameList>(r#"{"models":[{"name":"command-r"}]}"#).unwrap();
+        assert_eq!(cohere_shape.models[0].name, "command-r");
+
+        // togetherai returns an array directly.
+        let together_shape = serde_json::from_str::<Vec<IdItem>>(r#"[{"id":"meta.llama"}]"#).unwrap();
+        assert_eq!(together_shape[0].id, "meta.llama");
     }
 }

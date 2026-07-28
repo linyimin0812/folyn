@@ -143,6 +143,7 @@ export interface AiConfigState {
 
   /** Add a manually-defined model under a provider (for the picker). */
   addManualModel: (providerId: string, model: Omit<ManualModel, 'createdAt'>) => void;
+  removeManualModel: (providerId: string, modelId: string) => void;
 
   /** T06: returns provider ids that have a non-empty apiKey (or don't
    *  require one — Ollama). Used by the "重新拉取全部" button to iterate
@@ -439,6 +440,18 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
       if (list.some((m) => m.id === entry.id)) return s;
       return {
         manualModels: { ...s.manualModels, [providerId]: [...list, entry] },
+      };
+    });
+    schedulePersist();
+  },
+
+  removeManualModel: (providerId, modelId) => {
+    set((s) => {
+      const list = s.manualModels[providerId] ?? [];
+      const next = list.filter((m) => m.id !== modelId);
+      if (next.length === list.length) return s;
+      return {
+        manualModels: { ...s.manualModels, [providerId]: next },
       };
     });
     schedulePersist();

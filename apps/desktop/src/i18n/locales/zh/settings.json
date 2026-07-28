@@ -234,7 +234,9 @@
       "label": "获取模型",
       "fetching": "获取中…",
       "empty": "未获取到模型",
-      "orphan": "已不在可用列表"
+      "orphan": "已不在可用列表",
+      "errorTitle": "获取模型失败",
+      "errorClose": "关闭"
     },
     "thinkingBudget": {
       "label": "Thinking 预算(tokens)",
@@ -262,7 +264,9 @@
       "searchPlaceholder": "搜索模型 ID 或名称",
       "select": "选择",
       "selected": "已选中",
-      "sort": "排序"
+      "sort": "排序",
+      "refresh": "刷新",
+      "refreshing": "刷新中…"
     },
     "addCustom": "添加",
     "editCustom": "编辑",
