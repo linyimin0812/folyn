@@ -65,7 +65,7 @@ export function SettingsPage() {
   const [excludeInput, setExcludeInput] = useState<{ value: string } | null>(null);
 
   return (
-    <div className="settings-page flex flex-row max-w-none h-full">
+    <div className="settings-page flex flex-row max-w-none h-full relative flex-1">
       {/* Left navigation */}
       <nav className="sn w-[190px] shrink-0 bg-panel border-r border-brd flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto py-[11px] px-[7px]">

@@ -685,6 +685,7 @@ pub fn run() {
             plugin_commands::grant_plugin_capabilities,
             plugin_commands::verify_plugin_signature_cmd,
             plugin_commands::plugin_http_fetch,
+            plugin_commands::fetch_url,
             plugin_commands::plugin_rpc_respond,
             voice::voice_start,
             voice::voice_stop,

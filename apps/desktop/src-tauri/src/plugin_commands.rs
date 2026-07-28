@@ -753,6 +753,93 @@ pub struct HttpResponse {
     pub body: String,
 }
 
+/// Host allowlist for the ungated `fetch_url` command. The webview cannot
+/// `fetch()` these directly (CORS / preflight 404 from openrouter), so we
+/// proxy via reqwest. Limited to the catalog refresh use case — adding a
+/// host here means any webview code can GET from it.
+const FETCH_URL_ALLOWED_HOSTS: &[&str] = &["models.dev", "openrouter.ai"];
+
+/// Shared reqwest implementation used by `plugin_http_fetch` (gated by
+/// plugin manifest) and `fetch_url` (gated by host allowlist).
+async fn reqwest_fetch(
+    url: &str,
+    method: Option<String>,
+    headers: Option<HashMap<String, String>>,
+    body: Option<String>,
+) -> Result<HttpResponse, String> {
+    let method_str = method.as_deref().unwrap_or("GET").to_ascii_uppercase();
+    let method = reqwest::Method::from_bytes(method_str.as_bytes())
+        .map_err(|e| format!("invalid method {method_str}: {e}"))?;
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(30))
+        .redirect(reqwest::redirect::Policy::limited(10))
+        .build()
+        .map_err(|e| format!("reqwest client build failed: {e}"))?;
+
+    let mut req = client.request(method, url);
+    if let Some(headers) = headers {
+        for (k, v) in headers {
+            // Silently skip headers reqwest rejects (e.g. forbidden header
+            // names like `Host`); a malformed header must not abort the whole
+            // call.
+            if let Ok(name) = reqwest::header::HeaderName::try_from(k.as_str()) {
+                if let Ok(val) = reqwest::header::HeaderValue::try_from(v) {
+                    req = req.header(name, val);
+                }
+            }
+        }
+    }
+    if let Some(body) = body {
+        req = req.body(body);
+    }
+
+    let resp = req
+        .send()
+        .await
+        .map_err(|e| format!("http:fetch request failed: {e}"))?;
+
+    let status = resp.status().as_u16();
+    let mut out_headers: HashMap<String, String> = HashMap::new();
+    for (name, value) in resp.headers().iter() {
+        if let Ok(v) = value.to_str() {
+            out_headers.insert(name.as_str().to_ascii_lowercase(), v.to_string());
+        }
+    }
+    let body = resp
+        .text()
+        .await
+        .map_err(|e| format!("http:fetch body read failed: {e}"))?;
+
+    Ok(HttpResponse {
+        status,
+        headers: out_headers,
+        body,
+    })
+}
+
+/// Ungated HTTP GET for catalog refresh (models.dev / openrouter.ai). The
+/// webview can't fetch these directly due to CORS, so we proxy via reqwest.
+/// Host-restricted to `FETCH_URL_ALLOWED_HOSTS` to prevent SSRF — adding a
+/// caller-supplied URL with a different host returns an error before any
+/// network call.
+#[tauri::command]
+pub async fn fetch_url(
+    url: String,
+    headers: Option<HashMap<String, String>>,
+) -> Result<HttpResponse, AppError> {
+    let parsed = reqwest::Url::parse(&url).map_err(|e| format!("invalid url: {e}"))?;
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| "url missing host".to_string())?;
+    if !FETCH_URL_ALLOWED_HOSTS.contains(&host) {
+        return Err(format!("fetch_url denied: host not allowlisted: {host}").into());
+    }
+    reqwest_fetch(&url, None, headers, None)
+        .await
+        .map_err(AppError::from)
+}
+
 /// Extract the origin (`scheme://host[:port]`) from a URL string.
 ///
 /// `host` includes the port if present. The host is lowercased (RFC 3986 §3.2.2
@@ -878,66 +965,7 @@ pub async fn plugin_http_fetch(
         serde_json::from_str(&manifest_str).map_err(|e| e.to_string())?;
     check_http_origin(&manifest, &url)?;
 
-    // Build the request. Method defaults to GET.
-    let method_str = method.as_deref().unwrap_or("GET").to_ascii_uppercase();
-    let method = reqwest::Method::from_bytes(method_str.as_bytes())
-        .map_err(|e| format!("invalid method {method_str}: {e}"))?;
-
-    let builder = reqwest::Client::builder()
-        .timeout(Duration::from_secs(30))
-        .redirect(reqwest::redirect::Policy::limited(10));
-    // (No default headers; the plugin's headers are applied per-request below.)
-
-    let client = builder
-        .build()
-        .map_err(|e| format!("reqwest client build failed: {e}"))?;
-
-    let mut req = client.request(method, &url);
-    if let Some(headers) = headers {
-        for (k, v) in headers {
-            // Silently skip headers reqwest rejects (e.g. forbidden header
-            // names like `Host`); a malformed header must not abort the whole
-            // plugin surface.
-            if let Ok(name) = reqwest::header::HeaderName::try_from(k.as_str()) {
-                if let Ok(val) = reqwest::header::HeaderValue::try_from(v) {
-                    req = req.header(name, val);
-                }
-            }
-        }
-    }
-    if let Some(body) = body {
-        req = req.body(body);
-    }
-
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| format!("http:fetch request failed: {e}"))?;
-
-    let status = resp.status().as_u16();
-    let mut out_headers: HashMap<String, String> = HashMap::new();
-    for (name, value) in resp.headers().iter() {
-        // Lowercase the header name to match the old JS shape: the DOM `Headers`
-        // API normalizes names to lowercase, so `Object.fromEntries(entries())`
-        // produced lowercase keys. reqwest's `HeaderMap` preserves the case as
-        // received from the server; without lowercasing, a plugin reading
-        // `headers['content-type']` would miss a `Content-Type` response header.
-        // Last-wins on duplicate names (HashMap overwrite), matching the old JS
-        // `Object.fromEntries` semantics.
-        if let Ok(v) = value.to_str() {
-            out_headers.insert(name.as_str().to_ascii_lowercase(), v.to_string());
-        }
-    }
-    let body = resp
-        .text()
-        .await
-        .map_err(|e| format!("http:fetch body read failed: {e}"))?;
-
-    Ok(HttpResponse {
-        status,
-        headers: out_headers,
-        body,
-    })
+    reqwest_fetch(&url, method, headers, body).await.map_err(AppError::from)
 }
 
 // ── Fetch-RPC bridge for tool windows ───────────────────────────────────────

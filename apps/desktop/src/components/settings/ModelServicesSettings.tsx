@@ -35,13 +35,14 @@ import {
   type CustomProvider,
 } from '@/services/providers/catalog';
 import { isSelectedModelInList } from '@/services/modelRegistry/fetchModels';
+import { refetchAllFromModelsDev } from '@/services/modelRegistry/userProvidersCatalog';
 import { useModelRegistryStore, canFetchModelsFromStore } from '@/store/modelRegistryStore';
 import { findModelInCatalog } from '@/services/modelRegistry/loader';
 import { isReasoningModel } from '@/services/modelRegistry/merge';
 import type { Capability, Model } from '@/services/modelRegistry/types';
 import { Toggle } from './primitives';
 import { providerIconUrl } from '@/services/providers/icon';
-import { SquarePen, Trash2, Plus } from 'lucide-react';
+import { SquarePen, Trash2, Plus, ListRestart, Loader2, Check } from 'lucide-react';
 
 // ponytail: model row hover tooltip shows pricing when available.
 function modelOptionTitle(m: Model): string {
@@ -232,6 +233,12 @@ export function ModelServicesSettings() {
 
   // ── local UI state ──────────────────────────────────────────
   const [search, setSearch] = useState('');
+  const [refetchStatus, setRefetchStatus] = useState<
+    | { kind: 'idle' }
+    | { kind: 'loading' }
+    | { kind: 'ok' }
+    | { kind: 'err'; message: string }
+  >({ kind: 'idle' });
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
   const [chatTestStatus, setChatTestStatus] = useState<{ testing: boolean; result?: { success: boolean; message: string } }>({ testing: false });
   const [showChatKey, setShowChatKey] = useState(false);
@@ -291,15 +298,36 @@ export function ModelServicesSettings() {
         {/* ── Left: provider list ─────────────────────────────── */}
         <aside className="w-[300px] shrink-0 flex flex-col border border-brd rounded-md bg-panel overflow-hidden">
           <div className="p-2 border-b border-brd">
-            <input
-              type="text"
-              placeholder={t('settings:models.searchPlaceholder')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="fi2 w-full h-[30px] py-1 px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-            />
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                placeholder={t('settings:models.searchPlaceholder')}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="fi2 w-full h-[30px] py-1 pl-2.5 pr-8 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+              />
+              <button
+                type="button"
+                title={t('settings:models.refetchModelsDev')}
+                disabled={refetchStatus.kind === 'loading'}
+                onClick={async () => {
+                  setRefetchStatus({ kind: 'loading' });
+                  try {
+                    await refetchAllFromModelsDev();
+                    setRefetchStatus({ kind: 'ok' });
+                  } catch (e) {
+                    setRefetchStatus({ kind: 'err', message: (e as Error).message });
+                  } finally {
+                    setTimeout(() => setRefetchStatus({ kind: 'idle' }), 4000);
+                  }
+                }}
+                className="absolute right-1 top-1/2 -translate-y-1/2 w-[22px] h-[22px] flex items-center justify-center rounded text-t3 hover:text-t1 hover:bg-hov disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ListRestart size={13} />
+              </button>
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto py-1.5 px-1.5 min-h-0">
+          <div className="flex-1 overflow-y-auto py-1.5 px-1.5 min-h-0 relative">
             {filtered.length === 0 ? (
               <div className="text-[10.5px] text-t3 italic px-2 py-3 text-center">{t('settings:models.searchPlaceholder')}</div>
             ) : (
@@ -721,6 +749,29 @@ export function ModelServicesSettings() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {refetchStatus.kind !== 'idle' && (
+        // ponytail: containing block = SettingsPage root (added `relative` there).
+        // `left-[190px]` skips the left nav (`<nav className="sn w-[190px]">`)
+        // so the nav stays interactive while the right panel + right-side
+        // blank are grayed. Coupled to nav width — change there too.
+        <div className="absolute top-0 right-0 bottom-0 left-[190px] z-[100] flex items-center justify-center bg-black/40 pointer-events-none">
+          {refetchStatus.kind === 'loading' && (
+            <Loader2 size={28} className="animate-spin text-t2" />
+          )}
+          {refetchStatus.kind === 'ok' && (
+            <div className="flex items-center gap-2 text-white text-[14px]">
+              <Check size={16} className="text-green-400" />
+              <span>{t('settings:models.refetchModelsDevOk')}</span>
+            </div>
+          )}
+          {refetchStatus.kind === 'err' && (
+            <span className="text-red-400 text-[12px] px-4 text-center max-w-[400px]">
+              {t('settings:models.refetchModelsDevErr', { message: refetchStatus.message })}
+            </span>
+          )}
         </div>
       )}
     </div>

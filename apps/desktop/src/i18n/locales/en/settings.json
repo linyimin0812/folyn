@@ -241,6 +241,10 @@
     },
     "searchPlaceholder": "Search providers...",
     "searchModelPlaceholder": "Search models...",
+    "refetchModelsDev": "Fetch latest models from models.dev",
+    "refetchModelsDevLoading": "Syncing...",
+    "refetchModelsDevOk": "Model sync complete",
+    "refetchModelsDevErr": "Sync failed: {{message}}",
     "filterAll": "All",
     "filterEnabled": "Enabled",
     "picker": {

@@ -241,6 +241,10 @@
     },
     "searchPlaceholder": "搜索模型平台...",
     "searchModelPlaceholder": "搜索模型...",
+    "refetchModelsDev": "从 models.dev 拉取最新模型",
+    "refetchModelsDevLoading": "同步中...",
+    "refetchModelsDevOk": "模型信息同步完成",
+    "refetchModelsDevErr": "同步失败: {{message}}",
     "filterAll": "全部",
     "filterEnabled": "已启用",
     "picker": {
