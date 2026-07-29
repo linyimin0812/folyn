@@ -163,8 +163,8 @@ const RUN_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentCo
 const STOP_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
 // ponytail: lucide loader — shown while running (replaces the static pause icon).
 const SPINNER_SVG = '<svg class="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>';
-// ponytail: lucide file-pen-line — sync result to editor.
-const SYNC_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 22H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4" /><path d="M13 2.5 18.5 8" /><path d="M3 21c0-2 1-3 3-3s3 1 3 3-1 3-3 3-3-1-3-3Z" /><path d="m2 18 4-4" /></svg>';
+// ponytail: lucide send — sync result to editor.
+const SYNC_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-2-9-9-2Z"/><path d="M22 2 11 13"/></svg>';
 const RUN_COLOR = '#59A869';
 const STOP_COLOR = '#C7222D';
 

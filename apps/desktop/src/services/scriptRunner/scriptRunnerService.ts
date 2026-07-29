@@ -150,11 +150,10 @@ export async function runScript(
   return { child, stop };
 }
 
-/** Format the run output as an HTML-comment block:
- *  <!-- Result:
- *  <stdout/stderr lines>
- *  [exit N] | [stopped]
- *  -->
+/** Format the run output as a marker line + blockquote:
+ *  <!-- Result -->
+ *  > <stdout/stderr lines>
+ *  > [exit N] | [stopped]
  */
 export function formatResultBlock(
   stdout: string,
@@ -162,36 +161,36 @@ export function formatResultBlock(
   exitCode: number | null,
   stopped: boolean,
 ): string {
-  const lines: string[] = ['<!-- Result:'];
+  const lines: string[] = ['<!-- Result -->'];
   const pushChunk = (text: string) => {
     const trimmed = text.replace(/\n+$/, '');
     if (!trimmed) return;
     for (const ln of trimmed.split('\n')) {
-      lines.push(ln);
+      lines.push(`> ${ln}`);
     }
   };
   pushChunk(stdout);
   pushChunk(stderr);
   if (stopped) {
-    lines.push('[stopped]');
+    lines.push('> [stopped]');
   } else if (exitCode !== null) {
-    lines.push(`[exit ${exitCode}]`);
+    lines.push(`> [exit ${exitCode}]`);
   }
-  lines.push('-->');
   return lines.join('\n');
 }
 
 /**
- * Splice a `<!-- Result: ... -->` block into the source content so it follows
- * the code fence that starts at `codeStartLine` (1-based, from rehypeSourceLine).
+ * Splice a `<!-- Result -->` marker + `>` blockquote into the source content so
+ * it follows the code fence that starts at `codeStartLine` (1-based, from
+ * rehypeSourceLine).
  *
- * - If an HTML comment block whose first line starts with `<!-- Result:`
- *   immediately follows (after ≤1 blank line), replace its contents (up to
- *   the closing `-->`) with the new block.
- * - Otherwise, insert `\n\n<block>\n` after the closing fence.
- *
- * Invariant: exactly one blank line separates fence → block, and block →
- * following content.
+ * - If a `<!-- Result -->` marker line immediately follows the closing fence
+ *   (after ≤1 blank line), the block extends from the marker through all
+ *   consecutive `>`-prefixed lines that follow it. Replace that whole span
+ *   with the new block. Malformed marker with no `>` lines after it: replace
+ *   just the marker line.
+ * - Otherwise, insert `\n\n<block>\n` after the closing fence, preserving
+ *   exactly one blank line on each side.
  *
  * Returns the new content. If the fence can't be located, returns the
  * original content unchanged (write-back is best-effort).
@@ -205,8 +204,7 @@ export function replaceOrAppendResultBlock(
   const startIdx = codeStartLine - 1;
   if (startIdx < 0 || startIdx >= lines.length) return content;
 
-  // Find closing fence: a line that starts with ``` (optionally indented)
-  // and comes after the opening. Scan from startIdx+1.
+  // Find closing fence: a line that starts with ``` (optionally indented).
   const fenceRe = /^[ \t]*```/;
   let endIdx = -1;
   for (let i = startIdx + 1; i < lines.length; i++) {
@@ -217,21 +215,23 @@ export function replaceOrAppendResultBlock(
   }
   if (endIdx === -1) return content; // malformed — bail
 
-  // Locate existing `<!-- Result:` comment block right after the fence.
-  // Allow ≤1 blank line between fence and the comment opener.
+  const MARKER = '<!-- Result -->';
+
+  // Scan forward from the line after the closing fence. Skip at most one
+  // blank line. If we hit the marker, the existing block spans the marker
+  // + every consecutive `>` line after it.
   let blkStart = -1;
   let blkEnd = -1;
   for (let i = endIdx + 1; i < lines.length; i++) {
     const t = lines[i].trim();
-    if (t === '') continue;
-    if (t.startsWith('<!-- Result:')) {
+    if (t === '') continue; // tolerate ≤1 blank line
+    if (t === MARKER) {
       blkStart = i;
-      // The block extends to the first line whose trimmed value is `-->`.
-      // If no closer is found, consume to EOF (best-effort for malformed).
-      blkEnd = lines.length - 1;
+      blkEnd = i; // malformed case: marker with no `>` lines after it
       for (let j = i + 1; j < lines.length; j++) {
-        if (lines[j].trim() === '-->') {
+        if (/^>/.test(lines[j])) {
           blkEnd = j;
+        } else {
           break;
         }
       }
@@ -242,8 +242,7 @@ export function replaceOrAppendResultBlock(
   const before = lines.slice(0, endIdx + 1); // through closing fence
   const after = blkStart !== -1 ? lines.slice(blkEnd + 1) : lines.slice(endIdx + 1);
   // Strip one leading blank line from `after` so we don't double up the
-  // fence→block separator. Trailing blanks after the block are preserved
-  // as-is (they belong to the following content).
+  // fence→block separator. Trailing blanks after the block are preserved.
   const afterTrimmed = after.length > 0 && after[0] === '' ? after.slice(1) : after;
   const next = [...before, '', resultBlock, '', ...afterTrimmed];
   return next.join('\n');
