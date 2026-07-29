@@ -204,6 +204,9 @@
     "model": {
       "label": "模型"
     },
+    "selectedModels": {
+      "label": "已选模型"
+    },
     "apiKey": {
       "label": "API Key",
       "show": "显示 API Key",
@@ -264,6 +267,7 @@
       "searchPlaceholder": "搜索模型 ID 或名称",
       "select": "选择",
       "selected": "已选中",
+      "remove": "移除",
       "sort": "排序",
       "refresh": "刷新",
       "refreshing": "刷新中…"

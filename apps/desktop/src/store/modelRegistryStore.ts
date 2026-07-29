@@ -37,6 +37,8 @@ export interface ModelRegistryState {
     apiKey: string,
     baseUrl?: string,
     azureApiVersion?: string,
+    customProvider?: boolean,
+    defaultChatEndpoint?: string,
   ) => Promise<{ ok: boolean; error?: string }>;
   /** Iterate all configured providers in parallel; per-provider results land
    *  in fetchStatusByProvider / fetchErrorByProvider. Returns the count of
@@ -47,6 +49,8 @@ export interface ModelRegistryState {
       apiKey: string;
       baseUrl?: string;
       azureApiVersion?: string;
+      customProvider?: boolean;
+      defaultChatEndpoint?: string;
     }>,
   ) => Promise<{ success: number; failed: number }>;
   /** Test-only: reset state. */
@@ -82,13 +86,13 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
   fetchErrorByProvider: {},
   lastFetchedAtByProvider: {},
 
-  fetchModelsForProvider: async (providerId, apiKey, baseUrl, azureApiVersion) => {
+  fetchModelsForProvider: async (providerId, apiKey, baseUrl, azureApiVersion, customProvider, defaultChatEndpoint) => {
     set((s) => ({
       fetchStatusByProvider: { ...s.fetchStatusByProvider, [providerId]: 'loading' },
       fetchErrorByProvider: { ...s.fetchErrorByProvider, [providerId]: null },
     }));
     try {
-      const result = await fetchModelsRaw({ provider: providerId, apiKey, baseUrl, azureApiVersion });
+      const result = await fetchModelsRaw({ provider: providerId, apiKey, baseUrl, azureApiVersion, customProvider, defaultChatEndpoint });
       set((s) => ({
         modelsByProvider: { ...s.modelsByProvider, [providerId]: result.models },
         fetchStatusByProvider: { ...s.fetchStatusByProvider, [providerId]: 'success' },
@@ -119,7 +123,7 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
     if (configured.length === 0) return { success: 0, failed: 0 };
     const results = await Promise.all(
       configured.map((c) =>
-        get().fetchModelsForProvider(c.providerId, c.apiKey, c.baseUrl, c.azureApiVersion),
+        get().fetchModelsForProvider(c.providerId, c.apiKey, c.baseUrl, c.azureApiVersion, c.customProvider, c.defaultChatEndpoint),
       ),
     );
     const success = results.filter((r) => r.ok).length;

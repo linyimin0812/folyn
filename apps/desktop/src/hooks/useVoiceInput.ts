@@ -240,7 +240,7 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
       // unique sessionId keeps each polish a fresh one-turn conversation
       // (history would otherwise leak prior polish context into the next).
       const sessionId = `voice-polish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const { chatProvider, chatModel, chatApiKey, chatBaseUrl, chatThinkingBudget } = useAiConfigStore.getState();
+      const { chatProvider, chatModel, chatApiKey, chatBaseUrl, chatThinkingBudget, customerProviders } = useAiConfigStore.getState();
       try {
         finalText = await new Promise<string>((resolve, reject) => {
           let acc = '';
@@ -252,6 +252,9 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
             apiKey: chatApiKey,
             baseUrl: chatBaseUrl || undefined,
             thinkingBudget: chatThinkingBudget ?? undefined,
+            // PR2e: route custom providers via endpoint resolver.
+            customProvider: !!customerProviders[chatProvider],
+            defaultChatEndpoint: customerProviders[chatProvider]?.defaultChatEndpoint,
             onEvent: (e) => {
               if (e.type === 'text' && e.content) acc += e.content;
               else if (e.type === 'error') reject(new Error(e.content ?? 'polish error'));

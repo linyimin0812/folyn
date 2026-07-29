@@ -26,6 +26,10 @@ import {
   getProviderRequiresApiKey,
   getProviderRequiresAzureFields,
 } from './providersCatalog';
+import type {
+  CustomProviderDef,
+  DefaultChatEndpoint,
+} from './providerConfigStorage';
 
 export type ProviderCategory =
   | 'native'
@@ -34,38 +38,29 @@ export type ProviderCategory =
   | 'local';
 
 /**
- * User-selectable type for custom providers. Drives the label shown in the
- * add-provider drawer; backend routing still falls through chat.rs `_` arm
- * (OpenAI-compat) regardless of this value — picking "Gemini" or "Anthropic"
- * here is a label/preset, not a wire-format switch.
+ * User-defined provider entry. On-disk shape lives at
+ * `~/.quill/providers/customer/providers.json` (see providerConfigStorage).
+ * `defaultChatEndpoint` is the routing signal: when the user invokes chat /
+ * list-models, the frontend passes `customProvider: true` +
+ * `defaultChatEndpoint` to the Rust side, which dispatches by endpoint key
+ * (anthropic-messages / openai-chat-completions / google-generate-content /
+ * ollama / openai-responses) and applies `baseUrl` + `apiKey` from
+ * `settings.json`.
+ *
+ * ponytail: `baseUrl` and `apiKey` no longer live on the definition — they
+ * moved to `~/.quill/providers/settings.json`. The catalog type only carries
+ * what's intrinsic to the provider (id / display name / endpoint / metadata).
  */
-export type CustomProviderType =
-  | 'openai'
-  | 'openai-response'
-  | 'gemini'
-  | 'anthropic'
-  | 'azure-openai'
-  | 'new-api'
-  | 'ollama';
+export type CustomProvider = CustomProviderDef;
 
-/**
- * User-defined provider entry. Routes through chat.rs `_` fallback arm
- * (OpenAI-compat). `rigClientKind` is implicit `'openai-compat'` — the
- * backend matches unknown ids and uses base_url + api_key directly.
- */
-export interface CustomProvider {
-  id: string;
-  displayName: string;
-  baseUrl: string;
-  apiKeyUrl: string | null;
-  category: CustomProviderType;
-  createdAt: number;
-}
+/** Re-export so callers can construct endpoint values without reaching into
+ *  providerConfigStorage. */
+export type { DefaultChatEndpoint };
 
 export type ProviderEntry = ProviderCatalogEntry | CustomProvider;
 
 export function isCustomProvider(e: ProviderEntry): e is CustomProvider {
-  return 'displayName' in e;
+  return 'defaultChatEndpoint' in e;
 }
 
 export function providerId(e: ProviderEntry): string {
@@ -73,7 +68,7 @@ export function providerId(e: ProviderEntry): string {
 }
 
 export function providerDisplayName(e: ProviderEntry, t: (k: string) => string): string {
-  return isCustomProvider(e) ? e.displayName : t(e.i18nKey);
+  return isCustomProvider(e) ? e.name : t(e.i18nKey);
 }
 
 /** First-char avatar label. */
@@ -82,17 +77,22 @@ export function providerAvatarChar(e: ProviderEntry, t: (k: string) => string): 
   return name.charAt(0).toUpperCase() || '?';
 }
 
-export function providerCategory(e: ProviderEntry): ProviderCategory | CustomProviderType {
-  return e.category;
+export function providerCategory(e: ProviderEntry): ProviderCategory | DefaultChatEndpoint {
+  // ponytail: defaultChatEndpoint is typed `string` on the def for forward
+  // compat (user-typed endpoints); narrow here for type-safe consumers.
+  return isCustomProvider(e) ? (e.defaultChatEndpoint as DefaultChatEndpoint) : e.category;
 }
 
+/** Returns the bundled-catalog baseUrl for native providers. Custom providers
+ *  no longer carry baseUrl here — it lives in `settings.json`; callers should
+ *  read from `providerConfigStorage.getProviderSettings()` instead. */
 export function providerBaseUrl(e: ProviderEntry): string | null {
-  if (isCustomProvider(e)) return e.baseUrl;
+  if (isCustomProvider(e)) return null;
   return getProviderApiBaseUrl(e.id);
 }
 
 export function providerApiKeyUrl(e: ProviderEntry): string | null {
-  if (isCustomProvider(e)) return e.apiKeyUrl;
+  if (isCustomProvider(e)) return e.metadata?.website?.apiKey ?? null;
   return getProviderApiKeyUrl(e.id);
 }
 
@@ -186,28 +186,30 @@ export function providersByCategory(
 }
 
 /**
- * Lookup by id, including custom providers. Returns undefined if neither
+ * Lookup by id, including custom providers. `customProviders` is a Record
+ * keyed by id (matches the on-disk shape in customer/providers.json and
+ * the in-memory shape in aiConfigStore). Returns undefined if neither
  * catalog nor custom matches.
  */
 export function getProviderEntryIncludingCustom(
   id: string,
-  customProviders: readonly CustomProvider[],
+  customProviders: Readonly<Record<string, CustomProvider>>,
 ): ProviderEntry | undefined {
   const catalogEntry = PROVIDER_CATALOG.find((p) => p.id === id);
   if (catalogEntry) return catalogEntry;
-  return customProviders.find((p) => p.id === id);
+  return customProviders[id];
 }
 
 /**
  * All providers: catalog ids in declared order, then custom providers in
- * creation order. Display sort is applied by the consumer (enabled-first,
- * then alphabetical).
+ * Record-iteration order. Display sort is applied by the consumer
+ * (enabled-first, then alphabetical).
  */
 export function allProviders(
-  customProviders: readonly CustomProvider[],
+  customProviders: Readonly<Record<string, CustomProvider>>,
 ): ProviderEntry[] {
   const out: ProviderEntry[] = [];
   for (const e of PROVIDER_CATALOG) out.push(e);
-  for (const c of customProviders) out.push(c);
+  for (const c of Object.values(customProviders)) out.push(c);
   return out;
 }

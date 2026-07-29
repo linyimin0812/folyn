@@ -30,11 +30,10 @@ import {
   providerPlaceholderModel,
   providerRequiresApiKey,
   providerRequiresAzureFields,
-  type CustomProviderType,
+  type DefaultChatEndpoint,
   type ProviderEntry,
   type CustomProvider,
 } from '@/services/providers/catalog';
-import { isSelectedModelInList } from '@/services/modelRegistry/fetchModels';
 import { refetchAllFromModelsDev } from '@/services/modelRegistry/userProvidersCatalog';
 import { useModelRegistryStore, canFetchModelsFromStore } from '@/store/modelRegistryStore';
 import type { Capability, Model } from '@/services/modelRegistry/types';
@@ -79,6 +78,7 @@ function familyGroup(id: string): string {
 
 const EMPTY_MODELS: Model[] = [];
 const EMPTY_MANUAL: readonly { id: string; displayName: string; group: string; createdAt: number }[] = [];
+const EMPTY_SELECTED: readonly string[] = [];
 
 /** Deterministic color from id — used for the avatar background. */
 function avatarColor(id: string): string {
@@ -181,11 +181,13 @@ export function ModelServicesSettings() {
   const setChatBaseUrl = useAiConfigStore((s) => s.setChatBaseUrl);
   const setChatAzureApiVersion = useAiConfigStore((s) => s.setChatAzureApiVersion);
 
-  const customProviders = useAiConfigStore((s) => s.customProviders);
-  const enabledProviders = useAiConfigStore((s) => s.enabledProviders);
+  const customerProviders = useAiConfigStore((s) => s.customerProviders);
+  const providerSettings = useAiConfigStore((s) => s.providerSettings);
   const manualModelsMap = useAiConfigStore((s) => s.manualModels);
   const addManualModel = useAiConfigStore((s) => s.addManualModel);
   const removeManualModel = useAiConfigStore((s) => s.removeManualModel);
+  const addSelectedModelId = useAiConfigStore((s) => s.addSelectedModelId);
+  const removeSelectedModelId = useAiConfigStore((s) => s.removeSelectedModelId);
   const addCustomProvider = useAiConfigStore((s) => s.addCustomProvider);
   const updateCustomProvider = useAiConfigStore((s) => s.updateCustomProvider);
   const removeCustomProvider = useAiConfigStore((s) => s.removeCustomProvider);
@@ -228,8 +230,8 @@ export function ModelServicesSettings() {
   const [manualCollapsed, setManualCollapsed] = useState<Set<string>>(new Set());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const pendingDeleteProvider = useMemo(
-    () => customProviders.find((p) => p.id === deleteConfirmId) ?? null,
-    [customProviders, deleteConfirmId],
+    () => customerProviders[deleteConfirmId ?? ''] ?? null,
+    [customerProviders, deleteConfirmId],
   );
 
   // Reset the fetch-error dismissal whenever a new fetch starts so the
@@ -237,14 +239,16 @@ export function ModelServicesSettings() {
   useEffect(() => {
     if (fetchStatusForCurrent !== 'error') setFetchErrorDismissed(false);
   }, [fetchStatusForCurrent]);
+
+  const selectedModelIds = providerSettings[chatProvider]?.selectedModelIds ?? EMPTY_SELECTED;
   const showFetchErrorModal = fetchStatusForCurrent === 'error'
     && !!fetchErrorForCurrent
     && !fetchErrorDismissed;
 
   // ── derived ─────────────────────────────────────────────────
   const providers = useMemo(
-    () => allProviders(customProviders),
-    [customProviders],
+    () => allProviders(customerProviders),
+    [customerProviders],
   );
   const filtered = useMemo(() => {
     // ponytail: hidden catalog escape-hatch ids — superseded by custom
@@ -262,14 +266,14 @@ export function ModelServicesSettings() {
     // ponytail: enabled first, then alphabetical by display name.
     const nameOf = (p: ProviderEntry) => providerDisplayName(p, t).toLowerCase();
     return [...matched].sort((a, b) => {
-      const ae = enabledProviders[a.id] === true ? 0 : 1;
-      const be = enabledProviders[b.id] === true ? 0 : 1;
+      const ae = providerSettings[a.id]?.enabled === true ? 0 : 1;
+      const be = providerSettings[b.id]?.enabled === true ? 0 : 1;
       if (ae !== be) return ae - be;
       return nameOf(a).localeCompare(nameOf(b));
     });
-  }, [providers, search, t, enabledProviders]);
+  }, [providers, search, t, providerSettings]);
 
-  const entry: ProviderEntry = getProviderEntryIncludingCustom(chatProvider, customProviders) ?? PROVIDER_CATALOG[0];
+  const entry: ProviderEntry = getProviderEntryIncludingCustom(chatProvider, customerProviders) ?? PROVIDER_CATALOG[0];
   const requiresApiKey = providerRequiresApiKey(entry);
   const requiresAzureFields = providerRequiresAzureFields(entry);
   const apiKeyUrl = providerApiKeyUrl(entry);
@@ -279,7 +283,7 @@ export function ModelServicesSettings() {
   const modelsUrl = getProviderModelsUrl(entry.id);
   const placeholderModel = providerPlaceholderModel(entry);
   const isCustom = isCustomProvider(entry);
-  const entryEnabled = enabledProviders[entry.id] === true;
+  const entryEnabled = providerSettings[entry.id]?.enabled === true;
 
   return (
     <div className="h-full flex flex-col">
@@ -327,7 +331,7 @@ export function ModelServicesSettings() {
             ) : (
               filtered.map((p) => {
                 const isActive = p.id === chatProvider;
-                const isEnabled = enabledProviders[p.id] === true;
+                const isEnabled = providerSettings[p.id]?.enabled === true;
                 return (
                   <div
                     key={p.id}
@@ -466,6 +470,9 @@ export function ModelServicesSettings() {
                         baseUrl: chatBaseUrl || undefined,
                         azureDeploymentId: chatAzureDeploymentId || undefined,
                         azureApiVersion: chatAzureApiVersion || undefined,
+                        // PR2e: route custom providers via endpoint resolver.
+                        customProvider: isCustom,
+                        defaultChatEndpoint: isCustom ? (customerProviders[chatProvider]?.defaultChatEndpoint) : undefined,
                       });
                       setChatTestStatus({ testing: false, result });
                       setTimeout(() => setChatTestStatus((s) => ({ ...s, result: undefined })), 6000);
@@ -575,79 +582,70 @@ export function ModelServicesSettings() {
               </div>
             </div>
 
-            {/* Current selection card — display-only, no popup on click */}
-            {chatModel && (() => {
-              const m = modelsForCurrent.find((x) => x.id === chatModel);
-              const group = m?.group ?? familyGroup(chatModel);
-              const isOrphan = !isSelectedModelInList(chatModel, modelsForCurrent);
-              const isManual = manualForCurrent.some((mm) => mm.id === chatModel);
-              const isCardCollapsed = manualCollapsed.has('__selected__');
+            {/* Selected models list — ids the user picked via the model picker. */}
+            {selectedModelIds.length > 0 && (() => {
+              const isCollapsed = manualCollapsed.has('__selectedModels__');
               return (
-                <div
-                  className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm"
-                  title={m ? modelOptionTitle(m) : ''}
-                >
-                  {/* Group header — click to collapse/expand */}
-                  <div
-                    className="flex items-center justify-between px-4 py-2.5 bg-gray-50/80 border-b border-gray-100 select-none cursor-pointer hover:bg-gray-100/80 transition-colors"
-                    onClick={() => setManualCollapsed((prev) => {
-                      const next = new Set(prev);
-                      if (next.has('__selected__')) next.delete('__selected__');
-                      else next.add('__selected__');
-                      return next;
-                    })}
-                  >
-                    <div className="flex items-center gap-2">
-                      <svg
-                        className={`text-gray-400 transition-transform ${isCardCollapsed ? '' : 'rotate-180'}`}
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="6 9 12 15 18 9" />
-                      </svg>
-                      <span className="font-bold text-[length:calc(var(--ui-font-size)-2.5px)] font-ui text-gray-800">{group ?? '—'}</span>
+                <div className="mt-2 flex flex-col gap-2">
+                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div
+                      className="flex items-center justify-between px-4 py-2 bg-gray-50/80 border-b border-gray-100 select-none cursor-pointer hover:bg-gray-100/80 transition-colors"
+                      onClick={() => setManualCollapsed((prev) => {
+                        const next = new Set(prev);
+                        if (next.has('__selectedModels__')) next.delete('__selectedModels__');
+                        else next.add('__selectedModels__');
+                        return next;
+                      })}
+                    >
+                      <div className="flex items-center gap-2">
+                        <svg
+                          className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                        <span className="font-bold text-[length:calc(var(--ui-font-size)-2.5px)] font-ui text-gray-800">{t('settings:models.selectedModels.label')}</span>
+                        <span className="text-[10.5px] text-gray-400">{selectedModelIds.length}</span>
+                      </div>
                     </div>
-                    {isManual && (
-                      <button
-                        type="button"
-                        title={t('settings:models.deleteCustom')}
-                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeManualModel(chatProvider, chatModel);
-                        }}
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                    {!isCollapsed && (
+                      <div className="bg-white">
+                        {selectedModelIds.map((mid, idx) => {
+                          const isSelected = mid === chatModel;
+                          return (
+                            <div
+                              key={mid}
+                              className={`flex items-center justify-between px-4 py-2.5 hover:bg-gray-50/50 transition-colors cursor-pointer ${
+                                idx < selectedModelIds.length - 1 ? 'border-b border-gray-100' : ''
+                              }`}
+                              onClick={() => setChatModel(mid)}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <ModelAvatar id={mid} />
+                                <span className={`font-semibold text-[length:calc(var(--ui-font-size)-2px)] font-ui truncate ${isSelected ? 'text-emerald-600' : 'text-gray-800'}`}>
+                                  {mid}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {isSelected && (
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
-                  {/* Model row — hidden when collapsed */}
-                  {!isCardCollapsed && (
-                    <div className="flex items-center justify-between px-4 py-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <ModelAvatar id={chatModel} />
-                        <span className={`font-semibold text-[length:calc(var(--ui-font-size)-2px)] font-ui truncate ${isOrphan ? 'text-gray-500' : 'text-gray-800'}`}>
-                          {m?.displayName ?? chatModel}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        {m && <CapabilityPills capabilities={m.capabilities} />}
-                        {isOrphan ? (
-                          <span className="text-[10.5px] text-gray-400">{t('settings:models.fetchModels.orphan')}</span>
-                        ) : (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             })()}
@@ -789,9 +787,10 @@ export function ModelServicesSettings() {
       {drawer && (
         <CustomProviderDrawer
           state={drawer}
+          existingIds={Object.keys(customerProviders)}
           initial={
             drawer.mode === 'edit'
-              ? customProviders.find((p) => p.id === drawer.id) ?? null
+              ? customerProviders[drawer.id] ?? null
               : null
           }
           onClose={() => setDrawer(null)}
@@ -812,11 +811,17 @@ export function ModelServicesSettings() {
           providerName={providerDisplayName(entry, t)}
           models={modelsForCurrent}
           selectedId={chatModel}
+          selectedIds={providerSettings[chatProvider]?.selectedModelIds ?? EMPTY_SELECTED}
           fetchStatus={fetchStatusForCurrent}
           onClose={() => setPickerOpen(false)}
           onSelect={(id) => {
-            setChatModel(id);
-            setPickerOpen(false);
+            const current = providerSettings[chatProvider]?.selectedModelIds ?? [];
+            if (current.includes(id)) {
+              removeSelectedModelId(chatProvider, id);
+            } else {
+              setChatModel(id);
+              addSelectedModelId(chatProvider, id);
+            }
           }}
           onRefresh={() => {
             void fetchModelsForProvider(
@@ -824,6 +829,8 @@ export function ModelServicesSettings() {
               chatApiKey,
               chatBaseUrl || providersJsonBaseUrl || undefined,
               chatAzureApiVersion || undefined,
+              isCustom,
+              isCustom ? customerProviders[chatProvider]?.defaultChatEndpoint : undefined,
             );
           }}
         />
@@ -844,7 +851,7 @@ export function ModelServicesSettings() {
           <div className="bg-panel rounded-[10px] py-5 px-6 min-w-[300px] max-w-[400px] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd" onClick={(e) => e.stopPropagation()}>
             <div className="text-[15px] font-semibold text-t1 mb-2">{t('settings:models.confirmDelete')}</div>
             <div className="text-[13px] text-t2 leading-relaxed mb-4">
-              <strong>{pendingDeleteProvider.displayName || pendingDeleteProvider.id}</strong>
+              <strong>{pendingDeleteProvider.name || pendingDeleteProvider.id}</strong>
             </div>
             <div className="flex justify-end gap-2">
               <button className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-brd font-ui transition-all duration-[140ms] bg-panel text-t2 hover:bg-hov" onClick={() => setDeleteConfirmId(null)}>{t('settings:models.cancel')}</button>
@@ -919,28 +926,64 @@ export function ModelServicesSettings() {
 }
 
 // ── Custom provider drawer ─────────────────────────────────────
+// ponytail: endpoint options are the 7 actual endpoint keys present in
+// bundled providers.json's endpointConfigs — NOT the legacy
+// CustomProviderType label enum. `new-api` was never an endpoint key; the
+// legacy drawer emitting it was a bug.
+const ENDPOINT_OPTIONS: DefaultChatEndpoint[] = [
+  'openai-chat-completions',
+  'openai-responses',
+  'anthropic-messages',
+  'google-generate-content',
+  'ollama',
+  'ollama-chat',
+  'openai-image-generation',
+];
+
+const ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+
 function CustomProviderDrawer({
   state,
+  existingIds,
   initial,
   onClose,
   onSave,
 }: {
   state: DrawerState;
+  existingIds: readonly string[];
   initial: CustomProvider | null;
   onClose: () => void;
   onSave: (data: {
-    displayName: string;
-    baseUrl: string;
-    apiKeyUrl: string | null;
-    category: CustomProviderType;
+    id: string;
+    name: string;
+    defaultChatEndpoint: DefaultChatEndpoint;
+    description?: string;
+    metadata?: CustomProvider['metadata'];
   }) => void;
 }) {
   const { t } = useTranslation();
-  const [displayName, setDisplayName] = useState(initial?.displayName ?? '');
-  const [category, setCategory] = useState<CustomProviderType>(initial?.category ?? 'openai');
+  const [id, setId] = useState(initial?.id ?? '');
+  const [name, setName] = useState(initial?.name ?? '');
+  const [defaultChatEndpoint, setDefaultChatEndpoint] = useState<DefaultChatEndpoint>(
+    (initial?.defaultChatEndpoint as DefaultChatEndpoint) ?? 'openai-chat-completions',
+  );
+  const [description, setDescription] = useState(initial?.description ?? '');
+  const [apiKey, setApiKey] = useState(initial?.metadata?.website?.apiKey ?? '');
+  const [docs, setDocs] = useState(initial?.metadata?.website?.docs ?? '');
+  const [models, setModels] = useState(initial?.metadata?.website?.models ?? '');
+  const [official, setOfficial] = useState(initial?.metadata?.website?.official ?? '');
 
-  const valid = displayName.trim().length > 0;
-  const previewChar = (displayName.trim()[0] ?? '?').toUpperCase();
+  const idValid = ID_PATTERN.test(id.trim());
+  const idUnique = state.mode === 'edit' || !existingIds.includes(id.trim());
+  const nameValid = name.trim().length > 0;
+  const valid = idValid && idUnique && nameValid;
+
+  const previewChar = (name.trim()[0] ?? '?').toUpperCase();
+
+  const buildMetadata = (): CustomProvider['metadata'] | undefined => {
+    if (!apiKey && !docs && !models && !official) return undefined;
+    return { website: { apiKey: apiKey || undefined, docs: docs || undefined, models: models || undefined, official: official || undefined } };
+  };
 
   return (
     <div
@@ -948,7 +991,7 @@ function CustomProviderDrawer({
       onClick={onClose}
     >
       <div
-        className="bg-panel border border-brd rounded-md w-[420px] flex flex-col"
+        className="bg-panel border border-brd rounded-md w-[480px] max-h-[90vh] overflow-y-auto flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-4 pt-4 pb-2">
@@ -962,11 +1005,34 @@ function CustomProviderDrawer({
           <div className="flex justify-center">
             <span
               className="inline-flex items-center justify-center rounded-full text-white text-[16px] font-bold"
-              style={{ width: 40, height: 40, background: avatarColor(displayName || 'custom') }}
+              style={{ width: 40, height: 40, background: avatarColor(name || 'custom') }}
             >
               {previewChar}
             </span>
           </div>
+
+          {state.mode === 'add' && (
+            <label className="flex flex-col gap-1">
+              <span className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2">
+                {t('settings:models.idLabel') || 'ID'}
+              </span>
+              <input
+                className="fi2 h-[34px] py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                value={id}
+                onChange={(e) => setId(e.target.value.slice(0, 64))}
+                placeholder="my-provider"
+                autoCapitalize="off"
+                spellCheck={false}
+                autoFocus
+              />
+              <span className="text-[10px] text-t3">
+                {ID_PATTERN.test(id.trim())
+                  ? (idUnique ? t('settings:models.idHint') || 'Letters, digits, - and _ only.'
+                    : t('settings:models.idDuplicate') || 'ID already exists.')
+                  : (t('settings:models.idInvalid') || 'Letters, digits, - and _ only.')}
+              </span>
+            </label>
+          )}
 
           <label className="flex flex-col gap-1">
             <span className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2">
@@ -974,11 +1040,11 @@ function CustomProviderDrawer({
             </span>
             <input
               className="fi2 h-[34px] py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value.slice(0, 32))}
+              value={name}
+              onChange={(e) => setName(e.target.value.slice(0, 32))}
               placeholder={t('settings:models.customNamePlaceholder')}
               maxLength={32}
-              autoFocus
+              autoFocus={state.mode === 'edit'}
             />
           </label>
 
@@ -988,14 +1054,56 @@ function CustomProviderDrawer({
             </span>
             <select
               className="fi2 h-[34px] py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-              value={category}
-              onChange={(e) => setCategory(e.target.value as CustomProviderType)}
+              value={defaultChatEndpoint}
+              onChange={(e) => setDefaultChatEndpoint(e.target.value as DefaultChatEndpoint)}
             >
-              {(['openai-chat-completions', 'openai-response', 'anthropic-messages', 'new-api', 'ollama'] as const).map((c) => (
-                <option key={c} value={c}>{t(`settings:models.category.${c}`)}</option>
+              {ENDPOINT_OPTIONS.map((c) => (
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
           </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2">
+              {t('settings:models.descriptionLabel') || 'Description'}
+            </span>
+            <textarea
+              className="fi2 py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui min-h-[60px] resize-y"
+              value={description}
+              onChange={(e) => setDescription(e.target.value.slice(0, 500))}
+              placeholder={t('settings:models.descriptionPlaceholder') || 'Optional'}
+            />
+          </label>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2">
+              {t('settings:models.metadataLabel') || 'Metadata'}
+            </span>
+            <input
+              className="fi2 h-[30px] py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder={t('settings:models.metadata.apiKey') || 'API key URL'}
+            />
+            <input
+              className="fi2 h-[30px] py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+              value={docs}
+              onChange={(e) => setDocs(e.target.value)}
+              placeholder={t('settings:models.metadata.docs') || 'Docs URL'}
+            />
+            <input
+              className="fi2 h-[30px] py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+              value={models}
+              onChange={(e) => setModels(e.target.value)}
+              placeholder={t('settings:models.metadata.models') || 'Models list URL'}
+            />
+            <input
+              className="fi2 h-[30px] py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+              value={official}
+              onChange={(e) => setOfficial(e.target.value)}
+              placeholder={t('settings:models.metadata.official') || 'Official site URL'}
+            />
+          </div>
         </div>
 
         <div className="h-px bg-brd mx-4" />
@@ -1008,10 +1116,11 @@ function CustomProviderDrawer({
             disabled={!valid}
             onClick={() =>
               onSave({
-                displayName,
-                baseUrl: '',
-                apiKeyUrl: null,
-                category,
+                id: id.trim(),
+                name: name.trim(),
+                defaultChatEndpoint,
+                description: description.trim() || undefined,
+                metadata: buildMetadata(),
               })
             }
           >
@@ -1038,6 +1147,7 @@ function ModelPickerModal({
   providerName,
   models,
   selectedId,
+  selectedIds,
   fetchStatus,
   onClose,
   onSelect,
@@ -1046,6 +1156,7 @@ function ModelPickerModal({
   providerName: string;
   models: readonly Model[];
   selectedId: string;
+  selectedIds: readonly string[];
   fetchStatus: string;
   onClose: () => void;
   onSelect: (id: string) => void;
@@ -1241,7 +1352,8 @@ function ModelPickerModal({
                     {!isCollapsed && (
                       <div className="bg-white px-4">
                         {g.items.map((m, idx) => {
-                          const isSelected = m.id === selectedId;
+                          const isSelected = selectedIds.includes(m.id);
+                          const isActive = m.id === selectedId;
                           return (
                             <div
                               key={m.id}
@@ -1253,8 +1365,12 @@ function ModelPickerModal({
                               <div className="flex items-center gap-3 min-w-0">
                                 <ModelAvatar id={m.id} />
                                 <span
-                                  className={`text-[length:calc(var(--ui-font-size)-2px)] font-ui font-semibold truncate ${
-                                    isSelected ? 'text-emerald-600' : 'text-gray-800'
+                                  className={`text-[length:calc(var(--ui-font-size)-2px)] font-ui truncate ${
+                                    isActive
+                                      ? 'font-bold text-emerald-700'
+                                      : isSelected
+                                        ? 'font-semibold text-emerald-600'
+                                        : 'font-semibold text-gray-800'
                                   }`}
                                 >
                                   {m.displayName ?? m.id}
@@ -1265,7 +1381,7 @@ function ModelPickerModal({
                                 <button
                                   type="button"
                                   onClick={() => onSelect(m.id)}
-                                  title={isSelected ? t('settings:models.picker.selected') : t('settings:models.picker.select')}
+                                  title={isSelected ? t('settings:models.picker.remove') : t('settings:models.picker.select')}
                                   className={
                                     isSelected
                                       ? 'text-emerald-600 hover:text-emerald-700'
@@ -1274,7 +1390,7 @@ function ModelPickerModal({
                                 >
                                   {isSelected ? (
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <polyline points="20 6 9 17 4 12" />
+                                      <line x1="5" y1="12" x2="19" y2="12" />
                                     </svg>
                                   ) : (
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

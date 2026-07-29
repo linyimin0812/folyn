@@ -21,6 +21,10 @@ export interface FetchModelsParams {
   apiKey: string;
   baseUrl?: string;
   azureApiVersion?: string;
+  /** PR2e: routing flag — true for custom providers. */
+  customProvider?: boolean;
+  /** PR2e: endpoint key (e.g. "anthropic-messages"). Required when customProvider=true. */
+  defaultChatEndpoint?: string;
 }
 
 export interface FetchModelsResult {
@@ -34,7 +38,7 @@ interface ModelDto {
 }
 
 export async function fetchModels(params: FetchModelsParams): Promise<FetchModelsResult> {
-  const { provider, apiKey, baseUrl, azureApiVersion } = params;
+  const { provider, apiKey, baseUrl, azureApiVersion, customProvider, defaultChatEndpoint } = params;
   // ponytail: catalog derives `requiresApiKey` from providers.json; we trust
   // the caller (SettingsPage) to have already gated the button on that.
   // Here we just forward to Rust.
@@ -44,6 +48,9 @@ export async function fetchModels(params: FetchModelsParams): Promise<FetchModel
       apiKey,
       baseUrl: baseUrl || null,
       azureApiVersion: azureApiVersion || null,
+      // PR2e: routing flag + endpoint key for custom providers.
+      customProvider: customProvider ?? false,
+      defaultChatEndpoint: defaultChatEndpoint ?? null,
     },
   });
   const ids = remote.map((m) => m.id);

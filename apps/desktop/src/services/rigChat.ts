@@ -45,6 +45,13 @@ export interface RigChatParams {
    *  per-provider application is a follow-up. The field is plumbed so the
    *  follow-up touches one arm per provider. */
   thinkingBudget?: number | null;
+  /** PR2e: routing flag — true for custom providers, false for bundled.
+   *  When true, Rust resolves the adapter family from `defaultChatEndpoint`
+   *  instead of `provider`. Default false (bundled). */
+  customProvider?: boolean;
+  /** PR2e: endpoint key (e.g. "anthropic-messages" / "openai-chat-completions").
+   *  Required when `customProvider=true`; ignored otherwise. */
+  defaultChatEndpoint?: string;
   /** Optional preamble (system prompt) override. When omitted, the rig
    *  backend uses its built-in default. The Bubble Template AI Agent
    *  passes its feature-specific preamble here. */
@@ -87,6 +94,9 @@ export async function runRigChat(p: RigChatParams): Promise<void> {
       azureDeploymentId: p.azureDeploymentId ?? null,
       azureApiVersion: p.azureApiVersion ?? null,
       thinkingBudget: p.thinkingBudget ?? null,
+      // PR2e: routing flag + endpoint key for custom providers.
+      customProvider: p.customProvider ?? false,
+      defaultChatEndpoint: p.defaultChatEndpoint ?? null,
       prompt: p.prompt,
       preamble: p.preamble ?? null,
       images: p.images && p.images.length > 0 ? p.images : null,
@@ -117,9 +127,14 @@ export async function testChatConnection(params: {
   baseUrl?: string;
   azureDeploymentId?: string;
   azureApiVersion?: string;
+  customProvider?: boolean;
+  defaultChatEndpoint?: string;
   timeoutMs?: number;
 }): Promise<ChatTestResult> {
-  const { provider, model, apiKey, baseUrl, azureDeploymentId, azureApiVersion, timeoutMs = 10000 } = params;
+  const {
+    provider, model, apiKey, baseUrl, azureDeploymentId, azureApiVersion,
+    customProvider, defaultChatEndpoint, timeoutMs = 10000,
+  } = params;
   let settled = false;
   return new Promise<ChatTestResult>((resolve) => {
     const timer = setTimeout(() => {
@@ -137,6 +152,8 @@ export async function testChatConnection(params: {
       baseUrl,
       azureDeploymentId,
       azureApiVersion,
+      customProvider,
+      defaultChatEndpoint,
       onEvent: (e) => {
         if (settled) return;
         if (e.type === 'done') {

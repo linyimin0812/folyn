@@ -239,6 +239,9 @@ export function AiPanel() {
           // T07: forward reasoning budget. rig applies it via per-provider
           // additional_params; non-reasoning models silently ignore.
           thinkingBudget: aiConfig.chatThinkingBudget,
+          // PR2e: route custom providers via the endpoint resolver in Rust.
+          customProvider: !!aiConfig.customerProviders[aiConfig.chatProvider],
+          defaultChatEndpoint: aiConfig.customerProviders[aiConfig.chatProvider]?.defaultChatEndpoint,
           onEvent: eventHandler,
         });
       } else {

@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist for the final diff: no unrequested abstractions, no comments unless WHY is non-obvious, no boilerplate."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify the new setter follows store conventions: patch + schedulePersist + void providerConfigStorage.setProviderSettings, no inline disk I/O in the setter."}

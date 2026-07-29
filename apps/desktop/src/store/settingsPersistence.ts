@@ -90,8 +90,20 @@ export function hydrateAllStores(blob: Record<string, unknown>): void {
  *  the raw blob (or null) so callers can inspect it. */
 export async function loadSettings(): Promise<Record<string, unknown> | null> {
   const blob = await storageClient.get<Record<string, unknown>>(SETTINGS_STORAGE_KEY);
+  if (blob) hydrateAllStores(blob);
+  // Provider config lives in ~/.quill/providers/ — load from disk AFTER the
+  // storage.json hydrate so chatProvider is already set when we read the
+  // matching slot into the flat mirrors. Lazy import breaks the store→
+  // settingsPersistence→store cycle (aiConfigStore imports schedulePersist
+  // at module load; this module importing aiConfigStore at top would
+  // create the cycle).
+  try {
+    const { useAiConfigStore } = await import('./aiConfigStore');
+    await useAiConfigStore.getState().loadFromDisk();
+  } catch (err) {
+    console.warn('[settingsPersistence] Provider config load failed:', err);
+  }
   if (!blob) return null;
-  hydrateAllStores(blob);
   // Broadcast to secondary Tauri windows (pet-bubble / pet-corner /
   // pet-panel) which hold their own store instances but lack fs-plugin ACL
   // perms to re-read storage.json themselves. Without this, the bubble

@@ -204,6 +204,9 @@
     "model": {
       "label": "Model"
     },
+    "selectedModels": {
+      "label": "Selected models"
+    },
     "apiKey": {
       "label": "API Key",
       "show": "Show API Key",
@@ -264,6 +267,7 @@
       "searchPlaceholder": "Search by model ID or name",
       "select": "Select",
       "selected": "Selected",
+      "remove": "Remove",
       "sort": "Sort",
       "refresh": "Refresh",
       "refreshing": "Refreshing…"

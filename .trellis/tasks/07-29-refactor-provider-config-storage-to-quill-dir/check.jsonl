@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-quill-dir/prd.md", "reason": "Acceptance criteria checklist for verification."}
+{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-quill-dir/research/category-to-endpoint-mapping.md", "reason": "Verify migration coercion handles legacy typos and unknowns."}
+{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-quill-dir/research/rust-provider-read-path.md", "reason": "Verify ChatParams/ListModelsParams/rigChat/fetchModels were updated at the listed lines."}
+{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-quill-dir/research/manual-models-shape.md", "reason": "Verify selectedModelIds migration preserves user-added model ids."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend spec to check code quality / conventions."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared guides — applies to all packages."}

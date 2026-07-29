@@ -1,10 +1,45 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useAiConfigStore, PERSIST_KEYS_AI_CONFIG, type ChatProvider } from './aiConfigStore';
 import { storageClient } from '@/utils/storageClient';
-import { PROVIDER_CATALOG, PROVIDER_IDS, type CustomProvider } from '@/services/providers/catalog';
+import { providerConfigStorage } from '@/services/providers/providerConfigStorage';
+import { PROVIDER_CATALOG, PROVIDER_IDS } from '@/services/providers/catalog';
+import { rename, writeTextFile, exists, readTextFile } from '@tauri-apps/plugin-fs';
+import { homeDir, join } from '@tauri-apps/api/path';
+
+const PROVIDER_CONFIG_MIGRATED_KEY = 'providerConfigMigratedV1';
+const SETTINGS_STORAGE_KEY = 'settings:all';
+
+// In-memory fs mock — `homeDir`/`appDataDir`/`join`/`exists`/`mkdir`/
+// `readTextFile`/`writeTextFile`/`rename` all route through this Map.
+const FS: Map<string, string> = new Map();
+const FAKE_HOME = '/tmp/test-home';
+const FAKE_APPDATA = '/tmp/test-appdata';
+
+vi.mock('@tauri-apps/api/path', () => ({
+  homeDir: vi.fn(async () => FAKE_HOME),
+  appDataDir: vi.fn(async () => FAKE_APPDATA),
+  join: vi.fn(async (...parts: string[]) => parts.filter(Boolean).join('/').replace(/\/+/g, '/')),
+}));
+
+vi.mock('@tauri-apps/plugin-fs', () => ({
+  exists: vi.fn(async (p: string) => FS.has(p)),
+  mkdir: vi.fn(async () => {}),
+  readTextFile: vi.fn(async (p: string) => {
+    if (!FS.has(p)) throw new Error(`ENOENT: ${p}`);
+    return FS.get(p)!;
+  }),
+  writeTextFile: vi.fn(async (p: string, c: string) => { FS.set(p, c); }),
+  rename: vi.fn(async (from: string, to: string) => {
+    if (!FS.has(from)) throw new Error(`ENOENT: ${from}`);
+    FS.set(to, FS.get(from)!);
+    FS.delete(from);
+  }),
+}));
 
 beforeEach(() => {
   storageClient.__resetForTesting();
+  providerConfigStorage.__resetForTesting();
+  FS.clear();
   vi.useFakeTimers();
   useAiConfigStore.setState({
     cliAdapter: 'claude',
@@ -17,9 +52,9 @@ beforeEach(() => {
     chatAzureDeploymentId: '',
     chatAzureApiVersion: '',
     chatThinkingBudget: 1024,
-    providerConfigs: {},
-    customProviders: [],
-    enabledProviders: {},
+    customerProviders: {},
+    providerSettings: {},
+    manualModels: {},
   });
 });
 
@@ -48,50 +83,41 @@ describe('useAiConfigStore setters', () => {
     expect(useAiConfigStore.getState().chatApiKey).toBe('sk-xxx');
   });
 
-  it('setChatAzureDeploymentId updates + persists', () => {
-    const setSpy = vi.spyOn(storageClient, 'set');
+  it('setChatAzureDeploymentId updates in-memory mirror + providerSettings extra', () => {
     useAiConfigStore.getState().setChatAzureDeploymentId('my-deploy');
-    expect(useAiConfigStore.getState().chatAzureDeploymentId).toBe('my-deploy');
-    vi.advanceTimersByTime(400);
-    const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1] as Record<string, unknown>;
-    expect(payload.chatAzureDeploymentId).toBe('my-deploy');
-    setSpy.mockRestore();
+    const s = useAiConfigStore.getState();
+    expect(s.chatAzureDeploymentId).toBe('my-deploy');
+    expect(s.providerSettings.anthropic?.extra.azureDeploymentId).toBe('my-deploy');
   });
 
-  it('setChatAzureApiVersion updates + persists', () => {
+  it('setChatAzureApiVersion updates', () => {
     useAiConfigStore.getState().setChatAzureApiVersion('2024-10-21');
     expect(useAiConfigStore.getState().chatAzureApiVersion).toBe('2024-10-21');
+    expect(useAiConfigStore.getState().providerSettings.anthropic?.extra.azureApiVersion).toBe('2024-10-21');
   });
 
-  it('setChatThinkingBudget updates + persists', () => {
+  it('setChatThinkingBudget updates', () => {
     useAiConfigStore.getState().setChatThinkingBudget(2048);
     expect(useAiConfigStore.getState().chatThinkingBudget).toBe(2048);
+    expect(useAiConfigStore.getState().providerSettings.anthropic?.extra.thinkingBudget).toBe(2048);
     useAiConfigStore.getState().setChatThinkingBudget(null);
     expect(useAiConfigStore.getState().chatThinkingBudget).toBeNull();
   });
 });
 
 describe('useAiConfigStore.hydrate', () => {
-  it('applies fields from the blob', () => {
+  it('applies non-provider fields from the blob', () => {
     useAiConfigStore.getState().hydrate({
       cliAdapter: 'gemini',
       cliPath: '/usr/local/bin/gemini',
       chatProvider: 'openai',
       chatModel: 'gpt-4o',
-      chatApiKey: 'sk-hydrated',
-      chatBaseUrl: 'https://api.example.com',
-      chatAzureDeploymentId: 'deploy-x',
-      chatAzureApiVersion: '2024-10-21',
     });
     const s = useAiConfigStore.getState();
     expect(s.cliAdapter).toBe('gemini');
     expect(s.cliPath).toBe('/usr/local/bin/gemini');
     expect(s.chatProvider).toBe('openai');
     expect(s.chatModel).toBe('gpt-4o');
-    expect(s.chatApiKey).toBe('sk-hydrated');
-    expect(s.chatBaseUrl).toBe('https://api.example.com');
-    expect(s.chatAzureDeploymentId).toBe('deploy-x');
-    expect(s.chatAzureApiVersion).toBe('2024-10-21');
   });
 
   it('coerces invalid chatProvider to default (keeps anthropic)', () => {
@@ -105,7 +131,7 @@ describe('useAiConfigStore.hydrate', () => {
     expect(useAiConfigStore.getState().chatModel).toBe('gpt-4');
   });
 
-  // Regression: the three old ids must hydrate verbatim, no migration.
+  // The three old ids must hydrate verbatim, no migration.
   it('hydrates the three legacy ids verbatim', () => {
     for (const id of ['anthropic', 'openai', 'openai-compatible'] as const) {
       useAiConfigStore.setState({ chatProvider: 'anthropic' });
@@ -114,7 +140,6 @@ describe('useAiConfigStore.hydrate', () => {
     }
   });
 
-  // Parameterized: every catalog id must hydrate.
   it.each(PROVIDER_CATALOG.map((p) => [p.id] as [string]))(
     'hydrates catalog id %s',
     (id) => {
@@ -124,29 +149,17 @@ describe('useAiConfigStore.hydrate', () => {
     },
   );
 
-  it('PERSIST_KEYS_AI_CONFIG includes azure fields', () => {
-    expect(PERSIST_KEYS_AI_CONFIG).toContain('chatAzureDeploymentId');
-    expect(PERSIST_KEYS_AI_CONFIG).toContain('chatAzureApiVersion');
+  it('PERSIST_KEYS_AI_CONFIG dropped legacy provider keys', () => {
+    expect(PERSIST_KEYS_AI_CONFIG).not.toContain('providerConfigs');
+    expect(PERSIST_KEYS_AI_CONFIG).not.toContain('customProviders');
+    expect(PERSIST_KEYS_AI_CONFIG).not.toContain('enabledProviders');
+    expect(PERSIST_KEYS_AI_CONFIG).not.toContain('chatApiKey');
+    expect(PERSIST_KEYS_AI_CONFIG).not.toContain('chatAzureDeploymentId');
+    expect(PERSIST_KEYS_AI_CONFIG).not.toContain('chatThinkingBudget');
   });
 
-  it('PERSIST_KEYS_AI_CONFIG includes thinkingBudget', () => {
-    expect(PERSIST_KEYS_AI_CONFIG).toContain('chatThinkingBudget');
-  });
-
-  it('hydrates chatThinkingBudget (number and null)', () => {
-    useAiConfigStore.getState().setChatThinkingBudget(1024);
-    useAiConfigStore.getState().hydrate({ chatThinkingBudget: 4096 });
-    expect(useAiConfigStore.getState().chatThinkingBudget).toBe(4096);
-    useAiConfigStore.getState().hydrate({ chatThinkingBudget: null });
-    expect(useAiConfigStore.getState().chatThinkingBudget).toBeNull();
-  });
-
-  it('ignores invalid chatThinkingBudget values', () => {
-    useAiConfigStore.getState().setChatThinkingBudget(1024);
-    useAiConfigStore.getState().hydrate({ chatThinkingBudget: 'oops' });
-    expect(useAiConfigStore.getState().chatThinkingBudget).toBe(1024);
-    useAiConfigStore.getState().hydrate({ chatThinkingBudget: -1 });
-    expect(useAiConfigStore.getState().chatThinkingBudget).toBe(1024);
+  it('PERSIST_KEYS_AI_CONFIG keeps manualModels', () => {
+    expect(PERSIST_KEYS_AI_CONFIG).toContain('manualModels');
   });
 
   it('PROVIDER_IDS has 16 entries (14 rig + 2 compat)', () => {
@@ -154,13 +167,14 @@ describe('useAiConfigStore.hydrate', () => {
   });
 });
 
-// T06: per-provider config slots.
-describe('useAiConfigStore per-provider config (T06)', () => {
-  it('setChatApiKey writes into providerConfigs[currentProvider]', () => {
+// per-provider config slots (T06 reshaped): now providerSettings[id].
+describe('useAiConfigStore per-provider config slots', () => {
+  it('setChatApiKey writes into providerSettings[currentProvider]', () => {
     useAiConfigStore.getState().setChatApiKey('sk-abc');
     const s = useAiConfigStore.getState();
     expect(s.chatApiKey).toBe('sk-abc');
-    expect(s.providerConfigs.anthropic?.apiKey).toBe('sk-abc');
+    expect(s.providerSettings.anthropic?.apiKey).toBe('sk-abc');
+    expect(s.providerSettings.anthropic?.customProvider).toBe(false);
   });
 
   it('setChatProvider saves current slot, loads new slot', () => {
@@ -168,9 +182,8 @@ describe('useAiConfigStore per-provider config (T06)', () => {
     useAiConfigStore.getState().setChatProvider('openai');
     const afterSwitch = useAiConfigStore.getState();
     expect(afterSwitch.chatProvider).toBe('openai');
-    // Old slot preserved under anthropic
-    expect(afterSwitch.providerConfigs.anthropic?.apiKey).toBe('sk-anth');
-    // New slot's flat mirror is empty (openai had no slot)
+    expect(afterSwitch.providerSettings.anthropic?.apiKey).toBe('sk-anth');
+    // New slot's flat mirror is empty (openai had no slot before)
     expect(afterSwitch.chatApiKey).toBe('');
   });
 
@@ -179,26 +192,22 @@ describe('useAiConfigStore per-provider config (T06)', () => {
     useAiConfigStore.getState().setChatBaseUrl('https://anthropic.example');
     useAiConfigStore.getState().setChatThinkingBudget(2048);
     useAiConfigStore.getState().setChatProvider('openai');
-    // Set OpenAI's slot
     useAiConfigStore.getState().setChatApiKey('sk-openai');
-    // Switch back
     useAiConfigStore.getState().setChatProvider('anthropic');
     const s = useAiConfigStore.getState();
     expect(s.chatApiKey).toBe('sk-anth');
     expect(s.chatBaseUrl).toBe('https://anthropic.example');
     expect(s.chatThinkingBudget).toBe(2048);
-    // OpenAI's slot preserved even though we're not on it
-    expect(s.providerConfigs.openai?.apiKey).toBe('sk-openai');
+    expect(s.providerSettings.openai?.apiKey).toBe('sk-openai');
   });
 
-  it('setChatThinkingBudget writes into the current slot', () => {
+  it('setChatThinkingBudget writes into the current slot extra', () => {
     useAiConfigStore.getState().setChatThinkingBudget(4096);
-    expect(useAiConfigStore.getState().providerConfigs.anthropic?.thinkingBudget).toBe(4096);
+    expect(useAiConfigStore.getState().providerSettings.anthropic?.extra.thinkingBudget).toBe(4096);
   });
 
   it('configuredProviderIds returns providers with non-empty apiKey', () => {
     useAiConfigStore.getState().setChatApiKey('sk-anth');
-    // Switch to openai, set key
     useAiConfigStore.getState().setChatProvider('openai');
     useAiConfigStore.getState().setChatApiKey('sk-openai');
     const ids = useAiConfigStore.getState().configuredProviderIds();
@@ -208,194 +217,334 @@ describe('useAiConfigStore per-provider config (T06)', () => {
   });
 
   it('configuredProviderIds includes Ollama only when it has a slot or is current', () => {
-    // Ollama has requiresApiKey=false — only included if user picked it or set a slot
     useAiConfigStore.getState().setChatApiKey('sk-anth');
     expect(useAiConfigStore.getState().configuredProviderIds()).toEqual(['anthropic']);
-    // Set chatProvider=ollama once → included
     useAiConfigStore.getState().setChatProvider('ollama');
     const ids = useAiConfigStore.getState().configuredProviderIds();
     expect(ids).toContain('ollama');
     expect(ids).toContain('anthropic');
   });
+});
 
-  it('hydrates old flat-key blob into providerConfigs[legacyId]', () => {
-    // Simulate a pre-T06 blob: flat chatApiKey/chatBaseUrl/etc + chatProvider=anthropic
-    useAiConfigStore.getState().hydrate({
-      chatProvider: 'anthropic',
-      chatApiKey: 'sk-legacy',
-      chatBaseUrl: 'https://legacy.example',
-      chatAzureDeploymentId: 'legacy-deploy',
-      chatAzureApiVersion: '2024-01-01',
-      chatThinkingBudget: 512,
-    });
-    const s = useAiConfigStore.getState();
-    expect(s.providerConfigs.anthropic?.apiKey).toBe('sk-legacy');
-    expect(s.providerConfigs.anthropic?.baseUrl).toBe('https://legacy.example');
-    expect(s.providerConfigs.anthropic?.azureDeploymentId).toBe('legacy-deploy');
-    expect(s.providerConfigs.anthropic?.azureApiVersion).toBe('2024-01-01');
-    expect(s.providerConfigs.anthropic?.thinkingBudget).toBe(512);
-    // Flat mirrors populated from the slot
-    expect(s.chatApiKey).toBe('sk-legacy');
+describe('useAiConfigStore.addSelectedModelId', () => {
+  it('appends the id to providerSettings[id].selectedModelIds', () => {
+    useAiConfigStore.getState().addSelectedModelId('anthropic', 'claude-sonnet-4-6');
+    expect(useAiConfigStore.getState().providerSettings.anthropic?.selectedModelIds)
+      .toEqual(['claude-sonnet-4-6']);
   });
 
-  it('hydrates new providerConfigs blob as-is', () => {
-    useAiConfigStore.getState().hydrate({
-      chatProvider: 'openai',
-      providerConfigs: {
-        openai: {
-          apiKey: 'sk-new',
-          baseUrl: '',
-          azureDeploymentId: '',
-          azureApiVersion: '',
-          thinkingBudget: 8192,
-        },
-      },
-    });
-    const s = useAiConfigStore.getState();
-    expect(s.chatProvider).toBe('openai');
-    expect(s.providerConfigs.openai?.apiKey).toBe('sk-new');
-    expect(s.chatApiKey).toBe('sk-new');
-    expect(s.chatThinkingBudget).toBe(8192);
+  it('dedups on repeat select (preserves order)', () => {
+    useAiConfigStore.getState().addSelectedModelId('anthropic', 'a');
+    useAiConfigStore.getState().addSelectedModelId('anthropic', 'b');
+    useAiConfigStore.getState().addSelectedModelId('anthropic', 'a');
+    expect(useAiConfigStore.getState().providerSettings.anthropic?.selectedModelIds)
+      .toEqual(['a', 'b']);
   });
 
-  it('persists providerConfigs key', () => {
-    const setSpy = vi.spyOn(storageClient, 'set');
-    useAiConfigStore.getState().setChatApiKey('sk-persist');
-    vi.advanceTimersByTime(400);
-    const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1] as Record<string, unknown>;
-    expect(payload.providerConfigs).toBeDefined();
-    const pc = payload.providerConfigs as Record<string, unknown>;
-    expect(pc.anthropic).toBeDefined();
-    setSpy.mockRestore();
+  it('isolates per-provider (openai selection does not leak to anthropic)', () => {
+    useAiConfigStore.getState().addSelectedModelId('anthropic', 'claude');
+    useAiConfigStore.getState().addSelectedModelId('openai', 'gpt-4o');
+    const s = useAiConfigStore.getState();
+    expect(s.providerSettings.anthropic?.selectedModelIds).toEqual(['claude']);
+    expect(s.providerSettings.openai?.selectedModelIds).toEqual(['gpt-4o']);
+  });
+
+  it('persists to ~/.quill/providers/settings.json', async () => {
+    useAiConfigStore.getState().addSelectedModelId('anthropic', 'persisted-id');
+    await providerConfigStorage.getProviderSettings();
+    await providerConfigStorage.__flushForTesting();
+    const base = await join(await homeDir(), '.quill', 'providers');
+    const path = await join(base, 'settings.json');
+    expect(await exists(path)).toBe(true);
+    const onDisk = JSON.parse(await readTextFile(path));
+    expect(onDisk.anthropic.selectedModelIds).toContain('persisted-id');
+  });
+
+  it('seeds customProvider=true for custom provider ids', () => {
+    useAiConfigStore.getState().addCustomProvider({
+      id: 'custom-1',
+      name: 'C1',
+      defaultChatEndpoint: 'anthropic-messages',
+    });
+    useAiConfigStore.getState().addSelectedModelId('custom-1', 'm1');
+    expect(useAiConfigStore.getState().providerSettings['custom-1']?.customProvider)
+      .toBe(true);
   });
 });
 
-describe('useAiConfigStore custom providers (T08)', () => {
-  it('addCustomProvider creates an entry with a custom- id, appends to customProviders', () => {
-    const id = useAiConfigStore.getState().addCustomProvider({
-      displayName: 'My Provider',
-      baseUrl: 'https://example.com/v1',
-      apiKeyUrl: null,
-      category: 'openai',
-    });
-    expect(id).toMatch(/^custom-/);
+describe('useAiConfigStore.removeSelectedModelId', () => {
+  it('removes the middle id (preserves order, length drops by 1)', () => {
+    const store = useAiConfigStore.getState();
+    store.addSelectedModelId('anthropic', 'a');
+    store.addSelectedModelId('anthropic', 'b');
+    store.addSelectedModelId('anthropic', 'c');
+    store.removeSelectedModelId('anthropic', 'b');
+    expect(useAiConfigStore.getState().providerSettings.anthropic?.selectedModelIds)
+      .toEqual(['a', 'c']);
+  });
+
+  it('no-ops on an absent id (list unchanged)', () => {
+    const store = useAiConfigStore.getState();
+    store.addSelectedModelId('anthropic', 'a');
+    store.addSelectedModelId('anthropic', 'b');
+    store.removeSelectedModelId('anthropic', 'not-there');
+    expect(useAiConfigStore.getState().providerSettings.anthropic?.selectedModelIds)
+      .toEqual(['a', 'b']);
+  });
+
+  it('isolates per-provider (removing from A does not touch B)', () => {
+    const store = useAiConfigStore.getState();
+    store.addSelectedModelId('anthropic', 'shared');
+    store.addSelectedModelId('openai', 'shared');
+    store.removeSelectedModelId('anthropic', 'shared');
     const s = useAiConfigStore.getState();
-    const cp = s.customProviders.find((p) => p.id === id);
-    expect(cp?.displayName).toBe('My Provider');
-    expect(cp?.baseUrl).toBe('https://example.com/v1');
-    expect(cp?.category).toBe('openai');
-    expect(cp?.createdAt).toBeTypeOf('number');
+    expect(s.providerSettings.anthropic?.selectedModelIds).toEqual([]);
+    expect(s.providerSettings.openai?.selectedModelIds).toEqual(['shared']);
   });
 
-  it('addCustomProvider trims displayName + baseUrl; empty name defaults to "Custom"', () => {
+  it('persists removal to ~/.quill/providers/settings.json', async () => {
+    const store = useAiConfigStore.getState();
+    store.addSelectedModelId('anthropic', 'keep');
+    store.addSelectedModelId('anthropic', 'drop');
+    await providerConfigStorage.getProviderSettings();
+    await providerConfigStorage.__flushForTesting();
+    store.removeSelectedModelId('anthropic', 'drop');
+    await providerConfigStorage.__flushForTesting();
+    const base = await join(await homeDir(), '.quill', 'providers');
+    const path = await join(base, 'settings.json');
+    const onDisk = JSON.parse(await readTextFile(path));
+    expect(onDisk.anthropic.selectedModelIds).toEqual(['keep']);
+  });
+});
+
+describe('useAiConfigStore custom providers', () => {
+  it('addCustomProvider creates an entry keyed by the supplied id', () => {
     const id = useAiConfigStore.getState().addCustomProvider({
-      displayName: '  ',
-      baseUrl: '  https://x.com/v1  ',
-      category: 'gemini',
+      id: 'my-provider',
+      name: 'My Provider',
+      defaultChatEndpoint: 'openai-chat-completions',
     });
-    const cp = useAiConfigStore.getState().customProviders.find((p) => p.id === id);
-    expect(cp?.displayName).toBe('Custom');
-    expect(cp?.baseUrl).toBe('https://x.com/v1');
+    expect(id).toBe('my-provider');
+    const cp = useAiConfigStore.getState().customerProviders['my-provider'];
+    expect(cp?.name).toBe('My Provider');
+    expect(cp?.defaultChatEndpoint).toBe('openai-chat-completions');
   });
 
-  it('updateCustomProvider patches fields without changing id/createdAt', () => {
-    const id = useAiConfigStore.getState().addCustomProvider({
-      displayName: 'A',
-      baseUrl: 'https://a.com',
-      category: 'openai',
+  it('addCustomProvider trims name; empty name defaults to "Custom"', () => {
+    useAiConfigStore.getState().addCustomProvider({
+      id: 'x',
+      name: '  ',
+      defaultChatEndpoint: 'openai-chat-completions',
     });
-    const before = useAiConfigStore.getState().customProviders.find((p) => p.id === id);
-    useAiConfigStore.getState().updateCustomProvider(id, { displayName: 'B', baseUrl: 'https://b.com' });
-    const after = useAiConfigStore.getState().customProviders.find((p) => p.id === id);
-    expect(after?.displayName).toBe('B');
-    expect(after?.baseUrl).toBe('https://b.com');
-    expect(after?.createdAt).toBe(before?.createdAt);
+    expect(useAiConfigStore.getState().customerProviders.x?.name).toBe('Custom');
   });
 
-  it('removeCustomProvider deletes entry + cleans enabledProviders + providerConfigs slot', () => {
-    const id = useAiConfigStore.getState().addCustomProvider({
-      displayName: 'A',
-      baseUrl: 'https://a.com',
-      category: 'openai',
+  it('addCustomProvider seeds an empty settings entry with customProvider=true', () => {
+    useAiConfigStore.getState().addCustomProvider({
+      id: 'seeded',
+      name: 'Seeded',
+      defaultChatEndpoint: 'anthropic-messages',
     });
-    useAiConfigStore.getState().setProviderEnabled(id, true);
-    useAiConfigStore.getState().setChatApiKey('sk-xxx');
-    useAiConfigStore.getState().setChatProvider(id as ChatProvider);
-    useAiConfigStore.getState().removeCustomProvider(id);
+    const slot = useAiConfigStore.getState().providerSettings.seeded;
+    expect(slot?.customProvider).toBe(true);
+    expect(slot?.baseUrl).toBe('');
+    expect(slot?.apiKey).toBe('');
+    expect(slot?.selectedModelIds).toEqual([]);
+  });
+
+  it('addCustomProvider persists the def to ~/.quill/providers/customer/providers.json', async () => {
+    useAiConfigStore.getState().addCustomProvider({
+      id: 'disk-test',
+      name: 'Disk',
+      defaultChatEndpoint: 'openai-chat-completions',
+    });
+    // Drain microtasks so the void'd setCustomerProvider promise resolves
+    // before we flush.
+    await providerConfigStorage.getCustomerProviders();
+    await providerConfigStorage.__flushForTesting();
+    const base = await join(await homeDir(), '.quill', 'providers');
+    const path = await join(base, 'customer', 'providers.json');
+    expect(await exists(path)).toBe(true);
+    const onDisk = JSON.parse(await readTextFile(path));
+    expect(onDisk['disk-test']).toMatchObject({
+      id: 'disk-test',
+      name: 'Disk',
+      defaultChatEndpoint: 'openai-chat-completions',
+    });
+  });
+
+  it('updateCustomProvider patches fields without changing id', () => {
+    useAiConfigStore.getState().addCustomProvider({
+      id: 'u1',
+      name: 'A',
+      defaultChatEndpoint: 'openai-chat-completions',
+    });
+    useAiConfigStore.getState().updateCustomProvider('u1', { name: 'B' });
+    const after = useAiConfigStore.getState().customerProviders.u1;
+    expect(after?.name).toBe('B');
+    expect(after?.id).toBe('u1');
+  });
+
+  it('removeCustomProvider deletes entry + settings slot', () => {
+    useAiConfigStore.getState().addCustomProvider({
+      id: 'r1',
+      name: 'R1',
+      defaultChatEndpoint: 'openai-chat-completions',
+    });
+    useAiConfigStore.getState().setProviderEnabled('r1', true);
+    useAiConfigStore.getState().setChatProvider('r1' as ChatProvider);
+    useAiConfigStore.getState().removeCustomProvider('r1');
     const s = useAiConfigStore.getState();
-    expect(s.customProviders.find((p) => p.id === id)).toBeUndefined();
-    expect(s.enabledProviders[id]).toBeUndefined();
-    expect(s.providerConfigs[id]).toBeUndefined();
+    expect(s.customerProviders.r1).toBeUndefined();
+    expect(s.providerSettings.r1).toBeUndefined();
     // Removing the active chatProvider falls back to 'anthropic'.
     expect(s.chatProvider).toBe('anthropic');
   });
 
   it('removeCustomProvider is a no-op for an unknown id', () => {
-    const before = useAiConfigStore.getState().customProviders.length;
-    useAiConfigStore.getState().removeCustomProvider('custom-does-not-exist');
-    expect(useAiConfigStore.getState().customProviders.length).toBe(before);
+    const before = Object.keys(useAiConfigStore.getState().customerProviders);
+    useAiConfigStore.getState().removeCustomProvider('does-not-exist');
+    expect(Object.keys(useAiConfigStore.getState().customerProviders)).toEqual(before);
   });
 
-  it('setProviderEnabled toggles the flag', () => {
+  it('setProviderEnabled toggles the flag in providerSettings[id].enabled', () => {
     useAiConfigStore.getState().setProviderEnabled('openai', true);
-    expect(useAiConfigStore.getState().enabledProviders.openai).toBe(true);
+    expect(useAiConfigStore.getState().providerSettings.openai?.enabled).toBe(true);
     useAiConfigStore.getState().setProviderEnabled('openai', false);
-    expect(useAiConfigStore.getState().enabledProviders.openai).toBe(false);
+    expect(useAiConfigStore.getState().providerSettings.openai?.enabled).toBe(false);
   });
 });
 
-describe('useAiConfigStore hydrate migration (T08)', () => {
-  it('pre-T08 blob without enabledProviders gets chatProvider enabled', () => {
-    useAiConfigStore.getState().hydrate({
-      chatProvider: 'openai',
-      chatModel: 'gpt-5.2',
-      chatApiKey: 'sk-xxx',
-    });
+describe('useAiConfigStore loadFromDisk migration', () => {
+  it('returns empty state when no legacy blob and no disk files', async () => {
+    await useAiConfigStore.getState().loadFromDisk();
     const s = useAiConfigStore.getState();
-    expect(s.chatProvider).toBe('openai');
-    expect(s.enabledProviders).toEqual({ openai: true });
-    expect(s.customProviders).toEqual([]);
+    expect(s.customerProviders).toEqual({});
+    expect(s.providerSettings).toEqual({});
   });
 
-  it('blob with enabledProviders preserves them', () => {
-    useAiConfigStore.getState().hydrate({
+  it('sets the migrated flag so subsequent loads skip migration', async () => {
+    await useAiConfigStore.getState().loadFromDisk();
+    const blob = await storageClient.get<Record<string, unknown>>(SETTINGS_STORAGE_KEY);
+    expect(blob?.[PROVIDER_CONFIG_MIGRATED_KEY]).toBe(true);
+  });
+
+  it('migrates legacy blob: writes new files + strips legacy keys from storage.json', async () => {
+    // Seed storage.json with legacy provider config.
+    await storageClient.set(SETTINGS_STORAGE_KEY, {
       chatProvider: 'openai',
-      enabledProviders: { openai: true, anthropic: true, deepseek: false },
+      chatApiKey: 'sk-legacy',
+      chatBaseUrl: 'https://legacy.example',
+      customProviders: [{
+        id: 'custom-1',
+        displayName: 'C1',
+        baseUrl: 'https://c1.example',
+        apiKeyUrl: 'https://c1.example/keys',
+        category: 'anthropic',
+        createdAt: 1,
+      }],
+      enabledProviders: { 'custom-1': true, openai: true },
     });
-    expect(useAiConfigStore.getState().enabledProviders).toEqual({
-      openai: true,
-      anthropic: true,
-      deepseek: false,
+
+    await useAiConfigStore.getState().loadFromDisk();
+    const s = useAiConfigStore.getState();
+
+    // Custom provider migrated to customerProviders with the new shape.
+    expect(s.customerProviders['custom-1']).toMatchObject({
+      id: 'custom-1',
+      name: 'C1',
+      defaultChatEndpoint: 'anthropic-messages',
+      metadata: { website: { apiKey: 'https://c1.example/keys' } },
     });
+
+    // Settings slot for the custom provider seeded with baseUrl + customProvider=true.
+    expect(s.providerSettings['custom-1']).toMatchObject({
+      id: 'custom-1',
+      baseUrl: 'https://c1.example',
+      enabled: true,
+      customProvider: true,
+    });
+
+    // Bundled provider (openai) migrated with flat fields as top-level.
+    expect(s.providerSettings.openai).toMatchObject({
+      id: 'openai',
+      apiKey: 'sk-legacy',
+      baseUrl: 'https://legacy.example',
+      enabled: true,
+      customProvider: false,
+    });
+
+    // Legacy keys stripped from storage.json.
+    const blob = await storageClient.get<Record<string, unknown>>(SETTINGS_STORAGE_KEY);
+    expect(blob?.customProviders).toBeUndefined();
+    expect(blob?.enabledProviders).toBeUndefined();
+    expect(blob?.chatApiKey).toBeUndefined();
+    expect(blob?.[PROVIDER_CONFIG_MIGRATED_KEY]).toBe(true);
+
+    // Files exist on disk.
+    const base = await join(await homeDir(), '.quill', 'providers');
+    expect(await exists(await join(base, 'customer', 'providers.json'))).toBe(true);
+    expect(await exists(await join(base, 'settings.json'))).toBe(true);
   });
 
-  it('blob with customProviders preserves them', () => {
-    const cp: CustomProvider = {
-      id: 'custom-test',
-      displayName: 'Test',
-      baseUrl: 'https://test.com/v1',
-      apiKeyUrl: null,
-      category: 'openai',
-      createdAt: 1234,
+  it('does not re-migrate on second load (idempotent)', async () => {
+    await storageClient.set(SETTINGS_STORAGE_KEY, {
+      chatProvider: 'openai',
+      customProviders: [{
+        id: 'custom-1', displayName: 'C1', baseUrl: 'https://c1',
+        apiKeyUrl: null, category: 'openai', createdAt: 1,
+      }],
+      enabledProviders: { 'custom-1': true },
+    });
+    await useAiConfigStore.getState().loadFromDisk();
+    // Mutate disk after first migration to detect re-migration (which would
+    // overwrite the mutation).
+    await providerConfigStorage.__resetForTesting();
+    // Re-read storage.json to get the post-migration blob.
+    const blob = await storageClient.get<Record<string, unknown>>(SETTINGS_STORAGE_KEY);
+    expect(blob?.[PROVIDER_CONFIG_MIGRATED_KEY]).toBe(true);
+
+    // Re-run — should skip migration entirely (legacy keys already gone).
+    await useAiConfigStore.getState().loadFromDisk();
+    const blob2 = await storageClient.get<Record<string, unknown>>(SETTINGS_STORAGE_KEY);
+    expect(blob2?.customProviders).toBeUndefined();
+  });
+
+  it('defensive migration: does not clobber existing disk data when flag is missing (Bug #2)', async () => {
+    // Pre-seed ~/.quill/providers/settings.json with real user data.
+    const realSlot = {
+      id: 'anthropic',
+      baseUrl: '',
+      apiKey: 'sk-real',
+      selectedModelIds: ['m1', 'm2'],
+      enabled: false,
+      customProvider: false,
+      extra: {},
     };
-    useAiConfigStore.getState().hydrate({
-      chatProvider: 'anthropic',
-      customProviders: [cp],
-    });
-    const s = useAiConfigStore.getState();
-    expect(s.customProviders).toEqual([cp]);
-  });
+    await providerConfigStorage.setProviderSettings('anthropic', realSlot);
+    await providerConfigStorage.__flushForTesting();
+    providerConfigStorage.__resetForTesting();
 
-  it('blob with malformed customProviders falls back to empty array', () => {
-    useAiConfigStore.getState().hydrate({
-      chatProvider: 'anthropic',
-      customProviders: [{ id: 123, displayName: 'bad' }],
-    });
-    expect(useAiConfigStore.getState().customProviders).toEqual([]);
+    // Empty legacy blob (no customProviders/providerConfigs/etc.) and no
+    // migrated flag — simulates the state after a prior boot stripped the
+    // flag via schedulePersist but left disk data intact.
+    await storageClient.set(SETTINGS_STORAGE_KEY, { chatProvider: 'anthropic' });
+
+    await useAiConfigStore.getState().loadFromDisk();
+
+    // (a) On-disk settings file still has the real data (not overwritten
+    //     with defaults).
+    const diskSettings = await providerConfigStorage.getProviderSettings();
+    expect(diskSettings.anthropic?.apiKey).toBe('sk-real');
+    expect(diskSettings.anthropic?.selectedModelIds).toEqual(['m1', 'm2']);
+
+    // (b) Migrated flag is set in storage.json so next boot skips migration.
+    const blob = await storageClient.get<Record<string, unknown>>(SETTINGS_STORAGE_KEY);
+    expect(blob?.[PROVIDER_CONFIG_MIGRATED_KEY]).toBe(true);
   });
 });
 
-describe('per-adapter cliPath (A: each adapter owns its binary path)', () => {
+describe('per-adapter cliPath', () => {
   it('setCliPath writes the active cliPath AND cliPaths[active adapter]', () => {
     useAiConfigStore.getState().setCliPath('/usr/local/bin/claude');
     const s = useAiConfigStore.getState();
@@ -404,16 +553,12 @@ describe('per-adapter cliPath (A: each adapter owns its binary path)', () => {
   });
 
   it('setCliAdapter swaps the active cliPath to the target adapter stored path', () => {
-    // seed pi's path while pi is active
     useAiConfigStore.getState().setCliAdapter('pi');
     useAiConfigStore.getState().setCliPath('/Users/x/.nvm/.../bin/pi');
     expect(useAiConfigStore.getState().cliPath).toBe('/Users/x/.nvm/.../bin/pi');
-    // switch to claude (no stored claude path yet) -> falls back to default
     useAiConfigStore.getState().setCliAdapter('claude');
     expect(useAiConfigStore.getState().cliAdapter).toBe('claude');
-    // claude default 'claude' (cliPaths.claude unset)
     expect(useAiConfigStore.getState().cliPath).toBe('claude');
-    // switching back to pi restores the stored pi path
     useAiConfigStore.getState().setCliAdapter('pi');
     expect(useAiConfigStore.getState().cliPath).toBe('/Users/x/.nvm/.../bin/pi');
   });
@@ -423,9 +568,7 @@ describe('per-adapter cliPath (A: each adapter owns its binary path)', () => {
     useAiConfigStore.getState().setCliPath('/claude/bin');
     useAiConfigStore.getState().setCliAdapter('pi');
     useAiConfigStore.getState().setCliPath('/pi/bin');
-    // both stored
     expect(useAiConfigStore.getState().cliPaths).toEqual({ claude: '/claude/bin', pi: '/pi/bin' });
-    // switch back and forth, each restores its own
     useAiConfigStore.getState().setCliAdapter('claude');
     expect(useAiConfigStore.getState().cliPath).toBe('/claude/bin');
     useAiConfigStore.getState().setCliAdapter('pi');
@@ -439,15 +582,35 @@ describe('per-adapter cliPath (A: each adapter owns its binary path)', () => {
     expect(s.cliPaths.claude).toBe('/old/claude');
   });
 
-  it('setCliPathFor writes a specific adapter slot and keeps the active mirror in sync when editing the selected adapter', () => {
-    // pi is active; editing pi's slot updates both the slot and the mirror
+  it('setCliPathFor writes a specific adapter slot and keeps the active mirror in sync', () => {
     useAiConfigStore.getState().setCliAdapter('pi');
     useAiConfigStore.getState().setCliPathFor('pi', '/pi/bin');
     expect(useAiConfigStore.getState().cliPaths.pi).toBe('/pi/bin');
     expect(useAiConfigStore.getState().cliPath).toBe('/pi/bin');
-    // editing a NON-active adapter slot (claude, while pi active) leaves the active mirror untouched
     useAiConfigStore.getState().setCliPathFor('claude', '/claude/bin');
     expect(useAiConfigStore.getState().cliPaths.claude).toBe('/claude/bin');
-    expect(useAiConfigStore.getState().cliPath).toBe('/pi/bin'); // still pi
+    expect(useAiConfigStore.getState().cliPath).toBe('/pi/bin');
+  });
+});
+
+// Sanity: rename mock actually moves files so atomic-write works.
+describe('providerConfigStorage atomic write (fs mock integration)', () => {
+  it('writes to <path>.tmp then renames over the final path', async () => {
+    const renameSpy = vi.mocked(rename);
+    const writeSpy = vi.mocked(writeTextFile);
+    await providerConfigStorage.setCustomerProvider({
+      id: 'atomic',
+      name: 'A',
+      defaultChatEndpoint: 'openai-chat-completions',
+    });
+    await providerConfigStorage.__flushForTesting();
+    const base = await join(await homeDir(), '.quill', 'providers');
+    const finalPath = await join(base, 'customer', 'providers.json');
+    // rename was called at least once with the .tmp → final move.
+    const renameCalls = renameSpy.mock.calls.map((c) => `${c[0]} -> ${c[1]}`);
+    expect(renameCalls.some((c) => c.includes('providers.json.tmp'))).toBe(true);
+    expect(await exists(finalPath)).toBe(true);
+    // mkdir was called to create the customer/ dir.
+    expect(writeSpy).toHaveBeenCalled();
   });
 });

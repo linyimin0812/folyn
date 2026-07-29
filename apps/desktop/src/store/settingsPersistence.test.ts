@@ -207,7 +207,10 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
     // AI config
     expect(useAiConfigStore.getState().cliAdapter).toBe('gemini');
     expect(useAiConfigStore.getState().chatProvider).toBe('openai');
-    expect(useAiConfigStore.getState().chatApiKey).toBe('sk-legacy');
+    // ponytail: chatApiKey is now a flat mirror of providerSettings[chatProvider],
+    // loaded by loadFromDisk() (not hydrate). The legacy flat key is migrated
+    // to providerSettings.openai.apiKey on the next loadFromDisk() call.
+    expect(useAiConfigStore.getState().chatApiKey).toBe('');
 
     // Prefs
     expect(usePrefsStore.getState().dailyNoteDateFormat).toBe('MM-DD');

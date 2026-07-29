@@ -19,6 +19,13 @@ pub struct ListModelsParams {
     // ponytail: azure_api_version dropped — list_models uses Bearer +
     // /openai/v1/models per the user's curl, no api-version query param.
     // Frontend still passes azureApiVersion; serde ignores unknown fields.
+    /// PR2e: routing flag for custom providers. Mirrors ChatParams.
+    #[serde(default)]
+    pub custom_provider: bool,
+    /// PR2e: endpoint key when `custom_provider=true`. Maps to a provider id
+    /// via the resolver below.
+    #[serde(default)]
+    pub default_chat_endpoint: Option<String>,
 }
 
 #[derive(Serialize, Clone)]
@@ -28,7 +35,23 @@ pub struct ModelDto {
 
 #[tauri::command]
 pub async fn list_models(params: ListModelsParams) -> Result<Vec<ModelDto>, AppError> {
-    let ids = match params.provider.as_str() {
+    // PR2e: resolve adapter family from `default_chat_endpoint` when this
+    // is a custom provider. Each endpoint maps to an existing match arm —
+    // the arm uses `params.api_key` + `params.base_url`, so the custom
+    // provider's connection config flows through unchanged.
+    let resolved: &str = if params.custom_provider {
+        match params.default_chat_endpoint.as_deref().unwrap_or("") {
+            "anthropic-messages" => "anthropic",
+            "google-generate-content" => "gemini",
+            "ollama" | "ollama-chat" => "ollama",
+            // openai-chat-completions / openai-responses /
+            // openai-image-generation + unknowns → openai-shape `_` arm.
+            _ => "openai",
+        }
+    } else {
+        params.provider.as_str()
+    };
+    let ids = match resolved {
         "anthropic" | "anthropic-compatible" => list_anthropic(&params).await?,
         "azure-openai" => list_azure(&params).await?,
         "cohere" => list_cohere(&params).await?,

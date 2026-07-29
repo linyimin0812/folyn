@@ -33,6 +33,8 @@ interface ChatConfig {
   apiKey: string;
   baseUrl?: string;
   thinkingBudget?: number | null;
+  customProvider?: boolean;
+  defaultChatEndpoint?: string;
 }
 
 interface PendingAttachment {
@@ -49,12 +51,17 @@ interface PendingAttachment {
 }
 
 function readChatConfig(): ChatConfig | null {
-  const { chatProvider, chatModel, chatApiKey, chatBaseUrl, chatThinkingBudget } =
+  const { chatProvider, chatModel, chatApiKey, chatBaseUrl, chatThinkingBudget, customerProviders } =
     useAiConfigStore.getState();
   if (!chatProvider || !chatModel || !chatApiKey) return null;
   const cfg: ChatConfig = { provider: chatProvider, model: chatModel, apiKey: chatApiKey };
   if (chatBaseUrl) cfg.baseUrl = chatBaseUrl;
   if (chatThinkingBudget != null) cfg.thinkingBudget = chatThinkingBudget;
+  // PR2e: route custom providers via endpoint resolver in Rust.
+  if (customerProviders[chatProvider]) {
+    cfg.customProvider = true;
+    cfg.defaultChatEndpoint = customerProviders[chatProvider]?.defaultChatEndpoint;
+  }
   return cfg;
 }
 
@@ -302,6 +309,7 @@ export function BubbleTemplateAIChatModal({
         apiKey: cfg.apiKey,
         ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}),
         ...(cfg.thinkingBudget != null ? { thinkingBudget: cfg.thinkingBudget } : {}),
+        ...(cfg.customProvider ? { customProvider: true, defaultChatEndpoint: cfg.defaultChatEndpoint } : {}),
         preamble,
         ...(images ? { images } : {}),
         onEvent: (event) => {

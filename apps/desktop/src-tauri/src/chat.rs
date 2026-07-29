@@ -96,6 +96,19 @@ pub struct ChatParams {
     ///     (provider doesn't support reasoning, silently skipped)
     #[serde(default)]
     pub thinking_budget: Option<u32>,
+    /// PR2e: routing flag for custom providers. `false` → use rig's built-in
+    /// provider by `provider` id (bundled catalog). `true` → treat as custom
+    /// provider; the frontend supplies `default_chat_endpoint` to pick the
+    /// adapter family, and `base_url` + `api_key` carry the connection.
+    #[serde(default)]
+    pub custom_provider: bool,
+    /// PR2e: endpoint key when `custom_provider=true`. One of the catalog's
+    /// `defaultChatEndpoint` values ("anthropic-messages" / "openai-chat-
+    /// completions" / "google-generate-content" / "ollama" / "ollama-chat"
+    /// / "openai-responses" / "openai-image-generation"). Ignored when
+    /// `custom_provider=false`.
+    #[serde(default)]
+    pub default_chat_endpoint: Option<String>,
 }
 
 /// Build the provider-specific additional_params JSON for reasoning. Returns
@@ -266,7 +279,25 @@ pub async fn chat_stream(
     // Delta vs Thinking distinction that drain_loop relies on. Keeping the
     // ~5-line duplication per arm is cheaper than a boxed enum + 7 mapping
     // closures. Re-evaluate if provider count doubles.
-    let full: String = match params.provider.as_str() {
+    // PR2e: when `custom_provider=true`, resolve the adapter family from
+    // `default_chat_endpoint` instead of the bundled catalog id in
+    // `provider`. Each endpoint maps to an existing match arm — the arm
+    // already uses `params.api_key` + `params.base_url`, so a custom
+    // provider's connection config flows through unchanged. Unknown
+    // endpoints fall through to the openai-compat `_` arm.
+    let resolved: &str = if params.custom_provider {
+        match params.default_chat_endpoint.as_deref().unwrap_or("") {
+            "anthropic-messages" => "anthropic",
+            "google-generate-content" => "gemini",
+            "ollama" | "ollama-chat" => "ollama",
+            // openai-chat-completions / openai-responses /
+            // openai-image-generation + unknowns → openai-compat `_` arm.
+            _ => "openai",
+        }
+    } else {
+        params.provider.as_str()
+    };
+    let full: String = match resolved {
         "anthropic" | "anthropic-compatible" => {
             let mut b = anthropic::Client::builder().api_key(params.api_key);
             if let Some(url) = params.base_url {
