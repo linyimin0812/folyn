@@ -161,8 +161,10 @@ const CHECK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" s
 // Run / Stop button SVGs. Colors are spec'd: play = #59A869, pause = #C7222D.
 const RUN_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 5v14l12-7z"/></svg>';
 const STOP_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
-// ponytail: lucide refresh-cw path — sync result to editor.
-const SYNC_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>';
+// ponytail: lucide loader — shown while running (replaces the static pause icon).
+const SPINNER_SVG = '<svg class="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>';
+// ponytail: lucide file-pen-line — sync result to editor.
+const SYNC_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 22H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4" /><path d="M13 2.5 18.5 8" /><path d="M3 21c0-2 1-3 3-3s3 1 3 3-1 3-3 3-3-1-3-3Z" /><path d="m2 18 4-4" /></svg>';
 const RUN_COLOR = '#59A869';
 const STOP_COLOR = '#C7222D';
 
@@ -314,8 +316,8 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
           type="button"
           title={running ? 'Stop' : 'Run'}
           onClick={running ? handleStop : handleRun}
-          style={{ color: running ? STOP_COLOR : RUN_COLOR }}
-          dangerouslySetInnerHTML={{ __html: running ? STOP_SVG : RUN_SVG }}
+          style={{ color: running || stopped ? STOP_COLOR : RUN_COLOR }}
+          dangerouslySetInnerHTML={{ __html: running ? SPINNER_SVG : (stopped ? STOP_SVG : RUN_SVG) }}
         />
       )}
       {runtime && hasOutput && (
@@ -324,16 +326,16 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
           {stderr && <pre className="code-run-stderr">{stderr}</pre>}
           <div className="code-run-status">
             {stopped ? '[stopped]' : exitCode !== null ? `[exit ${exitCode}]` : null}
-            {!running && pendingResult && onChange && (
-              <button
-                className="code-sync-btn"
-                type="button"
-                title="Sync to editor"
-                onClick={handleSync}
-                dangerouslySetInnerHTML={{ __html: synced ? CHECK_SVG : SYNC_SVG }}
-              />
-            )}
           </div>
+          {!running && pendingResult && onChange && (
+            <button
+              className="code-sync-btn"
+              type="button"
+              title="Sync to editor"
+              onClick={handleSync}
+              dangerouslySetInnerHTML={{ __html: synced ? CHECK_SVG : SYNC_SVG }}
+            />
+          )}
         </div>
       )}
     </div>

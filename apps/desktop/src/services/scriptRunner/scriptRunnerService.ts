@@ -150,45 +150,48 @@ export async function runScript(
   return { child, stop };
 }
 
-/** Format the run output as a `> Result:` markdown blockquote. */
+/** Format the run output as an HTML-comment block:
+ *  <!-- Result:
+ *  <stdout/stderr lines>
+ *  [exit N] | [stopped]
+ *  -->
+ */
 export function formatResultBlock(
   stdout: string,
   stderr: string,
   exitCode: number | null,
   stopped: boolean,
 ): string {
-  const lines: string[] = [];
-  lines.push('Result:');
-  const pushChunk = (text: string, prefix: string) => {
+  const lines: string[] = ['<!-- Result:'];
+  const pushChunk = (text: string) => {
     const trimmed = text.replace(/\n+$/, '');
     if (!trimmed) return;
     for (const ln of trimmed.split('\n')) {
-      lines.push(`${prefix}${ln}`);
+      lines.push(ln);
     }
   };
-  pushChunk(stdout, '');
-  pushChunk(stderr, '');
+  pushChunk(stdout);
+  pushChunk(stderr);
   if (stopped) {
     lines.push('[stopped]');
-  } else if (exitCode !== null && exitCode !== 0) {
+  } else if (exitCode !== null) {
     lines.push(`[exit ${exitCode}]`);
-  } else if (exitCode === 0) {
-    lines.push('[exit 0]');
   }
-  return lines.map((l) => `> ${l}`).join('\n');
+  lines.push('-->');
+  return lines.join('\n');
 }
 
 /**
- * Splice a `> Result:` block into the source content so it follows the code
- * fence that starts at `codeStartLine` (1-based, from rehypeSourceLine).
+ * Splice a `<!-- Result: ... -->` block into the source content so it follows
+ * the code fence that starts at `codeStartLine` (1-based, from rehypeSourceLine).
  *
- * - If a `> Result:` blockquote immediately follows (after ≤1 blank line),
- *   replace its contents with the new block.
+ * - If an HTML comment block whose first line starts with `<!-- Result:`
+ *   immediately follows (after ≤1 blank line), replace its contents (up to
+ *   the closing `-->`) with the new block.
  * - Otherwise, insert `\n\n<block>\n` after the closing fence.
  *
  * Invariant: exactly one blank line separates fence → block, and block →
- * following content. Trailing blank lines after the block (if any) are
- * preserved.
+ * following content.
  *
  * Returns the new content. If the fence can't be located, returns the
  * original content unchanged (write-back is best-effort).
@@ -214,27 +217,26 @@ export function replaceOrAppendResultBlock(
   }
   if (endIdx === -1) return content; // malformed — bail
 
-  // Locate existing `> Result:` block right after the fence.
-  // Allow ≤1 blank line between fence and the blockquote.
+  // Locate existing `<!-- Result:` comment block right after the fence.
+  // Allow ≤1 blank line between fence and the comment opener.
   let blkStart = -1;
+  let blkEnd = -1;
   for (let i = endIdx + 1; i < lines.length; i++) {
     const t = lines[i].trim();
     if (t === '') continue;
-    if (t.startsWith('> Result:')) blkStart = i;
-    break;
-  }
-
-  let blkEnd = blkStart;
-  if (blkStart !== -1) {
-    for (let i = blkStart + 1; i < lines.length; i++) {
-      if (lines[i].startsWith('>')) {
-        blkEnd = i;
-      } else if (lines[i].trim() === '') {
-        break;
-      } else {
-        break;
+    if (t.startsWith('<!-- Result:')) {
+      blkStart = i;
+      // The block extends to the first line whose trimmed value is `-->`.
+      // If no closer is found, consume to EOF (best-effort for malformed).
+      blkEnd = lines.length - 1;
+      for (let j = i + 1; j < lines.length; j++) {
+        if (lines[j].trim() === '-->') {
+          blkEnd = j;
+          break;
+        }
       }
     }
+    break;
   }
 
   const before = lines.slice(0, endIdx + 1); // through closing fence

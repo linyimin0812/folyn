@@ -89,29 +89,29 @@ describe('buildRunArgs', () => {
 });
 
 describe('formatResultBlock', () => {
-  it('prefixes every line with > and shows exit 0', () => {
+  it('wraps stdout + exit 0 in an HTML comment', () => {
     const block = formatResultBlock('hello\nworld', '', 0, false);
-    expect(block).toBe('> Result:\n> hello\n> world\n> [exit 0]');
+    expect(block).toBe('<!-- Result:\nhello\nworld\n[exit 0]\n-->');
   });
 
   it('includes stderr when present', () => {
     const block = formatResultBlock('out', 'err line', 1, false);
-    expect(block).toBe('> Result:\n> out\n> err line\n> [exit 1]');
+    expect(block).toBe('<!-- Result:\nout\nerr line\n[exit 1]\n-->');
   });
 
   it('marks stopped over exit code', () => {
     const block = formatResultBlock('partial', '', null, true);
-    expect(block).toBe('> Result:\n> partial\n> [stopped]');
+    expect(block).toBe('<!-- Result:\npartial\n[stopped]\n-->');
   });
 
   it('omits exit marker when null and not stopped', () => {
     const block = formatResultBlock('out', '', null, false);
-    expect(block).toBe('> Result:\n> out');
+    expect(block).toBe('<!-- Result:\nout\n-->');
   });
 
   it('handles empty output', () => {
     const block = formatResultBlock('', '', 0, false);
-    expect(block).toBe('> Result:\n> [exit 0]');
+    expect(block).toBe('<!-- Result:\n[exit 0]\n-->');
   });
 });
 
@@ -120,29 +120,29 @@ describe('replaceOrAppendResultBlock', () => {
 
   it('appends a new block when none exists', () => {
     const content = `${fence}\n\nsome text after.`;
-    const result = '> Result:\n> hello\n> [exit 0]';
+    const result = '<!-- Result:\nhello\n[exit 0]\n-->';
     const next = replaceOrAppendResultBlock(content, 1, result);
     // New block sits between the closing fence and the existing text.
     expect(next).toBe(`${fence}\n\n${result}\n\nsome text after.`);
   });
 
   it('replaces an existing Result block', () => {
-    const original = `${fence}\n\n> Result:\n> old\n> [exit 0]\n\nother text`;
-    const result = '> Result:\n> new\n> [exit 0]';
+    const original = `${fence}\n\n<!-- Result:\nold\n[exit 0]\n-->\n\nother text`;
+    const result = '<!-- Result:\nnew\n[exit 0]\n-->';
     const next = replaceOrAppendResultBlock(original, 1, result);
     expect(next).toBe(`${fence}\n\n${result}\n\nother text`);
   });
 
   it('replaces a multi-line Result block', () => {
-    const original = `${fence}\n\n> Result:\n> line1\n> line2\n> line3\n> [exit 0]\n\ntext`;
-    const result = '> Result:\n> replaced\n> [exit 0]';
+    const original = `${fence}\n\n<!-- Result:\nline1\nline2\nline3\n[exit 0]\n-->\n\ntext`;
+    const result = '<!-- Result:\nreplaced\n[exit 0]\n-->';
     const next = replaceOrAppendResultBlock(original, 1, result);
     expect(next).toBe(`${fence}\n\n${result}\n\ntext`);
   });
 
   it('tolerates a single blank line between fence and Result', () => {
-    const original = `${fence}\n> Result:\n> old\n> [exit 0]\n`;
-    const result = '> Result:\n> new\n> [exit 0]';
+    const original = `${fence}\n<!-- Result:\nold\n[exit 0]\n-->\n`;
+    const result = '<!-- Result:\nnew\n[exit 0]\n-->';
     const next = replaceOrAppendResultBlock(original, 1, result);
     // Original ends with a single trailing newline; the replacement
     // preserves that one \n (not doubled).
@@ -151,24 +151,24 @@ describe('replaceOrAppendResultBlock', () => {
 
   it('leaves content unchanged when start line is out of range', () => {
     const content = fence;
-    const next = replaceOrAppendResultBlock(content, 99, '> Result:\n> x');
+    const next = replaceOrAppendResultBlock(content, 99, '<!-- Result:\nx\n-->');
     expect(next).toBe(content);
   });
 
   it('leaves content unchanged when no closing fence found', () => {
     const content = '```bash\necho hello\n'; // no closer
-    const next = replaceOrAppendResultBlock(content, 1, '> Result:\n> x');
+    const next = replaceOrAppendResultBlock(content, 1, '<!-- Result:\nx\n-->');
     expect(next).toBe(content);
   });
 
-  it('does not touch an unrelated quote block that does not start with > Result:', () => {
-    const original = `${fence}\n\n> some other quote\n> text\n`;
-    const result = '> Result:\n> new\n> [exit 0]';
+  it('does not touch an unrelated HTML comment that does not start with <!-- Result:', () => {
+    const original = `${fence}\n\n<!-- some other comment -->\n`;
+    const result = '<!-- Result:\nnew\n[exit 0]\n-->';
     const next = replaceOrAppendResultBlock(original, 1, result);
-    // Existing unrelated blockquote is left alone; new Result block inserted
-    // after the fence, before the unrelated quote (since no Result: header
+    // Existing unrelated comment is left alone; new Result block inserted
+    // after the fence, before the unrelated comment (since no Result: header
     // was matched, we go to insert mode).
-    expect(next).toContain('> Result:\n> new');
-    expect(next).toContain('> some other quote');
+    expect(next).toContain('<!-- Result:\nnew');
+    expect(next).toContain('<!-- some other comment -->');
   });
 });
