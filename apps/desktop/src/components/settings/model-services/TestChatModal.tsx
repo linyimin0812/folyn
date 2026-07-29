@@ -77,7 +77,7 @@ export function TestChatModal({
             </select>
           </label>
           {status.result && (
-            <div style={{ fontSize: 11, color: status.result.success ? 'var(--green, #22a863)' : 'var(--red, #f06a6a)' }}>
+            <div className="break-words max-h-[120px] overflow-y-auto" style={{ fontSize: 11, color: status.result.success ? 'var(--green, #22a863)' : 'var(--red, #f06a6a)' }}>
               {status.result.success ? '✓ ' : '✗ '}{status.result.message}
             </div>
           )}
