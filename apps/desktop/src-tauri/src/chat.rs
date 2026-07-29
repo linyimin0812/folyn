@@ -290,8 +290,13 @@ pub async fn chat_stream(
             "anthropic-messages" => "anthropic",
             "google-generate-content" => "gemini",
             "ollama" | "ollama-chat" => "ollama",
-            // openai-chat-completions / openai-responses /
-            // openai-image-generation + unknowns → openai-compat `_` arm.
+            // ponytail: split from `openai-resolutions` so the `_` arm can
+            // switch to Chat Completions API. Most OpenAI-compat gateways
+            // (one-api / new-api / fastgpt etc.) only expose /v1/chat/completions,
+            // not /v1/responses — the default Responses client 404s on them.
+            "openai-chat-completions" => "openai-completions",
+            // openai-responses / openai-image-generation + unknowns →
+            // openai-compat `_` arm (Responses API default).
             _ => "openai",
         }
     } else {
@@ -419,6 +424,35 @@ pub async fn chat_stream(
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
                 "ollama",
+                params.thinking_budget,
+            ).build();
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
+            drain_loop(&mut stream, &on_event).await?
+        }
+        "openai-completions" => {
+            // Custom provider picked `openai-chat-completions` — use rig's
+            // Completions API client so requests hit `/v1/chat/completions`
+            // instead of the default `/v1/responses`. Required for OpenAI-compat
+            // gateways (one-api / new-api / fastgpt / etc.) that don't expose
+            // the Responses API. Same agent/stream contract as the `_` arm
+            // below — split to avoid a type clash between `Client` and
+            // `CompletionsClient` in the same variable.
+            let base = params
+                .base_url
+                .clone()
+                .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
+            let client = openai::Client::builder()
+                .api_key(params.api_key.clone())
+                .base_url(base)
+                .build()
+                .map_err(|e| e.to_string())?
+                .with_system_instructions_as_messages()
+                .completions_api();
+            let agent = with_thinking(
+                client
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                params.provider.as_str(),
                 params.thinking_budget,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
