@@ -210,6 +210,12 @@ function RichTextImageView({ node, selected }: NodeViewProps) {
     // Mirrors MarkdownPreview's VaultImage short-circuit. Only vault-relative
     // `assets/...` and absolute filesystem paths go through convertFileSrc.
     if (isLoadableUrlScheme(src)) return src;
+    // ponytail: gate vault-relative srcs on resolvedRoot — before homeDir()
+    // resolves, the NodeView would otherwise fall through to
+    // convertFileSrc(rawSrc) and produce an out-of-scope
+    // `asset://localhost/<encoded raw src>` URL that 403s. Render the
+    // placeholder for the brief async window instead.
+    if (!resolvedRoot) return '';
     const abs = resolveVaultRelativePath(src, resolvedRoot);
     if (!abs) return '';
     return isTauri() ? convertFileSrc(abs) : abs;
