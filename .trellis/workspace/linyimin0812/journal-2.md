@@ -955,3 +955,40 @@ Provider config refactor PR2c-PR2f (Rust custom_provider routing, flat-key migra
 ### Next Steps
 
 - None - task complete
+
+
+## Session 86: Markdown code-block script runner
+
+**Date**: 2026-07-29
+**Task**: Markdown code-block script runner
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Run shell/node/python code blocks directly in Markdown preview with streaming stdout/stderr, manual stop, settings-page runtime config (detect/test), real-time editor sync via externalContentVersion, and a `<!-- Result -->` marker + blockquote result block. Sync icon = lucide send.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6336297` | (see git log) |
+| `cfc4954` | (see git log) |
+| `d99559f` | (see git log) |
+| `cc9eaf9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
