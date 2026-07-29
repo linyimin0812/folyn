@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Final check: forbidden patterns, review checklist — confirm no inline styles abuse, no any, no unrequested abstractions."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Verify RuntimeConfig interface is strict-typed, no any leaks in scriptRunnerService."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Verify CliSettings detect/test pattern was actually reused (not reimplemented) and no duplicate logic introduced."}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "Verify en + zh locale keys added symmetrically, no hardcoded Chinese strings in component."}

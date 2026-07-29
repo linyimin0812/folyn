@@ -150,6 +150,20 @@
       "description": "AI 工具通过调用本地 CLI（如 Claude Code）来编辑文档。请确保已安装对应的 CLI 工具。修改会以 Diff 形式展示，确认后再应用到文件。"
     }
   },
+  "scriptRuntime": {
+    "title": "脚本运行时",
+    "description": "在 Markdown 预览中运行代码块",
+    "usageHint": "在 Markdown 预览的 ```bash / ```js / ```python 代码块上点击运行按钮即可执行；运行结果会以 > Result: 引用块写回编辑器。",
+    "detect": "检测",
+    "detectTitle": "通过 /bin/sh -lc which <bin> 自动检测路径",
+    "test": {
+      "label": "测试",
+      "testing": "测试中…",
+      "success": "可用",
+      "exitCode": "退出码 {{code}}",
+      "cannotRun": "无法执行: {{error}}"
+    }
+  },
   "models": {
     "title": "模型服务",
     "description": "配置 LLM Provider 与模型，用于 Chat / Agent 对话",

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useAiConfigStore, PERSIST_KEYS_AI_CONFIG, type ChatProvider } from './aiConfigStore';
 import { storageClient } from '@/utils/storageClient';
 import { PROVIDER_CATALOG, PROVIDER_IDS, type CustomProvider } from '@/services/providers/catalog';
+import { DEFAULT_SCRIPT_RUNTIMES } from '@/services/scriptRunner/scriptRunnerService';
 
 beforeEach(() => {
   storageClient.__resetForTesting();
@@ -20,6 +21,7 @@ beforeEach(() => {
     providerConfigs: {},
     customProviders: [],
     enabledProviders: {},
+    scriptRuntimes: DEFAULT_SCRIPT_RUNTIMES.map((r) => ({ ...r })),
   });
 });
 
@@ -449,5 +451,39 @@ describe('per-adapter cliPath (A: each adapter owns its binary path)', () => {
     useAiConfigStore.getState().setCliPathFor('claude', '/claude/bin');
     expect(useAiConfigStore.getState().cliPaths.claude).toBe('/claude/bin');
     expect(useAiConfigStore.getState().cliPath).toBe('/pi/bin'); // still pi
+  });
+});
+
+describe('useAiConfigStore scriptRuntimes', () => {
+  it('defaults to shell/node/python', () => {
+    const ids = useAiConfigStore.getState().scriptRuntimes.map((r) => r.id);
+    expect(ids).toEqual(['shell', 'node', 'python']);
+  });
+
+  it('setRuntimePath updates only the matching runtime', () => {
+    useAiConfigStore.getState().setRuntimePath('node', '/usr/local/bin/node');
+    const s = useAiConfigStore.getState();
+    expect(s.scriptRuntimes.find((r) => r.id === 'node')?.binaryPath).toBe('/usr/local/bin/node');
+    expect(s.scriptRuntimes.find((r) => r.id === 'python')?.binaryPath).toBe('python3');
+  });
+
+  it('hydrate merges persisted binaryPath overrides onto defaults (drops unknown ids)', () => {
+    useAiConfigStore.getState().hydrate({
+      scriptRuntimes: [
+        { id: 'node', binaryPath: '/nvm/node' },
+        { id: 'python', binaryPath: '/pyenv/python3' },
+        { id: 'unknown-runtime', binaryPath: '/x' },
+      ],
+    });
+    const s = useAiConfigStore.getState();
+    expect(s.scriptRuntimes.map((r) => r.id)).toEqual(['shell', 'node', 'python']);
+    expect(s.scriptRuntimes.find((r) => r.id === 'node')?.binaryPath).toBe('/nvm/node');
+    expect(s.scriptRuntimes.find((r) => r.id === 'python')?.binaryPath).toBe('/pyenv/python3');
+    expect(s.scriptRuntimes.find((r) => r.id === 'shell')?.binaryPath).toBe('/bin/sh');
+  });
+
+  it('hydrate falls back to defaults when blob has no scriptRuntimes', () => {
+    useAiConfigStore.getState().hydrate({});
+    expect(useAiConfigStore.getState().scriptRuntimes.map((r) => r.id)).toEqual(['shell', 'node', 'python']);
   });
 });

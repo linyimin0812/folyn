@@ -12,6 +12,7 @@ import { SkillsSettings } from '@/components/settings/SkillsSettings';
 import { PetSettings } from '@/components/settings/PetSettings';
 import { NotificationsSettings } from '@/components/settings/NotificationsSettings';
 import { ShortcutEditor } from '@/components/settings/ShortcutEditor';
+import { ScriptRuntimesSettings } from '@/components/settings/ScriptRuntimesSettings';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { Toggle, NAV_GROUPS } from '@/components/settings/primitives';
 import { Home, Unlock, Sparkles, ClipboardCopy, RefreshCw } from 'lucide-react';
@@ -232,6 +233,7 @@ export function SettingsPage() {
                 >{t('settings:editor.linkOpenMode.internal')}</button>
               </div>
             </div>
+            <ScriptRuntimesSettings />
           </div>
         )}
 

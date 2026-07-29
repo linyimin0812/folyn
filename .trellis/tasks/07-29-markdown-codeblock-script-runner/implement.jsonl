@@ -1,0 +1,8 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Adding scriptRuntimes field + setter to aiConfigStore and persisting via settingsPersistence — follow the store pattern (granular selectors, no bare useStore)."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "CodeBlockWrapper gets Run/Stop buttons + output area; ScriptRuntimesSettings is a new settings section — follow named-export + props + Tailwind conventions."}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "Adding settings.editor.scriptRuntime.* keys to en + zh locales — follow namespace + key naming conventions."}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Reusing claude-cli sidecar (/bin/sh -lc) + Command.spawn/kill — ACL permission contract section confirms allow-spawn/allow-stdin-write/allow-kill already granted."}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "MarkdownPreview is a file-type preview component; write-back via onChange prop chain (PreviewPane → WorkArea → editorStore) must follow the existing serialization/edit hygiene."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "RuntimeConfig interface + language alias mapping — follow strict type patterns, no any."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "CliSettings.tsx is the template for detect/test pattern; reuse its state shape and shell Command logic instead of reinventing."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Preview → service → Tauri shell → editorStore write-back spans 4 layers; trace data flow before coding."}
