@@ -851,3 +851,37 @@ CLI 选择器从纯文字改为图标（折叠态只显图标，下拉显示图�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 83: Rich-text paste image: kill 403 flash + reduce callback-id warning
+
+**Date**: 2026-07-29
+**Task**: Rich-text paste image: kill 403 flash + reduce callback-id warning
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Fixed two benign-but-noisy errors triggered when pasting images into the .rt Tiptap editor. (1) 403 on assets/images/<hash>.png: NodeView rendered with unresolved resolvedRoot and fell through to convertFileSrc(rawSrc), producing an out-of-scope asset://localhost URL until homeDir() resolved. Gated the NodeView useMemo on resolvedRoot so the placeholder shows during the brief async window. (2) [TAURI] Couldn't find callback id (xN): every paste and every NodeView mount re-invoked homeDir(); any teardown (HMR, tab close, ProseMirror remount) orphaned pending callbacks. Added a module-level homeDir cache in pathResolver so the Tauri invoke fires once per session. HMR/reload residual warnings accepted as benign — plugin-fs has no abort support; AbortController plumbing is out of scope.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fcf5408` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

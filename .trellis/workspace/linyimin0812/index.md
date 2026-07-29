@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 82
-- **Last Active**: 2026-07-27
+- **Total Sessions**: 83
+- **Last Active**: 2026-07-29
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~853 | Active |
+| `journal-2.md` | ~887 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 83 | 2026-07-29 | Rich-text paste image: kill 403 flash + reduce callback-id warning | `fcf5408` | `master` |
 | 82 | 2026-07-27 | AI Panel & 桌宠 Chat 输入框 leadingSlot 调整 | `dc2c8f0`, `01d575a`, `2d0c071`, `90e0df1`, `843a125`, `d4ad200` | `master` |
 | 81 | 2026-07-27 | Sidebar context menu: copy file/folder with target picker | `0e912ae` | `master` |
 | 80 | 2026-07-24 | Cloudia bubble template + dynamic window size | `d67425a` | `master` |
