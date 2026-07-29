@@ -223,10 +223,11 @@ export function ModelServicesSettings() {
   >({ kind: 'idle' });
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
   const [chatTestStatus, setChatTestStatus] = useState<{ testing: boolean; result?: { success: boolean; message: string } }>({ testing: false });
+  const [testModalOpen, setTestModalOpen] = useState(false);
+  const [testModelId, setTestModelId] = useState<string>('');
   const [showChatKey, setShowChatKey] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [manualModalOpen, setManualModalOpen] = useState(false);
-  const [fetchErrorDismissed, setFetchErrorDismissed] = useState(false);
   const [manualCollapsed, setManualCollapsed] = useState<Set<string>>(new Set());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const pendingDeleteProvider = useMemo(
@@ -234,16 +235,7 @@ export function ModelServicesSettings() {
     [customerProviders, deleteConfirmId],
   );
 
-  // Reset the fetch-error dismissal whenever a new fetch starts so the
-  // popup re-opens on the next error.
-  useEffect(() => {
-    if (fetchStatusForCurrent !== 'error') setFetchErrorDismissed(false);
-  }, [fetchStatusForCurrent]);
-
   const selectedModelIds = providerSettings[chatProvider]?.selectedModelIds ?? EMPTY_SELECTED;
-  const showFetchErrorModal = fetchStatusForCurrent === 'error'
-    && !!fetchErrorForCurrent
-    && !fetchErrorDismissed;
 
   // ── derived ─────────────────────────────────────────────────
   const providers = useMemo(
@@ -458,38 +450,16 @@ export function ModelServicesSettings() {
                 <button
                   className="shrink-0 px-3 rounded-r-md border border-brd text-white text-[length:calc(var(--ui-font-size)-2px)] font-ui transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ background: 'var(--acc, #3a6ef0)' }}
-                  disabled={chatTestStatus.testing || !chatApiKey || (!PROVIDER_CATALOG.some((p) => p.id === chatProvider) && !isCustom)}
-                  onClick={async () => {
-                    // ponytail: custom providers route via chat.rs `_` fallback arm.
-                    setChatTestStatus({ testing: true });
-                    try {
-                      const result = await testChatConnection({
-                        provider: chatProvider,
-                        model: chatModel || placeholderModel,
-                        apiKey: chatApiKey,
-                        baseUrl: chatBaseUrl || undefined,
-                        azureDeploymentId: chatAzureDeploymentId || undefined,
-                        azureApiVersion: chatAzureApiVersion || undefined,
-                        // PR2e: route custom providers via endpoint resolver.
-                        customProvider: isCustom,
-                        defaultChatEndpoint: isCustom ? (customerProviders[chatProvider]?.defaultChatEndpoint) : undefined,
-                      });
-                      setChatTestStatus({ testing: false, result });
-                      setTimeout(() => setChatTestStatus((s) => ({ ...s, result: undefined })), 6000);
-                    } catch (err) {
-                      setChatTestStatus({ testing: false, result: { success: false, message: String(err) } });
-                      setTimeout(() => setChatTestStatus((s) => ({ ...s, result: undefined })), 6000);
-                    }
+                  disabled={chatTestStatus.testing || !chatApiKey || (!PROVIDER_CATALOG.some((p) => p.id === chatProvider) && !isCustom) || selectedModelIds.length === 0}
+                  onClick={() => {
+                    setTestModelId(chatModel || (selectedModelIds[0] ?? ''));
+                    setChatTestStatus({ testing: false });
+                    setTestModalOpen(true);
                   }}
                 >
                   {chatTestStatus.testing ? t('settings:models.test.testing') : t('settings:models.test.label')}
                 </button>
               </div>
-              {chatTestStatus.result && (
-                <div style={{ fontSize: 11, color: chatTestStatus.result.success ? 'var(--green, #22a863)' : 'var(--red, #f06a6a)' }} className="mt-1">
-                  {chatTestStatus.result.success ? '✓ ' : '✗ '}{chatTestStatus.result.message}
-                </div>
-              )}
               {apiKeyUrl && (
                 <a
                   href={apiKeyUrl}
@@ -567,7 +537,7 @@ export function ModelServicesSettings() {
                   type="button"
                   className="btn btn-g btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => setPickerOpen(true)}
-                  disabled={!canFetchModelsFromStore(chatProvider, chatApiKey)}
+                  disabled={!canFetchModelsFromStore(entry, chatApiKey)}
                 >
                   {fetchStatusForCurrent === 'loading' ? t('settings:models.fetchModels.fetching') : t('settings:models.fetchModels.label')}
                 </button>
@@ -646,11 +616,11 @@ export function ModelServicesSettings() {
                                   <div className="flex items-center gap-3 min-w-0">
                                     <ModelAvatar id={mid} />
                                     <span className={`font-semibold text-[length:calc(var(--ui-font-size)-2px)] font-ui truncate ${isSelected ? 'text-emerald-600' : 'text-gray-800'}`}>
-                                      {mid}
+                                      {m?.displayName ?? mid}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-[18px] shrink-0">
-                                    {m && <CapabilityPills capabilities={m.capabilities} />}
+                                    <CapabilityPills capabilities={m?.capabilities ?? []} />
                                     <button
                                       type="button"
                                       onClick={(e) => {
@@ -740,22 +710,19 @@ export function ModelServicesSettings() {
                                       {m.displayName ?? m.id}
                                     </span>
                                   </div>
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    {isSelected && (
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="20 6 9 17 4 12" />
-                                      </svg>
-                                    )}
+                                  <div className="flex items-center gap-[18px] shrink-0">
                                     <button
                                       type="button"
-                                      title={t('settings:models.deleteCustom')}
-                                      className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                                      title={t('settings:models.picker.remove')}
+                                      className="text-emerald-600 hover:text-emerald-700 transition-colors"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         removeManualModel(chatProvider, m.id);
                                       }}
                                     >
-                                      <Trash2 size={13} />
+                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="5" y1="12" x2="19" y2="12" />
+                                      </svg>
                                     </button>
                                   </div>
                                 </div>
@@ -833,6 +800,82 @@ export function ModelServicesSettings() {
         />
       )}
 
+      {testModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center"
+          onClick={() => !chatTestStatus.testing && setTestModalOpen(false)}
+        >
+          <div
+            className="bg-panel border border-brd rounded-md w-[400px] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 pt-4 pb-2">
+              <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1">
+                {t('settings:models.test.label')}
+              </div>
+            </div>
+            <div className="h-px bg-brd mx-4" />
+            <div className="px-4 py-4 flex flex-col gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2">
+                  {t('settings:models.test.selectModel') || 'Select model'}
+                </span>
+                <select
+                  className="fi2 h-[34px] py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                  value={testModelId}
+                  onChange={(e) => setTestModelId(e.target.value)}
+                >
+                  {selectedModelIds.map((mid) => (
+                    <option key={mid} value={mid}>{mid}</option>
+                  ))}
+                </select>
+              </label>
+              {chatTestStatus.result && (
+                <div style={{ fontSize: 11, color: chatTestStatus.result.success ? 'var(--green, #22a863)' : 'var(--red, #f06a6a)' }}>
+                  {chatTestStatus.result.success ? '✓ ' : '✗ '}{chatTestStatus.result.message}
+                </div>
+              )}
+            </div>
+            <div className="h-px bg-brd mx-4" />
+            <div className="flex justify-end gap-2 px-4 py-3">
+              <button
+                className="btn btn-g btn-sm"
+                disabled={chatTestStatus.testing}
+                onClick={() => setTestModalOpen(false)}
+              >
+                {t('settings:models.cancel')}
+              </button>
+              <button
+                className="btn btn-p btn-sm"
+                disabled={chatTestStatus.testing || !testModelId}
+                onClick={async () => {
+                  setChatTestStatus({ testing: true });
+                  try {
+                    // ponytail: custom providers route via chat.rs `_` fallback arm.
+                    const result = await testChatConnection({
+                      provider: chatProvider,
+                      model: testModelId || placeholderModel,
+                      apiKey: chatApiKey,
+                      baseUrl: chatBaseUrl || undefined,
+                      azureDeploymentId: chatAzureDeploymentId || undefined,
+                      azureApiVersion: chatAzureApiVersion || undefined,
+                      // PR2e: route custom providers via endpoint resolver.
+                      customProvider: isCustom,
+                      defaultChatEndpoint: isCustom ? (customerProviders[chatProvider]?.defaultChatEndpoint) : undefined,
+                    });
+                    setChatTestStatus({ testing: false, result });
+                  } catch (err) {
+                    setChatTestStatus({ testing: false, result: { success: false, message: String(err) } });
+                  }
+                }}
+              >
+                {chatTestStatus.testing ? t('settings:models.test.testing') : t('settings:models.test.label')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {pickerOpen && (
         <ModelPickerModal
           providerName={providerDisplayName(entry, t)}
@@ -840,6 +883,7 @@ export function ModelServicesSettings() {
           selectedId={chatModel}
           selectedIds={providerSettings[chatProvider]?.selectedModelIds ?? EMPTY_SELECTED}
           fetchStatus={fetchStatusForCurrent}
+          fetchError={fetchErrorForCurrent}
           onClose={() => setPickerOpen(false)}
           onSelect={(id) => {
             const current = providerSettings[chatProvider]?.selectedModelIds ?? [];
@@ -919,35 +963,7 @@ export function ModelServicesSettings() {
         </div>
       )}
 
-      {showFetchErrorModal && fetchErrorForCurrent && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40"
-          onClick={() => setFetchErrorDismissed(true)}
-        >
-          <div
-            className="bg-panel border border-brd rounded-md shadow-lg max-w-[420px] w-[90%] px-5 py-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-2 mb-2">
-              <span className="text-t1 text-[14px] font-semibold font-ui">
-                {t('settings:models.fetchModels.errorTitle')}
-              </span>
-            </div>
-            <div className="text-t2 text-[12.5px] break-all font-ui mb-4">
-              {fetchErrorForCurrent}
-            </div>
-            <div className="flex justify-end">
-              <button
-                type="button"
-                className="px-3 py-1.5 rounded-md border border-brd bg-hov text-t1 text-[12.5px] font-ui hover:opacity-90"
-                onClick={() => setFetchErrorDismissed(true)}
-              >
-                {t('settings:models.fetchModels.errorClose')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
@@ -999,6 +1015,7 @@ function CustomProviderDrawer({
   const [docs, setDocs] = useState(initial?.metadata?.website?.docs ?? '');
   const [models, setModels] = useState(initial?.metadata?.website?.models ?? '');
   const [official, setOfficial] = useState(initial?.metadata?.website?.official ?? '');
+  const [metadataOpen, setMetadataOpen] = useState(false);
 
   const idValid = ID_PATTERN.test(id.trim());
   const idUnique = state.mode === 'edit' || !existingIds.includes(id.trim());
@@ -1044,7 +1061,7 @@ function CustomProviderDrawer({
                 {t('settings:models.idLabel') || 'ID'}
               </span>
               <input
-                className="fi2 h-[34px] py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                className={`fi2 h-[34px] py-[7px] px-2.5 rounded-md border bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui ${id && !idValid ? 'border-red text-red' : 'border-brd'}`}
                 value={id}
                 onChange={(e) => setId(e.target.value.slice(0, 64))}
                 placeholder="my-provider"
@@ -1052,7 +1069,7 @@ function CustomProviderDrawer({
                 spellCheck={false}
                 autoFocus
               />
-              <span className="text-[10px] text-t3">
+              <span className={`text-[10px] ${id && !idValid ? 'text-red' : 'text-t3'}`}>
                 {ID_PATTERN.test(id.trim())
                   ? (idUnique ? t('settings:models.idHint') || 'Letters, digits, - and _ only.'
                     : t('settings:models.idDuplicate') || 'ID already exists.')
@@ -1084,7 +1101,7 @@ function CustomProviderDrawer({
               value={defaultChatEndpoint}
               onChange={(e) => setDefaultChatEndpoint(e.target.value as DefaultChatEndpoint)}
             >
-              {ENDPOINT_OPTIONS.map((c) => (
+              {[...ENDPOINT_OPTIONS].sort().map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
@@ -1103,33 +1120,54 @@ function CustomProviderDrawer({
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2">
+            <button
+              type="button"
+              className="flex items-center gap-1 text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 select-none"
+              onClick={() => setMetadataOpen((v) => !v)}
+            >
+              <svg
+                className={`transition-transform ${metadataOpen ? 'rotate-180' : ''}`}
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
               {t('settings:models.metadataLabel') || 'Metadata'}
-            </span>
-            <input
-              className="fi2 h-[30px] py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder={t('settings:models.metadata.apiKey') || 'API key URL'}
-            />
-            <input
-              className="fi2 h-[30px] py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-              value={docs}
-              onChange={(e) => setDocs(e.target.value)}
-              placeholder={t('settings:models.metadata.docs') || 'Docs URL'}
-            />
-            <input
-              className="fi2 h-[30px] py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-              value={models}
-              onChange={(e) => setModels(e.target.value)}
-              placeholder={t('settings:models.metadata.models') || 'Models list URL'}
-            />
-            <input
-              className="fi2 h-[30px] py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-              value={official}
-              onChange={(e) => setOfficial(e.target.value)}
-              placeholder={t('settings:models.metadata.official') || 'Official site URL'}
-            />
+            </button>
+            {metadataOpen && (
+              <>
+                <input
+                  className="fi2 h-[30px] py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder={t('settings:models.metadata.apiKey') || 'API key URL'}
+                />
+                <input
+                  className="fi2 h-[30px] py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                  value={docs}
+                  onChange={(e) => setDocs(e.target.value)}
+                  placeholder={t('settings:models.metadata.docs') || 'Docs URL'}
+                />
+                <input
+                  className="fi2 h-[30px] py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                  value={models}
+                  onChange={(e) => setModels(e.target.value)}
+                  placeholder={t('settings:models.metadata.models') || 'Models list URL'}
+                />
+                <input
+                  className="fi2 h-[30px] py-[5px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+                  value={official}
+                  onChange={(e) => setOfficial(e.target.value)}
+                  placeholder={t('settings:models.metadata.official') || 'Official site URL'}
+                />
+              </>
+            )}
           </div>
         </div>
 
@@ -1176,6 +1214,7 @@ function ModelPickerModal({
   selectedId,
   selectedIds,
   fetchStatus,
+  fetchError,
   onClose,
   onSelect,
   onRefresh,
@@ -1185,6 +1224,7 @@ function ModelPickerModal({
   selectedId: string;
   selectedIds: readonly string[];
   fetchStatus: string;
+  fetchError: string | null;
   onClose: () => void;
   onSelect: (id: string) => void;
   onRefresh: () => void;
@@ -1330,6 +1370,11 @@ function ModelPickerModal({
 
         {/* Groups — scrollable */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
+          {fetchStatus === 'error' && fetchError && (
+            <div className="text-[12.5px] break-all mb-3" style={{ color: 'var(--red, #f06a6a)' }}>
+              {fetchError}
+            </div>
+          )}
           <div className="flex flex-col gap-3">
             {groups.length === 0 ? (
               <div className="text-sm text-gray-400 italic py-4 text-center">

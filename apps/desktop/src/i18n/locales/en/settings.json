@@ -245,7 +245,8 @@
     },
     "test": {
       "testing": "Detecting…",
-      "label": "Detect"
+      "label": "Detect",
+      "selectModel": "Select model"
     },
     "fetchModels": {
       "label": "Fetch models",
@@ -302,6 +303,19 @@
     "customNamePlaceholder": "My Provider",
     "customBaseUrlPlaceholder": "https://your-endpoint/v1",
     "customApiKeyUrlPlaceholder": "https://...  (optional)",
+    "idLabel": "ID",
+    "idHint": "Letters, digits, - and _ only",
+    "idDuplicate": "ID already exists",
+    "idInvalid": "Letters, digits, - and _ only",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Optional",
+    "metadataLabel": "Metadata",
+    "metadata": {
+      "apiKey": "API key URL",
+      "docs": "Docs URL",
+      "models": "Models list URL",
+      "official": "Official site URL"
+    },
     "save": "Save",
     "cancel": "Cancel",
     "preview": "Preview: {{url}}",

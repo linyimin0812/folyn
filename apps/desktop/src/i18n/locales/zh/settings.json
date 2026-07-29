@@ -245,7 +245,8 @@
     },
     "test": {
       "testing": "检测中…",
-      "label": "检测"
+      "label": "检测",
+      "selectModel": "选择模型"
     },
     "fetchModels": {
       "label": "获取模型",
@@ -302,6 +303,19 @@
     "customNamePlaceholder": "My Provider",
     "customBaseUrlPlaceholder": "https://your-endpoint/v1",
     "customApiKeyUrlPlaceholder": "https://...  (可选)",
+    "idLabel": "ID",
+    "idHint": "字母、数字、- 和 _ 组合",
+    "idDuplicate": "ID 已存在",
+    "idInvalid": "仅支持字母、数字、- 和 _",
+    "descriptionLabel": "描述",
+    "descriptionPlaceholder": "可选",
+    "metadataLabel": "元数据",
+    "metadata": {
+      "apiKey": "API Key 获取地址",
+      "docs": "文档地址",
+      "models": "模型列表地址",
+      "official": "官网地址"
+    },
     "save": "保存",
     "cancel": "取消",
     "preview": "预览：{{url}}",
