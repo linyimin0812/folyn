@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { resolveVaultRelativePath, isLoadableUrlScheme } from './richTextContent';
+import {
+  resolveVaultRelativePath,
+  isLoadableUrlScheme,
+  nextResizeWidth,
+  IMAGE_MIN_WIDTH,
+} from './richTextContent';
 
 // ponytail: the path-resolution pure function is split out of the React
 // NodeView (RichTextImage.tsx) so it's unit-testable without Tauri / jsdom
@@ -103,5 +108,36 @@ describe('isLoadableUrlScheme', () => {
     expect(isLoadableUrlScheme('/abs/path/x.png')).toBe(false);
     expect(isLoadableUrlScheme('~/Pictures/x.png')).toBe(false);
     expect(isLoadableUrlScheme('')).toBe(false);
+  });
+});
+
+// ponytail: the resize-delta → width math is the only non-trivial logic in the
+// Phase 1 drag-to-resize NodeView; it's split out as a pure function so it's
+// unit-testable without a prosemirror view (jsdom ceiling — the actual
+// pointer-drag is verified by opening a .rt file in the running app).
+describe('nextResizeWidth', () => {
+  it('right handle: widens on positive delta, narrows on negative', () => {
+    expect(nextResizeWidth('right', 400, 100, 1000)).toBe(500);
+    expect(nextResizeWidth('right', 400, -100, 1000)).toBe(300);
+  });
+
+  it('left handle: dragging outward (negative delta) widens, inward (positive) narrows', () => {
+    expect(nextResizeWidth('left', 400, -100, 1000)).toBe(500);
+    expect(nextResizeWidth('left', 400, 100, 1000)).toBe(300);
+  });
+
+  it('clamps to IMAGE_MIN_WIDTH on the low end', () => {
+    expect(nextResizeWidth('right', 400, -1000, 1000)).toBe(IMAGE_MIN_WIDTH);
+    expect(nextResizeWidth('left', 400, 1000, 1000)).toBe(IMAGE_MIN_WIDTH);
+  });
+
+  it('clamps to maxWidth on the high end (no upscaling beyond native resolution)', () => {
+    expect(nextResizeWidth('right', 400, 1000, 600)).toBe(600);
+    expect(nextResizeWidth('left', 400, -1000, 600)).toBe(600);
+  });
+
+  it('rounds to integer px so the persisted width attr stays clean', () => {
+    expect(nextResizeWidth('right', 400, 33.7, 1000)).toBe(434);
+    expect(nextResizeWidth('left', 400, -33.2, 1000)).toBe(433);
   });
 });

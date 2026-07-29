@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Verify migration preserves the rich-text editor's spec contracts: disk format, vault-asset resolution, paste/drop behavior."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Test / lint / typecheck / CI bar — what the PR must clear."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Type safety checks for the forked NodeView + new extension wiring."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Root spec index for cross-references."}

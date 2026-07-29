@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from '@tiptap/extension-image';
 import { ReactNodeViewRenderer, NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
@@ -9,7 +9,7 @@ import { useVaultStore } from '@/store/vaultStore';
 import { useVaultConfigStore } from '@/store/vaultConfigStore';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { isTauri } from '@/utils/platform';
-import { resolveVaultRelativePath, isLoadableUrlScheme } from './richTextContent';
+import { resolveVaultRelativePath, isLoadableUrlScheme, nextResizeWidth } from './richTextContent';
 
 // ponytail: image vault-asset persistence. The disk format stores a
 // vault-relative `src` (e.g. `assets/images/<sha1>.png`) so the doc is portable
@@ -182,9 +182,10 @@ function imagePasteDropPlugin(): Plugin {
 // reads the store reactively and re-renders. This mirrors MarkdownPreview's
 // resolvedVaultRoot state, just per-image.
 
-function RichTextImageView({ node, selected }: NodeViewProps) {
+function RichTextImageView({ node, updateAttributes, selected }: NodeViewProps) {
   const src = (node.attrs.src as string) ?? '';
   const alt = (node.attrs.alt as string) ?? '';
+  const widthAttr = node.attrs.width as number | null;
   const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
   const [resolvedRoot, setResolvedRoot] = useState('');
   useEffect(() => {
@@ -221,15 +222,127 @@ function RichTextImageView({ node, selected }: NodeViewProps) {
     return isTauri() ? convertFileSrc(abs) : abs;
   }, [src, resolvedRoot]);
 
+  // ponytail: Phase 1 drag-to-resize. Two grips (left/right) on the image,
+  // shown on hover or while the node is selected. Dragging sets img.style.width
+  // directly (no React state churn mid-drag); on pointer-up the final width is
+  // committed to the `width` node attr via updateAttributes, which serializes
+  // to disk as part of the tiptap JSON (no manual disk logic). maxWidth caps
+  // at naturalWidth so the user can't blur-upscale beyond native resolution.
+  // Height stays `auto` so aspect ratio is preserved by the browser.
+  const imgRef = useRef<HTMLImageElement>(null);
+  const dragStateRef = useRef<{
+    side: 'left' | 'right';
+    startX: number;
+    startWidth: number;
+    maxWidth: number;
+  } | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const onHandlePointerDown = useCallback(
+    (e: React.PointerEvent, side: 'left' | 'right') => {
+      // ponytail: stop propagation + preventDefault so the pointerdown does
+      // NOT bubble to the NodeViewWrapper's data-drag-handle → no node-drag.
+      e.preventDefault();
+      e.stopPropagation();
+      const img = imgRef.current;
+      if (!img) return;
+      const rect = img.getBoundingClientRect();
+      // naturalWidth = 0 before img load; the user can't grip an unloaded
+      // image (no rect), so this fallback is defensive only.
+      const maxWidth = img.naturalWidth || rect.width || 1;
+      dragStateRef.current = { side, startX: e.clientX, startWidth: rect.width, maxWidth };
+      setDragging(true);
+      (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    },
+    [],
+  );
+
+  const onHandlePointerMove = useCallback((e: React.PointerEvent) => {
+    const st = dragStateRef.current;
+    if (!st) return;
+    const next = nextResizeWidth(st.side, st.startWidth, e.clientX - st.startX, st.maxWidth);
+    const img = imgRef.current;
+    if (img) img.style.width = `${next}px`;
+  }, []);
+
+  const onHandlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      const st = dragStateRef.current;
+      dragStateRef.current = null;
+      setDragging(false);
+      try {
+        (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+      } catch {
+        // pointerId already released — no-op.
+      }
+      if (!st) return;
+      const img = imgRef.current;
+      // Commit the rendered width (what the user actually sees) to the node
+      // attr so it persists across reloads. Fall back to startWidth if the img
+      // vanished mid-drag (e.g. tab closed).
+      const finalWidth = img ? Math.round(img.getBoundingClientRect().width) : st.startWidth;
+      updateAttributes({ width: finalWidth });
+    },
+    [updateAttributes],
+  );
+
+  // When an explicit width attr is set, render with inline width + override
+  // the global `.ProseMirror img { max-width: 100% }` (RichTextEditor.tsx) so
+  // the user-set width wins (and may overflow into horizontal scroll, which is
+  // the editor-container's overflow-auto). Without the override, max-w-full
+  // would cap to container width and fight the user's resize. Height auto
+  // preserves aspect ratio.
+  const hasExplicitWidth = widthAttr != null && widthAttr > 0;
+  const imgStyle = hasExplicitWidth
+    ? { width: widthAttr, height: 'auto' as const, maxWidth: 'none' as const }
+    : undefined;
+  const imgClassName = hasExplicitWidth
+    ? 'h-auto rounded [image-rendering:-webkit-optimize-contrast]'
+    : 'max-w-full h-auto rounded [image-rendering:-webkit-optimize-contrast]';
+  // Handles render while selected OR mid-drag (so group-hover deactivating
+  // during pointer-capture doesn't make the grip vanish mid-resize).
+  const showHandles = selected || dragging;
+
   return (
     <NodeViewWrapper className="block my-2" data-drag-handle>
       {url ? (
-        <img
-          src={url}
-          alt={alt}
-          loading="lazy"
-          className={`max-w-full h-auto rounded ${selected ? 'ring-2 ring-acc' : ''}`}
-        />
+        <div className="relative inline-block max-w-full group">
+          <img
+            ref={imgRef}
+            src={url}
+            alt={alt}
+            loading="lazy"
+            // ponytail: WebKit upscale on retina screenshots = bilinear blur.
+            // -webkit-optimize-contrast hints higher-quality interpolation.
+            // The drag-to-resize path lets the user size to device-pixel parity
+            // for the structural fix; this hint stays as a soft fallback for
+            // non-resized images. No img-level `selected` ring — the wrapper's
+            // global `.ProseMirror-selectednode` ring (RichTextEditor.tsx) is
+            // enough; doubling made the highlight feel heavy.
+            className={imgClassName}
+            style={imgStyle}
+          />
+          <span
+            aria-hidden
+            onPointerDown={(e) => onHandlePointerDown(e, 'left')}
+            onPointerMove={onHandlePointerMove}
+            onPointerUp={onHandlePointerUp}
+            onPointerCancel={onHandlePointerUp}
+            className={`absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/2 w-1.5 h-10 bg-panel border border-acc rounded-sm cursor-ew-resize shadow-sm transition-opacity ${
+              showHandles ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            }`}
+          />
+          <span
+            aria-hidden
+            onPointerDown={(e) => onHandlePointerDown(e, 'right')}
+            onPointerMove={onHandlePointerMove}
+            onPointerUp={onHandlePointerUp}
+            onPointerCancel={onHandlePointerUp}
+            className={`absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/2 w-1.5 h-10 bg-panel border border-acc rounded-sm cursor-ew-resize shadow-sm transition-opacity ${
+              showHandles ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            }`}
+          />
+        </div>
       ) : (
         <div className="inline-flex items-center gap-2 px-3 py-2 rounded border border-dashed border-brd text-t3 text-sm">
           <ImageIcon size={14} strokeWidth={1.6} /> image

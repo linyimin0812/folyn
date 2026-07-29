@@ -128,3 +128,25 @@ export function resolveVaultRelativePath(
   const base = resolvedVaultRoot.replace(/\/+$/, '');
   return `${base}/${src.replace(/^\.\//, '').replace(/^\/+/, '')}`;
 }
+
+/** Minimum image width (px) a drag resize can produce. Below this the grip is unusable. */
+export const IMAGE_MIN_WIDTH = 40;
+
+/**
+ * Compute the next image width (px) given a drag delta and which side moved.
+ * Right handle: newWidth = startWidth + deltaX. Left handle: startWidth - deltaX
+ * (dragging left outward widens; the delta is already signed by pointer motion).
+ * Clamps to [IMAGE_MIN_WIDTH, maxWidth] and rounds to int px so the persisted
+ * `width` node attr stays clean. Pure so it's unit-testable without a
+ * prosemirror view (jsdom ceiling — see file-type-editors.md dbml section).
+ */
+export function nextResizeWidth(
+  side: 'left' | 'right',
+  startWidth: number,
+  deltaX: number,
+  maxWidth: number,
+): number {
+  const raw = side === 'right' ? startWidth + deltaX : startWidth - deltaX;
+  const clamped = Math.max(IMAGE_MIN_WIDTH, Math.min(maxWidth, raw));
+  return Math.round(clamped);
+}

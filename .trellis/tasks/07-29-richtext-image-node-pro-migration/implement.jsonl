@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Spec for the rich-text editor; references current RichTextImage.tsx + disk format + vault-asset resolution contract. Migration touches all of these."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "React component patterns (NodeView, hooks usage, when to fork vendor source vs wrap)."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Vault store + vaultConfigStore usage — forked NodeView reads useVaultStore reactively."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Test/lint/typecheck bar; roundtrip test expectations."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Root spec index — entry point for desktop frontend conventions."}
