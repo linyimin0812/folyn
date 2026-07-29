@@ -885,3 +885,38 @@ Fixed two benign-but-noisy errors triggered when pasting images into the .rt Tip
 ### Next Steps
 
 - None - task complete
+
+
+## Session 84: Rich-text Image Node Pro Phase 2/3
+
+**Date**: 2026-07-29
+**Task**: Rich-text Image Node Pro Phase 2/3
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Self-implemented Tiptap Image Node Pro feature set (no vendor source, no Tiptap Cloud auth). Phase 1: drag-to-resize grips on left/right, width attr persisted on pointerup (one transaction = one undo step). Phase 2/3: width/dataAlign/caption attrs; renderHTML delegates to pure figureHTML helper (captionless+unaligned -> <img>, else <figure data-align><img><figcaption>); NodeView restructured to <figure> with inline floating toolbar (delete / align L-C-R / caption-toggle / download); caption contentEditable commits on blur (one undo step per edit session); read-only gating on editor.isEditable (download stays available); a11y role=toolbar + aria-pressed + grip role=slider with Arrow L/R keyboard step; selection ring on figure (tight to img) + user-select:none to kill browser native text/image highlight; resize cap at min(naturalWidth, .ProseMirror.clientWidth) so image can't exceed editor content width; img/figure maxWidth:100% as belt-and-suspenders. Deferred (ponytail: comments in source): keyboard nav around captionless images + into/out of captions; URL-scheme image download; multi-image figure. 41 rich-text tests + typecheck green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `367859e` | (see git log) |
+| `0978ba0` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
