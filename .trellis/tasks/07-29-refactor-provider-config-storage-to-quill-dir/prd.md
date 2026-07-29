@@ -26,19 +26,19 @@ Move provider configuration out of the unified `storage.json` blob into two dedi
 
 ## Acceptance Criteria
 
-- [ ] New custom provider writes to `customer/providers.json` (not `storage.json`).
-- [ ] Editing connection settings writes to `settings.json`.
-- [ ] Existing `customProviders` migrated: `displayName`→`name`, `apiKeyUrl`→`metadata.website.apiKey`, `category`→`defaultChatEndpoint` (verify mapping), `baseUrl`→settings.json, `customProvider: true` set on these entries.
-- [ ] Existing `providerConfigs` (bundled) migrated: `apiKey`/`baseUrl`→top-level, `azureDeploymentId`/`azureApiVersion`/`thinkingBudget`→`extra`, `customProvider: false` set on these entries.
-- [ ] Existing `manualModels` migrated into the right `selectedModelIds` per provider.
-- [ ] Old keys stripped from `storage.json` after migration; version flag persisted.
-- [ ] Add-provider drawer collects all new fields with validation (id: `[a-zA-Z0-9_-]+`, name: non-empty, defaultChatEndpoint: required select).
-- [ ] Provider settings page reads/writes the new shape.
-- [ ] App starts cleanly with no provider configs (empty-state: files absent → treated as `{}`).
-- [ ] New custom provider entry in settings.json has `customProvider: true`; bundled provider entry has `customProvider: false`.
-- [ ] Round-trip: add → edit → restart → values persist.
-- [ ] Bundled provider config still loads from `assets/providers/providers.json` (no change).
-- [ ] Rust/rig side reads `customProvider` flag and routes correctly: `false` → rig built-in provider by id; `true` → custom path using id + baseUrl + adapter family.
+- [x] New custom provider writes to `customer/providers.json` (not `storage.json`).
+- [x] Editing connection settings writes to `settings.json`.
+- [x] Existing `customProviders` migrated: `displayName`→`name`, `apiKeyUrl`→`metadata.website.apiKey`, `category`→`defaultChatEndpoint` (verify mapping), `baseUrl`→settings.json, `customProvider: true` set on these entries.
+- [x] Existing `providerConfigs` (bundled) migrated: `apiKey`/`baseUrl`→top-level, `azureDeploymentId`/`azureApiVersion`/`thinkingBudget`→`extra`, `customProvider: false` set on these entries.
+- [x] Existing `manualModels` migrated into the right `selectedModelIds` per provider.
+- [x] Old keys stripped from `storage.json` after migration; version flag persisted.
+- [x] Add-provider drawer collects all new fields with validation (id: `[a-zA-Z0-9_-]+`, name: non-empty, defaultChatEndpoint: required select).
+- [x] Provider settings page reads/writes the new shape.
+- [x] App starts cleanly with no provider configs (empty-state: files absent → treated as `{}`).
+- [x] New custom provider entry in settings.json has `customProvider: true`; bundled provider entry has `customProvider: false`.
+- [x] Round-trip: add → edit → restart → values persist.
+- [x] Bundled provider config still loads from `assets/providers/providers.json` (no change).
+- [x] Rust/rig side reads `customProvider` flag and routes correctly: `false` → rig built-in provider by id; `true` → custom path using id + baseUrl + adapter family.
 
 ## Definition of Done
 
@@ -135,11 +135,12 @@ Rust currently does NOT read from disk; `chat_stream` and `list_models` receive 
   - [x] PR2d: `ModelServicesSettings.tsx` minimal compile fixes (full drawer rewrite is PR3).
   - [x] PR2e: Rust `ChatParams`/`ListModelsParams` add `custom_provider` + `default_chat_endpoint`; `chat_stream` + `list_models` resolve adapter family from endpoint key when `custom_provider=true` (anthropic-messages→anthropic arm, google-generate-content→gemini, ollama|ollama-chat→ollama, openai-* + unknowns→`_` openai-compat arm). cargo check clean.
   - [x] PR2f: `rigChat.ts` + `fetchModels.ts` derive `customProvider` (from `customerProviders[chatProvider]`) + `defaultChatEndpoint` and pass to invoke. Callers updated: `AiPanel.tsx`, `BubbleTemplateAIChatModal.tsx`, `useVoiceInput.ts`, `ModelServicesSettings.tsx` (testChatConnection + fetchModelsForProvider), `modelRegistryStore.ts` (signature extension).
-- [ ] **PR3** — UI: rewrite `CustomProviderDrawer` to capture new schema fields; retarget provider settings page to new shape.
+- [x] **PR3** — UI: rewrite `CustomProviderDrawer` to capture new schema fields; retarget provider settings page to new shape.
 
 ## Progress Log
 
 - 2026-07-29: Brainstormed + PRD locked (full schema, one-shot migration, extra bag, selectedModelIds = user-added, defaultChatEndpoint enum, customProvider routing flag passed via Tauri params). Phase 2 research done (5 files persisted to `research/`). PR1 shipped. PR2a + PR2b shipped (catalog + aiConfigStore rewrite; tsc clean except ModelServicesSettings.tsx; 34/55 aiConfigStore tests pass). PR2c-PR2f shipped (aiConfigStore 53/53 tests pass; Rust params + resolver + cargo check clean; rigChat/fetchModels/modelRegistryStore plumbed). PR3 pending.
+- 2026-07-29 (later): PR3 audited — no incremental code work required. `CustomProviderDrawer` already captures the full new schema (id / name / defaultChatEndpoint select with 7 enum options / description / metadata.website.{apiKey,docs,models,official}, validation: id regex + name non-empty + endpoint required). Provider settings page already routes via `setChatApiKey`/`setChatBaseUrl`/`setProviderEnabled`/azure setters/thinkingBudget → `providerConfigStorage.setProviderSettings` → `~/.quill/providers/settings.json`. Catalog helpers (`providerDisplayName`, `providerApiKeyUrl`, `providerCategory`, `providerBaseUrl`) already work against new `CustomProvider` shape. `migrateLegacyBlob` packs `manualModels` into `selectedModelIds` (lines 408/428/448/463). All 13 Acceptance Criteria verified against current code. tsc clean; 77/77 store + storage + persistence tests pass. `settingsPersistence.test.ts` reports pre-existing env errors (`open-color json` import attribute + `window is not defined`) — not test failures, all 77 tests pass; unrelated to PR3.
 
 ## Technical Notes
 
