@@ -161,6 +161,8 @@ const CHECK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" s
 // Run / Stop button SVGs. Colors are spec'd: play = #59A869, pause = #C7222D.
 const RUN_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 5v14l12-7z"/></svg>';
 const STOP_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
+// ponytail: lucide refresh-cw path — sync result to editor.
+const SYNC_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>';
 const RUN_COLOR = '#59A869';
 const STOP_COLOR = '#C7222D';
 
@@ -193,6 +195,8 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
   const [stdout, setStdout] = useState('');
   const [stderr, setStderr] = useState('');
   const [exitCode, setExitCode] = useState<number | null>(null);
+  const [pendingResult, setPendingResult] = useState<string | null>(null);
+  const [synced, setSynced] = useState(false);
   const runningRef = useRef<{ stop: () => Promise<void> } | null>(null);
 
   useEffect(() => {
@@ -210,6 +214,8 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
     setStderr('');
     setExitCode(null);
     setStopped(false);
+    setPendingResult(null);
+    setSynced(false);
   }, [lineCount]);
 
   const handleCopy = useCallback(() => {
@@ -236,6 +242,8 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
     setStdout('');
     setStderr('');
     setExitCode(null);
+    setPendingResult(null);
+    setSynced(false);
     let outBuf = '';
     let errBuf = '';
     try {
@@ -252,12 +260,9 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
           setExitCode(code);
           setRunning(false);
           runningRef.current = null;
-          // Write back to the editor source.
-          if (onChange && content) {
-            const block = formatResultBlock(outBuf, errBuf, code, false);
-            const next = replaceOrAppendResultBlock(content, sourceLine, block);
-            if (next !== content) onChange(next);
-          }
+          // Stash the formatted result block; user syncs to editor explicitly.
+          const block = formatResultBlock(outBuf, errBuf, code, false);
+          setPendingResult(block);
         },
       });
       runningRef.current = controller;
@@ -272,12 +277,17 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
     setRunning(false);
     setStopped(true);
     runningRef.current = null;
-    if (onChange && content && sourceLine != null) {
-      const block = formatResultBlock(stdout, stderr, exitCode, true);
-      const next = replaceOrAppendResultBlock(content, sourceLine, block);
-      if (next !== content) onChange(next);
-    }
-  }, [onChange, content, sourceLine, stdout, stderr, exitCode]);
+    const block = formatResultBlock(stdout, stderr, exitCode, true);
+    setPendingResult(block);
+  }, [stdout, stderr, exitCode]);
+
+  const handleSync = useCallback(() => {
+    if (!pendingResult || !content || sourceLine == null || !onChange) return;
+    const next = replaceOrAppendResultBlock(content, sourceLine, pendingResult);
+    if (next !== content) onChange(next);
+    setSynced(true);
+    setTimeout(() => setSynced(false), 1500);
+  }, [pendingResult, content, sourceLine, onChange]);
 
   const hasOutput = stdout !== '' || stderr !== '' || exitCode !== null || stopped;
 
@@ -314,6 +324,15 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
           {stderr && <pre className="code-run-stderr">{stderr}</pre>}
           <div className="code-run-status">
             {stopped ? '[stopped]' : exitCode !== null ? `[exit ${exitCode}]` : null}
+            {!running && pendingResult && onChange && (
+              <button
+                className="code-sync-btn"
+                type="button"
+                title="Sync to editor"
+                onClick={handleSync}
+                dangerouslySetInnerHTML={{ __html: synced ? CHECK_SVG : SYNC_SVG }}
+              />
+            )}
           </div>
         </div>
       )}
