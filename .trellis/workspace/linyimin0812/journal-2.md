@@ -920,3 +920,38 @@ Self-implemented Tiptap Image Node Pro feature set (no vendor source, no Tiptap 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 85: selectedModelIds picker write/read + multi-select + grouping
+
+**Date**: 2026-07-29
+**Task**: selectedModelIds picker write/read + multi-select + grouping
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Provider config refactor PR2c-PR2f (Rust custom_provider routing, flat-key migration, fs-mock tests) + selectedModelIds task: add/remove setters, picker multi-select toggle (plus/minus icons, no auto-close), selected-models list grouped by family with capability pills + remove button, read path strictly from settings.json (no models.json lookup, no separate chatModel card). Critical migration data-loss fix: providerConfigMigratedV1 flag was missing from PERSIST_KEYS_AI_CONFIG so every schedulePersist stripped it — migration re-ran every boot with empty legacy blob and clobbered real ~/.quill/providers/settings.json with default anthropic slot. Flag now persisted; loadFromDisk defensively skips __replaceForMigration when disk already has real data. Already-lost user data not recoverable.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `586f5da` | (see git log) |
+| `0477fb1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

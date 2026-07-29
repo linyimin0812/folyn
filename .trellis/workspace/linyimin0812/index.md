@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 84
+- **Total Sessions**: 85
 - **Last Active**: 2026-07-29
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~922 | Active |
+| `journal-2.md` | ~957 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 85 | 2026-07-29 | selectedModelIds picker write/read + multi-select + grouping | `586f5da`, `0477fb1` | `master` |
 | 84 | 2026-07-29 | Rich-text Image Node Pro Phase 2/3 | `367859e`, `0978ba0` | `master` |
 | 83 | 2026-07-29 | Rich-text paste image: kill 403 flash + reduce callback-id warning | `fcf5408` | `master` |
 | 82 | 2026-07-27 | AI Panel & 桌宠 Chat 输入框 leadingSlot 调整 | `dc2c8f0`, `01d575a`, `2d0c071`, `90e0df1`, `843a125`, `d4ad200` | `master` |
