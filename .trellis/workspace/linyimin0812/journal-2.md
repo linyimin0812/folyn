@@ -992,3 +992,37 @@ Run shell/node/python code blocks directly in Markdown preview with streaming st
 ### Next Steps
 
 - None - task complete
+
+
+## Session 87: PR3 audit: refactor-provider-config-storage marked done
+
+**Date**: 2026-07-29
+**Task**: PR3 audit: refactor-provider-config-storage marked done
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Audited PR3 of refactor-provider-config-storage-to-quill-dir. No incremental code work required — CustomProviderDrawer already captures full new schema (id/name/defaultChatEndpoint select/description/metadata.website.{apiKey,docs,models,official}, validation intact), provider settings page already routes via setChat* setters → providerConfigStorage, migrateLegacyBlob packs manualModels into selectedModelIds, catalog helpers work against new shape. All 13 Acceptance Criteria verified against current code. tsc clean; 77/77 store + storage + persistence tests pass. Task archived.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f1b0a79` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

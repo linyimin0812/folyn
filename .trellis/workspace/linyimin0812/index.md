@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 86
+- **Total Sessions**: 87
 - **Last Active**: 2026-07-29
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~994 | Active |
+| `journal-2.md` | ~1028 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 87 | 2026-07-29 | PR3 audit: refactor-provider-config-storage marked done | `f1b0a79` | `master` |
 | 86 | 2026-07-29 | Markdown code-block script runner | `6336297`, `cfc4954`, `d99559f`, `cc9eaf9` | `master` |
 | 85 | 2026-07-29 | selectedModelIds picker write/read + multi-select + grouping | `586f5da`, `0477fb1` | `master` |
 | 84 | 2026-07-29 | Rich-text Image Node Pro Phase 2/3 | `367859e`, `0978ba0` | `master` |
