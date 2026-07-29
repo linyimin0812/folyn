@@ -102,43 +102,45 @@ function RuntimeRow({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="tr flex items-center justify-between py-3.5 border-b border-brd gap-3">
-      <div className="tr-info">
-        <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{runtime.label}</h4>
-        <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{runtime.languageAliases.join(' / ')}</p>
+    <div className="tr py-3.5 border-b border-brd gap-3 flex flex-col">
+      <div className="flex items-center justify-between gap-3">
+        <div className="tr-info">
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{runtime.label}</h4>
+          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{runtime.languageAliases.join(' / ')}</p>
+        </div>
+        <div className="flex gap-1.5 items-center shrink-0">
+          <input
+            className="fi2 py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc w-[220px]"
+            value={runtime.binaryPath}
+            onChange={(e) => onPathChange(e.target.value)}
+            placeholder={runtime.id}
+            autoCapitalize="off"
+            spellCheck={false}
+          />
+          <button className="btn btn-g btn-sm flex items-center justify-center" style={{ minWidth: 56 }} disabled={detecting} title={t('settings:scriptRuntime.detectTitle')} onClick={onDetect}>
+            {detecting ? (
+              <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
+            ) : t('settings:scriptRuntime.detect')}
+          </button>
+          <button className="btn btn-g btn-sm flex items-center justify-center" style={{ minWidth: 56 }} disabled={testStatus.testing} onClick={onTest}>
+            {testStatus.testing ? (
+              <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
+            ) : t('settings:scriptRuntime.test.label')}
+          </button>
+        </div>
       </div>
-      <div className="flex gap-1.5 items-center shrink-0">
-        <input
-          className="fi2 py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc w-[220px]"
-          value={runtime.binaryPath}
-          onChange={(e) => onPathChange(e.target.value)}
-          placeholder={runtime.id}
-          autoCapitalize="off"
-          spellCheck={false}
-        />
-        <button className="btn btn-g btn-sm flex items-center justify-center" style={{ minWidth: 56 }} disabled={detecting} title={t('settings:scriptRuntime.detectTitle')} onClick={onDetect}>
-          {detecting ? (
-            <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-            </svg>
-          ) : t('settings:scriptRuntime.detect')}
-        </button>
-        <button className="btn btn-g btn-sm flex items-center justify-center" style={{ minWidth: 56 }} disabled={testStatus.testing} onClick={onTest}>
-          {testStatus.testing ? (
-            <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-            </svg>
-          ) : t('settings:scriptRuntime.test.label')}
-        </button>
-        {testStatus.result && (
-          <span
-            style={{ fontSize: 11, color: testStatus.result.success ? 'var(--green, #22a863)' : 'var(--red, #f06a6a)' }}
-            className="inline-block"
-          >
-            {testStatus.result.message}
-          </span>
-        )}
-      </div>
+      {testStatus.result && (
+        <div
+          style={{ fontSize: 11, color: testStatus.result.success ? 'var(--green, #22a863)' : 'var(--red, #f06a6a)', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}
+          className="mt-1"
+        >
+          {testStatus.result.message}
+        </div>
+      )}
     </div>
   );
 }
