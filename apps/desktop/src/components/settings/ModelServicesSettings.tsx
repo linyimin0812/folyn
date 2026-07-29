@@ -35,6 +35,7 @@ import { useModelRegistryStore, canFetchModelsFromStore } from '@/store/modelReg
 import type { Model } from '@/services/modelRegistry/types';
 import {
   getProviderApiPath,
+  getEndpointPath,
   getProviderDocsUrl,
   getProviderModelsUrl,
 } from '@/services/providers/providersCatalog';
@@ -152,7 +153,9 @@ export function ModelServicesSettings() {
   const requiresAzureFields = providerRequiresAzureFields(entry);
   const apiKeyUrl = providerApiKeyUrl(entry);
   const providersJsonBaseUrl = providerBaseUrl(entry);
-  const providersJsonPath = getProviderApiPath(entry.id);
+  const providersJsonPath = isCustomProvider(entry)
+    ? getEndpointPath(entry.defaultChatEndpoint)
+    : getProviderApiPath(entry.id);
   const docsUrl = getProviderDocsUrl(entry.id);
   const modelsUrl = getProviderModelsUrl(entry.id);
   const placeholderModel = providerPlaceholderModel(entry);

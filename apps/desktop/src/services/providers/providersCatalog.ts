@@ -82,6 +82,12 @@ export function getProviderApiPath(catalogId: string): string | null {
   return ENDPOINT_PATH[cfg.defaultChatEndpoint] ?? null;
 }
 
+/** Path for a raw endpoint key — used by custom providers whose
+ *  defaultChatEndpoint is set but have no catalog entry. */
+export function getEndpointPath(endpoint: string): string | null {
+  return ENDPOINT_PATH[endpoint] ?? null;
+}
+
 export function getProviderDocsUrl(catalogId: string): string | null {
   return lookup(catalogId)?.metadata?.website?.docs ?? null;
 }
