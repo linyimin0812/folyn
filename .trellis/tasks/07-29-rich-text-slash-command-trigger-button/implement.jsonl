@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "rich-text editor lives here; patterns for Tiptap editor + toolbar + write-back-loop guard"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "conventions for new components (RichTextSlashMenu) — props, raw <button>+Tailwind pattern, no primitive lib"}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "conventions for any local hook (e.g. editor storage subscription) — dependency arrays, cleanup"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "MenuItem interface, ProseMirror plugin typing, avoid any"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "editor.storage.slashCommand state pattern; React local state subscription to editor transactions"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "reuse SlashMenu.tsx visual pattern + SlashCommandExtension.ts trigger-condition logic instead of reimplementing"}

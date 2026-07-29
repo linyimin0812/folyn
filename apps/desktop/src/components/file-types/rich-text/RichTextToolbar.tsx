@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import type { LucideIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   Bold,
   Italic,
@@ -118,6 +119,7 @@ function UrlModal({
 }
 
 export function RichTextToolbar({ editor }: RichTextToolbarProps) {
+  const { t } = useTranslation();
   const [modal, setModal] = useState<ModalKind>(null);
   // The initial URL the modal opens with (prev link href, or '' for image).
   const [modalInitial, setModalInitial] = useState('');
@@ -165,6 +167,15 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
   const inTable = editor.isActive('table');
 
   const buttons: ToolButton[] = [
+    // ponytail: slash-command trigger button. Inserts '/' at cursor; the
+    // RichTextSlashExtension's computeSlashState detects it on the next
+    // transaction and opens the menu. Same effect as the Mod-/ shortcut.
+    {
+      icon: Plus,
+      title: t('editor:slashMenu.richText.triggerButton'),
+      disabled: !editor.isEditable,
+      onClick: () => editor.chain().focus().insertContent('/').run(),
+    },
     { icon: Bold, title: 'Bold', active: editor.isActive('bold'), disabled: !editor.can().toggleBold(), onClick: () => editor.chain().focus().toggleBold().run() },
     { icon: Italic, title: 'Italic', active: editor.isActive('italic'), disabled: !editor.can().toggleItalic(), onClick: () => editor.chain().focus().toggleItalic().run() },
     { icon: Underline, title: 'Underline', active: editor.isActive('underline'), disabled: !editor.can().toggleUnderline(), onClick: () => editor.chain().focus().toggleUnderline().run() },

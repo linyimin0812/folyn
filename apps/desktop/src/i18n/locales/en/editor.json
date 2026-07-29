@@ -40,6 +40,26 @@
       "ai": "AI",
       "data": "Data",
       "custom": "Custom"
+    },
+    "richText": {
+      "triggerButton": "Insert slash command",
+      "shortcutHint": "⌘/",
+      "categories": {
+        "blocks": "Blocks",
+        "lists": "Lists"
+      },
+      "items": {
+        "heading1": "Heading 1",
+        "heading2": "Heading 2",
+        "heading3": "Heading 3",
+        "blockquote": "Blockquote",
+        "codeBlock": "Code block",
+        "horizontalRule": "Horizontal rule",
+        "bulletList": "Bullet list",
+        "orderedList": "Ordered list",
+        "taskList": "Task list"
+      },
+      "empty": "No matching command"
     }
   },
   "imagePaste": {

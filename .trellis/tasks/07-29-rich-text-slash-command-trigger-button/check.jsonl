@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "quality bar: lint, typecheck, tests required for new logic"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "type-check: MenuItem interface, no any, ProseMirror plugin typing"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "spec-compliance: rich-text editor patterns (write-back-loop guard, host-drawn toolbar)"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "audit for over-engineering / reinvented stdlib: confirm we did not install @tiptap/suggestion/tippy needlessly"}

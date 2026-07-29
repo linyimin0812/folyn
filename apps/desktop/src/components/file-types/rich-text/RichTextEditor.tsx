@@ -13,6 +13,14 @@ import {
 } from './richTextContent';
 import { RichTextImage } from './RichTextImage';
 import { RichTextToolbar } from './RichTextToolbar';
+import {
+  RichTextSlashExtension,
+  computeSlashState,
+  INITIAL_SLASH_STATE,
+  writeSlashState,
+  type SlashCommandState,
+} from './RichTextSlashExtension';
+import { RichTextSlashMenu } from './RichTextSlashMenu';
 
 // ponytail: anti-write-back-loop guard — drawio loadedXml + loadedXmlRef
 // pattern, adapted for tiptap (no iframe). User edits update the ref ONLY
@@ -49,6 +57,7 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
       TaskItem.configure({ nested: true }),
       TableKit.configure({ table: { allowTableNodeSelection: true } }),
       RichTextImage,
+      RichTextSlashExtension,
     ],
     content: deserializeToContent(content) ?? emptyDoc(),
     onUpdate: ({ editor }) => {
@@ -87,11 +96,36 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
   // active-state (bold/italic/etc.) highlights update. editor.can() and
   // editor.isActive() are reactive across transactions; bumping a tick on
   // selectionUpdate is the minimal signal. Skipping would leave the toolbar
-  // stale until next keystroke.
+  // stale until next keystroke. The same tick recomputes the slash-menu state
+  // (storage is written here, not in a ProseMirror plugin — no extra dep).
+  //
+  // dismissedFromRef: after Esc closes the menu, the `/` + filter text is
+  // left in the doc; without this guard, the next transaction (e.g. cursor
+  // move) would re-evaluate computeSlashState, find the same trigger, and
+  // immediately reopen — defeating Esc. We suppress reopening until the
+  // trigger position changes.
   const [, setToolbarTick] = useState(0);
+  const [slashState, setSlashState] = useState<SlashCommandState>(INITIAL_SLASH_STATE);
+  const dismissedFromRef = useRef<number | null>(null);
   useEffect(() => {
     if (!editor) return;
-    const rerender = () => setToolbarTick((t) => t + 1);
+    const rerender = () => {
+      setToolbarTick((t) => t + 1);
+      const next = computeSlashState(editor);
+      const suppressed =
+        next.visible && dismissedFromRef.current === next.rangeFrom;
+      const effective = suppressed ? INITIAL_SLASH_STATE : next;
+      writeSlashState(editor, effective);
+      if (!suppressed) dismissedFromRef.current = null;
+      setSlashState((cur) =>
+        cur.visible === effective.visible &&
+        cur.rangeFrom === effective.rangeFrom &&
+        cur.rangeTo === effective.rangeTo &&
+        cur.filter === effective.filter
+          ? cur
+          : effective,
+      );
+    };
     editor.on('selectionUpdate', rerender);
     editor.on('transaction', rerender);
     return () => {
@@ -108,6 +142,16 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
           <EditorContent editor={editor} />
         </div>
       </div>
+      {editor && (
+        <RichTextSlashMenu
+          editor={editor}
+          state={slashState}
+          onClose={() => {
+            if (slashState.visible) dismissedFromRef.current = slashState.rangeFrom;
+            setSlashState(INITIAL_SLASH_STATE);
+          }}
+        />
+      )}
     </div>
   );
 }
