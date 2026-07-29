@@ -1060,3 +1060,37 @@ Move script runtime test result to its own line under the row (flex-col), wrap w
 ### Next Steps
 
 - None - task complete
+
+
+## Session 89: Rich-text slash command trigger button
+
+**Date**: 2026-07-30
+**Task**: Rich-text slash command trigger button
+**Package**: api
+**Branch**: `worktree-slash-command-trigger-button`
+
+### Summary
+
+Added a '/'-triggered slash command menu + toolbar trigger button (Cmd/Ctrl+/) to the Tiptap rich-text editor. 9 Tiptap-native block commands (H1/H2/H3, blockquote, code block, hr, bullet/ordered/task list) with filter + grouped list + arrow nav + viewport flip. No new deps — wrote a minimal Tiptap Extension instead of @tiptap/suggestion/tippy. 14 new unit tests for findSlashTrigger + filterItems. Typecheck clean. Merged to master + pushed.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `07a0068` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
