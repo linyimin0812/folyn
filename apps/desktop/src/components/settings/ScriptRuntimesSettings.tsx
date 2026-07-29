@@ -17,6 +17,7 @@ export function ScriptRuntimesSettings() {
   const runtimes = useAiConfigStore((s) => s.scriptRuntimes);
   const setRuntimePath = useAiConfigStore((s) => s.setRuntimePath);
   const [testStatus, setTestStatus] = useState<Record<string, TestStatus>>({});
+  const [detecting, setDetecting] = useState<Record<string, boolean>>({});
 
   return (
     <div className="mb-8">
@@ -34,8 +35,10 @@ export function ScriptRuntimesSettings() {
             key={r.id}
             runtime={r}
             testStatus={testStatus[r.id] ?? { testing: false }}
+            detecting={detecting[r.id] ?? false}
             onPathChange={(path) => setRuntimePath(r.id, path)}
             onDetect={async () => {
+              setDetecting((s) => ({ ...s, [r.id]: true }));
               try {
                 const { Command } = await import('@tauri-apps/plugin-shell');
                 const cmd = Command.create('claude-cli', ['-l', '-c', r.detectCommand]);
@@ -44,7 +47,9 @@ export function ScriptRuntimesSettings() {
                 if (output.code === 0 && detected) {
                   setRuntimePath(r.id, detected);
                 }
-              } catch {}
+              } catch {} finally {
+                setDetecting((s) => ({ ...s, [r.id]: false }));
+              }
             }}
             onTest={async () => {
               setTestStatus((s) => ({ ...s, [r.id]: { testing: true } }));
@@ -83,12 +88,14 @@ export function ScriptRuntimesSettings() {
 function RuntimeRow({
   runtime,
   testStatus,
+  detecting,
   onPathChange,
   onDetect,
   onTest,
 }: {
   runtime: RuntimeConfig;
   testStatus: TestStatus;
+  detecting: boolean;
   onPathChange: (path: string) => void;
   onDetect: () => Promise<void>;
   onTest: () => Promise<void>;
@@ -109,11 +116,19 @@ function RuntimeRow({
           autoCapitalize="off"
           spellCheck={false}
         />
-        <button className="btn btn-g btn-sm" title={t('settings:scriptRuntime.detectTitle')} onClick={onDetect}>
-          {t('settings:scriptRuntime.detect')}
+        <button className="btn btn-g btn-sm" style={{ minWidth: 56 }} disabled={detecting} title={t('settings:scriptRuntime.detectTitle')} onClick={onDetect}>
+          {detecting ? (
+            <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+          ) : t('settings:scriptRuntime.detect')}
         </button>
-        <button className="btn btn-g btn-sm" disabled={testStatus.testing} onClick={onTest}>
-          {testStatus.testing ? t('settings:scriptRuntime.test.testing') : t('settings:scriptRuntime.test.label')}
+        <button className="btn btn-g btn-sm" style={{ minWidth: 56 }} disabled={testStatus.testing} onClick={onTest}>
+          {testStatus.testing ? (
+            <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+          ) : t('settings:scriptRuntime.test.label')}
         </button>
         {testStatus.result && (
           <span
