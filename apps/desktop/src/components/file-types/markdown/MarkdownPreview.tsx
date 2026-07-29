@@ -463,7 +463,8 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
         ? children.find((c: any) => typeof c?.props?.className === 'string' && c.props.className.includes('language-'))
         : (typeof children?.props?.className === 'string' && children.props.className.includes('language-') ? children : null);
       const lang = langEl?.props?.className?.match(/language-([\w-]+)/)?.[1];
-      const sourceLine = (node?.properties?.['data-source-line'] ?? rest['data-source-line']) as number | undefined;
+      const rawLine = node?.properties?.['data-source-line'] ?? rest['data-source-line'];
+      const sourceLine = rawLine != null ? Number(rawLine) : undefined;
       return createElement(
         CodeBlockWrapper,
         { ...rest, lang, sourceLine, content, onChange },
@@ -493,6 +494,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
           jsx,
           jsxs,
           Fragment,
+          passNode: true,
           components: componentMap,
         } as any)
         .processSync(body);
