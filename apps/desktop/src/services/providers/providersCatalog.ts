@@ -116,3 +116,18 @@ export function buildPreviewUrl(base: string, path: string): string {
   const trimmed = base.endsWith('/') ? base.slice(0, -1) : base;
   return `${trimmed}${path}`;
 }
+
+/**
+ * Append `/v1` to base if it ends without a version segment. Mirrors the
+ * Rust `openai-completions` arm in chat.rs so the preview shows the URL
+ * rig will actually hit. Only call this for OpenAI-compat endpoints
+ * (`/chat/completions` path); anthropic/google/ollama paths carry their
+ * own version prefix.
+ */
+export function normalizeOpenAIBase(base: string): string {
+  const trimmed = base.replace(/\/+$/, '');
+  const lastSlash = trimmed.lastIndexOf('/');
+  const lastSegment = lastSlash >= 0 ? trimmed.slice(lastSlash + 1) : '';
+  const hasVersion = /^v\d+/.test(lastSegment);
+  return hasVersion ? trimmed : `${trimmed}/v1`;
+}

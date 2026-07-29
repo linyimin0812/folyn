@@ -437,10 +437,26 @@ pub async fn chat_stream(
             // the Responses API. Same agent/stream contract as the `_` arm
             // below — split to avoid a type clash between `Client` and
             // `CompletionsClient` in the same variable.
-            let base = params
+            let base_raw = params
                 .base_url
                 .clone()
                 .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
+            // ponytail: auto-append /v1 if base ends without a version
+            // segment. OpenAI-compat gateways (one-api / new-api / fastgpt)
+            // conventionally serve at /v1/...; users often type just the
+            // host. Leaves /vN (e.g. /v1, /v2, /v1beta) alone. Mirrored in
+            // Quill's ProviderDetailSection preview so the displayed URL
+            // matches what rig actually hits. Upgrade path: if a gateway
+            // uses a non-/v1 versionless URL scheme, surface that as a
+            // separate match arm rather than extending this heuristic.
+            let base = {
+                let trimmed = base_raw.trim_end_matches('/');
+                let last_seg = trimmed.rsplit('/').next().unwrap_or("");
+                let has_version = last_seg.starts_with('v')
+                    && last_seg.len() > 1
+                    && last_seg.as_bytes()[1].is_ascii_digit();
+                if has_version { base_raw } else { format!("{}/v1", trimmed) }
+            };
             let client = openai::Client::builder()
                 .api_key(params.api_key.clone())
                 .base_url(base)

@@ -11,7 +11,7 @@ import {
   providerDisplayName,
   type ProviderEntry,
 } from '@/services/providers/catalog';
-import { buildPreviewUrl } from '@/services/providers/providersCatalog';
+import { buildPreviewUrl, normalizeOpenAIBase } from '@/services/providers/providersCatalog';
 import type { Model } from '@/services/modelRegistry/types';
 import type { ChatTestStatus } from './TestChatModal';
 import { Toggle } from '../primitives';
@@ -214,9 +214,16 @@ export function ProviderDetailSection({
         {(() => {
           const base = chatBaseUrl || providersJsonBaseUrl;
           if (!base || !providersJsonPath) return null;
+          // Mirror Rust's openai-completions arm: auto-append /v1 when
+          // base lacks a version segment. Only for the chat-completions
+          // path (openai-responses / anthropic / others carry their own
+          // version in the path).
+          const previewBase = providersJsonPath === '/chat/completions'
+            ? normalizeOpenAIBase(base)
+            : base;
           return (
             <div className="text-[10.5px] text-t3 mt-1 break-all">
-              {t('settings:models.preview', { url: buildPreviewUrl(base, providersJsonPath) })}
+              {t('settings:models.preview', { url: buildPreviewUrl(previewBase, providersJsonPath) })}
             </div>
           );
         })()}
