@@ -582,70 +582,97 @@ export function ModelServicesSettings() {
               </div>
             </div>
 
-            {/* Selected models list — ids the user picked via the model picker. */}
+            {/* Selected models list — ids the user picked via the model picker, grouped to mirror the picker. */}
             {selectedModelIds.length > 0 && (() => {
-              const isCollapsed = manualCollapsed.has('__selectedModels__');
+              // ponytail: group by m?.group ?? familyGroup(mid); ids without a fetched Model fall back to familyGroup.
+              const groups = (() => {
+                const map = new Map<string, string[]>();
+                for (const mid of selectedModelIds) {
+                  const m = modelsForCurrent.find((x) => x.id === mid);
+                  const g = m?.group ?? familyGroup(mid);
+                  const arr = map.get(g) ?? [];
+                  arr.push(mid);
+                  map.set(g, arr);
+                }
+                return Array.from(map.entries()).map(([name, items]) => ({ name, items }));
+              })();
               return (
                 <div className="mt-2 flex flex-col gap-2">
-                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                    <div
-                      className="flex items-center justify-between px-4 py-2 bg-gray-50/80 border-b border-gray-100 select-none cursor-pointer hover:bg-gray-100/80 transition-colors"
-                      onClick={() => setManualCollapsed((prev) => {
-                        const next = new Set(prev);
-                        if (next.has('__selectedModels__')) next.delete('__selectedModels__');
-                        else next.add('__selectedModels__');
-                        return next;
-                      })}
-                    >
-                      <div className="flex items-center gap-2">
-                        <svg
-                          className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
+                  {groups.map((g) => {
+                    const key = `__selectedModels__${g.name}`;
+                    const isCollapsed = manualCollapsed.has(key);
+                    return (
+                      <div key={g.name} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                        <div
+                          className="flex items-center justify-between px-4 py-2 bg-gray-50/80 border-b border-gray-100 select-none cursor-pointer hover:bg-gray-100/80 transition-colors"
+                          onClick={() => setManualCollapsed((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(key)) next.delete(key);
+                            else next.add(key);
+                            return next;
+                          })}
                         >
-                          <polyline points="6 9 12 15 18 9" />
-                        </svg>
-                        <span className="font-bold text-[length:calc(var(--ui-font-size)-2.5px)] font-ui text-gray-800">{t('settings:models.selectedModels.label')}</span>
-                        <span className="text-[10.5px] text-gray-400">{selectedModelIds.length}</span>
-                      </div>
-                    </div>
-                    {!isCollapsed && (
-                      <div className="bg-white">
-                        {selectedModelIds.map((mid, idx) => {
-                          const isSelected = mid === chatModel;
-                          return (
-                            <div
-                              key={mid}
-                              className={`flex items-center justify-between px-4 py-2.5 hover:bg-gray-50/50 transition-colors cursor-pointer ${
-                                idx < selectedModelIds.length - 1 ? 'border-b border-gray-100' : ''
-                              }`}
-                              onClick={() => setChatModel(mid)}
+                          <div className="flex items-center gap-2">
+                            <svg
+                              className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                             >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <ModelAvatar id={mid} />
-                                <span className={`font-semibold text-[length:calc(var(--ui-font-size)-2px)] font-ui truncate ${isSelected ? 'text-emerald-600' : 'text-gray-800'}`}>
-                                  {mid}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                {isSelected && (
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="20 6 9 17 4 12" />
-                                  </svg>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                            <span className="font-bold text-[length:calc(var(--ui-font-size)-2.5px)] font-ui text-gray-800">{g.name}</span>
+                            <span className="text-[10.5px] text-gray-400">{g.items.length}</span>
+                          </div>
+                        </div>
+                        {!isCollapsed && (
+                          <div className="bg-white">
+                            {g.items.map((mid, idx) => {
+                              const isSelected = mid === chatModel;
+                              const m = modelsForCurrent.find((x) => x.id === mid);
+                              return (
+                                <div
+                                  key={mid}
+                                  className={`flex items-center justify-between px-4 py-2.5 hover:bg-gray-50/50 transition-colors cursor-pointer ${
+                                    idx < g.items.length - 1 ? 'border-b border-gray-100' : ''
+                                  }`}
+                                  onClick={() => setChatModel(mid)}
+                                >
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <ModelAvatar id={mid} />
+                                    <span className={`font-semibold text-[length:calc(var(--ui-font-size)-2px)] font-ui truncate ${isSelected ? 'text-emerald-600' : 'text-gray-800'}`}>
+                                      {mid}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-[18px] shrink-0">
+                                    {m && <CapabilityPills capabilities={m.capabilities} />}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeSelectedModelId(chatProvider, mid);
+                                      }}
+                                      title={t('settings:models.picker.remove')}
+                                      className="text-emerald-600 hover:text-emerald-700 transition-colors"
+                                    >
+                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="5" y1="12" x2="19" y2="12" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
               );
             })()}
