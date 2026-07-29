@@ -1026,3 +1026,37 @@ Audited PR3 of refactor-provider-config-storage-to-quill-dir. No incremental cod
 ### Next Steps
 
 - None - task complete
+
+
+## Session 88: Script runtime test result layout fix
+
+**Date**: 2026-07-29
+**Task**: Script runtime test result layout fix
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Move script runtime test result to its own line under the row (flex-col), wrap with break-word/pre-wrap instead of horizontal scroll. Fix mismatched quote that broke babel parse.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c695243` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
