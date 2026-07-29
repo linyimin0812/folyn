@@ -15,6 +15,7 @@ interface TestChatModalProps {
   testModelId: string;
   setTestModelId: (id: string) => void;
   chatProvider: string;
+  chatModel: string;
   chatApiKey: string;
   chatBaseUrl: string;
   chatAzureDeploymentId: string;
@@ -33,6 +34,7 @@ export function TestChatModal({
   testModelId,
   setTestModelId,
   chatProvider,
+  chatModel,
   chatApiKey,
   chatBaseUrl,
   chatAzureDeploymentId,
@@ -71,7 +73,12 @@ export function TestChatModal({
               value={testModelId}
               onChange={(e) => setTestModelId(e.target.value)}
             >
-              {selectedModelIds.map((mid) => (
+              {/* ponytail: chatModel (manually-added, not in selectedModelIds)
+                  leads the dropdown so the user sees what they're testing. */}
+              {(chatModel && !selectedModelIds.includes(chatModel)
+                ? [chatModel, ...selectedModelIds]
+                : selectedModelIds
+              ).map((mid) => (
                 <option key={mid} value={mid}>{mid}</option>
               ))}
             </select>

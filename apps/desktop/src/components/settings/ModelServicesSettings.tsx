@@ -166,7 +166,10 @@ export function ModelServicesSettings() {
     chatTestStatus.testing
     || !chatApiKey
     || (!PROVIDER_CATALOG.some((p) => p.id === chatProvider) && !isCustom)
-    || selectedModelIds.length === 0;
+    // ponytail: test needs at least one model to send. Selected models
+    // come from the picker; manually-added models set chatModel without
+    // entering selectedModelIds. Accept either.
+    || (!chatModel && selectedModelIds.length === 0);
 
   return (
     <div className="h-full flex flex-col">
@@ -284,6 +287,7 @@ export function ModelServicesSettings() {
           testModelId={testModelId}
           setTestModelId={setTestModelId}
           chatProvider={chatProvider}
+          chatModel={chatModel}
           chatApiKey={chatApiKey}
           chatBaseUrl={chatBaseUrl}
           chatAzureDeploymentId={chatAzureDeploymentId}
@@ -331,6 +335,7 @@ export function ModelServicesSettings() {
           onClose={() => setManualModalOpen(false)}
           onSave={({ id, displayName, group }) => {
             addManualModel(chatProvider, { id, displayName, group });
+            addSelectedModelId(chatProvider, id);
             setManualModalOpen(false);
           }}
         />
