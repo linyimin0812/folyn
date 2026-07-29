@@ -328,6 +328,15 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .code-block-wrapper:hover .code-copy-btn { opacity: .7; }
 .code-copy-btn:hover { opacity: 1 !important; color: var(--t1); background: var(--hov); }
 .code-copy-btn.copied { opacity: 1 !important; color: var(--green); }
+.code-run-btn { position: absolute; top: 4px; right: 32px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 3px; line-height: 1; background: none; border: none; cursor: pointer; opacity: 0; transition: opacity .15s, background .12s; z-index: 3; }
+.code-block-wrapper:hover .code-run-btn { opacity: .9; }
+.code-run-btn:hover { opacity: 1 !important; background: var(--hov); }
+.code-run-output { position: relative; border-top: 1px solid var(--brd); background: var(--surf2, var(--surf)); padding: 8px 12px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; color: var(--t2); max-height: 240px; overflow: auto; }
+.code-run-output pre { margin: 0; white-space: pre-wrap; word-break: break-word; background: none; border: none; padding: 0; }
+.code-run-stderr { color: var(--red, #f06a6a); }
+.code-run-status { display: flex; align-items: center; gap: 6px; color: var(--t3); font-size: 11px; margin-top: 4px; }
+.code-sync-btn { position: absolute; top: 6px; right: 6px; padding: 2px; line-height: 1; background: none; border: none; cursor: pointer; color: var(--t3); opacity: .7; transition: opacity .12s, color .12s; z-index: 2; }
+.code-sync-btn:hover { opacity: 1; color: var(--t1); }
 .md-preview blockquote { border-left: 3px solid var(--acc); padding: 4px 16px; margin: 12px 0; color: var(--t2); background: var(--surf); border-radius: 0 6px 6px 0; }
 .md-preview ul { padding-left: 24px; margin: 8px 0; list-style-type: disc; }
 .md-preview ol { padding-left: 24px; margin: 8px 0; list-style-type: decimal; }

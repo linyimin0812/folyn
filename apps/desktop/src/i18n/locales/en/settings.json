@@ -150,6 +150,20 @@
       "description": "AI tools edit documents by calling a local CLI (e.g. Claude Code). Make sure the corresponding CLI is installed. Edits are shown as diffs and applied after confirmation."
     }
   },
+  "scriptRuntime": {
+    "title": "Script Runtimes",
+    "description": "Run code blocks in markdown preview",
+    "usageHint": "Click Run on a ```bash / ```js / ```python block in markdown preview to execute it. Output is written back as a > Result: blockquote.",
+    "detect": "Detect",
+    "detectTitle": "Auto-detect binary path via /bin/sh -lc which <bin>",
+    "test": {
+      "label": "Test",
+      "testing": "Testing…",
+      "success": "OK",
+      "exitCode": "Exit code {{code}}",
+      "cannotRun": "Cannot run: {{error}}"
+    }
+  },
   "models": {
     "title": "Model Services",
     "description": "Configure LLM providers and models for chat / agent conversations",

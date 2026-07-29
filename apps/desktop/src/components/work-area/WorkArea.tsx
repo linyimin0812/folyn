@@ -27,6 +27,7 @@ export function WorkArea() {
   const markTabDirty = useEditorStore((state) => state.markTabDirty);
   const isFileLoading = useEditorStore((state) => state.isFileLoading);
   const externalContentVersion = useDiffReviewStore((state) => state.externalContentVersion);
+  const setContentExternal = useDiffReviewStore((state) => state.setContentExternal);
 
   // Filter tabs by the active activity panel
   const tabs = allTabs.filter((t) => t.activity === activePanel);
@@ -380,7 +381,7 @@ export function WorkArea() {
           viewMode={viewMode}
           previewFlex={previewFlex}
           onScrollToHeading={scrollEditorToHeading}
-          onChange={(content) => updateTabContent(activeTab.id, content)}
+          onChange={(content) => setContentExternal(activeTab.id, content)}
         />
       )}
 

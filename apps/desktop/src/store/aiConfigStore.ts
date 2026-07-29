@@ -18,6 +18,10 @@ import {
   type ProviderSettingsFile,
 } from '@/services/providers/providerConfigStorage';
 import { storageClient } from '@/utils/storageClient';
+import {
+  DEFAULT_SCRIPT_RUNTIMES,
+  type RuntimeConfig,
+} from '@/services/scriptRunner/scriptRunnerService';
 
 // ponytail: ChatProvider is a string literal union of the 20 catalog ids.
 // The 3 old ids ('anthropic' | 'openai' | 'anthropic-compatible') are kept
@@ -71,6 +75,8 @@ export const PERSIST_KEYS_AI_CONFIG = [
   // ponytail: migrated flag MUST be persisted — without it, every boot
   // re-runs migration and clobbers user data. Was missing (Bug #2 root cause).
   PROVIDER_CONFIG_MIGRATED_KEY,
+  // Code-block script runner runtimes (shell/node/python defaults).
+  'scriptRuntimes',
 ] as const;
 
 export interface AiConfigState {
@@ -93,6 +99,9 @@ export interface AiConfigState {
   providerSettings: Record<string, ProviderSettings>;
   // Per-provider manually-added models (merged into the picker list).
   manualModels: Record<string, ManualModel[]>;
+  // Code-block script runner runtimes. Default = shell/node/python.
+  // User can override binaryPath per runtime via Editor settings tab.
+  scriptRuntimes: RuntimeConfig[];
 
   setCliAdapter: (v: string) => void;
   setCliPath: (v: string) => void;
@@ -133,6 +142,9 @@ export interface AiConfigState {
    *  No-op if absent. Persists to disk. Called by the model picker on
    *  toggle-off; does NOT clear `chatModel`. */
   removeSelectedModelId: (providerId: string, modelId: string) => void;
+
+  /** Set the binary path for a script runtime (shell/node/python/...). */
+  setRuntimePath: (runtimeId: string, path: string) => void;
 
   /** Returns provider ids that have a non-empty apiKey (or don't require one). */
   configuredProviderIds: () => string[];
@@ -208,6 +220,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   customerProviders: {},
   providerSettings: {},
   manualModels: {},
+  scriptRuntimes: DEFAULT_SCRIPT_RUNTIMES,
 
   setCliAdapter: (v) => {
     set((s) => {
@@ -443,6 +456,15 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     void providerConfigStorage.setProviderSettings(providerId, next[providerId]!);
   },
 
+  setRuntimePath: (runtimeId, path) => {
+    set((s) => ({
+      scriptRuntimes: s.scriptRuntimes.map((r) =>
+        r.id === runtimeId ? { ...r, binaryPath: path } : r,
+      ),
+    }));
+    schedulePersist();
+  },
+
   hydrate: (blob) => {
     const patch: Partial<AiConfigState> = {};
     if (blob.cliAdapter !== undefined) patch.cliAdapter = blob.cliAdapter as string;
@@ -462,6 +484,11 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     if (blob.chatModel !== undefined) patch.chatModel = blob.chatModel as string;
 
     patch.manualModels = isManualModelsMap(blob.manualModels) ? blob.manualModels : {};
+
+    // Script runtimes: merge persisted binaryPath overrides onto defaults.
+    // Unknown persisted ids (removed in future migrations) are dropped; new
+    // default ids not in the blob keep their default binaryPath.
+    patch.scriptRuntimes = mergeScriptRuntimes(blob.scriptRuntimes);
 
     if (Object.keys(patch).length > 0) set(patch);
   },
@@ -560,6 +587,22 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
 // ponytail: re-export getProviderEntry so callers needing catalog metadata
 // can grab it without a second import. One fewer file touched per caller.
 export { getProviderEntry };
+
+function mergeScriptRuntimes(persisted: unknown): RuntimeConfig[] {
+  if (!Array.isArray(persisted)) return DEFAULT_SCRIPT_RUNTIMES;
+  const byId = new Map<string, RuntimeConfig>();
+  for (const r of DEFAULT_SCRIPT_RUNTIMES) byId.set(r.id, { ...r });
+  for (const item of persisted) {
+    if (!item || typeof item !== 'object') continue;
+    const r = item as Partial<RuntimeConfig>;
+    if (typeof r.id !== 'string' || typeof r.binaryPath !== 'string') continue;
+    const existing = byId.get(r.id);
+    if (existing) {
+      existing.binaryPath = r.binaryPath;
+    }
+  }
+  return Array.from(byId.values());
+}
 
 registerPersistSlice({
   keys: PERSIST_KEYS_AI_CONFIG,

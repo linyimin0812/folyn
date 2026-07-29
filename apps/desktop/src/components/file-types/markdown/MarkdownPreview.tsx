@@ -19,6 +19,13 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { readFileByRoute } from '@/services/editorIoService';
 import { useEditorStore } from '@/store/editorStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
+import {
+  formatResultBlock,
+  mapLanguageToRuntime,
+  replaceOrAppendResultBlock,
+  runScript,
+} from '@/services/scriptRunner/scriptRunnerService';
 import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview';
 import { FileIcon } from '@/components/icons/FileIcon';
 /**
@@ -151,11 +158,48 @@ function extractTextContent(children: any): string {
 const COPY_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 const CHECK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
 
-/** Code block wrapper component — renders line numbers + copy button via React */
-function CodeBlockWrapper({ children, node, ...rest }: any) {
+// Run / Stop button SVGs. Colors are spec'd: play = #59A869, pause = #C7222D.
+const RUN_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 5v14l12-7z"/></svg>';
+const STOP_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
+// ponytail: lucide loader — shown while running (replaces the static pause icon).
+const SPINNER_SVG = '<svg class="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>';
+// ponytail: lucide send — sync result to editor.
+const SYNC_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-2-9-9-2Z"/><path d="M22 2 11 13"/></svg>';
+const RUN_COLOR = '#59A869';
+const STOP_COLOR = '#C7222D';
+
+interface CodeBlockWrapperProps {
+  children?: React.ReactNode;
+  node?: any;
+  lang?: string;
+  sourceLine?: number;
+  content?: string;
+  onChange?: (content: string) => void;
+  [key: string]: any;
+}
+
+/** Code block wrapper component — renders line numbers + copy button via React.
+ *  Also renders a Run/Stop button when the fence language maps to a configured
+ *  script runtime. Run output streams into a panel below the code block. */
+function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange, ...rest }: CodeBlockWrapperProps) {
   const preRef = useRef<HTMLPreElement>(null);
   const copyBtnRef = useRef<HTMLButtonElement>(null);
   const [lineCount, setLineCount] = useState(0);
+
+  const runtimes = useAiConfigStore((s) => s.scriptRuntimes);
+  const runtime = useMemo(
+    () => mapLanguageToRuntime(lang, runtimes),
+    [lang, runtimes],
+  );
+
+  const [running, setRunning] = useState(false);
+  const [stopped, setStopped] = useState(false);
+  const [stdout, setStdout] = useState('');
+  const [stderr, setStderr] = useState('');
+  const [exitCode, setExitCode] = useState<number | null>(null);
+  const [pendingResult, setPendingResult] = useState<string | null>(null);
+  const [synced, setSynced] = useState(false);
+  const runningRef = useRef<{ stop: () => Promise<void> } | null>(null);
 
   useEffect(() => {
     if (!preRef.current) return;
@@ -165,6 +209,16 @@ function CodeBlockWrapper({ children, node, ...rest }: any) {
     while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
     setLineCount(lines.length);
   }, [children]);
+
+  // Reset output panel when the code block content changes (e.g. user edits).
+  useEffect(() => {
+    setStdout('');
+    setStderr('');
+    setExitCode(null);
+    setStopped(false);
+    setPendingResult(null);
+    setSynced(false);
+  }, [lineCount]);
 
   const handleCopy = useCallback(() => {
     const codeEl = preRef.current?.querySelector('code');
@@ -180,6 +234,64 @@ function CodeBlockWrapper({ children, node, ...rest }: any) {
       }, 1500);
     });
   }, []);
+
+  const handleRun = useCallback(async () => {
+    if (!runtime || running || !preRef.current || !content || sourceLine == null) return;
+    const codeEl = preRef.current.querySelector('code');
+    const code = codeEl?.textContent ?? preRef.current?.textContent ?? '';
+    setRunning(true);
+    setStopped(false);
+    setStdout('');
+    setStderr('');
+    setExitCode(null);
+    setPendingResult(null);
+    setSynced(false);
+    let outBuf = '';
+    let errBuf = '';
+    try {
+      const controller = await runScript(runtime, code, {
+        onStdout: (line) => {
+          outBuf += line + '\n';
+          setStdout(outBuf);
+        },
+        onStderr: (line) => {
+          errBuf += line + '\n';
+          setStderr(errBuf);
+        },
+        onClose: (code) => {
+          setExitCode(code);
+          setRunning(false);
+          runningRef.current = null;
+          // Stash the formatted result block; user syncs to editor explicitly.
+          const block = formatResultBlock(outBuf, errBuf, code, false);
+          setPendingResult(block);
+        },
+      });
+      runningRef.current = controller;
+    } catch (err) {
+      setRunning(false);
+      setStderr((s) => s + `\n[error: ${String(err)}]`);
+    }
+  }, [runtime, running, content, sourceLine, onChange]);
+
+  const handleStop = useCallback(async () => {
+    await runningRef.current?.stop();
+    setRunning(false);
+    setStopped(true);
+    runningRef.current = null;
+    const block = formatResultBlock(stdout, stderr, exitCode, true);
+    setPendingResult(block);
+  }, [stdout, stderr, exitCode]);
+
+  const handleSync = useCallback(() => {
+    if (!pendingResult || !content || sourceLine == null || !onChange) return;
+    const next = replaceOrAppendResultBlock(content, sourceLine, pendingResult);
+    if (next !== content) onChange(next);
+    setSynced(true);
+    setTimeout(() => setSynced(false), 1500);
+  }, [pendingResult, content, sourceLine, onChange]);
+
+  const hasOutput = stdout !== '' || stderr !== '' || exitCode !== null || stopped;
 
   return (
     <div className="code-block-wrapper">
@@ -198,11 +310,39 @@ function CodeBlockWrapper({ children, node, ...rest }: any) {
         onClick={handleCopy}
         dangerouslySetInnerHTML={{ __html: COPY_SVG }}
       />
+      {runtime && (
+        <button
+          className="code-run-btn"
+          type="button"
+          title={running ? 'Stop' : 'Run'}
+          onClick={running ? handleStop : handleRun}
+          style={{ color: running || stopped ? STOP_COLOR : RUN_COLOR }}
+          dangerouslySetInnerHTML={{ __html: running ? SPINNER_SVG : (stopped ? STOP_SVG : RUN_SVG) }}
+        />
+      )}
+      {runtime && hasOutput && (
+        <div className="code-run-output">
+          {stdout && <pre className="code-run-stdout">{stdout}</pre>}
+          {stderr && <pre className="code-run-stderr">{stderr}</pre>}
+          <div className="code-run-status">
+            {stopped ? '[stopped]' : exitCode !== null ? `[exit ${exitCode}]` : null}
+          </div>
+          {!running && pendingResult && onChange && (
+            <button
+              className="code-sync-btn"
+              type="button"
+              title="Sync to editor"
+              onClick={handleSync}
+              dangerouslySetInnerHTML={{ __html: synced ? CHECK_SVG : SYNC_SVG }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-export function MarkdownPreview({ content, filePath, vaultRoot }: import('../types').PreviewProps) {
+export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: import('../types').PreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [resolvedVaultRoot, setResolvedVaultRoot] = useState('');
   const [assetBase, setAssetBase] = useState('');
@@ -313,18 +453,29 @@ export function MarkdownPreview({ content, filePath, vaultRoot }: import('../typ
     };
 
     map['pre'] = function PreWithMermaid(props: any) {
-      const { children, ...rest } = props;
+      const { children, node, ...rest } = props;
       const codeChild = Array.isArray(children)
         ? children.find((c: any) => c?.props?.className?.includes('language-mermaid'))
         : children?.props?.className?.includes('language-mermaid') ? children : null;
       if (codeChild) {
         return createElement(MermaidBlock, null, codeChild.props.children);
       }
-      return createElement(CodeBlockWrapper, rest, children);
+      // Detect fence language + source line for run/write-back.
+      const langEl = Array.isArray(children)
+        ? children.find((c: any) => typeof c?.props?.className === 'string' && c.props.className.includes('language-'))
+        : (typeof children?.props?.className === 'string' && children.props.className.includes('language-') ? children : null);
+      const lang = langEl?.props?.className?.match(/language-([\w-]+)/)?.[1];
+      const rawLine = node?.properties?.['data-source-line'] ?? rest['data-source-line'];
+      const sourceLine = rawLine != null ? Number(rawLine) : undefined;
+      return createElement(
+        CodeBlockWrapper,
+        { ...rest, lang, sourceLine, content, onChange },
+        children,
+      );
     };
 
     return map;
-  }, [filePath, vaultRoot, resolvedVaultRoot]);
+  }, [filePath, vaultRoot, resolvedVaultRoot, content, onChange]);
 
   const { meta, body, frontmatterLineCount } = useMemo(() => parseFrontmatter(content), [content]);
 
@@ -345,6 +496,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot }: import('../typ
           jsx,
           jsxs,
           Fragment,
+          passNode: true,
           components: componentMap,
         } as any)
         .processSync(body);
