@@ -1,1 +1,3 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "review checklist,验证重构未引入违规"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "验证拆分后组件符合 props/命名/组合约定"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "验证拆分后类型保持,无 any/隐式 any"}

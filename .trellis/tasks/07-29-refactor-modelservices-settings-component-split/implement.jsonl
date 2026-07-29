@@ -1,1 +1,5 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "新建 model-services/ 子目录布局依据,确认拆分后文件归属与命名约定"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "组件拆分、props 接口、组合模式、命名导出等约定"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "ProviderDetailSection 继承 ~20 个 Zustand 选择器,需遵循 selector 粒度与本地 state 划分约定"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "禁用模式与 review checklist,确保重构不引入违规"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "重构核心是抽取共享 helpers,避免循环依赖,遵循 code reuse 思路"}
