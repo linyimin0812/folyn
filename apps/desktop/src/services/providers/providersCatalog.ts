@@ -12,8 +12,14 @@
 import providersJson from '@/assets/providers/providers.json';
 
 const ENDPOINT_PATH: Record<string, string> = {
-  'openai-chat-completions': '/v1/chat/completions',
-  'openai-responses': '/v1/responses',
+  // ponytail: paths match rig's actual completion_path emits, not the
+  // canonical OpenAI docs URL. rig appends path to base_url as-is — so
+  // 'openai-chat-completions' emits "/chat/completions" and expects the
+  // user's base to include "/v1" (e.g. https://api.openai.com/v1).
+  // Anthropic/Google/Ollama paths include their own version prefix
+  // because their rig clients emit the full path.
+  'openai-chat-completions': '/chat/completions',
+  'openai-responses': '/responses',
   'anthropic-messages': '/v1/messages',
   'cohere': '/v2/chat',
   'google-generate-content': '/v1beta/models',
@@ -97,17 +103,16 @@ export function getProviderModelsUrl(catalogId: string): string | null {
 }
 
 /**
- * Build the preview URL by appending `path` to `base` with two special cases:
+ * Build the preview URL by appending `path` to `base`.
  *   1. base already contains the full path → return base as-is (user pasted a
  *      complete endpoint URL; don't double-append).
- *   2. base ends with `/v1` (optional trailing slash) → strip that `/v1` first
- *      so e.g. `https://api.openai.com/v1` + `/v1/responses` becomes
- *      `https://api.openai.com/v1/responses`, not `…/v1/v1/responses`.
- * Other bases just get path appended (a trailing slash is trimmed to avoid //).
+ *   2. otherwise trim a trailing slash and append path.
+ * Matches rig's behavior: rig appends `completion_path` (e.g. "/chat/completions")
+ * to base_url as-is — no /v1 stripping. If the user's base lacks "/v1", the
+ * preview shows the missing /v1 (surfaces the problem instead of hiding it).
  */
 export function buildPreviewUrl(base: string, path: string): string {
   if (base.includes(path)) return base;
-  const stripped = base.replace(/\/v1\/?$/, '');
-  const trimmedTrailingSlash = stripped.endsWith('/') ? stripped.slice(0, -1) : stripped;
-  return `${trimmedTrailingSlash}${path}`;
+  const trimmed = base.endsWith('/') ? base.slice(0, -1) : base;
+  return `${trimmed}${path}`;
 }
