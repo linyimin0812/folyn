@@ -22,11 +22,12 @@ vi.mock('@tauri-apps/plugin-shell', () => ({
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
   writeTextFile: vi.fn().mockResolvedValue(undefined),
-  removeFile: vi.fn().mockResolvedValue(undefined).mockRejectedValueOnce(new Error('gone')),
+  remove: vi.fn().mockResolvedValue(undefined),
+  mkdir: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@tauri-apps/api/path', () => ({
-  tempDir: vi.fn().mockResolvedValue('/tmp'),
+  appDataDir: vi.fn().mockResolvedValue('/appdata'),
   join: vi.fn(async (...parts: string[]) => parts.join('/')),
 }));
 
