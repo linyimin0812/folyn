@@ -3,13 +3,29 @@ import Image from '@tiptap/extension-image';
 import { ReactNodeViewRenderer, NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
-import { Image as ImageIcon } from 'lucide-react';
+import {
+  Image as ImageIcon,
+  Trash2,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  MessageSquareText,
+  Download,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useVaultStore } from '@/store/vaultStore';
 import { useVaultConfigStore } from '@/store/vaultConfigStore';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { isTauri } from '@/utils/platform';
-import { resolveVaultRelativePath, isLoadableUrlScheme, nextResizeWidth } from './richTextContent';
+import {
+  resolveVaultRelativePath,
+  isLoadableUrlScheme,
+  nextResizeWidth,
+  figureHTML,
+  IMAGE_MIN_WIDTH,
+  IMAGE_KBD_STEP,
+} from './richTextContent';
 
 // ponytail: image vault-asset persistence. The disk format stores a
 // vault-relative `src` (e.g. `assets/images/<sha1>.png`) so the doc is portable
@@ -182,12 +198,44 @@ function imagePasteDropPlugin(): Plugin {
 // reads the store reactively and re-renders. This mirrors MarkdownPreview's
 // resolvedVaultRoot state, just per-image.
 
-function RichTextImageView({ node, updateAttributes, selected }: NodeViewProps) {
+// ponytail: Phase 2/3 NodeView. Restructured to <figure> wrapper so the
+// floating toolbar, drag grips, img, and figcaption all anchor to one
+// positioned container. Alignment via Tailwind margin utilities on the
+// figure (mr-auto / mx-auto / ml-auto) — no inline styles, no extra CSS.
+// Caption is a contentEditable <figcaption> that commits on blur (one
+// transaction = one undo step per caption edit session). A dirtyRef guards
+// against React clobbering the textContent mid-edit on incidental parent
+// re-renders.
+//
+// Read-only safety: grips, caption contentEditable, and the mutating toolbar
+// buttons (delete/align/caption-toggle) are gated on `editor.isEditable`.
+// Download stays available in read-only (doesn't mutate the doc).
+
+type Align = 'left' | 'center' | 'right';
+
+const ALIGN_CLASS: Record<Align, string> = {
+  left: 'mr-auto',
+  center: 'mx-auto',
+  right: 'ml-auto',
+};
+
+function RichTextImageView({
+  node,
+  updateAttributes,
+  selected,
+  editor,
+  deleteNode,
+}: NodeViewProps) {
   const src = (node.attrs.src as string) ?? '';
   const alt = (node.attrs.alt as string) ?? '';
   const widthAttr = node.attrs.width as number | null;
+  const dataAlign = (node.attrs.dataAlign as Align | null) ?? null;
+  const caption = (node.attrs.caption as string | null) ?? null;
+  const captionOn = caption != null;
+  const editable = !!editor?.isEditable;
   const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
   const [resolvedRoot, setResolvedRoot] = useState('');
+  const [naturalWidth, setNaturalWidth] = useState(0);
   useEffect(() => {
     let cancelled = false;
     if (!vaultRoot) {
@@ -205,30 +253,14 @@ function RichTextImageView({ node, updateAttributes, selected }: NodeViewProps) 
   }, [vaultRoot]);
   const url = useMemo(() => {
     if (!src) return '';
-    // ponytail: URL-scheme srcs (http/https/data/asset/tauri/blob) load
-    // directly — do NOT feed them to convertFileSrc, which would mangle
-    // `https://example.com/x.png` into `asset://localhost/https%3A...`.
-    // Mirrors MarkdownPreview's VaultImage short-circuit. Only vault-relative
-    // `assets/...` and absolute filesystem paths go through convertFileSrc.
     if (isLoadableUrlScheme(src)) return src;
-    // ponytail: gate vault-relative srcs on resolvedRoot — before homeDir()
-    // resolves, the NodeView would otherwise fall through to
-    // convertFileSrc(rawSrc) and produce an out-of-scope
-    // `asset://localhost/<encoded raw src>` URL that 403s. Render the
-    // placeholder for the brief async window instead.
     if (!resolvedRoot) return '';
     const abs = resolveVaultRelativePath(src, resolvedRoot);
     if (!abs) return '';
     return isTauri() ? convertFileSrc(abs) : abs;
   }, [src, resolvedRoot]);
 
-  // ponytail: Phase 1 drag-to-resize. Two grips (left/right) on the image,
-  // shown on hover or while the node is selected. Dragging sets img.style.width
-  // directly (no React state churn mid-drag); on pointer-up the final width is
-  // committed to the `width` node attr via updateAttributes, which serializes
-  // to disk as part of the tiptap JSON (no manual disk logic). maxWidth caps
-  // at naturalWidth so the user can't blur-upscale beyond native resolution.
-  // Height stays `auto` so aspect ratio is preserved by the browser.
+  // --- Phase 1 drag-to-resize (unchanged logic) -------------------------
   const imgRef = useRef<HTMLImageElement>(null);
   const dragStateRef = useRef<{
     side: 'left' | 'right';
@@ -240,16 +272,19 @@ function RichTextImageView({ node, updateAttributes, selected }: NodeViewProps) 
 
   const onHandlePointerDown = useCallback(
     (e: React.PointerEvent, side: 'left' | 'right') => {
-      // ponytail: stop propagation + preventDefault so the pointerdown does
-      // NOT bubble to the NodeViewWrapper's data-drag-handle → no node-drag.
       e.preventDefault();
       e.stopPropagation();
       const img = imgRef.current;
       if (!img) return;
       const rect = img.getBoundingClientRect();
-      // naturalWidth = 0 before img load; the user can't grip an unloaded
-      // image (no rect), so this fallback is defensive only.
-      const maxWidth = img.naturalWidth || rect.width || 1;
+      // ponytail: cap drag width at min(naturalWidth, containerWidth) so the
+      // image can't widen past the editor content area (no horizontal scroll).
+      // containerWidth = the .ProseMirror editable's clientWidth (the max-w
+      // wrapper in RichTextEditor.tsx constrains it to 760px - padding).
+      const containerEl = img.closest('.ProseMirror') as HTMLElement | null;
+      const containerWidth = containerEl?.clientWidth ?? rect.width;
+      const natural = img.naturalWidth || rect.width || 1;
+      const maxWidth = Math.min(natural, containerWidth);
       dragStateRef.current = { side, startX: e.clientX, startWidth: rect.width, maxWidth };
       setDragging(true);
       (e.currentTarget as Element).setPointerCapture(e.pointerId);
@@ -262,7 +297,14 @@ function RichTextImageView({ node, updateAttributes, selected }: NodeViewProps) 
     if (!st) return;
     const next = nextResizeWidth(st.side, st.startWidth, e.clientX - st.startX, st.maxWidth);
     const img = imgRef.current;
-    if (img) img.style.width = `${next}px`;
+    if (!img) return;
+    img.style.width = `${next}px`;
+    // ponytail: sync figure width to img so the selected-node ring follows
+    // the live drag (figure.style.width is otherwise driven by the `width`
+    // node attr, which only commits on pointerup — without this, the ring
+    // would stay at the pre-drag width until release).
+    const fig = img.parentElement;
+    if (fig) fig.style.width = `${next}px`;
   }, []);
 
   const onHandlePointerUp = useCallback(
@@ -277,72 +319,247 @@ function RichTextImageView({ node, updateAttributes, selected }: NodeViewProps) 
       }
       if (!st) return;
       const img = imgRef.current;
-      // Commit the rendered width (what the user actually sees) to the node
-      // attr so it persists across reloads. Fall back to startWidth if the img
-      // vanished mid-drag (e.g. tab closed).
       const finalWidth = img ? Math.round(img.getBoundingClientRect().width) : st.startWidth;
       updateAttributes({ width: finalWidth });
     },
     [updateAttributes],
   );
 
-  // When an explicit width attr is set, render with inline width + override
-  // the global `.ProseMirror img { max-width: 100% }` (RichTextEditor.tsx) so
-  // the user-set width wins (and may overflow into horizontal scroll, which is
-  // the editor-container's overflow-auto). Without the override, max-w-full
-  // would cap to container width and fight the user's resize. Height auto
-  // preserves aspect ratio.
+  // ponytail: grip keyboard resize. Arrow L/R = ∓IMAGE_KBD_STEP (left handle
+  // reverses sign so right-arrow always widens visually). Enter/Space/blur
+  // commits the rendered width to the node attr (one transaction = one undo
+  // step). Falls back to naturalWidth if width attr unset.
+  const onHandleKeyDown = useCallback(
+    (e: React.KeyboardEvent, side: 'left' | 'right') => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Enter' && e.key !== ' ') {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      const img = imgRef.current;
+      if (!img) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        const w = Math.round(img.getBoundingClientRect().width);
+        updateAttributes({ width: w });
+        return;
+      }
+      const cur = widthAttr ?? (img.getBoundingClientRect().width || naturalWidth || 1);
+      const dir = e.key === 'ArrowRight' ? 1 : -1;
+      const signed = side === 'left' ? -dir : dir;
+      const containerEl = img.closest('.ProseMirror') as HTMLElement | null;
+      const containerWidth = containerEl?.clientWidth ?? cur;
+      const maxW = Math.min(naturalWidth || cur, containerWidth);
+      const next = nextResizeWidth(side, cur, signed * IMAGE_KBD_STEP, maxW);
+      img.style.width = `${next}px`;
+      const fig = img.parentElement;
+      if (fig) fig.style.width = `${next}px`;
+    },
+    [updateAttributes, widthAttr, naturalWidth],
+  );
+
+  // --- Phase 2 caption (commit-on-blur) -----------------------------------
+  const captionRef = useRef<HTMLElement>(null);
+  const dirtyRef = useRef(false);
+
+  const toggleCaption = useCallback(() => {
+    if (caption == null) {
+      updateAttributes({ caption: '' });
+      // focus the figcaption after React mounts it
+      requestAnimationFrame(() => {
+        captionRef.current?.focus();
+      });
+    } else {
+      updateAttributes({ caption: null });
+    }
+  }, [caption, updateAttributes]);
+
+  const onCaptionBlur = useCallback(() => {
+    const el = captionRef.current;
+    if (!el || !dirtyRef.current) return;
+    dirtyRef.current = false;
+    const text = el.textContent ?? '';
+    if (text !== (caption ?? '')) {
+      updateAttributes({ caption: text || null });
+    }
+  }, [caption, updateAttributes]);
+
+  // --- Phase 3 download ---------------------------------------------------
+  const downloadImage = useCallback(async () => {
+    if (!isTauri() || !src) return;
+    // ponytail: URL-scheme download deferred — vault-asset path covers the
+    // dominant case. URL srcs (http/data) would need fetch/blob/base64-decode.
+    if (isLoadableUrlScheme(src)) return;
+    const abs = resolveVaultRelativePath(src, resolvedRoot);
+    if (!abs) return;
+    try {
+      const { save } = await import('@tauri-apps/plugin-dialog');
+      const { readFile, writeFile } = await import('@tauri-apps/plugin-fs');
+      const ext = src.toLowerCase().match(/\.([^.]+)$/)?.[1] ?? 'png';
+      const dest = await save({
+        defaultPath: `image-${Date.now()}.${ext}`,
+        filters: [{ name: 'Image', extensions: [ext] }],
+      });
+      if (!dest) return;
+      const bytes = new Uint8Array(await readFile(abs));
+      await writeFile(dest, bytes);
+    } catch (err) {
+      console.warn('[rich-text] image download failed:', err);
+    }
+  }, [src, resolvedRoot]);
+
+  const alignClass = dataAlign ? ALIGN_CLASS[dataAlign] : '';
   const hasExplicitWidth = widthAttr != null && widthAttr > 0;
+  // ponytail: img maxWidth 100% caps a user-set width at the editor container
+  // (no horizontal scroll). Drag/keyboard resize also caps at min(natural,
+  // containerWidth) so the persisted widthAttr never exceeds container; this
+  // CSS is the belt-and-suspenders for widthAttrs from older docs / AI writes.
   const imgStyle = hasExplicitWidth
-    ? { width: widthAttr, height: 'auto' as const, maxWidth: 'none' as const }
+    ? { width: widthAttr, height: 'auto' as const, maxWidth: '100%' as const }
     : undefined;
   const imgClassName = hasExplicitWidth
     ? 'h-auto rounded [image-rendering:-webkit-optimize-contrast]'
     : 'max-w-full h-auto rounded [image-rendering:-webkit-optimize-contrast]';
   // Handles render while selected OR mid-drag (so group-hover deactivating
   // during pointer-capture doesn't make the grip vanish mid-resize).
-  const showHandles = selected || dragging;
+  const showHandles = editable && (selected || dragging);
+  const showToolbar = selected;
+
+  const stopSel = (e: React.SyntheticEvent) => {
+    // ponytail: prevent the editor from losing the NodeSelection when a
+    // toolbar button is clicked — mousedown default would move the caret.
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const alignBtn = (icon: LucideIcon, title: string, align: Align) => ({
+    icon,
+    title,
+    active: dataAlign === align,
+    pressed: dataAlign === align,
+    disabled: !editable,
+    onClick: () => updateAttributes({ dataAlign: align }),
+  });
+
+  const toolbarButtons = [
+    { icon: Trash2, title: 'Delete image', disabled: !editable, onClick: () => deleteNode() },
+    alignBtn(AlignLeft, 'Align left', 'left'),
+    alignBtn(AlignCenter, 'Align center', 'center'),
+    alignBtn(AlignRight, 'Align right', 'right'),
+    { icon: MessageSquareText, title: 'Toggle caption', active: captionOn, pressed: captionOn, disabled: !editable, onClick: toggleCaption },
+    { icon: Download, title: 'Download image', disabled: false, onClick: () => { void downloadImage(); } },
+  ];
+
+  const ariaNow = widthAttr ?? (naturalWidth || 1);
+  const ariaMax = naturalWidth || ariaNow;
 
   return (
-    <NodeViewWrapper className="block my-2" data-drag-handle>
+    <NodeViewWrapper className="block my-2 !ring-0 !shadow-none" data-drag-handle>
       {url ? (
-        <div className="relative inline-block max-w-full group">
+        <figure
+          className={`relative block w-fit group select-none ${alignClass} ${selected ? 'ring-2 ring-acc rounded' : ''}`.trim().replace(/\s+/g, ' ')}
+          style={hasExplicitWidth ? { width: widthAttr, maxWidth: '100%' } : undefined}
+          data-align={dataAlign ?? undefined}
+          aria-label={alt || caption || 'Image'}
+        >
+          {showToolbar && (
+            <div
+              role="toolbar"
+              aria-label="Image actions"
+              onMouseDown={stopSel}
+              className="absolute -top-9 right-0 z-10 flex items-center gap-0.5 px-1 py-0.5 rounded-md border border-brd bg-panel shadow-md"
+            >
+              {toolbarButtons.map((b, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  title={b.title}
+                  aria-label={b.title}
+                  aria-pressed={('pressed' in b && b.pressed) ? b.pressed : undefined}
+                  disabled={b.disabled}
+                  onClick={b.onClick}
+                  className={`inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-default ${
+                    ('active' in b && b.active) ? 'bg-accdim text-acc' : ''
+                  }`}
+                >
+                  <b.icon size={14} strokeWidth={1.6} />
+                </button>
+              ))}
+            </div>
+          )}
           <img
             ref={imgRef}
             src={url}
             alt={alt}
             loading="lazy"
-            // ponytail: WebKit upscale on retina screenshots = bilinear blur.
-            // -webkit-optimize-contrast hints higher-quality interpolation.
-            // The drag-to-resize path lets the user size to device-pixel parity
-            // for the structural fix; this hint stays as a soft fallback for
-            // non-resized images. No img-level `selected` ring — the wrapper's
-            // global `.ProseMirror-selectednode` ring (RichTextEditor.tsx) is
-            // enough; doubling made the highlight feel heavy.
+            onLoad={(e) => setNaturalWidth((e.currentTarget as HTMLImageElement).naturalWidth)}
             className={imgClassName}
             style={imgStyle}
           />
-          <span
-            aria-hidden
-            onPointerDown={(e) => onHandlePointerDown(e, 'left')}
-            onPointerMove={onHandlePointerMove}
-            onPointerUp={onHandlePointerUp}
-            onPointerCancel={onHandlePointerUp}
-            className={`absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/2 w-1.5 h-10 bg-panel border border-acc rounded-sm cursor-ew-resize shadow-sm transition-opacity ${
-              showHandles ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-            }`}
-          />
-          <span
-            aria-hidden
-            onPointerDown={(e) => onHandlePointerDown(e, 'right')}
-            onPointerMove={onHandlePointerMove}
-            onPointerUp={onHandlePointerUp}
-            onPointerCancel={onHandlePointerUp}
-            className={`absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/2 w-1.5 h-10 bg-panel border border-acc rounded-sm cursor-ew-resize shadow-sm transition-opacity ${
-              showHandles ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-            }`}
-          />
-        </div>
+          {showHandles && (
+            <>
+              <span
+                role="slider"
+                aria-label="Resize image width (left handle)"
+                aria-orientation="horizontal"
+                aria-valuenow={ariaNow}
+                aria-valuemin={IMAGE_MIN_WIDTH}
+                aria-valuemax={ariaMax}
+                tabIndex={0}
+                onPointerDown={(e) => onHandlePointerDown(e, 'left')}
+                onPointerMove={onHandlePointerMove}
+                onPointerUp={onHandlePointerUp}
+                onPointerCancel={onHandlePointerUp}
+                onKeyDown={(e) => onHandleKeyDown(e, 'left')}
+                className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/2 w-1.5 h-10 bg-panel border border-acc rounded-sm cursor-ew-resize shadow-sm transition-opacity opacity-0 group-hover:opacity-100 focus:opacity-100"
+              />
+              <span
+                role="slider"
+                aria-label="Resize image width (right handle)"
+                aria-orientation="horizontal"
+                aria-valuenow={ariaNow}
+                aria-valuemin={IMAGE_MIN_WIDTH}
+                aria-valuemax={ariaMax}
+                tabIndex={0}
+                onPointerDown={(e) => onHandlePointerDown(e, 'right')}
+                onPointerMove={onHandlePointerMove}
+                onPointerUp={onHandlePointerUp}
+                onPointerCancel={onHandlePointerUp}
+                onKeyDown={(e) => onHandleKeyDown(e, 'right')}
+                className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/2 w-1.5 h-10 bg-panel border border-acc rounded-sm cursor-ew-resize shadow-sm transition-opacity opacity-0 group-hover:opacity-100 focus:opacity-100"
+              />
+            </>
+          )}
+          {editable && captionOn ? (
+            <figcaption
+              ref={captionRef as React.RefObject<HTMLElement>}
+              contentEditable
+              suppressContentEditableWarning
+              role="textbox"
+              aria-label="Image caption"
+              data-placeholder="Add caption…"
+              onInput={() => {
+                dirtyRef.current = true;
+              }}
+              onBlur={onCaptionBlur}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  (e.currentTarget as HTMLElement).blur();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  dirtyRef.current = false;
+                  if (captionRef.current) captionRef.current.textContent = caption ?? '';
+                  (e.currentTarget as HTMLElement).blur();
+                }
+              }}
+              className="text-center text-sm text-t3 mt-1 outline-none select-text empty:before:content-[attr(data-placeholder)] empty:before:text-t4"
+            >
+              {caption ?? ''}
+            </figcaption>
+          ) : caption ? (
+            <figcaption className="text-center text-sm text-t3 mt-1">{caption}</figcaption>
+          ) : null}
+        </figure>
       ) : (
         <div className="inline-flex items-center gap-2 px-3 py-2 rounded border border-dashed border-brd text-t3 text-sm">
           <ImageIcon size={14} strokeWidth={1.6} /> image
@@ -354,12 +571,51 @@ function RichTextImageView({ node, updateAttributes, selected }: NodeViewProps) 
 
 /**
  * Image extension for the rich-text editor. Extends the official Image node
- * (keeps `setImage` command + markdown `![](src)` paste rule + attributes)
+ * (keeps `setImage` command + markdown `![](src)` paste rule + base attrs)
  * and adds: (1) a React NodeView that resolves vault-relative `src` to a
  * loadable `asset://` URL; (2) a paste/drop plugin that writes pasted/dropped
- * image files to the vault and inserts a vault-relative-src Image node.
+ * image files to the vault and inserts a vault-relative-src Image node;
+ * (3) Phase 2/3 attrs: `width` (drag-resize), `dataAlign` (left/center/right),
+ * `caption` (string, commit-on-blur = one undo step per edit session).
+ * Captioned/aligned images serialize as `<figure><img><figcaption>`; bare
+ * `<img>` otherwise (backward compatible with existing docs).
  */
 export const RichTextImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: {
+        default: null,
+        parseHTML: (el: HTMLElement) =>
+          el.getAttribute('width') ?? el.querySelector('img')?.getAttribute('width') ?? null,
+        renderHTML: (attrs: Record<string, unknown>) =>
+          attrs.width ? { width: attrs.width } : {},
+      },
+      dataAlign: {
+        default: null,
+        parseHTML: (el: HTMLElement) => {
+          const node = el.tagName === 'FIGURE' ? el : (el.querySelector('figure') ?? el);
+          return node.getAttribute('data-align') ?? null;
+        },
+        renderHTML: (attrs: Record<string, unknown>) =>
+          attrs.dataAlign ? { 'data-align': attrs.dataAlign } : {},
+      },
+      caption: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.querySelector('figcaption')?.textContent ?? null,
+        // node-level renderHTML emits <figcaption>; no per-attr renderHTML.
+      },
+    };
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    // ponytail: figureHTML returns a plain array shape that matches tiptap's
+    // DOMOutputSpec; the cast bridges the loose array type from the pure
+    // helper to the strict renderHTML signature without pulling the DOMOutputSpec
+    // type into the pure helper's surface.
+    return figureHTML(HTMLAttributes as Parameters<typeof figureHTML>[0]) as never;
+  },
+
   addNodeView() {
     return ReactNodeViewRenderer(RichTextImageView);
   },

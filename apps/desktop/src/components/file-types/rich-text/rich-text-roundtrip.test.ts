@@ -123,7 +123,14 @@ describe('image + table node round-trip', () => {
       content: [
         {
           type: 'image',
-          attrs: { src: 'assets/images/abc123.png', alt: 'pic', title: null },
+          attrs: {
+            src: 'assets/images/abc123.png',
+            alt: 'pic',
+            title: null,
+            width: null,
+            dataAlign: null,
+            caption: null,
+          },
         },
       ],
     };
@@ -136,7 +143,34 @@ describe('image + table node round-trip', () => {
       content: [
         {
           type: 'image',
-          attrs: { src: 'https://example.com/x.png', alt: null, title: null },
+          attrs: {
+            src: 'https://example.com/x.png',
+            alt: null,
+            title: null,
+            width: null,
+            dataAlign: null,
+            caption: null,
+          },
+        },
+      ],
+    };
+    expect(deserializeToContent(serializeToDisk(doc))).toEqual(doc);
+  });
+
+  it('round-trips an image with width/dataAlign/caption attrs (figure shape)', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'image',
+          attrs: {
+            src: 'assets/images/abc123.png',
+            alt: 'pic',
+            title: null,
+            width: 480,
+            dataAlign: 'center',
+            caption: 'A caption',
+          },
         },
       ],
     };

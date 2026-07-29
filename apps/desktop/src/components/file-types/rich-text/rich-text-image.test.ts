@@ -3,6 +3,7 @@ import {
   resolveVaultRelativePath,
   isLoadableUrlScheme,
   nextResizeWidth,
+  figureHTML,
   IMAGE_MIN_WIDTH,
 } from './richTextContent';
 
@@ -139,5 +140,67 @@ describe('nextResizeWidth', () => {
   it('rounds to integer px so the persisted width attr stays clean', () => {
     expect(nextResizeWidth('right', 400, 33.7, 1000)).toBe(434);
     expect(nextResizeWidth('left', 400, -33.2, 1000)).toBe(433);
+  });
+});
+
+// ponytail: figureHTML is the pure renderHTML-array builder for the Image
+// node. Split out of the extension so jsdom tests can cover the
+// figure-vs-img decision without mounting prosemirror. The extension's
+// renderHTML just delegates.
+describe('figureHTML', () => {
+  const baseAttrs = {
+    src: 'assets/images/abc.png',
+    alt: 'pic',
+    title: null,
+  };
+
+  it('emits bare <img> when no caption and no alignment (backward compat)', () => {
+    expect(figureHTML({ ...baseAttrs, width: null, dataAlign: null, caption: null })).toEqual([
+      'img',
+      { src: 'assets/images/abc.png', alt: 'pic', title: null },
+    ]);
+  });
+
+  it('emits bare <img> with width when only width is set (no caption/align)', () => {
+    expect(figureHTML({ ...baseAttrs, width: 480, dataAlign: null, caption: null })).toEqual([
+      'img',
+      { src: 'assets/images/abc.png', alt: 'pic', title: null, width: 480 },
+    ]);
+  });
+
+  it('emits <figure><img><figcaption> when caption is non-empty', () => {
+    expect(figureHTML({ ...baseAttrs, width: null, dataAlign: null, caption: 'A caption' })).toEqual([
+      'figure',
+      {},
+      ['img', { src: 'assets/images/abc.png', alt: 'pic', title: null }],
+      ['figcaption', {}, 'A caption'],
+    ]);
+  });
+
+  it('emits <figure data-align><img> when only alignment is set (no caption)', () => {
+    expect(figureHTML({ ...baseAttrs, width: null, dataAlign: 'center', caption: null })).toEqual([
+      'figure',
+      { 'data-align': 'center' },
+      ['img', { src: 'assets/images/abc.png', alt: 'pic', title: null }],
+      ['figcaption', {}, ''],
+    ]);
+  });
+
+  it('emits <figure data-align><img width><figcaption> when all attrs set', () => {
+    expect(
+      figureHTML({ ...baseAttrs, width: 600, dataAlign: 'right', caption: 'Hello' }),
+    ).toEqual([
+      'figure',
+      { 'data-align': 'right' },
+      ['img', { src: 'assets/images/abc.png', alt: 'pic', title: null, width: 600 }],
+      ['figcaption', {}, 'Hello'],
+    ]);
+  });
+
+  it('treats empty-string caption as no caption (bare <img>)', () => {
+    expect(figureHTML({ ...baseAttrs, width: null, dataAlign: null, caption: '' })).toEqual([
+      'img',
+      { src: 'assets/images/abc.png', alt: 'pic', title: null },
+    ]);
   });
 });

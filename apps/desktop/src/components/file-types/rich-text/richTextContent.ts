@@ -132,6 +132,9 @@ export function resolveVaultRelativePath(
 /** Minimum image width (px) a drag resize can produce. Below this the grip is unusable. */
 export const IMAGE_MIN_WIDTH = 40;
 
+/** Keyboard step (px) for grip arrow-key resize. */
+export const IMAGE_KBD_STEP = 8;
+
 /**
  * Compute the next image width (px) given a drag delta and which side moved.
  * Right handle: newWidth = startWidth + deltaX. Left handle: startWidth - deltaX
@@ -149,4 +152,32 @@ export function nextResizeWidth(
   const raw = side === 'right' ? startWidth + deltaX : startWidth - deltaX;
   const clamped = Math.max(IMAGE_MIN_WIDTH, Math.min(maxWidth, raw));
   return Math.round(clamped);
+}
+
+/**
+ * Build the tiptap `renderHTML` array shape for an image node. Captionless +
+ * unaligned images emit bare `<img>` (backward compatible with existing docs);
+ * captioned or aligned images wrap in `<figure data-align><img><figcaption>`.
+ * Pure so jsdom tests cover the figure-vs-img decision without mounting
+ * prosemirror. The extension's `renderHTML` delegates here.
+ *
+ * `caption` is a string attr (not a nested content node) so commit-on-blur =
+ * one transaction = one undo step per caption-edit session. ponytail: string
+ * attr is the lazy rung vs a custom node with `content: 'inline*'`.
+ */
+export function figureHTML(attrs: {
+  src?: string | null;
+  alt?: string | null;
+  title?: string | null;
+  width?: number | null;
+  dataAlign?: 'left' | 'center' | 'right' | null;
+  caption?: string | null;
+}): unknown[] {
+  const { caption, dataAlign, width, ...imgAttrs } = attrs;
+  const hasCaption = typeof caption === 'string' && caption.length > 0;
+  const w = width != null && width > 0 ? { width } : {};
+  const merged = { ...imgAttrs, ...w };
+  if (!hasCaption && !dataAlign) return ['img', merged];
+  const figAttrs = dataAlign ? { 'data-align': dataAlign } : {};
+  return ['figure', figAttrs, ['img', merged], ['figcaption', {}, caption ?? '']];
 }
