@@ -21,7 +21,7 @@ export function ScriptRuntimesSettings() {
 
   return (
     <div className="mb-8 mt-8">
-      <div className="pb-3 mb-5 border-b border-brd2 flex flex-wrap items-baseline gap-2">
+      <div className="pb-8 mb-5 border-b border-brd2 flex flex-wrap items-baseline gap-2">
         <div className="text-[length:calc(var(--ui-font-size)+3px)] font-bold text-t1 tracking-[-0.01em]">
           {t('settings:scriptRuntime.title')}
         </div>
