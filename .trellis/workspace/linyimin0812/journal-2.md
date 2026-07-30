@@ -1094,3 +1094,37 @@ Added a '/'-triggered slash command menu + toolbar trigger button (Cmd/Ctrl+/) t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 90: chatModel refactor: per-session provider+model pair
+
+**Date**: 2026-07-30
+**Task**: chatModel refactor: per-session provider+model pair
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Restructured chatModel from a free-form global string into a structured (provider, model) pair sourced from settings.json's enabled providers × selectedModelIds. AiPanel gets per-session pair via <PairSelector>; pet/bubble/voice/plugin each get their own pair configured in their respective settings pages. Global chatProvider+chatModel redefined as 'last used pair' synced atomically by setSessionPair. Per-message pair tag on CliMessage; reconcileSessionPair aiStore action + useEffect handles stale pairs and legacy migration. Spec updates in state-management (cross-store atomic writes, reconcile-after-render), type-safety (cross-package type boundaries, optional persisted fields), component-guidelines (renderPairTag slot).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0f81401` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
