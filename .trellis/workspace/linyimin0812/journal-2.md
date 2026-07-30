@@ -1128,3 +1128,37 @@ Restructured chatModel from a free-form global string into a structured (provide
 ### Next Steps
 
 - None - task complete
+
+
+## Session 91: Post chatModel-refactor microfixes: pet chat pair + test modal dropdown + isProviderModelPair
+
+**Date**: 2026-07-30
+**Task**: Post chatModel-refactor microfixes: pet chat pair + test modal dropdown + isProviderModelPair
+**Package**: desktop
+**Branch**: `master`
+
+### Summary
+
+Post-refactor follow-ups: TestChatModal dropdown scoped to selectedModelIds (chatModel is now cross-provider 'last used'); aiConfigStore.isProviderModelPair accepts custom provider ids so petPair/etc survive re-hydrate (was resetting to null 300ms after pick → dropdown reverted); petChatService resolveBasePath(vaultPath) before CLI spawn (raw ~/quill/default_vault broke cd under /bin/sh -c single quotes); PetChat inline PairSelector always rendered + stamp petPair on assistant messages for per-message pair tag (parity with AiPanel); ChatMessageList pair tag inline after 'AI' label, right-aligned via ml-auto.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7608c4e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

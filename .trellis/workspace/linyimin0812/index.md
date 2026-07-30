@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 90
+- **Total Sessions**: 91
 - **Last Active**: 2026-07-30
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1130 | Active |
+| `journal-2.md` | ~1164 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 91 | 2026-07-30 | Post chatModel-refactor microfixes: pet chat pair + test modal dropdown + isProviderModelPair | `7608c4e` | `master` |
 | 90 | 2026-07-30 | chatModel refactor: per-session provider+model pair | `0f81401` | `master` |
 | 89 | 2026-07-30 | Rich-text slash command trigger button | `07a0068` | `worktree-slash-command-trigger-button` |
 | 88 | 2026-07-29 | Script runtime test result layout fix | `c695243` | `master` |
