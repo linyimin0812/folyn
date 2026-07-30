@@ -81,8 +81,6 @@ beforeEach(() => {
     providerSettings: {},
     manualModels: {},
     scriptRuntimes: DEFAULT_SCRIPT_RUNTIMES.map((r) => ({ ...r })),
-    petPair: null,
-    bubblePair: null,
     voicePair: null,
     pluginPair: null,
   });
@@ -680,26 +678,23 @@ describe('useAiConfigStore scriptRuntimes', () => {
   });
 });
 
-// Per-caller (provider, model) pairs — PR1 of the chatModel refactor.
+// Per-caller (provider, model) pairs — pet/bubble moved to their session
+// stores in Phase 2; only voice/plugin remain here.
 describe('useAiConfigStore per-caller pairs', () => {
-  it('all four pair fields default to null', () => {
+  it('voicePair / pluginPair default to null', () => {
     const s = useAiConfigStore.getState();
-    expect(s.petPair).toBeNull();
-    expect(s.bubblePair).toBeNull();
     expect(s.voicePair).toBeNull();
     expect(s.pluginPair).toBeNull();
   });
 
-  it('PERSIST_KEYS_AI_CONFIG includes petPair / bubblePair / voicePair / pluginPair', () => {
-    expect(PERSIST_KEYS_AI_CONFIG).toContain('petPair');
-    expect(PERSIST_KEYS_AI_CONFIG).toContain('bubblePair');
+  it('PERSIST_KEYS_AI_CONFIG includes voicePair / pluginPair (pet/bubble dropped in Phase 2)', () => {
     expect(PERSIST_KEYS_AI_CONFIG).toContain('voicePair');
     expect(PERSIST_KEYS_AI_CONFIG).toContain('pluginPair');
+    expect(PERSIST_KEYS_AI_CONFIG).not.toContain('petPair');
+    expect(PERSIST_KEYS_AI_CONFIG).not.toContain('bubblePair');
   });
 
   it.each([
-    ['setPetPair', 'petPair'] as const,
-    ['setBubblePair', 'bubblePair'] as const,
     ['setVoicePair', 'voicePair'] as const,
     ['setPluginPair', 'pluginPair'] as const,
   ])('%s writes the pair and persists to settings:all', (setter, field) => {
@@ -714,8 +709,6 @@ describe('useAiConfigStore per-caller pairs', () => {
   });
 
   it.each([
-    ['setPetPair', 'petPair'] as const,
-    ['setBubblePair', 'bubblePair'] as const,
     ['setVoicePair', 'voicePair'] as const,
     ['setPluginPair', 'pluginPair'] as const,
   ])('%s accepts null to clear the pair', (setter, field) => {
@@ -726,39 +719,38 @@ describe('useAiConfigStore per-caller pairs', () => {
     expect(useAiConfigStore.getState()[field]).toBeNull();
   });
 
-  it('hydrate reads each pair from the blob', () => {
+  it('hydrate reads voice/plugin pairs from the blob (pet/bubble silently dropped post-Phase 2)', () => {
     useAiConfigStore.getState().hydrate({
-      petPair: { provider: 'openai', model: 'gpt-4o' },
-      bubblePair: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
       voicePair: { provider: 'ollama', model: 'llama3' },
       pluginPair: { provider: 'openai', model: 'gpt-4o-mini' },
+      // Legacy petPair/bubblePair in the blob must be ignored (not crash).
+      petPair: { provider: 'openai', model: 'gpt-4o' },
+      bubblePair: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
     });
     const s = useAiConfigStore.getState();
-    expect(s.petPair).toEqual({ provider: 'openai', model: 'gpt-4o' });
-    expect(s.bubblePair).toEqual({ provider: 'anthropic', model: 'claude-sonnet-4-6' });
     expect(s.voicePair).toEqual({ provider: 'ollama', model: 'llama3' });
     expect(s.pluginPair).toEqual({ provider: 'openai', model: 'gpt-4o-mini' });
+    // petPair/bubblePair no longer exist on the state.
+    expect((s as Record<string, unknown>).petPair).toBeUndefined();
+    expect((s as Record<string, unknown>).bubblePair).toBeUndefined();
   });
 
   it('hydrate falls back to null when blob omits the pair (legacy blob)', () => {
-    // Seed a non-null pair to prove hydrate clears it.
-    useAiConfigStore.getState().setPetPair({ provider: 'openai', model: 'gpt-4o' });
+    useAiConfigStore.getState().setVoicePair({ provider: 'openai', model: 'gpt-4o' });
     useAiConfigStore.getState().hydrate({});
-    expect(useAiConfigStore.getState().petPair).toBeNull();
-    expect(useAiConfigStore.getState().bubblePair).toBeNull();
     expect(useAiConfigStore.getState().voicePair).toBeNull();
     expect(useAiConfigStore.getState().pluginPair).toBeNull();
   });
 
-  it('hydrate accepts a pair with a custom (non-catalog) provider id', () => {
+  it('hydrate accepts a voice pair with a custom (non-catalog) provider id', () => {
     // ponytail: provider is typed ChatProvider but runtime accepts custom ids
     // (see isProviderModelPair string-check + PairSelector cast). Rejecting
-    // custom ids would reset petPair 300ms after the user picks one, because
+    // custom ids would reset voicePair 300ms after the user picks one, because
     // the pet-panel's own pet://settings-updated listener re-hydrates.
     useAiConfigStore.getState().hydrate({
-      petPair: { provider: 'my-custom', model: 'm' },
+      voicePair: { provider: 'my-custom', model: 'm' },
     });
-    expect(useAiConfigStore.getState().petPair).toEqual({
+    expect(useAiConfigStore.getState().voicePair).toEqual({
       provider: 'my-custom', model: 'm',
     });
   });

@@ -25,15 +25,14 @@ vi.mock('@/services/rigChat', () => ({
   runRigChat: (params: unknown) => runRigChatMock(params),
 }));
 
-// Mock useAiConfigStore — configured for anthropic / sonnet / fake key.
-// PR5: the modal reads bubblePair + providerSettings[bubblePair.provider]
-// (NOT the flat chat* mirrors). The mock is a callable function (so hook
-// usage `useAiConfigStore((s) => s.x)` works) with a `.getState()` for the
-// service-style reads in `readChatConfig`. vi.hoisted so the hoisted vi.mock
-// factory can reference the state object.
-const { aiConfigState, setBubblePairMock, resolvePairConfigMock } = vi.hoisted(() => {
+// Mock useAiConfigStore — providerSettings/customerProviders only. Phase 2:
+// the modal reads the bt pair from useBubbleTemplateChatStore's active
+// session and resolves via resolvePairForBtSession (mocked on the bt store
+// module). The aiConfigStore mock stays a callable function (so hook usage
+// `useAiConfigStore((s) => s.x)` works for any PairSelector-driven reads of
+// providerSettings/customerProviders).
+const { aiConfigState } = vi.hoisted(() => {
   const aiConfigState = {
-    bubblePair: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
     providerSettings: {
       anthropic: {
         id: 'anthropic',
@@ -47,37 +46,44 @@ const { aiConfigState, setBubblePairMock, resolvePairConfigMock } = vi.hoisted((
     },
     customerProviders: {},
   };
-  return {
-    aiConfigState,
-    setBubblePairMock: vi.fn(),
-    resolvePairConfigMock: (pair: { provider: string; model: string } | null) => {
-      if (!pair) return null;
-      const slot = aiConfigState.providerSettings[pair.provider];
-      if (!slot) return null;
-      return {
-        provider: pair.provider,
-        model: pair.model,
-        apiKey: slot.apiKey,
-        baseUrl: slot.baseUrl,
-        thinkingBudget: null,
-        customProvider: false,
-      };
-    },
-  };
+  return { aiConfigState };
 });
 vi.mock('@/store/aiConfigStore', () => ({
   useAiConfigStore: Object.assign(
     (sel: (s: typeof aiConfigState) => unknown) => sel(aiConfigState),
-    {
-      getState: () => ({
-        ...aiConfigState,
-        bubblePair: aiConfigState.bubblePair,
-        setBubblePair: setBubblePairMock,
-      }),
-    },
+    { getState: () => aiConfigState },
   ),
-  resolvePairConfig: resolvePairConfigMock,
+  // ponytail: real bubbleTemplateChatStore.createEmptySession calls
+  // firstEnabledPair on import; stub it to null so the mock stays
+  // self-contained. Phase 3 widens ChatProvider to string; the cast stays
+  // until then.
+  firstEnabledPair: () => null,
+  resolvePairConfig: () => null,
 }));
+
+// Mock resolvePairForBtSession — Phase 2: readChatConfig delegates to this.
+// Default returns a resolved config for the active session; tests can
+// override per-test to drive the unconfigured path.
+const { resolvePairForBtSessionMock } = vi.hoisted(() => ({
+  resolvePairForBtSessionMock: vi.fn<(sid: string | null) => unknown>(() => ({
+    provider: 'anthropic',
+    model: 'claude-sonnet-4-6',
+    apiKey: 'k',
+    baseUrl: '',
+    thinkingBudget: null,
+    customProvider: false,
+    defaultChatEndpoint: undefined,
+  })),
+}));
+vi.mock('@/store/bubbleTemplateChatStore', async () => {
+  const actual = await vi.importActual<typeof import('@/store/bubbleTemplateChatStore')>(
+    '@/store/bubbleTemplateChatStore',
+  );
+  return {
+    ...actual,
+    resolvePairForBtSession: (sid: string | null) => resolvePairForBtSessionMock(sid),
+  };
+});
 
 // Mock useTranslation — return keys verbatim so tests can grep for them.
 vi.mock('react-i18next', () => ({
@@ -115,12 +121,17 @@ type RigParams = {
 };
 
 /** Reset the store to a known-empty state between tests. Mirrors
- *  petChatStore.test's resetStoreToSingleEmpty. */
+ *  petChatStore.test's resetStoreToSingleEmpty. Phase 2: the session carries
+ *  a (provider, model) pair so the modal's PairSelector + readChatConfig
+ *  see a configured state — mirrors the production default where a fresh
+ *  session seeds from firstEnabledPair. */
 function resetStoreToSingleEmpty(): void {
   const session: BtSession = {
     id: 's1',
     title: '新会话',
     messages: [],
+    provider: 'anthropic',
+    model: 'claude-sonnet-4-6',
     createdAt: 1,
   };
   useBubbleTemplateChatStore.setState({
@@ -140,6 +151,16 @@ beforeEach(() => {
   storageGet.mockResolvedValue(null);
   storageSet.mockReset();
   storageSet.mockResolvedValue(undefined);
+  resolvePairForBtSessionMock.mockReset();
+  resolvePairForBtSessionMock.mockReturnValue({
+    provider: 'anthropic',
+    model: 'claude-sonnet-4-6',
+    apiKey: 'k',
+    baseUrl: '',
+    thinkingBudget: null,
+    customProvider: false,
+    defaultChatEndpoint: undefined,
+  });
   resetStoreToSingleEmpty();
 });
 

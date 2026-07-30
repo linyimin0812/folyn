@@ -2,6 +2,13 @@ import { create } from 'zustand';
 import { storageClient } from '@/utils/storageClient';
 import { generateId } from '@/utils/idGenerator';
 import { debounce } from '@/utils/debounce';
+import {
+  firstEnabledPair,
+  resolvePairConfig,
+  useAiConfigStore,
+  type ChatProvider,
+  type ResolvedPairConfig,
+} from './aiConfigStore';
 
 /**
  * PetChatStore — the pet-panel's independent, persisted AI chat sessions.
@@ -66,6 +73,14 @@ export interface PetChatSession {
    *  the first `session_id` stream event lands for this session (PR2 writes
    *  it via `setCliSessionId`). Persisted so resume survives restarts. */
   cliSessionId?: string;
+  /** The (provider, model) pair this session uses for sends. `string` not
+   *  `ChatProvider` — petChatStore stays catalog-free (same convention as
+   *  CliMessage / PetChatMessage.provider). Optional on legacy persisted
+   *  sessions; createEmptySession seeds from the most-recent session's pair
+   *  or firstEnabledPair. Set via setSessionPair. */
+  provider?: string;
+  /** Model id alongside `provider`. See `provider` doc above. */
+  model?: string;
   createdAt: number;
 }
 
@@ -129,6 +144,11 @@ interface PetChatState {
    *  the send — not "current active" — to avoid a late `session_id` polluting
    *  the wrong session after a switch. */
   setCliSessionId: (sessionId: string, cliSessionId: string) => void;
+
+  /** Set the (provider, model) pair on a specific pet session. Writes only
+   *  the session + persists. No-op if the session id is unknown. Mirrors
+   *  aiStore.setSessionPair's shape (Phase 1 dropped the global dual-write). */
+  setSessionPair: (sessionId: string, pair: { provider: string; model: string }) => void;
 }
 
 // ── Constants ──
@@ -150,11 +170,19 @@ const AUTO_TITLE_MAX = 20;
 // ── Helpers ──
 
 function createEmptySession(): PetChatSession {
+  // Seed the pair from the most-recent session (sessions[0] — new sessions
+  // are unshifted to the front), else fall back to firstEnabledPair. No
+  // global "last used pair" role post-Phase 2 — petPair global is gone.
+  const existing = usePetChatStore.getState().sessions;
+  const recent = existing.length > 0 ? existing[0] : undefined;
+  const fallback = firstEnabledPair(useAiConfigStore.getState());
   return {
     id: generateId(),
     title: DEFAULT_NEW_TITLE,
     messages: [],
     createdAt: Date.now(),
+    provider: recent?.provider ?? fallback?.provider,
+    model: recent?.model ?? fallback?.model,
   };
 }
 
@@ -335,7 +363,40 @@ export const usePetChatStore = create<PetChatState>((set, get) => ({
     set({ sessions });
     schedulePersist(payload);
   },
+
+  setSessionPair: (sessionId, pair) => {
+    const state = get();
+    if (!state.sessions.some((s) => s.id === sessionId)) return;
+    const sessions = updateSession(state.sessions, sessionId, (s) => ({
+      ...s,
+      provider: pair.provider,
+      model: pair.model,
+    }));
+    const payload: PersistedPetChat = { sessions, activeSessionId: state.activeSessionId };
+    set({ sessions });
+    schedulePersist(payload);
+  },
 }));
+
+/** Resolve a pet session's pair into the connection params a caller needs
+ *  to invoke runRigChat. Reads the session from petChatStore, then delegates
+ *  to resolvePairConfig. Returns null when the session has no pair, the
+ *  provider slot is missing, or a key-required provider has no apiKey.
+ *  Mirrors aiConfigStore.resolvePairForSession — keeps the deep-pair
+ *  interface symmetric across the three session-based callers. */
+export function resolvePairForPetSession(
+  sessionId: string,
+): ResolvedPairConfig | null {
+  const session = usePetChatStore.getState().sessions.find((s) => s.id === sessionId);
+  if (!session || !session.provider || !session.model) return null;
+  // ponytail: cast string → ChatProvider. petChatStore stays catalog-free
+  // (session.provider is `string`), but resolvePairConfig's input type is
+  // `ProviderModelPair` (ChatProvider-typed). ChatProvider widens to `string`
+  // in Phase 3 — same convention as firstEnabledPair's `entry.id as ChatProvider`.
+  return resolvePairConfig(
+    { provider: session.provider as ChatProvider, model: session.model },
+  );
+}
 
 // ── Rehydrate / migrate on launch ──
 

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePetStore, type PetOpacity } from '@/store/petStore';
-import { useAiConfigStore } from '@/store/aiConfigStore';
+import { usePetChatStore } from '@/store/petChatStore';
+import { type ChatProvider } from '@/store/aiConfigStore';
 import { PairSelector } from '@/components/ai/PairSelector';
 import { isTauri } from '@/utils/platform';
 import { Toggle } from '@/components/settings/primitives';
@@ -44,8 +45,23 @@ export function PetSettings() {
   const setPetOpacity = usePetStore((s) => s.setPetOpacity);
   const petClickThrough = usePetStore((s) => s.petClickThrough);
   const setPetClickThrough = usePetStore((s) => s.setPetClickThrough);
-  const petPair = useAiConfigStore((s) => s.petPair);
-  const setPetPair = useAiConfigStore((s) => s.setPetPair);
+  // Phase 2: the pet pair is per-session. PetSettings binds to the pet
+  // chat store's ACTIVE session pair (read+write via setSessionPair). If
+  // no active session, PairSelector shows empty (same as null petPair
+  // before). This preserves the settings-page UX without inventing a new
+  // "default pair" concept — the user picks the pair for whichever pet
+  // session is currently active in the panel.
+  const activePetSessionId = usePetChatStore((s) => s.activeSessionId);
+  const activePetSession = usePetChatStore((s) =>
+    s.sessions.find((sess) => sess.id === s.activeSessionId),
+  );
+  const setSessionPair = usePetChatStore((s) => s.setSessionPair);
+  // ponytail: cast string → ChatProvider for PairSelector's value prop —
+  // session.provider is `string` (catalog-free convention), ChatProvider
+  // widens to `string` in Phase 3.
+  const petPair = activePetSession?.provider && activePetSession?.model
+    ? { provider: activePetSession.provider as ChatProvider, model: activePetSession.model }
+    : null;
   const [errorMsg, setErrorMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -436,7 +452,16 @@ export function PetSettings() {
           <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('ai:pairSelector.sectionTitle')}</h4>
           <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('ai:pairSelector.sectionDesc')}</p>
         </div>
-        <PairSelector value={petPair} onChange={setPetPair} />
+        <PairSelector
+          value={petPair}
+          onChange={(pair) => {
+            // ponytail: pair is per-session now — this controls the active
+            // pet chat session's pair, same as the in-panel PairSelector.
+            if (activePetSessionId && pair) {
+              setSessionPair(activePetSessionId, pair);
+            }
+          }}
+        />
       </div>
     </div>
   );

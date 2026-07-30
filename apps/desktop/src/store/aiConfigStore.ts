@@ -79,11 +79,11 @@ export const PERSIST_KEYS_AI_CONFIG = [
   PROVIDER_CONFIG_MIGRATED_KEY,
   // Code-block script runner runtimes (shell/node/python defaults).
   'scriptRuntimes',
-  // Per-caller (provider, model) pairs for non-AiPanel chat callers.
+  // Per-caller (provider, model) pairs for non-AiPanel chat callers that
+  // have no session to hang the pair on. pet/bubble moved to their own
+  // session stores in Phase 2; voice/plugin stay here.
   // ponytail: fields are nullable + optional on the persisted blob so legacy
   // blobs hydrate without migration; first use post-upgrade picks a pair.
-  'petPair',
-  'bubblePair',
   'voicePair',
   'pluginPair',
 ] as const;
@@ -172,9 +172,10 @@ export function firstEnabledPair(
  *  resolvePairConfig. Returns null when the session has no pair, the
  *  provider slot is missing, or a key-requiring provider has no apiKey.
  *
- *  Session-based callers (AiPanel, pet, bubble — once Phase 2 lands) use
- *  this instead of resolvePairConfig directly so the pair-source is
- *  encapsulated. voice/plugin RPC keeps resolvePairConfig(pair, state). */
+ *  Session-based callers use this (or its per-store sibling
+ *  `resolvePairForPetSession` / `resolvePairForBtSession`) instead of
+ *  resolvePairConfig directly so the pair-source is encapsulated.
+ *  voice/plugin RPC keeps resolvePairConfig(pair, state). */
 export function resolvePairForSession(
   sessionId: string,
 ): ResolvedPairConfig | null {
@@ -209,10 +210,10 @@ export interface AiConfigState {
   // User can override binaryPath per runtime via Editor settings tab.
   scriptRuntimes: RuntimeConfig[];
   // Per-caller (provider, model) pairs. Null until the user picks one in
-  // each caller's settings page. AiPanel uses session-scoped pair fields
-  // (see aiStore.AiSession) — NOT these globals.
-  petPair: ProviderModelPair | null;
-  bubblePair: ProviderModelPair | null;
+  // each caller's settings page. AiPanel / pet / bubble use session-scoped
+  // pair fields (see aiStore.AiSession / petChatStore.PetChatSession /
+  // bubbleTemplateChatStore.BtSession) — NOT these globals. voice/plugin
+  // have no session to hang a pair on, so they stay here.
   voicePair: ProviderModelPair | null;
   pluginPair: ProviderModelPair | null;
 
@@ -261,8 +262,6 @@ export interface AiConfigState {
 
   /** Set the (provider, model) pair for a non-AiPanel chat caller.
    *  Pass null to clear. Persists via the settings:all blob. */
-  setPetPair: (pair: ProviderModelPair | null) => void;
-  setBubblePair: (pair: ProviderModelPair | null) => void;
   setVoicePair: (pair: ProviderModelPair | null) => void;
   setPluginPair: (pair: ProviderModelPair | null) => void;
 
@@ -309,10 +308,9 @@ function isManualModelsMap(v: unknown): v is Record<string, ManualModel[]> {
  *  ponytail: provider is typed `ChatProvider` (catalog union) but runtime
  *  accepts custom provider ids — see `setChatProvider` and PairSelector's
  *  `entry.id as ChatProvider` cast. isChatProvider would reject custom ids
- *  and reset petPair/bubblePair/voicePair/pluginPair to null on every
- *  hydrate (which fires from the pet-panel's own `pet://settings-updated`
- *  listener 300ms after the user picks). String check matches the runtime
- *  contract. */
+ *  and reset voicePair/pluginPair to null on every hydrate (which fires
+ *  from the pet-panel's own `pet://settings-updated` listener 300ms after
+ *  the user picks). String check matches the runtime contract. */
 function isProviderModelPair(v: unknown): v is ProviderModelPair {
   if (!v || typeof v !== 'object') return false;
   const r = v as Record<string, unknown>;
@@ -355,8 +353,6 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   providerSettings: {},
   manualModels: {},
   scriptRuntimes: DEFAULT_SCRIPT_RUNTIMES,
-  petPair: null,
-  bubblePair: null,
   voicePair: null,
   pluginPair: null,
 
@@ -603,8 +599,6 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     schedulePersist();
   },
 
-  setPetPair: (pair) => { set({ petPair: pair }); schedulePersist(); },
-  setBubblePair: (pair) => { set({ bubblePair: pair }); schedulePersist(); },
   setVoicePair: (pair) => { set({ voicePair: pair }); schedulePersist(); },
   setPluginPair: (pair) => { set({ pluginPair: pair }); schedulePersist(); },
 
@@ -634,9 +628,9 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     patch.scriptRuntimes = mergeScriptRuntimes(blob.scriptRuntimes);
 
     // Per-caller pairs: null when absent or malformed (legacy blobs hydrate
-    // to null without a migration pass).
-    patch.petPair = isProviderModelPair(blob.petPair) ? blob.petPair : null;
-    patch.bubblePair = isProviderModelPair(blob.bubblePair) ? blob.bubblePair : null;
+    // to null without a migration pass). petPair/bubblePair removed in
+    // Phase 2 — they live on petChatStore/bubbleTemplateChatStore sessions
+    // now; any leftover persisted values are silently dropped here.
     patch.voicePair = isProviderModelPair(blob.voicePair) ? blob.voicePair : null;
     patch.pluginPair = isProviderModelPair(blob.pluginPair) ? blob.pluginPair : null;
 

@@ -1,6 +1,7 @@
 import { createAdapter } from '@quill/cli-adapter';
 import type { CliAdapter, CliStreamEvent } from '@quill/cli-adapter';
-import { useAiConfigStore, resolvePairConfig } from '@/store/aiConfigStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
+import { resolvePairForPetSession } from '@/store/petChatStore';
 import { useVaultConfigStore } from '@/store/vaultConfigStore';
 import { usePetChatStore } from '@/store/petChatStore';
 import { isRigMode, resolveSendOptions } from '@/components/ai/inputModes';
@@ -177,7 +178,6 @@ export async function sendPetChatMessage(
   const adapter = getAdapterForSession(sessionId);
   const resumeSessionId = getCliSessionIdFor(sessionId);
   const mode = usePetChatStore.getState().inputMode;
-
   // Closed-over `sessionId` — NOT re-read from the store at event time.
   // This is the race-prevention contract: even if the user switches the
   // active session before a `session_id` event fires, the event attributes
@@ -207,11 +207,13 @@ export async function sendPetChatMessage(
     // are unused (rig has no cwd). History is persisted on disk by the backend
     // keyed by `sessionId`.
     //
-    // PR5: read petPair (not global chatProvider/chatModel). If petPair is
-    // unset or its provider isn't configured, surface the unconfigured error
-    // to the caller and bail — per PRD ADR, per-caller pairs are independent
-    // (no global fallback). PetSettings renders the PairSelector.
-    const cfg = resolvePairConfig(aiConfig.petPair, aiConfig);
+    // Phase 2: read the pair from the pet session (moved off the global
+    // petPair). If the session has no pair or its provider isn't configured,
+    // surface the unconfigured error to the caller and bail — per PRD ADR,
+    // per-caller pairs are independent (no global fallback). The pet panel's
+    // PairSelector + PetSettings both write the active session's pair via
+    // petChatStore.setSessionPair.
+    const cfg = resolvePairForPetSession(sessionId);
     if (!cfg) {
       const msg = 'pet chat not configured — pick a (provider, model) pair in Pet Settings';
       handlers.onError?.(msg);

@@ -102,10 +102,8 @@ const aiConfigState = {
   cliAdapter: 'claude',
   cliPath: 'claude',
   setCliAdapter: vi.fn(),
-  // PR: chatModel refactor — PetChat reads petPair/setPetPair inline and
-  // PairSelector reads providerSettings/customerProviders via useEnabledPairs.
-  petPair: null as { provider: string; model: string } | null,
-  setPetPair: vi.fn(),
+  // Phase 2: pet pair is per-session (read from usePetChatStore).
+  // providerSettings/customerProviders feed PairSelector's useEnabledPairs.
   providerSettings: {} as Record<string, unknown>,
   customerProviders: {} as Record<string, unknown>,
 };
@@ -117,6 +115,11 @@ vi.mock('@/store/aiConfigStore', () => ({
       selector ? selector(aiConfigState) : aiConfigState,
     { getState: () => aiConfigState },
   ),
+  // ponytail: real petChatStore.createEmptySession calls firstEnabledPair on
+  // import; stub it to null so the mock stays self-contained. Phase 3 widens
+  // ChatProvider to string; the cast stays until then.
+  firstEnabledPair: () => null,
+  resolvePairConfig: () => null,
 }));
 
 const navState = {

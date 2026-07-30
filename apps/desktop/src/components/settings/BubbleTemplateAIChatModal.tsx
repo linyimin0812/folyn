@@ -6,12 +6,15 @@ import { VoiceInputButton } from '@/components/ai/VoiceInputButton';
 import { PairSelector } from '@/components/ai/PairSelector';
 import type { CliMessage } from '@quill/cli-adapter';
 import { runRigChat } from '@/services/rigChat';
-import { useAiConfigStore, resolvePairConfig, type ResolvedPairConfig } from '@/store/aiConfigStore';
+import { type ChatProvider, type ResolvedPairConfig } from '@/store/aiConfigStore';
 import { useModelRegistryStore } from '@/store/modelRegistryStore';
 import { findModelInCatalog } from '@/services/modelRegistry/loader';
 import { isVisionModel } from '@/services/modelRegistry/merge';
 import type { Model } from '@/services/modelRegistry/types';
-import { useBubbleTemplateChatStore } from '@/store/bubbleTemplateChatStore';
+import {
+  useBubbleTemplateChatStore,
+  resolvePairForBtSession,
+} from '@/store/bubbleTemplateChatStore';
 import { generateId } from '@/utils/idGenerator';
 import { extractLastJsonFence } from '@/components/pet/extractLastJsonFence';
 import { buildBubbleTemplateSystemPrompt } from '@/components/pet/bubbleTemplateSystemPrompt';
@@ -41,10 +44,13 @@ interface PendingAttachment {
   previewUrl?: string;
 }
 
-/** Resolve the bubble pair to a usable chat config. Null until the user
- *  picks a (provider, model) in the modal's PairSelector. */
-function readChatConfig(): ResolvedPairConfig | null {
-  return resolvePairConfig(useAiConfigStore.getState().bubblePair);
+/** Resolve the active bt session's pair to a usable chat config. Null until
+ *  the user picks a (provider, model) in the modal's PairSelector (or the
+ *  active session has no pair). Phase 2: pair moved off the global bubblePair
+ *  onto the bt session. */
+function readChatConfig(sessionId: string | null): ResolvedPairConfig | null {
+  if (!sessionId) return null;
+  return resolvePairForBtSession(sessionId);
 }
 
 /** Stable empty reference for the active-session messages selector — when
@@ -108,11 +114,20 @@ export function BubbleTemplateAIChatModal({
     (s) => s.sessions.find((sess) => sess.id === s.activeSessionId)?.messages ?? EMPTY_MESSAGES,
   );
 
-  // T05: vision gate. The bubble pair drives which model to query for vision
-  // capability. Null pair → visionOk stays true (the modal renders the
-  // unconfigured empty state regardless, so the gate is moot in that path).
-  const bubblePair = useAiConfigStore((s) => s.bubblePair);
-  const setBubblePair = useAiConfigStore((s) => s.setBubblePair);
+  // Phase 2: the bt pair is per-session. Read the active session's pair
+  // (undefined when no pair yet — same empty state as the old null
+  // bubblePair global). The in-modal PairSelector writes via setSessionPair;
+  // readChatConfig resolves via resolvePairForBtSession at send time.
+  const activeBtSession = useBubbleTemplateChatStore((s) =>
+    s.sessions.find((sess) => sess.id === s.activeSessionId),
+  );
+  const setSessionPair = useBubbleTemplateChatStore((s) => s.setSessionPair);
+  // ponytail: cast string → ChatProvider for PairSelector's value prop —
+  // session.provider is `string` (catalog-free convention), ChatProvider
+  // widens to `string` in Phase 3.
+  const bubblePair = activeBtSession?.provider && activeBtSession?.model
+    ? { provider: activeBtSession.provider as ChatProvider, model: activeBtSession.model }
+    : null;
   const pairProvider = bubblePair?.provider;
   const pairModel = bubblePair?.model;
   const fetchedModels = useModelRegistryStore((s) =>
@@ -238,7 +253,7 @@ export function BubbleTemplateAIChatModal({
     const userText = input.trim();
     const hasAttachment = pending !== null;
     if (!userText && !hasAttachment) return;
-    const cfg = readChatConfig();
+    const cfg = readChatConfig(sessionId);
     if (!cfg) {
       setError(t('settings:pet.templates.ai.unconfigured'));
       return;
@@ -370,7 +385,7 @@ export function BubbleTemplateAIChatModal({
 
   if (!open) return null;
 
-  const chatConfig = readChatConfig();
+  const chatConfig = readChatConfig(sessionId);
   const unconfigured = !chatConfig;
 
   const attachmentsRow = pending ? (
@@ -461,7 +476,12 @@ export function BubbleTemplateAIChatModal({
           <div className="flex items-center gap-2 shrink-0">
             <PairSelector
               value={bubblePair}
-              onChange={setBubblePair}
+              onChange={(pair) => {
+                // Phase 2: pair is per-session — write the active bt session.
+                if (sessionId && pair) {
+                  setSessionPair(sessionId, pair);
+                }
+              }}
               className="max-w-[220px]"
             />
             <button

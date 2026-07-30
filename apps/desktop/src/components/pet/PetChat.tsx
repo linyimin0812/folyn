@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next';
 import type { CliMessage } from '@quill/cli-adapter';
 import { isTauri } from '@/utils/platform';
-import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useAiConfigStore, type ChatProvider } from '@/store/aiConfigStore';
 import { usePetChatStore } from '@/store/petChatStore';
 import type { PetChatMessage } from '@/store/petChatStore';
 import {
@@ -144,13 +144,23 @@ function toCliMessages(
 export function PetChat() {
   const { t } = useTranslation();
   const activeSessionId = usePetChatStore((s) => s.activeSessionId);
+  const activePetSession = usePetChatStore((s) =>
+    s.sessions.find((sess) => sess.id === s.activeSessionId),
+  );
   const messages = usePetChatStore(
     (s) => s.sessions.find((sess) => sess.id === s.activeSessionId)?.messages ?? EMPTY_MESSAGES,
   );
-  // PairSelector for chat mode — user picks (provider, model) inline, writes
-  // petPair. petChatService reads petPair at send time.
-  const petPair = useAiConfigStore((s) => s.petPair);
-  const setPetPair = useAiConfigStore((s) => s.setPetPair);
+  // Phase 2: the pet pair is per-session. Read the active session's pair
+  // (undefined when the session has no pair yet — same empty state as the
+  // old null petPair global). The in-panel PairSelector writes via
+  // setSessionPair; petChatService reads via resolvePairForPetSession.
+  // ponytail: cast string → ChatProvider for PairSelector's value prop —
+  // session.provider is `string` (catalog-free convention), ChatProvider
+  // widens to `string` in Phase 3.
+  const petPair = activePetSession?.provider && activePetSession?.model
+    ? { provider: activePetSession.provider as ChatProvider, model: activePetSession.model }
+    : null;
+  const setSessionPair = usePetChatStore((s) => s.setSessionPair);
   const customerProviders = useAiConfigStore((s) => s.customerProviders);
   const streaming = usePetChatStore((s) => s.streaming);
   const addMessage = usePetChatStore((s) => s.addMessage);
@@ -338,12 +348,13 @@ export function PetChat() {
     setInput('');
     setRejectError(null);
     addMessage(sessionId, 'user', prompt);
-    // Stamp petPair on the assistant bubble so ChatMessageList can render the
-    // pair tag — parity with AiPanel (every assistant message carries the
-    // session's pair). petPair is the user's selection in the always-visible
-    // PairSelector; chat mode (rig) actually consumes it, ask/agent run the
-    // claude CLI binary but still surface the tag for consistency with the
-    // picked pair.
+    // Stamp the assistant bubble with the active session's pair so
+    // ChatMessageList can render the pair tag — parity with AiPanel (every
+    // assistant message carries the session's pair). The pair is
+    // snapshotted at send time via addMessage, so historical bubbles keep
+    // their tag after a pair switch. chat mode (rig) actually consumes the
+    // pair; ask/agent run the claude CLI binary but still surface the tag
+    // for consistency with the picked pair.
     addMessage(
       sessionId,
       'assistant',
@@ -499,7 +510,14 @@ export function PetChat() {
       <div className="border-b border-brd px-2 py-1">
         <PairSelector
           value={petPair}
-          onChange={setPetPair}
+          onChange={(pair) => {
+            // Phase 2: pair is per-session. No active session → no-op (the
+            // panel always has at least one session post-rehydrate, so this
+            // is a defensive guard).
+            if (activeSessionId && pair) {
+              setSessionPair(activeSessionId, pair);
+            }
+          }}
           onOpenSettings={handleOpenSettings}
         />
       </div>

@@ -32,17 +32,15 @@ function makeFakeAdapter(id: string) {
   };
 }
 
-const { aiConfigState, vaultConfigState, createAdapter } = vi.hoisted(() => {
+const { aiConfigState, vaultConfigState, createAdapter, resolvePairForPetSessionMock } = vi.hoisted(() => {
   const aiConfigState: {
     cliAdapter: string;
     cliPath: string;
-    petPair: { provider: string; model: string } | null;
     providerSettings: Record<string, { apiKey: string; baseUrl: string }>;
     customerProviders: Record<string, unknown>;
   } = {
     cliAdapter: 'claude',
     cliPath: '/mock/claude',
-    petPair: null,
     providerSettings: {},
     customerProviders: {},
   };
@@ -55,25 +53,15 @@ const { aiConfigState, vaultConfigState, createAdapter } = vi.hoisted(() => {
     // Factory stub the test re-points before each send to control which
     // adapter instance a session gets.
     createAdapter: vi.fn(() => makeFakeAdapter('claude')),
+    // Phase 2: petChatService now calls resolvePairForPetSession(sessionId)
+    // from petChatStore. The petChatStore mock below delegates to this fn so
+    // tests can override its return per-test.
+    resolvePairForPetSessionMock: vi.fn<(sid: string) => unknown>(() => null),
   };
 });
 
 vi.mock('@/store/aiConfigStore', () => ({
   useAiConfigStore: { getState: () => aiConfigState },
-  resolvePairConfig: (pair: { provider: string; model: string } | null) => {
-    if (!pair) return null;
-    const slot = aiConfigState.providerSettings[pair.provider];
-    if (!slot) return null;
-    if (!slot.apiKey) return null;
-    return {
-      provider: pair.provider,
-      model: pair.model,
-      apiKey: slot.apiKey,
-      baseUrl: slot.baseUrl,
-      thinkingBudget: null,
-      customProvider: false,
-    };
-  },
 }));
 
 vi.mock('@/store/vaultConfigStore', () => ({
@@ -86,8 +74,10 @@ vi.mock('@/store/petChatStore', () => {
   // sessions/cliSessionId + inputMode and calls setCliSessionId. inputMode
   // defaults to undefined so existing ask/agent tests see `resolveSendOptions`
   // pass `base` through unchanged (no permissionMode added).
+  // Phase 2: also exports resolvePairForPetSession (delegated to the hoisted
+  // mock so tests can drive the rig-mode pair-resolution path).
   const store: {
-    sessions: { id: string; cliSessionId?: string }[];
+    sessions: { id: string; cliSessionId?: string; provider?: string; model?: string }[];
     activeSessionId: string | null;
     setCliSessionId: ReturnType<typeof vi.fn>;
     inputMode: string | undefined;
@@ -97,7 +87,10 @@ vi.mock('@/store/petChatStore', () => {
     setCliSessionId: vi.fn(),
     inputMode: undefined,
   };
-  return { usePetChatStore: { getState: () => store } };
+  return {
+    usePetChatStore: { getState: () => store },
+    resolvePairForPetSession: (sid: string) => resolvePairForPetSessionMock(sid),
+  };
 });
 
 vi.mock('@quill/cli-adapter', () => ({
@@ -124,7 +117,7 @@ import {
 const petChatStoreState = (
   await import('@/store/petChatStore')
 ).usePetChatStore.getState() as {
-  sessions: { id: string; cliSessionId?: string }[];
+  sessions: { id: string; cliSessionId?: string; provider?: string; model?: string }[];
   activeSessionId: string | null;
   setCliSessionId: ReturnType<typeof vi.fn>;
   inputMode: string | undefined;
@@ -141,7 +134,6 @@ beforeEach(() => {
   );
   aiConfigState.cliAdapter = 'claude';
   aiConfigState.cliPath = '/mock/claude';
-  aiConfigState.petPair = null;
   aiConfigState.providerSettings = {};
   aiConfigState.customerProviders = {};
   createAdapter.mockImplementation(() => makeFakeAdapter('claude'));
@@ -149,6 +141,10 @@ beforeEach(() => {
   petChatStoreState.activeSessionId = null;
   petChatStoreState.inputMode = undefined;
   petChatStoreState.setCliSessionId.mockClear();
+  // Default: rig-mode pair resolution returns null (no pair on the session).
+  // Tests that need a configured pair override this with mockReturnValue.
+  resolvePairForPetSessionMock.mockReset();
+  resolvePairForPetSessionMock.mockReturnValue(null);
   // Default: rig path resolves but emits nothing. Tests that need events
   // override this with mockImplementation.
   runRigChatMock.mockReset();
@@ -383,14 +379,20 @@ describe('adapter id invalidation', () => {
   });
 });
 
-// ── PR5: rig-mode (chat inputMode) reads petPair, no global fallback ──
-describe('sendPetChatMessage — rig-mode pair resolution (PR5)', () => {
-  it('rig mode: resolves petPair + providerSettings and forwards to runRigChat', async () => {
+// ── Phase 2: rig-mode (chat inputMode) reads the pet session's pair via
+// resolvePairForPetSession, no global fallback ──
+describe('sendPetChatMessage — rig-mode pair resolution (Phase 2)', () => {
+  it('rig mode: resolves the pet session pair and forwards to runRigChat', async () => {
     petChatStoreState.inputMode = 'chat';
-    aiConfigState.petPair = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
-    aiConfigState.providerSettings = {
-      anthropic: { apiKey: 'sk-test', baseUrl: '' },
-    };
+    resolvePairForPetSessionMock.mockReturnValue({
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+      apiKey: 'sk-test',
+      baseUrl: '',
+      thinkingBudget: null,
+      customProvider: false,
+      defaultChatEndpoint: undefined,
+    });
     seedSession('s1');
 
     await sendPetChatMessage('s1', 'hi', {});
@@ -402,11 +404,13 @@ describe('sendPetChatMessage — rig-mode pair resolution (PR5)', () => {
     expect(params.provider).toBe('anthropic');
     expect(params.model).toBe('claude-sonnet-4-6');
     expect(params.apiKey).toBe('sk-test');
+    // The resolver was called with the send's sessionId (not "current active").
+    expect(resolvePairForPetSessionMock).toHaveBeenCalledWith('s1');
   });
 
-  it('rig mode: fires onError + returns when petPair is null (no global fallback)', async () => {
+  it('rig mode: fires onError + returns when the session has no pair (no global fallback)', async () => {
     petChatStoreState.inputMode = 'chat';
-    // petPair stays null (default).
+    // resolvePairForPetSession returns null (default mock) — no pair on session.
     seedSession('s1');
     const onError = vi.fn();
 
@@ -416,10 +420,11 @@ describe('sendPetChatMessage — rig-mode pair resolution (PR5)', () => {
     expect(runRigChatMock).not.toHaveBeenCalled();
   });
 
-  it('rig mode: fires onError when petPair is set but provider has no apiKey', async () => {
+  it('rig mode: fires onError when the session pair points to a provider with no apiKey', async () => {
     petChatStoreState.inputMode = 'chat';
-    aiConfigState.petPair = { provider: 'anthropic', model: 'sonnet' };
-    aiConfigState.providerSettings = { anthropic: { apiKey: '', baseUrl: '' } };
+    // Resolver returns null because the provider slot has no apiKey — same
+    // surfaced-empty-state path as a missing pair.
+    resolvePairForPetSessionMock.mockReturnValue(null);
     seedSession('s1');
     const onError = vi.fn();
 

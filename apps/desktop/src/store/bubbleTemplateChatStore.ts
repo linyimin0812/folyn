@@ -3,6 +3,13 @@ import { storageClient } from '@/utils/storageClient';
 import { generateId } from '@/utils/idGenerator';
 import { debounce } from '@/utils/debounce';
 import type { CliMessage } from '@quill/cli-adapter';
+import {
+  firstEnabledPair,
+  resolvePairConfig,
+  useAiConfigStore,
+  type ChatProvider,
+  type ResolvedPairConfig,
+} from './aiConfigStore';
 
 /**
  * BubbleTemplateChatStore — sessions for the AI Bubble-Template generator
@@ -26,6 +33,14 @@ export interface BtSession {
   id: string;
   title: string;
   messages: CliMessage[];
+  /** The (provider, model) pair this session uses for sends. `string` not
+   *  `ChatProvider` — the bt store stays catalog-free (same convention as
+   *  CliMessage.provider/model which is already `string`). Optional on
+   *  legacy persisted sessions; createEmptySession seeds from the most-recent
+   *  session's pair or firstEnabledPair. Set via setSessionPair. */
+  provider?: string;
+  /** Model id alongside `provider`. See `provider` doc above. */
+  model?: string;
   createdAt: number;
 }
 
@@ -60,6 +75,10 @@ interface BtState {
   appendToLastMessageThinking: (sessionId: string, chunk: string) => void;
 
   setStreaming: (streaming: boolean) => void;
+  /** Set the (provider, model) pair on a specific bt session. Writes only the
+   *  session + persists. No-op if the session id is unknown. Mirrors
+   *  aiStore.setSessionPair's shape (Phase 1 dropped the global dual-write). */
+  setSessionPair: (sessionId: string, pair: { provider: string; model: string }) => void;
   rehydrate: () => Promise<void>;
 }
 
@@ -76,7 +95,20 @@ const AUTO_TITLE_MAX = 40;
 // ── Helpers ──
 
 function createEmptySession(): BtSession {
-  return { id: generateId(), title: DEFAULT_NEW_TITLE, messages: [], createdAt: Date.now() };
+  // Seed the pair from the most-recent session (sessions[0] — new sessions
+  // are unshifted to the front), else fall back to firstEnabledPair. No
+  // global "last used pair" role post-Phase 2 — bubblePair global is gone.
+  const existing = useBubbleTemplateChatStore.getState().sessions;
+  const recent = existing.length > 0 ? existing[0] : undefined;
+  const fallback = firstEnabledPair(useAiConfigStore.getState());
+  return {
+    id: generateId(),
+    title: DEFAULT_NEW_TITLE,
+    messages: [],
+    createdAt: Date.now(),
+    provider: recent?.provider ?? fallback?.provider,
+    model: recent?.model ?? fallback?.model,
+  };
 }
 
 /** Auto-title: when the first user message lands in a session still titled
@@ -202,6 +234,19 @@ export const useBubbleTemplateChatStore = create<BtState>((set, get) => ({
 
   setStreaming: (streaming) => set({ streaming }),
 
+  setSessionPair: (sessionId, pair) => {
+    const state = get();
+    if (!state.sessions.some((s) => s.id === sessionId)) return;
+    const sessions = updateSession(state.sessions, sessionId, (s) => ({
+      ...s,
+      provider: pair.provider,
+      model: pair.model,
+    }));
+    const payload: PersistedBt = { sessions, activeSessionId: state.activeSessionId };
+    set({ sessions });
+    schedulePersist(payload);
+  },
+
   rehydrate: async () => {
     if (get().loaded) return;
     try {
@@ -225,3 +270,23 @@ export const useBubbleTemplateChatStore = create<BtState>((set, get) => ({
     }
   },
 }));
+
+/** Resolve a bt session's pair into the connection params a caller needs
+ *  to invoke runRigChat. Reads the session from bubbleTemplateChatStore,
+ *  then delegates to resolvePairConfig. Returns null when the session has
+ *  no pair, the provider slot is missing, or a key-required provider has
+ *  no apiKey. Mirrors aiConfigStore.resolvePairForSession — keeps the
+ *  deep-pair interface symmetric across the three session-based callers. */
+export function resolvePairForBtSession(
+  sessionId: string,
+): ResolvedPairConfig | null {
+  const session = useBubbleTemplateChatStore.getState().sessions.find((s) => s.id === sessionId);
+  if (!session || !session.provider || !session.model) return null;
+  // ponytail: cast string → ChatProvider. bt store stays catalog-free
+  // (session.provider is `string`), but resolvePairConfig's input type is
+  // `ProviderModelPair` (ChatProvider-typed). ChatProvider widens to `string`
+  // in Phase 3 — same convention as firstEnabledPair's `entry.id as ChatProvider`.
+  return resolvePairConfig(
+    { provider: session.provider as ChatProvider, model: session.model },
+  );
+}
