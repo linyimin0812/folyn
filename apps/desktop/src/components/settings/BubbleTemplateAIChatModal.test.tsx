@@ -72,7 +72,7 @@ const { resolvePairForBtSessionMock } = vi.hoisted(() => ({
     baseUrl: '',
     thinkingBudget: null,
     customProvider: false,
-    defaultChatEndpoint: undefined,
+    adapterFamily: undefined,
   })),
 }));
 vi.mock('@/store/bubbleTemplateChatStore', async () => {
@@ -159,7 +159,7 @@ beforeEach(() => {
     baseUrl: '',
     thinkingBudget: null,
     customProvider: false,
-    defaultChatEndpoint: undefined,
+    adapterFamily: undefined,
   });
   resetStoreToSingleEmpty();
 });

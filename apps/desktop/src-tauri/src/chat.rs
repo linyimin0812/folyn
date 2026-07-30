@@ -96,19 +96,24 @@ pub struct ChatParams {
     ///     (provider doesn't support reasoning, silently skipped)
     #[serde(default)]
     pub thinking_budget: Option<u32>,
-    /// PR2e: routing flag for custom providers. `false` → use rig's built-in
-    /// provider by `provider` id (bundled catalog). `true` → treat as custom
-    /// provider; the frontend supplies `default_chat_endpoint` to pick the
-    /// adapter family, and `base_url` + `api_key` carry the connection.
+    /// Phase 3: bundled adapter family id when `custom_provider=true`
+    /// (e.g. 'anthropic', 'openai-completions', 'ollama', 'gemini', 'openai').
+    /// Same value space as `provider` for bundled providers; absent → fall
+    /// back to `provider.as_str()`. Replaces the old endpoint-key enum
+    /// indirection. The frontend still sends a `customProvider` flag for
+    /// semantic clarity; serde ignores it here (routing collapses to this
+    /// one field).
     #[serde(default)]
-    pub custom_provider: bool,
-    /// PR2e: endpoint key when `custom_provider=true`. One of the catalog's
-    /// `defaultChatEndpoint` values ("anthropic-messages" / "openai-chat-
-    /// completions" / "google-generate-content" / "ollama" / "ollama-chat"
-    /// / "openai-responses" / "openai-image-generation"). Ignored when
-    /// `custom_provider=false`.
-    #[serde(default)]
-    pub default_chat_endpoint: Option<String>,
+    pub adapter_family: Option<String>,
+}
+
+/// Phase 3: pick the rig adapter family id a chat turn routes to.
+/// Custom providers declare it directly via `adapter_family`; bundled
+/// providers carry it via `provider`. Absent `adapter_family` falls back
+/// to `provider.as_str()` (bundled or custom-without-family). Pure — unit
+/// tested below.
+fn resolve_adapter_family(params: &ChatParams) -> &str {
+    params.adapter_family.as_deref().unwrap_or(params.provider.as_str())
 }
 
 /// Build the provider-specific additional_params JSON for reasoning. Returns
@@ -279,29 +284,12 @@ pub async fn chat_stream(
     // Delta vs Thinking distinction that drain_loop relies on. Keeping the
     // ~5-line duplication per arm is cheaper than a boxed enum + 7 mapping
     // closures. Re-evaluate if provider count doubles.
-    // PR2e: when `custom_provider=true`, resolve the adapter family from
-    // `default_chat_endpoint` instead of the bundled catalog id in
-    // `provider`. Each endpoint maps to an existing match arm — the arm
-    // already uses `params.api_key` + `params.base_url`, so a custom
-    // provider's connection config flows through unchanged. Unknown
-    // endpoints fall through to the openai-compat `_` arm.
-    let resolved: &str = if params.custom_provider {
-        match params.default_chat_endpoint.as_deref().unwrap_or("") {
-            "anthropic-messages" => "anthropic",
-            "google-generate-content" => "gemini",
-            "ollama" | "ollama-chat" => "ollama",
-            // ponytail: split from `openai-resolutions` so the `_` arm can
-            // switch to Chat Completions API. Most OpenAI-compat gateways
-            // (one-api / new-api / fastgpt etc.) only expose /v1/chat/completions,
-            // not /v1/responses — the default Responses client 404s on them.
-            "openai-chat-completions" => "openai-completions",
-            // openai-responses / openai-image-generation + unknowns →
-            // openai-compat `_` arm (Responses API default).
-            _ => "openai",
-        }
-    } else {
-        params.provider.as_str()
-    };
+    // PR2e/Phase 3: collapse the enum indirection — custom providers
+    // declare their adapter family directly (same value space as bundled
+    // ids). `adapter_family` overrides `provider` for custom; absent →
+    // fall back to `provider.as_str()` (bundled providers). Custom and
+    // bundled now route through the same line.
+    let resolved: &str = resolve_adapter_family(&params);
     let full: String = match resolved {
         "anthropic" | "anthropic-compatible" => {
             let mut b = anthropic::Client::builder().api_key(params.api_key);
@@ -660,5 +648,51 @@ mod tests {
     fn thinking_params_none_when_budget_is_none() {
         assert!(thinking_params("anthropic", None).is_none());
         assert!(thinking_params("openai", None).is_none());
+    }
+
+    // Phase 3: resolve_adapter_family collapses the old endpoint-key enum.
+    // Custom providers declare a bundled id directly; bundled providers carry
+    // it via `provider`. The downstream `match resolved` arm then dispatches.
+    fn mk_params(provider: &str, adapter_family: Option<&str>) -> ChatParams {
+        ChatParams {
+            session_id: "test".into(),
+            provider: provider.into(),
+            preamble: None,
+            model: "m".into(),
+            api_key: "k".into(),
+            base_url: None,
+            prompt: "p".into(),
+            images: None,
+            azure_deployment_id: None,
+            azure_api_version: None,
+            thinking_budget: None,
+            adapter_family: adapter_family.map(|s| s.to_string()),
+        }
+    }
+
+    #[test]
+    fn resolve_adapter_family_custom_uses_adapter_family() {
+        // Custom provider: adapterFamily="openai-completions" routes through
+        // the openai-completions match arm (Completions API). The custom id
+        // "my-oneapi" is NOT a bundled id — without adapter_family it would
+        // fall to the `_` (openai Responses) arm.
+        let params = mk_params("my-oneapi", Some("openai-completions"));
+        assert_eq!(resolve_adapter_family(&params), "openai-completions");
+    }
+
+    #[test]
+    fn resolve_adapter_family_bundled_uses_provider() {
+        // Bundled provider: no adapter_family — fall back to provider id.
+        let params = mk_params("anthropic", None);
+        assert_eq!(resolve_adapter_family(&params), "anthropic");
+    }
+
+    #[test]
+    fn resolve_adapter_family_custom_without_family_falls_back() {
+        // Custom provider flag set but no adapter_family supplied (legacy
+        // def missing the field) — fall back to provider id, which for a
+        // custom id lands in the `_` openai-compat arm.
+        let params = mk_params("my-oneapi", None);
+        assert_eq!(resolve_adapter_family(&params), "my-oneapi");
     }
 }

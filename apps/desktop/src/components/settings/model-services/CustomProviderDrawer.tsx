@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type CustomProvider, type DefaultChatEndpoint } from '@/services/providers/catalog';
+import { type CustomProvider } from '@/services/providers/catalog';
 import { avatarColor } from './helpers';
 
 // ponytail: DrawerState lives here (its primary user). Main settings file
@@ -10,18 +10,16 @@ export type DrawerState =
   | { mode: 'edit'; id: string };
 
 // ── Custom provider drawer ─────────────────────────────────────
-// ponytail: endpoint options are the 7 actual endpoint keys present in
-// bundled providers.json's endpointConfigs — NOT the legacy
-// CustomProviderType label enum. `new-api` was never an endpoint key; the
-// legacy drawer emitting it was a bug.
-const ENDPOINT_OPTIONS: DefaultChatEndpoint[] = [
-  'openai-chat-completions',
-  'openai-responses',
-  'anthropic-messages',
-  'google-generate-content',
+// Phase 3: adapter family options are the bundled catalog ids the Rust side
+// dispatches by — the old endpoint enum keys ('anthropic-messages' etc.)
+// are gone. 'openai-completions' is split from 'openai' because most
+// OpenAI-compat gateways only expose /v1/chat/completions, not /v1/responses.
+const ADAPTER_FAMILY_OPTIONS: string[] = [
+  'anthropic',
+  'openai-completions',
   'ollama',
-  'ollama-chat',
-  'openai-image-generation',
+  'gemini',
+  'openai',
 ];
 
 const ID_PATTERN = /^[A-Za-z0-9_-]+$/;
@@ -40,7 +38,7 @@ export function CustomProviderDrawer({
   onSave: (data: {
     id: string;
     name: string;
-    defaultChatEndpoint: DefaultChatEndpoint;
+    adapterFamily: string;
     description?: string;
     metadata?: CustomProvider['metadata'];
   }) => void;
@@ -48,8 +46,8 @@ export function CustomProviderDrawer({
   const { t } = useTranslation();
   const [id, setId] = useState(initial?.id ?? '');
   const [name, setName] = useState(initial?.name ?? '');
-  const [defaultChatEndpoint, setDefaultChatEndpoint] = useState<DefaultChatEndpoint>(
-    (initial?.defaultChatEndpoint as DefaultChatEndpoint) ?? 'openai-chat-completions',
+  const [adapterFamily, setAdapterFamily] = useState<string>(
+    initial?.adapterFamily ?? 'openai-completions',
   );
   const [description, setDescription] = useState(initial?.description ?? '');
   const [apiKey, setApiKey] = useState(initial?.metadata?.website?.apiKey ?? '');
@@ -139,10 +137,10 @@ export function CustomProviderDrawer({
             </span>
             <select
               className="fi2 h-[34px] py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
-              value={defaultChatEndpoint}
-              onChange={(e) => setDefaultChatEndpoint(e.target.value as DefaultChatEndpoint)}
+              value={adapterFamily}
+              onChange={(e) => setAdapterFamily(e.target.value)}
             >
-              {[...ENDPOINT_OPTIONS].sort().map((c) => (
+              {[...ADAPTER_FAMILY_OPTIONS].sort().map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
@@ -224,7 +222,7 @@ export function CustomProviderDrawer({
               onSave({
                 id: id.trim(),
                 name: name.trim(),
-                defaultChatEndpoint,
+                adapterFamily,
                 description: description.trim() || undefined,
                 metadata: buildMetadata(),
               })

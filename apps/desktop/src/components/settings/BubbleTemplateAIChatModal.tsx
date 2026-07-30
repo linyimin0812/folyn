@@ -6,7 +6,7 @@ import { VoiceInputButton } from '@/components/ai/VoiceInputButton';
 import { PairSelector } from '@/components/ai/PairSelector';
 import type { CliMessage } from '@quill/cli-adapter';
 import { runRigChat } from '@/services/rigChat';
-import { type ChatProvider, type ResolvedPairConfig } from '@/store/aiConfigStore';
+import { type ResolvedPairConfig } from '@/store/aiConfigStore';
 import { useModelRegistryStore } from '@/store/modelRegistryStore';
 import { findModelInCatalog } from '@/services/modelRegistry/loader';
 import { isVisionModel } from '@/services/modelRegistry/merge';
@@ -122,11 +122,9 @@ export function BubbleTemplateAIChatModal({
     s.sessions.find((sess) => sess.id === s.activeSessionId),
   );
   const setSessionPair = useBubbleTemplateChatStore((s) => s.setSessionPair);
-  // ponytail: cast string → ChatProvider for PairSelector's value prop —
-  // session.provider is `string` (catalog-free convention), ChatProvider
-  // widens to `string` in Phase 3.
+  // ponytail: Phase 3 — ChatProvider is `string`, no cast needed.
   const bubblePair = activeBtSession?.provider && activeBtSession?.model
-    ? { provider: activeBtSession.provider as ChatProvider, model: activeBtSession.model }
+    ? { provider: activeBtSession.provider, model: activeBtSession.model }
     : null;
   const pairProvider = bubblePair?.provider;
   const pairModel = bubblePair?.model;
@@ -311,7 +309,7 @@ export function BubbleTemplateAIChatModal({
         apiKey: cfg.apiKey,
         ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}),
         ...(cfg.thinkingBudget != null ? { thinkingBudget: cfg.thinkingBudget } : {}),
-        ...(cfg.customProvider ? { customProvider: true, defaultChatEndpoint: cfg.defaultChatEndpoint } : {}),
+        ...(cfg.customProvider ? { customProvider: true, adapterFamily: cfg.adapterFamily } : {}),
         preamble,
         ...(images ? { images } : {}),
         onEvent: (event) => {

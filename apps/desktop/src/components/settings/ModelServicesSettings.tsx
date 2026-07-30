@@ -16,7 +16,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAiConfigStore, type ChatProvider } from '@/store/aiConfigStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
 import {
   PROVIDER_CATALOG,
   allProviders,
@@ -35,7 +35,6 @@ import { useModelRegistryStore, canFetchModelsFromStore } from '@/store/modelReg
 import type { Model } from '@/services/modelRegistry/types';
 import {
   getProviderApiPath,
-  getEndpointPath,
   getProviderDocsUrl,
   getProviderModelsUrl,
 } from '@/services/providers/providersCatalog';
@@ -154,7 +153,10 @@ export function ModelServicesSettings() {
   const apiKeyUrl = providerApiKeyUrl(entry);
   const providersJsonBaseUrl = providerBaseUrl(entry);
   const providersJsonPath = isCustomProvider(entry)
-    ? getEndpointPath(entry.defaultChatEndpoint)
+    // ponytail: Phase 3 — custom provider path preview dropped. adapterFamily
+    // is a bundled id now, not an endpoint key; getEndpointPath would return
+    // null for it. Pre-launch OK to not show the path for custom providers.
+    ? null
     : getProviderApiPath(entry.id);
   const docsUrl = getProviderDocsUrl(entry.id);
   const modelsUrl = getProviderModelsUrl(entry.id);
@@ -198,7 +200,7 @@ export function ModelServicesSettings() {
               setTimeout(() => setRefetchStatus({ kind: 'idle' }), 4000);
             }
           }}
-          onSelectProvider={(id) => setChatProvider(id as ChatProvider)}
+          onSelectProvider={(id) => setChatProvider(id)}
           onEditCustom={(id) => setDrawer({ mode: 'edit', id })}
           onDeleteCustom={(id) => setDeleteConfirmId(id)}
           onAddCustom={() => setDrawer({ mode: 'add' })}
@@ -230,7 +232,7 @@ export function ModelServicesSettings() {
           manualCollapsed={manualCollapsed}
           canFetchModels={canFetchModels}
           testButtonDisabled={testButtonDisabled}
-          onSetChatProvider={(id) => setChatProvider(id as ChatProvider)}
+          onSetChatProvider={(id) => setChatProvider(id)}
           onSetChatModel={setChatModel}
           onSetChatApiKey={setChatApiKey}
           onSetChatBaseUrl={setChatBaseUrl}
@@ -269,7 +271,7 @@ export function ModelServicesSettings() {
           onSave={(data) => {
             if (drawer.mode === 'add') {
               const id = addCustomProvider(data);
-              setChatProvider(id as ChatProvider);
+              setChatProvider(id);
             } else {
               updateCustomProvider(drawer.id, data);
             }
@@ -323,7 +325,7 @@ export function ModelServicesSettings() {
               chatBaseUrl || providersJsonBaseUrl || undefined,
               chatAzureApiVersion || undefined,
               isCustom,
-              isCustom ? customerProviders[chatProvider]?.defaultChatEndpoint : undefined,
+              isCustom ? customerProviders[chatProvider]?.adapterFamily : undefined,
             );
           }}
         />

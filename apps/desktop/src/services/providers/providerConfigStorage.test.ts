@@ -9,7 +9,7 @@ describe('migrateLegacyBlob', () => {
     expect(result.providerSettings).toEqual({});
   });
 
-  it('migrates a custom provider: displayName→name, category→defaultChatEndpoint, apiKeyUrl→metadata.website.apiKey, baseUrl→settings', () => {
+  it('migrates a custom provider: displayName→name, apiKeyUrl→metadata.website.apiKey, baseUrl→settings', () => {
     const custom: CustomProvider[] = [{
       id: 'custom-abc',
       displayName: 'My Custom',
@@ -17,12 +17,14 @@ describe('migrateLegacyBlob', () => {
       apiKeyUrl: 'https://my.api/keys',
       category: 'anthropic',
       createdAt: 1,
-    }];
+    } as unknown as CustomProvider];
     const result = migrateLegacyBlob({ customProviders: custom });
+    // Phase 3: legacy `category` mapping dropped; defensive default
+    // 'openai-completions' covers most OpenAI-compat gateways.
     expect(result.customerProviders['custom-abc']).toEqual({
       id: 'custom-abc',
       name: 'My Custom',
-      defaultChatEndpoint: 'anthropic-messages',
+      adapterFamily: 'openai-completions',
       metadata: { website: { apiKey: 'https://my.api/keys' } },
     });
     expect(result.providerSettings['custom-abc']).toMatchObject({
@@ -32,45 +34,6 @@ describe('migrateLegacyBlob', () => {
       enabled: false,
       customProvider: true,
     });
-  });
-
-  it('defensively coerces unknown category values to openai-chat-completions', () => {
-    const custom = [{
-      id: 'x', displayName: 'X', baseUrl: '', apiKeyUrl: null,
-      category: 'openai-response', // legacy typo
-      createdAt: 1,
-    } as unknown as CustomProvider];
-    const result = migrateLegacyBlob({ customProviders: custom });
-    expect(result.customerProviders.x.defaultChatEndpoint).toBe('openai-responses');
-
-    const unknown = [{
-      id: 'y', displayName: 'Y', baseUrl: '', apiKeyUrl: null,
-      category: 'some-bogus-value' as unknown as CustomProvider['category'],
-      createdAt: 1,
-    } as unknown as CustomProvider];
-    const result2 = migrateLegacyBlob({ customProviders: unknown });
-    expect(result2.customerProviders.y.defaultChatEndpoint).toBe('openai-chat-completions');
-  });
-
-  it('maps legacy category values to the right endpoint keys', () => {
-    const cases: Array<[CustomProvider['category'], string]> = [
-      ['openai', 'openai-chat-completions'],
-      ['openai-responses', 'openai-responses'],
-      ['gemini', 'google-generate-content'],
-      ['anthropic', 'anthropic-messages'],
-      ['azure-openai', 'openai-chat-completions'],
-      ['new-api', 'openai-chat-completions'],
-      ['ollama', 'ollama'],
-    ];
-    for (const [cat, expected] of cases) {
-      const result = migrateLegacyBlob({
-        customProviders: [{
-          id: 'p', displayName: 'P', baseUrl: '', apiKeyUrl: null,
-          category: cat, createdAt: 1,
-        }],
-      });
-      expect(result.customerProviders.p.defaultChatEndpoint).toBe(expected);
-    }
   });
 
   it('migrates bundled providerConfigs with azure fields packed into extra', () => {
@@ -142,7 +105,7 @@ describe('migrateLegacyBlob', () => {
     const custom: CustomProvider[] = [{
       id: 'custom-1', displayName: 'C1', baseUrl: 'https://c1',
       apiKeyUrl: null, category: 'openai', createdAt: 1,
-    }];
+    } as unknown as CustomProvider];
     const cfg: ProviderConfig = {
       apiKey: 'k', baseUrl: 'override', azureDeploymentId: '',
       azureApiVersion: '', thinkingBudget: null,

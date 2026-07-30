@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next';
 import type { CliMessage } from '@quill/cli-adapter';
 import { isTauri } from '@/utils/platform';
-import { useAiConfigStore, type ChatProvider } from '@/store/aiConfigStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
 import { usePetChatStore } from '@/store/petChatStore';
 import type { PetChatMessage } from '@/store/petChatStore';
 import {
@@ -154,11 +154,10 @@ export function PetChat() {
   // (undefined when the session has no pair yet — same empty state as the
   // old null petPair global). The in-panel PairSelector writes via
   // setSessionPair; petChatService reads via resolvePairForPetSession.
-  // ponytail: cast string → ChatProvider for PairSelector's value prop —
-  // session.provider is `string` (catalog-free convention), ChatProvider
-  // widens to `string` in Phase 3.
+  // ponytail: Phase 3 — ChatProvider is `string`, session.provider assigns
+  // directly (no cast).
   const petPair = activePetSession?.provider && activePetSession?.model
-    ? { provider: activePetSession.provider as ChatProvider, model: activePetSession.model }
+    ? { provider: activePetSession.provider, model: activePetSession.model }
     : null;
   const setSessionPair = usePetChatStore((s) => s.setSessionPair);
   const customerProviders = useAiConfigStore((s) => s.customerProviders);

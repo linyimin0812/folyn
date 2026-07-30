@@ -7,7 +7,6 @@ import {
   firstEnabledPair,
   resolvePairConfig,
   useAiConfigStore,
-  type ChatProvider,
   type ResolvedPairConfig,
 } from './aiConfigStore';
 
@@ -282,11 +281,7 @@ export function resolvePairForBtSession(
 ): ResolvedPairConfig | null {
   const session = useBubbleTemplateChatStore.getState().sessions.find((s) => s.id === sessionId);
   if (!session || !session.provider || !session.model) return null;
-  // ponytail: cast string → ChatProvider. bt store stays catalog-free
-  // (session.provider is `string`), but resolvePairConfig's input type is
-  // `ProviderModelPair` (ChatProvider-typed). ChatProvider widens to `string`
-  // in Phase 3 — same convention as firstEnabledPair's `entry.id as ChatProvider`.
   return resolvePairConfig(
-    { provider: session.provider as ChatProvider, model: session.model },
+    { provider: session.provider, model: session.model },
   );
 }

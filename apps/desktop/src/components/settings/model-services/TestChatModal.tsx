@@ -111,9 +111,9 @@ export function TestChatModal({
                   baseUrl: chatBaseUrl || undefined,
                   azureDeploymentId: chatAzureDeploymentId || undefined,
                   azureApiVersion: chatAzureApiVersion || undefined,
-                  // PR2e: route custom providers via endpoint resolver.
+                  // PR2e: route custom providers via adapter family resolver.
                   customProvider: isCustom,
-                  defaultChatEndpoint: isCustom ? (customerProviders[chatProvider]?.defaultChatEndpoint) : undefined,
+                  adapterFamily: isCustom ? (customerProviders[chatProvider]?.adapterFamily) : undefined,
                 });
                 setStatus({ testing: false, result });
               } catch (err) {

@@ -264,7 +264,7 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
             baseUrl: voiceCfg.baseUrl || undefined,
             thinkingBudget: voiceCfg.thinkingBudget ?? undefined,
             customProvider: voiceCfg.customProvider,
-            defaultChatEndpoint: voiceCfg.defaultChatEndpoint,
+            adapterFamily: voiceCfg.adapterFamily,
             onEvent: (e) => {
               if (e.type === 'text' && e.content) acc += e.content;
               else if (e.type === 'error') reject(new Error(e.content ?? 'polish error'));

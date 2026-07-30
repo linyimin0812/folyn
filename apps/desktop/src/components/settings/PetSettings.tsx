@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePetStore, type PetOpacity } from '@/store/petStore';
 import { usePetChatStore } from '@/store/petChatStore';
-import { type ChatProvider } from '@/store/aiConfigStore';
 import { PairSelector } from '@/components/ai/PairSelector';
 import { isTauri } from '@/utils/platform';
 import { Toggle } from '@/components/settings/primitives';
@@ -56,11 +55,9 @@ export function PetSettings() {
     s.sessions.find((sess) => sess.id === s.activeSessionId),
   );
   const setSessionPair = usePetChatStore((s) => s.setSessionPair);
-  // ponytail: cast string → ChatProvider for PairSelector's value prop —
-  // session.provider is `string` (catalog-free convention), ChatProvider
-  // widens to `string` in Phase 3.
+  // ponytail: Phase 3 — ChatProvider is `string`, no cast needed.
   const petPair = activePetSession?.provider && activePetSession?.model
-    ? { provider: activePetSession.provider as ChatProvider, model: activePetSession.model }
+    ? { provider: activePetSession.provider, model: activePetSession.model }
     : null;
   const [errorMsg, setErrorMsg] = useState('');
   const [busy, setBusy] = useState(false);

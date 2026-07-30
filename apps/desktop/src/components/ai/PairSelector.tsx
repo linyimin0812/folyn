@@ -40,17 +40,7 @@ export function useEnabledPairs(): { pairs: Pair[]; hasAny: boolean } {
       if (!slot || !slot.enabled) continue;
       if (slot.selectedModelIds.length === 0) continue;
       for (const model of slot.selectedModelIds) {
-        // ponytail: cast — `entry.id` is `string`, but `Pair.provider` is
-        // typed `ChatProvider` (catalog id union). Custom provider ids are
-        // unsoundly cast here; the same convention already applies to
-        // `aiConfigStore.chatProvider` (typed `ChatProvider`, accepts custom
-        // ids at runtime via `setChatProvider`). Widening to `string` would
-        // ripple through `ProviderModelPair` / `AiSession` / `CliMessage` /
-        // `setSessionPair` signatures — not the simpler fix. Hydrate guard
-        // `isChatProvider` (catalog-only) means custom-id pairs reset to null
-        // on restart, matching the existing `chatProvider` reset-to-'anthropic'
-        // behavior; fix both together if/ouf custom-provider persistence matters.
-        out.push({ provider: entry.id as ChatProvider, model });
+        out.push({ provider: entry.id, model });
       }
     }
     return out;

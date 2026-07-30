@@ -229,7 +229,7 @@ export async function sendPetChatMessage(
         baseUrl: cfg.baseUrl,
         thinkingBudget: cfg.thinkingBudget,
         customProvider: cfg.customProvider,
-        defaultChatEndpoint: cfg.defaultChatEndpoint,
+        adapterFamily: cfg.adapterFamily,
         onEvent: handler,
       });
     } catch (err) {

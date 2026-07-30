@@ -391,7 +391,7 @@ describe('sendPetChatMessage — rig-mode pair resolution (Phase 2)', () => {
       baseUrl: '',
       thinkingBudget: null,
       customProvider: false,
-      defaultChatEndpoint: undefined,
+      adapterFamily: undefined,
     });
     seedSession('s1');
 

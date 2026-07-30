@@ -149,8 +149,14 @@ describe('useAiConfigStore.hydrate', () => {
     expect(s.chatModel).toBe('gpt-4o');
   });
 
-  it('coerces invalid chatProvider to default (keeps anthropic)', () => {
+  it('Phase 3: accepts any non-empty string chatProvider (custom ids persist through hydrate)', () => {
+    // ChatProvider widened to `string`; the guard no longer rejects custom
+    // ids. 'bogus' persists — the UI's catalog lookup falls back to the
+    // first catalog entry, matching pre-Phase-3 effective behavior for
+    // custom ids. Non-string values still fall back to 'anthropic'.
     useAiConfigStore.getState().hydrate({ chatProvider: 'bogus' });
+    expect(useAiConfigStore.getState().chatProvider).toBe('bogus');
+    useAiConfigStore.getState().hydrate({ chatProvider: 42 });
     expect(useAiConfigStore.getState().chatProvider).toBe('anthropic');
   });
 
@@ -174,7 +180,7 @@ describe('useAiConfigStore.hydrate', () => {
     (id) => {
       useAiConfigStore.setState({ chatProvider: 'anthropic' });
       useAiConfigStore.getState().hydrate({ chatProvider: id });
-      expect(useAiConfigStore.getState().chatProvider).toBe(id as ChatProvider);
+      expect(useAiConfigStore.getState().chatProvider).toBe(id);
     },
   );
 
@@ -293,7 +299,7 @@ describe('useAiConfigStore.addSelectedModelId', () => {
     useAiConfigStore.getState().addCustomProvider({
       id: 'custom-1',
       name: 'C1',
-      defaultChatEndpoint: 'anthropic-messages',
+      adapterFamily: 'anthropic',
     });
     useAiConfigStore.getState().addSelectedModelId('custom-1', 'm1');
     expect(useAiConfigStore.getState().providerSettings['custom-1']?.customProvider)
@@ -351,19 +357,19 @@ describe('useAiConfigStore custom providers', () => {
     const id = useAiConfigStore.getState().addCustomProvider({
       id: 'my-provider',
       name: 'My Provider',
-      defaultChatEndpoint: 'openai-chat-completions',
+      adapterFamily: 'openai-completions',
     });
     expect(id).toBe('my-provider');
     const cp = useAiConfigStore.getState().customerProviders['my-provider'];
     expect(cp?.name).toBe('My Provider');
-    expect(cp?.defaultChatEndpoint).toBe('openai-chat-completions');
+    expect(cp?.adapterFamily).toBe('openai-completions');
   });
 
   it('addCustomProvider trims name; empty name defaults to "Custom"', () => {
     useAiConfigStore.getState().addCustomProvider({
       id: 'x',
       name: '  ',
-      defaultChatEndpoint: 'openai-chat-completions',
+      adapterFamily: 'openai-completions',
     });
     expect(useAiConfigStore.getState().customerProviders.x?.name).toBe('Custom');
   });
@@ -372,7 +378,7 @@ describe('useAiConfigStore custom providers', () => {
     useAiConfigStore.getState().addCustomProvider({
       id: 'seeded',
       name: 'Seeded',
-      defaultChatEndpoint: 'anthropic-messages',
+      adapterFamily: 'anthropic',
     });
     const slot = useAiConfigStore.getState().providerSettings.seeded;
     expect(slot?.customProvider).toBe(true);
@@ -385,7 +391,7 @@ describe('useAiConfigStore custom providers', () => {
     useAiConfigStore.getState().addCustomProvider({
       id: 'disk-test',
       name: 'Disk',
-      defaultChatEndpoint: 'openai-chat-completions',
+      adapterFamily: 'openai-completions',
     });
     // Drain microtasks so the void'd setCustomerProvider promise resolves
     // before we flush.
@@ -398,7 +404,7 @@ describe('useAiConfigStore custom providers', () => {
     expect(onDisk['disk-test']).toMatchObject({
       id: 'disk-test',
       name: 'Disk',
-      defaultChatEndpoint: 'openai-chat-completions',
+      adapterFamily: 'openai-completions',
     });
   });
 
@@ -406,7 +412,7 @@ describe('useAiConfigStore custom providers', () => {
     useAiConfigStore.getState().addCustomProvider({
       id: 'u1',
       name: 'A',
-      defaultChatEndpoint: 'openai-chat-completions',
+      adapterFamily: 'openai-completions',
     });
     useAiConfigStore.getState().updateCustomProvider('u1', { name: 'B' });
     const after = useAiConfigStore.getState().customerProviders.u1;
@@ -418,10 +424,10 @@ describe('useAiConfigStore custom providers', () => {
     useAiConfigStore.getState().addCustomProvider({
       id: 'r1',
       name: 'R1',
-      defaultChatEndpoint: 'openai-chat-completions',
+      adapterFamily: 'openai-completions',
     });
     useAiConfigStore.getState().setProviderEnabled('r1', true);
-    useAiConfigStore.getState().setChatProvider('r1' as ChatProvider);
+    useAiConfigStore.getState().setChatProvider('r1');
     useAiConfigStore.getState().removeCustomProvider('r1');
     const s = useAiConfigStore.getState();
     expect(s.customerProviders.r1).toBeUndefined();
@@ -479,10 +485,12 @@ describe('useAiConfigStore loadFromDisk migration', () => {
     const s = useAiConfigStore.getState();
 
     // Custom provider migrated to customerProviders with the new shape.
+    // Phase 3: legacy `category` mapping dropped; defensive default
+    // 'openai-completions' covers most OpenAI-compat gateways.
     expect(s.customerProviders['custom-1']).toMatchObject({
       id: 'custom-1',
       name: 'C1',
-      defaultChatEndpoint: 'anthropic-messages',
+      adapterFamily: 'openai-completions',
       metadata: { website: { apiKey: 'https://c1.example/keys' } },
     });
 
@@ -630,7 +638,7 @@ describe('providerConfigStorage atomic write (fs mock integration)', () => {
     await providerConfigStorage.setCustomerProvider({
       id: 'atomic',
       name: 'A',
-      defaultChatEndpoint: 'openai-chat-completions',
+      adapterFamily: 'openai-completions',
     });
     await providerConfigStorage.__flushForTesting();
     const base = await join(await homeDir(), '.quill', 'providers');

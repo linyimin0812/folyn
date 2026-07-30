@@ -2,10 +2,7 @@ import { create } from 'zustand';
 import { registerPersistSlice, schedulePersist } from './settingsPersistence';
 import {
   PROVIDER_CATALOG,
-  PROVIDER_IDS,
   allProviders,
-  type ChatProviderId,
-  type DefaultChatEndpoint,
   getProviderEntry,
   providerRequiresApiKey,
 } from '@/services/providers/catalog';
@@ -25,10 +22,11 @@ import {
 } from '@/services/scriptRunner/scriptRunnerService';
 import { useAiStore } from './aiStore';
 
-// ponytail: ChatProvider is a string literal union of the 20 catalog ids.
-// The 3 old ids ('anthropic' | 'openai' | 'anthropic-compatible') are kept
-// verbatim — old persisted blobs hydrate without migration.
-export type ChatProvider = ChatProviderId;
+// ponytail: ChatProvider is `string` (Phase 3) — the literal union of 20
+// catalog ids was bypassed by casts everywhere custom provider ids flowed
+// (PairSelector, firstEnabledPair, session seeding). `string` admits
+// reality; custom ids no longer need a cast.
+export type ChatProvider = string;
 
 /**
  * Manually-added model entry. Stored per-provider; merged into the picker
@@ -109,7 +107,10 @@ export interface ResolvedPairConfig {
   baseUrl: string;
   thinkingBudget: number | null;
   customProvider: boolean;
-  defaultChatEndpoint?: string;
+  /** Bundled adapter family id; present when `customProvider=true`. Same
+   *  value space as `ChatProvider` (now `string`) — e.g. 'anthropic',
+   *  'openai-completions', 'ollama', 'gemini', 'openai'. */
+  adapterFamily?: string;
 }
 
 /** Resolve a (provider, model) pair into the connection params a caller needs
@@ -141,7 +142,7 @@ export function resolvePairConfig(
     baseUrl: slot.baseUrl,
     thinkingBudget: (slot.extra.thinkingBudget as number | null) ?? null,
     customProvider: custom,
-    defaultChatEndpoint: state.customerProviders[pair.provider]?.defaultChatEndpoint,
+    adapterFamily: state.customerProviders[pair.provider]?.adapterFamily,
   };
 }
 
@@ -158,11 +159,7 @@ export function firstEnabledPair(
     const slot = state.providerSettings[entry.id];
     if (!slot || !slot.enabled) continue;
     if (slot.selectedModelIds.length === 0) continue;
-    // ponytail: cast — `entry.id` is `string`, but `ChatProvider` is the
-    // catalog id union. Custom provider ids are unsoundly cast here; the
-    // same convention already applies in PairSelector.useEnabledPairs and
-    // setChatProvider. Widening to `string` is Phase 3.
-    return { provider: entry.id as ChatProvider, model: slot.selectedModelIds[0] };
+    return { provider: entry.id, model: slot.selectedModelIds[0] };
   }
   return null;
 }
@@ -233,7 +230,7 @@ export interface AiConfigState {
   addCustomProvider: (input: {
     id: string;
     name: string;
-    defaultChatEndpoint: DefaultChatEndpoint;
+    adapterFamily: string;
     description?: string;
     metadata?: CustomProviderDef['metadata'];
   }) => string;
@@ -277,9 +274,11 @@ export interface AiConfigState {
   loadFromDisk: () => Promise<void>;
 }
 
-const PROVIDER_ID_SET = new Set<string>(PROVIDER_IDS);
+// ponytail: Phase 3 — ChatProvider is `string`, custom provider ids are
+// valid at runtime. The guard accepts any non-empty string; `hydrate`
+// uses it to default-miss only when the persisted value isn't a string.
 function isChatProvider(v: unknown): v is ChatProvider {
-  return typeof v === 'string' && PROVIDER_ID_SET.has(v);
+  return typeof v === 'string' && v.length > 0;
 }
 
 /** Per-adapter cliPath Record guard for the persisted blob. */
@@ -304,13 +303,7 @@ function isManualModelsMap(v: unknown): v is Record<string, ManualModel[]> {
   return true;
 }
 
-/** ProviderModelPair guard for the persisted blob.
- *  ponytail: provider is typed `ChatProvider` (catalog union) but runtime
- *  accepts custom provider ids — see `setChatProvider` and PairSelector's
- *  `entry.id as ChatProvider` cast. isChatProvider would reject custom ids
- *  and reset voicePair/pluginPair to null on every hydrate (which fires
- *  from the pet-panel's own `pet://settings-updated` listener 300ms after
- *  the user picks). String check matches the runtime contract. */
+/** ProviderModelPair guard for the persisted blob. */
 function isProviderModelPair(v: unknown): v is ProviderModelPair {
   if (!v || typeof v !== 'object') return false;
   const r = v as Record<string, unknown>;
@@ -486,7 +479,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     const def: CustomProviderDef = {
       id: input.id,
       name: input.name.trim() || 'Custom',
-      defaultChatEndpoint: input.defaultChatEndpoint,
+      adapterFamily: input.adapterFamily,
       ...(input.description ? { description: input.description } : {}),
       ...(input.metadata ? { metadata: input.metadata } : {}),
     };

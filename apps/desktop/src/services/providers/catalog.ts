@@ -28,7 +28,6 @@ import {
 } from './providersCatalog';
 import type {
   CustomProviderDef,
-  DefaultChatEndpoint,
 } from './providerConfigStorage';
 
 export type ProviderCategory =
@@ -40,27 +39,22 @@ export type ProviderCategory =
 /**
  * User-defined provider entry. On-disk shape lives at
  * `~/.quill/providers/customer/providers.json` (see providerConfigStorage).
- * `defaultChatEndpoint` is the routing signal: when the user invokes chat /
+ * `adapterFamily` is the routing signal: when the user invokes chat /
  * list-models, the frontend passes `customProvider: true` +
- * `defaultChatEndpoint` to the Rust side, which dispatches by endpoint key
- * (anthropic-messages / openai-chat-completions / google-generate-content /
- * ollama / openai-responses) and applies `baseUrl` + `apiKey` from
- * `settings.json`.
+ * `adapterFamily` to the Rust side, which dispatches by the bundled id
+ * (anthropic / openai-completions / ollama / gemini / openai) and applies
+ * `baseUrl` + `apiKey` from `settings.json`.
  *
  * ponytail: `baseUrl` and `apiKey` no longer live on the definition — they
  * moved to `~/.quill/providers/settings.json`. The catalog type only carries
- * what's intrinsic to the provider (id / display name / endpoint / metadata).
+ * what's intrinsic to the provider (id / display name / family / metadata).
  */
 export type CustomProvider = CustomProviderDef;
-
-/** Re-export so callers can construct endpoint values without reaching into
- *  providerConfigStorage. */
-export type { DefaultChatEndpoint };
 
 export type ProviderEntry = ProviderCatalogEntry | CustomProvider;
 
 export function isCustomProvider(e: ProviderEntry): e is CustomProvider {
-  return 'defaultChatEndpoint' in e;
+  return 'adapterFamily' in e;
 }
 
 export function providerId(e: ProviderEntry): string {
@@ -77,10 +71,11 @@ export function providerAvatarChar(e: ProviderEntry, t: (k: string) => string): 
   return name.charAt(0).toUpperCase() || '?';
 }
 
-export function providerCategory(e: ProviderEntry): ProviderCategory | DefaultChatEndpoint {
-  // ponytail: defaultChatEndpoint is typed `string` on the def for forward
-  // compat (user-typed endpoints); narrow here for type-safe consumers.
-  return isCustomProvider(e) ? (e.defaultChatEndpoint as DefaultChatEndpoint) : e.category;
+export function providerCategory(e: ProviderEntry): ProviderCategory | string {
+  // ponytail: Phase 3 — custom's adapterFamily is a bundled id (string),
+  // same value space as `provider` for bundled entries. Returned type widens
+  // to `ProviderCategory | string` since adapterFamily isn't `ProviderCategory`.
+  return isCustomProvider(e) ? e.adapterFamily : e.category;
 }
 
 /** Returns the bundled-catalog baseUrl for native providers. Custom providers

@@ -21,7 +21,11 @@ import { debounce } from '@/utils/debounce';
 export interface CustomProviderDef {
   id: string;
   name: string;
-  defaultChatEndpoint: string;
+  /** Bundled id of the rig adapter family this custom provider routes to
+   *  (e.g. 'anthropic', 'openai-completions', 'ollama', 'gemini', 'openai').
+   *  Replaces the old endpoint-key enum — the 1:1 mapping was a pure
+   *  indirection layer. Same value space as the bundled catalog ids. */
+  adapterFamily: string;
   description?: string;
   metadata?: {
     website?: {
@@ -45,44 +49,6 @@ export interface ProviderSettings {
 
 export type CustomerProvidersFile = Record<string, CustomProviderDef>;
 export type ProviderSettingsFile = Record<string, ProviderSettings>;
-
-const KNOWN_ENDPOINTS = [
-  'anthropic-messages',
-  'google-generate-content',
-  'ollama',
-  'ollama-chat',
-  'openai-chat-completions',
-  'openai-image-generation',
-  'openai-responses',
-] as const;
-export type DefaultChatEndpoint = (typeof KNOWN_ENDPOINTS)[number];
-
-// ponytail: keys include both canonical CustomProviderType values and the
-// legacy typo'd strings the drawer used to emit ('openai-response' singular,
-// 'new-api' as an endpoint). Lookup falls through to a defensive default.
-const LEGACY_CATEGORY_TO_ENDPOINT: Record<string, DefaultChatEndpoint> = {
-  openai: 'openai-chat-completions',
-  'openai-response': 'openai-responses',
-  'openai-responses': 'openai-responses',
-  gemini: 'google-generate-content',
-  anthropic: 'anthropic-messages',
-  'azure-openai': 'openai-chat-completions',
-  'new-api': 'openai-chat-completions',
-  ollama: 'ollama',
-};
-
-function coerceEndpoint(legacy: unknown): DefaultChatEndpoint {
-  if (typeof legacy === 'string' && (KNOWN_ENDPOINTS as readonly string[]).includes(legacy)) {
-    return legacy as DefaultChatEndpoint;
-  }
-  if (typeof legacy === 'string' && legacy in LEGACY_CATEGORY_TO_ENDPOINT) {
-    return LEGACY_CATEGORY_TO_ENDPOINT[legacy];
-  }
-  // ponytail: defensive default. Legacy drawer emitted typo'd values
-  // (`openai-response`, `new-api`) — everything unknown falls through to
-  // the openai-compat arm in chat.rs.
-  return 'openai-chat-completions';
-}
 
 // ─── Paths ──────────────────────────────────────────────────────────────
 
@@ -388,10 +354,14 @@ export function migrateLegacyBlob(legacy: LegacyBlob): MigrationResult {
 
   const customerProviders: CustomerProvidersFile = {};
   for (const cp of customProviders) {
+    // ponytail: Phase 3 — the legacy `category` → endpoint mapping is gone.
+    // Pre-launch, migrated custom defs land with a defensive default
+    // adapterFamily ('openai-completions' covers most OpenAI-compat gateways);
+    // user re-enters once if their gateway needs a different family.
     customerProviders[cp.id] = {
       id: cp.id,
       name: cp.displayName,
-      defaultChatEndpoint: coerceEndpoint(cp.category),
+      adapterFamily: 'openai-completions',
       ...(cp.apiKeyUrl ? { metadata: { website: { apiKey: cp.apiKeyUrl } } } : {}),
     };
   }

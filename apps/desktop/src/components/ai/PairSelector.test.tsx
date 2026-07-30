@@ -217,7 +217,7 @@ describe('PairSelector', () => {
         'my-custom': {
           id: 'my-custom',
           name: 'My Custom',
-          defaultChatEndpoint: 'openai-chat-completions',
+          adapterFamily: 'openai-completions',
         },
       },
       providerSettings: {
