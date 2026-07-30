@@ -46,6 +46,16 @@ export interface PetChatMessage {
    *  field is re-hydrated from `storageClient` only if previously
    *  persisted by the panel store. */
   thinking?: string;
+  /** Provider id (e.g. 'anthropic', 'aliyun') stamped on assistant turns
+   *  so ChatMessageList can render a pair tag like AiPanel. `string` not
+   *  `ChatProvider` — petChatStore can't depend on the desktop provider
+   *  catalog (same convention as cli-adapter's CliMessage). Optional —
+   *  ask/agent mode (CLI adapter) leaves it unset and the tag is omitted.
+   *  See .trellis/spec/desktop/frontend/type-safety.md "Cross-package type
+   *  boundaries". */
+  provider?: string;
+  /** Model id stamped alongside `provider` for the pair tag. */
+  model?: string;
 }
 
 export interface PetChatSession {
@@ -89,7 +99,18 @@ interface PetChatState {
   renameSession: (id: string, title: string) => void;
 
   // ── Message actions (target a specific session by id, NOT "active") ──
-  addMessage: (sessionId: string, role: 'user' | 'assistant', content: string) => void;
+  /** Add a message to a session. `provider`+`model` are stamped on
+   *  assistant turns (chat/rig mode only — ask/agent leave them unset)
+   *  so ChatMessageList can render the pair tag. Optional — persisted
+   *  on the message, optional on legacy blobs (type guard in rehydrate
+   *  keeps old messages valid). */
+  addMessage: (
+    sessionId: string,
+    role: 'user' | 'assistant',
+    content: string,
+    provider?: string,
+    model?: string,
+  ) => void;
   appendToLastMessage: (sessionId: string, chunk: string) => void;
   /** Append a thinking/reasoning chunk to the last message's `thinking`
    *  field (NOT `content`). Used for streaming Reasoning /
@@ -237,9 +258,16 @@ export const usePetChatStore = create<PetChatState>((set, get) => ({
     schedulePersist(payload);
   },
 
-  addMessage: (sessionId, role, content) => {
+  addMessage: (sessionId, role, content, provider, model) => {
     const state = get();
-    const msg: PetChatMessage = { id: generateId(), role, content, ts: Date.now() };
+    const msg: PetChatMessage = {
+      id: generateId(),
+      role,
+      content,
+      ts: Date.now(),
+      ...(provider !== undefined ? { provider } : {}),
+      ...(model !== undefined ? { model } : {}),
+    };
     const sessions = updateSession(state.sessions, sessionId, (s) => {
       const messages = [...s.messages, msg];
       // Auto-title only on the first user message in an untitled session.

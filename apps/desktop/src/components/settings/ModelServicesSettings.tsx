@@ -249,7 +249,7 @@ export function ModelServicesSettings() {
           onOpenPicker={() => setPickerOpen(true)}
           onOpenManualModal={() => setManualModalOpen(true)}
           onOpenTestModal={() => {
-            setTestModelId(chatModel || (selectedModelIds[0] ?? ''));
+            setTestModelId(selectedModelIds[0] ?? '');
             setChatTestStatus({ testing: false });
             setTestModalOpen(true);
           }}
@@ -287,7 +287,6 @@ export function ModelServicesSettings() {
           testModelId={testModelId}
           setTestModelId={setTestModelId}
           chatProvider={chatProvider}
-          chatModel={chatModel}
           chatApiKey={chatApiKey}
           chatBaseUrl={chatBaseUrl}
           chatAzureDeploymentId={chatAzureDeploymentId}

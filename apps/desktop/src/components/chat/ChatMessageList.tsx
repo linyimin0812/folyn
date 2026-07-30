@@ -180,7 +180,18 @@ function DefaultMessageRow({
       className={`py-2 px-2.5 rounded-lg ${isAssistant ? 'bg-surf border border-brd' : 'bg-accdim self-end max-w-[90%]'}`}
     >
       <div className="text-[9px] font-semibold text-t3 mb-1 uppercase flex items-center gap-1.5">
-        {isAssistant ? 'AI' : '我'}
+        {isAssistant ? (
+          <>
+            AI
+            {msg.provider && msg.model && renderPairTag && (
+              <span className="ml-auto font-normal normal-case opacity-70 text-[9px]" data-testid="msg-pair-tag">
+                {renderPairTag(msg)}
+              </span>
+            )}
+          </>
+        ) : (
+          '我'
+        )}
         {msg.role === 'user' && msg.timestamp && (
           <span className="font-normal normal-case opacity-70 text-[9px]">{formatTimestamp(msg.timestamp)}</span>
         )}
@@ -216,12 +227,6 @@ function DefaultMessageRow({
         >
           保存到 Wiki
         </button>
-      )}
-
-      {isAssistant && msg.provider && msg.model && renderPairTag && (
-        <div className="mt-1 text-[10px] text-t3" data-testid="msg-pair-tag">
-          {renderPairTag(msg)}
-        </div>
       )}
     </div>
   );

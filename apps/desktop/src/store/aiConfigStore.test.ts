@@ -725,11 +725,17 @@ describe('useAiConfigStore per-caller pairs', () => {
     expect(useAiConfigStore.getState().pluginPair).toBeNull();
   });
 
-  it('hydrate rejects a pair with an invalid provider (coerces to null)', () => {
+  it('hydrate accepts a pair with a custom (non-catalog) provider id', () => {
+    // ponytail: provider is typed ChatProvider but runtime accepts custom ids
+    // (see isProviderModelPair string-check + PairSelector cast). Rejecting
+    // custom ids would reset petPair 300ms after the user picks one, because
+    // the pet-panel's own pet://settings-updated listener re-hydrates.
     useAiConfigStore.getState().hydrate({
-      petPair: { provider: 'bogus', model: 'm' },
+      petPair: { provider: 'my-custom', model: 'm' },
     });
-    expect(useAiConfigStore.getState().petPair).toBeNull();
+    expect(useAiConfigStore.getState().petPair).toEqual({
+      provider: 'my-custom', model: 'm',
+    });
   });
 
   it('hydrate rejects a pair missing the model field (coerces to null)', () => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CliMessage } from '@quill/cli-adapter';
 import { isTauri } from '@/utils/platform';
@@ -28,6 +28,12 @@ import { PetChatSessionHeader } from './PetChatSessionHeader';
 import { listInputModes, getInputModeDef } from '@/components/ai/inputModes';
 import { AdapterSelector } from '@/components/ai/AdapterSelector';
 import { VoiceInputButton } from '@/components/ai/VoiceInputButton';
+import { PairSelector } from '@/components/ai/PairSelector';
+import {
+  allProviders,
+  providerDisplayName,
+  type ProviderEntry,
+} from '@/services/providers/catalog';
 import type { PetMenuAction } from './PetContextMenu';
 
 /**
@@ -86,14 +92,15 @@ async function emitMenuAction(action: PetMenuAction): Promise<void> {
   }
 }
 
-/** Detect "no AI configured" (R7). Mode-aware: chat (rig) needs provider +
- *  model + apiKey; ask/agent need the CLI adapter id + binary path. Defaults
- *  in `aiConfigStore` make ask/agent configured out-of-the-box
- *  (`'claude'`/`'claude'`); chat is configured once `chatApiKey` is set. */
+/** Detect "no AI configured" (R7). Mode-aware: chat (rig) mode always returns
+ *  true — the inline `<PairSelector>` handles both the "pick a pair" empty
+ *  state AND the "no provider enabled" empty state with its own Settings
+ *  link. ask/agent need the CLI adapter id + binary path; the CTA fires
+ *  only for those modes. */
 export function isPetChatConfigured(): boolean {
   const s = useAiConfigStore.getState();
   const mode = usePetChatStore.getState().inputMode;
-  if (mode === 'chat') return Boolean(s.chatProvider && s.chatModel && s.chatApiKey);
+  if (mode === 'chat') return true;
   return Boolean(s.cliAdapter && s.cliPath);
 }
 
@@ -110,8 +117,8 @@ const EMPTY_MESSAGES: PetChatMessage[] = [];
 
 /** Map the pet store's flat message shape to the shared `CliMessage`
  *  supertype at the prop boundary. `petChatStore` keeps its own
- *  `{id, role, content, ts, thinking?}` type; toolCalls / attachments
- *  are left undefined (pet is vault-free). */
+ *  `{id, role, content, ts, thinking?, provider?, model?}` type; toolCalls /
+ *  attachments are left undefined (pet is vault-free). */
 function toCliMessages(
   msgs: {
     id: string;
@@ -119,6 +126,8 @@ function toCliMessages(
     content: string;
     ts: number;
     thinking?: string;
+    provider?: string;
+    model?: string;
   }[],
 ): CliMessage[] {
   return msgs.map((m) => ({
@@ -127,6 +136,8 @@ function toCliMessages(
     content: m.content,
     thinking: m.thinking,
     timestamp: m.ts,
+    provider: m.provider,
+    model: m.model,
   }));
 }
 
@@ -136,6 +147,11 @@ export function PetChat() {
   const messages = usePetChatStore(
     (s) => s.sessions.find((sess) => sess.id === s.activeSessionId)?.messages ?? EMPTY_MESSAGES,
   );
+  // PairSelector for chat mode — user picks (provider, model) inline, writes
+  // petPair. petChatService reads petPair at send time.
+  const petPair = useAiConfigStore((s) => s.petPair);
+  const setPetPair = useAiConfigStore((s) => s.setPetPair);
+  const customerProviders = useAiConfigStore((s) => s.customerProviders);
   const streaming = usePetChatStore((s) => s.streaming);
   const addMessage = usePetChatStore((s) => s.addMessage);
   const appendToLastMessage = usePetChatStore((s) => s.appendToLastMessage);
@@ -158,6 +174,18 @@ export function PetChat() {
   // so the listener never fires (don't force-focus input on Actions).
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const configured = isPetChatConfigured();
+
+  // ponytail: renderPairTag closes over customerProviders (stable ref from
+  // zustand) so the resolver doesn't need to be a useCallback; it's only
+  // called inside DefaultMessageRow when msg.provider+model exist. Mirrors
+  // AiPanel's resolver verbatim — both panels share the provider catalog
+  // convention; diverging would just rot.
+  const renderPairTag = (msg: CliMessage): ReactNode | null => {
+    if (!msg.provider || !msg.model) return null;
+    const entry: ProviderEntry | undefined = allProviders(customerProviders).find((e) => e.id === msg.provider);
+    const name = entry ? providerDisplayName(entry, t) : msg.provider;
+    return <span>{name} : {msg.model}</span>;
+  };
 
   // Hold the latest attachments for the unmount cleanup so it can revoke
   // any pending object URLs without depending on `attachments` in its deps
@@ -310,7 +338,19 @@ export function PetChat() {
     setInput('');
     setRejectError(null);
     addMessage(sessionId, 'user', prompt);
-    addMessage(sessionId, 'assistant', '');
+    // Stamp petPair on the assistant bubble so ChatMessageList can render the
+    // pair tag — parity with AiPanel (every assistant message carries the
+    // session's pair). petPair is the user's selection in the always-visible
+    // PairSelector; chat mode (rig) actually consumes it, ask/agent run the
+    // claude CLI binary but still surface the tag for consistency with the
+    // picked pair.
+    addMessage(
+      sessionId,
+      'assistant',
+      '',
+      petPair?.provider,
+      petPair?.model,
+    );
     setStreaming(true);
     try {
       await sendPetChatMessage(sessionId, finalPrompt, {
@@ -338,6 +378,7 @@ export function PetChat() {
     appendToLastMessage,
     appendToLastMessageThinking,
     setStreaming,
+    petPair,
   ]);
 
   const handleStop = useCallback(async () => {
@@ -455,11 +496,19 @@ export function PetChat() {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <PetChatSessionHeader />
+      <div className="border-b border-brd px-2 py-1">
+        <PairSelector
+          value={petPair}
+          onChange={setPetPair}
+          onOpenSettings={handleOpenSettings}
+        />
+      </div>
       <ChatMessageList
         messages={toCliMessages(messages)}
         streaming={streaming}
         showCopy
         streamingIndicator="dots"
+        renderPairTag={renderPairTag}
         onClear={clear}
         className="pt-2"
         emptyState={
@@ -474,7 +523,7 @@ export function PetChat() {
         onSend={handleSend}
         streaming={streaming}
         onStop={handleStop}
-        canSend={input.trim().length > 0 || attachments.length > 0}
+        canSend={(input.trim().length > 0 || attachments.length > 0) && (inputMode !== 'chat' || petPair !== null)}
         placeholder={t('pet:chat.inputPlaceholder')}
         textareaRows={1}
         inputAriaLabel="Pet chat input"

@@ -102,6 +102,12 @@ const aiConfigState = {
   cliAdapter: 'claude',
   cliPath: 'claude',
   setCliAdapter: vi.fn(),
+  // PR: chatModel refactor — PetChat reads petPair/setPetPair inline and
+  // PairSelector reads providerSettings/customerProviders via useEnabledPairs.
+  petPair: null as { provider: string; model: string } | null,
+  setPetPair: vi.fn(),
+  providerSettings: {} as Record<string, unknown>,
+  customerProviders: {} as Record<string, unknown>,
 };
 // Support both call forms zustand supports: `useAiConfigStore(selector)`
 // (component selector) and `useAiConfigStore.getState()` (imperative).

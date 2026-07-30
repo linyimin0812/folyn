@@ -7,6 +7,7 @@ import { isRigMode, resolveSendOptions } from '@/components/ai/inputModes';
 import { runRigChat } from '@/services/rigChat';
 import { isTauri } from '@/utils/platform';
 import { appDataDir, join } from '@tauri-apps/api/path';
+import { resolveBasePath } from '@/utils/pathResolver';
 
 /**
  * PetChatService — the pet-panel's self-hosted AI chat pipeline.
@@ -241,7 +242,17 @@ export async function sendPetChatMessage(
   // appData dir when no vault is open so ask/agent still run. chat (above) has
   // no cwd. `resolveSendOptions` applies ask (plan) vs agent (bypassPermissions);
   // 'agent' here is byte-identical to the pre-chat `{ bare: true }` default.
-  const workingDir = vaultConfig.vaultPath || (await resolveWorkingDir());
+  //
+  // `vaultConfig.vaultPath` is the raw basePath (e.g. `~/quill/default_vault`
+  // for the default vault — see vaultStore.ts:155/221). The claude adapter
+  // spawns `/bin/sh -c 'cd <dir> && …'`, and single-quoted `~` doesn't expand
+  // → `cd: ~/quill/default_vault: No such file or directory`. Run it through
+  // `resolveBasePath` first (same as useVoiceInput.ts:198, featureAgentService,
+  // wikiIngestService, etc.).
+  const rawVaultPath = vaultConfig.vaultPath || '';
+  const workingDir = rawVaultPath
+    ? await resolveBasePath(rawVaultPath)
+    : await resolveWorkingDir();
   adapter.onEvent(handler);
 
   try {

@@ -264,11 +264,18 @@ function isManualModelsMap(v: unknown): v is Record<string, ManualModel[]> {
   return true;
 }
 
-/** ProviderModelPair guard for the persisted blob. */
+/** ProviderModelPair guard for the persisted blob.
+ *  ponytail: provider is typed `ChatProvider` (catalog union) but runtime
+ *  accepts custom provider ids — see `setChatProvider` and PairSelector's
+ *  `entry.id as ChatProvider` cast. isChatProvider would reject custom ids
+ *  and reset petPair/bubblePair/voicePair/pluginPair to null on every
+ *  hydrate (which fires from the pet-panel's own `pet://settings-updated`
+ *  listener 300ms after the user picks). String check matches the runtime
+ *  contract. */
 function isProviderModelPair(v: unknown): v is ProviderModelPair {
   if (!v || typeof v !== 'object') return false;
   const r = v as Record<string, unknown>;
-  return isChatProvider(r.provider) && typeof r.model === 'string';
+  return typeof r.provider === 'string' && typeof r.model === 'string';
 }
 
 function patchSettings(

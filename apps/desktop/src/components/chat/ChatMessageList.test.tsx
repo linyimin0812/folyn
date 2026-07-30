@@ -172,7 +172,7 @@ describe('ChatMessageList', () => {
     expect(screen.queryByText('orig')).toBeNull();
   });
 
-  // PR4: per-message pair tag on AI responses.
+  // PR4: per-message pair tag on AI responses — rendered inline after "AI".
   it('renderPairTag renders the tag under assistant messages that carry provider+model', () => {
     const messages: CliMessage[] = [
       mkMsg({ id: 'u1', role: 'user', content: 'hi', provider: 'openai', model: 'gpt-4o' }),
@@ -187,6 +187,7 @@ describe('ChatMessageList', () => {
     );
     const tags = screen.getAllByTestId('msg-pair-tag');
     expect(tags).toHaveLength(1); // only the assistant bubble
+    // inline label, right-aligned: "AI openai : gpt-4o"
     expect(tags[0].textContent).toBe('openai : gpt-4o');
   });
 
