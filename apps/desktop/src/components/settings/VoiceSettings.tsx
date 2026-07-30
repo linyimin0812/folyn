@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useVoiceStore, DEFAULT_POLISH_PROMPT, SPOKEN_LANGUAGES } from '@/store/voiceStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
+import { PairSelector } from '@/components/ai/PairSelector';
 import { isTauri } from '@/utils/platform';
 import { invoke } from '@tauri-apps/api/core';
 import { Toggle } from '@/components/settings/primitives';
@@ -131,6 +133,9 @@ export function VoiceSettings() {
   const setSaveSource = useVoiceStore((s) => s.setSaveSource);
   const setSourceDir = useVoiceStore((s) => s.setSourceDir);
   const setSpokenLanguage = useVoiceStore((s) => s.setSpokenLanguage);
+
+  const voicePair = useAiConfigStore((s) => s.voicePair);
+  const setVoicePair = useAiConfigStore((s) => s.setVoicePair);
 
   const onMac = isTauri() && typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
 
@@ -278,6 +283,13 @@ export function VoiceSettings() {
         <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 mb-2 leading-relaxed">{t('settings:voice.globalHotkey.desc')}</p>
         <VoiceHotkeyRecorder />
       </div>
+
+      {/* AI 模型 — pair picker for voice polish. Null → polish silently
+          skipped (per PRD ADR). The autoPolish toggle above still gates the
+          overall flow; this pair selects WHICH model polishes. */}
+      <Row title={t('ai:pairSelector.sectionTitle')} desc={t('ai:pairSelector.sectionDesc')}>
+        <PairSelector value={voicePair} onChange={setVoicePair} />
+      </Row>
     </div>
   );
 }

@@ -29,6 +29,8 @@ import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { isTauri } from '@/utils/platform';
 import { usePluginStore, type PluginRow } from '@/store/pluginStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
+import { PairSelector } from '@/components/ai/PairSelector';
 
 /** State badge color per runtime state. */
 function stateBadgeClass(state: PluginRow['state']): string {
@@ -231,6 +233,8 @@ export function PluginsSettings() {
   const refresh = usePluginStore((s) => s.refresh);
   const installFromFolder = usePluginStore((s) => s.installFromFolder);
   const clearError = usePluginStore((s) => s.clearError);
+  const pluginPair = useAiConfigStore((s) => s.pluginPair);
+  const setPluginPair = useAiConfigStore((s) => s.setPluginPair);
   const [folderOpen, setFolderOpen] = useState(false);
 
   // Refresh on mount + whenever the tab gains focus (cheap; guards against
@@ -279,6 +283,16 @@ export function PluginsSettings() {
         <button className="btn btn-g btn-sm" disabled={refreshing} onClick={() => void refresh()}>
           {refreshing ? t('settings:plugins.refreshing') : t('settings:plugins.refresh')}
         </button>
+      </div>
+
+      {/* AI 模型 — pair picker for plugin RPC `ai.chat`. Null → host refuses
+          the call with a clear error; plugin authors pick a pair here. */}
+      <div className="tr flex items-center justify-between py-3.5 border-b border-brd mb-3">
+        <div className="tr-info">
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('ai:pairSelector.sectionTitle')}</h4>
+          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('ai:pairSelector.sectionDesc')}</p>
+        </div>
+        <PairSelector value={pluginPair} onChange={setPluginPair} />
       </div>
 
       {error && (

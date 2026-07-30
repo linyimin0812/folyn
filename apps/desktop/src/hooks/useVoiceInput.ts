@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import { useVoiceStore } from '@/store/voiceStore';
-import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useAiConfigStore, resolvePairConfig } from '@/store/aiConfigStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { runRigChat } from '@/services/rigChat';
 import { isTauri } from '@/utils/platform';
@@ -170,7 +170,14 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
     // this stop() cycle carries it — the orb's caption + button's prompt stay
     // visible from transcribing through inserting, not just for one frame.
     const { saveSource, sourceDir, autoPolish, autoPaste, polishPrompt } = useVoiceStore.getState();
-    const hasApiKey = useAiConfigStore.getState().chatApiKey.trim().length > 0;
+    // ponytail: PR5 removed the global chatProvider/chatModel fallback that
+    // PR3 added to keep voice working post-upgrade. voicePair now owns the
+    // pair exclusively (per PRD ADR: per-caller pairs are independent, no
+    // global fallback). If null → polish silently skipped (no UI hint path
+    // here — the orb renders the raw transcript; the user picks a pair in
+    // VoiceSettings to enable polish).
+    const voiceCfg = resolvePairConfig(useAiConfigStore.getState().voicePair);
+    const hasApiKey = voiceCfg ? voiceCfg.apiKey.trim().length > 0 : false;
     const skipReason: PolishSkippedReason =
       autoPolish && polishPrompt.trim().length > 0 && !hasApiKey
         ? 'no-api-key'
@@ -226,11 +233,16 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
     }
 
     let finalText = transcript;
+    // PR5: polish fires only when voicePair is set AND its provider is
+    // configured. voiceCfg is null when voicePair is null or the provider's
+    // apiKey is missing — in both cases we fall back to the raw transcript
+    // (no polish). The skipReason above handles the no-api-key hint path;
+    // the no-pair path is silent per PRD ("just no-op or log").
     const shouldPolish =
       autoPolish &&
       polishPrompt.trim().length > 0 &&
-      hasApiKey;
-    if (shouldPolish) {
+      voiceCfg != null;
+    if (shouldPolish && voiceCfg) {
       set({ phase: 'polishing' });
       emitOrbPhase('polishing', get().trigger, skipReason);
       // ponytail: runRigChat has no systemPrompt param (chat_stream hardcodes
@@ -240,21 +252,19 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
       // unique sessionId keeps each polish a fresh one-turn conversation
       // (history would otherwise leak prior polish context into the next).
       const sessionId = `voice-polish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const { chatProvider, chatModel, chatApiKey, chatBaseUrl, chatThinkingBudget, customerProviders } = useAiConfigStore.getState();
       try {
         finalText = await new Promise<string>((resolve, reject) => {
           let acc = '';
           void runRigChat({
             sessionId,
             prompt: polishPrompt + transcript,
-            provider: chatProvider,
-            model: chatModel,
-            apiKey: chatApiKey,
-            baseUrl: chatBaseUrl || undefined,
-            thinkingBudget: chatThinkingBudget ?? undefined,
-            // PR2e: route custom providers via endpoint resolver.
-            customProvider: !!customerProviders[chatProvider],
-            defaultChatEndpoint: customerProviders[chatProvider]?.defaultChatEndpoint,
+            provider: voiceCfg.provider,
+            model: voiceCfg.model,
+            apiKey: voiceCfg.apiKey,
+            baseUrl: voiceCfg.baseUrl || undefined,
+            thinkingBudget: voiceCfg.thinkingBudget ?? undefined,
+            customProvider: voiceCfg.customProvider,
+            defaultChatEndpoint: voiceCfg.defaultChatEndpoint,
             onEvent: (e) => {
               if (e.type === 'text' && e.content) acc += e.content;
               else if (e.type === 'error') reject(new Error(e.content ?? 'polish error'));

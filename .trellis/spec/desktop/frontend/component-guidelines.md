@@ -141,6 +141,13 @@ consumer passes a subset. Reserved-but-unrendered optional props (`sessions?` /
 `activeSessionId?` / `onSwitchSession?`) preserve extension points without coupling the
 minimal consumer to concepts it doesn't have.
 
+The `renderPairTag?: (msg: CliMessage) => ReactNode | null` slot follows the same pattern
+when a shared chat component needs to display a model attribution tag on AI messages: the
+shared component can't import `@/services/providers/catalog` (it would couple the
+secondary window bundle), so the main-window consumer supplies a resolver via the slot;
+the minimal consumer omits it and renders no tag. Don't put `providerDisplayName` calls
+inside `components/chat/*` — pass the resolver in.
+
 ### Convention: shared components MUST NOT top-level import vault/editor/main-window stores
 
 `components/chat/*` is imported by the secondary `pet-panel` Tauri window, which has no

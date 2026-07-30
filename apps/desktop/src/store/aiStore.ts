@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { CliMessage, FileChange, MessageAttachment } from '@quill/cli-adapter';
 import type { FileChangeApplier } from '@/services/fileChangeApplier';
+import { useAiConfigStore, type ChatProvider } from './aiConfigStore';
 import { useVaultStore } from './vaultStore';
 import { sessionStorage } from '@/utils/sessionStorage';
 import { suppressWatcherFor } from '@/utils/fileWatcher';
@@ -46,6 +47,12 @@ export interface AiSession {
   updatedAt: number;
   /** 会话类型，缺省 'chat'。study 会话复用同一 cliSessionId 支持多轮 resume。 */
   kind?: AiSessionKind;
+  // ponytail: provider/model optional so legacy persisted sessions hydrate
+  // without migration. Render-time falls back to the global chatProvider/
+  // chatModel when undefined (see PRD migration note). New sessions inherit
+  // the global pair as default via createEmptySession.
+  provider?: ChatProvider;
+  model?: string;
 }
 
 interface AiState {
@@ -64,7 +71,14 @@ interface AiState {
   deleteSession: (id: string) => void;
 
   // Session-scoped message actions (target specific session, not just active)
-  addMessage: (role: 'user' | 'assistant', content: string, sessionId?: string, attachments?: MessageAttachment[]) => void;
+  addMessage: (
+    role: 'user' | 'assistant',
+    content: string,
+    sessionId?: string,
+    attachments?: MessageAttachment[],
+    provider?: ChatProvider,
+    model?: string,
+  ) => void;
   appendToLastMessage: (token: string, sessionId?: string) => void;
   appendThinking: (token: string, sessionId?: string) => void;
   addToolCall: (id: string, name: string, input?: Record<string, unknown>, sessionId?: string) => void;
@@ -77,6 +91,25 @@ interface AiState {
   setSessionStreaming: (sessionId: string, streaming: boolean) => void;
   setCliSessionId: (sessionId: string, targetSessionId?: string) => void;
   clearMessages: () => void;
+
+  /** Set the (provider, model) pair on a specific session AND sync the global
+   *  chatProvider/chatModel as "last used pair" (PR3 ADR). The dual write keeps
+   *  new sessions — which inherit the global pair via createEmptySession — in
+   *  sync with whatever the user last picked on an existing session. */
+  setSessionPair: (sessionId: string, pair: { provider: ChatProvider; model: string }) => void;
+
+  /** Reconcile a session's pair against the currently-enabled (provider, model)
+   *  pairs. If the session's pair is missing (legacy persisted session) or
+   *  stale (provider disabled / model unselected), fall back to `pairs[0]` and
+   *  write it via setSessionPair (which also syncs the global "last used"
+   *  pair). No-op when `pairs` is empty — the empty-state UI handles that via
+   *  a disabled input + Settings link. Called from AiPanel's mount/effect,
+   *  NOT on read, so we don't mutate during render (PR6: fixes the two ACs
+   *  PR3 left open — render-time fallback is read-only, this writes back). */
+  reconcileSessionPair: (
+    sessionId: string,
+    pairs: { provider: ChatProvider; model: string }[],
+  ) => void;
 
   /** AI panel 输入模式（ask/agent/…），全局共享，默认 'agent' 保持现状行为。
    * 决定单次发送的 permission-mode/system-prompt 等。 */
@@ -97,6 +130,10 @@ interface AiState {
 
 export function createEmptySession(): AiSession {
   const now = Date.now();
+  // Inherit the global pair as the session's default pair. New sessions pick
+  // up the user's last-used (provider, model); a mid-session dropdown change
+  // writes both the session pair and the global pair (PR3).
+  const { chatProvider, chatModel } = useAiConfigStore.getState();
   return {
     id: generateId(),
     title: '新会话',
@@ -106,6 +143,8 @@ export function createEmptySession(): AiSession {
     isStreaming: false,
     createdAt: now,
     updatedAt: now,
+    provider: chatProvider,
+    model: chatModel,
   };
 }
 
@@ -182,10 +221,24 @@ export const useAiStore = create<AiState>((set, get) => ({
     persistAiState();
   },
 
-  addMessage: (role, content, sessionId?, attachments?) => {
+  addMessage: (role, content, sessionId?, attachments?, provider?, model?) => {
     const targetId = sessionId || get().activeSessionId;
     if (!targetId) return;
-    const msg: CliMessage = { id: generateId(), role, content, timestamp: Date.now(), ...(attachments?.length ? { attachments } : {}) };
+    // ponytail: tag at creation time — provider/model are spread onto the
+    // CliMessage only when explicitly passed (PR4: AiPanel forwards the
+    // session's pair when appending the assistant bubble). The
+    // appendToLastMessage/appendThinking/etc. mutators below spread `...last`
+    // so the tag survives streaming chunk appends. Legacy messages
+    // (provider undefined) render without the tag — see ChatMessageList.
+    const msg: CliMessage = {
+      id: generateId(),
+      role,
+      content,
+      timestamp: Date.now(),
+      ...(attachments?.length ? { attachments } : {}),
+      ...(provider ? { provider } : {}),
+      ...(model ? { model } : {}),
+    };
     set((state) => ({
       sessions: updateSession(state.sessions, targetId, (s) => {
         const updated = { ...s, messages: [...s.messages, msg], updatedAt: Date.now() };
@@ -364,6 +417,39 @@ export const useAiStore = create<AiState>((set, get) => ({
       })),
     }));
     persistAiState();
+  },
+
+  setSessionPair: (sessionId, pair) => {
+    if (!get().sessions.some((s) => s.id === sessionId)) return;
+    set((state) => ({
+      sessions: updateSession(state.sessions, sessionId, (s) => ({
+        ...s,
+        provider: pair.provider,
+        model: pair.model,
+        updatedAt: Date.now(),
+      })),
+    }));
+    // Sync global "last used pair" so new sessions inherit this pick.
+    useAiConfigStore.getState().setChatProvider(pair.provider);
+    useAiConfigStore.getState().setChatModel(pair.model);
+    persistAiState();
+  },
+
+  reconcileSessionPair: (sessionId, pairs) => {
+    // ponytail: write-after-render — the AiPanel effect calls this on
+    // mount/activeSession change/pairs change. Render-time fallback to the
+    // global pair (see AiPanel.tsx) still handles the first paint; this
+    // writes the auto-selected pair back so subsequent reads see a stable
+    // session pair and the global "last used" stays in sync.
+    if (pairs.length === 0) return;
+    const session = get().sessions.find((s) => s.id === sessionId);
+    if (!session) return;
+    const valid =
+      !!session.provider &&
+      !!session.model &&
+      pairs.some((p) => p.provider === session.provider && p.model === session.model);
+    if (valid) return;
+    get().setSessionPair(sessionId, pairs[0]);
   },
 
   inputMode: 'agent',

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAiStore, type AiSession } from './aiStore';
+import { useAiConfigStore } from './aiConfigStore';
 import { useVaultStore } from './vaultStore';
 import type { FileChange } from '@quill/cli-adapter';
 
@@ -26,6 +27,23 @@ vi.mock('@/utils/fileWatcher', () => ({
 vi.mock('./aiFileChangeActions', () => ({
   applyAcceptChange: vi.fn(),
   applyRejectChange: vi.fn(),
+}));
+
+// Stub on-disk provider config writes — setSessionPair calls setChatProvider
+// which fire-and-forgets a providerConfigStorage write that would otherwise
+// hit Tauri's homeDir() (ReferenceError in node test env).
+vi.mock('@/services/providers/providerConfigStorage', () => ({
+  providerConfigStorage: {
+    setCustomerProvider: vi.fn(async () => {}),
+    setProviderSettings: vi.fn(async () => {}),
+    removeCustomerProvider: vi.fn(async () => {}),
+    removeProviderSettings: vi.fn(async () => {}),
+    getCustomerProviders: vi.fn(async () => ({})),
+    getProviderSettings: vi.fn(async () => ({})),
+    patchProviderSettings: vi.fn(async () => {}),
+    __replaceForMigration: vi.fn(async () => {}),
+  },
+  migrateLegacyBlob: vi.fn(() => ({ customerProviders: {}, providerSettings: {} })),
 }));
 
 import { applyAcceptChange, applyRejectChange } from './aiFileChangeActions';
@@ -132,6 +150,36 @@ describe('useAiStore message actions', () => {
     useAiStore.getState().addMessage('user', 'see this', undefined, [{ name: 'f', path: 'p', type: 'file' }]);
     const msg = useAiStore.getState().getActiveSession()!.messages[0];
     expect(msg.attachments).toHaveLength(1);
+  });
+
+  // PR4 of the chatModel refactor: addMessage tags assistant messages with
+  // the (provider, model) pair at creation time. The tag survives subsequent
+  // appendToLastMessage/appendThinking/addToolCall/completeToolCall calls
+  // because those spread `...last` — verified by the streaming-tag test below.
+  it('addMessage tags an assistant message with provider+model when passed', () => {
+    seedSession();
+    useAiStore.getState().addMessage('assistant', 'hi', undefined, undefined, 'openai', 'gpt-4o');
+    const msg = useAiStore.getState().getActiveSession()!.messages[0];
+    expect(msg.provider).toBe('openai');
+    expect(msg.model).toBe('gpt-4o');
+  });
+
+  it('addMessage leaves provider/model undefined when no pair is passed (legacy path)', () => {
+    seedSession();
+    useAiStore.getState().addMessage('assistant', 'hi');
+    const msg = useAiStore.getState().getActiveSession()!.messages[0];
+    expect(msg.provider).toBeUndefined();
+    expect(msg.model).toBeUndefined();
+  });
+
+  it('appendToLastMessage preserves the provider/model tag on the last message', () => {
+    seedSession();
+    useAiStore.getState().addMessage('assistant', 'Hello', undefined, undefined, 'anthropic', 'claude-sonnet-4-6');
+    useAiStore.getState().appendToLastMessage(' world');
+    const msg = useAiStore.getState().getActiveSession()!.messages[0];
+    expect(msg.content).toBe('Hello world');
+    expect(msg.provider).toBe('anthropic');
+    expect(msg.model).toBe('claude-sonnet-4-6');
   });
 
   it('appendToLastMessage concatenates onto the last message content', () => {
@@ -350,5 +398,120 @@ describe('useAiStore study session (PR9)', () => {
     expect(useAiStore.getState().sessions.filter((s) => s.kind === 'study')).toHaveLength(1);
     // cliSessionId 仍保留供 resume
     expect(useAiStore.getState().getSession(reused)?.cliSessionId).toBe('cli-9');
+  });
+});
+
+// PR1 of the chatModel refactor: new sessions inherit the global pair.
+describe('createEmptySession inherits global chatProvider/chatModel', () => {
+  it('seeds session.provider/model from aiConfigStore global pair', () => {
+    useAiConfigStore.setState({ chatProvider: 'openai', chatModel: 'gpt-4o' });
+    const id = useAiStore.getState().createSession();
+    const sess = useAiStore.getState().getActiveSession();
+    expect(sess?.id).toBe(id);
+    expect(sess?.provider).toBe('openai');
+    expect(sess?.model).toBe('gpt-4o');
+  });
+
+  it('falls back to whatever global pair is set at creation time', () => {
+    useAiConfigStore.setState({ chatProvider: 'anthropic', chatModel: 'claude-sonnet-4-6' });
+    useAiStore.getState().createSession();
+    const sess = useAiStore.getState().getActiveSession();
+    expect(sess?.provider).toBe('anthropic');
+    expect(sess?.model).toBe('claude-sonnet-4-6');
+  });
+});
+
+// PR3 of the chatModel refactor: setSessionPair writes session + global pair.
+describe('setSessionPair (PR3)', () => {
+  it('writes session.provider/model AND syncs global chatProvider/chatModel', () => {
+    useAiConfigStore.setState({ chatProvider: 'anthropic', chatModel: 'claude-sonnet-4-6' });
+    const id = useAiStore.getState().createSession();
+    useAiStore.getState().setSessionPair(id, { provider: 'openai', model: 'gpt-4o' });
+    const sess = useAiStore.getState().getSession(id)!;
+    expect(sess.provider).toBe('openai');
+    expect(sess.model).toBe('gpt-4o');
+    // Global "last used pair" must mirror the session pick so the next new
+    // session inherits it.
+    expect(useAiConfigStore.getState().chatProvider).toBe('openai');
+    expect(useAiConfigStore.getState().chatModel).toBe('gpt-4o');
+  });
+
+  it('is a no-op for an unknown session id (does not touch global pair)', () => {
+    useAiConfigStore.setState({ chatProvider: 'anthropic', chatModel: 'claude-sonnet-4-6' });
+    useAiStore.getState().setSessionPair('nope', { provider: 'openai', model: 'gpt-4o' });
+    expect(useAiConfigStore.getState().chatProvider).toBe('anthropic');
+    expect(useAiConfigStore.getState().chatModel).toBe('claude-sonnet-4-6');
+  });
+});
+
+// PR6 of the chatModel refactor: reconcileSessionPair fixes the two ACs PR3
+// left open — stale-pair fallback + legacy migration. The effect in AiPanel
+// calls this on mount/activeSession/pairs change; this test covers the policy.
+describe('reconcileSessionPair (PR6 fallback + migration)', () => {
+  it('writes pairs[0] to session + global when the session pair is stale (provider disabled / model unselected)', () => {
+    useAiConfigStore.setState({ chatProvider: 'openai', chatModel: 'gpt-4o' });
+    const id = useAiStore.getState().createSession();
+    // Session inherited (openai, gpt-4o) but openai is no longer enabled —
+    // pairs only contains anthropic.
+    const pairs = [{ provider: 'anthropic' as const, model: 'claude-sonnet-4-6' }];
+    useAiStore.getState().reconcileSessionPair(id, pairs);
+    const sess = useAiStore.getState().getSession(id)!;
+    expect(sess.provider).toBe('anthropic');
+    expect(sess.model).toBe('claude-sonnet-4-6');
+    // Global "last used" syncs so the next new session inherits it.
+    expect(useAiConfigStore.getState().chatProvider).toBe('anthropic');
+    expect(useAiConfigStore.getState().chatModel).toBe('claude-sonnet-4-6');
+  });
+
+  it('is a no-op when the session pair is in pairs (valid pair)', () => {
+    useAiConfigStore.setState({ chatProvider: 'anthropic', chatModel: 'claude-sonnet-4-6' });
+    const id = useAiStore.getState().createSession();
+    const pairs = [{ provider: 'anthropic' as const, model: 'claude-sonnet-4-6' }];
+    useAiStore.getState().reconcileSessionPair(id, pairs);
+    expect(useAiStore.getState().getSession(id)!.provider).toBe('anthropic');
+    expect(useAiStore.getState().getSession(id)!.model).toBe('claude-sonnet-4-6');
+  });
+
+  it('is a no-op when pairs is empty (empty-state UI handles it)', () => {
+    useAiConfigStore.setState({ chatProvider: 'anthropic', chatModel: 'claude-sonnet-4-6' });
+    const id = useAiStore.getState().createSession();
+    useAiStore.getState().reconcileSessionPair(id, []);
+    // Session pair unchanged — the disabled-input + Settings link handles UX.
+    expect(useAiStore.getState().getSession(id)!.provider).toBe('anthropic');
+    expect(useAiStore.getState().getSession(id)!.model).toBe('claude-sonnet-4-6');
+  });
+
+  it('auto-selects pairs[0] for a legacy session with no provider/model (migration)', () => {
+    // Legacy persisted session: schema-gained-provider/model absent.
+    useAiStore.setState({
+      sessions: [
+        {
+          id: 'legacy',
+          title: '旧会话',
+          messages: [],
+          fileChanges: [],
+          cliSessionId: null,
+          isStreaming: false,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+      activeSessionId: 'legacy',
+    });
+    const pairs = [{ provider: 'openai' as const, model: 'gpt-4o' }];
+    useAiStore.getState().reconcileSessionPair('legacy', pairs);
+    const sess = useAiStore.getState().getSession('legacy')!;
+    expect(sess.provider).toBe('openai');
+    expect(sess.model).toBe('gpt-4o');
+    expect(useAiConfigStore.getState().chatProvider).toBe('openai');
+    expect(useAiConfigStore.getState().chatModel).toBe('gpt-4o');
+  });
+
+  it('is a no-op for an unknown session id', () => {
+    useAiConfigStore.setState({ chatProvider: 'anthropic', chatModel: 'claude-sonnet-4-6' });
+    const pairs = [{ provider: 'openai' as const, model: 'gpt-4o' }];
+    useAiStore.getState().reconcileSessionPair('nope', pairs);
+    expect(useAiConfigStore.getState().chatProvider).toBe('anthropic');
+    expect(useAiConfigStore.getState().chatModel).toBe('claude-sonnet-4-6');
   });
 });

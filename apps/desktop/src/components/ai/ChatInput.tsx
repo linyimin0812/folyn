@@ -28,9 +28,11 @@ interface ChatInputProps {
   onSend: (text: string, attachments: PendingAttachment[]) => void;
   onStop: () => void;
   isStreaming: boolean;
+  /** Disable the textarea + send button (e.g. no provider/model pair picked). */
+  disabled?: boolean;
 }
 
-export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
+export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputProps) {
   const { t } = useTranslation();
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
@@ -356,6 +358,7 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
         onSend={handleSendClick}
         onStop={onStop}
         streaming={isStreaming}
+        disabled={disabled}
         canSend={input.trim().length > 0 || attachments.length > 0}
         placeholder={t('ai:chat.placeholder')}
         textareaRows={2}

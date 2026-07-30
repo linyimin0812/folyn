@@ -1,6 +1,6 @@
 import { createAdapter } from '@quill/cli-adapter';
 import type { CliAdapter, CliStreamEvent } from '@quill/cli-adapter';
-import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useAiConfigStore, resolvePairConfig } from '@/store/aiConfigStore';
 import { useVaultConfigStore } from '@/store/vaultConfigStore';
 import { usePetChatStore } from '@/store/petChatStore';
 import { isRigMode, resolveSendOptions } from '@/components/ai/inputModes';
@@ -177,7 +177,7 @@ export async function sendPetChatMessage(
   const resumeSessionId = getCliSessionIdFor(sessionId);
   const mode = usePetChatStore.getState().inputMode;
 
-  // Closed over `sessionId` — NOT re-read from the store at event time.
+  // Closed-over `sessionId` — NOT re-read from the store at event time.
   // This is the race-prevention contract: even if the user switches the
   // active session before a `session_id` event fires, the event attributes
   // to the session that sent the prompt.
@@ -205,15 +205,28 @@ export async function sendPetChatMessage(
     // calls above are harmless no-ops for a chat turn. workingDir / cliPath
     // are unused (rig has no cwd). History is persisted on disk by the backend
     // keyed by `sessionId`.
+    //
+    // PR5: read petPair (not global chatProvider/chatModel). If petPair is
+    // unset or its provider isn't configured, surface the unconfigured error
+    // to the caller and bail — per PRD ADR, per-caller pairs are independent
+    // (no global fallback). PetSettings renders the PairSelector.
+    const cfg = resolvePairConfig(aiConfig.petPair, aiConfig);
+    if (!cfg) {
+      const msg = 'pet chat not configured — pick a (provider, model) pair in Pet Settings';
+      handlers.onError?.(msg);
+      return;
+    }
     try {
       await runRigChat({
         sessionId,
         prompt,
-        provider: aiConfig.chatProvider,
-        model: aiConfig.chatModel,
-        apiKey: aiConfig.chatApiKey,
-        baseUrl: aiConfig.chatBaseUrl,
-        thinkingBudget: aiConfig.chatThinkingBudget,
+        provider: cfg.provider,
+        model: cfg.model,
+        apiKey: cfg.apiKey,
+        baseUrl: cfg.baseUrl,
+        thinkingBudget: cfg.thinkingBudget,
+        customProvider: cfg.customProvider,
+        defaultChatEndpoint: cfg.defaultChatEndpoint,
         onEvent: handler,
       });
     } catch (err) {

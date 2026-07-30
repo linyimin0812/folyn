@@ -1,20 +1,27 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import * as editorIoService from '@/services/editorIoService';
 import { useAiStore } from '@/store/aiStore';
 import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useNavStore } from '@/store/navStore';
 import { useVaultStore } from '@/store/vaultStore';
-import type { CliStreamEvent, MessageAttachment } from '@quill/cli-adapter';
+import type { CliMessage, CliStreamEvent, MessageAttachment } from '@quill/cli-adapter';
 import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';
 import { flattenFileTree } from '@/utils/treeUtils';
 import { sessionAdapters, getAdapterForSession } from './adapterManager';
 import { ChatMessageList } from '@/components/chat';
 import { ChatInput } from './ChatInput';
 import type { PendingAttachment } from './ChatInput';
+import { PairSelector, useEnabledPairs, type Pair } from './PairSelector';
 import { resolveSendOptions, isRigMode } from './inputModes';
 import { saveBlobs, buildReadInstructions } from '@/components/chat';
 import type { SavedAttachment } from '@/components/chat';
 import { runRigChat } from '@/services/rigChat';
+import {
+  allProviders,
+  providerDisplayName,
+  type ProviderEntry,
+} from '@/services/providers/catalog';
 import { useTranslation } from 'react-i18next';
 
 export function AiPanel() {
@@ -35,17 +42,69 @@ export function AiPanel() {
   const addFileChange = useAiStore((s) => s.addFileChange);
   const setSessionStreaming = useAiStore((s) => s.setSessionStreaming);
   const setCliSessionId = useAiStore((s) => s.setCliSessionId);
+  const setSessionPair = useAiStore((s) => s.setSessionPair);
+  const reconcileSessionPair = useAiStore((s) => s.reconcileSessionPair);
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const isStreaming = activeSession?.isStreaming ?? false;
   const isStudySession = activeSession?.kind === 'study';
   const messages = activeSession?.messages ?? [];
 
+  const chatProvider = useAiConfigStore((s) => s.chatProvider);
+  const chatModel = useAiConfigStore((s) => s.chatModel);
+  const { pairs, hasAny: hasPair } = useEnabledPairs();
+  // ponytail: render-time fallback for the FIRST paint keeps legacy sessions
+  // (persisted before the schema gained provider/model) and stale pairs on
+  // the air without a render-time mutation. A useEffect below calls
+  // reconcileSessionPair to WRITE the auto-selected pair back after mount, so
+  // the next paint sees a stable session pair and the global "last used"
+  // stays in sync (PR6 fixes the two ACs PR3 deliberately left open).
+  const sessionPair: Pair | null =
+    activeSession?.provider && activeSession?.model
+      ? { provider: activeSession.provider, model: activeSession.model }
+      : chatProvider && chatModel
+        ? { provider: chatProvider, model: chatModel }
+        : null;
+
+  // ponytail: derive-then-write — if the active session's pair is missing
+  // (legacy) or stale (provider disabled / model unselected), write pairs[0]
+  // back via setSessionPair. No-op when pairs is empty (empty-state UI
+  // handles it). Deps: activeSessionId covers session switch; pairs is a
+  // stable memo so it only changes when the enabled set actually changes —
+  // a write to the session pair here does NOT retrigger (no infinite loop)
+  // because pairs stays the same reference.
+  useEffect(() => {
+    if (!activeSessionId) return;
+    if (pairs.length === 0) return;
+    reconcileSessionPair(activeSessionId, pairs);
+  }, [activeSessionId, pairs, reconcileSessionPair]);
+
+  const handlePairChange = useCallback((pair: Pair | null) => {
+    if (!pair || !activeSessionId) return;
+    setSessionPair(activeSessionId, pair);
+  }, [activeSessionId, setSessionPair]);
+
+  const handleOpenSettings = useCallback(() => {
+    useNavStore.getState().setCurrentPage('settings');
+    useNavStore.getState().setSettingsTab('models');
+  }, []);
+
   const [showSessionList, setShowSessionList] = useState(false);
   const sessionListRef = useRef<HTMLDivElement>(null);
 
   const fileTree = useVaultStore((s) => s.fileTree);
   const allFiles = useMemo(() => flattenFileTree(fileTree), [fileTree]);
+
+  // ponytail: renderPairTag closes over customerProviders (stable ref from
+  // zustand) so the resolver doesn't need to be a useCallback; it's only
+  // called inside DefaultMessageRow when msg.provider+model exist.
+  const customerProviders = useAiConfigStore((s) => s.customerProviders);
+  const renderPairTag = (msg: CliMessage): ReactNode | null => {
+    if (!msg.provider || !msg.model) return null;
+    const entry: ProviderEntry | undefined = allProviders(customerProviders).find((e) => e.id === msg.provider);
+    const name = entry ? providerDisplayName(entry, t) : msg.provider;
+    return <span>{name} : {msg.model}</span>;
+  };
 
   // Drag resize
   const [panelWidth, setPanelWidth] = useState(380);
@@ -107,11 +166,20 @@ export function AiPanel() {
       type: att.type,
       previewUrl: att.previewUrl,
     }));
+    // ponytail: hoist the session-pair lookup so the assistant bubble is
+    // tagged at creation time with the same pair the send path will use.
+    // Reads fresh store state (not the render-time activeSession closure) so
+    // a pair switch between the click and handleSend running is reflected.
+    const aiConfig = useAiConfigStore.getState();
+    const targetSession = useAiStore.getState().sessions.find((s) => s.id === sessionId);
+    // ponytail: session pair wins; legacy sessions (provider undefined)
+    // fall back to the global pair so pre-schema persisted sessions still tag.
+    const sendProvider = targetSession?.provider ?? aiConfig.chatProvider;
+    const sendModel = targetSession?.model ?? aiConfig.chatModel;
     addMessage('user', userText || t('ai:panel.attachmentPlaceholder'), sessionId, previewAttachments.length > 0 ? previewAttachments : undefined);
-    addMessage('assistant', '', sessionId);
+    addMessage('assistant', '', sessionId, undefined, sendProvider, sendModel);
     setSessionStreaming(sessionId, true);
 
-    const aiConfig = useAiConfigStore.getState();
     const vault = useVaultStore.getState().currentVault;
 
     let workingDir = vault?.basePath ?? '';
@@ -180,8 +248,11 @@ export function AiPanel() {
 
     const adapter = getAdapterForSession(sessionId);
 
-    const targetSession = useAiStore.getState().sessions.find((s) => s.id === sessionId);
     const resumeSessionId = targetSession?.cliSessionId ?? undefined;
+    // ponytail: sendProvider/sendModel are hoisted to before the user/assistant
+    // addMessage calls so the assistant bubble tag and the actual send use the
+    // same pair. The fresh lookup captures any pair switch between the click
+    // and handleSend running.
 
     const sid = sessionId;
     const eventHandler = (event: CliStreamEvent) => {
@@ -232,16 +303,16 @@ export function AiPanel() {
         await runRigChat({
           sessionId: sid,
           prompt,
-          provider: aiConfig.chatProvider,
-          model: aiConfig.chatModel,
+          provider: sendProvider,
+          model: sendModel,
           apiKey: aiConfig.chatApiKey,
           baseUrl: aiConfig.chatBaseUrl,
           // T07: forward reasoning budget. rig applies it via per-provider
           // additional_params; non-reasoning models silently ignore.
           thinkingBudget: aiConfig.chatThinkingBudget,
           // PR2e: route custom providers via the endpoint resolver in Rust.
-          customProvider: !!aiConfig.customerProviders[aiConfig.chatProvider],
-          defaultChatEndpoint: aiConfig.customerProviders[aiConfig.chatProvider]?.defaultChatEndpoint,
+          customProvider: !!aiConfig.customerProviders[sendProvider],
+          defaultChatEndpoint: aiConfig.customerProviders[sendProvider]?.defaultChatEndpoint,
           onEvent: eventHandler,
         });
       } else {
@@ -343,10 +414,19 @@ export function AiPanel() {
         </div>
       </div>
 
+      <div className="flex items-center gap-2 py-1.5 px-3 border-b border-brd shrink-0">
+        <PairSelector
+          value={sessionPair}
+          onChange={handlePairChange}
+          onOpenSettings={handleOpenSettings}
+        />
+      </div>
+
       <ChatMessageList
         messages={messages}
         streaming={isStreaming}
         streamingIndicator="dots"
+        renderPairTag={renderPairTag}
         className="p-3 gap-3"
       />
 
@@ -375,6 +455,7 @@ export function AiPanel() {
           onSend={handleSend}
           onStop={handleStop}
           isStreaming={isStreaming}
+          disabled={!hasPair}
         />
       )}
     </div>

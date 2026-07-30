@@ -41,6 +41,13 @@
       "openSettings": "打开设置"
     }
   },
+  "pairSelector": {
+    "placeholder": "选择模型",
+    "empty": "未配置可用模型",
+    "openSettings": "前往模型设置",
+    "sectionTitle": "AI 模型",
+    "sectionDesc": "选择此功能使用的 (provider, model) 组合；先在模型服务中启用 provider 并选择模型"
+  },
   "errors": {
     "attachmentSaveFailed": "[错误] 附件保存失败: {{error}}",
     "streamError": "[错误] {{error}}"

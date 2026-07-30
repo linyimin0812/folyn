@@ -26,15 +26,57 @@ vi.mock('@/services/rigChat', () => ({
 }));
 
 // Mock useAiConfigStore — configured for anthropic / sonnet / fake key.
+// PR5: the modal reads bubblePair + providerSettings[bubblePair.provider]
+// (NOT the flat chat* mirrors). The mock is a callable function (so hook
+// usage `useAiConfigStore((s) => s.x)` works) with a `.getState()` for the
+// service-style reads in `readChatConfig`. vi.hoisted so the hoisted vi.mock
+// factory can reference the state object.
+const { aiConfigState, setBubblePairMock, resolvePairConfigMock } = vi.hoisted(() => {
+  const aiConfigState = {
+    bubblePair: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
+    providerSettings: {
+      anthropic: {
+        id: 'anthropic',
+        apiKey: 'k',
+        baseUrl: '',
+        enabled: true,
+        selectedModelIds: ['claude-sonnet-4-6'],
+        customProvider: false,
+        extra: {},
+      },
+    },
+    customerProviders: {},
+  };
+  return {
+    aiConfigState,
+    setBubblePairMock: vi.fn(),
+    resolvePairConfigMock: (pair: { provider: string; model: string } | null) => {
+      if (!pair) return null;
+      const slot = aiConfigState.providerSettings[pair.provider];
+      if (!slot) return null;
+      return {
+        provider: pair.provider,
+        model: pair.model,
+        apiKey: slot.apiKey,
+        baseUrl: slot.baseUrl,
+        thinkingBudget: null,
+        customProvider: false,
+      };
+    },
+  };
+});
 vi.mock('@/store/aiConfigStore', () => ({
-  useAiConfigStore: {
-    getState: () => ({
-      chatProvider: 'anthropic',
-      chatModel: 'claude-sonnet-4-6',
-      chatApiKey: 'k',
-      chatBaseUrl: '',
-    }),
-  },
+  useAiConfigStore: Object.assign(
+    (sel: (s: typeof aiConfigState) => unknown) => sel(aiConfigState),
+    {
+      getState: () => ({
+        ...aiConfigState,
+        bubblePair: aiConfigState.bubblePair,
+        setBubblePair: setBubblePairMock,
+      }),
+    },
+  ),
+  resolvePairConfig: resolvePairConfigMock,
 }));
 
 // Mock useTranslation — return keys verbatim so tests can grep for them.

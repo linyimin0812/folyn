@@ -3,6 +3,7 @@ import { registerPersistSlice, schedulePersist } from './settingsPersistence';
 import {
   PROVIDER_CATALOG,
   PROVIDER_IDS,
+  allProviders,
   type ChatProviderId,
   type DefaultChatEndpoint,
   getProviderEntry,
@@ -77,7 +78,71 @@ export const PERSIST_KEYS_AI_CONFIG = [
   PROVIDER_CONFIG_MIGRATED_KEY,
   // Code-block script runner runtimes (shell/node/python defaults).
   'scriptRuntimes',
+  // Per-caller (provider, model) pairs for non-AiPanel chat callers.
+  // ponytail: fields are nullable + optional on the persisted blob so legacy
+  // blobs hydrate without migration; first use post-upgrade picks a pair.
+  'petPair',
+  'bubblePair',
+  'voicePair',
+  'pluginPair',
 ] as const;
+
+/** A (provider, model) pair used by non-AiPanel chat callers (pet, bubble,
+ *  voice, plugin RPC). Null until the user picks a pair in each caller's
+ *  settings page. */
+export interface ProviderModelPair {
+  provider: ChatProvider;
+  model: string;
+}
+
+/** Connection params resolved from a (provider, model) pair. Reads the per-
+ *  provider settings slot directly (NOT the flat chat* mirrors — those are
+ *  only aligned with `chatProvider`, which per-caller pairs are independent
+ *  from). Returned when the pair is set AND the provider's slot exists AND
+ *  (for key-requiring providers) the apiKey is non-empty; null otherwise so
+ *  callers can surface their own empty state. */
+export interface ResolvedPairConfig {
+  provider: ChatProvider;
+  model: string;
+  apiKey: string;
+  baseUrl: string;
+  thinkingBudget: number | null;
+  customProvider: boolean;
+  defaultChatEndpoint?: string;
+}
+
+/** Resolve a (provider, model) pair into the connection params a caller needs
+ *  to invoke runRigChat. Used by pet / bubble / voice / plugin RPC send paths
+ *  so they don't reimplement the providerSettings lookup. Returns null when
+ *  the pair is null OR the provider's slot is missing OR a key-requiring
+ *  provider has no apiKey (caller surfaces the empty state).
+ *
+ *  ponytail: providers that don't require an apiKey (e.g. Ollama) pass through
+ *  with apiKey='' — runRigChat treats empty key as "no auth header" which is
+ *  correct for local providers. */
+export function resolvePairConfig(
+  pair: ProviderModelPair | null,
+  state: AiConfigState = useAiConfigStore.getState(),
+): ResolvedPairConfig | null {
+  if (!pair) return null;
+  const slot = state.providerSettings[pair.provider];
+  if (!slot) return null;
+  const entry = allProviders(state.customerProviders).find((e) => e.id === pair.provider);
+  // Unknown provider id (e.g. stale persisted pair for a since-deleted custom
+  // provider) → treat as key-required so we refuse to send without a key.
+  const requiresKey = entry ? providerRequiresApiKey(entry) : true;
+  if (requiresKey && !slot.apiKey.trim()) return null;
+  const custom = !!state.customerProviders[pair.provider];
+  return {
+    provider: pair.provider,
+    model: pair.model,
+    apiKey: slot.apiKey,
+    baseUrl: slot.baseUrl,
+    thinkingBudget: (slot.extra.thinkingBudget as number | null) ?? null,
+    customProvider: custom,
+    defaultChatEndpoint: state.customerProviders[pair.provider]?.defaultChatEndpoint,
+  };
+}
 
 export interface AiConfigState {
   cliAdapter: string;
@@ -102,6 +167,13 @@ export interface AiConfigState {
   // Code-block script runner runtimes. Default = shell/node/python.
   // User can override binaryPath per runtime via Editor settings tab.
   scriptRuntimes: RuntimeConfig[];
+  // Per-caller (provider, model) pairs. Null until the user picks one in
+  // each caller's settings page. AiPanel uses session-scoped pair fields
+  // (see aiStore.AiSession) — NOT these globals.
+  petPair: ProviderModelPair | null;
+  bubblePair: ProviderModelPair | null;
+  voicePair: ProviderModelPair | null;
+  pluginPair: ProviderModelPair | null;
 
   setCliAdapter: (v: string) => void;
   setCliPath: (v: string) => void;
@@ -146,6 +218,13 @@ export interface AiConfigState {
   /** Set the binary path for a script runtime (shell/node/python/...). */
   setRuntimePath: (runtimeId: string, path: string) => void;
 
+  /** Set the (provider, model) pair for a non-AiPanel chat caller.
+   *  Pass null to clear. Persists via the settings:all blob. */
+  setPetPair: (pair: ProviderModelPair | null) => void;
+  setBubblePair: (pair: ProviderModelPair | null) => void;
+  setVoicePair: (pair: ProviderModelPair | null) => void;
+  setPluginPair: (pair: ProviderModelPair | null) => void;
+
   /** Returns provider ids that have a non-empty apiKey (or don't require one). */
   configuredProviderIds: () => string[];
 
@@ -185,6 +264,13 @@ function isManualModelsMap(v: unknown): v is Record<string, ManualModel[]> {
   return true;
 }
 
+/** ProviderModelPair guard for the persisted blob. */
+function isProviderModelPair(v: unknown): v is ProviderModelPair {
+  if (!v || typeof v !== 'object') return false;
+  const r = v as Record<string, unknown>;
+  return isChatProvider(r.provider) && typeof r.model === 'string';
+}
+
 function patchSettings(
   settings: Record<string, ProviderSettings>,
   id: string,
@@ -221,6 +307,10 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   providerSettings: {},
   manualModels: {},
   scriptRuntimes: DEFAULT_SCRIPT_RUNTIMES,
+  petPair: null,
+  bubblePair: null,
+  voicePair: null,
+  pluginPair: null,
 
   setCliAdapter: (v) => {
     set((s) => {
@@ -465,6 +555,11 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     schedulePersist();
   },
 
+  setPetPair: (pair) => { set({ petPair: pair }); schedulePersist(); },
+  setBubblePair: (pair) => { set({ bubblePair: pair }); schedulePersist(); },
+  setVoicePair: (pair) => { set({ voicePair: pair }); schedulePersist(); },
+  setPluginPair: (pair) => { set({ pluginPair: pair }); schedulePersist(); },
+
   hydrate: (blob) => {
     const patch: Partial<AiConfigState> = {};
     if (blob.cliAdapter !== undefined) patch.cliAdapter = blob.cliAdapter as string;
@@ -489,6 +584,13 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     // Unknown persisted ids (removed in future migrations) are dropped; new
     // default ids not in the blob keep their default binaryPath.
     patch.scriptRuntimes = mergeScriptRuntimes(blob.scriptRuntimes);
+
+    // Per-caller pairs: null when absent or malformed (legacy blobs hydrate
+    // to null without a migration pass).
+    patch.petPair = isProviderModelPair(blob.petPair) ? blob.petPair : null;
+    patch.bubblePair = isProviderModelPair(blob.bubblePair) ? blob.bubblePair : null;
+    patch.voicePair = isProviderModelPair(blob.voicePair) ? blob.voicePair : null;
+    patch.pluginPair = isProviderModelPair(blob.pluginPair) ? blob.pluginPair : null;
 
     if (Object.keys(patch).length > 0) set(patch);
   },

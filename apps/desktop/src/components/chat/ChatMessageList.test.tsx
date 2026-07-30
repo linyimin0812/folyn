@@ -171,6 +171,42 @@ describe('ChatMessageList', () => {
     // default bubble NOT rendered
     expect(screen.queryByText('orig')).toBeNull();
   });
+
+  // PR4: per-message pair tag on AI responses.
+  it('renderPairTag renders the tag under assistant messages that carry provider+model', () => {
+    const messages: CliMessage[] = [
+      mkMsg({ id: 'u1', role: 'user', content: 'hi', provider: 'openai', model: 'gpt-4o' }),
+      mkMsg({ id: 'a1', role: 'assistant', content: 'reply', provider: 'openai', model: 'gpt-4o' }),
+    ];
+    render(
+      <ChatMessageList
+        messages={messages}
+        streaming={false}
+        renderPairTag={(m) => <span>{m.provider} : {m.model}</span>}
+      />,
+    );
+    const tags = screen.getAllByTestId('msg-pair-tag');
+    expect(tags).toHaveLength(1); // only the assistant bubble
+    expect(tags[0].textContent).toBe('openai : gpt-4o');
+  });
+
+  it('renderPairTag is not rendered when the message has no provider/model (legacy)', () => {
+    const messages: CliMessage[] = [mkMsg({ id: 'a1', role: 'assistant', content: 'legacy reply' })];
+    render(
+      <ChatMessageList
+        messages={messages}
+        streaming={false}
+        renderPairTag={(m) => <span>{m.provider} : {m.model}</span>}
+      />,
+    );
+    expect(screen.queryByTestId('msg-pair-tag')).toBeNull();
+  });
+
+  it('renderPairTag is not rendered when the prop is omitted (pet/bubble path)', () => {
+    const messages: CliMessage[] = [mkMsg({ id: 'a1', role: 'assistant', content: 'reply', provider: 'openai', model: 'gpt-4o' })];
+    render(<ChatMessageList messages={messages} streaming={false} />);
+    expect(screen.queryByTestId('msg-pair-tag')).toBeNull();
+  });
 });
 
 /** Tiny helper: pull the first call's first argument off a vi.fn (avoids the

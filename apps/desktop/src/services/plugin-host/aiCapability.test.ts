@@ -16,7 +16,26 @@ const { runRigChatMock, runFeatureAgentMock, aiConfigGetMock, aiStoreMock } = vi
 
 vi.mock('@/services/rigChat', () => ({ runRigChat: runRigChatMock }));
 vi.mock('@/services/featureAgentService', () => ({ runFeatureAgent: runFeatureAgentMock }));
-vi.mock('@/store/aiConfigStore', () => ({ useAiConfigStore: { getState: aiConfigGetMock } }));
+// PR5: aiCapability reads pluginPair + providerSettings[pluginPair.provider]
+// (NOT global chatProvider/chatModel/chatApiKey). The mock state is seeded
+// per-test via aiConfigGetMock.mockReturnValue({...}).
+vi.mock('@/store/aiConfigStore', () => ({
+  useAiConfigStore: { getState: aiConfigGetMock },
+  resolvePairConfig: (pair: { provider: string; model: string } | null, state = aiConfigGetMock()) => {
+    if (!pair) return null;
+    const slot = state.providerSettings?.[pair.provider];
+    if (!slot) return null;
+    if (!slot.apiKey) return null;
+    return {
+      provider: pair.provider,
+      model: pair.model,
+      apiKey: slot.apiKey,
+      baseUrl: slot.baseUrl ?? '',
+      thinkingBudget: null,
+      customProvider: !!state.customerProviders?.[pair.provider],
+    };
+  },
+}));
 vi.mock('@/store/aiStore', () => ({ useAiStore: { getState: () => aiStoreMock } }));
 
 import { buildPluginAi } from './aiCapability';
@@ -34,16 +53,22 @@ function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
   };
 }
 
+/** The default configured state: anthropic pluginPair + a slot with a key. */
+function configuredState() {
+  return {
+    pluginPair: { provider: 'anthropic', model: 'sonnet' },
+    providerSettings: {
+      anthropic: { apiKey: 'sk-test', baseUrl: '' },
+    },
+    customerProviders: {},
+  };
+}
+
 beforeEach(() => {
   runRigChatMock.mockReset();
   runFeatureAgentMock.mockReset();
   aiConfigGetMock.mockReset();
-  aiConfigGetMock.mockReturnValue({
-    chatProvider: 'anthropic',
-    chatModel: 'sonnet',
-    chatApiKey: 'sk-test',
-    chatBaseUrl: '',
-  });
+  aiConfigGetMock.mockReturnValue(configuredState());
   aiStoreMock.createSession.mockReset();
   aiStoreMock.addMessage.mockReset();
   aiStoreMock.appendToLastMessage.mockReset();
@@ -60,13 +85,23 @@ describe('buildPluginAi / ai.chat', () => {
     expect(runRigChatMock).not.toHaveBeenCalled();
   });
 
-  it('rejects when chatApiKey is empty', async () => {
+  it('rejects when pluginPair is null (caller has not picked a pair)', async () => {
+    aiConfigGetMock.mockReturnValue({ pluginPair: null, providerSettings: {}, customerProviders: {} });
+    const ai = buildPluginAi(manifest({ permissions: { ai: { chat: true } } }));
+    await expect(ai.chat({ sessionId: 's', prompt: 'p', onEvent: vi.fn() })).rejects.toThrow(
+      /pick a \(provider, model\) pair in Plugins Settings/,
+    );
+  });
+
+  it('rejects when the pair provider has no apiKey', async () => {
     aiConfigGetMock.mockReturnValue({
-      chatProvider: 'anthropic', chatModel: 'sonnet', chatApiKey: '', chatBaseUrl: '',
+      pluginPair: { provider: 'anthropic', model: 'sonnet' },
+      providerSettings: { anthropic: { apiKey: '', baseUrl: '' } },
+      customerProviders: {},
     });
     const ai = buildPluginAi(manifest({ permissions: { ai: { chat: true } } }));
     await expect(ai.chat({ sessionId: 's', prompt: 'p', onEvent: vi.fn() })).rejects.toThrow(
-      /chatApiKey/,
+      /pick a \(provider, model\) pair in Plugins Settings/,
     );
   });
 
@@ -99,6 +134,22 @@ describe('buildPluginAi / ai.chat', () => {
     ]);
     expect(seen.some((s) => s.startsWith('tool_'))).toBe(false);
     expect(seen.some((s) => s.startsWith('file_change'))).toBe(false);
+  });
+
+  it('passes the pluginPair provider/model/apiKey to runRigChat', async () => {
+    runRigChatMock.mockImplementation(async (p: { onEvent: (e: CliStreamEvent) => void }) => {
+      p.onEvent({ type: 'done' });
+    });
+    const ai = buildPluginAi(manifest({ permissions: { ai: { chat: true } } }));
+    await ai.chat({ sessionId: 's', prompt: 'p', onEvent: vi.fn() });
+
+    expect(runRigChatMock).toHaveBeenCalledTimes(1);
+    const params = runRigChatMock.mock.calls[0][0] as {
+      provider: string; model: string; apiKey: string;
+    };
+    expect(params.provider).toBe('anthropic');
+    expect(params.model).toBe('sonnet');
+    expect(params.apiKey).toBe('sk-test');
   });
 
   it('routes stream to aiStore when useSharedSession=true', async () => {

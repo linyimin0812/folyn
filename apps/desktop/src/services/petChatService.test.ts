@@ -33,9 +33,18 @@ function makeFakeAdapter(id: string) {
 }
 
 const { aiConfigState, vaultConfigState, createAdapter } = vi.hoisted(() => {
-  const aiConfigState: { cliAdapter: string; cliPath: string } = {
+  const aiConfigState: {
+    cliAdapter: string;
+    cliPath: string;
+    petPair: { provider: string; model: string } | null;
+    providerSettings: Record<string, { apiKey: string; baseUrl: string }>;
+    customerProviders: Record<string, unknown>;
+  } = {
     cliAdapter: 'claude',
     cliPath: '/mock/claude',
+    petPair: null,
+    providerSettings: {},
+    customerProviders: {},
   };
   const vaultConfigState: { vaultPath: string } = {
     vaultPath: '',
@@ -51,6 +60,20 @@ const { aiConfigState, vaultConfigState, createAdapter } = vi.hoisted(() => {
 
 vi.mock('@/store/aiConfigStore', () => ({
   useAiConfigStore: { getState: () => aiConfigState },
+  resolvePairConfig: (pair: { provider: string; model: string } | null) => {
+    if (!pair) return null;
+    const slot = aiConfigState.providerSettings[pair.provider];
+    if (!slot) return null;
+    if (!slot.apiKey) return null;
+    return {
+      provider: pair.provider,
+      model: pair.model,
+      apiKey: slot.apiKey,
+      baseUrl: slot.baseUrl,
+      thinkingBudget: null,
+      customProvider: false,
+    };
+  },
 }));
 
 vi.mock('@/store/vaultConfigStore', () => ({
@@ -59,16 +82,20 @@ vi.mock('@/store/vaultConfigStore', () => ({
 
 vi.mock('@/store/petChatStore', () => {
   // A lightweight stand-in for the store: a sessions array + activeSessionId
-  // + setCliSessionId spy. The service only reads sessions/cliSessionId and
-  // calls setCliSessionId.
+  // + setCliSessionId spy + inputMode (rig vs ask/agent). The service reads
+  // sessions/cliSessionId + inputMode and calls setCliSessionId. inputMode
+  // defaults to undefined so existing ask/agent tests see `resolveSendOptions`
+  // pass `base` through unchanged (no permissionMode added).
   const store: {
     sessions: { id: string; cliSessionId?: string }[];
     activeSessionId: string | null;
     setCliSessionId: ReturnType<typeof vi.fn>;
+    inputMode: string | undefined;
   } = {
     sessions: [],
     activeSessionId: null,
     setCliSessionId: vi.fn(),
+    inputMode: undefined,
   };
   return { usePetChatStore: { getState: () => store } };
 });
@@ -76,6 +103,13 @@ vi.mock('@/store/petChatStore', () => {
 vi.mock('@quill/cli-adapter', () => ({
   createAdapter: (id: string) => createAdapter(id),
 }));
+
+// rig-mode (chat inputMode) forwards to runRigChat. Mock it so the rig path
+// can be exercised without a real Tauri Channel (which the core mock doesn't
+// export). vi.hoisted keeps the mock ref available to the hoisted vi.mock
+// factory below.
+const { runRigChatMock } = vi.hoisted(() => ({ runRigChatMock: vi.fn() }));
+vi.mock('@/services/rigChat', () => ({ runRigChat: runRigChatMock }));
 
 import { mkdir as mockedMkdir } from '@tauri-apps/plugin-fs';
 import { appDataDir as mockedAppDataDir, join as mockedJoin } from '@tauri-apps/api/path';
@@ -93,6 +127,7 @@ const petChatStoreState = (
   sessions: { id: string; cliSessionId?: string }[];
   activeSessionId: string | null;
   setCliSessionId: ReturnType<typeof vi.fn>;
+  inputMode: string | undefined;
 };
 
 beforeEach(() => {
@@ -106,10 +141,18 @@ beforeEach(() => {
   );
   aiConfigState.cliAdapter = 'claude';
   aiConfigState.cliPath = '/mock/claude';
+  aiConfigState.petPair = null;
+  aiConfigState.providerSettings = {};
+  aiConfigState.customerProviders = {};
   createAdapter.mockImplementation(() => makeFakeAdapter('claude'));
   petChatStoreState.sessions = [];
   petChatStoreState.activeSessionId = null;
+  petChatStoreState.inputMode = undefined;
   petChatStoreState.setCliSessionId.mockClear();
+  // Default: rig path resolves but emits nothing. Tests that need events
+  // override this with mockImplementation.
+  runRigChatMock.mockReset();
+  runRigChatMock.mockResolvedValue(undefined);
   // Clear the per-session adapter Map between tests.
   void resetPetChatAdapter();
 });
@@ -337,6 +380,53 @@ describe('adapter id invalidation', () => {
 
     expect(__getAdapterForTesting('A')).toBe(fresh);
     expect(stale.stop).toHaveBeenCalled();
+  });
+});
+
+// ── PR5: rig-mode (chat inputMode) reads petPair, no global fallback ──
+describe('sendPetChatMessage — rig-mode pair resolution (PR5)', () => {
+  it('rig mode: resolves petPair + providerSettings and forwards to runRigChat', async () => {
+    petChatStoreState.inputMode = 'chat';
+    aiConfigState.petPair = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
+    aiConfigState.providerSettings = {
+      anthropic: { apiKey: 'sk-test', baseUrl: '' },
+    };
+    seedSession('s1');
+
+    await sendPetChatMessage('s1', 'hi', {});
+
+    expect(runRigChatMock).toHaveBeenCalledTimes(1);
+    const params = runRigChatMock.mock.calls[0][0] as {
+      provider: string; model: string; apiKey: string;
+    };
+    expect(params.provider).toBe('anthropic');
+    expect(params.model).toBe('claude-sonnet-4-6');
+    expect(params.apiKey).toBe('sk-test');
+  });
+
+  it('rig mode: fires onError + returns when petPair is null (no global fallback)', async () => {
+    petChatStoreState.inputMode = 'chat';
+    // petPair stays null (default).
+    seedSession('s1');
+    const onError = vi.fn();
+
+    await sendPetChatMessage('s1', 'hi', { onError });
+
+    expect(onError).toHaveBeenCalledWith(expect.stringMatching(/pet chat not configured/i));
+    expect(runRigChatMock).not.toHaveBeenCalled();
+  });
+
+  it('rig mode: fires onError when petPair is set but provider has no apiKey', async () => {
+    petChatStoreState.inputMode = 'chat';
+    aiConfigState.petPair = { provider: 'anthropic', model: 'sonnet' };
+    aiConfigState.providerSettings = { anthropic: { apiKey: '', baseUrl: '' } };
+    seedSession('s1');
+    const onError = vi.fn();
+
+    await sendPetChatMessage('s1', 'hi', { onError });
+
+    expect(onError).toHaveBeenCalledWith(expect.stringMatching(/pet chat not configured/i));
+    expect(runRigChatMock).not.toHaveBeenCalled();
   });
 });
 

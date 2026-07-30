@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "AiSession schema gains provider+model fields; aiConfigStore gains petPair/bubblePair/voicePair/pluginPair; need zustand persist + selector conventions."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "New reusable <PairSelector> component rendered across AiPanel header + 4 settings pages; needs composition + props conventions."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "ChatProvider type, per-caller pair {provider, model} shape, noUncheckedIndexedAccess on selectedModelIds lookups."}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "Where to place PairSelector — likely apps/desktop/src/components/ai/ or a shared settings primitives folder."}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "Dropdown option labels + empty-state hint + Settings link text must go through t()/useTranslation."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "No unrequested abstractions; per-message tag must be minimal; ponytail: comments on deliberate shortcuts."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "PairSelector is shared across 5 entry points; check reuse-first before adding new components."}

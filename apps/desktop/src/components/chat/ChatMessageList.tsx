@@ -30,6 +30,12 @@ export interface ChatMessageListProps {
   /** AiPanel wiki-mode "保存到 Wiki" button on assistant msgs with content.
    *  The pet chat omits this. */
   onSaveToWiki?: (msg: CliMessage) => void;
+  /** Render a small "provider : model" tag under assistant messages that carry
+   *  a `provider` + `model` pair (PR4). The resolver is consumer-supplied
+   *  because shared chat components MUST NOT import the provider catalog
+   *  (per component-guidelines.md). AiPanel passes a resolver that uses
+   *  `providerDisplayName`; the pet/bubble paths omit it (no tag). */
+  renderPairTag?: (msg: CliMessage) => ReactNode | null;
   className?: string;
   /** Reserved session-switch props (PRD R: PetChat does not pass them and
    *  the UI does not render a switcher yet). Kept on the type so future
@@ -151,6 +157,7 @@ function DefaultMessageRow({
   onCopy,
   streamingIndicator,
   onSaveToWiki,
+  renderPairTag,
 }: {
   msg: CliMessage;
   isLast: boolean;
@@ -160,6 +167,7 @@ function DefaultMessageRow({
   onCopy?: (msg: CliMessage) => void;
   streamingIndicator: 'dots' | 'cursor' | 'none';
   onSaveToWiki?: (msg: CliMessage) => void;
+  renderPairTag?: (msg: CliMessage) => ReactNode | null;
 }) {
   const isAssistant = msg.role === 'assistant';
   // Per-bubble cursor on the last assistant msg while streaming, for any
@@ -209,6 +217,12 @@ function DefaultMessageRow({
           保存到 Wiki
         </button>
       )}
+
+      {isAssistant && msg.provider && msg.model && renderPairTag && (
+        <div className="mt-1 text-[10px] text-t3" data-testid="msg-pair-tag">
+          {renderPairTag(msg)}
+        </div>
+      )}
     </div>
   );
 }
@@ -224,6 +238,7 @@ export function ChatMessageList({
   onCopy,
   streamingIndicator = 'dots',
   onSaveToWiki,
+  renderPairTag,
   className,
 }: ChatMessageListProps) {
   const msgsEndRef = useRef<HTMLDivElement>(null);
@@ -252,6 +267,7 @@ export function ChatMessageList({
             onCopy={onCopy}
             streamingIndicator={streamingIndicator}
             onSaveToWiki={onSaveToWiki}
+            renderPairTag={renderPairTag}
           />
         );
       })}

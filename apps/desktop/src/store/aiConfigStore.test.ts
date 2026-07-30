@@ -57,6 +57,10 @@ beforeEach(() => {
     providerSettings: {},
     manualModels: {},
     scriptRuntimes: DEFAULT_SCRIPT_RUNTIMES.map((r) => ({ ...r })),
+    petPair: null,
+    bubblePair: null,
+    voicePair: null,
+    pluginPair: null,
   });
 });
 
@@ -648,5 +652,90 @@ describe('useAiConfigStore scriptRuntimes', () => {
   it('hydrate falls back to defaults when blob has no scriptRuntimes', () => {
     useAiConfigStore.getState().hydrate({});
     expect(useAiConfigStore.getState().scriptRuntimes.map((r) => r.id)).toEqual(['shell', 'node', 'python']);
+  });
+});
+
+// Per-caller (provider, model) pairs — PR1 of the chatModel refactor.
+describe('useAiConfigStore per-caller pairs', () => {
+  it('all four pair fields default to null', () => {
+    const s = useAiConfigStore.getState();
+    expect(s.petPair).toBeNull();
+    expect(s.bubblePair).toBeNull();
+    expect(s.voicePair).toBeNull();
+    expect(s.pluginPair).toBeNull();
+  });
+
+  it('PERSIST_KEYS_AI_CONFIG includes petPair / bubblePair / voicePair / pluginPair', () => {
+    expect(PERSIST_KEYS_AI_CONFIG).toContain('petPair');
+    expect(PERSIST_KEYS_AI_CONFIG).toContain('bubblePair');
+    expect(PERSIST_KEYS_AI_CONFIG).toContain('voicePair');
+    expect(PERSIST_KEYS_AI_CONFIG).toContain('pluginPair');
+  });
+
+  it.each([
+    ['setPetPair', 'petPair'] as const,
+    ['setBubblePair', 'bubblePair'] as const,
+    ['setVoicePair', 'voicePair'] as const,
+    ['setPluginPair', 'pluginPair'] as const,
+  ])('%s writes the pair and persists to settings:all', (setter, field) => {
+    const setSpy = vi.spyOn(storageClient, 'set');
+    const pair = { provider: 'openai', model: 'gpt-4o' };
+    (useAiConfigStore.getState()[setter] as (p: typeof pair | null) => void)(pair);
+    expect(useAiConfigStore.getState()[field]).toEqual(pair);
+    vi.advanceTimersByTime(400);
+    const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1] as Record<string, unknown>;
+    expect(payload[field]).toEqual(pair);
+    setSpy.mockRestore();
+  });
+
+  it.each([
+    ['setPetPair', 'petPair'] as const,
+    ['setBubblePair', 'bubblePair'] as const,
+    ['setVoicePair', 'voicePair'] as const,
+    ['setPluginPair', 'pluginPair'] as const,
+  ])('%s accepts null to clear the pair', (setter, field) => {
+    const pair = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
+    (useAiConfigStore.getState()[setter] as (p: typeof pair | null) => void)(pair);
+    expect(useAiConfigStore.getState()[field]).toEqual(pair);
+    (useAiConfigStore.getState()[setter] as (p: typeof pair | null) => void)(null);
+    expect(useAiConfigStore.getState()[field]).toBeNull();
+  });
+
+  it('hydrate reads each pair from the blob', () => {
+    useAiConfigStore.getState().hydrate({
+      petPair: { provider: 'openai', model: 'gpt-4o' },
+      bubblePair: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
+      voicePair: { provider: 'ollama', model: 'llama3' },
+      pluginPair: { provider: 'openai', model: 'gpt-4o-mini' },
+    });
+    const s = useAiConfigStore.getState();
+    expect(s.petPair).toEqual({ provider: 'openai', model: 'gpt-4o' });
+    expect(s.bubblePair).toEqual({ provider: 'anthropic', model: 'claude-sonnet-4-6' });
+    expect(s.voicePair).toEqual({ provider: 'ollama', model: 'llama3' });
+    expect(s.pluginPair).toEqual({ provider: 'openai', model: 'gpt-4o-mini' });
+  });
+
+  it('hydrate falls back to null when blob omits the pair (legacy blob)', () => {
+    // Seed a non-null pair to prove hydrate clears it.
+    useAiConfigStore.getState().setPetPair({ provider: 'openai', model: 'gpt-4o' });
+    useAiConfigStore.getState().hydrate({});
+    expect(useAiConfigStore.getState().petPair).toBeNull();
+    expect(useAiConfigStore.getState().bubblePair).toBeNull();
+    expect(useAiConfigStore.getState().voicePair).toBeNull();
+    expect(useAiConfigStore.getState().pluginPair).toBeNull();
+  });
+
+  it('hydrate rejects a pair with an invalid provider (coerces to null)', () => {
+    useAiConfigStore.getState().hydrate({
+      petPair: { provider: 'bogus', model: 'm' },
+    });
+    expect(useAiConfigStore.getState().petPair).toBeNull();
+  });
+
+  it('hydrate rejects a pair missing the model field (coerces to null)', () => {
+    useAiConfigStore.getState().hydrate({
+      voicePair: { provider: 'openai' },
+    });
+    expect(useAiConfigStore.getState().voicePair).toBeNull();
   });
 });

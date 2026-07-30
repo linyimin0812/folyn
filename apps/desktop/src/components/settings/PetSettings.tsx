@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePetStore, type PetOpacity } from '@/store/petStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
+import { PairSelector } from '@/components/ai/PairSelector';
 import { isTauri } from '@/utils/platform';
 import { Toggle } from '@/components/settings/primitives';
 
@@ -42,6 +44,8 @@ export function PetSettings() {
   const setPetOpacity = usePetStore((s) => s.setPetOpacity);
   const petClickThrough = usePetStore((s) => s.petClickThrough);
   const setPetClickThrough = usePetStore((s) => s.setPetClickThrough);
+  const petPair = useAiConfigStore((s) => s.petPair);
+  const setPetPair = useAiConfigStore((s) => s.setPetPair);
   const [errorMsg, setErrorMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -423,6 +427,16 @@ export function PetSettings() {
           <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:pet.clickThrough.desc')}</p>
         </div>
         <Toggle value={petClickThrough} onChange={(v) => void handleToggleClickThrough(v)} />
+      </div>
+
+      {/* AI 模型 — pair picker for pet chat. Empty state falls back to the
+          i18n hint (no settings link; this IS settings). */}
+      <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
+        <div className="tr-info">
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('ai:pairSelector.sectionTitle')}</h4>
+          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('ai:pairSelector.sectionDesc')}</p>
+        </div>
+        <PairSelector value={petPair} onChange={setPetPair} />
       </div>
     </div>
   );

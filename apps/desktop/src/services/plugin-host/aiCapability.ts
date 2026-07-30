@@ -56,13 +56,16 @@ export function buildPluginAi(manifest: PluginManifest): PluginAiCapability {
     async chat(params: PluginAiChatParams): Promise<void> {
       assertChatPermission(manifest);
 
-      const [{ useAiConfigStore }, { useAiStore }] = await Promise.all([
+      const [{ useAiConfigStore, resolvePairConfig }, { useAiStore }] = await Promise.all([
         import('@/store/aiConfigStore'),
         import('@/store/aiStore'),
       ]);
-      const { chatProvider, chatModel, chatApiKey, chatBaseUrl, chatThinkingBudget } = useAiConfigStore.getState();
-      if (!chatApiKey) {
-        throw new Error('host AI not configured — set chatApiKey in settings');
+      // PR5: read pluginPair (per-caller pair, independent of global
+      // chatProvider/chatModel per PRD ADR). Null → caller hasn't picked a
+      // pair in PluginsSettings yet; surface a clear error to the plugin.
+      const cfg = resolvePairConfig(useAiConfigStore.getState().pluginPair);
+      if (!cfg) {
+        throw new Error('host AI not configured — pick a (provider, model) pair in Plugins Settings');
       }
 
       let sharedSid: string | null = null;
@@ -81,11 +84,12 @@ export function buildPluginAi(manifest: PluginManifest): PluginAiCapability {
         await runRigChat({
           sessionId: params.sessionId,
           prompt: params.prompt,
-          provider: chatProvider,
-          model: chatModel,
-          apiKey: chatApiKey,
-          ...(chatBaseUrl ? { baseUrl: chatBaseUrl } : {}),
-          ...(chatThinkingBudget != null ? { thinkingBudget: chatThinkingBudget } : {}),
+          provider: cfg.provider,
+          model: cfg.model,
+          apiKey: cfg.apiKey,
+          ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}),
+          ...(cfg.thinkingBudget != null ? { thinkingBudget: cfg.thinkingBudget } : {}),
+          ...(cfg.customProvider ? { customProvider: true, defaultChatEndpoint: cfg.defaultChatEndpoint } : {}),
           onEvent: (event: CliStreamEvent) => {
             const mapped = mapEvent(event);
             if (!mapped) return;

@@ -354,3 +354,93 @@ Helper files import from the store but are not stores themselves.
 - Exposing an `update(partial: Partial<State>)` generic setter on a settings store — re-introduces the cross-concern god-store coupling (see "No `update(partial)` escape hatch")
 - Stale references to the deleted `settingsStore` in comments/imports after the split — grep `settingsStore` should return only provenance narrative, zero imports
 - Using a plain singleton registry (à la `ContainerRegistry`) for a contribution point that registers/unregisters at runtime (plugin panels, tool windows) — `getAll()` is not subscribed, so React never re-renders and the icon/panel silently fails to appear or disappear. Use a Zustand store instead (see "Contribution registries: reactive store vs plain singleton" above)
+- Mutating derived state inside a render — causes React to schedule writes during the render phase, which React 18 explicitly forbids. Use a `useEffect` that calls a store action instead (see "Reconcile-after-render for stale derived state" below)
+- Adding new required fields to a persisted schema (`AiSession`, `CliMessage`) — legacy blobs on disk don't have the field, so the type lies. Make new fields **optional** (`field?: T`) and hydrate-to-default at read time, OR add a migration step. Don't `as` cast to bypass.
+
+---
+
+## Cross-store atomic writes (per-session + global "last used pair")
+
+When a piece of state has BOTH a per-record value (e.g. `AiSession.provider/model`)
+AND a global "last used" mirror (e.g. global `chatProvider`/`chatModel`), the
+write must be atomic — both stores updated by the same store action.
+
+**Why**: If callers write one but not the other, the two drift. A new session
+inherits the global pair as default; if the global pair wasn't synced when
+the user changed the per-session pair, the new session inherits a stale pair.
+
+**Pattern**:
+
+```ts
+// apps/desktop/src/store/aiStore.ts
+setSessionPair: (sessionId, pair) => {
+  if (!get().sessions.some((s) => s.id === sessionId)) return; // unknown id — no-op
+  set((state) => ({
+    sessions: updateSession(state.sessions, sessionId, (s) => ({
+      ...s,
+      provider: pair.provider,
+      model: pair.model,
+    })),
+  }));
+  // Sync global "last used pair" so new sessions inherit.
+  const ai = useAiConfigStore.getState();
+  ai.setChatProvider(pair.provider);
+  ai.setChatModel(pair.model);
+  persistAiState();
+},
+```
+
+**Don't**: Let callers write `session.provider` directly AND separately call
+`setChatProvider`. The two writes can be split by a re-render, race, or
+caller error.
+
+---
+
+## Reconcile-after-render for stale derived state
+
+When a persisted record carries a derived reference that can become stale
+(e.g. `AiSession.provider` pointing at a provider that's since been
+disabled, or `model` no longer in `selectedModelIds`), don't mutate during
+render. Render-time mutation violates React 18's render purity and can
+trigger "Cannot update a component while rendering a different component"
+warnings.
+
+**Pattern**:
+
+1. Render-time: read the record's pair, fall back to a global default if
+   missing. This paints correctly on first mount.
+2. `useEffect`: call a store action `reconcileRecord(recordId, validPairs)`
+   that writes `validPairs[0]` back to the record if the record's pair is
+   stale. The action's own validity check short-circuits on the second call,
+   so no infinite loop.
+3. Effect deps: `[recordId, validPairs, action]` — `validPairs` must be a
+   memoized array (see "Selector return values MUST be referentially stable").
+
+```ts
+// apps/desktop/src/store/aiStore.ts
+reconcileSessionPair: (sessionId, pairs) => {
+  if (pairs.length === 0) return; // empty-state UI handles it
+  const s = get().sessions.find((x) => x.id === sessionId);
+  if (!s) return;
+  const inPairs = pairs.some((p) => p.provider === s.provider && p.model === s.model);
+  if (inPairs && s.provider && s.model) return; // valid — no-op
+  get().setSessionPair(sessionId, pairs[0]!); // write back first available
+},
+```
+
+```tsx
+// apps/desktop/src/components/ai/AiPanel.tsx
+const { pairs, hasAny } = useEnabledPairs();
+const reconcile = useAiStore((s) => s.reconcileSessionPair);
+useEffect(() => {
+  if (activeSessionId) reconcile(activeSessionId, pairs);
+}, [activeSessionId, pairs, reconcile]);
+```
+
+**Don't**: Mutate `session.provider` inside the render function. Use the
+effect + store action pair.
+
+**Migration corollary**: legacy records (hydrated from old persisted blobs
+without the new fields) hit the same code path — `provider === undefined`
+triggers the effect, which writes `pairs[0]` back. No separate migration
+step needed.

@@ -13,6 +13,12 @@ export interface CliMessage {
   toolCalls?: ToolCallInfo[];
   attachments?: MessageAttachment[];
   timestamp: number;
+  // ponytail: provider/model are optional so legacy persisted messages hydrate
+  // without migration. AI responses are tagged at write time in a later PR.
+  // `string` (not a narrower union) keeps cli-adapter decoupled from the
+  // desktop ChatProvider catalog; the desktop consumer narrows on read.
+  provider?: string;
+  model?: string;
 }
 
 export interface ToolCallInfo {

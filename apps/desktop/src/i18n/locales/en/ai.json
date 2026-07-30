@@ -41,6 +41,13 @@
       "openSettings": "Open settings"
     }
   },
+  "pairSelector": {
+    "placeholder": "Select model",
+    "empty": "No model configured",
+    "openSettings": "Open model settings",
+    "sectionTitle": "AI model",
+    "sectionDesc": "Pick the (provider, model) pair this feature uses; enable a provider and select models in Model Services first"
+  },
   "errors": {
     "attachmentSaveFailed": "[error] Failed to save attachments: {{error}}",
     "streamError": "[error] {{error}}"

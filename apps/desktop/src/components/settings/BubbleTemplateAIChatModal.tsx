@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { Paperclip, Plus, Trash2 } from 'lucide-react';
 import { ChatInputBox, ChatMessageList } from '@/components/chat';
 import { VoiceInputButton } from '@/components/ai/VoiceInputButton';
+import { PairSelector } from '@/components/ai/PairSelector';
 import type { CliMessage } from '@quill/cli-adapter';
 import { runRigChat } from '@/services/rigChat';
-import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useAiConfigStore, resolvePairConfig, type ResolvedPairConfig } from '@/store/aiConfigStore';
 import { useModelRegistryStore } from '@/store/modelRegistryStore';
 import { findModelInCatalog } from '@/services/modelRegistry/loader';
 import { isVisionModel } from '@/services/modelRegistry/merge';
@@ -27,16 +28,6 @@ export interface BubbleTemplateAIChatModalProps {
   onPreview?: (jsonText: string) => { ok: boolean; error?: string };
 }
 
-interface ChatConfig {
-  provider: string;
-  model: string;
-  apiKey: string;
-  baseUrl?: string;
-  thinkingBudget?: number | null;
-  customProvider?: boolean;
-  defaultChatEndpoint?: string;
-}
-
 interface PendingAttachment {
   kind: 'html' | 'image';
   name: string;
@@ -50,19 +41,10 @@ interface PendingAttachment {
   previewUrl?: string;
 }
 
-function readChatConfig(): ChatConfig | null {
-  const { chatProvider, chatModel, chatApiKey, chatBaseUrl, chatThinkingBudget, customerProviders } =
-    useAiConfigStore.getState();
-  if (!chatProvider || !chatModel || !chatApiKey) return null;
-  const cfg: ChatConfig = { provider: chatProvider, model: chatModel, apiKey: chatApiKey };
-  if (chatBaseUrl) cfg.baseUrl = chatBaseUrl;
-  if (chatThinkingBudget != null) cfg.thinkingBudget = chatThinkingBudget;
-  // PR2e: route custom providers via endpoint resolver in Rust.
-  if (customerProviders[chatProvider]) {
-    cfg.customProvider = true;
-    cfg.defaultChatEndpoint = customerProviders[chatProvider]?.defaultChatEndpoint;
-  }
-  return cfg;
+/** Resolve the bubble pair to a usable chat config. Null until the user
+ *  picks a (provider, model) in the modal's PairSelector. */
+function readChatConfig(): ResolvedPairConfig | null {
+  return resolvePairConfig(useAiConfigStore.getState().bubblePair);
 }
 
 /** Stable empty reference for the active-session messages selector — when
@@ -126,14 +108,19 @@ export function BubbleTemplateAIChatModal({
     (s) => s.sessions.find((sess) => sess.id === s.activeSessionId)?.messages ?? EMPTY_MESSAGES,
   );
 
-  // T05: vision gate. selectedModel is the Model object for the current
-  // chatProvider + chatModel (from catalog + fetched list). Unknown model
-  // (not in catalog, not fetched) is optimistic — allow upload, let the
-  // provider reject it. Better than pre-blocking with a wrong guess.
-  const chatProvider = useAiConfigStore((s) => s.chatProvider);
-  const chatModel = useAiConfigStore((s) => s.chatModel);
-  const fetchedModels = useModelRegistryStore((s) => s.modelsByProvider[chatProvider] ?? EMPTY_MODELS);
-  const selectedModel = findModelInCatalog(chatProvider, chatModel) ?? fetchedModels.find((m) => m.id === chatModel);
+  // T05: vision gate. The bubble pair drives which model to query for vision
+  // capability. Null pair → visionOk stays true (the modal renders the
+  // unconfigured empty state regardless, so the gate is moot in that path).
+  const bubblePair = useAiConfigStore((s) => s.bubblePair);
+  const setBubblePair = useAiConfigStore((s) => s.setBubblePair);
+  const pairProvider = bubblePair?.provider;
+  const pairModel = bubblePair?.model;
+  const fetchedModels = useModelRegistryStore((s) =>
+    pairProvider ? (s.modelsByProvider[pairProvider] ?? EMPTY_MODELS) : EMPTY_MODELS,
+  );
+  const selectedModel = (pairProvider && pairModel)
+    ? (findModelInCatalog(pairProvider, pairModel) ?? fetchedModels.find((m) => m.id === pairModel))
+    : undefined;
   const visionOk = !selectedModel || isVisionModel(selectedModel);
 
   const [input, setInput] = useState('');
@@ -472,6 +459,11 @@ export function BubbleTemplateAIChatModal({
             >{confirmingDelete ? t('settings:pet.templates.ai.confirmDelete') : <Trash2 className="w-[14px] h-[14px]" />}</button>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <PairSelector
+              value={bubblePair}
+              onChange={setBubblePair}
+              className="max-w-[220px]"
+            />
             <button
               className="text-t3 hover:text-t1 text-[14px]"
               onClick={onClose}

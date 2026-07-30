@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Verify no unrequested abstractions, no speculative config, minimal diff per PR."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Verify ChatProvider union preserved, no any casts, per-caller pair typed, noUncheckedIndexedAccess respected on selectedModelIds."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify zustand store changes — AiSession.provider/model, per-caller pair fields, PERSIST_KEYS_AI_CONFIG update, selector granularity."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify PairSelector props surface is minimal, no prop drilling beyond one layer, no extra abstractions."}
