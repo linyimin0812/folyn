@@ -1,7 +1,22 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import * as ReactDOMFull from 'react-dom';
 import './i18n';
 import App from './App';
+
+// Expose the host's React instance globally so trusted-tier plugins (import()'d
+// into this realm via a blob URL) can share it via `window.React`. A blob URL
+// can't resolve `import 'react'`, and bundling React into every plugin would
+// break hooks (two React instances → "Invalid hook call"). This is the
+// established-but-missing pattern the example plugins already assume
+// (`markdown-todo` / `ai-chat-demo` `_loadReact` read `window.React`). Set
+// before `createRoot` so plugins activate against the live instance.
+// `window.ReactDOM` exposes the full react-dom API (createPortal/flushSync/…)
+// for plugins that render inline; main.tsx itself still uses the client import
+// above for `createRoot` (the modern entrypoint).
+window.React = React;
+window.ReactDOM = ReactDOMFull;
+
 import { PetApp } from './components/pet/PetApp';
 import { PetPanelApp } from './components/pet/PetPanelApp';
 import { PetBubbleApp } from './components/pet/PetBubbleApp';

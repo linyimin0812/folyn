@@ -353,6 +353,31 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
+  plugins/plugin-graphviz:
+    dependencies:
+      '@viz-js/viz':
+        specifier: ^3.28.0
+        version: 3.28.0
+    devDependencies:
+      '@quill/plugin-host':
+        specifier: workspace:*
+        version: link:../../packages/plugin-host
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.28
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vite:
+        specifier: ^6.0.0
+        version: 6.4.2(@types/node@22.19.17)(jiti@1.21.7)(sass@1.51.0)(terser@5.46.1)(yaml@2.9.0)
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.17)(happy-dom@15.11.7)(jsdom@25.0.1)(sass@1.51.0)(terser@5.46.1)
+
 packages:
 
   '@alloc/quick-lru@5.2.0':
@@ -2384,6 +2409,9 @@ packages:
 
   '@vitest/utils@2.1.9':
     resolution: {integrity: sha512-v0psaMSkNJ3A2NMrUEHFRzJtDPFn+/VWZ5WxImB21T9fjucJRmS7xCS3ppEnARb9y11OAzaD+P2Ps+b+BGX5iQ==}
+
+  '@viz-js/viz@3.28.0':
+    resolution: {integrity: sha512-nPt+jbGHGgd7lUQLBT79/4lChIzeW44I+hFrscx18AnpNyX9vdRFVNwVbKz9eq+ACeKSm4bFQns17WhCW11eWQ==}
 
   '@xmldom/xmldom@0.7.13':
     resolution: {integrity: sha512-lm2GW5PkosIzccsaZIz7tp8cPADSIlIHWDFTR1N0SzfinhhYgeIQjFMz4rYzanCScr3DqQLeomUDArp6MWKm+g==}
@@ -7207,6 +7235,8 @@ snapshots:
       '@vitest/pretty-format': 2.1.9
       loupe: 3.2.1
       tinyrainbow: 1.2.0
+
+  '@viz-js/viz@3.28.0': {}
 
   '@xmldom/xmldom@0.7.13': {}
 

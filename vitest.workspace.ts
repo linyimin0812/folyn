@@ -80,4 +80,14 @@ export default defineWorkspace([
     },
     resolve: { alias: tauriAlias },
   },
+  {
+    test: {
+      name: 'plugin-graphviz',
+      environment: 'jsdom',
+      root: path.resolve(root, 'plugins/plugin-graphviz'),
+      include: ['src/**/*.test.ts'],
+      setupFiles: [setupFile],
+    },
+    resolve: { alias: tauriAlias },
+  },
 ]);
