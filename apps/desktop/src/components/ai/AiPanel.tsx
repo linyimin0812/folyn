@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } fro
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import * as editorIoService from '@/services/editorIoService';
 import { useAiStore } from '@/store/aiStore';
-import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useAiConfigStore, resolvePairForSession } from '@/store/aiConfigStore';
 import { useNavStore } from '@/store/navStore';
 import { useVaultStore } from '@/store/vaultStore';
 import type { CliMessage, CliStreamEvent, MessageAttachment } from '@quill/cli-adapter';
@@ -43,41 +43,25 @@ export function AiPanel() {
   const setSessionStreaming = useAiStore((s) => s.setSessionStreaming);
   const setCliSessionId = useAiStore((s) => s.setCliSessionId);
   const setSessionPair = useAiStore((s) => s.setSessionPair);
-  const reconcileSessionPair = useAiStore((s) => s.reconcileSessionPair);
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const isStreaming = activeSession?.isStreaming ?? false;
   const isStudySession = activeSession?.kind === 'study';
   const messages = activeSession?.messages ?? [];
 
-  const chatProvider = useAiConfigStore((s) => s.chatProvider);
-  const chatModel = useAiConfigStore((s) => s.chatModel);
   const { pairs, hasAny: hasPair } = useEnabledPairs();
   // ponytail: render-time fallback for the FIRST paint keeps legacy sessions
   // (persisted before the schema gained provider/model) and stale pairs on
-  // the air without a render-time mutation. A useEffect below calls
-  // reconcileSessionPair to WRITE the auto-selected pair back after mount, so
-  // the next paint sees a stable session pair and the global "last used"
-  // stays in sync (PR6 fixes the two ACs PR3 deliberately left open).
+  // the air without a render-time mutation. Phase 1 dropped the
+  // reconcileSessionPair write-back effect; the display-only fallback to
+  // pairs[0] from useEnabledPairs covers the "legacy session / stale pair"
+  // case, and the next user-driven setSessionPair call persists the pick.
   const sessionPair: Pair | null =
     activeSession?.provider && activeSession?.model
       ? { provider: activeSession.provider, model: activeSession.model }
-      : chatProvider && chatModel
-        ? { provider: chatProvider, model: chatModel }
+      : pairs.length > 0
+        ? pairs[0]
         : null;
-
-  // ponytail: derive-then-write — if the active session's pair is missing
-  // (legacy) or stale (provider disabled / model unselected), write pairs[0]
-  // back via setSessionPair. No-op when pairs is empty (empty-state UI
-  // handles it). Deps: activeSessionId covers session switch; pairs is a
-  // stable memo so it only changes when the enabled set actually changes —
-  // a write to the session pair here does NOT retrigger (no infinite loop)
-  // because pairs stays the same reference.
-  useEffect(() => {
-    if (!activeSessionId) return;
-    if (pairs.length === 0) return;
-    reconcileSessionPair(activeSessionId, pairs);
-  }, [activeSessionId, pairs, reconcileSessionPair]);
 
   const handlePairChange = useCallback((pair: Pair | null) => {
     if (!pair || !activeSessionId) return;
@@ -166,16 +150,23 @@ export function AiPanel() {
       type: att.type,
       previewUrl: att.previewUrl,
     }));
-    // ponytail: hoist the session-pair lookup so the assistant bubble is
-    // tagged at creation time with the same pair the send path will use.
-    // Reads fresh store state (not the render-time activeSession closure) so
-    // a pair switch between the click and handleSend running is reflected.
+    // ponytail: hoist the pair lookup so the assistant bubble is tagged at
+    // creation time with the same pair the send path will use. Reads fresh
+    // store state (not the render-time activeSession closure) so a pair
+    // switch between the click and handleSend running is reflected.
     const aiConfig = useAiConfigStore.getState();
     const targetSession = useAiStore.getState().sessions.find((s) => s.id === sessionId);
-    // ponytail: session pair wins; legacy sessions (provider undefined)
-    // fall back to the global pair so pre-schema persisted sessions still tag.
-    const sendProvider = targetSession?.provider ?? aiConfig.chatProvider;
-    const sendModel = targetSession?.model ?? aiConfig.chatModel;
+    const resolved = resolvePairForSession(sessionId);
+    if (!resolved) {
+      // No pair available — surface empty state, abort send.
+      // ponytail: matches previous behavior where empty chatProvider/chatModel
+      // would produce a send with empty apiKey that runRigChat would reject.
+      appendToLastMessage(t('ai:errors.streamError', { error: 'No provider configured' }), sessionId);
+      setSessionStreaming(sessionId, false);
+      return;
+    }
+    const sendProvider = resolved.provider;
+    const sendModel = resolved.model;
     addMessage('user', userText || t('ai:panel.attachmentPlaceholder'), sessionId, previewAttachments.length > 0 ? previewAttachments : undefined);
     addMessage('assistant', '', sessionId, undefined, sendProvider, sendModel);
     setSessionStreaming(sessionId, true);
@@ -303,16 +294,16 @@ export function AiPanel() {
         await runRigChat({
           sessionId: sid,
           prompt,
-          provider: sendProvider,
-          model: sendModel,
-          apiKey: aiConfig.chatApiKey,
-          baseUrl: aiConfig.chatBaseUrl,
+          provider: resolved.provider,
+          model: resolved.model,
+          apiKey: resolved.apiKey,
+          baseUrl: resolved.baseUrl,
           // T07: forward reasoning budget. rig applies it via per-provider
           // additional_params; non-reasoning models silently ignore.
-          thinkingBudget: aiConfig.chatThinkingBudget,
+          thinkingBudget: resolved.thinkingBudget,
           // PR2e: route custom providers via the endpoint resolver in Rust.
-          customProvider: !!aiConfig.customerProviders[sendProvider],
-          defaultChatEndpoint: aiConfig.customerProviders[sendProvider]?.defaultChatEndpoint,
+          customProvider: resolved.customProvider,
+          defaultChatEndpoint: resolved.defaultChatEndpoint,
           onEvent: eventHandler,
         });
       } else {

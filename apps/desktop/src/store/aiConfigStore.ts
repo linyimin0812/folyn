@@ -23,6 +23,7 @@ import {
   DEFAULT_SCRIPT_RUNTIMES,
   type RuntimeConfig,
 } from '@/services/scriptRunner/scriptRunnerService';
+import { useAiStore } from './aiStore';
 
 // ponytail: ChatProvider is a string literal union of the 20 catalog ids.
 // The 3 old ids ('anthropic' | 'openai' | 'anthropic-compatible') are kept
@@ -142,6 +143,46 @@ export function resolvePairConfig(
     customProvider: custom,
     defaultChatEndpoint: state.customerProviders[pair.provider]?.defaultChatEndpoint,
   };
+}
+
+/** First enabled (provider, model) pair from the catalog — the non-hook
+ *  counterpart of PairSelector.useEnabledPairs' derivation. Used by
+ *  aiStore.createEmptySession to seed new sessions when no recent session
+ *  exists. Returns null when no provider is enabled with at least one
+ *  selected model. */
+export function firstEnabledPair(
+  state: AiConfigState = useAiConfigStore.getState(),
+): { provider: ChatProvider; model: string } | null {
+  const entries = allProviders(state.customerProviders);
+  for (const entry of entries) {
+    const slot = state.providerSettings[entry.id];
+    if (!slot || !slot.enabled) continue;
+    if (slot.selectedModelIds.length === 0) continue;
+    // ponytail: cast — `entry.id` is `string`, but `ChatProvider` is the
+    // catalog id union. Custom provider ids are unsoundly cast here; the
+    // same convention already applies in PairSelector.useEnabledPairs and
+    // setChatProvider. Widening to `string` is Phase 3.
+    return { provider: entry.id as ChatProvider, model: slot.selectedModelIds[0] };
+  }
+  return null;
+}
+
+/** Resolve a session's pair into the connection params a caller needs to
+ *  invoke runRigChat. Reads the session from aiStore, then delegates to
+ *  resolvePairConfig. Returns null when the session has no pair, the
+ *  provider slot is missing, or a key-requiring provider has no apiKey.
+ *
+ *  Session-based callers (AiPanel, pet, bubble — once Phase 2 lands) use
+ *  this instead of resolvePairConfig directly so the pair-source is
+ *  encapsulated. voice/plugin RPC keeps resolvePairConfig(pair, state). */
+export function resolvePairForSession(
+  sessionId: string,
+): ResolvedPairConfig | null {
+  const session = useAiStore.getState().sessions.find((s) => s.id === sessionId);
+  if (!session || !session.provider || !session.model) return null;
+  return resolvePairConfig(
+    { provider: session.provider, model: session.model },
+  );
 }
 
 export interface AiConfigState {

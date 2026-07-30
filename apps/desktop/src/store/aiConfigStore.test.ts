@@ -1,11 +1,35 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { useAiConfigStore, PERSIST_KEYS_AI_CONFIG, type ChatProvider } from './aiConfigStore';
+import { useAiConfigStore, PERSIST_KEYS_AI_CONFIG, resolvePairForSession, type ChatProvider } from './aiConfigStore';
 import { storageClient } from '@/utils/storageClient';
 import { providerConfigStorage } from '@/services/providers/providerConfigStorage';
 import { PROVIDER_CATALOG, PROVIDER_IDS, type CustomProvider } from '@/services/providers/catalog';
 import { DEFAULT_SCRIPT_RUNTIMES } from '@/services/scriptRunner/scriptRunnerService';
 import { rename, writeTextFile, exists, readTextFile } from '@tauri-apps/plugin-fs';
 import { homeDir, join } from '@tauri-apps/api/path';
+
+// Stub persistence so aiStore (imported transitively by resolvePairForSession)
+// doesn't touch the Tauri FS session store during aiConfigStore tests.
+vi.mock('./aiSessionPersistence', () => ({
+  persistAiState: vi.fn(),
+  saveAllSessions: vi.fn(async () => {}),
+  loadSessionsFromDisk: vi.fn(async () => {}),
+  setSuppressPersist: vi.fn(),
+  setupPersistSubscription: vi.fn(),
+  debouncedPersist: vi.fn(),
+}));
+vi.mock('./aiFileChangeActions', () => ({
+  applyAcceptChange: vi.fn(),
+  applyRejectChange: vi.fn(),
+}));
+vi.mock('@/utils/fileWatcher', () => ({
+  suppressWatcherFor: vi.fn(),
+  startVaultWatcher: vi.fn(async () => {}),
+  stopVaultWatcher: vi.fn(async () => {}),
+  pauseWatcher: vi.fn(),
+  resumeWatcher: vi.fn(),
+}));
+
+import { useAiStore } from './aiStore';
 
 const PROVIDER_CONFIG_MIGRATED_KEY = 'providerConfigMigratedV1';
 const SETTINGS_STORAGE_KEY = 'settings:all';
@@ -62,6 +86,7 @@ beforeEach(() => {
     voicePair: null,
     pluginPair: null,
   });
+  useAiStore.setState({ sessions: [], activeSessionId: null, studySessionId: null, inputMode: 'agent', pendingFileAttachments: [] });
 });
 
 afterEach(() => {
@@ -743,5 +768,88 @@ describe('useAiConfigStore per-caller pairs', () => {
       voicePair: { provider: 'openai' },
     });
     expect(useAiConfigStore.getState().voicePair).toBeNull();
+  });
+});
+
+// Phase 1: resolvePairForSession reads the session pair from aiStore then
+// delegates to resolvePairConfig. Session-based callers (AiPanel, pet, bubble
+// — once Phase 2 lands) use this instead of resolvePairConfig directly.
+describe('resolvePairForSession (Phase 1)', () => {
+  function seedSession(id: string, pair?: { provider: ChatProvider; model: string }): void {
+    useAiStore.setState({
+      sessions: [
+        {
+          id,
+          title: id,
+          messages: [],
+          fileChanges: [],
+          cliSessionId: null,
+          isStreaming: false,
+          createdAt: 1,
+          updatedAt: 1,
+          ...(pair ? { provider: pair.provider, model: pair.model } : {}),
+        },
+      ],
+      activeSessionId: id,
+    });
+  }
+
+  it('returns ResolvedPairConfig when the session has a pair with a valid provider slot', () => {
+    seedSession('s1', { provider: 'anthropic', model: 'claude-sonnet-4-6' });
+    useAiConfigStore.setState({
+      providerSettings: {
+        anthropic: {
+          id: 'anthropic',
+          baseUrl: 'https://api.anthropic.com',
+          apiKey: 'sk-abc',
+          selectedModelIds: ['claude-sonnet-4-6'],
+          enabled: true,
+          customProvider: false,
+          extra: { thinkingBudget: 1024 },
+        },
+      },
+    });
+    const resolved = resolvePairForSession('s1');
+    expect(resolved).not.toBeNull();
+    expect(resolved!.provider).toBe('anthropic');
+    expect(resolved!.model).toBe('claude-sonnet-4-6');
+    expect(resolved!.apiKey).toBe('sk-abc');
+    expect(resolved!.baseUrl).toBe('https://api.anthropic.com');
+    expect(resolved!.thinkingBudget).toBe(1024);
+    expect(resolved!.customProvider).toBe(false);
+  });
+
+  it('returns null when the session has no pair (legacy session)', () => {
+    seedSession('legacy'); // no provider/model
+    const resolved = resolvePairForSession('legacy');
+    expect(resolved).toBeNull();
+  });
+
+  it('returns null when the session pair points to a missing provider slot', () => {
+    seedSession('s2', { provider: 'openai', model: 'gpt-4o' });
+    useAiConfigStore.setState({ providerSettings: {} }); // no slot for openai
+    expect(resolvePairForSession('s2')).toBeNull();
+  });
+
+  it('returns null when the pair points to a key-required provider with empty apiKey', () => {
+    seedSession('s3', { provider: 'anthropic', model: 'claude-sonnet-4-6' });
+    useAiConfigStore.setState({
+      providerSettings: {
+        anthropic: {
+          id: 'anthropic',
+          baseUrl: '',
+          apiKey: '',
+          selectedModelIds: ['claude-sonnet-4-6'],
+          enabled: true,
+          customProvider: false,
+          extra: {},
+        },
+      },
+    });
+    expect(resolvePairForSession('s3')).toBeNull();
+  });
+
+  it('returns null when the session id is unknown', () => {
+    expect(resolvePairForSession('nope')).toBeNull();
   });
 });
