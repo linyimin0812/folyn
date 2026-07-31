@@ -30,7 +30,6 @@ import {
   providerRequiresAzureFields,
   type ProviderEntry,
 } from '@/services/providers/catalog';
-import { refetchAllFromModelsDev } from '@/services/modelRegistry/userProvidersCatalog';
 import { useModelRegistryStore, canFetchModelsFromStore } from '@/store/modelRegistryStore';
 import type { Model } from '@/services/modelRegistry/types';
 import {
@@ -50,7 +49,6 @@ import { ModelPickerModal } from './model-services/ModelPickerModal';
 import { AddManualModelModal } from './model-services/AddManualModelModal';
 import { TestChatModal, type ChatTestStatus } from './model-services/TestChatModal';
 import { DeleteProviderConfirmDialog } from './model-services/DeleteProviderConfirmDialog';
-import { RefetchOverlay, type RefetchStatus } from './model-services/RefetchOverlay';
 
 // Preview path for custom providers, keyed by adapterFamily. Mirrors rig's
 // completion_path emits — anthropic/ollama carry their own version prefix,
@@ -113,7 +111,6 @@ export function ModelServicesSettings() {
 
   // ── local UI state ──────────────────────────────────────────
   const [search, setSearch] = useState('');
-  const [refetchStatus, setRefetchStatus] = useState<RefetchStatus>({ kind: 'idle' });
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
   const [chatTestStatus, setChatTestStatus] = useState<ChatTestStatus>({ testing: false });
   const [testModalOpen, setTestModalOpen] = useState(false);
@@ -197,18 +194,6 @@ export function ModelServicesSettings() {
           filtered={filtered}
           chatProvider={chatProvider}
           providerSettings={providerSettings}
-          refetchStatus={refetchStatus}
-          onRefetchAll={async () => {
-            setRefetchStatus({ kind: 'loading' });
-            try {
-              await refetchAllFromModelsDev();
-              setRefetchStatus({ kind: 'ok' });
-            } catch (e) {
-              setRefetchStatus({ kind: 'err', message: (e as Error).message });
-            } finally {
-              setTimeout(() => setRefetchStatus({ kind: 'idle' }), 4000);
-            }
-          }}
           onSelectProvider={(id) => setChatProvider(id)}
           onEditCustom={(id) => setDrawer({ mode: 'edit', id })}
           onDeleteCustom={(id) => setDeleteConfirmId(id)}
@@ -360,9 +345,6 @@ export function ModelServicesSettings() {
           }}
         />
       )}
-
-      <RefetchOverlay status={refetchStatus} />
-
 
     </div>
   );

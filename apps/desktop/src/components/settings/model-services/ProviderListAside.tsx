@@ -1,17 +1,16 @@
 /**
- * Left aside of ModelServicesSettings — search + refetch + scrollable
+ * Left aside of ModelServicesSettings — search + scrollable
  * provider list + add-custom button. Pure code motion out of the main
  * file; no behavior change.
  */
 
 import { useTranslation } from 'react-i18next';
-import { ListRestart, SquarePen, Trash2 } from 'lucide-react';
+import { SquarePen, Trash2 } from 'lucide-react';
 import {
   isCustomProvider,
   providerDisplayName,
   type ProviderEntry,
 } from '@/services/providers/catalog';
-import type { RefetchStatus } from './RefetchOverlay';
 import { Avatar } from './helpers';
 
 interface ProviderListAsideProps {
@@ -20,8 +19,6 @@ interface ProviderListAsideProps {
   filtered: readonly ProviderEntry[];
   chatProvider: string;
   providerSettings: Record<string, { enabled?: boolean }>;
-  refetchStatus: RefetchStatus;
-  onRefetchAll: () => void;
   onSelectProvider: (id: string) => void;
   onEditCustom: (id: string) => void;
   onDeleteCustom: (id: string) => void;
@@ -34,8 +31,6 @@ export function ProviderListAside({
   filtered,
   chatProvider,
   providerSettings,
-  refetchStatus,
-  onRefetchAll,
   onSelectProvider,
   onEditCustom,
   onDeleteCustom,
@@ -52,17 +47,8 @@ export function ProviderListAside({
             placeholder={t('settings:models.searchPlaceholder')}
             value={search}
             onChange={(e) => onSearch(e.target.value)}
-            className="fi2 w-full h-[30px] py-1 pl-2.5 pr-8 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
+            className="fi2 w-full h-[30px] py-1 pl-2.5 pr-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui"
           />
-          <button
-            type="button"
-            title={t('settings:models.refetchModelsDev')}
-            disabled={refetchStatus.kind === 'loading'}
-            onClick={onRefetchAll}
-            className="absolute right-1 top-1/2 -translate-y-1/2 w-[22px] h-[22px] flex items-center justify-center rounded text-t3 hover:text-t1 hover:bg-hov disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <ListRestart size={13} />
-          </button>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto py-1.5 px-1.5 min-h-0 relative">
