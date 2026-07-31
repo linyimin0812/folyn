@@ -134,7 +134,7 @@ export async function testChatConnection(params: {
 }): Promise<ChatTestResult> {
   const {
     provider, model, apiKey, baseUrl, azureDeploymentId, azureApiVersion,
-    adapterFamily, timeoutMs = 10000,
+    adapterFamily, timeoutMs = 60000,
   } = params;
   let settled = false;
   return new Promise<ChatTestResult>((resolve) => {
