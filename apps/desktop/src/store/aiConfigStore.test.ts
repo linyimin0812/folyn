@@ -239,7 +239,6 @@ describe('useAiConfigStore per-provider config slots', () => {
     const s = useAiConfigStore.getState();
     expect(s.chatApiKey).toBe('sk-abc');
     expect(s.providerSettings.anthropic?.apiKey).toBe('sk-abc');
-    expect(s.providerSettings.anthropic?.customProvider).toBe(false);
   });
 
   it('setChatProvider saves current slot, loads new slot', () => {
@@ -325,15 +324,13 @@ describe('useAiConfigStore.addSelectedModelId', () => {
     expect(onDisk.anthropic.selectedModelIds).toContain('persisted-id');
   });
 
-  it('seeds customProvider=true for custom provider ids', () => {
+  it('seeds an empty settings entry for custom provider ids', () => {
     useAiConfigStore.getState().addCustomProvider({
       id: 'custom-1',
       name: 'C1',
       adapterFamily: 'anthropic',
     });
     useAiConfigStore.getState().addSelectedModelId('custom-1', 'm1');
-    expect(useAiConfigStore.getState().providerSettings['custom-1']?.customProvider)
-      .toBe(true);
   });
 });
 
@@ -414,14 +411,13 @@ describe('useAiConfigStore custom providers', () => {
     expect(useAiConfigStore.getState().customerProviders.x?.name).toBe('Custom');
   });
 
-  it('addCustomProvider seeds an empty settings entry with customProvider=true', () => {
+  it('addCustomProvider seeds an empty settings entry', () => {
     useAiConfigStore.getState().addCustomProvider({
       id: 'seeded',
       name: 'Seeded',
       adapterFamily: 'anthropic',
     });
     const slot = useAiConfigStore.getState().providerSettings.seeded;
-    expect(slot?.customProvider).toBe(true);
     expect(slot?.baseUrl).toBe('');
     expect(slot?.apiKey).toBe('');
     expect(slot?.selectedModelIds).toEqual([]);
@@ -534,12 +530,11 @@ describe('useAiConfigStore loadFromDisk migration', () => {
       metadata: { website: { apiKey: 'https://c1.example/keys' } },
     });
 
-    // Settings slot for the custom provider seeded with baseUrl + customProvider=true.
+    // Settings slot for the custom provider seeded with baseUrl.
     expect(s.providerSettings['custom-1']).toMatchObject({
       id: 'custom-1',
       baseUrl: 'https://c1.example',
       enabled: true,
-      customProvider: true,
     });
 
     // Bundled provider (openai) migrated with flat fields as top-level.
@@ -548,7 +543,6 @@ describe('useAiConfigStore loadFromDisk migration', () => {
       apiKey: 'sk-legacy',
       baseUrl: 'https://legacy.example',
       enabled: true,
-      customProvider: false,
     });
 
     // Legacy keys stripped from storage.json.
@@ -595,7 +589,6 @@ describe('useAiConfigStore loadFromDisk migration', () => {
       apiKey: 'sk-real',
       selectedModelIds: ['m1', 'm2'],
       enabled: false,
-      customProvider: false,
       extra: {},
     };
     await providerConfigStorage.setProviderSettings('anthropic', realSlot);
@@ -844,7 +837,6 @@ describe('resolvePairForSession (Phase 1)', () => {
           apiKey: 'sk-abc',
           selectedModelIds: ['claude-sonnet-4-6'],
           enabled: true,
-          customProvider: false,
           extra: { thinkingBudget: 1024 },
         },
       },
@@ -856,7 +848,6 @@ describe('resolvePairForSession (Phase 1)', () => {
     expect(resolved!.apiKey).toBe('sk-abc');
     expect(resolved!.baseUrl).toBe('https://api.anthropic.com');
     expect(resolved!.thinkingBudget).toBe(1024);
-    expect(resolved!.customProvider).toBe(false);
   });
 
   it('returns null when the session has no pair (legacy session)', () => {
@@ -881,7 +872,6 @@ describe('resolvePairForSession (Phase 1)', () => {
           apiKey: '',
           selectedModelIds: ['claude-sonnet-4-6'],
           enabled: true,
-          customProvider: false,
           extra: {},
         },
       },

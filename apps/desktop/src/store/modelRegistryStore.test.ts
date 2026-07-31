@@ -105,7 +105,7 @@ describe('useModelRegistryStore.fetchModelsForProvider — file cache + fallback
     ownerMapMock.mockResolvedValue({
       'gpt-4o': { modelId: 'gpt-4o', providerId: 'openai', capabilities: ['vision', 'function-call'] },
     });
-    const r = await useModelRegistryStore.getState().fetchModelsForProvider('my-custom', 'sk-test', undefined, undefined, true);
+    const r = await useModelRegistryStore.getState().fetchModelsForProvider('my-custom', 'sk-test', undefined, undefined, 'openai-completions');
     expect(r.ok).toBe(true);
     const s = useModelRegistryStore.getState();
     const models = s.modelsByProvider['my-custom']!;

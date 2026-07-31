@@ -301,8 +301,6 @@ export function AiPanel() {
           // T07: forward reasoning budget. rig applies it via per-provider
           // additional_params; non-reasoning models silently ignore.
           thinkingBudget: resolved.thinkingBudget,
-          // PR2e: route custom providers via the adapter family in Rust.
-          customProvider: resolved.customProvider,
           adapterFamily: resolved.adapterFamily,
           onEvent: eventHandler,
         });

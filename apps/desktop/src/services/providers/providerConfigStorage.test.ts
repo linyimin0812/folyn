@@ -32,7 +32,6 @@ describe('migrateLegacyBlob', () => {
       baseUrl: 'https://my.api/v1',
       apiKey: '',
       enabled: false,
-      customProvider: true,
     });
   });
 
@@ -51,7 +50,6 @@ describe('migrateLegacyBlob', () => {
       apiKey: 'sk-x',
       baseUrl: 'https://x',
       enabled: false,
-      customProvider: false,
     });
     expect(settings.extra).toEqual({
       azureDeploymentId: 'dep-1',
@@ -95,7 +93,6 @@ describe('migrateLegacyBlob', () => {
       baseUrl: '',
       apiKey: '',
       enabled: true,
-      customProvider: false,
       selectedModelIds: [],
       extra: {},
     });
@@ -118,6 +115,5 @@ describe('migrateLegacyBlob', () => {
     expect(Object.keys(result.providerSettings)).toEqual(['custom-1']);
     expect(result.providerSettings['custom-1'].apiKey).toBe('k');
     expect(result.providerSettings['custom-1'].baseUrl).toBe('https://c1');
-    expect(result.providerSettings['custom-1'].customProvider).toBe(true);
   });
 });

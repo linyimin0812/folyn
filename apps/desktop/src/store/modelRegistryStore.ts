@@ -46,7 +46,6 @@ export interface ModelRegistryState {
     apiKey: string,
     baseUrl?: string,
     azureApiVersion?: string,
-    customProvider?: boolean,
     adapterFamily?: string,
   ) => Promise<{ ok: boolean; error?: string }>;
   /** Iterate all configured providers in parallel; per-provider results land
@@ -58,7 +57,6 @@ export interface ModelRegistryState {
       apiKey: string;
       baseUrl?: string;
       azureApiVersion?: string;
-      customProvider?: boolean;
       adapterFamily?: string;
     }>,
   ) => Promise<{ success: number; failed: number }>;
@@ -107,13 +105,13 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
     }
   },
 
-  fetchModelsForProvider: async (providerId, apiKey, baseUrl, azureApiVersion, customProvider, adapterFamily) => {
+  fetchModelsForProvider: async (providerId, apiKey, baseUrl, azureApiVersion, adapterFamily) => {
     set((s) => ({
       fetchStatusByProvider: { ...s.fetchStatusByProvider, [providerId]: 'loading' },
       fetchErrorByProvider: { ...s.fetchErrorByProvider, [providerId]: null },
     }));
     try {
-      const result = await fetchModelsRaw({ provider: providerId, apiKey, baseUrl, azureApiVersion, customProvider, adapterFamily });
+      const result = await fetchModelsRaw({ provider: providerId, apiKey, baseUrl, azureApiVersion, adapterFamily });
       // ponytail: hoist the owner-map fetch (24h disk-cached, cheap) so we
       // can enrich the in-memory list for custom providers — the Rust
       // list_models + merge step leaves custom-provider models with empty
@@ -131,7 +129,7 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
           ownerMap = {};
         }
       }
-      const isCustom = customProvider === true;
+      const isCustom = adapterFamily != null;
       const enriched = result.models.map((m) => {
         const entry = ownerMap[ownerLookupKey(m.id)];
         // ponytail: capabilities filled from ownerMap when empty — catalog
@@ -205,7 +203,7 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
     if (configured.length === 0) return { success: 0, failed: 0 };
     const results = await Promise.all(
       configured.map((c) =>
-        get().fetchModelsForProvider(c.providerId, c.apiKey, c.baseUrl, c.azureApiVersion, c.customProvider, c.adapterFamily),
+        get().fetchModelsForProvider(c.providerId, c.apiKey, c.baseUrl, c.azureApiVersion, c.adapterFamily),
       ),
     );
     const success = results.filter((r) => r.ok).length;

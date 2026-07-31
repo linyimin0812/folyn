@@ -43,7 +43,6 @@ export interface ProviderSettings {
   apiKey: string;
   selectedModelIds: string[];
   enabled: boolean;
-  customProvider: boolean;
   extra: Record<string, unknown>;
 }
 
@@ -283,7 +282,6 @@ function emptySettings(id: string): ProviderSettings {
     apiKey: '',
     selectedModelIds: [],
     enabled: false,
-    customProvider: false,
     extra: {},
   };
 }
@@ -341,8 +339,8 @@ export interface MigrationResult {
  * blobs. No disk I/O — caller writes them. Unknown `category` values are
  * defensively coerced to `openai-chat-completions`.
  *
- * `customProvider` flag is derived: entries whose id appears in
- * `customProviders` get `true`; entries only in `providerConfigs` get `false`.
+ * Custom-vs-bundled is not stored on the slot — production code derives it
+ * from `state.customerProviders[id] != null` (see aiConfigStore.resolvePairConfig).
  */
 export function migrateLegacyBlob(legacy: LegacyBlob): MigrationResult {
   const customProviders = legacy.customProviders ?? [];
@@ -377,7 +375,6 @@ export function migrateLegacyBlob(legacy: LegacyBlob): MigrationResult {
       apiKey: providerConfigs[cp.id]?.apiKey ?? '',
       selectedModelIds: (manualModels[cp.id] ?? []).map((m) => m.id),
       enabled: enabledProviders[cp.id] ?? false,
-      customProvider: true,
       extra: {},
     };
   }
@@ -397,7 +394,6 @@ export function migrateLegacyBlob(legacy: LegacyBlob): MigrationResult {
       apiKey: cfg.apiKey ?? '',
       selectedModelIds: (manualModels[pid] ?? []).map((m) => m.id),
       enabled: enabledProviders[pid] ?? false,
-      customProvider: false,
       extra,
     };
   }
@@ -417,7 +413,6 @@ export function migrateLegacyBlob(legacy: LegacyBlob): MigrationResult {
       apiKey: '',
       selectedModelIds: (manualModels[pid] ?? []).map((m) => m.id),
       enabled,
-      customProvider: false,
       extra: {},
     };
   }
@@ -432,7 +427,6 @@ export function migrateLegacyBlob(legacy: LegacyBlob): MigrationResult {
       apiKey: '',
       selectedModelIds: list.map((m) => m.id),
       enabled: false,
-      customProvider: false,
       extra: {},
     };
   }

@@ -47,14 +47,13 @@ export interface ManualModel {
   createdAt: number;
 }
 
-function emptySettings(id: string, customProvider = false): ProviderSettings {
+function emptySettings(id: string): ProviderSettings {
   return {
     id,
     baseUrl: '',
     apiKey: '',
     selectedModelIds: [],
     enabled: false,
-    customProvider,
     extra: {},
   };
 }
@@ -72,12 +71,12 @@ function seedBundledBaseUrl(
   createIfMissing: boolean,
 ): ProviderSettings | undefined {
   if (slot && slot.baseUrl) return slot;
-  if (isCustom) return slot ?? (createIfMissing ? emptySettings(providerId, true) : undefined);
+  if (isCustom) return slot ?? (createIfMissing ? emptySettings(providerId) : undefined);
   if (!slot && !createIfMissing) return undefined;
   const entry = getProviderEntry(providerId);
   const catalogBase = entry ? providerBaseUrl(entry) : null;
-  if (!catalogBase) return slot ?? (createIfMissing ? emptySettings(providerId, false) : undefined);
-  return { ...(slot ?? emptySettings(providerId, false)), baseUrl: catalogBase };
+  if (!catalogBase) return slot ?? (createIfMissing ? emptySettings(providerId) : undefined);
+  return { ...(slot ?? emptySettings(providerId)), baseUrl: catalogBase };
 }
 
 export const PROVIDER_CONFIG_MIGRATED_KEY = 'providerConfigMigratedV1';
@@ -128,10 +127,10 @@ export interface ResolvedPairConfig {
   apiKey: string;
   baseUrl: string;
   thinkingBudget: number | null;
-  customProvider: boolean;
-  /** Bundled adapter family id; present when `customProvider=true`. Same
-   *  value space as `ChatProvider` (now `string`) — e.g. 'anthropic',
-   *  'openai-completions', 'ollama', 'gemini', 'openai'. */
+  /** Bundled adapter family id. Same value space as `ChatProvider` (now
+   *  `string`) — e.g. 'anthropic', 'openai-completions', 'ollama', 'gemini',
+   *  'openai'. Undefined for bundled providers; Rust falls back to
+   *  `provider.as_str()` via `resolve_adapter_family(...).unwrap_or(...)`. */
   adapterFamily?: string;
 }
 
@@ -156,14 +155,12 @@ export function resolvePairConfig(
   // provider) → treat as key-required so we refuse to send without a key.
   const requiresKey = entry ? providerRequiresApiKey(entry) : true;
   if (requiresKey && !slot.apiKey.trim()) return null;
-  const custom = !!state.customerProviders[pair.provider];
   return {
     provider: pair.provider,
     model: pair.model,
     apiKey: slot.apiKey,
     baseUrl: slot.baseUrl,
     thinkingBudget: (slot.extra.thinkingBudget as number | null) ?? null,
-    customProvider: custom,
     adapterFamily: state.customerProviders[pair.provider]?.adapterFamily,
   };
 }
@@ -335,9 +332,8 @@ function patchSettings(
   settings: Record<string, ProviderSettings>,
   id: string,
   patch: Partial<ProviderSettings>,
-  customProvider: boolean,
 ): Record<string, ProviderSettings> {
-  const current = settings[id] ?? emptySettings(id, customProvider);
+  const current = settings[id] ?? emptySettings(id);
   return { ...settings, [id]: { ...current, ...patch, id } };
 }
 
@@ -412,7 +408,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
         ...(s.chatAzureApiVersion ? { azureApiVersion: s.chatAzureApiVersion } : {}),
         ...(s.chatThinkingBudget != null ? { thinkingBudget: s.chatThinkingBudget } : {}),
       },
-    }, s.customerProviders[s.chatProvider] != null);
+    });
     const isCustom = s.customerProviders[v] != null;
     // Seed catalog default baseUrl for bundled providers with empty slot —
     // see seedBundledBaseUrl.
@@ -429,8 +425,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   setChatApiKey: (v) => {
     const s = get();
     const pid = s.chatProvider;
-    const custom = s.customerProviders[pid] != null;
-    const next = patchSettings(s.providerSettings, pid, { apiKey: v }, custom);
+    const next = patchSettings(s.providerSettings, pid, { apiKey: v });
     set({ chatApiKey: v, providerSettings: next });
     schedulePersist();
     void providerConfigStorage.setProviderSettings(pid, next[pid]!);
@@ -438,8 +433,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   setChatBaseUrl: (v) => {
     const s = get();
     const pid = s.chatProvider;
-    const custom = s.customerProviders[pid] != null;
-    const next = patchSettings(s.providerSettings, pid, { baseUrl: v }, custom);
+    const next = patchSettings(s.providerSettings, pid, { baseUrl: v });
     set({ chatBaseUrl: v, providerSettings: next });
     schedulePersist();
     void providerConfigStorage.setProviderSettings(pid, next[pid]!);
@@ -447,11 +441,10 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   setChatAzureDeploymentId: (v) => {
     const s = get();
     const pid = s.chatProvider;
-    const custom = s.customerProviders[pid] != null;
     const currentExtra = s.providerSettings[pid]?.extra ?? {};
     const next = patchSettings(s.providerSettings, pid, {
       extra: { ...currentExtra, azureDeploymentId: v },
-    }, custom);
+    });
     set({ chatAzureDeploymentId: v, providerSettings: next });
     schedulePersist();
     void providerConfigStorage.setProviderSettings(pid, next[pid]!);
@@ -459,11 +452,10 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   setChatAzureApiVersion: (v) => {
     const s = get();
     const pid = s.chatProvider;
-    const custom = s.customerProviders[pid] != null;
     const currentExtra = s.providerSettings[pid]?.extra ?? {};
     const next = patchSettings(s.providerSettings, pid, {
       extra: { ...currentExtra, azureApiVersion: v },
-    }, custom);
+    });
     set({ chatAzureApiVersion: v, providerSettings: next });
     schedulePersist();
     void providerConfigStorage.setProviderSettings(pid, next[pid]!);
@@ -471,11 +463,10 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   setChatThinkingBudget: (v) => {
     const s = get();
     const pid = s.chatProvider;
-    const custom = s.customerProviders[pid] != null;
     const currentExtra = s.providerSettings[pid]?.extra ?? {};
     const next = patchSettings(s.providerSettings, pid, {
       extra: { ...currentExtra, thinkingBudget: v },
-    }, custom);
+    });
     set({ chatThinkingBudget: v, providerSettings: next });
     schedulePersist();
     void providerConfigStorage.setProviderSettings(pid, next[pid]!);
@@ -512,7 +503,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     }));
     void providerConfigStorage.setCustomerProvider(def);
     // Seed an empty settings entry so the user lands on a config page.
-    const seed = emptySettings(def.id, true);
+    const seed = emptySettings(def.id);
     set((s) => ({
       providerSettings: { ...s.providerSettings, [def.id]: seed },
     }));
@@ -548,7 +539,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
 
   setProviderEnabled: (id, enabled) => {
     set((s) => {
-      const slot = s.providerSettings[id] ?? emptySettings(id, s.customerProviders[id] != null);
+      const slot = s.providerSettings[id] ?? emptySettings(id);
       return {
         providerSettings: { ...s.providerSettings, [id]: { ...slot, enabled } },
       };
@@ -571,12 +562,11 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
 
   addSelectedModelId: (providerId, modelId) => {
     const s = get();
-    const custom = s.customerProviders[providerId] != null;
     const current = s.providerSettings[providerId]?.selectedModelIds ?? [];
     if (current.includes(modelId)) return; // dedup; preserve order
     const next = patchSettings(s.providerSettings, providerId, {
       selectedModelIds: [...current, modelId],
-    }, custom);
+    });
     set({ providerSettings: next });
     schedulePersist();
     void providerConfigStorage.setProviderSettings(providerId, next[providerId]!);
@@ -584,12 +574,11 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
 
   removeSelectedModelId: (providerId, modelId) => {
     const s = get();
-    const custom = s.customerProviders[providerId] != null;
     const current = s.providerSettings[providerId]?.selectedModelIds ?? [];
     if (!current.includes(modelId)) return; // no-op; absent
     const next = patchSettings(s.providerSettings, providerId, {
       selectedModelIds: current.filter((x) => x !== modelId),
-    }, custom);
+    });
     // ponytail: also drop the manualModels entry if present — a manual model's
     // metadata is meaningless once the user has unselected it; otherwise the
     // picker (which synthesizes from manualModels) would still surface it.

@@ -263,7 +263,6 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
             apiKey: voiceCfg.apiKey,
             baseUrl: voiceCfg.baseUrl || undefined,
             thinkingBudget: voiceCfg.thinkingBudget ?? undefined,
-            customProvider: voiceCfg.customProvider,
             adapterFamily: voiceCfg.adapterFamily,
             onEvent: (e) => {
               if (e.type === 'text' && e.content) acc += e.content;

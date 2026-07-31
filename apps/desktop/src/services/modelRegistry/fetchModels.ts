@@ -21,9 +21,7 @@ export interface FetchModelsParams {
   apiKey: string;
   baseUrl?: string;
   azureApiVersion?: string;
-  /** PR2e: routing flag — true for custom providers. */
-  customProvider?: boolean;
-  /** Phase 3: bundled adapter family id (e.g. "anthropic"). Required when customProvider=true. */
+  /** Bundled adapter family id (e.g. "anthropic"). Rust falls back to `provider.as_str()` when absent. */
   adapterFamily?: string;
 }
 
@@ -38,7 +36,7 @@ interface ModelDto {
 }
 
 export async function fetchModels(params: FetchModelsParams): Promise<FetchModelsResult> {
-  const { provider, apiKey, baseUrl, azureApiVersion, customProvider, adapterFamily } = params;
+  const { provider, apiKey, baseUrl, azureApiVersion, adapterFamily } = params;
   // ponytail: catalog derives `requiresApiKey` from providers.json; we trust
   // the caller (SettingsPage) to have already gated the button on that.
   // Here we just forward to Rust.
@@ -48,8 +46,6 @@ export async function fetchModels(params: FetchModelsParams): Promise<FetchModel
       apiKey,
       baseUrl: baseUrl || null,
       azureApiVersion: azureApiVersion || null,
-      // PR2e: routing flag + adapter family id for custom providers.
-      customProvider: customProvider ?? false,
       adapterFamily: adapterFamily ?? null,
     },
   });

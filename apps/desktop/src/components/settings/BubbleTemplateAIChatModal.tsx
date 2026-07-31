@@ -309,7 +309,7 @@ export function BubbleTemplateAIChatModal({
         apiKey: cfg.apiKey,
         ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}),
         ...(cfg.thinkingBudget != null ? { thinkingBudget: cfg.thinkingBudget } : {}),
-        ...(cfg.customProvider ? { customProvider: true, adapterFamily: cfg.adapterFamily } : {}),
+        adapterFamily: cfg.adapterFamily,
         preamble,
         ...(images ? { images } : {}),
         onEvent: (event) => {

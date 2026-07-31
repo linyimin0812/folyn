@@ -111,8 +111,6 @@ export function TestChatModal({
                   baseUrl: chatBaseUrl || undefined,
                   azureDeploymentId: chatAzureDeploymentId || undefined,
                   azureApiVersion: chatAzureApiVersion || undefined,
-                  // PR2e: route custom providers via adapter family resolver.
-                  customProvider: isCustom,
                   adapterFamily: isCustom ? (customerProviders[chatProvider]?.adapterFamily) : undefined,
                 });
                 setStatus({ testing: false, result });

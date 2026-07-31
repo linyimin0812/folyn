@@ -20,3 +20,7 @@ Custom provider definitions carry an `adapterFamily: string` field whose value i
 ## Status
 
 Accepted.
+
+## Follow-up (2026-07-31)
+
+The TS-side `ResolvedPairConfig.customProvider` field and the 5-call-site conditional spreads mentioned in the Consequences section above were deleted in a follow-up cleanup task (`.trellis/tasks/07-31-customprovider-5`). The field was only ever used to feed `cfg.customProvider ? { customProvider: true, adapterFamily: cfg.adapterFamily } : {}`, and Rust's serde already dropped the `customProvider` flag — so callers now pass `adapterFamily` unconditionally and Rust falls back to `provider.as_str()` when absent. The `ProviderSettings.customProvider` persistence-layer flag was also deleted (production code never read it — "is custom" was always derived from `state.customerProviders[id] != null`). Storage.json files with residual `customProvider` fields are silently dropped by hydrate's unknown-key guard (same path as `defaultChatEndpoint` below).

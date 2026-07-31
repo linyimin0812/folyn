@@ -89,7 +89,7 @@ export function buildPluginAi(manifest: PluginManifest): PluginAiCapability {
           apiKey: cfg.apiKey,
           ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}),
           ...(cfg.thinkingBudget != null ? { thinkingBudget: cfg.thinkingBudget } : {}),
-          ...(cfg.customProvider ? { customProvider: true, adapterFamily: cfg.adapterFamily } : {}),
+          adapterFamily: cfg.adapterFamily,
           onEvent: (event: CliStreamEvent) => {
             const mapped = mapEvent(event);
             if (!mapped) return;

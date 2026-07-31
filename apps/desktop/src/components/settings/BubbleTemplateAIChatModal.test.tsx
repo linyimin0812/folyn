@@ -40,7 +40,6 @@ const { aiConfigState } = vi.hoisted(() => {
         baseUrl: '',
         enabled: true,
         selectedModelIds: ['claude-sonnet-4-6'],
-        customProvider: false,
         extra: {},
       },
     },
@@ -71,7 +70,6 @@ const { resolvePairForBtSessionMock } = vi.hoisted(() => ({
     apiKey: 'k',
     baseUrl: '',
     thinkingBudget: null,
-    customProvider: false,
     adapterFamily: undefined,
   })),
 }));
@@ -158,7 +156,6 @@ beforeEach(() => {
     apiKey: 'k',
     baseUrl: '',
     thinkingBudget: null,
-    customProvider: false,
     adapterFamily: undefined,
   });
   resetStoreToSingleEmpty();

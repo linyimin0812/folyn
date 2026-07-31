@@ -390,7 +390,6 @@ describe('sendPetChatMessage — rig-mode pair resolution (Phase 2)', () => {
       apiKey: 'sk-test',
       baseUrl: '',
       thinkingBudget: null,
-      customProvider: false,
       adapterFamily: undefined,
     });
     seedSession('s1');

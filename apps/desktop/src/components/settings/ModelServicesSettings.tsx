@@ -330,7 +330,6 @@ export function ModelServicesSettings() {
               chatApiKey,
               chatBaseUrl || providersJsonBaseUrl || undefined,
               chatAzureApiVersion || undefined,
-              isCustom,
               isCustom ? customerProviders[chatProvider]?.adapterFamily : undefined,
             );
           }}

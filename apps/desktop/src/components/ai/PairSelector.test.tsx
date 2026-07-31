@@ -47,12 +47,10 @@ describe('PairSelector', () => {
           apiKey: '',
           selectedModelIds: ['claude-sonnet-4-6'],
           enabled: true,
-          customProvider: false,
           extra: {},
         },
       },
-    });
-    renderSelector({ value: null });
+    });    renderSelector({ value: null });
     const select = screen.getByTestId('pair-selector') as HTMLSelectElement;
     expect(select.value).toBe('');
     // placeholder option exists
@@ -68,7 +66,6 @@ describe('PairSelector', () => {
           apiKey: '',
           selectedModelIds: ['claude-sonnet-4-6', 'claude-opus-4-7'],
           enabled: true,
-          customProvider: false,
           extra: {},
         },
         openai: {
@@ -77,12 +74,10 @@ describe('PairSelector', () => {
           apiKey: '',
           selectedModelIds: ['gpt-5.2'],
           enabled: true,
-          customProvider: false,
           extra: {},
         },
       },
-    });
-    renderSelector({ value: null });
+    });    renderSelector({ value: null });
     // 2 anthropic + 1 openai = 3 model options, +1 placeholder = 4 options
     const select = screen.getByTestId('pair-selector') as HTMLSelectElement;
     expect(select.options.length).toBe(4);
@@ -100,7 +95,6 @@ describe('PairSelector', () => {
           apiKey: '',
           selectedModelIds: ['claude-sonnet-4-6'],
           enabled: true,
-          customProvider: false,
           extra: {},
         },
         // disabled provider with models — must NOT appear
@@ -110,7 +104,6 @@ describe('PairSelector', () => {
           apiKey: '',
           selectedModelIds: ['gpt-5.2'],
           enabled: false,
-          customProvider: false,
           extra: {},
         },
         // enabled but no models — must NOT appear
@@ -120,12 +113,10 @@ describe('PairSelector', () => {
           apiKey: '',
           selectedModelIds: [],
           enabled: true,
-          customProvider: false,
           extra: {},
         },
       },
-    });
-    renderSelector({ value: null });
+    });    renderSelector({ value: null });
     const select = screen.getByTestId('pair-selector') as HTMLSelectElement;
     // placeholder + 1 anthropic option
     expect(select.options.length).toBe(2);
@@ -142,12 +133,10 @@ describe('PairSelector', () => {
           apiKey: '',
           selectedModelIds: ['claude-sonnet-4-6'],
           enabled: true,
-          customProvider: false,
           extra: {},
         },
       },
-    });
-    const { onChange } = renderSelector({ value: null });
+    });    const { onChange } = renderSelector({ value: null });
     const select = screen.getByTestId('pair-selector') as HTMLSelectElement;
     // pick index 0 (the only model option)
     fireEvent.change(select, { target: { value: '0' } });
@@ -168,12 +157,10 @@ describe('PairSelector', () => {
           // must NOT split on '/' or treat it as a sub-path.
           selectedModelIds: ['anthropic/claude-3.5-sonnet'],
           enabled: true,
-          customProvider: false,
           extra: {},
         },
       },
-    });
-    // value is set — placeholder is enabled and re-selectable.
+    });    // value is set — placeholder is enabled and re-selectable.
     const { onChange } = renderSelector({
       value: { provider: 'anthropic', model: 'anthropic/claude-3.5-sonnet' },
     });
@@ -199,12 +186,10 @@ describe('PairSelector', () => {
           apiKey: '',
           selectedModelIds: ['gpt-5.2'],
           enabled: false,
-          customProvider: false,
           extra: {},
         },
       },
-    });
-    const onOpenSettings = vi.fn();
+    });    const onOpenSettings = vi.fn();
     renderSelector({ value: null, onOpenSettings });
     expect(screen.getByTestId('pair-selector-empty')).toBeTruthy();
     expect(screen.getByText('未配置可用模型')).toBeTruthy();
@@ -227,7 +212,6 @@ describe('PairSelector', () => {
           apiKey: '',
           selectedModelIds: ['claude-sonnet-4-6'],
           enabled: true,
-          customProvider: false,
           extra: {},
         },
         'my-custom': {
@@ -236,7 +220,6 @@ describe('PairSelector', () => {
           apiKey: '',
           selectedModelIds: ['custom-model-a', 'custom-model-b'],
           enabled: true,
-          customProvider: true,
           extra: {},
         },
       },

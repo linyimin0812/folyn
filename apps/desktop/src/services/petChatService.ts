@@ -228,7 +228,6 @@ export async function sendPetChatMessage(
         apiKey: cfg.apiKey,
         baseUrl: cfg.baseUrl,
         thinkingBudget: cfg.thinkingBudget,
-        customProvider: cfg.customProvider,
         adapterFamily: cfg.adapterFamily,
         onEvent: handler,
       });

@@ -32,7 +32,6 @@ vi.mock('@/store/aiConfigStore', () => ({
       apiKey: slot.apiKey,
       baseUrl: slot.baseUrl ?? '',
       thinkingBudget: null,
-      customProvider: !!state.customerProviders?.[pair.provider],
     };
   },
 }));

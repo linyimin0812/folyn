@@ -96,13 +96,10 @@ pub struct ChatParams {
     ///     (provider doesn't support reasoning, silently skipped)
     #[serde(default)]
     pub thinking_budget: Option<u32>,
-    /// Phase 3: bundled adapter family id when `custom_provider=true`
-    /// (e.g. 'anthropic', 'openai-completions', 'ollama', 'gemini', 'openai').
-    /// Same value space as `provider` for bundled providers; absent → fall
-    /// back to `provider.as_str()`. Replaces the old endpoint-key enum
-    /// indirection. The frontend still sends a `customProvider` flag for
-    /// semantic clarity; serde ignores it here (routing collapses to this
-    /// one field).
+    /// Phase 3: bundled adapter family id (e.g. 'anthropic', 'openai-completions',
+    /// 'ollama', 'gemini', 'openai'). Same value space as `provider` for
+    /// bundled providers; absent → fall back to `provider.as_str()`.
+    /// Replaces the old endpoint-key enum indirection.
     #[serde(default)]
     pub adapter_family: Option<String>,
 }

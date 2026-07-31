@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "验证 ResolvedPairConfig / RigChatParams / fetchModels params / ProviderSettings 接口均无 customProvider 字段；无残留 as cast；5 调用方 + modelRegistryStore:134 isCustom 改写后类型一致。"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "验证 emptySettings 单参；resolvePairConfig 不再设 customProvider；modelRegistryStore.fetchModelsForProvider 形参减少；hydrate 静默丢弃 storage.json 残留 customProvider 字段（与 ADR-0002 :16 defaultChatEndpoint 同路径）；PERSIST_KEYS_AI_CONFIG 不变。"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "验证无 unrequested abstraction、无 optional 兼容垫片、无 stub 注释残留；最小 diff；ponytail 注释保留或一并清理（chat.rs:103-105, list_models.rs:25-26 死字段注释更新）。"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "验证 TS↔Rust seam 一致：Rust ChatParams 无 custom_provider；TS 不再发送；chat.rs / list_models.rs 注释中 'frontend still sends a customProvider flag' 表述更新或删除；无两侧漂移。"}
+{"file": "docs/adr/0002-custom-provider-adapter-family-direct.md", "reason": "验证 :14 与 :16 段落与代码现状一致——若代码已落地，注释/ADR 文本是否需要 follow-up 更新（ADR 本身不修改决策，仅确认其记录的现状与代码一致）。"}

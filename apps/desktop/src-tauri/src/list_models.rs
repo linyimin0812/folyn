@@ -19,11 +19,9 @@ pub struct ListModelsParams {
     // ponytail: azure_api_version dropped — list_models uses Bearer +
     // /openai/v1/models per the user's curl, no api-version query param.
     // Frontend still passes azureApiVersion; serde ignores unknown fields.
-    /// Phase 3: bundled adapter family id when `custom_provider=true`.
+    /// Phase 3: bundled adapter family id.
     /// Same value space as `provider` for bundled entries; absent → fall
     /// back to `provider.as_str()`. Replaces the old endpoint-key enum.
-    /// Frontend's `customProvider` flag is silently ignored by serde —
-    /// routing collapses to this one field.
     #[serde(default)]
     pub adapter_family: Option<String>,
 }

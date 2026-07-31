@@ -437,7 +437,6 @@ describe('createEmptySession seeds pair (Phase 1)', () => {
           apiKey: 'sk-x',
           selectedModelIds: ['gpt-4o'],
           enabled: true,
-          customProvider: false,
           extra: {},
         },
       },
