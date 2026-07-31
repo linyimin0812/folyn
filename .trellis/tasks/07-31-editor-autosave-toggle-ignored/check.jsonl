@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Verify code standards and review checklist pass"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify Zustand store read pattern is correct"}

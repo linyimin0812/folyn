@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand cross-store read pattern — getState() to avoid subscription cycles"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Code standards and review checklist"}

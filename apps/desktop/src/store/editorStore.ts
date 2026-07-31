@@ -7,6 +7,7 @@ import { WIKI_PREFIX } from '@/types/wiki';
 import { persistOpenTabs } from './editorPersistence';
 import { scheduleAutoSave } from './editorAutoSave';
 import { saveFile as saveFileIo } from '@/services/editorIoService';
+import { useEditorPrefsStore } from './editorPrefsStore';
 import { wikiProvider } from '@/services/wikiProvider';
 import type { ActivityPanel } from '@/components/shell/ActivityBar';
 
@@ -172,7 +173,9 @@ export const useEditorStore = create<EditorState>()(
         // Debounced auto-save — ponytail: saveFile lives in editorIoService;
         // route the debounced save through it. ESM live binding resolves
         // the editorStore↔editorIoService cycle at call time, not eval time.
-        scheduleAutoSave(tabId, (id) => saveFileIo(id));
+        if (useEditorPrefsStore.getState().autoSave) {
+          scheduleAutoSave(tabId, (id) => saveFileIo(id));
+        }
       },
 
       markTabDirty: (tabId, isDirty) =>
