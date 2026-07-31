@@ -1233,3 +1233,41 @@ Custom provider settings page showed two identical rows after manually adding a 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 94: Model Services settings iteration: sync button removal, fetched-models persistence, owner map cache + capabilities, custom-provider enrichment
+
+**Date**: 2026-07-31
+**Task**: Model Services settings iteration: sync button removal, fetched-models persistence, owner map cache + capabilities, custom-provider enrichment
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Five-step iteration on Model Services settings page. (1) Removed the ListRestart sync button from the left-aside search box — dropped the button, refetchStatus state, onRefetchAll wiring, and the RefetchOverlay component (left refetchAllFromModelsDev service function as documented future-work scaffolding). (2) Persisted fetched Model[] to ~/.quill/providers/{pid}/models.json on fetch success (fire-and-forget) and read it back on fetch failure with an appended '（拉取失败，使用缓存数据）' notice in the inline error banner. Repurposed userProvidersCatalog.ts: on-disk shape changed from speculative models.dev raw slice to Model[]; deleted dead refetchAllFromModelsDev/RefetchResult/buildModelsFile/USER_PROVIDERS and models.dev imports. (3) Restored the owner field in models.json that the deleted refetchAll used to inject — fetchOwnerMap enriches each model with owner before write, file-only (in-memory Model type unchanged). (4) Cached fetchOwnerMap to ~/.quill/providers/provider-models.json with 24h TTL; expanded cache shape to {modelId: {modelId, providerId, capabilities}}; derived capabilities from OpenRouter /models response (vision ← input_modalities, reasoning ← supported_parameters, function-call ← tools, structured-output ← structured_outputs, web-search ← pricing.web_search). (5) Enriched custom-provider fetched Model[] in-memory with owner map data (capabilities + group=ownerEntry.providerId) so the picker shows capability icons and groups by family like bundled providers; bundled providers unchanged (catalog authoritative). All tsc green; 11 new tests across fetchOwnerMap.test.ts and modelRegistryStore.test.ts.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `50ab958` | (see git log) |
+| `1aad190` | (see git log) |
+| `6f291f2` | (see git log) |
+| `df7e095` | (see git log) |
+| `f9ad4ae` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
