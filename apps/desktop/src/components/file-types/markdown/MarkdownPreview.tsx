@@ -324,16 +324,22 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
             // late layout (images, scripts). allow-same-origin is required to
             // read contentDocument; combined with allow-scripts the iframe is
             // same-origin to itself, not the host — still sandboxed.
+            //
+            // Feedback-loop break: set iframe height to 0 before measuring,
+            // otherwise scrollHeight returns max(content, current height) and
+            // stale blank space persists.
             try {
               const iframe = e.target as HTMLIFrameElement;
               const doc = iframe.contentDocument;
               if (!doc) return;
               const style = doc.createElement('style');
-              style.textContent = 'html, body { margin: 0 !important; padding: 0 !important; overflow: hidden !important; }';
+              style.textContent = 'html, body { margin: 0 !important; padding: 0 !important; overflow: hidden !important; height: auto !important; min-height: 0 !important; }';
               doc.head.appendChild(style);
               const resize = () => {
-                const h = Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight);
-                if (h > 0) iframe.style.height = `${h + 8}px`;
+                iframe.style.height = '0px';
+                void doc.body.offsetHeight; // force reflow
+                const h = doc.body.scrollHeight;
+                if (h > 0) iframe.style.height = `${h}px`;
               };
               resize();
               new ResizeObserver(resize).observe(doc.body);
