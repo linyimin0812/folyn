@@ -317,7 +317,7 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .md-preview code { font-family: var(--font-mono); font-size: 12px; background: var(--surf); padding: 2px 5px; border-radius: 3px; border: 1px solid var(--brd); }
 .md-preview pre code, .code-block-wrapper pre code { background: none; border: none; padding: 12px 16px; border-radius: 0; }
 .code-block-wrapper { border: 1px solid var(--brd); border-radius: 6px; margin: 12px 0; position: relative; max-height: 420px; overflow: hidden; }
-.code-block-wrapper--no-height-cap { max-height: none; overflow: visible; }
+.code-block-wrapper--no-height-cap { max-height: none; overflow: visible; padding: 8px; box-sizing: border-box; }
 .code-block-inner { display: grid; grid-template-columns: auto 1fr; max-height: 420px; overflow: auto; }
 .code-block-inner .code-line-numbers { position: sticky; left: 0; z-index: 1; padding: 12px 0; border-right: 1px solid var(--brd); background: var(--surf2); user-select: none; white-space: nowrap; }
 .code-block-inner .code-ln { display: block; padding: 0 10px; text-align: right; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: var(--t3); min-width: 32px; }
