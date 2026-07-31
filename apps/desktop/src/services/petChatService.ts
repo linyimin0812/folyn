@@ -7,7 +7,7 @@ import { usePetChatStore } from '@/store/petChatStore';
 import { isRigMode, resolveSendOptions } from '@/components/ai/inputModes';
 import { runRigChat } from '@/services/rigChat';
 import { isTauri } from '@/utils/platform';
-import { appDataDir, join } from '@tauri-apps/api/path';
+import { homeDir, join } from '@tauri-apps/api/path';
 import { resolveBasePath } from '@/utils/pathResolver';
 
 /**
@@ -90,27 +90,25 @@ function getAdapterForSession(sessionId: string): CliAdapter {
  *
  *  Fallback chain (never throws — a missing workingDir must not break the
  *  chat, the adapter can run with `cd` skipped):
- *    1. mkdir(<appData>/pet-chat-tmp, { recursive: true }) → return that path.
- *    2. mkdir failed → return <appData> itself (always exists; Tauri creates
- *       it on startup).
- *    3. appDataDir() failed → return '' (empty string → adapter skips `cd`
+ *    1. mkdir(~/.quill/pet-chat-tmp, { recursive: true }) → return that path.
+ *    2. mkdir failed → return '' (empty string → adapter skips `cd`
  *       and just `exec`s the CLI in the process cwd).
  */
 async function resolveWorkingDir(): Promise<string> {
   if (!isTauri()) return '';
-  let appData: string;
+  let home: string;
   try {
-    appData = await appDataDir();
+    home = await homeDir();
   } catch (err) {
-    console.warn('[petChat] appDataDir failed; proceeding without workingDir:', err);
+    console.warn('[petChat] homeDir failed; proceeding without workingDir:', err);
     return '';
   }
   let dir: string;
   try {
-    dir = await join(appData, 'pet-chat-tmp');
+    dir = await join(home, '.quill', 'pet-chat-tmp');
   } catch (err) {
-    console.warn('[petChat] join failed; falling back to appDataDir:', err);
-    return appData;
+    console.warn('[petChat] join failed; proceeding without workingDir:', err);
+    return '';
   }
   try {
     const { mkdir } = await import('@tauri-apps/plugin-fs');
@@ -118,10 +116,10 @@ async function resolveWorkingDir(): Promise<string> {
     return dir;
   } catch (err) {
     console.warn(
-      '[petChat] mkdir pet-chat-tmp failed; falling back to appDataDir:',
+      '[petChat] mkdir pet-chat-tmp failed; proceeding without workingDir:',
       err,
     );
-    return appData;
+    return '';
   }
 }
 

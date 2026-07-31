@@ -1,12 +1,12 @@
 import { readTextFile, writeTextFile, mkdir, exists, readDir, remove } from '@tauri-apps/plugin-fs';
-import { appDataDir, join } from '@tauri-apps/api/path';
+import { homeDir, join } from '@tauri-apps/api/path';
 
 let basePath = '';
 
 async function getBasePath(): Promise<string> {
   if (basePath) return basePath;
-  const appData = await appDataDir();
-  basePath = await join(appData, 'vaults');
+  const home = await homeDir();
+  basePath = await join(home, '.quill', 'vaults');
   return basePath;
 }
 

@@ -105,7 +105,7 @@ const { runRigChatMock } = vi.hoisted(() => ({ runRigChatMock: vi.fn() }));
 vi.mock('@/services/rigChat', () => ({ runRigChat: runRigChatMock }));
 
 import { mkdir as mockedMkdir } from '@tauri-apps/plugin-fs';
-import { appDataDir as mockedAppDataDir, join as mockedJoin } from '@tauri-apps/api/path';
+import { homeDir as mockedHomeDir, join as mockedJoin } from '@tauri-apps/api/path';
 import {
   sendPetChatMessage,
   stopPetChat,
@@ -125,7 +125,7 @@ const petChatStoreState = (
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockedAppDataDir.mockResolvedValue('/mock/appdata');
+  mockedHomeDir.mockResolvedValue('/mock/home');
   mockedJoin.mockImplementation(async (...parts: string[]) =>
     parts
       .filter((p) => p !== '' && p !== undefined && p !== null)
@@ -188,13 +188,13 @@ describe('sendPetChatMessage — send options', () => {
 
     await sendPetChatMessage('s1', 'hello', {});
 
-    expect(mockedMkdir).toHaveBeenCalledWith('/mock/appdata/pet-chat-tmp', { recursive: true });
+    expect(mockedMkdir).toHaveBeenCalledWith('/mock/home/.quill/pet-chat-tmp', { recursive: true });
     const mkdirOrder = mockedMkdir.mock.invocationCallOrder[0];
     const startOrder = fake.start.mock.invocationCallOrder[0];
     expect(mkdirOrder).toBeLessThan(startOrder);
     expect(fake.start).toHaveBeenCalledWith({
       cliPath: '/mock/claude',
-      workingDir: '/mock/appdata/pet-chat-tmp',
+      workingDir: '/mock/home/.quill/pet-chat-tmp',
     });
   });
 });

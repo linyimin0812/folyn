@@ -14,11 +14,11 @@ import { Toggle } from '@/components/settings/primitives';
  *  - Icon source radio: 默认 (inline SVG) vs. 自定义 (`<img>` from
  *    `petIconPath`). 自定义 with no path yet triggers the upload picker.
  *  - "上传图标…" button: native file picker (png/jpg/jpeg/webp/svg,
- *    ≤1MB) → copy file to `appDataDir/pet-icon.<ext>` → `setPetIcon('custom', path)`.
+ *    ≤1MB) → copy file to `~/.quill/pet-icon/pet-icon-<ts>.<ext>` → `setPetIcon('custom', path)`.
  *    Files >1MB or non-image extensions are rejected with a local error
  *    message (no toast system reused — the existing settings sections use
  *    local `errorMsg` state, so we follow that pattern).
- *  - "恢复默认" button: deletes any `pet-icon.<ext>` file in appDataDir +
+ *  - "恢复默认" button: deletes any `pet-icon*` file in `~/.quill/pet-icon/` +
  *    `setPetIcon('builtin')`.
  *  - Preview thumbnail of the current icon (builtin quill.svg or the
  *    custom image via `convertFileSrc`).
@@ -26,7 +26,7 @@ import { Toggle } from '@/components/settings/primitives';
  * ACL: the main window's capability file (`capabilities/default.json`)
  * already grants `fs:allow-exists`, `fs:allow-remove`, `fs:allow-read-dir`,
  * `fs:allow-stat`, `fs:allow-read-file`, `fs:allow-write-file`, plus
- * `dialog:default` and `fs:scope-appdata-recursive`. No capability changes
+ * `dialog:default` and `fs:scope-home-recursive`. No capability changes
  * needed for the upload/reset flows here.
  */
 export function PetSettings() {
@@ -100,8 +100,8 @@ export function PetSettings() {
         return;
       }
       const { open } = await import('@tauri-apps/plugin-dialog');
-      const { readFile, writeFile, stat } = await import('@tauri-apps/plugin-fs');
-      const { appDataDir, join } = await import('@tauri-apps/api/path');
+      const { readFile, writeFile, stat, mkdir } = await import('@tauri-apps/plugin-fs');
+      const { homeDir, join } = await import('@tauri-apps/api/path');
 
       const picked = await open({
         filters: [{ name: 'Image', extensions: VALID_EXTS }],
@@ -135,13 +135,14 @@ export function PetSettings() {
         return;
       }
 
-      // Copy file to appDataDir/pet-icon-<timestamp>.<ext>. The timestamp
-      // disambiguates multiple saved icons (PRD: multi-icon library). The
-      // appDataDir is created on demand by `writeFile` (fs plugin creates
-      // parent dirs). No deletion of prior files — every upload is a new
-      // library entry; reset clears them all.
-      const appData = await appDataDir();
-      const destPath = await join(appData, `pet-icon-${Date.now()}.${ext}`);
+      // Copy file to ~/.quill/pet-icon/pet-icon-<timestamp>.<ext>. The
+      // timestamp disambiguates multiple saved icons (PRD: multi-icon
+      // library). The dir is created on demand; no deletion of prior files
+      // — every upload is a new library entry; reset clears them all.
+      const home = await homeDir();
+      const iconDir = await join(home, '.quill', 'pet-icon');
+      await mkdir(iconDir, { recursive: true }).catch(() => {});
+      const destPath = await join(iconDir, `pet-icon-${Date.now()}.${ext}`);
 
       const bytes = await readFile(filePath);
       if (bytes.length > MAX_ICON_BYTES) {
@@ -187,16 +188,17 @@ export function PetSettings() {
         return;
       }
       const { remove, readDir } = await import('@tauri-apps/plugin-fs');
-      const { appDataDir, join } = await import('@tauri-apps/api/path');
-      const appData = await appDataDir();
-      // Delete any pet-icon* files in appDataDir (covers `pet-icon.<ext>`
-      // from the legacy single-icon schema and `pet-icon-<ts>.<ext>` from
-      // the current multi-icon schema).
+      const { homeDir, join } = await import('@tauri-apps/api/path');
+      const home = await homeDir();
+      const iconDir = await join(home, '.quill', 'pet-icon');
+      // Delete any pet-icon* files in ~/.quill/pet-icon/ (covers
+      // `pet-icon.<ext>` from the legacy single-icon schema and
+      // `pet-icon-<ts>.<ext>` from the current multi-icon schema).
       try {
-        const entries = await readDir(appData);
+        const entries = await readDir(iconDir);
         for (const e of entries) {
           if (e.name.startsWith('pet-icon')) {
-            try { await remove(await join(appData, e.name)); } catch {}
+            try { await remove(await join(iconDir, e.name)); } catch {}
           }
         }
       } catch {
@@ -212,7 +214,7 @@ export function PetSettings() {
   // Per-icon delete: confirm first (deleting a saved icon is destructive),
   // then remove the file from disk + drop from the library. The store's
   // `removePetIcon` handles the active-selection fallback; this handler
-  // also deletes the underlying file so it doesn't linger in appDataDir.
+  // also deletes the underlying file so it doesn't linger in ~/.quill/pet-icon/.
   // File-delete failures are non-fatal (store still updates).
   //
   // Uses `@tauri-apps/plugin-dialog`'s `confirm()` rather than
@@ -300,7 +302,7 @@ export function PetSettings() {
   // or the custom image via `convertFileSrc` (resolved in `CustomIconPreview`
   // so the Tauri-only module is only imported when actually rendering a
   // custom preview). The asset protocol scope in tauri.conf.json allows
-  // `$APPDATA/**` so appDataDir paths resolve.
+  // `$HOME/**` so ~/.quill/pet-icon/ paths resolve.
   const builtinPreviewSrc = `${import.meta.env.BASE_URL}quill.svg`;
 
   return (

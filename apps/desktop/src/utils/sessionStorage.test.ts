@@ -59,24 +59,24 @@ describe('sessionStorage', () => {
     expect(await sessionStorage.loadMeta('no-meta-vault')).toBeNull();
   });
 
-  it('writes files under <appDataDir>/vaults/<vaultId>/', async () => {
+  it('writes files under ~/.quill/vaults/<vaultId>/', async () => {
     await sessionStorage.saveSession(VAULT, 'path-check', { ok: true });
-    const expected = '/mock/appdata/vaults/vault-1/path-check.json';
+    const expected = '/mock/home/.quill/vaults/vault-1/path-check.json';
     expect(await readJson(expected)).toEqual({ ok: true });
   });
 
   it('returns null on corrupted JSON instead of throwing', async () => {
     // Manually place a corrupted file under the expected path.
-    await mkdir('/mock/appdata/vaults/vault-1');
-    await writeTextFile('/mock/appdata/vaults/vault-1/broken.json', '{not valid json');
+    await mkdir('/mock/home/.quill/vaults/vault-1');
+    await writeTextFile('/mock/home/.quill/vaults/vault-1/broken.json', '{not valid json');
     expect(await sessionStorage.loadSession(VAULT, 'broken')).toBeNull();
   });
 
   it('ensureDir is idempotent — does not re-create existing directory', async () => {
     await sessionStorage.saveSession(VAULT, 'first', { a: 1 });
-    expect(await exists('/mock/appdata/vaults/vault-1')).toBe(true);
+    expect(await exists('/mock/home/.quill/vaults/vault-1')).toBe(true);
     await sessionStorage.saveSession(VAULT, 'second', { b: 2 });
     // still exists, no throw
-    expect(await exists('/mock/appdata/vaults/vault-1')).toBe(true);
+    expect(await exists('/mock/home/.quill/vaults/vault-1')).toBe(true);
   });
 });

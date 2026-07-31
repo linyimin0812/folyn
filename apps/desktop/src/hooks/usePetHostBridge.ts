@@ -30,10 +30,10 @@ import type { PetBubbleActionEvent, PetBubblePayload } from '@/components/pet/Pe
 export function usePetHostBridge(): void {
   // ── Pet icon library reconcile + orphan sweep (PRD: settings-pet-tab-and-custom-icon) ──
   // On startup, reconcile the persisted `petIcons` library + active
-  // `petIconPath` with the actual files under appDataDir. Lives in the MAIN
-  // window (not PetApp) because the fs plugin calls require ACL permissions
-  // the main window has but the pet window does not. Wrapped in isTauri +
-  // try/catch so non-Tauri / test envs skip it.
+  // `petIconPath` with the actual files under ~/.quill/pet-icon/. Lives in
+  // the MAIN window (not PetApp) because the fs plugin calls require ACL
+  // permissions the main window has but the pet window does not. Wrapped
+  // in isTauri + try/catch so non-Tauri / test envs skip it.
   useEffect(() => {
     if (!isTauri()) return;
     let cancelled = false;
@@ -46,9 +46,11 @@ export function usePetHostBridge(): void {
         // `<img>` onError then clears the flag, and persistence is lost.
         await settingsLoadDone;
         if (cancelled) return;
-        const { exists, remove, readDir } = await import('@tauri-apps/plugin-fs');
-        const { appDataDir, join } = await import('@tauri-apps/api/path');
-        const appData = await appDataDir();
+        const { exists, remove, readDir, mkdir } = await import('@tauri-apps/plugin-fs');
+        const { homeDir, join } = await import('@tauri-apps/api/path');
+        const home = await homeDir();
+        const iconDir = await join(home, '.quill', 'pet-icon');
+        await mkdir(iconDir, { recursive: true }).catch(() => {});
         const { petIconSource, petIconPath, petIcons } = usePetStore.getState();
 
         // Verify every library entry + the active path (if custom). Drop
@@ -73,19 +75,19 @@ export function usePetHostBridge(): void {
           // gate, scoped to the new multi-icon library model. Builtin view
           // WITH a non-empty library skips this so saved icons survive.
           try {
-            const entries = await readDir(appData);
+            const entries = await readDir(iconDir);
             for (const e of entries) {
               if (cancelled) break;
               if (!e.name.startsWith('pet-icon')) continue;
               try {
-                await remove(await join(appData, e.name));
+                await remove(await join(iconDir, e.name));
               } catch {
                 // Non-fatal; best-effort cleanup.
               }
             }
           } catch {
-            // readDir on appDataDir can fail on permission / platform edge
-            // cases — non-fatal, the sweep is best-effort.
+            // readDir on ~/.quill/pet-icon can fail on permission / platform
+            // edge cases — non-fatal, the sweep is best-effort.
           }
         }
       } catch (err) {

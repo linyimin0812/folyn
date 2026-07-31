@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify path-resolution pattern stays consistent across stores + utils after the appDataDir → homeDir swap"}

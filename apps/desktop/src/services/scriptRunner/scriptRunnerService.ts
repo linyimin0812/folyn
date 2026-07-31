@@ -103,13 +103,14 @@ function escapeShellArg(s: string): string {
 
 let tmpCounter = 0;
 async function makeTmpPath(fileExt: string): Promise<string> {
-  // ponytail: use appDataDir (fs:scope-appdata-recursive) instead of tempDir.
-  // tempDir() returns /var/folders/... on macOS, which is outside the fs scope
-  // and rejected with "forbidden path". appDataDir is covered by ACL.
-  const { appDataDir, join } = await import('@tauri-apps/api/path');
+  // ponytail: use ~/.quill/scripts-tmp (fs:scope-home-recursive) instead
+  // of tempDir. tempDir() returns /var/folders/... on macOS, which is
+  // outside the fs scope and rejected with "forbidden path". ~/.quill is
+  // covered by ACL.
+  const { homeDir, join } = await import('@tauri-apps/api/path');
   const { mkdir } = await import('@tauri-apps/plugin-fs');
-  const dir = await appDataDir();
-  const tmpDir = await join(dir, 'quill-tmp');
+  const home = await homeDir();
+  const tmpDir = await join(home, '.quill', 'scripts-tmp');
   await mkdir(tmpDir, { recursive: true }).catch(() => {});
   const rand = `${Date.now().toString(36)}-${(tmpCounter++).toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   return join(tmpDir, `quill-run-${rand}.${fileExt}`);
