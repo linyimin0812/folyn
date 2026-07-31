@@ -301,7 +301,7 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
   const hasOutput = stdout !== '' || stderr !== '' || exitCode !== null || stopped;
 
   return (
-    <div className="code-block-wrapper">
+    <div className={`code-block-wrapper${isHtml && htmlView === 'preview' ? ' code-block-wrapper--no-height-cap' : ''}`}>
       {htmlView === 'source' || !isHtml ? (
         <div className="code-block-inner">
           <div className="code-line-numbers" aria-hidden="true">
