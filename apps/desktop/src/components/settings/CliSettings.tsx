@@ -10,8 +10,19 @@ import { useTranslation } from 'react-i18next';
 import { Lightbulb } from 'lucide-react';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { listAdapters, buildAdapterVersionCommand } from '@quill/cli-adapter';
+import { externalFileProvider } from '@/services/externalFileProvider';
+import { openFile } from '@/services/editorIoService';
 
 type TestStatus = { testing: boolean; result?: { success: boolean; message: string } };
+type SettingsFileState =
+  | { kind: 'idle' }
+  | { kind: 'missing' }
+  | { kind: 'creating' }
+  | { kind: 'error'; message: string };
+
+function basename(p: string): string {
+  return p.includes('/') ? p.substring(p.lastIndexOf('/') + 1) : p;
+}
 
 export function CliSettings() {
   const { t } = useTranslation();
@@ -19,6 +30,37 @@ export function CliSettings() {
   const setCliPathFor = useAiConfigStore((s) => s.setCliPathFor);
   // Per-adapter test result state, keyed by adapter id.
   const [testStatus, setTestStatus] = useState<Record<string, TestStatus>>({});
+  // Per-adapter "open settings file" state, keyed by adapter id.
+  const [settingsFileState, setSettingsFileState] = useState<Record<string, SettingsFileState>>({});
+
+  async function openAdapterSettings(adapterId: string, path: string) {
+    const st = settingsFileState[adapterId];
+    if (st?.kind === 'creating') return;
+    try {
+      const exists = await externalFileProvider.exists(path);
+      if (!exists) {
+        setSettingsFileState((s) => ({ ...s, [adapterId]: { kind: 'missing' } }));
+        return;
+      }
+      await openFile(path, basename(path));
+      setSettingsFileState((s) => ({ ...s, [adapterId]: { kind: 'idle' } }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setSettingsFileState((s) => ({ ...s, [adapterId]: { kind: 'error', message } }));
+    }
+  }
+
+  async function createAdapterSettings(adapterId: string, path: string, template: string) {
+    setSettingsFileState((s) => ({ ...s, [adapterId]: { kind: 'creating' } }));
+    try {
+      await externalFileProvider.writeFile(path, template);
+      await openFile(path, basename(path));
+      setSettingsFileState((s) => ({ ...s, [adapterId]: { kind: 'idle' } }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setSettingsFileState((s) => ({ ...s, [adapterId]: { kind: 'error', message } }));
+    }
+  }
 
   return (
     <div className="mb-8">
@@ -33,6 +75,7 @@ export function CliSettings() {
         {listAdapters().map((a) => {
           const path = cliPaths[a.id] ?? a.id;
           const st = testStatus[a.id] ?? { testing: false };
+          const sf = settingsFileState[a.id] ?? { kind: 'idle' };
           return (
             <div
               key={a.id}
@@ -92,13 +135,39 @@ export function CliSettings() {
                     setTimeout(() => setTestStatus((s) => ({ ...s, [a.id]: { ...s[a.id], result: undefined } })), 6000);
                   }}
                 >{st.testing ? t('settings:cli.test.testing') : t('settings:cli.test.label')}</button>
+                <button
+                  className="btn btn-g btn-sm"
+                  title={t('settings:cli.settingsFile.title')}
+                  disabled={sf.kind === 'creating'}
+                  onClick={() => openAdapterSettings(a.id, a.settingsFilePath)}
+                >{t('settings:cli.settingsFile.label')}</button>
               </div>
               {st.result && (
                 <span style={{ fontSize: 11, color: st.result.success ? 'var(--green, #22a863)' : 'var(--red, #f06a6a)' }} className="mt-1 inline-block">
                   {st.result.message}
                 </span>
               )}
+              {sf.kind === 'missing' && (
+                <div className="mt-2 rounded-md border border-brd2 bg-surf2 px-2.5 py-1.5 flex items-center gap-2">
+                  <span style={{ fontSize: 11, color: 'var(--red, #f06a6a)' }}>
+                    {t('settings:cli.settingsFile.missing', { path: a.settingsFilePath })}
+                  </span>
+                  <span style={{ fontSize: 10.5 }} className="text-t3">{t('settings:cli.settingsFile.missingHint')}</span>
+                  <button
+                    className="btn btn-g btn-sm"
+                    style={{ marginLeft: 'auto' }}
+                    title={t('settings:cli.settingsFile.createTitle')}
+                    onClick={() => createAdapterSettings(a.id, a.settingsFilePath, a.settingsFileTemplate)}
+                  >{t('settings:cli.settingsFile.create')}</button>
+                </div>
+              )}
+              {sf.kind === 'error' && (
+                <div className="mt-2" style={{ fontSize: 11, color: 'var(--red, #f06a6a)' }}>
+                  {sf.message}
+                </div>
+              )}
               <div className="text-[10.5px] text-t3 mt-1">{t('settings:cli.cliPath.hint')}</div>
+              <div className="text-[10.5px] text-t3 mt-0.5 font-mono">{a.settingsFilePath}</div>
             </div>
           );
         })}

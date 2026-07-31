@@ -138,6 +138,14 @@
       "detectTitle": "自动检测路径",
       "hint": "CLI 可执行文件的路径或命令名，点击\"检测\"自动查找"
     },
+    "settingsFile": {
+      "label": "打开设置文件",
+      "title": "在 Quill 编辑器中打开此 Adapter 的配置文件",
+      "missing": "未找到 {{path}}",
+      "missingHint": "该配置文件尚未生成（首次使用 CLI 时通常会自动创建）。",
+      "create": "创建",
+      "createTitle": "写入最小合法模板并打开"
+    },
     "test": {
       "testing": "测试中…",
       "label": "测试连接",

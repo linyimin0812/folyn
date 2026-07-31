@@ -138,6 +138,14 @@
       "detectTitle": "Auto-detect path",
       "hint": "Path or command name of the CLI executable; click \"Detect\" to auto-find"
     },
+    "settingsFile": {
+      "label": "Open settings file",
+      "title": "Open this adapter's config file in the Quill editor",
+      "missing": "Not found: {{path}}",
+      "missingHint": "The settings file hasn't been created yet (the CLI usually creates it on first run).",
+      "create": "Create",
+      "createTitle": "Write a minimal valid template and open it"
+    },
     "test": {
       "testing": "Testing…",
       "label": "Test connection",

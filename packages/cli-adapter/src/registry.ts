@@ -6,27 +6,50 @@ type AdapterDescriptor = {
   displayName: string;
   description: string;
   factory: () => CliAdapter;
+  /** Home-relative path to the adapter's user-editable settings file. The
+   *  settings UI offers a button to open this file in Quill's editor. Use `~`
+   *  so `externalFileProvider.resolveHome` expands it; never bake in an
+   *  absolute path. */
+  settingsFilePath: string;
+  /** Initial content written when the user asks to create a missing settings
+   *  file. Each adapter picks the minimal valid shape for its own schema. */
+  settingsFileTemplate: string;
 };
+
+const CLAUDE_SETTINGS_TEMPLATE = '{}\n';
+const PI_SETTINGS_TEMPLATE = '{\n  "providers": {}\n}\n';
 
 const ADAPTERS: Record<string, AdapterDescriptor> = {
   claude: {
     displayName: 'Claude Code',
     description: 'Anthropic 官方 CLI 工具，支持对话式编辑与多工具调用',
     factory: () => new ClaudeAdapter(),
+    settingsFilePath: '~/.claude/settings.json',
+    settingsFileTemplate: CLAUDE_SETTINGS_TEMPLATE,
   },
   pi: {
     displayName: 'Pi',
     description: 'pi 代码 Agent（@earendil-works/pi-coding-agent），read/bash/edit/write 工具，rpc 多轮会话',
     factory: () => new PiAdapter(),
+    settingsFilePath: '~/.pi/agent/models.json',
+    settingsFileTemplate: PI_SETTINGS_TEMPLATE,
   },
 };
 
-/** List all registered CLI adapters (id + display metadata). */
-export function listAdapters(): { id: string; displayName: string; description: string }[] {
+/** List all registered CLI adapters (id + display metadata + settings file). */
+export function listAdapters(): {
+  id: string;
+  displayName: string;
+  description: string;
+  settingsFilePath: string;
+  settingsFileTemplate: string;
+}[] {
   return Object.entries(ADAPTERS).map(([id, d]) => ({
     id,
     displayName: d.displayName,
     description: d.description,
+    settingsFilePath: d.settingsFilePath,
+    settingsFileTemplate: d.settingsFileTemplate,
   }));
 }
 

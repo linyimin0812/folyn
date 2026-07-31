@@ -18,6 +18,23 @@ describe('listAdapters', () => {
     expect(pi?.displayName).toBe('Pi');
     expect(pi?.description.length).toBeGreaterThan(0);
   });
+
+  it('exposes a home-relative settingsFilePath + settingsFileTemplate per adapter', () => {
+    const all = listAdapters();
+    for (const a of all) {
+      expect(a.settingsFilePath.startsWith('~')).toBe(true);
+      expect(a.settingsFileTemplate.length).toBeGreaterThan(0);
+    }
+    const claude = all.find((a) => a.id === 'claude')!;
+    expect(claude.settingsFilePath).toBe('~/.claude/settings.json');
+    // Claude Code settings.json is a free-form object; `{}` is a valid starting point.
+    expect(claude.settingsFileTemplate.trim()).toBe('{}');
+
+    const pi = all.find((a) => a.id === 'pi')!;
+    expect(pi.settingsFilePath).toBe('~/.pi/agent/models.json');
+    // pi models.json shape: {"providers": {}} — minimal valid catalog.
+    expect(JSON.parse(pi.settingsFileTemplate)).toEqual({ providers: {} });
+  });
 });
 
 describe('createAdapter', () => {
