@@ -93,6 +93,47 @@ describe('useModelRegistryStore.fetchModelsForProvider — file cache + fallback
     expect(parsed[1].owner).toBe('openai');
   });
 
+  it('custom provider: enriches in-memory capabilities + group from owner map', async () => {
+    // Custom-provider models come back with empty capabilities (Rust list_models
+    // returns only ids; merge fallback gives []). The owner map fills both
+    // capabilities and group (group = ownerEntry.providerId).
+    const customModels = [
+      { id: 'gpt-4o', providerId: 'my-custom', capabilities: [], inputModalities: ['text'] },
+      { id: 'unknown-model', providerId: 'my-custom', capabilities: [], inputModalities: ['text'] },
+    ];
+    fetchModelsMock.mockResolvedValue({ models: customModels });
+    ownerMapMock.mockResolvedValue({
+      'gpt-4o': { modelId: 'gpt-4o', providerId: 'openai', capabilities: ['vision', 'function-call'] },
+    });
+    const r = await useModelRegistryStore.getState().fetchModelsForProvider('my-custom', 'sk-test', undefined, undefined, true);
+    expect(r.ok).toBe(true);
+    const s = useModelRegistryStore.getState();
+    const models = s.modelsByProvider['my-custom']!;
+    // Owner-map hit → capabilities + group filled.
+    expect(models[0].capabilities).toEqual(['vision', 'function-call']);
+    expect(models[0].group).toBe('openai');
+    // Owner-map miss → capabilities stays [], group stays undefined (familyGroup fallback in UI).
+    expect(models[1].capabilities).toEqual([]);
+    expect(models[1].group).toBeUndefined();
+  });
+
+  it('bundled provider: does not enrich from owner map (catalog is authoritative)', async () => {
+    // Bundled fetch — catalog already supplies capabilities. Owner map is
+    // not consulted for in-memory state; the file write still gets owner.
+    const bundledModels = [
+      { id: 'claude-3-5-sonnet', providerId: 'anthropic', capabilities: ['vision'], inputModalities: ['text'] },
+    ];
+    fetchModelsMock.mockResolvedValue({ models: bundledModels });
+    ownerMapMock.mockResolvedValue({
+      'claude-3-5-sonnet': { modelId: 'claude-3-5-sonnet', providerId: 'WRONG', capabilities: ['reasoning'] },
+    });
+    await useModelRegistryStore.getState().fetchModelsForProvider('anthropic', 'sk-test');
+    const s = useModelRegistryStore.getState();
+    // Catalog capabilities preserved; owner map's WRONG providerId ignored.
+    expect(s.modelsByProvider.anthropic![0].capabilities).toEqual(['vision']);
+    expect(s.modelsByProvider.anthropic![0].group).toBeUndefined();
+  });
+
   it('on fetch failure with cached file, repopulates models and appends "使用缓存数据" notice', async () => {
     // Seed cache file first.
     FS.set(

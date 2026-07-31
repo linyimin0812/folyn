@@ -95,8 +95,27 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
     }));
     try {
       const result = await fetchModelsRaw({ provider: providerId, apiKey, baseUrl, azureApiVersion, customProvider, adapterFamily });
+      // ponytail: hoist the owner-map fetch (24h disk-cached, cheap) so we
+      // can enrich the in-memory list for custom providers — the Rust
+      // list_models + merge step leaves custom-provider models with empty
+      // `capabilities` and no `group` (no catalog match). Owner map fills
+      // both: capabilities come from OpenRouter's response, group becomes
+      // the owner providerId so the picker groups by family ("openai",
+      // "anthropic", …) instead of one bucket per id.
+      const ownerMap = await fetchOwnerMap();
+      const isCustom = customProvider === true;
+      const enriched = isCustom
+        ? result.models.map((m) => {
+            const entry = ownerMap[ownerLookupKey(m.id)];
+            return {
+              ...m,
+              capabilities: m.capabilities.length ? m.capabilities : (entry?.capabilities ?? []),
+              group: m.group ?? entry?.providerId,
+            };
+          })
+        : result.models;
       set((s) => ({
-        modelsByProvider: { ...s.modelsByProvider, [providerId]: result.models },
+        modelsByProvider: { ...s.modelsByProvider, [providerId]: enriched },
         fetchStatusByProvider: { ...s.fetchStatusByProvider, [providerId]: 'success' },
         fetchErrorByProvider: { ...s.fetchErrorByProvider, [providerId]: null },
         lastFetchedAtByProvider: {
@@ -106,19 +125,15 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
       }));
       schedulePersist();
       // ponytail: fire-and-forget the file write — cache failure must not
-      // block the main flow. Enrich with `owner` from the OpenRouter owner
-      // map before writing (matches the old refetchAllFromModelsDev
-      // behavior). `fetchOwnerMap` never throws and reads from a 24h
-      // disk cache when fresh. The in-memory store stays `Model[]`
-      // (no owner); owner is a file-only concern for downstream consumers.
+      // block the main flow. The file gets the enriched models + `owner`
+      // field (file-only; the in-memory `Model` type has no `owner`).
       void (async () => {
         try {
-          const ownerMap = await fetchOwnerMap();
-          const enriched = result.models.map((m) => ({
+          const fileModels = enriched.map((m) => ({
             ...m,
             owner: ownerMap[ownerLookupKey(m.id)]?.providerId ?? m.providerId,
           }));
-          await writeUserProviderModels(providerId, enriched);
+          await writeUserProviderModels(providerId, fileModels);
         } catch {
           // best-effort — swallow; cache write is non-critical
         }
