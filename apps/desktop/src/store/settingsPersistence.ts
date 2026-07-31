@@ -68,7 +68,9 @@ function collectPersistedBlob(): Record<string, unknown> {
 const debouncedPersist = debounce(() => {
   for (const slice of SLICES) {
     const data = pickSliceData(slice);
-    console.log('[settingsPersistence] debouncedPersist: writing slice', slice.name, '→ keys =', Object.keys(data));
+    if (slice.name === 'appearance') {
+      console.log('[settingsPersistence] debouncedPersist: writing slice', slice.name, '→ excludePatterns =', JSON.stringify(data.excludePatterns));
+    }
     void storageClient.set(slice.name, data);
   }
   const blob = collectPersistedBlob();
@@ -128,7 +130,11 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
   console.log('[settingsPersistence] loadSettings: SLICES registered =', SLICES.length, SLICES.map(s => s.name));
   for (const slice of SLICES) {
     const data = await storageClient.get<Record<string, unknown>>(slice.name);
-    console.log('[settingsPersistence] loadSettings: slice', slice.name, '→ data keys =', data ? Object.keys(data) : 'null');
+    if (slice.name === 'appearance') {
+      console.log('[settingsPersistence] loadSettings: slice', slice.name, '→ excludePatterns =', JSON.stringify(data?.excludePatterns));
+    } else {
+      console.log('[settingsPersistence] loadSettings: slice', slice.name, '→ data keys =', data ? Object.keys(data) : 'null');
+    }
     if (data) {
       any = true;
       slice.hydrate?.(data);
