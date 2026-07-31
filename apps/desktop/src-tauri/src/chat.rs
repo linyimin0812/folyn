@@ -30,9 +30,11 @@ use crate::errors::AppError;
 const PREAMBLE: &str = "You are Quill's writing assistant. Reply concisely and helpfully.";
 
 /// One chunk pushed down the frontend `Channel`. Tagged so the JS side can
-/// `switch (msg.type)`; `rename_all = "camelCase"` matches the TS shape.
+/// `switch (msg.type)`; `rename_all` renames the variant tag (e.g. `Image` →
+/// `"image"`), `rename_all_fields` renames fields *within* variants
+/// (e.g. `media_type` → `mediaType`) to match the TS shape.
 #[derive(Serialize, Clone)]
-#[serde(tag = "type", rename_all = "camelCase")]
+#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ChatChunk {
     Delta {
         text: String,
@@ -66,6 +68,7 @@ pub enum ChatChunk {
 /// offset. Persisted to `HistoryMsg.images` so reopening a session restores
 /// the image at its original position.
 #[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct AssistantImage {
     pub data: String,
     pub media_type: String,
