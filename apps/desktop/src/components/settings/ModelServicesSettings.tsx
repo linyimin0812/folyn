@@ -84,7 +84,6 @@ export function ModelServicesSettings() {
   const providerSettings = useAiConfigStore((s) => s.providerSettings);
   const manualModelsMap = useAiConfigStore((s) => s.manualModels);
   const addManualModel = useAiConfigStore((s) => s.addManualModel);
-  const removeManualModel = useAiConfigStore((s) => s.removeManualModel);
   const addSelectedModelId = useAiConfigStore((s) => s.addSelectedModelId);
   const removeSelectedModelId = useAiConfigStore((s) => s.removeSelectedModelId);
   const addCustomProvider = useAiConfigStore((s) => s.addCustomProvider);
@@ -251,7 +250,6 @@ export function ModelServicesSettings() {
           onToggleShowChatKey={() => setShowChatKey((v) => !v)}
           onResetBaseUrl={() => setChatBaseUrl('')}
           onRemoveSelectedModel={(id) => removeSelectedModelId(chatProvider, id)}
-          onRemoveManualModel={(id) => removeManualModel(chatProvider, id)}
           onToggleManualCollapsed={(key) => setManualCollapsed((prev) => {
             const next = new Set(prev);
             if (next.has(key)) next.delete(key);

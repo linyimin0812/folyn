@@ -266,7 +266,6 @@ export interface AiConfigState {
 
   /** Add a manually-defined model under a provider (for the picker). */
   addManualModel: (providerId: string, model: Omit<ManualModel, 'createdAt'>) => void;
-  removeManualModel: (providerId: string, modelId: string) => void;
   /** Append a model id to `providerSettings[providerId].selectedModelIds`
    *  (dedup; preserve order). Persists to disk. Called by the model picker
    *  on select so the user's "enabled subset" survives restarts. */
@@ -570,18 +569,6 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     schedulePersist();
   },
 
-  removeManualModel: (providerId, modelId) => {
-    set((s) => {
-      const list = s.manualModels[providerId] ?? [];
-      const next = list.filter((m) => m.id !== modelId);
-      if (next.length === list.length) return s;
-      return {
-        manualModels: { ...s.manualModels, [providerId]: next },
-      };
-    });
-    schedulePersist();
-  },
-
   addSelectedModelId: (providerId, modelId) => {
     const s = get();
     const custom = s.customerProviders[providerId] != null;
@@ -603,7 +590,22 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     const next = patchSettings(s.providerSettings, providerId, {
       selectedModelIds: current.filter((x) => x !== modelId),
     }, custom);
-    set({ providerSettings: next });
+    // ponytail: also drop the manualModels entry if present — a manual model's
+    // metadata is meaningless once the user has unselected it; otherwise the
+    // picker (which synthesizes from manualModels) would still surface it.
+    const manualList = s.manualModels[providerId] ?? [];
+    const manualHas = manualList.some((m) => m.id === modelId);
+    if (manualHas) {
+      set({
+        providerSettings: next,
+        manualModels: {
+          ...s.manualModels,
+          [providerId]: manualList.filter((m) => m.id !== modelId),
+        },
+      });
+    } else {
+      set({ providerSettings: next });
+    }
     schedulePersist();
     void providerConfigStorage.setProviderSettings(providerId, next[providerId]!);
   },

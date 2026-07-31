@@ -56,7 +56,6 @@ interface ProviderDetailSectionProps {
   onToggleShowChatKey: () => void;
   onResetBaseUrl: () => void;
   onRemoveSelectedModel: (id: string) => void;
-  onRemoveManualModel: (id: string) => void;
   onToggleManualCollapsed: (key: string) => void;
   onOpenPicker: () => void;
   onOpenManualModal: () => void;
@@ -97,7 +96,6 @@ export function ProviderDetailSection({
   onToggleShowChatKey,
   onResetBaseUrl,
   onRemoveSelectedModel,
-  onRemoveManualModel,
   onToggleManualCollapsed,
   onOpenPicker,
   onOpenManualModal,
@@ -347,92 +345,6 @@ export function ProviderDetailSection({
                                   }}
                                   title={t('settings:models.picker.remove')}
                                   className="text-emerald-600 hover:text-emerald-700 transition-colors"
-                                >
-                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="5" y1="12" x2="19" y2="12" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
-
-        {/* Manual-added models list — grouped, collapsible, removable. Hidden when chatModel already covers the only manual model. */}
-        {manualForCurrent.length > 0 && (() => {
-          type ManualItem = { id: string; displayName: string; group: string; createdAt: number };
-          const groups = (() => {
-            const map = new Map<string, ManualItem[]>();
-            for (const m of manualForCurrent) {
-              const g = m.group ?? familyGroup(m.id);
-              const arr = map.get(g) ?? [];
-              arr.push(m);
-              map.set(g, arr);
-            }
-            return Array.from(map.entries()).map(([name, items]) => ({ name, items }));
-          })();
-          return (
-            <div className="mt-2 flex flex-col gap-2">
-              {groups.map((g) => {
-                const isCollapsed = manualCollapsed.has(g.name);
-                return (
-                  <div key={g.name} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                    <div
-                      className="flex items-center justify-between px-4 py-2 bg-gray-50/80 border-b border-gray-100 select-none cursor-pointer hover:bg-gray-100/80 transition-colors"
-                      onClick={() => onToggleManualCollapsed(g.name)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <svg
-                          className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="6 9 12 15 18 9" />
-                        </svg>
-                        <span className="font-bold text-[length:calc(var(--ui-font-size)-2.5px)] font-ui text-gray-800">{g.name}</span>
-                        <span className="text-[10.5px] text-gray-400">{g.items.length}</span>
-                      </div>
-                    </div>
-                    {!isCollapsed && (
-                      <div className="bg-white">
-                        {g.items.map((m, idx) => {
-                          const isSelected = m.id === chatModel;
-                          return (
-                            <div
-                              key={m.id}
-                              className={`flex items-center justify-between px-4 py-2.5 hover:bg-gray-50/50 transition-colors cursor-pointer ${
-                                idx < g.items.length - 1 ? 'border-b border-gray-100' : ''
-                              }`}
-                              onClick={() => onSetChatModel(m.id)}
-                            >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <ModelAvatar id={m.id} />
-                                <span className={`font-semibold text-[length:calc(var(--ui-font-size)-2px)] font-ui truncate ${isSelected ? 'text-emerald-600' : 'text-gray-800'}`}>
-                                  {m.displayName ?? m.id}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-[18px] shrink-0">
-                                <button
-                                  type="button"
-                                  title={t('settings:models.picker.remove')}
-                                  className="text-emerald-600 hover:text-emerald-700 transition-colors"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onRemoveManualModel(m.id);
-                                  }}
                                 >
                                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <line x1="5" y1="12" x2="19" y2="12" />

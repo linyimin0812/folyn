@@ -380,6 +380,16 @@ describe('useAiConfigStore.removeSelectedModelId', () => {
     const onDisk = JSON.parse(await readTextFile(path));
     expect(onDisk.anthropic.selectedModelIds).toEqual(['keep']);
   });
+
+  it('also drops the manualModels entry when a manual model is unselected', () => {
+    const store = useAiConfigStore.getState();
+    store.addManualModel('openai', { id: 'my-manual', displayName: 'My Manual', group: 'manual' });
+    store.addSelectedModelId('openai', 'my-manual');
+    store.removeSelectedModelId('openai', 'my-manual');
+    const s = useAiConfigStore.getState();
+    expect(s.providerSettings.openai?.selectedModelIds).toEqual([]);
+    expect(s.manualModels.openai ?? []).toEqual([]);
+  });
 });
 
 describe('useAiConfigStore custom providers', () => {
