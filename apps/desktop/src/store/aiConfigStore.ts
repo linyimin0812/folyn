@@ -4,6 +4,7 @@ import {
   PROVIDER_CATALOG,
   allProviders,
   getProviderEntry,
+  providerBaseUrl,
   providerRequiresApiKey,
 } from '@/services/providers/catalog';
 import {
@@ -56,6 +57,27 @@ function emptySettings(id: string, customProvider = false): ProviderSettings {
     customProvider,
     extra: {},
   };
+}
+
+/** Seed bundled provider's slot.baseUrl with the catalog default when empty.
+ *  Turns the input's placeholder into a real pre-filled value, saved to
+ *  settings.json. Without this, an empty baseUrl silently routes to rig's
+ *  https://api.openai.com/v1 default and misroutes non-OpenAI bundled
+ *  providers (e.g. OpenRouter → 401 from OpenAI). Custom providers have no
+ *  catalog entry; their slot is returned unchanged. */
+function seedBundledBaseUrl(
+  slot: ProviderSettings | undefined,
+  providerId: string,
+  isCustom: boolean,
+  createIfMissing: boolean,
+): ProviderSettings | undefined {
+  if (slot && slot.baseUrl) return slot;
+  if (isCustom) return slot ?? (createIfMissing ? emptySettings(providerId, true) : undefined);
+  if (!slot && !createIfMissing) return undefined;
+  const entry = getProviderEntry(providerId);
+  const catalogBase = entry ? providerBaseUrl(entry) : null;
+  if (!catalogBase) return slot ?? (createIfMissing ? emptySettings(providerId, false) : undefined);
+  return { ...(slot ?? emptySettings(providerId, false)), baseUrl: catalogBase };
 }
 
 export const PROVIDER_CONFIG_MIGRATED_KEY = 'providerConfigMigratedV1';
@@ -392,10 +414,13 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
         ...(s.chatThinkingBudget != null ? { thinkingBudget: s.chatThinkingBudget } : {}),
       },
     }, s.customerProviders[s.chatProvider] != null);
-    const newSlot = oldSlot[v] ?? emptySettings(v, s.customerProviders[v] != null);
+    const isCustom = s.customerProviders[v] != null;
+    // Seed catalog default baseUrl for bundled providers with empty slot —
+    // see seedBundledBaseUrl.
+    const newSlot = seedBundledBaseUrl(oldSlot[v], v, isCustom, true)!;
     set({
       chatProvider: v,
-      providerSettings: oldSlot,
+      providerSettings: { ...oldSlot, [v]: newSlot },
       ...flatMirrors(newSlot),
     });
     schedulePersist();
@@ -712,11 +737,26 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     ]);
 
     const providerId = get().chatProvider;
-    const slot = settings[providerId];
+    const isCustom = customer[providerId] != null;
+    // Seed catalog default baseUrl for the initial provider on first load
+    // (same as setChatProvider, but only when a slot already exists —
+    // creating a slot from nothing would defeat the "empty state on no
+    // disk files" contract). Without this, the input stays empty until
+    // the user switches away and back.
+    let seededSettings = settings;
+    const existingSlot = settings[providerId];
+    if (existingSlot) {
+      const seededSlot = seedBundledBaseUrl(existingSlot, providerId, isCustom, false);
+      if (seededSlot && seededSlot !== existingSlot) {
+        seededSettings = { ...settings, [providerId]: seededSlot };
+        void providerConfigStorage.setProviderSettings(providerId, seededSlot);
+      }
+    }
+    const slotForMirrors = seededSettings[providerId];
     set({
       customerProviders: customer,
-      providerSettings: settings,
-      ...flatMirrors(slot),
+      providerSettings: seededSettings,
+      ...flatMirrors(slotForMirrors),
     });
   },
 }));

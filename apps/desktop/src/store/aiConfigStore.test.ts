@@ -107,6 +107,36 @@ describe('useAiConfigStore setters', () => {
     expect(useAiConfigStore.getState().chatProvider).toBe('openai');
   });
 
+  it('setChatProvider seeds catalog baseUrl for bundled provider with empty slot', () => {
+    // Switching to OpenRouter (bundled) with no prior slot.baseUrl — the
+    // catalog default (https://openrouter.ai/api/v1/) is seeded into both
+    // chatBaseUrl and providerSettings.openrouter.baseUrl. Without this,
+    // the chat/test path sends empty baseUrl and rig defaults to OpenAI.
+    useAiConfigStore.getState().setChatProvider('openrouter');
+    const s = useAiConfigStore.getState();
+    expect(s.chatProvider).toBe('openrouter');
+    expect(s.chatBaseUrl).toMatch(/^https:\/\/openrouter\.ai\//);
+    expect(s.providerSettings.openrouter?.baseUrl).toMatch(/^https:\/\/openrouter\.ai\//);
+  });
+
+  it('setChatProvider does not seed baseUrl for custom provider', () => {
+    useAiConfigStore.setState({
+      customerProviders: {
+        'my-custom': {
+          id: 'my-custom',
+          name: 'My',
+          adapterFamily: 'openai-completions',
+        },
+      },
+    });
+    useAiConfigStore.getState().setChatProvider('my-custom');
+    const s = useAiConfigStore.getState();
+    expect(s.chatProvider).toBe('my-custom');
+    // Custom providers have no catalog entry — baseUrl stays empty.
+    expect(s.chatBaseUrl).toBe('');
+    expect(s.providerSettings['my-custom']?.baseUrl).toBe('');
+  });
+
   it('setChatApiKey updates', () => {
     useAiConfigStore.getState().setChatApiKey('sk-xxx');
     expect(useAiConfigStore.getState().chatApiKey).toBe('sk-xxx');
