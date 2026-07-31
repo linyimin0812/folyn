@@ -52,6 +52,18 @@ import { TestChatModal, type ChatTestStatus } from './model-services/TestChatMod
 import { DeleteProviderConfirmDialog } from './model-services/DeleteProviderConfirmDialog';
 import { RefetchOverlay, type RefetchStatus } from './model-services/RefetchOverlay';
 
+// Preview path for custom providers, keyed by adapterFamily. Mirrors rig's
+// completion_path emits — anthropic/ollama carry their own version prefix,
+// openai shapes expect /v1 in base (normalizeOpenAIBase appends it for the
+// /chat/completions case in ProviderDetailSection).
+const ADAPTER_FAMILY_PATH: Record<string, string> = {
+  'anthropic': '/v1/messages',
+  'openai-completions': '/chat/completions',
+  'openai': '/responses',
+  'gemini': '/v1beta/models',
+  'ollama': '/api/chat',
+};
+
 export function ModelServicesSettings() {
   const { t } = useTranslation();
 
@@ -152,11 +164,9 @@ export function ModelServicesSettings() {
   const requiresAzureFields = providerRequiresAzureFields(entry);
   const apiKeyUrl = providerApiKeyUrl(entry);
   const providersJsonBaseUrl = providerBaseUrl(entry);
+  const customAf = isCustomProvider(entry) ? customerProviders[entry.id]?.adapterFamily : undefined;
   const providersJsonPath = isCustomProvider(entry)
-    // ponytail: Phase 3 — custom provider path preview dropped. adapterFamily
-    // is a bundled id now, not an endpoint key; getEndpointPath would return
-    // null for it. Pre-launch OK to not show the path for custom providers.
-    ? null
+    ? (customAf ? (ADAPTER_FAMILY_PATH[customAf] ?? null) : null)
     : getProviderApiPath(entry.id);
   const docsUrl = getProviderDocsUrl(entry.id);
   const modelsUrl = getProviderModelsUrl(entry.id);
