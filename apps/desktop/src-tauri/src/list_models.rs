@@ -198,10 +198,31 @@ async fn list_openai_shape(p: &ListModelsParams, path: &str) -> Result<Vec<Strin
         .base_url
         .clone()
         .ok_or_else(|| "base_url required".to_string())?;
-    let url = join_url(&base, path);
+    let url = openai_shape_url(&base, path);
     let auth = bearer(&p.api_key);
     let body: IdList = http_get_json(&url, |r| r.header("Authorization", &auth)).await?;
     Ok(body.data.into_iter().map(|m| m.id).collect())
+}
+
+/// Build the OpenAI-shape models URL, deduping `/v1` when the user's base
+/// already ends with a version segment. Mirrors chat.rs's openai arm
+/// (`normalizeOpenAIBase` in the TS side). Bundled callers pass either
+/// `v1/models` (base has no /v1) or `models` (base has /v1); custom
+/// providers' user-supplied base is unpredictable, so strip the `v1/`
+/// prefix from path when base already ends with `/v\d+`.
+/// ponytail: pure — unit tested below.
+fn openai_shape_url(base: &str, path: &str) -> String {
+    let trimmed = base.trim_end_matches('/');
+    let last_seg = trimmed.rsplit('/').next().unwrap_or("");
+    let base_has_version = last_seg.starts_with('v')
+        && last_seg.len() > 1
+        && last_seg.as_bytes()[1].is_ascii_digit();
+    let path_stripped = if base_has_version && path.starts_with("v1/") {
+        &path[3..]
+    } else {
+        path
+    };
+    format!("{}/{}", trimmed, path_stripped)
 }
 
 #[cfg(test)]
@@ -220,6 +241,36 @@ mod tests {
         );
         // xai base already has /v1 — per-provider path is just `models`.
         assert_eq!(join_url("https://api.x.ai/v1", "models"), "https://api.x.ai/v1/models");
+    }
+
+    #[test]
+    fn openai_shape_url_dedupes_v1_when_base_already_has_version() {
+        // Custom provider: user pasted base with /v1 — strip path's `v1/`
+        // prefix so we hit /v1/models, not /v1/v1/models.
+        assert_eq!(
+            openai_shape_url("https://api.vveai.com/v1", "v1/models"),
+            "https://api.vveai.com/v1/models"
+        );
+        assert_eq!(
+            openai_shape_url("https://api.vveai.com/v1/", "v1/models"),
+            "https://api.vveai.com/v1/models"
+        );
+        // Bundled: base without /v1, path `v1/models` → append /v1/models.
+        assert_eq!(
+            openai_shape_url("https://api.openai.com", "v1/models"),
+            "https://api.openai.com/v1/models"
+        );
+        // Bundled: base already has /v1, path is just `models` → no dedup
+        // needed, pass through.
+        assert_eq!(
+            openai_shape_url("https://api.x.ai/v1", "models"),
+            "https://api.x.ai/v1/models"
+        );
+        // Edge: base with /v2 should also dedup (some gateways use v2).
+        assert_eq!(
+            openai_shape_url("https://example.com/v2", "v1/models"),
+            "https://example.com/v2/models"
+        );
     }
 
     #[test]
