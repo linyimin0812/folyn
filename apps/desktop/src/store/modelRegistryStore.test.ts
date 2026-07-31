@@ -65,7 +65,10 @@ describe('useModelRegistryStore.fetchModelsForProvider — file cache + fallback
 
   it('writes fetched models with `owner` enriched from fetchOwnerMap', async () => {
     fetchModelsMock.mockResolvedValue({ models: FAKE_MODELS });
-    ownerMapMock.mockResolvedValue({ 'claude-3-5-sonnet': 'anthropic', 'gpt-4o': 'openai' });
+    ownerMapMock.mockResolvedValue({
+      'claude-3-5-sonnet': { modelId: 'claude-3-5-sonnet', providerId: 'anthropic', capabilities: ['vision'] },
+      'gpt-4o': { modelId: 'gpt-4o', providerId: 'openai', capabilities: ['vision', 'function-call'] },
+    });
     const r = await useModelRegistryStore.getState().fetchModelsForProvider('anthropic', 'sk-test');
     expect(r.ok).toBe(true);
     // Wait for the fire-and-forget write.

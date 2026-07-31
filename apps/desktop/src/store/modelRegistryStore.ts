@@ -108,15 +108,15 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
       // ponytail: fire-and-forget the file write — cache failure must not
       // block the main flow. Enrich with `owner` from the OpenRouter owner
       // map before writing (matches the old refetchAllFromModelsDev
-      // behavior). `fetchOwnerMap` never throws (returns {} on failure) so
-      // owner falls back to providerId. The in-memory store stays `Model[]`
+      // behavior). `fetchOwnerMap` never throws and reads from a 24h
+      // disk cache when fresh. The in-memory store stays `Model[]`
       // (no owner); owner is a file-only concern for downstream consumers.
       void (async () => {
         try {
           const ownerMap = await fetchOwnerMap();
           const enriched = result.models.map((m) => ({
             ...m,
-            owner: ownerMap[ownerLookupKey(m.id)] ?? m.providerId,
+            owner: ownerMap[ownerLookupKey(m.id)]?.providerId ?? m.providerId,
           }));
           await writeUserProviderModels(providerId, enriched);
         } catch {
