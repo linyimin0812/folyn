@@ -1379,3 +1379,39 @@ Fixed selected models on provider settings page showing no capability icons unti
 ### Next Steps
 
 - None - task complete
+
+
+## Session 98: CLI 设置页：打开 adapter 配置文件
+
+**Date**: 2026-07-31
+**Task**: CLI 设置页：打开 adapter 配置文件
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+在 CLI 工具设置页每张 adapter 卡片底部把配置文件路径渲染为链接，点击触发 openFile + 切到 editor 视图。claude→~/.claude/settings.json，pi→~/.pi/agent/models.json。文件不存在时 inline 提示 + 创建按钮（写 adapter 模板）。AdapterDescriptor 新增 settingsFilePath/settingsFileTemplate，listAdapters 透传。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `afebccb` | (see git log) |
+| `d4fff2d` | (see git log) |
+| `fc01a3a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
