@@ -352,7 +352,6 @@ export function DeleteConfirmDialog({ deleteConfirm, onCancel, onConfirm }: Dele
                 {items.slice(0, 20).map((it) => <li key={it.path} className="truncate">{it.name}</li>)}
                 {items.length > 20 && <li className="text-t3">… +{items.length - 20}</li>}
               </ul>
-              {t('sidebar:sidebarActions.deleteConfirm.suffix')}
             </>
           ) : (
             <>
