@@ -119,6 +119,7 @@ export const usePrefsStore = create<PrefsState>((set) => ({
 }));
 
 registerPersistSlice({
+  name: 'prefs',
   keys: PERSIST_KEYS_PREFS,
   getState: () => usePrefsStore.getState() as unknown as Record<string, unknown>,
   hydrate: (blob) => usePrefsStore.getState().hydrate(blob),

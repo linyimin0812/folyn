@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify the registerPersistSlice / schedulePersist / hydrate contract is preserved after the refactor"}

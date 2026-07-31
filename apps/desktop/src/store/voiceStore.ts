@@ -101,6 +101,7 @@ export const useVoiceStore = create<VoiceState>((set) => ({
 }));
 
 registerPersistSlice({
+  name: 'voice',
   keys: PERSIST_KEYS_VOICE,
   getState: () => useVoiceStore.getState() as unknown as Record<string, unknown>,
   hydrate: (blob) => useVoiceStore.getState().hydrate(blob),

@@ -63,6 +63,7 @@ export const useSyncStore = create<SyncState>((set) => ({
 }));
 
 registerPersistSlice({
+  name: 'sync',
   keys: PERSIST_KEYS_SYNC,
   getState: () => useSyncStore.getState() as unknown as Record<string, unknown>,
   hydrate: (blob) => useSyncStore.getState().hydrate(blob),

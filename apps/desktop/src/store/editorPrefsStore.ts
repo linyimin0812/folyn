@@ -69,6 +69,7 @@ export const useEditorPrefsStore = create<EditorPrefsState>((set) => ({
 }));
 
 registerPersistSlice({
+  name: 'editorPrefs',
   keys: PERSIST_KEYS_EDITOR_PREFS,
   getState: () => useEditorPrefsStore.getState() as unknown as Record<string, unknown>,
   hydrate: (blob) => useEditorPrefsStore.getState().hydrate(blob),

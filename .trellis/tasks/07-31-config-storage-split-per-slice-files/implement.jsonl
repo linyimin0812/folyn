@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "registerPersistSlice + schedulePersist + hydrate contract — refactor must preserve this pattern"}
+{"file": ".trellis/tasks/archive/2026-07/07-29-refactor-provider-config-storage-to-quill-dir/research/atomic-write-pattern.md", "reason": "Per-file storage at ~/.quill/ already used by providers; reuse the same path helper + atomic write pattern"}

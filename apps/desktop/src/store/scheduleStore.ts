@@ -597,6 +597,7 @@ export { subscribeToFileTree } from './vaultStore';
 // column, else DEFAULT_BOARD_COLUMNS. This slice is the sole live source
 // (PR2 retargeted columns.ts / SettingsPage / removeBoardColumn here).
 registerPersistSlice({
+  name: 'schedule',
   keys: PERSIST_KEYS_BOARD_COLUMNS,
   getState: () => useScheduleStore.getState() as unknown as Record<string, unknown>,
   hydrate: (blob) => {

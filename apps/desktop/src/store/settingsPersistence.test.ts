@@ -293,18 +293,20 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
 describe('settingsPersistence single writer', () => {
   beforeEach(resetAllDefaults);
 
-  it('persists a single merged blob containing every slice', () => {
+  it('writes each slice to its own file via storageClient.set(slice.name, ...)', () => {
     const setSpy = vi.spyOn(storageClient, 'set');
     useAppearanceStore.getState().setVaultName('a');
     useSyncStore.getState().setSyncBucket('b');
     usePetStore.getState().setPetSize('150');
     vi.advanceTimersByTime(400);
-    // One debounced flush → one storageClient.set call for the whole blob.
-    expect(setSpy).toHaveBeenCalledTimes(1);
-    const payload = setSpy.mock.calls[0][1] as Record<string, unknown>;
-    expect(payload.vaultName).toBe('a');
-    expect(payload.syncBucket).toBe('b');
-    expect(payload.petSize).toBe('150');
+    // One debounced flush → one storageClient.set call per slice.
+    const calls = new Map(setSpy.mock.calls.map(([k, v]) => [k as string, v]));
+    expect(calls.get('appearance')?.vaultName).toBe('a');
+    expect(calls.get('sync')?.syncBucket).toBe('b');
+    expect(calls.get('pet')?.petSize).toBe('150');
+    // Slices are isolated — appearance's payload carries no sync or pet keys.
+    expect(calls.get('appearance')?.syncBucket).toBeUndefined();
+    expect(calls.get('sync')?.petSize).toBeUndefined();
     setSpy.mockRestore();
   });
 });

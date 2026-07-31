@@ -494,6 +494,7 @@ export const usePetStore = create<PetState>((set, get) => ({
 }));
 
 registerPersistSlice({
+  name: 'pet',
   keys: PERSIST_KEYS_PET,
   getState: () => usePetStore.getState() as unknown as Record<string, unknown>,
   hydrate: (blob) => usePetStore.getState().hydrate(blob),

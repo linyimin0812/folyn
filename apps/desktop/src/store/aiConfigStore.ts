@@ -773,6 +773,7 @@ function mergeScriptRuntimes(persisted: unknown): RuntimeConfig[] {
 }
 
 registerPersistSlice({
+  name: 'aiConfig',
   keys: PERSIST_KEYS_AI_CONFIG,
   getState: () => useAiConfigStore.getState() as unknown as Record<string, unknown>,
   hydrate: (blob) => useAiConfigStore.getState().hydrate(blob),

@@ -185,6 +185,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
 export { BUILTIN_EXCLUDE_DIRS };
 
 registerPersistSlice({
+  name: 'appearance',
   keys: PERSIST_KEYS_APPEARANCE,
   getState: () => useAppearanceStore.getState() as unknown as Record<string, unknown>,
   hydrate: (blob) => useAppearanceStore.getState().hydrate(blob),

@@ -9,12 +9,14 @@ import { debounce } from '@/utils/debounce';
 // load, and settingsPersistence learns each store's getState via registration
 // at that store's module init. navStore is never registered (runtime-only).
 
-const SETTINGS_STORAGE_KEY = 'settings:all';
-
 export interface PersistSlice {
+  /** Filename stem under ~/.quill/storage/. Must be filename-safe
+   *  (storageClient sanitizes anyway, but slices use clean stems like
+   *  'prefs', 'editorPrefs', 'pet'). */
+  name: string;
   keys: readonly string[];
   getState: () => Record<string, unknown>;
-  /** Optional: hydrate this store's slice from the persisted blob. Stores
+  /** Optional: hydrate this store's slice from its persisted data. Stores
    *  that own migration logic (petStore, prefsStore, appearanceStore,
    *  scheduleStore.boardColumns) implement this; the loader calls it. */
   hydrate?: (blob: Record<string, unknown>) => void;
@@ -24,17 +26,27 @@ const SLICES: PersistSlice[] = [];
 
 /** Register a store's persisted slice. Called at module init by each
  *  persisted store. Order is irrelevant for correctness (each slice only
- *  reads its own keys from the blob), but a stable registration order makes
- *  the on-disk blob deterministic. */
+ *  reads its own keys), but a stable registration order keeps the on-disk
+ *  file set deterministic. */
 export function registerPersistSlice(slice: PersistSlice): void {
   if (!SLICES.includes(slice)) SLICES.push(slice);
 }
 
-/** Merge every registered slice's keys into a single blob. The union MUST
- *  equal the legacy PERSIST_KEYS allowlist (field-for-field) so a
- *  `settings:all` blob written by the old code round-trips through the new
- *  loader and vice versa. Single writer — schedulePersist is the only path
- *  that writes the blob, matching the legacy debouncedPersist contract. */
+/** Pick a slice's persisted keys from its current state. */
+function pickSliceData(slice: PersistSlice): Record<string, unknown> {
+  const state = slice.getState();
+  const out: Record<string, unknown> = {};
+  for (const key of slice.keys) {
+    if (key in state) out[key] = state[key as keyof typeof state];
+  }
+  return out;
+}
+
+/** Merge every registered slice's keys into a single blob. Used only to
+ *  assemble the `pet://settings-updated` payload — on disk, each slice
+ *  writes its own file. Secondary Tauri windows (pet-corner, pet-bubble,
+ *  pet-panel) lack fs-plugin ACL perms to re-read ~/.quill/storage/ files
+ *  themselves, so they hydrate from the broadcast blob instead. */
 function collectPersistedBlob(): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const slice of SLICES) {
@@ -46,17 +58,18 @@ function collectPersistedBlob(): Record<string, unknown> {
   return out;
 }
 
-/** Debounced persist — single writer, 300ms trailing edge. Matches the
- *  legacy settingsStore `debouncedPersist` (same delay, same single-writer
- *  contract, same storageClient.set call shape). After the write lands,
- *  emits `pet://settings-updated` with the blob as payload so secondary
- *  Tauri windows (pet-corner, pet-bubble, pet-panel) — which hold their
- *  own store instances and don't see in-memory `set()` calls from the
- *  main window, and which lack fs-plugin ACL perms to re-read storage.json
- *  themselves — can hydrate directly from the payload. */
+/** Debounced persist — single writer, 300ms trailing edge. Writes each
+ *  slice to its own file via storageClient.set(slice.name, sliceData), then
+ *  emits `pet://settings-updated` with the whole merged blob so secondary
+ *  Tauri windows (which hold their own store instances and don't see the
+ *  main window's in-memory set() calls, and which lack fs-plugin ACL perms
+ *  to re-read the storage files themselves) can hydrate directly from the
+ *  payload. */
 const debouncedPersist = debounce(() => {
+  for (const slice of SLICES) {
+    void storageClient.set(slice.name, pickSliceData(slice));
+  }
   const blob = collectPersistedBlob();
-  void storageClient.set(SETTINGS_STORAGE_KEY, blob);
   void (async () => {
     try {
       const { emit } = await import('@tauri-apps/api/event');
@@ -67,11 +80,7 @@ const debouncedPersist = debounce(() => {
   })();
 }, 300);
 
-/** Called by every persisted store's setter to schedule a debounced write.
- *  Tracing the legacy behavior: each old setter called
- *  `debouncedPersist(useSettingsStore.getState())` which re-picked the whole
- *  PERSIST_KEYS allowlist; here we re-collect from every registered slice
- *  instead, but the on-disk blob is identical. */
+/** Called by every persisted store's setter to schedule a debounced write. */
 export function schedulePersist(): void {
   debouncedPersist();
 }
@@ -85,29 +94,37 @@ export function hydrateAllStores(blob: Record<string, unknown>): void {
   }
 }
 
-/** On startup, read the single `settings:all` blob and dispatch each store's
- *  slice to its own `hydrate`. navStore is skipped (runtime-only). Returns
- *  the raw blob (or null) so callers can inspect it. */
+/** On startup, read each slice's file and dispatch to its own `hydrate`,
+ *  then assemble the merged blob for the secondary-window broadcast.
+ *  Provider config lives in ~/.quill/providers/ — load from disk AFTER the
+ *  per-slice hydrate so chatProvider is already set when we read the
+ *  matching slot into the flat mirrors. Lazy import breaks the store→
+ *  settingsPersistence→store cycle (aiConfigStore imports schedulePersist
+ *  at module load; this module importing aiConfigStore at top would
+ *  create the cycle). Returns the merged blob (or null) so callers can
+ *  inspect it. */
 export async function loadSettings(): Promise<Record<string, unknown> | null> {
-  const blob = await storageClient.get<Record<string, unknown>>(SETTINGS_STORAGE_KEY);
-  if (blob) hydrateAllStores(blob);
-  // Provider config lives in ~/.quill/providers/ — load from disk AFTER the
-  // storage.json hydrate so chatProvider is already set when we read the
-  // matching slot into the flat mirrors. Lazy import breaks the store→
-  // settingsPersistence→store cycle (aiConfigStore imports schedulePersist
-  // at module load; this module importing aiConfigStore at top would
-  // create the cycle).
+  const blob: Record<string, unknown> = {};
+  let any = false;
+  for (const slice of SLICES) {
+    const data = await storageClient.get<Record<string, unknown>>(slice.name);
+    if (data) {
+      any = true;
+      slice.hydrate?.(data);
+      for (const k of Object.keys(data)) blob[k] = data[k];
+    }
+  }
   try {
     const { useAiConfigStore } = await import('./aiConfigStore');
     await useAiConfigStore.getState().loadFromDisk();
   } catch (err) {
     console.warn('[settingsPersistence] Provider config load failed:', err);
   }
-  if (!blob) return null;
+  if (!any) return null;
   // Broadcast to secondary Tauri windows (pet-bubble / pet-corner /
   // pet-panel) which hold their own store instances but lack fs-plugin ACL
-  // perms to re-read storage.json themselves. Without this, the bubble
-  // window's petStore stays at defaults (petSize='100') on startup —
+  // perms to re-read ~/.quill/storage/ files themselves. Without this, the
+  // bubble window's petStore stays at defaults (petSize='100') on startup —
   // `computeBubblePosition` then sizes the gap against the wrong pet
   // footprint, and larger pets ('125' / '150') get the bubble window's top
   // inside the pet window → pet occludes the bubble on `bottom` placement.
@@ -127,9 +144,3 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
 // orphan sweep in usePetHostBridge) MUST await this before touching the store
 // — otherwise they read default state and clobber the persisted value.
 export const settingsLoadDone: Promise<void> = loadSettings().then(() => undefined, () => undefined);
-
-// ponytail: `settingsLoadDone` (above) is the single eager-load entry — a
-// top-level const starts the promise at module import. The pre-split
-// settingsStore did the same with `storageClient.get(...).then(...)` at module
-// bottom. Errors are swallowed — a missing blob is the normal first-launch
-// case.

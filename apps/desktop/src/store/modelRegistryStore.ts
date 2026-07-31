@@ -259,6 +259,7 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
 }));
 
 registerPersistSlice({
+  name: 'modelRegistry',
   keys: PERSIST_KEYS_MODEL_REGISTRY,
   getState: () => useModelRegistryStore.getState() as unknown as Record<string, unknown>,
   hydrate: (blob) => useModelRegistryStore.getState().hydrate(blob),

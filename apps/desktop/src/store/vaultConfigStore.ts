@@ -51,6 +51,7 @@ export const useVaultConfigStore = create<VaultConfigState>((set) => ({
 }));
 
 registerPersistSlice({
+  name: 'vault',
   keys: PERSIST_KEYS_VAULT_CONFIG,
   getState: () => useVaultConfigStore.getState() as unknown as Record<string, unknown>,
   hydrate: (blob) => useVaultConfigStore.getState().hydrate(blob),
