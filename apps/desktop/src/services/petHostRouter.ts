@@ -112,6 +112,14 @@ export async function routePetMenuAction(
     }
     case 'exit-app':
       try {
+        // Flush persisted settings BEFORE invoking exit_app — Rust
+        // `app.exit(0)` terminates the process before the reply is
+        // delivered, so any pending debounced write (300ms in
+        // storageClient) would be dropped. The window-close path is
+        // covered by App.tsx's onCloseRequested listener; this covers
+        // the pet right-click "退出应用" menu item.
+        const { persistNow } = await import('../store/settingsPersistence');
+        await persistNow();
         const { invoke } = await import('@tauri-apps/api/core');
         // Rust `exit_app` calls `app.exit(0)` — the process terminates
         // before the reply can be delivered, so this await never resolves.

@@ -72,6 +72,24 @@ export const storageClient = {
     scheduleFlush();
   },
 
+  /** Cancel pending debounce + write every dirty key to disk now. Awaited
+   *  by exit/close paths (settingsPersistence.persistNow) so a quit within
+   *  the 300ms debounce window does not lose the last setter's write. */
+  async flushNow(): Promise<void> {
+    scheduleFlush.cancel();
+    const keys = [...dirty];
+    dirty.clear();
+    if (keys.length === 0) return;
+    try {
+      for (const key of keys) {
+        const filePath = await filePathFor(key);
+        await writeTextFile(filePath, JSON.stringify(cache.get(key), null, 2));
+      }
+    } catch (err) {
+      console.warn('[storageClient] flushNow failed:', err);
+    }
+  },
+
   async remove(key: string): Promise<void> {
     cache.delete(key);
     dirty.delete(key);

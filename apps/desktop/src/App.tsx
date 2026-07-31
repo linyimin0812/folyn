@@ -18,7 +18,7 @@ import { usePetHostBridge } from './hooks/usePetHostBridge';
 import { useNavStore } from './store/navStore';
 import { useAppearanceStore } from './store/appearanceStore';
 import { useVaultStore } from './store/vaultStore';
-import { settingsLoadDone } from './store/settingsPersistence';
+import { settingsLoadDone, persistNow } from './store/settingsPersistence';
 import { useEditorStore } from './store/editorStore';
 import * as editorIoService from './services/editorIoService';
 import { registerEditorFileChangeApplier } from './services/fileChangeApplier';
@@ -551,6 +551,38 @@ export default function App() {
         });
       } catch (err) {
         console.warn('[App] open-external-file listener setup failed:', err);
+      }
+      if (cancelled) unlisten?.();
+    })();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
+
+  // ponytail: flush persisted settings before the window closes. The 300ms
+  // debounce in storageClient would otherwise drop the last setter's write
+  // if the user changes a setting and Cmd+Q / closes the window within
+  // that window. pet menu "退出应用" goes through routePetMenuAction which
+  // also awaits persistNow; this listener covers Cmd+Q and window-close.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        unlisten = await getCurrentWindow().onCloseRequested(async (e) => {
+          e.preventDefault();
+          try {
+            await persistNow();
+          } catch (err) {
+            console.warn('[App] persistNow on close failed:', err);
+          }
+          await getCurrentWindow().destroy();
+        });
+      } catch (err) {
+        console.warn('[App] close-requested listener setup failed:', err);
       }
       if (cancelled) unlisten?.();
     })();

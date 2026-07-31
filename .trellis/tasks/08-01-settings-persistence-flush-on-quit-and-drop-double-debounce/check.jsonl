@@ -1,0 +1,4 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "verify slice 注册 + 单 writer 模式未被破坏"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "单测 / typecheck 通过"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Promise.race + Map resolver 的类型签名"}

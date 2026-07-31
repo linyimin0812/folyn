@@ -8,7 +8,7 @@ import { useAiConfigStore } from './aiConfigStore';
 import { usePrefsStore, DEFAULT_SHORTCUTS } from './prefsStore';
 import { usePetStore } from './petStore';
 import { useScheduleStore } from './scheduleStore';
-import { loadSettings, hydrateAllStores } from './settingsPersistence';
+import { loadSettings, hydrateAllStores, persistNow } from './settingsPersistence';
 import { PET_SIZE_VERSION } from '@/components/pet/petPosition';
 
 beforeEach(() => {
@@ -310,3 +310,22 @@ describe('settingsPersistence single writer', () => {
     setSpy.mockRestore();
   });
 });
+
+describe('settingsPersistence flush-on-quit', () => {
+  beforeEach(resetAllDefaults);
+
+  it('persistNow writes through without waiting for the 300ms debounce', async () => {
+    // Mutate a field WITHOUT advancing the debounce timer — simulates the
+    // user changing a setting and quitting within 300ms.
+    useAppearanceStore.getState().setVaultName('quit-flush');
+    // persistNow must cancel the pending debounce + write to disk now.
+    await persistNow();
+    // Reset store + cache, reload — the value must round-trip even though
+    // the 300ms debounce never fired.
+    storageClient.__resetForTesting();
+    useAppearanceStore.setState({ vaultName: 'my-vault' }, false);
+    await loadSettings();
+    expect(useAppearanceStore.getState().vaultName).toBe('quit-flush');
+  });
+});
+

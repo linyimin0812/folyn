@@ -1,13 +1,12 @@
 import { storageClient } from '@/utils/storageClient';
-import { debounce } from '@/utils/debounce';
 
-// ponytail: This module owns the single-writer debounced persist + the store
-// slice registry. It deliberately imports NOTHING from any store — stores
-// register their slices via registerPersistSlice(). This breaks the cycle
+// ponytail: This module owns the single-writer persist + the store slice
+// registry. It deliberately imports NOTHING from any store — stores register
+// their slices via registerPersistSlice(). This breaks the cycle
 // (store → settingsPersistence → store) that a top-level import would create:
-// each store imports schedulePersist (a hoisted function binding) at module
-// load, and settingsPersistence learns each store's getState via registration
-// at that store's module init. navStore is never registered (runtime-only).
+// each store imports schedulePersist at module load, and settingsPersistence
+// learns each store's getState via registration at that store's module init.
+// navStore is never registered (runtime-only).
 
 export interface PersistSlice {
   /** Filename stem under ~/.quill/storage/. Must be filename-safe
@@ -23,6 +22,17 @@ export interface PersistSlice {
 }
 
 const SLICES: PersistSlice[] = [];
+
+// ponytail: expected slice names — every persisted store must register. We
+// don't gate loadSettings on these (the original `await import` was just a
+// microtask yield that happened to let App.tsx's static imports finish
+// evaluating); we only warn if a slice is missing at hydrate time so the
+// next "settings disappeared on restart" bug surfaces a clear log line
+// instead of silent data loss. New persisted store? Add its name here.
+const EXPECTED_SLICES = [
+  'prefs', 'editorPrefs', 'pet', 'appearance', 'sync', 'voice',
+  'vault', 'schedule', 'modelRegistry', 'aiConfig',
+] as const;
 
 /** Register a store's persisted slice. Called at module init by each
  *  persisted store. Order is irrelevant for correctness (each slice only
@@ -58,32 +68,34 @@ function collectPersistedBlob(): Record<string, unknown> {
   return out;
 }
 
-/** Debounced persist — single writer, 300ms trailing edge. Writes each
- *  slice to its own file via storageClient.set(slice.name, sliceData), then
- *  emits `pet://settings-updated` with the whole merged blob so secondary
- *  Tauri windows (which hold their own store instances and don't see the
- *  main window's in-memory set() calls, and which lack fs-plugin ACL perms
- *  to re-read the storage files themselves) can hydrate directly from the
- *  payload. */
-const debouncedPersist = debounce(() => {
-  for (const slice of SLICES) {
-    const data = pickSliceData(slice);
-    void storageClient.set(slice.name, data);
-  }
-  const blob = collectPersistedBlob();
-  void (async () => {
-    try {
-      const { emit } = await import('@tauri-apps/api/event');
-      await emit('pet://settings-updated', blob);
-    } catch {
-      // Non-tauri (tests) or emit failed — non-fatal.
-    }
-  })();
-}, 300);
-
-/** Called by every persisted store's setter to schedule a debounced write. */
+/** Called by every persisted store's setter. Writes through to storageClient
+ *  immediately — storageClient owns the 300ms trailing-edge debounce that
+ *  coalesces disk writes. The old outer debounce layered another 300ms on
+ *  top (600ms setter→disk); removing it halves the write window and the
+ *  flush-on-quit path (persistNow) covers the close/exit race. */
 export function schedulePersist(): void {
-  debouncedPersist();
+  for (const slice of SLICES) {
+    void storageClient.set(slice.name, pickSliceData(slice));
+  }
+}
+
+/** Synchronous flush: cancel pending debounce + write every dirty slice to
+ *  disk now. Awaited by App.tsx onCloseRequested and petHostRouter exit-app
+ *  so a quit within the 300ms debounce window does not lose the last
+ *  setter's write. Also broadcasts the merged blob to secondary Tauri
+ *  windows so their in-memory stores don't lose the last change either. */
+export async function persistNow(): Promise<void> {
+  for (const slice of SLICES) {
+    await storageClient.set(slice.name, pickSliceData(slice));
+  }
+  await storageClient.flushNow();
+  const blob = collectPersistedBlob();
+  try {
+    const { emit } = await import('@tauri-apps/api/event');
+    await emit('pet://settings-updated', blob);
+  } catch {
+    // Non-tauri (tests) or emit failed — non-fatal.
+  }
 }
 
 /** Dispatch a persisted blob to every registered slice's hydrate. Exported so
@@ -103,18 +115,25 @@ export function hydrateAllStores(blob: Record<string, unknown>): void {
  *  settingsPersistence→store cycle (aiConfigStore imports schedulePersist
  *  at module load; this module importing aiConfigStore at top would
  *  create the cycle). Returns the merged blob (or null) so callers can
- *  inspect it.
- *
- *  ponytail: the `await import('./aiConfigStore')` MUST come BEFORE the
- *  slice-hydration loop. `settingsLoadDone` at the bottom of this file is
- *  started eagerly at module init — which runs DURING settingsPersistence's
- *  own evaluation, before any store has called registerPersistSlice (SLICES
- *  is still []). The `await import` yields long enough for the App's import
- *  graph to resolve and all slices to register; without it, the for-loop
- *  runs 0 iterations and nothing gets hydrated (regression observed when
- *  this loop was placed before the await — user-hidden folders reappeared
- *  on restart because excludePatterns never loaded). */
+ *  inspect it. */
 export async function loadSettings(): Promise<Record<string, unknown> | null> {
+  // Yield one microtask so App.tsx's static imports finish evaluating and
+  // every persisted store has called registerPersistSlice. Without this,
+  // SLICES is still [] when we reach the loop (settingsLoadDone at the bottom
+  // of this file starts eagerly during this module's own evaluation, before
+  // any store has registered).
+  await Promise.resolve();
+  const missing = EXPECTED_SLICES.filter(
+    (n) => !SLICES.some((s) => s.name === n),
+  );
+  if (missing.length > 0) {
+    console.warn(
+      '[settingsPersistence] hydrate loop starting with unregistered slices:',
+      missing,
+      '— their persisted state will be skipped this launch.',
+    );
+  }
+
   try {
     const { useAiConfigStore } = await import('./aiConfigStore');
     await useAiConfigStore.getState().loadFromDisk();
@@ -141,7 +160,7 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
   // footprint, and larger pets ('125' / '150') get the bubble window's top
   // inside the pet window → pet occludes the bubble on `bottom` placement.
   // The same `pet://settings-updated` channel is also emitted by
-  // `debouncedPersist` on every setter, so subsequent changes propagate.
+  // `persistNow` on every setter, so subsequent changes propagate.
   try {
     const { emit } = await import('@tauri-apps/api/event');
     await emit('pet://settings-updated', blob);
