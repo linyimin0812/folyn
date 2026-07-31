@@ -3,7 +3,7 @@ import { registerPersistSlice, schedulePersist } from './settingsPersistence';
 import { fetchModels as fetchModelsRaw } from '@/services/modelRegistry/fetchModels';
 import { providerRequiresApiKey, type ProviderEntry } from '@/services/providers/catalog';
 import { readUserProviderModels, writeUserProviderModels } from '@/services/modelRegistry/userProvidersCatalog';
-import { fetchOwnerMap, ownerLookupKey } from '@/services/modelRegistry/fetchOwnerMap';
+import { fetchOwnerMap, ownerLookupKey, type OwnerMap } from '@/services/modelRegistry/fetchOwnerMap';
 import type { Model } from '@/services/modelRegistry/types';
 
 /**
@@ -32,6 +32,13 @@ export interface ModelRegistryState {
   fetchErrorByProvider: Record<string, string | null>;
   /** Per-provider epoch ms of last successful fetch. */
   lastFetchedAtByProvider: Record<string, number>;
+
+  /** Owner map (OpenRouter-derived {modelId → {providerId, capabilities}}).
+   *  Loaded once on first need; 24h disk-cached underneath. Shared across
+   *  UI consumers (manual model enrichment) + fetch enrichment. */
+  ownerMap: OwnerMap;
+  /** Populate `ownerMap` if empty. Idempotent; safe to call repeatedly. */
+  loadOwnerMap: () => Promise<void>;
 
   /** Single-provider fetch + write-through. */
   fetchModelsForProvider: (
@@ -87,6 +94,18 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
   fetchStatusByProvider: {},
   fetchErrorByProvider: {},
   lastFetchedAtByProvider: {},
+  ownerMap: {},
+
+  loadOwnerMap: async () => {
+    if (Object.keys(get().ownerMap).length > 0) return;
+    try {
+      const map = await fetchOwnerMap();
+      set({ ownerMap: map });
+    } catch {
+      // ponytail: owner map is a cosmetic enrichment — swallow errors so
+      // UI flows that depend on it (manual model capabilities) still work.
+    }
+  },
 
   fetchModelsForProvider: async (providerId, apiKey, baseUrl, azureApiVersion, customProvider, adapterFamily) => {
     set((s) => ({
@@ -102,18 +121,30 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
       // both: capabilities come from OpenRouter's response, group becomes
       // the owner providerId so the picker groups by family ("openai",
       // "anthropic", …) instead of one bucket per id.
-      const ownerMap = await fetchOwnerMap();
+      // ponytail: reuse store-cached ownerMap; fall back to fetch+cache.
+      let ownerMap = get().ownerMap;
+      if (Object.keys(ownerMap).length === 0) {
+        try {
+          ownerMap = await fetchOwnerMap();
+          set({ ownerMap });
+        } catch {
+          ownerMap = {};
+        }
+      }
       const isCustom = customProvider === true;
-      const enriched = isCustom
-        ? result.models.map((m) => {
-            const entry = ownerMap[ownerLookupKey(m.id)];
-            return {
-              ...m,
-              capabilities: m.capabilities.length ? m.capabilities : (entry?.capabilities ?? []),
-              group: m.group ?? entry?.providerId,
-            };
-          })
-        : result.models;
+      const enriched = result.models.map((m) => {
+        const entry = ownerMap[ownerLookupKey(m.id)];
+        // ponytail: capabilities filled from ownerMap when empty — catalog
+        // values are authoritative when present, but Rust list_models +
+        // merge leave many cataloged-provider models with [] (no catalog
+        // hit). Group enrichment stays custom-only (catalog group is
+        // authoritative for bundled providers).
+        return {
+          ...m,
+          capabilities: m.capabilities.length ? m.capabilities : (entry?.capabilities ?? []),
+          ...(isCustom ? { group: m.group ?? entry?.providerId } : {}),
+        };
+      });
       set((s) => ({
         modelsByProvider: { ...s.modelsByProvider, [providerId]: enriched },
         fetchStatusByProvider: { ...s.fetchStatusByProvider, [providerId]: 'success' },
@@ -187,6 +218,7 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
       fetchStatusByProvider: {},
       fetchErrorByProvider: {},
       lastFetchedAtByProvider: {},
+      ownerMap: {},
     });
   },
 

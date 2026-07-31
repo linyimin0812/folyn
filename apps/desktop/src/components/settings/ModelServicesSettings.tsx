@@ -14,9 +14,10 @@
  * backend changes needed.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAiConfigStore } from '@/store/aiConfigStore';
+import { ownerLookupKey } from '@/services/modelRegistry/fetchOwnerMap';
 import {
   PROVIDER_CATALOG,
   allProviders,
@@ -92,19 +93,31 @@ export function ModelServicesSettings() {
   // ── model registry reads ────────────────────────────────────
   const fetchedModels = useModelRegistryStore((s) => s.modelsByProvider[chatProvider] ?? EMPTY_MODELS);
   const manualForCurrent = manualModelsMap[chatProvider] ?? EMPTY_MANUAL;
+  // ponytail: owner map is 24h disk-cached and shared via modelRegistryStore;
+  // manual models pull capabilities from it (fetchModelsForProvider only
+  // enriches fetched models for custom providers — manual entries get []
+  // otherwise).
+  const ownerMap = useModelRegistryStore((s) => s.ownerMap);
+  const loadOwnerMap = useModelRegistryStore((s) => s.loadOwnerMap);
+  useEffect(() => {
+    void loadOwnerMap();
+  }, [loadOwnerMap]);
   const modelsForCurrent = useMemo(() => {
     if (manualForCurrent.length === 0) return fetchedModels;
     const existingIds = new Set(fetchedModels.map((m) => m.id));
-    const manual: Model[] = manualForCurrent.map((m) => ({
-      id: m.id,
-      providerId: chatProvider,
-      capabilities: [],
-      inputModalities: [],
-      displayName: m.displayName,
-      group: m.group,
-    }));
+    const manual: Model[] = manualForCurrent.map((m) => {
+      const ownerEntry = ownerMap[ownerLookupKey(m.id)];
+      return {
+        id: m.id,
+        providerId: chatProvider,
+        capabilities: ownerEntry?.capabilities ?? [],
+        inputModalities: [],
+        displayName: m.displayName,
+        group: m.group ?? ownerEntry?.providerId,
+      };
+    });
     return [...fetchedModels, ...manual.filter((m) => !existingIds.has(m.id))];
-  }, [fetchedModels, manualForCurrent, chatProvider]);
+  }, [fetchedModels, manualForCurrent, chatProvider, ownerMap]);
   const fetchStatusForCurrent = useModelRegistryStore((s) => s.fetchStatusByProvider[chatProvider] ?? 'idle');
   const fetchErrorForCurrent = useModelRegistryStore((s) => s.fetchErrorByProvider[chatProvider] ?? null);
   const fetchModelsForProvider = useModelRegistryStore((s) => s.fetchModelsForProvider);

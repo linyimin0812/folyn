@@ -117,21 +117,28 @@ describe('useModelRegistryStore.fetchModelsForProvider — file cache + fallback
     expect(models[1].group).toBeUndefined();
   });
 
-  it('bundled provider: does not enrich from owner map (catalog is authoritative)', async () => {
-    // Bundled fetch — catalog already supplies capabilities. Owner map is
-    // not consulted for in-memory state; the file write still gets owner.
+  it('bundled provider: catalog capabilities authoritative; empty caps fall back to owner map', async () => {
+    // Bundled fetch — catalog already supplies capabilities for some. Owner
+    // map is consulted as fallback when catalog returns [] (Rust list_models
+    // returns [] for any model not in the bundled catalog). Group stays
+    // undefined for bundled providers (catalog group is authoritative).
     const bundledModels = [
       { id: 'claude-3-5-sonnet', providerId: 'anthropic', capabilities: ['vision'], inputModalities: ['text'] },
+      { id: 'qwen/qwen3.7-flash', providerId: 'openrouter', capabilities: [], inputModalities: ['text'] },
     ];
     fetchModelsMock.mockResolvedValue({ models: bundledModels });
     ownerMapMock.mockResolvedValue({
       'claude-3-5-sonnet': { modelId: 'claude-3-5-sonnet', providerId: 'WRONG', capabilities: ['reasoning'] },
+      'qwen3.7-flash': { modelId: 'qwen3.7-flash', providerId: 'qwen', capabilities: ['vision', 'reasoning'] },
     });
     await useModelRegistryStore.getState().fetchModelsForProvider('anthropic', 'sk-test');
     const s = useModelRegistryStore.getState();
-    // Catalog capabilities preserved; owner map's WRONG providerId ignored.
+    // Non-empty catalog caps preserved; owner map's WRONG providerId ignored.
     expect(s.modelsByProvider.anthropic![0].capabilities).toEqual(['vision']);
     expect(s.modelsByProvider.anthropic![0].group).toBeUndefined();
+    // Empty catalog caps filled from owner map; group stays undefined (bundled).
+    expect(s.modelsByProvider.anthropic![1].capabilities).toEqual(['vision', 'reasoning']);
+    expect(s.modelsByProvider.anthropic![1].group).toBeUndefined();
   });
 
   it('on fetch failure with cached file, repopulates models and appends "使用缓存数据" notice', async () => {
