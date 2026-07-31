@@ -102,6 +102,38 @@ pub struct ChatParams {
     /// Replaces the old endpoint-key enum indirection.
     #[serde(default)]
     pub adapter_family: Option<String>,
+    /// Per-turn history handling. Absent → `LoadSave` (load before, save
+    /// after) — the chat-mode default. `None` skips both: used by
+    /// `testChatConnection` so repeated 检测连接 clicks don't accumulate
+    /// turns in `__connection_test__.json` and blow the upstream context
+    /// window. `LoadOnly` / `SaveOnly` reserved for future callers.
+    #[serde(default)]
+    pub history_mode: Option<HistoryMode>,
+}
+
+/// How `chat_stream` handles the on-disk session history for one call.
+/// Serialized as camelCase to match the TS-side string literal union
+/// ('loadSave' | 'none' | 'loadOnly' | 'saveOnly').
+#[derive(Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum HistoryMode {
+    LoadSave,
+    None,
+    LoadOnly,
+    SaveOnly,
+}
+
+/// Pure helper for `chat_stream`: map a `HistoryMode` to (should_load,
+/// should_save). Extracted so the gate logic is unit-testable without
+/// spinning up a provider. `None` mode (no load, no save) is the
+/// connection-test path.
+fn history_flags(mode: HistoryMode) -> (bool, bool) {
+    match mode {
+        HistoryMode::LoadSave => (true, true),
+        HistoryMode::None => (false, false),
+        HistoryMode::LoadOnly => (true, false),
+        HistoryMode::SaveOnly => (false, true),
+    }
 }
 
 /// Phase 3: pick the rig adapter family id a chat turn routes to.
@@ -250,7 +282,17 @@ pub async fn chat_stream(
     // preamble is set on the agent, not stored per-session. User turns carry
     // their original image content blocks so multi-turn visual context
     // survives across reopens.
-    let history: Vec<Message> = load_history(&app, &params.session_id)?
+    //
+    // history_mode gates this: None / SaveOnly skip the load (send only the
+    // live prompt). Default LoadSave + LoadOnly load.
+    let history_mode = params.history_mode.unwrap_or(HistoryMode::LoadSave);
+    let (should_load, should_save) = history_flags(history_mode);
+    let loaded: Vec<HistoryMsg> = if should_load {
+        load_history(&app, &params.session_id)?
+    } else {
+        Vec::new()
+    };
+    let history: Vec<Message> = loaded
         .into_iter()
         .filter_map(|m| match m.role.as_str() {
             "user" => Some(build_user_message(&m.content, m.images.as_deref(), &on_event)),
@@ -504,18 +546,23 @@ pub async fn chat_stream(
     // reasoning is not resumable across turns) and the on-disk
     // `HistoryMsg` shape stays `{role, content}` only. Re-running a turn
     // regenerates reasoning fresh.
-    let mut hist = load_history(&app, &params.session_id)?;
-    hist.push(HistoryMsg {
-        role: "user".into(),
-        content: params.prompt,
-        images: params.images.clone(),
-    });
-    hist.push(HistoryMsg {
-        role: "assistant".into(),
-        content: full,
-        images: None,
-    });
-    save_history(&app, &params.session_id, &hist)?;
+    //
+    // history_mode gates this: None / LoadOnly skip the save. Default
+    // LoadSave + SaveOnly persist.
+    if should_save {
+        let mut hist = load_history(&app, &params.session_id)?;
+        hist.push(HistoryMsg {
+            role: "user".into(),
+            content: params.prompt,
+            images: params.images.clone(),
+        });
+        hist.push(HistoryMsg {
+            role: "assistant".into(),
+            content: full,
+            images: None,
+        });
+        save_history(&app, &params.session_id, &hist)?;
+    }
 
     Ok(())
 }
@@ -664,6 +711,7 @@ mod tests {
             azure_api_version: None,
             thinking_budget: None,
             adapter_family: adapter_family.map(|s| s.to_string()),
+            history_mode: None,
         }
     }
 
@@ -691,5 +739,38 @@ mod tests {
         // custom id lands in the `_` openai-compat arm.
         let params = mk_params("my-oneapi", None);
         assert_eq!(resolve_adapter_family(&params), "my-oneapi");
+    }
+
+    // HistoryMode: connection-test path. The gate is a pure fn so we can
+    // unit-test the (load, save) mapping without spinning up a provider.
+    #[test]
+    fn history_flags_mapping() {
+        assert_eq!(history_flags(HistoryMode::LoadSave), (true, true));
+        assert_eq!(history_flags(HistoryMode::None), (false, false));
+        assert_eq!(history_flags(HistoryMode::LoadOnly), (true, false));
+        assert_eq!(history_flags(HistoryMode::SaveOnly), (false, true));
+    }
+
+    #[test]
+    fn history_mode_serde_camel_case() {
+        // TS side sends string literals; Rust must accept the camelCase
+        // form. Verifies the serde rename on the enum.
+        let load_save: HistoryMode = serde_json::from_str("\"loadSave\"").unwrap();
+        assert_eq!(load_save, HistoryMode::LoadSave);
+        let none: HistoryMode = serde_json::from_str("\"none\"").unwrap();
+        assert_eq!(none, HistoryMode::None);
+        let load_only: HistoryMode = serde_json::from_str("\"loadOnly\"").unwrap();
+        assert_eq!(load_only, HistoryMode::LoadOnly);
+        let save_only: HistoryMode = serde_json::from_str("\"saveOnly\"").unwrap();
+        assert_eq!(save_only, HistoryMode::SaveOnly);
+    }
+
+    #[test]
+    fn chatparams_history_mode_absent_defaults_to_none_option() {
+        // Absent field deserializes to Option::None — the chat_stream
+        // default (LoadSave) is applied at the call site via unwrap_or.
+        let json = r#"{"sessionId":"s","provider":"openai","model":"m","apiKey":"k","prompt":"p"}"#;
+        let params: ChatParams = serde_json::from_str(json).unwrap();
+        assert!(params.history_mode.is_none());
     }
 }

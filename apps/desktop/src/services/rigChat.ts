@@ -26,6 +26,8 @@ export interface RigChatImage {
   mediaType: string;
 }
 
+export type HistoryMode = 'loadSave' | 'none' | 'loadOnly' | 'saveOnly';
+
 export interface RigChatParams {
   /** App session id — rig persists history to `~/.quill/chat-sessions/<id>.json`. */
   sessionId: string;
@@ -49,6 +51,10 @@ export interface RigChatParams {
    *  / "ollama" / "gemini" / "openai"). Same value space as `provider` for
    *  bundled providers. Rust falls back to `provider.as_str()` when absent. */
   adapterFamily?: string;
+  /** Per-turn history handling. Default `loadSave` (load + persist).
+   *  `none` skips both — used by `testChatConnection` so repeated connection
+   *  tests don't accumulate turns in `__connection_test__.json`. */
+  historyMode?: HistoryMode;
   /** Optional preamble (system prompt) override. When omitted, the rig
    *  backend uses its built-in default. The Bubble Template AI Agent
    *  passes its feature-specific preamble here. */
@@ -92,6 +98,7 @@ export async function runRigChat(p: RigChatParams): Promise<void> {
       azureApiVersion: p.azureApiVersion ?? null,
       thinkingBudget: p.thinkingBudget ?? null,
       adapterFamily: p.adapterFamily ?? null,
+      historyMode: p.historyMode ?? null,
       prompt: p.prompt,
       preamble: p.preamble ?? null,
       images: p.images && p.images.length > 0 ? p.images : null,
@@ -147,6 +154,7 @@ export async function testChatConnection(params: {
       azureDeploymentId,
       azureApiVersion,
       adapterFamily,
+      historyMode: 'none',
       onEvent: (e) => {
         if (settled) return;
         if (e.type === 'done') {
