@@ -30,7 +30,7 @@ const SLICES: PersistSlice[] = [];
 // next "settings disappeared on restart" bug surfaces a clear log line
 // instead of silent data loss. New persisted store? Add its name here.
 const EXPECTED_SLICES = [
-  'prefs', 'editorPrefs', 'pet', 'appearance', 'sync', 'voice',
+  'prefs', 'editorPrefs', 'pet', 'appearance', 'voice',
   'vault', 'schedule', 'modelRegistry', 'aiConfig',
 ] as const;
 

@@ -3,7 +3,6 @@ import { storageClient } from '@/utils/storageClient';
 import { useAppearanceStore } from './appearanceStore';
 import { useEditorPrefsStore } from './editorPrefsStore';
 import { useVaultConfigStore } from './vaultConfigStore';
-import { useSyncStore } from './syncStore';
 import { useAiConfigStore } from './aiConfigStore';
 import { usePrefsStore, DEFAULT_SHORTCUTS } from './prefsStore';
 import { usePetStore } from './petStore';
@@ -38,10 +37,6 @@ function resetAllDefaults() {
     vaultPath: '~/Documents/quill/my-notes', imagePath: 'assets/images/',
     docExtension: '.md', watchFileChanges: true, trashOnDelete: true,
   }, false);
-  useSyncStore.setState({
-    syncMethod: 'S3 兼容（R2 / MinIO）', syncEndpoint: '', syncAccessKey: '',
-    syncSecretKey: '', syncBucket: '', autoSync: true, e2eEncrypt: false,
-  }, false);
   useAiConfigStore.setState({
     cliAdapter: 'claude', cliPath: 'claude', chatProvider: 'anthropic',
     chatModel: 'claude-sonnet-4-6', chatApiKey: '', chatBaseUrl: '',
@@ -66,7 +61,6 @@ describe('settingsPersistence round-trip', () => {
     useAppearanceStore.getState().setVaultName('rt-vault');
     useEditorPrefsStore.getState().setTabSize(2);
     useVaultConfigStore.getState().setDocExtension('.org');
-    useSyncStore.getState().setSyncBucket('rt-bucket');
     useAiConfigStore.getState().setChatModel('rt-model');
     usePrefsStore.getState().setDailyNoteDateFormat('DD/MM');
     usePetStore.getState().setPetSize('150');
@@ -81,7 +75,6 @@ describe('settingsPersistence round-trip', () => {
     expect(useAppearanceStore.getState().vaultName).toBe('rt-vault');
     expect(useEditorPrefsStore.getState().tabSize).toBe(2);
     expect(useVaultConfigStore.getState().docExtension).toBe('.org');
-    expect(useSyncStore.getState().syncBucket).toBe('rt-bucket');
     expect(useAiConfigStore.getState().chatModel).toBe('rt-model');
     expect(usePrefsStore.getState().dailyNoteDateFormat).toBe('DD/MM');
     expect(usePetStore.getState().petSize).toBe('150');
@@ -99,7 +92,6 @@ describe('settingsPersistence round-trip', () => {
     expect(useEditorPrefsStore.getState().tabSize).toBe(8);
     // Everything else stays at defaults.
     expect(useAppearanceStore.getState().vaultName).toBe('my-vault');
-    expect(useSyncStore.getState().syncMethod).toBe('S3 兼容（R2 / MinIO）');
   });
 
   it('null blob (first launch) loads nothing without throwing', async () => {
@@ -142,13 +134,6 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
       docExtension: '.txt',
       watchFileChanges: false,
       trashOnDelete: false,
-      syncMethod: 'WebDAV',
-      syncEndpoint: 'https://dav.legacy',
-      syncAccessKey: 'ak',
-      syncSecretKey: 'sk',
-      syncBucket: 'legacy-bucket',
-      autoSync: false,
-      e2eEncrypt: true,
       cliAdapter: 'gemini',
       cliPath: '/bin/gemini',
       chatProvider: 'openai',
@@ -198,11 +183,6 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
     // Vault config
     expect(useVaultConfigStore.getState().vaultPath).toBe('/legacy/vault');
     expect(useVaultConfigStore.getState().docExtension).toBe('.txt');
-
-    // Sync
-    expect(useSyncStore.getState().syncMethod).toBe('WebDAV');
-    expect(useSyncStore.getState().syncBucket).toBe('legacy-bucket');
-    expect(useSyncStore.getState().e2eEncrypt).toBe(true);
 
     // AI config
     expect(useAiConfigStore.getState().cliAdapter).toBe('gemini');
@@ -296,17 +276,17 @@ describe('settingsPersistence single writer', () => {
   it('writes each slice to its own file via storageClient.set(slice.name, ...)', () => {
     const setSpy = vi.spyOn(storageClient, 'set');
     useAppearanceStore.getState().setVaultName('a');
-    useSyncStore.getState().setSyncBucket('b');
+    useEditorPrefsStore.getState().setTabSize(2);
     usePetStore.getState().setPetSize('150');
     vi.advanceTimersByTime(400);
     // One debounced flush → one storageClient.set call per slice.
     const calls = new Map(setSpy.mock.calls.map(([k, v]) => [k as string, v]));
     expect(calls.get('appearance')?.vaultName).toBe('a');
-    expect(calls.get('sync')?.syncBucket).toBe('b');
+    expect(calls.get('editorPrefs')?.tabSize).toBe(2);
     expect(calls.get('pet')?.petSize).toBe('150');
-    // Slices are isolated — appearance's payload carries no sync or pet keys.
-    expect(calls.get('appearance')?.syncBucket).toBeUndefined();
-    expect(calls.get('sync')?.petSize).toBeUndefined();
+    // Slices are isolated — appearance's payload carries no editorPrefs or pet keys.
+    expect(calls.get('appearance')?.tabSize).toBeUndefined();
+    expect(calls.get('editorPrefs')?.petSize).toBeUndefined();
     setSpy.mockRestore();
   });
 });
