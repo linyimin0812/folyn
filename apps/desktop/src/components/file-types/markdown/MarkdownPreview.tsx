@@ -181,11 +181,16 @@ interface CodeBlockWrapperProps {
 
 /** Code block wrapper component — renders line numbers + copy button via React.
  *  Also renders a Run/Stop button when the fence language maps to a configured
- *  script runtime. Run output streams into a panel below the code block. */
+ *  script runtime. Run output streams into a panel below the code block.
+ *  For ```html fences, also renders a source/preview toggle: source shows the
+ *  code (default); preview renders the HTML in a sandboxed iframe. */
 function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange, ...rest }: CodeBlockWrapperProps) {
   const preRef = useRef<HTMLPreElement>(null);
   const copyBtnRef = useRef<HTMLButtonElement>(null);
   const [lineCount, setLineCount] = useState(0);
+  const isHtml = lang === 'html';
+  const [htmlView, setHtmlView] = useState<'source' | 'preview'>('source');
+  const [htmlSrc, setHtmlSrc] = useState('');
 
   const runtimes = useAiConfigStore((s) => s.scriptRuntimes);
   const runtime = useMemo(
@@ -209,7 +214,8 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
     const lines = text.split('\n');
     while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
     setLineCount(lines.length);
-  }, [children]);
+    if (isHtml) setHtmlSrc(text);
+  }, [children, isHtml]);
 
   // Reset output panel when the code block content changes (e.g. user edits).
   useEffect(() => {
@@ -296,14 +302,35 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
 
   return (
     <div className="code-block-wrapper">
-      <div className="code-block-inner">
-        <div className="code-line-numbers" aria-hidden="true">
-          {Array.from({ length: lineCount }, (_, i) => (
-            <span className="code-ln" key={i}>{i + 1}</span>
-          ))}
+      {htmlView === 'source' || !isHtml ? (
+        <div className="code-block-inner">
+          <div className="code-line-numbers" aria-hidden="true">
+            {Array.from({ length: lineCount }, (_, i) => (
+              <span className="code-ln" key={i}>{i + 1}</span>
+            ))}
+          </div>
+          <pre ref={preRef} {...rest}>{children}</pre>
         </div>
-        <pre ref={preRef} {...rest}>{children}</pre>
-      </div>
+      ) : (
+        <iframe
+          title="html-preview"
+          sandbox="allow-scripts allow-popups allow-forms allow-modals"
+          srcDoc={htmlSrc}
+          className="w-full border-0"
+          style={{ minHeight: '160px', background: '#fff' }}
+          onLoad={(e) => {
+            // ponytail: auto-resize iframe to content height. Try-catch
+            // guards cross-origin blowups; sandboxed srcDoc is same-origin
+            // so it generally works.
+            try {
+              const doc = (e.target as HTMLIFrameElement).contentDocument;
+              if (doc?.body) {
+                (e.target as HTMLIFrameElement).style.height = `${doc.body.scrollHeight + 16}px`;
+              }
+            } catch { /* cross-origin — leave default height */ }
+          }}
+        />
+      )}
       <button
         ref={copyBtnRef}
         className="code-copy-btn"
@@ -311,6 +338,28 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
         onClick={handleCopy}
         dangerouslySetInnerHTML={{ __html: COPY_SVG }}
       />
+      {isHtml && (
+        <div className="absolute top-1 right-8 flex items-center gap-0.5 z-3">
+          <button
+            type="button"
+            aria-label="source"
+            title="Source"
+            onClick={() => setHtmlView('source')}
+            className={`w-[22px] h-[22px] flex items-center justify-center rounded-[3px] cursor-pointer border-none transition-colors ${htmlView === 'source' ? 'text-t1 bg-hov' : 'text-t3 hover:text-t1 hover:bg-hov'}`}
+          >
+            <Code2 size={13} />
+          </button>
+          <button
+            type="button"
+            aria-label="preview"
+            title="Preview"
+            onClick={() => setHtmlView('preview')}
+            className={`w-[22px] h-[22px] flex items-center justify-center rounded-[3px] cursor-pointer border-none transition-colors ${htmlView === 'preview' ? 'text-t1 bg-hov' : 'text-t3 hover:text-t1 hover:bg-hov'}`}
+          >
+            <Eye size={13} />
+          </button>
+        </div>
+      )}
       {runtime && (
         <button
           className="code-run-btn"
@@ -347,7 +396,6 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
   const containerRef = useRef<HTMLDivElement>(null);
   const [resolvedVaultRoot, setResolvedVaultRoot] = useState('');
   const [assetBase, setAssetBase] = useState('');
-  const [viewMode, setViewMode] = useState<'preview' | 'source'>('preview');
 
   useEffect(() => {
     if (!vaultRoot) return;
@@ -520,34 +568,8 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
       getFileIcon: (path) => createElement(FileIcon, { filename: path }),
     }}>
       <div className="md-preview" ref={containerRef}>
-        <div className="flex items-center gap-1 mb-2">
-          <button
-            type="button"
-            aria-label="preview"
-            onClick={() => setViewMode('preview')}
-            className={`p-1 rounded text-t3 hover:bg-hov transition-colors ${viewMode === 'preview' ? 'bg-surf2 text-t1' : ''}`}
-          >
-            <Eye size={14} />
-          </button>
-          <button
-            type="button"
-            aria-label="source"
-            onClick={() => setViewMode('source')}
-            className={`p-1 rounded text-t3 hover:bg-hov transition-colors ${viewMode === 'source' ? 'bg-surf2 text-t1' : ''}`}
-          >
-            <Code2 size={14} />
-          </button>
-        </div>
-        {viewMode === 'source' ? (
-          <pre className="text-[12px] leading-[1.6] font-mono whitespace-pre-wrap break-words text-t1 bg-surf border border-brd rounded p-3 overflow-auto max-h-[70vh]">
-            {content}
-          </pre>
-        ) : (
-          <>
-            {meta && <SkillMetaCard meta={meta} />}
-            {reactContent}
-          </>
-        )}
+        {meta && <SkillMetaCard meta={meta} />}
+        {reactContent}
       </div>
     </VaultContext.Provider>
   );
