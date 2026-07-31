@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { registerPersistSlice, schedulePersist } from './settingsPersistence';
 import { fetchModels as fetchModelsRaw } from '@/services/modelRegistry/fetchModels';
 import { providerRequiresApiKey, type ProviderEntry } from '@/services/providers/catalog';
+import { readUserProviderModels, writeUserProviderModels } from '@/services/modelRegistry/userProvidersCatalog';
 import type { Model } from '@/services/modelRegistry/types';
 
 /**
@@ -103,15 +104,34 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
         },
       }));
       schedulePersist();
+      // ponytail: fire-and-forget the file write — cache failure must not
+      // block the main flow. A rejected promise here is swallowed.
+      void writeUserProviderModels(providerId, result.models).catch(() => {});
       return { ok: true };
     } catch (e) {
       // ponytail: Tauri rejects with the serialized AppError object
       // {category, detail}; String(obj) would yield "[object Object]".
       // Pull `detail` when present, else fall back to String(e).
-      const msg = typeof e === 'object' && e && 'detail' in e
+      const rawMsg = typeof e === 'object' && e && 'detail' in e
         ? String((e as { detail: unknown }).detail ?? e)
         : String(e);
+      // Fallback: read the on-disk cache. If present, repopulate the
+      // in-memory list so the UI still shows models, and append a
+      // "using cached data" notice to the error message.
+      let cached: Model[] | null = null;
+      try {
+        cached = await readUserProviderModels(providerId);
+      } catch {
+        cached = null;
+      }
+      const usingCache = cached && cached.length > 0;
+      const msg = usingCache
+        ? `${rawMsg}（拉取失败，使用缓存数据）`
+        : rawMsg;
       set((s) => ({
+        ...(usingCache
+          ? { modelsByProvider: { ...s.modelsByProvider, [providerId]: cached! } }
+          : {}),
         fetchStatusByProvider: { ...s.fetchStatusByProvider, [providerId]: 'error' },
         fetchErrorByProvider: { ...s.fetchErrorByProvider, [providerId]: msg },
       }));
