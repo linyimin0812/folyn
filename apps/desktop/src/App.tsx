@@ -18,6 +18,7 @@ import { usePetHostBridge } from './hooks/usePetHostBridge';
 import { useNavStore } from './store/navStore';
 import { useAppearanceStore } from './store/appearanceStore';
 import { useVaultStore } from './store/vaultStore';
+import { settingsLoadDone } from './store/settingsPersistence';
 import { useEditorStore } from './store/editorStore';
 import * as editorIoService from './services/editorIoService';
 import { registerEditorFileChangeApplier } from './services/fileChangeApplier';
@@ -159,6 +160,14 @@ export default function App() {
       // applier slot is null, so ordering just needs this before the first
       // user/AI action — here at init is the safe earliest point.
       registerEditorFileChangeApplier();
+
+      // Gate vault init on settings hydration — refreshFileTree reads
+      // appearanceStore.excludePatterns to filter the tree, and without this
+      // await it races against loadSettings(): the per-slice refactor reads
+      // 10 files sequentially (~10-50ms on SSD), wide enough for refresh to
+      // land before hydration restores user-hidden folders. Same pattern as
+      // usePetHostBridge (which awaits this before reading petStore).
+      await settingsLoadDone;
 
       await useVaultStore.getState().initVault();
 

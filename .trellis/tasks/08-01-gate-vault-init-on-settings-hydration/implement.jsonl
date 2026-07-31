@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "settingsLoadDone is the single hydration-await point — vault init must gate on it before reading persisted store state"}
