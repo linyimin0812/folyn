@@ -1162,3 +1162,40 @@ Post-refactor follow-ups: TestChatModal dropdown scoped to selectedModelIds (cha
 ### Next Steps
 
 - None - task complete
+
+
+## Session 92: Custom provider settings iteration: adapter family relabel, URL preview restore, /v1 dedupe, bundled baseUrl seed
+
+**Date**: 2026-07-31
+**Task**: Custom provider settings iteration: adapter family relabel, URL preview restore, /v1 dedupe, bundled baseUrl seed
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Iterated on the Model Services / Custom Provider settings area. (1) Drawer-only display rename: openai→openai-response, openai-completions→openai (routing id untouched). (2) Restored custom-provider URL preview by deriving path from adapterFamily via ADAPTER_FAMILY_PATH map. (3) Fixed double /v1 in list_models when user baseUrl already ends with version segment — added openai_shape_url() helper that strips v1/ prefix when base has version. (4) Seeded bundled provider baseUrl from catalog (providers.json) on setChatProvider and loadFromDisk via seedBundledBaseUrl() helper — fixes OpenRouter 401ing against OpenAI because empty baseUrl made rig default to https://api.openai.com/v1. send/test paths now read non-empty slot.baseUrl naturally, no fallback added.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c0b907d` | (see git log) |
+| `45979ed` | (see git log) |
+| `84f1d95` | (see git log) |
+| `10ffa3f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
