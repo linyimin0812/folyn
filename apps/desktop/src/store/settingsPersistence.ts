@@ -102,8 +102,25 @@ export function hydrateAllStores(blob: Record<string, unknown>): void {
  *  settingsPersistence→store cycle (aiConfigStore imports schedulePersist
  *  at module load; this module importing aiConfigStore at top would
  *  create the cycle). Returns the merged blob (or null) so callers can
- *  inspect it. */
+ *  inspect it.
+ *
+ *  ponytail: the `await import('./aiConfigStore')` MUST come BEFORE the
+ *  slice-hydration loop. `settingsLoadDone` at the bottom of this file is
+ *  started eagerly at module init — which runs DURING settingsPersistence's
+ *  own evaluation, before any store has called registerPersistSlice (SLICES
+ *  is still []). The `await import` yields long enough for the App's import
+ *  graph to resolve and all slices to register; without it, the for-loop
+ *  runs 0 iterations and nothing gets hydrated (regression observed when
+ *  this loop was placed before the await — user-hidden folders reappeared
+ *  on restart because excludePatterns never loaded). */
 export async function loadSettings(): Promise<Record<string, unknown> | null> {
+  try {
+    const { useAiConfigStore } = await import('./aiConfigStore');
+    await useAiConfigStore.getState().loadFromDisk();
+  } catch (err) {
+    console.warn('[settingsPersistence] Provider config load failed:', err);
+  }
+
   const blob: Record<string, unknown> = {};
   let any = false;
   for (const slice of SLICES) {
@@ -113,12 +130,6 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
       slice.hydrate?.(data);
       for (const k of Object.keys(data)) blob[k] = data[k];
     }
-  }
-  try {
-    const { useAiConfigStore } = await import('./aiConfigStore');
-    await useAiConfigStore.getState().loadFromDisk();
-  } catch (err) {
-    console.warn('[settingsPersistence] Provider config load failed:', err);
   }
   if (!any) return null;
   // Broadcast to secondary Tauri windows (pet-bubble / pet-corner /
