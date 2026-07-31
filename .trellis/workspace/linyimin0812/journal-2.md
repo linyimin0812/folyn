@@ -1311,3 +1311,37 @@ Six UX items bundled: (1) per-html code-block source/preview toggle with sandbox
 ### Next Steps
 
 - None - task complete
+
+
+## Session 96: Fix OpenAI-compat provider routing + /v1 base URL auto-append
+
+**Date**: 2026-07-31
+**Task**: Fix OpenAI-compat provider routing + /v1 base URL auto-append
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Routed 8 OpenAI-compat providers (deepseek/groq/hyperbolic/mira/openrouter/perplexity/together/xai) through rig's native client modules + added a dedicated moonshot arm earlier. Galadriel/eternalai/openai-compatible now reuse the openai-completions arm. Extracted ensure_v1_segment helper to auto-append /v1 to bare-host base URLs (catalog had them all without /v1, causing 404 even after the routing fix). 3 unit tests cover append/leave-alone/edge cases. Root cause: chat.rs _ arm used rig's generic openai::Client which defaults to the Responses API; servers only exposing /chat/completions returned 404 on /responses.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `08d1f8b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

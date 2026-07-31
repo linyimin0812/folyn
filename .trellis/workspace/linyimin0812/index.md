@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 95
+- **Total Sessions**: 96
 - **Last Active**: 2026-07-31
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1313 | Active |
+| `journal-2.md` | ~1347 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 96 | 2026-07-31 | Fix OpenAI-compat provider routing + /v1 base URL auto-append | `08d1f8b` | `master` |
 | 95 | 2026-07-31 | UX optimizations: markdown html preview, calendar removal, batch file actions, AI header | `7aa8a9f`, `0f83216`, `8fd3ee2`, `1d60761`, `6710bfb`, `252d617`, `b293693` | `master` |
 | 94 | 2026-07-31 | Model Services settings iteration: sync button removal, fetched-models persistence, owner map cache + capabilities, custom-provider enrichment | `50ab958`, `1aad190`, `6f291f2`, `df7e095`, `f9ad4ae` | `master` |
 | 93 | 2026-07-31 | Custom provider manual-add duplicate model row fix | `09adccd` | `master` |
