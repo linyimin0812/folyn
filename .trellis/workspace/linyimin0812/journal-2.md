@@ -1271,3 +1271,43 @@ Five-step iteration on Model Services settings page. (1) Removed the ListRestart
 ### Next Steps
 
 - None - task complete
+
+
+## Session 95: UX optimizations: markdown html preview, calendar removal, batch file actions, AI header
+
+**Date**: 2026-07-31
+**Task**: UX optimizations: markdown html preview, calendar removal, batch file actions, AI header
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Six UX items bundled: (1) per-html code-block source/preview toggle with sandboxed iframe auto-resize, (2) markdown preview text justify, (3) calendar sidebar plugin removal (schedule workspace kept), (4) file-panel divider 2px to 1px, (5) AI message header = provider icon + provider|modelId, left-aligned, AI literal dropped across Chat/AIPanel/PetChat using assets/providers icons via providerIconUrl + char fallback, (6) file-panel multi-select batch delete/copy/move via context menu. Multiple follow-up fixes for iframe blank-space feedback loop and padding. All pushed to origin/master.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7aa8a9f` | (see git log) |
+| `0f83216` | (see git log) |
+| `8fd3ee2` | (see git log) |
+| `1d60761` | (see git log) |
+| `6710bfb` | (see git log) |
+| `252d617` | (see git log) |
+| `b293693` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
