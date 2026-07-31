@@ -1,7 +1,7 @@
 import { debounceByKey } from '@/utils/debounce';
 
 /** Per-tab debounced auto-save: each tab tracks its own trailing-edge timer. */
-const AUTO_SAVE_DELAY_MS = 30000;
+const AUTO_SAVE_DELAY_MS = 5000;
 const autoSaveTimers = debounceByKey<string>(AUTO_SAVE_DELAY_MS);
 
 export function scheduleAutoSave(

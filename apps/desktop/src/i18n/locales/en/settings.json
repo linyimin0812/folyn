@@ -100,7 +100,7 @@
     },
     "autoSave": {
       "label": "Auto save",
-      "description": "Auto-save the current document every 30s"
+      "description": "Auto-save the current document every 5s"
     },
     "linkOpenMode": {
       "label": "Link open mode",
