@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 98
-- **Last Active**: 2026-07-31
+- **Total Sessions**: 99
+- **Last Active**: 2026-08-01
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1417 | Active |
+| `journal-2.md` | ~1451 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 99 | 2026-08-01 | Per-slice persist closure (drop global schedulePersist) | `c9aa00f` | `master` |
 | 98 | 2026-07-31 | CLI 设置页：打开 adapter 配置文件 | `afebccb`, `d4fff2d`, `fc01a3a` | `master` |
 | 97 | 2026-07-31 | Provider 设置页已选模型能力图标修复 | `589e6ea` | `master` |
 | 96 | 2026-07-31 | Fix OpenAI-compat provider routing + /v1 base URL auto-append | `08d1f8b` | `master` |

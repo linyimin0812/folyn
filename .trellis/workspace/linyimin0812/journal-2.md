@@ -1415,3 +1415,37 @@ Fixed selected models on provider settings page showing no capability icons unti
 ### Next Steps
 
 - None - task complete
+
+
+## Session 99: Per-slice persist closure (drop global schedulePersist)
+
+**Date**: 2026-08-01
+**Task**: Per-slice persist closure (drop global schedulePersist)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+registerPersistSlice now returns a bound persist closure; each store captures it and calls it in its own setters, so a setter writes only its own slice file instead of all 9. persistNow (quit flush) still writes all slices — safety net, documented with ponytail: comment. Mechanical rename across 9 store files; added per-slice isolation test; modelRegistryStore.test.ts mock updated to return a no-op. Typecheck passes; no new test failures (pre-existing open-color JSON import issue blocks settingsPersistence.test.ts from loading — unrelated).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c9aa00f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
