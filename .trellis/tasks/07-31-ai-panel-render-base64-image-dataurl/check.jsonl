@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Verify no main-thread-blocking, no perf regressions."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify shared chat component conventions are followed."}

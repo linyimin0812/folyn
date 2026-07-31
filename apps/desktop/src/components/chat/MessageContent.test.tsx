@@ -53,6 +53,14 @@ describe('MessageContent', () => {
     expect(div.textContent).toBe('');
   });
 
+  it('markdown mode: content that is a single data:image base64 URL renders as <img>', () => {
+    const dataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkAAIAAAoAAv/lxKU=';
+    const { container } = render(<MessageContent content={dataUrl} />);
+    const img = container.querySelector('img');
+    expect(img).toBeTruthy();
+    expect(img?.getAttribute('src')).toBe(dataUrl);
+  });
+
   it('markdown mode: throws inside the processor fall back to raw content', async () => {
     // Force the unified processor to throw by mocking `unified`. The
     // processor is built at module-eval time, so we mock `unified` itself

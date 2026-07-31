@@ -7,6 +7,14 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 
+// ponytail: image models (e.g. rig-backed image gen) return the generated
+// image inline as a `data:image/...;base64,...` text delta. The markdown
+// pipeline renders that as a giant opaque text blob; detect a content blob
+// that is *entirely* a data URL and short-circuit to an <img>. Mid-stream
+// partials (incomplete base64) won't match and fall through to markdown —
+// final state is correct. One-line regex, no new module.
+const DATA_URL_IMAGE_RE = /^data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+$/;
+
 // TODO(PRx): lazy-load markdown pipeline via dynamic import to keep the
 // pet-panel bundle lean. The top-level import is acceptable for PR1
 // (correctness first); PR2/PR3 will split the heavy markdown deps out of
@@ -45,6 +53,9 @@ export function MessageContent({ content, plaintext, className }: MessageContent
       return content;
     }
     if (!content.trim()) return null;
+    if (DATA_URL_IMAGE_RE.test(content.trim())) {
+      return <img src={content.trim()} alt="" className="max-w-full h-auto rounded" />;
+    }
     try {
       const result = processor.processSync(content);
       return result.result as React.ReactNode;
