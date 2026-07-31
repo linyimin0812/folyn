@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/container-plugins/frontend/index.md", "reason": "插件要加 :::graphviz 容器块，须遵循 container-plugins 的指令/渲染/注册约定（仿 mermaid）"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "插件经 plugin-host trustedLoader + contributionAdapters 注入 file-types/ContainerRegistry，须遵循 desktop 侧插件接线与文件类型约定"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "渲染须复用 MermaidPlugin 的 render→SVG→dangerouslySetInnerHTML + dark invert 模式，避免重写"}
+{"file": ".trellis/tasks/07-30-graphviz-trusted-plugin/research/trusted-plugin-wasm-loading.md", "reason": "@viz-js/viz 内嵌 wasm、无需独立资产、CSP 已放行——渲染实现的关键依据，勿走 fetch/locateFile 歧路"}

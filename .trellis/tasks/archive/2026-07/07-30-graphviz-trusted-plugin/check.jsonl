@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/container-plugins/frontend/index.md", "reason": "检查 :::graphviz 块是否符合 container-plugins 约定（注册/dispose/渲染回退）"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "检查插件接入 desktop 侧 plugin-host/file-types 的接线是否正确、无宿主运行时改动"}
+{"file": ".trellis/spec/guides/index.md", "reason": "团队质量基线与通用规范"}
+{"file": ".trellis/tasks/07-30-graphviz-trusted-plugin/research/trusted-plugin-wasm-loading.md", "reason": "核对渲染实现是否走了 @viz-js/viz 内嵌 wasm 路径而非错误的 fetch/独立 wasm 资产"}
