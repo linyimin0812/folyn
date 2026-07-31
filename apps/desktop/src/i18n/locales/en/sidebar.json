@@ -54,7 +54,8 @@
       "suffix": "?",
       "typeFile": "file",
       "typeFolder": "folder",
-      "folderContentsHint": "Everything inside the folder will also be deleted"
+      "folderContentsHint": "Everything inside the folder will also be deleted",
+      "batchPrefix": "Delete these {{count}} items?"
     },
     "cancel": "Cancel",
     "delete": "Delete",

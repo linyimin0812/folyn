@@ -20,8 +20,10 @@ import { runRigChat } from '@/services/rigChat';
 import {
   allProviders,
   providerDisplayName,
+  providerAvatarChar,
   type ProviderEntry,
 } from '@/services/providers/catalog';
+import { providerIconUrl } from '@/services/providers/icon';
 import { useTranslation } from 'react-i18next';
 
 export function AiPanel() {
@@ -88,7 +90,18 @@ export function AiPanel() {
     if (!msg.provider || !msg.model) return null;
     const entry: ProviderEntry | undefined = allProviders(customerProviders).find((e) => e.id === msg.provider);
     const name = entry ? providerDisplayName(entry, t) : msg.provider;
-    return <span>{name} : {msg.model}</span>;
+    const iconUrl = providerIconUrl(msg.provider);
+    const char = providerAvatarChar(entry ?? { id: msg.provider, name: msg.provider } as ProviderEntry, t);
+    return (
+      <>
+        {iconUrl ? (
+          <img src={iconUrl} alt={name} className="w-3 h-3 inline-block align-middle" />
+        ) : (
+          <span className="inline-flex w-3 h-3 items-center justify-center rounded bg-surf2 text-[8px] font-semibold align-middle">{char}</span>
+        )}
+        <span className="align-middle">{name}|{msg.model}</span>
+      </>
+    );
   };
 
   // Drag resize

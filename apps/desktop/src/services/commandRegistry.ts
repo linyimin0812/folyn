@@ -241,14 +241,6 @@ export function registerBuiltinCommands(): void {
       run: () => gotoPanel('analyze'),
     },
     {
-      id: 'panel.calendar',
-      title: 'Go to Calendar',
-      category: 'panel-mode',
-      keywords: ['daily', 'journal'],
-      enabled: () => appearance().enableDailyPanel,
-      run: () => gotoPanel('calendar'),
-    },
-    {
       id: 'panel.settings',
       title: 'Open Settings',
       category: 'panel-mode',

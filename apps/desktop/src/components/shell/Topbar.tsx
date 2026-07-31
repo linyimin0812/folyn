@@ -149,7 +149,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
         {copyToVaultSource && (
           <MoveDialog
             mode="copy"
-            source={{ path: copyToVaultSource.path, type: 'file', name: copyToVaultSource.name }}
+            sources={[{ path: copyToVaultSource.path, type: 'file', name: copyToVaultSource.name }]}
             fileTree={fileTree}
             onCancel={() => setCopyToVaultSource(null)}
             onConfirm={async (targetDir) => {

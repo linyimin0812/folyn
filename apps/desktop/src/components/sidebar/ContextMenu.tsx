@@ -20,12 +20,13 @@ export interface ContextMenuData {
 
 export interface ContextMenuProps {
   menu: ContextMenuData | null;
+  selectedPaths: Set<string>;
   onClose: () => void;
   onStartRename: (path: string, name: string) => void;
-  onDeleteItem: (path: string, type: 'file' | 'dir') => void;
+  onDeleteItem: (paths: string[]) => void;
   onStartNewItem: (type: 'file' | 'dir', parentDir?: string, ext?: string) => void;
-  onStartMove: (path: string, type: 'file' | 'dir') => void;
-  onStartCopy: (path: string, type: 'file' | 'dir') => void;
+  onStartMove: (paths: string[]) => void;
+  onStartCopy: (paths: string[]) => void;
   pinnedPaths: string[];
   onTogglePin: (path: string) => void;
 }
@@ -40,6 +41,7 @@ const fileTypeLabelKeys: Record<string, string> = {
 
 export function ContextMenu({
   menu,
+  selectedPaths,
   onClose,
   onStartRename,
   onDeleteItem,
@@ -73,6 +75,12 @@ export function ContextMenu({
   }, [menu]);
 
   if (!menu) return null;
+
+  // ponytail: when the right-clicked item is part of a multi-selection, batch
+  // actions operate on the whole selection; otherwise just the clicked item.
+  const batchPaths = selectedPaths.size > 1 && selectedPaths.has(menu.path)
+    ? Array.from(selectedPaths)
+    : [menu.path];
 
   return (
     <div
@@ -178,13 +186,13 @@ export function ContextMenu({
           <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onClose(); onStartRename(menu.path, menu.name); }}>
             <ThemeIcon name={menu.type === 'dir' ? 'editFolder' : 'edit'} size={14} /> {t('sidebar:contextMenu.rename')}
           </button>
-          <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onClose(); onStartMove(menu.path, menu.type); }}>
+          <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onClose(); onStartMove(batchPaths); }}>
             <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.move')}
           </button>
-          <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onClose(); onStartCopy(menu.path, menu.type); }}>
+          <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onClose(); onStartCopy(batchPaths); }}>
             <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copy')}
           </button>
-          <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-[#e05252] hover:bg-[rgba(224,82,82,.08)]" onClick={() => { onClose(); onDeleteItem(menu.path, menu.type); }}>
+          <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-[#e05252] hover:bg-[rgba(224,82,82,.08)]" onClick={() => { onClose(); onDeleteItem(batchPaths); }}>
             <ThemeIcon name="delete" size={14} /> {t('sidebar:contextMenu.delete')}
           </button>
           <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => {

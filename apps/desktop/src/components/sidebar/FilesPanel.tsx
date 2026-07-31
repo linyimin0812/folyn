@@ -128,7 +128,7 @@ export function FilesPanel(): React.JSX.Element {
     startNewItem, confirmNewItem, cancelNewItem,
     renamingItem, renameValue, setRenameValue, renameInputRef,
     startRename, confirmRename, cancelRename,
-    deleteConfirm, setDeleteConfirm, confirmDelete, deleteItem,
+    deleteConfirm, setDeleteConfirm, confirmDelete, deleteItems,
   } = useSidebarActions({ handleFileClick, setExpandedDirs });
 
   // Bridge the command palette's new-file/new-folder actions to the Sidebar's
@@ -224,8 +224,26 @@ export function FilesPanel(): React.JSX.Element {
   }, [revealPath]);
 
   const [contextMenu, setContextMenu] = useState<ContextMenuData | null>(null);
-  const [moveSource, setMoveSource] = useState<{ path: string; type: 'file' | 'dir'; name: string } | null>(null);
-  const [copySource, setCopySource] = useState<{ path: string; type: 'file' | 'dir'; name: string } | null>(null);
+  // ponytail: arrays even for single-select — MoveDialog handles 1+ uniformly.
+  const [moveSources, setMoveSources] = useState<{ path: string; type: 'file' | 'dir'; name: string }[] | null>(null);
+  const [copySources, setCopySources] = useState<{ path: string; type: 'file' | 'dir'; name: string }[] | null>(null);
+
+  // Lookup a path's type from the current fileTree. Used by batch delete/move/copy
+  // when only paths (no type) are available — e.g. when the context menu acts on
+  // the multi-selection rather than the right-clicked item.
+  const lookupType = useCallback((targetPath: string): 'file' | 'dir' => {
+    const find = (entries: VaultEntry[]): 'file' | 'dir' | null => {
+      for (const e of entries) {
+        if (e.path === targetPath) return e.type;
+        if (e.type === 'dir' && e.children) {
+          const r = find(e.children);
+          if (r) return r;
+        }
+      }
+      return null;
+    };
+    return find(fileTree) ?? 'file';
+  }, [fileTree]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent, path: string, name: string, type: 'file' | 'dir') => {
     e.preventDefault();
@@ -508,29 +526,31 @@ export function FilesPanel(): React.JSX.Element {
       )}
 
       {/* Move dialog */}
-      {moveSource && (
+      {moveSources && (
         <MoveDialog
-          source={moveSource}
+          sources={moveSources}
           fileTree={fileTree}
-          onCancel={() => setMoveSource(null)}
+          onCancel={() => setMoveSources(null)}
           onConfirm={async (targetDir) => {
-            await vaultMoveFiles([moveSource.path], targetDir);
+            await vaultMoveFiles(moveSources.map((s) => s.path), targetDir);
             setSelectedPaths(new Set());
-            setMoveSource(null);
+            setMoveSources(null);
           }}
         />
       )}
 
       {/* Copy dialog */}
-      {copySource && (
+      {copySources && (
         <MoveDialog
           mode="copy"
-          source={copySource}
+          sources={copySources}
           fileTree={fileTree}
-          onCancel={() => setCopySource(null)}
+          onCancel={() => setCopySources(null)}
           onConfirm={async (targetDir) => {
-            await vaultCopyPath(copySource.path, copySource.type, targetDir);
-            setCopySource(null);
+            for (const src of copySources) {
+              await vaultCopyPath(src.path, src.type, targetDir);
+            }
+            setCopySources(null);
           }}
         />
       )}
@@ -538,17 +558,24 @@ export function FilesPanel(): React.JSX.Element {
       {/* Context menu */}
       <ContextMenu
         menu={contextMenu}
+        selectedPaths={selectedPaths}
         onClose={closeContextMenu}
         onStartRename={startRename}
-        onDeleteItem={deleteItem}
+        onDeleteItem={(paths) => deleteItems(paths.map((p) => ({ path: p, type: lookupType(p) })))}
         onStartNewItem={startNewItem}
-        onStartMove={(path, type) => {
-          const name = path.includes('/') ? path.substring(path.lastIndexOf('/') + 1) : path;
-          setMoveSource({ path, type, name });
+        onStartMove={(paths) => {
+          setMoveSources(paths.map((p) => ({
+            path: p,
+            type: lookupType(p),
+            name: p.includes('/') ? p.substring(p.lastIndexOf('/') + 1) : p,
+          })));
         }}
-        onStartCopy={(path, type) => {
-          const name = path.includes('/') ? path.substring(path.lastIndexOf('/') + 1) : path;
-          setCopySource({ path, type, name });
+        onStartCopy={(paths) => {
+          setCopySources(paths.map((p) => ({
+            path: p,
+            type: lookupType(p),
+            name: p.includes('/') ? p.substring(p.lastIndexOf('/') + 1) : p,
+          })));
         }}
         pinnedPaths={pinnedPaths}
         onTogglePin={togglePin}

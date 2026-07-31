@@ -54,7 +54,8 @@
       "suffix": " 吗？",
       "typeFile": "文件",
       "typeFolder": "文件夹",
-      "folderContentsHint": "文件夹内的所有内容也将被删除"
+      "folderContentsHint": "文件夹内的所有内容也将被删除",
+      "batchPrefix": "确定要删除以下 {{count}} 项吗？"
     },
     "cancel": "取消",
     "delete": "删除",

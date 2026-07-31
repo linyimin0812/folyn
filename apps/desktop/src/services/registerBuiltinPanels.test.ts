@@ -2,7 +2,7 @@
  * Tests for the PR2 built-in panel registration + visibility/active sync.
  *
  * Covers the contract that `registerBuiltinPanels` fulfills:
- * - 5 built-in panels registered with correct ids + order.
+ * - 4 built-in panels registered with correct ids + order.
  * - Visibility bound to appearanceStore enable flags at registration time.
  * - appearanceStore flag toggle → setVisible + active-panel-fallback.
  * - editorStore.activePanel → featurePanelStore.activePanelId mirror.
@@ -36,14 +36,14 @@ afterEach(() => {
 });
 
 describe('registerBuiltinPanels: built-in registration', () => {
-  it('registers exactly the 5 built-in panels', () => {
+  it('registers exactly the 4 built-in panels', () => {
     const dispose = registerBuiltinPanels();
     const ids = useFeaturePanelStore.getState().panels.map((p) => p.id);
-    expect(ids).toEqual(['files', 'wiki', 'clips', 'analyze', 'calendar']);
+    expect(ids).toEqual(['files', 'wiki', 'clips', 'analyze']);
     dispose();
   });
 
-  it('assigns the spec-mandated order values (0/10/20/30/40)', () => {
+  it('assigns the spec-mandated order values (0/10/20/30)', () => {
     const dispose = registerBuiltinPanels();
     const byId = Object.fromEntries(
       useFeaturePanelStore.getState().panels.map((p) => [p.id, p.order]),
@@ -53,16 +53,15 @@ describe('registerBuiltinPanels: built-in registration', () => {
       wiki: 10,
       clips: 20,
       analyze: 30,
-      calendar: 40,
     });
     dispose();
   });
 
-  it('marks all 5 as builtin', () => {
+  it('marks all 4 as builtin', () => {
     const dispose = registerBuiltinPanels();
     const allBuiltin = useFeaturePanelStore
       .getState()
-      .panels.filter((p) => p.id === 'files' || p.id === 'wiki' || p.id === 'clips' || p.id === 'analyze' || p.id === 'calendar')
+      .panels.filter((p) => p.id === 'files' || p.id === 'wiki' || p.id === 'clips' || p.id === 'analyze')
       .every((p) => p.builtin === true);
     expect(allBuiltin).toBe(true);
     dispose();
@@ -83,17 +82,16 @@ describe('registerBuiltinPanels: built-in registration', () => {
     expect(visible.wiki).toBe(false);
     expect(visible.clips).toBe(true);
     expect(visible.analyze).toBe(false);
-    expect(visible.calendar).toBe(true);
     dispose();
   });
 
   it('is idempotent — a second call is a no-op (wired guard)', () => {
     const dispose1 = registerBuiltinPanels();
     const dispose2 = registerBuiltinPanels(); // no-op, returns disposer that does nothing
-    expect(useFeaturePanelStore.getState().panels).toHaveLength(5);
+    expect(useFeaturePanelStore.getState().panels).toHaveLength(4);
     dispose2();
     // The second dispose is a no-op — panels still present until dispose1.
-    expect(useFeaturePanelStore.getState().panels).toHaveLength(5);
+    expect(useFeaturePanelStore.getState().panels).toHaveLength(4);
     dispose1();
   });
 });
@@ -150,8 +148,8 @@ describe('registerBuiltinPanels: active-panel mirror + persisted-invalid fallbac
     const dispose = registerBuiltinPanels();
     useEditorStore.getState().setActivePanel('analyze');
     expect(useFeaturePanelStore.getState().activePanelId).toBe('analyze');
-    useEditorStore.getState().setActivePanel('calendar');
-    expect(useFeaturePanelStore.getState().activePanelId).toBe('calendar');
+    useEditorStore.getState().setActivePanel('wiki');
+    expect(useFeaturePanelStore.getState().activePanelId).toBe('wiki');
     dispose();
   });
 

@@ -66,7 +66,7 @@ export function SidebarResizer({
       onMouseEnter={() => setResizerHovered(true)}
       onMouseLeave={() => setResizerHovered(false)}
     >
-      <div className={`resizer w-0.5 shrink-0 bg-brd transition-colors duration-[140ms] h-full group-hover:bg-acc group-hover:opacity-30${collapsed ? ' cursor-default' : ' cursor-col-resize'}`} onMouseDown={collapsed ? undefined : handleMouseDown} />
+      <div className={`resizer w-px shrink-0 bg-brd transition-colors duration-[140ms] h-full group-hover:bg-acc group-hover:opacity-30${collapsed ? ' cursor-default' : ' cursor-col-resize'}`} onMouseDown={collapsed ? undefined : handleMouseDown} />
       {(resizerHovered || collapsed) && (
         <button
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-5 h-5 flex items-center justify-center rounded-full border border-brd2 bg-panel text-t3 cursor-pointer transition-all duration-[140ms] shadow-[0_1px_4px_rgba(0,0,0,.12)]"

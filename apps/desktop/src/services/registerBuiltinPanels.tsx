@@ -1,5 +1,5 @@
 /**
- * Register the 5 built-in sidebar panels (files/wiki/clips/analyze/calendar)
+ * Register the 4 built-in sidebar panels (files/wiki/clips/analyze)
  * into {@link useFeaturePanelStore} and wire the visibility + active-panel sync
  * that makes the data-driven ActivityBar/Sidebar behave identically to the
  * pre-PR2 hardcoded version.
@@ -37,7 +37,6 @@ import { FilesPanel } from '@/components/sidebar/FilesPanel';
 import { WikiFileTree } from '@/components/sidebar/WikiFileTree';
 import { ClipsPanel } from '@/components/sidebar/ClipsPanel';
 import { AnalysisPanel } from '@/components/sidebar/AnalysisPanel';
-import { CalendarPanel } from '@/components/sidebar/CalendarPanel';
 
 // ── Built-in icons (reuse the exact SVGs from the pre-PR2 ActivityBar) ──────────
 const FilesIcon: ReactNode = (
@@ -59,18 +58,6 @@ const AnalyzeIcon: ReactNode = (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
     <path d="M21 21H4.6c-.56 0-.84 0-1.054-.109a1 1 0 01-.437-.437C3 20.24 3 19.96 3 19.4V3" />
     <path d="M7 14l4-4 4 4 6-6" />
-  </svg>
-);
-// calendar: NEW ActivityBar icon entry (Decision Q3 — calendar was previously
-// reachable only via ⌘P today/journal/calendar; it now also gets an icon).
-// Reuses the schedule page-nav button's calendar SVG so the icon set stays
-// consistent.
-const CalendarIcon: ReactNode = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-    <line x1="16" y1="2" x2="16" y2="6" />
-    <line x1="8" y1="2" x2="8" y2="6" />
-    <line x1="3" y1="10" x2="21" y2="10" />
   </svg>
 );
 
@@ -123,18 +110,9 @@ export function registerBuiltinPanels(): () => void {
     visible: ap.enableAnalyzePanel,
     builtin: true,
   });
-  fps.register({
-    id: 'calendar',
-    title: '日历',
-    icon: CalendarIcon,
-    component: CalendarPanel,
-    order: 40,
-    visible: ap.enableDailyPanel,
-    builtin: true,
-  });
 
   // ── appearanceStore enable flags → featurePanelStore visibility ──
-  // On any appearanceStore change, for each of the 4 flag-bound panels: if the
+  // On any appearanceStore change, for each of the 3 flag-bound panels: if the
   // flag changed, push the new visibility to the store. If the just-hidden
   // panel was the active one, re-route the active panel to 'files' (the
   // editorStore→featurePanelStore mirror subscription below propagates it).
@@ -143,7 +121,6 @@ export function registerBuiltinPanels(): () => void {
       ['wiki', state.enableWikiPanel, prev.enableWikiPanel],
       ['clips', state.enableClipsPanel, prev.enableClipsPanel],
       ['analyze', state.enableAnalyzePanel, prev.enableAnalyzePanel],
-      ['calendar', state.enableDailyPanel, prev.enableDailyPanel],
     ];
     for (const [id, cur, prevFlag] of checks) {
       if (cur === prevFlag) continue;

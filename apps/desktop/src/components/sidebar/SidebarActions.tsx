@@ -36,7 +36,9 @@ export function useSidebarActions({ handleFileClick, setExpandedDirs }: UseSideb
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   /* -- Delete-confirm state -- */
-  const [deleteConfirm, setDeleteConfirm] = useState<{ path: string; type: 'file' | 'dir'; name: string } | null>(null);
+  // ponytail: items is an array even for single-select — keeps confirmDelete
+  // and DeleteConfirmDialog on one code path. Single-select wraps to [item].
+  const [deleteConfirm, setDeleteConfirm] = useState<{ items: { path: string; type: 'file' | 'dir'; name: string }[] } | null>(null);
 
   /* ---- New-item callbacks ---- */
 
@@ -144,29 +146,37 @@ export function useSidebarActions({ handleFileClick, setExpandedDirs }: UseSideb
 
   const confirmDelete = useCallback(async () => {
     if (!deleteConfirm) return;
-    const { path: itemPath, type: itemType } = deleteConfirm;
-    if (itemType === 'dir') {
-      const openTabs = useEditorStore.getState().tabs;
-      for (const tab of openTabs) {
-        if (tab.path === itemPath || tab.path.startsWith(itemPath + '/')) {
-          closeTab(tab.id);
+    const openTabs = useEditorStore.getState().tabs;
+    for (const { path: itemPath, type: itemType } of deleteConfirm.items) {
+      if (itemType === 'dir') {
+        for (const tab of openTabs) {
+          if (tab.path === itemPath || tab.path.startsWith(itemPath + '/')) {
+            closeTab(tab.id);
+          }
         }
+        await vaultDeleteDir(itemPath);
+      } else {
+        const matchingTab = openTabs.find((t) => t.path === itemPath);
+        if (matchingTab) closeTab(matchingTab.id);
+        await vaultDeleteFile(itemPath);
       }
-      await vaultDeleteDir(itemPath);
-    } else {
-      const openTabs = useEditorStore.getState().tabs;
-      const matchingTab = openTabs.find((t) => t.path === itemPath);
-      if (matchingTab) {
-        closeTab(matchingTab.id);
-      }
-      await vaultDeleteFile(itemPath);
     }
     setDeleteConfirm(null);
   }, [deleteConfirm, vaultDeleteFile, vaultDeleteDir, closeTab]);
 
   const deleteItem = useCallback((itemPath: string, itemType: 'file' | 'dir') => {
     const itemName = itemPath.includes('/') ? itemPath.substring(itemPath.lastIndexOf('/') + 1) : itemPath;
-    setDeleteConfirm({ path: itemPath, type: itemType, name: itemName });
+    setDeleteConfirm({ items: [{ path: itemPath, type: itemType, name: itemName }] });
+  }, []);
+
+  const deleteItems = useCallback((items: { path: string; type: 'file' | 'dir' }[]) => {
+    setDeleteConfirm({
+      items: items.map((it) => ({
+        path: it.path,
+        type: it.type,
+        name: it.path.includes('/') ? it.path.substring(it.path.lastIndexOf('/') + 1) : it.path,
+      })),
+    });
   }, []);
 
   return {
@@ -193,6 +203,7 @@ export function useSidebarActions({ handleFileClick, setExpandedDirs }: UseSideb
     setDeleteConfirm,
     confirmDelete,
     deleteItem,
+    deleteItems,
   };
 }
 
@@ -201,11 +212,11 @@ export function useSidebarActions({ handleFileClick, setExpandedDirs }: UseSideb
 /* -------------------------------------------------------------------------- */
 
 interface MoveDialogProps {
-  source: { path: string; type: 'file' | 'dir'; name: string };
+  sources: { path: string; type: 'file' | 'dir'; name: string }[];
   fileTree: VaultEntry[];
   onCancel: () => void;
   onConfirm: (targetDir: string) => Promise<void>;
-  /** 'move' (default) disables the source's parent dir as a no-op target; 'copy' allows it (same-dir copy creates a 副本). */
+  /** 'move' (default) disables any source's parent as a no-op target; 'copy' allows it (same-dir copy creates a 副本). */
   mode?: 'move' | 'copy';
 }
 
@@ -225,25 +236,28 @@ function collectDirs(entries: VaultEntry[], depth = 0, acc: DirRow[] = []): DirR
   return acc;
 }
 
-export function MoveDialog({ source, fileTree, onCancel, onConfirm, mode = 'move' }: MoveDialogProps): React.JSX.Element {
+export function MoveDialog({ sources, fileTree, onCancel, onConfirm, mode = 'move' }: MoveDialogProps): React.JSX.Element {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
 
   const dirs = useMemo(() => collectDirs(fileTree), [fileTree]);
 
-  // ponytail: vault root is also a valid target — represent it as the empty
-  // path '' so moveFiles writes the file to root. For `move`, the source's own
-  // parent is a no-op and is disabled; for `copy`, same-dir is allowed (a
-  // 副本 is produced). The source itself (if dir) and its descendants are
-  // always illegal targets.
-  const parentDir = source.path.includes('/') ? source.path.substring(0, source.path.lastIndexOf('/')) : '';
+  // ponytail: for batch, "disabled target" = target is equal to or descendant
+  // of ANY source dir (move into your own subtree is a no-op/illegal). For
+  // move mode, target equal to any source's parent is also a no-op. Single
+  // source reduces to the prior behavior.
+  const sourceParentDirs = useMemo(
+    () => new Set(sources.map((s) => (s.path.includes('/') ? s.path.substring(0, s.path.lastIndexOf('/')) : ''))),
+    [sources],
+  );
+  const sourceDirs = useMemo(() => sources.filter((s) => s.type === 'dir').map((s) => s.path), [sources]);
 
   const isDisabled = (dirPath: string): boolean => {
-    if (mode === 'move' && dirPath === parentDir) return true;
-    if (source.type === 'dir') {
-      if (dirPath === source.path) return true;
-      if (dirPath.startsWith(source.path + '/')) return true;
+    if (mode === 'move' && sourceParentDirs.has(dirPath)) return true;
+    for (const srcDir of sourceDirs) {
+      if (dirPath === srcDir) return true;
+      if (dirPath.startsWith(srcDir + '/')) return true;
     }
     return false;
   };
@@ -259,11 +273,12 @@ export function MoveDialog({ source, fileTree, onCancel, onConfirm, mode = 'move
 
   const titleKey = mode === 'copy' ? 'sidebar:sidebarActions.copyDialog.title' : 'sidebar:sidebarActions.moveDialog.title';
   const confirmKey = mode === 'copy' ? 'sidebar:sidebarActions.copyDialog.confirm' : 'sidebar:sidebarActions.moveDialog.confirm';
+  const countLabel = sources.length > 1 ? ` (${sources.length})` : '';
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black/35 flex items-center justify-center" onClick={onCancel}>
       <div className="bg-panel rounded-[10px] py-5 px-6 min-w-[320px] max-w-[420px] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="text-[15px] font-semibold text-t1 mb-3">{t(titleKey)}</div>
+        <div className="text-[15px] font-semibold text-t1 mb-3">{t(titleKey)}{countLabel}</div>
         {hasValidTargets ? (
           <div className="max-h-[55vh] overflow-y-auto py-1 mb-4 border border-brd rounded-md">
             <button
@@ -316,21 +331,37 @@ export function MoveDialog({ source, fileTree, onCancel, onConfirm, mode = 'move
 /* -------------------------------------------------------------------------- */
 
 interface DeleteConfirmDialogProps {
-  deleteConfirm: { path: string; type: 'file' | 'dir'; name: string };
+  deleteConfirm: { items: { path: string; type: 'file' | 'dir'; name: string }[] };
   onCancel: () => void;
   onConfirm: () => void;
 }
 
 export function DeleteConfirmDialog({ deleteConfirm, onCancel, onConfirm }: DeleteConfirmDialogProps): React.JSX.Element {
   const { t } = useTranslation();
-  const typeLabel = deleteConfirm.type === 'dir' ? t('sidebar:sidebarActions.deleteConfirm.typeFolder') : t('sidebar:sidebarActions.deleteConfirm.typeFile');
+  const items = deleteConfirm.items;
+  const isBatch = items.length > 1;
   return (
     <div className="fixed inset-0 z-[9999] bg-black/35 flex items-center justify-center" onClick={onCancel}>
       <div className="bg-panel rounded-[10px] py-5 px-6 min-w-[300px] max-w-[400px] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd" onClick={(e) => e.stopPropagation()}>
         <div className="text-[15px] font-semibold text-t1 mb-2">{t('sidebar:sidebarActions.deleteConfirm.title')}</div>
         <div className="text-[13px] text-t2 leading-relaxed mb-4">
-          {t('sidebar:sidebarActions.deleteConfirm.prefix', { type: typeLabel })}<strong>{deleteConfirm.name}</strong>{t('sidebar:sidebarActions.deleteConfirm.suffix')}
-          {deleteConfirm.type === 'dir' && <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: 'var(--t3, #71717a)' }}>{t('sidebar:sidebarActions.deleteConfirm.folderContentsHint')}</span>}
+          {isBatch ? (
+            <>
+              {t('sidebar:sidebarActions.deleteConfirm.batchPrefix', { count: items.length })}
+              <ul className="mt-1 mb-1 max-h-32 overflow-y-auto text-[12px] text-t3 list-disc pl-5">
+                {items.slice(0, 20).map((it) => <li key={it.path} className="truncate">{it.name}</li>)}
+                {items.length > 20 && <li className="text-t3">… +{items.length - 20}</li>}
+              </ul>
+              {t('sidebar:sidebarActions.deleteConfirm.suffix')}
+            </>
+          ) : (
+            <>
+              {t('sidebar:sidebarActions.deleteConfirm.prefix', { type: items[0].type === 'dir' ? t('sidebar:sidebarActions.deleteConfirm.typeFolder') : t('sidebar:sidebarActions.deleteConfirm.typeFile') })}
+              <strong>{items[0].name}</strong>
+              {t('sidebar:sidebarActions.deleteConfirm.suffix')}
+              {items[0].type === 'dir' && <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: 'var(--t3, #71717a)' }}>{t('sidebar:sidebarActions.deleteConfirm.folderContentsHint')}</span>}
+            </>
+          )}
         </div>
         <div className="flex justify-end gap-2">
           <button className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-brd font-ui transition-all duration-[140ms] bg-panel text-t2 hover:bg-hov" onClick={onCancel}>{t('sidebar:sidebarActions.cancel')}</button>

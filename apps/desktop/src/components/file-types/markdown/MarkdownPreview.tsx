@@ -1,4 +1,5 @@
 import { useMemo, useRef, useEffect, useCallback, useState, createElement, Fragment } from 'react';
+import { Code2, Eye } from 'lucide-react';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
@@ -346,6 +347,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
   const containerRef = useRef<HTMLDivElement>(null);
   const [resolvedVaultRoot, setResolvedVaultRoot] = useState('');
   const [assetBase, setAssetBase] = useState('');
+  const [viewMode, setViewMode] = useState<'preview' | 'source'>('preview');
 
   useEffect(() => {
     if (!vaultRoot) return;
@@ -518,8 +520,34 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
       getFileIcon: (path) => createElement(FileIcon, { filename: path }),
     }}>
       <div className="md-preview" ref={containerRef}>
-        {meta && <SkillMetaCard meta={meta} />}
-        {reactContent}
+        <div className="flex items-center gap-1 mb-2">
+          <button
+            type="button"
+            aria-label="preview"
+            onClick={() => setViewMode('preview')}
+            className={`p-1 rounded text-t3 hover:bg-hov transition-colors ${viewMode === 'preview' ? 'bg-surf2 text-t1' : ''}`}
+          >
+            <Eye size={14} />
+          </button>
+          <button
+            type="button"
+            aria-label="source"
+            onClick={() => setViewMode('source')}
+            className={`p-1 rounded text-t3 hover:bg-hov transition-colors ${viewMode === 'source' ? 'bg-surf2 text-t1' : ''}`}
+          >
+            <Code2 size={14} />
+          </button>
+        </div>
+        {viewMode === 'source' ? (
+          <pre className="text-[12px] leading-[1.6] font-mono whitespace-pre-wrap break-words text-t1 bg-surf border border-brd rounded p-3 overflow-auto max-h-[70vh]">
+            {content}
+          </pre>
+        ) : (
+          <>
+            {meta && <SkillMetaCard meta={meta} />}
+            {reactContent}
+          </>
+        )}
       </div>
     </VaultContext.Provider>
   );

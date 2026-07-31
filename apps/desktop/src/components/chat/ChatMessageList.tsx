@@ -188,14 +188,11 @@ function DefaultMessageRow({
     >
       <div className="text-[9px] font-semibold text-t3 mb-1 uppercase flex items-center gap-1.5">
         {isAssistant ? (
-          <>
-            AI
-            {msg.provider && msg.model && renderPairTag && (
-              <span className="ml-auto font-normal normal-case opacity-70 text-[9px]" data-testid="msg-pair-tag">
-                {renderPairTag(msg)}
-              </span>
-            )}
-          </>
+          msg.provider && msg.model && renderPairTag ? (
+            <span className="inline-flex items-center gap-1 normal-case font-normal opacity-80 text-[9px]" data-testid="msg-pair-tag">
+              {renderPairTag(msg)}
+            </span>
+          ) : null
         ) : (
           '我'
         )}

@@ -198,7 +198,6 @@ describe('commandRegistry — registerBuiltinCommands', () => {
       'panel.clips',
       'panel.wiki',
       'panel.analyze',
-      'panel.calendar',
       'panel.settings',
       'mode.split',
       'mode.edit',
