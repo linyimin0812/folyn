@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 92
+- **Total Sessions**: 93
 - **Last Active**: 2026-07-31
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1201 | Active |
+| `journal-2.md` | ~1235 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 93 | 2026-07-31 | Custom provider manual-add duplicate model row fix | `09adccd` | `master` |
 | 92 | 2026-07-31 | Custom provider settings iteration: adapter family relabel, URL preview restore, /v1 dedupe, bundled baseUrl seed | `c0b907d`, `45979ed`, `84f1d95`, `10ffa3f` | `master` |
 | 91 | 2026-07-30 | Post chatModel-refactor microfixes: pet chat pair + test modal dropdown + isProviderModelPair | `7608c4e` | `master` |
 | 90 | 2026-07-30 | chatModel refactor: per-session provider+model pair | `0f81401` | `master` |

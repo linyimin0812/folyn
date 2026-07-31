@@ -1199,3 +1199,37 @@ Iterated on the Model Services / Custom Provider settings area. (1) Drawer-only 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 93: Custom provider manual-add duplicate model row fix
+
+**Date**: 2026-07-31
+**Task**: Custom provider manual-add duplicate model row fix
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Custom provider settings page showed two identical rows after manually adding a model. Root cause: b916f25 made AddManualModelModal.onSave write to both manualModels (metadata) and selectedModelIds (for TestChatModal dropdown), but ProviderDetailSection rendered two separate lists — Selected models list and Manual-added models list — so manual models appeared in both. Removed the redundant Manual-added models list section (Selected list already renders manual models with synthesized displayName/group via modelsForCurrent). Made removeSelectedModelId also drop the manualModels entry when present, so the single remove button in the Selected list cleans both arrays. Dropped the now-dead removeManualModel store action and onRemoveManualModel prop. Added test for the new removeSelectedModelId branch. tsc clean, 85/85 aiConfigStore tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `09adccd` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
