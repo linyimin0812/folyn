@@ -1345,3 +1345,37 @@ Routed 8 OpenAI-compat providers (deepseek/groq/hyperbolic/mira/openrouter/perpl
 ### Next Steps
 
 - None - task complete
+
+
+## Session 97: Provider 设置页已选模型能力图标修复
+
+**Date**: 2026-07-31
+**Task**: Provider 设置页已选模型能力图标修复
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Fixed selected models on provider settings page showing no capability icons until fetch. Root cause: orphan selectedModelIds (not in modelsByProvider or manualModels) had no Model entry in modelsForCurrent, so m?.capabilities fell back to []. Added orphan branch to modelsForCurrent that builds minimal Model entries from ownerMap. Also enriched empty fetched caps from ownerMap at render time, and wrote catalog-derived caps back into the ownerMap disk cache on fetch (mergeCapabilitiesIntoOwnerMap with dedup).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `589e6ea` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
