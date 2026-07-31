@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Lightbulb } from 'lucide-react';
 import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useNavStore } from '@/store/navStore';
 import { listAdapters, buildAdapterVersionCommand } from '@quill/cli-adapter';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { openFile } from '@/services/editorIoService';
@@ -43,6 +44,7 @@ export function CliSettings() {
         return;
       }
       await openFile(path, basename(path));
+      useNavStore.getState().setCurrentPage('editor');
       setSettingsFileState((s) => ({ ...s, [adapterId]: { kind: 'idle' } }));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -55,6 +57,7 @@ export function CliSettings() {
     try {
       await externalFileProvider.writeFile(path, template);
       await openFile(path, basename(path));
+      useNavStore.getState().setCurrentPage('editor');
       setSettingsFileState((s) => ({ ...s, [adapterId]: { kind: 'idle' } }));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
