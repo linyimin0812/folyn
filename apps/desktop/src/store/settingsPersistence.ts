@@ -68,9 +68,6 @@ function collectPersistedBlob(): Record<string, unknown> {
 const debouncedPersist = debounce(() => {
   for (const slice of SLICES) {
     const data = pickSliceData(slice);
-    if (slice.name === 'appearance') {
-      console.log('[settingsPersistence] debouncedPersist: writing slice', slice.name, '→ excludePatterns =', JSON.stringify(data.excludePatterns));
-    }
     void storageClient.set(slice.name, data);
   }
   const blob = collectPersistedBlob();
@@ -86,7 +83,6 @@ const debouncedPersist = debounce(() => {
 
 /** Called by every persisted store's setter to schedule a debounced write. */
 export function schedulePersist(): void {
-  console.log('[settingsPersistence] schedulePersist called from:', new Error().stack?.split('\n').slice(1, 6).join(' | '));
   debouncedPersist();
 }
 
@@ -128,14 +124,8 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
 
   const blob: Record<string, unknown> = {};
   let any = false;
-  console.log('[settingsPersistence] loadSettings: SLICES registered =', SLICES.length, SLICES.map(s => s.name));
   for (const slice of SLICES) {
     const data = await storageClient.get<Record<string, unknown>>(slice.name);
-    if (slice.name === 'appearance') {
-      console.log('[settingsPersistence] loadSettings: slice', slice.name, '→ excludePatterns =', JSON.stringify(data?.excludePatterns));
-    } else {
-      console.log('[settingsPersistence] loadSettings: slice', slice.name, '→ data keys =', data ? Object.keys(data) : 'null');
-    }
     if (data) {
       any = true;
       slice.hydrate?.(data);

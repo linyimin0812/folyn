@@ -9,12 +9,8 @@ import {
 } from '@/services/providers/catalog';
 import {
   providerConfigStorage,
-  migrateLegacyBlob,
   type CustomProviderDef,
   type ProviderSettings,
-  type LegacyBlob,
-  type CustomerProvidersFile,
-  type ProviderSettingsFile,
 } from '@/services/providers/providerConfigStorage';
 import { storageClient } from '@/utils/storageClient';
 import {
@@ -79,8 +75,6 @@ function seedBundledBaseUrl(
   return { ...(slot ?? emptySettings(providerId)), baseUrl: catalogBase };
 }
 
-export const PROVIDER_CONFIG_MIGRATED_KEY = 'providerConfigMigratedV1';
-
 export const PERSIST_KEYS_AI_CONFIG = [
   'cliAdapter',
   'cliPath',
@@ -93,9 +87,6 @@ export const PERSIST_KEYS_AI_CONFIG = [
   // for old blobs, and migration strips them in the same pass.
   // manualModels stays here — see type doc above.
   'manualModels',
-  // ponytail: migrated flag MUST be persisted — without it, every boot
-  // re-runs migration and clobbers user data. Was missing (Bug #2 root cause).
-  PROVIDER_CONFIG_MIGRATED_KEY,
   // Code-block script runner runtimes (shell/node/python defaults).
   'scriptRuntimes',
   // Per-caller (provider, model) pairs for non-AiPanel chat callers that
@@ -647,81 +638,18 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   },
 
   loadFromDisk: async () => {
-    const blob = await storageClient.get<Record<string, unknown>>('settings:all') ?? {};
-    const migrated = blob[PROVIDER_CONFIG_MIGRATED_KEY] === true;
-    let customerFile: CustomerProvidersFile | null = null;
-    let settingsFile: ProviderSettingsFile | null = null;
+    // `settings:all` is the legacy single-blob file from before the per-slice
+    // storage split (1eac971). It is no longer the source of truth — each
+    // persisted slice writes its own file under ~/.quill/storage/, and
+    // provider config lives under ~/.quill/providers/. The file lingered on
+    // disk only because the old migration path wrote it back (stripped of
+    // provider keys) instead of deleting it; its appearance/prefs keys were a
+    // frozen snapshot that diverged from the per-slice files. Drop it so it
+    // stops masquerading as a config source.
+    await storageClient.remove('settings:all');
 
-    if (!migrated) {
-      // Migration pass: read legacy keys, build new files, write them,
-      // then strip legacy keys from storage.json and set the flag.
-      const legacy: LegacyBlob = {
-        customProviders: isRecord(blob.customProviders)
-          ? (Object.values(blob.customProviders) as unknown as LegacyBlob['customProviders'])
-          : Array.isArray(blob.customProviders)
-            ? (blob.customProviders as unknown as LegacyBlob['customProviders'])
-            : undefined,
-        providerConfigs: isRecord(blob.providerConfigs)
-          ? (blob.providerConfigs as unknown as LegacyBlob['providerConfigs'])
-          : undefined,
-        enabledProviders: isRecord(blob.enabledProviders)
-          ? (blob.enabledProviders as unknown as LegacyBlob['enabledProviders'])
-          : undefined,
-        manualModels: isManualModelsMap(blob.manualModels) ? blob.manualModels : undefined,
-        chatProvider: typeof blob.chatProvider === 'string' ? blob.chatProvider : undefined,
-        chatApiKey: typeof blob.chatApiKey === 'string' ? blob.chatApiKey : undefined,
-        chatBaseUrl: typeof blob.chatBaseUrl === 'string' ? blob.chatBaseUrl : undefined,
-        chatAzureDeploymentId: typeof blob.chatAzureDeploymentId === 'string' ? blob.chatAzureDeploymentId : undefined,
-        chatAzureApiVersion: typeof blob.chatAzureApiVersion === 'string' ? blob.chatAzureApiVersion : undefined,
-        chatThinkingBudget: typeof blob.chatThinkingBudget === 'number' ? blob.chatThinkingBudget : undefined,
-      };
-      const migration = migrateLegacyBlob(legacy);
-      customerFile = migration.customerProviders;
-      settingsFile = migration.providerSettings;
-
-      // Defensive: if disk already has real data (from a prior boot where
-      // the flag was stripped by a schedulePersist write), don't clobber it
-      // with this migration's result — Bug #2. Keep existing disk data,
-      // still set the flag + strip legacy keys below.
-      const existingCustomer = await providerConfigStorage.getCustomerProviders();
-      const existingSettings = await providerConfigStorage.getProviderSettings();
-      const hasDiskData =
-        Object.keys(existingCustomer).length > 0
-        || Object.values(existingSettings).some((s) =>
-          s.apiKey.trim() !== ''
-          || s.baseUrl.trim() !== ''
-          || s.selectedModelIds.length > 0
-          || s.enabled === true);
-
-      if (!hasDiskData) {
-        try {
-          await providerConfigStorage.__replaceForMigration(customerFile, settingsFile);
-        } catch (err) {
-          console.warn('[aiConfigStore] Migration failed; leaving legacy blob intact:', err);
-        }
-      }
-      // ponytail: disk already has data — skip the write; the read below
-      // picks up the existing on-disk state. Still set the flag + strip
-      // legacy keys so we don't re-attempt next boot.
-
-      // Always strip legacy keys + set the migrated flag (even if we skipped
-      // the disk write) — without the flag, next boot re-runs migration.
-      try {
-        const stripped: Record<string, unknown> = { ...blob };
-        for (const k of ['customProviders', 'providerConfigs', 'enabledProviders',
-          'chatApiKey', 'chatBaseUrl', 'chatAzureDeploymentId',
-          'chatAzureApiVersion', 'chatThinkingBudget']) {
-          delete stripped[k];
-        }
-        stripped[PROVIDER_CONFIG_MIGRATED_KEY] = true;
-        await storageClient.set('settings:all', stripped);
-      } catch (err) {
-        console.warn('[aiConfigStore] Failed to set migrated flag:', err);
-      }
-    }
-
-    // Always read from disk to pick up the latest state (whether we just
-    // wrote it or it was already there).
+    // Read the latest provider config from ~/.quill/providers/*.json (the
+    // source of truth since the storage split).
     const [customer, settings] = await Promise.all([
       providerConfigStorage.getCustomerProviders(),
       providerConfigStorage.getProviderSettings(),

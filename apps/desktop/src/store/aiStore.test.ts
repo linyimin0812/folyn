@@ -41,9 +41,7 @@ vi.mock('@/services/providers/providerConfigStorage', () => ({
     getCustomerProviders: vi.fn(async () => ({})),
     getProviderSettings: vi.fn(async () => ({})),
     patchProviderSettings: vi.fn(async () => {}),
-    __replaceForMigration: vi.fn(async () => {}),
   },
-  migrateLegacyBlob: vi.fn(() => ({ customerProviders: {}, providerSettings: {} })),
 }));
 
 import { applyAcceptChange, applyRejectChange } from './aiFileChangeActions';

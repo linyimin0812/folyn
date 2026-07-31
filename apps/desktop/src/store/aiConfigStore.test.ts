@@ -31,9 +31,6 @@ vi.mock('@/utils/fileWatcher', () => ({
 
 import { useAiStore } from './aiStore';
 
-const PROVIDER_CONFIG_MIGRATED_KEY = 'providerConfigMigratedV1';
-const SETTINGS_STORAGE_KEY = 'settings:all';
-
 // In-memory fs mock — `homeDir`/`appDataDir`/`join`/`exists`/`mkdir`/
 // `readTextFile`/`writeTextFile`/`rename` all route through this Map.
 const FS: Map<string, string> = new Map();
@@ -486,131 +483,19 @@ describe('useAiConfigStore custom providers', () => {
   });
 });
 
-describe('useAiConfigStore loadFromDisk migration', () => {
-  it('returns empty state when no legacy blob and no disk files', async () => {
+describe('useAiConfigStore loadFromDisk', () => {
+  it('returns empty state when no disk files exist', async () => {
     await useAiConfigStore.getState().loadFromDisk();
     const s = useAiConfigStore.getState();
     expect(s.customerProviders).toEqual({});
     expect(s.providerSettings).toEqual({});
   });
 
-  it('sets the migrated flag so subsequent loads skip migration', async () => {
+  it('removes the legacy settings:all file if it still exists on disk', async () => {
+    // Simulate a leftover legacy blob from before the per-slice storage split.
+    await storageClient.set('settings:all', { anything: 'stale' });
     await useAiConfigStore.getState().loadFromDisk();
-    const blob = await storageClient.get<Record<string, unknown>>(SETTINGS_STORAGE_KEY);
-    expect(blob?.[PROVIDER_CONFIG_MIGRATED_KEY]).toBe(true);
-  });
-
-  it('migrates legacy blob: writes new files + strips legacy keys from storage.json', async () => {
-    // Seed storage.json with legacy provider config.
-    await storageClient.set(SETTINGS_STORAGE_KEY, {
-      chatProvider: 'openai',
-      chatApiKey: 'sk-legacy',
-      chatBaseUrl: 'https://legacy.example',
-      customProviders: [{
-        id: 'custom-1',
-        displayName: 'C1',
-        baseUrl: 'https://c1.example',
-        apiKeyUrl: 'https://c1.example/keys',
-        category: 'anthropic',
-        createdAt: 1,
-      }],
-      enabledProviders: { 'custom-1': true, openai: true },
-    });
-
-    await useAiConfigStore.getState().loadFromDisk();
-    const s = useAiConfigStore.getState();
-
-    // Custom provider migrated to customerProviders with the new shape.
-    // Phase 3: legacy `category` mapping dropped; defensive default
-    // 'openai-completions' covers most OpenAI-compat gateways.
-    expect(s.customerProviders['custom-1']).toMatchObject({
-      id: 'custom-1',
-      name: 'C1',
-      adapterFamily: 'openai-completions',
-      metadata: { website: { apiKey: 'https://c1.example/keys' } },
-    });
-
-    // Settings slot for the custom provider seeded with baseUrl.
-    expect(s.providerSettings['custom-1']).toMatchObject({
-      id: 'custom-1',
-      baseUrl: 'https://c1.example',
-      enabled: true,
-    });
-
-    // Bundled provider (openai) migrated with flat fields as top-level.
-    expect(s.providerSettings.openai).toMatchObject({
-      id: 'openai',
-      apiKey: 'sk-legacy',
-      baseUrl: 'https://legacy.example',
-      enabled: true,
-    });
-
-    // Legacy keys stripped from storage.json.
-    const blob = await storageClient.get<Record<string, unknown>>(SETTINGS_STORAGE_KEY);
-    expect(blob?.customProviders).toBeUndefined();
-    expect(blob?.enabledProviders).toBeUndefined();
-    expect(blob?.chatApiKey).toBeUndefined();
-    expect(blob?.[PROVIDER_CONFIG_MIGRATED_KEY]).toBe(true);
-
-    // Files exist on disk.
-    const base = await join(await homeDir(), '.quill', 'providers');
-    expect(await exists(await join(base, 'customer', 'providers.json'))).toBe(true);
-    expect(await exists(await join(base, 'settings.json'))).toBe(true);
-  });
-
-  it('does not re-migrate on second load (idempotent)', async () => {
-    await storageClient.set(SETTINGS_STORAGE_KEY, {
-      chatProvider: 'openai',
-      customProviders: [{
-        id: 'custom-1', displayName: 'C1', baseUrl: 'https://c1',
-        apiKeyUrl: null, category: 'openai', createdAt: 1,
-      }],
-      enabledProviders: { 'custom-1': true },
-    });
-    await useAiConfigStore.getState().loadFromDisk();
-    // Mutate disk after first migration to detect re-migration (which would
-    // overwrite the mutation).
-    await providerConfigStorage.__resetForTesting();
-    // Re-read storage.json to get the post-migration blob.
-    const blob = await storageClient.get<Record<string, unknown>>(SETTINGS_STORAGE_KEY);
-    expect(blob?.[PROVIDER_CONFIG_MIGRATED_KEY]).toBe(true);
-
-    // Re-run — should skip migration entirely (legacy keys already gone).
-    await useAiConfigStore.getState().loadFromDisk();
-    const blob2 = await storageClient.get<Record<string, unknown>>(SETTINGS_STORAGE_KEY);
-    expect(blob2?.customProviders).toBeUndefined();
-  });
-
-  it('defensive migration: does not clobber existing disk data when flag is missing (Bug #2)', async () => {
-    // Pre-seed ~/.quill/providers/settings.json with real user data.
-    const realSlot = {
-      id: 'anthropic',
-      baseUrl: '',
-      apiKey: 'sk-real',
-      selectedModelIds: ['m1', 'm2'],
-      enabled: false,
-      extra: {},
-    };
-    await providerConfigStorage.setProviderSettings('anthropic', realSlot);
-    await providerConfigStorage.__flushForTesting();
-    providerConfigStorage.__resetForTesting();
-
-    // Empty legacy blob (no customProviders/providerConfigs/etc.) and no
-    // migrated flag — simulates the state after a prior boot stripped the
-    // flag via schedulePersist but left disk data intact.
-    await storageClient.set(SETTINGS_STORAGE_KEY, { chatProvider: 'anthropic' });
-
-    await useAiConfigStore.getState().loadFromDisk();
-
-    // (a) On-disk settings file still has the real data (not overwritten
-    //     with defaults).
-    const diskSettings = await providerConfigStorage.getProviderSettings();
-    expect(diskSettings.anthropic?.apiKey).toBe('sk-real');
-    expect(diskSettings.anthropic?.selectedModelIds).toEqual(['m1', 'm2']);
-
-    // (b) Migrated flag is set in storage.json so next boot skips migration.
-    const blob = await storageClient.get<Record<string, unknown>>(SETTINGS_STORAGE_KEY);
-    expect(blob?.[PROVIDER_CONFIG_MIGRATED_KEY]).toBe(true);
+    expect(await storageClient.get('settings:all')).toBeNull();
   });
 });
 
@@ -738,7 +623,7 @@ describe('useAiConfigStore per-caller pairs', () => {
   it.each([
     ['setVoicePair', 'voicePair'] as const,
     ['setPluginPair', 'pluginPair'] as const,
-  ])('%s writes the pair and persists to settings:all', (setter, field) => {
+  ])('%s writes the pair and persists to the aiConfig slice', (setter, field) => {
     const setSpy = vi.spyOn(storageClient, 'set');
     const pair = { provider: 'openai', model: 'gpt-4o' };
     (useAiConfigStore.getState()[setter] as (p: typeof pair | null) => void)(pair);
