@@ -43,10 +43,33 @@ pub enum ChatChunk {
     Thinking {
         text: String,
     },
+    /// A complete `data:image/<mt>;base64,<...>` run extracted from a Text
+    /// delta. Emitted by the `ImageScanner` state machine in `drain_loop`:
+    /// image-generation models return the rendered image inline as a data
+    /// URL text delta, so we scan the delta stream and emit structured
+    /// Image chunks instead of dumping raw base64 into the text pipeline.
+    /// `data` carries the full `data:image/...;base64,...` URL (decoded by
+    /// the frontend); `media_type` is the parsed MIME (e.g. `image/png`).
+    Image {
+        data: String,
+        media_type: String,
+    },
     Done,
     Error {
         message: String,
     },
+}
+
+/// One assistant image emitted inline in a streamed assistant turn. The
+/// `at_offset` is the character position in the accumulated assistant text
+/// where the image sits — the frontend interleaves text and images by this
+/// offset. Persisted to `HistoryMsg.images` so reopening a session restores
+/// the image at its original position.
+#[derive(Serialize, Deserialize, Clone)]
+pub struct AssistantImage {
+    pub data: String,
+    pub media_type: String,
+    pub at_offset: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -188,12 +211,21 @@ where
 /// One turn on disk. Decoupled from rig's `Message` so the on-disk format
 /// stays stable if rig's enums shift between versions. `images` is optional
 /// so pre-image session files (just `{role, content}`) deserialize cleanly.
+/// For user turns, `images` carries the multimodal input images fed to the
+/// provider. For assistant turns, `images` carries the inline image data
+/// URLs the model emitted (image-generation models); these are NOT fed
+/// back into the provider on history reload — they are display-only.
 #[derive(Serialize, Deserialize, Clone)]
 struct HistoryMsg {
     role: String,
     content: String,
+    /// User-turn multimodal input images (fed to provider on reload).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     images: Option<Vec<ImageInput>>,
+    /// Assistant-turn inline images emitted by image-generation models
+    /// (display-only; NOT fed back to the provider).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    assistant_images: Option<Vec<AssistantImage>>,
 }
 
 /// Build a rig `Message::User` carrying text + (optional) image content
@@ -329,7 +361,7 @@ pub async fn chat_stream(
     // fall back to `provider.as_str()` (bundled providers). Custom and
     // bundled now route through the same line.
     let resolved: &str = resolve_adapter_family(&params);
-    let full: String = match resolved {
+    let (full, assistant_images): (String, Vec<AssistantImage>) = match resolved {
         "anthropic" | "anthropic-compatible" => {
             let mut b = anthropic::Client::builder().api_key(params.api_key);
             if let Some(url) = params.base_url {
@@ -555,16 +587,287 @@ pub async fn chat_stream(
             role: "user".into(),
             content: params.prompt,
             images: params.images.clone(),
+            assistant_images: None,
         });
         hist.push(HistoryMsg {
             role: "assistant".into(),
             content: full,
             images: None,
+            // ponytail: `None` when no inline images emitted; `Some(vec)` when
+            // the scanner picked up at least one Image event. Skip-serialize
+            // keeps the on-disk shape clean for text-only turns.
+            assistant_images: if assistant_images.is_empty() {
+                None
+            } else {
+                Some(assistant_images)
+            },
         });
         save_history(&app, &params.session_id, &hist)?;
     }
 
     Ok(())
+}
+
+/// State machine that scans an incoming stream of Text deltas for inline
+/// `data:image/<mt>;base64,<...>` data URLs and emits them as `ScanEvent::Image`
+/// instead of letting raw base64 flow through as `ScanEvent::Delta`. Outside
+/// the data URL, text passes through as Delta unchanged.
+///
+/// Why a state machine: image-generation models return the rendered image as
+/// a single text delta (or a continuous run of deltas) containing a data URL.
+/// Without scanning, the frontend's markdown pipeline renders the base64 as a
+/// giant opaque text blob. The scanner emits a structured `Image` event per
+/// complete data URL, so the frontend renders `<img>` directly. Partial data
+/// URL prefixes that span delta boundaries are held back until they complete
+/// or are disproven.
+///
+/// ponytail: scanning happens in Rust, not TS, so the frontend stays dumb
+/// (render events as they arrive). The cost is one state machine here, but
+/// it replaces an O(n²) per-delta rescan on the TS side. The lazy shortcut
+/// would be a regex-per-delta over the accumulated text; the state machine
+/// avoids the O(n²) reparse without giving up cross-delta prefix detection.
+#[derive(Default)]
+struct ImageScanner {
+    state: ScanState,
+    /// Text held back in `ScanState::Text` because it could be the start of a
+    /// data URL prefix (e.g. trailing `"data:im"` awaiting the next delta to
+    /// complete `"data:image/..."`). Emitted as Delta once disproven.
+    pending_text: String,
+}
+
+#[derive(Default)]
+enum ScanState {
+    #[default]
+    Text,
+    /// Inside a data URL, accumulating base64 chars until a non-base64 char
+    /// terminates the run. `buf` holds the full `data:image/<mt>;base64,<...>`
+    /// string so far; `media_type` is the parsed MIME.
+    Image { buf: String, media_type: String },
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum ScanEvent {
+    Delta(String),
+    Image { data: String, media_type: String },
+}
+
+/// Base64 alphabet (RFC 4648): `A-Z`, `a-z`, `0-9`, `+`, `/`, and `=` padding.
+/// Anything else terminates a data URL run.
+fn is_base64_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '='
+}
+
+struct DataUrlPrefixMatch {
+    prefix_start: usize,
+    prefix_end: usize,
+    media_type: String,
+}
+
+/// Find the first `data:image/<mt>;base64,` prefix in `s`. Returns its
+/// byte range and the parsed media type (e.g. `"image/png"`). The media type
+/// must be at least one char; `+`/`-`/`.`/alnum are accepted (covers png,
+/// jpeg, webp, svg+xml, etc.). Returns `None` on no match.
+fn find_data_url_prefix(s: &str) -> Option<DataUrlPrefixMatch> {
+    let mut cursor = 0;
+    loop {
+        let start = match s[cursor..].find("data:image/") {
+            Some(i) => cursor + i,
+            None => return None,
+        };
+        let after = &s[start + "data:image/".len()..];
+        let mt_end = after
+            .find(|c: char| !c.is_ascii_alphanumeric() && c != '.' && c != '+' && c != '-')?;
+        let mt = &after[..mt_end];
+        if mt.is_empty() {
+            // `data:image/;base64,` — not a valid data URL. Advance past this
+            // false positive and keep scanning.
+            cursor = start + "data:image/".len();
+            continue;
+        }
+        let after_mt = &after[mt_end..];
+        if !after_mt.starts_with(";base64,") {
+            // `data:image/<mt>` not followed by `;base64,` — false positive.
+            cursor = start + "data:image/".len();
+            continue;
+        }
+        let prefix_end = start + "data:image/".len() + mt_end + ";base64,".len();
+        return Some(DataUrlPrefixMatch {
+            prefix_start: start,
+            prefix_end,
+            media_type: format!("image/{}", mt),
+        });
+    }
+}
+
+/// Length of the longest suffix of `s` that could be the start of a
+/// `data:image/<mt>;base64,` data URL prefix (strict prefix — `s` ends mid-
+/// prefix). Used to hold back trailing text that might complete into a full
+/// prefix on the next delta. Returns 0 when the suffix can't be a prefix
+/// start.
+///
+/// ponytail: bounded scan of suffix lengths 4..=min(s.len(), 30). The 4-char
+/// minimum avoids spurious hold-backs on common letters (a "d" alone is
+/// technically a strict prefix of "data:image/", but holding it back would
+/// fragment every word ending in "d" — false positive rate too high).
+/// 30 chars covers any realistic data URL prefix (`data:image/png;base64,`
+/// is 22 chars). Longer suffixes can't match a prefix.
+fn partial_data_url_prefix_len(s: &str) -> usize {
+    let bound = s.len().min(30);
+    let mut best = 0;
+    for n in 4..=bound {
+        let suffix = &s[s.len() - n..];
+        if could_start_data_url(suffix) {
+            best = n;
+        }
+    }
+    best
+}
+
+/// True if `s` could be the start of a `data:image/<mt>;base64,<base64>` URL.
+/// `s` is a strict prefix of `"data:image/"`, OR matches the partial pattern
+/// `data:image/<mt>[;base64[,]]` shape. The empty string returns false —
+/// holding back zero-length "prefixes" serves no purpose.
+fn could_start_data_url(s: &str) -> bool {
+    if s.is_empty() {
+        return false;
+    }
+    // Strict prefix of the literal "data:image/" (e.g. "data", "data:", "data:im").
+    if s.len() < "data:image/".len() && "data:image/".starts_with(s) {
+        return true;
+    }
+    if !s.starts_with("data:image/") {
+        return false;
+    }
+    let after = &s["data:image/".len()..];
+    let mt_end = after
+        .find(|c: char| !c.is_ascii_alphanumeric() && c != '.' && c != '+' && c != '-')
+        .unwrap_or(after.len());
+    let after_mt = &after[mt_end..];
+    if after_mt.is_empty() {
+        return true; // just "data:image/" + media-type chars so far
+    }
+    if !after_mt.starts_with(';') {
+        return false;
+    }
+    let after_semi = &after_mt[1..];
+    if after_semi.is_empty() {
+        return true; // "data:image/<mt>;"
+    }
+    // Should be a strict prefix of "base64,".
+    if after_semi.len() < "base64,".len() && "base64,".starts_with(after_semi) {
+        return true;
+    }
+    false
+}
+
+impl ImageScanner {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    /// Process one Text delta. Returns the events to emit: zero or more
+    /// `Delta` (text outside a data URL) and zero or more `Image` (complete
+    /// data URLs). The scanner may hold back text as `pending_text` if it
+    /// could be a partial data URL prefix; call `flush` at stream end.
+    fn process_chunk(&mut self, chunk: &str) -> Vec<ScanEvent> {
+        let mut events = Vec::new();
+        let mut input: String = chunk.to_string();
+        loop {
+            // Take ownership of state to avoid borrow conflicts when reassigning.
+            let state = std::mem::replace(&mut self.state, ScanState::Text);
+            match state {
+                ScanState::Text => {
+                    self.pending_text.push_str(&input);
+                    input.clear();
+                    if let Some(p) = find_data_url_prefix(&self.pending_text) {
+                        if p.prefix_start > 0 {
+                            events.push(ScanEvent::Delta(
+                                self.pending_text[..p.prefix_start].to_string(),
+                            ));
+                        }
+                        // Split: prefix goes into the Image buf; post-prefix
+                        // remainder stays in `input` for the Image state to
+                        // consume on the next iteration.
+                        let prefix = self.pending_text[p.prefix_start..p.prefix_end].to_string();
+                        let post_prefix = self.pending_text[p.prefix_end..].to_string();
+                        self.pending_text.clear();
+                        self.state = ScanState::Image { buf: prefix, media_type: p.media_type };
+                        input = post_prefix;
+                        // Continue loop: Image state consumes `input` next.
+                    } else {
+                        // Hold back the longest partial-prefix suffix; emit
+                        // the rest as Delta.
+                        let hold = partial_data_url_prefix_len(&self.pending_text);
+                        let emit_len = self.pending_text.len() - hold;
+                        if emit_len > 0 {
+                            events.push(ScanEvent::Delta(
+                                self.pending_text[..emit_len].to_string(),
+                            ));
+                            self.pending_text = self.pending_text[emit_len..].to_string();
+                        }
+                        self.state = ScanState::Text;
+                        break;
+                    }
+                }
+                ScanState::Image { mut buf, media_type } => {
+                    let end = input
+                        .find(|c: char| !is_base64_char(c))
+                        .unwrap_or(input.len());
+                    if end > 0 {
+                        buf.push_str(&input[..end]);
+                    }
+                    let prefix_len = format!("data:{};base64,", media_type).len();
+                    let has_data = buf.len() > prefix_len;
+                    if end < input.len() {
+                        // Non-base64 char terminates the data URL run.
+                        if has_data {
+                            events.push(ScanEvent::Image { data: buf, media_type });
+                        } else {
+                            // ponytail: malformed data URL (no base64 data
+                            // after prefix). Emit the prefix as plain text
+                            // so the user sees something — better than a
+                            // silent drop.
+                            events.push(ScanEvent::Delta(buf));
+                        }
+                        self.state = ScanState::Text;
+                        input = input[end..].to_string();
+                        // Continue loop: Text state consumes `input` next.
+                    } else {
+                        // All of `input` was base64 (or input was empty);
+                        // stay in Image state, wait for more deltas.
+                        self.state = ScanState::Image { buf, media_type };
+                        break;
+                    }
+                }
+            }
+        }
+        events
+    }
+
+    /// Flush at stream end. Emits any buffered text as Delta and any buffered
+    /// image data as Image (best-effort — partial base64 at end of stream is
+    /// emitted as if complete).
+    fn flush(&mut self) -> Vec<ScanEvent> {
+        let mut events = Vec::new();
+        let state = std::mem::replace(&mut self.state, ScanState::Text);
+        match state {
+            ScanState::Text => {
+                if !self.pending_text.is_empty() {
+                    events.push(ScanEvent::Delta(std::mem::take(&mut self.pending_text)));
+                }
+            }
+            ScanState::Image { buf, media_type } => {
+                let prefix_len = format!("data:{};base64,", media_type).len();
+                if buf.len() > prefix_len {
+                    events.push(ScanEvent::Image { data: buf, media_type });
+                } else if !buf.is_empty() {
+                    // ponytail: malformed at stream end — emit as text.
+                    events.push(ScanEvent::Delta(buf));
+                }
+            }
+        }
+        events
+    }
 }
 
 /// Drain a rig streaming chat stream into `full` text + frontend chunks.
@@ -573,22 +876,55 @@ pub async fn chat_stream(
 /// module is `pub(crate)`, so `StreamingResult<R>` can't be referenced by
 /// path; the concrete types are inferred at each call site). Only `Text`
 /// deltas, `FinalResponse`, and `Err` are matched — none depend on `R`.
+///
+/// Returns `(full, images)` where `images` is the list of inline images
+/// emitted by the model (with their character offsets into `full`). The
+/// caller persists these on the assistant `HistoryMsg` so reopening the
+/// session restores them at their original positions.
 async fn drain_loop<S, R, E>(
     stream: &mut S,
     on_event: &Channel<ChatChunk>,
-) -> Result<String, String>
+) -> Result<(String, Vec<AssistantImage>), String>
 where
     S: futures::Stream<Item = Result<MultiTurnStreamItem<R>, E>> + Unpin,
     E: std::fmt::Debug,
 {
     let mut full = String::new();
+    let mut images: Vec<AssistantImage> = Vec::new();
+    let mut scanner = ImageScanner::new();
+
+    /// Emit a `ScanEvent` to the frontend channel and update `full` /
+    /// `images` accordingly. Local closure (can't capture `&mut` refs in a
+    /// `fn`), so written as a macro to avoid the indirection.
+    macro_rules! emit {
+        ($ev:expr) => {
+            match $ev {
+                ScanEvent::Delta(t) => {
+                    full.push_str(&t);
+                    on_event.send(ChatChunk::Delta { text: t }).ok();
+                }
+                ScanEvent::Image { data, media_type } => {
+                    images.push(AssistantImage {
+                        data: data.clone(),
+                        media_type: media_type.clone(),
+                        at_offset: full.len(),
+                    });
+                    on_event
+                        .send(ChatChunk::Image { data, media_type })
+                        .ok();
+                }
+            }
+        };
+    }
+
     while let Some(item) = stream.next().await {
         match item {
             Ok(MultiTurnStreamItem::StreamAssistantItem(StreamedAssistantContent::Text(
                 Text { text, .. },
             ))) => {
-                full.push_str(&text);
-                on_event.send(ChatChunk::Delta { text }).ok();
+                for ev in scanner.process_chunk(&text) {
+                    emit!(ev);
+                }
             }
             // Reasoning block (full): iterate its content parts, emit each
             // Text part as a Thinking chunk. Encrypted/Redacted/Summary
@@ -608,10 +944,13 @@ where
                 on_event.send(ChatChunk::Thinking { text: reasoning }).ok();
             }
             Ok(MultiTurnStreamItem::FinalResponse(_)) => {
+                for ev in scanner.flush() {
+                    emit!(ev);
+                }
                 on_event.send(ChatChunk::Done).ok();
                 // ponytail: return (not break) — the trailing `Done` below is
                 // only for streams that exhausted without a FinalResponse.
-                return Ok(full);
+                return Ok((full, images));
             }
             Ok(_) => {}
             Err(e) => {
@@ -625,9 +964,13 @@ where
         }
     }
     // Stream exhausted without a FinalResponse (e.g. provider dropped the SSE).
-    // Send Done so the frontend still terminates the turn cleanly.
+    // Flush any buffered scanner state, then send Done so the frontend still
+    // terminates the turn cleanly.
+    for ev in scanner.flush() {
+        emit!(ev);
+    }
     on_event.send(ChatChunk::Done).ok();
-    Ok(full)
+    Ok((full, images))
 }
 
 #[cfg(test)]
@@ -772,5 +1115,287 @@ mod tests {
         let json = r#"{"sessionId":"s","provider":"openai","model":"m","apiKey":"k","prompt":"p"}"#;
         let params: ChatParams = serde_json::from_str(json).unwrap();
         assert!(params.history_mode.is_none());
+    }
+
+    // ── ImageScanner ──
+
+    /// Drive an `ImageScanner` through a sequence of text chunks, returning
+    /// the events emitted across all chunks plus the flush at end-of-stream.
+    fn drive_scanner(chunks: &[&str]) -> Vec<ScanEvent> {
+        let mut s = ImageScanner::new();
+        let mut events = Vec::new();
+        for c in chunks {
+            events.extend(s.process_chunk(c));
+        }
+        events.extend(s.flush());
+        events
+    }
+
+    #[test]
+    fn scanner_text_only_passes_through_as_delta() {
+        let events = drive_scanner(&["hello", " world"]);
+        assert_eq!(
+            events,
+            vec![
+                ScanEvent::Delta("hello".into()),
+                ScanEvent::Delta(" world".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn scanner_single_complete_data_url_emits_image() {
+        let chunk = "data:image/png;base64,iVBORw0KGgo=";
+        let events = drive_scanner(&[chunk]);
+        assert_eq!(
+            events,
+            vec![ScanEvent::Image {
+                data: chunk.to_string(),
+                media_type: "image/png".into(),
+            }]
+        );
+    }
+
+    #[test]
+    fn scanner_text_image_text_emits_three_events() {
+        let chunk = "before data:image/png;base64,iVBORw0KG= after";
+        let events = drive_scanner(&[chunk]);
+        assert_eq!(
+            events,
+            vec![
+                ScanEvent::Delta("before ".into()),
+                ScanEvent::Image {
+                    data: "data:image/png;base64,iVBORw0KG=".into(),
+                    media_type: "image/png".into(),
+                },
+                ScanEvent::Delta(" after".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn scanner_image_split_across_chunks() {
+        // Base64 run arrives across multiple deltas — the scanner stays in
+        // Image state until a non-base64 char (or stream end) terminates it.
+        let events = drive_scanner(&[
+            "data:image/png;base64,iVBOR",
+            "w0KGgo=",
+            " tail text",
+        ]);
+        assert_eq!(
+            events,
+            vec![
+                ScanEvent::Image {
+                    data: "data:image/png;base64,iVBORw0KGgo=".into(),
+                    media_type: "image/png".into(),
+                },
+                ScanEvent::Delta(" tail text".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn scanner_prefix_split_across_chunks() {
+        // The literal `data:image/` arrives split across two chunks. The
+        // scanner holds back the partial prefix and re-evaluates on the
+        // next chunk — without this buffering, "data:im" would emit as Delta
+        // and the image would be missed.
+        let events = drive_scanner(&["data:im", "age/png;base64,iVBOR=", " end"]);
+        assert_eq!(
+            events,
+            vec![
+                ScanEvent::Image {
+                    data: "data:image/png;base64,iVBOR=".into(),
+                    media_type: "image/png".into(),
+                },
+                ScanEvent::Delta(" end".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn scanner_two_images_in_one_chunk() {
+        // Two data URLs in one chunk, separated by a non-base64 char (space).
+        // (`=` would be consumed as base64 padding and merge the runs.)
+        let chunk = "data:image/png;base64,aaa data:image/jpeg;base64,bbb";
+        let events = drive_scanner(&[chunk]);
+        assert_eq!(
+            events,
+            vec![
+                ScanEvent::Image {
+                    data: "data:image/png;base64,aaa".into(),
+                    media_type: "image/png".into(),
+                },
+                ScanEvent::Delta(" ".into()),
+                ScanEvent::Image {
+                    data: "data:image/jpeg;base64,bbb".into(),
+                    media_type: "image/jpeg".into(),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn scanner_partial_prefix_at_end_held_back_then_completed() {
+        // "data:image" at end of chunk is a partial prefix; held back. The
+        // next chunk completes it into a real data URL.
+        let events = drive_scanner(&["pre data:image", "/png;base64,abc", " post"]);
+        assert_eq!(
+            events,
+            vec![
+                ScanEvent::Delta("pre ".into()),
+                ScanEvent::Image {
+                    data: "data:image/png;base64,abc".into(),
+                    media_type: "image/png".into(),
+                },
+                ScanEvent::Delta(" post".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn scanner_partial_prefix_disproven_emits_as_delta() {
+        // "data:image/" followed by something that doesn't complete to a
+        // data URL prefix — held back, then appended to the next chunk,
+        // disproven, and emitted as one merged Delta.
+        let events = drive_scanner(&["see data:image/", "xyz not a url"]);
+        assert_eq!(
+            events,
+            vec![
+                ScanEvent::Delta("see ".into()),
+                ScanEvent::Delta("data:image/xyz not a url".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn scanner_malformed_data_url_no_base64_data_emits_as_text() {
+        // Prefix immediately followed by a non-base64 char (no image data).
+        // ponytail: emit the prefix as Delta text rather than dropping it.
+        let events = drive_scanner(&["data:image/png;base64,"]);
+        assert_eq!(
+            events,
+            vec![ScanEvent::Delta("data:image/png;base64,".into())]
+        );
+    }
+
+    #[test]
+    fn scanner_malformed_data_url_no_semicolon_base64_passes_through() {
+        // "data:image/png;base64" without trailing comma is held back as a
+        // potential partial prefix; on the next chunk the prefix is
+        // disproven and the merged text emits as one Delta.
+        let events = drive_scanner(&["data:image/png;base64", " rest"]);
+        assert_eq!(
+            events,
+            vec![ScanEvent::Delta("data:image/png;base64 rest".into())]
+        );
+    }
+
+    #[test]
+    fn scanner_media_type_with_svg_xml() {
+        let chunk = "data:image/svg+xml;base64,PHN2ZyB4bWxu";
+        let events = drive_scanner(&[chunk]);
+        assert_eq!(
+            events,
+            vec![ScanEvent::Image {
+                data: chunk.to_string(),
+                media_type: "image/svg+xml".into(),
+            }]
+        );
+    }
+
+    #[test]
+    fn scanner_empty_input_no_events() {
+        let events = drive_scanner(&["", "", ""]);
+        assert!(events.is_empty(), "expected no events, got {:?}", events);
+    }
+
+    // ── find_data_url_prefix + could_start_data_url ──
+
+    #[test]
+    fn find_prefix_basic_png() {
+        let m = find_data_url_prefix("data:image/png;base64,abc").unwrap();
+        assert_eq!(m.prefix_start, 0);
+        assert_eq!(m.prefix_end, "data:image/png;base64,".len());
+        assert_eq!(m.media_type, "image/png");
+    }
+
+    #[test]
+    fn find_prefix_with_text_before() {
+        let m = find_data_url_prefix("hello data:image/jpeg;base64,xxx").unwrap();
+        assert_eq!(m.prefix_start, 6);
+        assert_eq!(m.media_type, "image/jpeg");
+    }
+
+    #[test]
+    fn find_prefix_no_match_returns_none() {
+        assert!(find_data_url_prefix("just text").is_none());
+        assert!(find_data_url_prefix("data:image/").is_none());
+        assert!(find_data_url_prefix("data:image/png").is_none());
+        assert!(find_data_url_prefix("data:image/png;base64").is_none());
+        // No media type chars.
+        assert!(find_data_url_prefix("data:image/;base64,abc").is_none());
+        // Media type but no `;base64,`.
+        assert!(find_data_url_prefix("data:image/png;foo,abc").is_none());
+    }
+
+    #[test]
+    fn find_prefix_skips_false_positive_data_image_literal() {
+        // `data:image/foo` without `;base64,` is a false positive; find
+        // should skip it and find the real prefix later.
+        let m = find_data_url_prefix("data:image/foo data:image/png;base64,abc").unwrap();
+        assert_eq!(m.prefix_start, 15);
+        assert_eq!(m.media_type, "image/png");
+    }
+
+    #[test]
+    fn could_start_data_url_strict_prefix_of_literal() {
+        assert!(could_start_data_url("d"));
+        assert!(could_start_data_url("data"));
+        assert!(could_start_data_url("data:"));
+        assert!(could_start_data_url("data:i"));
+        assert!(could_start_data_url("data:image/"));
+    }
+
+    #[test]
+    fn could_start_data_url_with_media_type_chars() {
+        assert!(could_start_data_url("data:image/p"));
+        assert!(could_start_data_url("data:image/png"));
+        assert!(could_start_data_url("data:image/svg+xml"));
+    }
+
+    #[test]
+    fn could_start_data_url_with_partial_base64_suffix() {
+        assert!(could_start_data_url("data:image/png;"));
+        assert!(could_start_data_url("data:image/png;b"));
+        assert!(could_start_data_url("data:image/png;base64"));
+        // `data:image/png;base64,` is the FULL prefix, not a partial —
+        // could_start_data_url returns false (it's no longer a strict
+        // prefix). The caller handles full prefixes via find_data_url_prefix.
+        assert!(!could_start_data_url("data:image/png;base64,"));
+        // Trailing data after a full prefix is also not a partial.
+        assert!(!could_start_data_url("data:image/png;base64,x"));
+    }
+
+    #[test]
+    fn could_start_data_url_rejects_non_prefixes() {
+        assert!(!could_start_data_url(""));
+        assert!(!could_start_data_url("hello"));
+        assert!(!could_start_data_url("xyzdata:"));
+        assert!(!could_start_data_url("data:image/png;foo"));
+        assert!(!could_start_data_url("data:image/png;base64,x"));
+    }
+
+    #[test]
+    fn partial_prefix_len_returns_longest_match() {
+        assert_eq!(partial_data_url_prefix_len("hello"), 0);
+        assert_eq!(partial_data_url_prefix_len("data"), 4);
+        assert_eq!(partial_data_url_prefix_len("hello data"), 4);
+        assert_eq!(partial_data_url_prefix_len("data:image/png;base64"), 21);
+        // A complete prefix — not a *partial* prefix, so len is 0.
+        assert_eq!(partial_data_url_prefix_len("data:image/png;base64,"), 0);
+        // Below the 4-char minimum — not held back.
+        assert_eq!(partial_data_url_prefix_len("dat"), 0);
+        assert_eq!(partial_data_url_prefix_len("d"), 0);
     }
 }

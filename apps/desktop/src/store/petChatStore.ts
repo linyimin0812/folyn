@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { storageClient } from '@/utils/storageClient';
 import { generateId } from '@/utils/idGenerator';
 import { debounce } from '@/utils/debounce';
+import type { AssistantImage } from '@quill/cli-adapter';
 import {
   firstEnabledPair,
   resolvePairConfig,
@@ -62,6 +63,13 @@ export interface PetChatMessage {
   provider?: string;
   /** Model id stamped alongside `provider` for the pair tag. */
   model?: string;
+  /** Assistant-turn inline images (image-generation models). Mirrors
+   *  `CliMessage.images`; the pet panel populates this from `'image'`
+   *  stream events so `MessageContent` can interleave text and `<img>`.
+   *  Not round-tripped through rig on-disk history for the pet panel's
+   *  own persistence path (the rig backend handles its own persistence
+   *  for AiPanel); the pet store persists them via `storageClient`. */
+  images?: AssistantImage[];
 }
 
 export interface PetChatSession {
@@ -126,6 +134,10 @@ interface PetChatState {
     model?: string,
   ) => void;
   appendToLastMessage: (sessionId: string, chunk: string) => void;
+  /** Append an inline image to the last message's `images[]` (assistant
+   *  turns only). `atOffset` is computed from the current `content.length`
+   *  so the frontend can interleave the image at the right text position. */
+  appendToLastMessageImage: (sessionId: string, image: { data: string; mediaType: string }) => void;
   /** Append a thinking/reasoning chunk to the last message's `thinking`
    *  field (NOT `content`). Used for streaming Reasoning /
    *  ReasoningDelta events from rig. Same no-op guards as
@@ -314,6 +326,27 @@ export const usePetChatStore = create<PetChatState>((set, get) => ({
       const messages = [...s.messages];
       const last = messages[messages.length - 1];
       messages[messages.length - 1] = { ...last, content: last.content + chunk };
+      return { ...s, messages };
+    });
+    const payload: PersistedPetChat = { sessions, activeSessionId: state.activeSessionId };
+    set({ sessions });
+    schedulePersist(payload);
+  },
+
+  appendToLastMessageImage: (sessionId, image) => {
+    const state = get();
+    const sessions = updateSession(state.sessions, sessionId, (s) => {
+      if (s.messages.length === 0) return s; // no-op guard
+      const messages = [...s.messages];
+      const last = messages[messages.length - 1];
+      if (last.role !== 'assistant') return s; // images only on assistant
+      // ponytail: atOffset = last.content.length at the time the image
+      // event arrives — image sits at the end of accumulated text so far.
+      const img: AssistantImage = { ...image, atOffset: last.content.length };
+      messages[messages.length - 1] = {
+        ...last,
+        images: [...(last.images || []), img],
+      };
       return { ...s, messages };
     });
     const payload: PersistedPetChat = { sessions, activeSessionId: state.activeSessionId };

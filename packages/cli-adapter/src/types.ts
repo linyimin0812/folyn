@@ -5,6 +5,20 @@ export interface MessageAttachment {
   previewUrl?: string;
 }
 
+/** An inline image emitted by an image-generation assistant turn. The image
+ *  sits at character position `atOffset` in the message `content` — the
+ *  frontend interleaves text and images by this offset (text segments are
+ *  `content[0..atOffset]`, `content[atOffset..nextOffset]`, etc.; images
+ *  consume no characters in `content` itself, only mark a render position). */
+export interface AssistantImage {
+  /** Full `data:image/<mt>;base64,<...>` URL, ready for `<img src>`. */
+  data: string;
+  /** Parsed MIME (e.g. `image/png`). */
+  mediaType: string;
+  /** Character offset in `CliMessage.content` where the image renders. */
+  atOffset: number;
+}
+
 export interface CliMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -19,6 +33,10 @@ export interface CliMessage {
   // desktop ChatProvider catalog; the desktop consumer narrows on read.
   provider?: string;
   model?: string;
+  /** Assistant-turn inline images (image-generation models). Frontend-only;
+   *  the desktop store populates this from `'image'` stream events and
+   *  persists it via the rig backend's `assistant_images` history field. */
+  images?: AssistantImage[];
 }
 
 export interface ToolCallInfo {
@@ -45,7 +63,8 @@ export type CliStreamEventType =
   | 'file_change'
   | 'session_id'
   | 'error'
-  | 'done';
+  | 'done'
+  | 'image';
 
 export interface CliStreamEvent {
   type: CliStreamEventType;
@@ -56,6 +75,10 @@ export interface CliStreamEvent {
   toolOutput?: string;
   fileChange?: FileChange;
   sessionId?: string;
+  /** Present when `type === 'image'`. Carries the full `data:image/...;base64,...`
+   *  URL and parsed MIME. Frontend stores it as an `AssistantImage` on the
+   *  streaming assistant message. */
+  imageData?: { data: string; mediaType: string };
 }
 
 export interface CliAdapterConfig {

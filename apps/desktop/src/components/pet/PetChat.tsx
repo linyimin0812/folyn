@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { CliMessage } from '@quill/cli-adapter';
+import type { AssistantImage, CliMessage } from '@quill/cli-adapter';
 import { isTauri } from '@/utils/platform';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { usePetChatStore } from '@/store/petChatStore';
@@ -128,6 +128,7 @@ function toCliMessages(
     thinking?: string;
     provider?: string;
     model?: string;
+    images?: AssistantImage[];
   }[],
 ): CliMessage[] {
   return msgs.map((m) => ({
@@ -138,6 +139,7 @@ function toCliMessages(
     timestamp: m.ts,
     provider: m.provider,
     model: m.model,
+    images: m.images,
   }));
 }
 
@@ -164,6 +166,7 @@ export function PetChat() {
   const streaming = usePetChatStore((s) => s.streaming);
   const addMessage = usePetChatStore((s) => s.addMessage);
   const appendToLastMessage = usePetChatStore((s) => s.appendToLastMessage);
+  const appendToLastMessageImage = usePetChatStore((s) => s.appendToLastMessageImage);
   const appendToLastMessageThinking = usePetChatStore((s) => s.appendToLastMessageThinking);
   const setStreaming = usePetChatStore((s) => s.setStreaming);
   const clear = usePetChatStore((s) => s.clearActive);
@@ -366,6 +369,7 @@ export function PetChat() {
       await sendPetChatMessage(sessionId, finalPrompt, {
         onToken: (text) => appendToLastMessage(sessionId, text),
         onThinking: (text) => appendToLastMessageThinking(sessionId, text),
+        onImage: (image) => appendToLastMessageImage(sessionId, image),
         onDone: () => {
           setStreaming(false);
         },
@@ -386,6 +390,7 @@ export function PetChat() {
     activeSessionId,
     addMessage,
     appendToLastMessage,
+    appendToLastMessageImage,
     appendToLastMessageThinking,
     setStreaming,
     petPair,
@@ -524,6 +529,7 @@ export function PetChat() {
         messages={toCliMessages(messages)}
         streaming={streaming}
         showCopy
+        showSaveImageButton
         streamingIndicator="dots"
         renderPairTag={renderPairTag}
         onClear={clear}

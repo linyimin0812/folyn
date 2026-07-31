@@ -36,6 +36,7 @@ export function AiPanel() {
   const deleteSession = useAiStore((s) => s.deleteSession);
   const addMessage = useAiStore((s) => s.addMessage);
   const appendToLastMessage = useAiStore((s) => s.appendToLastMessage);
+  const appendImageToLastMessage = useAiStore((s) => s.appendImageToLastMessage);
   const appendThinking = useAiStore((s) => s.appendThinking);
   const addToolCall = useAiStore((s) => s.addToolCall);
   const completeToolCall = useAiStore((s) => s.completeToolCall);
@@ -254,6 +255,9 @@ export function AiPanel() {
         case 'thinking':
           if (event.content) appendThinking(event.content, sid);
           break;
+        case 'image':
+          if (event.imageData) appendImageToLastMessage(event.imageData, sid);
+          break;
         case 'tool_start':
           if (event.toolId && event.toolName) addToolCall(event.toolId, event.toolName, event.toolInput, sid);
           break;
@@ -416,6 +420,7 @@ export function AiPanel() {
         streaming={isStreaming}
         streamingIndicator="dots"
         renderPairTag={renderPairTag}
+        showSaveImageButton
         className="p-3 gap-3"
       />
 

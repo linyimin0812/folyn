@@ -53,12 +53,73 @@ describe('MessageContent', () => {
     expect(div.textContent).toBe('');
   });
 
-  it('markdown mode: content that is a single data:image base64 URL renders as <img>', () => {
+  it('markdown mode: image segments render as <img> when images are interleaved', () => {
     const dataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkAAIAAAoAAv/lxKU=';
-    const { container } = render(<MessageContent content={dataUrl} />);
+    const { container } = render(
+      <MessageContent
+        content="before "
+        images={[{ data: dataUrl, mediaType: 'image/png', atOffset: 7 }]}
+      />,
+    );
     const img = container.querySelector('img');
     expect(img).toBeTruthy();
     expect(img?.getAttribute('src')).toBe(dataUrl);
+    // Text segment before the image is rendered too.
+    expect(container.textContent).toContain('before');
+  });
+
+  it('markdown mode: text + image + text renders all three segments in order', () => {
+    const dataUrl = 'data:image/png;base64,iVBORw0KG=';
+    const { container } = render(
+      <MessageContent
+        content="hello world end"
+        images={[{ data: dataUrl, mediaType: 'image/png', atOffset: 5 }]}
+      />,
+    );
+    // one image
+    expect(container.querySelectorAll('img')).toHaveLength(1);
+    // text segments contain both halves
+    expect(container.textContent).toContain('hello');
+    expect(container.textContent).toContain('world end');
+  });
+
+  it('markdown mode: image at offset 0 (no leading text) renders cleanly', () => {
+    const dataUrl = 'data:image/png;base64,iVBORw0KG=';
+    const { container } = render(
+      <MessageContent
+        content="tail"
+        images={[{ data: dataUrl, mediaType: 'image/png', atOffset: 0 }]}
+      />,
+    );
+    expect(container.querySelectorAll('img')).toHaveLength(1);
+    expect(container.textContent).toContain('tail');
+  });
+
+  it('markdown mode: image with atOffset past content.length clamps to end', () => {
+    // ponytail: atOffset > content.length clamps; image renders at the end.
+    const dataUrl = 'data:image/png;base64,iVBORw0KG=';
+    const { container } = render(
+      <MessageContent
+        content="short"
+        images={[{ data: dataUrl, mediaType: 'image/png', atOffset: 1000 }]}
+      />,
+    );
+    expect(container.querySelectorAll('img')).toHaveLength(1);
+    expect(container.textContent).toContain('short');
+  });
+
+  it('showSaveImageButton renders a save button on image segments', () => {
+    const dataUrl = 'data:image/png;base64,iVBORw0KG=';
+    const { container } = render(
+      <MessageContent
+        content="x"
+        images={[{ data: dataUrl, mediaType: 'image/png', atOffset: 1 }]}
+        showSaveImageButton
+      />,
+    );
+    const btn = container.querySelector('button');
+    expect(btn).toBeTruthy();
+    expect(btn?.textContent).toContain('保存');
   });
 
   it('markdown mode: throws inside the processor fall back to raw content', async () => {

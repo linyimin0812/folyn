@@ -14,9 +14,13 @@ import type { CliStreamEvent } from '@quill/cli-adapter';
 // Mirrors the `#[serde(tag = "type", rename_all = "camelCase")] ChatChunk` in
 // chat.rs. Keep in sync if the Rust enum changes.
 interface ChatChunk {
-  type: 'delta' | 'thinking' | 'done' | 'error';
+  type: 'delta' | 'thinking' | 'image' | 'done' | 'error';
   text?: string;
   message?: string;
+  /** Present when `type === 'image'`. Full `data:image/...;base64,...` URL. */
+  data?: string;
+  /** Parsed MIME (e.g. `image/png`). Present when `type === 'image'`. */
+  mediaType?: string;
 }
 
 export interface RigChatImage {
@@ -79,6 +83,11 @@ export async function runRigChat(p: RigChatParams): Promise<void> {
       p.onEvent({ type: 'text', content: chunk.text });
     } else if (chunk.type === 'thinking' && chunk.text) {
       p.onEvent({ type: 'thinking', content: chunk.text });
+    } else if (chunk.type === 'image' && chunk.data && chunk.mediaType) {
+      p.onEvent({
+        type: 'image',
+        imageData: { data: chunk.data, mediaType: chunk.mediaType },
+      });
     } else if (chunk.type === 'error') {
       p.onEvent({ type: 'error', content: chunk.message ?? 'chat error' });
     } else if (chunk.type === 'done') {

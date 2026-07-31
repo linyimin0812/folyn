@@ -1,4 +1,5 @@
 export type {
+  AssistantImage,
   CliAdapter,
   CliAdapterConfig,
   CliAgentDefinition,

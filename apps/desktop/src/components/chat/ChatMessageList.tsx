@@ -30,6 +30,11 @@ export interface ChatMessageListProps {
   /** AiPanel wiki-mode "保存到 Wiki" button on assistant msgs with content.
    *  The pet chat omits this. */
   onSaveToWiki?: (msg: CliMessage) => void;
+  /** When true, image segments on assistant messages render a "保存到 vault"
+   *  button that decodes the data URL and writes it under
+   *  `<vault>/__attachments__/`. Defaults to false; both AiPanel and Pet
+   *  chat opt in. */
+  showSaveImageButton?: boolean;
   /** Render a small "provider : model" tag under assistant messages that carry
    *  a `provider` + `model` pair (PR4). The resolver is consumer-supplied
    *  because shared chat components MUST NOT import the provider catalog
@@ -157,6 +162,7 @@ function DefaultMessageRow({
   onCopy,
   streamingIndicator,
   onSaveToWiki,
+  showSaveImageButton,
   renderPairTag,
 }: {
   msg: CliMessage;
@@ -167,6 +173,7 @@ function DefaultMessageRow({
   onCopy?: (msg: CliMessage) => void;
   streamingIndicator: 'dots' | 'cursor' | 'none';
   onSaveToWiki?: (msg: CliMessage) => void;
+  showSaveImageButton?: boolean;
   renderPairTag?: (msg: CliMessage) => ReactNode | null;
 }) {
   const isAssistant = msg.role === 'assistant';
@@ -209,8 +216,14 @@ function DefaultMessageRow({
       <AttachmentsRow msg={msg} />
 
       <div className="text-[12px] leading-[1.6] text-t1 break-words">
-        {isAssistant && msg.content ? (
-          <MessageContent content={msg.content} plaintext={plaintext} className={plaintext ? 'whitespace-pre-wrap' : undefined} />
+        {isAssistant && (msg.content || (msg.images && msg.images.length > 0)) ? (
+          <MessageContent
+            content={msg.content}
+            images={msg.images}
+            plaintext={plaintext}
+            className={plaintext ? 'whitespace-pre-wrap' : undefined}
+            showSaveImageButton={showSaveImageButton}
+          />
         ) : (
           msg.content
         )}
@@ -243,6 +256,7 @@ export function ChatMessageList({
   onCopy,
   streamingIndicator = 'dots',
   onSaveToWiki,
+  showSaveImageButton,
   renderPairTag,
   className,
 }: ChatMessageListProps) {
@@ -272,6 +286,7 @@ export function ChatMessageList({
             onCopy={onCopy}
             streamingIndicator={streamingIndicator}
             onSaveToWiki={onSaveToWiki}
+            showSaveImageButton={showSaveImageButton}
             renderPairTag={renderPairTag}
           />
         );

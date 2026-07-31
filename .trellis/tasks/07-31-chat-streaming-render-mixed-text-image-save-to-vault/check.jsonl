@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist + forbidden patterns — verify new code meets quality bar"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Type safety checks for new union variant + optional field"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify component prop patterns + styling on the new save button"}
+{"file": ".trellis/spec/cli-adapter/frontend/type-safety.md", "reason": "Verify CliStreamEvent 'image' variant follows type conventions"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Cross-layer data flow check: Rust → TS types → store → UI"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Verify saveImageToVault properly mirrors saveToWiki, no duplicate logic"}

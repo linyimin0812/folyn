@@ -1,0 +1,8 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "MessageContent/ChatMessageList changes — named exports, Props conventions, Tailwind patterns"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "aiStore + petChatStore event handling for new image event; zustand selector patterns"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "CliMessage.images field + CliStreamEvent image variant type definitions"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns + review checklist for the new saveImageToVault service"}
+{"file": ".trellis/spec/cli-adapter/frontend/component-guidelines.md", "reason": "CliStreamEvent shape contract — stream event emission conventions"}
+{"file": ".trellis/spec/cli-adapter/frontend/type-safety.md", "reason": "Stream event type union — directly adding 'image' variant here"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "saveImageToVault mirrors saveToWiki pattern; segment splitter is new util"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Feature spans Rust chat_stream → CliStreamEvent → store → UI — cross-layer"}

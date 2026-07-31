@@ -137,6 +137,7 @@ export async function getPetChatWorkingDir(): Promise<string> {
 export interface PetChatSendHandlers {
   onToken?: (text: string) => void;
   onThinking?: (text: string) => void;
+  onImage?: (image: { data: string; mediaType: string }) => void;
   onDone?: () => void;
   onError?: (msg: string) => void;
 }
@@ -187,6 +188,8 @@ export async function sendPetChatMessage(
       handlers.onToken?.(event.content);
     } else if (event.type === 'thinking' && event.content) {
       handlers.onThinking?.(event.content);
+    } else if (event.type === 'image' && event.imageData) {
+      handlers.onImage?.(event.imageData);
     } else if (event.type === 'session_id' && event.sessionId) {
       usePetChatStore.getState().setCliSessionId(sessionId, event.sessionId);
     } else if (event.type === 'error') {

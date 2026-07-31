@@ -80,6 +80,7 @@ interface AiState {
     model?: string,
   ) => void;
   appendToLastMessage: (token: string, sessionId?: string) => void;
+  appendImageToLastMessage: (image: { data: string; mediaType: string }, sessionId?: string) => void;
   appendThinking: (token: string, sessionId?: string) => void;
   addToolCall: (id: string, name: string, input?: Record<string, unknown>, sessionId?: string) => void;
   completeToolCall: (id: string, output?: string, sessionId?: string) => void;
@@ -250,6 +251,31 @@ export const useAiStore = create<AiState>((set, get) => ({
         if (msgs.length > 0) {
           const last = msgs[msgs.length - 1];
           msgs[msgs.length - 1] = { ...last, content: last.content + token };
+        }
+        return { ...s, messages: msgs, updatedAt: Date.now() };
+      }),
+    }));
+  },
+
+  appendImageToLastMessage: (image, sessionId?) => {
+    const targetId = sessionId || get().activeSessionId;
+    if (!targetId) return;
+    set((state) => ({
+      sessions: updateSession(state.sessions, targetId, (s) => {
+        const msgs = [...s.messages];
+        if (msgs.length > 0) {
+          const last = msgs[msgs.length - 1];
+          // ponytail: `atOffset` is `last.content.length` at the time the
+          // image event arrives — the image sits at the END of the text
+          // accumulated so far. The frontend renders text-before-image,
+          // image, then text-after (where text-after comes from subsequent
+          // 'text' deltas that extend `last.content` past `atOffset`).
+          const atOffset = last.content.length;
+          const img = { ...image, atOffset };
+          msgs[msgs.length - 1] = {
+            ...last,
+            images: [...(last.images || []), img],
+          };
         }
         return { ...s, messages: msgs, updatedAt: Date.now() };
       }),
