@@ -86,6 +86,7 @@ const debouncedPersist = debounce(() => {
 
 /** Called by every persisted store's setter to schedule a debounced write. */
 export function schedulePersist(): void {
+  console.log('[settingsPersistence] schedulePersist called from:', new Error().stack?.split('\n').slice(1, 6).join(' | '));
   debouncedPersist();
 }
 
