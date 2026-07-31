@@ -166,3 +166,37 @@ export async function fetchOwnerMap(): Promise<OwnerMap> {
   return out;
 }
 
+/**
+ * Merge capabilities from a provider fetch into the owner-map disk cache.
+ * Called by `modelRegistryStore.fetchModelsForProvider` after enrichment
+ * so ownerMap grows more complete over time — catalog (models.dev) caps
+ * that OpenRouter doesn't list become available for future providers'
+ * orphan lookups.
+ *
+ * Dedup rule (per PRD): same `ownerLookupKey(id)` already present with
+ * non-empty capabilities → skip (preserve OpenRouter's authoritative
+ * data); empty or missing → fill. Returns the merged map and writes it
+ * back to `provider-models.json`.
+ */
+export async function mergeCapabilitiesIntoOwnerMap(
+  entries: ReadonlyArray<{ id: string; capabilities: Capability[]; providerId?: string }>,
+): Promise<OwnerMap> {
+  const current = await fetchOwnerMap();
+  let changed = false;
+  for (const e of entries) {
+    if (!e.capabilities.length) continue;
+    const key = ownerLookupKey(e.id);
+    const existing = current[key];
+    if (!existing || existing.capabilities.length === 0) {
+      current[key] = {
+        modelId: key,
+        providerId: e.providerId ?? existing?.providerId ?? key,
+        capabilities: e.capabilities,
+      };
+      changed = true;
+    }
+  }
+  if (changed) await writeCache(current);
+  return current;
+}
+

@@ -103,8 +103,18 @@ export function ModelServicesSettings() {
     void loadOwnerMap();
   }, [loadOwnerMap]);
   const modelsForCurrent = useMemo(() => {
-    if (manualForCurrent.length === 0) return fetchedModels;
-    const existingIds = new Set(fetchedModels.map((m) => m.id));
+    // ponytail: enrich fetched models' empty capabilities from ownerMap at
+    // render time — fetchModelsForProvider enriches on the write path, but
+    // persisted modelsByProvider may carry [] when ownerMap wasn't loaded
+    // during fetch (or was saved before the all-provider enrichment fix).
+    const enrichFetched = fetchedModels.map((m) => {
+      if (m.capabilities.length) return m;
+      const entry = ownerMap[ownerLookupKey(m.id)];
+      return entry && entry.capabilities?.length
+        ? { ...m, capabilities: entry.capabilities }
+        : m;
+    });
+    const existingIds = new Set(enrichFetched.map((m) => m.id));
     const manual: Model[] = manualForCurrent.map((m) => {
       const ownerEntry = ownerMap[ownerLookupKey(m.id)];
       return {
@@ -116,8 +126,32 @@ export function ModelServicesSettings() {
         group: m.group ?? ownerEntry?.providerId,
       };
     });
-    return [...fetchedModels, ...manual.filter((m) => !existingIds.has(m.id))];
-  }, [fetchedModels, manualForCurrent, chatProvider, ownerMap]);
+    // ponytail: orphaned selectedModelIds — ids the user picked but that
+    // aren't in fetchedModels or manualModels (e.g. provider never fetched,
+    // or modelsByProvider[pid] is empty). Without this, ProviderDetailSection
+    // finds `m === undefined`, falls back to mid + [] capabilities, and the
+    // capability icons never render — even though ownerMap has the data.
+    // Build minimal Model entries enriched from ownerMap so icons + group
+    // resolve correctly. Renders the row with displayName = mid when no
+    // ownerEntry.displayName is available (matches existing fallback).
+    const selectedSlot = providerSettings[chatProvider];
+    const selectedIds = selectedSlot?.selectedModelIds ?? [];
+    const manualIds = new Set(manual.map((m) => m.id));
+    const orphans: Model[] = selectedIds
+      .filter((mid) => !existingIds.has(mid) && !manualIds.has(mid))
+      .map((mid) => {
+        const ownerEntry = ownerMap[ownerLookupKey(mid)];
+        return {
+          id: mid,
+          providerId: chatProvider,
+          capabilities: ownerEntry?.capabilities ?? [],
+          inputModalities: [],
+          displayName: mid,
+          group: ownerEntry?.providerId,
+        };
+      });
+    return [...enrichFetched, ...manual, ...orphans];
+  }, [fetchedModels, manualForCurrent, chatProvider, ownerMap, providerSettings]);
   const fetchStatusForCurrent = useModelRegistryStore((s) => s.fetchStatusByProvider[chatProvider] ?? 'idle');
   const fetchErrorForCurrent = useModelRegistryStore((s) => s.fetchErrorByProvider[chatProvider] ?? null);
   const fetchModelsForProvider = useModelRegistryStore((s) => s.fetchModelsForProvider);

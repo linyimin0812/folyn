@@ -3,7 +3,7 @@ import { registerPersistSlice, schedulePersist } from './settingsPersistence';
 import { fetchModels as fetchModelsRaw } from '@/services/modelRegistry/fetchModels';
 import { providerRequiresApiKey, type ProviderEntry } from '@/services/providers/catalog';
 import { readUserProviderModels, writeUserProviderModels } from '@/services/modelRegistry/userProvidersCatalog';
-import { fetchOwnerMap, ownerLookupKey, type OwnerMap } from '@/services/modelRegistry/fetchOwnerMap';
+import { fetchOwnerMap, mergeCapabilitiesIntoOwnerMap, ownerLookupKey, type OwnerMap } from '@/services/modelRegistry/fetchOwnerMap';
 import type { Model } from '@/services/modelRegistry/types';
 
 /**
@@ -163,6 +163,17 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
             owner: ownerMap[ownerLookupKey(m.id)]?.providerId ?? m.providerId,
           }));
           await writeUserProviderModels(providerId, fileModels);
+          // ponytail: also merge capabilities back into the owner-map cache
+          // (`~/.quill/providers/provider-models.json`) so ownerMap grows
+          // more complete over time — catalog (models.dev) caps that
+          // OpenRouter doesn't list become available for future providers'
+          // orphan lookups. Dedup rule: existing non-empty caps preserved.
+          const merged = await mergeCapabilitiesIntoOwnerMap(
+            enriched
+              .filter((m) => m.capabilities.length)
+              .map((m) => ({ id: m.id, capabilities: m.capabilities, providerId: m.providerId })),
+          );
+          set({ ownerMap: merged });
         } catch {
           // best-effort — swallow; cache write is non-critical
         }
