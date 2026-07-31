@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { registerPersistSlice, schedulePersist } from './settingsPersistence';
+import { registerPersistSlice } from './settingsPersistence';
 
 export const PERSIST_KEYS_VAULT_CONFIG = [
   'vaultPath',
@@ -33,11 +33,11 @@ export const useVaultConfigStore = create<VaultConfigState>((set) => ({
   watchFileChanges: true,
   trashOnDelete: true,
 
-  setVaultPath: (v) => { set({ vaultPath: v }); schedulePersist(); },
-  setImagePath: (v) => { set({ imagePath: v }); schedulePersist(); },
-  setDocExtension: (v) => { set({ docExtension: v }); schedulePersist(); },
-  setWatchFileChanges: (v) => { set({ watchFileChanges: v }); schedulePersist(); },
-  setTrashOnDelete: (v) => { set({ trashOnDelete: v }); schedulePersist(); },
+  setVaultPath: (v) => { set({ vaultPath: v }); persist(); },
+  setImagePath: (v) => { set({ imagePath: v }); persist(); },
+  setDocExtension: (v) => { set({ docExtension: v }); persist(); },
+  setWatchFileChanges: (v) => { set({ watchFileChanges: v }); persist(); },
+  setTrashOnDelete: (v) => { set({ trashOnDelete: v }); persist(); },
 
   hydrate: (blob) => {
     const patch: Partial<VaultConfigState> = {};
@@ -50,7 +50,7 @@ export const useVaultConfigStore = create<VaultConfigState>((set) => ({
   },
 }));
 
-registerPersistSlice({
+const persist = registerPersistSlice({
   name: 'vault',
   keys: PERSIST_KEYS_VAULT_CONFIG,
   getState: () => useVaultConfigStore.getState() as unknown as Record<string, unknown>,

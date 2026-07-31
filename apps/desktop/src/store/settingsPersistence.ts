@@ -1,12 +1,13 @@
 import { storageClient } from '@/utils/storageClient';
 
 // ponytail: This module owns the single-writer persist + the store slice
-// registry. It deliberately imports NOTHING from any store — stores register
-// their slices via registerPersistSlice(). This breaks the cycle
-// (store → settingsPersistence → store) that a top-level import would create:
-// each store imports schedulePersist at module load, and settingsPersistence
-// learns each store's getState via registration at that store's module init.
-// navStore is never registered (runtime-only).
+// registry. It deliberately imports NOTHING from any store — stores
+// register their slices via registerPersistSlice(), which returns a bound
+// persist closure the store captures. This breaks the cycle
+// (store → settingsPersistence → store) that a top-level import would
+// create: each store imports registerPersistSlice at module load, and
+// settingsPersistence learns each store's getState via registration at
+// that store's module init. navStore is never registered (runtime-only).
 
 export interface PersistSlice {
   /** Filename stem under ~/.quill/storage/. Must be filename-safe
@@ -35,11 +36,13 @@ const EXPECTED_SLICES = [
 ] as const;
 
 /** Register a store's persisted slice. Called at module init by each
- *  persisted store. Order is irrelevant for correctness (each slice only
- *  reads its own keys), but a stable registration order keeps the on-disk
- *  file set deterministic. */
-export function registerPersistSlice(slice: PersistSlice): void {
+ *  persisted store. Returns a `persist` closure bound to this slice —
+ *  setters call it to write ONLY this slice's file. Order is irrelevant for
+ *  correctness (each slice only reads its own keys), but a stable
+ *  registration order keeps the on-disk file set deterministic. */
+export function registerPersistSlice(slice: PersistSlice): () => void {
   if (!SLICES.includes(slice)) SLICES.push(slice);
+  return () => { void storageClient.set(slice.name, pickSliceData(slice)); };
 }
 
 /** Pick a slice's persisted keys from its current state. */
@@ -68,22 +71,19 @@ function collectPersistedBlob(): Record<string, unknown> {
   return out;
 }
 
-/** Called by every persisted store's setter. Writes through to storageClient
- *  immediately — storageClient owns the 300ms trailing-edge debounce that
- *  coalesces disk writes. The old outer debounce layered another 300ms on
- *  top (600ms setter→disk); removing it halves the write window and the
- *  flush-on-quit path (persistNow) covers the close/exit race. */
-export function schedulePersist(): void {
-  for (const slice of SLICES) {
-    void storageClient.set(slice.name, pickSliceData(slice));
-  }
-}
-
-/** Synchronous flush: cancel pending debounce + write every dirty slice to
- *  disk now. Awaited by App.tsx onCloseRequested and petHostRouter exit-app
- *  so a quit within the 300ms debounce window does not lose the last
- *  setter's write. Also broadcasts the merged blob to secondary Tauri
- *  windows so their in-memory stores don't lose the last change either. */
+/** Synchronous flush: cancel pending debounce + write every slice to disk
+ *  now. Awaited by App.tsx onCloseRequested and petHostRouter exit-app so
+ *  a quit within the 300ms debounce window does not lose the last setter's
+ *  write. Also broadcasts the merged blob to secondary Tauri windows so
+ *  their in-memory stores don't lose the last change either.
+ *  ponytail: writes ALL slices on quit, not just dirty ones — this is the
+ *  safety net path, not the hot path. Per-setter writes (via the closure
+ *  returned by registerPersistSlice) already wrote each slice's own file;
+ *  this re-writes everything as a belt-and-suspenders flush in case a
+ *  setter's debounced write was cancelled by the quit race. Per-slice dirty
+ *  tracking would shrink this to one file, but the cost is state to track +
+ *  reset; storageClient's own debounce already coalesces, so we accept the
+ *  redundant writes here. */
 export async function persistNow(): Promise<void> {
   for (const slice of SLICES) {
     await storageClient.set(slice.name, pickSliceData(slice));
@@ -112,10 +112,10 @@ export function hydrateAllStores(blob: Record<string, unknown>): void {
  *  Provider config lives in ~/.quill/providers/ — load from disk AFTER the
  *  per-slice hydrate so chatProvider is already set when we read the
  *  matching slot into the flat mirrors. Lazy import breaks the store→
- *  settingsPersistence→store cycle (aiConfigStore imports schedulePersist
- *  at module load; this module importing aiConfigStore at top would
- *  create the cycle). Returns the merged blob (or null) so callers can
- *  inspect it. */
+ *  settingsPersistence→store cycle (aiConfigStore imports
+ *  registerPersistSlice at module load; this module importing aiConfigStore
+ *  at top would create the cycle). Returns the merged blob (or null) so
+ *  callers can inspect it. */
 export async function loadSettings(): Promise<Record<string, unknown> | null> {
   // Yield one microtask so App.tsx's static imports finish evaluating and
   // every persisted store has called registerPersistSlice. Without this,

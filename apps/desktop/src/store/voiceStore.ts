@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { registerPersistSlice, schedulePersist } from './settingsPersistence';
+import { registerPersistSlice } from './settingsPersistence';
 
 // ponytail: voiceStore owns voice-input settings (polish prompt + behavior
 // toggles). Mirrors prefsStore / aiConfigStore slice-registration shape.
@@ -79,13 +79,13 @@ export const useVoiceStore = create<VoiceState>((set) => ({
   globalHotkey: '',
   spokenLanguage: 'zh-CN',
 
-  setPolishPrompt: (v) => { set({ polishPrompt: v }); schedulePersist(); },
-  setAutoPolish: (v) => { set({ autoPolish: v }); schedulePersist(); },
-  setAutoPaste: (v) => { set({ autoPaste: v }); schedulePersist(); },
-  setSaveSource: (v) => { set({ saveSource: v }); schedulePersist(); },
-  setSourceDir: (v) => { set({ sourceDir: v }); schedulePersist(); },
-  setGlobalHotkey: (v) => { set({ globalHotkey: v }); schedulePersist(); },
-  setSpokenLanguage: (v) => { set({ spokenLanguage: v }); schedulePersist(); },
+  setPolishPrompt: (v) => { set({ polishPrompt: v }); persist(); },
+  setAutoPolish: (v) => { set({ autoPolish: v }); persist(); },
+  setAutoPaste: (v) => { set({ autoPaste: v }); persist(); },
+  setSaveSource: (v) => { set({ saveSource: v }); persist(); },
+  setSourceDir: (v) => { set({ sourceDir: v }); persist(); },
+  setGlobalHotkey: (v) => { set({ globalHotkey: v }); persist(); },
+  setSpokenLanguage: (v) => { set({ spokenLanguage: v }); persist(); },
 
   hydrate: (blob) => {
     const patch: Partial<VoiceState> = {};
@@ -100,7 +100,7 @@ export const useVoiceStore = create<VoiceState>((set) => ({
   },
 }));
 
-registerPersistSlice({
+const persist = registerPersistSlice({
   name: 'voice',
   keys: PERSIST_KEYS_VOICE,
   getState: () => useVoiceStore.getState() as unknown as Record<string, unknown>,

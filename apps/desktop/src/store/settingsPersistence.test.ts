@@ -289,6 +289,22 @@ describe('settingsPersistence single writer', () => {
     expect(calls.get('editorPrefs')?.petSize).toBeUndefined();
     setSpy.mockRestore();
   });
+
+  it('changing one appearance field writes only the appearance slice, not every slice', () => {
+    // ponytail: per-slice persist closure — a setter in slice X must write
+    // ONLY slice X's file. The old global schedulePersist() looped every
+    // registered slice on every setter, so setVaultName('x') scheduled
+    // storageClient.set for all 9 slices (appearance + prefs + editorPrefs
+    // + pet + voice + vault + schedule + modelRegistry + aiConfig). The
+    // bound closure cuts that to one. This test fails if the per-slice
+    // persist contract regresses (e.g. someone reverts to a global loop).
+    const setSpy = vi.spyOn(storageClient, 'set');
+    useAppearanceStore.getState().setVaultName('solo');
+    vi.advanceTimersByTime(400);
+    const sliceNames = setSpy.mock.calls.map(([k]) => k as string);
+    expect(sliceNames).toEqual(['appearance']);
+    setSpy.mockRestore();
+  });
 });
 
 describe('settingsPersistence flush-on-quit', () => {

@@ -26,10 +26,10 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
 }));
 
 // Stub settingsPersistence — modelRegistryStore registers a persist slice
-// on import; avoid touching storageClient in tests.
+// on import; avoid touching storageClient in tests. registerPersistSlice
+// now returns a persist closure the store captures; return a no-op.
 vi.mock('./settingsPersistence', () => ({
-  registerPersistSlice: vi.fn(),
-  schedulePersist: vi.fn(),
+  registerPersistSlice: vi.fn(() => () => {}),
 }));
 
 vi.mock('@/services/modelRegistry/fetchModels', () => ({

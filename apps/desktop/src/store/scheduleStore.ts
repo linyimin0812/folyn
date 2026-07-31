@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import i18n from '@/i18n';
 import { useVaultStore } from './vaultStore';
 import { usePrefsStore } from './prefsStore';
-import { registerPersistSlice, schedulePersist } from './settingsPersistence';
+import { registerPersistSlice } from './settingsPersistence';
 import {
   parseDaily,
   serializeDaily,
@@ -192,14 +192,14 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       const color = palette[state.boardColumns.length % palette.length];
       return { boardColumns: [...state.boardColumns, { id, name: name || i18n.t('schedule:toast.newColumnDefault'), color }] };
     });
-    schedulePersist();
+    persist();
     return id;
   },
   renameBoardColumn: (id: string, name: string) => {
     set((state) => ({
       boardColumns: state.boardColumns.map((c) => (c.id === id ? { ...c, name } : c)),
     }));
-    schedulePersist();
+    persist();
   },
   reorderBoardColumns: (fromId: string, toId: string) => {
     if (fromId === toId) return;
@@ -212,11 +212,11 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       cols.splice(toIdx, 0, moved);
       return { boardColumns: cols };
     });
-    schedulePersist();
+    persist();
   },
   setBoardColumns: (columns: BoardColumnDef[]) => {
     set({ boardColumns: columns });
-    schedulePersist();
+    persist();
   },
 
   addEvent: async (noteDate, e) => {
@@ -596,7 +596,7 @@ export { subscribeToFileTree } from './vaultStore';
 // pre-split settingsStore path: non-empty array with at least one isDone
 // column, else DEFAULT_BOARD_COLUMNS. This slice is the sole live source
 // (PR2 retargeted columns.ts / SettingsPage / removeBoardColumn here).
-registerPersistSlice({
+const persist = registerPersistSlice({
   name: 'schedule',
   keys: PERSIST_KEYS_BOARD_COLUMNS,
   getState: () => useScheduleStore.getState() as unknown as Record<string, unknown>,

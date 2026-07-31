@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { registerPersistSlice, schedulePersist } from './settingsPersistence';
+import { registerPersistSlice } from './settingsPersistence';
 
 // ponytail: appearanceStore owns Theme/LinkOpenMode type ownership and
 // backfillBuiltinExcludePatterns (PR2 migrated from legacy settingsStore).
@@ -110,7 +110,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
       : theme;
     document.documentElement.dataset.theme = actual;
     set({ theme });
-    schedulePersist();
+    persist();
   },
 
   toggleTheme: () => {
@@ -119,31 +119,31 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
       document.documentElement.dataset.theme = newTheme;
       return { theme: newTheme };
     });
-    schedulePersist();
+    persist();
   },
 
   setFontSize: (size) => {
     document.documentElement.style.setProperty('--ui-font-size', `${size}px`);
     set({ fontSize: size });
-    schedulePersist();
+    persist();
   },
 
   setLineHeight: (height) => {
     set({ lineHeight: height });
-    schedulePersist();
+    persist();
   },
 
-  setShowAiPanel: (v) => { set({ showAiPanel: v }); schedulePersist(); },
-  setShowStatusBar: (v) => { set({ showStatusBar: v }); schedulePersist(); },
-  setShowHiddenFiles: (v) => { set({ showHiddenFiles: v }); schedulePersist(); },
-  setEnableWikiPanel: (v) => { set({ enableWikiPanel: v }); schedulePersist(); },
-  setEnableClipsPanel: (v) => { set({ enableClipsPanel: v }); schedulePersist(); },
-  setEnableAnalyzePanel: (v) => { set({ enableAnalyzePanel: v }); schedulePersist(); },
-  setEnableDailyPanel: (v) => { set({ enableDailyPanel: v }); schedulePersist(); },
-  setExcludePatterns: (v) => { set({ excludePatterns: v }); schedulePersist(); },
-  setLinkOpenMode: (v) => { set({ linkOpenMode: v }); schedulePersist(); },
-  setVaultName: (name) => { set({ vaultName: name }); schedulePersist(); },
-  setShowTrayIcon: (v) => { set({ showTrayIcon: v }); schedulePersist(); },
+  setShowAiPanel: (v) => { set({ showAiPanel: v }); persist(); },
+  setShowStatusBar: (v) => { set({ showStatusBar: v }); persist(); },
+  setShowHiddenFiles: (v) => { set({ showHiddenFiles: v }); persist(); },
+  setEnableWikiPanel: (v) => { set({ enableWikiPanel: v }); persist(); },
+  setEnableClipsPanel: (v) => { set({ enableClipsPanel: v }); persist(); },
+  setEnableAnalyzePanel: (v) => { set({ enableAnalyzePanel: v }); persist(); },
+  setEnableDailyPanel: (v) => { set({ enableDailyPanel: v }); persist(); },
+  setExcludePatterns: (v) => { set({ excludePatterns: v }); persist(); },
+  setLinkOpenMode: (v) => { set({ linkOpenMode: v }); persist(); },
+  setVaultName: (name) => { set({ vaultName: name }); persist(); },
+  setShowTrayIcon: (v) => { set({ showTrayIcon: v }); persist(); },
 
   hydrate: (blob) => {
     const patch: Partial<AppearanceState> = {};
@@ -184,7 +184,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
 // backfill behavior stays co-located with the field it guards.
 export { BUILTIN_EXCLUDE_DIRS };
 
-registerPersistSlice({
+const persist = registerPersistSlice({
   name: 'appearance',
   keys: PERSIST_KEYS_APPEARANCE,
   getState: () => useAppearanceStore.getState() as unknown as Record<string, unknown>,

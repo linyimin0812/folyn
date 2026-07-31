@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { registerPersistSlice, schedulePersist } from './settingsPersistence';
+import { registerPersistSlice } from './settingsPersistence';
 import {
   PET_SIZE_VERSION,
   PET_SIZE_DEFAULT,
@@ -186,15 +186,15 @@ export const usePetStore = create<PetState>((set, get) => ({
   bubbleAppWhitelist: [],
   inboxItems: [],
 
-  setPetModeEnabled: (enabled) => { set({ petModeEnabled: enabled }); schedulePersist(); },
+  setPetModeEnabled: (enabled) => { set({ petModeEnabled: enabled }); persist(); },
 
-  setPetPosition: (x, y) => { set({ petPositionX: x, petPositionY: y }); schedulePersist(); },
+  setPetPosition: (x, y) => { set({ petPositionX: x, petPositionY: y }); persist(); },
 
-  setPetPanelPosition: (x, y) => { set({ petPanelX: x, petPanelY: y }); schedulePersist(); },
+  setPetPanelPosition: (x, y) => { set({ petPanelX: x, petPanelY: y }); persist(); },
 
-  setPetPanelSize: (width, height) => { set({ petPanelWidth: width, petPanelHeight: height }); schedulePersist(); },
+  setPetPanelSize: (width, height) => { set({ petPanelWidth: width, petPanelHeight: height }); persist(); },
 
-  setPetPanelSizeVersion: (version) => { set({ petPanelSizeVersion: version }); schedulePersist(); },
+  setPetPanelSizeVersion: (version) => { set({ petPanelSizeVersion: version }); persist(); },
 
   setPetIcon: (source, path) => {
     // When switching to `'builtin'`, clear the path (no file to track). When
@@ -212,7 +212,7 @@ export const usePetStore = create<PetState>((set, get) => ({
         petIconPath: path !== undefined ? path : get().petIconPath,
       });
     }
-    schedulePersist();
+    persist();
   },
 
   addPetIcon: (path) => {
@@ -221,7 +221,7 @@ export const usePetStore = create<PetState>((set, get) => ({
     const cur = get().petIcons;
     const next = cur.includes(path) ? cur : [...cur, path];
     set({ petIcons: next, petIconSource: 'custom', petIconPath: path });
-    schedulePersist();
+    persist();
   },
 
   removePetIcon: (path) => {
@@ -241,7 +241,7 @@ export const usePetStore = create<PetState>((set, get) => ({
     } else {
       set({ petIcons: next });
     }
-    schedulePersist();
+    persist();
   },
 
   resetPetIcons: () => {
@@ -249,20 +249,20 @@ export const usePetStore = create<PetState>((set, get) => ({
     // Distinct from `setPetIcon('builtin')` which only flips the active
     // source (the library survives a temporary switch to builtin).
     set({ petIcons: [], petIconSource: 'builtin', petIconPath: '' });
-    schedulePersist();
+    persist();
   },
 
-  setPetSize: (size) => { set({ petSize: size }); schedulePersist(); },
+  setPetSize: (size) => { set({ petSize: size }); persist(); },
 
-  setPetOpacity: (opacity) => { set({ petOpacity: opacity }); schedulePersist(); },
+  setPetOpacity: (opacity) => { set({ petOpacity: opacity }); persist(); },
 
-  setPetClickThrough: (enabled) => { set({ petClickThrough: enabled }); schedulePersist(); },
+  setPetClickThrough: (enabled) => { set({ petClickThrough: enabled }); persist(); },
 
-  setNotificationForm: (form) => { set({ notificationForm: form }); schedulePersist(); },
+  setNotificationForm: (form) => { set({ notificationForm: form }); persist(); },
 
-  setCornerPlacement: (placement) => { set({ cornerPlacement: placement }); schedulePersist(); },
+  setCornerPlacement: (placement) => { set({ cornerPlacement: placement }); persist(); },
 
-  setCornerTtlMs: (ttl) => { set({ cornerTtlMs: ttl }); schedulePersist(); },
+  setCornerTtlMs: (ttl) => { set({ cornerTtlMs: ttl }); persist(); },
 
   addBubbleUserTemplate: (template) => {
     // ponytail: replace by id — importing the same id twice is an update, not
@@ -276,7 +276,7 @@ export const usePetStore = create<PetState>((set, get) => ({
     const cur = get().bubbleUserTemplates;
     const next = [...cur.filter((t) => t.id !== id), { ...template, id }];
     set({ bubbleUserTemplates: next });
-    schedulePersist();
+    persist();
   },
 
   removeBubbleUserTemplate: (id) => {
@@ -287,12 +287,12 @@ export const usePetStore = create<PetState>((set, get) => ({
     if (get().bubbleActiveTemplateId === id) {
       set({ bubbleActiveTemplateId: 'default' });
     }
-    schedulePersist();
+    persist();
   },
 
   setBubbleActiveTemplateId: (id) => {
     set({ bubbleActiveTemplateId: id });
-    schedulePersist();
+    persist();
   },
 
   addBubbleAppToWhitelist: (app) => {
@@ -301,13 +301,13 @@ export const usePetStore = create<PetState>((set, get) => ({
     if (!trimmed) return;
     if (cur.includes(trimmed)) return;
     set({ bubbleAppWhitelist: [...cur, trimmed] });
-    schedulePersist();
+    persist();
   },
 
   removeBubbleAppFromWhitelist: (app) => {
     const cur = get().bubbleAppWhitelist;
     set({ bubbleAppWhitelist: cur.filter((a) => a !== app) });
-    schedulePersist();
+    persist();
   },
 
   addInboxItem: (payload) => {
@@ -323,18 +323,18 @@ export const usePetStore = create<PetState>((set, get) => ({
     const cur = get().inboxItems;
     const next = [item, ...cur].slice(0, INBOX_MAX_ITEMS);
     set({ inboxItems: next });
-    schedulePersist();
+    persist();
   },
 
   removeInboxItem: (id) => {
     set({ inboxItems: get().inboxItems.filter((i) => i.id !== id) });
-    schedulePersist();
+    persist();
   },
 
   clearInbox: () => {
     if (get().inboxItems.length === 0) return;
     set({ inboxItems: [] });
-    schedulePersist();
+    persist();
   },
 
   hydrate: (blob) => {
@@ -493,7 +493,7 @@ export const usePetStore = create<PetState>((set, get) => ({
   },
 }));
 
-registerPersistSlice({
+const persist = registerPersistSlice({
   name: 'pet',
   keys: PERSIST_KEYS_PET,
   getState: () => usePetStore.getState() as unknown as Record<string, unknown>,

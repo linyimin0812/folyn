@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { registerPersistSlice, schedulePersist } from './settingsPersistence';
+import { registerPersistSlice } from './settingsPersistence';
 import {
   PROVIDER_CATALOG,
   allProviders,
@@ -370,14 +370,14 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
         cliPath: storedNew ?? defaultFor(v),
       };
     });
-    schedulePersist();
+    persist();
   },
   setCliPath: (v) => {
     set((s) => ({
       cliPath: v,
       cliPaths: { ...s.cliPaths, [s.cliAdapter]: v },
     }));
-    schedulePersist();
+    persist();
   },
   setCliPathFor: (adapterId, path) => {
     set((s) => {
@@ -385,7 +385,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
       const cliPath = adapterId === s.cliAdapter ? path : s.cliPath;
       return { cliPaths, cliPath };
     });
-    schedulePersist();
+    persist();
   },
   setChatProvider: (v) => {
     const s = get();
@@ -409,16 +409,16 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
       providerSettings: { ...oldSlot, [v]: newSlot },
       ...flatMirrors(newSlot),
     });
-    schedulePersist();
+    persist();
     void providerConfigStorage.setProviderSettings(v, newSlot);
   },
-  setChatModel: (v) => { set({ chatModel: v }); schedulePersist(); },
+  setChatModel: (v) => { set({ chatModel: v }); persist(); },
   setChatApiKey: (v) => {
     const s = get();
     const pid = s.chatProvider;
     const next = patchSettings(s.providerSettings, pid, { apiKey: v });
     set({ chatApiKey: v, providerSettings: next });
-    schedulePersist();
+    persist();
     void providerConfigStorage.setProviderSettings(pid, next[pid]!);
   },
   setChatBaseUrl: (v) => {
@@ -426,7 +426,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     const pid = s.chatProvider;
     const next = patchSettings(s.providerSettings, pid, { baseUrl: v });
     set({ chatBaseUrl: v, providerSettings: next });
-    schedulePersist();
+    persist();
     void providerConfigStorage.setProviderSettings(pid, next[pid]!);
   },
   setChatAzureDeploymentId: (v) => {
@@ -437,7 +437,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
       extra: { ...currentExtra, azureDeploymentId: v },
     });
     set({ chatAzureDeploymentId: v, providerSettings: next });
-    schedulePersist();
+    persist();
     void providerConfigStorage.setProviderSettings(pid, next[pid]!);
   },
   setChatAzureApiVersion: (v) => {
@@ -448,7 +448,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
       extra: { ...currentExtra, azureApiVersion: v },
     });
     set({ chatAzureApiVersion: v, providerSettings: next });
-    schedulePersist();
+    persist();
     void providerConfigStorage.setProviderSettings(pid, next[pid]!);
   },
   setChatThinkingBudget: (v) => {
@@ -459,7 +459,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
       extra: { ...currentExtra, thinkingBudget: v },
     });
     set({ chatThinkingBudget: v, providerSettings: next });
-    schedulePersist();
+    persist();
     void providerConfigStorage.setProviderSettings(pid, next[pid]!);
   },
 
@@ -548,7 +548,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
         manualModels: { ...s.manualModels, [providerId]: [...list, entry] },
       };
     });
-    schedulePersist();
+    persist();
   },
 
   addSelectedModelId: (providerId, modelId) => {
@@ -559,7 +559,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
       selectedModelIds: [...current, modelId],
     });
     set({ providerSettings: next });
-    schedulePersist();
+    persist();
     void providerConfigStorage.setProviderSettings(providerId, next[providerId]!);
   },
 
@@ -586,7 +586,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     } else {
       set({ providerSettings: next });
     }
-    schedulePersist();
+    persist();
     void providerConfigStorage.setProviderSettings(providerId, next[providerId]!);
   },
 
@@ -596,11 +596,11 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
         r.id === runtimeId ? { ...r, binaryPath: path } : r,
       ),
     }));
-    schedulePersist();
+    persist();
   },
 
-  setVoicePair: (pair) => { set({ voicePair: pair }); schedulePersist(); },
-  setPluginPair: (pair) => { set({ pluginPair: pair }); schedulePersist(); },
+  setVoicePair: (pair) => { set({ voicePair: pair }); persist(); },
+  setPluginPair: (pair) => { set({ pluginPair: pair }); persist(); },
 
   hydrate: (blob) => {
     const patch: Partial<AiConfigState> = {};
@@ -700,7 +700,7 @@ function mergeScriptRuntimes(persisted: unknown): RuntimeConfig[] {
   return Array.from(byId.values());
 }
 
-registerPersistSlice({
+const persist = registerPersistSlice({
   name: 'aiConfig',
   keys: PERSIST_KEYS_AI_CONFIG,
   getState: () => useAiConfigStore.getState() as unknown as Record<string, unknown>,

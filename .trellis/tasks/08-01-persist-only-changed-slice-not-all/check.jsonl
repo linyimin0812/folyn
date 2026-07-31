@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify per-slice persist contract + settingsLoadDone gate still holds; persistNow still writes all slices"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Lint / typecheck / single-check pattern for the mechanical refactor across 9 store files"}

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { registerPersistSlice, schedulePersist } from './settingsPersistence';
+import { registerPersistSlice } from './settingsPersistence';
 
 // ponytail: prefsStore owns ShortcutItem / DEFAULT_SHORTCUTS /
 // backfillDefaultShortcuts (PR2 migrated from legacy settingsStore).
@@ -81,20 +81,20 @@ export const usePrefsStore = create<PrefsState>((set) => ({
   fileTemplates: { ...DEFAULT_FILE_TEMPLATES },
   shortcuts: [...DEFAULT_SHORTCUTS],
 
-  setDailyNotesDir: (v) => { set({ dailyNotesDir: v }); schedulePersist(); },
-  setDailyNoteDateFormat: (v) => { set({ dailyNoteDateFormat: v }); schedulePersist(); },
-  setFileTemplates: (v) => { set({ fileTemplates: v }); schedulePersist(); },
+  setDailyNotesDir: (v) => { set({ dailyNotesDir: v }); persist(); },
+  setDailyNoteDateFormat: (v) => { set({ dailyNoteDateFormat: v }); persist(); },
+  setFileTemplates: (v) => { set({ fileTemplates: v }); persist(); },
 
   updateShortcut: (id, keys) => {
     set((state) => ({
       shortcuts: state.shortcuts.map((s) => (s.id === id ? { ...s, keys } : s)),
     }));
-    schedulePersist();
+    persist();
   },
 
   resetShortcuts: () => {
     set({ shortcuts: [...DEFAULT_SHORTCUTS] });
-    schedulePersist();
+    persist();
   },
 
   hydrate: (blob) => {
@@ -118,7 +118,7 @@ export const usePrefsStore = create<PrefsState>((set) => ({
   },
 }));
 
-registerPersistSlice({
+const persist = registerPersistSlice({
   name: 'prefs',
   keys: PERSIST_KEYS_PREFS,
   getState: () => usePrefsStore.getState() as unknown as Record<string, unknown>,

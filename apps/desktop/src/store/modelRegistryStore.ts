@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { registerPersistSlice, schedulePersist } from './settingsPersistence';
+import { registerPersistSlice } from './settingsPersistence';
 import { fetchModels as fetchModelsRaw } from '@/services/modelRegistry/fetchModels';
 import { providerRequiresApiKey, type ProviderEntry } from '@/services/providers/catalog';
 import { readUserProviderModels, writeUserProviderModels } from '@/services/modelRegistry/userProvidersCatalog';
@@ -152,7 +152,7 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
           [providerId]: Date.now(),
         },
       }));
-      schedulePersist();
+      persist();
       // ponytail: fire-and-forget the file write — cache failure must not
       // block the main flow. The file gets the enriched models + `owner`
       // field (file-only; the in-memory `Model` type has no `owner`).
@@ -258,7 +258,7 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
   },
 }));
 
-registerPersistSlice({
+const persist = registerPersistSlice({
   name: 'modelRegistry',
   keys: PERSIST_KEYS_MODEL_REGISTRY,
   getState: () => useModelRegistryStore.getState() as unknown as Record<string, unknown>,

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { registerPersistSlice, schedulePersist } from './settingsPersistence';
+import { registerPersistSlice } from './settingsPersistence';
 
 export const PERSIST_KEYS_EDITOR_PREFS = [
   'editorFont',
@@ -45,14 +45,14 @@ export const useEditorPrefsStore = create<EditorPrefsState>((set) => ({
   autoSave: true,
   spellCheck: false,
 
-  setEditorFont: (v) => { set({ editorFont: v }); schedulePersist(); },
-  setEditorFontSize: (v) => { set({ editorFontSize: v }); schedulePersist(); },
-  setTabSize: (v) => { set({ tabSize: v }); schedulePersist(); },
-  setWrapColumn: (v) => { set({ wrapColumn: v }); schedulePersist(); },
-  setShowLineNumbers: (v) => { set({ showLineNumbers: v }); schedulePersist(); },
-  setSyntaxHighlight: (v) => { set({ syntaxHighlight: v }); schedulePersist(); },
-  setAutoSave: (v) => { set({ autoSave: v }); schedulePersist(); },
-  setSpellCheck: (v) => { set({ spellCheck: v }); schedulePersist(); },
+  setEditorFont: (v) => { set({ editorFont: v }); persist(); },
+  setEditorFontSize: (v) => { set({ editorFontSize: v }); persist(); },
+  setTabSize: (v) => { set({ tabSize: v }); persist(); },
+  setWrapColumn: (v) => { set({ wrapColumn: v }); persist(); },
+  setShowLineNumbers: (v) => { set({ showLineNumbers: v }); persist(); },
+  setSyntaxHighlight: (v) => { set({ syntaxHighlight: v }); persist(); },
+  setAutoSave: (v) => { set({ autoSave: v }); persist(); },
+  setSpellCheck: (v) => { set({ spellCheck: v }); persist(); },
 
   hydrate: (blob) => {
     const patch: Partial<EditorPrefsState> = {};
@@ -68,7 +68,7 @@ export const useEditorPrefsStore = create<EditorPrefsState>((set) => ({
   },
 }));
 
-registerPersistSlice({
+const persist = registerPersistSlice({
   name: 'editorPrefs',
   keys: PERSIST_KEYS_EDITOR_PREFS,
   getState: () => useEditorPrefsStore.getState() as unknown as Record<string, unknown>,

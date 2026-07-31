@@ -216,7 +216,7 @@ export function PetCornerApp(): JSX.Element {
           timersRef.current.set(id, timer);
         }
       });
-      // Cross-window settings sync: the main window's `schedulePersist`
+      // Cross-window settings sync: the main window's per-slice `persist()`
       // emits `pet://settings-updated` with the fresh blob as payload
       // after every debounced write. This window holds its own `petStore`
       // instance (separate JS context) so in-memory `set()` calls in the
