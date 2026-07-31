@@ -67,7 +67,9 @@ function collectPersistedBlob(): Record<string, unknown> {
  *  payload. */
 const debouncedPersist = debounce(() => {
   for (const slice of SLICES) {
-    void storageClient.set(slice.name, pickSliceData(slice));
+    const data = pickSliceData(slice);
+    console.log('[settingsPersistence] debouncedPersist: writing slice', slice.name, '→ keys =', Object.keys(data));
+    void storageClient.set(slice.name, data);
   }
   const blob = collectPersistedBlob();
   void (async () => {
@@ -123,8 +125,10 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
 
   const blob: Record<string, unknown> = {};
   let any = false;
+  console.log('[settingsPersistence] loadSettings: SLICES registered =', SLICES.length, SLICES.map(s => s.name));
   for (const slice of SLICES) {
     const data = await storageClient.get<Record<string, unknown>>(slice.name);
+    console.log('[settingsPersistence] loadSettings: slice', slice.name, '→ data keys =', data ? Object.keys(data) : 'null');
     if (data) {
       any = true;
       slice.hydrate?.(data);
