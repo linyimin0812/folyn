@@ -5,8 +5,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 const FS: Map<string, string> = new Map();
 const FAKE_HOME = '/tmp/test-home';
 
-const { fetchModelsMock } = vi.hoisted(() => ({
+const { fetchModelsMock, ownerMapMock } = vi.hoisted(() => ({
   fetchModelsMock: vi.fn(),
+  ownerMapMock: vi.fn(),
 }));
 
 vi.mock('@tauri-apps/api/path', () => ({
@@ -35,32 +36,58 @@ vi.mock('@/services/modelRegistry/fetchModels', () => ({
   fetchModels: fetchModelsMock,
 }));
 
+// Stub fetchOwnerMap — owner enrichment is a file-only concern; tests drive
+// the owner map directly via `ownerMapMock`.
+vi.mock('@/services/modelRegistry/fetchOwnerMap', () => ({
+  fetchOwnerMap: ownerMapMock,
+  ownerLookupKey: (id: string) => {
+    const slashIdx = id.indexOf('/');
+    const after = slashIdx < 0 ? id : id.slice(slashIdx + 1);
+    const colon = after.indexOf(':');
+    return (colon < 0 ? after : after.slice(0, colon)).toLowerCase();
+  },
+}));
+
 import { useModelRegistryStore } from './modelRegistryStore';
 
 const FAKE_MODELS = [
   { id: 'claude-3-5-sonnet', providerId: 'anthropic', capabilities: [], inputModalities: [] },
-  { id: 'claude-3-opus', providerId: 'anthropic', capabilities: [], inputModalities: [] },
+  { id: 'gpt-4o', providerId: 'openai', capabilities: [], inputModalities: [] },
 ];
 
 describe('useModelRegistryStore.fetchModelsForProvider — file cache + fallback', () => {
   beforeEach(() => {
     FS.clear();
     fetchModelsMock.mockReset();
+    ownerMapMock.mockReset();
     useModelRegistryStore.getState().__reset();
   });
 
-  it('writes fetched models to ~/.quill/providers/{pid}/models.json on success', async () => {
+  it('writes fetched models with `owner` enriched from fetchOwnerMap', async () => {
     fetchModelsMock.mockResolvedValue({ models: FAKE_MODELS });
+    ownerMapMock.mockResolvedValue({ 'claude-3-5-sonnet': 'anthropic', 'gpt-4o': 'openai' });
     const r = await useModelRegistryStore.getState().fetchModelsForProvider('anthropic', 'sk-test');
     expect(r.ok).toBe(true);
     // Wait for the fire-and-forget write.
-    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 10));
     const file = FS.get('/tmp/test-home/.quill/providers/anthropic/models.json');
     expect(file).toBeDefined();
-    expect(JSON.parse(file!).map((m: { id: string }) => m.id)).toEqual([
-      'claude-3-5-sonnet',
-      'claude-3-opus',
+    const parsed = JSON.parse(file!) as Array<{ id: string; owner: string }>;
+    expect(parsed.map((m) => ({ id: m.id, owner: m.owner }))).toEqual([
+      { id: 'claude-3-5-sonnet', owner: 'anthropic' },
+      { id: 'gpt-4o', owner: 'openai' },
     ]);
+  });
+
+  it('falls back owner to providerId when fetchOwnerMap returns empty', async () => {
+    fetchModelsMock.mockResolvedValue({ models: FAKE_MODELS });
+    ownerMapMock.mockResolvedValue({});
+    await useModelRegistryStore.getState().fetchModelsForProvider('anthropic', 'sk-test');
+    await new Promise((r) => setTimeout(r, 10));
+    const file = FS.get('/tmp/test-home/.quill/providers/anthropic/models.json');
+    const parsed = JSON.parse(file!) as Array<{ id: string; providerId: string; owner: string }>;
+    expect(parsed[0].owner).toBe('anthropic');
+    expect(parsed[1].owner).toBe('openai');
   });
 
   it('on fetch failure with cached file, repopulates models and appends "使用缓存数据" notice', async () => {
@@ -76,7 +103,7 @@ describe('useModelRegistryStore.fetchModelsForProvider — file cache + fallback
     const s = useModelRegistryStore.getState();
     expect(s.modelsByProvider.anthropic?.map((m) => m.id)).toEqual([
       'claude-3-5-sonnet',
-      'claude-3-opus',
+      'gpt-4o',
     ]);
     expect(s.fetchErrorByProvider.anthropic).toContain('使用缓存数据');
     expect(s.fetchErrorByProvider.anthropic).toContain('network down');
@@ -91,3 +118,4 @@ describe('useModelRegistryStore.fetchModelsForProvider — file cache + fallback
     expect(s.fetchErrorByProvider.anthropic).toBe('network down');
   });
 });
+

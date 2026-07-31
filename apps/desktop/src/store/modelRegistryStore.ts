@@ -3,6 +3,7 @@ import { registerPersistSlice, schedulePersist } from './settingsPersistence';
 import { fetchModels as fetchModelsRaw } from '@/services/modelRegistry/fetchModels';
 import { providerRequiresApiKey, type ProviderEntry } from '@/services/providers/catalog';
 import { readUserProviderModels, writeUserProviderModels } from '@/services/modelRegistry/userProvidersCatalog';
+import { fetchOwnerMap, ownerLookupKey } from '@/services/modelRegistry/fetchOwnerMap';
 import type { Model } from '@/services/modelRegistry/types';
 
 /**
@@ -105,8 +106,23 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
       }));
       schedulePersist();
       // ponytail: fire-and-forget the file write — cache failure must not
-      // block the main flow. A rejected promise here is swallowed.
-      void writeUserProviderModels(providerId, result.models).catch(() => {});
+      // block the main flow. Enrich with `owner` from the OpenRouter owner
+      // map before writing (matches the old refetchAllFromModelsDev
+      // behavior). `fetchOwnerMap` never throws (returns {} on failure) so
+      // owner falls back to providerId. The in-memory store stays `Model[]`
+      // (no owner); owner is a file-only concern for downstream consumers.
+      void (async () => {
+        try {
+          const ownerMap = await fetchOwnerMap();
+          const enriched = result.models.map((m) => ({
+            ...m,
+            owner: ownerMap[ownerLookupKey(m.id)] ?? m.providerId,
+          }));
+          await writeUserProviderModels(providerId, enriched);
+        } catch {
+          // best-effort — swallow; cache write is non-critical
+        }
+      })();
       return { ok: true };
     } catch (e) {
       // ponytail: Tauri rejects with the serialized AppError object
