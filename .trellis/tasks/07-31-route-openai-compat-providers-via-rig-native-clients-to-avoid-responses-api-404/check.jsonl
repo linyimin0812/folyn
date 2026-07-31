@@ -1,0 +1,2 @@
+{"file": "docs/adr/0002-custom-provider-adapter-family-direct.md", "reason": "Verify the new match arms route purely on resolved adapter_family (no catalog-leak, no custom_provider-flag branch). Confirms _ arm covering only 'openai' + unknowns is consistent with the documented collapse."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Cross-layer contract: adapterFamily field shape unchanged across TS/Rust boundary. Used to verify no accidental rename of ChatParams fields during the match-arm additions."}

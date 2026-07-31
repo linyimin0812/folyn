@@ -21,7 +21,7 @@ use rig_core::completion::message::{ImageMediaType, MimeType, UserContent};
 use rig_core::message::{Message, ReasoningContent, Text};
 use rig_core::prelude::*;
 use rig_core::agent::AgentBuilder;
-use rig_core::providers::{anthropic, azure, cohere, gemini, huggingface, ollama, openai};
+use rig_core::providers::{anthropic, azure, cohere, deepseek, gemini, groq, huggingface, hyperbolic, mira, moonshot, ollama, openai, openrouter, perplexity, together, xai};
 use rig_core::client::Nothing;
 use rig_core::streaming::StreamedAssistantContent;
 
@@ -167,6 +167,22 @@ fn history_flags(mode: HistoryMode) -> (bool, bool) {
 /// providers carry it via `provider`. Absent `adapter_family` falls back
 /// to `provider.as_str()` (bundled or custom-without-family). Pure — unit
 /// tested below.
+///
+/// `ensure_v1_segment`: append `/v1` to a bare OpenAI-compat base URL that
+/// lacks a version segment. Catalog `baseUrl` values for OpenAI-compat
+/// providers are often bare hosts (e.g. `https://api.moonshot.cn`); rig's
+/// native modules use the base as-is and append `/chat/completions` → 404
+/// if `/v1` is missing. Leaves `/vN` (e.g. `/v1`, `/v2`, `/v1beta`) alone.
+/// Mirrored in the frontend `normalizeOpenAIBase` (`providersCatalog.ts`).
+fn ensure_v1_segment(base_raw: &str) -> String {
+    let trimmed = base_raw.trim_end_matches('/');
+    let last_seg = trimmed.rsplit('/').next().unwrap_or("");
+    let has_version = last_seg.starts_with('v')
+        && last_seg.len() > 1
+        && last_seg.as_bytes()[1].is_ascii_digit();
+    if has_version { base_raw.to_string() } else { format!("{}/v1", trimmed) }
+}
+
 fn resolve_adapter_family(params: &ChatParams) -> &str {
     params.adapter_family.as_deref().unwrap_or(params.provider.as_str())
 }
@@ -401,6 +417,132 @@ pub async fn chat_stream(
             let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
             drain_loop(&mut stream, &on_event).await?
         }
+        "moonshot" => {
+            // rig's built-in moonshot client — knows the Chat Completions
+            // contract natively (vs. the `_` arm's `openai::Client` which
+            // defaults to the Responses API and 404s on moonshot's server).
+            // Default base is rig's `https://api.moonshot.ai/v1`; the China
+            // endpoint `https://api.moonshot.cn/v1` is set via user-supplied
+            // base_url (catalog default is the China host without /v1, so
+            // `ensure_v1_segment` adds it).
+            let mut b = moonshot::Client::builder().api_key(params.api_key);
+            if let Some(url) = params.base_url {
+                b = b.base_url(ensure_v1_segment(&url));
+            }
+            let agent = with_thinking(
+                b.build()
+                    .map_err(|e| e.to_string())?
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                "moonshot",
+                params.thinking_budget,
+            ).build();
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
+            drain_loop(&mut stream, &on_event).await?
+        }
+        // 8 rig-native OpenAI-compat providers — same pattern as `moonshot`
+        // above. Each rig module knows its provider's Chat Completions
+        // contract natively; routing through them avoids the `_` arm's
+        // `openai::Client` default (Responses API → `/responses` 404 on
+        // servers that only expose `/chat/completions`). galadriel /
+        // eternalai have no rig module — they route through the
+        // `openai-completions` arm below.
+        "deepseek" => {
+            let mut b = deepseek::Client::builder().api_key(params.api_key);
+            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            let agent = with_thinking(
+                b.build().map_err(|e| e.to_string())?
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                "deepseek", params.thinking_budget,
+            ).build();
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
+            drain_loop(&mut stream, &on_event).await?
+        }
+        "groq" => {
+            let mut b = groq::Client::builder().api_key(params.api_key);
+            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            let agent = with_thinking(
+                b.build().map_err(|e| e.to_string())?
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                "groq", params.thinking_budget,
+            ).build();
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
+            drain_loop(&mut stream, &on_event).await?
+        }
+        "hyperbolic" => {
+            let mut b = hyperbolic::Client::builder().api_key(params.api_key);
+            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            let agent = with_thinking(
+                b.build().map_err(|e| e.to_string())?
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                "hyperbolic", params.thinking_budget,
+            ).build();
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
+            drain_loop(&mut stream, &on_event).await?
+        }
+        "mira" => {
+            let mut b = mira::Client::builder().api_key(params.api_key);
+            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            let agent = with_thinking(
+                b.build().map_err(|e| e.to_string())?
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                "mira", params.thinking_budget,
+            ).build();
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
+            drain_loop(&mut stream, &on_event).await?
+        }
+        "openrouter" => {
+            let mut b = openrouter::Client::builder().api_key(params.api_key);
+            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            let agent = with_thinking(
+                b.build().map_err(|e| e.to_string())?
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                "openrouter", params.thinking_budget,
+            ).build();
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
+            drain_loop(&mut stream, &on_event).await?
+        }
+        "perplexity" => {
+            let mut b = perplexity::Client::builder().api_key(params.api_key);
+            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            let agent = with_thinking(
+                b.build().map_err(|e| e.to_string())?
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                "perplexity", params.thinking_budget,
+            ).build();
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
+            drain_loop(&mut stream, &on_event).await?
+        }
+        "together" => {
+            let mut b = together::Client::builder().api_key(params.api_key);
+            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            let agent = with_thinking(
+                b.build().map_err(|e| e.to_string())?
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                "together", params.thinking_budget,
+            ).build();
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
+            drain_loop(&mut stream, &on_event).await?
+        }
+        "xai" => {
+            let mut b = xai::Client::builder().api_key(params.api_key);
+            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            let agent = with_thinking(
+                b.build().map_err(|e| e.to_string())?
+                    .agent(params.model.as_str())
+                    .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
+                "xai", params.thinking_budget,
+            ).build();
+            let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
+            drain_loop(&mut stream, &on_event).await?
+        }
         "azure-openai" => {
             // Azure uses deployment_id in the URL, not the model name. rig's
             // azure::Client::agent(deployment_id) treats the string as the
@@ -491,11 +633,17 @@ pub async fn chat_stream(
             let mut stream = agent.stream_chat(prompt_msg.clone(), &history).await;
             drain_loop(&mut stream, &on_event).await?
         }
-        "openai-completions" => {
-            // Custom provider picked `openai-chat-completions` — use rig's
-            // Completions API client so requests hit `/v1/chat/completions`
-            // instead of the default `/v1/responses`. Required for OpenAI-compat
-            // gateways (one-api / new-api / fastgpt / etc.) that don't expose
+        "openai-completions" | "galadriel" | "eternalai" | "openai-compatible" => {
+            // Custom provider picked `openai-chat-completions`, or a bundled
+            // OpenAI-compat id with no rig-native module (galadriel /
+            // eternalai), or the `openai-compatible` escape hatch — use
+            // rig's Completions API client so requests hit
+            // `/v1/chat/completions` instead of the default `/v1/responses`.
+            // Required for OpenAI-compat gateways (one-api / new-api /
+            // fastgpt / etc.) that don't expose the Responses API. Same
+            // agent/stream contract as the `_` arm below — split to avoid a
+            // type clash between `Client` and `CompletionsClient` in the
+            // same variable.
             // the Responses API. Same agent/stream contract as the `_` arm
             // below — split to avoid a type clash between `Client` and
             // `CompletionsClient` in the same variable.
@@ -503,22 +651,7 @@ pub async fn chat_stream(
                 .base_url
                 .clone()
                 .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
-            // ponytail: auto-append /v1 if base ends without a version
-            // segment. OpenAI-compat gateways (one-api / new-api / fastgpt)
-            // conventionally serve at /v1/...; users often type just the
-            // host. Leaves /vN (e.g. /v1, /v2, /v1beta) alone. Mirrored in
-            // Quill's ProviderDetailSection preview so the displayed URL
-            // matches what rig actually hits. Upgrade path: if a gateway
-            // uses a non-/v1 versionless URL scheme, surface that as a
-            // separate match arm rather than extending this heuristic.
-            let base = {
-                let trimmed = base_raw.trim_end_matches('/');
-                let last_seg = trimmed.rsplit('/').next().unwrap_or("");
-                let has_version = last_seg.starts_with('v')
-                    && last_seg.len() > 1
-                    && last_seg.as_bytes()[1].is_ascii_digit();
-                if has_version { base_raw } else { format!("{}/v1", trimmed) }
-            };
+            let base = ensure_v1_segment(&base_raw);
             let client = openai::Client::builder()
                 .api_key(params.api_key.clone())
                 .base_url(base)
@@ -537,30 +670,28 @@ pub async fn chat_stream(
             drain_loop(&mut stream, &on_event).await?
         }
         _ => {
-            // "openai" + "openai-compatible" + 11 OpenAI-compat family
-            // (deepseek/groq/hyperbolic/mira/moonshot/openrouter/perplexity/
-            // together/xai/galadriel/eternalai). Any non-default base_url needs
-            // `with_system_instructions_as_messages()` or the preamble silently
-            // vanishes on compatible servers; harmless for real OpenAI.
-            let base = params
-                .base_url
-                .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
-            // ponytail: /v1 auto-append dropped — catalog defaultBaseUrl values
-            // already include the correct path (e.g. https://api.groq.com/openai/v1).
-            // User-supplied base_url is used as-is; if a user types a bare host
-            // without /v1, the request will 404 — better to surface that than to
-            // silently mutate their input.
+            // Only real `"openai"` lands here after the reroute — every
+            // OpenAI-compat family member now has a dedicated arm above
+            // (moonshot/deepseek/groq/hyperbolic/mira/openrouter/perplexity/
+            // together/xai) or routes through `openai-completions`
+            // (galadriel/eternalai/openai-compatible). Unknown ids also
+            // fall through here as a last-resort OpenAI-shape attempt.
+            // `with_system_instructions_as_messages()` is harmless for real
+            // OpenAI and keeps preambles working if an unknown id happens
+            // to be a compat gateway.
+            let base = ensure_v1_segment(
+                params.base_url.as_deref().unwrap_or("https://api.openai.com/v1"),
+            );
             let client = openai::Client::builder()
                 .api_key(params.api_key)
                 .base_url(base)
                 .build()
                 .map_err(|e| e.to_string())?
                 .with_system_instructions_as_messages();
-            // T07: pass the actual provider id (openai / xai / etc.) so
-            // thinking_params dispatches correctly. 11 OpenAI-compat family
-            // providers (deepseek/groq/hyperbolic/mira/moonshot/openrouter/
-            // perplexity/together/galadriel/eternalai + openai-compatible
-            // escape hatch) return None — silently skipped.
+            // T07: pass the actual provider id so thinking_params dispatches
+            // correctly. Only `"openai"` reaches this arm after the reroute
+            // (returns reasoning_effort). Unknown ids also fall through here
+            // and return None — silently skipped.
             let agent = with_thinking(
                 client
                     .agent(params.model.as_str())
@@ -1038,6 +1169,35 @@ mod tests {
     fn thinking_params_none_when_budget_is_none() {
         assert!(thinking_params("anthropic", None).is_none());
         assert!(thinking_params("openai", None).is_none());
+    }
+
+    #[test]
+    fn ensure_v1_segment_appends_v1_to_bare_host() {
+        // Bare host → /v1 appended.
+        assert_eq!(ensure_v1_segment("https://api.moonshot.cn"), "https://api.moonshot.cn/v1");
+        assert_eq!(ensure_v1_segment("https://api.deepseek.com"), "https://api.deepseek.com/v1");
+        // Trailing slash trimmed before append.
+        assert_eq!(ensure_v1_segment("https://api.perplexity.ai/"), "https://api.perplexity.ai/v1");
+        // Path with no version segment → /v1 appended.
+        assert_eq!(ensure_v1_segment("https://api.groq.com/openai"), "https://api.groq.com/openai/v1");
+    }
+
+    #[test]
+    fn ensure_v1_segment_leaves_versioned_base_alone() {
+        // /v1, /v2, /v1beta preserved as-is.
+        assert_eq!(ensure_v1_segment("https://api.openai.com/v1"), "https://api.openai.com/v1");
+        assert_eq!(ensure_v1_segment("https://openrouter.ai/api/v1/"), "https://openrouter.ai/api/v1/");
+        assert_eq!(ensure_v1_segment("https://api.x.ai/v1"), "https://api.x.ai/v1");
+    }
+
+    #[test]
+    fn ensure_v1_segment_handles_edge_cases() {
+        // Bare /v1 with nothing else stays /v1.
+        assert_eq!(ensure_v1_segment("https://example.com/v1"), "https://example.com/v1");
+        // 'v' alone (len 1, no digit) is NOT a version segment → append.
+        assert_eq!(ensure_v1_segment("https://example.com/v"), "https://example.com/v/v1");
+        // 'vx' (no digit after v) → append.
+        assert_eq!(ensure_v1_segment("https://example.com/vx"), "https://example.com/vx/v1");
     }
 
     // Phase 3: resolve_adapter_family collapses the old endpoint-key enum.
