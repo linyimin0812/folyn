@@ -135,12 +135,6 @@ export function CliSettings() {
                     setTimeout(() => setTestStatus((s) => ({ ...s, [a.id]: { ...s[a.id], result: undefined } })), 6000);
                   }}
                 >{st.testing ? t('settings:cli.test.testing') : t('settings:cli.test.label')}</button>
-                <button
-                  className="btn btn-g btn-sm"
-                  title={t('settings:cli.settingsFile.title')}
-                  disabled={sf.kind === 'creating'}
-                  onClick={() => openAdapterSettings(a.id, a.settingsFilePath)}
-                >{t('settings:cli.settingsFile.label')}</button>
               </div>
               {st.result && (
                 <span style={{ fontSize: 11, color: st.result.success ? 'var(--green, #22a863)' : 'var(--red, #f06a6a)' }} className="mt-1 inline-block">
@@ -167,7 +161,15 @@ export function CliSettings() {
                 </div>
               )}
               <div className="text-[10.5px] text-t3 mt-1">{t('settings:cli.cliPath.hint')}</div>
-              <div className="text-[10.5px] text-t3 mt-0.5 font-mono">{a.settingsFilePath}</div>
+              <div className="text-[10.5px] mt-0.5">
+                <button
+                  type="button"
+                  className="font-mono text-acc hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-default"
+                  title={t('settings:cli.settingsFile.title')}
+                  disabled={sf.kind === 'creating'}
+                  onClick={() => openAdapterSettings(a.id, a.settingsFilePath)}
+                >{a.settingsFilePath}</button>
+              </div>
             </div>
           );
         })}
