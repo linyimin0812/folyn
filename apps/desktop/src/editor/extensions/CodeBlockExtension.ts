@@ -12,8 +12,12 @@ let cachedLanguages: LanguageEntry[] | null = null;
 function getAllLanguages(): LanguageEntry[] {
   if (!cachedLanguages) {
     // ponytail: mermaid isn't a highlight.js language, prepend so it shows in autocomplete
-    const extras: LanguageEntry[] = [{ name: 'mermaid', label: 'mermaid' }];
-    cachedLanguages = [...extras, ...hljs.listLanguages().sort().map((name) => ({ name, label: name }))];
+    // ponytail: html is an alias of xml in highlight.js so it's absent from listLanguages(); swap vbscript-html → html so the menu shows `html`
+    const extras: LanguageEntry[] = [{ name: 'mermaid', label: 'mermaid' }, { name: 'html', label: 'html' }];
+    cachedLanguages = [
+      ...extras,
+      ...hljs.listLanguages().sort().filter((name) => name !== 'vbscript-html').map((name) => ({ name, label: name })),
+    ];
   }
   return cachedLanguages;
 }
