@@ -314,19 +314,29 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
       ) : (
         <iframe
           title="html-preview"
-          sandbox="allow-scripts allow-popups allow-forms allow-modals"
+          sandbox="allow-scripts allow-popups allow-forms allow-modals allow-same-origin"
           srcDoc={htmlSrc}
           className="w-full border-0"
-          style={{ minHeight: '160px', background: '#fff' }}
+          style={{ background: '#fff', height: '160px' }}
           onLoad={(e) => {
-            // ponytail: auto-resize iframe to content height. Try-catch
-            // guards cross-origin blowups; sandboxed srcDoc is same-origin
-            // so it generally works.
+            // ponytail: reset iframe body margin + hide its internal scroll so
+            // scrollHeight reflects true content size. ResizeObserver catches
+            // late layout (images, scripts). allow-same-origin is required to
+            // read contentDocument; combined with allow-scripts the iframe is
+            // same-origin to itself, not the host — still sandboxed.
             try {
-              const doc = (e.target as HTMLIFrameElement).contentDocument;
-              if (doc?.body) {
-                (e.target as HTMLIFrameElement).style.height = `${doc.body.scrollHeight + 16}px`;
-              }
+              const iframe = e.target as HTMLIFrameElement;
+              const doc = iframe.contentDocument;
+              if (!doc) return;
+              const style = doc.createElement('style');
+              style.textContent = 'html, body { margin: 0 !important; padding: 0 !important; overflow: hidden !important; }';
+              doc.head.appendChild(style);
+              const resize = () => {
+                const h = Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight);
+                if (h > 0) iframe.style.height = `${h + 8}px`;
+              };
+              resize();
+              new ResizeObserver(resize).observe(doc.body);
             } catch { /* cross-origin — leave default height */ }
           }}
         />
