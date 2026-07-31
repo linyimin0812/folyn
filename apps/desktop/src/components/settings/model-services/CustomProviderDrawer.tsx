@@ -22,6 +22,15 @@ const ADAPTER_FAMILY_OPTIONS: string[] = [
   'openai',
 ];
 
+// ponytail: display-only labels — value stays the routing id (chat.rs match
+// arm), label is cosmetic. 'openai-response' makes the native-OpenAI Responses
+// path explicit; 'openai' is the simpler label for the OpenAI-compat
+// completions case (most gateways).
+const ADAPTER_FAMILY_LABEL: Record<string, string> = {
+  'openai': 'openai-response',
+  'openai-completions': 'openai',
+};
+
 const ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 export function CustomProviderDrawer({
@@ -141,7 +150,7 @@ export function CustomProviderDrawer({
               onChange={(e) => setAdapterFamily(e.target.value)}
             >
               {[...ADAPTER_FAMILY_OPTIONS].sort().map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>{ADAPTER_FAMILY_LABEL[c] ?? c}</option>
               ))}
             </select>
           </label>
