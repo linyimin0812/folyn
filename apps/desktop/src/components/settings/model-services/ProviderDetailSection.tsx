@@ -118,11 +118,6 @@ export function ProviderDetailSection({
               ON
             </span>
           )}
-          {entry.id === chatProvider && (
-            <span className="text-[9px] font-bold px-1.5 h-[16px] inline-flex items-center rounded-full text-white" style={{ background: 'var(--acc)' }}>
-              chat
-            </span>
-          )}
         </div>
         <Toggle
           value={entryEnabled}
