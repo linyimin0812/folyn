@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "TabBar is a React component — follow naming, props, composition, and styling conventions"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Code standards and review checklist for the desktop frontend"}
