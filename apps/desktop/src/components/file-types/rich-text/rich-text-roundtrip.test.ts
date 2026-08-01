@@ -205,4 +205,54 @@ describe('image + table node round-trip', () => {
     };
     expect(deserializeToContent(serializeToDisk(doc))).toEqual(doc);
   });
+
+  it('round-trips table cell align attrs (left/center/right)', () => {
+    const cell = (text: string, align?: string) => ({
+      type: 'tableCell',
+      attrs: align ? { align } : undefined,
+      content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+    });
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [
+            {
+              type: 'tableRow',
+              content: [cell('L', 'left'), cell('C', 'center'), cell('R', 'right'), cell('D')],
+            },
+          ],
+        },
+      ],
+    };
+    expect(deserializeToContent(serializeToDisk(doc))).toEqual(doc);
+  });
+
+  it('round-trips a merged cell (colspan/rowspan)', () => {
+    const cell = (text: string, attrs: Record<string, unknown>) => ({
+      type: 'tableCell',
+      attrs,
+      content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+    });
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [
+            {
+              type: 'tableRow',
+              content: [cell('merged', { colspan: 2, rowspan: 1, colwidth: null, align: null }), cell('b', { colspan: 1, rowspan: 2, colwidth: null, align: null })],
+            },
+            {
+              type: 'tableRow',
+              content: [cell('c', { colspan: 1, rowspan: 1, colwidth: null, align: null })],
+            },
+          ],
+        },
+      ],
+    };
+    expect(deserializeToContent(serializeToDisk(doc))).toEqual(doc);
+  });
 });

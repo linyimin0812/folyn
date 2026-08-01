@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "rich-text 是 file-type handler；toolbar/NodeView/anti-write-back-loop 约定都在此，RichTextToolbar 注释直接引用"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "新增 TableSizeGrid / overlay 组件需遵守桌面端组件规范"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "实现需过质量门"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "TableKit 命令类型 / getAttributes 返回类型需类型安全处理"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "网格尺寸提示、按钮 title 走 t() 命名空间"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "复用 UrlModal overlay 模式做 TableSizeGrid；ponytail 复用现有 ToolButton 结构"}
+{"file": ".trellis/tasks/08-02-richtext-table-editing/prd.md", "reason": "PRD：Option A overlay 决策 + TableKit 命令速查 + 验收标准"}

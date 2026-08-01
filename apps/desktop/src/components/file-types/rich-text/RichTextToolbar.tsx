@@ -20,6 +20,13 @@ import {
   Link as LinkIcon,
   Image as ImageIcon,
   Table as TableIcon,
+  Columns3,
+  Rows3,
+  TableCellsMerge,
+  TableCellsSplit,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
   Plus,
   Trash2,
   Undo,
@@ -27,6 +34,7 @@ import {
 } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import { persistImageBytes } from './RichTextImage';
+import { TableSizeGrid } from './TableSizeGrid';
 
 // ponytail: icon-only buttons with title= attributes — no visible text, so
 // no i18n namespace sprawl. Active state via editor.isActive(); disabled
@@ -52,6 +60,12 @@ interface ToolButton {
 }
 
 type ModalKind = 'link' | null;
+
+// ponytail: shared button className for toolbar icon buttons — kept here so
+// the inline table-insert button (rendered outside the buttons[] array for
+// its relative popover anchor) stays visually identical to the mapped ones.
+const TOOL_BTN_CLASS =
+  'inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-default';
 
 // ponytail: one modal serves both link and image-URL entry — same shape (a URL
 // input + OK/Cancel). title + placeholder differ. Reused rather than forked.
@@ -123,6 +137,9 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
   const [modal, setModal] = useState<ModalKind>(null);
   // The initial URL the modal opens with (prev link href, or '' for image).
   const [modalInitial, setModalInitial] = useState('');
+  // ponytail: table-size grid popover anchored under the insert-table button.
+  // Replaces the old fixed 2x2 insertTable call. Click-outside dismisses.
+  const [tablePickerOpen, setTablePickerOpen] = useState(false);
 
   const openLinkModal = () => {
     setModalInitial((editor.getAttributes('link').href as string | undefined) ?? '');
@@ -165,6 +182,7 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
   };
 
   const inTable = editor.isActive('table');
+  const cellAlign = editor.getAttributes('tableCell').align as string | undefined;
 
   const buttons: ToolButton[] = [
     // ponytail: slash-command trigger button. Inserts '/' at cursor; the
@@ -192,21 +210,34 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
     { icon: Minus, title: 'Horizontal rule', disabled: !editor.can().setHorizontalRule(), onClick: () => editor.chain().focus().setHorizontalRule().run() },
     { icon: LinkIcon, title: 'Link', active: editor.isActive('link'), disabled: !editor.can().toggleLink({ href: '' }), onClick: openLinkModal },
     { icon: ImageIcon, title: 'Insert image', onClick: () => { void pickImageFile(); } },
-    { icon: TableIcon, title: 'Insert table', onClick: () => editor.chain().focus().insertTable({ rows: 2, cols: 2, withHeaderRow: true }).run() },
+  ];
+
+  // ponytail: trailing Undo/Redo rendered after the inline table-insert
+  // popover button so the popover anchor sits between image and undo (its
+  // original toolbar slot).
+  const trailingButtons: ToolButton[] = [
     { icon: Undo, title: 'Undo', disabled: !editor.can().undo(), onClick: () => editor.chain().focus().undo().run() },
     { icon: Redo, title: 'Redo', disabled: !editor.can().redo(), onClick: () => editor.chain().focus().redo().run() },
   ];
 
   // ponytail: table cell-context controls — shown only when the cursor is
-  // inside a table, so the toolbar stays uncluttered the rest of the time.
-  // Minimal viable set (add/del col/row + toggle header + delete table). A
-  // full cell-merge UI is out of MVP scope.
+  // inside a table. Merge/split/align are the new ops (align sets the cell's
+  // built-in `align` attribute → renders as `text-align`). Structural
+  // add/del col/row use Columns3/Rows3/Minus instead of all-Plus so col vs
+  // row is distinguishable at a glance; before/after share an icon (title
+  // distinguishes) — same as Tiptap's own demo. Header toggle + delete table
+  // round it out.
   const tableButtons: ToolButton[] = inTable
     ? [
-        { icon: Plus, title: 'Add column before', onClick: () => editor.chain().focus().addColumnBefore().run() },
-        { icon: Plus, title: 'Add column after', onClick: () => editor.chain().focus().addColumnAfter().run() },
-        { icon: Plus, title: 'Add row before', onClick: () => editor.chain().focus().addRowBefore().run() },
-        { icon: Plus, title: 'Add row after', onClick: () => editor.chain().focus().addRowAfter().run() },
+        { icon: TableCellsMerge, title: 'Merge cells', disabled: !editor.can().mergeCells(), onClick: () => editor.chain().focus().mergeCells().run() },
+        { icon: TableCellsSplit, title: 'Split cell', disabled: !editor.can().splitCell(), onClick: () => editor.chain().focus().splitCell().run() },
+        { icon: AlignLeft, title: 'Align left', active: !cellAlign || cellAlign === 'left', onClick: () => editor.chain().focus().setCellAttribute('align', 'left').run() },
+        { icon: AlignCenter, title: 'Align center', active: cellAlign === 'center', onClick: () => editor.chain().focus().setCellAttribute('align', 'center').run() },
+        { icon: AlignRight, title: 'Align right', active: cellAlign === 'right', onClick: () => editor.chain().focus().setCellAttribute('align', 'right').run() },
+        { icon: Columns3, title: 'Add column before', onClick: () => editor.chain().focus().addColumnBefore().run() },
+        { icon: Columns3, title: 'Add column after', onClick: () => editor.chain().focus().addColumnAfter().run() },
+        { icon: Rows3, title: 'Add row before', onClick: () => editor.chain().focus().addRowBefore().run() },
+        { icon: Rows3, title: 'Add row after', onClick: () => editor.chain().focus().addRowAfter().run() },
         { icon: Minus, title: 'Delete column', onClick: () => editor.chain().focus().deleteColumn().run() },
         { icon: Minus, title: 'Delete row', onClick: () => editor.chain().focus().deleteRow().run() },
         { icon: TableIcon, title: 'Toggle header row', onClick: () => editor.chain().focus().toggleHeaderRow().run() },
@@ -231,6 +262,45 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
             <b.icon size={15} strokeWidth={1.6} />
           </button>
         ))}
+        {/* ponytail: table-insert is a relative-wrapped button so the size
+            grid can anchor under it; a transparent fixed backdrop dismisses
+            on outside click (no window.prompt — same reason as UrlModal). */}
+        <div className="relative">
+          <button
+            type="button"
+            title="Insert table"
+            disabled={!editor.isEditable}
+            onClick={() => setTablePickerOpen((v) => !v)}
+            className={TOOL_BTN_CLASS}
+          >
+            <TableIcon size={15} strokeWidth={1.6} />
+          </button>
+          {tablePickerOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setTablePickerOpen(false)} aria-hidden />
+              <div className="absolute top-full right-0 mt-1 z-50" onClick={(e) => e.stopPropagation()}>
+                <TableSizeGrid
+                  onSelect={(rows, cols) => {
+                    editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
+                    setTablePickerOpen(false);
+                  }}
+                />
+              </div>
+            </>
+          )}
+        </div>
+        {trailingButtons.map((b, i) => (
+          <button
+            key={`tr-${i}`}
+            type="button"
+            title={b.title}
+            disabled={b.disabled}
+            onClick={b.onClick}
+            className={TOOL_BTN_CLASS}
+          >
+            <b.icon size={15} strokeWidth={1.6} />
+          </button>
+        ))}
         {tableButtons.length > 0 && (
           <>
             <span className="mx-1 h-5 w-px bg-brd" aria-hidden />
@@ -241,7 +311,9 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
                 title={b.title}
                 disabled={b.disabled}
                 onClick={b.onClick}
-                className="inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-default"
+                className={`inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-default ${
+                  b.active ? 'bg-accdim text-acc' : ''
+                }`}
               >
                 <b.icon size={15} strokeWidth={1.6} />
               </button>
