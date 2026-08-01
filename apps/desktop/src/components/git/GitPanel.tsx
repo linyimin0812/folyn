@@ -212,7 +212,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, width: '100%',
                   padding: '4px 0', fontWeight: 500, background: 'none', border: 'none',
-                  cursor: 'pointer', color: 'inherit',
+                  cursor: 'pointer', color: 'inherit', fontSize: 12,
                 }}
               >
                 <span>{showFiles ? '▾' : '▸'}</span>
