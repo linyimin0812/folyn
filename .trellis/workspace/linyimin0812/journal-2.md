@@ -1449,3 +1449,39 @@ registerPersistSlice now returns a bound persist closure; each store captures it
 ### Next Steps
 
 - None - task complete
+
+
+## Session 100: Fix AiPanel mount gate + hydration race + StrictMode double-cancel
+
+**Date**: 2026-08-01
+**Task**: Fix AiPanel mount gate + hydration race + StrictMode double-cancel
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Three-stop fix for the AI panel not opening when showAiPanel=false: (1) App.tsx gated AiPanel mount with {showAiPanel && <AiPanel/>} — turned a launch-time auto-expand preference into a hard can-open gate, so the Topbar AI button flipped aiPanelVisible but nothing rendered. Dropped the gate, always mount AiPanel. (2) Seeding effect read showAiPanel synchronously at mount, but appearanceStore hadn't hydrated yet — settingsLoadDone was still in-flight, so the read returned the default true. Gated the read on settingsLoadDone.then(). (3) The ref guard short-circuited StrictMode's second mount while the first mount's .then was in flight; first mount's cancelled flag (flipped by cleanup) skipped its setState — neither mount seeded. Dropped the ref guard, mirrored App.tsx:381-423 voice hotkey pattern.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a0922b5` | (see git log) |
+| `4147fe4` | (see git log) |
+| `3db0a00` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
