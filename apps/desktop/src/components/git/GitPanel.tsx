@@ -127,9 +127,8 @@ export function GitPanel({ onClose }: GitPanelProps) {
     setError(null);
     setInfo(null);
     try {
-      const res = await pullRepo(absPath);
-      const prefix = t('shell:gitPanel.pullDone');
-      setInfo(`${prefix}${res.stdout ? ' ' + res.stdout : ''}`.trim());
+      await pullRepo(absPath);
+      setInfo(t('shell:gitPanel.pullDone'));
       await refreshStatus();
       await refreshFileTree();
     } catch (err) {
@@ -149,9 +148,8 @@ export function GitPanel({ onClose }: GitPanelProps) {
     setError(null);
     setInfo(null);
     try {
-      const res = await commitAndPush(absPath, msg);
-      const prefix = t('shell:gitPanel.pushDone');
-      setInfo(`${prefix}${res.stdout ? ' ' + res.stdout : ''}`.trim());
+      await commitAndPush(absPath, msg);
+      setInfo(t('shell:gitPanel.pushDone'));
       setCommitMsg('');
       await refreshStatus();
       await refreshFileTree();
