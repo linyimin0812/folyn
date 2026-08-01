@@ -143,7 +143,6 @@ export function ContextMenu({
       )}
       {menu.path && (
         <>
-          <div className="h-px mx-2 my-1 bg-brd" />
           <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onTogglePin(menu.path); onClose(); }}>
             <ThemeIcon name="pin" size={14} /> {pinnedPaths.includes(menu.path) ? t('sidebar:contextMenu.unpin') : t('sidebar:contextMenu.pin')}
           </button>
