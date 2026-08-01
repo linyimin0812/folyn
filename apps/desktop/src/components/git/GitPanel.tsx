@@ -301,6 +301,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
           <div className="dlg-input-group">
             <input
               className="dlg-input dlg-input-flex"
+              style={{ height: 36, fontSize: 13 }}
               placeholder="例如：补充 8 月 2 日的日记"
               value={commitMsg}
               onChange={(e) => setCommitMsg(e.target.value)}
@@ -309,7 +310,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
             />
             <button
               className="dlg-input-btn"
-              style={{ background: 'var(--acc)', color: 'white' }}
+              style={{ height: 36, fontSize: 13, background: 'var(--acc)', color: 'white' }}
               onClick={() => void handleCommitPush()}
               disabled={busy !== null}
             >
