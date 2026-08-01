@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 100
+- **Total Sessions**: 101
 - **Last Active**: 2026-08-01
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1487 | Active |
+| `journal-2.md` | ~1519 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 101 | 2026-08-01 | Reorder AI input modes + reusable model pair dropdown | - | `master` |
 | 100 | 2026-08-01 | Fix AiPanel mount gate + hydration race + StrictMode double-cancel | `a0922b5`, `4147fe4`, `3db0a00` | `master` |
 | 99 | 2026-08-01 | Per-slice persist closure (drop global schedulePersist) | `c9aa00f` | `master` |
 | 98 | 2026-07-31 | CLI 设置页：打开 adapter 配置文件 | `afebccb`, `d4fff2d`, `fc01a3a` | `master` |

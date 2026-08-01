@@ -1485,3 +1485,35 @@ Three-stop fix for the AI panel not opening when showAiPanel=false: (1) App.tsx 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 101: Reorder AI input modes + reusable model pair dropdown
+
+**Date**: 2026-08-01
+**Task**: Reorder AI input modes + reusable model pair dropdown
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Reordered built-in input modes to Chat → Agent → Ask. Rewrote PairSelector as a reusable custom dropdown (provider icon + bold provider | model + right-aligned capability icons; trigger: full|icon, dropDirection: up|down) backed by modelRegistry capabilities. ChatInput now links mode → secondary selector: Chat shows the pair icon dropdown (upward), Agent/Ask show the AdapterSelector. Removed the AiPanel top pair bar. Extracted shared ProviderIcon + CAPABILITY_PILL/CapabilityIcons into components/icons/ consumed by settings helpers.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
