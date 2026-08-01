@@ -76,7 +76,6 @@ export function GitPanel({ onClose }: GitPanelProps) {
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [showFiles, setShowFiles] = useState(false);
-  const [showRaw, setShowRaw] = useState(false);
   const [commitMsg, setCommitMsg] = useState('');
   const [busy, setBusy] = useState<'pull' | 'push' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -222,27 +221,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
             >
               刷新
             </button>
-            {rawStatus && (
-              <button
-                className="btn btn-g btn-sm"
-                onClick={() => setShowRaw((v) => !v)}
-                disabled={busy !== null}
-              >
-                {showRaw ? '隐藏原始输出' : '显示原始输出'}
-              </button>
-            )}
           </div>
-          {showRaw && rawStatus && (
-            <pre
-              className="dlg-input"
-              style={{
-                whiteSpace: 'pre-wrap', marginTop: 6, maxHeight: 160, overflow: 'auto',
-                fontFamily: 'var(--mono, monospace)', fontSize: 12,
-              }}
-            >
-              {rawStatus}
-            </pre>
-          )}
 
           {/* 拉取 */}
           <div className="dlg-label" style={{ marginTop: 16 }}>拉取远程更新</div>
