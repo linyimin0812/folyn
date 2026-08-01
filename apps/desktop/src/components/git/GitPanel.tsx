@@ -238,7 +238,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
                           })}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 6, width: '100%',
-                            fontSize: 12, fontWeight: 600, color: 'var(--t2, #475569)',
+                            fontSize: 11, fontWeight: 600, color: 'var(--t2, #475569)',
                             padding: '2px 0', borderBottom: '1px solid var(--brd, #e2e8f0)',
                             background: 'none', border: 'none', borderBottomWidth: 1,
                             borderBottomStyle: 'solid', borderBottomColor: 'var(--brd, #e2e8f0)',
@@ -256,7 +256,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
                                 <li
                                   key={i}
                                   style={{
-                                    fontFamily: 'var(--mono, monospace)', fontSize: 12,
+                                    fontFamily: 'var(--mono, monospace)', fontSize: 11,
                                     padding: '2px 0', wordBreak: 'break-all', color: 'var(--t1, #1e293b)',
                                   }}
                                 >
