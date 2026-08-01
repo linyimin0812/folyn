@@ -144,10 +144,13 @@ export async function cloneRepo(
   return result;
 }
 
-/** `git status --short` output for the panel. */
+/** `git status --short` output for the panel. Empty string when clean. */
 export async function getStatus(targetPath: string): Promise<string> {
   const result = await runShell(buildStatusCommand(targetPath));
-  return result.stdout || result.stderr || '(clean)';
+  if (result.code !== 0) {
+    throw new Error(result.stderr || result.stdout || 'git status failed');
+  }
+  return result.stdout;
 }
 
 /** `git pull`. Throws with stderr on failure (conflict / network). */
