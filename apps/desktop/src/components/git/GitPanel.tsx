@@ -85,7 +85,6 @@ export function GitPanel({ onClose }: GitPanelProps) {
   const [busy, setBusy] = useState<'pull' | 'push' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [infoFor, setInfoFor] = useState<'pull' | 'push' | null>(null);
   const [absPath, setAbsPath] = useState<string>('');
 
   const parsed = useMemo(() => parseGitStatus(rawStatus), [rawStatus]);
@@ -114,13 +113,10 @@ export function GitPanel({ onClose }: GitPanelProps) {
     if (absPath) void refreshStatus();
   }, [absPath, refreshStatus]);
 
-  // ponytail: auto-hide success info 4s after it's set; new info resets timer.
+  // ponytail: auto-hide success info 3s after it's set; new info resets timer.
   useEffect(() => {
     if (!info) return;
-    const t = window.setTimeout(() => {
-      setInfo(null);
-      setInfoFor(null);
-    }, 4000);
+    const t = window.setTimeout(() => setInfo(null), 3000);
     return () => window.clearTimeout(t);
   }, [info]);
 
@@ -128,11 +124,9 @@ export function GitPanel({ onClose }: GitPanelProps) {
     setBusy('pull');
     setError(null);
     setInfo(null);
-    setInfoFor(null);
     try {
       const res = await pullRepo(absPath);
       setInfo(`已拉取远程更新。${res.stdout ? res.stdout : ''}`.trim());
-      setInfoFor('pull');
       await refreshStatus();
       await refreshFileTree();
     } catch (err) {
@@ -151,11 +145,9 @@ export function GitPanel({ onClose }: GitPanelProps) {
     setBusy('push');
     setError(null);
     setInfo(null);
-    setInfoFor(null);
     try {
       const res = await commitAndPush(absPath, msg);
       setInfo(`已提交并推送到 GitHub。${res.stdout ? res.stdout : ''}`.trim());
-      setInfoFor('push');
       setCommitMsg('');
       await refreshStatus();
       await refreshFileTree();
@@ -292,9 +284,6 @@ export function GitPanel({ onClose }: GitPanelProps) {
           <div style={{ color: 'var(--fg-muted, #888)', fontSize: 12, marginBottom: 6, marginTop: 4 }}>
             将 GitHub 仓库上的最新改动下载到本地
           </div>
-          {info && infoFor === 'pull' && (
-            <div className="dlg-error" style={{ color: 'var(--ok, #16a34a)', marginBottom: 6 }}>{info}</div>
-          )}
 
           {/* 提交并推送 */}
           <div style={{
@@ -328,9 +317,6 @@ export function GitPanel({ onClose }: GitPanelProps) {
             spellCheck={false}
             rows={3}
           />
-          {info && infoFor === 'push' && (
-            <div className="dlg-error" style={{ color: 'var(--ok, #16a34a)', marginTop: 6 }}>{info}</div>
-          )}
 
           {error && <div className="dlg-error">{error}</div>}
         </div>
@@ -341,6 +327,24 @@ export function GitPanel({ onClose }: GitPanelProps) {
           </button>
         </div>
       </div>
+
+      {info && (
+        <div
+          style={{
+            position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)',
+            background: 'var(--panel, #fff)', color: 'var(--t1, #1e293b)',
+            padding: '8px 16px', borderRadius: 8, fontSize: 14,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            border: '1px solid var(--brd, #e2e8f0)',
+            display: 'flex', alignItems: 'center', gap: 8,
+            zIndex: 1000, pointerEvents: 'none',
+            animation: 'fadeIn .15s ease',
+          }}
+        >
+          <span style={{ color: 'var(--ok, #16a34a)', fontWeight: 600 }}>✓</span>
+          <span>{info}</span>
+        </div>
+      )}
     </div>
   );
 }
