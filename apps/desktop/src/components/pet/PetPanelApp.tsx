@@ -232,12 +232,19 @@ export function PetPanelApp() {
   // window via the `pet://file-tree-updated` broadcast (emitted by
   // `startFileTreeBroadcast` in App.tsx on every fileTree change, debounced
   // ~300ms). Mirrors the `pet://settings-updated` listener pattern above.
+  //
+  // Request-response: the main window's initial emit fires at App.tsx mount
+  // time, BEFORE this panel's listener registers (the panel opens on user
+  // click, long after startup). If the vault is already loaded and stable,
+  // no fileTree change fires to push it again — so we emit
+  // `pet://file-tree-request` after registering, and the main window
+  // re-emits the current snapshot on demand.
   useEffect(() => {
     if (!isTauri()) return;
     let unlisten: (() => void) | undefined;
     (async () => {
       try {
-        const { listen } = await import('@tauri-apps/api/event');
+        const { listen, emit } = await import('@tauri-apps/api/event');
         unlisten = await listen<{ currentVault: unknown; fileTree: unknown }>(
           'pet://file-tree-updated',
           (event) => {
@@ -249,6 +256,8 @@ export function PetPanelApp() {
             });
           },
         );
+        // Request the current snapshot (the initial emit was missed).
+        await emit('pet://file-tree-request', {});
       } catch (err) {
         console.warn('[pet-panel] file-tree-updated listener failed:', err);
       }

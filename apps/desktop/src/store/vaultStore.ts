@@ -588,7 +588,8 @@ export function subscribeToFileTree(cb: () => void): () => void {
  *  authoritative fileTree (via fs plugin + fileWatcher) and pushes it to
  *  secondary windows on change. Mirrors the `pet://settings-updated` pattern.
  *  Caller is responsible for only invoking this in the MAIN window — the
- *  pet-panel window listens via `listen('pet://file-tree-updated', …)`. */
+ *  pet-panel window listens via `listen('pet://file-tree-updated', …)` and
+ *  requests a snapshot on mount via `pet://file-tree-request`. */
 export function startFileTreeBroadcast(): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let stopped = false;
@@ -613,9 +614,27 @@ export function startFileTreeBroadcast(): () => void {
   // without waiting for the next fileWatcher tick.
   void emit();
   const unsub = subscribeToFileTree(debounce);
+  // ponytail: request-response. A secondary window that mounts AFTER the
+  // initial emit misses it; if the vault is already loaded and stable, no
+  // fileTree change fires to push it again. Listen for `pet://file-tree-request`
+  // from secondary windows and re-emit the current snapshot. The listener is
+  // main-window-only because startFileTreeBroadcast is only called from App.tsx.
+  let reqUnlisten: (() => void) | undefined;
+  (async () => {
+    if (stopped) return;
+    try {
+      const { listen } = await import('@tauri-apps/api/event');
+      reqUnlisten = await listen('pet://file-tree-request', () => {
+        void emit();
+      });
+    } catch {
+      // Non-tauri (tests) or listen failed — non-fatal.
+    }
+  })();
   return () => {
     stopped = true;
     unsub();
+    reqUnlisten?.();
     if (timer) clearTimeout(timer);
   };
 }
