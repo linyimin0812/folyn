@@ -290,7 +290,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
             </button>
           </div>
           <div style={{ color: 'var(--fg-muted, #888)', fontSize: 12, marginBottom: 6, marginTop: 4 }}>
-            把 GitHub 仓库上的最新改动下载到本地。多人协作或换设备后点这个。
+            将 GitHub 仓库上的最新改动下载到本地
           </div>
           {info && infoFor === 'pull' && (
             <div className="dlg-error" style={{ color: 'var(--ok, #16a34a)', marginBottom: 6 }}>{info}</div>
@@ -311,7 +311,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
             </button>
           </div>
           <div style={{ color: 'var(--fg-muted, #888)', fontSize: 12, marginBottom: 6, marginTop: 4 }}>
-            把本地改动上传到 GitHub。先填一句话说明这次改了什么，再点按钮。
+            将本地改动推送到 GitHub 远程仓库
           </div>
           <textarea
             className="dlg-input"
