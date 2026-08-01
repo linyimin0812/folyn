@@ -150,16 +150,26 @@ export default function App() {
   // ponytail: showAiPanel is a launch-time auto-expand preference, NOT a
   // mount gate. Seed aiPanelVisible once from showAiPanel so "默认显示 AI
   // 面板" works on launch without preventing the user from opening the panel
-  // manually when the setting is off. The useRef guard survives React 18
-  // StrictMode's double-invoke so a user click between the two invocations
-  // isn't clobbered.
+  // manually when the setting is off.
+  //
+  // MUST await settingsLoadDone: appearanceStore.showAiPanel is the DEFAULT
+  // (true) until the persisted blob hydrates. Reading it before hydration
+  // resolves always yields true, so a user with showAiPanel=false would
+  // still see the panel auto-open. The ref guard survives React 18
+  // StrictMode's double-invoke; the `cancelled` flag survives unmount
+  // between hydration resolving and the setState landing.
   const aiPanelVisibilitySeeded = useRef(false);
   useEffect(() => {
     if (aiPanelVisibilitySeeded.current) return;
     aiPanelVisibilitySeeded.current = true;
-    useEditorViewStateStore.setState({
-      aiPanelVisible: useAppearanceStore.getState().showAiPanel,
+    let cancelled = false;
+    settingsLoadDone.then(() => {
+      if (cancelled) return;
+      useEditorViewStateStore.setState({
+        aiPanelVisible: useAppearanceStore.getState().showAiPanel,
+      });
     });
+    return () => { cancelled = true; };
   }, []);
 
   // ── Vault initialization ──
