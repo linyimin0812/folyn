@@ -177,7 +177,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
         <div className="dlg-body" style={{ overflow: 'auto', flexGrow: 1, minHeight: 0 }}>
           {/* 状态 */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <div className="dlg-label" style={{ margin: 0, fontSize: 14, textTransform: 'none' }}>本地改动</div>
+            <div className="dlg-label" style={{ margin: 0, fontSize: 14, textTransform: 'none', background: 'var(--bg-muted, #f1f5f9)', padding: '4px 8px', borderRadius: 4 }}>本地改动</div>
             <button
               className="btn btn-g btn-sm"
               onClick={() => void refreshStatus()}
@@ -261,7 +261,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
 
           {/* 拉取 */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 16 }}>
-            <div className="dlg-label" style={{ margin: 0, fontSize: 14, textTransform: 'none' }}>拉取远程更新</div>
+            <div className="dlg-label" style={{ margin: 0, fontSize: 14, textTransform: 'none', background: 'var(--bg-muted, #f1f5f9)', padding: '4px 8px', borderRadius: 4 }}>拉取远程更新</div>
             <button
               className="btn btn-g btn-sm"
               onClick={() => void handlePull()}
@@ -278,7 +278,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
           )}
 
           {/* 提交并推送 */}
-          <div className="dlg-label" style={{ marginTop: 16, fontSize: 14, textTransform: 'none' }}>提交并推送</div>
+          <div className="dlg-label" style={{ marginTop: 16, fontSize: 14, textTransform: 'none', background: 'var(--bg-muted, #f1f5f9)', padding: '4px 8px', borderRadius: 4, display: 'inline-block' }}>提交并推送</div>
           <div style={{ color: 'var(--fg-muted, #888)', fontSize: 12, marginBottom: 6 }}>
             把本地改动上传到 GitHub。先填一句话说明这次改了什么，再点按钮。
           </div>
