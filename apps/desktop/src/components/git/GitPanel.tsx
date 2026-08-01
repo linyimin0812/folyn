@@ -294,36 +294,37 @@ export function GitPanel({ onClose }: GitPanelProps) {
           )}
 
           {/* 提交并推送 */}
-          <div className="dlg-label" style={{ marginTop: 16, fontSize: 13, textTransform: 'none', background: 'var(--bg-muted, #f1f5f9)', padding: '4px 8px', borderRadius: 4 }}>提交并推送</div>
-          <div style={{ color: 'var(--fg-muted, #888)', fontSize: 12, marginBottom: 6 }}>
-            把本地改动上传到 GitHub。先填一句话说明这次改了什么，再点按钮。
-          </div>
-          <div className="dlg-input-group">
-            <input
-              className="dlg-input dlg-input-flex"
-              style={{
-                height: 36, fontSize: 13, lineHeight: '36px',
-                padding: '0 12px', boxSizing: 'border-box',
-              }}
-              placeholder="例如：补充 8 月 2 日的日记"
-              value={commitMsg}
-              onChange={(e) => setCommitMsg(e.target.value)}
-              autoCapitalize="off"
-              spellCheck={false}
-            />
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 16,
+            background: 'var(--bg-muted, #f1f5f9)', padding: '4px 8px', borderRadius: 4,
+          }}>
+            <div className="dlg-label" style={{ margin: 0, fontSize: 13, textTransform: 'none' }}>提交并推送</div>
             <button
-              className="dlg-input-btn"
-              style={{
-                height: 36, fontSize: 13, lineHeight: '36px',
-                padding: '0 14px', boxSizing: 'border-box',
-                background: 'var(--acc)', color: 'white',
-              }}
+              className="btn btn-p btn-sm"
               onClick={() => void handleCommitPush()}
               disabled={busy !== null}
             >
               {busy === 'push' ? '推送中…' : 'Commit & Push'}
             </button>
           </div>
+          <div style={{ color: 'var(--fg-muted, #888)', fontSize: 12, marginBottom: 6, marginTop: 4 }}>
+            把本地改动上传到 GitHub。先填一句话说明这次改了什么，再点按钮。
+          </div>
+          <textarea
+            className="dlg-input"
+            style={{
+              width: '100%', fontSize: 13, lineHeight: 1.5,
+              padding: '8px 12px', boxSizing: 'border-box',
+              minHeight: 60, resize: 'vertical', height: 'auto',
+              display: 'block',
+            }}
+            placeholder="例如：补充 8 月 2 日的日记"
+            value={commitMsg}
+            onChange={(e) => setCommitMsg(e.target.value)}
+            autoCapitalize="off"
+            spellCheck={false}
+            rows={3}
+          />
           {info && infoFor === 'push' && (
             <div className="dlg-error" style={{ color: 'var(--ok, #16a34a)', marginTop: 6 }}>{info}</div>
           )}
