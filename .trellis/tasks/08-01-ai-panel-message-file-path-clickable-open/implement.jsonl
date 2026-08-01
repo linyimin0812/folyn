@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Props conventions, shared chat component slot pattern, no-store-import rule for components/chat/* — MessageContent code-override + onPathClick/resolvePath injection must honor this boundary"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "chat/ vs ai/ folder split, services/ for cross-feature logic, utils/ for pure functions — decides where matchFilePath and existence cache live"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand getState() out-of-React usage, granular selectors — openFile + setCursorPosition flow and editorViewState write pattern"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "useEffect cleanup, no silent swallow, platform guards — async path existence check + memoization cache invalidation"}

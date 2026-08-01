@@ -35,6 +35,12 @@ export interface ChatMessageListProps {
    *  `<vault>/__attachments__/`. Defaults to false; both AiPanel and Pet
    *  chat opt in. */
   showSaveImageButton?: boolean;
+  /** Clickable inline-code file paths. When both are present, an inline-code
+   *  token that matches a file-path shape renders as a clickable element that
+   *  calls `onPathClick(path, line?, col?)` after `resolvePath(raw)` confirms
+   *  the file exists. The pet chat omits both (vault-free); AiPanel supplies. */
+  onPathClick?: (path: string, line?: number, col?: number) => void;
+  resolvePath?: (raw: string) => Promise<boolean>;
   /** Render a small "provider : model" tag under assistant messages that carry
    *  a `provider` + `model` pair (PR4). The resolver is consumer-supplied
    *  because shared chat components MUST NOT import the provider catalog
@@ -163,6 +169,8 @@ function DefaultMessageRow({
   streamingIndicator,
   onSaveToWiki,
   showSaveImageButton,
+  onPathClick,
+  resolvePath,
   renderPairTag,
 }: {
   msg: CliMessage;
@@ -174,6 +182,8 @@ function DefaultMessageRow({
   streamingIndicator: 'dots' | 'cursor' | 'none';
   onSaveToWiki?: (msg: CliMessage) => void;
   showSaveImageButton?: boolean;
+  onPathClick?: (path: string, line?: number, col?: number) => void;
+  resolvePath?: (raw: string) => Promise<boolean>;
   renderPairTag?: (msg: CliMessage) => ReactNode | null;
 }) {
   const isAssistant = msg.role === 'assistant';
@@ -231,6 +241,8 @@ function DefaultMessageRow({
               plaintext={plaintext}
               className={plaintext ? 'whitespace-pre-wrap' : undefined}
               showSaveImageButton={showSaveImageButton}
+              onPathClick={onPathClick}
+              resolvePath={resolvePath}
             />
           ) : null}
           {showCursor && <span className="cursor-blink">▎</span>}
@@ -268,6 +280,8 @@ export function ChatMessageList({
   streamingIndicator = 'dots',
   onSaveToWiki,
   showSaveImageButton,
+  onPathClick,
+  resolvePath,
   renderPairTag,
   className,
 }: ChatMessageListProps) {
@@ -298,6 +312,8 @@ export function ChatMessageList({
             streamingIndicator={streamingIndicator}
             onSaveToWiki={onSaveToWiki}
             showSaveImageButton={showSaveImageButton}
+            onPathClick={onPathClick}
+            resolvePath={resolvePath}
             renderPairTag={renderPairTag}
           />
         );

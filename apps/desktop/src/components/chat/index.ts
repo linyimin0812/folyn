@@ -6,6 +6,10 @@ export { ChatInputBox } from './ChatInputBox';
 export type { ChatInputBoxProps } from './ChatInputBox';
 export { PairTag } from './PairTag';
 export type { PairTagProps } from './PairTag';
+export { matchFilePath, clearPathExistsCache } from './filePath';
+export type { MatchedPath } from './filePath';
+export { FilePathContext } from './FilePathCode';
+export type { FilePathContextValue } from './FilePathCode';
 export {
   DEFAULT_MAX_BYTES,
   DEFAULT_ALLOWED_TYPES,

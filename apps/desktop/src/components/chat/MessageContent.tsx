@@ -9,6 +9,7 @@ import { jsx, jsxs } from 'react/jsx-runtime';
 import type { AssistantImage } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { saveImageToVault } from '@/services/chatImageService';
+import { CodeOverride, FilePathContext, type FilePathContextValue } from './FilePathCode';
 
 // ponytail: image models (e.g. rig-backed image gen) return the generated
 // image inline as a `data:image/...;base64,...` text delta. The Rust
@@ -39,6 +40,9 @@ const processor = unified()
     Fragment,
     jsx,
     jsxs,
+    components: {
+      code: CodeOverride,
+    },
   });
 
 type Segment =
@@ -109,6 +113,13 @@ export interface MessageContentProps {
   /** When true, image segments render a "保存到 vault" button. Defaults
    *  to false — only the AiPanel and Pet chat callers opt in. */
   showSaveImageButton?: boolean;
+  /** Callbacks for clickable inline-code file paths. When both are present,
+   *  an inline-code token that matches a file-path shape renders as a
+   *  clickable element that calls `onPathClick(path, line?, col?)` after
+   *  `resolvePath(raw)` confirms the file exists. The pet chat omits both
+   *  (vault-free secondary window); the AiPanel supplies them. */
+  onPathClick?: (path: string, line?: number, col?: number) => void;
+  resolvePath?: (raw: string) => Promise<boolean>;
 }
 
 export function MessageContent({
@@ -117,6 +128,8 @@ export function MessageContent({
   plaintext,
   className,
   showSaveImageButton,
+  onPathClick,
+  resolvePath,
 }: MessageContentProps) {
   const segments = useMemo(() => splitSegments(content, images), [content, images]);
 
@@ -146,25 +159,29 @@ export function MessageContent({
     return <div className={`msg-md${className ? ` ${className}` : ''}`} />;
   }
 
+  const ctx: FilePathContextValue = { onPathClick, resolvePath };
+
   return (
-    <div className={`msg-md${className ? ` ${className}` : ''}`}>
-      {segments.map((seg, i) => {
-        if (seg.type === 'image') {
-          return (
-            <ImageSegment
-              key={`i-${i}`}
-              image={seg.value}
-              showSaveButton={!!showSaveImageButton}
-            />
-          );
-        }
-        // Text segment — memoized.
-        // ponytail: key is the segment value so React preserves the node
-        // identity across re-renders when the value is unchanged. This is
-        // what makes the per-segment memoization effective.
-        return <TextSegment key={`t-${i}`} value={seg.value} />;
-      })}
-    </div>
+    <FilePathContext.Provider value={ctx}>
+      <div className={`msg-md${className ? ` ${className}` : ''}`}>
+        {segments.map((seg, i) => {
+          if (seg.type === 'image') {
+            return (
+              <ImageSegment
+                key={`i-${i}`}
+                image={seg.value}
+                showSaveButton={!!showSaveImageButton}
+              />
+            );
+          }
+          // Text segment — memoized.
+          // ponytail: key is the segment value so React preserves the node
+          // identity across re-renders when the value is unchanged. This is
+          // what makes the per-segment memoization effective.
+          return <TextSegment key={`t-${i}`} value={seg.value} />;
+        })}
+      </div>
+    </FilePathContext.Provider>
   );
 }
 

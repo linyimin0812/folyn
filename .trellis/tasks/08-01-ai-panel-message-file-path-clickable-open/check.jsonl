@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "useEffect cleanup, no silent swallow, lint/typecheck gate — verify FilePathCode async check + tests pass"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "no-store-import grep for components/chat/* — verify chat/ boundary still holds after wiring onPathClick/resolvePath"}

@@ -7,8 +7,11 @@ import { useVaultStore } from '@/store/vaultStore';
 import type { CliMessage, CliStreamEvent, MessageAttachment } from '@quill/cli-adapter';
 import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';
 import { flattenFileTree } from '@/utils/treeUtils';
+import { isExternalPath } from '@/utils/isExternalPath';
+import { resolveAbsolutePath } from '@/services/externalFileProvider';
 import { sessionAdapters, getAdapterForSession } from './adapterManager';
 import { ChatMessageList } from '@/components/chat';
+import { clearPathExistsCache } from '@/components/chat/filePath';
 import { ChatInput } from './ChatInput';
 import type { PendingAttachment } from './ChatInput';
 import { useEnabledPairs } from './PairSelector';
@@ -65,6 +68,42 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
 
   const fileTree = useVaultStore((s) => s.fileTree);
   const allFiles = useMemo(() => flattenFileTree(fileTree), [fileTree]);
+  const activeVaultId = useVaultStore((s) => s.activeVaultId);
+
+  // ponytail: path-exists cache is keyed by raw path string, but existence
+  // depends on the active vault. Clear on vault switch so stale hits don't
+  // mis-render clickable paths from the prior vault's fileTree.
+  useEffect(() => {
+    clearPathExistsCache();
+  }, [activeVaultId]);
+
+  // Inline-code file paths in assistant messages: resolve existence via the
+  // same routing editorIoService uses (external / wiki / vault-relative).
+  // `allFiles` covers the vault-relative case without an fs read.
+  const resolvePath = useCallback(async (raw: string): Promise<boolean> => {
+    if (isExternalPath(raw)) {
+      try {
+        const { exists } = await import('@tauri-apps/plugin-fs');
+        const abs = await resolveAbsolutePath(raw);
+        return await exists(abs);
+      } catch {
+        return false;
+      }
+    }
+    return allFiles.some((f) => f.path === raw);
+  }, [allFiles]);
+
+  const handlePathClick = useCallback(
+    (path: string, line?: number, col?: number) => {
+      const name = path.includes('/') ? path.slice(path.lastIndexOf('/') + 1) : path;
+      void editorIoService.openFile(path, name).then(() => {
+        if (line) {
+          useEditorViewStateStore.getState().setCursorPosition(line, col ?? 1);
+        }
+      });
+    },
+    [],
+  );
 
   // ponytail: renderPairTag closes over customerProviders (stable ref from
   // zustand) so the resolver doesn't need to be a useCallback; it's only
@@ -405,6 +444,8 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
         streamingIndicator="dots"
         renderPairTag={renderPairTag}
         showSaveImageButton
+        onPathClick={handlePathClick}
+        resolvePath={resolvePath}
         className="p-3 gap-3"
       />
 
