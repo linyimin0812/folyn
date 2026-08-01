@@ -1623,3 +1623,41 @@ Polished GitHub vault UI across create dialog, vault page, and activity bar: rep
 ### Next Steps
 
 - None - task complete
+
+
+## Session 105: Git panel i18n and getStatus hardening
+
+**Date**: 2026-08-01
+**Task**: Git panel i18n and getStatus hardening
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Internationalized the Git panel dialog and fixed several follow-up issues: modal height adjustments (75vh then reverted to 65vh), trimmed success toast to prefix only, and hardened getStatus to drop the '(clean)' sentinel and throw on failure instead.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `91cd41b` | (see git log) |
+| `8ed776b` | (see git log) |
+| `335e7cc` | (see git log) |
+| `e96d0b5` | (see git log) |
+| `8c48957` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
