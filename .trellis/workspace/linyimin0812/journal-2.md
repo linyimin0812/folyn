@@ -1589,3 +1589,37 @@ Made inline-code file paths in AiPanel assistant messages clickable (open file +
 ### Next Steps
 
 - None - task complete
+
+
+## Session 104: GitHub vault UI polish
+
+**Date**: 2026-08-01
+**Task**: GitHub vault UI polish
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Polished GitHub vault UI across create dialog, vault page, and activity bar: replaced emoji icons with github.svg + lucide FolderOpen/Trash2/Settings; auto-derived vault name and clone path from repo URL; unified input/select heights; added Compact-style browse button (Tauri dialog open) for local and clone paths; tauri card keeps blue gradient, github card transparent.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `065a9d4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
