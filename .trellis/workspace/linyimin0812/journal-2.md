@@ -1695,3 +1695,37 @@ Clone GitHub vault 后自动把 BUILTIN_EXCLUDE_DIRS (__wiki__/__clips__/等) �
 ### Next Steps
 
 - None - task complete
+
+
+## Session 107: fix binary source export
+
+**Date**: 2026-08-01
+**Task**: fix binary source export
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+exportActiveSource downloaded empty files for binary types (PDF/zip/mp4) because office handler needsFileContent=false leaves tab.content empty. Added readFileBytes to vault-provider (symmetric with writeFileBytes) and branched exportActiveSource to read raw bytes from disk for needsFileContent=false handlers; text types keep tab.content path. SVG empty-download issue is separate and out of scope.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9099880` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
