@@ -1,13 +1,26 @@
 /**
  * Per-message "Agent CLI" tag for Ask/Agent-mode assistant bubbles. Mirrors
  * `PairTag`'s presentational contract (icon + bold label + dim pipe + value)
- * but surfaces the CLI adapter identity instead of the rig LLM pair.
+ * but surfaces the active CLI adapter identity (icon + displayName) plus
+ * the input-mode label, instead of the rig LLM pair.
  *
  * Chat (rig) mode still uses `<PairTag>`; Ask/Agent (CLI adapter) uses this.
+ *
+ * Icon + displayName come from `aiConfig.cliAdapter` + `listAdapters()` —
+ * same source `AdapterSelector` uses — so the tag stays in sync with the
+ * user's chosen CLI.
  */
 
-import { Bot } from 'lucide-react';
+import { useAiConfigStore } from '@/store/aiConfigStore';
+import { listAdapters } from '@quill/cli-adapter';
 import { getInputModeDef } from './inputModes';
+import claudeIcon from '@/assets/agents/claude_code.svg';
+import piIcon from '@/assets/agents/pi.svg';
+
+const ADAPTER_ICON: Record<string, string> = {
+  claude: claudeIcon,
+  pi: piIcon,
+};
 
 export interface AgentCliTagProps {
   /** Active input-mode id (e.g. 'agent', 'ask'). Looked up via
@@ -16,14 +29,21 @@ export interface AgentCliTagProps {
 }
 
 export function AgentCliTag({ modeId }: AgentCliTagProps) {
-  const def = getInputModeDef(modeId);
-  const label = def?.label ?? modeId;
+  const cliAdapter = useAiConfigStore((s) => s.cliAdapter);
+  const adapters = listAdapters();
+  const current = adapters.find((a) => a.id === cliAdapter) ?? adapters[0];
+  const modeDef = getInputModeDef(modeId);
+  const modeLabel = modeDef?.label ?? modeId;
+  const iconSrc = current ? ADAPTER_ICON[current.id] : undefined;
+
   return (
     <>
-      <Bot size={13} />
-      <span className="font-semibold text-t2">Agent CLI</span>
+      {iconSrc && (
+        <img src={iconSrc} alt="" className="w-[13px] h-[13px]" />
+      )}
+      <span className="font-semibold text-t2">{current?.displayName ?? 'Agent CLI'}</span>
       <span className="text-t3">|</span>
-      <span className="text-t3">{label}</span>
+      <span className="text-t3">{modeLabel}</span>
     </>
   );
 }

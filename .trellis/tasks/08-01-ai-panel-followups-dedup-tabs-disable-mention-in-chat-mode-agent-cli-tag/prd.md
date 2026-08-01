@@ -121,6 +121,22 @@ function AgentCliTag({ modeLabel }: { modeLabel: string }) {
 → `<PairTag>` (existing); else → `<AgentCliTag modeLabel={modeLabel}>`.
 The slot signature `(msg) => ReactNode | null` is preserved.
 
+### R4 — AgentCliTag shows real CLI identity (revision of R3)
+
+Replace the generic `Bot` icon + "Agent CLI" label with the active CLI
+adapter's icon (claude_code.svg / pi.svg) + `displayName` ("Claude Code" /
+"Pi") from `listAdapters()` + `aiConfig.cliAdapter`. Mode label still
+follows `getInputModeDef(modeId).label`. Icon lookup mirrors
+`AdapterSelector`'s `ADAPTER_ICON` map.
+
+### R5 — Unlock AdapterSelector mid-session
+
+`AdapterSelector` was disabled via `sessionLocked = Boolean(session.cliSessionId)`
+once the session had talked to a backend, forcing the user to start a new
+session to switch CLI. Drop the `sessionLocked` gate; only `isStreaming`
+disables now. Switching adapter mid-session is permitted — the next send
+runs under the new adapter.
+
 ## Technical Notes
 
 - `apps/desktop/src/components/ai/AiPanel.tsx:67-95` — `resolvePath` +

@@ -62,12 +62,6 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
   // time and ignore the user-facing adapter selector; only general chat
   // sessions show it.
   const sessionKind = useAiStore((s) => s.sessions?.find((x) => x.id === s.activeSessionId)?.kind);
-  // Forbid in-session adapter switching: once a chat session has talked to
-  // a backend (has a cliSessionId) or is mid-stream, lock the selector. The
-  // user starts a new session to use a different adapter.
-  const sessionLocked = useAiStore((s) =>
-    Boolean(s.sessions?.find((x) => x.id === s.activeSessionId)?.cliSessionId),
-  );
   const currentModeDef = useMemo(
     () => inputModes.find((m) => m.id === inputMode),
     [inputMode, inputModes],
@@ -411,7 +405,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
           onOpenSettings={handleOpenModelSettings}
         />
       ) : (
-        sessionKind !== 'study' && <AdapterSelector disabled={isStreaming || sessionLocked} />
+        sessionKind !== 'study' && <AdapterSelector disabled={isStreaming} />
       )}
       <button className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed" onClick={handleFileSelect} disabled={isStreaming} title={t('ai:chat.attachFile')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
