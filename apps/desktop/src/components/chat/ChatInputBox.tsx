@@ -100,14 +100,14 @@ export function ChatInputBox({
       {attachmentsRow}
 
       <div
-        className="flex flex-col border border-brd rounded-lg bg-inp transition-[border-color] duration-[140ms] focus-within:border-acc"
+        className="flex flex-col border border-brd rounded-xl bg-inp transition-[border-color,box-shadow] duration-150 focus-within:border-acc focus-within:shadow-[0_0_0_3px_var(--accglow)]"
         style={{ position: 'relative' }}
       >
         {overlayLayer}
 
         <textarea
           ref={setTextareaRef}
-          className="flex-1 resize-none border-none rounded-t-lg pt-2 px-2.5 pb-1 text-[12px] font-ui bg-transparent text-t1 outline-none placeholder:text-t3"
+          className="flex-1 resize-none border-none rounded-t-xl pt-2.5 px-3 pb-1 text-[12px] font-ui bg-transparent text-t1 outline-none placeholder:text-t3"
           placeholder={placeholder ?? t('ai:chat.placeholderFallback')}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -121,7 +121,7 @@ export function ChatInputBox({
           spellCheck={false}
         />
 
-        <div className="flex items-center gap-0 py-0.5 px-1.5 pb-1.5">
+        <div className="flex items-center gap-1 py-1 px-1.5 pb-2">
           {leadingSlot}
           <div className="flex-1" />
           {trailingSlot}
@@ -139,27 +139,27 @@ export function ChatInputBox({
           {streaming && onStop ? (
             <button
               type="button"
-              className="w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-all duration-[120ms] bg-red text-white hover:opacity-[.85]"
+              className="chat-stop-btn"
               onClick={onStop}
               title={t('ai:chat.stop')}
               aria-label={t('ai:chat.stop')}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="6" width="12" height="12" rx="2" />
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2.5" />
               </svg>
             </button>
           ) : (
             <button
               type="button"
-              className="w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-all duration-[120ms] bg-acc text-white hover:opacity-[.85] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="chat-send-btn"
               onClick={onSend}
               disabled={!canSendNow}
               title={t('ai:chat.send')}
               aria-label={t('ai:chat.send')}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="19" x2="12" y2="5" />
+                <polyline points="5 12 12 5 19 12" />
               </svg>
             </button>
           )}

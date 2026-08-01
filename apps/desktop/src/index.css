@@ -241,8 +241,9 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 }
 .cursor-blink { animation: blink 1s step-end infinite; color: var(--acc); }
 .ai-streaming-indicator {
-  display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px;
-  background: color-mix(in srgb, var(--acc) 8%, transparent);
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+  background: color-mix(in srgb, var(--acc) 7%, transparent);
+  align-self: flex-start;
 }
 .ai-streaming-dots { display: flex; gap: 4px; }
 .ai-streaming-dots span {
@@ -251,6 +252,57 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 }
 .ai-streaming-dots span:nth-child(2) { animation-delay: .15s; }
 .ai-streaming-dots span:nth-child(3) { animation-delay: .3s; }
+
+/* ── Chat message bubbles (shared by AiPanel + pet chat) ──
+ * Quiet, flat design: solid colors, no gradients / shadows / avatars.
+ * The accent bubble on the right is enough to tell user from AI. */
+.chat-msg-row { display: flex; }
+.chat-msg-bubble { min-width: 0; border-radius: 12px; padding: 8px 12px; }
+.chat-msg-bubble-ai { flex: 1; background: var(--surf); border: 1px solid var(--brd); }
+.chat-msg-bubble-user { max-width: 88%; background: var(--acc); color: #fff; }
+.chat-msg-user-text { font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: #fff; }
+.chat-msg-user-meta { display: flex; justify-content: flex-end; margin-top: 3px; font-size: 9px; line-height: 1; color: rgba(255,255,255,.65); }
+
+.chat-pair-tag {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
+  font-size: 10px; line-height: 1.5; color: var(--t3);
+}
+
+/* Bubble actions (copy / save-to-wiki) — revealed on row hover, always
+ * visible on touch (no hover) and while focus is inside the actions. */
+.chat-msg-actions { display: flex; align-items: center; justify-content: flex-end; gap: 2px; margin-top: 4px; opacity: 0; transition: opacity .15s ease; }
+.chat-msg-row:hover .chat-msg-actions, .chat-msg-actions:focus-within { opacity: 1; }
+@media (hover: none) { .chat-msg-actions { opacity: 1; } }
+
+/* Chat empty state */
+.chat-empty { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 24px; text-align: center; }
+.chat-empty-badge {
+  width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; line-height: 1; color: var(--acc); margin-bottom: 2px;
+  background: var(--accdim);
+}
+
+/* Chat input send / stop buttons */
+.chat-send-btn, .chat-stop-btn {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; border: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; cursor: pointer;
+  transition: opacity .12s ease;
+}
+.chat-send-btn { background: var(--acc); }
+.chat-send-btn:hover:not(:disabled) { opacity: .85; }
+.chat-send-btn:disabled { opacity: .35; cursor: not-allowed; }
+.chat-stop-btn { background: var(--red); }
+.chat-stop-btn:hover { opacity: .85; }
+
+/* Inline chat error bar (attachment rejection / save failure) */
+.chat-inline-error {
+  display: flex; align-items: center; gap: 6px;
+  margin: 0 12px 8px; padding: 6px 10px; border-radius: 8px;
+  font-size: 11px; line-height: 1.4; color: var(--red);
+  background: color-mix(in srgb, var(--red) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--red) 24%, transparent);
+}
 
 /* ── Markdown in messages ── */
 .msg-md { font-size: 12px; line-height: 1.7; color: var(--t1); }

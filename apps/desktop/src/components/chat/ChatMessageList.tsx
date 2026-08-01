@@ -51,10 +51,10 @@ export interface ChatMessageListProps {
 }
 
 const DEFAULT_EMPTY_HINT = (
-  <div className="flex flex-col items-center justify-center py-10 px-5 gap-2">
-    <div className="text-[32px] text-acc opacity-60">✦</div>
-    <div className="text-[13px] font-semibold text-t2">输入指令让 AI 编辑你的文档</div>
-    <div className="text-[11px] text-t3 text-center leading-normal">
+  <div className="chat-empty">
+    <div className="chat-empty-badge">✦</div>
+    <div className="text-[13px] font-semibold text-t1">输入指令让 AI 编辑你的文档</div>
+    <div className="text-[11px] text-t3 leading-relaxed max-w-[240px]">
       AI 会直接修改文件，变更将在编辑器内以 Diff 形式展示
     </div>
   </div>
@@ -108,7 +108,7 @@ function CopyButton({ msg, onCopy }: { msg: CliMessage; onCopy?: (msg: CliMessag
   return (
     <button
       type="button"
-      className="mt-1 self-end inline-flex items-center justify-center w-6 h-6 rounded text-t3 hover:bg-hov hover:text-t1 transition-colors"
+      className="inline-flex items-center justify-center w-6 h-6 rounded-md text-t3 hover:bg-hov hover:text-t1 transition-colors"
       onClick={() => void handleClick()}
       aria-label={copied ? '已复制' : '复制'}
       aria-pressed={copied}
@@ -182,62 +182,76 @@ function DefaultMessageRow({
   // 3-dot block (see ChatMessageList body); 'cursor' renders only this
   // per-bubble cursor (matches the pet); 'none' renders neither.
   const showCursor = streaming && isLast && isAssistant && streamingIndicator !== 'none';
+
+  // ── User bubble: right-aligned accent gradient, white text, timestamp
+  //    meta at the bottom-right. Multi-line input preserved via pre-wrap. ──
+  if (!isAssistant) {
+    return (
+      <div className="chat-msg-row justify-end">
+        <div className="chat-msg-bubble chat-msg-bubble-user">
+          <AttachmentsRow msg={msg} />
+          <div className="chat-msg-user-text">{msg.content}</div>
+          {msg.timestamp ? (
+            <div className="chat-msg-user-meta">{formatTimestamp(msg.timestamp)}</div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Assistant bubble: flat soft card; pair tag on top;
+  //    copy / wiki actions revealed on hover. ──
+  const hasActions = Boolean(msg.content) && (showCopy || onSaveToWiki);
   return (
-    <div
-      className={`py-2 px-2.5 rounded-lg ${isAssistant ? 'bg-surf border border-brd' : 'bg-accdim self-end max-w-[90%]'}`}
-    >
-      <div className="text-[9px] font-semibold text-t3 mb-1 uppercase flex items-center gap-1.5">
-        {isAssistant ? (
-          msg.provider && msg.model && renderPairTag ? (
-            <span className="inline-flex items-center gap-1 normal-case font-normal opacity-80 text-[9px]" data-testid="msg-pair-tag">
+    <div className="chat-msg-row">
+      <div className="chat-msg-bubble chat-msg-bubble-ai">
+        {msg.provider && msg.model && renderPairTag ? (
+          <div className="mb-1 flex items-center">
+            <span className="chat-pair-tag" data-testid="msg-pair-tag">
               {renderPairTag(msg)}
             </span>
-          ) : null
-        ) : (
-          '我'
+          </div>
+        ) : null}
+
+        {msg.thinking && (
+          <details className="msg-thinking" open={streaming && isLast}>
+            <summary className="msg-thinking-label">Thinking</summary>
+            <div className="msg-thinking-body">{msg.thinking}</div>
+          </details>
         )}
-        {msg.role === 'user' && msg.timestamp && (
-          <span className="font-normal normal-case opacity-70 text-[9px]">{formatTimestamp(msg.timestamp)}</span>
+
+        {msg.toolCalls && msg.toolCalls.length > 0 && <ToolCallBlock toolCalls={msg.toolCalls} />}
+
+        <AttachmentsRow msg={msg} />
+
+        <div className="text-[12px] leading-[1.6] text-t1 break-words">
+          {msg.content || (msg.images && msg.images.length > 0) ? (
+            <MessageContent
+              content={msg.content}
+              images={msg.images}
+              plaintext={plaintext}
+              className={plaintext ? 'whitespace-pre-wrap' : undefined}
+              showSaveImageButton={showSaveImageButton}
+            />
+          ) : null}
+          {showCursor && <span className="cursor-blink">▎</span>}
+        </div>
+
+        {hasActions && (
+          <div className="chat-msg-actions">
+            {msg.content && onSaveToWiki && (
+              <button
+                type="button"
+                className="py-0.5 px-2.5 border border-acc rounded-full bg-transparent text-acc text-[11px] cursor-pointer hover:bg-accdim transition-colors"
+                onClick={() => onSaveToWiki(msg)}
+              >
+                保存到 Wiki
+              </button>
+            )}
+            {msg.content && showCopy && <CopyButton msg={msg} onCopy={onCopy} />}
+          </div>
         )}
       </div>
-
-      {msg.thinking && (
-        <details className="msg-thinking" open={streaming && isLast}>
-          <summary className="msg-thinking-label">Thinking</summary>
-          <div className="msg-thinking-body">{msg.thinking}</div>
-        </details>
-      )}
-
-      {msg.toolCalls && msg.toolCalls.length > 0 && <ToolCallBlock toolCalls={msg.toolCalls} />}
-
-      <AttachmentsRow msg={msg} />
-
-      <div className="text-[12px] leading-[1.6] text-t1 break-words">
-        {isAssistant && (msg.content || (msg.images && msg.images.length > 0)) ? (
-          <MessageContent
-            content={msg.content}
-            images={msg.images}
-            plaintext={plaintext}
-            className={plaintext ? 'whitespace-pre-wrap' : undefined}
-            showSaveImageButton={showSaveImageButton}
-          />
-        ) : (
-          msg.content
-        )}
-        {showCursor && <span className="cursor-blink">▎</span>}
-      </div>
-
-      {isAssistant && msg.content && showCopy && <CopyButton msg={msg} onCopy={onCopy} />}
-
-      {isAssistant && msg.content && onSaveToWiki && (
-        <button
-          type="button"
-          className="mt-1.5 py-0.5 px-2.5 border border-acc rounded bg-transparent text-acc text-[12px] cursor-pointer hover:bg-accdim"
-          onClick={() => onSaveToWiki(msg)}
-        >
-          保存到 Wiki
-        </button>
-      )}
     </div>
   );
 }
@@ -305,7 +319,7 @@ export function ChatMessageList({
       {onClear && messages.length > 0 && (
         <button
           type="button"
-          className="self-center mt-1 py-1 px-3 text-[11px] text-t3 border border-brd rounded bg-transparent hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="self-center mt-1 mb-1 py-1 px-3.5 text-[11px] text-t3 border border-brd rounded-full bg-transparent hover:bg-hov hover:text-t1 hover:border-brd2 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           onClick={onClear}
           disabled={streaming}
         >

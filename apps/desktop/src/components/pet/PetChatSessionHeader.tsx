@@ -183,20 +183,20 @@ export function PetChatSessionHeader() {
   return (
     <div
       ref={containerRef}
-      className="relative shrink-0 flex items-center justify-between h-[30px] px-2 border-b border-brd"
+      className="relative shrink-0 flex items-center justify-between h-[36px] pl-2.5 pr-2 border-b border-brd"
       onKeyDown={handleContainerKeyDown}
     >
       <button
         type="button"
-        className="flex items-center gap-1 bg-transparent border-none py-0.5 px-1.5 rounded cursor-pointer max-w-full min-w-0 hover:bg-hov"
+        className="flex items-center gap-1.5 bg-transparent border-none py-1 px-1.5 rounded-md cursor-pointer max-w-full min-w-0 transition-colors hover:bg-hov"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-label={t('pet:chat.sessionHeader.toggleAria')}
       >
-        <span className="text-[12px] font-semibold text-acc truncate">{title}</span>
+        <span className="text-[12px] font-semibold text-t1 truncate"><span className="text-acc">✦</span> {title}</span>
         <svg
-          className="shrink-0 text-t3"
+          className={`shrink-0 text-t3 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
           width="9"
           height="9"
           viewBox="0 0 24 24"
@@ -212,16 +212,20 @@ export function PetChatSessionHeader() {
 
       <button
         type="button"
-        className="py-[3px] px-2 border border-acc rounded-md bg-acc text-white text-[11px] cursor-pointer hover:opacity-[.85] transition-opacity"
+        className="h-6 px-2 flex items-center gap-1 rounded-md text-[11px] text-t3 cursor-pointer transition-colors bg-transparent border-none hover:bg-hov hover:text-t1"
         onClick={() => void handleOpenSettings()}
       >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
         {t('pet:chat.sessionHeader.openAiSettings')}
       </button>
 
       {open && (
         <div
           role="listbox"
-          className="absolute top-full left-0 mt-1 min-w-[220px] max-w-[300px] max-h-[320px] overflow-y-auto bg-panel border border-brd rounded-md shadow-[0_4px_16px_rgba(0,0,0,.12)] z-[100] p-1 flex flex-col gap-0.5"
+          className="absolute top-full left-0 mt-1 min-w-[220px] max-w-[300px] max-h-[320px] overflow-y-auto bg-panel border border-brd rounded-lg shadow-[0_8px_24px_rgba(0,0,0,.14)] z-[100] p-1 flex flex-col gap-0.5"
         >
           {sessions.map((s) => {
             const isActive = s.id === activeSessionId;

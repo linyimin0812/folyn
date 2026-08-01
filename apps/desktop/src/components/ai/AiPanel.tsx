@@ -372,23 +372,23 @@ export function AiPanel() {
   return (
     <div className="shrink-0 h-full bg-panel border-l border-brd flex flex-col overflow-hidden relative" style={{ width: `${panelWidth}px` }}>
       <div className="absolute left-0 top-0 bottom-0 w-0.5 cursor-col-resize z-10 bg-transparent transition-[background] duration-[140ms] hover:bg-acc hover:opacity-30" onMouseDown={handleResizeStart} />
-      <div className="flex items-center justify-between h-[34px] px-3 border-b border-brd shrink-0">
+      <div className="flex items-center justify-between h-[40px] pl-3 pr-2 border-b border-brd shrink-0">
         <div className="relative min-w-0 flex-1" ref={sessionListRef}>
           <button
-            className="flex items-center gap-1 cursor-pointer bg-transparent border-none py-0.5 px-1.5 rounded max-w-full min-w-0 hover:bg-hov"
+            className="flex items-center gap-1.5 cursor-pointer bg-transparent border-none py-1 px-1.5 rounded-md max-w-full min-w-0 transition-colors hover:bg-hov"
             onClick={() => setShowSessionList(!showSessionList)}
           >
-            <span className="text-[13px] font-bold text-acc truncate">✦ {activeSession?.title || t('ai:panel.title')}</span>
-            <svg className="shrink-0 text-t3" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <span className="text-[13px] font-semibold text-t1 truncate"><span className="text-acc">✦</span> {activeSession?.title || t('ai:panel.title')}</span>
+            <svg className={`shrink-0 text-t3 transition-transform duration-150 ${showSessionList ? 'rotate-180' : ''}`} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 12 15 18 9" />
             </svg>
           </button>
           {showSessionList && (
-            <div className="absolute top-full left-0 mt-1 min-w-[200px] max-w-[280px] max-h-[300px] overflow-y-auto bg-panel border border-brd rounded-md shadow-[0_4px_16px_rgba(0,0,0,.12)] z-[100] p-1">
+            <div className="absolute top-full left-0 mt-1 min-w-[200px] max-w-[280px] max-h-[300px] overflow-y-auto bg-panel border border-brd rounded-lg shadow-[0_8px_24px_rgba(0,0,0,.14)] z-[100] p-1">
               {sessions.map((s) => (
                 <button
                   key={s.id}
-                  className={`flex items-center justify-between gap-2 w-full py-1.5 px-2 rounded cursor-pointer bg-transparent border-none text-left text-[12px] hover:bg-hov ${s.id === activeSessionId ? 'bg-accdim text-acc' : 'text-t2'}`}
+                  className={`flex items-center justify-between gap-2 w-full py-1.5 px-2 rounded-md cursor-pointer bg-transparent border-none text-left text-[12px] transition-colors hover:bg-hov ${s.id === activeSessionId ? 'bg-accdim text-acc' : 'text-t2'}`}
                   onClick={() => handleSwitchSession(s.id)}
                 >
                   <span className="truncate min-w-0 flex-1 flex items-center gap-1.5">
@@ -401,18 +401,18 @@ export function AiPanel() {
             </div>
           )}
         </div>
-        <div className="flex gap-1 shrink-0">
-          <button className="w-6 h-6 flex items-center justify-center rounded text-[12px] text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1" onClick={handleNewSession} title={t('ai:panel.newSession')}>
+        <div className="flex gap-0.5 shrink-0">
+          <button className="w-[26px] h-[26px] flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1" onClick={handleNewSession} title={t('ai:panel.newSession')}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
           </button>
-          <button className="w-6 h-6 flex items-center justify-center rounded text-[12px] text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1" onClick={handleDeleteSession} title={t('ai:panel.deleteSession')}>
+          <button className="w-[26px] h-[26px] flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-red" onClick={handleDeleteSession} title={t('ai:panel.deleteSession')}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
             </svg>
           </button>
-          <button className="w-6 h-6 flex items-center justify-center rounded text-[12px] text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1" onClick={toggleAiPanel} title={t('ai:panel.close')}>
+          <button className="w-[26px] h-[26px] flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1" onClick={toggleAiPanel} title={t('ai:panel.close')}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -420,7 +420,7 @@ export function AiPanel() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 py-1.5 px-3 border-b border-brd shrink-0">
+      <div className="flex items-center gap-2 py-2 px-3 border-b border-brd shrink-0 bg-surf">
         <PairSelector
           value={sessionPair}
           onChange={handlePairChange}
@@ -438,8 +438,8 @@ export function AiPanel() {
       />
 
       {isStudySession ? (
-        <div className="flex items-center justify-between gap-2 py-2.5 px-3 border-t border-brd shrink-0 text-[12px] text-t2">
-          <span className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center justify-between gap-2 py-2.5 px-3 border-t border-brd shrink-0 bg-surf text-[12px] text-t2">
+          <span className="flex items-center gap-2 min-w-0">
             {isStreaming && <span className="ai-session-streaming shrink-0" />}
             <span className="truncate">
               {isStreaming ? t('ai:panel.studyStreaming') : t('ai:panel.studyIdle')}
@@ -447,12 +447,12 @@ export function AiPanel() {
           </span>
           {isStreaming && (
             <button
-              className="w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-all duration-[120ms] bg-red text-white hover:opacity-[.85] shrink-0"
+              className="chat-stop-btn"
               onClick={handleStop}
               title={t('ai:panel.stop')}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="6" width="12" height="12" rx="2" />
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2.5" />
               </svg>
             </button>
           )}

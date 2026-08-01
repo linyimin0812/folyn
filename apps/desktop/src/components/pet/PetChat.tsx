@@ -428,11 +428,11 @@ export function PetChat() {
         {attachments.map((att) => (
           <div
             key={att.id}
-            className="flex items-center gap-1 py-0.5 px-1.5 bg-surf border border-brd rounded-md text-[11px] text-t2 max-w-[160px]"
+            className="flex items-center gap-1.5 py-1 px-1.5 bg-panel border border-brd rounded-lg text-[11px] text-t2 max-w-[160px]"
           >
             {att.previewUrl ? (
               <img
-                className="w-7 h-7 object-cover rounded shrink-0"
+                className="w-7 h-7 object-cover rounded-md shrink-0"
                 src={att.previewUrl}
                 alt={att.name}
               />
@@ -444,7 +444,7 @@ export function PetChat() {
             <span className="truncate min-w-0 flex-1">{att.name}</span>
             <button
               type="button"
-              className="w-3.5 h-3.5 flex items-center justify-center rounded-full text-[10px] text-t3 cursor-pointer shrink-0 transition-all duration-100 bg-transparent border-none hover:bg-hov hover:text-red"
+              className="w-4 h-4 flex items-center justify-center rounded-full text-[10px] text-t3 cursor-pointer shrink-0 transition-all duration-100 bg-transparent border-none hover:bg-hov hover:text-red"
               onClick={() => removeAttachment(att.id)}
               aria-label={t('pet:chat.removeAttachment')}
             >
@@ -461,7 +461,7 @@ export function PetChat() {
         open/close the AI panel's custom dropdown needs, and the pet panel is
         compact. chat routes to the rig backend; ask/agent to the claude CLI. */}
       <select
-        className="h-7 max-w-[96px] text-[11px] bg-transparent text-t3 border-none cursor-pointer outline-none appearance-none disabled:opacity-40 disabled:cursor-not-allowed"
+        className="h-7 max-w-[96px] px-1.5 text-[11px] bg-inp text-t2 border border-brd rounded-md cursor-pointer outline-none transition-colors hover:border-brd2 disabled:opacity-40 disabled:cursor-not-allowed"
         value={inputMode}
         onChange={(e) => setInputMode(e.target.value)}
         disabled={streaming}
@@ -505,14 +505,15 @@ export function PetChat() {
     // components (it replaces the whole chat body).
     return (
       <div
-        className="flex flex-col items-center justify-center gap-2 px-2 py-4 text-center flex-1"
+        className="chat-empty flex-1"
         role="status"
       >
+        <div className="chat-empty-badge">✦</div>
         <div className="text-[13px] font-semibold text-t1">{t('pet:chat.noAiConfig')}</div>
-        <div className="text-[12px] text-t3">{t('pet:chat.noAiConfigHint')}</div>
+        <div className="text-[12px] text-t3 leading-relaxed max-w-[240px]">{t('pet:chat.noAiConfigHint')}</div>
         <button
           type="button"
-          className="mt-1 py-1.5 px-3 border border-acc rounded-md bg-acc text-white text-[12px] cursor-pointer hover:opacity-[.85] transition-opacity"
+          className="mt-1 py-1.5 px-4 border border-acc rounded-full bg-acc text-white text-[12px] cursor-pointer hover:opacity-[.85] transition-opacity"
           onClick={() => void handleOpenSettings()}
         >
           {t('pet:chat.openAiSettings')}
@@ -524,7 +525,7 @@ export function PetChat() {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <PetChatSessionHeader />
-      <div className="border-b border-brd px-2 py-1">
+      <div className="border-b border-brd px-2 py-1.5 bg-surf shrink-0">
         <PairSelector
           value={petPair}
           onChange={(pair) => {
@@ -548,8 +549,11 @@ export function PetChat() {
         onClear={clear}
         className="pt-2"
         emptyState={
-          <div className="text-[12px] text-t3 text-center px-1 py-3">
-            {t('pet:chat.emptyHint')}
+          <div className="chat-empty">
+            <div className="chat-empty-badge">✦</div>
+            <div className="text-[12px] text-t3 leading-relaxed max-w-[220px]">
+              {t('pet:chat.emptyHint')}
+            </div>
           </div>
         }
       />
@@ -569,8 +573,11 @@ export function PetChat() {
         attachmentsRow={attachmentsRow}
       />
       {rejectError && (
-        <div className="px-3 pb-1.5 text-[11px] text-red" role="alert">
-          {rejectError}
+        <div className="chat-inline-error" role="alert">
+          <svg className="shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span className="min-w-0">{rejectError}</span>
         </div>
       )}
       <input
