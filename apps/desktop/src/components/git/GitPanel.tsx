@@ -80,7 +80,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [showFiles, setShowFiles] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<ParsedFile['kind']>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<ParsedFile['kind']>>(new Set(['untracked']));
   const [commitMsg, setCommitMsg] = useState('');
   const [busy, setBusy] = useState<'pull' | 'push' | null>(null);
   const [error, setError] = useState<string | null>(null);
