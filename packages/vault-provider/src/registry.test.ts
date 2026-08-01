@@ -3,6 +3,7 @@ import {
   VaultProviderRegistry,
   VaultError,
   TauriVaultProvider,
+  GithubVaultProvider,
 } from '../index';
 import type { VaultProviderDescriptor } from '../src/registry';
 import type { VaultConfig, ProviderType } from '../src/types';
@@ -78,10 +79,28 @@ describe('VaultProviderRegistry built-in tauri descriptor', () => {
   });
 });
 
-describe('VaultProviderRegistry unregistered types', () => {
-  it('get returns undefined for github / s3 / webdav (not registered by default)', () => {
+describe('VaultProviderRegistry built-in github descriptor', () => {
+  it('registers a "github" descriptor with the expected metadata', () => {
     const registry = VaultProviderRegistry.getInstance();
-    expect(registry.get('github')).toBeUndefined();
+    const desc = registry.get('github');
+    expect(desc).toBeDefined();
+    expect(desc?.type).toBe('github');
+    expect(desc?.displayName).toBe('GitHub 仓库');
+  });
+
+  it('create returns a GithubVaultProvider for a github config', () => {
+    const registry = VaultProviderRegistry.getInstance();
+    const provider = registry.create({ ...baseConfig, providerType: 'github' });
+    expect(provider).toBeInstanceOf(GithubVaultProvider);
+    expect(provider.type).toBe('github');
+    expect(provider.capabilities.history).toBe(true);
+    expect(provider.capabilities.watch).toBe(true);
+  });
+});
+
+describe('VaultProviderRegistry unregistered types', () => {
+  it('get returns undefined for s3 / webdav (not registered by default)', () => {
+    const registry = VaultProviderRegistry.getInstance();
     expect(registry.get('s3')).toBeUndefined();
     expect(registry.get('webdav')).toBeUndefined();
   });

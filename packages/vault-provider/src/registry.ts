@@ -1,6 +1,7 @@
 import type { VaultProvider } from './providerInterface';
 import type { ProviderType, VaultConfig } from './types';
 import { TauriVaultProvider } from './providers/tauriProvider';
+import { GithubVaultProvider } from './providers/githubProvider';
 
 /** Descriptor for registering a provider factory */
 export interface VaultProviderDescriptor {
@@ -67,6 +68,14 @@ export class VaultProviderRegistry {
       icon: '📂',
       description: '直接操作本地文件系统',
       factory: () => new TauriVaultProvider(),
+    });
+
+    this.register({
+      type: 'github',
+      displayName: 'GitHub 仓库',
+      icon: '🐙',
+      description: 'Clone GitHub 仓库到本地，后续基于本地文件操作（支持公开/私有）',
+      factory: () => new GithubVaultProvider(),
     });
 
   }

@@ -2,7 +2,8 @@
   "nav": {
     "schedule": "Schedule (⌘D)",
     "study": "Study",
-    "settings": "Settings"
+    "settings": "Settings",
+    "git": "Git"
   },
   "statusBar": {
     "aiReady": "✦ AI ready",

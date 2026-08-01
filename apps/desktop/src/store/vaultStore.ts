@@ -15,15 +15,50 @@ import { resolveBasePath } from '@/utils/pathResolver';
 import { seedAgentFiles } from '@/services/featureAgentService';
 import { isExternalPath } from '@/utils/isExternalPath';
 import { externalFileProvider } from '@/services/externalFileProvider';
+import { cloneRepo, type BranchStrategy } from '@/services/gitService';
 
 async function startWatcherForVault(config: VaultConfig) {
-  if (config.providerType !== 'tauri') return;
+  // ponytail: github vaults clone to a local dir, so the file watcher applies
+  // to them too — same on-disk layout as a local tauri vault.
+  if (config.providerType !== 'tauri' && config.providerType !== 'github') return;
   try {
     const resolved = await resolveBasePath(config.basePath);
     await startVaultWatcher(resolved);
   } catch (err) {
     console.warn('[VaultStore] Failed to start file watcher:', err);
   }
+}
+
+/**
+ * For a github vault, clone the repo into `basePath` on creation. Idempotent:
+ * if the dir already exists with a `.git`, skip the clone (re-add of an
+ * already-cloned vault); if it exists and is non-empty without `.git`, fail
+ * loudly (refuse to clobber). Only `git clone` is run here — subsequent
+ * connect() just opens the local dir, never re-cloning.
+ */
+async function prepareGithubVault(config: VaultConfig): Promise<void> {
+  const opts = config.options as
+    | { repoUrl?: string; auth?: string; token?: string; branchStrategy?: BranchStrategy }
+    | undefined;
+  if (!opts?.repoUrl) {
+    throw new Error('GitHub vault requires a repo URL');
+  }
+  const absPath = await resolveBasePath(config.basePath);
+  const { exists } = await import('@tauri-apps/plugin-fs');
+  const { join } = await import('@tauri-apps/api/path');
+  const dirExists = await exists(absPath);
+  if (dirExists) {
+    const hasGit = await exists(await join(absPath, '.git'));
+    if (hasGit) return; // already cloned — open local, don't clobber
+    // ponytail: surface the real reason instead of letting git clone fail
+    // with a confusing "already exists and is not empty" message.
+    throw new Error(`目标目录已存在且非 git 仓库：${absPath}`);
+  }
+  await cloneRepo(opts.repoUrl, absPath, {
+    auth: (opts.auth as 'https-public' | 'https-private' | 'ssh') ?? 'https-public',
+    token: opts.token,
+    branch: opts.branchStrategy,
+  });
 }
 
 /** Convert a glob-like pattern to a RegExp for matching file/folder names */
@@ -237,6 +272,9 @@ export const useVaultStore = create<VaultState>()(
           // Connect first — only add to list if successful
           set({ isLoading: true, error: null });
           try {
+            if (config.providerType === 'github') {
+              await prepareGithubVault(config);
+            }
             await get().manager.switchVault(config);
             // Ensure vault root directory exists before listing files
             await get().manager.createDir('');

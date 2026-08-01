@@ -17,3 +17,4 @@ export { VaultProviderRegistry } from './src/registry';
 export type { VaultProviderDescriptor } from './src/registry';
 export { VaultManager } from './src/vaultManager';
 export { TauriVaultProvider } from './src/providers/tauriProvider';
+export { GithubVaultProvider } from './src/providers/githubProvider';

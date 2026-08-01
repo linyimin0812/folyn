@@ -2,7 +2,8 @@
   "nav": {
     "schedule": "日程工作台 (⌘D)",
     "study": "学习工作台",
-    "settings": "设置"
+    "settings": "设置",
+    "git": "Git 操作"
   },
   "statusBar": {
     "aiReady": "✦ AI 就绪",
