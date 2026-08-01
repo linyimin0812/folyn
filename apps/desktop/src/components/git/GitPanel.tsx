@@ -179,7 +179,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
         onClick={(e) => e.stopPropagation()}
         style={{
           height: '65vh', display: 'flex', flexDirection: 'column',
-          width: 'max-content', maxWidth: '92vw',
+          width: 'max-content', minWidth: 480, maxWidth: '92vw',
         }}
       >
         <div className="dlg-hd">
