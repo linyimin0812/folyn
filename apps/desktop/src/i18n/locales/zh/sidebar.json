@@ -11,8 +11,7 @@
       "collapseAll": "折叠全部",
       "expandAllFolders": "展开全部文件夹",
       "collapseAllFolders": "折叠全部文件夹",
-      "hideSidebar": "隐藏侧边栏",
-      "newRichText": "新建富文本"
+      "hideSidebar": "隐藏侧边栏"
     },
     "search": {
       "placeholder": "搜索文件..."

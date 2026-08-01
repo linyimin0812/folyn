@@ -79,6 +79,7 @@ const EXT_TO_THEME_ICON: Record<string, string> = {
   mmap: 'mindMap',
   drawio: 'drawio',
   dio: 'drawio',
+  rt: 'richtext',
 };
 
 const HANDLER_TO_THEME_ICON: Record<string, string> = {
@@ -92,6 +93,7 @@ const HANDLER_TO_THEME_ICON: Record<string, string> = {
   mmap: 'mindMap',
   drawio: 'drawio',
   code: 'javaScript',
+  'rich-text': 'richtext',
 };
 
 function ExcalidrawIcon() {
