@@ -359,10 +359,12 @@ describe('BubbleTemplateAIChatModal', () => {
       await new Promise((r) => setTimeout(r, 0));
     });
 
-    // Chip shows file name + a thumbnail <img>.
+    // Chip shows file name + a thumbnail <img>. Scoped to the chip row —
+    // the PairSelector trigger may also render an alt-less provider icon.
     const chipText = await screen.findByText('design.png');
     expect(chipText).toBeTruthy();
-    const thumb = document.querySelector('img[alt=""]') as HTMLImageElement | null;
+    const chip = chipText.closest('div')!;
+    const thumb = chip.querySelector('img') as HTMLImageElement | null;
     expect(thumb).toBeTruthy();
     expect(thumb!.src.startsWith('data:image/')).toBe(true);
 

@@ -5,8 +5,11 @@ import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
 import { flattenFileTree } from '@/utils/treeUtils';
 import { FileIcon } from '@/components/icons/FileIcon';
-import { listInputModes } from './inputModes';
+import { listInputModes, isRigMode } from './inputModes';
+import { Sparkles } from 'lucide-react';
 import { AdapterSelector } from './AdapterSelector';
+import { PairSelector, useEnabledPairs, type Pair } from './PairSelector';
+import { useNavStore } from '@/store/navStore';
 import { ChatInputBox } from '@/components/chat';
 import type { PendingAttachment } from '@/components/chat';
 import {
@@ -69,6 +72,44 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
     () => inputModes.find((m) => m.id === inputMode),
     [inputMode, inputModes],
   );
+  // ponytail: custom modes registered without an icon get a generic glyph —
+  // the icon-only trigger has no text label to fall back to.
+  const ModeIcon = currentModeDef?.icon ?? Sparkles;
+  const modeTitle = currentModeDef?.description
+    ? `${currentModeDef.label} — ${currentModeDef.description}`
+    : (currentModeDef?.label ?? inputMode);
+
+  // ── Mode-linked secondary selector ──
+  // Chat (rig backend) talks straight to an LLM provider, so it needs the
+  // (provider, model) pair picker; Agent/Ask run through the CLI adapter,
+  // so they surface the adapter (Agent CLI) picker instead. Exactly one of
+  // the two renders next to the mode toggle.
+  const rigMode = isRigMode(inputMode);
+  // ponytail: select stable refs (sessions array, id string) and derive the
+  // pair in a memo — a selector returning a fresh {provider, model} object
+  // would re-render on every aiStore change (zustand compares Object.is).
+  const sessions = useAiStore((s) => s.sessions);
+  const activeSessionId = useAiStore((s) => s.activeSessionId);
+  const setSessionPair = useAiStore((s) => s.setSessionPair);
+  const activeSessionPair = useMemo<Pair | null>(() => {
+    const sess = sessions?.find((x) => x.id === activeSessionId);
+    return sess?.provider && sess?.model ? { provider: sess.provider, model: sess.model } : null;
+  }, [sessions, activeSessionId]);
+  const { pairs } = useEnabledPairs();
+  // ponytail: display-only fallback to the first enabled pair mirrors
+  // AiPanel's legacy render-time fallback — a fresh session (no persisted
+  // pair) still shows the model that a send would resolve to.
+  const sessionPair: Pair | null = activeSessionPair ?? (pairs.length > 0 ? pairs[0] : null);
+
+  const handlePairChange = useCallback((pair: Pair | null) => {
+    if (!pair || !activeSessionId) return;
+    setSessionPair(activeSessionId, pair);
+  }, [activeSessionId, setSessionPair]);
+
+  const handleOpenModelSettings = useCallback(() => {
+    useNavStore.getState().setCurrentPage('settings');
+    useNavStore.getState().setSettingsTab('models');
+  }, []);
 
   // 点击外部关闭模式下拉
   useEffect(() => {
@@ -313,29 +354,41 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
     <>
       {inputModes.length > 1 && (
         <div className="relative" ref={modeMenuRef}>
+          {/* ponytail: icon-only ghost trigger — the old bordered label box
+              looked heavy next to the ghost icon buttons beside it. Mode
+              identity stays discoverable via the tooltip + rich dropdown. */}
           <button
-            className="h-7 pl-2 pr-1.5 flex items-center gap-1 rounded-md text-[11px] cursor-pointer border border-brd transition-all duration-[120ms] bg-inp text-t2 hover:border-brd2 hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={() => setModeMenuOpen((v) => !v)}
             disabled={isStreaming}
-            title={currentModeDef?.description}
+            aria-label={currentModeDef?.label ?? inputMode}
+            title={modeTitle}
           >
-            <span>{currentModeDef?.label ?? inputMode}</span>
-            <svg className={`shrink-0 text-t3 transition-transform duration-150 ${modeMenuOpen ? 'rotate-180' : ''}`} width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
+            {/* ponytail: 14px, not the neighbors' 16 — MessageSquare/Bot fill
+                their viewBox more fully than the thin paperclip/mic glyphs,
+                so equal sizes read visually larger. */}
+            <ModeIcon size={14} />
           </button>
+          {/* ponytail: two-line rows (label line + description line), but
+              the description itself never wraps — panel sizes to the widest
+              row via w-max so long Chinese descriptions stay on one line. */}
           {modeMenuOpen && (
-            <div className="absolute bottom-full left-0 mb-1 min-w-[120px] bg-panel border border-brd rounded-lg shadow-[0_8px_24px_rgba(0,0,0,.14)] z-[100] p-1">
+            <div className="absolute bottom-full left-0 mb-1 w-max min-w-[200px] max-w-[360px] bg-panel border border-brd rounded-lg shadow-[0_8px_24px_rgba(0,0,0,.14)] z-[100] p-1">
               {inputModes.map((m) => {
                 const active = m.id === inputMode;
+                const RowIcon = m.icon ?? Sparkles;
                 return (
                   <div
                     key={m.id}
-                    className={`py-1.5 px-2.5 rounded-md text-[12px] cursor-pointer whitespace-nowrap transition-colors ${active ? 'bg-accdim text-acc font-semibold' : 'text-t2 hover:bg-hov hover:text-t1'}`}
-                    title={m.description}
+                    data-mode={m.id}
+                    className={`flex items-start gap-2 py-1.5 px-2 rounded-md cursor-pointer whitespace-nowrap transition-colors ${active ? 'bg-accdim text-acc' : 'text-t2 hover:bg-hov hover:text-t1'}`}
                     onMouseDown={(e) => { e.preventDefault(); setInputMode(m.id); setModeMenuOpen(false); }}
                   >
-                    {m.label}
+                    <RowIcon size={14} className="mt-[1px] shrink-0" />
+                    <span>
+                      <span className={`block text-[12px] leading-tight ${active ? 'font-semibold' : ''}`}>{m.label}</span>
+                      {m.description && <span className="block text-[11px] leading-tight mt-0.5 text-t3">{m.description}</span>}
+                    </span>
                   </div>
                 );
               })}
@@ -343,7 +396,17 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
           )}
         </div>
       )}
-      {sessionKind !== 'study' && <AdapterSelector disabled={isStreaming || sessionLocked} />}
+      {rigMode ? (
+        <PairSelector
+          trigger="icon"
+          dropDirection="up"
+          value={sessionPair}
+          onChange={handlePairChange}
+          onOpenSettings={handleOpenModelSettings}
+        />
+      ) : (
+        sessionKind !== 'study' && <AdapterSelector disabled={isStreaming || sessionLocked} />
+      )}
       <button className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed" onClick={handleFileSelect} disabled={isStreaming} title={t('ai:chat.attachFile')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />

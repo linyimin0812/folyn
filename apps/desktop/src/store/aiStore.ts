@@ -449,7 +449,9 @@ export const useAiStore = create<AiState>((set, get) => ({
     persistAiState();
   },
 
-  inputMode: 'agent',
+  // Default to Chat (rig direct-LLM) — not persisted, so this is the mode
+  // every launch starts in.
+  inputMode: 'chat',
   setInputMode: (mode) => set({ inputMode: mode }),
 
   pendingFileAttachments: [],

@@ -3,7 +3,6 @@ import { useEditorViewStateStore } from '@/store/editorViewState';
 import * as editorIoService from '@/services/editorIoService';
 import { useAiStore } from '@/store/aiStore';
 import { useAiConfigStore, resolvePairForSession } from '@/store/aiConfigStore';
-import { useNavStore } from '@/store/navStore';
 import { useVaultStore } from '@/store/vaultStore';
 import type { CliMessage, CliStreamEvent, MessageAttachment } from '@quill/cli-adapter';
 import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';
@@ -12,18 +11,12 @@ import { sessionAdapters, getAdapterForSession } from './adapterManager';
 import { ChatMessageList } from '@/components/chat';
 import { ChatInput } from './ChatInput';
 import type { PendingAttachment } from './ChatInput';
-import { PairSelector, useEnabledPairs, type Pair } from './PairSelector';
+import { useEnabledPairs } from './PairSelector';
 import { resolveSendOptions, isRigMode } from './inputModes';
 import { saveBlobs, buildReadInstructions } from '@/components/chat';
 import type { SavedAttachment } from '@/components/chat';
 import { runRigChat } from '@/services/rigChat';
-import {
-  allProviders,
-  providerDisplayName,
-  providerAvatarChar,
-  type ProviderEntry,
-} from '@/services/providers/catalog';
-import { providerIconUrl } from '@/services/providers/icon';
+import { PairTag } from '@/components/chat/PairTag';
 import { useTranslation } from 'react-i18next';
 
 export function AiPanel() {
@@ -45,36 +38,18 @@ export function AiPanel() {
   const addFileChange = useAiStore((s) => s.addFileChange);
   const setSessionStreaming = useAiStore((s) => s.setSessionStreaming);
   const setCliSessionId = useAiStore((s) => s.setCliSessionId);
-  const setSessionPair = useAiStore((s) => s.setSessionPair);
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const isStreaming = activeSession?.isStreaming ?? false;
   const isStudySession = activeSession?.kind === 'study';
   const messages = activeSession?.messages ?? [];
 
-  const { pairs, hasAny: hasPair } = useEnabledPairs();
-  // ponytail: render-time fallback for the FIRST paint keeps legacy sessions
-  // (persisted before the schema gained provider/model) and stale pairs on
-  // the air without a render-time mutation. Phase 1 dropped the
-  // reconcileSessionPair write-back effect; the display-only fallback to
-  // pairs[0] from useEnabledPairs covers the "legacy session / stale pair"
-  // case, and the next user-driven setSessionPair call persists the pick.
-  const sessionPair: Pair | null =
-    activeSession?.provider && activeSession?.model
-      ? { provider: activeSession.provider, model: activeSession.model }
-      : pairs.length > 0
-        ? pairs[0]
-        : null;
-
-  const handlePairChange = useCallback((pair: Pair | null) => {
-    if (!pair || !activeSessionId) return;
-    setSessionPair(activeSessionId, pair);
-  }, [activeSessionId, setSessionPair]);
-
-  const handleOpenSettings = useCallback(() => {
-    useNavStore.getState().setCurrentPage('settings');
-    useNavStore.getState().setSettingsTab('models');
-  }, []);
+  // ponytail: the (provider, model) picker moved from the panel header into
+  // ChatInput's mode-linked slot (visible in Chat mode only). AiPanel keeps
+  // `hasPair` to disable sending when nothing is configured; the send path
+  // itself resolves the pair via `resolvePairForSession` (display-only
+  // fallback to pairs[0] lives in ChatInput).
+  const { hasAny: hasPair } = useEnabledPairs();
 
   const [showSessionList, setShowSessionList] = useState(false);
   const sessionListRef = useRef<HTMLDivElement>(null);
@@ -88,20 +63,7 @@ export function AiPanel() {
   const customerProviders = useAiConfigStore((s) => s.customerProviders);
   const renderPairTag = (msg: CliMessage): ReactNode | null => {
     if (!msg.provider || !msg.model) return null;
-    const entry: ProviderEntry | undefined = allProviders(customerProviders).find((e) => e.id === msg.provider);
-    const name = entry ? providerDisplayName(entry, t) : msg.provider;
-    const iconUrl = providerIconUrl(msg.provider);
-    const char = providerAvatarChar(entry ?? { id: msg.provider, name: msg.provider } as ProviderEntry, t);
-    return (
-      <>
-        {iconUrl ? (
-          <img src={iconUrl} alt={name} className="w-3 h-3 inline-block align-middle" />
-        ) : (
-          <span className="inline-flex w-3 h-3 items-center justify-center rounded bg-surf2 text-[8px] font-semibold align-middle">{char}</span>
-        )}
-        <span className="align-middle">{name}|{msg.model}</span>
-      </>
-    );
+    return <PairTag provider={msg.provider} model={msg.model} customerProviders={customerProviders} />;
   };
 
   // Drag resize
@@ -372,7 +334,8 @@ export function AiPanel() {
   return (
     <div className="shrink-0 h-full bg-panel border-l border-brd flex flex-col overflow-hidden relative" style={{ width: `${panelWidth}px` }}>
       <div className="absolute left-0 top-0 bottom-0 w-0.5 cursor-col-resize z-10 bg-transparent transition-[background] duration-[140ms] hover:bg-acc hover:opacity-30" onMouseDown={handleResizeStart} />
-      <div className="flex items-center justify-between h-[40px] pl-3 pr-2 border-b border-brd shrink-0">
+      {/* h-[34px] matches the editor TabBar so both top bars align visually. */}
+      <div className="flex items-center justify-between h-[34px] pl-3 pr-2 border-b border-brd shrink-0">
         <div className="relative min-w-0 flex-1" ref={sessionListRef}>
           <button
             className="flex items-center gap-1.5 cursor-pointer bg-transparent border-none py-1 px-1.5 rounded-md max-w-full min-w-0 transition-colors hover:bg-hov"
@@ -418,14 +381,6 @@ export function AiPanel() {
             </svg>
           </button>
         </div>
-      </div>
-
-      <div className="flex items-center gap-2 py-2 px-3 border-b border-brd shrink-0 bg-surf">
-        <PairSelector
-          value={sessionPair}
-          onChange={handlePairChange}
-          onOpenSettings={handleOpenSettings}
-        />
       </div>
 
       <ChatMessageList

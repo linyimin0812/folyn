@@ -29,13 +29,7 @@ import { listInputModes, getInputModeDef } from '@/components/ai/inputModes';
 import { AdapterSelector } from '@/components/ai/AdapterSelector';
 import { VoiceInputButton } from '@/components/ai/VoiceInputButton';
 import { PairSelector } from '@/components/ai/PairSelector';
-import {
-  allProviders,
-  providerDisplayName,
-  providerAvatarChar,
-  type ProviderEntry,
-} from '@/services/providers/catalog';
-import { providerIconUrl } from '@/services/providers/icon';
+import { PairTag } from '@/components/chat/PairTag';
 import type { PetMenuAction } from './PetContextMenu';
 
 /**
@@ -191,25 +185,11 @@ export function PetChat() {
 
   // ponytail: renderPairTag closes over customerProviders (stable ref from
   // zustand) so the resolver doesn't need to be a useCallback; it's only
-  // called inside DefaultMessageRow when msg.provider+model exist. Mirrors
-  // AiPanel's resolver verbatim — both panels share the provider catalog
-  // convention; diverging would just rot.
+  // called inside DefaultMessageRow when msg.provider+model exist. Shared
+  // with AiPanel via components/chat/PairTag.
   const renderPairTag = (msg: CliMessage): ReactNode | null => {
     if (!msg.provider || !msg.model) return null;
-    const entry: ProviderEntry | undefined = allProviders(customerProviders).find((e) => e.id === msg.provider);
-    const name = entry ? providerDisplayName(entry, t) : msg.provider;
-    const iconUrl = providerIconUrl(msg.provider);
-    const char = providerAvatarChar(entry ?? { id: msg.provider, name: msg.provider } as ProviderEntry, t);
-    return (
-      <>
-        {iconUrl ? (
-          <img src={iconUrl} alt={name} className="w-3 h-3 inline-block align-middle" />
-        ) : (
-          <span className="inline-flex w-3 h-3 items-center justify-center rounded bg-surf2 text-[8px] font-semibold align-middle">{char}</span>
-        )}
-        <span className="align-middle">{name}|{msg.model}</span>
-      </>
-    );
+    return <PairTag provider={msg.provider} model={msg.model} customerProviders={customerProviders} />;
   };
 
   // Hold the latest attachments for the unmount cleanup so it can revoke

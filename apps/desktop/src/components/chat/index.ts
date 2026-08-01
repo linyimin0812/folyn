@@ -4,6 +4,8 @@ export { ChatMessageList } from './ChatMessageList';
 export type { ChatMessageListProps } from './ChatMessageList';
 export { ChatInputBox } from './ChatInputBox';
 export type { ChatInputBoxProps } from './ChatInputBox';
+export { PairTag } from './PairTag';
+export type { PairTagProps } from './PairTag';
 export {
   DEFAULT_MAX_BYTES,
   DEFAULT_ALLOWED_TYPES,

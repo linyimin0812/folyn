@@ -4,11 +4,14 @@
  * is smaller; no behavior change.
  */
 
-import { useState } from 'react';
-import { Eye, Brain, Search, Wrench, type LucideIcon } from 'lucide-react';
-import { providerIconUrl } from '@/services/providers/icon';
-import { providerAvatarChar, type ProviderEntry } from '@/services/providers/catalog';
+import type { ProviderEntry } from '@/services/providers/catalog';
+import { ProviderIcon, avatarColor } from '@/components/icons/ProviderIcon';
+import { CAPABILITY_PILL } from '@/components/icons/capabilityIcons';
 import type { Model } from '@/services/modelRegistry/types';
+
+// Re-export so existing model-services consumers (CustomProviderDrawer et al.)
+// keep importing from './helpers' after the extraction to components/icons.
+export { avatarColor, CAPABILITY_PILL };
 
 // ponytail: model row hover tooltip shows pricing when available.
 export function modelOptionTitle(m: Model): string {
@@ -43,16 +46,6 @@ export const EMPTY_MODELS: Model[] = [];
 export const EMPTY_MANUAL: readonly { id: string; displayName: string; group: string; createdAt: number }[] = [];
 export const EMPTY_SELECTED: readonly string[] = [];
 
-/** Deterministic color from id — used for the avatar background. */
-export function avatarColor(id: string): string {
-  // ponytail: 8 hand-picked colors; hash picks one. Catalog ids map to
-  // stable colors so the same provider keeps the same avatar across reloads.
-  const colors = ['#3a6ef0', '#6a3af0', '#0a8ab8', '#8040d0', '#cc44cc', '#22a863', '#f5a623', '#e0484d'];
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return colors[Math.abs(h) % colors.length];
-}
-
 export function ModelAvatar({ id }: { id: string }) {
   const char = (id[0] ?? '?').toUpperCase();
   return (
@@ -64,17 +57,6 @@ export function ModelAvatar({ id }: { id: string }) {
     </span>
   );
 }
-
-// ponytail: capability → colored pill per HTML design. 4 mapped, 1
-// (structured-output) skipped — no pill in the reference design. Uses
-// lucide-react icons instead of raw SVG paths — React's dev-mode path
-// validator rejects several of the original hand-written paths.
-export const CAPABILITY_PILL: Record<string, { title: string; bg: string; color: string; Icon: LucideIcon }> = {
-  vision: { title: 'vision', bg: '#e6f7ed', color: '#10b981', Icon: Eye },
-  reasoning: { title: 'reasoning', bg: '#f0f3ff', color: '#6366f1', Icon: Brain },
-  'web-search': { title: 'web', bg: '#e0f2fe', color: '#3b82f6', Icon: Search },
-  'function-call': { title: 'tools', bg: '#fff7ed', color: '#f97316', Icon: Wrench },
-};
 
 export function CapabilityPills({ capabilities }: { capabilities: readonly string[] }) {
   if (capabilities.length === 0) return null;
@@ -99,27 +81,5 @@ export function CapabilityPills({ capabilities }: { capabilities: readonly strin
 }
 
 export function Avatar({ entry, t }: { entry: ProviderEntry; t: (k: string) => string }) {
-  const icon = providerIconUrl(entry.id);
-  const [imgError, setImgError] = useState(false);
-  if (icon && !imgError) {
-    return (
-      <img
-        src={icon}
-        alt=""
-        onError={() => setImgError(true)}
-        className="shrink-0"
-        style={{ width: 16, height: 16, objectFit: 'contain' }}
-      />
-    );
-  }
-  const char = providerAvatarChar(entry, t);
-  const color = avatarColor(entry.id);
-  return (
-    <span
-      className="shrink-0 inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold"
-      style={{ width: 16, height: 16, background: color }}
-    >
-      {char}
-    </span>
-  );
+  return <ProviderIcon entry={entry} t={t} size={16} />;
 }

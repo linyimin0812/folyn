@@ -1,4 +1,5 @@
 import type { CliSendOptions, PermissionMode } from '@quill/cli-adapter';
+import { MessageSquare, Bot, CircleHelp, type LucideIcon } from 'lucide-react';
 
 /**
  * Declarative descriptor for an AI panel input mode (ask / agent / future).
@@ -16,6 +17,9 @@ import type { CliSendOptions, PermissionMode } from '@quill/cli-adapter';
 export interface AiInputModeDef {
   id: string;
   label: string;
+  /** Icon for the compact (icon-only) mode trigger + dropdown rows.
+   *  Optional — ChatInput falls back to a generic sparkles glyph. */
+  icon?: LucideIcon;
   /** Short human hint shown as the button title. */
   description?: string;
   /** Maps to `--permission-mode`. */
@@ -71,23 +75,28 @@ export function resolveSendOptions(modeId: string, base: CliSendOptions): CliSen
 }
 
 // --- Built-in modes -------------------------------------------------------
+// Display order in the ChatInput toggle follows registration order:
+// Chat → Agent → Ask.
+registerInputMode({
+  id: 'chat',
+  label: 'Chat',
+  icon: MessageSquare,
+  description: '多轮对话（rig 直连 LLM，无工具，不读写文件）',
+  backend: 'rig',
+});
 registerInputMode({
   id: 'agent',
   label: 'Agent',
+  icon: Bot,
   description: '全工具自主执行（可读写文件）',
   permissionMode: 'bypassPermissions',
 });
 registerInputMode({
   id: 'ask',
   label: 'Ask',
+  icon: CircleHelp,
   description: '只读问答，不修改文件',
   permissionMode: 'plan',
-});
-registerInputMode({
-  id: 'chat',
-  label: 'Chat',
-  description: '多轮对话（rig 直连 LLM，无工具，不读写文件）',
-  backend: 'rig',
 });
 
 /** True if the mode is served by the rig backend (bypasses the CLI adapter). */

@@ -37,6 +37,9 @@ const aiState = {
   consumePendingPrompt: vi.fn(() => ''),
   inputMode: 'agent',
   setInputMode: vi.fn(),
+  activeSessionId: null as string | null,
+  sessions: [] as { id: string; kind?: string; provider?: string; model?: string }[],
+  setSessionPair: vi.fn(),
 };
 vi.mock('@/store/aiStore', () => ({
   useAiStore: (sel: (s: typeof aiState) => unknown) => sel(aiState),
@@ -56,9 +59,11 @@ vi.mock('@/store/editorStore', () => ({
 // inputModes returns at least one mode so the dropdown branch is exercised.
 vi.mock('./inputModes', () => ({
   listInputModes: () => [
+    { id: 'chat', label: 'Chat', description: 'chat mode', backend: 'rig' },
     { id: 'agent', label: 'Agent', description: 'agent mode' },
     { id: 'ask', label: 'Ask', description: 'ask mode' },
   ],
+  isRigMode: (id: string) => id === 'chat',
 }));
 
 import { ChatInput } from './ChatInput';
@@ -246,5 +251,43 @@ describe('ChatInput (PR3 helper adoption)', () => {
     // Streaming → stop button is shown instead of send; send is not rendered.
     expect(screen.queryByLabelText('发送')).toBeNull();
     expect(screen.getByLabelText('停止')).toBeTruthy();
+  });
+});
+
+describe('ChatInput mode-linked selector', () => {
+  it('icon-only trigger exposes the current mode via aria-label + tooltip', () => {
+    aiState.inputMode = 'agent';
+    render(<ChatInput onSend={vi.fn()} onStop={vi.fn()} isStreaming={false} />);
+    const trigger = screen.getByLabelText('Agent');
+    expect(trigger.title).toBe('Agent — agent mode');
+  });
+
+  it('Chat (rig) mode renders the model pair icon trigger, not the adapter selector', () => {
+    aiState.inputMode = 'chat';
+    render(<ChatInput onSend={vi.fn()} onStop={vi.fn()} isStreaming={false} />);
+    // Real aiConfigStore has no enabled providers → icon-variant empty state.
+    expect(screen.getByTestId('pair-selector-empty')).toBeTruthy();
+  });
+
+  it('Agent/Ask (CLI) modes do not render the model pair picker', () => {
+    for (const mode of ['agent', 'ask']) {
+      aiState.inputMode = mode;
+      const { unmount } = render(<ChatInput onSend={vi.fn()} onStop={vi.fn()} isStreaming={false} />);
+      expect(screen.queryByTestId('pair-selector')).toBeNull();
+      expect(screen.queryByTestId('pair-selector-empty')).toBeNull();
+      unmount();
+    }
+  });
+
+  it('mode dropdown lists modes in Chat → Agent → Ask order', () => {
+    aiState.inputMode = 'agent';
+    const { container } = render(<ChatInput onSend={vi.fn()} onStop={vi.fn()} isStreaming={false} />);
+    // open the mode menu (trigger title = "<label> — <description>")
+    fireEvent.click(screen.getByTitle(/agent mode/));
+    const panel = container.querySelector('[class*="bottom-full"]');
+    const ids = Array.from(panel?.querySelectorAll('[data-mode]') ?? []).map((el) =>
+      el.getAttribute('data-mode'),
+    );
+    expect(ids).toEqual(['chat', 'agent', 'ask']);
   });
 });

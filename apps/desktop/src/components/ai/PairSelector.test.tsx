@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 import { PairSelector, useEnabledPairs, type Pair } from './PairSelector';
 import type { AiConfigState } from '@/store/aiConfigStore';
 
@@ -37,36 +37,36 @@ function renderSelector(props: React.ComponentProps<typeof PairSelector>) {
   return { onChange };
 }
 
+/** Open the dropdown panel via the trigger button. */
+function openPanel() {
+  fireEvent.click(screen.getByTestId('pair-selector'));
+  return screen.getByTestId('pair-selector-panel');
+}
+
+const anthropicSlot = {
+  id: 'anthropic',
+  baseUrl: '',
+  apiKey: '',
+  selectedModelIds: ['claude-sonnet-4-6'],
+  enabled: true,
+  extra: {},
+};
+
 describe('PairSelector', () => {
-  it('renders the placeholder option when no pair is selected', () => {
+  it('renders the placeholder on the trigger when no pair is selected', () => {
     setState({
-      providerSettings: {
-        anthropic: {
-          id: 'anthropic',
-          baseUrl: '',
-          apiKey: '',
-          selectedModelIds: ['claude-sonnet-4-6'],
-          enabled: true,
-          extra: {},
-        },
-      },
-    });    renderSelector({ value: null });
-    const select = screen.getByTestId('pair-selector') as HTMLSelectElement;
-    expect(select.value).toBe('');
-    // placeholder option exists
+      providerSettings: { anthropic: { ...anthropicSlot } },
+    });
+    renderSelector({ value: null });
     expect(screen.getByText('选择模型')).toBeTruthy();
   });
 
-  it('renders all enabled-provider × selectedModelIds options', () => {
+  it('renders all enabled-provider × selectedModelIds rows when opened', () => {
     setState({
       providerSettings: {
         anthropic: {
-          id: 'anthropic',
-          baseUrl: '',
-          apiKey: '',
+          ...anthropicSlot,
           selectedModelIds: ['claude-sonnet-4-6', 'claude-opus-4-7'],
-          enabled: true,
-          extra: {},
         },
         openai: {
           id: 'openai',
@@ -77,10 +77,11 @@ describe('PairSelector', () => {
           extra: {},
         },
       },
-    });    renderSelector({ value: null });
-    // 2 anthropic + 1 openai = 3 model options, +1 placeholder = 4 options
-    const select = screen.getByTestId('pair-selector') as HTMLSelectElement;
-    expect(select.options.length).toBe(4);
+    });
+    renderSelector({ value: null });
+    const panel = openPanel();
+    // 2 anthropic + 1 openai = 3 option rows (placeholder row is separate)
+    expect(panel.querySelectorAll('[role="option"]').length).toBe(3);
     expect(screen.getByText(/claude-sonnet-4-6/)).toBeTruthy();
     expect(screen.getByText(/claude-opus-4-7/)).toBeTruthy();
     expect(screen.getByText(/gpt-5\.2/)).toBeTruthy();
@@ -89,14 +90,7 @@ describe('PairSelector', () => {
   it('does not show disabled providers or providers with empty selectedModelIds', () => {
     setState({
       providerSettings: {
-        anthropic: {
-          id: 'anthropic',
-          baseUrl: '',
-          apiKey: '',
-          selectedModelIds: ['claude-sonnet-4-6'],
-          enabled: true,
-          extra: {},
-        },
+        anthropic: { ...anthropicSlot },
         // disabled provider with models — must NOT appear
         openai: {
           id: 'openai',
@@ -116,65 +110,79 @@ describe('PairSelector', () => {
           extra: {},
         },
       },
-    });    renderSelector({ value: null });
-    const select = screen.getByTestId('pair-selector') as HTMLSelectElement;
-    // placeholder + 1 anthropic option
-    expect(select.options.length).toBe(2);
+    });
+    renderSelector({ value: null });
+    const panel = openPanel();
+    expect(panel.querySelectorAll('[role="option"]').length).toBe(1);
     expect(screen.queryByText(/gpt-5\.2/)).toBeNull();
     expect(screen.queryByText(/command-r-plus/)).toBeNull();
   });
 
-  it('calls onChange with the selected pair when an option is picked', () => {
+  it('calls onChange with the selected pair and closes when a row is picked', () => {
     setState({
-      providerSettings: {
-        anthropic: {
-          id: 'anthropic',
-          baseUrl: '',
-          apiKey: '',
-          selectedModelIds: ['claude-sonnet-4-6'],
-          enabled: true,
-          extra: {},
-        },
-      },
-    });    const { onChange } = renderSelector({ value: null });
-    const select = screen.getByTestId('pair-selector') as HTMLSelectElement;
-    // pick index 0 (the only model option)
-    fireEvent.change(select, { target: { value: '0' } });
+      providerSettings: { anthropic: { ...anthropicSlot } },
+    });
+    const { onChange } = renderSelector({ value: null });
+    const panel = openPanel();
+    fireEvent.mouseDown(screen.getByText(/claude-sonnet-4-6/));
     expect(onChange).toHaveBeenCalledWith({
       provider: 'anthropic',
       model: 'claude-sonnet-4-6',
     });
+    expect(screen.queryByTestId('pair-selector-panel')).toBeNull();
+    expect(panel.isConnected).toBe(false);
   });
 
-  it('fires onChange(null) when the placeholder is re-selected (clear path)', () => {
+  it('shows the current pair on the trigger (bold provider name | model)', () => {
+    setState({
+      providerSettings: { anthropic: { ...anthropicSlot } },
+    });
+    renderSelector({ value: { provider: 'anthropic', model: 'claude-sonnet-4-6' } });
+    const trigger = screen.getByTestId('pair-selector');
+    expect(trigger.textContent).toContain('claude-sonnet-4-6');
+    // provider name renders in the bold span before the | separator
+    expect(trigger.querySelector('span.font-semibold')?.textContent).toBeTruthy();
+    expect(trigger.textContent).toContain('|');
+  });
+
+  it('fires onChange(null) when the placeholder row is re-picked (clear path)', () => {
     setState({
       providerSettings: {
         anthropic: {
-          id: 'anthropic',
-          baseUrl: '',
-          apiKey: '',
-          // ponytail: a model id containing '/' — index-based round-trip
-          // must NOT split on '/' or treat it as a sub-path.
+          ...anthropicSlot,
+          // ponytail: a model id containing '/' — the row key must NOT
+          // split on '/' or treat it as a sub-path.
           selectedModelIds: ['anthropic/claude-3.5-sonnet'],
-          enabled: true,
-          extra: {},
         },
       },
-    });    // value is set — placeholder is enabled and re-selectable.
+    });
+    // value is set — placeholder row is active and re-selectable.
     const { onChange } = renderSelector({
       value: { provider: 'anthropic', model: 'anthropic/claude-3.5-sonnet' },
     });
-    const select = screen.getByTestId('pair-selector') as HTMLSelectElement;
-    // sanity: the slash-bearing model id round-trips via index 0.
-    fireEvent.change(select, { target: { value: '0' } });
+    const panel0 = openPanel();
+    // sanity: the slash-bearing model id row selects cleanly (scoped to the
+    // panel — the trigger shows the same model text).
+    fireEvent.mouseDown(within(panel0).getByText('anthropic/claude-3.5-sonnet'));
     expect(onChange).toHaveBeenCalledWith({
       provider: 'anthropic',
       model: 'anthropic/claude-3.5-sonnet',
     });
     onChange.mockClear();
-    // re-select the placeholder — must fire onChange(null), NOT pairs[0].
-    fireEvent.change(select, { target: { value: '' } });
+    // re-open and pick the placeholder row — must fire onChange(null).
+    const panel = openPanel();
+    fireEvent.mouseDown(within(panel).getByText('选择模型'));
     expect(onChange).toHaveBeenCalledWith(null);
+  });
+
+  it('placeholder row is inert when no value is set', () => {
+    setState({
+      providerSettings: { anthropic: { ...anthropicSlot } },
+    });
+    const { onChange } = renderSelector({ value: null });
+    const panel = openPanel();
+    fireEvent.mouseDown(within(panel).getByText('选择模型'));
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('shows the empty-state hint when no provider is enabled', () => {
@@ -189,11 +197,44 @@ describe('PairSelector', () => {
           extra: {},
         },
       },
-    });    const onOpenSettings = vi.fn();
+    });
+    const onOpenSettings = vi.fn();
     renderSelector({ value: null, onOpenSettings });
     expect(screen.getByTestId('pair-selector-empty')).toBeTruthy();
     expect(screen.getByText('未配置可用模型')).toBeTruthy();
     expect(screen.getByText('前往模型设置')).toBeTruthy();
+  });
+
+  it('icon trigger: opens upward panel with the empty state when no pair exists', () => {
+    setState({ providerSettings: {} });
+    const onOpenSettings = vi.fn();
+    renderSelector({ value: null, trigger: 'icon', dropDirection: 'up', onOpenSettings });
+    const root = screen.getByTestId('pair-selector-empty');
+    // empty hint hidden until the icon button is clicked
+    expect(screen.queryByText('未配置可用模型')).toBeNull();
+    fireEvent.click(root.querySelector('button')!);
+    expect(screen.getByText('未配置可用模型')).toBeTruthy();
+    fireEvent.mouseDown(screen.getByText('前往模型设置'));
+    expect(onOpenSettings).toHaveBeenCalled();
+  });
+
+  it('icon trigger: shows the current provider icon and opens the pair panel', () => {
+    setState({
+      providerSettings: { anthropic: { ...anthropicSlot } },
+    });
+    const { onChange } = renderSelector({
+      value: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
+      trigger: 'icon',
+      dropDirection: 'up',
+    });
+    const trigger = screen.getByTestId('pair-selector');
+    expect(trigger.title).toContain('claude-sonnet-4-6');
+    fireEvent.click(trigger);
+    fireEvent.mouseDown(screen.getByText(/claude-sonnet-4-6/));
+    expect(onChange).toHaveBeenCalledWith({
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+    });
   });
 
   it('useEnabledPairs returns the right list shape', () => {
@@ -206,14 +247,7 @@ describe('PairSelector', () => {
         },
       },
       providerSettings: {
-        anthropic: {
-          id: 'anthropic',
-          baseUrl: '',
-          apiKey: '',
-          selectedModelIds: ['claude-sonnet-4-6'],
-          enabled: true,
-          extra: {},
-        },
+        anthropic: { ...anthropicSlot },
         'my-custom': {
           id: 'my-custom',
           baseUrl: '',

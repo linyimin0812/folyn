@@ -3,11 +3,23 @@ import { registerInputMode, getInputModeDef, listInputModes, resolveSendOptions 
 import type { CliSendOptions } from '@quill/cli-adapter';
 
 describe('inputModes built-ins', () => {
-  it('registers agent and ask in order', () => {
+  it('registers chat, agent and ask in display order (Chat → Agent → Ask)', () => {
     const ids = listInputModes().map((m) => m.id);
+    expect(ids).toContain('chat');
     expect(ids).toContain('agent');
     expect(ids).toContain('ask');
+    expect(ids.indexOf('chat')).toBeLessThan(ids.indexOf('agent'));
     expect(ids.indexOf('agent')).toBeLessThan(ids.indexOf('ask'));
+  });
+
+  it('chat def is served by the rig backend', () => {
+    expect(getInputModeDef('chat')?.backend).toBe('rig');
+  });
+
+  it('built-in modes carry an icon for the icon-only trigger', () => {
+    expect(getInputModeDef('chat')?.icon).toBeTruthy();
+    expect(getInputModeDef('agent')?.icon).toBeTruthy();
+    expect(getInputModeDef('ask')?.icon).toBeTruthy();
   });
 
   it('agent def uses bypassPermissions', () => {

@@ -199,19 +199,18 @@ function DefaultMessageRow({
     );
   }
 
-  // ── Assistant bubble: flat soft card; pair tag on top;
-  //    copy / wiki actions revealed on hover. ──
+  // ── Assistant bubble: flat soft card; pair tag sits OUTSIDE the bubble
+  //    as a small meta line above it; copy / wiki actions on hover. ──
   const hasActions = Boolean(msg.content) && (showCopy || onSaveToWiki);
   return (
     <div className="chat-msg-row">
-      <div className="chat-msg-bubble chat-msg-bubble-ai">
+      <div className="flex flex-col flex-1 min-w-0">
         {msg.provider && msg.model && renderPairTag ? (
-          <div className="mb-1 flex items-center">
-            <span className="chat-pair-tag" data-testid="msg-pair-tag">
-              {renderPairTag(msg)}
-            </span>
-          </div>
+          <span className="chat-pair-tag mb-1 px-0.5" data-testid="msg-pair-tag">
+            {renderPairTag(msg)}
+          </span>
         ) : null}
+        <div className="chat-msg-bubble chat-msg-bubble-ai">
 
         {msg.thinking && (
           <details className="msg-thinking" open={streaming && isLast}>
@@ -251,6 +250,7 @@ function DefaultMessageRow({
             {msg.content && showCopy && <CopyButton msg={msg} onCopy={onCopy} />}
           </div>
         )}
+        </div>
       </div>
     </div>
   );
