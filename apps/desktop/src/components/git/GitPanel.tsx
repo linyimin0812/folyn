@@ -75,6 +75,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
   const [rawStatus, setRawStatus] = useState<string>('');
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [showFiles, setShowFiles] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
   const [commitMsg, setCommitMsg] = useState('');
   const [busy, setBusy] = useState<'pull' | 'push' | null>(null);
@@ -171,31 +172,41 @@ export function GitPanel({ onClose }: GitPanelProps) {
             <div style={{ color: 'var(--ok, #16a34a)', padding: '8px 0' }}>✓ 工作区干净，没有需要提交的改动</div>
           ) : (
             <>
-              <div style={{ padding: '4px 0', fontWeight: 500 }}>
-                {parsed.total} 个文件有改动
+              <button
+                onClick={() => setShowFiles((v) => !v)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, width: '100%',
+                  padding: '4px 0', fontWeight: 500, background: 'none', border: 'none',
+                  cursor: 'pointer', color: 'inherit',
+                }}
+              >
+                <span>{showFiles ? '▾' : '▸'}</span>
+                <span>{parsed.total} 个文件有改动</span>
                 {summaryParts.length > 0 && (
-                  <span style={{ color: 'var(--fg-muted, #888)', fontWeight: 400, marginLeft: 8 }}>
+                  <span style={{ color: 'var(--fg-muted, #888)', fontWeight: 400 }}>
                     （{summaryParts.join(' · ')}）
                   </span>
                 )}
-              </div>
-              <ul style={{ listStyle: 'none', padding: 0, margin: '6px 0 0', maxHeight: 200, overflow: 'auto' }}>
-                {parsed.files.map((f, i) => (
-                  <li key={i} style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '2px 0' }}>
-                    <span
-                      style={{
-                        flex: '0 0 auto', fontSize: 12, padding: '1px 6px', borderRadius: 4,
-                        background: 'var(--bg-muted, #f1f5f9)', color: 'var(--fg-muted, #64748b)',
-                      }}
-                    >
-                      {f.label}
-                    </span>
-                    <span style={{ fontFamily: 'var(--mono, monospace)', fontSize: 12, wordBreak: 'break-all' }}>
-                      {f.path}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              </button>
+              {showFiles && (
+                <ul style={{ listStyle: 'none', padding: 0, margin: '6px 0 0', maxHeight: 200, overflow: 'auto' }}>
+                  {parsed.files.map((f, i) => (
+                    <li key={i} style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '2px 0' }}>
+                      <span
+                        style={{
+                          flex: '0 0 auto', fontSize: 12, padding: '1px 6px', borderRadius: 4,
+                          background: 'var(--bg-muted, #f1f5f9)', color: 'var(--fg-muted, #64748b)',
+                        }}
+                      >
+                        {f.label}
+                      </span>
+                      <span style={{ fontFamily: 'var(--mono, monospace)', fontSize: 12, wordBreak: 'break-all' }}>
+                        {f.path}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </>
           )}
 
@@ -236,6 +247,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
           </div>
           <button
             className="btn btn-g btn-sm"
+            style={{ width: '100%' }}
             onClick={() => void handlePull()}
             disabled={busy !== null}
           >
@@ -257,7 +269,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
           />
           <button
             className="btn btn-p btn-sm"
-            style={{ marginTop: 6 }}
+            style={{ width: '100%', marginTop: 6 }}
             onClick={() => void handleCommitPush()}
             disabled={busy !== null}
           >
