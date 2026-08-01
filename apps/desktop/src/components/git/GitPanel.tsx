@@ -174,7 +174,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
         className="dlg"
         onClick={(e) => e.stopPropagation()}
         style={{
-          height: '75vh', display: 'flex', flexDirection: 'column',
+          height: '65vh', display: 'flex', flexDirection: 'column',
           width: 'max-content', minWidth: 480, maxWidth: '92vw',
         }}
       >
