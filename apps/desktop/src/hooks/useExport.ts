@@ -16,6 +16,10 @@ import {
   renderFilePreviewToSvg,
   svgToPngBlob,
 } from '@/services/export/shared';
+import { getHandlerById } from '@/components/file-types/registry';
+import { externalFileProvider } from '@/services/externalFileProvider';
+import { isExternalPath } from '@/utils/isExternalPath';
+import { WIKI_PREFIX } from '@/types/wiki';
 
 export type { ExportFormat };
 export { hasContainerSyntax };
@@ -25,6 +29,7 @@ export interface ActiveDocument {
   content: string;
   path: string;
   vaultRoot: string;
+  fileType: string;
 }
 
 /**
@@ -41,6 +46,7 @@ export function getActiveDocument(): ActiveDocument {
     content: tab?.content ?? '',
     path: tab?.path ?? '',
     vaultRoot: currentVault?.basePath ?? '',
+    fileType: tab?.fileType ?? '',
   };
 }
 
@@ -52,17 +58,50 @@ export function exportActiveMarkdown(onBeforeDialog?: () => void): void {
   void downloadBlob(blob, name, ['md']);
 }
 
+/** Read raw bytes for a binary (needsFileContent=false) tab. Routes by path
+ *  shape — external paths go through externalFileProvider, vault paths
+ *  through the vault manager's byte-preserving read. Wiki paths never hit
+ *  this branch (wiki is text-only). */
+async function readActiveBytes(path: string): Promise<Uint8Array> {
+  if (isExternalPath(path)) {
+    return externalFileProvider.readFileBytes(path);
+  }
+  if (path.startsWith(WIKI_PREFIX)) {
+    // ponytail: wiki is text-only; office/binary types never open from wiki.
+    // If we ever get here, UTF-8 round-trip is acceptable.
+    const { wikiProvider } = await import('@/services/wikiProvider');
+    const text = await wikiProvider.readFile(path.slice(WIKI_PREFIX.length));
+    return new TextEncoder().encode(text);
+  }
+  return useVaultStore.getState().manager.readFileBytes(path);
+}
+
 /**
- * Export the active document as its raw source — works for any text-based
- * file type. Downloads with the original filename and extension.
+ * Export the active document as its raw source — works for both text
+ * editor-backed files (uses tab.content, including unsaved edits) and
+ * binary/preview-only files (reads raw bytes from disk; office handler
+ * sets needsFileContent=false so tab.content stays empty by design).
  */
-export function exportActiveSource(onBeforeDialog?: () => void): void {
-  const { name, content } = getActiveDocument();
+export async function exportActiveSource(onBeforeDialog?: () => void): Promise<void> {
+  const { name, content, path, fileType } = getActiveDocument();
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  const handler = getHandlerById(fileType);
+  if (handler && !handler.needsFileContent) {
+    if (!path) return;
+    try {
+      const bytes = await readActiveBytes(path);
+      const blob = new Blob([bytes as BlobPart], { type: 'application/octet-stream' });
+      onBeforeDialog?.();
+      await downloadBlob(blob, name, ext ? [ext] : undefined);
+    } catch (err) {
+      console.error('[export] exportActiveSource (binary) failed:', err);
+    }
+    return;
+  }
   const mime = ext === 'json' ? 'application/json;charset=utf-8' : 'text/plain;charset=utf-8';
   const blob = new Blob([content], { type: mime });
   onBeforeDialog?.();
-  void downloadBlob(blob, name, ext ? [ext] : undefined);
+  await downloadBlob(blob, name, ext ? [ext] : undefined);
 }
 
 /** Export a canvas-backed file (dbml/excalidraw/drawio/mmap) as SVG. */

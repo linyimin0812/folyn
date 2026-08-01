@@ -50,6 +50,12 @@ export interface VaultProvider {
    *  undefined and callers fall back to the text `writeFile`. */
   writeFileBytes?(path: string, bytes: Uint8Array): Promise<void>;
 
+  /** Read raw bytes from a file (byte-preserving, for binary copies).
+   *  Optional — mirrors `writeFileBytes`. Providers that don't support
+   *  binary read leave this undefined and callers fall back to the text
+   *  `readFile` (UTF-8 encode, lossy for non-text). */
+  readFileBytes?(path: string): Promise<Uint8Array>;
+
   /** Delete a file */
   deleteFile(path: string): Promise<void>;
 

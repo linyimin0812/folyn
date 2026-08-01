@@ -78,6 +78,21 @@ export class VaultManager {
     return provider.writeFile(path, new TextDecoder().decode(bytes));
   }
 
+  /** Read raw bytes — byte-preserving binary read. Falls back to the text
+   *  `readFile` for providers that don't implement `readFileBytes` (the
+   *  bytes are UTF-8-encoded from the string, which is lossy for non-text —
+   *  callers reading binary files should ensure the active provider
+   *  implements this). */
+  async readFileBytes(path: string): Promise<Uint8Array> {
+    const provider = this.getProvider();
+    if (provider.readFileBytes) {
+      return provider.readFileBytes(path);
+    }
+    // Lossy fallback — only reached for non-binary providers.
+    const text = await provider.readFile(path);
+    return new TextEncoder().encode(text);
+  }
+
   async deleteFile(path: string): Promise<void> {
     return this.getProvider().deleteFile(path);
   }

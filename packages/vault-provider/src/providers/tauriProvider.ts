@@ -5,6 +5,7 @@ import {
   readTextFile,
   writeTextFile,
   writeFile as writeFileBytes,
+  readFile as readFileBytesRaw,
   remove,
   mkdir,
   readDir,
@@ -68,6 +69,18 @@ export class TauriVaultProvider implements VaultProvider {
     const fullPath = await this.resolve(path);
     try {
       return await readTextFile(fullPath);
+    } catch (err) {
+      throw new VaultError('NOT_FOUND', `File not found: ${path}`);
+    }
+  }
+
+  /** Read raw bytes — byte-preserving (binary) read. Mirrors `writeFileBytes`.
+   *  Use for binary copies where a UTF-8 string round-trip would corrupt
+   *  non-text bytes. */
+  async readFileBytes(path: string): Promise<Uint8Array> {
+    const fullPath = await this.resolve(path);
+    try {
+      return await readFileBytesRaw(fullPath);
     } catch (err) {
       throw new VaultError('NOT_FOUND', `File not found: ${path}`);
     }
