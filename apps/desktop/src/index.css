@@ -463,13 +463,20 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .dlg-close:hover { background: var(--hov); color: var(--t1); }
 .dlg-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 6px; }
 .dlg-label { font-size: 11px; font-weight: 600; color: var(--t2); text-transform: uppercase; letter-spacing: .4px; margin-top: 6px; }
-.dlg-input { width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--brd); background: var(--inp); color: var(--t1); font-size: 13px; font-family: var(--font-ui); outline: none; transition: border-color .15s; }
+.dlg-input { width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--brd); background: var(--inp); color: var(--t1); font-size: 13px; font-family: var(--font-ui); outline: none; transition: border-color .15s; height: 36px; }
 .dlg-input:focus { border-color: var(--acc); }
+.dlg-input-group { display: flex; width: 100%; align-items: stretch; }
+.dlg-input-group .dlg-input-flex { flex: 1; min-width: 0; border-radius: 8px 0 0 8px; }
+.dlg-input-group .dlg-input-flex:focus { border-color: var(--acc); position: relative; z-index: 1; }
+.dlg-input-btn { flex: 0 0 auto; padding: 0 14px; border-radius: 0 8px 8px 0; border: 1px solid var(--brd); border-left: none; background: var(--surf); color: var(--t2); font-size: 13px; font-family: var(--font-ui); cursor: pointer; height: 36px; transition: background .15s, color .15s; }
+.dlg-input-btn:hover:not(:disabled) { background: var(--hov); color: var(--t1); }
+.dlg-input-btn:disabled { opacity: .4; cursor: not-allowed; }
 .dlg-provider-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .dlg-provider-card { padding: 10px 12px; border-radius: 10px; cursor: pointer; border: 1.5px solid var(--brd); background: var(--surf); transition: border-color .15s, background .15s; }
 .dlg-provider-card:hover { border-color: var(--brd2); background: var(--hov); }
 .dlg-provider-card.active { border-color: var(--acc); background: var(--accdim); }
-.dlg-provider-label { font-size: 13px; font-weight: 500; color: var(--t1); }
+.dlg-provider-label { font-size: 13px; font-weight: 500; color: var(--t1); display: flex; align-items: center; gap: 6px; }
+.dlg-provider-icon { width: 16px; height: 16px; display: inline-block; }
 .dlg-provider-desc { font-size: 10px; color: var(--t3); margin-top: 3px; line-height: 1.4; }
 .dlg-error { font-size: 12px; color: var(--red); margin-top: 4px; }
 .dlg-ft { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px 18px; border-top: 1px solid var(--brd); }

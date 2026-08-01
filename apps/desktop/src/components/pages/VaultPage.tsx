@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { FolderOpen, Trash2 } from 'lucide-react';
 import { useNavStore } from '@/store/navStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
@@ -7,6 +8,7 @@ import { CreateVaultDialog } from '../vault/CreateVaultDialog';
 import { FileIcon } from '@/components/icons/FileIcon';
 import type { VaultEntry } from '@quill/vault-provider';
 import { useTranslation } from 'react-i18next';
+import githubIcon from '@/assets/icons/github.svg';
 
 function ConfirmDialog({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
   const { t } = useTranslation();
@@ -32,11 +34,16 @@ function ConfirmDialog({ message, onConfirm, onCancel }: { message: string; onCo
 const PROVIDER_ICONS: Record<string, string> = {
   local: '💾',
   server: '🖥',
-  github: '🐙',
   webdav: '☁️',
   s3: '🪣',
   custom: '🔧',
 };
+
+function renderProviderIcon(type: string): React.ReactNode {
+  if (type === 'tauri') return <FolderOpen size={15} className="vc-icon-tauri" />;
+  if (type === 'github') return <img src={githubIcon} alt="" className="vc-icon-github" />;
+  return <span style={{ fontSize: 15 }}>{PROVIDER_ICONS[type] || '📁'}</span>;
+}
 
 function formatDate(date: Date | undefined, t: (key: string, options?: Record<string, unknown>) => string): string {
   if (!date) return '';
@@ -183,7 +190,6 @@ export function VaultPage() {
         <div className="vc-grid grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-[11px] mb-5">
           {vaults.map((vault) => {
             const isCurrent = currentVault?.id === vault.id;
-            const icon = PROVIDER_ICONS[vault.providerType] || '📁';
             return (
               <div
                 key={vault.id}
@@ -194,7 +200,7 @@ export function VaultPage() {
                 {isCurrent && <div className="vc-curr-glow absolute inset-0 bg-accglow pointer-events-none rounded-[inherit]" />}
                 {isCurrent && <div className="absolute top-2.5 right-2.5 text-[9px] bg-acc text-white py-0.5 px-1.5 rounded-lg font-semibold">{t('vault:page.current')}</div>}
                 <div className="flex items-center gap-[9px] mb-2">
-                  <div className="w-[30px] h-[30px] rounded-[7px] shrink-0 bg-gradient-to-br from-acc to-acc2 flex items-center justify-center text-[15px]">{icon}</div>
+                  <div className={`w-[30px] h-[30px] rounded-[7px] shrink-0 flex items-center justify-center ${vault.providerType === 'tauri' ? 'bg-gradient-to-br from-acc to-acc2 text-white' : 'text-t1'}`}>{renderProviderIcon(vault.providerType)}</div>
                   <div>
                     <div className="text-[13px] font-semibold text-t1">{vault.name}</div>
                     <div className="text-[10px] text-t3 font-mono overflow-hidden text-ellipsis whitespace-nowrap">{vault.basePath || vault.providerType}</div>
@@ -227,7 +233,7 @@ export function VaultPage() {
                     title={t('vault:page.deleteTitle')}
                     onClick={(e) => { e.stopPropagation(); handleDeleteVault(vault.id); }}
                   >
-                    🗑
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>

@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { FolderOpen } from 'lucide-react';
 import { useVaultStore } from '@/store/vaultStore';
 import type { BranchStrategy } from '@/services/gitService';
+import { isTauri } from '@/utils/platform';
+import githubIcon from '@/assets/icons/github.svg';
 
 interface CreateVaultDialogProps {
   onClose: () => void;
@@ -10,24 +13,31 @@ type ProviderOption = 'tauri' | 'github';
 type AuthMethod = 'https-public' | 'https-private' | 'ssh';
 
 const PROVIDER_OPTIONS: { value: ProviderOption; label: string; desc: string }[] = [
-  { value: 'tauri', label: '📂 本地文件', desc: '直接操作本地文件系统' },
-  { value: 'github', label: '🐙 GitHub 仓库', desc: 'Clone 仓库到本地，后续基于本地文件操作' },
+  { value: 'tauri', label: '本地文件', desc: '直接操作本地文件系统' },
+  { value: 'github', label: 'GitHub 仓库', desc: 'Clone 仓库到本地，后续基于本地文件操作' },
 ];
 
-/** Derive a default local dir name from a repo URL's last path segment. */
-function repoDefaultPath(repoUrl: string): string {
+/** Repo name from a GitHub URL's last path segment (strips trailing .git). */
+function repoNameFromUrl(repoUrl: string): string {
   const trimmed = repoUrl.trim();
   if (!trimmed) return '';
   const last = trimmed.split(/[/:]/).filter(Boolean).pop() ?? '';
-  const name = last.replace(/\.git$/, '');
+  return last.replace(/\.git$/, '');
+}
+
+/** Default local clone path `~/quill/<repo-name>` derived from a repo URL. */
+function repoDefaultPath(repoUrl: string): string {
+  const name = repoNameFromUrl(repoUrl);
   return name ? `~/quill/${name}` : '';
 }
 
 export function CreateVaultDialog({ onClose }: CreateVaultDialogProps) {
   const addVault = useVaultStore((s) => s.addVault);
   const [name, setName] = useState('');
+  const [nameTouched, setNameTouched] = useState(false);
   const [providerType, setProviderType] = useState<ProviderOption>('tauri');
   const [basePath, setBasePath] = useState('');
+  const [basePathTouched, setBasePathTouched] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,9 +51,30 @@ export function CreateVaultDialog({ onClose }: CreateVaultDialogProps) {
   const isGithub = providerType === 'github';
   const needsToken = isGithub && auth === 'https-private';
 
+  // Auto-derive vault name and clone path from repo URL until the user edits them.
+  useEffect(() => {
+    if (!isGithub || nameTouched) return;
+    const derived = repoNameFromUrl(repoUrl);
+    setName(derived);
+  }, [repoUrl, isGithub, nameTouched]);
+
+  useEffect(() => {
+    if (!isGithub || basePathTouched) return;
+    setBasePath(repoDefaultPath(repoUrl));
+  }, [repoUrl, isGithub, basePathTouched]);
+
+  const handleBrowse = async () => {
+    if (!isTauri()) return;
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const picked = await open({ directory: true, multiple: false });
+    if (!picked || Array.isArray(picked)) return;
+    setBasePath(picked as string);
+    setBasePathTouched(true);
+  };
+
   const handleCreate = async () => {
-    const trimmedName = name.trim();
-    if (!trimmedName) {
+    const finalName = name.trim() || (isGithub ? repoNameFromUrl(repoUrl) : '');
+    if (!finalName) {
       setError('请输入 Vault 名称');
       return;
     }
@@ -78,9 +109,9 @@ export function CreateVaultDialog({ onClose }: CreateVaultDialogProps) {
         : undefined;
 
       await addVault({
-        name: trimmedName,
+        name: finalName,
         providerType,
-        basePath: basePath.trim() || (isGithub ? repoDefaultPath(repoUrl) : trimmedName.toLowerCase().replace(/\s+/g, '-')),
+        basePath: basePath.trim() || (isGithub ? repoDefaultPath(repoUrl) : finalName.toLowerCase().replace(/\s+/g, '-')),
         options,
       });
       onClose();
@@ -114,9 +145,9 @@ export function CreateVaultDialog({ onClose }: CreateVaultDialogProps) {
           <label className="dlg-label">Vault 名称</label>
           <input
             className="dlg-input"
-            placeholder="如：My Notes、Work Docs"
+            placeholder="如：My Notes、Work Docs（GitHub 类型留空则从 URL 派生）"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => { setName(e.target.value); setNameTouched(true); }}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
             autoCapitalize="off"
@@ -131,7 +162,12 @@ export function CreateVaultDialog({ onClose }: CreateVaultDialogProps) {
                 className={`dlg-provider-card ${providerType === opt.value ? 'active' : ''}`}
                 onClick={() => setProviderType(opt.value)}
               >
-                <div className="dlg-provider-label">{opt.label}</div>
+                <div className="dlg-provider-label">
+                  {opt.value === 'github'
+                    ? <img src={githubIcon} className="dlg-provider-icon" alt="" />
+                    : <FolderOpen size={16} className="dlg-provider-icon" />}
+                  <span>{opt.label}</span>
+                </div>
                 <div className="dlg-provider-desc">{opt.desc}</div>
               </div>
             ))}
@@ -205,13 +241,22 @@ export function CreateVaultDialog({ onClose }: CreateVaultDialogProps) {
 
           {/* Base Path */}
           <label className="dlg-label">{isGithub ? '本地 clone 目录' : '目录路径'}</label>
-          <input
-            className="dlg-input"
-            placeholder={isGithub ? '如：~/quill/my-repo（留空则从仓库名派生）' : '如：~/quill/my-notes'}
-            value={basePath}
-            onChange={(e) => setBasePath(e.target.value)}
-            autoCapitalize="off"
-          />
+          <div className="dlg-input-group">
+            <input
+              className="dlg-input dlg-input-flex"
+              placeholder={isGithub ? '留空默认 ~/quill/<仓库名>' : '如：~/quill/my-notes'}
+              value={basePath}
+              onChange={(e) => { setBasePath(e.target.value); setBasePathTouched(true); }}
+              autoCapitalize="off"
+            />
+            <button
+              type="button"
+              className="dlg-input-btn"
+              onClick={handleBrowse}
+              disabled={!isTauri()}
+              title={isTauri() ? '浏览选择目录' : '仅桌面端可用'}
+            >浏览</button>
+          </div>
 
           {error && <div className="dlg-error">{error}</div>}
         </div>

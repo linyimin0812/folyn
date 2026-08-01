@@ -19,11 +19,13 @@
  */
 
 import { useState } from 'react';
+import { Settings } from 'lucide-react';
 import { useNavStore } from '@/store/navStore';
 import { useVisiblePanels } from '@/store/featurePanelStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useTranslation } from 'react-i18next';
 import { GitPanel } from '@/components/git/GitPanel';
+import githubIcon from '@/assets/icons/github.svg';
 
 /**
  * Active panel id. Widened to `string` in PR2 — plugin panels contribute
@@ -125,14 +127,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
             onClick={() => setGitOpen(true)}
             title={t('shell:nav.git')}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="6" cy="6" r="2.5" />
-              <circle cx="6" cy="18" r="2.5" />
-              <circle cx="18" cy="12" r="2.5" />
-              <line x1="6" y1="8.5" x2="6" y2="15.5" />
-              <path d="M8.5 6.5L15.5 11" />
-              <path d="M8.5 17.5L15.5 13" />
-            </svg>
+            <img src={githubIcon} alt="" width="18" height="18" />
           </button>
           {gitOpen && <GitPanel onClose={() => setGitOpen(false)} />}
         </>
@@ -143,10 +138,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
         onClick={() => setCurrentPage('settings')}
         title={t('shell:nav.settings')}
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
-        </svg>
+        <Settings size={16} />
       </button>
     </div>
   );
