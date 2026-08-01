@@ -17,6 +17,7 @@ import { useTheme } from './hooks/useTheme';
 import { usePetHostBridge } from './hooks/usePetHostBridge';
 import { useNavStore } from './store/navStore';
 import { useAppearanceStore } from './store/appearanceStore';
+import { useEditorViewStateStore } from './store/editorViewState';
 import { useVaultStore } from './store/vaultStore';
 import { settingsLoadDone, persistNow } from './store/settingsPersistence';
 import { useEditorStore } from './store/editorStore';
@@ -140,12 +141,26 @@ export default function App() {
   }, []);
 
   const currentPage = useNavStore((state) => state.currentPage);
-  const showAiPanel = useAppearanceStore((state) => state.showAiPanel);
   const showStatusBar = useAppearanceStore((state) => state.showStatusBar);
   const fontSize = useAppearanceStore((state) => state.fontSize);
   // enable*Panel flags are no longer read here post-PR2 — the visibility +
   // active-panel fallback logic moved into registerBuiltinPanels (one general
   // rule: if the active panel becomes invisible, re-route to 'files').
+
+  // ponytail: showAiPanel is a launch-time auto-expand preference, NOT a
+  // mount gate. Seed aiPanelVisible once from showAiPanel so "默认显示 AI
+  // 面板" works on launch without preventing the user from opening the panel
+  // manually when the setting is off. The useRef guard survives React 18
+  // StrictMode's double-invoke so a user click between the two invocations
+  // isn't clobbered.
+  const aiPanelVisibilitySeeded = useRef(false);
+  useEffect(() => {
+    if (aiPanelVisibilitySeeded.current) return;
+    aiPanelVisibilitySeeded.current = true;
+    useEditorViewStateStore.setState({
+      aiPanelVisible: useAppearanceStore.getState().showAiPanel,
+    });
+  }, []);
 
   // ── Vault initialization ──
   const vaultInitialized = useRef(false);
@@ -610,7 +625,7 @@ export default function App() {
             />
           </div>
           <WorkArea />
-          {showAiPanel && <AiPanel />}
+          <AiPanel />
         </div>
       )}
 
@@ -637,7 +652,7 @@ export default function App() {
         <div className="body-row flex-1 flex overflow-hidden">
           {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
           <StudyWorkbenchPage />
-          {showAiPanel && <AiPanel />}
+          <AiPanel />
         </div>
       )}
 
