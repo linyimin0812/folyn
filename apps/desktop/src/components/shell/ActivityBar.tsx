@@ -18,9 +18,12 @@
  * - Page-nav button: `active` when `currentPage === 'schedule'|'study'`.
  */
 
+import { useState } from 'react';
 import { useNavStore } from '@/store/navStore';
 import { useVisiblePanels } from '@/store/featurePanelStore';
+import { useVaultStore } from '@/store/vaultStore';
 import { useTranslation } from 'react-i18next';
+import { GitPanel } from '@/components/git/GitPanel';
 
 /**
  * Active panel id. Widened to `string` in PR2 — plugin panels contribute
@@ -40,6 +43,11 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   const { t } = useTranslation();
   const setCurrentPage = useNavStore((s) => s.setCurrentPage);
   const currentPage = useNavStore((s) => s.currentPage);
+  const currentVault = useVaultStore((s) => s.currentVault);
+  const [gitOpen, setGitOpen] = useState(false);
+
+  // Git icon only for GitHub-type vaults (clone-backed local git repo).
+  const isGithubVault = currentVault?.providerType === 'github';
 
   const onSchedule = currentPage === 'schedule';
   const onStudy = currentPage === 'study';
@@ -109,6 +117,26 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
       </button>
 
       <div className="flex-1" />
+
+      {isGithubVault && (
+        <>
+          <button
+            className="activity-icon"
+            onClick={() => setGitOpen(true)}
+            title={t('shell:nav.git')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="6" cy="6" r="2.5" />
+              <circle cx="6" cy="18" r="2.5" />
+              <circle cx="18" cy="12" r="2.5" />
+              <line x1="6" y1="8.5" x2="6" y2="15.5" />
+              <path d="M8.5 6.5L15.5 11" />
+              <path d="M8.5 17.5L15.5 13" />
+            </svg>
+          </button>
+          {gitOpen && <GitPanel onClose={() => setGitOpen(false)} />}
+        </>
+      )}
 
       <button
         className="activity-icon"

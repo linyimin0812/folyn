@@ -1,5 +1,5 @@
 import type { VaultProvider } from '../providerInterface';
-import type { VaultCapabilities, VaultConfig, VaultEntry } from '../types';
+import type { ProviderType, VaultCapabilities, VaultConfig, VaultEntry } from '../types';
 import { VaultError } from '../types';
 import {
   readTextFile,
@@ -15,9 +15,11 @@ import {
 import { join } from '@tauri-apps/api/path';
 
 export class TauriVaultProvider implements VaultProvider {
-  readonly id = 'tauri';
-  readonly type: 'tauri' = 'tauri' as any;
-  readonly displayName = '本地文件';
+  // ponytail: typed as interface types (not literals) so the
+  // GithubVaultProvider subclass can override identity with its own values.
+  readonly id: string = 'tauri';
+  readonly type: ProviderType = 'tauri' as any;
+  readonly displayName: string = '本地文件';
   readonly capabilities: VaultCapabilities = {
     writable: true,
     watch: false,

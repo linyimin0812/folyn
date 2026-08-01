@@ -1,0 +1,9 @@
+{"file": ".trellis/spec/vault-provider/frontend/quality-guidelines.md", "reason": "check 阶段对照 VaultError、required patterns、checklist 验证 githubProvider"}
+{"file": ".trellis/spec/vault-provider/frontend/type-safety.md", "reason": "校验 ProviderType/options 类型、brand 用法、capabilities 声明正确"}
+{"file": ".trellis/spec/vault-provider/frontend/component-guidelines.md", "reason": "校验 githubProvider 满足 VaultProvider 契约、VaultManager 代理一致性"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "校验 desktop 侧代码标准、forbidden patterns、review checklist"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "校验 vaultStore 改动与新增 git store 遵循 Zustand 持久化与选择器模式"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "校验 CreateVaultDialog/git 面板/ActivityBar 组件模式"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "校验 git shell scope ACL 权限契约正确、最小权限"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "校验跨层 options→provider→store→UI 数据流一致、无遗漏"}
+{"file": ".trellis/tasks/08-01-vault-github-git-clone-git/prd.md", "reason": "对照验收标准逐条核对"}

@@ -10,6 +10,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { ActivityBar } from './ActivityBar';
 import { useFeaturePanelStore } from '@/store/featurePanelStore';
+import { useVaultStore } from '@/store/vaultStore';
 import type { PanelEntry } from '@/store/featurePanelStore';
 
 function panel(id: string, overrides: Partial<PanelEntry> = {}): PanelEntry {
@@ -33,6 +34,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   useFeaturePanelStore.setState({ panels: [], activePanelId: null });
+  useVaultStore.setState({ currentVault: null });
 });
 
 describe('ActivityBar (data-driven)', () => {
@@ -103,6 +105,26 @@ describe('ActivityBar (data-driven)', () => {
     // The badge text '3' lives inside the panel button (title Panel-A).
     const btn = screen.getByTitle('Panel-A');
     expect(btn.textContent).toContain('3');
+  });
+});
+
+describe('ActivityBar git icon', () => {
+  it('does not render the git icon when the active vault is not github', () => {
+    useVaultStore.setState({
+      currentVault: { id: 'v', name: 'local', providerType: 'tauri', basePath: '/x' },
+    });
+    render(<ActivityBar activePanel="a" onPanelChange={() => {}} />);
+    expect(screen.queryByTitle('Git 操作')).toBeNull();
+  });
+
+  it('renders the git icon above settings when the active vault is github', () => {
+    useVaultStore.setState({
+      currentVault: { id: 'v', name: 'gh', providerType: 'github', basePath: '/x' },
+    });
+    render(<ActivityBar activePanel="a" onPanelChange={() => {}} />);
+    expect(screen.getByTitle('Git 操作')).toBeTruthy();
+    // Settings icon still present.
+    expect(screen.getByTitle('设置')).toBeTruthy();
   });
 });
 

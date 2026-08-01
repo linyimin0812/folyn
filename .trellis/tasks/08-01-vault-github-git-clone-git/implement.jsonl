@@ -1,0 +1,13 @@
+{"file": ".trellis/spec/vault-provider/frontend/index.md", "reason": "vault-provider 包总览：Provider→Registry→Manager 代理模式，githubProvider 实现遵循"}
+{"file": ".trellis/spec/vault-provider/frontend/component-guidelines.md", "reason": "VaultProvider 契约、capabilities、VaultManager 代理——githubProvider 组合 Tauri 时遵循"}
+{"file": ".trellis/spec/vault-provider/frontend/quality-guidelines.md", "reason": "VaultError 类型化错误码、checklist——clone/鉴权失败错误透传遵循"}
+{"file": ".trellis/spec/vault-provider/frontend/type-safety.md", "reason": "ProviderType/VaultPath brand、capabilities 类型——github 类型与 options 类型设计遵循"}
+{"file": ".trellis/spec/vault-provider/frontend/directory-structure.md", "reason": "providers/ 目录布局、registry 注册位置——githubProvider.ts 放置与注册遵循"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop 技术栈与关键模式：named exports、Zustand 粒度选择器、@/ 别名、isTauri 守卫"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store + persist slice 模式——vaultStore 改动与 git 操作 store 遵循"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "组件 props/组合/styling 模式——CreateVaultDialog 扩展、git 面板、ActivityBar git 图标遵循"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Tauri ACL 权限契约、shell plugin scope——新增 git shell scope 遵循"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "i18next namespace、tauriInvoke wrapper——弹窗/面板文案遵循"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "desktop 代码标准、forbidden patterns、review checklist"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "跨 vault-provider 包与 desktop 应用层，options→provider→store→UI 数据流参考"}
+{"file": ".trellis/tasks/08-01-vault-github-git-clone-git/prd.md", "reason": "本任务 PRD：需求/验收/决策/技术方案"}
