@@ -1729,3 +1729,38 @@ exportActiveSource downloaded empty files for binary types (PDF/zip/mp4) because
 ### Next Steps
 
 - None - task complete
+
+
+## Session 108: Regroup files panel context menu
+
+**Date**: 2026-08-01
+**Task**: Regroup files panel context menu
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Reordered left-panel right-click menu into four explicit groups (new / pin-delete-hide / copy-rename-move / copy-path) with extensions group at the tail, then removed the leading separator above the pin group.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3389043` | (see git log) |
+| `3e594a8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
