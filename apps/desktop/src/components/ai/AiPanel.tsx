@@ -9,6 +9,7 @@ import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';
 import { flattenFileTree } from '@/utils/treeUtils';
 import { isExternalPath } from '@/utils/isExternalPath';
 import { resolveAbsolutePath } from '@/services/externalFileProvider';
+import { normalizeVaultPath } from './vaultPath';
 import { sessionAdapters, getAdapterForSession } from './adapterManager';
 import { ChatMessageList } from '@/components/chat';
 import { clearPathExistsCache } from '@/components/chat/filePath';
@@ -20,6 +21,7 @@ import { saveBlobs, buildReadInstructions } from '@/components/chat';
 import type { SavedAttachment } from '@/components/chat';
 import { runRigChat } from '@/services/rigChat';
 import { PairTag } from '@/components/chat/PairTag';
+import { AgentCliTag } from './AgentCliTag';
 import { useTranslation } from 'react-i18next';
 
 interface AiPanelProps {
@@ -69,6 +71,7 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
   const fileTree = useVaultStore((s) => s.fileTree);
   const allFiles = useMemo(() => flattenFileTree(fileTree), [fileTree]);
   const activeVaultId = useVaultStore((s) => s.activeVaultId);
+  const currentVault = useVaultStore((s) => s.currentVault);
 
   // ponytail: path-exists cache is keyed by raw path string, but existence
   // depends on the active vault. Clear on vault switch so stale hits don't
@@ -77,10 +80,24 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
     clearPathExistsCache();
   }, [activeVaultId]);
 
+  // Normalize an absolute / `~/` path that actually lives inside the active
+  // vault's basePath to its vault-relative form. Without this, an AI-quoted
+  // `/Users/.../apps/desktop/src/foo.ts` would be routed as external and
+  // open a duplicate `ext:` tab next to the existing vault tab.
+  const normalizePath = useCallback(
+    (raw: string): string => normalizeVaultPath(raw, currentVault),
+    [currentVault],
+  );
+
   // Inline-code file paths in assistant messages: resolve existence via the
   // same routing editorIoService uses (external / wiki / vault-relative).
   // `allFiles` covers the vault-relative case without an fs read.
   const resolvePath = useCallback(async (raw: string): Promise<boolean> => {
+    const normalized = normalizePath(raw);
+    if (normalized !== raw) {
+      // Absolute path inside the vault — check the fileTree.
+      return allFiles.some((f) => f.path === normalized);
+    }
     if (isExternalPath(raw)) {
       try {
         const { exists } = await import('@tauri-apps/plugin-fs');
@@ -91,25 +108,36 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
       }
     }
     return allFiles.some((f) => f.path === raw);
-  }, [allFiles]);
+  }, [allFiles, normalizePath]);
 
   const handlePathClick = useCallback(
     (path: string, line?: number, col?: number) => {
-      const name = path.includes('/') ? path.slice(path.lastIndexOf('/') + 1) : path;
-      void editorIoService.openFile(path, name).then(() => {
+      const normalized = normalizePath(path);
+      const name = normalized.includes('/')
+        ? normalized.slice(normalized.lastIndexOf('/') + 1)
+        : normalized;
+      void editorIoService.openFile(normalized, name).then(() => {
         if (line) {
           useEditorViewStateStore.getState().setCursorPosition(line, col ?? 1);
         }
       });
     },
-    [],
+    [normalizePath],
   );
 
   // ponytail: renderPairTag closes over customerProviders (stable ref from
   // zustand) so the resolver doesn't need to be a useCallback; it's only
-  // called inside DefaultMessageRow when msg.provider+model exist.
+  // called inside DefaultMessageRow.
+  // For Chat (rig) mode → provider/model PairTag.
+  // For Ask/Agent (CLI adapter) mode → AgentCliTag with the mode label —
+  // those messages come from the CLI adapter, not the rig LLM pair, so
+  // showing provider/model would be misleading.
   const customerProviders = useAiConfigStore((s) => s.customerProviders);
+  const inputMode = useAiStore((s) => s.inputMode);
   const renderPairTag = (msg: CliMessage): ReactNode | null => {
+    if (!isRigMode(inputMode)) {
+      return <AgentCliTag modeId={inputMode} />;
+    }
     if (!msg.provider || !msg.model) return null;
     return <PairTag provider={msg.provider} model={msg.model} customerProviders={customerProviders} />;
   };

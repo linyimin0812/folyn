@@ -185,6 +185,12 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
 
   const handleChange = useCallback((value: string) => {
     setInput(value);
+    // Chat mode (rig backend) has no file tools — `@`-mention attachments
+    // would be dead weight. Skip the menu; `@` stays as plain text.
+    if (rigMode) {
+      if (mentionMenu.visible) setMentionMenu({ visible: false, filter: '', anchorPos: 0 });
+      return;
+    }
     // Read the live cursor position off the textarea DOM node (the same
     // node ChatInputBox owns; `textareaRef` is the merged `inputRef`).
     const cursorPos = textareaRef.current?.selectionStart ?? value.length;
@@ -199,7 +205,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
       }
     }
     setMentionMenu({ visible: false, filter: '', anchorPos: 0 });
-  }, []);
+  }, [rigMode, mentionMenu.visible]);
 
   const insertMention = useCallback((filePath: string) => {
     const { anchorPos } = mentionMenu;
