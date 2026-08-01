@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/vault-provider/frontend/type-safety.md", "reason": "Adding readFileBytes to provider interface; ensure optional method typing mirrors writeFileBytes"}
+{"file": ".trellis/spec/vault-provider/frontend/quality-guidelines.md", "reason": "VaultManager fallback pattern; match writeFileBytes fallback conventions"}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "useExport.ts is a hook facade; verify imperative export function placement"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Branch logic in exportActiveSource; Uint8Array → Blob typing"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Handler.needsFileContent semantics for binary vs text file types"}
