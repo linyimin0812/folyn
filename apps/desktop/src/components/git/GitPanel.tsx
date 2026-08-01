@@ -85,6 +85,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
   const [busy, setBusy] = useState<'pull' | 'push' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [infoFor, setInfoFor] = useState<'pull' | 'push' | null>(null);
   const [absPath, setAbsPath] = useState<string>('');
 
   const parsed = useMemo(() => parseGitStatus(rawStatus), [rawStatus]);
@@ -117,9 +118,11 @@ export function GitPanel({ onClose }: GitPanelProps) {
     setBusy('pull');
     setError(null);
     setInfo(null);
+    setInfoFor(null);
     try {
       const res = await pullRepo(absPath);
       setInfo(`已拉取远程更新。${res.stdout ? res.stdout : ''}`.trim());
+      setInfoFor('pull');
       await refreshStatus();
       await refreshFileTree();
     } catch (err) {
@@ -138,9 +141,11 @@ export function GitPanel({ onClose }: GitPanelProps) {
     setBusy('push');
     setError(null);
     setInfo(null);
+    setInfoFor(null);
     try {
       const res = await commitAndPush(absPath, msg);
       setInfo(`已提交并推送到 GitHub。${res.stdout ? res.stdout : ''}`.trim());
+      setInfoFor('push');
       setCommitMsg('');
       await refreshStatus();
       await refreshFileTree();
@@ -268,6 +273,9 @@ export function GitPanel({ onClose }: GitPanelProps) {
           <div style={{ color: 'var(--fg-muted, #888)', fontSize: 12, marginBottom: 6, marginTop: 4 }}>
             把 GitHub 仓库上的最新改动下载到本地。多人协作或换设备后点这个。
           </div>
+          {info && infoFor === 'pull' && (
+            <div className="dlg-error" style={{ color: 'var(--ok, #16a34a)', marginBottom: 6 }}>{info}</div>
+          )}
 
           {/* 提交并推送 */}
           <div className="dlg-label" style={{ marginTop: 16 }}>提交并推送</div>
@@ -292,8 +300,10 @@ export function GitPanel({ onClose }: GitPanelProps) {
               {busy === 'push' ? '推送中…' : 'Commit & Push'}
             </button>
           </div>
+          {info && infoFor === 'push' && (
+            <div className="dlg-error" style={{ color: 'var(--ok, #16a34a)', marginTop: 6 }}>{info}</div>
+          )}
 
-          {info && <div className="dlg-error" style={{ color: 'var(--ok, #16a34a)' }}>{info}</div>}
           {error && <div className="dlg-error">{error}</div>}
         </div>
 
