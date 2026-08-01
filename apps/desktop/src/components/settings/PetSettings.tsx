@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePetStore, type PetOpacity } from '@/store/petStore';
-import { usePetChatStore } from '@/store/petChatStore';
+import { useAiStore } from '@/store/aiStore';
 import { PairSelector } from '@/components/ai/PairSelector';
 import { isTauri } from '@/utils/platform';
 import { Toggle } from '@/components/settings/primitives';
@@ -44,17 +44,15 @@ export function PetSettings() {
   const setPetOpacity = usePetStore((s) => s.setPetOpacity);
   const petClickThrough = usePetStore((s) => s.petClickThrough);
   const setPetClickThrough = usePetStore((s) => s.setPetClickThrough);
-  // Phase 2: the pet pair is per-session. PetSettings binds to the pet
-  // chat store's ACTIVE session pair (read+write via setSessionPair). If
-  // no active session, PairSelector shows empty (same as null petPair
-  // before). This preserves the settings-page UX without inventing a new
-  // "default pair" concept — the user picks the pair for whichever pet
-  // session is currently active in the panel.
-  const activePetSessionId = usePetChatStore((s) => s.activeSessionId);
-  const activePetSession = usePetChatStore((s) =>
+  // Phase 2: the pet pair is per-session. PetSettings binds to the aiStore's
+  // ACTIVE session pair (read+write via setSessionPair). If no active
+  // session, PairSelector shows empty. Pet chat now reuses AiPanel directly,
+  // so pet sessions live in aiStore (shared with the main-window AI panel).
+  const activePetSessionId = useAiStore((s) => s.activeSessionId);
+  const activePetSession = useAiStore((s) =>
     s.sessions.find((sess) => sess.id === s.activeSessionId),
   );
-  const setSessionPair = usePetChatStore((s) => s.setSessionPair);
+  const setSessionPair = useAiStore((s) => s.setSessionPair);
   // ponytail: Phase 3 — ChatProvider is `string`, no cast needed.
   const petPair = activePetSession?.provider && activePetSession?.model
     ? { provider: activePetSession.provider, model: activePetSession.model }

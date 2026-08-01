@@ -19,7 +19,16 @@ import { runRigChat } from '@/services/rigChat';
 import { PairTag } from '@/components/chat/PairTag';
 import { useTranslation } from 'react-i18next';
 
-export function AiPanel() {
+interface AiPanelProps {
+  /** Render in a secondary window (e.g. pet-panel) instead of the main
+   *  editor shell. Skips the `aiPanelVisible` gate, hides the × close
+   *  button (the host window owns its own dismiss), hides the left
+   *  resize handle (the host window owns its own size), and drops
+   *  `border-l` + fixed `panelWidth` so the panel fills its container. */
+  embedded?: boolean;
+}
+
+export function AiPanel({ embedded = false }: AiPanelProps = {}) {
   const { t } = useTranslation();
   const aiPanelVisible = useEditorViewStateStore((s) => s.aiPanelVisible);
   const toggleAiPanel = useEditorViewStateStore((s) => s.toggleAiPanel);
@@ -109,7 +118,7 @@ export function AiPanel() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showSessionList]);
 
-  if (!aiPanelVisible) return null;
+  if (!embedded && !aiPanelVisible) return null;
 
   const handleSend = async (userText: string, currentAttachments: PendingAttachment[]) => {
     if ((!userText && currentAttachments.length === 0) || isStreaming) return;
@@ -332,8 +341,13 @@ export function AiPanel() {
   };
 
   return (
-    <div className="shrink-0 h-full bg-panel border-l border-brd flex flex-col overflow-hidden relative" style={{ width: `${panelWidth}px` }}>
-      <div className="absolute left-0 top-0 bottom-0 w-0.5 cursor-col-resize z-10 bg-transparent transition-[background] duration-[140ms] hover:bg-acc hover:opacity-30" onMouseDown={handleResizeStart} />
+    <div
+      className={`h-full bg-panel flex flex-col overflow-hidden relative${embedded ? ' w-full' : ' shrink-0 border-l border-brd'}`}
+      style={embedded ? undefined : { width: `${panelWidth}px` }}
+    >
+      {!embedded && (
+        <div className="absolute left-0 top-0 bottom-0 w-0.5 cursor-col-resize z-10 bg-transparent transition-[background] duration-[140ms] hover:bg-acc hover:opacity-30" onMouseDown={handleResizeStart} />
+      )}
       {/* h-[34px] matches the editor TabBar so both top bars align visually. */}
       <div className="flex items-center justify-between h-[34px] pl-3 pr-2 border-b border-brd shrink-0">
         <div className="relative min-w-0 flex-1" ref={sessionListRef}>
@@ -375,11 +389,13 @@ export function AiPanel() {
               <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
             </svg>
           </button>
-          <button className="w-[26px] h-[26px] flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1" onClick={toggleAiPanel} title={t('ai:panel.close')}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
+          {!embedded && (
+            <button className="w-[26px] h-[26px] flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1" onClick={toggleAiPanel} title={t('ai:panel.close')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 

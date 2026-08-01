@@ -18,7 +18,7 @@ import { usePetHostBridge } from './hooks/usePetHostBridge';
 import { useNavStore } from './store/navStore';
 import { useAppearanceStore } from './store/appearanceStore';
 import { useEditorViewStateStore } from './store/editorViewState';
-import { useVaultStore } from './store/vaultStore';
+import { useVaultStore, startFileTreeBroadcast } from './store/vaultStore';
 import { settingsLoadDone, persistNow } from './store/settingsPersistence';
 import { useEditorStore } from './store/editorStore';
 import * as editorIoService from './services/editorIoService';
@@ -172,6 +172,19 @@ export default function App() {
       });
     });
     return () => { cancelled = true; };
+  }, []);
+
+  // ponytail: push fileTree + currentVault to secondary Tauri windows
+  // (pet-panel) that mount AiPanel in `embedded` mode. Secondary windows
+  // lack vault-path fs ACL, so they can't refreshFileTree themselves — the
+  // main window owns the authoritative tree and broadcasts it on change.
+  // Mirrors the pet://settings-updated broadcast pattern.
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+    settingsLoadDone.then(() => {
+      stop = startFileTreeBroadcast();
+    });
+    return () => { stop?.(); };
   }, []);
 
   // ── Vault initialization ──

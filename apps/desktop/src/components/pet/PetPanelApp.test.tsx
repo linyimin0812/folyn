@@ -53,8 +53,8 @@ vi.mock('@tauri-apps/api/event', () => ({
 vi.mock('./PetLauncher', () => ({
   PetLauncher: () => <div className="pet-launcher">launcher</div>,
 }));
-vi.mock('./PetChat', () => ({
-  PetChat: () => <div className="pet-chat">chat</div>,
+vi.mock('@/components/ai/AiPanel', () => ({
+  AiPanel: () => <div className="ai-panel">chat</div>,
 }));
 
 import { PetPanelApp } from './PetPanelApp';
@@ -79,17 +79,17 @@ afterEach(() => {
 describe('PetPanelApp', () => {
   it('defaults to the Chat tab and shows the chat (not launcher)', () => {
     const { container } = render(<PetPanelApp />);
-    expect(container.querySelector('.pet-chat')).toBeTruthy();
+    expect(container.querySelector('.ai-panel')).toBeTruthy();
     expect(container.querySelector('.pet-launcher')).toBeNull();
     const chatTab = screen.getByRole('tab', { name: 'Chat' });
     expect(chatTab.getAttribute('aria-selected')).toBe('true');
   });
 
-  it('clicking the Actions tab mounts PetLauncher and unmounts PetChat', () => {
+  it('clicking the Actions tab mounts PetLauncher and unmounts AiPanel', () => {
     const { container } = render(<PetPanelApp />);
     fireEvent.click(screen.getByRole('tab', { name: 'Actions' }));
     expect(container.querySelector('.pet-launcher')).toBeTruthy();
-    expect(container.querySelector('.pet-chat')).toBeNull();
+    expect(container.querySelector('.ai-panel')).toBeNull();
     expect(screen.getByRole('tab', { name: 'Actions' }).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('tab', { name: 'Chat' }).getAttribute('aria-selected')).toBe('false');
   });
@@ -99,7 +99,7 @@ describe('PetPanelApp', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Actions' }));
     expect(container.querySelector('.pet-launcher')).toBeTruthy();
     fireEvent.click(screen.getByRole('tab', { name: 'Chat' }));
-    expect(container.querySelector('.pet-chat')).toBeTruthy();
+    expect(container.querySelector('.ai-panel')).toBeTruthy();
     expect(container.querySelector('.pet-launcher')).toBeNull();
   });
 

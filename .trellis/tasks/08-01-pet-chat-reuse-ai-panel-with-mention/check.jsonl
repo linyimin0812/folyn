@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify AiPanel embedded prop follows conventions, no broken slot patterns, shared component boundary intact"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify zustand selectors used correctly, no bare useStore(), fileTree mirror uses setState correctly"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Verify pet://file-tree-updated event naming + payload contract, pet-panel ACL unchanged, listener cleanup"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Verify useEffect cleanup, no silent swallow, platform guards on Tauri calls"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "Verify no orphan i18n keys after PetChat deletion"}

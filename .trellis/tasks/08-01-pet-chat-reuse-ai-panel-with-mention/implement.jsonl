@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Props conventions, shared chat component slot pattern, no-main-window-store-import rule for components/chat/* — AiPanel embedded mode touches this boundary"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand granular selectors, out-of-React getState() usage — vaultStore fileTree broadcast + setState in pet window"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Multi-window event channel naming (pet://locale:// pattern), ACL contract for pet-panel window — fileTree broadcast event + listener wiring"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "useEffect cleanup, platform guards (isTauri), no silent swallow — fileTree listener + emit pattern"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "Cross-window locale sync pattern (pet://event), removing PetChat-only i18n keys — cleanup of pet: namespace"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Cross-window data flow (main → pet fileTree broadcast), multiple consumers of fileTree — applies to broadcast design"}

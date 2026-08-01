@@ -11,8 +11,9 @@ import {
   type PetWorkArea,
 } from './petPosition';
 import { PetLauncher } from './PetLauncher';
-import { PetChat } from './PetChat';
+import { AiPanel } from '@/components/ai/AiPanel';
 import { PetInbox } from './PetInbox';
+import { useVaultStore } from '@/store/vaultStore';
 
 type PetPanelTab = 'actions' | 'chat' | 'inbox';
 
@@ -222,6 +223,39 @@ export function PetPanelApp() {
         console.warn('[pet-panel] set_topmost_level failed:', err);
       }
     })();
+  }, []);
+
+  // ── fileTree mirror from main window ──
+  // ponytail: the pet-panel window lacks vault-path fs ACL, so its own
+  // `useVaultStore.refreshFileTree()` would fail and leave fileTree empty.
+  // AiPanel's @-mention reads fileTree, so we mirror it from the main
+  // window via the `pet://file-tree-updated` broadcast (emitted by
+  // `startFileTreeBroadcast` in App.tsx on every fileTree change, debounced
+  // ~300ms). Mirrors the `pet://settings-updated` listener pattern above.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        unlisten = await listen<{ currentVault: unknown; fileTree: unknown }>(
+          'pet://file-tree-updated',
+          (event) => {
+            const payload = event.payload;
+            if (!payload) return;
+            useVaultStore.setState({
+              currentVault: payload.currentVault as never,
+              fileTree: payload.fileTree as never,
+            });
+          },
+        );
+      } catch (err) {
+        console.warn('[pet-panel] file-tree-updated listener failed:', err);
+      }
+    })();
+    return () => {
+      if (unlisten) unlisten();
+    };
   }, []);
 
   // ── Initial position/size restore ──
@@ -493,7 +527,7 @@ export function PetPanelApp() {
         </button>
       </header>
       <main className="pet-panel-body">
-        {tab === 'chat' ? <PetChat /> : tab === 'actions' ? <PetLauncher /> : <PetInbox />}
+        {tab === 'chat' ? <AiPanel embedded /> : tab === 'actions' ? <PetLauncher /> : <PetInbox />}
       </main>
     </div>
   );

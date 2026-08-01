@@ -8,7 +8,7 @@ import { usePetStore } from '@/store/petStore';
 import { useSearchStore } from '@/store/searchStore';
 import { useCommandPaletteStore } from '@/store/commandPaletteStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
-import { usePetChatStore } from '@/store/petChatStore';
+import { useAiStore } from '@/store/aiStore';
 import * as editorIoService from '@/services/editorIoService';
 import { routePetMenuAction, routePetBubbleAction } from './petHostRouter';
 import type { PetBubbleActionEvent } from '@/components/pet/PetBubbleApp';
@@ -153,7 +153,7 @@ describe('routePetBubbleAction', () => {
   });
 
   it('chat target switches the pet-panel session and invokes pet_panel_show', async () => {
-    usePetChatStore.setState({ sessions: [{ id: 's1', messages: [] }] as never, activeSessionId: 's1' });
+    useAiStore.setState({ sessions: [{ id: 's1', messages: [] }] as never, activeSessionId: 's1' });
     await routePetBubbleAction({ type: 'navigate', target: { kind: 'chat', id: 's1' } });
     expect(invokeMock).toHaveBeenCalledWith('pet_panel_show');
   });

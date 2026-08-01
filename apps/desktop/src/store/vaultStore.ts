@@ -580,3 +580,42 @@ export function subscribeToFileTree(cb: () => void): () => void {
     }
   });
 }
+
+/** ponytail: broadcast fileTree + currentVault to secondary Tauri windows
+ *  (pet-panel) that mount AiPanel in `embedded` mode. AiPanel's @-mention
+ *  reads `useVaultStore.fileTree`, but secondary windows lack vault-path fs
+ *  ACL — `refreshFileTree()` fails silently there. The main window owns the
+ *  authoritative fileTree (via fs plugin + fileWatcher) and pushes it to
+ *  secondary windows on change. Mirrors the `pet://settings-updated` pattern.
+ *  Caller is responsible for only invoking this in the MAIN window — the
+ *  pet-panel window listens via `listen('pet://file-tree-updated', …)`. */
+export function startFileTreeBroadcast(): () => void {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let stopped = false;
+  const emit = async () => {
+    if (stopped) return;
+    try {
+      const { emit } = await import('@tauri-apps/api/event');
+      const { fileTree, currentVault } = useVaultStore.getState();
+      await emit('pet://file-tree-updated', { currentVault, fileTree });
+    } catch {
+      // Non-tauri (tests) or emit failed — non-fatal.
+    }
+  };
+  const debounce = () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      void emit();
+    }, 300);
+  };
+  // Push initial state so a freshly-opened pet panel sees the current tree
+  // without waiting for the next fileWatcher tick.
+  void emit();
+  const unsub = subscribeToFileTree(debounce);
+  return () => {
+    stopped = true;
+    unsub();
+    if (timer) clearTimeout(timer);
+  };
+}

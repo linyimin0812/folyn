@@ -18,7 +18,7 @@ import { usePetStore } from '@/store/petStore';
 import { useSearchStore } from '@/store/searchStore';
 import { useCommandPaletteStore } from '@/store/commandPaletteStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
-import { usePetChatStore } from '@/store/petChatStore';
+import { useAiStore } from '@/store/aiStore';
 import * as editorIoService from './editorIoService';
 
 /** Focus the main editor window (show + setFocus). Swallows errors so a
@@ -204,7 +204,7 @@ export async function routePetBubbleAction(
       await focusMain();
       break;
     case 'chat':
-      usePetChatStore.getState().switchSession(target.id);
+      useAiStore.getState().switchSession(target.id);
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         await invoke('pet_panel_show');
