@@ -149,3 +149,54 @@ runs under the new adapter.
 - `apps/desktop/src/components/chat/PairTag.tsx` — reference for the
   presentational shape `AgentCliTag` should mirror.
 - `packages/vault-provider/src/types.ts:67` `VaultConfig.basePath`.
+
+## R6 — Mid-session locks: mode dropdown + Agent CLI selector
+
+### Semantics
+
+User feedback: after a session has started (any message sent), do not allow
+switching the input mode (Chat / Agent / Ask). Chat mode's Model (provider
+pair) selector stays unlocked. Agent/Ask mode's Agent CLI selector goes
+back to session-locked (partial revert of R5).
+
+1. **Mode dropdown trigger locked once session started** — the icon-only
+   mode toggle button in `ChatInput.leadingSlot` gains
+   `disabled={isStreaming || sessionStarted}`. The existing
+   `disabled:opacity-40 disabled:cursor-not-allowed` classes carry the
+   visual state.
+2. **PairSelector stays unlocked** — Chat mode keeps allowing mid-session
+   provider/model switching (no `sessionStarted` gate on `PairSelector`).
+   This is the user's explicit ask.
+3. **AdapterSelector re-locked** — `AdapterSelector disabled={isStreaming || sessionStarted}`
+   for Agent/Ask modes. R5 unlocked it fully; R6 re-adds the session-lock.
+
+### "Session started" signal
+
+Use `Boolean(sess && sess.messages.length > 0)` rather than R5's removed
+`Boolean(session.cliSessionId)`. Rationale: rig/Chat mode never sets
+`cliSessionId` (the rig backend isn't a CLI adapter), but a Chat session
+with messages is still "started" and the mode dropdown should be locked.
+`messages.length > 0` covers both backends uniformly.
+
+### Partial revert of R5
+
+R5 fully unlocked `AdapterSelector` (dropped `sessionLocked`). R6 re-adds
+a session-started lock to `AdapterSelector` AND extends the same lock to
+the mode dropdown trigger (new — R5 didn't touch the mode dropdown).
+`PairSelector` is deliberately left unlocked.
+
+### Implementation touchpoints
+
+- `apps/desktop/src/components/ai/ChatInput.tsx` — add `sessionStarted`
+  memo (derive from `sessions` + `activeSessionId`, both already
+  selected), gate the mode trigger button + `AdapterSelector`.
+- No `aiStore` / `CliMessage` type changes.
+- No new tests (UI behavior adjustment; existing smoke tests cover
+  render).
+
+### Out of scope
+
+- Per-message mode stamp (an earlier draft tried adding `inputMode` to
+  `CliMessage` to render a per-bubble mode label — abandoned; session-level
+  lock is the chosen solution).
+- Pet chat (vault-free, no mode dropdown, no adapter selector).

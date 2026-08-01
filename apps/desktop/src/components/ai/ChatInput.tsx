@@ -95,6 +95,17 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
   // pair) still shows the model that a send would resolve to.
   const sessionPair: Pair | null = activeSessionPair ?? (pairs.length > 0 ? pairs[0] : null);
 
+  // R6: once a session has sent/received any message, lock the input-mode
+  // dropdown and the Agent/Ask CLI adapter selector mid-session. Chat mode's
+  // PairSelector stays unlocked (user explicitly wants mid-session model
+  // switching). `messages.length > 0` is the "session started" signal — more
+  // general than `cliSessionId` (rig/Chat never sets cliSessionId but still
+  // warrants a lock once the user has typed).
+  const sessionStarted = useMemo(() => {
+    const sess = sessions?.find((x) => x.id === activeSessionId);
+    return Boolean(sess && sess.messages.length > 0);
+  }, [sessions, activeSessionId]);
+
   const handlePairChange = useCallback((pair: Pair | null) => {
     if (!pair || !activeSessionId) return;
     setSessionPair(activeSessionId, pair);
@@ -360,7 +371,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
           <button
             className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={() => setModeMenuOpen((v) => !v)}
-            disabled={isStreaming}
+            disabled={isStreaming || sessionStarted}
             aria-label={currentModeDef?.label ?? inputMode}
             title={modeTitle}
           >
@@ -405,7 +416,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
           onOpenSettings={handleOpenModelSettings}
         />
       ) : (
-        sessionKind !== 'study' && <AdapterSelector disabled={isStreaming} />
+        sessionKind !== 'study' && <AdapterSelector disabled={isStreaming || sessionStarted} />
       )}
       <button className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed" onClick={handleFileSelect} disabled={isStreaming} title={t('ai:chat.attachFile')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
