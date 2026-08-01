@@ -171,7 +171,16 @@ export function GitPanel({ onClose }: GitPanelProps) {
 
         <div className="dlg-body" style={{ overflow: 'auto', flexGrow: 1, minHeight: 0 }}>
           {/* 状态 */}
-          <div className="dlg-label">本地改动</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div className="dlg-label" style={{ margin: 0 }}>本地改动</div>
+            <button
+              className="btn btn-g btn-sm"
+              onClick={() => void refreshStatus()}
+              disabled={busy !== null}
+            >
+              刷新
+            </button>
+          </div>
           {statusLoading ? (
             <div style={{ color: 'var(--fg-muted, #888)', padding: '8px 0' }}>加载中…</div>
           ) : statusError ? (
@@ -245,51 +254,44 @@ export function GitPanel({ onClose }: GitPanelProps) {
             </>
           )}
 
-          <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+          {/* 拉取 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 16 }}>
+            <div className="dlg-label" style={{ margin: 0 }}>拉取远程更新</div>
             <button
               className="btn btn-g btn-sm"
-              onClick={() => void refreshStatus()}
+              onClick={() => void handlePull()}
               disabled={busy !== null}
             >
-              刷新
+              {busy === 'pull' ? '拉取中…' : 'Pull'}
             </button>
           </div>
-
-          {/* 拉取 */}
-          <div className="dlg-label" style={{ marginTop: 16 }}>拉取远程更新</div>
-          <div style={{ color: 'var(--fg-muted, #888)', fontSize: 12, marginBottom: 6 }}>
+          <div style={{ color: 'var(--fg-muted, #888)', fontSize: 12, marginBottom: 6, marginTop: 4 }}>
             把 GitHub 仓库上的最新改动下载到本地。多人协作或换设备后点这个。
           </div>
-          <button
-            className="btn btn-g btn-sm"
-            style={{ width: '100%' }}
-            onClick={() => void handlePull()}
-            disabled={busy !== null}
-          >
-            {busy === 'pull' ? '拉取中…' : '拉取 (Pull)'}
-          </button>
 
           {/* 提交并推送 */}
           <div className="dlg-label" style={{ marginTop: 16 }}>提交并推送</div>
           <div style={{ color: 'var(--fg-muted, #888)', fontSize: 12, marginBottom: 6 }}>
             把本地改动上传到 GitHub。先填一句话说明这次改了什么，再点按钮。
           </div>
-          <input
-            className="dlg-input"
-            placeholder="例如：补充 8 月 2 日的日记"
-            value={commitMsg}
-            onChange={(e) => setCommitMsg(e.target.value)}
-            autoCapitalize="off"
-            spellCheck={false}
-          />
-          <button
-            className="btn btn-p btn-sm"
-            style={{ width: '100%', marginTop: 6 }}
-            onClick={() => void handleCommitPush()}
-            disabled={busy !== null}
-          >
-            {busy === 'push' ? '提交推送中…' : '提交并推送 (Commit & Push)'}
-          </button>
+          <div className="dlg-input-group">
+            <input
+              className="dlg-input dlg-input-flex"
+              placeholder="例如：补充 8 月 2 日的日记"
+              value={commitMsg}
+              onChange={(e) => setCommitMsg(e.target.value)}
+              autoCapitalize="off"
+              spellCheck={false}
+            />
+            <button
+              className="dlg-input-btn"
+              style={{ background: 'var(--acc)', color: 'white' }}
+              onClick={() => void handleCommitPush()}
+              disabled={busy !== null}
+            >
+              {busy === 'push' ? '推送中…' : 'Commit & Push'}
+            </button>
+          </div>
 
           {info && <div className="dlg-error" style={{ color: 'var(--ok, #16a34a)' }}>{info}</div>}
           {error && <div className="dlg-error">{error}</div>}
