@@ -19,5 +19,32 @@
   "commandPalette": {
     "placeholder": "搜索命令或文件…",
     "noMatch": "无匹配项"
+  },
+  "gitPanel": {
+    "title": "同步「{{name}}」到 GitHub",
+    "clean": "✓ 工作区干净，没有需要提交的改动",
+    "localChanges": "本地改动",
+    "refresh": "刷新",
+    "filesChanged": "{{total}} 个文件有改动",
+    "pull": "拉取远程更新",
+    "pullBtn": "Pull",
+    "pullBusy": "拉取中…",
+    "pullHint": "将 GitHub 仓库上的最新改动下载到本地",
+    "commitPush": "提交并推送",
+    "commitPushBtn": "Commit & Push",
+    "pushBusy": "推送中…",
+    "commitPushHint": "将本地改动推送到 GitHub 远程仓库",
+    "placeholder": "例如：补充 8 月 2 日的日记",
+    "emptyCommitMsg": "请填写提交信息",
+    "pullDone": "已拉取远程更新。",
+    "pushDone": "已提交并推送到 GitHub。",
+    "kind": {
+      "modified": "修改",
+      "added": "新增",
+      "deleted": "删除",
+      "untracked": "未跟踪",
+      "renamed": "重命名",
+      "conflict": "冲突"
+    }
   }
 }

@@ -19,5 +19,32 @@
   "commandPalette": {
     "placeholder": "Search commands or files…",
     "noMatch": "No matches"
+  },
+  "gitPanel": {
+    "title": "Sync \"{{name}}\" to GitHub",
+    "clean": "✓ Working tree clean, nothing to commit",
+    "localChanges": "Local changes",
+    "refresh": "Refresh",
+    "filesChanged": "{{total}} file(s) changed",
+    "pull": "Pull remote updates",
+    "pullBtn": "Pull",
+    "pullBusy": "Pulling…",
+    "pullHint": "Download the latest changes from the GitHub remote to local",
+    "commitPush": "Commit & push",
+    "commitPushBtn": "Commit & Push",
+    "pushBusy": "Pushing…",
+    "commitPushHint": "Push local changes to the GitHub remote repository",
+    "placeholder": "e.g. Add entry for Aug 2",
+    "emptyCommitMsg": "Please enter a commit message",
+    "pullDone": "Pulled remote updates.",
+    "pushDone": "Committed and pushed to GitHub.",
+    "kind": {
+      "modified": "Modified",
+      "added": "Added",
+      "deleted": "Deleted",
+      "untracked": "Untracked",
+      "renamed": "Renamed",
+      "conflict": "Conflict"
+    }
   }
 }
