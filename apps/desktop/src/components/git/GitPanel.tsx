@@ -80,6 +80,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [showFiles, setShowFiles] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<ParsedFile['kind']>>(new Set());
   const [commitMsg, setCommitMsg] = useState('');
   const [busy, setBusy] = useState<'pull' | 'push' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -201,27 +202,42 @@ export function GitPanel({ onClose }: GitPanelProps) {
                     .filter((k) => parsed.counts[k] > 0)
                     .map((k) => (
                       <div key={k} style={{ marginBottom: 8 }}>
-                        <div style={{
-                          fontSize: 12, fontWeight: 600, color: 'var(--t2, #475569)',
-                          padding: '2px 0', borderBottom: '1px solid var(--brd, #e2e8f0)',
-                        }}>
-                          {KIND_LABEL[k]} · {parsed.counts[k]}
-                        </div>
-                        <ul style={{ listStyle: 'none', padding: 0, margin: '4px 0 0' }}>
-                          {parsed.files
-                            .filter((f) => f.kind === k)
-                            .map((f, i) => (
-                              <li
-                                key={i}
-                                style={{
-                                  fontFamily: 'var(--mono, monospace)', fontSize: 12,
-                                  padding: '2px 0', wordBreak: 'break-all', color: 'var(--t1, #1e293b)',
-                                }}
-                              >
-                                {f.path}
-                              </li>
-                            ))}
-                        </ul>
+                        <button
+                          onClick={() => setCollapsedGroups((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(k)) next.delete(k);
+                            else next.add(k);
+                            return next;
+                          })}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 6, width: '100%',
+                            fontSize: 12, fontWeight: 600, color: 'var(--t2, #475569)',
+                            padding: '2px 0', borderBottom: '1px solid var(--brd, #e2e8f0)',
+                            background: 'none', border: 'none', borderBottomWidth: 1,
+                            borderBottomStyle: 'solid', borderBottomColor: 'var(--brd, #e2e8f0)',
+                            cursor: 'pointer', textAlign: 'left',
+                          }}
+                        >
+                          <span>{collapsedGroups.has(k) ? '▸' : '▾'}</span>
+                          <span>{KIND_LABEL[k]} · {parsed.counts[k]}</span>
+                        </button>
+                        {!collapsedGroups.has(k) && (
+                          <ul style={{ listStyle: 'none', padding: 0, margin: '4px 0 0' }}>
+                            {parsed.files
+                              .filter((f) => f.kind === k)
+                              .map((f, i) => (
+                                <li
+                                  key={i}
+                                  style={{
+                                    fontFamily: 'var(--mono, monospace)', fontSize: 12,
+                                    padding: '2px 0', wordBreak: 'break-all', color: 'var(--t1, #1e293b)',
+                                  }}
+                                >
+                                  {f.path}
+                                </li>
+                              ))}
+                          </ul>
+                        )}
                       </div>
                     ))}
                 </div>
