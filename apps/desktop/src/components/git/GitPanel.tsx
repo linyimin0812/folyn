@@ -195,7 +195,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
           }}>
             <div className="dlg-label" style={{ margin: 0, fontSize: 13, textTransform: 'none' }}>本地改动</div>
             <button
-              className="btn btn-g btn-sm"
+              className="btn btn-p btn-sm"
               onClick={() => void refreshStatus()}
               disabled={busy !== null}
             >
@@ -282,7 +282,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
           }}>
             <div className="dlg-label" style={{ margin: 0, fontSize: 13, textTransform: 'none' }}>拉取远程更新</div>
             <button
-              className="btn btn-g btn-sm"
+              className="btn btn-p btn-sm"
               onClick={() => void handlePull()}
               disabled={busy !== null}
             >
