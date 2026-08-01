@@ -114,6 +114,16 @@ export function GitPanel({ onClose }: GitPanelProps) {
     if (absPath) void refreshStatus();
   }, [absPath, refreshStatus]);
 
+  // ponytail: auto-hide success info 4s after it's set; new info resets timer.
+  useEffect(() => {
+    if (!info) return;
+    const t = window.setTimeout(() => {
+      setInfo(null);
+      setInfoFor(null);
+    }, 4000);
+    return () => window.clearTimeout(t);
+  }, [info]);
+
   const handlePull = async () => {
     setBusy('pull');
     setError(null);
