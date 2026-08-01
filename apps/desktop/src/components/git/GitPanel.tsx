@@ -177,7 +177,10 @@ export function GitPanel({ onClose }: GitPanelProps) {
       <div
         className="dlg"
         onClick={(e) => e.stopPropagation()}
-        style={{ height: '65vh', display: 'flex', flexDirection: 'column' }}
+        style={{
+          height: '65vh', display: 'flex', flexDirection: 'column',
+          width: 'max-content', maxWidth: '92vw',
+        }}
       >
         <div className="dlg-hd">
           <h3>同步「{currentVault.name}」到 GitHub</h3>
