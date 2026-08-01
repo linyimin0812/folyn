@@ -155,13 +155,15 @@ export default function App() {
   // MUST await settingsLoadDone: appearanceStore.showAiPanel is the DEFAULT
   // (true) until the persisted blob hydrates. Reading it before hydration
   // resolves always yields true, so a user with showAiPanel=false would
-  // still see the panel auto-open. The ref guard survives React 18
-  // StrictMode's double-invoke; the `cancelled` flag survives unmount
-  // between hydration resolving and the setState landing.
-  const aiPanelVisibilitySeeded = useRef(false);
+  // still see the panel auto-open.
+  //
+  // NO ref guard: React 18 StrictMode (main.tsx:91) double-mounts effects.
+  // A ref guard would short-circuit the second mount while the first mount's
+  // `.then` is still in flight, and the first mount's `cancelled` flag
+  // (flipped by its cleanup) would skip the setState — neither mount seeds.
+  // Mirrors the canonical teardown-races-await pattern at App.tsx:381-423
+  // (voice hotkey). The redundant setState on the second mount is idempotent.
   useEffect(() => {
-    if (aiPanelVisibilitySeeded.current) return;
-    aiPanelVisibilitySeeded.current = true;
     let cancelled = false;
     settingsLoadDone.then(() => {
       if (cancelled) return;
