@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useVaultStore } from '@/store/vaultStore';
 import {
   getStatus,
@@ -11,10 +11,59 @@ interface GitPanelProps {
   onClose: () => void;
 }
 
+interface ParsedFile {
+  path: string;
+  label: string;
+  kind: 'modified' | 'added' | 'deleted' | 'untracked' | 'renamed' | 'conflict';
+}
+
+interface ParsedStatus {
+  clean: boolean;
+  counts: Record<ParsedFile['kind'], number>;
+  total: number;
+  files: ParsedFile[];
+  raw: string;
+}
+
 /**
- * Git operations panel for the active GitHub vault. Shows `git status --short`,
- * plus pull and commit+push actions. All operations run via `gitService`
- * (shell plugin, scoped to the vault's local clone path).
+ * ponytail: parse `git status --short` lines into a plain-language list.
+ * XY is the two-char code; the X/Y chars cover the cases Quill vaults
+ * actually produce (no rename source detection — `R ` paths are "renamed").
+ */
+function parseGitStatus(raw: string): ParsedStatus {
+  const counts: Record<ParsedFile['kind'], number> = {
+    modified: 0, added: 0, deleted: 0, untracked: 0, renamed: 0, conflict: 0,
+  };
+  const files: ParsedFile[] = [];
+  const lines = raw.split('\n').map((l) => l.trimEnd()).filter(Boolean);
+  for (const line of lines) {
+    if (!line) continue;
+    const xy = line.slice(0, 2);
+    const path = line.slice(3).trim();
+    let kind: ParsedFile['kind'];
+    let label: string;
+    if (xy === '??') { kind = 'untracked'; label = '未跟踪'; }
+    else if (xy[0] === 'U' || xy[1] === 'U' || xy === 'AA' || xy === 'DD') { kind = 'conflict'; label = '冲突'; }
+    else if (xy[0] === 'A' || xy[1] === 'A') { kind = 'added'; label = '新增'; }
+    else if (xy[0] === 'D' || xy[1] === 'D') { kind = 'deleted'; label = '删除'; }
+    else if (xy[0] === 'R' || xy[0] === 'C') { kind = 'renamed'; label = '重命名'; }
+    else { kind = 'modified'; label = '修改'; }
+    counts[kind] += 1;
+    files.push({ path, label, kind });
+  }
+  const total = files.length;
+  return { clean: total === 0, counts, total, files, raw };
+}
+
+const KIND_LABEL: Record<ParsedFile['kind'], string> = {
+  modified: '修改', added: '新增', deleted: '删除',
+  untracked: '未跟踪', renamed: '重命名', conflict: '冲突',
+};
+
+/**
+ * Git panel for the active GitHub vault. Plain-language status summary +
+ * Pull / Commit & Push actions. Operations run via `gitService` (shell
+ * plugin, scoped to the vault's local clone path).
  *
  * ponytail: modal dialog (dlg-overlay) reuses existing styling — no new
  * panel infrastructure. A side-popover would be nicer but costs more.
@@ -23,28 +72,36 @@ export function GitPanel({ onClose }: GitPanelProps) {
   const currentVault = useVaultStore((s) => s.currentVault);
   const refreshFileTree = useVaultStore((s) => s.refreshFileTree);
 
-  const [status, setStatus] = useState<string>('加载中…');
+  const [rawStatus, setRawStatus] = useState<string>('');
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [showRaw, setShowRaw] = useState(false);
   const [commitMsg, setCommitMsg] = useState('');
   const [busy, setBusy] = useState<'pull' | 'push' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [absPath, setAbsPath] = useState<string>('');
 
+  const parsed = useMemo(() => parseGitStatus(rawStatus), [rawStatus]);
+
   const refreshStatus = useCallback(async () => {
     if (!absPath) return;
+    setStatusLoading(true);
+    setStatusError(null);
     try {
       const out = await getStatus(absPath);
-      setStatus(out);
+      setRawStatus(out);
     } catch (err) {
-      setStatus(`获取状态失败: ${err instanceof Error ? err.message : String(err)}`);
+      setStatusError(err instanceof Error ? err.message : String(err));
+      setRawStatus('');
+    } finally {
+      setStatusLoading(false);
     }
   }, [absPath]);
 
   useEffect(() => {
     if (!currentVault) return;
-    resolveAbsPath(currentVault.basePath).then((p) => {
-      setAbsPath(p);
-    });
+    resolveAbsPath(currentVault.basePath).then((p) => setAbsPath(p));
   }, [currentVault]);
 
   useEffect(() => {
@@ -57,7 +114,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
     setInfo(null);
     try {
       const res = await pullRepo(absPath);
-      setInfo(`Pull 完成。${res.stdout ? res.stdout : ''}`.trim());
+      setInfo(`已拉取远程更新。${res.stdout ? res.stdout : ''}`.trim());
       await refreshStatus();
       await refreshFileTree();
     } catch (err) {
@@ -70,7 +127,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
   const handleCommitPush = async () => {
     const msg = commitMsg.trim();
     if (!msg) {
-      setError('请输入提交信息');
+      setError('请填写提交信息');
       return;
     }
     setBusy('push');
@@ -78,7 +135,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
     setInfo(null);
     try {
       const res = await commitAndPush(absPath, msg);
-      setInfo(`提交并推送完成。${res.stdout ? res.stdout : ''}`.trim());
+      setInfo(`已提交并推送到 GitHub。${res.stdout ? res.stdout : ''}`.trim());
       setCommitMsg('');
       await refreshStatus();
       await refreshFileTree();
@@ -89,48 +146,110 @@ export function GitPanel({ onClose }: GitPanelProps) {
     }
   };
 
-  if (!currentVault) {
-    return null;
-  }
+  if (!currentVault) return null;
+
+  const summaryParts = (Object.keys(parsed.counts) as ParsedFile['kind'][])
+    .filter((k) => parsed.counts[k] > 0)
+    .map((k) => `${KIND_LABEL[k]} ${parsed.counts[k]}`);
 
   return (
     <div className="dlg-overlay" onClick={onClose}>
       <div className="dlg" onClick={(e) => e.stopPropagation()}>
         <div className="dlg-hd">
-          <h3>Git 操作 — {currentVault.name}</h3>
+          <h3>同步「{currentVault.name}」到 GitHub</h3>
           <button className="dlg-close" onClick={onClose}>✕</button>
         </div>
 
         <div className="dlg-body">
-          <label className="dlg-label">状态 (git status --short)</label>
-          <pre
-            className="dlg-input"
-            style={{ whiteSpace: 'pre-wrap', maxHeight: 200, overflow: 'auto', fontFamily: 'var(--mono, monospace)' }}
-          >
-            {status}
-          </pre>
-          <button
-            className="btn btn-g btn-sm"
-            style={{ marginTop: 6 }}
-            onClick={() => void refreshStatus()}
-            disabled={busy !== null}
-          >
-            刷新状态
-          </button>
+          {/* 状态 */}
+          <div className="dlg-label">本地改动</div>
+          {statusLoading ? (
+            <div style={{ color: 'var(--fg-muted, #888)', padding: '8px 0' }}>加载中…</div>
+          ) : statusError ? (
+            <div className="dlg-error">{statusError}</div>
+          ) : parsed.clean ? (
+            <div style={{ color: 'var(--ok, #16a34a)', padding: '8px 0' }}>✓ 工作区干净，没有需要提交的改动</div>
+          ) : (
+            <>
+              <div style={{ padding: '4px 0', fontWeight: 500 }}>
+                {parsed.total} 个文件有改动
+                {summaryParts.length > 0 && (
+                  <span style={{ color: 'var(--fg-muted, #888)', fontWeight: 400, marginLeft: 8 }}>
+                    （{summaryParts.join(' · ')}）
+                  </span>
+                )}
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '6px 0 0', maxHeight: 200, overflow: 'auto' }}>
+                {parsed.files.map((f, i) => (
+                  <li key={i} style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '2px 0' }}>
+                    <span
+                      style={{
+                        flex: '0 0 auto', fontSize: 12, padding: '1px 6px', borderRadius: 4,
+                        background: 'var(--bg-muted, #f1f5f9)', color: 'var(--fg-muted, #64748b)',
+                      }}
+                    >
+                      {f.label}
+                    </span>
+                    <span style={{ fontFamily: 'var(--mono, monospace)', fontSize: 12, wordBreak: 'break-all' }}>
+                      {f.path}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
 
-          <label className="dlg-label" style={{ marginTop: 12 }}>拉取远程更新 (git pull)</label>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+            <button
+              className="btn btn-g btn-sm"
+              onClick={() => void refreshStatus()}
+              disabled={busy !== null}
+            >
+              刷新
+            </button>
+            {rawStatus && (
+              <button
+                className="btn btn-g btn-sm"
+                onClick={() => setShowRaw((v) => !v)}
+                disabled={busy !== null}
+              >
+                {showRaw ? '隐藏原始输出' : '显示原始输出'}
+              </button>
+            )}
+          </div>
+          {showRaw && rawStatus && (
+            <pre
+              className="dlg-input"
+              style={{
+                whiteSpace: 'pre-wrap', marginTop: 6, maxHeight: 160, overflow: 'auto',
+                fontFamily: 'var(--mono, monospace)', fontSize: 12,
+              }}
+            >
+              {rawStatus}
+            </pre>
+          )}
+
+          {/* 拉取 */}
+          <div className="dlg-label" style={{ marginTop: 16 }}>拉取远程更新</div>
+          <div style={{ color: 'var(--fg-muted, #888)', fontSize: 12, marginBottom: 6 }}>
+            把 GitHub 仓库上的最新改动下载到本地。多人协作或换设备后点这个。
+          </div>
           <button
             className="btn btn-g btn-sm"
             onClick={() => void handlePull()}
             disabled={busy !== null}
           >
-            {busy === 'pull' ? 'Pull 中…' : 'Pull'}
+            {busy === 'pull' ? '拉取中…' : '拉取 (Pull)'}
           </button>
 
-          <label className="dlg-label" style={{ marginTop: 12 }}>提交并推送 (commit + push -u origin HEAD)</label>
+          {/* 提交并推送 */}
+          <div className="dlg-label" style={{ marginTop: 16 }}>提交并推送</div>
+          <div style={{ color: 'var(--fg-muted, #888)', fontSize: 12, marginBottom: 6 }}>
+            把本地改动上传到 GitHub。先填一句话说明这次改了什么，再点按钮。
+          </div>
           <input
             className="dlg-input"
-            placeholder="提交信息"
+            placeholder="例如：补充 8 月 2 日的日记"
             value={commitMsg}
             onChange={(e) => setCommitMsg(e.target.value)}
             autoCapitalize="off"
@@ -142,7 +261,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
             onClick={() => void handleCommitPush()}
             disabled={busy !== null}
           >
-            {busy === 'push' ? '提交推送中…' : 'Commit & Push'}
+            {busy === 'push' ? '提交推送中…' : '提交并推送 (Commit & Push)'}
           </button>
 
           {info && <div className="dlg-error" style={{ color: 'var(--ok, #16a34a)' }}>{info}</div>}
