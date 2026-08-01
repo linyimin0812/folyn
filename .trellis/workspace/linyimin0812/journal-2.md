@@ -1517,3 +1517,38 @@ Reordered built-in input modes to Chat → Agent → Ask. Rewrote PairSelector a
 ### Next Steps
 
 - None - task complete
+
+
+## Session 102: Pet Chat reuses AiPanel + @-mention via fileTree broadcast
+
+**Date**: 2026-08-01
+**Task**: Pet Chat reuses AiPanel + @-mention via fileTree broadcast
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Pet-panel chat tab now mounts <AiPanel embedded /> instead of <PetChat>; embedded prop skips aiPanelVisible gate, hides × and resize handle, fills body. Main window broadcasts fileTree + currentVault via pet://file-tree-updated (debounced 300ms, reusing subscribeToFileTree); pet-panel mirrors into its own vaultStore instance and requests a snapshot on mount via pet://file-tree-request (main window re-emits on demand) so @-mention has real files even though the pet window lacks vault fs ACL. petHostRouter + PetSettings swapped usePetChatStore → useAiStore (pet sessions now shared with main AI panel). Deleted PetChat.tsx / PetChatSessionHeader.tsx / petChatStore.ts / petChatService.ts + tests: +132 / -3,497 lines.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `80ed7ff` | (see git log) |
+| `8671280` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
