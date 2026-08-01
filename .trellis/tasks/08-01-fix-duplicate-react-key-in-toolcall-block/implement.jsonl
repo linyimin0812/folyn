@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store action patterns; addToolCall 改动需符合 state 管理规范"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "list rendering key 约定；确认 ToolCallBlock key 策略"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "改动 + 新增测试需满足质量基线"}

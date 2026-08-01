@@ -208,6 +208,16 @@ describe('useAiStore message actions', () => {
     expect(done.output).toBe('result');
   });
 
+  it('addToolCall dedupes by id when the same tool_start fires twice', () => {
+    seedSession();
+    useAiStore.getState().addMessage('assistant', 'running');
+    useAiStore.getState().addToolCall('tc1', 'search', { q: 'x' });
+    useAiStore.getState().addToolCall('tc1', 'search', { q: 'x' });
+    const calls = useAiStore.getState().getActiveSession()!.messages[0].toolCalls!;
+    expect(calls).toHaveLength(1);
+    expect(calls[0].status).toBe('running');
+  });
+
   it('completeToolCall truncates output longer than 5000 chars', () => {
     seedSession();
     useAiStore.getState().addMessage('assistant', 'x');

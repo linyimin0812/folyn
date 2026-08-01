@@ -305,6 +305,8 @@ export const useAiStore = create<AiState>((set, get) => ({
         const msgs = [...s.messages];
         if (msgs.length > 0) {
           const last = msgs[msgs.length - 1];
+          const existing = last.toolCalls?.find((tc) => tc.id === id);
+          if (existing) return { ...s, messages: msgs, updatedAt: Date.now() };
           msgs[msgs.length - 1] = {
             ...last,
             toolCalls: [...(last.toolCalls || []), { id, name, status: 'running' as const, input }],
