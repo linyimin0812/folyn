@@ -192,7 +192,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
                 )}
               </button>
               {showFiles && (
-                <ul style={{ listStyle: 'none', padding: 0, margin: '6px 0 0', maxHeight: 200, overflow: 'auto' }}>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '6px 0 0' }}>
                   {parsed.files.map((f, i) => (
                     <li key={i} style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '2px 0' }}>
                       <span
