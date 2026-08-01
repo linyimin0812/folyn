@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 102
+- **Total Sessions**: 103
 - **Last Active**: 2026-08-01
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1554 | Active |
+| `journal-2.md` | ~1591 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 103 | 2026-08-01 | AiPanel: clickable file paths + follow-ups (dedup tabs, disable @ in Chat, Agent CLI tag, session-locks) | `d23259e`, `aa91f31`, `a885558`, `677460e` | `master` |
 | 102 | 2026-08-01 | Pet Chat reuses AiPanel + @-mention via fileTree broadcast | `80ed7ff`, `8671280` | `master` |
 | 101 | 2026-08-01 | Reorder AI input modes + reusable model pair dropdown | - | `master` |
 | 100 | 2026-08-01 | Fix AiPanel mount gate + hydration race + StrictMode double-cancel | `a0922b5`, `4147fe4`, `3db0a00` | `master` |

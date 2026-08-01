@@ -1552,3 +1552,40 @@ Pet-panel chat tab now mounts <AiPanel embedded /> instead of <PetChat>; embedde
 ### Next Steps
 
 - None - task complete
+
+
+## Session 103: AiPanel: clickable file paths + follow-ups (dedup tabs, disable @ in Chat, Agent CLI tag, session-locks)
+
+**Date**: 2026-08-01
+**Task**: AiPanel: clickable file paths + follow-ups (dedup tabs, disable @ in Chat, Agent CLI tag, session-locks)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Made inline-code file paths in AiPanel assistant messages clickable (open file + jump to line:col). Follow-ups: normalize absolute paths inside vault basePath to vault-relative before openFile (kills duplicate tabs); disable @-mention menu in Chat/rig mode (no file tools); replace provider|model tag with real CLI identity (claude_code.svg / pi.svg + displayName) for non-Chat modes; unlock AdapterSelector mid-session (R5), then re-lock AdapterSelector + mode dropdown once session has messages (R6) while keeping Chat's PairSelector unlocked. sessionStarted signal uses messages.length > 0 (rig never sets cliSessionId). All 33 tests green; typecheck clean.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d23259e` | (see git log) |
+| `aa91f31` | (see git log) |
+| `a885558` | (see git log) |
+| `677460e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
