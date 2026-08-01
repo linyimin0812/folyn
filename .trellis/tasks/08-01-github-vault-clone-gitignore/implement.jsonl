@@ -1,0 +1,7 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "frontend 概览与路径别名 / 命名约定"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "vaultStore 是 Zustand store；新增 helper 不破坏 selector 模式"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "GitPanel 改动需遵守组件/样式约定"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "新增 shell.json gitPanel 键"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "禁止模式 + review checklist"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "平移 patternToRegExp/matchesAnyPattern 到 utils 而非重写"}

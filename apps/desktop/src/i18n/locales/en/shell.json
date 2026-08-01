@@ -38,6 +38,8 @@
     "emptyCommitMsg": "Please enter a commit message",
     "pullDone": "Pulled remote updates.",
     "pushDone": "Committed and pushed to GitHub.",
+    "addToGitignore": "Add to .gitignore",
+    "gitignoreAdded": "Added {{pattern}} to .gitignore",
     "kind": {
       "modified": "Modified",
       "added": "Added",

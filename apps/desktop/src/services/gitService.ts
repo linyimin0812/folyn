@@ -9,6 +9,7 @@
  */
 
 import { resolveBasePath } from '@/utils/pathResolver';
+import { mergeGitignoreEntries } from '@/utils/excludePattern';
 
 export interface GitResult {
   stdout: string;
@@ -169,4 +170,31 @@ export async function commitAndPush(targetPath: string, message: string): Promis
     throw new Error(result.stderr || result.stdout || 'git commit+push failed');
   }
   return result;
+}
+
+/**
+ * Append any missing `entries` to `<targetPath>/.gitignore`. Idempotent: lines
+ * already present (literal match, comment-stripped) are not re-added; an empty
+ * or all-comment entry list is a no-op. Throws on read/write failure so callers
+ * can decide whether to swallow (clone-time: warn-and-continue) or surface
+ * (GitPanel button: toast the error).
+ *
+ * ponytail: pure merge logic in `mergeGitignoreEntries` (unit-tested); this is
+ * the thin fs shell — not unit-tested, mirroring the runShell/cloneRepo split.
+ */
+export async function ensureGitignoreEntries(targetPath: string, entries: string[]): Promise<void> {
+  if (entries.length === 0) return;
+  const { readTextFile, writeTextFile } = await import('@tauri-apps/plugin-fs');
+  const { join } = await import('@tauri-apps/api/path');
+  const gitignorePath = await join(targetPath, '.gitignore');
+  let existing = '';
+  try {
+    existing = await readTextFile(gitignorePath);
+  } catch {
+    // Missing .gitignore — start from empty.
+  }
+  const { changed, content } = mergeGitignoreEntries(existing, entries);
+  if (changed) {
+    await writeTextFile(gitignorePath, content);
+  }
 }

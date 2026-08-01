@@ -38,6 +38,8 @@
     "emptyCommitMsg": "请填写提交信息",
     "pullDone": "已拉取远程更新。",
     "pushDone": "已提交并推送到 GitHub。",
+    "addToGitignore": "加入 .gitignore",
+    "gitignoreAdded": "已将 {{pattern}} 加入 .gitignore",
     "kind": {
       "modified": "修改",
       "added": "新增",

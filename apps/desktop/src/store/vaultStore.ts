@@ -15,7 +15,9 @@ import { resolveBasePath } from '@/utils/pathResolver';
 import { seedAgentFiles } from '@/services/featureAgentService';
 import { isExternalPath } from '@/utils/isExternalPath';
 import { externalFileProvider } from '@/services/externalFileProvider';
-import { cloneRepo, type BranchStrategy } from '@/services/gitService';
+import { cloneRepo, ensureGitignoreEntries, type BranchStrategy } from '@/services/gitService';
+import { matchesAnyPattern } from '@/utils/excludePattern';
+import { BUILTIN_EXCLUDE_DIRS } from './appearanceStore';
 
 async function startWatcherForVault(config: VaultConfig) {
   // ponytail: github vaults clone to a local dir, so the file watcher applies
@@ -59,25 +61,16 @@ async function prepareGithubVault(config: VaultConfig): Promise<void> {
     token: opts.token,
     branch: opts.branchStrategy,
   });
-}
-
-/** Convert a glob-like pattern to a RegExp for matching file/folder names */
-function patternToRegExp(pattern: string): RegExp {
-  const escaped = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*/g, '.*')
-    .replace(/\?/g, '.');
-  return new RegExp(`^${escaped}$`);
-}
-
-/** Check if a file/folder name matches any of the exclude patterns */
-function matchesAnyPattern(name: string, patterns: string[]): boolean {
-  return patterns.some((pattern) => {
-    if (pattern.includes('*') || pattern.includes('?')) {
-      return patternToRegExp(pattern).test(name);
-    }
-    return name === pattern;
-  });
+  // Sync built-in managed dirs (__wiki__, __clips__, ...) into the cloned
+  // repo's .gitignore so the auto-created local work dirs don't get pushed
+  // back to the user's remote. Append-only; existing .gitignore preserved.
+  // ponytail: failure is non-fatal — clone already succeeded; surface as
+  // warning so a bad .gitignore state can't block vault creation.
+  try {
+    await ensureGitignoreEntries(absPath, BUILTIN_EXCLUDE_DIRS);
+  } catch (err) {
+    console.warn('[VaultStore] .gitignore sync after clone failed:', err);
+  }
 }
 
 interface VaultState {

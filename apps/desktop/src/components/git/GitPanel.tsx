@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useVaultStore } from '@/store/vaultStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
+import { findMatchedPattern } from '@/utils/excludePattern';
 import {
   getStatus,
   pullRepo,
   commitAndPush,
+  ensureGitignoreEntries,
   resolveAbsPath,
 } from '@/services/gitService';
 
@@ -72,6 +75,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
   const { t } = useTranslation(['shell', 'common']);
   const currentVault = useVaultStore((s) => s.currentVault);
   const refreshFileTree = useVaultStore((s) => s.refreshFileTree);
+  const excludePatternsRaw = useAppearanceStore((s) => s.excludePatterns);
 
   const [rawStatus, setRawStatus] = useState<string>('');
   const [statusLoading, setStatusLoading] = useState(true);
@@ -80,11 +84,20 @@ export function GitPanel({ onClose }: GitPanelProps) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<FileKind>>(new Set(['untracked']));
   const [commitMsg, setCommitMsg] = useState('');
   const [busy, setBusy] = useState<'pull' | 'push' | null>(null);
+  const [ignoreBusyPath, setIgnoreBusyPath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [absPath, setAbsPath] = useState<string>('');
 
   const parsed = useMemo(() => parseGitStatus(rawStatus), [rawStatus]);
+
+  const excludePatterns = useMemo(
+    () => (excludePatternsRaw || '')
+      .split('\n')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0 && !s.startsWith('#')),
+    [excludePatternsRaw],
+  );
 
   const kindLabel = useCallback(
     (k: FileKind) => t(`shell:gitPanel.kind.${k}`),
@@ -157,6 +170,22 @@ export function GitPanel({ onClose }: GitPanelProps) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(null);
+    }
+  };
+
+  const handleAddToGitignore = async (filePath: string, pattern: string) => {
+    setIgnoreBusyPath(filePath);
+    setError(null);
+    setInfo(null);
+    try {
+      await ensureGitignoreEntries(absPath, [pattern]);
+      setInfo(t('shell:gitPanel.gitignoreAdded', { pattern }));
+      await refreshStatus();
+      await refreshFileTree();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIgnoreBusyPath(null);
     }
   };
 
@@ -255,17 +284,35 @@ export function GitPanel({ onClose }: GitPanelProps) {
                           <ul style={{ listStyle: 'none', padding: 0, margin: '4px 0 0' }}>
                             {parsed.files
                               .filter((f) => f.kind === k)
-                              .map((f, i) => (
-                                <li
-                                  key={i}
-                                  style={{
-                                    fontFamily: 'var(--mono, monospace)', fontSize: 11,
-                                    padding: '2px 0', wordBreak: 'break-all', color: 'var(--t1, #1e293b)',
-                                  }}
-                                >
-                                  {f.path}
-                                </li>
-                              ))}
+                              .map((f, i) => {
+                                const matchedPattern = findMatchedPattern(f.path, excludePatterns);
+                                return (
+                                  <li
+                                    key={i}
+                                    style={{
+                                      display: 'flex', alignItems: 'center', gap: 6,
+                                      fontFamily: 'var(--mono, monospace)', fontSize: 11,
+                                      padding: '2px 0', wordBreak: 'break-all', color: 'var(--t1, #1e293b)',
+                                    }}
+                                  >
+                                    <span style={{ flex: 1 }}>{f.path}</span>
+                                    {matchedPattern && (
+                                      <button
+                                        className="btn btn-sm"
+                                        onClick={() => void handleAddToGitignore(f.path, matchedPattern)}
+                                        disabled={busy !== null || ignoreBusyPath === f.path}
+                                        style={{
+                                          flex: '0 0 auto', fontSize: 10, padding: '1px 6px',
+                                          whiteSpace: 'nowrap',
+                                        }}
+                                        title={t('shell:gitPanel.addToGitignore')}
+                                      >
+                                        {t('shell:gitPanel.addToGitignore')}
+                                      </button>
+                                    )}
+                                  </li>
+                                );
+                              })}
                           </ul>
                         )}
                       </div>
