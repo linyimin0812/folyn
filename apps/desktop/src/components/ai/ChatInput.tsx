@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { useAiStore } from '@/store/aiStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
 import { flattenFileTree } from '@/utils/treeUtils';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { listInputModes, isRigMode } from './inputModes';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Zap, Command as CommandIcon } from 'lucide-react';
 import { AdapterSelector } from './AdapterSelector';
 import { PairSelector, useEnabledPairs, type Pair } from './PairSelector';
 import { useNavStore } from '@/store/navStore';
@@ -20,12 +21,48 @@ import {
   DEFAULT_ALLOWED_TYPES,
 } from '@/components/chat';
 import { VoiceInputButton } from './VoiceInputButton';
+import { getAdapterForSession } from './adapterManager';
+import type { CommandEntry, SkillEntry } from '@quill/cli-adapter';
 
 // Re-export PendingAttachment so existing AiPanel imports
 // (`import type { PendingAttachment } from './ChatInput'`) keep working
 // during the PR3 migration. The canonical type now lives in the shared
 // `components/chat/attachments.ts` helper.
 export type { PendingAttachment };
+
+/** Build the text inserted into the input box when the user picks a slash-menu
+ *  entry. Mirrors the per-CLI invocation rules from the research file:
+ *  - Claude skill → `/name` (Claude resolves skills via bare `/name`)
+ *  - Pi skill      → `/skill:name` (Pi's mandatory `skill:` prefix)
+ *  - command/template → `/name` (both CLIs use bare `/name` for templates)
+ *  When the entry has an `argumentHint` and `args` is provided, the args are
+ *  appended after a space. Exported for unit testing. */
+export function buildSlashInsertString(
+  entry: { kind: 'skill' | 'command'; name: string },
+  adapterId: string,
+  args?: string,
+): string {
+  const trigger =
+    entry.kind === 'skill' && adapterId === 'pi' ? `/skill:${entry.name}` : `/${entry.name}`;
+  const trimmed = args?.trim();
+  return trimmed ? `${trigger} ${trimmed}` : trigger;
+}
+
+/** Filter skills + commands by a lowercase `q` prefix typed after `/`.
+ *  Matches on name OR description (case-insensitive). Exported for unit
+ *  testing the `/`-trigger filter without rendering. */
+export function filterSlashEntries(
+  skills: SkillEntry[],
+  commands: CommandEntry[],
+  q: string,
+): { skills: SkillEntry[]; commands: CommandEntry[] } {
+  const lf = q.toLowerCase();
+  const match = (name: string, desc: string) => !lf || name.toLowerCase().includes(lf) || desc.toLowerCase().includes(lf);
+  return {
+    skills: skills.filter((s) => match(s.name, s.description)).slice(0, 20),
+    commands: commands.filter((c) => match(c.name, c.description)).slice(0, 20),
+  };
+}
 
 interface ChatInputProps {
   onSend: (text: string, attachments: PendingAttachment[]) => void;
@@ -41,6 +78,19 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [mentionMenu, setMentionMenu] = useState<{ visible: boolean; filter: string; anchorPos: number }>({ visible: false, filter: '', anchorPos: 0 });
   const [mentionIndex, setMentionIndex] = useState(0);
+  // `/`-slash trigger (agent mode only). Mirrors the @-mention overlay's
+  // shape so the two share the same container + keyboard nav. Mutually
+  // exclusive with mentionMenu: the trigger char decides which opens.
+  const [slashMenu, setSlashMenu] = useState<{ visible: boolean; filter: string; anchorPos: number }>({ visible: false, filter: '', anchorPos: 0 });
+  const [slashIndex, setSlashIndex] = useState(0);
+  const [slashEntries, setSlashEntries] = useState<{ skills: SkillEntry[]; commands: CommandEntry[] }>({ skills: [], commands: [] });
+  const [argPrompt, setArgPrompt] = useState<{ entry: { kind: 'skill' | 'command'; name: string }; value: string } | null>(null);
+  // ponytail: per-session slash list cache. Invalidated when sessionId or
+  // cwd changes (cwd = vault basePath). Re-reading the disk every keystroke
+  // would thrash; the cache is rebuilt only on session/vault switch or
+  // manual refresh. The adapter's start() only stores config (no spawn) so
+  // it is safe to call before the first send just to seed the cwd.
+  const slashCacheRef = useRef<{ sessionId: string; cwd: string; skills: SkillEntry[]; commands: CommandEntry[] } | null>(null);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
   /** Inline guardrail / save-error message rendered under the input. Cleared
    *  on the next successful add/paste or after a timeout. Mirrors PetChat's
@@ -84,6 +134,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
   // would re-render on every aiStore change (zustand compares Object.is).
   const sessions = useAiStore((s) => s.sessions);
   const activeSessionId = useAiStore((s) => s.activeSessionId);
+  const activeSessionIdForSlash = activeSessionId ?? '';
   const setSessionPair = useAiStore((s) => s.setSessionPair);
   const activeSessionPair = useMemo<Pair | null>(() => {
     const sess = sessions?.find((x) => x.id === activeSessionId);
@@ -188,6 +239,91 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
     return [matched[activeIdx], ...matched.slice(0, activeIdx), ...matched.slice(activeIdx + 1)].slice(0, 20);
   }, [mentionMenu.visible, mentionMenu.filter, allFiles, activeFilePath]);
 
+  // ── `/`-slash trigger (agent mode only) ──
+  // Lists the current CLI adapter's skills + commands. The adapter is the
+  // per-session instance from adapterManager; `start()` only stores config
+  // (no spawn), so calling it here to seed the cwd is safe before the first
+  // real send. Cache is keyed by (sessionId, cwd); a vault/session switch
+  // invalidates it.
+  const currentVault = useVaultStore((s) => s.currentVault);
+  const slashCwd = useMemo(() => currentVault?.basePath ?? '', [currentVault]);
+  const slashEnabled = inputMode === 'agent' && !rigMode;
+
+  const loadSlashEntries = useCallback(async (sessionId: string, cwd: string): Promise<void> => {
+    const cache = slashCacheRef.current;
+    if (cache && cache.sessionId === sessionId && cache.cwd === cwd) {
+      setSlashEntries({ skills: cache.skills, commands: cache.commands });
+      return;
+    }
+    if (!sessionId || !cwd) {
+      setSlashEntries({ skills: [], commands: [] });
+      return;
+    }
+    const aiConfig = useAiConfigStore.getState();
+    const adapter = getAdapterForSession(sessionId);
+    // start() is idempotent (only stores config); safe to call before send.
+    try {
+      await adapter.start({ cliPath: aiConfig.cliPath, workingDir: cwd });
+    } catch {
+      // ignore — listing will just return []
+    }
+    let skills: SkillEntry[] = [];
+    let commands: CommandEntry[] = [];
+    try {
+      skills = await adapter.listSkills();
+    } catch {
+      skills = [];
+    }
+    try {
+      commands = await adapter.listCommands();
+    } catch {
+      commands = [];
+    }
+    slashCacheRef.current = { sessionId, cwd, skills, commands };
+    setSlashEntries({ skills, commands });
+  }, []);
+
+  // Invalidate cache on session/vault switch.
+  useEffect(() => {
+    if (!slashMenu.visible) return;
+    const sid = activeSessionIdForSlash;
+    const cwd = slashCwd;
+    const cache = slashCacheRef.current;
+    if (!cache || cache.sessionId !== sid || cache.cwd !== cwd) {
+      loadSlashEntries(sid, cwd);
+    }
+  }, [slashMenu.visible, activeSessionIdForSlash, slashCwd, loadSlashEntries]);
+
+  const filteredSlashEntries = useMemo(() => {
+    if (!slashMenu.visible) return { skills: [] as SkillEntry[], commands: [] as CommandEntry[] };
+    return filterSlashEntries(slashEntries.skills, slashEntries.commands, slashMenu.filter);
+  }, [slashMenu.visible, slashMenu.filter, slashEntries]);
+
+  const totalSlashRows = filteredSlashEntries.skills.length + filteredSlashEntries.commands.length;
+
+  /** Insert a `/name`-style trigger string at the slash anchor, replacing the
+   *  `/filter` the user typed. Mirrors insertMention's cursor handling. */
+  const insertSlash = useCallback((entry: { kind: 'skill' | 'command'; name: string }, args?: string) => {
+    const { anchorPos } = slashMenu;
+    const textarea = textareaRef.current;
+    const cursorPos = textarea?.selectionStart ?? input.length;
+    const adapterId = getAdapterForSession(activeSessionIdForSlash).id;
+    const trigger = buildSlashInsertString(entry, adapterId, args);
+    const before = input.slice(0, anchorPos);
+    const after = input.slice(cursorPos);
+    const newValue = `${before}${trigger} ${after}`;
+    setInput(newValue);
+    setSlashMenu({ visible: false, filter: '', anchorPos: 0 });
+    setArgPrompt(null);
+    setTimeout(() => {
+      if (textarea) {
+        const pos = anchorPos + trigger.length + 1;
+        textarea.selectionStart = textarea.selectionEnd = pos;
+        textarea.focus();
+      }
+    }, 0);
+  }, [slashMenu, input, activeSessionIdForSlash]);
+
   const handleChange = useCallback((value: string) => {
     setInput(value);
     // Chat mode (rig backend) has no file tools — `@`-mention attachments
@@ -200,17 +336,37 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
     // node ChatInputBox owns; `textareaRef` is the merged `inputRef`).
     const cursorPos = textareaRef.current?.selectionStart ?? value.length;
     const textBeforeCursor = value.slice(0, cursorPos);
+
+    // `/`-slash trigger: agent mode only, at line start or after whitespace.
+    // Mutually exclusive with `@`-mention (trigger char decides).
+    if (slashEnabled) {
+      const slashIdx = textBeforeCursor.lastIndexOf('/');
+      if (slashIdx >= 0 && (slashIdx === 0 || /\s/.test(textBeforeCursor[slashIdx - 1]))) {
+        const filter = textBeforeCursor.slice(slashIdx + 1);
+        if (!filter.includes(' ') && !filter.includes('\n')) {
+          setSlashMenu({ visible: true, filter, anchorPos: slashIdx });
+          setSlashIndex(0);
+          // Close mention if open (mutual exclusion).
+          if (mentionMenu.visible) setMentionMenu({ visible: false, filter: '', anchorPos: 0 });
+          return;
+        }
+      }
+      if (slashMenu.visible) setSlashMenu({ visible: false, filter: '', anchorPos: 0 });
+    }
+
     const atIdx = textBeforeCursor.lastIndexOf('@');
     if (atIdx >= 0 && (atIdx === 0 || /\s/.test(textBeforeCursor[atIdx - 1]))) {
       const filter = textBeforeCursor.slice(atIdx + 1);
       if (!filter.includes(' ') && !filter.includes('\n')) {
         setMentionMenu({ visible: true, filter, anchorPos: atIdx });
         setMentionIndex(0);
+        // Close slash if open (mutual exclusion).
+        if (slashMenu.visible) setSlashMenu({ visible: false, filter: '', anchorPos: 0 });
         return;
       }
     }
     setMentionMenu({ visible: false, filter: '', anchorPos: 0 });
-  }, [rigMode, mentionMenu.visible]);
+  }, [rigMode, slashEnabled, mentionMenu.visible, slashMenu.visible]);
 
   const insertMention = useCallback((filePath: string) => {
     const { anchorPos } = mentionMenu;
@@ -250,9 +406,60 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
     onSend(userText, currentAttachments);
   }, [input, attachments, isStreaming, onSend]);
 
-  // Mention-menu key handling runs BEFORE the base Enter-to-send. Returns
-  // true when a key is consumed so ChatInputBox skips its Enter handler.
+  // Mention-menu / slash-menu key handling runs BEFORE the base Enter-to-send.
+  // Returns true when a key is consumed so ChatInputBox skips its Enter handler.
   const handleBeforeKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Argument-prompt mini input: Enter confirms (insert /name <args>),
+    // Escape cancels back to the slash list.
+    if (argPrompt) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        insertSlash(argPrompt.entry, argPrompt.value);
+        return true;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setArgPrompt(null);
+        return true;
+      }
+      return false;
+    }
+    if (slashMenu.visible && totalSlashRows > 0) {
+      const skills = filteredSlashEntries.skills;
+      const commands = filteredSlashEntries.commands;
+      const pick = (idx: number) => {
+        if (idx < skills.length) {
+          return { kind: 'skill' as const, entry: skills[idx] };
+        }
+        return { kind: 'command' as const, entry: commands[idx - skills.length] };
+      };
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSlashIndex((i) => (i + 1) % totalSlashRows);
+        return true;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSlashIndex((i) => (i - 1 + totalSlashRows) % totalSlashRows);
+        return true;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        const { kind, entry } = pick(slashIndex);
+        if (kind === 'command' && entry.argumentHint) {
+          // Switch overlay to the argument mini-input.
+          setArgPrompt({ entry: { kind, name: entry.name }, value: '' });
+        } else {
+          insertSlash({ kind, name: entry.name });
+        }
+        return true;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setSlashMenu({ visible: false, filter: '', anchorPos: 0 });
+        return true;
+      }
+    }
     if (mentionMenu.visible && filteredMentionFiles.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -276,7 +483,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
       }
     }
     return false;
-  }, [mentionMenu.visible, filteredMentionFiles, mentionIndex, insertMention]);
+  }, [argPrompt, insertSlash, slashMenu.visible, totalSlashRows, filteredSlashEntries, slashIndex, mentionMenu.visible, filteredMentionFiles, mentionIndex, insertMention]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const { accepted, rejected } = handlePasteHelper(e, {
@@ -361,6 +568,88 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
     </div>
   ) : null;
 
+  // `/`-slash overlay: lists skills (Zap icon) then commands (Command icon).
+  // Source tag (user/project/plugin) mirrors config-layering terminology.
+  // When the picked command has an `argument-hint`, the overlay switches to
+  // the argPrompt mini-input (below) instead of inserting immediately.
+  const sourceTag = (s: SkillEntry['source']): string => t(`ai:slash.source${s[0].toUpperCase()}${s.slice(1)}`);
+  const slashOverlay = slashMenu.visible ? (
+    argPrompt ? (
+      <div className="absolute bottom-full left-0 right-0 bg-panel border border-brd rounded-lg mb-1 shadow-[0_-8px_24px_rgba(0,0,0,.12)] z-[100] p-2 flex items-center gap-2">
+        <CommandIcon size={14} className="text-t3 shrink-0" />
+        <input
+          className="flex-1 min-w-0 bg-transparent border-none outline-none text-[12px] text-t1"
+          autoFocus
+          placeholder={t('ai:slash.argumentPlaceholder', { name: argPrompt.entry.name })}
+          value={argPrompt.value}
+          onChange={(e) => setArgPrompt({ ...argPrompt, value: e.target.value })}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter') { e.preventDefault(); insertSlash(argPrompt.entry, argPrompt.value); }
+            else if (e.key === 'Escape') { e.preventDefault(); setArgPrompt(null); }
+          }}
+        />
+        <button
+          className="text-[11px] px-2 py-0.5 rounded-md bg-acc text-white border-none cursor-pointer shrink-0"
+          onMouseDown={(e) => { e.preventDefault(); insertSlash(argPrompt.entry, argPrompt.value); }}
+        >
+          {t('ai:slash.argumentConfirm')}
+        </button>
+      </div>
+    ) : totalSlashRows > 0 ? (
+      <div className="absolute bottom-full left-0 right-0 max-h-[220px] overflow-y-auto bg-panel border border-brd rounded-lg mb-1 shadow-[0_-8px_24px_rgba(0,0,0,.12)] z-[100] p-1">
+        {filteredSlashEntries.skills.length > 0 && (
+          <>
+            <div className="text-[10px] uppercase tracking-wide text-t3 px-2 pt-1 pb-0.5">{t('ai:slash.skillsLabel')}</div>
+            {filteredSlashEntries.skills.map((s, i) => (
+              <div
+                key={`skill-${s.source}-${s.name}`}
+                className={`py-1.5 px-2 rounded-md text-[12px] cursor-pointer flex items-center gap-1.5 transition-colors ${i === slashIndex ? 'bg-hov' : ''} hover:bg-hov`}
+                onMouseDown={(e) => { e.preventDefault(); insertSlash({ kind: 'skill', name: s.name }); }}
+              >
+                <Zap size={13} className="text-acc shrink-0" />
+                <span className="font-medium truncate">{s.name}</span>
+                <span className="text-t3 text-[11px] truncate min-w-0 flex-1">{s.description}</span>
+                <span className="text-t3 text-[10px] shrink-0">{sourceTag(s.source)}</span>
+              </div>
+            ))}
+          </>
+        )}
+        {filteredSlashEntries.commands.length > 0 && (
+          <>
+            <div className="text-[10px] uppercase tracking-wide text-t3 px-2 pt-1 pb-0.5">{t('ai:slash.commandsLabel')}</div>
+            {filteredSlashEntries.commands.map((c, ci) => {
+              const idx = filteredSlashEntries.skills.length + ci;
+              return (
+                <div
+                  key={`cmd-${c.source}-${c.name}`}
+                  className={`py-1.5 px-2 rounded-md text-[12px] cursor-pointer flex items-center gap-1.5 transition-colors ${idx === slashIndex ? 'bg-hov' : ''} hover:bg-hov`}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    if (c.argumentHint) setArgPrompt({ entry: { kind: 'command', name: c.name }, value: '' });
+                    else insertSlash({ kind: 'command', name: c.name });
+                  }}
+                >
+                  <CommandIcon size={13} className="text-t3 shrink-0" />
+                  <span className="font-medium truncate">{c.name}</span>
+                  {c.argumentHint && <span className="text-t3 text-[10px] truncate">{c.argumentHint}</span>}
+                  <span className="text-t3 text-[11px] truncate min-w-0 flex-1">{c.description}</span>
+                  <span className="text-t3 text-[10px] shrink-0">{sourceTag(c.source)}</span>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
+    ) : (
+      <div className="absolute bottom-full left-0 right-0 bg-panel border border-brd rounded-lg mb-1 shadow-[0_-8px_24px_rgba(0,0,0,.12)] z-[100] p-2 text-[11px] text-t3">
+        {t('ai:slash.empty')}
+      </div>
+    )
+  ) : null;
+
+  const overlayLayer = slashOverlay ?? mentionOverlay;
+
   const leadingSlot = (
     <>
       {inputModes.length > 1 && (
@@ -444,7 +733,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
         onBeforeKeyDown={handleBeforeKeyDown}
         leadingSlot={leadingSlot}
         attachmentsRow={attachmentsRow}
-        overlayLayer={mentionOverlay}
+        overlayLayer={overlayLayer}
       />
       {rejectError && (
         <div className="chat-inline-error" role="alert">

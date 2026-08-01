@@ -86,6 +86,33 @@ export interface CliAdapterConfig {
   workingDir: string;
 }
 
+/** A discoverable skill (Agent Skills standard `SKILL.md`). `name` and
+ *  `description` come from the file's YAML frontmatter; skills without a
+ *  `description` are skipped (Pi refuses to load them; Claude mirrors that).
+ *  `source` mirrors config layering; `pluginName` is set for plugin skills.
+ *  `dir` is the skill's directory (parent of `SKILL.md`). */
+export interface SkillEntry {
+  name: string;
+  description: string;
+  source: 'user' | 'project' | 'plugin' | 'builtin';
+  pluginName?: string;
+  dir: string;
+}
+
+/** A discoverable slash command / prompt template. `name` is the trigger
+ *  (e.g. `trellis:continue` for a Claude project command in
+ *  `.claude/commands/trellis/continue.md`, or `review` for a Pi prompt
+ *  template `~/.pi/agent/prompts/review.md`). `argumentHint` is the
+ *  frontmatter `argument-hint` (optional). `file` is the source path. */
+export interface CommandEntry {
+  name: string;
+  description: string;
+  source: 'user' | 'project' | 'plugin' | 'builtin';
+  argumentHint?: string;
+  pluginName?: string;
+  file: string;
+}
+
 export interface CliAgentDefinition {
   description?: string;
   prompt: string;
@@ -136,4 +163,14 @@ export interface CliAdapter {
   isRunning(): boolean;
   onEvent(handler: CliEventHandler): void;
   offEvent(handler: CliEventHandler): void;
+  /** List discoverable skills for the current session's cwd. Returns [] when
+   *  the adapter has not been started (no workingDir) or the CLI exposes no
+   *  on-disk skills. Built-in skills are not enumerable; see PRD Technical
+   *  Notes for the known gap. */
+  listSkills(): Promise<SkillEntry[]>;
+  /** List discoverable slash commands / prompt templates for the current
+   *  session's cwd. Returns [] when not started. Built-in session commands
+   *  (`/clear`, `/help`, …) are NOT listed — they are hardcoded in the CLI
+   *  and verified non-functional in `-p` one-shot mode. */
+  listCommands(): Promise<CommandEntry[]>;
 }

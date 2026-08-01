@@ -51,5 +51,15 @@
   "errors": {
     "attachmentSaveFailed": "[error] Failed to save attachments: {{error}}",
     "streamError": "[error] {{error}}"
+  },
+  "slash": {
+    "skillsLabel": "Skills",
+    "commandsLabel": "Commands",
+    "sourceUser": "user",
+    "sourceProject": "project",
+    "sourcePlugin": "plugin",
+    "empty": "No skills or commands found",
+    "argumentPlaceholder": "Arguments for /{{name}}",
+    "argumentConfirm": "Insert"
   }
 }

@@ -318,6 +318,9 @@ importers:
       '@tauri-apps/plugin-shell':
         specifier: ^2.2.0
         version: 2.3.5
+      yaml:
+        specifier: ^2.9.0
+        version: 2.9.0
 
   packages/container-plugins:
     devDependencies:

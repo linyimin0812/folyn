@@ -8,9 +8,11 @@ export type {
   CliSendOptions,
   CliStreamEvent,
   CliStreamEventType,
+  CommandEntry,
   FileChange,
   MessageAttachment,
   PermissionMode,
+  SkillEntry,
   ToolCallInfo,
 } from './src/types';
 
