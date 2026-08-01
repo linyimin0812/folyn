@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 105
+- **Total Sessions**: 106
 - **Last Active**: 2026-08-01
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1663 | Active |
+| `journal-2.md` | ~1697 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 106 | 2026-08-01 | github vault clone 后同步 .gitignore 忽略隐藏目录 | `c10e2f3` | `master` |
 | 105 | 2026-08-01 | Git panel i18n and getStatus hardening | `91cd41b`, `8ed776b`, `335e7cc`, `e96d0b5`, `8c48957` | `master` |
 | 104 | 2026-08-01 | GitHub vault UI polish | `065a9d4` | `master` |
 | 103 | 2026-08-01 | AiPanel: clickable file paths + follow-ups (dedup tabs, disable @ in Chat, Agent CLI tag, session-locks) | `d23259e`, `aa91f31`, `a885558`, `677460e` | `master` |

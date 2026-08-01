@@ -1661,3 +1661,37 @@ Internationalized the Git panel dialog and fixed several follow-up issues: modal
 ### Next Steps
 
 - None - task complete
+
+
+## Session 106: github vault clone 后同步 .gitignore 忽略隐藏目录
+
+**Date**: 2026-08-01
+**Task**: github vault clone 后同步 .gitignore 忽略隐藏目录
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Clone GitHub vault 后自动把 BUILTIN_EXCLUDE_DIRS (__wiki__/__clips__/等) 追加到 .gitignore；GitPanel 改动行若匹配 excludePatterns 显示「加入 .gitignore」按钮。新增 utils/excludePattern.ts 纯函数 (patternToRegExp/matchesAnyPattern/findMatchedPattern/mergeGitignoreEntries) + 17 单测，gitService.ensureGitignoreEntries 薄壳。tsc + 测试通过。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c10e2f3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
