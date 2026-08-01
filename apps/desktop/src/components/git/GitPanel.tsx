@@ -60,6 +60,10 @@ const KIND_LABEL: Record<ParsedFile['kind'], string> = {
   untracked: '未跟踪', renamed: '重命名', conflict: '冲突',
 };
 
+const GROUP_ORDER: ParsedFile['kind'][] = [
+  'conflict', 'modified', 'added', 'deleted', 'renamed', 'untracked',
+];
+
 /**
  * Git panel for the active GitHub vault. Plain-language status summary +
  * Pull / Commit & Push actions. Operations run via `gitService` (shell
@@ -192,23 +196,35 @@ export function GitPanel({ onClose }: GitPanelProps) {
                 )}
               </button>
               {showFiles && (
-                <ul style={{ listStyle: 'none', padding: 0, margin: '6px 0 0' }}>
-                  {parsed.files.map((f, i) => (
-                    <li key={i} style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '2px 0' }}>
-                      <span
-                        style={{
-                          flex: '0 0 auto', fontSize: 12, padding: '1px 6px', borderRadius: 4,
-                          background: 'var(--bg-muted, #f1f5f9)', color: 'var(--fg-muted, #64748b)',
-                        }}
-                      >
-                        {f.label}
-                      </span>
-                      <span style={{ fontFamily: 'var(--mono, monospace)', fontSize: 12, wordBreak: 'break-all' }}>
-                        {f.path}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <div style={{ margin: '6px 0 0' }}>
+                  {GROUP_ORDER
+                    .filter((k) => parsed.counts[k] > 0)
+                    .map((k) => (
+                      <div key={k} style={{ marginBottom: 8 }}>
+                        <div style={{
+                          fontSize: 12, fontWeight: 600, color: 'var(--t2, #475569)',
+                          padding: '2px 0', borderBottom: '1px solid var(--brd, #e2e8f0)',
+                        }}>
+                          {KIND_LABEL[k]} · {parsed.counts[k]}
+                        </div>
+                        <ul style={{ listStyle: 'none', padding: 0, margin: '4px 0 0' }}>
+                          {parsed.files
+                            .filter((f) => f.kind === k)
+                            .map((f, i) => (
+                              <li
+                                key={i}
+                                style={{
+                                  fontFamily: 'var(--mono, monospace)', fontSize: 12,
+                                  padding: '2px 0', wordBreak: 'break-all', color: 'var(--t1, #1e293b)',
+                                }}
+                              >
+                                {f.path}
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                    ))}
+                </div>
               )}
             </>
           )}
