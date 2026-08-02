@@ -10,8 +10,8 @@
  *
  * For Excel converters, the panel triggers a Tauri file save dialog
  * (`@tauri-apps/plugin-dialog` `save`) and writes the Blob via
- * `@tauri-apps/plugin-fs` `writeFile`. String outputs are surfaced to the
- * parent via `onOutput` so the auto-copy toggle (PR8) can copy them.
+ * `@tauri-apps/plugin-fs` `writeFile`. String outputs are copied via
+ * the explicit Copy button (`onCopyValue`).
  */
 import { useCallback, useState } from 'react';
 import {
@@ -23,7 +23,6 @@ import {
 
 export interface ConvertPanelProps {
   value: unknown;
-  onOutput: (text: string, mime?: string) => void;
   onCopyValue: (value: string) => void;
 }
 
@@ -33,7 +32,7 @@ const GROUP_LABELS: Record<ConverterGroup, string> = {
   language: '语言',
 };
 
-export function ConvertPanel({ value, onOutput, onCopyValue }: ConvertPanelProps) {
+export function ConvertPanel({ value, onCopyValue }: ConvertPanelProps) {
   const [output, setOutput] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -50,7 +49,6 @@ export function ConvertPanel({ value, onOutput, onCopyValue }: ConvertPanelProps
           setOutput(`已保存: ${result.filename}`);
         } else {
           setOutput(result.output);
-          onOutput(result.output, result.mime);
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -60,7 +58,7 @@ export function ConvertPanel({ value, onOutput, onCopyValue }: ConvertPanelProps
         setLoading(false);
       }
     },
-    [value, onOutput],
+    [value],
   );
 
   const handleCopy = useCallback(() => {

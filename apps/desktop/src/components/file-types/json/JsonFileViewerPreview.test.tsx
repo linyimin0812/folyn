@@ -8,13 +8,12 @@
  *   - Shows error banner on invalid content.
  *   - Switching input-mode dropdown to YAML re-parses as YAML.
  *   - Clicking expand-all expands collapsed subtrees.
- *   - Toggling auto-sort ON sorts keys on next parse.
  *   - Switching to Query/Convert/Diff tab shows "coming in PR*" placeholder.
  *
  * Mocks:
  *   - `@tauri-apps/plugin-clipboard-manager` — stubbed so the dynamic
  *     import in the component resolves to a noop.
- *   - The clipboard write is not asserted here; PR8 covers wiring.
+ *   - The clipboard write is not asserted here.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
@@ -135,58 +134,6 @@ describe('JsonFileViewerPreview — PR3', () => {
     await waitFor(() => {
       expect(within(getTree()).getByText('deep')).toBeTruthy();
     });
-  });
-
-  it('sorts keys alphabetically when auto-sort is ON before next parse', async () => {
-    // Keys in non-sorted order.
-    const unsorted = '{"zebra":1,"apple":2,"mango":3}';
-    let view: ReturnType<typeof render>;
-    await act(async () => {
-      view = render(<JsonFileViewerPreview content={unsorted} filePath='/v/data.json' />);
-    });
-    await waitFor(() => {
-      expect(within(getTree()).getByText('zebra')).toBeTruthy();
-    });
-
-    // Toggle auto-sort ON.
-    const sortToggle = view!.getByText('自动排序');
-    await act(async () => {
-      fireEvent.click(sortToggle);
-    });
-
-    // Trigger a re-parse by sending new content via the CodeMirror editor.
-    // The CM content element is a contenteditable `.cm-content`; we
-    // dispatch an input event with a new textContent to simulate typing.
-    // (CM6's mutation observer picks up DOM changes in jsdom.)
-    const cmContent = view!.container.querySelector('.cm-content') as HTMLElement | null;
-    if (cmContent) {
-      await act(async () => {
-        cmContent.focus();
-        fireEvent.input(cmContent, {
-          target: { textContent: '{ "zebra": 1, "apple": 2, "mango": 3 }' },
-        });
-      });
-    }
-    // Also fall back to re-rendering with new `content` to ensure re-parse.
-    await act(async () => {
-      view!.rerender(
-        <JsonFileViewerPreview
-          content='{ "zebra": 1, "apple": 2, "mango": 3 }'
-          filePath='/v/data.json'
-        />,
-      );
-    });
-
-    // After debounce + parse, keys should be sorted: apple, mango, zebra.
-    await waitFor(
-      () => {
-        const keys = within(getTree())
-          .getAllByText(/^(zebra|apple|mango)$/)
-          .map((el) => el.textContent);
-        expect(keys).toEqual(['apple', 'mango', 'zebra']);
-      },
-      { timeout: 2000 },
-    );
   });
 
   it('enables Query / Convert / Diff tabs (PR4-6 wired)', async () => {

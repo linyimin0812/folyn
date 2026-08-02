@@ -12,14 +12,13 @@
  *   │                              │  - Diff → DiffPane       │
  *   └──────────────────────────────┴─────────────────────────┘
  *
- * Owns state per PR3 spec: parsedValue, activeTab, autoSort,
- * autoCopy, parseError, search. Local-only — no Zustand store (per PRD
- * technical notes).
+ * Owns state per PR3 spec: parsedValue, activeTab, parseError, search.
+ * Local-only — no Zustand store (per PRD technical notes).
  *
  * Pipeline:
  *   content prop → inputContent state (editor value)
  *      → debounced 300ms → parseInput(text, 'auto')
- *      → if autoSort, sortKeysDeep → parsedValue
+ *      → parsedValue
  *      → parseError on failure (last valid parsedValue retained)
  *
  * Clipboard: clicking a key path / value in the tree calls `handleCopy`,
@@ -34,7 +33,6 @@ import {
 } from 'react';
 import type { PreviewProps } from '../types';
 import { parseInput } from './lib/parseInput';
-import { sortKeysDeep } from './lib/sortKeysDeep';
 import { runQuery, type QueryLang } from './lib/query';
 import { JsonTree } from './components/JsonTree';
 import { PreviewToolbar, type PreviewTab } from './components/PreviewToolbar';
@@ -52,8 +50,6 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
   const [parsedValue, setParsedValue] = useState<unknown>(null);
   const [parsedValueVersion, setParsedValueVersion] = useState(0);
   const [activeTab, setActiveTab] = useState<PreviewTab>('input');
-  const [autoSort, setAutoSort] = useState(false);
-  const [autoCopy, setAutoCopy] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [expandAllKey, setExpandAllKey] = useState(0);
@@ -86,11 +82,11 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
   }, []);
 
   // parse: runs parseInput in auto-detect mode (async due to dynamic-import
-  // of heavy parsers), applies auto-sort if enabled, updates parsedValue /
-  // parseError. Auto-detect covers JSON5 / escaped / base64 / YAML / XML /
-  // CSV / partial-JSON — pasted content is converted automatically.
+  // of heavy parsers), updates parsedValue / parseError. Auto-detect covers
+  // JSON5 / escaped / base64 / YAML / XML / CSV / partial-JSON — pasted
+  // content is converted automatically.
   const parse = useCallback(
-    async (text: string, sort: boolean) => {
+    async (text: string) => {
       if (text.length === 0) {
         setParsedValue(null);
         setParseError(null);
@@ -99,53 +95,40 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
       }
       try {
         const value = await parseInput(text, 'auto');
-        const finalValue = sort ? sortKeysDeep(value) : value;
-        setParsedValue(finalValue);
+        setParsedValue(value);
         setParsedValueVersion((v) => v + 1);
         setParseError(null);
         setHasParsed(true);
-        // PR8: auto-copy on parse (only when auto-copy is on AND content
-        // is non-empty). Skip copying null/primitive results is fine —
-        // copying a stringified value is still useful.
-        if (autoCopy) {
-          try {
-            const mod = await import('@tauri-apps/plugin-clipboard-manager');
-            await mod.writeText(JSON.stringify(finalValue, null, 2));
-            showToast('已自动复制解析结果');
-          } catch {
-            /* clipboard unavailable — silent */
-          }
-        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         setParseError(msg);
         setHasParsed(true);
       }
     },
-    [autoCopy, showToast],
+    [],
   );
 
   // Initial parse on mount using the file's `content` prop in auto mode.
   useEffect(() => {
     setInputContent(content ?? '');
-    void parse(content ?? '', false);
+    void parse(content ?? '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // External content change → reset input + re-parse.
   useEffect(() => {
     setInputContent(content ?? '');
-    void parse(content ?? '', autoSort);
+    void parse(content ?? '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content]);
 
-  // Debounced re-parse on input/sort change.
+  // Debounced re-parse on input change.
   useEffect(() => {
     const handle = window.setTimeout(() => {
-      void parse(inputContent, autoSort);
+      void parse(inputContent);
     }, PARSE_DEBOUNCE_MS);
     return () => window.clearTimeout(handle);
-  }, [inputContent, autoSort, parse]);
+  }, [inputContent, parse]);
 
   // Cleanup toast timer + in-flight query on unmount.
   useEffect(() => {
@@ -213,21 +196,6 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
     [showToast],
   );
 
-  // PR8: auto-copy helper for query/convert outputs.
-  const autoCopyIfEnabled = useCallback(
-    async (text: string, label: string) => {
-      if (!autoCopy) return;
-      try {
-        const mod = await import('@tauri-apps/plugin-clipboard-manager');
-        await mod.writeText(text);
-        showToast(`已自动复制${label}`);
-      } catch {
-        /* silent */
-      }
-    },
-    [autoCopy, showToast],
-  );
-
   // PR4: query runner — debounced + abortable.
   const handleQueryRun = useCallback(
     (lang: QueryLang, expr: string) => {
@@ -249,9 +217,6 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
             setQueryResult(result);
             setQueryResultVersion((v) => v + 1);
             setQueryLoading(false);
-            // PR8: auto-copy query result.
-            const resultStr = result === null ? 'null' : JSON.stringify(result, null, 2);
-            void autoCopyIfEnabled(resultStr, '查询结果');
           })
           .catch((err: unknown) => {
             if (controller.signal.aborted) return;
@@ -262,7 +227,7 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
           });
       }, QUERY_DEBOUNCE_MS);
     },
-    [parsedValue, autoCopyIfEnabled],
+    [parsedValue],
   );
 
   const handleQueryResult = useCallback((value: unknown) => {
@@ -274,14 +239,6 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
     setQueryError(message);
     setQueryResult(null);
   }, []);
-
-  // PR5: convert output handler — auto-copy if enabled.
-  const handleConvertOutput = useCallback(
-    (text: string, mime?: string) => {
-      void autoCopyIfEnabled(text, mime ? '转换结果' : '转换结果');
-    },
-    [autoCopyIfEnabled],
-  );
 
   const handleFormat = useCallback(async () => {
     if (inputContent.trim().length === 0) return;
@@ -318,11 +275,7 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-panel text-t1">
       <PreviewToolbar
         activeTab={activeTab}
-        autoSort={autoSort}
-        autoCopy={autoCopy}
         onTabChange={setActiveTab}
-        onToggleAutoSort={() => setAutoSort((v) => !v)}
-        onToggleAutoCopy={() => setAutoCopy((v) => !v)}
         onExpandAll={() => setExpandAllKey((k) => k + 1)}
         onCollapseAll={() => setCollapseAllKey((k) => k + 1)}
         // PR4-6: enable all tabs.
@@ -422,7 +375,6 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
           ) : activeTab === 'convert' ? (
             <ConvertPanel
               value={parsedValue}
-              onOutput={handleConvertOutput}
               onCopyValue={handleCopyValue}
             />
           ) : null}

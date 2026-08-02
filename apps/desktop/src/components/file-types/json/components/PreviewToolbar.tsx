@@ -4,7 +4,6 @@
  * Layout (left → right):
  *   [Input | Query | Convert | Diff] tabs
  *   | [Expand all] [Collapse all]   (active on Input tab only)
- *   | [Auto-sort toggle] [Auto-copy toggle]
  *
  * Pasted input is auto-detected as JSON / JSON5 / escaped / base64 / YAML /
  * XML / CSV / partial-JSON by `parseInput` — no manual format selector.
@@ -17,24 +16,16 @@ export type PreviewTab = 'input' | 'query' | 'convert' | 'diff';
 
 export interface PreviewToolbarProps {
   activeTab: PreviewTab;
-  autoSort: boolean;
-  autoCopy: boolean;
   enableAllTabs?: boolean;
   onTabChange: (tab: PreviewTab) => void;
-  onToggleAutoSort: () => void;
-  onToggleAutoCopy: () => void;
   onExpandAll: () => void;
   onCollapseAll: () => void;
 }
 
 export function PreviewToolbar({
   activeTab,
-  autoSort,
-  autoCopy,
   enableAllTabs = false,
   onTabChange,
-  onToggleAutoSort,
-  onToggleAutoCopy,
   onExpandAll,
   onCollapseAll,
 }: PreviewToolbarProps) {
@@ -107,49 +98,6 @@ export function PreviewToolbar({
       >
         全部收起
       </button>
-
-      <div className="mx-1 h-4 w-px bg-brd" />
-
-      {/* Auto-sort toggle */}
-      <ToggleChip
-        label="自动排序"
-        active={autoSort}
-        onClick={onToggleAutoSort}
-        title="解析后对键按字母顺序递归排序"
-      />
-      {/* Auto-copy toggle (PR8: wired to copy parse/query/convert results) */}
-      <ToggleChip
-        label="自动复制"
-        active={autoCopy}
-        onClick={onToggleAutoCopy}
-        title="格式/排序/查询/转换后自动复制结果到剪贴板"
-      />
     </div>
-  );
-}
-
-function ToggleChip({
-  label,
-  active,
-  onClick,
-  title,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  title?: string;
-}) {
-  const cls = active
-    ? 'bg-accdim text-acc border-acc/40'
-    : 'bg-surf text-t3 border-brd hover:bg-hov hover:text-t1';
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      className={`rounded border px-2 py-0.5 text-[11px] ${cls}`}
-    >
-      {label}
-    </button>
   );
 }
