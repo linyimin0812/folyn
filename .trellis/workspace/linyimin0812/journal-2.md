@@ -1834,3 +1834,38 @@ Three-task session on the JSON file viewer. (1) Redesigned DiffPane UI: horizont
 ### Next Steps
 
 - None - task complete
+
+
+## Session 111: Cmd+A select-all for native inputs
+
+**Date**: 2026-08-02
+**Task**: Cmd+A select-all for native inputs
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Tauri Edit menu lacked select_all so Cmd+A didn't work in native <input>/<textarea>; first tried adding .select_all() but its Cmd+A menu accelerator intercepted the keypress before the webview, breaking CodeMirror's Mod-a keymap. Reverted and added a global keydown listener in App.tsx that only fires on HTMLInputElement/HTMLTextAreaElement to call el.select(). CodeMirror's own Mod-a keymap preventDefaults so it never reaches this handler.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c162097` | (see git log) |
+| `dc82e8b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
