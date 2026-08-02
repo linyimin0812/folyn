@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildSlashInsertString, filterSlashEntries } from './ChatInput';
+import { buildSlashInsertString, filterSlashEntries, splitSlashTokens } from './ChatInput';
 import type { CommandEntry, SkillEntry } from '@quill/cli-adapter';
 
 describe('buildSlashInsertString (per-CLI /name rules)', () => {
@@ -77,5 +77,67 @@ describe('filterSlashEntries (/ prefix filter)', () => {
       name: `s${i}`, description: 'd', source: 'user' as const, dir: `/s${i}`,
     }));
     expect(filterSlashEntries(many, [], '').skills).toHaveLength(20);
+  });
+});
+
+describe('splitSlashTokens (/name highlight segmentation)', () => {
+  const join = (segs: { text: string; isToken: boolean }[]) => segs.map((s) => s.text).join('');
+
+  it('no token → one plain segment equal to input', () => {
+    const segs = splitSlashTokens('hello world');
+    expect(segs).toHaveLength(1);
+    expect(segs[0]).toEqual({ text: 'hello world', isToken: false });
+    expect(join(segs)).toBe('hello world');
+  });
+
+  it('empty input → one empty plain segment', () => {
+    const segs = splitSlashTokens('');
+    expect(segs).toHaveLength(1);
+    expect(segs[0]).toEqual({ text: '', isToken: false });
+  });
+
+  it('/skill-name alone → one token segment', () => {
+    const segs = splitSlashTokens('/skill-name');
+    expect(segs).toHaveLength(1);
+    expect(segs[0]).toEqual({ text: '/skill-name', isToken: true });
+    expect(join(segs)).toBe('/skill-name');
+  });
+
+  it('hello /skill:name world → three segments joining back to original', () => {
+    const segs = splitSlashTokens('hello /skill:name world');
+    expect(segs).toEqual([
+      { text: 'hello ', isToken: false },
+      { text: '/skill:name', isToken: true },
+      { text: ' world', isToken: false },
+    ]);
+    expect(join(segs)).toBe('hello /skill:name world');
+  });
+
+  it('/trellis:continue arg → token + text', () => {
+    const segs = splitSlashTokens('/trellis:continue arg');
+    expect(segs).toEqual([
+      { text: '/trellis:continue', isToken: true },
+      { text: ' arg', isToken: false },
+    ]);
+    expect(join(segs)).toBe('/trellis:continue arg');
+  });
+
+  it('a mid-word / is NOT a token (no whitespace before)', () => {
+    const segs = splitSlashTokens('a/b/c');
+    expect(segs).toHaveLength(1);
+    expect(segs[0]).toEqual({ text: 'a/b/c', isToken: false });
+    expect(join(segs)).toBe('a/b/c');
+  });
+
+  it('multiple tokens across lines (newline counts as whitespace)', () => {
+    const segs = splitSlashTokens('/foo bar /baz');
+    expect(segs.map((s) => s.isToken)).toEqual([true, false, true]);
+    expect(join(segs)).toBe('/foo bar /baz');
+  });
+
+  it('token after newline is recognized', () => {
+    const segs = splitSlashTokens('text\n/skill:x');
+    expect(segs.some((s) => s.isToken && s.text === '/skill:x')).toBe(true);
+    expect(join(segs)).toBe('text\n/skill:x');
   });
 });

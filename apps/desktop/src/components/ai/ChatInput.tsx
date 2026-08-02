@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAiStore } from '@/store/aiStore';
 import { useVaultStore } from '@/store/vaultStore';
@@ -62,6 +62,37 @@ export function filterSlashEntries(
     skills: skills.filter((s) => match(s.name, s.description)).slice(0, 20),
     commands: commands.filter((c) => match(c.name, c.description)).slice(0, 20),
   };
+}
+
+/** Split input text into segments, marking slash-invocation tokens
+ *  (`/name`, `/skill:name`, `/group:cmd`) for highlight. A token is a `/`
+ *  at start-of-string or after whitespace, followed by word/colon/hyphen
+ *  chars. Segments concatenate back to EXACTLY the original `text`.
+ *  Exported for unit testing. */
+export function splitSlashTokens(
+  text: string,
+): { text: string; isToken: boolean }[] {
+  const re = /(^|\s)(\/[\w:][\w:-]*)/g;
+  const segments: { text: string; isToken: boolean }[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const ws = m[1];
+    const token = m[2];
+    const tokenStart = m.index + ws.length;
+    if (tokenStart > last) {
+      segments.push({ text: text.slice(last, tokenStart), isToken: false });
+    }
+    segments.push({ text: token, isToken: true });
+    last = tokenStart + token.length;
+  }
+  if (last < text.length) {
+    segments.push({ text: text.slice(last), isToken: false });
+  }
+  if (segments.length === 0) {
+    segments.push({ text: '', isToken: false });
+  }
+  return segments;
 }
 
 interface ChatInputProps {
@@ -650,6 +681,30 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
 
   const overlayLayer = slashOverlay ?? mentionOverlay;
 
+  // ── `/`-token highlight mirror (agent mode only) ──
+  // A transparent-text mirror div rendered behind the textarea by
+  // ChatInputBox, wrapping `/name` tokens in a highlighted span. Only
+  // built when there's at least one token so the textarea stays normal
+  // (opaque text) when there's nothing to highlight.
+  const slashMirror: ReactNode = useMemo(() => {
+    if (!slashEnabled) return undefined;
+    const segs = splitSlashTokens(input);
+    if (!segs.some((s) => s.isToken)) return undefined;
+    return segs.map((s, i) =>
+      s.isToken ? (
+        <span
+          key={i}
+          className="slash-token rounded bg-accglow text-acc box-decoration-clone"
+        >
+          {s.text}
+        </span>
+      ) : (
+        <span key={i}>{s.text}</span>
+      ),
+    );
+  }, [slashEnabled, input]);
+
+
   const leadingSlot = (
     <>
       {inputModes.length > 1 && (
@@ -734,6 +789,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
         leadingSlot={leadingSlot}
         attachmentsRow={attachmentsRow}
         overlayLayer={overlayLayer}
+        mirrorLayer={slashMirror}
       />
       {rejectError && (
         <div className="chat-inline-error" role="alert">
