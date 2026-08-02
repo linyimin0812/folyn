@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist: no default exports, no any, named function, Tailwind tokens used."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "TS strict passes; DiffFile cast pattern consistent with DiffReviewPanel."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Props naming, structure order (selectors → state → effects → JSX), Tailwind tokens."}
+{"file": "apps/desktop/src/components/file-types/json/components/DiffPane.test.tsx", "reason": "Existing test asserts 3-stack structure (textarea + DiffView). Must be rewritten to assert horizontal split + CodeMirror input + stat badges."}

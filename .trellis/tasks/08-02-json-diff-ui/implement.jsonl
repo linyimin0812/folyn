@@ -1,0 +1,10 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Named function exports, Tailwind tokens (bg-panel/text-t1/border-brd), Props naming (on<Verb><Noun>). DiffPane rewrite + JsonFileViewerPreview layout branch must follow."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Local vs global state. Split-pane drag state stays local in DiffPane (mirrors JsonFileViewerPreview pattern); no Zustand."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns + review checklist. No default exports, no bare useStore, no any types."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "TS strict, DiffFile cast pattern (`as unknown as DiffFile`) already in DiffReviewPanel — keep consistent."}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Custom editors context. DiffPane lives inside JsonFileViewerPreview (a file-type viewer)."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse Json5CodeMirror for diff input; reuse split-pane drag pattern from JsonFileViewerPreview. Don't re-implement."}
+{"file": "apps/desktop/src/components/file-types/json/components/DiffPane.tsx", "reason": "Existing implementation — full rewrite target. Keep DiffPaneProps interface (parent doesn't change signature)."}
+{"file": "apps/desktop/src/components/file-types/json/JsonFileViewerPreview.tsx", "reason": "Layout branch point — when activeTab==='diff', skip editor/tree split and render DiffPane full-width. Reuse splitDragging pattern."}
+{"file": "apps/desktop/src/components/file-types/json/editor/Json5CodeMirror.tsx", "reason": "Reused as diff input editor. Has built-in json5 linter + errorInlineWidgetExtension — covers syntax highlight + error highlight requirements."}
+{"file": "apps/desktop/src/components/editor/DiffReviewPanel.tsx", "reason": "Reference pattern for generateDiffFile + initTheme + init + buildSplit/UnifiedDiffLines. DiffPane already mirrors it."}

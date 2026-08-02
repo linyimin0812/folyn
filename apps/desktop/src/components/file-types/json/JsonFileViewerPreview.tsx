@@ -71,7 +71,6 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
 
   // Diff tab state (PR6)
   const [diffInput, setDiffInput] = useState('');
-  const [diffValue, setDiffValue] = useState<unknown>(null);
   const [sortBeforeDiff, setSortBeforeDiff] = useState(false);
 
   // Split-pane drag-to-resize state (mirrors WorkArea.tsx pattern).
@@ -321,10 +320,6 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
     setDiffInput(text);
   }, []);
 
-  const handleDiffValueChange = useCallback((value: unknown) => {
-    setDiffValue(value);
-  }, []);
-
   // Persist queryLang across re-renders for QueryBar's default.
   const queryBarKey = `${queryLang}-${parsedValueVersion}`;
 
@@ -346,6 +341,18 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
       />
 
       <div className="flex min-h-0 flex-1" ref={splitContainerRef}>
+        {/* Diff tab takes the whole row — hide editor + tree split so DiffPane
+            gets full width for its own horizontal [input | diff] split. */}
+        {activeTab === 'diff' ? (
+          <DiffPane
+            left={parsedValue}
+            rightInput={diffInput}
+            sortBoth={sortBeforeDiff}
+            onRightInputChange={handleDiffInputChange}
+            onToggleSortBoth={() => setSortBeforeDiff((v) => !v)}
+          />
+        ) : (
+          <>
         {/* Left: CodeMirror JSON5 editor (PR7). */}
         <div className="flex min-h-0 flex-col" style={{ flex: editorFlex }}>
           <div className="flex h-[28px] shrink-0 items-center justify-end gap-1.5 border-b border-brd bg-surf px-2 text-[11px] text-t3">
@@ -435,19 +442,10 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
               onOutput={handleConvertOutput}
               onCopyValue={handleCopyValue}
             />
-          ) : (
-            <DiffPane
-              left={parsedValue}
-              rightInput={diffInput}
-              right={diffValue}
-              sortBoth={sortBeforeDiff}
-              onRightInputChange={handleDiffInputChange}
-              onRightValueChange={handleDiffValueChange}
-              onToggleSortBoth={() => setSortBeforeDiff((v) => !v)}
-              onCopyValue={handleCopyValue}
-            />
-          )}
+          ) : null}
         </div>
+          </>
+        )}
       </div>
 
       {/* Toast */}
