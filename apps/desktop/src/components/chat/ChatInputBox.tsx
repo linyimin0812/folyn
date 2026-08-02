@@ -136,7 +136,7 @@ export function ChatInputBox({
           )}
           <textarea
             ref={setTextareaRef}
-            className={`relative z-10 flex-1 resize-none border-none rounded-t-xl pt-2.5 px-3 pb-1 text-[12px] font-ui leading-[18px] bg-transparent outline-none placeholder:text-t3 ${mirrorLayer ? 'text-transparent caret-acc' : 'text-t1'}`}
+            className={`relative z-10 flex-1 w-full resize-none border-none rounded-t-xl pt-2.5 px-3 pb-1 text-[12px] font-ui leading-[18px] bg-transparent outline-none placeholder:text-t3 ${mirrorLayer ? 'text-transparent caret-acc' : 'text-t1'}`}
             placeholder={placeholder ?? t('ai:chat.placeholderFallback')}
             value={value}
             onChange={(e) => onChange(e.target.value)}
