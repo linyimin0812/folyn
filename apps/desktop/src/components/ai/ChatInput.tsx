@@ -146,9 +146,12 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
   // ponytail: read mode off the active session so it survives restart;
   // fall back to the global inputMode when no session is active (transient
   // state during creation) or for legacy sessions without a persisted mode.
+  // Both store reads must be unconditional — `??` short-circuits and would
+  // skip the second hook call on some renders, corrupting React's deps count.
   const sessionId = useAiStore((s) => s.activeSessionId);
   const sessionMode = useAiStore((s) => s.sessions?.find((x) => x.id === s.activeSessionId)?.mode);
-  const inputMode = sessionMode ?? useAiStore((s) => s.inputMode);
+  const globalInputMode = useAiStore((s) => s.inputMode);
+  const inputMode = sessionMode ?? globalInputMode;
   const currentModeDef = useMemo(
     () => inputModes.find((m) => m.id === inputMode),
     [inputMode, inputModes],
