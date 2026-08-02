@@ -487,15 +487,6 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .dlg-btn.primary:hover { opacity: .9; }
 .dlg-btn:disabled { opacity: .4; cursor: not-allowed; }
 
-/* ── Inline Diff Decorations (CodeMirror DOM) ── */
-.cm-diff-added { background: rgba(34, 197, 94, 0.15); }
-.cm-diff-deleted { background: rgba(239, 68, 68, 0.1); text-decoration: line-through; color: #999; }
-.cm-diff-widget { display: inline-flex; gap: 6px; margin-left: 12px; font-size: 14px; }
-.cm-diff-accept { color: #22c55e; cursor: pointer; font-weight: bold; }
-.cm-diff-accept:hover { color: #16a34a; }
-.cm-diff-reject { color: #ef4444; cursor: pointer; font-weight: bold; }
-.cm-diff-reject:hover { color: #dc2626; }
-
 /* ── Wiki spinners (use consolidated spin keyframe) ── */
 .wiki-btn-spinner { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--t4); border-top-color: var(--acc); animation: spin .6s linear infinite; flex-shrink: 0; }
 .wiki-activity-pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--acc); animation: streaming-pulse 1.2s ease-in-out infinite; }

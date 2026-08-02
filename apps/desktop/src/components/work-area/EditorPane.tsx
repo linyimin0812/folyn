@@ -8,8 +8,9 @@ import { hideSlashMenu, type SlashMenuState } from '@/editor/extensions/SlashCom
 import { type CodeBlockMenuState } from '@/editor/extensions/CodeBlockExtension';
 import { getStrategy, fileToBase64, convertImageFormat } from '@/utils/imageUploader';
 import type { ContainerPlugin } from '@quill/container-plugins';
+import { useDiffReviewStore } from '@/store/diffReviewStore';
+import { DiffReviewPanel } from '../editor/DiffReviewPanel';
 import type { FileTab } from '@/store/editorStore';
-import { DiffReviewBar } from './DiffReviewBar';
 import { DbmlStyleStatusButton } from '../file-types/dbml/DbmlStyleStatusButton';
 
 interface EditorPaneProps {
@@ -44,6 +45,9 @@ export const EditorPane = forwardRef<QuillEditorHandle, EditorPaneProps>(
     ref,
   ) {
     const editorRef = useRef<QuillEditorHandle>(null);
+    const diffReviewMode = useDiffReviewStore((s) => s.diffReviewMode);
+    const diffFilePath = useDiffReviewStore((s) => s.diffFilePath);
+    const isDiffTab = diffReviewMode && activeTab?.path === diffFilePath;
 
     // Expose QuillEditorHandle to parent via forwarded ref
     useImperativeHandle(ref, () => ({
@@ -180,65 +184,70 @@ export const EditorPane = forwardRef<QuillEditorHandle, EditorPaneProps>(
 
     return (
       <div className="flex-1 flex flex-col overflow-hidden border-r border-brd min-w-[200px]" style={style}>
-        <DiffReviewBar editorRef={editorRef} activeTab={activeTab} />
-        <div className="flex-1 overflow-hidden flex flex-col bg-surf min-h-0 relative">
-          {isFileLoading && (
-            <div className="ed-loading-overlay">
-              <span className="ft-spinner" /> 加载文件中…
+        {isDiffTab && activeTab ? (
+          <DiffReviewPanel activeTab={activeTab} />
+        ) : (
+          <>
+            <div className="flex-1 overflow-hidden flex flex-col bg-surf min-h-0 relative">
+              {isFileLoading && (
+                <div className="ed-loading-overlay">
+                  <span className="ft-spinner" /> 加载文件中…
+                </div>
+              )}
+              <QuillEditor
+                key={`${activeTab?.id}-${showLineNumbers}-${tabSize}-${wrapColumn}-${editorFont}-${editorFontSize}`}
+                ref={editorRef}
+                filePath={activeTab?.path ?? ''}
+                initialContent={activeTab?.content ?? ''}
+                initialCursorLine={activeTab?.cursorLine}
+                initialCursorCol={activeTab?.cursorCol}
+                onChange={(content) => {
+                  if (activeTab) onContentChange(activeTab.id, content);
+                }}
+                onSave={() => {
+                  if (activeTab) onSave(activeTab.id);
+                }}
+                onSlashMenuChange={handleSlashMenuChange}
+                onCodeBlockMenuChange={handleCodeBlockMenuChange}
+                onImagePaste={(file, previewUrl) => {
+                  setImagePasteFile(file);
+                  setImagePastePreviewUrl(previewUrl);
+                  setImagePasteVisible(true);
+                }}
+              />
+              <SlashMenu
+                visible={slashMenu.visible}
+                filter={slashMenu.filter}
+                position={slashMenuPosition}
+                onSelect={handleSlashSelect}
+                onClose={handleSlashClose}
+              />
+              <CodeBlockLangMenu
+                visible={codeBlockMenu.visible}
+                menuState={codeBlockMenu}
+                position={codeBlockMenuPosition}
+                getView={getView}
+              />
+              <ImagePasteDialog
+                visible={imagePasteVisible}
+                previewUrl={imagePastePreviewUrl}
+                currentFilePath={activeTab?.path ?? ''}
+                vaultRoot={vaultRoot}
+                onConfirm={handleImageConfirm}
+                onCancel={handleImageCancel}
+              />
+              {/* ponytail: bottom-of-editor status button for dbml persisted
+                  style state. Reads the trailing `<!-- dbml:meta -->` block
+                  straight from activeTab.content — no shared runtime state with
+                  ErDiagramX6, read-only display only. Shown only for .dbml
+                  tabs. Positioned at the bottom-right of the editor pane,
+                  matching mmap's bottom-of-editor button placement. */}
+              {activeTab?.fileType === 'dbml' && (
+                <DbmlStyleStatusButton content={activeTab.content ?? ''} />
+              )}
             </div>
-          )}
-          <QuillEditor
-            key={`${activeTab?.id}-${showLineNumbers}-${tabSize}-${wrapColumn}-${editorFont}-${editorFontSize}`}
-            ref={editorRef}
-            filePath={activeTab?.path ?? ''}
-            initialContent={activeTab?.content ?? ''}
-            initialCursorLine={activeTab?.cursorLine}
-            initialCursorCol={activeTab?.cursorCol}
-            onChange={(content) => {
-              if (activeTab) onContentChange(activeTab.id, content);
-            }}
-            onSave={() => {
-              if (activeTab) onSave(activeTab.id);
-            }}
-            onSlashMenuChange={handleSlashMenuChange}
-            onCodeBlockMenuChange={handleCodeBlockMenuChange}
-            onImagePaste={(file, previewUrl) => {
-              setImagePasteFile(file);
-              setImagePastePreviewUrl(previewUrl);
-              setImagePasteVisible(true);
-            }}
-          />
-          <SlashMenu
-            visible={slashMenu.visible}
-            filter={slashMenu.filter}
-            position={slashMenuPosition}
-            onSelect={handleSlashSelect}
-            onClose={handleSlashClose}
-          />
-          <CodeBlockLangMenu
-            visible={codeBlockMenu.visible}
-            menuState={codeBlockMenu}
-            position={codeBlockMenuPosition}
-            getView={getView}
-          />
-          <ImagePasteDialog
-            visible={imagePasteVisible}
-            previewUrl={imagePastePreviewUrl}
-            currentFilePath={activeTab?.path ?? ''}
-            vaultRoot={vaultRoot}
-            onConfirm={handleImageConfirm}
-            onCancel={handleImageCancel}
-          />
-          {/* ponytail: bottom-of-editor status button for dbml persisted
-              style state. Reads the trailing `<!-- dbml:meta -->` block
-              straight from activeTab.content — no shared runtime state with
-              ErDiagramX6, read-only display only. Shown only for .dbml
-              tabs. Positioned at the bottom-right of the editor pane,
-              matching mmap's bottom-of-editor button placement. */}
-          {activeTab?.fileType === 'dbml' && (
-            <DbmlStyleStatusButton content={activeTab.content ?? ''} />
-          )}
-        </div>
+          </>
+        )}
       </div>
     );
   },
