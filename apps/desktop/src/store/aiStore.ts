@@ -53,6 +53,10 @@ export interface AiSession {
   // via createEmptySession (recent session's pair, else firstEnabledPair).
   provider?: ChatProvider;
   model?: string;
+  // ponytail: mode optional so legacy persisted sessions hydrate as 'chat'
+  // without migration. Persisted on the session (not as a global) so the
+  // Agent/Ask/Chat selection survives restart — mirrors provider?/model?.
+  mode?: string;
 }
 
 interface AiState {
@@ -100,6 +104,12 @@ interface AiState {
    *  firstEnabledPair) in createEmptySession, not from a global. */
   setSessionPair: (sessionId: string, pair: { provider: ChatProvider; model: string }) => void;
 
+  /** Per-session mode (chat/agent/ask). Mirrors setSessionPair — writes onto
+   *  the session object so it survives restart via the existing persistence
+   *  layer. Falls back to the global inputMode for legacy sessions without
+   *  a mode field. */
+  setSessionMode: (sessionId: string, mode: string) => void;
+
   /** AI panel 输入模式（ask/agent/…），全局共享，默认 'agent' 保持现状行为。
    * 决定单次发送的 permission-mode/system-prompt 等。 */
   inputMode: string;
@@ -138,6 +148,10 @@ export function createEmptySession(): AiSession {
     updatedAt: now,
     provider: recent?.provider ?? fallback?.provider,
     model: recent?.model ?? fallback?.model,
+    // ponytail: seed mode from the most recent session (mirrors pair seed);
+    // legacy sessions[0] without a mode fall through to undefined → 'chat'
+    // at the read site, matching the global default.
+    mode: recent?.mode,
   };
 }
 
@@ -449,6 +463,18 @@ export const useAiStore = create<AiState>((set, get) => ({
         ...s,
         provider: pair.provider,
         model: pair.model,
+        updatedAt: Date.now(),
+      })),
+    }));
+    persistAiState();
+  },
+
+  setSessionMode: (sessionId, mode) => {
+    if (!get().sessions.some((s) => s.id === sessionId)) return;
+    set((state) => ({
+      sessions: updateSession(state.sessions, sessionId, (s) => ({
+        ...s,
+        mode,
         updatedAt: Date.now(),
       })),
     }));

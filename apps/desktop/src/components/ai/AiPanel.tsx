@@ -222,7 +222,9 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
     }
     const sendProvider = resolved.provider;
     const sendModel = resolved.model;
-    const sendMode = useAiStore.getState().inputMode;
+    // ponytail: prefer the session's persisted mode (survives restart) over
+    // the global inputMode fallback.
+    const sendMode = useAiStore.getState().sessions.find((s) => s.id === sessionId)?.mode ?? useAiStore.getState().inputMode;
     addMessage('user', userText || t('ai:panel.attachmentPlaceholder'), sessionId, previewAttachments.length > 0 ? previewAttachments : undefined, undefined, undefined, sendMode);
     addMessage('assistant', '', sessionId, undefined, sendProvider, sendModel, sendMode);
     setSessionStreaming(sessionId, true);
@@ -344,7 +346,9 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
     pauseWatcher();
 
     try {
-      const inputMode = useAiStore.getState().inputMode;
+      // ponytail: prefer session's persisted mode; fall back to global for
+      // legacy sessions without a mode field.
+      const inputMode = useAiStore.getState().sessions.find((s) => s.id === sid)?.mode ?? useAiStore.getState().inputMode;
       if (isRigMode(inputMode)) {
         // chat: rig direct LLM, no CLI adapter. runRigChat calls eventHandler
         // directly with the same CliStreamEvent shape; the dormant

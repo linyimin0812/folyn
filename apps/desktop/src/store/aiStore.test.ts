@@ -494,3 +494,24 @@ describe('setSessionPair (Phase 1)', () => {
     expect(useAiStore.getState().sessions).toEqual([]);
   });
 });
+
+describe('setSessionMode', () => {
+  it('writes mode onto the session (persists across restart via existing saveAllSessions)', () => {
+    const id = useAiStore.getState().createSession();
+    useAiStore.getState().setSessionMode(id, 'agent');
+    const sess = useAiStore.getState().getSession(id)!;
+    expect(sess.mode).toBe('agent');
+  });
+
+  it('is a no-op for an unknown session id', () => {
+    useAiStore.getState().setSessionMode('nope', 'agent');
+    expect(useAiStore.getState().sessions).toEqual([]);
+  });
+
+  it('createEmptySession seeds mode from the most recent session', () => {
+    const first = useAiStore.getState().createSession();
+    useAiStore.getState().setSessionMode(first, 'ask');
+    const second = useAiStore.getState().createSession();
+    expect(useAiStore.getState().getSession(second)?.mode).toBe('ask');
+  });
+});

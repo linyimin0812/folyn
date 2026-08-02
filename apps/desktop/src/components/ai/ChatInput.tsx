@@ -136,13 +136,19 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
   const consumePendingFiles = useAiStore((s) => s.consumePendingFiles);
   const pendingPrompt = useAiStore((s) => s.pendingPrompt);
   const consumePendingPrompt = useAiStore((s) => s.consumePendingPrompt);
-  const inputMode = useAiStore((s) => s.inputMode);
   const setInputMode = useAiStore((s) => s.setInputMode);
+  const setSessionMode = useAiStore((s) => s.setSessionMode);
   const inputModes = useMemo(() => listInputModes(), []);
   // Feature-agent sessions (kind='study') pick their own adapter at impl
   // time and ignore the user-facing adapter selector; only general chat
   // sessions show it.
   const sessionKind = useAiStore((s) => s.sessions?.find((x) => x.id === s.activeSessionId)?.kind);
+  // ponytail: read mode off the active session so it survives restart;
+  // fall back to the global inputMode when no session is active (transient
+  // state during creation) or for legacy sessions without a persisted mode.
+  const sessionId = useAiStore((s) => s.activeSessionId);
+  const sessionMode = useAiStore((s) => s.sessions?.find((x) => x.id === s.activeSessionId)?.mode);
+  const inputMode = sessionMode ?? useAiStore((s) => s.inputMode);
   const currentModeDef = useMemo(
     () => inputModes.find((m) => m.id === inputMode),
     [inputMode, inputModes],
@@ -737,7 +743,15 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
                     key={m.id}
                     data-mode={m.id}
                     className={`flex items-start gap-2 py-1.5 px-2 rounded-md cursor-pointer whitespace-nowrap transition-colors ${active ? 'bg-accdim text-acc' : 'text-t2 hover:bg-hov hover:text-t1'}`}
-                    onMouseDown={(e) => { e.preventDefault(); setInputMode(m.id); setModeMenuOpen(false); }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      // ponytail: write mode to the active session so it
+                      // persists; also mirror to the global for the
+                      // session-less fallback path (and tests).
+                      if (sessionId) setSessionMode(sessionId, m.id);
+                      else setInputMode(m.id);
+                      setModeMenuOpen(false);
+                    }}
                   >
                     <RowIcon size={14} className="mt-[1px] shrink-0" />
                     <span>
