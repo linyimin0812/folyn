@@ -170,6 +170,13 @@ describe('useAiStore message actions', () => {
     expect(msg.model).toBeUndefined();
   });
 
+  it('addMessage tags a message with mode when passed (persists across restart)', () => {
+    seedSession();
+    useAiStore.getState().addMessage('user', 'in agent mode', undefined, undefined, undefined, undefined, 'agent');
+    const msg = useAiStore.getState().getActiveSession()!.messages[0];
+    expect(msg.mode).toBe('agent');
+  });
+
   it('appendToLastMessage preserves the provider/model tag on the last message', () => {
     seedSession();
     useAiStore.getState().addMessage('assistant', 'Hello', undefined, undefined, 'anthropic', 'claude-sonnet-4-6');

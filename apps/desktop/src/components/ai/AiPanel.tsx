@@ -133,10 +133,13 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
   // those messages come from the CLI adapter, not the rig LLM pair, so
   // showing provider/model would be misleading.
   const customerProviders = useAiConfigStore((s) => s.customerProviders);
-  const inputMode = useAiStore((s) => s.inputMode);
   const renderPairTag = (msg: CliMessage): ReactNode | null => {
-    if (!isRigMode(inputMode)) {
-      return <AgentCliTag modeId={inputMode} />;
+    // ponytail: read the mode off the message (persisted at send time) so the
+    // Agent/Ask/Chat tag survives app restart. Fall back to 'chat' for legacy
+    // messages persisted before the mode field existed.
+    const modeId = msg.mode ?? 'chat';
+    if (!isRigMode(modeId)) {
+      return <AgentCliTag modeId={modeId} />;
     }
     if (!msg.provider || !msg.model) return null;
     return <PairTag provider={msg.provider} model={msg.model} customerProviders={customerProviders} />;
@@ -219,8 +222,9 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
     }
     const sendProvider = resolved.provider;
     const sendModel = resolved.model;
-    addMessage('user', userText || t('ai:panel.attachmentPlaceholder'), sessionId, previewAttachments.length > 0 ? previewAttachments : undefined);
-    addMessage('assistant', '', sessionId, undefined, sendProvider, sendModel);
+    const sendMode = useAiStore.getState().inputMode;
+    addMessage('user', userText || t('ai:panel.attachmentPlaceholder'), sessionId, previewAttachments.length > 0 ? previewAttachments : undefined, undefined, undefined, sendMode);
+    addMessage('assistant', '', sessionId, undefined, sendProvider, sendModel, sendMode);
     setSessionStreaming(sessionId, true);
 
     const vault = useVaultStore.getState().currentVault;

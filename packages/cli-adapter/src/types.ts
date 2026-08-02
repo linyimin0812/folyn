@@ -33,6 +33,10 @@ export interface CliMessage {
   // desktop ChatProvider catalog; the desktop consumer narrows on read.
   provider?: string;
   model?: string;
+  // ponytail: mode is optional so legacy persisted messages hydrate without
+  // migration. Persisted with the message (not as a session-global) so the
+  // Agent/Ask/Chat tag survives app restart — see AiPanel renderPairTag.
+  mode?: string;
   /** Assistant-turn inline images (image-generation models). Frontend-only;
    *  the desktop store populates this from `'image'` stream events and
    *  persists it via the rig backend's `assistant_images` history field. */

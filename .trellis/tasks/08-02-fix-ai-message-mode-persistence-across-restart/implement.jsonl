@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/cli-adapter/frontend/type-safety.md", "reason": "CliMessage interface lives in packages/cli-adapter/src/types.ts — adding optional mode field follows the optional-field pattern documented here"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "aiStore.addMessage is a Zustand action; threading a new optional param through it follows the store action patterns here"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Render-time tag derivation moves from global store read to per-message field — desktop type-safety patterns apply"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reusing the existing provider?/model? optional-field + render-time tag pattern instead of adding a parallel mechanism"}

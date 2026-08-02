@@ -78,6 +78,7 @@ interface AiState {
     attachments?: MessageAttachment[],
     provider?: ChatProvider,
     model?: string,
+    mode?: string,
   ) => void;
   appendToLastMessage: (token: string, sessionId?: string) => void;
   appendImageToLastMessage: (image: { data: string; mediaType: string }, sessionId?: string) => void;
@@ -213,15 +214,17 @@ export const useAiStore = create<AiState>((set, get) => ({
     persistAiState();
   },
 
-  addMessage: (role, content, sessionId?, attachments?, provider?, model?) => {
+  addMessage: (role, content, sessionId?, attachments?, provider?, model?, mode?) => {
     const targetId = sessionId || get().activeSessionId;
     if (!targetId) return;
-    // ponytail: tag at creation time — provider/model are spread onto the
+    // ponytail: tag at creation time — provider/model/mode are spread onto the
     // CliMessage only when explicitly passed (PR4: AiPanel forwards the
-    // session's pair when appending the assistant bubble). The
-    // appendToLastMessage/appendThinking/etc. mutators below spread `...last`
-    // so the tag survives streaming chunk appends. Legacy messages
-    // (provider undefined) render without the tag — see ChatMessageList.
+    // session's pair when appending the assistant bubble; mode is the global
+    // inputMode at send time, persisted per-message so the Agent/Ask/Chat tag
+    // survives restart). The appendToLastMessage/appendThinking/etc. mutators
+    // below spread `...last` so the tag survives streaming chunk appends.
+    // Legacy messages (provider/mode undefined) render without the tag —
+    // see ChatMessageList.
     const msg: CliMessage = {
       id: generateId(),
       role,
@@ -230,6 +233,7 @@ export const useAiStore = create<AiState>((set, get) => ({
       ...(attachments?.length ? { attachments } : {}),
       ...(provider ? { provider } : {}),
       ...(model ? { model } : {}),
+      ...(mode ? { mode } : {}),
     };
     set((state) => ({
       sessions: updateSession(state.sessions, targetId, (s) => {
