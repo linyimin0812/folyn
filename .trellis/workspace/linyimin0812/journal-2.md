@@ -1798,3 +1798,39 @@ Agent 模式 / 触发 skills/commands 下拉，从 CLI 真实磁盘来源读取�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 110: JSON diff redesign + MergeView two-editor + remove auto-sort/auto-copy
+
+**Date**: 2026-08-02
+**Task**: JSON diff redesign + MergeView two-editor + remove auto-sort/auto-copy
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Three-task session on the JSON file viewer. (1) Redesigned DiffPane UI: horizontal split [CodeMirror input | @git-diff-view DiffView] with drag-to-resize and +N/-M stats badges. (2) Swapped to @codemirror/merge MergeView — two editable side-by-side editors with char-level inline diff highlighting and scroll sync; stats computed from the diff package's diffLines. (3) Removed the auto-sort and auto-copy toolbar toggles and all downstream side-effects (parse-time sortKeysDeep, parse/query/convert clipboard writes); sortKeysDeep file + tests deleted, ConvertPanel onOutput prop removed (only consumer was auto-copy), manual click-to-copy on tree nodes preserved.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `59cf635` | (see git log) |
+| `dfcc550` | (see git log) |
+| `14c1277` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
