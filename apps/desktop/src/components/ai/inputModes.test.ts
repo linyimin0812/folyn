@@ -26,6 +26,12 @@ describe('inputModes built-ins', () => {
     expect(getInputModeDef('agent')?.permissionMode).toBe('bypassPermissions');
   });
 
+  it('agent def sets bare:false so user/project skills are discovered', () => {
+    const out = resolveSendOptions('agent', { resumeSessionId: 'rs-1' });
+    expect(out.bare).toBe(false);
+    expect(out.permissionMode).toBe('bypassPermissions');
+  });
+
   it('ask def uses plan (read-only)', () => {
     expect(getInputModeDef('ask')?.permissionMode).toBe('plan');
   });
