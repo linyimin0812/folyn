@@ -99,8 +99,18 @@
     "recentDailyEmpty": "(no recent daily notes)"
   },
   "diffToolbar": {
-    "pendingCount": "{{count}} change(s) pending review",
+    "pendingCount": "{{count}} pending review",
+    "hunkTotal": "{{count}} change(s) total",
     "acceptAll": "Accept all",
-    "rejectAll": "Reject all"
+    "rejectAll": "Reject all",
+    "accept": "Accept",
+    "reject": "Reject",
+    "split": "Split",
+    "unified": "Unified",
+    "splitHint": "Split view",
+    "unifiedHint": "Unified view",
+    "noHunk": "No matching hunk",
+    "preview": "Final content preview:",
+    "empty": "(empty)"
   }
 }
