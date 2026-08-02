@@ -103,7 +103,10 @@ export function ChatInputBox({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (onBeforeKeyDown && onBeforeKeyDown(e)) return;
-      if (e.key === 'Enter' && !e.shiftKey) {
+      // ponytail: IME 正在组词时按 Enter 选词也会进 keydown，但
+      // nativeEvent.isComposing / keyCode 229 标识这是 composition 提交，
+      // 不是真的提交消息。守一处，所有调用方都不再误发。
+      if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) {
         e.preventDefault();
         onSend();
       }
