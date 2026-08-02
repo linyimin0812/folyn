@@ -1764,3 +1764,37 @@ Reordered left-panel right-click menu into four explicit groups (new / pin-delet
 ### Next Steps
 
 - None - task complete
+
+
+## Session 109: AI Panel agent 模式 slash skills/commands + 高亮
+
+**Date**: 2026-08-02
+**Task**: AI Panel agent 模式 slash skills/commands + 高亮
+**Package**: api
+**Branch**: `feat/08-01-ai-panel-slash-skills-commands`
+
+### Summary
+
+Agent 模式 / 触发 skills/commands 下拉，从 CLI 真实磁盘来源读取（Claude ~/.claude、Pi ~/.pi/agent）；选中插入 /name 并 mirror overlay 高亮。修了 --bare 跳过用户 skill 导致空返回的 bug（agent bare:false）。cli-adapter 接口加 listSkills/listCommands。95+34 测试通过。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e3b21d6` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
