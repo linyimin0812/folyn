@@ -324,3 +324,37 @@ Added a .rt rich-text file type backed by tiptap, distinct from the existing Mar
 ### Next Steps
 
 - None - task complete
+
+
+## Session 10: 富文本表格编辑优化：网格建表+悬浮加行列+合并拆分+对齐
+
+**Date**: 2026-08-02
+**Task**: 富文本表格编辑优化：网格建表+悬浮加行列+合并拆分+对齐
+**Package**: api
+**Branch**: `brave-bridge`
+
+### Summary
+
+Tiptap 富文本编辑器表格 UX 增强。新增 TableSizeGrid（8x8 悬停网格替换硬编码 2x2 插入）、TableControlsOverlay（光标进表时浮出 +行/+列 按钮，React overlay 不碰 TableKit TableView，追加到末尾语义用 setCellSelection+addRowAfter/addColumnAfter，位置取自 @tiptap/pm/tables TableMap.positionAt）；工具栏 tableButtons 扩展合并/拆分（can() 禁用态）、左中右对齐（cell align 属性→内联 text-align），图标改用 Columns3/Rows3/TableCellsMerge|Split/Align* 区分行列。round-trip 测试加 align 与 colspan/rowspan 用例。tsc 干净，rich-text 测试 18/18。已合并 master（rebase 后 push origin）。PRD Option A，零新依赖。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f3944cb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
