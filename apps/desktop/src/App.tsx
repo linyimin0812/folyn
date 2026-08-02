@@ -465,6 +465,18 @@ export default function App() {
           useNavStore.getState().setCurrentPage('schedule');
         }
       }
+      // Cmd/Ctrl+A selects all in native <input>/<textarea>. CodeMirror has
+      // its own Mod-a keymap that preventDefaults, so it never reaches here.
+      // Tauri's Edit menu lacks a Select All item on purpose — adding
+      // `.select_all()` regresses CodeMirror (menu accelerator intercepts
+      // Cmd+A before the webview gets the keydown).
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'a') {
+        const el = e.target as HTMLElement | null;
+        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+          e.preventDefault();
+          el.select();
+        }
+      }
       // Cmd/Ctrl+P (no Shift) toggles the command palette. Shift is reserved
       // (e.g. Cmd+Shift+P / Cmd+Shift+F), so this branch only fires without it.
       if (
