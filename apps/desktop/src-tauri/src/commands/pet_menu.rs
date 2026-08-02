@@ -29,6 +29,7 @@ pub fn build_app_menu(app: &tauri::AppHandle, locale: &str) -> Result<(), AppErr
         .cut()
         .copy()
         .paste()
+        .select_all()
         .build()
         .map_err(|e| e.to_string())?;
 
