@@ -1764,3 +1764,39 @@ Reordered left-panel right-click menu into four explicit groups (new / pin-delet
 ### Next Steps
 
 - None - task complete
+
+
+## Session 109: Optimize diff review UI with @git-diff-view
+
+**Date**: 2026-08-02
+**Task**: Optimize diff review UI with @git-diff-view
+**Package**: api
+**Branch**: `worktree-feat-08-02-diff-view-git-diff-view`
+
+### Summary
+
+Replaced CodeMirror inline-diff decorations with @git-diff-view/react in both flows: (1) AI file-change / disk-sync conflict review — DiffReviewPanel with split/unified toggle, lowlight syntax highlight, theme follow, per-hunk ✓/✕ widget via diffViewAddWidget + renderWidgetLine, auto-exit on all-hunks-decided parity. Deleted InlineDiffExtension.ts + DiffReviewBar.tsx + cm-diff-* CSS. diffReviewStore API untouched, both callers (fileChangeApplier + editorIoService) verified end-to-end. (2) JSON viewer Diff tab — DiffPane swapped to DiffView (file-comparison mode, json highlight, split/unified toggle), removed diffBaseline prop + diffLineDecorator extension from Json5CodeMirror. Fixed regression: first swap dropped the editable input path so rightInput stayed empty; restored a stacked <textarea> above DiffView that fires onRightInputChange live. Net -486/+536 first phase, +109/-14 JSON fix. 32/32 tests green across DiffPane + fileChangeApplier + editorIoService + diffReviewStore; tsc clean (only pre-existing MarkdownPreview errors).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2c1eb2d` | (see git log) |
+| `c9475b4` | (see git log) |
+| `794be93` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

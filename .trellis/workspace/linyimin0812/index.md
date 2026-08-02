@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 108
-- **Last Active**: 2026-08-01
+- **Total Sessions**: 109
+- **Last Active**: 2026-08-02
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1766 | Active |
+| `journal-2.md` | ~1802 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 109 | 2026-08-02 | Optimize diff review UI with @git-diff-view | `2c1eb2d`, `c9475b4`, `794be93` | `worktree-feat-08-02-diff-view-git-diff-view` |
 | 108 | 2026-08-01 | Regroup files panel context menu | `3389043`, `3e594a8` | `master` |
 | 107 | 2026-08-01 | fix binary source export | `9099880` | `master` |
 | 106 | 2026-08-01 | github vault clone 后同步 .gitignore 忽略隐藏目录 | `c10e2f3` | `master` |
