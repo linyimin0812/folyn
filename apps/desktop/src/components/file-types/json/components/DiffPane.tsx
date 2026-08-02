@@ -1,20 +1,26 @@
 /**
  * DiffPane — git-diff-view variant of the JSON viewer's Diff tab.
  *
- * Layout:
+ * Layout (stacked — the JSON viewer's right pane is narrow, side-by-side
+ * input+diff would cram both):
  *   ┌────────────────────────────────────────────────────┐
  *   │ [☑ 排序后再比较]     [并排 | 合并]                 │
  *   │ ─────────────────────────────────────────────────  │
- *   │ <DiffView> (read-only, file-comparison mode)       │
+ *   │ <textarea> user pastes/edits candidate JSON here   │  (~40%)
+ *   │ ─────────────────────────────────────────────────  │
+ *   │ <DiffView> (read-only, file-comparison mode)       │  (~60%)
  *   │   - old = formatted `left` (sorted if `sortBoth`)  │
  *   │   - new = user's raw `rightInput`                  │
  *   └────────────────────────────────────────────────────┘
  *
- * `@git-diff-view/react`'s `DiffView` is read-only, so the inline editing
- * the old CodeMirror-based DiffPane allowed is gone — users edit on the
- * Raw tab. `rightInput` / `onRightInputChange` are kept in props for
- * interface compatibility (the parent still owns the value), they just
- * no longer fire from this tab.
+ * The textarea fires `onRightInputChange(text)` on every keystroke so the
+ * parent's `diffInput` state stays in sync and the diff re-renders live.
+ *
+ * ponytail: plain `<textarea>` over `Json5CodeMirror` — zero new CodeMirror
+ * mounts in a tab that's already running DiffView; the diff itself shows
+ * highlighted syntax, so input-area highlighting is redundant. Add a
+ * CodeMirror-backed input only if users report needing JSON validation
+ * while typing.
  *
  * Mirrors `apps/desktop/src/components/editor/DiffReviewPanel.tsx` for the
  * `generateDiffFile` + `DiffView` + theme pattern.
@@ -39,11 +45,16 @@ export interface DiffPaneProps {
 
 const BASELINE_NAME = 'baseline.json';
 const RIGHT_NAME = 'right.json';
+// ponytail: fixed 40/60 split — add a drag-resizer if users need to grow
+// the input past the default for large pastes.
+const INPUT_FLEX = 0.4;
+const DIFF_FLEX = 0.6;
 
 export function DiffPane({
   left,
   rightInput,
   sortBoth,
+  onRightInputChange,
   onToggleSortBoth,
 }: DiffPaneProps) {
   const { t } = useTranslation();
@@ -126,8 +137,27 @@ export function DiffPane({
         </div>
       </div>
 
+      {/* Input area — user pastes/edits candidate JSON; fires on every
+          keystroke so the parent's diffInput state + diff re-render live. */}
+      <div
+        className="flex min-h-0 flex-col"
+        style={{ flex: INPUT_FLEX }}
+      >
+        <textarea
+          value={rightInput ?? ''}
+          onChange={(e) => onRightInputChange(e.target.value)}
+          placeholder="粘贴或输入待比较的 JSON…"
+          aria-label="待比较的 JSON"
+          spellCheck={false}
+          className="min-h-0 flex-1 resize-none border-b border-brd bg-panel px-2 py-1.5 font-mono text-[12px] leading-[1.5] text-t1 outline-none"
+        />
+      </div>
+
       {/* Read-only git-diff-view. */}
-      <div className="min-h-0 flex-1 overflow-auto bg-surf">
+      <div
+        className="min-h-0 flex-1 overflow-auto bg-surf"
+        style={{ flex: DIFF_FLEX }}
+      >
         <DiffView
           diffFile={diffFile}
           diffViewMode={mode}

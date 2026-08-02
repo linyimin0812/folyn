@@ -25,13 +25,17 @@ vi.mock('@git-diff-view/react', () => {
   return { DiffView, DiffModeEnum };
 });
 
+// Stub DiffView as a plain div with a stable marker; capture props so we can
+// assert the host wires them through. generateDiffFile returns a sentinel
+// whose identity changes per call so we can assert re-renders on input.
+const mockGenerateDiffFile = vi.fn(() => ({
+  initTheme: vi.fn(),
+  init: vi.fn(),
+  buildSplitDiffLines: vi.fn(),
+  buildUnifiedDiffLines: vi.fn(),
+}));
 vi.mock('@git-diff-view/file', () => ({
-  generateDiffFile: vi.fn(() => ({
-    initTheme: vi.fn(),
-    init: vi.fn(),
-    buildSplitDiffLines: vi.fn(),
-    buildUnifiedDiffLines: vi.fn(),
-  })),
+  generateDiffFile: (...args: unknown[]) => mockGenerateDiffFile(...args),
 }));
 
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
@@ -136,5 +140,66 @@ describe('DiffPane', () => {
     // Default appearanceStore theme resolves to 'light' in the test env
     // (no matchMedia dark preference).
     expect(screen.getByTestId('diff-view-stub').getAttribute('data-theme')).toBe('light');
+  });
+
+  it('fires onRightInputChange on every keystroke and rebuilds the diff with the new rightInput', () => {
+    const onRightInputChange = vi.fn();
+    mockGenerateDiffFile.mockClear();
+    render(
+      <DiffPane
+        left={{ a: 1 }}
+        rightInput=""
+        right={null}
+        sortBoth={false}
+        onRightInputChange={onRightInputChange}
+        onRightValueChange={() => {}}
+        onToggleSortBoth={() => {}}
+        onCopyValue={() => {}}
+      />,
+    );
+    // The textarea is the only <textarea> in the component.
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+    expect(textarea.value).toBe('');
+    fireEvent.change(textarea, { target: { value: '{"a":2}' } });
+    expect(onRightInputChange).toHaveBeenCalledTimes(1);
+    expect(onRightInputChange).toHaveBeenCalledWith('{"a":2}');
+  });
+
+  it('re-renders the diff when rightInput prop changes (parent drives state)', () => {
+    mockGenerateDiffFile.mockClear();
+    const { rerender } = render(
+      <DiffPane
+        left={{ a: 1 }}
+        rightInput='{"a":1}'
+        right={null}
+        sortBoth={false}
+        onRightInputChange={() => {}}
+        onRightValueChange={() => {}}
+        onToggleSortBoth={() => {}}
+        onCopyValue={() => {}}
+      />,
+    );
+    const initialCalls = mockGenerateDiffFile.mock.calls.length;
+    expect(initialCalls).toBeGreaterThan(0);
+    // Last call's 4th positional arg (newContent) is the rightInput.
+    const firstNewContent = mockGenerateDiffFile.mock.calls[initialCalls - 1][3];
+    expect(firstNewContent).toBe('{"a":1}');
+
+    rerender(
+      <DiffPane
+        left={{ a: 1 }}
+        rightInput='{"a":2}'
+        right={null}
+        sortBoth={false}
+        onRightInputChange={() => {}}
+        onRightValueChange={() => {}}
+        onToggleSortBoth={() => {}}
+        onCopyValue={() => {}}
+      />,
+    );
+    const afterCalls = mockGenerateDiffFile.mock.calls.length;
+    expect(afterCalls).toBeGreaterThan(initialCalls);
+    const lastNewContent = mockGenerateDiffFile.mock.calls[afterCalls - 1][3];
+    expect(lastNewContent).toBe('{"a":2}');
   });
 });
