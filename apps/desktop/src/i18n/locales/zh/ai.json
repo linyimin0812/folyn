@@ -51,5 +51,15 @@
   "errors": {
     "attachmentSaveFailed": "[错误] 附件保存失败: {{error}}",
     "streamError": "[错误] {{error}}"
+  },
+  "slash": {
+    "skillsLabel": "技能",
+    "commandsLabel": "命令",
+    "sourceUser": "用户",
+    "sourceProject": "项目",
+    "sourcePlugin": "插件",
+    "empty": "未找到技能或命令",
+    "argumentPlaceholder": "/{{name}} 的参数",
+    "argumentConfirm": "插入"
   }
 }

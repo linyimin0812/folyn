@@ -1,0 +1,5 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/cli-adapter/frontend/index.md", "reason": "扩展 CliAdapter 接口加 listSkills/listCommands；适配器接口契约与现有 arg-building 约定"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "ChatInput / overlay 复用现有 @-mention 骨架；桌面前端组件/i18n 约定"}
+{"file": ".trellis/spec/guides/index.md", "reason": "共享编码/测试规范"}
+{"file": ".trellis/tasks/08-01-ai-panel-agent-mode-skills-commands-slash-trigger/research/cli-skills-commands-discovery.md", "reason": "Claude/Pi 各自 skills/commands 的 on-disk 来源、frontmatter 格式、/name 触发机制、Adapter contract 推荐"}

@@ -1,7 +1,15 @@
-import type { CliAdapterConfig, CliSendOptions, CliStreamEvent } from './types';
+import type { CliAdapterConfig, CliSendOptions, CommandEntry, CliStreamEvent, SkillEntry } from './types';
 import { Command } from '@tauri-apps/plugin-shell';
+import { readTextFile } from '@tauri-apps/plugin-fs';
 import { BaseCliAdapter } from './baseAdapter';
 import { quoteShellArg } from './claudeAdapter';
+import {
+  collectCommands,
+  collectSkills,
+  resolveHome,
+  type CommandSource,
+  type SkillSource,
+} from './discovery';
 
 /**
  * Pure seam: map a parsed pi `--mode rpc` / `--mode json` JSONL event object
@@ -240,6 +248,77 @@ export class PiAdapter extends BaseCliAdapter {
 
   async start(config: CliAdapterConfig): Promise<void> {
     this.config = config;
+  }
+
+  /** List discoverable Pi skills (Agent Skills standard). Reads the on-disk
+   *  sources from the research file: `~/.pi/agent/skills/` (rootMd),
+   *  `~/.agents/skills/` (SKILL.md dirs only), project `.pi/skills/` (rootMd)
+   *  + `.agents/skills/`, and package skills from `settings.json` `skills[]`.
+   *  Precedence: user > project > plugin (first occurrence wins). Skills
+   *  WITHOUT `description` are skipped (Pi refuses to load them). Skills with
+   *  `disable-model-invocation: true` ARE included (user-triggerable via
+   *  `/skill:name`). Returns [] when not started.
+   *  ponytail: Pi project trust is NOT replicated — the adapter only reads
+   *  files; an untrusted project's skills won't actually resolve in a Pi rpc
+   *  session started against it. Documented gap, see PRD Technical Notes. */
+  async listSkills(): Promise<SkillEntry[]> {
+    if (!this.config) return [];
+    const sources: SkillSource[] = [];
+    sources.push({ path: await resolveHome('~/.pi/agent/skills'), source: 'user', rootMd: true });
+    sources.push({ path: await resolveHome('~/.agents/skills'), source: 'user' });
+    sources.push({ path: `${this.config.workingDir}/.pi/skills`, source: 'project', rootMd: true });
+    sources.push({ path: `${this.config.workingDir}/.agents/skills`, source: 'project' });
+    for (const dir of await this.packageSkillDirs()) {
+      sources.push({ path: dir, source: 'plugin' });
+    }
+    return collectSkills(sources);
+  }
+
+  /** List discoverable Pi prompt templates (the slash-command analog).
+   *  Templates are NON-recursive: `~/.pi/agent/prompts/*.md` → `/review`;
+   *  subfolders must be added explicitly (per docs). Precedence:
+   *  user > project > plugin. */
+  async listCommands(): Promise<CommandEntry[]> {
+    if (!this.config) return [];
+    const sources: CommandSource[] = [];
+    sources.push({ path: await resolveHome('~/.pi/agent/prompts'), source: 'user', flat: true });
+    sources.push({ path: `${this.config.workingDir}/.pi/prompts`, source: 'project', flat: true });
+    for (const dir of await this.packagePromptDirs()) {
+      sources.push({ path: dir, source: 'plugin', flat: true });
+    }
+    return collectCommands(sources);
+  }
+
+  /** Read `~/.pi/agent/settings.json` and return the `skills[]` entries that
+   *  point to dirs (Pi merges these into the discovery). Missing /
+   *  malformed settings → []. The `prompts[]` array is read by
+   *  packagePromptDirs. */
+  private async readSettings(): Promise<{ skills?: string[]; prompts?: string[] }> {
+    const settingsPath = await resolveHome('~/.pi/agent/settings.json');
+    let text: string;
+    try {
+      text = await readTextFile(settingsPath);
+    } catch {
+      return {};
+    }
+    try {
+      const data = JSON.parse(text) as { skills?: unknown; prompts?: unknown };
+      const skills = Array.isArray(data.skills) ? data.skills.filter((s): s is string => typeof s === 'string') : [];
+      const prompts = Array.isArray(data.prompts) ? data.prompts.filter((s): s is string => typeof s === 'string') : [];
+      return { skills, prompts };
+    } catch {
+      return {};
+    }
+  }
+
+  private async packageSkillDirs(): Promise<string[]> {
+    const { skills } = await this.readSettings();
+    return skills ?? [];
+  }
+
+  private async packagePromptDirs(): Promise<string[]> {
+    const { prompts } = await this.readSettings();
+    return prompts ?? [];
   }
 
   async stop(): Promise<void> {

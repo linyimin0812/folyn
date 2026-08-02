@@ -90,6 +90,11 @@ registerInputMode({
   icon: Bot,
   description: '全工具自主执行（可读写文件）',
   permissionMode: 'bypassPermissions',
+  // bare:false aligns with interactive Claude Code: --bare isolates the
+  // session and skips discovery of user/project skills (and CLAUDE.md /
+  // cwd agents), so /skill-name from the slash dropdown would resolve to
+  // "Unknown command". Matching the interactive CLI keeps skills loadable.
+  bare: false,
 });
 registerInputMode({
   id: 'ask',

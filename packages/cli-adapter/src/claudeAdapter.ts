@@ -1,7 +1,14 @@
-import type { CliAdapterConfig, CliSendOptions, FileChange } from './types';
+import type { CliAdapterConfig, CliSendOptions, CommandEntry, FileChange, SkillEntry } from './types';
 import { Command } from '@tauri-apps/plugin-shell';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { BaseCliAdapter } from './baseAdapter';
+import {
+  collectCommands,
+  collectSkills,
+  resolveHome,
+  type CommandSource,
+  type SkillSource,
+} from './discovery';
 
 interface ClaudeStreamMessage {
   type: string;
@@ -35,6 +42,80 @@ export class ClaudeAdapter extends BaseCliAdapter {
 
   async start(config: CliAdapterConfig): Promise<void> {
     this.config = config;
+  }
+
+  /** List discoverable Claude Code skills. Reads the on-disk sources from
+   *  the research file: user (`~/.claude/skills/`), project
+   *  (`<cwd>/.claude/skills/`), and plugin skills (via
+   *  `~/.claude/plugins/installed_plugins.json` → `<installPath>/skills/`).
+   *  Precedence: user > project > plugin (first occurrence wins). Returns []
+   *  when the adapter has not been started.
+   *  ponytail: project sources use workingDir only (the vault root in Quill);
+   *  walking up to a `.git` repo root is not done — add if a non-vault cwd
+   *  ever needs ancestor discovery. */
+  async listSkills(): Promise<SkillEntry[]> {
+    if (!this.config) return [];
+    const sources: SkillSource[] = [];
+    const userDir = await resolveHome('~/.claude/skills');
+    sources.push({ path: userDir, source: 'user', rootMd: true });
+    sources.push({ path: `${this.config.workingDir}/.claude/skills`, source: 'project' });
+    for (const plugin of await this.pluginSkillDirs()) {
+      sources.push({ path: plugin.dir, source: 'plugin', pluginName: plugin.name });
+    }
+    return collectSkills(sources);
+  }
+
+  /** List discoverable Claude Code slash commands. Same three trees as
+   *  skills, globbing `*.md` AND `*.toml` under `commands/`; subfolder →
+   *  `group:name` (e.g. `.claude/commands/trellis/continue.md` →
+   *  `trellis:continue`). Precedence: user > project > plugin. */
+  async listCommands(): Promise<CommandEntry[]> {
+    if (!this.config) return [];
+    const sources: CommandSource[] = [];
+    const userDir = await resolveHome('~/.claude/commands');
+    sources.push({ path: userDir, source: 'user', toml: true });
+    sources.push({ path: `${this.config.workingDir}/.claude/commands`, source: 'project', toml: true });
+    for (const plugin of await this.pluginCommandDirs()) {
+      sources.push({ path: plugin.dir, source: 'plugin', pluginName: plugin.name, toml: true });
+    }
+    return collectCommands(sources);
+  }
+
+  /** Read `~/.claude/plugins/installed_plugins.json` and return the
+   *  `{dir, name}` for each installed plugin's `skills/` dir. Malformed /
+   *  missing registry → []. */
+  private async pluginSkillDirs(): Promise<{ dir: string; name: string }[]> {
+    return this.pluginDirs('skills');
+  }
+
+  private async pluginCommandDirs(): Promise<{ dir: string; name: string }[]> {
+    return this.pluginDirs('commands');
+  }
+
+  /** Parse the installed-plugins registry (`name@marketplace` →
+   *  `{installPath, version}`) and return each plugin's `<installPath>/<kind>/`
+   *  dir + the plugin's short name (before `@`). */
+  private async pluginDirs(kind: 'skills' | 'commands'): Promise<{ dir: string; name: string }[]> {
+    const registryPath = await resolveHome('~/.claude/plugins/installed_plugins.json');
+    let text: string;
+    try {
+      text = await readTextFile(registryPath);
+    } catch {
+      return [];
+    }
+    let registry: Record<string, { installPath?: string; version?: string }>;
+    try {
+      registry = JSON.parse(text);
+    } catch {
+      return [];
+    }
+    if (!registry || typeof registry !== 'object') return [];
+    const out: { dir: string; name: string }[] = [];
+    for (const [key, val] of Object.entries(registry)) {
+      if (!val || typeof val.installPath !== 'string') continue;
+      out.push({ dir: `${val.installPath}/${kind}`, name: key.split('@')[0] });
+    }
+    return out;
   }
 
   async stop(): Promise<void> {

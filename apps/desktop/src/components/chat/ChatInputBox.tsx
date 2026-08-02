@@ -35,6 +35,12 @@ export interface ChatInputBoxProps {
    *  @-mention popup and the input-mode menu). Omit for the minimal pet
    *  path. */
   overlayLayer?: ReactNode;
+  /** Mirror content rendered BEHIND the textarea (z-0, pointer-events-none)
+   *  to highlight `/name` slash tokens. When provided, the textarea's text
+   *  becomes transparent (caret stays visible) so the mirror shows through.
+   *  Omit for the minimal pet path — textarea stays opaque. The container
+   *  (typography + padding) is owned here so it aligns with the textarea. */
+  mirrorLayer?: ReactNode;
   /** Rendered in the action row to the right (after the flex spacer). The
    *  send/stop toggle is ALWAYS owned by the base component — do not put it
    *  here. Use this for extra trailing actions. */
@@ -60,11 +66,13 @@ export function ChatInputBox({
   leadingSlot,
   attachmentsRow,
   overlayLayer,
+  mirrorLayer,
   trailingSlot,
   className,
 }: ChatInputBoxProps) {
   const { t } = useTranslation();
   const internalRef = useRef<HTMLTextAreaElement | null>(null);
+  const mirrorRef = useRef<HTMLDivElement | null>(null);
   // Merge the internal ref (unused for reads today, kept for future use)
   // with the caller-provided `inputRef` so AiPanel's ChatInput can drive
   // @-mention cursor positioning + pendingPrompt focus-end on the same
@@ -80,6 +88,17 @@ export function ChatInputBox({
     },
     [inputRef],
   );
+
+  // Sync textarea scroll to the mirror so highlighted text stays aligned
+  // when the input overflows. No-op when no mirror is rendered.
+  const handleScroll = useCallback(() => {
+    const ta = internalRef.current;
+    const mirror = mirrorRef.current;
+    if (ta && mirror) {
+      mirror.scrollTop = ta.scrollTop;
+      mirror.scrollLeft = ta.scrollLeft;
+    }
+  }, []);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -105,21 +124,33 @@ export function ChatInputBox({
       >
         {overlayLayer}
 
-        <textarea
-          ref={setTextareaRef}
-          className="flex-1 resize-none border-none rounded-t-xl pt-2.5 px-3 pb-1 text-[12px] font-ui bg-transparent text-t1 outline-none placeholder:text-t3"
-          placeholder={placeholder ?? t('ai:chat.placeholderFallback')}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onPaste={onPaste}
-          rows={textareaRows ?? 2}
-          disabled={isDisabled}
-          aria-label={inputAriaLabel ?? 'chat input'}
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-        />
+        <div className="flex-1 relative">
+          {mirrorLayer && (
+            <div
+              ref={mirrorRef}
+              aria-hidden="true"
+              className="absolute inset-0 z-0 pointer-events-none overflow-hidden pt-2.5 px-3 pb-1 text-[12px] font-ui leading-[18px] whitespace-pre-wrap break-words"
+            >
+              {mirrorLayer}
+            </div>
+          )}
+          <textarea
+            ref={setTextareaRef}
+            className={`relative z-10 flex-1 resize-none border-none rounded-t-xl pt-2.5 px-3 pb-1 text-[12px] font-ui leading-[18px] bg-transparent outline-none placeholder:text-t3 ${mirrorLayer ? 'text-transparent caret-acc' : 'text-t1'}`}
+            placeholder={placeholder ?? t('ai:chat.placeholderFallback')}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onScroll={handleScroll}
+            onPaste={onPaste}
+            rows={textareaRows ?? 2}
+            disabled={isDisabled}
+            aria-label={inputAriaLabel ?? 'chat input'}
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+        </div>
 
         <div className="flex items-center gap-1 py-1 px-1.5 pb-2">
           {leadingSlot}

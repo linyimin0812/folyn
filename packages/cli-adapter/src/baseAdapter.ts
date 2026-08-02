@@ -1,4 +1,4 @@
-import type { CliAdapter, CliAdapterConfig, CliEventHandler, CliStreamEvent } from './types';
+import type { CliAdapter, CliAdapterConfig, CliEventHandler, CliStreamEvent, CommandEntry, SkillEntry } from './types';
 
 /**
  * Abstract base for CLI adapters. Owns the event-handler registry and the
@@ -20,6 +20,18 @@ export abstract class BaseCliAdapter implements CliAdapter {
   abstract send(prompt: string, options?: import('./types').CliSendOptions): Promise<void>;
   abstract stop(): Promise<void>;
   abstract isRunning(): boolean;
+
+  /** Default: no discoverable skills. Adapters that read skills from disk
+   *  override this. Returns [] when not started. */
+  async listSkills(): Promise<SkillEntry[]> {
+    return [];
+  }
+
+  /** Default: no discoverable commands. Adapters that read commands from
+   *  disk override this. Returns [] when not started. */
+  async listCommands(): Promise<CommandEntry[]> {
+    return [];
+  }
 
   onEvent(handler: CliEventHandler): void {
     this.handlers.push(handler);
