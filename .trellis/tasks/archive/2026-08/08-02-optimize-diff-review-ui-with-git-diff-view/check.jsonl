@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Reviewer checks rewrite against forbidden patterns, dead-code removal, and the review checklist."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify DiffReviewPanel + DiffToolbar follow named exports, props hygiene, Tailwind conventions."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify diffReviewStore untouched contract + per-hunk local state hygiene."}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "Verify all new toolbar strings use the editor: namespace and locale files updated for all locales."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Cross-layer check: AI file-change flow (aiFileChangeActions) and disk-sync flow (editorIoService) both reach diffReviewStore — verify both callers still work end-to-end."}

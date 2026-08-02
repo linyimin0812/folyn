@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "New DiffReviewPanel component + DiffToolbar rewrite must follow named-export, props composition, Tailwind styling conventions."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "diffReviewStore (Zustand) API stays intact; per-hunk local state in DiffReviewPanel must follow granular-selector and runtime-only-state patterns."}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "New toolbar strings (Split/Unified toggle, per-hunk accept/reject tooltips) need editor: namespace keys."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns + review checklist applies to the rewrite and to deleting InlineDiffExtension."}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Editor slot swap during diffReviewMode touches the file-type editor rendering pipeline; need to follow custom-editor registration conventions."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Before writing new helpers (language detection, hunk merging), reuse existing utilities in the repo (e.g. file-extension lookup, language registry)."}
