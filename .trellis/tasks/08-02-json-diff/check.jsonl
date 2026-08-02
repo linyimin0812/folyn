@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist: no default exports, no any, named function, Tailwind tokens."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "TS strict passes; no new type bypasses."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Props naming, structure order, Tailwind tokens."}
+{"file": "apps/desktop/src/components/file-types/json/components/DiffPane.test.tsx", "reason": "Existing test asserts [textarea stub + DiffView stub] structure. Must be rewritten to assert MergeView mock + stats badges + two-side editing."}

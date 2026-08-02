@@ -1,0 +1,9 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Named function exports, Tailwind tokens (bg-panel/text-t1/border-brd), Props naming. DiffPane rewrite must follow."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Local state. leftText/rightText + drag-resize stay local in DiffPane; no Zustand."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns + review checklist. No default exports, no any, no type bypasses."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "TS strict. MergeView type cast only if absolutely necessary (d.ts quirks)."}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Custom editors context. DiffPane lives inside JsonFileViewerPreview."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse Json5CodeMirror's lint extension pattern for the merge editors; reuse resolvedTheme pattern from DiffReviewPanel. Don't re-implement."}
+{"file": "apps/desktop/src/components/file-types/json/components/DiffPane.tsx", "reason": "Existing implementation — full rewrite target (MergeView replaces split [Json5CodeMirror | DiffView])."}
+{"file": "apps/desktop/src/components/file-types/json/JsonFileViewerPreview.tsx", "reason": "Diff tab render branch + diffInput/sortBeforeDiff state cleanup (props reduced to {left})."}
+{"file": "apps/desktop/src/components/file-types/json/editor/Json5CodeMirror.tsx", "reason": "Reference for CM6 mount-once pattern (useRef + useEffect + dispatch for external value sync) — same pattern applies to MergeView."}

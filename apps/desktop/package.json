@@ -24,6 +24,7 @@
     "@codemirror/language": "^6.10.0",
     "@codemirror/language-data": "^6.5.1",
     "@codemirror/lint": "^6.8.4",
+    "@codemirror/merge": "^6.12.2",
     "@codemirror/search": "^6.5.8",
     "@codemirror/state": "^6.5.0",
     "@codemirror/view": "^6.35.0",

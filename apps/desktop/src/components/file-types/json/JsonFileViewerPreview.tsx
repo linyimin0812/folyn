@@ -69,10 +69,6 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
   const [queryLoading, setQueryLoading] = useState(false);
   const queryAbortRef = useRef<AbortController | null>(null);
 
-  // Diff tab state (PR6)
-  const [diffInput, setDiffInput] = useState('');
-  const [sortBeforeDiff, setSortBeforeDiff] = useState(false);
-
   // Split-pane drag-to-resize state (mirrors WorkArea.tsx pattern).
   const [editorFlex, setEditorFlex] = useState(1);
   const [treeFlex, setTreeFlex] = useState(1);
@@ -315,11 +311,6 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
     [onChange],
   );
 
-  // PR6: diff input handlers.
-  const handleDiffInputChange = useCallback((text: string) => {
-    setDiffInput(text);
-  }, []);
-
   // Persist queryLang across re-renders for QueryBar's default.
   const queryBarKey = `${queryLang}-${parsedValueVersion}`;
 
@@ -336,21 +327,13 @@ export function JsonFileViewerPreview({ content, filePath, onChange }: PreviewPr
         onCollapseAll={() => setCollapseAllKey((k) => k + 1)}
         // PR4-6: enable all tabs.
         enableAllTabs
-        // PR6: sort-before-diff toggle is rendered inside DiffPane; toolbar
-        // doesn't need a slot for it.
       />
 
       <div className="flex min-h-0 flex-1" ref={splitContainerRef}>
         {/* Diff tab takes the whole row — hide editor + tree split so DiffPane
-            gets full width for its own horizontal [input | diff] split. */}
+            gets full width for its MergeView (two side-by-side editors). */}
         {activeTab === 'diff' ? (
-          <DiffPane
-            left={parsedValue}
-            rightInput={diffInput}
-            sortBoth={sortBeforeDiff}
-            onRightInputChange={handleDiffInputChange}
-            onToggleSortBoth={() => setSortBeforeDiff((v) => !v)}
-          />
+          <DiffPane left={parsedValue} />
         ) : (
           <>
         {/* Left: CodeMirror JSON5 editor (PR7). */}
