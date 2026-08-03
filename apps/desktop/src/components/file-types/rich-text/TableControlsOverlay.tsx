@@ -236,6 +236,55 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
       <circle cx="14" cy="5" r="1.5" fill="currentColor" />
     </svg>
   );
+  // ponytail: + buttons sit flush outside the table's right/bottom edge
+  // (1px gap, matching the handle bars). Always visible while the cursor
+  // is in a table — independent of hover, unlike the row/col handle dots.
+  const plusSvg = (
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
+      <rect x="1" y="4.25" width="8" height="1.5" fill="currentColor" rx="0.5" />
+      <rect x="4.25" y="1" width="1.5" height="8" fill="currentColor" rx="0.5" />
+    </svg>
+  );
+  const addColBtn =
+    cr && rowBtn && colBtn
+      ? (() => {
+          const t = findCurrentTableDom(editor);
+          if (!t) return null;
+          const r = t.getBoundingClientRect();
+          return { left: r.right - cr.left + 1, top: r.top - cr.top, height: r.height };
+        })()
+      : null;
+  const addRowBtn =
+    cr && rowBtn && colBtn
+      ? (() => {
+          const t = findCurrentTableDom(editor);
+          if (!t) return null;
+          const r = t.getBoundingClientRect();
+          return { left: r.left - cr.left, top: r.bottom - cr.top + 1, width: r.width };
+        })()
+      : null;
+
+  // ponytail: append row/col at the table's edge — find the last row's
+  // first cell (for addRowAfter) and first row's last cell (for
+  // addColumnAfter) and run the command via runOnCell which sets a
+  // cell selection first (TableKit's add*After operates on the
+  // selected cell's row/column).
+  const onAddColRight = () => {
+    const table = findCurrentTableDom(editor);
+    if (!table) return;
+    const firstRow = table.rows[0];
+    const lastCell = firstRow?.cells[firstRow.cells.length - 1] as HTMLTableCellElement | undefined;
+    if (!lastCell) return;
+    runOnCell(editor, lastCell, 'addColumnAfter');
+  };
+  const onAddRowBottom = () => {
+    const table = findCurrentTableDom(editor);
+    if (!table) return;
+    const lastRow = table.rows[table.rows.length - 1];
+    const firstCell = lastRow?.cells[0] as HTMLTableCellElement | undefined;
+    if (!firstCell) return;
+    runOnCell(editor, firstCell, 'addRowAfter');
+  };
 
   const openRowMenu = (e: React.MouseEvent, tr: HTMLTableRowElement) => {
     e.preventDefault();
@@ -331,6 +380,32 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
             onClick={(e) => hover.colCell && openColMenu(e, hover.colCell)}
           >
             {colDotsSvg}
+          </button>
+        )}
+        {/* right-edge + button: append column */}
+        {addColBtn && (
+          <button
+            type="button"
+            title={t('editor:table.colMenu.insertRight')}
+            data-table-handle
+            className={handleBtnClass}
+            style={{ left: addColBtn.left, top: addColBtn.top, height: addColBtn.height, width: 10 }}
+            onClick={onAddColRight}
+          >
+            {plusSvg}
+          </button>
+        )}
+        {/* bottom-edge + button: append row */}
+        {addRowBtn && (
+          <button
+            type="button"
+            title={t('editor:table.rowMenu.insertBelow')}
+            data-table-handle
+            className={handleBtnClass}
+            style={{ left: addRowBtn.left, top: addRowBtn.top, width: addRowBtn.width, height: 10 }}
+            onClick={onAddRowBottom}
+          >
+            {plusSvg}
           </button>
         )}
       </div>
