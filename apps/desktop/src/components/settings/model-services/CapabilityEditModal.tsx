@@ -190,12 +190,7 @@ export function CapabilityEditModal({
                 )}
                 {aiSuggested !== null && (
                   <div className="px-2 py-1.5 bg-accdim rounded-md">
-                    <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-acc mb-1">
-                      {aiSuggested.length > 0
-                        ? t('settings:models.askAI.suggestedLabel')
-                        : t('settings:models.askAI.noSuggestion')}
-                    </div>
-                    {aiSuggested.length > 0 && (
+                    {aiSuggested.length > 0 ? (
                       <div className="flex flex-wrap items-center gap-1.5">
                         {aiSuggested.map((c) => {
                           const pill = CAPABILITY_PILL[c];
@@ -214,10 +209,11 @@ export function CapabilityEditModal({
                           );
                         })}
                       </div>
+                    ) : (
+                      <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t3">
+                        {t('settings:models.askAI.noSuggestion')}
+                      </div>
                     )}
-                    <div className="mt-1 text-[length:calc(var(--ui-font-size)-3px)] text-t3">
-                      {t('settings:models.askAI.suggestedHint')}
-                    </div>
                   </div>
                 )}
               </div>
