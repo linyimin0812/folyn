@@ -237,18 +237,33 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
     </svg>
   );
   // ponytail: + buttons sit flush outside the table's right/bottom edge
-  // (1px gap, matching the handle bars). Only visible while the mouse is
-  // over the table — gating on hover.rowTr || hover.colCell covers any
-  // cell-entry mouseover and clears on wrapper mouseleave.
+  // (1px gap, matching the handle bars). Right + only shows when hovering
+  // the last column; bottom + only shows when hovering the last row —
+  // narrows the trigger so the bars don't pop for every cell entry.
   const plusSvg = (
     <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
       <rect x="1" y="4.25" width="8" height="1.5" fill="currentColor" rx="0.5" />
       <rect x="4.25" y="1" width="1.5" height="8" fill="currentColor" rx="0.5" />
     </svg>
   );
-  const overTable = !!(hover.rowTr || hover.colCell);
+  // ponytail: last col/row index via DOM — lastCell.cellIndex on the
+  // first row gives the rightmost column; tr.rowIndex on the last row
+  // gives the bottom row. Both are DOM order, not TableMap indices —
+  // same colspan caveat as the drag handle.
+  const onLastCol = (() => {
+    if (!hover.colCell) return false;
+    const table = hover.colCell.closest('table');
+    const last = table?.rows[0]?.cells[table.rows[0].cells.length - 1] as HTMLTableCellElement | undefined;
+    return !!last && hover.colCell.cellIndex === last.cellIndex;
+  })();
+  const onLastRow = (() => {
+    if (!hover.rowTr) return false;
+    const table = hover.rowTr.closest('table');
+    const lastRow = table?.rows[table.rows.length - 1] as HTMLTableRowElement | undefined;
+    return !!lastRow && hover.rowTr.rowIndex === lastRow.rowIndex;
+  })();
   const addColBtn =
-    cr && rowBtn && colBtn && overTable
+    cr && rowBtn && colBtn && onLastCol
       ? (() => {
           const t = findCurrentTableDom(editor);
           if (!t) return null;
@@ -257,7 +272,7 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
         })()
       : null;
   const addRowBtn =
-    cr && rowBtn && colBtn && overTable
+    cr && rowBtn && colBtn && onLastRow
       ? (() => {
           const t = findCurrentTableDom(editor);
           if (!t) return null;
