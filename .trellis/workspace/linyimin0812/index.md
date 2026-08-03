@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 111
-- **Last Active**: 2026-08-02
+- **Total Sessions**: 112
+- **Last Active**: 2026-08-03
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1871 | Active |
+| `journal-2.md` | ~1905 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 112 | 2026-08-03 | fix(diff): preserve original oldContent across sequential AI edits | `ad70381` | `master` |
 | 111 | 2026-08-02 | Cmd+A select-all for native inputs | `c162097`, `dc82e8b` | `master` |
 | 110 | 2026-08-02 | JSON diff redesign + MergeView two-editor + remove auto-sort/auto-copy | `59cf635`, `dfcc550`, `14c1277` | `master` |
 | 109 | 2026-08-02 | AI Panel agent 模式 slash skills/commands + 高亮 | `e3b21d6` | `feat/08-01-ai-panel-slash-skills-commands` |

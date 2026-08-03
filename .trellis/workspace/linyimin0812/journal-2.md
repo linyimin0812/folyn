@@ -1869,3 +1869,37 @@ Tauri Edit menu lacked select_all so Cmd+A didn't work in native <input>/<textar
 ### Next Steps
 
 - None - task complete
+
+
+## Session 112: fix(diff): preserve original oldContent across sequential AI edits
+
+**Date**: 2026-08-03
+**Task**: fix(diff): preserve original oldContent across sequential AI edits
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+AI emits one file_change per edit; enterDiffReview overwrote diffOldContent on every call, collapsing the diff range to just the last edit. Keep the original oldContent when re-entering review for the same path so the cumulative diff (first edit → final state) survives. Multi-hunk per-change session UI was prototyped then reverted at user request — keeping the simpler cumulative model.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ad70381` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
