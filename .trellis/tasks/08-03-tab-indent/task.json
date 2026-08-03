@@ -3,7 +3,7 @@
   "name": "tab-indent",
   "title": "tab key indent support",
   "description": "",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "api",

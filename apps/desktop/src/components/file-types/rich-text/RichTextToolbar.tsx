@@ -23,6 +23,10 @@ import {
   Plus,
   Undo,
   Redo,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Baseline,
 } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import { persistImageBytes } from './RichTextImage';
@@ -173,7 +177,12 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
     }
   };
 
-  const buttons: ToolButton[] = [
+  // ponytail: split buttons into two segments so the font/color/align
+  // controls can render between text marks (bold/italic/underline/strike)
+  // and block types (headings/lists). The new controls need custom UI
+  // (combobox, swatch button, three align buttons) — not the icon-button
+  // pattern the mapped array uses.
+  const buttonsEarly: ToolButton[] = [
     // ponytail: slash-command trigger button. Inserts '/' at cursor; the
     // RichTextSlashExtension's computeSlashState detects it on the next
     // transaction and opens the menu. Same effect as the Mod-/ shortcut.
@@ -187,6 +196,36 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
     { icon: Italic, title: 'Italic', active: editor.isActive('italic'), disabled: !editor.can().toggleItalic(), onClick: () => editor.chain().focus().toggleItalic().run() },
     { icon: Underline, title: 'Underline', active: editor.isActive('underline'), disabled: !editor.can().toggleUnderline(), onClick: () => editor.chain().focus().toggleUnderline().run() },
     { icon: Strikethrough, title: 'Strikethrough', active: editor.isActive('strike'), disabled: !editor.can().toggleStrike(), onClick: () => editor.chain().focus().toggleStrike().run() },
+  ];
+
+  // ponytail: font family combobox — native <select> styled to match
+  // the toolbar. Six common families incl. system default. Tiptap's
+  // FontFamily extension stores the value as a textStyle mark attr.
+  const FONT_OPTIONS: { label: string; value: string }[] = [
+    { label: 'Default', value: '' },
+    { label: 'Inter', value: 'Inter, sans-serif' },
+    { label: 'Arial', value: 'Arial, sans-serif' },
+    { label: 'Georgia', value: 'Georgia, serif' },
+    { label: 'Times', value: '"Times New Roman", serif' },
+    { label: 'Mono', value: 'ui-monospace, monospace' },
+  ];
+  const currentFont = (editor.getAttributes('textStyle').fontFamily as string | undefined) ?? '';
+
+  // ponytail: text color button — opens a small popover with the same
+  // 10-swatch palette as table cell bg (kept inline here to avoid a new
+  // shared module just for this list). Custom color opens native
+  // <input type="color">; unsetColor removes the mark.
+  const [colorOpen, setColorOpen] = useState(false);
+  const currentColor = (editor.getAttributes('textStyle').color as string | undefined) ?? '#000000';
+  const colorSwatches = ['#000000', '#52525b', '#a1a1aa', '#ffffff', '#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#a855f7'];
+
+  const alignButtons: ToolButton[] = [
+    { icon: AlignLeft, title: 'Align left', active: editor.isActive({ textAlign: 'left' }) || (!editor.isActive({ textAlign: 'center' }) && !editor.isActive({ textAlign: 'right' })), disabled: !editor.can().setTextAlign('left'), onClick: () => editor.chain().focus().setTextAlign('left').run() },
+    { icon: AlignCenter, title: 'Align center', active: editor.isActive({ textAlign: 'center' }), disabled: !editor.can().setTextAlign('center'), onClick: () => editor.chain().focus().setTextAlign('center').run() },
+    { icon: AlignRight, title: 'Align right', active: editor.isActive({ textAlign: 'right' }), disabled: !editor.can().setTextAlign('right'), onClick: () => editor.chain().focus().setTextAlign('right').run() },
+  ];
+
+  const buttonsRest: ToolButton[] = [
     { icon: Heading1, title: 'Heading 1', active: editor.isActive('heading', { level: 1 }), disabled: !editor.can().toggleHeading({ level: 1 }), onClick: () => editor.chain().focus().toggleHeading({ level: 1 }).run() },
     { icon: Heading2, title: 'Heading 2', active: editor.isActive('heading', { level: 2 }), disabled: !editor.can().toggleHeading({ level: 2 }), onClick: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
     { icon: Heading3, title: 'Heading 3', active: editor.isActive('heading', { level: 3 }), disabled: !editor.can().toggleHeading({ level: 3 }), onClick: () => editor.chain().focus().toggleHeading({ level: 3 }).run() },
@@ -212,9 +251,110 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
   return (
     <>
       <div className="flex flex-wrap items-center gap-[2px] px-2 py-1 border-b border-brd bg-surf2">
-        {buttons.map((b, i) => (
+        {buttonsEarly.map((b, i) => (
           <button
             key={i}
+            type="button"
+            title={b.title}
+            disabled={b.disabled}
+            onClick={b.onClick}
+            className={`inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-default ${
+              b.active ? 'bg-accdim text-acc' : ''
+            }`}
+          >
+            <b.icon size={15} strokeWidth={1.6} />
+          </button>
+        ))}
+        {/* ponytail: font family combobox — native <select> over a custom
+            dropdown; same reasoning as the URL modal (avoid window.prompt).
+            Width auto-sizes to the longest label so it doesn't jump. */}
+        <select
+          title="Font family"
+          value={currentFont}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v) editor.chain().focus().setFontFamily(v).run();
+            else editor.chain().focus().unsetFontFamily().run();
+          }}
+          className="h-7 px-1 rounded text-t2 text-xs bg-transparent border-none hover:bg-hov hover:text-t1 cursor-pointer outline-none"
+        >
+          {FONT_OPTIONS.map((opt) => (
+            <option key={opt.value || 'default'} value={opt.value} style={{ fontFamily: opt.value || undefined }}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        {/* ponytail: text color button — A icon with a colored bar under
+            it reflecting the active color. Click opens the swatch popover
+            (same palette as table cell bg). */}
+        <div className="relative">
+          <button
+            type="button"
+            title="Text color"
+            onClick={() => setColorOpen((v) => !v)}
+            className="relative inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1"
+          >
+            <Baseline size={15} strokeWidth={1.6} />
+            <span
+              className="absolute left-1 right-1 bottom-1 h-[3px] rounded-sm"
+              style={{ backgroundColor: currentColor }}
+            />
+          </button>
+          {colorOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setColorOpen(false)} aria-hidden />
+              <div
+                className="absolute top-full left-0 mt-1 z-50 p-2 bg-panel border border-brd rounded-lg shadow-[0_4px_16px_rgba(0,0,0,.12)] grid grid-cols-5 gap-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {colorSwatches.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    title={c}
+                    onClick={() => {
+                      editor.chain().focus().setColor(c).run();
+                      setColorOpen(false);
+                    }}
+                    className="w-5 h-5 rounded-sm border border-brd hover:scale-110 transition-transform"
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+                <button
+                  type="button"
+                  title="Clear color"
+                  onClick={() => {
+                    editor.chain().focus().unsetColor().run();
+                    setColorOpen(false);
+                  }}
+                  className="col-span-5 mt-1 py-1 rounded text-[10px] text-t3 hover:bg-hov"
+                >
+                  Clear
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+        {/* ponytail: align buttons — three icon buttons, active state per
+            alignment. textAlign defaults to left when unset (the OR
+            clause in alignButtons covers that). */}
+        {alignButtons.map((b, i) => (
+          <button
+            key={`al-${i}`}
+            type="button"
+            title={b.title}
+            disabled={b.disabled}
+            onClick={b.onClick}
+            className={`inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-default ${
+              b.active ? 'bg-accdim text-acc' : ''
+            }`}
+          >
+            <b.icon size={15} strokeWidth={1.6} />
+          </button>
+        ))}
+        {buttonsRest.map((b, i) => (
+          <button
+            key={`rest-${i}`}
             type="button"
             title={b.title}
             disabled={b.disabled}

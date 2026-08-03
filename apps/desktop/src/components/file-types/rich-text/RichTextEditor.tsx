@@ -5,6 +5,10 @@ import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { TableKit } from '@tiptap/extension-table';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { Color } from '@tiptap/extension-color';
+import { FontFamily } from '@tiptap/extension-font-family';
+import { TextAlign } from '@tiptap/extension-text-align';
 import { moveTableRow, moveTableColumn, CellSelection, selectedRect } from '@tiptap/pm/tables';
 import {
   TableCellsMerge,
@@ -75,6 +79,13 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
       StarterKit.configure({ codeBlock: { enableTabIndentation: true, tabSize: 2 } }),
       TaskList,
       TaskItem.configure({ nested: true }),
+      // ponytail: TextStyle must come before Color + FontFamily — both
+      // decorate text via the `textStyle` mark. TextAlign sets align attr
+      // on paragraph/heading independently (no mark dependency).
+      TextStyle,
+      Color,
+      FontFamily.configure({ types: ['textStyle'] }),
+      TextAlign.configure({ types: ['paragraph', 'heading'] }),
       // ponytail: tableCell/tableHeader disabled in TableKit and replaced
       // with RichTextTableCell/Header — the base Tiptap nodes lack a
       // `background` attr, so setCellAttribute('background', …) would be
