@@ -114,7 +114,7 @@ export function CapabilityEditModal({
         </div>
         <div className="h-px bg-brd mx-4" />
 
-        <div className="px-4 py-4 grid grid-cols-2 gap-2 overflow-y-auto">
+        <div className="px-4 py-4 flex flex-col gap-2 overflow-y-auto">
           {EDITABLE_CAPABILITIES.map((c) => {
             const pill = CAPABILITY_PILL[c];
             const isOn = selected.has(c);
@@ -154,8 +154,8 @@ export function CapabilityEditModal({
           })}
         </div>
 
-        {/* Streaming area — text + thinking (italic gray). Collapsible, default collapsed. */}
-        {(streamText || streamThinking || askAILoading || aiError) && (
+        {/* AI output block — streaming text + suggestion tags in one container. Collapsible, default collapsed. */}
+        {(streamText || streamThinking || askAILoading || aiError || aiSuggested !== null) && (
           <div className="mx-4 mb-2 border border-brd rounded-md">
             <button
               type="button"
@@ -171,55 +171,57 @@ export function CapabilityEditModal({
               )}
             </button>
             {streamOpen && (
-              <div
-                ref={streamRef}
-                className="px-3 pb-2 max-h-[120px] overflow-y-auto text-[length:calc(var(--ui-font-size)-3px)] text-t3 font-mono whitespace-pre-wrap break-words"
-              >
-                {streamThinking && (
-                  <div className="italic text-t3 opacity-70 whitespace-pre-wrap">{streamThinking}</div>
+              <div className="px-3 pb-2">
+                {(streamText || streamThinking || aiError) && (
+                  <div
+                    ref={streamRef}
+                    className="mb-2 max-h-[120px] overflow-y-auto text-[length:calc(var(--ui-font-size)-3px)] text-t3 font-mono whitespace-pre-wrap break-words"
+                  >
+                    {streamThinking && (
+                      <div className="italic text-t3 opacity-70 whitespace-pre-wrap">{streamThinking}</div>
+                    )}
+                    {streamText && (
+                      <div className="text-t2 whitespace-pre-wrap">{streamText}</div>
+                    )}
+                    {aiError && (
+                      <div className="text-[var(--red,#f06a6a)]">[error] {aiError}</div>
+                    )}
+                  </div>
                 )}
-                {streamText && (
-                  <div className="text-t2 whitespace-pre-wrap">{streamText}</div>
-                )}
-                {aiError && (
-                  <div className="text-[var(--red,#f06a6a)]">[error] {aiError}</div>
+                {aiSuggested !== null && (
+                  <div className="px-2 py-1.5 bg-accdim rounded-md">
+                    <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-acc mb-1">
+                      {aiSuggested.length > 0
+                        ? t('settings:models.askAI.suggestedLabel')
+                        : t('settings:models.askAI.noSuggestion')}
+                    </div>
+                    {aiSuggested.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {aiSuggested.map((c) => {
+                          const pill = CAPABILITY_PILL[c];
+                          return (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => applySuggested(c)}
+                              title={t('settings:models.askAI.clickToApply')}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold hover:opacity-80 transition-opacity"
+                              style={{ background: pill?.bg ?? '#eee', color: pill?.color ?? '#333' }}
+                            >
+                              {pill && <pill.Icon size={11} />}
+                              {t(`settings:models.capability.${c}`)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="mt-1 text-[length:calc(var(--ui-font-size)-3px)] text-t3">
+                      {t('settings:models.askAI.suggestedHint')}
+                    </div>
+                  </div>
                 )}
               </div>
             )}
-          </div>
-        )}
-
-        {/* AI suggestion tag bar — below streaming area. Each tag clickable to apply. */}
-        {aiSuggested !== null && (
-          <div className="mx-4 mb-2 px-3 py-2 bg-accdim rounded-md">
-            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-acc mb-1">
-              {aiSuggested.length > 0
-                ? t('settings:models.askAI.suggestedLabel')
-                : t('settings:models.askAI.noSuggestion')}
-            </div>
-            {aiSuggested.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                {aiSuggested.map((c) => {
-                  const pill = CAPABILITY_PILL[c];
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => applySuggested(c)}
-                      title={t('settings:models.askAI.clickToApply')}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold hover:opacity-80 transition-opacity"
-                      style={{ background: pill?.bg ?? '#eee', color: pill?.color ?? '#333' }}
-                    >
-                      {pill && <pill.Icon size={11} />}
-                      {t(`settings:models.capability.${c}`)}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            <div className="mt-1 text-[length:calc(var(--ui-font-size)-3px)] text-t3">
-              {t('settings:models.askAI.suggestedHint')}
-            </div>
           </div>
         )}
 
