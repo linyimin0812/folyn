@@ -1903,3 +1903,37 @@ AI emits one file_change per edit; enterDiffReview overwrote diffOldContent on e
 ### Next Steps
 
 - None - task complete
+
+
+## Session 113: AiPanel: per-message save dialog (vault/external) + multi-select save/copy
+
+**Date**: 2026-08-03
+**Task**: AiPanel: per-message save dialog (vault/external) + multi-select save/copy
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added CopyButton (showCopy) and SaveButton (Send icon) to assistant message actions row in AiPanel. SaveButton opens a new SaveMessageDialog with two tabs: Vault (in-app dir+filename picker, writes via vaultStore) and 外部 (directly fires Tauri system save() dialog, writes via plugin-fs). Added multi-select mode triggered by a ListTodo icon in assistant actions row; in this mode, every message (user + assistant) shows a right-edge SelectToggleButton, and a centered auto-width bottom toolbar appears with count + Copy + Save + Close icons. Copy/save auto-exit multi-select on success. i18n keys added to ai.json (zh + en) under panel.saveDialog. Note: this work was done inline without a Trellis task.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9a35538` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
