@@ -339,7 +339,9 @@
       "label": "Ask AI",
       "thinking": "AI thinking…",
       "streamTitle": "AI output",
-      "filledHint": "AI filled the toggles — review then click Save"
+      "filledHint": "AI filled the toggles — review then click Save",
+      "diffSummary": "AI changed:",
+      "noChange": "AI matches current — no change"
     },
     "editCapabilities": {
       "tooltip": "Edit capabilities",

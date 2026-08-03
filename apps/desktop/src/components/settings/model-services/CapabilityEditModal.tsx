@@ -40,6 +40,7 @@ export function CapabilityEditModal({
   const [streamOpen, setStreamOpen] = useState(true);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiFilled, setAiFilled] = useState(false);
+  const [aiDiff, setAiDiff] = useState<{ added: Capability[]; removed: Capability[] } | null>(null);
   const streamRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -58,14 +59,19 @@ export function CapabilityEditModal({
       else next.add(c);
       return next;
     });
+    // User manual edit clears the AI diff highlight — once they touch a
+    // toggle, the "AI just changed X" framing no longer applies.
+    setAiDiff(null);
   };
 
   const handleAskAI = async () => {
     if (askAILoading) return;
+    const prevSelected = new Set(selected);
     setAskAILoading(true);
     setStreamEntries([]);
     setAiError(null);
     setAiFilled(false);
+    setAiDiff(null);
     setStreamOpen(true);
     try {
       const { capabilities } = await askModelCapabilities(
@@ -84,8 +90,12 @@ export function CapabilityEditModal({
           setStreamEntries((prev) => [...prev, { kind: event.kind, content: event.content }]);
         },
       );
-      setSelected(new Set(capabilities));
+      const next = new Set(capabilities);
+      const added = capabilities.filter((c) => !prevSelected.has(c));
+      const removed = EDITABLE_CAPABILITIES.filter((c) => prevSelected.has(c) && !next.has(c));
+      setSelected(next);
       setAiFilled(true);
+      setAiDiff({ added, removed });
     } catch (e) {
       const msg = typeof e === 'object' && e && 'detail' in e
         ? String((e as { detail: unknown }).detail ?? e)
@@ -94,6 +104,15 @@ export function CapabilityEditModal({
     } finally {
       setAskAILoading(false);
     }
+  };
+
+  // ponytail: highlight a toggle row when AI just flipped it — yellow ring
+  // for newly-on, red ring for newly-off. Cleared on any manual toggle.
+  const aiChanged = (c: Capability): 'on' | 'off' | null => {
+    if (!aiDiff) return null;
+    if (aiDiff.added.includes(c)) return 'on';
+    if (aiDiff.removed.includes(c)) return 'off';
+    return null;
   };
 
   return (
@@ -119,6 +138,12 @@ export function CapabilityEditModal({
           {EDITABLE_CAPABILITIES.map((c) => {
             const pill = CAPABILITY_PILL[c];
             const isOn = selected.has(c);
+            const changed = aiChanged(c);
+            const ringClass = changed === 'on'
+              ? 'ring-2 ring-yellow-400'
+              : changed === 'off'
+                ? 'ring-2 ring-red-300'
+                : '';
             return (
               <button
                 key={c}
@@ -128,7 +153,7 @@ export function CapabilityEditModal({
                   isOn
                     ? 'border-acc bg-accdim'
                     : 'border-brd bg-transparent hover:bg-hov'
-                }`}
+                } ${ringClass}`}
               >
                 <span className="flex items-center gap-2">
                   {pill && (
@@ -142,6 +167,11 @@ export function CapabilityEditModal({
                   <span className="text-[length:calc(var(--ui-font-size)-2px)] font-ui text-t1">
                     {t(`settings:models.capability.${c}`)}
                   </span>
+                  {changed && (
+                    <span className={`text-[10px] font-bold px-1 rounded ${changed === 'on' ? 'text-yellow-700 bg-yellow-100' : 'text-red-700 bg-red-100'}`}>
+                      {changed === 'on' ? '+AI' : '-AI'}
+                    </span>
+                  )}
                 </span>
                 <span
                   className={`text-[10px] font-bold px-1.5 h-[14px] inline-flex items-center rounded-full ${
@@ -189,10 +219,23 @@ export function CapabilityEditModal({
           </div>
         )}
 
-        {/* Hint after AI fills — user must confirm before save. */}
+        {/* Diff summary + hint after AI fills — user must confirm before save. */}
         {aiFilled && !askAILoading && (
-          <div className="mx-4 mb-2 text-[length:calc(var(--ui-font-size)-2.5px)] text-acc px-3 py-1.5 bg-accdim rounded-md">
-            {t('settings:models.askAI.filledHint')}
+          <div className="mx-4 mb-2 px-3 py-1.5 bg-accdim rounded-md text-[length:calc(var(--ui-font-size)-2.5px)] text-acc">
+            {aiDiff && (aiDiff.added.length > 0 || aiDiff.removed.length > 0) ? (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span className="font-semibold">{t('settings:models.askAI.diffSummary')}</span>
+                {aiDiff.added.map((c) => (
+                  <span key={`a-${c}`} className="text-yellow-700 bg-yellow-100 px-1 rounded font-semibold">+{t(`settings:models.capability.${c}`)}</span>
+                ))}
+                {aiDiff.removed.map((c) => (
+                  <span key={`r-${c}`} className="text-red-700 bg-red-100 px-1 rounded font-semibold">-{t(`settings:models.capability.${c}`)}</span>
+                ))}
+              </div>
+            ) : (
+              <span>{t('settings:models.askAI.noChange')}</span>
+            )}
+            <div className="mt-0.5">{t('settings:models.askAI.filledHint')}</div>
           </div>
         )}
 

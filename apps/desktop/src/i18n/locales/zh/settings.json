@@ -339,7 +339,9 @@
       "label": "问AI",
       "thinking": "AI 思考中…",
       "streamTitle": "AI 输出",
-      "filledHint": "AI 已填入勾选，请确认后点保存"
+      "filledHint": "AI 已填入勾选，请确认后点保存",
+      "diffSummary": "AI 调整：",
+      "noChange": "AI 与当前一致，无变更"
     },
     "editCapabilities": {
       "tooltip": "编辑能力",
