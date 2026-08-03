@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/container-plugins/frontend/component-guidelines.md", "reason": "Confirms FilePreviewPlugin uses inline styles + overflow:auto body; ExcalidrawPreview lives in apps/desktop (Tailwind OK), min-w-[800px] is consistent with file-type-editors spec"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Documents ExcalidrawPreview as registered Preview handler and the :::file-preview directive embed path via ctx.renderFile"}
