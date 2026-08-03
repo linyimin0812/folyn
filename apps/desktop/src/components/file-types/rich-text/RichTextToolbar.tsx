@@ -236,7 +236,7 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
         <div className="relative">
           <button
             type="button"
-            title="Insert table"
+            title={t('editor:table.insertButton.title')}
             disabled={!editor.isEditable}
             onClick={() => setTablePickerOpen((v) => !v)}
             className={TOOL_BTN_CLASS}

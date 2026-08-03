@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -95,6 +96,7 @@ function runOnCell(
 }
 
 export function TableControlsOverlay({ editor, containerRef }: TableControlsOverlayProps) {
+  const { t } = useTranslation();
   const [rowBtn, setRowBtn] = useState<BtnPos | null>(null);
   const [colBtn, setColBtn] = useState<BtnPos | null>(null);
   const [hover, setHover] = useState<HoverState>({ rowTr: null, colCell: null });
@@ -218,13 +220,13 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
       if (firstCell) runOnCell(editor, firstCell, cmd);
     };
     const items: TableMenuItem[] = [
-      { label: 'Insert row above', icon: ArrowUpFromLine, onClick: () => runRow('addRowBefore') },
-      { label: 'Insert row below', icon: ArrowDownToLine, onClick: () => runRow('addRowAfter') },
-      { label: 'Delete row', icon: Trash2, danger: true, onClick: () => runRow('deleteRow') },
+      { label: t('editor:table.rowMenu.insertAbove'), icon: ArrowUpFromLine, onClick: () => runRow('addRowBefore') },
+      { label: t('editor:table.rowMenu.insertBelow'), icon: ArrowDownToLine, onClick: () => runRow('addRowAfter') },
+      { label: t('editor:table.rowMenu.delete'), icon: Trash2, danger: true, onClick: () => runRow('deleteRow') },
     ];
     if (isFirst) {
       items.push({ label: '---', onClick: () => {} });
-      items.push({ label: 'Toggle header row', icon: Rows3, onClick: () => editor.chain().focus().toggleHeaderRow().run() });
+      items.push({ label: t('editor:table.rowMenu.toggleHeader'), icon: Rows3, onClick: () => editor.chain().focus().toggleHeaderRow().run() });
     }
     setMenu({ items, x: e.clientX, y: e.clientY });
   };
@@ -234,13 +236,13 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
     e.stopPropagation();
     const isFirst = cell.cellIndex === 0;
     const items: TableMenuItem[] = [
-      { label: 'Insert column left', icon: ArrowLeftFromLine, onClick: () => runOnCell(editor, cell, 'addColumnBefore') },
-      { label: 'Insert column right', icon: ArrowRightToLine, onClick: () => runOnCell(editor, cell, 'addColumnAfter') },
-      { label: 'Delete column', icon: Trash2, danger: true, onClick: () => runOnCell(editor, cell, 'deleteColumn') },
+      { label: t('editor:table.colMenu.insertLeft'), icon: ArrowLeftFromLine, onClick: () => runOnCell(editor, cell, 'addColumnBefore') },
+      { label: t('editor:table.colMenu.insertRight'), icon: ArrowRightToLine, onClick: () => runOnCell(editor, cell, 'addColumnAfter') },
+      { label: t('editor:table.colMenu.delete'), icon: Trash2, danger: true, onClick: () => runOnCell(editor, cell, 'deleteColumn') },
     ];
     if (isFirst) {
       items.push({ label: '---', onClick: () => {} });
-      items.push({ label: 'Toggle header column', icon: Columns3, onClick: () => editor.chain().focus().toggleHeaderColumn().run() });
+      items.push({ label: t('editor:table.colMenu.toggleHeader'), icon: Columns3, onClick: () => editor.chain().focus().toggleHeaderColumn().run() });
     }
     setMenu({ items, x: e.clientX, y: e.clientY });
   };
@@ -252,7 +254,7 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
         {rowHandle && (
           <button
             type="button"
-            title="Row actions"
+            title={t('editor:table.handle.rowActions')}
             data-table-handle
             className={handleBtnClass}
             style={{ left: rowHandle.left, top: rowHandle.top }}
@@ -265,7 +267,7 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
         {colHandle && (
           <button
             type="button"
-            title="Column actions"
+            title={t('editor:table.handle.colActions')}
             data-table-handle
             className={handleBtnClass}
             style={{ left: colHandle.left, top: colHandle.top }}

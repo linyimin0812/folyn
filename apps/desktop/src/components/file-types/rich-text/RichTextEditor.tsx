@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
+import { useTranslation } from 'react-i18next';
 import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
@@ -51,6 +52,7 @@ import { TableMenu, type TableMenuItem } from './TableMenu';
 // initialized from content).
 
 export function RichTextEditor({ content, onChange }: EditorProps) {
+  const { t } = useTranslation();
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -127,41 +129,41 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
 
   const cellCtxItems: TableMenuItem[] = [
     {
-      label: 'Merge cells',
+      label: t('editor:table.cellMenu.merge'),
       icon: TableCellsMerge,
       disabled: !editor?.can().mergeCells(),
       onClick: () => editor?.chain().focus().mergeCells().run(),
     },
     {
-      label: 'Split cell',
+      label: t('editor:table.cellMenu.split'),
       icon: TableCellsSplit,
       disabled: !editor?.can().splitCell(),
       onClick: () => editor?.chain().focus().splitCell().run(),
     },
     { label: '---', onClick: () => {} },
     {
-      label: 'Align left',
+      label: t('editor:table.cellMenu.alignLeft'),
       icon: AlignLeft,
       onClick: () => editor?.chain().focus().setCellAttribute('align', 'left').run(),
     },
     {
-      label: 'Align center',
+      label: t('editor:table.cellMenu.alignCenter'),
       icon: AlignCenter,
       onClick: () => editor?.chain().focus().setCellAttribute('align', 'center').run(),
     },
     {
-      label: 'Align right',
+      label: t('editor:table.cellMenu.alignRight'),
       icon: AlignRight,
       onClick: () => editor?.chain().focus().setCellAttribute('align', 'right').run(),
     },
     { label: '---', onClick: () => {} },
     {
-      label: 'Toggle header cell',
+      label: t('editor:table.cellMenu.toggleHeaderCell'),
       onClick: () => editor?.chain().focus().toggleHeaderCell().run(),
     },
     { label: '---', onClick: () => {} },
     {
-      label: 'Delete table',
+      label: t('editor:table.cellMenu.deleteTable'),
       icon: Trash2,
       danger: true,
       onClick: () => editor?.chain().focus().deleteTable().run(),

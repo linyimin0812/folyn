@@ -102,5 +102,30 @@
     "pendingCount": "{{count}} change(s) pending review",
     "acceptAll": "Accept all",
     "rejectAll": "Reject all"
+  },
+  "table": {
+    "insertButton": { "title": "Insert table" },
+    "handle": { "rowActions": "Row actions", "colActions": "Column actions" },
+    "rowMenu": {
+      "insertAbove": "Insert row above",
+      "insertBelow": "Insert row below",
+      "delete": "Delete row",
+      "toggleHeader": "Toggle header row"
+    },
+    "colMenu": {
+      "insertLeft": "Insert column left",
+      "insertRight": "Insert column right",
+      "delete": "Delete column",
+      "toggleHeader": "Toggle header column"
+    },
+    "cellMenu": {
+      "merge": "Merge cells",
+      "split": "Split cell",
+      "alignLeft": "Align left",
+      "alignCenter": "Align center",
+      "alignRight": "Align right",
+      "toggleHeaderCell": "Toggle header cell",
+      "deleteTable": "Delete table"
+    }
   }
 }
