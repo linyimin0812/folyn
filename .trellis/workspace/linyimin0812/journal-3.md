@@ -39,3 +39,37 @@ Markdown preview rebuilt componentMap and VaultContext value on every keystroke,
 ### Next Steps
 
 - None - task complete
+
+
+## Session 116: file-preview html 支持导出
+
+**Date**: 2026-08-03
+**Task**: file-preview html 支持导出
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+processFilePreviews 兜底分支前加 if (body.querySelector('iframe')) return; html file-preview 的 iframe (srcDoc+sandbox 自包含) 原样保留,不再落到'此文件类型内容不支持导出'卡片。一行修复。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9735f1f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
