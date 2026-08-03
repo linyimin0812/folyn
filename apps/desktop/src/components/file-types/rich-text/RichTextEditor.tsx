@@ -40,6 +40,7 @@ import { RichTextSlashMenu } from './RichTextSlashMenu';
 import { TableControlsOverlay, domCellToPos } from './TableControlsOverlay';
 import { TableMenu, type TableMenuItem } from './TableMenu';
 import { RichTextTableCell, RichTextTableHeader } from './RichTextTableCell';
+import { RichTextIndent } from './RichTextIndent';
 
 // ponytail: anti-write-back-loop guard — drawio loadedXml + loadedXmlRef
 // pattern, adapted for tiptap (no iframe). User edits update the ref ONLY
@@ -86,6 +87,11 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
       Color,
       FontFamily.configure({ types: ['textStyle'] }),
       TextAlign.configure({ types: ['paragraph', 'heading'] }),
+      // ponytail: registered last so StarterKit's CodeBlock + ListItem
+      // Tab handlers get first dibs; they return false when the cursor
+      // isn't in their context, falling through to this handler for
+      // paragraph/heading indent.
+      RichTextIndent,
       // ponytail: tableCell/tableHeader disabled in TableKit and replaced
       // with RichTextTableCell/Header — the base Tiptap nodes lack a
       // `background` attr, so setCellAttribute('background', …) would be
@@ -164,12 +170,21 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
   // On change, setCellAttribute('background', value) on the current cell
   // selection (preserved across the picker because no transaction moves the
   // cursor). "Clear" sets background to null.
-  const [bgPicker, setBgPicker] = useState<{ x: number; y: number } | null>(null);
+  // ponytail: hidden color input that "Custom color…" menu items trigger
+  // via .click() — opens the native OS color picker directly, skipping
+  // the old bgPicker popover. onChange applies the color to whatever
+  // context opened it (cell bg via setCellAttribute). The picker value
+  // resets after each apply so reopening starts from a known state.
+  const colorInputRef = useRef<HTMLInputElement | null>(null);
+  const colorInputTargetRef = useRef<'cell' | null>(null);
+  const openColorInput = (target: 'cell') => {
+    colorInputTargetRef.current = target;
+    colorInputRef.current?.click();
+  };
   // ponytail: capture the last right-click position so the bgColor item can
   // open the picker where the menu was. TableMenu closes itself (setCtxMenu
   // null) before firing the item onClick, so ctxMenu is stale inside the
   // onClick — this ref holds the position across that close.
-  const ctxMenuPosRef = useRef<{ x: number; y: number } | null>(null);
   // ponytail: capture the last CellSelection positions so right-click can
   // restore it. PM's mousedown handler (delegated deeper in the DOM than
   // our React listener) processes the event first and the browser's
@@ -276,7 +291,7 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
         {
           label: t('editor:table.cellMenu.customColor'),
           icon: Paintbrush,
-          onClick: () => setBgPicker(ctxMenuPosRef.current ?? { x: 0, y: 0 }),
+          onClick: () => openColorInput('cell'),
         },
       ],
     },
@@ -382,7 +397,6 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
               merge: editor.can().mergeCells(),
               split: editor.can().splitCell(),
             });
-            ctxMenuPosRef.current = { x: e.clientX, y: e.clientY };
             setCtxMenu({ x: e.clientX, y: e.clientY });
             // ponytail: selectionchange is async — at contextmenu time
             // editor.state.selection is still the CellSelection, but the
@@ -466,35 +480,25 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
           }}
         />
       )}
-      {bgPicker && (
-        <div
-          className="fixed z-[1000] p-2 bg-panel border border-brd rounded-lg shadow-[0_4px_16px_rgba(0,0,0,.12)] flex items-center gap-2"
-          style={{ top: bgPicker.y, left: bgPicker.x }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <input
-            type="color"
-            // ponytail: native color input over a lib — no wheel/palette/
-            // history. onChange fires continuously while dragging the picker
-            // swatch (live preview on the cell selection).
-            onChange={(e) =>
-              editor?.chain().focus().setCellAttribute('background', e.target.value).run()
-            }
-            className="w-8 h-8 cursor-pointer bg-transparent border-none p-0"
-            autoFocus
-          />
-          <button
-            type="button"
-            onClick={() => {
-              editor?.chain().focus().setCellAttribute('background', null).run();
-              setBgPicker(null);
-            }}
-            className="px-2 py-1 text-xs text-t2 hover:text-t1"
-          >
-            {t('editor:table.cellMenu.clearBg')}
-          </button>
-        </div>
-      )}
+      {/* ponytail: hidden color input — opened via openColorInput() from
+          the table cell bg submenu's "Custom color…" item. Native OS
+          picker; onChange applies to whatever target set it (currently
+          only 'cell' → setCellAttribute('background')). The bgPicker
+          popover was removed in favor of this direct path. */}
+      <input
+        ref={colorInputRef}
+        type="color"
+        value="#000000"
+        onChange={(e) => {
+          const target = colorInputTargetRef.current;
+          if (target === 'cell') {
+            editor?.chain().focus().setCellAttribute('background', e.target.value).run();
+          }
+          colorInputTargetRef.current = null;
+        }}
+        className="sr-only"
+        aria-hidden
+      />
     </div>
   );
 }

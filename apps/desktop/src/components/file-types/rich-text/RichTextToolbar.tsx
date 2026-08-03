@@ -20,7 +20,6 @@ import {
   Link as LinkIcon,
   Image as ImageIcon,
   Table as TableIcon,
-  Plus,
   Undo,
   Redo,
   AlignLeft,
@@ -183,15 +182,6 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
   // (combobox, swatch button, three align buttons) — not the icon-button
   // pattern the mapped array uses.
   const buttonsEarly: ToolButton[] = [
-    // ponytail: slash-command trigger button. Inserts '/' at cursor; the
-    // RichTextSlashExtension's computeSlashState detects it on the next
-    // transaction and opens the menu. Same effect as the Mod-/ shortcut.
-    {
-      icon: Plus,
-      title: t('editor:slashMenu.richText.triggerButton'),
-      disabled: !editor.isEditable,
-      onClick: () => editor.chain().focus().insertContent('/').run(),
-    },
     { icon: Bold, title: 'Bold', active: editor.isActive('bold'), disabled: !editor.can().toggleBold(), onClick: () => editor.chain().focus().toggleBold().run() },
     { icon: Italic, title: 'Italic', active: editor.isActive('italic'), disabled: !editor.can().toggleItalic(), onClick: () => editor.chain().focus().toggleItalic().run() },
     { icon: Underline, title: 'Underline', active: editor.isActive('underline'), disabled: !editor.can().toggleUnderline(), onClick: () => editor.chain().focus().toggleUnderline().run() },
@@ -199,15 +189,24 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
   ];
 
   // ponytail: font family combobox — native <select> styled to match
-  // the toolbar. Six common families incl. system default. Tiptap's
-  // FontFamily extension stores the value as a textStyle mark attr.
+  // the toolbar. Common system + web-safe fonts incl. system default.
+  // Tiptap's FontFamily extension stores the value as a textStyle mark
+  // attr; value is a CSS font-family string.
   const FONT_OPTIONS: { label: string; value: string }[] = [
     { label: 'Default', value: '' },
     { label: 'Inter', value: 'Inter, sans-serif' },
-    { label: 'Arial', value: 'Arial, sans-serif' },
+    { label: 'System UI', value: 'system-ui, sans-serif' },
+    { label: 'Arial', value: 'Arial, Helvetica, sans-serif' },
+    { label: 'Helvetica', value: 'Helvetica, sans-serif' },
     { label: 'Georgia', value: 'Georgia, serif' },
-    { label: 'Times', value: '"Times New Roman", serif' },
-    { label: 'Mono', value: 'ui-monospace, monospace' },
+    { label: 'Times', value: '"Times New Roman", Times, serif' },
+    { label: 'Garamond', value: '"EB Garamond", Garamond, serif' },
+    { label: 'Courier', value: '"Courier New", Courier, monospace' },
+    { label: 'Mono', value: 'ui-monospace, SFMono-Regular, monospace' },
+    { label: 'Verdana', value: 'Verdana, sans-serif' },
+    { label: 'Tahoma', value: 'Tahoma, sans-serif' },
+    { label: 'Trebuchet', value: '"Trebuchet MS", sans-serif' },
+    { label: 'Comic Sans', value: '"Comic Sans MS", "Comic Sans", cursive' },
   ];
   const currentFont = (editor.getAttributes('textStyle').fontFamily as string | undefined) ?? '';
 
@@ -250,7 +249,7 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-[2px] px-2 py-1 border-b border-brd bg-surf2">
+      <div className="flex flex-wrap items-center justify-center gap-[2px] px-2 py-1 border-b border-brd bg-surf2">
         {buttonsEarly.map((b, i) => (
           <button
             key={i}
@@ -304,7 +303,7 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
             <>
               <div className="fixed inset-0 z-40" onClick={() => setColorOpen(false)} aria-hidden />
               <div
-                className="absolute top-full left-0 mt-1 z-50 p-2 bg-panel border border-brd rounded-lg shadow-[0_4px_16px_rgba(0,0,0,.12)] grid grid-cols-5 gap-1"
+                className="absolute top-full left-0 mt-1 z-50 p-2 bg-panel border border-brd rounded-lg shadow-[0_4px_16px_rgba(0,0,0,.12)] grid grid-cols-5 gap-1.5"
                 onClick={(e) => e.stopPropagation()}
               >
                 {colorSwatches.map((c) => (
@@ -316,7 +315,7 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
                       editor.chain().focus().setColor(c).run();
                       setColorOpen(false);
                     }}
-                    className="w-5 h-5 rounded-sm border border-brd hover:scale-110 transition-transform"
+                    className="w-6 h-6 rounded-md border border-brd hover:scale-110 transition-transform"
                     style={{ backgroundColor: c }}
                   />
                 ))}
