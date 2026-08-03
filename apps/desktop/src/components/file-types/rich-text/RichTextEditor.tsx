@@ -235,7 +235,35 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
     {
       label: t('editor:table.cellMenu.bgColor'),
       icon: Paintbrush,
-      onClick: () => setBgPicker(ctxMenuPosRef.current ?? { x: 0, y: 0 }),
+      // ponytail: bg-color submenu — 10 concrete hex swatches (neutrals
+      // + hues) then a separator then "Custom color…" which opens the
+      // existing native <input type="color"> picker. Hex literals, not
+      // CSS vars, because setCellAttribute persists the string verbatim;
+      // a var(--acc) would survive a theme switch and look wrong.
+      submenu: [
+        ...[
+          '#ffffff', '#f4f4f5', '#a1a1aa', '#52525b', '#000000',
+          '#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#a855f7',
+        ].map((hex) => ({
+          label: hex,
+          swatch: hex,
+          onClick: () => {
+            const snap = pendingSnapshot;
+            if (snap) {
+              editor?.chain().setCellSelection({ anchorCell: snap.anchor, headCell: snap.head }).run();
+              editor?.chain().setCellAttribute('background', hex).run();
+            } else {
+              editor?.chain().focus().setCellAttribute('background', hex).run();
+            }
+          },
+        })),
+        { label: '---', onClick: () => {} },
+        {
+          label: t('editor:table.cellMenu.customColor'),
+          icon: Paintbrush,
+          onClick: () => setBgPicker(ctxMenuPosRef.current ?? { x: 0, y: 0 }),
+        },
+      ],
     },
     {
       label: t('editor:table.cellMenu.clearBg'),

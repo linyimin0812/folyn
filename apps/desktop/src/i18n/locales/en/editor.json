@@ -127,7 +127,8 @@
       "toggleHeaderCell": "Toggle header cell",
       "deleteTable": "Delete table",
       "bgColor": "Background color",
-      "clearBg": "Clear background"
+      "clearBg": "Clear background",
+      "customColor": "Custom color…"
     }
   }
 }

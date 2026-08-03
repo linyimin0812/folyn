@@ -127,7 +127,8 @@
       "toggleHeaderCell": "切换表头单元格",
       "deleteTable": "删除表格",
       "bgColor": "背景颜色",
-      "clearBg": "清除背景"
+      "clearBg": "清除背景",
+      "customColor": "自定义颜色…"
     }
   }
 }
