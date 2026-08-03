@@ -839,19 +839,18 @@ fn find_data_url_prefix(s: &str) -> Option<DataUrlPrefixMatch> {
 /// prefix on the next delta. Returns 0 when the suffix can't be a prefix
 /// start.
 ///
-/// ponytail: bounded scan of suffix lengths 4..=min(s.len(), 30). The 4-char
-/// minimum avoids spurious hold-backs on common letters (a "d" alone is
-/// technically a strict prefix of "data:image/", but holding it back would
-/// fragment every word ending in "d" — false positive rate too high).
-/// 30 chars covers any realistic data URL prefix (`data:image/png;base64,`
-/// is 22 chars). Longer suffixes can't match a prefix.
+/// ponytail: iterate char boundary positions so suffix slices stay on UTF-8
+/// boundaries — byte-indexed `&s[s.len()-n..]` panics on CJK chars (3 bytes
+/// each). Capped at 30 bytes; 4-byte floor still skips spurious single letters.
 fn partial_data_url_prefix_len(s: &str) -> usize {
-    let bound = s.len().min(30);
     let mut best = 0;
-    for n in 4..=bound {
-        let suffix = &s[s.len() - n..];
-        if could_start_data_url(suffix) {
-            best = n;
+    for (i, _) in s.char_indices() {
+        let suffix_len = s.len() - i;
+        if suffix_len < 4 || suffix_len > 30 {
+            continue;
+        }
+        if could_start_data_url(&s[i..]) {
+            best = best.max(suffix_len);
         }
     }
     best
@@ -1560,5 +1559,9 @@ mod tests {
         // Below the 4-char minimum — not held back.
         assert_eq!(partial_data_url_prefix_len("dat"), 0);
         assert_eq!(partial_data_url_prefix_len("d"), 0);
+        // CJK suffix — must not panic on multibyte char boundaries.
+        assert_eq!(partial_data_url_prefix_len("您好"), 0);
+        assert_eq!(partial_data_url_prefix_len("您好dat"), 0);
+        assert_eq!(partial_data_url_prefix_len("您好data"), 4);
     }
 }
