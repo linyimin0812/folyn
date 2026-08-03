@@ -107,3 +107,37 @@ Extended VALID_EXTS in PetSettings.tsx to include 'gif' so users can upload anim
 ### Next Steps
 
 - None - task complete
+
+
+## Session 118: Fix file-preview locking preview scroll
+
+**Date**: 2026-08-03
+**Task**: Fix file-preview locking preview scroll
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Tightened .prev-body:has(.image-viewer/.html-preview-frame/.pdf-viewer) to direct-child :has(> ...) so embedding image/html/pdf via :::file-preview in markdown no longer applies overflow:hidden to the whole preview pane. Standalone .png/.svg/.html/.pdf full-bleed behavior preserved.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `66f6759` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
