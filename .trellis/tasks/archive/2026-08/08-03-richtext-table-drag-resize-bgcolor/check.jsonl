@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "review checklist — verify no forbidden patterns, no over-engineering"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "verify zh/en parity for new keys"}
