@@ -164,19 +164,38 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
   // (CellSelection still alive) and re-apply via setCellSelection in the
   // contextmenu handler when the click landed inside the captured rect.
   const pendingCellSelRef = useRef<{ anchor: number; head: number; cellPos: number } | null>(null);
+  // ponytail: capture merge/split capability AT contextmenu time (before
+  // the async selectionchange collapses the CellSelection). cellCtxItems
+  // reads from this state instead of editor.can() — by the time the menu
+  // renders, selectionchange has fired and editor.can() returns false.
+  const [cellMenuCaps, setCellMenuCaps] = useState<{ merge: boolean; split: boolean }>({ merge: false, split: false });
 
   const cellCtxItems: TableMenuItem[] = [
     {
       label: t('editor:table.cellMenu.merge'),
       icon: TableCellsMerge,
-      disabled: !editor?.can().mergeCells(),
-      onClick: () => editor?.chain().focus().mergeCells().run(),
+      disabled: !cellMenuCaps.merge,
+      onClick: () => {
+        const p = pendingCellSelRef.current;
+        if (p) {
+          editor?.chain().setCellSelection({ anchorCell: p.anchor, headCell: p.head }).mergeCells().run();
+        } else {
+          editor?.chain().focus().mergeCells().run();
+        }
+      },
     },
     {
       label: t('editor:table.cellMenu.split'),
       icon: TableCellsSplit,
-      disabled: !editor?.can().splitCell(),
-      onClick: () => editor?.chain().focus().splitCell().run(),
+      disabled: !cellMenuCaps.split,
+      onClick: () => {
+        const p = pendingCellSelRef.current;
+        if (p) {
+          editor?.chain().setCellSelection({ anchorCell: p.anchor, headCell: p.head }).splitCell().run();
+        } else {
+          editor?.chain().focus().splitCell().run();
+        }
+      },
     },
     { label: '---', onClick: () => {} },
     {
@@ -293,15 +312,18 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
             if (!editor) return;
             if (!editor.isActive('table')) return;
             e.preventDefault();
-            // ponytail: re-apply the CellSelection captured on mousedown if
-            // the click landed inside the original rect. We can't check
-            // editor.state.selection here — selectionchange fires async
-            // (next tick), so during this handler the CellSelection may
-            // still look alive, but by the time the menu re-renders it's
-            // collapsed. Re-applying is idempotent (setCellSelection to
-            // the same positions is a no-op if selection already matches).
+            // ponytail: capture merge/split capability BEFORE the async
+            // selectionchange collapses the CellSelection. The menu renders
+            // after the collapse, so reading editor.can() at render time
+            // would return false. Also re-apply setCellSelection from the
+            // mousedown-captured positions so the live selection is a
+            // CellSelection when the user clicks merge/split — the item
+            // onClick also restores (idempotent) for safety.
             const pending = pendingCellSelRef.current;
-            pendingCellSelRef.current = null;
+            setCellMenuCaps({
+              merge: editor.can().mergeCells(),
+              split: editor.can().splitCell(),
+            });
             if (pending) {
               try {
                 const $anchor = editor.state.doc.resolve(pending.anchor);
@@ -388,7 +410,11 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
           items={cellCtxItems}
           x={ctxMenu.x}
           y={ctxMenu.y}
-          onClose={() => setCtxMenu(null)}
+          onClose={() => {
+            setCtxMenu(null);
+            pendingCellSelRef.current = null;
+            setCellMenuCaps({ merge: false, split: false });
+          }}
         />
       )}
       {bgPicker && (
