@@ -134,8 +134,21 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
         }
       }
       const isCustom = adapterFamily != null;
+      // ponytail: preserve user-edited capabilities across refetch. The
+      // fetch result's caps come from the provider API / catalog merge,
+      // which would overwrite manual edits (setModelCapabilities) every
+      // time the user clicks "拉取模型". Here we prefer the current
+      // in-memory caps for any model id already in this provider's list —
+      // tradeoff: API-side capability updates are ignored on refetch for
+      // known models (rare; user can re-edit manually).
+      const currentById = new Map(
+        (get().modelsByProvider[providerId] ?? [])
+          .filter((m) => m.capabilities.length > 0)
+          .map((m) => [m.id, m.capabilities] as const),
+      );
       const enriched = result.models.map((m) => {
         const entry = ownerMap[ownerLookupKey(m.id)];
+        const preserved = currentById.get(m.id);
         // ponytail: capabilities filled from ownerMap when empty — catalog
         // values are authoritative when present, but Rust list_models +
         // merge leave many cataloged-provider models with [] (no catalog
@@ -143,7 +156,7 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
         // authoritative for bundled providers).
         return {
           ...m,
-          capabilities: m.capabilities.length ? m.capabilities : (entry?.capabilities ?? []),
+          capabilities: preserved ?? (m.capabilities.length ? m.capabilities : (entry?.capabilities ?? [])),
           ...(isCustom ? { group: m.group ?? entry?.providerId } : {}),
         };
       });
