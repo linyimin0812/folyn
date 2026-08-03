@@ -98,6 +98,7 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
   const [rowBtn, setRowBtn] = useState<BtnPos | null>(null);
   const [colBtn, setColBtn] = useState<BtnPos | null>(null);
   const [hover, setHover] = useState<HoverState>({ rowTr: null, colCell: null });
+  const [edgeHover, setEdgeHover] = useState<{ right: boolean; bottom: boolean }>({ right: false, bottom: false });
   const [menu, setMenu] = useState<MenuState | null>(null);
   const rafRef = useRef(0);
 
@@ -163,12 +164,46 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
         colCell: cell && table.contains(cell) ? cell : cur.colCell,
       }));
     };
-    const onLeave = () => setHover({ rowTr: null, colCell: null });
+    const onLeave = () => {
+      setHover({ rowTr: null, colCell: null });
+      setEdgeHover({ right: false, bottom: false });
+    };
+    // ponytail: + buttons show only when the mouse is on the table's
+    // right/bottom border line (6px tolerance either side). mousemove
+    // fires too often to setState directly; rAF-coalesce. The zone
+    // covers the full edge length (clamped by table top/bottom or
+    // left/right) so the user can slide along the edge and the button
+    // stays visible.
+    let moveRaf = 0;
+    const onMove = (e: MouseEvent) => {
+      if (moveRaf) return;
+      moveRaf = requestAnimationFrame(() => {
+        moveRaf = 0;
+        const table = findCurrentTableDom(editor);
+        if (!table) {
+          setEdgeHover({ right: false, bottom: false });
+          return;
+        }
+        const r = table.getBoundingClientRect();
+        const tol = 6;
+        const inX = e.clientY >= r.top && e.clientY <= r.bottom;
+        const inY = e.clientX >= r.left && e.clientX <= r.right;
+        const nearRight = inX && e.clientX >= r.right - tol && e.clientX <= r.right + tol;
+        const nearBottom = inY && e.clientY >= r.bottom - tol && e.clientY <= r.bottom + tol;
+        setEdgeHover((cur) => {
+          const next = { right: nearRight, bottom: nearBottom };
+          return next.right === cur.right && next.bottom === cur.bottom ? cur : next;
+        });
+      });
+    };
     wrapper.addEventListener('mouseover', onOver);
+    wrapper.addEventListener('mousemove', onMove);
     wrapper.addEventListener('mouseleave', onLeave);
     return () => {
       wrapper.removeEventListener('mouseover', onOver);
+      wrapper.removeEventListener('mousemove', onMove);
       wrapper.removeEventListener('mouseleave', onLeave);
+      if (moveRaf) cancelAnimationFrame(moveRaf);
     };
   }, [editor, containerRef]);
 
@@ -237,33 +272,18 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
     </svg>
   );
   // ponytail: + buttons sit flush outside the table's right/bottom edge
-  // (1px gap, matching the handle bars). Right + only shows when hovering
-  // the last column; bottom + only shows when hovering the last row —
-  // narrows the trigger so the bars don't pop for every cell entry.
+  // (1px gap, matching the handle bars). Trigger zone is the border line
+  // itself (6px tolerance either side, see mousemove in the layout effect
+  // above), not the cells — so the bar appears when the user reaches for
+  // the edge, not on every cell hover.
   const plusSvg = (
     <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
       <rect x="1" y="4.25" width="8" height="1.5" fill="currentColor" rx="0.5" />
       <rect x="4.25" y="1" width="1.5" height="8" fill="currentColor" rx="0.5" />
     </svg>
   );
-  // ponytail: last col/row index via DOM — lastCell.cellIndex on the
-  // first row gives the rightmost column; tr.rowIndex on the last row
-  // gives the bottom row. Both are DOM order, not TableMap indices —
-  // same colspan caveat as the drag handle.
-  const onLastCol = (() => {
-    if (!hover.colCell) return false;
-    const table = hover.colCell.closest('table');
-    const last = table?.rows[0]?.cells[table.rows[0].cells.length - 1] as HTMLTableCellElement | undefined;
-    return !!last && hover.colCell.cellIndex === last.cellIndex;
-  })();
-  const onLastRow = (() => {
-    if (!hover.rowTr) return false;
-    const table = hover.rowTr.closest('table');
-    const lastRow = table?.rows[table.rows.length - 1] as HTMLTableRowElement | undefined;
-    return !!lastRow && hover.rowTr.rowIndex === lastRow.rowIndex;
-  })();
   const addColBtn =
-    cr && rowBtn && colBtn && onLastCol
+    cr && rowBtn && colBtn && edgeHover.right
       ? (() => {
           const t = findCurrentTableDom(editor);
           if (!t) return null;
@@ -272,7 +292,7 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
         })()
       : null;
   const addRowBtn =
-    cr && rowBtn && colBtn && onLastRow
+    cr && rowBtn && colBtn && edgeHover.bottom
       ? (() => {
           const t = findCurrentTableDom(editor);
           if (!t) return null;
