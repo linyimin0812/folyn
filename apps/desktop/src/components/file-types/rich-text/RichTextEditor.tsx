@@ -5,7 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { TableKit } from '@tiptap/extension-table';
-import { moveTableRow, moveTableColumn, CellSelection, TableMap } from '@tiptap/pm/tables';
+import { moveTableRow, moveTableColumn, CellSelection, selectedRect } from '@tiptap/pm/tables';
 import {
   TableCellsMerge,
   TableCellsSplit,
@@ -269,6 +269,48 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
     };
   }, [editor]);
 
+  // ponytail: register a CAPTURE-phase mousedown listener on view.dom so
+  // it fires BEFORE PM's bubble-phase listener. preventDefault on right-
+  // click inside the current CellSelection stops the browser's default
+  // DOM-caret change, which is what triggers the async selectionchange
+  // that collapses the CellSelection before contextmenu renders. React's
+  // synthetic onMouseDown can't do this — React delegates at the root
+  // container, so PM's listener on contentDOM fires first. The capture
+  // phase runs deepest-first, so this runs before PM's bubble handler.
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom;
+    const handler = (e: MouseEvent) => {
+      if (e.button !== 2) return;
+      const { state } = editor;
+      if (!(state.selection instanceof CellSelection)) return;
+      const target = e.target as HTMLElement | null;
+      const cellEl = target?.closest?.('td, th') as HTMLTableCellElement | null;
+      if (!cellEl) return;
+      const cellPos = domCellToPos(editor, cellEl);
+      if (cellPos == null) return;
+      try {
+        const rect = selectedRect(state);
+        const cr = rect.map.findCell(cellPos - rect.tableStart);
+        const inSel =
+          cr.left >= rect.left && cr.right <= rect.right &&
+          cr.top >= rect.top && cr.bottom <= rect.bottom;
+        if (inSel) {
+          e.preventDefault();
+          pendingCellSelRef.current = {
+            anchor: state.selection.$anchorCell.pos,
+            head: state.selection.$headCell.pos,
+            cellPos,
+          };
+        }
+      } catch {
+        // cellPos not in map — let default run
+      }
+    };
+    dom.addEventListener('mousedown', handler, true);
+    return () => dom.removeEventListener('mousedown', handler, true);
+  }, [editor]);
+
   return (
     <div className="w-full h-full flex flex-col overflow-hidden bg-panel">
       {editor && <RichTextToolbar editor={editor} />}
@@ -276,75 +318,19 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
         <div
           ref={scrollRef}
           className="relative mx-auto max-w-[760px] px-8 py-6 min-h-full [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[60vh] [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:my-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:my-2 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_ul[data-type=taskList]]:list-none [&_.ProseMirror_ul[data-type=taskList]]:pl-0 [&_.ProseMirror_blockquote]:border-l-2 [&_.ProseMirror_blockquote]:border-brd [&_.ProseMirror_blockquote]:pl-4 [&_.ProseMirror_blockquote]:text-t3 [&_.ProseMirror_pre]:bg-surf2 [&_.ProseMirror_pre]:rounded [&_.ProseMirror_pre]:p-3 [&_.ProseMirror_code]:bg-surf2 [&_.ProseMirror_code]:px-1 [&_.ProseMirror_code]:rounded [&_.ProseMirror_hr]:border-brd [&_.ProseMirror_a]:text-acc [&_.ProseMirror_a]:underline [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-brd [&_.ProseMirror_th]:px-2 [&_.ProseMirror_th]:py-1 [&_.ProseMirror_th]:bg-surf2 [&_.ProseMirror_th]:text-left [&_.ProseMirror_th]:font-semibold [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-brd [&_.ProseMirror_td]:px-2 [&_.ProseMirror_td]:py-1 [&_.ProseMirror_td]:relative [&_.ProseMirror_th]:relative [&_.ProseMirror_.selectedCell]:bg-accdim [&_.ProseMirror_.column-resize]:cursor-col-resize [&_.ProseMirror_.column-resize-handle]:absolute [&_.ProseMirror_.column-resize-handle]:right-[-2px] [&_.ProseMirror_.column-resize-handle]:top-0 [&_.ProseMirror_.column-resize-handle]:bottom-0 [&_.ProseMirror_.column-resize-handle]:w-1 [&_.ProseMirror_.column-resize-handle]:z-10 [&_.ProseMirror_.column-resize-handle]:cursor-col-resize [&_.ProseMirror_.column-resize-handle:hover]:bg-acc [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:h-auto [&_.ProseMirror_selectednode]:ring-2 [&_.ProseMirror_selectednode]:ring-acc"
-          onMouseDown={(e) => {
-            // ponytail: capture the current CellSelection positions before
-            // the browser's default mousedown action collapses it. We
-            // cannot reliably preventDefault here — PM's view registers
-            // its mousedown listener directly on contentDOM (deeper in
-            // the DOM than React's root-delegated listener), so its
-            // handler runs first and selectionchange fires before our
-            // preventDefault lands. Instead, we capture {anchor, head}
-            // + the clicked cell's pos; the contextmenu handler uses
-            // them to restore the CellSelection via setCellSelection if
-            // the click landed inside the original rect.
-            if (e.button !== 2 || !editor) return;
-            const { state } = editor;
-            if (!(state.selection instanceof CellSelection)) {
-              pendingCellSelRef.current = null;
-              return;
-            }
-            const anchor = state.selection.$anchorCell.pos;
-            const head = state.selection.$headCell.pos;
-            const target = e.target as HTMLElement | null;
-            const cellEl = target?.closest?.('td, th') as HTMLTableCellElement | null;
-            if (!cellEl) {
-              pendingCellSelRef.current = null;
-              return;
-            }
-            const cellPos = domCellToPos(editor, cellEl);
-            if (cellPos == null) {
-              pendingCellSelRef.current = null;
-              return;
-            }
-            pendingCellSelRef.current = { anchor, head, cellPos };
-          }}
           onContextMenu={(e) => {
             if (!editor) return;
             if (!editor.isActive('table')) return;
             e.preventDefault();
-            // ponytail: capture merge/split capability BEFORE the async
-            // selectionchange collapses the CellSelection. The menu renders
-            // after the collapse, so reading editor.can() at render time
-            // would return false. Also re-apply setCellSelection from the
-            // mousedown-captured positions so the live selection is a
-            // CellSelection when the user clicks merge/split — the item
-            // onClick also restores (idempotent) for safety.
-            const pending = pendingCellSelRef.current;
+            // ponytail: the capture-phase mousedown listener should have
+            // preserved the CellSelection (preventDefault stops the DOM
+            // caret change that would trigger async selectionchange).
+            // Capture caps + positions as a fallback in case the
+            // preventDefault didn't take (cross-browser variance).
             setCellMenuCaps({
               merge: editor.can().mergeCells(),
               split: editor.can().splitCell(),
             });
-            if (pending) {
-              try {
-                const $anchor = editor.state.doc.resolve(pending.anchor);
-                const table = $anchor.node(-1);
-                const tableStart = $anchor.start(-1);
-                const map = TableMap.get(table);
-                const selRect = map.rectBetween(pending.anchor - tableStart, pending.head - tableStart);
-                const cr = map.findCell(pending.cellPos - tableStart);
-                const inSel =
-                  cr.left >= selRect.left && cr.right <= selRect.right &&
-                  cr.top >= selRect.top && cr.bottom <= selRect.bottom;
-                if (inSel) {
-                  editor.chain().setCellSelection({
-                    anchorCell: pending.anchor,
-                    headCell: pending.head,
-                  }).run();
-                }
-              } catch {
-                // positions no longer valid — give up, default selection stays
-              }
-            }
             ctxMenuPosRef.current = { x: e.clientX, y: e.clientY };
             setCtxMenu({ x: e.clientX, y: e.clientY });
           }}
