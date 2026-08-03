@@ -228,6 +228,12 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
       items.push({ label: '---', onClick: () => {} });
       items.push({ label: t('editor:table.rowMenu.toggleHeader'), icon: Rows3, onClick: () => editor.chain().focus().toggleHeaderRow().run() });
     }
+    // ponytail: Backspace only deletes the table when ALL cells are
+    // selected (Tiptap deleteTableWhenAllCellsSelected). Surfacing
+    // deleteTable here gives a one-click path without needing a full-
+    // cell select first.
+    items.push({ label: '---', onClick: () => {} });
+    items.push({ label: t('editor:table.cellMenu.deleteTable'), icon: Trash2, danger: true, onClick: () => editor.chain().focus().deleteTable().run() });
     setMenu({ items, x: e.clientX, y: e.clientY });
   };
 
@@ -244,6 +250,8 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
       items.push({ label: '---', onClick: () => {} });
       items.push({ label: t('editor:table.colMenu.toggleHeader'), icon: Columns3, onClick: () => editor.chain().focus().toggleHeaderColumn().run() });
     }
+    items.push({ label: '---', onClick: () => {} });
+    items.push({ label: t('editor:table.cellMenu.deleteTable'), icon: Trash2, danger: true, onClick: () => editor.chain().focus().deleteTable().run() });
     setMenu({ items, x: e.clientX, y: e.clientY });
   };
 

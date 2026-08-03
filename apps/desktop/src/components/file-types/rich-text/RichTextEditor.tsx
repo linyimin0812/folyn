@@ -5,7 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { TableKit } from '@tiptap/extension-table';
-import { moveTableRow, moveTableColumn, CellSelection, selectedRect } from '@tiptap/pm/tables';
+import { moveTableRow, moveTableColumn, CellSelection, TableMap } from '@tiptap/pm/tables';
 import {
   TableCellsMerge,
   TableCellsSplit,
@@ -155,6 +155,15 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
   // null) before firing the item onClick, so ctxMenu is stale inside the
   // onClick — this ref holds the position across that close.
   const ctxMenuPosRef = useRef<{ x: number; y: number } | null>(null);
+  // ponytail: capture the last CellSelection positions so right-click can
+  // restore it. PM's mousedown handler (delegated deeper in the DOM than
+  // our React listener) processes the event first and the browser's
+  // default action collapses the multi-cell CellSelection to the clicked
+  // cell by the time contextmenu fires — leaving editor.can().mergeCells()
+  // false when the menu renders. We capture {anchor, head} on mousedown
+  // (CellSelection still alive) and re-apply via setCellSelection in the
+  // contextmenu handler when the click landed inside the captured rect.
+  const pendingCellSelRef = useRef<{ anchor: number; head: number; cellPos: number } | null>(null);
 
   const cellCtxItems: TableMenuItem[] = [
     {
@@ -249,36 +258,68 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
           ref={scrollRef}
           className="relative mx-auto max-w-[760px] px-8 py-6 min-h-full [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[60vh] [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:my-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:my-2 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_ul[data-type=taskList]]:list-none [&_.ProseMirror_ul[data-type=taskList]]:pl-0 [&_.ProseMirror_blockquote]:border-l-2 [&_.ProseMirror_blockquote]:border-brd [&_.ProseMirror_blockquote]:pl-4 [&_.ProseMirror_blockquote]:text-t3 [&_.ProseMirror_pre]:bg-surf2 [&_.ProseMirror_pre]:rounded [&_.ProseMirror_pre]:p-3 [&_.ProseMirror_code]:bg-surf2 [&_.ProseMirror_code]:px-1 [&_.ProseMirror_code]:rounded [&_.ProseMirror_hr]:border-brd [&_.ProseMirror_a]:text-acc [&_.ProseMirror_a]:underline [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-brd [&_.ProseMirror_th]:px-2 [&_.ProseMirror_th]:py-1 [&_.ProseMirror_th]:bg-surf2 [&_.ProseMirror_th]:text-left [&_.ProseMirror_th]:font-semibold [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-brd [&_.ProseMirror_td]:px-2 [&_.ProseMirror_td]:py-1 [&_.ProseMirror_td]:relative [&_.ProseMirror_th]:relative [&_.ProseMirror_.selectedCell]:bg-accdim [&_.ProseMirror_.column-resize]:cursor-col-resize [&_.ProseMirror_.column-resize-handle]:absolute [&_.ProseMirror_.column-resize-handle]:right-[-2px] [&_.ProseMirror_.column-resize-handle]:top-0 [&_.ProseMirror_.column-resize-handle]:bottom-0 [&_.ProseMirror_.column-resize-handle]:w-1 [&_.ProseMirror_.column-resize-handle]:z-10 [&_.ProseMirror_.column-resize-handle]:cursor-col-resize [&_.ProseMirror_.column-resize-handle:hover]:bg-acc [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:h-auto [&_.ProseMirror_selectednode]:ring-2 [&_.ProseMirror_selectednode]:ring-acc"
           onMouseDown={(e) => {
-            // ponytail: preserve a multi-cell CellSelection across right-
-            // click. PM's default mousedown handler runs before contextmenu
-            // and collapses the selection to the clicked cell, which leaves
-            // editor.can().mergeCells() false by the time the context menu
-            // renders — disabling merge/split. Only block default when the
-            // right-click lands INSIDE the current CellSelection; otherwise
-            // let PM move the selection to the clicked cell (expected UX).
+            // ponytail: capture the current CellSelection positions before
+            // the browser's default mousedown action collapses it. We
+            // cannot reliably preventDefault here — PM's view registers
+            // its mousedown listener directly on contentDOM (deeper in
+            // the DOM than React's root-delegated listener), so its
+            // handler runs first and selectionchange fires before our
+            // preventDefault lands. Instead, we capture {anchor, head}
+            // + the clicked cell's pos; the contextmenu handler uses
+            // them to restore the CellSelection via setCellSelection if
+            // the click landed inside the original rect.
             if (e.button !== 2 || !editor) return;
             const { state } = editor;
-            if (!(state.selection instanceof CellSelection)) return;
+            if (!(state.selection instanceof CellSelection)) {
+              pendingCellSelRef.current = null;
+              return;
+            }
+            const anchor = state.selection.$anchorCell.pos;
+            const head = state.selection.$headCell.pos;
             const target = e.target as HTMLElement | null;
             const cellEl = target?.closest?.('td, th') as HTMLTableCellElement | null;
-            if (!cellEl) return;
-            const cellPos = domCellToPos(editor, cellEl);
-            if (cellPos == null) return;
-            try {
-              const rect = selectedRect(state);
-              const cr = rect.map.findCell(cellPos - rect.tableStart);
-              const inSel =
-                cr.left >= rect.left && cr.right <= rect.right &&
-                cr.top >= rect.top && cr.bottom <= rect.bottom;
-              if (inSel) e.preventDefault();
-            } catch {
-              // cellPos not in this table's map — fall through to default
+            if (!cellEl) {
+              pendingCellSelRef.current = null;
+              return;
             }
+            const cellPos = domCellToPos(editor, cellEl);
+            if (cellPos == null) {
+              pendingCellSelRef.current = null;
+              return;
+            }
+            pendingCellSelRef.current = { anchor, head, cellPos };
           }}
           onContextMenu={(e) => {
             if (!editor) return;
             if (!editor.isActive('table')) return;
             e.preventDefault();
+            // ponytail: if right-click collapsed a multi-cell CellSelection
+            // and the click landed inside the original rect, restore it so
+            // the merge/split items (which read editor.can().mergeCells()
+            // at render time) stay enabled.
+            const pending = pendingCellSelRef.current;
+            pendingCellSelRef.current = null;
+            if (pending && !(editor.state.selection instanceof CellSelection)) {
+              try {
+                const $anchor = editor.state.doc.resolve(pending.anchor);
+                const table = $anchor.node(-1);
+                const tableStart = $anchor.start(-1);
+                const map = TableMap.get(table);
+                const selRect = map.rectBetween(pending.anchor - tableStart, pending.head - tableStart);
+                const cr = map.findCell(pending.cellPos - tableStart);
+                const inSel =
+                  cr.left >= selRect.left && cr.right <= selRect.right &&
+                  cr.top >= selRect.top && cr.bottom <= selRect.bottom;
+                if (inSel) {
+                  editor.chain().setCellSelection({
+                    anchorCell: pending.anchor,
+                    headCell: pending.head,
+                  }).run();
+                }
+              } catch {
+                // positions no longer valid (table edited mid-flight) — give up
+              }
+            }
             ctxMenuPosRef.current = { x: e.clientX, y: e.clientY };
             setCtxMenu({ x: e.clientX, y: e.clientY });
           }}
