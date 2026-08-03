@@ -236,6 +236,14 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
       return { modelsByProvider: { ...s.modelsByProvider, [providerId]: next } };
     });
     persist();
+    // ponytail: also persist to ~/.quill/providers/provider-models.json so
+    // user-edited capabilities survive in the owner-map cache file (not
+    // just the storageClient blob). force=true because this is an explicit
+    // user edit, not a fetch dedup — overwrite whatever's there.
+    void mergeCapabilitiesIntoOwnerMap(
+      [{ id: modelId, capabilities, providerId }],
+      { force: true },
+    ).then((merged) => set({ ownerMap: merged }));
   },
 
   __reset: () => {

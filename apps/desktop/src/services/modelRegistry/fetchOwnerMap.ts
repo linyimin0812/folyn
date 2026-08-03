@@ -180,14 +180,15 @@ export async function fetchOwnerMap(): Promise<OwnerMap> {
  */
 export async function mergeCapabilitiesIntoOwnerMap(
   entries: ReadonlyArray<{ id: string; capabilities: Capability[]; providerId?: string }>,
+  opts: { force?: boolean } = {},
 ): Promise<OwnerMap> {
   const current = await fetchOwnerMap();
   let changed = false;
   for (const e of entries) {
-    if (!e.capabilities.length) continue;
+    if (!e.capabilities.length && !opts.force) continue;
     const key = ownerLookupKey(e.id);
     const existing = current[key];
-    if (!existing || existing.capabilities.length === 0) {
+    if (opts.force || !existing || existing.capabilities.length === 0) {
       current[key] = {
         modelId: key,
         providerId: e.providerId ?? existing?.providerId ?? key,

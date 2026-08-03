@@ -25,7 +25,7 @@ const CAP_KEYS: { key: Capability; jsonField: string }[] = [
 ];
 
 function buildPrompt(modelId: string, providerName: string): string {
-  const prompt = [
+  return [
     'You are a model-capability classifier. Given a model id and its provider,',
     'decide which of the following six capabilities the model supports.',
     'Use your training knowledge of named models (e.g. gpt-4o, claude-3.5,',
@@ -49,9 +49,6 @@ function buildPrompt(modelId: string, providerName: string): string {
     'Return STRICT JSON ONLY — no prose, no code fences:',
     '{"reasoning":bool,"function-call":bool,"vision":bool,"web-search":bool,"embedding":bool,"rerank":bool}',
   ].join('\n');
-  // ponytail: log prompt so user can audit what's actually sent to the LLM.
-  console.log('[askModelCapabilities] prompt:\n' + prompt);
-  return prompt;
 }
 
 export function parseCapabilities(aiText: string): ModelCapabilitiesResult {

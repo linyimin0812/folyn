@@ -40,6 +40,7 @@ vi.mock('@/services/modelRegistry/fetchModels', () => ({
 // the owner map directly via `ownerMapMock`.
 vi.mock('@/services/modelRegistry/fetchOwnerMap', () => ({
   fetchOwnerMap: ownerMapMock,
+  mergeCapabilitiesIntoOwnerMap: vi.fn(async () => ({})),
   ownerLookupKey: (id: string) => {
     const slashIdx = id.indexOf('/');
     const after = slashIdx < 0 ? id : id.slice(slashIdx + 1);
@@ -179,10 +180,12 @@ describe('useModelRegistryStore.setModelCapabilities', () => {
   it('overwrites capabilities on the matched model and leaves siblings untouched', async () => {
     // Seed two models via the fetch path (owner map stub returns empty).
     ownerMapMock.mockResolvedValue({});
-    fetchModelsMock.mockResolvedValue([
-      { id: 'gpt-4o', providerId: 'openai', capabilities: ['vision'], inputModalities: [] },
-      { id: 'gpt-3.5', providerId: 'openai', capabilities: [], inputModalities: [] },
-    ]);
+    fetchModelsMock.mockResolvedValue({
+      models: [
+        { id: 'gpt-4o', providerId: 'openai', capabilities: ['vision'], inputModalities: [] },
+        { id: 'gpt-3.5', providerId: 'openai', capabilities: [], inputModalities: [] },
+      ],
+    });
     await useModelRegistryStore.getState().fetchModelsForProvider('openai', 'sk-test');
 
     useModelRegistryStore.getState().setModelCapabilities('openai', 'gpt-4o', ['reasoning', 'function-call']);
@@ -200,9 +203,11 @@ describe('useModelRegistryStore.setModelCapabilities', () => {
 
   it('no-op when model id is not in the cached list', async () => {
     ownerMapMock.mockResolvedValue({});
-    fetchModelsMock.mockResolvedValue([
-      { id: 'gpt-4o', providerId: 'openai', capabilities: ['vision'], inputModalities: [] },
-    ]);
+    fetchModelsMock.mockResolvedValue({
+      models: [
+        { id: 'gpt-4o', providerId: 'openai', capabilities: ['vision'], inputModalities: [] },
+      ],
+    });
     await useModelRegistryStore.getState().fetchModelsForProvider('openai', 'sk-test');
     useModelRegistryStore.getState().setModelCapabilities('openai', 'no-such-model', ['reasoning']);
     expect(useModelRegistryStore.getState().modelsByProvider.openai![0].capabilities).toEqual(['vision']);
