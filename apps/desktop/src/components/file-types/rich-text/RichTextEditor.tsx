@@ -169,6 +169,13 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
   // reads from this state instead of editor.can() — by the time the menu
   // renders, selectionchange has fired and editor.can() returns false.
   const [cellMenuCaps, setCellMenuCaps] = useState<{ merge: boolean; split: boolean }>({ merge: false, split: false });
+  // ponytail: snapshot pendingCellSelRef at cellCtxItems build time so
+  // the item onClick closes over the captured positions. TableMenu's
+  // button onClick fires onClose BEFORE it.onClick() — and onClose
+  // clears pendingCellSelRef (so a stale snapshot doesn't leak into the
+  // next menu). Without this snapshot, onClick would read null and fall
+  // into the no-restore else branch, making merge/split a no-op.
+  const pendingSnapshot = pendingCellSelRef.current;
 
   const cellCtxItems: TableMenuItem[] = [
     {
@@ -176,9 +183,15 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
       icon: TableCellsMerge,
       disabled: !cellMenuCaps.merge,
       onClick: () => {
-        const p = pendingCellSelRef.current;
-        if (p) {
-          editor?.chain().setCellSelection({ anchorCell: p.anchor, headCell: p.head }).mergeCells().run();
+        if (pendingSnapshot) {
+          // ponytail: two chains, not one. Tiptap's chainable state
+          // caches `selection` at chain-creation time (createChainableState
+          // local var, only re-synced via state.tr getter). setCellSelection
+          // mutates tr.selection but the next command in the same chain
+          // reads stale state.selection → mergeCells sees single cell and
+          // no-ops. Splitting forces the second chain to read live state.
+          editor?.chain().setCellSelection({ anchorCell: pendingSnapshot.anchor, headCell: pendingSnapshot.head }).run();
+          editor?.chain().mergeCells().run();
         } else {
           editor?.chain().focus().mergeCells().run();
         }
@@ -189,9 +202,9 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
       icon: TableCellsSplit,
       disabled: !cellMenuCaps.split,
       onClick: () => {
-        const p = pendingCellSelRef.current;
-        if (p) {
-          editor?.chain().setCellSelection({ anchorCell: p.anchor, headCell: p.head }).splitCell().run();
+        if (pendingSnapshot) {
+          editor?.chain().setCellSelection({ anchorCell: pendingSnapshot.anchor, headCell: pendingSnapshot.head }).run();
+          editor?.chain().splitCell().run();
         } else {
           editor?.chain().focus().splitCell().run();
         }
@@ -322,11 +335,6 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
             if (!editor) return;
             if (!editor.isActive('table')) return;
             e.preventDefault();
-            // ponytail: the capture-phase mousedown listener should have
-            // preserved the CellSelection (preventDefault stops the DOM
-            // caret change that would trigger async selectionchange).
-            // Capture caps + positions as a fallback in case the
-            // preventDefault didn't take (cross-browser variance).
             setCellMenuCaps({
               merge: editor.can().mergeCells(),
               split: editor.can().splitCell(),
