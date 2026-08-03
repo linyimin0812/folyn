@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
+import { Send, ListTodo, Copy, X } from 'lucide-react';
 import type { CliMessage } from '@quill/cli-adapter';
 import { isTauri } from '@/utils/platform';
 import { MessageContent } from './MessageContent';
@@ -12,6 +13,19 @@ export interface ChatMessageListProps {
   onClear?: () => void;
   emptyState?: ReactNode;
   renderMessage?: (msg: CliMessage, isLast: boolean) => ReactNode;
+  /** Multi-select mode. When true, each message row shows a select-toggle
+   *  icon on its right edge; the bottom toolbar (count + copy/save/close)
+   *  renders. When false, the trigger button in assistant actions rows
+   *  enters the mode. */
+  multiSelectMode?: boolean;
+  onEnterMultiSelect?: () => void;
+  onExitMultiSelect?: () => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  /** Batch ops in the bottom toolbar. Copy writes concatenated content to
+   *  the clipboard; Save opens the save dialog. */
+  onBatchCopy?: () => void;
+  onBatchSave?: () => void;
   /** Plaintext rendering path for assistant messages (pet chat). When true,
    *  the markdown pipeline is skipped and `msg.content` is rendered as-is.
    *  Defaults to false (markdown, AiPanel path). */
@@ -30,6 +44,10 @@ export interface ChatMessageListProps {
   /** AiPanel wiki-mode "保存到 Wiki" button on assistant msgs with content.
    *  The pet chat omits this. */
   onSaveToWiki?: (msg: CliMessage) => void;
+  /** Save-to-vault button on assistant msgs with content. Opens an in-app
+   *  vault path picker (consumer-supplied) — the consumer renders the picker
+   *  and writes `msg.content` to the chosen path. */
+  onSaveToFile?: (msg: CliMessage) => void;
   /** When true, image segments on assistant messages render a "保存到 vault"
    *  button that decodes the data URL and writes it under
    *  `<vault>/__attachments__/`. Defaults to false; both AiPanel and Pet
@@ -134,6 +152,96 @@ function CopyButton({ msg, onCopy }: { msg: CliMessage; onCopy?: (msg: CliMessag
   );
 }
 
+function SaveButton({ msg, onSave }: { msg: CliMessage; onSave: (msg: CliMessage) => void }) {
+  return (
+    <button
+      type="button"
+      className="inline-flex items-center justify-center w-6 h-6 rounded-md text-t3 hover:bg-hov hover:text-t1 transition-colors"
+      onClick={() => onSave(msg)}
+      aria-label="保存到 vault"
+      title="保存到 vault"
+    >
+      <Send size={14} />
+    </button>
+  );
+}
+
+function MultiSelectTriggerButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className="inline-flex items-center justify-center w-6 h-6 rounded-md text-t3 hover:bg-hov hover:text-t1 transition-colors"
+      onClick={onClick}
+      aria-label="多选"
+      title="多选"
+    >
+      <ListTodo size={14} />
+    </button>
+  );
+}
+
+function SelectToggleButton({
+  msg,
+  selected,
+  onToggle,
+}: {
+  msg: CliMessage;
+  selected: boolean;
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="inline-flex items-center justify-center w-6 h-6 rounded-md text-t3 hover:bg-hov hover:text-t1 transition-colors"
+      onClick={() => onToggle(msg.id)}
+      aria-label={selected ? '取消选中' : '选中'}
+      aria-pressed={selected}
+      title={selected ? '取消选中' : '选中'}
+    >
+      {selected ? (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="2" width="12" height="12" rx="2" />
+          <path d="M5 8.5l2 2L11 6" />
+        </svg>
+      ) : (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="2" width="12" height="12" rx="2" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+function MultiSelectToolbar({
+  count,
+  onCopy,
+  onSave,
+  onClose,
+}: {
+  count: number;
+  onCopy: () => void;
+  onSave: () => void;
+  onClose: () => void;
+}) {
+  const btn = 'inline-flex items-center justify-center w-7 h-7 rounded-md text-t3 hover:bg-hov hover:text-t1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed';
+  return (
+    <div className="self-center mt-1 mb-1 inline-flex items-center justify-between gap-2 py-1 px-2 border border-brd rounded-md bg-surf">
+      <span className="text-[11px] text-t2 whitespace-nowrap">已选 {count} 条</span>
+      <div className="flex gap-0.5">
+        <button type="button" className={btn} onClick={onCopy} disabled={count === 0} aria-label="复制已选" title="复制已选">
+          <Copy size={14} />
+        </button>
+        <button type="button" className={btn} onClick={onSave} disabled={count === 0} aria-label="保存已选" title="保存已选">
+          <Send size={14} />
+        </button>
+        <button type="button" className={btn} onClick={onClose} aria-label="退出多选" title="退出多选">
+          <X size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AttachmentsRow({ msg }: { msg: CliMessage }) {
   if (!msg.attachments || msg.attachments.length === 0) return null;
   return (
@@ -168,10 +276,15 @@ function DefaultMessageRow({
   onCopy,
   streamingIndicator,
   onSaveToWiki,
+  onSaveToFile,
   showSaveImageButton,
   onPathClick,
   resolvePath,
   renderPairTag,
+  multiSelectMode,
+  onEnterMultiSelect,
+  selectedIds,
+  onToggleSelect,
 }: {
   msg: CliMessage;
   isLast: boolean;
@@ -181,10 +294,15 @@ function DefaultMessageRow({
   onCopy?: (msg: CliMessage) => void;
   streamingIndicator: 'dots' | 'cursor' | 'none';
   onSaveToWiki?: (msg: CliMessage) => void;
+  onSaveToFile?: (msg: CliMessage) => void;
   showSaveImageButton?: boolean;
   onPathClick?: (path: string, line?: number, col?: number) => void;
   resolvePath?: (raw: string) => Promise<boolean>;
   renderPairTag?: (msg: CliMessage) => ReactNode | null;
+  multiSelectMode?: boolean;
+  onEnterMultiSelect?: () => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }) {
   const isAssistant = msg.role === 'assistant';
   // Per-bubble cursor on the last assistant msg while streaming, for any
@@ -196,6 +314,7 @@ function DefaultMessageRow({
   // ── User bubble: right-aligned accent gradient, white text, timestamp
   //    meta at the bottom-right. Multi-line input preserved via pre-wrap. ──
   if (!isAssistant) {
+    const userSelected = selectedIds?.has(msg.id) ?? false;
     return (
       <div className="chat-msg-row justify-end">
         <div className="chat-msg-bubble chat-msg-bubble-user">
@@ -205,13 +324,17 @@ function DefaultMessageRow({
             <div className="chat-msg-user-meta">{formatTimestamp(msg.timestamp)}</div>
           ) : null}
         </div>
+        {multiSelectMode && onToggleSelect && (
+          <SelectToggleButton msg={msg} selected={userSelected} onToggle={onToggleSelect} />
+        )}
       </div>
     );
   }
 
   // ── Assistant bubble: flat soft card; pair tag sits OUTSIDE the bubble
   //    as a small meta line above it; copy / wiki actions on hover. ──
-  const hasActions = Boolean(msg.content) && (showCopy || onSaveToWiki);
+  const hasActions = Boolean(msg.content) && (showCopy || onSaveToWiki || onSaveToFile || onEnterMultiSelect);
+  const selected = selectedIds?.has(msg.id) ?? false;
   return (
     <div className="chat-msg-row">
       <div className="flex flex-col flex-1 min-w-0">
@@ -250,6 +373,9 @@ function DefaultMessageRow({
 
         {hasActions && (
           <div className="chat-msg-actions">
+            {msg.content && onEnterMultiSelect && !multiSelectMode && (
+              <MultiSelectTriggerButton onClick={onEnterMultiSelect} />
+            )}
             {msg.content && onSaveToWiki && (
               <button
                 type="button"
@@ -260,10 +386,14 @@ function DefaultMessageRow({
               </button>
             )}
             {msg.content && showCopy && <CopyButton msg={msg} onCopy={onCopy} />}
+            {msg.content && onSaveToFile && <SaveButton msg={msg} onSave={onSaveToFile} />}
           </div>
         )}
         </div>
       </div>
+      {multiSelectMode && onToggleSelect && (
+        <SelectToggleButton msg={msg} selected={selected} onToggle={onToggleSelect} />
+      )}
     </div>
   );
 }
@@ -279,10 +409,18 @@ export function ChatMessageList({
   onCopy,
   streamingIndicator = 'dots',
   onSaveToWiki,
+  onSaveToFile,
   showSaveImageButton,
   onPathClick,
   resolvePath,
   renderPairTag,
+  multiSelectMode,
+  onEnterMultiSelect,
+  onExitMultiSelect,
+  selectedIds,
+  onToggleSelect,
+  onBatchCopy,
+  onBatchSave,
   className,
 }: ChatMessageListProps) {
   const msgsEndRef = useRef<HTMLDivElement>(null);
@@ -311,10 +449,15 @@ export function ChatMessageList({
             onCopy={onCopy}
             streamingIndicator={streamingIndicator}
             onSaveToWiki={onSaveToWiki}
+            onSaveToFile={onSaveToFile}
             showSaveImageButton={showSaveImageButton}
             onPathClick={onPathClick}
             resolvePath={resolvePath}
             renderPairTag={renderPairTag}
+            multiSelectMode={multiSelectMode}
+            onEnterMultiSelect={onEnterMultiSelect}
+            selectedIds={selectedIds}
+            onToggleSelect={onToggleSelect}
           />
         );
       })}
@@ -332,7 +475,7 @@ export function ChatMessageList({
 
       <div ref={msgsEndRef} />
 
-      {onClear && messages.length > 0 && (
+      {onClear && messages.length > 0 && !multiSelectMode && (
         <button
           type="button"
           className="self-center mt-1 mb-1 py-1 px-3.5 text-[11px] text-t3 border border-brd rounded-full bg-transparent hover:bg-hov hover:text-t1 hover:border-brd2 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -341,6 +484,15 @@ export function ChatMessageList({
         >
           清空对话
         </button>
+      )}
+
+      {multiSelectMode && onExitMultiSelect && (
+        <MultiSelectToolbar
+          count={selectedIds?.size ?? 0}
+          onCopy={() => onBatchCopy?.()}
+          onSave={() => onBatchSave?.()}
+          onClose={onExitMultiSelect}
+        />
       )}
     </div>
   );

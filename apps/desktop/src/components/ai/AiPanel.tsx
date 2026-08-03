@@ -15,11 +15,18 @@ import { ChatMessageList } from '@/components/chat';
 import { clearPathExistsCache } from '@/components/chat/filePath';
 import { ChatInput } from './ChatInput';
 import type { PendingAttachment } from './ChatInput';
+import { SaveMessageDialog } from './SaveMessageDialog';
 import { useEnabledPairs } from './PairSelector';
 import { resolveSendOptions, isRigMode } from './inputModes';
 import { saveBlobs, buildReadInstructions } from '@/components/chat';
 import type { SavedAttachment } from '@/components/chat';
 import { runRigChat } from '@/services/rigChat';
+
+function defaultSaveName(msg: CliMessage): string {
+  const ts = msg.timestamp ? new Date(msg.timestamp) : new Date();
+  const stamp = ts.toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  return `ai-msg-${stamp}.md`;
+}
 import { PairTag } from '@/components/chat/PairTag';
 import { AgentCliTag } from './AgentCliTag';
 import { useTranslation } from 'react-i18next';
@@ -66,6 +73,9 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
   const { hasAny: hasPair } = useEnabledPairs();
 
   const [showSessionList, setShowSessionList] = useState(false);
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [pendingSave, setPendingSave] = useState<{ content: string; defaultName: string } | null>(null);
   const sessionListRef = useRef<HTMLDivElement>(null);
 
   const fileTree = useVaultStore((s) => s.fileTree);
@@ -124,6 +134,104 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
     },
     [normalizePath],
   );
+
+  const handleSaveMessage = useCallback((msg: CliMessage) => {
+    if (!msg.content) return;
+    setPendingSave({ content: msg.content, defaultName: defaultSaveName(msg) });
+  }, []);
+
+  const handleEnterMultiSelect = useCallback(() => {
+    setMultiSelectMode(true);
+  }, []);
+
+  const handleExitMultiSelect = useCallback(() => {
+    setMultiSelectMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const buildBatchContent = useCallback((): { content: string; defaultName: string } | null => {
+    if (selectedIds.size === 0) return null;
+    const picked = messages.filter((m) => selectedIds.has(m.id) && m.content);
+    if (picked.length === 0) return null;
+    const labeled = picked.map((m) => {
+      const role = m.role === 'user' ? 'User' : 'Assistant';
+      return `## ${role}\n\n${m.content}`;
+    });
+    const content = labeled.join('\n\n---\n\n');
+    const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    return { content, defaultName: `ai-msgs-batch-${ts}.md` };
+  }, [messages, selectedIds]);
+
+  const handleBatchSave = useCallback(() => {
+    const ctx = buildBatchContent();
+    if (ctx) {
+      setPendingSave(ctx);
+      setMultiSelectMode(false);
+      setSelectedIds(new Set());
+    }
+  }, [buildBatchContent]);
+
+  const handleBatchCopy = useCallback(async () => {
+    const ctx = buildBatchContent();
+    if (!ctx) return;
+    try {
+      const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+      await writeText(ctx.content);
+      setMultiSelectMode(false);
+      setSelectedIds(new Set());
+    } catch (err) {
+      console.warn('[ai] batch copy failed:', err);
+    }
+  }, [buildBatchContent]);
+
+  const handleSaveMessageConfirm = useCallback(async (path: string) => {
+    const ctx = pendingSave;
+    if (!ctx) return;
+    const store = useVaultStore.getState();
+    if (!store.currentVault) {
+      console.warn('[ai] save message: no active vault');
+      setPendingSave(null);
+      return;
+    }
+    try {
+      const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
+      if (dir) {
+        try {
+          await store.createDir(dir);
+        } catch {
+          // dir may already exist
+        }
+      }
+      await store.writeFile(path, ctx.content);
+      await store.refreshFileTree();
+    } catch (err) {
+      console.warn('[ai] save message to vault failed:', err);
+    } finally {
+      setPendingSave(null);
+    }
+  }, [pendingSave]);
+
+  const handleSaveMessageExternal = useCallback(async (absolutePath: string) => {
+    const ctx = pendingSave;
+    if (!ctx) return;
+    try {
+      const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+      await writeTextFile(absolutePath, ctx.content);
+    } catch (err) {
+      console.warn('[ai] save message to external path failed:', err);
+    } finally {
+      setPendingSave(null);
+    }
+  }, [pendingSave]);
 
   // ponytail: renderPairTag closes over customerProviders (stable ref from
   // zustand) so the resolver doesn't need to be a useCallback; it's only
@@ -480,6 +588,15 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
         streamingIndicator="dots"
         renderPairTag={renderPairTag}
         showSaveImageButton
+        showCopy
+        onSaveToFile={handleSaveMessage}
+        multiSelectMode={multiSelectMode}
+        onEnterMultiSelect={handleEnterMultiSelect}
+        onExitMultiSelect={handleExitMultiSelect}
+        selectedIds={selectedIds}
+        onToggleSelect={handleToggleSelect}
+        onBatchCopy={handleBatchCopy}
+        onBatchSave={handleBatchSave}
         onPathClick={handlePathClick}
         resolvePath={resolvePath}
         className="p-3 gap-3"
@@ -511,6 +628,16 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
           onStop={handleStop}
           isStreaming={isStreaming}
           disabled={!hasPair}
+        />
+      )}
+
+      {pendingSave && (
+        <SaveMessageDialog
+          fileTree={fileTree}
+          defaultFilename={pendingSave.defaultName}
+          onCancel={() => setPendingSave(null)}
+          onConfirmVault={handleSaveMessageConfirm}
+          onConfirmExternal={handleSaveMessageExternal}
         />
       )}
     </div>

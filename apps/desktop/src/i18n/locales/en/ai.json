@@ -10,7 +10,18 @@
     "studyIdle": "study agent session (manual input disabled)",
     "attachmentPlaceholder": "(attachment)",
     "deleteConfirmTitle": "Delete chat",
-    "deleteConfirm": "Delete this chat? This cannot be undone."
+    "deleteConfirm": "Delete this chat? This cannot be undone.",
+    "saveDialog": {
+      "title": "Save message",
+      "tabVault": "This vault",
+      "tabExternal": "External",
+      "vaultRoot": "Vault root",
+      "filename": "Filename",
+      "pathPrefix": "Path",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel"
+    }
   },
   "chat": {
     "placeholder": "Type a message; @ to mention a file...",

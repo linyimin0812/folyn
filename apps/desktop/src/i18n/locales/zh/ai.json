@@ -10,7 +10,18 @@
     "studyIdle": "study agent 会话（不可手动输入）",
     "attachmentPlaceholder": "(附件)",
     "deleteConfirmTitle": "删除会话",
-    "deleteConfirm": "确定要删除当前会话吗？删除后无法恢复。"
+    "deleteConfirm": "确定要删除当前会话吗？删除后无法恢复。",
+    "saveDialog": {
+      "title": "保存消息",
+      "tabVault": "本 vault",
+      "tabExternal": "外部",
+      "vaultRoot": "vault 根目录",
+      "filename": "文件名",
+      "pathPrefix": "路径",
+      "save": "保存",
+      "saving": "保存中…",
+      "cancel": "取消"
+    }
   },
   "chat": {
     "placeholder": "输入指令，@ 引用文件...",
