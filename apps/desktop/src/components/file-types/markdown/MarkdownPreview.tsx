@@ -413,6 +413,16 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
   const [resolvedVaultRoot, setResolvedVaultRoot] = useState('');
   const [assetBase, setAssetBase] = useState('');
 
+  // ponytail: content/onChange change every keystroke. componentMap below
+  // used to close over them, which forced a full map rebuild + unified re-parse
+  // + VaultContext value churn on each character — every :::file-preview block
+  // re-fetched and re-mounted. Refs let the pre wrapper read live values
+  // without being a closure dependency of the memoized componentMap.
+  const contentRef = useRef(content);
+  contentRef.current = content;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   useEffect(() => {
     if (!vaultRoot) return;
     import('@tauri-apps/api/path').then(({ homeDir, join }) => {
@@ -535,13 +545,13 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
       const sourceLine = rawLine != null ? Number(rawLine) : undefined;
       return createElement(
         CodeBlockWrapper,
-        { ...rest, lang, sourceLine, content, onChange },
+        { ...rest, lang, sourceLine, content: contentRef.current, onChange: onChangeRef.current },
         children,
       );
     };
 
     return map;
-  }, [filePath, vaultRoot, resolvedVaultRoot, content, onChange]);
+  }, [filePath, vaultRoot, resolvedVaultRoot, assetBase]);
 
   const { meta, body, frontmatterLineCount } = useMemo(() => parseFrontmatter(content), [content]);
 
@@ -574,15 +584,22 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
     }
   }, [body, componentMap, frontmatterLineCount]);
 
+  // ponytail: memoize VaultContext value — without this, every keystroke
+  // (content change → MarkdownPreview re-renders) creates a fresh value object,
+  // which made every FilePreviewComponent's useEffect([src, ctx]) re-fire and
+  // re-read + re-mount the preview. readFile is a stable module import; only
+  // filePath/resolvedVaultRoot/renderFile actually vary.
+  const vaultContextValue = useMemo(() => ({
+    vaultRoot: resolvedVaultRoot,
+    filePath,
+    readFile: (p: string) => readFileByRoute(p),
+    renderFile,
+    openFile,
+    getFileIcon: (path: string) => createElement(FileIcon, { filename: path }),
+  }), [resolvedVaultRoot, filePath, renderFile, openFile]);
+
   return (
-    <VaultContext.Provider value={{
-      vaultRoot: resolvedVaultRoot,
-      filePath,
-      readFile: (p) => readFileByRoute(p),
-      renderFile,
-      openFile,
-      getFileIcon: (path) => createElement(FileIcon, { filename: path }),
-    }}>
+    <VaultContext.Provider value={vaultContextValue}>
       <div className="md-preview" ref={containerRef}>
         {meta && <SkillMetaCard meta={meta} />}
         {reactContent}
