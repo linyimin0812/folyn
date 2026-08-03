@@ -9,8 +9,6 @@ import {
   Trash2,
   Rows3,
   Columns3,
-  MoreVertical,
-  MoreHorizontal,
 } from 'lucide-react';
 import { TableMenu, type TableMenuItem } from './TableMenu';
 
@@ -190,7 +188,7 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
       ? (() => {
           const r = hover.rowTr.getBoundingClientRect();
           return {
-            left: r.left - cr.left - 22,
+            left: r.left - cr.left - 16,
             top: r.top - cr.top,
             height: r.height,
           };
@@ -210,7 +208,7 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
           const r = firstRowCell.getBoundingClientRect();
           return {
             left: r.left - cr.left,
-            top: r.top - cr.top - 22,
+            top: r.top - cr.top - 16,
             width: r.width,
           };
         })()
@@ -219,8 +217,25 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
   // ponytail: handle style — gray bg that matches the row/column span,
   // hover lifts to a stronger surface. No border/shadow — the bar shape
   // itself reads as an affordance belonging to the row/column.
+  // ponytail: custom SVG dots (not lucide) so we can widen the dot
+  // spacing — lucide's MoreVertical/Horizontal at size 12 packs dots
+  // 4px apart which reads as a single blob; 6px reads as three.
   const handleBtnClass =
-    'pointer-events-auto absolute rounded-sm flex items-center justify-center text-t3 bg-surf2 hover:bg-hov hover:text-t1';
+    'pointer-events-auto absolute rounded-sm flex items-center justify-center text-t1 bg-surf2 hover:bg-hov';
+  const rowDotsSvg = (
+    <svg width="10" height="16" viewBox="0 0 10 16" aria-hidden>
+      <circle cx="5" cy="2" r="1.5" fill="currentColor" />
+      <circle cx="5" cy="8" r="1.5" fill="currentColor" />
+      <circle cx="5" cy="14" r="1.5" fill="currentColor" />
+    </svg>
+  );
+  const colDotsSvg = (
+    <svg width="16" height="10" viewBox="0 0 16 10" aria-hidden>
+      <circle cx="2" cy="5" r="1.5" fill="currentColor" />
+      <circle cx="8" cy="5" r="1.5" fill="currentColor" />
+      <circle cx="14" cy="5" r="1.5" fill="currentColor" />
+    </svg>
+  );
 
   const openRowMenu = (e: React.MouseEvent, tr: HTMLTableRowElement) => {
     e.preventDefault();
@@ -290,10 +305,10 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
               e.dataTransfer.effectAllowed = 'move';
             }}
             className={handleBtnClass}
-            style={{ left: rowHandle.left, top: rowHandle.top, height: rowHandle.height, width: 16 }}
+            style={{ left: rowHandle.left, top: rowHandle.top, height: rowHandle.height, width: 10 }}
             onClick={(e) => hover.rowTr && openRowMenu(e, hover.rowTr)}
           >
-            <MoreVertical size={12} strokeWidth={2} />
+            {rowDotsSvg}
           </button>
         )}
         {/* col-top hover handle */}
@@ -312,10 +327,10 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
               e.dataTransfer.effectAllowed = 'move';
             }}
             className={handleBtnClass}
-            style={{ left: colHandle.left, top: colHandle.top, width: colHandle.width, height: 16 }}
+            style={{ left: colHandle.left, top: colHandle.top, width: colHandle.width, height: 10 }}
             onClick={(e) => hover.colCell && openColMenu(e, hover.colCell)}
           >
-            <MoreHorizontal size={12} strokeWidth={2} />
+            {colDotsSvg}
           </button>
         )}
       </div>
