@@ -11,13 +11,15 @@
  * paths).
  */
 
-import { Eye, Brain, Search, Wrench, type LucideIcon } from 'lucide-react';
+import { Eye, Brain, Search, Wrench, Boxes, Layers, type LucideIcon } from 'lucide-react';
 
 export const CAPABILITY_PILL: Record<string, { title: string; bg: string; color: string; Icon: LucideIcon }> = {
   vision: { title: 'vision', bg: '#e6f7ed', color: '#10b981', Icon: Eye },
   reasoning: { title: 'reasoning', bg: '#f0f3ff', color: '#6366f1', Icon: Brain },
   'web-search': { title: 'web', bg: '#e0f2fe', color: '#3b82f6', Icon: Search },
   'function-call': { title: 'tools', bg: '#fff7ed', color: '#f97316', Icon: Wrench },
+  embedding: { title: 'embedding', bg: '#f5f3ff', color: '#8b5cf6', Icon: Boxes },
+  rerank: { title: 'rerank', bg: '#fdf4ff', color: '#d946ef', Icon: Layers },
 };
 
 /**

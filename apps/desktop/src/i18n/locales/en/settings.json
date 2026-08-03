@@ -200,7 +200,9 @@
       "vision": "vision",
       "reasoning": "reasoning",
       "web-search": "web",
-      "function-call": "tools"
+      "function-call": "tools",
+      "embedding": "embedding",
+      "rerank": "rerank"
     },
     "provider": {
       "label": "Provider",
@@ -331,6 +333,16 @@
       "idLabel": "Model ID",
       "nameLabel": "Display name",
       "groupLabel": "Group name"
+    },
+    "askAI": {
+      "tooltip": "Ask AI for capabilities",
+      "successToast": "Updated {{model}} capabilities",
+      "errorToast": "Ask AI failed: {{error}}",
+      "undo": "Undo"
+    },
+    "editCapabilities": {
+      "tooltip": "Edit capabilities",
+      "title": "Edit Model Capabilities"
     }
   },
   "about": {

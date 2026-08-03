@@ -11,7 +11,9 @@ export type Capability =
   | 'reasoning'
   | 'web-search'
   | 'function-call'
-  | 'structured-output';
+  | 'structured-output'
+  | 'embedding'
+  | 'rerank';
 
 export interface ModelPricing {
   /** USD per million input tokens. */

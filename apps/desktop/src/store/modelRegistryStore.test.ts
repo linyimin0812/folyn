@@ -170,3 +170,41 @@ describe('useModelRegistryStore.fetchModelsForProvider — file cache + fallback
   });
 });
 
+
+describe('useModelRegistryStore.setModelCapabilities', () => {
+  beforeEach(() => {
+    useModelRegistryStore.getState().__reset();
+  });
+
+  it('overwrites capabilities on the matched model and leaves siblings untouched', async () => {
+    // Seed two models via the fetch path (owner map stub returns empty).
+    ownerMapMock.mockResolvedValue({});
+    fetchModelsMock.mockResolvedValue([
+      { id: 'gpt-4o', providerId: 'openai', capabilities: ['vision'], inputModalities: [] },
+      { id: 'gpt-3.5', providerId: 'openai', capabilities: [], inputModalities: [] },
+    ]);
+    await useModelRegistryStore.getState().fetchModelsForProvider('openai', 'sk-test');
+
+    useModelRegistryStore.getState().setModelCapabilities('openai', 'gpt-4o', ['reasoning', 'function-call']);
+
+    const list = useModelRegistryStore.getState().modelsByProvider.openai!;
+    expect(list[0].capabilities).toEqual(['reasoning', 'function-call']);
+    expect(list[1].capabilities).toEqual([]);
+  });
+
+  it('no-op when provider has no cached list', () => {
+    const before = useModelRegistryStore.getState().modelsByProvider.openai ?? [];
+    useModelRegistryStore.getState().setModelCapabilities('openai', 'gpt-4o', ['reasoning']);
+    expect(useModelRegistryStore.getState().modelsByProvider.openai ?? []).toEqual(before);
+  });
+
+  it('no-op when model id is not in the cached list', async () => {
+    ownerMapMock.mockResolvedValue({});
+    fetchModelsMock.mockResolvedValue([
+      { id: 'gpt-4o', providerId: 'openai', capabilities: ['vision'], inputModalities: [] },
+    ]);
+    await useModelRegistryStore.getState().fetchModelsForProvider('openai', 'sk-test');
+    useModelRegistryStore.getState().setModelCapabilities('openai', 'no-such-model', ['reasoning']);
+    expect(useModelRegistryStore.getState().modelsByProvider.openai![0].capabilities).toEqual(['vision']);
+  });
+});

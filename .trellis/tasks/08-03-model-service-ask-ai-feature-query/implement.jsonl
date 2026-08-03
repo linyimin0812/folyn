@@ -1,0 +1,9 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend root spec — task is desktop UI + store work"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "Decides where new service file (askModelCapabilitiesService.ts) and modal component live"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Adding row buttons + a CapabilityEditModal — must follow component conventions"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Adding setModelCapabilities action to useModelRegistryStore — store conventions"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Extending Capability union — must follow union/type discipline"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "Adding settings:models.askAI.* + editCapabilities.* keys to zh/en"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "General quality bar for the final check pass"}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared guides root"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Must mirror planMyDayService pattern instead of inventing a new AI-call shape"}

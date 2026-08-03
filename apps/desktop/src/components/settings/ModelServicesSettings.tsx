@@ -14,10 +14,13 @@
  * backend changes needed.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useScheduleStore } from '@/store/scheduleStore';
 import { ownerLookupKey } from '@/services/modelRegistry/fetchOwnerMap';
+import { askModelCapabilities } from '@/services/askModelCapabilitiesService';
 import {
   PROVIDER_CATALOG,
   allProviders,
@@ -50,6 +53,7 @@ import { ModelPickerModal } from './model-services/ModelPickerModal';
 import { AddManualModelModal } from './model-services/AddManualModelModal';
 import { TestChatModal, type ChatTestStatus } from './model-services/TestChatModal';
 import { DeleteProviderConfirmDialog } from './model-services/DeleteProviderConfirmDialog';
+import { CapabilityEditModal } from './model-services/CapabilityEditModal';
 
 // Preview path for custom providers, keyed by adapterFamily. Mirrors rig's
 // completion_path emits — anthropic/ollama carry their own version prefix,
@@ -155,6 +159,7 @@ export function ModelServicesSettings() {
   const fetchStatusForCurrent = useModelRegistryStore((s) => s.fetchStatusByProvider[chatProvider] ?? 'idle');
   const fetchErrorForCurrent = useModelRegistryStore((s) => s.fetchErrorByProvider[chatProvider] ?? null);
   const fetchModelsForProvider = useModelRegistryStore((s) => s.fetchModelsForProvider);
+  const setModelCapabilities = useModelRegistryStore((s) => s.setModelCapabilities);
 
   // ── local UI state ──────────────────────────────────────────
   const [search, setSearch] = useState('');
@@ -167,6 +172,8 @@ export function ModelServicesSettings() {
   const [manualModalOpen, setManualModalOpen] = useState(false);
   const [manualCollapsed, setManualCollapsed] = useState<Set<string>>(new Set());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [askAILoadingIds, setAskAILoadingIds] = useState<ReadonlySet<string>>(new Set());
+  const [editCapabilitiesId, setEditCapabilitiesId] = useState<string | null>(null);
   const pendingDeleteProvider = useMemo(
     () => customerProviders[deleteConfirmId ?? ''] ?? null,
     [customerProviders, deleteConfirmId],
@@ -226,6 +233,36 @@ export function ModelServicesSettings() {
     // entering selectedModelIds. Accept either.
     || (!chatModel && selectedModelIds.length === 0);
 
+  const handleAskAI = useCallback(async (modelId: string) => {
+    if (askAILoadingIds.has(modelId)) return;
+    const providerName = providerDisplayName(entry, t);
+    const prevCapabilities =
+      useModelRegistryStore.getState().modelsByProvider[chatProvider]?.find((m) => m.id === modelId)?.capabilities ?? [];
+    setAskAILoadingIds((prev) => new Set(prev).add(modelId));
+    try {
+      const { capabilities } = await askModelCapabilities(modelId, providerName);
+      setModelCapabilities(chatProvider, modelId, capabilities);
+      useScheduleStore.getState().toast(
+        i18n.t('settings:models.askAI.successToast', { model: modelId }),
+        {
+          label: i18n.t('settings:models.askAI.undo'),
+          run: () => setModelCapabilities(chatProvider, modelId, prevCapabilities),
+        },
+      );
+    } catch (e) {
+      const msg = typeof e === 'object' && e && 'detail' in e
+        ? String((e as { detail: unknown }).detail ?? e)
+        : String(e);
+      useScheduleStore.getState().toast(i18n.t('settings:models.askAI.errorToast', { error: msg }));
+    } finally {
+      setAskAILoadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(modelId);
+        return next;
+      });
+    }
+  }, [askAILoadingIds, chatProvider, entry, setModelCapabilities, t]);
+
   return (
     <div className="h-full flex flex-col">
       <div className="pb-3 mb-3 border-b border-brd2 flex items-baseline gap-2 shrink-0">
@@ -273,6 +310,7 @@ export function ModelServicesSettings() {
           manualCollapsed={manualCollapsed}
           canFetchModels={canFetchModels}
           testButtonDisabled={testButtonDisabled}
+          askAILoadingIds={askAILoadingIds}
           onSetChatProvider={(id) => setChatProvider(id)}
           onSetChatModel={setChatModel}
           onSetChatApiKey={setChatApiKey}
@@ -295,6 +333,8 @@ export function ModelServicesSettings() {
             setChatTestStatus({ testing: false });
             setTestModalOpen(true);
           }}
+          onAskAI={(mid) => { void handleAskAI(mid); }}
+          onEditCapabilities={(mid) => setEditCapabilitiesId(mid)}
         />
       </div>
 
@@ -391,6 +431,22 @@ export function ModelServicesSettings() {
           }}
         />
       )}
+
+      {editCapabilitiesId && (() => {
+        const m = modelsForCurrent.find((x) => x.id === editCapabilitiesId);
+        const caps = m?.capabilities ?? [];
+        return (
+          <CapabilityEditModal
+            modelId={editCapabilitiesId}
+            initialCapabilities={caps}
+            onClose={() => setEditCapabilitiesId(null)}
+            onSave={(next) => {
+              setModelCapabilities(chatProvider, editCapabilitiesId, next);
+              setEditCapabilitiesId(null);
+            }}
+          />
+        );
+      })()}
 
     </div>
   );

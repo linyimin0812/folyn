@@ -200,7 +200,9 @@
       "vision": "视觉",
       "reasoning": "推理",
       "web-search": "联网",
-      "function-call": "工具"
+      "function-call": "工具",
+      "embedding": "嵌入",
+      "rerank": "重排"
     },
     "provider": {
       "label": "Provider",
@@ -331,6 +333,16 @@
       "idLabel": "模型 ID",
       "nameLabel": "模型名称",
       "groupLabel": "分组名称"
+    },
+    "askAI": {
+      "tooltip": "问AI查询能力",
+      "successToast": "已更新 {{model}} 的能力",
+      "errorToast": "问AI失败：{{error}}",
+      "undo": "撤销"
+    },
+    "editCapabilities": {
+      "tooltip": "编辑能力",
+      "title": "编辑模型能力"
     }
   },
   "about": {

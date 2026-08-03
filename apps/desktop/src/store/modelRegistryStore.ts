@@ -4,7 +4,7 @@ import { fetchModels as fetchModelsRaw } from '@/services/modelRegistry/fetchMod
 import { providerRequiresApiKey, type ProviderEntry } from '@/services/providers/catalog';
 import { readUserProviderModels, writeUserProviderModels } from '@/services/modelRegistry/userProvidersCatalog';
 import { fetchOwnerMap, mergeCapabilitiesIntoOwnerMap, ownerLookupKey, type OwnerMap } from '@/services/modelRegistry/fetchOwnerMap';
-import type { Model } from '@/services/modelRegistry/types';
+import type { Capability, Model } from '@/services/modelRegistry/types';
 
 /**
  * Persisted model registry — caches per-provider fetched model lists across
@@ -60,6 +60,10 @@ export interface ModelRegistryState {
       adapterFamily?: string;
     }>,
   ) => Promise<{ success: number; failed: number }>;
+  /** Overwrite capabilities on a single model in `modelsByProvider[providerId]`.
+   *  Used by the "问AI" button and the manual-edit modal — writes only the
+   *  in-memory + persisted cache; never touches models-catalog.json. */
+  setModelCapabilities: (providerId: string, modelId: string, capabilities: Capability[]) => void;
   /** Test-only: reset state. */
   __reset: () => void;
   /** Load this store's slice from the persisted `settings:all` blob. */
@@ -219,6 +223,19 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
     );
     const success = results.filter((r) => r.ok).length;
     return { success, failed: results.length - success };
+  },
+
+  setModelCapabilities: (providerId, modelId, capabilities) => {
+    set((s) => {
+      const list = s.modelsByProvider[providerId];
+      if (!list) return s;
+      const idx = list.findIndex((m) => m.id === modelId);
+      if (idx < 0) return s;
+      const next = list.slice();
+      next[idx] = { ...next[idx], capabilities };
+      return { modelsByProvider: { ...s.modelsByProvider, [providerId]: next } };
+    });
+    persist();
   },
 
   __reset: () => {
