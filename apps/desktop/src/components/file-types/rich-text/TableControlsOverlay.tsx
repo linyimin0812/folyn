@@ -188,7 +188,7 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
       ? (() => {
           const r = hover.rowTr.getBoundingClientRect();
           return {
-            left: r.left - cr.left - 10,
+            left: r.left - cr.left - 11,
             top: r.top - cr.top,
             height: r.height,
           };
@@ -208,7 +208,7 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
           const r = firstRowCell.getBoundingClientRect();
           return {
             left: r.left - cr.left,
-            top: r.top - cr.top - 10,
+            top: r.top - cr.top - 11,
             width: r.width,
           };
         })()
