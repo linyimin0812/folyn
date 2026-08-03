@@ -14,13 +14,10 @@
  * backend changes needed.
  */
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import i18n from '@/i18n';
 import { useAiConfigStore } from '@/store/aiConfigStore';
-import { useScheduleStore } from '@/store/scheduleStore';
 import { ownerLookupKey } from '@/services/modelRegistry/fetchOwnerMap';
-import { askModelCapabilities } from '@/services/askModelCapabilitiesService';
 import {
   PROVIDER_CATALOG,
   allProviders,
@@ -172,7 +169,6 @@ export function ModelServicesSettings() {
   const [manualModalOpen, setManualModalOpen] = useState(false);
   const [manualCollapsed, setManualCollapsed] = useState<Set<string>>(new Set());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [askAILoadingIds, setAskAILoadingIds] = useState<ReadonlySet<string>>(new Set());
   const [editCapabilitiesId, setEditCapabilitiesId] = useState<string | null>(null);
   const pendingDeleteProvider = useMemo(
     () => customerProviders[deleteConfirmId ?? ''] ?? null,
@@ -232,36 +228,6 @@ export function ModelServicesSettings() {
     // come from the picker; manually-added models set chatModel without
     // entering selectedModelIds. Accept either.
     || (!chatModel && selectedModelIds.length === 0);
-
-  const handleAskAI = useCallback(async (modelId: string) => {
-    if (askAILoadingIds.has(modelId)) return;
-    const providerName = providerDisplayName(entry, t);
-    const prevCapabilities =
-      useModelRegistryStore.getState().modelsByProvider[chatProvider]?.find((m) => m.id === modelId)?.capabilities ?? [];
-    setAskAILoadingIds((prev) => new Set(prev).add(modelId));
-    try {
-      const { capabilities } = await askModelCapabilities(modelId, providerName);
-      setModelCapabilities(chatProvider, modelId, capabilities);
-      useScheduleStore.getState().toast(
-        i18n.t('settings:models.askAI.successToast', { model: modelId }),
-        {
-          label: i18n.t('settings:models.askAI.undo'),
-          run: () => setModelCapabilities(chatProvider, modelId, prevCapabilities),
-        },
-      );
-    } catch (e) {
-      const msg = typeof e === 'object' && e && 'detail' in e
-        ? String((e as { detail: unknown }).detail ?? e)
-        : String(e);
-      useScheduleStore.getState().toast(i18n.t('settings:models.askAI.errorToast', { error: msg }));
-    } finally {
-      setAskAILoadingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(modelId);
-        return next;
-      });
-    }
-  }, [askAILoadingIds, chatProvider, entry, setModelCapabilities, t]);
 
   return (
     <div className="h-full flex flex-col">
@@ -437,14 +403,13 @@ export function ModelServicesSettings() {
         return (
           <CapabilityEditModal
             modelId={editCapabilitiesId}
+            providerName={providerDisplayName(entry, t)}
             initialCapabilities={caps}
-            askAILoading={askAILoadingIds.has(editCapabilitiesId)}
             onClose={() => setEditCapabilitiesId(null)}
             onSave={(next) => {
               setModelCapabilities(chatProvider, editCapabilitiesId, next);
               setEditCapabilitiesId(null);
             }}
-            onAskAI={() => { void handleAskAI(editCapabilitiesId); }}
           />
         );
       })()}

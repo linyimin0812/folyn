@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, ChevronDown, ChevronRight } from 'lucide-react';
 import type { Capability } from '@/services/modelRegistry/types';
 import { CAPABILITY_PILL } from '@/components/icons/capabilityIcons';
+import { askModelCapabilities } from '@/services/askModelCapabilitiesService';
+import type { StreamEvent } from '@/services/aiStreamUtils';
 
 const EDITABLE_CAPABILITIES: Capability[] = [
   'reasoning',
@@ -13,27 +15,41 @@ const EDITABLE_CAPABILITIES: Capability[] = [
   'rerank',
 ];
 
+interface ThinkingEntry {
+  kind: 'thinking' | 'text' | 'tool';
+  content: string;
+}
+
 export function CapabilityEditModal({
   modelId,
+  providerName,
   initialCapabilities,
-  askAILoading,
   onClose,
   onSave,
-  onAskAI,
 }: {
   modelId: string;
+  providerName: string;
   initialCapabilities: readonly Capability[];
-  askAILoading: boolean;
   onClose: () => void;
   onSave: (capabilities: Capability[]) => void;
-  onAskAI: () => void;
 }) {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<Set<Capability>>(() => new Set(initialCapabilities));
+  const [askAILoading, setAskAILoading] = useState(false);
+  const [streamEntries, setStreamEntries] = useState<ThinkingEntry[]>([]);
+  const [streamOpen, setStreamOpen] = useState(true);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiFilled, setAiFilled] = useState(false);
+  const streamRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setSelected(new Set(initialCapabilities));
   }, [initialCapabilities]);
+
+  // ponytail: autoscroll the streaming area to bottom as new entries arrive.
+  useEffect(() => {
+    if (streamRef.current) streamRef.current.scrollTop = streamRef.current.scrollHeight;
+  }, [streamEntries]);
 
   const toggle = (c: Capability) => {
     setSelected((prev) => {
@@ -44,13 +60,49 @@ export function CapabilityEditModal({
     });
   };
 
+  const handleAskAI = async () => {
+    if (askAILoading) return;
+    setAskAILoading(true);
+    setStreamEntries([]);
+    setAiError(null);
+    setAiFilled(false);
+    setStreamOpen(true);
+    try {
+      const { capabilities } = await askModelCapabilities(
+        modelId,
+        providerName,
+        (chunk) => {
+          setStreamEntries((prev) => {
+            const last = prev[prev.length - 1];
+            if (last && last.kind === 'text') {
+              return [...prev.slice(0, -1), { kind: 'text', content: last.content + chunk }];
+            }
+            return [...prev, { kind: 'text', content: chunk }];
+          });
+        },
+        (event: StreamEvent) => {
+          setStreamEntries((prev) => [...prev, { kind: event.kind, content: event.content }]);
+        },
+      );
+      setSelected(new Set(capabilities));
+      setAiFilled(true);
+    } catch (e) {
+      const msg = typeof e === 'object' && e && 'detail' in e
+        ? String((e as { detail: unknown }).detail ?? e)
+        : String(e);
+      setAiError(msg);
+    } finally {
+      setAskAILoading(false);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center"
       onClick={onClose}
     >
       <div
-        className="bg-panel border border-brd rounded-md w-[420px] flex flex-col"
+        className="bg-panel border border-brd rounded-md w-[460px] max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-4 pt-4 pb-2">
@@ -63,7 +115,7 @@ export function CapabilityEditModal({
         </div>
         <div className="h-px bg-brd mx-4" />
 
-        <div className="px-4 py-4 flex flex-col gap-2">
+        <div className="px-4 py-4 flex flex-col gap-2 overflow-y-auto">
           {EDITABLE_CAPABILITIES.map((c) => {
             const pill = CAPABILITY_PILL[c];
             const isOn = selected.has(c);
@@ -103,12 +155,53 @@ export function CapabilityEditModal({
           })}
         </div>
 
+        {/* AI streaming area — collapsible; visible only when there is content. */}
+        {(streamEntries.length > 0 || askAILoading || aiError) && (
+          <div className="mx-4 mb-2 border border-brd rounded-md">
+            <button
+              type="button"
+              onClick={() => setStreamOpen((v) => !v)}
+              className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 hover:bg-hov"
+            >
+              {streamOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              <span>{askAILoading ? t('settings:models.askAI.thinking') : t('settings:models.askAI.streamTitle')}</span>
+              {askAILoading && (
+                <svg className="animate-spin ml-1" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+              )}
+            </button>
+            {streamOpen && (
+              <div
+                ref={streamRef}
+                className="px-3 pb-2 max-h-[120px] overflow-y-auto text-[length:calc(var(--ui-font-size)-3px)] text-t3 font-mono whitespace-pre-wrap break-words"
+              >
+                {streamEntries.map((e, i) => (
+                  <div key={i} className={e.kind === 'thinking' ? 'text-t3 italic' : ''}>
+                    {e.kind === 'thinking' ? `[thinking] ${e.content}` : e.content}
+                  </div>
+                ))}
+                {aiError && (
+                  <div className="text-[var(--red,#f06a6a)]">[error] {aiError}</div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Hint after AI fills — user must confirm before save. */}
+        {aiFilled && !askAILoading && (
+          <div className="mx-4 mb-2 text-[length:calc(var(--ui-font-size)-2.5px)] text-acc px-3 py-1.5 bg-accdim rounded-md">
+            {t('settings:models.askAI.filledHint')}
+          </div>
+        )}
+
         <div className="h-px bg-brd mx-4" />
         <div className="flex items-center justify-between px-4 py-3">
           <button
             type="button"
             className="btn btn-g btn-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-wait"
-            onClick={onAskAI}
+            onClick={() => { void handleAskAI(); }}
             disabled={askAILoading}
             title={t('settings:models.askAI.tooltip')}
           >

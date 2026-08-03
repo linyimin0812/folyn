@@ -336,10 +336,10 @@
     },
     "askAI": {
       "tooltip": "Ask AI for capabilities",
-      "successToast": "Updated {{model}} capabilities",
-      "errorToast": "Ask AI failed: {{error}}",
-      "undo": "Undo",
-      "label": "Ask AI"
+      "label": "Ask AI",
+      "thinking": "AI thinking…",
+      "streamTitle": "AI output",
+      "filledHint": "AI filled the toggles — review then click Save"
     },
     "editCapabilities": {
       "tooltip": "Edit capabilities",

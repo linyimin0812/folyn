@@ -8,7 +8,7 @@
 import { createAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { useAiConfigStore } from '@/store/aiConfigStore';
-import { collectTextFromStream, extractJsonObject } from './aiStreamUtils';
+import { collectTextFromStream, extractJsonObject, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
 import type { Capability } from './modelRegistry/types';
 
@@ -69,6 +69,8 @@ export function parseCapabilities(aiText: string): ModelCapabilitiesResult {
 export async function askModelCapabilities(
   modelId: string,
   providerName: string,
+  onChunk?: (text: string) => void,
+  onEvent?: (event: StreamEvent) => void,
 ): Promise<ModelCapabilitiesResult> {
   const vault = useVaultStore.getState();
   if (!vault.currentVault) throw new Error('没有活跃的 vault');
@@ -80,7 +82,7 @@ export async function askModelCapabilities(
   await adapter.start({ cliPath: aiConfig.cliPath, workingDir: basePath });
 
   try {
-    const textPromise = collectTextFromStream(adapter);
+    const textPromise = collectTextFromStream(adapter, onChunk, onEvent);
     await adapter.send(buildPrompt(modelId, providerName));
     const aiText = await textPromise;
     return parseCapabilities(aiText);

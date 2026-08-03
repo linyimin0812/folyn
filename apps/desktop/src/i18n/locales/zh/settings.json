@@ -336,10 +336,10 @@
     },
     "askAI": {
       "tooltip": "问AI查询能力",
-      "successToast": "已更新 {{model}} 的能力",
-      "errorToast": "问AI失败：{{error}}",
-      "undo": "撤销",
-      "label": "问AI"
+      "label": "问AI",
+      "thinking": "AI 思考中…",
+      "streamTitle": "AI 输出",
+      "filledHint": "AI 已填入勾选，请确认后点保存"
     },
     "editCapabilities": {
       "tooltip": "编辑能力",
