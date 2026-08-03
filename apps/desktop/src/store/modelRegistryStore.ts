@@ -184,7 +184,10 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
           // (`~/.quill/providers/provider-models.json`) so ownerMap grows
           // more complete over time — catalog (models.dev) caps that
           // OpenRouter doesn't list become available for future providers'
-          // orphan lookups. Dedup rule: existing non-empty caps preserved.
+          // orphan lookups. ponytail: fetch path = INCREMENTAL — no `force`,
+          // so existing non-empty caps are preserved and only empty/missing
+          // entries get filled. Contrast setModelCapabilities, which passes
+          // `{ force: true }` to OVERWRITE because it's an explicit user edit.
           const merged = await mergeCapabilitiesIntoOwnerMap(
             enriched
               .filter((m) => m.capabilities.length)
