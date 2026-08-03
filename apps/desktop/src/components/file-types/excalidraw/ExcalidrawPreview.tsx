@@ -40,7 +40,7 @@ export function ExcalidrawPreview({ filePath }: ExcalidrawPreviewProps) {
   if (error) return <span className="text-[var(--danger,#e53e3e)] text-[13px]">{error}</span>;
   if (!data) return <span className="text-[var(--t3)] text-[13px] italic">Loading diagram...</span>;
   return (
-    <div className="w-full h-full relative [&_.excalidraw]:w-full [&_.excalidraw]:h-full [&_.excalidraw]:min-w-[800px]" style={{ minWidth: 800 }}>
+    <div className="w-full h-full relative [&_.excalidraw]:w-full [&_.excalidraw]:h-full [&_.excalidraw]:min-w-[1000px]" style={{ minWidth: 1000 }}>
       <Excalidraw
         initialData={data}
         theme={theme === 'dark' ? 'dark' : 'light'}
