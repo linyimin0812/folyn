@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 116
+- **Total Sessions**: 117
 - **Last Active**: 2026-08-03
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~75 | Active |
+| `journal-3.md` | ~109 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 117 | 2026-08-03 | Desktop pet icon: GIF support | `811f946` | `master` |
 | 116 | 2026-08-03 | file-preview html 支持导出 | `9735f1f` | `master` |
 | 115 | 2026-08-03 | Fix markdown file-preview rerender on every keystroke | `9795ff2` | `master` |
 | 114 | 2026-08-03 | fix(excalidraw): bump preview min-width to 1000 to stop mobile layout | `03f7e36` | `master` |

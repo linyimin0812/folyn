@@ -73,3 +73,37 @@ processFilePreviews 兜底分支前加 if (body.querySelector('iframe')) return;
 ### Next Steps
 
 - None - task complete
+
+
+## Session 117: Desktop pet icon: GIF support
+
+**Date**: 2026-08-03
+**Task**: Desktop pet icon: GIF support
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Extended VALID_EXTS in PetSettings.tsx to include 'gif' so users can upload animated GIFs as the desktop pet mascot. Render path (PetMascot <img>) already animates GIFs natively in the Tauri webview — no renderer change needed. 10MB cap and existing fallback logic reused.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `811f946` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
