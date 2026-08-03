@@ -1937,3 +1937,37 @@ Added CopyButton (showCopy) and SaveButton (Send icon) to assistant message acti
 ### Next Steps
 
 - None - task complete
+
+
+## Session 114: fix(excalidraw): bump preview min-width to 1000 to stop mobile layout
+
+**Date**: 2026-08-03
+**Task**: fix(excalidraw): bump preview min-width to 1000 to stop mobile layout
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Follow-up to archived 08-03 task. Excalidraw isMobileBreakpoint: width<730 || (height<500 && width<1000). File-preview body height is 420 (<500), so width must be >=1000 to keep desktop layout; previous 800 still triggered mobile via second clause, pushing icons to bottom-left and hiding zoom controls. Bumped min-width 800→1000 on ExcalidrawPreview wrapper (inline + .excalidraw selector). Split mode keeps horizontal scroll when pane<1000 (accepted trade-off per archived ADR).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `03f7e36` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

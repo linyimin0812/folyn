@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 113
+- **Total Sessions**: 114
 - **Last Active**: 2026-08-03
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1939 | Active |
+| `journal-2.md` | ~1973 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 114 | 2026-08-03 | fix(excalidraw): bump preview min-width to 1000 to stop mobile layout | `03f7e36` | `master` |
 | 113 | 2026-08-03 | AiPanel: per-message save dialog (vault/external) + multi-select save/copy | `9a35538` | `master` |
 | 112 | 2026-08-03 | fix(diff): preserve original oldContent across sequential AI edits | `ad70381` | `master` |
 | 111 | 2026-08-02 | Cmd+A select-all for native inputs | `c162097`, `dc82e8b` | `master` |
