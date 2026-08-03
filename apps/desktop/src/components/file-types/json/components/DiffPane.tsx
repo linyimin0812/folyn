@@ -132,8 +132,8 @@ function buildEditorExtensions(
 
 export function DiffPane({ left }: DiffPaneProps) {
   const theme = useAppearanceStore((s) => s.theme);
-  // ponytail: duplicates DiffReviewPanel — only 2 callers, extract
-  // useResolvedDiffTheme() when a 3rd surfaces.
+  // ponytail: only 2 callers of resolved-diff-theme, inline for now.
+  // Extract useResolvedDiffTheme() when a 3rd surfaces.
   const resolvedTheme = theme === 'system'
     ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
     : theme;

@@ -296,21 +296,15 @@ export class ClaudeAdapter extends BaseCliAdapter {
     if (!info) return;
     this.pendingWriteTools.delete(toolId);
 
-    if (this.pendingFileContents.has(info.relativePath)) return;
-
-    try {
-      const newContent = await readTextFile(info.absolutePath);
-      const fileChange: FileChange = {
-        path: info.relativePath,
-        oldContent: '',
-        newContent,
-        status: 'pending',
-        createdAt: Date.now(),
-      };
-      this.emit({ type: 'file_change', fileChange });
-    } catch {
-      // file may have been deleted
-    }
+    // ponytail: snapshotBeforeWrite schedules checkFileChange (500ms after the
+    // snapshot read resolves) — that's the canonical emit path with the real
+    // oldContent. The fallback that used to live here read the file AFTER the
+    // write had landed and emitted { oldContent: '', newContent }, which made
+    // every AI edit show up as whole-file-added (all green, no removals).
+    // Snapshot read may still be in flight here; checkFileChange fires once it
+    // resolves. No snapshot registered (e.g. readTextFile hung) → no emit,
+    // which is better than a bogus whole-file-green diff.
+    return;
   }
 
   private async snapshotBeforeWrite(

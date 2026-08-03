@@ -206,11 +206,19 @@ export interface ComputedDiff {
 }
 
 /**
- * Computes diff hunks between old and new content and produces a merged document
- * that interleaves removed and added lines at their proper positions.
+ * Computes line-level diff hunks between old and new content and produces a
+ * merged document that interleaves removed and added lines at their positions.
  */
 export function computeDiffHunks(oldContent: string, newContent: string): ComputedDiff {
-  const changes: Change[] = diffLines(oldContent, newContent);
+  // ponytail: diffLines merges a no-trailing-newline last line with the next
+  // change, marking the unchanged line as removed and duplicating it in added.
+  // Normalize both to trailing-newline form so line boundaries line up with
+  // actual content lines. Skip empty string — diffLines("", "x\n") already
+  // produces a single add hunk, but diffLines("\n", "x\n") would emit a
+  // phantom removed empty line.
+  const normOld = oldContent && !oldContent.endsWith('\n') ? oldContent + '\n' : oldContent;
+  const normNew = newContent && !newContent.endsWith('\n') ? newContent + '\n' : newContent;
+  const changes: Change[] = diffLines(normOld, normNew);
   const hunks: DiffHunk[] = [];
   const mergedLines: string[] = [];
   let currentLine = 1;
