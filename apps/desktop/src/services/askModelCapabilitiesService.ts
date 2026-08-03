@@ -76,7 +76,6 @@ export function parseCapabilities(aiText: string): ModelCapabilitiesResult {
 export async function askModelCapabilities(
   modelId: string,
   providerName: string,
-  onChunk?: (text: string) => void,
   onEvent?: (event: StreamEvent) => void,
 ): Promise<ModelCapabilitiesResult> {
   const cfg = useAiConfigStore.getState();
@@ -100,7 +99,6 @@ export async function askModelCapabilities(
     onEvent: (event: CliStreamEvent) => {
       if (event.type === 'text' && event.content) {
         text += event.content;
-        onChunk?.(event.content);
         onEvent?.({ kind: 'text', content: event.content });
       } else if (event.type === 'thinking' && event.content) {
         onEvent?.({ kind: 'thinking', content: event.content });

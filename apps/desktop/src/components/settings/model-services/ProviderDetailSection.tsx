@@ -290,14 +290,14 @@ export function ProviderDetailSection({
                 const key = `__selectedModels__${g.name}`;
                 const isCollapsed = manualCollapsed.has(key);
                 return (
-                  <div key={g.name} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                  <div key={g.name} className="bg-panel border border-brd rounded-xl overflow-hidden">
                     <div
-                      className="flex items-center justify-between px-4 py-2 bg-gray-50/80 border-b border-gray-100 select-none cursor-pointer hover:bg-gray-100/80 transition-colors"
+                      className="flex items-center justify-between px-4 py-2 bg-surf border-b border-brd select-none cursor-pointer hover:bg-hov transition-colors"
                       onClick={() => onToggleManualCollapsed(key)}
                     >
                       <div className="flex items-center gap-2">
                         <svg
-                          className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
+                          className={`text-t3 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
                           width="12"
                           height="12"
                           viewBox="0 0 24 24"
@@ -309,26 +309,26 @@ export function ProviderDetailSection({
                         >
                           <polyline points="6 9 12 15 18 9" />
                         </svg>
-                        <span className="font-bold text-[length:calc(var(--ui-font-size)-2.5px)] font-ui text-gray-800">{g.name}</span>
-                        <span className="text-[10.5px] text-gray-400">{g.items.length}</span>
+                        <span className="font-bold text-[length:calc(var(--ui-font-size)-2.5px)] font-ui text-t1">{g.name}</span>
+                        <span className="text-[10.5px] text-t3">{g.items.length}</span>
                       </div>
                     </div>
                     {!isCollapsed && (
-                      <div className="bg-white">
+                      <div className="bg-panel">
                         {g.items.map((mid, idx) => {
                           const isSelected = mid === chatModel;
                           const m = modelsForCurrent.find((x) => x.id === mid);
                           return (
                             <div
                               key={mid}
-                              className={`flex items-center justify-between px-4 py-2.5 hover:bg-gray-50/50 transition-colors cursor-pointer ${
-                                idx < g.items.length - 1 ? 'border-b border-gray-100' : ''
+                              className={`flex items-center justify-between px-4 py-2.5 hover:bg-hov transition-colors cursor-pointer ${
+                                idx < g.items.length - 1 ? 'border-b border-brd' : ''
                               }`}
                               onClick={() => onSetChatModel(mid)}
                             >
                               <div className="flex items-center gap-3 min-w-0">
                                 <ModelAvatar id={mid} />
-                                <span className={`font-semibold text-[length:calc(var(--ui-font-size)-2px)] font-ui truncate ${isSelected ? 'text-emerald-600' : 'text-gray-800'}`}>
+                                <span className={`font-semibold text-[length:calc(var(--ui-font-size)-2px)] font-ui truncate ${isSelected ? 'text-[var(--green)]' : 'text-t1'}`}>
                                   {m?.displayName ?? mid}
                                 </span>
                               </div>
@@ -341,7 +341,7 @@ export function ProviderDetailSection({
                                     onEditCapabilities(mid);
                                   }}
                                   title={t('settings:models.editCapabilities.tooltip')}
-                                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                                  className="text-t3 hover:text-t1 transition-colors"
                                 >
                                   <SquarePen size={15} />
                                 </button>
@@ -352,7 +352,7 @@ export function ProviderDetailSection({
                                     onRemoveSelectedModel(mid);
                                   }}
                                   title={t('settings:models.picker.remove')}
-                                  className="text-emerald-600 hover:text-emerald-700 transition-colors"
+                                  className="text-[var(--green)] hover:opacity-80 transition-colors"
                                 >
                                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <line x1="5" y1="12" x2="19" y2="12" />

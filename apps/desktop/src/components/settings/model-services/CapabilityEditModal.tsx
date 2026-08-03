@@ -86,15 +86,10 @@ export function CapabilityEditModal({
       const { capabilities } = await askModelCapabilities(
         modelId,
         providerName,
-        (chunk) => {
-          setStreamText((prev) => prev + chunk);
-        },
         (event: StreamEvent) => {
           if (event.kind === 'thinking') {
             setStreamThinking((prev) => prev + event.content);
           } else if (event.kind === 'text') {
-            // text chunks also arrive via onEvent in some adapter paths;
-            // concat into streamText to avoid duplicates.
             setStreamText((prev) => prev + event.content);
           }
         },

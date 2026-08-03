@@ -92,19 +92,19 @@ export function ModelPickerModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-[780px] h-[90vh] flex flex-col overflow-hidden relative"
+        className="bg-panel rounded-2xl w-full max-w-[780px] h-[90vh] flex flex-col overflow-hidden relative"
         style={{ boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header — pinned */}
         <div className="flex justify-between items-center px-6 pt-6 pb-4 shrink-0">
-          <h2 className="text-xl font-bold text-gray-900">{providerName}</h2>
+          <h2 className="text-xl font-bold text-t1">{providerName}</h2>
           <button
             type="button"
             aria-label={t('settings:models.picker.close')}
             title={t('settings:models.picker.close')}
             onClick={onClose}
-            className="text-gray-400 p-1 rounded-md hover:bg-gray-100 hover:text-gray-600 transition"
+            className="text-t3 p-1 rounded-md hover:bg-hov hover:text-t1 transition"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -117,7 +117,7 @@ export function ModelPickerModal({
         <div className="flex px-6 pb-3 shrink-0">
           <div className="relative flex-1">
             <svg
-              className="absolute left-[10px] top-1/2 -translate-y-1/2 text-gray-400"
+              className="absolute left-[10px] top-1/2 -translate-y-1/2 text-t3"
               width="14"
               height="14"
               viewBox="0 0 24 24"
@@ -135,7 +135,7 @@ export function ModelPickerModal({
               placeholder={t('settings:models.picker.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-[32px] pl-[30px] pr-[12px] border border-gray-200 border-r-0 rounded-l-md text-[13px] text-gray-800 outline-none focus:border-emerald-500"
+              className="w-full h-[32px] pl-[30px] pr-[12px] border border-brd border-r-0 rounded-l-md text-[13px] text-t1 outline-none focus:border-[var(--acc)]"
               style={{ fontFamily: 'inherit' }}
               autoFocus
             />
@@ -144,7 +144,7 @@ export function ModelPickerModal({
             type="button"
             onClick={onRefresh}
             disabled={fetchStatus === 'loading'}
-            className="shrink-0 h-[32px] px-3 rounded-r-md border border-gray-200 text-white text-[13px] font-medium flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90"
+            className="shrink-0 h-[32px] px-3 rounded-r-md border border-brd text-white text-[13px] font-medium flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90"
             style={{ background: 'var(--acc, #3a6ef0)' }}
           >
             {fetchStatus === 'loading' ? (
@@ -159,7 +159,7 @@ export function ModelPickerModal({
         </div>
 
         {/* Category tabs — pinned */}
-        <div className="flex gap-6 border-b border-gray-100 px-6 pb-2 shrink-0 overflow-x-auto">
+        <div className="flex gap-6 border-b border-brd px-6 pb-2 shrink-0 overflow-x-auto">
           {CATEGORY_TABS.map((tab) => {
             const active = category === tab.id;
             return (
@@ -167,14 +167,14 @@ export function ModelPickerModal({
                 key={tab.id}
                 onClick={() => setCategory(tab.id)}
                 className={`text-sm cursor-pointer pb-2.5 font-medium relative whitespace-nowrap select-none ${
-                  active ? 'text-emerald-500 font-semibold' : 'text-gray-600'
+                  active ? 'font-semibold text-[var(--green)]' : 'text-t2'
                 }`}
               >
                 {t(tab.labelKey)}
                 {active && (
                   <span
                     className="absolute -bottom-px left-0 right-0 rounded-sm"
-                    style={{ height: 2, background: '#10b981' }}
+                    style={{ height: 2, background: 'var(--green, #22a863)' }}
                   />
                 )}
               </div>
@@ -191,7 +191,7 @@ export function ModelPickerModal({
           )}
           <div className="flex flex-col gap-3">
             {groups.length === 0 ? (
-              <div className="text-sm text-gray-400 italic py-4 text-center">
+              <div className="text-sm text-t3 italic py-4 text-center">
                 {fetchStatus === 'loading'
                   ? t('settings:models.fetchModels.fetching')
                   : t('settings:models.fetchModels.empty')}
@@ -200,10 +200,10 @@ export function ModelPickerModal({
               groups.map((g) => {
                 const isCollapsed = collapsed.has(g.name);
                 return (
-                  <div key={g.name} className="bg-gray-100 rounded-xl overflow-hidden">
+                  <div key={g.name} className="bg-surf2 rounded-xl overflow-hidden">
                     {/* Group header — click to toggle collapse */}
                     <div
-                      className="px-4 py-2.5 flex items-center justify-between select-none cursor-pointer hover:bg-gray-200/60 transition-colors"
+                      className="px-4 py-2.5 flex items-center justify-between select-none cursor-pointer hover:bg-hov transition-colors"
                       onClick={() => setCollapsed((prev) => {
                         const next = new Set(prev);
                         if (next.has(g.name)) next.delete(g.name);
@@ -213,7 +213,7 @@ export function ModelPickerModal({
                     >
                       <div className="flex items-center gap-2">
                         <svg
-                          className={`text-gray-500 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
+                          className={`text-t3 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
                           width="12"
                           height="12"
                           viewBox="0 0 24 24"
@@ -225,10 +225,10 @@ export function ModelPickerModal({
                         >
                           <polyline points="6 9 12 15 18 9" />
                         </svg>
-                        <span className="text-[13px] font-bold text-gray-900">{g.name}</span>
+                        <span className="text-[13px] font-bold text-t1">{g.name}</span>
                         <span
                           className="text-[11px] font-semibold px-[6px] py-px rounded-full leading-tight"
-                          style={{ background: '#d1fae5', color: '#059669' }}
+                          style={{ background: 'var(--gdim, #dcf5e8)', color: 'var(--green, #22a863)' }}
                         >
                           {g.items.length}
                         </span>
@@ -236,7 +236,7 @@ export function ModelPickerModal({
                     </div>
                     {/* Group body — hidden when collapsed */}
                     {!isCollapsed && (
-                      <div className="bg-white px-4">
+                      <div className="bg-panel px-4">
                         {g.items.map((m, idx) => {
                           const isSelected = selectedIds.includes(m.id);
                           const isActive = m.id === selectedId;
@@ -245,7 +245,7 @@ export function ModelPickerModal({
                               key={m.id}
                               title={modelOptionTitle(m)}
                               className={`flex items-center justify-between py-3.5 ${
-                                idx < g.items.length - 1 ? 'border-b border-gray-100' : ''
+                                idx < g.items.length - 1 ? 'border-b border-brd' : ''
                               }`}
                             >
                               <div className="flex items-center gap-3 min-w-0">
@@ -253,10 +253,10 @@ export function ModelPickerModal({
                                 <span
                                   className={`text-[length:calc(var(--ui-font-size)-2px)] font-ui truncate ${
                                     isActive
-                                      ? 'font-bold text-emerald-700'
+                                      ? 'font-bold text-[var(--green)]'
                                       : isSelected
-                                        ? 'font-semibold text-emerald-600'
-                                        : 'font-semibold text-gray-800'
+                                        ? 'font-semibold text-[var(--green)]'
+                                        : 'font-semibold text-t1'
                                   }`}
                                 >
                                   {m.displayName ?? m.id}
@@ -271,7 +271,7 @@ export function ModelPickerModal({
                                     onEditCapabilities(m.id);
                                   }}
                                   title={t('settings:models.editCapabilities.tooltip')}
-                                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                                  className="text-t3 hover:text-t1 transition-colors"
                                 >
                                   <SquarePen size={15} />
                                 </button>
@@ -281,8 +281,8 @@ export function ModelPickerModal({
                                   title={isSelected ? t('settings:models.picker.remove') : t('settings:models.picker.select')}
                                   className={
                                     isSelected
-                                      ? 'text-emerald-600 hover:text-emerald-700'
-                                      : 'text-gray-700 hover:text-emerald-600'
+                                      ? 'text-[var(--green)] hover:opacity-80'
+                                      : 'text-t1 hover:text-[var(--green)]'
                                   }
                                 >
                                   {isSelected ? (
@@ -311,8 +311,8 @@ export function ModelPickerModal({
 
         {/* Loading overlay — centered spinner while fetching */}
         {fetchStatus === 'loading' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-10 pointer-events-none">
-            <Loader2 size={32} className="animate-spin text-gray-500" />
+          <div className="absolute inset-0 flex items-center justify-center bg-panel/60 z-10 pointer-events-none">
+            <Loader2 size={32} className="animate-spin text-t3" />
           </div>
         )}
       </div>
