@@ -338,7 +338,8 @@
       "tooltip": "Ask AI for capabilities",
       "successToast": "Updated {{model}} capabilities",
       "errorToast": "Ask AI failed: {{error}}",
-      "undo": "Undo"
+      "undo": "Undo",
+      "label": "Ask AI"
     },
     "editCapabilities": {
       "tooltip": "Edit capabilities",

@@ -310,7 +310,6 @@ export function ModelServicesSettings() {
           manualCollapsed={manualCollapsed}
           canFetchModels={canFetchModels}
           testButtonDisabled={testButtonDisabled}
-          askAILoadingIds={askAILoadingIds}
           onSetChatProvider={(id) => setChatProvider(id)}
           onSetChatModel={setChatModel}
           onSetChatApiKey={setChatApiKey}
@@ -333,7 +332,6 @@ export function ModelServicesSettings() {
             setChatTestStatus({ testing: false });
             setTestModalOpen(true);
           }}
-          onAskAI={(mid) => { void handleAskAI(mid); }}
           onEditCapabilities={(mid) => setEditCapabilitiesId(mid)}
         />
       </div>
@@ -407,6 +405,7 @@ export function ModelServicesSettings() {
               isCustom ? customerProviders[chatProvider]?.adapterFamily : undefined,
             );
           }}
+          onEditCapabilities={(mid) => setEditCapabilitiesId(mid)}
         />
       )}
 
@@ -439,11 +438,13 @@ export function ModelServicesSettings() {
           <CapabilityEditModal
             modelId={editCapabilitiesId}
             initialCapabilities={caps}
+            askAILoading={askAILoadingIds.has(editCapabilitiesId)}
             onClose={() => setEditCapabilitiesId(null)}
             onSave={(next) => {
               setModelCapabilities(chatProvider, editCapabilitiesId, next);
               setEditCapabilitiesId(null);
             }}
+            onAskAI={() => { void handleAskAI(editCapabilitiesId); }}
           />
         );
       })()}

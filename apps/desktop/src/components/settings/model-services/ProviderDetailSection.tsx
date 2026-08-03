@@ -6,7 +6,7 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { Plus, Sparkles, Pencil } from 'lucide-react';
+import { Plus, SquarePen } from 'lucide-react';
 import {
   providerDisplayName,
   type ProviderEntry,
@@ -47,8 +47,6 @@ interface ProviderDetailSectionProps {
   manualCollapsed: Set<string>;
   canFetchModels: boolean;
   testButtonDisabled: boolean;
-  /** Model ids currently running an "问AI" query — rows disable the button + show spinner. */
-  askAILoadingIds: ReadonlySet<string>;
   onSetChatProvider: (id: string) => void;
   onSetChatModel: (id: string) => void;
   onSetChatApiKey: (v: string) => void;
@@ -62,7 +60,6 @@ interface ProviderDetailSectionProps {
   onOpenPicker: () => void;
   onOpenManualModal: () => void;
   onOpenTestModal: () => void;
-  onAskAI: (modelId: string) => void;
   onEditCapabilities: (modelId: string) => void;
 }
 
@@ -91,7 +88,6 @@ export function ProviderDetailSection({
   manualCollapsed,
   canFetchModels,
   testButtonDisabled,
-  askAILoadingIds,
   onSetChatProvider,
   onSetChatModel,
   onSetChatApiKey,
@@ -105,7 +101,6 @@ export function ProviderDetailSection({
   onOpenPicker,
   onOpenManualModal,
   onOpenTestModal,
-  onAskAI,
   onEditCapabilities,
 }: ProviderDetailSectionProps) {
   const { t } = useTranslation();
@@ -343,30 +338,12 @@ export function ProviderDetailSection({
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    onAskAI(mid);
-                                  }}
-                                  disabled={askAILoadingIds.has(mid)}
-                                  title={t('settings:models.askAI.tooltip')}
-                                  className="text-indigo-500 hover:text-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-wait"
-                                >
-                                  {askAILoadingIds.has(mid) ? (
-                                    <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                                    </svg>
-                                  ) : (
-                                    <Sparkles size={16} />
-                                  )}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
                                     onEditCapabilities(mid);
                                   }}
                                   title={t('settings:models.editCapabilities.tooltip')}
                                   className="text-gray-400 hover:text-gray-600 transition-colors"
                                 >
-                                  <Pencil size={15} />
+                                  <SquarePen size={15} />
                                 </button>
                                 <button
                                   type="button"

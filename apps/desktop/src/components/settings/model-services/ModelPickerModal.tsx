@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
+import { Loader2, SquarePen } from 'lucide-react';
 import type { Capability, Model } from '@/services/modelRegistry/types';
 import {
   familyGroup,
@@ -30,6 +30,7 @@ export function ModelPickerModal({
   onClose,
   onSelect,
   onRefresh,
+  onEditCapabilities,
 }: {
   providerName: string;
   models: readonly Model[];
@@ -40,6 +41,7 @@ export function ModelPickerModal({
   onClose: () => void;
   onSelect: (id: string) => void;
   onRefresh: () => void;
+  onEditCapabilities: (modelId: string) => void;
 }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
@@ -262,6 +264,17 @@ export function ModelPickerModal({
                               </div>
                               <div className="flex items-center gap-[18px] shrink-0">
                                 <CapabilityPills capabilities={m.capabilities} />
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEditCapabilities(m.id);
+                                  }}
+                                  title={t('settings:models.editCapabilities.tooltip')}
+                                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                  <SquarePen size={15} />
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => onSelect(m.id)}

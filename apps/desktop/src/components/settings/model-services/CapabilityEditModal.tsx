@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Sparkles } from 'lucide-react';
 import type { Capability } from '@/services/modelRegistry/types';
 import { CAPABILITY_PILL } from '@/components/icons/capabilityIcons';
 
@@ -15,13 +16,17 @@ const EDITABLE_CAPABILITIES: Capability[] = [
 export function CapabilityEditModal({
   modelId,
   initialCapabilities,
+  askAILoading,
   onClose,
   onSave,
+  onAskAI,
 }: {
   modelId: string;
   initialCapabilities: readonly Capability[];
+  askAILoading: boolean;
   onClose: () => void;
   onSave: (capabilities: Capability[]) => void;
+  onAskAI: () => void;
 }) {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<Set<Capability>>(() => new Set(initialCapabilities));
@@ -99,16 +104,34 @@ export function CapabilityEditModal({
         </div>
 
         <div className="h-px bg-brd mx-4" />
-        <div className="flex justify-end gap-2 px-4 py-3">
-          <button className="btn btn-g btn-sm" onClick={onClose}>
-            {t('settings:models.cancel')}
-          </button>
+        <div className="flex items-center justify-between px-4 py-3">
           <button
-            className="btn btn-p btn-sm"
-            onClick={() => onSave(Array.from(selected))}
+            type="button"
+            className="btn btn-g btn-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-wait"
+            onClick={onAskAI}
+            disabled={askAILoading}
+            title={t('settings:models.askAI.tooltip')}
           >
-            {t('settings:models.save')}
+            {askAILoading ? (
+              <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
+            ) : (
+              <Sparkles size={14} />
+            )}
+            {t('settings:models.askAI.label')}
           </button>
+          <div className="flex gap-2">
+            <button className="btn btn-g btn-sm" onClick={onClose}>
+              {t('settings:models.cancel')}
+            </button>
+            <button
+              className="btn btn-p btn-sm"
+              onClick={() => onSave(Array.from(selected))}
+            >
+              {t('settings:models.save')}
+            </button>
+          </div>
         </div>
       </div>
     </div>
