@@ -1,6 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
-import { findTable, TableMap } from '@tiptap/pm/tables';
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -9,29 +8,29 @@ import {
   Trash2,
   Rows3,
   Columns3,
-  Plus,
+  MoreVertical,
+  MoreHorizontal,
 } from 'lucide-react';
 import { TableMenu, type TableMenuItem } from './TableMenu';
 
-// ponytail: row-left / col-top hover handles + the existing +row/+col
-// quick-append buttons, all in one overlay (single positioning system,
-// single transaction listener). Right-click context menu lives in
-// RichTextEditor (different trigger, different items) but shares TableMenu.
+// ponytail: row-left / col-top hover handles only. The previous +row/+col
+// quick-append buttons were removed (row/col hover menus + right-click
+// cover insert). Right-click context menu lives in RichTextEditor.
 //
-// Positioning: wrapper-relative coords (table.rect − wrapper.rect), scroll-
-// invariant — both rects shift by the same delta on scroll, no re-measure
-// needed. Hover handles are recomputed on each render from the live DOM
-// rect of the hovered tr/cell; mouseover fires on cell entry (not every
-// pixel), so no thrash. Toggle-header items only show when hovering the
-// first row/col — TableKit's toggleHeaderRow/Column always affects the
-// table's first row/col, so showing it elsewhere is misleading.
+// Hover-stickiness: the handle is positioned outside the table (22px gap),
+// so the mouse must cross that gap to click it. The naive `mouseover`
+// handler cleared hover when target left the table — which happened as
+// soon as the mouse entered the gap, making the handle vanish mid-motion.
+// Fix: on mouseover, (a) if target is the handle itself (data-table-handle),
+// no-op; (b) if target is outside the current table, no-op (don't clear);
+// (c) only update hover when target is inside the current table. Clearing
+// is delegated to wrapper `mouseleave` + editor `transaction` (which
+// recomputes rowBtn/colBtn to null when the cursor leaves the table →
+// overlay returns null).
 //
-// Cell-pos lookup: view.posAtDOM(cell, 0) → resolve → walk up to the
-// tableCell/tableHeader node → before(d). One helper, used by both row
-// and col handles. setCellSelection({anchorCell}) then runs the command
-// on the current cell's row/column — we don't need explicit row/col
-// indices because addRowBefore/After, deleteRow, addColumnBefore/After,
-// deleteColumn all operate on the selected cell's row/col.
+// Toggle-header items only show when hovering the first row/col —
+// TableKit's toggleHeaderRow/Column always affects the table's first
+// row/col, so showing it elsewhere is misleading.
 
 interface TableControlsOverlayProps {
   editor: Editor;
@@ -65,20 +64,6 @@ function findCurrentTableDom(editor: Editor): HTMLTableElement | null {
   } catch {
     return null;
   }
-}
-
-function selectCellAndRun(
-  editor: Editor,
-  row: number,
-  col: number,
-  command: 'addRowAfter' | 'addColumnAfter',
-): boolean {
-  const { $from } = editor.state.selection;
-  const found = findTable($from);
-  if (!found) return false;
-  const map = TableMap.get(found.node);
-  const cellPos = found.start + map.positionAt(row, col, found.node);
-  return editor.chain().focus().setCellSelection({ anchorCell: cellPos })[command]().run();
 }
 
 function domCellToPos(editor: Editor, cellEl: HTMLElement): number | null {
@@ -162,11 +147,15 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
     const onOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
+      // Hovering a handle itself: don't update or clear (let click land).
+      if (target.closest('[data-table-handle]')) return;
       const table = findCurrentTableDom(editor);
-      if (!table || !table.contains(target)) {
-        setHover({ rowTr: null, colCell: null });
-        return;
-      }
+      // Outside the current table: no-op. Previously this cleared hover,
+      // which killed the handle mid-motion as the mouse crossed the 22px
+      // gap between cell and handle. Clearing is delegated to wrapper
+      // mouseleave + transaction (measure() nulls rowBtn/colBtn when
+      // cursor leaves the table → overlay returns null).
+      if (!table || !table.contains(target)) return;
       const tr = target.closest('tr') as HTMLTableRowElement | null;
       const cell = target.closest('td, th') as HTMLTableCellElement | null;
       setHover((cur) => ({
@@ -211,10 +200,11 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
         })()
       : null;
 
-  const quickBtnClass =
-    'pointer-events-auto absolute w-5 h-5 rounded-full border border-brd bg-panel shadow flex items-center justify-center text-t2 hover:bg-hov hover:text-t1';
+  // ponytail: handle style — no border/shadow, subtle bg only on hover.
+  // Heavier chrome made the handle look like a floating box; this reads
+  // as an affordance that belongs to the row/column.
   const handleBtnClass =
-    'pointer-events-auto absolute w-5 h-5 rounded border border-brd2 bg-panel shadow flex items-center justify-center text-t2 hover:bg-hov hover:text-t1';
+    'pointer-events-auto absolute w-4 h-4 rounded-sm flex items-center justify-center text-t3 hover:bg-hov hover:text-t1';
 
   const openRowMenu = (e: React.MouseEvent, tr: HTMLTableRowElement) => {
     e.preventDefault();
@@ -258,46 +248,17 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
   return (
     <>
       <div className="pointer-events-none absolute inset-0" aria-hidden>
-        {/* +row quick append (bottom-left) */}
-        <button
-          type="button"
-          title="Add row"
-          className={quickBtnClass}
-          style={{ left: rowBtn.left, top: rowBtn.top - 10 }}
-          onClick={() => {
-            const found = findTable(editor.state.selection.$from);
-            if (!found) return;
-            const lastRow = TableMap.get(found.node).height - 1;
-            selectCellAndRun(editor, lastRow, 0, 'addRowAfter');
-          }}
-        >
-          <Plus size={12} strokeWidth={2} />
-        </button>
-        {/* +col quick append (top-right) */}
-        <button
-          type="button"
-          title="Add column"
-          className={quickBtnClass}
-          style={{ left: colBtn.left - 10, top: colBtn.top }}
-          onClick={() => {
-            const found = findTable(editor.state.selection.$from);
-            if (!found) return;
-            const lastCol = TableMap.get(found.node).width - 1;
-            selectCellAndRun(editor, 0, lastCol, 'addColumnAfter');
-          }}
-        >
-          <Plus size={12} strokeWidth={2} />
-        </button>
         {/* row-left hover handle */}
         {rowHandle && (
           <button
             type="button"
             title="Row actions"
+            data-table-handle
             className={handleBtnClass}
             style={{ left: rowHandle.left, top: rowHandle.top }}
             onClick={(e) => hover.rowTr && openRowMenu(e, hover.rowTr)}
           >
-            <Rows3 size={11} strokeWidth={2} />
+            <MoreVertical size={12} strokeWidth={2} />
           </button>
         )}
         {/* col-top hover handle */}
@@ -305,11 +266,12 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
           <button
             type="button"
             title="Column actions"
+            data-table-handle
             className={handleBtnClass}
             style={{ left: colHandle.left, top: colHandle.top }}
             onClick={(e) => hover.colCell && openColMenu(e, hover.colCell)}
           >
-            <Columns3 size={11} strokeWidth={2} />
+            <MoreHorizontal size={12} strokeWidth={2} />
           </button>
         )}
       </div>

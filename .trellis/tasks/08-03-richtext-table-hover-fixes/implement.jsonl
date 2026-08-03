@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "named exports + Tailwind styling — applies to handle redesign"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "forbidden patterns + cleanup checklist — verify fixes don't introduce any"}
