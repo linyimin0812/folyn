@@ -181,13 +181,18 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
   // ponytail: handle positions — wrapper-relative, computed from live rects
   // on each render. Cheap: two getBoundingClientRect per render when hover
   // is non-null. On scroll, both rects shift together → handle stays glued.
+  // ponytail: row handle fills the full row height (one tall bar to
+  // the left of the row); col handle fills the full column width (one
+  // wide bar above the first-row cell). Width/height come from the
+  // live rects so they stay glued on scroll and resize.
   const rowHandle =
     hover.rowTr && cr
       ? (() => {
           const r = hover.rowTr.getBoundingClientRect();
           return {
             left: r.left - cr.left - 22,
-            top: r.top - cr.top + r.height / 2 - 10,
+            top: r.top - cr.top,
+            height: r.height,
           };
         })()
       : null;
@@ -204,17 +209,18 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
           if (!firstRowCell) return null;
           const r = firstRowCell.getBoundingClientRect();
           return {
-            left: r.left - cr.left + r.width / 2 - 10,
+            left: r.left - cr.left,
             top: r.top - cr.top - 22,
+            width: r.width,
           };
         })()
       : null;
 
-  // ponytail: handle style — no border/shadow, subtle bg only on hover.
-  // Heavier chrome made the handle look like a floating box; this reads
-  // as an affordance that belongs to the row/column.
+  // ponytail: handle style — gray bg that matches the row/column span,
+  // hover lifts to a stronger surface. No border/shadow — the bar shape
+  // itself reads as an affordance belonging to the row/column.
   const handleBtnClass =
-    'pointer-events-auto absolute w-4 h-4 rounded-sm flex items-center justify-center text-t3 hover:bg-hov hover:text-t1';
+    'pointer-events-auto absolute rounded-sm flex items-center justify-center text-t3 bg-surf2 hover:bg-hov hover:text-t1';
 
   const openRowMenu = (e: React.MouseEvent, tr: HTMLTableRowElement) => {
     e.preventDefault();
@@ -284,7 +290,7 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
               e.dataTransfer.effectAllowed = 'move';
             }}
             className={handleBtnClass}
-            style={{ left: rowHandle.left, top: rowHandle.top }}
+            style={{ left: rowHandle.left, top: rowHandle.top, height: rowHandle.height, width: 16 }}
             onClick={(e) => hover.rowTr && openRowMenu(e, hover.rowTr)}
           >
             <MoreVertical size={12} strokeWidth={2} />
@@ -306,7 +312,7 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
               e.dataTransfer.effectAllowed = 'move';
             }}
             className={handleBtnClass}
-            style={{ left: colHandle.left, top: colHandle.top }}
+            style={{ left: colHandle.left, top: colHandle.top, width: colHandle.width, height: 16 }}
             onClick={(e) => hover.colCell && openColMenu(e, hover.colCell)}
           >
             <MoreHorizontal size={12} strokeWidth={2} />
