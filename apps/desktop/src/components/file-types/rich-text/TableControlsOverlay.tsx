@@ -191,8 +191,12 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
           };
         })()
       : null;
+  // ponytail: col handle only shows when hovering the first row —
+  // it's a column-level affordance, surfacing it on body cells reads
+  // as "this cell" rather than "this column". First row is the header
+  // strip where column actions naturally live.
   const colHandle =
-    hover.colCell && cr
+    hover.colCell && cr && hover.colCell.closest('tr')?.rowIndex === 0
       ? (() => {
           const r = hover.colCell.getBoundingClientRect();
           return {
