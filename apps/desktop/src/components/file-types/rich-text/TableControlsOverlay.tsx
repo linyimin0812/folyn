@@ -221,7 +221,7 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
   // spacing — lucide's MoreVertical/Horizontal at size 12 packs dots
   // 4px apart which reads as a single blob; 6px reads as three.
   const handleBtnClass =
-    'pointer-events-auto absolute rounded-sm flex items-center justify-center text-t1 bg-surf2 hover:bg-hov';
+    'pointer-events-auto absolute rounded-md flex items-center justify-center text-t1 bg-surf2 hover:bg-hov';
   const rowDotsSvg = (
     <svg width="10" height="16" viewBox="0 0 10 16" aria-hidden>
       <circle cx="5" cy="2" r="1.5" fill="currentColor" />
