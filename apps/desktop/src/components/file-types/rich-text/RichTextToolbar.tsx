@@ -20,15 +20,7 @@ import {
   Link as LinkIcon,
   Image as ImageIcon,
   Table as TableIcon,
-  Columns3,
-  Rows3,
-  TableCellsMerge,
-  TableCellsSplit,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
   Plus,
-  Trash2,
   Undo,
   Redo,
 } from 'lucide-react';
@@ -181,9 +173,6 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
     }
   };
 
-  const inTable = editor.isActive('table');
-  const cellAlign = editor.getAttributes('tableCell').align as string | undefined;
-
   const buttons: ToolButton[] = [
     // ponytail: slash-command trigger button. Inserts '/' at cursor; the
     // RichTextSlashExtension's computeSlashState detects it on the next
@@ -220,31 +209,6 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
     { icon: Redo, title: 'Redo', disabled: !editor.can().redo(), onClick: () => editor.chain().focus().redo().run() },
   ];
 
-  // ponytail: table cell-context controls — shown only when the cursor is
-  // inside a table. Merge/split/align are the new ops (align sets the cell's
-  // built-in `align` attribute → renders as `text-align`). Structural
-  // add/del col/row use Columns3/Rows3/Minus instead of all-Plus so col vs
-  // row is distinguishable at a glance; before/after share an icon (title
-  // distinguishes) — same as Tiptap's own demo. Header toggle + delete table
-  // round it out.
-  const tableButtons: ToolButton[] = inTable
-    ? [
-        { icon: TableCellsMerge, title: 'Merge cells', disabled: !editor.can().mergeCells(), onClick: () => editor.chain().focus().mergeCells().run() },
-        { icon: TableCellsSplit, title: 'Split cell', disabled: !editor.can().splitCell(), onClick: () => editor.chain().focus().splitCell().run() },
-        { icon: AlignLeft, title: 'Align left', active: !cellAlign || cellAlign === 'left', onClick: () => editor.chain().focus().setCellAttribute('align', 'left').run() },
-        { icon: AlignCenter, title: 'Align center', active: cellAlign === 'center', onClick: () => editor.chain().focus().setCellAttribute('align', 'center').run() },
-        { icon: AlignRight, title: 'Align right', active: cellAlign === 'right', onClick: () => editor.chain().focus().setCellAttribute('align', 'right').run() },
-        { icon: Columns3, title: 'Add column before', onClick: () => editor.chain().focus().addColumnBefore().run() },
-        { icon: Columns3, title: 'Add column after', onClick: () => editor.chain().focus().addColumnAfter().run() },
-        { icon: Rows3, title: 'Add row before', onClick: () => editor.chain().focus().addRowBefore().run() },
-        { icon: Rows3, title: 'Add row after', onClick: () => editor.chain().focus().addRowAfter().run() },
-        { icon: Minus, title: 'Delete column', onClick: () => editor.chain().focus().deleteColumn().run() },
-        { icon: Minus, title: 'Delete row', onClick: () => editor.chain().focus().deleteRow().run() },
-        { icon: TableIcon, title: 'Toggle header row', onClick: () => editor.chain().focus().toggleHeaderRow().run() },
-        { icon: Trash2, title: 'Delete table', onClick: () => editor.chain().focus().deleteTable().run() },
-      ]
-    : [];
-
   return (
     <>
       <div className="flex flex-wrap items-center gap-[2px] px-2 py-1 border-b border-brd bg-surf2">
@@ -264,7 +228,11 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
         ))}
         {/* ponytail: table-insert is a relative-wrapped button so the size
             grid can anchor under it; a transparent fixed backdrop dismisses
-            on outside click (no window.prompt — same reason as UrlModal). */}
+            on outside click (no window.prompt — same reason as UrlModal).
+            All other table ops (merge/split/align/insert row-col/delete)
+            live on the table itself: row-left + col-top hover handles in
+            TableControlsOverlay, and the cell right-click context menu in
+            RichTextEditor. */}
         <div className="relative">
           <button
             type="button"
@@ -301,25 +269,6 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
             <b.icon size={15} strokeWidth={1.6} />
           </button>
         ))}
-        {tableButtons.length > 0 && (
-          <>
-            <span className="mx-1 h-5 w-px bg-brd" aria-hidden />
-            {tableButtons.map((b, i) => (
-              <button
-                key={`tb-${i}`}
-                type="button"
-                title={b.title}
-                disabled={b.disabled}
-                onClick={b.onClick}
-                className={`inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-default ${
-                  b.active ? 'bg-accdim text-acc' : ''
-                }`}
-              >
-                <b.icon size={15} strokeWidth={1.6} />
-              </button>
-            ))}
-          </>
-        )}
       </div>
       {modal === 'link' && (
         <UrlModal

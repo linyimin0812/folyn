@@ -4,6 +4,14 @@ import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { TableKit } from '@tiptap/extension-table';
+import {
+  TableCellsMerge,
+  TableCellsSplit,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Trash2,
+} from 'lucide-react';
 import type { EditorProps } from '../types';
 import {
   deserializeToContent,
@@ -22,6 +30,7 @@ import {
 } from './RichTextSlashExtension';
 import { RichTextSlashMenu } from './RichTextSlashMenu';
 import { TableControlsOverlay } from './TableControlsOverlay';
+import { TableMenu, type TableMenuItem } from './TableMenu';
 
 // ponytail: anti-write-back-loop guard — drawio loadedXml + loadedXmlRef
 // pattern, adapted for tiptap (no iframe). User edits update the ref ONLY
@@ -108,6 +117,56 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
   const [, setToolbarTick] = useState(0);
   const [slashState, setSlashState] = useState<SlashCommandState>(INITIAL_SLASH_STATE);
   const dismissedFromRef = useRef<number | null>(null);
+  // ponytail: right-click cell context menu. Trigger is onContextMenu on
+  // the editor wrapper — if cursor is in a table, suppress browser menu
+  // and show ours; otherwise let the browser handle it (no global
+  // hijacking). Menu items reuse TableKit's merge/split/align/header/delete
+  // commands — no new ops, no cell-pos lookup needed (these act on the
+  // current cell selection).
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+
+  const cellCtxItems: TableMenuItem[] = [
+    {
+      label: 'Merge cells',
+      icon: TableCellsMerge,
+      disabled: !editor?.can().mergeCells(),
+      onClick: () => editor?.chain().focus().mergeCells().run(),
+    },
+    {
+      label: 'Split cell',
+      icon: TableCellsSplit,
+      disabled: !editor?.can().splitCell(),
+      onClick: () => editor?.chain().focus().splitCell().run(),
+    },
+    { label: '---', onClick: () => {} },
+    {
+      label: 'Align left',
+      icon: AlignLeft,
+      onClick: () => editor?.chain().focus().setCellAttribute('align', 'left').run(),
+    },
+    {
+      label: 'Align center',
+      icon: AlignCenter,
+      onClick: () => editor?.chain().focus().setCellAttribute('align', 'center').run(),
+    },
+    {
+      label: 'Align right',
+      icon: AlignRight,
+      onClick: () => editor?.chain().focus().setCellAttribute('align', 'right').run(),
+    },
+    { label: '---', onClick: () => {} },
+    {
+      label: 'Toggle header cell',
+      onClick: () => editor?.chain().focus().toggleHeaderCell().run(),
+    },
+    { label: '---', onClick: () => {} },
+    {
+      label: 'Delete table',
+      icon: Trash2,
+      danger: true,
+      onClick: () => editor?.chain().focus().deleteTable().run(),
+    },
+  ];
   // ponytail: content wrapper ref for the table +row/+col overlay. This div
   // is the positioned ancestor (relative) of the overlay, but NOT a scroll
   // container — so the overlay's abspos buttons scroll with the content and
@@ -144,7 +203,16 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
     <div className="w-full h-full flex flex-col overflow-hidden bg-panel">
       {editor && <RichTextToolbar editor={editor} />}
       <div className="flex-1 overflow-auto">
-        <div ref={scrollRef} className="relative mx-auto max-w-[760px] px-8 py-6 min-h-full [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[60vh] [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:my-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:my-2 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_ul[data-type=taskList]]:list-none [&_.ProseMirror_ul[data-type=taskList]]:pl-0 [&_.ProseMirror_blockquote]:border-l-2 [&_.ProseMirror_blockquote]:border-brd [&_.ProseMirror_blockquote]:pl-4 [&_.ProseMirror_blockquote]:text-t3 [&_.ProseMirror_pre]:bg-surf2 [&_.ProseMirror_pre]:rounded [&_.ProseMirror_pre]:p-3 [&_.ProseMirror_code]:bg-surf2 [&_.ProseMirror_code]:px-1 [&_.ProseMirror_code]:rounded [&_.ProseMirror_hr]:border-brd [&_.ProseMirror_a]:text-acc [&_.ProseMirror_a]:underline [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-brd [&_.ProseMirror_th]:px-2 [&_.ProseMirror_th]:py-1 [&_.ProseMirror_th]:bg-surf2 [&_.ProseMirror_th]:text-left [&_.ProseMirror_th]:font-semibold [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-brd [&_.ProseMirror_td]:px-2 [&_.ProseMirror_td]:py-1 [&_.ProseMirror_.selectedCell]:bg-accdim [&_.ProseMirror_.column-resize]:cursor-col-resize [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:h-auto [&_.ProseMirror_selectednode]:ring-2 [&_.ProseMirror_selectednode]:ring-acc">
+        <div
+          ref={scrollRef}
+          className="relative mx-auto max-w-[760px] px-8 py-6 min-h-full [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[60vh] [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:my-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:my-2 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_ul[data-type=taskList]]:list-none [&_.ProseMirror_ul[data-type=taskList]]:pl-0 [&_.ProseMirror_blockquote]:border-l-2 [&_.ProseMirror_blockquote]:border-brd [&_.ProseMirror_blockquote]:pl-4 [&_.ProseMirror_blockquote]:text-t3 [&_.ProseMirror_pre]:bg-surf2 [&_.ProseMirror_pre]:rounded [&_.ProseMirror_pre]:p-3 [&_.ProseMirror_code]:bg-surf2 [&_.ProseMirror_code]:px-1 [&_.ProseMirror_code]:rounded [&_.ProseMirror_hr]:border-brd [&_.ProseMirror_a]:text-acc [&_.ProseMirror_a]:underline [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-brd [&_.ProseMirror_th]:px-2 [&_.ProseMirror_th]:py-1 [&_.ProseMirror_th]:bg-surf2 [&_.ProseMirror_th]:text-left [&_.ProseMirror_th]:font-semibold [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-brd [&_.ProseMirror_td]:px-2 [&_.ProseMirror_td]:py-1 [&_.ProseMirror_.selectedCell]:bg-accdim [&_.ProseMirror_.column-resize]:cursor-col-resize [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:h-auto [&_.ProseMirror_selectednode]:ring-2 [&_.ProseMirror_selectednode]:ring-acc"
+          onContextMenu={(e) => {
+            if (!editor) return;
+            if (!editor.isActive('table')) return;
+            e.preventDefault();
+            setCtxMenu({ x: e.clientX, y: e.clientY });
+          }}
+        >
           <EditorContent editor={editor} />
           {editor && <TableControlsOverlay editor={editor} containerRef={scrollRef} />}
         </div>
@@ -157,6 +225,14 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
             if (slashState.visible) dismissedFromRef.current = slashState.rangeFrom;
             setSlashState(INITIAL_SLASH_STATE);
           }}
+        />
+      )}
+      {ctxMenu && (
+        <TableMenu
+          items={cellCtxItems}
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          onClose={() => setCtxMenu(null)}
         />
       )}
     </div>
