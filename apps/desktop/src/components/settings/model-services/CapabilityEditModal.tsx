@@ -15,11 +15,6 @@ const EDITABLE_CAPABILITIES: Capability[] = [
   'rerank',
 ];
 
-interface ThinkingEntry {
-  kind: 'thinking' | 'text' | 'tool';
-  content: string;
-}
-
 export function CapabilityEditModal({
   modelId,
   providerName,
@@ -36,21 +31,20 @@ export function CapabilityEditModal({
   const { t } = useTranslation();
   const [selected, setSelected] = useState<Set<Capability>>(() => new Set(initialCapabilities));
   const [askAILoading, setAskAILoading] = useState(false);
-  const [streamEntries, setStreamEntries] = useState<ThinkingEntry[]>([]);
+  const [streamText, setStreamText] = useState('');
+  const [streamThinking, setStreamThinking] = useState('');
   const [streamOpen, setStreamOpen] = useState(true);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [aiFilled, setAiFilled] = useState(false);
-  const [aiDiff, setAiDiff] = useState<{ added: Capability[]; removed: Capability[] } | null>(null);
+  const [aiSuggested, setAiSuggested] = useState<Capability[] | null>(null);
   const streamRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setSelected(new Set(initialCapabilities));
   }, [initialCapabilities]);
 
-  // ponytail: autoscroll the streaming area to bottom as new entries arrive.
   useEffect(() => {
     if (streamRef.current) streamRef.current.scrollTop = streamRef.current.scrollHeight;
-  }, [streamEntries]);
+  }, [streamText, streamThinking]);
 
   const toggle = (c: Capability) => {
     setSelected((prev) => {
@@ -59,43 +53,53 @@ export function CapabilityEditModal({
       else next.add(c);
       return next;
     });
-    // User manual edit clears the AI diff highlight — once they touch a
-    // toggle, the "AI just changed X" framing no longer applies.
-    setAiDiff(null);
+  };
+
+  const applySuggested = (c: Capability) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.add(c);
+      return next;
+    });
+    setAiSuggested((prev) => (prev ? prev.filter((x) => x !== c) : prev));
+  };
+
+  const applyAllSuggested = () => {
+    if (!aiSuggested) return;
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const c of aiSuggested) next.add(c);
+      return next;
+    });
+    setAiSuggested(null);
   };
 
   const handleAskAI = async () => {
     if (askAILoading) return;
-    const prevSelected = new Set(selected);
     setAskAILoading(true);
-    setStreamEntries([]);
+    setStreamText('');
+    setStreamThinking('');
     setAiError(null);
-    setAiFilled(false);
-    setAiDiff(null);
+    setAiSuggested(null);
     setStreamOpen(true);
     try {
       const { capabilities } = await askModelCapabilities(
         modelId,
         providerName,
         (chunk) => {
-          setStreamEntries((prev) => {
-            const last = prev[prev.length - 1];
-            if (last && last.kind === 'text') {
-              return [...prev.slice(0, -1), { kind: 'text', content: last.content + chunk }];
-            }
-            return [...prev, { kind: 'text', content: chunk }];
-          });
+          setStreamText((prev) => prev + chunk);
         },
         (event: StreamEvent) => {
-          setStreamEntries((prev) => [...prev, { kind: event.kind, content: event.content }]);
+          if (event.kind === 'thinking') {
+            setStreamThinking((prev) => prev + event.content);
+          } else if (event.kind === 'text') {
+            // text chunks also arrive via onEvent in some adapter paths;
+            // concat into streamText to avoid duplicates.
+            setStreamText((prev) => prev + event.content);
+          }
         },
       );
-      const next = new Set(capabilities);
-      const added = capabilities.filter((c) => !prevSelected.has(c));
-      const removed = EDITABLE_CAPABILITIES.filter((c) => prevSelected.has(c) && !next.has(c));
-      setSelected(next);
-      setAiFilled(true);
-      setAiDiff({ added, removed });
+      setAiSuggested(capabilities);
     } catch (e) {
       const msg = typeof e === 'object' && e && 'detail' in e
         ? String((e as { detail: unknown }).detail ?? e)
@@ -104,15 +108,6 @@ export function CapabilityEditModal({
     } finally {
       setAskAILoading(false);
     }
-  };
-
-  // ponytail: highlight a toggle row when AI just flipped it — yellow ring
-  // for newly-on, red ring for newly-off. Cleared on any manual toggle.
-  const aiChanged = (c: Capability): 'on' | 'off' | null => {
-    if (!aiDiff) return null;
-    if (aiDiff.added.includes(c)) return 'on';
-    if (aiDiff.removed.includes(c)) return 'off';
-    return null;
   };
 
   return (
@@ -134,16 +129,51 @@ export function CapabilityEditModal({
         </div>
         <div className="h-px bg-brd mx-4" />
 
+        {/* AI suggestion tag bar — clickable labels. */}
+        {aiSuggested !== null && (
+          <div className="mx-4 mt-3 px-3 py-2 bg-accdim rounded-md">
+            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-acc mb-1">
+              {aiSuggested.length > 0
+                ? t('settings:models.askAI.suggestedLabel')
+                : t('settings:models.askAI.noSuggestion')}
+            </div>
+            {aiSuggested.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {aiSuggested.map((c) => {
+                  const pill = CAPABILITY_PILL[c];
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => applySuggested(c)}
+                      title={t('settings:models.askAI.clickToApply')}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold hover:opacity-80 transition-opacity"
+                      style={{ background: pill?.bg ?? '#eee', color: pill?.color ?? '#333' }}
+                    >
+                      {pill && <pill.Icon size={11} />}
+                      {t(`settings:models.capability.${c}`)}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={applyAllSuggested}
+                  className="ml-1 text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-acc hover:underline"
+                >
+                  {t('settings:models.askAI.applyAll')}
+                </button>
+              </div>
+            )}
+            <div className="mt-1 text-[length:calc(var(--ui-font-size)-3px)] text-t3">
+              {t('settings:models.askAI.suggestedHint')}
+            </div>
+          </div>
+        )}
+
         <div className="px-4 py-4 flex flex-col gap-2 overflow-y-auto">
           {EDITABLE_CAPABILITIES.map((c) => {
             const pill = CAPABILITY_PILL[c];
             const isOn = selected.has(c);
-            const changed = aiChanged(c);
-            const ringClass = changed === 'on'
-              ? 'ring-2 ring-yellow-400'
-              : changed === 'off'
-                ? 'ring-2 ring-red-300'
-                : '';
             return (
               <button
                 key={c}
@@ -153,7 +183,7 @@ export function CapabilityEditModal({
                   isOn
                     ? 'border-acc bg-accdim'
                     : 'border-brd bg-transparent hover:bg-hov'
-                } ${ringClass}`}
+                }`}
               >
                 <span className="flex items-center gap-2">
                   {pill && (
@@ -167,11 +197,6 @@ export function CapabilityEditModal({
                   <span className="text-[length:calc(var(--ui-font-size)-2px)] font-ui text-t1">
                     {t(`settings:models.capability.${c}`)}
                   </span>
-                  {changed && (
-                    <span className={`text-[10px] font-bold px-1 rounded ${changed === 'on' ? 'text-yellow-700 bg-yellow-100' : 'text-red-700 bg-red-100'}`}>
-                      {changed === 'on' ? '+AI' : '-AI'}
-                    </span>
-                  )}
                 </span>
                 <span
                   className={`text-[10px] font-bold px-1.5 h-[14px] inline-flex items-center rounded-full ${
@@ -185,8 +210,8 @@ export function CapabilityEditModal({
           })}
         </div>
 
-        {/* AI streaming area — collapsible; visible only when there is content. */}
-        {(streamEntries.length > 0 || askAILoading || aiError) && (
+        {/* Streaming area — text + thinking (italic gray). Collapsible. */}
+        {(streamText || streamThinking || askAILoading || aiError) && (
           <div className="mx-4 mb-2 border border-brd rounded-md">
             <button
               type="button"
@@ -206,36 +231,17 @@ export function CapabilityEditModal({
                 ref={streamRef}
                 className="px-3 pb-2 max-h-[120px] overflow-y-auto text-[length:calc(var(--ui-font-size)-3px)] text-t3 font-mono whitespace-pre-wrap break-words"
               >
-                {streamEntries.map((e, i) => (
-                  <div key={i} className={e.kind === 'thinking' ? 'text-t3 italic' : ''}>
-                    {e.kind === 'thinking' ? `[thinking] ${e.content}` : e.content}
-                  </div>
-                ))}
+                {streamThinking && (
+                  <div className="italic text-t3 opacity-70 whitespace-pre-wrap">{streamThinking}</div>
+                )}
+                {streamText && (
+                  <div className="text-t2 whitespace-pre-wrap">{streamText}</div>
+                )}
                 {aiError && (
                   <div className="text-[var(--red,#f06a6a)]">[error] {aiError}</div>
                 )}
               </div>
             )}
-          </div>
-        )}
-
-        {/* Diff summary + hint after AI fills — user must confirm before save. */}
-        {aiFilled && !askAILoading && (
-          <div className="mx-4 mb-2 px-3 py-1.5 bg-accdim rounded-md text-[length:calc(var(--ui-font-size)-2.5px)] text-acc">
-            {aiDiff && (aiDiff.added.length > 0 || aiDiff.removed.length > 0) ? (
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <span className="font-semibold">{t('settings:models.askAI.diffSummary')}</span>
-                {aiDiff.added.map((c) => (
-                  <span key={`a-${c}`} className="text-yellow-700 bg-yellow-100 px-1 rounded font-semibold">+{t(`settings:models.capability.${c}`)}</span>
-                ))}
-                {aiDiff.removed.map((c) => (
-                  <span key={`r-${c}`} className="text-red-700 bg-red-100 px-1 rounded font-semibold">-{t(`settings:models.capability.${c}`)}</span>
-                ))}
-              </div>
-            ) : (
-              <span>{t('settings:models.askAI.noChange')}</span>
-            )}
-            <div className="mt-0.5">{t('settings:models.askAI.filledHint')}</div>
           </div>
         )}
 

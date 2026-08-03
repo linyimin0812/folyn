@@ -339,9 +339,11 @@
       "label": "Ask AI",
       "thinking": "AI thinking…",
       "streamTitle": "AI output",
-      "filledHint": "AI filled the toggles — review then click Save",
-      "diffSummary": "AI changed:",
-      "noChange": "AI matches current — no change"
+      "suggestedLabel": "AI suggests supported (click to apply):",
+      "noSuggestion": "AI reports no supported capabilities",
+      "clickToApply": "Click to apply this capability",
+      "applyAll": "Apply all",
+      "suggestedHint": "Click a tag to add to the toggles below, then Save"
     },
     "editCapabilities": {
       "tooltip": "Edit capabilities",

@@ -339,9 +339,11 @@
       "label": "问AI",
       "thinking": "AI 思考中…",
       "streamTitle": "AI 输出",
-      "filledHint": "AI 已填入勾选，请确认后点保存",
-      "diffSummary": "AI 调整：",
-      "noChange": "AI 与当前一致，无变更"
+      "suggestedLabel": "AI 建议支持（点击应用）：",
+      "noSuggestion": "AI 认为该模型无支持的能力",
+      "clickToApply": "点击应用此能力",
+      "applyAll": "全部应用",
+      "suggestedHint": "点击标签把能力加到下方勾选，最后点保存"
     },
     "editCapabilities": {
       "tooltip": "编辑能力",
