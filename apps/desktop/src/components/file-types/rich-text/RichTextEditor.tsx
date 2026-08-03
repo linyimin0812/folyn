@@ -341,6 +341,18 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
             });
             ctxMenuPosRef.current = { x: e.clientX, y: e.clientY };
             setCtxMenu({ x: e.clientX, y: e.clientY });
+            // ponytail: selectionchange is async — at contextmenu time
+            // editor.state.selection is still the CellSelection, but the
+            // browser collapses it on the next task tick and PM syncs
+            // state, dropping the selectedCell decoration. Re-apply the
+            // captured snapshot after the browser has its say so the
+            // highlight survives while the menu is open.
+            const snap = pendingCellSelRef.current;
+            if (snap) {
+              setTimeout(() => {
+                editor.chain().setCellSelection({ anchorCell: snap.anchor, headCell: snap.head }).run();
+              }, 0);
+            }
           }}
           onDragOver={(e) => {
             // ponytail: allow row/col drag drops from the hover handles. We
