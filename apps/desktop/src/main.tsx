@@ -23,7 +23,6 @@ import { PetBubbleApp } from './components/pet/PetBubbleApp';
 import { PetCornerApp } from './components/pet/PetCornerApp';
 import { VoiceOrbApp } from './components/ai/VoiceOrbApp';
 import './index.css';
-import '@git-diff-view/react/styles/diff-view.css';
 import './components/pet/pet.css';
 
 // The `pet` Tauri window loads `/#/pet` (see tauri.conf.json) and mounts only

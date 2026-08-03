@@ -39,6 +39,24 @@ describe('useDiffReviewStore', () => {
     expect(s.diffNewContent).toBe('new');
   });
 
+  it('enterDiffReview on same path mid-review keeps the original oldContent (cumulative diff across sequential AI edits)', () => {
+    useDiffReviewStore.getState().enterDiffReview('a.md', 'v0', 'v1');
+    useDiffReviewStore.getState().enterDiffReview('a.md', 'v1', 'v2');
+    useDiffReviewStore.getState().enterDiffReview('a.md', 'v2', 'v3');
+    const s = useDiffReviewStore.getState();
+    expect(s.diffOldContent).toBe('v0');
+    expect(s.diffNewContent).toBe('v3');
+  });
+
+  it('enterDiffReview on a different path overwrites oldContent (switching reviewed file)', () => {
+    useDiffReviewStore.getState().enterDiffReview('a.md', 'a0', 'a1');
+    useDiffReviewStore.getState().enterDiffReview('b.md', 'b0', 'b1');
+    const s = useDiffReviewStore.getState();
+    expect(s.diffFilePath).toBe('b.md');
+    expect(s.diffOldContent).toBe('b0');
+    expect(s.diffNewContent).toBe('b1');
+  });
+
   it('exitDiffReview resets all diff fields', () => {
     useDiffReviewStore.getState().enterDiffReview('a.md', 'old', 'new');
     useDiffReviewStore.getState().exitDiffReview();

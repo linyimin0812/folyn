@@ -99,18 +99,8 @@
     "recentDailyEmpty": "(无历史日记)"
   },
   "diffToolbar": {
-    "pendingCount": "{{count}} 处待审阅",
-    "hunkTotal": "共 {{count}} 处变更",
+    "pendingCount": "{{count}} 处变更待审阅",
     "acceptAll": "全部接受",
-    "rejectAll": "全部拒绝",
-    "accept": "接受",
-    "reject": "拒绝",
-    "split": "并排",
-    "unified": "合并",
-    "splitHint": "并排视图",
-    "unifiedHint": "合并视图",
-    "noHunk": "未匹配到变更块",
-    "preview": "预览最终内容：",
-    "empty": "(空)"
+    "rejectAll": "全部拒绝"
   }
 }

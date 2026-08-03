@@ -38,11 +38,24 @@ export const useDiffReviewStore = create<DiffReviewState>((set) => ({
   externalContentVersion: 0,
 
   enterDiffReview: (filePath, oldContent, newContent) => {
-    set({
-      diffReviewMode: true,
-      diffFilePath: filePath,
-      diffOldContent: oldContent,
-      diffNewContent: newContent,
+    set((state) => {
+      // ponytail: AI tool emits one file_change per edit, each carrying the
+      // disk content BEFORE that edit as oldContent. If we already have a
+      // pending diff for the same path, keep the original oldContent so the
+      // cumulative diff (first edit → final state) survives across multiple
+      // sequential edits. Ceiling: a true multi-hunk session UI would need
+      // a list of changes, not a single old/new pair — revisit when the
+      // single-pair model breaks down.
+      const keepOld =
+        state.diffReviewMode && state.diffFilePath === filePath
+          ? state.diffOldContent
+          : oldContent;
+      return {
+        diffReviewMode: true,
+        diffFilePath: filePath,
+        diffOldContent: keepOld,
+        diffNewContent: newContent,
+      };
     });
   },
 

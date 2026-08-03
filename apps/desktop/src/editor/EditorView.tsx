@@ -57,6 +57,7 @@ import {
 } from './extensions/CodeBlockExtension';
 import { createFilePreviewSrcCompletion } from './extensions/FilePreviewSrcExtension';
 import { orderedListExtension } from './extensions/OrderedListExtension';
+import { inlineDiffExtension } from './extensions/InlineDiffExtension';
 import { json as jsonLanguage } from '@codemirror/lang-json';
 
 /** JSON linter: validates JSON syntax and highlights only the error line */
@@ -270,6 +271,7 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
         highlightSelectionMatches(),
         indentationMarkers(),
         ...buildSearchExtensions(sp.toggleRef, sp.toggleReplaceRef),
+        ...inlineDiffExtension,
         keymap.of([
           { key: 'Mod-a', run: selectAll },
           ...closeBracketsKeymap,
