@@ -337,10 +337,14 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .diff-line.diff-separator { justify-content: center; color: var(--t3); font-size: 10px; padding: 2px 0; background: var(--surf); }
 
 /* ── prev-body :has() rules ── */
-.prev-body:has(.image-viewer) { padding: 0; overflow: hidden; }
-.prev-body:has(.html-preview-frame) { padding: 0; overflow: hidden; }
+/* ponytail: direct-child `> ` — these full-bleed rules are meant for standalone
+   .png/.svg/.html/.pdf files where the viewer is the direct child of .prev-body.
+   Without `>`, a :::file-preview embedding an image/html/pdf inside markdown
+   matches :has() too, locking the whole preview page's scroll. */
+.prev-body:has(> .image-viewer) { padding: 0; overflow: hidden; }
+.prev-body:has(> .html-preview-frame) { padding: 0; overflow: hidden; }
 .html-preview-frame { width: 100%; height: 100%; border: none; background: #fff; }
-.prev-body:has(.pdf-viewer) { padding: 0; overflow: hidden; }
+.prev-body:has(> .pdf-viewer) { padding: 0; overflow: hidden; }
 .pdf-page-wrap { contain: layout style; }
 
 /* ── SKILL Meta Card (color-mix / linear-gradient) ── */
