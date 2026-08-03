@@ -135,7 +135,7 @@ export function ModelPickerModal({
               placeholder={t('settings:models.picker.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-[32px] pl-[30px] pr-[12px] border border-brd border-r-0 rounded-l-md text-[13px] text-t1 outline-none focus:border-[var(--acc)]"
+              className="w-full h-[32px] pl-[30px] pr-[12px] border border-brd border-r-0 rounded-l-md text-[13px] text-t1 bg-inp outline-none focus:border-[var(--acc)]"
               style={{ fontFamily: 'inherit' }}
               autoFocus
             />
