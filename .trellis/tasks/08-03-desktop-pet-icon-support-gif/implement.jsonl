@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Pet window transparent + cross-window icon broadcast; confirms <img> render path is fine for animated GIF"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "Error keys reused (fileTooLarge, unsupportedFormat); no new keys needed"}

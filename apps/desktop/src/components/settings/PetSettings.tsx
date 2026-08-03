@@ -13,9 +13,9 @@ import { Toggle } from '@/components/settings/primitives';
  *    the user's preference, which the App startup effect re-applies).
  *  - Icon source radio: 默认 (inline SVG) vs. 自定义 (`<img>` from
  *    `petIconPath`). 自定义 with no path yet triggers the upload picker.
- *  - "上传图标…" button: native file picker (png/jpg/jpeg/webp/svg,
- *    ≤1MB) → copy file to `~/.quill/pet-icon/pet-icon-<ts>.<ext>` → `setPetIcon('custom', path)`.
- *    Files >1MB or non-image extensions are rejected with a local error
+ *  - "上传图标…" button: native file picker (png/jpg/jpeg/webp/svg/gif,
+ *    ≤10MB) → copy file to `~/.quill/pet-icon/pet-icon-<ts>.<ext>` → `setPetIcon('custom', path)`.
+ *    Files >10MB or non-image extensions are rejected with a local error
  *    message (no toast system reused — the existing settings sections use
  *    local `errorMsg` state, so we follow that pattern).
  *  - "恢复默认" button: deletes any `pet-icon*` file in `~/.quill/pet-icon/` +
@@ -60,8 +60,8 @@ export function PetSettings() {
   const [errorMsg, setErrorMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
-  /** Accepted image extensions for the custom icon (PRD: png/jpg/webp/svg). */
-  const VALID_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'svg'];
+  /** Accepted image extensions for the custom icon (png/jpg/webp/svg + gif). */
+  const VALID_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif'];
   /** File-size cap: 10MB. Rejected oversized files instead of resizing. */
   const MAX_ICON_BYTES = 10 * 1024 * 1024;
 
