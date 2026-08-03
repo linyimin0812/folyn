@@ -293,13 +293,16 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
             if (!editor) return;
             if (!editor.isActive('table')) return;
             e.preventDefault();
-            // ponytail: if right-click collapsed a multi-cell CellSelection
-            // and the click landed inside the original rect, restore it so
-            // the merge/split items (which read editor.can().mergeCells()
-            // at render time) stay enabled.
+            // ponytail: re-apply the CellSelection captured on mousedown if
+            // the click landed inside the original rect. We can't check
+            // editor.state.selection here — selectionchange fires async
+            // (next tick), so during this handler the CellSelection may
+            // still look alive, but by the time the menu re-renders it's
+            // collapsed. Re-applying is idempotent (setCellSelection to
+            // the same positions is a no-op if selection already matches).
             const pending = pendingCellSelRef.current;
             pendingCellSelRef.current = null;
-            if (pending && !(editor.state.selection instanceof CellSelection)) {
+            if (pending) {
               try {
                 const $anchor = editor.state.doc.resolve(pending.anchor);
                 const table = $anchor.node(-1);
@@ -317,7 +320,7 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
                   }).run();
                 }
               } catch {
-                // positions no longer valid (table edited mid-flight) — give up
+                // positions no longer valid — give up, default selection stays
               }
             }
             ctxMenuPosRef.current = { x: e.clientX, y: e.clientY };
