@@ -68,7 +68,11 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      // ponytail: enableTabIndentation lets Tab insert 2-space indents in
+      // code blocks (multi-line selection indents all lines; Shift-Tab
+      // reverses). List items already sink/lift on Tab via Tiptap's
+      // ListItem/TaskItem default shortcuts, so no extra wiring needed.
+      StarterKit.configure({ codeBlock: { enableTabIndentation: true, tabSize: 2 } }),
       TaskList,
       TaskItem.configure({ nested: true }),
       // ponytail: tableCell/tableHeader disabled in TableKit and replaced
