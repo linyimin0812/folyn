@@ -5,7 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { TableKit } from '@tiptap/extension-table';
-import { moveTableRow, moveTableColumn } from '@tiptap/pm/tables';
+import { moveTableRow, moveTableColumn, CellSelection, selectedRect } from '@tiptap/pm/tables';
 import {
   TableCellsMerge,
   TableCellsSplit,
@@ -248,6 +248,33 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
         <div
           ref={scrollRef}
           className="relative mx-auto max-w-[760px] px-8 py-6 min-h-full [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[60vh] [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:my-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:my-2 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_ul[data-type=taskList]]:list-none [&_.ProseMirror_ul[data-type=taskList]]:pl-0 [&_.ProseMirror_blockquote]:border-l-2 [&_.ProseMirror_blockquote]:border-brd [&_.ProseMirror_blockquote]:pl-4 [&_.ProseMirror_blockquote]:text-t3 [&_.ProseMirror_pre]:bg-surf2 [&_.ProseMirror_pre]:rounded [&_.ProseMirror_pre]:p-3 [&_.ProseMirror_code]:bg-surf2 [&_.ProseMirror_code]:px-1 [&_.ProseMirror_code]:rounded [&_.ProseMirror_hr]:border-brd [&_.ProseMirror_a]:text-acc [&_.ProseMirror_a]:underline [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-brd [&_.ProseMirror_th]:px-2 [&_.ProseMirror_th]:py-1 [&_.ProseMirror_th]:bg-surf2 [&_.ProseMirror_th]:text-left [&_.ProseMirror_th]:font-semibold [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-brd [&_.ProseMirror_td]:px-2 [&_.ProseMirror_td]:py-1 [&_.ProseMirror_td]:relative [&_.ProseMirror_th]:relative [&_.ProseMirror_.selectedCell]:bg-accdim [&_.ProseMirror_.column-resize]:cursor-col-resize [&_.ProseMirror_.column-resize-handle]:absolute [&_.ProseMirror_.column-resize-handle]:right-[-2px] [&_.ProseMirror_.column-resize-handle]:top-0 [&_.ProseMirror_.column-resize-handle]:bottom-0 [&_.ProseMirror_.column-resize-handle]:w-1 [&_.ProseMirror_.column-resize-handle]:z-10 [&_.ProseMirror_.column-resize-handle]:cursor-col-resize [&_.ProseMirror_.column-resize-handle:hover]:bg-acc [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:h-auto [&_.ProseMirror_selectednode]:ring-2 [&_.ProseMirror_selectednode]:ring-acc"
+          onMouseDown={(e) => {
+            // ponytail: preserve a multi-cell CellSelection across right-
+            // click. PM's default mousedown handler runs before contextmenu
+            // and collapses the selection to the clicked cell, which leaves
+            // editor.can().mergeCells() false by the time the context menu
+            // renders — disabling merge/split. Only block default when the
+            // right-click lands INSIDE the current CellSelection; otherwise
+            // let PM move the selection to the clicked cell (expected UX).
+            if (e.button !== 2 || !editor) return;
+            const { state } = editor;
+            if (!(state.selection instanceof CellSelection)) return;
+            const target = e.target as HTMLElement | null;
+            const cellEl = target?.closest?.('td, th') as HTMLTableCellElement | null;
+            if (!cellEl) return;
+            const cellPos = domCellToPos(editor, cellEl);
+            if (cellPos == null) return;
+            try {
+              const rect = selectedRect(state);
+              const cr = rect.map.findCell(cellPos - rect.tableStart);
+              const inSel =
+                cr.left >= rect.left && cr.right <= rect.right &&
+                cr.top >= rect.top && cr.bottom <= rect.bottom;
+              if (inSel) e.preventDefault();
+            } catch {
+              // cellPos not in this table's map — fall through to default
+            }
+          }}
           onContextMenu={(e) => {
             if (!editor) return;
             if (!editor.isActive('table')) return;
