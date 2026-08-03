@@ -25,9 +25,15 @@ const CAP_KEYS: { key: Capability; jsonField: string }[] = [
 ];
 
 function buildPrompt(modelId: string, providerName: string): string {
-  return [
+  const prompt = [
     'You are a model-capability classifier. Given a model id and its provider,',
     'decide which of the following six capabilities the model supports.',
+    'Use your training knowledge of named models (e.g. gpt-4o, claude-3.5,',
+    'deepseek-chat, qwen-max, llama-3). If you do not recognize the model,',
+    'infer from the model id heuristically (e.g. ids containing "reason"/"o1"/"r1"',
+    '→ reasoning; "vision"/"vl"/"image"→vision; "embed"/"embedding"→embedding;',
+    '"rerank"→rerank; "search"/"online"→web-search; tool/function calling is',
+    'common on flagship chat models).',
     '',
     `Model id: ${modelId}`,
     `Provider: ${providerName}`,
@@ -42,8 +48,10 @@ function buildPrompt(modelId: string, providerName: string): string {
     '',
     'Return STRICT JSON ONLY — no prose, no code fences:',
     '{"reasoning":bool,"function-call":bool,"vision":bool,"web-search":bool,"embedding":bool,"rerank":bool}',
-    'If you are unsure, default to false.',
   ].join('\n');
+  // ponytail: log prompt so user can audit what's actually sent to the LLM.
+  console.log('[askModelCapabilities] prompt:\n' + prompt);
+  return prompt;
 }
 
 export function parseCapabilities(aiText: string): ModelCapabilitiesResult {
