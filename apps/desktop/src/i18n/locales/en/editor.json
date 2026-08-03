@@ -125,7 +125,9 @@
       "alignCenter": "Align center",
       "alignRight": "Align right",
       "toggleHeaderCell": "Toggle header cell",
-      "deleteTable": "Delete table"
+      "deleteTable": "Delete table",
+      "bgColor": "Background color",
+      "clearBg": "Clear background"
     }
   }
 }

@@ -243,11 +243,41 @@ describe('image + table node round-trip', () => {
           content: [
             {
               type: 'tableRow',
-              content: [cell('merged', { colspan: 2, rowspan: 1, colwidth: null, align: null }), cell('b', { colspan: 1, rowspan: 2, colwidth: null, align: null })],
+              content: [cell('merged', { colspan: 2, rowspan: 1, colwidth: null, align: null, background: null }), cell('b', { colspan: 1, rowspan: 2, colwidth: null, align: null, background: null })],
             },
             {
               type: 'tableRow',
-              content: [cell('c', { colspan: 1, rowspan: 1, colwidth: null, align: null })],
+              content: [cell('c', { colspan: 1, rowspan: 1, colwidth: null, align: null, background: null })],
+            },
+          ],
+        },
+      ],
+    };
+    expect(deserializeToContent(serializeToDisk(doc))).toEqual(doc);
+  });
+
+  // ponytail: colwidth + background are the two attrs added by resizable
+  // tables + RichTextTableCell's custom `background` attr. Round-trip
+  // pins them so a doc saved with column widths / cell colors survives
+  // disk reload byte-for-byte (anti-loop stableStringify equality).
+  it('round-trips colwidth + background attrs (resize drag + bg color)', () => {
+    const cell = (text: string, attrs: Record<string, unknown>) => ({
+      type: 'tableCell',
+      attrs,
+      content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+    });
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [
+            {
+              type: 'tableRow',
+              content: [
+                cell('a', { colspan: 1, rowspan: 1, colwidth: [120], align: null, background: '#ffeb3b' }),
+                cell('b', { colspan: 1, rowspan: 1, colwidth: [80], align: 'center', background: null }),
+              ],
             },
           ],
         },

@@ -67,7 +67,7 @@ function findCurrentTableDom(editor: Editor): HTMLTableElement | null {
   }
 }
 
-function domCellToPos(editor: Editor, cellEl: HTMLElement): number | null {
+export function domCellToPos(editor: Editor, cellEl: HTMLElement): number | null {
   const { view, state } = editor;
   if (!view) return null;
   try {
@@ -256,6 +256,17 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
             type="button"
             title={t('editor:table.handle.rowActions')}
             data-table-handle
+            draggable
+            onDragStart={(e) => {
+              if (!hover.rowTr) return;
+              // ponytail: stash source row index in a custom MIME. drop
+              // handler in RichTextEditor reads this to call moveTableRow.
+              // Known ceiling: rowIndex is DOM order, not TableMap row —
+              // breaks if the table ever has multiple tbody/thead sections.
+              // Tiptap emits a single tbody so this matches TableMap rows.
+              e.dataTransfer.setData('application/x-quill-table-row', String(hover.rowTr.rowIndex));
+              e.dataTransfer.effectAllowed = 'move';
+            }}
             className={handleBtnClass}
             style={{ left: rowHandle.left, top: rowHandle.top }}
             onClick={(e) => hover.rowTr && openRowMenu(e, hover.rowTr)}
@@ -269,6 +280,15 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
             type="button"
             title={t('editor:table.handle.colActions')}
             data-table-handle
+            draggable
+            onDragStart={(e) => {
+              if (!hover.colCell) return;
+              // ponytail: cellIndex is DOM cell order, not column index —
+              // breaks for tables with colspan (a merged cell's cellIndex
+              // is its DOM slot, not its column). MVP: simple tables only.
+              e.dataTransfer.setData('application/x-quill-table-col', String(hover.colCell.cellIndex));
+              e.dataTransfer.effectAllowed = 'move';
+            }}
             className={handleBtnClass}
             style={{ left: colHandle.left, top: colHandle.top }}
             onClick={(e) => hover.colCell && openColMenu(e, hover.colCell)}

@@ -5,6 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { TableKit } from '@tiptap/extension-table';
+import { moveTableRow, moveTableColumn } from '@tiptap/pm/tables';
 import {
   TableCellsMerge,
   TableCellsSplit,
@@ -12,6 +13,8 @@ import {
   AlignCenter,
   AlignRight,
   Trash2,
+  Paintbrush,
+  Eraser,
 } from 'lucide-react';
 import type { EditorProps } from '../types';
 import {
@@ -30,8 +33,9 @@ import {
   type SlashCommandState,
 } from './RichTextSlashExtension';
 import { RichTextSlashMenu } from './RichTextSlashMenu';
-import { TableControlsOverlay } from './TableControlsOverlay';
+import { TableControlsOverlay, domCellToPos } from './TableControlsOverlay';
 import { TableMenu, type TableMenuItem } from './TableMenu';
+import { RichTextTableCell, RichTextTableHeader } from './RichTextTableCell';
 
 // ponytail: anti-write-back-loop guard — drawio loadedXml + loadedXmlRef
 // pattern, adapted for tiptap (no iframe). User edits update the ref ONLY
@@ -67,7 +71,20 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
       StarterKit,
       TaskList,
       TaskItem.configure({ nested: true }),
-      TableKit.configure({ table: { allowTableNodeSelection: true } }),
+      // ponytail: tableCell/tableHeader disabled in TableKit and replaced
+      // with RichTextTableCell/Header — the base Tiptap nodes lack a
+      // `background` attr, so setCellAttribute('background', …) would be
+      // rejected by the schema. Custom extensions add it via
+      // addAttributes(). `resizable: true` enables prosemirror-tables'
+      // columnResizing plugin (drag handles between columns; colwidth
+      // persists as a cell attr, survives round-trip).
+      TableKit.configure({
+        table: { allowTableNodeSelection: true, resizable: true },
+        tableCell: false,
+        tableHeader: false,
+      }),
+      RichTextTableCell,
+      RichTextTableHeader,
       RichTextImage,
       RichTextSlashExtension,
     ],
@@ -126,6 +143,18 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
   // commands — no new ops, no cell-pos lookup needed (these act on the
   // current cell selection).
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  // ponytail: bg-color picker popover. Opened from the cell context menu's
+  // "Background color" item; renders a native <input type="color"> (ponytail:
+  // native platform picker over a lib — same reasoning as the URL modal).
+  // On change, setCellAttribute('background', value) on the current cell
+  // selection (preserved across the picker because no transaction moves the
+  // cursor). "Clear" sets background to null.
+  const [bgPicker, setBgPicker] = useState<{ x: number; y: number } | null>(null);
+  // ponytail: capture the last right-click position so the bgColor item can
+  // open the picker where the menu was. TableMenu closes itself (setCtxMenu
+  // null) before firing the item onClick, so ctxMenu is stale inside the
+  // onClick — this ref holds the position across that close.
+  const ctxMenuPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const cellCtxItems: TableMenuItem[] = [
     {
@@ -160,6 +189,17 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
     {
       label: t('editor:table.cellMenu.toggleHeaderCell'),
       onClick: () => editor?.chain().focus().toggleHeaderCell().run(),
+    },
+    { label: '---', onClick: () => {} },
+    {
+      label: t('editor:table.cellMenu.bgColor'),
+      icon: Paintbrush,
+      onClick: () => setBgPicker(ctxMenuPosRef.current ?? { x: 0, y: 0 }),
+    },
+    {
+      label: t('editor:table.cellMenu.clearBg'),
+      icon: Eraser,
+      onClick: () => editor?.chain().focus().setCellAttribute('background', null).run(),
     },
     { label: '---', onClick: () => {} },
     {
@@ -207,12 +247,55 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
       <div className="flex-1 overflow-auto">
         <div
           ref={scrollRef}
-          className="relative mx-auto max-w-[760px] px-8 py-6 min-h-full [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[60vh] [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:my-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:my-2 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_ul[data-type=taskList]]:list-none [&_.ProseMirror_ul[data-type=taskList]]:pl-0 [&_.ProseMirror_blockquote]:border-l-2 [&_.ProseMirror_blockquote]:border-brd [&_.ProseMirror_blockquote]:pl-4 [&_.ProseMirror_blockquote]:text-t3 [&_.ProseMirror_pre]:bg-surf2 [&_.ProseMirror_pre]:rounded [&_.ProseMirror_pre]:p-3 [&_.ProseMirror_code]:bg-surf2 [&_.ProseMirror_code]:px-1 [&_.ProseMirror_code]:rounded [&_.ProseMirror_hr]:border-brd [&_.ProseMirror_a]:text-acc [&_.ProseMirror_a]:underline [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-brd [&_.ProseMirror_th]:px-2 [&_.ProseMirror_th]:py-1 [&_.ProseMirror_th]:bg-surf2 [&_.ProseMirror_th]:text-left [&_.ProseMirror_th]:font-semibold [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-brd [&_.ProseMirror_td]:px-2 [&_.ProseMirror_td]:py-1 [&_.ProseMirror_.selectedCell]:bg-accdim [&_.ProseMirror_.column-resize]:cursor-col-resize [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:h-auto [&_.ProseMirror_selectednode]:ring-2 [&_.ProseMirror_selectednode]:ring-acc"
+          className="relative mx-auto max-w-[760px] px-8 py-6 min-h-full [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[60vh] [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:my-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:my-2 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_ul[data-type=taskList]]:list-none [&_.ProseMirror_ul[data-type=taskList]]:pl-0 [&_.ProseMirror_blockquote]:border-l-2 [&_.ProseMirror_blockquote]:border-brd [&_.ProseMirror_blockquote]:pl-4 [&_.ProseMirror_blockquote]:text-t3 [&_.ProseMirror_pre]:bg-surf2 [&_.ProseMirror_pre]:rounded [&_.ProseMirror_pre]:p-3 [&_.ProseMirror_code]:bg-surf2 [&_.ProseMirror_code]:px-1 [&_.ProseMirror_code]:rounded [&_.ProseMirror_hr]:border-brd [&_.ProseMirror_a]:text-acc [&_.ProseMirror_a]:underline [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-brd [&_.ProseMirror_th]:px-2 [&_.ProseMirror_th]:py-1 [&_.ProseMirror_th]:bg-surf2 [&_.ProseMirror_th]:text-left [&_.ProseMirror_th]:font-semibold [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-brd [&_.ProseMirror_td]:px-2 [&_.ProseMirror_td]:py-1 [&_.ProseMirror_td]:relative [&_.ProseMirror_th]:relative [&_.ProseMirror_.selectedCell]:bg-accdim [&_.ProseMirror_.column-resize]:cursor-col-resize [&_.ProseMirror_.column-resize-handle]:absolute [&_.ProseMirror_.column-resize-handle]:right-[-2px] [&_.ProseMirror_.column-resize-handle]:top-0 [&_.ProseMirror_.column-resize-handle]:bottom-0 [&_.ProseMirror_.column-resize-handle]:w-1 [&_.ProseMirror_.column-resize-handle]:z-10 [&_.ProseMirror_.column-resize-handle]:cursor-col-resize [&_.ProseMirror_.column-resize-handle:hover]:bg-acc [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:h-auto [&_.ProseMirror_selectednode]:ring-2 [&_.ProseMirror_selectednode]:ring-acc"
           onContextMenu={(e) => {
             if (!editor) return;
             if (!editor.isActive('table')) return;
             e.preventDefault();
+            ctxMenuPosRef.current = { x: e.clientX, y: e.clientY };
             setCtxMenu({ x: e.clientX, y: e.clientY });
+          }}
+          onDragOver={(e) => {
+            // ponytail: allow row/col drag drops from the hover handles. We
+            // only preventDefault when our custom MIME is on the clipboard —
+            // otherwise the editor's default (text/file drop) keeps working.
+            const types = e.dataTransfer.types;
+            if (
+              types.includes('application/x-quill-table-row') ||
+              types.includes('application/x-quill-table-col')
+            ) {
+              e.preventDefault();
+            }
+          }}
+          onDrop={(e) => {
+            const dt = e.dataTransfer;
+            const rowIdx = dt.getData('application/x-quill-table-row');
+            const colIdx = dt.getData('application/x-quill-table-col');
+            if (!editor || (rowIdx === '' && colIdx === '')) return;
+            e.preventDefault();
+            const target = e.target as HTMLElement | null;
+            if (!target) return;
+            try {
+              if (rowIdx !== '') {
+                const trEl = target.closest('tr') as HTMLTableRowElement | null;
+                if (!trEl) return;
+                const cellEl = trEl.cells[0];
+                if (!cellEl) return;
+                const pos = domCellToPos(editor, cellEl);
+                if (pos == null) return;
+                const cmd = moveTableRow({ from: Number(rowIdx), to: trEl.rowIndex, pos });
+                cmd(editor.state, editor.view.dispatch.bind(editor.view));
+              } else {
+                const cellEl = target.closest('td, th') as HTMLTableCellElement | null;
+                if (!cellEl) return;
+                const pos = domCellToPos(editor, cellEl);
+                if (pos == null) return;
+                const cmd = moveTableColumn({ from: Number(colIdx), to: cellEl.cellIndex, pos });
+                cmd(editor.state, editor.view.dispatch.bind(editor.view));
+              }
+            } catch {
+              // swallow — bad drop shouldn't crash the editor
+            }
           }}
         >
           <EditorContent editor={editor} />
@@ -236,6 +319,35 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
           y={ctxMenu.y}
           onClose={() => setCtxMenu(null)}
         />
+      )}
+      {bgPicker && (
+        <div
+          className="fixed z-[1000] p-2 bg-panel border border-brd rounded-lg shadow-[0_4px_16px_rgba(0,0,0,.12)] flex items-center gap-2"
+          style={{ top: bgPicker.y, left: bgPicker.x }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <input
+            type="color"
+            // ponytail: native color input over a lib — no wheel/palette/
+            // history. onChange fires continuously while dragging the picker
+            // swatch (live preview on the cell selection).
+            onChange={(e) =>
+              editor?.chain().focus().setCellAttribute('background', e.target.value).run()
+            }
+            className="w-8 h-8 cursor-pointer bg-transparent border-none p-0"
+            autoFocus
+          />
+          <button
+            type="button"
+            onClick={() => {
+              editor?.chain().focus().setCellAttribute('background', null).run();
+              setBgPicker(null);
+            }}
+            className="px-2 py-1 text-xs text-t2 hover:text-t1"
+          >
+            {t('editor:table.cellMenu.clearBg')}
+          </button>
+        </div>
       )}
     </div>
   );
