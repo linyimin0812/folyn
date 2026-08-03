@@ -33,7 +33,7 @@ export function CapabilityEditModal({
   const [askAILoading, setAskAILoading] = useState(false);
   const [streamText, setStreamText] = useState('');
   const [streamThinking, setStreamThinking] = useState('');
-  const [streamOpen, setStreamOpen] = useState(true);
+  const [streamOpen, setStreamOpen] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiSuggested, setAiSuggested] = useState<Capability[] | null>(null);
   const streamRef = useRef<HTMLDivElement | null>(null);
@@ -62,16 +62,6 @@ export function CapabilityEditModal({
       return next;
     });
     setAiSuggested((prev) => (prev ? prev.filter((x) => x !== c) : prev));
-  };
-
-  const applyAllSuggested = () => {
-    if (!aiSuggested) return;
-    setSelected((prev) => {
-      const next = new Set(prev);
-      for (const c of aiSuggested) next.add(c);
-      return next;
-    });
-    setAiSuggested(null);
   };
 
   const handleAskAI = async () => {
@@ -124,48 +114,7 @@ export function CapabilityEditModal({
         </div>
         <div className="h-px bg-brd mx-4" />
 
-        {/* AI suggestion tag bar — clickable labels. */}
-        {aiSuggested !== null && (
-          <div className="mx-4 mt-3 px-3 py-2 bg-accdim rounded-md">
-            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-acc mb-1">
-              {aiSuggested.length > 0
-                ? t('settings:models.askAI.suggestedLabel')
-                : t('settings:models.askAI.noSuggestion')}
-            </div>
-            {aiSuggested.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                {aiSuggested.map((c) => {
-                  const pill = CAPABILITY_PILL[c];
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => applySuggested(c)}
-                      title={t('settings:models.askAI.clickToApply')}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold hover:opacity-80 transition-opacity"
-                      style={{ background: pill?.bg ?? '#eee', color: pill?.color ?? '#333' }}
-                    >
-                      {pill && <pill.Icon size={11} />}
-                      {t(`settings:models.capability.${c}`)}
-                    </button>
-                  );
-                })}
-                <button
-                  type="button"
-                  onClick={applyAllSuggested}
-                  className="ml-1 text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-acc hover:underline"
-                >
-                  {t('settings:models.askAI.applyAll')}
-                </button>
-              </div>
-            )}
-            <div className="mt-1 text-[length:calc(var(--ui-font-size)-3px)] text-t3">
-              {t('settings:models.askAI.suggestedHint')}
-            </div>
-          </div>
-        )}
-
-        <div className="px-4 py-4 flex flex-col gap-2 overflow-y-auto">
+        <div className="px-4 py-4 grid grid-cols-2 gap-2 overflow-y-auto">
           {EDITABLE_CAPABILITIES.map((c) => {
             const pill = CAPABILITY_PILL[c];
             const isOn = selected.has(c);
@@ -205,7 +154,7 @@ export function CapabilityEditModal({
           })}
         </div>
 
-        {/* Streaming area — text + thinking (italic gray). Collapsible. */}
+        {/* Streaming area — text + thinking (italic gray). Collapsible, default collapsed. */}
         {(streamText || streamThinking || askAILoading || aiError) && (
           <div className="mx-4 mb-2 border border-brd rounded-md">
             <button
@@ -237,6 +186,40 @@ export function CapabilityEditModal({
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* AI suggestion tag bar — below streaming area. Each tag clickable to apply. */}
+        {aiSuggested !== null && (
+          <div className="mx-4 mb-2 px-3 py-2 bg-accdim rounded-md">
+            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-acc mb-1">
+              {aiSuggested.length > 0
+                ? t('settings:models.askAI.suggestedLabel')
+                : t('settings:models.askAI.noSuggestion')}
+            </div>
+            {aiSuggested.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {aiSuggested.map((c) => {
+                  const pill = CAPABILITY_PILL[c];
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => applySuggested(c)}
+                      title={t('settings:models.askAI.clickToApply')}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold hover:opacity-80 transition-opacity"
+                      style={{ background: pill?.bg ?? '#eee', color: pill?.color ?? '#333' }}
+                    >
+                      {pill && <pill.Icon size={11} />}
+                      {t(`settings:models.capability.${c}`)}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <div className="mt-1 text-[length:calc(var(--ui-font-size)-3px)] text-t3">
+              {t('settings:models.askAI.suggestedHint')}
+            </div>
           </div>
         )}
 
