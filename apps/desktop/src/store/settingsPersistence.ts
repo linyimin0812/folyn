@@ -134,13 +134,14 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
     );
   }
 
-  try {
-    const { useAiConfigStore } = await import('./aiConfigStore');
-    await useAiConfigStore.getState().loadFromDisk();
-  } catch (err) {
-    console.warn('[settingsPersistence] Provider config load failed:', err);
-  }
-
+  // ponytail: hydrate per-slice blobs FIRST so chatProvider / etc. are
+  // restored from the aiConfig blob before loadFromDisk reads
+  // get().chatProvider. Without this, loadFromDisk runs against the
+  // default chatProvider='anthropic', seeds anthropic's base URL into
+  // chatBaseUrl, and never re-derives the flat mirrors after hydrate
+  // sets chatProvider='deepseek' — so the settings UI shows
+  // https://api.anthropic.com + empty apiKey even though the deepseek
+  // slot on disk has the right values.
   const blob: Record<string, unknown> = {};
   let any = false;
   for (const slice of SLICES) {
@@ -151,6 +152,14 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
       for (const k of Object.keys(data)) blob[k] = data[k];
     }
   }
+
+  try {
+    const { useAiConfigStore } = await import('./aiConfigStore');
+    await useAiConfigStore.getState().loadFromDisk();
+  } catch (err) {
+    console.warn('[settingsPersistence] Provider config load failed:', err);
+  }
+
   if (!any) return null;
   // Broadcast to secondary Tauri windows (pet-bubble / pet-corner /
   // pet-panel) which hold their own store instances but lack fs-plugin ACL
