@@ -319,7 +319,7 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
           // Router is set PER EDGE (addEdge below) — each edge needs its own
           // single start/end direction matching the port side it connects on.
           // `connector: 'normal'` draws straight polyline segments between the
-          // manhattan-computed vertices — no bezier, no rounding.
+          // router-computed vertices — no bezier, no rounding.
           connector: { name: 'normal' },
           anchor: 'center',
           connectionPoint: 'anchor',
@@ -561,8 +561,8 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
       const fromTable = tableMap.get(r.fromTable);
       const toTable = tableMap.get(r.toTable);
       if (!fromTable || !toTable) continue;
-      // Pick the port on the side facing the other table so the manhattan
-      // router exits the field row horizontally toward the target.
+      // Pick the port on the side facing the other table so the er router
+      // exits the field row horizontally toward the target.
       const fromOnRight = toTable.x + toTable.width / 2 >= fromTable.x + fromTable.width / 2;
       const toOnRight = fromTable.x + fromTable.width / 2 >= toTable.x + toTable.width / 2;
       const fromField = r.fromFields[0];
@@ -570,46 +570,21 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
       const sourcePort = fromField ? `f-${fromField}-${fromOnRight ? 'R' : 'L'}` : undefined;
       const targetPort = toField ? `f-${toField}-${toOnRight ? 'R' : 'L'}` : undefined;
 
-      // Manhattan router, configured PER EDGE. Root cause of the lingering
-      // through-cards bug: x6 3.1.7's getSharedObstacleMap caches ONE map per
-      // model keyed only by options (obstacle-map.js:134-155), while
-      // `excludeTerminals` resolves against whichever edge triggered the
-      // build — so the cached map excluded the FIRST edge's terminals and
-      // every other edge's own cards stayed obstacles. Their padded bboxes
-      // made the port-adjacent start/end points inaccessible, A* never ran
-      // (router.js:55), and the silent fallback `orth` router (not
-      // obstacle-aware) drew straight through cards. Fix: per-edge
-      // `excludeNodes` (edge-specific node IDs) — the option key differs per
-      // edge, forcing a correct rebuild each time (tens of nodes, cheap).
-      //
-      // startDirections/endDirections carry exactly ONE side — the side the
-      // chosen port sits on. With both sides allowed, getRectPoints
-      // (util.js:139) also emitted a candidate on the FAR side of the card;
-      // when A* picked it, the first segment sliced through the source card.
-      // One direction + `padding: 16` forces the first/last segment to be
-      // horizontal (perpendicular to the card's vertical edge) and ≥16px.
-      //
-      // snapToGrid: false — snap() (router.js:172) shifts vertex coords onto
-      // the 20px graph grid, which both breaks the port-row alignment of the
-      // exit segment (turning it slightly diagonal) and can shave the 16px
-      // exit below the 8px minimum.
-      //
-      // maxLoopCount: 20000 (default 2000) — A* explores ~(dist/step)² grid
-      // cells; distant tables exhausted 2000 loops and fell back to orth.
+      // ponytail: er router — single-bend straight line, exit side picked
+      // by relative position (source-on-left → source exits right, target
+      // exits left). Eliminates the manhattan A* staircase (zigzag) and the
+      // silent orth-fallback that drew straight through cards when A*
+      // starved (cards too close / maxLoopCount exhausted). Trade-off: er
+      // does NOT avoid OTHER cards between source and target — mitigated
+      // by d3-force clustering connected tables (shorter links, larger
+      // collide padding). direction:'H' forces horizontal exit so the line
+      // never crosses the table header vertically.
       graph.addEdge({
         source: { cell: `t:${r.fromTable}`, ...(sourcePort ? { port: sourcePort } : {}) },
         target: { cell: `t:${r.toTable}`, ...(targetPort ? { port: targetPort } : {}) },
         router: {
-          name: 'manhattan',
-          args: {
-            step: 10,
-            padding: 16,
-            maxLoopCount: 20000,
-            snapToGrid: false,
-            excludeNodes: [`t:${r.fromTable}`, `t:${r.toTable}`],
-            startDirections: [fromOnRight ? 'right' : 'left'],
-            endDirections: [toOnRight ? 'right' : 'left'],
-          },
+          name: 'er',
+          args: { offset: 24, min: 16, direction: 'H' },
         },
         attrs: {
           line: {

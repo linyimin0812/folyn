@@ -1,0 +1,5 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Frontend stack & patterns overview — React 18 + Vite + TS + Tailwind + Tauri"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component patterns — named exports, Tailwind + CSS vars, props"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "File-type editor patterns — dbml is a file-type preview"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns + review checklist"}

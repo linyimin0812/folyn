@@ -121,14 +121,10 @@ export interface Box {
 
 /**
  * True when two boxes are closer than `minGap` on both axes (i.e. overlap or
- * sit within the gap). Used by the ER canvas's drag guard: the manhattan
- * router treats every OTHER card as an obstacle padded by its own `padding`
- * option, so dragging two cards closer than that starves the router of an
- * accessible port-adjacent point and it silently falls back to a straight,
- * non-obstacle-aware line that cuts through cards. Keeping every pair at
- * least `minGap` apart (see ErDiagramX6's `node:change:position` handler)
- * avoids that failure mode entirely instead of trying to detect/repair a bad
- * route after the fact.
+ * sit within the gap). Used by the ER canvas's drag guard: keeps cards from
+ * visually overlapping while the user drags. Dragging two cards closer than
+ * `minGap` reverts the move — see ErDiagramX6's `node:change:position`
+ * handler.
  */
 export function boxesTooClose(a: Box, b: Box, minGap: number): boolean {
   return !(
@@ -287,13 +283,14 @@ export function layoutEr(
       'link',
       forceLink<SimNode, SimLink>(simLinks)
         .id((d) => d.id)
-        .distance(280),
+        .distance(200)
+        .strength(0.5),
     )
-    .force('charge', forceManyBody().strength(-900))
+    .force('charge', forceManyBody().strength(-700))
     .force('center', forceCenter(0, 0))
     .force(
       'collide',
-      forceCollide<SimNode>().radius((d) => Math.max(d.width, d.height) / 2 + 24),
+      forceCollide<SimNode>().radius((d) => Math.max(d.width, d.height) / 2 + 40),
     )
     .stop();
 
