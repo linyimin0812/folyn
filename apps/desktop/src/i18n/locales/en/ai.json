@@ -6,6 +6,10 @@
     "close": "Close",
     "stop": "Stop",
     "messageCountSuffix": "msg",
+    "emptyState": {
+      "title": "Tell the AI what to edit",
+      "desc": "The AI edits files directly; changes show up as diffs in the editor"
+    },
     "studyStreaming": "study agent running…",
     "studyIdle": "study agent session (manual input disabled)",
     "attachmentPlaceholder": "(attachment)",

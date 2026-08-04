@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 
+// Mock useTranslation — return keys verbatim so tests can grep for them.
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (k: string) => k }),
+}));
+
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = function scrollIntoView() { /* no-op */ };
 }
@@ -35,7 +40,7 @@ afterEach(() => { cleanup(); });
 describe('ChatMessageList', () => {
   it('renders the default empty-state hint when messages is empty', () => {
     render(<ChatMessageList messages={[]} streaming={false} />);
-    expect(screen.getByText('输入指令让 AI 编辑你的文档')).toBeTruthy();
+    expect(screen.getByText('ai:panel.emptyState.title')).toBeTruthy();
   });
 
   it('renders a custom emptyState when provided', () => {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Send, ListTodo, Copy, X } from 'lucide-react';
 import type { CliMessage } from '@quill/cli-adapter';
 import { isTauri } from '@/utils/platform';
@@ -74,15 +75,18 @@ export interface ChatMessageListProps {
   onSwitchSession?: (id: string) => void;
 }
 
-const DEFAULT_EMPTY_HINT = (
-  <div className="chat-empty">
-    <div className="chat-empty-badge">✦</div>
-    <div className="text-[13px] font-semibold text-t1">输入指令让 AI 编辑你的文档</div>
-    <div className="text-[11px] text-t3 leading-relaxed max-w-[240px]">
-      AI 会直接修改文件，变更将在编辑器内以 Diff 形式展示
+function DefaultEmptyHint() {
+  const { t } = useTranslation();
+  return (
+    <div className="chat-empty">
+      <div className="chat-empty-badge">✦</div>
+      <div className="text-[13px] font-semibold text-t1">{t('ai:panel.emptyState.title')}</div>
+      <div className="text-[11px] text-t3 leading-relaxed max-w-[240px]">
+        {t('ai:panel.emptyState.desc')}
+      </div>
     </div>
-  </div>
-);
+  );
+}
 
 /** Copy text to the clipboard via the Tauri clipboard-manager plugin. The
  *  dynamic import keeps the plugin out of the main-window bundle; the
@@ -433,7 +437,7 @@ export function ChatMessageList({
 
   return (
     <div className={`flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto chat-msg-scroll ${className ?? ''}`} role="log" aria-live="polite">
-      {messages.length === 0 && (emptyState ?? DEFAULT_EMPTY_HINT)}
+      {messages.length === 0 && (emptyState ?? <DefaultEmptyHint />)}
 
       {messages.map((msg, idx) => {
         const isLast = idx === messages.length - 1;
