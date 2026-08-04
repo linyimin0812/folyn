@@ -265,6 +265,7 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .chat-msg-bubble-user { max-width: 88%; background: var(--acc); color: #fff; }
 .chat-msg-user-text { font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: #fff; }
 .chat-msg-user-meta { display: flex; justify-content: flex-end; margin-top: 3px; font-size: 9px; line-height: 1; color: rgba(255,255,255,.65); }
+[data-theme="dark"] .chat-msg-bubble-user { background: color-mix(in srgb, var(--acc) 55%, var(--surf)); }
 
 .chat-pair-tag {
   display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
