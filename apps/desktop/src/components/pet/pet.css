@@ -945,9 +945,18 @@ html.is-pet-panel-window body {
  * the visible card fills the window — same logic as the pet-bubble).
  * ──────────────────────────────────────────────────────────────────────────── */
 
+/* Window-root wrapper: position relative so the absolute floating submenu
+ * anchors here. `getBoundingClientRect` on this returns the union of the
+ * main card + the submenu card when the submenu is rendered, which is what
+ * `resizeAndReposition` measures to size the OS window. */
+.pet-menu-window-root {
+  position: relative;
+  display: inline-block; /* shrink to fit; width driven by the main card */
+}
+
 .pet-menu-root {
-  /* Card fills the window; the OS window clips at the card's bounding box so
-   * there's no transparent eaten area to worry about. */
+  /* Card fills the main region; the OS window clips at the wrapper's
+   * bounding box (main card + floating submenu when visible). */
   box-sizing: border-box;
   min-width: 220px;
   padding: 4px 0;
@@ -1000,13 +1009,30 @@ html.is-pet-panel-window body {
   font-weight: 500;
 }
 
-/* Submenu (inline accordion) — indented children, slightly lighter bg. */
+/* Floating submenu card — positioned to the right of the main card, top
+ * aligned with the parent item's top edge (set inline via `style.top`). This
+ * replaces the old inline-accordion submenu (click-to-expand rows below the
+ * parent) with a native-NSMenu-style side card (hover-triggered). Items
+ * inside reuse `.pet-menu-item` + `--radio` + `.pet-menu-radio` + `.is-checked`
+ * — no indent, base `7px 14px` padding (the indent was for the accordion). */
 .pet-menu-submenu {
-  padding: 2px 0;
-  background: var(--hover, rgba(0, 0, 0, 0.03));
-}
-.pet-menu-submenu .pet-menu-item {
-  padding-left: 28px;
+  position: absolute;
+  top: 0; /* overridden inline by `style.top` */
+  left: 100%;
+  margin-left: 6px;
+  box-sizing: border-box;
+  min-width: 120px;
+  padding: 4px 0;
+  background: var(--bg, #ffffff);
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  color: var(--t1, #1f2329);
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+  font-size: 13px;
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 1;
 }
 
 /* Radio item — leading circle indicator, fills when checked. */
@@ -1061,7 +1087,10 @@ html.is-pet-panel-window body {
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
   }
   html.is-pet-menu-window .pet-menu-submenu {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--bg, #0f1219);
+    border-color: var(--border, #1c2136);
+    color: var(--t1, #e2e8f8);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
   }
   html.is-pet-menu-window .pet-menu-sep {
     background: #1c2136;

@@ -14,9 +14,12 @@
 // main window need no change. Closes on item click, ESC, and window blur
 // (click outside).
 //
-// Submenus (size, opacity) expand inline (accordion) below their parent item
-// on click — single-column layout, no side-overflow positioning. Only one
-// submenu open at a time (opening one closes the other).
+// Submenus (size, opacity) are floating secondary cards — hover the parent
+// item → after a short delay the submenu card appears to the right of the
+// main card, vertically aligned with the parent item's top edge. This mirrors
+// native macOS NSMenu submenus (no click-to-expand-inline accordion). Only one
+// submenu visible at a time; hovering the other parent swaps. Picking a radio
+// closes the whole menu (native submenu behavior).
 //
 // Mouse-only + ESC. No arrow-key / role=menuitem keyboard nav in MVP.
 
@@ -39,12 +42,6 @@ interface PetPositionResult {
   y: number;
 }
 
-/** Physical-position result from `get_pet_position` (physical px). */
-interface PetPositionResult {
-  x: number;
-  y: number;
-}
-
 /** Pet size levels surfaced in the size submenu. Synced with Rust
  *  `PET_CTX_MENU_SIZE_*` ids (now deleted from Rust, but the level set +
  *  payload shape stay — the `set-pet-size` action carries these strings). */
@@ -54,14 +51,16 @@ const SIZE_LEVELS: PetSize[] = ['50', '75', '100', '125', '150'];
  *  `set-pet-opacity` action payload. */
 const OPACITY_LEVELS = ['25', '50', '75', '100'] as const;
 
-/** Accordion section state — `null` = all collapsed, otherwise the open
- *  section's key. Only one open at a time. */
-type AccordionSection = 'size' | 'opacity' | null;
+/** Which submenu is currently visible (hover-triggered), plus the parent
+ *  item's vertical offset so the floating card can align with it. */
+type HoveredSection = { section: 'size' | 'opacity'; offsetTop: number } | null;
 
-/** Emit a `pet://menu-action` event with the given payload. Swallows errors
- *  so the click path never throws into React state. Used for size/opacity
- *  picks where the menu stays open so the user can keep exploring. */
-async function emitMenuAction(
+/** Emit a `pet://menu-action` event with the given payload, then hide the
+ *  menu window. Used for every item click — top-level actions AND size/opacity
+ *  radio picks — matching the native NSMenu auto-close behavior (picking any
+ *  leaf closes the whole menu). Swallows errors so the click path never
+ *  throws into React state. */
+async function emitMenuActionAndHide(
   action: PetMenuAction,
   payload?: { size?: PetSize; opacity?: string; clickThrough?: boolean },
 ): Promise<void> {
@@ -72,23 +71,11 @@ async function emitMenuAction(
   } catch (err) {
     console.warn('[pet-menu] emit menu-action failed:', err);
   }
-}
-
-/** Emit + hide. Used for top-level actions (show-main, hide-pet,
- *  click-through toggle, exit-app) — the menu closes after the action
- *  fires, matching the native NSMenu auto-close behavior. */
-async function emitMenuActionAndHide(
-  action: PetMenuAction,
-  payload?: { size?: PetSize; opacity?: string; clickThrough?: boolean },
-): Promise<void> {
-  await emitMenuAction(action, payload);
-  if (isTauri()) {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('pet_menu_hide');
-    } catch (err) {
-      console.warn('[pet-menu] hide failed:', err);
-    }
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('pet_menu_hide');
+  } catch (err) {
+    console.warn('[pet-menu] hide failed:', err);
   }
 }
 
@@ -107,9 +94,13 @@ async function hideMenu(): Promise<void> {
  * Measure the rendered menu DOM, compute a quadrant-aware position (reusing
  * `computePanelPosition`'s corner-attach math from `petPosition.ts`), then
  * size + position the `pet-menu` window. Used both on the open path (followed
- * by `pet_menu_show`) and on accordion toggles (the window is already visible
+ * by `pet_menu_show`) and on submenu show/hide (the window is already visible
  * — caller must NOT re-show, that would flicker / steal focus). Swallows
  * errors so a missing window / failed invoke doesn't break the open path.
+ *
+ * The root passed here is `.pet-menu-window-root`, whose `getBoundingClientRect`
+ * returns the union of the main card + the floating submenu when the submenu
+ * is rendered — so the OS window grows to fit both cards.
  */
 async function resizeAndReposition(
   root: HTMLDivElement | null,
@@ -154,7 +145,7 @@ async function resizeAndReposition(
  * size/position/show the window. Re-runs on every `pet://menu-show` event
  * so a locale change (which shifts label widths) re-positions correctly.
  * Delegates the measure+size+position work to `resizeAndReposition` so the
- * accordion-toggle path can reuse it without re-showing the window.
+ * submenu-toggle path can reuse it without re-showing the window.
  */
 async function openMenu(
   root: HTMLDivElement | null,
@@ -178,13 +169,10 @@ async function openMenu(
  * position, sizes + positions + shows the window in one frame (no flash at
  * the default origin — mirrors the `pet-bubble` open path).
  *
- * ESC + window-blur (click outside) hide the window. Item clicks emit
- * `pet://menu-action` + hide. The size/opacity accordion items emit the
- * `set-pet-size` / `set-pet-opacity` actions but do NOT close the menu —
- * the user can pick a size and continue interacting (the menu stays open
- * until they click a top-level action or ESC). The native menu auto-closed
- * on every pick; staying open for size/opacity is intentional UX —
- * adjusting size is a multi-step exploration.
+ * ESC + window-blur (click outside) hides the window. Item clicks emit
+ * `pet://menu-action` + hide. The size/opacity submenus are floating
+ * secondary cards (hover-triggered); picking a radio closes the whole menu
+ * (native submenu behavior).
  */
 export function PetMenuApp(): JSX.Element {
   const { t } = useTranslation();
@@ -192,7 +180,9 @@ export function PetMenuApp(): JSX.Element {
   const [petSize, setPetSize] = useState<PetSize>(PET_SIZE_DEFAULT);
   const [petOpacity, setPetOpacity] = useState<string>('100');
   const [petClickThrough, setPetClickThrough] = useState<boolean>(false);
-  const [openSection, setOpenSection] = useState<AccordionSection>(null);
+  const [hoveredSection, setHoveredSection] = useState<HoveredSection>(null);
+  const showTimeoutRef = useRef<number | null>(null);
+  const hideTimeoutRef = useRef<number | null>(null);
 
   // petStore is hydrated eagerly by `settingsPersistence.settingsLoadDone`
   // (runs once per realm at module load — same as the main window). The
@@ -217,10 +207,9 @@ export function PetMenuApp(): JSX.Element {
   }, []);
 
   // Subscribe to store changes so a size/opacity pick updates the radio
-  // pre-check immediately. Local picks (from this menu) write to petStore
-  // here; cross-window picks land via the `pet://settings-updated` listener
-  // above, which calls `hydrateAllStores` → the store mutates → this
-  // subscribe fires → state mirrors update.
+  // pre-check immediately. Cross-window picks land via the
+  // `pet://settings-updated` listener above, which calls `hydrateAllStores`
+  // → the store mutates → this subscribe fires → state mirrors update.
   useEffect(() => {
     const unsub = usePetStore.subscribe((s) => {
       setPetSize(s.petSize);
@@ -284,135 +273,189 @@ export function PetMenuApp(): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [petSize]);
 
-  // Accordion toggle → re-measure + re-size + re-position the menu window
-  // (NOT re-show). When the size/opacity accordion expands, the DOM grows
-  // by 5 / 4 rows; the OS window was sized for the collapsed menu at open
-  // time, so without a re-size the new rows are clipped (transparent
-  // borderless NSPanel has no scroll). Re-positioning is also necessary
-  // because the menu may have been placed in a corner (e.g. pet at
-  // bottom-right → menu pops up-left) and the taller accordion could push
-  // it off-screen — `computePanelPosition` clamps to the work area.
+  // Submenu show/hide → re-measure + re-size + re-position the menu window
+  // (NOT re-show). When the floating submenu appears, the wrapper's union
+  // bounding box grows (main card + submenu card to the right); the OS
+  // window was sized for the main card alone at open time, so without a
+  // re-size the submenu would be clipped (transparent borderless NSPanel
+  // has no scroll). Re-positioning is also necessary because the menu may
+  // have been placed in a corner (e.g. pet at bottom-right → menu pops
+  // up-left) and the wider union could push it off-screen —
+  // `computePanelPosition` clamps to the work area.
   useEffect(() => {
     if (!isTauri()) return;
     void resizeAndReposition(rootRef.current, petSize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openSection, petSize]);
+  }, [hoveredSection, petSize]);
 
-  const toggleSection = (s: 'size' | 'opacity') =>
-    setOpenSection((cur) => (cur === s ? null : s));
+  // Clear pending submenu show/hide timeouts on unmount so a pending show
+  // doesn't fire after the window is torn down.
+  useEffect(() => {
+    return () => {
+      if (showTimeoutRef.current) clearTimeout(showTimeoutRef.current);
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+    };
+  }, []);
+
+  const clearShow = () => {
+    if (showTimeoutRef.current) {
+      clearTimeout(showTimeoutRef.current);
+      showTimeoutRef.current = null;
+    }
+  };
+  const clearHide = () => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+  };
+
+  const showSubmenu = (section: 'size' | 'opacity', offsetTop: number) => {
+    clearHide();
+    if (hoveredSection?.section === section) return; // already showing this section
+    clearShow();
+    // 150ms show delay so rapid hovering across parent items doesn't flicker
+    // the submenu. Tracked in showTimeoutRef so a subsequent hide can cancel
+    // it (race: hover → schedule show → leave before 150ms → schedule hide →
+    // show would fire anyway without this clear).
+    showTimeoutRef.current = window.setTimeout(() => {
+      setHoveredSection({ section, offsetTop });
+    }, 150);
+  };
+
+  const hideSubmenu = () => {
+    clearShow();
+    clearHide();
+    // 200ms hide delay gives the user room to cross the diagonal gap between
+    // the parent item and the floating submenu card without the submenu
+    // snapping closed mid-transit.
+    hideTimeoutRef.current = window.setTimeout(() => {
+      setHoveredSection(null);
+    }, 200);
+  };
 
   return (
-    <div className="pet-menu-root" ref={rootRef} role="menu">
-      <button
-        className="pet-menu-item"
-        role="menuitem"
-        onClick={() => emitMenuActionAndHide('show-main')}
-      >
-        {t('pet:menu.showMain')}
-      </button>
-      <button
-        className="pet-menu-item"
-        role="menuitem"
-        onClick={() => emitMenuActionAndHide('hide-pet')}
-      >
-        {t('pet:menu.hidePet')}
-      </button>
+    <div className="pet-menu-window-root" ref={rootRef}>
+      <div className="pet-menu-root" role="menu">
+        <button
+          className="pet-menu-item"
+          role="menuitem"
+          onClick={() => emitMenuActionAndHide('show-main')}
+        >
+          {t('pet:menu.showMain')}
+        </button>
+        <button
+          className="pet-menu-item"
+          role="menuitem"
+          onClick={() => emitMenuActionAndHide('hide-pet')}
+        >
+          {t('pet:menu.hidePet')}
+        </button>
 
-      {/* Size submenu — inline accordion. */}
-      <button
-        className="pet-menu-item pet-menu-item--parent"
-        role="menuitem"
-        aria-expanded={openSection === 'size'}
-        onClick={() => toggleSection('size')}
-      >
-        <span>{t('pet:menu.sizeSubmenu')}</span>
-        <span className="pet-menu-chevron">
-          {openSection === 'size' ? '▾' : '▸'}
-        </span>
-      </button>
-      {openSection === 'size' && (
-        <div className="pet-menu-submenu" role="group">
-          {SIZE_LEVELS.map((level) => (
-            <button
-              key={level}
-              className={`pet-menu-item pet-menu-item--radio${
-                petSize === level ? ' is-checked' : ''
-              }`}
-              role="menuitemradio"
-              aria-checked={petSize === level}
-              onClick={() => {
-                setPetSize(level);
-                emitMenuAction('set-pet-size', { size: level });
-              }}
-            >
-              <span className="pet-menu-radio" />
-              {level}%
-            </button>
-          ))}
+        {/* Size submenu — hover-triggered floating card. Parent item has no
+         * onClick; it is a hover-only submenu trigger. */}
+        <button
+          className="pet-menu-item pet-menu-item--parent"
+          role="menuitem"
+          aria-expanded={hoveredSection?.section === 'size'}
+          onMouseEnter={(e) => showSubmenu('size', e.currentTarget.offsetTop)}
+          onMouseLeave={hideSubmenu}
+        >
+          <span>{t('pet:menu.sizeSubmenu')}</span>
+          <span className="pet-menu-chevron">▸</span>
+        </button>
+
+        {/* Opacity submenu — hover-triggered floating card. */}
+        <button
+          className="pet-menu-item pet-menu-item--parent"
+          role="menuitem"
+          aria-expanded={hoveredSection?.section === 'opacity'}
+          onMouseEnter={(e) => showSubmenu('opacity', e.currentTarget.offsetTop)}
+          onMouseLeave={hideSubmenu}
+        >
+          <span>{t('pet:menu.opacitySubmenu')}</span>
+          <span className="pet-menu-chevron">▸</span>
+        </button>
+
+        <button
+          className={`pet-menu-item pet-menu-item--toggle${
+            petClickThrough ? ' is-checked' : ''
+          }`}
+          role="menuitemcheckbox"
+          aria-checked={petClickThrough}
+          onClick={() => {
+            const next = !petClickThrough;
+            setPetClickThrough(next);
+            emitMenuActionAndHide('toggle-pet-click-through', {
+              clickThrough: next,
+            });
+          }}
+        >
+          <span>{t('pet:menu.clickThrough')}</span>
+          <span className="pet-menu-check" aria-hidden="true">{petClickThrough ? '✓' : ''}</span>
+        </button>
+
+        <div className="pet-menu-sep" />
+
+        <button
+          className="pet-menu-item"
+          role="menuitem"
+          onClick={() => emitMenuActionAndHide('exit-app')}
+        >
+          {t('pet:menu.exitApp')}
+        </button>
+      </div>
+
+      {hoveredSection && (
+        <div
+          className="pet-menu-submenu"
+          role="group"
+          style={{ top: hoveredSection.offsetTop }}
+          onMouseEnter={() => {
+            // Crossing from parent item onto the submenu card — cancel the
+            // pending hide so the submenu stays open while the user is on it.
+            clearHide();
+          }}
+          onMouseLeave={hideSubmenu}
+        >
+          {hoveredSection.section === 'size'
+            ? SIZE_LEVELS.map((level) => (
+                <button
+                  key={level}
+                  className={`pet-menu-item pet-menu-item--radio${
+                    petSize === level ? ' is-checked' : ''
+                  }`}
+                  role="menuitemradio"
+                  aria-checked={petSize === level}
+                  onClick={() => {
+                    // No local setPetSize — the menu is closing anyway; the
+                    // store updates via the emit path + `pet://settings-updated`
+                    // re-hydrate on next open.
+                    emitMenuActionAndHide('set-pet-size', { size: level });
+                  }}
+                >
+                  <span className="pet-menu-radio" />
+                  {level}%
+                </button>
+              ))
+            : OPACITY_LEVELS.map((level) => (
+                <button
+                  key={level}
+                  className={`pet-menu-item pet-menu-item--radio${
+                    petOpacity === level ? ' is-checked' : ''
+                  }`}
+                  role="menuitemradio"
+                  aria-checked={petOpacity === level}
+                  onClick={() => {
+                    emitMenuActionAndHide('set-pet-opacity', { opacity: level });
+                  }}
+                >
+                  <span className="pet-menu-radio" />
+                  {level}%
+                </button>
+              ))}
         </div>
       )}
-
-      {/* Opacity submenu — inline accordion. */}
-      <button
-        className="pet-menu-item pet-menu-item--parent"
-        role="menuitem"
-        aria-expanded={openSection === 'opacity'}
-        onClick={() => toggleSection('opacity')}
-      >
-        <span>{t('pet:menu.opacitySubmenu')}</span>
-        <span className="pet-menu-chevron">
-          {openSection === 'opacity' ? '▾' : '▸'}
-        </span>
-      </button>
-      {openSection === 'opacity' && (
-        <div className="pet-menu-submenu" role="group">
-          {OPACITY_LEVELS.map((level) => (
-            <button
-              key={level}
-              className={`pet-menu-item pet-menu-item--radio${
-                petOpacity === level ? ' is-checked' : ''
-              }`}
-              role="menuitemradio"
-              aria-checked={petOpacity === level}
-              onClick={() => {
-                setPetOpacity(level);
-                emitMenuAction('set-pet-opacity', { opacity: level });
-              }}
-            >
-              <span className="pet-menu-radio" />
-              {level}%
-            </button>
-          ))}
-        </div>
-      )}
-
-      <button
-        className={`pet-menu-item pet-menu-item--toggle${
-          petClickThrough ? ' is-checked' : ''
-        }`}
-        role="menuitemcheckbox"
-        aria-checked={petClickThrough}
-        onClick={() => {
-          const next = !petClickThrough;
-          setPetClickThrough(next);
-          emitMenuActionAndHide('toggle-pet-click-through', {
-            clickThrough: next,
-          });
-        }}
-      >
-        <span>{t('pet:menu.clickThrough')}</span>
-        <span className="pet-menu-check" aria-hidden="true">{petClickThrough ? '✓' : ''}</span>
-      </button>
-
-      <div className="pet-menu-sep" />
-
-      <button
-        className="pet-menu-item"
-        role="menuitem"
-        onClick={() => emitMenuActionAndHide('exit-app')}
-      >
-        {t('pet:menu.exitApp')}
-      </button>
     </div>
   );
 }
