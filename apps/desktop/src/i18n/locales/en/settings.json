@@ -565,11 +565,27 @@
       "testing": "Sent"
     },
     "templates": {
+      "title": "Bubble style",
+      "desc": "Choose a bubble template. Four built-in presets, or upload custom HTML+CSS templates",
+      "active": "Active",
+      "activate": "Use",
+      "importFile": "Import template file",
+      "importPaste": "Paste template JSON",
+      "pastePlaceholder": "Paste template JSON here: {\"id\":\"…\",\"name\":\"…\",\"html\":\"…\",\"css\":\"…\"}",
+      "import": "Import",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "preview": "Preview",
+      "builtin": "Built-in",
+      "custom": "Custom",
       "previewSample": {
         "text": "Preview: this is a sample notification",
         "title": "Preview title",
         "actionLabel": "View"
       },
+      "invalidJson": "JSON parse failed",
+      "missingFields": "Missing required fields: id / name / html / css",
+      "idCollision": "Template id collides with built-in; auto-prefing user:",
       "ai": {
         "generate": "AI Generate",
         "title": "AI Bubble Template Generator",
@@ -596,6 +612,14 @@
         "emptyResponse": "AI returned no content. Please retry.",
         "confirmDelete": "Delete?"
       }
+    },
+    "whitelist": {
+      "title": "External app whitelist",
+      "desc": "macOS apps named by {{launch.type}} in notifications must be listed here to be launchable",
+      "add": "Add",
+      "placeholder": "App name, e.g. Terminal / Xcode",
+      "empty": "No whitelisted apps",
+      "remove": "Remove"
     }
   },
   "notifications": {
