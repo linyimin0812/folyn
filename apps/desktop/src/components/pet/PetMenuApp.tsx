@@ -22,6 +22,14 @@
 // closes the whole menu (native submenu behavior).
 //
 // Mouse-only + ESC. No arrow-key / role=menuitem keyboard nav in MVP.
+//
+// The submenu always opens rightward. To prevent it from being clipped at
+// the screen's right edge, the open path reserves `SUBMENU_RESERVATION_LOGICAL`
+// of right-side room when positioning the main card (see
+// `resizeAndReposition`). No `order` flipping → the main card's screen
+// position is fixed at open time, so opening/closing the submenu only
+// changes the window SIZE (via `set_size`), never the position — the
+// first-level menu doesn't jump.
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -50,6 +58,13 @@ const SIZE_LEVELS: PetSize[] = ['50', '75', '100', '125', '150'];
 /** Pet opacity levels surfaced in the opacity submenu. Synced with the
  *  `set-pet-opacity` action payload. */
 const OPACITY_LEVELS = ['25', '50', '75', '100'] as const;
+
+/** Right-side room reserved for the submenu at open time (logical px).
+ *  Submenu min-width 120 + 6px gap. The open path shifts the main card
+ *  leftward by this much when the right side would otherwise overflow the
+ *  work area, so the always-rightward submenu never gets clipped — without
+ *  flipping layout (which would jump the first-level menu). */
+const SUBMENU_RESERVATION_LOGICAL = 126;
 
 /** Which submenu is currently visible (hover-triggered), plus the parent
  *  item's vertical offset so the floating card can align with it. */
@@ -116,11 +131,13 @@ async function hideMenu(): Promise<void> {
  * because the user just right-clicked and the menu is fresh; on submenu
  * toggle the user is mid-interaction and any movement is hostile.)
  *
- * The adaptive submenu side (`computeSubmenuSide`, called by `openMenu`
- * AFTER this) mitigates the "wider union overflows on the submenu side"
- * concern from the previous paragraph — the submenu flips to whichever side
- * has more room at open time, so the visible content stays clear of the
- * screen edge even without re-positioning on submenu toggle.
+ * Right-side reservation (open path only): after `computePanelPosition`
+ * returns `posLogical`, if the main card's right edge + submenu reservation
+ * would overflow the work area's right edge, shift `posLogical.x` leftward
+ * so the always-rightward submenu has room. Clamped to `>= workArea.x` so
+ * the reservation never pushes the main card off the left edge. This keeps
+ * the first-level menu fixed at open time (no `order` flip → no jump) while
+ * still preventing submenu clipping at the right screen edge.
  */
 async function resizeAndReposition(
   root: HTMLDivElement | null,
@@ -155,6 +172,14 @@ async function resizeAndReposition(
         { width: menuWidth, height: menuHeight },
         petSize,
       );
+      // Right-side reservation: ensure the always-rightward submenu has room.
+      // Shift the main card leftward when needed; clamp to the work area's
+      // left edge so the reservation doesn't push the main card off-screen.
+      const rightEdge = posLogical.x + menuWidth + SUBMENU_RESERVATION_LOGICAL;
+      const workAreaRight = workArea.x + workArea.width;
+      if (rightEdge > workAreaRight) {
+        posLogical.x = Math.max(workArea.x, workAreaRight - menuWidth - SUBMENU_RESERVATION_LOGICAL);
+      }
       await invoke('pet_menu_set_position', {
         x: Math.round(posLogical.x * sf),
         y: Math.round(posLogical.y * sf),
@@ -165,72 +190,24 @@ async function resizeAndReposition(
   }
 }
 
-/** Submenu opens toward the side with more screen room — mirrors native
- *  macOS NSMenu behavior. `'right'` is the default (matches the pre-fix
- *  always-right layout); `'left'` flips the submenu to render before the main
- *  card via `order: -1` so it extends leftward away from the screen's right
- *  edge. See `openMenu` for the room-on-the-right check that picks the side. */
-type SubmenuSide = 'left' | 'right';
-
-/** Submenu min-width (120) + gap (6) + ~10px buffer, in logical px. If the
- *  room to the right of the main card is less than this, flip the submenu
- *  to the left side. */
-const SUBMENU_FLIP_THRESHOLD_LOGICAL = 136;
-
 /**
  * Open path: measure rendered DOM + compute quadrant-aware position +
  * size/position/show the window. Re-runs on every `pet://menu-show` event
  * so a locale change (which shifts label widths) re-positions correctly.
  * Delegates the measure+size+position work to `resizeAndReposition` so the
  * submenu-toggle path can reuse it without re-showing the window.
- *
- * After positioning, picks which side the submenu should open toward based
- * on which side of the main card has more screen room. The side is returned
- * to the caller (which sets React state) so the submenu's `--left` modifier
- * applies before the submenu is first rendered.
  */
 async function openMenu(
   root: HTMLDivElement | null,
   petSize: PetSize,
-): Promise<SubmenuSide> {
-  if (!isTauri() || !root) return 'right';
+): Promise<void> {
+  if (!isTauri() || !root) return;
   await resizeAndReposition(root, petSize);
-  const side = await computeSubmenuSide(root);
   try {
     const { invoke } = await import('@tauri-apps/api/core');
     await invoke('pet_menu_show');
   } catch (err) {
     console.warn('[pet-menu] open path failed:', err);
-  }
-  return side;
-}
-
-/**
- * Pick the submenu side based on room to the right of the main card. The
- * window has just been positioned by `resizeAndReposition`, so its
- * `outerPosition()` is the physical top-left of the main card. The wrapper
- * rect's `right` is the logical width of the main card (no submenu rendered
- * yet at open time). Convert both to physical px and compare against the
- * work area's right edge. If the right side has less than
- * `SUBMENU_FLIP_THRESHOLD_LOGICAL * sf` room, the submenu flips left.
- */
-async function computeSubmenuSide(root: HTMLDivElement): Promise<SubmenuSide> {
-  if (!isTauri()) return 'right';
-  try {
-    const { getCurrentWindow } = await import('@tauri-apps/api/window');
-    const { invoke } = await import('@tauri-apps/api/core');
-    const win = getCurrentWindow();
-    const winPos = await win.outerPosition();
-    const rect = root.getBoundingClientRect();
-    const workArea = await invoke<PetWorkArea>('pet_get_work_area');
-    const sf = workArea.scale_factor || 1;
-    const mainCardRightPhysical = winPos.x + rect.right * sf;
-    const workAreaRightPhysical = (workArea.x + workArea.width) * sf;
-    const roomRight = workAreaRightPhysical - mainCardRightPhysical;
-    return roomRight < SUBMENU_FLIP_THRESHOLD_LOGICAL * sf ? 'left' : 'right';
-  } catch (err) {
-    console.warn('[pet-menu] computeSubmenuSide failed:', err);
-    return 'right';
   }
 }
 
@@ -254,7 +231,6 @@ export function PetMenuApp(): JSX.Element {
   const [petOpacity, setPetOpacity] = useState<string>('100');
   const [petClickThrough, setPetClickThrough] = useState<boolean>(false);
   const [hoveredSection, setHoveredSection] = useState<HoveredSection>(null);
-  const [submenuSide, setSubmenuSide] = useState<SubmenuSide>('right');
   const showTimeoutRef = useRef<number | null>(null);
   const hideTimeoutRef = useRef<number | null>(null);
 
@@ -340,9 +316,7 @@ export function PetMenuApp(): JSX.Element {
     (async () => {
       const { listen } = await import('@tauri-apps/api/event');
       unlisten = await listen('pet://menu-show', () => {
-        void openMenu(rootRef.current, petSize).then((side) => {
-          setSubmenuSide(side);
-        });
+        void openMenu(rootRef.current, petSize);
       });
     })();
     return () => unlisten?.();
@@ -503,9 +477,7 @@ export function PetMenuApp(): JSX.Element {
 
       {hoveredSection && (
         <div
-          className={`pet-menu-submenu${
-            submenuSide === 'left' ? ' pet-menu-submenu--left' : ''
-          }`}
+          className="pet-menu-submenu"
           role="group"
           style={{ marginTop: hoveredSection.offsetTop }}
           onMouseEnter={() => {
