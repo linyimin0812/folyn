@@ -49,7 +49,7 @@ export function FileTemplatesSettings() {
     <div className="mb-8">
       <div className="pb-3 mb-5 border-b border-brd2 flex items-baseline gap-2">
         <div className="text-[length:calc(var(--ui-font-size)+3px)] font-bold text-t1 tracking-[-0.01em]">{t('settings:templates.title')}</div>
-        <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3 flex-1 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis">{t('settings:templates.description')}</div>
+        <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3 flex-1 min-w-0 whitespace-nowrap">{t('settings:templates.description')}</div>
       </div>
 
       {/* Template list */}
