@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 118
-- **Last Active**: 2026-08-03
+- **Total Sessions**: 119
+- **Last Active**: 2026-08-04
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~143 | Active |
+| `journal-3.md` | ~177 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 119 | 2026-08-04 | Dark-mode markdown editor indent markers | `103db28` | `master` |
 | 118 | 2026-08-03 | Fix file-preview locking preview scroll | `66f6759` | `master` |
 | 117 | 2026-08-03 | Desktop pet icon: GIF support | `811f946` | `master` |
 | 116 | 2026-08-03 | file-preview html 支持导出 | `9735f1f` | `master` |

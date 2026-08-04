@@ -141,3 +141,37 @@ Tightened .prev-body:has(.image-viewer/.html-preview-frame/.pdf-viewer) to direc
 ### Next Steps
 
 - None - task complete
+
+
+## Session 119: Dark-mode markdown editor indent markers
+
+**Date**: 2026-08-04
+**Task**: Dark-mode markdown editor indent markers
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Fixed jarring vertical indent-guide lines in the markdown editor under dark mode. Root cause: @replit/codemirror-indentation-markers sets --indent-marker-bg-color via its &dark selector, which only activates when the editor has the cm-dark class — this project never adds it, so dark mode fell back to the light default (#F0F1F2, near-white) on a #0b0d14 background. Overrode the var on [data-theme=dark] .cm-indent-markers to match the existing dark border palette (#1c2136 / #252d4a). Inline change per user; no task created.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `103db28` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
