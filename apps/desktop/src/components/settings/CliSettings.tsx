@@ -72,7 +72,7 @@ export function CliSettings() {
         <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3">{t('settings:cli.description')}</div>
       </div>
       <div className="text-[10.5px] text-t3 mb-3">
-        每个 Adapter 独立配置可执行文件路径；会话使用哪个 Adapter 在 AI Panel / 桌宠 Chat 里选，此处仅做配置。
+        {t('settings:cli.adapterHint')}
       </div>
       <div className="flex flex-col gap-3">
         {listAdapters().map((a) => {
@@ -87,7 +87,7 @@ export function CliSettings() {
               <div className="flex items-baseline gap-2 mb-2">
                 <div className="text-[length:calc(var(--ui-font-size))] font-bold text-t1 font-mono">{a.displayName}</div>
               </div>
-              <div className="text-[10.5px] text-t3 mb-2">{a.description}</div>
+              <div className="text-[10.5px] text-t3 mb-2">{t(`settings:cli.adapters.${a.id}.description`, { defaultValue: a.description })}</div>
               <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">
                 {t('settings:cli.cliPath.label')}
               </div>

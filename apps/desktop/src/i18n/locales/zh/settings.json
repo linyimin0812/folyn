@@ -142,6 +142,15 @@
     "title": "CLI 工具",
     "description": "配置 AI CLI 工具，用于智能编辑文档",
     "cliAdapter": "CLI 适配器",
+    "adapterHint": "每个 Adapter 独立配置可执行文件路径；会话使用哪个 Adapter 在 AI Panel / 桌宠 Chat 里选，此处仅做配置。",
+    "adapters": {
+      "claude": {
+        "description": "Anthropic 官方 CLI 工具，支持对话式编辑与多工具调用"
+      },
+      "pi": {
+        "description": "pi 代码 Agent（@earendil-works/pi-coding-agent），read/bash/edit/write 工具，rpc 多轮会话"
+      }
+    },
     "cliPath": {
       "label": "CLI 路径",
       "detect": "检测",

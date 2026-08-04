@@ -142,6 +142,15 @@
     "title": "CLI Tools",
     "description": "Configure AI CLI tools for smart document editing",
     "cliAdapter": "CLI adapter",
+    "adapterHint": "Each adapter has its own executable path; which adapter a chat session uses is selected in the AI Panel / pet Chat — this tab only configures paths.",
+    "adapters": {
+      "claude": {
+        "description": "Anthropic's official CLI; supports conversational editing and multi-tool calls"
+      },
+      "pi": {
+        "description": "Pi coding agent (@earendil-works/pi-coding-agent); read/bash/edit/write tools, RPC multi-turn sessions"
+      }
+    },
     "cliPath": {
       "label": "CLI path",
       "detect": "Detect",

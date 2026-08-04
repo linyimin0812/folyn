@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "i18n 契约：namespace=settings, fallbackLng=zh, 缺键回退行为；本任务在 settings 命名空间下新增 adapterHint + adapters.<id>.description 键"}
