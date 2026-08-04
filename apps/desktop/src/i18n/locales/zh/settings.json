@@ -472,7 +472,8 @@
     },
     "sourceDir": {
       "label": "源文件目录",
-      "desc": "相对路径基于当前 vault 根目录;保存的文件形如 <dir>/<timestamp>.wav"
+      "desc": "相对路径基于当前 vault 根目录;保存的文件形如 <dir>/<timestamp>.wav",
+      "browse": "浏览"
     },
     "spokenLanguage": {
       "label": "识别语言",

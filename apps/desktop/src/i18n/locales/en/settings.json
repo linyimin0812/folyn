@@ -472,7 +472,8 @@
     },
     "sourceDir": {
       "label": "Source directory",
-      "desc": "Relative to the current vault root; saved file is <dir>/<timestamp>.wav"
+      "desc": "Relative to the current vault root; saved file is <dir>/<timestamp>.wav",
+      "browse": "Browse"
     },
     "spokenLanguage": {
       "label": "Recognition language",

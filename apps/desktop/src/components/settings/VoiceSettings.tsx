@@ -206,12 +206,27 @@ export function VoiceSettings() {
         <div className="py-3.5 border-b border-brd">
           <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:voice.sourceDir.label')}</h4>
           <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 mb-2 leading-relaxed">{t('settings:voice.sourceDir.desc')}</p>
-          <input
-            className="w-full h-[34px] py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
-            value={sourceDir}
-            onChange={(e) => setSourceDir(e.target.value)}
-            placeholder=".voice_input"
-          />
+          <div className="flex w-full">
+            <input
+              className="flex-1 min-w-0 h-[34px] py-[7px] px-2.5 rounded-l-md border border-r-0 border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
+              value={sourceDir}
+              onChange={(e) => setSourceDir(e.target.value)}
+              placeholder=".voice_input"
+            />
+            <button
+              className="shrink-0 h-[34px] px-3 rounded-r-md border border-brd bg-surf2 hover:bg-surf3 text-t1 text-[length:calc(var(--ui-font-size)-2px)] font-ui transition-colors"
+              onClick={async () => {
+                if (!isTauri()) return;
+                try {
+                  const { open } = await import('@tauri-apps/plugin-dialog');
+                  const picked = await open({ directory: true, multiple: false });
+                  if (typeof picked === 'string') setSourceDir(picked);
+                } catch (err) {
+                  console.warn('[voice] dir picker failed:', err);
+                }
+              }}
+            >{t('settings:voice.sourceDir.browse')}</button>
+          </div>
         </div>
       )}
 
