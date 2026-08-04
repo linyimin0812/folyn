@@ -438,7 +438,7 @@ function BubbleAppWhitelistBlock() {
           onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
         />
         <button
-          className="border border-brd border-l-0 rounded-r px-3 text-[length:calc(var(--ui-font-size)-2px)] bg-surf2 text-t1 hover:bg-hov hover:text-acc transition-colors h-full"
+          className="rounded-r px-3 text-[length:calc(var(--ui-font-size)-2px)] bg-acc text-white hover:opacity-90 transition-colors h-full"
           onClick={handleAdd}
         >
           {t('settings:pet.whitelist.add')}
