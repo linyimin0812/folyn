@@ -428,16 +428,19 @@ function BubbleAppWhitelistBlock() {
         <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:pet.whitelist.title')}</h4>
         <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:pet.whitelist.desc')}</p>
       </div>
-      <div className="flex h-[28px]">
+      <div className="flex h-[32px]">
         <input
           type="text"
-          className="flex-1 border border-brd border-r-0 rounded-l px-2 text-[11px] bg-surf h-full focus:outline-none focus:border-acc"
+          className="flex-1 border border-brd border-r-0 rounded-l px-2.5 text-[length:calc(var(--ui-font-size)-2px)] bg-inp focus:outline-none focus:border-acc h-full"
           placeholder={t('settings:pet.whitelist.placeholder')}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
         />
-        <button className="btn btn-p btn-sm rounded-l-none h-full px-3" onClick={handleAdd}>
+        <button
+          className="border border-brd border-l-0 rounded-r px-3 text-[length:calc(var(--ui-font-size)-2px)] bg-surf2 text-t1 hover:bg-hov hover:text-acc transition-colors h-full"
+          onClick={handleAdd}
+        >
           {t('settings:pet.whitelist.add')}
         </button>
       </div>
