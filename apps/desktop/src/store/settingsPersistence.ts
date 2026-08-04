@@ -1,4 +1,5 @@
 import { storageClient } from '@/utils/storageClient';
+import { debounce } from '@/utils/debounce';
 
 // ponytail: This module owns the single-writer persist + the store slice
 // registry. It deliberately imports NOTHING from any store — stores
@@ -24,6 +25,26 @@ export interface PersistSlice {
 
 const SLICES: PersistSlice[] = [];
 
+// ponytail: debounced broadcast — every per-setter persist schedules it, the
+// trailing edge emits one `pet://settings-updated` carrying the merged blob.
+// Mirrors storageClient's 300ms debounce (FLUSH_DELAY not exported; hardcode
+// + comment names the coupling). Without this, secondary Tauri windows
+// (pet-panel / pet-bubble / pet-corner) hold their own store instances and
+// only see writes on quit / startup — so e.g. the Inbox tab stays empty
+// after a curl notification lands in the main window's petStore.
+const BROADCAST_DELAY = 300;
+function broadcastSettingsImpl(): void {
+  void (async () => {
+    try {
+      const { emit } = await import('@tauri-apps/api/event');
+      await emit('pet://settings-updated', collectPersistedBlob());
+    } catch {
+      // Non-tauri (tests) or emit failed — non-fatal.
+    }
+  })();
+}
+const scheduleBroadcast = debounce(broadcastSettingsImpl, BROADCAST_DELAY);
+
 // ponytail: expected slice names — every persisted store must register. We
 // don't gate loadSettings on these (the original `await import` was just a
 // microtask yield that happened to let App.tsx's static imports finish
@@ -42,7 +63,10 @@ const EXPECTED_SLICES = [
  *  registration order keeps the on-disk file set deterministic. */
 export function registerPersistSlice(slice: PersistSlice): () => void {
   if (!SLICES.includes(slice)) SLICES.push(slice);
-  return () => { void storageClient.set(slice.name, pickSliceData(slice)); };
+  return () => {
+    void storageClient.set(slice.name, pickSliceData(slice));
+    scheduleBroadcast();
+  };
 }
 
 /** Pick a slice's persisted keys from its current state. */
@@ -85,6 +109,7 @@ function collectPersistedBlob(): Record<string, unknown> {
  *  reset; storageClient's own debounce already coalesces, so we accept the
  *  redundant writes here. */
 export async function persistNow(): Promise<void> {
+  scheduleBroadcast.cancel();
   for (const slice of SLICES) {
     await storageClient.set(slice.name, pickSliceData(slice));
   }
