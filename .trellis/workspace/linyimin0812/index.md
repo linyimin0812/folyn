@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 122
+- **Total Sessions**: 123
 - **Last Active**: 2026-08-04
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~279 | Active |
+| `journal-3.md` | ~313 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 123 | 2026-08-04 | AI panel mode icons swap to custom SVGs | `409dffa` | `master` |
 | 122 | 2026-08-04 | Fix CSP frame-src for embed.diagrams.net in prod | `1a2312b` | `master` |
 | 121 | 2026-08-04 | Mute AI Panel user bubble in dark mode | `ca707a4` | `master` |
 | 120 | 2026-08-04 | Fix AI Panel Chat table overflow | `c29d591` | `master` |

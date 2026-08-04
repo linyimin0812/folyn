@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Verify the new pet-menu window follows the declared transparent/borderless/skip-taskbar pattern, Rust command shape, and NSPanel conversion contract."}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "Verify new zh/en keys follow namespace + localeStore conventions and the Rust AppError contract is intact."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality bar: forbidden patterns, review checklist — applied to the new menu component, deleted Rust code, and updated tests."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify the menu React component follows composition, props, and Tailwind styling rules."}
+{"file": ".trellis/tasks/08-04-pet-custom-right-click-menu-adaptive-position-no-scroll/prd.md", "reason": "Acceptance criteria checklist — four-quadrant no-overlap/no-scroll, multi-monitor, fullscreen Space, submenu state, close interactions, lint/typecheck/cargo check/tests green."}

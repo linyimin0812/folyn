@@ -277,3 +277,37 @@ Prod build refused to load the drawio iframe because frame-src had a trailing co
 ### Next Steps
 
 - None - task complete
+
+
+## Session 123: AI panel mode icons swap to custom SVGs
+
+**Date**: 2026-08-04
+**Task**: AI panel mode icons swap to custom SVGs
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Swapped Chat/Agent/Ask mode trigger icons in the AI panel input from lucide (MessageSquare/Bot/CircleHelp) to assets/icons/{chat,agent,ask}.svg. Renamed inputModes.ts → .tsx for inline <img> wrapper, reusing the URL-as-src pattern already used by AgentCliTag. tsc + 13 inputModes tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `409dffa` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
