@@ -66,6 +66,14 @@ const OPACITY_LEVELS = ['25', '50', '75', '100'] as const;
  *  flipping layout (which would jump the first-level menu). */
 const SUBMENU_RESERVATION_LOGICAL = 126;
 
+/** Bottom-side room reserved for the submenu at open time (logical px).
+ *  The floating submenu card renders below its parent item; the part that
+ *  extends past the main card's bottom edge is ~18px (submenu bottom 201 −
+ *  main card 183, both measured at line-height 1.2). Add a small buffer
+ *  for font-metric variation so the submenu never spills past the work
+ *  area's bottom edge when the pet is near the screen bottom. */
+const SUBMENU_GROWTH_LOGICAL = 22;
+
 /** Which submenu is currently visible (hover-triggered), plus the parent
  *  item's vertical offset so the floating card can align with it. */
 type HoveredSection = { section: 'size' | 'opacity'; offsetTop: number } | null;
@@ -138,6 +146,19 @@ async function hideMenu(): Promise<void> {
  * the reservation never pushes the main card off the left edge. This keeps
  * the first-level menu fixed at open time (no `order` flip → no jump) while
  * still preventing submenu clipping at the right screen edge.
+ *
+ * Bottom-side reservation (open path only): the floating submenu card
+ * extends ~SUBMENU_GROWTH_LOGICAL below the main card's bottom edge. If
+ * that bottom edge would overflow the work area's bottom (pet near the
+ * screen bottom, or a larger pet size pushing iconTop down), shift
+ * `posLogical.y` upward. Clamped to `>= workArea.y`. Same no-jump
+ * rationale: the position is fixed at open time, only the window SIZE
+ * changes on submenu toggle.
+ *
+ * Left/top edge clamp: `computePanelPosition` doesn't clamp to the work
+ * area, so on narrow/short screens the computed corner-attach position can
+ * fall off-screen. Clamp both axes to `>= workArea.{x,y}` so the main card
+ * is always fully visible.
  */
 async function resizeAndReposition(
   root: HTMLDivElement | null,
@@ -180,6 +201,20 @@ async function resizeAndReposition(
       if (rightEdge > workAreaRight) {
         posLogical.x = Math.max(workArea.x, workAreaRight - menuWidth - SUBMENU_RESERVATION_LOGICAL);
       }
+      // Bottom-side reservation: the submenu extends ~SUBMENU_GROWTH_LOGICAL
+      // below the main card's bottom. Shift the window upward when the
+      // bottom edge would overflow the work area's bottom (pet near screen
+      // bottom, or larger pet sizes that push iconTop down). Clamped to
+      // workArea.y so the reservation never pushes the window off the top.
+      const bottomEdge = posLogical.y + menuHeight + SUBMENU_GROWTH_LOGICAL;
+      const workAreaBottom = workArea.y + workArea.height;
+      if (bottomEdge > workAreaBottom) {
+        posLogical.y = Math.max(workArea.y, workAreaBottom - menuHeight - SUBMENU_GROWTH_LOGICAL);
+      }
+      // Left/top edge clamp: computePanelPosition doesn't clamp, so on
+      // narrow/short screens the computed position can fall off-screen.
+      posLogical.x = Math.max(posLogical.x, workArea.x);
+      posLogical.y = Math.max(posLogical.y, workArea.y);
       await invoke('pet_menu_set_position', {
         x: Math.round(posLogical.x * sf),
         y: Math.round(posLogical.y * sf),
