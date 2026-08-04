@@ -151,7 +151,7 @@ export function PairSelector({
             <Cpu size={16} />
           </button>
           {open && (
-            <div className={`absolute left-0 ${dropDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'} min-w-[200px] bg-panel border border-brd rounded-lg shadow-[0_8px_24px_rgba(0,0,0,.14)] z-[100] p-2`}>
+            <div className={`absolute right-0 ${dropDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'} min-w-[200px] bg-panel border border-brd rounded-lg shadow-[0_8px_24px_rgba(0,0,0,.14)] z-[100] p-2`}>
               <div className="text-t3 text-[12px] whitespace-nowrap">{t(`${i18nPrefix}.empty`)}</div>
               {onOpenSettings && (
                 <button
@@ -187,7 +187,7 @@ export function PairSelector({
 
   const panel = open && (
     <div
-      className={`absolute left-0 ${dropDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'} w-max min-w-[220px] max-w-[360px] max-h-[300px] overflow-y-auto bg-panel border border-brd rounded-lg shadow-[0_8px_24px_rgba(0,0,0,.14)] z-[100] p-1`}
+      className={`absolute right-0 ${dropDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'} w-max min-w-[220px] max-w-[360px] max-h-[300px] overflow-y-auto bg-panel border border-brd rounded-lg shadow-[0_8px_24px_rgba(0,0,0,.14)] z-[100] p-1`}
       role="listbox"
       data-testid="pair-selector-panel"
     >
