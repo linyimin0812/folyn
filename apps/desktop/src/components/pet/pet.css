@@ -949,7 +949,7 @@ html.is-pet-panel-window body {
   /* Card fills the window; the OS window clips at the card's bounding box so
    * there's no transparent eaten area to worry about. */
   box-sizing: border-box;
-  min-width: 168px;
+  min-width: 220px;
   padding: 4px 0;
   background: var(--bg, #ffffff);
   border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
@@ -969,7 +969,7 @@ html.is-pet-panel-window body {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 6px 14px;
+  padding: 7px 14px;
   background: transparent;
   border: none;
   color: inherit;
@@ -1006,8 +1006,8 @@ html.is-pet-panel-window body {
 
 /* Radio item — leading circle indicator, fills when checked. */
 .pet-menu-radio {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border: 1.5px solid currentColor;
   border-radius: 50%;
   box-sizing: border-box;
@@ -1022,10 +1022,10 @@ html.is-pet-panel-window body {
 
 /* Click-through toggle — leading check mark (empty when off). */
 .pet-menu-check {
-  width: 10px;
+  width: 12px;
   text-align: center;
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 13px;
 }
 .pet-menu-item--toggle.is-checked {
   font-weight: 500;
@@ -1033,6 +1033,32 @@ html.is-pet-panel-window body {
 
 .pet-menu-sep {
   height: 1px;
-  margin: 4px 8px;
+  margin: 6px 10px;
   background: var(--border, rgba(0, 0, 0, 0.08));
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Dark mode — the `pet-menu` window is a separate JS realm; `<html>` may not
+ * get `[data-theme="dark"]` applied (the main window owns theme state). Use
+ * `prefers-color-scheme` so the menu adapts to OS dark mode on its own.
+ * Colors mirror the app's dark palette (`index.css`).
+ * ──────────────────────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  html.is-pet-menu-window .pet-menu-root {
+    --bg: #0f1219;
+    --t1: #e2e8f8;
+    --border: #1c2136;
+    --accent: #5b8af5;
+    --hover: rgba(255, 255, 255, 0.04);
+    background: var(--bg);
+    border-color: var(--border);
+    color: var(--t1);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  }
+  html.is-pet-menu-window .pet-menu-submenu {
+    background: rgba(255, 255, 255, 0.04);
+  }
+  html.is-pet-menu-window .pet-menu-sep {
+    background: #1c2136;
+  }
 }
