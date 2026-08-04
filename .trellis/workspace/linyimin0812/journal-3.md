@@ -175,3 +175,37 @@ Fixed jarring vertical indent-guide lines in the markdown editor under dark mode
 ### Next Steps
 
 - None - task complete
+
+
+## Session 120: Fix AI Panel Chat table overflow
+
+**Date**: 2026-08-04
+**Task**: Fix AI Panel Chat table overflow
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+AI Panel Chat 中 AI 返回含宽表格的消息时会撑破 380px 面板布局。根因：apps/desktop/src/index.css 的 .msg-md table 无宽度约束（对比 .md-preview table 已有 width:100%）。最小 CSS 修复：将 .msg-md table 改为 display:block; width:max-content; max-width:100%; overflow-x:auto，宽表在气泡内横向滚动，窄表保持自然宽度。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c29d591` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
