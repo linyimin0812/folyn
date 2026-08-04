@@ -431,13 +431,13 @@ function BubbleAppWhitelistBlock() {
       <div className="flex h-[28px]">
         <input
           type="text"
-          className="flex-1 border border-brd border-r-0 rounded-l px-2 text-[11px] bg-surf h-full"
+          className="flex-1 border border-brd border-r-0 rounded-l px-2 text-[11px] bg-surf h-full focus:outline-none focus:border-acc"
           placeholder={t('settings:pet.whitelist.placeholder')}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
         />
-        <button className="btn btn-g btn-sm rounded-l-none h-full" onClick={handleAdd}>
+        <button className="btn btn-p btn-sm rounded-l-none h-full px-3" onClick={handleAdd}>
           {t('settings:pet.whitelist.add')}
         </button>
       </div>
