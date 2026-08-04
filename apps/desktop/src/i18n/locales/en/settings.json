@@ -126,6 +126,16 @@
     "editor": {
       "recording": "Press a shortcut…",
       "conflictHint": "No key captured — this combo may be taken by the app menu or OS (⌘Q / ⌘H / ⌘M / ⌘W / ⌘⇧P)"
+    },
+    "items": {
+      "save": "Save document",
+      "bold": "Bold",
+      "italic": "Italic",
+      "strikethrough": "Strikethrough",
+      "code": "Inline code",
+      "link": "Insert link",
+      "dailyNote": "Today's note",
+      "togglePetPanel": "Open pet panel"
     }
   },
   "cli": {

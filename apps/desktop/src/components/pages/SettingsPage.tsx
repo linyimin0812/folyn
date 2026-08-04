@@ -247,7 +247,7 @@ export function SettingsPage() {
             {shortcuts.map((shortcut) => (
               <div className="tr flex items-center justify-between py-3.5 border-b border-brd" key={shortcut.id}>
                 <div className="tr-info">
-                  <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{shortcut.name}</h4>
+                  <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t(`settings:shortcuts.items.${shortcut.id}`, { defaultValue: shortcut.name })}</h4>
                 </div>
                 <ShortcutEditor shortcutId={shortcut.id} currentKeys={shortcut.keys} />
               </div>

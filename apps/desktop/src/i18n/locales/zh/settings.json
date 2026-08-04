@@ -126,6 +126,16 @@
     "editor": {
       "recording": "按下快捷键…",
       "conflictHint": "未捕获到按键 — 该组合可能被 app 菜单或系统占用（⌘Q / ⌘H / ⌘M / ⌘W / ⌘⇧P）"
+    },
+    "items": {
+      "save": "保存文档",
+      "bold": "加粗",
+      "italic": "斜体",
+      "strikethrough": "删除线",
+      "code": "行内代码",
+      "link": "插入链接",
+      "dailyNote": "今日笔记",
+      "togglePetPanel": "唤起桌宠面板"
     }
   },
   "cli": {
