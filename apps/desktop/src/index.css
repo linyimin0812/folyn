@@ -321,7 +321,7 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .msg-md blockquote { margin: 6px 0; padding: 4px 10px; border-left: 3px solid var(--brd2); color: var(--t2); font-style: italic; }
 .msg-md a { color: var(--acc); text-decoration: none; }
 .msg-md a:hover { text-decoration: underline; }
-.msg-md table { border-collapse: collapse; margin: 8px 0; font-size: 11px; }
+.msg-md table { display: block; width: max-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin: 8px 0; font-size: 11px; }
 .msg-md th, .msg-md td { border: 1px solid var(--brd); padding: 4px 8px; }
 .msg-md th { background: var(--surf2); font-weight: 600; }
 
