@@ -945,15 +945,15 @@ html.is-pet-panel-window body {
  * the visible card fills the window — same logic as the pet-bubble).
  * ──────────────────────────────────────────────────────────────────────────── */
 
-/* Window-root wrapper: flex so the submenu is in-flow and contributes to the
- * wrapper's box. `getBoundingClientRect` on this returns the union of the main
- * card + the submenu card (side by side, max height) when the submenu is
- * rendered, which is what `resizeAndReposition` measures to size the OS
- * window. The previous `position: relative` + `display: inline-block` left
- * the absolute submenu out-of-flow, so the wrapper's box stayed at main-card
- * size and the submenu was clipped at the window's right edge. */
+/* Window-root wrapper: `inline-flex` so the wrapper SHRINKS-TO-FIT its content
+ * (main card + in-flow submenu side by side). `getBoundingClientRect` on this
+ * returns the union of the main card + submenu card, which `resizeAndReposition`
+ * measures to size the OS window. A block-level `display: flex` fills its
+ * parent's width (220px = the pet-menu window's content width), so the wrapper
+ * box stayed at 220px even when the in-flow submenu overflowed it — the OS
+ * window never grew and the submenu was clipped at the window's right edge. */
 .pet-menu-window-root {
-  display: flex;
+  display: inline-flex;
   align-items: flex-start;
 }
 
