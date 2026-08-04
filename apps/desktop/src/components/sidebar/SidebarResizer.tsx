@@ -62,10 +62,17 @@ export function SidebarResizer({
 
   return (
     <div
-      className={`relative shrink-0 flex items-center group${collapsed ? ' w-1.5 cursor-pointer' : ''}`}
+      // ponytail: outer stays 1px wide (no visual gap); invisible hit area overlaps neighbors via negative margins.
+      className={`relative shrink-0 group${collapsed ? ' w-1.5 cursor-pointer' : ' w-px cursor-col-resize'}`}
       onMouseEnter={() => setResizerHovered(true)}
       onMouseLeave={() => setResizerHovered(false)}
     >
+      {!collapsed && (
+        <div
+          className="absolute inset-y-0 -left-[4px] -right-[4px] z-0"
+          onMouseDown={handleMouseDown}
+        />
+      )}
       <div className={`resizer w-px shrink-0 bg-brd transition-colors duration-[140ms] h-full group-hover:bg-acc group-hover:opacity-30${collapsed ? ' cursor-default' : ' cursor-col-resize'}`} onMouseDown={collapsed ? undefined : handleMouseDown} />
       {(resizerHovered || collapsed) && (
         <button
