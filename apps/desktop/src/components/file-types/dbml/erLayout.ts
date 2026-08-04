@@ -120,6 +120,35 @@ export interface Box {
 }
 
 /**
+ * Z-shape orthogonal path between two boxes: source → (midX, srcY) → (midX,
+ * tgtY) → target. Exits perpendicular to the boxes' L/R facing edges; midX
+ * sits in the gap between those edges and snaps to a 10px grid so parallel
+ * edges between the same pair collapse onto one shared vertical segment
+ * instead of rendering N near-duplicate lines 1-2px apart. Returns null
+ * when the two boxes are Y-aligned (no Z needed — caller draws a straight
+ * line / x6 uses the default path).
+ *
+ * Shared by the x6 `z-orth` router (ErDiagramX6.tsx) and the standalone SVG
+ * export (services/export/dbml.ts) so preview and export agree on geometry.
+ */
+export const Z_ORTH_GRID_PX = 10;
+export function zOrthPath(source: Box, target: Box): Point[] | null {
+  const scy = source.y + source.height / 2;
+  const tcy = target.y + target.height / 2;
+  if (scy === tcy) return null;
+  const sourceOnRight = (target.x + target.width / 2) >= (source.x + source.width / 2);
+  const fx = sourceOnRight ? source.x + source.width : source.x;
+  const tx = sourceOnRight ? target.x : target.x + target.width;
+  const mx = Math.round((fx + tx) / 2 / Z_ORTH_GRID_PX) * Z_ORTH_GRID_PX;
+  return [
+    { x: fx, y: scy },
+    { x: mx, y: scy },
+    { x: mx, y: tcy },
+    { x: tx, y: tcy },
+  ];
+}
+
+/**
  * True when two boxes are closer than `minGap` on both axes (i.e. overlap or
  * sit within the gap). Used by the ER canvas's drag guard: keeps cards from
  * visually overlapping while the user drags. Dragging two cards closer than

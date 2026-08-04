@@ -11,6 +11,14 @@
 
 import { useVaultStore } from '@/store/vaultStore';
 import { resolveVaultPath } from './shared';
+import {
+  zOrthPath,
+  type ErLayout,
+  type Point,
+  type PositionedEnum,
+  type PositionedTable,
+} from '@/components/file-types/dbml/erLayout';
+import { extractDbmlMeta } from '@/components/file-types/dbml/parseDbml';
 
 export interface EnhanceCtx {
   src: string;
@@ -30,7 +38,19 @@ export async function enhance(body: HTMLElement, ctx: EnhanceCtx): Promise<void>
   const { layoutEr } = await import('@/components/file-types/dbml/erLayout');
   const result = await parseDbml(content);
   if (result.errors.length > 0 || !result.schema) return;
-  const layout = layoutEr(result.schema, 800, 600);
+  // Restore user-dragged card positions from the file's meta block so the
+  // export matches the preview layout instead of re-running d3-force from
+  // scratch (which produces different positions and messier edges).
+  const { meta } = extractDbmlMeta(content);
+  const manualPositions = new Map<string, Point>();
+  if (meta?.positions) {
+    for (const [name, p] of Object.entries(meta.positions)) {
+      if (p && typeof p.x === 'number' && typeof p.y === 'number') {
+        manualPositions.set(name, { x: p.x, y: p.y });
+      }
+    }
+  }
+  const layout = layoutEr(result.schema, 800, 600, manualPositions);
   const svgString = renderErLayoutToSvg(layout);
   body.innerHTML = svgString;
   const svgEl = body.querySelector<SVGSVGElement>('svg');
@@ -58,11 +78,19 @@ const C = {
 const ER_HEADER_H = 38;
 const ER_ROW_H = 28;
 
+/** Y of a field's row center on the card, or null if not found. */
+function fieldRowY(t: PositionedTable, fieldName: string | undefined): number | null {
+  if (!fieldName) return null;
+  const idx = t.fields.findIndex((f) => f.name === fieldName);
+  if (idx < 0) return null;
+  return t.y + ER_HEADER_H + idx * ER_ROW_H + ER_ROW_H / 2;
+}
+
 // ponytail: standalone ER→SVG renderer. Mirrors the layout coordinates from
 // erLayout (header / row heights already agree with the in-app x6 render).
-// Drops x6-specific styling (drag handles, popovers, grid). Add when an
-// export needs closer visual parity with the in-app preview.
-function renderErLayoutToSvg(layout: import('@/components/file-types/dbml/erLayout').ErLayout): string {
+// Shares `zOrthPath` with the x6 `z-orth` router so preview and export draw
+// the same Z-shape, grid-snapped, field-row-anchored edges.
+function renderErLayoutToSvg(layout: ErLayout): string {
   const { tables, enums, refs } = layout;
   if (tables.length === 0 && enums.length === 0) return '';
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -90,15 +118,17 @@ function renderErLayoutToSvg(layout: import('@/components/file-types/dbml/erLayo
     const from = tableByName.get(r.fromTable);
     const to = tableByName.get(r.toTable);
     if (!from || !to) continue;
-    // Exit point: midpoint of the facing side of `from` → facing side of `to`.
-    const fx = from.x + (to.x + to.width / 2 >= from.x + from.width / 2 ? from.width : 0);
-    const fy = from.y + from.height / 2;
-    const tx = to.x + (from.x + from.width / 2 >= to.x + to.width / 2 ? to.width : 0);
-    const ty = to.y + to.height / 2;
-    const mx = (fx + tx) / 2;
+    // Anchor at the field row when the ref names a field, else the card's
+    // vertical center — mirrors the x6 port anchor so export matches preview.
+    const fy = fieldRowY(from, r.fromFields[0]) ?? from.y + from.height / 2;
+    const ty = fieldRowY(to, r.toFields[0]) ?? to.y + to.height / 2;
+    const fromBox = { x: from.x, y: fy, width: from.width, height: 0 };
+    const toBox = { x: to.x, y: ty, width: to.width, height: 0 };
+    const path = zOrthPath(fromBox, toBox);
+    if (!path) continue;
+    const pts = path.map((p) => `${p.x},${p.y}`).join(' ');
     parts.push(
-      `<polyline points="${fx},${fy} ${mx},${fy} ${mx},${ty} ${tx},${ty}"`,
-      ` fill="none" stroke="${C.t3}" stroke-width="1.4" stroke-dasharray="0" />`,
+      `<polyline points="${pts}" fill="none" stroke="${C.t3}" stroke-width="1.4" stroke-dasharray="0" />`,
     );
   }
   parts.push('</svg>');
@@ -109,7 +139,7 @@ function escapeXml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function renderTableCardSvg(t: import('@/components/file-types/dbml/erLayout').PositionedTable): string {
+function renderTableCardSvg(t: PositionedTable): string {
   const parts: string[] = [];
   parts.push('<g>');
   // Card body
@@ -152,7 +182,7 @@ function renderTableCardSvg(t: import('@/components/file-types/dbml/erLayout').P
   return parts.join('');
 }
 
-function renderEnumCardSvg(e: import('@/components/file-types/dbml/erLayout').PositionedEnum): string {
+function renderEnumCardSvg(e: PositionedEnum): string {
   const parts: string[] = [];
   parts.push('<g>');
   parts.push(

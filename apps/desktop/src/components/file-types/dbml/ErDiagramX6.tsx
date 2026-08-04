@@ -11,6 +11,7 @@ import {
 import {
   layoutEr,
   boxesTooClose,
+  zOrthPath,
   HEADER_H,
   ROW_H,
   type Point,
@@ -45,44 +46,26 @@ function setEdgeSelected(edge: Edge, selected: boolean): void {
 }
 
 /**
- * Custom Z-shape orthogonal router: source → (midX, sourceY) → (midX, targetY)
- * → target. All bends are 90°. Source/target exit perpendicular to the card's
- * L/R edge (where field ports sit). midX sits in the gap between source's
- * facing edge and target's facing edge, so the vertical segment doesn't cross
- * either card. Recomputed on every node move (x6 calls the router
- * dynamically), so dragging a card keeps the route orthogonal.
+ * Custom Z-shape orthogonal router — delegates to `zOrthPath` in erLayout.ts
+ * so the in-app preview and the standalone SVG export share the same geometry
+ * (grid-snapped midX, perpendicular L/R exits). Recomputed on every node
+ * move (x6 calls the router dynamically), so dragging a card keeps the route
+ * orthogonal.
  *
  * Trade-off: doesn't avoid OTHER cards in the gap — accepted earlier.
  */
 // ponytail: edgeView typed loosely (x6's EdgeView type is awkward to import
 // here); we only read sourceBBox/targetBBox which are stable public APIs.
-// GRID_PX snaps midX so parallel edges between nearby cards collapse onto
-// the same vertical segment instead of rendering N near-duplicate lines
-// 1-2px apart.
-const Z_ORTH_GRID_PX = 10;
 const zOrthRoute = (
   _vertices: Point[],
   _options: Record<string, unknown>,
   edgeView: {
-    sourceBBox: { getCenter(): Point; left: number; right: number };
-    targetBBox: { getCenter(): Point; left: number; right: number };
+    sourceBBox: { x: number; y: number; width: number; height: number };
+    targetBBox: { x: number; y: number; width: number; height: number };
   },
 ): Point[] => {
-  const sourceBBox = edgeView.sourceBBox;
-  const targetBBox = edgeView.targetBBox;
-  const sourcePoint = sourceBBox.getCenter();
-  const targetPoint = targetBBox.getCenter();
-
-  const sourceOnRight = targetPoint.x >= sourcePoint.x;
-  const sourceEdgeX = sourceOnRight ? sourceBBox.right : sourceBBox.left;
-  const targetEdgeX = sourceOnRight ? targetBBox.left : targetBBox.right;
-  const midX = Math.round((sourceEdgeX + targetEdgeX) / 2 / Z_ORTH_GRID_PX) * Z_ORTH_GRID_PX;
-
-  if (sourcePoint.y === targetPoint.y) return [];
-  return [
-    { x: midX, y: sourcePoint.y },
-    { x: midX, y: targetPoint.y },
-  ];
+  const path = zOrthPath(edgeView.sourceBBox, edgeView.targetBBox);
+  return path ? [path[1], path[2]] : [];
 };
 
 /**
