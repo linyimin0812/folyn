@@ -24,7 +24,7 @@ export function ExportMenu() {
   const [containerWarning, setContainerWarning] = useState(false);
   const [exporting, setExporting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { exportSource, exportHtml, exportSvg, exportPng, exportXmind, getActiveContent } = useExport();
+  const { exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportXmind, getActiveContent } = useExport();
 
   const fileType = useEditorStore((s) => {
     const tab = s.tabs.find((t) => t.id === s.activeTabId);
@@ -72,6 +72,10 @@ export function ExportMenu() {
     runWithOverlay(() => exportHtml());
   }, [exportHtml, runWithOverlay]);
 
+  const handleRichTextHtml = useCallback(() => {
+    runWithOverlay(() => exportRichTextHtml());
+  }, [exportRichTextHtml, runWithOverlay]);
+
   const handleSvg = useCallback(() => {
     runWithOverlay(() => exportSvg());
   }, [exportSvg, runWithOverlay]);
@@ -101,6 +105,14 @@ export function ExportMenu() {
       label: t('editor:export.html.label'),
       description: t('editor:export.html.description'),
       run: handleHtml,
+    });
+  } else if (fileType === 'rich-text') {
+    items.push({
+      key: 'html',
+      icon: <span className="text-base w-6 text-center shrink-0">🌐</span>,
+      label: t('editor:export.html.label'),
+      description: t('editor:export.html.description'),
+      run: handleRichTextHtml,
     });
   } else if (CANVAS_TYPES.has(fileType)) {
     items.push(

@@ -1,15 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { useTranslation } from 'react-i18next';
-import StarterKit from '@tiptap/starter-kit';
-import TaskList from '@tiptap/extension-task-list';
-import TaskItem from '@tiptap/extension-task-item';
-import { TableKit } from '@tiptap/extension-table';
-import { TextStyle } from '@tiptap/extension-text-style';
-import { Color } from '@tiptap/extension-color';
-import { FontFamily } from '@tiptap/extension-font-family';
-import { TextAlign } from '@tiptap/extension-text-align';
-import { Highlight } from '@tiptap/extension-highlight';
 import { moveTableRow, moveTableColumn, CellSelection, selectedRect } from '@tiptap/pm/tables';
 import {
   TableCellsMerge,
@@ -28,10 +19,9 @@ import {
   serializeToDisk,
   shouldApplyExternalContent,
 } from './richTextContent';
-import { RichTextImage } from './RichTextImage';
 import { RichTextToolbar } from './RichTextToolbar';
+import { getRichTextExtensions } from './richTextExtensions';
 import {
-  RichTextSlashExtension,
   computeSlashState,
   INITIAL_SLASH_STATE,
   writeSlashState,
@@ -40,8 +30,6 @@ import {
 import { RichTextSlashMenu } from './RichTextSlashMenu';
 import { TableControlsOverlay, domCellToPos } from './TableControlsOverlay';
 import { TableMenu, type TableMenuItem } from './TableMenu';
-import { RichTextTableCell, RichTextTableHeader } from './RichTextTableCell';
-import { RichTextIndent } from './RichTextIndent';
 
 // ponytail: anti-write-back-loop guard — drawio loadedXml + loadedXmlRef
 // pattern, adapted for tiptap (no iframe). User edits update the ref ONLY
@@ -73,44 +61,7 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
   const loadedContentRef = useRef(content);
 
   const editor = useEditor({
-    extensions: [
-      // ponytail: enableTabIndentation lets Tab insert 2-space indents in
-      // code blocks (multi-line selection indents all lines; Shift-Tab
-      // reverses). List items already sink/lift on Tab via Tiptap's
-      // ListItem/TaskItem default shortcuts, so no extra wiring needed.
-      StarterKit.configure({ codeBlock: { enableTabIndentation: true, tabSize: 2 } }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      // ponytail: TextStyle must come before Color + FontFamily — both
-      // decorate text via the `textStyle` mark. TextAlign sets align attr
-      // on paragraph/heading independently (no mark dependency).
-      TextStyle,
-      Color,
-      FontFamily.configure({ types: ['textStyle'] }),
-      TextAlign.configure({ types: ['paragraph', 'heading'] }),
-      Highlight.configure({ multicolor: true }),
-      // ponytail: registered last so StarterKit's CodeBlock + ListItem
-      // Tab handlers get first dibs; they return false when the cursor
-      // isn't in their context, falling through to this handler for
-      // paragraph/heading indent.
-      RichTextIndent,
-      // ponytail: tableCell/tableHeader disabled in TableKit and replaced
-      // with RichTextTableCell/Header — the base Tiptap nodes lack a
-      // `background` attr, so setCellAttribute('background', …) would be
-      // rejected by the schema. Custom extensions add it via
-      // addAttributes(). `resizable: true` enables prosemirror-tables'
-      // columnResizing plugin (drag handles between columns; colwidth
-      // persists as a cell attr, survives round-trip).
-      TableKit.configure({
-        table: { allowTableNodeSelection: true, resizable: true },
-        tableCell: false,
-        tableHeader: false,
-      }),
-      RichTextTableCell,
-      RichTextTableHeader,
-      RichTextImage,
-      RichTextSlashExtension,
-    ],
+    extensions: getRichTextExtensions(),
     content: deserializeToContent(content) ?? emptyDoc(),
     onUpdate: ({ editor }) => {
       // User edit: update ref ONLY (not setState), so when our own onChange

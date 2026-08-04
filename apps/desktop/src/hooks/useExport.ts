@@ -17,6 +17,7 @@ import {
   svgToPngBlob,
 } from '@/services/export/shared';
 import { mmapToXmindBlob } from '@/services/export/xmind';
+import { richTextToHtmlBlob } from '@/services/export/richtext';
 import { getHandlerById } from '@/components/file-types/registry';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { isExternalPath } from '@/utils/isExternalPath';
@@ -167,6 +168,16 @@ ${inlinedBody}
   await downloadBlob(blob, name.replace(/\.md$/, '.html'), ['html']);
 }
 
+/** Export a rich-text (.rt) doc as a standalone HTML file. */
+export async function exportActiveRichTextHtml(onBeforeDialog?: () => void): Promise<void> {
+  const { name, content, vaultRoot } = getActiveDocument();
+  if (!content) return;
+  const blob = await richTextToHtmlBlob(content, name, vaultRoot);
+  onBeforeDialog?.();
+  const baseName = name.replace(/\.[^.]+$/, '');
+  await downloadBlob(blob, `${baseName}.html`, ['html']);
+}
+
 /**
  * React hook facade over the imperative export functions. Reads from stores at
  * call time so the returned callbacks always reflect the latest active tab and
@@ -177,6 +188,7 @@ export function useExport() {
   const exportMarkdown = useCallback((onBeforeDialog?: () => void) => exportActiveMarkdown(onBeforeDialog), []);
   const exportSource = useCallback((onBeforeDialog?: () => void) => exportActiveSource(onBeforeDialog), []);
   const exportHtml = useCallback((onBeforeDialog?: () => void) => exportActiveHtml(onBeforeDialog), []);
+  const exportRichTextHtml = useCallback((onBeforeDialog?: () => void) => exportActiveRichTextHtml(onBeforeDialog), []);
   const exportSvg = useCallback((onBeforeDialog?: () => void) => exportActiveSvg(onBeforeDialog), []);
   const exportPng = useCallback((onBeforeDialog?: () => void) => exportActivePng(onBeforeDialog), []);
   const exportXmind = useCallback((onBeforeDialog?: () => void) => exportActiveXmind(onBeforeDialog), []);
@@ -187,5 +199,5 @@ export function useExport() {
     },
     [],
   );
-  return { exportMarkdown, exportSource, exportHtml, exportSvg, exportPng, exportXmind, getActiveContent };
+  return { exportMarkdown, exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportXmind, getActiveContent };
 }
