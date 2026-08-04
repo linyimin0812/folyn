@@ -42,12 +42,18 @@ export async function svgToPngBlob(svg: string, scale = 2): Promise<Blob | null>
   const hMatch = svg.match(/\bheight="([^"]+)"/);
   let w = wMatch ? parseInt(wMatch[1], 10) || 0 : 0;
   let h = hMatch ? parseInt(hMatch[1], 10) || 0 : 0;
-  if (!w || !h) {
+  // ponytail: mmap.ts / dbml.ts / excalidraw.ts all set width/height to "100%"
+  // for fit-to-container preview. parseInt("100%")=100 — passes the !w check
+  // but yields a 100×100 PNG instead of native SVG dims. Treat any % value
+  // as "unresolved" and fall through to viewBox.
+  const wIsPct = wMatch && wMatch[1].includes('%');
+  const hIsPct = hMatch && hMatch[1].includes('%');
+  if (!w || !h || wIsPct || hIsPct) {
     const vb = svg.match(/viewBox="([^"]+)"/);
     if (vb) {
       const parts = vb[1].split(/[\s,]+/).map(Number);
-      w = w || parts[2] || 0;
-      h = h || parts[3] || 0;
+      if (wIsPct || !w) w = parts[2] || 0;
+      if (hIsPct || !h) h = parts[3] || 0;
     }
   }
   w = w || 800;

@@ -111,14 +111,20 @@ export function ExportMenu() {
         description: t('editor:export.svg.description'),
         run: handleSvg,
       },
-      {
+    );
+    // PNG export: only for canvas types whose SVG has no foreignObject.
+    // mmap's exported SVG uses foreignObject for topic text — WebKit taints
+    // the canvas (SecurityError on toBlob) when rasterizing SVG-as-Image
+    // with foreignObject. Skip PNG for mmap; SVG + XMind cover the gap.
+    if (fileType !== 'mmap') {
+      items.push({
         key: 'png',
         icon: <ImageDown size={16} className="w-6 flex justify-center shrink-0" />,
         label: t('editor:export.png.label'),
         description: t('editor:export.png.description'),
         run: handlePng,
-      },
-    );
+      });
+    }
     // XMind export: only for mmap files
     if (fileType === 'mmap') {
       items.push({
