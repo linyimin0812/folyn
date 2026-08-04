@@ -21,6 +21,10 @@
       "label": "PNG",
       "description": "Export as raster image"
     },
+    "xmind": {
+      "label": "XMind",
+      "description": "Export as .xmind mind map"
+    },
     "containerWarning": {
       "title": "⚠️ Compatibility notice",
       "body": "The current document uses Quill container syntax (callouts, tabs, collapsible blocks, etc.), which is a Quill extension. **Other Markdown editors may fail to render it correctly.**",

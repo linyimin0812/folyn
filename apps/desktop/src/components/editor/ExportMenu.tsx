@@ -24,7 +24,7 @@ export function ExportMenu() {
   const [containerWarning, setContainerWarning] = useState(false);
   const [exporting, setExporting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { exportSource, exportHtml, exportSvg, exportPng, getActiveContent } = useExport();
+  const { exportSource, exportHtml, exportSvg, exportPng, exportXmind, getActiveContent } = useExport();
 
   const fileType = useEditorStore((s) => {
     const tab = s.tabs.find((t) => t.id === s.activeTabId);
@@ -80,6 +80,10 @@ export function ExportMenu() {
     runWithOverlay(() => exportPng());
   }, [exportPng, runWithOverlay]);
 
+  const handleXmind = useCallback(() => {
+    runWithOverlay(() => exportXmind());
+  }, [exportXmind, runWithOverlay]);
+
   const sourceKey = KNOWN_SOURCE_TYPES.has(fileType) ? fileType : 'default';
   const items: Item[] = [
     {
@@ -115,6 +119,16 @@ export function ExportMenu() {
         run: handlePng,
       },
     );
+    // XMind export: only for mmap files
+    if (fileType === 'mmap') {
+      items.push({
+        key: 'xmind',
+        icon: <span className="text-base w-6 text-center shrink-0">🧠</span>,
+        label: t('editor:export.xmind.label'),
+        description: t('editor:export.xmind.description'),
+        run: handleXmind,
+      });
+    }
   }
 
   return (
