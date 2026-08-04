@@ -303,7 +303,7 @@ export function VoiceSettings() {
           skipped (per PRD ADR). The autoPolish toggle above still gates the
           overall flow; this pair selects WHICH model polishes. */}
       <Row title={t('ai:pairSelector.sectionTitle')} desc={t('ai:pairSelector.sectionDesc')}>
-        <PairSelector value={voicePair} onChange={setVoicePair} />
+        <PairSelector value={voicePair} onChange={setVoicePair} dropDirection="up" />
       </Row>
     </div>
   );
