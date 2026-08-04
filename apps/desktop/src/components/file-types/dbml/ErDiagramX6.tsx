@@ -45,6 +45,43 @@ function setEdgeSelected(edge: Edge, selected: boolean): void {
 }
 
 /**
+ * Custom Z-shape orthogonal router: source → (midX, sourceY) → (midX, targetY)
+ * → target. All bends are 90°. Source/target exit perpendicular to the card's
+ * L/R edge (where field ports sit). midX sits in the gap between source's
+ * facing edge and target's facing edge, so the vertical segment doesn't cross
+ * either card. Recomputed on every node move (x6 calls the router
+ * dynamically), so dragging a card keeps the route orthogonal.
+ *
+ * Trade-off: doesn't avoid OTHER cards in the gap — accepted earlier.
+ */
+// ponytail: edgeView typed loosely (x6's EdgeView type is awkward to import
+// here); we only read sourceBBox/targetBBox which are stable public APIs.
+const zOrthRoute = (
+  _vertices: Point[],
+  _options: Record<string, unknown>,
+  edgeView: {
+    sourceBBox: { getCenter(): Point; left: number; right: number };
+    targetBBox: { getCenter(): Point; left: number; right: number };
+  },
+): Point[] => {
+  const sourceBBox = edgeView.sourceBBox;
+  const targetBBox = edgeView.targetBBox;
+  const sourcePoint = sourceBBox.getCenter();
+  const targetPoint = targetBBox.getCenter();
+
+  const sourceOnRight = targetPoint.x >= sourcePoint.x;
+  const sourceEdgeX = sourceOnRight ? sourceBBox.right : sourceBBox.left;
+  const targetEdgeX = sourceOnRight ? targetBBox.left : targetBBox.right;
+  const midX = (sourceEdgeX + targetEdgeX) / 2;
+
+  if (sourcePoint.y === targetPoint.y) return [];
+  return [
+    { x: midX, y: sourcePoint.y },
+    { x: midX, y: targetPoint.y },
+  ];
+};
+
+/**
  * Pure toggle logic for the single-selected-edge model (see prd.md's "点击
  * 连线动效" amendment). `clickedEdgeId: null` models a blank-canvas click,
  * which always clears the selection. Clicking the already-selected edge
@@ -290,6 +327,7 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
           markerOrient: 'auto-start-reverse' as const,
           markerUnits: 'userSpaceOnUse',
         }));
+        Graph.registerRouter('z-orth', zOrthRoute);
       }
       const el = containerRef.current!;
       const graph = new Graph({
@@ -570,38 +608,13 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
       const sourcePort = fromField ? `f-${fromField}-${fromOnRight ? 'R' : 'L'}` : undefined;
       const targetPort = toField ? `f-${toField}-${toOnRight ? 'R' : 'L'}` : undefined;
 
-      // ponytail: Z-shape orthogonal route — 3 segments (horizontal-vertical-
-      // horizontal), 2 bends at 90°. Source/target exit perpendicular to the
-      // card's L/R edge (where field ports sit). midX sits in the GAP between
-      // source's R edge and target's L edge (or vice versa), so the vertical
-      // segment doesn't cross either card. No A*, no fallback, no zigzag.
-      // Trade-off: doesn't avoid OTHER cards in the gap — accepted earlier.
-      const fromPortX = fromOnRight ? fromTable.x + fromTable.width : fromTable.x;
-      const toPortX = toOnRight ? toTable.x + toTable.width : toTable.x;
-      const fromFieldIdx = fromField
-        ? fromTable.fields.findIndex((f) => f.name === fromField)
-        : -1;
-      const toFieldIdx = toField
-        ? toTable.fields.findIndex((f) => f.name === toField)
-        : -1;
-      const fromPortY =
-        fromFieldIdx >= 0
-          ? fromTable.y + HEADER_H + (fromFieldIdx + 0.5) * ROW_H
-          : fromTable.y + fromTable.height / 2;
-      const toPortY =
-        toFieldIdx >= 0
-          ? toTable.y + HEADER_H + (toFieldIdx + 0.5) * ROW_H
-          : toTable.y + toTable.height / 2;
-      const midX = (fromPortX + toPortX) / 2;
-      const vertices =
-        fromPortY === toPortY
-          ? [{ x: midX, y: fromPortY }]
-          : [{ x: midX, y: fromPortY }, { x: midX, y: toPortY }];
-
+      // ponytail: z-orth router — Z-shape orthogonal route with 90° bends,
+      // perpendicular exits, recomputed dynamically on every node move so
+      // dragging a card keeps the route orthogonal. See zOrthRoute above.
       graph.addEdge({
         source: { cell: `t:${r.fromTable}`, ...(sourcePort ? { port: sourcePort } : {}) },
         target: { cell: `t:${r.toTable}`, ...(targetPort ? { port: targetPort } : {}) },
-        vertices,
+        router: { name: 'z-orth' },
         attrs: {
           line: {
             stroke: 'var(--t3)',
