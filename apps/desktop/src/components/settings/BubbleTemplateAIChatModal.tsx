@@ -460,7 +460,7 @@ export function BubbleTemplateAIChatModal({
               {t('settings:pet.templates.ai.title')}
             </h2>
             <select
-              className="text-[11px] bg-surf2 border border-brd rounded px-1.5 py-0.5 min-w-0 max-w-[220px] truncate disabled:opacity-40"
+              className="text-[11px] bg-surf2 border border-brd rounded px-1.5 py-1.5 min-w-0 max-w-[220px] truncate disabled:opacity-40"
               value={sessionId ?? ''}
               onChange={(e) => switchSession(e.target.value)}
               disabled={streaming || !loaded}
@@ -472,6 +472,8 @@ export function BubbleTemplateAIChatModal({
                 </option>
               ))}
             </select>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
             <button
               className="text-t3 hover:text-t1 px-1 disabled:opacity-40"
               onClick={handleNewSession}
@@ -486,8 +488,6 @@ export function BubbleTemplateAIChatModal({
               title={t('settings:pet.templates.ai.clear')}
               aria-label={t('settings:pet.templates.ai.clear')}
             >{confirmingDelete ? t('settings:pet.templates.ai.confirmDelete') : <Trash2 className="w-[14px] h-[14px]" />}</button>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
             <button
               className="text-t3 hover:text-t1 text-[14px]"
               onClick={onClose}
