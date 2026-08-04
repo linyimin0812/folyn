@@ -578,6 +578,11 @@
       "preview": "预览",
       "builtin": "内置",
       "custom": "自定义",
+      "previewSample": {
+        "text": "预览：这是一条示例通知",
+        "title": "预览标题",
+        "actionLabel": "查看"
+      },
       "invalidJson": "JSON 解析失败",
       "missingFields": "缺少必需字段：id / name / html / css",
       "idCollision": "模板 id 与内置冲突，已自动加前缀 user:",
@@ -631,7 +636,13 @@
     },
     "cornerPlacement": {
       "title": "角落位置",
-      "desc": "堆叠 toast 固定在屏幕的某个角"
+      "desc": "堆叠 toast 固定在屏幕的某个角",
+      "options": {
+        "topLeft": "左上",
+        "topRight": "右上",
+        "bottomLeft": "左下",
+        "bottomRight": "右下"
+      }
     },
     "cornerTtlMs": {
       "title": "提醒停留时长",

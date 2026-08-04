@@ -565,6 +565,11 @@
       "testing": "Sent"
     },
     "templates": {
+      "previewSample": {
+        "text": "Preview: this is a sample notification",
+        "title": "Preview title",
+        "actionLabel": "View"
+      },
       "ai": {
         "generate": "AI Generate",
         "title": "AI Bubble Template Generator",
@@ -607,7 +612,13 @@
     },
     "cornerPlacement": {
       "title": "Corner placement",
-      "desc": "The screen corner where the toast stack attaches"
+      "desc": "The screen corner where the toast stack attaches",
+      "options": {
+        "topLeft": "Top left",
+        "topRight": "Top right",
+        "bottomLeft": "Bottom left",
+        "bottomRight": "Bottom right"
+      }
     },
     "cornerTtlMs": {
       "title": "Notification TTL",

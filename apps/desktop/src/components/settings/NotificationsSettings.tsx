@@ -66,7 +66,7 @@ export function NotificationsSettings() {
             onChange={(e) => setCornerPlacement(e.target.value as CornerPlacement)}
           >
             {CORNERS.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>{t(`settings:notifications.cornerPlacement.options.${c}`)}</option>
             ))}
           </select>
         </div>
@@ -214,16 +214,16 @@ function BubbleTemplateBlock() {
     try {
       const { emit } = await import('@tauri-apps/api/event');
       await emit('pet://bubble-show', {
-        text: '预览：这是一条示例通知',
-        title: '预览标题',
+        text: t('settings:pet.templates.previewSample.text'),
+        title: t('settings:pet.templates.previewSample.title'),
         kind: 'info',
         template: tplId,
-        actions: [{ id: 'view', label: '查看', kind: 'primary' }],
+        actions: [{ id: 'view', label: t('settings:pet.templates.previewSample.actionLabel'), kind: 'primary' }],
       });
     } catch {
       // Non-fatal — preview just doesn't fire.
     }
-  }, []);
+  }, [t]);
 
   const handleImportFile = useCallback(async () => {
     setError('');
@@ -306,11 +306,11 @@ function BubbleTemplateBlock() {
       try {
         const { emit } = await import('@tauri-apps/api/event');
         await emit('pet://bubble-show', {
-          text: '预览：这是一条示例通知',
-          title: '预览标题',
+          text: t('settings:pet.templates.previewSample.text'),
+          title: t('settings:pet.templates.previewSample.title'),
           kind: 'info',
           templateDraft: r.tpl,
-          actions: [{ id: 'view', label: '查看', kind: 'primary' }],
+          actions: [{ id: 'view', label: t('settings:pet.templates.previewSample.actionLabel'), kind: 'primary' }],
         });
       } catch {
         // Non-fatal — preview just doesn't fire.
