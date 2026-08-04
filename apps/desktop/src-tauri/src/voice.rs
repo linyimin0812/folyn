@@ -725,6 +725,13 @@ pub async fn voice_insert_text(app: tauri::AppHandle, text: String) -> Result<()
 #[tauri::command]
 pub async fn voice_request_accessibility() -> Result<bool, AppError> {
     tauri::async_runtime::spawn_blocking(|| {
+        // ponytail: check first, skip the prompt API entirely when already
+        // trusted — AXIsProcessTrustedWithOptions({prompt:true}) can re-fire
+        // the system dialog on stale TCC cache even after the user has
+        // granted in System Settings.
+        if permissions::check_accessibility() {
+            return Ok::<bool, String>(true);
+        }
         insertion::reset_accessibility_prompt_guard();
         permissions::request_accessibility();
         Ok::<bool, String>(permissions::check_accessibility())
