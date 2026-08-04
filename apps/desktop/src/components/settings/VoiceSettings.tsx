@@ -64,7 +64,7 @@ function PermissionRow({ title, desc, idleLabel, state, onClick }: {
  * Voice doesn't surface a conflict-occupied hint, so `conflictTimeoutMs` is
  * omitted (unlike ShortcutEditor's 2500ms) — the hook degrades to no-timeout.
  */
-function VoiceHotkeyRecorder() {
+export function VoiceHotkeyRecorder() {
   const { t } = useTranslation();
   const globalHotkey = useVoiceStore((s) => s.globalHotkey);
   const setGlobalHotkey = useVoiceStore((s) => s.setGlobalHotkey);
