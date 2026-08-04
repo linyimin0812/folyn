@@ -126,7 +126,7 @@ type RigParams = {
 function resetStoreToSingleEmpty(): void {
   const session: BtSession = {
     id: 's1',
-    title: '新会话',
+    title: '',
     messages: [],
     provider: 'anthropic',
     model: 'claude-sonnet-4-6',

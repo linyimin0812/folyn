@@ -583,6 +583,9 @@
         "title": "Preview title",
         "actionLabel": "View"
       },
+      "builtinNames": {
+        "cloudia": "Cloudia card"
+      },
       "invalidJson": "JSON parse failed",
       "missingFields": "Missing required fields: id / name / html / css",
       "idCollision": "Template id collides with built-in; auto-prefing user:",

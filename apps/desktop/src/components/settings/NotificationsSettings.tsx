@@ -335,7 +335,7 @@ function BubbleTemplateBlock() {
               className={`rounded-md border p-2 text-[11px] flex flex-col gap-1.5 ${isActive ? 'border-acc bg-accdim' : 'border-brd bg-surf'}`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-ui font-semibold text-t1">{tpl.name}</span>
+                <span className="font-ui font-semibold text-t1">{tpl.nameKey ? t(tpl.nameKey) : tpl.name}</span>
                 <span className="text-[9px] px-1 rounded bg-surf2 text-t3">
                   {isBuiltin ? t('settings:pet.templates.builtin') : t('settings:pet.templates.custom')}
                 </span>

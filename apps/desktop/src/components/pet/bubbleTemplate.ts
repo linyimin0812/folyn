@@ -20,6 +20,10 @@ import type { PetBubblePayload } from './PetBubbleApp';
 export interface BubbleTemplate {
   id: string;
   name: string;
+  /** i18n key (built-in templates only) — if present, the UI renders
+   *  `t(nameKey)` instead of `name`. Custom templates leave this unset and
+   *  display the literal `name`. */
+  nameKey?: string;
   html: string;
   css: string;
   /** Declared placeholders — informational only, not enforced. Used by the
@@ -133,6 +137,7 @@ export const BUILT_IN_TEMPLATES: BubbleTemplate[] = [
     // fallback resolve to it without migration.
     id: 'default',
     name: 'Cloudia 卡片',
+    nameKey: 'settings:pet.templates.builtinNames.cloudia',
     // ponytail: 378×224 = 540×320 × 0.7 — shrunk proportionally because the
     // natural 540×320 read too large in the bubble tier. All inner CSS
     // values (padding / font-size / mascot / gap / radius) scaled by 0.7
@@ -140,7 +145,7 @@ export const BUILT_IN_TEMPLATES: BubbleTemplate[] = [
     size: { width: 378, height: 224 },
     html:
       '<div class="cloudia-card">' +
-        '<button class="cloudia-close" data-action="close" aria-label="关闭">✕</button>' +
+        '<button class="cloudia-close" data-action="close" aria-label="Close">✕</button>' +
         '<div class="cloudia-header">' +
           '<svg class="cloudia-mascot" width="40" height="30" viewBox="0 0 64 48" fill="none" xmlns="http://www.w3.org/2000/svg">' +
             '<defs>' +

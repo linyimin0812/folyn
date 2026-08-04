@@ -88,7 +88,7 @@ const BT_SESSIONS_KEY = 'btai:sessions';
 /** Hard cap on the number of sessions. Reaching it disables createSession. */
 export const MAX_SESSIONS = 50;
 
-const DEFAULT_NEW_TITLE = '新会话';
+const DEFAULT_NEW_TITLE = '';
 const AUTO_TITLE_MAX = 40;
 
 // ── Helpers ──

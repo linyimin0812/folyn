@@ -583,6 +583,9 @@
         "title": "预览标题",
         "actionLabel": "查看"
       },
+      "builtinNames": {
+        "cloudia": "Cloudia 卡片"
+      },
       "invalidJson": "JSON 解析失败",
       "missingFields": "缺少必需字段：id / name / html / css",
       "idCollision": "模板 id 与内置冲突，已自动加前缀 user:",
