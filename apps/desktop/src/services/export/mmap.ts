@@ -24,15 +24,13 @@ export async function enhance(body: HTMLElement, _ctx: EnhanceCtx): Promise<void
   // (insertAdjacentHTML on an SVG element) doesn't reliably apply to
   // foreignObject's HTML content in standalone SVG viewers — namespace
   // mismatch between HTML <style> and SVG. Patching the div's inline
-  // style bypasses that: inject `line-height:1.5` so the div's text
-  // matches the foreignObject's height (which came from
-  // getComputedStyle(.text) inheriting body's line-height 1.5). Without
-  // this, the div's text uses browser default "normal" ≈ 1.2 — shorter
-  // than foreignObject, top-anchored → 偏上. Adding line-height makes
-  // the text fill the foreignObject height. We don't use display:flex
-  // because flex shrink on narrow foreignObjects forces 2-char Chinese
-  // nodes to wrap to 2 lines, then the (1-line tall) foreignObject
-  // clips the 2nd line → 显示不全.
+  // style bypasses that: inject flex + line-height + white-space so the
+  // div's text matches the foreignObject's height and stays on one line.
+  // Without this, the div's text uses browser default "normal" ≈ 1.2 —
+  // shorter than foreignObject, top-anchored → 偏上. Adding line-height
+  // makes the text fill the foreignObject height. flex + white-space:nowrap
+  // centers the single-line text vertically and prevents wrapping that
+  // would otherwise clip content on narrow nodes.
   let blob: Blob | null = null;
   try {
     blob = inst.exportSvg(false, '');
@@ -57,7 +55,7 @@ export async function enhance(body: HTMLElement, _ctx: EnhanceCtx): Promise<void
   //    the text. (Plain flex without height:100% centers within the div's
   //    auto content height — no effect.)
   //  - Horizontal centering: text-align:center on the single line.
-  const foStyle = `<style>foreignObject div, foreignObject span, foreignObject p { height: 100% !important; display: flex !important; flex-direction: column !important; justify-content: center !important; line-height: 1.5 !important; text-align: center !important; }</style>`;
+  const foStyle = `<style>foreignObject div, foreignObject span, foreignObject p { height: 100% !important; display: flex !important; flex-direction: column !important; justify-content: center !important; line-height: 1.5 !important; text-align: center !important; white-space: nowrap !important; }</style>`;
   svgString = svgString.replace(/<svg\b([^>]*)>/, `<svg$1>${foStyle}`);
   // ponytail: fix image-node layout. mind-elixir's exportSvg has a bug
   // where for image nodes (me-tpc with img child), the text
