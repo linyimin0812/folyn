@@ -1035,6 +1035,19 @@ html.is-pet-panel-window body {
   -webkit-user-select: none;
 }
 
+/* Submenu opens leftward when the right side of the main card is too close
+ * to the screen's right edge (see `computeSubmenuSide` in PetMenuApp.tsx).
+ * `order: -1` makes the submenu render BEFORE the main card in the
+ * inline-flex wrapper (visual order: [submenu] [6px gap] [main card]); the
+ * `margin-right` puts the gap between submenu and main card; `margin-left: 0`
+ * resets the default right-side gap so the wrapper's union rect stays
+ * tight to the main card on its left edge. */
+.pet-menu-submenu--left {
+  margin-left: 0;
+  margin-right: 6px;
+  order: -1;
+}
+
 /* Radio item — leading circle indicator, fills when checked. */
 .pet-menu-radio {
   width: 12px;

@@ -115,6 +115,12 @@ async function hideMenu(): Promise<void> {
  * clamps the LARGER union to the work area — that clamp is correct there
  * because the user just right-clicked and the menu is fresh; on submenu
  * toggle the user is mid-interaction and any movement is hostile.)
+ *
+ * The adaptive submenu side (`computeSubmenuSide`, called by `openMenu`
+ * AFTER this) mitigates the "wider union overflows on the submenu side"
+ * concern from the previous paragraph — the submenu flips to whichever side
+ * has more room at open time, so the visible content stays clear of the
+ * screen edge even without re-positioning on submenu toggle.
  */
 async function resizeAndReposition(
   root: HTMLDivElement | null,
@@ -159,24 +165,72 @@ async function resizeAndReposition(
   }
 }
 
+/** Submenu opens toward the side with more screen room — mirrors native
+ *  macOS NSMenu behavior. `'right'` is the default (matches the pre-fix
+ *  always-right layout); `'left'` flips the submenu to render before the main
+ *  card via `order: -1` so it extends leftward away from the screen's right
+ *  edge. See `openMenu` for the room-on-the-right check that picks the side. */
+type SubmenuSide = 'left' | 'right';
+
+/** Submenu min-width (120) + gap (6) + ~10px buffer, in logical px. If the
+ *  room to the right of the main card is less than this, flip the submenu
+ *  to the left side. */
+const SUBMENU_FLIP_THRESHOLD_LOGICAL = 136;
+
 /**
  * Open path: measure rendered DOM + compute quadrant-aware position +
  * size/position/show the window. Re-runs on every `pet://menu-show` event
  * so a locale change (which shifts label widths) re-positions correctly.
  * Delegates the measure+size+position work to `resizeAndReposition` so the
  * submenu-toggle path can reuse it without re-showing the window.
+ *
+ * After positioning, picks which side the submenu should open toward based
+ * on which side of the main card has more screen room. The side is returned
+ * to the caller (which sets React state) so the submenu's `--left` modifier
+ * applies before the submenu is first rendered.
  */
 async function openMenu(
   root: HTMLDivElement | null,
   petSize: PetSize,
-): Promise<void> {
-  if (!isTauri() || !root) return;
+): Promise<SubmenuSide> {
+  if (!isTauri() || !root) return 'right';
   await resizeAndReposition(root, petSize);
+  const side = await computeSubmenuSide(root);
   try {
     const { invoke } = await import('@tauri-apps/api/core');
     await invoke('pet_menu_show');
   } catch (err) {
     console.warn('[pet-menu] open path failed:', err);
+  }
+  return side;
+}
+
+/**
+ * Pick the submenu side based on room to the right of the main card. The
+ * window has just been positioned by `resizeAndReposition`, so its
+ * `outerPosition()` is the physical top-left of the main card. The wrapper
+ * rect's `right` is the logical width of the main card (no submenu rendered
+ * yet at open time). Convert both to physical px and compare against the
+ * work area's right edge. If the right side has less than
+ * `SUBMENU_FLIP_THRESHOLD_LOGICAL * sf` room, the submenu flips left.
+ */
+async function computeSubmenuSide(root: HTMLDivElement): Promise<SubmenuSide> {
+  if (!isTauri()) return 'right';
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    const { invoke } = await import('@tauri-apps/api/core');
+    const win = getCurrentWindow();
+    const winPos = await win.outerPosition();
+    const rect = root.getBoundingClientRect();
+    const workArea = await invoke<PetWorkArea>('pet_get_work_area');
+    const sf = workArea.scale_factor || 1;
+    const mainCardRightPhysical = winPos.x + rect.right * sf;
+    const workAreaRightPhysical = (workArea.x + workArea.width) * sf;
+    const roomRight = workAreaRightPhysical - mainCardRightPhysical;
+    return roomRight < SUBMENU_FLIP_THRESHOLD_LOGICAL * sf ? 'left' : 'right';
+  } catch (err) {
+    console.warn('[pet-menu] computeSubmenuSide failed:', err);
+    return 'right';
   }
 }
 
@@ -200,6 +254,7 @@ export function PetMenuApp(): JSX.Element {
   const [petOpacity, setPetOpacity] = useState<string>('100');
   const [petClickThrough, setPetClickThrough] = useState<boolean>(false);
   const [hoveredSection, setHoveredSection] = useState<HoveredSection>(null);
+  const [submenuSide, setSubmenuSide] = useState<SubmenuSide>('right');
   const showTimeoutRef = useRef<number | null>(null);
   const hideTimeoutRef = useRef<number | null>(null);
 
@@ -285,7 +340,9 @@ export function PetMenuApp(): JSX.Element {
     (async () => {
       const { listen } = await import('@tauri-apps/api/event');
       unlisten = await listen('pet://menu-show', () => {
-        void openMenu(rootRef.current, petSize);
+        void openMenu(rootRef.current, petSize).then((side) => {
+          setSubmenuSide(side);
+        });
       });
     })();
     return () => unlisten?.();
@@ -446,7 +503,9 @@ export function PetMenuApp(): JSX.Element {
 
       {hoveredSection && (
         <div
-          className="pet-menu-submenu"
+          className={`pet-menu-submenu${
+            submenuSide === 'left' ? ' pet-menu-submenu--left' : ''
+          }`}
           role="group"
           style={{ marginTop: hoveredSection.offsetTop }}
           onMouseEnter={() => {
