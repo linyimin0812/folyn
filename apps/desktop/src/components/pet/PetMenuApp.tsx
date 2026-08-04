@@ -316,7 +316,21 @@ export function PetMenuApp(): JSX.Element {
     (async () => {
       const { listen } = await import('@tauri-apps/api/event');
       unlisten = await listen('pet://menu-show', () => {
-        void openMenu(rootRef.current, petSize);
+        // Reset submenu state on every open so a size/opacity pick from the
+        // previous open doesn't leave the submenu visible on the next open.
+        // The pet-menu window is created once and shown/hidden repeatedly —
+        // React `hoveredSection` state persists across opens; without this
+        // reset, picking a radio (which only calls `pet_menu_hide`, not
+        // `setHoveredSection(null)`) leaves the submenu rendered, and the
+        // next `pet://menu-show` measures a wrapper that already includes
+        // the submenu card. rAF defers `openMenu` past the state update so
+        // the measure sees the wrapper WITHOUT the submenu.
+        clearShow();
+        clearHide();
+        setHoveredSection(null);
+        requestAnimationFrame(() => {
+          void openMenu(rootRef.current, petSize);
+        });
       });
     })();
     return () => unlisten?.();
