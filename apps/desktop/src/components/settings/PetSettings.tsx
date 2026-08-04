@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePetStore, type PetOpacity } from '@/store/petStore';
-import { useAiStore } from '@/store/aiStore';
-import { PairSelector } from '@/components/ai/PairSelector';
 import { isTauri } from '@/utils/platform';
 import { Toggle } from '@/components/settings/primitives';
 
@@ -44,19 +42,6 @@ export function PetSettings() {
   const setPetOpacity = usePetStore((s) => s.setPetOpacity);
   const petClickThrough = usePetStore((s) => s.petClickThrough);
   const setPetClickThrough = usePetStore((s) => s.setPetClickThrough);
-  // Phase 2: the pet pair is per-session. PetSettings binds to the aiStore's
-  // ACTIVE session pair (read+write via setSessionPair). If no active
-  // session, PairSelector shows empty. Pet chat now reuses AiPanel directly,
-  // so pet sessions live in aiStore (shared with the main-window AI panel).
-  const activePetSessionId = useAiStore((s) => s.activeSessionId);
-  const activePetSession = useAiStore((s) =>
-    s.sessions.find((sess) => sess.id === s.activeSessionId),
-  );
-  const setSessionPair = useAiStore((s) => s.setSessionPair);
-  // ponytail: Phase 3 — ChatProvider is `string`, no cast needed.
-  const petPair = activePetSession?.provider && activePetSession?.model
-    ? { provider: activePetSession.provider, model: activePetSession.model }
-    : null;
   const [errorMsg, setErrorMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -440,25 +425,6 @@ export function PetSettings() {
           <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:pet.clickThrough.desc')}</p>
         </div>
         <Toggle value={petClickThrough} onChange={(v) => void handleToggleClickThrough(v)} />
-      </div>
-
-      {/* AI 模型 — pair picker for pet chat. Empty state falls back to the
-          i18n hint (no settings link; this IS settings). */}
-      <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
-        <div className="tr-info">
-          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('ai:pairSelector.sectionTitle')}</h4>
-          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('ai:pairSelector.sectionDesc')}</p>
-        </div>
-        <PairSelector
-          value={petPair}
-          onChange={(pair) => {
-            // ponytail: pair is per-session now — this controls the active
-            // pet chat session's pair, same as the in-panel PairSelector.
-            if (activePetSessionId && pair) {
-              setSessionPair(activePetSessionId, pair);
-            }
-          }}
-        />
       </div>
     </div>
   );
