@@ -42,6 +42,14 @@
   "bubble": {
     "closeAria": "Close"
   },
+  "menu": {
+    "showMain": "Show Main Window",
+    "hidePet": "Hide Pet Icon",
+    "sizeSubmenu": "Pet Size",
+    "opacitySubmenu": "Pet Opacity",
+    "clickThrough": "Click Through",
+    "exitApp": "Exit App"
+  },
   "tabs": {
     "chat": "Chat",
     "actions": "Actions",

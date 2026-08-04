@@ -66,6 +66,17 @@ html.is-pet-corner-window #root {
   background: transparent !important;
 }
 
+/* The pet-menu window is transparent (the right-click HTML menu floats above
+ * the desktop beside the pet). Same opaque-square defense as the bubble: tag
+ * <html> with `.is-pet-menu-window` (see main.tsx) so the editor's
+ * `html, body { background: var(--bg) }` rule does not paint an opaque square
+ * behind the menu. The menu card itself sets its own bg below. */
+html.is-pet-menu-window,
+html.is-pet-menu-window body,
+html.is-pet-menu-window #root {
+  background: transparent !important;
+}
+
 .pet-root {
   /* The pet window is 96x96 physical px. The root fills it so the sprite
    * can be centered, and transparent regions pass clicks through to the
@@ -919,4 +930,109 @@ html.is-pet-panel-window body {
 }
 .pet-corner-btn--ghost:hover {
   background: var(--hover, rgba(0, 0, 0, 0.06));
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Pet right-click HTML menu (`pet-menu` window).
+ *
+ * A transparent borderless NSPanel window (converted from the Tauri window by
+ * `pet_panel_macos::convert_windows`) that hosts the HTML right-click menu
+ * replacing the native NSMenu. The window is sized at runtime by
+ * `pet_menu_set_size` (the frontend measures the rendered `.pet-menu-root`
+ * DOM and passes the physical px). The card itself sets its own bg + shadow;
+ * the surrounding transparent window region passes clicks through to the
+ * desktop (the OS window's `setIgnoreCursorEvents` is NOT toggled because
+ * the visible card fills the window — same logic as the pet-bubble).
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+.pet-menu-root {
+  /* Card fills the window; the OS window clips at the card's bounding box so
+   * there's no transparent eaten area to worry about. */
+  box-sizing: border-box;
+  min-width: 168px;
+  padding: 4px 0;
+  background: var(--bg, #ffffff);
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  border-radius: 8px;
+  /* Shadow: macOS native menu feel — the OS provides shadow via
+   * `shadow: true` in tauri.conf.json, so this CSS shadow is a fallback. */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  color: var(--t1, #1f2329);
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+  font-size: 13px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pet-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 14px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+.pet-menu-item:hover {
+  background: var(--accent, #597ef7);
+  color: #fff;
+}
+.pet-menu-item:hover .pet-menu-radio,
+.pet-menu-item:hover .pet-menu-check {
+  border-color: #fff;
+}
+
+/* Parent item (size / opacity submenu toggler) — has a chevron on the right. */
+.pet-menu-item--parent {
+  justify-content: space-between;
+}
+.pet-menu-chevron {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* Submenu (inline accordion) — indented children, slightly lighter bg. */
+.pet-menu-submenu {
+  padding: 2px 0;
+  background: var(--hover, rgba(0, 0, 0, 0.03));
+}
+.pet-menu-submenu .pet-menu-item {
+  padding-left: 28px;
+}
+
+/* Radio item — leading circle indicator, fills when checked. */
+.pet-menu-radio {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.pet-menu-item--radio.is-checked .pet-menu-radio {
+  background: currentColor;
+}
+.pet-menu-item--radio.is-checked {
+  font-weight: 500;
+}
+
+/* Click-through toggle — leading check mark (empty when off). */
+.pet-menu-check {
+  width: 10px;
+  text-align: center;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+.pet-menu-item--toggle.is-checked {
+  font-weight: 500;
+}
+
+.pet-menu-sep {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--border, rgba(0, 0, 0, 0.08));
 }

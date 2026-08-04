@@ -42,6 +42,14 @@
   "bubble": {
     "closeAria": "关闭"
   },
+  "menu": {
+    "showMain": "显示主窗口",
+    "hidePet": "隐藏桌宠图标",
+    "sizeSubmenu": "桌宠大小",
+    "opacitySubmenu": "桌宠透明度",
+    "clickThrough": "桌宠穿透",
+    "exitApp": "退出应用"
+  },
   "tabs": {
     "chat": "对话",
     "actions": "操作",

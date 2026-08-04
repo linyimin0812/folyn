@@ -209,6 +209,26 @@ pub fn convert_windows(app: &AppHandle) -> usize {
         }
     }
 
+    // Pet-menu — HTML right-click context menu (replaces native NSMenu so the
+    // menu can be positioned adaptively outside the pet view: no overlap, no
+    // internal scroll). Same non-key panel as the mascot/bubble; `pet_menu_show`
+    // calls `set_focus()` + `makeFirstResponder(wkwebview)` to make the panel
+    // key on demand for the ESC keydown listener (mirrors `pet_panel_show`).
+    if let Some(window) = app.get_webview_window("pet-menu") {
+        if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
+            panel.set_level(PanelLevel::Dock.value());
+            panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
+            panel.set_collection_behavior(
+                CollectionBehavior::new()
+                    .stationary()
+                    .can_join_all_spaces()
+                    .full_screen_auxiliary()
+                    .into(),
+            );
+            count += 1;
+        }
+    }
+
     // Voice orb — the SiriGL waveform window shown during voice recording. Pure
     // display (no keyboard interaction); same non-key panel as the mascot so it
     // appears without stealing focus from the foreground app (the user is

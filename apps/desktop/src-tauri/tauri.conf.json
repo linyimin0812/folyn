@@ -124,6 +124,22 @@
         "dragDropEnabled": false
       },
       {
+        "label": "pet-menu",
+        "url": "/#/pet-menu",
+        "title": "Quill Pet Menu",
+        "width": 220,
+        "height": 320,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": false,
+        "skipTaskbar": true,
+        "shadow": true,
+        "visible": false,
+        "focus": false,
+        "dragDropEnabled": false
+      },
+      {
         "label": "voice-orb",
         "url": "/#/voice-orb",
         "title": "Quill Voice Orb",

@@ -53,28 +53,23 @@ pub fn build_app_menu(app: &tauri::AppHandle, locale: &str) -> Result<(), AppErr
 }
 
 /// Build the pet quick-action native menu (show-main / hide-pet / size
-/// submenu / opacity submenu / click-through toggle / separator / exit-app,
-/// plus the `test-bubble` demo item when `include_test_bubble` is true).
+/// submenu / opacity submenu / click-through toggle / separator / exit-app).
 ///
-/// Shared between two callers so the item ids — and therefore the
-/// `pet://menu-action` routing in `lib.rs::on_menu_event` — stay identical:
-///   - `pet_show_context_menu` (right-click popup): includes `test-bubble`,
-///     `hide_pet` is a plain `MenuItem` (single-shot hide — you can't
-///     right-click a hidden pet, so a toggle would be dead state).
-///   - `tray_set_enabled` (system tray menu): excludes `test-bubble`,
-///     `hide_pet` is a `CheckMenuItem` pre-checked from the pet window's
-///     current visibility (checked = pet hidden) so the user can toggle
-///     the pet on/off from the tray even when the pet is already hidden.
+/// Tray-only caller: `tray_set_enabled` (system tray menu). The pet
+/// right-click menu moved to a custom HTML window (`pet-menu` — see
+/// `PetMenuApp.tsx`), so `hide_pet_as_toggle=true` here — the tray menu
+/// pre-checks `hide_pet` from the pet window's current visibility (checked
+/// = pet hidden) so the user can toggle the pet on/off from the tray even
+/// when the pet is already hidden.
 ///
 /// Item ids are the `PET_CTX_MENU_*` constants; `lib.rs::pet_ctx_menu_action`
 /// maps each to the `PetMenuAction` payload the main window expects. The
 /// `hide-pet` frontend handler is a real toggle (`toggle_pet_mode` reads
-/// `pet.is_visible()` and flips), so the same id routes both the popup's
-/// single-shot hide and the tray's checkable toggle.
+/// `pet.is_visible()` and flips), so the tray's checkable toggle routes
+/// correctly.
 pub(crate) fn build_pet_context_menu(
     app: &tauri::AppHandle,
     locale: &str,
-    include_test_bubble: bool,
     hide_pet_as_toggle: bool,
 ) -> Result<tauri::menu::Menu<tauri::Wry>, AppError> {
     use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
@@ -88,13 +83,10 @@ pub(crate) fn build_pet_context_menu(
     )
     .map_err(|e| e.to_string())?;
 
-    // Hide pet icon. In the tray variant this is a `CheckMenuItem` pre-checked
+    // Hide pet icon. The tray variant uses a `CheckMenuItem` pre-checked
     // from the pet window's current visibility (checked = pet hidden — the
     // click-through toggle convention where a checked "Hide pet icon" means the
-    // hide-pet action is in effect, i.e. the pet is currently hidden). The
-    // popup variant keeps a plain `MenuItem` because right-clicking a hidden
-    // pet is impossible, so the checkmark state would never visibly flip from
-    // the popup.
+    // hide-pet action is in effect, i.e. the pet is currently hidden).
     //
     // ponytail: `CheckMenuItem` and `MenuItem` are distinct concrete types,
     // so the two branches can't share a single `let`. Box them behind a
@@ -110,7 +102,7 @@ pub(crate) fn build_pet_context_menu(
     // and stashes it in `TrayHidePetItemState`; `toggle_pet_mode` /
     // `show_pet_if_hidden` call `set_checked` on it so the checkmark tracks
     // pet visibility across all toggle paths (tray click, settings tab,
-    // pet right-click popup).
+    // pet right-click HTML menu).
     let pet_hidden = !app
         .get_webview_window(PET_LABEL)
         .and_then(|p| p.is_visible().ok())
@@ -275,10 +267,9 @@ pub(crate) fn build_pet_context_menu(
     // ponytail: build a `&[&dyn IsMenuItem]` slice — `MenuItem` and
     // `CheckMenuItem` and `PredefinedMenuItem` and `Submenu` all implement
     // `IsMenuItem`, so a heterogeneous slice works without boxing. The
-    // previous inline version spelled each item out by name; `build_pet_context_menu`
-    // is called twice (popup + tray), so this is the one place the slice
-    // gets assembled.
-    let mut items: Vec<&dyn tauri::menu::IsMenuItem<tauri::Wry>> = vec![
+    // previous inline version spelled each item out by name; this is the
+    // one place the slice gets assembled (tray menu only).
+    let items: Vec<&dyn tauri::menu::IsMenuItem<tauri::Wry>> = vec![
         &show_main,
         &*hide_pet,
         &size_submenu,
@@ -287,68 +278,16 @@ pub(crate) fn build_pet_context_menu(
         &sep,
         &exit_app,
     ];
-    // Demo: fire a test bubble notification (PRD pet-popup-bubble-notification).
-    // Routed in `lib.rs` `on_menu_event` to a `pet://notify` emit (the main
-    // window's dispatcher routes it by `notificationForm`). Only included in
-    // the pet right-click popup, not the tray menu (debug surface).
-    let test_bubble;
-    if include_test_bubble {
-        test_bubble = MenuItem::with_id(
-            app,
-            PET_CTX_MENU_TEST_BUBBLE,
-            pet_menu_label(locale, PetMenuLabel::TestBubble),
-            true,
-            None::<&str>,
-        )
-        .map_err(|e| e.to_string())?;
-        items.push(&test_bubble);
-    }
 
     let menu = Menu::with_items(app, &items).map_err(|e| e.to_string())?;
     Ok(menu)
 }
 
-/// Show the pet's quick-action context menu as a native OS popup at the
-/// cursor position. The pet Tauri window is only 120x120px, so an HTML
-/// `position: fixed` menu would be clipped by the window bounds (issue #1).
-/// A native popup menu is rendered by the OS, ignores the tiny window, and
-/// fires `on_menu_event` (handled in `lib.rs`) for each item — which emits
-/// `pet://menu-action` so the main window's existing listener dispatches the
-/// action. `popup_menu` blocks the calling (non-main) thread until the menu
-/// is dismissed; the JS `invoke` therefore resolves after dismissal.
-#[tauri::command]
-pub async fn pet_show_context_menu(
-    app: tauri::AppHandle,
-    locale: String,
-) -> Result<(), AppError> {
-    // ponytail: popup the menu attached to the pet NSPanel's own ns_view, with
-    // the cursor position relative to the pet window. The pet panel carries
-    // `full_screen_auxiliary` collectionBehavior so it stays on the active
-    // Space even when another app is fullscreen — attaching the menu to the
-    // pet's view (inView = Some) makes NSMenu popUp on the same Space.
-    // Position=None would use `NSEvent::mouseLocation()` + inView=nil (an
-    // orphaned menu that opens on the frontmost app's Space — invisible when
-    // our app isn't frontmost). Computing cursor-relative-to-pet-frame and
-    // passing to `popup_menu_at` keeps the menu anchored to the pet window.
-    let pet = app
-        .get_webview_window(PET_LABEL)
-        .ok_or_else(|| "pet window not found".to_string())?;
-
-    let menu = build_pet_context_menu(&app, &locale, true, false)?;
-    // popup_menu_at anchors the menu to `pet`'s ns_view (so NSMenu opens on
-    // the pet panel's Space — visible even when the frontmost app is
-    // fullscreen) at the cursor position expressed in the view's top-left
-    // origin (logical points). muda flips Y to the NSView's bottom-left.
-    let popup_pos = pet_cursor_pos_relative(&pet)?;
-    pet.popup_menu_at(&menu, popup_pos).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
 /// Toggle the macOS system tray icon. When `enabled`, builds a tray with:
 ///   - the app's bundled default window icon (no new asset needed)
 ///   - the shared pet context menu (`build_pet_context_menu` with
-///     `include_test_bubble=false` — the tray menu is a user-facing entry
-///     point, not a debug surface)
+///     `hide_pet_as_toggle=true` — the tray menu is a user-facing entry
+///     point)
 ///   - a left-click handler that pops the menu (macOS Tauri 2 tray icons
 ///     only show the menu on right-click by default; the user explicitly
 ///     asked for click-to-show-menu)
@@ -380,7 +319,7 @@ pub async fn tray_set_enabled(
         return Ok(());
     }
 
-    let menu = build_pet_context_menu(&app, &locale, false, true)?;
+    let menu = build_pet_context_menu(&app, &locale, true)?;
     // Extract the `hide_pet` CheckMenuItem handle and stash it in
     // `TrayHidePetItemState` so `toggle_pet_mode` / `show_pet_if_hidden`
     // can call `set_checked` on it after each visibility flip. Without this,
@@ -433,4 +372,108 @@ pub async fn pet_rebuild_app_menu(
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// HTML pet right-click menu (`pet-menu` window).
+//
+// Replaces the native NSMenu path so the menu can be positioned adaptively
+// outside the pet view (no overlap with the pet, no internal scroll arrows).
+// The frontend renders the menu in the `pet-menu` Tauri window, measures its
+// DOM size, computes a quadrant-aware position (reusing
+// `computePanelPosition`'s math from `petPosition.ts`), and calls
+// `pet_menu_set_size` + `pet_menu_set_position` + `pet_menu_show` in that
+// order. Item clicks emit `pet://menu-action` directly (no Rust
+// `on_menu_event` routing). Closes on item click, ESC, and window blur
+// (click outside).
+//
+// Commands mirror `pet_bubble_*` (bypass ACL; window capability grants only
+// `core:event`).
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Show the `pet-menu` window and make it key so the React ESC keydown listener
+/// fires. The caller sets size + position via `pet_menu_set_size` /
+/// `pet_menu_set_position` first. Mirrors `pet_panel_show`: `set_focus()`
+/// makes the window key + makes the WKWebView first responder so `document`
+/// receives `keydown` without a click. The Quill app is briefly activated
+/// (`set_focus()` calls `activateIgnoringOtherApps:YES`) — acceptable for a
+/// transient context menu; matches the pet-panel pattern.
+#[tauri::command]
+pub async fn pet_menu_show(app: tauri::AppHandle) -> Result<(), AppError> {
+    let panel = app
+        .get_webview_window(PET_MENU_LABEL)
+        .ok_or_else(|| "pet-menu window not found".to_string())?;
+    panel.show().map_err(|e| e.to_string())?;
+    panel.set_focus().map_err(|e| e.to_string())?;
+
+    // Make the WKWebView (not the contentView / parent view) the first
+    // responder so `document` receives `keydown` → ESC works without a click.
+    // Mirrors `pet_panel_show`. Must run on the main thread (`with_webview`);
+    // re-applied on every show because `orderOut` (hide) resigns the FR.
+    #[cfg(target_os = "macos")]
+    {
+        use objc::runtime::Object;
+        use objc::{msg_send, sel, sel_impl};
+        panel
+            .with_webview(move |webview| {
+                unsafe {
+                    let wk = webview.inner() as *mut Object;
+                    let ns = webview.ns_window() as *mut Object;
+                    if ns.is_null() || wk.is_null() {
+                        return;
+                    }
+                    let _: () = msg_send![ns, makeFirstResponder: wk];
+                }
+            })
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+/// Hide the `pet-menu` window without closing it (stays alive for the next
+/// show). Called on item click, ESC, and window blur.
+#[tauri::command]
+pub async fn pet_menu_hide(app: tauri::AppHandle) -> Result<(), AppError> {
+    let panel = app
+        .get_webview_window(PET_MENU_LABEL)
+        .ok_or_else(|| "pet-menu window not found".to_string())?;
+    panel.hide().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Set the `pet-menu` window's screen position (physical pixels). The
+/// frontend computes a clamped, quadrant-aware position (using
+/// `get_pet_position` + `pet_get_work_area` + measured menu size) and
+/// passes it here. Mirrors `pet_bubble_set_position`.
+#[tauri::command]
+pub async fn pet_menu_set_position(
+    app: tauri::AppHandle,
+    x: i32,
+    y: i32,
+) -> Result<(), AppError> {
+    let panel = app
+        .get_webview_window(PET_MENU_LABEL)
+        .ok_or_else(|| "pet-menu window not found".to_string())?;
+    panel
+        .set_position(tauri::PhysicalPosition::new(x, y))
+        .map_err(|e| AppError::from(e.to_string()))
+}
+
+/// Set the `pet-menu` window's size (physical pixels). The frontend measures
+/// the rendered menu DOM and passes the physical size here before
+/// `pet_menu_show` so the window matches the content exactly (no clipping,
+/// no internal scroll). Mirrors `pet_bubble_set_size`.
+#[tauri::command]
+pub async fn pet_menu_set_size(
+    app: tauri::AppHandle,
+    width: i32,
+    height: i32,
+) -> Result<(), AppError> {
+    let panel = app
+        .get_webview_window(PET_MENU_LABEL)
+        .ok_or_else(|| "pet-menu window not found".to_string())?;
+    panel
+        .set_size(tauri::PhysicalSize::new(width, height))
+        .map_err(|e| AppError::from(e.to_string()))
 }

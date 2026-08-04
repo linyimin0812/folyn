@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/tooling/cli/schema.json",
+  "identifier": "pet-menu",
+  "description": "Capabilities for the desktop pet right-click HTML menu window (replaces native NSMenu). All window mutation (show/hide/position/size) goes through custom `pet_menu_*` invoke commands which bypass the ACL, so no `core:window:*` perms are needed here. The menu only needs event access: `emit` for `pet://menu-action` (item click → main window routes via `usePetHostBridge`). The frontend reads current pet size + click-through state via `pet_cursor_probe` (already granted in `default.json`) so the menu can pre-check the size/opacity radio items and the click-through toggle.",
+  "windows": ["pet-menu"],
+  "permissions": [
+    "core:default",
+    "core:event:allow-listen",
+    "core:event:allow-emit"
+  ]
+}

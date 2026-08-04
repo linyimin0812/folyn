@@ -1,22 +1,40 @@
-// Pet context menu — native OS popup (issue #1 fix).
+// Pet context menu — custom HTML menu window (replaces native NSMenu).
 //
-// The pet Tauri window is only 120x120px, so an HTML `position: fixed`
-// context menu (`min-width: 168px`) is clipped by the window bounds and part
-// of it is invisible/unclickable. Instead, the right-click menu is shown as
-// a *native* OS popup built Rust-side (`commands::pet_show_context_menu`),
-// which is rendered by the OS and ignores the tiny window. Item selections
-// fire `on_menu_event` in `lib.rs`, which emits `pet://menu-action` — the
-// main window's existing listener in `App.tsx` dispatches the action.
+// Originally the right-click menu was a native NSMenu built Rust-side
+// (`commands::pet_show_context_menu` + muda's `popup_menu_at`), because the
+// pet Tauri window is only 96x96px and an HTML `position: fixed` menu would
+// be clipped by the window bounds (issue #1). The native path positioned
+// the menu at the cursor / pet-view corner, but muda's
+// `popUpMenuPositioningItem:atLocation:inView:` anchors the menu's top-left
+// at a location INSIDE the pet view — macOS auto-shifts to keep the menu on
+// screen, but the shift still left the menu overlapping the pet near screen
+// edges, and when the shift left no room macOS showed scroll arrows inside
+// the menu (the user reported this with the pet at screen bottom-right).
+//
+// The replacement: a custom HTML menu rendered in a dedicated borderless
+// transparent Tauri window (`pet-menu`). The frontend measures the DOM,
+// computes a quadrant-aware position (reusing `computePanelPosition`'s math
+// from `petPosition.ts` — picks the menu corner that attaches to the pet's
+// diagonally-opposite icon corner, gap away, no overlap), and calls
+// `pet_menu_set_size` + `pet_menu_set_position` + `pet_menu_show`. Item
+// clicks emit `pet://menu-action` (same channel as before); the main
+// window's `usePetHostBridge` listener + `routePetMenuAction` dispatcher
+// are unchanged. Closes on item click, ESC, and window blur (click
+// outside). Submenus (size, opacity) expand inline (accordion).
 //
 // This module keeps the `PetMenuAction` contract (the union of actions the
-// Rust side can emit) and exposes `openPetContextMenu()` for the pet
-// frontend to call on right-click. App.tsx's listener needs no change.
+// pet menu / launcher can emit) so `usePetHostBridge` and the contract test
+// stay valid. `openPetContextMenu()` now opens the HTML menu window.
+
+import { isTauri } from '@/utils/platform';
 
 /**
- * Quick-action menu/launcher actions. The native pet right-click context
- * menu (built Rust-side in `commands::pet_show_context_menu`) surfaces six
- * items: `show-main`, `hide-pet`, `set-pet-size`, `set-pet-opacity`,
- * `toggle-pet-click-through`, `exit-app`.
+ * Quick-action menu/launcher actions. The pet right-click HTML menu
+ * (`PetMenuApp.tsx`) surfaces six items: `show-main`, `hide-pet`,
+ * `set-pet-size`, `set-pet-opacity`, `toggle-pet-click-through`,
+ * `exit-app`. The action strings are emitted on the `pet://menu-action`
+ * event channel — the main window's `usePetHostBridge` listener routes
+ * them via `routePetMenuAction`.
  *
  * `hide-pet` is the sole "turn the pet off" entry — the old `disable-pet`
  * sibling was dropped from the right-click menu AND the pet-panel launcher
@@ -25,17 +43,13 @@
  *
  * `set-pet-size` carries `{ size: '50'|'75'|'100'|'125'|'150' }` on the event,
  * `set-pet-opacity` carries `{ opacity: '25'|'50'|'75'|'100' }`, and
- * `toggle-pet-click-through` carries `{ clickThrough: boolean }`. The Rust
- * `pet_ctx_menu_action` mapping emits the action string and the payload is
- * attached separately in `lib.rs::on_menu_event`.
+ * `toggle-pet-click-through` carries `{ clickThrough: boolean }`.
  *
  * The remaining five launcher-only actions (`daily-note`, `global-search`,
  * `clip-from-url`, `command-palette`, `toggle-theme`) are dispatched by the
  * pet-panel launcher grid via the same `pet://menu-action` event channel —
- * they are NOT in the native right-click menu, but the action strings are
- * recognized by `pet_ctx_menu_action` in `lib.rs` so the contract stays
- * uniform and the frontend↔Rust sync test (see PetContextMenu.test.tsx)
- * covers the full set.
+ * they are NOT in the right-click menu, but the action strings stay in this
+ * union so the contract test (covers the full set) keeps passing.
  *
  * `open-ai-settings` is dispatched by secondary windows (voice-orb caption
  * link, pet-panel chat CTA / session-header "AI 设置" button) that cannot
@@ -102,23 +116,40 @@ export const PET_MENU_ACTIONS: readonly PetMenuAction[] = [
 ] as const;
 
 /**
- * Show the native pet context menu at the cursor. Implemented Rust-side
- * (`pet_show_context_menu` Tauri command) because the pet window is too
- * small to host an HTML menu. Resolves after the user picks an item or
- * dismisses the menu; the chosen action is delivered separately via the
- * `pet://menu-action` event (listened to in `App.tsx`).
+ * Show the pet context menu. Opens the custom HTML `pet-menu` Tauri window
+ * (replaces the native NSMenu). The menu window measures its own DOM on
+ * mount and computes a quadrant-aware position so it never overlaps the pet
+ * and never shows internal scroll arrows — see `PetMenuApp.tsx`. Item
+ * selections are delivered via the `pet://menu-action` event (listened to
+ * in `usePetHostBridge` in the main window).
  *
- * Reads the current locale from `i18n.language`. The pet window is a
- * separate JS realm with its own i18next instance; the main window's
- * `setLocale` emits `locale://changed` (see `localeStore.ts`), and a
- * listener in `PetApp.tsx` calls `i18n.changeLanguage` on this window's
- * own instance — so `i18n.language` here tracks the user's choice
- * without the caller threading locale through. The Rust side falls back
- * to English for unknown locales.
+ * The `pet-menu` window is `visible:false` + `focus:false` at startup; this
+ * call makes it visible + key. The menu closes itself on item click / ESC /
+ * window blur (click outside), so this call does NOT await dismissal —
+ * unlike the old `pet_show_context_menu` invoke which blocked until the
+ * native menu was dismissed.
+ *
+ * No locale parameter is threaded through: the menu window has its own
+ * i18n instance (separate JS realm) hydrated from `localeStore` via the
+ * shared storage, so the menu reads `i18n.language` directly when rendering
+ * labels. The Rust `pet_menu_label` / `PetMenuLabel` (now deleted) used to
+ * be the source of truth; labels now live in the frontend `pet:menu.*`
+ * i18n keys (zh/en).
  */
 export async function openPetContextMenu(): Promise<void> {
-  const { invoke } = await import('@tauri-apps/api/core');
-  const i18n = (await import('@/i18n')).default;
-  const locale = i18n.language || 'en';
-  await invoke('pet_show_context_menu', { locale });
+  if (!isTauri()) return;
+  // The pet-menu window is a separate JS realm — its React tree mounts
+  // fresh on each `pet://` reload, but the WINDOW itself is created once at
+  // app launch and reused. After the first open, the React tree is already
+  // mounted (just hidden); `useLayoutEffect` runs only on first mount, so
+  // subsequent opens need to re-measure (in case locale changed the label
+  // widths) and re-position. The menu component listens for `pet://menu-show`
+  // and re-runs the measure/position path on each fire. Emit that signal
+  // here; the menu window handles the rest.
+  try {
+    const { emit } = await import('@tauri-apps/api/event');
+    await emit('pet://menu-show', {});
+  } catch (err) {
+    console.warn('[pet-context-menu] emit menu-show failed:', err);
+  }
 }

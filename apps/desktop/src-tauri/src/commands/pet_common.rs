@@ -2,13 +2,12 @@ use std::sync::Mutex;
 use serde::Serialize;
 use tauri::Manager;
 
-use crate::errors::AppError;
-
 /// Shared pet-size level state ("50"|"75"|"100"|"125"|"150"). Synced from
 /// the frontend via the `set_pet_size` command and from `on_menu_event` when
-/// the user picks a size from the native submenu. Read by `pet_show_context_menu`
-/// to pre-check the current size radio item. Defaults to `"100"` so
-/// existing users keep the 96×96 layout on first right-click.
+/// the user picks a size from the tray submenu. Read by
+/// `build_pet_context_menu` to pre-check the current size radio item.
+/// Defaults to `"100"` so existing users keep the 96×96 layout on first
+/// right-click.
 ///
 /// Defined here (not in `lib.rs`) so both `commands.rs` and `lib.rs` share
 /// the SAME type — Rust treats same-name structs in different modules as
@@ -37,7 +36,7 @@ impl PetSizeState {
 
 /// Shared pet-opacity level state ("25"|"50"|"75"|"100"). Same pattern as
 /// `PetSizeState`: synced from the frontend (`set_pet_opacity`) and from
-/// `on_menu_event` on a submenu pick; read by `pet_show_context_menu` to
+/// `on_menu_event` on a submenu pick; read by `build_pet_context_menu` to
 /// pre-check the current opacity radio item. Defaults to `"100"` (fully
 /// opaque) so existing users keep the pre-opacity-feature look on first
 /// right-click.
@@ -61,7 +60,7 @@ impl PetOpacityState {
 /// `setIgnoreCursorEvents(true)` so clicks fall through to apps behind.
 /// Same pattern as `PetSizeState`/`PetOpacityState`. Defaults to `false`
 /// (pet receives clicks — the pre-feature behavior). Read by
-/// `pet_show_context_menu` to pre-check the click-through menu item.
+/// `build_pet_context_menu` to pre-check the click-through menu item.
 pub struct PetClickThroughState(pub Mutex<bool>);
 
 impl PetClickThroughState {
@@ -119,13 +118,6 @@ pub const PET_CTX_MENU_OPACITY_75: &str = "pet-ctx-opacity-75";
 pub const PET_CTX_MENU_OPACITY_100: &str = "pet-ctx-opacity-100";
 pub const PET_CTX_MENU_CLICK_THROUGH: &str = "pet-ctx-click-through";
 pub const PET_CTX_MENU_EXIT_APP: &str = "pet-ctx-exit-app";
-/// Native context-menu item that fires the demo bubble notification (PRD:
-/// pet-popup-bubble-notification). `on_menu_event` in `lib.rs` maps this id
-/// to a `pet://notify` emit with a demo payload; the main window's dispatcher
-/// routes it by `settingsStore.notificationForm` (bubble / system / both /
-/// off) so the bubble window can be exercised without any real trigger
-/// source wired up yet.
-pub const PET_CTX_MENU_TEST_BUBBLE: &str = "pet-ctx-test-bubble";
 
 /// Localized label keys for the pet right-click context menu. One enum entry
 /// per `PET_CTX_MENU_*` id that has a user-visible label (separators have
@@ -148,13 +140,11 @@ pub enum PetMenuLabel {
     Opacity100,
     ClickThrough,
     ExitApp,
-    TestBubble,
 }
 
 /// Resolve a pet context-menu label for the given locale. `zh` → Chinese;
-/// any other value (including unknown locales) falls back to English. The
-/// frontend passes its `localeStore` value (`zh` / `en`) when invoking
-/// `pet_show_context_menu`.
+/// any other value (including unknown locales) falls back to English. Used
+/// by `build_pet_context_menu` (tray menu) and `build_app_menu`.
 pub fn pet_menu_label(locale: &str, key: PetMenuLabel) -> &'static str {
     match locale {
         "zh" => match key {
@@ -173,7 +163,6 @@ pub fn pet_menu_label(locale: &str, key: PetMenuLabel) -> &'static str {
             PetMenuLabel::Opacity100 => "100%",
             PetMenuLabel::ClickThrough => "桌宠穿透",
             PetMenuLabel::ExitApp => "退出应用",
-            PetMenuLabel::TestBubble => "测试气泡通知",
         },
         _ => match key {
             PetMenuLabel::ShowMain => "Show Main Window",
@@ -191,7 +180,6 @@ pub fn pet_menu_label(locale: &str, key: PetMenuLabel) -> &'static str {
             PetMenuLabel::Opacity100 => "100%",
             PetMenuLabel::ClickThrough => "Click Through",
             PetMenuLabel::ExitApp => "Exit App",
-            PetMenuLabel::TestBubble => "Test Bubble Notification",
         },
     }
 }
@@ -346,33 +334,6 @@ pub(crate) fn nspanel_target_appkit_origin(
     None
 }
 
-/// Compute the current cursor position relative to the pet window's top-left,
-/// in logical points (top-left origin, Y-down) — the format muda's
-/// `popup_menu_at` expects. Uses Tauri's portable `cursor_position()` +
-/// `outer_position()` / `outer_size()` so we don't have to call struct-
-/// returning AppKit methods (`NSEvent::mouseLocation`, `NSWindow::frame`)
-/// through `msg_send!`, which is UB on ARM64 and crashes. Falls back to
-/// (0,0) if any of the calls fail (menu shows at the pet window's top-left).
-pub(crate) fn pet_cursor_pos_relative(pet: &tauri::WebviewWindow) -> Result<tauri::Position, AppError> {
-    let cursor = pet.cursor_position().map_err(|e| e.to_string())?;
-    let win = pet.outer_position().map_err(|e| e.to_string())?;
-    let size = pet.outer_size().map_err(|e| e.to_string())?;
-    let scale_factor = pet.scale_factor().unwrap_or(1.0);
-    // Tauri returns physical px with top-left origin. muda's popup_menu_at
-    // takes Position in logical points (top-left origin, Y-down); it flips
-    // Y internally to NSView's bottom-left.
-    let dx = (cursor.x - win.x as f64) / scale_factor;
-    let dy = (cursor.y - win.y as f64) / scale_factor;
-    // Clamp to the pet window's bounds so the menu origin is always inside
-    // the window (muda attaches the menu to the view, an out-of-bounds
-    // origin can render the menu off-screen).
-    let max_x = size.width as f64 / scale_factor;
-    let max_y = size.height as f64 / scale_factor;
-    let dx = dx.clamp(0.0, max_x.max(0.0));
-    let dy = dy.clamp(0.0, max_y.max(0.0));
-    Ok(tauri::Position::Logical(tauri::LogicalPosition::new(dx, dy)))
-}
-
 /// Get the pet window's current screen position (physical pixels).
 #[derive(Serialize)]
 pub struct PetPosition {
@@ -464,6 +425,20 @@ pub(crate) const PET_PANEL_LABEL: &str = "pet-panel";
 pub(crate) const PET_BUBBLE_LABEL: &str = "pet-bubble";
 
 // ────────────────────────────────────────────────────────────────────────────
+// Pet right-click context menu window (`pet-menu`).
+//
+// A transparent, decorations:false, skipTaskbar NSPanel window that hosts the
+// HTML right-click menu (replaces the native NSMenu so positioning can be
+// adaptive — no overlap with the pet, no internal scroll). Shown/hidden/
+// positioned/sized via custom invoke commands that bypass the ACL, mirroring
+// the `pet-bubble` pattern. The window's own capability file grants only
+// `core:event` (listen for `pet://menu-show` if needed, emit
+// `pet://menu-action`) — no `core:window:*` perms.
+// ────────────────────────────────────────────────────────────────────────────
+
+pub(crate) const PET_MENU_LABEL: &str = "pet-menu";
+
+// ────────────────────────────────────────────────────────────────────────────
 // Pet corner toast window (`pet-corner`).
 //
 // A transparent, decorations:false, skipTaskbar NSPanel window that stacks
@@ -503,7 +478,6 @@ mod tests {
             PetMenuLabel::Opacity100,
             PetMenuLabel::ClickThrough,
             PetMenuLabel::ExitApp,
-            PetMenuLabel::TestBubble,
         ];
         for key in keys {
             let zh = pet_menu_label("zh", key);

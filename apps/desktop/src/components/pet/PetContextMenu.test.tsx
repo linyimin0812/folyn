@@ -1,31 +1,36 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-// Pet context menu is now a *native* OS popup built Rust-side (issue #1 fix:
-// the 120x120 pet window clipped the HTML menu). The frontend contract is:
+// Pet right-click menu is a custom HTML window (`pet-menu` Tauri window —
+// see `PetMenuApp.tsx`), replacing the native NSMenu path so the menu can
+// be positioned adaptively outside the pet view (no overlap, no internal
+// scroll arrows). The frontend contract is:
 //   (1) `PET_MENU_ACTIONS` lists exactly the actions that the Rust side
 //       recognizes (kept in sync with `pet_ctx_menu_action` in lib.rs),
-//   (2) `openPetContextMenu()` invokes the `pet_show_context_menu` Tauri
-//       command with the current locale read from `i18n.language`. The pet
-//       window is a separate JS realm with its own i18next instance; the
-//       main window's `setLocale` emits `locale://changed`, a listener in
-//       `PetApp.tsx` applies the new locale to this realm's i18next, so
-//       `i18n.language` stays current. Selections are delivered via the
-//       `pet://menu-action` event.
+//   (2) `openPetContextMenu()` emits the `pet://menu-show` event so the
+//       `pet-menu` window measures its DOM, computes a quadrant-aware
+//       position, and shows itself. No `invoke` is required on this path.
+//       Selections are delivered via the `pet://menu-action` event.
 //
-// PR1 of the pet-quick-action-panel task extends the contract: the union now
-// also includes the 5 launcher-only actions dispatched by the pet-panel
-// launcher grid (daily-note, global-search, clip-from-url, command-palette,
-// toggle-theme). The native right-click menu surfaces the first six
-// (`PET_NATIVE_MENU_ACTIONS`: show-main, hide-pet, set-pet-size,
+// The native NSMenu path remains for the tray menu only (`tray_set_enabled`
+// → `build_pet_context_menu`); the `PET_CTX_MENU_*` ids + `on_menu_event`
+// handler stay, so the contract test below (the union) still covers the
+// tray's action set.
+//
+// PR1 of the pet-quick-action-panel task extends the contract: the union
+// now also includes the 5 launcher-only actions dispatched by the pet-panel
+// launcher grid (daily-note, global-search, clip-from-url,
+// command-palette, toggle-theme). The right-click HTML menu surfaces the
+// first six (`PET_NATIVE_MENU_ACTIONS`: show-main, hide-pet, set-pet-size,
 // set-pet-opacity, toggle-pet-click-through, exit-app); the launcher
 // dispatches the rest. `hide-pet` is the sole "turn the pet off" entry —
 // the old `new-note` / `toggle-ai` / `disable-pet` were dropped from the
-// native menu (and `new-note` + `disable-pet` also from the launcher grid).
+// right-click menu (and `new-note` + `disable-pet` also from the launcher
+// grid).
 //
-// `@tauri-apps/api/core` is mocked globally via vitest.workspace.ts alias
-// (test/mocks/@tauri-apps/api/core.ts) and reset in beforeEach.
+// `@tauri-apps/api/event` is mocked globally via vitest.workspace.ts alias
+// (test/mocks/@tauri-apps/api/event.ts) and reset in beforeEach.
 
-import { invoke } from '@tauri-apps/api/core';
+import { emit } from '@tauri-apps/api/event';
 import i18n from '@/i18n';
 import {
   PET_MENU_ACTIONS,
@@ -35,11 +40,12 @@ import {
   type PetMenuAction,
 } from './PetContextMenu';
 
-describe('PetContextMenu (native popup + launcher contract)', () => {
+describe('PetContextMenu (HTML menu window + launcher contract)', () => {
   beforeEach(() => {
-    // `openPetContextMenu` reads `i18n.language`; pin it here so the invoke
-    // payload is deterministic. i18next is a shared singleton across the
-    // test file, so we restore it after each test.
+    // The HTML menu window has its own i18n instance hydrated from
+    // `localeStore`; `openPetContextMenu` no longer threads a locale
+    // parameter. Pin the test realm's locale anyway so any future
+    // locale-aware code path on this emit remains deterministic.
     void i18n.changeLanguage('zh');
   });
 
@@ -98,15 +104,9 @@ describe('PetContextMenu (native popup + launcher contract)', () => {
     }
   });
 
-  it('openPetContextMenu invokes pet_show_context_menu with the current locale', async () => {
+  it('openPetContextMenu emits pet://menu-show so the menu window opens', async () => {
     await openPetContextMenu();
-    expect(invoke).toHaveBeenCalledTimes(1);
-    expect(invoke).toHaveBeenCalledWith('pet_show_context_menu', { locale: 'zh' });
-  });
-
-  it('openPetContextMenu tracks locale changes through i18n.language', async () => {
-    void i18n.changeLanguage('en');
-    await openPetContextMenu();
-    expect(invoke).toHaveBeenCalledWith('pet_show_context_menu', { locale: 'en' });
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith('pet://menu-show', {});
   });
 });

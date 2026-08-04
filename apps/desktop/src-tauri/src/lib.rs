@@ -445,10 +445,10 @@ pub fn run() {
         )
         .on_menu_event(|app, event| {
             let id = event.id().as_ref();
-            // Pet right-click context menu items → emit `pet://menu-action`
-            // so the main window's listener (App.tsx) dispatches the action.
-            // Native popup menu (issue #1): the menu is built in
-            // `commands::pet_show_context_menu` and shown via `popup_menu`.
+            // Pet tray menu items → emit `pet://menu-action` so the main
+            // window's listener (App.tsx) dispatches the action. The tray
+            // menu is built in `commands::build_pet_context_menu` (called
+            // by `tray_set_enabled`) and shown by the OS tray.
             if let Some(action) = pet_ctx_menu_action(id) {
                 // The size submenu items all map to `set-pet-size`; attach
                 // the `{ size }` payload so the frontend applies the right
@@ -490,26 +490,6 @@ pub fn run() {
                         serde_json::json!({ "action": action }),
                     );
                 }
-            } else if id == commands::PET_CTX_MENU_TEST_BUBBLE {
-                // Demo trigger for the pet bubble notification (PRD
-                // pet-popup-bubble-notification). Emits a `pet://notify` event
-                // with a demo payload — the main window's dispatcher
-                // (`App.tsx`) routes it by `settingsStore.notificationForm`
-                // (bubble / system / both / off). The "查看详情" action
-                // exercises the full bubble→`pet://bubble-action`→main-window
-                // jump chain (target = schedule workbench).
-                let _ = app.emit(
-                    "pet://notify",
-                    serde_json::json!({
-                        "title": "提醒",
-                        "text": "这是一条气泡通知示例",
-                        "kind": "info",
-                        "target": { "kind": "schedule", "id": "demo" },
-                        "actions": [
-                            { "id": "view", "label": "查看详情", "kind": "primary" }
-                        ]
-                    }),
-                );
             }
         })
         // R8 (lifecycle): when pet mode is on, closing the main editor window
@@ -539,7 +519,7 @@ pub fn run() {
         .setup(|app| {
             // Shared pet-size state ("50"|"75"|"100"|"125"|"150"). Synced from
             // the frontend via `set_pet_size` and from `on_menu_event` on a
-            // native submenu pick. Read by `pet_show_context_menu` to
+            // native submenu pick. Read by `build_pet_context_menu` to
             // pre-check the current size radio item. Defaults to `"100"`
             // so existing users keep the 96×96 layout on first right-click.
             app.manage(commands::PetSizeState(std::sync::Mutex::new(
@@ -645,7 +625,6 @@ pub fn run() {
             commands::set_pet_position,
             commands::get_pet_position,
             commands::pet_cursor_probe,
-            commands::pet_show_context_menu,
             commands::pet_rebuild_app_menu,
             commands::pet_set_cursor,
             commands::pet_get_work_area,
@@ -661,6 +640,10 @@ pub fn run() {
             commands::pet_bubble_hide,
             commands::pet_bubble_set_position,
             commands::pet_bubble_set_size,
+            commands::pet_menu_show,
+            commands::pet_menu_hide,
+            commands::pet_menu_set_position,
+            commands::pet_menu_set_size,
             commands::pet_corner_show,
             commands::pet_corner_hide,
             commands::pet_corner_set_position,
