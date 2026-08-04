@@ -101,10 +101,25 @@ async function hideMenu(): Promise<void> {
  * The root passed here is `.pet-menu-window-root`, whose `getBoundingClientRect`
  * returns the union of the main card + the floating submenu when the submenu
  * is rendered — so the OS window grows to fit both cards.
+ *
+ * `reposition` defaults to `true` (the open path needs quadrant-aware
+ * positioning before show). The submenu show/hide path passes `false` — when
+ * the floating submenu appears/disappears, only the window SIZE changes (the
+ * union rect grows/shrinks); the window's top-left must STAY FIXED so the
+ * main card doesn't move out from under the mouse. If the submenu path
+ * re-positions, the recomputed top-left (based on the new larger size) shifts
+ * the window → the parent item moves → `onMouseLeave` fires → submenu hides
+ * after 200ms → window shrinks → position recomputed back → `onMouseEnter`
+ * fires → submenu shows after 150ms → … enter/leave feedback loop = "shake".
+ * Holding the position breaks the loop. (The open path's `computePanelPosition`
+ * clamps the LARGER union to the work area — that clamp is correct there
+ * because the user just right-clicked and the menu is fresh; on submenu
+ * toggle the user is mid-interaction and any movement is hostile.)
  */
 async function resizeAndReposition(
   root: HTMLDivElement | null,
   petSize: PetSize,
+  reposition = true,
 ): Promise<void> {
   if (!isTauri() || !root) return;
   const rect = root.getBoundingClientRect();
@@ -113,28 +128,32 @@ async function resizeAndReposition(
   if (menuWidth <= 0 || menuHeight <= 0) return;
   try {
     const { invoke } = await import('@tauri-apps/api/core');
-    const [petPos, workArea] = await Promise.all([
-      invoke<PetPositionResult>('get_pet_position'),
-      invoke<PetWorkArea>('pet_get_work_area'),
-    ]);
+    // Always fetch workArea — it carries `scale_factor` (needed for the
+    // logical→physical `set_size` multiply even when we skip positioning)
+    // AND is needed for `computePanelPosition` when repositioning. One IPC
+    // call covers both; cheaper than a separate `get_scale_factor` command.
+    const workArea = await invoke<PetWorkArea>('pet_get_work_area');
     const sf = workArea.scale_factor || 1;
-    // petPos is physical px → logical for the math (matches petPosition.ts
-    // unit contract), then × sf back to physical for set_position.
-    const petPosLogical = { x: petPos.x / sf, y: petPos.y / sf };
-    const posLogical = computePanelPosition(
-      petPosLogical,
-      workArea,
-      { width: menuWidth, height: menuHeight },
-      petSize,
-    );
     await invoke('pet_menu_set_size', {
       width: Math.round(menuWidth * sf),
       height: Math.round(menuHeight * sf),
     });
-    await invoke('pet_menu_set_position', {
-      x: Math.round(posLogical.x * sf),
-      y: Math.round(posLogical.y * sf),
-    });
+    if (reposition) {
+      const petPos = await invoke<PetPositionResult>('get_pet_position');
+      // petPos is physical px → logical for the math (matches petPosition.ts
+      // unit contract), then × sf back to physical for set_position.
+      const petPosLogical = { x: petPos.x / sf, y: petPos.y / sf };
+      const posLogical = computePanelPosition(
+        petPosLogical,
+        workArea,
+        { width: menuWidth, height: menuHeight },
+        petSize,
+      );
+      await invoke('pet_menu_set_position', {
+        x: Math.round(posLogical.x * sf),
+        y: Math.round(posLogical.y * sf),
+      });
+    }
   } catch (err) {
     console.warn('[pet-menu] resize/reposition failed:', err);
   }
@@ -273,18 +292,26 @@ export function PetMenuApp(): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [petSize]);
 
-  // Submenu show/hide → re-measure + re-size + re-position the menu window
-  // (NOT re-show). When the floating submenu appears, the wrapper's union
-  // bounding box grows (main card + submenu card to the right); the OS
-  // window was sized for the main card alone at open time, so without a
-  // re-size the submenu would be clipped (transparent borderless NSPanel
-  // has no scroll). Re-positioning is also necessary because the menu may
-  // have been placed in a corner (e.g. pet at bottom-right → menu pops
-  // up-left) and the wider union could push it off-screen —
-  // `computePanelPosition` clamps to the work area.
+  // Submenu show/hide → re-measure + re-size the menu window (NOT re-show,
+  // NOT re-position). When the floating submenu appears, the wrapper's union
+  // bounding box grows (main card + submenu card to the right); the OS window
+  // was sized for the main card alone at open time, so without a re-size the
+  // submenu would be clipped (transparent borderless NSPanel has no scroll).
+  //
+  // `reposition: false` here is the critical fix: re-positioning recomputes
+  // the window's top-left from the new (larger) union rect, which shifts the
+  // main card on screen → parent item moves out from under the mouse →
+  // onMouseLeave → hideSubmenu (200ms) → submenu disappears → window shrinks
+  // → position recomputed back → onMouseEnter → showSubmenu (150ms) → …
+  // enter/leave feedback loop visible as "shaking". Holding the position
+  // keeps the main card under the cursor so the loop never starts. The open
+  // path's `computePanelPosition` already clamped the (smaller) main card to
+  // the work area; the wider union may overflow on the submenu side, but the
+  // submenu floats over transparent space so the visible content stays clear
+  // of the screen edge in practice.
   useEffect(() => {
     if (!isTauri()) return;
-    void resizeAndReposition(rootRef.current, petSize);
+    void resizeAndReposition(rootRef.current, petSize, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hoveredSection, petSize]);
 
