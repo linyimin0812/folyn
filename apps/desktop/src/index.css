@@ -222,6 +222,7 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .cm-wrapper .cm-activeLine { background: transparent !important; }
 .cm-wrapper .cm-selectionBackground { background: #b3d4fc !important; }
 [data-theme="dark"] .cm-wrapper .cm-selectionBackground { background: #3a5da8 !important; }
+[data-theme="dark"] .cm-indent-markers { --indent-marker-bg-color: #1c2136; --indent-marker-active-bg-color: #252d4a; }
 .cm-wrapper .cm-cursor { border-left-color: var(--acc); }
 .cm-wrapper .cm-foldGutter { width: 12px; }
 .cm-wrapper .cm-foldGutter .cm-gutterElement { padding: 0 !important; }
