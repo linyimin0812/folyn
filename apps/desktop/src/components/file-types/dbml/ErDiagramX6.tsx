@@ -577,14 +577,15 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
       // starved (cards too close / maxLoopCount exhausted). Trade-off: er
       // does NOT avoid OTHER cards between source and target — mitigated
       // by d3-force clustering connected tables (shorter links, larger
-      // collide padding). direction:'H' forces horizontal exit so the line
-      // never crosses the table header vertically.
+      // collide padding). No `direction` arg → router auto-picks L/R/T/B
+      // by relative position, so a card can be hit on any of its 4 sides
+      // depending on which side faces the other card.
       graph.addEdge({
         source: { cell: `t:${r.fromTable}`, ...(sourcePort ? { port: sourcePort } : {}) },
         target: { cell: `t:${r.toTable}`, ...(targetPort ? { port: targetPort } : {}) },
         router: {
           name: 'er',
-          args: { offset: 24, min: 16, direction: 'H' },
+          args: { offset: 24, min: 16 },
         },
         attrs: {
           line: {
