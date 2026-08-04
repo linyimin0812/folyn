@@ -56,6 +56,10 @@ function setEdgeSelected(edge: Edge, selected: boolean): void {
  */
 // ponytail: edgeView typed loosely (x6's EdgeView type is awkward to import
 // here); we only read sourceBBox/targetBBox which are stable public APIs.
+// GRID_PX snaps midX so parallel edges between nearby cards collapse onto
+// the same vertical segment instead of rendering N near-duplicate lines
+// 1-2px apart.
+const Z_ORTH_GRID_PX = 10;
 const zOrthRoute = (
   _vertices: Point[],
   _options: Record<string, unknown>,
@@ -72,7 +76,7 @@ const zOrthRoute = (
   const sourceOnRight = targetPoint.x >= sourcePoint.x;
   const sourceEdgeX = sourceOnRight ? sourceBBox.right : sourceBBox.left;
   const targetEdgeX = sourceOnRight ? targetBBox.left : targetBBox.right;
-  const midX = (sourceEdgeX + targetEdgeX) / 2;
+  const midX = Math.round((sourceEdgeX + targetEdgeX) / 2 / Z_ORTH_GRID_PX) * Z_ORTH_GRID_PX;
 
   if (sourcePoint.y === targetPoint.y) return [];
   return [
