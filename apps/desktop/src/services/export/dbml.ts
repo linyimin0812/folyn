@@ -44,6 +44,14 @@ export async function enhance(body: HTMLElement, ctx: EnhanceCtx): Promise<void>
   body.style.overflow = 'hidden';
 }
 
+// ponytail: concrete light-theme hex, NOT var(--xxx). The SVG is extracted
+// standalone by shared.renderFilePreviewToSvg (no :root ancestor), so CSS
+// vars don't resolve in .svg files or PNG canvas rasterization — fills fall
+// back to black. Hex matches LIGHT_THEME_VARS in exportService.ts.
+const C = {
+  surf: '#f8f9fd', brd: '#dde2f0', hov: '#e8ecf8', brd2: '#c8d0e8',
+  t1: '#1a2040', t3: '#8892b0', acc: '#3a6ef0',
+};
 // ponytail: duplicated from erLayout.ts (ER_HEADER_H=38, ER_ROW_H=28). The
 // constants are stable layout sizing — duplicate beats a static import
 // that would pull d3-force into the main bundle. Revisit if they drift.
@@ -73,8 +81,11 @@ function renderErLayoutToSvg(layout: import('@/components/file-types/dbml/erLayo
     `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"`,
     ` viewBox="${vbX} ${vbY} ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet">`,
   );
-  // Edges first so cards draw on top.
+  // Edges last so they draw on top of cards (mirrors x6's edge z-order —
+  // lines crossing a card stay visible instead of being hidden by the fill).
   const tableByName = new Map(tables.map((t) => [t.name, t]));
+  for (const t of tables) parts.push(renderTableCardSvg(t));
+  for (const e of enums) parts.push(renderEnumCardSvg(e));
   for (const r of refs) {
     const from = tableByName.get(r.fromTable);
     const to = tableByName.get(r.toTable);
@@ -87,11 +98,9 @@ function renderErLayoutToSvg(layout: import('@/components/file-types/dbml/erLayo
     const mx = (fx + tx) / 2;
     parts.push(
       `<polyline points="${fx},${fy} ${mx},${fy} ${mx},${ty} ${tx},${ty}"`,
-      ` fill="none" stroke="var(--t3)" stroke-width="1.4" stroke-dasharray="0" />`,
+      ` fill="none" stroke="${C.t3}" stroke-width="1.4" stroke-dasharray="0" />`,
     );
   }
-  for (const t of tables) parts.push(renderTableCardSvg(t));
-  for (const e of enums) parts.push(renderEnumCardSvg(e));
   parts.push('</svg>');
   return parts.join('');
 }
@@ -106,37 +115,37 @@ function renderTableCardSvg(t: import('@/components/file-types/dbml/erLayout').P
   // Card body
   parts.push(
     `<rect x="${t.x}" y="${t.y}" width="${t.width}" height="${t.height}" rx="6" ry="6"`,
-    ` fill="var(--surf)" stroke="var(--brd)" stroke-width="1" />`,
+    ` fill="${C.surf}" stroke="${C.brd}" stroke-width="1" />`,
   );
   // Header band (top rounded)
   parts.push(
     `<path d="M ${t.x + 6} ${t.y} H ${t.x + t.width - 6} A 6 6 0 0 1 ${t.x + t.width} ${t.y + 6} V ${t.y + ER_HEADER_H} H ${t.x} V ${t.y + 6} A 6 6 0 0 1 ${t.x + 6} ${t.y} Z"`,
-    ` fill="var(--hov)" />`,
+    ` fill="${C.hov}" />`,
   );
   parts.push(
     `<text x="${t.x + 14}" y="${t.y + ER_HEADER_H / 2}" dominant-baseline="central"`,
-    ` font-family="var(--font-ui,'Sora',sans-serif)" font-size="15" font-weight="700" fill="var(--t1)">${escapeXml(t.name)}</text>`,
+    ` font-family="'Sora',sans-serif" font-size="15" font-weight="700" fill="${C.t1}">${escapeXml(t.name)}</text>`,
   );
   // Divider
   parts.push(
     `<line x1="${t.x}" y1="${t.y + ER_HEADER_H}" x2="${t.x + t.width}" y2="${t.y + ER_HEADER_H}"`,
-    ` stroke="var(--brd2)" stroke-width="1" />`,
+    ` stroke="${C.brd2}" stroke-width="1" />`,
   );
   // Fields
   t.fields.forEach((f, i) => {
     const ry = t.y + ER_HEADER_H + i * ER_ROW_H + ER_ROW_H / 2;
     if (f.pk) {
       parts.push(
-        `<circle cx="${t.x + 10}" cy="${ry}" r="3" fill="var(--acc)" />`,
+        `<circle cx="${t.x + 10}" cy="${ry}" r="3" fill="${C.acc}" />`,
       );
     }
     parts.push(
       `<text x="${t.x + 22}" y="${ry}" dominant-baseline="central"`,
-      ` font-family="var(--font-ui,'Sora',sans-serif)" font-size="13" fill="var(--t1)">${escapeXml(f.name)}</text>`,
+      ` font-family="'Sora',sans-serif" font-size="13" fill="${C.t1}">${escapeXml(f.name)}</text>`,
     );
     parts.push(
       `<text x="${t.x + t.width - 14}" y="${ry}" text-anchor="end" dominant-baseline="central"`,
-      ` font-family="var(--font-mono,'DM Mono',monospace)" font-size="12" fill="var(--t3)">${escapeXml(f.type)}</text>`,
+      ` font-family="'DM Mono',monospace" font-size="12" fill="${C.t3}">${escapeXml(f.type)}</text>`,
     );
   });
   parts.push('</g>');
@@ -148,25 +157,25 @@ function renderEnumCardSvg(e: import('@/components/file-types/dbml/erLayout').Po
   parts.push('<g>');
   parts.push(
     `<rect x="${e.x}" y="${e.y}" width="${e.width}" height="${e.height}" rx="6" ry="6"`,
-    ` fill="var(--surf)" stroke="var(--brd)" stroke-width="1" stroke-dasharray="3 2" />`,
+    ` fill="${C.surf}" stroke="${C.brd}" stroke-width="1" stroke-dasharray="3 2" />`,
   );
   parts.push(
     `<path d="M ${e.x + 6} ${e.y} H ${e.x + e.width - 6} A 6 6 0 0 1 ${e.x + e.width} ${e.y + 6} V ${e.y + ER_HEADER_H} H ${e.x} V ${e.y + 6} A 6 6 0 0 1 ${e.x + 6} ${e.y} Z"`,
-    ` fill="var(--brd2)" />`,
+    ` fill="${C.brd2}" />`,
   );
   parts.push(
     `<text x="${e.x + 14}" y="${e.y + ER_HEADER_H / 2}" dominant-baseline="central"`,
-    ` font-family="var(--font-ui,'Sora',sans-serif)" font-size="12" fill="var(--t3)">«enum»</text>`,
+    ` font-family="'Sora',sans-serif" font-size="12" fill="${C.t3}">«enum»</text>`,
   );
   parts.push(
     `<text x="${e.x + 62}" y="${e.y + ER_HEADER_H / 2}" dominant-baseline="central"`,
-    ` font-family="var(--font-ui,'Sora',sans-serif)" font-size="15" font-weight="700" fill="var(--t1)">${escapeXml(e.name)}</text>`,
+    ` font-family="'Sora',sans-serif" font-size="15" font-weight="700" fill="${C.t1}">${escapeXml(e.name)}</text>`,
   );
   e.values.forEach((v, i) => {
     const ry = e.y + ER_HEADER_H + i * ER_ROW_H + ER_ROW_H / 2;
     parts.push(
       `<text x="${e.x + 22}" y="${ry}" dominant-baseline="central"`,
-      ` font-family="var(--font-ui,'Sora',sans-serif)" font-size="13" fill="var(--t1)">${escapeXml(v.name)}</text>`,
+      ` font-family="'Sora',sans-serif" font-size="13" fill="${C.t1}">${escapeXml(v.name)}</text>`,
     );
   });
   parts.push('</g>');
