@@ -561,7 +561,7 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
       const fromTable = tableMap.get(r.fromTable);
       const toTable = tableMap.get(r.toTable);
       if (!fromTable || !toTable) continue;
-      // Pick the port on the side facing the other table so the er router
+      // Pick the port on the side facing the other table so the line
       // exits the field row horizontally toward the target.
       const fromOnRight = toTable.x + toTable.width / 2 >= fromTable.x + fromTable.width / 2;
       const toOnRight = fromTable.x + fromTable.width / 2 >= toTable.x + toTable.width / 2;
@@ -570,23 +570,38 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
       const sourcePort = fromField ? `f-${fromField}-${fromOnRight ? 'R' : 'L'}` : undefined;
       const targetPort = toField ? `f-${toField}-${toOnRight ? 'R' : 'L'}` : undefined;
 
-      // ponytail: er router — single-bend straight line, exit side picked
-      // by relative position (source-on-left → source exits right, target
-      // exits left). Eliminates the manhattan A* staircase (zigzag) and the
-      // silent orth-fallback that drew straight through cards when A*
-      // starved (cards too close / maxLoopCount exhausted). Trade-off: er
-      // does NOT avoid OTHER cards between source and target — mitigated
-      // by d3-force clustering connected tables (shorter links, larger
-      // collide padding). direction:'H' forces horizontal exit so the
-      // first/last segment is always perpendicular to the card's L/R edge
-      // (where the field ports sit) — no angled exits along the border.
+      // ponytail: Z-shape orthogonal route — 3 segments (horizontal-vertical-
+      // horizontal), 2 bends at 90°. Source/target exit perpendicular to the
+      // card's L/R edge (where field ports sit). midX sits in the GAP between
+      // source's R edge and target's L edge (or vice versa), so the vertical
+      // segment doesn't cross either card. No A*, no fallback, no zigzag.
+      // Trade-off: doesn't avoid OTHER cards in the gap — accepted earlier.
+      const fromPortX = fromOnRight ? fromTable.x + fromTable.width : fromTable.x;
+      const toPortX = toOnRight ? toTable.x + toTable.width : toTable.x;
+      const fromFieldIdx = fromField
+        ? fromTable.fields.findIndex((f) => f.name === fromField)
+        : -1;
+      const toFieldIdx = toField
+        ? toTable.fields.findIndex((f) => f.name === toField)
+        : -1;
+      const fromPortY =
+        fromFieldIdx >= 0
+          ? fromTable.y + HEADER_H + (fromFieldIdx + 0.5) * ROW_H
+          : fromTable.y + fromTable.height / 2;
+      const toPortY =
+        toFieldIdx >= 0
+          ? toTable.y + HEADER_H + (toFieldIdx + 0.5) * ROW_H
+          : toTable.y + toTable.height / 2;
+      const midX = (fromPortX + toPortX) / 2;
+      const vertices =
+        fromPortY === toPortY
+          ? [{ x: midX, y: fromPortY }]
+          : [{ x: midX, y: fromPortY }, { x: midX, y: toPortY }];
+
       graph.addEdge({
         source: { cell: `t:${r.fromTable}`, ...(sourcePort ? { port: sourcePort } : {}) },
         target: { cell: `t:${r.toTable}`, ...(targetPort ? { port: targetPort } : {}) },
-        router: {
-          name: 'er',
-          args: { offset: 24, min: 16, direction: 'H' },
-        },
+        vertices,
         attrs: {
           line: {
             stroke: 'var(--t3)',
