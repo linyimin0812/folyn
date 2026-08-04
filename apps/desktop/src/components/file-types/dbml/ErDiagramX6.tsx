@@ -144,6 +144,13 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
   // `blank:click` below). Reset to null whenever `graph.clearCells()` runs
   // (content re-sync) since that destroys the underlying edge cell.
   const selectedEdgeIdRef = useRef<string | null>(null);
+  // True after a node drag (node:change:position fired). Suppresses the next
+  // edge:click / blank:click so a short drag that x6 treats as a click
+  // doesn't accidentally select an edge (dashed-flow highlight) when the
+  // user just meant to move a card. Cleared on the next click or after the
+  // drag ends via setTimeout(0) so legitimate clicks right after a drag still
+  // work.
+  const nodeDraggedRef = useRef(false);
   // True until the first content load completes — drives auto-fit-on-open
   // so the first .dbml view centers content, but subsequent re-parses
   // (edits) don't override the user's manual pan/zoom.
@@ -392,7 +399,17 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
         }
         lastValidPositionsRef.current.set(id, { x: pos.x, y: pos.y });
         manualPositionsRef.current.set(id, { x: pos.x, y: pos.y });
+        nodeDraggedRef.current = true;
         scheduleMetaEmitRef.current?.();
+      });
+      // Clear the drag flag after the drag ends so a legitimate edge click
+      // right after a drag still works. setTimeout(0) keeps the flag true
+      // through the current tick (where edge:click / blank:click fire right
+      // after node:mouseup) and clears it on the next.
+      graph.on('node:mouseup', () => {
+        if (nodeDraggedRef.current) {
+          window.setTimeout(() => { nodeDraggedRef.current = false; }, 0);
+        }
       });
       graph.on('scale', ({ sx }: { sx: number }) => setZoomPct(Math.round(sx * 100)));
       // Click-to-highlight a relationship line — see `nextSelectedEdgeId` /
@@ -409,8 +426,14 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
         if (nextEdge?.isEdge()) setEdgeSelected(nextEdge, true);
         selectedEdgeIdRef.current = nextId;
       };
-      graph.on('edge:click', ({ edge }) => selectEdge(edge.id));
-      graph.on('blank:click', () => selectEdge(null));
+      graph.on('edge:click', ({ edge }) => {
+        if (nodeDraggedRef.current) return; // suppress spurious click from drag end
+        selectEdge(edge.id);
+      });
+      graph.on('blank:click', () => {
+        if (nodeDraggedRef.current) return; // suppress spurious click from drag end
+        selectEdge(null);
+      });
       graphRef.current = graph;
       if (overlayRef.current) overlayByGraph.set(graph, overlayRef.current);
       setGraphReady(true);
