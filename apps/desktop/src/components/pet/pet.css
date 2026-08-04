@@ -951,24 +951,29 @@ html.is-pet-panel-window body {
  * measures to size the OS window. A block-level `display: flex` fills its
  * parent's width (220px = the pet-menu window's content width), so the wrapper
  * box stayed at 220px even when the in-flow submenu overflowed it — the OS
- * window never grew and the submenu was clipped at the window's right edge. */
+ * window never grew and the submenu was clipped at the window's right edge.
+ *
+ * The wrapper carries the single shared elevation shadow so the main card and
+ * submenu card read as one connected surface (no per-card shadow, no 6px gap).
+ * The wrapper's own background is transparent; only the shadow is painted
+ * here, so the union rect's surrounding elevation is the only visual cue. */
 .pet-menu-window-root {
   display: inline-flex;
   align-items: flex-start;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
 .pet-menu-root {
   /* Card fills the main region; the OS window clips at the wrapper's
-   * bounding box (main card + floating submenu when visible). */
+   * bounding box (main card + floating submenu when visible). No per-card
+   * shadow — the wrapper carries the shared elevation (see
+   * `.pet-menu-window-root`). */
   box-sizing: border-box;
   min-width: 220px;
   padding: 4px 0;
   background: var(--bg, #ffffff);
   border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
   border-radius: 8px;
-  /* Shadow: macOS native menu feel — the OS provides shadow via
-   * `shadow: true` in tauri.conf.json, so this CSS shadow is a fallback. */
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   color: var(--t1, #1f2329);
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
   font-size: 13px;
@@ -1012,22 +1017,26 @@ html.is-pet-panel-window body {
   font-weight: 500;
 }
 
-/* Submenu card — in-flow flex sibling of the main card (margin-left for the
- * visual gap, margin-top set inline via `style.marginTop` to align with the
- * parent item). The previous `position: absolute; left: 100%; top: 0` left
- * the submenu out-of-flow so the wrapper's `getBoundingClientRect` did not
- * include it → the OS window never grew → the submenu was clipped at the
- * window's right edge. Items inside reuse `.pet-menu-item` + `--radio` +
- * `.pet-menu-radio` + `.is-checked` — no indent, base `7px 14px` padding. */
+/* Submenu card — in-flow flex sibling of the main card. `margin-top` is set
+ * inline via `style.marginTop` to align with the parent item. The previous
+ * `position: absolute; left: 100%; top: 0` left the submenu out-of-flow so
+ * the wrapper's `getBoundingClientRect` did not include it → the OS window
+ * never grew → the submenu was clipped at the window's right edge.
+ *
+ * Flush against the main card (no `margin-left` gap) + `border-left: none` so
+ * the main card's right border serves as the shared border — the two cards
+ * read as one connected surface under the wrapper's shared shadow. Items
+ * inside reuse `.pet-menu-item` + `--radio` + `.pet-menu-radio` + `.is-checked`
+ * — no indent, base `7px 14px` padding. */
 .pet-menu-submenu {
-  margin-left: 6px;
+  margin-left: 0;
+  border-left: none;
   box-sizing: border-box;
   min-width: 120px;
   padding: 4px 0;
   background: var(--bg, #ffffff);
   border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   color: var(--t1, #1f2329);
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
   font-size: 13px;
@@ -1075,6 +1084,9 @@ html.is-pet-panel-window body {
  * Colors mirror the app's dark palette (`index.css`).
  * ──────────────────────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
+  html.is-pet-menu-window .pet-menu-window-root {
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  }
   html.is-pet-menu-window .pet-menu-root {
     --bg: #0f1219;
     --t1: #e2e8f8;
@@ -1084,13 +1096,11 @@ html.is-pet-panel-window body {
     background: var(--bg);
     border-color: var(--border);
     color: var(--t1);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
   }
   html.is-pet-menu-window .pet-menu-submenu {
     background: var(--bg, #0f1219);
     border-color: var(--border, #1c2136);
     color: var(--t1, #e2e8f8);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
   }
   html.is-pet-menu-window .pet-menu-sep {
     background: #1c2136;

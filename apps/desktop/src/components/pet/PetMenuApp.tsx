@@ -35,6 +35,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isTauri } from '@/utils/platform';
 import {
+  clampPanelPosition,
   computePanelPosition,
   PET_SIZE_DEFAULT,
   type PetSize,
@@ -68,11 +69,15 @@ const SUBMENU_RESERVATION_LOGICAL = 126;
 
 /** Bottom-side room reserved for the submenu at open time (logical px).
  *  The floating submenu card renders below its parent item; the part that
- *  extends past the main card's bottom edge is ~18px (submenu bottom 201 −
- *  main card 183, both measured at line-height 1.2). Add a small buffer
- *  for font-metric variation so the submenu never spills past the work
- *  area's bottom edge when the pet is near the screen bottom. */
-const SUBMENU_GROWTH_LOGICAL = 22;
+ *  extends past the main card's bottom edge depends on which parent is
+ *  hovered. The WORST case is the LAST parent item (透明度/opacity, at
+ *  offsetTop ≈ 90): its submenu (height ≈ 158) extends to 90 + 158 = 248,
+ *  while the main card bottom is at ≈ 231, so the submenu spills ~17px
+ *  past the main card. The first parent item (大小/size, offsetTop ≈ 41)
+ *  spills only ~0px past the main card bottom. The worst-case spillover
+ *  is ~17px; add a font-metric buffer so the submenu never clips past the
+ *  work area's bottom edge when the pet is near the screen bottom. */
+const SUBMENU_GROWTH_LOGICAL = 32;
 
 /** Which submenu is currently visible (hover-triggered), plus the parent
  *  item's vertical offset so the floating card can align with it. */
@@ -155,10 +160,15 @@ async function hideMenu(): Promise<void> {
  * rationale: the position is fixed at open time, only the window SIZE
  * changes on submenu toggle.
  *
- * Left/top edge clamp: `computePanelPosition` doesn't clamp to the work
- * area, so on narrow/short screens the computed corner-attach position can
- * fall off-screen. Clamp both axes to `>= workArea.{x,y}` so the main card
- * is always fully visible.
+ * Full work-area clamp: after the two reservation shifts, both axes are
+ * clamped to the work area via `clampPanelPosition` (it clamps to
+ * `[workArea.x, workArea.x + workArea.width - menuWidth]` on X and the
+ * analogous range on Y). `computePanelPosition` itself doesn't clamp, so
+ * on narrow/short screens the corner-attach position (or the reservation
+ * shift) can leave the main card partially off-screen on the right/bottom
+ * edges. `clampPanelPosition` covers all four edges in one call; the
+ * degenerate case (work area smaller than the menu) lands at the
+ * work-area top-left.
  */
 async function resizeAndReposition(
   root: HTMLDivElement | null,
@@ -211,10 +221,18 @@ async function resizeAndReposition(
       if (bottomEdge > workAreaBottom) {
         posLogical.y = Math.max(workArea.y, workAreaBottom - menuHeight - SUBMENU_GROWTH_LOGICAL);
       }
-      // Left/top edge clamp: computePanelPosition doesn't clamp, so on
-      // narrow/short screens the computed position can fall off-screen.
-      posLogical.x = Math.max(posLogical.x, workArea.x);
-      posLogical.y = Math.max(posLogical.y, workArea.y);
+      // Full work-area clamp: `computePanelPosition` doesn't clamp, and the
+      // reservation shifts above only guard one edge each. `clampPanelPosition`
+      // clamps both axes to the full work-area rect (all four edges) in one
+      // call, covering the right/bottom edges that the reservation shifts
+      // don't touch. Degenerate case (menu larger than work area) lands at
+      // the work-area top-left.
+      const clamped = clampPanelPosition(posLogical, workArea, {
+        width: menuWidth,
+        height: menuHeight,
+      });
+      posLogical.x = clamped.x;
+      posLogical.y = clamped.y;
       await invoke('pet_menu_set_position', {
         x: Math.round(posLogical.x * sf),
         y: Math.round(posLogical.y * sf),
