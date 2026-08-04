@@ -405,6 +405,21 @@ export function BubbleTemplateAIChatModal({
 
   const leadingSlot = (
     <>
+      <PairSelector
+        trigger="icon"
+        dropDirection="up"
+        value={bubblePair}
+        onChange={(pair) => {
+          // Phase 2: pair is per-session — write the active bt session.
+          if (sessionId && pair) {
+            setSessionPair(sessionId, pair);
+          }
+        }}
+        onOpenSettings={() => {
+          useNavStore.getState().setCurrentPage('settings');
+          useNavStore.getState().setSettingsTab('models');
+        }}
+      />
       <VoiceInputButton />
       <input
         ref={fileInputRef}
@@ -473,20 +488,6 @@ export function BubbleTemplateAIChatModal({
             >{confirmingDelete ? t('settings:pet.templates.ai.confirmDelete') : <Trash2 className="w-[14px] h-[14px]" />}</button>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <PairSelector
-              trigger="icon"
-              value={bubblePair}
-              onChange={(pair) => {
-                // Phase 2: pair is per-session — write the active bt session.
-                if (sessionId && pair) {
-                  setSessionPair(sessionId, pair);
-                }
-              }}
-              onOpenSettings={() => {
-                useNavStore.getState().setCurrentPage('settings');
-                useNavStore.getState().setSettingsTab('models');
-              }}
-            />
             <button
               className="text-t3 hover:text-t1 text-[14px]"
               onClick={onClose}
