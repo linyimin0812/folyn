@@ -53,6 +53,12 @@ export const RichTextIndent = Extension.create({
               const v = (attrs.indent as number | undefined) ?? 0;
               return v ? { style: `text-indent: ${v * INDENT_EM}em` } : {};
             },
+            // ponytail: default keepOnSplit=true would copy `indent` into the
+            // new paragraph after Enter (Tiptap's splitBlock filters attrs via
+            // getSplittedAttributes by this flag). Set false so each new
+            // paragraph starts at indent 0 — first-line indent belongs to
+            // the paragraph the user actually pressed Tab in, not the next.
+            keepOnSplit: false,
           },
         },
       },
@@ -62,6 +68,24 @@ export const RichTextIndent = Extension.create({
     return {
       Tab: () => changeIndent(this.editor, 1),
       'Shift-Tab': () => changeIndent(this.editor, -1),
+      // ponytail: at start of an indented paragraph, Backspace should
+      // decrement indent rather than join with the previous block —
+      // matches the user's mental model of "Tab to indent, Backspace
+      // to undo indent". Only fires when selection is empty and cursor
+      // sits at offset 0 of a paragraph/heading with indent > 0; any
+      // other position falls through to default backspace.
+      Backspace: () => {
+        const { state } = this.editor;
+        const { selection } = state;
+        if (!selection.empty) return false;
+        const $from = selection.$from;
+        if ($from.parentOffset !== 0) return false;
+        const node = $from.parent;
+        if (node.type.name !== 'paragraph' && node.type.name !== 'heading') return false;
+        const cur = (node.attrs.indent as number | undefined) ?? 0;
+        if (cur <= 0) return false;
+        return changeIndent(this.editor, -1);
+      },
     };
   },
 });

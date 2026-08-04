@@ -7,9 +7,6 @@ import {
   Italic,
   Underline,
   Strikethrough,
-  Heading1,
-  Heading2,
-  Heading3,
   List,
   ListOrdered,
   ListChecks,
@@ -25,7 +22,12 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  Baseline,
+  AlignJustify,
+  Type,
+  Heading,
+  ZoomIn,
+  ZoomOut,
+  ChevronDown,
 } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import { persistImageBytes } from './RichTextImage';
@@ -44,6 +46,8 @@ import { TableSizeGrid } from './TableSizeGrid';
 
 interface RichTextToolbarProps {
   editor: Editor;
+  zoom: number;
+  onZoomChange: (z: number) => void;
 }
 
 interface ToolButton {
@@ -60,7 +64,7 @@ type ModalKind = 'link' | null;
 // the inline table-insert button (rendered outside the buttons[] array for
 // its relative popover anchor) stays visually identical to the mapped ones.
 const TOOL_BTN_CLASS =
-  'inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-default';
+  'inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 active:scale-[0.96] transition-transform disabled:opacity-40 disabled:cursor-default';
 
 // ponytail: one modal serves both link and image-URL entry — same shape (a URL
 // input + OK/Cancel). title + placeholder differ. Reused rather than forked.
@@ -127,7 +131,7 @@ function UrlModal({
   );
 }
 
-export function RichTextToolbar({ editor }: RichTextToolbarProps) {
+export function RichTextToolbar({ editor, zoom, onZoomChange }: RichTextToolbarProps) {
   const { t } = useTranslation();
   const [modal, setModal] = useState<ModalKind>(null);
   // The initial URL the modal opens with (prev link href, or '' for image).
@@ -210,24 +214,29 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
   ];
   const currentFont = (editor.getAttributes('textStyle').fontFamily as string | undefined) ?? '';
 
-  // ponytail: text color button — opens a small popover with the same
-  // 10-swatch palette as table cell bg (kept inline here to avoid a new
-  // shared module just for this list). Custom color opens native
-  // <input type="color">; unsetColor removes the mark.
+  // ponytail: color dropdown — one button, one popover, two sections
+  // (Text Color + Highlight). Same 10-swatch palette for both. Each
+  // section's "Custom" is a <label> wrapping a hidden <input type="color">
+  // positioned absolutely over the label — the browser natively forwards
+  // the click to the input and anchors the picker popover to the label's
+  // real screen position (no JS positioning, which macOS WKWebView
+  // ignores and falls back to bottom-left corner).
   const [colorOpen, setColorOpen] = useState(false);
+  const [headerOpen, setHeaderOpen] = useState(false);
+  const [fontOpen, setFontOpen] = useState(false);
   const currentColor = (editor.getAttributes('textStyle').color as string | undefined) ?? '#000000';
+  const currentHighlight = (editor.getAttributes('highlight').color as string | undefined) ?? '';
   const colorSwatches = ['#000000', '#52525b', '#a1a1aa', '#ffffff', '#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#a855f7'];
+  const headingLevels = [1, 2, 3, 4] as const;
 
   const alignButtons: ToolButton[] = [
     { icon: AlignLeft, title: 'Align left', active: editor.isActive({ textAlign: 'left' }) || (!editor.isActive({ textAlign: 'center' }) && !editor.isActive({ textAlign: 'right' })), disabled: !editor.can().setTextAlign('left'), onClick: () => editor.chain().focus().setTextAlign('left').run() },
     { icon: AlignCenter, title: 'Align center', active: editor.isActive({ textAlign: 'center' }), disabled: !editor.can().setTextAlign('center'), onClick: () => editor.chain().focus().setTextAlign('center').run() },
     { icon: AlignRight, title: 'Align right', active: editor.isActive({ textAlign: 'right' }), disabled: !editor.can().setTextAlign('right'), onClick: () => editor.chain().focus().setTextAlign('right').run() },
+    { icon: AlignJustify, title: 'Align justify', active: editor.isActive({ textAlign: 'justify' }), disabled: !editor.can().setTextAlign('justify'), onClick: () => editor.chain().focus().setTextAlign('justify').run() },
   ];
 
   const buttonsRest: ToolButton[] = [
-    { icon: Heading1, title: 'Heading 1', active: editor.isActive('heading', { level: 1 }), disabled: !editor.can().toggleHeading({ level: 1 }), onClick: () => editor.chain().focus().toggleHeading({ level: 1 }).run() },
-    { icon: Heading2, title: 'Heading 2', active: editor.isActive('heading', { level: 2 }), disabled: !editor.can().toggleHeading({ level: 2 }), onClick: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
-    { icon: Heading3, title: 'Heading 3', active: editor.isActive('heading', { level: 3 }), disabled: !editor.can().toggleHeading({ level: 3 }), onClick: () => editor.chain().focus().toggleHeading({ level: 3 }).run() },
     { icon: List, title: 'Bullet list', active: editor.isActive('bulletList'), disabled: !editor.can().toggleBulletList(), onClick: () => editor.chain().focus().toggleBulletList().run() },
     { icon: ListOrdered, title: 'Ordered list', active: editor.isActive('orderedList'), disabled: !editor.can().toggleOrderedList(), onClick: () => editor.chain().focus().toggleOrderedList().run() },
     { icon: ListChecks, title: 'Task list', active: editor.isActive('taskList'), disabled: !editor.can().toggleTaskList(), onClick: () => editor.chain().focus().toggleTaskList().run() },
@@ -239,63 +248,185 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
     { icon: ImageIcon, title: 'Insert image', onClick: () => { void pickImageFile(); } },
   ];
 
-  // ponytail: trailing Undo/Redo rendered after the inline table-insert
-  // popover button so the popover anchor sits between image and undo (its
-  // original toolbar slot).
-  const trailingButtons: ToolButton[] = [
+  // ponytail: undo/redo rendered as the FIRST group (leftmost), zoom
+  // buttons follow, then Heading — user-requested toolbar order. The
+  // remaining groups (font/color, marks, align, blocks, table) come after,
+  // separated by vertical dividers.
+  const undoRedoButtons: ToolButton[] = [
     { icon: Undo, title: 'Undo', disabled: !editor.can().undo(), onClick: () => editor.chain().focus().undo().run() },
     { icon: Redo, title: 'Redo', disabled: !editor.can().redo(), onClick: () => editor.chain().focus().redo().run() },
   ];
 
+  // ponytail: page zoom — CSS `zoom` property is non-standard but works
+  // in WebKit (Tauri's engine). Scales the editor content layout, not the
+  // toolbar chrome. Range 0.5–2.0, step 0.1.
+  const ZOOM_MIN = 0.5;
+  const ZOOM_MAX = 2;
+  const ZOOM_STEP = 0.1;
+  const clampZoom = (z: number) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(z * 100) / 100));
+  const zoomOut = () => onZoomChange(clampZoom(zoom - ZOOM_STEP));
+  const zoomIn = () => onZoomChange(clampZoom(zoom + ZOOM_STEP));
+
   return (
     <>
       <div className="flex flex-wrap items-center justify-center gap-[2px] px-2 py-1 border-b border-brd bg-surf2">
-        {buttonsEarly.map((b, i) => (
+        {/* ponytail: undo/redo — leftmost group. Same TOOL_BTN_CLASS as
+            other icon buttons so visual size + press feedback match. */}
+        {undoRedoButtons.map((b, i) => (
           <button
-            key={i}
+            key={`ur-${i}`}
             type="button"
             title={b.title}
             disabled={b.disabled}
             onClick={b.onClick}
-            className={`inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-default ${
-              b.active ? 'bg-accdim text-acc' : ''
-            }`}
+            className={TOOL_BTN_CLASS}
           >
             <b.icon size={15} strokeWidth={1.6} />
           </button>
         ))}
-        {/* ponytail: font family combobox — native <select> over a custom
-            dropdown; same reasoning as the URL modal (avoid window.prompt).
-            Width auto-sizes to the longest label so it doesn't jump. */}
-        <select
-          title="Font family"
-          value={currentFont}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v) editor.chain().focus().setFontFamily(v).run();
-            else editor.chain().focus().unsetFontFamily().run();
-          }}
-          className="h-7 px-1 rounded text-t2 text-xs bg-transparent border-none hover:bg-hov hover:text-t1 cursor-pointer outline-none"
+        <div className="w-px h-4 bg-brd2 mx-1" aria-hidden />
+        {/* ponytail: page zoom — CSS `zoom` applied to the editor content
+            wrapper from RichTextEditor. Step 0.1, range 0.5–2.0. The
+            percentage text in the middle resets to 100% on click. */}
+        <button type="button" title="Zoom out" onClick={zoomOut} className={TOOL_BTN_CLASS}>
+          <ZoomOut size={15} strokeWidth={1.6} />
+        </button>
+        <button
+          type="button"
+          title={`Reset zoom (${Math.round(zoom * 100)}%)`}
+          onClick={() => onZoomChange(1)}
+          className="inline-flex items-center justify-center h-7 min-w-[34px] px-1 rounded text-t2 text-[10px] tabular-nums hover:bg-hov hover:text-t1 active:scale-[0.96] transition-transform"
         >
-          {FONT_OPTIONS.map((opt) => (
-            <option key={opt.value || 'default'} value={opt.value} style={{ fontFamily: opt.value || undefined }}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        {/* ponytail: text color button — A icon with a colored bar under
-            it reflecting the active color. Click opens the swatch popover
-            (same palette as table cell bg). */}
+          {Math.round(zoom * 100)}%
+        </button>
+        <button type="button" title="Zoom in" onClick={zoomIn} className={TOOL_BTN_CLASS}>
+          <ZoomIn size={15} strokeWidth={1.6} />
+        </button>
+        <div className="w-px h-4 bg-brd2 mx-1" aria-hidden />
+        {/* ponytail: header dropdown — toolbar button uses the lucide
+            Heading SVG to match the visual weight of other toolbar
+            icons. Concentric radius: outer rounded-lg (8px) + p-1 (4px)
+            = inner rounded (4px). Active row gets bg-accdim + text-acc. */}
         <div className="relative">
           <button
             type="button"
-            title="Text color"
-            onClick={() => setColorOpen((v) => !v)}
-            className="relative inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1"
+            title="Heading"
+            onClick={() => setHeaderOpen((v) => !v)}
+            className={`inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 active:scale-[0.96] transition-transform ${headingLevels.some((l) => editor.isActive('heading', { level: l })) ? 'bg-accdim text-acc' : ''}`}
           >
-            <Baseline size={15} strokeWidth={1.6} />
+            <Heading size={15} strokeWidth={1.6} />
+          </button>
+          {headerOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setHeaderOpen(false)} aria-hidden />
+              <div
+                className="absolute top-full left-0 mt-1 z-50 p-1 bg-panel border border-brd rounded-lg shadow-[0_4px_16px_rgba(0,0,0,.12)] flex flex-col gap-0.5 min-w-[140px]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  title="Text"
+                  onClick={() => {
+                    editor.chain().focus().setParagraph().run();
+                    setHeaderOpen(false);
+                  }}
+                  className={`px-2 py-1 rounded flex items-baseline gap-2 text-xs text-left active:scale-[0.96] transition-colors ${
+                    editor.isActive('paragraph') && !headingLevels.some((l) => editor.isActive('heading', { level: l }))
+                      ? 'bg-accdim text-acc'
+                      : 'text-t2 hover:bg-hov hover:text-t1'
+                  }`}
+                >
+                  <span className="font-medium w-5 inline-block text-center">T</span>
+                  <span>Text</span>
+                </button>
+                {headingLevels.map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    title={`Heading ${level}`}
+                    onClick={() => {
+                      editor.chain().focus().toggleHeading({ level }).run();
+                      setHeaderOpen(false);
+                    }}
+                    className={`px-2 py-1 rounded flex items-baseline gap-2 text-xs text-left active:scale-[0.96] transition-colors ${
+                      editor.isActive('heading', { level })
+                        ? 'bg-accdim text-acc'
+                        : 'text-t2 hover:bg-hov hover:text-t1'
+                    }`}
+                  >
+                    <span className="font-medium w-5 inline-block text-center">H<sub className="text-[0.7em]">{level}</sub></span>
+                    <span>Heading {level}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        <div className="w-px h-4 bg-brd2 mx-1" aria-hidden />
+        {/* ponytail: font family combobox — fixed width so the toolbar
+            doesn't shift when selection changes. Width set on the wrapper;
+            select fills it. appearance-none + custom chevron. */}
+        <div className="relative">
+          <button
+            type="button"
+            title="Font family"
+            onClick={() => setFontOpen((v) => !v)}
+            className="inline-flex items-center justify-between h-7 w-[88px] px-1.5 rounded text-t2 text-xs hover:bg-hov hover:text-t1 active:scale-[0.96] transition-transform"
+          >
             <span
-              className="absolute left-1 right-1 bottom-1 h-[3px] rounded-sm"
+              className="truncate"
+              style={{ fontFamily: currentFont || undefined }}
+            >
+              {FONT_OPTIONS.find((o) => o.value === currentFont)?.label ?? 'Default'}
+            </span>
+            <ChevronDown size={10} strokeWidth={1.6} className="shrink-0 ml-1" />
+          </button>
+          {fontOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setFontOpen(false)} aria-hidden />
+              <div
+                className="absolute top-full left-0 mt-1 z-50 p-1 bg-panel border border-brd rounded-lg shadow-[0_4px_16px_rgba(0,0,0,.12)] flex flex-col gap-0.5 min-w-[160px] max-h-[280px] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {FONT_OPTIONS.map((opt) => {
+                  const active = opt.value === currentFont;
+                  return (
+                    <button
+                      key={opt.value || 'default'}
+                      type="button"
+                      title={opt.label}
+                      onClick={() => {
+                        if (opt.value) editor.chain().focus().setFontFamily(opt.value).run();
+                        else editor.chain().focus().unsetFontFamily().run();
+                        setFontOpen(false);
+                      }}
+                      className={`px-2 py-1 rounded text-xs text-left truncate active:scale-[0.96] transition-colors ${
+                        active ? 'bg-accdim text-acc' : 'text-t2 hover:bg-hov hover:text-t1'
+                      }`}
+                      style={{ fontFamily: opt.value || undefined }}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+        {/* ponytail: color dropdown — one button, one popover, two sections
+            (Text Color + Highlight). Same swatch palette for both; Custom
+            is a <label> wrapping a hidden <input type="color"> positioned
+            over the label so the native picker anchors to the label. */}
+        <div className="relative">
+          <button
+            type="button"
+            title={t('editor:color.buttonTitle')}
+            onClick={() => setColorOpen((v) => !v)}
+            className="relative inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 active:scale-[0.96] transition-transform"
+          >
+            <Type size={15} strokeWidth={1.6} />
+            <span
+              className="absolute left-1/2 -translate-x-1/2 bottom-1 h-[3px] w-[15px] rounded-sm"
               style={{ backgroundColor: currentColor }}
             />
           </button>
@@ -303,40 +434,93 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
             <>
               <div className="fixed inset-0 z-40" onClick={() => setColorOpen(false)} aria-hidden />
               <div
-                className="absolute top-full left-0 mt-1 z-50 p-2 bg-panel border border-brd rounded-lg shadow-[0_4px_16px_rgba(0,0,0,.12)] grid grid-cols-5 gap-1.5"
+                className="absolute top-full left-0 mt-1 z-50 p-2 bg-panel border border-brd rounded-lg shadow-[0_4px_16px_rgba(0,0,0,.12)] w-max"
                 onClick={(e) => e.stopPropagation()}
               >
-                {colorSwatches.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    title={c}
-                    onClick={() => {
-                      editor.chain().focus().setColor(c).run();
-                      setColorOpen(false);
-                    }}
-                    className="w-6 h-6 rounded-md border border-brd hover:scale-110 transition-transform"
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
-                <button
-                  type="button"
-                  title="Clear color"
-                  onClick={() => {
-                    editor.chain().focus().unsetColor().run();
-                    setColorOpen(false);
-                  }}
-                  className="col-span-5 mt-1 py-1 rounded text-[10px] text-t3 hover:bg-hov"
-                >
-                  Clear
-                </button>
+                <div className="flex items-center justify-between mb-1 px-0.5">
+                  <div className="text-[10px] text-t3">{t('editor:color.textColor')}</div>
+                  <label className="relative cursor-pointer py-0.5 px-1.5 rounded text-[10px] text-acc hover:bg-hov hover:opacity-80">
+                    {t('editor:color.custom')}
+                    <input
+                      type="color"
+                      onChange={(e) => {
+                        editor.chain().focus().setColor(e.target.value).run();
+                        setColorOpen(false);
+                      }}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      tabIndex={-1}
+                    />
+                  </label>
+                </div>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {colorSwatches.map((c) => (
+                    <button
+                      key={`tc-${c}`}
+                      type="button"
+                      title={c}
+                      onClick={() => {
+                        editor.chain().focus().setColor(c).run();
+                        setColorOpen(false);
+                      }}
+                      className={`w-6 h-6 rounded-md border border-brd hover:scale-110 transition-transform ${currentColor.toLowerCase() === c.toLowerCase() ? 'ring-2 ring-acc' : ''}`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+                <div className="my-2 border-t border-brd" />
+                <div className="flex items-center justify-between mb-1 px-0.5">
+                  <div className="text-[10px] text-t3">{t('editor:color.highlight')}</div>
+                  <label className="relative cursor-pointer py-0.5 px-1.5 rounded text-[10px] text-acc hover:bg-hov hover:opacity-80">
+                    {t('editor:color.custom')}
+                    <input
+                      type="color"
+                      onChange={(e) => {
+                        editor.chain().focus().toggleHighlight({ color: e.target.value }).run();
+                        setColorOpen(false);
+                      }}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      tabIndex={-1}
+                    />
+                  </label>
+                </div>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {colorSwatches.map((c) => (
+                    <button
+                      key={`hl-${c}`}
+                      type="button"
+                      title={c}
+                      onClick={() => {
+                        editor.chain().focus().toggleHighlight({ color: c }).run();
+                        setColorOpen(false);
+                      }}
+                      className={`w-6 h-6 rounded-md border border-brd hover:scale-110 transition-transform ${currentHighlight.toLowerCase() === c.toLowerCase() ? 'ring-2 ring-acc' : ''}`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
               </div>
             </>
           )}
         </div>
-        {/* ponytail: align buttons — three icon buttons, active state per
-            alignment. textAlign defaults to left when unset (the OR
-            clause in alignButtons covers that). */}
+        <div className="w-px h-4 bg-brd2 mx-1" aria-hidden />
+        {buttonsEarly.map((b, i) => (
+          <button
+            key={i}
+            type="button"
+            title={b.title}
+            disabled={b.disabled}
+            onClick={b.onClick}
+            className={`inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 active:scale-[0.96] transition-transform disabled:opacity-40 disabled:cursor-default ${
+              b.active ? 'bg-accdim text-acc' : ''
+            }`}
+          >
+            <b.icon size={15} strokeWidth={1.6} />
+          </button>
+        ))}
+        <div className="w-px h-4 bg-brd2 mx-1" aria-hidden />
+        {/* ponytail: align buttons — four icon buttons (left/center/right/justify),
+            active state per alignment. textAlign defaults to left when unset
+            (the OR clause in alignButtons covers that). */}
         {alignButtons.map((b, i) => (
           <button
             key={`al-${i}`}
@@ -344,13 +528,14 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
             title={b.title}
             disabled={b.disabled}
             onClick={b.onClick}
-            className={`inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-default ${
+            className={`inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 active:scale-[0.96] transition-transform disabled:opacity-40 disabled:cursor-default ${
               b.active ? 'bg-accdim text-acc' : ''
             }`}
           >
             <b.icon size={15} strokeWidth={1.6} />
           </button>
         ))}
+        <div className="w-px h-4 bg-brd2 mx-1" aria-hidden />
         {buttonsRest.map((b, i) => (
           <button
             key={`rest-${i}`}
@@ -358,13 +543,14 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
             title={b.title}
             disabled={b.disabled}
             onClick={b.onClick}
-            className={`inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-default ${
+            className={`inline-flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 active:scale-[0.96] transition-transform disabled:opacity-40 disabled:cursor-default ${
               b.active ? 'bg-accdim text-acc' : ''
             }`}
           >
             <b.icon size={15} strokeWidth={1.6} />
           </button>
         ))}
+        <div className="w-px h-4 bg-brd2 mx-1" aria-hidden />
         {/* ponytail: table-insert is a relative-wrapped button so the size
             grid can anchor under it; a transparent fixed backdrop dismisses
             on outside click (no window.prompt — same reason as UrlModal).
@@ -396,18 +582,6 @@ export function RichTextToolbar({ editor }: RichTextToolbarProps) {
             </>
           )}
         </div>
-        {trailingButtons.map((b, i) => (
-          <button
-            key={`tr-${i}`}
-            type="button"
-            title={b.title}
-            disabled={b.disabled}
-            onClick={b.onClick}
-            className={TOOL_BTN_CLASS}
-          >
-            <b.icon size={15} strokeWidth={1.6} />
-          </button>
-        ))}
       </div>
       {modal === 'link' && (
         <UrlModal

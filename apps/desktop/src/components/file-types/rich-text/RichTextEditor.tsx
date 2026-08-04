@@ -9,6 +9,7 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import { FontFamily } from '@tiptap/extension-font-family';
 import { TextAlign } from '@tiptap/extension-text-align';
+import { Highlight } from '@tiptap/extension-highlight';
 import { moveTableRow, moveTableColumn, CellSelection, selectedRect } from '@tiptap/pm/tables';
 import {
   TableCellsMerge,
@@ -87,6 +88,7 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
       Color,
       FontFamily.configure({ types: ['textStyle'] }),
       TextAlign.configure({ types: ['paragraph', 'heading'] }),
+      Highlight.configure({ multicolor: true }),
       // ponytail: registered last so StarterKit's CodeBlock + ListItem
       // Tab handlers get first dibs; they return false when the cursor
       // isn't in their context, falling through to this handler for
@@ -170,21 +172,6 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
   // On change, setCellAttribute('background', value) on the current cell
   // selection (preserved across the picker because no transaction moves the
   // cursor). "Clear" sets background to null.
-  // ponytail: hidden color input that "Custom color…" menu items trigger
-  // via .click() — opens the native OS color picker directly, skipping
-  // the old bgPicker popover. onChange applies the color to whatever
-  // context opened it (cell bg via setCellAttribute). The picker value
-  // resets after each apply so reopening starts from a known state.
-  const colorInputRef = useRef<HTMLInputElement | null>(null);
-  const colorInputTargetRef = useRef<'cell' | null>(null);
-  const openColorInput = (target: 'cell') => {
-    colorInputTargetRef.current = target;
-    colorInputRef.current?.click();
-  };
-  // ponytail: capture the last right-click position so the bgColor item can
-  // open the picker where the menu was. TableMenu closes itself (setCtxMenu
-  // null) before firing the item onClick, so ctxMenu is stale inside the
-  // onClick — this ref holds the position across that close.
   // ponytail: capture the last CellSelection positions so right-click can
   // restore it. PM's mousedown handler (delegated deeper in the DOM than
   // our React listener) processes the event first and the browser's
@@ -199,6 +186,9 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
   // reads from this state instead of editor.can() — by the time the menu
   // renders, selectionchange has fired and editor.can() returns false.
   const [cellMenuCaps, setCellMenuCaps] = useState<{ merge: boolean; split: boolean }>({ merge: false, split: false });
+  // ponytail: page zoom — applied to the editor content wrapper via CSS
+  // `zoom` (WebKit-native, Tauri's engine). Toolbar buttons drive it.
+  const [zoom, setZoom] = useState(1);
   // ponytail: snapshot pendingCellSelRef at cellCtxItems build time so
   // the item onClick closes over the captured positions. TableMenu's
   // button onClick fires onClose BEFORE it.onClick() — and onClose
@@ -291,7 +281,17 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
         {
           label: t('editor:table.cellMenu.customColor'),
           icon: Paintbrush,
-          onClick: () => openColorInput('cell'),
+          colorInput: {
+            onChange: (hex: string) => {
+              const snap = pendingSnapshot;
+              if (snap) {
+                editor?.chain().setCellSelection({ anchorCell: snap.anchor, headCell: snap.head }).run();
+                editor?.chain().setCellAttribute('background', hex).run();
+              } else {
+                editor?.chain().focus().setCellAttribute('background', hex).run();
+              }
+            },
+          },
         },
       ],
     },
@@ -384,11 +384,11 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden bg-panel">
-      {editor && <RichTextToolbar editor={editor} />}
+      {editor && <RichTextToolbar editor={editor} zoom={zoom} onZoomChange={setZoom} />}
       <div className="flex-1 overflow-auto">
         <div
           ref={scrollRef}
-          className="relative mx-auto max-w-[760px] px-8 py-6 min-h-full [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[60vh] [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:my-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:my-2 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_ul[data-type=taskList]]:list-none [&_.ProseMirror_ul[data-type=taskList]]:pl-0 [&_.ProseMirror_blockquote]:border-l-2 [&_.ProseMirror_blockquote]:border-brd [&_.ProseMirror_blockquote]:pl-4 [&_.ProseMirror_blockquote]:text-t3 [&_.ProseMirror_pre]:bg-surf2 [&_.ProseMirror_pre]:rounded [&_.ProseMirror_pre]:p-3 [&_.ProseMirror_code]:bg-surf2 [&_.ProseMirror_code]:px-1 [&_.ProseMirror_code]:rounded [&_.ProseMirror_hr]:border-brd [&_.ProseMirror_a]:text-acc [&_.ProseMirror_a]:underline [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-brd [&_.ProseMirror_th]:px-2 [&_.ProseMirror_th]:py-1 [&_.ProseMirror_th]:bg-surf2 [&_.ProseMirror_th]:text-left [&_.ProseMirror_th]:font-semibold [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-brd [&_.ProseMirror_td]:px-2 [&_.ProseMirror_td]:py-1 [&_.ProseMirror_td]:relative [&_.ProseMirror_th]:relative [&_.ProseMirror_.selectedCell]:bg-accdim [&_.ProseMirror_.column-resize]:cursor-col-resize [&_.ProseMirror_.column-resize-handle]:absolute [&_.ProseMirror_.column-resize-handle]:right-[-2px] [&_.ProseMirror_.column-resize-handle]:top-0 [&_.ProseMirror_.column-resize-handle]:bottom-0 [&_.ProseMirror_.column-resize-handle]:w-1 [&_.ProseMirror_.column-resize-handle]:z-10 [&_.ProseMirror_.column-resize-handle]:cursor-col-resize [&_.ProseMirror_.column-resize-handle:hover]:bg-acc [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:h-auto [&_.ProseMirror_selectednode]:ring-2 [&_.ProseMirror_selectednode]:ring-acc"
+          className="relative mx-auto max-w-[760px] px-8 py-6 min-h-full [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[60vh] [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:my-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:my-2 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_ul[data-type=taskList]]:list-none [&_.ProseMirror_ul[data-type=taskList]]:pl-0 [&_.ProseMirror_blockquote]:border-l-2 [&_.ProseMirror_blockquote]:border-brd [&_.ProseMirror_blockquote]:pl-4 [&_.ProseMirror_blockquote]:text-t3 [&_.ProseMirror_pre]:bg-surf2 [&_.ProseMirror_pre]:rounded [&_.ProseMirror_pre]:p-3 [&_.ProseMirror_code]:bg-surf2 [&_.ProseMirror_code]:px-1 [&_.ProseMirror_code]:rounded [&_.ProseMirror_hr]:border-brd [&_.ProseMirror_a]:text-acc [&_.ProseMirror_a]:underline [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-brd2 [&_.ProseMirror_th]:px-2 [&_.ProseMirror_th]:py-1 [&_.ProseMirror_th]:bg-surf2 [&_.ProseMirror_th]:text-left [&_.ProseMirror_th]:font-semibold [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-brd2 [&_.ProseMirror_td]:px-2 [&_.ProseMirror_td]:py-1 [&_.ProseMirror_td]:relative [&_.ProseMirror_th]:relative [&_.ProseMirror_.selectedCell]:bg-accdim [&_.ProseMirror_.column-resize]:cursor-col-resize [&_.ProseMirror_.column-resize-handle]:absolute [&_.ProseMirror_.column-resize-handle]:right-[-2px] [&_.ProseMirror_.column-resize-handle]:top-0 [&_.ProseMirror_.column-resize-handle]:bottom-0 [&_.ProseMirror_.column-resize-handle]:w-1 [&_.ProseMirror_.column-resize-handle]:z-10 [&_.ProseMirror_.column-resize-handle]:cursor-col-resize [&_.ProseMirror_.column-resize-handle:hover]:bg-acc [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:h-auto [&_.ProseMirror_selectednode]:ring-2 [&_.ProseMirror_selectednode]:ring-acc"
           onContextMenu={(e) => {
             if (!editor) return;
             if (!editor.isActive('table')) return;
@@ -454,7 +454,17 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
             }
           }}
         >
-          <EditorContent editor={editor} />
+          {/* ponytail: zoom applied on a wrapper INSIDE scrollRef, not on
+              scrollRef itself — TableControlsOverlay is a sibling of this
+              div (child of scrollRef) and computes positions from
+              getBoundingClientRect() (visual post-zoom coords) minus
+              scrollRef's rect. If scrollRef itself were zoomed, overlay
+              buttons (positioned in pre-zoom local coords) would drift by
+              a factor of `zoom`. Keeping the overlay un-zoomed means its
+              local coords match visual coords and handles stay glued. */}
+          <div style={{ zoom }}>
+            <EditorContent editor={editor} />
+          </div>
           {editor && <TableControlsOverlay editor={editor} containerRef={scrollRef} />}
         </div>
       </div>
@@ -480,25 +490,6 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
           }}
         />
       )}
-      {/* ponytail: hidden color input — opened via openColorInput() from
-          the table cell bg submenu's "Custom color…" item. Native OS
-          picker; onChange applies to whatever target set it (currently
-          only 'cell' → setCellAttribute('background')). The bgPicker
-          popover was removed in favor of this direct path. */}
-      <input
-        ref={colorInputRef}
-        type="color"
-        value="#000000"
-        onChange={(e) => {
-          const target = colorInputTargetRef.current;
-          if (target === 'cell') {
-            editor?.chain().focus().setCellAttribute('background', e.target.value).run();
-          }
-          colorInputTargetRef.current = null;
-        }}
-        className="sr-only"
-        aria-hidden
-      />
     </div>
   );
 }

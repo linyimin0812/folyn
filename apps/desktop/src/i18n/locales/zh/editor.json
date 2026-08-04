@@ -103,6 +103,12 @@
     "acceptAll": "全部接受",
     "rejectAll": "全部拒绝"
   },
+  "color": {
+    "buttonTitle": "文字颜色",
+    "textColor": "文字颜色",
+    "highlight": "高亮颜色",
+    "custom": "自定义"
+  },
   "table": {
     "insertButton": { "title": "插入表格" },
     "handle": { "rowActions": "行操作", "colActions": "列操作" },

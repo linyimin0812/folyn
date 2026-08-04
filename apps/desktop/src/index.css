@@ -78,6 +78,7 @@ aside button[data-tip]::after { bottom: auto; top: 100%; margin-bottom: 0; margi
   --ui-font-size: 14px;
 }
 [data-theme="light"] {
+  color-scheme: light;
   --bg: #f0f2f8; --panel: #fff; --surf: #f8f9fd; --surf2: #eef0f8;
   --hov: #e8ecf8; --act: #dde3f5; --brd: #dde2f0; --brd2: #c8d0e8;
   --t1: #1a2040; --t2: #4a5580; --t3: #8892b0; --t4: #c0c8e0;
@@ -96,6 +97,7 @@ aside button[data-tip]::after { bottom: auto; top: 100%; margin-bottom: 0; margi
   --cm-comment: #940; --cm-invalid: #f00;
 }
 [data-theme="dark"] {
+  color-scheme: dark;
   --bg: #0b0d14; --panel: #0f1219; --surf: #13161f; --surf2: #181c28;
   --hov: #1b1f2e; --act: #1e2438; --brd: #1c2136; --brd2: #252d4a;
   --t1: #e2e8f8; --t2: #9aa5c0; --t3: #6b7a96; --t4: #3a4560;
@@ -527,6 +529,13 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .settings-select:focus { border-color: var(--acc); }
 .settings-select:hover { border-color: var(--brd2, var(--brd)); }
 .settings-select option { background: var(--panel); color: var(--t1); }
+
+/* ponytail: rich-text table borders — bump brightness in dark mode so
+   cells stay readable against the panel. Light mode is fine with the
+   default brd2 token; dark mode's brd2 (#252d4a) is too dim on panel
+   (#0f1219). */
+[data-theme="dark"] .ProseMirror th,
+[data-theme="dark"] .ProseMirror td { border-color: #3a4470; }
 
 /* ── Responsive / Mobile ── */
 .sidebar-wrapper { display: contents; }
