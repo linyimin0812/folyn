@@ -994,9 +994,10 @@ html.is-pet-panel-window body {
   justify-content: space-between;
 }
 .pet-menu-chevron {
-  font-size: 13px;
-  opacity: 0.85;
+  font-size: 14px;
+  opacity: 1;
   color: inherit;
+  font-weight: 500;
 }
 
 /* Submenu (inline accordion) — indented children, slightly lighter bg. */

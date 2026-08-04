@@ -106,12 +106,12 @@ async function hideMenu(): Promise<void> {
 /**
  * Measure the rendered menu DOM, compute a quadrant-aware position (reusing
  * `computePanelPosition`'s corner-attach math from `petPosition.ts`), then
- * size + position + show the `pet-menu` window in one frame. Called on each
- * `pet://menu-show` event so a locale change (which shifts label widths)
- * re-positions correctly. Swallows errors so a missing window / failed
- * invoke doesn't break the open path — the menu just doesn't appear.
+ * size + position the `pet-menu` window. Used both on the open path (followed
+ * by `pet_menu_show`) and on accordion toggles (the window is already visible
+ * — caller must NOT re-show, that would flicker / steal focus). Swallows
+ * errors so a missing window / failed invoke doesn't break the open path.
  */
-async function openMenu(
+async function resizeAndReposition(
   root: HTMLDivElement | null,
   petSize: PetSize,
 ): Promise<void> {
@@ -144,6 +144,26 @@ async function openMenu(
       x: Math.round(posLogical.x * sf),
       y: Math.round(posLogical.y * sf),
     });
+  } catch (err) {
+    console.warn('[pet-menu] resize/reposition failed:', err);
+  }
+}
+
+/**
+ * Open path: measure rendered DOM + compute quadrant-aware position +
+ * size/position/show the window. Re-runs on every `pet://menu-show` event
+ * so a locale change (which shifts label widths) re-positions correctly.
+ * Delegates the measure+size+position work to `resizeAndReposition` so the
+ * accordion-toggle path can reuse it without re-showing the window.
+ */
+async function openMenu(
+  root: HTMLDivElement | null,
+  petSize: PetSize,
+): Promise<void> {
+  if (!isTauri() || !root) return;
+  await resizeAndReposition(root, petSize);
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
     await invoke('pet_menu_show');
   } catch (err) {
     console.warn('[pet-menu] open path failed:', err);
@@ -263,6 +283,20 @@ export function PetMenuApp(): JSX.Element {
     return () => unlisten?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [petSize]);
+
+  // Accordion toggle → re-measure + re-size + re-position the menu window
+  // (NOT re-show). When the size/opacity accordion expands, the DOM grows
+  // by 5 / 4 rows; the OS window was sized for the collapsed menu at open
+  // time, so without a re-size the new rows are clipped (transparent
+  // borderless NSPanel has no scroll). Re-positioning is also necessary
+  // because the menu may have been placed in a corner (e.g. pet at
+  // bottom-right → menu pops up-left) and the taller accordion could push
+  // it off-screen — `computePanelPosition` clamps to the work area.
+  useEffect(() => {
+    if (!isTauri()) return;
+    void resizeAndReposition(rootRef.current, petSize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openSection, petSize]);
 
   const toggleSection = (s: 'size' | 'opacity') =>
     setOpenSection((cur) => (cur === s ? null : s));
