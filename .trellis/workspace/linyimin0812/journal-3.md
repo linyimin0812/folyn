@@ -243,3 +243,37 @@ AI Panel Chat 用户气泡在暗黑模式下背景过亮突兀。根因：.chat-
 ### Next Steps
 
 - None - task complete
+
+
+## Session 122: Fix CSP frame-src for embed.diagrams.net in prod
+
+**Date**: 2026-08-04
+**Task**: Fix CSP frame-src for embed.diagrams.net in prod
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Prod build refused to load the drawio iframe because frame-src had a trailing colon after https://embed.diagrams.net:, making the source entry an invalid host:port and causing CSP to reject it. Dev was lax (Tauri dev CSP enforcement is loose on localhost devUrl) so the bug only surfaced in prod. Removed the trailing colon to match the other CSP directives.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1a2312b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
