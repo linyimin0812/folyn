@@ -4,6 +4,7 @@ import { Paperclip, Plus, Trash2 } from 'lucide-react';
 import { ChatInputBox, ChatMessageList } from '@/components/chat';
 import { VoiceInputButton } from '@/components/ai/VoiceInputButton';
 import { PairSelector } from '@/components/ai/PairSelector';
+import { useNavStore } from '@/store/navStore';
 import type { CliMessage } from '@quill/cli-adapter';
 import { runRigChat } from '@/services/rigChat';
 import { type ResolvedPairConfig } from '@/store/aiConfigStore';
@@ -473,6 +474,7 @@ export function BubbleTemplateAIChatModal({
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <PairSelector
+              trigger="icon"
               value={bubblePair}
               onChange={(pair) => {
                 // Phase 2: pair is per-session — write the active bt session.
@@ -480,7 +482,10 @@ export function BubbleTemplateAIChatModal({
                   setSessionPair(sessionId, pair);
                 }
               }}
-              className="max-w-[220px]"
+              onOpenSettings={() => {
+                useNavStore.getState().setCurrentPage('settings');
+                useNavStore.getState().setSettingsTab('models');
+              }}
             />
             <button
               className="text-t3 hover:text-t1 text-[14px]"
