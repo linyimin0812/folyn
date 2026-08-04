@@ -479,7 +479,7 @@
       "desc": "Apple Speech routes recognition by language; pick \"Simplified Chinese\" for Chinese speech. The system default locale may not match the spoken language; specify explicitly to avoid empty transcripts."
     },
     "globalHotkey": {
-      "label": "Voice input shortcut",
+      "label": "Voice hotkey",
       "desc": "Leave empty to disable; when set, hold the hotkey to start recording, release to finish and insert into the focused input (cross-app). Esc clears.",
       "recording": "Press a shortcut… (Esc to clear)",
       "notSet": "Not set (click to record)"
