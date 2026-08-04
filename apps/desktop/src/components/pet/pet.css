@@ -990,9 +990,13 @@ html.is-pet-panel-window body {
 .pet-menu-item--parent {
   justify-content: space-between;
 }
+.pet-menu-item--toggle {
+  justify-content: space-between;
+}
 .pet-menu-chevron {
-  font-size: 10px;
-  opacity: 0.7;
+  font-size: 13px;
+  opacity: 0.85;
+  color: inherit;
 }
 
 /* Submenu (inline accordion) — indented children, slightly lighter bg. */
@@ -1020,7 +1024,7 @@ html.is-pet-panel-window body {
   font-weight: 500;
 }
 
-/* Click-through toggle — leading check mark (empty when off). */
+/* Click-through toggle — trailing check mark (empty when off). */
 .pet-menu-check {
   width: 12px;
   text-align: center;

@@ -366,8 +366,8 @@ export function PetMenuApp(): JSX.Element {
           });
         }}
       >
-        <span className="pet-menu-check">{petClickThrough ? '✓' : ''}</span>
-        {t('pet:menu.clickThrough')}
+        <span>{t('pet:menu.clickThrough')}</span>
+        <span className="pet-menu-check" aria-hidden="true">{petClickThrough ? '✓' : ''}</span>
       </button>
 
       <div className="pet-menu-sep" />
