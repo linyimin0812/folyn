@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 120
+- **Total Sessions**: 121
 - **Last Active**: 2026-08-04
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~211 | Active |
+| `journal-3.md` | ~245 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 121 | 2026-08-04 | Mute AI Panel user bubble in dark mode | `ca707a4` | `master` |
 | 120 | 2026-08-04 | Fix AI Panel Chat table overflow | `c29d591` | `master` |
 | 119 | 2026-08-04 | Dark-mode markdown editor indent markers | `103db28` | `master` |
 | 118 | 2026-08-03 | Fix file-preview locking preview scroll | `66f6759` | `master` |

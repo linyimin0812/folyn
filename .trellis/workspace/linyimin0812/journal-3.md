@@ -209,3 +209,37 @@ AI Panel Chat 中 AI 返回含宽表格的消息时会撑破 380px 面板布局�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 121: Mute AI Panel user bubble in dark mode
+
+**Date**: 2026-08-04
+**Task**: Mute AI Panel user bubble in dark mode
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+AI Panel Chat 用户气泡在暗黑模式下背景过亮突兀。根因：.chat-msg-bubble-user 用 var(--acc) 作背景，暗黑下 --acc 为 #5b8af5 饱和度高。最小 CSS 修复：新增 [data-theme="dark"] .chat-msg-bubble-user { background: color-mix(in srgb, var(--acc) 55%, var(--surf)); }，将蓝色与暗背景混合 45% 降低饱和度；明亮模式不变。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ca707a4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
