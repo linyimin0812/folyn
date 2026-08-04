@@ -1,5 +1,16 @@
+import type { ComponentType } from 'react';
 import type { CliSendOptions, PermissionMode } from '@quill/cli-adapter';
-import { MessageSquare, Bot, CircleHelp, type LucideIcon } from 'lucide-react';
+import agentIcon from '@/assets/icons/agent.svg';
+import askIcon from '@/assets/icons/ask.svg';
+import chatIcon from '@/assets/icons/chat.svg';
+
+type ModeIcon = ComponentType<{ size?: number; className?: string }>;
+
+function makeSvgIcon(src: string): ModeIcon {
+  return function SvgModeIcon({ size = 14, className }) {
+    return <img src={src} width={size} height={size} className={className} alt="" />;
+  };
+}
 
 /**
  * Declarative descriptor for an AI panel input mode (ask / agent / future).
@@ -19,7 +30,7 @@ export interface AiInputModeDef {
   label: string;
   /** Icon for the compact (icon-only) mode trigger + dropdown rows.
    *  Optional — ChatInput falls back to a generic sparkles glyph. */
-  icon?: LucideIcon;
+  icon?: ModeIcon;
   /** Short human hint shown as the button title. */
   description?: string;
   /** Maps to `--permission-mode`. */
@@ -80,14 +91,14 @@ export function resolveSendOptions(modeId: string, base: CliSendOptions): CliSen
 registerInputMode({
   id: 'chat',
   label: 'Chat',
-  icon: MessageSquare,
+  icon: makeSvgIcon(chatIcon),
   description: '多轮对话（rig 直连 LLM，无工具，不读写文件）',
   backend: 'rig',
 });
 registerInputMode({
   id: 'agent',
   label: 'Agent',
-  icon: Bot,
+  icon: makeSvgIcon(agentIcon),
   description: '全工具自主执行（可读写文件）',
   permissionMode: 'bypassPermissions',
   // bare:false aligns with interactive Claude Code: --bare isolates the
@@ -99,7 +110,7 @@ registerInputMode({
 registerInputMode({
   id: 'ask',
   label: 'Ask',
-  icon: CircleHelp,
+  icon: makeSvgIcon(askIcon),
   description: '只读问答，不修改文件',
   permissionMode: 'plan',
 });
