@@ -352,26 +352,37 @@ export function PetMenuApp(): JSX.Element {
           {t('pet:menu.hidePet')}
         </button>
 
-        {/* Size submenu — hover-triggered floating card. Parent item has no
-         * onClick; it is a hover-only submenu trigger. */}
+        {/* Size submenu — hover- or click-triggered floating card. Clicking
+         * the parent opens the submenu immediately (clears pending show/hide
+         * first so click doesn't race with a pending hover). */}
         <button
           className="pet-menu-item pet-menu-item--parent"
           role="menuitem"
           aria-expanded={hoveredSection?.section === 'size'}
           onMouseEnter={(e) => showSubmenu('size', e.currentTarget.offsetTop)}
           onMouseLeave={hideSubmenu}
+          onClick={(e) => {
+            clearShow();
+            clearHide();
+            setHoveredSection({ section: 'size', offsetTop: e.currentTarget.offsetTop });
+          }}
         >
           <span>{t('pet:menu.sizeSubmenu')}</span>
           <span className="pet-menu-chevron">▸</span>
         </button>
 
-        {/* Opacity submenu — hover-triggered floating card. */}
+        {/* Opacity submenu — hover- or click-triggered floating card. */}
         <button
           className="pet-menu-item pet-menu-item--parent"
           role="menuitem"
           aria-expanded={hoveredSection?.section === 'opacity'}
           onMouseEnter={(e) => showSubmenu('opacity', e.currentTarget.offsetTop)}
           onMouseLeave={hideSubmenu}
+          onClick={(e) => {
+            clearShow();
+            clearHide();
+            setHoveredSection({ section: 'opacity', offsetTop: e.currentTarget.offsetTop });
+          }}
         >
           <span>{t('pet:menu.opacitySubmenu')}</span>
           <span className="pet-menu-chevron">▸</span>
@@ -410,7 +421,7 @@ export function PetMenuApp(): JSX.Element {
         <div
           className="pet-menu-submenu"
           role="group"
-          style={{ top: hoveredSection.offsetTop }}
+          style={{ marginTop: hoveredSection.offsetTop }}
           onMouseEnter={() => {
             // Crossing from parent item onto the submenu card — cancel the
             // pending hide so the submenu stays open while the user is on it.

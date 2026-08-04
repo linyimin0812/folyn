@@ -945,13 +945,16 @@ html.is-pet-panel-window body {
  * the visible card fills the window — same logic as the pet-bubble).
  * ──────────────────────────────────────────────────────────────────────────── */
 
-/* Window-root wrapper: position relative so the absolute floating submenu
- * anchors here. `getBoundingClientRect` on this returns the union of the
- * main card + the submenu card when the submenu is rendered, which is what
- * `resizeAndReposition` measures to size the OS window. */
+/* Window-root wrapper: flex so the submenu is in-flow and contributes to the
+ * wrapper's box. `getBoundingClientRect` on this returns the union of the main
+ * card + the submenu card (side by side, max height) when the submenu is
+ * rendered, which is what `resizeAndReposition` measures to size the OS
+ * window. The previous `position: relative` + `display: inline-block` left
+ * the absolute submenu out-of-flow, so the wrapper's box stayed at main-card
+ * size and the submenu was clipped at the window's right edge. */
 .pet-menu-window-root {
-  position: relative;
-  display: inline-block; /* shrink to fit; width driven by the main card */
+  display: flex;
+  align-items: flex-start;
 }
 
 .pet-menu-root {
@@ -1009,16 +1012,14 @@ html.is-pet-panel-window body {
   font-weight: 500;
 }
 
-/* Floating submenu card — positioned to the right of the main card, top
- * aligned with the parent item's top edge (set inline via `style.top`). This
- * replaces the old inline-accordion submenu (click-to-expand rows below the
- * parent) with a native-NSMenu-style side card (hover-triggered). Items
- * inside reuse `.pet-menu-item` + `--radio` + `.pet-menu-radio` + `.is-checked`
- * — no indent, base `7px 14px` padding (the indent was for the accordion). */
+/* Submenu card — in-flow flex sibling of the main card (margin-left for the
+ * visual gap, margin-top set inline via `style.marginTop` to align with the
+ * parent item). The previous `position: absolute; left: 100%; top: 0` left
+ * the submenu out-of-flow so the wrapper's `getBoundingClientRect` did not
+ * include it → the OS window never grew → the submenu was clipped at the
+ * window's right edge. Items inside reuse `.pet-menu-item` + `--radio` +
+ * `.pet-menu-radio` + `.is-checked` — no indent, base `7px 14px` padding. */
 .pet-menu-submenu {
-  position: absolute;
-  top: 0; /* overridden inline by `style.top` */
-  left: 100%;
   margin-left: 6px;
   box-sizing: border-box;
   min-width: 120px;
@@ -1032,7 +1033,6 @@ html.is-pet-panel-window body {
   font-size: 13px;
   user-select: none;
   -webkit-user-select: none;
-  z-index: 1;
 }
 
 /* Radio item — leading circle indicator, fills when checked. */
