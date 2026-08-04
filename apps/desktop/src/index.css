@@ -1281,3 +1281,25 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
    has its own React direction buttons (right-edge vertical strip); the
    library's bundled toolbar would duplicate them. */
 .mind-elixir-toolbar.lt { display: none !important; }
+
+/* ── Mind map (mmap) rendering quality ──
+ * The body sets -webkit-font-smoothing: antialiased which makes text appear
+ * thin on macOS, especially Chinese fonts (PingFang SC). Combined with the
+ * CSS transform: translate3d() on .map-canvas (GPU compositing layer), the
+ * text can look blurry. Restore subpixel rendering for sharper text, and
+ * use geometricPrecision for SVG branch lines.
+ */
+.map-container {
+  -webkit-font-smoothing: subpixel-antialiased;
+  -moz-osx-font-smoothing: auto;
+}
+.map-container svg {
+  /* geometricPrecision preserves anti-aliasing but improves precision for
+     curved branch lines — crispEdges would make bezier curves jagged. */
+  shape-rendering: geometricPrecision;
+}
+.map-container .map-canvas {
+  /* Hint the browser to keep the compositing layer for the 3D transform
+     (translate3d) optimized, preventing resolution loss on Retina. */
+  will-change: transform;
+}

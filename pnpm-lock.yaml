@@ -14,6 +14,9 @@ patchedDependencies:
   e-virt-table@1.4.2:
     hash: 4qsgisplhrk7qnejqmvcprfx4e
     path: patches/e-virt-table@1.4.2.patch
+  mind-elixir@5.14.0:
+    hash: mhfuxjqe3tx2rmxzbxzkzkzz4u
+    path: patches/mind-elixir@5.14.0.patch
 
 importers:
 
@@ -229,7 +232,7 @@ importers:
         version: 11.15.0
       mind-elixir:
         specifier: ^5.14.0
-        version: 5.14.0
+        version: 5.14.0(patch_hash=mhfuxjqe3tx2rmxzbxzkzkzz4u)
       papaparse:
         specifier: ^5.5.4
         version: 5.5.4
@@ -9143,7 +9146,7 @@ snapshots:
     dependencies:
       mime-db: 1.52.0
 
-  mind-elixir@5.14.0: {}
+  mind-elixir@5.14.0(patch_hash=mhfuxjqe3tx2rmxzbxzkzkzz4u): {}
 
   minimatch@10.2.5:
     dependencies:

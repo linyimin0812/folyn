@@ -1,0 +1,17 @@
+diff --git a/dist/MindElixir.js b/dist/MindElixir.js
+index d4625a34355ef67fafcc3e67492d016696dcc2c5..878af3370155580fff844ea1f0f1f8108e0eaa3a 100644
+--- a/dist/MindElixir.js
++++ b/dist/MindElixir.js
+@@ -729,10 +729,10 @@ const nn = function(e, t = !1) {
+   const { container: n, map: o, nodes: s } = e;
+   let i, l;
+   if (e.alignment === "nodes" || t)
+-    i = (n.offsetWidth - s.offsetWidth) / 2, l = (n.offsetHeight - s.offsetHeight) / 2, o.style.transformOrigin = "50% 50%";
++    i = Math.round((n.offsetWidth - s.offsetWidth) / 2), l = Math.round((n.offsetHeight - s.offsetHeight) / 2), o.style.transformOrigin = "50% 50%";
+   else {
+     const c = o.querySelector("me-root"), r = c.offsetTop, a = c.offsetLeft, d = c.offsetWidth, h = c.offsetHeight;
+-    i = n.offsetWidth / 2 - a - d / 2, l = n.offsetHeight / 2 - r - h / 2, o.style.transformOrigin = `${a + d / 2}px 50%`;
++    i = Math.round(n.offsetWidth / 2 - a - d / 2), l = Math.round(n.offsetHeight / 2 - r - h / 2), o.style.transformOrigin = `${a + d / 2}px 50%`;
+   }
+   return { dx: i, dy: l };
+ }, gn = function() {
