@@ -19,7 +19,7 @@ import { useNavStore } from './store/navStore';
 import { useAppearanceStore } from './store/appearanceStore';
 import { useEditorViewStateStore } from './store/editorViewState';
 import { useVaultStore, startFileTreeBroadcast } from './store/vaultStore';
-import { settingsLoadDone, persistNow } from './store/settingsPersistence';
+import { settingsLoadDone, persistNow, loadSettings, resolveSettingsLoadDone } from './store/settingsPersistence';
 import { useEditorStore } from './store/editorStore';
 import * as editorIoService from './services/editorIoService';
 import { registerEditorFileChangeApplier } from './services/fileChangeApplier';
@@ -113,6 +113,18 @@ export default function App() {
   useTheme();
   useDisableAutoCapitalize();
   usePetHostBridge();
+
+  // ── Hydrate persisted settings on mount ──
+  // loadSettings() reads every registered store's slice from disk and
+  // hydrates the Zustand stores. Must run AFTER the component mounts so
+  // that all module-level code (including registerPersistSlice calls) has
+  // finished evaluating — otherwise SLICES is still [] and no store gets
+  // hydrated. The promise returned by resolveSettingsLoadDone() unblocks
+  // every effect that awaits settingsLoadDone, including the pet-icon
+  // orphan sweep in usePetHostBridge and the vault initializer below.
+  useEffect(() => {
+    loadSettings().then(() => resolveSettingsLoadDone());
+  }, []);
 
   const isMobile = useIsMobile();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
