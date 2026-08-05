@@ -761,7 +761,7 @@ function TerminalResizeHandle({
           document.documentElement.classList.add('is-resizing');
         }}
       />
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-brd transition-colors duration-150 hover:bg-acc hover:opacity-60" />
+      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-brd transition-colors duration-150 hover:bg-acc hover:opacity-60" />
     </div>
   );
 }
