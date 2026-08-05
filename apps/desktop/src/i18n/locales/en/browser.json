@@ -1,6 +1,7 @@
 {
   "addressPlaceholder": "Enter a URL and press Enter",
   "importData": "Import from Chrome",
+  "importLabel": "Import",
   "importCookies": "Import Chrome cookies",
   "importPasswords": "Import Chrome passwords",
   "passwords": "Passwords",

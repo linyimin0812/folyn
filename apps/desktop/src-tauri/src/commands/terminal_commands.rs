@@ -21,14 +21,16 @@ static TERMINALS: LazyLock<Mutex<HashMap<String, TerminalSession>>> =
 
 /// Spawn a PTY-backed shell and start streaming its output to the frontend
 /// via the `terminal-output` event (base64 payloads so arbitrary bytes round
-/// trip intact). `terminal-exit` fires when the shell process ends.
+/// trip intact). Returns the resolved shell path so the UI can label the tab
+/// with the actual shell (e.g. `zsh`). `terminal-exit` fires when the shell
+/// process ends.
 #[tauri::command]
 pub fn terminal_create(
     app: tauri::AppHandle,
     id: String,
     cwd: Option<String>,
     shell: Option<String>,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let pty_system = native_pty_system();
     let pair = pty_system
         .openpty(PtySize {
@@ -99,7 +101,7 @@ pub fn terminal_create(
         let _ = emit_app.emit("terminal-exit", serde_json::json!({ "id": emit_id }));
     });
 
-    Ok(())
+    Ok(shell_path)
 }
 
 /// Forward a chunk of input to the session's pty. xterm input is UTF-8 text

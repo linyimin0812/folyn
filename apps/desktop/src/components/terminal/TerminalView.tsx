@@ -24,6 +24,7 @@ export function TerminalView({ id, active }: TerminalViewProps) {
   const fitRef = useRef<FitAddon | null>(null);
   const spawnedRef = useRef(false);
   const setStatus = useTerminalStore((s) => s.setStatus);
+  const setTitle = useTerminalStore((s) => s.setTitle);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -31,30 +32,31 @@ export function TerminalView({ id, active }: TerminalViewProps) {
 
     const term = new Terminal({
       cursorBlink: true,
-      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      fontSize: 13,
-      lineHeight: 1.2,
+      fontFamily: '"DM Mono", Menlo, Monaco, "Courier New", monospace',
+      fontSize: 12,
+      lineHeight: 1.35,
       theme: {
-        background: '#1e1e2e',
-        foreground: '#cdd6f4',
-        cursor: '#f5e0dc',
-        selectionBackground: '#45475a',
-        black: '#45475a',
-        red: '#f38ba8',
-        green: '#a6e3a1',
-        yellow: '#f9e2af',
-        blue: '#89b4fa',
-        magenta: '#f5c2e7',
-        cyan: '#94e2d5',
-        white: '#bac2de',
-        brightBlack: '#585b70',
-        brightRed: '#f38ba8',
-        brightGreen: '#a6e3a1',
-        brightYellow: '#f9e2af',
-        brightBlue: '#89b4fa',
-        brightMagenta: '#f5c2e7',
-        brightCyan: '#94e2d5',
-        brightWhite: '#a6adc8',
+        background: '#0d1117',
+        foreground: '#e6edf3',
+        cursor: '#f0f6fc',
+        cursorAccent: '#0d1117',
+        selectionBackground: '#388bfd40',
+        black: '#484f58',
+        red: '#ff7b72',
+        green: '#3fb950',
+        yellow: '#d29922',
+        blue: '#58a6ff',
+        magenta: '#bc8cff',
+        cyan: '#39c5cf',
+        white: '#b1bac4',
+        brightBlack: '#6e7681',
+        brightRed: '#ffa198',
+        brightGreen: '#56d364',
+        brightYellow: '#e3b341',
+        brightBlue: '#79c0ff',
+        brightMagenta: '#d2a8ff',
+        brightCyan: '#56d4dd',
+        brightWhite: '#f0f6fc',
       },
     });
     const fit = new FitAddon();
@@ -103,13 +105,15 @@ export function TerminalView({ id, active }: TerminalViewProps) {
         }
         const { invoke } = await import('@tauri-apps/api/core');
         const vault = useVaultStore.getState().currentVault?.basePath;
-        await invoke('terminal_create', {
+        const shell = await invoke<string>('terminal_create', {
           id,
           cwd: vault ?? '',
           shell: null,
         });
         if (cancelled) return;
         spawnedRef.current = true;
+        const shellName = shell.split('/').pop();
+        if (shellName) setTitle(id, shellName);
         setStatus(id, 'running');
         try {
           fit.fit();
@@ -158,7 +162,7 @@ export function TerminalView({ id, active }: TerminalViewProps) {
       termRef.current = null;
       fitRef.current = null;
     };
-  }, [id, setStatus]);
+  }, [id, setStatus, setTitle]);
 
   useEffect(() => {
     if (!active) return;
@@ -182,7 +186,7 @@ export function TerminalView({ id, active }: TerminalViewProps) {
 
   return (
     <div
-      className="absolute inset-0 p-[6px] bg-[#1e1e2e] overflow-hidden"
+      className="absolute inset-0 p-2 bg-[#0d1117] overflow-hidden"
       style={{ display: active ? 'block' : 'none' }}
       onClick={() => termRef.current?.focus()}
     >

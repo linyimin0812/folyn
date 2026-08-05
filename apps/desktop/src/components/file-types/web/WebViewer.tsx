@@ -434,7 +434,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
 
   return (
     <div className="web-viewer-container flex-1 flex flex-col bg-surf overflow-hidden relative">
-      <div className="web-viewer-bar flex items-center gap-2 py-1.5 px-3 bg-panel border-b border-brd shrink-0">
+      <div className="web-viewer-bar flex items-center gap-1.5 py-1 px-2 bg-panel border-b border-brd shrink-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {clipPath && (
           <button className="web-viewer-nav-btn flex items-center justify-center w-[26px] h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1" title="返回卡片" onClick={handleBackToClip}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -464,7 +464,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
             </button>
           </>
         )}
-        <form className="flex-1 min-w-0 flex items-center" onSubmit={submitUrl}>
+        <form className="flex-1 min-w-[140px] flex items-center shrink-0" onSubmit={submitUrl}>
           <div className="flex-1 min-w-0 flex items-center gap-1.5 h-[26px] px-2.5 rounded-[6px] bg-bg border border-brd transition-colors duration-150 focus-within:border-acc">
             <Globe size={12} className="text-t3 shrink-0" />
             <input
@@ -479,7 +479,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
           </div>
         </form>
         {!clipPath && (
-          <button className="web-viewer-clip-btn flex items-center justify-center w-7 h-7 border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1 disabled:opacity-50 disabled:cursor-not-allowed" title={clipError ? '剪藏失败，请重试' : '剪藏此页'} onClick={handleClipPage} disabled={clipping}>
+          <button className="web-viewer-clip-btn flex items-center justify-center w-7 h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1 disabled:opacity-50 disabled:cursor-not-allowed" title={clipError ? '剪藏失败，请重试' : '剪藏此页'} onClick={handleClipPage} disabled={clipping}>
             {clipping ? (
               <span className="inline-block w-3.5 h-3.5 rounded-full border-[1.5px] border-brd border-t-acc animate-spin" />
             ) : clipError ? (
@@ -494,13 +494,14 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
             )}
           </button>
         )}
-        <div className="relative" ref={importRef}>
+        <div className="relative shrink-0" ref={importRef}>
           <button
-            className="flex items-center justify-center w-7 h-7 border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1"
+            className="flex items-center gap-1 h-[26px] px-2 border border-brd rounded-[6px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1"
             title={t('browser:importData')}
             onClick={() => setImportOpen((v) => !v)}
           >
-            <Download size={14} />
+            <Download size={12} />
+            <span className="text-[11px] font-medium whitespace-nowrap">{t('browser:importLabel')}</span>
           </button>
           {importOpen && (
             <div className="absolute top-full right-0 mt-1 z-[120] min-w-[210px] bg-surf border border-brd rounded-[8px] shadow-[0_8px_28px_rgba(0,0,0,0.16)] py-1">
@@ -525,9 +526,9 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
             </div>
           )}
         </div>
-        <div className="relative" ref={passwordRef}>
+        <div className="relative shrink-0" ref={passwordRef}>
           <button
-            className="flex items-center justify-center w-7 h-7 border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1"
+            className="flex items-center justify-center w-7 h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1"
             title={t('browser:passwords')}
             onClick={() => setPasswordOpen((v) => !v)}
           >
@@ -574,13 +575,13 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
           )}
         </div>
         <button
-          className="flex items-center justify-center w-7 h-7 border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1"
+          className="flex items-center justify-center w-7 h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1"
           title={t('browser:newTab')}
           onClick={() => openBrowserTab()}
         >
           <Plus size={14} />
         </button>
-        <button className="web-viewer-open-btn flex items-center justify-center w-7 h-7 border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1" title="在外部浏览器打开" onClick={openExternal}>
+        <button className="web-viewer-open-btn flex items-center justify-center w-7 h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1" title="在外部浏览器打开" onClick={openExternal}>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M12 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4" />
             <path d="M9 2h5v5" />

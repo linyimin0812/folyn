@@ -1,6 +1,7 @@
 {
   "addressPlaceholder": "输入网址，按 Enter 打开",
   "importData": "从 Chrome 导入数据",
+  "importLabel": "导入",
   "importCookies": "导入 Chrome Cookies",
   "importPasswords": "导入 Chrome 密码",
   "passwords": "密码",
