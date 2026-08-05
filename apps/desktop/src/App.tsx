@@ -121,7 +121,7 @@ export default function App() {
   // finished evaluating — otherwise SLICES is still [] and no store gets
   // hydrated. The promise returned by resolveSettingsLoadDone() unblocks
   // every effect that awaits settingsLoadDone, including the pet-icon
-  // orphan sweep in usePetHostBridge and the vault initializer below.
+  // library reconcile in usePetHostBridge and the vault initializer below.
   useEffect(() => {
     loadSettings().then(() => resolveSettingsLoadDone());
   }, []);

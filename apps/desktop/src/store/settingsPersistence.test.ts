@@ -7,11 +7,18 @@ import { useAiConfigStore } from './aiConfigStore';
 import { usePrefsStore, DEFAULT_SHORTCUTS } from './prefsStore';
 import { usePetStore } from './petStore';
 import { useScheduleStore } from './scheduleStore';
-import { loadSettings, hydrateAllStores, persistNow } from './settingsPersistence';
+import {
+  loadSettings,
+  hydrateAllStores,
+  persistNow,
+  markSettingsHydrated,
+  __resetSettingsHydrationForTesting,
+} from './settingsPersistence';
 import { PET_SIZE_VERSION } from '@/components/pet/petPosition';
 
 beforeEach(() => {
   storageClient.__resetForTesting();
+  markSettingsHydrated();
   vi.useFakeTimers();
 });
 
@@ -325,3 +332,44 @@ describe('settingsPersistence flush-on-quit', () => {
   });
 });
 
+describe('settingsPersistence pre-hydration persist gate', () => {
+  beforeEach(() => {
+    storageClient.__resetForTesting();
+    __resetSettingsHydrationForTesting();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('setters before hydration never write the default slice over disk', async () => {
+    // Regression: at launch the main window can receive automated events
+    // (e.g. pet://visibility-changed → setPetModeEnabled) before
+    // loadSettings() finishes hydrating. The store is still at DEFAULTS, so
+    // persisting would overwrite ~/.quill/storage/pet.json (and the other
+    // slice files) with empty state — and loadSettings would then hydrate
+    // FROM the poisoned cache, losing the user's saved settings (pet icon
+    // library, appearance, …) on every restart. The gate must drop these
+    // pre-hydration writes entirely.
+    const setSpy = vi.spyOn(storageClient, 'set');
+
+    usePetStore.getState().setPetModeEnabled(true);
+    vi.advanceTimersByTime(400);
+    expect(setSpy).not.toHaveBeenCalled();
+
+    // persistNow on quit has the same hazard — skip it too while unhydrated.
+    await persistNow();
+    expect(setSpy).not.toHaveBeenCalled();
+    setSpy.mockRestore();
+  });
+
+  it('setters persist normally once hydration completes', async () => {
+    const setSpy = vi.spyOn(storageClient, 'set');
+    await loadSettings();
+    usePetStore.getState().setPetModeEnabled(false);
+    vi.advanceTimersByTime(400);
+    expect(setSpy).toHaveBeenCalled();
+    setSpy.mockRestore();
+  });
+});

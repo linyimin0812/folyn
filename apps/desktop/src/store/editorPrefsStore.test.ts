@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useEditorPrefsStore } from './editorPrefsStore';
 import { storageClient } from '@/utils/storageClient';
+import { markSettingsHydrated } from './settingsPersistence';
 
 beforeEach(() => {
   storageClient.__resetForTesting();
+  markSettingsHydrated();
   vi.useFakeTimers();
   useEditorPrefsStore.setState({
     editorFont: 'DM Mono',

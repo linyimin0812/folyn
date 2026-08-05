@@ -6,6 +6,7 @@ import { keysToAccelerator } from '@/utils/shortcutAccelerator';
 import { isTauri } from '@/utils/platform';
 import { currentWindowScaleFactor } from '@/utils/windowScale';
 import { usePetStore } from '@/store/petStore';
+import { hydrateAllStores } from '@/store/settingsPersistence';
 
 /**
  * PetApp — mounted only in the `pet` Tauri window (see main.tsx `#/pet` route
@@ -767,6 +768,40 @@ export function PetApp() {
         });
       } catch (err) {
         console.warn('[pet] global shortcut setup failed:', err);
+      }
+    })();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  // ── Cross-window settings hydration ──
+  // The pet window holds its own petStore instance (separate JS realm).
+  // The main window hydrates from disk and broadcasts
+  // `pet://settings-updated` after every persist — without this listener the
+  // pet window would stay at DEFAULTS on every launch
+  // (`petIconSource='builtin'`), so a persisted custom icon never renders
+  // after a restart until the user re-touches icon settings (which fires
+  // `pet://icon-changed`). Hydrate from the broadcast, mirroring the
+  // pet-bubble / pet-corner / pet-panel / pet-menu windows. The startup
+  // broadcast can fire before this window's webview registers its listener,
+  // so emit `pet://settings-request` after registering — the main window
+  // answers with the current merged blob.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { listen, emit } = await import('@tauri-apps/api/event');
+        unlisten = await listen<Record<string, unknown>>(
+          'pet://settings-updated',
+          (event) => {
+            if (event.payload) hydrateAllStores(event.payload);
+          },
+        );
+        await emit('pet://settings-request', {});
+      } catch (err) {
+        console.warn('[pet] settings-updated listener setup failed:', err);
       }
     })();
     return () => {

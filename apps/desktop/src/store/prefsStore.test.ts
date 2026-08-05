@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { usePrefsStore, DEFAULT_SHORTCUTS, backfillDefaultShortcuts } from './prefsStore';
 import { storageClient } from '@/utils/storageClient';
+import { markSettingsHydrated } from './settingsPersistence';
 
 beforeEach(() => {
   storageClient.__resetForTesting();
+  markSettingsHydrated();
   vi.useFakeTimers();
   usePrefsStore.setState({
     dailyNotesDir: '__daily__',

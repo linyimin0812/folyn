@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useAiConfigStore, PERSIST_KEYS_AI_CONFIG, resolvePairForSession, type ChatProvider } from './aiConfigStore';
 import { storageClient } from '@/utils/storageClient';
+import { markSettingsHydrated } from './settingsPersistence';
 import { providerConfigStorage } from '@/services/providers/providerConfigStorage';
 import { PROVIDER_CATALOG, PROVIDER_IDS, type CustomProvider } from '@/services/providers/catalog';
 import { DEFAULT_SCRIPT_RUNTIMES } from '@/services/scriptRunner/scriptRunnerService';
@@ -60,6 +61,7 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
 
 beforeEach(() => {
   storageClient.__resetForTesting();
+  markSettingsHydrated();
   providerConfigStorage.__resetForTesting();
   FS.clear();
   vi.useFakeTimers();

@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useScheduleStore } from './scheduleStore';
 import { storageClient } from '@/utils/storageClient';
-import { hydrateAllStores } from './settingsPersistence';
+import { hydrateAllStores, markSettingsHydrated } from './settingsPersistence';
 import { DEFAULT_BOARD_COLUMNS, COLUMN_COLOR_PALETTE } from '@/features/schedule/types';
 
 beforeEach(() => {
   storageClient.__resetForTesting();
+  markSettingsHydrated();
   vi.useFakeTimers();
   useScheduleStore.setState({
     events: [],

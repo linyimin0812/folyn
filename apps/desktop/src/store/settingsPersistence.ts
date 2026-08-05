@@ -25,6 +25,31 @@ export interface PersistSlice {
 
 const SLICES: PersistSlice[] = [];
 
+// ponytail: hydration gate for the per-setter persist closures. The store
+// defaults are the pre-hydration state; any setter that fires in that window
+// (e.g. the pet://visibility-changed sync during launch, before loadSettings
+// finishes) would otherwise write the DEFAULT slice over the real persisted
+// data — and loadSettings would then hydrate FROM that poisoned cache, so
+// the user's saved settings (pet icon library, appearance, …) are lost on
+// every restart. loadSettings() flips this on once every slice has hydrated;
+// persist() / persistNow() no-op until then. See 634123f / f33ad53 / the
+// pet-icon-restart PRD for the incident history.
+let hydrationDone = false;
+
+/** Called by loadSettings() once every registered slice has hydrated.
+ *  Also exported so store tests can model the app lifecycle (hydration
+ *  completes before user setters run). Idempotent. */
+export function markSettingsHydrated(): void {
+  hydrationDone = true;
+}
+
+/** Test-only: reset the hydration gate so a test can exercise the
+ *  pre-hydration persist-blocking path. Mirrors
+ *  `storageClient.__resetForTesting()`. */
+export function __resetSettingsHydrationForTesting(): void {
+  hydrationDone = false;
+}
+
 // ponytail: debounced broadcast — every per-setter persist schedules it, the
 // trailing edge emits one `pet://settings-updated` carrying the merged blob.
 // Mirrors storageClient's 300ms debounce (FLUSH_DELAY not exported; hardcode
@@ -64,6 +89,10 @@ const EXPECTED_SLICES = [
 export function registerPersistSlice(slice: PersistSlice): () => void {
   if (!SLICES.includes(slice)) SLICES.push(slice);
   return () => {
+    // Pre-hydration writes are default-state noise that would clobber the
+    // persisted file AND poison the storageClient cache that loadSettings
+    // hydrates from — skip them entirely.
+    if (!hydrationDone) return;
     void storageClient.set(slice.name, pickSliceData(slice));
     scheduleBroadcast();
   };
@@ -84,7 +113,11 @@ function pickSliceData(slice: PersistSlice): Record<string, unknown> {
  *  writes its own file. Secondary Tauri windows (pet-corner, pet-bubble,
  *  pet-panel) lack fs-plugin ACL perms to re-read ~/.quill/storage/ files
  *  themselves, so they hydrate from the broadcast blob instead. */
-function collectPersistedBlob(): Record<string, unknown> {
+/** Merge every registered slice's keys into a single blob. Used to assemble
+ *  the `pet://settings-updated` broadcast payload and to answer
+ *  `pet://settings-request` from secondary windows. On disk, each slice
+ *  writes its own file; the merged blob is only for cross-window sync. */
+export function collectPersistedBlob(): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const slice of SLICES) {
     const state = slice.getState();
@@ -109,6 +142,7 @@ function collectPersistedBlob(): Record<string, unknown> {
  *  reset; storageClient's own debounce already coalesces, so we accept the
  *  redundant writes here. */
 export async function persistNow(): Promise<void> {
+  if (!hydrationDone) return;
   scheduleBroadcast.cancel();
   for (const slice of SLICES) {
     await storageClient.set(slice.name, pickSliceData(slice));
@@ -178,6 +212,10 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
       for (const k of Object.keys(data)) blob[k] = data[k];
     }
   }
+  // Hydration of the registered slices is done — unblock persist(). Placed
+  // BEFORE the aiConfig/loadFromDisk step below so that step's own setters
+  // persist exactly as they did before the gate existed.
+  markSettingsHydrated();
 
   try {
     const { useAiConfigStore } = await import('./aiConfigStore');
@@ -207,7 +245,7 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
 
 // ponytail: eager-load promise is the single await point for "is hydration
 // done yet?". Callers that read persisted state at startup (e.g. the pet-icon
-// orphan sweep in usePetHostBridge) MUST await this before touching the store
+// library reconcile in usePetHostBridge) MUST await this before touching the store
 // — otherwise they read default state and clobber the persisted value.
 //
 // Deferred promise — NOT resolved at module evaluation time. The eager

@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useVaultConfigStore } from './vaultConfigStore';
 import { storageClient } from '@/utils/storageClient';
+import { markSettingsHydrated } from './settingsPersistence';
 
 beforeEach(() => {
   storageClient.__resetForTesting();
+  markSettingsHydrated();
   vi.useFakeTimers();
   useVaultConfigStore.setState({
     vaultPath: '~/Documents/quill/my-notes',

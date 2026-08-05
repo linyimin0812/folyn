@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { usePetStore } from './petStore';
 import { storageClient } from '@/utils/storageClient';
+import { markSettingsHydrated } from './settingsPersistence';
 import { PET_SIZE_VERSION, PET_SIZE_DEFAULT } from '@/components/pet/petPosition';
 
 beforeEach(() => {
   storageClient.__resetForTesting();
+  markSettingsHydrated();
   vi.useFakeTimers();
   usePetStore.setState({
     petModeEnabled: false,

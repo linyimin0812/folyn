@@ -1,12 +1,9 @@
 // usePetHostBridge — main-window pet Tauri event-bus hook
 // (PRD: extract-pet-host-bridge-from-app).
 //
-// Owns the four `pet://` listen channels + launch restore + pet icon orphan
-// sweep + the petNotifyDispatcher hookup, lifted verbatim from App.tsx
-// :167-397. App calls `usePetHostBridge()` once; all unlisten/cleanup lives
-// in the effect's return. Currently dormant (App.tsx still holds the inline
-// copy — PR2 swaps it for `usePetHostBridge()`). Behavior is identical to the
-// inline plumbing this replaces.
+// Owns the pet:// listen channels + launch restore + pet icon library
+// reconcile + the petNotifyDispatcher hookup. App calls `usePetHostBridge()`
+// once; all unlisten/cleanup lives in the effect's return.
 //
 // Spec: hook-guidelines.md (effect cleanup), tauri-window-patterns.md
 // (pet:// channels, window isolation), component-guidelines.md.
@@ -14,7 +11,7 @@
 import { useEffect } from 'react';
 import { isTauri } from '@/utils/platform';
 import { usePetStore } from '@/store/petStore';
-import { settingsLoadDone } from '@/store/settingsPersistence';
+import { settingsLoadDone, collectPersistedBlob } from '@/store/settingsPersistence';
 import { dispatchNotification } from '@/services/petNotifyDispatcher';
 import { routePetMenuAction, routePetBubbleAction } from '@/services/petHostRouter';
 import type { PetMenuAction } from '@/components/pet/PetContextMenu';
@@ -28,7 +25,7 @@ import type { PetBubbleActionEvent, PetBubblePayload } from '@/components/pet/Pe
  * outside Tauri.
  */
 export function usePetHostBridge(): void {
-  // ── Pet icon library reconcile + orphan sweep (PRD: settings-pet-tab-and-custom-icon) ──
+  // ── Pet icon library reconcile (PRD: settings-pet-tab-and-custom-icon) ──
   // On startup, reconcile the persisted `petIcons` library + active
   // `petIconPath` with the actual files under ~/.quill/pet-icon/. Lives in
   // the MAIN window (not PetApp) because the fs plugin calls require ACL
@@ -40,13 +37,17 @@ export function usePetHostBridge(): void {
     (async () => {
       try {
         // ponytail: wait for hydration before reading the store — otherwise
-        // the default `petIconSource='builtin'` sends this effect down the
-        // orphan-sweep branch, which deletes the user's `pet-icon.<ext>`
-        // file before hydrate restores the `custom/path` state. The mascot's
-        // `<img>` onError then clears the flag, and persistence is lost.
+        // the default `petIconSource='builtin'` / empty library would be
+        // mistaken for the persisted state. Historically this effect also
+        // SWEPT the directory (deleting every `pet-icon*` file whenever the
+        // library was empty); that destroyed user uploads on any launch
+        // where hydration hadn't run or the persisted library was lost
+        // (see 634123f, f33ad53). Files are now only removed on explicit
+        // user action (settings reset / per-icon delete) — startup never
+        // deletes, it only reconciles the in-memory library.
         await settingsLoadDone;
         if (cancelled) return;
-        const { exists, remove, readDir, mkdir } = await import('@tauri-apps/plugin-fs');
+        const { exists, mkdir } = await import('@tauri-apps/plugin-fs');
         const { homeDir, join } = await import('@tauri-apps/api/path');
         const home = await homeDir();
         const iconDir = await join(home, '.quill', 'pet-icon');
@@ -68,30 +69,9 @@ export function usePetHostBridge(): void {
               usePetStore.getState().removePetIcon(p);
             }
           }
-        } else if (petIcons.length === 0) {
-          // Orphan sweep: only when the library is empty (no entries to
-          // preserve — covers the legacy single-icon schema and any reset
-          // that failed mid-delete). Matches the old `!(custom && path)`
-          // gate, scoped to the new multi-icon library model. Builtin view
-          // WITH a non-empty library skips this so saved icons survive.
-          try {
-            const entries = await readDir(iconDir);
-            for (const e of entries) {
-              if (cancelled) break;
-              if (!e.name.startsWith('pet-icon')) continue;
-              try {
-                await remove(await join(iconDir, e.name));
-              } catch {
-                // Non-fatal; best-effort cleanup.
-              }
-            }
-          } catch {
-            // readDir on ~/.quill/pet-icon can fail on permission / platform
-            // edge cases — non-fatal, the sweep is best-effort.
-          }
         }
       } catch (err) {
-        console.warn('[App] pet icon sweep failed:', err);
+        console.warn('[App] pet icon reconcile failed:', err);
       }
     })();
     return () => { cancelled = true; };
@@ -163,17 +143,38 @@ export function usePetHostBridge(): void {
       const unNotify = await listen<PetBubblePayload>('pet://notify', (event) => {
         if (event.payload) void dispatchNotification(event.payload);
       });
+      // Secondary windows (pet / pet-bubble / pet-corner / pet-panel /
+      // pet-menu) hold their own store instances and hydrate from the
+      // `pet://settings-updated` broadcast. Their webviews can mount after
+      // the main window's startup broadcast has already fired, so they emit
+      // `pet://settings-request` once their listener is registered; answer
+      // with the current merged blob. Await settingsLoadDone so the reply
+      // is the hydrated state, never the pre-hydration defaults.
+      const unSettingsReq = await listen('pet://settings-request', () => {
+        void settingsLoadDone.then(() => {
+          void (async () => {
+            try {
+              const { emit } = await import('@tauri-apps/api/event');
+              await emit('pet://settings-updated', collectPersistedBlob());
+            } catch {
+              // Non-fatal — the window will pick up the next broadcast.
+            }
+          })();
+        });
+      });
       if (cancelled) {
         unAction();
         unVis();
         unBubble();
         unNotify();
+        unSettingsReq();
       } else {
         unlisten = () => {
           unAction();
           unVis();
           unBubble();
           unNotify();
+          unSettingsReq();
         };
       }
     })();
