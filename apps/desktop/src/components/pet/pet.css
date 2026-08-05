@@ -951,12 +951,7 @@ html.is-pet-panel-window body {
  * measures to size the OS window. A block-level `display: flex` fills its
  * parent's width (220px = the pet-menu window's content width), so the wrapper
  * box stayed at 220px even when the in-flow submenu overflowed it — the OS
- * window never grew and the submenu was clipped at the window's right edge.
- *
- * The wrapper's own background is transparent; on a `transparent: true` OS
- * window the wrapper cannot anchor a paint layer (WKWebView skips the
- * compositor layer for an element with no background of its own), so the
- * elevation shadow lives on each card's own background instead. */
+ * window never grew and the submenu was clipped at the window's right edge. */
 .pet-menu-window-root {
   display: inline-flex;
   align-items: flex-start;
@@ -964,10 +959,7 @@ html.is-pet-panel-window body {
 
 .pet-menu-root {
   /* Card fills the main region; the OS window clips at the wrapper's
-   * bounding box (main card + floating submenu when visible). Per-card
-   * shadow — the wrapper is transparent on a `transparent: true` OS window
-   * and cannot anchor a paint layer, so the elevation shadow lives on each
-   * card's own background (see `.pet-menu-window-root`). */
+   * bounding box (main card + floating submenu when visible). */
   box-sizing: border-box;
   min-width: 220px;
   padding: 4px 0;
@@ -1018,21 +1010,15 @@ html.is-pet-panel-window body {
   font-weight: 500;
 }
 
-/* Submenu card — in-flow flex sibling of the main card. `margin-top` is set
- * inline via `style.marginTop` to align with the parent item. The previous
- * `position: absolute; left: 100%; top: 0` left the submenu out-of-flow so
- * the wrapper's `getBoundingClientRect` did not include it → the OS window
- * never grew → the submenu was clipped at the window's right edge.
- *
- * Flush against the main card (no `margin-left` gap) + `border-left: none` so
- * the main card's right border serves as the shared border — the two cards
- * read as one connected surface. Per-card shadow (the wrapper is transparent
- * on a `transparent: true` OS window and cannot anchor a paint layer). Items
- * inside reuse `.pet-menu-item` + `--radio` + `.pet-menu-radio` + `.is-checked`
- * — no indent, base `7px 14px` padding. */
+/* Submenu card — in-flow flex sibling of the main card (margin-left for the
+ * visual gap, margin-top set inline via `style.marginTop` to align with the
+ * parent item). The previous `position: absolute; left: 100%; top: 0` left
+ * the submenu out-of-flow so the wrapper's `getBoundingClientRect` did not
+ * include it → the OS window never grew → the submenu was clipped at the
+ * window's right edge. Items inside reuse `.pet-menu-item` + `--radio` +
+ * `.pet-menu-radio` + `.is-checked` — no indent, base `7px 14px` padding. */
 .pet-menu-submenu {
-  margin-left: 0;
-  border-left: none;
+  margin-left: 6px;
   box-sizing: border-box;
   min-width: 120px;
   padding: 4px 0;
