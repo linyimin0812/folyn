@@ -38,50 +38,48 @@ export function TerminalPanel({
           {sessions.map((s) => (
             <div
               key={s.id}
-              className={`group relative h-full px-2 rounded-[6px] text-[13px] leading-none font-mono cursor-pointer whitespace-nowrap shrink-0 transition-colors duration-150 select-none ${
+              className={`group flex items-center justify-center gap-1.5 h-full px-2 rounded-[6px] text-[13px] leading-none font-mono cursor-pointer whitespace-nowrap shrink-0 transition-colors duration-150 select-none ${
                 s.id === activeId
                   ? 'bg-surf2 text-t1'
                   : 'text-t3 hover:bg-hov hover:text-t2'
               }`}
               onClick={() => setActive(s.id)}
             >
-              <div className="absolute inset-0 flex items-center justify-center gap-1.5 -translate-y-[2px]">
-                <img
-                  src={terminalIcon}
-                  alt=""
-                  width="14"
-                  height="14"
-                  className={`shrink-0 block ${s.id === activeId ? '' : 'opacity-50'}`}
-                />
-                <span className={`max-w-[120px] overflow-hidden text-ellipsis leading-none ${s.status === 'exited' ? 'opacity-50' : ''}`}>{s.title}</span>
-                {s.status === 'exited' && (
-                  <button
-                    className="shrink-0 w-[18px] h-[18px] flex items-center justify-center rounded-[3px] text-t3 hover:bg-hov hover:text-t1 border-none bg-transparent cursor-pointer"
-                    title={t('terminal:restart')}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Kill the dead session and open a fresh one.
-                      closeSession(s.id);
-                      setActive(addSession());
-                    }}
-                  >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" strokeLinecap="round" />
-                      <path d="M13.5 2.5v3h-3" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                )}
+              <img
+                src={terminalIcon}
+                alt=""
+                width="14"
+                height="14"
+                className={`shrink-0 block ${s.id === activeId ? '' : 'opacity-50'}`}
+              />
+              <span className={`max-w-[120px] overflow-hidden text-ellipsis leading-none ${s.status === 'exited' ? 'opacity-50' : ''}`}>{s.title}</span>
+              {s.status === 'exited' && (
                 <button
-                  className="opacity-0 group-hover:opacity-100 shrink-0 w-[18px] h-[18px] flex items-center justify-center rounded-[3px] text-[11px] text-t3 hover:bg-hov hover:text-red border-none bg-transparent cursor-pointer"
-                  title={t('terminal:close')}
+                  className="shrink-0 w-[18px] h-[18px] flex items-center justify-center rounded-[3px] text-t3 hover:bg-hov hover:text-t1 border-none bg-transparent cursor-pointer"
+                  title={t('terminal:restart')}
                   onClick={(e) => {
                     e.stopPropagation();
+                    // Kill the dead session and open a fresh one.
                     closeSession(s.id);
+                    setActive(addSession());
                   }}
                 >
-                  ✕
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" strokeLinecap="round" />
+                    <path d="M13.5 2.5v3h-3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </button>
-              </div>
+              )}
+              <button
+                className="opacity-0 group-hover:opacity-100 shrink-0 w-[18px] h-[18px] flex items-center justify-center rounded-[3px] text-[11px] text-t3 hover:bg-hov hover:text-red border-none bg-transparent cursor-pointer"
+                title={t('terminal:close')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  closeSession(s.id);
+                }}
+              >
+                ✕
+              </button>
             </div>
           ))}
           <button
