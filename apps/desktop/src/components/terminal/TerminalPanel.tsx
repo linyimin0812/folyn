@@ -14,6 +14,7 @@ export function TerminalPanel() {
   const { t } = useTranslation();
   const [fullscreen, setFullscreen] = useState(false);
   const [overlayLeft, setOverlayLeft] = useState(0);
+  const terminalPanelVisible = useEditorViewStateStore((s) => s.terminalPanelVisible);
   const sessions = useTerminalStore((s) => s.sessions);
   const activeId = useTerminalStore((s) => s.activeId);
   const addSession = useTerminalStore((s) => s.addSession);
@@ -30,6 +31,12 @@ export function TerminalPanel() {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [fullscreen]);
+
+  // Collapsing the panel while fullscreen exits fullscreen (the hidden column
+  // keeps its content mounted).
+  useEffect(() => {
+    if (fullscreen && !terminalPanelVisible) setFullscreen(false);
+  }, [fullscreen, terminalPanelVisible]);
 
   // Fullscreen covers the editor page but keeps the left file sidebar (and
   // activity bar) visible: the overlay starts at the sidebar's right edge.

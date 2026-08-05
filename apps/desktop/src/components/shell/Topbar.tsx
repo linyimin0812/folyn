@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useEditorStore, type ViewMode } from '@/store/editorStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useNavStore } from '@/store/navStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useTerminalStore } from '@/store/terminalStore';
 import { isExternalPath } from '@/utils/isExternalPath';
+import { isTauri } from '@/utils/platform';
 import * as editorIoService from '@/services/editorIoService';
 import { openBrowserTab } from '@/services/editorIoService';
 import { requestRevealPath } from '@/services/revealPathBridge';
@@ -13,11 +14,9 @@ import { ExportMenu } from '@/components/editor/ExportMenu';
 import { MoveDialog } from '@/components/sidebar/SidebarActions';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { requestPlanMyDay } from '@/services/planMyDayBridge';
-import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
 import { useTranslation } from 'react-i18next';
 import { Sun, Moon, FolderInput, Plus } from 'lucide-react';
 import terminalIcon from '@/assets/terminal.svg';
-import chromeIcon from '@/assets/chrome.svg';
 
 /** File types that support meaningful multi-mode switching — show the view-mode segment. */
 const SHOW_VIEW_MODE_FILE_TYPES = new Set(['markdown', 'json', 'csv', 'mmap', 'dbml', 'html', 'svg']);
@@ -90,26 +89,40 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const modes = activeTab?.fileType === 'html' ? HTML_MODES : VIEW_MODES;
   const setCurrentPage = useNavStore((state) => state.setCurrentPage);
   const currentPage = useNavStore((state) => state.currentPage);
-  const [plusOpen, setPlusOpen] = useState(false);
-  const plusRef = useRef<HTMLDivElement>(null);
   const showPlusMenu = currentPage === 'editor' || currentPage === 'study';
 
+  // The "+" menu is a native context menu (floats above the embedded
+  // webview), so its item clicks arrive as Tauri events here.
   useEffect(() => {
-    if (!plusOpen) return;
-    // The native webview floats above HTML, so hide it while the menu is open
-    // (it would otherwise cover New Terminal / New Browser items).
-    hideWebviewsForOverlay();
-    const handleClick = (e: MouseEvent) => {
-      if (plusRef.current && !plusRef.current.contains(e.target as Node)) {
-        setPlusOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
+    if (!isTauri()) return;
+    let unlistenTerminal: (() => void) | null = null;
+    let unlistenBrowser: (() => void) | null = null;
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen('app://new-terminal', () => {
+        useTerminalStore.getState().addSession();
+        useEditorViewStateStore.getState().openTerminalDock();
+      }).then((fn) => { unlistenTerminal = fn; });
+      listen('app://new-browser', () => {
+        openBrowserTab();
+      }).then((fn) => { unlistenBrowser = fn; });
+    });
     return () => {
-      document.removeEventListener('mousedown', handleClick);
-      window.dispatchEvent(new CustomEvent('quill:overlay-closed'));
+      unlistenTerminal?.();
+      unlistenBrowser?.();
     };
-  }, [plusOpen]);
+  }, []);
+
+  const openPlusMenu = (e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    void import('@tauri-apps/api/core').then(({ invoke }) => {
+      invoke('topbar_plus_menu', {
+        x: rect.left,
+        y: rect.bottom,
+        newTerminalLabel: t('topbar:plus.newTerminal'),
+        newBrowserLabel: t('topbar:plus.newBrowser'),
+      }).catch(() => {});
+    });
+  };
 
   return (
     <header data-tauri-drag-region className="topbar h-[36px] shrink-0 bg-panel border-b border-brd flex items-center justify-between pl-0 pr-2.5 gap-[3px] z-50">
@@ -157,40 +170,13 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
         <div className="top-div w-px h-[18px] bg-brd2 mx-[3px] shrink-0" />
 
         {showPlusMenu && (
-        <div className="relative" ref={plusRef}>
           <button
             className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1"
-            onClick={() => setPlusOpen((v) => !v)}
+            onClick={openPlusMenu}
             title={t('topbar:plus.menu')}
           >
             <Plus size={15} />
           </button>
-          {plusOpen && (
-            <div className="absolute top-full right-0 mt-1 z-[200] min-w-[190px] bg-surf border border-brd rounded-[8px] shadow-[0_8px_28px_rgba(0,0,0,0.16)] py-1">
-              <button
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[13px] text-t2 cursor-pointer border-none bg-transparent transition-colors duration-150 hover:bg-hov hover:text-t1"
-                onClick={() => {
-                  setPlusOpen(false);
-                  useTerminalStore.getState().addSession();
-                  openTerminalDock();
-                }}
-              >
-                <img src={terminalIcon} alt="" width="14" height="14" className="shrink-0 opacity-80" />
-                {t('topbar:plus.newTerminal')}
-              </button>
-              <button
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[13px] text-t2 cursor-pointer border-none bg-transparent transition-colors duration-150 hover:bg-hov hover:text-t1"
-                onClick={() => {
-                  setPlusOpen(false);
-                  openBrowserTab();
-                }}
-              >
-                <img src={chromeIcon} alt="" width="14" height="14" className="shrink-0" />
-                {t('topbar:plus.newBrowser')}
-              </button>
-            </div>
-          )}
-        </div>
         )}
 
         {/* Terminal collapse/expand toggle — appears once a terminal exists,

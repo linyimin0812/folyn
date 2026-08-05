@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditorViewStateStore } from '@/store/editorViewState';
+import { useTerminalStore } from '@/store/terminalStore';
 import { AiPanel } from './AiPanel';
 import { TerminalPanel } from '../terminal/TerminalPanel';
 
@@ -15,6 +16,7 @@ const DEFAULT_WIDTH = 380;
 export function RightDock() {
   const aiPanelVisible = useEditorViewStateStore((s) => s.aiPanelVisible);
   const terminalPanelVisible = useEditorViewStateStore((s) => s.terminalPanelVisible);
+  const terminalSessions = useTerminalStore((s) => s.sessions);
 
   const [aiWidth, setAiWidth] = useState(DEFAULT_WIDTH);
   const [termWidth, setTermWidth] = useState(DEFAULT_WIDTH);
@@ -57,7 +59,10 @@ export function RightDock() {
     };
   }, []);
 
-  if (!aiPanelVisible && !terminalPanelVisible) return null;
+  // Keep the terminal mounted (hidden) while sessions exist so collapsing the
+  // panel doesn't destroy xterm scrollback / the PTY connection — reopening
+  // shows the exact same terminal content.
+  if (!aiPanelVisible && !terminalPanelVisible && terminalSessions.length === 0) return null;
 
   return (
     <div className="h-full flex items-stretch overflow-hidden shrink-0">
@@ -74,11 +79,14 @@ export function RightDock() {
           <AiPanel embedded showClose />
         </div>
       )}
-      {terminalPanelVisible && (
+      {terminalSessions.length > 0 && (
         <div
           ref={termRef}
           className="h-full flex flex-col overflow-hidden relative shrink-0 border-l border-brd"
-          style={{ width: termWidth }}
+          style={{
+            width: terminalPanelVisible ? termWidth : 0,
+            display: terminalPanelVisible ? undefined : 'none',
+          }}
         >
           <div
             className="absolute left-0 top-0 bottom-0 w-0.5 cursor-col-resize z-10 bg-transparent transition-[background] duration-[140ms] hover:bg-acc hover:opacity-30"
