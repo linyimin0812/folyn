@@ -702,7 +702,7 @@ export default function App() {
 function BottomTerminal() {
   const sessions = useTerminalStore((s) => s.sessions);
   const terminalPanelVisible = useEditorViewStateStore((s) => s.terminalPanelVisible);
-  const [height, setHeight] = useState(240);
+  const [height, setHeight] = useState(180);
   if (sessions.length === 0) return null;
   return (
     <div
