@@ -56,16 +56,19 @@ export function TerminalPanel() {
       className="shrink-0 flex flex-col overflow-hidden bg-bg border-t border-brd"
       style={{ height }}
     >
-      {/* Resize handle: drag up/down to adjust the terminal height. */}
+      {/* Resize handle: 5px invisible hit target with a 1px visible line, so
+          the separator stays slim but the grab area is easy to hit. */}
       <div
-        className="shrink-0 h-[5px] cursor-row-resize bg-transparent transition-colors duration-150 hover:bg-acc hover:opacity-40"
+        className="shrink-0 h-[5px] cursor-row-resize bg-transparent relative"
         onMouseDown={(e) => {
           e.preventDefault();
           dragRef.current = { startY: e.clientY, startHeight: height };
           document.body.style.cursor = 'row-resize';
           document.documentElement.classList.add('is-resizing');
         }}
-      />
+      >
+        <div className="absolute top-0 left-0 right-0 h-px bg-brd transition-colors duration-150 hover:bg-acc hover:opacity-60" />
+      </div>
 
       <div className="flex items-center gap-0.5 h-[34px] shrink-0 px-2 bg-panel border-b border-brd overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sessions.map((s) => (
