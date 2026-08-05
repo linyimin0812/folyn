@@ -1,76 +1,72 @@
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useRef, useState } from 'react';
 import { useTerminalStore } from '@/store/terminalStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useTranslation } from 'react-i18next';
 import { TerminalView } from './TerminalView';
-import { Plus, X, Maximize2, Minimize2 } from 'lucide-react';
+import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
 import terminalIcon from '@/assets/terminal.svg';
-import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
-import { isTauri } from '@/utils/platform';
 
-/** Terminal panel: session-tab header + xterm body. Owns its own header and
- *  close button (no dock tab bar). The header's fullscreen button expands the
- *  terminal over the whole editor page. */
+const MIN_HEIGHT = 100;
+const MAX_HEIGHT = 600;
+const DEFAULT_HEIGHT = 240;
+
+/**
+ * Terminal panel: session-tab header + xterm body, docked at the BOTTOM of
+ * the editor page. The header's toggle button collapses/expands the panel;
+ * the strip above the header is a drag handle that resizes the panel height
+ * vertically. Owns its own height so collapse/reopen keeps the user's size.
+ */
 export function TerminalPanel() {
   const { t } = useTranslation();
-  const [fullscreen, setFullscreen] = useState(false);
-  const [overlayLeft, setOverlayLeft] = useState(0);
   const terminalPanelVisible = useEditorViewStateStore((s) => s.terminalPanelVisible);
+  const closeTerminalPanel = useEditorViewStateStore((s) => s.closeTerminalPanel);
   const sessions = useTerminalStore((s) => s.sessions);
   const activeId = useTerminalStore((s) => s.activeId);
   const addSession = useTerminalStore((s) => s.addSession);
   const setActive = useTerminalStore((s) => s.setActive);
   const closeSession = useTerminalStore((s) => s.closeSession);
-  const closeTerminalPanel = useEditorViewStateStore((s) => s.closeTerminalPanel);
 
-  // Esc exits fullscreen mode.
+  const [height, setHeight] = useState(DEFAULT_HEIGHT);
+  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+
+  // Vertical resize: dragging the top strip changes the panel height.
   useEffect(() => {
-    if (!fullscreen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setFullscreen(false);
+    const onMouseMove = (e: MouseEvent) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const delta = drag.startY - e.clientY;
+      const next = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, drag.startHeight + delta));
+      setHeight(next);
     };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [fullscreen]);
-
-  // Fullscreen is an HTML overlay; the native webview floats above HTML no
-  // matter the z-index, so hide every embedded webview while the terminal
-  // covers the page and re-sync the active one on exit.
-  useEffect(() => {
-    if (!isTauri()) return;
-    if (fullscreen) {
-      hideWebviewsForOverlay();
-    } else {
-      window.dispatchEvent(new CustomEvent('quill:overlay-closed'));
-    }
-  }, [fullscreen]);
-
-  // Collapsing the panel while fullscreen exits fullscreen (the hidden column
-  // keeps its content mounted).
-  useEffect(() => {
-    if (fullscreen && !terminalPanelVisible) setFullscreen(false);
-  }, [fullscreen, terminalPanelVisible]);
-
-  // Fullscreen covers the editor page but keeps the left file sidebar (and
-  // activity bar) visible: the overlay starts at the sidebar's right edge.
-  useEffect(() => {
-    if (!fullscreen) return;
-    const measure = () => {
-      // `.sidebar-wrapper` is display:contents on desktop (zero rect); the
-      // actual width lives on `.sidebar`.
-      const sidebar =
-        document.querySelector('.sidebar-wrapper .sidebar') ??
-        document.querySelector('.sidebar');
-      setOverlayLeft(sidebar ? Math.round(sidebar.getBoundingClientRect().right) : 0);
+    const stopResize = () => {
+      dragRef.current = null;
+      document.body.style.cursor = '';
+      document.documentElement.classList.remove('is-resizing');
     };
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, [fullscreen]);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', stopResize);
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', stopResize);
+    };
+  }, []);
 
-  const content = (
-    <>
+  return (
+    <div
+      className="shrink-0 flex flex-col overflow-hidden bg-bg border-t border-brd"
+      style={{ height }}
+    >
+      {/* Resize handle: drag up/down to adjust the terminal height. */}
+      <div
+        className="shrink-0 h-[5px] cursor-row-resize bg-transparent transition-colors duration-150 hover:bg-acc hover:opacity-40"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          dragRef.current = { startY: e.clientY, startHeight: height };
+          document.body.style.cursor = 'row-resize';
+          document.documentElement.classList.add('is-resizing');
+        }}
+      />
+
       <div className="flex items-center gap-0.5 h-[34px] shrink-0 px-2 bg-panel border-b border-brd overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sessions.map((s) => (
           <div
@@ -129,10 +125,10 @@ export function TerminalPanel() {
         <div className="flex-1 min-w-0" />
         <button
           className="shrink-0 w-[24px] h-[24px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
-          title={fullscreen ? t('terminal:exitFullscreen') : t('terminal:fullscreen')}
-          onClick={() => setFullscreen((v) => !v)}
+          title={terminalPanelVisible ? t('terminal:collapseToBottom') : t('terminal:openAtBottom')}
+          onClick={() => (terminalPanelVisible ? closeTerminalPanel() : useEditorViewStateStore.getState().openTerminalDock())}
         >
-          {fullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+          {terminalPanelVisible ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
         </button>
         <button
           className="shrink-0 w-[24px] h-[24px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
@@ -163,26 +159,6 @@ export function TerminalPanel() {
           </div>
         )}
       </div>
-    </>
-  );
-
-  if (fullscreen) {
-    // Cover the editor page (topbar included) above every panel, starting at
-    // the left sidebar's right edge so the file bar stays visible.
-    return createPortal(
-      <div
-        className="fixed top-0 right-0 bottom-0 z-[300] flex flex-col overflow-hidden bg-bg"
-        style={{ left: overlayLeft }}
-      >
-        {content}
-      </div>,
-      document.body,
-    );
-  }
-
-  return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-bg">
-      {content}
     </div>
   );
 }

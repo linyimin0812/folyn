@@ -1,34 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditorViewStateStore } from '@/store/editorViewState';
-import { useTerminalStore } from '@/store/terminalStore';
 import { AiPanel } from './AiPanel';
-import { TerminalPanel } from '../terminal/TerminalPanel';
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 760;
 const DEFAULT_WIDTH = 380;
 
 /**
- * Right-hand dock hosting the AI panel and the terminal panel as two
- * independent columns (no tab bar, no stacking). Each panel has its own
- * header/close and its own width + left-edge resize handle.
+ * Right-hand dock hosting the AI panel (the terminal lives in its own bottom
+ * strip — see App.tsx / TerminalPanel). The AI column has its own width and
+ * left-edge resize handle.
  */
 export function RightDock() {
   const aiPanelVisible = useEditorViewStateStore((s) => s.aiPanelVisible);
-  const terminalPanelVisible = useEditorViewStateStore((s) => s.terminalPanelVisible);
-  const terminalSessions = useTerminalStore((s) => s.sessions);
 
   const [aiWidth, setAiWidth] = useState(DEFAULT_WIDTH);
-  const [termWidth, setTermWidth] = useState(DEFAULT_WIDTH);
   const aiRef = useRef<HTMLDivElement>(null);
-  const termRef = useRef<HTMLDivElement>(null);
-  const draggingRef = useRef<{ which: 'ai' | 'term'; rightEdge: number } | null>(null);
+  const draggingRef = useRef<{ rightEdge: number } | null>(null);
 
-  const startResize = useCallback((which: 'ai' | 'term', e: React.MouseEvent) => {
+  const startResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    const el = which === 'ai' ? aiRef.current : termRef.current;
+    const el = aiRef.current;
     const rightEdge = el ? el.getBoundingClientRect().right : window.innerWidth;
-    draggingRef.current = { which, rightEdge };
+    draggingRef.current = { rightEdge };
     document.body.style.cursor = 'col-resize';
     document.documentElement.classList.add('is-resizing');
   }, []);
@@ -40,11 +34,7 @@ export function RightDock() {
       // Column width = its right edge (captured at drag start) - pointer x.
       const w = drag.rightEdge - e.clientX;
       const clamped = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, w));
-      if (drag.which === 'ai') {
-        setAiWidth(clamped);
-      } else {
-        setTermWidth(clamped);
-      }
+      setAiWidth(clamped);
     };
     const stopResize = () => {
       draggingRef.current = null;
@@ -59,10 +49,7 @@ export function RightDock() {
     };
   }, []);
 
-  // Keep the terminal mounted (hidden) while sessions exist so collapsing the
-  // panel doesn't destroy xterm scrollback / the PTY connection — reopening
-  // shows the exact same terminal content.
-  if (!aiPanelVisible && !terminalPanelVisible && terminalSessions.length === 0) return null;
+  if (!aiPanelVisible) return null;
 
   return (
     <div className="h-full flex items-stretch overflow-hidden shrink-0">
@@ -74,25 +61,9 @@ export function RightDock() {
         >
           <div
             className="absolute left-0 top-0 bottom-0 w-0.5 cursor-col-resize z-10 bg-transparent transition-[background] duration-[140ms] hover:bg-acc hover:opacity-30"
-            onMouseDown={(e) => startResize('ai', e)}
+            onMouseDown={startResize}
           />
           <AiPanel embedded showClose />
-        </div>
-      )}
-      {terminalSessions.length > 0 && (
-        <div
-          ref={termRef}
-          className="h-full flex flex-col overflow-hidden relative shrink-0 border-l border-brd"
-          style={{
-            width: terminalPanelVisible ? termWidth : 0,
-            display: terminalPanelVisible ? undefined : 'none',
-          }}
-        >
-          <div
-            className="absolute left-0 top-0 bottom-0 w-0.5 cursor-col-resize z-10 bg-transparent transition-[background] duration-[140ms] hover:bg-acc hover:opacity-30"
-            onMouseDown={(e) => startResize('term', e)}
-          />
-          <TerminalPanel />
         </div>
       )}
     </div>

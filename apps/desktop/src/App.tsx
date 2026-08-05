@@ -5,6 +5,8 @@ import { Sidebar } from './components/sidebar/Sidebar';
 import { WorkArea } from './components/work-area/WorkArea';
 import { StatusBar } from './components/shell/StatusBar';
 import { RightDock } from './components/ai/RightDock';
+import { TerminalPanel } from './components/terminal/TerminalPanel';
+import { useTerminalStore } from './store/terminalStore';
 import { GlobalSearchPanel } from './components/search/GlobalSearchPanel';
 import { CommandPalette } from './components/shell/CommandPalette';
 import { useWikiStore } from '@/store/wikiStore';
@@ -629,21 +631,24 @@ export default function App() {
       <Topbar isMobile={isMobile} onToggleSidebar={toggleMobileSidebar} />
 
       {currentPage === 'editor' && (
-        <div className="body-row flex-1 flex overflow-hidden">
-          {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
-          {isMobile && mobileSidebarOpen && (
-            <div className="mobile-sidebar-overlay" onClick={closeMobileSidebar} />
-          )}
-          <div className={`sidebar-wrapper ${isMobile ? 'mobile' : ''} ${mobileSidebarOpen ? 'open' : ''}`}>
-            <Sidebar
-              collapsed={sidebarCollapsed}
-              onCollapsedChange={setSidebarCollapsed}
-              onFileSelect={isMobile ? closeMobileSidebar : undefined}
-            />
+        <>
+          <div className="body-row flex-1 flex overflow-hidden">
+            {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
+            {isMobile && mobileSidebarOpen && (
+              <div className="mobile-sidebar-overlay" onClick={closeMobileSidebar} />
+            )}
+            <div className={`sidebar-wrapper ${isMobile ? 'mobile' : ''} ${mobileSidebarOpen ? 'open' : ''}`}>
+              <Sidebar
+                collapsed={sidebarCollapsed}
+                onCollapsedChange={setSidebarCollapsed}
+                onFileSelect={isMobile ? closeMobileSidebar : undefined}
+              />
+            </div>
+            <WorkArea />
+            <RightDock />
           </div>
-          <WorkArea />
-          <RightDock />
-        </div>
+          <BottomTerminal />
+        </>
       )}
 
       {currentPage === 'vault' && (
@@ -666,16 +671,34 @@ export default function App() {
       )}
 
       {currentPage === 'study' && (
-        <div className="body-row flex-1 flex overflow-hidden">
-          {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
-          <StudyWorkbenchPage />
-          <RightDock />
-        </div>
+        <>
+          <div className="body-row flex-1 flex overflow-hidden">
+            {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
+            <StudyWorkbenchPage />
+            <RightDock />
+          </div>
+          <BottomTerminal />
+        </>
       )}
 
       {showStatusBar && <StatusBar />}
       <GlobalSearchPanel />
       <CommandPalette />
+    </div>
+  );
+}
+
+/** Bottom terminal strip: mounted only while sessions exist, hidden (but
+ *  mounted) while collapsed so xterm scrollback and the PTY session survive.
+ *  `useTerminalStore` subscription keeps this mounted across session
+ *  add/close without re-rendering the whole App. */
+function BottomTerminal() {
+  const sessions = useTerminalStore((s) => s.sessions);
+  const terminalPanelVisible = useEditorViewStateStore((s) => s.terminalPanelVisible);
+  if (sessions.length === 0) return null;
+  return (
+    <div style={{ display: terminalPanelVisible ? undefined : 'none' }}>
+      <TerminalPanel />
     </div>
   );
 }

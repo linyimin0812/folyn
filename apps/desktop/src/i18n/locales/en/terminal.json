@@ -2,8 +2,8 @@
   "new": "New terminal",
   "close": "Close terminal",
   "closePanel": "Close terminal panel",
-  "fullscreen": "Fullscreen terminal",
-  "exitFullscreen": "Exit fullscreen",
+  "openAtBottom": "Open terminal at bottom",
+  "collapseToBottom": "Collapse to bottom",
   "restart": "Restart",
   "empty": "No terminal sessions yet"
 }
