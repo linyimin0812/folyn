@@ -1103,28 +1103,57 @@ html.is-pet-panel-window body {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Dark mode — the `pet-menu` window is a separate JS realm; `<html>` may not
- * get `[data-theme="dark"]` applied (the main window owns theme state). Use
- * `prefers-color-scheme` so the menu adapts to OS dark mode on its own.
- * Colors mirror the app's dark palette (`index.css`).
+ * Dark mode — the menu follows the APP theme, not just the OS. `useTheme()`
+ * in `PetMenuApp` syncs `appearanceStore.theme` (hydrated in this separate
+ * realm via `pet://settings-updated` + `settingsLoadDone`) onto this
+ * window's `<html data-theme>`, so the dark palette below keys off
+ * `[data-theme="dark"]`. The `prefers-color-scheme` block is a fallback for
+ * the brief window before hydration applies `data-theme` — it deliberately
+ * excludes `[data-theme="light"]` so an OS-dark + app-light setup stays
+ * light. Colors mirror the app's dark palette (`index.css`).
  * ──────────────────────────────────────────────────────────────────────────── */
+html.is-pet-menu-window[data-theme="dark"] .pet-menu-root,
+html.is-pet-menu-window[data-theme="dark"] .pet-menu-submenu {
+  --bg: #0f1219;
+  --t1: #e2e8f8;
+  --border: #1c2136;
+  --accent: #5b8af5;
+  --hover: rgba(255, 255, 255, 0.04);
+}
+html.is-pet-menu-window[data-theme="dark"] .pet-menu-root {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--t1);
+}
+html.is-pet-menu-window[data-theme="dark"] .pet-menu-submenu {
+  background: var(--bg, #0f1219);
+  border-color: var(--border, #1c2136);
+  color: var(--t1, #e2e8f8);
+}
+html.is-pet-menu-window[data-theme="dark"] .pet-menu-sep {
+  background: #1c2136;
+}
+
 @media (prefers-color-scheme: dark) {
-  html.is-pet-menu-window .pet-menu-root {
+  html.is-pet-menu-window:not([data-theme="light"]) .pet-menu-root,
+  html.is-pet-menu-window:not([data-theme="light"]) .pet-menu-submenu {
     --bg: #0f1219;
     --t1: #e2e8f8;
     --border: #1c2136;
     --accent: #5b8af5;
     --hover: rgba(255, 255, 255, 0.04);
+  }
+  html.is-pet-menu-window:not([data-theme="light"]) .pet-menu-root {
     background: var(--bg);
     border-color: var(--border);
     color: var(--t1);
   }
-  html.is-pet-menu-window .pet-menu-submenu {
+  html.is-pet-menu-window:not([data-theme="light"]) .pet-menu-submenu {
     background: var(--bg, #0f1219);
     border-color: var(--border, #1c2136);
     color: var(--t1, #e2e8f8);
   }
-  html.is-pet-menu-window .pet-menu-sep {
+  html.is-pet-menu-window:not([data-theme="light"]) .pet-menu-sep {
     background: #1c2136;
   }
 }

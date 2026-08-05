@@ -49,6 +49,7 @@ import type { PetMenuAction } from './PetContextMenu';
 import { usePetStore } from '@/store/petStore';
 import { hydrateAllStores } from '@/store/settingsPersistence';
 import { currentWindowScaleFactor } from '@/utils/windowScale';
+import { useTheme } from '@/hooks/useTheme';
 
 /** Physical-position result from `get_pet_position` (physical px). */
 interface PetPositionResult {
@@ -359,6 +360,12 @@ async function syncSubmenuWindow(
  */
 export function PetMenuApp(): JSX.Element {
   const { t } = useTranslation();
+  // Sync the app theme (appearanceStore, hydrated via `pet://settings-updated`
+  // + `settingsLoadDone`) onto THIS window's `<html data-theme>` so the menu
+  // follows the app's light/dark setting — not just the OS
+  // `prefers-color-scheme` (which the old CSS relied on, leaving the menu
+  // light when the app is dark but the OS is light).
+  useTheme();
   const rootRef = useRef<HTMLDivElement>(null);
   const [petSize, setPetSize] = useState<PetSize>(PET_SIZE_DEFAULT);
   const [petOpacity, setPetOpacity] = useState<string>('100');
