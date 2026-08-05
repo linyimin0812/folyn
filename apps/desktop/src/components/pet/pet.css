@@ -1015,10 +1015,14 @@ html.is-pet-panel-window body {
   justify-content: space-between;
 }
 .pet-menu-chevron {
-  font-size: 14px;
-  font-weight: 500;
+  /* Right-side submenu affordance (size / opacity items). The user found
+   * the old 14px chevron too faint — keep it clearly larger + bolder. */
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1;
   opacity: 1;
   color: inherit;
+  flex-shrink: 0;
 }
 
 /* Submenu card — in-flow flex sibling of the main card (margin-left for the
