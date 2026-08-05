@@ -5,6 +5,7 @@ import '@xterm/xterm/css/xterm.css';
 import { isTauri } from '@/utils/platform';
 import { useTerminalStore } from '@/store/terminalStore';
 import { useVaultStore } from '@/store/vaultStore';
+import { useResolvedTheme } from '@/hooks/useTheme';
 
 interface TerminalViewProps {
   id: string;
@@ -18,6 +19,43 @@ function base64ToBytes(b64: string): Uint8Array {
   return bytes;
 }
 
+/** Read a CSS variable from the app theme (light/dark via `data-theme`). */
+function cssVar(name: string): string {
+  return (
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#000000'
+  );
+}
+
+/**
+ * xterm palette derived entirely from the app's theme tokens, so the terminal
+ * follows the configured light/dark theme instead of forcing a dark look.
+ */
+function terminalTheme(): Record<string, string> {
+  return {
+    background: cssVar('--bg'),
+    foreground: cssVar('--t1'),
+    cursor: cssVar('--acc'),
+    cursorAccent: cssVar('--bg'),
+    selectionBackground: cssVar('--accglow'),
+    black: cssVar('--t4'),
+    red: cssVar('--red'),
+    green: cssVar('--green'),
+    yellow: cssVar('--amber'),
+    blue: cssVar('--acc'),
+    magenta: cssVar('--purple'),
+    cyan: cssVar('--cyan'),
+    white: cssVar('--t2'),
+    brightBlack: cssVar('--t3'),
+    brightRed: cssVar('--red'),
+    brightGreen: cssVar('--green'),
+    brightYellow: cssVar('--amber'),
+    brightBlue: cssVar('--acc'),
+    brightMagenta: cssVar('--purple'),
+    brightCyan: cssVar('--cyan'),
+    brightWhite: cssVar('--t1'),
+  };
+}
+
 export function TerminalView({ id, active }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -25,6 +63,7 @@ export function TerminalView({ id, active }: TerminalViewProps) {
   const spawnedRef = useRef(false);
   const setStatus = useTerminalStore((s) => s.setStatus);
   const setTitle = useTerminalStore((s) => s.setTitle);
+  const resolvedTheme = useResolvedTheme();
 
   useEffect(() => {
     const el = containerRef.current;
@@ -34,30 +73,7 @@ export function TerminalView({ id, active }: TerminalViewProps) {
       cursorBlink: true,
       fontFamily: '"DM Mono", Menlo, Monaco, "Courier New", monospace',
       fontSize: 12,
-      lineHeight: 1.35,
-      theme: {
-        background: '#0d1117',
-        foreground: '#e6edf3',
-        cursor: '#f0f6fc',
-        cursorAccent: '#0d1117',
-        selectionBackground: '#388bfd40',
-        black: '#484f58',
-        red: '#ff7b72',
-        green: '#3fb950',
-        yellow: '#d29922',
-        blue: '#58a6ff',
-        magenta: '#bc8cff',
-        cyan: '#39c5cf',
-        white: '#b1bac4',
-        brightBlack: '#6e7681',
-        brightRed: '#ffa198',
-        brightGreen: '#56d364',
-        brightYellow: '#e3b341',
-        brightBlue: '#79c0ff',
-        brightMagenta: '#d2a8ff',
-        brightCyan: '#56d4dd',
-        brightWhite: '#f0f6fc',
-      },
+      lineHeight: 1.2,
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
@@ -99,7 +115,7 @@ export function TerminalView({ id, active }: TerminalViewProps) {
         });
 
         if (!isTauri()) {
-          term.writeln('终端仅在桌面端可用（Tauri 运行时）。');
+        term.writeln('终端仅在桌面端可用（Tauri 运行时）。');
           setStatus(id, 'exited');
           return;
         }
@@ -122,7 +138,7 @@ export function TerminalView({ id, active }: TerminalViewProps) {
         }
         syncPtySize();
       } catch (err) {
-        const msg = typeof err === 'string' ? err : err instanceof Error ? err.message : String(err);
+        const msg = (typeof err === 'string' ? err : err instanceof Error ? err.message : String(err)).split('\n')[0];
         term.writeln(`启动终端失败：${msg}`);
         setStatus(id, 'exited');
       }
@@ -164,6 +180,13 @@ export function TerminalView({ id, active }: TerminalViewProps) {
     };
   }, [id, setStatus, setTitle]);
 
+  // Keep the xterm palette in sync with the app theme (light/dark/system).
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term) return;
+    term.options.theme = terminalTheme();
+  }, [resolvedTheme]);
+
   useEffect(() => {
     if (!active) return;
     const timer = setTimeout(() => {
@@ -186,7 +209,7 @@ export function TerminalView({ id, active }: TerminalViewProps) {
 
   return (
     <div
-      className="absolute inset-0 p-2 bg-[#0d1117] overflow-hidden"
+      className="absolute inset-0 p-2 bg-bg overflow-hidden"
       style={{ display: active ? 'block' : 'none' }}
       onClick={() => termRef.current?.focus()}
     >

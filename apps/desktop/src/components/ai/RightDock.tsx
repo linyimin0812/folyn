@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditorViewStateStore } from '@/store/editorViewState';
+import { useTerminalStore } from '@/store/terminalStore';
 import { useTranslation } from 'react-i18next';
+import { Plus } from 'lucide-react';
 import { AiPanel } from './AiPanel';
 import { TerminalPanel } from '../terminal/TerminalPanel';
 
@@ -20,6 +22,11 @@ export function RightDock() {
   const rightDockTab = useEditorViewStateStore((s) => s.rightDockTab);
   const setRightDockTab = useEditorViewStateStore((s) => s.setRightDockTab);
   const closeRightDock = useEditorViewStateStore((s) => s.closeRightDock);
+  const terminalSessions = useTerminalStore((s) => s.sessions);
+  const terminalActiveId = useTerminalStore((s) => s.activeId);
+  const terminalAdd = useTerminalStore((s) => s.addSession);
+  const terminalSetActive = useTerminalStore((s) => s.setActive);
+  const terminalClose = useTerminalStore((s) => s.closeSession);
 
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const draggingRef = useRef(false);
@@ -85,7 +92,74 @@ export function RightDock() {
             <path d="M4.5 6l2.5 2-2.5 2M8.5 10.5h3" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         ))}
-        <div className="flex-1" />
+        {rightDockTab === 'terminal' && (
+          <>
+            <div className="w-px h-[14px] bg-brd2 mx-1 shrink-0" />
+            <div className="flex-1 min-w-0 flex items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {terminalSessions.map((s) => (
+                <div
+                  key={s.id}
+                  className={`group flex items-center gap-1 h-[22px] px-2 rounded-[5px] text-[11px] font-mono cursor-pointer whitespace-nowrap shrink-0 transition-colors duration-150 select-none ${
+                    s.id === terminalActiveId
+                      ? 'bg-surf2 text-t1'
+                      : 'text-t3 hover:bg-hov hover:text-t2'
+                  }`}
+                  onClick={() => terminalSetActive(s.id)}
+                >
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    className={`shrink-0 ${s.id === terminalActiveId ? 'text-acc' : 'text-t4'}`}
+                  >
+                    <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" />
+                    <path d="M4.5 6l2.5 2-2.5 2M8.5 10.5h3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className={`max-w-[110px] overflow-hidden text-ellipsis ${s.status === 'exited' ? 'opacity-50' : ''}`}>
+                    {s.title}
+                  </span>
+                  {s.status === 'exited' && (
+                    <button
+                      className="shrink-0 w-[14px] h-[14px] flex items-center justify-center rounded-[3px] text-t3 hover:bg-hov hover:text-t1 border-none bg-transparent cursor-pointer"
+                      title={t('terminal:restart')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        terminalClose(s.id);
+                        terminalSetActive(terminalAdd());
+                      }}
+                    >
+                      <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" strokeLinecap="round" />
+                        <path d="M13.5 2.5v3h-3" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  )}
+                  <button
+                    className="opacity-0 group-hover:opacity-100 shrink-0 w-[14px] h-[14px] flex items-center justify-center rounded-[3px] text-t3 hover:bg-hov hover:text-red border-none bg-transparent cursor-pointer"
+                    title={t('terminal:close')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      terminalClose(s.id);
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <button
+                className="shrink-0 w-[22px] h-[22px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
+                title={t('terminal:new')}
+                onClick={terminalAdd}
+              >
+                <Plus size={11} />
+              </button>
+            </div>
+          </>
+        )}
+        {rightDockTab !== 'terminal' && <div className="flex-1" />}
         <button
           className="w-[22px] h-[22px] flex items-center justify-center rounded-[5px] border-none bg-transparent text-t3 cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
           onClick={closeRightDock}
