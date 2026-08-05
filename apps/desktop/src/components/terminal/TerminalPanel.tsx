@@ -33,19 +33,12 @@ export function TerminalPanel({
       className="shrink-0 flex flex-col overflow-hidden bg-bg"
       style={{ height }}
     >
-      <div className="flex items-center gap-1 h-[29px] shrink-0 px-2 bg-panel border-b border-brd overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <button
-          className="shrink-0 w-[26px] h-[22px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
-          title={t('terminal:new')}
-          onClick={addSession}
-        >
-          <Plus size={15} />
-        </button>
+      <div className="flex items-center gap-1 h-[28px] shrink-0 px-2 bg-panel border-b border-brd overflow-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex-1 min-w-0 flex items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {sessions.map((s) => (
             <div
               key={s.id}
-              className={`group flex items-center gap-1.5 h-[22px] px-2 rounded-[6px] text-[13px] font-mono cursor-pointer whitespace-nowrap shrink-0 transition-colors duration-150 select-none ${
+              className={`group flex items-center gap-1.5 h-[20px] px-2 rounded-[6px] text-[13px] leading-none font-mono cursor-pointer whitespace-nowrap shrink-0 transition-colors duration-150 select-none ${
                 s.id === activeId
                   ? 'bg-surf2 text-t1'
                   : 'text-t3 hover:bg-hov hover:text-t2'
@@ -57,9 +50,9 @@ export function TerminalPanel({
                 alt=""
                 width="14"
                 height="14"
-                className={`shrink-0 ${s.id === activeId ? '' : 'opacity-50'}`}
+                className={`shrink-0 block ${s.id === activeId ? '' : 'opacity-50'}`}
               />
-              <span className={`max-w-[120px] overflow-hidden text-ellipsis ${s.status === 'exited' ? 'opacity-50' : ''}`}>{s.title}</span>
+              <span className={`max-w-[120px] overflow-hidden text-ellipsis leading-none ${s.status === 'exited' ? 'opacity-50' : ''}`}>{s.title}</span>
               {s.status === 'exited' && (
                 <button
                   className="shrink-0 w-[18px] h-[18px] flex items-center justify-center rounded-[3px] text-t3 hover:bg-hov hover:text-t1 border-none bg-transparent cursor-pointer"
@@ -92,14 +85,21 @@ export function TerminalPanel({
         </div>
         <div className="shrink-0 flex items-center justify-end">
           <button
-            className="shrink-0 w-[26px] h-[22px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
+            className="shrink-0 w-[26px] h-[20px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
+            title={t('terminal:new')}
+            onClick={addSession}
+          >
+            <Plus size={15} />
+          </button>
+          <button
+            className="shrink-0 w-[26px] h-[20px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
             title={terminalPanelVisible ? t('terminal:collapseToBottom') : t('terminal:openAtBottom')}
             onClick={() => (terminalPanelVisible ? closeTerminalPanel() : useEditorViewStateStore.getState().openTerminalDock())}
           >
             {terminalPanelVisible ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
           </button>
           <button
-            className="shrink-0 w-[26px] h-[22px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
+            className="shrink-0 w-[26px] h-[20px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
             title={t('terminal:closePanel')}
             onClick={closeTerminalPanel}
           >
