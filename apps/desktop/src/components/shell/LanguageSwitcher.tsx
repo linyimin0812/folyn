@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocaleStore, SUPPORTED_LOCALES, type Locale } from '@/store/localeStore';
 import languageIcon from '@/assets/language.svg';
+import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
 
 interface LanguageSwitcherProps {
   /** "compact" renders a single icon button with a dropdown (Topbar);
@@ -29,11 +30,15 @@ export function LanguageSwitcher({ variant = 'compact' }: LanguageSwitcherProps)
 
   useEffect(() => {
     if (!open) return;
+    hideWebviewsForOverlay();
     const onDocClick = (e: MouseEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      window.dispatchEvent(new CustomEvent('quill:overlay-closed'));
+    };
   }, [open]);
 
   if (variant === 'row') {

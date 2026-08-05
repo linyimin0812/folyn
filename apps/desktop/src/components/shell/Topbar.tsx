@@ -13,6 +13,7 @@ import { ExportMenu } from '@/components/editor/ExportMenu';
 import { MoveDialog } from '@/components/sidebar/SidebarActions';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { requestPlanMyDay } from '@/services/planMyDayBridge';
+import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
 import { useTranslation } from 'react-i18next';
 import { Sun, Moon, FolderInput, Plus } from 'lucide-react';
 import terminalIcon from '@/assets/terminal.svg';
@@ -95,13 +96,19 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
 
   useEffect(() => {
     if (!plusOpen) return;
+    // The native webview floats above HTML, so hide it while the menu is open
+    // (it would otherwise cover New Terminal / New Browser items).
+    hideWebviewsForOverlay();
     const handleClick = (e: MouseEvent) => {
       if (plusRef.current && !plusRef.current.contains(e.target as Node)) {
         setPlusOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      window.dispatchEvent(new CustomEvent('quill:overlay-closed'));
+    };
   }, [plusOpen]);
 
   return (

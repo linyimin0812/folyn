@@ -4,6 +4,7 @@ import { useExport, hasContainerSyntax } from '@/hooks/useExport';
 import { useEditorStore, detectFileType } from '@/store/editorStore';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { useTranslation } from 'react-i18next';
+import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
 
 // File types that ship a canvas → SVG/PNG export. Markdown goes HTML instead.
 const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'mmap']);
@@ -41,8 +42,15 @@ export function ExportMenu() {
         setOpen(false);
       }
     };
-    if (open) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (open) {
+      // Hide the native webview so the export menu isn't covered by it.
+      hideWebviewsForOverlay();
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (open) window.dispatchEvent(new CustomEvent('quill:overlay-closed'));
+    };
   }, [open]);
 
   const runWithOverlay = useCallback((fn: () => void | Promise<void>) => {
