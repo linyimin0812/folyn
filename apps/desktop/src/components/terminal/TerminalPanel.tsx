@@ -38,7 +38,7 @@ export function TerminalPanel({
           {sessions.map((s) => (
             <div
               key={s.id}
-              className={`group flex items-center justify-center gap-1.5 h-full px-2 rounded-[6px] text-[13px] leading-none font-mono cursor-pointer whitespace-nowrap shrink-0 transition-colors duration-150 select-none ${
+              className={`group flex items-center justify-center gap-1.5 h-full px-2 rounded-[6px] text-[13px] leading-none font-mono cursor-pointer whitespace-nowrap shrink-0 transition-colors duration-150 select-none [&>*]:-translate-y-[2px] ${
                 s.id === activeId
                   ? 'bg-surf2 text-t1'
                   : 'text-t3 hover:bg-hov hover:text-t2'
