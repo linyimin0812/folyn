@@ -32,6 +32,7 @@ pub fn terminal_create(
     shell: Option<String>,
     cols: Option<u16>,
     rows: Option<u16>,
+    theme: Option<String>,
 ) -> Result<String, String> {
     let pty_system = native_pty_system();
     let pair = pty_system
@@ -68,6 +69,15 @@ pub fn terminal_create(
         "LANG",
         std::env::var("LANG").unwrap_or_else(|_| "en_US.UTF-8".into()),
     );
+    // sobole (the user's oh-my-zsh theme) colors its caret `»` white when
+    // SOBOLE_THEME_MODE=dark and black otherwise — without this, the caret is
+    // invisible on the app's dark background. Other themes ignore the var.
+    if let Some(theme) = theme {
+        cmd.env(
+            "SOBOLE_THEME_MODE",
+            if theme == "dark" { "dark" } else { "light" },
+        );
+    }
 
     let child = pair
         .slave

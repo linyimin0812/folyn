@@ -154,6 +154,7 @@ export function TerminalView({ id, active }: TerminalViewProps) {
           shell: null,
           cols: Math.max(term.cols, 2),
           rows: Math.max(term.rows, 2),
+          theme: resolvedTheme,
         });
         if (cancelled) {
           // The effect was torn down while the shell was spawning — kill the
