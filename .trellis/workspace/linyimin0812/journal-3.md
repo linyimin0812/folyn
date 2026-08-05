@@ -311,3 +311,39 @@ Swapped Chat/Agent/Ask mode trigger icons in the AI panel input from lucide (Mes
 ### Next Steps
 
 - None - task complete
+
+
+## Session 124: Pet menu: connect + clamp + revert to working state
+
+**Date**: 2026-08-05
+**Task**: Pet menu: connect + clamp + revert to working state
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Connected pet-menu cards and clamped to work area on all edges, tried moving shadow from cards to wrapper but it broke display, reverted to the d136825 working state for the pet-menu.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `220670a` | (see git log) |
+| `1831c43` | (see git log) |
+| `cc31584` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
