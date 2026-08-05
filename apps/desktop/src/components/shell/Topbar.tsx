@@ -14,7 +14,9 @@ import { MoveDialog } from '@/components/sidebar/SidebarActions';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { requestPlanMyDay } from '@/services/planMyDayBridge';
 import { useTranslation } from 'react-i18next';
-import { Sun, Moon, FolderInput, Plus, SquareTerminal, Globe } from 'lucide-react';
+import { Sun, Moon, FolderInput, Plus } from 'lucide-react';
+import terminalIcon from '@/assets/terminal.svg';
+import chromeIcon from '@/assets/chrome.svg';
 
 /** File types that support meaningful multi-mode switching — show the view-mode segment. */
 const SHOW_VIEW_MODE_FILE_TYPES = new Set(['markdown', 'json', 'csv', 'mmap', 'dbml', 'html', 'svg']);
@@ -66,6 +68,9 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const setViewMode = useEditorStore((state) => state.setViewMode);
   const toggleAiPanel = useEditorViewStateStore((state) => state.toggleAiPanel);
   const openTerminalDock = useEditorViewStateStore((state) => state.openTerminalDock);
+  const closeTerminalPanel = useEditorViewStateStore((state) => state.closeTerminalPanel);
+  const terminalPanelVisible = useEditorViewStateStore((state) => state.terminalPanelVisible);
+  const terminalSessions = useTerminalStore((state) => state.sessions);
   const activeTab = useEditorStore((state) => {
     const tabs = state.tabs;
     return tabs.find((t) => t.id === state.activeTabId);
@@ -144,15 +149,6 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
 
         <div className="top-div w-px h-[18px] bg-brd2 mx-[3px] shrink-0" />
 
-        <button className="tb-btn tb-ai-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-xs text-t3 transition-all duration-150 hover:bg-hov hover:text-t1 font-bold tracking-[-0.5px]" onClick={() => {
-          if (currentPage === 'schedule') {
-            requestPlanMyDay();
-          } else {
-            toggleAiPanel();
-          }
-        }} title={currentPage === 'schedule' ? t('topbar:ai.planToday') : t('topbar:ai.panel')}>
-          AI
-        </button>
         {showPlusMenu && (
         <div className="relative" ref={plusRef}>
           <button
@@ -172,7 +168,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
                   openTerminalDock();
                 }}
               >
-                <SquareTerminal size={14} className="text-t3 shrink-0" />
+                <img src={terminalIcon} alt="" width="14" height="14" className="shrink-0 opacity-80" />
                 {t('topbar:plus.newTerminal')}
               </button>
               <button
@@ -182,13 +178,44 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
                   openBrowserTab();
                 }}
               >
-                <Globe size={14} className="text-t3 shrink-0" />
+                <img src={chromeIcon} alt="" width="14" height="14" className="shrink-0" />
                 {t('topbar:plus.newBrowser')}
               </button>
             </div>
           )}
         </div>
         )}
+
+        {/* Terminal collapse/expand toggle — appears once a terminal exists,
+            next to the + icon and before the AI button, mirroring the AI
+            button's behavior. */}
+        {terminalSessions.length > 0 && (
+          <button
+            className={`tb-btn tb-term-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm transition-all duration-150 hover:bg-hov ${
+              terminalPanelVisible ? 'text-acc bg-accdim' : 'text-t3 hover:text-t1'
+            }`}
+            onClick={() => {
+              if (terminalPanelVisible) {
+                closeTerminalPanel();
+              } else {
+                openTerminalDock();
+              }
+            }}
+            title={terminalPanelVisible ? t('topbar:terminal.collapse') : t('topbar:terminal.expand')}
+          >
+            <img src={terminalIcon} alt="" width="14" height="14" className="shrink-0" />
+          </button>
+        )}
+
+        <button className="tb-btn tb-ai-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-xs text-t3 transition-all duration-150 hover:bg-hov hover:text-t1 font-bold tracking-[-0.5px]" onClick={() => {
+          if (currentPage === 'schedule') {
+            requestPlanMyDay();
+          } else {
+            toggleAiPanel();
+          }
+        }} title={currentPage === 'schedule' ? t('topbar:ai.planToday') : t('topbar:ai.panel')}>
+          AI
+        </button>
         <ExportMenu />
         {isExternalFileActive && activeTab && (
           <button

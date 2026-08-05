@@ -34,7 +34,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
               className={`group flex items-center gap-[5px] px-[11px] font-mono text-[calc(var(--ui-font-size)-3px)] text-t3 cursor-pointer border-b-2 border-b-transparent whitespace-nowrap shrink-0 transition-all duration-[220ms] select-none hover:text-t2 hover:bg-hov ${activeTabId === tab.id ? 'text-t1 !border-b-acc bg-surf' : ''}`}
               onClick={() => onSelectTab(tab.id)}
             >
-              <span className="shrink-0 flex items-center"><FileIcon filename={tab.name} /></span>
+              <span className="shrink-0 flex items-center"><FileIcon filename={tab.name} fileType={tab.fileType} /></span>
               <span className="max-w-[110px] overflow-hidden text-ellipsis">{tab.name}</span>
               {tab.isDirty && <span className="w-[5px] h-[5px] rounded-full bg-amber shrink-0" />}
               <span
@@ -69,7 +69,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-[calc(var(--ui-font-size)-2px)] text-t2 cursor-pointer whitespace-nowrap transition-[background] duration-[120ms] hover:bg-hov ${activeTabId === tab.id ? '!text-acc bg-hov' : ''}`}
                   onClick={() => { onSelectTab(tab.id); setTabListOpen(false); }}
                 >
-                  <span className="shrink-0 flex items-center"><FileIcon filename={tab.name} /></span>
+                  <span className="shrink-0 flex items-center"><FileIcon filename={tab.name} fileType={tab.fileType} /></span>
                   <span className="flex-1">{tab.name}</span>
                   {tab.isDirty && <span className="w-[5px] h-[5px] rounded-full bg-amber shrink-0" />}
                   <span

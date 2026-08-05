@@ -61,6 +61,8 @@ export function TerminalView({ id, active }: TerminalViewProps) {
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const spawnedRef = useRef(false);
+  const lineBufferRef = useRef('');
+  const firstCommandSetRef = useRef(false);
   const setStatus = useTerminalStore((s) => s.setStatus);
   const setTitle = useTerminalStore((s) => s.setTitle);
   const resolvedTheme = useResolvedTheme();
@@ -181,6 +183,30 @@ export function TerminalView({ id, active }: TerminalViewProps) {
     void start();
 
     const dataDisposable = term.onData((data) => {
+      // Name the tab after the first command the user runs (like VS Code /
+      // iTerm): accumulate the current line and, on the first Enter, replace
+      // the shell-name title with the command.
+      if (!firstCommandSetRef.current) {
+        for (const ch of data) {
+          if (ch === '\r' || ch === '\n') {
+            const cmd = lineBufferRef.current.trim();
+            if (cmd) {
+              firstCommandSetRef.current = true;
+              setTitle(id, cmd.length > 36 ? `${cmd.slice(0, 36)}…` : cmd);
+              lineBufferRef.current = '';
+              break;
+            }
+            lineBufferRef.current = '';
+          } else if (ch === '\x7f' || ch === '\b') {
+            lineBufferRef.current = lineBufferRef.current.slice(0, -1);
+          } else if (ch === '\x15') {
+            // Ctrl-U clears the line
+            lineBufferRef.current = '';
+          } else if (ch >= ' ' && ch < '\x7f') {
+            lineBufferRef.current += ch;
+          }
+        }
+      }
       if (isTauri() && spawnedRef.current) {
         void import('@tauri-apps/api/core').then(({ invoke }) => {
           invoke('terminal_write', { id, data }).catch(() => {});

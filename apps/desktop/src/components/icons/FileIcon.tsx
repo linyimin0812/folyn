@@ -1,9 +1,12 @@
 import React from 'react';
 import { ThemeIcon, hasIcon } from './ThemeIcon';
+import chromeIcon from '@/assets/chrome.svg';
 
 interface FileIconProps {
   filename: string;
   isDir?: boolean;
+  /** File-type id (e.g. 'web') to pick a type-specific icon. */
+  fileType?: string;
 }
 
 const S = 16;
@@ -125,9 +128,14 @@ function WebIcon() {
   );
 }
 
-export function FileIcon({ filename, isDir }: FileIconProps) {
+export function FileIcon({ filename, isDir, fileType }: FileIconProps) {
   if (isDir) {
     return <ThemeIcon name="folder" />;
+  }
+
+  // Browser/web tabs share the Chrome icon in the open-files tab bar.
+  if (fileType === 'web') {
+    return <img src={chromeIcon} alt="" width={S} height={S} className="shrink-0" />;
   }
 
   const ext = filename.split('.').pop()?.toLowerCase() ?? '';

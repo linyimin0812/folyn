@@ -8,7 +8,7 @@ import type { QuillEditorHandle } from '@/editor/EditorView';
 import { EditorView } from '@codemirror/view';
 import { getHandlerById } from '../file-types/registry';
 import { WikiGraphView } from '../graph/WikiGraphView';
-import { webviewCache } from '../file-types/web/WebViewer';
+import { getWebviewLabels } from '../file-types/web/WebViewer';
 import { TabBar } from './TabBar';
 import { EditorPane } from './EditorPane';
 import { PreviewPane } from './PreviewPane';
@@ -47,27 +47,22 @@ export function WorkArea() {
 
   // Hide all webviews when switching to a non-web tab
   const prevTabIdRef = useRef<string | null>(null);
-  const prevWasWebRef = useRef(false);
 
   useEffect(() => {
     if (activeTabId !== prevTabIdRef.current) {
-      const wasWeb = prevWasWebRef.current;
-      const isWeb = activeTab?.fileType === 'web';
-
-      // Hide all webviews when switching away from a web tab or between web tabs
-      if (wasWeb || isWeb) {
-        if (isTauri()) {
-          const labels = Array.from(webviewCache.values()).map(wv => wv.label);
-          if (labels.length > 0) {
-            import('@tauri-apps/api/core').then(({ invoke }) => {
-              invoke('hide_all_webviews', { labels }).catch(() => {});
-            });
-          }
+      // Hide every native webview on ANY tab switch. The active web tab's
+      // WebViewer re-shows itself via its position-sync effect, so nothing
+      // stale can cover the newly selected file page.
+      if (isTauri()) {
+        const labels = getWebviewLabels();
+        if (labels.length > 0) {
+          import('@tauri-apps/api/core').then(({ invoke }) => {
+            invoke('hide_all_webviews', { labels }).catch(() => {});
+          });
         }
       }
 
       prevTabIdRef.current = activeTabId;
-      prevWasWebRef.current = isWeb;
     }
 
     if (activeTabId && handler) {

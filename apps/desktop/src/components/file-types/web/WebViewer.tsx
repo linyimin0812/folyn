@@ -15,6 +15,17 @@ type WebviewStatus = 'loading' | 'ready' | { error: WebviewError };
 // Module-level cache to persist webview labels across component remounts
 export const webviewCache = new Map<string, { label: string; url: string }>();
 
+/**
+ * Every webview label created this session, including labels whose cache
+ * entry was replaced by navigation. WorkArea hides ALL of them on tab
+ * switches so an orphaned webview can never keep covering other pages.
+ */
+const allWebviewLabels = new Set<string>();
+
+export function getWebviewLabels(): string[] {
+  return Array.from(allWebviewLabels);
+}
+
 export function WebViewer({ filePath, tabId }: EditorProps) {
   const { t } = useTranslation();
   const webViewerRef = useRef<HTMLDivElement>(null);
@@ -279,6 +290,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
     if (cached && cached.url === filePath) {
       // Reuse existing webview
       webviewLabelRef.current = cached.label;
+      allWebviewLabels.add(cached.label);
       setStatus('ready');
       // First hide it, then reposition after layout is ready
       import('@tauri-apps/api/core').then(({ invoke }) => {
@@ -292,7 +304,34 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
           setTimeout(() => syncPosition(), 100);
         });
       });
-      return;
+      return () => {
+        // Hide the reused webview on unmount (tab switch) — the reuse path
+        // previously returned no cleanup, leaving the native webview floating
+        // over other pages.
+        const label = webviewLabelRef.current;
+        if (label) {
+          import('@tauri-apps/api/core').then(({ invoke }) => {
+            invoke('set_webview_position', {
+              label,
+              x: -10000,
+              y: -10000,
+              width: 1,
+              height: 1,
+            }).catch(() => {});
+          });
+          webviewLabelRef.current = null;
+        }
+      };
+    }
+
+    // Navigation: the cached webview belongs to a stale URL for this tab.
+    // Close it so it can't linger on screen, then create a fresh one below.
+    if (cached) {
+      import('@tauri-apps/api/core').then(({ invoke }) => {
+        invoke('close_webview', { label: cached.label }).catch(() => {});
+      });
+      allWebviewLabels.delete(cached.label);
+      webviewCache.delete(tabId);
     }
 
     setStatus('loading');
@@ -333,6 +372,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
         });
 
         webviewLabelRef.current = label;
+        allWebviewLabels.add(label);
         // Cache the webview for this tab
         webviewCache.set(tabId, { label, url: filePath });
         setStatus('ready');
@@ -394,6 +434,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
           import('@tauri-apps/api/core').then(({ invoke }) => {
             invoke('close_webview', { label: cached.label }).catch(() => {});
           });
+          allWebviewLabels.delete(cached.label);
           webviewCache.delete(tabId);
         }
       }

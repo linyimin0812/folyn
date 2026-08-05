@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocaleStore, SUPPORTED_LOCALES, type Locale } from '@/store/localeStore';
+import languageIcon from '@/assets/language.svg';
 
 interface LanguageSwitcherProps {
   /** "compact" renders a single icon button with a dropdown (Topbar);
@@ -70,10 +71,7 @@ export function LanguageSwitcher({ variant = 'compact' }: LanguageSwitcherProps)
         title={t('language.switcher.title')}
         aria-label={t('language.switcher.aria')}
       >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-          <circle cx="8" cy="8" r="6.5" />
-          <path d="M1.5 8h13M8 1.5c1.8 2 1.8 11 0 13M8 1.5c-1.8 2-1.8 11 0 13" />
-        </svg>
+        <img src={languageIcon} alt="" width="14" height="14" />
       </button>
       {open && (
         <div

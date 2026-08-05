@@ -13,6 +13,10 @@
     "newTerminal": "New Terminal",
     "newBrowser": "New Browser"
   },
+  "terminal": {
+    "collapse": "Collapse terminal",
+    "expand": "Expand terminal"
+  },
   "viewMode": {
     "split": "Split",
     "edit": "Edit",

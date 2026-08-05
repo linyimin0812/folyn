@@ -13,6 +13,10 @@
     "newTerminal": "新建终端",
     "newBrowser": "新建浏览器"
   },
+  "terminal": {
+    "collapse": "收起终端",
+    "expand": "展开终端"
+  },
   "viewMode": {
     "split": "分屏",
     "edit": "编辑",

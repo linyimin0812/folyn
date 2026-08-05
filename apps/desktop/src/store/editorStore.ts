@@ -214,6 +214,10 @@ export const useEditorStore = create<EditorState>()(
           tabs: [...state.tabs, newTab],
           activeTabId: newTab.id,
         }));
+        // Persist web tabs so they reappear in the open-files tab bar on the
+        // next launch (same path as file tabs).
+        const vaultId = useVaultStore.getState().activeVaultId;
+        if (vaultId) persistOpenTabs(vaultId, get().tabs, newTab.id);
       },
 
       openWebFromClip: (tabId, url, clipPath, title) => {

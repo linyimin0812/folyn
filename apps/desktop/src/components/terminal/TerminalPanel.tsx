@@ -2,7 +2,8 @@ import { useTerminalStore } from '@/store/terminalStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useTranslation } from 'react-i18next';
 import { TerminalView } from './TerminalView';
-import { Terminal, Plus, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
+import terminalIcon from '@/assets/terminal.svg';
 
 /** Terminal panel: session-tab header + xterm body. Owns its own header and
  *  close button (no dock tab bar). */
@@ -28,7 +29,13 @@ export function TerminalPanel() {
             }`}
             onClick={() => setActive(s.id)}
           >
-            <Terminal size={11} className={`shrink-0 ${s.id === activeId ? 'text-acc' : 'text-t4'}`} />
+            <img
+              src={terminalIcon}
+              alt=""
+              width="11"
+              height="11"
+              className={`shrink-0 ${s.id === activeId ? '' : 'opacity-50'}`}
+            />
             <span className={`max-w-[120px] overflow-hidden text-ellipsis ${s.status === 'exited' ? 'opacity-50' : ''}`}>{s.title}</span>
             {s.status === 'exited' && (
               <button
@@ -83,7 +90,7 @@ export function TerminalPanel() {
         {sessions.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-bg">
             <div className="w-[44px] h-[44px] rounded-[10px] bg-hov border border-brd flex items-center justify-center">
-              <Terminal size={18} className="text-t3" />
+              <img src={terminalIcon} alt="" width="18" height="18" className="opacity-70" />
             </div>
             <span className="text-xs text-t3">{t('terminal:empty')}</span>
             <button
