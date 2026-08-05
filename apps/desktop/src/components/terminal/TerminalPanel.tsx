@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next';
 import { TerminalView } from './TerminalView';
 import { Plus, X, Maximize2, Minimize2 } from 'lucide-react';
 import terminalIcon from '@/assets/terminal.svg';
+import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
+import { isTauri } from '@/utils/platform';
 
 /** Terminal panel: session-tab header + xterm body. Owns its own header and
  *  close button (no dock tab bar). The header's fullscreen button expands the
@@ -30,6 +32,18 @@ export function TerminalPanel() {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
+  }, [fullscreen]);
+
+  // Fullscreen is an HTML overlay; the native webview floats above HTML no
+  // matter the z-index, so hide every embedded webview while the terminal
+  // covers the page and re-sync the active one on exit.
+  useEffect(() => {
+    if (!isTauri()) return;
+    if (fullscreen) {
+      hideWebviewsForOverlay();
+    } else {
+      window.dispatchEvent(new CustomEvent('quill:overlay-closed'));
+    }
   }, [fullscreen]);
 
   // Collapsing the panel while fullscreen exits fullscreen (the hidden column
