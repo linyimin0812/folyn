@@ -1,4 +1,9 @@
 {
+  "rightDock": {
+    "ai": "AI",
+    "terminal": "终端",
+    "close": "关闭面板"
+  },
   "nav": {
     "schedule": "日程工作台 (⌘D)",
     "study": "学习工作台",

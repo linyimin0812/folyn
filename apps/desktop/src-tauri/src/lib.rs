@@ -655,6 +655,19 @@ pub fn run() {
             commands::set_webview_position,
             commands::hide_all_webviews,
             commands::on_webview_url_changed,
+            commands::load_url_webview,
+            commands::terminal_create,
+            commands::terminal_write,
+            commands::terminal_resize,
+            commands::terminal_kill,
+            commands::import_chrome_cookies,
+            commands::apply_imported_cookies,
+            commands::has_imported_cookies,
+            commands::import_chrome_passwords,
+            commands::save_imported_passwords,
+            commands::load_imported_passwords,
+            commands::clear_imported_passwords,
+            commands::fill_webview_credentials,
             commands::git_clone,
             commands::get_project_overview,
             commands::remove_dir,
@@ -723,6 +736,9 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                commands::terminal_kill_all();
+            }
             // OS "Open With" / file-association launch (macOS/iOS/Android).
             // When the user opens a file with Quill from Finder/Explorer, the
             // OS hands us the resource as a `file://` URL here. Convert to a

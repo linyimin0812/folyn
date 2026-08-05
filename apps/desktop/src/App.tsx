@@ -4,7 +4,7 @@ import { ActivityBar } from './components/shell/ActivityBar';
 import { Sidebar } from './components/sidebar/Sidebar';
 import { WorkArea } from './components/work-area/WorkArea';
 import { StatusBar } from './components/shell/StatusBar';
-import { AiPanel } from './components/ai/AiPanel';
+import { RightDock } from './components/ai/RightDock';
 import { GlobalSearchPanel } from './components/search/GlobalSearchPanel';
 import { CommandPalette } from './components/shell/CommandPalette';
 import { useWikiStore } from '@/store/wikiStore';
@@ -642,7 +642,7 @@ export default function App() {
             />
           </div>
           <WorkArea />
-          <AiPanel />
+          <RightDock />
         </div>
       )}
 
@@ -669,7 +669,7 @@ export default function App() {
         <div className="body-row flex-1 flex overflow-hidden">
           {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
           <StudyWorkbenchPage />
-          <AiPanel />
+          <RightDock />
         </div>
       )}
 

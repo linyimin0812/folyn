@@ -1,0 +1,18 @@
+{
+  "addressPlaceholder": "输入网址，按 Enter 打开",
+  "importData": "从 Chrome 导入数据",
+  "importCookies": "导入 Chrome Cookies",
+  "importPasswords": "导入 Chrome 密码",
+  "passwords": "密码",
+  "passwordsFor": "当前站点密码：",
+  "noPasswords": "此站点暂无已导入的密码",
+  "fill": "填充到页面",
+  "copyPassword": "复制密码",
+  "removePassword": "删除",
+  "newTab": "新建标签页",
+  "filled": "已填充到页面",
+  "fillFailed": "填充失败：",
+  "copied": "已复制到剪贴板",
+  "copyFailed": "复制失败",
+  "navigateFailed": "导航失败"
+}

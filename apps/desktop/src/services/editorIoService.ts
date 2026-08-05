@@ -25,6 +25,9 @@ import {
   loadExternalOpenTabs,
 } from '@/store/editorPersistence';
 
+/** Default URL for a freshly created browser tab. */
+export const BROWSER_HOME_URL = 'https://www.google.com';
+
 /**
  * Editor file-IO service — the file read/write/persist/disk-sync operations
  * that lived as editorStore actions in the legacy god-store.
@@ -166,6 +169,12 @@ export async function openFile(filePath: string, name: string): Promise<void> {
   } finally {
     set({ isFileLoading: false });
   }
+}
+
+/** Open a new browser tab (web tab in the files work area) and surface it. */
+export function openBrowserTab(url: string = BROWSER_HOME_URL): void {
+  useEditorStore.getState().openWebTab(url);
+  useEditorStore.setState({ activePanel: 'files' });
 }
 
 /** Open (or create) today's daily note. */

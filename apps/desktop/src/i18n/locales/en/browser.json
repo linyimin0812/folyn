@@ -1,0 +1,18 @@
+{
+  "addressPlaceholder": "Enter a URL and press Enter",
+  "importData": "Import from Chrome",
+  "importCookies": "Import Chrome cookies",
+  "importPasswords": "Import Chrome passwords",
+  "passwords": "Passwords",
+  "passwordsFor": "Passwords for",
+  "noPasswords": "No imported passwords for this site",
+  "fill": "Fill into page",
+  "copyPassword": "Copy password",
+  "removePassword": "Remove",
+  "newTab": "New tab",
+  "filled": "Filled into the page",
+  "fillFailed": "Fill failed:",
+  "copied": "Copied to clipboard",
+  "copyFailed": "Copy failed",
+  "navigateFailed": "Navigation failed"
+}

@@ -8,6 +8,11 @@
     "panel": "AI panel",
     "planToday": "AI plan today"
   },
+  "plus": {
+    "menu": "New terminal or browser",
+    "newTerminal": "New Terminal",
+    "newBrowser": "New Browser"
+  },
   "viewMode": {
     "split": "Split",
     "edit": "Edit",

@@ -1,4 +1,9 @@
 {
+  "rightDock": {
+    "ai": "AI",
+    "terminal": "Terminal",
+    "close": "Close panel"
+  },
   "nav": {
     "schedule": "Schedule (⌘D)",
     "study": "Study",

@@ -1,8 +1,11 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { isTauri } from '@/utils/platform';
 import { useEditorStore } from '@/store/editorStore';
-import * as editorIoService from '@/services/editorIoService';
+import { openBrowserTab, openFile } from '@/services/editorIoService';
 import { useClipStore } from '@/store/clipStore';
+import { useBrowserStore } from '@/store/browserStore';
+import { useTranslation } from 'react-i18next';
+import { Plus, Globe, KeyRound, Cookie, Copy, Lock, Trash2, Download } from 'lucide-react';
 import type { EditorProps } from '../types';
 
 type WebviewErrorCode = 'dns' | 'refused' | 'timeout' | 'http' | 'invalid_url' | 'blocked' | 'unknown';
@@ -13,12 +16,27 @@ type WebviewStatus = 'loading' | 'ready' | { error: WebviewError };
 export const webviewCache = new Map<string, { label: string; url: string }>();
 
 export function WebViewer({ filePath, tabId }: EditorProps) {
+  const { t } = useTranslation();
   const webViewerRef = useRef<HTMLDivElement>(null);
   const webviewLabelRef = useRef<string | null>(null);
   const [status, setStatus] = useState<WebviewStatus>('loading');
   const [clipping, setClipping] = useState(false);
   const [clipError, setClipError] = useState(false);
   const [clipDuplicate, setClipDuplicate] = useState<{ url: string; existingPath: string } | null>(null);
+  const [urlInput, setUrlInput] = useState(filePath);
+  const [importOpen, setImportOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const importRef = useRef<HTMLDivElement>(null);
+  const passwordRef = useRef<HTMLDivElement>(null);
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const passwords = useBrowserStore((s) => s.passwords);
+  const passwordImporting = useBrowserStore((s) => s.passwordImporting);
+  const cookieImporting = useBrowserStore((s) => s.cookieImporting);
+  const importCookies = useBrowserStore((s) => s.importCookies);
+  const importPasswords = useBrowserStore((s) => s.importPasswords);
+  const loadPasswords = useBrowserStore((s) => s.loadPasswords);
+  const removePassword = useBrowserStore((s) => s.removePassword);
 
   // Check if this web tab was opened from a clip card
   const clipPath = useEditorStore((s) => {
@@ -30,6 +48,109 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
   // Track active tab to hide/show webview
   const activeTabId = useEditorStore((s) => s.activeTabId);
   const isActive = activeTabId === tabId;
+
+  // Keep the address bar in sync with in-page navigation.
+  useEffect(() => {
+    setUrlInput(filePath);
+  }, [filePath]);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    void loadPasswords();
+  }, [loadPasswords]);
+
+  useEffect(() => {
+    if (!importOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (importRef.current && !importRef.current.contains(e.target as Node)) setImportOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [importOpen]);
+
+  useEffect(() => {
+    if (!passwordOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (passwordRef.current && !passwordRef.current.contains(e.target as Node)) setPasswordOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [passwordOpen]);
+
+  useEffect(() => () => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+  }, []);
+
+  const showNotice = useCallback((msg: string) => {
+    setNotice(msg);
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = setTimeout(() => setNotice(null), 4000);
+  }, []);
+
+  const submitUrl = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    const label = webviewLabelRef.current;
+    const raw = urlInput.trim();
+    if (!label || !raw) return;
+    let url = raw;
+    if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+    if (!isTauri()) {
+      window.location.href = url;
+      return;
+    }
+    import('@tauri-apps/api/core').then(({ invoke }) => {
+      invoke('load_url_webview', { label, url }).catch(() => showNotice(t('browser:navigateFailed')));
+    });
+  }, [urlInput, showNotice, t]);
+
+  const currentHost = (() => {
+    try { return new URL(filePath).hostname; } catch { return ''; }
+  })();
+  const matchingPasswords = passwords.filter((p) => {
+    try { return new URL(p.url).hostname === currentHost; } catch { return false; }
+  });
+
+  const fillPassword = useCallback(async (username: string, password: string) => {
+    const label = webviewLabelRef.current;
+    if (!label) return;
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('fill_webview_credentials', { label, username, password });
+      showNotice(t('browser:filled'));
+      setPasswordOpen(false);
+    } catch (err) {
+      const msg = typeof err === 'string' ? err : err instanceof Error ? err.message : String(err);
+      showNotice(`${t('browser:fillFailed')} ${msg}`);
+    }
+  }, [showNotice, t]);
+
+  const copyText = useCallback(async (text: string) => {
+    try {
+      if (isTauri()) {
+        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+        await writeText(text);
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
+      showNotice(t('browser:copied'));
+    } catch {
+      showNotice(t('browser:copyFailed'));
+    }
+  }, [showNotice, t]);
+
+  const handleImportCookies = useCallback(async () => {
+    setImportOpen(false);
+    await importCookies();
+    const notice = useBrowserStore.getState().notice;
+    if (notice) showNotice(notice);
+  }, [importCookies, showNotice]);
+
+  const handleImportPasswords = useCallback(async () => {
+    setImportOpen(false);
+    await importPasswords();
+    const notice = useBrowserStore.getState().notice;
+    if (notice) showNotice(notice);
+  }, [importPasswords, showNotice]);
 
   const handleBackToClip = useCallback(async () => {
     if (!clipPath) return;
@@ -121,7 +242,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
     setClipDuplicate(null);
     await syncPosition();
     try {
-      await editorIoService.openFile(existingPath, fileName);
+      await openFile(existingPath, fileName);
     } catch (err) {
       console.error('[WebViewer] openFile failed:', err);
     }
@@ -343,7 +464,20 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
             </button>
           </>
         )}
-        <span className="flex-1 text-xs text-t3 font-mono overflow-hidden text-ellipsis whitespace-nowrap" title={filePath}>🌐 {filePath}</span>
+        <form className="flex-1 min-w-0 flex items-center" onSubmit={submitUrl}>
+          <div className="flex-1 min-w-0 flex items-center gap-1.5 h-[26px] px-2.5 rounded-[6px] bg-bg border border-brd transition-colors duration-150 focus-within:border-acc">
+            <Globe size={12} className="text-t3 shrink-0" />
+            <input
+              className="flex-1 min-w-0 bg-transparent border-none outline-none text-xs text-t2 font-mono placeholder:text-t3"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              placeholder={t('browser:addressPlaceholder')}
+              spellCheck={false}
+              autoCapitalize="off"
+              autoCorrect="off"
+            />
+          </div>
+        </form>
         {!clipPath && (
           <button className="web-viewer-clip-btn flex items-center justify-center w-7 h-7 border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1 disabled:opacity-50 disabled:cursor-not-allowed" title={clipError ? '剪藏失败，请重试' : '剪藏此页'} onClick={handleClipPage} disabled={clipping}>
             {clipping ? (
@@ -360,6 +494,92 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
             )}
           </button>
         )}
+        <div className="relative" ref={importRef}>
+          <button
+            className="flex items-center justify-center w-7 h-7 border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1"
+            title={t('browser:importData')}
+            onClick={() => setImportOpen((v) => !v)}
+          >
+            <Download size={14} />
+          </button>
+          {importOpen && (
+            <div className="absolute top-full right-0 mt-1 z-[120] min-w-[210px] bg-surf border border-brd rounded-[8px] shadow-[0_8px_28px_rgba(0,0,0,0.16)] py-1">
+              <button
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[13px] text-t2 cursor-pointer border-none bg-transparent transition-colors duration-150 hover:bg-hov hover:text-t1 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleImportCookies}
+                disabled={cookieImporting}
+              >
+                <Cookie size={14} className="text-t3 shrink-0" />
+                <span className="flex-1">{t('browser:importCookies')}</span>
+                {cookieImporting && <span className="inline-block w-3 h-3 rounded-full border-[1.5px] border-brd border-t-acc animate-spin" />}
+              </button>
+              <button
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[13px] text-t2 cursor-pointer border-none bg-transparent transition-colors duration-150 hover:bg-hov hover:text-t1 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleImportPasswords}
+                disabled={passwordImporting}
+              >
+                <KeyRound size={14} className="text-t3 shrink-0" />
+                <span className="flex-1">{t('browser:importPasswords')}</span>
+                {passwordImporting && <span className="inline-block w-3 h-3 rounded-full border-[1.5px] border-brd border-t-acc animate-spin" />}
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="relative" ref={passwordRef}>
+          <button
+            className="flex items-center justify-center w-7 h-7 border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1"
+            title={t('browser:passwords')}
+            onClick={() => setPasswordOpen((v) => !v)}
+          >
+            <Lock size={14} />
+          </button>
+          {passwordOpen && (
+            <div className="absolute top-full right-0 mt-1 z-[120] min-w-[240px] max-w-[320px] max-h-[320px] overflow-y-auto bg-surf border border-brd rounded-[8px] shadow-[0_8px_28px_rgba(0,0,0,0.16)] p-1.5">
+              <div className="px-2 py-1 text-[11px] text-t3 truncate">
+                {t('browser:passwordsFor')} {currentHost || '—'}
+              </div>
+              {matchingPasswords.length === 0 && (
+                <div className="px-2 py-2.5 text-xs text-t3">{t('browser:noPasswords')}</div>
+              )}
+              {matchingPasswords.map((p) => (
+                <div key={p.id} className="flex items-center gap-1 px-2 py-1.5 rounded-[5px] hover:bg-hov">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-t2 truncate">{p.username || '—'}</div>
+                    <div className="text-[10px] text-t3 font-mono">••••••••••</div>
+                  </div>
+                  <button
+                    className="w-[22px] h-[22px] flex items-center justify-center rounded-[4px] border-none bg-transparent text-t3 cursor-pointer hover:bg-hov hover:text-t1 shrink-0"
+                    title={t('browser:fill')}
+                    onClick={() => fillPassword(p.username, p.password)}
+                  >
+                    <KeyRound size={12} />
+                  </button>
+                  <button
+                    className="w-[22px] h-[22px] flex items-center justify-center rounded-[4px] border-none bg-transparent text-t3 cursor-pointer hover:bg-hov hover:text-t1 shrink-0"
+                    title={t('browser:copyPassword')}
+                    onClick={() => copyText(p.password)}
+                  >
+                    <Copy size={12} />
+                  </button>
+                  <button
+                    className="w-[22px] h-[22px] flex items-center justify-center rounded-[4px] border-none bg-transparent text-t3 cursor-pointer hover:bg-hov hover:text-red shrink-0"
+                    title={t('browser:removePassword')}
+                    onClick={() => removePassword(p.id)}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <button
+          className="flex items-center justify-center w-7 h-7 border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1"
+          title={t('browser:newTab')}
+          onClick={() => openBrowserTab()}
+        >
+          <Plus size={14} />
+        </button>
         <button className="web-viewer-open-btn flex items-center justify-center w-7 h-7 border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1" title="在外部浏览器打开" onClick={openExternal}>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M12 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4" />
@@ -368,6 +588,12 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
           </svg>
         </button>
       </div>
+
+      {notice && (
+        <div className="absolute left-3 bottom-3 z-[130] max-w-[70%] bg-panel border border-brd rounded-[8px] shadow-[0_6px_20px_rgba(0,0,0,0.18)] px-3 py-2 text-xs text-t1 pointer-events-none">
+          {notice}
+        </div>
+      )}
 
       {clipDuplicate && (
         <div className="web-viewer-duplicate absolute inset-x-0 top-10 bottom-0 flex items-center justify-center bg-surf z-20 p-4">

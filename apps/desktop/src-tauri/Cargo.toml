@@ -71,6 +71,22 @@ tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
 # so it adds the smallest dependency footprint for a single localhost
 # endpoint. See .trellis/tasks/07-22-pet-external-notify-api/research/rust-http-server.md.
 tiny_http = "0.12"
+# PTY-backed terminal sessions for the right-dock terminal panel (wezterm's
+# cross-platform pty layer: openpty on macOS/Linux, conpty on Windows).
+portable-pty = "0.9"
+# Chrome cookies/passwords import. rusqlite reads the Chromium SQLite stores;
+# the aes/cbc/cipher/pbkdf2/hmac/sha1/sha2 stack implements Chrome's macOS
+# "v10"/"v11" AES-128-CBC + PBKDF2("saltysalt", 1003) decryption exactly
+# (same constants Chromium pins in components/os_crypt). `time` matches the
+# `cookie` crate's expiry type used by tauri::webview::Cookie.
+rusqlite = { version = "0.40", features = ["bundled"] }
+aes = "0.9"
+cbc = { version = "0.2", features = ["alloc"] }
+cipher = "0.5"
+pbkdf2 = "0.13"
+hmac = "0.13"
+sha1 = "0.11"
+time = "0.3"
 # Dev-only: RNG for the ed25519 signature round-trip tests (signs + verifies
 # with a real keypair). NOT linked into the release binary — only used in
 # `#[cfg(test)]` blocks.

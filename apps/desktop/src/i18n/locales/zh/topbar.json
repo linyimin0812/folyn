@@ -8,6 +8,11 @@
     "panel": "AI 面板",
     "planToday": "AI 规划今日"
   },
+  "plus": {
+    "menu": "新建终端或浏览器",
+    "newTerminal": "新建终端",
+    "newBrowser": "新建浏览器"
+  },
   "viewMode": {
     "split": "分屏",
     "edit": "编辑",

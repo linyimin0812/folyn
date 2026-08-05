@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useEditorStore, type ViewMode } from '@/store/editorStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useNavStore } from '@/store/navStore';
 import { useVaultStore } from '@/store/vaultStore';
+import { useTerminalStore } from '@/store/terminalStore';
 import { isExternalPath } from '@/utils/isExternalPath';
 import * as editorIoService from '@/services/editorIoService';
+import { openBrowserTab } from '@/services/editorIoService';
 import { requestRevealPath } from '@/services/revealPathBridge';
 import { useTheme } from '@/hooks/useTheme';
 import { ExportMenu } from '@/components/editor/ExportMenu';
@@ -12,7 +14,7 @@ import { MoveDialog } from '@/components/sidebar/SidebarActions';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { requestPlanMyDay } from '@/services/planMyDayBridge';
 import { useTranslation } from 'react-i18next';
-import { Sun, Moon, FolderInput } from 'lucide-react';
+import { Sun, Moon, FolderInput, Plus, SquareTerminal, Globe } from 'lucide-react';
 
 /** File types that support meaningful multi-mode switching — show the view-mode segment. */
 const SHOW_VIEW_MODE_FILE_TYPES = new Set(['markdown', 'json', 'csv', 'mmap', 'dbml', 'html', 'svg']);
@@ -63,6 +65,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const viewMode = useEditorStore((state) => state.viewMode);
   const setViewMode = useEditorStore((state) => state.setViewMode);
   const toggleAiPanel = useEditorViewStateStore((state) => state.toggleAiPanel);
+  const openTerminalDock = useEditorViewStateStore((state) => state.openTerminalDock);
   const activeTab = useEditorStore((state) => {
     const tabs = state.tabs;
     return tabs.find((t) => t.id === state.activeTabId);
@@ -81,6 +84,20 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const modes = activeTab?.fileType === 'html' ? HTML_MODES : VIEW_MODES;
   const setCurrentPage = useNavStore((state) => state.setCurrentPage);
   const currentPage = useNavStore((state) => state.currentPage);
+  const [plusOpen, setPlusOpen] = useState(false);
+  const plusRef = useRef<HTMLDivElement>(null);
+  const showPlusMenu = currentPage === 'editor' || currentPage === 'study';
+
+  useEffect(() => {
+    if (!plusOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (plusRef.current && !plusRef.current.contains(e.target as Node)) {
+        setPlusOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [plusOpen]);
 
   return (
     <header data-tauri-drag-region className="topbar h-[36px] shrink-0 bg-panel border-b border-brd flex items-center justify-between pl-0 pr-2.5 gap-[3px] z-50">
@@ -136,6 +153,42 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
         }} title={currentPage === 'schedule' ? t('topbar:ai.planToday') : t('topbar:ai.panel')}>
           AI
         </button>
+        {showPlusMenu && (
+        <div className="relative" ref={plusRef}>
+          <button
+            className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1"
+            onClick={() => setPlusOpen((v) => !v)}
+            title={t('topbar:plus.menu')}
+          >
+            <Plus size={15} />
+          </button>
+          {plusOpen && (
+            <div className="absolute top-full right-0 mt-1 z-[200] min-w-[190px] bg-surf border border-brd rounded-[8px] shadow-[0_8px_28px_rgba(0,0,0,0.16)] py-1">
+              <button
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[13px] text-t2 cursor-pointer border-none bg-transparent transition-colors duration-150 hover:bg-hov hover:text-t1"
+                onClick={() => {
+                  setPlusOpen(false);
+                  useTerminalStore.getState().addSession();
+                  openTerminalDock();
+                }}
+              >
+                <SquareTerminal size={14} className="text-t3 shrink-0" />
+                {t('topbar:plus.newTerminal')}
+              </button>
+              <button
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[13px] text-t2 cursor-pointer border-none bg-transparent transition-colors duration-150 hover:bg-hov hover:text-t1"
+                onClick={() => {
+                  setPlusOpen(false);
+                  openBrowserTab();
+                }}
+              >
+                <Globe size={14} className="text-t3 shrink-0" />
+                {t('topbar:plus.newBrowser')}
+              </button>
+            </div>
+          )}
+        </div>
+        )}
         <ExportMenu />
         {isExternalFileActive && activeTab && (
           <button

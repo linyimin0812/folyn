@@ -26,6 +26,10 @@ import zhRustErrors from './locales/zh/rustErrors.json';
 import enRustErrors from './locales/en/rustErrors.json';
 import zhPet from './locales/zh/pet.json';
 import enPet from './locales/en/pet.json';
+import zhTerminal from './locales/zh/terminal.json';
+import enTerminal from './locales/en/terminal.json';
+import zhBrowser from './locales/zh/browser.json';
+import enBrowser from './locales/en/browser.json';
 
 // ponytail: static bundle import (no lazy loading). Bundle size is bounded
 // by the namespace count; add lazy loading only when total JSON exceeds a
@@ -63,6 +67,8 @@ export const NAMESPACES = [
   'study',
   'rustErrors',
   'pet',
+  'terminal',
+  'browser',
 ] as const;
 
 void i18n.use(initReactI18next).init({
@@ -81,6 +87,8 @@ void i18n.use(initReactI18next).init({
       study: zhStudy,
       rustErrors: zhRustErrors,
       pet: zhPet,
+      terminal: zhTerminal,
+      browser: zhBrowser,
     },
     en: {
       common: enCommon,
@@ -96,6 +104,8 @@ void i18n.use(initReactI18next).init({
       study: enStudy,
       rustErrors: enRustErrors,
       pet: enPet,
+      terminal: enTerminal,
+      browser: enBrowser,
     },
   },
   lng: detectInitialLocale(),

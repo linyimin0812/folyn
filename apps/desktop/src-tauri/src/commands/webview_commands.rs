@@ -115,6 +115,10 @@ pub async fn create_webview(
         LogicalSize::new(width, height),
     ).map_err(|e| format!("Failed to create webview: {}", e))?;
 
+    // Seed freshly created browser webviews with cookies imported earlier
+    // from Chrome (if any).
+    super::browser_commands::apply_imported_cookies_to_label(&app, &label);
+
     Ok(())
 }
 
@@ -219,4 +223,3 @@ pub async fn hide_all_webviews(app: tauri::AppHandle, labels: Vec<String>) -> Re
     }
     Ok(())
 }
-
