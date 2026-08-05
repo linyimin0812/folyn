@@ -53,7 +53,7 @@ export function TerminalPanel() {
 
   return (
     <div
-      className="shrink-0 flex flex-col overflow-hidden bg-bg border-t border-brd"
+      className="shrink-0 flex flex-col overflow-hidden bg-bg"
       style={{ height }}
     >
       {/* Resize handle: 5px invisible hit target with a 1px visible line, so

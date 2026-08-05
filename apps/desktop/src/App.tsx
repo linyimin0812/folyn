@@ -97,7 +97,6 @@ export default function App() {
   const isMobile = useIsMobile();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarLeft, setSidebarLeft] = useState(0);
   const activePanel = useEditorStore((s) => s.activePanel);
   const setActivePanel = useEditorStore((s) => s.setActivePanel);
   const setCurrentPage = useNavStore((s) => s.setCurrentPage);
@@ -124,40 +123,6 @@ export default function App() {
   const currentPage = useNavStore((state) => state.currentPage);
   const showStatusBar = useAppearanceStore((state) => state.showStatusBar);
   const fontSize = useAppearanceStore((state) => state.fontSize);
-
-  // Track where the editor content area starts (right edge of the left file
-  // bar) so the bottom terminal strip spans exactly the editor page width
-  // instead of the whole window — the file bar stays visible on the left.
-  useEffect(() => {
-    if (isMobile) {
-      setSidebarLeft(0);
-      return;
-    }
-    const measure = () => {
-      const sidebar =
-        document.querySelector('.sidebar-wrapper .sidebar') ??
-        document.querySelector('.sidebar');
-      if (!sidebar || !sidebar.isConnected) {
-        setSidebarLeft(0);
-        return;
-      }
-      setSidebarLeft(Math.round(sidebar.getBoundingClientRect().right));
-    };
-    measure();
-    // The sidebar is resizable by dragging; observe its size so the terminal
-    // follows while the user drags.
-    const sidebar = document.querySelector('.sidebar-wrapper .sidebar') ?? document.querySelector('.sidebar');
-    let observer: ResizeObserver | null = null;
-    if (sidebar) {
-      observer = new ResizeObserver(measure);
-      observer.observe(sidebar);
-    }
-    window.addEventListener('resize', measure);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, [isMobile, sidebarCollapsed, currentPage]);
   // enable*Panel flags are no longer read here post-PR2 — the visibility +
   // active-panel fallback logic moved into registerBuiltinPanels (one general
   // rule: if the active panel becomes invisible, re-route to 'files').
@@ -672,6 +637,9 @@ export default function App() {
             {isMobile && mobileSidebarOpen && (
               <div className="mobile-sidebar-overlay" onClick={closeMobileSidebar} />
             )}
+            {/* The file bar is a full-height sibling of the editor column so
+                it keeps showing the file tree while the terminal occupies
+                only the space below the editor content. */}
             <div className={`sidebar-wrapper ${isMobile ? 'mobile' : ''} ${mobileSidebarOpen ? 'open' : ''}`}>
               <Sidebar
                 collapsed={sidebarCollapsed}
@@ -679,10 +647,14 @@ export default function App() {
                 onFileSelect={isMobile ? closeMobileSidebar : undefined}
               />
             </div>
-            <WorkArea />
-            <RightDock />
+            <div className="flex-1 min-w-0 flex flex-col">
+              <div className="flex-1 min-h-0 flex">
+                <WorkArea />
+                <RightDock />
+              </div>
+              <BottomTerminal />
+            </div>
           </div>
-          <BottomTerminal sidebarLeft={sidebarLeft} />
         </>
       )}
 
@@ -712,7 +684,7 @@ export default function App() {
             <StudyWorkbenchPage />
             <RightDock />
           </div>
-          <BottomTerminal sidebarLeft={sidebarLeft} />
+          <BottomTerminal />
         </>
       )}
 
@@ -727,18 +699,12 @@ export default function App() {
  *  mounted) while collapsed so xterm scrollback and the PTY session survive.
  *  `useTerminalStore` subscription keeps this mounted across session
  *  add/close without re-rendering the whole App. */
-function BottomTerminal({ sidebarLeft }: { sidebarLeft: number }) {
+function BottomTerminal() {
   const sessions = useTerminalStore((s) => s.sessions);
   const terminalPanelVisible = useEditorViewStateStore((s) => s.terminalPanelVisible);
   if (sessions.length === 0) return null;
   return (
-    <div
-      style={{
-        display: terminalPanelVisible ? undefined : 'none',
-        marginLeft: sidebarLeft,
-        width: sidebarLeft > 0 ? `calc(100% - ${sidebarLeft}px)` : undefined,
-      }}
-    >
+    <div style={{ display: terminalPanelVisible ? undefined : 'none' }}>
       <TerminalPanel />
     </div>
   );
