@@ -35,7 +35,7 @@ export function TerminalPanel({
     >
       <div className="flex items-center gap-1 h-[28px] shrink-0 px-2 bg-panel border-b border-brd overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <button
-          className="shrink-0 w-[52px] h-[22px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
+          className="shrink-0 w-[26px] h-[22px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
           title={t('terminal:new')}
           onClick={addSession}
         >
@@ -90,7 +90,7 @@ export function TerminalPanel({
             </div>
           ))}
         </div>
-        <div className="w-[52px] shrink-0 flex items-center justify-end">
+        <div className="shrink-0 flex items-center justify-end">
           <button
             className="shrink-0 w-[26px] h-[22px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
             title={terminalPanelVisible ? t('terminal:collapseToBottom') : t('terminal:openAtBottom')}
