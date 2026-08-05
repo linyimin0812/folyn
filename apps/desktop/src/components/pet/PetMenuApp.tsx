@@ -15,28 +15,33 @@
 // (click outside).
 //
 // Submenus (size, opacity) are floating secondary cards — hover the parent
-// item → after a short delay the submenu card appears to the right of the
-// main card, vertically aligned with the parent item's top edge. This mirrors
-// native macOS NSMenu submenus (no click-to-expand-inline accordion). Only one
-// submenu visible at a time; hovering the other parent swaps. Picking a radio
-// closes the whole menu (native submenu behavior).
+// item → after a short delay the submenu card appears beside the main card,
+// vertically aligned with the parent item's top edge. The side is adaptive:
+// the submenu opens AWAY from the pet icon (pet on the right half → left,
+// pet on the left half → right) so it never covers the mascot and never gets
+// covered by it — `computePanelPosition` always places the main card entirely
+// on one horizontal side of the pet, so the opposite side is the safe one.
+// Only one submenu visible at a time; hovering the other parent swaps.
+// Picking a radio closes the whole menu (native submenu behavior).
 //
 // Mouse-only + ESC. No arrow-key / role=menuitem keyboard nav in MVP.
 //
-// The submenu always opens rightward. To prevent it from being clipped at
-// the screen's right edge, the open path reserves `SUBMENU_RESERVATION_LOGICAL`
-// of right-side room when positioning the main card (see
-// `resizeAndReposition`). No `order` flipping → the main card's screen
-// position is fixed at open time, so opening/closing the submenu only
-// changes the window SIZE (via `set_size`), never the position — the
-// first-level menu doesn't jump.
+// The submenu side is chosen at open time (see `resizeAndReposition` /
+// `SubmenuSide`). For a rightward submenu the window only resizes on toggle
+// (top-left fixed). For a leftward submenu the window also shifts by the
+// submenu's left-extent so the MAIN CARD stays at the identical screen
+// position — the parent item never moves out from under the mouse, so no
+// enter/leave "shake" loop.
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isTauri } from '@/utils/platform';
 import {
   computePanelPosition,
+  mascotSizeForPetSize,
+  PET_PANEL_GAP,
   PET_SIZE_DEFAULT,
+  petSizeToPx,
   type PetSize,
   type PetWorkArea,
 } from './petPosition';
@@ -59,12 +64,12 @@ const SIZE_LEVELS: PetSize[] = ['50', '75', '100', '125', '150'];
  *  `set-pet-opacity` action payload. */
 const OPACITY_LEVELS = ['25', '50', '75', '100'] as const;
 
-/** Right-side room reserved for the submenu at open time (logical px).
- *  Submenu min-width 120 + 6px gap. The open path shifts the main card
- *  leftward by this much when the right side would otherwise overflow the
- *  work area, so the always-rightward submenu never gets clipped — without
- *  flipping layout (which would jump the first-level menu). */
-const SUBMENU_RESERVATION_LOGICAL = 126;
+/** Room reserved for the submenu on its chosen side at open time (logical
+ *  px). Submenu min-width 128 + 6px gap + 6px buffer. The open path keeps
+ *  the main card far enough from the work-area edge on the submenu side so
+ *  the submenu never gets clipped — without moving the main card later
+ *  (which would jump the first-level menu). */
+const SUBMENU_RESERVATION_LOGICAL = 140;
 
 /** Bottom-side room reserved for the submenu at open time (logical px).
  *  The floating submenu card renders below its parent item; the part that
@@ -77,6 +82,14 @@ const SUBMENU_GROWTH_LOGICAL = 22;
 /** Which submenu is currently visible (hover-triggered), plus the parent
  *  item's vertical offset so the floating card can align with it. */
 type HoveredSection = { section: 'size' | 'opacity'; offsetTop: number } | null;
+
+/** Which side of the main card the submenu opens toward. Chosen at open time
+ *  from the pet's horizontal half: `'left'` when the pet is on the right
+ *  half (main card sits left of the icon → submenu extends left, away from
+ *  it), `'right'` when the pet is on the left half. Mirrors the quadrant
+ *  branch in `computePanelPosition` so the two can never disagree about
+ *  which side of the icon the main card is on. */
+type SubmenuSide = 'left' | 'right';
 
 /** Emit a `pet://menu-action` event with the given payload, then hide the
  *  menu window. Used for every item click — top-level actions AND size/opacity
@@ -115,37 +128,36 @@ async function hideMenu(): Promise<void> {
 
 /**
  * Measure the rendered menu DOM, compute a quadrant-aware position (reusing
- * `computePanelPosition`'s corner-attach math from `petPosition.ts`), then
- * size + position the `pet-menu` window. Used both on the open path (followed
- * by `pet_menu_show`) and on submenu show/hide (the window is already visible
- * — caller must NOT re-show, that would flicker / steal focus). Swallows
- * errors so a missing window / failed invoke doesn't break the open path.
+ * `computePanelPosition`'s corner-attach math from `petPosition.ts`), pick
+ * the submenu side, then size + position the `pet-menu` window. Open path
+ * only (followed by `pet_menu_show`); the submenu show/hide path is handled
+ * by `syncSubmenuWindow`, which keeps the main card fixed. Swallows errors
+ * so a missing window / failed invoke doesn't break the open path.
  *
- * The root passed here is `.pet-menu-window-root`, whose `getBoundingClientRect`
- * returns the union of the main card + the floating submenu when the submenu
- * is rendered — so the OS window grows to fit both cards.
+ * The root passed here is `.pet-menu-window-root`; the MEASURE is taken from
+ * its `.pet-menu-root` child (the main card), NOT the wrapper union. The
+ * wrapper's rect includes a rendered submenu (size/opacity card), and if the
+ * previous open left one in the DOM when a new `pet://menu-show` arrives,
+ * measuring the union would size/position the window as if the submenu were
+ * part of the main card — the main card drifts away from the pet. Measuring
+ * the main card directly makes the open path immune to submenu render state.
  *
- * `reposition` defaults to `true` (the open path needs quadrant-aware
- * positioning before show). The submenu show/hide path passes `false` — when
- * the floating submenu appears/disappears, only the window SIZE changes (the
- * union rect grows/shrinks); the window's top-left must STAY FIXED so the
- * main card doesn't move out from under the mouse. If the submenu path
- * re-positions, the recomputed top-left (based on the new larger size) shifts
- * the window → the parent item moves → `onMouseLeave` fires → submenu hides
- * after 200ms → window shrinks → position recomputed back → `onMouseEnter`
- * fires → submenu shows after 150ms → … enter/leave feedback loop = "shake".
- * Holding the position breaks the loop. (The open path's `computePanelPosition`
- * clamps the LARGER union to the work area — that clamp is correct there
- * because the user just right-clicked and the menu is fresh; on submenu
- * toggle the user is mid-interaction and any movement is hostile.)
+ * Submenu side: recomputed on EVERY open from the pet's horizontal half —
+ * `'left'` (pet on the right half, main card left of the icon) or `'right'`
+ * (pet on the left half). The submenu later opens on that side, AWAY from
+ * the pet icon, so it can never cover or be covered by the mascot. The side
+ * is returned to the caller, which stores it for the submenu-toggle path.
  *
- * Right-side reservation (open path only): after `computePanelPosition`
- * returns `posLogical`, if the main card's right edge + submenu reservation
- * would overflow the work area's right edge, shift `posLogical.x` leftward
- * so the always-rightward submenu has room. Clamped to `>= workArea.x` so
- * the reservation never pushes the main card off the left edge. This keeps
- * the first-level menu fixed at open time (no `order` flip → no jump) while
- * still preventing submenu clipping at the right screen edge.
+ * Side reservation (open path only): after `computePanelPosition` returns
+ * `posLogical`, keep `SUBMENU_RESERVATION_LOGICAL` of free room on the
+ * submenu's chosen side so the submenu never gets clipped at the work-area
+ * edge. For `'right'` that means shifting the main card left when the right
+ * side would overflow; for `'left'` it means shifting the main card right
+ * when the left side would be too tight — the latter capped at the pet icon
+ * edge (`PET_PANEL_GAP` away) so the reservation can never push the card
+ * onto the mascot. In practice the away side points into the larger quadrant
+ * (the same one `computePanelPosition` placed the card into), so these
+ * shifts are pure safety nets.
  *
  * Bottom-side reservation (open path only): the floating submenu card
  * extends ~SUBMENU_GROWTH_LOGICAL below the main card's bottom edge. If
@@ -163,86 +175,165 @@ async function hideMenu(): Promise<void> {
 async function resizeAndReposition(
   root: HTMLDivElement | null,
   petSize: PetSize,
-  reposition = true,
-): Promise<void> {
-  if (!isTauri() || !root) return;
-  const rect = root.getBoundingClientRect();
+): Promise<{ pos: { x: number; y: number }; side: SubmenuSide } | null> {
+  if (!isTauri() || !root) return null;
+  const card = root.querySelector<HTMLElement>('.pet-menu-root');
+  const rect = card?.getBoundingClientRect() ?? root.getBoundingClientRect();
   const menuWidth = Math.ceil(rect.width);
   const menuHeight = Math.ceil(rect.height);
-  if (menuWidth <= 0 || menuHeight <= 0) return;
+  if (menuWidth <= 0 || menuHeight <= 0) return null;
   try {
     const { invoke } = await import('@tauri-apps/api/core');
-    // Always fetch workArea — it carries `scale_factor` (needed for the
-    // logical→physical `set_size` multiply even when we skip positioning)
-    // AND is needed for `computePanelPosition` when repositioning. One IPC
-    // call covers both; cheaper than a separate `get_scale_factor` command.
     const workArea = await invoke<PetWorkArea>('pet_get_work_area');
     const sf = workArea.scale_factor || 1;
     await invoke('pet_menu_set_size', {
       width: Math.round(menuWidth * sf),
       height: Math.round(menuHeight * sf),
     });
-    if (reposition) {
-      const petPos = await invoke<PetPositionResult>('get_pet_position');
-      // petPos is physical px → logical for the math (matches petPosition.ts
-      // unit contract), then × sf back to physical for set_position.
-      const petPosLogical = { x: petPos.x / sf, y: petPos.y / sf };
-      const posLogical = computePanelPosition(
-        petPosLogical,
-        workArea,
-        { width: menuWidth, height: menuHeight },
-        petSize,
-      );
-      // Right-side reservation: ensure the always-rightward submenu has room.
-      // Shift the main card leftward when needed; clamp to the work area's
-      // left edge so the reservation doesn't push the main card off-screen.
+    const petPos = await invoke<PetPositionResult>('get_pet_position');
+    // petPos is physical px → logical for the math (matches petPosition.ts
+    // unit contract), then × sf back to physical for set_position.
+    const petPosLogical = { x: petPos.x / sf, y: petPos.y / sf };
+    const posLogical = computePanelPosition(
+      petPosLogical,
+      workArea,
+      { width: menuWidth, height: menuHeight },
+      petSize,
+    );
+
+    // Submenu side: mirror computePanelPosition's X branch — pet on the right
+    // half → main card extends left of the icon → submenu opens LEFT (away
+    // from the icon); pet on the left half → submenu opens RIGHT.
+    const petWindowSize = petSizeToPx(petSize);
+    const petCenterX = petPosLogical.x + petWindowSize / 2;
+    const side: SubmenuSide =
+      petCenterX >= workArea.x + workArea.width / 2 ? 'left' : 'right';
+
+    if (side === 'right') {
+      // Ensure the rightward submenu has room: shift the main card leftward
+      // when the right side would overflow; clamp to the work area's left
+      // edge so the reservation never pushes the main card off-screen.
       const rightEdge = posLogical.x + menuWidth + SUBMENU_RESERVATION_LOGICAL;
       const workAreaRight = workArea.x + workArea.width;
       if (rightEdge > workAreaRight) {
         posLogical.x = Math.max(workArea.x, workAreaRight - menuWidth - SUBMENU_RESERVATION_LOGICAL);
       }
-      // Bottom-side reservation: the submenu extends ~SUBMENU_GROWTH_LOGICAL
-      // below the main card's bottom. Shift the window upward when the
-      // bottom edge would overflow the work area's bottom (pet near screen
-      // bottom, or larger pet sizes that push iconTop down). Clamped to
-      // workArea.y so the reservation never pushes the window off the top.
-      const bottomEdge = posLogical.y + menuHeight + SUBMENU_GROWTH_LOGICAL;
-      const workAreaBottom = workArea.y + workArea.height;
-      if (bottomEdge > workAreaBottom) {
-        posLogical.y = Math.max(workArea.y, workAreaBottom - menuHeight - SUBMENU_GROWTH_LOGICAL);
+    } else {
+      // Leftward submenu: keep its left edge on-screen by shifting the main
+      // card right when the pet-adjacent placement would be too tight. Cap
+      // at the pet icon edge (PET_PANEL_GAP away) so the reservation can
+      // never push the main card onto the mascot — the pet takes precedence.
+      const minX = workArea.x + SUBMENU_RESERVATION_LOGICAL;
+      if (posLogical.x < minX) {
+        const mascotSize = mascotSizeForPetSize(petSize);
+        const inset = (petWindowSize - mascotSize) / 2;
+        const iconLeft = petPosLogical.x + inset;
+        const maxX = iconLeft - PET_PANEL_GAP - menuWidth;
+        posLogical.x = Math.min(maxX, minX);
       }
-      // Left/top edge clamp: computePanelPosition doesn't clamp, so on
-      // narrow/short screens the computed position can fall off-screen.
-      posLogical.x = Math.max(posLogical.x, workArea.x);
-      posLogical.y = Math.max(posLogical.y, workArea.y);
-      await invoke('pet_menu_set_position', {
-        x: Math.round(posLogical.x * sf),
-        y: Math.round(posLogical.y * sf),
-      });
     }
+
+    // Bottom-side reservation: the submenu extends ~SUBMENU_GROWTH_LOGICAL
+    // below the main card's bottom. Shift the window upward when the bottom
+    // edge would overflow the work area's bottom (pet near screen bottom, or
+    // larger pet sizes that push iconTop down). Clamped to workArea.y so the
+    // reservation never pushes the window off the top.
+    const bottomEdge = posLogical.y + menuHeight + SUBMENU_GROWTH_LOGICAL;
+    const workAreaBottom = workArea.y + workArea.height;
+    if (bottomEdge > workAreaBottom) {
+      posLogical.y = Math.max(workArea.y, workAreaBottom - menuHeight - SUBMENU_GROWTH_LOGICAL);
+    }
+    // Left/top edge clamp: computePanelPosition doesn't clamp, so on
+    // narrow/short screens the computed corner-attach position can fall
+    // off-screen.
+    posLogical.x = Math.max(posLogical.x, workArea.x);
+    posLogical.y = Math.max(posLogical.y, workArea.y);
+
+    await invoke('pet_menu_set_position', {
+      x: Math.round(posLogical.x * sf),
+      y: Math.round(posLogical.y * sf),
+    });
+    return { pos: posLogical, side };
   } catch (err) {
     console.warn('[pet-menu] resize/reposition failed:', err);
+    return null;
   }
 }
 
 /**
- * Open path: measure rendered DOM + compute quadrant-aware position +
- * size/position/show the window. Re-runs on every `pet://menu-show` event
- * so a locale change (which shifts label widths) re-positions correctly.
- * Delegates the measure+size+position work to `resizeAndReposition` so the
- * submenu-toggle path can reuse it without re-showing the window.
+ * Open path: measure rendered DOM + compute quadrant-aware position + pick
+ * the submenu side + size/position/show the window. Re-runs on every
+ * `pet://menu-show` event so a locale change (which shifts label widths) or
+ * a pet drag (which shifts the pet) re-positions correctly. Returns the
+ * final main-card position + chosen submenu side so the caller can store
+ * them for the submenu-toggle path (`syncSubmenuWindow`).
  */
 async function openMenu(
   root: HTMLDivElement | null,
   petSize: PetSize,
-): Promise<void> {
-  if (!isTauri() || !root) return;
-  await resizeAndReposition(root, petSize);
+): Promise<{ pos: { x: number; y: number }; side: SubmenuSide } | null> {
+  if (!isTauri() || !root) return null;
+  const placed = await resizeAndReposition(root, petSize);
   try {
     const { invoke } = await import('@tauri-apps/api/core');
     await invoke('pet_menu_show');
   } catch (err) {
     console.warn('[pet-menu] open path failed:', err);
+  }
+  return placed;
+}
+
+/**
+ * Submenu show/hide → re-measure the wrapper union + re-size the menu window
+ * (+ shift it when the submenu opens on the LEFT). Called from the
+ * `hoveredSection` / `submenuSide` / `petSize` effect. Never re-shows the
+ * window (that would flicker / steal focus) and never moves the MAIN card:
+ *
+ * - Rightward submenu: the union grows/shrinks right of the main card, so
+ *   only the window SIZE changes; the top-left stays put.
+ * - Leftward submenu: the union extends LEFT of the main card. The window
+ *   top-left must shift left by the submenu's left-extent (and back on
+ *   hide) so the main card — and the parent item under the mouse — stays at
+ *   the identical screen position. This is a precise shift, NOT a recompute:
+ *   recomputing from the union rect (as `computePanelPosition` would) moves
+ *   the main card → parent item leaves the cursor → `onMouseLeave` → hide →
+ *   shrink → position recomputed back → `onMouseEnter` → … enter/leave
+ *   feedback loop = "shake". Holding the main card fixed breaks the loop.
+ */
+async function syncSubmenuWindow(
+  root: HTMLDivElement | null,
+  side: SubmenuSide,
+  openPos: { x: number; y: number } | null,
+): Promise<void> {
+  if (!isTauri() || !root) return;
+  const union = root.getBoundingClientRect();
+  const unionWidth = Math.ceil(union.width);
+  const unionHeight = Math.ceil(union.height);
+  if (unionWidth <= 0 || unionHeight <= 0) return;
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const workArea = await invoke<PetWorkArea>('pet_get_work_area');
+    const sf = workArea.scale_factor || 1;
+    await invoke('pet_menu_set_size', {
+      width: Math.round(unionWidth * sf),
+      height: Math.round(unionHeight * sf),
+    });
+    // Leftward submenu only: keep the main card pinned to its open position.
+    // The shift is the submenu card's left-extent (its left edge minus the
+    // union's left edge) — measured live so a size/opacity swap (4 vs 5
+    // radio rows are the same width, but locale/font drift is covered) stays
+    // exact. Hidden → restore the open position (union == main card).
+    if (side === 'left' && openPos) {
+      const main = root.querySelector<HTMLElement>('.pet-menu-root');
+      const mainRect = main?.getBoundingClientRect();
+      const shiftLogical = mainRect ? mainRect.left - union.left : 0;
+      await invoke('pet_menu_set_position', {
+        x: Math.round((openPos.x - shiftLogical) * sf),
+        y: Math.round(openPos.y * sf),
+      });
+    }
+  } catch (err) {
+    console.warn('[pet-menu] sync submenu window failed:', err);
   }
 }
 
@@ -266,8 +357,29 @@ export function PetMenuApp(): JSX.Element {
   const [petOpacity, setPetOpacity] = useState<string>('100');
   const [petClickThrough, setPetClickThrough] = useState<boolean>(false);
   const [hoveredSection, setHoveredSection] = useState<HoveredSection>(null);
+  const [submenuSide, setSubmenuSide] = useState<SubmenuSide>('right');
   const showTimeoutRef = useRef<number | null>(null);
   const hideTimeoutRef = useRef<number | null>(null);
+  // The main card's screen position (logical px) from the last open. The
+  // leftward-submenu path pins the main card to this exact spot while the
+  // window shifts around it (see `syncSubmenuWindow`).
+  const openPosRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Native transparency: Tauri's `transparent: true` config does not
+  // reliably disable the macOS WKWebView's opaque background on all builds,
+  // leaving a white rect behind the menu card (the webview paints its own
+  // background before the page, so CSS `background: transparent !important`
+  // cannot remove it). `pet_make_transparent` flips NSWindow opaque=NO +
+  // backgroundColor=clear + WKWebView drawsBackground=NO on the main thread
+  // — the same mount-time call PetApp makes for the pet window.
+  useEffect(() => {
+    if (!isTauri()) return;
+    void import('@tauri-apps/api/core').then(({ invoke }) =>
+      invoke('pet_make_transparent', { label: 'pet-menu' }).catch((err) => {
+        console.warn('[pet-menu] pet_make_transparent failed:', err);
+      }),
+    );
+  }, []);
 
   // petStore is hydrated eagerly by `settingsPersistence.settingsLoadDone`
   // (runs once per realm at module load — same as the main window). The
@@ -374,7 +486,13 @@ export function PetMenuApp(): JSX.Element {
         // `setHoveredSection(null)` reset so the measured DOM excludes a
         // stale submenu card.
         window.setTimeout(() => {
-          void openMenu(rootRef.current, petSize);
+          void (async () => {
+            const placed = await openMenu(rootRef.current, petSize);
+            if (placed) {
+              openPosRef.current = placed.pos;
+              setSubmenuSide(placed.side);
+            }
+          })();
         }, 0);
       });
     })();
@@ -382,28 +500,20 @@ export function PetMenuApp(): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [petSize]);
 
-  // Submenu show/hide → re-measure + re-size the menu window (NOT re-show,
-  // NOT re-position). When the floating submenu appears, the wrapper's union
-  // bounding box grows (main card + submenu card to the right); the OS window
-  // was sized for the main card alone at open time, so without a re-size the
-  // submenu would be clipped (transparent borderless NSPanel has no scroll).
-  //
-  // `reposition: false` here is the critical fix: re-positioning recomputes
-  // the window's top-left from the new (larger) union rect, which shifts the
-  // main card on screen → parent item moves out from under the mouse →
-  // onMouseLeave → hideSubmenu (200ms) → submenu disappears → window shrinks
-  // → position recomputed back → onMouseEnter → showSubmenu (150ms) → …
-  // enter/leave feedback loop visible as "shaking". Holding the position
-  // keeps the main card under the cursor so the loop never starts. The open
-  // path's `computePanelPosition` already clamped the (smaller) main card to
-  // the work area; the wider union may overflow on the submenu side, but the
-  // submenu floats over transparent space so the visible content stays clear
-  // of the screen edge in practice.
+  // Submenu show/hide (and petSize changes) → sync the window frame to the
+  // wrapper's union: re-size, and for a leftward submenu also shift so the
+  // main card stays pinned to its open position (see `syncSubmenuWindow`).
+  // No re-show, no computePanelPosition recompute — the parent item under
+  // the cursor never moves, so no enter/leave "shake" loop can start.
   useEffect(() => {
     if (!isTauri()) return;
-    void resizeAndReposition(rootRef.current, petSize, false);
+    void syncSubmenuWindow(
+      rootRef.current,
+      submenuSide,
+      openPosRef.current,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hoveredSection, petSize]);
+  }, [hoveredSection, submenuSide, petSize]);
 
   // Clear pending submenu show/hide timeouts on unmount so a pending show
   // doesn't fire after the window is torn down.
@@ -459,14 +569,14 @@ export function PetMenuApp(): JSX.Element {
           role="menuitem"
           onClick={() => emitMenuActionAndHide('show-main')}
         >
-          {t('pet:menu.showMain')}
+          <span>{t('pet:menu.showMain')}</span>
         </button>
         <button
           className="pet-menu-item"
           role="menuitem"
           onClick={() => emitMenuActionAndHide('hide-pet')}
         >
-          {t('pet:menu.hidePet')}
+          <span>{t('pet:menu.hidePet')}</span>
         </button>
 
         {/* Size submenu — hover- or click-triggered floating card. Clicking
@@ -530,13 +640,15 @@ export function PetMenuApp(): JSX.Element {
           role="menuitem"
           onClick={() => emitMenuActionAndHide('exit-app')}
         >
-          {t('pet:menu.exitApp')}
+          <span>{t('pet:menu.exitApp')}</span>
         </button>
       </div>
 
       {hoveredSection && (
         <div
-          className="pet-menu-submenu"
+          className={`pet-menu-submenu${
+            submenuSide === 'left' ? ' pet-menu-submenu--left' : ''
+          }`}
           role="group"
           style={{ marginTop: hoveredSection.offsetTop }}
           onMouseEnter={() => {

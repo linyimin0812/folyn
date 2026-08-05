@@ -959,19 +959,28 @@ html.is-pet-panel-window body {
 
 .pet-menu-root {
   /* Card fills the main region; the OS window clips at the wrapper's
-   * bounding box (main card + floating submenu when visible). */
+   * bounding box (main card + floating submenu when visible). The card
+   * background is EXPLICIT white (not var(--bg)): the menu window loads the
+   * app's index.css, whose `--bg` (#f0f2f8) is the editor's light gray-blue
+   * — a card using var(--bg) reads as a gray "background panel" behind the
+   * items instead of a native white menu. */
   box-sizing: border-box;
-  min-width: 220px;
-  padding: 4px 0;
-  background: var(--bg, #ffffff);
-  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  min-width: 224px;
+  padding: 5px;
+  background: #ffffff;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+  border-radius: 10px;
+  /* No box-shadow: the OS window is sized exactly to the card, so a shadow
+   * is clipped in the main state — but when the submenu is open the window
+   * grows to the card union and the shadow leaks into the 6px gap + the
+   * strip below the main card, reading as a faint "background" behind the
+   * popup. The border carries the edge definition instead. */
   color: var(--t1, #1f2329);
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
   font-size: 13px;
   user-select: none;
   -webkit-user-select: none;
+  animation: pet-menu-fade 140ms ease-out;
 }
 
 .pet-menu-item {
@@ -979,7 +988,9 @@ html.is-pet-panel-window body {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 7px 14px;
+  padding: 6px 10px;
+  margin: 1px 0;
+  border-radius: 6px;
   background: transparent;
   border: none;
   color: inherit;
@@ -1005,9 +1016,9 @@ html.is-pet-panel-window body {
 }
 .pet-menu-chevron {
   font-size: 14px;
+  font-weight: 500;
   opacity: 1;
   color: inherit;
-  font-weight: 500;
 }
 
 /* Submenu card — in-flow flex sibling of the main card (margin-left for the
@@ -1020,17 +1031,27 @@ html.is-pet-panel-window body {
 .pet-menu-submenu {
   margin-left: 6px;
   box-sizing: border-box;
-  min-width: 120px;
-  padding: 4px 0;
-  background: var(--bg, #ffffff);
-  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  min-width: 128px;
+  padding: 5px;
+  background: #ffffff;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+  border-radius: 10px;
   color: var(--t1, #1f2329);
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
   font-size: 13px;
   user-select: none;
   -webkit-user-select: none;
+  animation: pet-menu-fade 140ms ease-out;
+}
+
+/* Leftward submenu (pet on the right half) — rendered before the main card
+ * via `order: -1`, with the 6px gap on ITS right side so the wrapper's union
+ * rect stays tight (the main card's on-screen position is pinned against
+ * that union by `syncSubmenuWindow`). */
+.pet-menu-submenu--left {
+  order: -1;
+  margin-left: 0;
+  margin-right: 6px;
 }
 
 /* Radio item — leading circle indicator, fills when checked. */
@@ -1062,8 +1083,19 @@ html.is-pet-panel-window body {
 
 .pet-menu-sep {
   height: 1px;
-  margin: 6px 10px;
+  margin: 4px 8px;
   background: var(--border, rgba(0, 0, 0, 0.08));
+}
+
+/* Entrance fade — opacity only (no transform), so the animated card never
+ * shifts its measured rect mid-open/mid-hover. */
+@keyframes pet-menu-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -1082,13 +1114,11 @@ html.is-pet-panel-window body {
     background: var(--bg);
     border-color: var(--border);
     color: var(--t1);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
   }
   html.is-pet-menu-window .pet-menu-submenu {
     background: var(--bg, #0f1219);
     border-color: var(--border, #1c2136);
     color: var(--t1, #e2e8f8);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
   }
   html.is-pet-menu-window .pet-menu-sep {
     background: #1c2136;
