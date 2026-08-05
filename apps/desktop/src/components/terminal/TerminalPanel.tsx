@@ -41,7 +41,7 @@ export function TerminalPanel({
         >
           <Plus size={15} />
         </button>
-        <div className="flex-1 min-w-0 flex items-center justify-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex-1 min-w-0 flex items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {sessions.map((s) => (
             <div
               key={s.id}
