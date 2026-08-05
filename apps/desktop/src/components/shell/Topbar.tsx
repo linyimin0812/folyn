@@ -120,7 +120,9 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
         y: rect.bottom,
         newTerminalLabel: t('topbar:plus.newTerminal'),
         newBrowserLabel: t('topbar:plus.newBrowser'),
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn('[Topbar] open + menu failed:', err);
+      });
     });
   };
 
@@ -171,6 +173,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
 
         {showPlusMenu && (
           <button
+            data-tauri-drag-region={false}
             className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1"
             onClick={openPlusMenu}
             title={t('topbar:plus.menu')}

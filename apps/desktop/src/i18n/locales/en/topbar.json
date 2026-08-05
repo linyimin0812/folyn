@@ -13,6 +13,11 @@
     "newTerminal": "New Terminal",
     "newBrowser": "New Browser"
   },
+  "tabList": {
+    "menu": "All open files",
+    "closeAll": "Close All Tabs",
+    "noOpenFiles": "No open files"
+  },
   "terminal": {
     "collapse": "Collapse terminal",
     "expand": "Expand terminal"

@@ -1,7 +1,9 @@
-import { useRef, useState, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import type { FileTab } from '@/store/editorStore';
+import { useEditorStore } from '@/store/editorStore';
 import { FileIcon } from '@/components/icons/FileIcon';
-import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
+import { isTauri } from '@/utils/platform';
+import { useTranslation } from 'react-i18next';
 
 interface TabBarProps {
   tabs: FileTab[];
@@ -11,27 +13,48 @@ interface TabBarProps {
 }
 
 export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarProps) {
-  const [tabListOpen, setTabListOpen] = useState(false);
-  const tabListRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
-  const closeList = () => {
-    setTabListOpen(false);
-    // The open-files dropdown overlaps the work area; if a native webview was
-    // hidden for it, ask the active webview to re-sync back into view.
-    window.dispatchEvent(new CustomEvent('quill:overlay-closed'));
-  };
+  // The open-files list is a native NSMenu (topbar_tablist_menu) so it floats
+  // above the embedded webview without hiding the currently open webpage.
+  const openTabList = useCallback((e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const tabItems = tabs.map((tab) => ({ id: tab.id, name: tab.name }));
+    void import('@tauri-apps/api/core').then(({ invoke }) => {
+      invoke('topbar_tablist_menu', {
+        x: rect.left,
+        y: rect.bottom,
+        tabs: tabItems,
+        activeTabId,
+        closeAllLabel: t('topbar:tabList.closeAll'),
+        noOpenFilesLabel: t('topbar:tabList.noOpenFiles'),
+      }).catch((err) => {
+        console.warn('[TabBar] open tab list failed:', err);
+      });
+    });
+  }, [tabs, activeTabId, t]);
 
+  // Menu item clicks arrive as Tauri events (forwarded by on_menu_event in
+  // lib.rs); route them straight to the editor store.
   useEffect(() => {
-    if (!tabListOpen) return;
-    hideWebviewsForOverlay();
-    const handleClick = (e: MouseEvent) => {
-      if (tabListRef.current && !tabListRef.current.contains(e.target as Node)) {
-        closeList();
-      }
+    if (!isTauri()) return;
+    let unlistenSelect: (() => void) | null = null;
+    let unlistenCloseAll: (() => void) | null = null;
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen<string>('app://select-tab', (event) => {
+        useEditorStore.getState().setActiveTab(event.payload);
+      }).then((fn) => { unlistenSelect = fn; });
+      listen('app://close-all-tabs', () => {
+        const state = useEditorStore.getState();
+        const ids = [...state.tabs.map((tab) => tab.id)];
+        for (const id of ids) state.closeTab(id);
+      }).then((fn) => { unlistenCloseAll = fn; });
+    });
+    return () => {
+      unlistenSelect?.();
+      unlistenCloseAll?.();
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [tabListOpen]);
+  }, []);
 
   return (
     <div className="flex items-stretch h-[34px] shrink-0 border-b border-brd bg-panel">
@@ -59,45 +82,16 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
           );
         })}
       </div>
-      <div className="relative flex items-center shrink-0 border-l border-brd" ref={tabListRef}>
+      <div className="relative flex items-center shrink-0 border-l border-brd">
         <button
           className="w-7 h-full flex items-center justify-center text-t3 cursor-pointer transition-[background] duration-150 hover:bg-hov hover:text-t2"
-          onClick={() => {
-            if (tabListOpen) {
-              closeList();
-            } else {
-              setTabListOpen(true);
-            }
-          }}
-          title="所有打开的文件"
+          onClick={openTabList}
+          title={t('topbar:tabList.menu')}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </button>
-        {tabListOpen && (
-          <div className="absolute top-full right-0 z-[100] max-h-[300px] overflow-y-auto bg-surf border border-brd rounded-[6px] shadow-[0_4px_16px_rgba(0,0,0,0.12)] py-1">
-            {tabs.map((tab) => {
-              return (
-                <div
-                  key={tab.id}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[calc(var(--ui-font-size)-2px)] text-t2 cursor-pointer whitespace-nowrap transition-[background] duration-[120ms] hover:bg-hov ${activeTabId === tab.id ? '!text-acc bg-hov' : ''}`}
-                  onClick={() => { onSelectTab(tab.id); closeList(); }}
-                >
-                  <span className="shrink-0 flex items-center"><FileIcon filename={tab.name} fileType={tab.fileType} /></span>
-                  <span className="flex-1">{tab.name}</span>
-                  {tab.isDirty && <span className="w-[5px] h-[5px] rounded-full bg-amber shrink-0" />}
-                  <span
-                    className="opacity-40 text-[10px] w-[18px] h-[18px] shrink-0 flex items-center justify-center rounded-[3px] transition-[opacity,background] duration-100 hover:opacity-100 hover:bg-hov hover:text-red"
-                    onClick={(e) => { e.stopPropagation(); onCloseTab(tab.id); }}
-                  >
-                    ✕
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
     </div>
   );
