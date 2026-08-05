@@ -20,17 +20,21 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
   const openTabList = useCallback((e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const tabItems = tabs.map((tab) => ({ id: tab.id, name: tab.name }));
-    void import('@tauri-apps/api/core').then(({ invoke }) => {
-      invoke('topbar_tablist_menu', {
+    void Promise.all([
+      import('@tauri-apps/api/core'),
+      import('@tauri-apps/api/window'),
+    ]).then(([{ invoke }, { getCurrentWindow }]) => {
+      return invoke('topbar_tablist_menu', {
         x: rect.left,
         y: rect.bottom,
         tabs: tabItems,
         activeTabId,
         closeAllLabel: t('topbar:tabList.closeAll'),
         noOpenFilesLabel: t('topbar:tabList.noOpenFiles'),
-      }).catch((err) => {
-        console.warn('[TabBar] open tab list failed:', err);
+        windowLabel: getCurrentWindow().label,
       });
+    }).catch((err) => {
+      console.warn('[TabBar] open tab list failed:', err);
     });
   }, [tabs, activeTabId, t]);
 

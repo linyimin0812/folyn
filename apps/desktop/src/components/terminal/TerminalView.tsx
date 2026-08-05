@@ -94,6 +94,15 @@ export function TerminalView({ id, active }: TerminalViewProps) {
     termRef.current = term;
     fitRef.current = fit;
 
+    // fit() on a zero-size container (collapsed panel / inactive tab, which
+    // are kept mounted with display:none) makes xterm's renderer lose its
+    // dimensions; the next write then crashes inside syncScrollArea. Only fit
+    // when the container actually has a size.
+    const safeFit = () => {
+      if (el.clientWidth === 0 || el.clientHeight === 0) return;
+      fit.fit();
+    };
+
     let cancelled = false;
     let unlistenOutput: (() => void) | null = null;
     let unlistenExit: (() => void) | null = null;
@@ -150,7 +159,7 @@ export function TerminalView({ id, active }: TerminalViewProps) {
         const { invoke } = await import('@tauri-apps/api/core');
         if (cancelled) return;
         try {
-          fit.fit();
+          safeFit();
         } catch {
           // container hidden — keep the pty at its default size
         }
@@ -180,7 +189,7 @@ export function TerminalView({ id, active }: TerminalViewProps) {
         if (shellName && !hasCustomTitle) setTitle(id, shellName);
         setStatus(id, 'running');
         try {
-          fit.fit();
+          safeFit();
         } catch {
           // hidden container
         }
@@ -227,7 +236,7 @@ export function TerminalView({ id, active }: TerminalViewProps) {
 
     const observer = new ResizeObserver(() => {
       try {
-        fit.fit();
+        safeFit();
         syncPtySize();
       } catch {
         // hidden container
@@ -262,7 +271,10 @@ export function TerminalView({ id, active }: TerminalViewProps) {
     if (!active) return;
     const timer = setTimeout(() => {
       try {
-        fitRef.current?.fit();
+        const el = containerRef.current;
+        if (el && el.clientWidth > 0 && el.clientHeight > 0) {
+          fitRef.current?.fit();
+        }
         const term = termRef.current;
         if (spawnedRef.current && term && isTauri()) {
           void import('@tauri-apps/api/core').then(({ invoke }) => {

@@ -114,15 +114,19 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
 
   const openPlusMenu = (e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    void import('@tauri-apps/api/core').then(({ invoke }) => {
-      invoke('topbar_plus_menu', {
+    void Promise.all([
+      import('@tauri-apps/api/core'),
+      import('@tauri-apps/api/window'),
+    ]).then(([{ invoke }, { getCurrentWindow }]) => {
+      return invoke('topbar_plus_menu', {
         x: rect.left,
         y: rect.bottom,
         newTerminalLabel: t('topbar:plus.newTerminal'),
         newBrowserLabel: t('topbar:plus.newBrowser'),
-      }).catch((err) => {
-        console.warn('[Topbar] open + menu failed:', err);
+        windowLabel: getCurrentWindow().label,
       });
+    }).catch((err) => {
+      console.warn('[Topbar] open + menu failed:', err);
     });
   };
 

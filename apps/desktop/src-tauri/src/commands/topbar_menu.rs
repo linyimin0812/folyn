@@ -2,6 +2,20 @@ use tauri::Manager;
 
 use crate::errors::AppError;
 
+/// Resolve the window the topbar dropdown should anchor to.
+///
+/// This intentionally uses `get_window` (the raw window) rather than
+/// `get_webview_window`: Tauri's `is_webview_window()` requires every webview
+/// attached to the window to share the window's label, which stops being true
+/// the moment a browser tab is opened (`create_webview` attaches `web-*`
+/// webviews to the "main" window). `get_webview_window("main")` then returns
+/// `None` and the native menu silently never appears — exactly the "+ has no
+/// response" regression.
+fn resolve_menu_window(app: &tauri::AppHandle, window_label: &str) -> Option<tauri::Window<tauri::Wry>> {
+    app.get_window(window_label)
+        .or_else(|| app.get_window("main"))
+}
+
 /// Show the topbar "+" menu (New Terminal / New Browser) as a native context
 /// menu. A native NSMenu floats above the embedded webview, so opening it
 /// doesn't require hiding the web page (unlike an HTML dropdown).
@@ -17,6 +31,7 @@ pub fn topbar_plus_menu(
     y: f64,
     new_terminal_label: String,
     new_browser_label: String,
+    window_label: String,
 ) -> Result<(), AppError> {
     use tauri::menu::{MenuBuilder, MenuItemBuilder};
 
@@ -31,9 +46,8 @@ pub fn topbar_plus_menu(
         .build()
         .map_err(|e| AppError::from(e.to_string()))?;
 
-    let window = app
-        .get_webview_window("main")
-        .ok_or_else(|| AppError::from("main window not found".to_string()))?;
+    let window = resolve_menu_window(&app, &window_label)
+        .ok_or_else(|| AppError::from(format!("no window found (looked for '{window_label}', 'main')")))?;
     // Position is relative to the window's top-left corner (logical px, which
     // matches CSS pixels from getBoundingClientRect()).
     window
@@ -60,6 +74,7 @@ pub fn topbar_tablist_menu(
     active_tab_id: String,
     close_all_label: String,
     no_open_files_label: String,
+    window_label: String,
 ) -> Result<(), AppError> {
     use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 
@@ -103,9 +118,8 @@ pub fn topbar_tablist_menu(
 
     let menu = Menu::with_items(&app, &items).map_err(|e| AppError::from(e.to_string()))?;
 
-    let window = app
-        .get_webview_window("main")
-        .ok_or_else(|| AppError::from("main window not found".to_string()))?;
+    let window = resolve_menu_window(&app, &window_label)
+        .ok_or_else(|| AppError::from(format!("no window found (looked for '{window_label}', 'main')")))?;
     window
         .popup_menu_at(&menu, tauri::LogicalPosition::new(x, y))
         .map_err(|e| AppError::from(e.to_string()))?;
