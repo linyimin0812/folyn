@@ -33,7 +33,7 @@ export function TerminalPanel({
       className="shrink-0 flex flex-col overflow-hidden bg-bg"
       style={{ height }}
     >
-      <div className="flex items-center gap-1 h-[28px] shrink-0 px-2 bg-panel border-b border-brd overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex items-center gap-1 h-[29px] shrink-0 px-2 bg-panel border-b border-brd overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <button
           className="shrink-0 w-[26px] h-[22px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
           title={t('terminal:new')}
