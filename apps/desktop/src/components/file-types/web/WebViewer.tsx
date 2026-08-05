@@ -91,6 +91,20 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
     return () => document.removeEventListener('mousedown', handler);
   }, [importOpen]);
 
+  // The import / password dropdowns render directly below the address bar,
+  // exactly where the native webview starts — the webview covers the menu and
+  // swallows every click. Hide the embedded webviews while either dropdown is
+  // open and re-sync the active one when both are closed.
+  const anyOverlayOpen = importOpen || passwordOpen;
+  useEffect(() => {
+    if (!isTauri()) return;
+    if (anyOverlayOpen) {
+      hideWebviewsForOverlay();
+    } else {
+      window.dispatchEvent(new CustomEvent('quill:overlay-closed'));
+    }
+  }, [anyOverlayOpen]);
+
   useEffect(() => {
     if (!passwordOpen) return;
     const handler = (e: MouseEvent) => {
