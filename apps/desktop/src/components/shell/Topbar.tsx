@@ -1,13 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useEditorStore, type ViewMode } from '@/store/editorStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useNavStore } from '@/store/navStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useTerminalStore } from '@/store/terminalStore';
 import { isExternalPath } from '@/utils/isExternalPath';
-import { isTauri } from '@/utils/platform';
 import * as editorIoService from '@/services/editorIoService';
-import { openBrowserTab } from '@/services/editorIoService';
 import { requestRevealPath } from '@/services/revealPathBridge';
 import { useTheme } from '@/hooks/useTheme';
 import { ExportMenu } from '@/components/editor/ExportMenu';
@@ -15,7 +13,7 @@ import { MoveDialog } from '@/components/sidebar/SidebarActions';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { requestPlanMyDay } from '@/services/planMyDayBridge';
 import { useTranslation } from 'react-i18next';
-import { Sun, Moon, FolderInput, Plus } from 'lucide-react';
+import { Sun, Moon, FolderInput } from 'lucide-react';
 import terminalIcon from '@/assets/terminal.svg';
 
 /** File types that support meaningful multi-mode switching — show the view-mode segment. */
@@ -89,46 +87,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const modes = activeTab?.fileType === 'html' ? HTML_MODES : VIEW_MODES;
   const setCurrentPage = useNavStore((state) => state.setCurrentPage);
   const currentPage = useNavStore((state) => state.currentPage);
-  const showPlusMenu = currentPage === 'editor' || currentPage === 'study';
-
-  // The "+" menu is a native context menu (floats above the embedded
-  // webview), so its item clicks arrive as Tauri events here.
-  useEffect(() => {
-    if (!isTauri()) return;
-    let unlistenTerminal: (() => void) | null = null;
-    let unlistenBrowser: (() => void) | null = null;
-    import('@tauri-apps/api/event').then(({ listen }) => {
-      listen('app://new-terminal', () => {
-        useTerminalStore.getState().addSession();
-        useEditorViewStateStore.getState().openTerminalDock();
-      }).then((fn) => { unlistenTerminal = fn; });
-      listen('app://new-browser', () => {
-        openBrowserTab();
-      }).then((fn) => { unlistenBrowser = fn; });
-    });
-    return () => {
-      unlistenTerminal?.();
-      unlistenBrowser?.();
-    };
-  }, []);
-
-  const openPlusMenu = (e: React.MouseEvent) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    void Promise.all([
-      import('@tauri-apps/api/core'),
-      import('@tauri-apps/api/window'),
-    ]).then(([{ invoke }, { getCurrentWindow }]) => {
-      return invoke('topbar_plus_menu', {
-        x: rect.left,
-        y: rect.bottom,
-        newTerminalLabel: t('topbar:plus.newTerminal'),
-        newBrowserLabel: t('topbar:plus.newBrowser'),
-        windowLabel: getCurrentWindow().label,
-      });
-    }).catch((err) => {
-      console.warn('[Topbar] open + menu failed:', err);
-    });
-  };
+  const showTerminalAction = currentPage === 'editor' || currentPage === 'study';
 
   return (
     <header data-tauri-drag-region className="topbar h-[36px] shrink-0 bg-panel border-b border-brd flex items-center justify-between pl-0 pr-2.5 gap-[3px] z-50">
@@ -175,33 +134,31 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
 
         <div className="top-div w-px h-[18px] bg-brd2 mx-[3px] shrink-0" />
 
-        {showPlusMenu && (
+        {showTerminalAction && (
           <button
             data-tauri-drag-region={false}
-            className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1"
-            onClick={openPlusMenu}
-            title={t('topbar:plus.menu')}
-          >
-            <Plus size={15} />
-          </button>
-        )}
-
-        {/* Terminal collapse/expand toggle — appears once a terminal exists,
-            next to the + icon and before the AI button, mirroring the AI
-            button's behavior. */}
-        {terminalSessions.length > 0 && (
-          <button
             className={`tb-btn tb-term-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm transition-all duration-150 hover:bg-hov ${
               terminalPanelVisible ? 'text-acc bg-accdim' : 'text-t3 hover:text-t1'
             }`}
             onClick={() => {
+              if (terminalSessions.length === 0) {
+                useTerminalStore.getState().addSession();
+                useEditorViewStateStore.getState().openTerminalDock();
+                return;
+              }
               if (terminalPanelVisible) {
                 closeTerminalPanel();
               } else {
                 openTerminalDock();
               }
             }}
-            title={terminalPanelVisible ? t('topbar:terminal.collapse') : t('topbar:terminal.expand')}
+            title={
+              terminalSessions.length === 0
+                ? t('topbar:terminal.open')
+                : terminalPanelVisible
+                  ? t('topbar:terminal.collapse')
+                  : t('topbar:terminal.expand')
+            }
           >
             <img src={terminalIcon} alt="" width="14" height="14" className="shrink-0" />
           </button>

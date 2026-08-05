@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "下拉面板的组件结构、命名与 Tailwind 样式约定"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "React effect 清理、store selector 与 Tauri 调用模式"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "新增/复用 UI 文案必须保持 zh/en key 树一致"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "webview 覆盖 HTML 浮层时的隐藏与恢复约定"}

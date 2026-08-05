@@ -29,7 +29,7 @@ interface EditorViewState {
   setWordCount: (count: number) => void;
   toggleOutline: () => void;
   toggleAiPanel: () => void;
-  /** Show the terminal panel (used by "+ 新建终端"). */
+  /** Show the terminal panel (used by the Topbar terminal icon). */
   openTerminalDock: () => void;
   /** Hide the terminal panel. */
   closeTerminalPanel: () => void;

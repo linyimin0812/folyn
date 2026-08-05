@@ -8,19 +8,17 @@
     "panel": "AI 面板",
     "planToday": "AI 规划今日"
   },
-  "plus": {
-    "menu": "新建终端或浏览器",
-    "newTerminal": "新建终端",
-    "newBrowser": "新建浏览器"
-  },
   "tabList": {
     "menu": "所有打开的文件",
     "closeAll": "关闭所有标签页",
-    "noOpenFiles": "没有打开的文件"
+    "noOpenFiles": "没有打开的文件",
+    "closePanel": "关闭列表",
+    "closeTab": "关闭文件"
   },
   "terminal": {
     "collapse": "收起终端",
-    "expand": "展开终端"
+    "expand": "展开终端",
+    "open": "打开终端"
   },
   "viewMode": {
     "split": "分屏",

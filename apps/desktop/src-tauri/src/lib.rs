@@ -445,29 +445,6 @@ pub fn run() {
         )
         .on_menu_event(|app, event| {
             let id = event.id().as_ref();
-            // Topbar "+" native menu items → forward to the frontend so it
-            // runs the same actions as before (new terminal / new browser).
-            if id == "topbar-new-terminal" {
-                let _ = app.emit_to("main", "app://new-terminal", ());
-                return;
-            }
-            if id == "topbar-new-browser" {
-                let _ = app.emit_to("main", "app://new-browser", ());
-                return;
-            }
-            // Topbar open-files tab-list menu items → forward to the frontend.
-            // `topbar-tab-<tabId>` selects a tab; `topbar-tab-close-all`
-            // closes every open file.
-            if id == "topbar-tab-close-all" {
-                let _ = app.emit_to("main", "app://close-all-tabs", ());
-                return;
-            }
-            if let Some(tab_id) = id.strip_prefix("topbar-tab-") {
-                if !tab_id.is_empty() {
-                    let _ = app.emit_to("main", "app://select-tab", tab_id);
-                    return;
-                }
-            }
             // Manual fullscreen toggle for the focused plugin tool window
             // (Window menu → "插件弹窗全屏", ⌘⇧F). Tool windows are pinned
             // (alwaysOnTop), which macOS blocks from entering native
@@ -691,8 +668,6 @@ pub fn run() {
             commands::load_imported_passwords,
             commands::clear_imported_passwords,
             commands::fill_webview_credentials,
-            commands::topbar_plus_menu,
-            commands::topbar_tablist_menu,
             commands::git_clone,
             commands::get_project_overview,
             commands::remove_dir,

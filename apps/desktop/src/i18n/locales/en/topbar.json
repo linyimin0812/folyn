@@ -8,19 +8,17 @@
     "panel": "AI panel",
     "planToday": "AI plan today"
   },
-  "plus": {
-    "menu": "New terminal or browser",
-    "newTerminal": "New Terminal",
-    "newBrowser": "New Browser"
-  },
   "tabList": {
     "menu": "All open files",
     "closeAll": "Close All Tabs",
-    "noOpenFiles": "No open files"
+    "noOpenFiles": "No open files",
+    "closePanel": "Close list",
+    "closeTab": "Close file"
   },
   "terminal": {
     "collapse": "Collapse terminal",
-    "expand": "Expand terminal"
+    "expand": "Expand terminal",
+    "open": "Open terminal"
   },
   "viewMode": {
     "split": "Split",

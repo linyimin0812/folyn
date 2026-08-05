@@ -9,7 +9,6 @@ mod pet_corner;
 mod pet_commands;
 mod terminal_commands;
 mod browser_commands;
-mod topbar_menu;
 
 pub use file_commands::*;
 pub use project_commands::*;
@@ -22,4 +21,3 @@ pub use pet_commands::*;
 pub use webview_commands::*;
 pub use terminal_commands::*;
 pub use browser_commands::*;
-pub use topbar_menu::*;

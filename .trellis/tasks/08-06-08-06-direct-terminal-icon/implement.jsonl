@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Topbar 组件结构、store selector 与按钮交互写法"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "effect 清理、Tauri 命令与死代码移除约定"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "删除 topbar:plus 文案需同时更新 zh/en 且保持 key 树一致"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "移除原生菜单命令后的注册与事件清理"}
