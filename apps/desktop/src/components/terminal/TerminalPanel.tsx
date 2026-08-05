@@ -33,12 +33,12 @@ export function TerminalPanel({
       className="shrink-0 flex flex-col overflow-hidden bg-bg"
       style={{ height }}
     >
-      <div className="flex items-start gap-1 h-[29px] shrink-0 px-2 bg-panel border-b border-brd overflow-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex items-center gap-1 h-[29px] shrink-0 px-2 bg-panel border-b border-brd overflow-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex-1 min-w-0 flex items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {sessions.map((s) => (
             <div
               key={s.id}
-              className={`group flex items-center justify-center gap-1.5 h-[26px] px-2 rounded-[6px] text-[13px] leading-none font-mono cursor-pointer whitespace-nowrap shrink-0 transition-colors duration-150 select-none [&>*]:-translate-y-[2px] ${
+              className={`group flex items-center justify-center gap-1.5 h-[24px] px-2 rounded-[6px] text-[13px] leading-none font-mono cursor-pointer whitespace-nowrap shrink-0 transition-colors duration-150 select-none -translate-y-[2px] ${
                 s.id === activeId
                   ? 'bg-surf2 text-t1'
                   : 'text-t3 hover:bg-hov hover:text-t2'
