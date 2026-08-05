@@ -7,8 +7,12 @@
     "stop": "停止",
     "messageCountSuffix": "条",
     "emptyState": {
-      "title": "输入指令让 AI 编辑你的文档",
-      "desc": "AI 会直接修改文件，变更将在编辑器内以 Diff 形式展示"
+      "greeting": {
+        "morning": "早上好，我是Quill AI助手，有什么可以帮您",
+        "noon": "中午好，我是Quill AI助手，有什么可以帮您",
+        "afternoon": "下午好，我是Quill AI助手，有什么可以帮您",
+        "evening": "晚上好，我是Quill AI助手，有什么可以帮您"
+      }
     },
     "studyStreaming": "study agent 运行中…",
     "studyIdle": "study agent 会话（不可手动输入）",

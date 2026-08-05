@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isTauri } from '@/utils/platform';
 import { currentWindowScaleFactor } from '@/utils/windowScale';
@@ -13,10 +13,14 @@ import {
 } from './petPosition';
 import { AiPanel } from '@/components/ai/AiPanel';
 import { PetInbox } from './PetInbox';
-import { PetPanelSearchResults } from './PetPanelSearchResults';
+import {
+  PetPanelSearchResults,
+  type PetPanelSearchResultsHandle,
+} from './PetPanelSearchResults';
 import { useVaultStore } from '@/store/vaultStore';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useModelRegistryStore } from '@/store/modelRegistryStore';
+import { useDisableAutoCapitalize } from '@/hooks/useDisableAutoCapitalize';
 import type {
   CustomProviderDef,
   ProviderSettings,
@@ -72,6 +76,11 @@ const PANEL_PERSIST_INTERVAL_MS = 800;
  * `pet.css` (scoped via `is-pet-panel-window` on `<html>`).
  */
 export function PetPanelApp() {
+  // The panel is a separate Tauri window (separate JS realm) — the main
+  // window's global auto-capitalize-off observer never reaches this realm,
+  // so the search box / chat input here need their own.
+  useDisableAutoCapitalize();
+
   // Default tab is Chat — the panel opens on the embedded AI chat so a
   // single left-click on the pet drops the user into "ask" mode without an
   // extra tab switch.
@@ -91,6 +100,8 @@ export function PetPanelApp() {
   const { t } = useTranslation();
   const setPetPanelPosition = usePetStore((s) => s.setPetPanelPosition);
   const setPetPanelSize = usePetStore((s) => s.setPetPanelSize);
+  // Imperative keyboard controls for the search results (Arrow/Enter).
+  const searchResultsRef = useRef<PetPanelSearchResultsHandle>(null);
 
   const hidePanel = useCallback(async () => {
     try {
@@ -100,6 +111,10 @@ export function PetPanelApp() {
       console.warn('[pet-panel] hide failed:', err);
     }
   }, []);
+
+  const handleSearchDone = useCallback(() => {
+    void hidePanel();
+  }, [hidePanel]);
 
   // Esc key dismisses the panel.
   useEffect(() => {
@@ -204,6 +219,10 @@ export function PetPanelApp() {
       try {
         const { listen } = await import('@tauri-apps/api/event');
         unlisten = await listen('pet://panel-fade-in', () => {
+          // The panel webview lives across shows, so the search query would
+          // otherwise survive a close → reopen. The popup search is
+          // ephemeral — clear it every time the panel is shown again.
+          setSearchQuery('');
           setVisible(true);
         });
       } catch (err) {
@@ -238,6 +257,39 @@ export function PetPanelApp() {
         );
       } catch (err) {
         console.warn('[pet-panel] settings-updated listener failed:', err);
+      }
+    })();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  // ── Cross-window locale change sync ──
+  // The main window's `localeStore.setLocale` emits `locale://changed` so
+  // each secondary Tauri window (separate JS realm with its own i18next +
+  // localeStore instance) can apply the new locale without a reload. The
+  // panel's UI is locale-driven (tabs, search placeholder, chat labels), so
+  // without this listener it would stay in the language loaded at launch.
+  // Mirrors the `locale://changed` listener in PetApp.tsx.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        const i18n = (await import('@/i18n')).default;
+        const { useLocaleStore } = await import('@/store/localeStore');
+        unlisten = await listen<{ locale: 'zh' | 'en' }>(
+          'locale://changed',
+          (event) => {
+            const lg = event.payload?.locale;
+            if (lg !== 'zh' && lg !== 'en') return;
+            void i18n.changeLanguage(lg);
+            useLocaleStore.setState({ locale: lg });
+          },
+        );
+      } catch (err) {
+        console.warn('[pet-panel] locale-changed listener setup failed:', err);
       }
     })();
     return () => {
@@ -566,20 +618,26 @@ export function PetPanelApp() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Escape') setSearchQuery('');
+                if (e.key === 'Escape') {
+                  setSearchQuery('');
+                  return;
+                }
+                // While an IME composition is committing, Enter belongs to
+                // the input method, not to result selection.
+                if (e.nativeEvent.isComposing) return;
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  searchResultsRef.current?.moveNext();
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  searchResultsRef.current?.movePrev();
+                } else if (e.key === 'Enter') {
+                  e.preventDefault();
+                  searchResultsRef.current?.activate();
+                }
               }}
               aria-label={t('pet:search.placeholder')}
             />
-            {searchQuery !== '' && (
-              <button
-                type="button"
-                className="pet-panel-search-clear"
-                aria-label="Clear search"
-                onClick={() => setSearchQuery('')}
-              >
-                ×
-              </button>
-            )}
           </div>
           <button
             type="button"
@@ -590,38 +648,41 @@ export function PetPanelApp() {
             ×
           </button>
         </div>
-        <div className="pet-panel-header-row" onPointerDown={suppressDrag}>
-          <nav
-            className="pet-panel-tabs"
-            role="tablist"
-            aria-label="Pet panel sections"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'chat'}
-              className={`pet-panel-tab${tab === 'chat' ? ' is-active' : ''}`}
-              onClick={() => setTab('chat')}
+        {searchQuery.trim() === '' && (
+          <div className="pet-panel-header-row" onPointerDown={suppressDrag}>
+            <nav
+              className="pet-panel-tabs"
+              role="tablist"
+              aria-label="Pet panel sections"
             >
-              {t('pet:tabs.chat')}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'inbox'}
-              className={`pet-panel-tab${tab === 'inbox' ? ' is-active' : ''}`}
-              onClick={() => setTab('inbox')}
-            >
-              {t('pet:tabs.inbox')}
-            </button>
-          </nav>
-        </div>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'chat'}
+                className={`pet-panel-tab${tab === 'chat' ? ' is-active' : ''}`}
+                onClick={() => setTab('chat')}
+              >
+                {t('pet:tabs.chat')}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'inbox'}
+                className={`pet-panel-tab${tab === 'inbox' ? ' is-active' : ''}`}
+                onClick={() => setTab('inbox')}
+              >
+                {t('pet:tabs.inbox')}
+              </button>
+            </nav>
+          </div>
+        )}
       </header>
       <main className="pet-panel-body">
         {searchQuery.trim() !== '' ? (
           <PetPanelSearchResults
+            ref={searchResultsRef}
             query={searchQuery}
-            onDone={() => void hidePanel()}
+            onDone={handleSearchDone}
           />
         ) : tab === 'chat' ? (
           <AiPanel embedded />

@@ -7,8 +7,12 @@
     "stop": "Stop",
     "messageCountSuffix": "msg",
     "emptyState": {
-      "title": "Tell the AI what to edit",
-      "desc": "The AI edits files directly; changes show up as diffs in the editor"
+      "greeting": {
+        "morning": "Good morning, I'm Quill AI. How can I help you?",
+        "noon": "Good noon, I'm Quill AI. How can I help you?",
+        "afternoon": "Good afternoon, I'm Quill AI. How can I help you?",
+        "evening": "Good evening, I'm Quill AI. How can I help you?"
+      }
     },
     "studyStreaming": "study agent running…",
     "studyIdle": "study agent session (manual input disabled)",

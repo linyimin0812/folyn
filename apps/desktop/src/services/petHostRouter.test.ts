@@ -134,6 +134,44 @@ describe('routePetMenuAction', () => {
     expect(useNavStore.getState().settingsTab).toBe('models');
     expect(showMock).toHaveBeenCalledTimes(1);
   });
+
+  it('open-plugin-tool runs the plugin openTool command without focusing main', async () => {
+    const { registerCommand } = await import('@/services/commandRegistry');
+    const run = vi.fn(async () => undefined);
+    const dispose = registerCommand({
+      id: 'plugin.openTool.string-unescaper.unescaper',
+      title: 'Open: String Unescaper',
+      category: 'action',
+      run,
+    });
+    await routePetMenuAction(
+      'open-plugin-tool',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'string-unescaper',
+    );
+    expect(run).toHaveBeenCalledTimes(1);
+    // The tool window comes to front on its own — no focusMain.
+    expect(showMock).not.toHaveBeenCalled();
+    dispose.dispose();
+  });
+
+  it('open-plugin-tool without a registered tool falls back to Plugins settings + focusMain', async () => {
+    useNavStore.setState({ currentPage: 'editor', settingsTab: 'appearance' });
+    await routePetMenuAction(
+      'open-plugin-tool',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'no-tool-plugin',
+    );
+    expect(useNavStore.getState().currentPage).toBe('settings');
+    expect(useNavStore.getState().settingsTab).toBe('plugins');
+    expect(showMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('routePetBubbleAction', () => {

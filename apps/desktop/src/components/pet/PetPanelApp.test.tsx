@@ -91,7 +91,52 @@ describe('PetPanelApp', () => {
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'readme' } });
     expect(container.querySelector('.pet-panel-search-results')).toBeTruthy();
     expect(container.querySelector('.ai-panel')).toBeNull();
-    expect(screen.getAllByRole('tab')[0].getAttribute('aria-selected')).toBe('true');
+    // Tabs are removed while searching — results take over the body.
+    expect(container.querySelector('.pet-panel-tabs')).toBeNull();
+  });
+
+  it('search hides the tabs and supports arrow/enter keyboard navigation', async () => {
+    const { registerCommand } = await import('@/services/commandRegistry');
+    const disposables = [
+      registerCommand({
+        id: 'pet-test.search-cmd-1',
+        title: 'readme helper',
+        category: 'action',
+        run: async () => undefined,
+      }),
+      registerCommand({
+        id: 'pet-test.search-cmd-2',
+        title: 'readme docs',
+        category: 'action',
+        run: async () => undefined,
+      }),
+    ];
+    const { container } = render(<PetPanelApp />);
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'readme' } });
+
+    // Tabs are removed while searching — only results remain.
+    expect(container.querySelector('.pet-panel-tabs')).toBeNull();
+    const items = container.querySelectorAll('.pet-panel-search-item');
+    expect(items.length).toBeGreaterThanOrEqual(2);
+    // First result is highlighted by default.
+    expect(items[0].classList.contains('is-active')).toBe(true);
+    expect(items[0].getAttribute('aria-selected')).toBe('true');
+
+    // ArrowDown moves the highlight to the next result.
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(items[1].classList.contains('is-active')).toBe(true);
+    expect(items[0].classList.contains('is-active')).toBe(false);
+
+    // ArrowUp moves back to the first.
+    fireEvent.keyDown(input, { key: 'ArrowUp' });
+    expect(items[0].classList.contains('is-active')).toBe(true);
+
+    // Enter activates the highlighted result (hides the panel on pick).
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide'));
+
+    for (const d of disposables) d.dispose();
   });
 
   it('clicking the Inbox tab mounts the inbox and unmounts AiPanel', () => {

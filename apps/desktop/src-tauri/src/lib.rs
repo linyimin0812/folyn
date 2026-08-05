@@ -445,6 +445,44 @@ pub fn run() {
         )
         .on_menu_event(|app, event| {
             let id = event.id().as_ref();
+            // Manual fullscreen toggle for the focused plugin tool window
+            // (Window menu → "插件弹窗全屏", ⌘⇧F). Tool windows are pinned
+            // (alwaysOnTop), which macOS blocks from entering native
+            // fullscreen — so drop the pinned level before entering and
+            // restore it once the user leaves fullscreen.
+            if id == "plugin-tool-fullscreen" {
+                if let Some((label, win)) = app
+                    .webview_windows()
+                    .iter()
+                    .find(|(l, w)| l.starts_with("plugin-tool-") && w.is_focused().unwrap_or(false))
+                {
+                    let already_fullscreen = win.is_fullscreen().unwrap_or(false);
+                    if already_fullscreen {
+                        let _ = win.set_fullscreen(false);
+                    } else {
+                        let _ = win.set_always_on_top(false);
+                        let _ = win.set_fullscreen(true);
+                        let app2 = app.clone();
+                        let label2 = label.clone();
+                        // Restore the pinned level as soon as fullscreen
+                        // exits (poll — macOS native fullscreen transitions
+                        // don't surface a dedicated Tauri event).
+                        tauri::async_runtime::spawn(async move {
+                            loop {
+                                tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+                                let Some(win) = app2.get_webview_window(&label2) else {
+                                    return;
+                                };
+                                if !win.is_fullscreen().unwrap_or(false) {
+                                    let _ = win.set_always_on_top(true);
+                                    return;
+                                }
+                            }
+                        });
+                    }
+                }
+                return;
+            }
             // Pet tray menu items → emit `pet://menu-action` so the main
             // window's listener (App.tsx) dispatches the action. The tray
             // menu is built in `commands::build_pet_context_menu` (called

@@ -7,10 +7,19 @@
 //    (the main window's existing jump router opens it — same as PetInbox).
 //  - Command → `pet://menu-action { action:'run-command', commandId }` — the
 //    main window's routePetMenuAction runs it via the command registry.
-//  - Plugin → `pet://menu-action { action:'open-plugins-settings' }` — the
-//    main window opens the Plugins settings tab.
+//  - Plugin → `pet://menu-action { action:'open-plugin-tool', pluginId }` —
+//    the main window opens the plugin's tool window (popup) via its
+//    registered `plugin.openTool.<pluginId>.<toolId>` command; plugins
+//    without a window tool fall back to the Plugins settings tab.
 
-import { useEffect, useMemo, useState } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useVaultStore } from '@/store/vaultStore';
 import { flattenMarkdownFiles } from '@/services/fileCommands';
@@ -33,13 +42,30 @@ interface PetPanelSearchResultsProps {
   onDone: () => void;
 }
 
-export function PetPanelSearchResults({
-  query,
-  onDone,
-}: PetPanelSearchResultsProps): JSX.Element {
+/** Imperative keyboard controls driven by the panel's search input. */
+export interface PetPanelSearchResultsHandle {
+  /** Highlight the next result (clamped; stays on the last one). */
+  moveNext(): void;
+  /** Highlight the previous result (clamped; stays on the first one). */
+  movePrev(): void;
+  /** Open the currently highlighted result (same as clicking it). */
+  activate(): void;
+}
+
+/** One flattened search hit, in render order (files → commands → plugins). */
+type SearchItem =
+  | { kind: 'file'; path: string }
+  | { kind: 'command'; commandId: string }
+  | { kind: 'plugin'; pluginId: string };
+
+export const PetPanelSearchResults = forwardRef<
+  PetPanelSearchResultsHandle,
+  PetPanelSearchResultsProps
+>(function PetPanelSearchResults({ query, onDone }, ref) {
   const { t } = useTranslation();
   const fileTree = useVaultStore((s) => s.fileTree);
   const [plugins, setPlugins] = useState<PluginEntry[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   // Vault files (the panel receives the tree via `pet://file-tree-updated`).
   const files = useMemo(() => flattenMarkdownFiles(fileTree), [fileTree]);
@@ -86,6 +112,59 @@ export function PetPanelSearchResults({
     : [];
   const total = fileHits.length + commandHits.length + pluginHits.length;
 
+  // Flattened hit list in render order — index maps 1:1 onto the DOM buttons
+  // (`data-search-index`), so ArrowUp/ArrowDown/Enter can drive the UI.
+  const items = useMemo<SearchItem[]>(
+    () => [
+      ...fileHits.map((f): SearchItem => ({ kind: 'file', path: f.path })),
+      ...commandHits.map((c): SearchItem => ({ kind: 'command', commandId: c.id })),
+      ...pluginHits.map((p): SearchItem => ({ kind: 'plugin', pluginId: p.id })),
+    ],
+    [fileHits, commandHits, pluginHits],
+  );
+
+  // A new query starts with the first result highlighted.
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [query]);
+
+  // Keep the highlight in range if the hit list shrinks (e.g. plugins load
+  // asynchronously and the mount snapshot is incomplete).
+  useEffect(() => {
+    setActiveIndex((i) => Math.min(i, Math.max(items.length - 1, 0)));
+  }, [items.length]);
+
+  // Keep the highlighted row visible while navigating with the keyboard.
+  useEffect(() => {
+    if (items.length === 0) return;
+    document
+      .querySelector<HTMLElement>(`[data-search-index="${activeIndex}"]`)
+      ?.scrollIntoView?.({ block: 'nearest' });
+  }, [activeIndex, items.length]);
+
+  const activateItem = useCallback(
+    (item: SearchItem) => {
+      if (item.kind === 'file') void emitNavigateFile(item.path);
+      else if (item.kind === 'command') void emitRunCommand(item.commandId);
+      else void emitOpenPluginTool(item.pluginId);
+      onDone();
+    },
+    [onDone],
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      moveNext: () => setActiveIndex((i) => Math.min(i + 1, items.length - 1)),
+      movePrev: () => setActiveIndex((i) => Math.max(i - 1, 0)),
+      activate: () => {
+        const item = items[activeIndex];
+        if (item) activateItem(item);
+      },
+    }),
+    [items, activeIndex, activateItem],
+  );
+
   if (!q) return <div className="pet-panel-search-empty" />;
 
   return (
@@ -100,16 +179,15 @@ export function PetPanelSearchResults({
           <div className="pet-panel-search-group-label">
             {t('pet:search.files')}
           </div>
-          {fileHits.map((f) => (
+          {fileHits.map((f, i) => (
             <button
               key={f.path}
               type="button"
-              className="pet-panel-search-item"
+              data-search-index={i}
+              className={`pet-panel-search-item${i === activeIndex ? ' is-active' : ''}`}
               role="option"
-              onClick={() => {
-                void emitNavigateFile(f.path);
-                onDone();
-              }}
+              aria-selected={i === activeIndex}
+              onClick={() => activateItem({ kind: 'file', path: f.path })}
             >
               <span className="pet-panel-search-item-title">{f.name}</span>
               <span className="pet-panel-search-item-sub">{f.path}</span>
@@ -122,20 +200,22 @@ export function PetPanelSearchResults({
           <div className="pet-panel-search-group-label">
             {t('pet:search.commands')}
           </div>
-          {commandHits.map((c) => (
+          {commandHits.map((c, i) => {
+            const index = fileHits.length + i;
+            return (
             <button
               key={c.id}
               type="button"
-              className="pet-panel-search-item"
+              data-search-index={index}
+              className={`pet-panel-search-item${index === activeIndex ? ' is-active' : ''}`}
               role="option"
-              onClick={() => {
-                void emitRunCommand(c.id);
-                onDone();
-              }}
+              aria-selected={index === activeIndex}
+              onClick={() => activateItem({ kind: 'command', commandId: c.id })}
             >
               <span className="pet-panel-search-item-title">{c.title}</span>
             </button>
-          ))}
+            );
+          })}
         </section>
       )}
       {pluginHits.length > 0 && (
@@ -143,28 +223,30 @@ export function PetPanelSearchResults({
           <div className="pet-panel-search-group-label">
             {t('pet:search.plugins')}
           </div>
-          {pluginHits.map((p) => (
+          {pluginHits.map((p, i) => {
+            const index = fileHits.length + commandHits.length + i;
+            return (
             <button
               key={p.id}
               type="button"
-              className="pet-panel-search-item"
+              data-search-index={index}
+              className={`pet-panel-search-item${index === activeIndex ? ' is-active' : ''}`}
               role="option"
-              onClick={() => {
-                void emitOpenPluginsSettings();
-                onDone();
-              }}
+              aria-selected={index === activeIndex}
+              onClick={() => activateItem({ kind: 'plugin', pluginId: p.id })}
             >
               <span className="pet-panel-search-item-title">{p.name}</span>
               <span className="pet-panel-search-item-sub">
                 {p.id} · v{p.version}
               </span>
             </button>
-          ))}
+            );
+          })}
         </section>
       )}
     </div>
   );
-}
+});
 
 /** Open a vault file in the main editor via the bubble-action jump router. */
 async function emitNavigateFile(path: string): Promise<void> {
@@ -192,12 +274,12 @@ async function emitRunCommand(commandId: string): Promise<void> {
   }
 }
 
-/** Open the Plugins settings tab in the main window. */
-async function emitOpenPluginsSettings(): Promise<void> {
+/** Open a plugin's tool window (popup) in the main window. */
+async function emitOpenPluginTool(pluginId: string): Promise<void> {
   if (!isTauri()) return;
   try {
     const { emit } = await import('@tauri-apps/api/event');
-    await emit('pet://menu-action', { action: 'open-plugins-settings' });
+    await emit('pet://menu-action', { action: 'open-plugin-tool', pluginId });
   } catch {
     // Non-fatal.
   }

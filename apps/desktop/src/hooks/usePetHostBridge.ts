@@ -113,6 +113,7 @@ export function usePetHostBridge(): void {
         opacity?: '25' | '50' | '75' | '100';
         clickThrough?: boolean;
         commandId?: string;
+        pluginId?: string;
       }>(
         'pet://menu-action',
         (event) => {
@@ -123,6 +124,7 @@ export function usePetHostBridge(): void {
               event.payload?.opacity,
               event.payload?.clickThrough,
               event.payload?.commandId,
+              event.payload?.pluginId,
             );
           }
         },

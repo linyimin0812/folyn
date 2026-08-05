@@ -62,8 +62,26 @@ export const useToolWindowStore = create<ToolWindowState>((set, get) => ({
       title,
       width: 800,
       height: 600,
+      // Pinned tool window: open centered, above normal windows, and take
+      // focus immediately. The pet-panel search path opens the popup while
+      // the app may not be frontmost (the panel just hid), so without these
+      // the window can appear without key focus — the user reads that as
+      // "弹窗失焦/被关闭". Fullscreen is entered manually via the Window menu
+      // "插件弹窗全屏" item (⌘⇧F); the Rust handler drops alwaysOnTop during
+      // fullscreen and restores it on exit (macOS blocks native fullscreen on
+      // always-on-top windows).
+      center: true,
+      focus: true,
+      alwaysOnTop: true,
       resizable: true,
       skipTaskbar: false,
+    });
+    win.once('tauri://created', async () => {
+      try {
+        await win.setFocus();
+      } catch (err) {
+        console.warn(`[plugin-host] tool window "${label}" focus failed:`, err);
+      }
     });
     win.once('tauri://close-requested', () => {
       get().remove(label);

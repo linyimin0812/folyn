@@ -282,8 +282,14 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .chat-empty { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 24px; text-align: center; }
 .chat-empty-badge {
   width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
-  font-size: 16px; line-height: 1; color: var(--acc); margin-bottom: 2px;
+  font-size: 36px; line-height: 1; color: var(--acc); margin-bottom: 2px;
   background: var(--accdim);
+}
+.chat-empty-badge-glyph {
+  /* In the real WKWebView render the ✦ ink sits ~3.5px below the badge
+     center at font-size 36px (measured from a live screenshot); nudge it up
+     so the star is optically centered in the badge. */
+  transform: translateY(-3.5px);
 }
 
 /* Chat input send / stop buttons */

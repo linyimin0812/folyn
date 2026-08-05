@@ -17,7 +17,7 @@ vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
   writeText: writeTextMock,
 }));
 
-import { ChatMessageList } from './ChatMessageList';
+import { ChatMessageList, greetingKeyForHour } from './ChatMessageList';
 import { readFile as mockedReadFile } from '@tauri-apps/plugin-fs';
 import type { CliMessage } from '@quill/cli-adapter';
 
@@ -42,7 +42,24 @@ afterEach(() => { cleanup(); });
 describe('ChatMessageList', () => {
   it('renders the default empty-state hint when messages is empty', () => {
     render(<ChatMessageList messages={[]} streaming={false} />);
-    expect(screen.getByText('ai:panel.emptyState.title')).toBeTruthy();
+    expect(
+      screen.getByText(
+        `ai:panel.emptyState.greeting.${greetingKeyForHour(new Date().getHours())}`,
+      ),
+    ).toBeTruthy();
+  });
+
+  it('greetingKeyForHour buckets the 24h clock into the four greetings', () => {
+    expect(greetingKeyForHour(0)).toBe('evening');
+    expect(greetingKeyForHour(4)).toBe('evening');
+    expect(greetingKeyForHour(5)).toBe('morning');
+    expect(greetingKeyForHour(11)).toBe('morning');
+    expect(greetingKeyForHour(12)).toBe('noon');
+    expect(greetingKeyForHour(13)).toBe('noon');
+    expect(greetingKeyForHour(14)).toBe('afternoon');
+    expect(greetingKeyForHour(17)).toBe('afternoon');
+    expect(greetingKeyForHour(18)).toBe('evening');
+    expect(greetingKeyForHour(23)).toBe('evening');
   });
 
   it('renders a custom emptyState when provided', () => {

@@ -70,6 +70,7 @@ describe('PetContextMenu (HTML menu window + launcher contract)', () => {
       'open-ai-settings',
       'run-command',
       'open-plugins-settings',
+      'open-plugin-tool',
     ]);
   });
 
@@ -89,6 +90,7 @@ describe('PetContextMenu (HTML menu window + launcher contract)', () => {
       'open-ai-settings',
       'run-command',
       'open-plugins-settings',
+      'open-plugin-tool',
     ]);
   });
 

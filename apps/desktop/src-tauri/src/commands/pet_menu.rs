@@ -32,10 +32,26 @@ pub fn build_app_menu(app: &tauri::AppHandle, locale: &str) -> Result<(), AppErr
         .build()
         .map_err(|e| e.to_string())?;
 
+    // Manual fullscreen trigger for plugin tool windows. macOS blocks native
+    // fullscreen on always-on-top windows, so the popup stays pinned in
+    // normal use and the user enters fullscreen via this item / ⌘⇧F (the
+    // handler in lib.rs drops the pinned level, enters fullscreen, and
+    // restores the level on exit).
+    let tool_fullscreen = tauri::menu::MenuItem::with_id(
+        app,
+        "plugin-tool-fullscreen",
+        app_menu_label(locale, AppMenuLabel::PluginToolFullscreen),
+        true,
+        Some("Cmd+Shift+F"),
+    )
+    .map_err(|e| e.to_string())?;
+
     let window_menu = SubmenuBuilder::new(app, app_menu_label(locale, AppMenuLabel::Window))
         .minimize()
         .maximize()
         .close_window()
+        .separator()
+        .item(&tool_fullscreen)
         .separator()
         .fullscreen()
         .build()

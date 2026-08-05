@@ -76,15 +76,31 @@ export interface ChatMessageListProps {
   onSwitchSession?: (id: string) => void;
 }
 
+/**
+ * Pick the greeting bucket from the current hour.
+ *  - morning: 05:00–11:59  (早上好)
+ *  - noon:    12:00–13:59  (中午好)
+ *  - afternoon: 14:00–17:59 (下午好)
+ *  - evening: 18:00–04:59  (晚上好)
+ */
+export function greetingKeyForHour(hour: number): 'morning' | 'noon' | 'afternoon' | 'evening' {
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 14) return 'noon';
+  if (hour >= 14 && hour < 18) return 'afternoon';
+  return 'evening';
+}
+
 function DefaultEmptyHint() {
   const { t } = useTranslation();
+  const greeting = t(
+    `ai:panel.emptyState.greeting.${greetingKeyForHour(new Date().getHours())}`,
+  );
   return (
     <div className="chat-empty">
-      <div className="chat-empty-badge">✦</div>
-      <div className="text-[13px] font-semibold text-t1">{t('ai:panel.emptyState.title')}</div>
-      <div className="text-[11px] text-t3 leading-relaxed max-w-[240px]">
-        {t('ai:panel.emptyState.desc')}
+      <div className="chat-empty-badge">
+        <span className="chat-empty-badge-glyph">✦</span>
       </div>
+      <div className="text-[13px] font-semibold text-t1">{greeting}</div>
     </div>
   );
 }

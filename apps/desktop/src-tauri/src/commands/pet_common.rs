@@ -191,6 +191,7 @@ pub fn pet_menu_label(locale: &str, key: PetMenuLabel) -> &'static str {
 pub enum AppMenuLabel {
     Edit,
     Window,
+    PluginToolFullscreen,
 }
 
 pub fn app_menu_label(locale: &str, key: AppMenuLabel) -> &'static str {
@@ -198,10 +199,12 @@ pub fn app_menu_label(locale: &str, key: AppMenuLabel) -> &'static str {
         "zh" => match key {
             AppMenuLabel::Edit => "编辑",
             AppMenuLabel::Window => "窗口",
+            AppMenuLabel::PluginToolFullscreen => "插件弹窗全屏",
         },
         _ => match key {
             AppMenuLabel::Edit => "Edit",
             AppMenuLabel::Window => "Window",
+            AppMenuLabel::PluginToolFullscreen => "Plugin Popup Fullscreen",
         },
     }
 }

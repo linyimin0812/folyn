@@ -44,6 +44,7 @@ export async function routePetMenuAction(
   opacity?: '25' | '50' | '75' | '100',
   clickThrough?: boolean,
   commandId?: string,
+  pluginId?: string,
 ): Promise<void> {
   switch (action) {
     case 'show-main':
@@ -181,6 +182,28 @@ export async function routePetMenuAction(
       break;
     case 'open-plugins-settings':
       // Pet-panel search → open the Plugins settings tab in the main window.
+      useNavStore.getState().setCurrentPage('settings');
+      useNavStore.getState().setSettingsTab('plugins');
+      await focusMain();
+      break;
+    case 'open-plugin-tool':
+      // Pet-panel search → open a plugin's tool window (popup). The panel is a
+      // separate realm whose command registry lacks plugin commands (plugins
+      // are activated in the main window), so it sends the plugin id and the
+      // MAIN window resolves the registered "Open: <tool>" command. No
+      // focusMain on success — the newly created tool window comes to front
+      // on its own. Plugins without a window tool fall back to the Plugins
+      // settings tab (the previous behavior).
+      if (pluginId) {
+        const { getCommands, runCommand } = await import('@/services/commandRegistry');
+        const toolCmd = getCommands().find((c) =>
+          c.id.startsWith(`plugin.openTool.${pluginId}.`),
+        );
+        if (toolCmd) {
+          await runCommand(toolCmd.id);
+          break;
+        }
+      }
       useNavStore.getState().setCurrentPage('settings');
       useNavStore.getState().setSettingsTab('plugins');
       await focusMain();
