@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react';
 import { useTerminalStore } from '@/store/terminalStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useTranslation } from 'react-i18next';
@@ -6,17 +5,20 @@ import { TerminalView } from './TerminalView';
 import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
 import terminalIcon from '@/assets/terminal.svg';
 
-const MIN_HEIGHT = 100;
-const MAX_HEIGHT = 600;
 const DEFAULT_HEIGHT = 240;
 
 /**
  * Terminal panel: session-tab header + xterm body, docked at the BOTTOM of
  * the editor page. The header's toggle button collapses/expands the panel;
- * the strip above the header is a drag handle that resizes the panel height
- * vertically. Owns its own height so collapse/reopen keeps the user's size.
+ * the height is lifted to the bottom strip (BottomTerminal) so the resize
+ * handle and the panel share one source of truth; collapse/reopen keeps the
+ * user's size.
  */
-export function TerminalPanel() {
+export function TerminalPanel({
+  height = DEFAULT_HEIGHT,
+}: {
+  height?: number;
+}) {
   const { t } = useTranslation();
   const terminalPanelVisible = useEditorViewStateStore((s) => s.terminalPanelVisible);
   const closeTerminalPanel = useEditorViewStateStore((s) => s.closeTerminalPanel);
@@ -26,50 +28,11 @@ export function TerminalPanel() {
   const setActive = useTerminalStore((s) => s.setActive);
   const closeSession = useTerminalStore((s) => s.closeSession);
 
-  const [height, setHeight] = useState(DEFAULT_HEIGHT);
-  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
-
-  // Vertical resize: dragging the top strip changes the panel height.
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
-      const drag = dragRef.current;
-      if (!drag) return;
-      const delta = drag.startY - e.clientY;
-      const next = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, drag.startHeight + delta));
-      setHeight(next);
-    };
-    const stopResize = () => {
-      dragRef.current = null;
-      document.body.style.cursor = '';
-      document.documentElement.classList.remove('is-resizing');
-    };
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', stopResize);
-    return () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', stopResize);
-    };
-  }, []);
-
   return (
     <div
       className="shrink-0 flex flex-col overflow-hidden bg-bg"
       style={{ height }}
     >
-      {/* Resize handle: 5px invisible hit target with a 1px visible line, so
-          the separator stays slim but the grab area is easy to hit. */}
-      <div
-        className="shrink-0 h-[5px] cursor-row-resize bg-transparent relative"
-        onMouseDown={(e) => {
-          e.preventDefault();
-          dragRef.current = { startY: e.clientY, startHeight: height };
-          document.body.style.cursor = 'row-resize';
-          document.documentElement.classList.add('is-resizing');
-        }}
-      >
-        <div className="absolute top-0 left-0 right-0 h-px bg-brd transition-colors duration-150 hover:bg-acc hover:opacity-60" />
-      </div>
-
       <div className="flex items-center gap-0.5 h-[34px] shrink-0 px-2 bg-panel border-b border-brd overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sessions.map((s) => (
           <div

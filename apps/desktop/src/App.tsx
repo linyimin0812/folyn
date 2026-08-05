@@ -702,10 +702,66 @@ export default function App() {
 function BottomTerminal() {
   const sessions = useTerminalStore((s) => s.sessions);
   const terminalPanelVisible = useEditorViewStateStore((s) => s.terminalPanelVisible);
+  const [height, setHeight] = useState(240);
   if (sessions.length === 0) return null;
   return (
-    <div style={{ display: terminalPanelVisible ? undefined : 'none' }}>
-      <TerminalPanel />
+    <div
+      className="shrink-0 flex flex-col"
+      style={{ display: terminalPanelVisible ? undefined : 'none' }}
+    >
+      <TerminalResizeHandle height={height} onHeightChange={setHeight} />
+      <TerminalPanel height={height} />
+    </div>
+  );
+}
+
+/**
+ * 1px visible separator with a 5px invisible hit target above it. The line
+ * sits at the handle's BOTTOM edge, flush against the terminal header, so
+ * nothing (no gray gap) renders below it — only the line itself separates
+ * the editor from the terminal.
+ */
+function TerminalResizeHandle({
+  height,
+  onHeightChange,
+}: {
+  height: number;
+  onHeightChange: (height: number) => void;
+}) {
+  const [dragging, setDragging] = useState<{ startY: number; startHeight: number } | null>(null);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onMouseMove = (e: MouseEvent) => {
+      const delta = dragging.startY - e.clientY;
+      const next = Math.max(100, Math.min(600, dragging.startHeight + delta));
+      onHeightChange(next);
+    };
+    const stop = () => {
+      setDragging(null);
+      document.body.style.cursor = '';
+      document.documentElement.classList.remove('is-resizing');
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', stop);
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', stop);
+    };
+  }, [dragging]);
+
+  return (
+    <div className="shrink-0 h-[6px] relative cursor-row-resize bg-panel">
+      <div
+        className="absolute inset-0"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          setDragging({ startY: e.clientY, startHeight: height });
+          document.body.style.cursor = 'row-resize';
+          document.documentElement.classList.add('is-resizing');
+        }}
+      />
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-brd transition-colors duration-150 hover:bg-acc hover:opacity-60" />
     </div>
   );
 }
