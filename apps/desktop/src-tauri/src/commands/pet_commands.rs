@@ -311,7 +311,7 @@ pub async fn pet_cursor_probe(app: tauri::AppHandle) -> Result<PetCursorProbe, A
 }
 
 #[tauri::command]
-pub async fn pet_get_work_area(_app: tauri::AppHandle) -> Result<PetWorkArea, AppError> {
+pub async fn pet_get_work_area(app: tauri::AppHandle) -> Result<PetWorkArea, AppError> {
     #[cfg(target_os = "macos")]
     {
         use cocoa::appkit::NSScreen;
@@ -319,41 +319,89 @@ pub async fn pet_get_work_area(_app: tauri::AppHandle) -> Result<PetWorkArea, Ap
         use cocoa::foundation::NSRect;
         use objc::{msg_send, sel, sel_impl};
 
-        unsafe {
-            // `NSScreen::mainScreen` is a class method; call it via msg_send!
-            // against the class object (cocoa's NSScreen trait method is
-            // misleadingly implemented for `id` instances, not `&Class`).
-            let screen: id = msg_send![objc::class!(NSScreen), mainScreen];
-            if screen.is_null() {
-                return Err("NSScreen.mainScreen is null".into());
-            }
-            // `visibleFrame` excludes the Dock and menu bar. NSRect uses
-            // bottom-left origin; we convert to top-left origin below.
-            let vis_rect: NSRect = NSScreen::visibleFrame(screen);
-            // Full frame gives us the total screen height, used to flip Y.
-            let full_rect: NSRect = NSScreen::frame(screen);
-            let flip_y =
-                full_rect.size.height - vis_rect.origin.y - vis_rect.size.height;
-            // `backingScaleFactor` is the physical-px-per-logical-point ratio
-            // (2.0 on Retina, 1.0 on non-Retina). The math in petPosition.ts
-            // runs in logical points; the JS caller uses this to convert at
-            // the set_pet_position / outerPosition() boundary.
-            let scale_factor: f64 = msg_send![screen, backingScaleFactor];
+        // Work area of the screen CONTAINING THE PET WINDOW, in the same
+        // top-left logical space as the frontend's pet position (physical
+        // outer_position ÷ this scale_factor). The old implementation used
+        // `NSScreen.mainScreen`, which on macOS is "the screen containing
+        // the key window" — it flips between monitors as focus moves, and on
+        // a mixed-DPI setup (2x laptop + 1x external) the wrong scale factor
+        // made the menu/panel math land on the wrong display when the pet
+        // was on the external screen.
+        let pet = app
+            .get_webview_window(PET_LABEL)
+            .ok_or_else(|| "pet window not found".to_string())?;
+        let pet_pos = pet.outer_position().map_err(|e| e.to_string())?;
+        let pet_size = pet.outer_size().map_err(|e| e.to_string())?;
+        let pet_center_x = pet_pos.x + pet_size.width as i32 / 2;
+        let pet_center_y = pet_pos.y + pet_size.height as i32 / 2;
 
-            let result = PetWorkArea {
-                x: vis_rect.origin.x as i32,
-                y: flip_y as i32,
-                width: vis_rect.size.width as i32,
-                height: vis_rect.size.height as i32,
-                scale_factor,
-            };
-            Ok(result)
+        // Find the Tauri monitor containing the pet's center.
+        let monitors = app.available_monitors().map_err(|e| e.to_string())?;
+        let monitor = monitors
+            .into_iter()
+            .find(|m| {
+                let pos = m.position();
+                let size = m.size();
+                pet_center_x >= pos.x
+                    && pet_center_x < pos.x + size.width as i32
+                    && pet_center_y >= pos.y
+                    && pet_center_y < pos.y + size.height as i32
+            })
+            .or_else(|| pet.current_monitor().ok().flatten())
+            .or_else(|| app.primary_monitor().ok().flatten());
+        let Some(monitor) = monitor else {
+            // No monitor info — fall back to the old mainScreen path.
+            return pet_work_area_main_screen();
+        };
+        let m_pos = monitor.position();
+        let m_size = monitor.size();
+        let scale = monitor.scale_factor();
+
+        unsafe {
+            let screens: id = msg_send![objc::class!(NSScreen), screens];
+            if screens.is_null() {
+                return pet_work_area_main_screen();
+            }
+            let count: usize = msg_send![screens, count];
+            for i in 0..count {
+                let screen: id = msg_send![screens, objectAtIndex: i];
+                let frame: NSRect = NSScreen::frame(screen);
+                // Match by size (logical points) — same pattern as
+                // `nspanel_target_appkit_origin` (first match wins).
+                let size_match =
+                    (frame.size.width - m_size.width as f64 / scale).abs() < 1.0
+                        && (frame.size.height - m_size.height as f64 / scale).abs() < 1.0;
+                if !size_match {
+                    continue;
+                }
+                let vis_rect: NSRect = NSScreen::visibleFrame(screen);
+                let sf: f64 = msg_send![screen, backingScaleFactor];
+                let sx = frame.origin.x;
+                let sy = frame.origin.y;
+                let sh = frame.size.height;
+                // Map the screen's visibleFrame (AppKit bottom-left points)
+                // into Tauri top-left logical points: the monitor's Tauri
+                // top-left (m_pos / scale) plus the offset from the screen's
+                // top-left, Y-flipped locally.
+                let x = m_pos.x as f64 / scale + (vis_rect.origin.x - sx);
+                let y = m_pos.y as f64 / scale
+                    + (sh - (vis_rect.origin.y - sy) - vis_rect.size.height);
+                return Ok(PetWorkArea {
+                    x: x.round() as i32,
+                    y: y.round() as i32,
+                    width: vis_rect.size.width.round() as i32,
+                    height: vis_rect.size.height.round() as i32,
+                    scale_factor: sf,
+                });
+            }
+            // No NSScreen matched the monitor — fall back to mainScreen.
+            pet_work_area_main_screen()
         }
     }
 
     #[cfg(not(target_os = "macos"))]
     {
-        let monitor = _app
+        let monitor = app
             .primary_monitor()
             .map_err(|e| e.to_string())?
             .ok_or_else(|| "no primary monitor".to_string())?;
@@ -365,6 +413,36 @@ pub async fn pet_get_work_area(_app: tauri::AppHandle) -> Result<PetWorkArea, Ap
             width: size.width as i32,
             height: size.height as i32,
             scale_factor: monitor.scale_factor(),
+        })
+    }
+}
+
+/// Legacy work-area source: `NSScreen.mainScreen`'s visibleFrame in Tauri
+/// top-left logical points. Kept as the fallback when the pet's monitor
+/// cannot be resolved / matched.
+#[cfg(target_os = "macos")]
+fn pet_work_area_main_screen() -> Result<PetWorkArea, AppError> {
+    use cocoa::appkit::NSScreen;
+    use cocoa::base::id;
+    use cocoa::foundation::NSRect;
+    use objc::{msg_send, sel, sel_impl};
+
+    unsafe {
+        let screen: id = msg_send![objc::class!(NSScreen), mainScreen];
+        if screen.is_null() {
+            return Err("NSScreen.mainScreen is null".into());
+        }
+        let vis_rect: NSRect = NSScreen::visibleFrame(screen);
+        let full_rect: NSRect = NSScreen::frame(screen);
+        let flip_y =
+            full_rect.size.height - vis_rect.origin.y - vis_rect.size.height;
+        let scale_factor: f64 = msg_send![screen, backingScaleFactor];
+        Ok(PetWorkArea {
+            x: vis_rect.origin.x as i32,
+            y: flip_y as i32,
+            width: vis_rect.size.width as i32,
+            height: vis_rect.size.height as i32,
+            scale_factor,
         })
     }
 }
