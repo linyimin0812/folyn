@@ -227,19 +227,19 @@ html.is-pet-menu-window #root {
  * clipped by the window bounds (issue #1). See PetContextMenu.tsx. */
 
 /* ── Pet quick-action panel window (`pet-panel`) ──
- * The panel reuses `index.css` with the editor theme (opaque body bg is
- * fine — the panel is opaque). It is declared in tauri.conf.json with
- * `transparent:false`, `decorations:false`, `alwaysOnTop:true`,
- * `skipTaskbar:true`, `shadow:true`. main.tsx tags <html> with
- * `.is-pet-panel-window` for the `/#/pet-panel` route only. PR1 ships a
- * minimal shell; PR2 mounts the launcher grid, PR3 the embedded chat. */
+ * The panel reuses `index.css` but the WINDOW is transparent (declared
+ * `transparent:true` + `pet_make_transparent` on mount) so the rounded
+ * `.pet-panel-root` (10px radius) shows clean corners. The html/body MUST
+ * stay transparent — an opaque body bg painted the editor gray into the
+ * corner slivers outside the root's radius, reading as a gray square behind
+ * the rounded popup. main.tsx tags <html> with `.is-pet-panel-window` for
+ * the `/#/pet-panel` route only. PR1 ships a minimal shell; PR2 mounts the
+ * launcher grid, PR3 the embedded chat. */
 html.is-pet-panel-window,
 html.is-pet-panel-window body {
-  /* The panel is opaque — keep the editor theme background. This rule is
-   * here to explicitly document that the panel does NOT inherit the
-   * transparent override meant for the pet mascot window, and to provide
-   * a single scoping hook for future panel-only body overrides. */
-  background: var(--bg, #f0f2f8);
+  /* Transparent so the rounded root floats over the desktop — the root's
+   * own `background: var(--panel)` still provides the opaque card. */
+  background: transparent;
 }
 
 .pet-panel-root {
