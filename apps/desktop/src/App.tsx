@@ -752,16 +752,15 @@ function TerminalResizeHandle({
   }, [dragging]);
 
   return (
-    <div className="shrink-0 h-[8px] relative cursor-row-resize bg-panel">
-      <div
-        className="absolute inset-0"
-        onMouseDown={(e) => {
-          e.preventDefault();
-          setDragging({ startY: e.clientY, startHeight: height });
-          document.body.style.cursor = 'row-resize';
-          document.documentElement.classList.add('is-resizing');
-        }}
-      />
+    <div
+      className="shrink-0 h-[8px] relative cursor-row-resize bg-panel"
+      onMouseDown={(e) => {
+        e.preventDefault();
+        setDragging({ startY: e.clientY, startHeight: height });
+        document.body.style.cursor = 'row-resize';
+        document.documentElement.classList.add('is-resizing');
+      }}
+    >
       <div className="absolute top-0 left-0 right-0 h-[2px] bg-brd transition-colors duration-150 hover:bg-acc hover:opacity-60" />
     </div>
   );
