@@ -26,6 +26,18 @@ export function getWebviewLabels(): string[] {
   return Array.from(allWebviewLabels);
 }
 
+/** Hide every native webview so an HTML overlay (e.g. the open-files tab
+ *  dropdown) can render above the work area. Callers must dispatch
+ *  `quill:overlay-closed` afterwards so the active webview re-syncs. */
+export function hideWebviewsForOverlay(): void {
+  if (!isTauri()) return;
+  const labels = getWebviewLabels();
+  if (labels.length === 0) return;
+  import('@tauri-apps/api/core').then(({ invoke }) => {
+    invoke('hide_all_webviews', { labels }).catch(() => {});
+  });
+}
+
 export function WebViewer({ filePath, tabId }: EditorProps) {
   const { t } = useTranslation();
   const webViewerRef = useRef<HTMLDivElement>(null);
@@ -453,6 +465,18 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
     }, 100);
 
     return () => clearTimeout(timer);
+  }, [isActive, status, syncPosition]);
+
+  // Re-show the active webview after an HTML overlay that hid it closes.
+  useEffect(() => {
+    if (!isTauri()) return;
+    const onOverlayClosed = () => {
+      if (isActive && webviewLabelRef.current && status === 'ready') {
+        syncPosition();
+      }
+    };
+    window.addEventListener('quill:overlay-closed', onOverlayClosed);
+    return () => window.removeEventListener('quill:overlay-closed', onOverlayClosed);
   }, [isActive, status, syncPosition]);
 
   const navigate = (action: 'back' | 'forward' | 'reload') => {

@@ -13,6 +13,7 @@ import terminalIcon from '@/assets/terminal.svg';
 export function TerminalPanel() {
   const { t } = useTranslation();
   const [fullscreen, setFullscreen] = useState(false);
+  const [overlayLeft, setOverlayLeft] = useState(0);
   const sessions = useTerminalStore((s) => s.sessions);
   const activeId = useTerminalStore((s) => s.activeId);
   const addSession = useTerminalStore((s) => s.addSession);
@@ -28,6 +29,23 @@ export function TerminalPanel() {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
+  }, [fullscreen]);
+
+  // Fullscreen covers the editor page but keeps the left file sidebar (and
+  // activity bar) visible: the overlay starts at the sidebar's right edge.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const measure = () => {
+      // `.sidebar-wrapper` is display:contents on desktop (zero rect); the
+      // actual width lives on `.sidebar`.
+      const sidebar =
+        document.querySelector('.sidebar-wrapper .sidebar') ??
+        document.querySelector('.sidebar');
+      setOverlayLeft(sidebar ? Math.round(sidebar.getBoundingClientRect().right) : 0);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
   }, [fullscreen]);
 
   const content = (
@@ -128,9 +146,13 @@ export function TerminalPanel() {
   );
 
   if (fullscreen) {
-    // Cover the entire editor page (topbar included) above every panel.
+    // Cover the editor page (topbar included) above every panel, starting at
+    // the left sidebar's right edge so the file bar stays visible.
     return createPortal(
-      <div className="fixed inset-0 z-[300] flex flex-col overflow-hidden bg-bg">
+      <div
+        className="fixed top-0 right-0 bottom-0 z-[300] flex flex-col overflow-hidden bg-bg"
+        style={{ left: overlayLeft }}
+      >
         {content}
       </div>,
       document.body,

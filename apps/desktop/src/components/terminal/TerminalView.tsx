@@ -71,6 +71,17 @@ export function TerminalView({ id, active }: TerminalViewProps) {
     const el = containerRef.current;
     if (!el) return;
 
+    // Preserve the session's custom title (first command) when the panel is
+    // collapsed and reopened: only overwrite with the shell name while the
+    // title is still the auto-generated default ("终端 N").
+    const sessionTitle = useTerminalStore
+      .getState()
+      .sessions.find((s) => s.id === id)?.title;
+    const hasCustomTitle = !!sessionTitle && !/^终端 \d+$/.test(sessionTitle);
+    if (hasCustomTitle) {
+      firstCommandSetRef.current = true;
+    }
+
     const term = new Terminal({
       cursorBlink: true,
       fontFamily: '"DM Mono", Menlo, Monaco, "Courier New", monospace',
@@ -166,7 +177,7 @@ export function TerminalView({ id, active }: TerminalViewProps) {
         }
         spawnedRef.current = true;
         const shellName = shell.split('/').pop();
-        if (shellName) setTitle(id, shellName);
+        if (shellName && !hasCustomTitle) setTitle(id, shellName);
         setStatus(id, 'running');
         try {
           fit.fit();
@@ -230,11 +241,10 @@ export function TerminalView({ id, active }: TerminalViewProps) {
       dataDisposable.dispose();
       unlistenOutput?.();
       unlistenExit?.();
-      if (isTauri() && spawnedRef.current) {
-        void import('@tauri-apps/api/core').then(({ invoke }) => {
-          invoke('terminal_kill', { id }).catch(() => {});
-        });
-      }
+      // NOTE: no terminal_kill here — collapsing the panel only unmounts the
+      // xterm view; the PTY session stays alive in the Rust registry so
+      // reopening shows the SAME shell. Sessions are killed explicitly via
+      // the tab's × (terminalStore.closeSession) or on app exit.
       term.dispose();
       termRef.current = null;
       fitRef.current = null;

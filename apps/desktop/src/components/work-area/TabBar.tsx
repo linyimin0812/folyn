@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import type { FileTab } from '@/store/editorStore';
 import { FileIcon } from '@/components/icons/FileIcon';
+import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
 
 interface TabBarProps {
   tabs: FileTab[];
@@ -13,11 +14,19 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
   const [tabListOpen, setTabListOpen] = useState(false);
   const tabListRef = useRef<HTMLDivElement>(null);
 
+  const closeList = () => {
+    setTabListOpen(false);
+    // The open-files dropdown overlaps the work area; if a native webview was
+    // hidden for it, ask the active webview to re-sync back into view.
+    window.dispatchEvent(new CustomEvent('quill:overlay-closed'));
+  };
+
   useEffect(() => {
     if (!tabListOpen) return;
+    hideWebviewsForOverlay();
     const handleClick = (e: MouseEvent) => {
       if (tabListRef.current && !tabListRef.current.contains(e.target as Node)) {
-        setTabListOpen(false);
+        closeList();
       }
     };
     document.addEventListener('mousedown', handleClick);
@@ -53,7 +62,13 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
       <div className="relative flex items-center shrink-0 border-l border-brd" ref={tabListRef}>
         <button
           className="w-7 h-full flex items-center justify-center text-t3 cursor-pointer transition-[background] duration-150 hover:bg-hov hover:text-t2"
-          onClick={() => setTabListOpen(!tabListOpen)}
+          onClick={() => {
+            if (tabListOpen) {
+              closeList();
+            } else {
+              setTabListOpen(true);
+            }
+          }}
           title="所有打开的文件"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -67,7 +82,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
                 <div
                   key={tab.id}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-[calc(var(--ui-font-size)-2px)] text-t2 cursor-pointer whitespace-nowrap transition-[background] duration-[120ms] hover:bg-hov ${activeTabId === tab.id ? '!text-acc bg-hov' : ''}`}
-                  onClick={() => { onSelectTab(tab.id); setTabListOpen(false); }}
+                  onClick={() => { onSelectTab(tab.id); closeList(); }}
                 >
                   <span className="shrink-0 flex items-center"><FileIcon filename={tab.name} fileType={tab.fileType} /></span>
                   <span className="flex-1">{tab.name}</span>

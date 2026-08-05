@@ -11,6 +11,7 @@ struct TerminalSession {
     writer: Box<dyn Write + Send>,
     #[allow(dead_code)]
     child: Box<dyn portable_pty::Child + Send + Sync>,
+    shell_path: String,
 }
 
 /// Global registry of terminal sessions keyed by frontend-assigned id.
@@ -34,6 +35,19 @@ pub fn terminal_create(
     rows: Option<u16>,
     theme: Option<String>,
 ) -> Result<String, String> {
+    // Reopening a collapsed terminal must preserve the original shell, not
+    // spawn a fresh one. If a session with this id is still alive, return it
+    // untouched; if its child has exited, drop it and respawn below.
+    if let Some(shell_path) = {
+        let mut guard = TERMINALS.lock().unwrap();
+        guard.get_mut(&id).and_then(|session| match session.child.try_wait() {
+            Ok(Some(_)) => None,
+            _ => Some(session.shell_path.clone()),
+        })
+    } {
+        return Ok(shell_path);
+    }
+
     let pty_system = native_pty_system();
     let pair = pty_system
         .openpty(PtySize {
@@ -100,6 +114,7 @@ pub fn terminal_create(
             master: pair.master,
             writer,
             child,
+            shell_path: shell_path.clone(),
         },
     );
 
