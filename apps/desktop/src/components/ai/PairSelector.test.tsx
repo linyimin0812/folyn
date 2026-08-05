@@ -237,6 +237,34 @@ describe('PairSelector', () => {
     });
   });
 
+  it('defaults the panel anchor to right-0 (right-aligned triggers)', () => {
+    setState({
+      providerSettings: { anthropic: { ...anthropicSlot } },
+    });
+    renderSelector({ value: null });
+    const panel = openPanel();
+    expect(panel.className).toContain('right-0');
+    expect(panel.className).not.toContain('left-0');
+  });
+
+  it('panelAlign="left" anchors the panel left-0 (left-aligned triggers)', () => {
+    setState({
+      providerSettings: { anthropic: { ...anthropicSlot } },
+    });
+    renderSelector({ value: null, panelAlign: 'left' });
+    const panel = openPanel();
+    expect(panel.className).toContain('left-0');
+    expect(panel.className).not.toContain('right-0');
+  });
+
+  it('panelAlign applies to the icon empty-state hint too', () => {
+    setState({ providerSettings: {} });
+    renderSelector({ value: null, trigger: 'icon', dropDirection: 'up', panelAlign: 'left' });
+    fireEvent.click(screen.getByTestId('pair-selector-empty').querySelector('button')!);
+    const hint = screen.getByText('未配置可用模型').parentElement!;
+    expect(hint.className).toContain('left-0');
+  });
+
   it('useEnabledPairs returns the right list shape', () => {
     setState({
       customerProviders: {

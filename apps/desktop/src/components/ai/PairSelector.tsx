@@ -37,6 +37,15 @@ export interface PairSelectorProps {
    * edge (chat input).
    */
   dropDirection?: 'up' | 'down';
+  /**
+   * Horizontal panel anchor relative to the trigger. `'right'` (default)
+   * grows the panel leftward from the trigger's right edge — correct for
+   * right-aligned triggers (settings rows). `'left'` grows rightward from
+   * the trigger's left edge — for left-aligned triggers (chat input icon
+   * button) whose panel would otherwise run off the left edge and get
+   * clipped by an `overflow-hidden` ancestor.
+   */
+  panelAlign?: 'left' | 'right';
 }
 
 /**
@@ -101,6 +110,7 @@ export function PairSelector({
   disabled,
   trigger = 'full',
   dropDirection = 'down',
+  panelAlign = 'right',
 }: PairSelectorProps) {
   const { t } = useTranslation();
   const { pairs, hasAny } = useEnabledPairs();
@@ -151,7 +161,7 @@ export function PairSelector({
             <Cpu size={16} />
           </button>
           {open && (
-            <div className={`absolute right-0 ${dropDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'} min-w-[200px] bg-panel border border-brd rounded-lg shadow-[0_8px_24px_rgba(0,0,0,.14)] z-[100] p-2`}>
+            <div className={`absolute ${panelAlign === 'left' ? 'left-0' : 'right-0'} ${dropDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'} min-w-[200px] bg-panel border border-brd rounded-lg shadow-[0_8px_24px_rgba(0,0,0,.14)] z-[100] p-2`}>
               <div className="text-t3 text-[12px] whitespace-nowrap">{t(`${i18nPrefix}.empty`)}</div>
               {onOpenSettings && (
                 <button
@@ -187,7 +197,7 @@ export function PairSelector({
 
   const panel = open && (
     <div
-      className={`absolute right-0 ${dropDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'} w-max min-w-[220px] max-w-[360px] max-h-[300px] overflow-y-auto bg-panel border border-brd rounded-lg shadow-[0_8px_24px_rgba(0,0,0,.14)] z-[100] p-1`}
+      className={`absolute ${panelAlign === 'left' ? 'left-0' : 'right-0'} ${dropDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'} w-max min-w-[220px] max-w-[360px] max-h-[300px] overflow-y-auto bg-panel border border-brd rounded-lg shadow-[0_8px_24px_rgba(0,0,0,.14)] z-[100] p-1`}
       role="listbox"
       data-testid="pair-selector-panel"
     >

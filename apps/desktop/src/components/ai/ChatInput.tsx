@@ -772,6 +772,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
         <PairSelector
           trigger="icon"
           dropDirection="up"
+          panelAlign="left"
           value={sessionPair}
           onChange={handlePairChange}
           onOpenSettings={handleOpenModelSettings}

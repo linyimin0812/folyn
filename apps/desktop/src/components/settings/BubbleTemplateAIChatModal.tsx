@@ -408,6 +408,7 @@ export function BubbleTemplateAIChatModal({
       <PairSelector
         trigger="icon"
         dropDirection="up"
+        panelAlign="left"
         value={bubblePair}
         onChange={(pair) => {
           // Phase 2: pair is per-session — write the active bt session.
