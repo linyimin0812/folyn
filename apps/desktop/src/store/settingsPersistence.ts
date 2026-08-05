@@ -143,10 +143,11 @@ export function hydrateAllStores(blob: Record<string, unknown>): void {
  *  callers can inspect it. */
 export async function loadSettings(): Promise<Record<string, unknown> | null> {
   // Yield one microtask so App.tsx's static imports finish evaluating and
-  // every persisted store has called registerPersistSlice. Without this,
-  // SLICES is still [] when we reach the loop (settingsLoadDone at the bottom
-  // of this file starts eagerly during this module's own evaluation, before
-  // any store has registered).
+  // every persisted store has called registerPersistSlice. This is a safety
+  // net for DIRECT callers (tests, persistNow, etc.) — the canonical
+  // settingsLoadDone promise is now a deferred promise resolved by App.tsx
+  // from a useEffect, so the module-graph race is handled at the call site,
+  // not here.
   await Promise.resolve();
   const missing = EXPECTED_SLICES.filter(
     (n) => !SLICES.some((s) => s.name === n),
@@ -208,4 +209,25 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
 // done yet?". Callers that read persisted state at startup (e.g. the pet-icon
 // orphan sweep in usePetHostBridge) MUST await this before touching the store
 // — otherwise they read default state and clobber the persisted value.
-export const settingsLoadDone: Promise<void> = loadSettings().then(() => undefined, () => undefined);
+//
+// Deferred promise — NOT resolved at module evaluation time. The eager
+// loadSettings() call at module init runs before sibling modules (petStore,
+// prefsStore, …) have had their own module code evaluated, so SLICES is
+// still [] when the hydration loop starts. Instead, the caller (App.tsx)
+// calls loadSettings() from a useEffect once the component mounts — by
+// which time all modules are evaluated and SLICES is fully populated —
+// and then calls resolveSettingsLoadDone() to unblock awaiters.
+// See PRD fix-pet-icon-restart.
+
+let _resolveSettingsLoadDone: ((value: void | PromiseLike<void>) => void) | null = null;
+
+export const settingsLoadDone: Promise<void> = new Promise((resolve) => {
+  _resolveSettingsLoadDone = resolve;
+});
+
+/** Resolve the settingsLoadDone promise. Called by App.tsx after
+ *  loadSettings() completes. Idempotent — subsequent calls are no-ops. */
+export function resolveSettingsLoadDone(): void {
+  _resolveSettingsLoadDone?.();
+  _resolveSettingsLoadDone = null;
+}
