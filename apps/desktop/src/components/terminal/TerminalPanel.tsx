@@ -1,14 +1,18 @@
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTerminalStore } from '@/store/terminalStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useTranslation } from 'react-i18next';
 import { TerminalView } from './TerminalView';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Maximize2, Minimize2 } from 'lucide-react';
 import terminalIcon from '@/assets/terminal.svg';
 
 /** Terminal panel: session-tab header + xterm body. Owns its own header and
- *  close button (no dock tab bar). */
+ *  close button (no dock tab bar). The header's fullscreen button expands the
+ *  terminal over the whole editor page. */
 export function TerminalPanel() {
   const { t } = useTranslation();
+  const [fullscreen, setFullscreen] = useState(false);
   const sessions = useTerminalStore((s) => s.sessions);
   const activeId = useTerminalStore((s) => s.activeId);
   const addSession = useTerminalStore((s) => s.addSession);
@@ -16,8 +20,18 @@ export function TerminalPanel() {
   const closeSession = useTerminalStore((s) => s.closeSession);
   const closeTerminalPanel = useEditorViewStateStore((s) => s.closeTerminalPanel);
 
-  return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-bg">
+  // Esc exits fullscreen mode.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFullscreen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [fullscreen]);
+
+  const content = (
+    <>
       <div className="flex items-center gap-0.5 h-[34px] shrink-0 px-2 bg-panel border-b border-brd overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sessions.map((s) => (
           <div
@@ -76,6 +90,13 @@ export function TerminalPanel() {
         <div className="flex-1 min-w-0" />
         <button
           className="shrink-0 w-[24px] h-[24px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
+          title={fullscreen ? t('terminal:exitFullscreen') : t('terminal:fullscreen')}
+          onClick={() => setFullscreen((v) => !v)}
+        >
+          {fullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+        </button>
+        <button
+          className="shrink-0 w-[24px] h-[24px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
           title={t('terminal:closePanel')}
           onClick={closeTerminalPanel}
         >
@@ -103,6 +124,22 @@ export function TerminalPanel() {
           </div>
         )}
       </div>
+    </>
+  );
+
+  if (fullscreen) {
+    // Cover the entire editor page (topbar included) above every panel.
+    return createPortal(
+      <div className="fixed inset-0 z-[300] flex flex-col overflow-hidden bg-bg">
+        {content}
+      </div>,
+      document.body,
+    );
+  }
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-bg">
+      {content}
     </div>
   );
 }

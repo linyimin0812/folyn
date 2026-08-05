@@ -2,6 +2,8 @@
   "new": "New terminal",
   "close": "Close terminal",
   "closePanel": "Close terminal panel",
+  "fullscreen": "Fullscreen terminal",
+  "exitFullscreen": "Exit fullscreen",
   "restart": "Restart",
   "empty": "No terminal sessions yet"
 }

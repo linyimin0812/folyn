@@ -2,6 +2,8 @@
   "new": "新建终端",
   "close": "关闭终端",
   "closePanel": "关闭终端面板",
+  "fullscreen": "全屏显示终端",
+  "exitFullscreen": "退出全屏",
   "restart": "重新启动",
   "empty": "还没有终端会话"
 }
