@@ -50,9 +50,6 @@ vi.mock('@tauri-apps/api/event', () => ({
 
 // Mock the heavy child components so this test focuses on tab host behavior.
 // Each renders a div tagged with its root class name (matches real root).
-vi.mock('./PetLauncher', () => ({
-  PetLauncher: () => <div className="pet-launcher">launcher</div>,
-}));
 vi.mock('@/components/ai/AiPanel', () => ({
   AiPanel: () => <div className="ai-panel">chat</div>,
 }));
@@ -77,30 +74,42 @@ afterEach(() => {
 });
 
 describe('PetPanelApp', () => {
-  it('defaults to the Chat tab and shows the chat (not launcher)', () => {
+  it('defaults to the Chat tab with a search box above the tabs (no Actions tab)', () => {
     const { container } = render(<PetPanelApp />);
     expect(container.querySelector('.ai-panel')).toBeTruthy();
-    expect(container.querySelector('.pet-launcher')).toBeNull();
-    const chatTab = screen.getByRole('tab', { name: 'Chat' });
-    expect(chatTab.getAttribute('aria-selected')).toBe('true');
+    // The search input sits above the tabs; the Actions tab was removed.
+    expect(container.querySelector('.pet-panel-search-input')).toBeTruthy();
+    // Only Chat + Inbox remain (tab labels are locale-dependent — index 0
+    // is Chat, the default tab).
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs).toHaveLength(2);
+    expect(tabs[0].getAttribute('aria-selected')).toBe('true');
   });
 
-  it('clicking the Actions tab mounts PetLauncher and unmounts AiPanel', () => {
+  it('typing in the search box replaces the body with search results', () => {
     const { container } = render(<PetPanelApp />);
-    fireEvent.click(screen.getByRole('tab', { name: 'Actions' }));
-    expect(container.querySelector('.pet-launcher')).toBeTruthy();
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'readme' } });
+    expect(container.querySelector('.pet-panel-search-results')).toBeTruthy();
     expect(container.querySelector('.ai-panel')).toBeNull();
-    expect(screen.getByRole('tab', { name: 'Actions' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByRole('tab', { name: 'Chat' }).getAttribute('aria-selected')).toBe('false');
+    expect(screen.getAllByRole('tab')[0].getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('clicking the Inbox tab mounts the inbox and unmounts AiPanel', () => {
+    const { container } = render(<PetPanelApp />);
+    fireEvent.click(screen.getAllByRole('tab')[1]);
+    expect(container.querySelector('.pet-inbox-empty')).toBeTruthy();
+    expect(container.querySelector('.ai-panel')).toBeNull();
+    expect(screen.getAllByRole('tab')[1].getAttribute('aria-selected')).toBe('true');
+    expect(screen.getAllByRole('tab')[0].getAttribute('aria-selected')).toBe('false');
   });
 
   it('clicking Chat tab reverses back to the chat', () => {
     const { container } = render(<PetPanelApp />);
-    fireEvent.click(screen.getByRole('tab', { name: 'Actions' }));
-    expect(container.querySelector('.pet-launcher')).toBeTruthy();
-    fireEvent.click(screen.getByRole('tab', { name: 'Chat' }));
+    fireEvent.click(screen.getAllByRole('tab')[1]);
+    expect(container.querySelector('.pet-inbox-empty')).toBeTruthy();
+    fireEvent.click(screen.getAllByRole('tab')[0]);
     expect(container.querySelector('.ai-panel')).toBeTruthy();
-    expect(container.querySelector('.pet-launcher')).toBeNull();
+    expect(container.querySelector('.pet-inbox-empty')).toBeNull();
   });
 
   it('close button hides the panel via pet_panel_hide', async () => {
@@ -146,7 +155,7 @@ describe('PetPanelApp', () => {
 
   it('clicking a tab button does NOT start a drag', async () => {
     render(<PetPanelApp />);
-    await fireEvent.pointerDown(screen.getByRole('tab', { name: 'Chat' }), { button: 0 });
+    await fireEvent.pointerDown(screen.getAllByRole('tab')[0], { button: 0 });
     await Promise.resolve();
     expect(startDraggingMock).not.toHaveBeenCalled();
   });

@@ -198,8 +198,14 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
   }, [sessions, activeSessionId]);
 
   const handlePairChange = useCallback((pair: Pair | null) => {
-    if (!pair || !activeSessionId) return;
-    setSessionPair(activeSessionId, pair);
+    if (!pair) return;
+    // A fresh panel/AiPanel has no active session yet (the send path creates
+    // one on the first message) — switching the model before sending must
+    // create the session so the pick sticks. Without this the change was
+    // silently dropped ("cannot switch model" in the pet panel).
+    const sessionId = activeSessionId ?? useAiStore.getState().createSession();
+    if (!sessionId) return;
+    setSessionPair(sessionId, pair);
   }, [activeSessionId, setSessionPair]);
 
   const handleOpenModelSettings = useCallback(() => {

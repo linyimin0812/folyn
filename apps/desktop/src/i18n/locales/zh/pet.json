@@ -52,8 +52,14 @@
   },
   "tabs": {
     "chat": "对话",
-    "actions": "操作",
     "inbox": "收件箱"
+  },
+  "search": {
+    "placeholder": "搜索文件 / 命令 / 插件",
+    "files": "文件",
+    "commands": "命令",
+    "plugins": "插件",
+    "noResults": "无匹配结果"
   },
   "inbox": {
     "empty": "暂无通知",

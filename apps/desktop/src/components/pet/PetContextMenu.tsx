@@ -69,16 +69,20 @@ export type PetMenuAction =
   | 'clip-from-url'
   | 'command-palette'
   | 'toggle-theme'
-  | 'open-ai-settings';
+  | 'open-ai-settings'
+  | 'run-command'
+  | 'open-plugins-settings';
 
 /** Payload for `pet://menu-action` events. `set-pet-size` carries the size
  *  level, `set-pet-opacity` the opacity level, `toggle-pet-click-through`
- *  the next bool; all other actions use only `action`. */
+ *  the next bool, `run-command` the command id to run in the main window;
+ *  all other actions use only `action`. */
 export interface PetMenuActionPayload {
   action: PetMenuAction;
   size?: '50' | '75' | '100' | '125' | '150';
   opacity?: '25' | '50' | '75' | '100';
   clickThrough?: boolean;
+  commandId?: string;
 }
 
 /**
@@ -108,6 +112,8 @@ export const PET_LAUNCHER_ACTIONS: readonly PetMenuAction[] = [
   'command-palette',
   'toggle-theme',
   'open-ai-settings',
+  'run-command',
+  'open-plugins-settings',
 ] as const;
 
 export const PET_MENU_ACTIONS: readonly PetMenuAction[] = [

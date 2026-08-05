@@ -52,8 +52,14 @@
   },
   "tabs": {
     "chat": "Chat",
-    "actions": "Actions",
     "inbox": "Inbox"
+  },
+  "search": {
+    "placeholder": "Search files / commands / plugins",
+    "files": "Files",
+    "commands": "Commands",
+    "plugins": "Plugins",
+    "noResults": "No matching results"
   },
   "inbox": {
     "empty": "No notifications",

@@ -11,12 +11,19 @@ import {
   PET_PANEL_SIZE_VERSION,
   type PetWorkArea,
 } from './petPosition';
-import { PetLauncher } from './PetLauncher';
 import { AiPanel } from '@/components/ai/AiPanel';
 import { PetInbox } from './PetInbox';
+import { PetPanelSearchResults } from './PetPanelSearchResults';
 import { useVaultStore } from '@/store/vaultStore';
+import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useModelRegistryStore } from '@/store/modelRegistryStore';
+import type {
+  CustomProviderDef,
+  ProviderSettings,
+} from '@/services/providers/providerConfigStorage';
+import type { Model } from '@/services/modelRegistry/types';
 
-type PetPanelTab = 'actions' | 'chat' | 'inbox';
+type PetPanelTab = 'chat' | 'inbox';
 
 interface PetCursorProbeResult {
   cursor_x: number;
@@ -37,7 +44,7 @@ const PANEL_PERSIST_INTERVAL_MS = 800;
 /**
  * PetPanelApp — mounted only in the `pet-panel` Tauri window (see main.tsx
  * `#/pet-panel` route switch). Hosts a tabbed layout: **Actions** (the
- * `PetLauncher` grid) and **Chat** (the `PetChat` component). Only one view
+ * and **Chat** (the `PetChat` component). Only one view
  * is mounted at a time; switching tabs unmounts the inactive view — this
  * releases the chat's `CliAdapter` mid-stream, which is acceptable per the
  * PRD's Out-of-Scope "stream-interrupt resume" rule.
@@ -67,8 +74,12 @@ const PANEL_PERSIST_INTERVAL_MS = 800;
 export function PetPanelApp() {
   // Default tab is Chat — the panel opens on the embedded AI chat so a
   // single left-click on the pet drops the user into "ask" mode without an
-  // extra tab switch. The launcher grid is one click away on the Actions tab.
+  // extra tab switch.
   const [tab, setTab] = useState<PetPanelTab>('chat');
+  // Unified search (files / commands / plugins) — the input sits above the
+  // tabs; while a query is non-empty the body shows the results instead of
+  // the active tab.
+  const [searchQuery, setSearchQuery] = useState('');
   // ponytail: drives the CSS opacity/transform transition on
   // `.pet-panel-root`. The webview persists across shows (no re-mount), so
   // the fade-in has to be class-driven by an explicit event rather than a
@@ -132,6 +143,51 @@ export function PetPanelApp() {
     })();
     return () => {
       void unlisten?.();
+    };
+  }, []);
+
+  // ── Provider config sync ──
+  // The embedded AiPanel's model selector reads `aiConfigStore.providerSettings`
+  // + `customerProviders` + `modelRegistryStore.modelsByProvider`, which live
+  // in ~/.quill/providers/ and are loaded by the MAIN window (secondary
+  // windows lack fs ACL). The main window broadcasts them on
+  // `pet://providers-updated` (startProvidersBroadcast in App.tsx); without
+  // this the panel would show "configure a model" even though providers are
+  // configured. Mirrors the pet://file-tree-updated listener.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        unlisten = await listen<{
+          providerSettings?: Record<string, ProviderSettings>;
+          customerProviders?: Record<string, CustomProviderDef>;
+          modelsByProvider?: Record<string, Model[]>;
+        }>('pet://providers-updated', (event) => {
+          const p = event.payload ?? {};
+          if (p.providerSettings) {
+            useAiConfigStore.setState({
+              providerSettings: p.providerSettings,
+            });
+          }
+          if (p.customerProviders) {
+            useAiConfigStore.setState({
+              customerProviders: p.customerProviders,
+            });
+          }
+          if (p.modelsByProvider) {
+            useModelRegistryStore.setState({
+              modelsByProvider: p.modelsByProvider,
+            });
+          }
+        });
+      } catch (err) {
+        console.warn('[pet-panel] providers-updated listener failed:', err);
+      }
+    })();
+    return () => {
+      if (unlisten) unlisten();
     };
   }, []);
 
@@ -500,52 +556,78 @@ export function PetPanelApp() {
         onPointerDown={headerPointerDown}
         role="banner"
       >
-        <nav
-          className="pet-panel-tabs"
-          role="tablist"
-          aria-label="Pet panel sections"
-          onPointerDown={suppressDrag}
-        >
+        {/* Search row above the tabs — filters files / commands / plugins. */}
+        <div className="pet-panel-search-row" onPointerDown={suppressDrag}>
+          <div className="pet-panel-search-field">
+            <input
+              className="pet-panel-search-input"
+              type="text"
+              placeholder={t('pet:search.placeholder')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setSearchQuery('');
+              }}
+              aria-label={t('pet:search.placeholder')}
+            />
+            {searchQuery !== '' && (
+              <button
+                type="button"
+                className="pet-panel-search-clear"
+                aria-label="Clear search"
+                onClick={() => setSearchQuery('')}
+              >
+                ×
+              </button>
+            )}
+          </div>
           <button
             type="button"
-            role="tab"
-            aria-selected={tab === 'chat'}
-            className={`pet-panel-tab${tab === 'chat' ? ' is-active' : ''}`}
-            onClick={() => setTab('chat')}
+            className="pet-panel-close"
+            aria-label="Close pet panel"
+            onClick={() => void hidePanel()}
           >
-            {t('pet:tabs.chat')}
+            ×
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'actions'}
-            className={`pet-panel-tab${tab === 'actions' ? ' is-active' : ''}`}
-            onClick={() => setTab('actions')}
+        </div>
+        <div className="pet-panel-header-row" onPointerDown={suppressDrag}>
+          <nav
+            className="pet-panel-tabs"
+            role="tablist"
+            aria-label="Pet panel sections"
           >
-            {t('pet:tabs.actions')}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'inbox'}
-            className={`pet-panel-tab${tab === 'inbox' ? ' is-active' : ''}`}
-            onClick={() => setTab('inbox')}
-          >
-            {t('pet:tabs.inbox')}
-          </button>
-        </nav>
-        <button
-          type="button"
-          className="pet-panel-close"
-          aria-label="Close pet panel"
-          onClick={() => void hidePanel()}
-          onPointerDown={suppressDrag}
-        >
-          ×
-        </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'chat'}
+              className={`pet-panel-tab${tab === 'chat' ? ' is-active' : ''}`}
+              onClick={() => setTab('chat')}
+            >
+              {t('pet:tabs.chat')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'inbox'}
+              className={`pet-panel-tab${tab === 'inbox' ? ' is-active' : ''}`}
+              onClick={() => setTab('inbox')}
+            >
+              {t('pet:tabs.inbox')}
+            </button>
+          </nav>
+        </div>
       </header>
       <main className="pet-panel-body">
-        {tab === 'chat' ? <AiPanel embedded /> : tab === 'actions' ? <PetLauncher /> : <PetInbox />}
+        {searchQuery.trim() !== '' ? (
+          <PetPanelSearchResults
+            query={searchQuery}
+            onDone={() => void hidePanel()}
+          />
+        ) : tab === 'chat' ? (
+          <AiPanel embedded />
+        ) : (
+          <PetInbox />
+        )}
       </main>
     </div>
   );

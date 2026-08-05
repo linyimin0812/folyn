@@ -18,6 +18,7 @@ import {
   type RuntimeConfig,
 } from '@/services/scriptRunner/scriptRunnerService';
 import { useAiStore } from './aiStore';
+import { useModelRegistryStore } from './modelRegistryStore';
 
 // ponytail: ChatProvider is `string` (Phase 3) — the literal union of 20
 // catalog ids was bypassed by casts everywhere custom provider ids flowed
@@ -706,3 +707,60 @@ const persist = registerPersistSlice({
   getState: () => useAiConfigStore.getState() as unknown as Record<string, unknown>,
   hydrate: (blob) => useAiConfigStore.getState().hydrate(blob),
 });
+
+/**
+ * Broadcast provider settings + the model registry to secondary Tauri
+ * windows (the pet-panel's embedded AiPanel). Secondary windows lack fs ACL
+ * perms to re-read `~/.quill/providers/`, so their `aiConfigStore` stays
+ * empty and the panel's model selector shows "configure a model" even
+ * though the main window has providers configured. Mirrors the
+ * `pet://file-tree-updated` pattern: main-window-only caller (App.tsx),
+ * pushes `providerSettings` + `customerProviders` + `modelsByProvider` on
+ * change. The pet-panel listens on `pet://providers-updated` and hydrates
+ * its own store instances.
+ */
+export function startProvidersBroadcast(): () => void {
+  let stopped = false;
+  const emit = async () => {
+    if (stopped) return;
+    try {
+      const { emit } = await import('@tauri-apps/api/event');
+      const { providerSettings, customerProviders } = useAiConfigStore.getState();
+      const { modelsByProvider } = useModelRegistryStore.getState();
+      await emit('pet://providers-updated', {
+        providerSettings,
+        customerProviders,
+        modelsByProvider,
+      });
+    } catch {
+      // Non-tauri (tests) or emit failed — non-fatal.
+    }
+  };
+  // Push initial state so a freshly-opened pet panel sees the current config
+  // without waiting for the next provider-settings mutation.
+  void emit();
+  let prevSettings = useAiConfigStore.getState().providerSettings;
+  let prevCustomers = useAiConfigStore.getState().customerProviders;
+  const unsubConfig = useAiConfigStore.subscribe((state) => {
+    if (
+      state.providerSettings !== prevSettings ||
+      state.customerProviders !== prevCustomers
+    ) {
+      prevSettings = state.providerSettings;
+      prevCustomers = state.customerProviders;
+      void emit();
+    }
+  });
+  let prevModels = useModelRegistryStore.getState().modelsByProvider;
+  const unsubModels = useModelRegistryStore.subscribe((state) => {
+    if (state.modelsByProvider !== prevModels) {
+      prevModels = state.modelsByProvider;
+      void emit();
+    }
+  });
+  return () => {
+    stopped = true;
+    unsubConfig();
+    unsubModels();
+  };
+}

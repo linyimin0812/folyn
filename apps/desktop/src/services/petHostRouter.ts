@@ -43,6 +43,7 @@ export async function routePetMenuAction(
   size?: '50' | '75' | '100' | '125' | '150',
   opacity?: '25' | '50' | '75' | '100',
   clickThrough?: boolean,
+  commandId?: string,
 ): Promise<void> {
   switch (action) {
     case 'show-main':
@@ -164,6 +165,24 @@ export async function routePetMenuAction(
       // settings (the chat/LLM tab — pet/voice CTAs are about chat config).
       useNavStore.getState().setCurrentPage('settings');
       useNavStore.getState().setSettingsTab('models');
+      await focusMain();
+      break;
+    case 'run-command':
+      // Pet-panel search → run a registered command in the main window
+      // (the panel is a separate realm whose store instances cannot execute
+      // main-window commands). `runCommand` falls back to the registry when
+      // the id isn't in the current palette list, so any registered command
+      // works. Focus main so the user sees the effect.
+      if (commandId) {
+        const { useCommandPaletteStore } = await import('@/store/commandPaletteStore');
+        useCommandPaletteStore.getState().runCommand(commandId);
+      }
+      await focusMain();
+      break;
+    case 'open-plugins-settings':
+      // Pet-panel search → open the Plugins settings tab in the main window.
+      useNavStore.getState().setCurrentPage('settings');
+      useNavStore.getState().setSettingsTab('plugins');
       await focusMain();
       break;
   }

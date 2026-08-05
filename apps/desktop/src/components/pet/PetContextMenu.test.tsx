@@ -68,6 +68,8 @@ describe('PetContextMenu (HTML menu window + launcher contract)', () => {
       'command-palette',
       'toggle-theme',
       'open-ai-settings',
+      'run-command',
+      'open-plugins-settings',
     ]);
   });
 
@@ -85,6 +87,8 @@ describe('PetContextMenu (HTML menu window + launcher contract)', () => {
       'command-palette',
       'toggle-theme',
       'open-ai-settings',
+      'run-command',
+      'open-plugins-settings',
     ]);
   });
 

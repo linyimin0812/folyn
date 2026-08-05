@@ -277,10 +277,8 @@ html.is-pet-panel-window body {
 
 .pet-panel-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 36px;
-  padding: 0 10px;
+  flex-direction: column;
+  padding: 0;
   border-bottom: 1px solid var(--brd, #e2e5ee);
   background: var(--panel, #ffffff);
   flex-shrink: 0;
@@ -296,6 +294,73 @@ html.is-pet-panel-window body {
 }
 .pet-panel-header:active {
   cursor: grabbing;
+}
+
+/* Search row above the tabs — input + clear button. The row itself is a
+ * drag-handle child (suppressDrag stops the input from starting a drag). */
+.pet-panel-search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 0;
+}
+/* Wraps the input so the inline clear button can overlay its right edge. */
+.pet-panel-search-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.pet-panel-search-input {
+  width: 100%;
+  height: 34px;
+  padding: 0 30px 0 12px; /* right padding clears the inline × */
+  border: none;
+  border-radius: 8px;
+  background: var(--surf, #f8f9fd);
+  color: var(--t1, #1f2330);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+.pet-panel-search-input::placeholder {
+  color: var(--t3, #9aa1b2);
+}
+.pet-panel-search-input:focus {
+  background: var(--panel, #ffffff);
+  box-shadow: 0 0 0 2px var(--accglow, rgba(58, 110, 240, 0.12));
+}
+.pet-panel-search-clear {
+  appearance: none;
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--t2, #5a6275);
+  font-size: 16px;
+  line-height: 1;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pet-panel-search-clear:hover {
+  background: var(--hov, #eef0f5);
+  color: var(--t1, #1f2330);
+}
+
+/* Tabs + close row (kept as its own row so the search row can sit above). */
+.pet-panel-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 0 10px;
 }
 
 .pet-panel-tabs {
@@ -348,6 +413,61 @@ html.is-pet-panel-window body {
 .pet-panel-tab.is-active {
   color: var(--acc, #3a6ef0);
   border-bottom-color: var(--acc, #3a6ef0);
+}
+
+/* Unified search results (files / commands / plugins). */
+.pet-panel-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pet-panel-search-group {
+  display: flex;
+  flex-direction: column;
+}
+.pet-panel-search-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--t3, #9aa1b2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 4px 4px;
+}
+.pet-panel-search-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.pet-panel-search-item:hover {
+  background: var(--hov, #eef0f5);
+}
+.pet-panel-search-item-title {
+  color: var(--t1, #1f2330);
+}
+.pet-panel-search-item-sub {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--t3, #9aa1b2);
+}
+.pet-panel-search-empty {
+  padding: 24px 8px;
+  text-align: center;
+  color: var(--t3, #9aa1b2);
+  font-size: 12px;
 }
 
 .pet-panel-body {

@@ -19,6 +19,7 @@ import { useNavStore } from './store/navStore';
 import { useAppearanceStore } from './store/appearanceStore';
 import { useEditorViewStateStore } from './store/editorViewState';
 import { useVaultStore, startFileTreeBroadcast } from './store/vaultStore';
+import { startProvidersBroadcast } from './store/aiConfigStore';
 import { settingsLoadDone, persistNow, loadSettings, resolveSettingsLoadDone } from './store/settingsPersistence';
 import { useEditorStore } from './store/editorStore';
 import * as editorIoService from './services/editorIoService';
@@ -193,10 +194,12 @@ export default function App() {
   // Mirrors the pet://settings-updated broadcast pattern.
   useEffect(() => {
     let stop: (() => void) | undefined;
+    let stopProviders: (() => void) | undefined;
     settingsLoadDone.then(() => {
       stop = startFileTreeBroadcast();
+      stopProviders = startProvidersBroadcast();
     });
-    return () => { stop?.(); };
+    return () => { stop?.(); stopProviders?.(); };
   }, []);
 
   // ── Vault initialization ──
