@@ -716,10 +716,11 @@ function BottomTerminal() {
 }
 
 /**
- * 1px visible separator with a 5px invisible hit target above it. The line
- * sits at the handle's BOTTOM edge, flush against the terminal header, so
- * nothing (no gray gap) renders below it — only the line itself separates
- * the editor from the terminal.
+ * 2px visible separator with an 8px hit target. The line sits at the TOP
+ * edge of the handle so clicking ON the line (and a comfortable strip below
+ * it, over the terminal header) starts the drag — not just a few pixels
+ * above the line. The strip below the line matches the header color, so
+ * only the line separates the editor from the terminal.
  */
 function TerminalResizeHandle({
   height,
@@ -751,7 +752,7 @@ function TerminalResizeHandle({
   }, [dragging]);
 
   return (
-    <div className="shrink-0 h-[6px] relative cursor-row-resize bg-panel">
+    <div className="shrink-0 h-[8px] relative cursor-row-resize bg-panel">
       <div
         className="absolute inset-0"
         onMouseDown={(e) => {
@@ -761,7 +762,7 @@ function TerminalResizeHandle({
           document.documentElement.classList.add('is-resizing');
         }}
       />
-      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-brd transition-colors duration-150 hover:bg-acc hover:opacity-60" />
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-brd transition-colors duration-150 hover:bg-acc hover:opacity-60" />
     </div>
   );
 }
