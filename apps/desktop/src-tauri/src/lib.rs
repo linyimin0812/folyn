@@ -640,6 +640,7 @@ pub fn run() {
             commands::pet_bubble_hide,
             commands::pet_bubble_set_position,
             commands::pet_bubble_set_size,
+            commands::pet_window_scale,
             commands::pet_menu_show,
             commands::pet_menu_hide,
             commands::pet_menu_set_position,

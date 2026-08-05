@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isTauri } from '@/utils/platform';
+import { currentWindowScaleFactor } from '@/utils/windowScale';
 import { usePetStore } from '@/store/petStore';
 import { hydrateAllStores } from '@/store/settingsPersistence';
 import {
@@ -312,7 +313,10 @@ export function PetPanelApp() {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         const workArea = await invoke<PetWorkArea>('pet_get_work_area');
-        const sf = workArea.scale_factor || 1;
+        // Pet screen's scale (pet position → logical) vs the PANEL window's
+        // own scale (frame → physical) — see currentWindowScaleFactor.
+        const screenSf = workArea.scale_factor || 1;
+        const winSf = await currentWindowScaleFactor(screenSf);
         const {
           petPanelX,
           petPanelY,
@@ -347,8 +351,8 @@ export function PetPanelApp() {
           usePetStore.getState().setPetPanelSizeVersion(PET_PANEL_SIZE_VERSION);
         }
         await invoke('pet_panel_set_size', {
-          width: Math.round(clampedSize.width * sf),
-          height: Math.round(clampedSize.height * sf),
+          width: Math.round(clampedSize.width * winSf),
+          height: Math.round(clampedSize.height * winSf),
         });
 
         // 2. Clamp the saved POSITION against the clamped size (logical points).
@@ -362,8 +366,8 @@ export function PetPanelApp() {
             setPetPanelPosition(pos.x, pos.y);
           }
           await invoke('pet_panel_set_position', {
-            x: Math.round(pos.x * sf),
-            y: Math.round(pos.y * sf),
+            x: Math.round(pos.x * winSf),
+            y: Math.round(pos.y * winSf),
           });
         } else {
           // First-ever open: position next to the pet (probe gives pet pos
@@ -378,14 +382,14 @@ export function PetPanelApp() {
           // via the `pet://size-changed` listener in PetApp.
           const petSize = usePetStore.getState().petSize;
           const pos = computePanelPosition(
-            { x: probe.window_x / sf, y: probe.window_y / sf },
+            { x: probe.window_x / screenSf, y: probe.window_y / screenSf },
             workArea,
             clampedSize,
             petSize,
           );
           await invoke('pet_panel_set_position', {
-            x: Math.round(pos.x * sf),
-            y: Math.round(pos.y * sf),
+            x: Math.round(pos.x * winSf),
+            y: Math.round(pos.y * winSf),
           });
           setPetPanelPosition(pos.x, pos.y);
         }
@@ -423,8 +427,13 @@ export function PetPanelApp() {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         if (sf === 1) {
-          const wa = await invoke<PetWorkArea>('pet_get_work_area');
-          sf = wa.scale_factor || 1;
+          // The PANEL window's own scale — pet_panel_get_position/get_size
+          // return PHYSICAL px in this window's frame; dividing by its own
+          // scale yields the logical points stored in petStore. (Using the
+          // pet screen's scale would be wrong while the panel window sits on
+          // a different-DPI display.)
+          const { getCurrentWindow } = await import('@tauri-apps/api/window');
+          sf = (await getCurrentWindow().scaleFactor()) || 1;
         }
         const pos = await invoke<{ x: number; y: number }>('pet_panel_get_position');
         const size = await invoke<PetPanelSizePayload>('pet_panel_get_size');

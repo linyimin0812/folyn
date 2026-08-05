@@ -48,6 +48,7 @@ import {
 import type { PetMenuAction } from './PetContextMenu';
 import { usePetStore } from '@/store/petStore';
 import { hydrateAllStores } from '@/store/settingsPersistence';
+import { currentWindowScaleFactor } from '@/utils/windowScale';
 
 /** Physical-position result from `get_pet_position` (physical px). */
 interface PetPositionResult {
@@ -185,15 +186,19 @@ async function resizeAndReposition(
   try {
     const { invoke } = await import('@tauri-apps/api/core');
     const workArea = await invoke<PetWorkArea>('pet_get_work_area');
-    const sf = workArea.scale_factor || 1;
+    // Pet screen's scale (petPos → logical) vs the MENU window's own scale
+    // (frame → physical) — see currentWindowScaleFactor. The first open
+    // after the pet moves to a different-DPI screen must not mix them.
+    const screenSf = workArea.scale_factor || 1;
+    const winSf = await currentWindowScaleFactor(screenSf);
     await invoke('pet_menu_set_size', {
-      width: Math.round(menuWidth * sf),
-      height: Math.round(menuHeight * sf),
+      width: Math.round(menuWidth * winSf),
+      height: Math.round(menuHeight * winSf),
     });
     const petPos = await invoke<PetPositionResult>('get_pet_position');
     // petPos is physical px → logical for the math (matches petPosition.ts
-    // unit contract), then × sf back to physical for set_position.
-    const petPosLogical = { x: petPos.x / sf, y: petPos.y / sf };
+    // unit contract), then × winSf back to physical for set_position.
+    const petPosLogical = { x: petPos.x / screenSf, y: petPos.y / screenSf };
     const posLogical = computePanelPosition(
       petPosLogical,
       workArea,
@@ -250,8 +255,8 @@ async function resizeAndReposition(
     posLogical.y = Math.max(posLogical.y, workArea.y);
 
     await invoke('pet_menu_set_position', {
-      x: Math.round(posLogical.x * sf),
-      y: Math.round(posLogical.y * sf),
+      x: Math.round(posLogical.x * winSf),
+      y: Math.round(posLogical.y * winSf),
     });
     return { pos: posLogical, side };
   } catch (err) {
@@ -313,10 +318,12 @@ async function syncSubmenuWindow(
   try {
     const { invoke } = await import('@tauri-apps/api/core');
     const workArea = await invoke<PetWorkArea>('pet_get_work_area');
-    const sf = workArea.scale_factor || 1;
+    // The MENU window's own scale for the frame conversions — see
+    // currentWindowScaleFactor.
+    const winSf = await currentWindowScaleFactor(workArea.scale_factor || 1);
     await invoke('pet_menu_set_size', {
-      width: Math.round(unionWidth * sf),
-      height: Math.round(unionHeight * sf),
+      width: Math.round(unionWidth * winSf),
+      height: Math.round(unionHeight * winSf),
     });
     // Leftward submenu only: keep the main card pinned to its open position.
     // The shift is the submenu card's left-extent (its left edge minus the
@@ -328,8 +335,8 @@ async function syncSubmenuWindow(
       const mainRect = main?.getBoundingClientRect();
       const shiftLogical = mainRect ? mainRect.left - union.left : 0;
       await invoke('pet_menu_set_position', {
-        x: Math.round((openPos.x - shiftLogical) * sf),
-        y: Math.round(openPos.y * sf),
+        x: Math.round((openPos.x - shiftLogical) * winSf),
+        y: Math.round(openPos.y * winSf),
       });
     }
   } catch (err) {

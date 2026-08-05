@@ -21,6 +21,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { isTauri } from '@/utils/platform';
+import { currentWindowScaleFactor } from '@/utils/windowScale';
 import {
   computeBubblePosition,
   PET_SIZE_DEFAULT,
@@ -159,10 +160,17 @@ async function positionAndShowBubble(
     invoke<PetPositionResult>('get_pet_position'),
     invoke<PetWorkArea>('pet_get_work_area'),
   ]);
-  const sf = workArea.scale_factor || 1;
-  // petPos is PHYSICAL px → logical for the math, then × sf back to physical
-  // for pet_bubble_set_position. See petPosition.ts unit contract.
-  const petPosLogical = { x: petPos.x / sf, y: petPos.y / sf };
+  // Pet screen's scale — converts the pet's PHYSICAL position to logical.
+  const screenSf = workArea.scale_factor || 1;
+  // The BUBBLE window's own scale — converts the logical frame back to
+  // physical for set_size / set_position. The two differ while the bubble
+  // window is still on its old display (first show after the pet moves to a
+  // different-DPI screen); mixing them made the first bubble half-size and
+  // misplaced. See currentWindowScaleFactor.
+  const winSf = await currentWindowScaleFactor(screenSf);
+  // petPos is PHYSICAL px → logical for the math, then × winSf back to
+  // physical for pet_bubble_set_position. See petPosition.ts unit contract.
+  const petPosLogical = { x: petPos.x / screenSf, y: petPos.y / screenSf };
   const posLogical = computeBubblePosition(
     petPosLogical,
     workArea,
@@ -171,12 +179,12 @@ async function positionAndShowBubble(
     placement,
   );
   await invoke('pet_bubble_set_size', {
-    width: Math.round(bubbleSize.width * sf),
-    height: Math.round(bubbleSize.height * sf),
+    width: Math.round(bubbleSize.width * winSf),
+    height: Math.round(bubbleSize.height * winSf),
   });
   await invoke('pet_bubble_set_position', {
-    x: Math.round(posLogical.x * sf),
-    y: Math.round(posLogical.y * sf),
+    x: Math.round(posLogical.x * winSf),
+    y: Math.round(posLogical.y * winSf),
   });
   await invoke('pet_bubble_show');
 }
@@ -214,6 +222,7 @@ export function PetBubbleApp(): JSX.Element {
   // any subsequent bubble-show without a draft.
   const [draftTemplate, setDraftTemplate] = useState<BubbleTemplate | null>(null);
   const ttlRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // ponytail: subscribe to user templates + active id. The bubble is a
   // separate window but petStore's storage backend (appDataDir/storage.json)
   // is shared, so hydration mirrors the main window's view. Settings UI

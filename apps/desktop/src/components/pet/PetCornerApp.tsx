@@ -28,6 +28,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { isTauri } from '@/utils/platform';
+import { currentWindowScaleFactor } from '@/utils/windowScale';
 import {
   computeCornerToastPosition,
   PET_CORNER_CARD_WIDTH,
@@ -78,15 +79,18 @@ async function syncCornerWindow(
       return;
     }
     const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
-    const sf = workArea.scale_factor || 1;
+    // The CORNER window's own scale for the frame conversions — see
+    // currentWindowScaleFactor (first show after the pet moves to a
+    // different-DPI screen must not convert with the target screen's scale).
+    const winSf = await currentWindowScaleFactor(workArea.scale_factor || 1);
     const posLogical = computeCornerToastPosition(corner, workArea, stackHeight);
     await invoke('pet_corner_set_size', {
-      width: Math.round(PET_CORNER_CARD_WIDTH * sf),
-      height: Math.round(stackHeight * sf),
+      width: Math.round(PET_CORNER_CARD_WIDTH * winSf),
+      height: Math.round(stackHeight * winSf),
     });
     await invoke('pet_corner_set_position', {
-      x: Math.round(posLogical.x * sf),
-      y: Math.round(posLogical.y * sf),
+      x: Math.round(posLogical.x * winSf),
+      y: Math.round(posLogical.y * winSf),
     });
     await invoke('pet_corner_show');
   } catch {

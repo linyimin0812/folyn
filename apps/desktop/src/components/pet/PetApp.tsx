@@ -4,6 +4,7 @@ import { openPetContextMenu } from './PetContextMenu';
 import { clampPetPosition, computeDefaultPetPosition, computePanelPosition, computeCenteredPanelPosition, resolvePanelSize, PET_PANEL_SIZE_VERSION, petSizeToPx } from './petPosition';
 import { keysToAccelerator } from '@/utils/shortcutAccelerator';
 import { isTauri } from '@/utils/platform';
+import { currentWindowScaleFactor } from '@/utils/windowScale';
 import { usePetStore } from '@/store/petStore';
 
 /**
@@ -186,7 +187,11 @@ async function openOrTogglePetPanel(): Promise<void> {
     const { invoke } = await import('@tauri-apps/api/core');
     const probe = await invoke<PetCursorProbeResult>('pet_cursor_probe');
     const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
-    const sf = workArea.scale_factor || 1;
+    // Pet screen's scale (pet position → logical) vs the PANEL window's own
+    // scale (frame → physical) — see currentWindowScaleFactor. The first
+    // open after the pet moves to a different-DPI screen must not mix them.
+    const screenSf = workArea.scale_factor || 1;
+    const winSf = await currentWindowScaleFactor(screenSf);
     const size = await resolveAndPersistPanelSize(workArea);
 
     // Read the current pet size level from petStore so the panel anchor
@@ -202,15 +207,15 @@ async function openOrTogglePetPanel(): Promise<void> {
     // position is NOT persisted.
     //
     // Unit boundary: `probe.window_x/y` is PHYSICAL px; `computePanelPosition`
-    // runs in LOGICAL points. Divide by `sf` to get logical, compute, then
-    // multiply by `sf` for `pet_panel_set_position` (physical px).
-    const petPosLogical = { x: probe.window_x / sf, y: probe.window_y / sf };
+    // runs in LOGICAL points. Divide by `screenSf` to get logical, compute,
+    // then multiply by `winSf` for `pet_panel_set_position` (physical px).
+    const petPosLogical = { x: probe.window_x / screenSf, y: probe.window_y / screenSf };
     const panelPosLogical = computePanelPosition(petPosLogical, {
-      x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height, scale_factor: sf,
+      x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height, scale_factor: screenSf,
     }, size, petSize);
     await applyPanelFrame(
-      { x: Math.round(panelPosLogical.x * sf), y: Math.round(panelPosLogical.y * sf) },
-      { width: Math.round(size.width * sf), height: Math.round(size.height * sf) },
+      { x: Math.round(panelPosLogical.x * winSf), y: Math.round(panelPosLogical.y * winSf) },
+      { width: Math.round(size.width * winSf), height: Math.round(size.height * winSf) },
     );
   } catch (err) {
     console.warn('[pet] openOrTogglePetPanel failed:', err);
@@ -237,7 +242,8 @@ async function openPetPanelCentered(): Promise<void> {
 
     const { invoke } = await import('@tauri-apps/api/core');
     const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
-    const sf = workArea.scale_factor || 1;
+    const screenSf = workArea.scale_factor || 1;
+    const winSf = await currentWindowScaleFactor(screenSf);
     const size = await resolveAndPersistPanelSize(workArea);
 
     const panelPosLogical = computeCenteredPanelPosition(
@@ -245,8 +251,8 @@ async function openPetPanelCentered(): Promise<void> {
       size,
     );
     await applyPanelFrame(
-      { x: Math.round(panelPosLogical.x * sf), y: Math.round(panelPosLogical.y * sf) },
-      { width: Math.round(size.width * sf), height: Math.round(size.height * sf) },
+      { x: Math.round(panelPosLogical.x * winSf), y: Math.round(panelPosLogical.y * winSf) },
+      { width: Math.round(size.width * winSf), height: Math.round(size.height * winSf) },
     );
   } catch (err) {
     console.warn('[pet] openPetPanelCentered failed:', err);

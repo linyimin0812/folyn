@@ -3,6 +3,19 @@ use tauri::{Manager, PhysicalPosition, PhysicalSize};
 use crate::commands::pet_common::*;
 use crate::errors::AppError;
 
+/// Read the CALLING window's own backing scale factor (physical px per
+/// logical point). Custom command — bypasses the ACL, so the pet windows
+/// (whose capabilities deliberately grant only `core:event`) can resolve
+/// their frame scale without a `core:window:allow-scale-factor` permission.
+/// The frontend needs this to convert logical frames to physical for
+/// `*_set_size` / `*_set_position`: those commands interpret their values
+/// against the WINDOW's own scale, which differs from the pet screen's
+/// scale while the window is still on its old display.
+#[tauri::command]
+pub async fn pet_window_scale(window: tauri::WebviewWindow) -> Result<f64, AppError> {
+    window.scale_factor().map_err(|e| AppError::from(e.to_string()))
+}
+
 /// Show the pet-bubble window. Does NOT steal focus (the window is configured
 /// `focus:false` + converted to a `nonactivating_panel` NSPanel, so it appears
 /// without deactivating the foreground app). The caller sets position via
