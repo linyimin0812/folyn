@@ -358,14 +358,24 @@ export function PetMenuApp(): JSX.Element {
         // reset, picking a radio (which only calls `pet_menu_hide`, not
         // `setHoveredSection(null)`) leaves the submenu rendered, and the
         // next `pet://menu-show` measures a wrapper that already includes
-        // the submenu card. rAF defers `openMenu` past the state update so
-        // the measure sees the wrapper WITHOUT the submenu.
+        // the submenu card. `setTimeout(0)` defers `openMenu` past the state
+        // update so the measure sees the wrapper WITHOUT the submenu.
         clearShow();
         clearHide();
         setHoveredSection(null);
-        requestAnimationFrame(() => {
+        // ponytail: `setTimeout(0)` — NOT `requestAnimationFrame`. The
+        // pet-menu window is `visible:false` at app launch and stays hidden
+        // until the user right-clicks the pet; WKWebView SUSPENDS rAF
+        // callbacks for non-visible windows (the callback never fires, so
+        // openMenu never ran and the right-click menu never appeared —
+        // reproduced in dev with the pet-menu window hidden). setTimeout
+        // is a macrotask and fires even while the window is hidden. The
+        // deferral purpose is unchanged: run after React commits the
+        // `setHoveredSection(null)` reset so the measured DOM excludes a
+        // stale submenu card.
+        window.setTimeout(() => {
           void openMenu(rootRef.current, petSize);
-        });
+        }, 0);
       });
     })();
     return () => unlisten?.();
