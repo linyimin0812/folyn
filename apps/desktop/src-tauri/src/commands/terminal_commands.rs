@@ -30,12 +30,14 @@ pub fn terminal_create(
     id: String,
     cwd: Option<String>,
     shell: Option<String>,
+    cols: Option<u16>,
+    rows: Option<u16>,
 ) -> Result<String, String> {
     let pty_system = native_pty_system();
     let pair = pty_system
         .openpty(PtySize {
-            rows: 24,
-            cols: 80,
+            rows: rows.unwrap_or(24),
+            cols: cols.unwrap_or(80),
             pixel_width: 0,
             pixel_height: 0,
         })
@@ -44,6 +46,14 @@ pub fn terminal_create(
     let shell_path =
         shell.unwrap_or_else(|| std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string()));
     let mut cmd = CommandBuilder::new(&shell_path);
+    // Interactive shells only load the user's rc files / prompt theme when the
+    // shell believes it is interactive. Without `-i`, zsh falls back to its
+    // bare `%` prompt and skips oh-my-zsh entirely. Known shells that support
+    // `-i` get it; others (e.g. fish) are already interactive on a tty.
+    let shell_base = shell_path.rsplit('/').next().unwrap_or("").to_string();
+    if matches!(shell_base.as_str(), "zsh" | "bash" | "sh" | "dash" | "ksh") {
+        cmd.arg("-i");
+    }
     if let Some(dir) = cwd {
         if !dir.is_empty() {
             cmd.cwd(dir);

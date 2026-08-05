@@ -120,11 +120,18 @@ export function TerminalView({ id, active }: TerminalViewProps) {
           return;
         }
         const { invoke } = await import('@tauri-apps/api/core');
+        try {
+          fit.fit();
+        } catch {
+          // container hidden — keep the pty at its default size
+        }
         const vault = useVaultStore.getState().currentVault?.basePath;
         const shell = await invoke<string>('terminal_create', {
           id,
           cwd: vault ?? '',
           shell: null,
+          cols: Math.max(term.cols, 2),
+          rows: Math.max(term.rows, 2),
         });
         if (cancelled) return;
         spawnedRef.current = true;
