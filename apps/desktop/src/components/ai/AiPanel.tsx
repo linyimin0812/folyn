@@ -18,9 +18,9 @@ import type { PendingAttachment } from './ChatInput';
 import { SaveMessageDialog } from './SaveMessageDialog';
 import { useEnabledPairs } from './PairSelector';
 import { resolveSendOptions, isRigMode } from './inputModes';
-import { saveBlobs, buildReadInstructions } from '@/components/chat';
+import { saveBlobs, buildReadInstructions, buildRigPrompt, blobToRigImage } from '@/components/chat';
 import type { SavedAttachment } from '@/components/chat';
-import { runRigChat } from '@/services/rigChat';
+import { runRigChat, type RigChatImage } from '@/services/rigChat';
 
 function defaultSaveName(msg: CliMessage): string {
   const ts = msg.timestamp ? new Date(msg.timestamp) : new Date();
@@ -38,6 +38,22 @@ interface AiPanelProps {
    *  resize handle (the host window owns its own size), and drops
    *  `border-l` + fixed `panelWidth` so the panel fills its container. */
   embedded?: boolean;
+}
+
+/** Extract a human-readable message from a Tauri invoke rejection.
+ *  Backend errors serialize as `AppError { category, detail }` — `String()`
+ *  on that object yields "[object Object]"; prefer `detail`, then
+ *  `message`, then the raw string. */
+export function errorMessage(err: unknown): string {
+  if (typeof err === 'string') return err;
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object') {
+    const detail = (err as { detail?: unknown }).detail;
+    if (typeof detail === 'string' && detail) return detail;
+    const message = (err as { message?: unknown }).message;
+    if (typeof message === 'string' && message) return message;
+  }
+  return String(err);
 }
 
 export function AiPanel({ embedded = false }: AiPanelProps = {}) {
@@ -350,13 +366,13 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
 
     // Save blob attachments to temp directory.
     //
-    // Uses the shared `saveBlobs` helper with `strategy: 'shell'` to preserve
-    // AiPanel's EXACT legacy mechanism (base64-via-`claude-cli` sidecar →
-    // `<vault>/.quill-tmp`), so behavior is byte-identical to the pre-PR3
-    // inline implementation. The main window's fs ACL scope for arbitrary
-    // vault paths was not verified to cover `.quill-tmp`, so we keep the
-    // shell path (which bypasses the fs ACL via `/bin/sh`) rather than
-    // switching to the helper's cleaner default `'fs'` strategy.
+    // Saves blob attachments via the shared `saveBlobs` helper's fs-plugin
+    // path (`mkdir` + `writeFile` → `<vault>/.quill-tmp`). The main window's
+    // fs ACL scope includes `$HOME/**/.*/**`, which covers the dot-dir
+    // `.quill-tmp` under any home-based vault, so no shell sidecar is
+    // needed. The old base64-via-`claude-cli` sidecar embedded the whole
+    // payload in the command line and failed with "Argument list too long
+    // (os error 7)" on sizeable images.
     //
     // path-only attachments (vault @mention / pendingFileAttachments) pass
     // through unchanged; blob attachments (paste / file-picker) are written
@@ -366,21 +382,45 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
     if (currentAttachments.length > 0) {
       try {
         saved = await saveBlobs(currentAttachments, workingDir, {
-          strategy: 'shell',
           subdir: '.quill-tmp',
         });
       } catch (err) {
-        attachSaveError = String(err);
+        attachSaveError = errorMessage(err);
         console.error('[AiPanel] Failed to save attachments:', err);
       }
+    }
+
+    // Persist the real on-disk paths onto the user bubble. The bubble was
+    // added with blob-preview URLs, which only live for the current page;
+    // the saved paths let the attachment re-render from disk after the
+    // session is reopened (see ChatMessageList: path is preferred over
+    // previewUrl). saveBlobs returns one entry per accepted attachment in
+    // order (path-only pass through; blobs are written), so the index
+    // mapping back to the original preview URL is 1:1.
+    if (saved.length > 0) {
+      useAiStore.getState().setUserMessageAttachments(
+        sessionId,
+        saved.map((s, i) => ({
+          name: s.name,
+          path: s.path,
+          type: s.type,
+          previewUrl: currentAttachments[i]?.previewUrl,
+        })),
+      );
     }
 
     // Phase A — build the Read-tool instruction prefix from saved
     // attachments (images first, then files; wraps `用户消息: <prompt>`).
     // Delegated to the shared `buildReadInstructions` helper (vault-free).
+    // Chat (rig) mode is an exception: it has no Read tool, so attached
+    // images travel as multimodal content blocks (converted in the rig send
+    // branch below) and are excluded from the prompt via buildRigPrompt.
     // Phase B (@mention resolution) runs AFTER this on the already-wrapped
     // prompt and is vault-coupled (needs `allFiles`), so it stays inline.
-    let prompt = buildReadInstructions(saved, userText);
+    const isRigSend = isRigMode(sendMode);
+    let prompt = isRigSend
+      ? buildRigPrompt(userText, saved, t('ai:panel.attachmentPlaceholder'))
+      : buildReadInstructions(saved, userText);
 
     // Extract @file references from prompt
     const mentionedFiles: string[] = [];
@@ -412,6 +452,11 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
     // and handleSend running.
 
     const sid = sessionId;
+    // Backend stream errors are surfaced BOTH as a `ChatChunk::Error` event
+    // (appended in the handler below) and as a rejected invoke (caught at
+    // the bottom). Track whether the event already showed the message so the
+    // catch doesn't append a duplicate.
+    let errorAlreadyShown = false;
     const eventHandler = (event: CliStreamEvent) => {
       switch (event.type) {
         case 'text':
@@ -436,7 +481,10 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
           if (event.sessionId) setCliSessionId(event.sessionId, sid);
           break;
         case 'error':
-          if (event.content) appendToLastMessage(t('ai:errors.streamError', { error: event.content }), sid);
+          if (event.content) {
+            errorAlreadyShown = true;
+            appendToLastMessage(t('ai:errors.streamError', { error: event.content }), sid);
+          }
           break;
         case 'done':
           setSessionStreaming(sid, false);
@@ -462,6 +510,19 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
         // directly with the same CliStreamEvent shape; the dormant
         // adapter.onEvent subscription above is harmless and cleaned up in
         // finally. workingDir / cliPath are unused (rig has no cwd).
+        // Attached images are converted to multimodal content blocks — rig
+        // has no Read tool, so the file-path instruction from Phase A would
+        // be useless (see buildRigPrompt).
+        const images: RigChatImage[] = [];
+        for (const att of currentAttachments) {
+          if (att.type === 'image' && att.blob) {
+            try {
+              images.push(await blobToRigImage(att.blob));
+            } catch (err) {
+              console.warn('[AiPanel] failed to convert image attachment:', err);
+            }
+          }
+        }
         await runRigChat({
           sessionId: sid,
           prompt,
@@ -474,6 +535,7 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
           thinkingBudget: resolved.thinkingBudget,
           adapterFamily: resolved.adapterFamily,
           onEvent: eventHandler,
+          ...(images.length > 0 ? { images } : {}),
         });
       } else {
         await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
@@ -482,7 +544,9 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
         await adapter.send(prompt, sendOptions);
       }
     } catch (err) {
-      appendToLastMessage(t('ai:errors.streamError', { error: String(err) }), sid);
+      if (!errorAlreadyShown) {
+        appendToLastMessage(t('ai:errors.streamError', { error: errorMessage(err) }), sid);
+      }
       setSessionStreaming(sid, false);
       resumeWatcher();
     } finally {

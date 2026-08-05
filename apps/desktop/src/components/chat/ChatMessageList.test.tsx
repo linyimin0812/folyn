@@ -18,6 +18,7 @@ vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
 }));
 
 import { ChatMessageList } from './ChatMessageList';
+import { readFile as mockedReadFile } from '@tauri-apps/plugin-fs';
 import type { CliMessage } from '@quill/cli-adapter';
 
 function mkMsg(partial: Partial<CliMessage>): CliMessage {
@@ -34,6 +35,7 @@ beforeEach(() => {
   cleanup();
   writeTextMock.mockClear();
   writeTextMock.mockResolvedValue(undefined);
+  mockedReadFile.mockClear();
 });
 afterEach(() => { cleanup(); });
 
@@ -56,6 +58,32 @@ describe('ChatMessageList', () => {
     render(<ChatMessageList messages={messages} streaming={false} />);
     expect(screen.getByText('hello there')).toBeTruthy();
     expect(screen.getByText('hi back')).toBeTruthy();
+  });
+
+  it('renders an image attachment from its on-disk path, preferring path over a dead previewUrl', async () => {
+    // Regression: blob preview URLs die with the page, so a session reopened
+    // after restart must re-render the image from the saved file. FileImage
+    // reads the path via the fs plugin; assert the read happens even when a
+    // (dead) previewUrl is present.
+    const messages: CliMessage[] = [
+      mkMsg({
+        id: 'u1',
+        role: 'user',
+        content: 'pic',
+        attachments: [
+          {
+            name: 'pic.png',
+            path: '/work/.quill-tmp/pic.png',
+            type: 'image',
+            previewUrl: 'blob:dead-after-restart',
+          },
+        ],
+      }),
+    ];
+    render(<ChatMessageList messages={messages} streaming={false} />);
+    await vi.waitFor(() => {
+      expect(mockedReadFile).toHaveBeenCalledWith('/work/.quill-tmp/pic.png');
+    });
   });
 
   it('exposes an auto-scroll sentinel (the end-of-list div)', () => {

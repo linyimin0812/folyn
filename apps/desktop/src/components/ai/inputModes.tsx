@@ -92,7 +92,7 @@ registerInputMode({
   id: 'chat',
   label: 'Chat',
   icon: makeSvgIcon(chatIcon),
-  description: '多轮对话（rig 直连 LLM，无工具，不读写文件）',
+  description: '多轮对话（rig 直连 LLM，无工具，不读写文件，图片以多模态输入）',
   backend: 'rig',
 });
 registerInputMode({

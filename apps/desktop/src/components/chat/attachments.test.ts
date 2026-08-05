@@ -5,7 +5,6 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vite
 // tests by test/setup.ts.
 
 import { mkdir as mockedMkdir, writeFile as mockedWriteFile, __internals as fsInternals } from '@tauri-apps/plugin-fs';
-import { Command as MockedCommand, __internals as shellInternals } from '@tauri-apps/plugin-shell';
 
 import {
   DEFAULT_MAX_BYTES,
@@ -14,6 +13,8 @@ import {
   isImageFile,
   validateFile,
   buildReadInstructions,
+  buildRigPrompt,
+  blobToRigImage,
   revokeUrls,
   addFiles,
   handlePaste,
@@ -102,7 +103,6 @@ function makePasteEvent(items: { kind: 'file' | 'string'; type: string; file?: F
 
 beforeEach(() => {
   fsInternals.reset();
-  shellInternals.reset();
   createObjectURLMock.mockClear();
   revokeObjectURLMock.mockClear();
   vi.clearAllMocks();
@@ -236,6 +236,44 @@ describe('buildReadInstructions', () => {
       'go',
     );
     expect(out).toContain('/a.txt\n/b.txt');
+  });
+});
+
+describe('buildRigPrompt', () => {
+  it('uses the placeholder when only images are attached (no Read tool in chat mode)', () => {
+    const saved: SavedAttachment[] = [
+      { name: 'pic.png', path: '/work/.quill-tmp/pic.png', type: 'image' },
+    ];
+    expect(buildRigPrompt('', saved, '(附件)')).toBe('(附件)');
+  });
+
+  it('keeps user text unchanged when images accompany text', () => {
+    const saved: SavedAttachment[] = [
+      { name: 'pic.png', path: '/x/pic.png', type: 'image' },
+    ];
+    expect(buildRigPrompt('看看这张图', saved, '(附件)')).toBe('看看这张图');
+  });
+
+  it('keeps a Read hint for non-image files but excludes image paths', () => {
+    const saved: SavedAttachment[] = [
+      { name: 'a.md', path: '/x/a.md', type: 'file' },
+      { name: 'pic.png', path: '/x/pic.png', type: 'image' },
+    ];
+    const out = buildRigPrompt('读一下', saved, '(附件)');
+    expect(out).toContain('请先使用 Read 工具读取以下文件');
+    expect(out).toContain('/x/a.md');
+    expect(out).toContain('用户消息: 读一下');
+    expect(out).not.toContain('/x/pic.png');
+  });
+});
+
+describe('blobToRigImage', () => {
+  it('converts a blob to {data, mediaType} without the data: URL prefix', async () => {
+    const blob = new Blob(['hello'], { type: 'image/png' });
+    const img = await blobToRigImage(blob);
+    expect(img.mediaType).toBe('image/png');
+    expect(img.data).toBeTruthy();
+    expect(atob(img.data)).toBe('hello');
   });
 });
 
@@ -397,54 +435,23 @@ describe('saveBlobs', () => {
         ),
       ).rejects.toThrow(/Tauri/);
     });
-  });
 
-  describe('shell strategy', () => {
-    // The shared shell mock exports a `Command` class (constructor + execute)
-    // but no static `create` factory; AiPanel/attachments use `Command.create`.
-    // Install a static factory that returns a new instance so the sidecar
-    // path can be exercised.
-    let createSpy: ReturnType<typeof vi.fn>;
-    let executeSpy: ReturnType<typeof vi.spyOn>;
-
-    beforeEach(() => {
-      createSpy = vi.fn(
-        (program: string, args: string | string[]) => new MockedCommand(program, args),
-      );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (MockedCommand as any).create = createSpy;
-      executeSpy = vi.spyOn(MockedCommand.prototype, 'execute');
-    });
-    afterEach(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (MockedCommand as any).create;
-      executeSpy.mockRestore();
-    });
-
-    it('invokes the claude-cli sidecar to mkdir + write each blob', async () => {
+    it('writes large blobs through the fs plugin (no argv/E2BIG path)', async () => {
+      // Regression: the old shell strategy embedded the whole base64 payload
+      // in a `claude-cli` command-line argument, so sizeable images failed
+      // with "Argument list too long (os error 7)". The fs path receives the
+      // raw bytes and never spawns a shell command.
+      const big = makeBlob('x'.repeat(2 * 1024 * 1024), 'image/png');
       const atts: PendingAttachment[] = [
-        { id: 'id1', name: 'pic.png', type: 'image', blob: makeImageBlob(4, 'image/png') },
+        { id: 'big1', name: 'big.png', type: 'image', blob: big },
       ];
-      const saved = await saveBlobs(atts, '/work', { strategy: 'shell' });
+      const saved = await saveBlobs(atts, '/work');
       expect(saved).toHaveLength(1);
-      expect(saved[0].path).toMatch(/^\/work\/attachments\/id1-pic\.png$/);
-      // mkdir + one write = 2 Command.create calls.
-      expect(createSpy).toHaveBeenCalledTimes(2);
-      expect(executeSpy).toHaveBeenCalledTimes(2);
-      // The first Command is the mkdir; its joined args contain "mkdir -p".
-      const mkdirArgs = createSpy.mock.calls[0][1] as string[];
-      expect(mkdirArgs.join(' ')).toMatch(/mkdir -p/);
-    });
-
-    it('passes path-only attachments through unchanged', async () => {
-      const saved = await saveBlobs(
-        [{ id: 'p1', name: 'v.md', type: 'file', path: '/v/v.md' }],
-        '/work',
-        { strategy: 'shell' },
+      expect(saved[0].path).toBe('/work/attachments/big1-big.png');
+      expect(mockedWriteFile).toHaveBeenCalledWith(
+        '/work/attachments/big1-big.png',
+        expect.any(Uint8Array),
       );
-      expect(saved).toEqual([{ name: 'v.md', path: '/v/v.md', type: 'file' }]);
-      // only the mkdir Command was created (no per-blob write).
-      expect(createSpy).toHaveBeenCalledTimes(1);
     });
   });
 });

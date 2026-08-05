@@ -18,6 +18,7 @@
 import { mkdir, writeFile } from '@tauri-apps/plugin-fs';
 import { isTauri } from '@/utils/platform';
 import { generateId } from '@/utils/idGenerator';
+import type { RigChatImage } from '@/services/rigChat';
 
 // ── Types ───────────────────────────────────────────────
 
@@ -67,11 +68,6 @@ export interface AddFilesResult {
 }
 
 export interface SaveBlobsOptions {
-  /** `'fs'` (default) uses `@tauri-apps/plugin-fs` `mkdir` + `writeFile`;
-   *  `'shell'` mirrors AiPanel's legacy base64-via-`claude-cli` sidecar
-   *  path for vault-grounded writes that may fall outside the window's
-   *  fs ACL scope. */
-  strategy?: 'fs' | 'shell';
   /** Subdirectory under `workingDir` to write blobs into. Defaults to
    *  {@link ATTACHMENTS_SUBDIR}. */
   subdir?: string;
@@ -175,6 +171,50 @@ export function buildReadInstructions(
   }
   const instruction = parts.join('\n\n');
   return prompt ? `${instruction}\n\n用户消息: ${prompt}` : instruction;
+}
+
+/** Build the prompt for chat (rig) mode. Rig has no Read tool — image
+ *  attachments travel as multimodal content blocks (see
+ *  {@link blobToRigImage}), so they are excluded from the text prompt;
+ *  non-image files keep a best-effort Read hint. `placeholder` is used when
+ *  the user sent only images and no text. */
+export function buildRigPrompt(
+  userText: string,
+  saved: SavedAttachment[],
+  placeholder: string,
+): string {
+  const files = saved.filter((a) => a.type === 'file');
+  const images = saved.filter((a) => a.type === 'image');
+  let prompt = userText;
+  if (files.length > 0) {
+    const fileInstruction = `请先使用 Read 工具读取以下文件:\n${files.map((a) => a.path).join('\n')}`;
+    prompt = prompt ? `${fileInstruction}\n\n用户消息: ${prompt}` : fileInstruction;
+  } else if (images.length > 0 && !prompt) {
+    prompt = placeholder;
+  }
+  return prompt;
+}
+
+/** Convert a blob attachment into a rig multimodal image content block.
+ *  Chat (rig) mode has no Read tool, so attached images must travel as
+ *  content blocks rather than disk-path instructions. */
+export function blobToRigImage(blob: Blob): Promise<RigChatImage> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result ?? '');
+      const comma = dataUrl.indexOf(',');
+      if (comma === -1) {
+        reject(new Error('无法读取图片附件'));
+        return;
+      }
+      const header = dataUrl.slice(0, comma);
+      const mime = header.match(/^data:([^;]+);base64$/)?.[1] || blob.type || 'image/png';
+      resolve({ data: dataUrl.slice(comma + 1), mediaType: mime });
+    };
+    reader.onerror = () => reject(reader.error ?? new Error('无法读取图片附件'));
+    reader.readAsDataURL(blob);
+  });
 }
 
 /** Revoke all `previewUrl` object URLs. No-op for attachments without a
@@ -316,16 +356,15 @@ function deriveExtension(att: PendingAttachment): string {
  * - blob attachments are written to `${workingDir}/${subdir}/${id}-${name}`
  *   (sanitized) and their `previewUrl` is revoked after the write.
  *
- * Default strategy `'fs'` uses `@tauri-apps/plugin-fs` `mkdir` (recursive)
- * + `writeFile(Uint8Array)` — cleaner than the legacy base64 shell path
- * (no shell quoting, no non-portable `base64 -D` flag, no
- * `String.fromCharCode(...spread)` stack risk). It works under the
- * pet-panel ACL (`fs:allow-mkdir` + `fs:allow-write-file` +
- * `fs:scope-appdata-recursive`) because pet writes under appData.
- *
- * `'shell'` mirrors AiPanel's legacy base64-via-`claude-cli` sidecar path,
- * kept as an opt-in for AiPanel until the main window's fs ACL scope is
- * confirmed to cover arbitrary vault paths.
+ * Uses `@tauri-apps/plugin-fs` `mkdir` (recursive) + `writeFile(Uint8Array)`
+ * — no shell quoting, no non-portable `base64 -D` flag, and no
+ * `String.fromCharCode(...spread)` stack risk. The legacy base64-via-
+ * `claude-cli` sidecar path was removed: it embedded the whole base64
+ * payload in the command line, so any sizeable image blew past the OS
+ * ARG_MAX limit ("Argument list too long (os error 7)"). The main window's
+ * fs ACL scope covers the attachment destinations (vault `.quill-tmp` is a
+ * hidden dir anywhere under the home directory, pet writes under appData),
+ * so the fs plugin is sufficient.
  *
  * Throws when not running inside Tauri (caller catches and surfaces an
  * inline error).
@@ -335,13 +374,8 @@ export async function saveBlobs(
   workingDir: string,
   opts: SaveBlobsOptions = {},
 ): Promise<SavedAttachment[]> {
-  const strategy = opts.strategy ?? 'fs';
   const subdir = opts.subdir ?? ATTACHMENTS_SUBDIR;
-
-  if (strategy === 'fs') {
-    return saveBlobsFs(attachments, workingDir, subdir);
-  }
-  return saveBlobsShell(attachments, workingDir, subdir);
+  return saveBlobsFs(attachments, workingDir, subdir);
 }
 
 async function saveBlobsFs(
@@ -375,48 +409,6 @@ async function saveBlobsFs(
     await writeFile(filePath, bytes);
     if (att.previewUrl) URL.revokeObjectURL(att.previewUrl);
     saved.push({ name: att.name, path: filePath, type: att.type });
-  }
-  return saved;
-}
-
-async function saveBlobsShell(
-  attachments: PendingAttachment[],
-  workingDir: string,
-  subdir: string,
-): Promise<SavedAttachment[]> {
-  const { Command } = await import('@tauri-apps/plugin-shell');
-  const dir = `${workingDir}/${subdir}`;
-  await Command.create('claude-cli', ['-l', '-c', `mkdir -p '${dir}'`]).execute();
-
-  const saved: SavedAttachment[] = [];
-  for (const att of attachments) {
-    if (att.path) {
-      saved.push({ name: att.name, path: att.path, type: att.type });
-      continue;
-    }
-    if (!att.blob) continue;
-
-    const ext = deriveExtension(att);
-    const fileName = buildBlobFileName(att, ext);
-    const filePath = `${dir}/${fileName}`;
-
-    const buffer = await att.blob.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    // Chunked base64 encode (avoids spread-stack overflow on large blobs).
-    let binaryStr = '';
-    const chunk = 8192;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      binaryStr += String.fromCharCode(...bytes.slice(i, i + chunk));
-    }
-    const base64 = btoa(binaryStr);
-    const writeResult = await Command.create(
-      'claude-cli',
-      ['-l', '-c', `printf '%s' '${base64}' | base64 -D > '${filePath}'`],
-    ).execute();
-    if (writeResult.code === 0) {
-      saved.push({ name: att.name, path: filePath, type: att.type });
-    }
-    if (att.previewUrl) URL.revokeObjectURL(att.previewUrl);
   }
   return saved;
 }

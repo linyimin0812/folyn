@@ -150,6 +150,25 @@ describe('useAiStore message actions', () => {
     expect(msg.attachments).toHaveLength(1);
   });
 
+  it('setUserMessageAttachments patches the most recent user message with real paths', () => {
+    seedSession();
+    const sid = useAiStore.getState().getActiveSession()!.id;
+    useAiStore.getState().addMessage('user', 'see this', sid, [
+      { name: 'pic.png', path: '', type: 'image', previewUrl: 'blob:dead' },
+    ]);
+    useAiStore.getState().addMessage('assistant', 'ok', sid);
+    // AiPanel calls this after saveBlobs so the persisted message carries the
+    // on-disk path (blob preview URLs die with the page).
+    useAiStore.getState().setUserMessageAttachments(sid, [
+      { name: 'pic.png', path: '/work/.quill-tmp/pic.png', type: 'image' },
+    ]);
+    const session = useAiStore.getState().getActiveSession()!;
+    const userMsgs = session.messages.filter((m) => m.role === 'user');
+    expect(userMsgs[userMsgs.length - 1].attachments).toEqual([
+      { name: 'pic.png', path: '/work/.quill-tmp/pic.png', type: 'image' },
+    ]);
+  });
+
   // PR4 of the chatModel refactor: addMessage tags assistant messages with
   // the (provider, model) pair at creation time. The tag survives subsequent
   // appendToLastMessage/appendThinking/addToolCall/completeToolCall calls

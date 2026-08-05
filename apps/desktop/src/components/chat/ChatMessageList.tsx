@@ -6,6 +6,7 @@ import { isTauri } from '@/utils/platform';
 import { MessageContent } from './MessageContent';
 import { ToolCallBlock } from './ToolCallBlock';
 import { FileImage } from './FileImage';
+import { ZoomableImage } from './ZoomableImage';
 import { FileIcon } from '@/components/icons/FileIcon';
 
 export interface ChatMessageListProps {
@@ -253,10 +254,14 @@ function AttachmentsRow({ msg }: { msg: CliMessage }) {
       {msg.attachments.map((att, i) => (
         <div key={i} className="rounded overflow-hidden">
           {att.type === 'image' ? (
-            att.previewUrl ? (
-              <img className="max-w-[120px] max-h-[80px] object-cover rounded border border-brd" src={att.previewUrl} alt={att.name} />
-            ) : att.path ? (
+            // Prefer the on-disk path: previewUrl is a blob URL that dies
+            // with the page, so a persisted session must re-render the image
+            // from the saved file (FileImage). previewUrl remains the
+            // fallback for transient/legacy attachments without a path.
+            att.path ? (
               <FileImage className="max-w-[120px] max-h-[80px] object-cover rounded border border-brd" path={att.path} alt={att.name} />
+            ) : att.previewUrl ? (
+              <ZoomableImage className="max-w-[120px] max-h-[80px] object-cover rounded border border-brd" src={att.previewUrl} alt={att.name} />
             ) : (
               <span className="inline-flex items-center gap-1 text-[11px] py-0.5 px-1.5 bg-surf border border-brd rounded-md text-t2">🖼 {att.name}</span>
             )

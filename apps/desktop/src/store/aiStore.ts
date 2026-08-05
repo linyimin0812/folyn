@@ -110,6 +110,14 @@ interface AiState {
    *  a mode field. */
   setSessionMode: (sessionId: string, mode: string) => void;
 
+  /** Patch the attachments of the session's most recent user message.
+   *  AiPanel adds the user bubble with blob-preview URLs before the blobs
+   *  are written to disk, then calls this once `saveBlobs` returns so the
+   *  persisted message carries the real on-disk paths — blob URLs die with
+   *  the page, so without this an image attachment renders broken after the
+   *  session is reopened. Persists via the session subscription. */
+  setUserMessageAttachments: (sessionId: string, attachments: MessageAttachment[]) => void;
+
   /** AI panel 输入模式（ask/agent/…），全局共享，默认 'agent' 保持现状行为。
    * 决定单次发送的 permission-mode/system-prompt 等。 */
   inputMode: string;
@@ -479,6 +487,22 @@ export const useAiStore = create<AiState>((set, get) => ({
       })),
     }));
     persistAiState();
+  },
+
+  setUserMessageAttachments: (sessionId, attachments) => {
+    if (!get().sessions.some((s) => s.id === sessionId)) return;
+    set((state) => ({
+      sessions: updateSession(state.sessions, sessionId, (s) => {
+        const messages = [...s.messages];
+        for (let i = messages.length - 1; i >= 0; i--) {
+          if (messages[i].role === 'user') {
+            messages[i] = { ...messages[i], attachments };
+            break;
+          }
+        }
+        return { ...s, messages, updatedAt: Date.now() };
+      }),
+    }));
   },
 
   // Default to Chat (rig direct-LLM) — not persisted, so this is the mode

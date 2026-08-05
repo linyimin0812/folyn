@@ -17,6 +17,8 @@ export {
   isImageFile,
   validateFile,
   buildReadInstructions,
+  buildRigPrompt,
+  blobToRigImage,
   revokeUrls,
   addFiles,
   handlePaste,

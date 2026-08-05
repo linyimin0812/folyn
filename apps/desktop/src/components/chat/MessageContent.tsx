@@ -10,6 +10,7 @@ import type { AssistantImage } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { saveImageToVault } from '@/services/chatImageService';
 import { CodeOverride, FilePathContext, type FilePathContextValue } from './FilePathCode';
+import { ZoomableImage } from './ZoomableImage';
 
 // ponytail: image models (e.g. rig-backed image gen) return the generated
 // image inline as a `data:image/...;base64,...` text delta. The Rust
@@ -232,7 +233,7 @@ function ImageSegment({
 
   return (
     <span className="inline-block align-top my-1">
-      <img src={image.data} alt="" className="max-w-full h-auto rounded" />
+      <ZoomableImage src={image.data} alt="" className="max-w-full h-auto rounded" />
       {showSaveButton && (
         <span className="block mt-0.5">
           <button

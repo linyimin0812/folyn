@@ -5,11 +5,24 @@ if (!Element.prototype.scrollIntoView) {
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { useEditorViewStateStore } from '@/store/editorViewState';
-import { AiPanel } from './AiPanel';
+import { AiPanel, errorMessage } from './AiPanel';
 
 afterEach(() => {
   cleanup();
   useEditorViewStateStore.setState({ aiPanelVisible: false });
+});
+
+describe('errorMessage', () => {
+  it('extracts detail from a serialized AppError instead of "[object Object]"', () => {
+    const err = { category: 'internal', detail: 'Completion(ProviderError("boom"))' };
+    expect(errorMessage(err)).toBe('Completion(ProviderError("boom"))');
+  });
+
+  it('falls back to message, Error.message, string, then String()', () => {
+    expect(errorMessage({ message: 'hi' })).toBe('hi');
+    expect(errorMessage(new Error('errored'))).toBe('errored');
+    expect(errorMessage('plain')).toBe('plain');
+  });
 });
 
 describe('AiPanel smoke', () => {
