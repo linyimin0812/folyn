@@ -55,6 +55,9 @@ pub fn terminal_create(
         cmd.arg("-i");
     }
     if let Some(dir) = cwd {
+        // Vault base paths are stored as `~/...` (resolveBasePath notation);
+        // the PTY's chdir needs an absolute path, so expand the tilde here.
+        let dir = expand_tilde(&dir);
         if !dir.is_empty() {
             cmd.cwd(dir);
         }
@@ -172,4 +175,33 @@ pub fn terminal_kill_all() {
 fn base64_encode(bytes: &[u8]) -> String {
     use base64::Engine;
     base64::engine::general_purpose::STANDARD.encode(bytes)
+}
+
+/// Expand a leading `~` / `~/` to the user's home directory (no-op otherwise).
+fn expand_tilde(path: &str) -> String {
+    let home = std::env::var("HOME").unwrap_or_default();
+    if home.is_empty() {
+        return path.to_string();
+    }
+    if path == "~" {
+        return home;
+    }
+    if let Some(rest) = path.strip_prefix("~/") {
+        return format!("{home}/{rest}");
+    }
+    path.to_string()
+}
+
+#[cfg(test)]
+mod tilde_tests {
+    use super::expand_tilde;
+
+    #[test]
+    fn expands_tilde_prefix() {
+        let home = std::env::var("HOME").unwrap();
+        assert_eq!(expand_tilde("~"), home);
+        assert_eq!(expand_tilde("~/quill/default_vault"), format!("{home}/quill/default_vault"));
+        assert_eq!(expand_tilde("/abs/path"), "/abs/path");
+        assert_eq!(expand_tilde("relative/path"), "relative/path");
+    }
 }
