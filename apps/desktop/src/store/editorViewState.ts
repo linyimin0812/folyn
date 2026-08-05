@@ -24,19 +24,15 @@ interface EditorViewState {
   aiPanelVisible: boolean;
   /** Right-dock terminal panel visibility (independent of the AI panel). */
   terminalPanelVisible: boolean;
-  /** Which tab the right dock is showing when both are open. */
-  rightDockTab: 'ai' | 'terminal';
 
   setCursorPosition: (line: number, col: number) => void;
   setWordCount: (count: number) => void;
   toggleOutline: () => void;
   toggleAiPanel: () => void;
-  /** Open the dock on the terminal tab (used by "+ 新建终端"). */
+  /** Show the terminal panel (used by "+ 新建终端"). */
   openTerminalDock: () => void;
-  /** Switch the dock tab; ensures the target panel becomes visible. */
-  setRightDockTab: (tab: 'ai' | 'terminal') => void;
-  /** Close the currently active dock tab (hides the dock when both are off). */
-  closeRightDock: () => void;
+  /** Hide the terminal panel. */
+  closeTerminalPanel: () => void;
 }
 
 export const useEditorViewStateStore = create<EditorViewState>((set) => ({
@@ -46,7 +42,6 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   outlineVisible: false,
   aiPanelVisible: false,
   terminalPanelVisible: false,
-  rightDockTab: 'ai' as const,
 
   setCursorPosition: (line, col) => {
     // ponytail: cursor is also persisted onto the active tab so it survives tab
@@ -68,39 +63,9 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   setWordCount: (count) => set({ wordCount: count }),
 
   toggleOutline: () => set((state) => ({ outlineVisible: !state.outlineVisible })),
-  toggleAiPanel: () =>
-    set((state) => ({
-      aiPanelVisible: !state.aiPanelVisible,
-      // Opening the AI panel always surfaces its tab; closing it leaves the
-      // dock on the terminal tab if the user was there.
-      rightDockTab: state.aiPanelVisible ? state.rightDockTab : 'ai',
-    })),
+  toggleAiPanel: () => set((state) => ({ aiPanelVisible: !state.aiPanelVisible })),
 
-  openTerminalDock: () =>
-    set((state) => ({
-      terminalPanelVisible: true,
-      rightDockTab: 'terminal',
-      // Keep the AI panel open in the background so switching back is one click.
-      aiPanelVisible: state.aiPanelVisible,
-    })),
+  openTerminalDock: () => set({ terminalPanelVisible: true }),
 
-  setRightDockTab: (tab) =>
-    set((state) => ({
-      rightDockTab: tab,
-      aiPanelVisible: tab === 'ai' ? true : state.aiPanelVisible,
-      terminalPanelVisible: tab === 'terminal' ? true : state.terminalPanelVisible,
-    })),
-
-  closeRightDock: () =>
-    set((state) => {
-      if (state.rightDockTab === 'terminal') {
-        return { terminalPanelVisible: false };
-      }
-      // Closing the AI tab while the terminal is still open falls back to it,
-      // so the dock never shows a hidden panel.
-      return {
-        aiPanelVisible: false,
-        rightDockTab: state.terminalPanelVisible ? 'terminal' : 'ai',
-      };
-    }),
+  closeTerminalPanel: () => set({ terminalPanelVisible: false }),
 }));

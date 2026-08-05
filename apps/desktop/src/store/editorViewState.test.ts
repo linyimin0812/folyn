@@ -40,39 +40,26 @@ describe('useEditorViewStateStore', () => {
     expect(useEditorViewStateStore.getState().aiPanelVisible).toBe(true);
   });
 
-  it('openTerminalDock shows the terminal tab and keeps AI available', () => {
+  it('openTerminalDock shows the terminal panel and keeps AI available', () => {
     useEditorViewStateStore.getState().openTerminalDock();
     const s = useEditorViewStateStore.getState();
     expect(s.terminalPanelVisible).toBe(true);
-    expect(s.rightDockTab).toBe('terminal');
     expect(s.aiPanelVisible).toBe(false);
   });
 
-  it('setRightDockTab surfaces the target panel', () => {
+  it('openTerminalDock keeps the AI panel visible when it was already open', () => {
+    useEditorViewStateStore.getState().toggleAiPanel();
     useEditorViewStateStore.getState().openTerminalDock();
-    useEditorViewStateStore.getState().setRightDockTab('ai');
     const s = useEditorViewStateStore.getState();
-    expect(s.rightDockTab).toBe('ai');
     expect(s.aiPanelVisible).toBe(true);
     expect(s.terminalPanelVisible).toBe(true);
   });
 
-  it('closeRightDock hides only the active tab', () => {
+  it('closeTerminalPanel hides only the terminal panel', () => {
     useEditorViewStateStore.getState().openTerminalDock();
-    useEditorViewStateStore.getState().closeRightDock();
+    useEditorViewStateStore.getState().closeTerminalPanel();
     expect(useEditorViewStateStore.getState().terminalPanelVisible).toBe(false);
-    useEditorViewStateStore.getState().closeRightDock();
     expect(useEditorViewStateStore.getState().aiPanelVisible).toBe(false);
-  });
-
-  it('closing the AI tab while terminal is open falls back to the terminal tab', () => {
-    useEditorViewStateStore.getState().openTerminalDock();
-    useEditorViewStateStore.getState().setRightDockTab('ai');
-    useEditorViewStateStore.getState().closeRightDock();
-    const s = useEditorViewStateStore.getState();
-    expect(s.aiPanelVisible).toBe(false);
-    expect(s.rightDockTab).toBe('terminal');
-    expect(s.terminalPanelVisible).toBe(true);
   });
 
   it('setCursorPosition updates cursor fields and writes the active tab cursor', () => {

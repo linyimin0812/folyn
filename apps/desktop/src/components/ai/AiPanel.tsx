@@ -39,6 +39,9 @@ interface AiPanelProps {
    *  resize handle (the host window owns its own size), and drops
    *  `border-l` + fixed `panelWidth` so the panel fills its container. */
   embedded?: boolean;
+  /** When embedded, still render the × close button (used by the right dock,
+   *  which doesn't own a tab-bar close affordance). */
+  showClose?: boolean;
 }
 
 /** Extract a human-readable message from a Tauri invoke rejection.
@@ -57,7 +60,7 @@ export function errorMessage(err: unknown): string {
   return String(err);
 }
 
-export function AiPanel({ embedded = false }: AiPanelProps = {}) {
+export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = {}) {
   const { t } = useTranslation();
   const aiPanelVisible = useEditorViewStateStore((s) => s.aiPanelVisible);
   const toggleAiPanel = useEditorViewStateStore((s) => s.toggleAiPanel);
@@ -635,7 +638,7 @@ export function AiPanel({ embedded = false }: AiPanelProps = {}) {
           <button className="w-[26px] h-[26px] flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-red" onClick={handleDeleteSession} title={t('ai:panel.deleteSession')}>
             <Trash2 className="w-[14px] h-[14px]" />
           </button>
-          {!embedded && (
+          {(!embedded || showClose) && (
             <button className="w-[26px] h-[26px] flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1" onClick={toggleAiPanel} title={t('ai:panel.close')}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

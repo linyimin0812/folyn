@@ -1,6 +1,7 @@
 {
   "new": "New terminal",
   "close": "Close terminal",
+  "closePanel": "Close terminal panel",
   "restart": "Restart",
   "empty": "No terminal sessions yet"
 }
