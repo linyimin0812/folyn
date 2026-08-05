@@ -33,12 +33,12 @@ export function TerminalPanel({
       className="shrink-0 flex flex-col overflow-hidden bg-bg"
       style={{ height }}
     >
-      <div className="flex items-center gap-1 h-[28px] shrink-0 px-2 bg-panel border-b border-brd overflow-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex items-stretch gap-1 h-[28px] shrink-0 px-2 bg-panel border-b border-brd overflow-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex-1 min-w-0 flex items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {sessions.map((s) => (
             <div
               key={s.id}
-              className={`group flex items-center gap-1.5 h-[20px] px-2 rounded-[6px] text-[13px] leading-none font-mono cursor-pointer whitespace-nowrap shrink-0 transition-colors duration-150 select-none ${
+              className={`group self-center flex items-center gap-1.5 h-[26px] px-2 rounded-[6px] text-[13px] leading-none font-mono cursor-pointer whitespace-nowrap shrink-0 transition-colors duration-150 select-none ${
                 s.id === activeId
                   ? 'bg-surf2 text-t1'
                   : 'text-t3 hover:bg-hov hover:text-t2'
@@ -82,24 +82,24 @@ export function TerminalPanel({
               </button>
             </div>
           ))}
-        </div>
-        <div className="shrink-0 flex items-center justify-end">
           <button
-            className="shrink-0 w-[26px] h-[20px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
+            className="self-center shrink-0 w-[24px] h-[26px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
             title={t('terminal:new')}
             onClick={addSession}
           >
             <Plus size={15} />
           </button>
+        </div>
+        <div className="shrink-0 flex items-center justify-end">
           <button
-            className="shrink-0 w-[26px] h-[20px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
+            className="self-center shrink-0 w-[26px] h-[26px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
             title={terminalPanelVisible ? t('terminal:collapseToBottom') : t('terminal:openAtBottom')}
             onClick={() => (terminalPanelVisible ? closeTerminalPanel() : useEditorViewStateStore.getState().openTerminalDock())}
           >
             {terminalPanelVisible ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
           </button>
           <button
-            className="shrink-0 w-[26px] h-[20px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
+            className="self-center shrink-0 w-[26px] h-[26px] flex items-center justify-center rounded-[5px] text-t3 border-none bg-transparent cursor-pointer transition-colors duration-150 hover:bg-hov hover:text-t1"
             title={t('terminal:closePanel')}
             onClick={closeTerminalPanel}
           >
