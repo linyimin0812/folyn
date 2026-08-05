@@ -101,6 +101,11 @@ export function TerminalView({ id, active }: TerminalViewProps) {
     const start = async () => {
       try {
         const { listen } = await import('@tauri-apps/api/event');
+        // React.StrictMode double-invokes effects in dev: the first pass is
+        // cancelled synchronously, so abort before attaching listeners or
+        // spawning — otherwise two shells would share one terminal id and
+        // their output would interleave (double rc output / double prompts).
+        if (cancelled) return;
         unlistenOutput = await listen<{ id: string; data: string }>('terminal-output', (e) => {
           if (e.payload.id !== id || cancelled) return;
           try {
@@ -109,31 +114,53 @@ export function TerminalView({ id, active }: TerminalViewProps) {
             // ignore malformed chunk
           }
         });
+        if (cancelled) {
+          unlistenOutput?.();
+          unlistenOutput = null;
+          return;
+        }
         unlistenExit = await listen<{ id: string }>('terminal-exit', (e) => {
           if (e.payload.id !== id) return;
           setStatus(id, 'exited');
         });
+        if (cancelled) {
+          unlistenOutput?.();
+          unlistenExit?.();
+          return;
+        }
 
         if (!isTauri()) {
-        term.writeln('终端仅在桌面端可用（Tauri 运行时）。');
+          term.writeln('终端仅在桌面端可用（Tauri 运行时）。');
           setStatus(id, 'exited');
           return;
         }
         const { invoke } = await import('@tauri-apps/api/core');
+        if (cancelled) return;
         try {
           fit.fit();
         } catch {
           // container hidden — keep the pty at its default size
         }
-        const vault = useVaultStore.getState().currentVault?.basePath;
+        // Start in the current vault root (the terminal's working directory).
+        const vaultState = useVaultStore.getState();
+        const vaultRoot =
+          vaultState.currentVault?.basePath ??
+          vaultState.vaults.find((v) => v.id === vaultState.activeVaultId)?.basePath ??
+          vaultState.vaults[0]?.basePath ??
+          '';
         const shell = await invoke<string>('terminal_create', {
           id,
-          cwd: vault ?? '',
+          cwd: vaultRoot,
           shell: null,
           cols: Math.max(term.cols, 2),
           rows: Math.max(term.rows, 2),
         });
-        if (cancelled) return;
+        if (cancelled) {
+          // The effect was torn down while the shell was spawning — kill the
+          // fresh pty so it doesn't linger as an orphan.
+          invoke('terminal_kill', { id }).catch(() => {});
+          return;
+        }
         spawnedRef.current = true;
         const shellName = shell.split('/').pop();
         if (shellName) setTitle(id, shellName);
