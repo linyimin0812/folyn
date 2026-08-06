@@ -165,18 +165,17 @@ const SKELETON_CSS = `
     padding: 24px;
   }
   .map-container[data-mmap-skeleton="tree"] me-children {
-    margin-left: 56px;
+    margin-inline-start: 56px;
   }
   .map-container[data-mmap-skeleton="tree"] me-parent {
-    padding-left: 0;
+    padding-inline-start: 0;
   }
   .map-container[data-mmap-skeleton="tree"] .map-canvas {
     --node-gap-y: 48px;
-    --main-gap-y: 90px;
+    --main-gap-y: 96px;
   }
   .map-container[data-mmap-skeleton="tree"] me-wrapper:has(> me-children > me-wrapper) > me-parent > me-tpc {
-    border: 2px solid var(--main-color);
-    background-color: var(--main-bgcolor);
+    border: 1.5px solid var(--main-color);
     border-radius: var(--main-radius);
   }
 `;
@@ -216,13 +215,16 @@ function treeBranch({ pT, pL, pW, pH, cT, cL, cH }: SkeletonBranchParams): strin
   const y2 = cT + cH / 2;
   // Lines always leave the parent's right-center and enter the child's
   // left-center. Only when the two centers are already aligned does the
-  // connector stay a single horizontal line; otherwise it is a clean
-  // orthogonal elbow. No diagonals.
+  // connector stay a single horizontal line; otherwise it is a rounded
+  // elbow with quadratic-bezier corners (radius 8px). No diagonals.
   if (Math.abs(y2 - y1) < 2) {
     return `M ${x1} ${y1} L ${x2} ${y2}`;
   }
   const midX = x1 + (x2 - x1) / 2;
-  return `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
+  const r = 8;
+  const dy = y2 - y1;
+  const rY = Math.sign(dy) * Math.min(r, Math.abs(dy) / 2);
+  return `M ${x1} ${y1} H ${midX - r} Q ${midX} ${y1} ${midX} ${y1 + rY} V ${y2 - rY} Q ${midX} ${y2} ${midX + r} ${y2} H ${x2}`;
 }
 
 function verticalBranch({ pT, pL, pW, pH, cT, cL, cW }: SkeletonBranchParams): string {
