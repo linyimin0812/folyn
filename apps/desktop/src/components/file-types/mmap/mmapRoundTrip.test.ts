@@ -633,9 +633,6 @@ describe('canvas-level mapStyle (direction/compact/palette/background/alignment/
   it('deriveMapStyle round-trips non-default skeleton presets', () => {
     const data = outlineToMindElixirData('- Root\n  - A\n  - B');
     expect(deriveMapStyle(data, { skeleton: 'tree' })).toEqual({ skeleton: 'tree' });
-    expect(deriveMapStyle(data, { skeleton: 'fishbone' })).toEqual({ skeleton: 'fishbone' });
-    expect(deriveMapStyle(data, { skeleton: 'timeline' })).toEqual({ skeleton: 'timeline' });
-    expect(deriveMapStyle(data, { skeleton: 'bracket' })).toEqual({ skeleton: 'bracket' });
     expect(deriveMapStyle(data, { skeleton: 'org' })).toEqual({ skeleton: 'org' });
     // mind is the default and is omitted
     expect(deriveMapStyle(data, { skeleton: 'mind' })).toBeUndefined();

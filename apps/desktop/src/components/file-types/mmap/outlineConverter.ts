@@ -80,11 +80,10 @@ export type MmapDirection = 0 | 1 | 2;
 
 // ponytail: canvas skeleton (骨架) — 'mind' is the standard mind map
 // (default), 'org' is the top-down org chart, 'tree' is the right-branching
-// tree, 'fishbone' is the alternating fishbone, 'timeline' is the horizontal
-// timeline, 'bracket' is the right-branching bracket map. mind-elixir has no
-// native skeleton concept; the canvas maps each to a direction + CSS/branch
-// override. Default 'mind' is omitted from the meta block.
-export type MmapSkeleton = 'mind' | 'org' | 'tree' | 'fishbone' | 'timeline' | 'bracket';
+// tree. mind-elixir has no native skeleton concept; the canvas maps each
+// to a direction + CSS/branch override. Default 'mind' is omitted from the
+// meta block.
+export type MmapSkeleton = 'mind' | 'org' | 'tree';
 
 export interface MmapMapStyle {
   // ponytail: `rainbow: false` opts every first-level branch into a single

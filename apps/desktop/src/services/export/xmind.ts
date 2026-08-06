@@ -156,16 +156,22 @@ function buildContentXml(lines: OutlineLine[], meta: MmapMeta | undefined): stri
     lines = [{ text: 'Root', depth: 0 }];
   }
 
-  // Determine structure class from mapStyle direction
+  // ponytail: structure class follows the source's skeleton when set;
+  // falls back to direction-based logic chart for the default mind case.
+  // Skeleton → XMind: org → top-down org-chart, tree → right-branching
+  // tree (tree skeleton forces direction=1 in mind-elixir init).
+  const skeleton = meta?.mapStyle?.skeleton;
   const direction = meta?.mapStyle?.direction;
-  // 0=LEFT, 1=RIGHT (default), 2=SIDE (both sides)
   let structureClass: string;
-  if (direction === 0) {
+  if (skeleton === 'org') {
+    structureClass = 'org.xmind.ui.org-chart';
+  } else if (skeleton === 'tree') {
+    structureClass = 'org.xmind.ui.tree.right';
+  } else if (direction === 0) {
     structureClass = 'org.xmind.ui.logic.left';
   } else if (direction === 1) {
     structureClass = 'org.xmind.ui.logic.right';
   } else {
-    // SIDE (2) or default — map layout (both sides)
     structureClass = 'org.xmind.ui.map.old';
   }
 

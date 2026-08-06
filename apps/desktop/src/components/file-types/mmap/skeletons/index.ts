@@ -4,17 +4,11 @@ import type { MainBranchGenerator, SubBranchGenerator, MmapSkeletonStrategy } fr
 import { mindStrategy } from './mind';
 import { orgStrategy } from './org';
 import { treeStrategy } from './tree';
-import { fishboneStrategy } from './fishbone';
-import { timelineStrategy } from './timeline';
-import { bracketStrategy } from './bracket';
 
 export const SKELETON_REGISTRY: Record<MmapSkeleton, MmapSkeletonStrategy> = {
   mind: mindStrategy,
   org: orgStrategy,
   tree: treeStrategy,
-  fishbone: fishboneStrategy,
-  timeline: timelineStrategy,
-  bracket: bracketStrategy,
 };
 
 function ensureStyleEl(container: HTMLElement): HTMLStyleElement {
@@ -28,12 +22,21 @@ function ensureStyleEl(container: HTMLElement): HTMLStyleElement {
   return style;
 }
 
+// ponytail: resolve a skeleton string to a known strategy, falling back to
+// 'mind' for unknown values. Sources may carry a skeleton name that was
+// removed from the registry (e.g. 'bracket' was deleted), or a future name
+// not yet registered — silently render as the default mind map instead of
+// throwing on `strategy.css` / `.init` / `.directionEnabled`.
+function resolve(skeleton: MmapSkeleton | undefined): MmapSkeletonStrategy {
+  return SKELETON_REGISTRY[skeleton ?? 'mind'] ?? mindStrategy;
+}
+
 // ponytail: dispatch entry. Tears down the previous strategy, swaps CSS +
 // data attribute + branch generators. Does NOT call strategy.init — the
 // caller decides whether to enforce direction (mount respects the source's
 // data.direction for the default mind case; a user picker action always
 // enforces). `defaults` are mind-elixir's captured default generators (used
-// when the strategy doesn't override branch — mind/bracket).
+// when the strategy doesn't override branch — mind).
 export function applySkeleton(
   inst: MindElixirInstance,
   skeleton: MmapSkeleton | undefined,
@@ -43,7 +46,7 @@ export function applySkeleton(
   const prev = prevName ? SKELETON_REGISTRY[prevName] : undefined;
   prev?.teardown?.(inst);
 
-  const strategy = SKELETON_REGISTRY[skeleton ?? 'mind'];
+  const strategy = resolve(skeleton);
   const style = ensureStyleEl(inst.container);
   style.textContent = strategy.css;
   if (strategy.name === 'mind') {
@@ -68,19 +71,19 @@ export function runSkeletonInit(
   inst: MindElixirInstance,
   skeleton: MmapSkeleton | undefined,
 ): void {
-  SKELETON_REGISTRY[skeleton ?? 'mind'].init(inst);
+  resolve(skeleton).init(inst);
 }
 
 // ponytail: postLinkDiv dispatcher — called from mind-elixir's linkDiv
 // event listener. Routes to the active strategy's postLinkDiv if defined
-// (e.g. bracket overlay redraw, tree non-leaf box coloring).
+// (e.g. tree non-leaf box coloring).
 export function runPostLinkDiv(
   inst: MindElixirInstance,
   skeleton: MmapSkeleton | undefined,
 ): void {
-  SKELETON_REGISTRY[skeleton ?? 'mind'].postLinkDiv?.(inst);
+  resolve(skeleton).postLinkDiv?.(inst);
 }
 
 export function isDirectionEnabled(skeleton: MmapSkeleton | undefined): boolean {
-  return SKELETON_REGISTRY[skeleton ?? 'mind'].directionEnabled;
+  return resolve(skeleton).directionEnabled;
 }

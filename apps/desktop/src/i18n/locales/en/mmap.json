@@ -35,10 +35,7 @@
     "spacingLabel": "Node Spacing",
     "skeletonMind": "Mind Map",
     "skeletonOrg": "Org Chart",
-    "skeletonTree": "Tree Chart",
-    "skeletonFishbone": "Fishbone",
-    "skeletonTimeline": "Timeline",
-    "skeletonBracket": "Bracket Map"
+    "skeletonTree": "Tree Chart"
   },
   "node": {
     "font": "Font",

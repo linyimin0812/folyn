@@ -364,10 +364,10 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
       // patch — fine for MVP; if large maps stutter, diff+patch by node id.
       inst.bus.addListener('operation', syncOut);
 
-      // ponytail: redraw bracket-map connectors whenever mind-elixir finishes a
+      // ponytail: redraw skeleton overlays whenever mind-elixir finishes a
       // linkDiv pass (refresh / theme / add / delete all funnel through it).
-      // The overlay hides the default branch lines and draws one bracket per
-      // sibling group, so it must run after the lines exist.
+      // Strategies that draw post-line overlays (e.g. tree non-leaf boxes)
+      // need them re-applied after the lines exist.
       inst.bus.addListener('linkDiv', () => {
         runPostLinkDiv(inst, canvasStyleRef.current.skeleton);
       });
@@ -620,7 +620,7 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
   }, []);
 
   // ponytail: direction is only meaningful for the 'mind' skeleton; the other
-  // presets (org/tree/fishbone/timeline/bracket) are intrinsically
+  // presets (org/tree) are intrinsically
   // right-branching, so a direction flip has no valid interpretation. Guard
   // so a direction dispatch can't silently revert the skeleton to 'mind' —
   // the UI also disables the control, this is the defensive backstop.
@@ -1150,7 +1150,7 @@ function StylingPanel({
 // state read from `inst` + callbacks. Native HTML inputs only.
 //
 // Ceilings (rendered as disabled controls with tooltips, NOT stubbed):
-//  - 骨架 (skeleton/layout type): mind/org/tree/fishbone/timeline/bracket
+//  - 骨架 (skeleton/layout type): mind/org/tree
 //    implemented via direction + CSS/branch overrides. Matrix and other
 //    exotic layouts are not — hand-rolling them would be a layout engine.
 //  - 方向 up/down: mind-elixir only supports left/right/side. Dropdown lists
@@ -1323,9 +1323,6 @@ function CanvasStylePanel({
           >
             <option value="mind">{t('canvas.skeletonMind')}</option>
             <option value="tree">{t('canvas.skeletonTree')}</option>
-            <option value="fishbone">{t('canvas.skeletonFishbone')}</option>
-            <option value="timeline">{t('canvas.skeletonTimeline')}</option>
-            <option value="bracket">{t('canvas.skeletonBracket')}</option>
             <option value="org">{t('canvas.skeletonOrg')}</option>
           </select>
         </div>

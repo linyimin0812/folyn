@@ -35,10 +35,7 @@
     "spacingLabel": "主题间距",
     "skeletonMind": "思维导图",
     "skeletonOrg": "组织结构图",
-    "skeletonTree": "树型图",
-    "skeletonFishbone": "鱼骨图",
-    "skeletonTimeline": "时间轴",
-    "skeletonBracket": "括号图"
+    "skeletonTree": "树型图"
   },
   "node": {
     "font": "字体",
