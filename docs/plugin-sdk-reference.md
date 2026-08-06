@@ -30,6 +30,8 @@ import { definePlugin, validateManifest } from '@quill/plugin-sdk';
 | `permissions` | `PluginPermissions` | 否 | 能力声明 |
 | `contributes` | `ContributionPoints` | 否 | 贡献点 |
 | `activation` | `ActivationEvents` | 否 | 懒激活触发 |
+| `signature` | `string` | 否 | ed25519 签名（base64），MVP 可选 |
+| `publisherPublicKey` | `string` | 否 | 配对公钥（base64） |
 
 ### permissions 子表
 
@@ -50,8 +52,6 @@ import { definePlugin, validateManifest } from '@quill/plugin-sdk';
 | `onCommand` | `string` | 命令调用时激活 |
 | `onFileType` | `string[]` | 匹配扩展名时激活 |
 | `onLanguage` | `string[]` | 匹配语言时激活 |
-
-> 注：`signature` / `publisherPublicKey`（ed25519 脚手架）未在 SDK 类型中声明；当前为可选、未强制。
 
 ## 3. 贡献点一览
 

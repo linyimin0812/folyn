@@ -90,6 +90,12 @@ export interface PluginManifest {
   permissions?: PluginPermissions;
   contributes?: ContributionPoints;
   activation?: ActivationEvents;
+  /** Optional ed25519 signature over the canonicalized manifest (base64). MVP:
+   * not enforced; verified best-effort on the Rust side. See
+   * docs/plugin-development.md "Integrity upgrade path". */
+  signature?: string;
+  /** Optional base64 ed25519 public key paired with `signature`. */
+  publisherPublicKey?: string;
 }
 
 // ── Permissions (declarative; host enforces) ───────────────────────────────
