@@ -122,35 +122,51 @@ const SKELETON_CSS = `
     margin-top: 18px;
   }
   .map-container[data-mmap-skeleton="fishbone"] .map-canvas me-nodes {
-    padding: 64px 32px;
+    padding-block: 64px;
+    padding-inline: 32px;
   }
   .map-container[data-mmap-skeleton="fishbone"] me-root {
-    margin: 0 44px 0 0;
+    margin-inline-end: 44px;
   }
   .map-container[data-mmap-skeleton="fishbone"] me-main {
     display: flex;
     flex-direction: row;
     align-items: center;
     margin: 0;
+    position: relative;
+  }
+  .map-container[data-mmap-skeleton="fishbone"] me-main::before {
+    content: '';
+    position: absolute;
+    left: -44px;
+    right: 0;
+    top: 50%;
+    height: 2px;
+    background: var(--main-color);
+    pointer-events: none;
+    z-index: 0;
   }
   .map-container[data-mmap-skeleton="fishbone"] me-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin: 0 16px;
+    margin-inline: 16px;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
   }
   .map-container[data-mmap-skeleton="fishbone"] me-wrapper me-children {
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-top: 8px;
+    gap: 12px;
   }
   .map-container[data-mmap-skeleton="fishbone"] me-main > me-wrapper:nth-child(odd) {
-    margin-top: -56px;
+    margin-block-start: -56px;
     flex-direction: column-reverse;
   }
   .map-container[data-mmap-skeleton="fishbone"] me-main > me-wrapper:nth-child(even) {
-    margin-top: 56px;
+    margin-block-start: 56px;
   }
 
   .map-container[data-mmap-skeleton="timeline"] .map-canvas me-nodes {
@@ -201,12 +217,16 @@ function orgBranch({ pT, pL, pW, pH, cT, cL, cW }: SkeletonBranchParams): string
   return `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`;
 }
 
-function slantedBranch({ pT, pL, pW, pH, cT, cL, cH }: SkeletonBranchParams): string {
-  const x1 = pL + pW;
-  const y1 = pT + pH / 2;
-  const x2 = cL;
-  const y2 = cT + cH / 2;
-  return `M ${x1} ${y1} L ${x2} ${y2}`;
+function slantedBranch({ pT, pH, cT, cL, cH }: SkeletonBranchParams): string {
+  // ponytail: fishbone bone. Attaches to the horizontal spine at the parent's
+  // vertical center, stubs left from the child by 30px, then diagonals to the
+  // child's left-center. The spine itself is drawn as fishbone me-main::before.
+  // Keeps bones short and roughly parallel instead of fanning from the root.
+  const ySpine = pT + pH / 2;
+  const yChild = cT + cH / 2;
+  const xChild = cL;
+  const stub = 30;
+  return `M ${xChild - stub} ${ySpine} L ${xChild} ${yChild}`;
 }
 
 function treeBranch({ pT, pL, pW, pH, cT, cL, cH }: SkeletonBranchParams): string {
