@@ -381,3 +381,37 @@ Restructured fishbone skeleton: added horizontal spine pseudo-element on me-main
 ### Next Steps
 
 - None - task complete
+
+
+## Session 126: mmap: trim skeletons + fix xmind export
+
+**Date**: 2026-08-06
+**Task**: mmap: trim skeletons + fix xmind export
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Deleted bracket/fishbone/timeline skeletons, kept mind/org/tree with resolve() fallback for residual meta. Fixed xmind export to honor skeleton (org→org-chart, tree→tree.right) instead of direction-only.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ac79c00` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
