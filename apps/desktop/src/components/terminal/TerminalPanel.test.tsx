@@ -10,23 +10,24 @@ vi.mock('@/components/terminal/TerminalView', () => ({
 }));
 
 beforeEach(() => {
-  useEditorViewStateStore.setState({ terminalPanelVisible: true });
+  useEditorViewStateStore.setState({ terminalPanelVisible: true, terminalInRightDock: false });
   useTerminalStore.setState({ sessions: [], activeId: null });
 });
 
 describe('TerminalPanel (bottom)', () => {
-  it('renders the drag-resize handle on top', () => {
+  it('renders the session tab row with an add button', () => {
     useTerminalStore.getState().addSession();
     const { container } = render(<TerminalPanel />);
-    const handle = container.querySelector('.cursor-row-resize');
-    expect(handle).toBeTruthy();
+    expect(container.querySelector('div.font-mono')).toBeTruthy();
+    expect(container.querySelector('button[title="新建终端"]')).toBeTruthy();
   });
 
-  it('collapses via the header toggle when visible', () => {
+  it('moves the terminal to the right dock via the columns toggle', () => {
     useTerminalStore.getState().addSession();
     render(<TerminalPanel />);
-    const toggle = document.querySelector('button[title="收起到底部"]') as HTMLButtonElement;
+    const toggle = document.querySelector('button[title="在右侧栏显示终端"]') as HTMLButtonElement;
     fireEvent.click(toggle);
     expect(useEditorViewStateStore.getState().terminalPanelVisible).toBe(false);
+    expect(useEditorViewStateStore.getState().terminalInRightDock).toBe(true);
   });
 });

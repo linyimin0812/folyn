@@ -14,7 +14,7 @@ import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { requestPlanMyDay } from '@/services/planMyDayBridge';
 import { useTranslation } from 'react-i18next';
 import { Sun, Moon, FolderInput } from 'lucide-react';
-import terminalIcon from '@/assets/terminal.svg';
+import { TerminalIcon } from '@/components/icons/TerminalIcon';
 
 /** File types that support meaningful multi-mode switching — show the view-mode segment. */
 const SHOW_VIEW_MODE_FILE_TYPES = new Set(['markdown', 'json', 'csv', 'mmap', 'dbml', 'html', 'svg']);
@@ -68,6 +68,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const openTerminalDock = useEditorViewStateStore((state) => state.openTerminalDock);
   const closeTerminalPanel = useEditorViewStateStore((state) => state.closeTerminalPanel);
   const terminalPanelVisible = useEditorViewStateStore((state) => state.terminalPanelVisible);
+  const terminalInRightDock = useEditorViewStateStore((state) => state.terminalInRightDock);
   const terminalSessions = useTerminalStore((state) => state.sessions);
   const activeTab = useEditorStore((state) => {
     const tabs = state.tabs;
@@ -88,6 +89,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const setCurrentPage = useNavStore((state) => state.setCurrentPage);
   const currentPage = useNavStore((state) => state.currentPage);
   const showTerminalAction = currentPage === 'editor' || currentPage === 'study';
+  const terminalOpen = terminalPanelVisible || terminalInRightDock;
 
   return (
     <header data-tauri-drag-region className="topbar h-[36px] shrink-0 bg-panel border-b border-brd flex items-center justify-between pl-0 pr-2.5 gap-[3px] z-50">
@@ -138,7 +140,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
           <button
             data-tauri-drag-region={false}
             className={`tb-btn tb-term-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm transition-all duration-150 hover:bg-hov ${
-              terminalPanelVisible ? 'text-acc bg-accdim' : 'text-t3 hover:text-t1'
+              terminalOpen ? 'text-acc bg-accdim' : 'text-t3 hover:text-t1'
             }`}
             onClick={() => {
               if (terminalSessions.length === 0) {
@@ -146,7 +148,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
                 useEditorViewStateStore.getState().openTerminalDock();
                 return;
               }
-              if (terminalPanelVisible) {
+              if (terminalOpen) {
                 closeTerminalPanel();
               } else {
                 openTerminalDock();
@@ -155,12 +157,12 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
             title={
               terminalSessions.length === 0
                 ? t('topbar:terminal.open')
-                : terminalPanelVisible
+                : terminalOpen
                   ? t('topbar:terminal.collapse')
                   : t('topbar:terminal.expand')
             }
           >
-            <img src={terminalIcon} alt="" width="14" height="14" className="shrink-0" />
+            <TerminalIcon size={14} className="shrink-0" />
           </button>
         )}
 

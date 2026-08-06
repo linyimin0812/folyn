@@ -9,6 +9,9 @@ beforeEach(() => {
     wordCount: 0,
     outlineVisible: false,
     aiPanelVisible: false,
+    terminalPanelVisible: false,
+    terminalInRightDock: false,
+    terminalRightWidth: 300,
   });
   useEditorStore.setState({ tabs: [], activeTabId: null });
 });
@@ -21,6 +24,9 @@ describe('useEditorViewStateStore', () => {
     expect(s.wordCount).toBe(0);
     expect(s.outlineVisible).toBe(false);
     expect(s.aiPanelVisible).toBe(false);
+    expect(s.terminalPanelVisible).toBe(false);
+    expect(s.terminalInRightDock).toBe(false);
+    expect(s.terminalRightWidth).toBe(300);
   });
 
   it('setWordCount updates wordCount', () => {
@@ -55,10 +61,24 @@ describe('useEditorViewStateStore', () => {
     expect(s.terminalPanelVisible).toBe(true);
   });
 
-  it('closeTerminalPanel hides only the terminal panel', () => {
+  it('showTerminalInRightDock moves the terminal to the right dock', () => {
     useEditorViewStateStore.getState().openTerminalDock();
+    useEditorViewStateStore.getState().showTerminalInRightDock();
+    const s = useEditorViewStateStore.getState();
+    expect(s.terminalPanelVisible).toBe(false);
+    expect(s.terminalInRightDock).toBe(true);
+  });
+
+  it('setTerminalRightWidth updates the right dock width', () => {
+    useEditorViewStateStore.getState().setTerminalRightWidth(420);
+    expect(useEditorViewStateStore.getState().terminalRightWidth).toBe(420);
+  });
+
+  it('closeTerminalPanel hides only the terminal panel', () => {
+    useEditorViewStateStore.getState().showTerminalInRightDock();
     useEditorViewStateStore.getState().closeTerminalPanel();
     expect(useEditorViewStateStore.getState().terminalPanelVisible).toBe(false);
+    expect(useEditorViewStateStore.getState().terminalInRightDock).toBe(false);
     expect(useEditorViewStateStore.getState().aiPanelVisible).toBe(false);
   });
 

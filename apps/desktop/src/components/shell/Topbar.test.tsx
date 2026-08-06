@@ -21,7 +21,7 @@ vi.mock('@/hooks/useTheme', () => ({
 beforeEach(() => {
   useNavStore.setState({ currentPage: 'editor' });
   useTerminalStore.setState({ sessions: [], activeId: null });
-  useEditorViewStateStore.setState({ terminalPanelVisible: false });
+  useEditorViewStateStore.setState({ terminalPanelVisible: false, terminalInRightDock: false });
 });
 
 afterEach(() => cleanup());

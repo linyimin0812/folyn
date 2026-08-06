@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { Topbar } from './components/shell/Topbar';
 import { ActivityBar } from './components/shell/ActivityBar';
 import { Sidebar } from './components/sidebar/Sidebar';
@@ -647,13 +647,7 @@ export default function App() {
                 onFileSelect={isMobile ? closeMobileSidebar : undefined}
               />
             </div>
-            <div className="flex-1 min-w-0 flex flex-col">
-              <div className="flex-1 min-h-0 flex">
-                <WorkArea />
-                <RightDock />
-              </div>
-              <BottomTerminal />
-            </div>
+            <EditorContent />
           </div>
         </>
       )}
@@ -678,14 +672,10 @@ export default function App() {
       )}
 
       {currentPage === 'study' && (
-        <>
-          <div className="body-row flex-1 flex overflow-hidden">
-            {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
-            <StudyWorkbenchPage />
-            <RightDock />
-          </div>
-          <BottomTerminal />
-        </>
+        <div className="body-row flex-1 flex overflow-hidden">
+          {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
+          <StudyContent />
+        </div>
       )}
 
       {showStatusBar && <StatusBar />}
@@ -695,23 +685,157 @@ export default function App() {
   );
 }
 
-/** Bottom terminal strip: mounted only while sessions exist, hidden (but
- *  mounted) while collapsed so xterm scrollback and the PTY session survive.
- *  `useTerminalStore` subscription keeps this mounted across session
- *  add/close without re-rendering the whole App. */
-function BottomTerminal() {
+/** Editor + AI dock with a single mounted terminal that moves between bottom
+ *  and right via absolute positioning, so xterm and scrollback survive the
+ *  dock-location switch. */
+function EditorContent() {
+  return (
+    <TerminalHost>
+      <WorkArea />
+      <RightDock />
+    </TerminalHost>
+  );
+}
+
+function StudyContent() {
+  return (
+    <TerminalHost>
+      <StudyWorkbenchPage />
+      <RightDock />
+    </TerminalHost>
+  );
+}
+
+/** Shared terminal host used by editor and study layouts. */
+function TerminalHost({ children }: { children: ReactNode }) {
   const sessions = useTerminalStore((s) => s.sessions);
   const terminalPanelVisible = useEditorViewStateStore((s) => s.terminalPanelVisible);
-  const [height, setHeight] = useState(240);
+  const terminalInRightDock = useEditorViewStateStore((s) => s.terminalInRightDock);
+  const terminalRightWidth = useEditorViewStateStore((s) => s.terminalRightWidth);
+  const [bottomHeight, setBottomHeight] = useState(240);
+
+  const hasSessions = sessions.length > 0;
+  const bottomOpen = hasSessions && terminalPanelVisible && !terminalInRightDock;
+  const rightOpen = hasSessions && terminalInRightDock;
+
+  return (
+    <div className="relative flex-1 min-w-0 flex flex-col overflow-hidden">
+      <div
+        className="flex-1 min-h-0 flex"
+        style={{
+          paddingBottom: bottomOpen ? bottomHeight + 8 : 0,
+          paddingRight: rightOpen ? terminalRightWidth : 0,
+        }}
+      >
+        {children}
+      </div>
+      <TerminalDock
+        bottomHeight={bottomHeight}
+        onBottomHeightChange={setBottomHeight}
+      />
+    </div>
+  );
+}
+
+/** Single persistent terminal dock rendered at the bottom or right edge. */
+function TerminalDock({
+  bottomHeight,
+  onBottomHeightChange,
+}: {
+  bottomHeight: number;
+  onBottomHeightChange: (height: number) => void;
+}) {
+  const sessions = useTerminalStore((s) => s.sessions);
+  const terminalPanelVisible = useEditorViewStateStore((s) => s.terminalPanelVisible);
+  const terminalInRightDock = useEditorViewStateStore((s) => s.terminalInRightDock);
+  const terminalRightWidth = useEditorViewStateStore((s) => s.terminalRightWidth);
+
   if (sessions.length === 0) return null;
+
+  const right = terminalInRightDock;
+  const bottom = terminalPanelVisible && !right;
+  const visible = right || bottom;
+
   return (
     <div
-      className="shrink-0 flex flex-col"
-      style={{ display: terminalPanelVisible ? undefined : 'none' }}
+      className="absolute z-10 bg-bg"
+      style={
+        !visible
+          ? { display: 'none' }
+          : right
+            ? {
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: terminalRightWidth,
+                borderLeft: '1px solid var(--brd)',
+              }
+            : {
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: bottomHeight + 8,
+                borderTop: '1px solid var(--brd)',
+              }
+      }
     >
-      <TerminalResizeHandle height={height} onHeightChange={setHeight} />
-      <TerminalPanel height={height} />
+      {visible && (right ? (
+        <TerminalRightResizeHandle key="right-resize" />
+      ) : (
+        <TerminalResizeHandle
+          key="bottom-resize"
+          height={bottomHeight}
+          onHeightChange={onBottomHeightChange}
+        />
+      ))}
+      <TerminalPanel key="terminal-panel" height={right ? '100%' : bottomHeight} />
     </div>
+  );
+}
+
+const MIN_TERMINAL_RIGHT_WIDTH = 240;
+const MAX_TERMINAL_RIGHT_WIDTH = 640;
+
+function TerminalRightResizeHandle() {
+  const terminalRightWidth = useEditorViewStateStore((s) => s.terminalRightWidth);
+  const setTerminalRightWidth = useEditorViewStateStore((s) => s.setTerminalRightWidth);
+  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+
+  const startResize = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      dragRef.current = { startX: e.clientX, startWidth: terminalRightWidth };
+      document.body.style.cursor = 'col-resize';
+      document.documentElement.classList.add('is-resizing');
+    },
+    [terminalRightWidth],
+  );
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const next = drag.startWidth + drag.startX - e.clientX;
+      setTerminalRightWidth(Math.max(MIN_TERMINAL_RIGHT_WIDTH, Math.min(MAX_TERMINAL_RIGHT_WIDTH, next)));
+    };
+    const stopResize = () => {
+      dragRef.current = null;
+      document.body.style.cursor = '';
+      document.documentElement.classList.remove('is-resizing');
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', stopResize);
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', stopResize);
+    };
+  }, [setTerminalRightWidth]);
+
+  return (
+    <div
+      className="absolute left-0 top-0 bottom-0 w-0.5 cursor-col-resize z-10 bg-transparent transition-[background] duration-[140ms] hover:bg-acc hover:opacity-30"
+      onMouseDown={startResize}
+    />
   );
 }
 

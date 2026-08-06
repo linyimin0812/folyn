@@ -24,13 +24,20 @@ interface EditorViewState {
   aiPanelVisible: boolean;
   /** Right-dock terminal panel visibility (independent of the AI panel). */
   terminalPanelVisible: boolean;
+  /** Right-dock terminal panel visibility (mutually exclusive with bottom dock). */
+  terminalInRightDock: boolean;
+  terminalRightWidth: number;
 
   setCursorPosition: (line: number, col: number) => void;
   setWordCount: (count: number) => void;
   toggleOutline: () => void;
   toggleAiPanel: () => void;
-  /** Show the terminal panel (used by the Topbar terminal icon). */
+  /** Show the terminal panel in the bottom dock (used by the Topbar terminal icon). */
   openTerminalDock: () => void;
+  /** Show the terminal panel in the right dock. */
+  showTerminalInRightDock: () => void;
+  /** Set the right-dock terminal column width. */
+  setTerminalRightWidth: (width: number) => void;
   /** Hide the terminal panel. */
   closeTerminalPanel: () => void;
 }
@@ -42,6 +49,8 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   outlineVisible: false,
   aiPanelVisible: false,
   terminalPanelVisible: false,
+  terminalInRightDock: false,
+  terminalRightWidth: 300,
 
   setCursorPosition: (line, col) => {
     // ponytail: cursor is also persisted onto the active tab so it survives tab
@@ -65,7 +74,11 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   toggleOutline: () => set((state) => ({ outlineVisible: !state.outlineVisible })),
   toggleAiPanel: () => set((state) => ({ aiPanelVisible: !state.aiPanelVisible })),
 
-  openTerminalDock: () => set({ terminalPanelVisible: true }),
+  openTerminalDock: () => set({ terminalPanelVisible: true, terminalInRightDock: false }),
 
-  closeTerminalPanel: () => set({ terminalPanelVisible: false }),
+  showTerminalInRightDock: () => set({ terminalPanelVisible: false, terminalInRightDock: true }),
+
+  setTerminalRightWidth: (width) => set({ terminalRightWidth: width }),
+
+  closeTerminalPanel: () => set({ terminalPanelVisible: false, terminalInRightDock: false }),
 }));

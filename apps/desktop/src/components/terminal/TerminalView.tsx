@@ -234,18 +234,23 @@ export function TerminalView({ id, active }: TerminalViewProps) {
       }
     });
 
+    let resizeRaf = 0;
     const observer = new ResizeObserver(() => {
-      try {
-        safeFit();
-        syncPtySize();
-      } catch {
-        // hidden container
-      }
+      cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(() => {
+        try {
+          safeFit();
+          syncPtySize();
+        } catch {
+          // hidden container
+        }
+      });
     });
     observer.observe(el);
 
     return () => {
       cancelled = true;
+      cancelAnimationFrame(resizeRaf);
       observer.disconnect();
       dataDisposable.dispose();
       unlistenOutput?.();

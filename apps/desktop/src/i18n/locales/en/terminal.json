@@ -3,7 +3,7 @@
   "close": "Close terminal",
   "closePanel": "Close terminal panel",
   "openAtBottom": "Open terminal at bottom",
-  "collapseToBottom": "Collapse to bottom",
+  "showInRightDock": "Show terminal in right dock",
   "restart": "Restart",
   "empty": "No terminal sessions yet"
 }

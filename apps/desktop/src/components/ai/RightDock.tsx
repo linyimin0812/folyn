@@ -7,9 +7,9 @@ const MAX_WIDTH = 760;
 const DEFAULT_WIDTH = 380;
 
 /**
- * Right-hand dock hosting the AI panel (the terminal lives in its own bottom
- * strip — see App.tsx / TerminalPanel). The AI column has its own width and
- * left-edge resize handle.
+ * Right-hand dock hosting the AI panel. The terminal can also dock here as a
+ * separate right-side column (see App.tsx / TerminalPanel). The AI column has
+ * its own width and left-edge resize handle.
  */
 export function RightDock() {
   const aiPanelVisible = useEditorViewStateStore((s) => s.aiPanelVisible);

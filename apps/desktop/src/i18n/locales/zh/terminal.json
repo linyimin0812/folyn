@@ -3,7 +3,7 @@
   "close": "关闭终端",
   "closePanel": "关闭终端面板",
   "openAtBottom": "在底部打开终端",
-  "collapseToBottom": "收起到底部",
+  "showInRightDock": "在右侧栏显示终端",
   "restart": "重新启动",
   "empty": "还没有终端会话"
 }
