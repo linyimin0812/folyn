@@ -165,14 +165,15 @@ const SKELETON_CSS = `
     padding: 24px;
   }
   .map-container[data-mmap-skeleton="tree"] me-children {
-    margin-inline-start: 56px;
+    margin-inline-start: 32px;
   }
   .map-container[data-mmap-skeleton="tree"] me-parent {
     padding-inline-start: 0;
   }
   .map-container[data-mmap-skeleton="tree"] .map-canvas {
-    --node-gap-y: 48px;
-    --main-gap-y: 96px;
+    --node-gap-x: 0;
+    --node-gap-y: 24px;
+    --main-gap-y: 48px;
   }
   .map-container[data-mmap-skeleton="tree"] me-wrapper:has(> me-children > me-wrapper) > me-parent > me-tpc {
     border: 1.5px solid var(--main-color);
