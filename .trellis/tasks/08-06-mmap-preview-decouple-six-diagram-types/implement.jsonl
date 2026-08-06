@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "决定 skeletons/ 子目录放在哪、文件命名规范"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "策略对象 + registry 的 React 组织方式，避免 over-engineering"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "mmap 属于 file-type 编辑器，须遵守其生命周期/实例管理规范"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "MmapSkeletonStrategy 接口类型设计、避免 any"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "解耦重构的核心是识别共享 vs 独立部分"}

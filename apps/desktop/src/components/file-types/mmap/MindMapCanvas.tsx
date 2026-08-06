@@ -31,6 +31,7 @@ import {
   type MmapSkeleton,
   type MmapDirection,
 } from './outlineConverter';
+import { applySkeleton, runPostLinkDiv, isDirectionEnabled } from './skeletons';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { useAppearanceStore } from '@/store/appearanceStore';
 
@@ -73,337 +74,6 @@ function setNodeStyleOnObj(node: unknown, style: MmapNodeStyle | undefined): voi
   (node as { style?: MmapNodeStyle }).style = style;
 }
 
-// ponytail: skeleton (骨架) layouts. mind-elixir has no native skeleton
-// concept, so the canvas maps each preset to a direction plus (where needed)
-// a scoped CSS override and custom branch generators:
-//  - org (组织结构图): top-down tree with vertical elbow connectors
-//  - tree (树型图): right-branching with right-angle elbow connectors
-//  - fishbone (鱼骨图): right spine, first-level branches alternate up/down
-//  - timeline (时间轴): vertical spine with stub lines into each first-level node
-//  - bracket (括号图): right-branching with a bracket overlay that spans
-//    each child group (leader to the bracket, stubs into the children)
-const SKELETON_CSS = `
-  .map-container[data-mmap-skeleton="org"] .map-canvas me-nodes {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: center;
-    padding: 24px;
-  }
-  .map-container[data-mmap-skeleton="org"] me-root {
-    margin: 8px 0 32px;
-  }
-  .map-container[data-mmap-skeleton="org"] me-main {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: flex-start;
-    width: max-content;
-    margin: 0;
-  }
-  .map-container[data-mmap-skeleton="org"] me-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 0 14px;
-  }
-  .map-container[data-mmap-skeleton="org"] me-parent {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 0;
-    padding: 0;
-  }
-  .map-container[data-mmap-skeleton="org"] me-wrapper me-children {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: flex-start;
-    margin-top: 18px;
-  }
-  .map-container[data-mmap-skeleton="fishbone"] .map-canvas me-nodes {
-    padding-block: 64px;
-    padding-inline: 32px;
-  }
-  .map-container[data-mmap-skeleton="fishbone"] me-root {
-    margin-inline-end: 44px;
-  }
-  .map-container[data-mmap-skeleton="fishbone"] me-main {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    margin: 0;
-    position: relative;
-  }
-  .map-container[data-mmap-skeleton="fishbone"] me-main::before {
-    content: '';
-    position: absolute;
-    left: -44px;
-    right: 0;
-    top: 50%;
-    height: 2px;
-    background: var(--main-color);
-    pointer-events: none;
-    z-index: 0;
-  }
-  .map-container[data-mmap-skeleton="fishbone"] me-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-inline: 16px;
-    gap: 8px;
-    position: relative;
-    z-index: 1;
-  }
-  .map-container[data-mmap-skeleton="fishbone"] me-wrapper me-children {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-  }
-  .map-container[data-mmap-skeleton="fishbone"] me-main > me-wrapper:nth-child(odd) {
-    margin-block-start: -56px;
-    flex-direction: column-reverse;
-  }
-  .map-container[data-mmap-skeleton="fishbone"] me-main > me-wrapper:nth-child(even) {
-    margin-block-start: 56px;
-  }
-
-  .map-container[data-mmap-skeleton="timeline"] .map-canvas me-nodes {
-    padding: 24px 40px;
-  }
-  .map-container[data-mmap-skeleton="timeline"] me-root {
-    margin: 0 48px 0 0;
-  }
-
-  .map-container[data-mmap-skeleton="tree"] .map-canvas me-nodes,
-  .map-container[data-mmap-skeleton="bracket"] .map-canvas me-nodes {
-    padding: 24px;
-  }
-  .map-container[data-mmap-skeleton="tree"] me-children {
-    margin-inline-start: 32px;
-  }
-  .map-container[data-mmap-skeleton="tree"] me-parent {
-    padding-inline-start: 0;
-  }
-  .map-container[data-mmap-skeleton="tree"] .map-canvas {
-    --node-gap-x: 0;
-    --node-gap-y: 24px;
-    --main-gap-y: 48px;
-  }
-  .map-container[data-mmap-skeleton="tree"] me-wrapper:has(> me-children > me-wrapper) > me-parent > me-tpc {
-    border: 1.5px solid var(--main-color);
-    border-radius: var(--main-radius);
-  }
-`;
-
-type SkeletonBranchParams = {
-  pT: number;
-  pL: number;
-  pW: number;
-  pH: number;
-  cT: number;
-  cL: number;
-  cW: number;
-  cH: number;
-};
-
-function orgBranch({ pT, pL, pW, pH, cT, cL, cW }: SkeletonBranchParams): string {
-  const x1 = pL + pW / 2;
-  const y1 = pT + pH;
-  const x2 = cL + cW / 2;
-  const y2 = cT;
-  const midY = y1 + (y2 - y1) / 2;
-  return `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`;
-}
-
-function slantedBranch({ pT, pH, cT, cL, cH }: SkeletonBranchParams): string {
-  // ponytail: fishbone bone. Attaches to the horizontal spine at the parent's
-  // vertical center, stubs left from the child by 30px, then diagonals to the
-  // child's left-center. The spine itself is drawn as fishbone me-main::before.
-  // Keeps bones short and roughly parallel instead of fanning from the root.
-  const ySpine = pT + pH / 2;
-  const yChild = cT + cH / 2;
-  const xChild = cL;
-  const stub = 30;
-  return `M ${xChild - stub} ${ySpine} L ${xChild} ${yChild}`;
-}
-
-function treeBranch({ pT, pL, pW, pH, cT, cL, cH }: SkeletonBranchParams): string {
-  const x1 = pL + pW;
-  const y1 = pT + pH / 2;
-  const x2 = cL;
-  const y2 = cT + cH / 2;
-  // Lines always leave the parent's right-center and enter the child's
-  // left-center. Only when the two centers are already aligned does the
-  // connector stay a single horizontal line; otherwise it is a rounded
-  // elbow with quadratic-bezier corners (radius 8px). No diagonals.
-  if (Math.abs(y2 - y1) < 2) {
-    return `M ${x1} ${y1} L ${x2} ${y2}`;
-  }
-  const midX = x1 + (x2 - x1) / 2;
-  const r = 8;
-  const dy = y2 - y1;
-  const rY = Math.sign(dy) * Math.min(r, Math.abs(dy) / 2);
-  return `M ${x1} ${y1} H ${midX - r} Q ${midX} ${y1} ${midX} ${y1 + rY} V ${y2 - rY} Q ${midX} ${y2} ${midX + r} ${y2} H ${x2}`;
-}
-
-function verticalBranch({ pT, pL, pW, pH, cT, cL, cW }: SkeletonBranchParams): string {
-  const x1 = pL + pW / 2;
-  const y1 = pT + pH;
-  const x2 = cL + cW / 2;
-  const y2 = cT;
-  const midY = y1 + (y2 - y1) / 2;
-  return `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`;
-}
-
-function timelineMain({ pT, pL, pW, pH, cT, cL, cH }: SkeletonBranchParams): string {
-  const x1 = pL + pW;
-  const yRoot = pT + pH / 2;
-  const yChild = cT + cH / 2;
-  const x2 = cL;
-  return `M ${x1} ${yRoot} V ${yChild} H ${x2}`;
-}
-
-// Main/sub branch generators per skeleton. 'mind' (and 'bracket', which
-// draws its own overlay) keep the captured mind-elixir defaults.
-const SKELETON_BRANCHES: Partial<Record<MmapSkeleton, (p: SkeletonBranchParams) => string>> = {
-  org: orgBranch,
-  fishbone: slantedBranch,
-  tree: treeBranch,
-  timeline: timelineMain,
-};
-
-function ensureSkeletonStyle(container: HTMLElement): void {
-  const existing = container.querySelector<HTMLStyleElement>(
-    'style[data-mmap-skeleton-style]',
-  );
-  if (existing) return;
-  const style = document.createElement('style');
-  style.dataset.mmapSkeletonStyle = '';
-  style.textContent = SKELETON_CSS;
-  container.appendChild(style);
-}
-
-// ponytail: bracket-map connectors. mind-elixir draws one path per parent-child
-// pair, but a real bracket needs the whole sibling group (vertical span + a
-// stub into every child). We draw it as an overlay after linkDiv and hide the
-// default branch lines while the bracket skeleton is active.
-function offsetInNodes(nodes: HTMLElement, el: HTMLElement): { x: number; y: number } {
-  let x = 0;
-  let y = 0;
-  let cur: HTMLElement | null = el;
-  while (cur && cur !== nodes) {
-    x += cur.offsetLeft;
-    y += cur.offsetTop;
-    cur = cur.offsetParent as HTMLElement | null;
-  }
-  return { x, y };
-}
-
-function removeBracketOverlay(inst: MindElixirInstance): void {
-  inst.container.querySelector('svg.mmap-bracket-lines')?.remove();
-  const lines = inst.container.querySelector<HTMLElement>('svg.lines');
-  if (lines) lines.style.display = '';
-}
-
-// ponytail: give every non-leaf node in the tree skeleton the same box as the
-// main (first-level) nodes. mind-elixir only colors first-level borders with
-// the branch palette; this pass propagates that color down to deeper branches
-// so all boxes stay coordinated.
-function applyTreeNonLeafBoxes(inst: MindElixirInstance): void {
-  const palette = inst.theme.palette;
-  if (!palette?.length) return;
-  inst.container.querySelectorAll('me-main > me-wrapper').forEach((mainWrapper, i) => {
-    const rootTpc = mainWrapper.querySelector<HTMLElement>(
-      ':scope > me-parent > me-tpc',
-    );
-    if (!rootTpc) return;
-    const color =
-      (rootTpc as HTMLElement & { nodeObj?: { branchColor?: string } }).nodeObj
-        ?.branchColor || palette[i % palette.length];
-    mainWrapper.querySelectorAll('me-wrapper').forEach((descWrapper) => {
-      const tpc = descWrapper.querySelector<HTMLElement>(
-        ':scope > me-parent > me-tpc',
-      );
-      if (
-        tpc &&
-        descWrapper.querySelector(':scope > me-children > me-wrapper')
-      ) {
-        tpc.style.borderColor = color;
-      }
-    });
-  });
-}
-
-function drawBracketConnectors(inst: MindElixirInstance): void {
-  const nodes = inst.container.querySelector<HTMLElement>('me-nodes');
-  if (!nodes) return;
-  const lines = inst.container.querySelector<HTMLElement>('svg.lines');
-  if (lines) lines.style.display = 'none';
-  inst.container.querySelectorAll('svg.subLines').forEach((el) => el.remove());
-  const ns = 'http://www.w3.org/2000/svg';
-  let svg = inst.container.querySelector<SVGSVGElement>('svg.mmap-bracket-lines');
-  if (!svg) {
-    svg = document.createElementNS(ns, 'svg');
-    svg.classList.add('mmap-bracket-lines');
-    svg.setAttribute('overflow', 'visible');
-    nodes.appendChild(svg);
-  }
-  svg.innerHTML = '';
-  const drawGroup = (
-    parentTpc: HTMLElement | null,
-    childTpcs: HTMLElement[],
-  ) => {
-    if (!parentTpc || childTpcs.length === 0) return;
-    const p = {
-      ...offsetInNodes(nodes, parentTpc),
-      w: parentTpc.offsetWidth,
-      h: parentTpc.offsetHeight,
-    };
-    const children = childTpcs.map((c) => ({
-      ...offsetInNodes(nodes, c),
-      w: c.offsetWidth,
-      h: c.offsetHeight,
-    }));
-    const busX = p.x + p.w + 12;
-    const topY = Math.min(...children.map((c) => c.y));
-    const bottomY = Math.max(...children.map((c) => c.y + c.h));
-    const color = getComputedStyle(parentTpc).borderColor || '#666';
-    const d = [
-      `M ${p.x + p.w} ${p.y + p.h / 2} L ${busX} ${p.y + p.h / 2}`,
-      `M ${busX} ${topY} L ${busX} ${bottomY}`,
-      ...children.map(
-        (c) => `M ${busX} ${c.y + c.h / 2} L ${c.x} ${c.y + c.h / 2}`,
-      ),
-    ].join(' ');
-    const path = document.createElementNS(ns, 'path');
-    path.setAttribute('d', d);
-    path.setAttribute('stroke', color);
-    path.setAttribute('stroke-width', '2');
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke-linecap', 'round');
-    svg.appendChild(path);
-  };
-  const rootTpc = inst.container.querySelector<HTMLElement>('me-root > me-tpc');
-  const firstLevelTpcs = Array.from(
-    inst.container.querySelectorAll<HTMLElement>(
-      'me-main > me-wrapper > me-parent > me-tpc',
-    ),
-  );
-  drawGroup(rootTpc, firstLevelTpcs);
-  inst.container.querySelectorAll('me-wrapper').forEach((wrapper) => {
-    const parentTpc = wrapper.querySelector<HTMLElement>(
-      ':scope > me-parent > me-tpc',
-    );
-    const childTpcs = Array.from(
-      wrapper.querySelectorAll<HTMLElement>(
-        ':scope > me-children > me-wrapper > me-parent > me-tpc',
-      ),
-    );
-    drawGroup(parentTpc, childTpcs);
-  });
-}
 export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }: PreviewProps) {
   const { t } = useTranslation('mmap');
   const elRef = useRef<HTMLDivElement>(null);
@@ -494,41 +164,12 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
     inst.linkDiv();
   }, []);
 
-  // ponytail: apply the skeleton (骨架) layout. Each non-default preset
-  // switches the container's data attribute (driving scoped CSS) and installs
-  // matching branch generators; 'mind' (and 'bracket', which draws its own
-  // overlay) keep the captured mind-elixir defaults. timeline sub-branches
-  // and fishbone sub-branches use their own vertical connectors.
-  const applySkeleton = useCallback((inst: MindElixirInstance, skeleton: MmapSkeleton | undefined) => {
-    const name = skeleton && skeleton !== 'mind' ? skeleton : 'mind';
-    if (name === 'mind') {
-      delete inst.container.dataset.mmapSkeleton;
-    } else {
-      inst.container.dataset.mmapSkeleton = name;
-      ensureSkeletonStyle(inst.container);
-    }
-    const gen = SKELETON_BRANCHES[name];
-    if (gen) {
-      inst.generateMainBranch = gen;
-      inst.generateSubBranch =
-        name === 'timeline' ? treeBranch : name === 'fishbone' ? verticalBranch : gen;
-      return;
-    }
-    if (defaultMainBranchRef.current) {
-      inst.generateMainBranch = defaultMainBranchRef.current;
-    }
-    if (defaultSubBranchRef.current) {
-      inst.generateSubBranch = defaultSubBranchRef.current;
-    }
-    if (name !== 'bracket') removeBracketOverlay(inst);
-  }, []);
-
   // ponytail: apply canvas-level runtime-only mapStyle (palette preset,
   // background color, sibling alignment, topic spacing, skeleton) to the
   // mind-elixir instance. Called after init + after every theme swap
   // (changeTheme resets every cssVar on container.style, so overrides must be
   // re-applied). rainbow/compact live in `inst` and round-trip via
-  // MindElixirData; direction is only touched when a skeleton implies it.
+  // MindElixirData; direction is enforced inside applySkeleton per-strategy.
   //
   // Ceilings:
   //  - `palette` overrides `theme.palette` directly (same path as the
@@ -564,21 +205,11 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
       inst.container.style.setProperty('--node-gap-y', px);
       inst.container.style.setProperty('--main-gap-y', px);
     }
-    // Skeleton presets imply a direction: mind = both sides; the rest are
-    // right-branching (org/fishbone/timeline/tree/bracket). Enforce it here so
-    // a stale data.direction can't fight the skeleton.
-    if (
-      ms?.skeleton === 'org' ||
-      ms?.skeleton === 'tree' ||
-      ms?.skeleton === 'fishbone' ||
-      ms?.skeleton === 'timeline' ||
-      ms?.skeleton === 'bracket'
-    ) {
-      if (inst.direction !== 1) inst.initRight();
-    } else if (ms?.skeleton === 'mind') {
-      if (inst.direction !== 2) inst.initSide();
-    }
-    applySkeleton(inst, ms?.skeleton);
+    const defaults =
+      defaultMainBranchRef.current && defaultSubBranchRef.current
+        ? { main: defaultMainBranchRef.current, sub: defaultSubBranchRef.current }
+        : undefined;
+    applySkeleton(inst, ms?.skeleton, defaults);
     inst.layout();
     inst.linkDiv();
     inst.toCenter();
@@ -733,13 +364,7 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
       // The overlay hides the default branch lines and draws one bracket per
       // sibling group, so it must run after the lines exist.
       inst.bus.addListener('linkDiv', () => {
-        const skeleton = canvasStyleRef.current.skeleton;
-        if (skeleton === 'bracket') {
-          drawBracketConnectors(inst);
-        }
-        if (skeleton === 'tree') {
-          applyTreeNonLeafBoxes(inst);
-        }
+        runPostLinkDiv(inst, canvasStyleRef.current.skeleton);
       });
 
       // ponytail: mind-elixir's beginEdit (Pt in MindElixir.js) places
@@ -1000,31 +625,26 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
   const setDirection = useCallback((d: MmapDirection) => {
     const inst = instRef.current;
     if (!inst) return;
-    if ((canvasStyleRef.current.skeleton ?? 'mind') !== 'mind') return;
+    // ponytail: direction is only meaningful for the 'mind' skeleton; other
+    // skeletons are intrinsically right-branching. Policy lives in each
+    // strategy's directionEnabled flag — no cross-skeleton if here.
+    if (!isDirectionEnabled(canvasStyleRef.current.skeleton)) return;
     if (d === 0) inst.initLeft();
     else if (d === 1) inst.initRight();
     else inst.initSide();
     syncOutRef.current?.();
   }, []);
 
-  // ponytail: skeleton (骨架) mutator. mind switches back to the classic
-  // both-sides map; every other preset is right-branching (org layers the
-  // top-down CSS + connectors on top of RIGHT).
+  // ponytail: skeleton (骨架) mutator. Each strategy owns its own init
+  // (direction flip) inside applySkeleton — no per-skeleton branch here.
   const setSkeleton = useCallback((skeleton: MmapSkeleton) => {
     const inst = instRef.current;
     if (!inst) return;
-    if (skeleton === 'mind') {
-      inst.initSide();
-    } else if (
-      skeleton === 'org' ||
-      skeleton === 'tree' ||
-      skeleton === 'fishbone' ||
-      skeleton === 'timeline' ||
-      skeleton === 'bracket'
-    ) {
-      if (inst.direction !== 1) inst.initRight();
-    }
-    applySkeleton(inst, skeleton);
+    const defaults =
+      defaultMainBranchRef.current && defaultSubBranchRef.current
+        ? { main: defaultMainBranchRef.current, sub: defaultSubBranchRef.current }
+        : undefined;
+    applySkeleton(inst, skeleton, defaults);
     const next = { ...canvasStyleRef.current };
     if (skeleton === 'mind') delete next.skeleton;
     else next.skeleton = skeleton;
@@ -1034,7 +654,7 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
     inst.linkDiv();
     inst.toCenter();
     syncOutRef.current?.();
-  }, [applySkeleton]);
+  }, []);
 
   // ponytail: palette preset mutator — swap `inst.theme.palette` to the
   // preset's color array + redraw branches. Picking a preset implies
@@ -1198,7 +818,7 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
   const liveCompact = instRef.current?.compact ?? false;
   // ponytail: non-mind skeletons are intrinsically right-branching; direction
   // control is disabled to prevent the silent skeleton→mind revert.
-  const directionDisabled = (canvasStyle.skeleton ?? 'mind') !== 'mind';
+  const directionDisabled = !isDirectionEnabled(canvasStyle.skeleton);
 
   return (
     <div className="flex w-full h-full overflow-hidden">
@@ -1678,9 +1298,9 @@ function CanvasStylePanel({
   const paletteDisabled = !rainbowOn;
   // topic spacing is grayed out when compact is ON (compact hardcodes gaps).
   const spacingDisabled = compact;
-  // ponytail: non-mind skeletons are intrinsically right-branching; direction
-  // is disabled to prevent the silent skeleton→mind revert.
-  const directionDisabled = skeleton !== 'mind';
+  // ponytail: direction disabled when the active skeleton's policy says so
+  // (policy lives in each strategy's directionEnabled flag).
+  const directionDisabled = !isDirectionEnabled(skeleton);
 
   return (
     <>
