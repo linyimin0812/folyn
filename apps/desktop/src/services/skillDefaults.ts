@@ -12,7 +12,6 @@ const clipCardSkill: Skill = {
   description: '分析网页内容生成结构化知识卡片',
   version: '1.0.0',
   builtin: true,
-  outputFormat: 'json',
   content: `# Web Clip Card Generation
 
 你是一个网页内容分析助手。请按照以下步骤分析网页内容并生成结构化知识卡片。
@@ -56,7 +55,6 @@ const githubAnalysisSkill: Skill = {
   description: '深度分析 GitHub 仓库并生成 HTML 报告',
   version: '1.0.0',
   builtin: true,
-  outputFormat: 'tags-html',
   content: `# GitHub Repository Analysis
 
 You are a senior software architect. Analyze a GitHub repository and generate a comprehensive HTML report.

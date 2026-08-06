@@ -520,7 +520,6 @@
       "descPlaceholder": "Describe this skill's purpose",
       "promptLabel": "Prompt template",
       "promptPlaceholder": "Enter a prompt template; use {{variableName}} for variables...",
-      "formatLabel": "Output format",
       "create": "Create",
       "cancel": "Cancel",
       "editTitle": "Edit",

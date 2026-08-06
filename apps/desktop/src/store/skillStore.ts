@@ -152,7 +152,6 @@ export const useSkillStore = create<SkillState>((set, get) => ({
         version: parsed.version || '1.0.0',
         builtin: false,
         content: parsed.content,
-        outputFormat: parsed.outputFormat || 'json',
       };
       set((state) => ({
         skills: { ...state.skills, [skill.id]: skill },

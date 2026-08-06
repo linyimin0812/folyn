@@ -520,7 +520,6 @@
       "descPlaceholder": "描述此 Skill 的用途",
       "promptLabel": "Prompt 模板",
       "promptPlaceholder": "输入 Prompt 模板，使用 {{variableName}} 引用变量...",
-      "formatLabel": "输出格式",
       "create": "创建",
       "cancel": "取消",
       "editTitle": "编辑",

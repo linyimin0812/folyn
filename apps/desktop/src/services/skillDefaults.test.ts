@@ -17,14 +17,12 @@ describe('builtinSkills', () => {
 
   it('clip-card skill outputs JSON', () => {
     const s: Skill = builtinSkills['clip-card'];
-    expect(s.outputFormat).toBe('json');
     expect(s.content).toContain('WebFetch');
     expect(s.content).toContain('tags');
   });
 
   it('github-analysis skill outputs tags + html', () => {
     const s: Skill = builtinSkills['github-analysis'];
-    expect(s.outputFormat).toBe('tags-html');
     expect(s.content).toContain('git clone');
     expect(s.content).toContain('---TAGS---');
   });

@@ -3,30 +3,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { useTranslation } from 'react-i18next';
 import { useSkillStore } from '@/store/skillStore';
 import { builtinSkills } from '@/services/skillDefaults';
-import type { SkillOutputFormat, SkillCapability } from '@/types/skill';
+import type { SkillCapability } from '@/types/skill';
 import { isTauri } from '@/utils/platform';
-
-const FORMAT_OPTIONS: { value: SkillOutputFormat; label: string }[] = [
-  { value: 'json', label: 'JSON' },
-  { value: 'tags-html', label: 'Tags + HTML' },
-  { value: 'markdown', label: 'Markdown' },
-  { value: 'html', label: 'HTML' },
-];
-
-function formatBadge(format: string) {
-  const map: Record<string, string> = {
-    json: 'bg-[#e3f2fd] text-[#1565c0]',
-    'tags-html': 'bg-[#fce4ec] text-[#c62828]',
-    markdown: 'bg-[#e8f5e9] text-[#2e7d32]',
-    html: 'bg-[#fff8e1] text-[#f57f17]',
-  };
-  const cls = map[format] || 'bg-surf2 text-t2';
-  return (
-    <span className={`text-[9.5px] font-mono font-semibold px-1.5 py-[1px] rounded ${cls}`}>
-      {format}
-    </span>
-  );
-}
 
 export function SkillsSettings() {
   const { t } = useTranslation();
@@ -41,7 +19,7 @@ export function SkillsSettings() {
   const setCapabilitySkill = useSkillStore((s) => s.setCapabilitySkill);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', description: '', content: '', outputFormat: 'json' as SkillOutputFormat });
+  const [form, setForm] = useState({ name: '', description: '', content: '' });
   const [isCreating, setIsCreating] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -50,7 +28,6 @@ export function SkillsSettings() {
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newPrompt, setNewPrompt] = useState('');
-  const [newFormat, setNewFormat] = useState<SkillOutputFormat>('json');
 
   const selectedSkill = selectedId ? (allSkills.find((s) => s.id === selectedId) || undefined) : undefined;
 
@@ -58,14 +35,14 @@ export function SkillsSettings() {
     const skill = allSkills.find((s) => s.id === id);
     if (!skill) return;
     setSelectedId(id);
-    setForm({ name: skill.name, description: skill.description, content: skill.content, outputFormat: skill.outputFormat });
+    setForm({ name: skill.name, description: skill.description, content: skill.content });
     setIsCreating(false);
     setErrorMsg('');
   }, [allSkills]);
 
   const handleSave = useCallback(() => {
     if (!selectedId) return;
-    updateSkill(selectedId, { name: form.name, description: form.description, content: form.content, outputFormat: form.outputFormat });
+    updateSkill(selectedId, { name: form.name, description: form.description, content: form.content });
   }, [selectedId, form, updateSkill]);
 
   const handleReset = useCallback(() => {
@@ -74,7 +51,7 @@ export function SkillsSettings() {
     resetSkill(selectedId);
     const skill = builtinSkills[selectedId];
     if (skill) {
-      setForm({ name: skill.name, description: skill.description, content: skill.content, outputFormat: skill.outputFormat });
+      setForm({ name: skill.name, description: skill.description, content: skill.content });
     }
   }, [selectedId, resetSkill, t]);
 
@@ -92,7 +69,6 @@ export function SkillsSettings() {
     setNewName('');
     setNewDesc('');
     setNewPrompt('');
-    setNewFormat('json');
     setErrorMsg('');
   }, []);
 
@@ -115,16 +91,15 @@ export function SkillsSettings() {
         version: '1.0.0',
         builtin: false,
         content: newPrompt,
-        outputFormat: newFormat,
       });
       setIsCreating(false);
       setErrorMsg('');
       setSelectedId(id);
-      setForm({ name: newName.trim(), description: newDesc.trim(), content: newPrompt, outputFormat: newFormat });
+      setForm({ name: newName.trim(), description: newDesc.trim(), content: newPrompt });
     } catch (e: unknown) {
       setErrorMsg(e instanceof Error ? e.message : t('settings:skills.errorCreate'));
     }
-  }, [newId, newName, newDesc, newPrompt, newFormat, createSkill, t]);
+  }, [newId, newName, newDesc, newPrompt, createSkill, t]);
 
   const handleImport = useCallback(async () => {
     setErrorMsg('');
@@ -227,7 +202,6 @@ export function SkillsSettings() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-semibold text-t1">{skill.name}</span>
-                {formatBadge(skill.outputFormat)}
                 <span className={`text-[9px] font-medium px-1 py-[0.5px] rounded ${skill.builtin ? 'bg-surf2 text-t3' : 'bg-[#e8f5e9] text-[#2e7d32]'}`}>
                   {skill.builtin ? 'Built-in' : 'Custom'}
                 </span>
@@ -287,19 +261,6 @@ export function SkillsSettings() {
               placeholder={t('settings:skills.form.promptPlaceholder')}
             />
           </div>
-          <div className="mb-2.5">
-            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:skills.form.formatLabel')}</div>
-            <select
-              className="settings-select"
-              style={{ maxWidth: 200 }}
-              value={newFormat}
-              onChange={(e) => setNewFormat(e.target.value as SkillOutputFormat)}
-            >
-              {FORMAT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
           <div className="flex gap-1.5 mt-2">
             <button className="btn btn-p btn-sm" onClick={confirmCreate}>{t('settings:skills.form.create')}</button>
             <button className="btn btn-g btn-sm" onClick={cancelCreate}>{t('settings:skills.form.cancel')}</button>
@@ -349,21 +310,6 @@ export function SkillsSettings() {
               value={form.content}
               onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
             />
-          </div>
-
-          {/* Output Format */}
-          <div className="mb-2.5">
-            <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:skills.form.formatLabel')}</div>
-            <select
-              className="settings-select"
-              style={{ maxWidth: 200 }}
-              value={form.outputFormat}
-              onChange={(e) => setForm((f) => ({ ...f, outputFormat: e.target.value as SkillOutputFormat }))}
-            >
-              {FORMAT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
           </div>
 
           {/* Action buttons */}

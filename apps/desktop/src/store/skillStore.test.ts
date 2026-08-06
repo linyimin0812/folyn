@@ -26,7 +26,7 @@ describe('useSkillStore.getSkill', () => {
 
 describe('useSkillStore.getAllSkills', () => {
   it('returns built-in skills merged with user skills', () => {
-    useSkillStore.getState().createSkill({ id: 'custom', name: 'C', content: 'x', version: '1.0.0', builtin: false, outputFormat: 'json', description: '' });
+    useSkillStore.getState().createSkill({ id: 'custom', name: 'C', content: 'x', version: '1.0.0', builtin: false, description: '' });
     const all = useSkillStore.getState().getAllSkills();
     const ids = all.map((s) => s.id).sort();
     expect(ids).toEqual(['clip-card', 'custom', 'github-analysis']);
@@ -45,7 +45,7 @@ describe('useSkillStore.getSkillForCapability', () => {
 
 describe('useSkillStore.setCapabilitySkill', () => {
   it('updates the capability → skill mapping', () => {
-    useSkillStore.getState().createSkill({ id: 'custom', name: 'C', content: 'x', version: '1.0.0', builtin: false, outputFormat: 'json', description: '' });
+    useSkillStore.getState().createSkill({ id: 'custom', name: 'C', content: 'x', version: '1.0.0', builtin: false, description: '' });
     useSkillStore.getState().setCapabilitySkill('clip', 'custom');
     expect(useSkillStore.getState().getSkillForCapability('clip')?.id).toBe('custom');
   });
@@ -74,7 +74,7 @@ describe('useSkillStore.resetSkill', () => {
   });
 
   it('does nothing for non-builtin ids', () => {
-    useSkillStore.getState().createSkill({ id: 'custom', name: 'C', content: 'x', version: '1.0.0', builtin: false, outputFormat: 'json', description: '' });
+    useSkillStore.getState().createSkill({ id: 'custom', name: 'C', content: 'x', version: '1.0.0', builtin: false, description: '' });
     useSkillStore.getState().resetSkill('custom');
     expect(useSkillStore.getState().getSkill('custom')?.name).toBe('C');
   });
@@ -82,19 +82,19 @@ describe('useSkillStore.resetSkill', () => {
 
 describe('useSkillStore.createSkill / deleteSkill', () => {
   it('creates a custom skill marked builtin=false', () => {
-    useSkillStore.getState().createSkill({ id: 'mine', name: 'M', content: 'x', version: '1.0.0', builtin: true, outputFormat: 'json', description: '' });
+    useSkillStore.getState().createSkill({ id: 'mine', name: 'M', content: 'x', version: '1.0.0', builtin: true, description: '' });
     const s = useSkillStore.getState().getSkill('mine')!;
     expect(s.builtin).toBe(false);
   });
 
   it('rejects creating a skill with a built-in id', () => {
     expect(() =>
-      useSkillStore.getState().createSkill({ id: 'clip-card', name: 'x', content: 'y', version: '1.0.0', builtin: false, outputFormat: 'json', description: '' }),
+      useSkillStore.getState().createSkill({ id: 'clip-card', name: 'x', content: 'y', version: '1.0.0', builtin: false, description: '' }),
     ).toThrow();
   });
 
   it('deletes a custom skill', () => {
-    useSkillStore.getState().createSkill({ id: 'mine', name: 'M', content: 'x', version: '1.0.0', builtin: false, outputFormat: 'json', description: '' });
+    useSkillStore.getState().createSkill({ id: 'mine', name: 'M', content: 'x', version: '1.0.0', builtin: false, description: '' });
     useSkillStore.getState().deleteSkill('mine');
     expect(useSkillStore.getState().getSkill('mine')).toBeUndefined();
   });
@@ -106,7 +106,7 @@ describe('useSkillStore.createSkill / deleteSkill', () => {
 
 describe('useSkillStore.importSkill / exportSkill', () => {
   it('round-trips a custom skill through export and import', () => {
-    useSkillStore.getState().createSkill({ id: 'mine', name: 'M', content: 'body', version: '1.0.0', builtin: false, outputFormat: 'json', description: 'd' });
+    useSkillStore.getState().createSkill({ id: 'mine', name: 'M', content: 'body', version: '1.0.0', builtin: false, description: 'd' });
     const json = useSkillStore.getState().exportSkill('mine');
     useSkillStore.getState().deleteSkill('mine');
     useSkillStore.getState().importSkill(json);
@@ -122,7 +122,7 @@ describe('useSkillStore.importSkill / exportSkill', () => {
   });
 
   it('importSkill on a built-in id updates the built-in skill', () => {
-    useSkillStore.getState().importSkill(JSON.stringify({ id: 'clip-card', name: 'Imported', content: 'x', version: '1.0.0', outputFormat: 'json' }));
+    useSkillStore.getState().importSkill(JSON.stringify({ id: 'clip-card', name: 'Imported', content: 'x', version: '1.0.0' }));
     expect(useSkillStore.getState().getSkill('clip-card')?.name).toBe('Imported');
   });
 
