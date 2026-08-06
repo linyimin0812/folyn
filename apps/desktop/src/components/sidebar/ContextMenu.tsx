@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EyeOff } from 'lucide-react';
 import { useVaultStore } from '@/store/vaultStore';
@@ -39,6 +39,12 @@ const fileTypeLabelKeys: Record<string, string> = {
   code: 'sidebar:contextMenu.fileType.code',
 };
 
+const NEW_FILE_GROUPS: string[][] = [
+  ['markdown', 'rich-text', 'csv', 'json'],
+  ['svg'],
+  ['mmap', 'dbml', 'drawio', 'excalidraw'],
+];
+
 export function ContextMenu({
   menu,
   selectedPaths,
@@ -56,6 +62,10 @@ export function ContextMenu({
     const handlers = getAllHandlers();
     return handlers.filter((h) => h.supportedViewModes.includes('edit') && h.extensions.length > 0);
   }, []);
+  const creatableById = useMemo(
+    () => new Map(creatableTypes.map((handler) => [handler.id, handler])),
+    [creatableTypes],
+  );
 
   const copyToClipboard = useCallback((text: string) => {
     navigator.clipboard.writeText(text);
@@ -102,18 +112,27 @@ export function ContextMenu({
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><ThemeIcon name="addFile" size={14} />{t('sidebar:contextMenu.newFile')}</span>
             <span className="text-[10px] text-t3 ml-2">&#9656;</span>
             <div className="hidden group-hover/sub:block absolute left-full top-0 min-w-[180px] w-max py-1 bg-panel border border-brd rounded-lg shadow-[0_4px_16px_rgba(0,0,0,.12)] z-[1001]">
-              {creatableTypes.map((handler) => (
-                <button
-                  key={handler.id}
-                  className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov whitespace-nowrap"
-                  onClick={() => {
-                    onClose();
-                    onStartNewItem('file', menu.path, handler.extensions[0]);
-                  }}
-                >
-                  <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 4 }}>{handler.icon ?? <FileIcon filename={`file.${handler.extensions[0]}`} />}</span>
-                  {(fileTypeLabelKeys[handler.id] ? t(fileTypeLabelKeys[handler.id]) : handler.id)} (.{handler.extensions[0]})
-                </button>
+              {NEW_FILE_GROUPS.map((group, groupIndex) => (
+                <Fragment key={group.join('-')}>
+                  {groupIndex > 0 && <div className="h-px mx-2 my-1 bg-brd" />}
+                  {group.map((handlerId) => {
+                    const handler = creatableById.get(handlerId);
+                    if (!handler) return null;
+                    return (
+                      <button
+                        key={handler.id}
+                        className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov whitespace-nowrap"
+                        onClick={() => {
+                          onClose();
+                          onStartNewItem('file', menu.path, handler.extensions[0]);
+                        }}
+                      >
+                        <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 4 }}>{handler.icon ?? <FileIcon filename={`file.${handler.extensions[0]}`} />}</span>
+                        {(fileTypeLabelKeys[handler.id] ? t(fileTypeLabelKeys[handler.id]) : handler.id)} (.{handler.extensions[0]})
+                      </button>
+                    );
+                  })}
+                </Fragment>
               ))}
               <div className="h-px mx-2 my-1 bg-brd" />
               <button
