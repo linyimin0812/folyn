@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Settings2 } from 'lucide-react';
 import { DARK_THEME, THEME } from 'mind-elixir';
@@ -22,10 +23,12 @@ import {
   readRuntimeMapStyle,
   resolveCanvasPalette,
   PRESET_STYLES,
+  CREATE_STYLES,
   MONO_PALETTE,
   CANVAS_PALETTES,
   type MmapNodeStyle,
   type MmapMapStyle,
+  type MmapSkeleton,
   type MmapDirection,
 } from './outlineConverter';
 import { resolveBasePath } from '@/utils/pathResolver';
@@ -70,7 +73,316 @@ function setNodeStyleOnObj(node: unknown, style: MmapNodeStyle | undefined): voi
   (node as { style?: MmapNodeStyle }).style = style;
 }
 
+// ponytail: skeleton (骨架) layouts. mind-elixir has no native skeleton
+// concept, so the canvas maps each preset to a direction plus (where needed)
+// a scoped CSS override and custom branch generators:
+//  - org (组织结构图): top-down tree with vertical elbow connectors
+//  - tree (树型图): right-branching with right-angle elbow connectors
+//  - fishbone (鱼骨图): right spine, first-level branches alternate up/down
+//  - timeline (时间轴): vertical spine with stub lines into each first-level node
+//  - bracket (括号图): right-branching with a bracket overlay that spans
+//    each child group (leader to the bracket, stubs into the children)
+const SKELETON_CSS = `
+  .map-container[data-mmap-skeleton="org"] .map-canvas me-nodes {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 24px;
+  }
+  .map-container[data-mmap-skeleton="org"] me-root {
+    margin: 8px 0 32px;
+  }
+  .map-container[data-mmap-skeleton="org"] me-main {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-start;
+    width: max-content;
+    margin: 0;
+  }
+  .map-container[data-mmap-skeleton="org"] me-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 14px;
+  }
+  .map-container[data-mmap-skeleton="org"] me-parent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+  }
+  .map-container[data-mmap-skeleton="org"] me-wrapper me-children {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-start;
+    margin-top: 18px;
+  }
+  .map-container[data-mmap-skeleton="fishbone"] .map-canvas me-nodes {
+    padding: 64px 32px;
+  }
+  .map-container[data-mmap-skeleton="fishbone"] me-root {
+    margin: 0 44px 0 0;
+  }
+  .map-container[data-mmap-skeleton="fishbone"] me-main {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin: 0;
+  }
+  .map-container[data-mmap-skeleton="fishbone"] me-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 16px;
+  }
+  .map-container[data-mmap-skeleton="fishbone"] me-wrapper me-children {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .map-container[data-mmap-skeleton="fishbone"] me-main > me-wrapper:nth-child(odd) {
+    margin-top: -56px;
+    flex-direction: column-reverse;
+  }
+  .map-container[data-mmap-skeleton="fishbone"] me-main > me-wrapper:nth-child(even) {
+    margin-top: 56px;
+  }
+
+  .map-container[data-mmap-skeleton="timeline"] .map-canvas me-nodes {
+    padding: 24px 40px;
+  }
+  .map-container[data-mmap-skeleton="timeline"] me-root {
+    margin: 0 48px 0 0;
+  }
+
+  .map-container[data-mmap-skeleton="tree"] .map-canvas me-nodes,
+  .map-container[data-mmap-skeleton="bracket"] .map-canvas me-nodes {
+    padding: 24px;
+  }
+  .map-container[data-mmap-skeleton="tree"] me-children {
+    margin-left: 56px;
+  }
+  .map-container[data-mmap-skeleton="tree"] me-parent {
+    padding-left: 0;
+  }
+  .map-container[data-mmap-skeleton="tree"] .map-canvas {
+    --node-gap-y: 48px;
+    --main-gap-y: 90px;
+  }
+  .map-container[data-mmap-skeleton="tree"] me-wrapper:has(> me-children > me-wrapper) > me-parent > me-tpc {
+    border: 2px solid var(--main-color);
+    background-color: var(--main-bgcolor);
+    border-radius: var(--main-radius);
+  }
+`;
+
+type SkeletonBranchParams = {
+  pT: number;
+  pL: number;
+  pW: number;
+  pH: number;
+  cT: number;
+  cL: number;
+  cW: number;
+  cH: number;
+};
+
+function orgBranch({ pT, pL, pW, pH, cT, cL, cW }: SkeletonBranchParams): string {
+  const x1 = pL + pW / 2;
+  const y1 = pT + pH;
+  const x2 = cL + cW / 2;
+  const y2 = cT;
+  const midY = y1 + (y2 - y1) / 2;
+  return `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`;
+}
+
+function slantedBranch({ pT, pL, pW, pH, cT, cL, cH }: SkeletonBranchParams): string {
+  const x1 = pL + pW;
+  const y1 = pT + pH / 2;
+  const x2 = cL;
+  const y2 = cT + cH / 2;
+  return `M ${x1} ${y1} L ${x2} ${y2}`;
+}
+
+function treeBranch({ pT, pL, pW, pH, cT, cL, cH }: SkeletonBranchParams): string {
+  const x1 = pL + pW;
+  const y1 = pT + pH / 2;
+  const x2 = cL;
+  const y2 = cT + cH / 2;
+  // Lines always leave the parent's right-center and enter the child's
+  // left-center. Only when the two centers are already aligned does the
+  // connector stay a single horizontal line; otherwise it is a clean
+  // orthogonal elbow. No diagonals.
+  if (Math.abs(y2 - y1) < 2) {
+    return `M ${x1} ${y1} L ${x2} ${y2}`;
+  }
+  const midX = x1 + (x2 - x1) / 2;
+  return `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
+}
+
+function verticalBranch({ pT, pL, pW, pH, cT, cL, cW }: SkeletonBranchParams): string {
+  const x1 = pL + pW / 2;
+  const y1 = pT + pH;
+  const x2 = cL + cW / 2;
+  const y2 = cT;
+  const midY = y1 + (y2 - y1) / 2;
+  return `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`;
+}
+
+function timelineMain({ pT, pL, pW, pH, cT, cL, cH }: SkeletonBranchParams): string {
+  const x1 = pL + pW;
+  const yRoot = pT + pH / 2;
+  const yChild = cT + cH / 2;
+  const x2 = cL;
+  return `M ${x1} ${yRoot} V ${yChild} H ${x2}`;
+}
+
+// Main/sub branch generators per skeleton. 'mind' (and 'bracket', which
+// draws its own overlay) keep the captured mind-elixir defaults.
+const SKELETON_BRANCHES: Partial<Record<MmapSkeleton, (p: SkeletonBranchParams) => string>> = {
+  org: orgBranch,
+  fishbone: slantedBranch,
+  tree: treeBranch,
+  timeline: timelineMain,
+};
+
+function ensureSkeletonStyle(container: HTMLElement): void {
+  const existing = container.querySelector<HTMLStyleElement>(
+    'style[data-mmap-skeleton-style]',
+  );
+  if (existing) return;
+  const style = document.createElement('style');
+  style.dataset.mmapSkeletonStyle = '';
+  style.textContent = SKELETON_CSS;
+  container.appendChild(style);
+}
+
+// ponytail: bracket-map connectors. mind-elixir draws one path per parent-child
+// pair, but a real bracket needs the whole sibling group (vertical span + a
+// stub into every child). We draw it as an overlay after linkDiv and hide the
+// default branch lines while the bracket skeleton is active.
+function offsetInNodes(nodes: HTMLElement, el: HTMLElement): { x: number; y: number } {
+  let x = 0;
+  let y = 0;
+  let cur: HTMLElement | null = el;
+  while (cur && cur !== nodes) {
+    x += cur.offsetLeft;
+    y += cur.offsetTop;
+    cur = cur.offsetParent as HTMLElement | null;
+  }
+  return { x, y };
+}
+
+function removeBracketOverlay(inst: MindElixirInstance): void {
+  inst.container.querySelector('svg.mmap-bracket-lines')?.remove();
+  const lines = inst.container.querySelector<HTMLElement>('svg.lines');
+  if (lines) lines.style.display = '';
+}
+
+// ponytail: give every non-leaf node in the tree skeleton the same box as the
+// main (first-level) nodes. mind-elixir only colors first-level borders with
+// the branch palette; this pass propagates that color down to deeper branches
+// so all boxes stay coordinated.
+function applyTreeNonLeafBoxes(inst: MindElixirInstance): void {
+  const palette = inst.theme.palette;
+  if (!palette?.length) return;
+  inst.container.querySelectorAll('me-main > me-wrapper').forEach((mainWrapper, i) => {
+    const rootTpc = mainWrapper.querySelector<HTMLElement>(
+      ':scope > me-parent > me-tpc',
+    );
+    if (!rootTpc) return;
+    const color =
+      (rootTpc as HTMLElement & { nodeObj?: { branchColor?: string } }).nodeObj
+        ?.branchColor || palette[i % palette.length];
+    mainWrapper.querySelectorAll('me-wrapper').forEach((descWrapper) => {
+      const tpc = descWrapper.querySelector<HTMLElement>(
+        ':scope > me-parent > me-tpc',
+      );
+      if (
+        tpc &&
+        descWrapper.querySelector(':scope > me-children > me-wrapper')
+      ) {
+        tpc.style.borderColor = color;
+      }
+    });
+  });
+}
+
+function drawBracketConnectors(inst: MindElixirInstance): void {
+  const nodes = inst.container.querySelector<HTMLElement>('me-nodes');
+  if (!nodes) return;
+  const lines = inst.container.querySelector<HTMLElement>('svg.lines');
+  if (lines) lines.style.display = 'none';
+  inst.container.querySelectorAll('svg.subLines').forEach((el) => el.remove());
+  const ns = 'http://www.w3.org/2000/svg';
+  let svg = inst.container.querySelector<SVGSVGElement>('svg.mmap-bracket-lines');
+  if (!svg) {
+    svg = document.createElementNS(ns, 'svg');
+    svg.classList.add('mmap-bracket-lines');
+    svg.setAttribute('overflow', 'visible');
+    nodes.appendChild(svg);
+  }
+  svg.innerHTML = '';
+  const drawGroup = (
+    parentTpc: HTMLElement | null,
+    childTpcs: HTMLElement[],
+  ) => {
+    if (!parentTpc || childTpcs.length === 0) return;
+    const p = {
+      ...offsetInNodes(nodes, parentTpc),
+      w: parentTpc.offsetWidth,
+      h: parentTpc.offsetHeight,
+    };
+    const children = childTpcs.map((c) => ({
+      ...offsetInNodes(nodes, c),
+      w: c.offsetWidth,
+      h: c.offsetHeight,
+    }));
+    const busX = p.x + p.w + 12;
+    const topY = Math.min(...children.map((c) => c.y));
+    const bottomY = Math.max(...children.map((c) => c.y + c.h));
+    const color = getComputedStyle(parentTpc).borderColor || '#666';
+    const d = [
+      `M ${p.x + p.w} ${p.y + p.h / 2} L ${busX} ${p.y + p.h / 2}`,
+      `M ${busX} ${topY} L ${busX} ${bottomY}`,
+      ...children.map(
+        (c) => `M ${busX} ${c.y + c.h / 2} L ${c.x} ${c.y + c.h / 2}`,
+      ),
+    ].join(' ');
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('stroke', color);
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(path);
+  };
+  const rootTpc = inst.container.querySelector<HTMLElement>('me-root > me-tpc');
+  const firstLevelTpcs = Array.from(
+    inst.container.querySelectorAll<HTMLElement>(
+      'me-main > me-wrapper > me-parent > me-tpc',
+    ),
+  );
+  drawGroup(rootTpc, firstLevelTpcs);
+  inst.container.querySelectorAll('me-wrapper').forEach((wrapper) => {
+    const parentTpc = wrapper.querySelector<HTMLElement>(
+      ':scope > me-parent > me-tpc',
+    );
+    const childTpcs = Array.from(
+      wrapper.querySelectorAll<HTMLElement>(
+        ':scope > me-children > me-wrapper > me-parent > me-tpc',
+      ),
+    );
+    drawGroup(parentTpc, childTpcs);
+  });
+}
 export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }: PreviewProps) {
+  const { t } = useTranslation('mmap');
   const elRef = useRef<HTMLDivElement>(null);
   const instRef = useRef<MindElixirInstance | null>(null);
   const lastEmittedRef = useRef<string | null>(null);
@@ -85,6 +397,12 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
   // the latest without re-binding the operation listener.
   const [canvasStyle, setCanvasStyle] = useState<MmapMapStyle>({});
   const canvasStyleRef = useRef<MmapMapStyle>({});
+  // ponytail: the default branch-line generators captured after the first
+  // theme apply. changeTheme() resets them to mind-elixir's defaults, and the
+  // org skeleton swaps in its own vertical connectors, so we need the originals
+  // to restore when switching back to a non-org skeleton.
+  const defaultMainBranchRef = useRef<MindElixirInstance['generateMainBranch']>(undefined);
+  const defaultSubBranchRef = useRef<MindElixirInstance['generateSubBranch']>(undefined);
   // ponytail: single merged "样式" panel with two tabs (画布样式 / 节点样式).
   // Replaces the old `showCanvasPanel` + `showNodePanel` pair. The panel
   // only opens via the toolbar button — node clicks don't auto-open it
@@ -153,12 +471,41 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
     inst.linkDiv();
   }, []);
 
+  // ponytail: apply the skeleton (骨架) layout. Each non-default preset
+  // switches the container's data attribute (driving scoped CSS) and installs
+  // matching branch generators; 'mind' (and 'bracket', which draws its own
+  // overlay) keep the captured mind-elixir defaults. timeline sub-branches
+  // and fishbone sub-branches use their own vertical connectors.
+  const applySkeleton = useCallback((inst: MindElixirInstance, skeleton: MmapSkeleton | undefined) => {
+    const name = skeleton && skeleton !== 'mind' ? skeleton : 'mind';
+    if (name === 'mind') {
+      delete inst.container.dataset.mmapSkeleton;
+    } else {
+      inst.container.dataset.mmapSkeleton = name;
+      ensureSkeletonStyle(inst.container);
+    }
+    const gen = SKELETON_BRANCHES[name];
+    if (gen) {
+      inst.generateMainBranch = gen;
+      inst.generateSubBranch =
+        name === 'timeline' ? treeBranch : name === 'fishbone' ? verticalBranch : gen;
+      return;
+    }
+    if (defaultMainBranchRef.current) {
+      inst.generateMainBranch = defaultMainBranchRef.current;
+    }
+    if (defaultSubBranchRef.current) {
+      inst.generateSubBranch = defaultSubBranchRef.current;
+    }
+    if (name !== 'bracket') removeBracketOverlay(inst);
+  }, []);
+
   // ponytail: apply canvas-level runtime-only mapStyle (palette preset,
-  // background color, sibling alignment, topic spacing) to the mind-elixir
-  // instance. Called after init + after every theme swap (changeTheme resets
-  // every cssVar on container.style, so `--bgcolor`/`--node-gap-y` overrides
-  // must be re-applied). Does NOT touch rainbow/direction/compact — those
-  // live in `inst` and round-trip via MindElixirData.
+  // background color, sibling alignment, topic spacing, skeleton) to the
+  // mind-elixir instance. Called after init + after every theme swap
+  // (changeTheme resets every cssVar on container.style, so overrides must be
+  // re-applied). rainbow/compact live in `inst` and round-trip via
+  // MindElixirData; direction is only touched when a skeleton implies it.
   //
   // Ceilings:
   //  - `palette` overrides `theme.palette` directly (same path as the
@@ -194,12 +541,26 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
       inst.container.style.setProperty('--node-gap-y', px);
       inst.container.style.setProperty('--main-gap-y', px);
     }
+    // Skeleton presets imply a direction: mind = both sides; the rest are
+    // right-branching (org/fishbone/timeline/tree/bracket). Enforce it here so
+    // a stale data.direction can't fight the skeleton.
+    if (
+      ms?.skeleton === 'org' ||
+      ms?.skeleton === 'tree' ||
+      ms?.skeleton === 'fishbone' ||
+      ms?.skeleton === 'timeline' ||
+      ms?.skeleton === 'bracket'
+    ) {
+      if (inst.direction !== 1) inst.initRight();
+    } else if (ms?.skeleton === 'mind') {
+      if (inst.direction !== 2) inst.initSide();
+    }
+    applySkeleton(inst, ms?.skeleton);
     inst.layout();
     inst.linkDiv();
     inst.toCenter();
   }, []);
 
-  // ponytail: event delegation over the canvas instead of per-img onclick.
   // mind-elixir renders topic HTML via innerHTML, so React can't bind onClick
   // on those <img> nodes. One listener on the container catches them all;
   // upgrade to a portal-based lightbox lib only if zoom/pan is needed.
@@ -344,6 +705,20 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
       // patch — fine for MVP; if large maps stutter, diff+patch by node id.
       inst.bus.addListener('operation', syncOut);
 
+      // ponytail: redraw bracket-map connectors whenever mind-elixir finishes a
+      // linkDiv pass (refresh / theme / add / delete all funnel through it).
+      // The overlay hides the default branch lines and draws one bracket per
+      // sibling group, so it must run after the lines exist.
+      inst.bus.addListener('linkDiv', () => {
+        const skeleton = canvasStyleRef.current.skeleton;
+        if (skeleton === 'bracket') {
+          drawBracketConnectors(inst);
+        }
+        if (skeleton === 'tree') {
+          applyTreeNonLeafBoxes(inst);
+        }
+      });
+
       // ponytail: mind-elixir's beginEdit (Pt in MindElixir.js) places
       // #input-box at the topic element's top-left (`top: offsetTop`), but
       // the branch line connects to the topic's vertical center
@@ -391,6 +766,33 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
         },
       );
 
+      // ponytail: create-style operation listener — when a createStyle preset
+      // is selected, apply its style to newly created nodes (addChild,
+      // insertSibling, insertParent). Uses rAF so mind-elixir's DOM render
+      // completes before we query for the new topic element.
+      inst.bus.addListener(
+        'operation',
+        (op: { name: string; obj?: { id?: string } }) => {
+          if (
+            op.name !== 'addChild' &&
+            op.name !== 'insertSibling' &&
+            op.name !== 'insertParent'
+          ) return;
+          const createStyleName = canvasStyleRef.current.createStyle;
+          if (!createStyleName || createStyleName === 'default' || !op.obj?.id) return;
+          const preset = CREATE_STYLES[createStyleName];
+          if (!preset || Object.keys(preset.style).length === 0) return;
+          requestAnimationFrame(() => {
+            const inst = instRef.current;
+            const tpc = inst?.container.querySelector<HTMLElement>(
+              `me-tpc[data-nodeid="me${op.obj!.id}"]`,
+            );
+            if (!tpc) return;
+            inst!.reshapeNode(tpc as never, { style: { ...preset.style } } as never);
+          });
+        },
+      );
+
       const data = outlineToMindElixirData(toSafeSrc(content));
       inst.init(data);
       // ponytail: re-apply dark/light + rainbow-OFF preservation. `init`
@@ -399,15 +801,19 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
       // reset the canvas to light even in dark mode. This call restores the
       // resolved dark/light cssVar and re-applies the mono palette if needed.
       applyThemeToInst(isDark);
+      // Capture the theme-resolved default generators once; the org skeleton
+      // swaps these out and changeTheme() resets them on every theme flip.
+      defaultMainBranchRef.current = inst.generateMainBranch;
+      defaultSubBranchRef.current = inst.generateSubBranch;
       // ponytail: read runtime-only canvas-level mapStyle (palette/background/
-      // alignment/topicSpacing) from the source meta and apply them post-init
+      // alignment/topicSpacing/skeleton) from the source meta and apply them post-init
       // + post-theme-swap (changeTheme resets all cssVars). direction/compact
       // are already in `data` and applied by init.
       const runtimeMs = readRuntimeMapStyle(toSafeSrc(content));
       canvasStyleRef.current = runtimeMs;
       setCanvasStyle(runtimeMs);
-      applyCanvasMapStyle(runtimeMs);
       instRef.current = inst;
+      applyCanvasMapStyle(runtimeMs);
 
       el.addEventListener('load', onImgLoad, true);
       // Catch font swaps (e.g. Microsoft YaHei fallback → real face) which
@@ -570,8 +976,47 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
     if (d === 0) inst.initLeft();
     else if (d === 1) inst.initRight();
     else inst.initSide();
+    // A manual direction change replaces the skeleton's implied layout;
+    // fall back to the standard mind map so the two settings can't conflict.
+    const next = { ...canvasStyleRef.current };
+    if (next.skeleton) {
+      delete next.skeleton;
+      canvasStyleRef.current = next;
+      setCanvasStyle(next);
+      applySkeleton(inst, 'mind');
+      inst.linkDiv();
+    }
     syncOutRef.current?.();
-  }, []);
+  }, [applySkeleton]);
+
+  // ponytail: skeleton (骨架) mutator. mind switches back to the classic
+  // both-sides map; every other preset is right-branching (org layers the
+  // top-down CSS + connectors on top of RIGHT).
+  const setSkeleton = useCallback((skeleton: MmapSkeleton) => {
+    const inst = instRef.current;
+    if (!inst) return;
+    if (skeleton === 'mind') {
+      inst.initSide();
+    } else if (
+      skeleton === 'org' ||
+      skeleton === 'tree' ||
+      skeleton === 'fishbone' ||
+      skeleton === 'timeline' ||
+      skeleton === 'bracket'
+    ) {
+      if (inst.direction !== 1) inst.initRight();
+    }
+    applySkeleton(inst, skeleton);
+    const next = { ...canvasStyleRef.current };
+    if (skeleton === 'mind') delete next.skeleton;
+    else next.skeleton = skeleton;
+    canvasStyleRef.current = next;
+    setCanvasStyle(next);
+    inst.layout();
+    inst.linkDiv();
+    inst.toCenter();
+    syncOutRef.current?.();
+  }, [applySkeleton]);
 
   // ponytail: palette preset mutator — swap `inst.theme.palette` to the
   // preset's color array + redraw branches. Picking a preset implies
@@ -652,6 +1097,66 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
     syncOutRef.current?.();
   }, []);
 
+  // ponytail: compact (骨架) mutator — toggles mind-elixir's compact mode
+  // via changeCompact, which adjusts node spacing. After toggling, re-layout
+  // and re-center the canvas. syncOut so the compact field persists.
+  const setCompact = useCallback((on: boolean) => {
+    const inst = instRef.current;
+    if (!inst) return;
+    inst.changeCompact(on);
+    inst.layout();
+    inst.linkDiv();
+    inst.toCenter();
+    syncOutRef.current?.();
+  }, []);
+
+  // ponytail: create-style (创建风格) mutator — stores the selected preset
+  // name in canvasStyleRef. The actual style application happens in the
+  // operation listener (see mount effect), which catches addChild/insertSibling
+  // /insertParent and applies the preset's style to the new node.
+  const setCreateStyle = useCallback((name: string | undefined) => {
+    const next = { ...canvasStyleRef.current };
+    if (name && name !== 'default') next.createStyle = name;
+    else delete next.createStyle;
+    canvasStyleRef.current = next;
+    setCanvasStyle(next);
+    syncOutRef.current?.();
+  }, []);
+
+  // ponytail: free-layout (分支自由布局) mutator — enables/disables free drag
+  // positioning. When enabled, node positions are saved before each layout
+  // and restored after, so the auto-layout doesn't reset user-placed positions.
+  const freeLayoutPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+
+  const saveAllPositions = useCallback((inst: MindElixirInstance) => {
+    const pos = new Map<string, { x: number; y: number }>();
+    const data = inst.getData();
+    const walk = (node: { id?: string; left?: number; top?: number; children?: unknown[] }) => {
+      if (node.id && node.left !== undefined && node.top !== undefined) {
+        pos.set(node.id, { x: node.left, y: node.top });
+      }
+      for (const child of node.children ?? []) walk(child as never);
+    };
+    walk(data.nodeData as never);
+    freeLayoutPositionsRef.current = pos;
+  }, []);
+
+  const setFreeLayout = useCallback((on: boolean) => {
+    const inst = instRef.current;
+    if (!inst) return;
+    if (on) {
+      saveAllPositions(inst);
+    } else {
+      freeLayoutPositionsRef.current = new Map();
+    }
+    const next = { ...canvasStyleRef.current };
+    if (on) next.freeLayout = true;
+    else delete next.freeLayout;
+    canvasStyleRef.current = next;
+    setCanvasStyle(next);
+    syncOutRef.current?.();
+  }, [saveAllPositions]);
+
   // Read the currently-selected node's style for panel display. Re-reads
   // on every render so we always show the latest state (forceStyleReread
   // bumps a dummy state counter to trigger a re-render after a style
@@ -685,31 +1190,31 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
           of elRef, not a descendant, so mind-elixir's own listeners never
           see clicks here. */}
       <div
-        className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 z-[800]"
+        className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5 z-[800]"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
-          className={`h-8 w-8 rounded border border-brd bg-panel text-t1 hover:bg-hov shadow-sm flex items-center justify-center ${showStylePanel ? 'border-acc text-acc' : ''}`}
+          className={`h-8 w-8 rounded border border-brd bg-panel text-t1 hover:bg-hov shadow-sm flex items-center justify-center active:scale-[0.96] transition-transform ${showStylePanel ? 'border-acc text-acc' : ''}`}
           onClick={() => setShowStylePanel((v) => !v)}
-          title="样式"
+          title={t('toolbar.style')}
         >
           <Settings2 size={14} />
         </button>
         {([
-          { d: 0 as MmapDirection, key: 'left' as const, label: '向左' },
-          { d: 1 as MmapDirection, key: 'right' as const, label: '向右' },
-          { d: 2 as MmapDirection, key: 'side' as const, label: '双侧' },
-        ]).map(({ d, key, label }) => {
+          { d: 0 as MmapDirection, key: 'left' as const },
+          { d: 1 as MmapDirection, key: 'right' as const },
+          { d: 2 as MmapDirection, key: 'side' as const },
+        ]).map(({ d, key }) => {
           const active = liveDirection === d;
           return (
             <button
               key={d}
               type="button"
-              className={`h-8 w-8 rounded border border-brd bg-panel shadow-sm flex items-center justify-center ${active ? 'border-acc text-acc' : 'text-t1 hover:bg-hov'}`}
+              className={`h-8 w-8 rounded border border-brd bg-panel shadow-sm flex items-center justify-center active:scale-[0.96] transition-transform ${active ? 'border-acc text-acc' : 'text-t1 hover:bg-hov'}`}
               onClick={() => setDirection(d)}
-              title={`方向：${label}`}
+              title={t('toolbar.direction', { dir: t('canvas.direction' + (key === 'side' ? 'Both' : key.charAt(0).toUpperCase() + key.slice(1))) })}
             >
               <svg width="16" height="16" viewBox="0 0 1024 1024" fill="currentColor">
                 <path d={DIR_ICON_PATHS[key]} />
@@ -734,6 +1239,11 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
           onBackground={setCanvasBackground}
           onAlignment={setAlignment}
           onTopicSpacing={setTopicSpacing}
+          skeleton={canvasStyle.skeleton ?? 'mind'}
+          onSkeleton={setSkeleton}
+          onCompact={setCompact}
+          onCreateStyle={setCreateStyle}
+          onFreeLayout={setFreeLayout}
           // node-tab props
           hasSelection={!!selectedNodeId}
           nodeStyle={selectedStyle}
@@ -775,14 +1285,10 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
 // (`--panel`, `--surf`, `--brd`, `--hov`, `--acc`, `--t1`/`--t2`/`--t3`)
 // so light/dark themes adapt automatically.
 //
-// Ceiling: 连线线宽 (line width) and 编号 (numbering) controls are NOT
-// implemented — mind-elixir hardcodes main/sub branch stroke widths (3/2
-// in MindElixir.js) and has no built-in per-node or map-level numbering
-// API. Re-implementing either means overriding `generateMainBranch` /
-// `generateSubBranch` (line width) or post-processing the topic text via
-// the `markdown:` callback (numbering — pollutes the source topic text).
-// Add when a real need lands; the panel's `lineWidth`/`numbering` rows
-// are placeholders that document the gap, not working controls.
+// Ceiling: 连线线宽 (line width) control is NOT implemented — mind-elixir
+// hardcodes main/sub branch stroke widths (3/2 in MindElixir.js).
+// Overriding would mean patching generateMainBranch / generateSubBranch.
+// The panel's line-width row is a placeholder that documents the gap.
 interface StylingPanelProps {
   style: MmapNodeStyle;
   rainbowOn: boolean;
@@ -800,12 +1306,13 @@ function StylingPanel({
   onReset,
   onRainbowToggle,
 }: StylingPanelProps) {
-  const labelCls = 'text-t3 text-[11px] font-medium w-[44px] shrink-0';
-  const rowCls = 'flex items-center gap-1.5';
+  const { t } = useTranslation('mmap');
+  const labelCls = 'text-t3 text-[12px] font-medium w-[46px] shrink-0';
+  const rowCls = 'flex items-center gap-2';
   const inputCls =
     'bg-surf2 border border-brd rounded px-1 py-0.5 text-[11px] text-t1 outline-none focus:border-acc';
   const btnCls =
-    'h-[20px] min-w-[20px] px-1 rounded border border-brd bg-surf2 text-[11px] text-t1 hover:bg-hov';
+    'h-[22px] min-w-[22px] px-1 rounded border border-brd bg-surf2 text-[12px] text-t1 hover:bg-hov';
   const btnActiveCls = 'border-acc bg-accdim text-acc';
 
   const isBold = style.fontWeight === 'bold';
@@ -830,30 +1337,30 @@ function StylingPanel({
 
   return (
     <>
-      <div className="px-2.5 py-2 flex flex-col gap-1.5 border-b border-brd">
+      <div className="px-3 py-2.5 flex flex-col gap-2 border-b border-brd">
         <div className={rowCls}>
-          <span className={labelCls}>字体</span>
+          <span className={labelCls}>{t('node.font')}</span>
           <select
             className={`${inputCls} flex-1`}
             value={style.fontFamily ?? DEFAULT_FONT_FAMILY}
             onChange={(e) => onPatch({ fontFamily: e.target.value })}
           >
-            <option value="Microsoft YaHei">微软雅黑</option>
-            <option value="PingFang SC">苹方</option>
-            <option value="SimSun">宋体</option>
-            <option value="SimHei">黑体</option>
+            <option value="Microsoft YaHei">{t('node.fontMicrosoft')}</option>
+            <option value="PingFang SC">{t('node.fontPingfang')}</option>
+            <option value="SimSun">{t('node.fontSimsun')}</option>
+            <option value="SimHei">{t('node.fontSimhei')}</option>
             <option value="Helvetica">Helvetica</option>
             <option value="Arial">Arial</option>
             <option value="monospace">monospace</option>
           </select>
         </div>
         <div className={rowCls}>
-          <span className={labelCls}>字号</span>
+          <span className={labelCls}>{t('node.fontSize')}</span>
           <input
             type="number"
             min={8}
             max={48}
-            className={`${inputCls} w-[52px]`}
+            className={`${inputCls} w-[56px]`}
             value={style.fontSize ?? DEFAULT_FONT_SIZE}
             onChange={(e) =>
               onPatch({ fontSize: `${e.target.value || '14'}px` })
@@ -863,7 +1370,7 @@ function StylingPanel({
             type="button"
             className={`${btnCls} font-bold ${isBold ? btnActiveCls : ''}`}
             onClick={() => onPatch({ fontWeight: 'bold' })}
-            title="加粗"
+            title={t('node.bold')}
           >
             B
           </button>
@@ -871,35 +1378,35 @@ function StylingPanel({
             type="button"
             className={`${btnCls} italic ${isItalic ? btnActiveCls : ''}`}
             onClick={() => onPatch({ fontStyle: 'italic' })}
-            title="斜体"
+            title={t('node.italic')}
           >
             I
           </button>
           <input
             type="color"
-            className="w-[20px] h-[20px] p-0 border border-brd rounded bg-surf2 cursor-pointer"
+            className="w-[22px] h-[22px] p-0 border border-brd rounded bg-surf2 cursor-pointer"
             value={style.color ?? '#18181b'}
             onChange={(e) => onPatch({ color: e.target.value })}
-            title="文本颜色"
+            title={t('node.textColor')}
           />
         </div>
       </div>
 
-      <div className="px-2.5 py-2 flex flex-col gap-1.5 border-b border-brd">
+      <div className="px-3 py-2.5 flex flex-col gap-2 border-b border-brd">
         <div className={rowCls}>
-          <span className={labelCls}>填充</span>
+          <span className={labelCls}>{t('node.fill')}</span>
           <input
             type="color"
-            className="w-[20px] h-[20px] p-0 border border-brd rounded bg-surf2 cursor-pointer"
+            className="w-[22px] h-[22px] p-0 border border-brd rounded bg-surf2 cursor-pointer"
             value={style.background ?? '#ffffff'}
             onChange={(e) => onPatch({ background: e.target.value })}
           />
         </div>
         <div className={rowCls}>
-          <span className={labelCls}>边框</span>
+          <span className={labelCls}>{t('node.border')}</span>
           <input
             type="color"
-            className="w-[20px] h-[20px] p-0 border border-brd rounded bg-surf2 cursor-pointer"
+            className="w-[22px] h-[22px] p-0 border border-brd rounded bg-surf2 cursor-pointer"
             value={borderColor}
             onChange={(e) => applyBorder(borderWidth, e.target.value)}
           />
@@ -907,19 +1414,19 @@ function StylingPanel({
             type="number"
             min={0}
             max={20}
-            className={`${inputCls} w-[44px]`}
+            className={`${inputCls} w-[48px]`}
             value={borderWidth}
             onChange={(e) => applyBorder(e.target.value, borderColor)}
           />
           <span className="text-t3 text-[10px]">px</span>
         </div>
         <div className={rowCls}>
-          <span className={labelCls}>固定宽</span>
+          <span className={labelCls}>{t('node.fixedWidth')}</span>
           <input
             type="number"
             min={40}
             max={600}
-            className={`${inputCls} w-[52px]`}
+            className={`${inputCls} w-[56px]`}
             value={
               style.width ? style.width.replace(/px$/, '') : DEFAULT_FIXED_WIDTH
             }
@@ -931,41 +1438,33 @@ function StylingPanel({
         </div>
       </div>
 
-      <div className="px-2.5 py-2 flex flex-col gap-1.5 border-b border-brd">
+      <div className="px-3 py-2.5 flex flex-col gap-2 border-b border-brd">
         <div className={rowCls}>
-          <span className={labelCls}>连线</span>
+          <span className={labelCls}>{t('node.line')}</span>
           {/* ponytail: line-width control deferred — mind-elixir hardcodes
               main/sub branch stroke widths (3/2 in MindElixir.js). Re-add
               when overriding generateMainBranch becomes worth it. */}
           <span className="text-t3 text-[10px]">3px</span>
-          <span className="text-t3 text-[11px] ml-auto">彩虹分支</span>
+          <span className="text-t3 text-[11px] ml-auto">{t('node.rainbow')}</span>
           <button
             type="button"
             className={`${btnCls} ${rainbowOn ? btnActiveCls : ''}`}
             onClick={onRainbowToggle}
-            title="切换彩虹分支着色"
+            title={t('node.rainbowTitle')}
           >
             {rainbowOn ? 'ON' : 'OFF'}
           </button>
         </div>
-        <div className={rowCls}>
-          <span className={labelCls}>编号</span>
-          {/* ponytail: per-node/map numbering deferred — mind-elixir has no
-              built-in numbering API. The `markdown:` callback can prepend
-              `${i+1}. ` but that pollutes the topic text and breaks
-              round-trip. Add when a real need lands. */}
-          <span className="text-t3 text-[10px]">无 / 有 (未实现)</span>
-        </div>
       </div>
 
-      <div className="px-2.5 py-2 flex flex-col gap-1.5 border-b border-brd">
-        <div className="text-t3 text-[11px] font-medium">预置主题风格</div>
+      <div className="px-3 py-2.5 flex flex-col gap-2 border-b border-brd">
+        <div className="text-t3 text-[11px] font-medium">{t('node.presets')}</div>
         <div className="grid grid-cols-3 gap-1">
           {Object.entries(PRESET_STYLES).map(([key, preset]) => (
             <button
               key={key}
               type="button"
-              className="h-[26px] rounded border border-brd text-[11px] hover:bg-hov"
+              className="h-[28px] rounded border border-brd text-[12px] hover:bg-hov"
               style={{
                 background: preset.style.background ?? 'transparent',
                 color: preset.style.color ?? 'var(--t1)',
@@ -973,9 +1472,9 @@ function StylingPanel({
                 fontWeight: preset.style.fontWeight as 'bold' | undefined,
               }}
               onClick={() => onReplace({ ...preset.style })}
-              title={preset.label}
+              title={t(`preset.${key}`)}
             >
-              {preset.label}
+              {t(`preset.${key}`)}
             </button>
           ))}
         </div>
@@ -986,9 +1485,9 @@ function StylingPanel({
           type="button"
           className={`${btnCls} w-full h-[24px]`}
           onClick={onReset}
-          title="清除选中节点的所有样式"
+          title={t('node.resetTitle')}
         >
-          重置样式
+          {t('node.reset')}
         </button>
       </div>
     </>
@@ -1001,19 +1500,14 @@ function StylingPanel({
 // state read from `inst` + callbacks. Native HTML inputs only.
 //
 // Ceilings (rendered as disabled controls with tooltips, NOT stubbed):
-//  - 骨架 (skeleton/layout type): single option "基础思维导图" — mind-elixir
-//    has only one layout algorithm; no fishbone/tree layout. Disabled dropdown.
-//  - 创建风格 (create style): single option "自定义风格" — XMind concept;
-//    mind-elixir has no per-node "create style" preset. Disabled dropdown.
+//  - 骨架 (skeleton/layout type): mind/org/tree/fishbone/timeline/bracket
+//    implemented via direction + CSS/branch overrides. Matrix and other
+//    exotic layouts are not — hand-rolling them would be a layout engine.
 //  - 方向 up/down: mind-elixir only supports left/right/side. Dropdown lists
 //    only the three; up/down omitted (not rendered as disabled to avoid
 //    implying a feature that doesn't exist).
-//  - 隐藏中心主题 (hide center topic): mind-elixir's `me-root` wraps the
-//    entire tree — hiding it hides everything. No way to hide just the root
-//    topic without breaking layout. Disabled checkbox.
-//  - 分支自由布局 (free branch layout): mind-elixir's layout is force-driven
-//    via `layout()`; nodes can be drag-repositioned but snap back on refresh.
-//    No "free layout" mode. Disabled checkbox.
+//  - 分支自由布局 (free branch layout): now implemented. Positions are saved
+//    before each layout and restored after, so auto-layout doesn't reset.
 //  - 水印 (watermark): mind-elixir has no watermark API. Omitted entirely
 //    (not even rendered as a disabled control — would be pure theater).
 
@@ -1039,6 +1533,7 @@ interface StylePanelProps extends CanvasStylePanelProps {
 }
 
 function StylePanel(props: StylePanelProps) {
+  const { t } = useTranslation('mmap');
   const {
     activeTab,
     onTabChange,
@@ -1054,14 +1549,14 @@ function StylePanel(props: StylePanelProps) {
     ...canvasProps
   } = props;
   const tabBtnCls = (active: boolean) =>
-    `flex-1 px-2 py-1.5 text-[11px] font-medium border-b-2 ${
+    `flex-1 px-3 py-2 text-[12px] font-medium border-b-2 ${
       active
         ? 'border-acc text-acc'
         : 'border-transparent text-t3 hover:text-t1'
     }`;
   return (
     <div
-      className="w-[240px] shrink-0 h-full flex flex-col border-l border-brd bg-panel text-t1"
+      className="w-[260px] shrink-0 h-full flex flex-col border-l border-brd bg-panel text-t1"
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
@@ -1071,20 +1566,20 @@ function StylePanel(props: StylePanelProps) {
           className={tabBtnCls(activeTab === 'canvas')}
           onClick={() => onTabChange('canvas')}
         >
-          画布样式
+          {t('stylePanel.canvasTab')}
         </button>
         <button
           type="button"
           className={tabBtnCls(activeTab === 'node')}
           onClick={() => onTabChange('node')}
         >
-          节点样式
+          {t('stylePanel.nodeTab')}
         </button>
         <button
           type="button"
           className="text-t3 hover:text-t1 text-[14px] leading-none px-2"
           onClick={onClose}
-          title="关闭"
+          title={t('stylePanel.close')}
         >
           ×
         </button>
@@ -1127,6 +1622,11 @@ interface CanvasStylePanelProps {
   onBackground: (bg: string | undefined) => void;
   onAlignment: (mode: 'root' | 'nodes') => void;
   onTopicSpacing: (px: number | undefined) => void;
+  skeleton: MmapSkeleton;
+  onSkeleton: (skeleton: MmapSkeleton) => void;
+  onCompact: (on: boolean) => void;
+  onCreateStyle: (name: string | undefined) => void;
+  onFreeLayout: (on: boolean) => void;
 }
 
 function CanvasStylePanel({
@@ -1136,15 +1636,21 @@ function CanvasStylePanel({
   rainbowOn,
   onDirection,
   onPalette,
-  onBackground,
   onAlignment,
+  onBackground,
   onTopicSpacing,
+  skeleton,
+  onSkeleton,
+  onCompact,
+  onCreateStyle,
+  onFreeLayout,
 }: CanvasStylePanelProps) {
-  const labelCls = 'text-t3 text-[11px] font-medium w-[52px] shrink-0';
-  const rowCls = 'flex items-center gap-1.5';
+  const { t } = useTranslation('mmap');
+  const labelCls = 'text-t3 text-[12px] font-medium w-[54px] shrink-0';
+  const rowCls = 'flex items-center gap-2';
   const inputCls =
-    'bg-surf2 border border-brd rounded px-1 py-0.5 text-[11px] text-t1 outline-none focus:border-acc disabled:opacity-50 disabled:cursor-not-allowed';
-  const checkboxCls = 'w-[13px] h-[13px] accent-[var(--acc)] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed';
+    'bg-surf2 border border-brd rounded px-1 py-0.5 text-[12px] text-t1 outline-none focus:border-acc disabled:opacity-50 disabled:cursor-not-allowed';
+  const checkboxCls = 'w-[14px] h-[14px] accent-[var(--acc)] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed';
 
   // palette is grayed out when rainbow is OFF (mono wins).
   const paletteDisabled = !rainbowOn;
@@ -1153,56 +1659,71 @@ function CanvasStylePanel({
 
   return (
     <>
-      <div className="px-2.5 py-2 flex flex-col gap-1.5 border-b border-brd">
-        <div className="text-t3 text-[11px] font-medium">主题样式</div>
-        <div className={rowCls} title="骨架类型 — mind-elixir 仅支持基础思维导图">
-          <span className={labelCls}>骨架</span>
-          <select className={`${inputCls} flex-1`} value="basic" disabled>
-            <option value="basic">基础思维导图</option>
+      <div className="px-3 py-2.5 flex flex-col gap-2 border-b border-brd">
+        <div className="text-t3 text-[11px] font-medium">{t('canvas.sectionTheme')}</div>
+        <div className={rowCls} title={t('canvas.skeletonTitle')}>
+          <span className={labelCls}>{t('canvas.skeleton')}</span>
+          <select
+            className={`${inputCls} flex-1`}
+            value={skeleton}
+            onChange={(e) => onSkeleton(e.target.value as MmapSkeleton)}
+          >
+            <option value="mind">{t('canvas.skeletonMind')}</option>
+            <option value="tree">{t('canvas.skeletonTree')}</option>
+            <option value="fishbone">{t('canvas.skeletonFishbone')}</option>
+            <option value="timeline">{t('canvas.skeletonTimeline')}</option>
+            <option value="bracket">{t('canvas.skeletonBracket')}</option>
+            <option value="org">{t('canvas.skeletonOrg')}</option>
           </select>
         </div>
         <div className={rowCls}>
-          <span className={labelCls}>方向</span>
+          <span className={labelCls}>{t('canvas.direction')}</span>
           <select
             className={`${inputCls} flex-1`}
             value={String(direction)}
             onChange={(e) => onDirection(Number(e.target.value) as MmapDirection)}
           >
-            <option value="1">向右</option>
-            <option value="0">向左</option>
-            <option value="2">双侧</option>
+            <option value="1">{t('canvas.directionRight')}</option>
+            <option value="0">{t('canvas.directionLeft')}</option>
+            <option value="2">{t('canvas.directionBoth')}</option>
           </select>
         </div>
-        <div className={rowCls} title={paletteDisabled ? '请先开启彩虹分支' : undefined}>
-          <span className={labelCls}>配色</span>
+        <div className={rowCls} title={paletteDisabled ? t('canvas.paletteTitle') : undefined}>
+          <span className={labelCls}>{t('canvas.palette')}</span>
           <select
             className={`${inputCls} flex-1`}
             value={mapStyle.palette ?? ''}
             disabled={paletteDisabled}
             onChange={(e) => onPalette(e.target.value || undefined)}
           >
-            <option value="">默认</option>
-            {Object.entries(CANVAS_PALETTES).map(([key, p]) => (
+            <option value="">{t('canvas.paletteDefault')}</option>
+            {Object.entries(CANVAS_PALETTES).map(([key]) => (
               <option key={key} value={key}>
-                {p.label}
+                {t(`palette.${key}`)}
               </option>
             ))}
           </select>
         </div>
-        <div className={rowCls} title="创建风格 — XMind 概念，mind-elixir 不支持">
-          <span className={labelCls}>创建风格</span>
-          <select className={`${inputCls} flex-1`} value="custom" disabled>
-            <option value="custom">自定义风格</option>
+        <div className={rowCls} title={t('canvas.createStyleTitle')}>
+          <span className={labelCls}>{t('canvas.createStyle')}</span>
+          <select
+            className={`${inputCls} flex-1`}
+            value={mapStyle.createStyle ?? 'default'}
+            onChange={(e) => onCreateStyle(e.target.value || undefined)}
+          >
+            {Object.entries(CREATE_STYLES).map(([key]) => (
+              <option key={key} value={key}>{t(`createStyle.${key}`)}</option>
+            ))}
           </select>
         </div>
       </div>
 
-      <div className="px-2.5 py-2 flex flex-col gap-1.5 border-b border-brd">
+      <div className="px-3 py-2.5 flex flex-col gap-2 border-b border-brd">
         <div className={rowCls}>
-          <span className={labelCls}>背景</span>
+          <span className={labelCls}>{t('canvas.background')}</span>
           <input
             type="color"
-            className="w-[20px] h-[20px] p-0 border border-brd rounded bg-surf2 cursor-pointer"
+            className="w-[22px] h-[22px] p-0 border border-brd rounded bg-surf2 cursor-pointer"
             value={mapStyle.background ?? '#f6f6f6'}
             onChange={(e) => onBackground(e.target.value)}
           />
@@ -1211,43 +1732,51 @@ function CanvasStylePanel({
               type="button"
               className="text-t3 text-[10px] hover:text-t1 ml-auto"
               onClick={() => onBackground(undefined)}
-              title="清除背景色"
+              title={t('canvas.clearBgTitle')}
             >
-              清除
+              {t('canvas.clearBg')}
             </button>
           )}
         </div>
       </div>
 
-      <div className="px-2.5 py-2 flex flex-col gap-1.5 border-b border-brd">
-        <div className="text-t3 text-[11px] font-medium">布局</div>
-        <label className={`${rowCls} cursor-pointer`} title="同级节点居中对齐">
+      <div className="px-3 py-2.5 flex flex-col gap-2 border-b border-brd">
+        <div className="text-t3 text-[11px] font-medium">{t('canvas.sectionLayout')}</div>
+        <label className={`${rowCls} cursor-pointer`} title={t('canvas.alignTitle')}>
           <input
             type="checkbox"
             className={checkboxCls}
             checked={mapStyle.alignment === 'nodes'}
             onChange={(e) => onAlignment(e.target.checked ? 'nodes' : 'root')}
           />
-          <span className="text-[11px] text-t1">同级主题对齐</span>
+          <span className="text-[11px] text-t1">{t('canvas.alignLabel')}</span>
         </label>
-        <label className={`${rowCls} cursor-not-allowed`} title="隐藏中心主题 — mind-elixir 不支持（隐藏根节点会隐藏整棵树）">
-          <input type="checkbox" className={checkboxCls} disabled />
-          <span className="text-[11px] text-t3">隐藏中心主题</span>
-          <span className="text-t3 text-[10px] ml-auto">未实现</span>
+        <label className={`${rowCls} cursor-pointer`} title={t('canvas.freeLayoutTitle')}>
+          <input
+            type="checkbox"
+            className={checkboxCls}
+            checked={!!mapStyle.freeLayout}
+            onChange={(e) => onFreeLayout(e.target.checked)}
+          />
+          <span className="text-[11px] text-t1">{t('canvas.freeLayoutLabel')}</span>
         </label>
-        <label className={`${rowCls} cursor-not-allowed`} title="分支自由布局 — mind-elixir 不支持（节点拖拽后刷新会复位）">
-          <input type="checkbox" className={checkboxCls} disabled />
-          <span className="text-[11px] text-t3">分支自由布局</span>
-          <span className="text-t3 text-[10px] ml-auto">未实现</span>
+        <label className={`${rowCls} cursor-pointer`} title={t('canvas.compactTitle')}>
+          <input
+            type="checkbox"
+            className={checkboxCls}
+            checked={compact}
+            onChange={(e) => onCompact(e.target.checked)}
+          />
+          <span className="text-[11px] text-t1">{t('canvas.compactLabel')}</span>
         </label>
-        <div className={rowCls} title={spacingDisabled ? '紧凑模式下间距被锁定' : undefined}>
-          <span className={labelCls}>主题间距</span>
+        <div className={rowCls} title={spacingDisabled ? t('canvas.spacingTitle') : undefined}>
+          <span className={labelCls}>{t('canvas.spacingLabel')}</span>
           <input
             type="number"
             min={2}
             max={80}
-            className={`${inputCls} w-[52px]`}
-            value={mapStyle.topicSpacing ?? 10}
+            className={`${inputCls} w-[56px]`}
+            value={mapStyle.topicSpacing ?? 14}
             disabled={spacingDisabled}
             onChange={(e) => {
               const v = e.target.value === '' ? undefined : Number(e.target.value);

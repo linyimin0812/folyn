@@ -1,0 +1,86 @@
+{
+  "toolbar": {
+    "style": "样式",
+    "direction": "方向：{{dir}}"
+  },
+  "stylePanel": {
+    "canvasTab": "画布样式",
+    "nodeTab": "节点样式",
+    "close": "关闭"
+  },
+  "canvas": {
+    "sectionTheme": "主题样式",
+    "skeleton": "骨架",
+    "skeletonTitle": "选择画布骨架布局",
+    "direction": "方向",
+    "directionRight": "向右",
+    "directionLeft": "向左",
+    "directionBoth": "双侧",
+    "palette": "配色",
+    "paletteTitle": "请先开启彩虹分支",
+    "paletteDefault": "默认",
+    "createStyle": "创建风格",
+    "createStyleTitle": "新创建节点自动应用预设风格",
+    "background": "背景",
+    "clearBg": "清除",
+    "clearBgTitle": "清除背景色",
+    "sectionLayout": "布局",
+    "alignTitle": "同级节点居中对齐",
+    "alignLabel": "同级主题对齐",
+    "freeLayoutTitle": "节点可自由拖拽到任意位置",
+    "freeLayoutLabel": "分支自由布局",
+    "compactTitle": "紧凑模式，减少节点间距",
+    "compactLabel": "紧凑模式",
+    "spacingTitle": "紧凑模式下间距被锁定",
+    "spacingLabel": "主题间距",
+    "skeletonMind": "思维导图",
+    "skeletonOrg": "组织结构图",
+    "skeletonTree": "树型图",
+    "skeletonFishbone": "鱼骨图",
+    "skeletonTimeline": "时间轴",
+    "skeletonBracket": "括号图"
+  },
+  "node": {
+    "font": "字体",
+    "fontMicrosoft": "微软雅黑",
+    "fontPingfang": "苹方",
+    "fontSimsun": "宋体",
+    "fontSimhei": "黑体",
+    "fontHelvetica": "Helvetica",
+    "fontArial": "Arial",
+    "fontMonospace": "monospace",
+    "fontSize": "字号",
+    "bold": "加粗",
+    "italic": "斜体",
+    "textColor": "文本颜色",
+    "fill": "填充",
+    "border": "边框",
+    "fixedWidth": "固定宽",
+    "line": "连线",
+    "rainbow": "彩虹分支",
+    "rainbowTitle": "切换彩虹分支着色",
+    "presets": "预置主题风格",
+    "reset": "重置样式",
+    "resetTitle": "清除选中节点的所有样式"
+  },
+  "preset": {
+    "important": "重点",
+    "pending": "待定",
+    "done": "完成",
+    "highlight": "突出",
+    "delete": "删除",
+    "secondary": "次要"
+  },
+  "createStyle": {
+    "default": "默认",
+    "rounded": "圆角大",
+    "colorFill": "彩色填充",
+    "minimal": "简洁"
+  },
+  "palette": {
+    "classic": "经典推荐",
+    "dark": "深色",
+    "pastel": "柔粉",
+    "vibrant": "鲜艳"
+  }
+}

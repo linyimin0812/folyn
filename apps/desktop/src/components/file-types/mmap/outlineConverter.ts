@@ -78,6 +78,14 @@ export interface MmapMetaLink {
 // Ceiling: add when mind-elixir ships a down/up layout.
 export type MmapDirection = 0 | 1 | 2;
 
+// ponytail: canvas skeleton (骨架) — 'mind' is the standard mind map
+// (default), 'org' is the top-down org chart, 'tree' is the right-branching
+// tree, 'fishbone' is the alternating fishbone, 'timeline' is the horizontal
+// timeline, 'bracket' is the right-branching bracket map. mind-elixir has no
+// native skeleton concept; the canvas maps each to a direction + CSS/branch
+// override. Default 'mind' is omitted from the meta block.
+export type MmapSkeleton = 'mind' | 'org' | 'tree' | 'fishbone' | 'timeline' | 'bracket';
+
 export interface MmapMapStyle {
   // ponytail: `rainbow: false` opts every first-level branch into a single
   // muted color. `true` (or omitted) keeps mind-elixir's default multi-color
@@ -110,6 +118,16 @@ export interface MmapMapStyle {
   // `--main-gap-y` CSS vars. Overridden by `compact: true` (which hardcodes
   // the gaps), so the canvas panel disables this control when compact is on.
   topicSpacing?: number;
+  // ponytail: default style preset for newly created nodes. 'default' means
+  // no special style (the mind-elixir default). The preset name is stored
+  // here; the actual style values live in CREATE_STYLES.
+  createStyle?: string;
+  // ponytail: skeleton (骨架) layout preset. Default 'mind' omitted from meta.
+  skeleton?: MmapSkeleton;
+  // ponytail: when true, nodes can be freely dragged to any position on the
+  // canvas, bypassing the automatic layout algorithm. Node positions are
+  // stored in the node's metadata. On refresh, saved positions are restored.
+  freeLayout?: boolean;
 }
 export interface MmapMeta {
   arrows: MmapMetaArrow[];
@@ -147,6 +165,40 @@ export const PRESET_STYLES: Record<string, { label: string; style: MmapNodeStyle
   secondary: {
     label: '次要',
     style: { color: '#6b7280', background: '#f3f4f6' },
+  },
+};
+
+// ponytail: 4 create-style presets for the canvas panel. When a create style
+// is selected, newly created nodes inherit these style defaults. 'default' means
+// no override (mind-elixir's own default). The styles are applied in
+// the operation listener (addChild/insertSibling/insertParent) via reshapeNode.
+// Colors are hand-picked to complement the default Catppuccin Latte palette.
+export const CREATE_STYLES: Record<string, { label: string; style: MmapNodeStyle }> = {
+  default: {
+    label: '默认',
+    style: {},
+  },
+  rounded: {
+    label: '圆角大',
+    style: {
+      border: '2px solid #cbd5e1',
+      background: '#f8fafc',
+    },
+  },
+  colorFill: {
+    label: '彩色填充',
+    style: {
+      background: '#ede9fe',
+      color: '#5b21b6',
+      fontWeight: 'bold',
+    },
+  },
+  minimal: {
+    label: '简洁',
+    style: {
+      border: '1px solid #e2e8f0',
+      color: '#334155',
+    },
   },
 };
 
@@ -588,6 +640,8 @@ export function readRuntimeMapStyle(src: string): MmapMapStyle {
   if (ms.background) out.background = ms.background;
   if (ms.alignment) out.alignment = ms.alignment;
   if (ms.topicSpacing !== undefined) out.topicSpacing = ms.topicSpacing;
+  if (ms.createStyle) out.createStyle = ms.createStyle;
+  if (ms.skeleton && ms.skeleton !== 'mind') out.skeleton = ms.skeleton;
   return out;
 }
 
@@ -707,7 +761,9 @@ export function deriveMapStyle(
   if (palettePreset !== undefined) out.palette = palettePreset;
   if (background !== undefined) out.background = background;
   if (alignment !== undefined) out.alignment = alignment;
-  if (topicSpacing !== undefined) out.topicSpacing = topicSpacing;
+ if (topicSpacing !== undefined) out.topicSpacing = topicSpacing;
+  if (o.createStyle !== undefined) out.createStyle = o.createStyle;
+  if (o.skeleton !== undefined && o.skeleton !== 'mind') out.skeleton = o.skeleton;
 
   if (Object.keys(out).length === 0) return undefined;
   return out;

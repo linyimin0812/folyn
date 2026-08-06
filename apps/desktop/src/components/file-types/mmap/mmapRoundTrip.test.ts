@@ -630,6 +630,24 @@ describe('canvas-level mapStyle (direction/compact/palette/background/alignment/
       topicSpacing: 12,
     });
   });
+  it('deriveMapStyle round-trips non-default skeleton presets', () => {
+    const data = outlineToMindElixirData('- Root\n  - A\n  - B');
+    expect(deriveMapStyle(data, { skeleton: 'tree' })).toEqual({ skeleton: 'tree' });
+    expect(deriveMapStyle(data, { skeleton: 'fishbone' })).toEqual({ skeleton: 'fishbone' });
+    expect(deriveMapStyle(data, { skeleton: 'timeline' })).toEqual({ skeleton: 'timeline' });
+    expect(deriveMapStyle(data, { skeleton: 'bracket' })).toEqual({ skeleton: 'bracket' });
+    expect(deriveMapStyle(data, { skeleton: 'org' })).toEqual({ skeleton: 'org' });
+    // mind is the default and is omitted
+    expect(deriveMapStyle(data, { skeleton: 'mind' })).toBeUndefined();
+  });
+
+  it('readRuntimeMapStyle surfaces non-default skeleton', () => {
+    const src =
+      '- Root\n  - A\n  - B\n\n<!-- mmap:meta\nmapStyle: {"skeleton":"org"}\n-->';
+    expect(readRuntimeMapStyle(src)).toEqual({ skeleton: 'org' });
+    expect(readRuntimeMapStyle('- Root\n  - A')).toEqual({});
+  });
+
 });
 
 describe('canvas palette presets (CANVAS_PALETTES / resolveCanvasPalette)', () => {

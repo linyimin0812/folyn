@@ -30,6 +30,8 @@ import zhTerminal from './locales/zh/terminal.json';
 import enTerminal from './locales/en/terminal.json';
 import zhBrowser from './locales/zh/browser.json';
 import enBrowser from './locales/en/browser.json';
+import zhMmap from './locales/zh/mmap.json';
+import enMmap from './locales/en/mmap.json';
 
 // ponytail: static bundle import (no lazy loading). Bundle size is bounded
 // by the namespace count; add lazy loading only when total JSON exceeds a
@@ -69,6 +71,7 @@ export const NAMESPACES = [
   'pet',
   'terminal',
   'browser',
+  'mmap',
 ] as const;
 
 void i18n.use(initReactI18next).init({
@@ -89,6 +92,7 @@ void i18n.use(initReactI18next).init({
       pet: zhPet,
       terminal: zhTerminal,
       browser: zhBrowser,
+      mmap: zhMmap,
     },
     en: {
       common: enCommon,
@@ -106,6 +110,7 @@ void i18n.use(initReactI18next).init({
       pet: enPet,
       terminal: enTerminal,
       browser: enBrowser,
+      mmap: enMmap,
     },
   },
   lng: detectInitialLocale(),

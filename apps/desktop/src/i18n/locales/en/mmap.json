@@ -1,0 +1,86 @@
+{
+  "toolbar": {
+    "style": "Style",
+    "direction": "Direction: {{dir}}"
+  },
+  "stylePanel": {
+    "canvasTab": "Canvas",
+    "nodeTab": "Node",
+    "close": "Close"
+  },
+  "canvas": {
+    "sectionTheme": "Theme",
+    "skeleton": "Skeleton",
+    "skeletonTitle": "Choose a canvas skeleton layout",
+    "direction": "Direction",
+    "directionRight": "Right",
+    "directionLeft": "Left",
+    "directionBoth": "Both Sides",
+    "palette": "Palette",
+    "paletteTitle": "Please enable rainbow branches first",
+    "paletteDefault": "Default",
+    "createStyle": "Create Style",
+    "createStyleTitle": "Auto-apply preset style to new nodes",
+    "background": "Background",
+    "clearBg": "Clear",
+    "clearBgTitle": "Clear background color",
+    "sectionLayout": "Layout",
+    "alignTitle": "Align sibling nodes to center",
+    "alignLabel": "Align Siblings",
+    "freeLayoutTitle": "Nodes can be freely dragged to any position",
+    "freeLayoutLabel": "Free Layout",
+    "compactTitle": "Compact mode, reduces node spacing",
+    "compactLabel": "Compact",
+    "spacingTitle": "Spacing is locked in compact mode",
+    "spacingLabel": "Node Spacing",
+    "skeletonMind": "Mind Map",
+    "skeletonOrg": "Org Chart",
+    "skeletonTree": "Tree Chart",
+    "skeletonFishbone": "Fishbone",
+    "skeletonTimeline": "Timeline",
+    "skeletonBracket": "Bracket Map"
+  },
+  "node": {
+    "font": "Font",
+    "fontMicrosoft": "Microsoft YaHei",
+    "fontPingfang": "PingFang SC",
+    "fontSimsun": "SimSun",
+    "fontSimhei": "SimHei",
+    "fontHelvetica": "Helvetica",
+    "fontArial": "Arial",
+    "fontMonospace": "monospace",
+    "fontSize": "Size",
+    "bold": "Bold",
+    "italic": "Italic",
+    "textColor": "Color",
+    "fill": "Fill",
+    "border": "Border",
+    "fixedWidth": "Width",
+    "line": "Line",
+    "rainbow": "Rainbow",
+    "rainbowTitle": "Toggle rainbow branch coloring",
+    "presets": "Preset Styles",
+    "reset": "Reset",
+    "resetTitle": "Clear all styles on selected node"
+  },
+  "preset": {
+    "important": "Important",
+    "pending": "Pending",
+    "done": "Done",
+    "highlight": "Highlight",
+    "delete": "Deleted",
+    "secondary": "Secondary"
+  },
+  "createStyle": {
+    "default": "Default",
+    "rounded": "Rounded",
+    "colorFill": "Color Fill",
+    "minimal": "Minimal"
+  },
+  "palette": {
+    "classic": "Classic",
+    "dark": "Dark",
+    "pastel": "Pastel",
+    "vibrant": "Vibrant"
+  }
+}
