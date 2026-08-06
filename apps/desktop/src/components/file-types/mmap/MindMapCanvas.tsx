@@ -969,28 +969,23 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
     syncOutRef.current?.();
   }, []);
 
-  // ponytail: canvas-level direction mutator. mind-elixir exposes
-  // `initLeft/initRight/initSide` (0/1/2) — each fires `changeDirection`
-  // (NOT `operation`), so we trigger syncOut manually. No UP/DOWN —
-  // ceiling documented in outlineConverter.ts (`MmapDirection`).
+  // ponytail: direction is only meaningful for the 'mind' skeleton; the other
+  // presets (org/tree/fishbone/timeline/bracket) are intrinsically
+  // right-branching, so a direction flip has no valid interpretation. Guard
+  // so a direction dispatch can't silently revert the skeleton to 'mind' —
+  // the UI also disables the control, this is the defensive backstop.
+  // Ceiling: per-skeleton mirror layouts (e.g. left-branching tree) would
+  // need CSS margin flips + branch-fn mirror; upgrade path if a real
+  // left-tree is requested.
   const setDirection = useCallback((d: MmapDirection) => {
     const inst = instRef.current;
     if (!inst) return;
+    if ((canvasStyleRef.current.skeleton ?? 'mind') !== 'mind') return;
     if (d === 0) inst.initLeft();
     else if (d === 1) inst.initRight();
     else inst.initSide();
-    // A manual direction change replaces the skeleton's implied layout;
-    // fall back to the standard mind map so the two settings can't conflict.
-    const next = { ...canvasStyleRef.current };
-    if (next.skeleton) {
-      delete next.skeleton;
-      canvasStyleRef.current = next;
-      setCanvasStyle(next);
-      applySkeleton(inst, 'mind');
-      inst.linkDiv();
-    }
     syncOutRef.current?.();
-  }, [applySkeleton]);
+  }, []);
 
   // ponytail: skeleton (骨架) mutator. mind switches back to the classic
   // both-sides map; every other preset is right-branching (org layers the
@@ -1181,6 +1176,9 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
   // via initLeft/Right/Side and changeCompact — they're not in canvasStyleRef).
   const liveDirection = (instRef.current?.direction ?? 1) as MmapDirection;
   const liveCompact = instRef.current?.compact ?? false;
+  // ponytail: non-mind skeletons are intrinsically right-branching; direction
+  // control is disabled to prevent the silent skeleton→mind revert.
+  const directionDisabled = (canvasStyle.skeleton ?? 'mind') !== 'mind';
 
   return (
     <div className="flex w-full h-full overflow-hidden">
@@ -1215,7 +1213,8 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
             <button
               key={d}
               type="button"
-              className={`h-8 w-8 rounded border border-brd bg-panel shadow-sm flex items-center justify-center active:scale-[0.96] transition-transform ${active ? 'border-acc text-acc' : 'text-t1 hover:bg-hov'}`}
+              disabled={directionDisabled}
+              className={`h-8 w-8 rounded border border-brd bg-panel shadow-sm flex items-center justify-center active:scale-[0.96] transition-transform ${active ? 'border-acc text-acc' : 'text-t1 hover:bg-hov'} disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-panel`}
               onClick={() => setDirection(d)}
               title={t('toolbar.direction', { dir: t('canvas.direction' + (key === 'side' ? 'Both' : key.charAt(0).toUpperCase() + key.slice(1))) })}
             >
@@ -1659,6 +1658,9 @@ function CanvasStylePanel({
   const paletteDisabled = !rainbowOn;
   // topic spacing is grayed out when compact is ON (compact hardcodes gaps).
   const spacingDisabled = compact;
+  // ponytail: non-mind skeletons are intrinsically right-branching; direction
+  // is disabled to prevent the silent skeleton→mind revert.
+  const directionDisabled = skeleton !== 'mind';
 
   return (
     <>
@@ -1684,6 +1686,7 @@ function CanvasStylePanel({
           <select
             className={`${inputCls} flex-1`}
             value={String(direction)}
+            disabled={directionDisabled}
             onChange={(e) => onDirection(Number(e.target.value) as MmapDirection)}
           >
             <option value="1">{t('canvas.directionRight')}</option>
