@@ -381,3 +381,40 @@ Restructured fishbone skeleton: added horizontal spine pseudo-element on me-main
 ### Next Steps
 
 - None - task complete
+
+
+## Session 126: Plugin SDK refactor: extract @quill/plugin-sdk + 6 contribution points
+
+**Date**: 2026-08-06
+**Task**: Plugin SDK refactor: extract @quill/plugin-sdk + 6 contribution points
+**Package**: api
+**Branch**: `sharp-mountain`
+
+### Summary
+
+Split publishable @quill/plugin-sdk (types + contracts + dev helpers, no runtime) out of @quill/plugin-host; contract types (FileTypeHandler/ViewMode/ContainerProps/PluginModule) moved into SDK with re-export shims so existing consumers are unchanged. Added 6 new trusted-tier contribution points with host adapters + samples + tests + docs: exporters, fileTemplates, keybindings (app-scope keydown), custom view modes, AI editFile/createFile (vault-manager-mediated), and exportEnhancers (closes async-container export loop). Plus concise standalone SDK reference doc and ed25519 signature/publisherPublicKey fields on PluginManifest.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `42e053d` | (see git log) |
+| `000b313` | (see git log) |
+| `55c9534` | (see git log) |
+| `7425727` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
