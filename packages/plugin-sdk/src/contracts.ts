@@ -114,6 +114,14 @@ export interface ExporterContext {
 /** A custom exporter: takes doc content + ctx, returns a Blob or string to write. */
 export type ExporterHandler = (content: string, ctx: ExporterContext) => Promise<Blob | string>;
 
+/**
+ * A post-render export enhancer: takes the rendered container/file-preview body
+ * element + ctx, mutates it in place to be self-contained for export (e.g.
+ * canvas→SVG capture, stripping action buttons, inlining async content). Runs
+ * host-realm on a real HTMLElement after the in-DOM render has settled.
+ */
+export type ExportEnhancerHandler = (body: HTMLElement, ctx: ExporterContext) => Promise<void>;
+
 export interface PluginModule {
   /** Entry-ref → file-type handler. Keys match `contributes.fileTypes[].handler`. */
   handlers?: Record<string, FileTypeHandler>;
@@ -129,6 +137,8 @@ export interface PluginModule {
   commands?: Record<string, () => void | Promise<void>>;
   /** Entry-ref → exporter function. Keys match `contributes.exporters[].run`. */
   exporters?: Record<string, ExporterHandler>;
+  /** Entry-ref → export enhancer. Keys match `contributes.exportEnhancers[].run`. */
+  exportEnhancers?: Record<string, ExportEnhancerHandler>;
   /** Optional lifecycle hook; called by the trusted loader on activate. */
   activate?: (ctx: PluginContext) => void | Promise<void>;
   /** Optional lifecycle hook; called by the trusted loader on deactivate. */

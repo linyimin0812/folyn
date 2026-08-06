@@ -76,7 +76,11 @@ function buildComponentMap(): Record<string, React.ComponentType<any>> {
         attributes: mergedAttributes,
         name: plugin.name,
       };
-      return createElement(PluginComponent, containerProps);
+      // Tag with data-container so the export DOM walk can locate rendered
+      // containers by directive name and apply plugin enhancers. Transparent
+      // wrapper div — container plugins use inline styles, so an extra plain
+      // div does not affect their rendering.
+      return createElement('div', { 'data-container': plugin.name }, createElement(PluginComponent, containerProps));
     };
   }
 

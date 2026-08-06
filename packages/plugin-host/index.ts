@@ -23,6 +23,7 @@ export type {
   ExporterContribution,
   FileTemplateContribution,
   KeybindingContribution,
+  ExportEnhancerContribution,
   ActivationEvents,
   PluginAiCapability,
   PluginAiChatParams,
@@ -42,4 +43,5 @@ export type {
   PluginModule,
   ExporterContext,
   ExporterHandler,
+  ExportEnhancerHandler,
 } from '@quill/plugin-sdk';

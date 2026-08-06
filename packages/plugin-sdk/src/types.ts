@@ -314,6 +314,23 @@ export interface KeybindingContribution {
   when?: string;
 }
 
+// ── Export-enhancer contribution (post-render DOM mutation) ─────────────────
+// Lets a trusted plugin post-process its own `:::name` container (or a
+// file-extension preview) during HTML/PDF export, after the in-DOM render has
+// settled. The handler runs host-realm on the rendered HTMLElement and mutates
+// it in place to be self-contained for export (e.g. canvas→SVG capture).
+
+export interface ExportEnhancerContribution {
+  /**
+   * Key the enhancer matches on: a `:::` container directive `name`, OR a
+   * file extension (without the dot). The host tries both lookups so a single
+   * enhancer can serve either surface.
+   */
+  name: string;
+  /** Entry ref into `PluginModule.exportEnhancers`. */
+  run: string;
+}
+
 export interface ContributionPoints {
   commands?: CommandContribution[];
   fileTypes?: FileTypeContribution[];
@@ -326,6 +343,8 @@ export interface ContributionPoints {
   fileTemplates?: FileTemplateContribution[];
   /** Key→command bindings registered with the global-shortcut layer. */
   keybindings?: KeybindingContribution[];
+  /** Post-render export enhancers for container/file-preview DOM. */
+  exportEnhancers?: ExportEnhancerContribution[];
 }
 
 export interface ActivationEvents {

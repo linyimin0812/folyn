@@ -93,6 +93,7 @@ export const commands = { ping: () => console.info('pong') };
 | `exporters` | ✗ | ✓ | 自定义导出格式 → "Export as <label>" 面板命令 |
 | `fileTemplates` | ✗ | ✓ | 新建文件模板 → "New <label>" 面板命令 |
 | `keybindings` | ✗ | ✓ | Tauri accelerator → 命令 id（app 级 keydown） |
+| `exportEnhancers` | ✗ | ✓ | 导出 HTML/PDF 时对已渲染 DOM 的后处理变异 |
 
 ### 3. RPC 方法表（sandbox tier —— host 中介）
 
@@ -453,6 +454,32 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
   `plugin-global-shortcut` 的 `register(accelerator, handler)` + dispose 里
   `unregister(accelerator)`。
 
+### exportEnhancers（仅 trusted）
+
+```jsonc
+"exportEnhancers": [
+  { "name": "quote", "run": "enhance-quote" }
+]
+```
+
+- `name` 是 enhancer 匹配的 key：一个 `:::` 容器指令 `name`，**或**一个
+  文件扩展名（不含点）。host 两种查找都试，所以一个 enhancer 可以同时
+  服务容器与文件预览。
+- `run` 是模块 `exportEnhancers` map 的 **entry-ref**。handler 签名为
+  `(body: HTMLElement, ctx: ExporterContext) => Promise<void>`——在已渲染的
+  DOM 元素上原地变异，使其导出时自包含（如 canvas→SVG 捕获、内联异步
+  内容、剥离 action 按钮）。
+- handler 在 in-DOM 渲染稳定后（`renderMarkdownToHtmlViaDom` 中
+  `processFilePreviews` 之后）于 **host realm** 运行，可直接使用
+  `body.querySelector` / `body.appendChild`——插件模块作为 trusted blob-URL
+  `import()` 运行在 host realm。
+- 传给 enhancer 的 `body` 是 `[data-container]` 元素本身；若其内含
+  `[data-file-preview-body]` 子元素（容器指令内渲染的文件预览），则用内层
+  body。调用前会剥离 action 按钮。
+- ponytail：enhancer 失败被 best-effort 吞掉（`.catch(() => {})`）——一个
+  enhancer 挂了不能中断整个导出。多个插件注册同一 key → last-registered-wins；
+  升级路径是 per-plugin 优先级列表（若需要组合）。
+
 ---
 
 ## PluginModule 导出契约（trusted tier）
@@ -467,6 +494,7 @@ export const containers: Record<string, ComponentType<ContainerProps>> = { 'todo
 export const commands: Record<string, () => void | Promise<void>> = { 'greet': () => {} };
 export const features: Record<string, ComponentType<unknown>> = { 'my-panel': Panel };
 export const exporters: Record<string, ExporterHandler> = { 'txt-with-header': exportTxt };
+export const exportEnhancers: Record<string, ExportEnhancerHandler> = { 'enhance-quote': enhanceQuote };
 export function activate(ctx: PluginContext) { /* 可选 */ }
 export function deactivate(ctx: PluginContext) { /* 可选 */ }
 ```
@@ -782,9 +810,11 @@ ed25519 脚手架（见上）已为其就位。
   数据驱动的 activity bar / 侧边栏挂载路径，以及 panel 组件内进程内 editor
   store 访问。
 - [`examples/plugins/plugin-export-demo`](../examples/plugins/plugin-export-demo)
-  —— trusted tier。在一个小插件里演练三个新贡献点：一个 `exporters`（当前
+  —— trusted tier。在一个小插件里演练各贡献点：一个 `exporters`（当前
   文档 → 带表头的 `.txt`）、一个 `fileTemplates`（**New Meeting Notes** 面板
   命令）、一个 `keybindings`（`Cmd/Ctrl+Alt+Shift+T` → 一个 **Demo: Ping**
-  命令）。纯 ESM，无 JSX、无 React。
+  命令）、一个 `containers`（`:::quote` 引用块，经 `window.React` +
+  `createElement`）、一个 `exportEnhancers`（导出时的后渲染 DOM 变异）。
+  纯 ESM，无 JSX、无打包步骤。
 
 任一都通过 Settings → Plugins → 从文件夹安装… 装，手动 QA 全流程。

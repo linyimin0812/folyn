@@ -56,6 +56,7 @@ import { registerPluginFeatures } from './featureAdapter';
 import { registerPluginExporters } from './exporterAdapter';
 import { registerPluginFileTemplates } from './fileTemplateAdapter';
 import { registerPluginKeybindings } from './keybindingAdapter';
+import { registerPluginExportEnhancers } from './exportEnhancerAdapter';
 import { buildPluginAi } from './aiCapability';
 
 export const trustedLoader: PluginLoader = {
@@ -117,6 +118,7 @@ export const trustedLoader: PluginLoader = {
           registerPluginExporters(manifest, module),
           registerPluginFileTemplates(manifest),
           registerPluginKeybindings(manifest),
+          registerPluginExportEnhancers(manifest, module),
         ];
         for (const d of adapterDisposables) ctx.addDisposable(d);
 
@@ -163,6 +165,7 @@ function normalizeModule(mod: Record<string, unknown>): PluginModule {
   if (src.features) out.features = src.features as PluginModule['features'];
   if (src.commands) out.commands = src.commands as PluginModule['commands'];
   if (src.exporters) out.exporters = src.exporters as PluginModule['exporters'];
+  if (src.exportEnhancers) out.exportEnhancers = src.exportEnhancers as PluginModule['exportEnhancers'];
   if (typeof src.activate === 'function') out.activate = src.activate as PluginModule['activate'];
   if (typeof src.deactivate === 'function') out.deactivate = src.deactivate as PluginModule['deactivate'];
   return out;

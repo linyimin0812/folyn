@@ -53,6 +53,7 @@ activate; auto-unregistered on deactivate.
 | `exporters` | ✗ | ✓ | custom export format → "Export as <label>" palette command |
 | `fileTemplates` | ✗ | ✓ | new-file template → "New <label>" palette command |
 | `keybindings` | ✗ | ✓ | Tauri accelerator → command id (app-scope keydown) |
+| `exportEnhancers` | ✗ | ✓ | post-render DOM mutation during HTML/PDF export |
 
 ### 3. RPC method table (sandbox tier — host-mediated)
 
@@ -497,6 +498,37 @@ adapts it into the matching app registry when the plugin activates.
   upgrade path is `plugin-global-shortcut`'s `register(accelerator, handler)`
   + `unregister(accelerator)` in dispose.
 
+### exportEnhancers (trusted only)
+
+```jsonc
+"exportEnhancers": [
+  { "name": "quote", "run": "enhance-quote" }
+]
+```
+
+- `name` is the key the enhancer matches on: a `:::` container directive
+  `name` **OR** a file extension (without the dot). The host tries both
+  lookups so a single enhancer can serve either surface.
+- `run` is the **entry-ref** into the module's `exportEnhancers` map. The
+  handler signature is
+  `(body: HTMLElement, ctx: ExporterContext) => Promise<void>` — it mutates
+  the rendered DOM element in place to be self-contained for export (e.g.
+  canvas→SVG capture, inlining async content, stripping action buttons).
+- The handler runs **host-realm** on a real `HTMLElement` after the in-DOM
+  render has settled (inside `renderMarkdownToHtmlViaDom`, after
+  `processFilePreviews`). It can use `body.querySelector` /
+  `body.appendChild` directly — the plugin module runs in the host realm as
+  a trusted blob-URL `import()`.
+- The `body` handed to the enhancer is the `[data-container]` element
+  itself, unless it contains a `[data-file-preview-body]` child (a
+  file-preview rendered inside a container directive), in which case the
+  inner body is used. Action buttons are stripped before the call.
+- ponytail: enhancer failures are swallowed best-effort
+  (`.catch(() => {})`) — a broken enhancer must not abort the whole export.
+  Multiple plugins registering for the same key → last-registered-wins; the
+  upgrade path is a per-plugin precedence list if colliding enhancers ever
+  need to compose.
+
 ---
 
 ## The PluginModule export contract (trusted tier)
@@ -511,6 +543,7 @@ export const containers: Record<string, ComponentType<ContainerProps>> = { 'todo
 export const commands: Record<string, () => void | Promise<void>> = { 'greet': () => {} };
 export const features: Record<string, ComponentType<unknown>> = { 'my-panel': Panel };
 export const exporters: Record<string, ExporterHandler> = { 'txt-with-header': exportTxt };
+export const exportEnhancers: Record<string, ExportEnhancerHandler> = { 'enhance-quote': enhanceQuote };
 export function activate(ctx: PluginContext) { /* optional */ }
 export function deactivate(ctx: PluginContext) { /* optional */ }
 ```
@@ -893,11 +926,13 @@ above) is already in place for that.
   command. Demonstrates the data-driven activity bar / sidebar mounting
   path and the in-process editor-store access from a panel component.
 - [`examples/plugins/plugin-export-demo`](../examples/plugins/plugin-export-demo)
-  — trusted tier. Exercises the three new contribution points in one tiny
-  plugin: an `exporters` entry (active doc → `.txt` with a header), a
-  `fileTemplates` entry (**New Meeting Notes** palette command), and a
-  `keybindings` entry (`Cmd/Ctrl+Alt+Shift+T` → a **Demo: Ping** command).
-  Pure ESM, no JSX, no React.
+  — trusted tier. Exercises the contribution points in one tiny plugin: an
+  `exporters` entry (active doc → `.txt` with a header), a
+  `fileTemplates` entry (**New Meeting Notes** palette command), a
+  `keybindings` entry (`Cmd/Ctrl+Alt+Shift+T` → a **Demo: Ping** command), a
+  `containers` entry (`:::quote` blockquote via `window.React` + `createElement`),
+  and an `exportEnhancers` entry (post-render DOM mutation during export).
+  Pure ESM, no JSX, no bundler step.
 
 Install any via Settings → Plugins → 从文件夹安装… to manually QA the full
 pipeline.

@@ -21,6 +21,8 @@ import * as drawioExporter from './export/drawio';
 import * as mmapExporter from './export/mmap';
 import { inlineContainerImages } from './export/shared';
 import type { EnhanceCtx } from './export/dbml';
+import { getEnhancer } from './plugin-host/exportEnhancerAdapter';
+import type { ExporterContext } from '@quill/plugin-host';
 
 // Ensure built-in plugins are registered once
 registerBuiltinPlugins();
@@ -55,7 +57,9 @@ export function buildExportComponentMap(): Record<string, React.ComponentType<an
         attributes: mergedAttributes,
         name: plugin.name,
       };
-      return createElement(PluginComponent, containerProps);
+      // Tag the wrapper with data-container so the export DOM walk can locate
+      // rendered containers by directive name and apply plugin enhancers.
+      return createElement('div', { 'data-container': plugin.name }, createElement(PluginComponent, containerProps));
     };
   }
 
@@ -259,6 +263,10 @@ export async function renderMarkdownToHtmlViaDom(
   // so the export captures the post-processed DOM.
   await processFilePreviews(container, filePath, vaultRoot);
 
+  // Apply plugin-contributed export enhancers to [data-container] blocks
+  // (post-process rendered container DOM into self-contained export form).
+  await applyContainerEnhancers(container, { filePath, vaultRoot });
+
   const html = container.innerHTML;
   const css = collectAppCss();
   // ponytail: defer unmount out of the current render cycle. x6-react-shape
@@ -320,6 +328,16 @@ async function processFilePreviews(
       await fn(body, { src, filePath, vaultRoot }).catch(() => {});
       return;
     }
+    // Fallback: consult the plugin export-enhancer registry (keyed by ext
+    // without dot). Unifies container-name and file-extension enhancers onto
+    // one surface. Plugin handler receives ExporterContext (no src — it can
+    // read data-file-preview-src from the parent block if needed).
+    const pluginEnhancer = getEnhancer(ext);
+    if (pluginEnhancer) {
+      const ctx: ExporterContext = { filePath, vaultRoot };
+      await pluginEnhancer(body, ctx).catch(() => {});
+      return;
+    }
     // .mmap and other types: keep in-DOM content if it has an SVG; else
     // fall back to a filename card. Reset the body's fixed 420px height
     // so the card shrinks to content instead of leaving a huge empty box.
@@ -331,6 +349,43 @@ async function processFilePreviews(
     body.style.height = 'auto';
     body.style.minHeight = '0';
     body.style.overflow = 'visible';
+  }));
+}
+
+/**
+ * Walk each `[data-container]` element in the rendered export DOM and apply
+ * any matching plugin export enhancer (keyed by the container directive name).
+ * The enhancer runs host-realm on a real HTMLElement after the in-DOM render
+ * has settled; it mutates the body in place to be self-contained for export.
+ *
+ * The `body` handed to the enhancer is the `[data-container]` element itself,
+ * unless it contains a `[data-file-preview-body]` child (a file-preview
+ * rendered inside a container directive) — then the inner body is used, mir
+ * roring `processFilePreviews`'s body-selection logic. Action buttons are
+ * stripped first (same as processFilePreviews).
+ *
+ * ponytail: enhancer failures are swallowed best-effort (`.catch(() => {})`)
+ * — a broken enhancer should not abort the whole export. If multiple plugins
+ * register for the same key, last-registered-wins (see exportEnhancerAdapter).
+ *
+ * Extracted as an exported pure function so the walk is unit-testable in
+ * isolation (jsdom can host a DOM, but not MarkdownPreview + excalidraw/x6).
+ */
+export async function applyContainerEnhancers(
+  container: HTMLElement,
+  ctx: ExporterContext,
+): Promise<void> {
+  const blocks = container.querySelectorAll<HTMLElement>('[data-container]');
+  await Promise.all(Array.from(blocks).map(async (block) => {
+    const name = block.getAttribute('data-container') || '';
+    const enhancer = getEnhancer(name);
+    if (!enhancer) return;
+    // Strip action buttons (no-ops in static HTML).
+    for (const btn of Array.from(block.querySelectorAll('button'))) btn.remove();
+    // Use the inner [data-file-preview-body] if present (a file-preview
+    // rendered inside this container directive), else the block itself.
+    const body = block.querySelector<HTMLElement>('[data-file-preview-body]') ?? block;
+    await enhancer(body, ctx).catch(() => {});
   }));
 }
 
