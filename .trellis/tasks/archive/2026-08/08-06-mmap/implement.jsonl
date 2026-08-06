@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "mmap viewer 是 file-type editor，MindMapCanvas 是其渲染组件；改动需符合 file-type editor 的边界与预览源契约"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "改 MindMapCanvas.tsx 内部 CSS/函数，需符合桌面端组件规范"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "需保证 MindMapCanvas.click.test.tsx 不破"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "复用现有 SKELETON_CSS / SKELETON_BRANCHES 结构，不引入新抽象"}

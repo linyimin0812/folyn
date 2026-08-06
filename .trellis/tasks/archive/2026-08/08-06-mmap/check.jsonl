@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "检查现有测试不破、tree skeleton 渲染符合 PRD 验收"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "检查改动符合桌面端组件规范"}
