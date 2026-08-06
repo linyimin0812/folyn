@@ -31,7 +31,7 @@ import {
   type MmapSkeleton,
   type MmapDirection,
 } from './outlineConverter';
-import { applySkeleton, runPostLinkDiv, isDirectionEnabled } from './skeletons';
+import { applySkeleton, runSkeletonInit, runPostLinkDiv, isDirectionEnabled } from './skeletons';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { useAppearanceStore } from '@/store/appearanceStore';
 
@@ -210,6 +210,11 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
         ? { main: defaultMainBranchRef.current, sub: defaultSubBranchRef.current }
         : undefined;
     applySkeleton(inst, ms?.skeleton, defaults);
+    // ponytail: only enforce direction when the source EXPLICITLY set a
+    // skeleton. For the default mind case (skeleton undefined), respect
+    // data.direction so a left/right-branching mind map source keeps its
+    // direction instead of being forced to both-sides.
+    if (ms?.skeleton) runSkeletonInit(inst, ms.skeleton);
     inst.layout();
     inst.linkDiv();
     inst.toCenter();
@@ -645,6 +650,9 @@ export default function MindMapCanvas({ content, onChange, filePath, vaultRoot }
         ? { main: defaultMainBranchRef.current, sub: defaultSubBranchRef.current }
         : undefined;
     applySkeleton(inst, skeleton, defaults);
+    // ponytail: user picker action always enforces the skeleton's canonical
+    // direction (mind = both-sides, others = right-branching).
+    runSkeletonInit(inst, skeleton);
     const next = { ...canvasStyleRef.current };
     if (skeleton === 'mind') delete next.skeleton;
     else next.skeleton = skeleton;

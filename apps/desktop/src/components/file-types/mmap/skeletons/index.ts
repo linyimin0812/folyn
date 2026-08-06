@@ -29,9 +29,11 @@ function ensureStyleEl(container: HTMLElement): HTMLStyleElement {
 }
 
 // ponytail: dispatch entry. Tears down the previous strategy, swaps CSS +
-// data attribute + branch generators, then runs the new strategy's init.
-// `defaults` are mind-elixir's captured default generators (passed in by
-// the canvas) — used when the strategy doesn't override branch (mind/bracket).
+// data attribute + branch generators. Does NOT call strategy.init — the
+// caller decides whether to enforce direction (mount respects the source's
+// data.direction for the default mind case; a user picker action always
+// enforces). `defaults` are mind-elixir's captured default generators (used
+// when the strategy doesn't override branch — mind/bracket).
 export function applySkeleton(
   inst: MindElixirInstance,
   skeleton: MmapSkeleton | undefined,
@@ -56,7 +58,17 @@ export function applySkeleton(
     inst.generateMainBranch = defaults.main;
     inst.generateSubBranch = defaults.sub;
   }
-  strategy.init(inst);
+}
+
+// ponytail: enforce the skeleton's implied direction. Call this when the
+// caller knows direction should be reset to the skeleton's canonical value
+// (user picker action, explicit skeleton in source). Skip for the default
+// mind case when the source's data.direction should be respected.
+export function runSkeletonInit(
+  inst: MindElixirInstance,
+  skeleton: MmapSkeleton | undefined,
+): void {
+  SKELETON_REGISTRY[skeleton ?? 'mind'].init(inst);
 }
 
 // ponytail: postLinkDiv dispatcher — called from mind-elixir's linkDiv
