@@ -53,6 +53,10 @@ import {
 } from './contributionAdapters';
 import { registerPluginTools } from './toolAdapter';
 import { registerPluginFeatures } from './featureAdapter';
+import { registerPluginExporters } from './exporterAdapter';
+import { registerPluginFileTemplates } from './fileTemplateAdapter';
+import { registerPluginKeybindings } from './keybindingAdapter';
+import { registerPluginExportEnhancers } from './exportEnhancerAdapter';
 import { buildPluginAi } from './aiCapability';
 
 export const trustedLoader: PluginLoader = {
@@ -111,6 +115,10 @@ export const trustedLoader: PluginLoader = {
           registerPluginContainers(manifest, module),
           registerPluginTools(manifest),
           registerPluginFeatures(manifest, module),
+          registerPluginExporters(manifest, module),
+          registerPluginFileTemplates(manifest),
+          registerPluginKeybindings(manifest),
+          registerPluginExportEnhancers(manifest, module),
         ];
         for (const d of adapterDisposables) ctx.addDisposable(d);
 
@@ -146,8 +154,8 @@ export const trustedLoader: PluginLoader = {
 /**
  * Normalize a raw `import()` result into a `PluginModule`. Unwraps a
  * `default` export if present, then copies the named plugin exports
- * (`handlers`, `containers`, `features`, `commands`, `activate`, `deactivate`) when
- * they exist on the module namespace.
+ * (`handlers`, `containers`, `features`, `commands`, `exporters`, `activate`,
+ * `deactivate`) when they exist on the module namespace.
  */
 function normalizeModule(mod: Record<string, unknown>): PluginModule {
   const out: PluginModule = {};
@@ -156,6 +164,8 @@ function normalizeModule(mod: Record<string, unknown>): PluginModule {
   if (src.containers) out.containers = src.containers as PluginModule['containers'];
   if (src.features) out.features = src.features as PluginModule['features'];
   if (src.commands) out.commands = src.commands as PluginModule['commands'];
+  if (src.exporters) out.exporters = src.exporters as PluginModule['exporters'];
+  if (src.exportEnhancers) out.exportEnhancers = src.exportEnhancers as PluginModule['exportEnhancers'];
   if (typeof src.activate === 'function') out.activate = src.activate as PluginModule['activate'];
   if (typeof src.deactivate === 'function') out.deactivate = src.deactivate as PluginModule['deactivate'];
   return out;

@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 126
+- **Total Sessions**: 127
 - **Last Active**: 2026-08-06
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~417 | Active |
+| `journal-3.md` | ~455 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 127 | 2026-08-06 | Plugin SDK refactor: extract @quill/plugin-sdk + 6 contribution points | `42e053d`, `000b313`, `55c9534`, `7425727` | `sharp-mountain` |
 | 126 | 2026-08-06 | mmap: trim skeletons + fix xmind export | `ac79c00` | `master` |
 | 125 | 2026-08-06 | mmap fishbone spine and parallel bones | `37ce7a7` | `master` |
 | 124 | 2026-08-05 | Pet menu: connect + clamp + revert to working state | `220670a`, `1831c43`, `cc31584` | `master` |

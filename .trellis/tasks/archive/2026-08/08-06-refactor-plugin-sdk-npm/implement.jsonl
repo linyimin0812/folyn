@@ -1,0 +1,9 @@
+{"file": "docs/plugin-development.md", "reason": "插件契约权威文档：manifest schema、tier、5 既有贡献点、PluginModule 导出契约、TOFU、打包路径。SDK 拆分与新贡献点的契约源头。"}
+{"file": ".trellis/spec/desktop/frontend/trusted-plugin-rendering.md", "reason": "trusted 插件 blob-URL import + 共享 host React（window.React / createElement 无 JSX）契约。PluginModule 迁入 SDK 时必须保持此约束。"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "FileTypeHandler / EditorProps / PreviewProps / ViewMode 契约与自定义编辑器规范——这些类型迁入 SDK 的依据。"}
+{"file": ".trellis/spec/container-plugins/frontend/type-safety.md", "reason": "ContainerProps / ContainerPlugin / ContainerCategory 类型契约——迁入 SDK 的依据。"}
+{"file": ".trellis/spec/container-plugins/frontend/component-guidelines.md", "reason": "ContainerPlugin 注册模式 + 单例 ContainerRegistry，container adapter 复用。"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "包级类型模式与命名约定，SDK 包类型表面遵循。"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "desktop 前端代码标准与禁用模式，host adapter 实现遵循。"}
+{"file": ".trellis/spec/desktop/frontend/feature-agents.md", "reason": "AI 能力 chokepoint：ctx.ai.agent 驱动 feature agent 的契约，aiCapability 扩展 editFile/createFile 时遵循。"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "重构需识别既有 adapter/registry 模式避免重复，validateManifest 从 PluginHost 抽出复用。"}
