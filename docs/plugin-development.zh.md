@@ -38,6 +38,32 @@ Trusted tier 插件还需额外点一次 **批准并授权**（见 [TOFU](#tofu-
 - `hello-tool` 插件（sandbox tier）贡献一个 **Hello: Greet** 命令，通过 host RPC
   桥写入剪贴板。
 
+### 安装 SDK
+
+用 `@quill/plugin-sdk` 给你的 manifest 做类型守卫——它是可发布到 npm 的类型包
+（manifest schema、贡献点、`PluginModule`、AI 能力类型，以及 `definePlugin`/
+`validateManifest` 等 dev helper）。它无运行时依赖；React 仅作 peer 类型
+（type-only 消费者在构建时被擦除）。
+
+```bash
+npm install @quill/plugin-sdk
+```
+
+```ts
+// index.ts —— trusted tier 插件入口模块
+import type { PluginModule, ExporterHandler } from '@quill/plugin-sdk';
+
+const exportTxt: ExporterHandler = async (content, ctx) =>
+  `# ${ctx.filePath}\n\n${content}`;
+
+export const exporters: Record<string, ExporterHandler> = { 'txt-with-header': exportTxt };
+export const commands = { ping: () => console.info('pong') };
+```
+
+内部 workspace 插件依赖 `@quill/plugin-host`（它 re-export 了完整 SDK 面）——
+从两边 import 都可以。运行时微内核（`PluginHost`、`pluginHost` 单例）留在
+`@quill/plugin-host`；SDK 保持可发布、无运行时。
+
 ---
 
 ## 一览：host 对外提供什么
@@ -52,7 +78,7 @@ Trusted tier 插件还需额外点一次 **批准并授权**（见 [TOFU](#tofu-
 | `sandbox` | 独立 `WebviewWindow` 或 iframe，origin 为 `quill-plugin://localhost` | 仅能用 host RPC 桥，无 Tauri API | 无（sandbox 本身就是边界） |
 | `trusted` | 主 webview realm（进程内） | 完整 host realm + Zustand store + Tauri | TOFU：用户必须点 **批准并授权** |
 
-### 2. 五个 contribution 点位
+### 2. Contribution 点位
 
 在 manifest 的 `contributes` 中声明；activate 时由 host 接入对应注册表；deactivate
 时自动注销。
@@ -64,6 +90,9 @@ Trusted tier 插件还需额外点一次 **批准并授权**（见 [TOFU](#tofu-
 | `fileTypes` | ✗ | ✓ | 文件扩展名 → handler 映射 |
 | `containers` | ✗ | ✓ | `:::name` Markdown 指令 → React 组件 |
 | `features` | ✗ | ✓ | 侧边栏 panel slot（activity bar 图标 + 组件）—— MVP 仅 left |
+| `exporters` | ✗ | ✓ | 自定义导出格式 → "Export as <label>" 面板命令 |
+| `fileTemplates` | ✗ | ✓ | 新建文件模板 → "New <label>" 面板命令 |
+| `keybindings` | ✗ | ✓ | Tauri accelerator → 命令 id（app 级 keydown） |
 
 ### 3. RPC 方法表（sandbox tier —— host 中介）
 
@@ -186,7 +215,8 @@ default-src 'none';
     "clipboard": true,
     "dialog": true,
     "window": true,
-    "vault":  { "readActive": true, "insertContent": true }
+    "vault":  { "readActive": true, "insertContent": true },
+    "ai":     { "chat": true, "agents": ["study"], "edit": true }
   },
 
   // 可选。本插件添加到 app 的 contribution 点位。
@@ -195,7 +225,10 @@ default-src 'none';
     "fileTypes":  [{ "id": "json", "extensions": [".json"], "handler": "default", "defaultViewMode": "edit" }],
     "containers": [{ "name": "callout", "icon": "💡", "label": "Callout", "category": "layout", "component": "callout", "template": ":::callout\n:::", "description": "A callout" }],
     "features":   [{ "id": "my-panel", "panel": "left", "component": "my-panel", "icon": "<svg>...</svg>", "title": "My Panel", "order": 50, "badge": "NEW" }],
-    "tools":      [{ "id": "my-tool", "title": "My Tool", "icon": "🛠", "window": true, "entry": "index.html" }]
+    "tools":      [{ "id": "my-tool", "title": "My Tool", "icon": "🛠", "window": true, "entry": "index.html" }],
+    "exporters":      [{ "id": "txt", "format": "txt-header", "label": "Text with header", "fileExtension": "txt", "run": "txt-with-header" }],
+    "fileTemplates":  [{ "id": "meeting-notes", "label": "Meeting Notes", "fileName": "meeting-notes.md", "template": "# Meeting Notes\n\n", "icon": "📝" }],
+    "keybindings":    [{ "command": "plugin.my-plugin.greet", "key": "Control+Alt+Shift+T", "mac": "Cmd+Alt+Shift+T" }]
   },
 
   // 可选。懒激活触发器。仅当以下之一触发时才加载插件代码（仿 VSCode activation events）。
@@ -252,6 +285,10 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
 - `handler` 是模块 `handlers` map 的 entry-ref。handler 必须是完整的
   `FileTypeHandler`（见 `apps/desktop/src/components/file-types/types.ts`）。
 - `defaultViewMode` 可选（`split` / `edit` / `preview` / `visual` / `source`）。
+- `supportedViewModes`（可选）声明 handler 支持的 view mode；host 会把 manifest
+  声明的 id 合并进 handler 自有的集合，shell 的 view-mode 切换器会展示它们。
+  除了 5 个内置（`split`/`edit`/`preview`/`visual`/`source`），插件可以声明
+  **自定义** mode id（如 `canvas`），由 handler 自己的 `Editor`/`Preview` 渲染。
 
 ### containers（仅 trusted）
 
@@ -364,6 +401,58 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
   demo：textarea → markdown 表格 → Insert 按钮 → `vault:insert-content` RPC →
   表格被追加进当前文档。
 
+### exporters（仅 trusted）
+
+```jsonc
+"exporters": [
+  { "id": "txt-with-header", "format": "txt-header", "label": "Text with header", "fileExtension": "txt", "run": "txt-with-header" }
+]
+```
+
+- `format` 是输出格式 id（插件内唯一）；palette 命令 id 为
+  `plugin.<pluginId>.export.<format>`。
+- `label` 是菜单标签；注册的命令标题为 `Export as <label>`。
+- `fileExtension` 是输出扩展名（不带点，如 `txt`）。
+- `run` 是模块 `exporters` map 的 **entry-ref**。handler 签名为
+  `(content: string, ctx: { filePath, vaultRoot }) => Promise<Blob | string>`；
+  返回 `string` 会被包成 `text/plain` Blob。运行命令时 host 用 `getActiveDocument`
+  读当前文档，调 handler，再通过共享的 `downloadBlob` chokepoint 写文件
+  （与内置导出走同一条 save-dialog + `writeFile` 路径）。
+
+### fileTemplates（仅 trusted）
+
+```jsonc
+"fileTemplates": [
+  { "id": "meeting-notes", "label": "Meeting Notes", "fileName": "meeting-notes.md", "template": "# Meeting Notes\n\n", "icon": "📝" }
+]
+```
+
+- 纯声明式——无模块 map。每条会注册进 host 的 `fileTemplateRegistry`
+  （key 为 `<pluginId>.<templateId>`）并暴露 palette 命令
+  `plugin.<pluginId>.new.<templateId>`，标题 `New <label>`。运行命令会弹保存
+  对话框（默认路径在当前 vault root 下），把 `template` 原样写入，再刷新文件树。
+- ponytail：文件树右键「新建」子菜单暂未接入——其内联重命名流程按扩展名从
+  `prefsStore.fileTemplates` 取内容，无法承载任意 body。palette 命令是 MVP 的
+  用户入口；子菜单分组是升级路径（读 `getPluginFileTemplates()`）。
+
+### keybindings（仅 trusted）
+
+```jsonc
+"keybindings": [
+  { "command": "plugin.my-plugin.greet", "key": "Control+Alt+Shift+T", "mac": "Cmd+Alt+Shift+T", "when": "..." }
+]
+```
+
+- `command` 是命令 id——可以是插件贡献的命令（`plugin.<pluginId>.<id>`）或
+  内置命令（如 `action.toggle-theme`）。按键触发时 host 在 `commandRegistry`
+  里查并运行它。
+- `key` 是 Tauri accelerator（`Cmd+Shift+K`、`Control+Alt+T`）。
+- `mac` 覆盖 macOS。`when` 是可选的激活子句（opaque 字符串，预留——MVP 全局注册）。
+- ponytail：项目未装 `@tauri-apps/plugin-global-shortcut`，所以绑定是 app 级
+  `keydown` 监听器——只在 app 窗口聚焦时触发，后台不触发。OS 全局的升级路径是
+  `plugin-global-shortcut` 的 `register(accelerator, handler)` + dispose 里
+  `unregister(accelerator)`。
+
 ---
 
 ## PluginModule 导出契约（trusted tier）
@@ -377,13 +466,15 @@ export const handlers: Record<string, FileTypeHandler> = { 'default': { ... } };
 export const containers: Record<string, ComponentType<ContainerProps>> = { 'todo': TodoComp };
 export const commands: Record<string, () => void | Promise<void>> = { 'greet': () => {} };
 export const features: Record<string, ComponentType<unknown>> = { 'my-panel': Panel };
+export const exporters: Record<string, ExporterHandler> = { 'txt-with-header': exportTxt };
 export function activate(ctx: PluginContext) { /* 可选 */ }
 export function deactivate(ctx: PluginContext) { /* 可选 */ }
 ```
 
 各个 map **以 entry-ref 为 key**——即 manifest `contributes.*[].run` / `.handler`
-/ `.component` 中填的字符串。模块 export 中找不到的 entry-ref 会被跳过并打 console
-警告（best-effort：部分插件仍能加载其他 contribution）。
+/ `.component` / `.entry` 中填的字符串。模块 export 中找不到的 entry-ref 会被跳过
+并打 console 警告（best-effort：部分插件仍能加载其他 contribution）。
+`fileTemplates` 与 `keybindings` 是声明式的——无模块 map。
 
 也接受 default-export 工厂 `(ctx) => PluginModule`（loader 会归一两种形态）。详见
 `contributionAdapters.ts` 的具体解析规则。
@@ -489,6 +580,67 @@ Trusted 插件运行在 **主 webview realm**，本身已有 `capabilities/defau
 
 不要假装 `grant_plugin_capabilities` 是硬沙箱。需要硬边界装第三方插件，用
 **sandbox tier**。
+
+---
+
+## AI 能力（`permissions.ai`）
+
+Quill 的 AI 面（chat 走 `runRigChat`、feature agent 走 `runFeatureAgent`）以
+host 中介的能力暴露给插件。host 持有 provider/model/apiKey；插件永远看不到凭证。
+
+### 权限声明
+
+```json
+"permissions": {
+  "ai": { "chat": true, "agents": ["study"], "edit": true }
+}
+```
+
+- `chat`（boolean）——`ctx.ai.chat`（trusted）或 `ai:chat` RPC（sandbox）必填。
+- `agents`（string[]）——允许插件驱动的 feature 名白名单。空/缺 = 不能调
+  agent。**仅 trusted。**
+- `edit`（boolean）——`ctx.ai.editFile` / `ctx.ai.createFile` 必填（仅 trusted）。
+  host 把结果文件改动通过共享的 editor/vault chokepoint 应用；插件本身不写文件系统。
+
+### Trusted tier —— `PluginContext.ai`
+
+```ts
+ctx.ai.chat({
+  sessionId: 'my-plugin-session',   // 插件自管；rig 按 id 持久化历史
+  prompt: '用 3 个要点总结当前文档',
+  onEvent: (e) => { /* e.type ∈ 'text'|'thinking'|'error'|'done' */ },
+  useSharedSession: true,            // 可选：同时在 aiPanel 里露出
+});
+
+ctx.ai.agent({
+  feature: 'study',                  // 必须在 permissions.ai.agents 里
+  instruction: '复习我的笔记',
+  onEvent: (e) => { /* 'done' | 'error' */ },
+});
+
+// AI 驱动的文件编辑（仅 trusted，需 permissions.ai.edit）。host 通过 vault
+// manager 读写文件；插件只表达意图 + 收流式进度。
+await ctx.ai.editFile({
+  path: 'notes/summary.md',           // vault 相对路径
+  instruction: '总结成 3 个要点',
+  onEvent: (e) => { /* 'text' | 'error' | 'done' */ },
+});
+await ctx.ai.createFile({
+  path: 'notes/new-note.md',
+  instruction: '起草一个会议纪要骨架',
+  onEvent: (e) => {},
+});
+```
+
+`onEvent` 镜像 `CliStreamEvent`，但过滤掉 `tool_*` / `file_change`——插件只
+看到 text / thinking / error / done。provider/model 来自 host 的
+`useAiConfigStore`；apiKey 不会出现在 `ctx` 或 RPC 参数里。
+
+### Sandbox tier —— `ai:chat` RPC
+
+Sandbox 插件无法调 feature agent（canonical agent 文件位于 vault 的
+`__<feature>__/` 目录；sandbox 隔离下安全暴露它们超出范围）。需要 `ai.agent`
+请用 trusted tier。
 
 ---
 
@@ -629,5 +781,10 @@ ed25519 脚手架（见上）已为其就位。
   内联 SVG 图标 + `order` + `badge`）+ 一个 **Notes: Open Panel** 命令。演示
   数据驱动的 activity bar / 侧边栏挂载路径，以及 panel 组件内进程内 editor
   store 访问。
+- [`examples/plugins/plugin-export-demo`](../examples/plugins/plugin-export-demo)
+  —— trusted tier。在一个小插件里演练三个新贡献点：一个 `exporters`（当前
+  文档 → 带表头的 `.txt`）、一个 `fileTemplates`（**New Meeting Notes** 面板
+  命令）、一个 `keybindings`（`Cmd/Ctrl+Alt+Shift+T` → 一个 **Demo: Ping**
+  命令）。纯 ESM，无 JSX、无 React。
 
-三个都通过 Settings → Plugins → 从文件夹安装… 装，手动 QA 全流程。
+任一都通过 Settings → Plugins → 从文件夹安装… 装，手动 QA 全流程。

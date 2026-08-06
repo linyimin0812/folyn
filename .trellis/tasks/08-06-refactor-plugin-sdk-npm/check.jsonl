@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "review checklist + 禁用模式，check 阶段对照审查 SDK 拆分与 adapter 改动。"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "类型安全标准，检查 SDK 类型表面与 re-export 是否破坏既有类型。"}
+{"file": ".trellis/spec/desktop/frontend/trusted-plugin-rendering.md", "reason": "检查 trusted 插件 React 共享契约未被 PluginModule 迁移破坏。"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "检查 FileTypeHandler/ViewMode 迁入 SDK 后契约一致。"}
+{"file": ".trellis/spec/container-plugins/frontend/quality-guidelines.md", "reason": "container-plugins 包质量标准，检查 ContainerProps 迁移不回归。"}
+{"file": "docs/plugin-development.md", "reason": "插件契约文档，检查新贡献点与文档一致、既有行为不回归。"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "检查是否复用既有 registry/adapter 模式而非重复实现。"}

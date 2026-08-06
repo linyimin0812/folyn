@@ -32,37 +32,25 @@
  * partial plugin should still load its other contributions).
  */
 
-import type { ComponentType } from 'react';
-import type { Disposable, PluginManifest, PluginContext } from '@quill/plugin-host';
+import type { Disposable, PluginManifest } from '@quill/plugin-host';
 import type {
   CommandContribution,
   ContainerContribution,
 } from '@quill/plugin-host';
 import type { FileTypeHandler } from '@/components/file-types/types';
-import type { ContainerProps, ContainerCategory } from '@quill/container-plugins';
+import type { ContainerCategory } from '@quill/container-plugins';
 
 /**
  * The resolved exports of a trusted plugin's ESM bundle. All maps are
  * optional — a plugin may contribute only commands, only file-types, etc.
+ *
+ * ponytail: interface moved to `@quill/plugin-sdk` contracts (so external
+ * plugin authors typecheck against the publishable SDK). Re-exported here so
+ * existing `import type { PluginModule } from './contributionAdapters'` keeps
+ * working.
  */
-export interface PluginModule {
-  /** Entry-ref → file-type handler. Keys match `contributes.fileTypes[].handler`. */
-  handlers?: Record<string, FileTypeHandler>;
-  /** Entry-ref → React component. Keys match `contributes.containers[].component`. */
-  containers?: Record<string, ComponentType<ContainerProps>>;
-  /**
-   * Entry-ref → React component. Keys match `contributes.features[].component`.
-   * Used by `registerPluginFeatures` (services/plugin-host/featureAdapter.ts)
-   * to mount trusted-tier sidebar panels.
-   */
-  features?: Record<string, ComponentType>;
-  /** Entry-ref → command handler. Keys match `contributes.commands[].run`. */
-  commands?: Record<string, () => void | Promise<void>>;
-  /** Optional lifecycle hook; called by the trusted loader on activate. */
-  activate?: (ctx: PluginContext) => void | Promise<void>;
-  /** Optional lifecycle hook; called by the trusted loader on deactivate. */
-  deactivate?: (ctx: PluginContext) => void | Promise<void>;
-}
+export type { PluginModule } from '@quill/plugin-sdk';
+import type { PluginModule } from '@quill/plugin-sdk';
 
 /** Merge a list of disposables into one. */
 function mergeDisposables(disposables: Disposable[]): Disposable {
@@ -149,6 +137,16 @@ export function registerPluginFileTypes(
     const merged: FileTypeHandler = { ...handler, id: ft.id, extensions: ft.extensions };
     if (ft.defaultViewMode && !merged.defaultViewMode) {
       merged.defaultViewMode = ft.defaultViewMode as FileTypeHandler['defaultViewMode'];
+    }
+    // Merge manifest-declared view modes (incl. custom ids) into the handler so
+    // the shell's view-mode switcher surfaces them. Built-in ids stay; custom
+    // ids are appended after the handler's own set.
+    if (ft.supportedViewModes?.length) {
+      const have = new Set(merged.supportedViewModes);
+      merged.supportedViewModes = [
+        ...merged.supportedViewModes,
+        ...ft.supportedViewModes.filter((m) => !have.has(m)),
+      ];
     }
     const d = registerFileTypeHandler(merged);
     disposables.push({ dispose: () => d.dispose() });

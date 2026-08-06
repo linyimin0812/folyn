@@ -10,8 +10,8 @@ import { saveFile as saveFileIo } from '@/services/editorIoService';
 import { useEditorPrefsStore } from './editorPrefsStore';
 import { wikiProvider } from '@/services/wikiProvider';
 import type { ActivityPanel } from '@/components/shell/ActivityBar';
-
-export type ViewMode = 'split' | 'edit' | 'preview' | 'visual' | 'source';
+import type { ViewMode } from '@/components/file-types/types';
+export type { ViewMode };
 
 export type FileType = string;
 

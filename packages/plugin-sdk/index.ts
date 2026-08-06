@@ -1,10 +1,6 @@
-// The manifest schema, contribution points, contracts, and Disposable have
-// moved to `@quill/plugin-sdk` (publishable, no runtime). This package keeps
-// only the runtime microkernel (`PluginHost` + shared instance) and re-exports
-// the SDK surface so existing `import from '@quill/plugin-host'` keeps working.
-export type { Disposable } from '@quill/plugin-sdk';
-export { disposable, validateManifest, definePlugin } from '@quill/plugin-sdk';
-export { PluginHost, pluginHost } from './src/PluginHost';
+export type { Disposable } from './src/Disposable';
+export { disposable } from './src/Disposable';
+export { validateManifest, definePlugin } from './src/definePlugin';
 export type {
   Plugin,
   PluginContext,
@@ -32,6 +28,8 @@ export type {
   PluginAiStreamEvent,
   PluginAiEventType,
   PluginAiEventHandler,
+} from './src/types';
+export type {
   ViewMode,
   EditorProps,
   PreviewProps,
@@ -42,4 +40,4 @@ export type {
   PluginModule,
   ExporterContext,
   ExporterHandler,
-} from '@quill/plugin-sdk';
+} from './src/contracts';

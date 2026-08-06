@@ -16,6 +16,9 @@
     "build": "tsc",
     "clean": "rm -rf dist"
   },
+  "dependencies": {
+    "@quill/plugin-sdk": "workspace:*"
+  },
   "devDependencies": {
     "typescript": "^5.7.0"
   }

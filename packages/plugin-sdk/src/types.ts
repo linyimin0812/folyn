@@ -4,7 +4,8 @@
  * This file is the public surface plugin authors program against. It is
  * framework-agnostic: contribution points declare entry references (strings)
  * that a {@link PluginLoader} resolves to real functions/components at runtime,
- * so the kernel package has no React dependency.
+ * so the SDK package has no runtime dependency (React types are peer-only,
+ * erased at build for type-only consumers).
  *
  * Tier model (see prd.md ADR-lite):
  * - `sandbox`: untrusted plugin hosted in a sandboxed iframe (`quill-plugin://`
@@ -108,8 +109,11 @@ export interface PluginPermissions {
    * - `agents`: whitelist of feature names the plugin may drive via
    *   `PluginContext.ai.agent` (trusted only — sandbox cannot reach feature
    *   agents). Empty/absent = no agent calls.
+   * - `edit`: allow `PluginContext.ai.editFile` / `createFile` (trusted only).
+   *   Host applies the resulting file changes through the shared editor/vault
+   *   chokepoint; the plugin never writes the filesystem directly.
    */
-  ai?: { chat?: boolean; agents?: string[] };
+  ai?: { chat?: boolean; agents?: string[]; edit?: boolean };
 }
 
 // ── AI capability (host-mediated) ─────────────────────────────────────────────
@@ -148,6 +152,24 @@ export interface PluginAiAgentParams {
   onEvent: PluginAiEventHandler;
 }
 
+/** Params for {@link PluginAiCapability.editFile} — modify an existing file. */
+export interface PluginAiEditFileParams {
+  /** Vault-relative path of the file to modify. */
+  path: string;
+  /** Natural-language instruction describing the desired change. */
+  instruction: string;
+  onEvent: PluginAiEventHandler;
+}
+
+/** Params for {@link PluginAiCapability.createFile} — create a new file. */
+export interface PluginAiCreateFileParams {
+  /** Vault-relative path of the file to create (overwrites if present). */
+  path: string;
+  /** Natural-language instruction describing the file to create. */
+  instruction: string;
+  onEvent: PluginAiEventHandler;
+}
+
 export interface PluginAiCapability {
   /** Stream a multi-turn chat turn through the host's configured provider.
    * Rejects if `permissions.ai.chat` is not declared. */
@@ -155,6 +177,13 @@ export interface PluginAiCapability {
   /** Drive a registered feature agent (trusted tier only). Rejects if the
    * feature is not in `permissions.ai.agents`. */
   agent(params: PluginAiAgentParams): Promise<void>;
+  /** Apply an AI-driven edit to an existing vault file (trusted tier only).
+   * The host streams progress via `onEvent` and applies the change through the
+   * shared editor chokepoint. Rejects if `permissions.ai.edit` is not declared. */
+  editFile(params: PluginAiEditFileParams): Promise<void>;
+  /** Create a new vault file from an AI instruction (trusted tier only).
+   * Rejects if `permissions.ai.edit` is not declared. */
+  createFile(params: PluginAiCreateFileParams): Promise<void>;
 }
 
 // ── Contribution points ────────────────────────────────────────────────────
@@ -179,6 +208,13 @@ export interface FileTypeContribution {
   /** Entry ref to a component or 'default' to reuse built-in rendering. */
   handler: string;
   defaultViewMode?: string;
+  /**
+   * Optional view modes this handler supports (incl. custom mode ids). When
+   * present, merged into the registered handler's `supportedViewModes` so the
+   * shell's view-mode switcher surfaces them. Built-in ids: split/edit/preview/
+   * visual/source; plugins may declare custom ids (e.g. 'canvas').
+   */
+  supportedViewModes?: string[];
 }
 
 export interface ContainerContribution {
@@ -228,12 +264,68 @@ export interface ToolContribution {
   entry: string;
 }
 
+// ── Exporter contribution ──────────────────────────────────────────────────
+// Adds a custom file export format to the export menu / exportService. The
+// `run` entry-ref resolves (via `PluginModule.exporters`) to a function that
+// takes the active doc content + ctx and returns a Blob/string to write.
+
+export interface ExporterContribution {
+  id: string;
+  /** Output format id, e.g. `pdf`, `docx`. Globally unique within a plugin. */
+  format: string;
+  /** Menu label, e.g. `Export as PDF`. */
+  label: string;
+  /** Output file extension without dot, e.g. `pdf`. */
+  fileExtension: string;
+  /** Entry ref to the exporter function (indexed by `PluginModule.exporters`). */
+  run: string;
+}
+
+// ── File-template contribution (new-file submenu) ──────────────────────────
+// Adds a secondary entry to the file-tree right-click "新建" submenu. Selecting
+// it creates a new file at the chosen path seeded with `template`.
+
+export interface FileTemplateContribution {
+  id: string;
+  /** Submenu label, e.g. `New DBML diagram`. */
+  label: string;
+  /** Default file name (without directory), e.g. `untitled.dbml`. */
+  fileName: string;
+  /** Initial file content. */
+  template: string;
+  /** Optional emoji/ThemeIcon for the submenu row. */
+  icon?: string;
+}
+
+// ── Keybinding contribution ────────────────────────────────────────────────
+// Binds a key to a command id (a plugin-contributed command or a built-in).
+// `key` is a Tauri accelerator string (e.g. `Cmd+Shift+P`). `mac` overrides
+// for macOS; `when` is an optional activation clause (kept as an opaque
+// string for forward-compat — MVP registers globally).
+
+export interface KeybindingContribution {
+  /** Command id to invoke (e.g. `plugin.my-plugin.greet` or a built-in id). */
+  command: string;
+  /** Tauri accelerator, e.g. `Cmd+Shift+K`. */
+  key: string;
+  /** macOS-specific accelerator override. */
+  mac?: string;
+  /** Optional activation clause (opaque string; reserved for `when` contexts). */
+  when?: string;
+}
+
 export interface ContributionPoints {
   commands?: CommandContribution[];
   fileTypes?: FileTypeContribution[];
   containers?: ContainerContribution[];
   features?: FeatureContribution[];
   tools?: ToolContribution[];
+  /** Custom export formats added to the export menu. */
+  exporters?: ExporterContribution[];
+  /** Entries added to the file-tree right-click "新建" submenu. */
+  fileTemplates?: FileTemplateContribution[];
+  /** Key→command bindings registered with the global-shortcut layer. */
+  keybindings?: KeybindingContribution[];
 }
 
 export interface ActivationEvents {

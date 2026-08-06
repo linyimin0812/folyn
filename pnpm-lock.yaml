@@ -116,6 +116,9 @@ importers:
       '@quill/plugin-host':
         specifier: workspace:*
         version: link:../../packages/plugin-host
+      '@quill/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
       '@quill/vault-provider':
         specifier: workspace:*
         version: link:../../packages/vault-provider
@@ -350,6 +353,10 @@ importers:
         version: 2.9.0
 
   packages/container-plugins:
+    dependencies:
+      '@quill/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
     devDependencies:
       '@types/react':
         specifier: ^18.3.12
@@ -365,7 +372,23 @@ importers:
         version: 5.9.3
 
   packages/plugin-host:
+    dependencies:
+      '@quill/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
     devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
+  packages/plugin-sdk:
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.28
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
@@ -389,9 +412,9 @@ importers:
         specifier: ^3.28.0
         version: 3.28.0
     devDependencies:
-      '@quill/plugin-host':
+      '@quill/plugin-sdk':
         specifier: workspace:*
-        version: link:../../packages/plugin-host
+        version: link:../../packages/plugin-sdk
       '@types/react':
         specifier: ^18.3.12
         version: 18.3.28

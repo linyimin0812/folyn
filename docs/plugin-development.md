@@ -38,7 +38,7 @@ A Quill plugin is a folder under `~/.quill/plugins/<id>/` with a
 | `sandbox` | separate `WebviewWindow` or iframe, origin `quill-plugin://localhost` | host RPC bridge only — no Tauri APIs | none (sandbox IS the boundary) |
 | `trusted` | main webview realm (in-process) | full host realm + Zustand stores + Tauri | TOFU: user must **批准并授权** |
 
-### 2. Five contribution points
+### 2. Contribution points
 
 Declared in `contributes` in the manifest; wired into host registries on
 activate; auto-unregistered on deactivate.
@@ -50,6 +50,9 @@ activate; auto-unregistered on deactivate.
 | `fileTypes` | ✗ | ✓ | file extension → handler mapping |
 | `containers` | ✗ | ✓ | `:::name` Markdown directive → React component |
 | `features` | ✗ | ✓ | sidebar panel slot (activity bar icon + component) — left only (MVP) |
+| `exporters` | ✗ | ✓ | custom export format → "Export as <label>" palette command |
+| `fileTemplates` | ✗ | ✓ | new-file template → "New <label>" palette command |
+| `keybindings` | ✗ | ✓ | Tauri accelerator → command id (app-scope keydown) |
 
 ### 3. RPC method table (sandbox tier — host-mediated)
 
@@ -136,6 +139,34 @@ After install + activate:
   (⌘P → "Todo: Insert Checklist").
 - The `hello-tool` plugin (sandbox tier) contributes a **Hello: Greet**
   command that writes to the clipboard via the host RPC bridge.
+
+### Install the SDK
+
+Type your manifest against `@quill/plugin-sdk` — the publishable type package
+(manifest schema, contribution points, `PluginModule`, AI capability types,
+and dev helpers like `definePlugin` / `validateManifest`). It has no runtime
+dependency; React is a peer type only (erased at build for type-only
+consumers).
+
+```bash
+npm install @quill/plugin-sdk
+```
+
+```ts
+// index.ts — a trusted-tier plugin's entry module
+import type { PluginModule, ExporterHandler } from '@quill/plugin-sdk';
+
+const exportTxt: ExporterHandler = async (content, ctx) =>
+  `# ${ctx.filePath}\n\n${content}`;
+
+export const exporters: Record<string, ExporterHandler> = { 'txt-with-header': exportTxt };
+export const commands = { ping: () => console.info('pong') };
+```
+
+Internal workspace plugins depend on `@quill/plugin-host` (which re-exports
+the full SDK surface) — `import` from either works. The runtime microkernel
+(`PluginHost`, `pluginHost` singleton) lives in `@quill/plugin-host`; the SDK
+stays publishable and runtime-free.
 
 ---
 
@@ -269,6 +300,12 @@ adapts it into the matching app registry when the plugin activates.
   `apps/desktop/src/components/file-types/types.ts`).
 - `defaultViewMode` is optional (`split` / `edit` / `preview` / `visual` /
   `source`).
+- `supportedViewModes` (optional) declares the handler's view modes — the
+  host merges manifest-declared ids into the handler's own set so the
+  shell's view-mode switcher surfaces them. Beyond the 5 built-ins
+  (`split`/`edit`/`preview`/`visual`/`source`), a plugin may declare
+  **custom** mode ids (e.g. `canvas`); the handler's own `Editor`/`Preview`
+  then renders that mode.
 
 ### containers (trusted only)
 
@@ -400,6 +437,66 @@ adapts it into the matching app registry when the plugin activates.
   end-to-end demo: textarea → markdown table → Insert button →
   `vault:insert-content` RPC → table appended to the active doc.
 
+### exporters (trusted only)
+
+```jsonc
+"exporters": [
+  { "id": "txt-with-header", "format": "txt-header", "label": "Text with header", "fileExtension": "txt", "run": "txt-with-header" }
+]
+```
+
+- `format` is the output format id (unique within the plugin); the palette
+  command id becomes `plugin.<pluginId>.export.<format>`.
+- `label` is the menu label; the registered command is titled
+  `Export as <label>`.
+- `fileExtension` is the output extension without the dot (e.g. `txt`).
+- `run` is the **entry-ref** into the module's `exporters` map. The handler
+  has signature `(content: string, ctx: { filePath, vaultRoot }) => Promise<Blob | string>`.
+  A `string` return is wrapped in a `text/plain` Blob. Running the command
+  reads the active doc via the host's `getActiveDocument`, calls the handler,
+  and writes the result through the shared `downloadBlob` chokepoint (the
+  same save-dialog + `writeFile` path built-in exporters use).
+
+### fileTemplates (trusted only)
+
+```jsonc
+"fileTemplates": [
+  { "id": "meeting-notes", "label": "Meeting Notes", "fileName": "meeting-notes.md", "template": "# Meeting Notes\n\n", "icon": "📝" }
+]
+```
+
+- Declarative — no module map. Each entry registers into a host
+  `fileTemplateRegistry` (keyed `<pluginId>.<templateId>`) and surfaces a
+  palette command `plugin.<pluginId>.new.<templateId>` titled
+  `New <label>`. Running the command prompts for a save path (default under
+  the current vault root) and writes `template` verbatim, then refreshes the
+  file tree.
+- ponytail: the file-tree right-click "新建" submenu is NOT wired yet — its
+  inline-rename flow keys file content off the extension via
+  `prefsStore.fileTemplates`, which can't carry an arbitrary body. The
+  palette command is the MVP surface; the submenu group is the upgrade path
+  (read `getPluginFileTemplates()`).
+
+### keybindings (trusted only)
+
+```jsonc
+"keybindings": [
+  { "command": "plugin.my-plugin.greet", "key": "Control+Alt+Shift+T", "mac": "Cmd+Alt+Shift+T", "when": "..." }
+]
+```
+
+- `command` is a command id — a plugin-contributed command
+  (`plugin.<pluginId>.<id>`) or a built-in (e.g. `action.toggle-theme`).
+  The host looks it up in `commandRegistry` and runs it when the key fires.
+- `key` is a Tauri accelerator string (`Cmd+Shift+K`, `Control+Alt+T`).
+- `mac` overrides for macOS. `when` is an optional activation clause
+  (opaque string, reserved for forward-compat — MVP registers globally).
+- ponytail: the project has no `@tauri-apps/plugin-global-shortcut`
+  dependency, so bindings are app-scope `keydown` listeners — they fire
+  only while the app window has focus, not when backgrounded. The OS-global
+  upgrade path is `plugin-global-shortcut`'s `register(accelerator, handler)`
+  + `unregister(accelerator)` in dispose.
+
 ---
 
 ## The PluginModule export contract (trusted tier)
@@ -413,14 +510,16 @@ export const handlers: Record<string, FileTypeHandler> = { 'default': { ... } };
 export const containers: Record<string, ComponentType<ContainerProps>> = { 'todo': TodoComp };
 export const commands: Record<string, () => void | Promise<void>> = { 'greet': () => {} };
 export const features: Record<string, ComponentType<unknown>> = { 'my-panel': Panel };
+export const exporters: Record<string, ExporterHandler> = { 'txt-with-header': exportTxt };
 export function activate(ctx: PluginContext) { /* optional */ }
 export function deactivate(ctx: PluginContext) { /* optional */ }
 ```
 
 The maps are **keyed by entry-ref** — the strings in the manifest's
-`contributes.*[].run` / `.handler` / `.component`. An entry-ref missing from
-the module's exports is skipped with a console warning (best-effort: a
-partial plugin still loads its other contributions).
+`contributes.*[].run` / `.handler` / `.component` / `.entry`. An entry-ref
+missing from the module's exports is skipped with a console warning
+(best-effort: a partial plugin still loads its other contributions).
+`fileTemplates` and `keybindings` are declarative — no module map.
 
 A default-export factory `(ctx) => PluginModule` is also accepted (the loader
 normalizes both shapes). See `contributionAdapters.ts` for the exact
@@ -550,7 +649,7 @@ host owns provider/model/apiKey; plugins never see credentials.
 
 ```json
 "permissions": {
-  "ai": { "chat": true, "agents": ["study"] }
+  "ai": { "chat": true, "agents": ["study"], "edit": true }
 }
 ```
 
@@ -558,6 +657,10 @@ host owns provider/model/apiKey; plugins never see credentials.
   (sandbox).
 - `agents` (string[]) — whitelist of feature names the plugin may drive via
   `ctx.ai.agent`. Empty/absent = no agent calls. **Trusted tier only.**
+- `edit` (boolean) — required for `ctx.ai.editFile` / `ctx.ai.createFile`
+  (trusted only). The host applies the resulting file changes through the
+  shared editor/vault chokepoint; the plugin never writes the filesystem
+  directly.
 
 ### Trusted tier — `PluginContext.ai`
 
@@ -573,6 +676,20 @@ ctx.ai.agent({
   feature: 'study',                  // must be in permissions.ai.agents
   instruction: 'Review my notes',
   onEvent: (e) => { /* 'done' | 'error' */ },
+});
+
+// AI-driven file edits (trusted only — requires permissions.ai.edit). The
+// host reads/writes the file through the vault manager; the plugin only
+// states intent + receives streaming progress.
+await ctx.ai.editFile({
+  path: 'notes/summary.md',           // vault-relative
+  instruction: 'Summarize as 3 bullets',
+  onEvent: (e) => { /* 'text' | 'error' | 'done' */ },
+});
+await ctx.ai.createFile({
+  path: 'notes/new-note.md',
+  instruction: 'Draft a meeting notes skeleton',
+  onEvent: (e) => {},
 });
 ```
 
@@ -775,6 +892,12 @@ above) is already in place for that.
   left slot, inline-SVG icon, `order`, `badge`) + a **Notes: Open Panel**
   command. Demonstrates the data-driven activity bar / sidebar mounting
   path and the in-process editor-store access from a panel component.
+- [`examples/plugins/plugin-export-demo`](../examples/plugins/plugin-export-demo)
+  — trusted tier. Exercises the three new contribution points in one tiny
+  plugin: an `exporters` entry (active doc → `.txt` with a header), a
+  `fileTemplates` entry (**New Meeting Notes** palette command), and a
+  `keybindings` entry (`Cmd/Ctrl+Alt+Shift+T` → a **Demo: Ping** command).
+  Pure ESM, no JSX, no React.
 
-Install both via Settings → Plugins → 从文件夹安装… to manually QA the full
+Install any via Settings → Plugins → 从文件夹安装… to manually QA the full
 pipeline.

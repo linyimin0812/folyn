@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { runRigChatMock, runFeatureAgentMock, aiConfigGetMock, aiStoreMock } = vi.hoisted(() => {
+const { runRigChatMock, runFeatureAgentMock, aiConfigGetMock, aiStoreMock, vaultStoreMock } = vi.hoisted(() => {
   return {
     runRigChatMock: vi.fn(),
     runFeatureAgentMock: vi.fn(),
@@ -10,6 +10,10 @@ const { runRigChatMock, runFeatureAgentMock, aiConfigGetMock, aiStoreMock } = vi
       addMessage: vi.fn(),
       appendToLastMessage: vi.fn(),
       setSessionStreaming: vi.fn(),
+    },
+    vaultStoreMock: {
+      readFile: vi.fn(),
+      writeFile: vi.fn(),
     },
   };
 });
@@ -36,6 +40,9 @@ vi.mock('@/store/aiConfigStore', () => ({
   },
 }));
 vi.mock('@/store/aiStore', () => ({ useAiStore: { getState: () => aiStoreMock } }));
+vi.mock('@/store/vaultStore', () => ({
+  useVaultStore: { getState: () => ({ manager: vaultStoreMock }) },
+}));
 
 import { buildPluginAi } from './aiCapability';
 import type { PluginManifest } from '@quill/plugin-host';
@@ -73,6 +80,9 @@ beforeEach(() => {
   aiStoreMock.appendToLastMessage.mockReset();
   aiStoreMock.setSessionStreaming.mockReset();
   aiStoreMock.createSession.mockReturnValue('shared-sid');
+  vaultStoreMock.readFile.mockReset();
+  vaultStoreMock.writeFile.mockReset();
+  vaultStoreMock.readFile.mockResolvedValue('OLD');
 });
 
 describe('buildPluginAi / ai.chat', () => {
@@ -216,5 +226,59 @@ describe('buildPluginAi / ai.agent', () => {
       ai.agent({ feature: 'study', instruction: 'do', onEvent: (e) => seen.push(`${e.type}:${e.content ?? ''}`) }),
     ).rejects.toThrow('agent fail');
     expect(seen).toContain('error:agent fail');
+  });
+});
+
+describe('buildPluginAi / ai.editFile & createFile', () => {
+  function streamText(chunks: string[]) {
+    runRigChatMock.mockImplementation(async (p: { onEvent: (e: CliStreamEvent) => void }) => {
+      for (const c of chunks) p.onEvent({ type: 'text', content: c });
+    });
+  }
+
+  it('rejects editFile without permissions.ai.edit', async () => {
+    const ai = buildPluginAi(manifest({ permissions: { ai: { edit: false } } }));
+    await expect(
+      ai.editFile({ path: 'a.md', instruction: 'x', onEvent: vi.fn() }),
+    ).rejects.toThrow(/permissions\.ai\.edit/);
+    expect(vaultStoreMock.writeFile).not.toHaveBeenCalled();
+  });
+
+  it('rejects createFile without permissions.ai.edit', async () => {
+    const ai = buildPluginAi(manifest());
+    await expect(
+      ai.createFile({ path: 'a.md', instruction: 'x', onEvent: vi.fn() }),
+    ).rejects.toThrow(/permissions\.ai\.edit/);
+    expect(vaultStoreMock.writeFile).not.toHaveBeenCalled();
+  });
+
+  it('strips a single outer fenced block before writing (editFile)', async () => {
+    streamText(['```markdown\n', '# Title\n', '\n', 'body\n', '```']);
+    const seen: string[] = [];
+    const ai = buildPluginAi(manifest({ permissions: { ai: { edit: true } } }));
+    await ai.editFile({ path: 'note.md', instruction: 'summarize', onEvent: (e) => seen.push(e.type) });
+    expect(vaultStoreMock.readFile).toHaveBeenCalledWith('note.md');
+    expect(vaultStoreMock.writeFile).toHaveBeenCalledWith('note.md', '# Title\n\nbody\n');
+    expect(seen).toContain('done');
+  });
+
+  it('writes plain (unfenced) AI output verbatim (createFile)', async () => {
+    streamText(['plain text body']);
+    const ai = buildPluginAi(manifest({ permissions: { ai: { edit: true } } }));
+    await ai.createFile({ path: 'new.md', instruction: 'draft', onEvent: vi.fn() });
+    // create does not read prior content.
+    expect(vaultStoreMock.readFile).not.toHaveBeenCalled();
+    expect(vaultStoreMock.writeFile).toHaveBeenCalledWith('new.md', 'plain text body');
+  });
+
+  it('emits error and rethrows when AI returns empty content', async () => {
+    streamText(['   ']);
+    const seen: string[] = [];
+    const ai = buildPluginAi(manifest({ permissions: { ai: { edit: true } } }));
+    await expect(
+      ai.editFile({ path: 'a.md', instruction: 'x', onEvent: (e) => seen.push(`${e.type}:${e.content ?? ''}`) }),
+    ).rejects.toThrow(/empty content/);
+    expect(vaultStoreMock.writeFile).not.toHaveBeenCalled();
+    expect(seen).toContain('error:AI returned empty content — file not written');
   });
 });

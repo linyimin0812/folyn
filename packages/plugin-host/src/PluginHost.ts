@@ -15,16 +15,15 @@
  *   uninstall → record removed (deactivates first if active)
  */
 
-import type { Disposable } from './Disposable';
+import type { Disposable } from '@quill/plugin-sdk';
 import type {
   PluginContext,
   PluginLoader,
   PluginManifest,
   PluginRecord,
   PluginTier,
-} from './types';
-
-const ID_RE = /^[a-z0-9]+(-[a-z0-9]+)+$/;
+} from '@quill/plugin-sdk';
+import { validateManifest as validate } from '@quill/plugin-sdk';
 
 export class PluginHost {
   private readonly records = new Map<string, PluginRecord>();
@@ -119,37 +118,10 @@ export class PluginHost {
     return Array.from(this.records.values());
   }
 
-  /** Throw on invalid manifest. Kept strict-but-minimal for PR1. */
+  /** Throw on invalid manifest. Delegates to the SDK's `validateManifest` so
+   * plugin authors and the host share one source of truth. */
   validateManifest(manifest: PluginManifest): void {
-    if (!manifest || typeof manifest !== 'object') {
-      throw new Error('manifest must be an object');
-    }
-    if (!manifest.id || !ID_RE.test(manifest.id)) {
-      throw new Error(`manifest.id must be kebab-case, got: ${manifest.id}`);
-    }
-    if (!manifest.version) {
-      throw new Error('manifest.version is required');
-    }
-    if (manifest.tier !== 'sandbox' && manifest.tier !== 'trusted') {
-      throw new Error(`manifest.tier must be 'sandbox' | 'trusted', got: ${manifest.tier}`);
-    }
-    if (!manifest.main) {
-      throw new Error('manifest.main is required');
-    }
-    if (manifest.tier === 'sandbox' && !manifest.html) {
-      throw new Error('sandbox plugins require manifest.html');
-    }
-    if (manifest.permissions?.ai) {
-      const { chat, agents } = manifest.permissions.ai;
-      if (chat !== undefined && typeof chat !== 'boolean') {
-        throw new Error('permissions.ai.chat must be a boolean');
-      }
-      if (agents !== undefined) {
-        if (!Array.isArray(agents) || agents.some((a) => typeof a !== 'string' || !a)) {
-          throw new Error('permissions.ai.agents must be a string[] of non-empty feature names');
-        }
-      }
-    }
+    validate(manifest);
   }
 
   private makeContext(record: PluginRecord): PluginContext {
