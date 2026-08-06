@@ -347,3 +347,37 @@ Connected pet-menu cards and clamped to work area on all edges, tried moving sha
 ### Next Steps
 
 - None - task complete
+
+
+## Session 125: mmap fishbone spine and parallel bones
+
+**Date**: 2026-08-06
+**Task**: mmap fishbone spine and parallel bones
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Restructured fishbone skeleton: added horizontal spine pseudo-element on me-main, modified slantedBranch to draw short bones from spine-at-child-x instead of fanning from root, added 12px gap between sibling sub-branches. Logical margins throughout. Archived 08-06-mmap (tree skeleton scope already committed in prior session).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `37ce7a7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
