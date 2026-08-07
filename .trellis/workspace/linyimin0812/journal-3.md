@@ -594,3 +594,38 @@ Removed per-plugin AI model pair selector from PluginsSettings (store field reta
 ### Next Steps
 
 - None - task complete
+
+
+## Session 132: Plugin settings: icon/description display + toggle-after-approve gate
+
+**Date**: 2026-08-07
+**Task**: Plugin settings: icon/description display + toggle-after-approve gate
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Settings → Plugins rows now render the manifest icon (inline SVG / .svg-path-inlined / emoji / first-letter fallback) and one-line description. PluginManifest SDK type gained optional top-level icon/description fields; pluginStore.fetchRows Promise.all-fetches each installed plugin's manifest to surface them on PluginRow (best-effort; .svg path icons inlined via read_plugin_file). Separately: hide the activate Toggle until a trusted plugin is approved (Approve button replaces Toggle in that state). Also renamed ~/project/quill-plugin-sdk/quill-plugin-plantuml → plantuml-plugin (manifest id + test assertion updated to match folder name for install_plugin cross-check).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4294103` | (see git log) |
+| `04c0724` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
