@@ -1,4 +1,4 @@
-# @quill/plugin-sdk
+# quill-plugin-sdk
 
 Quill Plugin SDK — the public type surface plugin authors program against.
 Publishable to npm; no runtime.
@@ -23,11 +23,11 @@ tarball is just `.d.ts` + a tiny ESM barrel.
 ## Install
 
 ```bash
-npm install @quill/plugin-sdk
+npm install quill-plugin-sdk
 # or
-pnpm add @quill/plugin-sdk
+pnpm add quill-plugin-sdk
 # or
-yarn add @quill/plugin-sdk
+yarn add quill-plugin-sdk
 ```
 
 `react` is a peer dependency (`^18.0.0`) — install it yourself if your plugin
@@ -36,8 +36,8 @@ uses React types.
 ## Quick start
 
 ```ts
-import type { PluginManifest } from '@quill/plugin-sdk';
-import { definePlugin, validateManifest } from '@quill/plugin-sdk';
+import type { PluginManifest } from 'quill-plugin-sdk';
+import { definePlugin, validateManifest } from 'quill-plugin-sdk';
 
 const manifest: PluginManifest = {
   id: 'my-plugin',

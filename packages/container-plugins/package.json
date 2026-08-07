@@ -17,7 +17,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@quill/plugin-sdk": "workspace:*"
+    "quill-plugin-sdk": "workspace:*"
   },
   "peerDependencies": {
     "react": "^18.0.0",

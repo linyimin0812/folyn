@@ -1,7 +1,7 @@
 /**
  * Plugin runtime contracts — the typed shapes a plugin's ESM bundle exports
  * and the host-side handler/container interfaces. Moved into the SDK so
- * external plugin authors can typecheck their bundles against `@quill/plugin-sdk`
+ * external plugin authors can typecheck their bundles against `quill-plugin-sdk`
  * without importing host internals.
  *
  * React appears as a peer type only (`ComponentType`, `ReactNode`); type-only

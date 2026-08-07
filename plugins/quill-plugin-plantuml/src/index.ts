@@ -1,5 +1,5 @@
 import type { ReactNode, CSSProperties, WheelEvent } from 'react';
-import type { PreviewProps, FileTypeHandler, PluginModule, ExporterContext } from '@quill/plugin-sdk';
+import type { PreviewProps, FileTypeHandler, PluginModule, ExporterContext } from 'quill-plugin-sdk';
 import plantumlEncoder from 'plantuml-encoder';
 import { resolveReact } from './react';
 

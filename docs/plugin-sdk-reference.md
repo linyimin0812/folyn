@@ -1,16 +1,16 @@
 # Plugin SDK Reference
 
-Plugin SDK (`@quill/plugin-sdk`) 类型契约与示例速查。运行时微内核（`PluginHost`）位于 `@quill/plugin-host`。
+Plugin SDK (`quill-plugin-sdk`) 类型契约与示例速查。运行时微内核（`PluginHost`）位于 `@quill/plugin-host`。
 
 ## 1. 安装
 
 ```bash
-npm install @quill/plugin-sdk
+npm install quill-plugin-sdk
 ```
 
 ```ts
-import type { PluginManifest, PluginModule, FileTypeHandler } from '@quill/plugin-sdk';
-import { definePlugin, validateManifest } from '@quill/plugin-sdk';
+import type { PluginManifest, PluginModule, FileTypeHandler } from 'quill-plugin-sdk';
+import { definePlugin, validateManifest } from 'quill-plugin-sdk';
 ```
 
 内部 workspace 插件也可从 `@quill/plugin-host` 导入（re-export 全部 SDK 公共面）。SDK 无运行时依赖；React 仅作 peer 类型引用（构建时擦除）。
@@ -218,7 +218,7 @@ entry-ref key 与 manifest 中 `run`/`handler`/`component`/`entry` 字符串对�
 
 ```ts
 // index.ts — self-contained ESM bundle
-import type { PluginModule, ExporterHandler } from '@quill/plugin-sdk';
+import type { PluginModule, ExporterHandler } from 'quill-plugin-sdk';
 
 function loadReact() {
   if (typeof window !== 'undefined' && window.React) return window.React;
@@ -333,7 +333,7 @@ await ctx.ai.createFile({ path: 'notes/new.md', instruction: 'Draft skeleton', o
 ## 8. dev helpers
 
 ```ts
-import { definePlugin, validateManifest } from '@quill/plugin-sdk';
+import { definePlugin, validateManifest } from 'quill-plugin-sdk';
 
 export const manifest = definePlugin({ id: 'my-plugin', version: '1.0.0', tier: 'trusted', main: 'index.js' });
 // validateManifest(manifest) — 非法时 throw，可在 test 步骤调用

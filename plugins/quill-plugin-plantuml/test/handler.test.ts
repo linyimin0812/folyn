@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateManifest } from '@quill/plugin-sdk';
+import { validateManifest } from 'quill-plugin-sdk';
 import { handler } from '../src/index';
 import manifest from '../manifest.json';
 

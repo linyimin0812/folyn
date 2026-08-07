@@ -155,19 +155,19 @@ After install + activate:
 
 ### Install the SDK
 
-Type your manifest against `@quill/plugin-sdk` — the publishable type package
+Type your manifest against `quill-plugin-sdk` — the publishable type package
 (manifest schema, contribution points, `PluginModule`, AI capability types,
 and dev helpers like `definePlugin` / `validateManifest`). It has no runtime
 dependency; React is a peer type only (erased at build for type-only
 consumers).
 
 ```bash
-npm install @quill/plugin-sdk
+npm install quill-plugin-sdk
 ```
 
 ```ts
 // index.ts — a trusted-tier plugin's entry module
-import type { PluginModule, ExporterHandler } from '@quill/plugin-sdk';
+import type { PluginModule, ExporterHandler } from 'quill-plugin-sdk';
 
 const exportTxt: ExporterHandler = async (content, ctx) =>
   `# ${ctx.filePath}\n\n${content}`;
@@ -788,7 +788,7 @@ identifier string (e.g. `'zh'`, `'en'`) is delivered.
 ### Trusted tier — `PluginContext.env`
 
 ```ts
-import type { PluginContext } from '@quill/plugin-sdk';
+import type { PluginContext } from 'quill-plugin-sdk';
 
 export function activate(ctx: PluginContext) {
   console.log('theme:', ctx.env?.theme, 'locale:', ctx.env?.locale);

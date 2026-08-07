@@ -15,7 +15,7 @@
     "plantuml-encoder": "^1.4.0"
   },
   "devDependencies": {
-    "@quill/plugin-sdk": "workspace:*",
+    "quill-plugin-sdk": "workspace:*",
     "@testing-library/react": "^16.0.0",
     "@types/plantuml-encoder": "^1.4.0",
     "@types/react": "^18.3.12",

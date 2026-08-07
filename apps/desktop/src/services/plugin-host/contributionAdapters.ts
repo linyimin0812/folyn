@@ -44,13 +44,13 @@ import type { ContainerCategory } from '@quill/container-plugins';
  * The resolved exports of a trusted plugin's ESM bundle. All maps are
  * optional — a plugin may contribute only commands, only file-types, etc.
  *
- * ponytail: interface moved to `@quill/plugin-sdk` contracts (so external
+ * ponytail: interface moved to `quill-plugin-sdk` contracts (so external
  * plugin authors typecheck against the publishable SDK). Re-exported here so
  * existing `import type { PluginModule } from './contributionAdapters'` keeps
  * working.
  */
-export type { PluginModule } from '@quill/plugin-sdk';
-import type { PluginModule } from '@quill/plugin-sdk';
+export type { PluginModule } from 'quill-plugin-sdk';
+import type { PluginModule } from 'quill-plugin-sdk';
 
 /** Merge a list of disposables into one. */
 function mergeDisposables(disposables: Disposable[]): Disposable {

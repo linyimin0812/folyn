@@ -1,5 +1,5 @@
 {
-  "name": "@quill/plugin-sdk",
+  "name": "quill-plugin-sdk",
   "version": "0.1.0",
   "description": "Quill Plugin SDK — manifest schema, contribution points, contracts, and dev helpers. Publishable to npm; no runtime.",
   "type": "module",

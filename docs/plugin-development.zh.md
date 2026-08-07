@@ -40,18 +40,18 @@ Trusted tier 插件还需额外点一次 **批准并授权**（见 [TOFU](#tofu-
 
 ### 安装 SDK
 
-用 `@quill/plugin-sdk` 给你的 manifest 做类型守卫——它是可发布到 npm 的类型包
+用 `quill-plugin-sdk` 给你的 manifest 做类型守卫——它是可发布到 npm 的类型包
 （manifest schema、贡献点、`PluginModule`、AI 能力类型，以及 `definePlugin`/
 `validateManifest` 等 dev helper）。它无运行时依赖；React 仅作 peer 类型
 （type-only 消费者在构建时被擦除）。
 
 ```bash
-npm install @quill/plugin-sdk
+npm install quill-plugin-sdk
 ```
 
 ```ts
 // index.ts —— trusted tier 插件入口模块
-import type { PluginModule, ExporterHandler } from '@quill/plugin-sdk';
+import type { PluginModule, ExporterHandler } from 'quill-plugin-sdk';
 
 const exportTxt: ExporterHandler = async (content, ctx) =>
   `# ${ctx.filePath}\n\n${content}`;
@@ -691,7 +691,7 @@ i18n bundle**——host 的 `t()` 不暴露，只传 locale 字符串（如 `'zh
 ### Trusted tier —— `PluginContext.env`
 
 ```ts
-import type { PluginContext } from '@quill/plugin-sdk';
+import type { PluginContext } from 'quill-plugin-sdk';
 
 export function activate(ctx: PluginContext) {
   console.log('theme:', ctx.env?.theme, 'locale:', ctx.env?.locale);
