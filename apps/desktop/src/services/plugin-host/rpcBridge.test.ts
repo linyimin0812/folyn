@@ -665,3 +665,59 @@ describe('RpcBridge / ai:chat streaming end-to-end', () => {
     bridge.dispose();
   });
 });
+
+describe('dispatchPluginRpc / env:get', () => {
+  it('returns current {theme, locale} from host stores', async () => {
+    const manifest = sandboxManifest();
+    // No permission flag for env:get — env is non-sensitive.
+    const result = await dispatchPluginRpc(
+      manifest,
+      'demo',
+      'env:get',
+      undefined,
+      async (p) => `/mock/${p}`,
+    );
+    expect(result).toMatchObject({
+      theme: expect.stringMatching(/^(light|dark)$/),
+      locale: expect.any(String),
+    });
+  });
+});
+
+describe('RpcBridge / env-event push', () => {
+  it('pushes env-event for theme change after stores subscribe', async () => {
+    const manifest = sandboxManifest();
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    // Wait for the bridge's dynamic-import env subscription setup to resolve
+    // (both stores). The bridge's Promise.all needs two imports to land.
+    await Promise.all([
+      import('@/store/appearanceStore'),
+      import('@/store/localeStore'),
+    ]);
+    await new Promise((r) => setTimeout(r, 0));
+
+    const { useAppearanceStore } = await import('@/store/appearanceStore');
+    const before = useAppearanceStore.getState().theme;
+    const next = before === 'dark' ? 'light' : 'dark';
+    useAppearanceStore.getState().setTheme(next);
+
+    // Allow the store subscriber + postMessage to flush.
+    await new Promise((r) => setTimeout(r, 0));
+
+    const envEvents = sent.filter(
+      (m): m is { type: 'env-event'; event: 'theme' | 'locale'; value: string } =>
+        typeof m === 'object' && m !== null && (m as { type?: string }).type === 'env-event',
+    );
+    expect(envEvents.length).toBeGreaterThanOrEqual(1);
+    expect(envEvents[envEvents.length - 1].event).toBe('theme');
+    expect(envEvents[envEvents.length - 1].value).toMatch(/^(light|dark)$/);
+
+    bridge.dispose();
+  });
+});

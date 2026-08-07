@@ -114,6 +114,16 @@ Sandbox 插件通过 `postMessage`（iframe 传输）或
 | `vault:read-active-doc` | `{}` | `vault.readActive: true` | `{ path, content } \| null` |
 | `vault:insert-content` | `{ content }` | `vault.insertContent: true` | `{ ok: true }` |
 | `window:open` | `{ toolId }` | `window: true` | `{ opened: true, toolId }` |
+| `env:get` | `{}` | _（无——env 非敏感）_ | `{ theme: 'light'\|'dark', locale: string }` |
+
+**Host 主动推送的 env 事件**（无需请求;用户切换 theme 或 locale 时 host 推送到 iframe）:
+
+```jsonc
+{ "type": "env-event", "event": "theme",  "value": "dark" }
+{ "type": "env-event", "event": "locale", "value": "zh" }
+```
+
+插件应在 `activate` 时调用 `env:get` 拿初值,然后监听 `env-event` 消息以就地更新。
 
 **响应契约**：成功 → 按"返回值"列的 JSON 对象；失败 → `{ "error": "<msg>" }`
 （HTTP 200）；超时 30s → HTTP 504 + `{ "error": "rpc timeout" }`。读取返回字段前
@@ -669,6 +679,66 @@ await ctx.ai.createFile({
 Sandbox 插件无法调 feature agent（canonical agent 文件位于 vault 的
 `__<feature>__/` 目录；sandbox 隔离下安全暴露它们超出范围）。需要 `ai.agent`
 请用 trusted tier。
+
+---
+
+## Host 环境（theme + locale）
+
+渲染 UI 的插件需要追踪 host 的 resolved theme（明亮/暗黑）和用户 locale，
+并在用户运行时切换时跟随变化。Host 推送当前值 + 变更事件；**插件自带
+i18n bundle**——host 的 `t()` 不暴露，只传 locale 字符串（如 `'zh'`、`'en'`）。
+
+### Trusted tier —— `PluginContext.env`
+
+```ts
+import type { PluginContext } from '@quill/plugin-sdk';
+
+export function activate(ctx: PluginContext) {
+  console.log('theme:', ctx.env?.theme, 'locale:', ctx.env?.locale);
+
+  ctx.addDisposable(
+    ctx.env!.onThemeChange((t) => {
+      // 用新 theme 重渲染
+    }),
+  );
+
+  ctx.addDisposable(
+    ctx.env!.onLocaleChange((l) => {
+      // 切换 i18n bundle
+    }),
+  );
+}
+```
+
+- `env.theme`:已 resolve 的 `'light' | 'dark'`——host 在交付前把 `'system'`
+  解析为具体值，插件不会看到 `'system'`。
+- `env.locale`:当前 locale 字符串。
+- `env.onThemeChange(cb)` / `env.onLocaleChange(cb)`:订阅运行时变更;
+  返回 `Disposable` 用于清理（推入 `ctx.addDisposable`）。
+
+### Sandbox tier —— `env:get` RPC + `env-event` 推送
+
+Sandbox 插件在 `activate` 时调 `env:get` 拿初值,然后监听 `env-event` 消息就地更新:
+
+```js
+// 在 sandbox iframe 内
+window.parent.postMessage({
+  type: 'request', id: 'env-seed', method: 'env:get', params: {}
+}, '*');
+
+window.addEventListener('message', (e) => {
+  const msg = e.data;
+  if (msg.type === 'response' && msg.id === 'env-seed') {
+    applyEnv(msg.result.theme, msg.result.locale);
+  }
+  if (msg.type === 'env-event') {
+    if (msg.event === 'theme') applyTheme(msg.value);
+    if (msg.event === 'locale') applyLocale(msg.value);
+  }
+});
+```
+
+无需声明权限——env 非敏感（无文件系统、无网络、无凭证;仅 theme + locale 字符串）。
 
 ---
 

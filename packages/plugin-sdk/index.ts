@@ -29,6 +29,9 @@ export type {
   PluginAiStreamEvent,
   PluginAiEventType,
   PluginAiEventHandler,
+  PluginEnv,
+  PluginTheme,
+  PluginLocale,
 } from './src/types';
 export type {
   ViewMode,

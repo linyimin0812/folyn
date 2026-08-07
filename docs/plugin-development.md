@@ -76,6 +76,18 @@ resolution.
 | `vault:insert-content` | `{ content }` | `vault.insertContent: true` | `{ ok: true }` |
 | `window:open` | `{ toolId }` | `window: true` | `{ opened: true, toolId }` |
 | `ai:chat` | `{ sessionId, prompt }` | `ai.chat: true` | streams `ai-stream` events, final `response` (sandbox only — trusted uses `ctx.ai.chat`) |
+| `env:get` | `{}` | _(none — env is non-sensitive)_ | `{ theme: 'light'\|'dark', locale: string }` |
+
+**Host-pushed env events** (no request needed; the host pushes these to the
+iframe whenever the user switches theme or locale mid-session):
+
+```jsonc
+{ "type": "env-event", "event": "theme",  "value": "dark" }
+{ "type": "env-event", "event": "locale", "value": "zh" }
+```
+
+Plugins should call `env:get` on `activate` to seed the initial values, then
+listen for `env-event` messages to update in place.
 
 **Response shape**: success → JSON object per the "Returns" column; failure →
 `{ "error": "<message>" }` with HTTP 200; timeout (30 s) → HTTP 504 with
@@ -762,6 +774,70 @@ exposing them safely out-of-scope). Use the trusted tier if you need
   `ctx.ai.agent` (study).
 - `examples/plugins/ai-chat-sandbox-demo/` — sandbox, demonstrates `ai:chat`
   RPC + `ai-stream` event consumption.
+
+---
+
+## Host environment (theme + locale)
+
+Plugins that render UI need to track the host's resolved theme (bright/dark)
+and the user's locale, and react when the user switches either mid-session.
+The host signals the current values and pushes change events; **plugins bring
+their own i18n bundles** — the host's `t()` is NOT exposed. Only the locale
+identifier string (e.g. `'zh'`, `'en'`) is delivered.
+
+### Trusted tier — `PluginContext.env`
+
+```ts
+import type { PluginContext } from '@quill/plugin-sdk';
+
+export function activate(ctx: PluginContext) {
+  console.log('theme:', ctx.env?.theme, 'locale:', ctx.env?.locale);
+
+  ctx.addDisposable(
+    ctx.env!.onThemeChange((t) => {
+      // re-render with the new theme
+    }),
+  );
+
+  ctx.addDisposable(
+    ctx.env!.onLocaleChange((l) => {
+      // swap your i18n bundle to the new locale
+    }),
+  );
+}
+```
+
+- `env.theme`: resolved `'light' | 'dark'` — `'system'` is resolved by the
+  host before delivery, plugins never see `'system'`.
+- `env.locale`: current locale string.
+- `env.onThemeChange(cb)` / `env.onLocaleChange(cb)`: subscribe to mid-session
+  changes; return a `Disposable` for cleanup (push into `ctx.addDisposable`).
+
+### Sandbox tier — `env:get` RPC + `env-event` push
+
+Sandbox plugins call `env:get` on activate to seed, then listen for
+`env-event` messages to update in place:
+
+```js
+// In the sandbox iframe
+window.parent.postMessage({
+  type: 'request', id: 'env-seed', method: 'env:get', params: {}
+}, '*');
+
+window.addEventListener('message', (e) => {
+  const msg = e.data;
+  if (msg.type === 'response' && msg.id === 'env-seed') {
+    applyEnv(msg.result.theme, msg.result.locale);
+  }
+  if (msg.type === 'env-event') {
+    if (msg.event === 'theme') applyTheme(msg.value);
+    if (msg.event === 'locale') applyLocale(msg.value);
+  }
+});
+```
+
+No permission declaration is required — env is non-sensitive (no file system,
+no network, no credentials; just the current theme + locale string).
 
 ---
 

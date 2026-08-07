@@ -58,6 +58,7 @@ import { registerPluginFileTemplates } from './fileTemplateAdapter';
 import { registerPluginKeybindings } from './keybindingAdapter';
 import { registerPluginExportEnhancers } from './exportEnhancerAdapter';
 import { buildPluginAi } from './aiCapability';
+import { buildPluginEnv, disposePluginEnv } from './envCapability';
 
 export const trustedLoader: PluginLoader = {
   tier: 'trusted',
@@ -133,7 +134,11 @@ export const trustedLoader: PluginLoader = {
         // Call the plugin's own activate hook if present.
         if (typeof module.activate === 'function') {
           const ai = buildPluginAi(manifest);
-          return module.activate({ ...ctx, ai });
+          const env = buildPluginEnv();
+          // Tear down env's host-side store subscriptions after the plugin
+          // deactivates. Pushed as a disposable so PluginHost reaps it.
+          ctx.addDisposable({ dispose: () => disposePluginEnv(env) });
+          return module.activate({ ...ctx, ai, env });
         }
       },
       deactivate: (ctx: PluginContext) => {

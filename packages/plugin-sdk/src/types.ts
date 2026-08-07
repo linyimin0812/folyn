@@ -44,6 +44,13 @@ export interface PluginContext {
    * tiers that do not provide AI access.
    */
   readonly ai?: PluginAiCapability;
+  /**
+   * Host environment: resolved theme + current locale. Present on the trusted
+   * tier (wired by `trustedLoader`); sandbox tier reaches the same data via
+   * the `env:get` RPC method + `env-event` push messages. `undefined` only on
+   * tiers that do not expose env.
+   */
+  readonly env?: PluginEnv;
   // Capability RPC + UI contribution adapters are layered on in PR2 (sandbox)
   // and PR3 (trusted); kept out of PR1 so the kernel is testable in isolation.
 }
@@ -120,6 +127,37 @@ export interface PluginPermissions {
    *   chokepoint; the plugin never writes the filesystem directly.
    */
   ai?: { chat?: boolean; agents?: string[]; edit?: boolean };
+}
+
+// ── Plugin env (theme + locale) ─────────────────────────────────────────────
+//
+// Plugins that render UI need to track the host's resolved theme and current
+// locale, and react when the user switches either mid-session. The host
+// signals the current values and pushes change events; plugins bring their
+// own i18n bundles and styling keyed off `theme` — host's `t()`/message
+// catalog is NOT exposed.
+
+/** Resolved theme name. `'system'` is resolved to 'light'|'dark' by the host
+ * before delivery, so plugins never see 'system'. */
+export type PluginTheme = 'light' | 'dark';
+
+/**
+ * Locale identifier string (e.g. 'zh', 'en'). Typed as a generic string so
+ * the publishable SDK has no dependency on the desktop app's locale union —
+ * the host narrows to its supported set at runtime, plugins handle whatever
+ * string arrives.
+ */
+export type PluginLocale = string;
+
+export interface PluginEnv {
+  /** Resolved current theme. */
+  readonly theme: PluginTheme;
+  /** Current locale identifier. */
+  readonly locale: PluginLocale;
+  /** Subscribe to subsequent theme changes. Returns a Disposable. */
+  onThemeChange(cb: (theme: PluginTheme) => void): Disposable;
+  /** Subscribe to subsequent locale changes. Returns a Disposable. */
+  onLocaleChange(cb: (locale: PluginLocale) => void): Disposable;
 }
 
 // ── AI capability (host-mediated) ─────────────────────────────────────────────

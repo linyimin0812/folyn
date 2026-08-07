@@ -298,6 +298,14 @@ export interface PluginContext {
   readonly manifest: PluginManifest;
   addDisposable(d: Disposable): void;
   readonly ai?: PluginAiCapability;
+  readonly env?: PluginEnv;
+}
+
+export interface PluginEnv {
+  readonly theme: 'light' | 'dark';
+  readonly locale: string;
+  onThemeChange(cb: (t: 'light' | 'dark') => void): Disposable;
+  onLocaleChange(cb: (l: string) => void): Disposable;
 }
 ```
 

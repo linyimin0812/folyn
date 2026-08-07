@@ -123,6 +123,18 @@ function mapSandboxEvent(e: CliStreamEvent): PluginAiStreamEvent | null {
 }
 
 /**
+ * Resolve the host's `theme` value (which may be `'system'`) to a concrete
+ * `'light' | 'dark'` for sandbox plugins. MatchMedia is available in the
+ * host webview where the RpcBridge runs.
+ */
+function resolveSystemTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' {
+  if (theme === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return theme;
+}
+
+/**
  * Normalize a `RequestInit.headers` value (which may be a `Headers`, a plain
  * `Record`, or an array of `[key, value]` tuples) into a plain string map for
  * Tauri IPC serialization. Non-string-coercible entries are skipped. Returns
@@ -216,7 +228,23 @@ export interface AiStreamMessage {
   event: PluginAiStreamEvent;
 }
 
-type PluginMessage = RpcRequest | RpcResponse | LifecycleMessage | InvokeMessage | InvokeResultMessage | AiStreamMessage;
+/** Env state push from host to iframe. Fired when the host's theme or locale
+ * changes while a sandbox plugin is active. Plugin listens for these in
+ * addition to calling `env:get` to seed initial values. */
+export interface EnvEventMessage {
+  type: 'env-event';
+  event: 'theme' | 'locale';
+  value: string;
+}
+
+type PluginMessage =
+  | RpcRequest
+  | RpcResponse
+  | LifecycleMessage
+  | InvokeMessage
+  | InvokeResultMessage
+  | AiStreamMessage
+  | EnvEventMessage;
 
 // ── RpcBridge ────────────────────────────────────────────────────────────────
 
@@ -247,10 +275,14 @@ export class RpcBridge {
   private readonly pendingInvokes = new Map<string, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
   private listener: ((event: MessageEvent) => void) | null = null;
   private disposed = false;
+  /** Env store unsubscribers — set up lazily on first subscribe so the test
+   * injected resolver pattern is preserved; torn down in `dispose()`. */
+  private envUnsubs: Array<() => void> = [];
 
   constructor(opts: RpcBridgeOptions) {
     this.opts = opts;
     this.attachListener();
+    this.attachEnvSubscriptions();
   }
 
   /** Process an incoming message from the iframe. Called by the message listener. */
@@ -299,13 +331,18 @@ export class RpcBridge {
     });
   }
 
-  /** Remove the message listener and reject all pending invokes. */
+  /** Remove the message listener, reject all pending invokes, and tear down
+   *  env store subscriptions. */
   dispose(): void {
     this.disposed = true;
     if (this.listener) {
       window.removeEventListener('message', this.listener);
       this.listener = null;
     }
+    for (const un of this.envUnsubs) {
+      try { un(); } catch { /* store already torn down */ }
+    }
+    this.envUnsubs = [];
     for (const [, { reject }] of this.pendingInvokes) {
       reject(new Error('bridge disposed'));
     }
@@ -313,6 +350,40 @@ export class RpcBridge {
   }
 
   // ── Internal ──
+
+  /**
+   * Subscribe to host theme + locale stores; on change, push an `env-event`
+   * message to the iframe so sandbox plugins can react mid-session. Stores
+   * are imported dynamically so the bridge module stays unit-testable without
+   * the full desktop store graph at module load. Subscriptions are torn down
+   * in `dispose()`. Ponytail: one subscription per store, fan-out in
+   * `sendEnvEvent` for any plugin that's still active.
+   */
+  private attachEnvSubscriptions(): void {
+    void Promise.all([
+      import('@/store/appearanceStore'),
+      import('@/store/localeStore'),
+    ]).then(([appearanceMod, localeMod]) => {
+      if (this.disposed) return;
+      this.envUnsubs.push(
+        appearanceMod.useAppearanceStore.subscribe((state, prev) => {
+          if (state.theme === prev.theme) return;
+          this.sendEnvEvent('theme', resolveSystemTheme(state.theme));
+        }),
+      );
+      this.envUnsubs.push(
+        localeMod.useLocaleStore.subscribe((state, prev) => {
+          if (state.locale === prev.locale) return;
+          this.sendEnvEvent('locale', state.locale);
+        }),
+      );
+    });
+  }
+
+  private sendEnvEvent(event: 'theme' | 'locale', value: string): void {
+    if (this.disposed) return;
+    this.send({ type: 'env-event', event, value });
+  }
 
   private attachListener(): void {
     this.listener = (event: MessageEvent) => {
@@ -549,6 +620,17 @@ export async function dispatchPluginRpc(
       // so plugins can request their own tool window programmatically; MVP
       // returns a stub because the actual open is a host-side concern.
       return { opened: true, toolId };
+    }
+
+    // ── env (host theme + locale; non-sensitive, no permission flag) ──
+    case 'env:get': {
+      const [{ useAppearanceStore }, { useLocaleStore }] = await Promise.all([
+        import('@/store/appearanceStore'),
+        import('@/store/localeStore'),
+      ]);
+      const theme = resolveSystemTheme(useAppearanceStore.getState().theme);
+      const locale = useLocaleStore.getState().locale;
+      return { theme, locale };
     }
 
     // ── ai (sandbox streaming over postMessage; trusted uses PluginContext.ai) ──
