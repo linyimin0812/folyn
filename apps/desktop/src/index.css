@@ -314,13 +314,21 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
   border: 1px solid color-mix(in srgb, var(--red) 24%, transparent);
 }
 
-/* Inline chat notice bar (transient success/info, e.g. "context cleared") */
-.chat-inline-notice {
+/* Floating chat toast (transient success/info, e.g. "context cleared") */
+.chat-toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
   display: flex; align-items: center; gap: 6px;
-  margin: 0 12px 8px; padding: 6px 10px; border-radius: 8px;
-  font-size: 11px; line-height: 1.4; color: var(--acc);
-  background: color-mix(in srgb, var(--acc) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--acc) 24%, transparent);
+  padding: 8px 14px; border-radius: 10px;
+  font-size: 12px; line-height: 1.4; color: var(--t1);
+  background: var(--panel); border: 1px solid var(--brd);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+  animation: chat-toast-in 160ms ease-out;
+  pointer-events: none;
+}
+.chat-toast .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--acc); flex: none; }
+@keyframes chat-toast-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Markdown in messages ── */

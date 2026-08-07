@@ -888,11 +888,9 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
         </div>
       )}
       {notice && (
-        <div className="chat-inline-notice" role="status">
-          <svg className="shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-          <span className="min-w-0">{notice}</span>
+        <div className="chat-toast" role="status">
+          <span className="dot" />
+          <span>{notice}</span>
         </div>
       )}
       <input
