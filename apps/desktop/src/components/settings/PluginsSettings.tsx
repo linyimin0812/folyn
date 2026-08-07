@@ -328,8 +328,6 @@ export function PluginsSettings() {
       {rows.length === 0 ? (
         <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
           {t('settings:plugins.empty')}
-          <br />
-          {t('settings:plugins.emptyExample')} <code className="font-mono text-t2">examples/plugins/</code>。
         </div>
       ) : (
         <div>

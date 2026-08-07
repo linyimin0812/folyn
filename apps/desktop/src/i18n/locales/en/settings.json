@@ -395,8 +395,7 @@
     "installing": "Installing ({{id}})…",
     "refresh": "Refresh",
     "refreshing": "Refreshing…",
-    "empty": "No plugins installed yet. Place a plugin folder anywhere, then click \"Install from folder\".",
-    "emptyExample": "Sample plugins live in the repo at",
+    "empty": "No plugins installed yet",
     "state": {
       "active": "Active",
       "inactive": "Disabled",

@@ -395,8 +395,7 @@
     "installing": "安装中（{{id}}）…",
     "refresh": "刷新",
     "refreshing": "刷新中…",
-    "empty": "尚未安装任何插件。将插件文件夹放到任意位置，然后点\"从文件夹安装\"。",
-    "emptyExample": "示例插件见仓库",
+    "empty": "尚未安装任何插件",
     "state": {
       "active": "运行中",
       "inactive": "已停用",
