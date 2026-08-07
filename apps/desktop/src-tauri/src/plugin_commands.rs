@@ -185,6 +185,12 @@ fn walk_and_hash(
         let path = entry.path();
         let ft = entry.file_type().map_err(|e| e.to_string())?;
         if ft.is_dir() {
+            // ponytail: skip node_modules — trusted bundles are self-contained
+            // (no runtime imports), and pnpm's symlinked node_modules would
+            // waste time hashing thousands of irrelevant files.
+            if entry.file_name() == "node_modules" {
+                continue;
+            }
             walk_and_hash(base, &path, out)?;
         } else if ft.is_file() {
             let rel = path
@@ -429,10 +435,21 @@ fn copy_inner(src: &Path, dst: &Path) -> Result<(), String> {
         let from = entry.path();
         let to = dst.join(&name);
         let ft = entry.file_type().map_err(|e| e.to_string())?;
+        // ponytail: skip node_modules (dev-only; trusted bundles are
+        // self-contained per the rendering contract, no bare-specifier
+        // imports at runtime) and any symlinks (pnpm's node_modules layout
+        // uses them heavily and fs::copy fails on symlink→dir with
+        // "neither a regular file nor a symlink to a regular file").
+        if ft.is_symlink() {
+            continue;
+        }
         if ft.is_dir() {
+            if name == "node_modules" {
+                continue;
+            }
             fs::create_dir_all(&to).map_err(|e| e.to_string())?;
             copy_inner(&from, &to)?;
-        } else {
+        } else if ft.is_file() {
             fs::copy(&from, &to).map_err(|e| e.to_string())?;
         }
     }

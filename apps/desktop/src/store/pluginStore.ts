@@ -21,6 +21,15 @@
 import { create } from 'zustand';
 import { isTauri } from '@/utils/platform';
 
+// ponytail: Tauri rejects with the serialized AppError {category, detail};
+// String(obj) yields "[object Object]" and hides the cause. Pull `detail`
+// when present, else fall back to String(e). Same shape as modelRegistryStore.
+function fmtErr(e: unknown): string {
+  return typeof e === 'object' && e && 'detail' in e
+    ? String((e as { detail: unknown }).detail ?? e)
+    : String(e);
+}
+
 /** Mirrors the Rust `PluginEntry` shape (plugin_commands.rs). */
 export interface PluginEntry {
   id: string;
@@ -157,7 +166,7 @@ export const usePluginStore = create<PluginState>((set, get) => ({
       const rows = await fetchRows();
       set({ rows, refreshing: false, error: '' });
     } catch (err) {
-      set({ refreshing: false, error: String(err) });
+      set({ refreshing: false, error: fmtErr(err) });
     }
   },
 
@@ -179,7 +188,7 @@ export const usePluginStore = create<PluginState>((set, get) => ({
       await get().refresh();
       set({ installing: false });
     } catch (err) {
-      set({ installing: false, error: String(err) });
+      set({ installing: false, error: fmtErr(err) });
     }
   },
 
@@ -194,7 +203,7 @@ export const usePluginStore = create<PluginState>((set, get) => ({
       await get().refresh();
       set({ consent: null });
     } catch (err) {
-      set({ error: String(err) });
+      set({ error: fmtErr(err) });
     } finally {
       const next = { ...get().busy };
       delete next[busyKey(id, 'approve')];
@@ -209,7 +218,7 @@ export const usePluginStore = create<PluginState>((set, get) => ({
       await pluginHost.activate(id);
       await get().refresh();
     } catch (err) {
-      set({ error: String(err) });
+      set({ error: fmtErr(err) });
       await get().refresh();
     } finally {
       const next = { ...get().busy };
@@ -225,7 +234,7 @@ export const usePluginStore = create<PluginState>((set, get) => ({
       await pluginHost.deactivate(id);
       await get().refresh();
     } catch (err) {
-      set({ error: String(err) });
+      set({ error: fmtErr(err) });
       await get().refresh();
     } finally {
       const next = { ...get().busy };
@@ -244,7 +253,7 @@ export const usePluginStore = create<PluginState>((set, get) => ({
       // pluginHost.uninstall; refresh to reflect the removal.
       await get().refresh();
     } catch (err) {
-      set({ error: String(err) });
+      set({ error: fmtErr(err) });
     } finally {
       const next = { ...get().busy };
       delete next[busyKey(id, 'uninstall')];
@@ -259,7 +268,7 @@ export const usePluginStore = create<PluginState>((set, get) => ({
       const permissions = await readManifestPermissions(id);
       set({ consent: { id, name, permissions } });
     } catch (err) {
-      set({ error: String(err) });
+      set({ error: fmtErr(err) });
     }
   },
 
