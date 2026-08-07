@@ -1,0 +1,18 @@
+{
+  "name": "__pkgName__",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "quill-plugin-sdk": "^0.1.0",
+    "@types/react": "^18.3.12",
+    "esbuild": "^0.23.0",
+    "react": "^18.3.1",
+    "typescript": "^5.7.0"
+  }
+}

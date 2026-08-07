@@ -1,0 +1,10 @@
+{
+  "id": "__id__",
+  "name": "__Name__",
+  "version": "0.1.0",
+  "author": "",
+  "quill": ">=0.1.0",
+  "tier": "trusted",
+  "main": "dist/index.js",
+  "contributes": {}
+}

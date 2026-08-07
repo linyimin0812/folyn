@@ -1,0 +1,23 @@
+{
+  "name": "create-quill-plugin",
+  "version": "0.1.0",
+  "description": "Scaffold a Quill plugin from a template. Run: npx create-quill-plugin <name>",
+  "type": "module",
+  "bin": {
+    "create-quill-plugin": "dist/index.js"
+  },
+  "files": ["dist", "template"],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "tsc",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.7.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

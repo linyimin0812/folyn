@@ -371,6 +371,15 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
+  packages/create-quill-plugin:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.14.0
+        version: 20.19.43
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
   packages/plugin-host:
     dependencies:
       quill-plugin-sdk:
@@ -402,6 +411,24 @@ importers:
         specifier: ^2.2.0
         version: 2.5.0
     devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
+  plugins/my-fancy-plugin:
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.28
+      esbuild:
+        specifier: ^0.23.0
+        version: 0.23.1
+      quill-plugin-sdk:
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
@@ -2566,6 +2593,9 @@ packages:
 
   '@types/node@14.18.63':
     resolution: {integrity: sha512-fAtCfv4jJg+ExtXhvCkCqUKZ+4ok/JQk01qDKhL5BDDoS3AxKXhV5/MAVUZyQnSEd2GT92fkgZl0pz0Q0AzcIQ==}
+
+  '@types/node@20.19.43':
+    resolution: {integrity: sha512-6oYBAi5ikg4Pl+kGsoYtawUMBT2zZMCvPNF7pVLnHZfd1zf38DRiWn/gT01RYCdUqkv7Fhr+C9ot4/tb+2sVvA==}
 
   '@types/node@22.19.17':
     resolution: {integrity: sha512-wGdMcf+vPYM6jikpS/qhg6WiqSV/OhG+jeeHT/KlVqxYfD40iYJf9/AE1uQxVWFvU7MipKRkRv8NSHiCGgPr8Q==}
@@ -7482,6 +7512,10 @@ snapshots:
 
   '@types/node@14.18.63': {}
 
+  '@types/node@20.19.43':
+    dependencies:
+      undici-types: 6.21.0
+
   '@types/node@22.19.17':
     dependencies:
       undici-types: 6.21.0
@@ -7492,7 +7526,7 @@ snapshots:
 
   '@types/plantuml-encoder@1.4.2':
     dependencies:
-      '@types/node': 22.19.17
+      '@types/node': 20.19.43
 
   '@types/prop-types@15.7.15': {}
 
