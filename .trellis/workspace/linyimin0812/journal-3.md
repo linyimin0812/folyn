@@ -700,3 +700,40 @@ Three small fixes plus one course correction. (1) plantuml file-preview now show
 ### Next Steps
 
 - None - task complete
+
+
+## Session 135: Plugin zip install + template buildable dir + svg filetype icon
+
+**Date**: 2026-08-07
+**Task**: Plugin zip install + template buildable dir + svg filetype icon
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added install_plugin_zip Tauri command with compiled-only enforcement (blacklist hard-fail + unknown-ext soft-skip + zip-slip/zip-bomb defenses) + Install from .zip UI button. Updated plugin template build.mjs to assemble dist/ as a self-contained installable dir (manifest copied + main rewritten). Wired the svg file type to the dedicated assets/icons/svg.svg icon across both handler and extension maps.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e7ae374` | (see git log) |
+| `144108b` | (see git log) |
+| `ff5f61b` | (see git log) |
+| `5b4b071` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
