@@ -169,13 +169,15 @@ function PluginRowCard({ row }: { row: PluginRow }) {
               {isApproveBusy ? t('settings:plugins.approving') : t('settings:plugins.approve')}
             </button>
           )}
-          <Toggle
-            value={toggleValue}
-            onChange={(v) => {
-              if (v && !isActive) void activate(entry.id);
-              else if (!v && isActive) void deactivate(entry.id);
-            }}
-          />
+          {!needsApproval && (
+            <Toggle
+              value={toggleValue}
+              onChange={(v) => {
+                if (v && !isActive) void activate(entry.id);
+                else if (!v && isActive) void deactivate(entry.id);
+              }}
+            />
+          )}
           <button
             className="btn btn-g btn-sm"
             disabled={anyBusy}
