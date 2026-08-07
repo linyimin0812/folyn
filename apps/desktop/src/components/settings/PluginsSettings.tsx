@@ -29,8 +29,7 @@ import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { isTauri } from '@/utils/platform';
 import { usePluginStore, type PluginRow } from '@/store/pluginStore';
-import { useAiConfigStore } from '@/store/aiConfigStore';
-import { PairSelector } from '@/components/ai/PairSelector';
+import { Toggle } from '@/components/settings/primitives';
 
 /** State badge color per runtime state. */
 function stateBadgeClass(state: PluginRow['state']): string {
@@ -84,8 +83,9 @@ function PluginRowCard({ row }: { row: PluginRow }) {
   // on confirm). Sandbox plugins auto-activate on install — no approval
   // needed (their trust boundary is the iframe sandbox, not a pin).
   const needsApproval = entry.tier === 'trusted' && !entry.trusted;
-  const canActivate = state !== 'active' && !needsApproval;
-  const canDeactivate = state === 'active';
+  const isActive = state === 'active';
+  const toggleBusy = isActivateBusy || isDeactivateBusy;
+  const toggleValue = isActive && !toggleBusy;
 
   const handleApprove = useCallback(() => {
     void openConsent(entry.id);
@@ -114,7 +114,7 @@ function PluginRowCard({ row }: { row: PluginRow }) {
           </div>
           <div className="text-[10.5px] text-t3 font-mono mt-0.5 truncate">{entry.id}</div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {needsApproval && (
             <button
               className="btn btn-g btn-sm"
@@ -124,24 +124,13 @@ function PluginRowCard({ row }: { row: PluginRow }) {
               {isApproveBusy ? t('settings:plugins.approving') : t('settings:plugins.approve')}
             </button>
           )}
-          {canActivate && (
-            <button
-              className="btn btn-g btn-sm"
-              disabled={anyBusy}
-              onClick={() => void activate(entry.id)}
-            >
-              {isActivateBusy ? t('settings:plugins.activating') : t('settings:plugins.activate')}
-            </button>
-          )}
-          {canDeactivate && (
-            <button
-              className="btn btn-g btn-sm"
-              disabled={anyBusy}
-              onClick={() => void deactivate(entry.id)}
-            >
-              {isDeactivateBusy ? t('settings:plugins.deactivating') : t('settings:plugins.deactivate')}
-            </button>
-          )}
+          <Toggle
+            value={toggleValue}
+            onChange={(v) => {
+              if (v && !isActive) void activate(entry.id);
+              else if (!v && isActive) void deactivate(entry.id);
+            }}
+          />
           <button
             className="btn btn-g btn-sm"
             disabled={anyBusy}
@@ -233,8 +222,6 @@ export function PluginsSettings() {
   const refresh = usePluginStore((s) => s.refresh);
   const installFromFolder = usePluginStore((s) => s.installFromFolder);
   const clearError = usePluginStore((s) => s.clearError);
-  const pluginPair = useAiConfigStore((s) => s.pluginPair);
-  const setPluginPair = useAiConfigStore((s) => s.setPluginPair);
   const [folderOpen, setFolderOpen] = useState(false);
 
   // Refresh on mount + whenever the tab gains focus (cheap; guards against
@@ -283,16 +270,6 @@ export function PluginsSettings() {
         <button className="btn btn-g btn-sm" disabled={refreshing} onClick={() => void refresh()}>
           {refreshing ? t('settings:plugins.refreshing') : t('settings:plugins.refresh')}
         </button>
-      </div>
-
-      {/* AI 模型 — pair picker for plugin RPC `ai.chat`. Null → host refuses
-          the call with a clear error; plugin authors pick a pair here. */}
-      <div className="tr flex items-center justify-between py-3.5 border-b border-brd mb-3">
-        <div className="tr-info">
-          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('ai:pairSelector.sectionTitle')}</h4>
-          <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('ai:pairSelector.sectionDesc')}</p>
-        </div>
-        <PairSelector value={pluginPair} onChange={setPluginPair} />
       </div>
 
       {error && (
