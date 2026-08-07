@@ -11,6 +11,7 @@
     "build": "tsc",
     "prepublishOnly": "tsc",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsc && node test/smoke.mjs",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
