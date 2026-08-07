@@ -12,6 +12,7 @@ const EXT_TO_LANG: Record<string, string> = {
   py: 'python', sh: 'bash', bash: 'bash', zsh: 'bash',
   sql: 'sql', java: 'java', go: 'go', rust: 'rust', rs: 'rust',
   c: 'c', cpp: 'cpp', h: 'c',
+  plantuml: 'plantuml', puml: 'plantuml', pu: 'plantuml',
   // ponytail: not exhaustive — highlight.js will fall back to highlightAuto for anything missing.
 };
 
