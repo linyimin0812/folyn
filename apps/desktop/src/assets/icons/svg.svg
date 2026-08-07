@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Main Card Gradient -->
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a7af3"/>
+      <stop offset="50%" stop-color="#1f5ecd"/>
+      <stop offset="100%" stop-color="#143e92"/>
+    </linearGradient>
+
+    <!-- Tag Badge Gradient -->
+    <linearGradient id="tagGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+
+    <!-- Fold Shadow Gradient -->
+    <linearGradient id="foldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#0f2b6b"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ribbon Fold (Layer 1: Behind Card) -->
+  <path d="M 40,90 C 38,145 52,192 92,198 L 130,198 L 130,90 Z" 
+        fill="url(#foldGrad)" 
+        stroke="#ffffff" 
+        stroke-width="12" 
+        stroke-linejoin="round" 
+        stroke-linecap="round" />
+
+  <!-- Main Card Container (Layer 2) -->
+  <rect x="86" y="86" width="328" height="328" rx="60" ry="60" fill="url(#cardGrad)" />
+
+  <!-- Graphic Elements Inside Card -->
+  <!-- Sun -->
+  <circle cx="290" cy="192" r="40" fill="none" stroke="#ffffff" stroke-width="15" />
+
+  <!-- Left Mountain Peak & Extended Diagonal Line -->
+  <path d="M 86,296 C 120,258 148,252 178,252 C 218,252 242,298 272,336 L 350,414" 
+        fill="none" 
+        stroke="#ffffff" 
+        stroke-width="15" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" />
+
+  <!-- Right Mountain Peak -->
+  <path d="M 272,336 C 295,306 316,288 344,288 C 376,288 398,318 414,360" 
+        fill="none" 
+        stroke="#ffffff" 
+        stroke-width="15" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" />
+
+  <!-- Sparkle Accent (Bottom Right) -->
+  <path d="M 412,398 Q 412,406 420,406 Q 412,406 412,414 Q 412,406 404,406 Q 412,406 412,398 Z" 
+        fill="#ffffff" 
+        opacity="0.6" />
+
+  <!-- Top SVG Badge Tag (Layer 3: On Top of Card) -->
+  <rect x="40" y="40" width="210" height="100" rx="30" ry="30" 
+        fill="url(#tagGrad)" 
+        stroke="#ffffff" 
+        stroke-width="12" 
+        stroke-linejoin="round" />
+
+  <!-- SVG Text -->
+  <text x="145" y="112" 
+        fill="#ffffff" 
+        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+        font-size="62" 
+        font-weight="800" 
+        text-anchor="middle" 
+        letter-spacing="1.5">SVG</text>
+</svg>

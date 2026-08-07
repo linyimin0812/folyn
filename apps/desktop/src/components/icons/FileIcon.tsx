@@ -98,6 +98,7 @@ const HANDLER_TO_THEME_ICON: Record<string, string> = {
   drawio: 'drawio',
   code: 'javaScript',
   'rich-text': 'richtext',
+  svg: 'svg',
 };
 
 function ExcalidrawIcon() {
