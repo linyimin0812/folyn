@@ -215,7 +215,7 @@ import { definePlugin, validateManifest } from "quill-plugin-sdk";
 "markdownCodeRenderers": [{ "language": "plantuml", "aliases": ["puml", "pu"], "component": "PlantUmlMarkdownBlock" }]
 ```
 
-> host-realm React（用 `window.React` + `resolveReact()`）。未命中回退到 `CodeBlockWrapper`。规范形态见 `plugins/quill-plugin-plantuml/src/index.ts`。
+> host-realm React（用 `window.React` + `resolveReact()`）。未命中回退到 `CodeBlockWrapper`。规范形态见 `quill-plugin-sdk/quill-plugin-plantuml/src/index.ts`。
 
 ### editorLanguages（仅 trusted）
 
@@ -229,7 +229,7 @@ import { definePlugin, validateManifest } from "quill-plugin-sdk";
 "editorLanguages": [{ "id": "plantuml", "aliases": ["puml", "pu"], "entry": "plantumlLanguage" }]
 ```
 
-> trusted 插件经 blob URL 加载，需通过 `window.codemirrorLanguage`（host 在 `main.tsx` 中赋值）+ `resolveCodemirror()` helper 拿 `@codemirror/language`，避免 module-instance mismatch。规范形态见 `plugins/quill-plugin-plantuml/src/codemirror.ts`。
+> trusted 插件经 blob URL 加载，需通过 `window.codemirrorLanguage`（host 在 `main.tsx` 中赋值）+ `resolveCodemirror()` helper 拿 `@codemirror/language`，避免 module-instance mismatch。规范形态见 `quill-plugin-sdk/quill-plugin-plantuml/src/codemirror.ts`。
 
 ## 5. PluginModule 导出契约（trusted）
 

@@ -588,7 +588,7 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
 - ponytail：renderer 是 host-realm React（trusted blob `import()` 共用 host 的
   Reactor）；自带 React bundle 会触发 "Invalid hook call" 双 React 错误。用
   `window.React` 经 `resolveReact()` helper 拿（与下方 `resolveCodemirror()` 同
-  形）。规范形态见 `plugins/quill-plugin-plantuml/src/index.ts` 的
+  形）。规范形态见 `quill-plugin-sdk/quill-plugin-plantuml/src/index.ts` 的
   `PlantUmlMarkdownBlock`。
 
 ### editorLanguages（仅 trusted）
@@ -614,7 +614,7 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
   mismatch——和自带 React bundle 是同一种失败）。用 `resolveCodemirror()` helper
   懒加载 host 的 `@codemirror/language`，从 `window.codemirrorLanguage` 拿
   （host 在 `main.tsx` 中于任何 trusted 插件 `import()` 前赋值）。规范形态见
-  `plugins/quill-plugin-plantuml/src/codemirror.ts`——与 `resolveReact()` 对
+  `quill-plugin-sdk/quill-plugin-plantuml/src/codemirror.ts`——与 `resolveReact()` 对
   `window.React` 的处理镜像。
 
 ---
@@ -646,7 +646,7 @@ export function deactivate(ctx: PluginContext) { /* 可选 */ }
 `markdownCodeRenderers` 的 key 对应 manifest 的 `component` 字符串；
 `editorLanguages` 的 key 对应 `entry`。完整四 map 示例（`handlers`、`exporters`、
 `markdownCodeRenderers`、`containers`、`exportEnhancers`、`editorLanguages`）见
-`plugins/quill-plugin-plantuml`。
+`quill-plugin-sdk/quill-plugin-plantuml`。
 
 也接受 default-export 工厂 `(ctx) => PluginModule`（loader 会归一两种形态）。详见
 `contributionAdapters.ts` 的具体解析规则。

@@ -153,7 +153,7 @@ async function main() {
   console.log('  pnpm build');
   console.log('');
   console.log('Then edit src/index.ts and manifest.json to add contributions.');
-  console.log('See plugins/quill-plugin-plantuml for a working example.');
+  console.log('See quill-plugin-sdk/quill-plugin-plantuml (external repo) for a working example.');
 }
 
 main().catch((e) => {

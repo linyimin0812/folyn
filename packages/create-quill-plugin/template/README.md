@@ -15,4 +15,4 @@ pnpm build
 - `manifest.json` — declares contributions (`fileTypes`, `exporters`, `containers`, …).
 - `build.mjs` — esbuild config that bundles `src/index.ts` to `dist/index.js`.
 
-See `plugins/quill-plugin-plantuml` in the Quill repo for a working reference.
+See `quill-plugin-plantuml` in the external `quill-plugin-sdk` repo for a working reference.

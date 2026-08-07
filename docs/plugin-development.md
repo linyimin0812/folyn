@@ -620,7 +620,7 @@ adapts it into the matching app registry when the plugin activates.
   shares the host's Reactor); bundle React yourself and you'll get the
   "Invalid hook call" two-React error. Use `window.React` via a
   `resolveReact()` helper (mirror of `resolveCodemirror()` below). See
-  `plugins/quill-plugin-plantuml/src/index.ts` `PlantUmlMarkdownBlock` for
+  `quill-plugin-sdk/quill-plugin-plantuml/src/index.ts` `PlantUmlMarkdownBlock` for
   the canonical shape.
 
 ### editorLanguages (trusted only)
@@ -649,7 +649,7 @@ adapts it into the matching app registry when the plugin activates.
   `@codemirror/language` lazily via a `resolveCodemirror()` helper that
   reads `window.codemirrorLanguage` (the host sets it in `main.tsx` before
   any trusted plugin is `import()`-ed). See
-  `plugins/quill-plugin-plantuml/src/codemirror.ts` for the canonical
+  `quill-plugin-sdk/quill-plugin-plantuml/src/codemirror.ts` for the canonical
   pattern — it mirrors the `resolveReact()` approach for `window.React`.
 
 ---
@@ -680,7 +680,7 @@ missing from the module's exports is skipped with a console warning
 `fileTemplates` and `keybindings` are declarative — no module map.
 
 `markdownCodeRenderers` is keyed by the manifest's `component` string;
-`editorLanguages` by `entry`. See `plugins/quill-plugin-plantuml` for a
+`editorLanguages` by `entry`. See `quill-plugin-sdk/quill-plugin-plantuml` for a
 working example of all four maps (`handlers`, `exporters`,
 `markdownCodeRenderers`, `containers`, `exportEnhancers`, `editorLanguages`).
 
