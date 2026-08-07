@@ -1,25 +1,35 @@
 import { EditorView, ViewPlugin, ViewUpdate, keymap } from '@codemirror/view';
 import { StateField, StateEffect, Prec } from '@codemirror/state';
 import hljs from 'highlight.js';
+import { listMarkdownCodeRendererLanguages } from '@/services/plugin-host/markdownCodeRendererAdapter';
+import { listEditorLanguages } from '@/services/plugin-host/editorLanguageAdapter';
 
 interface LanguageEntry {
   name: string;
   label: string;
 }
 
-let cachedLanguages: LanguageEntry[] | null = null;
-
 function getAllLanguages(): LanguageEntry[] {
-  if (!cachedLanguages) {
-    // ponytail: mermaid isn't a highlight.js language, prepend so it shows in autocomplete
-    // ponytail: html is an alias of xml in highlight.js so it's absent from listLanguages(); swap vbscript-html → html so the menu shows `html`
-    const extras: LanguageEntry[] = [{ name: 'mermaid', label: 'mermaid' }, { name: 'html', label: 'html' }];
-    cachedLanguages = [
-      ...extras,
-      ...hljs.listLanguages().sort().filter((name) => name !== 'vbscript-html').map((name) => ({ name, label: name })),
-    ];
-  }
-  return cachedLanguages;
+  // ponytail: mermaid isn't a highlight.js language, prepend so it shows in autocomplete.
+  // ponytail: html is an alias of xml in highlight.js so it's absent from listLanguages();
+  // swap vbscript-html → html so the menu shows `html`.
+  const extras: LanguageEntry[] = [{ name: 'mermaid', label: 'mermaid' }, { name: 'html', label: 'html' }];
+  // ponytail: plugin-contributed renderer langs (e.g. plantuml + aliases puml, pu) and
+  // editor-language aliases. Lookup is per-call — sub-ms, only invoked while the
+  // popup is visible or triggering, so no module-level cache. Plugins load
+  // asynchronously; a cached list would miss plantuml on first trigger.
+  const rendererLangs = listMarkdownCodeRendererLanguages();
+  const editorLangs = listEditorLanguages().flatMap(({ canonical, aliases }) => [
+    { name: canonical, label: canonical },
+    ...aliases.map((a) => ({ name: a, label: a })),
+  ]);
+  const seen = new Set<string>();
+  const all = [...extras, ...rendererLangs, ...editorLangs, ...hljs.listLanguages().sort().filter((name) => name !== 'vbscript-html').map((name) => ({ name, label: name }))];
+  return all.filter((e) => {
+    if (seen.has(e.name)) return false;
+    seen.add(e.name);
+    return true;
+  });
 }
 
 export interface CodeBlockMenuState {

@@ -58,6 +58,17 @@ export function clearMarkdownCodeRenderers(): void {
   renderers.clear();
 }
 
+/**
+ * Enumerate registered renderer languages (canonical + alias keys) for the
+ * markdown code-fence autocomplete. Each key — canonical or alias — is a
+ * valid fence language the user may type, so all are surfaced as
+ * `{name, label}` entries. `CodeBlockExtension.getAllLanguages()` merges
+ * this with the highlight.js list.
+ */
+export function listMarkdownCodeRendererLanguages(): Array<{ name: string; label: string }> {
+  return Array.from(renderers.keys(), (key) => ({ name: key, label: key }));
+}
+
 export function registerPluginMarkdownCodeRenderers(
   manifest: PluginManifest,
   module: PluginModule,
