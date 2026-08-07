@@ -60,6 +60,12 @@ export interface PluginRow {
   state: PluginUiState;
   /** Present when `state === 'failed'`, for diagnostics. */
   error?: string;
+  /** Inline-SVG / emoji / short-text icon (resolved from the manifest; a
+   * `.svg` path has already been fetched and inlined). Undefined when the
+   * manifest declares no icon or the read failed. */
+  icon?: string;
+  /** One-line description from the manifest. */
+  description?: string;
 }
 
 /** Consent-prompt modal state. */
@@ -104,11 +110,44 @@ async function fetchRows(): Promise<PluginRow[]> {
   const entries = await invoke<PluginEntry[]>('list_plugins');
   // Lazy-import the pluginHost so this store stays decoupled at module load.
   const { pluginHost } = await import('@quill/plugin-host');
-  return entries.map((entry) => {
-    const record = pluginHost.get(entry.id);
-    const state: PluginUiState = record?.state ?? 'installed';
-    return { entry, state, error: record?.error ? String(record.error) : undefined };
-  });
+  // Best-effort: fetch each plugin's manifest in parallel to surface
+  // `icon` / `description` on the row. A failed read leaves the row with
+  // both fields undefined (UI falls back to first-letter avatar + no
+  // description). Refresh is rare and plugin count is small, so the N
+  // extra IPCs are acceptable. `.svg` path icons are inlined here so the
+  // UI gets a ready-to-render SVG string.
+  const rows = await Promise.all(
+    entries.map(async (entry): Promise<PluginRow> => {
+      const record = pluginHost.get(entry.id);
+      const state: PluginUiState = record?.state ?? 'installed';
+      const error = record?.error ? String(record.error) : undefined;
+      let icon: string | undefined;
+      let description: string | undefined;
+      try {
+        const manifestText = await invoke<string>('read_plugin_file', {
+          id: entry.id,
+          path: 'manifest.json',
+        });
+        const manifest = JSON.parse(manifestText) as {
+          icon?: string;
+          description?: string;
+        };
+        icon = manifest.icon;
+        description = manifest.description;
+        if (icon && icon.trim().toLowerCase().endsWith('.svg') && !icon.trim().startsWith('<svg')) {
+          try {
+            icon = await invoke<string>('read_plugin_file', { id: entry.id, path: icon });
+          } catch {
+            icon = undefined;
+          }
+        }
+      } catch {
+        // manifest read failed — leave icon/description undefined
+      }
+      return { entry, state, error, icon, description };
+    }),
+  );
+  return rows;
 }
 
 /** Parse a plugin's manifest permissions into human-readable summary lines. */

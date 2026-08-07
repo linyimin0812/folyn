@@ -30,6 +30,7 @@ import i18n from '@/i18n';
 import { isTauri } from '@/utils/platform';
 import { usePluginStore, type PluginRow } from '@/store/pluginStore';
 import { Toggle } from '@/components/settings/primitives';
+import { IconFromSvg } from '@/components/icons/IconFromSvg';
 
 /** State badge color per runtime state. */
 function stateBadgeClass(state: PluginRow['state']): string {
@@ -62,10 +63,43 @@ function tierLabel(tier: PluginRow['entry']['tier']): string {
   return i18n.t(tier === 'trusted' ? 'settings:plugins.tier.trusted' : 'settings:plugins.tier.sandbox');
 }
 
+/** Render a plugin's manifest icon at a fixed 20×20 slot. Inline SVG is
+ * rendered via IconFromSvg; emoji/short text is rendered as text; absent
+ * icon falls back to the first letter of the plugin name. Mirrors the
+ * precedent in `services/plugin-host/featureAdapter.tsx`. */
+function renderPluginIcon(icon: string | undefined, name: string) {
+  const size = 20;
+  const boxCls =
+    'shrink-0 inline-flex items-center justify-center rounded bg-surf2 border border-brd2 text-t2 overflow-hidden';
+  if (icon && icon.trim().startsWith('<svg')) {
+    return <IconFromSvg svg={icon} size={size} className="shrink-0" />;
+  }
+  if (icon && icon.trim().length > 0) {
+    return (
+      <span
+        className={boxCls}
+        style={{ width: size, height: size, fontSize: 12, lineHeight: 1 }}
+        aria-hidden
+      >
+        {icon.trim()}
+      </span>
+    );
+  }
+  return (
+    <span
+      className={boxCls}
+      style={{ width: size, height: size, fontSize: 11, fontWeight: 600, lineHeight: 1 }}
+      aria-hidden
+    >
+      {(name.trim()[0] ?? '?').toUpperCase()}
+    </span>
+  );
+}
+
 /** A single plugin row with its action buttons. */
 function PluginRowCard({ row }: { row: PluginRow }) {
   const { t } = useTranslation();
-  const { entry, state, error } = row;
+  const { entry, state, error, icon, description } = row;
   const busy = usePluginStore(useShallow((s) => s.busy));
   const activate = usePluginStore((s) => s.activate);
   const deactivate = usePluginStore((s) => s.deactivate);
@@ -94,25 +128,36 @@ function PluginRowCard({ row }: { row: PluginRow }) {
   return (
     <div className="tr-info border border-brd rounded-lg p-3 mb-2 bg-surf">
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[length:calc(var(--ui-font-size)-1px)] font-semibold text-t1 truncate">
-              {entry.name}
-            </span>
-            <span className="text-[10px] text-t3 font-mono">{entry.version}</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${stateBadgeClass(state)}`}>
-              {stateLabel(state)}
-            </span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded border border-brd2 text-t2 bg-surf2">
-              {tierLabel(entry.tier)}
-            </span>
-            {entry.trusted && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded border border-acc/30 text-acc bg-accdim">
-                {t('settings:plugins.approved')}
+        <div className="flex items-start gap-2 min-w-0">
+          {renderPluginIcon(icon, entry.name)}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[length:calc(var(--ui-font-size)-1px)] font-semibold text-t1 truncate">
+                {entry.name}
               </span>
+              <span className="text-[10px] text-t3 font-mono">{entry.version}</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${stateBadgeClass(state)}`}>
+                {stateLabel(state)}
+              </span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded border border-brd2 text-t2 bg-surf2">
+                {tierLabel(entry.tier)}
+              </span>
+              {entry.trusted && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded border border-acc/30 text-acc bg-accdim">
+                  {t('settings:plugins.approved')}
+                </span>
+              )}
+            </div>
+            <div className="text-[10.5px] text-t3 font-mono mt-0.5 truncate">{entry.id}</div>
+            {description && (
+              <div
+                className="text-[11px] text-t2 mt-0.5 truncate"
+                title={description}
+              >
+                {description}
+              </div>
             )}
           </div>
-          <div className="text-[10.5px] text-t3 font-mono mt-0.5 truncate">{entry.id}</div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {needsApproval && (

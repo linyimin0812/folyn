@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Store changes — extending PluginRow + fetchRows parallel manifest fetch"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "New UI in PluginRowCard — icon slot + description line"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Adding optional icon?/description? to PluginManifest SDK type"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "If any new UI strings (e.g. fallback placeholder) — keep i18n discipline"}

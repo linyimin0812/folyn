@@ -103,6 +103,12 @@ export interface PluginManifest {
   signature?: string;
   /** Optional base64 ed25519 public key paired with `signature`. */
   publisherPublicKey?: string;
+  /** Optional display icon. Inline `<svg>…</svg>` string, `.svg` file path
+   * (resolved by host via `read_plugin_file`), or emoji/short text. Mirrors
+   * `ContainerContribution.icon`. */
+  icon?: string;
+  /** Optional one-line human-readable description shown in Settings → Plugins. */
+  description?: string;
 }
 
 // ── Permissions (declarative; host enforces) ───────────────────────────────
