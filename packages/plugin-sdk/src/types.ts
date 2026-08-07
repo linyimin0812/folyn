@@ -264,6 +264,17 @@ export interface FileTypeContribution {
 export interface ContainerContribution {
   /** Directive name, e.g. `callout`. */
   name: string;
+  /**
+   * Container icon shown in the `/` slash menu. Three accepted forms:
+   *
+   * 1. Inline SVG string (`<svg ...>...</svg>`) — rendered verbatim via the
+   *    host's `IconFromSvg`. Recommended for self-contained plugin icons.
+   * 2. `.svg` file path relative to the plugin install dir — the host reads
+   *    the file at activate via `read_plugin_file` and stores the resolved
+   *    SVG string. Missing file → warn + empty fallback (no crash).
+   * 3. Emoji / short string (fallback) — rendered as plain text. Preserves
+   *    the original builtin convention (e.g. `💡`).
+   */
   icon: string;
   label: string;
   category?: string;

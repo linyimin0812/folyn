@@ -157,23 +157,63 @@ export function registerPluginFileTypes(
 // ── Container adapter ───────────────────────────────────────────────────────
 
 import { ContainerRegistry } from '@quill/container-plugins';
+import { readPluginFile } from './trustedLoader';
+
+/**
+ * Resolve a container `icon` field to the string the registry will store.
+ *
+ * - `.svg` file path → host reads the file from the plugin install dir.
+ *   On failure, warn + return '' (slash menu renders empty; never crashes).
+ * - Anything else (inline `<svg>...</svg>` or emoji) → returned as-is; the
+ *   slash-menu dispatcher branches on the `<svg` prefix at render time.
+ *
+ * ponytail: per-container `Promise.all` is fine — activation is rare and
+ * bounded by the manifest's container count; no caching layer needed.
+ */
+async function resolveContainerIcon(
+  manifest: PluginManifest,
+  icon: string,
+): Promise<string> {
+  if (icon.endsWith('.svg')) {
+    try {
+      return await readPluginFile(manifest.id, icon);
+    } catch (err) {
+      console.warn(
+        `[plugin-host] plugin "${manifest.id}" container icon "${icon}" could not be read — falling back to empty`,
+        err,
+      );
+      return '';
+    }
+  }
+  return icon;
+}
 
 /**
  * Register a trusted plugin's container directives into `ContainerRegistry`.
  * The contribution's `component` entry-ref resolves to a React component
  * exported by the plugin module. A `ContainerPlugin` object is built from the
  * manifest's declarative fields + the resolved component.
+ *
+ * Async because each container's `icon` may be a `.svg` file path that the
+ * host must read from the plugin install dir before registration. The
+ * trusted loader awaits this in `activate`.
  */
-export function registerPluginContainers(
+export async function registerPluginContainers(
   manifest: PluginManifest,
   module: PluginModule,
-): Disposable {
+): Promise<Disposable> {
   const containers: ContainerContribution[] = manifest.contributes?.containers ?? [];
   if (containers.length === 0) return { dispose: () => {} };
 
   const registry = ContainerRegistry.getInstance();
   const registeredNames: string[] = [];
-  for (const c of containers) {
+  const resolved = await Promise.all(
+    containers.map(async (c) => ({
+      c,
+      icon: c.icon ? await resolveContainerIcon(manifest, c.icon) : '',
+    })),
+  );
+  for (const { c, icon } of resolved) {
     const component = module.containers?.[c.component];
     if (!component) {
       console.warn(
@@ -183,7 +223,7 @@ export function registerPluginContainers(
     }
     const plugin = {
       name: c.name,
-      icon: c.icon,
+      icon,
       label: c.label,
       category: (c.category ?? 'custom') as ContainerCategory,
       component,

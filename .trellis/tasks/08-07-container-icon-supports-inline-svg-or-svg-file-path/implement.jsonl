@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Overall desktop frontend conventions; trusted-plugin rendering + adapter patterns."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component patterns for the new icon dispatcher + async adapter changes."}
+{"file": ".trellis/spec/desktop/frontend/trusted-plugin-rendering.md", "reason": "How trusted-plugin contributions are resolved host-realm — applies to async SVG file resolution."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Type-only imports + PluginModule entry-ref shape — relevant for the docstring update."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality bar for the new unit tests (async adapter + SlashMenu render dispatch)."}
+{"file": ".trellis/spec/container-plugins/frontend/index.md", "reason": "Builtin container-plugin registration pattern — confirms where async resolution plugs in."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse IconFromSvg + renderIcon pattern rather than reinventing."}

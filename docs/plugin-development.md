@@ -374,6 +374,7 @@ adapts it into the matching app registry when the plugin activates.
 ```
 
 - `name` is the directive name (what follows `:::` in Markdown).
+- `icon` accepts three forms: an inline `<svg>...</svg>` string (rendered verbatim via the host's `IconFromSvg`), a `.svg` file path relative to the plugin install dir (the host reads it at activate via `read_plugin_file`; missing file → warn + empty fallback), or an emoji/short string rendered as plain text (the builtin convention, e.g. `💡`).
 - `component` is the entry-ref into the module's `containers` map. The
   component must be a React component accepting `ContainerProps`
   (`{ children?, attributes?, name? }`).

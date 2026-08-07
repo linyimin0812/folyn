@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ContainerRegistry } from '@quill/container-plugins';
 import type { ContainerPlugin, ContainerCategory } from '@quill/container-plugins';
+import { IconFromSvg } from '@/components/icons/IconFromSvg';
 
 const CATEGORY_KEYS: Record<ContainerCategory, string> = {
   layout: 'editor:slashMenu.categories.layout',
@@ -17,6 +19,22 @@ interface SlashMenuProps {
   position: { top: number; left: number };
   onSelect: (plugin: ContainerPlugin) => void;
   onClose: () => void;
+}
+
+/**
+ * Render a container's resolved `icon` string. Inline `<svg>...</svg>` strings
+ * (set directly from the manifest, OR pre-resolved from a `.svg` file path by
+ * `registerPluginContainers`) go through `IconFromSvg`; anything else is the
+ * emoji/text fallback (preserves the builtin convention).
+ *
+ * ponytail: inline two-branch dispatcher; not worth a shared file — the
+ * `featureAdapter` version has a ThemeIcon fallback that doesn't apply here.
+ */
+function renderContainerIcon(icon: string): ReactNode {
+  if (icon.trim().startsWith('<svg')) {
+    return <IconFromSvg svg={icon} size={16} />;
+  }
+  return <span>{icon}</span>;
 }
 
 export function SlashMenu({ visible, filter, position, onSelect, onClose }: SlashMenuProps) {
@@ -135,7 +153,7 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
                 onClick={() => onSelect(plugin)}
                 onMouseEnter={() => setActiveIndex(currentIndex)}
               >
-                <span className="text-base w-6 text-center shrink-0">{plugin.icon}</span>
+                <span className="text-base w-6 text-center shrink-0">{renderContainerIcon(plugin.icon)}</span>
                 <div className="flex flex-col gap-px">
                   <span className="text-xs font-medium text-t1">{plugin.label}</span>
                   {plugin.description && (

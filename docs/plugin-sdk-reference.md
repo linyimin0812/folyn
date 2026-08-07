@@ -108,7 +108,7 @@ import { definePlugin, validateManifest } from "quill-plugin-sdk";
 | 字段          | 类型     | 必填 | 说明                                  |
 | ------------- | -------- | ---- | ------------------------------------- |
 | `name`        | `string` | 是   | 指令名（`:::` 后）                    |
-| `icon`        | `string` | 是   | emoji                                 |
+| `icon`        | `string` | 是   | 内联 `<svg>` 字符串 / `.svg` 文件路径（宿主 activate 时读取）/ emoji |
 | `label`       | `string` | 是   | 显示标签                              |
 | `category`    | `string` | 否   | `layout`/`media`/`ai`/`data`/`custom` |
 | `component`   | `string` | 是   | entry-ref，索引 `module.containers`   |

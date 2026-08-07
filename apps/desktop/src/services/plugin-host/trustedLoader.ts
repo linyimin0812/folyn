@@ -109,13 +109,16 @@ export const trustedLoader: PluginLoader = {
 
     return {
       manifest,
-      activate: (ctx: PluginContext) => {
+      activate: async (ctx: PluginContext) => {
         // Wire contribution adapters. Each returns a Disposable; push them
         // all into the context so PluginHost reaps them on deactivate.
+        // `registerPluginContainers` is async (resolves `.svg` file-path icons
+        // via read_plugin_file before registering); the other adapters are sync.
+        const containerDisp = await registerPluginContainers(manifest, module);
         const adapterDisposables: Disposable[] = [
           registerTrustedPluginCommands(manifest, module),
           registerPluginFileTypes(manifest, module),
-          registerPluginContainers(manifest, module),
+          containerDisp,
           registerPluginTools(manifest),
           registerPluginFeatures(manifest, module),
           registerPluginExporters(manifest, module),

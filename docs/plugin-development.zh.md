@@ -378,6 +378,7 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
 ```
 
 - `name` 是指令名（Markdown 中 `:::` 后面的部分）。
+- `icon` 接受三种形式：内联 `<svg>...</svg>` 字符串（由宿主 `IconFromSvg` 原样渲染）；`.svg` 文件路径，相对于插件安装目录（宿主在 activate 时通过 `read_plugin_file` 读取；文件缺失则告警并回退为空）；emoji 或短字符串，作为纯文本渲染（内置惯例，如 `💡`）。
 - `component` 是模块 `containers` map 的 entry-ref。component 必须是接受
   `ContainerProps`（`{ children?, attributes?, name? }`）的 React 组件。
 - `category` 取 `layout` / `media` / `ai` / `data` / `custom`（slash 菜单分组）。

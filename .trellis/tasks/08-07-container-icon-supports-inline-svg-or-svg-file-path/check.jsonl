@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality bar — typecheck / lint / unit-test gates the check sub-agent enforces."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify the icon dispatcher + SlashMenu change conform to component conventions."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Verify the SDK docstring update + async adapter don't break type-only imports / SDK runtime-free constraint."}
+{"file": ".trellis/spec/container-plugins/frontend/quality-guidelines.md", "reason": "Container-plugins package quality bar — touches builtin registration shape."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Verify IconFromSvg + renderIcon pattern is reused, not duplicated."}
