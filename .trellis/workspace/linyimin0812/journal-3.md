@@ -489,3 +489,38 @@ Added PluginEnv to SDK (theme + locale + on*Change returning Disposable); truste
 ### Next Steps
 
 - None - task complete
+
+
+## Session 129: Code-fence autocomplete plugin langs + gitignore dummy folder
+
+**Date**: 2026-08-07
+**Task**: Code-fence autocomplete plugin langs + gitignore dummy folder
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Fixed markdown editor code-fence language picker missing plugin-contributed langs (plantuml + aliases puml/pu). Root cause: CodeBlockExtension.getAllLanguages() only consulted highlight.js + hardcoded mermaid/html extras, missing markdownCodeRenderers and editorLanguages registries. Added listMarkdownCodeRendererLanguages() enumerator and merged both registry sources into the popup list, dropped module-level cache so async-loaded plugins appear on next trigger. Also gitignored repo-root dummy-non-existing-folder (vite-plugin test fallback path) — existing apps/desktop-scoped entry missed the root-level creation.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `36ea354` | (see git log) |
+| `8d96391` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
