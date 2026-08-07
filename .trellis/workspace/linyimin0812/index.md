@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 130
+- **Total Sessions**: 131
 - **Last Active**: 2026-08-07
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~562 | Active |
+| `journal-3.md` | ~596 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 131 | 2026-08-07 | Plugins settings: drop AI pair picker, toggle for state | `9614ad8` | `master` |
 | 130 | 2026-08-07 | AI Panel 输入框加清除上下文/清空消息图标 | `9085962`, `e897d96`, `d90859f` | `master` |
 | 129 | 2026-08-07 | Code-fence autocomplete plugin langs + gitignore dummy folder | `36ea354`, `8d96391` | `master` |
 | 128 | 2026-08-07 | Plugin env capability (theme + locale) + publish plugin-sdk to npm | `f1a8099`, `271c0d7`, `a38f5f4` | `master` |

@@ -560,3 +560,37 @@ AI Panel 输入框 trailingSlot 新增 Eraser(清除上下文) + Trash2(清空�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 131: Plugins settings: drop AI pair picker, toggle for state
+
+**Date**: 2026-08-07
+**Task**: Plugins settings: drop AI pair picker, toggle for state
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Removed per-plugin AI model pair selector from PluginsSettings (store field retained for aiCapability runtime). Replaced Activate/Deactivate button pair with a single Toggle. Archived 3 stale tasks: 08-06-direct-terminal-icon, 08-06-tab-list-dropdown-in-editor, 08-06-plantuml-file-viewer-plugin.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9614ad8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
