@@ -6,5 +6,32 @@
   "quill": ">=0.1.0",
   "tier": "trusted",
   "main": "dist/index.js",
-  "contributes": {}
+  "html": "",
+  "permissions": {
+    "fs": { "scope": [] },
+    "http": { "origins": [] },
+    "clipboard": false,
+    "dialog": false,
+    "window": false,
+    "vault": { "readActive": false, "insertContent": false },
+    "ai": { "chat": false, "agents": [], "edit": false }
+  },
+  "contributes": {
+    "commands": [],
+    "fileTypes": [],
+    "containers": [],
+    "features": [],
+    "tools": [],
+    "exporters": [],
+    "fileTemplates": [],
+    "keybindings": [],
+    "exportEnhancers": []
+  },
+  "activation": {
+    "onCommand": "",
+    "onFileType": [],
+    "onLanguage": []
+  },
+  "signature": "",
+  "publisherPublicKey": ""
 }
