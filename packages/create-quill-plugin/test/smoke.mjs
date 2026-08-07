@@ -36,3 +36,20 @@ try {
 } finally {
   await rm(dir, { recursive: true, force: true });
 }
+
+// ponytail: smoke-check the build.mjs manifest rewrite logic in isolation.
+// Running real `pnpm build` needs network for esbuild+sdk; the regex
+// `manifest.main.replace(/^dist\//, '')` is the only non-trivial part —
+// exercised here against the template manifest so a regression surfaces
+// in `pnpm test` instead of at user install time.
+{
+  const templateManifest = JSON.parse(
+    await readFile(join(here, '..', 'template', 'manifest.json'), 'utf8')
+  );
+  const rewritten = templateManifest.main.replace(/^dist\//, '');
+  assert.equal(
+    rewritten, 'index.js',
+    'template manifest.main should rewrite to index.js inside dist/'
+  );
+  console.log('OK: build.mjs manifest rewrite checked');
+}
