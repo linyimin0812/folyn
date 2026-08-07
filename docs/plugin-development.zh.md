@@ -51,13 +51,15 @@ npm install quill-plugin-sdk
 
 ```ts
 // index.ts —— trusted tier 插件入口模块
-import type { PluginModule, ExporterHandler } from 'quill-plugin-sdk';
+import type { PluginModule, ExporterHandler } from "quill-plugin-sdk";
 
 const exportTxt: ExporterHandler = async (content, ctx) =>
   `# ${ctx.filePath}\n\n${content}`;
 
-export const exporters: Record<string, ExporterHandler> = { 'txt-with-header': exportTxt };
-export const commands = { ping: () => console.info('pong') };
+export const exporters: Record<string, ExporterHandler> = {
+  "txt-with-header": exportTxt,
+};
+export const commands = { ping: () => console.info("pong") };
 ```
 
 内部 workspace 插件依赖 `@quill/plugin-host`（它 re-export 了完整 SDK 面）——
@@ -69,31 +71,34 @@ export const commands = { ping: () => console.info('pong') };
 ## 一览：host 对外提供什么
 
 一个 Quill 插件是 `~/.quill/plugins/<id>/` 下的一个文件夹，包含 `manifest.json`
-+ 资源文件。host 给你五样东西：
+
+- 资源文件。host 给你五样东西：
 
 ### 1. 两种执行 tier
 
-| Tier | 隔离 | 能力面 | 信任门槛 |
-|---|---|---|---|
-| `sandbox` | 独立 `WebviewWindow` 或 iframe，origin 为 `quill-plugin://localhost` | 仅能用 host RPC 桥，无 Tauri API | 无（sandbox 本身就是边界） |
-| `trusted` | 主 webview realm（进程内） | 完整 host realm + Zustand store + Tauri | TOFU：用户必须点 **批准并授权** |
+| Tier      | 隔离                                                                 | 能力面                                  | 信任门槛                        |
+| --------- | -------------------------------------------------------------------- | --------------------------------------- | ------------------------------- |
+| `sandbox` | 独立 `WebviewWindow` 或 iframe，origin 为 `quill-plugin://localhost` | 仅能用 host RPC 桥，无 Tauri API        | 无（sandbox 本身就是边界）      |
+| `trusted` | 主 webview realm（进程内）                                           | 完整 host realm + Zustand store + Tauri | TOFU：用户必须点 **批准并授权** |
 
 ### 2. Contribution 点位
 
 在 manifest 的 `contributes` 中声明；activate 时由 host 接入对应注册表；deactivate
 时自动注销。
 
-| 点位 | Sandbox | Trusted | 作用 |
-|---|---|---|---|
-| `commands` | ✓ | ✓ | 命令面板入口（⌘P）—— 注册 id 为 `plugin.<pluginId>.<id>` |
-| `tools`（`window: true`） | ✓ | ✓ | "Open: <title>" 命令 → 弹出 Tauri WebviewWindow |
-| `fileTypes` | ✗ | ✓ | 文件扩展名 → handler 映射 |
-| `containers` | ✗ | ✓ | `:::name` Markdown 指令 → React 组件 |
-| `features` | ✗ | ✓ | 侧边栏 panel slot（activity bar 图标 + 组件）—— MVP 仅 left |
-| `exporters` | ✗ | ✓ | 自定义导出格式 → "Export as <label>" 面板命令 |
-| `fileTemplates` | ✗ | ✓ | 新建文件模板 → "New <label>" 面板命令 |
-| `keybindings` | ✗ | ✓ | Tauri accelerator → 命令 id（app 级 keydown） |
-| `exportEnhancers` | ✗ | ✓ | 导出 HTML/PDF 时对已渲染 DOM 的后处理变异 |
+| 点位                      | Sandbox | Trusted | 作用                                                        |
+| ------------------------- | ------- | ------- | ----------------------------------------------------------- |
+| `commands`                | ✓       | ✓       | 命令面板入口（⌘P）—— 注册 id 为 `plugin.<pluginId>.<id>`    |
+| `tools`（`window: true`） | ✓       | ✓       | "Open: <title>" 命令 → 弹出 Tauri WebviewWindow             |
+| `fileTypes`               | ✗       | ✓       | 文件扩展名 → handler 映射                                   |
+| `containers`              | ✗       | ✓       | `:::name` Markdown 指令 → React 组件                        |
+| `features`                | ✗       | ✓       | 侧边栏 panel slot（activity bar 图标 + 组件）—— MVP 仅 left |
+| `exporters`               | ✗       | ✓       | 自定义导出格式 → "Export as <label>" 面板命令               |
+| `fileTemplates`           | ✗       | ✓       | 新建文件模板 → "New <label>" 面板命令                       |
+| `keybindings`             | ✗       | ✓       | Tauri accelerator → 命令 id（app 级 keydown）               |
+| `exportEnhancers`         | ✗       | ✓       | 导出 HTML/PDF 时对已渲染 DOM 的后处理变异                   |
+| `markdownCodeRenderers`   | ✗       | ✓       | 带语言标签的 fenced code block → React 渲染器               |
+| `editorLanguages`         | ✗       | ✓       | fenced source 高亮用的 CodeMirror language 扩展             |
 
 ### 3. RPC 方法表（sandbox tier —— host 中介）
 
@@ -101,20 +106,20 @@ Sandbox 插件通过 `postMessage`（iframe 传输）或
 `fetch('quill-plugin://localhost/<id>/rpc', ...)`（工具窗口传输）调用 host 能力。
 两者都走同一个 `dispatchPluginRpc` 表——同样的权限校验、同样的路径解析。
 
-| 方法 | 参数 | 所需权限 | 返回值 |
-|---|---|---|---|
-| `fs:read` | `{ path }` | `fs.scope`（glob） | `string`（文件内容） |
-| `fs:write` | `{ path, content }` | `fs.scope` | `void` → `{ ok: true }` |
-| `fs:list` | `{ path }` | `fs.scope` | `DirEntry[]` |
-| `http:fetch` | `{ url, init? }` | `http.origins`（白名单） | `{ status, headers, body }` |
-| `clipboard:read` | `{}` | `clipboard: true` | `string \| null` |
-| `clipboard:write` | `{ text }` | `clipboard: true` | `void` → `{ ok: true }` |
-| `dialog:open` | `{}` | `dialog: true` | `string \| null`（文件路径） |
-| `dialog:save` | `{ content }` | `dialog: true` | `string \| null` |
-| `vault:read-active-doc` | `{}` | `vault.readActive: true` | `{ path, content } \| null` |
-| `vault:insert-content` | `{ content }` | `vault.insertContent: true` | `{ ok: true }` |
-| `window:open` | `{ toolId }` | `window: true` | `{ opened: true, toolId }` |
-| `env:get` | `{}` | _（无——env 非敏感）_ | `{ theme: 'light'\|'dark', locale: string }` |
+| 方法                    | 参数                | 所需权限                    | 返回值                                       |
+| ----------------------- | ------------------- | --------------------------- | -------------------------------------------- |
+| `fs:read`               | `{ path }`          | `fs.scope`（glob）          | `string`（文件内容）                         |
+| `fs:write`              | `{ path, content }` | `fs.scope`                  | `void` → `{ ok: true }`                      |
+| `fs:list`               | `{ path }`          | `fs.scope`                  | `DirEntry[]`                                 |
+| `http:fetch`            | `{ url, init? }`    | `http.origins`（白名单）    | `{ status, headers, body }`                  |
+| `clipboard:read`        | `{}`                | `clipboard: true`           | `string \| null`                             |
+| `clipboard:write`       | `{ text }`          | `clipboard: true`           | `void` → `{ ok: true }`                      |
+| `dialog:open`           | `{}`                | `dialog: true`              | `string \| null`（文件路径）                 |
+| `dialog:save`           | `{ content }`       | `dialog: true`              | `string \| null`                             |
+| `vault:read-active-doc` | `{}`                | `vault.readActive: true`    | `{ path, content } \| null`                  |
+| `vault:insert-content`  | `{ content }`       | `vault.insertContent: true` | `{ ok: true }`                               |
+| `window:open`           | `{ toolId }`        | `window: true`              | `{ opened: true, toolId }`                   |
+| `env:get`               | `{}`                | _（无——env 非敏感）_        | `{ theme: 'light'\|'dark', locale: string }` |
 
 **Host 主动推送的 env 事件**（无需请求;用户切换 theme 或 locale 时 host 推送到 iframe）:
 
@@ -174,15 +179,15 @@ default-src 'none';
 每个插件在 manifest 里声明 `tier: "sandbox" | "trusted"`。tier 决定 loader、隔离
 边界、能力面、可用的 contribution 点位。
 
-| | **sandbox** | **trusted** |
-|---|---|---|
-| Loader | 隐藏 `<iframe sandbox="allow-scripts">`（无 `allow-same-origin`），从 `quill-plugin://localhost/<id>/<html>` 加载 | `import(/* @vite-ignore */ blobUrl)` 进 **主 webview realm** |
-| 隔离 | 跨 origin opaque origin；无父 DOM、无 Tauri API、无 localStorage | 无——运行在 host realm；可读 Zustand store、调 Tauri、操作 DOM |
-| 能力面 | 仅 host RPC 桥（`postMessage`）；manifest 的 `permissions` 把守每一调用 | 完整 host realm 访问；`grant_plugin_capabilities` 加范围化 Tauri 能力（基本冗余——见 [权限模型](#权限模型)） |
-| 信任门槛 | 无（sandbox 本身就是边界） | TOFU：激活前必须 **批准并授权** |
-| 可用 contribution | `commands`、`tools`（window） | `commands`、`fileTypes`、`containers`、`features`、`tools` |
-| 热卸载 | 销毁 iframe 元素 | `dispose()` adapter + `URL.revokeObjectURL(blobUrl)` |
-| 打包要求 | HTML + JS 由 iframe 通过 `quill-plugin://` 加载 | 自包含 ESM bundle（eval 时不能有相对/远程 import——blob URL 解析不了） |
+|                   | **sandbox**                                                                                                       | **trusted**                                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Loader            | 隐藏 `<iframe sandbox="allow-scripts">`（无 `allow-same-origin`），从 `quill-plugin://localhost/<id>/<html>` 加载 | `import(/* @vite-ignore */ blobUrl)` 进 **主 webview realm**                                                |
+| 隔离              | 跨 origin opaque origin；无父 DOM、无 Tauri API、无 localStorage                                                  | 无——运行在 host realm；可读 Zustand store、调 Tauri、操作 DOM                                               |
+| 能力面            | 仅 host RPC 桥（`postMessage`）；manifest 的 `permissions` 把守每一调用                                           | 完整 host realm 访问；`grant_plugin_capabilities` 加范围化 Tauri 能力（基本冗余——见 [权限模型](#权限模型)） |
+| 信任门槛          | 无（sandbox 本身就是边界）                                                                                        | TOFU：激活前必须 **批准并授权**                                                                             |
+| 可用 contribution | `commands`、`tools`（window）                                                                                     | `commands`、`fileTypes`、`containers`、`features`、`tools`、`markdownCodeRenderers`、`editorLanguages`      |
+| 热卸载            | 销毁 iframe 元素                                                                                                  | `dispose()` adapter + `URL.revokeObjectURL(blobUrl)`                                                        |
+| 打包要求          | HTML + JS 由 iframe 通过 `quill-plugin://` 加载                                                                   | 自包含 ESM bundle（eval 时不能有相对/远程 import——blob URL 解析不了）                                       |
 
 **什么时候用哪个**：
 
@@ -221,38 +226,103 @@ default-src 'none';
 
   // 可选。声明插件可用的能力。不同 tier 执行方式不同——见"权限模型"。
   "permissions": {
-    "fs":     { "scope": ["data/**", "vault:read-active"] },
-    "http":   { "origins": ["https://api.example.com"] },
+    "fs": { "scope": ["data/**", "vault:read-active"] },
+    "http": { "origins": ["https://api.example.com"] },
     "clipboard": true,
     "dialog": true,
     "window": true,
-    "vault":  { "readActive": true, "insertContent": true },
-    "ai":     { "chat": true, "agents": ["study"], "edit": true }
+    "vault": { "readActive": true, "insertContent": true },
+    "ai": { "chat": true, "agents": ["study"], "edit": true },
   },
 
   // 可选。本插件添加到 app 的 contribution 点位。
   "contributes": {
-    "commands":   [{ "id": "greet", "title": "Greet", "icon": "👋", "keywords": ["hi"], "run": "greet" }],
-    "fileTypes":  [{ "id": "json", "extensions": [".json"], "handler": "default", "defaultViewMode": "edit" }],
-    "containers": [{ "name": "callout", "icon": "💡", "label": "Callout", "category": "layout", "component": "callout", "template": ":::callout\n:::", "description": "A callout" }],
-    "features":   [{ "id": "my-panel", "panel": "left", "component": "my-panel", "icon": "<svg>...</svg>", "title": "My Panel", "order": 50, "badge": "NEW" }],
-    "tools":      [{ "id": "my-tool", "title": "My Tool", "icon": "🛠", "window": true, "entry": "index.html" }],
-    "exporters":      [{ "id": "txt", "format": "txt-header", "label": "Text with header", "fileExtension": "txt", "run": "txt-with-header" }],
-    "fileTemplates":  [{ "id": "meeting-notes", "label": "Meeting Notes", "fileName": "meeting-notes.md", "template": "# Meeting Notes\n\n", "icon": "📝" }],
-    "keybindings":    [{ "command": "plugin.my-plugin.greet", "key": "Control+Alt+Shift+T", "mac": "Cmd+Alt+Shift+T" }]
+    "commands": [
+      {
+        "id": "greet",
+        "title": "Greet",
+        "icon": "👋",
+        "keywords": ["hi"],
+        "run": "greet",
+      },
+    ],
+    "fileTypes": [
+      {
+        "id": "json",
+        "extensions": [".json"],
+        "handler": "default",
+        "defaultViewMode": "edit",
+      },
+    ],
+    "containers": [
+      {
+        "name": "callout",
+        "icon": "💡",
+        "label": "Callout",
+        "category": "layout",
+        "component": "callout",
+        "template": ":::callout\n:::",
+        "description": "A callout",
+      },
+    ],
+    "features": [
+      {
+        "id": "my-panel",
+        "panel": "left",
+        "component": "my-panel",
+        "icon": "<svg>...</svg>",
+        "title": "My Panel",
+        "order": 50,
+        "badge": "NEW",
+      },
+    ],
+    "tools": [
+      {
+        "id": "my-tool",
+        "title": "My Tool",
+        "icon": "🛠",
+        "window": true,
+        "entry": "index.html",
+      },
+    ],
+    "exporters": [
+      {
+        "id": "txt",
+        "format": "txt-header",
+        "label": "Text with header",
+        "fileExtension": "txt",
+        "run": "txt-with-header",
+      },
+    ],
+    "fileTemplates": [
+      {
+        "id": "meeting-notes",
+        "label": "Meeting Notes",
+        "fileName": "meeting-notes.md",
+        "template": "# Meeting Notes\n\n",
+        "icon": "📝",
+      },
+    ],
+    "keybindings": [
+      {
+        "command": "plugin.my-plugin.greet",
+        "key": "Control+Alt+Shift+T",
+        "mac": "Cmd+Alt+Shift+T",
+      },
+    ],
   },
 
   // 可选。懒激活触发器。仅当以下之一触发时才加载插件代码（仿 VSCode activation events）。
   "activation": {
-    "onCommand": "greet",        // 此命令被调用时激活
-    "onFileType": [".json"],     // 此扩展名的文件打开时激活
-    "onLanguage": ["markdown"]   // 此语言的文档打开时激活
+    "onCommand": "greet", // 此命令被调用时激活
+    "onFileType": [".json"], // 此扩展名的文件打开时激活
+    "onLanguage": ["markdown"], // 此语言的文档打开时激活
   },
 
   // 可选（PR4 脚手架）。ed25519 签名 + 固定的 publisher 公钥。
   // MVP 不强制——见"完整性升级路径"。
   "signature": "<base64 ed25519 signature over the canonicalized manifest>",
-  "publisherPublicKey": "<base64 ed25519 public key>"
+  "publisherPublicKey": "<base64 ed25519 public key>",
 }
 ```
 
@@ -386,13 +456,17 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
   // 响应: 成功 → 200 + <返回值>（按方法不同，对象/string/null）；
   //       失败 → 200 + { "error": "<msg>" }；
   //       超时 30s → 504 + { "error": "rpc timeout" }。
-  const res = await fetch('quill-plugin://localhost/<plugin-id>/rpc', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ method: 'vault:insert-content', params: { content: '\nhello\n' } }),
+  const res = await fetch("quill-plugin://localhost/<plugin-id>/rpc", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      method: "vault:insert-content",
+      params: { content: "\nhello\n" },
+    }),
   });
-  const json = await res.json();           // 成功为 { ok: true }
-  if (!res.ok || json?.error) {            // null-safe：成功 body 可能是原始值
+  const json = await res.json(); // 成功为 { ok: true }
+  if (!res.ok || json?.error) {
+    // null-safe：成功 body 可能是原始值
     throw new Error(json?.error || `HTTP ${res.status}`);
   }
   ```
@@ -401,6 +475,7 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
   `dispatchPluginRpc` dispatch（与 iframe 桥相同的权限校验 + 路径解析）。见上方
   "一览" 中的方法表，下方 "Sandbox RPC 协议" 看协议细节。插件 bundle 不依赖
   Tauri SDK——只用纯 `fetch()`。
+
 - 关闭 WebviewWindow（用户 OS 关闭或插件 deactivate）即销毁窗口。插件 deactivate
   会关闭该插件所有打开的工具窗口，与注销命令在同一 dispose pass 中完成。
 
@@ -490,6 +565,57 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
   enhancer 挂了不能中断整个导出。多个插件注册同一 key → last-registered-wins；
   升级路径是 per-plugin 优先级列表（若需要组合）。
 
+### markdownCodeRenderers（仅 trusted）
+
+```jsonc
+"markdownCodeRenderers": [
+  { "language": "plantuml", "aliases": ["puml", "pu"], "component": "PlantUmlMarkdownBlock" }
+]
+```
+
+- `language` 是此 renderer 处理的 fenced code block 语言标签（开头 ` ``` ` 后的字符串）。host 的 `MarkdownPreview` 在渲染后的 `<pre>` 上找
+  `language-*` class，命中注册表就 dispatch 给插件组件，否则走默认的
+  `CodeBlockWrapper`。
+- `aliases`（可选）是解析到同一 renderer 的备选语言标签（如 PlantUML 的
+  `puml` / `pu`）。
+- `component` 是模块 `markdownCodeRenderers` map 的 **entry-ref**。组件接收
+  `MarkdownCodeRendererProps`（`{ source, language, resolvedLanguage, filePath }`），
+  负责渲染该 block（通常是把 `source` 转成预览/图）。
+- 内置 `mermaid` 在 app 启动时先于插件注册，所以插件对同一 `language` 的
+  注册是 first-registered-wins。未命中则回退到 `CodeBlockWrapper`
+  （默认的语法高亮 `<pre>`）。
+- ponytail：renderer 是 host-realm React（trusted blob `import()` 共用 host 的
+  Reactor）；自带 React bundle 会触发 "Invalid hook call" 双 React 错误。用
+  `window.React` 经 `resolveReact()` helper 拿（与下方 `resolveCodemirror()` 同
+  形）。规范形态见 `plugins/quill-plugin-plantuml/src/index.ts` 的
+  `PlantUmlMarkdownBlock`。
+
+### editorLanguages（仅 trusted）
+
+```jsonc
+"editorLanguages": [
+  { "id": "plantuml", "aliases": ["puml", "pu"], "entry": "plantumlLanguage" }
+]
+```
+
+- `id` 是 markdown 编辑器喂给 CodeMirror `codeLanguages` 查找的语言 id，
+  让 fenced ` ```lang ` block 拿到正确的 `LanguageSupport` 扩展。host
+  遍历 `editorLanguageRegistry`（含 aliases），未命中再回退到
+  `@codemirror/language-data`。
+- `aliases`（可选）是解析到同一 `LanguageSupport` factory 的备选 id
+  （让 ` ```puml ` 和 ` ```plantuml ` 都点亮编辑器）。
+- `entry` 是模块 `editorLanguages` map 的 **entry-ref**。factory 类型为
+  `EditorLanguageFactory = () => unknown`；host 会把返回值窄化成 CodeMirror 6
+  的 `LanguageSupport`。
+- **Trusted tier 的 `window.codemirrorLanguage` 要求**：trusted 插件经 blob URL
+  加载，`import '@codemirror/language'` 会解析到 _第二个_ module 实例，其
+  `LanguageSupport` 在 host 的 `EditorState` 中不一定生效（module-instance
+  mismatch——和自带 React bundle 是同一种失败）。用 `resolveCodemirror()` helper
+  懒加载 host 的 `@codemirror/language`，从 `window.codemirrorLanguage` 拿
+  （host 在 `main.tsx` 中于任何 trusted 插件 `import()` 前赋值）。规范形态见
+  `plugins/quill-plugin-plantuml/src/codemirror.ts`——与 `resolveReact()` 对
+  `window.React` 的处理镜像。
+
 ---
 
 ## PluginModule 导出契约（trusted tier）
@@ -505,6 +631,8 @@ export const commands: Record<string, () => void | Promise<void>> = { 'greet': (
 export const features: Record<string, ComponentType<unknown>> = { 'my-panel': Panel };
 export const exporters: Record<string, ExporterHandler> = { 'txt-with-header': exportTxt };
 export const exportEnhancers: Record<string, ExportEnhancerHandler> = { 'enhance-quote': enhanceQuote };
+export const markdownCodeRenderers: Record<string, ComponentType<MarkdownCodeRendererProps>> = { 'PlantUmlMarkdownBlock': PlantUmlBlock };
+export const editorLanguages: Record<string, EditorLanguageFactory> = { 'plantumlLanguage': () => plantumlLanguage() };
 export function activate(ctx: PluginContext) { /* 可选 */ }
 export function deactivate(ctx: PluginContext) { /* 可选 */ }
 ```
@@ -513,6 +641,11 @@ export function deactivate(ctx: PluginContext) { /* 可选 */ }
 / `.component` / `.entry` 中填的字符串。模块 export 中找不到的 entry-ref 会被跳过
 并打 console 警告（best-effort：部分插件仍能加载其他 contribution）。
 `fileTemplates` 与 `keybindings` 是声明式的——无模块 map。
+
+`markdownCodeRenderers` 的 key 对应 manifest 的 `component` 字符串；
+`editorLanguages` 的 key 对应 `entry`。完整四 map 示例（`handlers`、`exporters`、
+`markdownCodeRenderers`、`containers`、`exportEnhancers`、`editorLanguages`）见
+`plugins/quill-plugin-plantuml`。
 
 也接受 default-export 工厂 `(ctx) => PluginModule`（loader 会归一两种形态）。详见
 `contributionAdapters.ts` 的具体解析规则。
@@ -552,19 +685,19 @@ iframe → host: { type: 'invoke-result',  id, result?, error? }
 
 可用 RPC 方法（均受 manifest `permissions` 把守）：
 
-| 方法 | 参数 | 权限 |
-|---|---|---|
-| `fs:read` | `{ path }` | `fs.scope`（glob，相对插件 data dir） |
-| `fs:write` | `{ path, content }` | `fs.scope` |
-| `fs:list` | `{ path }` | `fs.scope` |
-| `http:fetch` | `{ url, init? }` | `http.origins`（白名单） |
-| `clipboard:read` | `{}` | `clipboard: true` |
-| `clipboard:write` | `{ text }` | `clipboard: true` |
-| `dialog:open` | `{}` | `dialog: true` |
-| `dialog:save` | `{ content }` | `dialog: true` |
-| `vault:read-active-doc` | `{}` | `vault.readActive: true` |
-| `vault:insert-content` | `{ content }` | `vault.insertContent: true` |
-| `window:open` | `{ toolId }` | `window: true` |
+| 方法                    | 参数                | 权限                                  |
+| ----------------------- | ------------------- | ------------------------------------- |
+| `fs:read`               | `{ path }`          | `fs.scope`（glob，相对插件 data dir） |
+| `fs:write`              | `{ path, content }` | `fs.scope`                            |
+| `fs:list`               | `{ path }`          | `fs.scope`                            |
+| `http:fetch`            | `{ url, init? }`    | `http.origins`（白名单）              |
+| `clipboard:read`        | `{}`                | `clipboard: true`                     |
+| `clipboard:write`       | `{ text }`          | `clipboard: true`                     |
+| `dialog:open`           | `{}`                | `dialog: true`                        |
+| `dialog:save`           | `{ content }`       | `dialog: true`                        |
+| `vault:read-active-doc` | `{}`                | `vault.readActive: true`              |
+| `vault:insert-content`  | `{ content }`       | `vault.insertContent: true`           |
+| `window:open`           | `{ toolId }`        | `window: true`                        |
 
 完整示例见 `examples/plugins/hello-tool/index.js`——iframe 脚本把 `postMessage`
 封装成 Promise 风格的 `rpc()` helper。
@@ -644,28 +777,34 @@ host 中介的能力暴露给插件。host 持有 provider/model/apiKey；插件
 
 ```ts
 ctx.ai.chat({
-  sessionId: 'my-plugin-session',   // 插件自管；rig 按 id 持久化历史
-  prompt: '用 3 个要点总结当前文档',
-  onEvent: (e) => { /* e.type ∈ 'text'|'thinking'|'error'|'done' */ },
-  useSharedSession: true,            // 可选：同时在 aiPanel 里露出
+  sessionId: "my-plugin-session", // 插件自管；rig 按 id 持久化历史
+  prompt: "用 3 个要点总结当前文档",
+  onEvent: (e) => {
+    /* e.type ∈ 'text'|'thinking'|'error'|'done' */
+  },
+  useSharedSession: true, // 可选：同时在 aiPanel 里露出
 });
 
 ctx.ai.agent({
-  feature: 'study',                  // 必须在 permissions.ai.agents 里
-  instruction: '复习我的笔记',
-  onEvent: (e) => { /* 'done' | 'error' */ },
+  feature: "study", // 必须在 permissions.ai.agents 里
+  instruction: "复习我的笔记",
+  onEvent: (e) => {
+    /* 'done' | 'error' */
+  },
 });
 
 // AI 驱动的文件编辑（仅 trusted，需 permissions.ai.edit）。host 通过 vault
 // manager 读写文件；插件只表达意图 + 收流式进度。
 await ctx.ai.editFile({
-  path: 'notes/summary.md',           // vault 相对路径
-  instruction: '总结成 3 个要点',
-  onEvent: (e) => { /* 'text' | 'error' | 'done' */ },
+  path: "notes/summary.md", // vault 相对路径
+  instruction: "总结成 3 个要点",
+  onEvent: (e) => {
+    /* 'text' | 'error' | 'done' */
+  },
 });
 await ctx.ai.createFile({
-  path: 'notes/new-note.md',
-  instruction: '起草一个会议纪要骨架',
+  path: "notes/new-note.md",
+  instruction: "起草一个会议纪要骨架",
   onEvent: (e) => {},
 });
 ```
@@ -691,10 +830,10 @@ i18n bundle**——host 的 `t()` 不暴露，只传 locale 字符串（如 `'zh
 ### Trusted tier —— `PluginContext.env`
 
 ```ts
-import type { PluginContext } from 'quill-plugin-sdk';
+import type { PluginContext } from "quill-plugin-sdk";
 
 export function activate(ctx: PluginContext) {
-  console.log('theme:', ctx.env?.theme, 'locale:', ctx.env?.locale);
+  console.log("theme:", ctx.env?.theme, "locale:", ctx.env?.locale);
 
   ctx.addDisposable(
     ctx.env!.onThemeChange((t) => {
@@ -722,18 +861,24 @@ Sandbox 插件在 `activate` 时调 `env:get` 拿初值,然后监听 `env-event`
 
 ```js
 // 在 sandbox iframe 内
-window.parent.postMessage({
-  type: 'request', id: 'env-seed', method: 'env:get', params: {}
-}, '*');
+window.parent.postMessage(
+  {
+    type: "request",
+    id: "env-seed",
+    method: "env:get",
+    params: {},
+  },
+  "*",
+);
 
-window.addEventListener('message', (e) => {
+window.addEventListener("message", (e) => {
   const msg = e.data;
-  if (msg.type === 'response' && msg.id === 'env-seed') {
+  if (msg.type === "response" && msg.id === "env-seed") {
     applyEnv(msg.result.theme, msg.result.locale);
   }
-  if (msg.type === 'env-event') {
-    if (msg.event === 'theme') applyTheme(msg.value);
-    if (msg.event === 'locale') applyLocale(msg.value);
+  if (msg.type === "env-event") {
+    if (msg.event === "theme") applyTheme(msg.value);
+    if (msg.event === "locale") applyLocale(msg.value);
   }
 });
 ```
@@ -835,12 +980,12 @@ kebab-case id。会把文件夹复制进 `~/.quill/plugins/<id>/` 并安装。
 使用 JSX/TSX 的 trusted 插件需要构建步骤。最小 `vite.config.ts`：
 
 ```ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-  build: { lib: { entry: 'index.tsx', formats: ['es'], fileName: 'index' } },
+  build: { lib: { entry: "index.tsx", formats: ["es"], fileName: "index" } },
 });
 ```
 

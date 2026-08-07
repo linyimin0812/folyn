@@ -33,27 +33,29 @@ A Quill plugin is a folder under `~/.quill/plugins/<id>/` with a
 
 ### 1. Two execution tiers
 
-| Tier | Isolation | Capability surface | Trust gate |
-|---|---|---|---|
-| `sandbox` | separate `WebviewWindow` or iframe, origin `quill-plugin://localhost` | host RPC bridge only — no Tauri APIs | none (sandbox IS the boundary) |
-| `trusted` | main webview realm (in-process) | full host realm + Zustand stores + Tauri | TOFU: user must **批准并授权** |
+| Tier      | Isolation                                                             | Capability surface                       | Trust gate                     |
+| --------- | --------------------------------------------------------------------- | ---------------------------------------- | ------------------------------ |
+| `sandbox` | separate `WebviewWindow` or iframe, origin `quill-plugin://localhost` | host RPC bridge only — no Tauri APIs     | none (sandbox IS the boundary) |
+| `trusted` | main webview realm (in-process)                                       | full host realm + Zustand stores + Tauri | TOFU: user must **批准并授权** |
 
 ### 2. Contribution points
 
 Declared in `contributes` in the manifest; wired into host registries on
 activate; auto-unregistered on deactivate.
 
-| Point | Sandbox? | Trusted? | What it adds |
-|---|---|---|---|
-| `commands` | ✓ | ✓ | palette entry (⌘P) — `plugin.<pluginId>.<id>` |
-| `tools` (with `window: true`) | ✓ | ✓ | "Open: <title>" command → Tauri WebviewWindow |
-| `fileTypes` | ✗ | ✓ | file extension → handler mapping |
-| `containers` | ✗ | ✓ | `:::name` Markdown directive → React component |
-| `features` | ✗ | ✓ | sidebar panel slot (activity bar icon + component) — left only (MVP) |
-| `exporters` | ✗ | ✓ | custom export format → "Export as <label>" palette command |
-| `fileTemplates` | ✗ | ✓ | new-file template → "New <label>" palette command |
-| `keybindings` | ✗ | ✓ | Tauri accelerator → command id (app-scope keydown) |
-| `exportEnhancers` | ✗ | ✓ | post-render DOM mutation during HTML/PDF export |
+| Point                         | Sandbox? | Trusted? | What it adds                                                         |
+| ----------------------------- | -------- | -------- | -------------------------------------------------------------------- |
+| `commands`                    | ✓        | ✓        | palette entry (⌘P) — `plugin.<pluginId>.<id>`                        |
+| `tools` (with `window: true`) | ✓        | ✓        | "Open: <title>" command → Tauri WebviewWindow                        |
+| `fileTypes`                   | ✗        | ✓        | file extension → handler mapping                                     |
+| `containers`                  | ✗        | ✓        | `:::name` Markdown directive → React component                       |
+| `features`                    | ✗        | ✓        | sidebar panel slot (activity bar icon + component) — left only (MVP) |
+| `exporters`                   | ✗        | ✓        | custom export format → "Export as <label>" palette command           |
+| `fileTemplates`               | ✗        | ✓        | new-file template → "New <label>" palette command                    |
+| `keybindings`                 | ✗        | ✓        | Tauri accelerator → command id (app-scope keydown)                   |
+| `exportEnhancers`             | ✗        | ✓        | post-render DOM mutation during HTML/PDF export                      |
+| `markdownCodeRenderers`       | ✗        | ✓        | lang-tagged fenced code block → React renderer                       |
+| `editorLanguages`             | ✗        | ✓        | CodeMirror language extension for fenced source highlighting         |
 
 ### 3. RPC method table (sandbox tier — host-mediated)
 
@@ -62,21 +64,21 @@ Sandbox plugins call host capabilities via `postMessage` (iframe transport) or
 hit the same `dispatchPluginRpc` table — same permission checks, same path
 resolution.
 
-| Method | Params | Required permission | Returns |
-|---|---|---|---|
-| `fs:read` | `{ path }` | `fs.scope` (glob) | `string` (file contents) |
-| `fs:write` | `{ path, content }` | `fs.scope` | `void` → `{ ok: true }` |
-| `fs:list` | `{ path }` | `fs.scope` | `DirEntry[]` |
-| `http:fetch` | `{ url, init? }` | `http.origins` (allowlist) | `{ status, headers, body }` |
-| `clipboard:read` | `{}` | `clipboard: true` | `string \| null` |
-| `clipboard:write` | `{ text }` | `clipboard: true` | `void` → `{ ok: true }` |
-| `dialog:open` | `{}` | `dialog: true` | `string \| null` (file path) |
-| `dialog:save` | `{ content }` | `dialog: true` | `string \| null` |
-| `vault:read-active-doc` | `{}` | `vault.readActive: true` | `{ path, content } \| null` |
-| `vault:insert-content` | `{ content }` | `vault.insertContent: true` | `{ ok: true }` |
-| `window:open` | `{ toolId }` | `window: true` | `{ opened: true, toolId }` |
-| `ai:chat` | `{ sessionId, prompt }` | `ai.chat: true` | streams `ai-stream` events, final `response` (sandbox only — trusted uses `ctx.ai.chat`) |
-| `env:get` | `{}` | _(none — env is non-sensitive)_ | `{ theme: 'light'\|'dark', locale: string }` |
+| Method                  | Params                  | Required permission             | Returns                                                                                  |
+| ----------------------- | ----------------------- | ------------------------------- | ---------------------------------------------------------------------------------------- |
+| `fs:read`               | `{ path }`              | `fs.scope` (glob)               | `string` (file contents)                                                                 |
+| `fs:write`              | `{ path, content }`     | `fs.scope`                      | `void` → `{ ok: true }`                                                                  |
+| `fs:list`               | `{ path }`              | `fs.scope`                      | `DirEntry[]`                                                                             |
+| `http:fetch`            | `{ url, init? }`        | `http.origins` (allowlist)      | `{ status, headers, body }`                                                              |
+| `clipboard:read`        | `{}`                    | `clipboard: true`               | `string \| null`                                                                         |
+| `clipboard:write`       | `{ text }`              | `clipboard: true`               | `void` → `{ ok: true }`                                                                  |
+| `dialog:open`           | `{}`                    | `dialog: true`                  | `string \| null` (file path)                                                             |
+| `dialog:save`           | `{ content }`           | `dialog: true`                  | `string \| null`                                                                         |
+| `vault:read-active-doc` | `{}`                    | `vault.readActive: true`        | `{ path, content } \| null`                                                              |
+| `vault:insert-content`  | `{ content }`           | `vault.insertContent: true`     | `{ ok: true }`                                                                           |
+| `window:open`           | `{ toolId }`            | `window: true`                  | `{ opened: true, toolId }`                                                               |
+| `ai:chat`               | `{ sessionId, prompt }` | `ai.chat: true`                 | streams `ai-stream` events, final `response` (sandbox only — trusted uses `ctx.ai.chat`) |
+| `env:get`               | `{}`                    | _(none — env is non-sensitive)_ | `{ theme: 'light'\|'dark', locale: string }`                                             |
 
 **Host-pushed env events** (no request needed; the host pushes these to the
 iframe whenever the user switches theme or locale mid-session):
@@ -167,13 +169,15 @@ npm install quill-plugin-sdk
 
 ```ts
 // index.ts — a trusted-tier plugin's entry module
-import type { PluginModule, ExporterHandler } from 'quill-plugin-sdk';
+import type { PluginModule, ExporterHandler } from "quill-plugin-sdk";
 
 const exportTxt: ExporterHandler = async (content, ctx) =>
   `# ${ctx.filePath}\n\n${content}`;
 
-export const exporters: Record<string, ExporterHandler> = { 'txt-with-header': exportTxt };
-export const commands = { ping: () => console.info('pong') };
+export const exporters: Record<string, ExporterHandler> = {
+  "txt-with-header": exportTxt,
+};
+export const commands = { ping: () => console.info("pong") };
 ```
 
 Internal workspace plugins depend on `@quill/plugin-host` (which re-exports
@@ -189,15 +193,15 @@ Every plugin declares `tier: "sandbox" | "trusted"` in its manifest. The tier
 determines the loader, isolation boundary, capability surface, and which
 contribution points are available.
 
-| | **sandbox** | **trusted** |
-|---|---|---|
-| Loader | hidden `<iframe sandbox="allow-scripts">` (no `allow-same-origin`), loaded from `quill-plugin://localhost/<id>/<html>` | `import(/* @vite-ignore */ blobUrl)` into the **main webview realm** |
-| Isolation | cross-origin opaque origin; no parent DOM, no Tauri APIs, no localStorage | none — runs in the host realm; can read Zustand stores, call Tauri, touch the DOM |
-| Capability surface | host RPC bridge (`postMessage`) only; manifest `permissions` gate every call | full host realm access; `grant_plugin_capabilities` adds scoped Tauri caps (largely redundant — see [Design reality](#permissions-model)) |
-| Trust gate | none (sandbox IS the boundary) | TOFU: user must **批准并授权** before activation |
-| Allowed contribution points | `commands`, `tools` (window) | `commands`, `fileTypes`, `containers`, `features`, `tools` |
-| Hot unload | destroy iframe element | `dispose()` adapters + `URL.revokeObjectURL(blobUrl)` |
-| Bundle requirement | HTML + JS loaded by the iframe via `quill-plugin://` | self-contained ESM bundle (no relative/remote imports at eval time — blob URLs can't resolve them) |
+|                             | **sandbox**                                                                                                            | **trusted**                                                                                                                               |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Loader                      | hidden `<iframe sandbox="allow-scripts">` (no `allow-same-origin`), loaded from `quill-plugin://localhost/<id>/<html>` | `import(/* @vite-ignore */ blobUrl)` into the **main webview realm**                                                                      |
+| Isolation                   | cross-origin opaque origin; no parent DOM, no Tauri APIs, no localStorage                                              | none — runs in the host realm; can read Zustand stores, call Tauri, touch the DOM                                                         |
+| Capability surface          | host RPC bridge (`postMessage`) only; manifest `permissions` gate every call                                           | full host realm access; `grant_plugin_capabilities` adds scoped Tauri caps (largely redundant — see [Design reality](#permissions-model)) |
+| Trust gate                  | none (sandbox IS the boundary)                                                                                         | TOFU: user must **批准并授权** before activation                                                                                          |
+| Allowed contribution points | `commands`, `tools` (window)                                                                                           | `commands`, `fileTypes`, `containers`, `features`, `tools`, `markdownCodeRenderers`, `editorLanguages`                                    |
+| Hot unload                  | destroy iframe element                                                                                                 | `dispose()` adapters + `URL.revokeObjectURL(blobUrl)`                                                                                     |
+| Bundle requirement          | HTML + JS loaded by the iframe via `quill-plugin://`                                                                   | self-contained ESM bundle (no relative/remote imports at eval time — blob URLs can't resolve them)                                        |
 
 **When to use which:**
 
@@ -238,35 +242,78 @@ Every plugin folder has a `manifest.json` at its root. Full schema:
   // Optional. Declared capabilities the plugin may use. Enforced differently
   // per tier — see "Permissions model" below.
   "permissions": {
-    "fs":     { "scope": ["data/**", "vault:read-active"] },
-    "http":   { "origins": ["https://api.example.com"] },
+    "fs": { "scope": ["data/**", "vault:read-active"] },
+    "http": { "origins": ["https://api.example.com"] },
     "clipboard": true,
     "dialog": true,
     "window": true,
-    "vault":  { "readActive": true, "insertContent": true }
+    "vault": { "readActive": true, "insertContent": true },
   },
 
   // Optional. The contribution points this plugin adds to the app.
   "contributes": {
-    "commands":   [{ "id": "greet", "title": "Greet", "icon": "👋", "keywords": ["hi"], "run": "greet" }],
-    "fileTypes":  [{ "id": "json", "extensions": [".json"], "handler": "default", "defaultViewMode": "edit" }],
-    "containers": [{ "name": "callout", "icon": "💡", "label": "Callout", "category": "layout", "component": "callout", "template": ":::callout\n:::", "description": "A callout" }],
-    "features":   [{ "id": "my-panel", "panel": "left", "component": "my-panel", "icon": "<svg>...</svg>", "title": "My Panel", "order": 50, "badge": "NEW" }],
-    "tools":      [{ "id": "my-tool", "title": "My Tool", "icon": "🛠", "window": true, "entry": "index.html" }]
+    "commands": [
+      {
+        "id": "greet",
+        "title": "Greet",
+        "icon": "👋",
+        "keywords": ["hi"],
+        "run": "greet",
+      },
+    ],
+    "fileTypes": [
+      {
+        "id": "json",
+        "extensions": [".json"],
+        "handler": "default",
+        "defaultViewMode": "edit",
+      },
+    ],
+    "containers": [
+      {
+        "name": "callout",
+        "icon": "💡",
+        "label": "Callout",
+        "category": "layout",
+        "component": "callout",
+        "template": ":::callout\n:::",
+        "description": "A callout",
+      },
+    ],
+    "features": [
+      {
+        "id": "my-panel",
+        "panel": "left",
+        "component": "my-panel",
+        "icon": "<svg>...</svg>",
+        "title": "My Panel",
+        "order": 50,
+        "badge": "NEW",
+      },
+    ],
+    "tools": [
+      {
+        "id": "my-tool",
+        "title": "My Tool",
+        "icon": "🛠",
+        "window": true,
+        "entry": "index.html",
+      },
+    ],
   },
 
   // Optional. Lazy activation triggers. The plugin's code is loaded only when
   // one of these fires (mirrors VSCode activation events).
   "activation": {
-    "onCommand": "greet",        // activate when this command is invoked
-    "onFileType": [".json"],     // activate when a file with this extension opens
-    "onLanguage": ["markdown"]   // activate when a doc of this language opens
+    "onCommand": "greet", // activate when this command is invoked
+    "onFileType": [".json"], // activate when a file with this extension opens
+    "onLanguage": ["markdown"], // activate when a doc of this language opens
   },
 
   // Optional (PR4 scaffolding). ed25519 signature + pinned publisher key.
   // MVP does NOT require these — see "Integrity upgrade path".
   "signature": "<base64 ed25519 signature over the canonicalized manifest>",
-  "publisherPublicKey": "<base64 ed25519 public key>"
+  "publisherPublicKey": "<base64 ed25519 public key>",
 }
 ```
 
@@ -422,13 +469,17 @@ adapts it into the matching app registry when the plugin activates.
   // response: 200 with `<return-value>` (object/string/null per method) on
   //           success, or 200 with `{ "error": "<msg>" }` on RPC failure,
   //           or 504 with `{ "error": "rpc timeout" }` after 30s.
-  const res = await fetch('quill-plugin://localhost/<plugin-id>/rpc', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ method: 'vault:insert-content', params: { content: '\nhello\n' } }),
+  const res = await fetch("quill-plugin://localhost/<plugin-id>/rpc", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      method: "vault:insert-content",
+      params: { content: "\nhello\n" },
+    }),
   });
-  const json = await res.json();           // { ok: true } on success
-  if (!res.ok || json?.error) {            // null-safe: success body may be a primitive
+  const json = await res.json(); // { ok: true } on success
+  if (!res.ok || json?.error) {
+    // null-safe: success body may be a primitive
     throw new Error(json?.error || `HTTP ${res.status}`);
   }
   ```
@@ -438,6 +489,7 @@ adapts it into the matching app registry when the plugin activates.
   checks + path resolution as the iframe bridge). See "At a glance" above for
   the method table and "Sandbox RPC protocol" below for protocol details. No
   Tauri SDK dependency in the plugin bundle — plain `fetch()` only.
+
 - Closing the WebviewWindow (user OS-close or plugin deactivate) destroys
   the window. Plugin deactivate closes ALL of that plugin's open tool
   windows in the same dispose pass that unregisters commands.
@@ -508,7 +560,7 @@ adapts it into the matching app registry when the plugin activates.
   dependency, so bindings are app-scope `keydown` listeners — they fire
   only while the app window has focus, not when backgrounded. The OS-global
   upgrade path is `plugin-global-shortcut`'s `register(accelerator, handler)`
-  + `unregister(accelerator)` in dispose.
+  - `unregister(accelerator)` in dispose.
 
 ### exportEnhancers (trusted only)
 
@@ -541,6 +593,64 @@ adapts it into the matching app registry when the plugin activates.
   upgrade path is a per-plugin precedence list if colliding enhancers ever
   need to compose.
 
+### markdownCodeRenderers (trusted only)
+
+```jsonc
+"markdownCodeRenderers": [
+  { "language": "plantuml", "aliases": ["puml", "pu"], "component": "PlantUmlMarkdownBlock" }
+]
+```
+
+- `language` is the fenced code block language label (the string after the
+  opening ` ``` `) that this renderer handles. The host's
+  `MarkdownPreview` looks up the fence's `language-*` class on the rendered
+  `<pre>` against the registry; a hit dispatches to the plugin component
+  instead of the default `CodeBlockWrapper`.
+- `aliases` (optional) are alternate language labels that resolve to the
+  same renderer (e.g. `puml` / `pu` for PlantUML).
+- `component` is the **entry-ref** into the module's `markdownCodeRenderers`
+  map. The component receives `MarkdownCodeRendererProps`
+  (`{ source, language, resolvedLanguage, filePath }`) and renders the
+  block (typically a transformed/preview rendering of `source`).
+- Builtin `mermaid` registers before plugins at app boot, so plugin
+  registrations for the same `language` are first-registered-wins. A miss
+  falls back to `CodeBlockWrapper` (the default syntax-highlighted `<pre>`).
+- ponytail: the renderer is host-realm React (the trusted blob `import()`
+  shares the host's Reactor); bundle React yourself and you'll get the
+  "Invalid hook call" two-React error. Use `window.React` via a
+  `resolveReact()` helper (mirror of `resolveCodemirror()` below). See
+  `plugins/quill-plugin-plantuml/src/index.ts` `PlantUmlMarkdownBlock` for
+  the canonical shape.
+
+### editorLanguages (trusted only)
+
+```jsonc
+"editorLanguages": [
+  { "id": "plantuml", "aliases": ["puml", "pu"], "entry": "plantumlLanguage" }
+]
+```
+
+- `id` is the language id the markdown editor feeds to CodeMirror's
+  `codeLanguages` lookup so fenced ` ```lang ` blocks get the right
+  `LanguageSupport` extension. The host iterates `editorLanguageRegistry`
+  (aliases included) before falling back to `@codemirror/language-data`.
+- `aliases` (optional) are alternate ids that resolve to the same
+  `LanguageSupport` factory (so ` ```puml ` and ` ```plantuml `
+  both light up the editor).
+- `entry` is the **entry-ref** into the module's `editorLanguages` map. The
+  factory's type is `EditorLanguageFactory = () => unknown`; the host
+  narrows the return to `LanguageSupport` for CodeMirror 6.
+- **Trusted-tier `window.codemirrorLanguage` requirement**: trusted
+  plugins load via blob URL, so `import '@codemirror/language'` resolves
+  to a _second_ module instance whose `LanguageSupport` the host's
+  `EditorState` won't reliably apply (module-instance mismatch — same
+  failure mode as bundling your own React). Resolve the host's
+  `@codemirror/language` lazily via a `resolveCodemirror()` helper that
+  reads `window.codemirrorLanguage` (the host sets it in `main.tsx` before
+  any trusted plugin is `import()`-ed). See
+  `plugins/quill-plugin-plantuml/src/codemirror.ts` for the canonical
+  pattern — it mirrors the `resolveReact()` approach for `window.React`.
+
 ---
 
 ## The PluginModule export contract (trusted tier)
@@ -556,6 +666,8 @@ export const commands: Record<string, () => void | Promise<void>> = { 'greet': (
 export const features: Record<string, ComponentType<unknown>> = { 'my-panel': Panel };
 export const exporters: Record<string, ExporterHandler> = { 'txt-with-header': exportTxt };
 export const exportEnhancers: Record<string, ExportEnhancerHandler> = { 'enhance-quote': enhanceQuote };
+export const markdownCodeRenderers: Record<string, ComponentType<MarkdownCodeRendererProps>> = { 'PlantUmlMarkdownBlock': PlantUmlBlock };
+export const editorLanguages: Record<string, EditorLanguageFactory> = { 'plantumlLanguage': () => plantumlLanguage() };
 export function activate(ctx: PluginContext) { /* optional */ }
 export function deactivate(ctx: PluginContext) { /* optional */ }
 ```
@@ -565,6 +677,11 @@ The maps are **keyed by entry-ref** — the strings in the manifest's
 missing from the module's exports is skipped with a console warning
 (best-effort: a partial plugin still loads its other contributions).
 `fileTemplates` and `keybindings` are declarative — no module map.
+
+`markdownCodeRenderers` is keyed by the manifest's `component` string;
+`editorLanguages` by `entry`. See `plugins/quill-plugin-plantuml` for a
+working example of all four maps (`handlers`, `exporters`,
+`markdownCodeRenderers`, `containers`, `exportEnhancers`, `editorLanguages`).
 
 A default-export factory `(ctx) => PluginModule` is also accepted (the loader
 normalizes both shapes). See `contributionAdapters.ts` for the exact
@@ -608,19 +725,19 @@ iframe → host: { type: 'invoke-result',  id, result?, error? }
 
 Available RPC methods (all gated by the manifest `permissions`):
 
-| Method | Params | Permission |
-|---|---|---|
-| `fs:read` | `{ path }` | `fs.scope` (glob, relative to plugin data dir) |
-| `fs:write` | `{ path, content }` | `fs.scope` |
-| `fs:list` | `{ path }` | `fs.scope` |
-| `http:fetch` | `{ url, init? }` | `http.origins` (allowlist) |
-| `clipboard:read` | `{}` | `clipboard: true` |
-| `clipboard:write` | `{ text }` | `clipboard: true` |
-| `dialog:open` | `{}` | `dialog: true` |
-| `dialog:save` | `{ content }` | `dialog: true` |
-| `vault:read-active-doc` | `{}` | `vault.readActive: true` |
-| `vault:insert-content` | `{ content }` | `vault.insertContent: true` |
-| `window:open` | `{ toolId }` | `window: true` |
+| Method                  | Params              | Permission                                     |
+| ----------------------- | ------------------- | ---------------------------------------------- |
+| `fs:read`               | `{ path }`          | `fs.scope` (glob, relative to plugin data dir) |
+| `fs:write`              | `{ path, content }` | `fs.scope`                                     |
+| `fs:list`               | `{ path }`          | `fs.scope`                                     |
+| `http:fetch`            | `{ url, init? }`    | `http.origins` (allowlist)                     |
+| `clipboard:read`        | `{}`                | `clipboard: true`                              |
+| `clipboard:write`       | `{ text }`          | `clipboard: true`                              |
+| `dialog:open`           | `{}`                | `dialog: true`                                 |
+| `dialog:save`           | `{ content }`       | `dialog: true`                                 |
+| `vault:read-active-doc` | `{}`                | `vault.readActive: true`                       |
+| `vault:insert-content`  | `{ content }`       | `vault.insertContent: true`                    |
+| `window:open`           | `{ toolId }`        | `window: true`                                 |
 
 See `examples/plugins/hello-tool/index.js` for a complete iframe script that
 wraps `postMessage` in a Promise-based `rpc()` helper.
@@ -711,29 +828,35 @@ host owns provider/model/apiKey; plugins never see credentials.
 
 ```ts
 ctx.ai.chat({
-  sessionId: 'my-plugin-session',   // plugin-owned; rig persists history by id
-  prompt: 'Summarize the active doc',
-  onEvent: (e) => { /* e.type ∈ 'text'|'thinking'|'error'|'done' */ },
-  useSharedSession: true,            // optional: also surface in aiPanel
+  sessionId: "my-plugin-session", // plugin-owned; rig persists history by id
+  prompt: "Summarize the active doc",
+  onEvent: (e) => {
+    /* e.type ∈ 'text'|'thinking'|'error'|'done' */
+  },
+  useSharedSession: true, // optional: also surface in aiPanel
 });
 
 ctx.ai.agent({
-  feature: 'study',                  // must be in permissions.ai.agents
-  instruction: 'Review my notes',
-  onEvent: (e) => { /* 'done' | 'error' */ },
+  feature: "study", // must be in permissions.ai.agents
+  instruction: "Review my notes",
+  onEvent: (e) => {
+    /* 'done' | 'error' */
+  },
 });
 
 // AI-driven file edits (trusted only — requires permissions.ai.edit). The
 // host reads/writes the file through the vault manager; the plugin only
 // states intent + receives streaming progress.
 await ctx.ai.editFile({
-  path: 'notes/summary.md',           // vault-relative
-  instruction: 'Summarize as 3 bullets',
-  onEvent: (e) => { /* 'text' | 'error' | 'done' */ },
+  path: "notes/summary.md", // vault-relative
+  instruction: "Summarize as 3 bullets",
+  onEvent: (e) => {
+    /* 'text' | 'error' | 'done' */
+  },
 });
 await ctx.ai.createFile({
-  path: 'notes/new-note.md',
-  instruction: 'Draft a meeting notes skeleton',
+  path: "notes/new-note.md",
+  instruction: "Draft a meeting notes skeleton",
   onEvent: (e) => {},
 });
 ```
@@ -747,19 +870,23 @@ RPC params.
 
 ```js
 const id = crypto.randomUUID();
-window.addEventListener('message', (ev) => {
+window.addEventListener("message", (ev) => {
   const m = ev.data;
   if (m.id !== id) return;
-  if (m.type === 'ai-stream') {
+  if (m.type === "ai-stream") {
     // m.event: { type: 'text'|'thinking'|'error'|'done', content? }
-  } else if (m.type === 'response') {
+  } else if (m.type === "response") {
     // stream terminates — check m.error
   }
 });
 window.parent.postMessage(
-  { type: 'request', id, method: 'ai:chat',
-    params: { sessionId: 's', prompt: 'hello' } },
-  '*',
+  {
+    type: "request",
+    id,
+    method: "ai:chat",
+    params: { sessionId: "s", prompt: "hello" },
+  },
+  "*",
 );
 ```
 
@@ -788,10 +915,10 @@ identifier string (e.g. `'zh'`, `'en'`) is delivered.
 ### Trusted tier — `PluginContext.env`
 
 ```ts
-import type { PluginContext } from 'quill-plugin-sdk';
+import type { PluginContext } from "quill-plugin-sdk";
 
 export function activate(ctx: PluginContext) {
-  console.log('theme:', ctx.env?.theme, 'locale:', ctx.env?.locale);
+  console.log("theme:", ctx.env?.theme, "locale:", ctx.env?.locale);
 
   ctx.addDisposable(
     ctx.env!.onThemeChange((t) => {
@@ -820,18 +947,24 @@ Sandbox plugins call `env:get` on activate to seed, then listen for
 
 ```js
 // In the sandbox iframe
-window.parent.postMessage({
-  type: 'request', id: 'env-seed', method: 'env:get', params: {}
-}, '*');
+window.parent.postMessage(
+  {
+    type: "request",
+    id: "env-seed",
+    method: "env:get",
+    params: {},
+  },
+  "*",
+);
 
-window.addEventListener('message', (e) => {
+window.addEventListener("message", (e) => {
   const msg = e.data;
-  if (msg.type === 'response' && msg.id === 'env-seed') {
+  if (msg.type === "response" && msg.id === "env-seed") {
     applyEnv(msg.result.theme, msg.result.locale);
   }
-  if (msg.type === 'env-event') {
-    if (msg.event === 'theme') applyTheme(msg.value);
-    if (msg.event === 'locale') applyLocale(msg.value);
+  if (msg.type === "env-event") {
+    if (msg.event === "theme") applyTheme(msg.value);
+    if (msg.event === "locale") applyLocale(msg.value);
   }
 });
 ```
@@ -955,12 +1088,12 @@ reload, either:
 A trusted plugin that uses JSX/TSX needs a build step. Minimal `vite.config.ts`:
 
 ```ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-  build: { lib: { entry: 'index.tsx', formats: ['es'], fileName: 'index' } },
+  build: { lib: { entry: "index.tsx", formats: ["es"], fileName: "index" } },
 });
 ```
 

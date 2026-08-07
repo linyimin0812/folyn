@@ -25,7 +25,9 @@
     "exporters": [],
     "fileTemplates": [],
     "keybindings": [],
-    "exportEnhancers": []
+    "exportEnhancers": [],
+    "markdownCodeRenderers": [],
+    "editorLanguages": []
   },
   "activation": {
     "onCommand": "",
