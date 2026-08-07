@@ -453,3 +453,39 @@ Split publishable @quill/plugin-sdk (types + contracts + dev helpers, no runtime
 ### Next Steps
 
 - None - task complete
+
+
+## Session 128: Plugin env capability (theme + locale) + publish plugin-sdk to npm
+
+**Date**: 2026-08-07
+**Task**: Plugin env capability (theme + locale) + publish plugin-sdk to npm
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added PluginEnv to SDK (theme + locale + on*Change returning Disposable); trusted tier wires ctx.env via buildPluginEnv subscribing appearanceStore + localeStore; sandbox tier gets env:get RPC + env-event push messages from RpcBridge. Renamed published npm package from @quill/plugin-sdk to quill-plugin-sdk (unscoped) after @quill scope publish 404'd; package.json now points at dist/ outputs with prepublishOnly=tsc and publishConfig.access=public. 145 plugin-host tests + tsc clean; npm pack dry-run produces quill-plugin-sdk-0.1.0.tgz. Actual npm publish pending user's manual step.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f1a8099` | (see git log) |
+| `271c0d7` | (see git log) |
+| `a38f5f4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

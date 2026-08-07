@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 127
-- **Last Active**: 2026-08-06
+- **Total Sessions**: 128
+- **Last Active**: 2026-08-07
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~455 | Active |
+| `journal-3.md` | ~491 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 128 | 2026-08-07 | Plugin env capability (theme + locale) + publish plugin-sdk to npm | `f1a8099`, `271c0d7`, `a38f5f4` | `master` |
 | 127 | 2026-08-06 | Plugin SDK refactor: extract @quill/plugin-sdk + 6 contribution points | `42e053d`, `000b313`, `55c9534`, `7425727` | `sharp-mountain` |
 | 126 | 2026-08-06 | mmap: trim skeletons + fix xmind export | `ac79c00` | `master` |
 | 125 | 2026-08-06 | mmap fishbone spine and parallel bones | `37ce7a7` | `master` |
