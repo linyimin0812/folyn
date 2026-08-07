@@ -10,6 +10,7 @@ const handler: FileTypeHandler = {
   needsFileContent: true,
   useCodeMirror: true,
   Preview: CsvFileViewerPreview,
+  defaultViewMode: 'split'
 };
 
 export default handler;

@@ -8,11 +8,11 @@ const handler: FileTypeHandler = {
   extensions: ['html', 'htm'],
   icon: getFileTypeIcon('html'),
   supportedViewModes: ['visual', 'source', 'preview'],
-  defaultViewMode: 'visual',
+  defaultViewMode: 'preview',
   needsFileContent: true,
   useCodeMirror: false,
   Editor: HtmlVisualEditor,
-  Preview: HtmlPreview,
+  Preview: HtmlPreview
 };
 
 export default handler;

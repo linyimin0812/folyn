@@ -7,7 +7,7 @@ const handler: FileTypeHandler = {
   extensions: ['svg'],
   icon: getFileTypeIcon('image'),
   supportedViewModes: ['edit', 'preview', 'split'],
-  defaultViewMode: 'edit',
+  defaultViewMode: 'split',
   needsFileContent: true,
   useCodeMirror: true,
   Preview: SvgPreview,

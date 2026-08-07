@@ -10,6 +10,7 @@ const handler: FileTypeHandler = {
   needsFileContent: true,
   useCodeMirror: true,
   Preview: MarkdownPreview,
+  defaultViewMode: 'split'
 };
 
 export default handler;
