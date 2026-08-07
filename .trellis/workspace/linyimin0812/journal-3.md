@@ -629,3 +629,37 @@ Settings → Plugins rows now render the manifest icon (inline SVG / .svg-path-i
 ### Next Steps
 
 - None - task complete
+
+
+## Session 133: Trim plugin settings empty-state hint
+
+**Date**: 2026-08-07
+**Task**: Trim plugin settings empty-state hint
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Removed the examples/plugins/ pointer line and trimmed empty-state text in PluginsSettings and zh/en settings.json.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e3e0b86` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
