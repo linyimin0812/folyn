@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 133
+- **Total Sessions**: 134
 - **Last Active**: 2026-08-07
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~665 | Active |
+| `journal-3.md` | ~702 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 134 | 2026-08-07 | PlantUML source fallback, tabs export clicks, highlightGrammars contribution point | `9c90857`, `31a395f`, `014d16a`, `12b7d86` | `master` |
 | 133 | 2026-08-07 | Trim plugin settings empty-state hint | `e3e0b86` | `master` |
 | 132 | 2026-08-07 | Plugin settings: icon/description display + toggle-after-approve gate | `4294103`, `04c0724` | `master` |
 | 131 | 2026-08-07 | Plugins settings: drop AI pair picker, toggle for state | `9614ad8` | `master` |

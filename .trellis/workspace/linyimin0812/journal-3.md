@@ -663,3 +663,40 @@ Removed the examples/plugins/ pointer line and trimmed empty-state text in Plugi
 ### Next Steps
 
 - None - task complete
+
+
+## Session 134: PlantUML source fallback, tabs export clicks, highlightGrammars contribution point
+
+**Date**: 2026-08-07
+**Task**: PlantUML source fallback, tabs export clicks, highlightGrammars contribution point
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Three small fixes plus one course correction. (1) plantuml file-preview now shows source when the plantuml plugin is absent — dropped plantuml/puml from the office handler's extensions list so the code handler picks them up. (2) Exported HTML tabs now switch — injected a one-shot click delegation script into the export template's <head>, keyed off [data-tab-button] inside [data-container=tabs]. (3) PlantUML code blocks in markdown were unhighlighted; first attempt added a core plantuml grammar for highlight.js, but user redirected the work to a plugin contribution point: added contributes.highlightGrammars[] + HighlightGrammarFn to plugin-sdk, wired a host-side highlightGrammarAdapter (mirrors editorLanguageAdapter — foreign-plugin guard, first-registered-wins), reverted the core grammar + plantuml-specific EXT_TO_LANG mapping, generalized CodeFileViewer fallback to hljs.getLanguage(ext) ? ext : EXT_TO_LANG[ext]. The plantuml grammar itself ships in the external plantuml plugin repo (out of scope here).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9c90857` | (see git log) |
+| `31a395f` | (see git log) |
+| `014d16a` | (see git log) |
+| `12b7d86` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
