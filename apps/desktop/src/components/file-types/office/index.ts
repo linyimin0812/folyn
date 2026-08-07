@@ -31,7 +31,9 @@ const handler: FileTypeHandler = {
     'usd', 'usda', 'usdc', 'usdz', 'kmz', 'pcd', 'wrl', 'vrml',
     'xyz', 'vtk', 'vtp', 'step', 'stp', 'iges', 'igs', 'ifc', '3dm',
     // Mindmap / drawing (read-only)
-    'xmind', 'mmd', 'plantuml', 'puml',
+    'xmind', 'mmd',
+    // ponytail: 'plantuml'/'puml' omitted — code handler shows source when the
+    // plantuml plugin isn't installed; the plugin's extMap entry overrides it.
     // Ebooks
     'epub', 'umd',
     // Images (supplement)
