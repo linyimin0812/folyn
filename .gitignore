@@ -35,6 +35,7 @@ default_vault/
 .dev/
 
 # @file-viewer/vite-plugin artifacts (regenerated on dev/build/test)
+dummy-non-existing-folder/
 apps/desktop/dummy-non-existing-folder/
 apps/desktop/public/flyfish-viewer-assets.json
 apps/desktop/public/vendor/
