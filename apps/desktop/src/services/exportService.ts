@@ -496,3 +496,33 @@ export const HTML_STYLES = `
       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
 `;
+
+/**
+ * Inline `<script>` injected into the exported HTML `<head>` to make container
+ * directives that rely on React synthetic events work in static HTML. Currently
+ * wires up `::::tabs` click-to-switch via event delegation on `[data-tab-button]`.
+ *
+ * ponytail: one global listener covers every tabs block in the doc — smaller
+ * than per-block script injection and avoids duplicate handlers on re-render.
+ * Initial display (tab 0 visible, others hidden) is set by TabsComponent's
+ * useEffect during the in-DOM render mount, so the script only handles clicks.
+ */
+export const CONTAINER_INTERACT_SCRIPT = `
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest && e.target.closest('[data-tab-button]');
+      if (!btn) return;
+      var c = btn.closest('[data-container="tabs"]');
+      if (!c) return;
+      var btns = c.querySelectorAll('button[data-tab-button]');
+      var panels = c.querySelectorAll('[data-is-tab="true"]');
+      var idx = Array.prototype.indexOf.call(btns, btn);
+      for (var i = 0; i < btns.length; i++) {
+        var active = i === idx;
+        btns[i].style.borderBottom = active ? '3px solid var(--acc, #068ad5)' : '3px solid transparent';
+        btns[i].style.color = active ? 'var(--acc, #068ad5)' : 'var(--t3, #71717a)';
+        btns[i].style.backgroundColor = active ? 'var(--panel, #fff)' : 'transparent';
+        if (panels[i]) panels[i].style.display = active ? 'block' : 'none';
+      }
+    });
+`;
+

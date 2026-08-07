@@ -62,6 +62,7 @@ function TabsComponent({ children }: ContainerProps) {
           {tabs.map((tab, i) => (
             <button
               key={i}
+              data-tab-button={i}
               onClick={() => setActiveTab(i)}
               style={{
                 padding: '.75rem 1.25rem',
