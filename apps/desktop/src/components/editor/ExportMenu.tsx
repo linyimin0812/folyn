@@ -5,6 +5,8 @@ import { useEditorStore, detectFileType } from '@/store/editorStore';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { useTranslation } from 'react-i18next';
 import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
+import { getPluginExportersForFileType } from '@/services/plugin-host/exporterAdapter';
+import { runCommand } from '@/services/commandRegistry';
 
 // File types that ship a canvas → SVG/PNG export. Markdown goes HTML instead.
 const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'mmap']);
@@ -155,6 +157,21 @@ export function ExportMenu() {
         run: handleXmind,
       });
     }
+  }
+
+  // ponytail: append plugin-contributed exporters matching the active file
+  // type. Surfaces as a menu item that runs the registered command; the
+  // exporterAdapter already pipes the result through `downloadBlob` (native
+  // save dialog). Reuses runWithOverlay for the exporting spinner.
+  for (const e of getPluginExportersForFileType(fileType)) {
+    const commandId = e.commandId;
+    items.push({
+      key: `plugin-export-${e.pluginId}-${e.contrib.format}`,
+      icon: <ImageDown size={16} className="w-6 flex justify-center shrink-0" />,
+      label: e.contrib.label,
+      description: e.contrib.label,
+      run: () => runWithOverlay(() => runCommand(commandId)),
+    });
   }
 
   return (

@@ -9,6 +9,8 @@
  * {@link downloadBlob} chokepoint (same save-dialog + writeFile path the
  * built-in exporters use).
  *
+ * Also keeps an in-memory registry of active contributions so the host's
+ * ExportMenu can append matching entries (filtered by `contrib.fileType`).
  * Mirrors `contributionAdapters.ts`: entry-ref missing → warn + skip; returns
  * a merged Disposable that unregisters all commands on plugin deactivate.
  */
@@ -20,6 +22,36 @@ import { registerCommand } from '@/services/commandRegistry';
 import { getActiveDocument } from '@/hooks/useExport';
 import { downloadBlob } from '@/services/export/shared';
 
+export interface PluginExporterEntry {
+  pluginId: string;
+  contrib: ExporterContribution;
+  commandId: string;
+}
+
+// ponytail: module-level Map keyed by commandId. One entry per registered
+// exporter; dispose removes by key. No per-instance Map on each call — this
+// is the smallest data structure that lets ExportMenu filter by fileType at
+// menu-open time. Plugin deactivation always routes through dispose().
+const activeExporters = new Map<string, PluginExporterEntry>();
+
+/**
+ * Returns plugin-contributed exporters applicable to the given file type.
+ * Entries with `contrib.fileType` set only match when it equals `fileType`;
+ * entries without `fileType` match every file type (backward-compat).
+ */
+export function getPluginExportersForFileType(fileType: string): PluginExporterEntry[] {
+  const out: PluginExporterEntry[] = [];
+  for (const e of activeExporters.values()) {
+    if (!e.contrib.fileType || e.contrib.fileType === fileType) out.push(e);
+  }
+  return out;
+}
+
+/** Test-only: clear the active exporters registry. Mirrors `clearCommands()`. */
+export function clearPluginExporters(): void {
+  activeExporters.clear();
+}
+
 export function registerPluginExporters(
   manifest: PluginManifest,
   module: PluginModule,
@@ -28,6 +60,7 @@ export function registerPluginExporters(
   if (exporters.length === 0) return { dispose: () => {} };
 
   const disposables: Disposable[] = [];
+  const registeredKeys: string[] = [];
   for (const exp of exporters) {
     const handler = module.exporters?.[exp.run];
     if (typeof handler !== 'function') {
@@ -60,10 +93,13 @@ export function registerPluginExporters(
       },
     });
     disposables.push(d);
+    activeExporters.set(fullId, { pluginId: manifest.id, contrib: exp, commandId: fullId });
+    registeredKeys.push(fullId);
   }
 
   return {
     dispose: () => {
+      for (const k of registeredKeys) activeExporters.delete(k);
       for (const d of disposables) d.dispose();
     },
   };

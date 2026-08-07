@@ -84,7 +84,14 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
       [onScrollToHeading],
     );
 
-    const fullBleed = ['csv', 'office', 'dbml', 'json', 'mmap'].includes(activeTab.fileType);
+    // ponytail: full-bleed is the DEFAULT (zero host padding — the preview
+    // component manages its own padding). Only markdown needs the host's
+    // pt-2 px-8 pb-[80vh] padding (the 80vh bottom space is for scroll-sync
+    // anchor scrolling so heading clicks can park the last heading at top).
+    // Previously a hardcoded list of built-in ids gated this — that forced
+    // every plugin file-type to either inherit markdown's 80vh bottom pad
+    // (broken) or edit host source to be added to the list.
+    const fullBleed = activeTab.fileType !== 'markdown';
 
     return (
       <div

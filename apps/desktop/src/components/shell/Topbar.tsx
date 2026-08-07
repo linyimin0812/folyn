@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useEditorStore, type ViewMode } from '@/store/editorStore';
+import { getHandlerById } from '@/components/file-types/registry';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useNavStore } from '@/store/navStore';
 import { useVaultStore } from '@/store/vaultStore';
@@ -15,9 +16,6 @@ import { requestPlanMyDay } from '@/services/planMyDayBridge';
 import { useTranslation } from 'react-i18next';
 import { Sun, Moon, FolderInput } from 'lucide-react';
 import { TerminalIcon } from '@/components/icons/TerminalIcon';
-
-/** File types that support meaningful multi-mode switching — show the view-mode segment. */
-const SHOW_VIEW_MODE_FILE_TYPES = new Set(['markdown', 'json', 'csv', 'mmap', 'dbml', 'html', 'svg']);
 
 const VIEW_MODE_ICONS: Record<ViewMode, React.ReactNode> = {
   split: (
@@ -84,8 +82,24 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const isExternalFileActive = !!activeTab
     && activeTab.fileType !== 'web'
     && isExternalPath(activeTab.path);
-  const showViewMode = activeTab ? SHOW_VIEW_MODE_FILE_TYPES.has(activeTab.fileType) : false;
-  const modes = activeTab?.fileType === 'html' ? HTML_MODES : VIEW_MODES;
+  // ponytail: show the view-mode segment when the active file-type's handler
+  // declares more than one supported mode. Previously a hardcoded Set of
+  // built-in ids — that forced every plugin file-type to edit host source to
+  // surface its switcher. The handler already declares supportedViewModes, so
+  // derive from it.
+  const showViewMode = activeTab
+    ? (getHandlerById(activeTab.fileType)?.supportedViewModes.length ?? 0) > 1
+    : false;
+  // ponytail: filter the standard mode order to what the handler actually
+  // supports, so a plugin (or built-in) declaring a subset like
+  // ['edit','preview'] doesn't surface an unsupported 'split' button.
+  const supportedModes = activeTab ? getHandlerById(activeTab.fileType)?.supportedViewModes : undefined;
+  const modes = (supportedModes && supportedModes.length > 0
+    ? supportedModes
+    : activeTab?.fileType === 'html'
+      ? HTML_MODES
+      : VIEW_MODES
+  ) as ViewMode[];
   const setCurrentPage = useNavStore((state) => state.setCurrentPage);
   const currentPage = useNavStore((state) => state.currentPage);
   const showTerminalAction = currentPage === 'editor' || currentPage === 'study';

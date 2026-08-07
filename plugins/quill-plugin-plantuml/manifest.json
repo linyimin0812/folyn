@@ -1,0 +1,30 @@
+{
+  "id": "quill-plugin-plantuml",
+  "name": "PlantUML Viewer",
+  "version": "0.1.0",
+  "author": "Quill",
+  "quill": ">=0.1.0",
+  "tier": "trusted",
+  "main": "dist/index.js",
+  "contributes": {
+    "fileTypes": [
+      {
+        "id": "plantuml",
+        "extensions": ["puml", "plantuml", "pu"],
+        "handler": "plantuml",
+        "defaultViewMode": "split",
+        "supportedViewModes": ["edit", "split", "preview"]
+      }
+    ],
+    "exporters": [
+      {
+        "id": "svg",
+        "format": "svg",
+        "label": "Export as SVG",
+        "fileExtension": "svg",
+        "run": "svg",
+        "fileType": "plantuml"
+      }
+    ]
+  }
+}

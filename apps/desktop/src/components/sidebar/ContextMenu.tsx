@@ -66,6 +66,15 @@ export function ContextMenu({
     () => new Map(creatableTypes.map((handler) => [handler.id, handler])),
     [creatableTypes],
   );
+  // ponytail: NEW_FILE_GROUPS is the curated built-in ordering. Plugin
+  // handlers (anything in creatableById not already in a built-in group)
+  // are appended as a final "extensions" group so plugins surface in the
+  // new-file menu without modifying host source.
+  const newFileGroups = useMemo(() => {
+    const builtin = new Set(NEW_FILE_GROUPS.flat());
+    const extras = creatableTypes.filter((h) => !builtin.has(h.id)).map((h) => h.id);
+    return extras.length > 0 ? [...NEW_FILE_GROUPS, extras] : NEW_FILE_GROUPS;
+  }, [creatableTypes]);
 
   const copyToClipboard = useCallback((text: string) => {
     navigator.clipboard.writeText(text);
@@ -112,7 +121,7 @@ export function ContextMenu({
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><ThemeIcon name="addFile" size={14} />{t('sidebar:contextMenu.newFile')}</span>
             <span className="text-[10px] text-t3 ml-2">&#9656;</span>
             <div className="hidden group-hover/sub:block absolute left-full top-0 min-w-[180px] w-max py-1 bg-panel border border-brd rounded-lg shadow-[0_4px_16px_rgba(0,0,0,.12)] z-[1001]">
-              {NEW_FILE_GROUPS.map((group, groupIndex) => (
+              {newFileGroups.map((group, groupIndex) => (
                 <Fragment key={group.join('-')}>
                   {groupIndex > 0 && <div className="h-px mx-2 my-1 bg-brd" />}
                   {group.map((handlerId) => {

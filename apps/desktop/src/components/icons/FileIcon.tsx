@@ -1,6 +1,7 @@
 import React from 'react';
 import { ThemeIcon, hasIcon } from './ThemeIcon';
 import chromeIcon from '@/assets/chrome.svg';
+import { getHandlerByExtension, getHandlerById } from '@/components/file-types/registry';
 
 interface FileIconProps {
   filename: string;
@@ -144,6 +145,18 @@ export function FileIcon({ filename, isDir, fileType }: FileIconProps) {
 
   const iconName = EXT_TO_THEME_ICON[ext];
   if (iconName && hasIcon(iconName)) return <ThemeIcon name={iconName} />;
+
+  // ponytail: no built-in ext mapping — consult the registry lazily (render
+  // time, AFTER the registry's eager `import.meta.glob` has resolved, so no
+  // TDZ). A plugin handler may supply its own `icon` (ReactNode), so plugin
+  // file types get their icon without modifying host source.
+  //
+  // NOTE: only the <FileIcon> component does this. The legacy `getFileTypeIcon`
+  // function below is called at module load by built-in handler index.ts
+  // files (before registry is initialized), so it must NOT touch the
+  // registry — that would re-introduce the cycle.
+  const handler = fileType ? getHandlerById(fileType) : getHandlerByExtension(ext);
+  if (handler?.icon) return <>{handler.icon}</>;
 
   return <ThemeIcon name="documentation" />;
 }

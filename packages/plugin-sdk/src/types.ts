@@ -285,6 +285,13 @@ export interface ExporterContribution {
   fileExtension: string;
   /** Entry ref to the exporter function (indexed by `PluginModule.exporters`). */
   run: string;
+  /**
+   * Optional file-type id this exporter applies to. When set, the host only
+   * surfaces the menu entry for tabs whose `fileType` matches (so a `.puml`-only
+   * SVG exporter doesn't show on markdown, etc.). When absent, applies to all
+   * file types (backward-compat).
+   */
+  fileType?: string;
 }
 
 // ── File-template contribution (new-file submenu) ──────────────────────────

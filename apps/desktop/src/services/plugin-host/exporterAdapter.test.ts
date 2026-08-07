@@ -12,7 +12,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { PluginManifest } from '@quill/plugin-host';
-import { registerPluginExporters } from './exporterAdapter';
+import { registerPluginExporters, getPluginExportersForFileType, clearPluginExporters } from './exporterAdapter';
 import type { PluginModule } from './contributionAdapters';
 import { getCommands, getCommand, clearCommands } from '@/services/commandRegistry';
 
@@ -64,6 +64,7 @@ function fakeModule(): PluginModule {
 
 beforeEach(() => {
   clearCommands();
+  clearPluginExporters();
   downloadBlobMock.mockClear();
 });
 
@@ -130,5 +131,64 @@ describe('registerPluginExporters', () => {
     expect(downloadBlobMock).toHaveBeenCalledTimes(1);
     const [blob] = downloadBlobMock.mock.calls[0];
     expect(blob).toBeInstanceOf(Blob);
+  });
+
+  describe('getPluginExportersForFileType', () => {
+    function manifestWithFileType(fileType: string | undefined): PluginManifest {
+      return {
+        ...manifest(),
+        contributes: {
+          exporters: [
+            {
+              id: 'svg',
+              format: 'svg',
+              label: 'Export as SVG',
+              fileExtension: 'svg',
+              run: 'svg',
+              ...(fileType ? { fileType } : {}),
+            },
+          ],
+        },
+      };
+    }
+
+    const svgHandler = async () => new Blob([''], { type: 'image/svg+xml' });
+
+    it('returns exporters whose fileType matches the active tab', () => {
+      const d = registerPluginExporters(manifestWithFileType('plantuml'), {
+        exporters: { svg: svgHandler },
+      });
+      const matches = getPluginExportersForFileType('plantuml');
+      expect(matches).toHaveLength(1);
+      expect(matches[0].contrib.label).toBe('Export as SVG');
+      expect(matches[0].commandId).toBe('plugin.exporter-test.export.svg');
+      d.dispose();
+    });
+
+    it('excludes exporters whose fileType does not match', () => {
+      const d = registerPluginExporters(manifestWithFileType('plantuml'), {
+        exporters: { svg: svgHandler },
+      });
+      expect(getPluginExportersForFileType('markdown')).toHaveLength(0);
+      d.dispose();
+    });
+
+    it('includes exporters with no fileType for any tab (backward-compat)', () => {
+      const d = registerPluginExporters(manifestWithFileType(undefined), {
+        exporters: { svg: svgHandler },
+      });
+      expect(getPluginExportersForFileType('plantuml')).toHaveLength(1);
+      expect(getPluginExportersForFileType('markdown')).toHaveLength(1);
+      d.dispose();
+    });
+
+    it('removes entries on dispose', () => {
+      const d = registerPluginExporters(manifestWithFileType('plantuml'), {
+        exporters: { svg: svgHandler },
+      });
+      expect(getPluginExportersForFileType('plantuml')).toHaveLength(1);
+      d.dispose();
+      expect(getPluginExportersForFileType('plantuml')).toHaveLength(0);
+    });
   });
 });
