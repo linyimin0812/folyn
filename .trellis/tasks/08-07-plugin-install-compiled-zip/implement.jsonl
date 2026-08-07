@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "frontend overview: Tauri+React+Zustand stack conventions"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand patterns for new installFromZip action mirroring installFromFolder"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Tauri invoke + ACL contract for the new install_plugin_zip command"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "i18n for new button text + error messages"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Rust command + frontend store cross-layer flow"}

@@ -1106,16 +1106,70 @@ the host realm — see "Trusted tier bundling" above).
 
 ## Packaging
 
-MVP: **unpacked folder**. The install command copies a folder containing
-`manifest.json` + assets into `~/.quill/plugins/<id>/`. There is no zip /
-tarball / npm-pack support yet — zip extraction is explicitly deferred.
+**Two install paths today**:
 
-To distribute a plugin today: ship the folder (zip it yourself for download;
-users unzip to a local path and install via the folder dialog).
+1. **Folder install** (dev/debug): Settings → Plugins → 从文件夹安装… picks an
+   unpacked folder containing `manifest.json` + assets; the install command
+   copies it verbatim into `~/.quill/plugins/<id>/`. No source/asset
+   filtering — useful while iterating on a plugin locally.
 
-Future: a `.quill-plugin` archive (zip of the folder) + marketplace download
-will land when the signature chain is enforced. The ed25519 scaffolding (see
-above) is already in place for that.
+2. **Zip install** (distribution): Settings → Plugins → 从 .zip 安装… picks a
+   `.zip` archive; the install command extracts it to a staging dir, filters
+   forbidden files, validates the manifest, then atomically renames into
+   `~/.quill/plugins/<id>/`. This is the path end users use to install a
+   plugin someone else shipped.
+
+### Distributing as a .zip
+
+The zip MUST contain `manifest.json` at the root. Everything else must be
+**compiled output** — the source/lockfiles/configs that built the plugin do
+not belong in the shipped package. The zip installer hard-rejects forbidden
+files and silently drops files whose extension is outside the whitelist.
+
+**Allowed file types** (copied to `~/.quill/plugins/<id>/`):
+- `manifest.json` (required at the root)
+- Built `main` (e.g. `dist/index.js`, `dist/index.mjs`) and `html` for sandbox
+- Static assets: `html`/`htm`/`css`/`svg`/`png`/`jpg`/`jpeg`/`gif`/`ico`/
+  `woff`/`woff2`/`ttf`/`wasm`/`json`/`md`
+- `LICENSE` and `README.md` (matched by basename, extension-agnostic)
+
+**Forbidden — install hard-fails and lists every offender** (so the package
+author can fix it once):
+
+| Pattern | Reason |
+|---------|--------|
+| `src/**`, `node_modules/**`, `.git/**`, `.vscode/**`, `.idea/**` | Source / dev tooling |
+| `*.ts`, `*.tsx`, `*.jsx` | TypeScript / JSX sources |
+| `*.map` | Sourcemaps (re-derived at dev time; not shipped) |
+| `*.env` (incl. `.env.local`, `.env.production`, ...) | Secrets |
+| `package.json`, `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml` | npm metadata |
+| `tsconfig.json` | TS build config |
+| `vite.config.*`, `webpack.config.*`, `rollup.config.*` | Bundler configs |
+| `.DS_Store`, `Thumbs.db` | OS cruft |
+
+**Soft-skipped — not copied, install continues** (the zip might still ship
+them; they just don't land in `~/.quill/plugins/<id>/`): any file whose
+extension is not in the whitelist above and is not `manifest.json` /
+`LICENSE` / `README.md`. Common example: `.otf` fonts, `.txt` notes.
+
+**Zip-bomb / size caps** (install hard-fails if exceeded):
+- 50 MB per single uncompressed entry
+- 100 MB total uncompressed size across all entries
+- 1000 file entries max
+
+**Zip-slip defense** (install hard-fails): any entry whose path is absolute
+(`/etc/...`, `C:\...`), contains `..` segments, or is a symlink.
+
+To build a distributable zip from a built plugin folder:
+
+```bash
+cd dist-output/
+zip -r ../my-plugin-1.0.0.zip manifest.json dist/ assets/
+```
+
+Future: a `.quill-plugin` archive + marketplace download will land when the
+ed25519 signature chain is enforced. The scaffolding (see "Integrity
+upgrade path" above) is already in place for that.
 
 ---
 

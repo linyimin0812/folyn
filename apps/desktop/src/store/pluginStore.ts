@@ -94,6 +94,7 @@ interface PluginState {
   // ── Actions ──
   refresh: () => Promise<void>;
   installFromFolder: (sourcePath: string) => Promise<void>;
+  installFromZip: (filePath: string) => Promise<void>;
   approve: (id: string) => Promise<void>;
   activate: (id: string) => Promise<void>;
   deactivate: (id: string) => Promise<void>;
@@ -224,6 +225,26 @@ export const usePluginStore = create<PluginState>((set, get) => ({
       // The `plugin://installed` event listener in App.tsx installs the
       // manifest into the in-memory PluginHost and activates sandbox
       // plugins. Refresh to pick up the new row.
+      await get().refresh();
+      set({ installing: false });
+    } catch (err) {
+      set({ installing: false, error: fmtErr(err) });
+    }
+  },
+
+  installFromZip: async (filePath: string) => {
+    if (!isTauri()) {
+      set({ error: '桌面端功能，请在 Tauri 环境中使用' });
+      return;
+    }
+    // Derive the plugin id from the zip filename minus the `.zip` extension.
+    // Must be kebab-case to match the manifest id; the Rust side cross-checks.
+    const base = filePath.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? '';
+    const id = base.endsWith('.zip') ? base.slice(0, -'.zip'.length) : base;
+    set({ installing: { id, sourcePath: filePath }, error: '' });
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('install_plugin_zip', { id, zipPath: filePath });
       await get().refresh();
       set({ installing: false });
     } catch (err) {

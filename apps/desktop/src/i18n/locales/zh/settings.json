@@ -392,6 +392,7 @@
     "title": "插件",
     "description": "安装、批准、启用或卸载第三方插件（微内核 + 插件 SDK）",
     "installFromFolder": "从文件夹安装…",
+    "installFromZip": "从 .zip 安装…",
     "installing": "安装中（{{id}}）…",
     "refresh": "刷新",
     "refreshing": "刷新中…",

@@ -6,14 +6,16 @@
 //! manage the on-disk registry (`plugins.json`) and emit lifecycle events.
 //!
 //! MVP limitation: `install_plugin` copies an **unpacked folder** as the
-//! source. Zip extraction is deferred (see PR4). The `zip` crate is not added
-//! to avoid a new dependency for a path that may change when the signature
-//! chain lands.
+//! source — kept as the dev/debug path. `install_plugin_zip` extracts a
+//! compiled-only `.zip` archive (no `src/`, `*.ts`, `package*.json`, etc.)
+//! and is the main distribution path; see "Distributing as a .zip" in
+//! `docs/plugin-development.md`.
 
 use std::collections::HashMap;
 use std::fs;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -454,6 +456,410 @@ fn copy_inner(src: &Path, dst: &Path) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+// ── Zip extraction (compiled-only distribution) ──────────────────────────────
+
+/// Per-file size cap. A single entry larger than this hard-fails the install.
+const ZIP_MAX_FILE_SIZE: u64 = 50 * 1024 * 1024;
+/// Total uncompressed size cap across all entries (zip-bomb defense).
+const ZIP_MAX_TOTAL_SIZE: u64 = 100 * 1024 * 1024;
+/// Max number of file entries in a zip (zip-bomb defense).
+const ZIP_MAX_FILE_COUNT: usize = 1000;
+
+/// Extension whitelist for compiled-only zip install. Anything outside this
+/// set is soft-skipped (not copied to staging). `manifest.json`, `LICENSE`,
+/// and `README.md` are matched by basename regardless of extension.
+const ALLOWED_EXTS: &[&str] = &[
+    "html", "htm", "js", "mjs", "css", "svg", "png", "jpg", "jpeg", "gif", "ico", "woff",
+    "woff2", "ttf", "wasm", "json", "md",
+];
+
+/// Path-component blacklist. The first component of an entry's relative path
+/// matching any of these → hard-fail (source dir, dev tooling, venv, etc.).
+const BLACKLIST_TOP_DIRS: &[&str] = &[
+    "src",
+    "node_modules",
+    ".git",
+    ".vscode",
+    ".idea",
+];
+
+/// Basename blacklist. Files named exactly this (case-sensitive) anywhere in
+/// the zip → hard-fail. Lockfiles + build configs that don't belong in a
+/// shipped plugin package.
+const BLACKLIST_BASENAMES_EXACT: &[&str] = &[
+    "package.json",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "tsconfig.json",
+    ".DS_Store",
+    "Thumbs.db",
+];
+
+/// Basename prefix blacklist. Files whose basename starts with any of these
+/// → hard-fail (`vite.config.*`, `webpack.config.*`, `rollup.config.*`,
+/// `.env.*` to catch `.env.local` / `.env.production` etc.).
+const BLACKLIST_BASENAME_PREFIXES: &[&str] = &[
+    "vite.config.",
+    "webpack.config.",
+    "rollup.config.",
+    ".env",
+];
+
+/// Extension blacklist. Files with these extensions anywhere in the zip →
+/// hard-fail (TypeScript sources, sourcemaps, env files).
+const BLACKLIST_EXTS: &[&str] = &["ts", "tsx", "jsx", "env", "map"];
+
+/// Pure size/count check factored out for unit-testability without having
+/// to write a real >50MB temp file. Returns `Err(message)` when the new
+/// entry would exceed per-file, total, or count caps. ponytail: pure fn so
+/// tests run in microseconds — the real path also short-circuits the same way.
+fn check_size(uncompressed: u64, cumulative: u64, count: usize) -> Result<(), String> {
+    if uncompressed > ZIP_MAX_FILE_SIZE {
+        return Err(format!(
+            "zip entry uncompressed size {uncompressed} exceeds per-file limit {ZIP_MAX_FILE_SIZE}"
+        ));
+    }
+    if cumulative + uncompressed > ZIP_MAX_TOTAL_SIZE {
+        return Err(format!(
+            "zip total uncompressed size would exceed limit {ZIP_MAX_TOTAL_SIZE}"
+        ));
+    }
+    if count > ZIP_MAX_FILE_COUNT {
+        return Err(format!(
+            "zip entry count {count} exceeds limit {ZIP_MAX_FILE_COUNT}"
+        ));
+    }
+    Ok(())
+}
+
+/// Is `rel` (path relative to the zip root) a forbidden file that should
+/// hard-fail the install? Checks: top dir ∈ BLACKLIST_TOP_DIRS; basename ∈
+/// BLACKLIST_BASENAMES_EXACT; basename starts with BLACKLIST_BASENAME_PREFIXES;
+/// extension ∈ BLACKLIST_EXTS. Pure — no I/O.
+fn is_blacklisted_path(rel: &Path) -> bool {
+    // First path component (`src`, `node_modules`, ...).
+    if let Some(top) = rel.components().next() {
+        if let std::path::Component::Normal(s) = top {
+            if let Some(name) = s.to_str() {
+                if BLACKLIST_TOP_DIRS.contains(&name) {
+                    return true;
+                }
+            }
+        }
+    }
+    let basename = rel.file_name().and_then(|s| s.to_str()).unwrap_or("");
+    if BLACKLIST_BASENAMES_EXACT.contains(&basename) {
+        return true;
+    }
+    if BLACKLIST_BASENAME_PREFIXES.iter().any(|p| basename.starts_with(p)) {
+        return true;
+    }
+    if let Some(ext) = rel.extension().and_then(|s| s.to_str()) {
+        if BLACKLIST_EXTS.contains(&ext) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Should this entry be soft-skipped (extension outside the whitelist)?
+/// `manifest.json`, `LICENSE`, `README.md` are always allowed by basename.
+fn is_unknown_ext(rel: &Path) -> bool {
+    let basename = rel.file_name().and_then(|s| s.to_str()).unwrap_or("");
+    if basename == "manifest.json" || basename == "LICENSE" || basename == "README.md" {
+        return false;
+    }
+    match rel.extension().and_then(|s| s.to_str()) {
+        Some(ext) => !ALLOWED_EXTS.contains(&ext),
+        None => true, // no extension and not in the basename allowlist
+    }
+}
+
+/// Reject zip-slip + symlink + Windows-drive entries. Returns `None` if the
+/// name is unsafe; the caller collects it into `rejected_slip`.
+///
+/// We re-implement the `enclosed_name` normalisation by hand (strip leading
+/// `/`, reject any `..` component or Windows `C:\`/`C:/` prefix) because in
+/// `zip` 2.x it's a method on `ZipFile`, not a free function — and we want
+/// to short-circuit before opening the file for read.
+fn safe_zip_path(name: &str) -> Option<PathBuf> {
+    if name.starts_with('/') {
+        return None;
+    }
+    let bytes = name.as_bytes();
+    if bytes.len() >= 2
+        && bytes[0].is_ascii_alphabetic()
+        && bytes[1] == b':'
+        && (bytes.get(2) == Some(&b'\\') || bytes.get(2) == Some(&b'/'))
+    {
+        return None;
+    }
+    let path = PathBuf::from(name);
+    let mut out = PathBuf::new();
+    for comp in path.components() {
+        match comp {
+            std::path::Component::Normal(s) => out.push(s),
+            std::path::Component::CurDir => {} // `.`
+            std::path::Component::ParentDir => return None, // `..`
+            std::path::Component::RootDir => return None,   // leading `/`
+            std::path::Component::Prefix(_) => return None, // Windows `C:`
+        }
+    }
+    if out.as_os_str().is_empty() {
+        None
+    } else {
+        Some(out)
+    }
+}
+
+/// Extract a zip to `staging`, applying compiled-only filtering.
+///
+/// Returns `(rejected_slip, rejected_blacklist, skipped_unknown_ext)` — the
+/// caller is responsible for surfacing these in the final error or install
+/// result. Hard-fails (with cleanup by the caller) when a file exceeds the
+/// size/count caps. The blacklist + slip checks are collected, not abort-
+/// early, so the user sees ALL offenders in one error message.
+fn extract_zip_filtered(zip_path: &Path, staging: &Path) -> Result<(Vec<String>, Vec<String>, Vec<String>), AppError> {
+    let file = fs::File::open(zip_path).map_err(|e| format!("failed to open zip: {e}"))?;
+    let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("failed to read zip: {e}"))?;
+
+    let mut rejected_slip: Vec<String> = Vec::new();
+    let mut rejected_blacklist: Vec<String> = Vec::new();
+    let mut skipped_unknown_ext: Vec<String> = Vec::new();
+    let mut total_uncompressed: u64 = 0;
+    let mut count: usize = 0;
+
+    for i in 0..archive.len() {
+        let mut entry = archive
+            .by_index(i)
+            .map_err(|e| format!("zip entry {i} read failed: {e}"))?;
+        let raw_name = entry.name().to_string();
+        // Symlink entries are a slip vector — reject them outright. `zip`
+        // 2.x surfaces them as entries where `is_symlink()` returns true.
+        if entry.is_symlink() {
+            rejected_slip.push(raw_name.clone());
+            continue;
+        }
+        let Some(rel) = safe_zip_path(&raw_name) else {
+            rejected_slip.push(raw_name.clone());
+            continue;
+        };
+        let uncompressed = entry.size();
+        // Pure size/count check (factored out so tests cover the limits
+        // without writing a real 50MB+ blob).
+        if let Err(e) = check_size(uncompressed, total_uncompressed, count + 1) {
+            return Err(format!("zip bomb defense tripped: {e}").into());
+        }
+
+        // Directory entry — create it; no file content to write.
+        if entry.is_dir() {
+            if is_blacklisted_path(&rel) {
+                rejected_blacklist.push(raw_name.clone());
+                continue;
+            }
+            // Don't bother soft-skipping empty unknown-extension dirs; the
+            // files inside will be filtered individually.
+            let target = staging.join(&rel);
+            fs::create_dir_all(&target).map_err(|e| format!("mkdir failed for {raw_name}: {e}"))?;
+            total_uncompressed += uncompressed;
+            count += 1;
+            continue;
+        }
+
+        // File entry.
+        if is_blacklisted_path(&rel) {
+            rejected_blacklist.push(raw_name.clone());
+            // Still drain the entry so the archive cursor advances cleanly.
+            // `enclosed_name` already validated the path — reading is safe.
+            continue;
+        }
+        if is_unknown_ext(&rel) {
+            skipped_unknown_ext.push(raw_name.clone());
+            continue;
+        }
+
+        let target = staging.join(&rel);
+        if let Some(parent) = target.parent() {
+            fs::create_dir_all(parent).map_err(|e| format!("mkdir failed for {raw_name}: {e}"))?;
+        }
+        let mut out = fs::File::create(&target).map_err(|e| format!("create failed for {raw_name}: {e}"))?;
+        // Limit the read to ZIP_MAX_FILE_SIZE bytes as defense-in-depth: even
+        // though we checked `uncompressed_size()` above, a maliciously-crafted
+        // archive could lie about its size in the central directory.
+        let mut written: u64 = 0;
+        let mut buf = [0u8; 64 * 1024];
+        loop {
+            let n = entry.read(&mut buf).map_err(|e| format!("read failed for {raw_name}: {e}"))?;
+            if n == 0 {
+                break;
+            }
+            written += n as u64;
+            if written > ZIP_MAX_FILE_SIZE {
+                return Err(format!(
+                    "zip entry {raw_name} exceeded per-file limit while extracting"
+                ).into());
+            }
+            out.write_all(&buf[..n]).map_err(|e| format!("write failed for {raw_name}: {e}"))?;
+        }
+        total_uncompressed += uncompressed;
+        count += 1;
+    }
+
+    Ok((rejected_slip, rejected_blacklist, skipped_unknown_ext))
+}
+
+/// Install a plugin from a compiled-only `.zip` archive. Extracts to a
+/// staging dir under `~/.quill/plugins/.staging/`, filters forbidden files
+/// (source/lockfiles/configs), validates the manifest, then atomically
+/// renames into `~/.quill/plugins/<id>/` and emits `plugin://installed`.
+///
+/// Hard-fails on: zip-slip (`..`, absolute, drive-letter), symlink entries,
+/// blacklisted files (src/, *.ts, package*.json, etc.), per-file > 50 MB,
+/// total > 100 MB, > 1000 entries, manifest mismatch. Soft-skips (does NOT
+/// copy) files whose extension is outside the whitelist.
+#[tauri::command]
+pub async fn install_plugin_zip(
+    app: tauri::AppHandle,
+    id: String,
+    zip_path: String,
+) -> Result<PluginEntry, AppError> {
+    let zp = PathBuf::from(&zip_path);
+    if !zp.is_file() {
+        return Err(format!("zip_path must be an existing file: {zip_path}").into());
+    }
+
+    let dir = plugins_dir(&app)?;
+    let staging_root = dir.join(".staging");
+    fs::create_dir_all(&staging_root).map_err(|e| format!("staging root create failed: {e}"))?;
+
+    // Unique staging dir derived from `id` + pid + monotonic nanos. No `uuid`
+    // crate dep — keeps Cargo.toml lean; collisions are practically
+    // impossible (same-pid re-entry would still differ by nanos).
+    let unique = unique_staging_suffix();
+    let staging = staging_root.join(format!("{id}-{unique}"));
+    fs::create_dir_all(&staging).map_err(|e| format!("staging create failed: {e}"))?;
+
+    // Best-effort cleanup on any error path: drop staging then propagate.
+    // Closure captures `staging` by reference and accepts the `AppError`
+    // shape all error sites convert to before passing in.
+    let cleanup = |e: AppError| -> AppError {
+        let _ = fs::remove_dir_all(&staging);
+        e
+    };
+
+    let (rejected_slip, rejected_blacklist, skipped) =
+        match extract_zip_filtered(&zp, &staging) {
+            Ok(v) => v,
+            Err(e) => return Err(cleanup(e)),
+        };
+    if !skipped.is_empty() {
+        // ponytail: stderr diagnostic, not a fatal error — mirrors the
+        // signature-check warning pattern. The diagnostics UI picks up
+        // stderr; surfacing this in the install return type would force an
+        // API shape change for a non-blocking warning.
+        eprintln!(
+            "[plugin_commands] install_plugin_zip: skipped {n} file(s) with non-allowlisted extensions: {files}",
+            n = skipped.len(),
+            files = skipped.join(", ")
+        );
+    }
+    if !rejected_blacklist.is_empty() || !rejected_slip.is_empty() {
+        let mut offenders: Vec<String> = Vec::new();
+        offenders.extend(rejected_blacklist);
+        offenders.extend(rejected_slip);
+        offenders.sort();
+        offenders.dedup();
+        return Err(cleanup(
+            format!("plugin contains forbidden files: {}", offenders.join(", ")).into(),
+        ));
+    }
+
+    // Read + validate manifest from staging.
+    let manifest_path = staging.join("manifest.json");
+    if !manifest_path.exists() {
+        return Err(cleanup("zip is missing manifest.json at the root".into()));
+    }
+    let manifest_str = fs::read_to_string(&manifest_path)
+        .map_err(|e| format!("failed to read manifest.json: {e}"))
+        .map_err(|e| cleanup(e.into()))?;
+    let manifest: serde_json::Value = serde_json::from_str(&manifest_str)
+        .map_err(|e| format!("manifest.json parse failed: {e}"))
+        .map_err(|e| cleanup(e.into()))?;
+    if let Err(e) = validate_manifest(&manifest) {
+        return Err(cleanup(format!("manifest validation failed: {e}").into()));
+    }
+    let manifest_id = manifest["id"]
+        .as_str()
+        .ok_or_else(|| "manifest.id missing".to_string())
+        .map_err(|e| cleanup(e.into()))?
+        .to_string();
+    if manifest_id != id {
+        return Err(cleanup(
+            format!("manifest.id ({manifest_id}) does not match requested id ({id})").into(),
+        ));
+    }
+
+    // Replace any existing plugin dir with the same id (matches the folder
+    // install path's `copy_dir_recursive` behavior — re-install = wipe + new).
+    let plugin_dir = dir.join(&id);
+    if plugin_dir.exists() {
+        fs::remove_dir_all(&plugin_dir)
+            .map_err(|e| format!("failed to remove existing plugin dir: {e}"))
+            .map_err(|e| cleanup(e.into()))?;
+    }
+    // Rename staging → plugin_dir. Same filesystem (both under ~/.quill), so
+    // this is atomic + instant. Fall back to a recursive copy if rename
+    // refuses (cross-filesystem edge case on exotic setups).
+    if let Err(e) = fs::rename(&staging, &plugin_dir) {
+        eprintln!("[plugin_commands] install_plugin_zip: rename failed ({e}), falling back to copy");
+        if let Err(copy_err) = copy_dir_recursive(&staging, &plugin_dir) {
+            let _ = fs::remove_dir_all(&staging);
+            return Err(format!("rename+copy fallback failed: rename {e}; copy {copy_err}").into());
+        }
+        let _ = fs::remove_dir_all(&staging);
+    }
+
+    let integrity = compute_integrity(&plugin_dir).unwrap_or_default();
+
+    let signature = manifest["signature"].as_str().map(|s| s.to_string());
+    let publisher_public_key = manifest["publisherPublicKey"].as_str().map(|s| s.to_string());
+    if let Err(e) = verify_plugin_signature(&manifest, signature.as_deref(), publisher_public_key.as_deref()) {
+        eprintln!("[plugin_commands] install_plugin_zip: signature check warning for {id}: {e}");
+    }
+
+    let entry = PluginEntry {
+        id: id.clone(),
+        name: manifest["name"].as_str().unwrap_or(&id).to_string(),
+        version: manifest["version"].as_str().unwrap_or("0.0.0").to_string(),
+        tier: manifest["tier"].as_str().unwrap_or("sandbox").to_string(),
+        trusted: false,
+        integrity,
+        signature,
+        publisher_public_key,
+    };
+
+    let records = read_plugins_json(&dir)?;
+    let records = upsert_record(records, entry.clone());
+    write_plugins_json(&dir, &records)?;
+
+    app.emit("plugin://installed", &entry)
+        .map_err(|e| e.to_string())?;
+    Ok(entry)
+}
+
+/// Build a unique short suffix for a staging dir name. Combines the pid +
+/// monotonic nanos from `SystemTime` so two concurrent installs of the same
+/// plugin id can't clobber each other.
+fn unique_staging_suffix() -> String {
+    let pid = std::process::id();
+    let nanos = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    format!("{pid}-{nanos}")
 }
 
 // ── Tauri commands ───────────────────────────────────────────────────────────
@@ -1807,5 +2213,224 @@ mod tests {
         )
         .await;
         assert!(result.is_ok());
+    }
+
+    // ── install_plugin_zip: pure helpers ──
+
+    #[test]
+    fn check_size_accepts_within_limits() {
+        assert!(check_size(0, 0, 0).is_ok());
+        assert!(check_size(50 * 1024 * 1024, 0, 1).is_ok());
+        assert!(check_size(1, 99 * 1024 * 1024, 999).is_ok());
+    }
+
+    #[test]
+    fn check_size_rejects_per_file_limit() {
+        let err = check_size(50 * 1024 * 1024 + 1, 0, 1).unwrap_err();
+        assert!(err.contains("per-file limit"), "{err}");
+    }
+
+    #[test]
+    fn check_size_rejects_total_limit() {
+        let err = check_size(1, 100 * 1024 * 1024, 1).unwrap_err();
+        assert!(err.contains("total uncompressed"), "{err}");
+    }
+
+    #[test]
+    fn check_size_rejects_count_limit() {
+        let err = check_size(1, 0, 1001).unwrap_err();
+        assert!(err.contains("entry count"), "{err}");
+    }
+
+    #[test]
+    fn is_blacklisted_path_catches_src_and_node_modules() {
+        assert!(is_blacklisted_path(Path::new("src/index.ts")));
+        assert!(is_blacklisted_path(Path::new("node_modules/react/index.js")));
+        assert!(is_blacklisted_path(Path::new(".git/config")));
+        assert!(is_blacklisted_path(Path::new(".vscode/settings.json")));
+        assert!(is_blacklisted_path(Path::new(".idea/workspace.xml")));
+    }
+
+    #[test]
+    fn is_blacklisted_path_catches_lockfiles_and_configs() {
+        assert!(is_blacklisted_path(Path::new("package.json")));
+        assert!(is_blacklisted_path(Path::new("package-lock.json")));
+        assert!(is_blacklisted_path(Path::new("yarn.lock")));
+        assert!(is_blacklisted_path(Path::new("pnpm-lock.yaml")));
+        assert!(is_blacklisted_path(Path::new("tsconfig.json")));
+        assert!(is_blacklisted_path(Path::new("vite.config.ts")));
+        assert!(is_blacklisted_path(Path::new("webpack.config.js")));
+        assert!(is_blacklisted_path(Path::new("rollup.config.mjs")));
+    }
+
+    #[test]
+    fn is_blacklisted_path_catches_source_exts_and_dotfiles() {
+        assert!(is_blacklisted_path(Path::new("dist/index.ts")));
+        assert!(is_blacklisted_path(Path::new("comp/index.tsx")));
+        assert!(is_blacklisted_path(Path::new("comp/thing.jsx")));
+        assert!(is_blacklisted_path(Path::new(".env")));
+        assert!(is_blacklisted_path(Path::new("dist/app.js.map")));
+        assert!(is_blacklisted_path(Path::new(".DS_Store")));
+        assert!(is_blacklisted_path(Path::new("Thumbs.db")));
+    }
+
+    #[test]
+    fn is_blacklisted_path_allows_built_artifacts() {
+        assert!(!is_blacklisted_path(Path::new("dist/index.js")));
+        assert!(!is_blacklisted_path(Path::new("dist/index.mjs")));
+        assert!(!is_blacklisted_path(Path::new("assets/style.css")));
+        assert!(!is_blacklisted_path(Path::new("index.html")));
+        assert!(!is_blacklisted_path(Path::new("manifest.json")));
+        assert!(!is_blacklisted_path(Path::new("LICENSE")));
+        assert!(!is_blacklisted_path(Path::new("README.md")));
+        assert!(!is_blacklisted_path(Path::new("assets/icon.svg")));
+    }
+
+    #[test]
+    fn is_unknown_ext_soft_skips_non_whitelisted() {
+        assert!(is_unknown_ext(Path::new("data.bin")));
+        assert!(is_unknown_ext(Path::new("assets/font.otf")));
+        assert!(is_unknown_ext(Path::new("README.txt")));
+        assert!(!is_unknown_ext(Path::new("dist/index.js")));
+        assert!(!is_unknown_ext(Path::new("manifest.json")));
+        assert!(!is_unknown_ext(Path::new("LICENSE")));
+        assert!(!is_unknown_ext(Path::new("README.md")));
+    }
+
+    #[test]
+    fn safe_zip_path_rejects_slip_vectors() {
+        assert!(safe_zip_path("../escape.txt").is_none());
+        assert!(safe_zip_path("../../etc/passwd").is_none());
+        assert!(safe_zip_path("/etc/passwd").is_none());
+        assert!(safe_zip_path("C:\\Windows\\System32\\config").is_none());
+        assert!(safe_zip_path("C:/Windows/System32").is_none());
+        assert!(safe_zip_path("dir/../escape.txt").is_none());
+    }
+
+    #[test]
+    fn safe_zip_path_accepts_normal_relative() {
+        assert_eq!(
+            safe_zip_path("dist/index.js").unwrap(),
+            PathBuf::from("dist/index.js")
+        );
+        assert_eq!(
+            safe_zip_path("manifest.json").unwrap(),
+            PathBuf::from("manifest.json")
+        );
+    }
+
+    // ── install_plugin_zip: extract_zip_filtered end-to-end ──
+    //
+    // We build in-memory zips with `zip::ZipWriter` over a `Cursor<Vec<u8>>`,
+    // write them to a temp file, and call `extract_zip_filtered` against a
+    // tempdir staging dir. No AppHandle needed — `extract_zip_filtered` is
+    // the post-validation core; the command wrapper only adds manifest
+    // validation + registry I/O on top.
+
+    use std::io::Cursor;
+
+    /// Write a zip to a temp file and return its path. Caller owns the temp
+    /// file (it's written under a `tempfile::TempDir`'s lifetime scope).
+    fn write_zip_to_temp(entries: &[(String, Vec<u8>)]) -> (tempfile::TempDir, PathBuf) {
+        use zip::ZipWriter;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("plugin.zip");
+        let file = std::fs::File::create(&path).expect("create zip file");
+        let mut zip = ZipWriter::new(file);
+        let opts = zip::write::SimpleFileOptions::default();
+        for (name, bytes) in entries {
+            zip.start_file(name, opts).expect("start_file");
+            std::io::Write::write_all(&mut zip, bytes).expect("write bytes");
+        }
+        zip.finish().expect("finish zip");
+        (dir, path)
+    }
+
+    fn manifest_json() -> Vec<u8> {
+        b"{\"id\":\"test-plugin\",\"name\":\"T\",\"version\":\"1.0.0\",\"tier\":\"sandbox\",\"main\":\"index.html\",\"html\":\"index.html\"}"
+            .to_vec()
+    }
+
+    #[test]
+    fn test_zip_slip_rejected() {
+        let (dir, zip_path) = write_zip_to_temp(&[
+            ("../escape.txt".to_string(), b"evil".to_vec()),
+            ("manifest.json".to_string(), manifest_json()),
+        ]);
+        let staging = dir.path().join("staging");
+        std::fs::create_dir_all(&staging).unwrap();
+        let result = extract_zip_filtered(&zip_path, &staging);
+        let (slip, blacklist, _skip) = result.expect("extract succeeds — slip is collected, not aborted");
+        assert!(slip.iter().any(|s| s == "../escape.txt"), "slip list: {slip:?}");
+        // The slip entry must NOT have been extracted.
+        assert!(!staging.join("escape.txt").exists());
+        assert!(!staging.join("../escape.txt").exists());
+        assert!(blacklist.is_empty());
+    }
+
+    #[test]
+    fn test_blacklist_hard_fail() {
+        let (dir, zip_path) = write_zip_to_temp(&[
+            ("src/index.ts".to_string(), b"console.log(1)".to_vec()),
+            ("manifest.json".to_string(), manifest_json()),
+        ]);
+        let staging = dir.path().join("staging");
+        std::fs::create_dir_all(&staging).unwrap();
+        let (_, blacklist, _) = extract_zip_filtered(&zip_path, &staging).expect("extract ok");
+        assert!(
+            blacklist.iter().any(|s| s == "src/index.ts"),
+            "blacklist: {blacklist:?}"
+        );
+        // Blacklisted entry must not have been written.
+        assert!(!staging.join("src/index.ts").exists());
+    }
+
+    #[test]
+    fn test_unknown_ext_soft_skip() {
+        let (dir, zip_path) = write_zip_to_temp(&[
+            ("data.bin".to_string(), b"\x00\x01\x02".to_vec()),
+            ("dist/index.js".to_string(), b"console.log(1);".to_vec()),
+            ("manifest.json".to_string(), manifest_json()),
+        ]);
+        let staging = dir.path().join("staging");
+        std::fs::create_dir_all(&staging).unwrap();
+        let (_, _, skipped) = extract_zip_filtered(&zip_path, &staging).expect("extract ok");
+        assert!(
+            skipped.iter().any(|s| s == "data.bin"),
+            "skipped: {skipped:?}"
+        );
+        // Soft-skipped: not on disk.
+        assert!(!staging.join("data.bin").exists());
+        // Whitelisted: on disk.
+        assert!(staging.join("dist/index.js").exists());
+        assert!(staging.join("manifest.json").exists());
+    }
+
+    #[test]
+    fn test_symlink_entry_rejected() {
+        // Build a zip with a symlink entry via `ZipWriter::add_symlink`
+        // (which sets the S_IFLNK bit in the central directory's external
+        // attributes — `unix_permissions()` alone masks the upper bits
+        // away, so it does NOT mark the entry as a symlink).
+        let dir = tempfile::tempdir().unwrap();
+        let zip_path = dir.path().join("plugin.zip");
+        let file = std::fs::File::create(&zip_path).unwrap();
+        let mut zip = zip::ZipWriter::new(file);
+        let opts = zip::write::SimpleFileOptions::default();
+        zip.add_symlink("link.txt", "/etc/passwd", opts)
+            .expect("add_symlink");
+        // A normal entry too, so the archive is not just the symlink.
+        zip.start_file("manifest.json", zip::write::SimpleFileOptions::default())
+            .unwrap();
+        std::io::Write::write_all(&mut zip, &manifest_json()).unwrap();
+        zip.finish().unwrap();
+
+        let staging = dir.path().join("staging");
+        std::fs::create_dir_all(&staging).unwrap();
+        let (slip, _, _) = extract_zip_filtered(&zip_path, &staging).expect("extract ok");
+        assert!(!slip.is_empty(), "expected symlink entry to be rejected; slip: {slip:?}");
+        assert!(slip.iter().any(|s| s == "link.txt"), "slip: {slip:?}");
+        // And it must not have been written to disk.
+        assert!(!staging.join("link.txt").exists());
     }
 }

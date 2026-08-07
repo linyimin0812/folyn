@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "review checklist: forbidden patterns, code standards"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "verify Zustand action follows store conventions"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "verify all user-facing strings are i18n'd"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "check no duplication with installFromFolder path"}

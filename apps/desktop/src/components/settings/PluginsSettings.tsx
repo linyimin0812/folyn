@@ -4,8 +4,11 @@
  *
  * Surfaces:
  *  - "Install from folder…" button: native folder dialog (`open({directory:true})`)
- *    then `install_plugin(id, sourcePath)`. MVP source is an unpacked folder;
- *    zip extraction is explicitly deferred.
+ *    then `install_plugin(id, sourcePath)`. Dev/debug path — unpacked folder.
+ *  - "Install from .zip…" button: native file dialog
+ *    (`open({filters:[{extensions:['zip']}]})`) then
+ *    `install_plugin_zip(id, zipPath)`. Main distribution path — compiled-only
+ *    archive; the Rust side filters source/lockfiles/configs out of the zip.
  *  - List of installed plugins (from `usePluginStore.rows`): id, name,
  *    version, tier, state, permissions summary.
  *  - Per-plugin actions: Approve (trusted tier only — opens the consent
@@ -268,8 +271,10 @@ export function PluginsSettings() {
   const error = usePluginStore((s) => s.error);
   const refresh = usePluginStore((s) => s.refresh);
   const installFromFolder = usePluginStore((s) => s.installFromFolder);
+  const installFromZip = usePluginStore((s) => s.installFromZip);
   const clearError = usePluginStore((s) => s.clearError);
   const [folderOpen, setFolderOpen] = useState(false);
+  const [zipOpen, setZipOpen] = useState(false);
 
   // Refresh on mount + whenever the tab gains focus (cheap; guards against
   // external mutation). The listener in App.tsx also calls refresh on
@@ -295,6 +300,26 @@ export function PluginsSettings() {
     }
   }, [folderOpen, installFromFolder, clearError]);
 
+  const handleInstallFromZip = useCallback(async () => {
+    if (zipOpen) return;
+    setZipOpen(true);
+    clearError();
+    try {
+      if (!isTauri()) {
+        return;
+      }
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const picked = await open({
+        filters: [{ name: 'Plugin zip', extensions: ['zip'] }],
+        multiple: false,
+      });
+      if (!picked || Array.isArray(picked)) return;
+      await installFromZip(picked as string);
+    } finally {
+      setZipOpen(false);
+    }
+  }, [zipOpen, installFromZip, clearError]);
+
   return (
     <div className="mb-8">
       <div className="pb-3 mb-5 border-b border-brd2 flex items-baseline gap-2">
@@ -309,10 +334,17 @@ export function PluginsSettings() {
       <div className="flex items-center gap-2 mb-3">
         <button
           className="btn btn-p btn-sm"
-          disabled={!!installing || folderOpen || !isTauri()}
+          disabled={!!installing || folderOpen || zipOpen || !isTauri()}
           onClick={handleInstallFromFolder}
         >
           {installing ? t('settings:plugins.installing', { id: installing.id }) : t('settings:plugins.installFromFolder')}
+        </button>
+        <button
+          className="btn btn-p btn-sm"
+          disabled={!!installing || folderOpen || zipOpen || !isTauri()}
+          onClick={handleInstallFromZip}
+        >
+          {installing ? t('settings:plugins.installing', { id: installing.id }) : t('settings:plugins.installFromZip')}
         </button>
         <button className="btn btn-g btn-sm" disabled={refreshing} onClick={() => void refresh()}>
           {refreshing ? t('settings:plugins.refreshing') : t('settings:plugins.refresh')}

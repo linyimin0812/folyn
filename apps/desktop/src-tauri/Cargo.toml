@@ -87,11 +87,16 @@ pbkdf2 = "0.13"
 hmac = "0.13"
 sha1 = "0.11"
 time = "0.3"
+# Zip extraction for the `install_plugin_zip` command (PR4). Sandbox-tier
+# plugins are distributed as compiled-only zips; this crate does the unzip +
+# the zip-slip / size-bomb / blacklist filtering in `plugin_commands.rs`.
+zip = "2"
 # Dev-only: RNG for the ed25519 signature round-trip tests (signs + verifies
 # with a real keypair). NOT linked into the release binary — only used in
 # `#[cfg(test)]` blocks.
 [dev-dependencies]
 rand = "0.8"
+tempfile = "3"
 # `#[tokio::test]` for the AppleSpeechAsr::transcribe() async tests ported
 # from openless — the test drives `tauri::async_runtime::spawn_blocking` which
 # needs a tokio runtime; `macros` provides the test attribute, `rt` the

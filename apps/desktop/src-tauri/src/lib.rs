@@ -712,6 +712,7 @@ pub fn run() {
             chat::chat_stream,
             list_models::list_models,
             plugin_commands::install_plugin,
+            plugin_commands::install_plugin_zip,
             plugin_commands::list_plugins,
             plugin_commands::uninstall_plugin,
             plugin_commands::approve_plugin,
