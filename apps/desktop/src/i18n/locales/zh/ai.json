@@ -40,8 +40,13 @@
     "clearTitle": "清空对话",
     "clearContext": "清除上下文",
     "clearContextTitle": "清除上下文（保留消息，重置 agent 记忆）",
+    "clearContextConfirm": "清除上下文将重置 agent 记忆（保留对话消息），确定继续？",
+    "clearContextConfirmTitle": "清除上下文",
+    "clearContextDone": "已清除上下文",
     "clearMessages": "清空消息",
     "clearMessagesTitle": "清空消息（清掉全部对话与上下文）",
+    "clearMessagesConfirm": "清空消息将删除全部对话与上下文，且无法恢复，确定继续？",
+    "clearMessagesConfirmTitle": "清空消息",
     "send": "发送",
     "stop": "停止"
   },

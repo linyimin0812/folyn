@@ -314,6 +314,15 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
   border: 1px solid color-mix(in srgb, var(--red) 24%, transparent);
 }
 
+/* Inline chat notice bar (transient success/info, e.g. "context cleared") */
+.chat-inline-notice {
+  display: flex; align-items: center; gap: 6px;
+  margin: 0 12px 8px; padding: 6px 10px; border-radius: 8px;
+  font-size: 11px; line-height: 1.4; color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--acc) 24%, transparent);
+}
+
 /* ── Markdown in messages ── */
 .msg-md { font-size: 12px; line-height: 1.7; color: var(--t1); }
 .msg-md p { margin: 0 0 8px; }

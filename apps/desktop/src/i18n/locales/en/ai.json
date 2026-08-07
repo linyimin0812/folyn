@@ -40,8 +40,13 @@
     "clearTitle": "Clear chat",
     "clearContext": "Clear context",
     "clearContextTitle": "Clear context (keep messages, reset agent memory)",
+    "clearContextConfirm": "Clear context will reset agent memory (messages stay). Continue?",
+    "clearContextConfirmTitle": "Clear context",
+    "clearContextDone": "Context cleared",
     "clearMessages": "Clear messages",
     "clearMessagesTitle": "Clear messages (drops all messages and context)",
+    "clearMessagesConfirm": "Clear messages will delete all messages and context. This cannot be undone. Continue?",
+    "clearMessagesConfirmTitle": "Clear messages",
     "send": "Send",
     "stop": "Stop"
   },

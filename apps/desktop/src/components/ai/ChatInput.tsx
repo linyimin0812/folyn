@@ -128,6 +128,9 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
    *  rejectError pattern so both consumers surface attachment rejections
    *  consistently (previously AiPanel had no validation UI at all). */
   const [rejectError, setRejectError] = useState<string | null>(null);
+  /** Transient success/info notice (e.g. "context cleared"). Mirrors the
+   *  rejectError pattern so both surface inline under the input. */
+  const [notice, setNotice] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modeMenuRef = useRef<HTMLDivElement>(null);
@@ -268,6 +271,39 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
     const t = setTimeout(() => setRejectError(null), 3000);
     return () => clearTimeout(t);
   }, [rejectError]);
+
+  // Auto-clear the inline notice after a short delay so it does not linger.
+  // Mirrors rejectError's timeout; re-arms on each new notice.
+  useEffect(() => {
+    if (notice === null) return;
+    const t = setTimeout(() => setNotice(null), 2500);
+    return () => clearTimeout(t);
+  }, [notice]);
+
+  // Tauri confirm() with a window.confirm fallback for non-Tauri contexts
+  // (browser-extension userscripts can intercept window.confirm — same reason
+  // as PetSettings). Mirrors the AiPanel.handleDeleteSession pattern.
+  const confirmAction = useCallback(async (message: string, title: string): Promise<boolean> => {
+    try {
+      const { confirm } = await import('@tauri-apps/plugin-dialog');
+      return await confirm(message, { title, kind: 'warning' });
+    } catch {
+      return window.confirm(message);
+    }
+  }, []);
+
+  const handleClearContext = useCallback(async () => {
+    const yes = await confirmAction(t('ai:chat.clearContextConfirm'), t('ai:chat.clearContextConfirmTitle'));
+    if (!yes) return;
+    clearContext();
+    setNotice(t('ai:chat.clearContextDone'));
+  }, [confirmAction, clearContext, t]);
+
+  const handleClearMessages = useCallback(async () => {
+    const yes = await confirmAction(t('ai:chat.clearMessagesConfirm'), t('ai:chat.clearMessagesConfirmTitle'));
+    if (!yes) return;
+    clearMessages();
+  }, [confirmAction, clearMessages, t]);
 
   const fileTree = useVaultStore((s) => s.fileTree);
   const allFiles = useMemo(() => flattenFileTree(fileTree), [fileTree]);
@@ -802,7 +838,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
       <button
         type="button"
         className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
-        onClick={clearContext}
+        onClick={handleClearContext}
         disabled={isStreaming}
         title={t('ai:chat.clearContextTitle')}
         aria-label={t('ai:chat.clearContext')}
@@ -812,7 +848,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
       <button
         type="button"
         className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
-        onClick={clearMessages}
+        onClick={handleClearMessages}
         disabled={isStreaming}
         title={t('ai:chat.clearMessagesTitle')}
         aria-label={t('ai:chat.clearMessages')}
@@ -849,6 +885,14 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
             <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           <span className="min-w-0">{rejectError}</span>
+        </div>
+      )}
+      {notice && (
+        <div className="chat-inline-notice" role="status">
+          <svg className="shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <span className="min-w-0">{notice}</span>
         </div>
       )}
       <input
