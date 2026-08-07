@@ -7,7 +7,7 @@ import { useAiConfigStore } from '@/store/aiConfigStore';
 import { flattenFileTree } from '@/utils/treeUtils';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { listInputModes, isRigMode } from './inputModes';
-import { Sparkles, Zap, Command as CommandIcon } from 'lucide-react';
+import { Sparkles, Zap, Command as CommandIcon, Eraser, Trash2 } from 'lucide-react';
 import { AdapterSelector } from './AdapterSelector';
 import { PairSelector, useEnabledPairs, type Pair } from './PairSelector';
 import { useNavStore } from '@/store/navStore';
@@ -138,6 +138,8 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
   const consumePendingPrompt = useAiStore((s) => s.consumePendingPrompt);
   const setInputMode = useAiStore((s) => s.setInputMode);
   const setSessionMode = useAiStore((s) => s.setSessionMode);
+  const clearContext = useAiStore((s) => s.clearContext);
+  const clearMessages = useAiStore((s) => s.clearMessages);
   const inputModes = useMemo(() => listInputModes(), []);
   // Feature-agent sessions (kind='study') pick their own adapter at impl
   // time and ignore the user-facing adapter selector; only general chat
@@ -795,6 +797,31 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
     </>
   );
 
+  const trailingSlot = (
+    <>
+      <button
+        type="button"
+        className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
+        onClick={clearContext}
+        disabled={isStreaming}
+        title={t('ai:chat.clearContextTitle')}
+        aria-label={t('ai:chat.clearContext')}
+      >
+        <Eraser size={14} />
+      </button>
+      <button
+        type="button"
+        className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
+        onClick={clearMessages}
+        disabled={isStreaming}
+        title={t('ai:chat.clearMessagesTitle')}
+        aria-label={t('ai:chat.clearMessages')}
+      >
+        <Trash2 size={14} />
+      </button>
+    </>
+  );
+
   return (
     <>
       <ChatInputBox
@@ -811,6 +838,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
         inputRef={textareaRef}
         onBeforeKeyDown={handleBeforeKeyDown}
         leadingSlot={leadingSlot}
+        trailingSlot={trailingSlot}
         attachmentsRow={attachmentsRow}
         overlayLayer={overlayLayer}
         mirrorLayer={slashMirror}

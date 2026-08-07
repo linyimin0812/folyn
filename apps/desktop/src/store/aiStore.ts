@@ -97,6 +97,10 @@ interface AiState {
   setSessionStreaming: (sessionId: string, streaming: boolean) => void;
   setCliSessionId: (sessionId: string, targetSessionId?: string) => void;
   clearMessages: () => void;
+  /** Drop the agent's accumulated context (cliSessionId + fileChanges) on
+   *  the active session WITHOUT clearing visible messages. Next send starts
+   *  a fresh CLI adapter session. */
+  clearContext: () => void;
 
   /** Set the (provider, model) pair on a specific session. Writes only the
    *  session — the global chatProvider/chatModel "last used pair" role was
@@ -456,6 +460,20 @@ export const useAiStore = create<AiState>((set, get) => ({
       sessions: updateSession(state.sessions, activeSessionId, (s) => ({
         ...s,
         messages: [],
+        fileChanges: [],
+        cliSessionId: null,
+        updatedAt: Date.now(),
+      })),
+    }));
+    persistAiState();
+  },
+
+  clearContext: () => {
+    const { activeSessionId } = get();
+    if (!activeSessionId) return;
+    set((state) => ({
+      sessions: updateSession(state.sessions, activeSessionId, (s) => ({
+        ...s,
         fileChanges: [],
         cliSessionId: null,
         updatedAt: Date.now(),

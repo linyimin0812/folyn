@@ -38,6 +38,10 @@
     "attachFile": "附加文件",
     "clear": "清空",
     "clearTitle": "清空对话",
+    "clearContext": "清除上下文",
+    "clearContextTitle": "清除上下文（保留消息，重置 agent 记忆）",
+    "clearMessages": "清空消息",
+    "clearMessagesTitle": "清空消息（清掉全部对话与上下文）",
     "send": "发送",
     "stop": "停止"
   },

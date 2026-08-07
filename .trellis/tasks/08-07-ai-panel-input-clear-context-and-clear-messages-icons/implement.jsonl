@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop frontend coding spec — icon button, i18n, zustand conventions"}
+{"file": "apps/desktop/src/store/aiStore.ts", "reason": "add clearContext() next to clearMessages (line ~452); see pattern at 444-465"}
+{"file": "apps/desktop/src/components/ai/ChatInput.tsx", "reason": "wire trailingSlot here; leadingSlot pattern at 723-796; ghost button className at 731"}
+{"file": "apps/desktop/src/components/chat/ChatInputBox.tsx", "reason": "trailingSlot render at 158-172; spacer at 168"}

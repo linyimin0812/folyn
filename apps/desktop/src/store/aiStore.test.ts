@@ -349,6 +349,15 @@ describe('useAiStore.clearMessages + pending attachments', () => {
     expect(s.cliSessionId).toBeNull();
   });
 
+  it('clearContext drops cliSessionId + fileChanges but keeps messages', () => {
+    seedSession({ messages: [{ id: 'm', role: 'user', content: 'x', timestamp: 1 }], fileChanges: [makeFileChange('a.md')], cliSessionId: 'cli' });
+    useAiStore.getState().clearContext();
+    const s = useAiStore.getState().getActiveSession()!;
+    expect(s.messages).toHaveLength(1);
+    expect(s.fileChanges).toEqual([]);
+    expect(s.cliSessionId).toBeNull();
+  });
+
   it('addFileToChat / consumePendingFiles buffer and drain attachments', () => {
     useAiStore.getState().addFileToChat('a.md', 'notes/a.md');
     useAiStore.getState().addFileToChat('b.md', 'notes/b.md');

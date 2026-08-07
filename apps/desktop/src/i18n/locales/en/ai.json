@@ -38,6 +38,10 @@
     "attachFile": "Attach file",
     "clear": "Clear",
     "clearTitle": "Clear chat",
+    "clearContext": "Clear context",
+    "clearContextTitle": "Clear context (keep messages, reset agent memory)",
+    "clearMessages": "Clear messages",
+    "clearMessagesTitle": "Clear messages (drops all messages and context)",
     "send": "Send",
     "stop": "Stop"
   },
