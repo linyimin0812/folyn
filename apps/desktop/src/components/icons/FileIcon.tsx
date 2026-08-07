@@ -40,7 +40,7 @@ const EXT_TO_THEME_ICON: Record<string, string> = {
   jpeg: 'image',
   gif: 'image',
   webp: 'image',
-  svg: 'image',
+  svg: 'svg',
   bmp: 'image',
   ico: 'image',
   pdf: 'pdf',
