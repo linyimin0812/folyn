@@ -140,6 +140,14 @@ export interface MarkdownCodeRendererProps {
  */
 export type EditorLanguageFactory = () => unknown;
 
+/**
+ * highlight.js grammar factory. Receives the host's `hljs` instance and returns
+ * a Language definition object. ponytail: typed `unknown` return because the
+ * SDK has no `highlight.js` dependency — the host narrows to `Language` when
+ * it calls `hljs.registerLanguage(name, fn)`.
+ */
+export type HighlightGrammarFn = (hljs: unknown) => unknown;
+
 export interface PluginModule {
   /** Entry-ref → file-type handler. Keys match `contributes.fileTypes[].handler`. */
   handlers?: Record<string, FileTypeHandler>;
@@ -161,6 +169,8 @@ export interface PluginModule {
   markdownCodeRenderers?: Record<string, ComponentType<MarkdownCodeRendererProps>>;
   /** Entry-ref → CodeMirror language factory. Keys match `contributes.editorLanguages[].entry`. */
   editorLanguages?: Record<string, EditorLanguageFactory>;
+  /** Entry-ref → highlight.js grammar factory. Keys match `contributes.highlightGrammars[].entry`. */
+  highlightGrammars?: Record<string, HighlightGrammarFn>;
   /** Optional lifecycle hook; called by the trusted loader on activate. */
   activate?: (ctx: PluginContext) => void | Promise<void>;
   /** Optional lifecycle hook; called by the trusted loader on deactivate. */

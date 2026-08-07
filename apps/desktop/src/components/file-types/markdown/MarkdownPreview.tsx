@@ -15,7 +15,6 @@ import { rehypeSourceLine } from './rehypeSourceLine';
 import { ContainerRegistry, registerBuiltinPlugins, VaultContext } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
-import '@/services/highlightLanguages';
 import { getMarkdownCodeRenderer } from '@/services/plugin-host/markdownCodeRendererAdapter';
 import { getHandlerByExtension, getHandlerById } from '@/components/file-types/registry';
 import { isTauri } from '@/utils/platform';

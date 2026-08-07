@@ -417,6 +417,19 @@ export interface EditorLanguageContribution {
   entry: string;
 }
 
+export interface HighlightGrammarContribution {
+  /**
+   * highlight.js language name to register (e.g. `plantuml`). Becomes the
+   * canonical id; `aliases` below are registered as additional lookup keys
+   * via hljs's own alias mechanism.
+   */
+  name: string;
+  /** Alternate fence languages / file extensions that resolve to this grammar. */
+  aliases?: string[];
+  /** Entry ref into `PluginModule.highlightGrammars`. */
+  entry: string;
+}
+
 export interface ContributionPoints {
   commands?: CommandContribution[];
   fileTypes?: FileTypeContribution[];
@@ -435,6 +448,8 @@ export interface ContributionPoints {
   markdownCodeRenderers?: MarkdownCodeRendererContribution[];
   /** CodeMirror language extensions contributed by plugins. */
   editorLanguages?: EditorLanguageContribution[];
+  /** highlight.js grammars contributed by plugins (drives ```lang code blocks + CodeFileViewer). */
+  highlightGrammars?: HighlightGrammarContribution[];
 }
 
 export interface ActivationEvents {

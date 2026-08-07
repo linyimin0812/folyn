@@ -12,13 +12,16 @@ const EXT_TO_LANG: Record<string, string> = {
   py: 'python', sh: 'bash', bash: 'bash', zsh: 'bash',
   sql: 'sql', java: 'java', go: 'go', rust: 'rust', rs: 'rust',
   c: 'c', cpp: 'cpp', h: 'c',
-  plantuml: 'plantuml', puml: 'plantuml', pu: 'plantuml',
   // ponytail: not exhaustive — highlight.js will fall back to highlightAuto for anything missing.
 };
 
 export function CodeFileViewer({ content, filePath }: PreviewProps) {
   const ext = filePath.toLowerCase().match(/\.([^.]+)$/)?.[1] || '';
-  const lang = EXT_TO_LANG[ext];
+  // ponytail: prefer the file extension itself if hljs knows it — lets plugin-contributed
+  // grammars (e.g. plantuml registering 'plantuml' + aliases 'puml'/'pu') drive
+  // .puml/.plantuml/.pu highlighting without a per-extension core mapping. Fall back
+  // to the EXT_TO_LANG alias table, then highlightAuto.
+  const lang = hljs.getLanguage(ext) ? ext : EXT_TO_LANG[ext];
 
   const html = useMemo(() => {
     try {

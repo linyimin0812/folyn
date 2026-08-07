@@ -2,78 +2,69 @@
 
 ## Goal
 
-Markdown 中 ```plantuml 代码块在预览（和导出 HTML）里没有语法高亮，应该至少对注释/字符串/关键字/`@startuml` 等做基础高亮，跟其他语言代码块视觉一致。
+Quill 核心不应该硬编码 plantuml-specific 高亮逻辑。改为在 plugin SDK 增加一个 `contributes.highlightGrammars[]` contribution 点 + host 侧 `highlightGrammarAdapter`，让任何插件都能为 highlight.js 注册 grammar。PlantUML grammar 由 plantuml 插件（external repo）提供。
 
 ## What I already know
 
 * `MarkdownPreview.tsx:579` 用 `rehype-highlight` (highlight.js 11.11.1) 处理代码块高亮，配置 `ignoreMissing: true` —— 未知语言静默跳过。
-* highlight.js 11.11.1 内置 192 种语言，**不含 plantuml/puml/pu**（已验证：`hljs.getLanguage('plantuml')` 返回 false）。
-* `CodeBlockExtension.ts:21-25` 已经把 plantuml + aliases 加入 fence 语言自动补全菜单（继承自插件 markdownCodeRenderer 列表），所以用户能在 ``` 后自动补全 `plantuml` —— 但补全后实际没高亮。
-* PlantUML 插件（external trusted-tier）只提供 CodeMirror `plantumlLanguage`（Lezer 语法），用于 `.puml` 文件编辑器；与 highlight.js 的 grammar 格式不兼容，不能直接复用到 markdown 预览。
-* `markdownCodeRendererAdapter` 允许插件注册一个 React 组件**替换**整个代码块（mermaid 就是这样），但那是替换为渲染图，不是给源码加语法高亮——不符合用户需求。
-* CodeFileViewer (`code/CodeFileViewer.tsx:5-16`) 的 `EXT_TO_LANG` 也没 plantuml —— `.puml` 文件直接打开时走 `highlightAuto`，同样没正确高亮。
-
-## Assumptions (temporary)
-
-* 用户想要的是"代码块里有语法高亮颜色"，不是把 ```plantuml 块替换成渲染的 SVG 图。
-* "够用就行"——基础高亮（注释/字符串/关键字/meta）即可，不必100%覆盖 PlantUML 全语法。
-* 同一份 grammar 同时让 markdown 预览和 CodeFileViewer `.puml` 高亮受益。
-
-## Open Questions
-
-* （已解决）选 A：在 codebase 内置最小 plantuml hljs grammar，一处注册，markdown 预览 + CodeFileViewer 共用。
-
-## Requirements (evolving)
-
-* ```plantuml 代码块在 markdown 预览中显示语法高亮。
-* 同一 grammar 也覆盖 ```puml、```pu 别名。
-* `.puml` / `.plantuml` 文件在 CodeFileViewer 中也获得高亮（CodeFileViewer 的 `EXT_TO_LANG` 加映射）。
-* 不引入未验证可用的第三方依赖。
-* 不破坏其他语言代码块既有高亮。
-
-## Acceptance Criteria (evolving)
-
-* [ ] ```plantuml 代码块在 markdown 预览中显示注释/字符串/关键字/`@startuml` 高亮颜色。
-* [ ] ```puml、```pu 别名同样高亮。
-* [ ] `.puml` 文件直接打开（CodeFileViewer）有高亮。
-* [ ] 既有 ```ts / ```js / ```python 等代码块高亮不变。
-* [ ] `pnpm lint` / typecheck / 既有测试绿。
-
-## Definition of Done
-
-* 内置 plantuml grammar 注册逻辑 + 单测（注册后 `hljs.getLanguage('plantuml')` 返回 truthy，且 `hljs.highlight(...)` 输出含期望 className span）。
-* Lint / typecheck / build green。
-* 不改动 plantuml 插件本身。
-
-## Out of Scope
-
-* PlantUML 完整语法 100% 覆盖（skinparam 参数、`!include`、`!function` 等高阶特性）—— MVP 只覆盖常见构造。
-* 用 plantuml 插件的 CodeMirror Lezer grammar 在 markdown 中渲染高亮——格式不兼容，重写代价大。
-* 其他无 hljs grammar 的语言（dot/graphviz 等）—— 单独任务。
-
-## Technical Notes
-
-* 注册入口候选：`apps/desktop/src/components/file-types/markdown/MarkdownPreview.tsx` 模块级语句；或新建 `apps/desktop/src/services/highlightLanguages.ts` 集中管理第三方/自定义 grammar 注册。
-* CodeFileViewer 改动：`apps/desktop/src/components/file-types/code/CodeFileViewer.tsx:5-16` `EXT_TO_LANG` 加 `plantuml: 'plantuml', puml: 'plantuml', pu: 'plantuml'`。
-* highlight.js grammar 格式参考：`hljs.COMMENT(start, end)`、`hljs.QUOTE_STRING_MODE`、`hljs.C_NUMBER_MODE`、`{ className, begin, end }`。
-* fence 自动补全已含 plantuml（`CodeBlockExtension.getAllLanguages` 合并 `listMarkdownCodeRendererLanguages`），无需改。
+* highlight.js 11.11.1 内置 192 种语言，不含 plantuml/puml/pu。
+* `CodeFileViewer.tsx:21` 取 `EXT_TO_LANG[ext]` 作为 lang；无映射则 `highlightAuto`。
+* 现有 plugin SDK contribution 点：`commands / fileTypes / containers / features / tools / exporters / fileTemplates / keybindings / exportEnhancers / markdownCodeRenderers / editorLanguages` —— 没有"注册 hljs grammar"的点。
+* `markdownCodeRenderers` 是替换整个代码块为 React 组件（mermaid 走这条路），不是给源码加语法高亮。
+* `editorLanguages` 是 CodeMirror 语言（Lezer grammar），跟 highlight.js 不兼容，不能复用。
+* `PluginModule` shape 在 `packages/plugin-sdk/src/contracts.ts`，manifest `ContributionPoints` 在 `packages/plugin-sdk/src/types.ts`。
+* plugin-host `index.ts` re-exports SDK 类型；`trustedLoader.ts:118-130` wire 所有 adapter；adapter 模板见 `editorLanguageAdapter.ts`。
+* 插件加载是异步的；rehype-highlight 处理 ```plantuml 块时若插件未加载则跳过（`ignoreMissing: true`）——markdown 重新渲染时（任何 keystroke）会再次尝试，加载完成后自然恢复。
 
 ## Decision (ADR-lite)
 
-**Context**: highlight.js 不内置 plantuml；npm 上 `highlightjs-plantuml` 包状态/可用性无法可靠验证；CodeMirror 的 plantuml Lezer grammar 与 hljs 格式不兼容无法复用。
+**Context**: 上一版方案（commit 014d16a）在核心 `apps/desktop/src/services/highlightLanguages.ts` 内置 plantuml grammar。用户反馈这把 plantuml 特例固化在 Quill 核心，应交给插件。
 
-**Decision**: 选 A——在 `apps/desktop/src/services/highlightLanguages.ts` 内置最小 plantuml hljs grammar，模块加载时注册一次（`hljs.registerLanguage('plantuml', ...)`）。MarkdownPreview 与 CodeFileViewer 共用同一份 grammar。
+**Decision**: 选 A——回滚核心 grammar，加 `contributes.highlightGrammars[]` contribution 点。grammar 由 plantuml 插件提供。
 
 **Consequences**:
-- grammar 覆盖率约 80% 常见 PlantUML 构造；冷门 skinparam 参数 / `!include` / `!function` 不高亮——可接受，后续按需扩展。
-- 未来要加 dot/graphviz 等其他无 hljs grammar 的语言时，复用此文件追加。
-- 一处注册，零运行时开销（hljs 内部 Map 查询）。
+- 核心零 plantuml 特例代码。`CodeFileViewer` 的 fallback 改为通用："若 ext 本身是 hljs 注册语言就用它"，让任何插件注册的 grammar 自动覆盖对应扩展名文件。
+- 插件未加载时 ```plantuml 块无高亮（`ignoreMissing` 静默）；插件加载后再次渲染时生效。markdown 实时渲染，热路径无回归。
+- 未来 dot/graphviz/其他无 hljs grammar 的语言都能靠插件补，零核心改动。
+- PlantUML grammar 代码迁移到 plantuml 插件仓库（external），不在本仓库。本仓库只负责契约 + adapter。
 
-## Implementation Plan
+## Requirements
 
-* PR1（单步）：
-  1. 新建 `apps/desktop/src/services/highlightLanguages.ts`：定义 plantuml grammar + 模块加载时 `hljs.registerLanguage('plantuml', ...)` + 也注册 `puml`、`pu` 别名（hljs 的 `aliases` 字段）。
-  2. `apps/desktop/src/components/file-types/markdown/MarkdownPreview.tsx`：`import '@/services/highlightLanguages'` 触发注册（side-effect import）。
-  3. `apps/desktop/src/components/file-types/code/CodeFileViewer.tsx:5-16`：`EXT_TO_LANG` 加 `plantuml: 'plantuml', puml: 'plantuml', pu: 'plantuml'`。
-  4. 新增最小单测 `highlightLanguages.test.ts`：注册后 `hljs.getLanguage('plantuml')` 非空；`hljs.highlight('@startuml\nparticipant Alice\n@enduml', { language: 'plantuml' }).value` 含 `hljs-meta` / `hljs-keyword` span。
-  5. 跑 lint / typecheck / test。
+* plugin SDK 新增 `HighlightGrammarContribution` 类型 + manifest `contributes.highlightGrammars[]` 字段 + `PluginModule.highlightGrammars` 导出映射 + `HighlightGrammarFn` 函数类型。
+* host 侧 `highlightGrammarAdapter.ts`：解析 `entry` entry-ref → `hljs.registerLanguage(name, fn)`；deactivate 时 `unregisterLanguage`；foreign-plugin 守护；missing entry-ref warn + skip。
+* `trustedLoader` wire 进 adapter。
+* `CodeFileViewer.tsx` 改 fallback：`hljs.getLanguage(ext) ? ext : EXT_TO_LANG[ext]`，移除 plantuml 特例映射。
+* 撤销前次 commit 014d16a 的核心改动：删除 `apps/desktop/src/services/highlightLanguages.ts` + 测试，移除 `MarkdownPreview.tsx` 的 side-effect import。
+
+## Acceptance Criteria
+
+* [ ] plugin SDK 导出 `HighlightGrammarContribution` + `HighlightGrammarFn` 类型。
+* [ ] manifest schema 接受 `contributes.highlightGrammars[]`。
+* [ ] `highlightGrammarAdapter` 注册 + 卸载 + foreign-plugin 守护 + missing entry-ref 警告（7 个单测全绿）。
+* [ ] `trustedLoader` wire 进 adapter，activate 时调用、deactivate 时 dispose。
+* [ ] `CodeFileViewer` 的 fallback 用 `hljs.getLanguage(ext)`，无 plantuml 特例映射。
+* [ ] `pnpm lint` / typecheck / 既有测试绿。
+
+## Out of Scope
+
+* PlantUML grammar 实际代码（迁移到 plantuml 插件仓库）。
+* 其他无 hljs grammar 的语言（dot/graphviz）—— 单独任务。
+* 已加载插件的 grammar 在 markdown 第一次渲染时即生效的优化（异步加载 + 重新渲染已够用）。
+
+## Technical Notes
+
+* SDK 改动：`packages/plugin-sdk/src/types.ts`（`HighlightGrammarContribution` + `ContributionPoints.highlightGrammars`）+ `packages/plugin-sdk/src/contracts.ts`（`HighlightGrammarFn` + `PluginModule.highlightGrammars`）+ `packages/plugin-sdk/index.ts`（re-export）。
+* Host 改动：`apps/desktop/src/services/plugin-host/highlightGrammarAdapter.ts`（新）+ `highlightGrammarAdapter.test.ts`（新）+ `trustedLoader.ts`（wire）+ `packages/plugin-host/index.ts`（re-export SDK 类型）。
+* App 改动：`apps/desktop/src/components/file-types/code/CodeFileViewer.tsx`（fallback + 移除 plantuml 映射）+ `apps/desktop/src/components/file-types/markdown/MarkdownPreview.tsx`（移除 side-effect import）+ 删除 `apps/desktop/src/services/highlightLanguages.ts` + 测试。
+* 插件 manifest 示例（在 plantuml 插件仓库做，不在本仓库）：
+  ```json
+  { "contributes": { "highlightGrammars": [
+    { "name": "plantuml", "aliases": ["puml", "pu"], "entry": "plantumlGrammar" }
+  ]}}
+  ```
+  插件 module 导出：
+  ```ts
+  export const highlightGrammars = {
+    plantumlGrammar: (hljs) => ({ name: 'PlantUML', aliases: ['puml','pu'], ... })
+  };
+  ```

@@ -59,6 +59,7 @@ import { registerPluginKeybindings } from './keybindingAdapter';
 import { registerPluginExportEnhancers } from './exportEnhancerAdapter';
 import { registerPluginMarkdownCodeRenderers } from './markdownCodeRendererAdapter';
 import { registerPluginEditorLanguages } from './editorLanguageAdapter';
+import { registerPluginHighlightGrammars } from './highlightGrammarAdapter';
 import { buildPluginAi } from './aiCapability';
 import { buildPluginEnv, disposePluginEnv } from './envCapability';
 
@@ -127,6 +128,7 @@ export const trustedLoader: PluginLoader = {
           registerPluginExportEnhancers(manifest, module),
           registerPluginMarkdownCodeRenderers(manifest, module),
           registerPluginEditorLanguages(manifest, module),
+          registerPluginHighlightGrammars(manifest, module),
         ];
         for (const d of adapterDisposables) ctx.addDisposable(d);
 

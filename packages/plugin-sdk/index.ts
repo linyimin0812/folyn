@@ -22,6 +22,7 @@ export type {
   ExportEnhancerContribution,
   MarkdownCodeRendererContribution,
   EditorLanguageContribution,
+  HighlightGrammarContribution,
   ActivationEvents,
   PluginAiCapability,
   PluginAiChatParams,
@@ -49,4 +50,5 @@ export type {
   ExportEnhancerHandler,
   MarkdownCodeRendererProps,
   EditorLanguageFactory,
+  HighlightGrammarFn,
 } from './src/contracts';
