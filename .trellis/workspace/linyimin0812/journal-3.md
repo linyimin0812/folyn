@@ -524,3 +524,39 @@ Fixed markdown editor code-fence language picker missing plugin-contributed lang
 ### Next Steps
 
 - None - task complete
+
+
+## Session 130: AI Panel 输入框加清除上下文/清空消息图标
+
+**Date**: 2026-08-07
+**Task**: AI Panel 输入框加清除上下文/清空消息图标
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+AI Panel 输入框 trailingSlot 新增 Eraser(清除上下文) + Trash2(清空消息) 两个 ghost 图标按钮。aiStore 新增 clearContext()（清 cliSessionId+fileChanges，保留 messages），清空消息复用 clearMessages()。清空消息点击弹 Tauri confirm 框防误删；清除上下文点击后右下角浮出 chat-toast 小弹窗提示「已清除上下文」。zh/en i18n 全套。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9085962` | (see git log) |
+| `e897d96` | (see git log) |
+| `d90859f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
