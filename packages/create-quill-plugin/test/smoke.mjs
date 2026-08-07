@@ -13,18 +13,24 @@ const bin = join(here, '..', 'dist', 'index.js');
 
 const dir = await mkdtemp(join(tmpdir(), 'create-quill-plugin-'));
 try {
-  execFileSync(process.execPath, [bin, 'demo-plugin', '--yes', '--author', 'Jane'], {
-    cwd: dir,
-    stdio: 'pipe',
-  });
+  execFileSync(process.execPath, [
+    bin, 'demo-plugin', '--yes',
+    '--author', 'Jane',
+    '--version', '1.2.3',
+    '--quill', '>=0.2.0',
+    '--display-name', 'Demo Plugin',
+  ], { cwd: dir, stdio: 'pipe' });
 
   const manifest = JSON.parse(await readFile(join(dir, 'demo-plugin', 'manifest.json'), 'utf8'));
   assert.equal(manifest.id, 'demo-plugin');
-  assert.equal(manifest.name, 'demo-plugin');
+  assert.equal(manifest.name, 'Demo Plugin');
   assert.equal(manifest.author, 'Jane');
+  assert.equal(manifest.version, '1.2.3');
+  assert.equal(manifest.quill, '>=0.2.0');
 
   const pkg = JSON.parse(await readFile(join(dir, 'demo-plugin', 'package.json'), 'utf8'));
   assert.equal(pkg.name, 'quill-plugin-demo-plugin');
+  assert.equal(pkg.version, '1.2.3');
 
   console.log('OK: smoke test passed');
 } finally {

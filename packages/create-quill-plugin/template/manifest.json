@@ -1,9 +1,9 @@
 {
   "id": "__id__",
   "name": "__Name__",
-  "version": "0.1.0",
+  "version": "__version__",
   "author": "__author__",
-  "quill": ">=0.1.0",
+  "quill": "__quill__",
   "tier": "trusted",
   "main": "dist/index.js",
   "html": "",

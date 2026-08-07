@@ -1,6 +1,6 @@
 {
   "name": "__pkgName__",
-  "version": "0.1.0",
+  "version": "__version__",
   "private": true,
   "type": "module",
   "scripts": {

@@ -10,15 +10,23 @@ import { parseArgs } from 'node:util';
 const here = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_DIR = join(here, '..', 'template');
 
+const DEFAULTS = {
+  version: '0.1.0',
+  quill: '>=0.1.0',
+};
+
 const HELP = `Usage: create-quill-plugin [name] [options]
 
 Scaffolds a Quill plugin in ./<name>/.
 
 Options:
-  --name <name>      Plugin name (alternative to positional arg)
-  --author <name>    Author (default: empty)
-  --yes, -y          Skip prompts; use defaults for missing fields
-  -h, --help         Show this help
+  --name <name>          Plugin name (alternative to positional arg)
+  --display-name <name>  Human-readable name (default: same as --name)
+  --author <name>        Author (default: empty)
+  --version <ver>        Plugin version (default: ${DEFAULTS.version})
+  --quill <constraint>    Quill engine compat (default: ${DEFAULTS.quill})
+  --yes, -y              Skip prompts; use defaults for missing fields
+  -h, --help             Show this help
 
 Interactive (default TTY): prompts for any field not supplied via flags.
 Non-interactive: pass --yes, supply all fields via flags/positional.
@@ -29,7 +37,10 @@ function parseCliArgs(argv: string[]) {
     const { values, positionals } = parseArgs({
       options: {
         name: { type: 'string' },
+        'display-name': { type: 'string' },
         author: { type: 'string' },
+        version: { type: 'string' },
+        quill: { type: 'string' },
         yes: { type: 'boolean', short: 'y' },
         help: { type: 'boolean', short: 'h' },
       },
@@ -38,7 +49,10 @@ function parseCliArgs(argv: string[]) {
     });
     return {
       name: values.name ?? positionals[0] ?? null,
-      author: values.author ?? '',
+      displayName: values['display-name'] ?? null,
+      author: values.author ?? null,
+      version: values.version ?? null,
+      quill: values.quill ?? null,
       yes: Boolean(values.yes),
       help: Boolean(values.help),
     };
@@ -55,7 +69,8 @@ function toId(name: string): string {
 }
 
 async function prompt(rl: readline.Interface, q: string, defaultValue = ''): Promise<string> {
-  const a = (await rl.question(q)).trim();
+  const suffix = defaultValue ? ` [${defaultValue}] ` : ': ';
+  const a = (await rl.question(q.endsWith(':') ? q.slice(0, -1) + suffix : q + suffix)).trim();
   return a || defaultValue;
 }
 
@@ -67,14 +82,20 @@ async function main() {
   }
 
   let name = args.name;
-  let author = args.author;
+  let displayName = args.displayName;
+  let author = args.author ?? '';
+  let version = args.version ?? DEFAULTS.version;
+  let quill = args.quill ?? DEFAULTS.quill;
   const interactive = !args.yes && stdout.isTTY;
 
-  if (interactive && (name === null || author === '')) {
+  if (interactive) {
     const rl = readline.createInterface({ input: stdin, output: stdout });
     try {
       if (name === null) name = await prompt(rl, 'Plugin name: ');
-      if (author === '') author = await prompt(rl, 'Author (optional, Enter to skip): ');
+      if (displayName === null) displayName = await prompt(rl, 'Display name: ', name);
+      if (author === '') author = await prompt(rl, 'Author (optional): ');
+      version = await prompt(rl, 'Version: ', version);
+      quill = await prompt(rl, 'Quill engine compat: ', quill);
     } finally {
       rl.close();
     }
@@ -92,17 +113,20 @@ async function main() {
     process.exit(1);
   }
   const pkgName = id.startsWith('quill-plugin-') ? id : `quill-plugin-${id}`;
+  const finalDisplayName = displayName || name;
   const target = resolve(process.cwd(), name);
   if (existsSync(target)) {
     console.error(`✗ ${target} already exists`);
     process.exit(1);
   }
 
-  const placeholders = [
+  const placeholders: [string, string][] = [
     ['__id__', id],
     ['__pkgName__', pkgName],
-    ['__Name__', name],
+    ['__Name__', finalDisplayName],
     ['__author__', author],
+    ['__version__', version],
+    ['__quill__', quill],
   ];
   const filesToRewrite = [
     'package.json',
