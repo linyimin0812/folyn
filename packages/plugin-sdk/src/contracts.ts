@@ -122,6 +122,24 @@ export type ExporterHandler = (content: string, ctx: ExporterContext) => Promise
  */
 export type ExportEnhancerHandler = (body: HTMLElement, ctx: ExporterContext) => Promise<void>;
 
+export interface MarkdownCodeRendererProps {
+  /** Raw text content of the fenced code block. */
+  source: string;
+  /** Fence language as written (e.g. `puml` for an alias hit). */
+  language: string;
+  /** Canonical language id the renderer registered under (e.g. `plantuml`). */
+  resolvedLanguage: string;
+  /** Vault-relative path of the markdown file being previewed. */
+  filePath: string;
+}
+
+/**
+ * Lazy CodeMirror language factory. Returns a `LanguageSupport` at runtime;
+ * ponytail: typed as `() => unknown` because the SDK has no `@codemirror/language`
+ * dependency — the host narrows to `LanguageSupport` when it calls the factory.
+ */
+export type EditorLanguageFactory = () => unknown;
+
 export interface PluginModule {
   /** Entry-ref → file-type handler. Keys match `contributes.fileTypes[].handler`. */
   handlers?: Record<string, FileTypeHandler>;
@@ -139,6 +157,10 @@ export interface PluginModule {
   exporters?: Record<string, ExporterHandler>;
   /** Entry-ref → export enhancer. Keys match `contributes.exportEnhancers[].run`. */
   exportEnhancers?: Record<string, ExportEnhancerHandler>;
+  /** Entry-ref → fenced-block renderer. Keys match `contributes.markdownCodeRenderers[].component`. */
+  markdownCodeRenderers?: Record<string, ComponentType<MarkdownCodeRendererProps>>;
+  /** Entry-ref → CodeMirror language factory. Keys match `contributes.editorLanguages[].entry`. */
+  editorLanguages?: Record<string, EditorLanguageFactory>;
   /** Optional lifecycle hook; called by the trusted loader on activate. */
   activate?: (ctx: PluginContext) => void | Promise<void>;
   /** Optional lifecycle hook; called by the trusted loader on deactivate. */

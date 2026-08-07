@@ -24,6 +24,8 @@ export type {
   FileTemplateContribution,
   KeybindingContribution,
   ExportEnhancerContribution,
+  MarkdownCodeRendererContribution,
+  EditorLanguageContribution,
   ActivationEvents,
   PluginAiCapability,
   PluginAiChatParams,
@@ -47,4 +49,6 @@ export type {
   ExporterContext,
   ExporterHandler,
   ExportEnhancerHandler,
+  MarkdownCodeRendererProps,
+  EditorLanguageFactory,
 } from 'quill-plugin-sdk';

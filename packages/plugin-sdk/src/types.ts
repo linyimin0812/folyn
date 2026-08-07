@@ -382,6 +382,24 @@ export interface ExportEnhancerContribution {
   run: string;
 }
 
+export interface MarkdownCodeRendererContribution {
+  /** Fenced-block language id, e.g. `plantuml` or `mermaid`. */
+  language: string;
+  /** Alternate fence languages that also dispatch to this renderer. */
+  aliases?: string[];
+  /** Entry ref into `PluginModule.markdownCodeRenderers`. */
+  component: string;
+}
+
+export interface EditorLanguageContribution {
+  /** CodeMirror language id, e.g. `plantuml` or `mermaid`. */
+  id: string;
+  /** Alternate language names that also resolve to this language support. */
+  aliases?: string[];
+  /** Entry ref into `PluginModule.editorLanguages`. */
+  entry: string;
+}
+
 export interface ContributionPoints {
   commands?: CommandContribution[];
   fileTypes?: FileTypeContribution[];
@@ -396,6 +414,10 @@ export interface ContributionPoints {
   keybindings?: KeybindingContribution[];
   /** Post-render export enhancers for container/file-preview DOM. */
   exportEnhancers?: ExportEnhancerContribution[];
+  /** Fenced-block renderers for Markdown preview (e.g. ```mermaid, ```plantuml). */
+  markdownCodeRenderers?: MarkdownCodeRendererContribution[];
+  /** CodeMirror language extensions contributed by plugins. */
+  editorLanguages?: EditorLanguageContribution[];
 }
 
 export interface ActivationEvents {

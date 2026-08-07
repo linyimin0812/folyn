@@ -57,6 +57,8 @@ import { registerPluginExporters } from './exporterAdapter';
 import { registerPluginFileTemplates } from './fileTemplateAdapter';
 import { registerPluginKeybindings } from './keybindingAdapter';
 import { registerPluginExportEnhancers } from './exportEnhancerAdapter';
+import { registerPluginMarkdownCodeRenderers } from './markdownCodeRendererAdapter';
+import { registerPluginEditorLanguages } from './editorLanguageAdapter';
 import { buildPluginAi } from './aiCapability';
 import { buildPluginEnv, disposePluginEnv } from './envCapability';
 
@@ -120,6 +122,8 @@ export const trustedLoader: PluginLoader = {
           registerPluginFileTemplates(manifest),
           registerPluginKeybindings(manifest),
           registerPluginExportEnhancers(manifest, module),
+          registerPluginMarkdownCodeRenderers(manifest, module),
+          registerPluginEditorLanguages(manifest, module),
         ];
         for (const d of adapterDisposables) ctx.addDisposable(d);
 
@@ -171,6 +175,8 @@ function normalizeModule(mod: Record<string, unknown>): PluginModule {
   if (src.commands) out.commands = src.commands as PluginModule['commands'];
   if (src.exporters) out.exporters = src.exporters as PluginModule['exporters'];
   if (src.exportEnhancers) out.exportEnhancers = src.exportEnhancers as PluginModule['exportEnhancers'];
+  if (src.markdownCodeRenderers) out.markdownCodeRenderers = src.markdownCodeRenderers as PluginModule['markdownCodeRenderers'];
+  if (src.editorLanguages) out.editorLanguages = src.editorLanguages as PluginModule['editorLanguages'];
   if (typeof src.activate === 'function') out.activate = src.activate as PluginModule['activate'];
   if (typeof src.deactivate === 'function') out.deactivate = src.deactivate as PluginModule['deactivate'];
   return out;

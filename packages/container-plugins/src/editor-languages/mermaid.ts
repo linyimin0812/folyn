@@ -97,6 +97,7 @@ export const mermaidStream = StreamLanguage.define({
   },
 });
 
+/** ponytail: factory shape — host narrows the `unknown` return to LanguageSupport. */
 export function mermaid(): LanguageSupport {
   return new LanguageSupport(mermaidStream);
 }

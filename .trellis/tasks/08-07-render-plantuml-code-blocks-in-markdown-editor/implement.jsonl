@@ -1,0 +1,12 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Overall desktop frontend conventions — Tauri+React+CodeMirror stack, module boundaries."}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "Where new adapter/registry files live in apps/desktop/src/services/plugin-host/ and src/editor/."}
+{"file": ".trellis/spec/desktop/frontend/trusted-plugin-rendering.md", "reason": "How trusted-tier plugin React components are resolved and rendered host-realm — core to the new markdownCodeRenderers dispatch."}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "EditorView + MarkdownPreview + CodeMirror language wiring — where editorLanguages registry plugs in."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "React component patterns for the new PreWithCodeRenderer dispatch + plugin-rendered blocks."}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "Registry-lookup hook shape for MarkdownPreview to consume markdownCodeRendererRegistry reactively."}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store pattern for the two new registries (markdownCodeRenderer / editorLanguage)."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Type-only React imports + entry-ref resolution patterns the SDK contract uses."}
+{"file": ".trellis/spec/container-plugins/frontend/index.md", "reason": "Existing builtin container-plugin registration pattern — direct template for markdownCodeRenderers/editorLanguages builtin registration."}
+{"file": ".trellis/spec/container-plugins/frontend/component-guidelines.md", "reason": "How MermaidBlock-style components are structured; new PlantUmlMarkdownBlock mirrors it."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse over re-implementation — applies to lifting mermaid renderer/editor-language into builtin registration vs. duplicating."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "SDK types -> host adapter -> registry -> consumer is a cross-layer change; this guide flags the seams."}

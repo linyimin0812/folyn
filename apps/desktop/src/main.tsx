@@ -17,6 +17,21 @@ import App from './App';
 window.React = React;
 window.ReactDOM = ReactDOMFull;
 
+// Expose the host's @codemirror/language instance so trusted-tier blob plugins
+// (e.g. quill-plugin-plantuml) can share it via `window.codemirrorLanguage`.
+// Same reason as React above: a blob URL can't resolve `import '@codemirror/language'`,
+// and bundling it into the plugin would produce a second module instance whose
+// `LanguageSupport` extension the host's `EditorState` won't reliably apply
+// (module-instance mismatch). Set before plugin import() so plugins resolve the
+// live instance.
+// ponytail: local cast — `declare global` in vite-env.d.ts (a script-level file)
+// doesn't merge onto Window, and making that file a module breaks the ambient
+// `declare module 'virtual:file-viewer-renderers'`. A local cast is the smallest
+// diff that typechecks. React/ReactDOM on window work via the UMD
+// `export as namespace` globals from @types/react(-dom), not via vite-env.d.ts.
+import * as cmLanguage from '@codemirror/language';
+(window as unknown as { codemirrorLanguage: typeof cmLanguage }).codemirrorLanguage = cmLanguage;
+
 import { PetApp } from './components/pet/PetApp';
 import { PetPanelApp } from './components/pet/PetPanelApp';
 import { PetBubbleApp } from './components/pet/PetBubbleApp';

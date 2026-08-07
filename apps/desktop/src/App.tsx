@@ -33,6 +33,7 @@ import { loadAiSessionsForVault } from './store/aiStore';
 import { registerBuiltinPlugins } from '@quill/container-plugins';
 import { registerBuiltinCommands } from './services/commandRegistry';
 import { registerBuiltinPanels } from './services/registerBuiltinPanels';
+import { registerBuiltinCodeContributions } from './services/registerBuiltinCodeContributions';
 import { isTauri } from './utils/platform';
 import { useLocaleStore } from '@/store/localeStore';
 import { pluginHost } from '@quill/plugin-host';
@@ -41,6 +42,7 @@ import { trustedLoader } from './services/plugin-host/trustedLoader';
 import { attachToolWindowRpcListener } from './services/plugin-host/toolWindowRpcListener';
 
 registerBuiltinPlugins();
+registerBuiltinCodeContributions();
 // Seed the command palette's static commands (actions + panels/modes) once at
 // startup. File commands are sourced dynamically from the live vault tree.
 registerBuiltinCommands();

@@ -1,7 +1,16 @@
 import type { ReactNode, CSSProperties, WheelEvent } from 'react';
-import type { PreviewProps, FileTypeHandler, PluginModule, ExporterContext } from 'quill-plugin-sdk';
+import type {
+  PreviewProps,
+  FileTypeHandler,
+  PluginModule,
+  ExporterContext,
+  MarkdownCodeRendererProps,
+  ContainerProps,
+  ExportEnhancerHandler,
+} from 'quill-plugin-sdk';
 import plantumlEncoder from 'plantuml-encoder';
 import { resolveReact } from './react';
+import { plantumlLanguage } from './plantumlLanguage';
 
 const PLANTUML_SERVER = 'https://www.plantuml.com/plantuml/svg/';
 const DEBOUNCE_MS = 300;
@@ -126,9 +135,104 @@ const handler: FileTypeHandler = {
   Preview: PlantUmlPreview,
 };
 
+// ponytail: shared encode/render/error helper — dedupes the <img>+onError
+// shape between the markdown fenced-block renderer and the container
+// directive component. Only acceptable internal abstraction per dispatch.
+function PlantUmlDiagram({ source }: { source: string }) {
+  const R = resolveReact();
+  const { createElement: h, useState, useEffect } = R;
+  const [debounced, setDebounced] = useState(source);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setError(null);
+    const t = setTimeout(() => setDebounced(source), DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [source]);
+
+  if (error || !debounced.trim()) {
+    return h('div', {
+      'data-container': 'plantuml',
+      className: 'plantuml-block',
+      style: { padding: '8px' },
+    },
+      error
+        ? h('div', { className: 'plantuml-error', style: { color: '#c00', whiteSpace: 'pre-wrap', marginBottom: 8 } },
+            `PlantUML rendering failed. Check syntax or network.\n\nSource:\n${debounced}`)
+        : h('pre', { style: { whiteSpace: 'pre-wrap', margin: 0, padding: 8, background: 'var(--surf, #f6f6f6)', borderRadius: 4 } }, debounced),
+    );
+  }
+
+  const url = PLANTUML_SERVER + plantumlEncoder.encode(debounced);
+  return h('div', {
+    'data-container': 'plantuml',
+    className: 'plantuml-block',
+    style: { display: 'flex', justifyContent: 'center', padding: '8px' },
+  },
+    h('img', {
+      src: url,
+      alt: 'PlantUML diagram',
+      onError: () => setError('render-failed'),
+      style: { maxWidth: '100%' },
+    }),
+  );
+}
+
+export function PlantUmlMarkdownBlock(props: MarkdownCodeRendererProps) {
+  const R = resolveReact();
+  return R.createElement(PlantUmlDiagram, { source: props.source });
+}
+
+// ponytail: container children serialization mirrors MermaidPlugin.extractText
+// — handles string / array / React node trees. Naive: only walks props.children
+// (no text nodes split across sibling spans); upgrade path is a proper
+// text-extractor if directive bodies get complex.
+function extractText(children: ReactNode): string {
+  if (typeof children === 'string') return children;
+  if (typeof children === 'number') return String(children);
+  if (Array.isArray(children)) return children.map(extractText).join('');
+  if (children && typeof children === 'object' && 'props' in children) {
+    return extractText((children as { props: { children?: ReactNode } }).props.children);
+  }
+  return '';
+}
+
+export function PlantUmlContainerBlock(props: ContainerProps) {
+  const R = resolveReact();
+  return R.createElement(PlantUmlDiagram, { source: extractText(props.children) });
+}
+
+// ponytail: best-effort SVG inlining for export. Swallows per-img fetch/parse
+// errors — on failure the <img> stays (remote URL; broken if offline, but
+// source text remains in the rendered block elsewhere). DOMParser is stdlib.
+export const enhancePlantUml: ExportEnhancerHandler = async (body: HTMLElement) => {
+  const imgs = Array.from(body.querySelectorAll('img'));
+  await Promise.all(imgs.map(async (img) => {
+    const src = img.getAttribute('src') ?? '';
+    if (!src.startsWith(PLANTUML_SERVER)) return;
+    try {
+      const res = await fetch(src);
+      if (!res.ok) return;
+      const text = await res.text();
+      const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+      const svg = doc.querySelector('svg');
+      if (!svg) return;
+      const adopted = document.importNode(svg, true);
+      img.replaceWith(adopted);
+    } catch {
+      // ponytail: per-img failure leaves the <img> in place — export falls
+      // back to remote URL (acceptable per prd offline-fallback note).
+    }
+  }));
+};
+
 const module: PluginModule = {
   handlers: { plantuml: handler },
   exporters: { svg: exportPlantUmlSvg },
+  markdownCodeRenderers: { PlantUmlMarkdownBlock },
+  containers: { PlantUmlContainerBlock },
+  exportEnhancers: { enhancePlantUml },
+  editorLanguages: { plantumlLanguage: () => plantumlLanguage() },
 };
 
 export default module;

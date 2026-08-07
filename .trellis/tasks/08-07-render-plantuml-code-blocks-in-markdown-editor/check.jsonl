@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality bar the check sub-agent enforces — lint/typecheck/test/build gates."}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Type safety checks for the new SDK contribution types + PluginModule fields."}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify new PreWithCodeRenderer + PlantUml*Block components conform to props/composition conventions."}
+{"file": ".trellis/spec/container-plugins/frontend/quality-guidelines.md", "reason": "Container-plugins package quality bar — applies since mermaid builtin migration + new plantuml contributions land here."}
+{"file": ".trellis/spec/container-plugins/frontend/index.md", "reason": "Builtin registration pattern — check that new markdownCodeRenderers/editorLanguages builtins follow the same shape."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Cross-layer spec coverage: SDK -> adapter -> registry -> consumer seams all need verification."}

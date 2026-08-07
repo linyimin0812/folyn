@@ -20,17 +20,29 @@ import {
   indentOnInput,
   indentUnit,
   LanguageDescription,
+  LanguageSupport,
 } from '@codemirror/language';
 import { quillHighlighting } from './highlightStyle';
+import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
+import { listEditorLanguages } from '@/services/plugin-host/editorLanguageAdapter';
 
-// ponytail: @codemirror/language-data has no mermaid; supply a tiny StreamLanguage
-// so fenced ```mermaid blocks get syntax highlighting in the editor.
-const mermaidDesc = LanguageDescription.of({
-  name: 'mermaid',
-  extensions: ['mermaid'],
-  load: async () => (await import('./extensions/mermaidLanguage')).mermaid(),
-});
-const codeLanguages = [mermaidDesc, ...languages];
+registerBuiltinCodeContributions();
+
+// ponytail: build markdown codeLanguages at module load. Reads the editorLanguageRegistry
+// (mermaid builtin + any plugin-registered languages loaded before this module) and falls
+// back to @codemirror/language-data. Open editors do NOT live-migrate on later plugin load —
+// MVP; affects newly-opened editors only.
+function buildCodeLanguages(): LanguageDescription[] {
+  const registryDescs = listEditorLanguages().map((entry) =>
+    LanguageDescription.of({
+      name: entry.canonical,
+      alias: entry.aliases,
+      load: async () => entry.factory() as LanguageSupport,
+    }),
+  );
+  return [...registryDescs, ...languages];
+}
+const codeLanguages = buildCodeLanguages();
 import {
   autocompletion,
   closeBrackets,

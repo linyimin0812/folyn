@@ -21,6 +21,10 @@ export { cardPlugin } from './src/plugins/CardPlugin';
 export { gridPlugin } from './src/plugins/GridPlugin';
 export { buttonPlugin } from './src/plugins/ButtonPlugin';
 
+// Built-in editor language factories (CodeMirror StreamLanguage, hosted by
+// the app — see apps/desktop registerBuiltinCodeContributions).
+export { mermaid as mermaidLanguageFactory } from './src/editor-languages/mermaid';
+
 import { ContainerRegistry } from './src/ContainerRegistry';
 import { calloutPlugin } from './src/plugins/CalloutPlugin';
 import { tabsPlugin, tabPlugin } from './src/plugins/TabsPlugin';

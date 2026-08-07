@@ -12,8 +12,10 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 import { rehypeSourceLine } from './rehypeSourceLine';
-import { ContainerRegistry, registerBuiltinPlugins, MermaidBlock, VaultContext } from '@quill/container-plugins';
+import { ContainerRegistry, registerBuiltinPlugins, VaultContext } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
+import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
+import { getMarkdownCodeRenderer } from '@/services/plugin-host/markdownCodeRendererAdapter';
 import { getHandlerByExtension, getHandlerById } from '@/components/file-types/registry';
 import { isTauri } from '@/utils/platform';
 import { convertFileSrc } from '@tauri-apps/api/core';
@@ -52,6 +54,7 @@ function rehypeRemoveCodeBreaks() {
 
 // Ensure built-in plugins are registered once
 registerBuiltinPlugins();
+registerBuiltinCodeContributions();
 
 /**
  * Build a component map from the ContainerRegistry for rehype-react.
@@ -532,21 +535,25 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
       return createElement('img', { src, alt, loading: 'lazy', ...rest });
     };
 
-    map['pre'] = function PreWithMermaid(props: any) {
+    map['pre'] = function PreWithCodeRenderer(props: any) {
       const { children, node, ...rest } = props;
-      const codeChild = Array.isArray(children)
-        ? children.find((c: any) => c?.props?.className?.includes('language-mermaid'))
-        : children?.props?.className?.includes('language-mermaid') ? children : null;
-      if (codeChild) {
-        return createElement(MermaidBlock, null, codeChild.props.children);
-      }
-      // Detect fence language + source line for run/write-back.
+      // Detect fence language + source line for renderer dispatch + run/write-back.
       const langEl = Array.isArray(children)
         ? children.find((c: any) => typeof c?.props?.className === 'string' && c.props.className.includes('language-'))
         : (typeof children?.props?.className === 'string' && children.props.className.includes('language-') ? children : null);
       const lang = langEl?.props?.className?.match(/language-([\w-]+)/)?.[1];
       const rawLine = node?.properties?.['data-source-line'] ?? rest['data-source-line'];
       const sourceLine = rawLine != null ? Number(rawLine) : undefined;
+      const renderer = lang ? getMarkdownCodeRenderer(lang) : undefined;
+      if (renderer && langEl) {
+        const source = extractTextContent(langEl.props.children);
+        return createElement(renderer.component, {
+          source,
+          language: lang,
+          resolvedLanguage: renderer.canonical,
+          filePath,
+        });
+      }
       return createElement(
         CodeBlockWrapper,
         { ...rest, lang, sourceLine, content: contentRef.current, onChange: onChangeRef.current },
