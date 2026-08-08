@@ -60,9 +60,9 @@ export interface PluginRow {
   state: PluginUiState;
   /** Present when `state === 'failed'`, for diagnostics. */
   error?: string;
-  /** Inline-SVG / emoji / short-text icon (resolved from the manifest; a
-   * `.svg` path has already been fetched and inlined). Undefined when the
-   * manifest declares no icon or the read failed. */
+  /** Inline-SVG / emoji / ThemeIcon-name / short-text icon (resolved from
+   * the manifest; a `.svg` path has already been fetched and inlined).
+   * Undefined when the manifest declares no icon or the read failed. */
   icon?: string;
   /** One-line description from the manifest. */
   description?: string;
@@ -104,6 +104,42 @@ interface PluginState {
   clearError: () => void;
 }
 
+/**
+ * Contribution kinds that carry an icon, in display-priority order. Used to
+ * derive a plugin's row icon when the manifest has no top-level `icon`.
+ */
+const ICON_CONTRIBUTION_KEYS = [
+  'features',
+  'tools',
+  'containers',
+  'commands',
+  'fileTemplates',
+] as const;
+
+/**
+ * Resolve the icon string to show for a plugin's settings row: the top-level
+ * `manifest.icon` wins; otherwise fall back to the first non-empty icon
+ * declared by any contribution point (features → tools → containers →
+ * commands → fileTemplates). Sample plugins ship their identity icon in
+ * `contributes.*.icon`, so without this fallback the settings row would show
+ * a bare first-letter avatar.
+ */
+export function resolveManifestIcon(manifest: {
+  icon?: string;
+  contributes?: Partial<
+    Record<(typeof ICON_CONTRIBUTION_KEYS)[number], Array<{ icon?: string }>>
+  >;
+}): string | undefined {
+  if (manifest.icon && manifest.icon.trim().length > 0) return manifest.icon;
+  for (const key of ICON_CONTRIBUTION_KEYS) {
+    const items = manifest.contributes?.[key];
+    if (!items) continue;
+    const hit = items.find((item) => item.icon && item.icon.trim().length > 0);
+    if (hit?.icon) return hit.icon;
+  }
+  return undefined;
+}
+
 /** Pull the host's runtime plugin records into display rows. */
 async function fetchRows(): Promise<PluginRow[]> {
   if (!isTauri()) return [];
@@ -132,8 +168,9 @@ async function fetchRows(): Promise<PluginRow[]> {
         const manifest = JSON.parse(manifestText) as {
           icon?: string;
           description?: string;
+          contributes?: Record<string, Array<{ icon?: string }>>;
         };
-        icon = manifest.icon;
+        icon = resolveManifestIcon(manifest);
         description = manifest.description;
         if (icon && icon.trim().toLowerCase().endsWith('.svg') && !icon.trim().startsWith('<svg')) {
           try {

@@ -34,6 +34,7 @@ import { isTauri } from '@/utils/platform';
 import { usePluginStore, type PluginRow } from '@/store/pluginStore';
 import { Toggle } from '@/components/settings/primitives';
 import { IconFromSvg } from '@/components/icons/IconFromSvg';
+import { ThemeIcon, hasIcon } from '@/components/icons/ThemeIcon';
 
 /** State badge color per runtime state. */
 function stateBadgeClass(state: PluginRow['state']): string {
@@ -67,7 +68,8 @@ function tierLabel(tier: PluginRow['entry']['tier']): string {
 }
 
 /** Render a plugin's manifest icon at a fixed 20×20 slot. Inline SVG is
- * rendered via IconFromSvg; emoji/short text is rendered as text; absent
+ * rendered via IconFromSvg; a host ThemeIcon name (e.g. "folder") is
+ * rendered via ThemeIcon; emoji/short text is rendered as text; absent
  * icon falls back to the first letter of the plugin name. Mirrors the
  * precedent in `services/plugin-host/featureAdapter.tsx`. */
 function renderPluginIcon(icon: string | undefined, name: string) {
@@ -76,6 +78,9 @@ function renderPluginIcon(icon: string | undefined, name: string) {
     'shrink-0 inline-flex items-center justify-center rounded bg-surf2 border border-brd2 text-t2 overflow-hidden';
   if (icon && icon.trim().startsWith('<svg')) {
     return <IconFromSvg svg={icon} size={size} className="shrink-0" />;
+  }
+  if (icon && hasIcon(icon.trim())) {
+    return <ThemeIcon name={icon.trim()} size={size} className={boxCls} />;
   }
   if (icon && icon.trim().length > 0) {
     return (
