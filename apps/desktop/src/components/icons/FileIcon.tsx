@@ -157,7 +157,9 @@ export function FileIcon({ filename, isDir, fileType }: FileIconProps) {
   // files (before registry is initialized), so it must NOT touch the
   // registry — that would re-introduce the cycle.
   const handler = fileType ? getHandlerById(fileType) : getHandlerByExtension(ext);
-  if (handler?.icon) return <>{handler.icon}</>;
+  // Skip the generic code handler's icon (javaScript) for files that are only
+  // recognized as a fallback — use the neutral documentation icon instead.
+  if (handler && handler.id !== 'code' && handler?.icon) return <>{handler.icon}</>;
 
   return <ThemeIcon name="documentation" />;
 }

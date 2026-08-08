@@ -252,13 +252,13 @@ export const usePluginStore = create<PluginState>((set, get) => ({
       set({ error: '桌面端功能，请在 Tauri 环境中使用' });
       return;
     }
-    // Derive the plugin id from the source folder name (must be kebab-case to
-    // match the manifest id; the Rust side cross-checks).
+    // The install_plugin command reads the id from manifest.json, so the
+    // folder name is irrelevant — any folder (e.g. "dist") works.
     const id = sourcePath.replace(/\/$/, '').split('/').pop() ?? '';
     set({ installing: { id, sourcePath }, error: '' });
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('install_plugin', { id, sourcePath });
+      await invoke('install_plugin', { sourcePath });
       // The `plugin://installed` event listener in App.tsx installs the
       // manifest into the in-memory PluginHost and activates sandbox
       // plugins. Refresh to pick up the new row.

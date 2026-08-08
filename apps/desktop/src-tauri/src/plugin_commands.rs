@@ -873,7 +873,6 @@ fn unique_staging_suffix() -> String {
 #[tauri::command]
 pub async fn install_plugin(
     app: tauri::AppHandle,
-    id: String,
     source_path: String,
 ) -> Result<PluginEntry, AppError> {
     let src = PathBuf::from(&source_path);
@@ -891,15 +890,11 @@ pub async fn install_plugin(
         serde_json::from_str(&manifest_str).map_err(|e| e.to_string())?;
     validate_manifest(&manifest)?;
 
-    // Verify the manifest's `id` matches the requested `id` (defensive).
-    let manifest_id = manifest["id"]
+    // Use the id declared in the manifest (not the folder name).
+    let id = manifest["id"]
         .as_str()
-        .ok_or_else(|| "manifest.id missing".to_string())?;
-    if manifest_id != id {
-        return Err(format!(
-            "manifest.id ({manifest_id}) does not match requested id ({id})"
-        ).into());
-    }
+        .ok_or_else(|| "manifest.id missing".to_string())?
+        .to_string();
 
     let dir = plugins_dir(&app)?;
     let plugin_dir = dir.join(&id);

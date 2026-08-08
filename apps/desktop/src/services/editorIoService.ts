@@ -93,19 +93,25 @@ export async function openFile(filePath: string, name: string): Promise<void> {
 
   const existing = get().tabs.find((t) => t.id === tabId);
   if (existing) {
+    // Re-detect file type: a newly installed plugin may now handle this
+    // extension (e.g. plantuml plugin for .puml files created before the
+    // plugin was installed).
+    const correctFileType = detectFileType(filePath);
+    const needsFileTypeUpdate = existing.fileType !== correctFileType;
+
     // Re-detect activity to fix stale values from before path-based detection
-    const correctActivity = detectActivity(filePath, existing.fileType);
+    const correctActivity = detectActivity(filePath, correctFileType);
     const needsActivityUpdate = existing.activity !== correctActivity;
 
     // If existing tab has empty content but the file type needs content, reload it
-    if (!existing.content && getHandlerById(existing.fileType)?.needsFileContent) {
+    if (!existing.content && getHandlerById(correctFileType)?.needsFileContent) {
       try {
-        const handler = getHandlerById(existing.fileType);
+        const handler = getHandlerById(correctFileType);
         const raw = await readRawContent(filePath);
         const content = handler?.deserialize ? handler.deserialize(raw) : raw;
         set((state) => ({
           tabs: state.tabs.map((t) =>
-            t.id === tabId ? { ...t, content, ...(needsActivityUpdate ? { activity: correctActivity } : {}) } : t,
+            t.id === tabId ? { ...t, content, fileType: correctFileType, ...(needsActivityUpdate ? { activity: correctActivity } : {}) } : t,
           ),
           activeTabId: tabId,
         }));
@@ -113,19 +119,25 @@ export async function openFile(filePath: string, name: string): Promise<void> {
         console.error('[EditorStore] Failed to reload content for existing tab:', err);
         set((state) => ({
           activeTabId: existing.id,
-          ...(needsActivityUpdate ? { tabs: state.tabs.map((t) => t.id === tabId ? { ...t, activity: correctActivity } : t) } : {}),
+          ...(needsFileTypeUpdate || needsActivityUpdate
+            ? { tabs: state.tabs.map((t) => t.id === tabId ? { ...t, ...(needsFileTypeUpdate ? { fileType: correctFileType } : {}), ...(needsActivityUpdate ? { activity: correctActivity } : {}) } : t) }
+            : {}),
         }));
       }
-    } else if (needsActivityUpdate) {
+    } else if (needsFileTypeUpdate || needsActivityUpdate) {
       set((state) => ({
-        tabs: state.tabs.map((t) => t.id === tabId ? { ...t, activity: correctActivity } : t),
+        tabs: state.tabs.map((t) =>
+          t.id === tabId
+            ? { ...t, ...(needsFileTypeUpdate ? { fileType: correctFileType } : {}), ...(needsActivityUpdate ? { activity: correctActivity } : {}) }
+            : t,
+        ),
         activeTabId: existing.id,
       }));
     } else {
       set({ activeTabId: existing.id });
     }
     // Auto-switch to appropriate view mode — tab's saved mode takes priority
-    const handler = getHandlerById(existing.fileType);
+    const handler = getHandlerById(correctFileType);
     const targetMode = existing.viewMode ?? handler?.defaultViewMode;
     if (targetMode) {
       set({ viewMode: targetMode });
