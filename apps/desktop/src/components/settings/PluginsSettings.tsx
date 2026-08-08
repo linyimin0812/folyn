@@ -25,15 +25,15 @@
  * originates elsewhere (e.g. another window, or a future CLI install path).
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { TriangleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { isTauri } from '@/utils/platform';
 import { usePluginStore, type PluginRow } from '@/store/pluginStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 import { Toggle } from '@/components/settings/primitives';
-import { IconFromSvg } from '@/components/icons/IconFromSvg';
 import { ThemeIcon, hasIcon } from '@/components/icons/ThemeIcon';
 
 /** State badge color per runtime state. */
@@ -68,20 +68,62 @@ function tierLabel(tier: PluginRow['entry']['tier']): string {
 }
 
 /** Render a plugin's manifest icon at a fixed 20×20 slot. Inline SVG is
- * rendered via IconFromSvg; a host ThemeIcon name (e.g. "folder") is
- * rendered via ThemeIcon; emoji/short text is rendered as text; absent
- * icon falls back to the first letter of the plugin name. Mirrors the
- * precedent in `services/plugin-host/featureAdapter.tsx`. */
-function renderPluginIcon(icon: string | undefined, name: string) {
+ * rendered as a data-URI <img> — empirically reliable in the Tauri webview,
+ * where dangerouslySetInnerHTML-injected SVG fails to paint. Because an
+ * <img>-loaded SVG is an isolated document (currentColor / CSS vars don't
+ * resolve inside it), currentColor references are substituted with the
+ * theme's actual --t2 value before encoding, so stroke/fill="currentColor"
+ * icons keep a visible, theme-appropriate color. A host ThemeIcon name
+ * (e.g. "folder") is rendered via ThemeIcon; emoji/short text is rendered
+ * as text; absent icon falls back to the first letter of the plugin name. */
+function PluginIcon({ icon, name }: { icon: string | undefined; name: string }) {
+  // Subscribed so --t2 is re-resolved (and the data URI rebuilt) on theme change.
+  const theme = useAppearanceStore((s) => s.theme);
   const size = 20;
   const boxCls =
     'shrink-0 inline-flex items-center justify-center rounded bg-surf2 border border-brd2 text-t2 overflow-hidden';
-  if (icon && icon.trim().startsWith('<svg')) {
-    return <IconFromSvg svg={icon} size={size} className="shrink-0" />;
+
+  const dataUri = useMemo(() => {
+    if (!icon) return null;
+    // Strip the XML prologue / DOCTYPE that design-tool-exported SVGs often
+    // carry — otherwise the startsWith('<svg') check misses and the raw SVG
+    // source would end up rendered as text.
+    const svgText = icon
+      .trim()
+      .replace(/^<\?xml[^?]*\?>\s*/, '')
+      .replace(/^<!DOCTYPE[^>]*>\s*/i, '');
+    if (!svgText.startsWith('<svg')) return null;
+    const t2 = getComputedStyle(document.documentElement).getPropertyValue('--t2').trim();
+    const colored = t2 ? svgText.replace(/currentColor/gi, t2) : svgText;
+    return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(colored)))}`;
+    // theme in deps: re-resolve --t2 after a theme switch
+  }, [icon, theme]);
+
+  if (dataUri) {
+    return <img src={dataUri} width={size} height={size} className="shrink-0" alt="" />;
   }
+
+  // .svg file path that wasn't inlined by the store (defensive fallback).
+  // This shouldn't normally be reached — fetchRows() in the store resolves
+  // .svg paths — but serves as a safety net.
+  if (icon && icon.trim().toLowerCase().endsWith('.svg') && !icon.trim().startsWith('<svg')) {
+    return (
+      <span
+        className={boxCls}
+        style={{ width: size, height: size, fontSize: 11, fontWeight: 600, lineHeight: 1 }}
+        aria-hidden
+      >
+        {(name.trim()[0] ?? '?').toUpperCase()}
+      </span>
+    );
+  }
+
+  // Host ThemeIcon name.
   if (icon && hasIcon(icon.trim())) {
     return <ThemeIcon name={icon.trim()} size={size} className={boxCls} />;
   }
+
+  // Emoji or short text (e.g. "👋", "📝", "▦").
   if (icon && icon.trim().length > 0) {
     return (
       <span
@@ -93,6 +135,8 @@ function renderPluginIcon(icon: string | undefined, name: string) {
       </span>
     );
   }
+
+  // First-letter avatar (fallback when no icon is declared).
   return (
     <span
       className={boxCls}
@@ -137,7 +181,7 @@ function PluginRowCard({ row }: { row: PluginRow }) {
     <div className="tr-info border border-brd rounded-lg p-3 mb-2 bg-surf">
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="flex items-start gap-2 min-w-0">
-          {renderPluginIcon(icon, entry.name)}
+          <PluginIcon icon={icon} name={entry.name} />
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[length:calc(var(--ui-font-size)-1px)] font-semibold text-t1 truncate">

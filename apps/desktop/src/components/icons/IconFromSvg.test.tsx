@@ -23,6 +23,21 @@ describe('normalizeSvg', () => {
     const out = normalizeSvg('<svg width="8" height="8" viewBox="0 0 8 8"></svg>', 20);
     expect(out).toBe('<svg width="20" height="20" viewBox="0 0 8 8"></svg>');
   });
+
+  it('strips width/height from inline style (CSS overrides SVG attributes)', () => {
+    const out = normalizeSvg(
+      '<svg viewBox="0 0 32 32" style="width: 200px; height: 200px; transform: rotate(0deg);"></svg>',
+      20,
+    );
+    expect(out).toBe(
+      '<svg height="20" width="20" viewBox="0 0 32 32" style="transform: rotate(0deg);"></svg>',
+    );
+  });
+
+  it('drops the style attribute entirely when only width/height remained', () => {
+    const out = normalizeSvg('<svg style="width:200px;height:200px"></svg>', 16);
+    expect(out).toBe('<svg height="16" width="16"></svg>');
+  });
 });
 
 describe('IconFromSvg', () => {

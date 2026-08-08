@@ -12,6 +12,17 @@ import { useMemo } from 'react';
 
 export function normalizeSvg(raw: string, size: number): string {
   let s = raw;
+  // Strip width/height from inline style — CSS inline style overrides the SVG
+  // width/height attributes, so an exported style="width:200px;height:200px"
+  // would render at 200px regardless of the attributes set below.
+  s = s.replace(/\s*style="([^"]*)"/g, (_m, inner: string) => {
+    const cleaned = inner
+      .replace(/\bwidth\s*:\s*[^;"]+;?/g, '')
+      .replace(/\bheight\s*:\s*[^;"]+;?/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return cleaned ? ` style="${cleaned}"` : '';
+  });
   s = /width="[^"]*"/.test(s)
     ? s.replace(/width="[^"]*"/, `width="${size}"`)
     : s.replace(/<svg/, `<svg width="${size}"`);
