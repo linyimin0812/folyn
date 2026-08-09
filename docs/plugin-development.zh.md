@@ -666,6 +666,58 @@ Trusted loader 把你的 `main` 包成 **blob URL** 再 `import()`。Blob URL �
 （懒加载，不在 module-eval 时执行），且用变量 specifier 让 Vite 不静态解析。
 demo 能跑；真实插件应该 bundle。
 
+### 访问远程资源（trusted tier）
+
+主窗口的 CSP 在 `tauri.conf.json` 构建时写死，**不包含第三方 origin**。
+trusted 插件里直接 `fetch()` 或 `<img src=remote>` 在打包构建下会被 CSP 拦截
+（dev 模式不强制 CSP，掩盖了 bug）。需要访问远程 origin 的插件必须走
+`ctx.http.fetch` —— 该方法把请求路由到 Rust 的 `plugin_http_fetch` 命令
+（reqwest，在 webview 之外执行，不受 CSP 约束），并强制校验 manifest 中的
+`permissions.http.origins`。
+
+**第 1 步 —— 在 manifest 声明 origin：**
+
+```jsonc
+{
+  "permissions": {
+    "http": { "origins": ["https://www.example.com"] }
+  }
+}
+```
+
+**第 2 步 —— 在 `activate()` 缓存 `ctx.http`，到处复用：**
+
+```ts
+import type { PluginContext, PluginHttpCapability } from "quill-plugin-sdk";
+
+let hostHttp: PluginHttpCapability | undefined;
+export async function activate(ctx: PluginContext) { hostHttp = ctx.http; }
+function http(): PluginHttpCapability {
+  if (!hostHttp) throw new Error("plugin: activate() not called");
+  return hostHttp;
+}
+
+// 渲染场景：fetch → data URL → <img>
+async function renderDiagram(source: string) {
+  const { body, status } = await http().fetch(`https://www.example.com/svg/${encode(source)}`);
+  if (status !== 200) throw new Error(`HTTP ${status}`);
+  // base64 编码 UTF-8 SVG 文本，给 <img src>
+  const dataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(body)))}`;
+  return dataUrl;
+}
+
+// 数据场景：fetch → JSON
+const { body } = await http().fetch("https://api.example.com/data.json");
+const data = JSON.parse(body);
+```
+
+**为什么这么设计**：manifest 是单一真相源——新增远程 origin 不需要改
+Quill 源码或主窗口 CSP。Host 在两处强制校验 allowlist（JS 侧快失败 + Rust 侧
+从磁盘 manifest 二次校验）。
+
+**渲染格式**：优先 `data:image/svg+xml;base64,...` URL，不要用 `blob:` URL
+（需要 revoke 生命周期）或 inline `<svg>`（带 script 注入面）。
+
 ---
 
 ## Sandbox RPC 协议（sandbox tier）

@@ -705,6 +705,61 @@ imports **inside functions** (lazy, not at module-eval time) and using a
 variable specifier so Vite doesn't statically resolve them. That works for a
 demo; a real plugin should bundle.
 
+### Fetching remote resources (trusted tier)
+
+The main webview's CSP is build-time-fixed in `tauri.conf.json` and does
+NOT include third-party origins. **Direct `fetch()` and `<img src=remote>`
+in a trusted plugin are blocked in packaged builds** (dev mode does not
+enforce CSP, masking the bug). Plugins that need to reach a remote
+origin must go through `ctx.http.fetch`, which routes the request through
+the Rust `plugin_http_fetch` command (reqwest, outside the webview) and
+enforces `permissions.http.origins` from the manifest.
+
+**Step 1 — declare the origin in the manifest:**
+
+```jsonc
+{
+  "permissions": {
+    "http": { "origins": ["https://www.example.com"] }
+  }
+}
+```
+
+**Step 2 — stash `ctx.http` in `activate()`, use it everywhere:**
+
+```ts
+import type { PluginContext, PluginHttpCapability } from 'quill-plugin-sdk';
+
+let hostHttp: PluginHttpCapability | undefined;
+export async function activate(ctx: PluginContext) { hostHttp = ctx.http; }
+function http(): PluginHttpCapability {
+  if (!hostHttp) throw new Error('plugin: activate() not called');
+  return hostHttp;
+}
+
+// Render path: fetch → data URL → <img>
+async function renderDiagram(source: string) {
+  const { body, status } = await http().fetch(`https://www.example.com/svg/${encode(source)}`);
+  if (status !== 200) throw new Error(`HTTP ${status}`);
+  // base64-encode UTF-8 SVG text for <img src>
+  const dataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(body)))}`;
+  return dataUrl;
+}
+
+// Data path: fetch → JSON
+const { body } = await http().fetch('https://api.example.com/data.json');
+const data = JSON.parse(body);
+```
+
+**Why this design**: the manifest is the single source of truth — adding
+a new remote origin does not require editing Quill source or the main
+window CSP. The host enforces the allowlist twice (JS-side fast-fail +
+Rust-side re-check from the on-disk manifest).
+
+**Render format**: prefer `data:image/svg+xml;base64,...` URLs over
+`blob:` URLs (no lifecycle, CSP already allows `img-src data:`) or
+inline `<svg>` (carries script-injection surface).
+
 ---
 
 ## The sandbox RPC protocol (sandbox tier)
