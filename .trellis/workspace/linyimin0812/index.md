@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 135
-- **Last Active**: 2026-08-07
+- **Total Sessions**: 136
+- **Last Active**: 2026-08-09
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~739 | Active |
+| `journal-3.md` | ~779 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 136 | 2026-08-09 | Plantuml CSP fix → host-mediated ctx.http.fetch + close/dock fixes | `af777da`, `bf38feb`, `0411d80`, `4af9c14`, `feca3c2`, `982046d`, `555fccd` | `master` |
 | 135 | 2026-08-07 | Plugin zip install + template buildable dir + svg filetype icon | `e7ae374`, `144108b`, `ff5f61b`, `5b4b071` | `master` |
 | 134 | 2026-08-07 | PlantUML source fallback, tabs export clicks, highlightGrammars contribution point | `9c90857`, `31a395f`, `014d16a`, `12b7d86` | `master` |
 | 133 | 2026-08-07 | Trim plugin settings empty-state hint | `e3e0b86` | `master` |

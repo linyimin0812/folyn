@@ -737,3 +737,43 @@ Added install_plugin_zip Tauri command with compiled-only enforcement (blacklist
 ### Next Steps
 
 - None - task complete
+
+
+## Session 136: Plantuml CSP fix → host-mediated ctx.http.fetch + close/dock fixes
+
+**Date**: 2026-08-09
+**Task**: Plantuml CSP fix → host-mediated ctx.http.fetch + close/dock fixes
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Packaged-build CSP blocked plantuml.com <img src>; first applied a stopgap whitelist, then reverted and added PluginContext.http (trusted-tier host-mediated fetch routed through Rust plugin_http_fetch, manifest permissions.http.origins enforced both sides). Plantuml plugin refactored to use ctx.http.fetch + data: URL render; docs added EN/ZH. Also fixed two window-lifecycle bugs surfaced while testing: App.tsx onCloseRequested was unconditionally destroy()ing the main window (raced Rust's pet-mode hide → full-screen black frame on macOS) — now hides when petModeEnabled; and macOS dock-click on hidden main window did nothing — added RunEvent::Reopen handler that shows + focuses main.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `af777da` | (see git log) |
+| `bf38feb` | (see git log) |
+| `0411d80` | (see git log) |
+| `4af9c14` | (see git log) |
+| `feca3c2` | (see git log) |
+| `982046d` | (see git log) |
+| `555fccd` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
