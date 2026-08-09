@@ -23,6 +23,7 @@ import { useAppearanceStore } from './store/appearanceStore';
 import { useEditorViewStateStore } from './store/editorViewState';
 import { useVaultStore, startFileTreeBroadcast } from './store/vaultStore';
 import { startProvidersBroadcast } from './store/aiConfigStore';
+import { usePetStore } from './store/petStore';
 import { settingsLoadDone, persistNow, loadSettings, resolveSettingsLoadDone } from './store/settingsPersistence';
 import { useEditorStore } from './store/editorStore';
 import * as editorIoService from './services/editorIoService';
@@ -615,7 +616,19 @@ export default function App() {
           } catch (err) {
             console.warn('[App] persistNow on close failed:', err);
           }
-          await getCurrentWindow().destroy();
+          // ponytail: pet mode on → just hide (Rust on_window_event also
+          // prevent_close + hide for the same case; doing it here too avoids
+          // the hide-then-destroy race that left a black full-screen frame
+          // on macOS — destroy() tears down the webview while the NSWindow
+          // is still mid-orderOut, leaving a black artifact under
+          // macOSPrivateApi. Pet off → real close (app exits, pet window
+          // cleanup is automatic).
+          const petOn = usePetStore.getState().petModeEnabled;
+          if (petOn) {
+            await getCurrentWindow().hide();
+          } else {
+            await getCurrentWindow().destroy();
+          }
         });
       } catch (err) {
         console.warn('[App] close-requested listener setup failed:', err);
