@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 137
+- **Total Sessions**: 138
 - **Last Active**: 2026-08-09
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~813 | Active |
+| `journal-3.md` | ~847 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 138 | 2026-08-09 | Fix tray_set_enabled crash on reload (non-main-thread NSStatusBar destroy) | `e43aed4` | `master` |
 | 137 | 2026-08-09 | Plugin render error isolation for markdown containers | `35fc475` | `master` |
 | 136 | 2026-08-09 | Plantuml CSP fix → host-mediated ctx.http.fetch + close/dock fixes | `af777da`, `bf38feb`, `0411d80`, `4af9c14`, `feca3c2`, `982046d`, `555fccd` | `master` |
 | 135 | 2026-08-07 | Plugin zip install + template buildable dir + svg filetype icon | `e7ae374`, `144108b`, `ff5f61b`, `5b4b071` | `master` |

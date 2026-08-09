@@ -811,3 +811,37 @@ Wrap plugin container components in MarkdownPreview's DirectiveWrapper with Pane
 ### Next Steps
 
 - None - task complete
+
+
+## Session 138: Fix tray_set_enabled crash on reload (non-main-thread NSStatusBar destroy)
+
+**Date**: 2026-08-09
+**Task**: Fix tray_set_enabled crash on reload (non-main-thread NSStatusBar destroy)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+右键 reload 触发崩溃: tray_set_enabled 是 async tauri command, app.remove_tray_by_id 在 tokio worker 线程 drop TrayIcon, 触发 NSStatusBar.removeStatusItem 在非主线程执行, BoardServices assertBarrierOnQueue 断言失败 → SIGTRAP. 把整个函数体包进 run_on_main_thread + mpsc::channel, 照搬同文件 pet_rebuild_app_menu 模式.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e43aed4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
