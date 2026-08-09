@@ -777,3 +777,37 @@ Packaged-build CSP blocked plantuml.com <img src>; first applied a stopgap white
 ### Next Steps
 
 - None - task complete
+
+
+## Session 137: Plugin render error isolation for markdown containers
+
+**Date**: 2026-08-09
+**Task**: Plugin render error isolation for markdown containers
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Wrap plugin container components in MarkdownPreview's DirectiveWrapper with PanelErrorBoundary so a trusted plugin render-time throw no longer white-screens the main React tree. Adds dev-only :::plugin-error-demo container as a manual self-check. Skipped: ContainerRenderer.tsx (dead code), spec doc update (change is transparent to plugin authors). Open follow-up: user reports right-click reload exits the whole process — root cause NOT diagnosed (no Rust panic stack captured yet); needs a separate investigation task.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `35fc475` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
