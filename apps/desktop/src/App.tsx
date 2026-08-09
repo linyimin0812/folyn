@@ -35,6 +35,7 @@ import { registerBuiltinPlugins } from '@quill/container-plugins';
 import { registerBuiltinCommands } from './services/commandRegistry';
 import { registerBuiltinPanels } from './services/registerBuiltinPanels';
 import { registerBuiltinCodeContributions } from './services/registerBuiltinCodeContributions';
+import { registerErrorDemoPlugin } from './services/registerErrorDemoPlugin';
 import { isTauri } from './utils/platform';
 import { useLocaleStore } from '@/store/localeStore';
 import { pluginHost } from '@quill/plugin-host';
@@ -44,6 +45,7 @@ import { attachToolWindowRpcListener } from './services/plugin-host/toolWindowRp
 
 registerBuiltinPlugins();
 registerBuiltinCodeContributions();
+registerErrorDemoPlugin();
 // Seed the command palette's static commands (actions + panels/modes) once at
 // startup. File commands are sourced dynamically from the live vault tree.
 registerBuiltinCommands();

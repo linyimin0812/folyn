@@ -31,6 +31,7 @@ import {
 } from '@/services/scriptRunner/scriptRunnerService';
 import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview';
 import { FileIcon } from '@/components/icons/FileIcon';
+import { PanelErrorBoundary } from '@/components/sidebar/PanelErrorBoundary';
 /**
  * Rehype plugin: remove <br> nodes inside <code> elements (within <pre> blocks).
  * remark-breaks converts soft line breaks to <br> in paragraphs,
@@ -83,7 +84,13 @@ function buildComponentMap(): Record<string, React.ComponentType<any>> {
       // containers by directive name and apply plugin enhancers. Transparent
       // wrapper div — container plugins use inline styles, so an extra plain
       // div does not affect their rendering.
-      return createElement('div', { 'data-container': plugin.name }, createElement(PluginComponent, containerProps));
+      // ponytail: PanelErrorBoundary isolates plugin render throws so a broken
+      // container doesn't white-screen the whole markdown preview.
+      return createElement(
+        'div',
+        { 'data-container': plugin.name },
+        createElement(PanelErrorBoundary, { panelId: plugin.name, children: createElement(PluginComponent, containerProps) }),
+      );
     };
   }
 

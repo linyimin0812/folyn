@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "MarkdownPreview.tsx 在 apps/desktop,需遵循 desktop frontend 编码规范(error boundary / React render 约定)"}
+{"file": ".trellis/spec/container-plugins/frontend/index.md", "reason": "插件容器组件契约(ContainerRegistry / DirectiveWrapper 注册流程),确认 error boundary 不破坏容器挂载约定"}
