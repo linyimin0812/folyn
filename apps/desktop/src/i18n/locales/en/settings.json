@@ -417,6 +417,12 @@
     "uninstall": "Uninstall",
     "uninstalling": "Uninstalling…",
     "uninstallTitle": "Uninstall plugin",
+    "uninstallConfirm": {
+      "title": "Uninstall plugin",
+      "message": "Uninstall this plugin? Its folder, approval, and registered contributions will be removed.",
+      "confirm": "Uninstall",
+      "cancel": "Cancel"
+    },
     "consent": {
       "title": "Approve trusted plugin",
       "intro": "About to approve",

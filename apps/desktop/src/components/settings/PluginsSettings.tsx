@@ -177,6 +177,21 @@ function PluginRowCard({ row }: { row: PluginRow }) {
     void openConsent(entry.id);
   }, [entry.id, openConsent]);
 
+  const handleUninstall = useCallback(async () => {
+    if (!isTauri()) {
+      void uninstall(entry.id);
+      return;
+    }
+    const { confirm } = await import('@tauri-apps/plugin-dialog');
+    const ok = await confirm(t('settings:plugins.uninstallConfirm.message'), {
+      title: t('settings:plugins.uninstallConfirm.title'),
+      okLabel: t('settings:plugins.uninstallConfirm.confirm'),
+      cancelLabel: t('settings:plugins.uninstallConfirm.cancel'),
+    });
+    if (!ok) return;
+    void uninstall(entry.id);
+  }, [entry.id, uninstall, t]);
+
   return (
     <div className="tr-info border border-brd rounded-lg p-3 mb-2 bg-surf">
       <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -233,7 +248,7 @@ function PluginRowCard({ row }: { row: PluginRow }) {
           <button
             className="btn btn-g btn-sm"
             disabled={anyBusy}
-            onClick={() => void uninstall(entry.id)}
+            onClick={handleUninstall}
             title={t('settings:plugins.uninstallTitle')}
           >
             {isUninstallBusy ? t('settings:plugins.uninstalling') : t('settings:plugins.uninstall')}

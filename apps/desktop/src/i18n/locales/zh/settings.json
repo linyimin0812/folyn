@@ -417,6 +417,12 @@
     "uninstall": "卸载",
     "uninstalling": "卸载中…",
     "uninstallTitle": "卸载插件",
+    "uninstallConfirm": {
+      "title": "卸载插件",
+      "message": "确定卸载此插件？将移除插件目录、批准状态与已注册的贡献点。",
+      "confirm": "卸载",
+      "cancel": "取消"
+    },
     "consent": {
       "title": "批准可信插件",
       "intro": "即将批准",
