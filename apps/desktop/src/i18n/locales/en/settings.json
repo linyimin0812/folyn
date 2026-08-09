@@ -422,7 +422,7 @@
       "intro": "About to approve",
       "permissionsLabel": "Declared permissions & contribution points:",
       "noPermissions": "None",
-      "warning": "Trusted plugins run in the main process and have full host capabilities (read/write the vault, invoke Tauri commands, access all React state). Approval equals full trust — only approve plugins from sources you trust. Uninstall removes its contribution points at any time.",
+      "warning": "Trusted plugins run in the main process and have full host capabilities (read/write the vault, invoke Tauri commands, access all React state). Approval equals full trust — only approve plugins from sources you trust.",
       "cancel": "Cancel",
       "confirm": "I understand, approve"
     }
