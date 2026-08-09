@@ -319,48 +319,66 @@ pub async fn tray_set_enabled(
     enabled: bool,
     locale: String,
 ) -> Result<(), AppError> {
+    use std::sync::mpsc::channel;
     use tauri::tray::TrayIconBuilder;
 
-    // Destroy any existing tray icon first so the rebuild path (locale
-    // switch, re-enable) is the same as the enable path. Idempotent for the
-    // disable case: `remove_tray_by_id` is a no-op when no tray exists.
-    app.remove_tray_by_id(TRAY_ID);
-    // Clear the stashed CheckMenuItem handle — the old tray's menu is gone,
-    // so `set_checked` on it would be a no-op or UB. Re-populated below when
-    // the new menu is built.
-    if let Ok(mut guard) = app.state::<TrayHidePetItemState>().0.lock() {
-        *guard = None;
-    }
-    if !enabled {
-        return Ok(());
-    }
-
-    let menu = build_pet_context_menu(&app, &locale, true)?;
-    // Extract the `hide_pet` CheckMenuItem handle and stash it in
-    // `TrayHidePetItemState` so `toggle_pet_mode` / `show_pet_if_hidden`
-    // can call `set_checked` on it after each visibility flip. Without this,
-    // the tray menu (built once) would show a stale checkmark after the
-    // first toggle. `Menu::get(id)` → `MenuItemKind::as_check_menuitem()`.
-    if let Some(kind) = menu.get(PET_CTX_MENU_HIDE_PET) {
-        if let Some(check_item) = kind.as_check_menuitem() {
-            if let Ok(mut guard) = app.state::<TrayHidePetItemState>().0.lock() {
-                *guard = Some(check_item.clone());
-            }
+    // NSStatusBar / NSStatusItem destroy + build must run on the main thread
+    // (BoardServices `assertBarrierOnQueue` asserts this; running on a tokio
+    // worker thread SIGTRAPs the process — observed on reload).
+    let (tx, rx) = channel::<Result<(), String>>();
+    let app2 = app.clone();
+    app.run_on_main_thread(move || {
+        // Destroy any existing tray icon first so the rebuild path (locale
+        // switch, re-enable) is the same as the enable path. Idempotent for
+        // the disable case: `remove_tray_by_id` is a no-op when no tray exists.
+        app2.remove_tray_by_id(TRAY_ID);
+        // Clear the stashed CheckMenuItem handle — the old tray's menu is gone,
+        // so `set_checked` on it would be a no-op or UB. Re-populated below when
+        // the new menu is built.
+        if let Ok(mut guard) = app2.state::<TrayHidePetItemState>().0.lock() {
+            *guard = None;
         }
-    }
-    // Dedicated tray icon: the app icon has a dark rounded-square background
-    // that vanishes into the macOS menubar. This PNG is the feather + ink
-    // drop on transparent background, enlarged to fill the canvas. Embedded
-    // at compile time via `include_image!` (raw RGBA, 64x64 = 16KB).
-    let icon = tauri::include_image!("icons/tray-icon.png");
-    let _tray = TrayIconBuilder::with_id(TRAY_ID)
-        .icon(icon)
-        .menu(&menu)
-        // macOS Tauri 2 tray icons default to right-click-only for menu; the
-        // user asked for click-to-show-menu, so flip this. `show_menu_on_left_click`
-        // makes the OS pop the menu on left-click without a JS-side handler.
-        .show_menu_on_left_click(true)
-        .build(&app)
+        if !enabled {
+            let _ = tx.send(Ok(()));
+            return;
+        }
+        let res = (|| {
+            let menu = build_pet_context_menu(&app2, &locale, true).map_err(|e| e.to_string())?;
+            // Extract the `hide_pet` CheckMenuItem handle and stash it in
+            // `TrayHidePetItemState` so `toggle_pet_mode` / `show_pet_if_hidden`
+            // can call `set_checked` on it after each visibility flip. Without
+            // this, the tray menu (built once) would show a stale checkmark
+            // after the first toggle. `Menu::get(id)` → `MenuItemKind::as_check_menuitem()`.
+            if let Some(kind) = menu.get(PET_CTX_MENU_HIDE_PET) {
+                if let Some(check_item) = kind.as_check_menuitem() {
+                    if let Ok(mut guard) = app2.state::<TrayHidePetItemState>().0.lock() {
+                        *guard = Some(check_item.clone());
+                    }
+                }
+            }
+            // Dedicated tray icon: the app icon has a dark rounded-square
+            // background that vanishes into the macOS menubar. This PNG is the
+            // feather + ink drop on transparent background, enlarged to fill the
+            // canvas. Embedded at compile time via `include_image!` (raw RGBA,
+            // 64x64 = 16KB).
+            let icon = tauri::include_image!("icons/tray-icon.png");
+            let _tray = TrayIconBuilder::with_id(TRAY_ID)
+                .icon(icon)
+                .menu(&menu)
+                // macOS Tauri 2 tray icons default to right-click-only for
+                // menu; the user asked for click-to-show-menu, so flip this.
+                // `show_menu_on_left_click` makes the OS pop the menu on
+                // left-click without a JS-side handler.
+                .show_menu_on_left_click(true)
+                .build(&app2)
+                .map_err(|e| e.to_string())?;
+            Ok::<(), String>(())
+        })();
+        let _ = tx.send(res);
+    })
+    .map_err(|e| e.to_string())?;
+    rx.recv()
+        .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
     Ok(())
 }

@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Tauri command patterns; pet_rebuild_app_menu in same module demonstrates run_on_main_thread + channel marshalling for AppKit APIs."}
