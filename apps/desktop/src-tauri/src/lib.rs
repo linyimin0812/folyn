@@ -736,8 +736,8 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app, event| {
-            if let tauri::RunEvent::Exit = event {
+        .run(|app, event| match event {
+            tauri::RunEvent::Exit => {
                 commands::terminal_kill_all();
             }
             // OS "Open With" / file-association launch (macOS/iOS/Android).
@@ -746,7 +746,7 @@ pub fn run() {
             // filesystem path and emit it to the frontend, which opens it as
             // an external (vault-independent) editor tab. Also surface the
             // main window in case the app was backgrounded.
-            if let tauri::RunEvent::Opened { urls } = event {
+            tauri::RunEvent::Opened { urls } => {
                 let paths: Vec<String> = urls
                     .into_iter()
                     .filter_map(|u| u.to_file_path().ok().map(|p| p.to_string_lossy().into_owned()))
@@ -759,5 +759,17 @@ pub fn run() {
                     let _ = app.emit("app://open-external-file", paths);
                 }
             }
+            // ponytail: macOS dock-click reopen. When the main window is
+            // hidden (pet-mode close-to-hide path) and the user clicks the
+            // dock icon, AppKit fires applicationShouldHandleReopen; Tauri
+            // surfaces it as RunEvent::Reopen. Without this, the dock click
+            // does nothing — the app is alive but no window comes forward.
+            tauri::RunEvent::Reopen { .. } => {
+                if let Some(main) = app.get_webview_window("main") {
+                    let _ = main.show();
+                    let _ = main.set_focus();
+                }
+            }
+            _ => {}
         });
 }
