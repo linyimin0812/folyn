@@ -141,7 +141,7 @@ function resolveSystemTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark
  * `undefined` when there are no headers so the Rust `Option<HashMap>` receives
  * `None`.
  */
-function normalizeHeaders(
+export function normalizeHeaders(
   headers: HeadersInit | undefined,
 ): Record<string, string> | undefined {
   if (headers == null) return undefined;

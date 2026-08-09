@@ -35,6 +35,9 @@ export type {
   PluginEnv,
   PluginTheme,
   PluginLocale,
+  PluginHttpCapability,
+  PluginHttpInit,
+  PluginHttpResponse,
 } from './src/types';
 export type {
   ViewMode,

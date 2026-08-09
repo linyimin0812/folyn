@@ -51,9 +51,49 @@ export interface PluginContext {
    * tiers that do not expose env.
    */
   readonly env?: PluginEnv;
+  /**
+   * Host-mediated HTTP fetch. Routes through the Rust `plugin_http_fetch`
+   * command (reqwest, outside the webview's CSP) so plugins can reach
+   * remote origins without main-window CSP edits. Manifest must declare
+   * `permissions.http.origins`; calls throw `origin not allowed` otherwise.
+   * `undefined` on tiers that do not expose HTTP (sandbox reaches the same
+   * path via the `http:fetch` RPC method).
+   */
+  readonly http?: PluginHttpCapability;
   // Capability RPC + UI contribution adapters are layered on in PR2 (sandbox)
   // and PR3 (trusted); kept out of PR1 so the kernel is testable in isolation.
 }
+
+/** Response shape returned by {@link PluginHttpCapability.fetch}. Mirrors the
+ * rpcBridge `http:fetch` + Rust `plugin_http_fetch` body: a single string
+ * `body` (no streaming, no binary). Add a `fetchBlob` variant when a plugin
+ * needs binary responses. */
+export interface PluginHttpResponse {
+  status: number;
+  headers: Record<string, string>;
+  body: string;
+}
+
+/** Init shape accepted by {@link PluginHttpCapability.fetch}. Subset of the
+ * stdlib `RequestInit`: only string bodies + simple headers — the Rust
+ * command serializes headers as `HashMap<String, String>` so non-string
+ * values are dropped. */
+export interface PluginHttpInit {
+  method?: string;
+  headers?: HeadersInit;
+  body?: string;
+}
+
+export interface PluginHttpCapability {
+  /**
+   * Fetch a remote URL via the host. The host enforces
+   * `permissions.http.origins` (JS-side fast-fail + Rust-side re-check) before
+   * performing the request with reqwest. Rejects with `origin not allowed`
+   * if the URL's origin is not declared in the manifest.
+   */
+  fetch(url: string, init?: PluginHttpInit): Promise<PluginHttpResponse>;
+}
+
 
 /**
  * Strategy that resolves an installed manifest into a runtime {@link Plugin}.

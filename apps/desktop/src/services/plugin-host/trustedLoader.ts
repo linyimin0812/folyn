@@ -62,6 +62,7 @@ import { registerPluginEditorLanguages } from './editorLanguageAdapter';
 import { registerPluginHighlightGrammars } from './highlightGrammarAdapter';
 import { buildPluginAi } from './aiCapability';
 import { buildPluginEnv, disposePluginEnv } from './envCapability';
+import { buildPluginHttp } from './httpCapability';
 
 export const trustedLoader: PluginLoader = {
   tier: 'trusted',
@@ -144,10 +145,11 @@ export const trustedLoader: PluginLoader = {
         if (typeof module.activate === 'function') {
           const ai = buildPluginAi(manifest);
           const env = buildPluginEnv();
+          const http = buildPluginHttp(manifest);
           // Tear down env's host-side store subscriptions after the plugin
           // deactivates. Pushed as a disposable so PluginHost reaps it.
           ctx.addDisposable({ dispose: () => disposePluginEnv(env) });
-          return module.activate({ ...ctx, ai, env });
+          return module.activate({ ...ctx, ai, env, http });
         }
       },
       deactivate: (ctx: PluginContext) => {
