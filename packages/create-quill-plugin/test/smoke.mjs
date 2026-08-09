@@ -32,6 +32,13 @@ try {
   assert.equal(pkg.name, 'quill-plugin-demo-plugin');
   assert.equal(pkg.version, '1.2.3');
 
+  // ponytail: agent-context docs ship with the template (static, no
+  // placeholder substitution). CLAUDE.md is a one-line pointer to AGENTS.md.
+  const agents = await readFile(join(dir, 'demo-plugin', 'AGENTS.md'), 'utf8');
+  const claude = await readFile(join(dir, 'demo-plugin', 'CLAUDE.md'), 'utf8');
+  assert.ok(agents.length > 100, 'AGENTS.md should have real content');
+  assert.match(claude, /See AGENTS\.md/, 'CLAUDE.md should point to AGENTS.md');
+
   console.log('OK: smoke test passed');
 } finally {
   await rm(dir, { recursive: true, force: true });
