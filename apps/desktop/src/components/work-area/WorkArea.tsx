@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { useDiffReviewStore } from '@/store/diffReviewStore';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
+import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useVaultStore } from '@/store/vaultStore';
 import { isTauri } from '@/utils/platform';
 import type { QuillEditorHandle } from '@/editor/EditorView';
@@ -13,7 +14,8 @@ import { TabBar } from './TabBar';
 import { EditorPane } from './EditorPane';
 import { PreviewPane } from './PreviewPane';
 import { DailyDigest } from '../editor/DailyDigest';
-import { VersionHistoryPanel } from './VersionHistoryPanel';
+import { VersionHistoryPanel, isVersionableTab } from './VersionHistoryPanel';
+import { VersionHistoryDiffView } from './VersionHistoryDiffView';
 import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
 
 
@@ -29,6 +31,8 @@ export function WorkArea() {
   const isFileLoading = useEditorStore((state) => state.isFileLoading);
   const externalContentVersion = useDiffReviewStore((state) => state.externalContentVersion);
   const setContentExternal = useDiffReviewStore((state) => state.setContentExternal);
+  const versionHistoryVisible = useEditorViewStateStore((s) => s.versionHistoryVisible);
+  const versionHistorySelectedHash = useEditorViewStateStore((s) => s.versionHistorySelection.selectedHash);
 
   // Filter tabs by the active activity panel
   const tabs = allTabs.filter((t) => t.activity === activePanel);
@@ -264,6 +268,17 @@ export function WorkArea() {
   const showPreview = handler?.Preview && (isPreviewOnly || viewMode === 'preview' || viewMode === 'split');
   const showSplitResizer = handler?.Preview && viewMode === 'split' && (handler.useCodeMirror || !!handler.Editor);
 
+  // ponytail: when the version-history side panel is open AND a snapshot is
+  // selected, swap the entire editor area for the diff view. Single branch
+  // covers CodeMirror + custom editors + preview split — the diff view fills
+  // the area the editor normally would. Editor / preview / resizer all stay
+  // unmounted for the duration so their scroll state and CodeMirror view
+  // don't have to coexist with the diff. Selection clears on panel close /
+  // restore / tab switch (handled in the panel) — this flag follows.
+  const showVersionHistoryDiff = versionHistoryVisible
+    && versionHistorySelectedHash !== null
+    && isVersionableTab(activeTab);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-bg relative">
       {/* File tabs */}
@@ -290,6 +305,12 @@ export function WorkArea() {
         <div className="flex-1 flex items-center justify-center text-t3 text-[13px] select-none">
           {activePanel === 'clips' ? '暂无剪藏' : activePanel === 'wiki' ? '暂无 Wiki 页面' : activePanel === 'calendar' ? '暂无日记' : activePanel === 'analyze' ? '暂无分析报告' : '暂无打开的文件'}
         </div>
+      ) : showVersionHistoryDiff ? (
+        // ponytail: editor area swapped for the version-history diff view.
+        // Renders in place of CodeMirror / custom editor / preview split so
+        // the diff gets the full editor canvas — the bottom-of-panel layout
+        // was cramped (PR4). The side panel still owns the snapshot list.
+        <VersionHistoryDiffView />
       ) : (<>
 
       {/* CodeMirror editor pane */}

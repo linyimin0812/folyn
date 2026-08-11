@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createPatch } from 'diff';
 import { useTranslation } from 'react-i18next';
 import { useEditorStore } from '@/store/editorStore';
@@ -17,6 +17,12 @@ import {
 } from '@/services/versionHistory';
 import type { SnapshotEntry } from '@/services/versionHistoryService';
 import type { FileTab } from '@/store/editorStore';
+
+// Re-export the pure diff helpers so the existing test import path keeps
+// working after the move to versionHistoryDiff.ts.
+export { parsePatchLines } from './versionHistoryDiff';
+export type { DiffLine } from './versionHistoryDiff';
+import { parsePatchLines } from './versionHistoryDiff';
 
 // ponytail: the versionable predicate mirrors `editorIoService.maybeSnapshotVersion`
 // (PR2). Same gate, same scope per PRD §7 — single source of truth so the UI
@@ -64,29 +70,6 @@ async function resolveTabContext(tab: FileTab): Promise<ResolvedTab | null> {
   return { vaultId, absFilePath, ext: getExt(tab.path) };
 }
 
-interface DiffLine {
-  text: string;
-  kind: 'context' | 'add' | 'del' | 'hunk' | 'meta';
-}
-
-// ponytail: parse the unified-diff patch string into a flat list of lines with
-// kind tags. Cheaper than tokenising via the `diff` package's structuredPatch
-// (we render line-level only — per-character diff is Out of Scope per PRD).
-// Ceiling: this won't surface intra-line edits; upgrade to structuredPatch if
-// per-character granularity becomes a real need. Exported for unit testing.
-export function parsePatchLines(patch: string): DiffLine[] {
-  const lines = patch.split('\n');
-  return lines.map((line) => {
-    if (line.startsWith('@@')) return { text: line, kind: 'hunk' as const };
-    if (line.startsWith('+++') || line.startsWith('---')) return { text: line, kind: 'meta' as const };
-    if (line.startsWith('+')) return { text: line.slice(1), kind: 'add' as const };
-    if (line.startsWith('-')) return { text: line.slice(1), kind: 'del' as const };
-    if (line.startsWith(' ')) return { text: line.slice(1), kind: 'context' as const };
-    if (line.startsWith('\\')) return { text: line, kind: 'meta' as const };
-    return { text: line, kind: 'context' as const };
-  });
-}
-
 interface VersionHistoryPanelProps {
   activeTab: FileTab | undefined;
 }
@@ -95,10 +78,10 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
   const { t } = useTranslation();
   const versionHistoryVisible = useEditorViewStateStore((s) => s.versionHistoryVisible);
   const setVersionHistoryVisible = useEditorViewStateStore((s) => s.setVersionHistoryVisible);
+  const setVersionHistorySelection = useEditorViewStateStore((s) => s.setVersionHistorySelection);
+  const selectedHash = useEditorViewStateStore((s) => s.versionHistorySelection.selectedHash);
 
   const [snapshots, setSnapshots] = useState<SnapshotEntry[]>([]);
-  const [selectedHash, setSelectedHash] = useState<string | null>(null);
-  const [diffLines, setDiffLines] = useState<DiffLine[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,15 +89,23 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
   // Stable identity for `activeTab?.path` so effect deps behave.
   const tabPath = activeTab?.path;
 
+  // ponytail: clear selection helper — used on panel close, restore success,
+  // and tab switch so the editor area swaps back to the active editor. Single
+  // exit so lifecycle edges cannot drift.
+  const clearSelection = useCallback(() => {
+    setVersionHistorySelection({ selectedHash: null, diffLines: null, diffError: null });
+  }, [setVersionHistorySelection]);
+
   // ponytail: refetch snapshot list whenever the active file changes or the
   // panel re-opens. We also refetch after a restore so the new "restored"
   // entry appears. Disabled when the panel is hidden — no wasted IPC.
+  // Also clears any selected snapshot + diff so the editor area returns to
+  // the live editor when the file context changes.
   const refreshList = useCallback(async () => {
     if (!activeTab || !versionHistoryVisible) return;
     setError(null);
     setLoading(true);
-    setDiffLines(null);
-    setSelectedHash(null);
+    clearSelection();
     try {
       const ctx = await resolveTabContext(activeTab);
       if (!ctx) {
@@ -130,12 +121,19 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, versionHistoryVisible]);
+  }, [activeTab, versionHistoryVisible, clearSelection]);
 
   useEffect(() => {
     if (!versionHistoryVisible) return;
     void refreshList();
   }, [versionHistoryVisible, tabPath, refreshList]);
+
+  // ponytail: clear the selection when the panel is hidden (ESC / X / tab
+  // switch / toggle). The editor area reads selection from the store, so this
+  // is the single exit that returns the editor to view.
+  useEffect(() => {
+    if (!versionHistoryVisible) clearSelection();
+  }, [versionHistoryVisible, clearSelection]);
 
   // ponytail: ESC closes the panel — matches the secondary-window Esc-dismiss
   // convention elsewhere in the app. Keydown listener on the panel root so
@@ -152,12 +150,13 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
   }, [setVersionHistoryVisible]);
 
   // Selecting a snapshot: compute a unified diff (snapshot → current on-disk).
-  // Both reads are async on the Tauri fs; cache the parsed patch in state.
+  // Both reads are async on the Tauri fs; lift the parsed patch to the store
+  // so WorkArea's editor-area diff view re-renders.
   const handleSelect = useCallback(async (entry: SnapshotEntry) => {
     if (!activeTab) return;
     setError(null);
-    setSelectedHash(entry.hash);
-    setDiffLines(null);
+    // Mark loading: hash set, lines cleared. WorkArea shows the loading hint.
+    setVersionHistorySelection({ selectedHash: entry.hash, diffLines: null, diffError: null });
     try {
       const ctx = await resolveTabContext(activeTab);
       if (!ctx) return;
@@ -166,12 +165,12 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
         readRawContent(activeTab.path),
       ]);
       const patch = createPatch(activeTab.path, oldContent, newContent, '', '', { context: 3 });
-      setDiffLines(parsePatchLines(patch));
+      setVersionHistorySelection({ selectedHash: entry.hash, diffLines: parsePatchLines(patch), diffError: null });
     } catch (err) {
       console.warn('[VersionHistory] diff failed:', err);
-      setError(String(err));
+      setVersionHistorySelection({ selectedHash: entry.hash, diffLines: null, diffError: String(err) });
     }
-  }, [activeTab]);
+  }, [activeTab, setVersionHistorySelection]);
 
   // Restore flow per PRD §5:
   //   (a) `restore()` snapshots current on-disk first (never loses state).
@@ -185,6 +184,8 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
   //     on the new key.
   // We do NOT use `setContentExternal` because it sets isDirty:true and
   // schedules an auto-save (wasteful — disk already matches).
+  // Clear the selection so the editor area swaps back to the live editor,
+  // now showing the restored content.
   const handleRestore = useCallback(async (entry: SnapshotEntry) => {
     if (!activeTab) return;
     setRestoring(true);
@@ -206,57 +207,25 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
       useDiffReviewStore.setState((s) => ({ externalContentVersion: s.externalContentVersion + 1 }));
 
       // Refetch the list so the new "preserved-current" + "restored" entries appear.
-      // Avoid recursing through the effect — we directly call listSnapshots here.
       const list = await listSnapshots(ctx.vaultId, ctx.absFilePath);
       setSnapshots(list);
-      // Re-render the diff against the freshly-restored on-disk content.
-      // The "current" is now identical to the chosen blob → diff should be empty.
-      const patch = createPatch(activeTab.path, raw, raw, '', '', { context: 3 });
-      setDiffLines(parsePatchLines(patch));
+      // Clear selection — editor area returns to the live editor, which now
+      // shows the restored content (externalContentVersion bumped above).
+      clearSelection();
     } catch (err) {
       console.warn('[VersionHistory] restore failed:', err);
       setError(String(err));
     } finally {
       setRestoring(false);
     }
-  }, [activeTab]);
-
-  const diffRender = useMemo(() => {
-    if (!diffLines) return null;
-    if (diffLines.length === 0) {
-      return <div className="text-t3 text-[12px] px-3 py-2">{t('editor:versionHistory.diff.identical')}</div>;
-    }
-    return (
-      <pre className="text-[12px] font-mono leading-[1.5] overflow-x-auto px-3 py-2 m-0">
-        {diffLines.map((line, i) => {
-          const cls =
-            line.kind === 'add' ? 'text-green-600 dark:text-green-400 bg-green-500/5'
-            : line.kind === 'del' ? 'text-red-600 dark:text-red-400 bg-red-500/5'
-            : line.kind === 'hunk' ? 'text-t3'
-            : line.kind === 'meta' ? 'text-t3'
-            : 'text-t2';
-          const prefix =
-            line.kind === 'add' ? '+ '
-            : line.kind === 'del' ? '- '
-            : line.kind === 'hunk' ? ''
-            : line.kind === 'meta' ? ''
-            : '  ';
-          return (
-            <div key={i} className={`whitespace-pre ${cls}`}>
-              <span>{prefix}{line.text}</span>
-            </div>
-          );
-        })}
-      </pre>
-    );
-  }, [diffLines, t]);
+  }, [activeTab, clearSelection]);
 
   if (!versionHistoryVisible) return null;
   if (!isVersionableTab(activeTab)) return null;
 
   return (
     <div
-      className="absolute top-0 right-0 bottom-0 z-30 flex flex-col w-[420px] bg-panel border-l border-brd shadow-lg"
+      className="absolute top-0 right-0 bottom-0 z-30 flex flex-col w-[340px] bg-panel border-l border-brd shadow-lg"
       onKeyDown={handleKeyDown}
     >
       <div className="flex items-center justify-between h-[34px] px-3 border-b border-brd shrink-0">
@@ -274,7 +243,7 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-        {/* Snapshot list */}
+        {/* Snapshot list — fills the panel now that the diff renders in the editor area. */}
         <div className="flex-1 overflow-y-auto min-h-0">
           {loading && (
             <div className="text-t3 text-[12px] px-3 py-2">{t('editor:versionHistory.loading')}</div>
@@ -318,14 +287,8 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
           })}
         </div>
 
-        {/* Diff view */}
         {error && (
-          <div className="px-3 py-2 text-[11px] text-red-500 border-t border-brd2">{error}</div>
-        )}
-        {diffRender && (
-          <div className="h-[45%] border-t border-brd overflow-auto bg-surf shrink-0">
-            {diffRender}
-          </div>
+          <div className="px-3 py-2 text-[11px] text-red-500 border-t border-brd2 shrink-0">{error}</div>
         )}
       </div>
     </div>

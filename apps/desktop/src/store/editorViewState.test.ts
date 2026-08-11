@@ -13,6 +13,7 @@ beforeEach(() => {
     terminalInRightDock: false,
     terminalRightWidth: 300,
     versionHistoryVisible: false,
+    versionHistorySelection: { selectedHash: null, diffLines: null, diffError: null },
   });
   useEditorStore.setState({ tabs: [], activeTabId: null });
 });
@@ -124,5 +125,49 @@ describe('useEditorViewStateStore', () => {
     expect(useEditorViewStateStore.getState().versionHistoryVisible).toBe(true);
     useEditorViewStateStore.getState().setVersionHistoryVisible(false);
     expect(useEditorViewStateStore.getState().versionHistoryVisible).toBe(false);
+  });
+
+  it('defaults versionHistorySelection to empty (no selected hash, no diff)', () => {
+    const s = useEditorViewStateStore.getState().versionHistorySelection;
+    expect(s.selectedHash).toBeNull();
+    expect(s.diffLines).toBeNull();
+    expect(s.diffError).toBeNull();
+  });
+
+  it('setVersionHistorySelection writes the selection payload', () => {
+    const lines = [{ text: 'x', kind: 'context' as const }];
+    useEditorViewStateStore.getState().setVersionHistorySelection({
+      selectedHash: 'abc',
+      diffLines: lines,
+      diffError: null,
+    });
+    const s = useEditorViewStateStore.getState().versionHistorySelection;
+    expect(s.selectedHash).toBe('abc');
+    expect(s.diffLines).toBe(lines);
+    expect(s.diffError).toBeNull();
+  });
+
+  it('setVersionHistoryVisible clears the selection when hiding', () => {
+    useEditorViewStateStore.getState().setVersionHistorySelection({
+      selectedHash: 'abc',
+      diffLines: [{ text: 'x', kind: 'context' }],
+      diffError: null,
+    });
+    useEditorViewStateStore.getState().setVersionHistoryVisible(false);
+    const s = useEditorViewStateStore.getState().versionHistorySelection;
+    expect(s.selectedHash).toBeNull();
+    expect(s.diffLines).toBeNull();
+  });
+
+  it('toggleVersionHistory clears the selection when toggling off', () => {
+    useEditorViewStateStore.getState().setVersionHistoryVisible(true);
+    useEditorViewStateStore.getState().setVersionHistorySelection({
+      selectedHash: 'abc',
+      diffLines: [{ text: 'x', kind: 'context' }],
+      diffError: null,
+    });
+    useEditorViewStateStore.getState().toggleVersionHistory();
+    expect(useEditorViewStateStore.getState().versionHistoryVisible).toBe(false);
+    expect(useEditorViewStateStore.getState().versionHistorySelection.selectedHash).toBeNull();
   });
 });
