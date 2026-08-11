@@ -4,7 +4,7 @@ import { usePrefsStore } from './prefsStore';
 import { storageClient } from '@/utils/storageClient';
 import { getHandlerByExtension } from '@/components/file-types/registry';
 import { WIKI_PREFIX } from '@/types/wiki';
-import { persistOpenTabs } from './editorPersistence';
+import { persistOpenTabs, flushPersistOpenTabs, flushPersistExternalOpenTabs } from './editorPersistence';
 import { scheduleAutoSave } from './editorAutoSave';
 import { saveFile as saveFileIo } from '@/services/editorIoService';
 import { useEditorPrefsStore } from './editorPrefsStore';
@@ -149,8 +149,13 @@ export const useEditorStore = create<EditorState>()(
           }
           return { tabs: newTabs, activeTabId: newActiveId };
         });
+        // Flush immediately (no debounce): a debounced write would be lost if
+        // the app quits right after closing, restoring the closed tab on the
+        // next launch. Flush both vault and external (vault-independent) tabs.
         const vaultId = useVaultStore.getState().activeVaultId;
-        if (vaultId) persistOpenTabs(vaultId, get().tabs, get().activeTabId);
+        const { tabs, activeTabId } = get();
+        if (vaultId) flushPersistOpenTabs(vaultId, tabs, activeTabId);
+        flushPersistExternalOpenTabs('ext', tabs, activeTabId);
       },
 
       setActiveTab: (tabId) => {
