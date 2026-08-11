@@ -259,7 +259,7 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
       className="absolute top-0 right-0 bottom-0 z-30 flex flex-col w-[420px] bg-panel border-l border-brd shadow-lg"
       onKeyDown={handleKeyDown}
     >
-      <div className="flex items-center justify-between h-[36px] px-3 border-b border-brd shrink-0">
+      <div className="flex items-center justify-between h-[34px] px-3 border-b border-brd shrink-0">
         <span className="text-[13px] font-semibold text-t1">{t('editor:versionHistory.title')}</span>
         <button
           className="w-[24px] h-[24px] flex items-center justify-center rounded text-t3 hover:bg-hov hover:text-t1 transition-colors"
