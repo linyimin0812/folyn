@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { createPatch } from 'diff';
 import { useTranslation } from 'react-i18next';
 import { useEditorStore } from '@/store/editorStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
@@ -17,12 +16,6 @@ import {
 } from '@/services/versionHistory';
 import type { SnapshotEntry } from '@/services/versionHistoryService';
 import type { FileTab } from '@/store/editorStore';
-
-// Re-export the pure diff helpers so the existing test import path keeps
-// working after the move to versionHistoryDiff.ts.
-export { parsePatchLines } from './versionHistoryDiff';
-export type { DiffLine } from './versionHistoryDiff';
-import { parsePatchLines } from './versionHistoryDiff';
 
 // ponytail: the versionable predicate mirrors `editorIoService.maybeSnapshotVersion`
 // (PR2). Same gate, same scope per PRD §7 — single source of truth so the UI
@@ -90,16 +83,16 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
   const tabPath = activeTab?.path;
 
   // ponytail: clear selection helper — used on panel close, restore success,
-  // and tab switch so the editor area swaps back to the active editor. Single
-  // exit so lifecycle edges cannot drift.
+  // close-button click, and tab switch so the editor area swaps back to the
+  // active editor. Single exit so lifecycle edges cannot drift.
   const clearSelection = useCallback(() => {
-    setVersionHistorySelection({ selectedKey: null, diffLines: null, diffError: null });
+    setVersionHistorySelection({ selectedKey: null, snapshotContent: null, snapshotError: null });
   }, [setVersionHistorySelection]);
 
   // ponytail: refetch snapshot list whenever the active file changes or the
   // panel re-opens. We also refetch after a restore so the new "restored"
   // entry appears. Disabled when the panel is hidden — no wasted IPC.
-  // Also clears any selected snapshot + diff so the editor area returns to
+  // Also clears any selected snapshot + content so the editor area returns to
   // the live editor when the file context changes.
   //
   // Deps use `tabPath` (the stable path string), NOT `activeTab` — the tab
@@ -157,28 +150,24 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
     setVersionHistoryVisible(false);
   }, [setVersionHistoryVisible]);
 
-  // Selecting a snapshot: compute a unified diff (snapshot → current on-disk).
-  // Both reads are async on the Tauri fs; lift the parsed patch to the store
-  // so WorkArea's editor-area diff view re-renders.
+  // Selecting a snapshot: fetch its full blob content and lift it to the
+  // store so WorkArea's editor-area content view re-renders. No diff, no
+  // on-disk read — the user wants to see the historical version verbatim.
   const handleSelect = useCallback(async (entry: SnapshotEntry) => {
     const liveTab = useEditorStore.getState().tabs.find((t) => t.path === tabPath);
     if (!liveTab) return;
     setError(null);
-    // Mark loading: key set, lines cleared. WorkArea shows the loading hint.
+    // Mark loading: key set, content cleared. WorkArea shows the loading hint.
     const key = `${entry.hash}-${entry.ts}`;
-    setVersionHistorySelection({ selectedKey: key, diffLines: null, diffError: null });
+    setVersionHistorySelection({ selectedKey: key, snapshotContent: null, snapshotError: null });
     try {
       const ctx = await resolveTabContext(liveTab);
       if (!ctx) return;
-      const [oldContent, newContent] = await Promise.all([
-        readBlob(ctx.vaultId, entry.hash, ctx.ext),
-        readRawContent(liveTab.path),
-      ]);
-      const patch = createPatch(liveTab.path, oldContent, newContent, '', '', { context: 3 });
-      setVersionHistorySelection({ selectedKey: key, diffLines: parsePatchLines(patch), diffError: null });
+      const content = await readBlob(ctx.vaultId, entry.hash, ctx.ext);
+      setVersionHistorySelection({ selectedKey: key, snapshotContent: content, snapshotError: null });
     } catch (err) {
-      console.warn('[VersionHistory] diff failed:', err);
-      setVersionHistorySelection({ selectedKey: key, diffLines: null, diffError: String(err) });
+      console.warn('[VersionHistory] load snapshot failed:', err);
+      setVersionHistorySelection({ selectedKey: key, snapshotContent: null, snapshotError: String(err) });
     }
   }, [tabPath, setVersionHistorySelection]);
 
@@ -254,8 +243,11 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-        {/* Snapshot list — fills the panel now that the diff renders in the editor area. */}
-        <div className="flex-1 overflow-y-auto min-h-0">
+        {/* Snapshot list — fills the panel; content renders in the editor area.
+          // ponytail: flex-col-reverse renders newest (last in insertion-order
+          // array) at the top. Label `idx + 1` keeps v1 = oldest (bottom) and
+          // vN = newest (top), matching the visual order. */}
+        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col-reverse">
           {loading && (
             <div className="text-t3 text-[12px] px-3 py-2">{t('editor:versionHistory.loading')}</div>
           )}
@@ -284,7 +276,19 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
                   <span className="text-[11px] text-t3 shrink-0">{formatSize(entry.size)}</span>
                 </div>
                 <div className="text-[11px] text-t3">{formatTimestamp(entry.ts)}</div>
-                <div className="flex justify-end mt-1">
+                <div className="flex justify-end mt-1 gap-1">
+                  {isSelected && (
+                    <button
+                      className="text-[11px] px-2 py-[2px] rounded border border-brd text-t2 hover:bg-hov hover:text-t1 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearSelection();
+                      }}
+                      title={t('editor:versionHistory.closeSelected')}
+                    >
+                      {t('editor:versionHistory.closeSelected')}
+                    </button>
+                  )}
                   <button
                     className="text-[11px] px-2 py-[2px] rounded border border-brd text-t2 hover:bg-acc hover:text-white hover:border-acc disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     onClick={(e) => {

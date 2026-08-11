@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { useEditorStore } from './editorStore';
-import type { DiffLine } from '@/components/work-area/versionHistoryDiff';
 
 /**
  * Editor view-state split out of the legacy editorStore god-store (PR1).
@@ -23,14 +22,14 @@ export interface VersionHistorySelection {
    *  means the same hash can legitimately appear in multiple index entries
    *  (e.g. after a restore that re-snapshots identical content) — `ts` keeps
    *  the selection unique. When non-null AND `versionHistoryVisible` is true,
-   *  WorkArea renders the diff view in the editor area instead of the active
-   *  editor (CodeMirror / custom). */
+   *  WorkArea renders the snapshot content view in the editor area instead of
+   *  the active editor (CodeMirror / custom). */
   selectedKey: string | null;
-  /** Parsed unified-diff lines for the selected snapshot vs current on-disk
-   *  content. `null` = not yet computed or loading. Empty array = identical. */
-  diffLines: DiffLine[] | null;
-  /** Error surfaced while computing the diff (fs read failure etc.). */
-  diffError: string | null;
+  /** Full snapshot content for the selected entry. `null` = not yet loaded or
+   *  loading. Shown verbatim in the editor area — no diff, no on-disk read. */
+  snapshotContent: string | null;
+  /** Error surfaced while fetching the snapshot blob (fs read failure etc.). */
+  snapshotError: string | null;
 }
 
 interface EditorViewState {
@@ -68,7 +67,7 @@ interface EditorViewState {
   toggleVersionHistory: () => void;
   /** Set version-history panel visibility (used to force-close on tab switch). */
   setVersionHistoryVisible: (v: boolean) => void;
-  /** Set the version-history selection (selected key + parsed diff lines +
+  /** Set the version-history selection (selected key + snapshot content +
    *  error). Pass `null` key to clear (panel close, restore success, tab
    *  switch). */
   setVersionHistorySelection: (sel: VersionHistorySelection) => void;
@@ -84,7 +83,7 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   terminalInRightDock: false,
   terminalRightWidth: 300,
   versionHistoryVisible: false,
-  versionHistorySelection: { selectedKey: null, diffLines: null, diffError: null },
+  versionHistorySelection: { selectedKey: null, snapshotContent: null, snapshotError: null },
 
   setCursorPosition: (line, col) => {
     // ponytail: cursor is also persisted onto the active tab so it survives tab
@@ -116,7 +115,7 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
 
   closeTerminalPanel: () => set({ terminalPanelVisible: false, terminalInRightDock: false }),
 
-  toggleVersionHistory: () => set((state) => ({ versionHistoryVisible: !state.versionHistoryVisible, versionHistorySelection: { selectedKey: null, diffLines: null, diffError: null } })),
-  setVersionHistoryVisible: (v) => set({ versionHistoryVisible: v, versionHistorySelection: { selectedKey: null, diffLines: null, diffError: null } }),
+  toggleVersionHistory: () => set((state) => ({ versionHistoryVisible: !state.versionHistoryVisible, versionHistorySelection: { selectedKey: null, snapshotContent: null, snapshotError: null } })),
+  setVersionHistoryVisible: (v) => set({ versionHistoryVisible: v, versionHistorySelection: { selectedKey: null, snapshotContent: null, snapshotError: null } }),
   setVersionHistorySelection: (sel) => set({ versionHistorySelection: sel }),
 }));

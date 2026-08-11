@@ -15,7 +15,7 @@ import { EditorPane } from './EditorPane';
 import { PreviewPane } from './PreviewPane';
 import { DailyDigest } from '../editor/DailyDigest';
 import { VersionHistoryPanel, isVersionableTab } from './VersionHistoryPanel';
-import { VersionHistoryDiffView } from './VersionHistoryDiffView';
+import { VersionHistoryContentView } from './VersionHistoryContentView';
 import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
 
 
@@ -306,11 +306,11 @@ export function WorkArea() {
           {activePanel === 'clips' ? '暂无剪藏' : activePanel === 'wiki' ? '暂无 Wiki 页面' : activePanel === 'calendar' ? '暂无日记' : activePanel === 'analyze' ? '暂无分析报告' : '暂无打开的文件'}
         </div>
       ) : showVersionHistoryDiff ? (
-        // ponytail: editor area swapped for the version-history diff view.
+        // ponytail: editor area swapped for the version-history content view.
         // Renders in place of CodeMirror / custom editor / preview split so
-        // the diff gets the full editor canvas — the bottom-of-panel layout
-        // was cramped (PR4). The side panel still owns the snapshot list.
-        <VersionHistoryDiffView />
+        // the snapshot content gets the full editor canvas. The side panel
+        // still owns the snapshot list.
+        <VersionHistoryContentView />
       ) : (<>
 
       {/* CodeMirror editor pane */}

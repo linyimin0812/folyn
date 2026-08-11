@@ -13,7 +13,7 @@ beforeEach(() => {
     terminalInRightDock: false,
     terminalRightWidth: 300,
     versionHistoryVisible: false,
-    versionHistorySelection: { selectedKey: null, diffLines: null, diffError: null },
+    versionHistorySelection: { selectedKey: null, snapshotContent: null, snapshotError: null },
   });
   useEditorStore.setState({ tabs: [], activeTabId: null });
 });
@@ -127,44 +127,44 @@ describe('useEditorViewStateStore', () => {
     expect(useEditorViewStateStore.getState().versionHistoryVisible).toBe(false);
   });
 
-  it('defaults versionHistorySelection to empty (no selected key, no diff)', () => {
+  it('defaults versionHistorySelection to empty (no selected key, no content)', () => {
     const s = useEditorViewStateStore.getState().versionHistorySelection;
     expect(s.selectedKey).toBeNull();
-    expect(s.diffLines).toBeNull();
-    expect(s.diffError).toBeNull();
+    expect(s.snapshotContent).toBeNull();
+    expect(s.snapshotError).toBeNull();
   });
 
   it('setVersionHistorySelection writes the selection payload', () => {
-    const lines = [{ text: 'x', kind: 'context' as const }];
+    const content = 'snapshot body';
     useEditorViewStateStore.getState().setVersionHistorySelection({
       selectedKey: 'abc',
-      diffLines: lines,
-      diffError: null,
+      snapshotContent: content,
+      snapshotError: null,
     });
     const s = useEditorViewStateStore.getState().versionHistorySelection;
     expect(s.selectedKey).toBe('abc');
-    expect(s.diffLines).toBe(lines);
-    expect(s.diffError).toBeNull();
+    expect(s.snapshotContent).toBe(content);
+    expect(s.snapshotError).toBeNull();
   });
 
   it('setVersionHistoryVisible clears the selection when hiding', () => {
     useEditorViewStateStore.getState().setVersionHistorySelection({
       selectedKey: 'abc',
-      diffLines: [{ text: 'x', kind: 'context' }],
-      diffError: null,
+      snapshotContent: 'snapshot body',
+      snapshotError: null,
     });
     useEditorViewStateStore.getState().setVersionHistoryVisible(false);
     const s = useEditorViewStateStore.getState().versionHistorySelection;
     expect(s.selectedKey).toBeNull();
-    expect(s.diffLines).toBeNull();
+    expect(s.snapshotContent).toBeNull();
   });
 
   it('toggleVersionHistory clears the selection when toggling off', () => {
     useEditorViewStateStore.getState().setVersionHistoryVisible(true);
     useEditorViewStateStore.getState().setVersionHistorySelection({
       selectedKey: 'abc',
-      diffLines: [{ text: 'x', kind: 'context' }],
-      diffError: null,
+      snapshotContent: 'snapshot body',
+      snapshotError: null,
     });
     useEditorViewStateStore.getState().toggleVersionHistory();
     expect(useEditorViewStateStore.getState().versionHistoryVisible).toBe(false);

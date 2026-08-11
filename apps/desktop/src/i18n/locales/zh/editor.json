@@ -118,6 +118,7 @@
     "snapshotN": "快照 {{index}}",
     "restore": "恢复",
     "restoring": "恢复中…",
+    "closeSelected": "关闭",
     "diff": {
       "identical": "内容与当前一致"
     }

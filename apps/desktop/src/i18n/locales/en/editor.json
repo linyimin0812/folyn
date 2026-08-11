@@ -118,6 +118,7 @@
     "snapshotN": "Snapshot {{index}}",
     "restore": "Restore",
     "restoring": "Restoring…",
+    "closeSelected": "Close",
     "diff": {
       "identical": "Content matches current state"
     }
