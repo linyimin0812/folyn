@@ -981,3 +981,37 @@ Root cause: the slash/code-block extensions dispatched effect-only transactions 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 143: Restore slash menu filtering during IME composition
+
+**Date**: 2026-08-11
+**Task**: Restore slash menu filtering during IME composition
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The composition guard that fixed pinyin input broke the slash menu in WKWebView: with a Chinese IME active, typing command names is also a composition session, so the extension skipped every filter update (no live filtering) and the menu's 100ms post-composition key window swallowed the selection Enter. Fix: EditorView.handleUpdate now mirrors the slash filter from the document into React state during composition (no CodeMirror transaction, so WKWebView composition stays intact), and SlashMenu drops the post-composition key window — keys are only ignored while a composition is actually active, and with live filtering the confirming Enter selects the already-filtered item. Verified via headless-Chrome CDP IME simulation (filter mirrors t→ta→tab→tabs during composition; plain typing unaffected). 2094 desktop tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `48071b2d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
