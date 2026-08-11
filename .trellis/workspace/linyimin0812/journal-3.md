@@ -1219,3 +1219,37 @@ Removed the group-hover:text-t3 hover brightening from the external-file SquareA
 ### Next Steps
 
 - None - task complete
+
+
+## Session 150: External-file tab icon: remove hover tooltip
+
+**Date**: 2026-08-11
+**Task**: External-file tab icon: remove hover tooltip
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The black popup appearing on hover over the external-file tab icon was the [data-tip] tooltip, not the icon's hover tint. Removed the data-tip attribute from both icon wrappers (main tab row + open-files list); the icon stays a static text-t4 with aria-label for accessibility. i18n key still used by aria-label.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `905ca1fb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
