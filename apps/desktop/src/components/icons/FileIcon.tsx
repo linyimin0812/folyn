@@ -86,6 +86,9 @@ const EXT_TO_THEME_ICON: Record<string, string> = {
   puml: 'plantuml',
   pu: 'plantuml',
   plantuml: 'plantuml',
+  gv: 'graphviz',
+  dot: 'graphviz',
+  graphviz: 'graphviz',
   rt: 'richtext',
 };
 
@@ -100,6 +103,7 @@ const HANDLER_TO_THEME_ICON: Record<string, string> = {
   mmap: 'mindMap',
   drawio: 'drawio',
   plantuml: 'plantuml',
+  graphviz: 'graphviz',
   code: 'javaScript',
   'rich-text': 'richtext',
   svg: 'svg',

@@ -10,12 +10,14 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { LanguageDescription } from '@codemirror/language';
 import type { PluginManifest } from '@quill/plugin-host';
 import {
   registerPluginEditorLanguages,
   registerEditorLanguage,
   unregisterEditorLanguage,
   getEditorLanguage,
+  listEditorLanguages,
   clearEditorLanguages,
 } from './editorLanguageAdapter';
 import type { PluginModule } from './contributionAdapters';
@@ -29,7 +31,7 @@ function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
     main: 'index.js',
     contributes: {
       editorLanguages: [
-        { id: 'plantuml', aliases: ['puml', 'pu'], entry: 'plantumlLanguage' },
+        { id: 'plantuml', aliases: ['puml', 'pu'], extensions: ['puml', 'pu', 'plantuml'], entry: 'plantumlLanguage' },
       ],
     },
     ...overrides,
@@ -59,6 +61,46 @@ describe('registerPluginEditorLanguages', () => {
     expect(getEditorLanguage('plantuml')).toBeDefined();
     expect(getEditorLanguage('puml')?.canonical).toBe('plantuml');
     expect(getEditorLanguage('pu')?.canonical).toBe('plantuml');
+  });
+
+  it('exposes declared file extensions for standalone-file matching', () => {
+    registerPluginEditorLanguages(manifest(), fakeModule());
+    expect(getEditorLanguage('plantuml')?.extensions).toEqual(['puml', 'pu', 'plantuml']);
+    const listed = listEditorLanguages();
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).toMatchObject({
+      canonical: 'plantuml',
+      aliases: ['puml', 'pu'],
+      extensions: ['puml', 'pu', 'plantuml'],
+    });
+  });
+
+  it('unions extensions across alias keys of the same canonical language', () => {
+    registerEditorLanguage('plugin-a', 'plantuml', 'plantuml', () => ({ /* a */ }), ['puml', 'plantuml']);
+    registerEditorLanguage('plugin-a', 'pu', 'plantuml', () => ({ /* a */ }), ['pu']);
+    expect(listEditorLanguages()[0].extensions.sort()).toEqual(['plantuml', 'pu', 'puml']);
+  });
+
+  it('built registry descriptions match standalone files by extension', () => {
+    // Mirrors buildCodeLanguages() in EditorView.tsx: registered languages are
+    // turned into LanguageDescription.of({ name, alias, extensions, load }).
+    registerEditorLanguage('builtin', 'plantuml', 'plantuml', () => ({ /* LanguageSupport stub */ }), ['puml', 'pu', 'plantuml']);
+    registerEditorLanguage('builtin', 'graphviz', 'graphviz', () => ({ /* LanguageSupport stub */ }), ['gv', 'dot', 'graphviz']);
+    const descs = listEditorLanguages().map((entry) =>
+      LanguageDescription.of({
+        name: entry.canonical,
+        alias: entry.aliases,
+        extensions: entry.extensions,
+        load: async () => entry.factory() as never,
+      }),
+    );
+    expect(LanguageDescription.matchFilename(descs, '/vault/diagram.puml')?.name).toBe('plantuml');
+    expect(LanguageDescription.matchFilename(descs, 'diagram.dot')?.name).toBe('graphviz');
+    expect(LanguageDescription.matchFilename(descs, 'diagram.gv')?.name).toBe('graphviz');
+    // matchFilename is case-sensitive on the extension, so callers lowercase
+    // the path first (EditorView does) — same convention as detectFileType.
+    expect(LanguageDescription.matchFilename(descs, 'DIAGRAM.PUML'.toLowerCase())?.name).toBe('plantuml');
+    expect(LanguageDescription.matchFilename(descs, 'notes.md')).toBeNull();
   });
 
   it('skips languages with missing entry-ref and warns', () => {

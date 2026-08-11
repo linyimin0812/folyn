@@ -1,0 +1,10 @@
+{"file": ".trellis/tasks/08-11-add-graphviz-file-type/prd.md", "reason": "PRD with decisions: quickchart.io online server, .gv/.dot/.graphviz extensions, new graphviz.svg icon. Mirror plantuml pattern."}
+{"file": "packages/container-plugins/src/plugins/PlantUmlPlugin.tsx", "reason": "Template for GraphvizPlugin: useGraphvizSvg hook + GraphvizBlock inline renderer. Replace encodePlantUml+plantuml.com fetch with quickchart.io POST."}
+{"file": "apps/desktop/src/components/file-types/plantuml/index.tsx", "reason": "Template for graphviz file-type handler. Same shape: id, extensions, icon, Preview."}
+{"file": "apps/desktop/src/components/file-types/plantuml/PlantUmlPreview.tsx", "reason": "Template for GraphvizPreview: ZoomPanCanvas + blob URL + loading marker."}
+{"file": "apps/desktop/src/services/export/plantuml.ts", "reason": "Template for graphviz export enhancer: re-fetch SVG from quickchart.io, set data-raw-svg + body.innerHTML."}
+{"file": "apps/desktop/src/services/exportService.ts", "reason": "REGISTRY registration: add graphviz/dot/gv extensions. Also where LOADING_MARKERS lives (reuse '渲染图表中')."}
+{"file": "apps/desktop/src/services/registerBuiltinCodeContributions.ts", "reason": "Register graphviz/dot fence renderers. Add GraphvizCodeRenderer + registerMarkdownCodeRenderer calls."}
+{"file": "apps/desktop/src/components/icons/FileIcon.tsx", "reason": "EXT_TO_THEME_ICON + HANDLER_TO_THEME_ICON: add gv/dot/graphviz → 'graphviz' mapping."}
+{"file": "apps/desktop/src/components/icons/ThemeIcon.tsx", "reason": "Icon data-URL rendering contract. graphviz.svg will load via import.meta.glob → data URL → <img>."}
+{"file": "apps/desktop/src/services/export/shared.ts", "reason": "renderFilePreviewToSvg already checks data-raw-svg attribute — graphviz exporter just needs to set it like plantuml does."}

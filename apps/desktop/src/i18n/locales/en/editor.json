@@ -8,6 +8,7 @@
       "drawio": { "label": "Drawio", "description": "Export .drawio source file" },
       "mmap": { "label": "Mind Map", "description": "Export .mmap source file" },
       "plantuml": { "label": "PlantUML", "description": "Export .puml source file" },
+      "graphviz": { "label": "Graphviz", "description": "Export .gv source file" },
       "default": { "label": "Source File", "description": "Export raw file" }
     },
     "html": {

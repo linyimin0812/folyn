@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
-import { usePlantUmlSvg } from '@quill/container-plugins';
+import { useGraphvizSvg } from '@quill/container-plugins';
 import { ZoomPanCanvas } from '../image/ZoomPanCanvas';
 import type { PreviewProps } from '../types';
 
 // ponytail: file-type preview reuses the same SVG fetch as the inline markdown
 // renderer, but wraps the SVG in ZoomPanCanvas (matching svg/image previews)
 // so the user can wheel-zoom, drag-pan, and pinch. SVG string → blob URL is
-// the same trick SvgPreview uses; ZoomPanCanvas treats it as an img src.
-export function PlantUmlPreview({ content, filePath }: PreviewProps) {
-  const { svg, error } = usePlantUmlSvg(content);
+// the same trick PlantUmlPreview uses; ZoomPanCanvas treats it as an img src.
+export function GraphvizPreview({ content, filePath }: PreviewProps) {
+  const { svg, error } = useGraphvizSvg(content);
   const [url, setUrl] = useState('');
 
   useEffect(() => {

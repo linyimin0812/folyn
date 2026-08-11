@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/08-11-add-graphviz-file-type/prd.md", "reason": "Acceptance criteria to verify: .gv preview, dot/graphviz fence render, file-preview directive, ZoomPanCanvas, SVG export byte-fidelity, error display, CSP allowlist."}
+{"file": "packages/container-plugins/src/plugins/PlantUmlPlugin.tsx", "reason": "Reference for GraphvizPlugin parity: same hook+block shape, same error/loading UI, same loading marker '渲染图表中...' for export stability."}
+{"file": "apps/desktop/src/services/export/plantuml.ts", "reason": "Reference for graphviz export enhancer: must set body[data-raw-svg] to bypass HTML outerHTML round-trip (avoid 'Entity nbsp not defined' XML error)."}
+{"file": "apps/desktop/src/services/export/shared.ts", "reason": "renderFilePreviewToSvg reads data-raw-svg first — verify graphviz exporter sets it, otherwise export falls through to outerHTML path which corrupts entities."}

@@ -78,7 +78,15 @@ export function PlantUmlBlock({ source }: PlantUmlBlockProps) {
     );
   }
 
-  // Loading marker — `渲染图表中` is in exportService's LOADING_MARKERS so
-  // the export stability poll waits for the SVG to land before snapshotting.
-  return <div className="py-4 text-center text-[var(--t3)] text-[13px]">渲染图表中...</div>;
+  // Loading marker — `data-loading` attribute is queried by exportService's
+  // stability poll (sibling mechanism to the LOADING_MARKERS text markers
+  // mermaid/ER still use). Spinner matches ExportMenu's exporting overlay.
+  return (
+    <div className="py-4 flex justify-center items-center" data-loading="true">
+      <span
+        className="inline-block w-4 h-4 rounded-full border-[1.5px] border-brd border-t-acc animate-spin shrink-0"
+        aria-label="渲染图表中"
+      />
+    </div>
+  );
 }

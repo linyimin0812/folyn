@@ -453,6 +453,8 @@ export interface EditorLanguageContribution {
   id: string;
   /** Alternate language names that also resolve to this language support. */
   aliases?: string[];
+  /** File extensions (without the leading dot) that should open with this language, e.g. `puml`, `dot`. */
+  extensions?: string[];
   /** Entry ref into `PluginModule.editorLanguages`. */
   entry: string;
 }

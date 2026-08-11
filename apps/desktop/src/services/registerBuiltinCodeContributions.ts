@@ -9,7 +9,7 @@
  */
 
 import { createElement } from 'react';
-import { MermaidBlock, mermaidLanguageFactory, PlantUmlBlock } from '@quill/container-plugins';
+import { MermaidBlock, mermaidLanguageFactory, PlantUmlBlock, GraphvizBlock, plantumlLanguageFactory, dotLanguageFactory } from '@quill/container-plugins';
 import type { MarkdownCodeRendererProps } from '@quill/plugin-host';
 import { registerMarkdownCodeRenderer } from './plugin-host/markdownCodeRendererAdapter';
 import { registerEditorLanguage } from './plugin-host/editorLanguageAdapter';
@@ -24,6 +24,11 @@ function PlantUmlCodeRenderer({ source }: MarkdownCodeRendererProps) {
   return createElement(PlantUmlBlock, { source });
 }
 
+/** Graphviz (DOT) code-fence renderer — POSTed to quickchart.io. */
+function GraphvizCodeRenderer({ source }: MarkdownCodeRendererProps) {
+  return createElement(GraphvizBlock, { source });
+}
+
 let registered = false;
 
 export function registerBuiltinCodeContributions(): void {
@@ -33,12 +38,24 @@ export function registerBuiltinCodeContributions(): void {
   // builtin mermaid renderer authoritative even if a plugin also declares it.
   registerMarkdownCodeRenderer('builtin', 'mermaid', 'mermaid', MermaidCodeRenderer);
   registerMarkdownCodeRenderer('builtin', 'mmd', 'mermaid', MermaidCodeRenderer);
-  registerEditorLanguage('builtin', 'mermaid', 'mermaid', mermaidLanguageFactory);
-  registerEditorLanguage('builtin', 'mmd', 'mermaid', mermaidLanguageFactory);
-  // PlantUML: rendered via plantuml.com. No CodeMirror StreamLanguage — the
-  // .puml editor falls through to plain-text. Add one if users want syntax
-  // highlighting; the SDK contract already documents `plantuml` as a sample.
+  registerEditorLanguage('builtin', 'mermaid', 'mermaid', mermaidLanguageFactory, ['mmd', 'mermaid']);
+  registerEditorLanguage('builtin', 'mmd', 'mermaid', mermaidLanguageFactory, ['mmd', 'mermaid']);
+  // PlantUML: rendered via plantuml.com. StreamLanguage defined in
+  // container-plugins/src/editor-languages/plantuml.ts (covers common
+  // diagram keywords, ' line comments, /' block comments, strings).
   registerMarkdownCodeRenderer('builtin', 'plantuml', 'plantuml', PlantUmlCodeRenderer);
   registerMarkdownCodeRenderer('builtin', 'puml', 'plantuml', PlantUmlCodeRenderer);
   registerMarkdownCodeRenderer('builtin', 'pu', 'plantuml', PlantUmlCodeRenderer);
+  registerEditorLanguage('builtin', 'plantuml', 'plantuml', plantumlLanguageFactory, ['puml', 'pu', 'plantuml']);
+  registerEditorLanguage('builtin', 'puml', 'plantuml', plantumlLanguageFactory, ['puml', 'pu', 'plantuml']);
+  registerEditorLanguage('builtin', 'pu', 'plantuml', plantumlLanguageFactory, ['puml', 'pu', 'plantuml']);
+  // Graphviz: rendered via quickchart.io. StreamLanguage defined in
+  // container-plugins/src/editor-languages/dot.ts (covers digraph/graph/
+  // subgraph, attributes, // and # line comments, /* block comments,
+  // " strings, <html labels>).
+  registerMarkdownCodeRenderer('builtin', 'graphviz', 'graphviz', GraphvizCodeRenderer);
+  registerMarkdownCodeRenderer('builtin', 'dot', 'graphviz', GraphvizCodeRenderer);
+  registerEditorLanguage('builtin', 'graphviz', 'graphviz', dotLanguageFactory, ['gv', 'dot', 'graphviz']);
+  registerEditorLanguage('builtin', 'dot', 'graphviz', dotLanguageFactory, ['gv', 'dot', 'graphviz']);
+  registerEditorLanguage('builtin', 'gv', 'graphviz', dotLanguageFactory, ['gv', 'dot', 'graphviz']);
 }

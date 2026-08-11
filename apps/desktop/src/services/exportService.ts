@@ -20,6 +20,7 @@ import * as excalidrawExporter from './export/excalidraw';
 import * as drawioExporter from './export/drawio';
 import * as mmapExporter from './export/mmap';
 import * as plantumlExporter from './export/plantuml';
+import * as graphvizExporter from './export/graphviz';
 import { inlineContainerImages } from './export/shared';
 import type { EnhanceCtx } from './export/dbml';
 import { getEnhancer } from './plugin-host/exportEnhancerAdapter';
@@ -158,8 +159,11 @@ export function collectAppCss(): string {
 
 // Loading-state placeholder strings that must disappear before export is
 // ready. Covers mermaid ("渲染图表中..."), file-preview ("加载中..."), and
-// the lazy ER renderer ("正在加载 ER 渲染器…"). Any of these present means
-// an async render is still pending.
+// the lazy ER renderer ("正在加载 ER 渲染器..."). Any of these present means
+// an async render is still pending. PlantUML/Graphviz previews replaced the
+// text with a spinner element marked `data-loading="true"` — the tick loop
+// also queries that attribute so both paths are covered. Mermaid and the ER
+// renderer still use the text markers, so the array stays.
 const LOADING_MARKERS = ['加载中', '渲染图表中', '正在加载', '渲染中', '正在加载 ER 渲染器'];
 
 /**
@@ -233,7 +237,9 @@ export async function renderMarkdownToHtmlViaDom(
   await new Promise<void>((resolve) => {
     const tick = () => {
       const text = container.textContent ?? '';
-      const hasLoading = LOADING_MARKERS.some((m) => text.includes(m));
+      const hasLoadingMarker = LOADING_MARKERS.some((m) => text.includes(m));
+      const hasLoadingAttr = container.querySelector('[data-loading="true"]') !== null;
+      const hasLoading = hasLoadingMarker || hasLoadingAttr;
       const mmapBlocks = container.querySelectorAll('[data-file-preview-src]');
       let pendingMmap = false;
       for (const b of Array.from(mmapBlocks)) {
@@ -298,6 +304,9 @@ const REGISTRY: Record<string, EnhanceFn> = {
   plantuml: plantumlExporter.enhance,
   puml: plantumlExporter.enhance,
   pu: plantumlExporter.enhance,
+  graphviz: graphvizExporter.enhance,
+  gv: graphvizExporter.enhance,
+  dot: graphvizExporter.enhance,
 };
 
 /**

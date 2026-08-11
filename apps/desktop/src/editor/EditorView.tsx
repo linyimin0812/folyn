@@ -37,6 +37,10 @@ function buildCodeLanguages(): LanguageDescription[] {
     LanguageDescription.of({
       name: entry.canonical,
       alias: entry.aliases,
+      // Extensions come from the same registry that drives markdown code
+      // fences, so standalone files (.puml/.pu/.dot/.gv/...) get the same
+      // CodeMirror highlighting as ```plantuml / ```dot blocks.
+      extensions: entry.extensions,
       load: async () => entry.factory() as LanguageSupport,
     }),
   );
@@ -380,7 +384,13 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
             });
           }
         } else {
-          const langDesc = LanguageDescription.matchFilename(languages, filePath);
+          // ponytail: codeLanguages merges listEditorLanguages() (plantuml/graphviz builtin
+          // + plugin-contributed) with @codemirror/language-data fallback, so .puml/.gv
+          // files match their registered StreamLanguage instead of falling through to plain-text.
+          // Lowercase to match file-type detection (detectFileType) and the
+          // lowercase extensions registered in the language registry — Foo.PUML
+          // should highlight the same as foo.puml.
+          const langDesc = LanguageDescription.matchFilename(codeLanguages, filePath.toLowerCase());
           if (langDesc) {
             langDesc.load().then((langSupport) => {
               view.dispatch({

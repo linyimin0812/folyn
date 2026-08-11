@@ -20,6 +20,8 @@ interface RegisteredLanguage {
   pluginId: string;
   canonical: string;
   factory: EditorLanguageFactory;
+  /** File extensions (no leading dot) that should open with this language. */
+  extensions: string[];
 }
 
 const languages = new Map<string, RegisteredLanguage>();
@@ -30,9 +32,10 @@ export function registerEditorLanguage(
   id: string,
   canonical: string,
   factory: EditorLanguageFactory,
+  extensions: string[] = [],
 ): { dispose: () => void } {
   if (!languages.has(id)) {
-    languages.set(id, { pluginId, canonical, factory });
+    languages.set(id, { pluginId, canonical, factory, extensions });
   }
   return { dispose: () => unregisterEditorLanguage(id, pluginId) };
 }
@@ -46,9 +49,9 @@ export function unregisterEditorLanguage(id: string, pluginId: string): void {
 /** Look up a language factory by id or alias. */
 export function getEditorLanguage(
   id: string,
-): { canonical: string; factory: EditorLanguageFactory } | undefined {
+): { canonical: string; factory: EditorLanguageFactory; extensions: string[] } | undefined {
   const entry = languages.get(id);
-  return entry ? { canonical: entry.canonical, factory: entry.factory } : undefined;
+  return entry ? { canonical: entry.canonical, factory: entry.factory, extensions: entry.extensions } : undefined;
 }
 
 /**
@@ -56,25 +59,34 @@ export function getEditorLanguage(
  * alias keys that point at each). `EditorView.tsx` builds its markdown
  * `codeLanguages` lookup from this so plugin-contributed languages (e.g.
  * plantuml) get CodeMirror highlighting — not just the hardcoded mermaid
- * builtin. Each entry's `aliases` excludes the canonical itself.
+ * builtin. Each entry's `aliases` excludes the canonical itself; `extensions`
+ * are the union across all keys so standalone files (`.puml`, `.dot`, ...)
+ * resolve to the same language support as ```` ```plantuml ```` fences.
  */
 export function listEditorLanguages(): Array<{
   canonical: string;
   aliases: string[];
+  extensions: string[];
   factory: EditorLanguageFactory;
 }> {
-  const byCanonical = new Map<string, { aliases: Set<string>; factory: EditorLanguageFactory }>();
-  for (const [key, { canonical, factory }] of languages) {
+  const byCanonical = new Map<string, {
+    aliases: Set<string>;
+    extensions: Set<string>;
+    factory: EditorLanguageFactory;
+  }>();
+  for (const [key, { canonical, factory, extensions }] of languages) {
     let bucket = byCanonical.get(canonical);
     if (!bucket) {
-      bucket = { aliases: new Set(), factory };
+      bucket = { aliases: new Set(), extensions: new Set(), factory };
       byCanonical.set(canonical, bucket);
     }
     if (key !== canonical) bucket.aliases.add(key);
+    for (const ext of extensions) bucket.extensions.add(ext);
   }
-  return Array.from(byCanonical.entries(), ([canonical, { aliases, factory }]) => ({
+  return Array.from(byCanonical.entries(), ([canonical, { aliases, extensions, factory }]) => ({
     canonical,
     aliases: Array.from(aliases),
+    extensions: Array.from(extensions),
     factory,
   }));
 }
@@ -103,7 +115,7 @@ export function registerPluginEditorLanguages(
     const keys = [c.id, ...(c.aliases ?? [])];
     for (const key of keys) {
       if (languages.has(key)) continue; // first-registered wins
-      disposables.push(registerEditorLanguage(manifest.id, key, c.id, factory));
+      disposables.push(registerEditorLanguage(manifest.id, key, c.id, factory, c.extensions ?? []));
     }
   }
 
