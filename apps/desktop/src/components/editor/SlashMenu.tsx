@@ -53,6 +53,10 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
   // active — the filter itself is mirrored from the document in
   // EditorView.handleUpdate, so the menu still works during composition.
   const composingRef = useRef(false);
+  // Remember whether the menu is flipped above the cursor so the
+  // below/above decision doesn't oscillate as the filtered list height
+  // changes on every keystroke.
+  const flippedRef = useRef(false);
   const registry = ContainerRegistry.getInstance();
 
   const allPlugins = registry
@@ -86,9 +90,13 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
     setActiveIndex(0);
   }, [visible, filter]);
 
-  // Adjust position to avoid being clipped at the bottom of the viewport
+  // Adjust position to avoid being clipped at the bottom of the viewport.
+  // The side (below/above) is sticky once chosen: it only flips back when
+  // the other side clearly fits, so filtering (which changes the list
+  // height every keystroke) can't make the menu oscillate up/down.
   useEffect(() => {
     if (!visible || !menuRef.current) {
+      flippedRef.current = false;
       setAdjustedPosition(position);
       return;
     }
@@ -98,9 +106,22 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
       const menuHeight = menu.offsetHeight;
       const viewportHeight = window.innerHeight;
       const spaceBelow = viewportHeight - position.top;
-      if (spaceBelow < menuHeight && position.top > menuHeight) {
-        // Not enough space below, flip above
-        setAdjustedPosition({ top: position.top - menuHeight - 8, left: position.left });
+      const spaceAbove = position.top;
+      const fitsBelow = spaceBelow >= menuHeight;
+      const fitsAbove = spaceAbove >= menuHeight;
+
+      if (flippedRef.current) {
+        // Keep it above while it fits there; flip back only when it no
+        // longer fits above AND clearly fits below (hysteresis).
+        if (fitsAbove || !fitsBelow) {
+          setAdjustedPosition({ top: Math.max(0, position.top - menuHeight - 8), left: position.left });
+        } else {
+          flippedRef.current = false;
+          setAdjustedPosition(position);
+        }
+      } else if (!fitsBelow && fitsAbove) {
+        flippedRef.current = true;
+        setAdjustedPosition({ top: Math.max(0, position.top - menuHeight - 8), left: position.left });
       } else {
         setAdjustedPosition(position);
       }
@@ -162,12 +183,21 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
     return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [handleKeyDown]);
 
-  // Scroll active item into view
+  // Scroll the active item into view within the menu's own scroll container
+  // only. scrollIntoView also scrolls ancestor containers (the fixed menu's
+  // DOM ancestors include the editor pane), which shifts the surrounding
+  // content and makes the menu appear to jump relative to the cursor.
   useEffect(() => {
     if (!visible || !menuRef.current) return;
-    const activeElement = menuRef.current.querySelector('.slash-menu-item.active');
-    if (activeElement) {
-      activeElement.scrollIntoView({ block: 'nearest' });
+    const menu = menuRef.current;
+    const activeElement = menu.querySelector('.slash-menu-item.active');
+    if (!activeElement) return;
+    const menuRect = menu.getBoundingClientRect();
+    const itemRect = activeElement.getBoundingClientRect();
+    if (itemRect.top < menuRect.top) {
+      menu.scrollTop -= menuRect.top - itemRect.top;
+    } else if (itemRect.bottom > menuRect.bottom) {
+      menu.scrollTop += itemRect.bottom - menuRect.bottom;
     }
   }, [activeIndex, visible]);
 
