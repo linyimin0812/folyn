@@ -13,6 +13,11 @@ const CATEGORY_KEYS: Record<ContainerCategory, string> = {
   custom: 'editor:slashMenu.categories.custom',
 };
 
+/** Plugins that still render in the preview pane but should not be offered as
+ *  `/`-commands. `ai-result` is inserted through the AI panel's own flow;
+ *  `plugin-error-demo` is a dev-only error-boundary self-check. */
+const SLASH_MENU_HIDDEN_PLUGINS = new Set(['ai-result', 'plugin-error-demo']);
+
 interface SlashMenuProps {
   visible: boolean;
   filter: string;
@@ -44,7 +49,9 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
   const menuRef = useRef<HTMLDivElement>(null);
   const registry = ContainerRegistry.getInstance();
 
-  const allPlugins = registry.getAll().filter((p) => p.name !== 'step' && p.name !== 'tab');
+  const allPlugins = registry
+    .getAll()
+    .filter((p) => !SLASH_MENU_HIDDEN_PLUGINS.has(p.name) && p.name !== 'step' && p.name !== 'tab');
   const filtered = filter
     ? allPlugins.filter(
         (p) =>
@@ -67,9 +74,11 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
     flatList.push(...plugins);
   }
 
+  // Always start on the first item: reset when the menu reopens AND when the
+  // filter changes, so a previous selection never carries across triggers.
   useEffect(() => {
     setActiveIndex(0);
-  }, [filter]);
+  }, [visible, filter]);
 
   // Adjust position to avoid being clipped at the bottom of the viewport
   useEffect(() => {
@@ -137,27 +146,37 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
 
   return (
     <div
-      className="slash-menu fixed z-40 bg-panel border border-brd2 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,.12)] min-w-[240px] max-h-[320px] overflow-y-auto p-1.5 animate-[fadeIn_.12s]"
+      className="slash-menu fixed z-40 bg-panel border border-brd2 rounded-xl shadow-[0_12px_40px_rgba(0,0,0,.16)] min-w-[248px] max-w-[320px] max-h-[320px] overflow-y-auto p-1.5 animate-[slideUp_.14s_ease]"
       ref={menuRef}
       style={{ top: adjustedPosition.top, left: adjustedPosition.left }}
     >
       {Array.from(grouped.entries()).map(([category, plugins]) => (
-        <div key={category} className="mb-1">
-          <div className="text-[9px] font-semibold text-t3 uppercase tracking-[.1em] py-1.5 px-2">{t(CATEGORY_KEYS[category])}</div>
+        <div key={category} className="mb-0.5">
+          <div className="text-[9px] font-semibold text-t3 uppercase tracking-[.1em] pt-1.5 pb-1 px-2">{t(CATEGORY_KEYS[category])}</div>
           {plugins.map((plugin) => {
             const currentIndex = itemIndex++;
             return (
               <div
                 key={plugin.name}
-                className={`slash-menu-item flex items-center gap-2 py-1.5 px-2 rounded-[5px] cursor-pointer transition-[background] duration-100 ${currentIndex === activeIndex ? 'active bg-hov' : ''}`}
+                className={`slash-menu-item group flex items-center gap-2.5 py-2 px-2 rounded-lg cursor-pointer transition-[background-color,box-shadow] duration-100 ${
+                  currentIndex === activeIndex
+                    ? 'active bg-accglow shadow-[inset_0_0_0_1px_var(--accdim)]'
+                    : 'hover:bg-hov'
+                }`}
                 onClick={() => onSelect(plugin)}
                 onMouseEnter={() => setActiveIndex(currentIndex)}
               >
-                <span className="text-base w-6 text-center shrink-0">{renderContainerIcon(plugin.icon)}</span>
-                <div className="flex flex-col gap-px">
-                  <span className="text-xs font-medium text-t1">{plugin.label}</span>
+                <span
+                  className={`w-7 h-7 flex items-center justify-center rounded-md bg-surf2 text-[15px] shrink-0 transition-colors duration-100 ${
+                    currentIndex === activeIndex ? 'bg-accdim' : ''
+                  }`}
+                >
+                  {renderContainerIcon(plugin.icon)}
+                </span>
+                <div className="flex flex-col gap-px min-w-0">
+                  <span className="text-xs font-medium text-t1 truncate">{plugin.label}</span>
                   {plugin.description && (
-                    <span className="text-[10px] text-t3">{plugin.description}</span>
+                    <span className="text-[10px] text-t3 truncate">{plugin.description}</span>
                   )}
                 </div>
               </div>

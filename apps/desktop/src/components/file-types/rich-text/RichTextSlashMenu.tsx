@@ -94,9 +94,11 @@ export function RichTextSlashMenu({ editor, state, onClose }: RichTextSlashMenuP
 
   const flatList = filtered;
 
+  // Always start on the first item: reset when the menu reopens AND when the
+  // filter changes, so a previous selection never carries across triggers.
   useEffect(() => {
     setActiveIndex(0);
-  }, [state.filter]);
+  }, [state.visible, state.filter]);
 
   // Position the menu at the cursor; flip above if viewport-bottom space is short.
   useEffect(() => {
