@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 141
+- **Total Sessions**: 142
 - **Last Active**: 2026-08-11
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~949 | Active |
+| `journal-3.md` | ~983 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 142 | 2026-08-11 | Fix IME composition dropping pinyin after slash trigger | `fcd895d3` | `codex/slash-menu-cleanup` |
 | 141 | 2026-08-11 | Fix slash menu hijacking IME composition (pinyin input garble) | `f8a127a4` | `codex/slash-menu-cleanup` |
 | 140 | 2026-08-11 | Clean up slash command menu (hide AI result / error self-check, reset selection, style polish) | `fbb4c376` | `codex/slash-menu-cleanup` |
 | 139 | 2026-08-11 | Graphviz file type + plantuml/dot syntax highlighting | `dd7aac4a` | `master` |

@@ -947,3 +947,37 @@ The slash menu's capture-phase document keydown listener intercepted Enter/Arrow
 ### Next Steps
 
 - None - task complete
+
+
+## Session 142: Fix IME composition dropping pinyin after slash trigger
+
+**Date**: 2026-08-11
+**Task**: Fix IME composition dropping pinyin after slash trigger
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+Root cause: the slash/code-block extensions dispatched effect-only transactions on every keystroke during IME composition, which makes WKWebView (Tauri) commit the composition early at a segment boundary and drop uncommitted pinyin ('wenjian' → 'wen'). Also, WKWebView fires the composition-confirming Enter after compositionend with isComposing=false, so the menu's event-flag guard alone was insufficient. Fixed by (1) skipping extension dispatch while update.view.compositionStarted, (2) tracking composition at document level in SlashMenu and ignoring the single key after compositionend (CodeMirror's 100ms window). Verified via headless-Chrome CDP IME simulation harness; 2090 desktop tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fcd895d3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
