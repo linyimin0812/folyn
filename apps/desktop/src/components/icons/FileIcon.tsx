@@ -83,8 +83,9 @@ const EXT_TO_THEME_ICON: Record<string, string> = {
   mmap: 'mindMap',
   drawio: 'drawio',
   dio: 'drawio',
-  puml: 'drawio',
-  pu: 'drawio',
+  puml: 'plantuml',
+  pu: 'plantuml',
+  plantuml: 'plantuml',
   rt: 'richtext',
 };
 
@@ -98,7 +99,7 @@ const HANDLER_TO_THEME_ICON: Record<string, string> = {
   dbml: 'sql',
   mmap: 'mindMap',
   drawio: 'drawio',
-  plantuml: 'drawio',
+  plantuml: 'plantuml',
   code: 'javaScript',
   'rich-text': 'richtext',
   svg: 'svg',
