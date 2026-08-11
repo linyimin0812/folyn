@@ -58,7 +58,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
                 <span data-tip={t('topbar:tabList.externalFile')} className="flex items-center shrink-0">
                   <SquareArrowOutUpRight
                     size={11}
-                    className="text-t4 group-hover:text-t3"
+                    className="text-t4"
                     aria-label={t('topbar:tabList.externalFile')}
                   />
                 </span>
@@ -140,7 +140,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
                       <span data-tip={t('topbar:tabList.externalFile')} className="flex items-center shrink-0">
                         <SquareArrowOutUpRight
                           size={12}
-                          className="text-t4 group-hover:text-t3"
+                          className="text-t4"
                           aria-label={t('topbar:tabList.externalFile')}
                         />
                       </span>
