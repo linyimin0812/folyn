@@ -55,10 +55,10 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
               <span className="shrink-0 flex items-center"><FileIcon filename={tab.name} fileType={tab.fileType} /></span>
               <span className="max-w-[110px] overflow-hidden text-ellipsis">{tab.name}</span>
               {isExternalPath(tab.path) && (
-                <span className="w-[14px] h-[14px] flex items-center justify-center shrink-0">
+                <span className="shrink-0 flex items-center">
                   <SquareArrowOutUpRight
-                    size={11}
-                    className="text-t4 block"
+                    size={16}
+                    className="text-t4"
                     aria-label={t('topbar:tabList.externalFile')}
                   />
                 </span>
@@ -137,10 +137,10 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
                     </span>
                     <span className="flex-1 min-w-0 overflow-hidden text-ellipsis">{tab.name}</span>
                     {isExternalPath(tab.path) && (
-                      <span className="w-[16px] h-[16px] flex items-center justify-center shrink-0">
+                      <span className="shrink-0 flex items-center">
                         <SquareArrowOutUpRight
-                          size={12}
-                          className="text-t4 block"
+                          size={16}
+                          className="text-t4"
                           aria-label={t('topbar:tabList.externalFile')}
                         />
                       </span>
