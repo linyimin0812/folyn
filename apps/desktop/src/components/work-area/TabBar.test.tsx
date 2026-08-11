@@ -7,10 +7,9 @@ vi.mock('@/components/file-types/web/WebViewer', () => ({
   hideWebviewsForOverlay: vi.fn(),
 }));
 
-vi.mock('@tauri-apps/plugin-shell', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tauri-apps/plugin-shell')>();
-  return { ...actual, open: vi.fn() };
-});
+vi.mock('@tauri-apps/plugin-opener', () => ({
+  openPath: vi.fn(),
+}));
 
 vi.mock('@tauri-apps/api/path', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tauri-apps/api/path')>();
@@ -156,7 +155,7 @@ describe('TabBar external file indicator', () => {
 
 describe('TabBar external folder click', () => {
   it('opens the containing folder when the external icon is clicked', async () => {
-    const { open } = await import('@tauri-apps/plugin-shell');
+    const { openPath } = await import('@tauri-apps/plugin-opener');
     render(
       <TabBar
         tabs={[tab('ext', 'foo.md', { path: '/Users/test/docs/foo.md' })]}
@@ -168,12 +167,12 @@ describe('TabBar external folder click', () => {
 
     fireEvent.click(screen.getByLabelText('打开所在文件夹'));
     await vi.waitFor(() => {
-      expect(vi.mocked(open)).toHaveBeenCalledWith('/Users/test/docs');
+      expect(vi.mocked(openPath)).toHaveBeenCalledWith('/Users/test/docs');
     });
   });
 
   it('resolves ~/ external paths to the home directory before opening', async () => {
-    const { open } = await import('@tauri-apps/plugin-shell');
+    const { openPath } = await import('@tauri-apps/plugin-opener');
     render(
       <TabBar
         tabs={[tab('ext', 'foo.md', { path: '~/docs/foo.md' })]}
@@ -185,7 +184,7 @@ describe('TabBar external folder click', () => {
 
     fireEvent.click(screen.getByLabelText('打开所在文件夹'));
     await vi.waitFor(() => {
-      expect(vi.mocked(open)).toHaveBeenCalledWith('/Users/test/docs');
+      expect(vi.mocked(openPath)).toHaveBeenCalledWith('/Users/test/docs');
     });
   });
 

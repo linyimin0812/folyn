@@ -42,7 +42,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
    *  since the shell opener does not expand them. */
   const openExternalFolder = useCallback(async (path: string) => {
     try {
-      const { open } = await import('@tauri-apps/plugin-shell');
+      const { openPath } = await import('@tauri-apps/plugin-opener');
       let resolved = path;
       if (resolved.startsWith('~/') || resolved.startsWith('$HOME/')) {
         const { homeDir } = await import('@tauri-apps/api/path');
@@ -54,7 +54,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
       const trimmed = resolved.replace(/[\\/]+$/, '');
       const sepIdx = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
       const folder = sepIdx > 0 ? trimmed.slice(0, sepIdx) : trimmed;
-      await open(folder || resolved);
+      await openPath(folder || resolved);
     } catch (err) {
       console.warn('[TabBar] open containing folder failed:', err);
     }
