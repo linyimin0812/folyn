@@ -32,7 +32,7 @@ export function WorkArea() {
   const externalContentVersion = useDiffReviewStore((state) => state.externalContentVersion);
   const setContentExternal = useDiffReviewStore((state) => state.setContentExternal);
   const versionHistoryVisible = useEditorViewStateStore((s) => s.versionHistoryVisible);
-  const versionHistorySelectedHash = useEditorViewStateStore((s) => s.versionHistorySelection.selectedHash);
+  const versionHistorySelectedKey = useEditorViewStateStore((s) => s.versionHistorySelection.selectedKey);
 
   // Filter tabs by the active activity panel
   const tabs = allTabs.filter((t) => t.activity === activePanel);
@@ -276,7 +276,7 @@ export function WorkArea() {
   // don't have to coexist with the diff. Selection clears on panel close /
   // restore / tab switch (handled in the panel) — this flag follows.
   const showVersionHistoryDiff = versionHistoryVisible
-    && versionHistorySelectedHash !== null
+    && versionHistorySelectedKey !== null
     && isVersionableTab(activeTab);
 
   return (

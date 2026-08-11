@@ -18,10 +18,14 @@ import type { DiffLine } from '@/components/work-area/versionHistoryDiff';
  */
 
 export interface VersionHistorySelection {
-  /** Hash of the snapshot currently selected in the side panel. When non-null
-   *  AND `versionHistoryVisible` is true, WorkArea renders the diff view in
-   *  the editor area instead of the active editor (CodeMirror / custom). */
-  selectedHash: string | null;
+  /** Composite key (`${hash}-${ts}`) of the snapshot currently selected in the
+   *  side panel. Composite (not bare hash) because content-addressable storage
+   *  means the same hash can legitimately appear in multiple index entries
+   *  (e.g. after a restore that re-snapshots identical content) — `ts` keeps
+   *  the selection unique. When non-null AND `versionHistoryVisible` is true,
+   *  WorkArea renders the diff view in the editor area instead of the active
+   *  editor (CodeMirror / custom). */
+  selectedKey: string | null;
   /** Parsed unified-diff lines for the selected snapshot vs current on-disk
    *  content. `null` = not yet computed or loading. Empty array = identical. */
   diffLines: DiffLine[] | null;
@@ -64,8 +68,8 @@ interface EditorViewState {
   toggleVersionHistory: () => void;
   /** Set version-history panel visibility (used to force-close on tab switch). */
   setVersionHistoryVisible: (v: boolean) => void;
-  /** Set the version-history selection (selected hash + parsed diff lines +
-   *  error). Pass `null` hash to clear (panel close, restore success, tab
+  /** Set the version-history selection (selected key + parsed diff lines +
+   *  error). Pass `null` key to clear (panel close, restore success, tab
    *  switch). */
   setVersionHistorySelection: (sel: VersionHistorySelection) => void;
 }
@@ -80,7 +84,7 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   terminalInRightDock: false,
   terminalRightWidth: 300,
   versionHistoryVisible: false,
-  versionHistorySelection: { selectedHash: null, diffLines: null, diffError: null },
+  versionHistorySelection: { selectedKey: null, diffLines: null, diffError: null },
 
   setCursorPosition: (line, col) => {
     // ponytail: cursor is also persisted onto the active tab so it survives tab
@@ -112,7 +116,7 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
 
   closeTerminalPanel: () => set({ terminalPanelVisible: false, terminalInRightDock: false }),
 
-  toggleVersionHistory: () => set((state) => ({ versionHistoryVisible: !state.versionHistoryVisible, versionHistorySelection: { selectedHash: null, diffLines: null, diffError: null } })),
-  setVersionHistoryVisible: (v) => set({ versionHistoryVisible: v, versionHistorySelection: { selectedHash: null, diffLines: null, diffError: null } }),
+  toggleVersionHistory: () => set((state) => ({ versionHistoryVisible: !state.versionHistoryVisible, versionHistorySelection: { selectedKey: null, diffLines: null, diffError: null } })),
+  setVersionHistoryVisible: (v) => set({ versionHistoryVisible: v, versionHistorySelection: { selectedKey: null, diffLines: null, diffError: null } }),
   setVersionHistorySelection: (sel) => set({ versionHistorySelection: sel }),
 }));

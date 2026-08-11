@@ -79,7 +79,7 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
   const versionHistoryVisible = useEditorViewStateStore((s) => s.versionHistoryVisible);
   const setVersionHistoryVisible = useEditorViewStateStore((s) => s.setVersionHistoryVisible);
   const setVersionHistorySelection = useEditorViewStateStore((s) => s.setVersionHistorySelection);
-  const selectedHash = useEditorViewStateStore((s) => s.versionHistorySelection.selectedHash);
+  const selectedKey = useEditorViewStateStore((s) => s.versionHistorySelection.selectedKey);
 
   const [snapshots, setSnapshots] = useState<SnapshotEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -93,7 +93,7 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
   // and tab switch so the editor area swaps back to the active editor. Single
   // exit so lifecycle edges cannot drift.
   const clearSelection = useCallback(() => {
-    setVersionHistorySelection({ selectedHash: null, diffLines: null, diffError: null });
+    setVersionHistorySelection({ selectedKey: null, diffLines: null, diffError: null });
   }, [setVersionHistorySelection]);
 
   // ponytail: refetch snapshot list whenever the active file changes or the
@@ -101,13 +101,21 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
   // entry appears. Disabled when the panel is hidden — no wasted IPC.
   // Also clears any selected snapshot + diff so the editor area returns to
   // the live editor when the file context changes.
+  //
+  // Deps use `tabPath` (the stable path string), NOT `activeTab` — the tab
+  // object reference changes on every keystroke (store updates tab.content),
+  // which would recreate this callback and re-fire the effect, flashing
+  // "loading" while the user types. `resolveTabContext` only reads
+  // `tab.path`, so a stale-closure `activeTab` snapshot is fine; the live
+  // tab is read from the store inside the callback when needed.
   const refreshList = useCallback(async () => {
-    if (!activeTab || !versionHistoryVisible) return;
+    const liveTab = useEditorStore.getState().tabs.find((t) => t.path === tabPath);
+    if (!liveTab || !versionHistoryVisible) return;
     setError(null);
     setLoading(true);
     clearSelection();
     try {
-      const ctx = await resolveTabContext(activeTab);
+      const ctx = await resolveTabContext(liveTab);
       if (!ctx) {
         setSnapshots([]);
         return;
@@ -121,7 +129,7 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, versionHistoryVisible, clearSelection]);
+  }, [tabPath, versionHistoryVisible, clearSelection]);
 
   useEffect(() => {
     if (!versionHistoryVisible) return;
@@ -153,24 +161,26 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
   // Both reads are async on the Tauri fs; lift the parsed patch to the store
   // so WorkArea's editor-area diff view re-renders.
   const handleSelect = useCallback(async (entry: SnapshotEntry) => {
-    if (!activeTab) return;
+    const liveTab = useEditorStore.getState().tabs.find((t) => t.path === tabPath);
+    if (!liveTab) return;
     setError(null);
-    // Mark loading: hash set, lines cleared. WorkArea shows the loading hint.
-    setVersionHistorySelection({ selectedHash: entry.hash, diffLines: null, diffError: null });
+    // Mark loading: key set, lines cleared. WorkArea shows the loading hint.
+    const key = `${entry.hash}-${entry.ts}`;
+    setVersionHistorySelection({ selectedKey: key, diffLines: null, diffError: null });
     try {
-      const ctx = await resolveTabContext(activeTab);
+      const ctx = await resolveTabContext(liveTab);
       if (!ctx) return;
       const [oldContent, newContent] = await Promise.all([
         readBlob(ctx.vaultId, entry.hash, ctx.ext),
-        readRawContent(activeTab.path),
+        readRawContent(liveTab.path),
       ]);
-      const patch = createPatch(activeTab.path, oldContent, newContent, '', '', { context: 3 });
-      setVersionHistorySelection({ selectedHash: entry.hash, diffLines: parsePatchLines(patch), diffError: null });
+      const patch = createPatch(liveTab.path, oldContent, newContent, '', '', { context: 3 });
+      setVersionHistorySelection({ selectedKey: key, diffLines: parsePatchLines(patch), diffError: null });
     } catch (err) {
       console.warn('[VersionHistory] diff failed:', err);
-      setVersionHistorySelection({ selectedHash: entry.hash, diffLines: null, diffError: String(err) });
+      setVersionHistorySelection({ selectedKey: key, diffLines: null, diffError: String(err) });
     }
-  }, [activeTab, setVersionHistorySelection]);
+  }, [tabPath, setVersionHistorySelection]);
 
   // Restore flow per PRD §5:
   //   (a) `restore()` snapshots current on-disk first (never loses state).
@@ -187,21 +197,22 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
   // Clear the selection so the editor area swaps back to the live editor,
   // now showing the restored content.
   const handleRestore = useCallback(async (entry: SnapshotEntry) => {
-    if (!activeTab) return;
+    const liveTab = useEditorStore.getState().tabs.find((t) => t.path === tabPath);
+    if (!liveTab) return;
     setRestoring(true);
     setError(null);
     try {
-      const ctx = await resolveTabContext(activeTab);
+      const ctx = await resolveTabContext(liveTab);
       if (!ctx) return;
       await restoreSnapshot(ctx.vaultId, ctx.absFilePath, entry.hash, ctx.ext);
 
       // Refresh editor buffer from disk.
-      const handler = getHandlerById(activeTab.fileType);
-      const raw = await readRawContent(activeTab.path);
+      const handler = getHandlerById(liveTab.fileType);
+      const raw = await readRawContent(liveTab.path);
       const content = handler?.deserialize ? handler.deserialize(raw) : raw;
       useEditorStore.setState((state) => ({
         tabs: state.tabs.map((t) =>
-          t.id === activeTab.id ? { ...t, content, isDirty: false } : t,
+          t.id === liveTab.id ? { ...t, content, isDirty: false } : t,
         ),
       }));
       useDiffReviewStore.setState((s) => ({ externalContentVersion: s.externalContentVersion + 1 }));
@@ -218,7 +229,7 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
     } finally {
       setRestoring(false);
     }
-  }, [activeTab, clearSelection]);
+  }, [tabPath, clearSelection]);
 
   if (!versionHistoryVisible) return null;
   if (!isVersionableTab(activeTab)) return null;
@@ -252,13 +263,17 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
             <div className="text-t3 text-[12px] px-3 py-2">{t('editor:versionHistory.empty')}</div>
           )}
           {snapshots.map((entry, idx) => {
-            const isSelected = entry.hash === selectedHash;
+            const key = `${entry.hash}-${entry.ts}`;
+            const isSelected = key === selectedKey;
+            // ponytail: snapshots is in insertion order (oldest first), so
+            // idx 0 is v1 and the last idx is vN. Time gets later as version
+            // number grows — matches user expectation.
             const label = snapshots.length > 1
-              ? t('editor:versionHistory.snapshotN', { index: snapshots.length - idx })
+              ? t('editor:versionHistory.snapshotN', { index: idx + 1 })
               : t('editor:versionHistory.snapshot');
             return (
               <div
-                key={`${entry.hash}-${entry.ts}`}
+                key={key}
                 className={`flex flex-col gap-[2px] px-3 py-2 cursor-pointer border-b border-brd2 transition-colors ${
                   isSelected ? 'bg-accdim' : 'hover:bg-hov'
                 }`}
