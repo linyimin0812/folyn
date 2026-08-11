@@ -40,7 +40,11 @@ export function updateSlashFilter(view: EditorView, pos: number, filter: string)
 export const slashCommandPlugin = ViewPlugin.fromClass(
   class {
     update(update: ViewUpdate) {
-      if (!update.docChanged) return;
+      // React to both doc changes and selection moves: WKWebView can deliver
+      // an IME commit as a doc change followed by a separate selection
+      // update, and the menu must re-evaluate after both, or it hides
+      // itself on the intermediate (stale-selection) transaction.
+      if (!update.docChanged && !update.selectionSet) return;
       // Let the IME own the document during composition (pinyin/Chinese
       // input). Dispatching transactions here — even effect-only — makes
       // WKWebView commit the composition early at a segment boundary and
@@ -66,11 +70,17 @@ export const slashCommandPlugin = ViewPlugin.fromClass(
         const charAfterSlash = afterSlash.length > 0 ? afterSlash[0] : '';
         if ((charBeforeSlash === ' ' || charBeforeSlash === '\t' || slashIdx === 0) && charAfterSlash !== '>') {
           if (afterSlash.length === 0 && !menuState.visible) {
-            // Just typed '/', show menu
-            const viewRef = update.view;
-            setTimeout(() => showSlashMenu(viewRef, pos), 0);
+            // Just typed '/', show menu. Only auto-open on actual typing,
+            // not when a selection move lands after a '/'.
+            if (update.docChanged) {
+              const viewRef = update.view;
+              setTimeout(() => showSlashMenu(viewRef, pos), 0);
+            }
           } else if (afterSlash.length > 0 && !/\s/.test(afterSlash)) {
-            // Typing filter text after '/'
+            // Typing filter text after '/' — also re-evaluated on selection
+            // moves so a WKWebView IME commit (doc change + separate
+            // selection update) leaves the menu on the right filter instead
+            // of hiding it mid-commit.
             const viewRef = update.view;
             setTimeout(() => updateSlashFilter(viewRef, pos, afterSlash), 0);
           } else if (menuState.visible) {

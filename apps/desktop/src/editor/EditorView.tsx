@@ -249,7 +249,7 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
           // Mirror the live filter here through React state only — the menu
           // keeps filtering as the user types command names, with no CodeMirror
           // transaction. The extension takes over again once composition ends.
-          if (update.docChanged && update.view.compositionStarted && menuState.visible) {
+          if ((update.docChanged || update.selectionSet) && update.view.compositionStarted && menuState.visible) {
             const head = update.state.selection.main.head;
             const line = update.state.doc.lineAt(head);
             const textBefore = update.state.doc.sliceString(line.from, head);
