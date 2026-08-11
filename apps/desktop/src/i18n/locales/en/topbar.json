@@ -14,7 +14,7 @@
     "noOpenFiles": "No open files",
     "closePanel": "Close list",
     "closeTab": "Close file",
-    "externalFile": "External file"
+    "openExternalFolder": "Open containing folder"
   },
   "terminal": {
     "collapse": "Collapse terminal",

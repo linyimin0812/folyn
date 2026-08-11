@@ -37,6 +37,29 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
 
   const closeTabList = useCallback(() => setTabListOpen(false), []);
 
+  /** Open the folder containing an external file in the system file manager
+   *  (e.g. Finder). Resolves ~/ and $HOME/ prefixes before taking the dirname,
+   *  since the shell opener does not expand them. */
+  const openExternalFolder = useCallback(async (path: string) => {
+    try {
+      const { open } = await import('@tauri-apps/plugin-shell');
+      let resolved = path;
+      if (resolved.startsWith('~/') || resolved.startsWith('$HOME/')) {
+        const { homeDir } = await import('@tauri-apps/api/path');
+        const home = (await homeDir()).replace(/\/+$/, '');
+        resolved = resolved.startsWith('~/')
+          ? home + resolved.slice(1)
+          : home + resolved.slice('$HOME'.length);
+      }
+      const trimmed = resolved.replace(/[\\/]+$/, '');
+      const sepIdx = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
+      const folder = sepIdx > 0 ? trimmed.slice(0, sepIdx) : trimmed;
+      await open(folder || resolved);
+    } catch (err) {
+      console.warn('[TabBar] open containing folder failed:', err);
+    }
+  }, []);
+
   const handleCloseAll = useCallback(() => {
     for (const tab of tabs) onCloseTab(tab.id);
     closeTabList();
@@ -55,12 +78,16 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
               <span className="shrink-0 flex items-center"><FileIcon filename={tab.name} fileType={tab.fileType} /></span>
               <span className="max-w-[110px] overflow-hidden text-ellipsis">{tab.name}</span>
               {isExternalPath(tab.path) && (
-                <span className="shrink-0 flex items-center">
-                  <SquareArrowOutUpRight
-                    size={12}
-                    className="text-t4"
-                    aria-label={t('topbar:tabList.externalFile')}
-                  />
+                <span
+                  className="shrink-0 flex items-center cursor-pointer"
+                  role="button"
+                  aria-label={t('topbar:tabList.openExternalFolder')}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void openExternalFolder(tab.path);
+                  }}
+                >
+                  <SquareArrowOutUpRight size={12} className="text-t4 pointer-events-none" />
                 </span>
               )}
               {tab.isDirty && <span className="w-[5px] h-[5px] rounded-full bg-amber shrink-0" />}
@@ -137,12 +164,16 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
                     </span>
                     <span className="flex-1 min-w-0 overflow-hidden text-ellipsis">{tab.name}</span>
                     {isExternalPath(tab.path) && (
-                      <span className="shrink-0 flex items-center">
-                        <SquareArrowOutUpRight
-                          size={12}
-                          className="text-t4"
-                          aria-label={t('topbar:tabList.externalFile')}
-                        />
+                      <span
+                        className="shrink-0 flex items-center cursor-pointer"
+                        role="button"
+                        aria-label={t('topbar:tabList.openExternalFolder')}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void openExternalFolder(tab.path);
+                        }}
+                      >
+                        <SquareArrowOutUpRight size={12} className="text-t4 pointer-events-none" />
                       </span>
                     )}
                     {tab.isDirty && <span className="w-[5px] h-[5px] rounded-full bg-amber shrink-0" />}
