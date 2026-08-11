@@ -845,3 +845,37 @@ Wrap plugin container components in MarkdownPreview's DirectiveWrapper with Pane
 ### Next Steps
 
 - None - task complete
+
+
+## Session 139: Graphviz file type + plantuml/dot syntax highlighting
+
+**Date**: 2026-08-11
+**Task**: Graphviz file type + plantuml/dot syntax highlighting
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added graphviz (.gv/.dot/.graphviz) file type mirroring plantuml: quickchart.io online rendering, ZoomPanCanvas preview, data-raw-svg byte-fidelity export, CSP allowlist, graphviz.svg icon, zh/en labels. Added plantuml + dot StreamLanguage definitions (built on mermaid.ts pattern) and registered via registerEditorLanguage for aliases plantuml/puml/pu and graphviz/dot/gv. Fixed EditorView.tsx file-editor language lookup to use codeLanguages (merged registry + language-data) instead of bare @codemirror/language-data import so .puml/.gv files match their registered StreamLanguage. Fixed quickchart.io SVG detection: response includes XML prolog + DOCTYPE, so check /<svg\b/.test instead of startsWith('<svg'). Replaced '渲染图表中...' text loading marker with spinner + data-loading attribute for plantuml/graphviz previews (mermaid still uses text marker). ThemeIcon rewritten to use <img data URL instead of dangerouslySetInnerHTML + normalizeSvg — renders source SVG byte-identical.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dd7aac4a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
