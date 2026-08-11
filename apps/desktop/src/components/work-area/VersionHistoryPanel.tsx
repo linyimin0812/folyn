@@ -244,24 +244,24 @@ export function VersionHistoryPanel({ activeTab }: VersionHistoryPanelProps) {
 
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
         {/* Snapshot list — fills the panel; content renders in the editor area.
-          // ponytail: flex-col-reverse renders newest (last in insertion-order
-          // array) at the top. Label `idx + 1` keeps v1 = oldest (bottom) and
-          // vN = newest (top), matching the visual order. */}
-        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col-reverse">
+          // ponytail: JS-reversed array so newest (last in insertion-order
+          // array) renders at the top. Label `snapshots.length - idx` keeps
+          v1 = oldest (bottom) and vN = newest (top), matching visual order.
+          Avoids flex-col-reverse + overflow-y-auto edge cases. */}
+        <div className="flex-1 overflow-y-auto min-h-0">
           {loading && (
             <div className="text-t3 text-[12px] px-3 py-2">{t('editor:versionHistory.loading')}</div>
           )}
           {!loading && snapshots.length === 0 && (
             <div className="text-t3 text-[12px] px-3 py-2">{t('editor:versionHistory.empty')}</div>
           )}
-          {snapshots.map((entry, idx) => {
+          {[...snapshots].reverse().map((entry, idx) => {
             const key = `${entry.hash}-${entry.ts}`;
             const isSelected = key === selectedKey;
-            // ponytail: snapshots is in insertion order (oldest first), so
-            // idx 0 is v1 and the last idx is vN. Time gets later as version
-            // number grows — matches user expectation.
+            // ponytail: after reverse(), idx 0 = newest, idx N-1 = oldest.
+            // Label = snapshots.length - idx so newest = vN, oldest = v1.
             const label = snapshots.length > 1
-              ? t('editor:versionHistory.snapshotN', { index: idx + 1 })
+              ? t('editor:versionHistory.snapshotN', { index: snapshots.length - idx })
               : t('editor:versionHistory.snapshot');
             return (
               <div
