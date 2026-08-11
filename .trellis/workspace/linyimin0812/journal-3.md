@@ -1185,3 +1185,37 @@ External files (absolute/home-relative paths from outside the vault) now show a 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 149: External-file tab icon: remove hover tint
+
+**Date**: 2026-08-11
+**Task**: External-file tab icon: remove hover tint
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+Removed the group-hover:text-t3 hover brightening from the external-file SquareArrowOutUpRight icon in both the tab bar row and the open-files list — the icon now stays a static muted text-t4. Small style follow-up to the external-file indicator feature.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a1c569bf` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
