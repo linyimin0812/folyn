@@ -94,6 +94,10 @@ const codeBlockPlugin = ViewPlugin.fromClass(
   class {
     update(update: ViewUpdate) {
       if (!update.docChanged) return;
+      // Never dispatch while an IME composition is active — effect-only
+      // transactions can make WKWebView commit the composition early and
+      // drop uncommitted text. Same guard as SlashCommandExtension.
+      if (update.view.compositionStarted) return;
 
       // Skip our own dispatches
       for (const tr of update.transactions) {

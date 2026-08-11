@@ -41,6 +41,13 @@ export const slashCommandPlugin = ViewPlugin.fromClass(
   class {
     update(update: ViewUpdate) {
       if (!update.docChanged) return;
+      // Let the IME own the document during composition (pinyin/Chinese
+      // input). Dispatching transactions here — even effect-only — makes
+      // WKWebView commit the composition early at a segment boundary and
+      // drop the uncommitted pinyin (e.g. "wenjian" → "wen"). The commit
+      // transaction arrives after compositionend (compositionStarted=false),
+      // so the menu still re-evaluates once the text is finalized.
+      if (update.view.compositionStarted) return;
 
       const state = update.state;
       const pos = state.selection.main.head;

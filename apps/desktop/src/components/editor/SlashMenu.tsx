@@ -47,6 +47,14 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
   const [activeIndex, setActiveIndex] = useState(0);
   const [adjustedPosition, setAdjustedPosition] = useState(position);
   const menuRef = useRef<HTMLDivElement>(null);
+  // IME composition tracking: WKWebView fires the composition-confirming
+  // keydown (e.g. Enter) AFTER compositionend with isComposing=false, so the
+  // event flag alone is not enough. Track the session on document and ignore
+  // the single key that follows composition end (mirrors CodeMirror's own
+  // Safari/WKWebView workaround).
+  const composingRef = useRef(false);
+  const compositionEndedAtRef = useRef(0);
+  const pendingCompositionKeyRef = useRef(false);
   const registry = ContainerRegistry.getInstance();
 
   const allPlugins = registry
@@ -101,13 +109,39 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
     });
   }, [visible, position, flatList.length]);
 
+  // Track composition at the document level (fires regardless of which
+  // element owns the editor) so the keydown guard below works in WKWebView.
+  useEffect(() => {
+    const onStart = () => {
+      composingRef.current = true;
+    };
+    const onEnd = () => {
+      composingRef.current = false;
+      compositionEndedAtRef.current = Date.now();
+      pendingCompositionKeyRef.current = true;
+    };
+    document.addEventListener('compositionstart', onStart);
+    document.addEventListener('compositionend', onEnd);
+    return () => {
+      document.removeEventListener('compositionstart', onStart);
+      document.removeEventListener('compositionend', onEnd);
+    };
+  }, []);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       // Let the IME own the keyboard during composition (pinyin/Chinese
       // input): Enter confirms the composed text and arrows move the
       // candidate list — neither should drive menu navigation or selection.
-      // Mirrors the ChatInputBox / PetPanelApp IME guards.
+      // WKWebView reports the confirming keydown after compositionend with
+      // isComposing=false, so also honor the tracked session and ignore the
+      // single key that follows composition end (CodeMirror's 100ms window).
       if (e.isComposing || e.keyCode === 229) return;
+      if (composingRef.current) return;
+      if (pendingCompositionKeyRef.current && Date.now() - compositionEndedAtRef.current < 100) {
+        pendingCompositionKeyRef.current = false;
+        return;
+      }
       if (!visible || flatList.length === 0) return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();

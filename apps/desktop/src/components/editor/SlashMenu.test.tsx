@@ -204,3 +204,53 @@ describe('SlashMenu IME composition', () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('SlashMenu WKWebView composition ordering', () => {
+  it('ignores the Enter that confirms a composition (fires after compositionend with isComposing=false)', () => {
+    const cr = ContainerRegistry.getInstance();
+    cr.register(makePlugin({ name: 'callout', label: '提示框' }));
+    const onSelect = vi.fn();
+    render(
+      <SlashMenu
+        visible={true}
+        filter=""
+        position={{ top: 0, left: 0 }}
+        onSelect={onSelect}
+        onClose={() => {}}
+      />,
+    );
+
+    // WKWebView: compositionend fires, then the confirming Enter keydown
+    // arrives with isComposing=false. The menu must still let it through.
+    document.dispatchEvent(new Event('compositionstart'));
+    document.dispatchEvent(new Event('compositionend'));
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    );
+
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('ignores keys while a document-level composition is active even if the event flag is missing', () => {
+    const cr = ContainerRegistry.getInstance();
+    cr.register(makePlugin({ name: 'callout', label: '提示框' }));
+    const onSelect = vi.fn();
+    render(
+      <SlashMenu
+        visible={true}
+        filter=""
+        position={{ top: 0, left: 0 }}
+        onSelect={onSelect}
+        onClose={() => {}}
+      />,
+    );
+
+    document.dispatchEvent(new Event('compositionstart'));
+    // Some WKWebView keydowns during composition don't set isComposing.
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    );
+
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+});
