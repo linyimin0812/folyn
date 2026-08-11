@@ -1363,3 +1363,37 @@ The lucide SVG defaults to display:inline; WKWebView aligns inline SVG on the te
 ### Next Steps
 
 - None - task complete
+
+
+## Session 154: External-file icon: match file-icon alignment pattern
+
+**Date**: 2026-08-11
+**Task**: External-file icon: match file-icon alignment pattern
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+User pointed out the file-type icon renders centered; the external indicator should follow the same pattern. Replaced the fixed 14/16px boxes and display:block hack with the file icon's exact structure: a 16px SquareArrowOutUpRight inside 'shrink-0 flex items-center' in both the tab row and the open-files list. Row-level items-center now centers it identically to the file icon.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `afeadd6e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
