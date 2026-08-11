@@ -1151,3 +1151,37 @@ Closing a tab persisted through a 500ms debounce (plus storageClient's 300ms deb
 ### Next Steps
 
 - None - task complete
+
+
+## Session 148: Add external-file indicator to tab bar
+
+**Date**: 2026-08-11
+**Task**: Add external-file indicator to tab bar
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+External files (absolute/home-relative paths from outside the vault) now show a lucide SquareArrowOutUpRight icon after the filename in the tab bar row and the 'all open files' dropdown, with a data-tip tooltip and aria-label ('外部文件' / 'External file', new topbar:tabList.externalFile i18n keys). Added a TabBar test asserting the icon appears for external tabs and not for vault tabs. Full desktop suite green (2110 tests).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `31b2aaf0` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

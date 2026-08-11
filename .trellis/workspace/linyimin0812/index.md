@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 147
+- **Total Sessions**: 148
 - **Last Active**: 2026-08-11
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1153 | Active |
+| `journal-3.md` | ~1187 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 148 | 2026-08-11 | Add external-file indicator to tab bar | `31b2aaf0` | `codex/slash-menu-cleanup` |
 | 147 | 2026-08-11 | Fix closed tabs reappearing on next launch | `813a8a7c` | `codex/slash-menu-cleanup` |
 | 146 | 2026-08-11 | Fix slash menu scroll jumpiness | `408c8ab3` | `codex/slash-menu-cleanup` |
 | 145 | 2026-08-11 | Refactor slash menu to pure derivation from document (fix nondeterministic IME behavior) | `15adecb9` | `codex/slash-menu-cleanup` |
