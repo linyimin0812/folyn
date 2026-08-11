@@ -1015,3 +1015,37 @@ The composition guard that fixed pinyin input broke the slash menu in WKWebView:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 144: Fix slash menu hiding on WKWebView IME commit (two-transaction split)
+
+**Date**: 2026-08-11
+**Task**: Fix slash menu hiding on WKWebView IME commit (two-transaction split)
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+Typing '/文件' in WKWebView could hide the slash menu: the IME commit arrives as a doc change with a stale selection (cursor before the composed text), the extension saw an empty filter and hid the menu, and the follow-up selection update was ignored (extension only processed docChanged), leaving the menu closed. Fix: SlashCommandExtension now also re-evaluates on selectionSet (auto-open still gated to typing), and the EditorView composition mirror runs on selection updates too. Reproduced and verified via headless-Chrome CDP with a simulated split commit: menu ends on filter '文件' → ['文件预览']. 2094 tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3c9c0505` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
