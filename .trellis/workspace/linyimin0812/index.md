@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 144
+- **Total Sessions**: 145
 - **Last Active**: 2026-08-11
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1051 | Active |
+| `journal-3.md` | ~1085 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 145 | 2026-08-11 | Refactor slash menu to pure derivation from document (fix nondeterministic IME behavior) | `15adecb9` | `codex/slash-menu-cleanup` |
 | 144 | 2026-08-11 | Fix slash menu hiding on WKWebView IME commit (two-transaction split) | `3c9c0505` | `codex/slash-menu-cleanup` |
 | 143 | 2026-08-11 | Restore slash menu filtering during IME composition | `48071b2d` | `codex/slash-menu-cleanup` |
 | 142 | 2026-08-11 | Fix IME composition dropping pinyin after slash trigger | `fcd895d3` | `codex/slash-menu-cleanup` |

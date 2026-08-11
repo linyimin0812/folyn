@@ -1049,3 +1049,37 @@ Typing '/文件' in WKWebView could hide the slash menu: the IME commit arrives 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 145: Refactor slash menu to pure derivation from document (fix nondeterministic IME behavior)
+
+**Date**: 2026-08-11
+**Task**: Refactor slash menu to pure derivation from document (fix nondeterministic IME behavior)
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The dispatch-based slash menu StateField + composition guards + React mirror + selectionSet handling produced races (setTimeout dispatches overwriting each other) → menu behaved nondeterministically in WKWebView (sometimes no popup, sometimes unfiltered). Replaced with a pure derivation: computeSlashMenuState(state) reads document+cursor from the update listener — zero CodeMirror transactions on keystrokes, so IME composition is never disturbed, filtering is live and deterministic (文件 → 文件预览), and WKWebView's split commit settles on the correct filter by construction. Escape dismissal now tracked by trigger position in EditorPane. Verified via headless-Chrome CDP across plain typing, IME composition, and the split-commit scenario; 2107 tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `15adecb9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
