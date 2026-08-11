@@ -29,6 +29,18 @@ function normalizeSvg(raw: string, size: number): string {
   s = /height="[^"]*"/.test(s)
     ? s.replace(/height="[^"]*"/, `height="${size}"`)
     : s.replace(/<svg/, `<svg height="${size}"`);
+  // ponytail: an inline `style="width:...; height:..."` on the root <svg>
+  // overrides the width/height attributes above (CSS beats presentation
+  // attributes). Source SVGs exported from design tools sometimes ship
+  // with a hardcoded 200px / 500px etc. size in the style — that paints
+  // a giant square that overflows the icon's `size` container. If the
+  // root <svg> has a style attribute, replace its value with an explicit
+  // px size matching `size`. Icons without root-level style are
+  // unaffected — they keep using the attribute path above.
+  s = s.replace(
+    /<svg\b([^>]*?)\bstyle="[^"]*"/,
+    `<svg$1style="width:${size}px;height:${size}px"`,
+  );
   return s;
 }
 
