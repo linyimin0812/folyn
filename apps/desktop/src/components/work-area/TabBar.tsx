@@ -57,7 +57,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
               {isExternalPath(tab.path) && (
                 <span className="shrink-0 flex items-center">
                   <SquareArrowOutUpRight
-                    size={16}
+                    size={12}
                     className="text-t4"
                     aria-label={t('topbar:tabList.externalFile')}
                   />
@@ -139,7 +139,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
                     {isExternalPath(tab.path) && (
                       <span className="shrink-0 flex items-center">
                         <SquareArrowOutUpRight
-                          size={16}
+                          size={12}
                           className="text-t4"
                           aria-label={t('topbar:tabList.externalFile')}
                         />
