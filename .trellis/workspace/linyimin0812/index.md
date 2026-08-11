@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 150
+- **Total Sessions**: 151
 - **Last Active**: 2026-08-11
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1255 | Active |
+| `journal-3.md` | ~1289 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 151 | 2026-08-11 | Center external-file tab icon | `dfd9f325` | `codex/slash-menu-cleanup` |
 | 150 | 2026-08-11 | External-file tab icon: remove hover tooltip | `905ca1fb` | `codex/slash-menu-cleanup` |
 | 149 | 2026-08-11 | External-file tab icon: remove hover tint | `a1c569bf` | `codex/slash-menu-cleanup` |
 | 148 | 2026-08-11 | Add external-file indicator to tab bar | `31b2aaf0` | `codex/slash-menu-cleanup` |

@@ -1253,3 +1253,37 @@ The black popup appearing on hover over the external-file tab icon was the [data
 ### Next Steps
 
 - None - task complete
+
+
+## Session 151: Center external-file tab icon
+
+**Date**: 2026-08-11
+**Task**: Center external-file tab icon
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The external-file SquareArrowOutUpRight icon could sit off-center due to SVG baseline/line-height quirks. Wrapped it in a fixed-size flex box (14x14 in the tab row, 16x16 in the open-files list) with items-center justify-center so it renders exactly centered relative to the tab row.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dfd9f325` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
