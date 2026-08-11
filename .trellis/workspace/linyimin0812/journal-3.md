@@ -913,3 +913,37 @@ Removed 'AI 结果' (ai-result) and '错误隔离自检' (plugin-error-demo) fro
 ### Next Steps
 
 - None - task complete
+
+
+## Session 141: Fix slash menu hijacking IME composition (pinyin input garble)
+
+**Date**: 2026-08-11
+**Task**: Fix slash menu hijacking IME composition (pinyin input garble)
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The slash menu's capture-phase document keydown listener intercepted Enter/Arrow keys without checking IME state, so pinyin IME confirmation (Enter) selected a command and garbled input. Added isComposing / keyCode 229 guards to the markdown editor SlashMenu and the AI chat slash/mention handler, mirroring existing ChatInputBox/PetPanelApp guards. Added SlashMenu IME tests; full desktop suite green (165 files / 2076 tests).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f8a127a4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

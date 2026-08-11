@@ -1,1 +1,6 @@
 {"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "review checklist + forbidden patterns"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "strict-TS type patterns"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "tech-stack + key-pattern checklist"}
+{"file": "docs/adr/0003-version-history-content-addressable-store.md", "reason": "verify implementation matches ADR (storage path, dedup, restore chain, no retention)"}
+{"file": "CONTEXT.md", "reason": "verify canonical vocabulary used in code (Version Snapshot / Version Index / Versionable File)"}
