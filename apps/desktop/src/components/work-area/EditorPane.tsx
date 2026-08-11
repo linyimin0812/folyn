@@ -4,7 +4,7 @@ import { QuillEditor, type QuillEditorHandle } from '@/editor/EditorView';
 import { SlashMenu } from '../editor/SlashMenu';
 import { CodeBlockLangMenu } from '../editor/CodeBlockLangMenu';
 import { ImagePasteDialog, type ImageSaveConfig } from '../editor/ImagePasteDialog';
-import { hideSlashMenu, type SlashMenuState } from '@/editor/extensions/SlashCommandExtension';
+import { type SlashMenuState } from '@/editor/extensions/SlashCommandExtension';
 import { type CodeBlockMenuState } from '@/editor/extensions/CodeBlockExtension';
 import { getStrategy, fileToBase64, convertImageFormat } from '@/utils/imageUploader';
 import type { ContainerPlugin } from '@quill/container-plugins';
@@ -57,6 +57,11 @@ export const EditorPane = forwardRef<QuillEditorHandle, EditorPaneProps>(
     // Slash menu state
     const [slashMenu, setSlashMenu] = useState<SlashMenuState>({ visible: false, pos: 0, filter: '' });
     const [slashMenuPosition, setSlashMenuPosition] = useState({ top: 0, left: 0 });
+    // Escape closes the menu even though the "/filter" text stays in the doc;
+    // the menu stays closed only while the trigger position is unchanged.
+    // Typing more or moving the cursor clears the dismissal (mirrors the
+    // rich-text editor's dismissedFromRef pattern).
+    const dismissedSlashPosRef = useRef<number | null>(null);
 
     // Code block language menu state
     const [codeBlockMenu, setCodeBlockMenu] = useState<CodeBlockMenuState>({ visible: false, triggerPos: 0, blockStart: 0, filter: '', selectedIndex: 0 });
@@ -96,11 +101,19 @@ export const EditorPane = forwardRef<QuillEditorHandle, EditorPaneProps>(
     }, [getView]);
 
     const handleSlashMenuChange = useCallback((state: SlashMenuState) => {
-      setSlashMenu(state);
-      if (state.visible) {
+      // Re-arm the menu once the trigger moves (user typed more or moved the
+      // cursor); a dismissed menu stays closed only at the same position.
+      if (dismissedSlashPosRef.current !== null && state.pos !== dismissedSlashPosRef.current) {
+        dismissedSlashPosRef.current = null;
+      }
+      const effective = dismissedSlashPosRef.current !== null && state.pos === dismissedSlashPosRef.current
+        ? { ...state, visible: false }
+        : state;
+      setSlashMenu(effective);
+      if (effective.visible) {
         const view = getView();
         if (view) {
-          const coords = view.coordsAtPos(state.pos);
+          const coords = view.coordsAtPos(effective.pos);
           if (coords) {
             setSlashMenuPosition({ top: coords.bottom + 4, left: coords.left });
           }
@@ -122,20 +135,19 @@ export const EditorPane = forwardRef<QuillEditorHandle, EditorPaneProps>(
       // the heuristic would jump to the first "" — revisit if/when it bites.
       const emptyQuoteIdx = plugin.template.indexOf('""');
 
+      dismissedSlashPosRef.current = null;
       view.dispatch({
         changes: { from: slashStart, to: menuState.pos, insert: plugin.template },
         selection: emptyQuoteIdx >= 0
           ? { anchor: slashStart + emptyQuoteIdx + 1 }
           : undefined,
       });
-      hideSlashMenu(view);
       view.focus();
     }, [getView, slashMenu]);
 
     const handleSlashClose = useCallback(() => {
-      const view = getView();
-      if (view) hideSlashMenu(view);
-    }, [getView]);
+      dismissedSlashPosRef.current = slashMenu.pos;
+    }, [slashMenu]);
 
     const handleImageConfirm = useCallback(async (config: ImageSaveConfig) => {
       if (!imagePasteFile) return;
