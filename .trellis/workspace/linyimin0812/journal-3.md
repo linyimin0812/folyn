@@ -1465,3 +1465,37 @@ Clicking the external-file indicator in the tab bar (and the open-files list) no
 ### Next Steps
 
 - None - task complete
+
+
+## Session 157: Open external-file folder via tauri-opener (fix shell URL-only restriction)
+
+**Date**: 2026-08-11
+**Task**: Open external-file folder via tauri-opener (fix shell URL-only restriction)
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The shell plugin's open() only accepts URL arguments (mailto/tel/http regex) and rejected local folder paths, so clicking the external-file tab icon failed with 'Scoped command argument ... failed regex validation'. Switched to the dedicated tauri-opener plugin: added tauri-plugin-opener to Cargo.toml + registered in lib.rs, granted opener:allow-open-path in capabilities/default.json, installed @tauri-apps/plugin-opener on the frontend, and the TabBar handler now calls openPath() on the resolved parent directory (~ and $HOME still resolved first). Tests mock openPath. cargo check passes; full desktop suite green (2113 tests). NOTE: requires a Rust rebuild for the plugin to take effect.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ee25d851` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

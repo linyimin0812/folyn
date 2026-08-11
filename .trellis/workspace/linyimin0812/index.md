@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 156
+- **Total Sessions**: 157
 - **Last Active**: 2026-08-11
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1467 | Active |
+| `journal-3.md` | ~1501 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 157 | 2026-08-11 | Open external-file folder via tauri-opener (fix shell URL-only restriction) | `ee25d851` | `codex/slash-menu-cleanup` |
 | 156 | 2026-08-11 | External-file tab icon opens containing folder | `9efc43cf` | `codex/slash-menu-cleanup` |
 | 155 | 2026-08-11 | External-file tab icon: reduce to 12px | `a0932cb9` | `codex/slash-menu-cleanup` |
 | 154 | 2026-08-11 | External-file icon: match file-icon alignment pattern | `afeadd6e` | `codex/slash-menu-cleanup` |
