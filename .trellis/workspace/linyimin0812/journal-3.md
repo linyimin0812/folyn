@@ -1083,3 +1083,37 @@ The dispatch-based slash menu StateField + composition guards + React mirror + s
 ### Next Steps
 
 - None - task complete
+
+
+## Session 146: Fix slash menu scroll jumpiness
+
+**Date**: 2026-08-11
+**Task**: Fix slash menu scroll jumpiness
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The /-menu jumped while scrolling/navigating for two reasons: scrollIntoView({block:'nearest'}) also scrolls ancestor scroll containers (the fixed menu's DOM ancestors include the editor pane), shifting surrounding content; and the below/above viewport-flip was re-decided on every filter change, so a list height oscillating around the boundary flipped the menu up/down each keystroke. Replaced scrollIntoView with a scrollTop adjustment on the menu container only, and made the flip side sticky (hysteresis, flips only when the other side clearly fits). Applied to both the markdown SlashMenu and RichTextSlashMenu. 2111 tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `408c8ab3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
