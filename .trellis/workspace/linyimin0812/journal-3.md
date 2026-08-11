@@ -1329,3 +1329,37 @@ End-to-end version-history: PR1 content-addressable snapshot service + atomic in
 ### Next Steps
 
 - None - task complete
+
+
+## Session 153: External-file icon: force block display for WebKit alignment
+
+**Date**: 2026-08-11
+**Task**: External-file icon: force block display for WebKit alignment
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The lucide SVG defaults to display:inline; WKWebView aligns inline SVG on the text baseline, which can make the 11px external-file icon appear off-center next to the filename. Added the Tailwind 'block' class to both icon instances so the SVG becomes a block flex item, always centered by the wrapper's items-center/justify-center regardless of WebView SVG baseline handling. Verified via DOM + pixel analysis that the icon is within ~0.5px of the filename's visual center in Chrome.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a85cbd63` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
