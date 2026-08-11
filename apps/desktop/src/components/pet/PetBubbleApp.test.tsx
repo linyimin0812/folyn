@@ -96,7 +96,8 @@ describe('PetBubbleApp', () => {
       handler({ payload: samplePayload });
     });
     await act(async () => {
-      fireEvent.click(screen.getByLabelText('关闭'));
+      // The default Cloudia template renders its close with aria-label="Close".
+      fireEvent.click(screen.getByLabelText('Close'));
     });
     await waitFor(() => expect(countHideCalls()).toBe(1));
     expect(screen.queryByText('这是一条气泡通知示例')).toBeNull();

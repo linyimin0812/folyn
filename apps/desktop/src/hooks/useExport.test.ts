@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 // task's preferred fallback ("replicate the call sequence against mocked
 // stores and assert outcomes"), these tests drive the hook's *underlying*
 // logic: the store-derived content lookup and the HTML/Markdown document
-// assembly, using the REAL escapeHtml + HTML_STYLES from exportService.
+// assembly, using the REAL escapeHtml (export/shared) + HTML_STYLES (exportService).
 //
 // Residual (not covered without React render): the hook's useCallback memo
 // wiring and its store-selector subscriptions.
@@ -27,14 +27,11 @@ vi.mock('@/services/exportService', async (importOriginal) => {
   };
 });
 
-import {
-  escapeHtml,
-  HTML_STYLES,
-  LIGHT_THEME_VARS,
-  renderMarkdownToHtmlViaDom,
-  inlineImages,
-  downloadBlob,
-} from '@/services/exportService';
+import { HTML_STYLES, LIGHT_THEME_VARS, renderMarkdownToHtmlViaDom } from '@/services/exportService';
+// escapeHtml lives in export/shared (not exportService) — it is used by the
+// replicated exportHtml assembly below.
+import { escapeHtml } from '@/services/export/shared';
+import { inlineImages, downloadBlob } from '@/services/exportService';
 import type { FileTab } from '@/store/editorStore';
 
 function makeTab(overrides: Partial<FileTab>): FileTab {

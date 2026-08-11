@@ -32,13 +32,15 @@ afterEach(() => {
 });
 
 describe('usePetStore setters', () => {
-  it('setPetModeEnabled updates + persists', () => {
+  it('setPetModeEnabled updates state but is deliberately NOT persisted', () => {
+    // fix(pet): stop persisting petModeEnabled so the default true always
+    // wins on launch — an off-state saved last session must not hide the pet.
     const setSpy = vi.spyOn(storageClient, 'set');
     usePetStore.getState().setPetModeEnabled(true);
     expect(usePetStore.getState().petModeEnabled).toBe(true);
     vi.advanceTimersByTime(400);
     const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1] as Record<string, unknown>;
-    expect(payload.petModeEnabled).toBe(true);
+    expect(payload.petModeEnabled).toBeUndefined();
     setSpy.mockRestore();
   });
 
@@ -212,7 +214,6 @@ describe('usePetStore.hydrate', () => {
       petPanelWidth: 440,
       petPanelHeight: 620,
       petPanelSizeVersion: 1,
-      petModeEnabled: true,
       petIconSource: 'custom',
       petIconPath: '/abs/pet.png',
       petSize: '150',
@@ -226,7 +227,8 @@ describe('usePetStore.hydrate', () => {
     expect(s.petPanelWidth).toBe(440);
     expect(s.petPanelHeight).toBe(620);
     expect(s.petPanelSizeVersion).toBe(1);
-    expect(s.petModeEnabled).toBe(true);
+    // petModeEnabled is deliberately not persisted — it is absent from the
+    // blob above and stays at whatever the store already holds.
     expect(s.petIconSource).toBe('custom');
     expect(s.petIconPath).toBe('/abs/pet.png');
     expect(s.petSize).toBe('150');

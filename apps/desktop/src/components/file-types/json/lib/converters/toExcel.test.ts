@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 /**
  * toExcel converter tests (PR5).
  *

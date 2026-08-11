@@ -113,6 +113,7 @@ describe('PERSIST_KEYS_VOICE', () => {
     expect([...PERSIST_KEYS_VOICE]).toEqual([
       'polishPrompt',
       'autoPolish',
+      'autoPaste',
       'saveSource',
       'sourceDir',
       'globalHotkey',

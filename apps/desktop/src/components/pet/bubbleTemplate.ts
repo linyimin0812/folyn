@@ -162,7 +162,7 @@ export const BUILT_IN_TEMPLATES: BubbleTemplate[] = [
             '<ellipse cx="47" cy="32" rx="3.5" ry="2.5" fill="#ffb3c6" opacity="0.85"/>' +
             '<path d="M 31 32 Q 33 35 35 32" stroke="#4a5568" stroke-width="2" stroke-linecap="round" fill="none"/>' +
           '</svg>' +
-          '{{#title}}<h2 class="cloudia-title">{{title}}</h2>{{/title}}' +
+          '{{#title}}<h2 class="cloudia-title" data-action="navigate">{{title}}</h2>{{/title}}' +
         '</div>' +
         '<p class="cloudia-text">{{text}}</p>' +
         '{{#actions}}<div class="cloudia-actions"><button class="cloudia-btn" data-action="{{id}}">{{label}}</button></div>{{/actions}}' +

@@ -21,7 +21,6 @@ const {
   setActivePanelMock,
   setViewModeMock,
   openDailyNoteMock,
-  setChatModeMock,
   openPanelMock,
   exportMarkdownMock,
   exportHtmlMock,
@@ -33,7 +32,6 @@ const {
   setActivePanelMock: vi.fn(),
   setViewModeMock: vi.fn(),
   openDailyNoteMock: vi.fn(),
-  setChatModeMock: vi.fn(),
   openPanelMock: vi.fn(),
   exportMarkdownMock: vi.fn(),
   exportHtmlMock: vi.fn(),
@@ -72,12 +70,6 @@ vi.mock('@/store/editorStore', () => ({
   },
 }));
 
-vi.mock('@/store/aiStore', () => ({
-  useAiStore: {
-    getState: () => ({ setChatMode: setChatModeMock }),
-  },
-}));
-
 vi.mock('@/store/searchStore', () => ({
   useSearchStore: {
     getState: () => ({ openPanel: openPanelMock }),
@@ -108,7 +100,6 @@ beforeEach(() => {
   setActivePanelMock.mockClear();
   setViewModeMock.mockClear();
   openDailyNoteMock.mockClear();
-  setChatModeMock.mockClear();
   openPanelMock.mockClear();
   exportMarkdownMock.mockClear();
   exportHtmlMock.mockClear();
@@ -202,9 +193,6 @@ describe('commandRegistry — registerBuiltinCommands', () => {
       'mode.split',
       'mode.edit',
       'mode.preview',
-      'mode.ai-chat',
-      'mode.ai-wiki',
-      'mode.ai-clip',
     ]);
   });
 
@@ -258,12 +246,6 @@ describe('commandRegistry — registerBuiltinCommands', () => {
     registerBuiltinCommands();
     await runCommand('panel.settings');
     expect(setCurrentPageMock).toHaveBeenCalledWith('settings');
-  });
-
-  it('mode.ai-chat sets the AI chat mode', async () => {
-    registerBuiltinCommands();
-    await runCommand('mode.ai-chat');
-    expect(setChatModeMock).toHaveBeenCalledWith('chat');
   });
 
   it('hides disabled panel commands when enabled() returns false', () => {

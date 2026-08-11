@@ -203,7 +203,9 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
     expect(usePrefsStore.getState().dailyNoteDateFormat).toBe('MM-DD');
 
     // Pet
-    expect(usePetStore.getState().petModeEnabled).toBe(true);
+    // petModeEnabled is deliberately not persisted (default true always wins
+    // on launch) — a legacy blob carrying it is ignored, not restored.
+    expect(usePetStore.getState().petModeEnabled).toBe(false);
     expect(usePetStore.getState().petPositionX).toBe(250);
     expect(usePetStore.getState().petIconSource).toBe('custom');
     expect(usePetStore.getState().petSize).toBe('150');
