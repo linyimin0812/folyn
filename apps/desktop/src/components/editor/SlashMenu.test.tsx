@@ -159,3 +159,48 @@ describe('SlashMenu selection reset', () => {
     expect(reopenedItems[2]!.className).not.toContain('active');
   });
 });
+describe('SlashMenu IME composition', () => {
+  it('ignores Enter while an IME composition is active (no selection)', () => {
+    const cr = ContainerRegistry.getInstance();
+    cr.register(makePlugin({ name: 'callout', label: '提示框' }));
+    const onSelect = vi.fn();
+    render(
+      <SlashMenu
+        visible={true}
+        filter=""
+        position={{ top: 0, left: 0 }}
+        onSelect={onSelect}
+        onClose={() => {}}
+      />,
+    );
+
+    // Pinyin IME confirms composition with Enter; the keydown carries
+    // isComposing=true and must pass through to the editor untouched.
+    const ev = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    Object.defineProperty(ev, 'isComposing', { value: true });
+    document.dispatchEvent(ev);
+
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('selects the active item with Enter when not composing', () => {
+    const cr = ContainerRegistry.getInstance();
+    cr.register(makePlugin({ name: 'callout', label: '提示框' }));
+    const onSelect = vi.fn();
+    render(
+      <SlashMenu
+        visible={true}
+        filter=""
+        position={{ top: 0, left: 0 }}
+        onSelect={onSelect}
+        onClose={() => {}}
+      />,
+    );
+
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    );
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+});

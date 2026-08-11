@@ -103,6 +103,11 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      // Let the IME own the keyboard during composition (pinyin/Chinese
+      // input): Enter confirms the composed text and arrows move the
+      // candidate list — neither should drive menu navigation or selection.
+      // Mirrors the ChatInputBox / PetPanelApp IME guards.
+      if (e.isComposing || e.keyCode === 229) return;
       if (!visible || flatList.length === 0) return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
