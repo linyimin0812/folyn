@@ -24,6 +24,9 @@ interface EditorPaneProps {
   editorFont: string;
   editorFontSize: number;
   style?: React.CSSProperties;
+  /** ponytail: read-only mode for the version-history snapshot view. Passes
+   *  through to QuillEditor's `EditorState.readOnly.of(true)`. */
+  readOnly?: boolean;
 }
 
 export const EditorPane = forwardRef<QuillEditorHandle, EditorPaneProps>(
@@ -40,6 +43,7 @@ export const EditorPane = forwardRef<QuillEditorHandle, EditorPaneProps>(
       editorFont,
       editorFontSize,
       style,
+      readOnly,
     },
     ref,
   ) {
@@ -219,6 +223,7 @@ export const EditorPane = forwardRef<QuillEditorHandle, EditorPaneProps>(
               setImagePastePreviewUrl(previewUrl);
               setImagePasteVisible(true);
             }}
+            readOnly={readOnly}
           />
           <SlashMenu
             visible={slashMenu.visible}

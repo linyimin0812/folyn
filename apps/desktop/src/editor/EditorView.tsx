@@ -180,10 +180,14 @@ interface QuillEditorProps {
   onCodeBlockMenuChange?: (state: CodeBlockMenuState) => void;
   onSave?: () => void;
   onImagePaste?: (file: File, previewUrl: string) => void;
+  /** ponytail: read-only mode — `EditorState.readOnly.of(true)` blocks doc-modifying
+   *  transactions but keeps the cursor + selection + scroll, so the version-history
+   *  snapshot view can show real CodeMirror highlighting with full text selection. */
+  readOnly?: boolean;
 }
 
 export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
-  function QuillEditor({ initialContent = '', filePath = '', initialCursorLine, initialCursorCol, onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste }, ref) {
+  function QuillEditor({ initialContent = '', filePath = '', initialCursorLine, initialCursorCol, onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste, readOnly }, ref) {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const [view, setView] = useState<EditorView | null>(null);
@@ -273,6 +277,10 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
         foldGutter(),
         dropCursor(),
         EditorState.allowMultipleSelections.of(true),
+        // ponytail: read-only snapshot mode blocks doc modifications but keeps
+        // selection + scroll so the version-history view is a real CodeMirror
+        // surface, not a static <pre>.
+        ...(readOnly ? [EditorState.readOnly.of(true)] : []),
         tabSizeCompartment.current.of([
           EditorState.tabSize.of(settingsTabSize),
           indentUnit.of(' '.repeat(settingsTabSize)),
