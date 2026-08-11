@@ -3,7 +3,8 @@ import type { FileTab } from '@/store/editorStore';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
 import { useTranslation } from 'react-i18next';
-import { X } from 'lucide-react';
+import { X, SquareArrowOutUpRight } from 'lucide-react';
+import { isExternalPath } from '@/utils/isExternalPath';
 
 interface TabBarProps {
   tabs: FileTab[];
@@ -53,6 +54,15 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
             >
               <span className="shrink-0 flex items-center"><FileIcon filename={tab.name} fileType={tab.fileType} /></span>
               <span className="max-w-[110px] overflow-hidden text-ellipsis">{tab.name}</span>
+              {isExternalPath(tab.path) && (
+                <span data-tip={t('topbar:tabList.externalFile')} className="flex items-center shrink-0">
+                  <SquareArrowOutUpRight
+                    size={11}
+                    className="text-t4 group-hover:text-t3"
+                    aria-label={t('topbar:tabList.externalFile')}
+                  />
+                </span>
+              )}
               {tab.isDirty && <span className="w-[5px] h-[5px] rounded-full bg-amber shrink-0" />}
               <span
                 className="opacity-0 text-[10px] shrink-0 w-[14px] h-[14px] flex items-center justify-center rounded-[3px] transition-[opacity,background] duration-100 group-hover:opacity-50 hover:!opacity-100 hover:bg-hov hover:text-red"
@@ -126,6 +136,15 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
                       <FileIcon filename={tab.name} fileType={tab.fileType} />
                     </span>
                     <span className="flex-1 min-w-0 overflow-hidden text-ellipsis">{tab.name}</span>
+                    {isExternalPath(tab.path) && (
+                      <span data-tip={t('topbar:tabList.externalFile')} className="flex items-center shrink-0">
+                        <SquareArrowOutUpRight
+                          size={12}
+                          className="text-t4 group-hover:text-t3"
+                          aria-label={t('topbar:tabList.externalFile')}
+                        />
+                      </span>
+                    )}
                     {tab.isDirty && <span className="w-[5px] h-[5px] rounded-full bg-amber shrink-0" />}
                     <span
                       role="button"

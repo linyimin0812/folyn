@@ -13,7 +13,8 @@
     "closeAll": "关闭所有标签页",
     "noOpenFiles": "没有打开的文件",
     "closePanel": "关闭列表",
-    "closeTab": "关闭文件"
+    "closeTab": "关闭文件",
+    "externalFile": "外部文件"
   },
   "terminal": {
     "collapse": "收起终端",

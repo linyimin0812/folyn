@@ -113,3 +113,32 @@ describe('TabBar tab list panel', () => {
     expect(screen.queryByTestId('tab-list-panel')).toBeNull();
   });
 });
+
+describe('TabBar external file indicator', () => {
+  it('shows the external-file icon after external tab names (main row + list)', () => {
+    render(
+      <TabBar
+        tabs={[
+          tab('ext', 'foo.md', { path: '/Users/test/foo.md' }),
+          tab('vault', 'bar.md', { path: 'notes/bar.md' }),
+        ]}
+        activeTabId="ext"
+        onSelectTab={() => {}}
+        onCloseTab={() => {}}
+      />,
+    );
+
+    // Main tab row: only the external tab gets the icon.
+    const externalTab = screen.getByText('foo.md').closest('div');
+    expect(within(externalTab as HTMLElement).getByLabelText('外部文件')).toBeTruthy();
+    const vaultTab = screen.getByText('bar.md').closest('div');
+    expect(within(vaultTab as HTMLElement).queryByLabelText('外部文件')).toBeNull();
+
+    // Dropdown list: same behavior.
+    const panel = openPanel();
+    const extRow = within(panel).getByText('foo.md').closest('[role="menuitem"]');
+    expect(within(extRow as HTMLElement).getByLabelText('外部文件')).toBeTruthy();
+    const vaultRow = within(panel).getByText('bar.md').closest('[role="menuitem"]');
+    expect(within(vaultRow as HTMLElement).queryByLabelText('外部文件')).toBeNull();
+  });
+});

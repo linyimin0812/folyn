@@ -13,7 +13,8 @@
     "closeAll": "Close All Tabs",
     "noOpenFiles": "No open files",
     "closePanel": "Close list",
-    "closeTab": "Close file"
+    "closeTab": "Close file",
+    "externalFile": "External file"
   },
   "terminal": {
     "collapse": "Collapse terminal",
