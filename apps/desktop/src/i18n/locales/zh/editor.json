@@ -7,6 +7,7 @@
       "excalidraw": { "label": "Excalidraw", "description": "导出 .excalidraw 源文件" },
       "drawio": { "label": "Drawio", "description": "导出 .drawio 源文件" },
       "mmap": { "label": "思维导图", "description": "导出 .mmap 源文件" },
+      "plantuml": { "label": "PlantUML", "description": "导出 .puml 源文件" },
       "default": { "label": "源文件", "description": "导出原始文件" }
     },
     "html": {
