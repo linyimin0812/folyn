@@ -1397,3 +1397,37 @@ User pointed out the file-type icon renders centered; the external indicator sho
 ### Next Steps
 
 - None - task complete
+
+
+## Session 155: External-file tab icon: reduce to 12px
+
+**Date**: 2026-08-11
+**Task**: External-file tab icon: reduce to 12px
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+After matching the file-icon centering pattern, the 16px external indicator read too large. Reduced SquareArrowOutUpRight to size 12 in both the tab row and the open-files list, keeping the same 'shrink-0 flex items-center' wrapper so centering is unchanged.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a0932cb9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
