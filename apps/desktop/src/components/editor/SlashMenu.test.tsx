@@ -183,6 +183,30 @@ describe('SlashMenu IME composition', () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
+  it('ignores keys during a document-level composition even if the event flag is missing', () => {
+    const cr = ContainerRegistry.getInstance();
+    cr.register(makePlugin({ name: 'callout', label: '提示框' }));
+    const onSelect = vi.fn();
+    render(
+      <SlashMenu
+        visible={true}
+        filter=""
+        position={{ top: 0, left: 0 }}
+        onSelect={onSelect}
+        onClose={() => {}}
+      />,
+    );
+
+    // Some WKWebView keydowns during composition don't set isComposing, so
+    // the menu tracks compositionstart/end on document.
+    document.dispatchEvent(new Event('compositionstart'));
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    );
+
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
   it('selects the active item with Enter when not composing', () => {
     const cr = ContainerRegistry.getInstance();
     cr.register(makePlugin({ name: 'callout', label: '提示框' }));
@@ -203,10 +227,8 @@ describe('SlashMenu IME composition', () => {
 
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
-});
 
-describe('SlashMenu WKWebView composition ordering', () => {
-  it('ignores the Enter that confirms a composition (fires after compositionend with isComposing=false)', () => {
+  it('selects with Enter once the composition has ended (WKWebView confirming keydown)', () => {
     const cr = ContainerRegistry.getInstance();
     cr.register(makePlugin({ name: 'callout', label: '提示框' }));
     const onSelect = vi.fn();
@@ -220,37 +242,14 @@ describe('SlashMenu WKWebView composition ordering', () => {
       />,
     );
 
-    // WKWebView: compositionend fires, then the confirming Enter keydown
-    // arrives with isComposing=false. The menu must still let it through.
+    // The filter is mirrored live during composition, so once composition
+    // ends the menu is ready and Enter may pick the highlighted item.
     document.dispatchEvent(new Event('compositionstart'));
     document.dispatchEvent(new Event('compositionend'));
     document.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
     );
 
-    expect(onSelect).not.toHaveBeenCalled();
-  });
-
-  it('ignores keys while a document-level composition is active even if the event flag is missing', () => {
-    const cr = ContainerRegistry.getInstance();
-    cr.register(makePlugin({ name: 'callout', label: '提示框' }));
-    const onSelect = vi.fn();
-    render(
-      <SlashMenu
-        visible={true}
-        filter=""
-        position={{ top: 0, left: 0 }}
-        onSelect={onSelect}
-        onClose={() => {}}
-      />,
-    );
-
-    document.dispatchEvent(new Event('compositionstart'));
-    // Some WKWebView keydowns during composition don't set isComposing.
-    document.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
-    );
-
-    expect(onSelect).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 });

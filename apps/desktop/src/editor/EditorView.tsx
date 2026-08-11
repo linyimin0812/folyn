@@ -242,7 +242,28 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
             setCursorPosition(line.number, pos - line.from + 1);
           }
           // Notify parent about slash menu state changes
-          const menuState = update.state.field(slashMenuField);
+          let menuState = update.state.field(slashMenuField);
+          // While an IME composition is active the slash extension deliberately
+          // does NOT dispatch (touching editor state mid-composition makes
+          // WKWebView commit the composition early and drop uncommitted pinyin).
+          // Mirror the live filter here through React state only — the menu
+          // keeps filtering as the user types command names, with no CodeMirror
+          // transaction. The extension takes over again once composition ends.
+          if (update.docChanged && update.view.compositionStarted && menuState.visible) {
+            const head = update.state.selection.main.head;
+            const line = update.state.doc.lineAt(head);
+            const textBefore = update.state.doc.sliceString(line.from, head);
+            const slashIdx = textBefore.lastIndexOf('/');
+            if (slashIdx !== -1) {
+              const charBefore = slashIdx > 0 ? textBefore[slashIdx - 1] : ' ';
+              if (charBefore === ' ' || charBefore === '\t' || slashIdx === 0) {
+                const afterSlash = textBefore.slice(slashIdx + 1);
+                if (afterSlash.length > 0 && !/\s/.test(afterSlash)) {
+                  menuState = { ...menuState, pos: head, filter: afterSlash };
+                }
+              }
+            }
+          }
           onSlashMenuChangeRef.current?.(menuState);
           // Notify parent about code block menu state changes
           const cbMenuState = update.state.field(codeBlockMenuField);
