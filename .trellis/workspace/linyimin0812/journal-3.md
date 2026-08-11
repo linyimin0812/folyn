@@ -1117,3 +1117,37 @@ The /-menu jumped while scrolling/navigating for two reasons: scrollIntoView({bl
 ### Next Steps
 
 - None - task complete
+
+
+## Session 147: Fix closed tabs reappearing on next launch
+
+**Date**: 2026-08-11
+**Task**: Fix closed tabs reappearing on next launch
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+Closing a tab persisted through a 500ms debounce (plus storageClient's 300ms debounce), so quitting within that window dropped the write and the next launch restored the closed tab from stale data. closeTab now flushes immediately (flushPersistOpenTabs + flushPersistExternalOpenTabs, no debounce), covering vault and external tabs; the App.tsx onCloseRequested handler now calls saveOpenTabs() before persistNow() as a safety net for any pending tab change. Added a closeTab persistence test. Full desktop suite green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `813a8a7c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
