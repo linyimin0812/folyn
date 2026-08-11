@@ -26,5 +26,8 @@
     "preview": "预览",
     "source": "源码",
     "visual": "可视化"
+  },
+  "versionHistory": {
+    "toggle": "版本历史"
   }
 }

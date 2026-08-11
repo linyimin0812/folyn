@@ -12,6 +12,7 @@ beforeEach(() => {
     terminalPanelVisible: false,
     terminalInRightDock: false,
     terminalRightWidth: 300,
+    versionHistoryVisible: false,
   });
   useEditorStore.setState({ tabs: [], activeTabId: null });
 });
@@ -27,6 +28,7 @@ describe('useEditorViewStateStore', () => {
     expect(s.terminalPanelVisible).toBe(false);
     expect(s.terminalInRightDock).toBe(false);
     expect(s.terminalRightWidth).toBe(300);
+    expect(s.versionHistoryVisible).toBe(false);
   });
 
   it('setWordCount updates wordCount', () => {
@@ -108,5 +110,19 @@ describe('useEditorViewStateStore', () => {
     expect(useEditorViewStateStore.getState().cursorLine).toBe(5);
     expect(useEditorViewStateStore.getState().cursorCol).toBe(2);
     expect(useEditorStore.getState().tabs).toEqual([]);
+  });
+
+  it('toggleVersionHistory flips versionHistoryVisible', () => {
+    useEditorViewStateStore.getState().toggleVersionHistory();
+    expect(useEditorViewStateStore.getState().versionHistoryVisible).toBe(true);
+    useEditorViewStateStore.getState().toggleVersionHistory();
+    expect(useEditorViewStateStore.getState().versionHistoryVisible).toBe(false);
+  });
+
+  it('setVersionHistoryVisible sets an explicit value', () => {
+    useEditorViewStateStore.getState().setVersionHistoryVisible(true);
+    expect(useEditorViewStateStore.getState().versionHistoryVisible).toBe(true);
+    useEditorViewStateStore.getState().setVersionHistoryVisible(false);
+    expect(useEditorViewStateStore.getState().versionHistoryVisible).toBe(false);
   });
 });

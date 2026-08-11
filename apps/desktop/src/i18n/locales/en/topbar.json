@@ -26,5 +26,8 @@
     "preview": "Preview",
     "source": "Source",
     "visual": "Visual"
+  },
+  "versionHistory": {
+    "toggle": "Version history"
   }
 }

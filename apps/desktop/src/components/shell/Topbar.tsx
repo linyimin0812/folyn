@@ -14,8 +14,9 @@ import { MoveDialog } from '@/components/sidebar/SidebarActions';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { requestPlanMyDay } from '@/services/planMyDayBridge';
 import { useTranslation } from 'react-i18next';
-import { Sun, Moon, FolderInput } from 'lucide-react';
+import { Sun, Moon, FolderInput, History } from 'lucide-react';
 import { TerminalIcon } from '@/components/icons/TerminalIcon';
+import { isVersionableTab } from '@/components/work-area/VersionHistoryPanel';
 
 const VIEW_MODE_ICONS: Record<ViewMode, React.ReactNode> = {
   split: (
@@ -82,6 +83,14 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const isExternalFileActive = !!activeTab
     && activeTab.fileType !== 'web'
     && isExternalPath(activeTab.path);
+  // ponytail: version-history button visibility reuses the panel's
+  // `isVersionableTab` (single source of truth — mirrors PR2's
+  // `editorIoService.maybeSnapshotVersion` predicate). Same gate so the
+  // button can never surface for a file type whose save/close hooks skip
+  // snapshots.
+  const isVersionableActive = isVersionableTab(activeTab);
+  const toggleVersionHistory = useEditorViewStateStore((state) => state.toggleVersionHistory);
+  const versionHistoryVisible = useEditorViewStateStore((state) => state.versionHistoryVisible);
   // ponytail: show the view-mode segment when the active file-type's handler
   // declares more than one supported mode. Previously a hardcoded Set of
   // built-in ids — that forced every plugin file-type to edit host source to
@@ -190,6 +199,17 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
           AI
         </button>
         <ExportMenu />
+        {isVersionableActive && (
+          <button
+            className={`tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm transition-all duration-150 hover:bg-hov hover:text-t1 ${
+              versionHistoryVisible ? 'text-acc bg-accdim' : 'text-t3'
+            }`}
+            onClick={toggleVersionHistory}
+            title={t('topbar:versionHistory.toggle')}
+          >
+            <History size={14} className="shrink-0" />
+          </button>
+        )}
         {isExternalFileActive && activeTab && (
           <button
             className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1"

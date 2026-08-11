@@ -109,6 +109,19 @@
     "acceptAll": "Accept all",
     "rejectAll": "Reject all"
   },
+  "versionHistory": {
+    "title": "Version history",
+    "close": "Close",
+    "loading": "Loading…",
+    "empty": "No snapshots",
+    "snapshot": "Snapshot",
+    "snapshotN": "Snapshot {{index}}",
+    "restore": "Restore",
+    "restoring": "Restoring…",
+    "diff": {
+      "identical": "Content matches current state"
+    }
+  },
   "color": {
     "buttonTitle": "Text color",
     "textColor": "Text Color",

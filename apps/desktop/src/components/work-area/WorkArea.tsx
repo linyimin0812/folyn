@@ -13,6 +13,7 @@ import { TabBar } from './TabBar';
 import { EditorPane } from './EditorPane';
 import { PreviewPane } from './PreviewPane';
 import { DailyDigest } from '../editor/DailyDigest';
+import { VersionHistoryPanel } from './VersionHistoryPanel';
 import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
 
 
@@ -264,7 +265,7 @@ export function WorkArea() {
   const showSplitResizer = handler?.Preview && viewMode === 'split' && (handler.useCodeMirror || !!handler.Editor);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-bg">
+    <div className="flex-1 flex flex-col overflow-hidden bg-bg relative">
       {/* File tabs */}
       {tabs.length > 0 && (
         <TabBar
@@ -397,6 +398,13 @@ export function WorkArea() {
           }}
         />
       )}
+
+      {/* Version-history side panel (PR3). Mounts as an absolute overlay on
+          the right edge of the work area so it covers all editor types
+          (CodeMirror + custom) uniformly — single mount point, no per-type
+          integration. Visibility gated by useEditorViewStateStore; the panel
+          itself no-ops when the active tab is not a Versionable File. */}
+      <VersionHistoryPanel activeTab={activeTab} />
     </div>
   );
 }

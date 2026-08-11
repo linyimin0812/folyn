@@ -27,6 +27,9 @@ interface EditorViewState {
   /** Right-dock terminal panel visibility (mutually exclusive with bottom dock). */
   terminalInRightDock: boolean;
   terminalRightWidth: number;
+  /** Version-history side-panel visibility (PR3). Toggled from the Topbar
+   *  History button; the panel itself lives in WorkArea. */
+  versionHistoryVisible: boolean;
 
   setCursorPosition: (line: number, col: number) => void;
   setWordCount: (count: number) => void;
@@ -40,6 +43,10 @@ interface EditorViewState {
   setTerminalRightWidth: (width: number) => void;
   /** Hide the terminal panel. */
   closeTerminalPanel: () => void;
+  /** Toggle the version-history side panel. */
+  toggleVersionHistory: () => void;
+  /** Set version-history panel visibility (used to force-close on tab switch). */
+  setVersionHistoryVisible: (v: boolean) => void;
 }
 
 export const useEditorViewStateStore = create<EditorViewState>((set) => ({
@@ -51,6 +58,7 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   terminalPanelVisible: false,
   terminalInRightDock: false,
   terminalRightWidth: 300,
+  versionHistoryVisible: false,
 
   setCursorPosition: (line, col) => {
     // ponytail: cursor is also persisted onto the active tab so it survives tab
@@ -81,4 +89,7 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   setTerminalRightWidth: (width) => set({ terminalRightWidth: width }),
 
   closeTerminalPanel: () => set({ terminalPanelVisible: false, terminalInRightDock: false }),
+
+  toggleVersionHistory: () => set((state) => ({ versionHistoryVisible: !state.versionHistoryVisible })),
+  setVersionHistoryVisible: (v) => set({ versionHistoryVisible: v }),
 }));
