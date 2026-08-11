@@ -1431,3 +1431,37 @@ After matching the file-icon centering pattern, the 16px external indicator read
 ### Next Steps
 
 - None - task complete
+
+
+## Session 156: External-file tab icon opens containing folder
+
+**Date**: 2026-08-11
+**Task**: External-file tab icon opens containing folder
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+Clicking the external-file indicator in the tab bar (and the open-files list) now opens the containing folder in the system file manager via @tauri-apps/plugin-shell's open(), resolving ~/ and /Users/yiminlin prefixes to the home path first (shell open does not expand them). stopPropagation prevents the click from switching tabs; the icon keeps its static no-hover styling with a pointer cursor and an actionable aria-label (tabList.openExternalFolder: 打开所在文件夹 / Open containing folder; replaced the old externalFile key). Added tests for the open action, ~/ resolution, and tab-switch suppression. Full suite green (2113 tests).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9efc43cf` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

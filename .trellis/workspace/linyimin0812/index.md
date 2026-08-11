@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 155
+- **Total Sessions**: 156
 - **Last Active**: 2026-08-11
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1433 | Active |
+| `journal-3.md` | ~1467 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 156 | 2026-08-11 | External-file tab icon opens containing folder | `9efc43cf` | `codex/slash-menu-cleanup` |
 | 155 | 2026-08-11 | External-file tab icon: reduce to 12px | `a0932cb9` | `codex/slash-menu-cleanup` |
 | 154 | 2026-08-11 | External-file icon: match file-icon alignment pattern | `afeadd6e` | `codex/slash-menu-cleanup` |
 | 153 | 2026-08-11 | External-file icon: force block display for WebKit alignment | `a85cbd63` | `codex/slash-menu-cleanup` |
