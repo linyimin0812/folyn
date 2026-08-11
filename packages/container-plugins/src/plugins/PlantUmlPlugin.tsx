@@ -5,11 +5,17 @@ import { encodePlantUml } from '../plantuml/encode';
 // field when a user needs an internal/on-prem PlantUML server.
 const PLANTUML_SERVER = 'https://www.plantuml.com/plantuml/svg/';
 
-interface PlantUmlBlockProps {
-  source: string;
+interface PlantUmlState {
+  svg: string | null;
+  error: string | null;
 }
 
-export function PlantUmlBlock({ source }: PlantUmlBlockProps) {
+/**
+ * Fetch the rendered SVG for a PlantUML source from plantuml.com. Shared by
+ * the inline markdown code-fence renderer (`PlantUmlBlock`) and the file-type
+ * preview (`PlantUmlPreview` via ZoomPanCanvas).
+ */
+export function usePlantUmlSvg(source: string): PlantUmlState {
   const [svg, setSvg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,6 +47,16 @@ export function PlantUmlBlock({ source }: PlantUmlBlockProps) {
 
     return () => { cancelled = true; };
   }, [source]);
+
+  return { svg, error };
+}
+
+interface PlantUmlBlockProps {
+  source: string;
+}
+
+export function PlantUmlBlock({ source }: PlantUmlBlockProps) {
+  const { svg, error } = usePlantUmlSvg(source);
 
   if (error) {
     return (
