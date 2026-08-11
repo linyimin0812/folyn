@@ -35,8 +35,14 @@ export async function enhance(body: HTMLElement, ctx: EnhanceCtx): Promise<void>
   } catch { return; }
   if (!svg.startsWith('<svg')) return;
 
-  // ponytail: keep the SVG block-level + scrollable so wide diagrams don't
-  // blow out the export page width. Matches the inline PlantUmlBlock style.
+  // ponytail: stash the raw SVG returned by plantuml.com on a data attribute.
+  // renderFilePreviewToSvg prefers this over svgEl.outerHTML — HTML
+  // serialization (outerHTML) rewrites U+00A0 to &nbsp; and breaks standalone
+  // XML parsing of the exported .svg ("Entity 'nbsp' not defined"). The
+  // attribute value is HTML-escaped on serialization and decoded on read, so
+  // the original SVG bytes survive byte-for-byte. The visible innerHTML
+  // stays for HTML export embedding (HTML accepts &nbsp; fine).
+  body.setAttribute('data-raw-svg', svg);
   body.innerHTML = `<div style="display:flex;justify-content:center;padding:16px 12px;overflow-x:auto">${svg}</div>`;
   const svgEl = body.querySelector<SVGSVGElement>('svg');
   if (svgEl) {

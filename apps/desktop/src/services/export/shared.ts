@@ -262,6 +262,14 @@ export async function renderFilePreviewToSvg(
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const bodyEl = doc.querySelector('[data-file-preview-body]');
   if (!bodyEl) return '';
+  // ponytail: exporters that want byte-level preservation of a remote-rendered
+  // SVG (e.g. plantuml.com) stash the raw response on `data-raw-svg`. HTML
+  // parsing + outerHTML serialization rewrites U+00A0 → &nbsp; and similar,
+  // breaking standalone XML parsing. Prefer the raw attribute to bypass the
+  // HTML round-trip entirely. Falls through to outerHTML/img-data-URL paths
+  // for exporters that build their own SVG locally (dbml/drawio/mmap).
+  const rawSvg = bodyEl.getAttribute('data-raw-svg');
+  if (rawSvg) return rawSvg;
   // ponytail: drawio embeds its SVG as <img src="data:image/svg+xml;utf8,…">
   // for CSS isolation (inline SVG in HTML inherits host CSS into
   // foreignObject divs and breaks drawio's text layout — see
@@ -301,37 +309,8 @@ export async function renderFilePreviewToSvg(
       '<svg xmlns="http://www.w3.org/2000/svg"$1>',
     );
   }
-  // ponytail: HTML serialization (outerHTML / innerHTML) emits named entities
-  // like &nbsp; for U+00A0. XML parsers reject any named entity outside the
-  // 5 XML-predefined (amp/lt/gt/quot/apos), so a standalone .svg throws
-  // "Entity 'nbsp' not defined" the moment a user opens it. Swap the common
-  // HTML named entities back to numeric forms. Extend the map if a new entity
-  // surfaces; the regex skips the 5 XML-predefined and numeric refs.
-  svgString = svgString.replace(
-    /&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)\w+;/g,
-    (m) => HTML_ENTITY_TO_NUMERIC[m] ?? m,
-  );
   return svgString;
 }
-
-// ponytail: minimal named-entity → numeric map for the entities that show up
-// in exported SVGs (plantuml.com emits U+00A0 in labels, HTML serialization
-// renames it to &nbsp;). Add entries as users hit new entity errors.
-const HTML_ENTITY_TO_NUMERIC: Record<string, string> = {
-  '&nbsp;': '&#160;',
-  '&copy;': '&#169;',
-  '&reg;': '&#174;',
-  '&trade;': '&#8482;',
-  '&mdash;': '&#8212;',
-  '&ndash;': '&#8211;',
-  '&hellip;': '&#8230;',
-  '&laquo;': '&#171;',
-  '&raquo;': '&#187;',
-  '&lsquo;': '&#8216;',
-  '&rsquo;': '&#8217;',
-  '&ldquo;': '&#8220;',
-  '&rdquo;': '&#8221;',
-};
 
 /** Show a temporary toast notification for export success */
 function showExportNotification(message: string) {
