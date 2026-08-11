@@ -879,3 +879,37 @@ Added graphviz (.gv/.dot/.graphviz) file type mirroring plantuml: quickchart.io 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 140: Clean up slash command menu (hide AI result / error self-check, reset selection, style polish)
+
+**Date**: 2026-08-11
+**Task**: Clean up slash command menu (hide AI result / error self-check, reset selection, style polish)
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+Removed 'AI 结果' (ai-result) and '错误隔离自检' (plugin-error-demo) from the markdown editor /-command dropdown while preserving preview rendering. Reset active index to 0 on every menu reopen for both markdown and rich-text slash menus. Polished menu styling (rounded-xl, softer shadow, slideUp entrance, icon chips, accent-tinted active row). Added SlashMenu tests for hidden plugins and selection reset; full desktop suite green (165 files / 2074 tests).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fbb4c376` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
