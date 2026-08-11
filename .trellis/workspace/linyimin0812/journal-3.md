@@ -1287,3 +1287,45 @@ The external-file SquareArrowOutUpRight icon could sit off-center due to SVG bas
 ### Next Steps
 
 - None - task complete
+
+
+## Session 152: Version History feature
+
+**Date**: 2026-08-11
+**Task**: Version History feature
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+End-to-end version-history: PR1 content-addressable snapshot service + atomic index write + hash dedup + restore monotonic chain; PR2 Tauri FS adapter + save/close hooks (best-effort, never blocks save); PR3 in-editor side panel + Topbar History button + (eventually) editor-pipeline snapshot view. Iterate fixes: panel header height, diff moved to editor area, 3 panel bugs (numbering, edit-time flash, multi-highlight via composite selectedKey), newest-first list, full content view replacing diff, snapshot view via real editor pipeline with read-only CodeMirror. ADR-0003 + CONTEXT.md terms (Version Snapshot / Index / Versionable File) recorded.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `53bbf112` | (see git log) |
+| `a98d849f` | (see git log) |
+| `c7502fce` | (see git log) |
+| `4b2217d9` | (see git log) |
+| `6368578c` | (see git log) |
+| `8028b249` | (see git log) |
+| `8e80d95e` | (see git log) |
+| `df742be0` | (see git log) |
+| `4b4d2f6a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
