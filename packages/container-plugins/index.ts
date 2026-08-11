@@ -12,6 +12,7 @@ export { calloutPlugin } from './src/plugins/CalloutPlugin';
 export { tabsPlugin, tabPlugin } from './src/plugins/TabsPlugin';
 export { mermaidPlugin, MermaidBlock } from './src/plugins/MermaidPlugin';
 export { PlantUmlBlock, usePlantUmlSvg } from './src/plugins/PlantUmlPlugin';
+export { encodePlantUml } from './src/plantuml/encode';
 export { aiResultPlugin } from './src/plugins/AiResultPlugin';
 export { statusTagPlugin } from './src/plugins/StatusTagPlugin';
 export { timelinePlugin } from './src/plugins/TimelinePlugin';

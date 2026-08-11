@@ -19,6 +19,7 @@ import * as dbmlExporter from './export/dbml';
 import * as excalidrawExporter from './export/excalidraw';
 import * as drawioExporter from './export/drawio';
 import * as mmapExporter from './export/mmap';
+import * as plantumlExporter from './export/plantuml';
 import { inlineContainerImages } from './export/shared';
 import type { EnhanceCtx } from './export/dbml';
 import { getEnhancer } from './plugin-host/exportEnhancerAdapter';
@@ -294,6 +295,9 @@ const REGISTRY: Record<string, EnhanceFn> = {
   excalidraw: excalidrawExporter.enhance,
   drawio: drawioExporter.enhance,
   mmap: mmapExporter.enhance,
+  plantuml: plantumlExporter.enhance,
+  puml: plantumlExporter.enhance,
+  pu: plantumlExporter.enhance,
 };
 
 /**
