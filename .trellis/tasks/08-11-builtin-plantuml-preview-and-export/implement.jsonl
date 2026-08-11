@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Code standards, forbidden patterns, review checklist — applies to all new desktop code"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Named exports, props, composition patterns for new PlantUmlBlock component and file-type handler"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Custom editor + iframe bridge + serialization patterns — informs how plantuml file-type handler should be structured"}
+{"file": ".trellis/spec/container-plugins/frontend/index.md", "reason": "Container plugins package guidelines — PlantUmlBlock lives here next to MermaidPlugin"}
