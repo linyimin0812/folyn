@@ -13,6 +13,7 @@ import { TabBar } from './TabBar';
 import { EditorPane } from './EditorPane';
 import { PreviewPane } from './PreviewPane';
 import { DailyDigest } from '../editor/DailyDigest';
+import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
 
 
 export function WorkArea() {
@@ -22,7 +23,6 @@ export function WorkArea() {
   const activeTabId = useEditorStore((state) => state.activeTabId);
   const allTabs = useEditorStore((state) => state.tabs);
   const setActiveTab = useEditorStore((state) => state.setActiveTab);
-  const closeTab = useEditorStore((state) => state.closeTab);
   const updateTabContent = useEditorStore((state) => state.updateTabContent);
   const markTabDirty = useEditorStore((state) => state.markTabDirty);
   const isFileLoading = useEditorStore((state) => state.isFileLoading);
@@ -271,7 +271,7 @@ export function WorkArea() {
           tabs={tabs}
           activeTabId={activeTabId}
           onSelectTab={setActiveTab}
-          onCloseTab={closeTab}
+          onCloseTab={closeTabWithSnapshot}
         />
       )}
 

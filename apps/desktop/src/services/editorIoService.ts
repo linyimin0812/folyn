@@ -24,6 +24,8 @@ import {
   flushPersistExternalOpenTabs,
   loadExternalOpenTabs,
 } from '@/store/editorPersistence';
+import { snapshot as snapshotVersion } from '@/services/versionHistory';
+import { resolveBasePath } from '@/utils/pathResolver';
 
 /** Default URL for a freshly created browser tab. */
 export const BROWSER_HOME_URL = 'https://www.google.com';
@@ -251,9 +253,71 @@ export async function saveFile(tabId: string): Promise<void> {
         t.id === tabId ? { ...t, isDirty: false } : t,
       ),
     }));
+    // PR2: best-effort version-history snapshot. Never fails the save —
+    // version history is a secondary affordance; the user's primary intent
+    // (saving) has already succeeded at this point.
+    void maybeSnapshotVersion(tab).catch((err) => {
+      console.warn('[EditorStore] version snapshot failed:', err);
+    });
   } catch (err) {
     console.error('[EditorStore] saveFile failed:', err);
   }
+}
+
+/**
+ * Close a tab, snapshotting the on-disk content first if the tab is a
+ * Versionable File (per PRD §2). Best-effort — never fails the close.
+ *
+ * Snapshots the on-disk content (NOT the editor dirty state) so the
+ * snapshot reflects what's actually persisted to disk. Dedup in the pure
+ * service means a snapshot taken here right after a save is a no-op.
+ *
+ * Exported so callers that previously invoked the bare store `closeTab`
+ * can opt into the snapshot path with one import change. The bare store
+ * action is still available via `useEditorStore.getState().closeTab` for
+ * paths where a snapshot is unwanted (e.g. closing a deleted file).
+ */
+export function closeTab(tabId: string): void {
+  const tab = useEditorStore.getState().tabs.find((t) => t.id === tabId);
+  if (tab) {
+    void maybeSnapshotVersion(tab).catch((err) => {
+      console.warn('[EditorStore] version snapshot on close failed:', err);
+    });
+  }
+  useEditorStore.getState().closeTab(tabId);
+}
+
+/**
+ * Snapshot `tab`'s on-disk content if it is a Versionable File under the
+ * active vault. Skips:
+ *   - external tabs (`isExternalPath(tab.path)`) — no vault id bound
+ *   - wiki tabs (`wiki://` prefix) — no on-disk path under the vault
+ *   - `web` tabs — no on-disk file content (URL-only)
+ *   - non-content handlers (`needsFileContent !== true`) — image/office
+ *     previews have no editor-buffer state worth snapshotting
+ *   - missing `vaultId` / `currentVault` — untitled or vault-less state
+ *
+ * The "versionable" predicate mirrors `checkDiskChanges`'s filter
+ * (`fileType !== 'web' && handler.needsFileContent`) — same gate, same
+ * scope per PRD §7. PRD §scope-list ("web" included) is intentional but
+ * `web` has no on-disk content, so the practical predicate excludes it.
+ */
+async function maybeSnapshotVersion(tab: FileTab): Promise<void> {
+  if (isExternalPath(tab.path) || tab.path.startsWith(WIKI_PREFIX)) return;
+  if (tab.fileType === 'web') return;
+  const handler = getHandlerById(tab.fileType);
+  if (!handler?.needsFileContent) return;
+
+  const vaultId = useVaultStore.getState().activeVaultId;
+  if (!vaultId) return;
+  const vault = useVaultStore.getState().currentVault;
+  if (!vault) return;
+
+  const vaultRoot = await resolveBasePath(vault.basePath);
+  const { join } = await import('@tauri-apps/api/path');
+  const absFilePath = await join(vaultRoot, tab.path);
+
+  await snapshotVersion(vaultId, absFilePath);
 }
 
 /** Save current open tabs immediately (flush, no debounce). External tabs are

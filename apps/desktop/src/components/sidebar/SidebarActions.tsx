@@ -4,6 +4,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { usePrefsStore } from '@/store/prefsStore';
 import { FileIcon } from '@/components/icons/FileIcon';
+import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
 import type { VaultEntry } from '@quill/vault-provider';
 
 /* -------------------------------------------------------------------------- */
@@ -21,7 +22,7 @@ export function useSidebarActions({ handleFileClick, setExpandedDirs }: UseSideb
   const vaultDeleteFile = useVaultStore((state) => state.deleteFile);
   const vaultDeleteDir = useVaultStore((state) => state.deleteDir);
   const vaultRenameFile = useVaultStore((state) => state.renameFile);
-  const closeTab = useEditorStore((state) => state.closeTab);
+  const closeTab = closeTabWithSnapshot;
 
   /* -- New-item state -- */
   const [newItemType, setNewItemType] = useState<'file' | 'dir' | null>(null);
