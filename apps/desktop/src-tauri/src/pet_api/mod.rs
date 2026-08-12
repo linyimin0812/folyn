@@ -91,7 +91,7 @@ pub fn open_external(target: LaunchSpec, whitelist: Vec<String>) -> OpenExternal
                     reason: "url must be http(s)".into(),
                 };
             }
-            match std::process::Command::new("open").arg(&target.value).status() {
+            match build_open_command(&target.value, false).status() {
                 Ok(_) => OpenExternalResult::Opened,
                 Err(e) => OpenExternalResult::Failed {
                     reason: e.to_string(),
@@ -109,11 +109,7 @@ pub fn open_external(target: LaunchSpec, whitelist: Vec<String>) -> OpenExternal
                     app: target.value.clone(),
                 };
             }
-            match std::process::Command::new("open")
-                .arg("-a")
-                .arg(&target.value)
-                .status()
-            {
+            match build_open_command(&target.value, true).status() {
                 Ok(s) if s.success() => OpenExternalResult::Opened,
                 Ok(s) => OpenExternalResult::Failed {
                     reason: format!("exit: {}", s.code().unwrap_or(-1)),
@@ -126,6 +122,27 @@ pub fn open_external(target: LaunchSpec, whitelist: Vec<String>) -> OpenExternal
         other => OpenExternalResult::Invalid {
             reason: format!("unknown launch type: {}", other),
         },
+    }
+}
+
+// ponytail: macOS `open [<url> | -a <app>]` vs Windows `cmd /c start "" <target>`.
+// `start` is a cmd.exe builtin (not a binary), so Windows must spawn cmd.exe
+// with `start` as an arg. `start "" <url>` opens the default browser;
+// `start "" <appname>` launches a registered app by name — the closest
+// Windows analog to macOS `open -a`. Whitelist controls the value either way.
+fn build_open_command(target: &str, as_app: bool) -> std::process::Command {
+    if cfg!(target_os = "windows") {
+        let mut cmd = std::process::Command::new("cmd.exe");
+        cmd.arg("/c").arg("start").arg("").arg(target);
+        cmd
+    } else if as_app {
+        let mut cmd = std::process::Command::new("open");
+        cmd.arg("-a").arg(target);
+        cmd
+    } else {
+        let mut cmd = std::process::Command::new("open");
+        cmd.arg(target);
+        cmd
     }
 }
 
