@@ -1499,3 +1499,37 @@ The shell plugin's open() only accepts URL arguments (mailto/tel/http regex) and
 ### Next Steps
 
 - None - task complete
+
+
+## Session 158: Fix opener scope so external folder open works incl. hidden dirs
+
+**Date**: 2026-08-12
+**Task**: Fix opener scope so external folder open works incl. hidden dirs
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+opener:allow-open-path with no scope allows nothing (empty allow list = deny all), so the external-file icon still failed with 'Not allowed to open path /Users/yiminlin/.pi/agent'. Also the opener plugin's require_literal_leading_dot (default true on Unix) makes $HOME/** miss hidden directories. Provided an explicit scope in capabilities/default.json mirroring the existing fs:scope-home-recursive pattern: $HOME/** + $HOME/**/.* + $HOME/**/.*/**. cargo check + schema regen pass. NOTE: requires a Rust rebuild.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4a32ef80` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

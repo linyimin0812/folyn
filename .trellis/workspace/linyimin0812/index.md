@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 157
-- **Last Active**: 2026-08-11
+- **Total Sessions**: 158
+- **Last Active**: 2026-08-12
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1501 | Active |
+| `journal-3.md` | ~1535 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 158 | 2026-08-12 | Fix opener scope so external folder open works incl. hidden dirs | `4a32ef80` | `codex/slash-menu-cleanup` |
 | 157 | 2026-08-11 | Open external-file folder via tauri-opener (fix shell URL-only restriction) | `ee25d851` | `codex/slash-menu-cleanup` |
 | 156 | 2026-08-11 | External-file tab icon opens containing folder | `9efc43cf` | `codex/slash-menu-cleanup` |
 | 155 | 2026-08-11 | External-file tab icon: reduce to 12px | `a0932cb9` | `codex/slash-menu-cleanup` |
