@@ -10,6 +10,7 @@ import {
   dropCursor,
   rectangularSelection,
   crosshairCursor,
+  tooltips,
 } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab, selectAll } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
@@ -70,7 +71,7 @@ import {
   codeBlockMenuField,
   type CodeBlockMenuState,
 } from './extensions/CodeBlockExtension';
-import { createFilePreviewSrcCompletion } from './extensions/FilePreviewSrcExtension';
+import { createFilePreviewSrcCompletion, filePreviewSrcSearchBox } from './extensions/FilePreviewSrcExtension';
 import { orderedListExtension } from './extensions/OrderedListExtension';
 import { inlineDiffExtension } from './extensions/InlineDiffExtension';
 import { json as jsonLanguage } from '@codemirror/lang-json';
@@ -289,7 +290,22 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
         quillHighlighting(),
         bracketMatching(),
         closeBrackets(),
-        autocompletion({ override: [createFilePreviewSrcCompletion(filePath)] }),
+        // closeOnBlur: false — the src dropdown hosts its own search input;
+        // focusing it must not dismiss the dropdown. The search-box plugin
+        // closes the completion when focus leaves the editor entirely.
+        // interactionDelay: 0 — the default 75ms swallows accept/arrow keys
+        // right after the popup opens; a swallowed Enter falls through to the
+        // editor's default keymap and inserts a newline into the src string.
+        autocompletion({
+          override: [createFilePreviewSrcCompletion(filePath)],
+          closeOnBlur: false,
+          interactionDelay: 0,
+        }),
+        filePreviewSrcSearchBox(),
+        // Render tooltips on <body> (fixed position): inside the editor they
+        // get clipped by .cm-wrapper's overflow:hidden and slide under the
+        // preview pane on the right.
+        tooltips({ parent: document.body }),
         rectangularSelection(),
         crosshairCursor(),
         highlightActiveLine(),

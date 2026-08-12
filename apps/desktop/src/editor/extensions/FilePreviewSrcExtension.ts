@@ -1,8 +1,199 @@
-import { type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
-import type { EditorState } from '@codemirror/state';
+import {
+  acceptCompletion,
+  closeCompletion,
+  moveCompletionSelection,
+  type Completion,
+  type CompletionContext,
+  type CompletionResult,
+} from '@codemirror/autocomplete';
+import { Transaction, type EditorState } from '@codemirror/state';
+import { EditorView, ViewPlugin } from '@codemirror/view';
 import { useVaultStore } from '@/store/vaultStore';
 import { flattenFileTree } from '@/utils/treeUtils';
 import type { VaultEntry } from '@quill/vault-provider';
+
+const SRC_ATTR_RE = /:::file-preview\b[^{]*\{[^}]*?src="([^"]*)$/;
+
+/** Locate the `src="..."` partial being typed before `pos`, and its document
+ *  offset. Shared by the completion source and the search-box plugin. */
+function srcPartialAt(state: EditorState, pos: number): { start: number; text: string } | null {
+  const windowStart = Math.max(0, pos - 500);
+  const before = state.sliceDoc(windowStart, pos);
+  const m = before.match(SRC_ATTR_RE);
+  if (!m) return null;
+  return { start: windowStart + (m.index ?? 0) + m[0].length - m[1].length, text: m[1] };
+}
+
+/** Insert `insert` over [from, to) and CLOSE the dropdown. Deliberately NOT
+ *  annotated as a user event — CodeMirror's default string-apply dispatches
+ *  with userEvent "input.complete", which re-triggers completion after every
+ *  pick and leaves the dropdown open on the just-inserted path. */
+function applyFileAndClose(insert: string) {
+  return (view: EditorView, _completion: Completion, from: number, to: number) => {
+    view.dispatch({
+      changes: { from, to, insert },
+      selection: { anchor: from + insert.length },
+    });
+    closeCompletion(view);
+  };
+}
+
+/**
+ * Adds a search input pinned to the top of the src-completion dropdown.
+ * Typing in the input rewrites the document's src partial (annotated as user
+ * typing, so completion re-filters exactly as if typed in the editor); arrow
+ * keys and Enter drive the option list while focus stays in the input.
+ *
+ * ponytail: focus bookkeeping — CodeMirror rebuilds the tooltip DOM whenever
+ * the result object changes (e.g. crossing the no-`/` ↔ `dir/` branch
+ * boundary), which detaches and remounts this input. `hadFocus` survives the
+ * rebuild so the remounted input gets its focus back; it is cleared the
+ * moment focus lands anywhere else.
+ */
+export function filePreviewSrcSearchBox() {
+  return ViewPlugin.fromClass(
+    class {
+      box: HTMLDivElement | null = null;
+      input: HTMLInputElement | null = null;
+      hadFocus = false;
+      readonly onFocusIn = (e: FocusEvent) => {
+        const t = e.target as Node;
+        if (this.input && t === this.input) {
+          this.hadFocus = true;
+          return;
+        }
+        this.hadFocus = false;
+        // closeOnBlur is disabled for this editor's autocompletion so the
+        // dropdown survives focusing the search box; compensate by closing
+        // when focus moves outside the editor entirely. Tooltips live on
+        // document.body (so they can overlay the preview pane), hence the
+        // explicit .cm-tooltip exemption.
+        if (
+          !this.view.dom.contains(t) &&
+          !(t instanceof HTMLElement && t.closest('.cm-tooltip'))
+        ) {
+          closeCompletion(this.view);
+        }
+      };
+      readonly onMouseDown = (e: MouseEvent) => {
+        // Clicking a non-focusable area fires no focusin — close via
+        // mousedown as well so the dropdown never lingers. Clicks inside the
+        // tooltip itself (e.g. picking an option) must not close it — CM
+        // applies the pick on the same mousedown.
+        const t = e.target;
+        if (
+          !this.view.dom.contains(t as Node) &&
+          !(t instanceof HTMLElement && t.closest('.cm-tooltip'))
+        ) {
+          this.hadFocus = false;
+          closeCompletion(this.view);
+        }
+      };
+
+      constructor(readonly view: EditorView) {
+        document.addEventListener('focusin', this.onFocusIn);
+        document.addEventListener('mousedown', this.onMouseDown);
+      }
+
+      update() {
+        this.sync();
+      }
+
+      destroy() {
+        document.removeEventListener('focusin', this.onFocusIn);
+        document.removeEventListener('mousedown', this.onMouseDown);
+        this.box?.remove();
+      }
+
+      sync() {
+        // Tooltips are mounted on document.body (tooltips({parent}) in
+        // EditorView), not inside view.dom — search the whole document.
+        const tooltip = document.querySelector<HTMLElement>('.cm-tooltip-autocomplete');
+        if (!tooltip) {
+          this.box = null;
+          this.input = null;
+          return;
+        }
+        if (!this.box || this.box.parentElement !== tooltip) this.mount(tooltip);
+        // Two-way sync: if the user typed in the editor instead of the box,
+        // reflect the current partial in the (unfocused) input.
+        const partial = srcPartialAt(this.view.state, this.view.state.selection.main.head);
+        if (
+          partial && this.input &&
+          document.activeElement !== this.input && this.input.value !== partial.text
+        ) {
+          this.input.value = partial.text;
+        }
+      }
+
+      mount(tooltip: HTMLElement) {
+        const box = document.createElement('div');
+        box.className = 'cm-src-search-box';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = '搜索文件…';
+        const partial = srcPartialAt(this.view.state, this.view.state.selection.main.head);
+        if (partial) input.value = partial.text;
+
+        box.addEventListener('mousedown', (e) => {
+          // Don't let the click move the editor selection; just focus the box.
+          e.preventDefault();
+          input.focus();
+        });
+        input.addEventListener('input', () => {
+          const p = srcPartialAt(this.view.state, this.view.state.selection.main.head);
+          if (!p) return;
+          this.view.dispatch({
+            changes: { from: p.start, to: p.start + p.text.length, insert: input.value },
+            selection: { anchor: p.start + input.value.length },
+            // Annotated as typing so completion re-filters / re-opens.
+            annotations: Transaction.userEvent.of('input.type'),
+          });
+        });
+        input.addEventListener('keydown', (e) => {
+          const run = (cmd: (v: EditorView) => boolean) => {
+            if (cmd(this.view)) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          };
+          if (e.key === 'ArrowDown') run((v) => moveCompletionSelection(true)(v));
+          else if (e.key === 'ArrowUp') run((v) => moveCompletionSelection(false)(v));
+          else if (e.key === 'Enter') {
+            run(acceptCompletion);
+            requestAnimationFrame(() => {
+              // File picked → dropdown closed → hand focus back to the
+              // editor. Dir picked → dropdown reopened on the new dir →
+              // refresh the box with the post-apply partial.
+              if (!document.querySelector('.cm-tooltip-autocomplete')) {
+                this.hadFocus = false;
+                this.view.focus();
+                return;
+              }
+              const p = srcPartialAt(this.view.state, this.view.state.selection.main.head);
+              if (p && this.input) this.input.value = p.text;
+            });
+          } else if (e.key === 'Escape') {
+            this.hadFocus = false;
+            closeCompletion(this.view);
+            this.view.focus();
+          }
+        });
+
+        box.appendChild(input);
+        tooltip.prepend(box);
+        this.box = box;
+        this.input = input;
+        // The tooltip was rebuilt while the user was typing in the box —
+        // hand focus (and the caret) back to the fresh input.
+        if (this.hadFocus) {
+          input.focus();
+          input.setSelectionRange(input.value.length, input.value.length);
+        }
+      }
+    },
+  );
+}
 
 /**
  * Factory: returns a completion source for the `src` attribute of
@@ -10,49 +201,37 @@ import type { VaultEntry } from '@quill/vault-provider';
  * `filePath` so `./` and `../` resolve relative to the document's directory.
  *
  * Behavior:
- * - partial has no `/` → substring filter across all vault files (legacy).
- * - partial has `/` → list immediate children of the resolved directory,
- *   filtered by the segment after the last `/`. Directories apply with a
- *   trailing `/` so the user can keep drilling.
+ * - partial has no `/` → global search across all vault files. Options carry
+ *   the full path as their label so CodeMirror's built-in fuzzy matcher
+ *   (subsequence match with word-boundary bonuses) filters AND ranks them
+ *   client-side — the result stays valid while typing, so the dropdown never
+ *   tears down per keystroke.
+ * - partial has `/` → list immediate children of the resolved directory.
+ *   Directories apply with a trailing `/` so the user can keep drilling.
  */
 export function createFilePreviewSrcCompletion(filePath: string) {
   return function filePreviewSrcCompletion(ctx: CompletionContext): CompletionResult | null {
-    const windowStart = Math.max(0, ctx.pos - 500);
-    const textBefore = ctx.state.sliceDoc(windowStart, ctx.pos);
-    const m = textBefore.match(/:::file-preview\b[^{]*\{[^}]*?src="([^"]*)$/);
-    if (!m) return null;
+    const found = srcPartialAt(ctx.state, ctx.pos);
+    if (!found) return null;
 
-    const partial = m[1];
-    const partialStart = windowStart + (m.index ?? 0) + m[0].length - m[1].length;
+    const partial = found.text;
+    const partialStart = found.start;
 
     const slashIdx = Math.max(partial.lastIndexOf('/'), partial.lastIndexOf('\\'));
     if (slashIdx === -1) {
-      // No `/` → legacy behavior: substring filter across all vault files.
+      // No `/` → global search. Full path as label: CodeMirror fuzzy-matches
+      // and ranks against it per keystroke, and the match highlighting shows
+      // exactly which part of the path matched. No result cap — CodeMirror
+      // only renders maxRenderedOptions (100) rows.
       const fileTree = useVaultStore.getState().fileTree;
-      const files = flattenFileTree(fileTree);
-      const lower = partial.toLowerCase();
-      const filtered = partial
-        ? files.filter(
-            (f) => f.path.toLowerCase().includes(lower) || f.name.toLowerCase().includes(lower),
-          )
-        : files;
-      // ponytail: cap at 50 matches — vault can have thousands of files, the
-      // dropdown is unusable past that. Replace with ranked/scored search
-      // (fuzzy, recency) if/when the cap bites.
-      const options = filtered.slice(0, 50).map((f) => {
-        // ponytail: detail = parent dir only — full path ends with `name`, so
-        // label+detail would show the filename twice per row.
-        const lastSlash = f.path.lastIndexOf('/');
-        return {
-          label: f.name,
-          detail: lastSlash === -1 ? '' : f.path.slice(0, lastSlash),
-          apply: f.path,
-          type: 'file' as const,
-        };
-      });
-      // ponytail: invalidate the moment the partial grows a `/` — that
-      // transitions to the directory-children branch below, which needs a
-      // fresh query (different options, different `from`).
+      const options = flattenFileTree(fileTree).map((f) => ({
+        label: f.path,
+        apply: applyFileAndClose(f.path),
+        type: 'file' as const,
+      }));
+      // ponytail: stay valid while the query has no `/` — client-side
+      // filtering handles narrowing, so no re-query (and no tooltip rebuild)
+      // happens per keystroke. A `/` transitions to the dir branch below.
       return {
         from: partialStart,
         to: ctx.pos,
@@ -62,7 +241,6 @@ export function createFilePreviewSrcCompletion(filePath: string) {
     }
 
     const dirPart = partial.slice(0, slashIdx + 1);
-    const filenameFilter = partial.slice(slashIdx + 1);
     const dirPath = resolveDirPart(dirPart, filePath);
     if (dirPath === null) return null;
 
@@ -70,27 +248,37 @@ export function createFilePreviewSrcCompletion(filePath: string) {
     const children = findDirChildren(fileTree, dirPath);
     if (!children) return null;
 
-    const lower = filenameFilter.toLowerCase();
-    const filtered = lower
-      ? children.filter((c) => c.name.toLowerCase().includes(lower))
-      : children;
-    // ponytail: cap at 50 matches — same reasoning as the no-`/` branch above.
     // ponytail: `from` is the position AFTER the last `/` in the partial, so
-    // CodeMirror's fuzzy matcher uses just the filename filter as the pattern
-    // (not the full `./<dir>/filter`), which actually matches the child-name
-    // labels. `apply` is the bare child name so picking replaces only the
-    // filter text and preserves the typed directory prefix (e.g. `./<dir>/`).
+    // CodeMirror's fuzzy matcher uses just the segment after it as the
+    // pattern. `apply` is the bare child name so picking replaces only that
+    // segment and preserves the typed directory prefix (e.g. `./<dir>/`).
+    // No `detail`: every row shares the same resolved dir, so a per-row
+    // detail would repeat the identical path on every line.
     const filterStart = partialStart + slashIdx + 1;
-    const options = filtered.slice(0, 50).map((c) =>
-      // ponytail: detail = resolved dir (same for every row) — full path would
-      // repeat the filename from `label`.
+    const options = children.map((c): Completion =>
       c.type === 'dir'
-        ? { label: c.name + '/', detail: dirPath, apply: c.name + '/', type: 'dir' as const }
-        : { label: c.name, detail: dirPath, apply: c.name, type: 'file' as const },
+        ? {
+            label: c.name + '/',
+            // Custom apply: drilling into a dir must KEEP the dropdown open
+            // with that dir's children (the default string-apply would just
+            // dismiss it). The inserted text is annotated as user typing, so
+            // completion immediately re-queries against the new dir — exactly
+            // as if the user had typed `name/` by hand.
+            apply: (view: EditorView, _completion: Completion, from: number, to: number) => {
+              const insert = c.name + '/';
+              view.dispatch({
+                changes: { from, to, insert },
+                selection: { anchor: from + insert.length },
+                annotations: Transaction.userEvent.of('input.type'),
+              });
+            },
+            type: 'dir' as const,
+          }
+        : { label: c.name, apply: applyFileAndClose(c.name), type: 'file' as const },
     );
     // ponytail: invalidate when the directory part of the partial changes
     // (drilling into a subdir must re-query). Filter-only typing within the
-    // same dir keeps the result, so the popup doesn't flicker per keystroke.
+    // same dir reuses the result, so the popup doesn't rebuild per keystroke.
     const validFor = (_text: string, _from: number, to: number, state: EditorState) => {
       const currentPartial = state.sliceDoc(partialStart, to);
       const newSlash = Math.max(currentPartial.lastIndexOf('/'), currentPartial.lastIndexOf('\\'));
