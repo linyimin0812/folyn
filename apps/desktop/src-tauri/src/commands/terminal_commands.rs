@@ -203,8 +203,11 @@ fn base64_encode(bytes: &[u8]) -> String {
 }
 
 /// Expand a leading `~` / `~/` to the user's home directory (no-op otherwise).
+/// macOS/Linux use HOME; Windows has no HOME so falls back to USERPROFILE.
 fn expand_tilde(path: &str) -> String {
-    let home = std::env::var("HOME").unwrap_or_default();
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .unwrap_or_default();
     if home.is_empty() {
         return path.to_string();
     }
