@@ -137,17 +137,15 @@ export function buildAdapterVersionCommand(adapterId: string, cliPath: string): 
  * - win32:  `where <cmd>` (no shell concept; uses Windows system PATH)
  * - other:  plain `which <cmd>` (fallback for unknown platforms)
  *
- * The resolved shell is invoked with `-ilc` (interactive login). `-l` alone
- * reads `/etc/zprofile` + `~/.zprofile`, but most users set PATH in `~/.zshrc`
- * (or `~/.bashrc`), which is only sourced in interactive mode. Without `-i`,
- * the Tauri sidecar's launchd-inherited PATH (containing cmux shims from
- * `/etc/paths.d/`, missing `~/.local/bin`) leaks through and `which` returns
- * the UUID-suffixed temp shim path. `-i` forces `~/.zshrc` / `~/.bashrc` to
- * load so PATH matches the user's interactive terminal.
- *
- * `zsh -i` in a non-TTY context (Tauri sidecar) typically works but may emit
- * warnings to stderr (e.g. "can't open terminal" from some plugins). The
- * caller only reads stdout's first line, so stderr noise is harmless.
+ * The resolved shell is invoked with `-lc` (login). `-l` reads
+ * `/etc/zprofile` + `~/.zprofile` (zsh) / `/etc/profile` + `~/.profile` (sh).
+ * PATH set only in `~/.zshrc` / `~/.bashrc` (interactive rc files) is NOT
+ * loaded, so users whose PATH lives in those files may still see shim paths
+ * (e.g. cmux-cli-shims) leak through from the Tauri sidecar's launchd-inherited
+ * PATH. Accepted tradeoff: forcing `-i` to source `~/.zshrc` is worse — many
+ * users' `~/.zshrc` (SDKMAN, nvm, etc.) prints noise to stdout that pollutes
+ * the detect output. `-lc` keeps `which` output clean at the cost of
+ * rc-file-only PATHs.
  *
  * The command is run via the sidecar with `args`: Unix sidecar uses
  * `['-l', '-c', <cmd>]`, Windows sidecar uses `['/c', <cmd>]`. Caller picks
@@ -158,9 +156,9 @@ export function buildAdapterDetectCommand(
 ): string {
   switch (platform) {
     case 'darwin':
-      return `exec "$(dscl . -read /Users/$(whoami) UserShell | awk '{print $2}')" -ilc "which ${adapterCmd}"`;
+      return `exec "$(dscl . -read /Users/$(whoami) UserShell | awk '{print $2}')" -lc "which ${adapterCmd}"`;
     case 'linux':
-      return `exec "$(getent passwd $(whoami) | cut -d: -f7)" -ilc "which ${adapterCmd}"`;
+      return `exec "$(getent passwd $(whoami) | cut -d: -f7)" -lc "which ${adapterCmd}"`;
     case 'win32':
       return `where ${adapterCmd}`;
     default:
