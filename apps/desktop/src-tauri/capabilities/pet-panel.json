@@ -25,6 +25,11 @@
           "name": "pi-cli",
           "cmd": "/bin/sh",
           "args": true
+        },
+        {
+          "name": "win-detect",
+          "cmd": "cmd.exe",
+          "args": true
         }
       ]
     },
@@ -39,6 +44,11 @@
         {
           "name": "pi-cli",
           "cmd": "/bin/sh",
+          "args": true
+        },
+        {
+          "name": "win-detect",
+          "cmd": "cmd.exe",
           "args": true
         }
       ]

@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { Lightbulb } from 'lucide-react';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useNavStore } from '@/store/navStore';
-import { listAdapters, buildAdapterVersionCommand } from '@quill/cli-adapter';
+import { listAdapters, buildAdapterVersionCommand, buildAdapterDetectCommand } from '@quill/cli-adapter';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { openFile } from '@/services/editorIoService';
 
@@ -107,7 +107,13 @@ export function CliSettings() {
                     try {
                       const { Command } = await import('@tauri-apps/plugin-shell');
                       const adapterCmd = a.id === 'claude' ? 'claude' : a.id;
-                      const cmd = Command.create('claude-cli', ['-l', '-c', `which ${adapterCmd}`]);
+                      const isWin = typeof navigator !== 'undefined' && /Win/i.test(navigator.platform);
+                      const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
+                      const platform = isWin ? 'win32' : isMac ? 'darwin' : 'linux';
+                      const detectCmd = buildAdapterDetectCommand(adapterCmd, platform);
+                      const sidecarName = isWin ? 'win-detect' : 'claude-cli';
+                      const sidecarArgs = isWin ? ['/c', detectCmd] : ['-l', '-c', detectCmd];
+                      const cmd = Command.create(sidecarName, sidecarArgs);
                       const output = await cmd.execute();
                       const detected = output.stdout.trim().split('\n')[0];
                       if (output.code === 0 && detected) {

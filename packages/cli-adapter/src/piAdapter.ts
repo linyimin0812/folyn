@@ -121,6 +121,41 @@ export function buildAdapterVersionCommand(adapterId: string, cliPath: string): 
   return `exec ${quoteShellArg(cliPath)} ${quoteShellArg('--version')}`;
 }
 
+/** Build the shell command a settings UI uses to detect an adapter's CLI
+ * path on the user's real default shell — NOT the Tauri sidecar's `/bin/sh`.
+ *
+ * Why: Tauri GUI processes inherit launchd's PATH, not the user's interactive
+ * shell PATH. `/bin/sh -lc which <cmd>` reads only `/etc/profile` + `~/.profile`,
+ * so it picks up shim directories (e.g. cmux-cli-shims under `/var/folders/`)
+ * injected via `/etc/paths.d/` — returning a UUID-suffixed temp path that
+ * breaks on reboot. Running `which` under the user's actual login shell
+ * (`dscl`/`getent`-resolved) gives the same path the user sees in a terminal.
+ *
+ * Platform branches:
+ * - darwin: resolve user shell via `dscl . -read /Users/$(whoami) UserShell`
+ * - linux:  resolve user shell via `getent passwd $(whoami) | cut -d: -f7`
+ * - win32:  `where <cmd>` (no shell concept; uses Windows system PATH)
+ * - other:  plain `which <cmd>` (fallback for unknown platforms)
+ *
+ * The command is run via the sidecar with `args`: Unix sidecar uses
+ * `['-l', '-c', <cmd>]`, Windows sidecar uses `['/c', <cmd>]`. Caller picks
+ * the sidecar name based on `navigator.platform` (browser-safe). */
+export function buildAdapterDetectCommand(
+  adapterCmd: string,
+  platform: string = process.platform,
+): string {
+  switch (platform) {
+    case 'darwin':
+      return `exec "$(dscl . -read /Users/$(whoami) UserShell | awk '{print $2}')" -lc "which ${adapterCmd}"`;
+    case 'linux':
+      return `exec "$(getent passwd $(whoami) | cut -d: -f7)" -lc "which ${adapterCmd}"`;
+    case 'win32':
+      return `where ${adapterCmd}`;
+    default:
+      return `which ${adapterCmd}`;
+  }
+}
+
 /** Build the `pi --mode rpc ...` spawn arg vector from send options.
  *
  * pi's rpc mode is a long-lived process: `system-prompt`/`tools`/`session` are

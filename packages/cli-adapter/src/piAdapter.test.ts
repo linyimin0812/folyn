@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { translatePiEvent, mapClaudeToolsToPi, buildPiSpawnArgs, buildPromptCommand, buildPiShellCommand, splitJsonlLines, PiAdapter, buildAdapterVersionCommand } from './piAdapter';
+import { translatePiEvent, mapClaudeToolsToPi, buildPiSpawnArgs, buildPromptCommand, buildPiShellCommand, splitJsonlLines, PiAdapter, buildAdapterVersionCommand, buildAdapterDetectCommand } from './piAdapter';
 import type { CliStreamEvent } from './types';
 
 describe('translatePiEvent (pi JSONL → CliStreamEvent)', () => {
@@ -179,6 +179,35 @@ describe('buildAdapterVersionCommand (settings self-test: --version via sibling 
 
   it('unknown adapter: falls back to <cliPath> --version', () => {
     expect(buildAdapterVersionCommand('nope', 'x')).toBe("exec 'x' '--version'");
+  });
+});
+
+describe('buildAdapterDetectCommand (settings detect: which via user default shell)', () => {
+  it('darwin: resolves user shell via dscl and execs it in login mode', () => {
+    const cmd = buildAdapterDetectCommand('claude', 'darwin');
+    expect(cmd).toContain('dscl . -read /Users/$(whoami) UserShell');
+    expect(cmd).toContain("awk '{print $2}'");
+    expect(cmd).toMatch(/-lc "which claude"$/);
+    expect(cmd.startsWith('exec "')).toBe(true);
+  });
+
+  it('linux: resolves user shell via getent passwd', () => {
+    const cmd = buildAdapterDetectCommand('claude', 'linux');
+    expect(cmd).toContain('getent passwd $(whoami)');
+    expect(cmd).toContain('cut -d: -f7');
+    expect(cmd).toMatch(/-lc "which claude"$/);
+  });
+
+  it('win32: uses where (no shell concept)', () => {
+    expect(buildAdapterDetectCommand('claude', 'win32')).toBe('where claude');
+  });
+
+  it('unknown platform: falls back to plain which', () => {
+    expect(buildAdapterDetectCommand('claude', 'aix')).toBe('which claude');
+  });
+
+  it('passes adapterCmd through (e.g. pi)', () => {
+    expect(buildAdapterDetectCommand('pi', 'win32')).toBe('where pi');
   });
 });
 
