@@ -54,8 +54,34 @@ const CHROME_KEYCHAIN_SERVICE: &str = "Chrome Safe Storage";
 
 /// Profile directories that actually contain a Cookies DB. Default profile is
 /// always first; numbered `Profile N` dirs follow.
+#[cfg(target_os = "macos")]
 fn chrome_profile_dirs(home: &Path) -> Vec<PathBuf> {
     let base = home.join("Library/Application Support/Google/Chrome");
+    let mut dirs = Vec::new();
+    let default = base.join("Default");
+    if default.join("Cookies").exists() {
+        dirs.push(default);
+    }
+    if let Ok(entries) = fs::read_dir(&base) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name.starts_with("Profile ") && path.join("Cookies").exists() {
+                dirs.push(path);
+            }
+        }
+    }
+    dirs
+}
+
+/// Windows Chrome stores its user data under `%LOCALAPPDATA%\Google\Chrome\User Data`,
+/// with profile subdirs `Default` and `Profile N` mirroring the macOS layout.
+#[cfg(target_os = "windows")]
+fn chrome_profile_dirs(_home: &Path) -> Vec<PathBuf> {
+    let local = std::env::var("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(r"C:\Users\Public\AppData\Local"));
+    let base = local.join(r"Google\Chrome\User Data");
     let mut dirs = Vec::new();
     let default = base.join("Default");
     if default.join("Cookies").exists() {
@@ -97,6 +123,7 @@ fn copy_db_snapshot(src: &Path, scratch: &Path) -> Result<PathBuf, String> {
 
 /// Read Chrome's encryption password from the macOS Keychain. Mirrors
 /// pycookiecheat: `security -w` may return raw bytes or a `0x…` hex dump.
+#[cfg(target_os = "macos")]
 fn chrome_keychain_password() -> Result<Vec<u8>, String> {
     let out = std::process::Command::new("/usr/bin/security")
         .args(["find-generic-password", "-w", "-s", CHROME_KEYCHAIN_SERVICE])
@@ -122,6 +149,64 @@ fn chrome_keychain_password() -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
+// ── Chrome decryption (Windows) ────────────────────────────────────────────
+
+/// Read Chrome's AES-256-GCM key on Windows. The key lives in `<user data>/Local State`,
+/// JSON `os_crypt.encrypted_key` (base64-encoded, with a 5-byte "DPAPI" prefix).
+/// `CryptUnprotectData` unwraps the DPAPI layer to reveal the raw 32-byte key.
+#[cfg(target_os = "windows")]
+fn chrome_keychain_password() -> Result<Vec<u8>, String> {
+    let local = std::env::var("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(r"C:\Users\Public\AppData\Local"));
+    let local_state = local.join(r"Google\Chrome\User Data\Local State");
+    let json_bytes = fs::read(&local_state)
+        .map_err(|e| format!("cannot read Local State: {e}"))?;
+    let json: serde_json::Value = serde_json::from_slice(&json_bytes)
+        .map_err(|e| format!("cannot parse Local State JSON: {e}"))?;
+    let b64 = json
+        .get("os_crypt")
+        .and_then(|v| v.get("encrypted_key"))
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Local State missing os_crypt.encrypted_key".to_string())?;
+    let mut blob = base64::engine::general_purpose::STANDARD
+        .decode(b64)
+        .map_err(|e| format!("cannot base64-decode encrypted_key: {e}"))?;
+    // Strip the 5-byte "DPAPI" prefix before calling CryptUnprotectData.
+    if blob.len() >= 5 && &blob[..5] == b"DPAPI" {
+        blob.drain(..5);
+    }
+    dpapi_decrypt(&blob)
+}
+
+/// Wrap `CryptUnprotectData` — Windows DPAPI symmetric decryption. The caller
+/// must not hold a reference into `blob` across the call (the API takes a
+/// pointer but does not keep it; the out-buffer is freed by us via `LocalFree`).
+#[cfg(target_os = "windows")]
+fn dpapi_decrypt(blob: &[u8]) -> Result<Vec<u8>, String> {
+    use windows_sys::Win32::Security::Cryptography::{
+        CryptUnprotectData, CRYPT_INTEGER_BLOB,
+    };
+    use windows_sys::Win32::Foundation::LocalFree;
+    let mut in_blob = CRYPT_INTEGER_BLOB {
+        cbData: blob.len() as u32,
+        pbData: blob.as_ptr() as *mut u8,
+    };
+    let mut out_blob = CRYPT_INTEGER_BLOB {
+        cbData: 0,
+        pbData: std::ptr::null_mut(),
+    };
+    unsafe {
+        let r = CryptUnprotectData(&in_blob, std::ptr::null_mut(), std::ptr::null(), std::ptr::null_mut(), std::ptr::null(), 0, &mut out_blob);
+        if r == 0 {
+            return Err("CryptUnprotectData returned 0 (decryption failed; not running as the same user that encrypted?)".to_string());
+        }
+        let data = std::slice::from_raw_parts(out_blob.pbData, out_blob.cbData as usize).to_vec();
+        let _ = LocalFree(out_blob.pbData as _);
+        Ok(data)
+    }
+}
+
 fn hex_decode(hex: &str) -> Result<Vec<u8>, String> {
     let clean: String = hex.chars().filter(|c| c.is_ascii_hexdigit()).collect();
     if clean.len() % 2 != 0 {
@@ -134,6 +219,9 @@ fn hex_decode(hex: &str) -> Result<Vec<u8>, String> {
 }
 
 /// Derive Chrome's AES-128 key: PBKDF2(password, "saltysalt", 1003, SHA-1).
+/// macOS-only; Windows returns the 32-byte AES-256-GCM key as-is (DPAPI
+/// already unwrapped it; no PBKDF2 derivation needed).
+#[cfg(target_os = "macos")]
 fn derive_key(password: &[u8]) -> [u8; 16] {
     let mut key = [0u8; 16];
     pbkdf2_hmac::<Sha1>(password, b"saltysalt", 1003, &mut key);
@@ -143,7 +231,8 @@ fn derive_key(password: &[u8]) -> [u8; 16] {
 /// Decrypt a Chrome `v10`/`v11` value: AES-128-CBC, IV = 16 spaces, PKCS#7.
 /// Chrome M130+ prepends SHA-256(host) to the plaintext before encryption;
 /// the prefix is stripped only when it actually matches.
-fn decrypt_chrome_value(enc: &[u8], key: &[u8; 16], hash_candidates: &[&str]) -> Option<String> {
+#[cfg(target_os = "macos")]
+fn decrypt_chrome_value(enc: &[u8], key: &[u8], hash_candidates: &[&str]) -> Option<String> {
     let payload = if let Some(p) = enc.strip_prefix(b"v10") {
         p
     } else if let Some(p) = enc.strip_prefix(b"v11") {
@@ -154,6 +243,34 @@ fn decrypt_chrome_value(enc: &[u8], key: &[u8; 16], hash_candidates: &[&str]) ->
     let iv = [0x20u8; 16];
     let decryptor = Decryptor::<Aes128>::new_from_slices(key, &iv).ok()?;
     let mut plain = decryptor.decrypt_padded_vec::<Pkcs7>(payload).ok()?;
+    if plain.len() >= 32 {
+        let matched = hash_candidates.iter().any(|candidate| {
+            let digest = Sha256::digest(candidate.as_bytes());
+            plain[..32] == digest[..]
+        });
+        if matched {
+            plain.drain(..32);
+        }
+    }
+    String::from_utf8(plain).ok()
+}
+
+/// Decrypt a Chrome `v10` value on Windows: AES-256-GCM with a 12-byte nonce
+/// prefix and a 16-byte GCM tag suffix. Chrome M130+ prepends SHA-256(host)
+/// to the plaintext before encryption; the prefix is stripped when it matches.
+#[cfg(target_os = "windows")]
+fn decrypt_chrome_value(enc: &[u8], key: &[u8], hash_candidates: &[&str]) -> Option<String> {
+    use aes_gcm::{aead::Aead, Aes256Gcm, Key, Nonce};
+    let payload = enc.strip_prefix(b"v10")?;
+    if payload.len() < 12 + 16 {
+        return None;
+    }
+    let nonce_bytes = &payload[..12];
+    let ct_tag = &payload[12..];
+    let key: &Key<Aes256Gcm> = Key::from_slice(key);
+    let cipher = Aes256Gcm::new(key);
+    let nonce = Nonce::from_slice(nonce_bytes);
+    let mut plain = cipher.decrypt(nonce, ct_tag).ok()?;
     if plain.len() >= 32 {
         let matched = hash_candidates.iter().any(|candidate| {
             let digest = Sha256::digest(candidate.as_bytes());
@@ -184,9 +301,13 @@ fn plaintext_value(bytes: &[u8]) -> Option<String> {
 /// Import cookies from every Chrome profile and cache them for injection.
 #[tauri::command]
 pub async fn import_chrome_cookies() -> Result<BrowserImportResult, String> {
-    let home = std::env::var("HOME").map_err(|_| "HOME not set".to_string())?;
+    let home = std::env::var(if cfg!(target_os = "windows") { "LOCALAPPDATA" } else { "HOME" })
+        .map_err(|_| "home env not set".to_string())?;
     let keychain_password = chrome_keychain_password()?;
+    #[cfg(target_os = "macos")]
     let key = derive_key(&keychain_password);
+    #[cfg(target_os = "windows")]
+    let key = keychain_password;
     let scratch = std::env::temp_dir().join(format!("quill-cookies-{}", std::process::id()));
     let _ = fs::remove_dir_all(&scratch);
 
@@ -330,9 +451,13 @@ pub fn has_imported_cookies() -> bool {
 #[tauri::command]
 pub async fn import_chrome_passwords(
 ) -> Result<(Vec<ImportedPassword>, BrowserImportResult), String> {
-    let home = std::env::var("HOME").map_err(|_| "HOME not set".to_string())?;
+    let home = std::env::var(if cfg!(target_os = "windows") { "LOCALAPPDATA" } else { "HOME" })
+        .map_err(|_| "home env not set".to_string())?;
     let keychain_password = chrome_keychain_password()?;
+    #[cfg(target_os = "macos")]
     let key = derive_key(&keychain_password);
+    #[cfg(target_os = "windows")]
+    let key = keychain_password;
     let scratch = std::env::temp_dir().join(format!("quill-logins-{}", std::process::id()));
     let _ = fs::remove_dir_all(&scratch);
 

@@ -127,6 +127,18 @@ log = "0.4"
 # is pinned via Cargo.lock for reproducible builds.
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }
 
+# Windows-only deps for Chrome cookie/password decryption (DPAPI + AES-GCM).
+# Chrome on Windows stores the AES-256-GCM key in `Local State` under
+# `os_crypt.encrypted_key`, base64-encoded with a 5-byte "DPAPI" prefix;
+# CryptUnprotectData unwraps it. Each value is `v10` + 12-byte nonce +
+# ciphertext + 16-byte GCM tag. macOS uses the same crate stack already
+# declared above (aes/cbc/cipher) — Windows needs aes-gcm (GCM mode) and
+# windows-sys for DPAPI.
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Security_Cryptography", "Win32_Foundation"] }
+aes-gcm = "0.10"
+base64 = "0.22"
+
 [profile.release]
 codegen-units = 1
 lto = true
