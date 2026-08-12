@@ -879,3 +879,657 @@ Added graphviz (.gv/.dot/.graphviz) file type mirroring plantuml: quickchart.io 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 140: Clean up slash command menu (hide AI result / error self-check, reset selection, style polish)
+
+**Date**: 2026-08-11
+**Task**: Clean up slash command menu (hide AI result / error self-check, reset selection, style polish)
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+Removed 'AI 结果' (ai-result) and '错误隔离自检' (plugin-error-demo) from the markdown editor /-command dropdown while preserving preview rendering. Reset active index to 0 on every menu reopen for both markdown and rich-text slash menus. Polished menu styling (rounded-xl, softer shadow, slideUp entrance, icon chips, accent-tinted active row). Added SlashMenu tests for hidden plugins and selection reset; full desktop suite green (165 files / 2074 tests).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fbb4c376` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 141: Fix slash menu hijacking IME composition (pinyin input garble)
+
+**Date**: 2026-08-11
+**Task**: Fix slash menu hijacking IME composition (pinyin input garble)
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The slash menu's capture-phase document keydown listener intercepted Enter/Arrow keys without checking IME state, so pinyin IME confirmation (Enter) selected a command and garbled input. Added isComposing / keyCode 229 guards to the markdown editor SlashMenu and the AI chat slash/mention handler, mirroring existing ChatInputBox/PetPanelApp guards. Added SlashMenu IME tests; full desktop suite green (165 files / 2076 tests).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f8a127a4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 142: Fix IME composition dropping pinyin after slash trigger
+
+**Date**: 2026-08-11
+**Task**: Fix IME composition dropping pinyin after slash trigger
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+Root cause: the slash/code-block extensions dispatched effect-only transactions on every keystroke during IME composition, which makes WKWebView (Tauri) commit the composition early at a segment boundary and drop uncommitted pinyin ('wenjian' → 'wen'). Also, WKWebView fires the composition-confirming Enter after compositionend with isComposing=false, so the menu's event-flag guard alone was insufficient. Fixed by (1) skipping extension dispatch while update.view.compositionStarted, (2) tracking composition at document level in SlashMenu and ignoring the single key after compositionend (CodeMirror's 100ms window). Verified via headless-Chrome CDP IME simulation harness; 2090 desktop tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fcd895d3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 143: Restore slash menu filtering during IME composition
+
+**Date**: 2026-08-11
+**Task**: Restore slash menu filtering during IME composition
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The composition guard that fixed pinyin input broke the slash menu in WKWebView: with a Chinese IME active, typing command names is also a composition session, so the extension skipped every filter update (no live filtering) and the menu's 100ms post-composition key window swallowed the selection Enter. Fix: EditorView.handleUpdate now mirrors the slash filter from the document into React state during composition (no CodeMirror transaction, so WKWebView composition stays intact), and SlashMenu drops the post-composition key window — keys are only ignored while a composition is actually active, and with live filtering the confirming Enter selects the already-filtered item. Verified via headless-Chrome CDP IME simulation (filter mirrors t→ta→tab→tabs during composition; plain typing unaffected). 2094 desktop tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `48071b2d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 144: Fix slash menu hiding on WKWebView IME commit (two-transaction split)
+
+**Date**: 2026-08-11
+**Task**: Fix slash menu hiding on WKWebView IME commit (two-transaction split)
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+Typing '/文件' in WKWebView could hide the slash menu: the IME commit arrives as a doc change with a stale selection (cursor before the composed text), the extension saw an empty filter and hid the menu, and the follow-up selection update was ignored (extension only processed docChanged), leaving the menu closed. Fix: SlashCommandExtension now also re-evaluates on selectionSet (auto-open still gated to typing), and the EditorView composition mirror runs on selection updates too. Reproduced and verified via headless-Chrome CDP with a simulated split commit: menu ends on filter '文件' → ['文件预览']. 2094 tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3c9c0505` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 145: Refactor slash menu to pure derivation from document (fix nondeterministic IME behavior)
+
+**Date**: 2026-08-11
+**Task**: Refactor slash menu to pure derivation from document (fix nondeterministic IME behavior)
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The dispatch-based slash menu StateField + composition guards + React mirror + selectionSet handling produced races (setTimeout dispatches overwriting each other) → menu behaved nondeterministically in WKWebView (sometimes no popup, sometimes unfiltered). Replaced with a pure derivation: computeSlashMenuState(state) reads document+cursor from the update listener — zero CodeMirror transactions on keystrokes, so IME composition is never disturbed, filtering is live and deterministic (文件 → 文件预览), and WKWebView's split commit settles on the correct filter by construction. Escape dismissal now tracked by trigger position in EditorPane. Verified via headless-Chrome CDP across plain typing, IME composition, and the split-commit scenario; 2107 tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `15adecb9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 146: Fix slash menu scroll jumpiness
+
+**Date**: 2026-08-11
+**Task**: Fix slash menu scroll jumpiness
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The /-menu jumped while scrolling/navigating for two reasons: scrollIntoView({block:'nearest'}) also scrolls ancestor scroll containers (the fixed menu's DOM ancestors include the editor pane), shifting surrounding content; and the below/above viewport-flip was re-decided on every filter change, so a list height oscillating around the boundary flipped the menu up/down each keystroke. Replaced scrollIntoView with a scrollTop adjustment on the menu container only, and made the flip side sticky (hysteresis, flips only when the other side clearly fits). Applied to both the markdown SlashMenu and RichTextSlashMenu. 2111 tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `408c8ab3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 147: Fix closed tabs reappearing on next launch
+
+**Date**: 2026-08-11
+**Task**: Fix closed tabs reappearing on next launch
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+Closing a tab persisted through a 500ms debounce (plus storageClient's 300ms debounce), so quitting within that window dropped the write and the next launch restored the closed tab from stale data. closeTab now flushes immediately (flushPersistOpenTabs + flushPersistExternalOpenTabs, no debounce), covering vault and external tabs; the App.tsx onCloseRequested handler now calls saveOpenTabs() before persistNow() as a safety net for any pending tab change. Added a closeTab persistence test. Full desktop suite green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `813a8a7c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 148: Add external-file indicator to tab bar
+
+**Date**: 2026-08-11
+**Task**: Add external-file indicator to tab bar
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+External files (absolute/home-relative paths from outside the vault) now show a lucide SquareArrowOutUpRight icon after the filename in the tab bar row and the 'all open files' dropdown, with a data-tip tooltip and aria-label ('外部文件' / 'External file', new topbar:tabList.externalFile i18n keys). Added a TabBar test asserting the icon appears for external tabs and not for vault tabs. Full desktop suite green (2110 tests).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `31b2aaf0` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 149: External-file tab icon: remove hover tint
+
+**Date**: 2026-08-11
+**Task**: External-file tab icon: remove hover tint
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+Removed the group-hover:text-t3 hover brightening from the external-file SquareArrowOutUpRight icon in both the tab bar row and the open-files list — the icon now stays a static muted text-t4. Small style follow-up to the external-file indicator feature.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a1c569bf` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 150: External-file tab icon: remove hover tooltip
+
+**Date**: 2026-08-11
+**Task**: External-file tab icon: remove hover tooltip
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The black popup appearing on hover over the external-file tab icon was the [data-tip] tooltip, not the icon's hover tint. Removed the data-tip attribute from both icon wrappers (main tab row + open-files list); the icon stays a static text-t4 with aria-label for accessibility. i18n key still used by aria-label.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `905ca1fb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 151: Center external-file tab icon
+
+**Date**: 2026-08-11
+**Task**: Center external-file tab icon
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The external-file SquareArrowOutUpRight icon could sit off-center due to SVG baseline/line-height quirks. Wrapped it in a fixed-size flex box (14x14 in the tab row, 16x16 in the open-files list) with items-center justify-center so it renders exactly centered relative to the tab row.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dfd9f325` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 152: Version History feature
+
+**Date**: 2026-08-11
+**Task**: Version History feature
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+End-to-end version-history: PR1 content-addressable snapshot service + atomic index write + hash dedup + restore monotonic chain; PR2 Tauri FS adapter + save/close hooks (best-effort, never blocks save); PR3 in-editor side panel + Topbar History button + (eventually) editor-pipeline snapshot view. Iterate fixes: panel header height, diff moved to editor area, 3 panel bugs (numbering, edit-time flash, multi-highlight via composite selectedKey), newest-first list, full content view replacing diff, snapshot view via real editor pipeline with read-only CodeMirror. ADR-0003 + CONTEXT.md terms (Version Snapshot / Index / Versionable File) recorded.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `53bbf112` | (see git log) |
+| `a98d849f` | (see git log) |
+| `c7502fce` | (see git log) |
+| `4b2217d9` | (see git log) |
+| `6368578c` | (see git log) |
+| `8028b249` | (see git log) |
+| `8e80d95e` | (see git log) |
+| `df742be0` | (see git log) |
+| `4b4d2f6a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 153: External-file icon: force block display for WebKit alignment
+
+**Date**: 2026-08-11
+**Task**: External-file icon: force block display for WebKit alignment
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The lucide SVG defaults to display:inline; WKWebView aligns inline SVG on the text baseline, which can make the 11px external-file icon appear off-center next to the filename. Added the Tailwind 'block' class to both icon instances so the SVG becomes a block flex item, always centered by the wrapper's items-center/justify-center regardless of WebView SVG baseline handling. Verified via DOM + pixel analysis that the icon is within ~0.5px of the filename's visual center in Chrome.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a85cbd63` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 154: External-file icon: match file-icon alignment pattern
+
+**Date**: 2026-08-11
+**Task**: External-file icon: match file-icon alignment pattern
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+User pointed out the file-type icon renders centered; the external indicator should follow the same pattern. Replaced the fixed 14/16px boxes and display:block hack with the file icon's exact structure: a 16px SquareArrowOutUpRight inside 'shrink-0 flex items-center' in both the tab row and the open-files list. Row-level items-center now centers it identically to the file icon.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `afeadd6e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 155: External-file tab icon: reduce to 12px
+
+**Date**: 2026-08-11
+**Task**: External-file tab icon: reduce to 12px
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+After matching the file-icon centering pattern, the 16px external indicator read too large. Reduced SquareArrowOutUpRight to size 12 in both the tab row and the open-files list, keeping the same 'shrink-0 flex items-center' wrapper so centering is unchanged.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a0932cb9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 156: External-file tab icon opens containing folder
+
+**Date**: 2026-08-11
+**Task**: External-file tab icon opens containing folder
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+Clicking the external-file indicator in the tab bar (and the open-files list) now opens the containing folder in the system file manager via @tauri-apps/plugin-shell's open(), resolving ~/ and /Users/yiminlin prefixes to the home path first (shell open does not expand them). stopPropagation prevents the click from switching tabs; the icon keeps its static no-hover styling with a pointer cursor and an actionable aria-label (tabList.openExternalFolder: 打开所在文件夹 / Open containing folder; replaced the old externalFile key). Added tests for the open action, ~/ resolution, and tab-switch suppression. Full suite green (2113 tests).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9efc43cf` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 157: Open external-file folder via tauri-opener (fix shell URL-only restriction)
+
+**Date**: 2026-08-11
+**Task**: Open external-file folder via tauri-opener (fix shell URL-only restriction)
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+The shell plugin's open() only accepts URL arguments (mailto/tel/http regex) and rejected local folder paths, so clicking the external-file tab icon failed with 'Scoped command argument ... failed regex validation'. Switched to the dedicated tauri-opener plugin: added tauri-plugin-opener to Cargo.toml + registered in lib.rs, granted opener:allow-open-path in capabilities/default.json, installed @tauri-apps/plugin-opener on the frontend, and the TabBar handler now calls openPath() on the resolved parent directory (~ and $HOME still resolved first). Tests mock openPath. cargo check passes; full desktop suite green (2113 tests). NOTE: requires a Rust rebuild for the plugin to take effect.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ee25d851` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 158: Fix opener scope so external folder open works incl. hidden dirs
+
+**Date**: 2026-08-12
+**Task**: Fix opener scope so external folder open works incl. hidden dirs
+**Package**: api
+**Branch**: `codex/slash-menu-cleanup`
+
+### Summary
+
+opener:allow-open-path with no scope allows nothing (empty allow list = deny all), so the external-file icon still failed with 'Not allowed to open path /Users/yiminlin/.pi/agent'. Also the opener plugin's require_literal_leading_dot (default true on Unix) makes $HOME/** miss hidden directories. Provided an explicit scope in capabilities/default.json mirroring the existing fs:scope-home-recursive pattern: $HOME/** + $HOME/**/.* + $HOME/**/.*/**. cargo check + schema regen pass. NOTE: requires a Rust rebuild.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4a32ef80` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

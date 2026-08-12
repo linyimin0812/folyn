@@ -78,6 +78,9 @@ export function RichTextSlashMenu({ editor, state, onClose }: RichTextSlashMenuP
   const [activeIndex, setActiveIndex] = useState(0);
   const [adjustedPos, setAdjustedPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
+  // Sticky below/above side — avoids oscillating as the filtered list height
+  // changes on every keystroke (mirrors SlashMenu.tsx).
+  const flippedRef = useRef(false);
 
   const filtered = useMemo(() => filterItems(ITEMS, state.filter), [state.filter]);
 
@@ -94,27 +97,48 @@ export function RichTextSlashMenu({ editor, state, onClose }: RichTextSlashMenuP
 
   const flatList = filtered;
 
+  // Always start on the first item: reset when the menu reopens AND when the
+  // filter changes, so a previous selection never carries across triggers.
   useEffect(() => {
     setActiveIndex(0);
-  }, [state.filter]);
+  }, [state.visible, state.filter]);
 
-  // Position the menu at the cursor; flip above if viewport-bottom space is short.
+  // Position the menu at the cursor; flip above if viewport-bottom space is
+  // short. The side is sticky once chosen (hysteresis) so filtering can't
+  // make the menu oscillate up/down (mirrors SlashMenu.tsx).
   useEffect(() => {
     if (!state.visible) {
+      flippedRef.current = false;
       setAdjustedPos({ top: 0, left: 0 });
       return;
     }
     const coords = editor.view.coordsAtPos(state.rangeTo);
     const baseTop = coords.bottom + 4;
     const baseLeft = coords.left;
+    // Position immediately, then refine (possibly flip above) on the next
+    // frame once the real height is known.
     setAdjustedPos({ top: baseTop, left: baseLeft });
     requestAnimationFrame(() => {
       const menu = menuRef.current;
       if (!menu) return;
       const h = menu.offsetHeight;
       const spaceBelow = window.innerHeight - baseTop;
-      if (spaceBelow < h && baseTop > h + 8) {
-        setAdjustedPos({ top: baseTop - h - 8 - 4, left: baseLeft });
+      const spaceAbove = baseTop;
+      const fitsBelow = spaceBelow >= h;
+      const fitsAbove = spaceAbove >= h;
+
+      if (flippedRef.current) {
+        if (fitsAbove || !fitsBelow) {
+          setAdjustedPos({ top: Math.max(0, baseTop - h - 8 - 4), left: baseLeft });
+        } else {
+          flippedRef.current = false;
+          setAdjustedPos({ top: baseTop, left: baseLeft });
+        }
+      } else if (!fitsBelow && fitsAbove) {
+        flippedRef.current = true;
+        setAdjustedPos({ top: Math.max(0, baseTop - h - 8 - 4), left: baseLeft });
+      } else {
+        setAdjustedPos({ top: baseTop, left: baseLeft });
       }
     });
   }, [editor, state.visible, state.rangeTo, state.filter, flatList.length]);
@@ -157,10 +181,22 @@ export function RichTextSlashMenu({ editor, state, onClose }: RichTextSlashMenuP
     return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [handleKeyDown]);
 
+  // Scroll the active item into view within the menu's own scroll container
+  // only — scrollIntoView also scrolls ancestor containers, which shifts the
+  // editor content and makes the fixed menu appear to jump (mirrors
+  // SlashMenu.tsx).
   useEffect(() => {
     if (!state.visible || !menuRef.current) return;
-    const el = menuRef.current.querySelector('.slash-menu-item.active');
-    if (el) el.scrollIntoView({ block: 'nearest' });
+    const menu = menuRef.current;
+    const activeElement = menu.querySelector('.slash-menu-item.active');
+    if (!activeElement) return;
+    const menuRect = menu.getBoundingClientRect();
+    const itemRect = activeElement.getBoundingClientRect();
+    if (itemRect.top < menuRect.top) {
+      menu.scrollTop -= menuRect.top - itemRect.top;
+    } else if (itemRect.bottom > menuRect.bottom) {
+      menu.scrollTop += itemRect.bottom - menuRect.bottom;
+    }
   }, [activeIndex, state.visible]);
 
   if (!state.visible || flatList.length === 0) return null;

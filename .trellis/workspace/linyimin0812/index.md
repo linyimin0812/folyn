@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 139
-- **Last Active**: 2026-08-11
+- **Total Sessions**: 158
+- **Last Active**: 2026-08-12
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~881 | Active |
+| `journal-3.md` | ~1535 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,25 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 158 | 2026-08-12 | Fix opener scope so external folder open works incl. hidden dirs | `4a32ef80` | `codex/slash-menu-cleanup` |
+| 157 | 2026-08-11 | Open external-file folder via tauri-opener (fix shell URL-only restriction) | `ee25d851` | `codex/slash-menu-cleanup` |
+| 156 | 2026-08-11 | External-file tab icon opens containing folder | `9efc43cf` | `codex/slash-menu-cleanup` |
+| 155 | 2026-08-11 | External-file tab icon: reduce to 12px | `a0932cb9` | `codex/slash-menu-cleanup` |
+| 154 | 2026-08-11 | External-file icon: match file-icon alignment pattern | `afeadd6e` | `codex/slash-menu-cleanup` |
+| 153 | 2026-08-11 | External-file icon: force block display for WebKit alignment | `a85cbd63` | `codex/slash-menu-cleanup` |
+| 152 | 2026-08-11 | Version History feature | `53bbf112`, `a98d849f`, `c7502fce`, `4b2217d9`, `6368578c`, `8028b249`, `8e80d95e`, `df742be0`, `4b4d2f6a` | `codex/slash-menu-cleanup` |
+| 151 | 2026-08-11 | Center external-file tab icon | `dfd9f325` | `codex/slash-menu-cleanup` |
+| 150 | 2026-08-11 | External-file tab icon: remove hover tooltip | `905ca1fb` | `codex/slash-menu-cleanup` |
+| 149 | 2026-08-11 | External-file tab icon: remove hover tint | `a1c569bf` | `codex/slash-menu-cleanup` |
+| 148 | 2026-08-11 | Add external-file indicator to tab bar | `31b2aaf0` | `codex/slash-menu-cleanup` |
+| 147 | 2026-08-11 | Fix closed tabs reappearing on next launch | `813a8a7c` | `codex/slash-menu-cleanup` |
+| 146 | 2026-08-11 | Fix slash menu scroll jumpiness | `408c8ab3` | `codex/slash-menu-cleanup` |
+| 145 | 2026-08-11 | Refactor slash menu to pure derivation from document (fix nondeterministic IME behavior) | `15adecb9` | `codex/slash-menu-cleanup` |
+| 144 | 2026-08-11 | Fix slash menu hiding on WKWebView IME commit (two-transaction split) | `3c9c0505` | `codex/slash-menu-cleanup` |
+| 143 | 2026-08-11 | Restore slash menu filtering during IME composition | `48071b2d` | `codex/slash-menu-cleanup` |
+| 142 | 2026-08-11 | Fix IME composition dropping pinyin after slash trigger | `fcd895d3` | `codex/slash-menu-cleanup` |
+| 141 | 2026-08-11 | Fix slash menu hijacking IME composition (pinyin input garble) | `f8a127a4` | `codex/slash-menu-cleanup` |
+| 140 | 2026-08-11 | Clean up slash command menu (hide AI result / error self-check, reset selection, style polish) | `fbb4c376` | `codex/slash-menu-cleanup` |
 | 139 | 2026-08-11 | Graphviz file type + plantuml/dot syntax highlighting | `dd7aac4a` | `master` |
 | 138 | 2026-08-09 | Fix tray_set_enabled crash on reload (non-main-thread NSStatusBar destroy) | `e43aed4` | `master` |
 | 137 | 2026-08-09 | Plugin render error isolation for markdown containers | `35fc475` | `master` |

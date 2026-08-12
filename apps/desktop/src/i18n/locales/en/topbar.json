@@ -13,7 +13,8 @@
     "closeAll": "Close All Tabs",
     "noOpenFiles": "No open files",
     "closePanel": "Close list",
-    "closeTab": "Close file"
+    "closeTab": "Close file",
+    "openExternalFolder": "Open containing folder"
   },
   "terminal": {
     "collapse": "Collapse terminal",
@@ -26,5 +27,8 @@
     "preview": "Preview",
     "source": "Source",
     "visual": "Visual"
+  },
+  "versionHistory": {
+    "toggle": "Version history"
   }
 }

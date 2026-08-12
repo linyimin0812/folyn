@@ -12,6 +12,8 @@ beforeEach(() => {
     terminalPanelVisible: false,
     terminalInRightDock: false,
     terminalRightWidth: 300,
+    versionHistoryVisible: false,
+    versionHistorySelection: { selectedKey: null, snapshotContent: null, snapshotError: null },
   });
   useEditorStore.setState({ tabs: [], activeTabId: null });
 });
@@ -27,6 +29,7 @@ describe('useEditorViewStateStore', () => {
     expect(s.terminalPanelVisible).toBe(false);
     expect(s.terminalInRightDock).toBe(false);
     expect(s.terminalRightWidth).toBe(300);
+    expect(s.versionHistoryVisible).toBe(false);
   });
 
   it('setWordCount updates wordCount', () => {
@@ -108,5 +111,63 @@ describe('useEditorViewStateStore', () => {
     expect(useEditorViewStateStore.getState().cursorLine).toBe(5);
     expect(useEditorViewStateStore.getState().cursorCol).toBe(2);
     expect(useEditorStore.getState().tabs).toEqual([]);
+  });
+
+  it('toggleVersionHistory flips versionHistoryVisible', () => {
+    useEditorViewStateStore.getState().toggleVersionHistory();
+    expect(useEditorViewStateStore.getState().versionHistoryVisible).toBe(true);
+    useEditorViewStateStore.getState().toggleVersionHistory();
+    expect(useEditorViewStateStore.getState().versionHistoryVisible).toBe(false);
+  });
+
+  it('setVersionHistoryVisible sets an explicit value', () => {
+    useEditorViewStateStore.getState().setVersionHistoryVisible(true);
+    expect(useEditorViewStateStore.getState().versionHistoryVisible).toBe(true);
+    useEditorViewStateStore.getState().setVersionHistoryVisible(false);
+    expect(useEditorViewStateStore.getState().versionHistoryVisible).toBe(false);
+  });
+
+  it('defaults versionHistorySelection to empty (no selected key, no content)', () => {
+    const s = useEditorViewStateStore.getState().versionHistorySelection;
+    expect(s.selectedKey).toBeNull();
+    expect(s.snapshotContent).toBeNull();
+    expect(s.snapshotError).toBeNull();
+  });
+
+  it('setVersionHistorySelection writes the selection payload', () => {
+    const content = 'snapshot body';
+    useEditorViewStateStore.getState().setVersionHistorySelection({
+      selectedKey: 'abc',
+      snapshotContent: content,
+      snapshotError: null,
+    });
+    const s = useEditorViewStateStore.getState().versionHistorySelection;
+    expect(s.selectedKey).toBe('abc');
+    expect(s.snapshotContent).toBe(content);
+    expect(s.snapshotError).toBeNull();
+  });
+
+  it('setVersionHistoryVisible clears the selection when hiding', () => {
+    useEditorViewStateStore.getState().setVersionHistorySelection({
+      selectedKey: 'abc',
+      snapshotContent: 'snapshot body',
+      snapshotError: null,
+    });
+    useEditorViewStateStore.getState().setVersionHistoryVisible(false);
+    const s = useEditorViewStateStore.getState().versionHistorySelection;
+    expect(s.selectedKey).toBeNull();
+    expect(s.snapshotContent).toBeNull();
+  });
+
+  it('toggleVersionHistory clears the selection when toggling off', () => {
+    useEditorViewStateStore.getState().setVersionHistoryVisible(true);
+    useEditorViewStateStore.getState().setVersionHistorySelection({
+      selectedKey: 'abc',
+      snapshotContent: 'snapshot body',
+      snapshotError: null,
+    });
+    useEditorViewStateStore.getState().toggleVersionHistory();
+    expect(useEditorViewStateStore.getState().versionHistoryVisible).toBe(false);
+    expect(useEditorViewStateStore.getState().versionHistorySelection.selectedKey).toBeNull();
   });
 });

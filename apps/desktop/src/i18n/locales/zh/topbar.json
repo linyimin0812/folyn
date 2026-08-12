@@ -13,7 +13,8 @@
     "closeAll": "关闭所有标签页",
     "noOpenFiles": "没有打开的文件",
     "closePanel": "关闭列表",
-    "closeTab": "关闭文件"
+    "closeTab": "关闭文件",
+    "openExternalFolder": "打开所在文件夹"
   },
   "terminal": {
     "collapse": "收起终端",
@@ -26,5 +27,8 @@
     "preview": "预览",
     "source": "源码",
     "visual": "可视化"
+  },
+  "versionHistory": {
+    "toggle": "版本历史"
   }
 }

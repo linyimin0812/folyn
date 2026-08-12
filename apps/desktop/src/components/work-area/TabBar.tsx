@@ -3,7 +3,8 @@ import type { FileTab } from '@/store/editorStore';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
 import { useTranslation } from 'react-i18next';
-import { X } from 'lucide-react';
+import { X, SquareArrowOutUpRight } from 'lucide-react';
+import { isExternalPath } from '@/utils/isExternalPath';
 
 interface TabBarProps {
   tabs: FileTab[];
@@ -36,6 +37,29 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
 
   const closeTabList = useCallback(() => setTabListOpen(false), []);
 
+  /** Open the folder containing an external file in the system file manager
+   *  (e.g. Finder). Resolves ~/ and $HOME/ prefixes before taking the dirname,
+   *  since the shell opener does not expand them. */
+  const openExternalFolder = useCallback(async (path: string) => {
+    try {
+      const { openPath } = await import('@tauri-apps/plugin-opener');
+      let resolved = path;
+      if (resolved.startsWith('~/') || resolved.startsWith('$HOME/')) {
+        const { homeDir } = await import('@tauri-apps/api/path');
+        const home = (await homeDir()).replace(/\/+$/, '');
+        resolved = resolved.startsWith('~/')
+          ? home + resolved.slice(1)
+          : home + resolved.slice('$HOME'.length);
+      }
+      const trimmed = resolved.replace(/[\\/]+$/, '');
+      const sepIdx = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
+      const folder = sepIdx > 0 ? trimmed.slice(0, sepIdx) : trimmed;
+      await openPath(folder || resolved);
+    } catch (err) {
+      console.warn('[TabBar] open containing folder failed:', err);
+    }
+  }, []);
+
   const handleCloseAll = useCallback(() => {
     for (const tab of tabs) onCloseTab(tab.id);
     closeTabList();
@@ -53,6 +77,19 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
             >
               <span className="shrink-0 flex items-center"><FileIcon filename={tab.name} fileType={tab.fileType} /></span>
               <span className="max-w-[110px] overflow-hidden text-ellipsis">{tab.name}</span>
+              {isExternalPath(tab.path) && (
+                <span
+                  className="shrink-0 flex items-center cursor-pointer"
+                  role="button"
+                  aria-label={t('topbar:tabList.openExternalFolder')}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void openExternalFolder(tab.path);
+                  }}
+                >
+                  <SquareArrowOutUpRight size={12} className="text-t4 pointer-events-none" />
+                </span>
+              )}
               {tab.isDirty && <span className="w-[5px] h-[5px] rounded-full bg-amber shrink-0" />}
               <span
                 className="opacity-0 text-[10px] shrink-0 w-[14px] h-[14px] flex items-center justify-center rounded-[3px] transition-[opacity,background] duration-100 group-hover:opacity-50 hover:!opacity-100 hover:bg-hov hover:text-red"
@@ -126,6 +163,19 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
                       <FileIcon filename={tab.name} fileType={tab.fileType} />
                     </span>
                     <span className="flex-1 min-w-0 overflow-hidden text-ellipsis">{tab.name}</span>
+                    {isExternalPath(tab.path) && (
+                      <span
+                        className="shrink-0 flex items-center cursor-pointer"
+                        role="button"
+                        aria-label={t('topbar:tabList.openExternalFolder')}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void openExternalFolder(tab.path);
+                        }}
+                      >
+                        <SquareArrowOutUpRight size={12} className="text-t4 pointer-events-none" />
+                      </span>
+                    )}
                     {tab.isDirty && <span className="w-[5px] h-[5px] rounded-full bg-amber shrink-0" />}
                     <span
                       role="button"

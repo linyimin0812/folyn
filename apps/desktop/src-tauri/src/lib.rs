@@ -394,6 +394,10 @@ pub fn run() {
             );
         })
         .plugin(tauri_plugin_shell::init())
+        // Open files/folders in the system file manager (external-file tab icon
+        // "open containing folder"). Shell's `open` is URL-only, so this uses
+        // the dedicated opener plugin instead.
+        .plugin(tauri_plugin_opener::init())
         // OS native notifications (PRD pet-popup-bubble-notification: system
         // notification form). The main window's dispatcher calls the plugin's
         // JS API (`sendNotification`/`registerActionTypes`/`onAction`);

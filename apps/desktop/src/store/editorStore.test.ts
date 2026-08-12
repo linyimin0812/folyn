@@ -1,10 +1,56 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { detectFileType, detectActivity, useEditorStore } from './editorStore';
 import { usePrefsStore } from './prefsStore';
+import { useVaultStore } from './vaultStore';
+import {
+  flushPersistOpenTabs,
+  flushPersistExternalOpenTabs,
+} from './editorPersistence';
+
+// Mock persistence writes so closeTab's flush behavior is observable without
+// touching the Tauri storageClient (and the existing tests stay unaffected).
+vi.mock('./editorPersistence', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./editorPersistence')>();
+  return {
+    ...actual,
+    persistOpenTabs: vi.fn(),
+    flushPersistOpenTabs: vi.fn(),
+    flushPersistExternalOpenTabs: vi.fn(),
+  };
+});
 
 beforeEach(() => {
   useEditorStore.setState({ tabs: [], activeTabId: null });
   usePrefsStore.setState({ dailyNotesDir: '__daily__' });
+});
+
+// ── closeTab persistence ──────────────────────────────────────────────────
+// closeTab must flush immediately (no debounce) so a quit right after closing
+// doesn't restore the closed tab from stale persisted data on next launch.
+describe('closeTab persistence', () => {
+  it('flushes the closed tab out of persisted open tabs immediately', () => {
+    useVaultStore.setState({ activeVaultId: 'vault-1' } as never);
+    useEditorStore.setState({
+      tabs: [
+        { id: 't1', name: 'a.md', path: 'a.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
+        { id: 't2', name: 'b.md', path: 'b.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
+      ],
+      activeTabId: 't1',
+    });
+    vi.mocked(flushPersistOpenTabs).mockClear();
+    vi.mocked(flushPersistExternalOpenTabs).mockClear();
+
+    useEditorStore.getState().closeTab('t1');
+
+    expect(flushPersistOpenTabs).toHaveBeenCalledTimes(1);
+    const [vaultId, tabsArg, activeTabId] = vi.mocked(flushPersistOpenTabs).mock.calls[0];
+    expect(vaultId).toBe('vault-1');
+    expect(tabsArg.map((t) => t.id)).toEqual(['t2']);
+    expect(activeTabId).toBe('t2');
+    // External persistence is flushed too so closed external tabs don't
+    // reappear on next launch.
+    expect(flushPersistExternalOpenTabs).toHaveBeenCalled();
+  });
 });
 
 describe('detectFileType', () => {
@@ -102,3 +148,4 @@ describe('rewriteTabPrefixes', () => {
     expect(useEditorStore.getState().tabs[0].path).toBe('clips/tech/foo.md');
   });
 });
+

@@ -227,6 +227,68 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .cm-wrapper .cm-foldGutter { width: 12px; }
 .cm-wrapper .cm-foldGutter .cm-gutterElement { padding: 0 !important; }
 
+/* ── CodeMirror autocomplete tooltip (file-preview src picker etc.) ── */
+.cm-tooltip.cm-tooltip-autocomplete {
+  background: var(--panel);
+  border: 1px solid var(--brd);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
+  padding: 8px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  max-width: 460px;
+}
+.cm-tooltip.cm-tooltip-autocomplete > ul {
+  font-family: var(--font-ui);
+  max-height: 320px;
+  min-width: 240px;
+}
+.cm-tooltip.cm-tooltip-autocomplete > ul > li {
+  padding: 9px 12px;
+  margin: 3px 0;
+  border-radius: 7px;
+  line-height: 1.6;
+  color: var(--t1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background: var(--act);
+  color: var(--t1);
+}
+.cm-tooltip-autocomplete .cm-completionDetail {
+  color: var(--t3);
+  font-style: normal;
+  font-size: 12px;
+  margin-left: 1em;
+}
+.cm-tooltip-autocomplete .cm-completionMatchedText {
+  color: var(--acc);
+  font-weight: 600;
+  text-decoration: none;
+}
+.cm-tooltip-autocomplete .cm-completionIcon {
+  width: 1.1em;
+  opacity: .8;
+}
+
+/* Search box pinned to the top of the file-preview src dropdown */
+.cm-src-search-box { padding: 0 0 8px; }
+.cm-src-search-box input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--brd);
+  border-radius: 7px;
+  background: var(--inp);
+  color: var(--t1);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  outline: none;
+}
+.cm-src-search-box input:focus { border-color: var(--acc); }
+.cm-src-search-box input::placeholder { color: var(--t3); }
+
 /* ── AI Panel (animations, scrollbar, pseudo-selectors) ── */
 .ai-session-streaming {
   width: 6px; height: 6px; border-radius: 50%; background: var(--acc);
@@ -401,6 +463,8 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .md-preview pre code, .code-block-wrapper pre code { background: none; border: none; padding: 12px 16px; border-radius: 0; }
 .code-block-wrapper { border: 1px solid var(--brd); border-radius: 6px; margin: 12px 0; position: relative; max-height: 420px; overflow: hidden; }
 .code-block-wrapper--no-height-cap { max-height: none; overflow: visible; padding: 8px; box-sizing: border-box; }
+.code-block-wrapper--empty-html { min-height: 60px; }
+.code-block-empty-html { flex: 1; }
 .code-block-inner { display: grid; grid-template-columns: auto 1fr; max-height: 420px; overflow: auto; }
 .code-block-inner .code-line-numbers { position: sticky; left: 0; z-index: 1; padding: 12px 0; border-right: 1px solid var(--brd); background: var(--surf2); user-select: none; white-space: nowrap; }
 .code-block-inner .code-ln { display: block; padding: 0 10px; text-align: right; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: var(--t3); min-width: 32px; }

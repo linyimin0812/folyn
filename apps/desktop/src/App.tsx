@@ -614,6 +614,11 @@ export default function App() {
         unlisten = await getCurrentWindow().onCloseRequested(async (e) => {
           e.preventDefault();
           try {
+            // Flush open tabs first (sync, marks storage dirty), then
+            // persistNow() flushes everything to disk. Without this, closing
+            // a tab and quitting within the persist debounce window would
+            // restore the closed tab on the next launch.
+            editorIoService.saveOpenTabs();
             await persistNow();
           } catch (err) {
             console.warn('[App] persistNow on close failed:', err);

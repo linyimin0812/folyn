@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { useDiffReviewStore } from '@/store/diffReviewStore';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
+import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useVaultStore } from '@/store/vaultStore';
 import { isTauri } from '@/utils/platform';
 import type { QuillEditorHandle } from '@/editor/EditorView';
@@ -13,6 +14,9 @@ import { TabBar } from './TabBar';
 import { EditorPane } from './EditorPane';
 import { PreviewPane } from './PreviewPane';
 import { DailyDigest } from '../editor/DailyDigest';
+import { VersionHistoryPanel, isVersionableTab } from './VersionHistoryPanel';
+import { VersionHistoryContentView } from './VersionHistoryContentView';
+import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
 
 
 export function WorkArea() {
@@ -22,12 +26,13 @@ export function WorkArea() {
   const activeTabId = useEditorStore((state) => state.activeTabId);
   const allTabs = useEditorStore((state) => state.tabs);
   const setActiveTab = useEditorStore((state) => state.setActiveTab);
-  const closeTab = useEditorStore((state) => state.closeTab);
   const updateTabContent = useEditorStore((state) => state.updateTabContent);
   const markTabDirty = useEditorStore((state) => state.markTabDirty);
   const isFileLoading = useEditorStore((state) => state.isFileLoading);
   const externalContentVersion = useDiffReviewStore((state) => state.externalContentVersion);
   const setContentExternal = useDiffReviewStore((state) => state.setContentExternal);
+  const versionHistoryVisible = useEditorViewStateStore((s) => s.versionHistoryVisible);
+  const versionHistorySelectedKey = useEditorViewStateStore((s) => s.versionHistorySelection.selectedKey);
 
   // Filter tabs by the active activity panel
   const tabs = allTabs.filter((t) => t.activity === activePanel);
@@ -40,7 +45,6 @@ export function WorkArea() {
   const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
 
   const editorRef = useRef<QuillEditorHandle>(null);
-  const prevBodyRef = useRef<HTMLDivElement>(null);
 
   // Get the handler for the active tab
   const handler = activeTab ? getHandlerById(activeTab.fileType) : undefined;
@@ -107,138 +111,6 @@ export function WorkArea() {
     };
   }, []);
 
-  // ── Synchronized scrolling between editor and preview (markdown split mode) ──
-  const scrollSourceRef = useRef<'editor' | 'preview' | null>(null);
-  const scrollResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (viewMode !== 'split' || activeTab?.fileType !== 'markdown') return;
-
-    // ponytail: prefs (editorFont/fontSize/showLineNumbers/tabSize/wrapColumn)
-    // hydrate async after first mount and are part of QuillEditor's `key`, so
-    // QuillEditor remounts on hydration — destroying the EditorView (and its
-    // .cm-scroller) the first attach pointed at. To survive that race we don't
-    // cache the scroller/preview nodes in closure vars; we read them live from
-    // refs inside the document-level capture listener. That way, whatever the
-    // current scroller is, the listener uses it. Effect deps intentionally
-    // exclude prefs so we don't churn listeners on hydration.
-    let editorRaf = 0;
-    let previewRaf = 0;
-
-    const getEditorScrollDOM = () => editorRef.current?.getScrollDOM() ?? null;
-    const getPreviewDOM = () => prevBodyRef.current;
-
-    function handleEditorScroll() {
-      if (scrollSourceRef.current === 'preview') return;
-      scrollSourceRef.current = 'editor';
-      resetScrollSource();
-
-      const view = editorRef.current?.getView();
-      const scrollDOM = getEditorScrollDOM();
-      const previewDOM = getPreviewDOM();
-      if (!view || !scrollDOM || !previewDOM) return;
-
-      const topBlock = view.lineBlockAtHeight(scrollDOM.scrollTop);
-      const topLine = view.state.doc.lineAt(topBlock.from).number;
-
-      const anchors = previewDOM.querySelectorAll<HTMLElement>('[data-source-line]');
-      if (anchors.length === 0) return;
-
-      let lo = 0, hi = anchors.length - 1;
-      while (lo < hi) {
-        const mid = (lo + hi + 1) >> 1;
-        if (parseInt(anchors[mid].dataset.sourceLine!) <= topLine) lo = mid;
-        else hi = mid - 1;
-      }
-
-      const anchorEl = anchors[lo];
-      const anchorLine = parseInt(anchorEl.dataset.sourceLine!);
-
-      if (lo + 1 < anchors.length) {
-        const nextEl = anchors[lo + 1];
-        const nextLine = parseInt(nextEl.dataset.sourceLine!);
-        // ponytail: clamp progress to [0,1]. When the editor's topLine is
-        // below the first block anchor (body starts with blank lines / non-block
-        // content), anchorLine > topLine → negative progress → preview jumps to
-        // top. Clamp keeps preview at the nearest anchor instead.
-        const progress = nextLine > anchorLine
-          ? Math.max(0, Math.min(1, (topLine - anchorLine) / (nextLine - anchorLine)))
-          : 0;
-        // ponytail: anchorEl.offsetTop is relative to its offsetParent
-        // (PreviewPane root, position:relative), which sits at the .prev-body's
-        // 0,0 — same coordinate origin as scrollTop. So direct assignment works.
-        const anchorTop = anchorEl.offsetTop;
-        const nextTop = nextEl.offsetTop;
-        previewDOM.scrollTop = anchorTop + (nextTop - anchorTop) * progress;
-      } else {
-        previewDOM.scrollTop = anchorEl.offsetTop;
-      }
-    }
-
-    function handlePreviewScroll() {
-      if (scrollSourceRef.current === 'editor') return;
-      scrollSourceRef.current = 'preview';
-      resetScrollSource();
-
-      const view = editorRef.current?.getView();
-      const scrollDOM = getEditorScrollDOM();
-      const previewDOM = getPreviewDOM();
-      if (!view || !scrollDOM || !previewDOM) return;
-
-      const scrollTop = previewDOM.scrollTop;
-      const anchors = previewDOM.querySelectorAll<HTMLElement>('[data-source-line]');
-      if (anchors.length === 0) return;
-
-      let target: HTMLElement | null = null;
-      for (const anchor of anchors) {
-        if (anchor.offsetTop <= scrollTop + 10) target = anchor;
-        else break;
-      }
-      if (!target) target = anchors[0];
-
-      const targetLine = parseInt(target.dataset.sourceLine!);
-      const lineCount = view.state.doc.lines;
-      if (targetLine < 1 || targetLine > lineCount) return;
-
-      const lineInfo = view.state.doc.line(targetLine);
-      const block = view.lineBlockAt(lineInfo.from);
-      scrollDOM.scrollTop = block.top;
-    }
-
-    function resetScrollSource() {
-      if (scrollResetTimer.current) clearTimeout(scrollResetTimer.current);
-      scrollResetTimer.current = setTimeout(() => {
-        scrollSourceRef.current = null;
-      }, 150);
-    }
-
-    // ponytail: scroll events don't bubble. Capture-phase listener on document
-    // catches all descendant scroll events; filter by target containment
-    // against the *current* scroller nodes (read live from refs each event so
-    // QuillEditor remounts don't strand us on a detached scroller).
-    const onDocScrollCapture = (e: Event) => {
-      const t = e.target as HTMLElement | null;
-      if (!t) return;
-      const scrollDOM = getEditorScrollDOM();
-      const previewDOM = getPreviewDOM();
-      if (scrollDOM && (t === scrollDOM || scrollDOM.contains(t))) {
-        cancelAnimationFrame(editorRaf);
-        editorRaf = requestAnimationFrame(handleEditorScroll);
-      } else if (previewDOM && (t === previewDOM || previewDOM.contains(t))) {
-        cancelAnimationFrame(previewRaf);
-        previewRaf = requestAnimationFrame(handlePreviewScroll);
-      }
-    };
-    document.addEventListener('scroll', onDocScrollCapture, true);
-
-    return () => {
-      cancelAnimationFrame(editorRaf);
-      cancelAnimationFrame(previewRaf);
-      if (scrollResetTimer.current) clearTimeout(scrollResetTimer.current);
-      document.removeEventListener('scroll', onDocScrollCapture, true);
-    };
-  }, [viewMode, activeTab?.fileType, activeTabId]);
-
   // Scroll editor to a heading (called from PreviewPane outline clicks)
   const scrollEditorToHeading = useCallback((headingText: string) => {
     const view = editorRef.current?.getView();
@@ -263,15 +135,26 @@ export function WorkArea() {
   const showPreview = handler?.Preview && (isPreviewOnly || viewMode === 'preview' || viewMode === 'split');
   const showSplitResizer = handler?.Preview && viewMode === 'split' && (handler.useCodeMirror || !!handler.Editor);
 
+  // ponytail: when the version-history side panel is open AND a snapshot is
+  // selected, swap the entire editor area for the diff view. Single branch
+  // covers CodeMirror + custom editors + preview split — the diff view fills
+  // the area the editor normally would. Editor / preview / resizer all stay
+  // unmounted for the duration so their scroll state and CodeMirror view
+  // don't have to coexist with the diff. Selection clears on panel close /
+  // restore / tab switch (handled in the panel) — this flag follows.
+  const showVersionHistoryDiff = versionHistoryVisible
+    && versionHistorySelectedKey !== null
+    && isVersionableTab(activeTab);
+
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-bg">
+    <div className="flex-1 flex flex-col overflow-hidden bg-bg relative">
       {/* File tabs */}
       {tabs.length > 0 && (
         <TabBar
           tabs={tabs}
           activeTabId={activeTabId}
           onSelectTab={setActiveTab}
-          onCloseTab={closeTab}
+          onCloseTab={closeTabWithSnapshot}
         />
       )}
 
@@ -289,6 +172,12 @@ export function WorkArea() {
         <div className="flex-1 flex items-center justify-center text-t3 text-[13px] select-none">
           {activePanel === 'clips' ? '暂无剪藏' : activePanel === 'wiki' ? '暂无 Wiki 页面' : activePanel === 'calendar' ? '暂无日记' : activePanel === 'analyze' ? '暂无分析报告' : '暂无打开的文件'}
         </div>
+      ) : showVersionHistoryDiff ? (
+        // ponytail: editor area swapped for the version-history content view.
+        // Renders in place of CodeMirror / custom editor / preview split so
+        // the snapshot content gets the full editor canvas. The side panel
+        // still owns the snapshot list.
+        <VersionHistoryContentView />
       ) : (<>
 
       {/* CodeMirror editor pane */}
@@ -369,7 +258,6 @@ export function WorkArea() {
       {/* Preview pane */}
       {showPreview && activeTab && handler?.Preview && (
         <PreviewPane
-          ref={prevBodyRef}
           activeTab={activeTab}
           Preview={handler.Preview}
           vaultRoot={vaultRoot}
@@ -397,6 +285,13 @@ export function WorkArea() {
           }}
         />
       )}
+
+      {/* Version-history side panel (PR3). Mounts as an absolute overlay on
+          the right edge of the work area so it covers all editor types
+          (CodeMirror + custom) uniformly — single mount point, no per-type
+          integration. Visibility gated by useEditorViewStateStore; the panel
+          itself no-ops when the active tab is not a Versionable File. */}
+      <VersionHistoryPanel activeTab={activeTab} />
     </div>
   );
 }

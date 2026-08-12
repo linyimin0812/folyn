@@ -222,9 +222,11 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
   const runningRef = useRef<{ stop: () => Promise<void> } | null>(null);
 
   useEffect(() => {
-    if (!preRef.current) return;
-    const codeEl = preRef.current.querySelector('code');
-    const text = codeEl?.textContent ?? preRef.current.textContent ?? '';
+    // ponytail: read text from React children, not preRef.current — when the
+    // html block is empty we render the placeholder (no <pre>), so preRef is
+    // null and the DOM read would early-return, locking lineCount at 0 even
+    // after the user adds content.
+    const text = extractTextContent(children);
     const lines = text.split('\n');
     while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
     setLineCount(lines.length);
@@ -313,10 +315,16 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
   }, [pendingResult, content, sourceLine, onChange]);
 
   const hasOutput = stdout !== '' || stderr !== '' || exitCode !== null || stopped;
+  // ponytail: empty ```html block renders as a short sliver with the toggle
+  // crammed into top-right. Give it real height + right-side centered icons.
+  // Applies in both source and preview views so toggling doesn't resize.
+  const isEmptyHtml = isHtml && lineCount === 0;
 
   return (
-    <div className={`code-block-wrapper${isHtml && htmlView === 'preview' ? ' code-block-wrapper--no-height-cap' : ''}`}>
-      {htmlView === 'source' || !isHtml ? (
+    <div className={`code-block-wrapper${isHtml && htmlView === 'preview' && !isEmptyHtml ? ' code-block-wrapper--no-height-cap' : ''}${isEmptyHtml ? ' code-block-wrapper--empty-html' : ''}`}>
+      {isEmptyHtml ? (
+        <div className="code-block-empty-html" />
+      ) : htmlView === 'source' || !isHtml ? (
         <div className="code-block-inner">
           <div className="code-line-numbers" aria-hidden="true">
             {Array.from({ length: lineCount }, (_, i) => (
@@ -361,15 +369,19 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
           }}
         />
       )}
-      <button
-        ref={copyBtnRef}
-        className="code-copy-btn"
-        type="button"
-        onClick={handleCopy}
-        dangerouslySetInnerHTML={{ __html: COPY_SVG }}
-      />
+      {!isEmptyHtml && (
+        <button
+          ref={copyBtnRef}
+          className="code-copy-btn"
+          type="button"
+          onClick={handleCopy}
+          dangerouslySetInnerHTML={{ __html: COPY_SVG }}
+        />
+      )}
       {isHtml && (
-        <div className="absolute top-1 right-8 flex items-center gap-0.5 z-3">
+        <div className={isEmptyHtml
+          ? 'absolute top-1/2 right-2 -translate-y-1/2 flex items-center gap-1 z-3'
+          : 'absolute top-1 right-8 flex items-center gap-0.5 z-3'}>
           <button
             type="button"
             aria-label="source"
@@ -567,6 +579,14 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
         children,
       );
     };
+
+    // ponytail: drop <style>/<script> from raw HTML blocks — rehypeRaw embeds
+    // them as live DOM nodes, so a raw <style> with body{height:100vh;...}
+    // leaks out of .md-preview and obscures the sidebar. Inline HTML
+    // (<u>, <details>, …) still renders. Use a ```html code block for live
+    // styled preview (CodeBlockWrapper sandboxes it in an iframe).
+    map['style'] = () => null;
+    map['script'] = () => null;
 
     return map;
   }, [filePath, vaultRoot, resolvedVaultRoot, assetBase]);

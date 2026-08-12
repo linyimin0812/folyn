@@ -7,6 +7,15 @@ vi.mock('@/components/file-types/web/WebViewer', () => ({
   hideWebviewsForOverlay: vi.fn(),
 }));
 
+vi.mock('@tauri-apps/plugin-opener', () => ({
+  openPath: vi.fn(),
+}));
+
+vi.mock('@tauri-apps/api/path', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tauri-apps/api/path')>();
+  return { ...actual, homeDir: vi.fn().mockResolvedValue('/Users/test') };
+});
+
 function tab(id: string, name: string, overrides: Partial<FileTab> = {}): FileTab {
   return {
     id,
@@ -111,5 +120,86 @@ describe('TabBar tab list panel', () => {
     expect(onCloseTab).toHaveBeenNthCalledWith(1, 'a');
     expect(onCloseTab).toHaveBeenNthCalledWith(2, 'b');
     expect(screen.queryByTestId('tab-list-panel')).toBeNull();
+  });
+});
+
+describe('TabBar external file indicator', () => {
+  it('shows the external-file icon after external tab names (main row + list)', () => {
+    render(
+      <TabBar
+        tabs={[
+          tab('ext', 'foo.md', { path: '/Users/test/foo.md' }),
+          tab('vault', 'bar.md', { path: 'notes/bar.md' }),
+        ]}
+        activeTabId="ext"
+        onSelectTab={() => {}}
+        onCloseTab={() => {}}
+      />,
+    );
+
+    // Main tab row: only the external tab gets the icon.
+    const externalTab = screen.getByText('foo.md').closest('div');
+    expect(within(externalTab as HTMLElement).getByLabelText('打开所在文件夹')).toBeTruthy();
+    const vaultTab = screen.getByText('bar.md').closest('div');
+    expect(within(vaultTab as HTMLElement).queryByLabelText('打开所在文件夹')).toBeNull();
+
+    // Dropdown list: same behavior.
+    const panel = openPanel();
+    const extRow = within(panel).getByText('foo.md').closest('[role="menuitem"]');
+    expect(within(extRow as HTMLElement).getByLabelText('打开所在文件夹')).toBeTruthy();
+    const vaultRow = within(panel).getByText('bar.md').closest('[role="menuitem"]');
+    expect(within(vaultRow as HTMLElement).queryByLabelText('打开所在文件夹')).toBeNull();
+  });
+});
+
+
+describe('TabBar external folder click', () => {
+  it('opens the containing folder when the external icon is clicked', async () => {
+    const { openPath } = await import('@tauri-apps/plugin-opener');
+    render(
+      <TabBar
+        tabs={[tab('ext', 'foo.md', { path: '/Users/test/docs/foo.md' })]}
+        activeTabId="ext"
+        onSelectTab={() => {}}
+        onCloseTab={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText('打开所在文件夹'));
+    await vi.waitFor(() => {
+      expect(vi.mocked(openPath)).toHaveBeenCalledWith('/Users/test/docs');
+    });
+  });
+
+  it('resolves ~/ external paths to the home directory before opening', async () => {
+    const { openPath } = await import('@tauri-apps/plugin-opener');
+    render(
+      <TabBar
+        tabs={[tab('ext', 'foo.md', { path: '~/docs/foo.md' })]}
+        activeTabId="ext"
+        onSelectTab={() => {}}
+        onCloseTab={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText('打开所在文件夹'));
+    await vi.waitFor(() => {
+      expect(vi.mocked(openPath)).toHaveBeenCalledWith('/Users/test/docs');
+    });
+  });
+
+  it('does not select the tab when the external icon is clicked', () => {
+    const onSelectTab = vi.fn();
+    render(
+      <TabBar
+        tabs={[tab('ext', 'foo.md', { path: '/Users/test/foo.md' })]}
+        activeTabId="ext"
+        onSelectTab={onSelectTab}
+        onCloseTab={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText('打开所在文件夹'));
+    expect(onSelectTab).not.toHaveBeenCalled();
   });
 });

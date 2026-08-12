@@ -493,6 +493,10 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
   // Mention-menu / slash-menu key handling runs BEFORE the base Enter-to-send.
   // Returns true when a key is consumed so ChatInputBox skips its Enter handler.
   const handleBeforeKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Let the IME own the keyboard during composition (pinyin/Chinese
+    // input): Enter confirms the composed text, not a slash/mention pick.
+    // Mirrors the ChatInputBox / PetPanelApp IME guards.
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return false;
     // Argument-prompt mini input: Enter confirms (insert /name <args>),
     // Escape cancels back to the slash list.
     if (argPrompt) {

@@ -10,6 +10,7 @@ import {
   dropCursor,
   rectangularSelection,
   crosshairCursor,
+  tooltips,
 } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab, selectAll } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
@@ -62,8 +63,7 @@ import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { usePrefsStore, type ShortcutItem } from '@/store/prefsStore';
 import {
-  slashCommandExtension,
-  slashMenuField,
+  computeSlashMenuState,
   type SlashMenuState,
 } from './extensions/SlashCommandExtension';
 import {
@@ -71,7 +71,7 @@ import {
   codeBlockMenuField,
   type CodeBlockMenuState,
 } from './extensions/CodeBlockExtension';
-import { createFilePreviewSrcCompletion } from './extensions/FilePreviewSrcExtension';
+import { createFilePreviewSrcCompletion, filePreviewSrcSearchBox } from './extensions/FilePreviewSrcExtension';
 import { orderedListExtension } from './extensions/OrderedListExtension';
 import { inlineDiffExtension } from './extensions/InlineDiffExtension';
 import { json as jsonLanguage } from '@codemirror/lang-json';
@@ -181,10 +181,14 @@ interface QuillEditorProps {
   onCodeBlockMenuChange?: (state: CodeBlockMenuState) => void;
   onSave?: () => void;
   onImagePaste?: (file: File, previewUrl: string) => void;
+  /** ponytail: read-only mode — `EditorState.readOnly.of(true)` blocks doc-modifying
+   *  transactions but keeps the cursor + selection + scroll, so the version-history
+   *  snapshot view can show real CodeMirror highlighting with full text selection. */
+  readOnly?: boolean;
 }
 
 export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
-  function QuillEditor({ initialContent = '', filePath = '', initialCursorLine, initialCursorCol, onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste }, ref) {
+  function QuillEditor({ initialContent = '', filePath = '', initialCursorLine, initialCursorCol, onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste, readOnly }, ref) {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const [view, setView] = useState<EditorView | null>(null);
@@ -241,9 +245,11 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
             const line = update.state.doc.lineAt(pos);
             setCursorPosition(line.number, pos - line.from + 1);
           }
-          // Notify parent about slash menu state changes
-          const menuState = update.state.field(slashMenuField);
-          onSlashMenuChangeRef.current?.(menuState);
+          // Notify parent about slash menu state changes. Derived purely from
+          // the document + cursor (no CodeMirror transaction, no state field),
+          // so IME composition is never disturbed and the menu filters live —
+          // deterministically, for both plain typing and pinyin input.
+          onSlashMenuChangeRef.current?.(computeSlashMenuState(update.state));
           // Notify parent about code block menu state changes
           const cbMenuState = update.state.field(codeBlockMenuField);
           onCodeBlockMenuChangeRef.current?.(cbMenuState);
@@ -272,6 +278,10 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
         foldGutter(),
         dropCursor(),
         EditorState.allowMultipleSelections.of(true),
+        // ponytail: read-only snapshot mode blocks doc modifications but keeps
+        // selection + scroll so the version-history view is a real CodeMirror
+        // surface, not a static <pre>.
+        ...(readOnly ? [EditorState.readOnly.of(true)] : []),
         tabSizeCompartment.current.of([
           EditorState.tabSize.of(settingsTabSize),
           indentUnit.of(' '.repeat(settingsTabSize)),
@@ -280,7 +290,22 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
         quillHighlighting(),
         bracketMatching(),
         closeBrackets(),
-        autocompletion({ override: [createFilePreviewSrcCompletion(filePath)] }),
+        // closeOnBlur: false — the src dropdown hosts its own search input;
+        // focusing it must not dismiss the dropdown. The search-box plugin
+        // closes the completion when focus leaves the editor entirely.
+        // interactionDelay: 0 — the default 75ms swallows accept/arrow keys
+        // right after the popup opens; a swallowed Enter falls through to the
+        // editor's default keymap and inserts a newline into the src string.
+        autocompletion({
+          override: [createFilePreviewSrcCompletion(filePath)],
+          closeOnBlur: false,
+          interactionDelay: 0,
+        }),
+        filePreviewSrcSearchBox(),
+        // Render tooltips on <body> (fixed position): inside the editor they
+        // get clipped by .cm-wrapper's overflow:hidden and slide under the
+        // preview pane on the right.
+        tooltips({ parent: document.body }),
         rectangularSelection(),
         crosshairCursor(),
         highlightActiveLine(),
@@ -308,7 +333,6 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
           keymap.of(buildMarkdownKeymap(shortcuts, onSaveRef)),
         ),
         markdown({ base: markdownLanguage, codeLanguages }),
-        ...slashCommandExtension,
         ...codeBlockExtension,
         ...orderedListExtension,
         EditorView.lineWrapping,
