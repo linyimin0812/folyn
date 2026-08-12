@@ -137,15 +137,22 @@ export function buildAdapterVersionCommand(adapterId: string, cliPath: string): 
  * - win32:  `where <cmd>` (no shell concept; uses Windows system PATH)
  * - other:  plain `which <cmd>` (fallback for unknown platforms)
  *
- * The resolved shell is invoked with `-lc` (login). `-l` reads
+ * The resolved shell is invoked with `-ilc` (interactive + login). `-l` reads
  * `/etc/zprofile` + `~/.zprofile` (zsh) / `/etc/profile` + `~/.profile` (sh).
- * PATH set only in `~/.zshrc` / `~/.bashrc` (interactive rc files) is NOT
- * loaded, so users whose PATH lives in those files may still see shim paths
- * (e.g. cmux-cli-shims) leak through from the Tauri sidecar's launchd-inherited
- * PATH. Accepted tradeoff: forcing `-i` to source `~/.zshrc` is worse — many
- * users' `~/.zshrc` (SDKMAN, nvm, etc.) prints noise to stdout that pollutes
- * the detect output. `-lc` keeps `which` output clean at the cost of
- * rc-file-only PATHs.
+ * `-i` additionally sources `~/.zshrc` / `~/.bashrc`, where users typically
+ * `export PATH` (e.g. `~/.local/bin`, nvm, sdkman). Without `-i`, PATH set only
+ * in those rc files is NOT loaded, and detect returns shim paths (e.g.
+ * cmux-cli-shims under `/var/folders/`) injected via `/etc/paths.d/`.
+ *
+ * `-i` has a cost: rc-file init blocks (SDKMAN's "Using java version...",
+ * nvm, etc.) print noise to stdout BEFORE `which` runs. `2>/dev/null` silences
+ * stderr (non-TTY `-i` mode may emit warnings; rc-file init may also write to
+ * stderr), and `| tail -1` extracts the path — it is always the LAST stdout
+ * line because `which` runs after rc-file sourcing.
+ *
+ * No `exec`: we need a pipe (`| tail -1`), and `exec` replaces the shell
+ * process so the pipe cannot attach. The wrapper `/bin/sh -l -c` (the sidecar)
+ * hosts the pipeline as a parent, launching the user shell as a child.
  *
  * The command is run via the sidecar with `args`: Unix sidecar uses
  * `['-l', '-c', <cmd>]`, Windows sidecar uses `['/c', <cmd>]`. Caller picks
@@ -156,9 +163,9 @@ export function buildAdapterDetectCommand(
 ): string {
   switch (platform) {
     case 'darwin':
-      return `exec "$(dscl . -read /Users/$(whoami) UserShell | awk '{print $2}')" -lc "which ${adapterCmd}"`;
+      return `"$(dscl . -read /Users/$(whoami) UserShell | awk '{print $2}')" -ilc "which ${adapterCmd}" 2>/dev/null | tail -1`;
     case 'linux':
-      return `exec "$(getent passwd $(whoami) | cut -d: -f7)" -lc "which ${adapterCmd}"`;
+      return `"$(getent passwd $(whoami) | cut -d: -f7)" -ilc "which ${adapterCmd}" 2>/dev/null | tail -1`;
     case 'win32':
       return `where ${adapterCmd}`;
     default:
