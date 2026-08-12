@@ -1533,3 +1533,41 @@ opener:allow-open-path with no scope allows nothing (empty allow list = deny all
 ### Next Steps
 
 - None - task complete
+
+
+## Session 159: CLI detect via user shell + detect button loading state
+
+**Date**: 2026-08-12
+**Task**: CLI detect via user shell + detect button loading state
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Fixed CliSettings detect button returning cmux shim paths in Tauri by resolving user's real login shell via dscl (macOS) / getent (Linux) and running which under -ilc with tail -1 to filter rc-file stdout noise (SDKMAN); Windows uses where via new win-detect sidecar. Added per-adapter loading spinner (Loader2 animate-spin) to detect button mirroring Test button pattern.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4ad51b71` | (see git log) |
+| `832afef7` | (see git log) |
+| `3ae84c9e` | (see git log) |
+| `ff26a70d` | (see git log) |
+| `24b0d9cc` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
