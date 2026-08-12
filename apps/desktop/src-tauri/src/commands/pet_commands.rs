@@ -65,9 +65,44 @@ pub async fn set_pet_opacity(app: tauri::AppHandle, level: String) -> Result<(),
         })
         .map_err(|e| e.to_string())?;
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
     {
-        // Pet mode is macOS-only; opacity has no effect on other platforms.
+        // ponytail: SetLayeredWindowAttributes (LWA_ALPHA) is the Win32 way to
+        // set per-window alpha. The window must have WS_EX_LAYERED for it to
+        // take effect; Tauri's `transparent: true` config sets this on creation,
+        // but we OR it in defensively in case the style was stripped. Runs on
+        // the main thread because SetLayeredWindowAttributes hits the thread
+        // that owns the HWND.
+        use windows_sys::Win32::Foundation::HWND;
+        use windows_sys::Win32::UI::WindowsAndMessaging::{
+            GetWindowLongW, SetLayeredWindowAttributes, SetWindowLongW, GWL_EXSTYLE, LWA_ALPHA,
+            WS_EX_LAYERED,
+        };
+        let app2 = app.clone();
+        app.run_on_main_thread(move || {
+            let Some(window) = app2.get_webview_window(PET_LABEL) else {
+                return;
+            };
+            let Ok(hwnd_ptr) = window.hwnd() else { return; };
+            let hwnd = hwnd_ptr as HWND;
+            if hwnd.is_null() {
+                return;
+            }
+            unsafe {
+                let ex = GetWindowLongW(hwnd, GWL_EXSTYLE);
+                if (ex & WS_EX_LAYERED) == 0 {
+                    SetWindowLongW(hwnd, GWL_EXSTYLE, ex | WS_EX_LAYERED);
+                }
+                let byte = (alpha * 255.0).round().clamp(0.0, 255.0) as u8;
+                SetLayeredWindowAttributes(hwnd, 0, byte, LWA_ALPHA);
+            }
+        })
+        .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        // ponytail: Linux pet opacity deferred — Tauri stock set_alpha may
+        // suffice on X11/Wayland; revisit if Linux pet support lands.
         let _ = app;
     }
     Ok(())
@@ -399,7 +434,40 @@ pub async fn pet_get_work_area(app: tauri::AppHandle) -> Result<PetWorkArea, App
         }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        // ponytail: MonitorFromWindow + GetMonitorInfoW returns the work area
+        // (excluding taskbar / docked app bars) for the screen the pet is on,
+        // matching the macOS visibleFrame semantics. rcWork is in physical
+        // pixels; the frontend divides by scale_factor to get logical points.
+        use windows_sys::Win32::Foundation::HWND;
+        use windows_sys::Win32::Graphics::Gdi::{
+            GetMonitorInfoW, MonitorFromWindow, MONITOR_DEFAULTTONEAREST, MONITORINFO,
+        };
+
+        let pet = app
+            .get_webview_window(PET_LABEL)
+            .ok_or_else(|| "pet window not found".to_string())?;
+        let hwnd_ptr = pet.hwnd().map_err(|e| e.to_string())?;
+        let hwnd = hwnd_ptr as HWND;
+        let hmon = unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) };
+        let mut mi: MONITORINFO = unsafe { std::mem::zeroed() };
+        mi.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
+        let ok = unsafe { GetMonitorInfoW(hmon, &mut mi) };
+        if ok == 0 {
+            return Err("GetMonitorInfoW failed".into());
+        }
+        let scale = pet.scale_factor().unwrap_or(1.0);
+        Ok(PetWorkArea {
+            x: mi.rcWork.left,
+            y: mi.rcWork.top,
+            width: mi.rcWork.right - mi.rcWork.left,
+            height: mi.rcWork.bottom - mi.rcWork.top,
+            scale_factor: scale,
+        })
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         let monitor = app
             .primary_monitor()
@@ -464,6 +532,7 @@ fn pet_work_area_main_screen() -> Result<PetWorkArea, AppError> {
 /// when the cursor is over another app's window (the frontmost app owns the
 /// cursor); reliable fix needs an `NSTrackingArea` with `NSTrackingActiveAlways`
 /// on the panel's content view, deferred until this proves insufficient.
+#[cfg(target_os = "macos")]
 #[tauri::command]
 pub async fn pet_set_cursor(app: tauri::AppHandle, kind: String) -> Result<(), AppError> {
     use cocoa::base::id;
@@ -480,6 +549,35 @@ pub async fn pet_set_cursor(app: tauri::AppHandle, kind: String) -> Result<(), A
         }
         let _ = app2;
     });
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub async fn pet_set_cursor(_app: tauri::AppHandle, kind: String) -> Result<(), AppError> {
+    // ponytail: SetCursor sets the OS cursor for the current thread. On Windows
+    // the cursor is global per-thread, so this matches the macOS intent
+    // (CSS `cursor: pointer` doesn't apply when the pet is non-activating).
+    // LoadCursorW loads a shared system cursor (no need to free).
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        LoadCursorW, SetCursor, IDC_ARROW, IDC_HAND,
+    };
+    let cursor_id = if kind == "pointer" { IDC_HAND } else { IDC_ARROW };
+    unsafe {
+        let h = LoadCursorW(0, cursor_id);
+        if h.is_null() {
+            return Err("LoadCursorW returned NULL".into());
+        }
+        SetCursor(h);
+    }
+    Ok(())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[tauri::command]
+pub async fn pet_set_cursor(_app: tauri::AppHandle, _kind: String) -> Result<(), AppError> {
+    // ponytail: Linux pet cursor support deferred — no cocoa/objc equivalent
+    // and Tauri's stock webview cursor handling is sufficient on Linux for now.
     Ok(())
 }
 

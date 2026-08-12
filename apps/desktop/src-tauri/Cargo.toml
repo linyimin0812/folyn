@@ -135,7 +135,13 @@ tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.
 # declared above (aes/cbc/cipher) — Windows needs aes-gcm (GCM mode) and
 # windows-sys for DPAPI.
 [target.'cfg(target_os = "windows")'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Security_Cryptography", "Win32_Foundation"] }
+windows-sys = { version = "0.59", features = [
+  "Win32_Security_Cryptography",
+  "Win32_Foundation",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_UI_HiDpi",
+  "Win32_Graphics_Gdi",
+] }
 aes-gcm = "0.10"
 base64 = "0.22"
 
