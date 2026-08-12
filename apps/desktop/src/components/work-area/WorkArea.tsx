@@ -45,6 +45,8 @@ export function WorkArea() {
   const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
 
   const editorRef = useRef<QuillEditorHandle>(null);
+  const prevBodyRef = useRef<HTMLDivElement>(null);
+  const cursorLine = useEditorViewStateStore((s) => s.cursorLine);
 
   // Get the handler for the active tab
   const handler = activeTab ? getHandlerById(activeTab.fileType) : undefined;
@@ -127,6 +129,34 @@ export function WorkArea() {
       }
     }
   }, []);
+
+  // ponytail: cursor-driven preview follow — replaces the old scroll-sync.
+  // Subscribes to the editor's cursorLine (written by QuillEditor on every
+  // selectionSet). On cursor move, find the latest [data-source-line] anchor
+  // ≤ cursor line and `scrollIntoView({ block: 'nearest' })` so the preview
+  // only scrolls when that anchor is off-screen. No scroll-event listeners →
+  // no feedback loop (preview scroll does not write back to cursorLine).
+  useEffect(() => {
+    if (viewMode !== 'split' || activeTab?.fileType !== 'markdown') return;
+    const previewDOM = prevBodyRef.current;
+    if (!previewDOM) return;
+
+    const anchors = previewDOM.querySelectorAll<HTMLElement>('[data-source-line]');
+    if (anchors.length === 0) return;
+
+    let target: HTMLElement | null = null;
+    for (const anchor of anchors) {
+      const line = parseInt(anchor.dataset.sourceLine!);
+      if (line <= cursorLine) target = anchor;
+      else break;
+    }
+    if (!target) target = anchors[0];
+
+    // ponytail: block:'nearest' avoids aggressive recentering — typing inside
+    // a visible block keeps the preview steady; only jumps when the cursor
+    // crosses into a block that's currently off-screen.
+    target.scrollIntoView({ block: 'nearest' });
+  }, [cursorLine, viewMode, activeTab?.fileType, activeTab?.id, activeTab?.content]);
 
   // Determine what to show
   const showCodeMirror = handler?.useCodeMirror && (viewMode === 'edit' || viewMode === 'split' || !handler.Preview);
@@ -258,6 +288,7 @@ export function WorkArea() {
       {/* Preview pane */}
       {showPreview && activeTab && handler?.Preview && (
         <PreviewPane
+          ref={prevBodyRef}
           activeTab={activeTab}
           Preview={handler.Preview}
           vaultRoot={vaultRoot}
