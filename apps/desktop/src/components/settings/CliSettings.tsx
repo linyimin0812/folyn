@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Lightbulb } from 'lucide-react';
+import { Lightbulb, Loader2 } from 'lucide-react';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useNavStore } from '@/store/navStore';
 import { listAdapters, buildAdapterVersionCommand, buildAdapterDetectCommand } from '@quill/cli-adapter';
@@ -33,6 +33,8 @@ export function CliSettings() {
   const [testStatus, setTestStatus] = useState<Record<string, TestStatus>>({});
   // Per-adapter "open settings file" state, keyed by adapter id.
   const [settingsFileState, setSettingsFileState] = useState<Record<string, SettingsFileState>>({});
+  // Per-adapter detect-in-flight flag, keyed by adapter id.
+  const [detectingState, setDetectingState] = useState<Record<string, boolean>>({});
 
   async function openAdapterSettings(adapterId: string, path: string) {
     const st = settingsFileState[adapterId];
@@ -79,6 +81,7 @@ export function CliSettings() {
           const path = cliPaths[a.id] ?? a.id;
           const st = testStatus[a.id] ?? { testing: false };
           const sf = settingsFileState[a.id] ?? { kind: 'idle' };
+          const detecting = detectingState[a.id] ?? false;
           return (
             <div
               key={a.id}
@@ -103,7 +106,9 @@ export function CliSettings() {
                 <button
                   className="btn btn-g btn-sm"
                   title={t('settings:cli.cliPath.detectTitle')}
+                  disabled={detecting}
                   onClick={async () => {
+                    setDetectingState((s) => ({ ...s, [a.id]: true }));
                     try {
                       const { Command } = await import('@tauri-apps/plugin-shell');
                       const adapterCmd = a.id === 'claude' ? 'claude' : a.id;
@@ -119,9 +124,11 @@ export function CliSettings() {
                       if (output.code === 0 && detected) {
                         setCliPathFor(a.id, detected);
                       }
-                    } catch {}
+                    } catch {} finally {
+                      setDetectingState((s) => ({ ...s, [a.id]: false }));
+                    }
                   }}
-                >{t('settings:cli.cliPath.detect')}</button>
+                >{detecting ? <Loader2 size={13} className="animate-spin" /> : t('settings:cli.cliPath.detect')}</button>
                 <button
                   className="btn btn-g btn-sm"
                   disabled={st.testing}
