@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "verify detect button matches settings component conventions"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "verify useState pattern for loading flag is consistent"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "verify no hardcoded user-facing text introduced"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "verify lint/typecheck/build green"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "verify Loader2 + animate-spin reused, no new spinner abstraction"}

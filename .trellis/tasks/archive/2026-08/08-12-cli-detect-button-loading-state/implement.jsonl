@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "settings component conventions; detect button follows existing Test button pattern"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "useState pattern for per-adapter loading flag, mirrors existing testStatus state"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "verify whether new 'detecting...' label needs i18n key or spinner-only is fine"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "lint / typecheck / build quality bar"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "reuse existing Loader2 + animate-spin pattern from ModelPickerModal; do not add new spinner abstraction"}
