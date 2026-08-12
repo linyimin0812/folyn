@@ -113,8 +113,20 @@ export function mapClaudeToolsToPi(tools: string[] | undefined | null): string[]
  * sibling-node invocation from buildPiShellCommand so the test runs on the
  * same node the spawn will use (not the stale `env node` the GUI app PATH
  * resolves). For claude (standalone binary) / unknown adapters, just
- * `exec <cliPath> --version`. */
-export function buildAdapterVersionCommand(adapterId: string, cliPath: string): string {
+ * `exec <cliPath> --version` on Unix; on Windows cmd.exe has no `exec`
+ * builtin and single-quote wrapping doesn't work, so invoke the binary
+ * directly with double-quote wrapping (handles paths containing spaces). */
+export function buildAdapterVersionCommand(
+  adapterId: string,
+  cliPath: string,
+  platform: string = process.platform,
+): string {
+  if (platform === 'win32') {
+    // ponytail: cmd.exe has no exec; double-quote wrap is sufficient for
+    // paths with spaces. Pi adapter Windows support is partial — see PR3
+    // notes in 08-12-windows — but the version probe works for any binary.
+    return `"${cliPath}" --version`;
+  }
   if (adapterId === 'pi') {
     return buildPiShellCommand(cliPath, '', ['--version']);
   }

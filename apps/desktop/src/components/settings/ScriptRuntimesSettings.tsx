@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import type { RuntimeConfig } from '@/services/scriptRunner/scriptRunnerService';
+import { buildShellSidecar } from '@/utils/shellSidecar';
 
 type TestStatus = { testing: boolean; result?: { success: boolean; message: string } };
 
@@ -41,7 +42,8 @@ export function ScriptRuntimesSettings() {
               setDetecting((s) => ({ ...s, [r.id]: true }));
               try {
                 const { Command } = await import('@tauri-apps/plugin-shell');
-                const cmd = Command.create('claude-cli', ['-l', '-c', r.detectCommand]);
+                const [name, args] = buildShellSidecar(r.detectCommand);
+                const cmd = Command.create(name, args);
                 const output = await cmd.execute();
                 const detected = output.stdout.trim().split('\n')[0];
                 if (output.code === 0 && detected) {
@@ -56,7 +58,8 @@ export function ScriptRuntimesSettings() {
               try {
                 const { Command } = await import('@tauri-apps/plugin-shell');
                 const runCmd = `${r.binaryPath} ${r.versionArgs.join(' ')}`;
-                const cmd = Command.create('claude-cli', ['-l', '-c', runCmd]);
+                const [name, args] = buildShellSidecar(runCmd);
+                const cmd = Command.create(name, args);
                 const output = await cmd.execute();
                 if (output.code === 0) {
                   const version = output.stdout.trim().split('\n')[0];

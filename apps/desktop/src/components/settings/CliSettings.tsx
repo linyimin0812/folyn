@@ -13,6 +13,7 @@ import { useNavStore } from '@/store/navStore';
 import { listAdapters, buildAdapterVersionCommand, buildAdapterDetectCommand } from '@quill/cli-adapter';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { openFile } from '@/services/editorIoService';
+import { buildShellSidecar, isWindowsPlatform } from '@/utils/shellSidecar';
 
 type TestStatus = { testing: boolean; result?: { success: boolean; message: string } };
 type SettingsFileState =
@@ -112,12 +113,9 @@ export function CliSettings() {
                     try {
                       const { Command } = await import('@tauri-apps/plugin-shell');
                       const adapterCmd = a.id === 'claude' ? 'claude' : a.id;
-                      const isWin = typeof navigator !== 'undefined' && /Win/i.test(navigator.platform);
-                      const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
-                      const platform = isWin ? 'win32' : isMac ? 'darwin' : 'linux';
+                      const platform = isWindowsPlatform() ? 'win32' : /Mac/i.test(navigator.platform) ? 'darwin' : 'linux';
                       const detectCmd = buildAdapterDetectCommand(adapterCmd, platform);
-                      const sidecarName = isWin ? 'win-detect' : 'claude-cli';
-                      const sidecarArgs = isWin ? ['/c', detectCmd] : ['-l', '-c', detectCmd];
+                      const [sidecarName, sidecarArgs] = buildShellSidecar(detectCmd);
                       const cmd = Command.create(sidecarName, sidecarArgs);
                       const output = await cmd.execute();
                       const detected = output.stdout.trim().split('\n')[0];
@@ -137,7 +135,10 @@ export function CliSettings() {
                     try {
                       const { Command } = await import('@tauri-apps/plugin-shell');
                       const p = useAiConfigStore.getState().cliPaths[a.id] ?? a.id;
-                      const cmd = Command.create('claude-cli', ['-l', '-c', buildAdapterVersionCommand(a.id, p)]);
+                      const platform = isWindowsPlatform() ? 'win32' : /Mac/i.test(navigator.platform) ? 'darwin' : 'linux';
+                      const versionCmd = buildAdapterVersionCommand(a.id, p, platform);
+                      const [sidecarName, sidecarArgs] = buildShellSidecar(versionCmd);
+                      const cmd = Command.create(sidecarName, sidecarArgs);
                       const output = await cmd.execute();
                       if (output.code === 0) {
                         const version = output.stdout.trim().split('\n')[0];

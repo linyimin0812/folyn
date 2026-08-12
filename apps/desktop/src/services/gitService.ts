@@ -10,6 +10,7 @@
 
 import { resolveBasePath } from '@/utils/pathResolver';
 import { mergeGitignoreEntries } from '@/utils/excludePattern';
+import { buildShellSidecar } from '@/utils/shellSidecar';
 
 export interface GitResult {
   stdout: string;
@@ -108,7 +109,8 @@ export const resolveAbsPath = resolveBasePath;
  */
 export async function runShell(shellCmd: string): Promise<GitResult> {
   const { Command } = await import('@tauri-apps/plugin-shell');
-  const cmd = Command.create('claude-cli', ['-l', '-c', shellCmd]);
+  const [sidecarName, sidecarArgs] = buildShellSidecar(shellCmd);
+  const cmd = Command.create(sidecarName, sidecarArgs);
   let stdout = '';
   let stderr = '';
   cmd.stdout.on('data', (line) => { stdout += line + '\n'; });

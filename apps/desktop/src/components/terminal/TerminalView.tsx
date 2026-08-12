@@ -185,7 +185,7 @@ export function TerminalView({ id, active }: TerminalViewProps) {
           return;
         }
         spawnedRef.current = true;
-        const shellName = shell.split('/').pop();
+        const shellName = shell.split(/[/\\]/).pop();
         if (shellName && !hasCustomTitle) setTitle(id, shellName);
         setStatus(id, 'running');
         try {

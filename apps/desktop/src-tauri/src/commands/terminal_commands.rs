@@ -58,16 +58,33 @@ pub fn terminal_create(
         })
         .map_err(|e| format!("failed to open pty: {e}"))?;
 
-    let shell_path =
-        shell.unwrap_or_else(|| std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string()));
+    let shell_path = shell.unwrap_or_else(|| {
+        // ponytail: macOS/Linux expose the user's shell via $SHELL; Windows has
+        // no SHELL env var — fall back to COMSPEC (cmd.exe) or a final
+        // hard-coded cmd.exe. PowerShell users can pass `shell` explicitly.
+        if cfg!(target_os = "windows") {
+            std::env::var("COMSPEC").unwrap_or_else(|_| "cmd.exe".to_string())
+        } else {
+            std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string())
+        }
+    });
     let mut cmd = CommandBuilder::new(&shell_path);
     // Interactive shells only load the user's rc files / prompt theme when the
     // shell believes it is interactive. Without `-i`, zsh falls back to its
-    // bare `%` prompt and skips oh-my-zsh entirely. Known shells that support
-    // `-i` get it; others (e.g. fish) are already interactive on a tty.
-    let shell_base = shell_path.rsplit('/').next().unwrap_or("").to_string();
+    // bare `%` prompt and skips oh-my-zsh entirely. Known Unix shells get `-i`;
+    // Windows cmd.exe / powershell don't recognize `-i` (cmd uses /Q for echo
+    // off, powershell uses -NoLogo).
+    let shell_base = shell_path
+        .rsplit(|c| c == '/' || c == '\\')
+        .next()
+        .unwrap_or("")
+        .to_string();
     if matches!(shell_base.as_str(), "zsh" | "bash" | "sh" | "dash" | "ksh") {
         cmd.arg("-i");
+    } else if matches!(shell_base.as_str(), "cmd.exe" | "cmd") {
+        cmd.arg("/Q");
+    } else if shell_base == "powershell.exe" || shell_base == "powershell" {
+        cmd.arg("-NoLogo");
     }
     if let Some(dir) = cwd {
         // Vault base paths are stored as `~/...` (resolveBasePath notation);
