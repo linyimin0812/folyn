@@ -1,0 +1,10 @@
+{"file": ".trellis/spec/cli-adapter/frontend/index.md", "reason": "cli-adapter package overview; helper buildAdapterDetectCommand lives alongside buildAdapterVersionCommand here"}
+{"file": ".trellis/spec/cli-adapter/frontend/directory-structure.md", "reason": "decides whether helper goes in registry.ts / piAdapter.ts / new file"}
+{"file": ".trellis/spec/cli-adapter/frontend/type-safety.md", "reason": "type signature of helper (string in, string out, no any)"}
+{"file": ".trellis/spec/cli-adapter/frontend/quality-guidelines.md", "reason": "unit test expectations for helper (three platform branches)"}
+{"file": ".trellis/spec/cli-adapter/frontend/component-guidelines.md", "reason": "CliSettings.tsx consumer-side conventions for calling helper"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "sidecar patterns: how to add win-detect sidecar to capabilities JSON, how default.json + pet-panel.json mirror"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "no new i18n strings introduced in this change, but verify no hardcoded user-facing text added"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "desktop-side quality bar (lint, typecheck, build)"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "helper mirrors existing buildAdapterVersionCommand shape; reuse pattern, not new abstraction"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "helper lives in packages/cli-adapter, consumed by apps/desktop — verify layer boundary"}

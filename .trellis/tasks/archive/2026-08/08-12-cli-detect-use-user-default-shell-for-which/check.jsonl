@@ -1,0 +1,8 @@
+{"file": ".trellis/spec/cli-adapter/frontend/quality-guidelines.md", "reason": "verify helper has unit tests for darwin/linux/win32 branches"}
+{"file": ".trellis/spec/cli-adapter/frontend/type-safety.md", "reason": "verify no any / no unsafe casts in buildAdapterDetectCommand"}
+{"file": ".trellis/spec/cli-adapter/frontend/directory-structure.md", "reason": "verify helper placement follows package conventions"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "verify win-detect sidecar added to BOTH default.json and pet-panel.json with cmd.exe + args:true"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "verify lint/typecheck/build green on desktop side"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "verify no hardcoded user-facing text introduced"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "verify helper mirrors buildAdapterVersionCommand pattern, no over-abstraction"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "verify packages/cli-adapter -> apps/desktop boundary respected"}
