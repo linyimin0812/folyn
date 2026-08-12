@@ -14,7 +14,20 @@
     "core:webview:allow-set-webview-size",
     "core:webview:allow-webview-close",
     "shell:allow-open",
-    "opener:allow-open-path",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        {
+          "path": "$HOME/**"
+        },
+        {
+          "path": "$HOME/**/.*"
+        },
+        {
+          "path": "$HOME/**/.*/**"
+        }
+      ]
+    },
     {
       "identifier": "shell:allow-spawn",
       "allow": [
