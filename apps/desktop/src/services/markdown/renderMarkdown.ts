@@ -256,10 +256,11 @@ export function renderMarkdownToHtml(md: string, opts: MathRenderOptions = {}): 
 
 /**
  * CSS rule pinning `mjx-container` to a stable font + size so MathJax SVG
- * `width="Xex"` resolves consistently in standalone export HTML.
+ * `width="Xex"` resolves consistently in standalone export HTML, and
+ * hinting the SVG rasterizer toward geometric precision on 1x DPI screens.
  *
- * Why: MathJax v3 SVG output uses CSS `ex` units for `width`/`height` (see
- * `OutputJax.SVG.prototype.ex` — divides internal coords by `x_height`
+ * Why font pin: MathJax v3 SVG output uses CSS `ex` units for `width`/`height`
+ * (see `OutputJax.SVG.prototype.ex` — divides internal coords by `x_height`
  * and appends `'ex'`). `1ex` is the x-height of the surrounding font. In
  * the in-app preview 'Sora' is loaded from Google Fonts via `@import`, so
  * `1ex` resolves to Sora's x-height. In exported HTML the `@import` rule
@@ -274,14 +275,33 @@ export function renderMarkdownToHtml(md: string, opts: MathRenderOptions = {}): 
  * shapes. Pinning to a system-font stack guarantees the ex-height is
  * stable regardless of whether 'Sora' loads from CDN.
  *
+ * Why shape-rendering: with the font pinned, the SVG's display size is
+ * stable, but on a 1x DPI (non-Retina) screen the SVG's viewBox
+ * (~814×1058 internal units) is rasterized to ~13×17 device pixels —
+ * a 60x downsample that picks up heavy subpixel anti-aliasing and reads
+ * as blurry. `shape-rendering: geometricPrecision` (plus
+ * `text-rendering: geometricPrecision` on the container) asks the
+ * rasterizer to favor geometric accuracy over speed. This is a hint,
+ * not a guarantee — but it's one CSS rule with no layout/align side
+ * effects, so it's the ponytail rung before the 2x-render-and-scale
+ * upgrade (option B in the task brief).
+ *
  * ponytail: one CSS rule. Bundling 'Sora' as `@font-face` base64 would
  * also work but bloats every export by ~50KB+ for a font that only
  * affects MathJax's reference `ex` — the math glyphs themselves are
- * vector paths from MathJax's TeX font, embedded inline.
+ * vector paths from MathJax's TeX font, embedded inline. If
+ * `geometricPrecision` proves insufficient on 1x DPI screens, upgrade
+ * to 2x font-size + `transform: scale(0.5)` (option B) — but that
+ * reopens vertical-align and layout-box compensation, so try the hint
+ * first.
  */
 export const MATHJAX_CONTAINER_CSS = `
 mjx-container {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
+  text-rendering: geometricPrecision;
+}
+mjx-container svg {
+  shape-rendering: geometricPrecision;
 }
 `;

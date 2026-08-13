@@ -274,4 +274,17 @@ describe('MathJax SVG ex-unit sensitivity (export blur root cause)', () => {
     expect(MATHJAX_CONTAINER_CSS).toMatch(/font-family:\s*-apple-system/);
     expect(MATHJAX_CONTAINER_CSS).toMatch(/font-size:\s*\d+px/);
   });
+
+  it('MATHJAX_CONTAINER_CSS hints geometric-precision rasterization on 1x DPI', () => {
+    // Regression guard for the 1x-DPI blur bug: even with the font pin,
+    // a 1x (non-Retina) screen rasterizes the SVG viewBox (~814×1058)
+    // to ~13×17 device pixels — a 60x downsample that reads as blurry
+    // subpixel anti-aliasing. `shape-rendering: geometricPrecision` on
+    // the SVG (and `text-rendering: geometricPrecision` on the container)
+    // asks the rasterizer to favor accuracy over speed. A hint, not a
+    // guarantee — but the smallest viable fix before the 2x-render-and-
+    // scale upgrade (option B in the task brief).
+    expect(MATHJAX_CONTAINER_CSS).toMatch(/shape-rendering:\s*geometricPrecision/);
+    expect(MATHJAX_CONTAINER_CSS).toMatch(/text-rendering:\s*geometricPrecision/);
+  });
 });
