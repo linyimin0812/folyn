@@ -281,10 +281,24 @@ describe('MathJax SVG ex-unit sensitivity (export blur root cause)', () => {
     // to ~13×17 device pixels — a 60x downsample that reads as blurry
     // subpixel anti-aliasing. `shape-rendering: geometricPrecision` on
     // the SVG (and `text-rendering: geometricPrecision` on the container)
-    // asks the rasterizer to favor accuracy over speed. A hint, not a
-    // guarantee — but the smallest viable fix before the 2x-render-and-
-    // scale upgrade (option B in the task brief).
+    // asks the rasterizer to favor accuracy over speed. Kept as a cheap
+    // hint alongside the option-B zoom fix below.
     expect(MATHJAX_CONTAINER_CSS).toMatch(/shape-rendering:\s*geometricPrecision/);
     expect(MATHJAX_CONTAINER_CSS).toMatch(/text-rendering:\s*geometricPrecision/);
+  });
+
+  it('MATHJAX_CONTAINER_CSS applies option B: 2x font-size + zoom 0.5 for 1x DPI crispness', () => {
+    // Regression guard for the 1x-DPI blur bug (option B, landed
+    // 2026-08-13). At `font-size: 14px` the SVG rasterizes to ~13×17
+    // device px on a 1x screen — a 60x downsample of the viewBox
+    // (~814×1058 internal units) that reads as blurry subpixel AA.
+    // Fix: render at 2x font-size (28px → SVG ~26×34 CSS px → 26×34
+    // device px on a 1x screen, 4x the pixel count) then collapse
+    // back to the original visual size with Chromium `zoom: 0.5`,
+    // which rescales layout and paint in one pass so the SVG stays
+    // crisp while occupying the original 14px layout footprint.
+    // Removing either rule re-introduces the blur.
+    expect(MATHJAX_CONTAINER_CSS).toMatch(/font-size:\s*28px/);
+    expect(MATHJAX_CONTAINER_CSS).toMatch(/zoom:\s*0\.5/);
   });
 });
