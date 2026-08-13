@@ -288,6 +288,28 @@ export function renderMarkdownToHtml(md: string, opts: MathRenderOptions = {}): 
  *    geometricPrecision` remain as rasterizer hints (cheap, no side
  *    effects).
  *
+ * 3. Inline-flow fix (landed 2026-08-13). Two independent layout
+ *    hazards kept inline math ($..$) on its own line:
+ *
+ *    a. Tailwind preflight forces `svg { display: block }` on every
+ *       SVG, turning the MathJax <svg> inside the inline mjx-container
+ *       into a block box that breaks the paragraph line. `mjx-container
+ *       svg { display: inline }` restores MathJax's intended inline SVG.
+ *       The same rule ships in index.css for the in-app preview/chat;
+ *       MATHJAX_CONTAINER_CSS carries it for the standalone export
+ *       (which bakes in Tailwind's preflight via collectAppCss).
+ *    b. The 28px font-size (option B above) inflates the inline
+ *       container's line box (28px × inherited line-height 1.8 ≈ 50px)
+ *       and bounding box (~33px), displacing the formula off the text
+ *       baseline. `display: inline-block; line-height: 0` collapses the
+ *       container to the zoomed SVG's 14px footprint while `zoom: 0.5`
+ *       still rescales layout + paint, keeping the 2x rasterization.
+ *
+ *    The upgrade path note below (transform scale + negative margins)
+ *    was evaluated and rejected: `zoom` already halves the layout box
+ *    in Chromium, so inline-block + line-height 0 is the minimal
+ *    correction.
+ *
  * ponytail: `zoom` is Chromium-only. Tauri's webview and Chrome
  * (the two targets for export HTML) are both Chromium, so this
  * covers the real surfaces. Firefox/Safari ignore `zoom` and fall
@@ -306,8 +328,20 @@ mjx-container {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 28px;
   text-rendering: geometricPrecision;
+  /* Keep inline math inline. Without this, the 28px font-size (2x
+     rasterization for 1x-DPI crispness) multiplies the inherited
+     line-height (1.8 in the export body) into a ~50px line box, so the
+     formula's box balloons to ~33px and gets shoved onto its own visual
+     line (or displaced above the text baseline). inline-block + line-height 0
+     collapses the container box to the zoomed SVG so $..$ flows inline
+     with the text. Display math is unaffected: MathJax's own
+     mjx-container[display="true"] rule (display:block; margin:1em 0)
+     wins by specificity. */
+  display: inline-block;
+  line-height: 0;
 }
 mjx-container svg {
+  display: inline;
   shape-rendering: geometricPrecision;
   zoom: 0.5;
 }

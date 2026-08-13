@@ -446,6 +446,14 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .skill-meta-key { flex-shrink: 0; color: var(--t3); font-weight: 600; font-family: var(--font-mono); padding: 1px 5px; background: var(--surf2); border-radius: 3px; }
 .skill-meta-value { color: var(--t2); word-break: break-word; }
 
+/* MathJax inline math must stay inline. Tailwind's preflight forces
+   `svg { display: block }` on every SVG, which turns the MathJax <svg> inside
+   the inline mjx-container into a block box and shoves each inline formula
+   ($..$) onto its own line. Restore MathJax's intended inline SVG. */
+mjx-container svg {
+  display: inline;
+}
+
 /* ── Markdown Preview (targets rendered HTML) ── */
 .md-preview { font-family: var(--font-ui); font-size: 14px; line-height: 1.8; color: var(--t1); word-break: break-word; text-align: left; }
 .md-preview h1 { font-size: 28px; font-weight: 700; margin: 8px 0 12px; border-bottom: 1px solid var(--brd); padding-bottom: 8px; }

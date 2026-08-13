@@ -301,4 +301,22 @@ describe('MathJax SVG ex-unit sensitivity (export blur root cause)', () => {
     expect(MATHJAX_CONTAINER_CSS).toMatch(/font-size:\s*28px/);
     expect(MATHJAX_CONTAINER_CSS).toMatch(/zoom:\s*0\.5/);
   });
+
+  it('MATHJAX_CONTAINER_CSS keeps inline math in the text flow (svg inline + container inline-block)', () => {
+    // Regression guard for "inline formula preview takes its own line"
+    // (2026-08-13). Two hazards:
+    // 1. Tailwind preflight's `svg { display: block }` turns the MathJax
+    //    <svg> inside the inline mjx-container into a block box, breaking
+    //    the paragraph line — `mjx-container svg { display: inline }`
+    //    restores the intended inline SVG.
+    // 2. The 28px font-size (option B above) multiplies the inherited
+    //    line-height (1.8) into a ~50px line box, ballooning the inline
+    //    container to ~33px — `display: inline-block; line-height: 0`
+    //    collapses it to the zoomed SVG's 14px footprint. Display math is
+    //    unaffected: MathJax's own `[display="true"]` rule (higher
+    //    specificity) keeps it display:block / centered.
+    expect(MATHJAX_CONTAINER_CSS).toMatch(/mjx-container\s*\{[^}]*display:\s*inline-block/s);
+    expect(MATHJAX_CONTAINER_CSS).toMatch(/mjx-container\s*\{[^}]*line-height:\s*0/s);
+    expect(MATHJAX_CONTAINER_CSS).toMatch(/mjx-container\s+svg\s*\{[^}]*display:\s*inline/s);
+  });
 });
