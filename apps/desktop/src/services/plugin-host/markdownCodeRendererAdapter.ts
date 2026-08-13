@@ -17,6 +17,7 @@ import type { ComponentType } from 'react';
 import type { Disposable, PluginManifest } from '@quill/plugin-host';
 import type { MarkdownCodeRendererContribution, MarkdownCodeRendererProps } from '@quill/plugin-host';
 import type { PluginModule } from './contributionAdapters';
+import { withPluginBoundary } from './pluginBoundary';
 
 interface RegisteredRenderer {
   pluginId: string;
@@ -85,10 +86,15 @@ export function registerPluginMarkdownCodeRenderers(
       );
       continue;
     }
+    // Wrap at the registration chokepoint so a renderer throw is isolated to
+    // this fenced-block surface and never white-screens the markdown preview.
+    // Per-`<pre>` instance isolation: each createElement(wrapped) call gets
+    // its own boundary, so one broken block doesn't kill its siblings.
+    const wrapped = withPluginBoundary(component, manifest.id, `code-renderer:${c.language}`);
     const keys = [c.language, ...(c.aliases ?? [])];
     for (const key of keys) {
       if (renderers.has(key)) continue; // first-registered wins
-      disposables.push(registerMarkdownCodeRenderer(manifest.id, key, c.language, component));
+      disposables.push(registerMarkdownCodeRenderer(manifest.id, key, c.language, wrapped));
     }
   }
 

@@ -73,6 +73,13 @@ export class PluginHost {
       record.state = 'active';
       record.error = undefined;
     } catch (err) {
+      // Rollback any disposables pushed during this activation. The trusted
+      // loader registers contribution adapters BEFORE calling module.activate();
+      // without this reap, a failed activate leaves a half-wired plugin — its
+      // commands/file-types/containers still registered, its components still
+      // rendering and still crashing. Reap so a failed plugin is fully inert.
+      await this.reapDisposables(record);
+      record.plugin = undefined;
       record.state = 'failed';
       record.error = err;
       throw err;

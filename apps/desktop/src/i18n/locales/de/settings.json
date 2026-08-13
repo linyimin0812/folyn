@@ -409,6 +409,8 @@
       "sandbox": "Sandbox-Tier"
     },
     "approved": "Genehmigt",
+    "renderError": "Renderfehler: {{label}}",
+    "clearRenderError": "Leeren",
     "approve": "Genehmigen und autorisieren",
     "approving": "Genehmige…",
     "activate": "Aktivieren",

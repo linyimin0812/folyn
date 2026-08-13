@@ -212,6 +212,36 @@ contribution points are available.
   (file-type handler, `:::container` directive, feature panel) or needs deep
   host integration. Requires the user to explicitly approve (TOFU).
 
+### Render isolation (trusted tier — host guarantee)
+
+Because the `plugin-sdk` is public and third-party authors ship plugins, the
+host treats **render isolation as a hard contract**: no plugin render throw,
+lazy-factory throw, or `activate()` failure may crash the host app. You do
+not need to do anything to get this — it is applied host-side, at the
+adapter that registers your component, regardless of how your component is
+written. Specifically:
+
+- A component you contribute (`fileTypes[].Editor`/`Preview`,
+  `markdownCodeRenderers[].component`, `containers[].component`,
+  `features[].component`) that **throws during render** is caught by a
+  `PanelErrorBoundary`. The broken surface shows an inline "面板加载失败"
+  fallback; the rest of the app (other tabs, the sidebar, the editor) keeps
+  working. **Your throw never white-screens the host.**
+- Isolation is per-instance: one broken `:::box` or ` ```lang ` block does
+  not disable its siblings.
+- The throw is recorded to the plugin's row in Settings → Plugins (an ⚠
+  "render error" line with the surface label + a Clear button), so the user
+  can see which plugin errored.
+- If your `activate()` throws **after** registering contributions, the host
+  rolls back everything registered during that activation (commands, file
+  types, containers, …) so no half-wired plugin lingers. The plugin enters
+  the `failed` state; the user can fix and re-activate.
+
+Practical guidance: you may still `throw` from render for genuine
+invariant violations (the host will contain it), but prefer rendering an
+inline error state for expected failure modes (missing data, bad input) so
+the user sees your message rather than the generic boundary fallback.
+
 ---
 
 ## manifest.json schema

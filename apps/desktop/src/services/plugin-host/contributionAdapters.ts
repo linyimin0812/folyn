@@ -39,6 +39,7 @@ import type {
 } from '@quill/plugin-host';
 import type { FileTypeHandler } from '@/components/file-types/types';
 import type { ContainerCategory } from '@quill/container-plugins';
+import { withPluginBoundary } from './pluginBoundary';
 
 /**
  * The resolved exports of a trusted plugin's ESM bundle. All maps are
@@ -135,6 +136,16 @@ export function registerPluginFileTypes(
     // Ensure the handler's id matches the contribution id (defensive: the
     // plugin author may have set a different id in the handler object).
     const merged: FileTypeHandler = { ...handler, id: ft.id, extensions: ft.extensions };
+    // Wrap the plugin's Editor/Preview in an error boundary at the registration
+    // chokepoint so a render throw is isolated to this file-type surface and
+    // never white-screens the host. Render sites (WorkArea/PreviewPane) render
+    // the already-wrapped component unchanged.
+    if (merged.Editor) {
+      merged.Editor = withPluginBoundary(merged.Editor, manifest.id, `file-type:${ft.id}:editor`);
+    }
+    if (merged.Preview) {
+      merged.Preview = withPluginBoundary(merged.Preview, manifest.id, `file-type:${ft.id}:preview`);
+    }
     if (ft.defaultViewMode && !merged.defaultViewMode) {
       merged.defaultViewMode = ft.defaultViewMode as FileTypeHandler['defaultViewMode'];
     }

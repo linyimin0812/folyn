@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/08-14-plugin-system/prd.md", "reason": "Acceptance criteria + Definition of Done to verify against"}
+{"file": ".trellis/tasks/08-14-plugin-system/research/technical-solution.md", "reason": "Code-level solution + file list — verify each touched file matches the design"}
+{"file": ".trellis/spec/desktop/frontend/trusted-plugin-rendering.md", "reason": "Spec compliance — render isolation rules the change must satisfy"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Verify file-type handler registration conventions are respected"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Verify React/ErrorBoundary patterns and component conventions"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify pluginStore additions follow Zustand conventions"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Verify reuse of PanelErrorBoundary over a new boundary is justified"}

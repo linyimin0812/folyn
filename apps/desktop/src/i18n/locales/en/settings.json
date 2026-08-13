@@ -409,6 +409,8 @@
       "sandbox": "Sandbox tier"
     },
     "approved": "Approved",
+    "renderError": "Render error: {{label}}",
+    "clearRenderError": "Clear",
     "approve": "Approve & authorize",
     "approving": "Approving…",
     "activate": "Enable",

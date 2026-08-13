@@ -409,6 +409,8 @@
       "sandbox": "沙箱层"
     },
     "approved": "已批准",
+    "renderError": "渲染错误：{{label}}",
+    "clearRenderError": "清除",
     "approve": "批准并授权",
     "approving": "批准中…",
     "activate": "启用",

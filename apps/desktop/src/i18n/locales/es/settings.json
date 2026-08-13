@@ -409,6 +409,8 @@
       "sandbox": "Nivel Sandbox"
     },
     "approved": "Aprobado",
+    "renderError": "Error de renderizado: {{label}}",
+    "clearRenderError": "Limpiar",
     "approve": "Aprobar y autorizar",
     "approving": "Aprobando…",
     "activate": "Habilitar",

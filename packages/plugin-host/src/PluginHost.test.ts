@@ -129,6 +129,30 @@ describe('PluginHost / lifecycle', () => {
     expect(disposed).toEqual(['x']);
     expect(host.get('demo-plugin')?.state).toBe('failed');
   });
+
+  it('failed activate reaps disposables registered before the throw', async () => {
+    // Regression: the trusted loader registers adapters (pushing disposables
+    // to ctx) BEFORE calling module.activate(). If activate then throws, the
+    // half-wired plugin must be rolled back — disposables reaped, plugin
+    // cleared, state=failed — so its components stop rendering.
+    const host = new PluginHost();
+    const disposed: string[] = [];
+    const plugin: Plugin = {
+      manifest: manifest(),
+      activate: (ctx) => {
+        ctx.addDisposable({ dispose: () => { disposed.push('a'); } });
+        ctx.addDisposable({ dispose: () => { disposed.push('b'); } });
+        throw new Error('boom');
+      },
+    };
+    host.registerLoader(fakeLoader(plugin));
+    await host.install(manifest());
+    await expect(host.activate('demo-plugin')).rejects.toThrow('boom');
+    expect(host.get('demo-plugin')?.state).toBe('failed');
+    expect(host.get('demo-plugin')?.plugin).toBeUndefined();
+    expect(disposed).toEqual(['a', 'b']);
+    expect(host.get('demo-plugin')?.disposables).toHaveLength(0);
+  });
 });
 
 describe('PluginHost / loaders', () => {

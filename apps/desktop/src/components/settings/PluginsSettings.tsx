@@ -157,6 +157,11 @@ function PluginRowCard({ row }: { row: PluginRow }) {
   const deactivate = usePluginStore((s) => s.deactivate);
   const uninstall = usePluginStore((s) => s.uninstall);
   const openConsent = usePluginStore((s) => s.openConsent);
+  // Render errors captured by PanelErrorBoundary for this plugin's surfaces.
+  // A plugin that threw during render is isolated (never crashes the host),
+  // but surfaced here so the user can see something went wrong + clear it.
+  const renderErrors = usePluginStore((s) => s.renderErrors[entry.id]);
+  const clearRenderErrors = usePluginStore((s) => s.clearRenderErrors);
 
   const isApproveBusy = !!busy[`${entry.id}:approve`];
   const isActivateBusy = !!busy[`${entry.id}:activate`];
@@ -260,6 +265,20 @@ function PluginRowCard({ row }: { row: PluginRow }) {
           {error}
         </div>
       )}
+      {renderErrors?.length ? (
+        <div className="text-[11px] text-amber-700 dark:text-amber-400 mt-1 flex items-center gap-1.5">
+          <TriangleAlert size={12} className="shrink-0" />
+          <span className="truncate" title={renderErrors[renderErrors.length - 1].message}>
+            {t('settings:plugins.renderError', { label: renderErrors[renderErrors.length - 1].label })}
+          </span>
+          <button
+            className="ml-auto shrink-0 underline hover:text-t1"
+            onClick={() => clearRenderErrors(entry.id)}
+          >
+            {t('settings:plugins.clearRenderError')}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

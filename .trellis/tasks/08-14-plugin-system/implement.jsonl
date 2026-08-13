@@ -1,0 +1,8 @@
+{"file": ".trellis/tasks/08-14-plugin-system/prd.md", "reason": "Task PRD — gaps, requirements, acceptance criteria, failure policy, implementation plan"}
+{"file": ".trellis/tasks/08-14-plugin-system/research/technical-solution.md", "reason": "Concrete code-level solution: withPluginBoundary helper, adapter wrap sites, PluginHost.activate rollback, pluginStore render-error log, file list"}
+{"file": ".trellis/spec/desktop/frontend/trusted-plugin-rendering.md", "reason": "Existing spec governing trusted plugin render surfaces — the boundary/isolation conventions this task extends"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "FileTypeHandler registration + Editor/Preview conventions — wrap site for registerPluginFileTypes"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "React component + ErrorBoundary patterns the new helper and PanelErrorBoundary extension must follow"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store conventions for the pluginStore render-error additions"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse-first guidance — we reuse PanelErrorBoundary instead of a new boundary; this guides the decision"}
+{"file": "docs/plugin-development.md", "reason": "Plugin author doc that gains the 'Render isolation' section; also defines the public contract for third-party authors"}

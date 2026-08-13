@@ -409,6 +409,8 @@
       "sandbox": "Sandbox階層"
     },
     "approved": "承認済み",
+    "renderError": "レンダリングエラー：{{label}}",
+    "clearRenderError": "クリア",
     "approve": "承認して認可",
     "approving": "承認中…",
     "activate": "有効化",

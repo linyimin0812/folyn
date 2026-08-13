@@ -78,6 +78,22 @@ export interface ConsentPrompt {
   permissions: string[];
 }
 
+/**
+ * A render error captured by `PanelErrorBoundary` wrapping a plugin surface.
+ * Surfaced in Settings → Plugins so a third-party plugin that throws during
+ * render shows a ⚠ badge + last message instead of silently white-screening.
+ */
+export interface RenderError {
+  message: string;
+  /** Diagnostics label naming the broken surface, e.g. "file-type:dbml:editor". */
+  label: string;
+  /** Capture time (ms epoch). */
+  ts: number;
+}
+
+/** Per-plugin cap so a render-error spam loop can't grow memory unbounded. */
+const MAX_RENDER_ERRORS = 20;
+
 interface PluginState {
   rows: PluginRow[];
   /** True while `refresh()` is in flight. */
@@ -90,6 +106,13 @@ interface PluginState {
   error: string;
   /** Consent-prompt modal. `null` when closed. */
   consent: ConsentPrompt | null;
+  /**
+   * Per-plugin render errors captured by `PanelErrorBoundary`, keyed by
+   * pluginId. Capped at {@link MAX_RENDER_ERRORS} per plugin. Presence of an
+   * entry means a plugin surface threw during render — the host isolated it,
+   * but the user should see *something* errored in Settings.
+   */
+  renderErrors: Record<string, RenderError[]>;
 
   // ── Actions ──
   refresh: () => Promise<void>;
@@ -102,6 +125,10 @@ interface PluginState {
   openConsent: (id: string) => Promise<void>;
   closeConsent: () => void;
   clearError: () => void;
+  /** Record a render error thrown by a plugin surface (called by the boundary). */
+  recordRenderError: (pluginId: string, e: { message: string; label: string }) => void;
+  /** Clear the render-error log for a plugin (Settings "clear" button). */
+  clearRenderErrors: (pluginId: string) => void;
 }
 
 /**
@@ -235,6 +262,7 @@ export const usePluginStore = create<PluginState>((set, get) => ({
   busy: {},
   error: '',
   consent: null,
+  renderErrors: {},
 
   refresh: async () => {
     if (!isTauri()) return;
@@ -371,4 +399,19 @@ export const usePluginStore = create<PluginState>((set, get) => ({
 
   closeConsent: () => set({ consent: null }),
   clearError: () => set({ error: '' }),
+
+  recordRenderError: (pluginId, e) =>
+    set((s) => {
+      const prev = s.renderErrors[pluginId] ?? [];
+      const next = [...prev, { ...e, ts: Date.now() }].slice(-MAX_RENDER_ERRORS);
+      return { renderErrors: { ...s.renderErrors, [pluginId]: next } };
+    }),
+
+  clearRenderErrors: (pluginId) =>
+    set((s) => {
+      if (!(pluginId in s.renderErrors)) return {};
+      const next = { ...s.renderErrors };
+      delete next[pluginId];
+      return { renderErrors: next };
+    }),
 }));
