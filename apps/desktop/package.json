@@ -8,7 +8,7 @@
     "dev:voice": "node scripts/dev-voice.mjs",
     "build:mac": "bash scripts/build-mac.sh",
     "build:win": "tauri build",
-    "build": "tsc -b && NODE_OPTIONS=--max-old-space-size=8192 vite build",
+    "build": "tsc -b && node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build",
     "preview": "vite preview",
     "tauri": "tauri",
     "clean": "rm -rf dist"
