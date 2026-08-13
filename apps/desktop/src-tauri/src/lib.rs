@@ -784,6 +784,7 @@ pub fn run() {
             }
             #[cfg(not(target_os = "macos"))]
             {
+                let _ = &app;
                 // ponytail: RunEvent::Opened / Reopen are macOS-only variants in
                 // Tauri 2 (they surface AppKit applicationDidFinishLaunching URL
                 // open + applicationShouldHandleReopen). Windows has no equivalent

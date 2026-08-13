@@ -19,7 +19,9 @@
 
 use serde::Serialize;
 use std::sync::Mutex;
-use tauri::{Emitter, Manager, PhysicalPosition};
+use tauri::Manager;
+#[cfg(target_os = "macos")]
+use tauri::{Emitter, PhysicalPosition};
 
 use crate::errors::AppError;
 

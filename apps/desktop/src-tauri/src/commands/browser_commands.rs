@@ -198,7 +198,7 @@ fn dpapi_decrypt(blob: &[u8]) -> Result<Vec<u8>, String> {
         CryptUnprotectData, CRYPT_INTEGER_BLOB,
     };
     use windows_sys::Win32::Foundation::LocalFree;
-    let mut in_blob = CRYPT_INTEGER_BLOB {
+    let in_blob = CRYPT_INTEGER_BLOB {
         cbData: blob.len() as u32,
         pbData: blob.as_ptr() as *mut u8,
     };
@@ -275,15 +275,17 @@ fn decrypt_chrome_value(enc: &[u8], key: &[u8], hash_candidates: &[&str]) -> Opt
     // would shadow it and `Aes256Gcm::new` would not resolve. Import the
     // trait from `aes_gcm` directly so the right version wins.
     use aes_gcm::aead::{Aead, KeyInit};
-    use aes_gcm::{Aes256Gcm, Key, Nonce};
+    use aes_gcm::{Aes256Gcm, Nonce};
     let payload = enc.strip_prefix(b"v10")?;
     if payload.len() < 12 + 16 {
         return None;
     }
     let nonce_bytes = &payload[..12];
     let ct_tag = &payload[12..];
-    let key: &Key<Aes256Gcm> = Key::from_slice(key);
-    let cipher = Aes256Gcm::new(key);
+    let cipher = match Aes256Gcm::new_from_slice(key) {
+        Ok(c) => c,
+        Err(_) => return None,
+    };
     let nonce = Nonce::from_slice(nonce_bytes);
     let mut plain = cipher.decrypt(nonce, ct_tag).ok()?;
     if plain.len() >= 32 {
