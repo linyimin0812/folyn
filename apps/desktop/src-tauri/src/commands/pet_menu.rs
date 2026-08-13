@@ -389,23 +389,39 @@ pub async fn tray_set_enabled(
 /// user switches locale. `set_menu` must run on the main thread, so we marshal
 /// via `run_on_main_thread`; the closure reports failure through a channel so
 /// the command surfaces a real error instead of swallowing it.
+///
+/// No-op on non-macOS: the macOS app-menu pattern (`services`/`hide_others`/
+/// `show_all`/`quit`) does not apply on Windows, and `build_app_menu`'s
+/// `SubmenuBuilder::services()` etc. fail to build there. The bootstrap call
+/// in `lib.rs::setup` is cfg-gated to macOS; this command must mirror that or
+/// the frontend's locale-hydrate invoke surfaces a spurious error on Windows.
 #[tauri::command]
 pub async fn pet_rebuild_app_menu(
     app: tauri::AppHandle,
     locale: String,
 ) -> Result<(), AppError> {
-    use std::sync::mpsc::channel;
-    let (tx, rx) = channel::<Result<(), String>>();
-    let app2 = app.clone();
-    app.run_on_main_thread(move || {
-        let res = build_app_menu(&app2, &locale).map_err(|e| e.to_string());
-        let _ = tx.send(res);
-    })
-    .map_err(|e| e.to_string())?;
-    rx.recv()
-        .map_err(|e| e.to_string())?
+    #[cfg(not(target_os = "macos"))]
+    {
+        // Avoid unused-arg warnings; the command still must match the macOS
+        // signature so the invoke_handler! registration is uniform.
+        let _ = (app, locale);
+        return Ok(());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        use std::sync::mpsc::channel;
+        let (tx, rx) = channel::<Result<(), String>>();
+        let app2 = app.clone();
+        app.run_on_main_thread(move || {
+            let res = build_app_menu(&app2, &locale).map_err(|e| e.to_string());
+            let _ = tx.send(res);
+        })
         .map_err(|e| e.to_string())?;
-    Ok(())
+        rx.recv()
+            .map_err(|e| e.to_string())?
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
 }
 
 // ────────────────────────────────────────────────────────────────────────────

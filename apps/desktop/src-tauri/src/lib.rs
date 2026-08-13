@@ -615,12 +615,15 @@ pub fn run() {
             app.manage(pet_api::PetApiState(std::sync::Mutex::new(None)));
             pet_api::spawn(app.handle().clone());
 
-            // ponytail: app menu bar built via `commands::build_app_menu` so
-            // the same path serves the bootstrap build (here, locale="en") and
-            // the locale-switch rebuild (`pet_rebuild_app_menu`). The frontend
-            // hydrates `localeStore` after the JS realm starts and calls
-            // `pet_rebuild_app_menu` with the user's actual locale; until then
-            // the menu bar shows the English defaults.
+            // ponytail: app menu bar is a macOS-only concept (Quill / Edit /
+            // Window submenus with `services`/`hide_others`/`show_all`
+            // predefined items). On Windows, `SubmenuBuilder::services()` etc.
+            // fail at `build()` time and `app.set_menu(...)` rejects the
+            // macOS app-menu pattern; the `?` propagates → setup returns Err
+            // → Tauri aborts startup → app flash-quits. So cfg-gate the
+            // bootstrap call to macOS. `pet_rebuild_app_menu` (the locale-
+            // switch path) is itself a no-op on non-macOS.
+            #[cfg(target_os = "macos")]
             commands::build_app_menu(app.handle(), "en")?;
 
             #[cfg(debug_assertions)]
