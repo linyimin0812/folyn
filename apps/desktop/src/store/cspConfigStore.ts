@@ -22,11 +22,11 @@ export const DEFAULT_ALLOWED_URLS: string[] = [
   'https://fonts.gstatic.com',
   'https://www.plantuml.com',
   'https://quickchart.io',
-  // ponytail: local pet-notify API (default port 17382). Settings → 桌宠
-  // notification test fetches this endpoint no-cors; CSP still applies, so
-  // ship it whitelisted. If 17382 is taken the API falls back to 17400 —
-  // add that manually in CSP settings if your install lands on it.
-  'http://127.0.0.1:17382',
+  // ponytail: local pet-notify API (default port 17382, falls back to 17400).
+  // Settings → 桌宠 notification test fetches this endpoint no-cors; CSP still
+  // applies. `*` port covers the whole fallback range — `17382..=17400` is
+  // too narrow to enumerate and CSP has no range syntax.
+  'http://127.0.0.1:*',
 ];
 
 export const PERSIST_KEYS_CSP = ['mode', 'allowedUrls'] as const;
