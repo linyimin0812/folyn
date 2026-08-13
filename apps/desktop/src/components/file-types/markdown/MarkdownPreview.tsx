@@ -2,6 +2,7 @@ import { useMemo, useRef, useEffect, useCallback, useState, createElement, Fragm
 import { Code2, Eye } from 'lucide-react';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
+import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkDirective from 'remark-directive';
@@ -9,8 +10,10 @@ import remarkDirectiveRehype from 'remark-directive-rehype';
 import remarkRehype from 'remark-rehype';
 import rehypeRaw from 'rehype-raw';
 import rehypeHighlight from 'rehype-highlight';
+import rehypeMathjax from 'rehype-mathjax';
 import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
+import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/renderMarkdown';
 import { rehypeSourceLine } from './rehypeSourceLine';
 import { ContainerRegistry, registerBuiltinPlugins, VaultContext } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
@@ -585,7 +588,13 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
     // leaks out of .md-preview and obscures the sidebar. Inline HTML
     // (<u>, <details>, …) still renders. Use a ```html code block for live
     // styled preview (CodeBlockWrapper sandboxes it in an iframe).
-    map['style'] = () => null;
+    // rehype-mathjax emits a scoped <style> for mjx-container layout — that
+    // one is safe (scoped to MathJax selectors), so let it through.
+    map['style'] = function FilteredStyle(props: any) {
+      const text = extractTextContent(props.children);
+      if (text.includes('mjx-')) return createElement('style', null, text);
+      return null;
+    };
     map['script'] = () => null;
 
     return map;
@@ -597,6 +606,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
     try {
       const result = unified()
         .use(remarkParse)
+        .use(remarkMath)
         .use(remarkGfm)
         .use(remarkBreaks)
         .use(remarkDirective)
@@ -605,6 +615,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
         .use(rehypeRaw)
         .use(rehypeHighlight, { ignoreMissing: true } as any)
         .use(rehypeRemoveCodeBreaks)
+        .use(rehypeMathjax)
         .use(rehypeSourceLine, { offset: frontmatterLineCount })
         .use(rehypeReact, {
           jsx,
@@ -613,7 +624,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
           passNode: true,
           components: componentMap,
         } as any)
-        .processSync(body);
+        .processSync(unwrapInlineMath(transformMathBrackets(body)));
 
       return result.result as React.ReactElement;
     } catch (error) {

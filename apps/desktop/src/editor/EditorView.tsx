@@ -74,6 +74,7 @@ import {
 import { createFilePreviewSrcCompletion, filePreviewSrcSearchBox } from './extensions/FilePreviewSrcExtension';
 import { orderedListExtension } from './extensions/OrderedListExtension';
 import { inlineDiffExtension } from './extensions/InlineDiffExtension';
+import { mathExtension } from './extensions/MarkdownMathExtension';
 import { json as jsonLanguage } from '@codemirror/lang-json';
 
 /** JSON linter: validates JSON syntax and highlights only the error line */
@@ -289,6 +290,11 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
         indentOnInput(),
         quillHighlighting(),
         bracketMatching(),
+        // ponytail: closeBrackets() takes no args; the bracket list is
+        // configured via the `closeBrackets` language-data slot. Adding `$`
+        // makes typing `$` auto-pair to `$$` (cursor between), matching the
+        // math inline delimiter.
+        EditorState.languageData.of(() => [{ closeBrackets: { brackets: ['(', '[', '{', "'", '"', '$'] } }]),
         closeBrackets(),
         // closeOnBlur: false — the src dropdown hosts its own search input;
         // focusing it must not dismiss the dropdown. The search-box plugin
@@ -335,6 +341,7 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
         markdown({ base: markdownLanguage, codeLanguages }),
         ...codeBlockExtension,
         ...orderedListExtension,
+        ...mathExtension,
         EditorView.lineWrapping,
         EditorView.domEventHandlers({
           paste(event) {

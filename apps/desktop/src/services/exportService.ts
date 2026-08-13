@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
+import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkDirective from 'remark-directive';
@@ -10,10 +11,12 @@ import remarkDirectiveRehype from 'remark-directive-rehype';
 import remarkRehype from 'remark-rehype';
 import rehypeRaw from 'rehype-raw';
 import rehypeHighlight from 'rehype-highlight';
+import rehypeMathjax from 'rehype-mathjax';
 import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 import { ContainerRegistry, registerBuiltinPlugins } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
+import { transformMathBrackets, MATHJAX_CONTAINER_CSS } from '@/services/markdown/renderMarkdown';
 
 import * as dbmlExporter from './export/dbml';
 import * as excalidrawExporter from './export/excalidraw';
@@ -86,6 +89,7 @@ export function renderMarkdownToHtml(markdown: string, _vaultRoot?: string): str
 
   const result = unified()
     .use(remarkParse)
+    .use(remarkMath)
     .use(remarkGfm)
     .use(remarkBreaks)
     .use(remarkDirective)
@@ -93,13 +97,14 @@ export function renderMarkdownToHtml(markdown: string, _vaultRoot?: string): str
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
     .use(rehypeHighlight, { ignoreMissing: true } as any)
+    .use(rehypeMathjax)
     .use(rehypeReact, {
       jsx,
       jsxs,
       Fragment,
       components: componentMap,
     } as any)
-    .processSync(markdown);
+    .processSync(transformMathBrackets(markdown));
 
   // result.result is a React element tree; render it to static HTML
   const html = renderToStaticMarkup(result.result as React.ReactElement);
@@ -414,6 +419,12 @@ export const HTML_STYLES = `
       font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       font-size: 14px; line-height: 1.8; color: #1a2040; word-break: break-word;
     }
+
+    /* MathJax: pin mjx-container to a stable font + size so the SVG
+       width="Xex" resolves consistently regardless of whether 'Sora'
+       loaded from CDN. See renderMarkdown.ts MATHJAX_CONTAINER_CSS for
+       the full rationale. */
+    ${MATHJAX_CONTAINER_CSS}
 
     /* Headings */
     h1 { font-size: 28px; font-weight: 700; margin: 8px 0 12px; border-bottom: 1px solid #dde2f0; padding-bottom: 8px; }

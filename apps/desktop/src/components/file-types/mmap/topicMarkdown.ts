@@ -1,9 +1,14 @@
-// ponytail: hand-rolled regex over a real markdown lib — mind-elixir's README
-// shows this exact pattern for its `markdown:` callback; topic text is
-// single-line, so a remark→rehype pipeline is unjustified. If multi-line
-// topics or nested syntax ever land here, swap this for remark-stringify.
+// ponytail: hand-rolled regex over a real markdown lib for plain topic text
+// (bold/italic/inline-code/images). Math is rendered via the unified
+// pipeline below so `$x^2$` and `$$...$$` produce inline SVG. mind-elixir
+// hands us single-line topic text; the unified pipeline handles the rare
+// multi-line case as a bonus. If mind-elixir topic text grows long, swap
+// the regex calls for renderMarkdownToHtml everywhere (it already does
+// math + GFM); the per-node cost is the trade.
 
+import { createElement } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { renderMarkdownToHtml } from '@/services/markdown/renderMarkdown';
 
 function escapeHtml(s: string): string {
   return s
@@ -79,16 +84,45 @@ function renderNoteIcon(note: string): string {
 
 function renderTopic(text: string, opts: TopicMarkdownOpts): string {
   const { filePath, vaultRoot } = opts;
-  const escaped = escapeHtml(text);
-  return escaped
-    .replace(
-      /!\[([^\]]*)\]\(([^)]+)\)/g,
-      (_m, alt: string, src: string) =>
-        `<img src="${resolveImgSrc(src, filePath, vaultRoot)}" alt="${alt}" style="max-width:200px;max-height:120px;vertical-align:middle">`,
-    )
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>');
+  // ponytail: fast regex path for plain topics; route through the unified
+  // pipeline only when math markers ($) are present so $...$ and $$...$$
+  // render to inline SVG. The pipeline's img component resolves vault-
+  // relative image paths so legacy image handling carries over. <p> wrapper
+  // from the pipeline is stripped for inline display in mind-elixir topics.
+  if (!text.includes('$')) {
+    const escaped = escapeHtml(text);
+    return escaped
+      .replace(
+        /!\[([^\]]*)\]\(([^)]+)\)/g,
+        (_m, alt: string, src: string) =>
+          `<img src="${resolveImgSrc(src, filePath, vaultRoot)}" alt="${alt}" style="max-width:200px;max-height:120px;vertical-align:middle">`,
+      )
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>');
+  }
+  // ponytail: mind-elixir topic boxes are tight; scale MathJax SVG down
+  // (it sizes in `ex` units, so font-size on the wrapper scales the SVG).
+  // Display math still adds block margins — accept the tradeoff; rare in
+  // topic text. If it bites, downgrade `$$..$$` → `$..$` here or add a
+  // scoped style overriding mjx-container[display] margins.
+  const html = renderMarkdownToHtml(text, {
+    components: {
+      img: function TopicImg(props: any) {
+        const { src, alt, ...rest } = props;
+        if (!src || /^(https?:|data:|file:|blob:)/.test(src)) {
+          return createElement('img', { src, alt, ...rest });
+        }
+        return createElement('img', {
+          src: resolveImgSrc(src, filePath, vaultRoot),
+          alt,
+          style: { maxWidth: 200, maxHeight: 120, verticalAlign: 'middle' },
+          ...rest,
+        });
+      },
+    },
+  });
+  return `<span style="font-size:11px;line-height:1.1">${html.replace(/^<p>|<\/p>$/g, '')}</span>`;
 }
 
 /**

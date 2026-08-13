@@ -22,6 +22,7 @@ This directory contains guidelines for the `@quill/desktop` frontend — a Tauri
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns, review checklist | Filled |
 | [Type Safety](./type-safety.md) | Type patterns, naming, validation | Filled |
 | [File Type Editors](./file-type-editors.md) | Custom editors, iframe bridge, serialization hygiene | Filled |
+| [Markdown Rendering](./markdown-rendering.md) | Unified pipeline, MathJax SVG sync output, editor↔renderer code-segment contract, export self-containment | Filled |
 | [Trusted Plugin Rendering](./trusted-plugin-rendering.md) | Host exposes `window.React`; trusted blob-URL plugins use `createElement` (no JSX/runtime `import 'react'`) to share the host React instance | Filled |
 | [Tauri Window & ACL Patterns](./tauri-window-patterns.md) | Multi-window features, transparent/click-through windows, native popup menus, close-to-tray, ACL permission contract | Filled |
 | [i18n Guidelines](./i18n-guidelines.md) | i18next + react-i18next namespaces, localeStore, Rust AppError contract, tauriInvoke wrapper | Filled |
