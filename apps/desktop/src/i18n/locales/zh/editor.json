@@ -63,10 +63,25 @@
         "horizontalRule": "分隔线",
         "bulletList": "无序列表",
         "orderedList": "有序列表",
-        "taskList": "任务列表"
+        "taskList": "任务列表",
+        "inlineMath": "行内公式",
+        "blockMath": "块级公式"
       },
       "empty": "无匹配命令"
     }
+  },
+  "math": {
+    "insertButton": "插入公式",
+    "title": "插入数学公式",
+    "editTitle": "编辑数学公式",
+    "latexLabel": "LaTeX",
+    "preview": "预览",
+    "inline": "行内",
+    "block": "块级",
+    "insert": "插入",
+    "update": "更新",
+    "cancel": "取消",
+    "placeholder": "例如：\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}"
   },
   "imagePaste": {
     "title": "📷 粘贴图片",

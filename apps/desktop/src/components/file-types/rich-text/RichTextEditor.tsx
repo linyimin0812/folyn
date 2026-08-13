@@ -20,7 +20,7 @@ import {
   shouldApplyExternalContent,
 } from './richTextContent';
 import { RichTextToolbar } from './RichTextToolbar';
-import { getRichTextExtensions } from './richTextExtensions';
+import { getRichTextExtensions, type MathEditHandler, type MathEditKind } from './richTextExtensions';
 import {
   computeSlashState,
   INITIAL_SLASH_STATE,
@@ -28,8 +28,13 @@ import {
   type SlashCommandState,
 } from './RichTextSlashExtension';
 import { RichTextSlashMenu } from './RichTextSlashMenu';
+import { RichTextMathModal } from './RichTextMathModal';
 import { TableControlsOverlay, domCellToPos } from './TableControlsOverlay';
 import { TableMenu, type TableMenuItem } from './TableMenu';
+// KaTeX layout/font rules for rendered math nodes. Plain CSS import injects
+// into the app bundle (Vite); the standalone HTML export inlines the same
+// rules via services/export/richtext.ts.
+import 'katex/dist/katex.min.css';
 
 // ponytail: anti-write-back-loop guard — drawio loadedXml + loadedXmlRef
 // pattern, adapted for tiptap (no iframe). User edits update the ref ONLY
@@ -54,6 +59,20 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // null = closed; otherwise the modal's initial kind/pos/latex. pos is null
+  // for insert-at-cursor, the node position for editing an existing node.
+  const [mathModal, setMathModal] = useState<{
+    kind: MathEditKind;
+    pos: number | null;
+    latex: string;
+  } | null>(null);
+  // ponytail: math node click → open the LaTeX editor modal. Mathematics'
+  // onClick is captured at extension-creation time (first render), so it
+  // routes through this ref to always reach the latest handler (same
+  // "latest value" pattern as onChangeRef above).
+  const mathEditRef = useRef<MathEditHandler>(() => {});
+  mathEditRef.current = (node, pos, kind) =>
+    setMathModal({ kind, pos, latex: String(node.attrs.latex ?? '') });
   // Tracks the last content we handed to the editor (mount init or a
   // setContent call) OR the last JSON the user's edit emitted. Either way,
   // it's what the content prop should equal when the change originated from
@@ -61,7 +80,9 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
   const loadedContentRef = useRef(content);
 
   const editor = useEditor({
-    extensions: getRichTextExtensions(),
+    extensions: getRichTextExtensions({
+      onMathEdit: (node, pos, kind) => mathEditRef.current(node, pos, kind),
+    }),
     content: deserializeToContent(content) ?? emptyDoc(),
     onUpdate: ({ editor }) => {
       // User edit: update ref ONLY (not setState), so when our own onChange
@@ -335,7 +356,24 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden bg-panel">
-      {editor && <RichTextToolbar editor={editor} zoom={zoom} onZoomChange={setZoom} />}
+      {/* ponytail: math node chrome. KaTeX CSS handles the .katex layout;
+          these rules center block math and add a click-to-edit affordance
+          (the Mathematics NodeView's onClick opens the LaTeX modal). */}
+      <style>{`
+        .tiptap-mathematics-render[data-type="inline-math"] { white-space: nowrap; padding: 0 1px; }
+        .tiptap-mathematics-render[data-type="block-math"] { display: block; text-align: center; margin: 0.75rem 0; }
+        .tiptap-mathematics-render[data-type="block-math"] .block-math-inner { display: inline-block; }
+        .tiptap-mathematics-render--editable { cursor: pointer; border-radius: 2px; }
+        .tiptap-mathematics-render--editable:hover { outline: 1px dashed var(--acc, #3a6ef0); outline-offset: 2px; }
+      `}</style>
+      {editor && (
+        <RichTextToolbar
+          editor={editor}
+          zoom={zoom}
+          onZoomChange={setZoom}
+          onInsertMath={() => setMathModal({ kind: 'block', pos: null, latex: '' })}
+        />
+      )}
       <div className="flex-1 overflow-auto">
         <div
           ref={scrollRef}
@@ -423,6 +461,7 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
         <RichTextSlashMenu
           editor={editor}
           state={slashState}
+          onInsertMath={(kind) => setMathModal({ kind, pos: null, latex: '' })}
           onClose={() => {
             if (slashState.visible) dismissedFromRef.current = slashState.rangeFrom;
             setSlashState(INITIAL_SLASH_STATE);
@@ -439,6 +478,15 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
             pendingCellSelRef.current = null;
             setCellMenuCaps({ merge: false, split: false });
           }}
+        />
+      )}
+      {mathModal && editor && (
+        <RichTextMathModal
+          editor={editor}
+          pos={mathModal.pos}
+          initialLatex={mathModal.latex}
+          initialKind={mathModal.kind}
+          onClose={() => setMathModal(null)}
         />
       )}
     </div>

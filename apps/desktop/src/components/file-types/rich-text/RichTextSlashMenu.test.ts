@@ -37,3 +37,24 @@ describe('filterItems', () => {
     expect(filterItems(items, 'zzz')).toEqual([]);
   });
 });
+
+// ponytail: math slash items don't run a chain command — they delete the
+// "/<filter>" text then hand off to the LaTeX modal via onInsertMath. The
+// mathKind marker drives that branch in RichTextSlashMenu.select; filtering
+// still matches on the item id ("inlinemath" / "blockmath"), so typing
+// "/math" or "/block" reaches them like any other item.
+describe('math slash items', () => {
+  const mathItems: SlashMenuItem[] = [
+    { id: 'inlineMath', icon: {} as never, labelKey: 'a.inlineMath', category: 'blocks', mathKind: 'inline', run: () => {} },
+    { id: 'blockMath', icon: {} as never, labelKey: 'a.blockMath', category: 'blocks', mathKind: 'block', run: () => {} },
+  ];
+
+  it('matches "math" against both inlineMath and blockMath', () => {
+    expect(filterItems(mathItems, 'math')).toEqual(mathItems);
+  });
+
+  it('matches "inline"/"block" to the right item', () => {
+    expect(filterItems(mathItems, 'inline')).toEqual([mathItems[0]]);
+    expect(filterItems(mathItems, 'block')).toEqual([mathItems[1]]);
+  });
+});

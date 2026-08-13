@@ -63,10 +63,25 @@
         "horizontalRule": "Horizontal rule",
         "bulletList": "Bullet list",
         "orderedList": "Ordered list",
-        "taskList": "Task list"
+        "taskList": "Task list",
+        "inlineMath": "Inline math",
+        "blockMath": "Block math"
       },
       "empty": "No matching command"
     }
+  },
+  "math": {
+    "insertButton": "Insert math",
+    "title": "Insert math formula",
+    "editTitle": "Edit math formula",
+    "latexLabel": "LaTeX",
+    "preview": "Preview",
+    "inline": "Inline",
+    "block": "Block",
+    "insert": "Insert",
+    "update": "Update",
+    "cancel": "Cancel",
+    "placeholder": "e.g. \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}"
   },
   "imagePaste": {
     "title": "📷 Paste image",

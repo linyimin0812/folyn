@@ -1,4 +1,10 @@
 import { generateHTML } from '@tiptap/react';
+import katex from 'katex';
+// ponytail: Vite `?inline` returns the raw CSS text (not a <link>), so the
+// standalone export can embed KaTeX's layout rules without a CDN stylesheet
+// or an extra network dependency. Font files stay external (CDN below) —
+// KaTeX falls back to system serif glyphs if fonts can't load.
+import katexCss from 'katex/dist/katex.min.css?inline';
 import { getRichTextExtensions } from '@/components/file-types/rich-text/richTextExtensions';
 import { deserializeToContent, emptyDoc } from '@/components/file-types/rich-text/richTextContent';
 import { readImageAsDataUrl, escapeHtml } from './shared';
@@ -30,13 +36,56 @@ a { color: #3b82f6; text-decoration: underline; }
 table { border-collapse: collapse; width: 100%; margin: 0.5rem 0; }
 th, td { border: 1px solid #d0d0d0; padding: 4px 8px; }
 th { background: #f4f4f5; text-align: left; font-weight: 600; }
+/* empty cells keep row height: tiptap serializes an empty cell as
+   <td><p></p></td> — an empty <p> has no line box, so the cell (and any
+   fully-empty row) collapses. ::after injects a non-breaking space, giving
+   the cell a line box at the same height as a text cell (mirrors the
+   editor, where contenteditable keeps an editable <br> in empty cells). */
+td:empty::after, th:empty::after,
+td p:empty::after, th p:empty::after { content: "\\00a0"; }
 img { max-width: 100%; height: auto; }
 figure { margin: 0.5rem 0; }
 figure[data-align="left"] { margin-right: auto; }
 figure[data-align="center"] { margin-left: auto; margin-right: auto; }
 figure[data-align="right"] { margin-left: auto; }
 figcaption { text-align: center; font-size: 0.85rem; color: #888; margin-top: 0.25rem; }
+/* exported math elements carry only data-type (the NodeView adds
+   .tiptap-mathematics-render, which generateHTML never runs) */
+[data-type="inline-math"] { white-space: nowrap; }
+[data-type="block-math"] { display: block; text-align: center; margin: 0.75rem 0; }
 `;
+
+// KaTeX's @font-face rules reference `fonts/...` relative to the CSS file.
+// In the standalone export there is no fonts/ dir, so rewrite them to the
+// jsdelivr CDN (version must track the `katex` dependency in package.json).
+// Online exports render with real KaTeX fonts; offline, the browser 404s
+// and KaTeX falls back to its serif glyph stack — layout still works.
+const KATEX_FONT_CDN_BASE = 'https://cdn.jsdelivr.net/npm/katex@0.16.47/dist';
+
+function katexCssForExport(): string {
+  return katexCss.replace(/url\((fonts\/[^)]+)\)/g, (_m, p: string) => `url(${KATEX_FONT_CDN_BASE}/${p})`);
+}
+
+/**
+ * generateHTML only emits each node's static renderHTML — math nodes come
+ * out as empty `<span data-type="inline-math" data-latex="...">` /
+ * `<div data-type="block-math">` because their KaTeX output lives in the
+ * NodeView, which generateHTML never runs. Post-process those elements into
+ * real KaTeX HTML so the exported file shows the formula.
+ */
+function renderRichTextMath(html: string): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const nodes = Array.from(doc.querySelectorAll('[data-type="inline-math"], [data-type="block-math"]'));
+  if (nodes.length === 0) return html;
+  for (const el of nodes) {
+    const latex = el.getAttribute('data-latex') ?? '';
+    const isBlock = el.getAttribute('data-type') === 'block-math';
+    // throwOnError:false mirrors the editor's katexOptions — invalid LaTeX
+    // renders the raw source (KaTeX red error styling) instead of throwing.
+    el.innerHTML = katex.renderToString(latex, { throwOnError: false, displayMode: isBlock });
+  }
+  return doc.body.innerHTML;
+}
 
 /**
  * Inline vault-relative `<img src="assets/...">` as base64 data URLs so the
@@ -79,7 +128,8 @@ export async function richTextToHtmlBlob(
 ): Promise<Blob> {
   const doc = deserializeToContent(content) ?? emptyDoc();
   const bodyHtml = generateHTML(doc, getRichTextExtensions());
-  const inlined = await inlineRichTextImages(bodyHtml, vaultRoot);
+  const withMath = renderRichTextMath(bodyHtml);
+  const inlined = await inlineRichTextImages(withMath, vaultRoot);
   const baseName = name.replace(/\.[^.]+$/, '');
   const html = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -87,7 +137,8 @@ export async function richTextToHtmlBlob(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(baseName)}</title>
-  <style>${RT_HTML_STYLES}</style>
+  <style>${RT_HTML_STYLES}
+${katexCssForExport()}</style>
 </head>
 <body>
 ${inlined}

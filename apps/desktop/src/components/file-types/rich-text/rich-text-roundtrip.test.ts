@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import { generateHTML } from '@tiptap/react';
 import {
   deserializeToContent,
   emptyDoc,
   serializeToDisk,
   shouldApplyExternalContent,
 } from './richTextContent';
+import { getRichTextExtensions } from './richTextExtensions';
 
 // ponytail: jsdom cannot host a real prosemirror view (getScreenCTM /
 // createSVGMatrix / selection API gaps — see file-type-editors.md dbml
@@ -284,5 +286,59 @@ describe('image + table node round-trip', () => {
       ],
     };
     expect(deserializeToContent(serializeToDisk(doc))).toEqual(doc);
+  });
+});
+
+// ponytail: math nodes (inlineMath/blockMath from @tiptap/extension-mathematics)
+// are atoms with a single `latex` attr — plain JSON, so identity round-trip
+// is automatic. Pinning the node names + attr shape guards the disk format
+// against a future extension change (an AI or tiptap getJSON emitting these
+// nodes must survive disk reload byte-for-byte for the anti-loop predicate).
+describe('math node round-trip', () => {
+  it('round-trips inline + block math nodes (latex attrs)', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Euler: ' },
+            { type: 'inlineMath', attrs: { latex: 'e^{i\\pi} + 1 = 0' } },
+            { type: 'text', text: ' end' },
+          ],
+        },
+        { type: 'blockMath', attrs: { latex: '\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}' } },
+      ],
+    };
+    expect(deserializeToContent(serializeToDisk(doc))).toEqual(doc);
+  });
+});
+
+// ponytail: export contract — generateHTML (used by services/export/richtext.ts)
+// runs static renderHTML, not NodeViews, so math nodes serialize as empty
+// wrappers carrying data-type + data-latex. The export pipeline's
+// renderRichTextMath then fills them with KaTeX HTML. Pin the wrapper shape
+// so a future schema change can't silently break the export post-processor.
+describe('math export HTML contract', () => {
+  it('generateHTML emits inline/block math wrappers with data-latex attrs', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'inlineMath', attrs: { latex: 'e^{i\\pi} + 1 = 0' } }],
+        },
+        { type: 'blockMath', attrs: { latex: '\\sum_{i=1}^{n} i' } },
+      ],
+    };
+    const html = generateHTML(doc, getRichTextExtensions());
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    const inline = parsed.querySelector('span[data-type="inline-math"]');
+    const block = parsed.querySelector('div[data-type="block-math"]');
+    expect(inline?.getAttribute('data-latex')).toBe('e^{i\\pi} + 1 = 0');
+    expect(block?.getAttribute('data-latex')).toBe('\\sum_{i=1}^{n} i');
+    // Wrappers must be empty — the export post-processor injects KaTeX HTML.
+    expect(inline?.textContent).toBe('');
+    expect(block?.textContent).toBe('');
   });
 });

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Editor } from '@tiptap/react';
+import type { EditorState } from '@tiptap/pm/state';
 import type { LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -28,6 +29,7 @@ import {
   ZoomIn,
   ZoomOut,
   ChevronDown,
+  Sigma,
 } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import { persistImageBytes } from './RichTextImage';
@@ -48,6 +50,8 @@ interface RichTextToolbarProps {
   editor: Editor;
   zoom: number;
   onZoomChange: (z: number) => void;
+  /** Opens the LaTeX math-insert modal (also reachable via slash menu). */
+  onInsertMath: () => void;
 }
 
 interface ToolButton {
@@ -56,6 +60,30 @@ interface ToolButton {
   active?: boolean;
   disabled?: boolean;
   onClick: () => void;
+}
+
+export type TextAlignValue = 'left' | 'center' | 'right' | 'justify' | null;
+
+/**
+ * Alignment shared by every textblock under the selection. Unset textAlign
+ * attrs count as the default 'left'; returns null when the selection covers
+ * mixed alignments (or no textblock) so the toolbar highlights at most one
+ * alignment button — and none for mixed selections, matching Word/Google
+ * Docs. Pure so it's unit-testable without mounting a prosemirror view.
+ *
+ * Why not editor.isActive({ textAlign }): isActive is true when ANY node in
+ * the selection range matches, and this toolbar's old left-button fallback
+ * (!center && !right) forgot 'justify' — so a justified paragraph highlighted
+ * Left AND Justify at the same time.
+ */
+export function selectionTextAlign(state: EditorState): TextAlignValue {
+  const { from, to } = state.selection;
+  const aligns = new Set<string | null>();
+  state.doc.nodesBetween(from, to, (node) => {
+    if (node.isTextblock) aligns.add((node.attrs.textAlign as string | undefined) ?? null);
+  });
+  if (aligns.size !== 1) return null;
+  return (aligns.values().next().value as TextAlignValue | undefined) ?? 'left';
 }
 
 type ModalKind = 'link' | null;
@@ -131,7 +159,7 @@ function UrlModal({
   );
 }
 
-export function RichTextToolbar({ editor, zoom, onZoomChange }: RichTextToolbarProps) {
+export function RichTextToolbar({ editor, zoom, onZoomChange, onInsertMath }: RichTextToolbarProps) {
   const { t } = useTranslation();
   const [modal, setModal] = useState<ModalKind>(null);
   // The initial URL the modal opens with (prev link href, or '' for image).
@@ -229,11 +257,14 @@ export function RichTextToolbar({ editor, zoom, onZoomChange }: RichTextToolbarP
   const colorSwatches = ['#000000', '#52525b', '#a1a1aa', '#ffffff', '#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#a855f7'];
   const headingLevels = [1, 2, 3, 4] as const;
 
+  // ponytail: single shared alignment for the selection — at most one button
+  // active (mixed selections highlight none). See selectionTextAlign.
+  const align = selectionTextAlign(editor.state);
   const alignButtons: ToolButton[] = [
-    { icon: AlignLeft, title: 'Align left', active: editor.isActive({ textAlign: 'left' }) || (!editor.isActive({ textAlign: 'center' }) && !editor.isActive({ textAlign: 'right' })), disabled: !editor.can().setTextAlign('left'), onClick: () => editor.chain().focus().setTextAlign('left').run() },
-    { icon: AlignCenter, title: 'Align center', active: editor.isActive({ textAlign: 'center' }), disabled: !editor.can().setTextAlign('center'), onClick: () => editor.chain().focus().setTextAlign('center').run() },
-    { icon: AlignRight, title: 'Align right', active: editor.isActive({ textAlign: 'right' }), disabled: !editor.can().setTextAlign('right'), onClick: () => editor.chain().focus().setTextAlign('right').run() },
-    { icon: AlignJustify, title: 'Align justify', active: editor.isActive({ textAlign: 'justify' }), disabled: !editor.can().setTextAlign('justify'), onClick: () => editor.chain().focus().setTextAlign('justify').run() },
+    { icon: AlignLeft, title: 'Align left', active: align === 'left', disabled: !editor.can().setTextAlign('left'), onClick: () => editor.chain().focus().setTextAlign('left').run() },
+    { icon: AlignCenter, title: 'Align center', active: align === 'center', disabled: !editor.can().setTextAlign('center'), onClick: () => editor.chain().focus().setTextAlign('center').run() },
+    { icon: AlignRight, title: 'Align right', active: align === 'right', disabled: !editor.can().setTextAlign('right'), onClick: () => editor.chain().focus().setTextAlign('right').run() },
+    { icon: AlignJustify, title: 'Align justify', active: align === 'justify', disabled: !editor.can().setTextAlign('justify'), onClick: () => editor.chain().focus().setTextAlign('justify').run() },
   ];
 
   const buttonsRest: ToolButton[] = [
@@ -246,6 +277,7 @@ export function RichTextToolbar({ editor, zoom, onZoomChange }: RichTextToolbarP
     { icon: Minus, title: 'Horizontal rule', disabled: !editor.can().setHorizontalRule(), onClick: () => editor.chain().focus().setHorizontalRule().run() },
     { icon: LinkIcon, title: 'Link', active: editor.isActive('link'), disabled: !editor.can().toggleLink({ href: '' }), onClick: openLinkModal },
     { icon: ImageIcon, title: 'Insert image', onClick: () => { void pickImageFile(); } },
+    { icon: Sigma, title: t('editor:math.insertButton'), onClick: onInsertMath },
   ];
 
   // ponytail: undo/redo rendered as the FIRST group (leftmost), zoom
@@ -518,9 +550,9 @@ export function RichTextToolbar({ editor, zoom, onZoomChange }: RichTextToolbarP
           </button>
         ))}
         <div className="w-px h-4 bg-brd2 mx-1" aria-hidden />
-        {/* ponytail: align buttons — four icon buttons (left/center/right/justify),
-            active state per alignment. textAlign defaults to left when unset
-            (the OR clause in alignButtons covers that). */}
+        {/* ponytail: align buttons — four icon buttons (left/center/right/justify).
+            selectionTextAlign resolves the shared alignment (unset = left,
+            mixed = none), so exactly one button highlights. */}
         {alignButtons.map((b, i) => (
           <button
             key={`al-${i}`}

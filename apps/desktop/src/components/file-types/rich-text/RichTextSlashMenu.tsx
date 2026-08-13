@@ -12,6 +12,7 @@ import {
   List,
   ListOrdered,
   ListChecks,
+  Sigma,
 } from 'lucide-react';
 import type { SlashCommandState } from './RichTextSlashExtension';
 import { applySlashCommand } from './RichTextSlashExtension';
@@ -34,6 +35,13 @@ export interface SlashMenuItem {
   category: SlashCategory;
   /** Chain callback — receives the chain after the "/<filter>" range is deleted. */
   run: (chain: ReturnType<Editor['chain']>) => void;
+  /**
+   * Math items are marked instead of using `run`: selecting them deletes the
+   * "/<filter>" text then opens the LaTeX modal via onInsertMath (the modal
+   * does the actual insert, with live preview). Keeps the menu decoupled
+   * from the modal — no chain command can express "open a dialog".
+   */
+  mathKind?: 'inline' | 'block';
 }
 
 const CATEGORY_KEYS: Record<SlashCategory, string> = {
@@ -47,6 +55,8 @@ const ITEMS: SlashMenuItem[] = [
   { id: 'heading3', icon: Heading3, labelKey: 'editor:slashMenu.richText.items.heading3', category: 'blocks', run: (c) => c.toggleHeading({ level: 3 }) },
   { id: 'blockquote', icon: Quote, labelKey: 'editor:slashMenu.richText.items.blockquote', category: 'blocks', run: (c) => c.toggleBlockquote() },
   { id: 'codeBlock', icon: Code2, labelKey: 'editor:slashMenu.richText.items.codeBlock', category: 'blocks', run: (c) => c.toggleCodeBlock() },
+  { id: 'inlineMath', icon: Sigma, labelKey: 'editor:slashMenu.richText.items.inlineMath', category: 'blocks', mathKind: 'inline', run: () => {} },
+  { id: 'blockMath', icon: Sigma, labelKey: 'editor:slashMenu.richText.items.blockMath', category: 'blocks', mathKind: 'block', run: () => {} },
   { id: 'horizontalRule', icon: Minus, labelKey: 'editor:slashMenu.richText.items.horizontalRule', category: 'blocks', run: (c) => c.setHorizontalRule() },
   { id: 'bulletList', icon: List, labelKey: 'editor:slashMenu.richText.items.bulletList', category: 'lists', run: (c) => c.toggleBulletList() },
   { id: 'orderedList', icon: ListOrdered, labelKey: 'editor:slashMenu.richText.items.orderedList', category: 'lists', run: (c) => c.toggleOrderedList() },
@@ -57,6 +67,8 @@ export interface RichTextSlashMenuProps {
   editor: Editor;
   state: SlashCommandState;
   onClose: () => void;
+  /** Opens the LaTeX math-insert modal for a given node kind. */
+  onInsertMath: (kind: 'inline' | 'block') => void;
 }
 
 /**
@@ -73,7 +85,7 @@ export function filterItems(items: SlashMenuItem[], filter: string): SlashMenuIt
   });
 }
 
-export function RichTextSlashMenu({ editor, state, onClose }: RichTextSlashMenuProps) {
+export function RichTextSlashMenu({ editor, state, onClose, onInsertMath }: RichTextSlashMenuProps) {
   const { t } = useTranslation();
   const [activeIndex, setActiveIndex] = useState(0);
   const [adjustedPos, setAdjustedPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -145,10 +157,17 @@ export function RichTextSlashMenu({ editor, state, onClose }: RichTextSlashMenuP
 
   const select = useCallback(
     (item: SlashMenuItem) => {
-      applySlashCommand(editor, state, item.run);
+      if (item.mathKind) {
+        // Delete the "/<filter>" text first so the modal's insert lands at
+        // the cursor where the slash command was, then hand off to the modal.
+        applySlashCommand(editor, state, () => {});
+        onInsertMath(item.mathKind);
+      } else {
+        applySlashCommand(editor, state, item.run);
+      }
       onClose();
     },
-    [editor, state, onClose],
+    [editor, state, onClose, onInsertMath],
   );
 
   const handleKeyDown = useCallback(
