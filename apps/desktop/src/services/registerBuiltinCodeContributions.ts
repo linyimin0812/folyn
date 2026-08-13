@@ -9,6 +9,7 @@
  */
 
 import { createElement } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MermaidBlock, mermaidLanguageFactory, PlantUmlBlock, GraphvizBlock, plantumlLanguageFactory, dotLanguageFactory } from '@quill/container-plugins';
 import type { MarkdownCodeRendererProps } from '@quill/plugin-host';
 import { registerMarkdownCodeRenderer } from './plugin-host/markdownCodeRendererAdapter';
@@ -21,12 +22,14 @@ function MermaidCodeRenderer({ source }: MarkdownCodeRendererProps) {
 
 /** PlantUML code-fence renderer — uses the source string directly. */
 function PlantUmlCodeRenderer({ source }: MarkdownCodeRendererProps) {
-  return createElement(PlantUmlBlock, { source });
+  const { t } = useTranslation();
+  return createElement(PlantUmlBlock, { source, loadingLabel: t('common.renderingDiagram') });
 }
 
 /** Graphviz (DOT) code-fence renderer — POSTed to quickchart.io. */
 function GraphvizCodeRenderer({ source }: MarkdownCodeRendererProps) {
-  return createElement(GraphvizBlock, { source });
+  const { t } = useTranslation();
+  return createElement(GraphvizBlock, { source, loadingLabel: t('common.renderingDiagram') });
 }
 
 let registered = false;

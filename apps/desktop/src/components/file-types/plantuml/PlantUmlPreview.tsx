@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePlantUmlSvg } from '@quill/container-plugins';
 import { ZoomPanCanvas } from '../image/ZoomPanCanvas';
 import type { PreviewProps } from '../types';
@@ -8,6 +9,7 @@ import type { PreviewProps } from '../types';
 // so the user can wheel-zoom, drag-pan, and pinch. SVG string → blob URL is
 // the same trick SvgPreview uses; ZoomPanCanvas treats it as an img src.
 export function PlantUmlPreview({ content, filePath }: PreviewProps) {
+  const { t } = useTranslation();
   const { svg, error } = usePlantUmlSvg(content);
   const [url, setUrl] = useState('');
 
@@ -40,7 +42,7 @@ export function PlantUmlPreview({ content, filePath }: PreviewProps) {
           className="inline-block w-8 h-8 rounded-full border-[3px] border-brd border-t-acc animate-spin shrink-0"
           aria-label="渲染图表中"
         />
-        <span className="text-sm">渲染图表中…</span>
+        <span className="text-sm">{t('common.renderingDiagram')}</span>
       </div>
     );
   }

@@ -60,9 +60,11 @@ export function useGraphvizSvg(source: string): GraphvizState {
 
 interface GraphvizBlockProps {
   source: string;
+  /** Visible loading label (i18n'd by the caller). Defaults to zh for back-compat. */
+  loadingLabel?: string;
 }
 
-export function GraphvizBlock({ source }: GraphvizBlockProps) {
+export function GraphvizBlock({ source, loadingLabel = '渲染图表中…' }: GraphvizBlockProps) {
   const { svg, error } = useGraphvizSvg(source);
 
   if (error) {
@@ -97,7 +99,7 @@ export function GraphvizBlock({ source }: GraphvizBlockProps) {
         className="inline-block w-6 h-6 rounded-full border-2 border-brd border-t-acc animate-spin shrink-0"
         aria-label="渲染图表中"
       />
-      <span className="text-xs">渲染图表中…</span>
+      <span className="text-xs">{loadingLabel}</span>
     </div>
   );
 }

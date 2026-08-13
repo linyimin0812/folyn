@@ -53,9 +53,11 @@ export function usePlantUmlSvg(source: string): PlantUmlState {
 
 interface PlantUmlBlockProps {
   source: string;
+  /** Visible loading label (i18n'd by the caller). Defaults to zh for back-compat. */
+  loadingLabel?: string;
 }
 
-export function PlantUmlBlock({ source }: PlantUmlBlockProps) {
+export function PlantUmlBlock({ source, loadingLabel = '渲染图表中…' }: PlantUmlBlockProps) {
   const { svg, error } = usePlantUmlSvg(source);
 
   if (error) {
@@ -90,7 +92,7 @@ export function PlantUmlBlock({ source }: PlantUmlBlockProps) {
         className="inline-block w-6 h-6 rounded-full border-2 border-brd border-t-acc animate-spin shrink-0"
         aria-label="渲染图表中"
       />
-      <span className="text-xs">渲染图表中…</span>
+      <span className="text-xs">{loadingLabel}</span>
     </div>
   );
 }
