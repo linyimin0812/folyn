@@ -18,7 +18,10 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [],
+  "children": [
+    "08-13-windows-pet",
+    "08-13-windows-voice"
+  ],
   "parent": null,
   "relatedFiles": [],
   "notes": "",

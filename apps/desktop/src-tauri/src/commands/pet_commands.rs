@@ -725,11 +725,50 @@ pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Resu
     Ok(())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Result<(), AppError> {
+    // ponytail: SetWindowPos(HWND_TOPMOST, ...) is the Win32 always-on-top
+    // primitive. Tauri config has `alwaysOnTop: false` (the macOS path uses
+    // ScreenSaver level instead); this command is the re-assert the frontend
+    // polls every ~800ms + on `tauri://blur`. SWP_NOMOVE | SWP_NOSIZE |
+    // SWP_NOACTIVATE keeps position/size/focus untouched — only the Z-order
+    // changes. Runs on the main thread (HWND owner thread) via
+    // `run_on_main_thread`, mirroring `set_pet_opacity`.
+    use windows_sys::Win32::Foundation::HWND;
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        SetWindowPos, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE,
+    };
+    let app2 = app.clone();
+    let label2 = label.clone();
+    app.run_on_main_thread(move || {
+        let Some(window) = app2.get_webview_window(&label2) else {
+            return;
+        };
+        let Ok(hwnd_ptr) = window.hwnd() else { return; };
+        let hwnd: HWND = hwnd_ptr.0;
+        if hwnd.is_null() {
+            return;
+        }
+        unsafe {
+            // SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE keeps position/size/focus
+            // untouched — only Z-order changes. No SWP_SHOWWINDOW: the macOS
+            // path gates `panel.show()` on `already_visible`, and the visibility
+            // owner here is `toggle_pet_mode` / `show_pet_if_hidden`. Forcing
+            // show on a hidden pet would flash a blank 96x96 frame on startup.
+            let flags = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE;
+            let _ = SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, flags);
+        }
+    })
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[tauri::command]
 pub async fn pet_set_topmost_level(_app: tauri::AppHandle, _label: String) -> Result<(), AppError> {
-    // Non-macOS: no equivalent level API; `alwaysOnTop: true` config is the
-    // best available. Pet mode is macOS-only at present.
+    // Non-macOS/Windows: no equivalent level API; `alwaysOnTop: true` config is
+    // the best available. Pet mode is macOS/Windows-only at present.
     Ok(())
 }
 
@@ -856,11 +895,53 @@ pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Resul
     Ok(())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Result<(), AppError> {
+    // ponytail: Tauri 2's `transparent: true` config already handles native
+    // transparency on Windows (WebView2 `DefaultBackgroundColor` = transparent
+    // + DWM extended frame). The macOS issue this command fixes is WKWebView-
+    // specific (`drawsBackground = YES` paints white behind transparent CSS);
+    // WebView2 has no such opaque-background default. So this is a no-op for
+    // the transparency itself. The single useful side-effect: ensure
+    // `WS_EX_LAYERED` is set so a later `set_pet_opacity` call's
+    // `SetLayeredWindowAttributes(LWA_ALPHA)` takes effect — matches the
+    // defensive OR pattern in `set_pet_opacity`. Ceiling: if Tauri ever
+    // switches transparent windows to `WS_EX_NOREDIRECTIONBITMAP` exclusively,
+    // OR-ing in `WS_EX_LAYERED` here could interact with that — revisit if
+    // Windows transparency regresses (upgrade path: gate on the current ex-
+    // style bit instead of blindly OR-ing).
+    use windows_sys::Win32::Foundation::HWND;
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetWindowLongW, SetWindowLongW, GWL_EXSTYLE, WS_EX_LAYERED,
+    };
+    let app2 = app.clone();
+    let label2 = label.clone();
+    app.run_on_main_thread(move || {
+        let Some(window) = app2.get_webview_window(&label2) else {
+            return;
+        };
+        let Ok(hwnd_ptr) = window.hwnd() else { return; };
+        let hwnd: HWND = hwnd_ptr.0;
+        if hwnd.is_null() {
+            return;
+        }
+        unsafe {
+            let ex = GetWindowLongW(hwnd, GWL_EXSTYLE);
+            if (ex as u32 & WS_EX_LAYERED) == 0 {
+                SetWindowLongW(hwnd, GWL_EXSTYLE, (ex as u32 | WS_EX_LAYERED) as i32);
+            }
+        }
+    })
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[tauri::command]
 pub async fn pet_make_transparent(_app: tauri::AppHandle, _label: String) -> Result<(), AppError> {
-    // Non-macOS: native transparency is platform-specific and pet mode is
-    // macOS-only at present. Tauri's `transparent: true` config is the best
-    // available on Windows/Linux.
+    // Non-macOS/Windows: native transparency is platform-specific and pet mode
+    // is macOS/Windows-only at present. Tauri's `transparent: true` config is
+    // the best available on Linux.
     Ok(())
 }
