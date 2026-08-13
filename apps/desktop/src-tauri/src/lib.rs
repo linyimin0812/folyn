@@ -149,6 +149,7 @@ fn reapply_pet_topmost(app: &tauri::AppHandle) {
 }
 
 #[cfg(not(target_os = "macos"))]
+#[allow(dead_code)]
 fn reapply_pet_topmost(_app: &tauri::AppHandle) {
     // Non-macOS: no equivalent level API; pet mode is macOS-only at present.
 }
@@ -183,6 +184,7 @@ fn reapply_pet_nspanel_level(app: &tauri::AppHandle) {
 }
 
 #[cfg(not(target_os = "macos"))]
+#[allow(dead_code)]
 fn reapply_pet_nspanel_level(_app: &tauri::AppHandle) {}
 
 /// Apply the pet window's topmost backend once at startup. Two paths:
@@ -266,6 +268,7 @@ fn spawn_nspanel_reapply_thread(app: tauri::AppHandle) {
 }
 
 #[cfg(not(target_os = "macos"))]
+#[allow(dead_code)]
 fn spawn_nspanel_reapply_thread(_app: tauri::AppHandle) {}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

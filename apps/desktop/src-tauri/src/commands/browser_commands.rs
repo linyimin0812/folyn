@@ -54,6 +54,7 @@ pub struct ImportedPassword {
 static IMPORTED_COOKIES: LazyLock<Mutex<Vec<ImportedCookie>>> =
     LazyLock::new(|| Mutex::new(Vec::new()));
 
+#[cfg(target_os = "macos")]
 const CHROME_KEYCHAIN_SERVICE: &str = "Chrome Safe Storage";
 
 // ── Chrome profile discovery ────────────────────────────────────────────────
@@ -217,6 +218,7 @@ fn dpapi_decrypt(blob: &[u8]) -> Result<Vec<u8>, String> {
     }
 }
 
+#[cfg(target_os = "macos")]
 fn hex_decode(hex: &str) -> Result<Vec<u8>, String> {
     let clean: String = hex.chars().filter(|c| c.is_ascii_hexdigit()).collect();
     if clean.len() % 2 != 0 {

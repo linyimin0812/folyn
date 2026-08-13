@@ -106,6 +106,7 @@ pub struct VoiceStopResult {
 /// handler in `lib.rs` to dispatch `voice://hotkey-press`/`release` for this
 /// HotKey vs `pet://shortcut-toggle` for any other.
 pub struct VoiceState {
+    #[allow(dead_code)]
     inner: Mutex<VoiceInner>,
     voice_hotkey: Mutex<Option<Shortcut>>,
 }
@@ -397,6 +398,7 @@ fn show_voice_orb_no_activate(app: &tauri::AppHandle, _window: &tauri::WebviewWi
 }
 
 #[cfg(not(target_os = "macos"))]
+#[allow(dead_code)]
 fn show_voice_orb(_app: &tauri::AppHandle) {
     // Non-macOS: voice flow is gated to macOS-only; this helper is never
     // reached on Windows because `voice_start` returns the macOS-only error
