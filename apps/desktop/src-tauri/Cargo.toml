@@ -164,7 +164,7 @@ windows-sys = { version = "0.59", features = [
   # SendInput / KEYBDINPUT / VK_CONTROL / VK_V for voice insert (PRD R15).
   "Win32_UI_Input_KeyboardAndMouse",
 ] }
-windows = { version = "3", features = [
+windows = { version = "0.62", features = [
   "Media_SpeechRecognition",
   "Globalization",
   "Foundation",
