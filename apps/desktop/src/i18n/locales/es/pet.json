@@ -1,0 +1,74 @@
+{
+  "chat": {
+    "noAiConfig": "IA no configurada",
+    "noAiConfigHint": "Configura la ruta del CLI en Ajustes para empezar a chatear aquí.",
+    "openAiSettings": "Abrir ajustes de IA",
+    "emptyHint": "Pregunta a la IA — las respuestas se transmiten aquí.",
+    "inputPlaceholder": "Escribe un mensaje, Enter para enviar",
+    "removeAttachment": "Quitar adjunto",
+    "attachFile": "Adjuntar archivo",
+    "aiMode": "Modo IA",
+    "attachmentSaveFailed": "Error al guardar adjunto: {{error}}",
+    "errorPrefix": "[Error] {{message}}",
+    "sessionHeader": {
+      "toggleAria": "Cambiar sesión",
+      "openAiSettings": "Ajustes de IA",
+      "confirmDelete": "¿Confirmar eliminación?",
+      "deleteYes": "Sí",
+      "deleteNo": "No",
+      "renameAria": "Renombrar",
+      "deleteAria": "Eliminar",
+      "newSession": "Nueva sesión",
+      "defaultTitle": "Nuevo chat",
+      "capHint": "Límite de sesiones alcanzado ({{max}})"
+    }
+  },
+  "launcher": {
+    "dailyNote": "Nota de hoy",
+    "clipFromUrl": "Recortar de URL",
+    "globalSearch": "Búsqueda global",
+    "commandPalette": "Paleta de comandos",
+    "showMain": "Mostrar ventana principal",
+    "toggleTheme": "Cambiar tema",
+    "clip": {
+      "emptyUrl": "Introduce una URL",
+      "running": "Recortando...",
+      "saved": "Guardado: {{name}}",
+      "failed": "Recorte fallido",
+      "submit": "Recortar",
+      "collapse": "Contraer"
+    }
+  },
+  "bubble": {
+    "closeAria": "Cerrar"
+  },
+  "menu": {
+    "showMain": "Mostrar ventana principal",
+    "hidePet": "Ocultar icono de mascota",
+    "sizeSubmenu": "Tamaño de mascota",
+    "opacitySubmenu": "Opacidad de mascota",
+    "clickThrough": "Atraviesar clics",
+    "exitApp": "Salir de la app"
+  },
+  "tabs": {
+    "chat": "Chat",
+    "inbox": "Bandeja de entrada"
+  },
+  "search": {
+    "placeholder": "Buscar archivos / comandos / plugins",
+    "files": "Archivos",
+    "commands": "Comandos",
+    "plugins": "Plugins",
+    "noResults": "Sin resultados coincidentes"
+  },
+  "inbox": {
+    "empty": "Sin notificaciones",
+    "clear": "Limpiar",
+    "kind": {
+      "info": "info",
+      "reminder": "recordatorio",
+      "message": "mensaje",
+      "event": "evento"
+    }
+  }
+}

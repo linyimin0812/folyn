@@ -1,0 +1,208 @@
+{
+  "filesPanel": {
+    "actions": {
+      "locateActive": "Aktive Datei lokalisieren",
+      "openExternal": "Externe Datei öffnen…",
+      "refresh": "Dateibaum aktualisieren",
+      "more": "Weitere Aktionen",
+      "newFile": "Neue Datei",
+      "newFolder": "Neuer Ordner",
+      "expandAll": "Alle ausklappen",
+      "collapseAll": "Alle einklappen",
+      "expandAllFolders": "Alle Ordner ausklappen",
+      "collapseAllFolders": "Alle Ordner einklappen",
+      "hideSidebar": "Seitenleiste ausblenden"
+    },
+    "search": {
+      "placeholder": "Dateien suchen..."
+    },
+    "newItem": {
+      "folderName": "Ordnername",
+      "fileNameWithExt": "Dateiname (mit Erweiterung)",
+      "fileNameDefault": "Dateiname (Standard .{{ext}})",
+      "fileNameMd": "Dateiname (Standard .md)"
+    },
+    "empty": "Keine Dateien"
+  },
+  "contextMenu": {
+    "fileType": {
+      "code": "Codedatei",
+      "richText": "Rich-Text"
+    },
+    "newFile": "Neue Datei",
+    "newFileOther": "Andere (eigene Erweiterung)",
+    "newFolder": "Neuer Ordner",
+    "copyRelativePath": "Relativen Pfad kopieren",
+    "copyAbsolutePath": "Absoluten Pfad kopieren",
+    "copyFileName": "Dateinamen kopieren",
+    "copyVaultPath": "Vault-Pfad kopieren",
+    "unpin": "Lösen",
+    "pin": "Anheften",
+    "addToChat": "Datei zum Chat hinzufügen",
+    "ingestToWiki": "Ins Wiki übernehmen",
+    "rename": "Umbenennen",
+    "delete": "Löschen",
+    "move": "Verschieben nach...",
+    "copy": "Kopieren",
+    "hide": "Ausblenden"
+  },
+  "sidebarActions": {
+    "deleteConfirm": {
+      "title": "Löschen bestätigen",
+      "prefix": "{{type}} löschen ",
+      "suffix": "?",
+      "typeFile": "Datei",
+      "typeFolder": "Ordner",
+      "folderContentsHint": "Alle Inhalte des Ordners werden ebenfalls gelöscht",
+      "batchPrefix": "Diese {{count}} Elemente löschen?"
+    },
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "moveDialog": {
+      "title": "Verschieben nach",
+      "confirm": "Verschieben",
+      "noTargets": "Keine anderen Zielordner vorhanden",
+      "vaultRoot": "Vault-Root"
+    },
+    "copyDialog": {
+      "title": "Kopieren nach",
+      "confirm": "Kopieren"
+    }
+  },
+  "calendar": {
+    "weekdays": ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"],
+    "title": "{{month}} {{year}}",
+    "hasNote": "{{date}} (hat Notiz)"
+  },
+  "wikiTree": {
+    "empty": "Wiki ist leer. Übernehme Dateien aus dem KI-Panel, um die Wissensbasis aufzubauen."
+  },
+  "clips": {
+    "title": "Ausschnitte",
+    "delete": "Löschen",
+    "removeTag": "Tag entfernen",
+    "tagPlaceholderEmpty": "Tag eingeben und Enter drücken...",
+    "tagPlaceholderAdd": "Hinzufügen...",
+    "progressDefault": "Wird vorbereitet...",
+    "preview": {
+      "title": "Wissenskarten-Vorschau",
+      "titleLabel": "Titel",
+      "tagsLabel": "Tags",
+      "suggestedLabel": "Vorgeschlagene Tags",
+      "summaryLabel": "Zusammenfassung",
+      "source": "Quelle: {{host}}"
+    },
+    "save": "Speichern",
+    "saving": "Speichern...",
+    "cancel": "Abbrechen",
+    "batch": {
+      "title": "Stapel-Ausschnitt",
+      "close": "Stapelmodus schließen",
+      "placeholder": "Eine URL pro Zeile, z. B.:\nhttps://example.com/a\nhttps://example.com/b",
+      "force": "Erneut ausschneiden erzwingen",
+      "delay": "Verzögerung zwischen Einträgen",
+      "count": "{{count}} Eintrag/Einträge",
+      "start": "Stapel-Ausschnitt starten",
+      "cancelRunning": "Abbrechen (nach aktuellem stoppen)",
+      "summary": {
+        "total": "Gesamt {{count}}",
+        "done": "Erledigt {{count}}",
+        "skipped": "Übersprungen {{count}}",
+        "failed": "Fehlgeschlagen {{count}}"
+      },
+      "open": "Öffnen",
+      "openSummary": "Stapelzusammenfassung öffnen"
+    },
+    "status": {
+      "pending": "Ausstehend",
+      "running": "Läuft",
+      "done": "Erledigt",
+      "skipped": "Übersprungen",
+      "failed": "Fehlgeschlagen",
+      "cancelled": "Abgebrochen"
+    },
+    "clippingInProgress": "Schneidet aus",
+    "viewDetails": "Klick für Details",
+    "batchModeEnter": "Stapel-Ausschnitt",
+    "batchModeExit": "Stapelmodus verlassen",
+    "addClip": "Ausschnitt hinzufügen",
+    "empty": "Noch keine Ausschnitte. Auf + klicken zum Starten.",
+    "loading": "Laden...",
+    "modalTitle": "Ausschnitt hinzufügen",
+    "urlPlaceholder": "URL einfügen...",
+    "langLabel": "Sprache",
+    "langEn": "English",
+    "langZh": "中文",
+    "langAuto": "Automatisch",
+    "clipButton": "Ausschneiden",
+    "generating": "Wird erstellt...",
+    "duplicate": {
+      "title": "Diese URL wurde bereits ausgeschnitten",
+      "prompt": "Bestehenden Inhalt neu generieren und überschreiben?",
+      "openExisting": "Bestehenden öffnen",
+      "regenerate": "Neu generieren"
+    },
+    "savingFile": "Datei wird gespeichert...",
+    "deleteConfirm": {
+      "titleDelete": "Löschen bestätigen",
+      "titleRemoveTag": "Tag entfernen",
+      "deletePrefix": "Ausschnitt löschen ",
+      "deleteSuffix": "?",
+      "removeTagPrefix": "Tag \"",
+      "removeTagMiddle": "\" entfernen von ",
+      "removeTagSuffix": "?",
+      "removeTagHint": "Dieser Ausschnitt hat {{count}} weitere Tag(s); die Datei wird nicht gelöscht."
+    }
+  },
+  "analysis": {
+    "title": "Projektanalyse",
+    "delete": "Löschen",
+    "viewDetails": "Klick für Details",
+    "analyzing": "Analysiert",
+    "newAnalysis": "Neue Analyse",
+    "uncategorized": "Unkategorisiert",
+    "empty": "Noch keine Analyseberichte. Auf + klicken zum Starten.",
+    "loading": "Laden...",
+    "deleteConfirm": {
+      "titleDelete": "Löschen bestätigen",
+      "titleRemoveTag": "Tag entfernen",
+      "deletePrefix": "Analysebericht löschen ",
+      "deleteSuffix": "?",
+      "removeTagPrefix": "Tag \"",
+      "removeTagMiddle": "\" entfernen von ",
+      "removeTagSuffix": "?",
+      "removeTagHint": "Dieser Bericht hat {{count}} weitere Tag(s); die Datei wird nicht gelöscht."
+    },
+    "dedup": {
+      "title": "Für dieses Projekt existiert bereits ein Analysebericht",
+      "regenerate": "Neu generieren"
+    },
+    "tagPlaceholderEmpty": "Tag eingeben und Enter drücken...",
+    "tagPlaceholderMore": "Mehr hinzufügen...",
+    "confirmation": {
+      "success": "Analyse abgeschlossen — {{repo}}",
+      "previewLabel": "Berichtsvorschau",
+      "htmlSize": "HTML {{kb}} KB · {{count}} Tag(s)",
+      "tagsLabel": "Tags (bearbeitbar)"
+    },
+    "dialog": {
+      "title": "Neue Projektanalyse",
+      "urlLabel": "GitHub-Repository-URL",
+      "urlPlaceholder": "https://github.com/owner/repo",
+      "langLabel": "Berichtssprache",
+      "langZh": "中文",
+      "langEn": "English",
+      "langAuto": "Automatisch erkennen",
+      "start": "Analyse starten",
+      "progressDefault": "Wird vorbereitet...",
+      "hide": "Ausblenden",
+      "patience": "Die Analyse kann einige Minuten dauern; bitte warten."
+    }
+  },
+  "panelError": {
+    "failed": "Panel konnte nicht geladen werden"
+  },
+  "dragDrop": {
+    "itemsCount": "{{count}} Eintrag/Einträge"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "page": {
+    "tagline": "Almacenamiento",
+    "title": "Gestión de vaults",
+    "description": "Administra bases de conocimiento locales y cambia contextos de trabajo",
+    "newVault": "+ Nuevo Vault",
+    "myVaults": "Mis Vaults",
+    "newVaultShort": "Nuevo Vault",
+    "current": "Actual",
+    "typeSuffix": "tipo",
+    "openEditor": "Abrir editor",
+    "switch": "Cambiar",
+    "deleteTitle": "Eliminar",
+    "fileBrowse": "Explorador de archivos — {{name}}",
+    "emptyFiles": "Aún no hay archivos; crea un nuevo documento en el editor",
+    "emptyFolder": "Carpeta vacía"
+  },
+  "delete": {
+    "title": "Confirmar eliminación",
+    "confirm": "¿Eliminar Vault \"{{name}}\"? Esto no eliminará los archivos en disco.",
+    "delete": "Eliminar",
+    "cancel": "Cancelar"
+  },
+  "time": {
+    "justNow": "justo ahora",
+    "minutesAgo": "hace {{count}} min",
+    "hoursAgo": "hace {{count}} h",
+    "daysAgo": "hace {{count}} días"
+  }
+}

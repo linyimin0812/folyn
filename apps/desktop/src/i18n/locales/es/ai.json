@@ -1,0 +1,93 @@
+{
+  "panel": {
+    "title": "Nuevo chat",
+    "newSession": "Nuevo chat",
+    "deleteSession": "Eliminar chat",
+    "close": "Cerrar",
+    "stop": "Detener",
+    "messageCountSuffix": "msg",
+    "emptyState": {
+      "greeting": {
+        "morning": "Buenos días, soy Quill AI. ¿En qué puedo ayudarte?",
+        "noon": "Buen mediodía, soy Quill AI. ¿En qué puedo ayudarte?",
+        "afternoon": "Buenas tardes, soy Quill AI. ¿En qué puedo ayudarte?",
+        "evening": "Buenas noches, soy Quill AI. ¿En qué puedo ayudarte?"
+      }
+    },
+    "studyStreaming": "agente de estudio ejecutándose…",
+    "studyIdle": "sesión de agente de estudio (entrada manual deshabilitada)",
+    "attachmentPlaceholder": "(adjunto)",
+    "deleteConfirmTitle": "Eliminar chat",
+    "deleteConfirm": "¿Eliminar este chat? No se puede deshacer.",
+    "saveDialog": {
+      "title": "Guardar mensaje",
+      "tabVault": "Este vault",
+      "tabExternal": "Externo",
+      "vaultRoot": "Raíz del vault",
+      "filename": "Nombre del archivo",
+      "pathPrefix": "Ruta",
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "cancel": "Cancelar"
+    }
+  },
+  "chat": {
+    "placeholder": "Escribe un mensaje; @ para mencionar un archivo...",
+    "placeholderFallback": "Escribe un mensaje...",
+    "removeAttachment": "Quitar adjunto",
+    "attachFile": "Adjuntar archivo",
+    "clear": "Limpiar",
+    "clearTitle": "Limpiar chat",
+    "clearContext": "Limpiar contexto",
+    "clearContextTitle": "Limpiar contexto (conserva mensajes, reinicia memoria del agente)",
+    "clearContextConfirm": "Limpiar contexto reiniciará la memoria del agente (los mensajes se quedan). ¿Continuar?",
+    "clearContextConfirmTitle": "Limpiar contexto",
+    "clearContextDone": "Contexto limpiado",
+    "clearMessages": "Limpiar mensajes",
+    "clearMessagesTitle": "Limpiar mensajes (descarta todos los mensajes y contexto)",
+    "clearMessagesConfirm": "Limpiar mensajes eliminará todos los mensajes y contexto. No se puede deshacer. ¿Continuar?",
+    "clearMessagesConfirmTitle": "Limpiar mensajes",
+    "send": "Enviar",
+    "stop": "Detener"
+  },
+  "voice": {
+    "phase": {
+      "transcribing": "Transcribiendo…",
+      "polishing": "Refinando…",
+      "inserting": "Insertando…",
+      "processing": "Procesando voz…"
+    },
+    "button": {
+      "idle": "Entrada de voz",
+      "windowsUnsupported": "La entrada de voz no se admite en esta plataforma",
+      "clickToStop": "Haz clic para detener la grabación e insertar",
+      "stopRecordingLabel": "Detener grabación",
+      "voiceInputLabel": "Entrada de voz"
+    },
+    "orb": {
+      "noApiKey": "Sin API Key configurada; refinamiento LLM omitido",
+      "openSettings": "Abrir ajustes"
+    }
+  },
+  "pairSelector": {
+    "placeholder": "Seleccionar modelo",
+    "empty": "Ningún modelo configurado",
+    "openSettings": "Abrir ajustes de modelo",
+    "sectionTitle": "Modelo IA",
+    "sectionDesc": "Elige el par (proveedor, modelo) que usará esta función; habilita un proveedor y selecciona modelos en Servicios de modelos primero"
+  },
+  "errors": {
+    "attachmentSaveFailed": "[error] Error al guardar adjuntos: {{error}}",
+    "streamError": "[error] {{error}}"
+  },
+  "slash": {
+    "skillsLabel": "Habilidades",
+    "commandsLabel": "Comandos",
+    "sourceUser": "usuario",
+    "sourceProject": "proyecto",
+    "sourcePlugin": "plugin",
+    "empty": "Sin habilidades ni comandos",
+    "argumentPlaceholder": "Argumentos para /{{name}}",
+    "argumentConfirm": "Insertar"
+  }
+}

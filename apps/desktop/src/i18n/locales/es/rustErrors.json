@@ -1,0 +1,6 @@
+{
+  "io": { "title": "Error de E/S de archivo", "message": "Error al procesar el archivo: {{detail}}" },
+  "notFound": { "title": "No encontrado", "message": "No encontrado: {{detail}}" },
+  "permission": { "title": "Permiso denegado", "message": "Permiso denegado: {{detail}}" },
+  "internal": { "title": "Error interno", "message": "Algo salió mal: {{detail}}" }
+}

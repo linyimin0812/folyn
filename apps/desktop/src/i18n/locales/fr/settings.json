@@ -1,0 +1,714 @@
+{
+  "nav": {
+    "backToEditor": "Retour à l'éditeur"
+  },
+  "groups": {
+    "general": "Général",
+    "editor": "Éditeur",
+    "ai": "IA",
+    "extensions": "Extensions",
+    "about": "À propos"
+  },
+  "tabs": {
+    "appearance": "Apparence",
+    "editor": "Éditeur",
+    "shortcuts": "Raccourcis",
+    "cli": "Outils CLI",
+    "models": "Services de modèles",
+    "voice": "Saisie vocale",
+    "templates": "Modèles de fichiers",
+    "skills": "Compétences",
+    "pet": "Pet",
+    "notifications": "Notifications",
+    "plugins": "Plugins",
+    "csp": "Politique de sécurité",
+    "about": "À propos"
+  },
+  "appearance": {
+    "title": "Apparence",
+    "description": "Ajuster le thème UI et l'affichage des polices",
+    "theme": {
+      "label": "Thème UI",
+      "dark": "Sombre",
+      "light": "Clair",
+      "system": "Suivre le système"
+    },
+    "fontSize": {
+      "label": "Taille de police UI",
+      "compact": "12px (compact)",
+      "default": "14px (par défaut)",
+      "comfortable": "16px (confortable)"
+    },
+    "panels": {
+      "ai": {
+        "label": "Afficher le panneau IA par défaut",
+        "description": "Déplier automatiquement le panneau de chat IA à l'ouverture de l'éditeur"
+      },
+      "statusBar": {
+        "label": "Barre d'état",
+        "description": "Afficher le nombre de mots et la position du curseur en bas"
+      },
+      "hiddenFiles": {
+        "label": "Afficher les fichiers cachés",
+        "description": "Afficher dotfiles et dossiers cachés dans l'arborescence"
+      },
+      "wiki": {
+        "label": "Panneau Wiki",
+        "description": "Afficher l'entrée Wiki dans la barre latérale"
+      },
+      "clips": {
+        "label": "Panneau Captures",
+        "description": "Afficher l'entrée Captures web dans la barre latérale"
+      },
+      "analyze": {
+        "label": "Panneau d'analyse de projet",
+        "description": "Afficher l'entrée Analyse de projet dans la barre latérale"
+      },
+      "daily": {
+        "label": "Panneau Notes quotidiennes",
+        "description": "Afficher l'entrée Calendrier et notes quotidiennes dans la barre latérale (désactiver désactive aussi ⌘D)"
+      },
+      "tray": {
+        "label": "Afficher l'icône dans la barre",
+        "description": "Afficher l'icône dans la barre système ; clic pour le même menu d'actions rapides que le clic droit du pet"
+      }
+    },
+    "excludePatterns": {
+      "label": "Filtrer fichiers/dossiers",
+      "description": "Les fichiers/dossiers correspondants sont masqués dans l'arborescence. Prend en charge * et ?.",
+      "add": "Ajouter",
+      "prompt": "Saisir un motif de filtre (prend en charge * et ?)",
+      "empty": "Aucune règle de filtre"
+    }
+  },
+  "editor": {
+    "title": "Éditeur",
+    "description": "Configurer le comportement et les options d'affichage de l'éditeur",
+    "font": {
+      "label": "Police de l'éditeur"
+    },
+    "fontSize": {
+      "label": "Taille de police"
+    },
+    "tabSize": {
+      "label": "Taille de tabulation",
+      "2": "2 espaces",
+      "4": "4 espaces"
+    },
+    "showLineNumbers": {
+      "label": "Afficher les numéros de ligne",
+      "description": "Numéros de ligne à gauche de l'éditeur"
+    },
+    "autoSave": {
+      "label": "Enregistrement auto",
+      "description": "Enregistrer le document courant toutes les 5s"
+    },
+    "linkOpenMode": {
+      "label": "Mode d'ouverture des liens",
+      "description": "Comportement par défaut au clic sur un lien",
+      "external": "Navigateur externe",
+      "internal": "Ouvrir dans l'app"
+    },
+    "dailyNotes": {
+      "title": "Notes quotidiennes",
+      "description": "Configurer le répertoire de stockage et le format de date",
+      "dir": {
+        "label": "Répertoire des notes"
+      },
+      "dateFormat": {
+        "label": "Format de date"
+      }
+    }
+  },
+  "shortcuts": {
+    "title": "Raccourcis",
+    "description": "Cliquer un champ pour réenregistrer ; appuyer sur une nouvelle combinaison pour modifier",
+    "reset": "Réinitialiser",
+    "editor": {
+      "recording": "Appuyer sur un raccourci…",
+      "conflictHint": "Aucune touche capturée — la combinaison est peut-être prise par le menu ou l'OS (⌘Q / ⌘H / ⌘M / ⌘W / ⌘⇧P)"
+    },
+    "items": {
+      "save": "Enregistrer le document",
+      "bold": "Gras",
+      "italic": "Italique",
+      "strikethrough": "Barré",
+      "code": "Code en ligne",
+      "link": "Insérer un lien",
+      "dailyNote": "Note du jour",
+      "togglePetPanel": "Ouvrir le panneau du pet"
+    }
+  },
+  "cli": {
+    "title": "Outils CLI",
+    "description": "Configurer les CLI d'IA pour l'édition intelligente des documents",
+    "cliAdapter": "Adaptateur CLI",
+    "adapterHint": "Chaque adaptateur a son propre chemin d'exécutable ; l'adaptateur utilisé par une session est choisi dans le panneau IA / chat du pet — cet onglet ne configure que les chemins.",
+    "adapters": {
+      "claude": {
+        "description": "CLI officiel d'Anthropic ; édition conversationnelle et multi-outils"
+      },
+      "pi": {
+        "description": "Agent de code Pi (@earendil-works/pi-coding-agent) ; outils read/bash/edit/write, sessions RPC multi-tours"
+      }
+    },
+    "cliPath": {
+      "label": "Chemin du CLI",
+      "detect": "Détecter",
+      "detectTitle": "Auto-détecter le chemin",
+      "hint": "Chemin ou nom de commande de l'exécutable ; cliquer « Détecter » pour rechercher"
+    },
+    "settingsFile": {
+      "title": "Ouvrir le fichier de config de cet adaptateur dans l'éditeur Quill",
+      "missing": "Introuvable : {{path}}",
+      "missingHint": "Le fichier n'est pas encore créé (le CLI le crée généralement au premier lancement).",
+      "create": "Créer",
+      "createTitle": "Écrire un modèle minimal valide et l'ouvrir"
+    },
+    "test": {
+      "testing": "Test en cours…",
+      "label": "Tester la connexion",
+      "success": "Connecté",
+      "exitCode": "Code de sortie {{code}}",
+      "cannotRun": "CLI non exécutable : {{error}}"
+    },
+    "usage": {
+      "title": "Utilisation",
+      "description": "Les outils IA éditent les documents en appelant un CLI local (ex. Claude Code). Assurez-vous que le CLI correspondant est installé. Les modifications sont affichées en diff puis appliquées après confirmation."
+    }
+  },
+  "scriptRuntime": {
+    "title": "Runtimes de script",
+    "description": "Exécuter des blocs de code dans l'aperçu Markdown",
+    "usageHint": "Cliquer Exécuter sur un bloc ```bash / ```js / ```python dans l'aperçu. La sortie est écrite comme bloc > Result:.",
+    "detect": "Détecter",
+    "detectTitle": "Auto-détecter le chemin du binaire via /bin/sh -lc which <bin>",
+    "test": {
+      "label": "Tester",
+      "testing": "Test en cours…",
+      "success": "OK",
+      "exitCode": "Code de sortie {{code}}",
+      "cannotRun": "Non exécutable : {{error}}"
+    }
+  },
+  "models": {
+    "title": "Services de modèles",
+    "description": "Configurer les fournisseurs LLM et les modèles pour chat / agent",
+    "chat": {
+      "title": "Mode chat",
+      "description": "Chat multi-tours via rig LLM direct (pas de CLI, pas d'accès outils/fichiers). ask/agent utilisent encore le CLI ci-dessus."
+    },
+    "refetchAll": "Recharger tous les modèles",
+    "refetchAllHint": "Configurez d'abord au moins un fournisseur",
+    "refetchAllRunning": "Rechargement…",
+    "refetchAllSummary": "{{success}} réussis, {{failed}} échoués",
+    "backendNotReady": "Backend non prêt — utiliser un autre fournisseur",
+    "category": {
+      "native": "Natif",
+      "compat": "Compatible",
+      "openai-family": "Famille OpenAI-compatible",
+      "local": "Local",
+      "openai": "OpenAI",
+      "openai-response": "OpenAI-Response",
+      "gemini": "Gemini",
+      "anthropic": "Anthropic",
+      "azure-openai": "Azure OpenAI",
+      "new-api": "New API",
+      "ollama": "Ollama"
+    },
+    "capability": {
+      "vision": "vision",
+      "reasoning": "raisonnement",
+      "web-search": "web",
+      "function-call": "outils",
+      "embedding": "embedding",
+      "rerank": "rerank"
+    },
+    "provider": {
+      "label": "Fournisseur",
+      "anthropic": "Anthropic (Claude)",
+      "openai": "OpenAI",
+      "openaiCompatible": "OpenAI-compatible (baseUrl personnalisé)",
+      "azure-openai": "Azure OpenAI",
+      "cohere": "Cohere",
+      "gemini": "Google Gemini",
+      "huggingface": "HuggingFace",
+      "ollama": "Ollama (local)",
+      "openai-compatible": "OpenAI-compatible (baseUrl personnalisé)",
+      "anthropic-compatible": "Anthropic-compatible (baseUrl personnalisé)",
+      "deepseek": "DeepSeek",
+      "groq": "Groq",
+      "moonshot": "Moonshot",
+      "openrouter": "OpenRouter",
+      "perplexity": "Perplexity",
+      "together": "TogetherAI",
+      "xai": "xAI"
+    },
+    "model": {
+      "label": "Modèle"
+    },
+    "selectedModels": {
+      "label": "Modèles sélectionnés"
+    },
+    "apiKey": {
+      "label": "Clé API",
+      "show": "Afficher la clé",
+      "hide": "Masquer la clé",
+      "getKey": "Obtenir une clé API"
+    },
+    "azure": {
+      "deploymentId": {
+        "label": "ID de déploiement"
+      },
+      "apiVersion": {
+        "label": "Version d'API"
+      }
+    },
+    "baseUrl": {
+      "label": "URL d'API",
+      "anthropicHint": "Vide pour Anthropic officiel ; endpoints Anthropic-compatible",
+      "openaiHint": "Vide pour OpenAI officiel.",
+      "openaiCompatibleHint": "Requis pour Ollama / vLLM / LM Studio etc. ; /v1 ajouté automatiquement si manquant.",
+      "placeholder": "Vide par défaut",
+      "reset": "Réinitialiser"
+    },
+    "test": {
+      "testing": "Détection…",
+      "label": "Détecter",
+      "selectModel": "Sélectionner un modèle"
+    },
+    "fetchModels": {
+      "label": "Récupérer les modèles",
+      "fetching": "Récupération…",
+      "empty": "Aucun modèle retourné",
+      "orphan": "absent de la liste récupérée",
+      "errorTitle": "Échec de récupération",
+      "errorClose": "Fermer"
+    },
+    "thinkingBudget": {
+      "label": "Budget de raisonnement (tokens)",
+      "hint": "Appliqué aux modèles raisonnants ; les non-raisonnants l'ignorent."
+    },
+    "searchPlaceholder": "Rechercher des fournisseurs...",
+    "searchModelPlaceholder": "Rechercher des modèles...",
+    "refetchModelsDev": "Récupérer les derniers modèles de models.dev",
+    "refetchModelsDevLoading": "Synchronisation...",
+    "refetchModelsDevOk": "Sync des modèles terminée",
+    "refetchModelsDevErr": "Sync échouée : {{message}}",
+    "infoLinks": {
+      "prefix": "Voir",
+      "docs": "docs du fournisseur",
+      "models": "modèles",
+      "and": "et",
+      "suffix": "pour plus d'infos"
+    },
+    "filterAll": "Tous",
+    "filterEnabled": "Activés",
+    "picker": {
+      "open": "Choisir un modèle",
+      "empty": "Cliquer pour choisir un modèle",
+      "close": "Fermer",
+      "searchPlaceholder": "Rechercher par ID ou nom",
+      "select": "Sélectionner",
+      "selected": "Sélectionné",
+      "remove": "Retirer",
+      "sort": "Trier",
+      "refresh": "Actualiser",
+      "refreshing": "Actualisation…"
+    },
+    "addCustom": "Ajouter",
+    "editCustom": "Éditer",
+    "deleteCustom": "Supprimer",
+    "confirmDelete": "Supprimer ce fournisseur personnalisé ?",
+    "setAsChat": "Définir comme fournisseur de chat",
+    "activeBadge": "ON",
+    "displayNameLabel": "Nom",
+    "baseUrlLabel": "URL d'API",
+    "apiKeyUrlLabel": "URL de clé API",
+    "categoryLabel": "Type de fournisseur",
+    "modelCount": "{{count}} modèles",
+    "addCustomTitle": "Ajouter un fournisseur personnalisé",
+    "editCustomTitle": "Éditer le fournisseur",
+    "customNamePlaceholder": "Mon fournisseur",
+    "customBaseUrlPlaceholder": "https://your-endpoint/v1",
+    "customApiKeyUrlPlaceholder": "https://...  (optionnel)",
+    "idLabel": "ID",
+    "idHint": "Lettres, chiffres, - et _ seulement",
+    "idDuplicate": "ID déjà existant",
+    "idInvalid": "Lettres, chiffres, - et _ seulement",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Optionnel",
+    "metadataLabel": "Métadonnées",
+    "metadata": {
+      "apiKey": "URL de clé API",
+      "docs": "URL docs",
+      "models": "URL liste des modèles",
+      "official": "URL site officiel"
+    },
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "preview": "Aperçu : {{url}}",
+    "addManual": {
+      "title": "Ajouter un modèle",
+      "idLabel": "ID du modèle",
+      "nameLabel": "Nom affiché",
+      "groupLabel": "Nom du groupe"
+    },
+    "askAI": {
+      "tooltip": "Demander à l'IA les capacités",
+      "label": "Demander à l'IA",
+      "thinking": "IA réfléchit…",
+      "streamTitle": "Sortie IA",
+      "suggestedLabel": "IA suggère (cliquer pour appliquer) :",
+      "noSuggestion": "L'IA ne rapporte aucune capacité",
+      "clickToApply": "Cliquer pour appliquer cette capacité",
+      "applyAll": "Tout appliquer",
+      "suggestedHint": "Cliquer un tag pour l'ajouter aux bascules ci-dessous, puis Enregistrer"
+    },
+    "editCapabilities": {
+      "tooltip": "Éditer les capacités",
+      "title": "Éditer les capacités du modèle"
+    }
+  },
+  "about": {
+    "tagline": "v0.1.0-alpha · Éditeur Markdown local-first",
+    "features": {
+      "localFirst": {
+        "title": "Local-first",
+        "description": "Données stockées sur votre appareil"
+      },
+      "openFormat": {
+        "title": "Format ouvert",
+        "description": "Markdown standard, sans verrou"
+      },
+      "ai": {
+        "title": "Assisté par IA",
+        "description": "LLM local + cloud"
+      }
+    },
+    "copyVersion": "Copier les infos de version",
+    "checkUpdate": "Vérifier les mises à jour"
+  },
+  "plugins": {
+    "title": "Plugins",
+    "description": "Installer, approuver, activer ou désinstaller des plugins tiers (micro-noyau + SDK plugin)",
+    "installFromFolder": "Installer depuis un dossier…",
+    "installFromZip": "Installer depuis un .zip…",
+    "installing": "Installation ({{id}})…",
+    "refresh": "Actualiser",
+    "refreshing": "Actualisation…",
+    "empty": "Aucun plugin installé",
+    "state": {
+      "active": "Actif",
+      "inactive": "Désactivé",
+      "failed": "Échec",
+      "installed": "Installé"
+    },
+    "tier": {
+      "trusted": "Niveau Trusted",
+      "sandbox": "Niveau Sandbox"
+    },
+    "approved": "Approuvé",
+    "approve": "Approuver et autoriser",
+    "approving": "Approbation…",
+    "activate": "Activer",
+    "activating": "Activation…",
+    "deactivate": "Désactiver",
+    "deactivating": "Désactivation…",
+    "uninstall": "Désinstaller",
+    "uninstalling": "Désinstallation…",
+    "uninstallTitle": "Désinstaller le plugin",
+    "uninstallConfirm": {
+      "title": "Désinstaller le plugin",
+      "message": "Désinstaller ce plugin ? Son dossier, son approbation et ses contributions enregistrées seront supprimés.",
+      "confirm": "Désinstaller",
+      "cancel": "Annuler"
+    },
+    "consent": {
+      "title": "Approuver plugin trusted",
+      "intro": "Sur le point d'approuver",
+      "permissionsLabel": "Permissions déclarées et points de contribution :",
+      "noPermissions": "Aucune",
+      "warning": "Les plugins trusted s'exécutent dans le processus principal et disposent de toutes les capacités hôte (lire/écrire le vault, invoquer des commandes Tauri, accéder à tout l'état React). Approuver équivaut à une confiance totale — n'approuvez que des plugins de sources de confiance.",
+      "cancel": "Annuler",
+      "confirm": "Je comprends, approuver"
+    }
+  },
+  "voice": {
+    "title": "Saisie vocale",
+    "description": "Cliquer 🎤 dans le chat IA ou appuyer sur le raccourci global pour enregistrer ; la voix est transcrite, polie, puis insérée dans le champ focalisé (entre apps).",
+    "windowsUnsupported": ". La saisie vocale n'est pas prise en charge sur cette plateforme",
+    "windowsUnsupportedBanner": "La saisie vocale n'est pas prise en charge sur cette plateforme. macOS utilise Apple Speech ; Windows utilise WinRT SpeechRecognition.",
+    "permission": {
+      "checking": "Vérification…",
+      "granted": "Accordée ✓",
+      "denied": "Encore refusée — cliquer pour réessayer"
+    },
+    "accessibility": {
+      "title": "Permission d'accessibilité",
+      "desc": "L'insertion de texte entre apps nécessite la permission d'accessibilité. Cliquer pour déclencher l'invite système ; redémarrez l'app après accord (TCC met en cache la décision au démarrage du processus).",
+      "action": "Accorder l'accessibilité"
+    },
+    "microphone": {
+      "title": "Permission du micro",
+      "desc": "L'enregistrement nécessite la permission du micro. Cliquer pour déclencher l'invite ; si déjà refusée, autorisez Quill sous Réglages Système → Confidentialité et Sécurité → Micro, puis réessayez.",
+      "action": "Accorder le micro"
+    },
+    "speech": {
+      "title": "Permission de reconnaissance vocale",
+      "desc": "La transcription Apple Speech nécessite la reconnaissance vocale. Cliquer pour déclencher l'invite ; si déjà refusée, autorisez Quill sous Confidentialité et Sécurité → Reconnaissance vocale, puis réessayez.",
+      "action": "Accorder la reconnaissance"
+    },
+    "polishPrompt": {
+      "label": "Prompt de polissage",
+      "desc": "Polir la transcription brute via la config IA actuelle (voir Outils IA). Vide pour ignorer.",
+      "charCount": "{{count}} caractères",
+      "reset": "Réinitialiser"
+    },
+    "autoPolish": {
+      "title": "Polissage auto",
+      "desc": "Après l'enregistrement, lancer le prompt de polissage sur la transcription ; désactiver pour la sortie brute"
+    },
+    "autoPaste": {
+      "title": "Collage auto",
+      "desc": "Coller automatiquement le texte reconnu à la position du curseur ; requiert l'accessibilité"
+    },
+    "saveSource": {
+      "title": "Enregistrer le fichier source vocal",
+      "desc": "Enregistrer l'enregistrement brut (WAV) dans un répertoire du vault"
+    },
+    "sourceDir": {
+      "label": "Répertoire source",
+      "desc": "Relatif à la racine du vault actuel ; fichier <dir>/<timestamp>.wav",
+      "browse": "Parcourir"
+    },
+    "spokenLanguage": {
+      "label": "Langue de reconnaissance",
+      "desc": "Apple Speech route par langue ; choisir « Chinois simplifié » pour le chinois. La locale système peut ne pas correspondre ; spécifier explicitement pour éviter les transcriptions vides."
+    },
+    "globalHotkey": {
+      "label": "Raccourci vocal",
+      "desc": "Vide pour désactiver ; maintenir pour enregistrer, relâcher pour terminer et insérer (entre apps). Esc efface.",
+      "recording": "Appuyer sur un raccourci… (Esc pour effacer)",
+      "notSet": "Non défini (cliquer pour enregistrer)"
+    }
+  },
+  "templates": {
+    "title": "Modèles de fichiers",
+    "description": "Configurer le modèle par défaut pour les nouveaux fichiers par extension. Variables : {{title}}, {{filename}}, {{date}}, {{ext}}",
+    "empty": "(vide)",
+    "emptyState": "Aucun modèle configuré",
+    "deleteTitle": "Supprimer le modèle",
+    "add": "Ajouter un modèle",
+    "editTitle": "Éditer le modèle",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "extPlaceholder": "ext"
+  },
+  "skills": {
+    "title": "Compétences",
+    "description": "Configurer les modèles de compétences IA ; les prompts contrôlent le format et la qualité de la sortie IA",
+    "new": "Nouvelle compétence",
+    "import": "Importer",
+    "export": "Exporter",
+    "empty": "Aucune compétence configurée",
+    "capability": {
+      "title": "Lien capacités",
+      "desc": "Affecter une compétence à chaque capacité ; Claude Code suit les instructions de la compétence correspondante.",
+      "clip": "Captures web",
+      "githubAnalysis": "Analyse GitHub"
+    },
+    "form": {
+      "newTitle": "Nouvelle compétence",
+      "idLabel": "ID",
+      "idHint": "Format slug ; minuscules, chiffres et tirets seulement",
+      "nameLabel": "Nom",
+      "descLabel": "Description",
+      "descPlaceholder": "Décrire le but de cette compétence",
+      "promptLabel": "Modèle de prompt",
+      "promptPlaceholder": "Saisir un modèle ; utiliser {{variableName}} pour les variables...",
+      "create": "Créer",
+      "cancel": "Annuler",
+      "editTitle": "Éditer",
+      "contentLabel": "Contenu de la compétence",
+      "save": "Enregistrer",
+      "reset": "Réinitialiser",
+      "delete": "Supprimer"
+    },
+    "confirmReset": "Réinitialiser ? Les modifications non enregistrées seront perdues.",
+    "confirmDelete": "Supprimer cette compétence ? Irréversible.",
+    "errorRequired": "ID et nom sont requis",
+    "errorCreate": "Échec de création",
+    "errorImport": "Échec d'import",
+    "errorExport": "Échec d'export"
+  },
+  "pet": {
+    "title": "Pet",
+    "description": "Configurer l'icône et l'affichage du pet de bureau",
+    "showPet": {
+      "title": "Afficher le pet",
+      "desc": "Afficher la fenêtre du pet à l'écran (macOS)"
+    },
+    "icon": {
+      "title": "Icône",
+      "desc": "Utiliser l'icône intégrée de Quill, ou téléverser une image personnalisée",
+      "builtin": "Intégré",
+      "custom": "Personnalisé",
+      "uploading": "Téléversement…",
+      "upload": "Téléverser une icône…",
+      "reset": "Réinitialiser",
+      "hint": "Prend png / jpg / webp / svg, ≤ 10 Mo",
+      "alt": "Icône personnalisée",
+      "select": "Sélectionner cette icône",
+      "delete": "Supprimer cette icône",
+      "confirmDelete": "Supprimer cette icône personnalisée ?"
+    },
+    "errors": {
+      "desktopOnly": "Fonction desktop ; utiliser dans un environnement Tauri",
+      "unsupportedFormat": "Seuls png / jpg / webp / svg sont pris en charge",
+      "fileTooLarge": "Fichier ≤ 10 Mo (actuellement {{kb}} Ko)",
+      "uploadFailed": "Téléversement échoué",
+      "resetFailed": "Réinitialisation échouée"
+    },
+    "opacity": {
+      "title": "Opacité du pet",
+      "desc": "Ajuster l'opacité globale (25 % / 50 % / 75 % / 100 %)",
+      "level25": "25 %",
+      "level50": "50 %",
+      "level75": "75 %",
+      "level100": "100 %"
+    },
+    "clickThrough": {
+      "title": "Traversée des clics",
+      "desc": "La fenêtre ignore les événements de pointeur ; les clics passent aux apps derrière"
+    },
+    "api": {
+      "title": "API de notification externe",
+      "desc": "D'autres apps peuvent POST sur localhost port {{port}} pour déclencher des notifications",
+      "copy": "Copier curl",
+      "copied": "Copié",
+      "test": "Tester",
+      "testing": "Envoyé"
+    },
+    "templates": {
+      "title": "Style de bulle",
+      "desc": "Choisir un modèle de bulle. Quatre presets intégrés, ou téléverser des modèles HTML+CSS personnalisés",
+      "active": "Actif",
+      "activate": "Utiliser",
+      "importFile": "Importer un fichier modèle",
+      "importPaste": "Coller un JSON de modèle",
+      "pastePlaceholder": "Coller le JSON ici : {\"id\":\"…\",\"name\":\"…\",\"html\":\"…\",\"css\":\"…\"}",
+      "import": "Importer",
+      "cancel": "Annuler",
+      "delete": "Supprimer",
+      "preview": "Aperçu",
+      "builtin": "Intégré",
+      "custom": "Personnalisé",
+      "previewSample": {
+        "text": "Aperçu : ceci est un exemple de notification",
+        "title": "Titre d'aperçu",
+        "actionLabel": "Voir"
+      },
+      "builtinNames": {
+        "cloudia": "Carte Cloudia"
+      },
+      "invalidJson": "Échec d'analyse JSON",
+      "missingFields": "Champs requis manquants : id / name / html / css",
+      "idCollision": "L'ID de modèle entre en collision avec un intégré ; préfixe user: ajouté automatiquement :",
+      "ai": {
+        "generate": "Génération IA",
+        "title": "Générateur de modèles de bulles IA",
+        "close": "Fermer",
+        "clear": "Vider",
+        "unconfigured": "Configurez chatProvider / chatModel / chatApiKey dans les réglages IA d'abord",
+        "importTemplate": "Importer ce modèle",
+        "inputPlaceholder": "Décrire le modèle souhaité, ex. carte de rappel d'anniversaire",
+        "paperclip": "Joindre un fichier",
+        "unsupportedFile": "Seuls .html / .htm / images",
+        "fileReadFailed": "Échec de lecture du fichier",
+        "imageNotSupported": "Le modèle actuel ne supporte pas les images — basculez vers un modèle vision ou téléversez du HTML",
+        "htmlAttached": "HTML joint : {{name}}",
+        "htmlWrapPrefix": "Adapter le HTML suivant en BubbleTemplate (doit passer DOMPurify, sans attributs on*, sans ressources externes) :",
+        "imageWrapPrefix": "Générer un BubbleTemplate (html + css) correspondant visuellement à l'image. Utiliser layout, couleurs et texte comme référence.",
+        "imageAttached": "Image jointe : {{name}}",
+        "removeAttachment": "Retirer la pièce jointe",
+        "preview": "Aperçu",
+        "newSession": "Nouvelle session",
+        "sessionSelect": "Sélectionner une session",
+        "untitled": "Session sans titre",
+        "loading": "Chargement…",
+        "error": "L'IA a renvoyé une erreur",
+        "emptyResponse": "L'IA n'a rien renvoyé. Réessayer.",
+        "confirmDelete": "Supprimer ?"
+      }
+    },
+    "whitelist": {
+      "title": "Whitelist des apps externes",
+      "desc": "Les apps macOS nommées par {{launch.type}} dans les notifications doivent être listées ici",
+      "add": "Ajouter",
+      "placeholder": "Nom de l'app, ex. Terminal / Xcode",
+      "empty": "Aucune app en whitelist",
+      "remove": "Retirer"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Choisir la forme des notifications d'événements du pet",
+    "form": {
+      "title": "Forme de notification",
+      "desc": "Carte popover ancrée au pet ; toast d'angle empilé dans un coin d'écran (passif, sans vol de focus)"
+    },
+    "options": {
+      "bubble": "Carte popover du pet",
+      "corner": "Toast d'angle",
+      "off": "Off"
+    },
+    "cornerPlacement": {
+      "title": "Position d'angle",
+      "desc": "Coin d'écran où le toast s'empile",
+      "options": {
+        "topLeft": "Haut gauche",
+        "topRight": "Haut droit",
+        "bottomLeft": "Bas gauche",
+        "bottomRight": "Bas droit"
+      }
+    },
+    "cornerTtlMs": {
+      "title": "TTL de notification",
+      "desc": "Auto-fermeture au TTL ; « jamais » requiert fermeture manuelle (valable pour popover et toast)",
+      "never": "Jamais",
+      "seconds": "{{seconds}}s"
+    }
+  },
+  "csp": {
+    "title": "Politique de sécurité (CSP)",
+    "description": "Contrôler quelles URLs externes l'app peut charger",
+    "mode": {
+      "label": "Mode URL externe",
+      "description": "Autoriser toute source ou seulement la whitelist",
+      "all": "Autoriser toutes les URLs",
+      "custom": "Whitelist personnalisée"
+    },
+    "urls": {
+      "label": "URLs autorisées",
+      "description": "Noms d'hôtes, URLs complètes ou schémas (ex. example.com, https://api.example.com, https:). Appliqué aux scripts, styles, polices, images, médias, connexions, workers et frames.",
+      "prompt": "example.com ou https://…",
+      "add": "Ajouter une URL",
+      "remove": "Retirer",
+      "empty": "Aucune URL — seule la baseline intégrée s'applique",
+      "reset": "Restaurer les valeurs par défaut",
+      "invalid": "Hostname / URL / schéma invalide"
+    },
+    "preview": {
+      "label": "Politique effective",
+      "description": "La politique entre en vigueur après « Appliquer & recharger »"
+    },
+    "baseline": {
+      "note": "Tauri IPC, quill-plugin, asset, data: et blob: sont toujours autorisés et non retirables."
+    },
+    "apply": {
+      "button": "Appliquer & recharger",
+      "note": "Appliquer recharge la page — bref clignotement. Les URLs ajoutées et « Autoriser toutes » ne sont actives qu'après le rechargement."
+    }
+  }
+}

@@ -1,0 +1,175 @@
+{
+  "export": {
+    "title": "エクスポート",
+    "source": {
+      "markdown": { "label": "Markdown", "description": ".mdソースファイルをエクスポート" },
+      "dbml": { "label": "DBML", "description": ".dbmlソースファイルをエクスポート" },
+      "excalidraw": { "label": "Excalidraw", "description": ".excalidrawソースファイルをエクスポート" },
+      "drawio": { "label": "Drawio", "description": ".drawioソースファイルをエクスポート" },
+      "mmap": { "label": "マインドマップ", "description": ".mmapソースファイルをエクスポート" },
+      "plantuml": { "label": "PlantUML", "description": ".pumlソースファイルをエクスポート" },
+      "graphviz": { "label": "Graphviz", "description": ".gvソースファイルをエクスポート" },
+      "default": { "label": "ソースファイル", "description": "生ファイルをエクスポート" }
+    },
+    "html": {
+      "label": "HTML",
+      "description": "レンダリングされたWebページとしてエクスポート"
+    },
+    "svg": {
+      "label": "SVG",
+      "description": "ベクター画像としてエクスポート"
+    },
+    "png": {
+      "label": "PNG",
+      "description": "ラスター画像としてエクスポート"
+    },
+    "xmind": {
+      "label": "XMind",
+      "description": ".xmindマインドマップとしてエクスポート"
+    },
+    "containerWarning": {
+      "title": "⚠️ 互換性の注意",
+      "body": "現在のドキュメントはQuillコンテナ構文（コールアウト、タブ、折りたたみブロックなど）を使用しています。これはQuill拡張です。**他のMarkdownエディタでは正しくレンダリングできない場合があります。**",
+      "hint": "他のエディタで表示するには、HTMLとしてエクスポートしてください。",
+      "cancel": "キャンセル",
+      "confirm": "そのままエクスポート"
+    },
+    "processing": {
+      "title": "エクスポート中",
+      "hint": "コンテンツを準備中、お待ちください…"
+    }
+  },
+  "slashMenu": {
+    "categories": {
+      "layout": "レイアウト",
+      "media": "メディア",
+      "ai": "AI",
+      "data": "データ",
+      "custom": "カスタム"
+    },
+    "richText": {
+      "triggerButton": "スラッシュコマンドを挿入",
+      "shortcutHint": "⌘/",
+      "categories": {
+        "blocks": "ブロック",
+        "lists": "リスト"
+      },
+      "items": {
+        "heading1": "見出し1",
+        "heading2": "見出し2",
+        "heading3": "見出し3",
+        "blockquote": "引用",
+        "codeBlock": "コードブロック",
+        "horizontalRule": "区切り線",
+        "bulletList": "箇条書き",
+        "orderedList": "番号付きリスト",
+        "taskList": "タスクリスト",
+        "inlineMath": "インライン数式",
+        "blockMath": "ブロック数式"
+      },
+      "empty": "一致するコマンドはありません"
+    }
+  },
+  "math": {
+    "insertButton": "数式を挿入",
+    "title": "数式を挿入",
+    "editTitle": "数式を編集",
+    "latexLabel": "LaTeX",
+    "preview": "プレビュー",
+    "inline": "インライン",
+    "block": "ブロック",
+    "insert": "挿入",
+    "update": "更新",
+    "cancel": "キャンセル",
+    "placeholder": "例: \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}"
+  },
+  "imagePaste": {
+    "title": "📷 画像を貼り付け",
+    "uploadMethod": "アップロード方法",
+    "comingSoon": "近日対応",
+    "fileName": "画像名",
+    "fileNamePlaceholder": "画像名を入力",
+    "directory": "保存ディレクトリ",
+    "directoryPlaceholder": "Vaultルートからの相対パス",
+    "vaultHint": "🗄️ vault: {{root}}",
+    "format": "画像形式",
+    "size": "画像サイズ",
+    "width": "幅",
+    "widthPlaceholder": "幅",
+    "height": "高さ",
+    "heightPlaceholder": "高さ",
+    "lockRatio": "縦横比を固定",
+    "unlockRatio": "縦横比の固定を解除",
+    "resetSize": "元のサイズに戻す",
+    "originalSize": "元のサイズ: {{w}} × {{h}} px",
+    "pathPreview": "📄 {{path}}",
+    "cancel": "キャンセル",
+    "upload": "✓ アップロード"
+  },
+  "dailyDigest": {
+    "title": "AIデイリーダジェスト",
+    "generate": "ラジェストを生成",
+    "hint": "AIが今日の執筆アクティビティを分析してラジェストを生成します",
+    "loading": "ラジェスト生成中...",
+    "insert": "ノートに挿入",
+    "generateFailed": "生成失敗: {{error}}",
+    "today": "今日: {{date}}",
+    "modifiedSection": "今日の変更ドキュメント",
+    "modifiedEmpty": "（変更なし）",
+    "recentDailySection": "最近のデイリーノート",
+    "recentDailyEmpty": "（最近のデイリーノートはありません）"
+  },
+  "diffToolbar": {
+    "pendingCount": "{{count}}件の変更がレビュー待ち",
+    "acceptAll": "すべて承認",
+    "rejectAll": "すべて却下"
+  },
+  "versionHistory": {
+    "title": "バージョン履歴",
+    "close": "閉じる",
+    "loading": "読み込み中…",
+    "empty": "スナップショットはありません",
+    "snapshot": "スナップショット",
+    "snapshotN": "スナップショット {{index}}",
+    "restore": "復元",
+    "restoring": "復元中…",
+    "closeSelected": "閉じる",
+    "diff": {
+      "identical": "内容は現在の状態と一致します"
+    }
+  },
+  "color": {
+    "buttonTitle": "テキスト色",
+    "textColor": "テキスト色",
+    "highlight": "ハイライト",
+    "custom": "カスタム"
+  },
+  "table": {
+    "insertButton": { "title": "表を挿入" },
+    "handle": { "rowActions": "行アクション", "colActions": "列アクション" },
+    "rowMenu": {
+      "insertAbove": "上に行を挿入",
+      "insertBelow": "下に行を挿入",
+      "delete": "行を削除",
+      "toggleHeader": "ヘッダー行を切り替え"
+    },
+    "colMenu": {
+      "insertLeft": "左に列を挿入",
+      "insertRight": "右に列を挿入",
+      "delete": "列を削除",
+      "toggleHeader": "ヘッダー列を切り替え"
+    },
+    "cellMenu": {
+      "merge": "セルを結合",
+      "split": "セルを分割",
+      "alignLeft": "左揃え",
+      "alignCenter": "中央揃え",
+      "alignRight": "右揃え",
+      "toggleHeaderCell": "ヘッダーセルを切り替え",
+      "deleteTable": "表を削除",
+      "bgColor": "背景色",
+      "clearBg": "背景をクリア",
+      "customColor": "カスタム色…"
+    }
+  }
+}

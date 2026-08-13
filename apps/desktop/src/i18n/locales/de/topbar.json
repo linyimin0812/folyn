@@ -1,0 +1,34 @@
+{
+  "menu": "Menü",
+  "copyToVault": "In Vault kopieren",
+  "theme": {
+    "toggle": "Design wechseln"
+  },
+  "ai": {
+    "panel": "KI-Panel",
+    "planToday": "KI-Plan für heute"
+  },
+  "tabList": {
+    "menu": "Alle geöffneten Dateien",
+    "closeAll": "Alle Tabs schließen",
+    "noOpenFiles": "Keine offenen Dateien",
+    "closePanel": "Liste schließen",
+    "closeTab": "Datei schließen",
+    "openExternalFolder": "Übergeordneten Ordner öffnen"
+  },
+  "terminal": {
+    "collapse": "Terminal einklappen",
+    "expand": "Terminal ausklappen",
+    "open": "Terminal öffnen"
+  },
+  "viewMode": {
+    "split": "Teilen",
+    "edit": "Bearbeiten",
+    "preview": "Vorschau",
+    "source": "Quelle",
+    "visual": "Visuell"
+  },
+  "versionHistory": {
+    "toggle": "Versionsverlauf"
+  }
+}

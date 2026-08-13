@@ -1,0 +1,714 @@
+{
+  "nav": {
+    "backToEditor": "Zum Editor"
+  },
+  "groups": {
+    "general": "Allgemein",
+    "editor": "Editor",
+    "ai": "KI",
+    "extensions": "Erweiterungen",
+    "about": "Über"
+  },
+  "tabs": {
+    "appearance": "Darstellung",
+    "editor": "Editor",
+    "shortcuts": "Tastenkürzel",
+    "cli": "CLI-Werkzeuge",
+    "models": "Modelldienste",
+    "voice": "Spracheingabe",
+    "templates": "Dateivorlagen",
+    "skills": "Fähigkeiten",
+    "pet": "Pet",
+    "notifications": "Benachrichtigungen",
+    "plugins": "Plugins",
+    "csp": "Sicherheitspolitik",
+    "about": "Über"
+  },
+  "appearance": {
+    "title": "Darstellung",
+    "description": "UI-Design und Schriftanzeige anpassen",
+    "theme": {
+      "label": "UI-Design",
+      "dark": "Dunkel",
+      "light": "Hell",
+      "system": "System folgen"
+    },
+    "fontSize": {
+      "label": "UI-Schriftgröße",
+      "compact": "12px (kompakt)",
+      "default": "14px (Standard)",
+      "comfortable": "16px (komfortabel)"
+    },
+    "panels": {
+      "ai": {
+        "label": "KI-Panel standardmäßig anzeigen",
+        "description": "KI-Chat-Panel beim Öffnen des Editors automatisch ausklappen"
+      },
+      "statusBar": {
+        "label": "Statusleiste",
+        "description": "Wortzahl und Cursorposition unten anzeigen"
+      },
+      "hiddenFiles": {
+        "label": "Versteckte Dateien anzeigen",
+        "description": "Dotfiles und versteckte Ordner im Dateibaum anzeigen"
+      },
+      "wiki": {
+        "label": "Wiki-Panel",
+        "description": "Wiki-Eintrag in der Seitenleiste anzeigen"
+      },
+      "clips": {
+        "label": "Clips-Panel",
+        "description": "Web-Clips-Eintrag in der Seitenleiste anzeigen"
+      },
+      "analyze": {
+        "label": "Projektanalyse-Panel",
+        "description": "Projektanalyse-Eintrag in der Seitenleiste anzeigen"
+      },
+      "daily": {
+        "label": "Tagesnotizen-Panel",
+        "description": "Kalender- und Tagesnotiz-Eintrag in der Seitenleiste (Deaktivieren deaktiviert auch ⌘D)"
+      },
+      "tray": {
+        "label": "Tray-Icon anzeigen",
+        "description": "App-Icon im System-Tray anzeigen; Klick für dasselbe Schnellaktionsmenü wie das Pet-Rechtsklickmenü"
+      }
+    },
+    "excludePatterns": {
+      "label": "Dateien/Ordner filtern",
+      "description": "Übereinstimmende Dateien/Ordner werden im Baum ausgeblendet. Unterstützt * und ?.",
+      "add": "Hinzufügen",
+      "prompt": "Filtermuster eingeben (unterstützt * und ?)",
+      "empty": "Keine Filterregeln"
+    }
+  },
+  "editor": {
+    "title": "Editor",
+    "description": "Editor-Verhalten und Anzeigeoptionen konfigurieren",
+    "font": {
+      "label": "Editor-Schriftart"
+    },
+    "fontSize": {
+      "label": "Schriftgröße"
+    },
+    "tabSize": {
+      "label": "Tab-Größe",
+      "2": "2 Leerzeichen",
+      "4": "4 Leerzeichen"
+    },
+    "showLineNumbers": {
+      "label": "Zeilennummern anzeigen",
+      "description": "Zeilennummern links im Editor"
+    },
+    "autoSave": {
+      "label": "Automatisch speichern",
+      "description": "Aktuelles Dokument alle 5s speichern"
+    },
+    "linkOpenMode": {
+      "label": "Link-Öffnungsmodus",
+      "description": "Standardverhalten beim Klick auf einen Link",
+      "external": "Externer Browser",
+      "internal": "In App öffnen"
+    },
+    "dailyNotes": {
+      "title": "Tagesnotizen",
+      "description": "Speicherverzeichnis und Datumsformat konfigurieren",
+      "dir": {
+        "label": "Notizverzeichnis"
+      },
+      "dateFormat": {
+        "label": "Datumsformat"
+      }
+    }
+  },
+  "shortcuts": {
+    "title": "Tastenkürzel",
+    "description": "Auf ein Kürzelfeld klicken zum Neu-Aufzeichnen; neue Tastenkombination drücken zum Ändern",
+    "reset": "Auf Standard zurücksetzen",
+    "editor": {
+      "recording": "Kürzel drücken…",
+      "conflictHint": "Keine Taste erfasst — Kombination könnte durch App-Menü oder OS belegt sein (⌘Q / ⌘H / ⌘M / ⌘W / ⌘⇧P)"
+    },
+    "items": {
+      "save": "Dokument speichern",
+      "bold": "Fett",
+      "italic": "Kursiv",
+      "strikethrough": "Durchgestrichen",
+      "code": "Inline-Code",
+      "link": "Link einfügen",
+      "dailyNote": "Heutige Notiz",
+      "togglePetPanel": "Pet-Panel öffnen"
+    }
+  },
+  "cli": {
+    "title": "CLI-Werkzeuge",
+    "description": "KI-CLI-Werkzeuge für intelligente Dokumentbearbeitung konfigurieren",
+    "cliAdapter": "CLI-Adapter",
+    "adapterHint": "Jeder Adapter hat seinen eigenen Programmpfad; welcher Adapter in einer Chat-Sitzung verwendet wird, wird im KI-Panel / Pet-Chat ausgewählt — dieser Tab konfiguriert nur Pfade.",
+    "adapters": {
+      "claude": {
+        "description": "Offizieller CLI von Anthropic; unterstützt konversationelle Bearbeitung und Multi-Tool-Aufrufe"
+      },
+      "pi": {
+        "description": "Pi Coding Agent (@earendil-works/pi-coding-agent); Tools read/bash/edit/write, RPC-Multi-Turn-Sessions"
+      }
+    },
+    "cliPath": {
+      "label": "CLI-Pfad",
+      "detect": "Erkennen",
+      "detectTitle": "Pfad automatisch erkennen",
+      "hint": "Pfad oder Befehlsname des CLI-Programms; auf \"Erkennen\" klicken zum Suchen"
+    },
+    "settingsFile": {
+      "title": "Konfigurationsdatei dieses Adapters im Quill-Editor öffnen",
+      "missing": "Nicht gefunden: {{path}}",
+      "missingHint": "Datei wurde noch nicht erstellt (CLI erstellt sie meist beim ersten Lauf).",
+      "create": "Erstellen",
+      "createTitle": "Minimale gültige Vorlage schreiben und öffnen"
+    },
+    "test": {
+      "testing": "Testen…",
+      "label": "Verbindung testen",
+      "success": "Verbunden",
+      "exitCode": "Exit-Code {{code}}",
+      "cannotRun": "CLI nicht ausführbar: {{error}}"
+    },
+    "usage": {
+      "title": "Verwendung",
+      "description": "KI-Werkzeuge bearbeiten Dokumente über ein lokales CLI (z. B. Claude Code). Entsprechendes CLI muss installiert sein. Änderungen werden als Diff gezeigt und nach Bestätigung angewendet."
+    }
+  },
+  "scriptRuntime": {
+    "title": "Skript-Runtimes",
+    "description": "Code-Blöcke in der Markdown-Vorschau ausführen",
+    "usageHint": " Auf „Ausführen“ bei einem ```bash / ```js / ```python-Block in der Vorschau klicken. Ausgabe wird als > Result:-Zitat eingefügt.",
+    "detect": "Erkennen",
+    "detectTitle": "Binär-Pfad automatisch via /bin/sh -lc which <bin> erkennen",
+    "test": {
+      "label": "Testen",
+      "testing": "Testen…",
+      "success": "OK",
+      "exitCode": "Exit-Code {{code}}",
+      "cannotRun": "Nicht ausführbar: {{error}}"
+    }
+  },
+  "models": {
+    "title": "Modelldienste",
+    "description": "LLM-Anbieter und Modelle für Chat / Agent konfigurieren",
+    "chat": {
+      "title": "Chat-Modus",
+      "description": "Multi-Turn-Chat über rig direkt LLM (kein CLI, kein Tool-/Dateizugriff). ask/agent verwenden weiterhin obiges CLI."
+    },
+    "refetchAll": "Alle Modelle neu laden",
+    "refetchAllHint": "Zuerst mindestens einen Anbieter konfigurieren",
+    "refetchAllRunning": "Lädt neu…",
+    "refetchAllSummary": "{{success}} erfolgreich, {{failed}} fehlgeschlagen",
+    "backendNotReady": "Backend nicht verbunden — anderen Anbieter verwenden",
+    "category": {
+      "native": "Nativ",
+      "compat": "Kompatibel",
+      "openai-family": "OpenAI-kompatible Familie",
+      "local": "Lokal",
+      "openai": "OpenAI",
+      "openai-response": "OpenAI-Response",
+      "gemini": "Gemini",
+      "anthropic": "Anthropic",
+      "azure-openai": "Azure OpenAI",
+      "new-api": "New API",
+      "ollama": "Ollama"
+    },
+    "capability": {
+      "vision": "Vision",
+      "reasoning": "Reasoning",
+      "web-search": "Web",
+      "function-call": "Tools",
+      "embedding": "Embedding",
+      "rerank": "Rerank"
+    },
+    "provider": {
+      "label": "Anbieter",
+      "anthropic": "Anthropic (Claude)",
+      "openai": "OpenAI",
+      "openaiCompatible": "OpenAI-kompatibel (eigene baseUrl)",
+      "azure-openai": "Azure OpenAI",
+      "cohere": "Cohere",
+      "gemini": "Google Gemini",
+      "huggingface": "HuggingFace",
+      "ollama": "Ollama (lokal)",
+      "openai-compatible": "OpenAI-kompatibel (eigene baseUrl)",
+      "anthropic-compatible": "Anthropic-kompatibel (eigene baseUrl)",
+      "deepseek": "DeepSeek",
+      "groq": "Groq",
+      "moonshot": "Moonshot",
+      "openrouter": "OpenRouter",
+      "perplexity": "Perplexity",
+      "together": "TogetherAI",
+      "xai": "xAI"
+    },
+    "model": {
+      "label": "Modell"
+    },
+    "selectedModels": {
+      "label": "Ausgewählte Modelle"
+    },
+    "apiKey": {
+      "label": "API-Key",
+      "show": "API-Key anzeigen",
+      "hide": "API-Key verbergen",
+      "getKey": "API-Key holen"
+    },
+    "azure": {
+      "deploymentId": {
+        "label": "Deployment-ID"
+      },
+      "apiVersion": {
+        "label": "API-Version"
+      }
+    },
+    "baseUrl": {
+      "label": "API-URL",
+      "anthropicHint": "Für offizielles Anthropic leer; Anthropic-kompatible Endpunkte",
+      "openaiHint": "Für offizielles OpenAI leer.",
+      "openaiCompatibleHint": "Pflicht für Ollama / vLLM / LM Studio etc.; /v1 wird automatisch angefügt.",
+      "placeholder": "Standard leer",
+      "reset": "Zurücksetzen"
+    },
+    "test": {
+      "testing": "Erkennen…",
+      "label": "Erkennen",
+      "selectModel": "Modell wählen"
+    },
+    "fetchModels": {
+      "label": "Modelle abrufen",
+      "fetching": "Abrufen…",
+      "empty": "Keine Modelle zurückgegeben",
+      "orphan": "nicht in abgerufener Liste",
+      "errorTitle": "Abruf fehlgeschlagen",
+      "errorClose": "Schließen"
+    },
+    "thinkingBudget": {
+      "label": "Reasoning-Budget (Tokens)",
+      "hint": "Auf Reasoning-fähige Modelle angewendet; nicht-Reasoning-Modelle ignorieren es."
+    },
+    "searchPlaceholder": "Anbieter suchen...",
+    "searchModelPlaceholder": "Modelle suchen...",
+    "refetchModelsDev": "Neueste Modelle von models.dev abrufen",
+    "refetchModelsDevLoading": "Synchronisiere...",
+    "refetchModelsDevOk": "Modell-Sync abgeschlossen",
+    "refetchModelsDevErr": "Sync fehlgeschlagen: {{message}}",
+    "infoLinks": {
+      "prefix": "Siehe",
+      "docs": "Anbieter-Doku",
+      "models": "Modelle",
+      "and": "und",
+      "suffix": "für mehr Infos"
+    },
+    "filterAll": "Alle",
+    "filterEnabled": "Aktiviert",
+    "picker": {
+      "open": "Modell auswählen",
+      "empty": "Klicken, um Modell zu wählen",
+      "close": "Schließen",
+      "searchPlaceholder": "Nach ID oder Name suchen",
+      "select": "Auswählen",
+      "selected": "Ausgewählt",
+      "remove": "Entfernen",
+      "sort": "Sortieren",
+      "refresh": "Aktualisieren",
+      "refreshing": "Aktualisieren…"
+    },
+    "addCustom": "Hinzufügen",
+    "editCustom": "Bearbeiten",
+    "deleteCustom": "Löschen",
+    "confirmDelete": "Diesen benutzerdefinierten Anbieter löschen?",
+    "setAsChat": "Als Chat-Anbieter festlegen",
+    "activeBadge": "AN",
+    "displayNameLabel": "Name",
+    "baseUrlLabel": "API-URL",
+    "apiKeyUrlLabel": "API-Key-URL",
+    "categoryLabel": "Anbietertyp",
+    "modelCount": "{{count}} Modelle",
+    "addCustomTitle": "Benutzerdefinierten Anbieter hinzufügen",
+    "editCustomTitle": "Anbieter bearbeiten",
+    "customNamePlaceholder": "Mein Anbieter",
+    "customBaseUrlPlaceholder": "https://your-endpoint/v1",
+    "customApiKeyUrlPlaceholder": "https://...  (optional)",
+    "idLabel": "ID",
+    "idHint": "Nur Buchstaben, Ziffern, - und _",
+    "idDuplicate": "ID existiert bereits",
+    "idInvalid": "Nur Buchstaben, Ziffern, - und _",
+    "descriptionLabel": "Beschreibung",
+    "descriptionPlaceholder": "Optional",
+    "metadataLabel": "Metadaten",
+    "metadata": {
+      "apiKey": "API-Key-URL",
+      "docs": "Doku-URL",
+      "models": "Modelle-Listen-URL",
+      "official": "Offizielle Site-URL"
+    },
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "preview": "Vorschau: {{url}}",
+    "addManual": {
+      "title": "Modell hinzufügen",
+      "idLabel": "Modell-ID",
+      "nameLabel": "Anzeigename",
+      "groupLabel": "Gruppenname"
+    },
+    "askAI": {
+      "tooltip": "KI nach Fähigkeiten fragen",
+      "label": "KI fragen",
+      "thinking": "KI denkt…",
+      "streamTitle": "KI-Ausgabe",
+      "suggestedLabel": "KI schlägt vor (Klick zum Anwenden):",
+      "noSuggestion": "KI meldet keine unterstützten Fähigkeiten",
+      "clickToApply": "Klick, um diese Fähigkeit anzuwenden",
+      "applyAll": "Alle anwenden",
+      "suggestedHint": "Auf einen Tag klicken, um ihn zu den Toggles unten hinzuzufügen, dann Speichern"
+    },
+    "editCapabilities": {
+      "tooltip": "Fähigkeiten bearbeiten",
+      "title": "Modellfähigkeiten bearbeiten"
+    }
+  },
+  "about": {
+    "tagline": "v0.1.0-alpha · Local-first Markdown-Editor",
+    "features": {
+      "localFirst": {
+        "title": "Local-first",
+        "description": "Daten liegen auf deinem Gerät"
+      },
+      "openFormat": {
+        "title": "Offenes Format",
+        "description": "Standard-Markdown, kein Lock-in"
+      },
+      "ai": {
+        "title": "KI-gestützt",
+        "description": "Lokal + Cloud-LLM"
+      }
+    },
+    "copyVersion": "Versionsinfo kopieren",
+    "checkUpdate": "Nach Updates suchen"
+  },
+  "plugins": {
+    "title": "Plugins",
+    "description": "Drittanbieter-Plugins installieren, genehmigen, aktivieren oder deinstallieren (Mikrokernel + Plugin-SDK)",
+    "installFromFolder": "Aus Ordner installieren…",
+    "installFromZip": "Aus .zip installieren…",
+    "installing": "Installiere ({{id}})…",
+    "refresh": "Aktualisieren",
+    "refreshing": "Aktualisiere…",
+    "empty": "Noch keine Plugins installiert",
+    "state": {
+      "active": "Aktiv",
+      "inactive": "Deaktiviert",
+      "failed": "Fehlgeschlagen",
+      "installed": "Installiert"
+    },
+    "tier": {
+      "trusted": "Trusted-Tier",
+      "sandbox": "Sandbox-Tier"
+    },
+    "approved": "Genehmigt",
+    "approve": "Genehmigen und autorisieren",
+    "approving": "Genehmige…",
+    "activate": "Aktivieren",
+    "activating": "Aktiviere…",
+    "deactivate": "Deaktivieren",
+    "deactivating": "Deaktiviere…",
+    "uninstall": "Deinstallieren",
+    "uninstalling": "Deinstalliere…",
+    "uninstallTitle": "Plugin deinstallieren",
+    "uninstallConfirm": {
+      "title": "Plugin deinstallieren",
+      "message": "Dieses Plugin deinstallieren? Ordner, Genehmigung und eingetragene Beiträge werden entfernt.",
+      "confirm": "Deinstallieren",
+      "cancel": "Abbrechen"
+    },
+    "consent": {
+      "title": "Trusted Plugin genehmigen",
+      "intro": "Zur Genehmigung anstehend",
+      "permissionsLabel": "Deklarierte Berechtigungen und Beitragspunkte:",
+      "noPermissions": "Keine",
+      "warning": "Trusted Plugins laufen im Hauptprozess und haben volle Host-Fähigkeiten (Vault lesen/schreiben, Tauri-Befehle aufrufen, auf den gesamten React-State zugreifen). Genehmigung bedeutet volles Vertrauen — nur Plugins aus vertrauten Quellen genehmigen.",
+      "cancel": "Abbrechen",
+      "confirm": "Verstanden, genehmigen"
+    }
+  },
+  "voice": {
+    "title": "Spracheingabe",
+    "description": "Im KI-Chat auf 🎤 klicken oder den globalen Hotkey drücken zum Aufnehmen; Sprache wird transkribiert, überarbeitet und in den fokussierten Input eingefügt (app-übergreifend).",
+    "windowsUnsupported": ". Spracheingabe wird auf dieser Plattform nicht unterstützt",
+    "windowsUnsupportedBanner": "Spracheingabe wird auf dieser Plattform nicht unterstützt. macOS nutzt Apple Speech; Windows nutzt WinRT SpeechRecognition.",
+    "permission": {
+      "checking": "Prüfe…",
+      "granted": "Gewährt ✓",
+      "denied": "Noch nicht gewährt — Klick zum Wiederholen"
+    },
+    "accessibility": {
+      "title": "Bedienungshilfen-Berechtigung",
+      "desc": "App-übergreifendes Text-Einfügen benötigt Bedienungshilfen-Berechtigung. Klick löst den Systemprompt aus; nach Gewährung App neu starten (TCC cached die Entscheidung beim Prozessstart).",
+      "action": "Bedienungshilfen gewähren"
+    },
+    "microphone": {
+      "title": "Mikrofon-Berechtigung",
+      "desc": "Aufnahme erfordert Mikrofon-Berechtigung. Klick löst den Systemprompt aus; falls vorher verweigert, Quill unter Systemeinstellungen → Datenschutz & Sicherheit → Mikrofon erlauben und wiederholen.",
+      "action": "Mikrofon gewähren"
+    },
+    "speech": {
+      "title": "Spracherkennungs-Berechtigung",
+      "desc": "Apple-Speech-Transkription benötigt Spracherkennung. Klick löst den Systemprompt aus; bei vorheriger Verweigerung unter Systemeinstellungen → Datenschutz & Sicherheit → Spracherkennung erlauben und wiederholen.",
+      "action": "Spracherkennung gewähren"
+    },
+    "polishPrompt": {
+      "label": "Überarbeitungs-Prompt",
+      "desc": "Rohtranskript mit der aktuellen KI-Config überarbeiten (siehe KI-Werkzeuge). Leer lassen, um zu überspringen.",
+      "charCount": "{{count}} Zeichen",
+      "reset": "Auf Standard zurücksetzen"
+    },
+    "autoPolish": {
+      "title": "Auto-Überarbeitung",
+      "desc": "Nach Aufnahme automatisch Überarbeitungs-Prompt auf Transkript anwenden; deaktivieren für Roh-Transkript"
+    },
+    "autoPaste": {
+      "title": "Auto-Einfügen",
+      "desc": "Erkannten Text automatisch an der Cursorposition einfügen; erfordert Bedienungshilfen-Berechtigung"
+    },
+    "saveSource": {
+      "title": "Sprachquelldatei speichern",
+      "desc": "Rohe Aufnahme (WAV) in angegebenem Verzeichnis im Vault speichern"
+    },
+    "sourceDir": {
+      "label": "Quellverzeichnis",
+      "desc": "Relativ zur aktuellen Vault-Root; Datei ist <dir>/<timestamp>.wav",
+      "browse": "Durchsuchen"
+    },
+    "spokenLanguage": {
+      "label": "Erkennungssprache",
+      "desc": "Apple Speech leitet nach Sprache; für Chinesisch „Vereinfachtes Chinesisch“ wählen. Standard-Locale passt evtl. nicht; explizit angeben, um leere Transkripte zu vermeiden."
+    },
+    "globalHotkey": {
+      "label": "Sprach-Hotkey",
+      "desc": "Leer = deaktiviert; gedrückt halten zum Aufnehmen, loslassen zum Beenden und Einfügen (app-übergreifend). Esc löscht.",
+      "recording": "Kürzel drücken… (Esc zum Löschen)",
+      "notSet": "Nicht gesetzt (Klick zum Aufzeichnen)"
+    }
+  },
+  "templates": {
+    "title": "Dateivorlagen",
+    "description": "Standardvorlage pro Erweiterung konfigurieren. Variablen: {{title}}, {{filename}}, {{date}}, {{ext}}",
+    "empty": "(leer)",
+    "emptyState": "Keine Vorlagen konfiguriert",
+    "deleteTitle": "Vorlage löschen",
+    "add": "Vorlage hinzufügen",
+    "editTitle": "Vorlage bearbeiten",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "extPlaceholder": "Erw."
+  },
+  "skills": {
+    "title": "Fähigkeiten",
+    "description": "KI-Fähigkeitsvorlagen konfigurieren; Custom Prompts steuern Format und Qualität der KI-Ausgabe",
+    "new": "Neue Fähigkeit",
+    "import": "Importieren",
+    "export": "Exportieren",
+    "empty": "Keine Fähigkeiten konfiguriert",
+    "capability": {
+      "title": "Fähigkeitsbindung",
+      "desc": "Jeder Fähigkeit eine Skill zuweisen; Claude Code folgt den Anweisungen der entsprechenden Skill.",
+      "clip": "Web-Clips",
+      "githubAnalysis": "GitHub-Analyse"
+    },
+    "form": {
+      "newTitle": "Neue Fähigkeit",
+      "idLabel": "ID",
+      "idHint": "Slug-Format; nur Kleinbuchstaben, Ziffern und Bindestriche",
+      "nameLabel": "Name",
+      "descLabel": "Beschreibung",
+      "descPlaceholder": "Zweck dieser Fähigkeit beschreiben",
+      "promptLabel": "Prompt-Vorlage",
+      "promptPlaceholder": "Prompt-Vorlage eingeben; Variablen als {{variableName}}...",
+      "create": "Erstellen",
+      "cancel": "Abbrechen",
+      "editTitle": "Bearbeiten",
+      "contentLabel": "Fähigkeitsinhalt",
+      "save": "Speichern",
+      "reset": "Auf Standard zurücksetzen",
+      "delete": "Löschen"
+    },
+    "confirmReset": "Auf Standards zurücksetzen? Ungespeicherte Änderungen gehen verloren.",
+    "confirmDelete": "Diese Fähigkeit löschen? Nicht rückgängig machbar.",
+    "errorRequired": "ID und Name sind erforderlich",
+    "errorCreate": "Erstellen fehlgeschlagen",
+    "errorImport": "Import fehlgeschlagen",
+    "errorExport": "Export fehlgeschlagen"
+  },
+  "pet": {
+    "title": "Pet",
+    "description": "Desktop-Pet-Icon und Anzeige konfigurieren",
+    "showPet": {
+      "title": "Pet anzeigen",
+      "desc": "Pet-Fenster auf dem Bildschirm anzeigen (macOS)"
+    },
+    "icon": {
+      "title": "Icon",
+      "desc": "Eingebautes Quill-Icon verwenden oder eigenes Bild hochladen",
+      "builtin": "Eingebaut",
+      "custom": "Benutzerdefiniert",
+      "uploading": "Lade hoch…",
+      "upload": "Icon hochladen…",
+      "reset": "Auf Standard zurücksetzen",
+      "hint": "Unterstützt png / jpg / webp / svg, ≤ 10MB",
+      "alt": "Benutzerdefiniertes Icon",
+      "select": "Dieses Icon auswählen",
+      "delete": "Dieses Icon löschen",
+      "confirmDelete": "Dieses benutzerdefinierte Icon löschen?"
+    },
+    "errors": {
+      "desktopOnly": "Desktop-Funktion; in Tauri-Umgebung verwenden",
+      "unsupportedFormat": "Nur png / jpg / webp / svg werden unterstützt",
+      "fileTooLarge": "Datei muss ≤ 10MB sein (aktuell {{kb}} KB)",
+      "uploadFailed": "Upload fehlgeschlagen",
+      "resetFailed": "Zurücksetzen fehlgeschlagen"
+    },
+    "opacity": {
+      "title": "Pet-Deckkraft",
+      "desc": "Gesamtdeckkraft einstellen (25% / 50% / 75% / 100%)",
+      "level25": "25%",
+      "level50": "50%",
+      "level75": "75%",
+      "level100": "100%"
+    },
+    "clickThrough": {
+      "title": "Klick-Durchgriff",
+      "desc": "Fenster ignoriert Pointer-Events; Klicks gehen an Apps dahinter"
+    },
+    "api": {
+      "title": "Externe Benachrichtigungs-API",
+      "desc": "Andere Apps können an localhost Port {{port}} POST senden, um Pet-Benachrichtigungen auszulösen",
+      "copy": "curl kopieren",
+      "copied": "Kopiert",
+      "test": "Testen",
+      "testing": "Gesendet"
+    },
+    "templates": {
+      "title": "Bubble-Stil",
+      "desc": "Bubble-Vorlage wählen. Vier eingebaute Presets oder eigene HTML+CSS hochladen",
+      "active": "Aktiv",
+      "activate": "Verwenden",
+      "importFile": "Vorlagendatei importieren",
+      "importPaste": "Vorlagen-JSON einfügen",
+      "pastePlaceholder": "Hier JSON einfügen: {\"id\":\"…\",\"name\":\"…\",\"html\":\"…\",\"css\":\"…\"}",
+      "import": "Importieren",
+      "cancel": "Abbrechen",
+      "delete": "Löschen",
+      "preview": "Vorschau",
+      "builtin": "Eingebaut",
+      "custom": "Benutzerdefiniert",
+      "previewSample": {
+        "text": "Vorschau: dies ist eine Beispielbenachrichtigung",
+        "title": "Vorschau-Titel",
+        "actionLabel": "Ansehen"
+      },
+      "builtinNames": {
+        "cloudia": "Cloudia-Karte"
+      },
+      "invalidJson": "JSON-Parsing fehlgeschlagen",
+      "missingFields": "Pflichtfelder fehlen: id / name / html / css",
+      "idCollision": "Vorlagen-ID kollidiert mit eingebauter; automatisch user: präfixiert:",
+      "ai": {
+        "generate": "KI-Generierung",
+        "title": "KI Bubble Template Generator",
+        "close": "Schließen",
+        "clear": "Leeren",
+        "unconfigured": "Zuerst chatProvider / chatModel / chatApiKey in KI-Einstellungen konfigurieren",
+        "importTemplate": "Diese Vorlage importieren",
+        "inputPlaceholder": "Gewünschte Bubble-Vorlage beschreiben, z. B. Geburtstags-Erinnerungskarte",
+        "paperclip": "Datei anhängen",
+        "unsupportedFile": "Nur .html / .htm / Bilddateien",
+        "fileReadFailed": "Datei konnte nicht gelesen werden",
+        "imageNotSupported": "Aktuelles Modell unterstützt keine Bilder — Vision-Modell wählen oder HTML hochladen",
+        "htmlAttached": "HTML angehängt: {{name}}",
+        "htmlWrapPrefix": "Folgendes HTML in ein BubbleTemplate adaptieren (muss DOMPurify passieren, ohne on*-Attribute, ohne externe Ressourcen):",
+        "imageWrapPrefix": "Generiere ein BubbleTemplate (html + css), das visuell zum angehängten Bild passt. Layout, Farben und Text als Referenz verwenden.",
+        "imageAttached": "Bild angehängt: {{name}}",
+        "removeAttachment": "Anhang entfernen",
+        "preview": "Vorschau",
+        "newSession": "Neue Sitzung",
+        "sessionSelect": "Sitzung wählen",
+        "untitled": "Unbenannte Sitzung",
+        "loading": "Laden…",
+        "error": "KI hat einen Fehler zurückgegeben",
+        "emptyResponse": "KI hat keinen Inhalt zurückgegeben. Bitte erneut versuchen.",
+        "confirmDelete": "Löschen?"
+      }
+    },
+    "whitelist": {
+      "title": "Externe App-Whitelist",
+      "desc": "macOS-Apps, die in Benachrichtigungen über {{launch.type}} benannt werden, müssen hier gelistet sein",
+      "add": "Hinzufügen",
+      "placeholder": "App-Name, z. B. Terminal / Xcode",
+      "empty": "Keine Whitelist-Apps",
+      "remove": "Entfernen"
+    }
+  },
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "description": "Form der Desktop-Pet-Ereignisbenachrichtigungen wählen",
+    "form": {
+      "title": "Benachrichtigungsform",
+      "desc": "Popover-Karte ankert am Pet; Eck-Toast stapelt in einer Ecke (passiv, kein Fokus-Diebstahl)"
+    },
+    "options": {
+      "bubble": "Pet-Popover-Karte",
+      "corner": "Eck-Toast",
+      "off": "Aus"
+    },
+    "cornerPlacement": {
+      "title": "Eck-Position",
+      "desc": "Bildschirmecke, in der der Toast-Stapel liegt",
+      "options": {
+        "topLeft": "Oben links",
+        "topRight": "Oben rechts",
+        "bottomLeft": "Unten links",
+        "bottomRight": "Unten rechts"
+      }
+    },
+    "cornerTtlMs": {
+      "title": "Benachrichtigungs-TTL",
+      "desc": "Auto-Ausblenden bei TTL; „niemals“ erfordert manuelles Schließen (für Popover und Toast)",
+      "never": "Nie",
+      "seconds": "{{seconds}}s"
+    }
+  },
+  "csp": {
+    "title": "Sicherheitspolitik (CSP)",
+    "description": "Steuert, welche externen URLs die App laden darf",
+    "mode": {
+      "label": "Externer URL-Modus",
+      "description": "Beliebige Quellen oder nur Whitelist",
+      "all": "Alle URLs erlauben",
+      "custom": "Eigene Whitelist"
+    },
+    "urls": {
+      "label": "Erlaubte URLs",
+      "description": "Hostnamen, volle URLs oder Schemata (z. B. example.com, https://api.example.com, https:). Angewendet auf Skripte, Styles, Fonts, Bilder, Medien, Verbindungen, Worker und Frames.",
+      "prompt": "example.com oder https://…",
+      "add": "URL hinzufügen",
+      "remove": "Entfernen",
+      "empty": "Keine URLs — nur eingebaute Baseline",
+      "reset": "Standard wiederherstellen",
+      "invalid": "Kein gültiger Hostname / URL / Schema"
+    },
+    "preview": {
+      "label": "Gültige Richtlinie",
+      "description": "Richtlinie wird nach „Anwenden & Neuladen“ aktiv"
+    },
+    "baseline": {
+      "note": "Tauri IPC, quill-plugin, asset, data: und blob: sind immer erlaubt und nicht entfernbar."
+    },
+    "apply": {
+      "button": "Anwenden & neu laden",
+      "note": "Anwenden lädt die Seite neu — kurzes Blinken. Neue URLs und „Alle URLs erlauben“ werden erst nach Neuladen aktiv."
+    }
+  }
+}

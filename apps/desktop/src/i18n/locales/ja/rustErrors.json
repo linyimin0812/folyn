@@ -1,0 +1,6 @@
+{
+  "io": { "title": "ファイルI/Oエラー", "message": "ファイルの処理に失敗しました: {{detail}}" },
+  "notFound": { "title": "見つかりません", "message": "見つかりません: {{detail}}" },
+  "permission": { "title": "権限がありません", "message": "権限がありません: {{detail}}" },
+  "internal": { "title": "内部エラー", "message": "問題が発生しました: {{detail}}" }
+}

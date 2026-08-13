@@ -1,0 +1,19 @@
+{
+  "addressPlaceholder": "Saisissez une URL et appuyez sur Entrée",
+  "importData": "Importer depuis Chrome",
+  "importLabel": "Importer",
+  "importCookies": "Importer les cookies Chrome",
+  "importPasswords": "Importer les mots de passe Chrome",
+  "passwords": "Mots de passe",
+  "passwordsFor": "Mots de passe pour",
+  "noPasswords": "Aucun mot de passe importé pour ce site",
+  "fill": "Remplir dans la page",
+  "copyPassword": "Copier le mot de passe",
+  "removePassword": "Supprimer",
+  "newTab": "Nouvel onglet",
+  "filled": "Rempli dans la page",
+  "fillFailed": "Échec du remplissage :",
+  "copied": "Copié dans le presse-papiers",
+  "copyFailed": "Échec de la copie",
+  "navigateFailed": "Échec de la navigation"
+}

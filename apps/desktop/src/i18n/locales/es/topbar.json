@@ -1,0 +1,34 @@
+{
+  "menu": "Menú",
+  "copyToVault": "Copiar al vault",
+  "theme": {
+    "toggle": "Cambiar tema"
+  },
+  "ai": {
+    "panel": "Panel de IA",
+    "planToday": "Plan de IA hoy"
+  },
+  "tabList": {
+    "menu": "Todos los archivos abiertos",
+    "closeAll": "Cerrar todas las pestañas",
+    "noOpenFiles": "No hay archivos abiertos",
+    "closePanel": "Cerrar lista",
+    "closeTab": "Cerrar archivo",
+    "openExternalFolder": "Abrir carpeta contenedora"
+  },
+  "terminal": {
+    "collapse": "Contraer terminal",
+    "expand": "Expandir terminal",
+    "open": "Abrir terminal"
+  },
+  "viewMode": {
+    "split": "Dividir",
+    "edit": "Editar",
+    "preview": "Vista previa",
+    "source": "Fuente",
+    "visual": "Visual"
+  },
+  "versionHistory": {
+    "toggle": "Historial de versiones"
+  }
+}

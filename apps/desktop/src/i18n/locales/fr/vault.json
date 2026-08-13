@@ -1,0 +1,30 @@
+{
+  "page": {
+    "tagline": "Stockage",
+    "title": "Gestion du vault",
+    "description": "Gérer les bases de connaissances locales et changer de contexte de travail",
+    "newVault": "+ Nouveau Vault",
+    "myVaults": "Mes Vaults",
+    "newVaultShort": "Nouveau Vault",
+    "current": "Actuel",
+    "typeSuffix": "type",
+    "openEditor": "Ouvrir l'éditeur",
+    "switch": "Changer",
+    "deleteTitle": "Supprimer",
+    "fileBrowse": "Explorateur de fichiers — {{name}}",
+    "emptyFiles": "Aucun fichier pour le moment ; créez un nouveau document dans l'éditeur",
+    "emptyFolder": "Dossier vide"
+  },
+  "delete": {
+    "title": "Confirmer la suppression",
+    "confirm": "Supprimer le Vault \"{{name}}\" ? Cela ne supprimera pas les fichiers sur le disque.",
+    "delete": "Supprimer",
+    "cancel": "Annuler"
+  },
+  "time": {
+    "justNow": "à l'instant",
+    "minutesAgo": "il y a {{count}} min",
+    "hoursAgo": "il y a {{count}} h",
+    "daysAgo": "il y a {{count}} jours"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "io": { "title": "Erreur d'E/S de fichier", "message": "Échec du traitement du fichier : {{detail}}" },
+  "notFound": { "title": "Introuvable", "message": "Introuvable : {{detail}}" },
+  "permission": { "title": "Permission refusée", "message": "Permission refusée : {{detail}}" },
+  "internal": { "title": "Erreur interne", "message": "Un problème est survenu : {{detail}}" }
+}

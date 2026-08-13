@@ -1,0 +1,30 @@
+{
+  "page": {
+    "tagline": "Speicher",
+    "title": "Vault-Verwaltung",
+    "description": "Lokale Wissensbasen verwalten und Arbeitskontexte wechseln",
+    "newVault": "+ Neuer Vault",
+    "myVaults": "Meine Vaults",
+    "newVaultShort": "Neuer Vault",
+    "current": "Aktuell",
+    "typeSuffix": "Typ",
+    "openEditor": "Editor öffnen",
+    "switch": "Wechseln",
+    "deleteTitle": "Löschen",
+    "fileBrowse": "Dateibrowser — {{name}}",
+    "emptyFiles": "Noch keine Dateien; erstelle ein neues Dokument im Editor",
+    "emptyFolder": "Leerer Ordner"
+  },
+  "delete": {
+    "title": "Löschen bestätigen",
+    "confirm": "Vault \"{{name}}\" löschen? Dateien auf der Festplatte werden nicht gelöscht.",
+    "delete": "Löschen",
+    "cancel": "Abbrechen"
+  },
+  "time": {
+    "justNow": "gerade eben",
+    "minutesAgo": "vor {{count}} Min.",
+    "hoursAgo": "vor {{count}} Std.",
+    "daysAgo": "vor {{count}} Tagen"
+  }
+}

@@ -1,0 +1,176 @@
+{
+  "title": "Termin-Arbeitsplatz",
+  "new": "Neu",
+  "views": {
+    "schedule": "Agenda",
+    "board": "Task-Board"
+  },
+  "weekGrid": {
+    "today": "Heute",
+    "weekRange": "{{ms}}/{{ds}}/{{y}} – {{me}}/{{de}}",
+    "dow": ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+    "selectDay": "Diesen Tag auswählen",
+    "legend": {
+      "work": "Arbeit",
+      "personal": "Persönlich",
+      "family": "Familie",
+      "health": "Gesundheit",
+      "task": "Aufgabe"
+    },
+    "scheduledToast": "Terminiert auf {{day}} {{time}}"
+  },
+  "dayCal": {
+    "monthTitle": "{{m}}/{{y}}",
+    "prevMonth": "Voriger Monat",
+    "nextMonth": "Nächster Monat",
+    "today": "Zurück zu heute",
+    "legend": {
+      "selected": "Ausgewählt",
+      "today": "Heute",
+      "overdue": "Überfällig"
+    },
+    "dow": ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+  },
+  "miniCal": {
+    "monthTitle": "{{m}}/{{y}}",
+    "prevMonth": "Voriger Monat",
+    "nextMonth": "Nächster Monat",
+    "dow": ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+  },
+  "calendarCategory": {
+    "calendar": "Kalender",
+    "week": "Diese Woche",
+    "totalEvents": "Ereignisse gesamt",
+    "incompleteTasks": "Offene Aufgaben"
+  },
+  "category": {
+    "event": {
+      "work": "Arbeit",
+      "personal": "Persönlich",
+      "family": "Familie",
+      "health": "Gesundheit",
+      "task": "Aufgabe"
+    },
+    "task": {
+      "design": "Design",
+      "dev": "Entwicklung",
+      "bug": "Bug",
+      "growth": "Wachstum",
+      "ops": "Ops",
+      "calendar": "Kalender",
+      "learn": "Lernen"
+    }
+  },
+  "reminders": {
+    "upcoming": "Anstehend",
+    "empty": "Keine anstehenden Einträge",
+    "dueBody": "<b>{{title}}</b> · fällig · {{column}}"
+  },
+  "todayTaskList": {
+    "title": "Heutige Aufgaben",
+    "duePrefix": "Fällig {{due}} · ",
+    "empty": "Heute keine Aufgaben"
+  },
+  "unschedDock": {
+    "title": "Zu terminieren",
+    "allDone": "Alle terminiert ✓",
+    "hint": "Ziehe von hier in einen Kalender-Slot, um zu terminieren",
+    "dragToast": "In einen Kalender-Slot ziehen, um zu terminieren",
+    "delete": "Löschen"
+  },
+  "pomodoro": {
+    "work": "Arbeitssession · Runde {{round}}",
+    "rest": "Pause · Runde {{round}}",
+    "label": "Pomodoro-Fokus",
+    "pause": "Pause",
+    "start": "Start",
+    "reset": "Zurücksetzen"
+  },
+  "boardColumn": {
+    "renameHint": "Doppelklick zum Umbenennen",
+    "deleteColumn": "Spalte löschen",
+    "empty": "Keine Aufgaben für heute",
+    "emptyHint": "Karten in diese Spalte ziehen"
+  },
+  "boardView": {
+    "columnNamePlaceholder": "Spaltenname…",
+    "addColumn": "+ Neue Spalte"
+  },
+  "quickAdd": {
+    "placeholder": "Aufgabe hinzufügen, Enter zum Senden…",
+    "submit": "Hinzufügen"
+  },
+  "taskCard": {
+    "priorityTitle": "Priorität",
+    "scheduled": "Terminiert"
+  },
+  "modal": {
+    "titleEdit": "{{kind}} bearbeiten",
+    "titleNew": "Neu {{kind}}",
+    "kindEvent": "Ereignis",
+    "kindTask": "Aufgabe",
+    "typeLabel": "Typ",
+    "typeEvent": "Ereignis eintragen",
+    "typeTask": "Board-Aufgabe",
+    "titleLabel": "Titel",
+    "titlePlaceholder": "z. B. Produkt-Review-Meeting",
+    "descLabel": "Beschreibung",
+    "descPlaceholder": "Hintergrund, Akzeptanzkriterien, zugehörige Links…",
+    "start": "Start",
+    "end": "Ende",
+    "calendar": "Kalender",
+    "column": "Spalte",
+    "columnDoneSuffix": "(erledigt)",
+    "category": "Kategorie",
+    "priority": "Priorität",
+    "priorityHigh": "Hoch",
+    "priorityMed": "Mittel",
+    "priorityLow": "Niedrig",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "save": "Speichern",
+    "create": "Erstellen",
+    "delete": "Löschen",
+    "unschedule": "Termin entfernen",
+    "toastTitleRequired": "Titel ausfüllen",
+    "toastEndAfterStart": "Ende muss nach dem Start liegen"
+  },
+  "plan": {
+    "loading": "KI plant deinen Tag…",
+    "errorClose": "Schließen",
+    "errorRetry": "Erneut versuchen",
+    "resultApplied": "{{applied}} Eintrag/Einträge angewendet",
+    "resultFailed": ", {{failed}} fehlgeschlagen",
+    "resultDone": "Erledigt",
+    "appliedToast": "{{count}} Plan-Einträge angewendet",
+    "appliedPartialToast": "{{applied}} angewendet, {{failed}} fehlgeschlagen",
+    "previewTitle": "KI-Plan für heute",
+    "discard": "Verwerfen",
+    "applySelected": "Auswahl anwenden",
+    "empty": "Keine offenen Aufgaben in den letzten 7 Tagen und die KI hat keinen neuen Plan vorgeschlagen.",
+    "legendTask": "Vorgeschlagene Aufgaben (ziehen zum Anpassen / ✓✗ auswählen)",
+    "legendEvent": "Vorgeschlagene Ereignisse / Pausen",
+    "legendExisting": "Bestehende Ereignisse (Referenz)",
+    "ariaLabel": "KI-Plan für heute"
+  },
+  "toast": {
+    "undo": "Rückgängig",
+    "newColumnDefault": "Neue Spalte",
+    "eventAdded": "Ereignis zum Kalender hinzugefügt",
+    "eventMoved": "Verschoben auf {{date}} {{time}}",
+    "eventUpdated": "Ereignis aktualisiert",
+    "eventDeleted": "\"{{title}}\" gelöscht",
+    "taskAdded": "Aufgabe hinzugefügt",
+    "taskRestored": "Wiederhergestellt",
+    "taskMarkedDone": "Als erledigt markiert",
+    "taskUpdated": "Aufgabe aktualisiert",
+    "taskUnscheduled": "Termin entfernt",
+    "taskDeleted": "\"{{title}}\" gelöscht",
+    "dueDateSet": "Fälligkeitsdatum auf {{date}} gesetzt",
+    "cannotDeleteDoneColumn": "Erledigt-Spalte kann nicht gelöscht werden",
+    "mustKeepOneColumn": "Mindestens eine Spalte muss bleiben",
+    "columnDeleted": "Spalte \"{{name}}\" gelöscht",
+    "pomoWorkEnded": "Arbeitssession beendet, 5 Minuten Pause",
+    "pomoRestEnded": "Pause vorbei, starte Runde {{round}}"
+  }
+}

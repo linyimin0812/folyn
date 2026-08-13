@@ -1,0 +1,83 @@
+{
+  "toolbar": {
+    "style": "Estilo",
+    "direction": "Dirección: {{dir}}"
+  },
+  "stylePanel": {
+    "canvasTab": "Lienzo",
+    "nodeTab": "Nodo",
+    "close": "Cerrar"
+  },
+  "canvas": {
+    "sectionTheme": "Tema",
+    "skeleton": "Esqueleto",
+    "skeletonTitle": "Elige un diseño de esqueleto del lienzo",
+    "direction": "Dirección",
+    "directionRight": "Derecha",
+    "directionLeft": "Izquierda",
+    "directionBoth": "Ambos lados",
+    "palette": "Paleta",
+    "paletteTitle": "Activa primero las ramas arcoíris",
+    "paletteDefault": "Por defecto",
+    "createStyle": "Crear estilo",
+    "createStyleTitle": "Aplicar automáticamente un estilo predefinido a los nuevos nodos",
+    "background": "Fondo",
+    "clearBg": "Limpiar",
+    "clearBgTitle": "Limpiar el color de fondo",
+    "sectionLayout": "Disposición",
+    "alignTitle": "Alinear nodos hermanos al centro",
+    "alignLabel": "Alinear hermanos",
+    "freeLayoutTitle": "Los nodos se pueden arrastrar libremente a cualquier posición",
+    "freeLayoutLabel": "Disposición libre",
+    "compactTitle": "Modo compacto, reduce el espaciado entre nodos",
+    "compactLabel": "Compacto",
+    "spacingTitle": "El espaciado está bloqueado en modo compacto",
+    "spacingLabel": "Espaciado de nodos",
+    "skeletonMind": "Mapa mental",
+    "skeletonOrg": "Organigrama",
+    "skeletonTree": "Diagrama de árbol"
+  },
+  "node": {
+    "font": "Fuente",
+    "fontMicrosoft": "Microsoft YaHei",
+    "fontPingfang": "PingFang SC",
+    "fontSimsun": "SimSun",
+    "fontSimhei": "SimHei",
+    "fontHelvetica": "Helvetica",
+    "fontArial": "Arial",
+    "fontMonospace": "monospace",
+    "fontSize": "Tamaño",
+    "bold": "Negrita",
+    "italic": "Cursiva",
+    "textColor": "Color",
+    "fill": "Relleno",
+    "border": "Borde",
+    "fixedWidth": "Ancho",
+    "line": "Línea",
+    "rainbow": "Arcoíris",
+    "rainbowTitle": "Activar colorido arcoíris de ramas",
+    "presets": "Estilos predefinidos",
+    "reset": "Restablecer",
+    "resetTitle": "Limpiar todos los estilos del nodo seleccionado"
+  },
+  "preset": {
+    "important": "Importante",
+    "pending": "Pendiente",
+    "done": "Hecho",
+    "highlight": "Destacar",
+    "delete": "Eliminado",
+    "secondary": "Secundario"
+  },
+  "createStyle": {
+    "default": "Por defecto",
+    "rounded": "Redondeado",
+    "colorFill": "Relleno de color",
+    "minimal": "Minimalista"
+  },
+  "palette": {
+    "classic": "Clásica",
+    "dark": "Oscura",
+    "pastel": "Pastel",
+    "vibrant": "Vibrante"
+  }
+}

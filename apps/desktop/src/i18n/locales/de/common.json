@@ -1,0 +1,31 @@
+{
+  "language": {
+    "zh": "中文",
+    "en": "English",
+    "ja": "日本語",
+    "es": "Español",
+    "de": "Deutsch",
+    "fr": "Français",
+    "switcher": {
+      "title": "Sprache",
+      "aria": "Sprache wechseln"
+    }
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "confirm": "Bestätigen",
+    "close": "Schließen",
+    "new": "Neu",
+    "open": "Öffnen",
+    "edit": "Bearbeiten",
+    "preview": "Vorschau",
+    "loading": "Laden…",
+    "error": "Fehler",
+    "retry": "Erneut versuchen",
+    "yes": "Ja",
+    "no": "Nein"
+  }
+}

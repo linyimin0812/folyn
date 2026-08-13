@@ -1,0 +1,74 @@
+{
+  "chat": {
+    "noAiConfig": "AIが未設定です",
+    "noAiConfigHint": "設定でCLIパスを構成してチャットを始めてください。",
+    "openAiSettings": "AI設定を開く",
+    "emptyHint": "AIに質問 — 返信はここにストリーミングされます。",
+    "inputPlaceholder": "メッセージを入力、Enterで送信",
+    "removeAttachment": "添付を削除",
+    "attachFile": "ファイルを添付",
+    "aiMode": "AIモード",
+    "attachmentSaveFailed": "添付の保存に失敗しました: {{error}}",
+    "errorPrefix": "[エラー] {{message}}",
+    "sessionHeader": {
+      "toggleAria": "セッションを切り替え",
+      "openAiSettings": "AI設定",
+      "confirmDelete": "削除しますか？",
+      "deleteYes": "はい",
+      "deleteNo": "いいえ",
+      "renameAria": "名前変更",
+      "deleteAria": "削除",
+      "newSession": "新規セッション",
+      "defaultTitle": "新規チャット",
+      "capHint": "セッション上限に達しました ({{max}})"
+    }
+  },
+  "launcher": {
+    "dailyNote": "今日のノート",
+    "clipFromUrl": "URLからクリップ",
+    "globalSearch": "グローバル検索",
+    "commandPalette": "コマンドパレット",
+    "showMain": "メインウィンドウを表示",
+    "toggleTheme": "テーマ切り替え",
+    "clip": {
+      "emptyUrl": "URLを入力してください",
+      "running": "クリップ中...",
+      "saved": "保存しました: {{name}}",
+      "failed": "クリップ失敗",
+      "submit": "クリップ",
+      "collapse": "折りたたむ"
+    }
+  },
+  "bubble": {
+    "closeAria": "閉じる"
+  },
+  "menu": {
+    "showMain": "メインウィンドウを表示",
+    "hidePet": "桌宠アイコンを非表示",
+    "sizeSubmenu": "桌宠サイズ",
+    "opacitySubmenu": "桌宠透明度",
+    "clickThrough": "クリックスルー",
+    "exitApp": "アプリを終了"
+  },
+  "tabs": {
+    "chat": "チャット",
+    "inbox": "受信箱"
+  },
+  "search": {
+    "placeholder": "ファイル / コマンド / プラグインを検索",
+    "files": "ファイル",
+    "commands": "コマンド",
+    "plugins": "プラグイン",
+    "noResults": "一致する結果はありません"
+  },
+  "inbox": {
+    "empty": "通知はありません",
+    "clear": "クリア",
+    "kind": {
+      "info": "お知らせ",
+      "reminder": "リマインダー",
+      "message": "メッセージ",
+      "event": "イベント"
+    }
+  }
+}

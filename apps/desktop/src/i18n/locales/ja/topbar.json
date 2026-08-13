@@ -1,0 +1,34 @@
+{
+  "menu": "メニュー",
+  "copyToVault": "Vaultにコピー",
+  "theme": {
+    "toggle": "テーマ切り替え"
+  },
+  "ai": {
+    "panel": "AIパネル",
+    "planToday": "AIで今日を計画"
+  },
+  "tabList": {
+    "menu": "開いているすべてのファイル",
+    "closeAll": "すべてのタブを閉じる",
+    "noOpenFiles": "開いているファイルはありません",
+    "closePanel": "リストを閉じる",
+    "closeTab": "ファイルを閉じる",
+    "openExternalFolder": "含むフォルダを開く"
+  },
+  "terminal": {
+    "collapse": "ターミナルを折りたたむ",
+    "expand": "ターミナルを展開",
+    "open": "ターミナルを開く"
+  },
+  "viewMode": {
+    "split": "分割",
+    "edit": "編集",
+    "preview": "プレビュー",
+    "source": "ソース",
+    "visual": "ビジュアル"
+  },
+  "versionHistory": {
+    "toggle": "バージョン履歴"
+  }
+}

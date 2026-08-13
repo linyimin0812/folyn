@@ -1,0 +1,74 @@
+{
+  "chat": {
+    "noAiConfig": "IA non configurée",
+    "noAiConfigHint": "Configurez le chemin CLI dans les Paramètres pour discuter ici.",
+    "openAiSettings": "Ouvrir les paramètres IA",
+    "emptyHint": "Posez une question à l'IA — les réponses arrivent ici en flux.",
+    "inputPlaceholder": "Saisir un message, Entrée pour envoyer",
+    "removeAttachment": "Retirer la pièce jointe",
+    "attachFile": "Joindre un fichier",
+    "aiMode": "Mode IA",
+    "attachmentSaveFailed": "Échec de l'enregistrement de la pièce jointe : {{error}}",
+    "errorPrefix": "[Erreur] {{message}}",
+    "sessionHeader": {
+      "toggleAria": "Changer de session",
+      "openAiSettings": "Paramètres IA",
+      "confirmDelete": "Confirmer la suppression ?",
+      "deleteYes": "Oui",
+      "deleteNo": "Non",
+      "renameAria": "Renommer",
+      "deleteAria": "Supprimer",
+      "newSession": "Nouvelle session",
+      "defaultTitle": "Nouveau chat",
+      "capHint": "Limite de sessions atteinte ({{max}})"
+    }
+  },
+  "launcher": {
+    "dailyNote": "Note du jour",
+    "clipFromUrl": "Capturer depuis une URL",
+    "globalSearch": "Recherche globale",
+    "commandPalette": "Palette de commandes",
+    "showMain": "Afficher la fenêtre principale",
+    "toggleTheme": "Basculer le thème",
+    "clip": {
+      "emptyUrl": "Saisir une URL",
+      "running": "Capture en cours...",
+      "saved": "Enregistré : {{name}}",
+      "failed": "Échec de la capture",
+      "submit": "Capturer",
+      "collapse": "Réduire"
+    }
+  },
+  "bubble": {
+    "closeAria": "Fermer"
+  },
+  "menu": {
+    "showMain": "Afficher la fenêtre principale",
+    "hidePet": "Masquer l'icône du pet",
+    "sizeSubmenu": "Taille du pet",
+    "opacitySubmenu": "Opacité du pet",
+    "clickThrough": "Traversée des clics",
+    "exitApp": "Quitter l'application"
+  },
+  "tabs": {
+    "chat": "Chat",
+    "inbox": "Boîte de réception"
+  },
+  "search": {
+    "placeholder": "Rechercher fichiers / commandes / plugins",
+    "files": "Fichiers",
+    "commands": "Commandes",
+    "plugins": "Plugins",
+    "noResults": "Aucun résultat correspondant"
+  },
+  "inbox": {
+    "empty": "Aucune notification",
+    "clear": "Effacer",
+    "kind": {
+      "info": "info",
+      "reminder": "rappel",
+      "message": "message",
+      "event": "événement"
+    }
+  }
+}

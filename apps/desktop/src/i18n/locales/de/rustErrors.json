@@ -1,0 +1,6 @@
+{
+  "io": { "title": "Datei-I/O-Fehler", "message": "Datei konnte nicht verarbeitet werden: {{detail}}" },
+  "notFound": { "title": "Nicht gefunden", "message": "Nicht gefunden: {{detail}}" },
+  "permission": { "title": "Keine Berechtigung", "message": "Keine Berechtigung: {{detail}}" },
+  "internal": { "title": "Interner Fehler", "message": "Etwas ist schiefgelaufen: {{detail}}" }
+}

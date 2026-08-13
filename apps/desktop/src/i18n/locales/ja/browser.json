@@ -1,0 +1,19 @@
+{
+  "addressPlaceholder": "URLを入力してEnterを押してください",
+  "importData": "Chromeからインポート",
+  "importLabel": "インポート",
+  "importCookies": "ChromeのCookieをインポート",
+  "importPasswords": "Chromeのパスワードをインポート",
+  "passwords": "パスワード",
+  "passwordsFor": "パスワード:",
+  "noPasswords": "このサイトにはインポートされたパスワードはありません",
+  "fill": "ページに入力",
+  "copyPassword": "パスワードをコピー",
+  "removePassword": "削除",
+  "newTab": "新規タブ",
+  "filled": "ページに入力しました",
+  "fillFailed": "入力失敗:",
+  "copied": "クリップボードにコピーしました",
+  "copyFailed": "コピーアウト",
+  "navigateFailed": "ナビゲーション失敗"
+}
