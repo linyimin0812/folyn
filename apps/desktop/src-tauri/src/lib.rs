@@ -630,72 +630,66 @@ pub fn run() {
             }
         }
         })
+        // ── managed state ──
+        // ponytail: MUST be on the Builder chain (not inside `.setup()`) so the
+        // state is registered the moment the App is constructed — BEFORE any
+        // webview loads. Tauri 2 starts loading structurally-declared webviews
+        // during `Builder::build()`, and the frontend can fire an `invoke`
+        // (e.g. `pet_panel_set_shortcut` from the pet window's React mount
+        // effect) BEFORE the `.setup(|app| { ... })` closure body runs. If
+        // `app.manage(...)` lived in setup, `app.state::<T>()` in those
+        // commands would panic with "state() called before manage()" — the
+        // Windows flash-quit crash. Builder-level `.manage(...)` makes the
+        // state visible from t=0.
+        .manage({
+            startup_log("[builder] manage PetSizeState");
+            commands::PetSizeState(std::sync::Mutex::new(
+                commands::PetSizeState::DEFAULT_LEVEL.to_string(),
+            ))
+        })
+        .manage({
+            startup_log("[builder] manage PetOpacityState");
+            commands::PetOpacityState(std::sync::Mutex::new(
+                commands::PetOpacityState::DEFAULT_LEVEL.to_string(),
+            ))
+        })
+        .manage({
+            startup_log("[builder] manage PetClickThroughState");
+            commands::PetClickThroughState(std::sync::Mutex::new(
+                commands::PetClickThroughState::DEFAULT,
+            ))
+        })
+        .manage({
+            startup_log("[builder] manage TrayHidePetItemState");
+            commands::TrayHidePetItemState(std::sync::Mutex::new(None))
+        })
+        .manage({
+            startup_log("[builder] manage PetShortcutState");
+            commands::PetShortcutState::new()
+        })
+        .manage({
+            startup_log("[builder] manage VoiceState");
+            voice::VoiceState::new()
+        })
+        .manage({
+            startup_log("[builder] manage PetApiState");
+            pet_api::PetApiState(std::sync::Mutex::new(None))
+        })
         .setup({
             startup_log("[hook] setup closure");
             |app| {
             startup_log("[setup] entering setup closure");
-            // Shared pet-size state ("50"|"75"|"100"|"125"|"150"). Synced from
-            // the frontend via `set_pet_size` and from `on_menu_event` on a
-            // native submenu pick. Read by `build_pet_context_menu` to
-            // pre-check the current size radio item. Defaults to `"100"`
-            // so existing users keep the 96×96 layout on first right-click.
-            startup_log("[setup] manage PetSizeState");
-            app.manage(commands::PetSizeState(std::sync::Mutex::new(
-                commands::PetSizeState::DEFAULT_LEVEL.to_string(),
-            )));
 
-            // Shared pet-opacity state ("25"|"50"|"75"|"100"). Same pattern
-            // as `PetSizeState`: defaults to "100" (fully opaque) so existing
-            // users keep the pre-opacity look on first right-click.
-            startup_log("[setup] manage PetOpacityState");
-            app.manage(commands::PetOpacityState(std::sync::Mutex::new(
-                commands::PetOpacityState::DEFAULT_LEVEL.to_string(),
-            )));
-
-            // Shared pet-click-through flag (bool). Defaults to `false` so
-            // the pet receives clicks (pre-feature behavior) on first launch.
-            startup_log("[setup] manage PetClickThroughState");
-            app.manage(commands::PetClickThroughState(std::sync::Mutex::new(
-                commands::PetClickThroughState::DEFAULT,
-            )));
-
-            // Shared handle to the tray menu's `hide_pet` CheckMenuItem so
-            // `toggle_pet_mode` / `show_pet_if_hidden` can `set_checked` after
-            // each visibility flip — the tray menu is built once at
-            // `tray_set_enabled` time and muda does not auto-toggle the
-            // checkmark on click. `None` until `tray_set_enabled(true)` runs.
-            startup_log("[setup] manage TrayHidePetItemState");
-            app.manage(commands::TrayHidePetItemState(std::sync::Mutex::new(None)));
-
-            // Pet-panel global-shortcut state. Holds the currently-registered
-            // pet HotKey so `pet_panel_set_shortcut` can do a TARGETED
-            // unregister (not `unregister_all`, which would wipe the voice
-            // toggle HotKey registered by `voice::voice_set_global_hotkey`).
-            startup_log("[setup] manage PetShortcutState");
-            app.manage(commands::PetShortcutState::new());
-
-            // Voice input shared state (PR2). Holds the live `Recorder` +
-            // `AppleSpeechAsr` consumer between `voice_start` and
-            // `voice_stop` / `voice_cancel`. Idle on non-macOS (commands
-            // there return macOS-only errors). See `voice::VoiceState`.
-            startup_log("[setup] manage VoiceState");
-            app.manage(voice::VoiceState::new());
-            // Startup beacon: confirms `log stream --predicate 'process == "quill"'`
-            // is wired before the user touches voice. If this line shows in the
-            // log stream, the predicate works; if not, the user is filtering on
-            // the wrong process name (dev .app's executable is `quill`, lowercase).
-            // NOTE: `log::info!` goes nowhere at runtime (no logger installed
-            // in the bare Tauri process), so mirror it to `startup_log` so the
-            // beacon is actually visible in `quill-startup.log`.
-            startup_log("[voice] module ready; bundle_id=com.quill.editor");
-            log::info!("[voice] module ready; bundle_id={}", "com.quill.editor");
+            // Voice module beacon. `log::info!` goes nowhere at runtime (no
+            // logger installed in the bare Tauri process), so mirror it to
+            // `startup_log` so the beacon is actually visible.
+            startup_log("[voice] module ready; bundle id=com.quill.editor");
+            log::info!("[voice] module ready; bundle id={}", "com.quill.editor");
 
             // External pet notify API (pet-external-notify-api). Local HTTP
-            // server on 127.0.0.1; reuses the `pet://notify` dispatcher. State
-            // holds the actual bound port for the settings-page UI; the server
-            // thread writes it on bind. Non-fatal if no port is free.
-            startup_log("[setup] manage PetApiState");
-            app.manage(pet_api::PetApiState(std::sync::Mutex::new(None)));
+            // server on 127.0.0.1; reuses the `pet://notify` dispatcher. The
+            // state is registered on the Builder chain above; here we only
+            // spawn the server thread. Non-fatal if no port is free.
             startup_log("[setup] pet_api::spawn");
             pet_api::spawn(app.handle().clone());
 
