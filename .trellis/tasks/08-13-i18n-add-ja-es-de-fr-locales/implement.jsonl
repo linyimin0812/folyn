@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "Project i18n conventions — locale file structure, key naming, missing-key policy, switcher pattern. Must follow when adding new locale JSONs and extending SUPPORTED_LOCALES."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Lint / typecheck / test quality bar the PR must clear before commit."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend spec index — pointers to type-safety, state-management, directory-structure specs relevant to wiring new locales."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse existing patterns (static import, Zustand store, LanguageSwitcher) instead of inventing new locale loading / lazy-loading mechanisms."}

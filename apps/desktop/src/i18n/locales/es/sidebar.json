@@ -1,0 +1,208 @@
+{
+  "filesPanel": {
+    "actions": {
+      "locateActive": "Localizar archivo activo",
+      "openExternal": "Abrir archivo externo…",
+      "refresh": "Actualizar árbol de archivos",
+      "more": "Más acciones",
+      "newFile": "Nuevo archivo",
+      "newFolder": "Nueva carpeta",
+      "expandAll": "Expandir todo",
+      "collapseAll": "Contraer todo",
+      "expandAllFolders": "Expandir todas las carpetas",
+      "collapseAllFolders": "Contraer todas las carpetas",
+      "hideSidebar": "Ocultar barra lateral"
+    },
+    "search": {
+      "placeholder": "Buscar archivos..."
+    },
+    "newItem": {
+      "folderName": "Nombre de carpeta",
+      "fileNameWithExt": "Nombre de archivo (con extensión)",
+      "fileNameDefault": "Nombre de archivo (por defecto .{{ext}})",
+      "fileNameMd": "Nombre de archivo (por defecto .md)"
+    },
+    "empty": "Sin archivos"
+  },
+  "contextMenu": {
+    "fileType": {
+      "code": "Archivo de código",
+      "richText": "Texto enriquecido"
+    },
+    "newFile": "Nuevo archivo",
+    "newFileOther": "Otro (extensión personalizada)",
+    "newFolder": "Nueva carpeta",
+    "copyRelativePath": "Copiar ruta relativa",
+    "copyAbsolutePath": "Copiar ruta absoluta",
+    "copyFileName": "Copiar nombre de archivo",
+    "copyVaultPath": "Copiar ruta del vault",
+    "unpin": "Desfijar",
+    "pin": "Fijar",
+    "addToChat": "Añadir archivo al chat",
+    "ingestToWiki": "Ingestar al Wiki",
+    "rename": "Renombrar",
+    "delete": "Eliminar",
+    "move": "Mover a...",
+    "copy": "Copiar",
+    "hide": "Ocultar"
+  },
+  "sidebarActions": {
+    "deleteConfirm": {
+      "title": "Confirmar eliminación",
+      "prefix": "Eliminar {{type}} ",
+      "suffix": "?",
+      "typeFile": "archivo",
+      "typeFolder": "carpeta",
+      "folderContentsHint": "Todo lo que hay dentro de la carpeta también se eliminará",
+      "batchPrefix": "¿Eliminar estos {{count}} elementos?"
+    },
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "moveDialog": {
+      "title": "Mover a",
+      "confirm": "Mover",
+      "noTargets": "No hay otras carpetas a las que mover",
+      "vaultRoot": "Raíz del vault"
+    },
+    "copyDialog": {
+      "title": "Copiar a",
+      "confirm": "Copiar"
+    }
+  },
+  "calendar": {
+    "weekdays": ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"],
+    "title": "{{month}} de {{year}}",
+    "hasNote": "{{date}} (con nota)"
+  },
+  "wikiTree": {
+    "empty": "El Wiki está vacío. Ingesta archivos desde el panel de IA para construir la base de conocimientos."
+  },
+  "clips": {
+    "title": "Recortes",
+    "delete": "Eliminar",
+    "removeTag": "Quitar etiqueta",
+    "tagPlaceholderEmpty": "Escribe una etiqueta y pulsa Enter...",
+    "tagPlaceholderAdd": "Añadir...",
+    "progressDefault": "Preparando...",
+    "preview": {
+      "title": "Vista previa de tarjeta de conocimiento",
+      "titleLabel": "Título",
+      "tagsLabel": "Etiquetas",
+      "suggestedLabel": "Etiquetas sugeridas",
+      "summaryLabel": "Resumen",
+      "source": "Fuente: {{host}}"
+    },
+    "save": "Guardar",
+    "saving": "Guardando...",
+    "cancel": "Cancelar",
+    "batch": {
+      "title": "Recorte por lotes",
+      "close": "Cerrar modo lote",
+      "placeholder": "Una URL por línea, p. ej.:\nhttps://example.com/a\nhttps://example.com/b",
+      "force": "Forzar recorte de nuevo",
+      "delay": "Retardo entre elementos",
+      "count": "{{count}} elemento(s)",
+      "start": "Iniciar recorte por lotes",
+      "cancelRunning": "Cancelar (parar tras el actual)",
+      "summary": {
+        "total": "Total {{count}}",
+        "done": "Hecho {{count}}",
+        "skipped": "Omitido {{count}}",
+        "failed": "Fallido {{count}}"
+      },
+      "open": "Abrir",
+      "openSummary": "Abrir resumen del lote"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "running": "En ejecución",
+      "done": "Hecho",
+      "skipped": "Omitido",
+      "failed": "Fallido",
+      "cancelled": "Cancelado"
+    },
+    "clippingInProgress": "Recortando",
+    "viewDetails": "Haz clic para detalles",
+    "batchModeEnter": "Recorte por lotes",
+    "batchModeExit": "Salir del modo lote",
+    "addClip": "Añadir recorte",
+    "empty": "Sin recortes todavía. Haz clic en el botón + para empezar.",
+    "loading": "Cargando...",
+    "modalTitle": "Añadir recorte",
+    "urlPlaceholder": "Pegar URL...",
+    "langLabel": "Idioma",
+    "langEn": "English",
+    "langZh": "中文",
+    "langAuto": "Automático",
+    "clipButton": "Recortar",
+    "generating": "Generando...",
+    "duplicate": {
+      "title": "Esta URL ya ha sido recortada",
+      "prompt": "¿Regenerar y sobrescribir el contenido existente?",
+      "openExisting": "Abrir existente",
+      "regenerate": "Regenerar"
+    },
+    "savingFile": "Guardando archivo...",
+    "deleteConfirm": {
+      "titleDelete": "Confirmar eliminación",
+      "titleRemoveTag": "Quitar etiqueta",
+      "deletePrefix": "Eliminar recorte ",
+      "deleteSuffix": "?",
+      "removeTagPrefix": "Quitar etiqueta \"",
+      "removeTagMiddle": "\" de ",
+      "removeTagSuffix": "?",
+      "removeTagHint": "Este recorte tiene otras {{count}} etiqueta(s); el archivo no se eliminará."
+    }
+  },
+  "analysis": {
+    "title": "Análisis de proyecto",
+    "delete": "Eliminar",
+    "viewDetails": "Haz clic para detalles",
+    "analyzing": "Analizando",
+    "newAnalysis": "Nuevo análisis",
+    "uncategorized": "Sin categorizar",
+    "empty": "Sin informes de análisis todavía. Haz clic en el botón + para empezar.",
+    "loading": "Cargando...",
+    "deleteConfirm": {
+      "titleDelete": "Confirmar eliminación",
+      "titleRemoveTag": "Quitar etiqueta",
+      "deletePrefix": "Eliminar informe de análisis ",
+      "deleteSuffix": "?",
+      "removeTagPrefix": "Quitar etiqueta \"",
+      "removeTagMiddle": "\" de ",
+      "removeTagSuffix": "?",
+      "removeTagHint": "Este informe tiene otras {{count}} etiqueta(s); el archivo no se eliminará."
+    },
+    "dedup": {
+      "title": "Ya existe un informe de análisis para este proyecto",
+      "regenerate": "Regenerar"
+    },
+    "tagPlaceholderEmpty": "Escribe una etiqueta y pulsa Enter...",
+    "tagPlaceholderMore": "Añadir más...",
+    "confirmation": {
+      "success": "Análisis completado — {{repo}}",
+      "previewLabel": "Vista previa del informe",
+      "htmlSize": "HTML {{kb}} KB · {{count}} etiqueta(s)",
+      "tagsLabel": "Etiquetas (editable)"
+    },
+    "dialog": {
+      "title": "Nuevo análisis de proyecto",
+      "urlLabel": "URL del repositorio de GitHub",
+      "urlPlaceholder": "https://github.com/owner/repo",
+      "langLabel": "Idioma del informe",
+      "langZh": "中文",
+      "langEn": "English",
+      "langAuto": "Detección automática",
+      "start": "Iniciar análisis",
+      "progressDefault": "Preparando...",
+      "hide": "Ocultar",
+      "patience": "El análisis puede tardar varios minutos; por favor espera."
+    }
+  },
+  "panelError": {
+    "failed": "El panel no se pudo cargar"
+  },
+  "dragDrop": {
+    "itemsCount": "{{count}} elemento(s)"
+  }
+}

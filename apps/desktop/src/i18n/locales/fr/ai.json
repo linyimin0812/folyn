@@ -1,0 +1,93 @@
+{
+  "panel": {
+    "title": "Nouveau chat",
+    "newSession": "Nouveau chat",
+    "deleteSession": "Supprimer le chat",
+    "close": "Fermer",
+    "stop": "Arrêter",
+    "messageCountSuffix": "msg",
+    "emptyState": {
+      "greeting": {
+        "morning": "Bonjour, je suis Quill AI. Comment puis-je vous aider ?",
+        "noon": "Bon midi, je suis Quill AI. Comment puis-je vous aider ?",
+        "afternoon": "Bon après-midi, je suis Quill AI. Comment puis-je vous aider ?",
+        "evening": "Bonsoir, je suis Quill AI. Comment puis-je vous aider ?"
+      }
+    },
+    "studyStreaming": "agent d'étude en cours…",
+    "studyIdle": "session d'agent d'étude (saisie manuelle désactivée)",
+    "attachmentPlaceholder": "(pièce jointe)",
+    "deleteConfirmTitle": "Supprimer le chat",
+    "deleteConfirm": "Supprimer ce chat ? Irréversible.",
+    "saveDialog": {
+      "title": "Enregistrer le message",
+      "tabVault": "Ce vault",
+      "tabExternal": "Externe",
+      "vaultRoot": "Racine du vault",
+      "filename": "Nom du fichier",
+      "pathPrefix": "Chemin",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "cancel": "Annuler"
+    }
+  },
+  "chat": {
+    "placeholder": "Saisir un message ; @ pour mentionner un fichier...",
+    "placeholderFallback": "Saisir un message...",
+    "removeAttachment": "Retirer la pièce jointe",
+    "attachFile": "Joindre un fichier",
+    "clear": "Effacer",
+    "clearTitle": "Effacer le chat",
+    "clearContext": "Effacer le contexte",
+    "clearContextTitle": "Effacer le contexte (conserve les messages, réinitialise la mémoire de l'agent)",
+    "clearContextConfirm": "Effacer le contexte réinitialise la mémoire de l'agent (les messages restent). Continuer ?",
+    "clearContextConfirmTitle": "Effacer le contexte",
+    "clearContextDone": "Contexte effacé",
+    "clearMessages": "Effacer les messages",
+    "clearMessagesTitle": "Effacer les messages (supprime tous les messages et le contexte)",
+    "clearMessagesConfirm": "Effacer les messages supprimera tous les messages et le contexte. Irréversible. Continuer ?",
+    "clearMessagesConfirmTitle": "Effacer les messages",
+    "send": "Envoyer",
+    "stop": "Arrêter"
+  },
+  "voice": {
+    "phase": {
+      "transcribing": "Transcription…",
+      "polishing": "Polissage…",
+      "inserting": "Insertion…",
+      "processing": "Traitement de la voix…"
+    },
+    "button": {
+      "idle": "Saisie vocale",
+      "windowsUnsupported": "La saisie vocale n'est pas prise en charge sur cette plateforme",
+      "clickToStop": "Cliquer pour arrêter l'enregistrement et insérer",
+      "stopRecordingLabel": "Arrêter l'enregistrement",
+      "voiceInputLabel": "Saisie vocale"
+    },
+    "orb": {
+      "noApiKey": "Aucune clé API configurée ; polissage LLM ignoré",
+      "openSettings": "Ouvrir les paramètres"
+    }
+  },
+  "pairSelector": {
+    "placeholder": "Sélectionner un modèle",
+    "empty": "Aucun modèle configuré",
+    "openSettings": "Ouvrir les paramètres du modèle",
+    "sectionTitle": "Modèle IA",
+    "sectionDesc": "Choisissez le couple (fournisseur, modèle) utilisé par cette fonction ; activez d'abord un fournisseur et sélectionnez des modèles dans Services de modèles"
+  },
+  "errors": {
+    "attachmentSaveFailed": "[erreur] Échec de l'enregistrement des pièces jointes : {{error}}",
+    "streamError": "[erreur] {{error}}"
+  },
+  "slash": {
+    "skillsLabel": "Compétences",
+    "commandsLabel": "Commandes",
+    "sourceUser": "utilisateur",
+    "sourceProject": "projet",
+    "sourcePlugin": "plugin",
+    "empty": "Aucune compétence ni commande trouvée",
+    "argumentPlaceholder": "Arguments pour /{{name}}",
+    "argumentConfirm": "Insérer"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "page": {
+    "tagline": "ストレージ",
+    "title": "Vault管理",
+    "description": "ローカルナレッジベースを管理し、作業コンテキストを切り替えます",
+    "newVault": "+ 新規Vault",
+    "myVaults": "マイVault",
+    "newVaultShort": "新規Vault",
+    "current": "現在",
+    "typeSuffix": "タイプ",
+    "openEditor": "エディタを開く",
+    "switch": "切り替え",
+    "deleteTitle": "削除",
+    "fileBrowse": "ファイルブラウザ — {{name}}",
+    "emptyFiles": "まだファイルはありません。エディタで新規ドキュメントを作成してください",
+    "emptyFolder": "空のフォルダ"
+  },
+  "delete": {
+    "title": "削除の確認",
+    "confirm": "Vault「{{name}}」を削除しますか？ディスク上のファイルは削除されません。",
+    "delete": "削除",
+    "cancel": "キャンセル"
+  },
+  "time": {
+    "justNow": "たった今",
+    "minutesAgo": "{{count}}分前",
+    "hoursAgo": "{{count}}時間前",
+    "daysAgo": "{{count}}日前"
+  }
+}

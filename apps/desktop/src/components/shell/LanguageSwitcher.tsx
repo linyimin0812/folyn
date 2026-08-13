@@ -13,6 +13,10 @@ interface LanguageSwitcherProps {
 const LOCALE_LABELS: Record<Locale, string> = {
   zh: '中文',
   en: 'English',
+  ja: '日本語',
+  es: 'Español',
+  de: 'Deutsch',
+  fr: 'Français',
 };
 
 /**

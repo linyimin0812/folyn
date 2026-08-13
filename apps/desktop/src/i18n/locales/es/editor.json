@@ -1,0 +1,175 @@
+{
+  "export": {
+    "title": "Exportar",
+    "source": {
+      "markdown": { "label": "Markdown", "description": "Exportar archivo .md" },
+      "dbml": { "label": "DBML", "description": "Exportar archivo .dbml" },
+      "excalidraw": { "label": "Excalidraw", "description": "Exportar archivo .excalidraw" },
+      "drawio": { "label": "Drawio", "description": "Exportar archivo .drawio" },
+      "mmap": { "label": "Mapa mental", "description": "Exportar archivo .mmap" },
+      "plantuml": { "label": "PlantUML", "description": "Exportar archivo .puml" },
+      "graphviz": { "label": "Graphviz", "description": "Exportar archivo .gv" },
+      "default": { "label": "Archivo fuente", "description": "Exportar archivo en bruto" }
+    },
+    "html": {
+      "label": "HTML",
+      "description": "Exportar como página web renderizada"
+    },
+    "svg": {
+      "label": "SVG",
+      "description": "Exportar como imagen vectorial"
+    },
+    "png": {
+      "label": "PNG",
+      "description": "Exportar como imagen rasterizada"
+    },
+    "xmind": {
+      "label": "XMind",
+      "description": "Exportar como mapa mental .xmind"
+    },
+    "containerWarning": {
+      "title": "⚠️ Aviso de compatibilidad",
+      "body": "El documento actual usa sintaxis de contenedor de Quill (callouts, pestañas, bloques plegables, etc.), que es una extensión de Quill. **Otros editores Markdown podrían no renderizarlo correctamente.**",
+      "hint": "Para verlo en otros editores, exporta como HTML.",
+      "cancel": "Cancelar",
+      "confirm": "Exportar de todos modos"
+    },
+    "processing": {
+      "title": "Exportando",
+      "hint": "Preparando contenido, espera…"
+    }
+  },
+  "slashMenu": {
+    "categories": {
+      "layout": "Disposición",
+      "media": "Multimedia",
+      "ai": "IA",
+      "data": "Datos",
+      "custom": "Personalizado"
+    },
+    "richText": {
+      "triggerButton": "Insertar comando de barra",
+      "shortcutHint": "⌘/",
+      "categories": {
+        "blocks": "Bloques",
+        "lists": "Listas"
+      },
+      "items": {
+        "heading1": "Encabezado 1",
+        "heading2": "Encabezado 2",
+        "heading3": "Encabezado 3",
+        "blockquote": "Cita",
+        "codeBlock": "Bloque de código",
+        "horizontalRule": "Línea horizontal",
+        "bulletList": "Lista de viñetas",
+        "orderedList": "Lista ordenada",
+        "taskList": "Lista de tareas",
+        "inlineMath": "Matemática en línea",
+        "blockMath": "Bloque matemático"
+      },
+      "empty": "Sin comandos coincidentes"
+    }
+  },
+  "math": {
+    "insertButton": "Insertar fórmula",
+    "title": "Insertar fórmula matemática",
+    "editTitle": "Editar fórmula matemática",
+    "latexLabel": "LaTeX",
+    "preview": "Vista previa",
+    "inline": "En línea",
+    "block": "Bloque",
+    "insert": "Insertar",
+    "update": "Actualizar",
+    "cancel": "Cancelar",
+    "placeholder": "p. ej. \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}"
+  },
+  "imagePaste": {
+    "title": "📷 Pegar imagen",
+    "uploadMethod": "Método de subida",
+    "comingSoon": "Próximamente",
+    "fileName": "Nombre de la imagen",
+    "fileNamePlaceholder": "Introduce el nombre de la imagen",
+    "directory": "Directorio de guardado",
+    "directoryPlaceholder": "Ruta relativa a la raíz del vault",
+    "vaultHint": "🗄️ vault: {{root}}",
+    "format": "Formato de imagen",
+    "size": "Tamaño de imagen",
+    "width": "An",
+    "widthPlaceholder": "Ancho",
+    "height": "Al",
+    "heightPlaceholder": "Alto",
+    "lockRatio": "Bloquear relación de aspecto",
+    "unlockRatio": "Desbloquear relación de aspecto",
+    "resetSize": "Restablecer al tamaño original",
+    "originalSize": "Original: {{w}} × {{h}} px",
+    "pathPreview": "📄 {{path}}",
+    "cancel": "Cancelar",
+    "upload": "✓ Subir"
+  },
+  "dailyDigest": {
+    "title": "Resumen diario IA",
+    "generate": "Generar resumen",
+    "hint": "La IA analizará la actividad de escritura de hoy y generará un resumen",
+    "loading": "Generando resumen...",
+    "insert": "Insertar en la nota",
+    "generateFailed": "Generación fallida: {{error}}",
+    "today": "Hoy: {{date}}",
+    "modifiedSection": "Documentos modificados hoy",
+    "modifiedEmpty": "(sin modificaciones)",
+    "recentDailySection": "Notas diarias recientes",
+    "recentDailyEmpty": "(sin notas diarias recientes)"
+  },
+  "diffToolbar": {
+    "pendingCount": "{{count}} cambio(s) pendiente(s) de revisión",
+    "acceptAll": "Aceptar todo",
+    "rejectAll": "Rechazar todo"
+  },
+  "versionHistory": {
+    "title": "Historial de versiones",
+    "close": "Cerrar",
+    "loading": "Cargando…",
+    "empty": "Sin instantáneas",
+    "snapshot": "Instantánea",
+    "snapshotN": "Instantánea {{index}}",
+    "restore": "Restaurar",
+    "restoring": "Restaurando…",
+    "closeSelected": "Cerrar",
+    "diff": {
+      "identical": "El contenido coincide con el estado actual"
+    }
+  },
+  "color": {
+    "buttonTitle": "Color de texto",
+    "textColor": "Color de texto",
+    "highlight": "Resaltado",
+    "custom": "Personalizado"
+  },
+  "table": {
+    "insertButton": { "title": "Insertar tabla" },
+    "handle": { "rowActions": "Acciones de fila", "colActions": "Acciones de columna" },
+    "rowMenu": {
+      "insertAbove": "Insertar fila arriba",
+      "insertBelow": "Insertar fila abajo",
+      "delete": "Eliminar fila",
+      "toggleHeader": "Alternar fila de encabezado"
+    },
+    "colMenu": {
+      "insertLeft": "Insertar columna a la izquierda",
+      "insertRight": "Insertar columna a la derecha",
+      "delete": "Eliminar columna",
+      "toggleHeader": "Alternar columna de encabezado"
+    },
+    "cellMenu": {
+      "merge": "Combinar celdas",
+      "split": "Dividir celda",
+      "alignLeft": "Alinear a la izquierda",
+      "alignCenter": "Centrar",
+      "alignRight": "Alinear a la derecha",
+      "toggleHeaderCell": "Alternar celda de encabezado",
+      "deleteTable": "Eliminar tabla",
+      "bgColor": "Color de fondo",
+      "clearBg": "Limpiar fondo",
+      "customColor": "Color personalizado…"
+    }
+  }
+}

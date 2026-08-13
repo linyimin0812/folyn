@@ -1,0 +1,31 @@
+{
+  "language": {
+    "zh": "中文",
+    "en": "English",
+    "ja": "日本語",
+    "es": "Español",
+    "de": "Deutsch",
+    "fr": "Français",
+    "switcher": {
+      "title": "言語",
+      "aria": "言語を切り替え"
+    }
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "delete": "削除",
+    "confirm": "確認",
+    "close": "閉じる",
+    "new": "新規",
+    "open": "開く",
+    "edit": "編集",
+    "preview": "プレビュー",
+    "loading": "読み込み中…",
+    "error": "エラー",
+    "retry": "再試行",
+    "yes": "はい",
+    "no": "いいえ"
+  }
+}

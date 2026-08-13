@@ -1,0 +1,93 @@
+{
+  "panel": {
+    "title": "新規チャット",
+    "newSession": "新規チャット",
+    "deleteSession": "チャットを削除",
+    "close": "閉じる",
+    "stop": "停止",
+    "messageCountSuffix": "件",
+    "emptyState": {
+      "greeting": {
+        "morning": "おはようございます、Quill AIです。お手伝いしましょうか？",
+        "noon": "こんにちは、Quill AIです。お手伝いしましょうか？",
+        "afternoon": "こんにちは、Quill AIです。お手伝いしましょうか？",
+        "evening": "こんばんは、Quill AIです。お手伝いしましょうか？"
+      }
+    },
+    "studyStreaming": "学習エージェント実行中…",
+    "studyIdle": "学習エージェントセッション（手動入力無効）",
+    "attachmentPlaceholder": "（添付）",
+    "deleteConfirmTitle": "チャットを削除",
+    "deleteConfirm": "このチャットを削除しますか？元に戻せません。",
+    "saveDialog": {
+      "title": "メッセージを保存",
+      "tabVault": "このVault",
+      "tabExternal": "外部",
+      "vaultRoot": "Vaultルート",
+      "filename": "ファイル名",
+      "pathPrefix": "パス",
+      "save": "保存",
+      "saving": "保存中…",
+      "cancel": "キャンセル"
+    }
+  },
+  "chat": {
+    "placeholder": "メッセージを入力；@でファイルをメンション...",
+    "placeholderFallback": "メッセージを入力...",
+    "removeAttachment": "添付を削除",
+    "attachFile": "ファイルを添付",
+    "clear": "クリア",
+    "clearTitle": "チャットをクリア",
+    "clearContext": "コンテキストをクリア",
+    "clearContextTitle": "コンテキストをクリア（メッセージ保持、エージェント記憶リセット）",
+    "clearContextConfirm": "コンテキストをクリアするとエージェント記憶をリセットします（メッセージは残ります）。続行しますか？",
+    "clearContextConfirmTitle": "コンテキストをクリア",
+    "clearContextDone": "コンテキストをクリアしました",
+    "clearMessages": "メッセージをクリア",
+    "clearMessagesTitle": "メッセージをクリア（全メッセージとコンテキストを破棄）",
+    "clearMessagesConfirm": "メッセージをクリアするとすべてのメッセージとコンテキストが削除されます。元に戻せません。続行しますか？",
+    "clearMessagesConfirmTitle": "メッセージをクリア",
+    "send": "送信",
+    "stop": "停止"
+  },
+  "voice": {
+    "phase": {
+      "transcribing": "文字起こし中…",
+      "polishing": "推敲中…",
+      "inserting": "挿入中…",
+      "processing": "音声を処理中…"
+    },
+    "button": {
+      "idle": "音声入力",
+      "windowsUnsupported": "このプラットフォームでは音声入力はサポートされていません",
+      "clickToStop": "クリックして録音を停止し挿入",
+      "stopRecordingLabel": "録音を停止",
+      "voiceInputLabel": "音声入力"
+    },
+    "orb": {
+      "noApiKey": "APIキー未設定、LLM推敲をスキップ",
+      "openSettings": "設定を開く"
+    }
+  },
+  "pairSelector": {
+    "placeholder": "モデルを選択",
+    "empty": "モデルが未設定",
+    "openSettings": "モデル設定を開く",
+    "sectionTitle": "AIモデル",
+    "sectionDesc": "この機能が使用する（プロバイダ、モデル）ペアを選択。まずモデルサービスでプロバイダを有効化してモデルを選択してください"
+  },
+  "errors": {
+    "attachmentSaveFailed": "[エラー] 添付の保存に失敗しました: {{error}}",
+    "streamError": "[エラー] {{error}}"
+  },
+  "slash": {
+    "skillsLabel": "スキル",
+    "commandsLabel": "コマンド",
+    "sourceUser": "ユーザ",
+    "sourceProject": "プロジェクト",
+    "sourcePlugin": "プラグイン",
+    "empty": "スキルやコマンドが見つかりません",
+    "argumentPlaceholder": "/{{name}}への引数",
+    "argumentConfirm": "挿入"
+  }
+}

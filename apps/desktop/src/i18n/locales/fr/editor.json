@@ -1,0 +1,175 @@
+{
+  "export": {
+    "title": "Exporter",
+    "source": {
+      "markdown": { "label": "Markdown", "description": "Exporter le fichier .md" },
+      "dbml": { "label": "DBML", "description": "Exporter le fichier .dbml" },
+      "excalidraw": { "label": "Excalidraw", "description": "Exporter le fichier .excalidraw" },
+      "drawio": { "label": "Drawio", "description": "Exporter le fichier .drawio" },
+      "mmap": { "label": "Carte mentale", "description": "Exporter le fichier .mmap" },
+      "plantuml": { "label": "PlantUML", "description": "Exporter le fichier .puml" },
+      "graphviz": { "label": "Graphviz", "description": "Exporter le fichier .gv" },
+      "default": { "label": "Fichier source", "description": "Exporter le fichier brut" }
+    },
+    "html": {
+      "label": "HTML",
+      "description": "Exporter en page web rendue"
+    },
+    "svg": {
+      "label": "SVG",
+      "description": "Exporter en image vectorielle"
+    },
+    "png": {
+      "label": "PNG",
+      "description": "Exporter en image matricielle"
+    },
+    "xmind": {
+      "label": "XMind",
+      "description": "Exporter en carte mentale .xmind"
+    },
+    "containerWarning": {
+      "title": "⚠️ Avis de compatibilité",
+      "body": "Le document actuel utilise la syntaxe de conteneur Quill (callouts, onglets, blocs repliables, etc.), une extension Quill. **Les autres éditeurs Markdown pourraient ne pas le rendre correctement.**",
+      "hint": "Pour visualiser dans d'autres éditeurs, exportez en HTML.",
+      "cancel": "Annuler",
+      "confirm": "Exporter quand même"
+    },
+    "processing": {
+      "title": "Export en cours",
+      "hint": "Préparation du contenu, patientez…"
+    }
+  },
+  "slashMenu": {
+    "categories": {
+      "layout": "Disposition",
+      "media": "Médias",
+      "ai": "IA",
+      "data": "Données",
+      "custom": "Personnalisé"
+    },
+    "richText": {
+      "triggerButton": "Insérer une commande slash",
+      "shortcutHint": "⌘/",
+      "categories": {
+        "blocks": "Blocs",
+        "lists": "Listes"
+      },
+      "items": {
+        "heading1": "Titre 1",
+        "heading2": "Titre 2",
+        "heading3": "Titre 3",
+        "blockquote": "Citation",
+        "codeBlock": "Bloc de code",
+        "horizontalRule": "Ligne horizontale",
+        "bulletList": "Liste à puces",
+        "orderedList": "Liste ordonnée",
+        "taskList": "Liste de tâches",
+        "inlineMath": "Math en ligne",
+        "blockMath": "Bloc mathématique"
+      },
+      "empty": "Aucune commande correspondante"
+    }
+  },
+  "math": {
+    "insertButton": "Insérer une formule",
+    "title": "Insérer une formule mathématique",
+    "editTitle": "Modifier la formule mathématique",
+    "latexLabel": "LaTeX",
+    "preview": "Aperçu",
+    "inline": "En ligne",
+    "block": "Bloc",
+    "insert": "Insérer",
+    "update": "Mettre à jour",
+    "cancel": "Annuler",
+    "placeholder": "ex. \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}"
+  },
+  "imagePaste": {
+    "title": "📷 Coller une image",
+    "uploadMethod": "Méthode d'envoi",
+    "comingSoon": "Bientôt disponible",
+    "fileName": "Nom de l'image",
+    "fileNamePlaceholder": "Saisir le nom de l'image",
+    "directory": "Répertoire d'enregistrement",
+    "directoryPlaceholder": "Chemin relatif à la racine du vault",
+    "vaultHint": "🗄️ vault : {{root}}",
+    "format": "Format d'image",
+    "size": "Taille de l'image",
+    "width": "L",
+    "widthPlaceholder": "Largeur",
+    "height": "H",
+    "heightPlaceholder": "Hauteur",
+    "lockRatio": "Verrouiller le ratio",
+    "unlockRatio": "Déverrouiller le ratio",
+    "resetSize": "Réinitialiser à la taille d'origine",
+    "originalSize": "Origine : {{w}} × {{h}} px",
+    "pathPreview": "📄 {{path}}",
+    "cancel": "Annuler",
+    "upload": "✓ Envoyer"
+  },
+  "dailyDigest": {
+    "title": "Résumé quotidien IA",
+    "generate": "Générer le résumé",
+    "hint": "L'IA analysera l'activité d'écriture du jour et générera un résumé",
+    "loading": "Génération du résumé...",
+    "insert": "Insérer dans la note",
+    "generateFailed": "Échec de la génération : {{error}}",
+    "today": "Aujourd'hui : {{date}}",
+    "modifiedSection": "Documents modifiés aujourd'hui",
+    "modifiedEmpty": "(aucune modification)",
+    "recentDailySection": "Notes quotidiennes récentes",
+    "recentDailyEmpty": "(aucune note quotidienne récente)"
+  },
+  "diffToolbar": {
+    "pendingCount": "{{count}} modification(s) en attente de révision",
+    "acceptAll": "Tout accepter",
+    "rejectAll": "Tout rejeter"
+  },
+  "versionHistory": {
+    "title": "Historique des versions",
+    "close": "Fermer",
+    "loading": "Chargement…",
+    "empty": "Aucun instantané",
+    "snapshot": "Instantané",
+    "snapshotN": "Instantané {{index}}",
+    "restore": "Restaurer",
+    "restoring": "Restauration…",
+    "closeSelected": "Fermer",
+    "diff": {
+      "identical": "Le contenu correspond à l'état actuel"
+    }
+  },
+  "color": {
+    "buttonTitle": "Couleur du texte",
+    "textColor": "Couleur du texte",
+    "highlight": "Surlignage",
+    "custom": "Personnalisé"
+  },
+  "table": {
+    "insertButton": { "title": "Insérer un tableau" },
+    "handle": { "rowActions": "Actions de ligne", "colActions": "Actions de colonne" },
+    "rowMenu": {
+      "insertAbove": "Insérer une ligne au-dessus",
+      "insertBelow": "Insérer une ligne en dessous",
+      "delete": "Supprimer la ligne",
+      "toggleHeader": "Basculer la ligne d'en-tête"
+    },
+    "colMenu": {
+      "insertLeft": "Insérer une colonne à gauche",
+      "insertRight": "Insérer une colonne à droite",
+      "delete": "Supprimer la colonne",
+      "toggleHeader": "Basculer la colonne d'en-tête"
+    },
+    "cellMenu": {
+      "merge": "Fusionner les cellules",
+      "split": "Scinder la cellule",
+      "alignLeft": "Aligner à gauche",
+      "alignCenter": "Centrer",
+      "alignRight": "Aligner à droite",
+      "toggleHeaderCell": "Basculer la cellule d'en-tête",
+      "deleteTable": "Supprimer le tableau",
+      "bgColor": "Couleur d'arrière-plan",
+      "clearBg": "Effacer l'arrière-plan",
+      "customColor": "Couleur personnalisée…"
+    }
+  }
+}

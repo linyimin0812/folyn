@@ -1,0 +1,10 @@
+{
+  "search": {
+    "placeholder": "Rechercher dans le vault...",
+    "caseSensitive": "Sensible à la casse",
+    "useRegex": "Utiliser regex",
+    "searching": "Recherche...",
+    "noResults": "Aucun résultat trouvé",
+    "typeToSearch": "Saisir pour rechercher dans tous les fichiers"
+  }
+}

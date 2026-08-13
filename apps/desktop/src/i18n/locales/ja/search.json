@@ -1,0 +1,10 @@
+{
+  "search": {
+    "placeholder": "Vault内を検索...",
+    "caseSensitive": "大文字小文字を区別",
+    "useRegex": "正規表現を使用",
+    "searching": "検索中...",
+    "noResults": "結果が見つかりません",
+    "typeToSearch": "すべてのファイルを横断検索するには入力してください"
+  }
+}

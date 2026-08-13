@@ -1,0 +1,74 @@
+{
+  "chat": {
+    "noAiConfig": "KI nicht konfiguriert",
+    "noAiConfigHint": "Konfiguriere den CLI-Pfad in den Einstellungen, um hier zu chatten.",
+    "openAiSettings": "KI-Einstellungen öffnen",
+    "emptyHint": "Frag die KI — Antworten werden hier gestreamt.",
+    "inputPlaceholder": "Nachricht eingeben, Enter zum Senden",
+    "removeAttachment": "Anhang entfernen",
+    "attachFile": "Datei anhängen",
+    "aiMode": "KI-Modus",
+    "attachmentSaveFailed": "Speichern des Anhangs fehlgeschlagen: {{error}}",
+    "errorPrefix": "[Fehler] {{message}}",
+    "sessionHeader": {
+      "toggleAria": "Sitzung wechseln",
+      "openAiSettings": "KI-Einstellungen",
+      "confirmDelete": "Löschen bestätigen?",
+      "deleteYes": "Ja",
+      "deleteNo": "Nein",
+      "renameAria": "Umbenennen",
+      "deleteAria": "Löschen",
+      "newSession": "Neue Sitzung",
+      "defaultTitle": "Neuer Chat",
+      "capHint": "Sitzungslimit erreicht ({{max}})"
+    }
+  },
+  "launcher": {
+    "dailyNote": "Heutige Notiz",
+    "clipFromUrl": "Aus URL ausschneiden",
+    "globalSearch": "Globale Suche",
+    "commandPalette": "Befehlspalette",
+    "showMain": "Hauptfenster anzeigen",
+    "toggleTheme": "Design wechseln",
+    "clip": {
+      "emptyUrl": "URL eingeben",
+      "running": "Ausschneiden...",
+      "saved": "Gespeichert: {{name}}",
+      "failed": "Ausschneiden fehlgeschlagen",
+      "submit": "Ausschneiden",
+      "collapse": "Einklappen"
+    }
+  },
+  "bubble": {
+    "closeAria": "Schließen"
+  },
+  "menu": {
+    "showMain": "Hauptfenster anzeigen",
+    "hidePet": "Pet-Icon ausblenden",
+    "sizeSubmenu": "Pet-Größe",
+    "opacitySubmenu": "Pet-Deckkraft",
+    "clickThrough": "Klick-Durchgriff",
+    "exitApp": "App beenden"
+  },
+  "tabs": {
+    "chat": "Chat",
+    "inbox": "Posteingang"
+  },
+  "search": {
+    "placeholder": "Dateien / Befehle / Plugins suchen",
+    "files": "Dateien",
+    "commands": "Befehle",
+    "plugins": "Plugins",
+    "noResults": "Keine passenden Ergebnisse"
+  },
+  "inbox": {
+    "empty": "Keine Benachrichtigungen",
+    "clear": "Leeren",
+    "kind": {
+      "info": "Info",
+      "reminder": "Erinnerung",
+      "message": "Nachricht",
+      "event": "Ereignis"
+    }
+  }
+}

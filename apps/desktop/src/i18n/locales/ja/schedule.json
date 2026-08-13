@@ -1,0 +1,176 @@
+{
+  "title": "スケジュールワークベンチ",
+  "new": "新規",
+  "views": {
+    "schedule": "スケジュール",
+    "board": "タスクボード"
+  },
+  "weekGrid": {
+    "today": "今日",
+    "weekRange": "{{ms}}/{{ds}}/{{y}} – {{me}}/{{de}}",
+    "dow": ["月", "火", "水", "木", "金", "土", "日"],
+    "selectDay": "この日を選択",
+    "legend": {
+      "work": "仕事",
+      "personal": "個人",
+      "family": "家族",
+      "health": "健康",
+      "task": "タスク"
+    },
+    "scheduledToast": "{{day}} {{time}}に予定しました"
+  },
+  "dayCal": {
+    "monthTitle": "{{m}}/{{y}}",
+    "prevMonth": "前の月",
+    "nextMonth": "翌月",
+    "today": "今日に戻る",
+    "legend": {
+      "selected": "選択中",
+      "today": "今日",
+      "overdue": "期限超過"
+    },
+    "dow": ["月", "火", "水", "木", "金", "土", "日"]
+  },
+  "miniCal": {
+    "monthTitle": "{{m}}/{{y}}",
+    "prevMonth": "前の月",
+    "nextMonth": "翌月",
+    "dow": ["月", "火", "水", "木", "金", "土", "日"]
+  },
+  "calendarCategory": {
+    "calendar": "カレンダー",
+    "week": "今週",
+    "totalEvents": "総イベント数",
+    "incompleteTasks": "未完了タスク"
+  },
+  "category": {
+    "event": {
+      "work": "仕事",
+      "personal": "個人",
+      "family": "家族",
+      "health": "健康",
+      "task": "タスク"
+    },
+    "task": {
+      "design": "デザイン",
+      "dev": "開発",
+      "bug": "バグ",
+      "growth": "グロース",
+      "ops": "運用",
+      "calendar": "カレンダー",
+      "learn": "学習"
+    }
+  },
+  "reminders": {
+    "upcoming": "今後",
+    "empty": "今後の項目はありません",
+    "dueBody": "<b>{{title}}</b> · 期限 · {{column}}"
+  },
+  "todayTaskList": {
+    "title": "今日のタスク",
+    "duePrefix": "期限 {{due}} · ",
+    "empty": "今日のタスクはありません"
+  },
+  "unschedDock": {
+    "title": "予定設定",
+    "allDone": "すべて予定済み ✓",
+    "hint": "ここからカレンダーの時間枠にドラッグして予定設定",
+    "dragToast": "カレンダーの時間枠にドラッグして予定設定",
+    "delete": "削除"
+  },
+  "pomodoro": {
+    "work": "作業セッション · ラウンド {{round}}",
+    "rest": "休憩 · ラウンド {{round}}",
+    "label": "ポモドーロ集中",
+    "pause": "一時停止",
+    "start": "開始",
+    "reset": "リセット"
+  },
+  "boardColumn": {
+    "renameHint": "ダブルクリックで名前変更",
+    "deleteColumn": "列を削除",
+    "empty": "今日のタスクはありません",
+    "emptyHint": "この列にカードをドラッグ"
+  },
+  "boardView": {
+    "columnNamePlaceholder": "列名…",
+    "addColumn": "+ 新規列"
+  },
+  "quickAdd": {
+    "placeholder": "タスクを追加、Enterで送信…",
+    "submit": "追加"
+  },
+  "taskCard": {
+    "priorityTitle": "優先度",
+    "scheduled": "予定済み"
+  },
+  "modal": {
+    "titleEdit": "{{kind}}を編集",
+    "titleNew": "新規{{kind}}",
+    "kindEvent": "イベント",
+    "kindTask": "タスク",
+    "typeLabel": "タイプ",
+    "typeEvent": "イベントを予定",
+    "typeTask": "ボードタスク",
+    "titleLabel": "タイトル",
+    "titlePlaceholder": "例: プロダクトレビュー会議",
+    "descLabel": "説明",
+    "descPlaceholder": "背景、受け入れ基準、関連リンク…",
+    "start": "開始",
+    "end": "終了",
+    "calendar": "カレンダー",
+    "column": "列",
+    "columnDoneSuffix": "（完了）",
+    "category": "カテゴリ",
+    "priority": "優先度",
+    "priorityHigh": "高",
+    "priorityMed": "中",
+    "priorityLow": "低",
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "save": "保存",
+    "create": "作成",
+    "delete": "削除",
+    "unschedule": "予定解除",
+    "toastTitleRequired": "タイトルを入力してください",
+    "toastEndAfterStart": "終了時間は開始時間より後にしてください"
+  },
+  "plan": {
+    "loading": "AIが今日の予定を立てています…",
+    "errorClose": "閉じる",
+    "errorRetry": "再試行",
+    "resultApplied": "{{applied}}件適用",
+    "resultFailed": "、{{failed}}件失敗",
+    "resultDone": "完了",
+    "appliedToast": "{{count}}件のプラン項目を適用",
+    "appliedPartialToast": "{{applied}}件適用、{{failed}}件失敗",
+    "previewTitle": "今日のAIプラン",
+    "discard": "破棄",
+    "applySelected": "選択を適用",
+    "empty": "過去7日間に未完了タスクはなく、AIは新しいプランを提案しませんでした。",
+    "legendTask": "提案タスク（ドラッグで調整 / ✓✗で選択）",
+    "legendEvent": "提案イベント / 休憩",
+    "legendExisting": "既存イベント（参考）",
+    "ariaLabel": "今日のAIプラン"
+  },
+  "toast": {
+    "undo": "元に戻す",
+    "newColumnDefault": "新規列",
+    "eventAdded": "カレンダーにイベントを追加",
+    "eventMoved": "{{date}} {{time}}に移動",
+    "eventUpdated": "イベントを更新",
+    "eventDeleted": "「{{title}}」を削除",
+    "taskAdded": "タスクを追加",
+    "taskRestored": "復元",
+    "taskMarkedDone": "完了に設定",
+    "taskUpdated": "タスクを更新",
+    "taskUnscheduled": "予定解除",
+    "taskDeleted": "「{{title}}」を削除",
+    "dueDateSet": "期限を{{date}}に設定",
+    "cannotDeleteDoneColumn": "完了列は削除できません",
+    "mustKeepOneColumn": "少なくとも1列残す必要があります",
+    "columnDeleted": "列「{{name}}」を削除",
+    "pomoWorkEnded": "作業セッション終了、5分休憩してください",
+    "pomoRestEnded": "休憩終了、ラウンド{{round}}を開始"
+  }
+}

@@ -1,0 +1,176 @@
+{
+  "title": "Atelier d'agenda",
+  "new": "Nouveau",
+  "views": {
+    "schedule": "Agenda",
+    "board": "Tableau des tâches"
+  },
+  "weekGrid": {
+    "today": "Aujourd'hui",
+    "weekRange": "{{ms}}/{{ds}}/{{y}} – {{me}}/{{de}}",
+    "dow": ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"],
+    "selectDay": "Sélectionner ce jour",
+    "legend": {
+      "work": "Travail",
+      "personal": "Personnel",
+      "family": "Famille",
+      "health": "Santé",
+      "task": "Tâche"
+    },
+    "scheduledToast": "Planifié le {{day}} {{time}}"
+  },
+  "dayCal": {
+    "monthTitle": "{{m}}/{{y}}",
+    "prevMonth": "Mois précédent",
+    "nextMonth": "Mois suivant",
+    "today": "Revenir à aujourd'hui",
+    "legend": {
+      "selected": "Sélectionné",
+      "today": "Aujourd'hui",
+      "overdue": "En retard"
+    },
+    "dow": ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
+  },
+  "miniCal": {
+    "monthTitle": "{{m}}/{{y}}",
+    "prevMonth": "Mois précédent",
+    "nextMonth": "Mois suivant",
+    "dow": ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
+  },
+  "calendarCategory": {
+    "calendar": "Calendrier",
+    "week": "Cette semaine",
+    "totalEvents": "Total d'événements",
+    "incompleteTasks": "Tâches incomplètes"
+  },
+  "category": {
+    "event": {
+      "work": "Travail",
+      "personal": "Personnel",
+      "family": "Famille",
+      "health": "Santé",
+      "task": "Tâche"
+    },
+    "task": {
+      "design": "Design",
+      "dev": "Dév",
+      "bug": "Bug",
+      "growth": "Croissance",
+      "ops": "Ops",
+      "calendar": "Calendrier",
+      "learn": "Apprentissage"
+    }
+  },
+  "reminders": {
+    "upcoming": "À venir",
+    "empty": "Aucun élément à venir",
+    "dueBody": "<b>{{title}}</b> · échéance · {{column}}"
+  },
+  "todayTaskList": {
+    "title": "Tâches du jour",
+    "duePrefix": "Échéance {{due}} · ",
+    "empty": "Aucune tâche aujourd'hui"
+  },
+  "unschedDock": {
+    "title": "À planifier",
+    "allDone": "Tout planifié ✓",
+    "hint": "Glisser d'ici vers un créneau du calendrier pour planifier",
+    "dragToast": "Glisser vers un créneau du calendrier pour planifier",
+    "delete": "Supprimer"
+  },
+  "pomodoro": {
+    "work": "Session de travail · tour {{round}}",
+    "rest": "Pause · tour {{round}}",
+    "label": "Focus Pomodoro",
+    "pause": "Pause",
+    "start": "Démarrer",
+    "reset": "Réinitialiser"
+  },
+  "boardColumn": {
+    "renameHint": "Double-cliquer pour renommer",
+    "deleteColumn": "Supprimer la colonne",
+    "empty": "Aucune tâche pour aujourd'hui",
+    "emptyHint": "Glisser des cartes dans cette colonne"
+  },
+  "boardView": {
+    "columnNamePlaceholder": "Nom de colonne…",
+    "addColumn": "+ Nouvelle colonne"
+  },
+  "quickAdd": {
+    "placeholder": "Ajouter une tâche, Entrée pour envoyer…",
+    "submit": "Ajouter"
+  },
+  "taskCard": {
+    "priorityTitle": "Priorité",
+    "scheduled": "Planifié"
+  },
+  "modal": {
+    "titleEdit": "Modifier {{kind}}",
+    "titleNew": "Nouveau {{kind}}",
+    "kindEvent": "événement",
+    "kindTask": "tâche",
+    "typeLabel": "Type",
+    "typeEvent": "Planifier un événement",
+    "typeTask": "Tâche de tableau",
+    "titleLabel": "Titre",
+    "titlePlaceholder": "ex. Réunion de revue produit",
+    "descLabel": "Description",
+    "descPlaceholder": "Contexte, critères d'acceptation, liens associés…",
+    "start": "Début",
+    "end": "Fin",
+    "calendar": "Calendrier",
+    "column": "Colonne",
+    "columnDoneSuffix": "(fait)",
+    "category": "Catégorie",
+    "priority": "Priorité",
+    "priorityHigh": "Haute",
+    "priorityMed": "Moyenne",
+    "priorityLow": "Basse",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "save": "Enregistrer",
+    "create": "Créer",
+    "delete": "Supprimer",
+    "unschedule": "Déplanifier",
+    "toastTitleRequired": "Veuillez saisir le titre",
+    "toastEndAfterStart": "L'heure de fin doit être après l'heure de début"
+  },
+  "plan": {
+    "loading": "L'IA planifie votre journée…",
+    "errorClose": "Fermer",
+    "errorRetry": "Réessayer",
+    "resultApplied": "{{applied}} élément(s) appliqué(s)",
+    "resultFailed": ", {{failed}} échec(s)",
+    "resultDone": "Terminé",
+    "appliedToast": "{{count}} élément(s) de plan appliqué(s)",
+    "appliedPartialToast": "{{applied}} appliqué(s), {{failed}} échec(s)",
+    "previewTitle": "Plan IA du jour",
+    "discard": "Ecarter",
+    "applySelected": "Appliquer la sélection",
+    "empty": "Aucune tâche en retard dans les 7 derniers jours, et l'IA n'a proposé aucun nouveau plan.",
+    "legendTask": "Tâches proposées (glisser pour ajuster / ✓✗ sélectionner)",
+    "legendEvent": "Événements / pauses proposés",
+    "legendExisting": "Événements existants (référence)",
+    "ariaLabel": "Plan IA du jour"
+  },
+  "toast": {
+    "undo": "Annuler",
+    "newColumnDefault": "Nouvelle colonne",
+    "eventAdded": "Événement ajouté au calendrier",
+    "eventMoved": "Déplacé au {{date}} {{time}}",
+    "eventUpdated": "Événement mis à jour",
+    "eventDeleted": "« {{title}} » supprimé",
+    "taskAdded": "Tâche ajoutée",
+    "taskRestored": "Restaurée",
+    "taskMarkedDone": "Marquée comme faite",
+    "taskUpdated": "Tâche mise à jour",
+    "taskUnscheduled": "Déplanifiée",
+    "taskDeleted": "« {{title}} » supprimée",
+    "dueDateSet": "Date d'échéance {{date}}",
+    "cannotDeleteDoneColumn": "Impossible de supprimer la colonne des faits",
+    "mustKeepOneColumn": "Au moins une colonne doit rester",
+    "columnDeleted": "Colonne « {{name}} » supprimée",
+    "pomoWorkEnded": "Session de travail terminée, faites une pause de 5 minutes",
+    "pomoRestEnded": "Pause terminée, tour {{round}}"
+  }
+}

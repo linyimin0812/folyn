@@ -1,0 +1,83 @@
+{
+  "toolbar": {
+    "style": "Style",
+    "direction": "Direction : {{dir}}"
+  },
+  "stylePanel": {
+    "canvasTab": "Canevas",
+    "nodeTab": "Nœud",
+    "close": "Fermer"
+  },
+  "canvas": {
+    "sectionTheme": "Thème",
+    "skeleton": "Squelette",
+    "skeletonTitle": "Choisir une structure de squelette pour le canevas",
+    "direction": "Direction",
+    "directionRight": "Droite",
+    "directionLeft": "Gauche",
+    "directionBoth": "Les deux côtés",
+    "palette": "Palette",
+    "paletteTitle": "Veuillez d'abord activer les branches en arc-en-ciel",
+    "paletteDefault": "Par défaut",
+    "createStyle": "Créer un style",
+    "createStyleTitle": "Appliquer automatiquement un style prédéfini aux nouveaux nœuds",
+    "background": "Arrière-plan",
+    "clearBg": "Effacer",
+    "clearBgTitle": "Effacer la couleur d'arrière-plan",
+    "sectionLayout": "Disposition",
+    "alignTitle": "Aligner les nœuds frères au centre",
+    "alignLabel": "Aligner les frères",
+    "freeLayoutTitle": "Les nœuds peuvent être glissés librement vers n'importe quelle position",
+    "freeLayoutLabel": "Disposition libre",
+    "compactTitle": "Mode compact, réduit l'espacement entre les nœuds",
+    "compactLabel": "Compact",
+    "spacingTitle": "L'espacement est verrouillé en mode compact",
+    "spacingLabel": "Espacement des nœuds",
+    "skeletonMind": "Carte mentale",
+    "skeletonOrg": "Organigramme",
+    "skeletonTree": "Diagramme en arbre"
+  },
+  "node": {
+    "font": "Police",
+    "fontMicrosoft": "Microsoft YaHei",
+    "fontPingfang": "PingFang SC",
+    "fontSimsun": "SimSun",
+    "fontSimhei": "SimHei",
+    "fontHelvetica": "Helvetica",
+    "fontArial": "Arial",
+    "fontMonospace": "monospace",
+    "fontSize": "Taille",
+    "bold": "Gras",
+    "italic": "Italique",
+    "textColor": "Couleur",
+    "fill": "Remplissage",
+    "border": "Bordure",
+    "fixedWidth": "Largeur",
+    "line": "Ligne",
+    "rainbow": "Arc-en-ciel",
+    "rainbowTitle": "Basculer la coloration en arc-en-ciel des branches",
+    "presets": "Styles prédéfinis",
+    "reset": "Réinitialiser",
+    "resetTitle": "Effacer tous les styles du nœud sélectionné"
+  },
+  "preset": {
+    "important": "Important",
+    "pending": "En attente",
+    "done": "Terminé",
+    "highlight": "Surligner",
+    "delete": "Supprimé",
+    "secondary": "Secondaire"
+  },
+  "createStyle": {
+    "default": "Par défaut",
+    "rounded": "Arrondi",
+    "colorFill": "Remplissage de couleur",
+    "minimal": "Minimaliste"
+  },
+  "palette": {
+    "classic": "Classique",
+    "dark": "Sombre",
+    "pastel": "Pastel",
+    "vibrant": "Vif"
+  }
+}

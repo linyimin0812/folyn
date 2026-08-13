@@ -1,0 +1,19 @@
+{
+  "addressPlaceholder": "URL eingeben und Enter drücken",
+  "importData": "Aus Chrome importieren",
+  "importLabel": "Importieren",
+  "importCookies": "Chrome-Cookies importieren",
+  "importPasswords": "Chrome-Passwörter importieren",
+  "passwords": "Passwörter",
+  "passwordsFor": "Passwörter für",
+  "noPasswords": "Keine importierten Passwörter für diese Seite",
+  "fill": "In Seite eintragen",
+  "copyPassword": "Passwort kopieren",
+  "removePassword": "Entfernen",
+  "newTab": "Neuer Tab",
+  "filled": "In die Seite eingetragen",
+  "fillFailed": "Eintragen fehlgeschlagen:",
+  "copied": "In die Zwischenablage kopiert",
+  "copyFailed": "Kopieren fehlgeschlagen",
+  "navigateFailed": "Navigation fehlgeschlagen"
+}

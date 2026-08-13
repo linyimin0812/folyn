@@ -1,0 +1,9 @@
+{
+  "new": "Nuevo terminal",
+  "close": "Cerrar terminal",
+  "closePanel": "Cerrar panel de terminal",
+  "openAtBottom": "Abrir terminal en la parte inferior",
+  "showInRightDock": "Mostrar terminal en el panel derecho",
+  "restart": "Reiniciar",
+  "empty": "Aún no hay sesiones de terminal"
+}

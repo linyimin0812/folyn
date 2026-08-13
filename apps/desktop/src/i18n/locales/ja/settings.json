@@ -1,0 +1,714 @@
+{
+  "nav": {
+    "backToEditor": "エディタに戻る"
+  },
+  "groups": {
+    "general": "一般",
+    "editor": "エディタ",
+    "ai": "AI",
+    "extensions": "拡張",
+    "about": "情報"
+  },
+  "tabs": {
+    "appearance": "外観",
+    "editor": "エディタ",
+    "shortcuts": "ショートカット",
+    "cli": "CLIツール",
+    "models": "モデルサービス",
+    "voice": "音声入力",
+    "templates": "ファイルテンプレート",
+    "skills": "スキル",
+    "pet": "桌宠",
+    "notifications": "通知",
+    "plugins": "プラグイン",
+    "csp": "セキュリティポリシー",
+    "about": "情報"
+  },
+  "appearance": {
+    "title": "外観",
+    "description": "UIテーマとフォント表示を調整",
+    "theme": {
+      "label": "UIテーマ",
+      "dark": "ダーク",
+      "light": "ライト",
+      "system": "システムに従う"
+    },
+    "fontSize": {
+      "label": "UIフォントサイズ",
+      "compact": "12px（コンパクト）",
+      "default": "14px（デフォルト）",
+      "comfortable": "16px（快適）"
+    },
+    "panels": {
+      "ai": {
+        "label": "AIパネルをデフォルト表示",
+        "description": "エディタを開いたときAIチャットパネルを自動展開"
+      },
+      "statusBar": {
+        "label": "ステータスバー",
+        "description": "下部に単語数とカーソル位置を表示"
+      },
+      "hiddenFiles": {
+        "label": "隠しファイルを表示",
+        "description": "ドットファイルと隠しフォルダをファイルツリーに表示"
+      },
+      "wiki": {
+        "label": "Wikiパネル",
+        "description": "サイドバーにWikiエントリを表示"
+      },
+      "clips": {
+        "label": "クリップパネル",
+        "description": "サイドバーにWebクリップエントリを表示"
+      },
+      "analyze": {
+        "label": "プロジェクト分析パネル",
+        "description": "サイドバーにプロジェクト分析エントリを表示"
+      },
+      "daily": {
+        "label": "デイリーノートパネル",
+        "description": "サイドバーにカレンダーとデイリーノートエントリを表示（無効化すると⌘Dも無効）"
+      },
+      "tray": {
+        "label": "トレイアイコンを表示",
+        "description": "システムトレイにアプリアイコンを表示。クリックで桌宠の右クリックメニューと同じクイックアクションメニュー"
+      }
+    },
+    "excludePatterns": {
+      "label": "ファイル/フォルダをフィルタ",
+      "description": "一致したファイル/フォルダをファイルツリーから非表示。*と?のワイルドカードをサポート。",
+      "add": "追加",
+      "prompt": "フィルタパターンを入力（*と?のワイルドカードをサポート）",
+      "empty": "フィルタルールなし"
+    }
+  },
+  "editor": {
+    "title": "エディタ",
+    "description": "エディタの挙動と表示オプションを設定",
+    "font": {
+      "label": "エディタフォント"
+    },
+    "fontSize": {
+      "label": "フォントサイズ"
+    },
+    "tabSize": {
+      "label": "タブ幅",
+      "2": "2スペース",
+      "4": "4スペース"
+    },
+    "showLineNumbers": {
+      "label": "行番号を表示",
+      "description": "エディタ左に行番号を表示"
+    },
+    "autoSave": {
+      "label": "自動保存",
+      "description": "現在のドキュメントを5秒ごとに自動保存"
+    },
+    "linkOpenMode": {
+      "label": "リンクを開く方式",
+      "description": "リンククリック時のデフォルト挙動",
+      "external": "外部ブラウザ",
+      "internal": "アプリ内で開く"
+    },
+    "dailyNotes": {
+      "title": "デイリーノート",
+      "description": "デイリーノートの保存ディレクトリと日付形式を設定",
+      "dir": {
+        "label": "ノートディレクトリ"
+      },
+      "dateFormat": {
+        "label": "日付形式"
+      }
+    }
+  },
+  "shortcuts": {
+    "title": "ショートカット",
+    "description": "ショートカットフィールドをクリックして再記録。新しいキーコンボを押して変更",
+    "reset": "デフォルトに戻す",
+    "editor": {
+      "recording": "ショートカットを押してください…",
+      "conflictHint": "キー取得できず — このコンボはアプリメニューやOSに取られている可能性（⌘Q / ⌘H / ⌘M / ⌘W / ⌘⇧P）"
+    },
+    "items": {
+      "save": "ドキュメントを保存",
+      "bold": "太字",
+      "italic": "斜体",
+      "strikethrough": "取り消し線",
+      "code": "インラインコード",
+      "link": "リンクを挿入",
+      "dailyNote": "今日のノート",
+      "togglePetPanel": "桌宠パネルを開く"
+    }
+  },
+  "cli": {
+    "title": "CLIツール",
+    "description": "スマートなドキュメント編集のためのAI CLIツールを設定",
+    "cliAdapter": "CLIアダプタ",
+    "adapterHint": "各アダプタは独自の実行可能パスを持ちます。チャットセッションが使用するアダプタはAIパネル/桌宠チャットで選択します — このタブはパス設定のみ。",
+    "adapters": {
+      "claude": {
+        "description": "Anthropic公式CLI。会話型編集とマルチツール呼び出しをサポート"
+      },
+      "pi": {
+        "description": "Piコーディングエージェント（@earendil-works/pi-coding-agent）。read/bash/edit/writeツール、RPCマルチターンセッション"
+      }
+    },
+    "cliPath": {
+      "label": "CLIパス",
+      "detect": "検出",
+      "detectTitle": "パスを自動検出",
+      "hint": "CLI実行可能ファイルのパスまたはコマンド名。「検出」をクリックで自動探索"
+    },
+    "settingsFile": {
+      "title": "このアダプタの設定ファイルをQuillエディタで開く",
+      "missing": "見つかりません: {{path}}",
+      "missingHint": "設定ファイルがまだ作成されていません（CLIは通常初回実行時に作成）。",
+      "create": "作成",
+      "createTitle": "最小限の有効なテンプレートを書き出して開く"
+    },
+    "test": {
+      "testing": "テスト中…",
+      "label": "接続テスト",
+      "success": "接続済み",
+      "exitCode": "終了コード {{code}}",
+      "cannotRun": "CLIを実行できません: {{error}}"
+    },
+    "usage": {
+      "title": "使用方法",
+      "description": "AIツールはローカルCLI（例: Claude Code）を呼び出してドキュメントを編集します。該当するCLIがインストールされていることを確認。編集は差分として表示し、確認後に適用。"
+    }
+  },
+  "scriptRuntime": {
+    "title": "スクリプトランタイム",
+    "description": "Markdownプレビューでコードブロックを実行",
+    "usageHint": "Markdownプレビューで```bash / ```js / ```pythonブロックの「実行」をクリックして実行。出力は> Result: 引用として書き戻されます。",
+    "detect": "検出",
+    "detectTitle": "/bin/sh -lc which <bin>でバイナリパスを自動検出",
+    "test": {
+      "label": "テスト",
+      "testing": "テスト中…",
+      "success": "OK",
+      "exitCode": "終了コード {{code}}",
+      "cannotRun": "実行できません: {{error}}"
+    }
+  },
+  "models": {
+    "title": "モデルサービス",
+    "description": "チャット/エージェント会話用のLLMプロバイダとモデルを設定",
+    "chat": {
+      "title": "チャットモード",
+      "description": "rig直接LLMによるマルチターンチャット（CLIなし、ツール/ファイルアクセスなし）。ask/agentは上のCLIを引き続き使用。"
+    },
+    "refetchAll": "全モデルを再取得",
+    "refetchAllHint": "少なくとも1つのプロバイダを先に設定",
+    "refetchAllRunning": "再取得中…",
+    "refetchAllSummary": "{{success}}件成功、{{failed}}件失敗",
+    "backendNotReady": "バックエンド未接続 — 別のプロバイダを使用",
+    "category": {
+      "native": "ネイティブ",
+      "compat": "互換",
+      "openai-family": "OpenAI互換ファミリ",
+      "local": "ローカル",
+      "openai": "OpenAI",
+      "openai-response": "OpenAI-Response",
+      "gemini": "Gemini",
+      "anthropic": "Anthropic",
+      "azure-openai": "Azure OpenAI",
+      "new-api": "New API",
+      "ollama": "Ollama"
+    },
+    "capability": {
+      "vision": "ビジョン",
+      "reasoning": "推論",
+      "web-search": "Web",
+      "function-call": "ツール",
+      "embedding": "エンベディング",
+      "rerank": "リランク"
+    },
+    "provider": {
+      "label": "プロバイダ",
+      "anthropic": "Anthropic（Claude）",
+      "openai": "OpenAI",
+      "openaiCompatible": "OpenAI互換（カスタムbaseUrl）",
+      "azure-openai": "Azure OpenAI",
+      "cohere": "Cohere",
+      "gemini": "Google Gemini",
+      "huggingface": "HuggingFace",
+      "ollama": "Ollama（ローカル）",
+      "openai-compatible": "OpenAI互換（カスタムbaseUrl）",
+      "anthropic-compatible": "Anthropic互換（カスタムbaseUrl）",
+      "deepseek": "DeepSeek",
+      "groq": "Groq",
+      "moonshot": "Moonshot",
+      "openrouter": "OpenRouter",
+      "perplexity": "Perplexity",
+      "together": "TogetherAI",
+      "xai": "xAI"
+    },
+    "model": {
+      "label": "モデル"
+    },
+    "selectedModels": {
+      "label": "選択したモデル"
+    },
+    "apiKey": {
+      "label": "APIキー",
+      "show": "APIキーを表示",
+      "hide": "APIキーを非表示",
+      "getKey": "APIキーを取得"
+    },
+    "azure": {
+      "deploymentId": {
+        "label": "デプロイメントID"
+      },
+      "apiVersion": {
+        "label": "APIバージョン"
+      }
+    },
+    "baseUrl": {
+      "label": "API URL",
+      "anthropicHint": "公式Anthropicの場合空欄。Anthropic互換エンドポイント",
+      "openaiHint": "公式OpenAIの場合空欄。",
+      "openaiCompatibleHint": "Ollama / vLLM / LM Studio等では必須。/v1が無ければ自動付加。",
+      "placeholder": "デフォルトは空欄",
+      "reset": "リセット"
+    },
+    "test": {
+      "testing": "検出中…",
+      "label": "検出",
+      "selectModel": "モデルを選択"
+    },
+    "fetchModels": {
+      "label": "モデルを取得",
+      "fetching": "取得中…",
+      "empty": "モデルが返されませんでした",
+      "orphan": "取得リストにありません",
+      "errorTitle": "モデル取得失敗",
+      "errorClose": "閉じる"
+    },
+    "thinkingBudget": {
+      "label": "思考予算（トークン）",
+      "hint": "推論対応モデルに適用。非推論モデルは無視。"
+    },
+    "searchPlaceholder": "プロバイダを検索...",
+    "searchModelPlaceholder": "モデルを検索...",
+    "refetchModelsDev": "models.devから最新モデルを取得",
+    "refetchModelsDevLoading": "同期中...",
+    "refetchModelsDevOk": "モデル同期完了",
+    "refetchModelsDevErr": "同期失敗: {{message}}",
+    "infoLinks": {
+      "prefix": "詳細は",
+      "docs": "プロバイダドキュメント",
+      "models": "モデル",
+      "and": "と",
+      "suffix": "を参照"
+    },
+    "filterAll": "すべて",
+    "filterEnabled": "有効",
+    "picker": {
+      "open": "モデルを選択",
+      "empty": "クリックしてモデルを選択",
+      "close": "閉じる",
+      "searchPlaceholder": "モデルIDまたは名前で検索",
+      "select": "選択",
+      "selected": "選択済み",
+      "remove": "削除",
+      "sort": "ソート",
+      "refresh": "更新",
+      "refreshing": "更新中…"
+    },
+    "addCustom": "追加",
+    "editCustom": "編集",
+    "deleteCustom": "削除",
+    "confirmDelete": "このカスタムプロバイダを削除しますか？",
+    "setAsChat": "チャットプロバイダに設定",
+    "activeBadge": "ON",
+    "displayNameLabel": "名前",
+    "baseUrlLabel": "API URL",
+    "apiKeyUrlLabel": "APIキーURL",
+    "categoryLabel": "プロバイダタイプ",
+    "modelCount": "{{count}}モデル",
+    "addCustomTitle": "カスタムプロバイダを追加",
+    "editCustomTitle": "プロバイダを編集",
+    "customNamePlaceholder": "マイプロバイダ",
+    "customBaseUrlPlaceholder": "https://your-endpoint/v1",
+    "customApiKeyUrlPlaceholder": "https://...  (任意)",
+    "idLabel": "ID",
+    "idHint": "英字、数字、-、_のみ",
+    "idDuplicate": "IDは既に存在します",
+    "idInvalid": "英字、数字、-、_のみ",
+    "descriptionLabel": "説明",
+    "descriptionPlaceholder": "任意",
+    "metadataLabel": "メタデータ",
+    "metadata": {
+      "apiKey": "APIキーURL",
+      "docs": "ドキュメントURL",
+      "models": "モデル一覧URL",
+      "official": "公式サイトURL"
+    },
+    "save": "保存",
+    "cancel": "キャンセル",
+    "preview": "プレビュー: {{url}}",
+    "addManual": {
+      "title": "モデルを追加",
+      "idLabel": "モデルID",
+      "nameLabel": "表示名",
+      "groupLabel": "グループ名"
+    },
+    "askAI": {
+      "tooltip": "AIに能力を尋ねる",
+      "label": "AIに尋ねる",
+      "thinking": "AI思考中…",
+      "streamTitle": "AI出力",
+      "suggestedLabel": "AIが対応を提案（クリックで適用）:",
+      "noSuggestion": "AIは対応能力なしと報告",
+      "clickToApply": "クリックでこの能力を適用",
+      "applyAll": "すべて適用",
+      "suggestedHint": "タグをクリックして下のトグルに追加し、保存"
+    },
+    "editCapabilities": {
+      "tooltip": "能力を編集",
+      "title": "モデル能力を編集"
+    }
+  },
+  "about": {
+    "tagline": "v0.1.0-alpha · ローカルファーストMarkdownエディタ",
+    "features": {
+      "localFirst": {
+        "title": "ローカルファースト",
+        "description": "データはあなたのデバイスに保存"
+      },
+      "openFormat": {
+        "title": "オープンフォーマット",
+        "description": "標準Markdown、ロックインなし"
+      },
+      "ai": {
+        "title": "AIアシスト",
+        "description": "ローカル＋クラウドLLM"
+      }
+    },
+    "copyVersion": "バージョン情報をコピー",
+    "checkUpdate": "更新を確認"
+  },
+  "plugins": {
+    "title": "プラグイン",
+    "description": "サードパーティプラグインのインストール、承認、有効化、アンインストール（マイクロカーネル＋プラグインSDK）",
+    "installFromFolder": "フォルダからインストール…",
+    "installFromZip": ".zipからインストール…",
+    "installing": "インストール中（{{id}}）…",
+    "refresh": "更新",
+    "refreshing": "更新中…",
+    "empty": "まだプラグインはインストールされていません",
+    "state": {
+      "active": "アクティブ",
+      "inactive": "無効",
+      "failed": "失敗",
+      "installed": "インストール済み"
+    },
+    "tier": {
+      "trusted": "Trusted階層",
+      "sandbox": "Sandbox階層"
+    },
+    "approved": "承認済み",
+    "approve": "承認して認可",
+    "approving": "承認中…",
+    "activate": "有効化",
+    "activating": "有効化中…",
+    "deactivate": "無効化",
+    "deactivating": "無効化中…",
+    "uninstall": "アンインストール",
+    "uninstalling": "アンインストール中…",
+    "uninstallTitle": "プラグインをアンインストール",
+    "uninstallConfirm": {
+      "title": "プラグインをアンインストール",
+      "message": "このプラグインをアンインストールしますか？フォルダ、承認、登録されたコントリビューションが削除されます。",
+      "confirm": "アンインストール",
+      "cancel": "キャンセル"
+    },
+    "consent": {
+      "title": "Trustedプラグインを承認",
+      "intro": "以下を承認しようとしています",
+      "permissionsLabel": "宣言された権限とコントリビューションポイント:",
+      "noPermissions": "なし",
+      "warning": "Trustedプラグインはメインプロセスで動作し、ホストの全機能を使用できます（Vaultの読み書き、Tauriコマンドの呼び出し、すべてのReact状態へのアクセス）。承認は完全信頼と同義です — 信頼するソースのプラグインのみ承認してください。",
+      "cancel": "キャンセル",
+      "confirm": "理解した上で承認"
+    }
+  },
+  "voice": {
+    "title": "音声入力",
+    "description": "AIチャットで🎤をクリックするかグローバルホットキーを押して録音開始。音声は文字起こしされ、推敲され、フォーカス中の入力に挿入されます（アプリをまたぐ）。",
+    "windowsUnsupported": "。このプラットフォームでは音声入力はサポートされていません",
+    "windowsUnsupportedBanner": "このプラットフォームでは音声入力はサポートされていません。macOSはApple Speech、WindowsはWinRT SpeechRecognitionを使用。",
+    "permission": {
+      "checking": "確認中…",
+      "granted": "許可済み ✓",
+      "denied": "まだ許可されていません — クリックで再試行"
+    },
+    "accessibility": {
+      "title": "アクセシビリティ権限",
+      "desc": "アプリをまたぐテキスト挿入にはアクセシビリティ権限が必要。ボタンをクリックしてシステムプロンプトをトリガ。許可後にアプリを再起動してください（TCCはプロセス開始時に決定をキャッシュ）。",
+      "action": "アクセシビリティを許可"
+    },
+    "microphone": {
+      "title": "マイク権限",
+      "desc": "録音にはマイク権限が必要。ボタンをクリックしてシステムプロンプトをトリガ。以前拒否した場合は、システム設定 → プライバシーとセキュリティ → マイクでQuillを許可して再試行。",
+      "action": "マイクを許可"
+    },
+    "speech": {
+      "title": "音声認識権限",
+      "desc": "Apple Speechの文字起こしには音声認識権限が必要。ボタンをクリックしてシステムプロンプトをトリガ。以前拒否した場合は、システム設定 → プライバシーとセキュリティ → 音声認識でQuillを許可して再試行。",
+      "action": "音声認識を許可"
+    },
+    "polishPrompt": {
+      "label": "推敲プロンプト",
+      "desc": "現在のAI設定（AIツールを参照）を使用して生の文字起こしを推敲。空欄で推敲をスキップ。",
+      "charCount": "{{count}}文字",
+      "reset": "デフォルトに戻す"
+    },
+    "autoPolish": {
+      "title": "自動推敲",
+      "desc": "録音後、文字起こしに対して自動的に推敲プロンプトを実行。オフにすると生の文字起こしを出力"
+    },
+    "autoPaste": {
+      "title": "自動貼り付け",
+      "desc": "認識されたテキストをカーソル位置に自動的に貼り付け。アクセシビリティ権限が必要"
+    },
+    "saveSource": {
+      "title": "音声ソースファイルを保存",
+      "desc": "生の録音（WAV）をVault下の指定ディレクトリに保存"
+    },
+    "sourceDir": {
+      "label": "ソースディレクトリ",
+      "desc": "現在のVaultルートからの相対パス。保存ファイルは<dir>/<timestamp>.wav",
+      "browse": "参照"
+    },
+    "spokenLanguage": {
+      "label": "認識言語",
+      "desc": "Apple Speechは言語ごとに認識をルーティング。中国語話しの場合は「簡体字中国語」を選択。システムデフォルトのロケールが話し言葉と一致しない場合があるので、空の文字起こしを避けるため明示的に指定。"
+    },
+    "globalHotkey": {
+      "label": "音声ホットキー",
+      "desc": "空欄で無効。設定時、ホットキーを押している間録音し、離すと終了してフォーカス中の入力に挿入（アプリをまたぐ）。Escでクリア。",
+      "recording": "ショートカットを押してください…（Escでクリア）",
+      "notSet": "未設定（クリックで記録）"
+    }
+  },
+  "templates": {
+    "title": "ファイルテンプレート",
+    "description": "拡張子ごとに新規ファイルのデフォルトテンプレート内容を設定。変数: {{title}}, {{filename}}, {{date}}, {{ext}}",
+    "empty": "（空）",
+    "emptyState": "テンプレート未設定",
+    "deleteTitle": "テンプレートを削除",
+    "add": "テンプレートを追加",
+    "editTitle": "テンプレートを編集",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "extPlaceholder": "拡張子"
+  },
+  "skills": {
+    "title": "スキル",
+    "description": "AIスキルテンプレートを設定。カスタムプロンプトがAI生成コンテンツの形式と品質を制御",
+    "new": "新規スキル",
+    "import": "インポート",
+    "export": "エクスポート",
+    "empty": "スキル未設定",
+    "capability": {
+      "title": "能力バインディング",
+      "desc": "各能力にスキルを割り当て。Claude Codeは対応するスキルの指示に従ってタスクを完了。",
+      "clip": "Webクリップ",
+      "githubAnalysis": "GitHub分析"
+    },
+    "form": {
+      "newTitle": "新規スキル",
+      "idLabel": "ID",
+      "idHint": "スラッグ形式。小文字英字、数字、ハイフンのみ",
+      "nameLabel": "名前",
+      "descLabel": "説明",
+      "descPlaceholder": "このスキルの目的を説明",
+      "promptLabel": "プロンプトテンプレート",
+      "promptPlaceholder": "プロンプトテンプレートを入力。変数には{{variableName}}を使用...",
+      "create": "作成",
+      "cancel": "キャンセル",
+      "editTitle": "編集",
+      "contentLabel": "スキル内容",
+      "save": "保存",
+      "reset": "デフォルトに戻す",
+      "delete": "削除"
+    },
+    "confirmReset": "デフォルトに戻しますか？未保存の変更は失われます。",
+    "confirmDelete": "このスキルを削除しますか？元に戻せません。",
+    "errorRequired": "IDと名前は必須です",
+    "errorCreate": "作成失敗",
+    "errorImport": "インポート失敗",
+    "errorExport": "エクスポート失敗"
+  },
+  "pet": {
+    "title": "桌宠",
+    "description": "デスクトップ桌宠アイコンと表示を設定",
+    "showPet": {
+      "title": "桌宠を表示",
+      "desc": "デスクトップ桌宠ウィンドウを画面に表示（macOS）"
+    },
+    "icon": {
+      "title": "アイコン",
+      "desc": "組み込みのQuillアイコンを使用、またはカスタム画像をアップロード",
+      "builtin": "組み込み",
+      "custom": "カスタム",
+      "uploading": "アップロード中…",
+      "upload": "アイコンをアップロード…",
+      "reset": "デフォルトに戻す",
+      "hint": "png / jpg / webp / svg対応、10MB以下",
+      "alt": "カスタムアイコン",
+      "select": "このアイコンを選択",
+      "delete": "このアイコンを削除",
+      "confirmDelete": "このカスタムアイコンを削除しますか？"
+    },
+    "errors": {
+      "desktopOnly": "デスクトップ機能。Tauri環境で使用してください",
+      "unsupportedFormat": "png / jpg / webp / svg形式のみサポート",
+      "fileTooLarge": "ファイルは10MB以下である必要があります（現在{{kb}} KB）",
+      "uploadFailed": "アップロード失敗",
+      "resetFailed": "リセット失敗"
+    },
+    "opacity": {
+      "title": "桌宠透明度",
+      "desc": "桌宠ウィンドウ全体の透明度を調整（25% / 50% / 75% / 100%）",
+      "level25": "25%",
+      "level50": "50%",
+      "level75": "75%",
+      "level100": "100%"
+    },
+    "clickThrough": {
+      "title": "クリックスルー",
+      "desc": "有効化すると、桌宠ウィンドウはポインタイベントを無視し、背後のアプリにクリックが貫通します"
+    },
+    "api": {
+      "title": "外部通知API",
+      "desc": "他のアプリがlocalhostポート{{port}}にPOSTして桌宠通知をトリガ可能",
+      "copy": "curlをコピー",
+      "copied": "コピーしました",
+      "test": "テスト",
+      "testing": "送信しました"
+    },
+    "templates": {
+      "title": "バブルスタイル",
+      "desc": "バブルテンプレートを選択。4つの組み込みプリセット、またはカスタムHTML+CSSテンプレートをアップロード",
+      "active": "アクティブ",
+      "activate": "使用",
+      "importFile": "テンプレートファイルをインポート",
+      "importPaste": "テンプレートJSONを貼り付け",
+      "pastePlaceholder": "ここにテンプレートJSONを貼り付け: {\"id\":\"…\",\"name\":\"…\",\"html\":\"…\",\"css\":\"…\"}",
+      "import": "インポート",
+      "cancel": "キャンセル",
+      "delete": "削除",
+      "preview": "プレビュー",
+      "builtin": "組み込み",
+      "custom": "カスタム",
+      "previewSample": {
+        "text": "プレビュー: これはサンプル通知です",
+        "title": "プレビュータイトル",
+        "actionLabel": "表示"
+      },
+      "builtinNames": {
+        "cloudia": "Cloudiaカード"
+      },
+      "invalidJson": "JSONパース失敗",
+      "missingFields": "必須フィールドが不足: id / name / html / css",
+      "idCollision": "テンプレートIDが組み込みと衝突。自動的にuser:プレフィックス付与:",
+      "ai": {
+        "generate": "AI生成",
+        "title": "AIバブルテンプレートジェネレータ",
+        "close": "閉じる",
+        "clear": "クリア",
+        "unconfigured": "まずAI設定でchatProvider / chatModel / chatApiKeyを設定",
+        "importTemplate": "このテンプレートをインポート",
+        "inputPlaceholder": "欲しいバブルテンプレートを説明、例: 誕生日リマインダーカード",
+        "paperclip": "ファイルを添付",
+        "unsupportedFile": ".html / .htm / 画像ファイルのみサポート",
+        "fileReadFailed": "ファイル読み込み失敗",
+        "imageNotSupported": "現在のモデルは画像入力に対応していません — ビジョンモデルに切り替えるかHTMLをアップロード",
+        "htmlAttached": "HTML添付: {{name}}",
+        "htmlWrapPrefix": "次のHTMLをBubbleTemplateに適合（DOMPurifyを通し、on*属性を削除、外部リソースなし）:",
+        "imageWrapPrefix": "添付画像と視覚的に一致するBubbleTemplate（html + css）を生成。画像のレイアウト、色、テキストをデザイン参照として使用。",
+        "imageAttached": "画像添付: {{name}}",
+        "removeAttachment": "添付を削除",
+        "preview": "プレビュー",
+        "newSession": "新規セッション",
+        "sessionSelect": "セッションを選択",
+        "untitled": "無題セッション",
+        "loading": "読み込み中…",
+        "error": "AIがエラーを返しました",
+        "emptyResponse": "AIが内容を返しませんでした。再試行してください。",
+        "confirmDelete": "削除しますか？"
+      }
+    },
+    "whitelist": {
+      "title": "外部アプリホワイトリスト",
+      "desc": "通知の{{launch.type}}で指定されたmacOSアプリは、ここにリストされている必要があります",
+      "add": "追加",
+      "placeholder": "アプリ名、例: Terminal / Xcode",
+      "empty": "ホワイトリストアプリなし",
+      "remove": "削除"
+    }
+  },
+  "notifications": {
+    "title": "通知",
+    "description": "デスクトップ桌宠のイベント通知の形式を選択",
+    "form": {
+      "title": "通知形式",
+      "desc": "ポップオーバーカードは桌宠に紐付き、コーナートーストは画面のコーナーにスタック（受動的、フォーカスを奪わない）"
+    },
+    "options": {
+      "bubble": "桌宠ポップオーバーカード",
+      "corner": "画面コーナートースト",
+      "off": "オフ"
+    },
+    "cornerPlacement": {
+      "title": "コーナー配置",
+      "desc": "トーストスタックが配置される画面のコーナー",
+      "options": {
+        "topLeft": "左上",
+        "topRight": "右上",
+        "bottomLeft": "左下",
+        "bottomRight": "右下"
+      }
+    },
+    "cornerTtlMs": {
+      "title": "通知TTL",
+      "desc": "TTLで自動消去。「なし」は手動クローズが必要（ポップオーバーカードとコーナートースト両方に適用）",
+      "never": "なし",
+      "seconds": "{{seconds}}秒"
+    }
+  },
+  "csp": {
+    "title": "セキュリティポリシー（CSP）",
+    "description": "アプリがロード可能な外部URLを制御",
+    "mode": {
+      "label": "外部URLモード",
+      "description": "任意のウェブサイトからロード可能か、許可リストからのみかを選択",
+      "all": "全てのURLを許可",
+      "custom": "カスタム許可リスト"
+    },
+    "urls": {
+      "label": "許可URL",
+      "description": "ホスト名、完全URL、またはスキームソース（例: example.com, https://api.example.com, https:）。スクリプト、スタイル、フォント、画像、メディア、接続、ワーカー、フレームに適用。",
+      "prompt": "example.com または https://…",
+      "add": "URLを追加",
+      "remove": "削除",
+      "empty": "URLなし — 組み込みベースラインのみ適用",
+      "reset": "デフォルトに戻す",
+      "invalid": "有効なホスト名 / URL / スキームではありません"
+    },
+    "preview": {
+      "label": "有効なポリシー",
+      "description": "下記のポリシーは「適用して再読み込み」クリック後に有効化"
+    },
+    "baseline": {
+      "note": "Tauri IPC、quill-plugin、asset、data:、blob:は常に許可され、削除不可。"
+    },
+    "apply": {
+      "button": "適用して再読み込み",
+      "note": "適用をクリックするとページが再読み込みされます — 一瞬点滅します。新規追加URLと「全てのURLを許可」は再読み込み後のみ有効化。"
+    }
+  }
+}

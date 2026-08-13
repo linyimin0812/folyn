@@ -1,0 +1,93 @@
+{
+  "panel": {
+    "title": "Neuer Chat",
+    "newSession": "Neuer Chat",
+    "deleteSession": "Chat löschen",
+    "close": "Schließen",
+    "stop": "Stopp",
+    "messageCountSuffix": "Nr.",
+    "emptyState": {
+      "greeting": {
+        "morning": "Guten Morgen, ich bin Quill AI. Wie kann ich helfen?",
+        "noon": "Guten Mittag, ich bin Quill AI. Wie kann ich helfen?",
+        "afternoon": "Guten Nachmittag, ich bin Quill AI. Wie kann ich helfen?",
+        "evening": "Guten Abend, ich bin Quill AI. Wie kann ich helfen?"
+      }
+    },
+    "studyStreaming": "Lern-Agent läuft…",
+    "studyIdle": "Lern-Agent-Sitzung (manuelle Eingabe deaktiviert)",
+    "attachmentPlaceholder": "(Anhang)",
+    "deleteConfirmTitle": "Chat löschen",
+    "deleteConfirm": "Diesen Chat löschen? Kann nicht rückgängig gemacht werden.",
+    "saveDialog": {
+      "title": "Nachricht speichern",
+      "tabVault": "Dieser Vault",
+      "tabExternal": "Extern",
+      "vaultRoot": "Vault-Root",
+      "filename": "Dateiname",
+      "pathPrefix": "Pfad",
+      "save": "Speichern",
+      "saving": "Speichern…",
+      "cancel": "Abbrechen"
+    }
+  },
+  "chat": {
+    "placeholder": "Nachricht eingeben; @ für Dateierwähnung...",
+    "placeholderFallback": "Nachricht eingeben...",
+    "removeAttachment": "Anhang entfernen",
+    "attachFile": "Datei anhängen",
+    "clear": "Leeren",
+    "clearTitle": "Chat leeren",
+    "clearContext": "Kontext leeren",
+    "clearContextTitle": "Kontext leeren (Nachrichten behalten, Agent-Gedächtnis zurücksetzen)",
+    "clearContextConfirm": "Kontext leeren setzt das Agent-Gedächtnis zurück (Nachrichten bleiben). Fortfahren?",
+    "clearContextConfirmTitle": "Kontext leeren",
+    "clearContextDone": "Kontext geleert",
+    "clearMessages": "Nachrichten leeren",
+    "clearMessagesTitle": "Nachrichten leeren (verwirft alle Nachrichten und den Kontext)",
+    "clearMessagesConfirm": "Nachrichten leeren löscht alle Nachrichten und den Kontext. Nicht rückgängig machbar. Fortfahren?",
+    "clearMessagesConfirmTitle": "Nachrichten leeren",
+    "send": "Senden",
+    "stop": "Stopp"
+  },
+  "voice": {
+    "phase": {
+      "transcribing": "Transkribieren…",
+      "polishing": "Überarbeiten…",
+      "inserting": "Einfügen…",
+      "processing": "Sprache wird verarbeitet…"
+    },
+    "button": {
+      "idle": "Spracheingabe",
+      "windowsUnsupported": "Spracheingabe wird auf dieser Plattform nicht unterstützt",
+      "clickToStop": "Klicken zum Stoppen der Aufnahme und Einfügen",
+      "stopRecordingLabel": "Aufnahme stoppen",
+      "voiceInputLabel": "Spracheingabe"
+    },
+    "orb": {
+      "noApiKey": "Kein API-Key konfiguriert; LLM-Überarbeitung übersprungen",
+      "openSettings": "Einstellungen öffnen"
+    }
+  },
+  "pairSelector": {
+    "placeholder": "Modell wählen",
+    "empty": "Kein Modell konfiguriert",
+    "openSettings": "Modelleinstellungen öffnen",
+    "sectionTitle": "KI-Modell",
+    "sectionDesc": "Wähle das (Anbieter, Modell)-Paar, das diese Funktion verwendet; aktiviere zuerst einen Anbieter und wähle Modelle in den Modelldiensten"
+  },
+  "errors": {
+    "attachmentSaveFailed": "[Fehler] Speichern von Anhängen fehlgeschlagen: {{error}}",
+    "streamError": "[Fehler] {{error}}"
+  },
+  "slash": {
+    "skillsLabel": "Fähigkeiten",
+    "commandsLabel": "Befehle",
+    "sourceUser": "Benutzer",
+    "sourceProject": "Projekt",
+    "sourcePlugin": "Plugin",
+    "empty": "Keine Fähigkeiten oder Befehle gefunden",
+    "argumentPlaceholder": "Argumente für /{{name}}",
+    "argumentConfirm": "Einfügen"
+  }
+}

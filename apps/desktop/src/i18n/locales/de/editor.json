@@ -1,0 +1,175 @@
+{
+  "export": {
+    "title": "Exportieren",
+    "source": {
+      "markdown": { "label": "Markdown", "description": ".md-Quelldatei exportieren" },
+      "dbml": { "label": "DBML", "description": ".dbml-Quelldatei exportieren" },
+      "excalidraw": { "label": "Excalidraw", "description": ".excalidraw-Quelldatei exportieren" },
+      "drawio": { "label": "Drawio", "description": ".drawio-Quelldatei exportieren" },
+      "mmap": { "label": "Mindmap", "description": ".mmap-Quelldatei exportieren" },
+      "plantuml": { "label": "PlantUML", "description": ".puml-Quelldatei exportieren" },
+      "graphviz": { "label": "Graphviz", "description": ".gv-Quelldatei exportieren" },
+      "default": { "label": "Quelldatei", "description": "Rohdatei exportieren" }
+    },
+    "html": {
+      "label": "HTML",
+      "description": "Als gerenderte Webseite exportieren"
+    },
+    "svg": {
+      "label": "SVG",
+      "description": "Als Vektorbild exportieren"
+    },
+    "png": {
+      "label": "PNG",
+      "description": "Als Rasterbild exportieren"
+    },
+    "xmind": {
+      "label": "XMind",
+      "description": "Als .xmind-Mindmap exportieren"
+    },
+    "containerWarning": {
+      "title": "⚠️ Kompatibilitätshinweis",
+      "body": "Das aktuelle Dokument verwendet Quill-Container-Syntax (Callouts, Tabs, einklappbare Blöcke usw.), eine Quill-Erweiterung. **Andere Markdown-Editoren rendern es eventuell falsch.**",
+      "hint": "Für die Anzeige in anderen Editoren als HTML exportieren.",
+      "cancel": "Abbrechen",
+      "confirm": "Trotzdem exportieren"
+    },
+    "processing": {
+      "title": "Wird exportiert",
+      "hint": "Inhalte werden vorbereitet, bitte warten…"
+    }
+  },
+  "slashMenu": {
+    "categories": {
+      "layout": "Layout",
+      "media": "Medien",
+      "ai": "KI",
+      "data": "Daten",
+      "custom": "Benutzerdefiniert"
+    },
+    "richText": {
+      "triggerButton": "Slash-Befehl einfügen",
+      "shortcutHint": "⌘/",
+      "categories": {
+        "blocks": "Blöcke",
+        "lists": "Listen"
+      },
+      "items": {
+        "heading1": "Überschrift 1",
+        "heading2": "Überschrift 2",
+        "heading3": "Überschrift 3",
+        "blockquote": "Zitatblock",
+        "codeBlock": "Codeblock",
+        "horizontalRule": "Trennlinie",
+        "bulletList": "Aufzählungsliste",
+        "orderedList": "Nummerierte Liste",
+        "taskList": "Aufgabenliste",
+        "inlineMath": "Inline-Mathe",
+        "blockMath": "Mathe-Block"
+      },
+      "empty": "Kein passender Befehl"
+    }
+  },
+  "math": {
+    "insertButton": "Formel einfügen",
+    "title": "Mathe-Formel einfügen",
+    "editTitle": "Mathe-Formel bearbeiten",
+    "latexLabel": "LaTeX",
+    "preview": "Vorschau",
+    "inline": "Inline",
+    "block": "Block",
+    "insert": "Einfügen",
+    "update": "Aktualisieren",
+    "cancel": "Abbrechen",
+    "placeholder": "z. B. \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}"
+  },
+  "imagePaste": {
+    "title": "📷 Bild einfügen",
+    "uploadMethod": "Upload-Methode",
+    "comingSoon": "Demnächst",
+    "fileName": "Bildname",
+    "fileNamePlaceholder": "Bildname eingeben",
+    "directory": "Speicherverzeichnis",
+    "directoryPlaceholder": "Pfad relativ zum Vault-Root",
+    "vaultHint": "🗄️ Vault: {{root}}",
+    "format": "Bildformat",
+    "size": "Bildgröße",
+    "width": "Br",
+    "widthPlaceholder": "Breite",
+    "height": "H",
+    "heightPlaceholder": "Höhe",
+    "lockRatio": "Seitenverhältnis sperren",
+    "unlockRatio": "Seitenverhältnis entsperren",
+    "resetSize": "Auf Originalgröße zurücksetzen",
+    "originalSize": "Original: {{w}} × {{h}} px",
+    "pathPreview": "📄 {{path}}",
+    "cancel": "Abbrechen",
+    "upload": "✓ Hochladen"
+  },
+  "dailyDigest": {
+    "title": "KI-Tageszusammenfassung",
+    "generate": "Zusammenfassung erstellen",
+    "hint": "Die KI analysiert die heutige Schreibaktivität und erstellt eine Zusammenfassung",
+    "loading": "Zusammenfassung wird erstellt...",
+    "insert": "In Notiz einfügen",
+    "generateFailed": "Erstellung fehlgeschlagen: {{error}}",
+    "today": "Heute: {{date}}",
+    "modifiedSection": "Heute geänderte Dokumente",
+    "modifiedEmpty": "(keine Änderungen)",
+    "recentDailySection": "Aktuelle Tagesnotizen",
+    "recentDailyEmpty": "(keine aktuellen Tagesnotizen)"
+  },
+  "diffToolbar": {
+    "pendingCount": "{{count}} Änderung(en) offen zur Prüfung",
+    "acceptAll": "Alle akzeptieren",
+    "rejectAll": "Alle verwerfen"
+  },
+  "versionHistory": {
+    "title": "Versionsverlauf",
+    "close": "Schließen",
+    "loading": "Laden…",
+    "empty": "Keine Snapshots",
+    "snapshot": "Snapshot",
+    "snapshotN": "Snapshot {{index}}",
+    "restore": "Wiederherstellen",
+    "restoring": "Wird wiederhergestellt…",
+    "closeSelected": "Schließen",
+    "diff": {
+      "identical": "Inhalt stimmt mit aktuellem Stand überein"
+    }
+  },
+  "color": {
+    "buttonTitle": "Textfarbe",
+    "textColor": "Textfarbe",
+    "highlight": "Hervorhebung",
+    "custom": "Benutzerdefiniert"
+  },
+  "table": {
+    "insertButton": { "title": "Tabelle einfügen" },
+    "handle": { "rowActions": "Zeilenaktionen", "colActions": "Spaltenaktionen" },
+    "rowMenu": {
+      "insertAbove": "Zeile oben einfügen",
+      "insertBelow": "Zeile unten einfügen",
+      "delete": "Zeile löschen",
+      "toggleHeader": "Kopfzeile umschalten"
+    },
+    "colMenu": {
+      "insertLeft": "Spalte links einfügen",
+      "insertRight": "Spalte rechts einfügen",
+      "delete": "Spalte löschen",
+      "toggleHeader": "Kopfspalte umschalten"
+    },
+    "cellMenu": {
+      "merge": "Zellen verbinden",
+      "split": "Zelle teilen",
+      "alignLeft": "Links ausrichten",
+      "alignCenter": "Zentrieren",
+      "alignRight": "Rechts ausrichten",
+      "toggleHeaderCell": "Kopfzelle umschalten",
+      "deleteTable": "Tabelle löschen",
+      "bgColor": "Hintergrundfarbe",
+      "clearBg": "Hintergrund löschen",
+      "customColor": "Benutzerdefinierte Farbe…"
+    }
+  }
+}

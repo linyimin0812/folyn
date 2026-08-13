@@ -1,0 +1,83 @@
+{
+  "toolbar": {
+    "style": "スタイル",
+    "direction": "方向: {{dir}}"
+  },
+  "stylePanel": {
+    "canvasTab": "キャンバス",
+    "nodeTab": "ノード",
+    "close": "閉じる"
+  },
+  "canvas": {
+    "sectionTheme": "テーマ",
+    "skeleton": "スケルトン",
+    "skeletonTitle": "キャンバスのスケルトンレイアウトを選択",
+    "direction": "方向",
+    "directionRight": "右",
+    "directionLeft": "左",
+    "directionBoth": "両側",
+    "palette": "パレット",
+    "paletteTitle": "まず虹色分岐を有効にしてください",
+    "paletteDefault": "デフォルト",
+    "createStyle": "スタイルを作成",
+    "createStyleTitle": "新規ノードにプリセットスタイルを自動適用",
+    "background": "背景",
+    "clearBg": "クリア",
+    "clearBgTitle": "背景色をクリア",
+    "sectionLayout": "レイアウト",
+    "alignTitle": "兄弟ノードを中央に揃える",
+    "alignLabel": "兄弟を揃える",
+    "freeLayoutTitle": "ノードを自由な位置にドラッグ可能",
+    "freeLayoutLabel": "フリーレイアウト",
+    "compactTitle": "コンパクトモード、ノード間隔を縮小",
+    "compactLabel": "コンパクト",
+    "spacingTitle": "コンパクトモードでは間隔が固定されています",
+    "spacingLabel": "ノード間隔",
+    "skeletonMind": "マインドマップ",
+    "skeletonOrg": "組織図",
+    "skeletonTree": "ツリー図"
+  },
+  "node": {
+    "font": "フォント",
+    "fontMicrosoft": "Microsoft YaHei",
+    "fontPingfang": "PingFang SC",
+    "fontSimsun": "SimSun",
+    "fontSimhei": "SimHei",
+    "fontHelvetica": "Helvetica",
+    "fontArial": "Arial",
+    "fontMonospace": "monospace",
+    "fontSize": "サイズ",
+    "bold": "太字",
+    "italic": "斜体",
+    "textColor": "色",
+    "fill": "塗りつぶし",
+    "border": "枠線",
+    "fixedWidth": "幅",
+    "line": "線",
+    "rainbow": "レインボー",
+    "rainbowTitle": "虹色分岐の色付けを切り替え",
+    "presets": "プリセットスタイル",
+    "reset": "リセット",
+    "resetTitle": "選択ノードのすべてのスタイルをクリア"
+  },
+  "preset": {
+    "important": "重要",
+    "pending": "保留",
+    "done": "完了",
+    "highlight": "ハイライト",
+    "delete": "削除済み",
+    "secondary": "副次"
+  },
+  "createStyle": {
+    "default": "デフォルト",
+    "rounded": "角丸",
+    "colorFill": "色塗りつぶし",
+    "minimal": "ミニマル"
+  },
+  "palette": {
+    "classic": "クラシック",
+    "dark": "ダーク",
+    "pastel": "パステル",
+    "vibrant": "鮮やか"
+  }
+}

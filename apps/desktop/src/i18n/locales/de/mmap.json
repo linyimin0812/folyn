@@ -1,0 +1,83 @@
+{
+  "toolbar": {
+    "style": "Stil",
+    "direction": "Richtung: {{dir}}"
+  },
+  "stylePanel": {
+    "canvasTab": "Leinwand",
+    "nodeTab": "Knoten",
+    "close": "Schließen"
+  },
+  "canvas": {
+    "sectionTheme": "Design",
+    "skeleton": "Skelett",
+    "skeletonTitle": "Skelett-Layout der Leinwand wählen",
+    "direction": "Richtung",
+    "directionRight": "Rechts",
+    "directionLeft": "Links",
+    "directionBoth": "Beide Seiten",
+    "palette": "Palette",
+    "paletteTitle": "Bitte zuerst Regenbogen-Zweige aktivieren",
+    "paletteDefault": "Standard",
+    "createStyle": "Stil erstellen",
+    "createStyleTitle": "Voreingestellten Stil automatisch auf neue Knoten anwenden",
+    "background": "Hintergrund",
+    "clearBg": "Leeren",
+    "clearBgTitle": "Hintergrundfarbe löschen",
+    "sectionLayout": "Layout",
+    "alignTitle": "Geschwisterknoten mittig ausrichten",
+    "alignLabel": "Geschwister ausrichten",
+    "freeLayoutTitle": "Knoten können frei an jede Position gezogen werden",
+    "freeLayoutLabel": "Freies Layout",
+    "compactTitle": "Kompaktmodus, reduziert Knotenabstand",
+    "compactLabel": "Kompakt",
+    "spacingTitle": "Abstand ist im Kompaktmodus gesperrt",
+    "spacingLabel": "Knotenabstand",
+    "skeletonMind": "Mindmap",
+    "skeletonOrg": "Organigramm",
+    "skeletonTree": "Baumdiagramm"
+  },
+  "node": {
+    "font": "Schriftart",
+    "fontMicrosoft": "Microsoft YaHei",
+    "fontPingfang": "PingFang SC",
+    "fontSimsun": "SimSun",
+    "fontSimhei": "SimHei",
+    "fontHelvetica": "Helvetica",
+    "fontArial": "Arial",
+    "fontMonospace": "monospace",
+    "fontSize": "Größe",
+    "bold": "Fett",
+    "italic": "Kursiv",
+    "textColor": "Farbe",
+    "fill": "Füllung",
+    "border": "Rahmen",
+    "fixedWidth": "Breite",
+    "line": "Linie",
+    "rainbow": "Regenbogen",
+    "rainbowTitle": "Regenbogeneinfärbung der Zweige umschalten",
+    "presets": "Voreinstellungen",
+    "reset": "Zurücksetzen",
+    "resetTitle": "Alle Stile des ausgewählten Knotens löschen"
+  },
+  "preset": {
+    "important": "Wichtig",
+    "pending": "Ausstehend",
+    "done": "Erledigt",
+    "highlight": "Hervorheben",
+    "delete": "Gelöscht",
+    "secondary": "Sekundär"
+  },
+  "createStyle": {
+    "default": "Standard",
+    "rounded": "Abgerundet",
+    "colorFill": "Farbfüllung",
+    "minimal": "Minimal"
+  },
+  "palette": {
+    "classic": "Klassisch",
+    "dark": "Dunkel",
+    "pastel": "Pastell",
+    "vibrant": "Lebendig"
+  }
+}

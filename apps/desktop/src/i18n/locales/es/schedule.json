@@ -1,0 +1,176 @@
+{
+  "title": "Mesa de agenda",
+  "new": "Nuevo",
+  "views": {
+    "schedule": "Agenda",
+    "board": "Tablero de tareas"
+  },
+  "weekGrid": {
+    "today": "Hoy",
+    "weekRange": "{{ms}}/{{ds}}/{{y}} – {{me}}/{{de}}",
+    "dow": ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
+    "selectDay": "Seleccionar este día",
+    "legend": {
+      "work": "Trabajo",
+      "personal": "Personal",
+      "family": "Familia",
+      "health": "Salud",
+      "task": "Tarea"
+    },
+    "scheduledToast": "Programado para {{day}} {{time}}"
+  },
+  "dayCal": {
+    "monthTitle": "{{m}}/{{y}}",
+    "prevMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "today": "Volver a hoy",
+    "legend": {
+      "selected": "Seleccionado",
+      "today": "Hoy",
+      "overdue": "Vencido"
+    },
+    "dow": ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+  },
+  "miniCal": {
+    "monthTitle": "{{m}}/{{y}}",
+    "prevMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "dow": ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+  },
+  "calendarCategory": {
+    "calendar": "Calendario",
+    "week": "Esta semana",
+    "totalEvents": "Total de eventos",
+    "incompleteTasks": "Tareas incompletas"
+  },
+  "category": {
+    "event": {
+      "work": "Trabajo",
+      "personal": "Personal",
+      "family": "Familia",
+      "health": "Salud",
+      "task": "Tarea"
+    },
+    "task": {
+      "design": "Diseño",
+      "dev": "Desarrollo",
+      "bug": "Bug",
+      "growth": "Crecimiento",
+      "ops": "Ops",
+      "calendar": "Calendario",
+      "learn": "Aprender"
+    }
+  },
+  "reminders": {
+    "upcoming": "Próximos",
+    "empty": "Sin elementos próximos",
+    "dueBody": "<b>{{title}}</b> · vence · {{column}}"
+  },
+  "todayTaskList": {
+    "title": "Tareas de hoy",
+    "duePrefix": "Vence {{due}} · ",
+    "empty": "Sin tareas hoy"
+  },
+  "unschedDock": {
+    "title": "Para programar",
+    "allDone": "Todo programado ✓",
+    "hint": "Arrastra desde aquí a una franja horaria del calendario para programar",
+    "dragToast": "Arrastra a una franja horaria del calendario para programar",
+    "delete": "Eliminar"
+  },
+  "pomodoro": {
+    "work": "Sesión de trabajo · ronda {{round}}",
+    "rest": "Descanso · ronda {{round}}",
+    "label": "Enfoque Pomodoro",
+    "pause": "Pausar",
+    "start": "Iniciar",
+    "reset": "Reiniciar"
+  },
+  "boardColumn": {
+    "renameHint": "Doble clic para renombrar",
+    "deleteColumn": "Eliminar columna",
+    "empty": "Sin tareas para hoy",
+    "emptyHint": "Arrastra tarjetas a esta columna"
+  },
+  "boardView": {
+    "columnNamePlaceholder": "Nombre de columna…",
+    "addColumn": "+ Nueva columna"
+  },
+  "quickAdd": {
+    "placeholder": "Añadir tarea, pulsa Enter para enviar…",
+    "submit": "Añadir"
+  },
+  "taskCard": {
+    "priorityTitle": "Prioridad",
+    "scheduled": "Programado"
+  },
+  "modal": {
+    "titleEdit": "Editar {{kind}}",
+    "titleNew": "Nuevo {{kind}}",
+    "kindEvent": "evento",
+    "kindTask": "tarea",
+    "typeLabel": "Tipo",
+    "typeEvent": "Programar evento",
+    "typeTask": "Tarea de tablero",
+    "titleLabel": "Título",
+    "titlePlaceholder": "p. ej. Reunión de revisión de producto",
+    "descLabel": "Descripción",
+    "descPlaceholder": "Contexto, criterios de aceptación, enlaces relacionados…",
+    "start": "Inicio",
+    "end": "Fin",
+    "calendar": "Calendario",
+    "column": "Columna",
+    "columnDoneSuffix": "(hecho)",
+    "category": "Categoría",
+    "priority": "Prioridad",
+    "priorityHigh": "Alta",
+    "priorityMed": "Media",
+    "priorityLow": "Baja",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "save": "Guardar",
+    "create": "Crear",
+    "delete": "Eliminar",
+    "unschedule": "Desprogramar",
+    "toastTitleRequired": "Introduce el título",
+    "toastEndAfterStart": "La hora de fin debe ser posterior a la de inicio"
+  },
+  "plan": {
+    "loading": "La IA está planificando tu día…",
+    "errorClose": "Cerrar",
+    "errorRetry": "Reintentar",
+    "resultApplied": "{{applied}} elemento(s) aplicado(s)",
+    "resultFailed": ", {{failed}} fallido(s)",
+    "resultDone": "Hecho",
+    "appliedToast": "{{count}} elemento(s) del plan aplicado(s)",
+    "appliedPartialToast": "{{applied}} aplicado(s), {{failed}} fallido(s)",
+    "previewTitle": "Plan de IA para hoy",
+    "discard": "Descartar",
+    "applySelected": "Aplicar seleccionados",
+    "empty": "Sin tareas pendientes en los últimos 7 días, y la IA no propuso un nuevo plan.",
+    "legendTask": "Tareas propuestas (arrastra para ajustar / ✓✗ selecciona)",
+    "legendEvent": "Eventos / pausas propuestos",
+    "legendExisting": "Eventos existentes (referencia)",
+    "ariaLabel": "Plan de IA para hoy"
+  },
+  "toast": {
+    "undo": "Deshacer",
+    "newColumnDefault": "Nueva columna",
+    "eventAdded": "Evento añadido al calendario",
+    "eventMoved": "Movido a {{date}} {{time}}",
+    "eventUpdated": "Evento actualizado",
+    "eventDeleted": "Eliminado \"{{title}}\"",
+    "taskAdded": "Tarea añadida",
+    "taskRestored": "Restaurada",
+    "taskMarkedDone": "Marcada como hecha",
+    "taskUpdated": "Tarea actualizada",
+    "taskUnscheduled": "Desprogramada",
+    "taskDeleted": "Eliminada \"{{title}}\"",
+    "dueDateSet": "Fecha de vencimiento {{date}}",
+    "cannotDeleteDoneColumn": "No se puede eliminar la columna de hechos",
+    "mustKeepOneColumn": "Debe mantener al menos una columna",
+    "columnDeleted": "Eliminada columna \"{{name}}\"",
+    "pomoWorkEnded": "Sesión de trabajo terminada, toma un descanso de 5 minutos",
+    "pomoRestEnded": "Descanso terminado, comenzando ronda {{round}}"
+  }
+}

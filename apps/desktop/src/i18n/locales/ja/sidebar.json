@@ -1,0 +1,208 @@
+{
+  "filesPanel": {
+    "actions": {
+      "locateActive": "アクティブファイルを表示",
+      "openExternal": "外部ファイルを開く…",
+      "refresh": "ファイルツリーを更新",
+      "more": "その他のアクション",
+      "newFile": "新規ファイル",
+      "newFolder": "新規フォルダ",
+      "expandAll": "すべて展開",
+      "collapseAll": "すべて折りたたむ",
+      "expandAllFolders": "すべてのフォルダを展開",
+      "collapseAllFolders": "すべてのフォルダを折りたたむ",
+      "hideSidebar": "サイドバーを隠す"
+    },
+    "search": {
+      "placeholder": "ファイルを検索..."
+    },
+    "newItem": {
+      "folderName": "フォルダ名",
+      "fileNameWithExt": "ファイル名（拡張子付き）",
+      "fileNameDefault": "ファイル名（デフォルト .{{ext}}）",
+      "fileNameMd": "ファイル名（デフォルト .md）"
+    },
+    "empty": "ファイルはありません"
+  },
+  "contextMenu": {
+    "fileType": {
+      "code": "コードファイル",
+      "richText": "リッチテキスト"
+    },
+    "newFile": "新規ファイル",
+    "newFileOther": "その他（カスタム拡張子）",
+    "newFolder": "新規フォルダ",
+    "copyRelativePath": "相対パスをコピー",
+    "copyAbsolutePath": "絶対パスをコピー",
+    "copyFileName": "ファイル名をコピー",
+    "copyVaultPath": "Vaultパスをコピー",
+    "unpin": "ピン解除",
+    "pin": "ピン留め",
+    "addToChat": "チャットにファイルを追加",
+    "ingestToWiki": "Wikiに取り込み",
+    "rename": "名前変更",
+    "delete": "削除",
+    "move": "移動先...",
+    "copy": "コピー",
+    "hide": "非表示"
+  },
+  "sidebarActions": {
+    "deleteConfirm": {
+      "title": "削除の確認",
+      "prefix": "{{type}}を削除 ",
+      "suffix": "？",
+      "typeFile": "ファイル",
+      "typeFolder": "フォルダ",
+      "folderContentsHint": "フォルダ内のすべての内容も削除されます",
+      "batchPrefix": "{{count}}件のアイテムを削除しますか？"
+    },
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "moveDialog": {
+      "title": "移動先",
+      "confirm": "移動",
+      "noTargets": "移動先のフォルダは他にありません",
+      "vaultRoot": "Vaultルート"
+    },
+    "copyDialog": {
+      "title": "コピー先",
+      "confirm": "コピー"
+    }
+  },
+  "calendar": {
+    "weekdays": ["日", "月", "火", "水", "木", "金", "土"],
+    "title": "{{year}}年{{month}}月",
+    "hasNote": "{{date}}（ノートあり）"
+  },
+  "wikiTree": {
+    "empty": "Wikiは空です。AIパネルからファイルを取り込んでナレッジベースを構築してください。"
+  },
+  "clips": {
+    "title": "クリップ",
+    "delete": "削除",
+    "removeTag": "タグを削除",
+    "tagPlaceholderEmpty": "タグを入力してEnter...",
+    "tagPlaceholderAdd": "追加...",
+    "progressDefault": "準備中...",
+    "preview": {
+      "title": "ナレッジカードプレビュー",
+      "titleLabel": "タイトル",
+      "tagsLabel": "タグ",
+      "suggestedLabel": "提案タグ",
+      "summaryLabel": "要約",
+      "source": "出典: {{host}}"
+    },
+    "save": "保存",
+    "saving": "保存中...",
+    "cancel": "キャンセル",
+    "batch": {
+      "title": "バッチクリップ",
+      "close": "バッチモードを閉じる",
+      "placeholder": "1行1URL、例:\nhttps://example.com/a\nhttps://example.com/b",
+      "force": "強制再クリップ",
+      "delay": "項目間の遅延",
+      "count": "{{count}}件",
+      "start": "バッチクリップ開始",
+      "cancelRunning": "キャンセル（現在の終了後停止）",
+      "summary": {
+        "total": "合計 {{count}}",
+        "done": "完了 {{count}}",
+        "skipped": "スキップ {{count}}",
+        "failed": "失敗 {{count}}"
+      },
+      "open": "開く",
+      "openSummary": "バッチサマリを開く"
+    },
+    "status": {
+      "pending": "保留",
+      "running": "実行中",
+      "done": "完了",
+      "skipped": "スキップ",
+      "failed": "失敗",
+      "cancelled": "キャンセル済"
+    },
+    "clippingInProgress": "クリップ中",
+    "viewDetails": "クリックで詳細",
+    "batchModeEnter": "バッチクリップ",
+    "batchModeExit": "バッチモード終了",
+    "addClip": "クリップを追加",
+    "empty": "クリップはまだありません。+ボタンをクリックして開始。",
+    "loading": "読み込み中...",
+    "modalTitle": "クリップを追加",
+    "urlPlaceholder": "URLを貼り付け...",
+    "langLabel": "言語",
+    "langEn": "English",
+    "langZh": "中文",
+    "langAuto": "自動",
+    "clipButton": "クリップ",
+    "generating": "生成中...",
+    "duplicate": {
+      "title": "このURLはすでにクリップ済みです",
+      "prompt": "既存のコンテンツを再生成して上書きしますか？",
+      "openExisting": "既存を開く",
+      "regenerate": "再生成"
+    },
+    "savingFile": "ファイル保存中...",
+    "deleteConfirm": {
+      "titleDelete": "削除の確認",
+      "titleRemoveTag": "タグを削除",
+      "deletePrefix": "クリップを削除 ",
+      "deleteSuffix": "？",
+      "removeTagPrefix": "タグ「",
+      "removeTagMiddle": "」を削除 ",
+      "removeTagSuffix": "？",
+      "removeTagHint": "このクリップには他に{{count}}個のタグがあります。ファイルは削除されません。"
+    }
+  },
+  "analysis": {
+    "title": "プロジェクト分析",
+    "delete": "削除",
+    "viewDetails": "クリックで詳細",
+    "analyzing": "分析中",
+    "newAnalysis": "新規分析",
+    "uncategorized": "未分類",
+    "empty": "分析レポートはまだありません。+ボタンをクリックして開始。",
+    "loading": "読み込み中...",
+    "deleteConfirm": {
+      "titleDelete": "削除の確認",
+      "titleRemoveTag": "タグを削除",
+      "deletePrefix": "分析レポートを削除 ",
+      "deleteSuffix": "？",
+      "removeTagPrefix": "タグ「",
+      "removeTagMiddle": "」を削除 ",
+      "removeTagSuffix": "？",
+      "removeTagHint": "このレポートには他に{{count}}個のタグがあります。ファイルは削除されません。"
+    },
+    "dedup": {
+      "title": "このプロジェクトにはすでに分析レポートが存在します",
+      "regenerate": "再生成"
+    },
+    "tagPlaceholderEmpty": "タグを入力してEnter...",
+    "tagPlaceholderMore": "さらに追加...",
+    "confirmation": {
+      "success": "分析完了 — {{repo}}",
+      "previewLabel": "レポートプレビュー",
+      "htmlSize": "HTML {{kb}} KB · {{count}}タグ",
+      "tagsLabel": "タグ（編集可）"
+    },
+    "dialog": {
+      "title": "新規プロジェクト分析",
+      "urlLabel": "GitHubリポジトリURL",
+      "urlPlaceholder": "https://github.com/owner/repo",
+      "langLabel": "レポート言語",
+      "langZh": "中文",
+      "langEn": "English",
+      "langAuto": "自動検出",
+      "start": "分析開始",
+      "progressDefault": "準備中...",
+      "hide": "非表示",
+      "patience": "分析に数分かかる場合があります。お待ちください。"
+    }
+  },
+  "panelError": {
+    "failed": "パネルの読み込みに失敗しました"
+  },
+  "dragDrop": {
+    "itemsCount": "{{count}}件"
+  }
+}

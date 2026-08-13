@@ -1,0 +1,55 @@
+{
+  "rightDock": {
+    "ai": "IA",
+    "terminal": "Terminal",
+    "close": "Fermer le panneau"
+  },
+  "nav": {
+    "schedule": "Agenda (⌘D)",
+    "study": "Étude",
+    "settings": "Paramètres",
+    "git": "Git"
+  },
+  "statusBar": {
+    "viewMode": {
+      "split": "Mode scindé",
+      "edit": "Mode édition",
+      "preview": "Mode aperçu"
+    },
+    "lineCol": "Lig {{line}}, Col {{col}}",
+    "wordCount": "{{count}} mots"
+  },
+  "commandPalette": {
+    "placeholder": "Rechercher commandes ou fichiers…",
+    "noMatch": "Aucune correspondance"
+  },
+  "gitPanel": {
+    "title": "Synchroniser « {{name}} » avec GitHub",
+    "clean": "✓ Arbre de travail propre, rien à valider",
+    "localChanges": "Modifications locales",
+    "refresh": "Actualiser",
+    "filesChanged": "{{total}} fichier(s) modifié(s)",
+    "pull": "Pull des mises à jour distantes",
+    "pullBtn": "Pull",
+    "pullBusy": "Pull en cours…",
+    "pullHint": "Télécharger les dernières modifications du remote GitHub vers le local",
+    "commitPush": "Commit & push",
+    "commitPushBtn": "Commit & Push",
+    "pushBusy": "Push en cours…",
+    "commitPushHint": "Pousser les modifications locales vers le dépôt distant GitHub",
+    "placeholder": "ex. Ajouter une entrée pour le 2 août",
+    "emptyCommitMsg": "Saisir un message de commit",
+    "pullDone": "Mises à jour distantes pullées.",
+    "pushDone": "Committé et poussé vers GitHub.",
+    "addToGitignore": "Ajouter au .gitignore",
+    "gitignoreAdded": "{{pattern}} ajouté au .gitignore",
+    "kind": {
+      "modified": "Modifié",
+      "added": "Ajouté",
+      "deleted": "Supprimé",
+      "untracked": "Non suivi",
+      "renamed": "Renommé",
+      "conflict": "Conflit"
+    }
+  }
+}

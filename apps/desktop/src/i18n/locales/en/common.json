@@ -2,6 +2,10 @@
   "language": {
     "zh": "中文",
     "en": "English",
+    "ja": "日本語",
+    "es": "Español",
+    "de": "Deutsch",
+    "fr": "Français",
     "switcher": {
       "title": "Language",
       "aria": "Switch language"

@@ -1,0 +1,55 @@
+{
+  "rightDock": {
+    "ai": "AI",
+    "terminal": "ターミナル",
+    "close": "パネルを閉じる"
+  },
+  "nav": {
+    "schedule": "スケジュール (⌘D)",
+    "study": "学習",
+    "settings": "設定",
+    "git": "Git"
+  },
+  "statusBar": {
+    "viewMode": {
+      "split": "分割モード",
+      "edit": "編集モード",
+      "preview": "プレビューモード"
+    },
+    "lineCol": "{{line}}行 {{col}}列",
+    "wordCount": "{{count}}語"
+  },
+  "commandPalette": {
+    "placeholder": "コマンドやファイルを検索…",
+    "noMatch": "一致なし"
+  },
+  "gitPanel": {
+    "title": "\"{{name}}\"をGitHubに同期",
+    "clean": "✓ 作業ツリーはクリーン、コミットするものはありません",
+    "localChanges": "ローカル変更",
+    "refresh": "更新",
+    "filesChanged": "{{total}}ファイル変更",
+    "pull": "リモートの更新をプル",
+    "pullBtn": "プル",
+    "pullBusy": "プル中…",
+    "pullHint": "GitHubリモートから最新の変更をローカルにダウンロード",
+    "commitPush": "コミットしてプッシュ",
+    "commitPushBtn": "コミット & プッシュ",
+    "pushBusy": "プッシュ中…",
+    "commitPushHint": "ローカルの変更をGitHubリモートリポジトリにプッシュ",
+    "placeholder": "例: 8月2日のエントリを追加",
+    "emptyCommitMsg": "コミットメッセージを入力してください",
+    "pullDone": "リモートの更新をプルしました。",
+    "pushDone": "コミットしてGitHubにプッシュしました。",
+    "addToGitignore": ".gitignoreに追加",
+    "gitignoreAdded": "{{pattern}}を.gitignoreに追加しました",
+    "kind": {
+      "modified": "変更",
+      "added": "追加",
+      "deleted": "削除",
+      "untracked": "未追跡",
+      "renamed": "名前変更",
+      "conflict": "競合"
+    }
+  }
+}

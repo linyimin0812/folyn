@@ -1,0 +1,55 @@
+{
+  "rightDock": {
+    "ai": "KI",
+    "terminal": "Terminal",
+    "close": "Panel schließen"
+  },
+  "nav": {
+    "schedule": "Termine (⌘D)",
+    "study": "Lernen",
+    "settings": "Einstellungen",
+    "git": "Git"
+  },
+  "statusBar": {
+    "viewMode": {
+      "split": "Geteilter Modus",
+      "edit": "Bearbeitungsmodus",
+      "preview": "Vorschaumodus"
+    },
+    "lineCol": "Z. {{line}}, Sp. {{col}}",
+    "wordCount": "{{count}} Wörter"
+  },
+  "commandPalette": {
+    "placeholder": "Befehle oder Dateien suchen…",
+    "noMatch": "Keine Treffer"
+  },
+  "gitPanel": {
+    "title": "\"{{name}}\" mit GitHub synchronisieren",
+    "clean": "✓ Working Tree sauber, nichts zu committen",
+    "localChanges": "Lokale Änderungen",
+    "refresh": "Aktualisieren",
+    "filesChanged": "{{total}} Datei(en) geändert",
+    "pull": "Remote-Updates pullen",
+    "pullBtn": "Pull",
+    "pullBusy": "Pullen…",
+    "pullHint": "Die neuesten Änderungen vom GitHub-Remote lokal herunterladen",
+    "commitPush": "Commit & Push",
+    "commitPushBtn": "Commit & Push",
+    "pushBusy": "Pushen…",
+    "commitPushHint": "Lokale Änderungen ins GitHub-Remote-Repository pushen",
+    "placeholder": "z. B. Eintrag für 2. Aug. hinzufügen",
+    "emptyCommitMsg": "Commit-Nachricht eingeben",
+    "pullDone": "Remote-Updates gepullt.",
+    "pushDone": "Committed und zu GitHub gepusht.",
+    "addToGitignore": "Zur .gitignore hinzufügen",
+    "gitignoreAdded": "{{pattern}} zur .gitignore hinzugefügt",
+    "kind": {
+      "modified": "Geändert",
+      "added": "Hinzugefügt",
+      "deleted": "Gelöscht",
+      "untracked": "Unversioniert",
+      "renamed": "Umbenannt",
+      "conflict": "Konflikt"
+    }
+  }
+}
