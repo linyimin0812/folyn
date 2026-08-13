@@ -40,6 +40,7 @@ import { PetMenuApp } from './components/pet/PetMenuApp';
 import { VoiceOrbApp } from './components/ai/VoiceOrbApp';
 import './index.css';
 import './components/pet/pet.css';
+import { initCsp } from './utils/csp';
 
 // The `pet` Tauri window loads `/#/pet` (see tauri.conf.json) and mounts only
 // the mascot — not the full editor app — so the pet window stays tiny and
@@ -113,6 +114,11 @@ if (isPetMenuWindow) {
 if (isVoiceOrbWindow) {
   document.documentElement.classList.add('is-voice-orb-window');
 }
+
+// Apply the runtime CSP (a single <meta http-equiv="Content-Security-Policy">
+// tag, see utils/csp.ts) before React mounts — this runs in every Tauri
+// window (main / pet / voice-orb), so each window gets the same policy.
+initCsp();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

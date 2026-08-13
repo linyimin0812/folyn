@@ -11,6 +11,7 @@ import { FileTemplatesSettings } from '@/components/settings/FileTemplatesSettin
 import { SkillsSettings } from '@/components/settings/SkillsSettings';
 import { PetSettings } from '@/components/settings/PetSettings';
 import { NotificationsSettings } from '@/components/settings/NotificationsSettings';
+import { CspSettings } from '@/components/settings/CspSettings';
 import { ShortcutEditor } from '@/components/settings/ShortcutEditor';
 import { ScriptRuntimesSettings } from '@/components/settings/ScriptRuntimesSettings';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
@@ -307,6 +308,11 @@ export function SettingsPage() {
         {/* -- 插件 -- */}
         {settingsTab === 'plugins' && (
           <PluginsSettings />
+        )}
+
+        {/* -- 安全策略 -- */}
+        {settingsTab === 'csp' && (
+          <CspSettings />
         )}
 
         {/* -- 关于 -- */}
