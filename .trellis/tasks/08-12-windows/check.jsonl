@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "check 阶段验证跨平台改动是否满足质量基线"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "验证平台分支类型缩窄、无 any 渗漏"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "验证 Windows pet/voice 窗口实现仍满足 ACL 与模式契约"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "验证 zh/en 文案同步、无硬编码字面量"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "验证前端→sidecar→Rust 跨层数据流一致性"}
+{"file": ".trellis/tasks/08-12-windows/research/macos-deps-audit.md", "reason": "按 15 项必须修复清单逐条验收 + 可忽略项未被误改"}

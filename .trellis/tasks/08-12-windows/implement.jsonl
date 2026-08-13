@@ -1,0 +1,8 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "pet/voice/多窗口透明置顶在 Windows 重写时的 ACL 与窗口模式契约"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "StatusBar 与 shell detect 涉及 zh/en 文案改动"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "平台分支与 sidecar 类型必须严格缩窄，避免 any"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "新增 Windows Rust 模块需按目录约定放置"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "CliSettings/ScriptRuntimesSettings/TerminalView 改动遵循组件契约"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "前端 navigator.platform → sidecar → Rust 的跨层数据流"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "避免重写已有 macOS 实现的 Windows 等价，优先复用 helper"}
+{"file": ".trellis/tasks/08-12-windows/research/macos-deps-audit.md", "reason": "本任务的盘点基线 + 15 项必须修复清单 + 文件:行号定位"}
