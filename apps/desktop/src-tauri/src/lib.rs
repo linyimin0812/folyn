@@ -22,6 +22,34 @@ mod pet_panel_macos;
 use tauri::Manager;
 use tauri::{Emitter, WindowEvent};
 
+/// Append a startup log line to both `quill-startup.log` in the OS temp dir
+/// and stderr. Used to trace the Windows flash-quit crash that has no visible
+/// output. `startup_log` is append-mode; call `truncate_startup_log` once at
+/// the start of `run()` so each launch overwrites the previous log.
+///
+/// Cross-platform paths:
+/// - macOS: `$TMPDIR/quill-startup.log` (usually `/var/folders/.../T/...`)
+/// - Windows: `%TEMP%\quill-startup.log` (usually
+///   `C:\Users\<user>\AppData\Local\Temp\quill-startup.log`)
+fn startup_log(msg: impl AsRef<str>) {
+    let path = std::env::temp_dir().join("quill-startup.log");
+    let line = msg.as_ref();
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+    {
+        use std::io::Write;
+        let _ = writeln!(f, "{line}");
+    }
+    eprintln!("{line}");
+}
+
+fn truncate_startup_log() {
+    let path = std::env::temp_dir().join("quill-startup.log");
+    let _ = std::fs::write(&path, "");
+}
+
 /// Maps a pet context-menu item id (see `commands::PET_CTX_MENU_*`) to the
 /// `PetMenuAction` payload the main window expects. Returns `None` for
 /// unknown ids (e.g. separators, which never fire `on_menu_event`).
@@ -273,6 +301,22 @@ fn spawn_nspanel_reapply_thread(_app: tauri::AppHandle) {}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Install a panic hook BEFORE anything else so a panic anywhere in the
+    // setup chain is captured to `quill-startup.log` before the process
+    // aborts. `std::panic::set_hook` fires BEFORE the default abort behavior,
+    // so the log write completes. The hook also dumps a backtrace when
+    // available. This is the single source of truth for "what crashed at
+    // startup" — the user pastes `%TEMP%\quill-startup.log` back.
+    std::panic::set_hook(Box::new(|info| {
+        startup_log(format!("[PANIC] {info}"));
+        let bt = std::backtrace::Backtrace::capture();
+        if bt.status() == std::backtrace::BacktraceStatus::Captured {
+            startup_log(format!("[BACKTRACE] {bt}"));
+        }
+    }));
+    truncate_startup_log();
+    startup_log("[run] starting — panic hook installed");
+
     tauri::Builder::default()
         // ── quill-plugin:// URI scheme ──
         // Registered ONCE at startup (register_uri_scheme_protocol is on
@@ -396,17 +440,35 @@ pub fn run() {
                     .unwrap_or_else(|_| http::Response::new(b"error".to_vec())),
             );
         })
-        .plugin(tauri_plugin_shell::init())
+        // ── plugin init chain ──
+        // Each `.plugin(...)` is preceded by a `startup_log` so a plugin that
+        // panics during init lands a line naming which plugin was at fault.
+        .plugin({
+            startup_log("[plugin] shell");
+            tauri_plugin_shell::init()
+        })
         // Open files/folders in the system file manager (external-file tab icon
         // "open containing folder"). Shell's `open` is URL-only, so this uses
         // the dedicated opener plugin instead.
-        .plugin(tauri_plugin_opener::init())
+        .plugin({
+            startup_log("[plugin] opener");
+            tauri_plugin_opener::init()
+        })
         // OS native notifications (PRD pet-popup-bubble-notification: system
         // notification form). The main window's dispatcher calls the plugin's
         // JS API (`sendNotification`/`registerActionTypes`/`onAction`);
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin({
+            startup_log("[plugin] dialog");
+            tauri_plugin_dialog::init()
+        })
+        .plugin({
+            startup_log("[plugin] fs");
+            tauri_plugin_fs::init()
+        })
+        .plugin({
+            startup_log("[plugin] clipboard_manager");
+            tauri_plugin_clipboard_manager::init()
+        })
         // Global keyboard shortcut plugin. A single global handler dispatches
         // by HotKey id: the voice toggle HotKey (stored in
         // `VoiceState::voice_hotkey` by `voice_set_global_hotkey`) emits
@@ -423,7 +485,8 @@ pub fn run() {
         // needed: the frontend never invokes the plugin's built-in commands
         // directly, only our custom `pet_panel_set_shortcut` +
         // `voice_set_global_hotkey` (custom invoke bypasses the ACL).
-        .plugin(
+        .plugin({
+            startup_log("[plugin] global_shortcut");
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
                     use tauri_plugin_global_shortcut::ShortcutState;
@@ -448,9 +511,11 @@ pub fn run() {
                         let _ = app.emit("pet://shortcut-toggle", ());
                     }
                 })
-                .build(),
-        )
-        .on_menu_event(|app, event| {
+                .build()
+        })
+        .on_menu_event({
+            startup_log("[hook] on_menu_event registered");
+            |app, event| {
             let id = event.id().as_ref();
             // Manual fullscreen toggle for the focused plugin tool window
             // (Window menu → "插件弹窗全屏", ⌘⇧F). Tool windows are pinned
@@ -536,6 +601,7 @@ pub fn run() {
                     );
                 }
             }
+        }
         })
         // R8 (lifecycle): when pet mode is on, closing the main editor window
         // must NOT quit the app — the pet is a persistent entry point. So we
@@ -543,7 +609,9 @@ pub fn run() {
         // pet mode is off, default close behavior (app quit) is preserved.
         // The pet window's visibility is the source of truth for "pet mode
         // active right now", so we don't need a separate cached flag.
-        .on_window_event(|window, event| {
+        .on_window_event({
+            startup_log("[hook] on_window_event registered");
+            |window, event| {
             if window.label() != "main" {
                 return;
             }
@@ -560,13 +628,18 @@ pub fn run() {
                 // else: default close → app exits (cleanup of pet window is
                 // automatic since it's a child of the app process).
             }
+        }
         })
-        .setup(|app| {
+        .setup({
+            startup_log("[hook] setup closure");
+            |app| {
+            startup_log("[setup] entering setup closure");
             // Shared pet-size state ("50"|"75"|"100"|"125"|"150"). Synced from
             // the frontend via `set_pet_size` and from `on_menu_event` on a
             // native submenu pick. Read by `build_pet_context_menu` to
             // pre-check the current size radio item. Defaults to `"100"`
             // so existing users keep the 96×96 layout on first right-click.
+            startup_log("[setup] manage PetSizeState");
             app.manage(commands::PetSizeState(std::sync::Mutex::new(
                 commands::PetSizeState::DEFAULT_LEVEL.to_string(),
             )));
@@ -574,12 +647,14 @@ pub fn run() {
             // Shared pet-opacity state ("25"|"50"|"75"|"100"). Same pattern
             // as `PetSizeState`: defaults to "100" (fully opaque) so existing
             // users keep the pre-opacity look on first right-click.
+            startup_log("[setup] manage PetOpacityState");
             app.manage(commands::PetOpacityState(std::sync::Mutex::new(
                 commands::PetOpacityState::DEFAULT_LEVEL.to_string(),
             )));
 
             // Shared pet-click-through flag (bool). Defaults to `false` so
             // the pet receives clicks (pre-feature behavior) on first launch.
+            startup_log("[setup] manage PetClickThroughState");
             app.manage(commands::PetClickThroughState(std::sync::Mutex::new(
                 commands::PetClickThroughState::DEFAULT,
             )));
@@ -589,30 +664,39 @@ pub fn run() {
             // each visibility flip — the tray menu is built once at
             // `tray_set_enabled` time and muda does not auto-toggle the
             // checkmark on click. `None` until `tray_set_enabled(true)` runs.
+            startup_log("[setup] manage TrayHidePetItemState");
             app.manage(commands::TrayHidePetItemState(std::sync::Mutex::new(None)));
 
             // Pet-panel global-shortcut state. Holds the currently-registered
             // pet HotKey so `pet_panel_set_shortcut` can do a TARGETED
             // unregister (not `unregister_all`, which would wipe the voice
             // toggle HotKey registered by `voice::voice_set_global_hotkey`).
+            startup_log("[setup] manage PetShortcutState");
             app.manage(commands::PetShortcutState::new());
 
             // Voice input shared state (PR2). Holds the live `Recorder` +
             // `AppleSpeechAsr` consumer between `voice_start` and
             // `voice_stop` / `voice_cancel`. Idle on non-macOS (commands
             // there return macOS-only errors). See `voice::VoiceState`.
+            startup_log("[setup] manage VoiceState");
             app.manage(voice::VoiceState::new());
             // Startup beacon: confirms `log stream --predicate 'process == "quill"'`
             // is wired before the user touches voice. If this line shows in the
             // log stream, the predicate works; if not, the user is filtering on
             // the wrong process name (dev .app's executable is `quill`, lowercase).
+            // NOTE: `log::info!` goes nowhere at runtime (no logger installed
+            // in the bare Tauri process), so mirror it to `startup_log` so the
+            // beacon is actually visible in `quill-startup.log`.
+            startup_log("[voice] module ready; bundle_id=com.quill.editor");
             log::info!("[voice] module ready; bundle_id={}", "com.quill.editor");
 
             // External pet notify API (pet-external-notify-api). Local HTTP
             // server on 127.0.0.1; reuses the `pet://notify` dispatcher. State
             // holds the actual bound port for the settings-page UI; the server
             // thread writes it on bind. Non-fatal if no port is free.
+            startup_log("[setup] manage PetApiState");
             app.manage(pet_api::PetApiState(std::sync::Mutex::new(None)));
+            startup_log("[setup] pet_api::spawn");
             pet_api::spawn(app.handle().clone());
 
             // ponytail: app menu bar is a macOS-only concept (Quill / Edit /
@@ -624,7 +708,13 @@ pub fn run() {
             // bootstrap call to macOS. `pet_rebuild_app_menu` (the locale-
             // switch path) is itself a no-op on non-macOS.
             #[cfg(target_os = "macos")]
-            commands::build_app_menu(app.handle(), "en")?;
+            {
+                startup_log("[setup] build_app_menu");
+                if let Err(e) = commands::build_app_menu(app.handle(), "en") {
+                    startup_log(format!("[setup] build_app_menu ERROR: {e}"));
+                    return Err(e.into());
+                }
+            }
 
             #[cfg(debug_assertions)]
             if let Some(window) = app.get_webview_window("main") {
@@ -648,10 +738,14 @@ pub fn run() {
             // 500ms re-apply thread. See `apply_pet_backend_init` /
             // `spawn_legacy_reapply_thread`.
             let app_handle = app.handle().clone();
+            startup_log("[setup] apply_pet_backend_init");
             apply_pet_backend_init(&app_handle);
+            startup_log("[setup] spawn_legacy_reapply_thread");
             spawn_legacy_reapply_thread(app_handle);
 
+            startup_log("[setup] done — returning Ok");
             Ok(())
+        }
         })
         .invoke_handler(tauri::generate_handler![
             commands::open_file,
@@ -746,7 +840,12 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app, event| {
+        // Last logging opportunity before the GUI event loop takes over. If
+        // the crash happens AFTER setup returns Ok but during the first event
+        // loop tick, this is the final line in `quill-startup.log`.
+        .run({
+            startup_log("[run] entering event loop");
+            |app, event| {
             #[cfg(target_os = "macos")]
             {
                 match event {
@@ -798,10 +897,12 @@ pub fn run() {
                 // the Exit cleanup (cross-platform) and drop the rest.
                 match event {
                     tauri::RunEvent::Exit => {
+                        startup_log("[run] RunEvent::Exit");
                         commands::terminal_kill_all();
                     }
                     _ => {}
                 }
             }
+        }
         });
 }
