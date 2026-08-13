@@ -13,7 +13,7 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeMathjax from 'rehype-mathjax';
 import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
-import { transformMathBrackets } from '@/services/markdown/renderMarkdown';
+import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/renderMarkdown';
 import { rehypeSourceLine } from './rehypeSourceLine';
 import { ContainerRegistry, registerBuiltinPlugins, VaultContext } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
@@ -624,7 +624,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
           passNode: true,
           components: componentMap,
         } as any)
-        .processSync(transformMathBrackets(body));
+        .processSync(unwrapInlineMath(transformMathBrackets(body)));
 
       return result.result as React.ReactElement;
     } catch (error) {

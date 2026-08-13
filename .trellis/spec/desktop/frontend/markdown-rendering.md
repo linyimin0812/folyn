@@ -29,6 +29,7 @@ interface MathRenderOptions {
 function renderMarkdownToReact(md: string, opts?: MathRenderOptions): ReactNode;
 function renderMarkdownToHtml(md: string, opts?: MathRenderOptions): string;
 function transformMathBrackets(md: string): string;     // \[..\] / \(..\) → $$..$$ / $..$
+function unwrapInlineMath(md: string): string;          // collapse \n adjacent to inline math → space
 function findMathSegments(md: string): MathSegment[];    // shared code-segment scanner
 const MATHJAX_CONTAINER_CSS: string;                    // pinned font for SVG ex-unit
 ```
@@ -42,6 +43,7 @@ const MATHJAX_CONTAINER_CSS: string;                    // pinned font for SVG e
 ```
 md source
   → transformMathBrackets (string preprocessor)
+  → unwrapInlineMath (collapse single \n adjacent to inline math → space)
   → unified()
       .use(remarkParse)
       .use(remarkMath)              // $..$ / $$..$$ → math nodes
@@ -100,6 +102,14 @@ Chat does NOT call `useEffect` to re-typeset math on content append. rehype-math
 **Solution**: A ~30-line string-level preprocessor (`transformMathBrackets`) walks the doc, skips code regions verbatim (via shared `listSegments`), and replaces `\[..\]` → `$$..$$` / `\(..\)` → `$..$` on text segments only.
 
 **Why**: micromark extensions are 200+ lines of state-machine definition for a syntax transformation that is a 6-line regex on text segments. The preprocessor is the smallest viable diff. Tradeoffs documented in a `ponytail:` comment.
+
+### Pattern: Collapse `\n` adjacent to inline math (`unwrapInlineMath`)
+
+**Problem**: `MarkdownPreview` uses `remark-breaks`, which converts soft `\n` to `<br>`. When the user writes inline math on its own line for source readability (`text\n$x^2$\ntext`), remark-breaks inserts `<br>` before and after the math, pushing it onto its own visual line. The user reports this as "inline math shouldn't directly line-break".
+
+**Solution**: A ~30-line string-level preprocessor (`unwrapInlineMath`) runs after `transformMathBrackets`. It reuses `findMathSegments` (already code-aware, distinguishes inline vs display) to locate inline math segments, then collapses a single `\n` (with optional surrounding whitespace) immediately adjacent to an inline math segment into a single space. `\n\n` (paragraph break) is preserved; display math (`$$..$$` / `\[..\]`) is untouched.
+
+**Why**: the user's source convention — writing inline math on its own line for editing clarity — is reasonable; the rendering should not punish it. A custom remark plugin walking mdast would be larger; the segment-based pass reuses the existing scanner and is ~30 lines. `renderMarkdownToReact` calls it internally; `MarkdownPreview.tsx` (which has its own pipeline) calls it explicitly. The fix is a no-op for callers that don't use `remark-breaks` — a `\n` that would collapse to a space anyway now collapses one step earlier.
 
 ### Pattern: Reuse MarkdownPreview for export via hidden DOM
 
@@ -164,6 +174,8 @@ Assertion points:
 - `transformMathBrackets` skips fenced code blocks (line starts with `` ``` ``)
 - `transformMathBrackets` skips inline code spans (between backticks)
 - `transformMathBrackets` does NOT touch `\$` (remark-parse handles)
+- `unwrapInlineMath` collapses single `\n` adjacent to inline math into a space, preserves `\n\n` paragraph breaks, leaves display math alone, skips code regions
+- With `remark-breaks` in the pipeline, inline math on its own line (`text\n$x$\ntext`) produces no `<br>` adjacent to `<mjx-container>`
 - Exported HTML has zero `cdn.jsdelivr`, zero `https://fonts.gstatic`, zero `<link rel="stylesheet"`
 - `findMathSegments` and `transformMathBrackets` agree on code-vs-text boundaries for the same source
 

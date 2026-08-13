@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import remarkBreaks from 'remark-breaks';
 import {
   transformMathBrackets,
   findMathSegments,
   renderMarkdownToHtml,
+  unwrapInlineMath,
   MATHJAX_CONTAINER_CSS,
 } from './renderMarkdown';
 
@@ -37,6 +39,57 @@ describe('transformMathBrackets', () => {
   it('handles unterminated inline code (literal backticks)', () => {
     // single backtick with no close → treated as text, math conversion runs
     expect(transformMathBrackets('`code \\[x\\]')).toBe('`code $$x$$');
+  });
+});
+
+describe('unwrapInlineMath', () => {
+  it('collapses single \\n before inline math into space', () => {
+    expect(unwrapInlineMath('text before\n$x^2$ after')).toBe('text before $x^2$ after');
+  });
+
+  it('collapses single \\n after inline math into space', () => {
+    expect(unwrapInlineMath('before $x^2$\nafter')).toBe('before $x^2$ after');
+  });
+
+  it('collapses \\n on both sides of inline math on its own line', () => {
+    expect(unwrapInlineMath('text before\n$x^2$\ntext after'))
+      .toBe('text before $x^2$ text after');
+  });
+
+  it('preserves paragraph breaks (\\n\\n)', () => {
+    expect(unwrapInlineMath('para one\n\npara two $x$ end'))
+      .toBe('para one\n\npara two $x$ end');
+    expect(unwrapInlineMath('para one $x$\n\npara two'))
+      .toBe('para one $x$\n\npara two');
+  });
+
+  it('does not touch display math (block-level, breaks are fine)', () => {
+    expect(unwrapInlineMath('text\n$$y^2$$\ntext')).toBe('text\n$$y^2$$\ntext');
+  });
+
+  it('does not touch math markers inside fenced code', () => {
+    expect(unwrapInlineMath('```\ntext\n$x$\ntext\n```'))
+      .toBe('```\ntext\n$x$\ntext\n```');
+  });
+
+  it('does not touch math markers inside inline code spans', () => {
+    expect(unwrapInlineMath('see `$x$`\nhere')).toBe('see `$x$`\nhere');
+  });
+
+  it('handles bracket-style inline math after transformMathBrackets', () => {
+    // transformMathBrackets converts \(..\) → $..$, then unwrapInlineMath
+    // collapses surrounding \n.
+    const src = 'text before\n\\(y\\)\ntext after';
+    expect(unwrapInlineMath(transformMathBrackets(src)))
+      .toBe('text before $y$ text after');
+  });
+
+  it('leaves inline math already on the same line unchanged', () => {
+    expect(unwrapInlineMath('text $x^2$ more')).toBe('text $x^2$ more');
+  });
+
+  it('leaves \\$ escapes alone (no math segment, no edit)', () => {
+    expect(unwrapInlineMath('price \\$5\nand \\$10')).toBe('price \\$5\nand \\$10');
   });
 });
 
@@ -152,6 +205,46 @@ describe('renderMarkdownToHtml (export self-contained)', () => {
     // Two math segments — should contain two mjx-container instances
     const count = (html.match(/<mjx-container/g) || []).length;
     expect(count).toBe(2);
+  });
+});
+
+describe('inline math line-break (MarkdownPreview contract)', () => {
+  // MarkdownPreview uses remark-breaks which converts \n → <br>. When the
+  // user writes inline math on its own line for source readability
+  // (`text\n$x^2$\ntext`), remark-breaks inserts <br> before and after the
+  // math, pushing it onto its own visual line — the user reports this as
+  // "inline math shouldn't directly line-break". `unwrapInlineMath` (run
+  // by renderMarkdownToReact + MarkdownPreview before the pipeline) collapses
+  // single \n adjacent to inline math into a space, so remark-breaks sees
+  // the math on one line and emits no <br> around it.
+  it('inline math on its own line: no <br> adjacent to mjx-container', () => {
+    const html = renderMarkdownToHtml('text before\n$x^2$\ntext after', {
+      remarkPlugins: [remarkBreaks],
+    });
+    expect(html).toContain('<mjx-container');
+    // The paragraph should not contain a <br> between text and mjx-container
+    // (no break immediately before or after the math). Strip the scoped
+    // <style> block to isolate the <p>.
+    const body = html.split('<style')[0];
+    expect(body).not.toMatch(/<br\s*\/?>/);
+  });
+
+  it('inline math on same line: still inline, no <br>', () => {
+    const html = renderMarkdownToHtml('text $x^2$ more', {
+      remarkPlugins: [remarkBreaks],
+    });
+    const body = html.split('<style')[0];
+    expect(body).not.toMatch(/<br\s*\/?>/);
+  });
+
+  it('paragraph break before inline math: <br> NOT collapsed across paragraphs', () => {
+    // \n\n is a paragraph break — remark-breaks shouldn't merge paragraphs.
+    // The fix only collapses single \n, not \n\n.
+    const html = renderMarkdownToHtml('para one\n\n$x^2$ end');
+    expect(html).toContain('<mjx-container');
+    // Two paragraphs (no merging)
+    const pCount = (html.match(/<p>/g) || []).length;
+    expect(pCount).toBeGreaterThanOrEqual(2);
   });
 });
 

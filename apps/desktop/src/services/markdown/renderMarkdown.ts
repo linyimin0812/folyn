@@ -114,6 +114,60 @@ export function transformMathBrackets(md: string): string {
   return out;
 }
 
+/**
+ * Collapse single `\n` adjacent to inline math (`$..$` / `\(..\)`, NOT
+ * display `$$..$$` / `\[..\]`) into a space so remark-breaks doesn't emit
+ * `<br>` around inline math. `\n\n` (paragraph break) is preserved; code
+ * regions are skipped (math markers inside code are not math).
+ *
+ * Why: when the user writes inline math on its own line for source
+ * readability (`text\n$x^2$\ntext`), remark-breaks inserts `<br>` before
+ * and after the math, forcing it onto its own visual line. The user reports
+ * this as "inline math shouldn't directly line-break". Collapsing the `\n`
+ * into a space keeps the math in the inline flow.
+ *
+ * ponytail: reuse `findMathSegments` (already code-aware, distinguishes
+ * inline vs display) and collect edit ranges, then apply in reverse so
+ * indices stay valid. Shorter than a custom remark plugin walking mdast.
+ *
+ * Ceiling: this is a string-level pass, so it can't see mdast structure —
+ * if a list item puts inline math on its own indented line (`  $x^2$`), the
+ * leading `  ` is preserved and remark-breaks still sees a soft break on
+ * the previous line. Acceptable: the common case is bare math on its own
+ * line at column 0; list-item math is rare and still renders, just with a
+ * stray `<br>`.
+ */
+export function unwrapInlineMath(md: string): string {
+  const inlineSegs = findMathSegments(md).filter((s) => s.kind === 'inline');
+  if (inlineSegs.length === 0) return md;
+
+  const edits: { from: number; to: number }[] = [];
+  for (const { from, to } of inlineSegs) {
+    // \n (with optional trailing ws) immediately before inline math;
+    // skip if part of \n\n (paragraph break).
+    let p = from - 1;
+    while (p >= 0 && (md[p] === ' ' || md[p] === '\t')) p--;
+    if (p >= 0 && md[p] === '\n' && !(p >= 1 && md[p - 1] === '\n')) {
+      edits.push({ from: p, to: from });
+    }
+    // \n (with optional leading ws) immediately after inline math;
+    // skip if part of \n\n.
+    let q = to;
+    while (q < md.length && (md[q] === ' ' || md[q] === '\t')) q++;
+    if (q < md.length && md[q] === '\n' && !(q + 1 < md.length && md[q + 1] === '\n')) {
+      edits.push({ from: to, to: q + 1 });
+    }
+  }
+
+  if (edits.length === 0) return md;
+  edits.sort((a, b) => b.from - a.from);
+  let out = md;
+  for (const { from, to } of edits) {
+    out = out.slice(0, from) + ' ' + out.slice(to);
+  }
+  return out;
+}
+
 // ── Math segment finder (editor + tests) ───────────────────────────────────
 
 export type MathKind = 'display' | 'inline';
@@ -190,7 +244,7 @@ export function renderMarkdownToReact(md: string, opts: MathRenderOptions = {}):
     components: opts.components,
     passNode: true,
   } as any);
-  return p.processSync(transformMathBrackets(md)).result as ReactNode;
+  return p.processSync(unwrapInlineMath(transformMathBrackets(md))).result as ReactNode;
 }
 
 /** Render markdown to an HTML string (React SSR via renderToStaticMarkup).
