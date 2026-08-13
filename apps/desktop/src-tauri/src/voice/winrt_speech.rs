@@ -35,18 +35,26 @@
 
 #![cfg(target_os = "windows")]
 
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use parking_lot::Mutex;
 use windows::core::HSTRING;
-use windows::Foundation::IAsyncOperation;
 use windows::Globalization::Language;
 use windows::Media::SpeechRecognition::{
     SpeechRecognizer, SpeechRecognitionResult, SpeechRecognitionScenario,
     SpeechRecognitionTopicConstraint,
 };
+
+/// Type-erased pending recognition op. windows-rs 0.62 `IAsyncOperation<T>`
+/// impls `Future<Output = Result<T, windows::core::Error>>` when `T: Send`,
+/// but the exact path/import is gated by feature flags that don't reliably
+/// expose `IAsyncOperation` by name across 0.6x point releases. Boxing erases
+/// the concrete type so we don't need to name it.
+type PendingOp = Pin<Box<dyn Future<Output = Result<SpeechRecognitionResult>> + Send>>;
 
 /// ASR 一次会话产出的转写结果。镜像 macOS `apple_speech::RawTranscript`，
 /// `voice.rs::voice_stop` 通过 `.text` 字段取转写文本。`duration_ms` 仅用于
@@ -73,9 +81,9 @@ pub struct RawTranscript {
 pub struct WinRtSpeechAsr {
     locale: Option<String>,
     /// voice_start 创建、voice_stop/cancel 释放。Option<> 守 pending 状态。
-    /// ponytail: 用 `Mutex<Option<...>>` 而非 atomic，因 IAsyncOperation 是
-    /// COM 接口指针，无原子 swap；短临界区（仅 take/set）开销可接受。
-    pending_op: Mutex<Option<IAsyncOperation<SpeechRecognitionResult>>>,
+    /// ponytail: 用 `Mutex<Option<...>>` 而非 atomic，因 `PendingOp` 是
+    /// boxed Future，无原子 swap；短临界区（仅 take/set）开销可接受。
+    pending_op: Mutex<Option<PendingOp>>,
     /// 在 start_session 创建 RecognizeAsync 时持有 recognizer，确保
     /// async op 期间源对象不被 GC。voice_stop/cancel 时释放。
     recognizer: Mutex<Option<SpeechRecognizer>>,
@@ -151,7 +159,13 @@ impl WinRtSpeechAsr {
         // 启动 mic capture。RecognizeAsync 立即返回 op 句柄，op 在后台捕获
         // 并在用户停止说话 + silence 阈值后完成。
         let op = recognizer.RecognizeAsync()?;
-        *self.pending_op.lock() = Some(op);
+        // ponytail: Box::pin 擦掉 IAsyncOperation 具体类型，避免依赖
+        // windows-rs 0.6x 不稳定的 feature 投影。op.await 返回
+        // Result<SpeechRecognitionResult, windows::core::Error>，转 anyhow。
+        let boxed: PendingOp = Box::pin(async move {
+            op.await.map_err(|e| anyhow!("{e}"))
+        });
+        *self.pending_op.lock() = Some(boxed);
         *self.recognizer.lock() = Some(recognizer);
         Ok(())
     }
@@ -163,8 +177,9 @@ impl WinRtSpeechAsr {
         let Some(op) = op else {
             return Ok(RawTranscript::default());
         };
-        // ponytail: 不 spawn_blocking — windows-rs 0.62 IAsyncOperation<T> 是
-        // Send-safe Future，可 tokio worker await（research 风险点 3）。
+        // ponytail: 不 spawn_blocking — PendingOp 是 Send-safe boxed Future
+        // （IAsyncOperation<SpeechRecognitionResult> Send + Future），可直接
+        // tokio worker await（research 风险点 3）。
         let result = op
             .await
             .context("WinRT RecognizeAsync failed (语言包未安装 / 麦克风被拒 / silence 超时)")?;

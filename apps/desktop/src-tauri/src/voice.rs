@@ -20,7 +20,7 @@
 use serde::Serialize;
 use std::sync::Mutex;
 use tauri::Manager;
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(target_os = "macos")]
 use tauri::Emitter;
 #[cfg(target_os = "macos")]
 use tauri::PhysicalPosition;
@@ -715,35 +715,43 @@ pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result
     log::info!("[voice] voice_start called (windows): spoken_locale={:?}", spoken_locale);
 
     let state = app.state::<VoiceState>();
-    let mut inner = state.inner.lock().map_err(|e| format!("voice state poisoned: {e}"))?;
-
-    if inner.is_recording() {
-        return Err("voice recording already in progress".into());
-    }
-
-    // Fresh ASR per session (mirrors macOS rationale).
-    let locale_arg = if spoken_locale.trim().is_empty() {
-        None
-    } else {
-        Some(spoken_locale)
+    // ponytail: scope the MutexGuard so it's dropped BEFORE the `.await`
+    // below — `std::sync::MutexGuard` is `!Send`, and Tauri command futures
+    // must be `Send`. Acquire → check → set inner.asr → release, then await.
+    let asr = {
+        let mut inner = state.inner.lock().map_err(|e| format!("voice state poisoned: {e}"))?;
+        if inner.is_recording() {
+            return Err("voice recording already in progress".into());
+        }
+        let locale_arg = if spoken_locale.trim().is_empty() {
+            None
+        } else {
+            Some(spoken_locale)
+        };
+        let asr = Arc::new(WinRtSpeechAsr::new(locale_arg));
+        inner.asr = Arc::clone(&asr);
+        asr
     };
-    let asr = Arc::new(WinRtSpeechAsr::new(locale_arg));
 
     // ponytail: permissions_win::ensure_microphone is a no-op — WinRT
     // SpeechRecognizer::Create triggers the Windows mic Consent UI implicitly
     // on first creation. Ceiling: explicit preflight via Media_Capture feature
     // if a future release wants a permission-gate UI before recognition.
     if let Err(err) = permissions_win::ensure_microphone() {
+        // Reset state on failure — the asr was set in inner but session never started.
+        let mut inner = state.inner.lock().map_err(|e| format!("voice state poisoned: {e}"))?;
+        inner.asr = std::sync::Arc::new(WinRtSpeechAsr::new(None));
         return Err(err.into());
     }
 
     // 启动 WinRT 一次性 RecognizeAsync — 立刻开始 mic capture。无 cpal，
     // 无 voice://mic-level UI 指示器（前端 fallback CSS ring）。
-    asr.start_session()
-        .await
-        .map_err(|e| format!("WinRT 语音识别启动失败: {e:#}"))?;
+    if let Err(e) = asr.start_session().await {
+        let mut inner = state.inner.lock().map_err(|e| format!("voice state poisoned: {e}"))?;
+        inner.asr = std::sync::Arc::new(WinRtSpeechAsr::new(None));
+        return Err(format!("WinRT 语音识别启动失败: {e:#}").into());
+    }
 
-    inner.asr = asr;
     log::info!("[voice] WinRT recognition session started (windows)");
 
     // Orb MVP: no-op on Windows (see impl below). Callsite kept for parity
