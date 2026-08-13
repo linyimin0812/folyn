@@ -76,13 +76,16 @@ export function DailyDigest({ currentFilePath, onInsertContent }: DailyDigestPro
       const vault = useVaultStore.getState().currentVault;
       let workingDir = vault?.basePath ?? '';
       if (workingDir.startsWith('~')) {
-        const { homeDir } = await import('@tauri-apps/api/path');
-        const home = (await homeDir()).replace(/\/+$/, '');
-        workingDir = home + workingDir.slice(1);
+        const { homeDir, join } = await import('@tauri-apps/api/path');
+        const home = (await homeDir()).replace(/[/\\]+$/, '');
+        // ponytail: join() is separator-aware — string concat produced mixed
+        // separators on Windows failing the fs scope glob.
+        workingDir = await join(home, workingDir.slice(1));
       }
       // schedule agent cwd = `<vault>/__schedule__/`；feature agent 在此自动发现
       // `.claude/agents/schedule.md`，并通过 `--add-dir <vault>` 访问 `__daily__/` 日记。
-      workingDir = `${workingDir.replace(/\/+$/, '')}/__schedule__`;
+      const { join: joinPath } = await import('@tauri-apps/api/path');
+      workingDir = await joinPath(workingDir.replace(/[/\\]+$/, ''), '__schedule__');
 
       const fileSummaries = modified
         .map((f) => `- ${f.name}: ${f.summary.slice(0, 200)}`)

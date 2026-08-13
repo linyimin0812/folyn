@@ -23,14 +23,16 @@ import { isWithinHome } from '@/utils/isExternalPath';
  */
 export async function resolveAbsolutePath(p: string): Promise<string> {
   if (p.startsWith('~/') || p === '~') {
-    const { homeDir } = await import('@tauri-apps/api/path');
-    const home = (await homeDir()).replace(/\/+$/, '');
-    return home + p.slice(1);
+    const { homeDir, join } = await import('@tauri-apps/api/path');
+    const home = (await homeDir()).replace(/[/\\]+$/, '');
+    // ponytail: join() is separator-aware — string concat produced mixed
+    // separators on Windows (C:\Users\x/quill/...) failing the fs scope glob.
+    return await join(home, p.slice(1));
   }
   if (p.startsWith('$HOME/') || p === '$HOME') {
-    const { homeDir } = await import('@tauri-apps/api/path');
-    const home = (await homeDir()).replace(/\/+$/, '');
-    return home + p.slice('$HOME'.length);
+    const { homeDir, join } = await import('@tauri-apps/api/path');
+    const home = (await homeDir()).replace(/[/\\]+$/, '');
+    return await join(home, p.slice('$HOME'.length));
   }
   return p;
 }
@@ -70,7 +72,11 @@ export const externalFileProvider = {
     const abs = await resolveAbsolutePath(rawPath);
     await assertWithinHome(abs);
     const { writeTextFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
-    const dir = abs.substring(0, abs.lastIndexOf('/'));
+    const { dirname } = await import('@tauri-apps/api/path');
+    // ponytail: dirname() is separator-aware. lastIndexOf('/') on a Windows
+    // backslash path returns -1 → substring(0, -1) === '' → mkdir('') throws
+    // "forbidden path:". Mirrors the TauriVaultProvider.writeFile fix.
+    const dir = await dirname(abs);
     if (dir && !(await exists(dir))) {
       await mkdir(dir, { recursive: true });
     }

@@ -45,15 +45,17 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
       const { openPath } = await import('@tauri-apps/plugin-opener');
       let resolved = path;
       if (resolved.startsWith('~/') || resolved.startsWith('$HOME/')) {
-        const { homeDir } = await import('@tauri-apps/api/path');
-        const home = (await homeDir()).replace(/\/+$/, '');
-        resolved = resolved.startsWith('~/')
-          ? home + resolved.slice(1)
-          : home + resolved.slice('$HOME'.length);
+        const { homeDir, join } = await import('@tauri-apps/api/path');
+        const home = (await homeDir()).replace(/[/\\]+$/, '');
+        // ponytail: join() is separator-aware — string concat produced mixed
+        // separators on Windows failing the fs scope glob.
+        const suffix = resolved.startsWith('~/') ? resolved.slice(1) : resolved.slice('$HOME'.length);
+        resolved = await join(home, suffix);
       }
-      const trimmed = resolved.replace(/[\\/]+$/, '');
-      const sepIdx = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
-      const folder = sepIdx > 0 ? trimmed.slice(0, sepIdx) : trimmed;
+      const { dirname } = await import('@tauri-apps/api/path');
+      // ponytail: dirname() is separator-aware; lastIndexOf('/') on a Windows
+      // backslash path returns -1 → wrong folder.
+      const folder = await dirname(resolved);
       await openPath(folder || resolved);
     } catch (err) {
       console.warn('[TabBar] open containing folder failed:', err);

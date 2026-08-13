@@ -12,7 +12,7 @@ function getCachedHomeDir(): Promise<string> {
   if (!homeDirPromise) {
     homeDirPromise = import('@tauri-apps/api/path')
       .then(({ homeDir }) => homeDir())
-      .then((h) => h.replace(/\/+$/, ''));
+      .then((h) => h.replace(/[/\\]+$/, ''));
   }
   return homeDirPromise;
 }
@@ -21,7 +21,12 @@ export async function resolveBasePath(basePath: string): Promise<string> {
   let resolved = basePath;
   if (resolved.startsWith('~')) {
     const home = await getCachedHomeDir();
-    resolved = home + resolved.slice(1);
+    const { join } = await import('@tauri-apps/api/path');
+    // ponytail: join() is separator-aware (\ on Windows, / on macOS). String
+    // concat `home + resolved.slice(1)` produced mixed separators on Windows
+    // (C:\Users\x/quill/...) which Tauri 2's fs scope glob fails to match
+    // against $HOME/** → "forbidden path:" errors.
+    resolved = await join(home, resolved.slice(1));
   }
-  return resolved.replace(/\/+$/, '');
+  return resolved.replace(/[/\\]+$/, '');
 }

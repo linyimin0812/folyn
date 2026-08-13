@@ -13,7 +13,7 @@ import {
   stat,
   rename as fsRename,
 } from '@tauri-apps/plugin-fs';
-import { join } from '@tauri-apps/api/path';
+import { join, dirname } from '@tauri-apps/api/path';
 
 export class TauriVaultProvider implements VaultProvider {
   // ponytail: typed as interface types (not literals) so the
@@ -36,10 +36,10 @@ export class TauriVaultProvider implements VaultProvider {
   async connect(config: VaultConfig): Promise<void> {
     let base = config.basePath;
     if (base.startsWith('~')) {
-      const home = (await this.getHome()).replace(/\/+$/, '');
-      base = home + base.slice(1);
+      const home = await this.getHome();
+      base = await join(home, base.slice(1));
     }
-    this.basePath = base.replace(/\/+$/, '');
+    this.basePath = base.replace(/[/\\]+$/, '');
 
     const dirExists = await exists(this.basePath);
     if (!dirExists) {
@@ -88,10 +88,17 @@ export class TauriVaultProvider implements VaultProvider {
 
   async writeFile(path: string, content: string): Promise<void> {
     const fullPath = await this.resolve(path);
-    const parentDir = fullPath.substring(0, fullPath.lastIndexOf('/'));
-    const parentExists = await exists(parentDir);
-    if (!parentExists) {
-      await mkdir(parentDir, { recursive: true });
+    // ponytail: use Tauri's dirname (Rust-backed, separator-aware) instead of
+    // lastIndexOf('/'). On Windows, join() returns backslash-separated paths,
+    // so lastIndexOf('/') returns -1 → substring(0, -1) === '' → exists('')
+    // throws "forbidden path:" (empty path, out of fs scope). This was the
+    // Windows startup crash: every writeFile parent-check hit an empty path.
+    const parentDir = await dirname(fullPath);
+    if (parentDir) {
+      const parentExists = await exists(parentDir);
+      if (!parentExists) {
+        await mkdir(parentDir, { recursive: true });
+      }
     }
     await writeTextFile(fullPath, content);
   }
@@ -101,10 +108,13 @@ export class TauriVaultProvider implements VaultProvider {
    *  round-trip would corrupt non-text bytes. */
   async writeFileBytes(path: string, bytes: Uint8Array): Promise<void> {
     const fullPath = await this.resolve(path);
-    const parentDir = fullPath.substring(0, fullPath.lastIndexOf('/'));
-    const parentExists = await exists(parentDir);
-    if (!parentExists) {
-      await mkdir(parentDir, { recursive: true });
+    // ponytail: see writeFile — dirname is separator-aware (Windows fix).
+    const parentDir = await dirname(fullPath);
+    if (parentDir) {
+      const parentExists = await exists(parentDir);
+      if (!parentExists) {
+        await mkdir(parentDir, { recursive: true });
+      }
     }
     await writeFileBytes(fullPath, bytes);
   }
@@ -205,10 +215,13 @@ export class TauriVaultProvider implements VaultProvider {
   async rename(oldPath: string, newPath: string): Promise<void> {
     const fullOld = await this.resolve(oldPath);
     const fullNew = await this.resolve(newPath);
-    const parentDir = fullNew.substring(0, fullNew.lastIndexOf('/'));
-    const parentExists = await exists(parentDir);
-    if (!parentExists) {
-      await mkdir(parentDir, { recursive: true });
+    // ponytail: see writeFile — dirname is separator-aware (Windows fix).
+    const parentDir = await dirname(fullNew);
+    if (parentDir) {
+      const parentExists = await exists(parentDir);
+      if (!parentExists) {
+        await mkdir(parentDir, { recursive: true });
+      }
     }
     await fsRename(fullOld, fullNew);
   }

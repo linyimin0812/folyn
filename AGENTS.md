@@ -35,3 +35,5 @@ Managed by Trellis. Edits outside this block are preserved; edits inside may be 
 - Lean on the dependencies already in the project before writing your own implementation or adding packages. Do not assume a library lacks a capability without checking its documentation and types.
 
 - Make architectural decisions for the long term. Do not accept a stopgap that only works for now and is meant to be replaced later.
+
+- **Do NOT run whole-project compiles/builds** (`cargo check`, `pnpm build`, `pnpm tauri build`, etc.) unless the user explicitly asks. These load many files into the toolchain and cause computer lag on this machine. The user will edit files themselves; your job is to ensure the changes are syntactically correct (visually verify types/imports/signatures). Run targeted single-file checks (`tsc --noEmit` on one file, `cargo check -p <crate>` on one crate) only when syntax correctness genuinely cannot be verified by reading.

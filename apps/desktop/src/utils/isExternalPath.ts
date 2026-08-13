@@ -41,12 +41,20 @@ export function isExternalPath(p: string): boolean {
  */
 export async function isWithinHome(absPath: string): Promise<boolean> {
   const { homeDir } = await import('@tauri-apps/api/path');
-  const home = (await homeDir()).replace(/\/+$/, '');
-  // Normalise ~ / $HOME for the comparison.
-  let p = absPath;
-  if (p.startsWith('~/')) p = home + p.slice(1);
-  else if (p.startsWith('$HOME/')) p = home + p.slice('$HOME'.length);
-  // Also strip a trailing slash.
-  p = p.replace(/\/+$/, '');
-  return p === home || p.startsWith(home + '/');
+  // ponytail: normalize both sides to forward slashes before comparing.
+  // On Windows, homeDir() returns `C:\Users\x` (backslashes) while absPath
+  // from Tauri fs dialogs also uses backslashes — but `home + '/'` ends with
+  // a forward slash, so `p.startsWith(home + '/')` was always false on Windows,
+  // rejecting every home-relative file as "outside home". Normalizing to `/`
+  // makes the comparison separator-agnostic.
+  const home = (await homeDir()).replace(/[/\\]+$/, '');
+  const h = home.replace(/\\/g, '/');
+  let p = absPath.replace(/\\/g, '/');
+  if (p.startsWith('~/')) {
+    p = h + p.slice(1);
+  } else if (p.startsWith('$HOME/')) {
+    p = h + p.slice('$HOME'.length);
+  }
+  p = p.replace(/[/\\]+$/, '');
+  return p === h || p.startsWith(h + '/');
 }

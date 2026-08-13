@@ -362,9 +362,11 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
     let workingDir = vault?.basePath ?? '';
     if (workingDir.startsWith('~')) {
       try {
-        const { homeDir } = await import('@tauri-apps/api/path');
-        const home = (await homeDir()).replace(/\/+$/, '');
-        workingDir = home + workingDir.slice(1);
+        const { homeDir, join } = await import('@tauri-apps/api/path');
+        const home = (await homeDir()).replace(/[/\\]+$/, '');
+        // ponytail: join() is separator-aware — string concat produced mixed
+        // separators on Windows failing the fs scope glob.
+        workingDir = await join(home, workingDir.slice(1));
       } catch {}
     }
 

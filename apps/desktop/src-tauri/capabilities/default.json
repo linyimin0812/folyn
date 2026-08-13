@@ -92,6 +92,7 @@
     {
       "identifier": "fs:scope-home-recursive",
       "allow": [
+        { "path": "$HOME/**" },
         { "path": "$HOME/**/.*" },
         { "path": "$HOME/**/.*/**" }
       ]
