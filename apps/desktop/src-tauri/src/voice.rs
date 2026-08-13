@@ -142,7 +142,6 @@ struct VoiceInner {
 
 #[cfg(target_os = "windows")]
 struct VoiceInner {
-    recorder: Option<recorder::Recorder>,
     asr: std::sync::Arc<winrt_speech::WinRtSpeechAsr>,
 }
 
@@ -193,13 +192,13 @@ impl VoiceInner {
 impl VoiceInner {
     fn idle() -> Self {
         Self {
-            recorder: None,
             asr: std::sync::Arc::new(winrt_speech::WinRtSpeechAsr::new(None)),
         }
     }
 
+    /// True if a WinRT recognition session is active (pending_op set).
     fn is_recording(&self) -> bool {
-        self.recorder.is_some()
+        self.asr.is_session_active()
     }
 }
 
@@ -712,7 +711,6 @@ pub async fn voice_cancel(app: tauri::AppHandle) -> Result<(), AppError> {
 pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result<(), AppError> {
     use std::sync::Arc;
     use winrt_speech::WinRtSpeechAsr;
-    use recorder::{Recorder, RecorderError};
 
     log::info!("[voice] voice_start called (windows): spoken_locale={:?}", spoken_locale);
 
@@ -723,46 +721,30 @@ pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result
         return Err("voice recording already in progress".into());
     }
 
-    // Fresh ASR consumer per session (mirrors macOS rationale).
+    // Fresh ASR per session (mirrors macOS rationale).
     let locale_arg = if spoken_locale.trim().is_empty() {
         None
     } else {
         Some(spoken_locale)
     };
     let asr = Arc::new(WinRtSpeechAsr::new(locale_arg));
-    let consumer_typed = Arc::clone(&asr);
-    let consumer: Arc<dyn recorder::AudioConsumer> = consumer_typed;
 
-    // ponytail: permissions_win::ensure_microphone is a no-op — WinRT + cpal
-    // WASAPI trigger the Windows mic Consent UI implicitly on first
-    // SpeechRecognizer::CreateAsync / build_input_stream. No equivalent of
-    // macOS's three-box AVAudioApplication / SFSpeechRecognizer / AX flow.
-    // Ceiling: if a future release wants a preflight mic-permission UI gate,
-    // implement `Media_Capture` feature + `MediaCapture::InitializeAsync`
-    // (research winrt-speech.md §麦克风权限). For MVP, rely on cpal implicit.
+    // ponytail: permissions_win::ensure_microphone is a no-op — WinRT
+    // SpeechRecognizer::Create triggers the Windows mic Consent UI implicitly
+    // on first creation. Ceiling: explicit preflight via Media_Capture feature
+    // if a future release wants a permission-gate UI before recognition.
     if let Err(err) = permissions_win::ensure_microphone() {
         return Err(err.into());
     }
 
-    let app_for_level = app.clone();
-    let level_handler: Option<recorder::LevelHandler> = Some(std::sync::Arc::new(move |level: f32| {
-        let _ = app_for_level.emit("voice://mic-level", serde_json::json!({ "level": level }));
-    }));
-    let (recorder, runtime_rx) = match Recorder::start(consumer, level_handler) {
-        Ok(pair) => pair,
-        Err(RecorderError::PermissionDenied) => {
-            return Err("麦克风权限被拒绝，请在 系统设置 → 隐私和安全性 → 麦克风 中允许 Quill".into());
-        }
-        Err(RecorderError::EngineFailed(msg)) => {
-            return Err(format!("麦克风启动失败: {msg}").into());
-        }
-    };
+    // 启动 WinRT 一次性 RecognizeAsync — 立刻开始 mic capture。无 cpal，
+    // 无 voice://mic-level UI 指示器（前端 fallback CSS ring）。
+    asr.start_session()
+        .await
+        .map_err(|e| format!("WinRT 语音识别启动失败: {e:#}"))?;
 
-    let _ = runtime_rx.try_recv();
-
-    inner.recorder = Some(recorder);
     inner.asr = asr;
-    log::info!("[voice] recording started (windows)");
+    log::info!("[voice] WinRT recognition session started (windows)");
 
     // Orb MVP: no-op on Windows (see impl below). Callsite kept for parity
     // with macOS so a future orb implementation drops in unchanged.
@@ -786,43 +768,30 @@ pub async fn voice_stop(
     );
 
     let state = app.state::<VoiceState>();
-    let (recorder, asr): (
-        Option<recorder::Recorder>,
-        Arc<winrt_speech::WinRtSpeechAsr>,
-    ) = {
-        let mut inner = state.inner.lock().map_err(|e| format!("voice state poisoned: {e}"))?;
-        let recorder = inner.recorder.take();
-        if recorder.is_none() {
-            log::warn!("[voice] voice_stop called with no active recorder (windows)");
+    let asr: Arc<winrt_speech::WinRtSpeechAsr> = {
+        let inner = state.inner.lock().map_err(|e| format!("voice state poisoned: {e}"))?;
+        if !inner.is_recording() {
+            log::warn!("[voice] voice_stop called with no active session (windows)");
         }
-        (recorder, Arc::clone(&inner.asr))
+        Arc::clone(&inner.asr)
     };
 
-    if let Some(rec) = recorder {
-        rec.stop();
-    }
-    log::info!("[voice] recording stopped (windows); transcribing (buffered {} ms)", asr.buffer_duration_ms());
-
+    // ponytail: save_source_wav 在 Windows 不支持 — 无 cpal PCM buffer
+    // （WinRT 自管 mic capture）。返回 None + 提示。升级路径：AudioGraph +
+    // IRandomAccessStream 共享 mic 流，同时驱动识别 + WAV 落盘。
     let (audio_path, save_error) = if save_source {
-        if vault_path.trim().is_empty() {
-            log::warn!("[voice] save_source requested but vault_path is empty (windows)");
-            (None, Some("未配置 vault 路径,无法保存语音源文件".to_string()))
-        } else {
-            match save_source_wav(&asr.buffered_pcm(), &source_dir, &vault_path) {
-                Ok(p) => (Some(p), None),
-                Err(err) => {
-                    log::warn!("[voice] source audio save failed (windows): {err}");
-                    (None, Some(err))
-                }
-            }
-        }
+        log::warn!("[voice] save_source requested but Windows does not buffer source audio");
+        (
+            None,
+            Some("Windows 暂不支持保存源音频（WinRT 自管 mic capture）".to_string()),
+        )
     } else {
         (None, None)
     };
 
-    // ponytail: WinRtSpeechAsr::transcribe awaits IAsyncOperation directly
-    // (no spawn_blocking — STA thread affinity, research winrt-speech.md
-    // §风险点3). windows-rs 3.x IAsyncOperation is Send-safe Future.
+    // ponytail: WinRtSpeechAsr::transcribe awaits the pending RecognizeAsync
+    // op. No spawn_blocking — windows-rs 0.62 IAsyncOperation is Send-safe
+    // Future (research winrt-speech.md §风险点3).
     let transcript = asr.transcribe().await.map_err(|e| format!("语音识别失败: {e:#}"))?;
 
     Ok(VoiceStopResult {
@@ -836,16 +805,11 @@ pub async fn voice_stop(
 #[tauri::command]
 pub async fn voice_cancel(app: tauri::AppHandle) -> Result<(), AppError> {
     let state = app.state::<VoiceState>();
-    let (recorder, asr) = {
-        let mut inner = state.inner.lock().map_err(|e| format!("voice state poisoned: {e}"))?;
-        let recorder = inner.recorder.take();
+    let asr = {
+        let inner = state.inner.lock().map_err(|e| format!("voice state poisoned: {e}"))?;
         inner.asr.cancel();
-        (recorder, std::sync::Arc::clone(&inner.asr))
+        std::sync::Arc::clone(&inner.asr)
     };
-
-    if let Some(rec) = recorder {
-        rec.stop();
-    }
     let _ = asr;
     log::info!("[voice] recording cancelled (windows)");
     Ok(())
@@ -908,37 +872,38 @@ pub async fn voice_request_speech() -> Result<bool, AppError> {
 #[cfg(target_os = "windows")]
 #[tauri::command]
 pub async fn voice_debug_frontmost() -> Result<String, AppError> {
-    tauri::async_runtime::spawn_blocking(|| {
-        use windows_sys::Win32::UI::WindowsAndMessaging::{
-            GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId,
-        };
-        // SAFETY: GetWindowTextW writes into a stack buffer of fixed size; the
-        // return value is the char count (excluding NUL). Buffer is large
-        // enough for any reasonable window title. GetForegroundWindow +
-        // GetWindowThreadProcessId are thread-safe query APIs.
-        let hwnd = unsafe { GetForegroundWindow() };
-        // ponytail: windows-sys 0.59 `HWND = *mut c_void` (changed from `isize`
-        // in earlier versions). Compare via `is_null`, format as `hwnd as usize`
-        // since raw pointers don't impl LowerHex.
-        if hwnd.is_null() {
-            return Ok("foreground window nil".to_string());
-        }
-        let mut buf = [0u16; 512];
-        let len = unsafe { GetWindowTextW(hwnd, buf.as_mut_ptr(), buf.len() as i32) };
-        let title = if len > 0 {
-            String::from_utf16_lossy(&buf[..len as usize])
-        } else {
-            String::new()
-        };
-        let mut pid: u32 = 0;
-        unsafe { GetWindowThreadProcessId(hwnd, &mut pid) };
-        let info = format!("hwnd=0x{:x} title={title} pid={pid}", hwnd as usize);
-        paste_log(&format!("[voice-paste] frontmost (win): {info}"));
-        Ok(info)
-    })
+    tauri::async_runtime::spawn_blocking(
+        || -> Result<String, AppError> {
+            use windows_sys::Win32::UI::WindowsAndMessaging::{
+                GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId,
+            };
+            // SAFETY: GetWindowTextW writes into a stack buffer of fixed size; the
+            // return value is the char count (excluding NUL). Buffer is large
+            // enough for any reasonable window title. GetForegroundWindow +
+            // GetWindowThreadProcessId are thread-safe query APIs.
+            let hwnd = unsafe { GetForegroundWindow() };
+            // ponytail: windows-sys 0.59 `HWND = *mut c_void` (changed from
+            // `isize` in earlier versions). Compare via `is_null`, format as
+            // `hwnd as usize` since raw pointers don't impl LowerHex.
+            if hwnd.is_null() {
+                return Ok("foreground window nil".to_string());
+            }
+            let mut buf = [0u16; 512];
+            let len = unsafe { GetWindowTextW(hwnd, buf.as_mut_ptr(), buf.len() as i32) };
+            let title = if len > 0 {
+                String::from_utf16_lossy(&buf[..len as usize])
+            } else {
+                String::new()
+            };
+            let mut pid: u32 = 0;
+            unsafe { GetWindowThreadProcessId(hwnd, &mut pid) };
+            let info = format!("hwnd=0x{:x} title={title} pid={pid}", hwnd as usize);
+            paste_log(&format!("[voice-paste] frontmost (win): {info}"));
+            Ok(info)
+        },
+    )
     .await
-    .map_err(|e| format!("voice_debug_frontmost join failed: {e}"))?
-    .map_err(AppError::from)
+    .map_err(|e| AppError::from(format!("voice_debug_frontmost join failed: {e}")))?
 }
 
 // ── Non-macOS stubs (Linux etc.) ───────────────────────────────────────────

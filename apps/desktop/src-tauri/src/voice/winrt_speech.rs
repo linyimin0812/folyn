@@ -1,16 +1,29 @@
 //! WinRT Speech 本地 ASR 适配器（Windows）。
 //!
 //! 把 Windows `Media::SpeechRecognition::SpeechRecognizer` 当作本地 ASR
-//! provider：实现 `super::recorder::AudioConsumer` 把 PCM 累进缓冲，
-//! `transcribe()` 返回 `RawTranscript{text, duration_ms}`。
+//! provider。**实时麦克风一次性识别模式**：`voice_start` 时调用
+//! `RecognizeAsync()` 启动识别（WinRT 自管 mic capture），返回
+//! `IAsyncOperation<SpeechRecognitionResult>` 句柄存入 pending_op；
+//! `voice_stop` 时 `.await` 句柄拿转写文本。
 //!
-//! **首版批处理**：把缓冲的 16k/mono/16-bit PCM 用 `encode_wav_16k_mono`
-//! 写成临时 wav，喂给 SpeechRecognizer (via `SetAudioDataBuffer` +
-//! `RecognizeAsync`)。避开实时流式 partial，换取实现确定性。
+//! **为什么不像 macOS 那样 buffer PCM + 批量转写**：windows-rs 0.62 投影
+//! 移除了 deprecated `SetAudioDataBuffer` API（Win10 标记弃用，0.6x 投影
+//! 不再暴露）。现代替代路径是 `AudioGraph` + 自建 `IRandomAccessStream`，
+//! 200+ 行 FFI，对 MVP 过重。`RecognizeAsync()` 实时 mic 是 0.62 投影里
+//! 最短的可用路径。
 //!
-//! 权限：WinRT `SpeechRecognizer` 在首次 `CreateAsync` 时触发系统麦克风
-//! Consent UI（cpal WASAPI 也会触发，但 WinRT 创建早于 cpal 的 stream
-//! build）。无独立"语音识别"权限概念，无 Accessibility 等价概念。
+//! **副作用**：
+//! - 不再走 cpal mic capture → `voice://mic-level` UI 指示器在 Windows
+//!   上不会触发（前端 fallback CSS ring 已在 PRD R15 内）。
+//! - `save_source_wav` 在 Windows 返回 None + "不支持保存源音频" 提示
+//!   （buffered_pcm 始终空）。
+//!
+//! **UX 差异**：RecognizeAsync 在用户停止说话后的 silence 阈值触发返回。
+//! 多句连续说话只识别第一句；后续短语丢失。升级路径：ContinuousRecognitionSession
+//! + ResultGenerated 事件累积，但需要 TypedEventHandler FFI（后续 PR）。
+//!
+//! 权限：WinRT `SpeechRecognizer` 在首次 `Create` 时触发系统麦克风
+//! Consent UI。无独立"语音识别"权限概念，无 Accessibility 等价概念。
 //!
 //! 离线：WinRT SpeechRecognizer 默认走云识别（Microsoft 在线 SR）。
 //! 离线需用户在「设置 → 时间和语言 → 语言和区域 → 添加语言」勾选"语音
@@ -28,96 +41,151 @@ use std::sync::Arc;
 use anyhow::{bail, Context, Result};
 use parking_lot::Mutex;
 use windows::core::HSTRING;
+use windows::Foundation::IAsyncOperation;
 use windows::Globalization::Language;
 use windows::Media::SpeechRecognition::{
-    SpeechRecognizer, SpeechRecognitionTopicConstraint, SpeechRecognitionScenario,
+    SpeechRecognizer, SpeechRecognitionResult, SpeechRecognitionScenario,
+    SpeechRecognitionTopicConstraint,
 };
-use windows::Storage::Streams::{DataWriter, InMemoryRandomAccessStream};
-
-use super::wav::encode_wav_16k_mono;
 
 /// ASR 一次会话产出的转写结果。镜像 macOS `apple_speech::RawTranscript`，
 /// `voice.rs::voice_stop` 通过 `.text` 字段取转写文本。`duration_ms` 仅用于
 /// 日志，未 surface 给前端（与 macOS 实现一致）。
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct RawTranscript {
     pub text: String,
     #[allow(dead_code)]
     pub duration_ms: u64,
 }
 
-/// Windows WinRT Speech ASR 消费者。镜像 macOS `AppleSpeechAsr` 接口：
-/// `new(locale) / buffer_duration_ms / buffered_pcm / transcribe / cancel +
-/// impl AudioConsumer`。
+/// Windows WinRT Speech ASR 适配器。
 ///
-/// STA 线程亲和性：`SpeechRecognizer` 创建/await 在 async command (`voice_stop`)
-/// 里直接 `.await`，不 `spawn_blocking`（windows-rs 3.x 的 `IAsyncOperation`
-/// Future `Send` 友好，可在 tokio multi-thread runtime 上 await）。
+/// **生命周期**：
+/// - `new(locale)`: idle 状态。
+/// - `start_session()`: 创建 SpeechRecognizer + 编译约束 + 启动
+///   `RecognizeAsync()` 异步 op，存入 `pending_op`。
+/// - `transcribe()`: `.await` pending_op 拿结果文本，清空 pending_op。
+/// - `cancel()`: `.Cancel()` pending_op 并清空。
+///
+/// STA 线程亲和性：windows-rs 0.62 `IAsyncOperation<T>` 是 Send-safe Future
+/// （T: Send 时），可在 tokio multi-thread runtime 上直接 await，无需
+/// spawn_blocking。
 pub struct WinRtSpeechAsr {
-    /// 16-bit LE PCM 字节缓冲（recorder 推什么我们存什么）。
-    buffer: Mutex<Vec<u8>>,
-    /// 识别 locale（"zh-CN" / "en-US"）。None = 系统默认。
     locale: Option<String>,
-    /// 取消标志。`cancel()` 置位；`transcribe()` 在每个 await 点前后检查。
+    /// voice_start 创建、voice_stop/cancel 释放。Option<> 守 pending 状态。
+    /// ponytail: 用 `Mutex<Option<...>>` 而非 atomic，因 IAsyncOperation 是
+    /// COM 接口指针，无原子 swap；短临界区（仅 take/set）开销可接受。
+    pending_op: Mutex<Option<IAsyncOperation<SpeechRecognitionResult>>>,
+    /// 在 start_session 创建 RecognizeAsync 时持有 recognizer，确保
+    /// async op 期间源对象不被 GC。voice_stop/cancel 时释放。
+    recognizer: Mutex<Option<SpeechRecognizer>>,
     cancel_flag: Arc<AtomicBool>,
 }
 
 impl WinRtSpeechAsr {
     pub fn new(locale: Option<String>) -> Self {
         Self {
-            buffer: Mutex::new(Vec::new()),
             locale,
+            pending_op: Mutex::new(None),
+            recognizer: Mutex::new(None),
             cancel_flag: Arc::new(AtomicBool::new(false)),
         }
     }
 
     pub fn buffer_duration_ms(&self) -> u64 {
-        (self.buffer.lock().len() as u64 / 2) * 1000 / 16_000
+        // Windows 走 WinRT 实时 mic，不走 cpal buffer。始终 0。
+        0
     }
 
-    /// Clone of the buffered PCM (16 kHz / mono / Int16-LE bytes). Source-file
-    /// save grabs this BEFORE `transcribe()` (which clears the buffer on
-    /// success). Mirrors macOS `AppleSpeechAsr::buffered_pcm`.
+    /// True if a recognition session is active (pending_op set, not yet
+    /// transcribed/cancelled). Used by `VoiceInner::is_recording` on Windows.
+    pub fn is_session_active(&self) -> bool {
+        self.pending_op.lock().is_some()
+    }
+
+    /// Windows 上无 PCM buffer（WinRT 自管 mic capture）。返回空 Vec 让
+    /// `voice_stop` 的 save_source_wav 路径走 "不支持" 分支。
     pub fn buffered_pcm(&self) -> Vec<u8> {
-        self.buffer.lock().clone()
+        Vec::new()
     }
 
-    /// stop 时调用：编码 PCM 成 WAV，喂给 `SpeechRecognizer` 识别。
-    ///
-    /// 失败时**保留** buffer（与 macOS `AppleSpeechAsr::transcribe` 一致），
-    /// 成功才清缓冲。
-    pub async fn transcribe(&self) -> Result<RawTranscript> {
-        let pcm = self.buffer.lock().clone();
-        if pcm.is_empty() {
-            return Ok(RawTranscript {
-                text: String::new(),
-                duration_ms: 0,
-            });
-        }
-        let duration_ms = (pcm.len() as u64 / 2) * 1000 / 16_000;
-        let locale = self.locale.clone();
-
-        // 复位取消标志：上一会话若以取消收尾，标志可能仍为 true。
+    /// voice_start 调用：创建 recognizer + 编译 dictation 约束 + 启动
+    /// `RecognizeAsync()` 并存句柄。返回后立刻开始 mic capture。
+    pub async fn start_session(&self) -> Result<()> {
+        // 复位取消标志。
         self.cancel_flag.store(false, Ordering::SeqCst);
-        let cancel_flag = Arc::clone(&self.cancel_flag);
 
-        // ponytail: 不 `spawn_blocking` — windows-rs 3.x 的 IAsyncOperation 是
-        // Send-safe Future，可直接在 tauri async command 的 tokio worker 上 await。
-        // `spawn_blocking` 会把 WinRT 对象 throw 到阻塞线程池，破坏 STA 亲和性
-        // （research summary 风险点 3）。
-        let result = transcribe_pcm_async(&pcm, duration_ms, locale.as_deref(), &cancel_flag).await;
+        let lang_tag = HSTRING::from(self.locale.as_deref().unwrap_or("en-US"));
+        let lang = Language::CreateLanguage(&lang_tag)
+            .context("WinRT Language::CreateLanguage failed (检查语言包安装)")?;
 
-        if result.is_ok() {
-            self.buffer.lock().clear();
+        // ponytail: SupportedTopicLanguages 预飞检查（research summary 风险点 4）。
+        let supported = SpeechRecognizer::SupportedTopicLanguages()?;
+        if supported.Size()? == 0 {
+            bail!(
+                "WinRT 语音识别不可用：未安装任何语言包。请在「设置 → 时间和语言 → \
+                 语言和区域 → 添加语言」勾选「语音识别」子功能（语言：{}）",
+                self.locale.as_deref().unwrap_or("en-US")
+            );
         }
-        result
+
+        // ponytail: windows-rs 0.62 `SpeechRecognizer::Create` 是同步构造
+        // （不再走 IAsyncOperation 包装），直接返回 Result。
+        let recognizer = SpeechRecognizer::Create(&lang)
+            .context("WinRT SpeechRecognizer::Create failed")?;
+
+        let dictation = SpeechRecognitionTopicConstraint::Create(
+            SpeechRecognitionScenario::Dictation,
+            &HSTRING::from(""),
+        )?;
+        recognizer.Constraints()?.Append(&dictation)?;
+        recognizer
+            .CompileConstraintsAsync()?
+            .await
+            .context("WinRT CompileConstraintsAsync failed (语言包可能未安装)")?;
+
+        if self.cancel_flag.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+
+        // 启动 mic capture。RecognizeAsync 立即返回 op 句柄，op 在后台捕获
+        // 并在用户停止说话 + silence 阈值后完成。
+        let op = recognizer.RecognizeAsync()?;
+        *self.pending_op.lock() = Some(op);
+        *self.recognizer.lock() = Some(recognizer);
+        Ok(())
+    }
+
+    /// voice_stop 调用：await pending_op 拿 SpeechRecognitionResult，取 Text。
+    /// 成功后清空 pending_op + recognizer（释放 COM 引用）。
+    pub async fn transcribe(&self) -> Result<RawTranscript> {
+        let op = self.pending_op.lock().take();
+        let Some(op) = op else {
+            return Ok(RawTranscript::default());
+        };
+        // ponytail: 不 spawn_blocking — windows-rs 0.62 IAsyncOperation<T> 是
+        // Send-safe Future，可 tokio worker await（research 风险点 3）。
+        let result = op
+            .await
+            .context("WinRT RecognizeAsync failed (语言包未安装 / 麦克风被拒 / silence 超时)")?;
+        // recognizer 在 op 完成后释放，避免 COM 对象泄漏。
+        drop(self.recognizer.lock().take());
+        let text: HSTRING = result.Text()?;
+        Ok(RawTranscript {
+            text: text.to_string(),
+            duration_ms: 0,
+        })
     }
 
     pub fn cancel(&self) {
-        // WinRT dictation `RecognizeAsync` 不可中途取消（一次性返回完整文本），
-        // cancel = 置标志，下次 transcribe 检查时丢弃结果。无在飞 task 句柄。
         self.cancel_flag.store(true, Ordering::SeqCst);
-        self.buffer.lock().clear();
+        // ponytail: 仅 drop pending_op + recognizer。不显式调 `op.Cancel()`
+        // — windows-rs 0.62 投影的 IAsyncOperation 上 Cancel() 方法签名
+        // 需 Windows host 验证；drop 已让句柄失效，op 后台自行完成或超时
+        // 释放。资源上略泄漏（识别继续到 silence 阈值），用户视角已取消。
+        // 升级路径：验证 IAsyncInfo::Cancel() 投影后改显式取消。
+        drop(self.pending_op.lock().take());
+        drop(self.recognizer.lock().take());
     }
 }
 
@@ -125,113 +193,6 @@ impl Default for WinRtSpeechAsr {
     fn default() -> Self {
         Self::new(None)
     }
-}
-
-impl super::recorder::AudioConsumer for WinRtSpeechAsr {
-    fn consume_pcm_chunk(&self, pcm: &[u8]) {
-        self.buffer.lock().extend_from_slice(pcm);
-    }
-}
-
-/// WinRT 批处理识别入口。windows-rs 把 IAsyncOperation 实现成 Future，直接 await。
-///
-/// ponytail: API 形状（`SpeechRecognizer::CreateAsync(&Language)?.await?` 等）来自
-/// windows-rs 3.x 投影惯例（research doc winrt-speech.md §API 调用模式）。具体签名
-/// 需 Windows host `cargo check` 验证；macOS host 无法编译此模块。
-async fn transcribe_pcm_async(
-    pcm: &[u8],
-    duration_ms: u64,
-    locale: Option<&str>,
-    cancel_flag: &AtomicBool,
-) -> Result<RawTranscript> {
-    if cancel_flag.load(Ordering::SeqCst) {
-        return Ok(RawTranscript {
-            text: String::new(),
-            duration_ms,
-        });
-    }
-
-    // 编码 PCM → WAV 字节流。
-    let samples: Vec<i16> = pcm
-        .chunks_exact(2)
-        .map(|c| i16::from_le_bytes([c[0], c[1]]))
-        .collect();
-    let wav_bytes = encode_wav_16k_mono(&samples);
-
-    // 创建 SpeechRecognizer + 加载 dictation constraint。
-    let lang_tag = HSTRING::from(locale.unwrap_or("en-US"));
-    let lang = Language::CreateLanguage(&lang_tag)
-        .context("WinRT Language::CreateLanguage failed (检查语言包安装)")?;
-
-    // ponytail: SupportedTopicLanguages 预飞检查（research summary 风险点 4）。
-    // 缺离线语言包时 CreateAsync 后续 CompileConstraintsAsync 会报错，提前给清晰提示。
-    let supported = SpeechRecognizer::SupportedTopicLanguages()?;
-    let supported_count = supported.Size()?;
-    if supported_count == 0 {
-        bail!(
-            "WinRT 语音识别不可用：未安装任何语言包。请在「设置 → 时间和语言 → \
-             语言和区域 → 添加语言」勾选「语音识别」子功能（语言：{}）",
-            locale.unwrap_or("en-US")
-        );
-    }
-
-    // ponytail: windows-rs 0.62 `SpeechRecognizer::Create` is a sync constructor
-    // returning `Result<SpeechRecognizer>` (not IAsyncOperation — the projection
-    // flattened the async factory in 0.6x). No `.await` needed.
-    let recognizer = SpeechRecognizer::Create(&lang)
-        .context("WinRT SpeechRecognizer::Create failed")?;
-
-    // 加 dictation 约束（自由文本听写，对齐 macOS SFSpeechURLRecognitionRequest 的
-    // 自由文本语义）。`SpeechRecognitionTopicConstraint::Create(scenario, &HSTRING)`
-    // + Scenario::Dictation 启用 WebService grammar 的听写模式。
-    let dictation = SpeechRecognitionTopicConstraint::Create(
-        SpeechRecognitionScenario::Dictation,
-        &HSTRING::from(""),
-    )?;
-    recognizer.Constraints()?.Append(&dictation)?;
-    recognizer
-        .CompileConstraintsAsync()?
-        .await
-        .context("WinRT CompileConstraintsAsync failed (语言包可能未安装)")?;
-
-    if cancel_flag.load(Ordering::SeqCst) {
-        return Ok(RawTranscript {
-            text: String::new(),
-            duration_ms,
-        });
-    }
-
-    // 把 WAV 字节写入 InMemoryRandomAccessStream，喂给 recognizer 的
-    // SetAudioDataBuffer。这是 WinRT 喂预录音频给 SpeechRecognizer 的标准路径
-    // （SetAudioDataBuffer 在 Win10 标记 deprecated 但 Win11 仍可用）。
-    let stream = InMemoryRandomAccessStream::new()?;
-    let writer = DataWriter::CreateDataWriter(&stream)?;
-    writer.WriteBytes(&wav_bytes)?;
-    writer.StoreAsync()?.await?;
-    // 重置 stream 读指针到 0，recognizer 从头读。
-    let _ = stream.Seek(0)?;
-    recognizer.SetAudioDataBuffer(&stream)?;
-
-    let result_op = recognizer.RecognizeAsync()?;
-    // 在 await 前检查 cancel_flag，让 cancel 能在识别开始前短路。
-    if cancel_flag.load(Ordering::SeqCst) {
-        let _ = result_op.Cancel();
-        return Ok(RawTranscript {
-            text: String::new(),
-            duration_ms,
-        });
-    }
-    // ponytail: windows-rs 3.x 把 IAsyncOperation<SpeechRecognitionResult>
-    // 实现为 Future<Output = Result<SpeechRecognitionResult, Error>>，直接 await。
-    // 不 spawn_blocking（STA 亲和性，research 风险点 3）。
-    let result = result_op
-        .await
-        .context("WinRT RecognizeAsync failed (语言包可能未安装 / 麦克风被拒)")?;
-    let text: HSTRING = result.Text()?;
-    Ok(RawTranscript {
-        text: text.to_string(),
-        duration_ms,
-    })
 }
 
 // ponytail: 无 self-check 测试 — windows-only 模块 macOS host 无法编译其测试。
