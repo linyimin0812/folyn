@@ -84,14 +84,20 @@ pub async fn set_pet_opacity(app: tauri::AppHandle, level: String) -> Result<(),
                 return;
             };
             let Ok(hwnd_ptr) = window.hwnd() else { return; };
-            let hwnd = hwnd_ptr as HWND;
+            // ponytail: `window.hwnd()` returns `windows::Win32::Foundation::HWND`
+            // (windows 0.61 — a tuple struct wrapping `*mut c_void`). We want
+            // `windows_sys::Win32::Foundation::HWND` (a type alias for
+            // `*mut c_void`). `.0` extracts the inner pointer; the types are
+            // literally identical (`*mut core::ffi::c_void`), so no `as` cast
+            // is needed — a struct→pointer `as` cast would not compile.
+            let hwnd: HWND = hwnd_ptr.0;
             if hwnd.is_null() {
                 return;
             }
             unsafe {
                 let ex = GetWindowLongW(hwnd, GWL_EXSTYLE);
-                if (ex & WS_EX_LAYERED) == 0 {
-                    SetWindowLongW(hwnd, GWL_EXSTYLE, ex | WS_EX_LAYERED);
+                if (ex as u32 & WS_EX_LAYERED) == 0 {
+                    SetWindowLongW(hwnd, GWL_EXSTYLE, (ex as u32 | WS_EX_LAYERED) as i32);
                 }
                 let byte = (alpha * 255.0).round().clamp(0.0, 255.0) as u8;
                 SetLayeredWindowAttributes(hwnd, 0, byte, LWA_ALPHA);
@@ -449,7 +455,9 @@ pub async fn pet_get_work_area(app: tauri::AppHandle) -> Result<PetWorkArea, App
             .get_webview_window(PET_LABEL)
             .ok_or_else(|| "pet window not found".to_string())?;
         let hwnd_ptr = pet.hwnd().map_err(|e| e.to_string())?;
-        let hwnd = hwnd_ptr as HWND;
+        // ponytail: extract the `*mut c_void` from Tauri's windows-crate HWND
+        // tuple struct; it IS the windows_sys::HWND type alias verbatim.
+        let hwnd: HWND = hwnd_ptr.0;
         let hmon = unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) };
         let mut mi: MONITORINFO = unsafe { std::mem::zeroed() };
         mi.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
@@ -564,7 +572,7 @@ pub async fn pet_set_cursor(_app: tauri::AppHandle, kind: String) -> Result<(), 
     };
     let cursor_id = if kind == "pointer" { IDC_HAND } else { IDC_ARROW };
     unsafe {
-        let h = LoadCursorW(0, cursor_id);
+        let h = LoadCursorW(std::ptr::null_mut(), cursor_id);
         if h.is_null() {
             return Err("LoadCursorW returned NULL".into());
         }

@@ -740,40 +740,61 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app, event| match event {
-            tauri::RunEvent::Exit => {
-                commands::terminal_kill_all();
-            }
-            // OS "Open With" / file-association launch (macOS/iOS/Android).
-            // When the user opens a file with Quill from Finder/Explorer, the
-            // OS hands us the resource as a `file://` URL here. Convert to a
-            // filesystem path and emit it to the frontend, which opens it as
-            // an external (vault-independent) editor tab. Also surface the
-            // main window in case the app was backgrounded.
-            tauri::RunEvent::Opened { urls } => {
-                let paths: Vec<String> = urls
-                    .into_iter()
-                    .filter_map(|u| u.to_file_path().ok().map(|p| p.to_string_lossy().into_owned()))
-                    .collect();
-                if !paths.is_empty() {
-                    if let Some(main) = app.get_webview_window("main") {
-                        let _ = main.show();
-                        let _ = main.set_focus();
+        .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            {
+                match event {
+                    tauri::RunEvent::Exit => {
+                        commands::terminal_kill_all();
                     }
-                    let _ = app.emit("app://open-external-file", paths);
+                    // OS "Open With" / file-association launch (macOS/iOS/Android).
+                    // When the user opens a file with Quill from Finder/Explorer, the
+                    // OS hands us the resource as a `file://` URL here. Convert to a
+                    // filesystem path and emit it to the frontend, which opens it as
+                    // an external (vault-independent) editor tab. Also surface the
+                    // main window in case the app was backgrounded.
+                    tauri::RunEvent::Opened { urls } => {
+                        let paths: Vec<String> = urls
+                            .into_iter()
+                            .filter_map(|u| {
+                                u.to_file_path().ok().map(|p| p.to_string_lossy().into_owned())
+                            })
+                            .collect();
+                        if !paths.is_empty() {
+                            if let Some(main) = app.get_webview_window("main") {
+                                let _ = main.show();
+                                let _ = main.set_focus();
+                            }
+                            let _ = app.emit("app://open-external-file", paths);
+                        }
+                    }
+                    // ponytail: macOS dock-click reopen. When the main window is
+                    // hidden (pet-mode close-to-hide path) and the user clicks the
+                    // dock icon, AppKit fires applicationShouldHandleReopen; Tauri
+                    // surfaces it as RunEvent::Reopen. Without this, the dock click
+                    // does nothing — the app is alive but no window comes forward.
+                    tauri::RunEvent::Reopen { .. } => {
+                        if let Some(main) = app.get_webview_window("main") {
+                            let _ = main.show();
+                            let _ = main.set_focus();
+                        }
+                    }
+                    _ => {}
                 }
             }
-            // ponytail: macOS dock-click reopen. When the main window is
-            // hidden (pet-mode close-to-hide path) and the user clicks the
-            // dock icon, AppKit fires applicationShouldHandleReopen; Tauri
-            // surfaces it as RunEvent::Reopen. Without this, the dock click
-            // does nothing — the app is alive but no window comes forward.
-            tauri::RunEvent::Reopen { .. } => {
-                if let Some(main) = app.get_webview_window("main") {
-                    let _ = main.show();
-                    let _ = main.set_focus();
+            #[cfg(not(target_os = "macos"))]
+            {
+                // ponytail: RunEvent::Opened / Reopen are macOS-only variants in
+                // Tauri 2 (they surface AppKit applicationDidFinishLaunching URL
+                // open + applicationShouldHandleReopen). Windows has no equivalent
+                // so the variants don't exist in the enum on that target — keep
+                // the Exit cleanup (cross-platform) and drop the rest.
+                match event {
+                    tauri::RunEvent::Exit => {
+                        commands::terminal_kill_all();
+                    }
+                    _ => {}
                 }
             }
-            _ => {}
         });
 }

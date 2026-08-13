@@ -67,6 +67,12 @@ futures = "0.3"
 # `time` for the 30s response timeout). Regular dep — not just dev — because
 # the runtime path uses these APIs in the shipped binary.
 tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
+# Diagnostics for unconditional code paths (voice module ready beacon, pet-api
+# enabled beacon, global-shortcut handler trace, plugin-rpc emit-failed warn).
+# Declared in main deps — NOT macOS-only — because the call sites compile on
+# every platform; gating the crate under `[target.macos]` made Windows fail to
+# resolve `log::info!` / `log::warn!` at link time.
+log = "0.4"
 # Local HTTP API for the desktop pet (pet-external-notify-api). tiny_http is
 # sync + threaded — does NOT need tokio's `net` feature (unlike axum/hyper),
 # so it adds the smallest dependency footprint for a single localhost
@@ -118,7 +124,6 @@ block2 = "0.5"
 objc2 = { version = "0.5", features = ["exception"] }
 parking_lot = "0.12"
 anyhow = "1"
-log = "0.4"
 # NSPanel backend for the pet / pet-panel windows. Converts the Tauri
 # WebviewWindow into a real NSPanel (object_setClass onto a custom objc2
 # subclass with empty ivars + mouse-event overrides — the design that avoids

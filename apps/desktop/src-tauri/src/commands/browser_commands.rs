@@ -2,12 +2,18 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
 
+#[cfg(target_os = "macos")]
 use aes::Aes128;
+#[cfg(target_os = "macos")]
 use cbc::Decryptor;
+#[cfg(target_os = "macos")]
 use cipher::block_padding::Pkcs7;
+#[cfg(target_os = "macos")]
 use cipher::{BlockModeDecrypt, KeyIvInit};
+#[cfg(target_os = "macos")]
 use pbkdf2::pbkdf2_hmac;
 use rusqlite::{Connection, OpenFlags};
+#[cfg(target_os = "macos")]
 use sha1::Sha1;
 use sha2::{Digest, Sha256};
 use tauri::Manager;
@@ -156,6 +162,10 @@ fn chrome_keychain_password() -> Result<Vec<u8>, String> {
 /// `CryptUnprotectData` unwraps the DPAPI layer to reveal the raw 32-byte key.
 #[cfg(target_os = "windows")]
 fn chrome_keychain_password() -> Result<Vec<u8>, String> {
+    // ponytail: base64 0.22 splits `.decode()` behind the `Engine` trait;
+    // bring it into scope in this Windows-only fn so the macOS branch (which
+    // pulls it transitively via other imports) doesn't mask the dep.
+    use base64::Engine;
     let local = std::env::var("LOCALAPPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from(r"C:\Users\Public\AppData\Local"));
@@ -260,7 +270,12 @@ fn decrypt_chrome_value(enc: &[u8], key: &[u8], hash_candidates: &[&str]) -> Opt
 /// to the plaintext before encryption; the prefix is stripped when it matches.
 #[cfg(target_os = "windows")]
 fn decrypt_chrome_value(enc: &[u8], key: &[u8], hash_candidates: &[&str]) -> Option<String> {
-    use aes_gcm::{aead::Aead, Aes256Gcm, Key, Nonce};
+    // ponytail: aes-gcm 0.10 re-exports `aead::KeyInit` from its own
+    // (crypto-common 0.1) version; the ambient `cipher 0.5` in this crate
+    // would shadow it and `Aes256Gcm::new` would not resolve. Import the
+    // trait from `aes_gcm` directly so the right version wins.
+    use aes_gcm::aead::{Aead, KeyInit};
+    use aes_gcm::{Aes256Gcm, Key, Nonce};
     let payload = enc.strip_prefix(b"v10")?;
     if payload.len() < 12 + 16 {
         return None;
