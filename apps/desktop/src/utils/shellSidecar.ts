@@ -13,6 +13,8 @@
  * gitService / scriptRunnerService — all 4 callers route through here so the
  * platform branch lives in one place.
  */
+import { isTauri } from '@/utils/platform';
+
 export function buildShellSidecar(cmd: string): [name: string, args: string[]] {
   const isWin = typeof navigator !== 'undefined' && /Win/i.test(navigator.platform);
   return isWin
@@ -23,4 +25,21 @@ export function buildShellSidecar(cmd: string): [name: string, args: string[]] {
 /** Whether the current platform is Windows (browser-safe navigator check). */
 export function isWindowsPlatform(): boolean {
   return typeof navigator !== 'undefined' && /Win/i.test(navigator.platform);
+}
+
+/** Whether the current platform is macOS (browser-safe navigator check). */
+export function isMacPlatform(): boolean {
+  return typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
+}
+
+/** Whether the voice module is supported on the current platform.
+ *
+ *  R15 widens voice from macOS-only to macOS + Windows. Linux / web stay
+ *  unsupported. Centralized here so VoiceInputButton / useVoiceInput /
+ *  VoiceSettings share one source of truth (PRD R15 frontend gating).
+ *  `isTauri()` guard ensures the web build (no `navigator.platform` Tauri
+ *  webview semantics) short-circuits to false. */
+export function isVoiceSupportedPlatform(): boolean {
+  if (!isTauri()) return false;
+  return isMacPlatform() || isWindowsPlatform();
 }

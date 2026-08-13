@@ -59,7 +59,7 @@
     },
     "button": {
       "idle": "Voice input",
-      "windowsUnsupported": "Voice input is not supported on Windows",
+      "windowsUnsupported": "Voice input is not supported on this platform",
       "clickToStop": "Click to stop recording and insert",
       "stopRecordingLabel": "Stop recording",
       "voiceInputLabel": "Voice input"

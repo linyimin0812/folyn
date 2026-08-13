@@ -73,6 +73,10 @@ tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
 # every platform; gating the crate under `[target.macos]` made Windows fail to
 # resolve `log::info!` / `log::warn!` at link time.
 log = "0.4"
+# `dirs` for cross-platform `paste_log` cache path (macOS ~/Library/Logs,
+# Windows %LOCALAPPDATA%\quill\logs). Pure Rust, <1s compile. Was hardcoded
+# to `~/Library/Logs/...` before R11; now needed on Windows too.
+dirs = "5"
 # Local HTTP API for the desktop pet (pet-external-notify-api). tiny_http is
 # sync + threaded — does NOT need tokio's `net` feature (unlike axum/hyper),
 # so it adds the smallest dependency footprint for a single localhost
@@ -114,16 +118,13 @@ tokio = { version = "1", features = ["macros", "rt"] }
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.25"
 objc = "0.2"
-# Voice input (PR2): cpal mic capture → 16kHz mono Int16 PCM; objc2/block2 for
-# SFSpeechRecognizer FFI; anyhow for error context; parking_lot for the Mutex
-# state holding the live Recorder handle; log for diagnostics. Versions match
-# openless (`asr/local/apple_speech_provider.rs` + `recorder.rs`) verbatim —
-# the port is a faithful minimal subset and must not drift on FFI-shaped deps.
-cpal = "0.15"
+# Voice input (PR2): objc2/block2 for SFSpeechRecognizer FFI. cpal /
+# parking_lot / anyhow live in the macOS+Windows cross-platform block below
+# (R15 widens voice module to Windows 11). Versions match openless
+# (`asr/local/apple_speech_provider.rs` + `recorder.rs`) verbatim — the port
+# is a faithful minimal subset and must not drift on FFI-shaped deps.
 block2 = "0.5"
 objc2 = { version = "0.5", features = ["exception"] }
-parking_lot = "0.12"
-anyhow = "1"
 # NSPanel backend for the pet / pet-panel windows. Converts the Tauri
 # WebviewWindow into a real NSPanel (object_setClass onto a custom objc2
 # subclass with empty ivars + mouse-event overrides — the design that avoids
@@ -132,6 +133,15 @@ anyhow = "1"
 # is pinned via Cargo.lock for reproducible builds.
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }
 
+# Cross-platform voice mic capture deps (cpal WASAPI on Windows, CoreAudio on
+# macOS). parked under a cfg(any) so Linux doesn't pull ALSA. R15 widens the
+# macOS-only block above to macOS+Windows so the voice module compiles on
+# Windows 11.
+[target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
+cpal = "0.15"
+parking_lot = "0.12"
+anyhow = "1"
+
 # Windows-only deps for Chrome cookie/password decryption (DPAPI + AES-GCM).
 # Chrome on Windows stores the AES-256-GCM key in `Local State` under
 # `os_crypt.encrypted_key`, base64-encoded with a 5-byte "DPAPI" prefix;
@@ -139,6 +149,11 @@ tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.
 # ciphertext + 16-byte GCM tag. macOS uses the same crate stack already
 # declared above (aes/cbc/cipher) — Windows needs aes-gcm (GCM mode) and
 # windows-sys for DPAPI.
+#
+# PRD R15 note: keep `windows-sys` (raw FFI, used by pet_commands + DPAPI in
+# browser_commands) AND add `windows` (WinRT projection, for SpeechRecognition).
+# Migration of windows-sys paths to the `windows` crate is out of scope
+# (PRD Out of Scope). Both crates can coexist on the Windows target.
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.59", features = [
   "Win32_Security_Cryptography",
@@ -146,6 +161,24 @@ windows-sys = { version = "0.59", features = [
   "Win32_UI_WindowsAndMessaging",
   "Win32_UI_HiDpi",
   "Win32_Graphics_Gdi",
+  # SendInput / KEYBDINPUT / VK_CONTROL / VK_V for voice insert (PRD R15).
+  "Win32_UI_Input_KeyboardAndMouse",
+] }
+windows = { version = "3", features = [
+  "Media_SpeechRecognition",
+  "Globalization",
+  "Foundation",
+  "Storage",
+  "Storage_Streams",
+  # Win32 features are also pulled for completeness if pet_commands ever
+  # migrates off windows-sys; not required by voice module today. Listed
+  # verbatim from research summary so a future migration needs no Cargo edit.
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_Foundation",
+  "Win32_Security_Cryptography",
+  "Win32_Graphics_Gdi",
+  "Win32_UI_HiDpi",
 ] }
 aes-gcm = "0.10"
 base64 = "0.22"

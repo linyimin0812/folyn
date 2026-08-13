@@ -437,8 +437,8 @@
   "voice": {
     "title": "Voice input",
     "description": "Click 🎤 in the AI chat or press the global hotkey to start recording; speech is transcribed, polished, and inserted into the focused input (works across apps).",
-    "windowsUnsupported": ". Voice input is not supported on Windows",
-    "windowsUnsupportedBanner": "Voice input is not supported on this platform. macOS uses Apple Speech (SFSpeechRecognizer).",
+    "windowsUnsupported": ". Voice input is not supported on this platform",
+    "windowsUnsupportedBanner": "Voice input is not supported on this platform. macOS uses Apple Speech; Windows uses WinRT SpeechRecognition.",
     "permission": {
       "checking": "Checking…",
       "granted": "Granted ✓",

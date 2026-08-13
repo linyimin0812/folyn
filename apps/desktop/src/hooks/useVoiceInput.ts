@@ -5,6 +5,7 @@ import { useAiConfigStore, resolvePairConfig } from '@/store/aiConfigStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { runRigChat } from '@/services/rigChat';
 import { isTauri } from '@/utils/platform';
+import { isVoiceSupportedPlatform } from '@/utils/shellSidecar';
 import { resolveBasePath } from '@/utils/pathResolver';
 
 // ponytail: a zustand store IS a hook (`useVoiceInput((s) => s.phase)`), so
@@ -54,12 +55,11 @@ export interface VoiceInputState {
   clearError: () => void;
 }
 
-/** macOS-only check mirroring the one in VoiceInputButton. The hotkey path
- *  on a non-macOS build would call `start()` → `invoke('voice_start')` →
- *  macOS-only error; we short-circuit here so the button stays calm. */
-function onMac(): boolean {
-  return isTauri() && typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
-}
+/** macOS + Windows check (R15 widened voice support). Mirrors the one in
+ *  VoiceInputButton via the shared `isVoiceSupportedPlatform` helper. The
+ *  hotkey path on an unsupported platform would call `start()` →
+ *  `invoke('voice_start')` → platform-unsupported error; we short-circuit
+ *  here so the button stays calm. */
 
 // Internal: a 3s timer that auto-clears the error dot. Module-level so the
 // store action can clear/extend it across calls without exposing it.
@@ -142,7 +142,7 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
     // recording for ~5s after the linger started — phase stays 'inserting'
     // and the bare idle guard rejects the new start().
     if (get().phase !== 'idle' && !(get().phase === 'inserting' && idleNoticeTimer)) return;
-    if (!onMac()) return;
+    if (!isVoiceSupportedPlatform()) return;
     if (idleNoticeTimer) {
       clearTimeout(idleNoticeTimer);
       idleNoticeTimer = null;

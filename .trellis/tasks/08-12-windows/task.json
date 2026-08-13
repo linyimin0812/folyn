@@ -20,7 +20,8 @@
   "subtasks": [],
   "children": [
     "08-13-windows-pet",
-    "08-13-windows-voice"
+    "08-13-windows-voice",
+    "08-13-windows-voice-impl"
   ],
   "parent": null,
   "relatedFiles": [],

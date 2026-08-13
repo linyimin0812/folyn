@@ -437,8 +437,8 @@
   "voice": {
     "title": "语音输入",
     "description": "在 AI 聊天框点 🎤 或按全局热键开始录音,语音转文字后润色并插入到光标所在输入框(支持其他应用)",
-    "windowsUnsupported": "。Windows 暂不支持语音输入",
-    "windowsUnsupportedBanner": "当前平台暂不支持语音输入。macOS 使用 Apple Speech (SFSpeechRecognizer)。",
+    "windowsUnsupported": "。当前平台不支持语音输入",
+    "windowsUnsupportedBanner": "当前平台不支持语音输入。macOS 使用 Apple Speech,Windows 使用 WinRT SpeechRecognition。",
     "permission": {
       "checking": "检查中…",
       "granted": "已授权 ✓",

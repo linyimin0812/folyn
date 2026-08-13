@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
-import { isTauri } from '@/utils/platform';
+import { isVoiceSupportedPlatform, isMacPlatform } from '@/utils/shellSidecar';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 import { isWebGLAvailable } from './SiriGL';
 
@@ -28,9 +28,11 @@ import { isWebGLAvailable } from './SiriGL';
 // orb's own VoiceOrbApp will surface a fallback (TODO). For the mic-button
 // path the CSS ring stays as the in-panel fallback when WebGL is missing.
 
-function onMac(): boolean {
-  return isTauri() && typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
-}
+// ponytail: voice is supported on macOS + Windows (R15). `isVoiceSupportedPlatform`
+// gates the button; `isMacPlatform` gates the macOS-only SiriGL overlay path
+// (Windows has no orb window — R15 out of scope — so the CSS ring is the
+// Windows fallback indicator). Both helpers live in shellSidecar.ts so
+// VoiceInputButton / useVoiceInput / VoiceSettings share one source of truth.
 
 export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
   const { t } = useTranslation();
@@ -53,12 +55,13 @@ export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
     return () => clearTimeout(id);
   }, [glAvailable]);
 
-  const mac = onMac();
+  const voiceSupported = isVoiceSupportedPlatform();
+  const isMac = isMacPlatform();
   const recording = phase === 'recording';
   const busy = phase === 'transcribing' || phase === 'polishing' || phase === 'inserting';
   // Bug #1 fix: enable the button while recording (click = stop). Only busy
-  // phases disable it. `!mac` + `disabled` prop stay hard-disabled.
-  const isDisabled = disabled || !mac || busy;
+  // phases disable it. `!voiceSupported` + `disabled` prop stay hard-disabled.
+  const isDisabled = disabled || !voiceSupported || busy;
 
   // Click-to-toggle: idle → start, recording → stop. The hook guards against
   // double-start / double-stop internally. Label this entry point 'button'
@@ -81,7 +84,7 @@ export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
           ? t('ai:voice.phase.inserting')
           : t('ai:voice.phase.processing');
 
-  const title = !mac
+  const title = !voiceSupported
     ? t('ai:voice.button.windowsUnsupported')
     : recording
       ? t('ai:voice.button.clickToStop')
@@ -95,7 +98,10 @@ export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
 
   return (
     <span className="relative inline-flex">
-      {recording && (!mac || !glAvailable) && trigger === 'hotkey' && (
+      {/* ponytail: macOS gates the SiriGL overlay on WebGL availability;
+          Windows (and any other supported non-mac platform) always falls back
+          to the CSS ring — no orb / no SiriGL on Windows in R15 MVP. */}
+      {recording && (!isMac || !glAvailable) && trigger === 'hotkey' && (
         // ponytail: fallback ring (openless panel-context variant) — only
         // rendered when WebGL is unavailable OR we're not on macOS. The
         // `.voice-ring` / `.voice-glow` CSS classes stay in index.css so this

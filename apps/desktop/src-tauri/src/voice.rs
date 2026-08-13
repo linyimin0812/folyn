@@ -20,20 +20,33 @@
 use serde::Serialize;
 use std::sync::Mutex;
 use tauri::Manager;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+use tauri::Emitter;
 #[cfg(target_os = "macos")]
-use tauri::{Emitter, PhysicalPosition};
+use tauri::PhysicalPosition;
 
 use crate::errors::AppError;
 
-// ponytail: diagnostic for the "Cmd+V didn't paste anywhere" release-build bug.
+// ponytail: diagnostic for the "Cmd+V / Ctrl+V didn't paste anywhere" release-build bug.
 // Quill has no tauri-plugin-log, so release `log::info!` is a no-op. This writes
-// the voice-paste trace to ~/Library/Logs/quill-voice-debug.log so the user can
-// `tail` it without DevTools. Delete once the root cause is fixed.
-#[cfg(target_os = "macos")]
+// the voice-paste trace to a per-platform cache dir so the user can `tail` it
+// without DevTools. macOS → ~/Library/Logs/quill-voice-debug.log; Windows →
+// %LOCALAPPDATA%\quill\logs\quill-voice-debug.log. Delete once the root cause
+// is fixed.
+//
+// R11 originally moved this off the macOS-only `~/Library/Logs` hardcode to
+// `dirs::cache_dir().join("quill/logs")`. R15 widens the cfg gate from
+// macOS-only to macOS+Windows so the Windows paste path has the same
+// diagnostic.
 fn paste_log(msg: &str) {
     use std::io::Write;
-    let path = std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default())
-        .join("Library/Logs/quill-voice-debug.log");
+    let dir = dirs::cache_dir()
+        .or_else(|| dirs::data_dir())
+        .unwrap_or_else(|| std::env::temp_dir())
+        .join("quill")
+        .join("logs");
+    let _ = std::fs::create_dir_all(&dir);
+    let path = dir.join("quill-voice-debug.log");
     if let Ok(mut f) = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -57,23 +70,31 @@ fn paste_log(msg: &str) {
 // is `Copy + Send + Sync`, so storing it in a `Mutex` is cheap and safe.
 use tauri_plugin_global_shortcut::Shortcut;
 
-// Submodules. `recorder` + `apple_speech` are macOS-only (cpal + objc2 FFI);
-// `wav` is pure Rust but only consumed by `apple_speech`, so cfg-gate it too
-// to avoid an unused-crate warning on non-macOS. `insertion` is macOS-only
-// (CoreGraphics + ApplicationServices FFI). On Windows these `mod`
-// declarations resolve to empty modules (the files start with
-// `#![cfg(target_os = "macos")]`), so the types below are only referenced
-// from the macOS command paths.
+// Submodules. macOS: `apple_speech` (objc2 SFSpeechRecognizer), `insertion`
+// (CoreGraphics CGEvent Cmd+V), `permissions` (AVAudioApplication / AX FFI),
+// `recorder` (cpal), `wav` (pure Rust WAV encoder). Windows: `winrt_speech`
+// (WinRT SpeechRecognizer), `insertion_win` (user32 SendInput Ctrl+V),
+// `permissions_win` (no-op stub). `recorder` + `wav` are cross-platform
+// (macOS+Windows). All Windows-target modules start with
+// `#![cfg(target_os = "windows")]` so the file contents are empty on macOS;
+// the macOS-target modules start with `#![cfg(target_os = "macos")]` so the
+// reverse holds on Windows.
 #[cfg(target_os = "macos")]
 mod apple_speech;
 #[cfg(target_os = "macos")]
 mod insertion;
 #[cfg(target_os = "macos")]
 mod permissions;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 mod recorder;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 mod wav;
+#[cfg(target_os = "windows")]
+mod winrt_speech;
+#[cfg(target_os = "windows")]
+mod insertion_win;
+#[cfg(target_os = "windows")]
+mod permissions_win;
 
 /// Result of a `voice_stop` call. `audioPath` is set when the user has
 /// "保存语音源文件" enabled — the WAV written under `<vault>/.voice_input/`.
@@ -119,7 +140,13 @@ struct VoiceInner {
     asr: std::sync::Arc<apple_speech::AppleSpeechAsr>,
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "windows")]
+struct VoiceInner {
+    recorder: Option<recorder::Recorder>,
+    asr: std::sync::Arc<winrt_speech::WinRtSpeechAsr>,
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 struct VoiceInner;
 
 impl VoiceState {
@@ -162,7 +189,21 @@ impl VoiceInner {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "windows")]
+impl VoiceInner {
+    fn idle() -> Self {
+        Self {
+            recorder: None,
+            asr: std::sync::Arc::new(winrt_speech::WinRtSpeechAsr::new(None)),
+        }
+    }
+
+    fn is_recording(&self) -> bool {
+        self.recorder.is_some()
+    }
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 impl VoiceInner {
     fn idle() -> Self {
         Self
@@ -400,9 +441,13 @@ fn show_voice_orb_no_activate(app: &tauri::AppHandle, _window: &tauri::WebviewWi
 #[cfg(not(target_os = "macos"))]
 #[allow(dead_code)]
 fn show_voice_orb(_app: &tauri::AppHandle) {
-    // Non-macOS: voice flow is gated to macOS-only; this helper is never
-    // reached on Windows because `voice_start` returns the macOS-only error
-    // before calling it. Stub kept so the call site compiles unchanged.
+    // Non-macOS no-op. On Windows, `voice_start` (windows) calls this for
+    // parity with the macOS call site, but the orb window is OUT OF SCOPE for
+    // R15 MVP (PRD Out of Scope) — Windows users get the mic-button CSS ring
+    // fallback in the frontend. On Linux the voice_start stub returns an
+    // unsupported-platform error before reaching here. Stub kept so the
+    // Windows call site compiles unchanged; replace with real orb show logic
+    // if a Windows orb window is added later.
 }
 
 /// Hide the `voice-orb` window. Called by the frontend VoiceOrbApp via
@@ -519,7 +564,11 @@ pub async fn voice_stop(
 /// `<vault_path>/<source_dir>/<timestamp>.wav`. Creates the dir if missing.
 /// Empty `pcm` → returns `None`-shaped empty path error (caller treats as
 /// best-effort skip). Timestamp format: `YYYYMMDD-HHMMSS-<ms>`.
-#[cfg(target_os = "macos")]
+///
+/// ponytail: cfg widened from macOS-only to mac+windows in R15 — pure Rust
+/// (std::fs + `wav::encode_wav_16k_mono`), no FFI. Windows `voice_stop` reuses
+/// the same save-source-wav path as macOS.
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 fn save_source_wav(
     pcm: &[u8],
     source_dir: &str,
@@ -587,7 +636,7 @@ fn save_source_wav(
 }
 
 /// `YYYYMMDD-HHMMSS-<ms>` in local time. Mirrors openless source-file naming.
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 fn timestamp_filename() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let now = SystemTime::now()
@@ -641,22 +690,280 @@ pub async fn voice_cancel(app: tauri::AppHandle) -> Result<(), AppError> {
     Ok(())
 }
 
-// ── Non-macOS stubs ────────────────────────────────────────────────────────
+// ── Windows real implementation ─────────────────────────────────────────────
 //
-// `voice.rs` (this file) is the module root declared in `lib.rs::mod voice;`.
-// The macOS submodules (`recorder`, `apple_speech`, `wav`) are cfg-gated to
-// `target_os = "macos"` so they don't compile on Windows — but the commands
-// below MUST exist on every platform because `lib.rs::invoke_handler!`
-// references them unconditionally. Non-macOS returns a clear error so the
-// frontend can show the "Windows 暂不支持语音输入" tooltip path.
+// Mirrors macOS `voice_start` / `voice_stop` / `voice_cancel` /
+// `voice_insert_text` 1:1 with Windows-native backends:
+//   - cpal WASAPI mic capture (cross-platform `recorder::Recorder`)
+//   - WinRT `SpeechRecognizer` for ASR (`winrt_speech::WinRtSpeechAsr`)
+//   - `user32::SendInput` Ctrl+V for cross-app paste (`insertion_win::insert_text`)
+//   - No Accessibility / speech-recognition permission concepts (cpal隐式触发
+//     Consent UI); `permissions_win` is a no-op stub kept for signature parity.
+//
+// ponytail: orb window is OUT OF SCOPE for R15 MVP (PRD Out of Scope).
+// `show_voice_orb(&app)` here resolves to the non-macOS no-op stub below —
+// Windows users get the mic-button CSS ring fallback in the frontend, not a
+// floating orb window. Upgrade path: implement a Windows orb window
+// (`tauri::WebviewWindow` + `WS_EX_TOOLWINDOW` per sendinput-paste.md §风险点5)
+// then replace the no-op stub with real show/hide logic.
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "windows")]
 #[tauri::command]
-pub async fn voice_start(_app: tauri::AppHandle, _spoken_locale: String) -> Result<(), AppError> {
-    Err("voice input is macOS-only".into())
+pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result<(), AppError> {
+    use std::sync::Arc;
+    use winrt_speech::WinRtSpeechAsr;
+    use recorder::{Recorder, RecorderError};
+
+    log::info!("[voice] voice_start called (windows): spoken_locale={:?}", spoken_locale);
+
+    let state = app.state::<VoiceState>();
+    let mut inner = state.inner.lock().map_err(|e| format!("voice state poisoned: {e}"))?;
+
+    if inner.is_recording() {
+        return Err("voice recording already in progress".into());
+    }
+
+    // Fresh ASR consumer per session (mirrors macOS rationale).
+    let locale_arg = if spoken_locale.trim().is_empty() {
+        None
+    } else {
+        Some(spoken_locale)
+    };
+    let asr = Arc::new(WinRtSpeechAsr::new(locale_arg));
+    let consumer_typed = Arc::clone(&asr);
+    let consumer: Arc<dyn recorder::AudioConsumer> = consumer_typed;
+
+    // ponytail: permissions_win::ensure_microphone is a no-op — WinRT + cpal
+    // WASAPI trigger the Windows mic Consent UI implicitly on first
+    // SpeechRecognizer::CreateAsync / build_input_stream. No equivalent of
+    // macOS's three-box AVAudioApplication / SFSpeechRecognizer / AX flow.
+    // Ceiling: if a future release wants a preflight mic-permission UI gate,
+    // implement `Media_Capture` feature + `MediaCapture::InitializeAsync`
+    // (research winrt-speech.md §麦克风权限). For MVP, rely on cpal implicit.
+    if let Err(err) = permissions_win::ensure_microphone() {
+        return Err(err.into());
+    }
+
+    let app_for_level = app.clone();
+    let level_handler: Option<recorder::LevelHandler> = Some(std::sync::Arc::new(move |level: f32| {
+        let _ = app_for_level.emit("voice://mic-level", serde_json::json!({ "level": level }));
+    }));
+    let (recorder, runtime_rx) = match Recorder::start(consumer, level_handler) {
+        Ok(pair) => pair,
+        Err(RecorderError::PermissionDenied) => {
+            return Err("麦克风权限被拒绝，请在 系统设置 → 隐私和安全性 → 麦克风 中允许 Quill".into());
+        }
+        Err(RecorderError::EngineFailed(msg)) => {
+            return Err(format!("麦克风启动失败: {msg}").into());
+        }
+    };
+
+    let _ = runtime_rx.try_recv();
+
+    inner.recorder = Some(recorder);
+    inner.asr = asr;
+    log::info!("[voice] recording started (windows)");
+
+    // Orb MVP: no-op on Windows (see impl below). Callsite kept for parity
+    // with macOS so a future orb implementation drops in unchanged.
+    show_voice_orb(&app);
+    Ok(())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub async fn voice_stop(
+    app: tauri::AppHandle,
+    save_source: bool,
+    source_dir: String,
+    vault_path: String,
+) -> Result<VoiceStopResult, AppError> {
+    use std::sync::Arc;
+
+    log::info!(
+        "[voice] voice_stop called (windows): save_source={}, source_dir={:?}, vault_path={:?}",
+        save_source, source_dir, vault_path
+    );
+
+    let state = app.state::<VoiceState>();
+    let (recorder, asr): (
+        Option<recorder::Recorder>,
+        Arc<winrt_speech::WinRtSpeechAsr>,
+    ) = {
+        let mut inner = state.inner.lock().map_err(|e| format!("voice state poisoned: {e}"))?;
+        let recorder = inner.recorder.take();
+        if recorder.is_none() {
+            log::warn!("[voice] voice_stop called with no active recorder (windows)");
+        }
+        (recorder, Arc::clone(&inner.asr))
+    };
+
+    if let Some(rec) = recorder {
+        rec.stop();
+    }
+    log::info!("[voice] recording stopped (windows); transcribing (buffered {} ms)", asr.buffer_duration_ms());
+
+    let (audio_path, save_error) = if save_source {
+        if vault_path.trim().is_empty() {
+            log::warn!("[voice] save_source requested but vault_path is empty (windows)");
+            (None, Some("未配置 vault 路径,无法保存语音源文件".to_string()))
+        } else {
+            match save_source_wav(&asr.buffered_pcm(), &source_dir, &vault_path) {
+                Ok(p) => (Some(p), None),
+                Err(err) => {
+                    log::warn!("[voice] source audio save failed (windows): {err}");
+                    (None, Some(err))
+                }
+            }
+        }
+    } else {
+        (None, None)
+    };
+
+    // ponytail: WinRtSpeechAsr::transcribe awaits IAsyncOperation directly
+    // (no spawn_blocking — STA thread affinity, research winrt-speech.md
+    // §风险点3). windows-rs 3.x IAsyncOperation is Send-safe Future.
+    let transcript = asr.transcribe().await.map_err(|e| format!("语音识别失败: {e:#}"))?;
+
+    Ok(VoiceStopResult {
+        transcript: transcript.text,
+        audio_path,
+        save_error,
+    })
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub async fn voice_cancel(app: tauri::AppHandle) -> Result<(), AppError> {
+    let state = app.state::<VoiceState>();
+    let (recorder, asr) = {
+        let mut inner = state.inner.lock().map_err(|e| format!("voice state poisoned: {e}"))?;
+        let recorder = inner.recorder.take();
+        inner.asr.cancel();
+        (recorder, std::sync::Arc::clone(&inner.asr))
+    };
+
+    if let Some(rec) = recorder {
+        rec.stop();
+    }
+    let _ = asr;
+    log::info!("[voice] recording cancelled (windows)");
+    Ok(())
+}
+
+/// Windows cross-app paste: `insertion_win::insert_text` writes the text to
+/// the clipboard via `tauri-plugin-clipboard-manager` then posts Ctrl+V via
+/// `user32::SendInput`. Mirrors macOS `voice_insert_text` shape.
+///
+/// ponytail: orb hide step is skipped — R15 MVP does not enable the voice-orb
+/// window on Windows (PRD Out of Scope). The macOS hide-orb-before-paste
+/// pattern (insertion.rs:680-699) is only relevant when a floating orb window
+/// could steal foreground focus; without an orb, SendInput lands at whatever
+/// window the user is already fronting. If a Windows orb is added later,
+/// mirror the macOS `run_on_main_thread(hide)` + 50ms yield here.
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub async fn voice_insert_text(app: tauri::AppHandle, text: String) -> Result<(), AppError> {
+    tauri::async_runtime::spawn_blocking(move || insertion_win::insert_text(&app, &text))
+        .await
+        .map_err(|e| format!("voice insert join failed: {e}"))?
+        .map_err(AppError::from)
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub async fn voice_request_accessibility() -> Result<bool, AppError> {
+    // Windows has no Accessibility concept; SendInput needs no permission.
+    // Frontend hides the accessibility permission row on Windows (see
+    // VoiceSettings.tsx isMacPlatform gate).
+    Ok(true)
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub async fn voice_request_microphone() -> Result<bool, AppError> {
+    // Windows has no synchronous mic-permission API; cpal WASAPI triggers the
+    // Consent UI implicitly on first build_input_stream. Report true so the
+    // frontend permission row short-circuits; actual denial surfaces as
+    // RecorderError::PermissionDenied from voice_start.
+    Ok(true)
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub async fn voice_request_speech() -> Result<bool, AppError> {
+    // WinRT SpeechRecognizer has no separate permission grant; the only
+    // prerequisite is the offline language pack (detected via
+    // SupportedTopicLanguages in winrt_speech::transcribe). Frontend hides
+    // the speech permission row on Windows.
+    Ok(true)
+}
+
+/// Debug helper for the "Ctrl+V didn't paste anywhere" diagnostic. On
+/// Windows returns the foreground window's title + PID via `GetForegroundWindow`
+/// + `GetWindowTextW` + `GetWindowThreadProcessId`. Mirrors macOS
+/// `voice_debug_frontmost` shape so the frontend can call it unchanged.
+///
+/// ponytail: diagnostic scaffolding — delete once the paste bug is resolved.
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub async fn voice_debug_frontmost() -> Result<String, AppError> {
+    tauri::async_runtime::spawn_blocking(|| {
+        use windows_sys::Win32::UI::WindowsAndMessaging::{
+            GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId,
+        };
+        // SAFETY: GetWindowTextW writes into a stack buffer of fixed size; the
+        // return value is the char count (excluding NUL). Buffer is large
+        // enough for any reasonable window title. GetForegroundWindow +
+        // GetWindowThreadProcessId are thread-safe query APIs.
+        let hwnd = unsafe { GetForegroundWindow() };
+        // ponytail: windows-sys 0.59 `HWND = isize`; format as hex (Pointer
+        // formatter needs a real raw pointer, and the handle value is the
+        // only meaningful identifier anyway).
+        if hwnd == 0 {
+            return Ok("foreground window nil".to_string());
+        }
+        let mut buf = [0u16; 512];
+        let len = unsafe { GetWindowTextW(hwnd, buf.as_mut_ptr(), buf.len() as i32) };
+        let title = if len > 0 {
+            String::from_utf16_lossy(&buf[..len as usize])
+        } else {
+            String::new()
+        };
+        let mut pid: u32 = 0;
+        unsafe { GetWindowThreadProcessId(hwnd, &mut pid) };
+        let info = format!("hwnd=0x{hwnd:x} title={title} pid={pid}");
+        paste_log(&format!("[voice-paste] frontmost (win): {info}"));
+        Ok(info)
+    })
+    .await
+    .map_err(|e| format!("voice_debug_frontmost join failed: {e}"))?
+    .map_err(AppError::from)
+}
+
+// ── Non-macOS stubs (Linux etc.) ───────────────────────────────────────────
+//
+// `voice.rs` (this file) is the module root declared in `lib.rs::mod voice;`.
+// The macOS submodules (`apple_speech`, `insertion`, `permissions`) are
+// cfg-gated to `target_os = "macos"`; the Windows submodules (`winrt_speech`,
+// `insertion_win`, `permissions_win`) to `target_os = "windows"`; `recorder`
+// + `wav` are cross-platform (mac+windows). The commands below MUST exist on
+// every platform because `lib.rs::invoke_handler!` references them
+// unconditionally. Linux (and other non-mac/non-win targets) returns a clear
+// error so the frontend can show the "当前平台不支持语音输入" tooltip path.
+//
+// ponytail: tri-state cfg — `#[cfg(target_os = "macos")]` macOS impl,
+// `#[cfg(target_os = "windows")]` Windows impl (mirror of macOS),
+// `#[cfg(not(any(target_os = "macos", target_os = "windows")))]` Linux no-op.
+// Zero-overhead by construction: each target picks exactly one branch.
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[tauri::command]
+pub async fn voice_start(_app: tauri::AppHandle, _spoken_locale: String) -> Result<(), AppError> {
+    Err("voice input is not supported on this platform".into())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[tauri::command]
 pub async fn voice_stop(
     _app: tauri::AppHandle,
@@ -664,13 +971,13 @@ pub async fn voice_stop(
     _source_dir: String,
     _vault_path: String,
 ) -> Result<VoiceStopResult, AppError> {
-    Err("voice input is macOS-only".into())
+    Err("voice input is not supported on this platform".into())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[tauri::command]
 pub async fn voice_cancel(_app: tauri::AppHandle) -> Result<(), AppError> {
-    Err("voice input is macOS-only".into())
+    Err("voice input is not supported on this platform".into())
 }
 
 /// Write `text` to the system clipboard and simulate Cmd+V so it lands in
@@ -776,10 +1083,10 @@ pub async fn voice_request_speech() -> Result<bool, AppError> {
     .map_err(AppError::from)
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[tauri::command]
 pub async fn voice_insert_text(_app: tauri::AppHandle, _text: String) -> Result<(), AppError> {
-    Err("voice input is macOS-only".into())
+    Err("voice input is not supported on this platform".into())
 }
 
 /// Debug helper: returns `bundle=<id> name=<name> pid=<pid> isQuill=<bool>`
@@ -848,28 +1155,28 @@ pub async fn voice_debug_frontmost() -> Result<String, AppError> {
     .map_err(|e| format!("voice_debug_frontmost join failed: {e}"))?
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[tauri::command]
 pub async fn voice_debug_frontmost() -> Result<String, AppError> {
-    Err("voice input is macOS-only".into())
+    Err("voice input is not supported on this platform".into())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[tauri::command]
 pub async fn voice_request_accessibility() -> Result<bool, AppError> {
-    // Non-macOS: no Accessibility concept; report "not applicable" as false so
-    // the frontend can short-circuit its permission UI the same way as a denied
-    // macOS user (the voice flow is gated to macOS-only anyway).
+    // Non-mac/non-win: no Accessibility concept; report "not applicable" as
+    // false so the frontend short-circuits its permission UI the same way as
+    // a denied macOS user (the voice flow is gated off this platform anyway).
     Ok(false)
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[tauri::command]
 pub async fn voice_request_microphone() -> Result<bool, AppError> {
     Ok(false)
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 #[tauri::command]
 pub async fn voice_request_speech() -> Result<bool, AppError> {
     Ok(false)

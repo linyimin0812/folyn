@@ -11,7 +11,7 @@
 //! level metering UI. PR3 will add the level handler + archiver when wiring
 //! `VoiceInputButton` recording state + source file save.
 
-#![cfg(target_os = "macos")]
+#![cfg(any(target_os = "macos", target_os = "windows"))]
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -259,6 +259,13 @@ fn classify_default_config_err(msg: String) -> RecorderError {
     }
 }
 
+// ponytail: string-match the BuildStreamError message — cpal 0.15 doesn't
+// expose typed variants for permission denial (the variant is
+// `BackendSpecific { err }` carrying the OS error string). Windows WASAPI
+// returns "Access is denied." (contains "denied") when the user blocked the
+// mic, so the keyword catch holds. Ceiling: if cpal adds a typed
+// `PermissionDenied` variant in a future release, switch to it (more robust
+// than string-match against an unstable OS-formatted message).
 fn classify_build_stream_err(err: cpal::BuildStreamError) -> RecorderError {
     let msg = err.to_string();
     let lower = msg.to_lowercase();

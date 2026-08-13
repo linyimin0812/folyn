@@ -59,7 +59,7 @@
     },
     "button": {
       "idle": "语音输入",
-      "windowsUnsupported": "Windows 暂不支持语音输入",
+      "windowsUnsupported": "当前平台不支持语音输入",
       "clickToStop": "点击停止录音并插入",
       "stopRecordingLabel": "停止录音",
       "voiceInputLabel": "语音输入"

@@ -4,6 +4,7 @@ import { useVoiceStore, DEFAULT_POLISH_PROMPT, SPOKEN_LANGUAGES } from '@/store/
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { PairSelector } from '@/components/ai/PairSelector';
 import { isTauri } from '@/utils/platform';
+import { isVoiceSupportedPlatform, isMacPlatform } from '@/utils/shellSidecar';
 import { invoke } from '@tauri-apps/api/core';
 import { Toggle } from '@/components/settings/primitives';
 import { useHotkeyRecording } from '@/components/settings/useHotkeyRecording';
@@ -137,7 +138,12 @@ export function VoiceSettings() {
   const voicePair = useAiConfigStore((s) => s.voicePair);
   const setVoicePair = useAiConfigStore((s) => s.setVoicePair);
 
-  const onMac = isTauri() && typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
+  // ponytail: R15 widens voice from macOS-only to macOS + Windows. Split
+  // the old `onMac` into `isMac` (mac-only permission rows: mic / speech /
+  // accessibility — Windows has no equivalent concepts) and `voiceSupported`
+  // (banner gate — only Linux/web see the unsupported banner now).
+  const isMac = isMacPlatform();
+  const voiceSupported = isVoiceSupportedPlatform();
 
   // macOS permission affordances: each is an explicit "trigger the system prompt"
   // button (mirrors openless — prompts fire from explicit user actions, not hot
@@ -151,7 +157,7 @@ export function VoiceSettings() {
 
   const requestPerm = useCallback(
     async (cmd: string, setState: (s: PermState) => void) => {
-      if (!onMac) return;
+      if (!isMac) return;
       setState('checking');
       try {
         const granted = await invoke<boolean>(cmd);
@@ -161,7 +167,7 @@ export function VoiceSettings() {
         setState('denied');
       }
     },
-    [onMac],
+    [isMac],
   );
 
   return (
@@ -172,21 +178,21 @@ export function VoiceSettings() {
           {(() => {
             const desc = t('settings:voice.description');
             const idx = desc.indexOf('🎤');
-            if (idx < 0) return <>{desc}{!onMac && t('settings:voice.windowsUnsupported')}</>;
+            if (idx < 0) return <>{desc}{!voiceSupported && t('settings:voice.windowsUnsupported')}</>;
             const before = desc.slice(0, idx);
             const after = desc.slice(idx + 2);
-            return <>{before}<ThemeIcon name="cwmMicOn" size={12} className="inline-block align-middle" />{after}{!onMac && t('settings:voice.windowsUnsupported')}</>;
+            return <>{before}<ThemeIcon name="cwmMicOn" size={12} className="inline-block align-middle" />{after}{!voiceSupported && t('settings:voice.windowsUnsupported')}</>;
           })()}
         </div>
       </div>
 
-      {!onMac && (
+      {!voiceSupported && (
         <div className="mb-3.5 px-3 py-2 rounded-md border border-brd bg-surf text-[length:calc(var(--ui-font-size)-2.5px)] text-t3">
           {t('settings:voice.windowsUnsupportedBanner')}
         </div>
       )}
 
-      {onMac && (
+      {isMac && (
         <>
           <PermissionRow
             title={t('settings:voice.microphone.title')}
@@ -230,7 +236,7 @@ export function VoiceSettings() {
         </div>
       )}
 
-      {onMac && (
+      {isMac && (
         <PermissionRow
           title={t('settings:voice.speech.title')}
           desc={t('settings:voice.speech.desc')}
@@ -283,7 +289,7 @@ export function VoiceSettings() {
         <Toggle value={autoPaste} onChange={setAutoPaste} />
       </Row>
 
-      {onMac && autoPaste && (
+      {isMac && autoPaste && (
         <PermissionRow
           title={t('settings:voice.accessibility.title')}
           desc={t('settings:voice.accessibility.desc')}
