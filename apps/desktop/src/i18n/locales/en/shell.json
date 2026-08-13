@@ -11,8 +11,6 @@
     "git": "Git"
   },
   "statusBar": {
-    "aiReady": "✦ AI ready",
-    "markdown": "Markdown",
     "viewMode": {
       "split": "Split mode",
       "edit": "Edit mode",

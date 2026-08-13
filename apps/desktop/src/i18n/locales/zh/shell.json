@@ -11,8 +11,6 @@
     "git": "Git 操作"
   },
   "statusBar": {
-    "aiReady": "✦ AI 就绪",
-    "markdown": "Markdown",
     "viewMode": {
       "split": "分屏模式",
       "edit": "编辑模式",
