@@ -16,7 +16,7 @@ import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 import { ContainerRegistry, registerBuiltinPlugins } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
-import { transformMathBrackets } from '@/services/markdown/renderMarkdown';
+import { transformMathBrackets, MATHJAX_CONTAINER_CSS } from '@/services/markdown/renderMarkdown';
 
 import * as dbmlExporter from './export/dbml';
 import * as excalidrawExporter from './export/excalidraw';
@@ -419,6 +419,12 @@ export const HTML_STYLES = `
       font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       font-size: 14px; line-height: 1.8; color: #1a2040; word-break: break-word;
     }
+
+    /* MathJax: pin mjx-container to a stable font + size so the SVG
+       width="Xex" resolves consistently regardless of whether 'Sora'
+       loaded from CDN. See renderMarkdown.ts MATHJAX_CONTAINER_CSS for
+       the full rationale. */
+    ${MATHJAX_CONTAINER_CSS}
 
     /* Headings */
     h1 { font-size: 28px; font-weight: 700; margin: 8px 0 12px; border-bottom: 1px solid #dde2f0; padding-bottom: 8px; }

@@ -30,6 +30,7 @@ function renderMarkdownToReact(md: string, opts?: MathRenderOptions): ReactNode;
 function renderMarkdownToHtml(md: string, opts?: MathRenderOptions): string;
 function transformMathBrackets(md: string): string;     // \[..\] / \(..\) → $$..$$ / $..$
 function findMathSegments(md: string): MathSegment[];    // shared code-segment scanner
+const MATHJAX_CONTAINER_CSS: string;                    // pinned font for SVG ex-unit
 ```
 
 `renderMarkdownToHtml` is `renderToStaticMarkup(renderMarkdownToReact(md, opts))` — they share one pipeline, not two.
@@ -77,6 +78,12 @@ Bare AMS environments outside `$$..$$` are NOT recognized as math. YAGNI — wri
 ### Export self-containment
 
 Export HTML MUST inline MathJax output (SVG + scoped `<style>`). No CDN URLs, no `<link stylesheet>`, no font URLs. rehype-mathjax's SVG output is naturally self-contained — preserve this. Tests in `renderMarkdown.test.ts` assert absence of `cdn.jsdelivr`, font-URL patterns, and `<link stylesheet>` in exported HTML.
+
+### Export math crispness (font pin)
+
+MathJax v3 SVG emits `width="Xex"` / `height="Yex"` in CSS `ex` units. `1ex` is the surrounding font's x-height, so the SVG's display pixel size is font-dependent. The in-app preview loads 'Sora' from Google Fonts via `@import`; the standalone export only loads 'Sora' when opened online (the `@import` is captured by `collectAppCss`). Offline or blocked loads fall back to a system font with a different x-height → SVG renders at a different pixel size → subpixel anti-aliasing looks blurry.
+
+`MATHJAX_CONTAINER_CSS` (exported from `services/markdown/renderMarkdown.ts`) pins `mjx-container` to a system-font stack + explicit `font-size` so `1ex` resolves consistently regardless of whether 'Sora' loads. `HTML_STYLES` in `services/exportService.ts` MUST embed `MATHJAX_CONTAINER_CSS`. Math content is vector path data — `font-family` only affects the SVG's display dimensions, not glyph shapes. Tests in `renderMarkdown.test.ts` assert the SVG uses `ex` units (documents the root cause) and that `MATHJAX_CONTAINER_CSS` sets `font-family` + `font-size`.
 
 ### Streaming (chat)
 

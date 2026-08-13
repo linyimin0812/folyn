@@ -199,3 +199,35 @@ export function renderMarkdownToHtml(md: string, opts: MathRenderOptions = {}): 
   const node = renderMarkdownToReact(md, opts);
   return renderToStaticMarkup(node as React.ReactElement);
 }
+
+/**
+ * CSS rule pinning `mjx-container` to a stable font + size so MathJax SVG
+ * `width="Xex"` resolves consistently in standalone export HTML.
+ *
+ * Why: MathJax v3 SVG output uses CSS `ex` units for `width`/`height` (see
+ * `OutputJax.SVG.prototype.ex` — divides internal coords by `x_height`
+ * and appends `'ex'`). `1ex` is the x-height of the surrounding font. In
+ * the in-app preview 'Sora' is loaded from Google Fonts via `@import`, so
+ * `1ex` resolves to Sora's x-height. In exported HTML the `@import` rule
+ * is captured by `collectAppCss()`, but Sora only loads when the export
+ * is opened ONLINE — offline or blocked loads fall back to the system
+ * font, whose x-height differs. SVG then renders at a different pixel
+ * size, and at small sizes (~13×17px) the path rasterization picks up
+ * subpixel anti-aliasing that looks blurry vs the in-app preview.
+ *
+ * Math content is vector path data, not text — `font-family` only
+ * affects the SVG's display dimensions (via the `ex` unit), not glyph
+ * shapes. Pinning to a system-font stack guarantees the ex-height is
+ * stable regardless of whether 'Sora' loads from CDN.
+ *
+ * ponytail: one CSS rule. Bundling 'Sora' as `@font-face` base64 would
+ * also work but bloats every export by ~50KB+ for a font that only
+ * affects MathJax's reference `ex` — the math glyphs themselves are
+ * vector paths from MathJax's TeX font, embedded inline.
+ */
+export const MATHJAX_CONTAINER_CSS = `
+mjx-container {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+}
+`;

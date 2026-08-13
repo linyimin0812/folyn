@@ -3,6 +3,7 @@ import {
   transformMathBrackets,
   findMathSegments,
   renderMarkdownToHtml,
+  MATHJAX_CONTAINER_CSS,
 } from './renderMarkdown';
 
 describe('transformMathBrackets', () => {
@@ -151,5 +152,33 @@ describe('renderMarkdownToHtml (export self-contained)', () => {
     // Two math segments — should contain two mjx-container instances
     const count = (html.match(/<mjx-container/g) || []).length;
     expect(count).toBe(2);
+  });
+});
+
+describe('MathJax SVG ex-unit sensitivity (export blur root cause)', () => {
+  // MathJax v3 SVG output uses CSS `ex` units for width/height (see
+  // OutputJax.SVG.prototype.ex — internal coords divided by x_height
+  // and suffixed with 'ex'). `1ex` is the x-height of the surrounding
+  // font, so the SVG's display pixel size is font-dependent. If the
+  // export HTML's font differs from the in-app preview (e.g., 'Sora'
+  // loaded in preview via Google Fonts @import, but not loaded in the
+  // standalone export when opened offline), the SVG renders at a
+  // different pixel size and small formulas pick up subpixel anti-
+  // aliasing that looks blurry. MATHJAX_CONTAINER_CSS pins a stable
+  // system font + size so the ex unit resolves consistently.
+  it('emits SVG width and height in ex units (font-dependent display size)', () => {
+    const html = renderMarkdownToHtml('$$\\frac{a}{b}$$');
+    expect(html).toMatch(/<svg[^>]*\swidth="[\d.]+ex"/);
+    expect(html).toMatch(/<svg[^>]*\sheight="[\d.]+ex"/);
+  });
+
+  it('MATHJAX_CONTAINER_CSS pins mjx-container font-family and font-size', () => {
+    // Regression guard: removing the font pin re-introduces the export
+    // blur. The rule must set a system font stack (always available,
+    // not dependent on 'Sora' loading) AND an explicit font-size so
+    // `1ex` resolves to a stable pixel value.
+    expect(MATHJAX_CONTAINER_CSS).toMatch(/mjx-container\s*\{/);
+    expect(MATHJAX_CONTAINER_CSS).toMatch(/font-family:\s*-apple-system/);
+    expect(MATHJAX_CONTAINER_CSS).toMatch(/font-size:\s*\d+px/);
   });
 });
