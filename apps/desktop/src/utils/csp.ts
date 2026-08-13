@@ -1,4 +1,5 @@
 import { useCspConfigStore, type CspMode } from '@/store/cspConfigStore';
+import { settingsLoadDone } from '@/store/settingsPersistence';
 
 /**
  * Runtime Content-Security-Policy management.
@@ -124,14 +125,24 @@ export function applyCspFromStore(): void {
 let cspInitialized = false;
 
 /**
- * Bootstrap runtime CSP: apply immediately with the current (default) state,
- * then re-apply whenever the store changes (including async hydration).
- * Runs once per window from main.tsx — every Tauri window shares this module,
- * so the pet/voice-orb windows get the same policy as the main window.
+ * Bootstrap runtime CSP: subscribe to store changes (hydration + live edits)
+ * and apply exactly once after settings hydration completes.
+ *
+ * The first policy applied to a document is the ONLY one that can set the
+ * ceiling — browsers never *relax* an already-enforced CSP, so injecting a
+ * pre-hydration default first would permanently block any URL that only
+ * exists in the persisted config: "adding" a URL (or switching to allow-all)
+ * would never take effect, even after reload. We therefore must not touch the
+ * DOM until the hydrated config is ready.
+ *
+ * Runs once per window from main.tsx. In the main window hydration comes
+ * from disk (loadSettings -> settingsLoadDone); secondary windows (pet /
+ * voice-orb) hydrate from the `pet://settings-updated` broadcast, which fires
+ * the store subscription below.
  */
 export function initCsp(): void {
   if (cspInitialized) return;
   cspInitialized = true;
-  applyCspFromStore();
   useCspConfigStore.subscribe(() => applyCspFromStore());
+  settingsLoadDone.then(() => applyCspFromStore());
 }
