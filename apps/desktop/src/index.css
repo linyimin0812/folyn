@@ -447,7 +447,7 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .skill-meta-value { color: var(--t2); word-break: break-word; }
 
 /* ── Markdown Preview (targets rendered HTML) ── */
-.md-preview { font-family: var(--font-ui); font-size: 14px; line-height: 1.8; color: var(--t1); word-break: break-word; text-align: justify; }
+.md-preview { font-family: var(--font-ui); font-size: 14px; line-height: 1.8; color: var(--t1); word-break: break-word; text-align: left; }
 .md-preview h1 { font-size: 28px; font-weight: 700; margin: 8px 0 12px; border-bottom: 1px solid var(--brd); padding-bottom: 8px; }
 .md-preview h2 { font-size: 22px; font-weight: 700; margin: 20px 0 10px; }
 .md-preview h3 { font-size: 18px; font-weight: 600; margin: 16px 0 8px; }
