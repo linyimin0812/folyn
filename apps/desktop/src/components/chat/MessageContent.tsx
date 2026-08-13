@@ -1,11 +1,7 @@
-import { useMemo, useState, createElement, Fragment, type ReactNode } from 'react';
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
+import { useMemo, useState, type ReactNode } from 'react';
+import { renderMarkdownToReact } from '@/services/markdown/renderMarkdown';
 import remarkGfm from 'remark-gfm';
-import remarkRehype from 'remark-rehype';
 import rehypeHighlight from 'rehype-highlight';
-import rehypeReact from 'rehype-react';
-import { jsx, jsxs } from 'react/jsx-runtime';
 import type { AssistantImage } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { saveImageToVault } from '@/services/chatImageService';
@@ -31,19 +27,15 @@ import { ZoomableImage } from './ZoomableImage';
 // (correctness first); PR2/PR3 will split the heavy markdown deps out of
 // the secondary window bundle.
 
-const processor = unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  .use(remarkRehype)
-  .use(rehypeHighlight, { detect: true })
-  .use(rehypeReact, {
-    createElement,
-    Fragment,
-    jsx,
-    jsxs,
-    components: {
-      code: CodeOverride,
-    },
+// ponytail: renderMarkdownToReact is sync (processSync) and MathJax SVG
+// rendering happens at parse time, so each new text segment re-parses to
+// fresh SVG — no runtime typeset/useEffect needed for streaming. The
+// per-segment useMemo cache below keeps prior segments from re-parsing.
+const render = (value: string): ReactNode =>
+  renderMarkdownToReact(value, {
+    remarkPlugins: [remarkGfm],
+    rehypePlugins: [[rehypeHighlight, { detect: true } as any]],
+    components: { code: CodeOverride },
   });
 
 type Segment =
@@ -88,8 +80,7 @@ function useTextNode(value: string): ReactNode {
   return useMemo(() => {
     if (!value.trim()) return null;
     try {
-      const result = processor.processSync(value);
-      return result.result as ReactNode;
+      return render(value);
     } catch {
       return value;
     }

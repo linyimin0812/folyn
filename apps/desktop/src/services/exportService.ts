@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
+import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkDirective from 'remark-directive';
@@ -10,10 +11,12 @@ import remarkDirectiveRehype from 'remark-directive-rehype';
 import remarkRehype from 'remark-rehype';
 import rehypeRaw from 'rehype-raw';
 import rehypeHighlight from 'rehype-highlight';
+import rehypeMathjax from 'rehype-mathjax';
 import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 import { ContainerRegistry, registerBuiltinPlugins } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
+import { transformMathBrackets } from '@/services/markdown/renderMarkdown';
 
 import * as dbmlExporter from './export/dbml';
 import * as excalidrawExporter from './export/excalidraw';
@@ -86,6 +89,7 @@ export function renderMarkdownToHtml(markdown: string, _vaultRoot?: string): str
 
   const result = unified()
     .use(remarkParse)
+    .use(remarkMath)
     .use(remarkGfm)
     .use(remarkBreaks)
     .use(remarkDirective)
@@ -93,13 +97,14 @@ export function renderMarkdownToHtml(markdown: string, _vaultRoot?: string): str
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
     .use(rehypeHighlight, { ignoreMissing: true } as any)
+    .use(rehypeMathjax)
     .use(rehypeReact, {
       jsx,
       jsxs,
       Fragment,
       components: componentMap,
     } as any)
-    .processSync(markdown);
+    .processSync(transformMathBrackets(markdown));
 
   // result.result is a React element tree; render it to static HTML
   const html = renderToStaticMarkup(result.result as React.ReactElement);
