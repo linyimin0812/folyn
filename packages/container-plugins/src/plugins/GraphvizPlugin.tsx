@@ -89,11 +89,15 @@ export function GraphvizBlock({ source }: GraphvizBlockProps) {
   // stability poll (sibling mechanism to the LOADING_MARKERS text markers
   // mermaid/ER still use). Spinner matches ExportMenu's exporting overlay.
   return (
-    <div className="py-4 flex justify-center items-center" data-loading="true">
+    <div
+      className="py-6 flex flex-col gap-2 justify-center items-center text-[var(--txt-muted, #888)]"
+      data-loading="true"
+    >
       <span
-        className="inline-block w-4 h-4 rounded-full border-[1.5px] border-brd border-t-acc animate-spin shrink-0"
+        className="inline-block w-6 h-6 rounded-full border-2 border-brd border-t-acc animate-spin shrink-0"
         aria-label="渲染图表中"
       />
+      <span className="text-xs">渲染图表中…</span>
     </div>
   );
 }

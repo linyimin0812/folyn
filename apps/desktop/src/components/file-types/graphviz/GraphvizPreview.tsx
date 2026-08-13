@@ -32,11 +32,15 @@ export function GraphvizPreview({ content, filePath }: PreviewProps) {
     // Loading marker — `data-loading` attribute is queried by exportService's
     // stability poll (sibling mechanism to LOADING_MARKERS text markers).
     return (
-      <div className="py-4 flex justify-center items-center" data-loading="true">
+      <div
+        className="min-h-[60vh] flex flex-col gap-3 justify-center items-center text-[var(--txt-muted, #888)]"
+        data-loading="true"
+      >
         <span
-          className="inline-block w-4 h-4 rounded-full border-[1.5px] border-brd border-t-acc animate-spin shrink-0"
+          className="inline-block w-8 h-8 rounded-full border-[3px] border-brd border-t-acc animate-spin shrink-0"
           aria-label="渲染图表中"
         />
+        <span className="text-sm">渲染图表中…</span>
       </div>
     );
   }
