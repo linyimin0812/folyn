@@ -917,10 +917,10 @@ pub async fn voice_debug_frontmost() -> Result<String, AppError> {
         // enough for any reasonable window title. GetForegroundWindow +
         // GetWindowThreadProcessId are thread-safe query APIs.
         let hwnd = unsafe { GetForegroundWindow() };
-        // ponytail: windows-sys 0.59 `HWND = isize`; format as hex (Pointer
-        // formatter needs a real raw pointer, and the handle value is the
-        // only meaningful identifier anyway).
-        if hwnd == 0 {
+        // ponytail: windows-sys 0.59 `HWND = *mut c_void` (changed from `isize`
+        // in earlier versions). Compare via `is_null`, format as `hwnd as usize`
+        // since raw pointers don't impl LowerHex.
+        if hwnd.is_null() {
             return Ok("foreground window nil".to_string());
         }
         let mut buf = [0u16; 512];
@@ -932,7 +932,7 @@ pub async fn voice_debug_frontmost() -> Result<String, AppError> {
         };
         let mut pid: u32 = 0;
         unsafe { GetWindowThreadProcessId(hwnd, &mut pid) };
-        let info = format!("hwnd=0x{hwnd:x} title={title} pid={pid}");
+        let info = format!("hwnd=0x{:x} title={title} pid={pid}", hwnd as usize);
         paste_log(&format!("[voice-paste] frontmost (win): {info}"));
         Ok(info)
     })

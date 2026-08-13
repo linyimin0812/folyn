@@ -25,9 +25,9 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use parking_lot::Mutex;
-use windows::core::HString;
+use windows::core::HSTRING;
 use windows::Globalization::Language;
 use windows::Media::SpeechRecognition::{
     SpeechRecognizer, SpeechRecognitionTopicConstraint, SpeechRecognitionScenario,
@@ -159,7 +159,7 @@ async fn transcribe_pcm_async(
     let wav_bytes = encode_wav_16k_mono(&samples);
 
     // 创建 SpeechRecognizer + 加载 dictation constraint。
-    let lang_tag = HString::from(locale.unwrap_or("en-US"));
+    let lang_tag = HSTRING::from(locale.unwrap_or("en-US"));
     let lang = Language::CreateLanguage(&lang_tag)
         .context("WinRT Language::CreateLanguage failed (检查语言包安装)")?;
 
@@ -175,17 +175,18 @@ async fn transcribe_pcm_async(
         );
     }
 
-    let recognizer = SpeechRecognizer::CreateAsync(&lang)
-        .context("WinRT SpeechRecognizer::CreateAsync failed")?
-        .await
-        .context("WinRT SpeechRecognizer::CreateAsync await failed")?;
+    // ponytail: windows-rs 0.62 `SpeechRecognizer::Create` is a sync constructor
+    // returning `Result<SpeechRecognizer>` (not IAsyncOperation — the projection
+    // flattened the async factory in 0.6x). No `.await` needed.
+    let recognizer = SpeechRecognizer::Create(&lang)
+        .context("WinRT SpeechRecognizer::Create failed")?;
 
     // 加 dictation 约束（自由文本听写，对齐 macOS SFSpeechURLRecognitionRequest 的
-    // 自由文本语义）。`SpeechRecognitionTopicConstraint::CreateWithHint` + Scenario
-    // = Dictation 启用 WebService grammar 的听写模式。
-    let dictation = SpeechRecognitionTopicConstraint::CreateWithHint(
-        &HString::from(""),
+    // 自由文本语义）。`SpeechRecognitionTopicConstraint::Create(scenario, &HSTRING)`
+    // + Scenario::Dictation 启用 WebService grammar 的听写模式。
+    let dictation = SpeechRecognitionTopicConstraint::Create(
         SpeechRecognitionScenario::Dictation,
+        &HSTRING::from(""),
     )?;
     recognizer.Constraints()?.Append(&dictation)?;
     recognizer
@@ -226,7 +227,7 @@ async fn transcribe_pcm_async(
     let result = result_op
         .await
         .context("WinRT RecognizeAsync failed (语言包可能未安装 / 麦克风被拒)")?;
-    let text: HString = result.Text()?;
+    let text: HSTRING = result.Text()?;
     Ok(RawTranscript {
         text: text.to_string(),
         duration_ms,
