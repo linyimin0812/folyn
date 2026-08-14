@@ -16,7 +16,6 @@
   "dependencies": {
     "@antv/x6": "^3.1.7",
     "@antv/x6-plugin-transform": "3.0.0",
-    "@antv/x6-react-shape": "^3.0.1",
     "@codemirror/autocomplete": "^6.18.0",
     "@codemirror/commands": "^6.7.1",
     "@codemirror/lang-html": "^6.4.11",

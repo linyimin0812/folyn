@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import type { Edge, Graph, Node } from '@antv/x6';
+import type { Edge, Graph } from '@antv/x6';
 import type { PreviewProps } from '../types';
 import { parseDbml, type ErSchema, type ErParseError } from './parseDbml';
 import {
@@ -82,6 +81,135 @@ export function nextSelectedEdgeId(
   return current === clickedEdgeId ? null : clickedEdgeId;
 }
 
+// ── Native X6 SVG markup builders ──────────────────────────────────────────
+// Cards render as native SVG primitives (no react-shape / foreignObject) so
+// they composite in lockstep with the zoom/pan transform — no ghost outlines.
+// Markup is per-node (built from PositionedTable/PositionedEnum) since field
+// rows vary; X6 accepts a per-node `markup` array on addNode that overrides
+// the (absent) shape markup. Text content is set via the `text` attr (X6 sets
+// it as the element's textContent). All visual decisions mirror the old
+// TableCardNode/EnumCardNode React components exactly (same coords, sizes,
+// colors, PAD=14) so the card appearance is unchanged.
+interface MarkupElem {
+  tagName: string;
+  selector?: string;
+  attrs?: Record<string, string | number | null>;
+  // ponytail: presentation props (fill/stroke/font/text-anchor/…) MUST go here,
+  // NOT in `attrs`. X6 applies `attrs` as SVG *attributes* via setAttribute; CSS
+  // variables (`var(--t1)` etc.) in SVG attributes do NOT reliably re-resolve
+  // when the theme flips (dark mode), so a card drawn with `fill="var(--surf)"`
+  // stays light-mode colored. `style` goes through Dom.css → `elem.style.*`
+  // (real CSS), where var() is live and theme-reactive.
+  style?: Record<string, string | number>;
+  // ponytail: textContent (NOT attrs.text). X6's markup renderer sets
+  // element.textContent only from `define.textContent` (markup.js:70); an
+  // `attrs.text` key gets kebablized to the invalid SVG attr `text` and
+  // silently ignored, leaving <text> elements empty — the "卡片什么内容都没
+  // 显示" bug.
+  textContent?: string;
+  children?: MarkupElem[];
+}
+
+const TABLE_PAD = 14;
+const ENUM_PALETTE_LINE = 'var(--brd2)'; // header band fill for enums
+
+function buildTableMarkup(t: PositionedTable): MarkupElem[] {
+  const width = t.width;
+  const fieldRowH = ROW_H;
+  const height = HEADER_H + t.fields.length * fieldRowH + 8;
+  const indexes = t.indexes ?? [];
+  const hasIndexes = indexes.length > 0;
+  const headerColor = t.headerColor ?? undefined;
+  const children: MarkupElem[] = [
+    // Inert `text`-selector anchor. The default 'rect' shape (Node.create's
+    // fallback when no `shape` is passed) inherits Base's `attrs.text =
+    // { refX:0.5, refY:0.5, textAnchor:'middle', fontFamily:'Arial', ... }`
+    // (shape/base.js:12-20). That group targets selector 'text', but our real
+    // <text> elements carry no selector, so `viewFind` (view/view/util.js:33-42)
+    // would fall back to `querySelectorAll('text')` and match EVERY <text>,
+    // relocating each to the node center via refX/refY — the "文字在卡片外"
+    // bug. Registering a dummy element under selector 'text' makes viewFind
+    // hit the selector map and stop the CSS fallback, so the group applies to
+    // this empty <g> (a no-op) and our inline x/y/text-anchor/baseline/font win.
+    { tagName: 'g', selector: 'text' },
+    // card body — plain rect, no filter (filter/opacity would re-introduce the
+    // compositing layer that ghosts during zoom — see comment on the removed
+    // drop-shadow in the old TableCardNode). Stroke uses --brd2 (not --brd) to
+    // match the header band fill, so the card outline reads as one color; --brd
+    // is a much darker token in dark mode (#1c2136 vs #252d4a) and made the
+    // left/right/bottom edges look too black next to the header. 0.5px keeps
+    // the outline as light as the header's own (stroke-less) top edge.
+    { tagName: 'rect', attrs: { x: 0, y: 0, width, height, rx: 6, ry: 6 }, style: { fill: 'var(--surf)', stroke: 'var(--brd2)', strokeWidth: 0.5 } },
+    // header band
+    { tagName: 'path', attrs: { d: `M 6 0 H ${width - 6} A 6 6 0 0 1 ${width} 6 V ${HEADER_H} H 0 V 6 A 6 6 0 0 1 6 0 Z` }, style: { fill: headerColor ?? ENUM_PALETTE_LINE } },
+    { tagName: 'text', attrs: { x: TABLE_PAD, y: HEADER_H / 2 }, style: { dominantBaseline: 'central', fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 700, fill: headerColor ? '#ffffff' : 'var(--t1)', pointerEvents: 'none' }, textContent: t.name },
+  ];
+  if (hasIndexes) {
+    const label = `${indexes.length} idx`;
+    const pillW = 8 + label.length * 6.5;
+    const pillX = width - TABLE_PAD - pillW;
+    children.push(
+      { tagName: 'rect', attrs: { x: pillX, y: HEADER_H / 2 - 9, width: pillW, height: 18, rx: 9, ry: 9 }, style: { fill: headerColor ? 'rgba(255,255,255,0.18)' : 'var(--hov)', stroke: headerColor ? 'rgba(255,255,255,0.35)' : 'var(--brd2)', strokeWidth: 1, pointerEvents: 'none' } },
+      { tagName: 'text', attrs: { x: pillX + pillW / 2, y: HEADER_H / 2 }, style: { dominantBaseline: 'central', textAnchor: 'middle', fontFamily: 'var(--font-ui)', fontSize: 11, fill: headerColor ? '#ffffff' : 'var(--t3)', pointerEvents: 'none' }, textContent: label },
+    );
+  }
+  t.fields.forEach((f, i) => {
+    const blockTop = HEADER_H + i * fieldRowH;
+    const fy = blockTop + ROW_H / 2;
+    if (i > 0) {
+      children.push({ tagName: 'line', attrs: { x1: 0, y1: blockTop, x2: width, y2: blockTop }, style: { stroke: 'var(--brd2)', strokeWidth: 1 } });
+    }
+    if (f.pk) {
+      children.push({
+        tagName: 'g',
+        attrs: { transform: `translate(${TABLE_PAD + 7} ${fy})`, pointerEvents: 'none' },
+        children: [
+          { tagName: 'circle', attrs: { cx: -4, cy: 0, r: 4 }, style: { fill: 'none', stroke: '#f1c40f', strokeWidth: 1.6 } },
+          { tagName: 'path', attrs: { d: 'M 0 0 L 10 0 M 7 0 L 7 3 M 10 0 L 10 3' }, style: { fill: 'none', stroke: '#f1c40f', strokeWidth: 1.6, strokeLinecap: 'round' } },
+        ],
+      });
+    }
+    children.push({ tagName: 'text', attrs: { x: TABLE_PAD + (f.pk ? 22 : 0), y: fy }, style: { dominantBaseline: 'central', fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: f.pk ? 600 : 400, fill: 'var(--t1)', pointerEvents: 'none' }, textContent: f.name });
+    children.push({ tagName: 'text', attrs: { x: width - TABLE_PAD, y: fy }, style: { dominantBaseline: 'central', textAnchor: 'end', fontFamily: 'var(--font-ui)', fontSize: 12, fill: 'var(--t2)', pointerEvents: 'none' }, textContent: f.type });
+  });
+  return children;
+}
+
+function buildEnumMarkup(e: PositionedEnum): MarkupElem[] {
+  const width = e.width;
+  const valueRowH = ROW_H;
+  const height = HEADER_H + e.values.length * valueRowH + 8;
+  const children: MarkupElem[] = [
+    // Inert `text`-selector anchor — see buildTableMarkup for the full story.
+    { tagName: 'g', selector: 'text' },
+    { tagName: 'rect', attrs: { x: 0, y: 0, width, height, rx: 6, ry: 6 }, style: { fill: 'var(--surf)', stroke: 'var(--brd2)', strokeWidth: 0.5, strokeDasharray: '3 2' } },
+    { tagName: 'path', attrs: { d: `M 6 0 H ${width - 6} A 6 6 0 0 1 ${width} 6 V ${HEADER_H} H 0 V 6 A 6 6 0 0 1 6 0 Z` }, style: { fill: ENUM_PALETTE_LINE } },
+    { tagName: 'text', attrs: { x: TABLE_PAD, y: HEADER_H / 2 }, style: { dominantBaseline: 'central', fontFamily: 'var(--font-ui)', fontSize: 12, fill: 'var(--t3)', pointerEvents: 'none' }, textContent: '«enum»' },
+    { tagName: 'text', attrs: { x: TABLE_PAD + 48, y: HEADER_H / 2 }, style: { dominantBaseline: 'central', fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 700, fill: 'var(--t1)', pointerEvents: 'none' }, textContent: e.name },
+  ];
+  e.values.forEach((v, i) => {
+    const blockTop = HEADER_H + i * valueRowH;
+    const vy = blockTop + ROW_H / 2;
+    if (i > 0) {
+      children.push({ tagName: 'line', attrs: { x1: 0, y1: blockTop, x2: width, y2: blockTop }, style: { stroke: 'var(--brd2)', strokeWidth: 1 } });
+    }
+    children.push({ tagName: 'text', attrs: { x: TABLE_PAD, y: vy }, style: { dominantBaseline: 'central', fontFamily: 'var(--font-ui)', fontSize: 13, fill: 'var(--t1)', pointerEvents: 'none' }, textContent: v.name });
+  });
+  return children;
+}
+
+/** True when a table card carries anything worth a popover (note/index). */
+function tableHasInfo(t: PositionedTable): boolean {
+  return !!t.note
+    || t.fields.some((f) => f.note)
+    || (t.indexes ?? []).some((ix) => ix.note)
+    || (t.indexes?.length ?? 0) > 0;
+}
+/** True when an enum card has a note (table-level or per-value). */
+function enumHasInfo(e: PositionedEnum): boolean {
+  return !!e.note || e.values.some((v) => v.note);
+}
+
 type State =
   | { kind: 'loading' }
   | { kind: 'ok'; schema: ErSchema; layout: ErLayout }
@@ -90,13 +218,6 @@ type State =
 // Module-level guard so shape/marker registration runs once even if the
 // component mounts/unmounts multiple times across tabs.
 let registered = false;
-
-// Per-graph overlay element (the React-managed sibling of the graph's own
-// container div). X6 react-shape node components reach back through this map
-// to render popovers as React portals attached to the overlay, decoupling
-// popover DOM from the transformed SVG (foreignObject pointer-events inside
-// a transformed SVG are unreliable in Chromium).
-const overlayByGraph = new WeakMap<Graph, HTMLDivElement>();
 
 /**
  * ER diagram preview backed by @antv/x6 v3. Replaces the hand-rolled SVG
@@ -157,6 +278,23 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
   const hasSeededFromMetaRef = useRef(false);
   const restoreZoomRef = useRef<number | null>(null);
 
+  // ponytail: popover state for native-SVG cards. The old react-shape
+  // TableCardNode/EnumCardNode owned their own popover state (open on click,
+  // 150ms mouseleave auto-close, reposition on scale/translate). With native
+  // markup there's no React component per node, so the PARENT owns a single
+  // popover target {cell, kind, idx?}. Opening: node:click + geometry
+  // hit-test (click y within the card → header row vs field row index — no
+  // DOM-selector fragility, survives markup changes). Closing: blank:click,
+  // node drag (change:position), mouseleave on the popover content, and
+  // scale/translate just reposition (no close). `popoverRef` mirrors state for
+  // the mount-effect event handlers (which close over `null` otherwise).
+  // `tick` forces re-render on translate/resize so an open popover tracks its
+  // card; `scale` already re-renders via setZoomPct.
+  const [popover, setPopover] = useState<{ cell: string; kind: 'table' | 'field'; idx?: number } | null>(null);
+  const popoverRef = useRef<typeof popover>(null);
+  popoverRef.current = popover;
+  const [, setTick] = useState(0);
+
   // Debounced meta write-back: read current content, strip old meta, append
   // new meta derived from runtime state, emit via onChange. Skipped when the
   // content already carries this exact meta (no-op). Each invocation replaces
@@ -191,19 +329,22 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
   const scheduleMetaEmitRef = useRef(scheduleMetaEmit);
   scheduleMetaEmitRef.current = scheduleMetaEmit;
 
-  // Mount: lazy-load x6 + react-shape, register shapes + markers, create graph.
+  // Mount: lazy-load x6, register shapes + markers, create graph.
+  // ponytail: shapes are native X6 SVG nodes (Graph.registerNode-less — per-node
+  // `markup` passed at addNode), NOT react-shape/foreignObject. The previous
+  // react-shape implementation wrapped each card in a <foreignObject> whose
+  // HTML/SVG content composited on its own layer and lagged behind the SVG
+  // `transform`-attribute pan/zoom, leaving ghost card outlines during
+  // zoom/pan that vanished once the compositor caught up — the
+  // "很多border，一会才消失" + "移动时也有" symptom. Native SVG markup has
+  // no foreignObject, so it composites in lockstep with the zoom transform.
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [{ Graph }, { register }] = await Promise.all([
-        import('@antv/x6'),
-        import('@antv/x6-react-shape'),
-      ]);
+      const { Graph } = await import('@antv/x6');
       if (cancelled) return;
       if (!registered) {
         registered = true;
-        register({ shape: 'er-table', component: TableCardNode });
-        register({ shape: 'er-enum', component: EnumCardNode });
         // Crow's foot markers — separate start/end variants because X6 applies
         // `transform: 'rotate(180)'` to the child element of marker-end only
         // (see `@antv/x6` src/registry/attr/marker.ts:17-24 — targetMarker
@@ -395,6 +536,17 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
         }
       });
       graph.on('scale', ({ sx }: { sx: number }) => setZoomPct(Math.round(sx * 100)));
+      // Pan/resize: force a re-render so an open popover tracks its card.
+      // (scale already re-renders via setZoomPct above.)
+      graph.on('translate', () => setTick((t) => t + 1));
+      graph.on('resize', () => setTick((t) => t + 1));
+      // Close any open popover when a node is dragged (its screen position
+      // is changing under it). Uses popoverRef so the handler — bound once at
+      // mount — reads the latest target instead of the stale mount-time null.
+      graph.on('node:change:position', ({ node }) => {
+        const p = popoverRef.current;
+        if (p && p.cell === node.id) setPopover(null);
+      });
       // Click-to-highlight a relationship line — see `nextSelectedEdgeId` /
       // `setEdgeSelected` above. `interacting.edgeMovable: false` (set below)
       // already keeps this click from making the edge draggable/editable.
@@ -413,23 +565,50 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
         if (nodeDraggedRef.current) return; // suppress spurious click from drag end
         selectEdge(edge.id);
       });
+      // Native-SVG card popover hit-test: pure geometry (no DOM-selector
+      // dependency). Click y relative to the card → header band (y < HEADER_H)
+      // → table/enum info popover (only if the card carries info); else a
+      // field/value row index → that row's note popover (only if it has a
+      // note). Matches the old react-shape TableCardNode/EnumCardNode click
+      // targets (header click = table info; note-row click = field info).
+      graph.on('node:click', ({ node, e }) => {
+        if (nodeDraggedRef.current) return; // suppress spurious click from drag end
+        const data = node.getData() as { table?: PositionedTable; enum?: PositionedEnum } | undefined;
+        if (!data) return;
+        const local = graph.clientToLocal(e.clientX, e.clientY);
+        const np = node.getPosition();
+        const ry = local.y - np.y;
+        const openTable = () => setPopover({ cell: node.id, kind: 'table' });
+        if (ry < HEADER_H) {
+          if (data.table && tableHasInfo(data.table)) openTable();
+          else if (data.enum && enumHasInfo(data.enum)) openTable();
+          return;
+        }
+        const idx = Math.floor((ry - HEADER_H) / ROW_H);
+        if (idx < 0) return;
+        if (data.table) {
+          const f = data.table.fields[idx];
+          if (f && f.note) setPopover({ cell: node.id, kind: 'field', idx });
+        } else if (data.enum) {
+          const v = data.enum.values[idx];
+          if (v && v.note) setPopover({ cell: node.id, kind: 'field', idx });
+        }
+      });
       graph.on('blank:click', () => {
         if (nodeDraggedRef.current) return; // suppress spurious click from drag end
         selectEdge(null);
+        setPopover(null);
       });
       graphRef.current = graph;
-      if (overlayRef.current) overlayByGraph.set(graph, overlayRef.current);
       setGraphReady(true);
     })();
     return () => {
       cancelled = true;
       const g = graphRef.current;
-      if (g) overlayByGraph.delete(g);
       graphRef.current = null;
       setGraphReady(false);
-      // ponytail: defer dispose out of React's passive-unmount phase — x6-react-shape
-      // synchronously calls root.unmount() on model reset, which races with the
-      // in-flight render. Scheduling on next tick avoids the warning.
+      // Defer dispose out of React's passive-unmount phase — scheduling on
+      // the next tick avoids racing any in-flight render.
       if (g) setTimeout(() => g.dispose(), 0);
     };
   }, []);
@@ -570,8 +749,8 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
         ports.push({ id: `f-${f.name}-R`, group: 'right', args: { x: t.width, y } });
       });
       graph.addNode({
-        shape: 'er-table',
         id: `t:${t.name}`,
+        markup: buildTableMarkup(t),
         x: t.x,
         y: t.y,
         width: t.width,
@@ -595,8 +774,8 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
 
     for (const e of layout.enums) {
       graph.addNode({
-        shape: 'er-enum',
         id: `e:${e.name}`,
+        markup: buildEnumMarkup(e),
         x: e.x,
         y: e.y,
         width: e.width,
@@ -629,7 +808,18 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
           line: {
             stroke: 'var(--t3)',
             strokeWidth: 1.5,
-            opacity: 0.9,
+            // ponytail: stroke-opacity (paint-time alpha) — NOT element-level
+            // `opacity`. opacity<1 promotes each edge <path> to its own
+            // compositing layer, which lags one frame behind X6's zoom scale
+            // transform and leaves ghost copies of every relationship line
+            // during zoom-in/out (they vanish once the compositor settles —
+            // the exact "很多border，一会后才消失" symptom). Same root cause
+            // class as the drop-shadow removed from the card body (see comment
+            // above the card <rect>). stroke-opacity is applied at paint time
+            // and does not create a stacking context / offscreen buffer, so
+            // edges composite in lockstep with the zoom transform. Visual is
+            // identical (stroke still 90% opaque).
+            strokeOpacity: 0.9,
             sourceMarker: 'er-one-double-start',
             targetMarker: 'er-many-end',
           },
@@ -670,6 +860,90 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
 
   const empty = state.kind === 'ok' && state.layout.tables.length === 0 && state.layout.enums.length === 0;
 
+  // Derive the open popover's portal (native-SVG cards: the parent renders
+  // it into the overlay, repositioning on every render — which scale/translate
+  // ticks trigger). Geometry mirrors the old TableCardNode portal math.
+  let popoverPortal: React.ReactNode = null;
+  if (popover && graphReady && graphRef.current && overlayRef.current) {
+    const g = graphRef.current;
+    const node = g.getCellById(popover.cell);
+    if (node && node.isNode()) {
+      const data = node.getData() as { table?: PositionedTable; enum?: PositionedEnum } | undefined;
+      const t = data?.table;
+      const en = data?.enum;
+      if (t || en) {
+        const pos = node.getPosition();
+        const size = node.getSize();
+        const screen = g.localToGraph(pos.x, pos.y, size.width, size.height);
+        const POPOVER_W = t ? 320 : 280;
+        const containerW = overlayRef.current.clientWidth;
+        const spaceRight = containerW - (screen.x + screen.width);
+        const openRight = spaceRight >= POPOVER_W + 16;
+        let popoverX = openRight
+          ? screen.x + screen.width + 8
+          : screen.x - POPOVER_W - 8;
+        if (popoverX < 8) popoverX = Math.min(screen.x + screen.width + 8, Math.max(8, containerW - POPOVER_W - 8));
+        const scale = g.zoom();
+        const rowTop = popover.kind === 'field' ? HEADER_H + (popover.idx ?? 0) * ROW_H : 0;
+        const popoverY = screen.y + rowTop * scale;
+        if (popover.kind === 'table' && t) {
+          const indexes = t.indexes ?? [];
+          const noteLines = [
+            t.note ?? null,
+            ...t.fields.filter((f) => f.note).map((f) => `[${f.name}] ${f.note}`),
+            ...indexes.filter((ix) => ix.note).map((ix) => `[${ix.name ?? '(unnamed)'}] ${ix.note}`),
+          ].filter(Boolean) as string[];
+          const indexLines = indexes.map((ix) => `${ix.name ?? '(unnamed)'} (${ix.columns.join(', ')})${ix.unique ? ' unique' : ''}`);
+          popoverPortal = (
+            <TableInfoPopoverHTML
+              x={popoverX} y={popoverY} width={POPOVER_W}
+              tableName={t.name} noteLines={noteLines} indexLines={indexLines}
+              onContentMouseEnter={() => {}}
+              onContentMouseLeave={() => setPopover(null)}
+            />
+          );
+        } else if (popover.kind === 'table' && en) {
+          const noteLines = [
+            en.note ?? null,
+            ...en.values.filter((v) => v.note).map((v) => `[${v.name}] ${v.note}`),
+          ].filter(Boolean) as string[];
+          popoverPortal = (
+            <TableInfoPopoverHTML
+              x={popoverX} y={popoverY} width={POPOVER_W}
+              tableName={en.name} noteLines={noteLines} indexLines={[]}
+              onContentMouseEnter={() => {}}
+              onContentMouseLeave={() => setPopover(null)}
+            />
+          );
+        } else if (popover.kind === 'field' && t && popover.idx != null) {
+          const f = t.fields[popover.idx];
+          if (f) {
+            popoverPortal = (
+              <FieldInfoPopoverHTML
+                x={popoverX} y={popoverY} width={POPOVER_W}
+                fieldName={f.name} fieldType={f.type} fieldNote={f.note}
+                onContentMouseEnter={() => {}}
+                onContentMouseLeave={() => setPopover(null)}
+              />
+            );
+          }
+        } else if (popover.kind === 'field' && en && popover.idx != null) {
+          const v = en.values[popover.idx];
+          if (v) {
+            popoverPortal = (
+              <FieldInfoPopoverHTML
+                x={popoverX} y={popoverY} width={POPOVER_W}
+                fieldName={v.name} fieldType={undefined} fieldNote={v.note}
+                onContentMouseEnter={() => {}}
+                onContentMouseLeave={() => setPopover(null)}
+              />
+            );
+          }
+        }
+      }
+    }
+  }
+
   return (
     <div className="er-preview relative h-full w-full overflow-hidden bg-[var(--bg)]">
       <style>{EDGE_FLOW_ANIMATION_CSS}</style>
@@ -681,7 +955,9 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
           div (not a child — React must not render inside containerRef). The
           overlay itself is pointer-events:none so it doesn't block graph
           panning; individual popover portals set pointer-events:auto. */}
-      <div ref={overlayRef} className="absolute inset-0 z-20 pointer-events-none" />
+      <div ref={overlayRef} className="absolute inset-0 z-20 pointer-events-none">
+        {popoverPortal}
+      </div>
       {state.kind === 'loading' && <StatusMsg>正在解析 DBML…</StatusMsg>}
       {state.kind === 'error' && <ErrorView errors={state.errors} />}
       {empty && <StatusMsg>空 ER 图 — 在编辑器中定义 Table 以渲染关系图</StatusMsg>}
@@ -833,543 +1109,7 @@ function ProjectBanner({
   );
 }
 
-// --- React-shape node components -------------------------------------------
-
-interface TableNodeData {
-  table: PositionedTable;
-}
-interface EnumNodeData {
-  enum: PositionedEnum;
-}
-
-/**
- * Table card rendered inside x6's foreignObject. SVG content is positioned
- * relative to the node's top-left (0,0). Node size = estimateTableSize()
- * (always expanded height); when note/index blocks are collapsed a chip at
- * the bottom of the card indicates expandability.
- *
- * Visual decisions (per refactor PRD):
- *  - Neutral header by default (var(--surf) + brd); DBML `headerColor` opts in.
- *  - Table note + indexes collapse into a bottom chip "⋯ N notes · M indexes";
- *    field notes stay visible so per-field ports keep their row alignment.
- */
-function TableCardNode({ node }: { node: Node }) {
-  const data = node.getData() as TableNodeData;
-  const table = data.table;
-  const PAD = 14;
-  const width = table.width;
-
-  // Field notes are hover-only icons now (no inline text row), so every
-  // field row is exactly ROW_H tall — no FIELD_NOTE_H reservation.
-  const fieldRowH = ROW_H;
-  const fieldsEnd = HEADER_H + table.fields.length * fieldRowH;
-
-  const indexes = table.indexes ?? [];
-  const hasIndexes = indexes.length > 0;
-  // Table-level note OR any field note OR any index note → show info button.
-  const hasAnyNote =
-    !!table.note ||
-    table.fields.some((f) => f.note) ||
-    indexes.some((ix) => ix.note);
-
-  // Card height is just header + fields (no expanded block, no bottom chip).
-  const height = fieldsEnd + 8;
-
-  useEffect(() => {
-    node.resize(width, height);
-  }, [node, width, height]);
-
-  const headerColor = table.headerColor ?? undefined;
-
-  // Unified popover state — either the table-info popover (opened from the
-  // header) or a field-info popover (opened from a field row). Only one is
-  // open at a time; both share the 150ms close timer, the drag-close, and the
-  // scale/translate reposition effect below.
-  type PopoverState =
-    | { kind: 'table' }
-    | { kind: 'field'; idx: number }
-    | null;
-  const [popover, setPopover] = useState<PopoverState>(null);
-  // Tick state forces a re-render (and thus a portal-position recompute) when
-  // the graph pans/zooms while the popover is open, so the popover tracks the
-  // card instead of stranding at the old screen position.
-  const [, setTick] = useState(0);
-  const closeTimeoutRef = useRef<number | null>(null);
-  const clearCloseTimer = useCallback(() => {
-    if (closeTimeoutRef.current != null) {
-      clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-  }, []);
-  const scheduleClose = useCallback(() => {
-    clearCloseTimer();
-    closeTimeoutRef.current = window.setTimeout(() => setPopover(null), 150);
-  }, [clearCloseTimer]);
-  const openTable = useCallback(() => {
-    clearCloseTimer();
-    setPopover((p) => (p?.kind === 'table' ? null : { kind: 'table' }));
-  }, [clearCloseTimer]);
-  const openField = useCallback((idx: number) => {
-    clearCloseTimer();
-    setPopover((p) =>
-      p?.kind === 'field' && p.idx === idx ? null : { kind: 'field', idx });
-  }, [clearCloseTimer]);
-  // ponytail: click-vs-drag guard for the header/field hover-catchers.
-  // The card sits on the pannable x6 canvas; without this, a drag-pan that
-  // starts on a header or field row would fire onClick (now that we
-  // switched from onMouseEnter) and unintentionally open popovers. Track
-  // mousedown coords; if mouseup moved >4px, skip the toggle.
-  const downPosRef = useRef<{ x: number; y: number } | null>(null);
-  const onCardDown = (e: React.MouseEvent) => {
-    downPosRef.current = { x: e.clientX, y: e.clientY };
-  };
-  const makeCardUp = (fn: () => void) => (e: React.MouseEvent) => {
-    const down = downPosRef.current;
-    downPosRef.current = null;
-    if (!down) return;
-    const dx = e.clientX - down.x;
-    const dy = e.clientY - down.y;
-    if (dx * dx + dy * dy > 16) return;
-    fn();
-  };
-  useEffect(() => {
-    if (!popover) return;
-    // Bring the whole card to the front so the popover (now portaled into the
-    // overlay above the graph) isn't occluded by edges or other cards added
-    // after this one.
-    node.toFront();
-    const close = () => setPopover(null);
-    node.on('change:position', close);
-    const graph = node.model?.graph;
-    const recompute = () => setTick((t) => t + 1);
-    graph?.on('scale', recompute);
-    graph?.on('translate', recompute);
-    graph?.on('resize', recompute);
-    return () => {
-      node.off('change:position', close);
-      graph?.off('scale', recompute);
-      graph?.off('translate', recompute);
-      graph?.off('resize', recompute);
-      clearCloseTimer();
-    };
-  }, [popover, node, clearCloseTimer]);
-
-  // Popover content: structured noteLines (table note + per-field + per-index
-  // notes) + indexLines (full index list). The portal popover wraps content
-  // to a fixed width, so lines stay verbatim — no char-width fit, no cap.
-  const noteLines = [
-    table.note ?? null,
-    ...table.fields
-      .filter((f) => f.note)
-      .map((f) => `[${f.name}] ${f.note}`),
-    ...indexes
-      .filter((ix) => ix.note)
-      .map((ix) => `[${ix.name ?? '(unnamed)'}] ${ix.note}`),
-  ].filter(Boolean) as string[];
-  const indexLines = indexes.map(
-    (ix) =>
-      `${ix.name ?? '(unnamed)'} (${ix.columns.join(', ')})${ix.unique ? ' unique' : ''}`,
-  );
-
-  const indexPillLabel = `${indexes.length} idx`;
-  const indexPillW = 8 + indexPillLabel.length * 6.5;
-  const indexPillX = width - PAD - indexPillW;
-
-  const hasInfo = hasIndexes || hasAnyNote;
-
-  // Fixed-width portal popover: render into the React-managed overlay div
-  // (sibling of the X6-owned container) so HTML mouse events work reliably
-  // and the popover is decoupled from the node's transformed SVG.
-  const POPOVER_W = 320;
-  const graph = node.model?.graph;
-  const overlay = graph ? overlayByGraph.get(graph) : null;
-  let popoverX = 0;
-  let popoverY = 0;
-  if (graph && overlay) {
-    const pos = node.getPosition();
-    const size = node.getSize();
-    const screen = graph.localToGraph(pos.x, pos.y, size.width, size.height);
-    const containerW = overlay.clientWidth;
-    const spaceRight = containerW - (screen.x + screen.width);
-    const openRight = spaceRight >= POPOVER_W + 16;
-    popoverX = openRight
-      ? screen.x + screen.width + 8
-      : screen.x - POPOVER_W - 8;
-    // ponytail: if the chosen side clips the popover off the left edge
-    // (card sits very near the left), fall back to opening right even though
-    // space is tight — better a slightly cramped popover than one clipped to
-    // invisibility. Symmetric right-edge clip isn't worth the branch: opening
-    // left was already the "tight on the right" fallback.
-    if (popoverX < 8) popoverX = Math.min(screen.x + screen.width + 8, Math.max(8, containerW - POPOVER_W - 8));
-    // Y: table-info popover anchors at the card top; field-info popover
-    // anchors at the hovered row so it reads as "about this field".
-    const scale = graph.zoom();
-    const rowTop =
-      popover?.kind === 'field' ? HEADER_H + popover.idx * fieldRowH : 0;
-    popoverY = screen.y + rowTop * scale;
-  }
-
-  return (
-    <>
-    <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
-      {/* card body — no CSS filter (drop-shadow creates a compositing layer
-          that lags behind scale transforms during zoom, leaving ghost edges). */}
-      <rect
-        x={0}
-        y={0}
-        width={width}
-        height={height}
-        rx={6}
-        ry={6}
-        fill="var(--surf)"
-        stroke="var(--brd)"
-        strokeWidth={1}
-      />
-      {/* header — darker neutral band by default; DBML `headerColor` overrides.
-          Click on the header opens the table-info popover beside the card.
-          ponytail: onMouseDown+onMouseUp with drag detection replaces the
-          previous onMouseEnter — no more hover popovers, and drag-pans
-          starting on the header don't trigger the popover. */}
-      <path
-        d={`M 6 0 H ${width - 6} A 6 6 0 0 1 ${width} 6 V ${HEADER_H} H 0 V 6 A 6 6 0 0 1 6 0 Z`}
-        fill={headerColor ?? 'var(--brd2)'}
-        style={hasInfo ? { cursor: 'pointer' } : undefined}
-        onMouseDown={hasInfo ? onCardDown : undefined}
-        onMouseUp={hasInfo ? makeCardUp(openTable) : undefined}
-        onMouseLeave={hasInfo ? scheduleClose : undefined}
-      />
-      <text
-        x={PAD}
-        y={HEADER_H / 2}
-        dominantBaseline="central"
-        fontSize={15}
-        fontWeight={700}
-        fill={headerColor ? '#ffffff' : 'var(--t1)'}
-        pointerEvents="none"
-      >
-        {table.name}
-      </text>
-      {/* index pill — non-interactive count badge (popover opens via header hover) */}
-      {hasIndexes && (
-        <IndexPill
-          x={indexPillX}
-          y={HEADER_H / 2 - 9}
-          w={indexPillW}
-          label={indexPillLabel}
-          headerColor={headerColor}
-        />
-      )}
-
-      {table.fields.map((f, i) => {
-        const blockTop = HEADER_H + i * fieldRowH;
-        const fy = blockTop + ROW_H / 2;
-        return (
-          <g key={f.name + i}>
-            {i > 0 && (
-              <line
-                x1={0}
-                y1={blockTop}
-                x2={width}
-                y2={blockTop}
-                stroke="var(--brd2)"
-                strokeWidth={1}
-              />
-            )}
-            {f.pk ? <KeyIcon cx={PAD + 7} cy={fy} /> : null}
-            <text
-              x={PAD + (f.pk ? 22 : 0)}
-              y={fy}
-              dominantBaseline="central"
-              fontSize={13}
-              fill="var(--t1)"
-              fontWeight={f.pk ? 600 : 400}
-            >
-              {f.name}
-            </text>
-            <text
-              x={width - PAD}
-              y={fy}
-              dominantBaseline="central"
-              textAnchor="end"
-              fontSize={12}
-              fill="var(--t2)"
-            >
-              {f.type}
-            </text>
-            {/* Click catcher for the field-info popover. Transparent rect over
-                the full row, last in DOM so it's on top and catches pointer
-                events across the whole row width (text/icons below are
-                pointer-events:none or just sit under it). Only fields with a
-                note get a popover — gating avoids a header-only popover that
-                just echoes the inline name/type. ponytail: onMouseDown+
-                onMouseUp with drag detection — no hover trigger, drag-pan
-                on the row doesn't open the popover. */}
-            {f.note && (
-              <rect
-                x={0}
-                y={blockTop}
-                width={width}
-                height={fieldRowH}
-                fill="transparent"
-                style={{ cursor: 'pointer' }}
-                onMouseDown={onCardDown}
-                onMouseUp={makeCardUp(() => openField(i))}
-                onMouseLeave={scheduleClose}
-              />
-            )}
-          </g>
-        );
-      })}
-
-      {popover && overlay && (
-        popover.kind === 'table' ? (
-          createPortal(
-            <TableInfoPopoverHTML
-              x={popoverX}
-              y={popoverY}
-              width={POPOVER_W}
-              tableName={table.name}
-              noteLines={noteLines}
-              indexLines={indexLines}
-              onContentMouseEnter={clearCloseTimer}
-              onContentMouseLeave={scheduleClose}
-            />,
-            overlay,
-          )
-        ) : (
-          createPortal(
-            <FieldInfoPopoverHTML
-              x={popoverX}
-              y={popoverY}
-              width={POPOVER_W}
-              fieldName={table.fields[popover.idx].name}
-              fieldType={table.fields[popover.idx].type}
-              fieldNote={table.fields[popover.idx].note}
-              onContentMouseEnter={clearCloseTimer}
-              onContentMouseLeave={scheduleClose}
-            />,
-            overlay,
-          )
-        )
-      )}
-    </svg>
-    </>
-  );
-}
-
-/**
- * Enum card — dashed border + «enum» tag + name, no colored header.
- * Value notes render as hover-only icons (no inline text row, no chip).
- */
-function EnumCardNode({ node }: { node: Node }) {
-  const data = node.getData() as EnumNodeData;
-  const enumCard = data.enum;
-  const PAD = 14;
-  const width = enumCard.width;
-
-  // Value notes are hover-only icons now — every value row is ROW_H.
-  const valueRowH = ROW_H;
-  const valuesEnd = HEADER_H + enumCard.values.length * valueRowH;
-
-  const height = valuesEnd + 8;
-
-  useEffect(() => {
-    node.resize(width, height);
-  }, [node, width, height]);
-
-  // Per-value popover state — same pattern as TableCardNode's field popover:
-  // 150ms close timer, drag-close, scale/translate reposition. Only values
-  // with a note get a popover (enum values have no type/default, so a
-  // note-less row would render a header-only popover that echoes the name).
-  type PopoverState = { idx: number } | null;
-  const [popover, setPopover] = useState<PopoverState>(null);
-  const [, setTick] = useState(0);
-  const closeTimeoutRef = useRef<number | null>(null);
-  const clearCloseTimer = useCallback(() => {
-    if (closeTimeoutRef.current != null) {
-      clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-  }, []);
-  const scheduleClose = useCallback(() => {
-    clearCloseTimer();
-    closeTimeoutRef.current = window.setTimeout(() => setPopover(null), 150);
-  }, [clearCloseTimer]);
-  const openValue = useCallback((idx: number) => {
-    clearCloseTimer();
-    setPopover((p) => (p?.idx === idx ? null : { idx }));
-  }, [clearCloseTimer]);
-  // ponytail: click-vs-drag guard — see TableCardNode's makeCardUp/onCardDown.
-  const downPosRef = useRef<{ x: number; y: number } | null>(null);
-  const onCardDown = (e: React.MouseEvent) => {
-    downPosRef.current = { x: e.clientX, y: e.clientY };
-  };
-  const makeCardUp = (fn: () => void) => (e: React.MouseEvent) => {
-    const down = downPosRef.current;
-    downPosRef.current = null;
-    if (!down) return;
-    const dx = e.clientX - down.x;
-    const dy = e.clientY - down.y;
-    if (dx * dx + dy * dy > 16) return;
-    fn();
-  };
-  useEffect(() => {
-    if (!popover) return;
-    node.toFront();
-    const close = () => setPopover(null);
-    node.on('change:position', close);
-    const graph = node.model?.graph;
-    const recompute = () => setTick((t) => t + 1);
-    graph?.on('scale', recompute);
-    graph?.on('translate', recompute);
-    graph?.on('resize', recompute);
-    return () => {
-      node.off('change:position', close);
-      graph?.off('scale', recompute);
-      graph?.off('translate', recompute);
-      graph?.off('resize', recompute);
-      clearCloseTimer();
-    };
-  }, [popover, node, clearCloseTimer]);
-
-  const POPOVER_W = 280;
-  const graph = node.model?.graph;
-  const overlay = graph ? overlayByGraph.get(graph) : null;
-  let popoverX = 0;
-  let popoverY = 0;
-  if (graph && overlay) {
-    const pos = node.getPosition();
-    const size = node.getSize();
-    const screen = graph.localToGraph(pos.x, pos.y, size.width, size.height);
-    const containerW = overlay.clientWidth;
-    const spaceRight = containerW - (screen.x + screen.width);
-    const openRight = spaceRight >= POPOVER_W + 16;
-    popoverX = openRight
-      ? screen.x + screen.width + 8
-      : screen.x - POPOVER_W - 8;
-    if (popoverX < 8) popoverX = Math.min(screen.x + screen.width + 8, Math.max(8, containerW - POPOVER_W - 8));
-    const scale = graph.zoom();
-    const rowTop =
-      popover ? HEADER_H + popover.idx * valueRowH : 0;
-    popoverY = screen.y + rowTop * scale;
-  }
-
-  return (
-    <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
-      <rect
-        x={0}
-        y={0}
-        width={width}
-        height={height}
-        rx={6}
-        ry={6}
-        fill="var(--surf)"
-        stroke="var(--brd)"
-        strokeWidth={1}
-        strokeDasharray="3 2"
-      />
-      {/* «enum» tag + name on a darker neutral header band */}
-      <path
-        d={`M 6 0 H ${width - 6} A 6 6 0 0 1 ${width} 6 V ${HEADER_H} H 0 V 6 A 6 6 0 0 1 6 0 Z`}
-        fill="var(--brd2)"
-      />
-      <text
-        x={PAD}
-        y={HEADER_H / 2}
-        dominantBaseline="central"
-        fontSize={12}
-        fill="var(--t3)"
-      >
-        {'«enum»'}
-      </text>
-      <text
-        x={PAD + 48}
-        y={HEADER_H / 2}
-        dominantBaseline="central"
-        fontSize={15}
-        fontWeight={700}
-        fill="var(--t1)"
-      >
-        {enumCard.name}
-      </text>
-
-      {enumCard.values.map((v, i) => {
-        const blockTop = HEADER_H + i * valueRowH;
-        const vy = blockTop + ROW_H / 2;
-        return (
-          <g key={v.name + i}>
-            {i > 0 && (
-              <line
-                x1={0}
-                y1={blockTop}
-                x2={width}
-                y2={blockTop}
-                stroke="var(--brd2)"
-                strokeWidth={1}
-              />
-            )}
-            <text
-              x={PAD}
-              y={vy}
-              dominantBaseline="central"
-              fontSize={13}
-              fill="var(--t1)"
-            >
-              {v.name}
-            </text>
-            {/* Click catcher for the value-info popover — same pattern as
-                table field rows. Only values with a note get a popover. */}
-            {v.note && (
-              <rect
-                x={0}
-                y={blockTop}
-                width={width}
-                height={valueRowH}
-                fill="transparent"
-                style={{ cursor: 'pointer' }}
-                onMouseDown={onCardDown}
-                onMouseUp={makeCardUp(() => openValue(i))}
-                onMouseLeave={scheduleClose}
-              />
-            )}
-          </g>
-        );
-      })}
-
-      {popover && overlay && (
-        createPortal(
-          <FieldInfoPopoverHTML
-            x={popoverX}
-            y={popoverY}
-            width={POPOVER_W}
-            fieldName={enumCard.values[popover.idx].name}
-            fieldNote={enumCard.values[popover.idx].note}
-            onContentMouseEnter={clearCloseTimer}
-            onContentMouseLeave={scheduleClose}
-          />,
-          overlay,
-        )
-      )}
-    </svg>
-  );
-}
-
-/** Gold key icon — marks primary key fields (dbdiagram.io style). */
-function KeyIcon({ cx, cy }: { cx: number; cy: number }) {
-  return (
-    <g transform={`translate(${cx} ${cy})`} pointerEvents="none">
-      <circle cx={-4} cy={0} r={4} fill="none" stroke="#f1c40f" strokeWidth={1.6} />
-      <path
-        d="M 0 0 L 10 0 M 7 0 L 7 3 M 10 0 L 10 3"
-        fill="none"
-        stroke="#f1c40f"
-        strokeWidth={1.6}
-        strokeLinecap="round"
-      />
-    </g>
-  );
-}
-
+// --- Popover HTML (rendered into the graph overlay via React portal) --------
 
 /**
  * Unified table-info popover, rendered as plain HTML via a React portal into
@@ -1581,50 +1321,5 @@ function FieldInfoPopoverHTML({
         </>
       )}
     </div>
-  );
-}
-
-/**
- * Header index pill — non-interactive count badge. The popover opens via
- * header hover; this just signals "N idx" visually.
- */
-function IndexPill({
-  x,
-  y,
-  w,
-  label,
-  headerColor,
-}: {
-  x: number;
-  y: number;
-  w: number;
-  label: string;
-  headerColor?: string;
-}) {
-  return (
-    <g pointerEvents="none">
-      <rect
-        x={x}
-        y={y}
-        width={w}
-        height={18}
-        rx={9}
-        ry={9}
-        fill={headerColor ? 'rgba(255,255,255,0.18)' : 'var(--hov)'}
-        stroke={headerColor ? 'rgba(255,255,255,0.35)' : 'var(--brd2)'}
-        strokeWidth={1}
-      />
-      <text
-        x={x + w / 2}
-        y={y + 9}
-        dominantBaseline="central"
-        textAnchor="middle"
-        fontSize={11}
-        fill={headerColor ? '#ffffff' : 'var(--t3)'}
-        pointerEvents="none"
-      >
-        {label}
-      </text>
-    </g>
   );
 }

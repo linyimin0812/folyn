@@ -220,9 +220,9 @@ export async function renderMarkdownToHtmlViaDom(
   const root = createRoot(container);
   // ponytail: no flushSync — it forces ALL pending passive effects in the
   // document to flush, including the editor pane's ErDiagramX6 if it has
-  // pending work, which triggers x6-react-shape's sync unmount during
-  // React's commit phase and logs a warning. Natural async render + the
-  // 150ms poll start gives React time to commit the first frame.
+  // pending work, which races with React's commit phase and logs a warning.
+  // Natural async render + the 150ms poll start gives React time to commit
+  // the first frame.
   root.render(createElement(MarkdownPreview, { content, filePath, vaultRoot }));
 
   // Inline <img> srcs (Tauri asset URLs) as base64 data URLs so the exported
@@ -281,11 +281,10 @@ export async function renderMarkdownToHtmlViaDom(
 
   const html = container.innerHTML;
   const css = collectAppCss();
-  // ponytail: defer unmount out of the current render cycle. x6-react-shape
-  // calls unmountComponentAtNode synchronously during React's commit phase,
-  // which races with React 18's own unmount and logs a warning. setTimeout(0)
-  // pushes cleanup past the current task so no render is in flight. Errors
-  // are swallowed — we've already extracted what we need.
+  // Defer unmount out of the current render cycle so it doesn't race with
+  // React 18's own unmount and log a warning. setTimeout(0) pushes cleanup
+  // past the current task so no render is in flight. Errors are swallowed —
+  // we've already extracted what we need.
   setTimeout(() => {
     try { root.unmount(); } catch { /* already torn down */ }
     container.remove();
