@@ -58,7 +58,8 @@
         "minHeight": 600,
         "resizable": true,
         "fullscreen": false,
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "visible": false
       },
       {
         "label": "pet",

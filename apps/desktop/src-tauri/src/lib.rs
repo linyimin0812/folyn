@@ -737,6 +737,33 @@ pub fn run() {
             startup_log("[setup] spawn_legacy_reapply_thread");
             spawn_legacy_reapply_thread(app_handle);
 
+            // Windows: drop the native titlebar. Its left-hand app icon +
+            // "Quill" title and right-hand window controls duplicate the
+            // in-app Topbar (logo + name on the left, custom window controls
+            // rendered by `WindowControls.tsx` on the right). The main window
+            // is declared `visible: false` in tauri.conf.json so the
+            // decorations are removed BEFORE the first paint — no
+            // decorated→borderless flash at startup. The Topbar header's
+            // `data-tauri-drag-region` becomes the drag handle (tauri-core
+            // also makes double-click toggle maximize on Windows), and tao's
+            // undecorated-window hit-testing keeps edge resizing + aero-snap
+            // working. macOS/Linux keep the native titlebar untouched.
+            #[cfg(target_os = "windows")]
+            if let Some(window) = app.get_webview_window("main") {
+                startup_log("[setup] main window decorations off (windows)");
+                let _ = window.set_decorations(false);
+            }
+
+            // Show the main window only after setup is done. It is created
+            // `visible: false` (see tauri.conf.json) so Windows can drop the
+            // native titlebar before first paint; this show call replaces the
+            // implicit show-at-build on every platform.
+            if let Some(window) = app.get_webview_window("main") {
+                startup_log("[setup] show main window");
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+
             startup_log("[setup] done — returning Ok");
             Ok(())
         }

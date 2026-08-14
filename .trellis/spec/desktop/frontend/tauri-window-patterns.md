@@ -225,6 +225,54 @@ or a frontend-driven hide/show can desync the close decision. Quitting via the a
 
 ---
 
+## Scenario: Windows Custom Titlebar (undecorated main window + in-app window controls)
+
+### Problem
+On Windows, the native titlebar renders the app icon + "Quill" title on the left and
+minimize/maximize/close on the right. Quill's own Topbar already shows the logo + name on the
+left, so the native bar duplicates the branding and wastes a 30px strip. macOS is fine (traffic
+lights are unobtrusive and there is no icon/title duplication), so the titlebar must be removed
+**on Windows only** — `"decorations": false` in `tauri.conf.json` is NOT per-platform, it would
+strip macOS too.
+
+### Solution
+1. **Create the main window hidden** (`"visible": false` in `tauri.conf.json`) so Windows can
+   drop decorations BEFORE first paint — no decorated→borderless startup flash.
+2. **Windows-only `set_decorations(false)` in Rust setup** (`#[cfg(target_os = "windows")]`
+   inside the `.setup` closure), then `show()` + `set_focus()` the main window at the END of
+   setup on all platforms (replaces the implicit show-at-build; macOS appearance timing is
+   unchanged in practice).
+3. **In-app window controls**: `WindowControls.tsx` (components/shell) renders
+   minimize / maximize-restore / close at the right end of the Topbar, but only when
+   `isWindowsPlatform()` (`utils/shellSidecar.ts`) — macOS/Linux render nothing.
+4. **Drag + double-click-maximize come free**: the Topbar header already has
+   `data-tauri-drag-region`; tauri-core's injected drag script handles mousedown-drag AND
+   double-click→`internal_toggle_maximize` on Windows (macOS maximizes on mouseup instead).
+   Edge resizing + aero-snap still work: tao hit-tests undecorated resizable windows itself
+   (WM_NCHITTEST), and the window keeps its shadow (`"shadow"` defaults to true).
+
+### ACL (main window, `capabilities/default.json`) — grant what you call
+
+| Frontend call | Required ACL permission | If missing |
+|---|---|---|
+| `win.minimize()` | `core:window:allow-minimize` | click no-ops silently |
+| `win.toggleMaximize()` | `core:window:allow-toggle-maximize` | click no-ops silently |
+| `win.close()` | `core:window:allow-close` | click no-ops silently |
+| `data-tauri-drag-region` drag | `core:window:allow-start-dragging` | header drag broken (also silently broken today on macOS!) |
+| `win.isMaximized()` | in `core:window:default` | n/a |
+| `win.onResized()` | `core:event:allow-listen` (in `core:default`) | icon never flips on aero-snap |
+
+Double-click-maximize via the drag region (`internal_toggle_maximize`) is in
+`core:window:default` already. `onResized` is `listen('tauri://resize')` — event-system only.
+
+### Tests Required
+- `WindowControls.test.tsx` mocks `@tauri-apps/api/window` + `isWindowsPlatform`; asserts the
+  three buttons render only on Windows, each click reaches the right window API, and a resize
+  while maximized swaps the maximize→restore icon. Note: `test/setup.desktop.ts` initializes
+  i18n with `zh`, so assert the Chinese `t()` strings like `Topbar.test.tsx` does.
+
+---
+
 ## Scenario: Click-Through on Transparent Regions
 
 ### Problem

@@ -30,5 +30,11 @@
   },
   "versionHistory": {
     "toggle": "Historique des versions"
+  },
+  "window": {
+    "minimize": "Réduire",
+    "maximize": "Agrandir",
+    "restore": "Restaurer",
+    "close": "Fermer"
   }
 }

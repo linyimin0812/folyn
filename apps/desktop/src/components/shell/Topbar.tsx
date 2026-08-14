@@ -16,6 +16,7 @@ import { requestPlanMyDay } from '@/services/planMyDayBridge';
 import { useTranslation } from 'react-i18next';
 import { Sun, Moon, FolderInput, History } from 'lucide-react';
 import { TerminalIcon } from '@/components/icons/TerminalIcon';
+import { WindowControls } from '@/components/shell/WindowControls';
 import { isVersionableTab } from '@/components/work-area/VersionHistoryPanel';
 
 const VIEW_MODE_ICONS: Record<ViewMode, React.ReactNode> = {
@@ -240,6 +241,12 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
         <button className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1" onClick={toggleTheme} title={t('topbar:theme.toggle')}>
           {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
         </button>
+
+        {/* Windows-only window controls (minimize / maximize / close) — the
+            main window drops its native titlebar on Windows, so these buttons
+            replace the OS window controls. Renders nothing elsewhere. */}
+        <div className="top-div w-px h-[18px] bg-brd2 mx-[3px] shrink-0" />
+        <WindowControls />
 
       </div>
     </header>

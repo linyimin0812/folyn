@@ -30,5 +30,11 @@
   },
   "versionHistory": {
     "toggle": "バージョン履歴"
+  },
+  "window": {
+    "minimize": "最小化",
+    "maximize": "最大化",
+    "restore": "元に戻す",
+    "close": "閉じる"
   }
 }
