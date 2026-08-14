@@ -23,9 +23,17 @@ export function resolveImagesInTree(
 ): void {
   if (node.content && node.content.includes('<img')) {
     node.content = node.content.replace(
-      /<img\b([^>]*?)src="([^"]+)"/g,
-      (m, attrs: string, src: string) =>
-        `<img${attrs}src="${resolveImgSrc(src, assetBase)}"`,
+      /<img\b([^>]*?)src="([^"]+)"([^>]*)>/g,
+      (m, pre: string, src: string, post: string) => {
+        const resolved = resolveImgSrc(src, assetBase);
+        // ponytail: cap image size so a fat screenshot doesn't blow the
+        // node box; matches the old mind-elixir topicMarkdown sizing.
+        const has = (s: string, k: string) => new RegExp(`\\b${k}=`).test(s);
+        const style = has(pre + post, 'style')
+          ? ''  // don't clobber an explicit style
+          : ' style="max-width:200px;max-height:120px;vertical-align:middle"';
+        return `<img${pre}src="${resolved}"${post}${style}>`;
+      },
     );
   }
   if (node.children) {
