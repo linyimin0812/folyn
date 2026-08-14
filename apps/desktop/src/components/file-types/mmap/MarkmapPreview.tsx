@@ -8,10 +8,11 @@
 // markmap re-runs d3-flextree on every setData. If it bites, throttle setData
 // (requestAnimationFrame coalesce) or virtualize — not needed at v1.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Transformer } from 'markmap-lib';
 import { Markmap } from 'markmap-view';
 import type { PreviewProps } from '../types';
+import { resolveAssetBase } from '../previewPath';
 import { resolveImagesInTree } from './resolveImages';
 
 const transformer = new Transformer();
@@ -19,6 +20,15 @@ const transformer = new Transformer();
 export function MarkmapPreview({ content, filePath, vaultRoot }: PreviewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const mmRef = useRef<Markmap | null>(null);
+  const [assetBase, setAssetBase] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveAssetBase(filePath, vaultRoot)
+      .then((base) => { if (!cancelled) setAssetBase(base); })
+      .catch(() => { if (!cancelled) setAssetBase(null); });
+    return () => { cancelled = true; };
+  }, [filePath, vaultRoot]);
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -33,10 +43,10 @@ export function MarkmapPreview({ content, filePath, vaultRoot }: PreviewProps) {
     const mm = mmRef.current;
     if (!mm) return;
     const { root } = transformer.transform(content || '');
-    resolveImagesInTree(root, filePath, vaultRoot);
+    resolveImagesInTree(root, assetBase);
     mm.setData(root);
     mm.fit();
-  }, [content, filePath, vaultRoot]);
+  }, [content, assetBase]);
 
   return (
     <div className="markmap-container flex-1 h-full w-full overflow-hidden">

@@ -8,12 +8,14 @@ import { Transformer } from 'markmap-lib';
 import { Markmap } from 'markmap-view';
 import { inlineSvgImages } from './shared';
 import type { EnhanceCtx } from './dbml';
+import { resolveAssetBase } from '@/components/file-types/previewPath';
 import { resolveImagesInTree } from '@/components/file-types/mmap/resolveImages';
 
 const transformer = new Transformer();
 
 export async function enhance(body: HTMLElement, ctx: EnhanceCtx): Promise<void> {
   const { src, filePath, vaultRoot } = ctx;
+  const assetBase = await resolveAssetBase(filePath, vaultRoot).catch(() => null);
   body.innerHTML = '';
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('width', '100%');
@@ -22,7 +24,7 @@ export async function enhance(body: HTMLElement, ctx: EnhanceCtx): Promise<void>
 
   const mm = Markmap.create(svg, { autoFit: true });
   const { root } = transformer.transform(src || '');
-  resolveImagesInTree(root, filePath, vaultRoot);
+  resolveImagesInTree(root, assetBase);
   mm.setData(root);
   // ponytail: one rAF lets d3-flextree lay out + markmap apply the fit
   // transform; without it the captured SVG may still be at origin.
