@@ -43,10 +43,10 @@ export function withPluginBoundary<P extends object>(
   surface: string,
 ): ComponentType<P> {
   return function PluginBoundaryWrapped(props: P) {
-    return createElement(
-      PanelErrorBoundary,
-      { pluginId, surface },
-      createElement(Comp, props),
-    );
+    return createElement(PanelErrorBoundary, {
+      pluginId,
+      surface,
+      children: createElement(Comp, props),
+    });
   };
 }
