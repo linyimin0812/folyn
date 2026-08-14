@@ -18,6 +18,12 @@ import { settingsLoadDone } from '@/store/settingsPersistence';
  * Tauri IPC (`ipc:` / `http://ipc.localhost`), the custom `quill-plugin:`
  * protocol, the `asset:` protocol, and `data:` / `blob:`. Users only get to
  * add *extra* hosts on top of this baseline.
+ *
+ * The asset protocol is served under two different schemes: `asset://localhost`
+ * on macOS/Linux but `http://asset.localhost` on Windows (Tauri serves custom
+ * protocols through a virtual host there). Both must appear in img-src /
+ * media-src, otherwise `convertFileSrc(...)` images (custom pet icon, markdown
+ * images, rich-text images, image viewer) are blocked by CSP on Windows.
  */
 
 export interface CspConfig {
@@ -32,8 +38,8 @@ const BASE_DIRECTIVES: Record<string, string[]> = {
   "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "'wasm-unsafe-eval'", 'blob:', 'quill-plugin:'],
   "style-src": ["'self'", "'unsafe-inline'"],
   "font-src": ["'self'", 'data:'],
-  "img-src": ["'self'", 'data:', 'blob:', 'asset:'],
-  "media-src": ["'self'", 'blob:', 'asset:'],
+  "img-src": ["'self'", 'data:', 'blob:', 'asset:', 'http://asset.localhost'],
+  "media-src": ["'self'", 'blob:', 'asset:', 'http://asset.localhost'],
   "connect-src": ["'self'", 'ipc:', 'http://ipc.localhost', 'quill-plugin:'],
   "worker-src": ["'self'", 'blob:'],
   "frame-src": ["'self'", 'blob:', 'data:', 'quill-plugin:'],
