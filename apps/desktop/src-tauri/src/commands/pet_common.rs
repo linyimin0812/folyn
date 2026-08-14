@@ -186,7 +186,10 @@ pub fn pet_menu_label(locale: &str, key: PetMenuLabel) -> &'static str {
 
 /// Localized label keys for the macOS app menu bar submenus. "Quill" is a
 /// brand name and stays untranslated; `PredefinedMenuItem` (Cut/Copy/Paste
-/// /About/…) is OS-localized and untouched.
+/// /About/…) is OS-localized and untouched. macOS-only: `build_app_menu`
+/// (the only consumer) is cfg-gated to macOS, so compiling these on Windows
+/// would trip `dead_code`.
+#[cfg(target_os = "macos")]
 #[derive(Copy, Clone)]
 pub enum AppMenuLabel {
     Edit,
@@ -194,6 +197,7 @@ pub enum AppMenuLabel {
     PluginToolFullscreen,
 }
 
+#[cfg(target_os = "macos")]
 pub fn app_menu_label(locale: &str, key: AppMenuLabel) -> &'static str {
     match locale {
         "zh" => match key {
@@ -496,6 +500,10 @@ mod tests {
         assert_eq!(pet_menu_label("fr", PetMenuLabel::ShowMain), "Show Main Window");
     }
 
+    // macOS-only items (`app_menu_label` / `AppMenuLabel` are gated to
+    // `target_os = "macos"`), so this test only compiles there — on Windows
+    // the tray-menu tests below still cover the cross-platform labels.
+    #[cfg(all(test, target_os = "macos"))]
     #[test]
     fn app_menu_labels_cover_all_keys_in_both_locales() {
         assert_eq!(app_menu_label("zh", AppMenuLabel::Edit), "编辑");

@@ -74,8 +74,10 @@ use tauri_plugin_global_shortcut::Shortcut;
 // (CoreGraphics CGEvent Cmd+V), `permissions` (AVAudioApplication / AX FFI),
 // `recorder` (cpal), `wav` (pure Rust WAV encoder). Windows: `winrt_speech`
 // (WinRT SpeechRecognizer), `insertion_win` (user32 SendInput Ctrl+V),
-// `permissions_win` (no-op stub). `recorder` + `wav` are cross-platform
-// (macOS+Windows). All Windows-target modules start with
+// `permissions_win` (no-op stub). `recorder` + `wav` are macOS-only: the
+// Windows voice path uses WinRT's own mic capture (no cpal PCM buffer), so
+// compiling them on Windows would trip `dead_code` on every item. All
+// Windows-target modules start with
 // `#![cfg(target_os = "windows")]` so the file contents are empty on macOS;
 // the macOS-target modules start with `#![cfg(target_os = "macos")]` so the
 // reverse holds on Windows.
@@ -85,9 +87,9 @@ mod apple_speech;
 mod insertion;
 #[cfg(target_os = "macos")]
 mod permissions;
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(target_os = "macos")]
 mod recorder;
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(target_os = "macos")]
 mod wav;
 #[cfg(target_os = "windows")]
 mod winrt_speech;
@@ -564,10 +566,11 @@ pub async fn voice_stop(
 /// Empty `pcm` → returns `None`-shaped empty path error (caller treats as
 /// best-effort skip). Timestamp format: `YYYYMMDD-HHMMSS-<ms>`.
 ///
-/// ponytail: cfg widened from macOS-only to mac+windows in R15 — pure Rust
-/// (std::fs + `wav::encode_wav_16k_mono`), no FFI. Windows `voice_stop` reuses
-/// the same save-source-wav path as macOS.
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+/// macOS-only: pure Rust (std::fs + `wav::encode_wav_16k_mono`), no FFI, but
+/// only the macOS `voice_stop` calls it — Windows uses WinRT's own mic
+/// capture (no cpal PCM buffer) and surfaces the "不支持保存源音频" hint
+/// instead (see the windows `voice_stop`).
+#[cfg(target_os = "macos")]
 fn save_source_wav(
     pcm: &[u8],
     source_dir: &str,
@@ -635,7 +638,8 @@ fn save_source_wav(
 }
 
 /// `YYYYMMDD-HHMMSS-<ms>` in local time. Mirrors openless source-file naming.
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+/// macOS-only (sole caller `save_source_wav` is macOS-only).
+#[cfg(target_os = "macos")]
 fn timestamp_filename() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let now = SystemTime::now()
@@ -693,11 +697,11 @@ pub async fn voice_cancel(app: tauri::AppHandle) -> Result<(), AppError> {
 //
 // Mirrors macOS `voice_start` / `voice_stop` / `voice_cancel` /
 // `voice_insert_text` 1:1 with Windows-native backends:
-//   - cpal WASAPI mic capture (cross-platform `recorder::Recorder`)
-//   - WinRT `SpeechRecognizer` for ASR (`winrt_speech::WinRtSpeechAsr`)
+//   - WinRT `SpeechRecognizer` for ASR + mic capture (`winrt_speech::WinRtSpeechAsr`;
+//     no cpal — `recorder`/`wav` are macOS-only)
 //   - `user32::SendInput` Ctrl+V for cross-app paste (`insertion_win::insert_text`)
-//   - No Accessibility / speech-recognition permission concepts (cpal隐式触发
-//     Consent UI); `permissions_win` is a no-op stub kept for signature parity.
+//   - No Accessibility / speech-recognition permission concepts (WinRT 隐式触发
+//     Consent UI); `permissions_win` keeps only `ensure_microphone` (no-op).
 //
 // ponytail: orb window is OUT OF SCOPE for R15 MVP (PRD Out of Scope).
 // `show_voice_orb(&app)` here resolves to the non-macOS no-op stub below —
@@ -917,10 +921,10 @@ pub async fn voice_debug_frontmost() -> Result<String, AppError> {
 // ── Non-macOS stubs (Linux etc.) ───────────────────────────────────────────
 //
 // `voice.rs` (this file) is the module root declared in `lib.rs::mod voice;`.
-// The macOS submodules (`apple_speech`, `insertion`, `permissions`) are
-// cfg-gated to `target_os = "macos"`; the Windows submodules (`winrt_speech`,
-// `insertion_win`, `permissions_win`) to `target_os = "windows"`; `recorder`
-// + `wav` are cross-platform (mac+windows). The commands below MUST exist on
+// The macOS submodules (`apple_speech`, `insertion`, `permissions`, `recorder`,
+// `wav`) are cfg-gated to `target_os = "macos"`; the Windows submodules
+// (`winrt_speech`, `insertion_win`, `permissions_win`) to
+// `target_os = "windows"`. The commands below MUST exist on
 // every platform because `lib.rs::invoke_handler!` references them
 // unconditionally. Linux (and other non-mac/non-win targets) returns a clear
 // error so the frontend can show the "当前平台不支持语音输入" tooltip path.

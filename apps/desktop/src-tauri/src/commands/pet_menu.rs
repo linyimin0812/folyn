@@ -9,6 +9,12 @@ use crate::errors::AppError;
 /// calls `pet_rebuild_app_menu` to sync the user's actual locale) and again
 /// whenever the user switches locale. The `Quill` submenu title is a brand
 /// name and never translated; `Edit`/`Window` use `app_menu_label`.
+///
+/// macOS-only: both call sites are cfg-gated to `target_os = "macos"`
+/// (`lib.rs::setup` and `pet_rebuild_app_menu`'s macOS branch) — the macOS
+/// app-menu pattern (`services`/`hide_others`/`show_all`/`quit`) fails to
+/// build on Windows, so compiling this fn there would only trip `dead_code`.
+#[cfg(target_os = "macos")]
 pub fn build_app_menu(app: &tauri::AppHandle, locale: &str) -> Result<(), AppError> {
     use tauri::menu::{MenuBuilder, SubmenuBuilder};
 

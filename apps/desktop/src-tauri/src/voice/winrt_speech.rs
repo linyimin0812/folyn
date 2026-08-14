@@ -15,8 +15,8 @@
 //! **副作用**：
 //! - 不再走 cpal mic capture → `voice://mic-level` UI 指示器在 Windows
 //!   上不会触发（前端 fallback CSS ring 已在 PRD R15 内）。
-//! - `save_source_wav` 在 Windows 返回 None + "不支持保存源音频" 提示
-//!   （buffered_pcm 始终空）。
+//! - `save_source_wav` 在 Windows 不支持（WinRT 自管 mic capture、无 cpal
+//!   PCM buffer）— `voice_stop` 直接返回 "不支持保存源音频" 提示。
 //!
 //! **UX 差异**：RecognizeAsync 在用户停止说话后的 silence 阈值触发返回。
 //! 多句连续说话只识别第一句；后续短语丢失。升级路径：ContinuousRecognitionSession
@@ -100,21 +100,10 @@ impl WinRtSpeechAsr {
         }
     }
 
-    pub fn buffer_duration_ms(&self) -> u64 {
-        // Windows 走 WinRT 实时 mic，不走 cpal buffer。始终 0。
-        0
-    }
-
     /// True if a recognition session is active (pending_op set, not yet
     /// transcribed/cancelled). Used by `VoiceInner::is_recording` on Windows.
     pub fn is_session_active(&self) -> bool {
         self.pending_op.lock().is_some()
-    }
-
-    /// Windows 上无 PCM buffer（WinRT 自管 mic capture）。返回空 Vec 让
-    /// `voice_stop` 的 save_source_wav 路径走 "不支持" 分支。
-    pub fn buffered_pcm(&self) -> Vec<u8> {
-        Vec::new()
     }
 
     /// voice_start 调用：创建 recognizer + 编译 dictation 约束 + 启动

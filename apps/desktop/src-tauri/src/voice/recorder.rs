@@ -11,7 +11,11 @@
 //! level metering UI. PR3 will add the level handler + archiver when wiring
 //! `VoiceInputButton` recording state + source file save.
 
-#![cfg(any(target_os = "macos", target_os = "windows"))]
+// macOS-only: the Windows voice path uses WinRT's own mic capture (no cpal
+// PCM buffer), so `voice.rs` gates `mod recorder` to `target_os = "macos"`;
+// this inner cfg keeps the file self-describing (same pattern as
+// `winrt_speech.rs`'s `#![cfg(target_os = "windows")]`).
+#![cfg(target_os = "macos")]
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender};
