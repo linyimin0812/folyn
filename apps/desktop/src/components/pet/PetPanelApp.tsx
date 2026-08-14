@@ -168,13 +168,23 @@ export function PetPanelApp() {
   // windows lack fs ACL). The main window broadcasts them on
   // `pet://providers-updated` (startProvidersBroadcast in App.tsx); without
   // this the panel would show "configure a model" even though providers are
-  // configured. Mirrors the pet://file-tree-updated listener.
+  // configured, and `useEnabledPairs().hasAny` stays false → the ChatInput
+  // textarea is `disabled` and the user cannot type. Mirrors the
+  // pet://file-tree-updated listener.
+  //
+  // Request-response: the main window's initial emit fires at App.tsx mount
+  // time, BEFORE this panel's listener registers (the panel opens on user
+  // click, long after startup). If the provider config is already loaded and
+  // stable, no aiConfigStore change fires to push it again — so we emit
+  // `pet://providers-request` after registering, and the main window re-emits
+  // the current snapshot (startProvidersBroadcast listens for it). Mirrors the
+  // `pet://file-tree-request` pattern below.
   useEffect(() => {
     if (!isTauri()) return;
     let unlisten: (() => void) | undefined;
     (async () => {
       try {
-        const { listen } = await import('@tauri-apps/api/event');
+        const { listen, emit } = await import('@tauri-apps/api/event');
         unlisten = await listen<{
           providerSettings?: Record<string, ProviderSettings>;
           customerProviders?: Record<string, CustomProviderDef>;
@@ -197,6 +207,8 @@ export function PetPanelApp() {
             });
           }
         });
+        // Request the current snapshot (the initial emit was missed).
+        await emit('pet://providers-request', {});
       } catch (err) {
         console.warn('[pet-panel] providers-updated listener failed:', err);
       }

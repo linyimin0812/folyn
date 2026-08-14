@@ -758,9 +758,29 @@ export function startProvidersBroadcast(): () => void {
       void emit();
     }
   });
+  // ponytail: request-response. A secondary window (pet-panel) that mounts
+  // AFTER the initial emit above misses it; if the provider config is already
+  // loaded and stable, no aiConfigStore/modelRegistryStore change fires to push
+  // it again. Listen for `pet://providers-request` from secondary windows and
+  // re-emit the current snapshot. Mirrors the `pet://file-tree-request`
+  // pattern in startFileTreeBroadcast. The listener is main-window-only
+  // because startProvidersBroadcast is only called from App.tsx.
+  let reqUnlisten: (() => void) | undefined;
+  (async () => {
+    if (stopped) return;
+    try {
+      const { listen } = await import('@tauri-apps/api/event');
+      reqUnlisten = await listen('pet://providers-request', () => {
+        void emit();
+      });
+    } catch {
+      // Non-tauri (tests) or listen failed — non-fatal.
+    }
+  })();
   return () => {
     stopped = true;
     unsubConfig();
     unsubModels();
+    reqUnlisten?.();
   };
 }
