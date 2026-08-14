@@ -95,6 +95,7 @@ export const DEFAULT_FILE_TEMPLATES: Record<string, string> = {
   puml: '@startuml\nAlice->Bob : Hello\nreturn ok\n@enduml',
   gv: 'digraph G {Hello->World}',
   dbml: '// {{title}}\nTable users {\n  id integer [pk, increment]\n  name varchar(255)\n  created_at timestamp\n}',
+  mmap: '# {{title}}\n## Child\n### Grandchild\n',
 };
 
 /**

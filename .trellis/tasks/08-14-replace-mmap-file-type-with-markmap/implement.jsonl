@@ -1,0 +1,8 @@
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "file-type handler contract — Editor/Preview/useCodeMirror/needsFileContent wiring"}
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "markmap consumes markdown; existing render pipeline + dark theme tokens to reuse"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "placement of mmap/ handler dir + new MarkmapPreview"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "React component shape for MarkmapPreview"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "mmap namespace keys; what to keep vs drop"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "self-check / test expectations"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "reuse existing CodeMirror markdown editor instead of rolling new"}
+{"file": ".trellis/tasks/08-14-replace-mmap-file-type-with-markmap/prd.md", "reason": "PRD for this task"}

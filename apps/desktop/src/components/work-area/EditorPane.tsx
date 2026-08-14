@@ -250,8 +250,7 @@ export const EditorPane = forwardRef<QuillEditorHandle, EditorPaneProps>(
               style state. Reads the trailing `<!-- dbml:meta -->` block
               straight from activeTab.content — no shared runtime state with
               ErDiagramX6, read-only display only. Shown only for .dbml
-              tabs. Positioned at the bottom-right of the editor pane,
-              matching mmap's bottom-of-editor button placement. */}
+              tabs. Positioned at the bottom-right of the editor pane. */}
           {activeTab?.fileType === 'dbml' && (
             <DbmlStyleStatusButton content={activeTab.content ?? ''} />
           )}

@@ -44,7 +44,7 @@ export async function resolvePreviewPath(filePath: string, vaultRoot: string): P
  *
  * For an external file, that's the file's own directory. For a vault-relative
  * file, that's `<vaultRoot>/<fileDir>` (the legacy behaviour embedded in
- * MarkdownPreview / topicMarkdown).
+ * MarkdownPreview).
  */
 export async function resolveAssetBase(filePath: string, vaultRoot: string): Promise<string> {
   if (isExternalPath(filePath)) {

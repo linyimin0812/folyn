@@ -17,7 +17,6 @@ import {
   renderFilePreviewToSvg,
   svgToPngBlob,
 } from '@/services/export/shared';
-import { mmapToXmindBlob } from '@/services/export/xmind';
 import { richTextToHtmlBlob } from '@/services/export/richtext';
 import { getHandlerById } from '@/components/file-types/registry';
 import { externalFileProvider } from '@/services/externalFileProvider';
@@ -118,16 +117,6 @@ export async function exportActiveSvg(onBeforeDialog?: () => void): Promise<void
   await downloadBlob(blob, `${baseName}.svg`, ['svg']);
 }
 
-/** Export an mmap file as XMind (.xmind) format. */
-export async function exportActiveXmind(onBeforeDialog?: () => void): Promise<void> {
-  const { name, content } = getActiveDocument();
-  if (!content) return;
-  const baseName = name.replace(/\.[^.]+$/, '');
-  const blob = await mmapToXmindBlob(content, baseName);
-  onBeforeDialog?.();
-  await downloadBlob(blob, `${baseName}.xmind`, ['xmind']);
-}
-
 /** Export a canvas-backed file (dbml/excalidraw/drawio/mmap) as PNG. */
 export async function exportActivePng(onBeforeDialog?: () => void): Promise<void> {
   const { name, path, vaultRoot } = getActiveDocument();
@@ -193,7 +182,6 @@ export function useExport() {
   const exportRichTextHtml = useCallback((onBeforeDialog?: () => void) => exportActiveRichTextHtml(onBeforeDialog), []);
   const exportSvg = useCallback((onBeforeDialog?: () => void) => exportActiveSvg(onBeforeDialog), []);
   const exportPng = useCallback((onBeforeDialog?: () => void) => exportActivePng(onBeforeDialog), []);
-  const exportXmind = useCallback((onBeforeDialog?: () => void) => exportActiveXmind(onBeforeDialog), []);
   const getActiveContent = useCallback(
     () => {
       const { name, content, path } = getActiveDocument();
@@ -201,5 +189,5 @@ export function useExport() {
     },
     [],
   );
-  return { exportMarkdown, exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportXmind, getActiveContent };
+  return { exportMarkdown, exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, getActiveContent };
 }

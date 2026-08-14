@@ -87,9 +87,8 @@ export async function svgToPngBlob(svg: string, scale = 2): Promise<Blob | null>
 /**
  * Walk all <image> elements (SVG namespace) inside `container` and replace
  * Tauri asset URLs (any non-data, non-http src) in both `href` and
- * `xlink:href` with base64 data URLs. Used by the mmap enhancer —
- * mind-elixir's exported SVG (inlineContainerImages runs before mind-elixir
- * mounts, so it misses the mmap image elements).
+ * `xlink:href` with base64 data URLs. Used by the mmap enhancer so the
+ * exported markmap SVG renders embedded images standalone.
  */
 export async function inlineSvgImages(container: HTMLElement): Promise<void> {
   const imgs = Array.from(container.querySelectorAll('image'));
@@ -292,11 +291,11 @@ export async function renderFilePreviewToSvg(
     if (!svgEl) return '';
     svgString = svgEl.outerHTML;
   }
-  // ponytail: mind-elixir's exportSvg emits <image xlink:href="..."> without
-  // declaring xmlns:xlink on the root <svg>, so standalone XML parsers reject
-  // it ("Namespace prefix xlink for href on image is not defined"). HTML
-  // rendering is unaffected — only standalone .svg files break. Inject the
-  // namespace declaration on the root when xlink: is referenced but missing.
+  // ponytail: SVG exporters (markmap, etc.) may emit <image xlink:href="...">
+  // without declaring xmlns:xlink on the root <svg>, so standalone XML parsers
+  // reject it ("Namespace prefix xlink for href on image is not defined").
+  // HTML rendering is unaffected — only standalone .svg files break. Inject
+  // the namespace declaration on the root when xlink: is referenced but missing.
   if (svgString.includes('xlink:') && !/\bxmlns:xlink=/.test(svgString)) {
     svgString = svgString.replace(
       /<svg\b([^>]*)>/,

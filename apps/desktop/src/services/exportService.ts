@@ -200,21 +200,6 @@ export async function renderMarkdownToHtmlViaDom(
   const fg = theme === 'dark' ? '#e2e8f8' : '#1a2040';
   container.style.cssText =
     `position:absolute;left:-9999px;top:0;width:800px;height:auto;background:${bg};color:${fg};visibility:hidden;`;
-  // ponytail: center image + text inside mind-elixir topic boxes during
-  // export. mind-elixir left-aligns me-tpc > img (block, no auto margin)
-  // and .text (inline-block). text-align:center on me-tpc + margin:auto
-  // on img centers both. Scoped to export root so the in-app preview is
-  // unaffected. inst.exportSvg reads offsets from the live DOM, so these
-  // shifts propagate to the exported SVG coordinates.
-  // (The foreignObject-div fix for 偏上 is injected into the SVG itself
-  // via the second arg to inst.exportSvg in enhanceMmapBlock — CSS here
-  // doesn't reach the standalone exported SVG.)
-  const style = document.createElement('style');
-  style.textContent = `
-    [data-export-root] me-tpc { text-align: center !important; }
-    [data-export-root] me-tpc > img { margin-left: auto !important; margin-right: auto !important; }
-  `;
-  container.appendChild(style);
   document.body.appendChild(container);
 
   const root = createRoot(container);
@@ -231,10 +216,10 @@ export async function renderMarkdownToHtmlViaDom(
   await inlineContainerImages(container);
 
   // Poll for stability: no loading markers visible AND any mmap file-preview
-  // block has its mind-elixir instance mounted (data-mmap-instance-host
-  // attribute). The latter matters because MindMapCanvas has no internal
-  // loading state during the lazy mind-elixir chunk load + init — without
-  // this check the loop can exit before inst.exportSvg is callable.
+  // block has its markmap SVG mounted (a child <g> inside the container's
+  // <svg>). markmap-view's Markmap.create is synchronous, but d3 layout
+  // runs on the next frame; without this check the loop can exit before
+  // the SVG has any rendered nodes.
   const startedAt = Date.now();
   const TIMEOUT_MS = 10000;
   const POLL_MS = 150;
@@ -250,7 +235,8 @@ export async function renderMarkdownToHtmlViaDom(
       for (const b of Array.from(mmapBlocks)) {
         const name = (b.getAttribute('data-file-preview-name') || '').toLowerCase();
         if (!name.endsWith('.mmap')) continue;
-        if (!b.querySelector('[data-mmap-instance-host]')) { pendingMmap = true; break; }
+        const svg = b.querySelector('.markmap-container svg');
+        if (!svg || !svg.querySelector('g')) { pendingMmap = true; break; }
       }
       const elapsed = Date.now() - startedAt;
       if (!hasLoading && !pendingMmap) {

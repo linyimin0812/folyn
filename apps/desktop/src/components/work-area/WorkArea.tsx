@@ -201,7 +201,7 @@ export function WorkArea() {
       {/* Custom editor (full area) — e.g. Excalidraw.
           border-r border-brd mirrors EditorPane's divider so split view shows
           the same vertical line between editor and preview for custom editors
-          (mmap/OutlineEditor) as for CodeMirror-driven file types. */}
+          as for CodeMirror-driven file types. */}
       {showCustomEditor && activeTab && handler?.Editor && activeTab.fileType !== 'web' && (
         <div
           className={`flex-1 flex flex-col overflow-hidden editor-${handler.id} ${handler?.Preview && viewMode === 'split' ? 'border-r border-brd' : ''}`}

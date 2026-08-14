@@ -27,7 +27,7 @@ export function ExportMenu() {
   const [containerWarning, setContainerWarning] = useState(false);
   const [exporting, setExporting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportXmind, getActiveContent } = useExport();
+  const { exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, getActiveContent } = useExport();
 
   const fileType = useEditorStore((s) => {
     const tab = s.tabs.find((t) => t.id === s.activeTabId);
@@ -94,10 +94,6 @@ export function ExportMenu() {
     runWithOverlay(() => exportPng());
   }, [exportPng, runWithOverlay]);
 
-  const handleXmind = useCallback(() => {
-    runWithOverlay(() => exportXmind());
-  }, [exportXmind, runWithOverlay]);
-
   const sourceKey = KNOWN_SOURCE_TYPES.has(fileType) ? fileType : 'default';
   const items: Item[] = [
     {
@@ -135,9 +131,9 @@ export function ExportMenu() {
       },
     );
     // PNG export: only for canvas types whose SVG has no foreignObject.
-    // mmap's exported SVG uses foreignObject for topic text — WebKit taints
-    // the canvas (SecurityError on toBlob) when rasterizing SVG-as-Image
-    // with foreignObject. Skip PNG for mmap; SVG + XMind cover the gap.
+    // mmap (markmap) uses foreignObject for topic text — WebKit taints the
+    // canvas (SecurityError on toBlob) when rasterizing SVG-as-Image with
+    // foreignObject. Skip PNG for mmap; SVG covers the gap.
     // plantuml + graphviz ship SVG-only for now — PNG can be added later via
     // the shared svgToPngBlob helper (no foreignObject in their server SVGs).
     if (fileType !== 'mmap' && fileType !== 'plantuml' && fileType !== 'graphviz') {
@@ -147,16 +143,6 @@ export function ExportMenu() {
         label: t('editor:export.png.label'),
         description: t('editor:export.png.description'),
         run: handlePng,
-      });
-    }
-    // XMind export: only for mmap files
-    if (fileType === 'mmap') {
-      items.push({
-        key: 'xmind',
-        icon: <span className="text-base w-6 text-center shrink-0">🧠</span>,
-        label: t('editor:export.xmind.label'),
-        description: t('editor:export.xmind.description'),
-        run: handleXmind,
       });
     }
   }

@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "lint/type/test acceptance gates"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "verify handler contract matches spec"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "verify i18n namespace trimming is consistent"}
+{"file": ".trellis/tasks/08-14-replace-mmap-file-type-with-markmap/prd.md", "reason": "Acceptance Criteria checklist"}

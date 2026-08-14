@@ -1399,3 +1399,13 @@ mjx-container svg {
      (translate3d) optimized, preventing resolution loss on Retina. */
   will-change: transform;
 }
+
+/* ponytail: markmap text inherits from container; flip color in dark theme.
+   markmap-view's branch color comes from its built-in palette (unchanged),
+   only the topic text needs to invert. */
+.markmap-container {
+  color: var(--fg, #1f2328);
+}
+[data-theme='dark'] .markmap-container {
+  color: var(--fg, #e6edf3);
+}

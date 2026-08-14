@@ -271,7 +271,7 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
     useEffect(() => {
       if (!editorRef.current) return;
 
-      const isMarkdown = !filePath || /\.(md|markdown|mdx)$/i.test(filePath);
+      const isMarkdown = !filePath || /\.(md|markdown|mdx|mmap)$/i.test(filePath);
 
       // Common extensions shared by all file types
       const commonExtensions = [
