@@ -127,14 +127,18 @@ impl WinRtSpeechAsr {
         let lang = Language::CreateLanguage(&lang_tag)
             .context("WinRT Language::CreateLanguage failed (检查语言包安装)")?;
 
-        // ponytail: SupportedTopicLanguages 预飞检查（research summary 风险点 4）。
-        let supported = SpeechRecognizer::SupportedTopicLanguages()?;
-        if supported.Size()? == 0 {
-            bail!(
-                "WinRT 语音识别不可用：未安装任何语言包。请在「设置 → 时间和语言 → \
-                 语言和区域 → 添加语言」勾选「语音识别」子功能（语言：{}）",
-                self.locale.as_deref().unwrap_or("en-US")
-            );
+        // ponytail: SupportedTopicLanguages 预飞检查。IVectorView 非 Send，
+        // 必须在 await 前 drop — 否则跨 await 持有破坏 voice_start future 的
+        // Send 要求。scope 限制 + check 后 Size() 取回 bool，让 supported 立即释放。
+        {
+            let supported = SpeechRecognizer::SupportedTopicLanguages()?;
+            if supported.Size()? == 0 {
+                bail!(
+                    "WinRT 语音识别不可用：未安装任何语言包。请在「设置 → 时间和语言 → \
+                     语言和区域 → 添加语言」勾选「语音识别」子功能（语言：{}）",
+                    self.locale.as_deref().unwrap_or("en-US")
+                );
+            }
         }
 
         // ponytail: windows-rs 0.62 `SpeechRecognizer::Create` 是同步构造
