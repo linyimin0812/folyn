@@ -21,7 +21,7 @@ export async function enhance(body: HTMLElement, ctx: EnhanceCtx): Promise<void>
 
   const mm = Markmap.create(svg, { autoFit: true });
   const { root } = transformer.transform(src || '');
-  mm.setData({ root });
+  mm.setData(root);
   // ponytail: one rAF lets d3-flextree lay out + markmap apply the fit
   // transform; without it the captured SVG may still be at origin.
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));

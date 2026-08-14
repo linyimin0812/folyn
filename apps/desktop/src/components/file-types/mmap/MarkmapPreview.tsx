@@ -32,7 +32,7 @@ export function MarkmapPreview({ content }: PreviewProps) {
     const mm = mmRef.current;
     if (!mm) return;
     const { root } = transformer.transform(content || '');
-    mm.setData({ root });
+    mm.setData(root);
     mm.fit();
   }, [content]);
 
