@@ -51,7 +51,12 @@ export async function enhance(body: HTMLElement, ctx: EnhanceCtx): Promise<void>
     }
   }
   const layout = layoutEr(result.schema, 800, 600, manualPositions);
-  const svgString = renderErLayoutToSvg(layout);
+  // Resolve the applied theme at export time. documentElement.dataset.theme is
+  // set by appearanceStore to the ACTUAL applied theme (system already
+  // resolved), matching how exportActiveHtml picks its palette.
+  const theme =
+    document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const svgString = renderErLayoutToSvg(layout, theme);
   body.innerHTML = svgString;
   const svgEl = body.querySelector<SVGSVGElement>('svg');
   if (svgEl) {
@@ -64,13 +69,24 @@ export async function enhance(body: HTMLElement, ctx: EnhanceCtx): Promise<void>
   body.style.overflow = 'hidden';
 }
 
-// ponytail: concrete light-theme hex, NOT var(--xxx). The SVG is extracted
+type Palette = {
+  surf: string; brd: string; hov: string; brd2: string;
+  t1: string; t3: string; acc: string;
+};
+
+// ponytail: concrete theme hex, NOT var(--xxx). The SVG is extracted
 // standalone by shared.renderFilePreviewToSvg (no :root ancestor), so CSS
 // vars don't resolve in .svg files or PNG canvas rasterization — fills fall
-// back to black. Hex matches LIGHT_THEME_VARS in exportService.ts.
-const C = {
+// back to black. Both palettes mirror LIGHT_THEME_VARS / DARK_THEME_VARS in
+// exportService.ts. Pick the palette from the applied app theme so dark-mode
+// exports stay dark instead of always baking the light palette.
+const LIGHT_C: Palette = {
   surf: '#f8f9fd', brd: '#dde2f0', hov: '#e8ecf8', brd2: '#c8d0e8',
   t1: '#1a2040', t3: '#8892b0', acc: '#3a6ef0',
+};
+const DARK_C: Palette = {
+  surf: '#13161f', brd: '#1c2136', hov: '#1b1f2e', brd2: '#252d4a',
+  t1: '#e2e8f8', t3: '#6b7a96', acc: '#5b8af5',
 };
 // ponytail: duplicated from erLayout.ts (ER_HEADER_H=38, ER_ROW_H=28). The
 // constants are stable layout sizing — duplicate beats a static import
@@ -90,9 +106,10 @@ function fieldRowY(t: PositionedTable, fieldName: string | undefined): number | 
 // erLayout (header / row heights already agree with the in-app x6 render).
 // Shares `zOrthPath` with the x6 `z-orth` router so preview and export draw
 // the same Z-shape, grid-snapped, field-row-anchored edges.
-function renderErLayoutToSvg(layout: ErLayout): string {
+function renderErLayoutToSvg(layout: ErLayout, theme: 'light' | 'dark'): string {
   const { tables, enums, refs } = layout;
   if (tables.length === 0 && enums.length === 0) return '';
+  const C = theme === 'dark' ? DARK_C : LIGHT_C;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   const bounds = (x: number, y: number, w: number, h: number) => {
     minX = Math.min(minX, x); minY = Math.min(minY, y);
@@ -112,8 +129,8 @@ function renderErLayoutToSvg(layout: ErLayout): string {
   // Edges last so they draw on top of cards (mirrors x6's edge z-order —
   // lines crossing a card stay visible instead of being hidden by the fill).
   const tableByName = new Map(tables.map((t) => [t.name, t]));
-  for (const t of tables) parts.push(renderTableCardSvg(t));
-  for (const e of enums) parts.push(renderEnumCardSvg(e));
+  for (const t of tables) parts.push(renderTableCardSvg(t, C));
+  for (const e of enums) parts.push(renderEnumCardSvg(e, C));
   for (const r of refs) {
     const from = tableByName.get(r.fromTable);
     const to = tableByName.get(r.toTable);
@@ -139,7 +156,7 @@ function escapeXml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function renderTableCardSvg(t: PositionedTable): string {
+function renderTableCardSvg(t: PositionedTable, C: Palette): string {
   const parts: string[] = [];
   parts.push('<g>');
   // Card body
@@ -182,7 +199,7 @@ function renderTableCardSvg(t: PositionedTable): string {
   return parts.join('');
 }
 
-function renderEnumCardSvg(e: PositionedEnum): string {
+function renderEnumCardSvg(e: PositionedEnum, C: Palette): string {
   const parts: string[] = [];
   parts.push('<g>');
   parts.push(
