@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { usePrefsStore, DEFAULT_SHORTCUTS, backfillDefaultShortcuts } from './prefsStore';
+import { usePrefsStore, DEFAULT_SHORTCUTS, DEFAULT_FILE_TEMPLATES, backfillDefaultShortcuts, backfillDefaultFileTemplates } from './prefsStore';
 import { storageClient } from '@/utils/storageClient';
 import { markSettingsHydrated } from './settingsPersistence';
 
@@ -91,6 +91,15 @@ describe('usePrefsStore.hydrate', () => {
     expect(bold.keys).toEqual(['⌘', 'X']);
   });
 
+  it('backfills missing default file templates', () => {
+    usePrefsStore.getState().hydrate({ fileTemplates: { md: '# mine' } });
+    const t = usePrefsStore.getState().fileTemplates;
+    expect(t.md).toBe('# mine');
+    expect(t.puml).toContain('@startuml');
+    expect(t.gv).toContain('digraph');
+    expect(t.dbml).toContain('Table users');
+  });
+
   it('missing fields keep defaults', () => {
     usePrefsStore.getState().hydrate({ dailyNotesDir: '__daily__' });
     expect(usePrefsStore.getState().dailyNoteDateFormat).toBe('YYYY-MM-DD');
@@ -121,5 +130,34 @@ describe('backfillDefaultShortcuts', () => {
   it('returns the input unchanged when no defaults are missing', () => {
     const persisted = DEFAULT_SHORTCUTS.map((s) => ({ ...s }));
     expect(backfillDefaultShortcuts(persisted)).toEqual(persisted);
+  });
+});
+
+describe('backfillDefaultFileTemplates', () => {
+  it('appends missing default template keys while preserving existing entries', () => {
+    const result = backfillDefaultFileTemplates({ md: '# custom' });
+    expect(result.md).toBe('# custom');
+    expect(result.puml).toContain('@startuml');
+    expect(result.gv).toContain('digraph');
+    expect(result.dbml).toContain('Table users');
+    expect(Object.keys(result).sort()).toEqual(Object.keys(DEFAULT_FILE_TEMPLATES).sort());
+  });
+
+  it('returns the defaults copy when input is empty or undefined', () => {
+    expect(backfillDefaultFileTemplates({})).toEqual(DEFAULT_FILE_TEMPLATES);
+    expect(backfillDefaultFileTemplates(undefined as unknown as Record<string, string>)).toEqual(DEFAULT_FILE_TEMPLATES);
+  });
+
+  it('preserves user-cleared (empty-string) templates during backfill', () => {
+    const result = backfillDefaultFileTemplates({ md: '' });
+    expect(result.md).toBe('');
+    expect(result.puml).toBeDefined();
+  });
+
+  it('includes diagram starters for puml, gv and dbml', () => {
+    const { puml, gv, dbml } = DEFAULT_FILE_TEMPLATES;
+    expect(puml).toMatch(/^@startuml/);
+    expect(gv).toContain('digraph');
+    expect(dbml).toContain('Table users');
   });
 });

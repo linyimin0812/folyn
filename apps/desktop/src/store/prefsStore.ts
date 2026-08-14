@@ -69,11 +69,35 @@ export interface PrefsState {
   hydrate: (blob: Record<string, unknown>) => void;
 }
 
-const DEFAULT_FILE_TEMPLATES: Record<string, string> = {
+export const DEFAULT_FILE_TEMPLATES: Record<string, string> = {
   md: '# {{title}}\n\n',
   html: '<!DOCTYPE html>\n<html lang="zh">\n<head>\n  <meta charset="UTF-8">\n  <title>{{title}}</title>\n</head>\n<body>\n  \n</body>\n</html>',
   excalidraw: '{"type":"excalidraw","version":2,"elements":[],"appState":{"viewBackgroundColor":"#ffffff"}}',
+  // Diagram formats — keys match the primary extension of the file-type
+  // handlers (plantuml → puml, graphviz → gv, dbml → dbml) so the "new file"
+  // flow seeds starter content for these types.
+  puml: '@startuml\nAlice->Bob : Hello\nreturn ok\n@enduml',
+  gv: 'digraph G {Hello->World}',
+  dbml: '// {{title}}\nTable users {\n  id integer [pk, increment]\n  name varchar(255)\n  created_at timestamp\n}',
 };
+
+/**
+ * Backfill persisted `fileTemplates` with any DEFAULT_FILE_TEMPLATES entries
+ * that are missing (by extension key). Existing entries — including
+ * user-customized content or intentionally cleared templates — are preserved;
+ * only keys absent from the persisted map are added from the defaults. Runs
+ * at settings-load time so a user who persisted `fileTemplates` before a new
+ * default (e.g. `puml`/`gv`/`dbml`) was added sees the new entry appear
+ * automatically without resetting their other templates. Mirrors the
+ * `backfillDefaultShortcuts` pattern.
+ */
+export function backfillDefaultFileTemplates(saved: Record<string, string>): Record<string, string> {
+  const result = { ...(saved ?? {}) };
+  for (const [ext, content] of Object.entries(DEFAULT_FILE_TEMPLATES)) {
+    if (result[ext] === undefined) result[ext] = content;
+  }
+  return result;
+}
 
 export const usePrefsStore = create<PrefsState>((set) => ({
   dailyNotesDir: '__daily__',
@@ -107,7 +131,14 @@ export const usePrefsStore = create<PrefsState>((set) => ({
       patch.dailyNotesDir = dir;
     }
     if (blob.dailyNoteDateFormat !== undefined) patch.dailyNoteDateFormat = blob.dailyNoteDateFormat as string;
-    if (blob.fileTemplates !== undefined) patch.fileTemplates = blob.fileTemplates as Record<string, string>;
+    if (blob.fileTemplates !== undefined) {
+      // Backfill: append any DEFAULT_FILE_TEMPLATES entry missing from the
+      // persisted map. Existing entries (including user-customized or
+      // intentionally cleared content) are preserved — only missing extension
+      // keys are added from the defaults. Mirrors the backfillDefaultShortcuts
+      // path.
+      patch.fileTemplates = backfillDefaultFileTemplates(blob.fileTemplates as Record<string, string>);
+    }
     if (blob.shortcuts !== undefined) {
       // Backfill: append any DEFAULT_SHORTCUTS entry whose id is missing from
       // the persisted array. Preserves user-customized keys on existing
