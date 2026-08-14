@@ -2,12 +2,34 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePrefsStore } from '@/store/prefsStore';
 import { isTauri } from '@/utils/platform';
+import { isMacPlatform } from '@/utils/shellSidecar';
 import { useHotkeyRecording } from '@/components/settings/useHotkeyRecording';
+
+const isMac = isMacPlatform();
+
+/**
+ * Display symbols for the four modifier flags, resolved once per platform.
+ * macOS uses ⌘ (Command) / ⌥ (Option); Windows has neither, so Meta becomes
+ * the logo key (`Win`) and Alt stays `Alt`. `Ctrl`/`Shift` are identical on
+ * both. This keeps a shortcut recorded on Windows (Ctrl+S) from ever being
+ * shown or persisted as the Mac-only ⌘ glyph.
+ */
+function modifierSymbols(): { meta: string; ctrl: string; alt: string; shift: string } {
+  return {
+    meta: isMac ? '⌘' : 'Win',
+    ctrl: 'Ctrl',
+    alt: isMac ? '⌥' : 'Alt',
+    shift: 'Shift',
+  };
+}
 
 /** Map keyboard event key to display symbol */
 function keyToSymbol(key: string): string {
   const map: Record<string, string> = {
-    Meta: '⌘', Control: 'Ctrl', Alt: '⌥', Shift: 'Shift',
+    Meta: isMac ? '⌘' : 'Win',
+    Control: 'Ctrl',
+    Alt: isMac ? '⌥' : 'Alt',
+    Shift: 'Shift',
   };
   if (map[key]) return map[key];
   if (key.length === 1) return key.toUpperCase();
@@ -16,21 +38,23 @@ function keyToSymbol(key: string): string {
 
 /**
  * Shortcut editor for the prefs-store keybinds (symbol-array shape, e.g.
- * `['⌘','Shift','P']`). The recording mechanics live in `useHotkeyRecording`;
- * this shell owns the prefs-specific bits: the ⌘-symbol keyshape,
- * `updateShortcut` persistence, and OS re-registration of the one global
- * shortcut (`togglePetPanel` → `pet_panel_set_shortcut` Rust command).
+ * `['⌘','Shift','P']` on macOS, `['Ctrl','Shift','P']` on Windows). The
+ * recording mechanics live in `useHotkeyRecording`; this shell owns the
+ * prefs-specific bits: the platform-aware modifier symbols, `updateShortcut`
+ * persistence, and OS re-registration of the one global shortcut
+ * (`togglePetPanel` → `pet_panel_set_shortcut` Rust command).
  */
 export function ShortcutEditor({ shortcutId, currentKeys }: { shortcutId: string; currentKeys: string[] }) {
   const { t } = useTranslation();
   const updateShortcut = usePrefsStore((s) => s.updateShortcut);
 
   const onCapture = useCallback((event: KeyboardEvent) => {
+    const mods = modifierSymbols();
     const keys: string[] = [];
-    if (event.metaKey) keys.push('⌘');
-    if (event.ctrlKey) keys.push('Ctrl');
-    if (event.altKey) keys.push('⌥');
-    if (event.shiftKey) keys.push('Shift');
+    if (event.metaKey) keys.push(mods.meta);
+    if (event.ctrlKey) keys.push(mods.ctrl);
+    if (event.altKey) keys.push(mods.alt);
+    if (event.shiftKey) keys.push(mods.shift);
     keys.push(keyToSymbol(event.key));
 
     updateShortcut(shortcutId, keys);

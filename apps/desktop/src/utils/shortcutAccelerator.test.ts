@@ -10,6 +10,18 @@ describe('keysToAccelerator', () => {
     expect(keysToAccelerator(['Ctrl', 'Shift', 'P'])).toBe('Control+Shift+P');
   });
 
+  it('maps the Windows default togglePetPanel shortcut to Control+Shift+Q', () => {
+    expect(keysToAccelerator(['Ctrl', 'Shift', 'Q'])).toBe('Control+Shift+Q');
+  });
+
+  it('maps Win (Windows logo key) to Super', () => {
+    expect(keysToAccelerator(['Win', 'Shift', 'Q'])).toBe('Super+Shift+Q');
+  });
+
+  it('passes Alt through unchanged (Windows/Linux Alt)', () => {
+    expect(keysToAccelerator(['Ctrl', 'Alt', 'P'])).toBe('Control+Alt+P');
+  });
+
   it('maps ⌥ to Alt', () => {
     expect(keysToAccelerator(['⌘', '⌥', 'P'])).toBe('Cmd+Alt+P');
   });

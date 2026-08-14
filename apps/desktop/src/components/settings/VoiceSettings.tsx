@@ -10,6 +10,11 @@ import { Toggle } from '@/components/settings/primitives';
 import { useHotkeyRecording } from '@/components/settings/useHotkeyRecording';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 
+// Resolved once per platform: the voice push-to-talk recorder uses `Cmd` on
+// macOS and `Super` (the Windows logo key) on Windows — never the other
+// platform's token — so a recorded combo stays a valid OS-global accelerator.
+const isMac = isMacPlatform();
+
 function Row({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
   return (
     <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
@@ -79,7 +84,7 @@ export function VoiceHotkeyRecorder() {
     }
 
     const tokens: string[] = [];
-    if (event.metaKey) tokens.push('Cmd');
+    if (event.metaKey) tokens.push(isMac ? 'Cmd' : 'Super');
     if (event.ctrlKey) tokens.push('Control');
     if (event.altKey) tokens.push('Alt');
     if (event.shiftKey) tokens.push('Shift');
@@ -142,7 +147,6 @@ export function VoiceSettings() {
   // the old `onMac` into `isMac` (mac-only permission rows: mic / speech /
   // accessibility — Windows has no equivalent concepts) and `voiceSupported`
   // (banner gate — only Linux/web see the unsupported banner now).
-  const isMac = isMacPlatform();
   const voiceSupported = isVoiceSupportedPlatform();
 
   // macOS permission affordances: each is an explicit "trigger the system prompt"

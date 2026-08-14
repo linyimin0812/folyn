@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { registerPersistSlice } from './settingsPersistence';
+import { isMacPlatform } from '@/utils/shellSidecar';
 
 // ponytail: prefsStore owns ShortcutItem / DEFAULT_SHORTCUTS /
 // backfillDefaultShortcuts (PR2 migrated from legacy settingsStore).
@@ -10,22 +11,37 @@ export interface ShortcutItem {
   keys: string[];
 }
 
-export const DEFAULT_SHORTCUTS: ShortcutItem[] = [
-  { id: 'save', name: '保存文档', keys: ['⌘', 'S'] },
-  { id: 'bold', name: '加粗', keys: ['⌘', 'B'] },
-  { id: 'italic', name: '斜体', keys: ['⌘', 'I'] },
-  { id: 'strikethrough', name: '删除线', keys: ['⌘', 'Shift', 'S'] },
-  { id: 'code', name: '行内代码', keys: ['⌘', 'E'] },
-  { id: 'link', name: '插入链接', keys: ['⌘', 'K'] },
-  { id: 'dailyNote', name: '今日笔记', keys: ['⌘', 'D'] },
-  // GLOBAL shortcut — registered with the OS via `pet_panel_set_shortcut` so
-  // it fires even when Quill is not focused. The other entries above are
-  // in-editor keybindings (consumed by EditorView's keymap, never registered
-  // with the OS). Only this entry needs an accelerator conversion + Rust
-  // re-registration on rebind (see SettingsPage.tsx ShortcutEditor +
-  // PetApp.tsx mount effect).
-  { id: 'togglePetPanel', name: '唤起桌宠面板', keys: ['⌘', 'Shift', 'Q'] },
-];
+/**
+ * Build the default shortcut list for a given primary modifier symbol.
+ *
+ * `primaryMod` is `⌘` (Command) on macOS and `Ctrl` on Windows/Linux.
+ * Windows has no Command key, so a hardcoded `⌘` default would render a
+ * meaningless glyph in the settings UI and emit an invalid `Cmd+…`
+ * accelerator to the OS-global shortcut layer (Windows uses `Ctrl`/`Super`).
+ * Kept pure so tests can assert both platform shapes deterministically.
+ */
+export function buildDefaultShortcuts(primaryMod: '⌘' | 'Ctrl'): ShortcutItem[] {
+  return [
+    { id: 'save', name: '保存文档', keys: [primaryMod, 'S'] },
+    { id: 'bold', name: '加粗', keys: [primaryMod, 'B'] },
+    { id: 'italic', name: '斜体', keys: [primaryMod, 'I'] },
+    { id: 'strikethrough', name: '删除线', keys: [primaryMod, 'Shift', 'S'] },
+    { id: 'code', name: '行内代码', keys: [primaryMod, 'E'] },
+    { id: 'link', name: '插入链接', keys: [primaryMod, 'K'] },
+    { id: 'dailyNote', name: '今日笔记', keys: [primaryMod, 'D'] },
+    // GLOBAL shortcut — registered with the OS via `pet_panel_set_shortcut` so
+    // it fires even when Quill is not focused. The other entries above are
+    // in-editor keybindings (consumed by EditorView's keymap, never registered
+    // with the OS). Only this entry needs an accelerator conversion + Rust
+    // re-registration on rebind (see SettingsPage.tsx ShortcutEditor +
+    // PetApp.tsx mount effect).
+    { id: 'togglePetPanel', name: '唤起桌宠面板', keys: [primaryMod, 'Shift', 'Q'] },
+  ];
+}
+
+export const DEFAULT_SHORTCUTS: ShortcutItem[] = buildDefaultShortcuts(
+  isMacPlatform() ? '⌘' : 'Ctrl',
+);
 
 /**
  * Backfill persisted `shortcuts` with any DEFAULT_SHORTCUTS entries that are

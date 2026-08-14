@@ -105,9 +105,16 @@ function jsonLintSource(view: EditorView): Diagnostic[] {
   }
 }
 
-/** Convert display key symbols (⌘, Shift, etc.) to CodeMirror key format (Mod-Shift-s) */
+/** Convert display key symbols (⌘, Ctrl, ⌥, Alt, Win, Shift) to CodeMirror key format (Mod-s, Ctrl-b, …) */
 function shortcutToCmKey(keys: string[]): string {
-  const modMap: Record<string, string> = { '⌘': 'Mod', Ctrl: 'Ctrl', '⌥': 'Alt', Shift: 'Shift' };
+  const modMap: Record<string, string> = {
+    '⌘': 'Mod',   // macOS Command → platform primary (Cmd on mac, Ctrl elsewhere)
+    Ctrl: 'Ctrl', // explicit Control key on both platforms
+    '⌥': 'Alt',   // macOS Option
+    Alt: 'Alt',   // Windows/Linux Alt
+    Win: 'Meta',  // Windows logo key → CodeMirror Meta
+    Shift: 'Shift',
+  };
   const mods: string[] = [];
   let mainKey = '';
   for (const k of keys) {

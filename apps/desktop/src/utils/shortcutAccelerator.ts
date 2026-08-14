@@ -6,16 +6,17 @@
  * `pet_panel_set_shortcut` custom command).
  *
  * Mapping (display symbol → Tauri token):
- *   ⌘     → Cmd      (macOS Super)
+ *   ⌘     → Cmd      (macOS Command)
  *   Ctrl  → Control
- *   ⌥     → Alt
+ *   ⌥     → Alt      (macOS Option)
+ *   Win   → Super    (Windows logo key)
  *   Shift → Shift
  *
  * Single-letter keys are uppercased (Tauri expects `"Q"`, not `"q"`, for
- * letter keys). Multi-character tokens (e.g. `"F5"`, `"Space"`, `"Enter"`)
- * are passed through unchanged. Tokens not in the map and not single-char
- * are passed through unchanged so the user can rebind to functional keys
- * without us having to whitelist them.
+ * letter keys). Multi-character tokens (e.g. `"F5"`, `"Space"`, `"Enter"`,
+ * and `"Alt"` — Windows/Linux Alt) are passed through unchanged. Tokens not
+ * in the map and not single-char are passed through unchanged so the user can
+ * rebind to functional keys without us having to whitelist them.
  *
  * Returns the empty string if `keys` is empty (the caller treats an empty
  * accelerator as "unregister only" — see `pet_panel_set_shortcut`).
@@ -36,6 +37,8 @@ export function keysToAccelerator(keys: string[]): string {
         return 'Control';
       case '⌥':
         return 'Alt';
+      case 'Win':
+        return 'Super';
       case 'Shift':
         return 'Shift';
       default:

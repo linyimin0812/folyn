@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { usePrefsStore, DEFAULT_SHORTCUTS, DEFAULT_FILE_TEMPLATES, backfillDefaultShortcuts, backfillDefaultFileTemplates } from './prefsStore';
+import { usePrefsStore, DEFAULT_SHORTCUTS, DEFAULT_FILE_TEMPLATES, buildDefaultShortcuts, backfillDefaultShortcuts, backfillDefaultFileTemplates } from './prefsStore';
 import { storageClient } from '@/utils/storageClient';
 import { markSettingsHydrated } from './settingsPersistence';
 
@@ -107,17 +107,39 @@ describe('usePrefsStore.hydrate', () => {
 });
 
 describe('DEFAULT_SHORTCUTS', () => {
-  it('includes the global togglePetPanel shortcut with the default Cmd+Shift+Q binding', () => {
+  it('includes the global togglePetPanel shortcut bound to the platform primary modifier', () => {
     // The global-shortcut entry must round-trip through the same persistence
-    // path as the in-editor bindings, and its default keys must match the
-    // accelerator documented in the PRD (asserted by ShortcutEditor's rebind
-    // flow). Bumping/renaming this id without updating PetApp's mount-time
-    // registration + SettingsPage's rebind hook would silently break the
-    // global shortcut.
+    // path as the in-editor bindings. Its default keys use the platform's
+    // primary modifier (⌘ on macOS, Ctrl on Windows/Linux) so the OS-global
+    // accelerator stays valid on both — Windows has no Cmd key. Bumping or
+    // renaming this id without updating PetApp's mount-time registration +
+    // SettingsPage's rebind hook would silently break the global shortcut.
     const entry = DEFAULT_SHORTCUTS.find((x) => x.id === 'togglePetPanel');
     expect(entry).toBeDefined();
     expect(entry!.name).toBe('唤起桌宠面板');
-    expect(entry!.keys).toEqual(['⌘', 'Shift', 'Q']);
+    // Everything after the primary modifier is platform-independent; the
+    // modifier itself is one of the two supported symbols.
+    expect(entry!.keys.slice(1)).toEqual(['Shift', 'Q']);
+    expect(['⌘', 'Ctrl']).toContain(entry!.keys[0]);
+  });
+});
+
+describe('buildDefaultShortcuts', () => {
+  it('uses ⌘ as the primary modifier on macOS', () => {
+    const s = buildDefaultShortcuts('⌘');
+    expect(s.find((x) => x.id === 'save')!.keys).toEqual(['⌘', 'S']);
+    expect(s.find((x) => x.id === 'togglePetPanel')!.keys).toEqual(['⌘', 'Shift', 'Q']);
+  });
+
+  it('uses Ctrl as the primary modifier on Windows/Linux', () => {
+    const s = buildDefaultShortcuts('Ctrl');
+    expect(s.find((x) => x.id === 'save')!.keys).toEqual(['Ctrl', 'S']);
+    expect(s.find((x) => x.id === 'togglePetPanel')!.keys).toEqual(['Ctrl', 'Shift', 'Q']);
+  });
+
+  it('preserves Shift and the non-modifier key across platforms', () => {
+    expect(buildDefaultShortcuts('⌘').find((x) => x.id === 'strikethrough')!.keys).toEqual(['⌘', 'Shift', 'S']);
+    expect(buildDefaultShortcuts('Ctrl').find((x) => x.id === 'strikethrough')!.keys).toEqual(['Ctrl', 'Shift', 'S']);
   });
 });
 
