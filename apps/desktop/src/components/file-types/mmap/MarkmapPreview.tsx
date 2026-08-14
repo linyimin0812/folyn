@@ -14,6 +14,7 @@ import { Markmap } from 'markmap-view';
 import type { PreviewProps } from '../types';
 import { resolveAssetBase } from '../previewPath';
 import { resolveImagesInTree } from './resolveImages';
+import './initKatex';
 
 const transformer = new Transformer();
 

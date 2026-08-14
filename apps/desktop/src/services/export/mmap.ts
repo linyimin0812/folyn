@@ -10,6 +10,7 @@ import { inlineSvgImages } from './shared';
 import type { EnhanceCtx } from './dbml';
 import { resolveAssetBase } from '@/components/file-types/previewPath';
 import { resolveImagesInTree } from '@/components/file-types/mmap/resolveImages';
+import '@/components/file-types/mmap/initKatex';
 
 const transformer = new Transformer();
 
