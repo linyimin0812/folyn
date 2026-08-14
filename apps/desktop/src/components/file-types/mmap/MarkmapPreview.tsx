@@ -12,10 +12,11 @@ import { useEffect, useRef } from 'react';
 import { Transformer } from 'markmap-lib';
 import { Markmap } from 'markmap-view';
 import type { PreviewProps } from '../types';
+import { resolveImagesInTree } from './resolveImages';
 
 const transformer = new Transformer();
 
-export function MarkmapPreview({ content }: PreviewProps) {
+export function MarkmapPreview({ content, filePath, vaultRoot }: PreviewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const mmRef = useRef<Markmap | null>(null);
 
@@ -32,9 +33,10 @@ export function MarkmapPreview({ content }: PreviewProps) {
     const mm = mmRef.current;
     if (!mm) return;
     const { root } = transformer.transform(content || '');
+    resolveImagesInTree(root, filePath, vaultRoot);
     mm.setData(root);
     mm.fit();
-  }, [content]);
+  }, [content, filePath, vaultRoot]);
 
   return (
     <div className="markmap-container flex-1 h-full w-full overflow-hidden">
