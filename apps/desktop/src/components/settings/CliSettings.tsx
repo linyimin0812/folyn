@@ -95,17 +95,16 @@ export function CliSettings() {
               <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px] flex items-center gap-1.5">
                 {t('settings:cli.cliPath.label')}
               </div>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
                 <input
-                  className="fi2 w-full py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
-                  style={{ flex: 1 }}
+                  className="fi2 w-full flex-1 min-w-0 h-[30px] py-[5px] px-2.5 rounded-l-md border border-r-0 border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc"
                   value={path}
                   onChange={(e) => setCliPathFor(a.id, e.target.value)}
                   placeholder={a.id}
                   autoCapitalize="off"
                 />
                 <button
-                  className="btn btn-g btn-sm"
+                  className="shrink-0 h-[30px] px-3 inline-flex items-center rounded-none border border-r-0 border-brd bg-accdim hover:bg-hov text-acc text-[length:calc(var(--ui-font-size)-2px)] font-ui transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('settings:cli.cliPath.detectTitle')}
                   disabled={detecting}
                   onClick={async () => {
@@ -127,8 +126,9 @@ export function CliSettings() {
                     }
                   }}
                 >{detecting ? <Loader2 size={13} className="animate-spin" /> : t('settings:cli.cliPath.detect')}</button>
+                <div className="w-px self-stretch bg-brd" />
                 <button
-                  className="btn btn-g btn-sm"
+                  className="shrink-0 h-[30px] px-3 inline-flex items-center rounded-r-md border border-l-0 border-brd bg-accdim hover:bg-hov text-acc text-[length:calc(var(--ui-font-size)-2px)] font-ui transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={st.testing}
                   onClick={async () => {
                     setTestStatus((s) => ({ ...s, [a.id]: { testing: true } }));

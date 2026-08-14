@@ -220,7 +220,7 @@ export function VoiceSettings() {
               placeholder=".voice_input"
             />
             <button
-              className="shrink-0 h-[34px] px-3 rounded-r-md border border-brd bg-surf2 hover:bg-surf3 text-t1 text-[length:calc(var(--ui-font-size)-2px)] font-ui transition-colors"
+              className="shrink-0 h-[34px] px-3 rounded-r-md border border-brd bg-acc hover:brightness-110 text-white text-[length:calc(var(--ui-font-size)-2px)] font-ui transition-colors"
               onClick={async () => {
                 if (!isTauri()) return;
                 try {

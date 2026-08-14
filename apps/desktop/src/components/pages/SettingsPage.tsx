@@ -96,8 +96,12 @@ export function SettingsPage() {
         </div>
       </nav>
 
-      {/* Right panel */}
-      <div className={`sc2 overflow-y-auto pt-[22px] pb-2 px-[26px] ${settingsTab === 'cli' || settingsTab === 'models' || settingsTab === 'voice' || settingsTab === 'templates' ? 'w-fit min-w-[60vw] shrink-0' : 'w-[50vw]'}`}>
+      {/* Right panel: flex-1 min-w-0 so wide tabs (models 2-col, voice inputs,
+          templates editor) shrink to fit instead of pushing past viewport.
+          cli uses the narrow 50vw column — its cards (input + 2 buttons) are
+          compact and don't need full width. overflow-x-hidden clips any
+          residual unbreakable content (long URLs, file paths). */}
+      <div className={`sc2 overflow-y-auto overflow-x-hidden pt-[22px] pb-2 px-[26px] min-w-0 ${settingsTab === 'models' || settingsTab === 'voice' || settingsTab === 'templates' ? 'flex-1' : 'w-[50vw]'}`}>
         {/* -- 外观 -- */}
         {settingsTab === 'appearance' && (
           <div className="mb-8">
