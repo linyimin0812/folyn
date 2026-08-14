@@ -549,7 +549,7 @@
     "description": "Configurer l'icône et l'affichage du pet de bureau",
     "showPet": {
       "title": "Afficher le pet",
-      "desc": "Afficher la fenêtre du pet à l'écran (macOS)"
+      "desc": "Afficher la fenêtre du pet à l'écran"
     },
     "icon": {
       "title": "Icône",
