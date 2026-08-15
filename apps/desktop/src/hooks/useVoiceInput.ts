@@ -107,6 +107,33 @@ function showVoiceOrbWindow(): void {
     .catch((err) => console.warn('[voice] re-show voice-orb failed:', err));
 }
 
+/** Extract a human-readable message from a Tauri command rejection.
+ *  Rust `AppError` serializes to `{ category, detail }` (see
+ *  src-tauri/src/errors.rs), so a bare `String(err)` on the rejection yields
+ *  `[object Object]` and hides the real cause (e.g. "WinRT 语音识别启动失败:
+ *  ..."). Prefer `detail`, then `message`/`Error`, then `String(err)` as the
+ *  last resort. Mirrors `AiPanel#errorMessage` / `pluginStore`'s inline
+ *  `detail ?? e` extraction. */
+function commandErrorMessage(err: unknown): string {
+  if (typeof err === 'string') return err;
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object') {
+    const detail = (err as { detail?: unknown }).detail;
+    if (typeof detail === 'string' && detail.trim()) return detail;
+    const message = (err as { message?: unknown }).message;
+    if (typeof message === 'string' && message.trim()) return message;
+    // Last resort: stringify the whole object so an unexpected rejection
+    // shape (e.g. a serialized Rust struct) still shows its fields instead
+    // of collapsing to "[object Object]".
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return String(err);
+    }
+  }
+  return String(err);
+}
+
 function flashError(set: (partial: Partial<VoiceInputState>) => void, msg: string): void {
   console.error('[voice]', msg);
   if (errorTimer) clearTimeout(errorTimer);
@@ -156,7 +183,7 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
     try {
       await invoke('voice_start', { spokenLocale });
     } catch (err) {
-      flashError(set, typeof err === 'string' ? err : String(err));
+      flashError(set, commandErrorMessage(err));
     }
   },
 
@@ -208,7 +235,7 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
       transcript = (result?.transcript ?? '').trim();
       saveError = result?.saveError ?? null;
     } catch (err) {
-      flashError(set, typeof err === 'string' ? err : String(err));
+      flashError(set, commandErrorMessage(err));
       return;
     }
 
@@ -298,7 +325,7 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
       try {
         await invoke('voice_insert_text', { text: finalText });
       } catch (err) {
-        flashError(set, typeof err === 'string' ? err : String(err));
+        flashError(set, commandErrorMessage(err));
         return;
       }
       try {
@@ -313,7 +340,7 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
       try {
         await navigator.clipboard.writeText(finalText);
       } catch (err) {
-        flashError(set, err instanceof Error ? err.message : String(err));
+        flashError(set, commandErrorMessage(err));
         return;
       }
     }
