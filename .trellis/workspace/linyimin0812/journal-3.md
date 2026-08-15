@@ -1605,3 +1605,37 @@ Deleted SkillsSettings tab, skillStore, skillDefaults, and Skill type. Inlined c
 ### Next Steps
 
 - None - task complete
+
+
+## Session 161: Rich-text image paste opens upload dialog
+
+**Date**: 2026-08-16
+**Task**: Rich-text image paste opens upload dialog
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Rich-text editor's image paste/drop now opens the shared ImagePasteDialog (same as markdown) for target/format/dimension selection instead of directly persisting to the vault. Threaded an onImagePaste hook through RichTextImage extension → richTextExtensions → RichTextEditor. Confirm handler reuses imageUploader strategies (LocalFileStrategy) and computes the vault-relative src directly from dialog config, bypassing LocalFileStrategy's doc-dir-relative markdownUrl which mis-resolves in the rich-text NodeView (NodeView resolves src against the vault root, not the doc dir). Fixes broken-image-icon when the .rt file lives in a vault subdirectory.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1601246e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
