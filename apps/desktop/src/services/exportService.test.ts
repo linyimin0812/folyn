@@ -7,6 +7,7 @@ import {
 import {
   readImageAsDataUrl,
   inlineImages,
+  inlineContainerImages,
 } from './export/shared';
 import { writeFile } from '@tauri-apps/plugin-fs';
 
@@ -92,6 +93,43 @@ describe('readImageAsDataUrl', () => {
 
   it('returns an empty string when the file does not exist', async () => {
     expect(await readImageAsDataUrl('/no/such/file.png')).toBe('');
+  });
+});
+
+describe('inlineContainerImages', () => {
+  it('inlines asset://localhost/ URLs by reading the file directly', async () => {
+    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+    await writeFile('/mock/asset.png', bytes);
+    const container = document.createElement('div');
+    // Real convertFileSrc URL-encodes the path (leading / → %2F).
+    container.innerHTML = '<img src="asset://localhost/%2Fmock%2Fasset.png" alt="x">';
+    await inlineContainerImages(container);
+    expect(container.querySelector('img')!.getAttribute('src')).toMatch(/^data:image\/png;base64,/);
+  });
+
+  it('inlines the Windows http://asset.localhost/ form too', async () => {
+    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+    await writeFile('/mock/win.png', bytes);
+    const container = document.createElement('div');
+    container.innerHTML = '<img src="http://asset.localhost/%2Fmock%2Fwin.png" alt="x">';
+    await inlineContainerImages(container);
+    expect(container.querySelector('img')!.getAttribute('src')).toMatch(/^data:image\/png;base64,/);
+  });
+
+  it('leaves http(s) and data: image srcs untouched', async () => {
+    const container = document.createElement('div');
+    container.innerHTML = '<img src="https://example.com/a.png"><img src="data:image/png;base64,AAAA">';
+    await inlineContainerImages(container);
+    const [a, b] = Array.from(container.querySelectorAll('img'));
+    expect(a.getAttribute('src')).toBe('https://example.com/a.png');
+    expect(b.getAttribute('src')).toBe('data:image/png;base64,AAAA');
+  });
+
+  it('leaves an asset URL untouched when the file is missing', async () => {
+    const container = document.createElement('div');
+    container.innerHTML = '<img src="asset://localhost//mock/missing.png" alt="x">';
+    await inlineContainerImages(container);
+    expect(container.querySelector('img')!.getAttribute('src')).toBe('asset://localhost//mock/missing.png');
   });
 });
 

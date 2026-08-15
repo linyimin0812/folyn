@@ -29,6 +29,9 @@ Thumbs.db
 npm-debug.log*
 pnpm-debug.log*
 
+# pnpm local store (accidentally redirected into the repo)
+.pnpm-store/
+
 # Jupyter
 .ipynb_checkpoints/
 

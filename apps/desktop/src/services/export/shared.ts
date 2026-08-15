@@ -113,15 +113,40 @@ export async function inlineSvgImages(container: HTMLElement): Promise<void> {
 }
 
 /**
+ * Convert a Tauri asset URL back to its absolute file path.
+ * `asset://localhost/<path>` (macOS/Linux) or `http(s)://asset.localhost/<path>`
+ * (Windows). Returns null for any other URL shape.
+ */
+function assetUrlToFilePath(src: string): string | null {
+  const m =
+    /^asset:\/\/localhost\/(.+)$/i.exec(src) ||
+    /^https?:\/\/asset\.localhost\/(.+)$/i.exec(src);
+  if (!m) return null;
+  try { return decodeURIComponent(m[1]); } catch { return m[1]; }
+}
+
+/**
  * Walk all <img> elements in a container and replace Tauri asset URLs with
  * base64 data URLs. Skips http(s) and data: URLs. Mutates the DOM in place.
+ *
+ * Tauri asset URLs are NOT inlined via fetch: the app's connect-src CSP does
+ * not allow the `asset:` scheme (only img-src does), so `fetch('asset://…')`
+ * rejects and the image silently stays as an asset URL that won't load outside
+ * the app. Read the file directly through the fs plugin instead.
  */
 export async function inlineContainerImages(container: HTMLElement): Promise<void> {
   const imgs = Array.from(container.querySelectorAll('img'));
   await Promise.all(
     imgs.map(async (img) => {
       const src = img.getAttribute('src') ?? '';
-      if (!src || src.startsWith('data:') || src.startsWith('http')) return;
+      if (!src || src.startsWith('data:')) return;
+      const assetPath = assetUrlToFilePath(src);
+      if (assetPath) {
+        const dataUrl = await readImageAsDataUrl(assetPath);
+        if (dataUrl) img.setAttribute('src', dataUrl);
+        return;
+      }
+      if (src.startsWith('http')) return;
       try {
         const res = await fetch(src);
         const blob = await res.blob();
