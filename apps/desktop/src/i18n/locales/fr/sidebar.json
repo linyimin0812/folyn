@@ -36,6 +36,7 @@
     "copyAbsolutePath": "Copier le chemin absolu",
     "copyFileName": "Copier le nom du fichier",
     "copyVaultPath": "Copier le chemin du vault",
+    "openInFileManager": "Ouvrir dans le gestionnaire de fichiers",
     "unpin": "Détacher",
     "pin": "Épingler",
     "addToChat": "Ajouter le fichier au chat",

@@ -1,7 +1,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EyeOff } from 'lucide-react';
+import { EyeOff, SquareArrowOutUpRight } from 'lucide-react';
 import { useVaultStore } from '@/store/vaultStore';
+import { resolveBasePath } from '@/utils/pathResolver';
 import { useAiStore } from '@/store/aiStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
@@ -44,6 +45,40 @@ const NEW_FILE_GROUPS: string[][] = [
   ['svg'],
   ['mmap', 'dbml', 'drawio', 'excalidraw'],
 ];
+
+/** Resolve a vault-relative path to an absolute, platform-native path string
+ *  (e.g. `C:\Users\me\...\file.md` on Windows). Mirrors `openInFileManager`'s
+ *  base resolution so a copied path matches what the OS file manager uses,
+ *  instead of the raw `~/...` basePath with forward slashes. */
+async function resolveAbsoluteVaultPath(path: string): Promise<string> {
+  const vault = useVaultStore.getState().currentVault;
+  if (!vault?.basePath) return path;
+  const base = await resolveBasePath(vault.basePath);
+  if (!path) return base;
+  const { join } = await import('@tauri-apps/api/path');
+  return join(base, path);
+}
+
+/** Open a vault item in the OS file manager. A file opens its containing
+ *  folder, a directory opens itself, and an empty path opens the vault root.
+ *  Uses the opener plugin's `openPath` (already ACL-granted for `$HOME/**`). */
+async function openInFileManager(path: string, type: 'file' | 'dir'): Promise<void> {
+  try {
+    const vault = useVaultStore.getState().currentVault;
+    if (!vault?.basePath) return;
+    const base = await resolveBasePath(vault.basePath);
+    let target = base;
+    if (path) {
+      const { join, dirname } = await import('@tauri-apps/api/path');
+      target = await join(base, path);
+      if (type === 'file') target = await dirname(target);
+    }
+    const { openPath } = await import('@tauri-apps/plugin-opener');
+    await openPath(target);
+  } catch (err) {
+    console.warn('[ContextMenu] open in file manager failed:', err);
+  }
+}
 
 export function ContextMenu({
   menu,
@@ -160,12 +195,16 @@ export function ContextMenu({
             <ThemeIcon name="newFolder" size={14} /> {t('sidebar:contextMenu.newFolder')}
           </button>
           {menu.path === '' && (
-            <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => {
-              const vault = useVaultStore.getState().currentVault;
-              copyToClipboard(vault?.basePath || '');
-            }}>
-              <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copyVaultPath')}
-            </button>
+            <>
+              <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => {
+                void resolveAbsoluteVaultPath('').then(copyToClipboard).catch((err) => console.warn('[ContextMenu] copy vault path failed:', err));
+              }}>
+                <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copyVaultPath')}
+              </button>
+              <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onClose(); void openInFileManager('', 'dir'); }}>
+                <SquareArrowOutUpRight size={14} className="text-t3" /> {t('sidebar:contextMenu.openInFileManager')}
+              </button>
+            </>
           )}
         </>
       )}
@@ -205,9 +244,7 @@ export function ContextMenu({
             <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copyRelativePath')}
           </button>
           <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => {
-            const vault = useVaultStore.getState().currentVault;
-            const base = vault?.basePath || '';
-            copyToClipboard(`${base}/${menu.path}`);
+            void resolveAbsoluteVaultPath(menu.path).then(copyToClipboard).catch((err) => console.warn('[ContextMenu] copy absolute path failed:', err));
           }}>
             <ThemeIcon name="copyOfFolder" size={14} /> {t('sidebar:contextMenu.copyAbsolutePath')}
           </button>
@@ -236,6 +273,10 @@ export function ContextMenu({
               )}
             </>
           )}
+          <div className="h-px mx-2 my-1 bg-brd" />
+          <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => { onClose(); void openInFileManager(menu.path, menu.type); }}>
+            <SquareArrowOutUpRight size={14} className="text-t3" /> {t('sidebar:contextMenu.openInFileManager')}
+          </button>
         </>
       )}
     </div>

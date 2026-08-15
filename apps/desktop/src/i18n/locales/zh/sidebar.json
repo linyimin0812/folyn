@@ -36,6 +36,7 @@
     "copyAbsolutePath": "复制绝对路径",
     "copyFileName": "复制文件名",
     "copyVaultPath": "复制仓库路径",
+    "openInFileManager": "在文件管理器中打开",
     "unpin": "取消置顶",
     "pin": "置顶",
     "addToChat": "添加文件到对话",

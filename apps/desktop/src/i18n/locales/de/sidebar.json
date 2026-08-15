@@ -36,6 +36,7 @@
     "copyAbsolutePath": "Absoluten Pfad kopieren",
     "copyFileName": "Dateinamen kopieren",
     "copyVaultPath": "Vault-Pfad kopieren",
+    "openInFileManager": "Im Dateimanager öffnen",
     "unpin": "Lösen",
     "pin": "Anheften",
     "addToChat": "Datei zum Chat hinzufügen",
