@@ -710,6 +710,31 @@ pub async fn voice_cancel(app: tauri::AppHandle) -> Result<(), AppError> {
 // (`tauri::WebviewWindow` + `WS_EX_TOOLWINDOW` per sendinput-paste.md §风险点5)
 // then replace the no-op stub with real show/hide logic.
 
+/// Map a WinRT session-start failure to a user-actionable message.
+///
+/// 0x80045509 = SPERR_NO_PRIVACY_CONSENT — Windows refuses speech
+/// recognition until the user enables「联机语音识别」(Online speech
+/// recognition) in 设置 → 隐私和安全性 → 语音. This is an OS-level privacy
+/// toggle: no code path can bypass it, so surface setup instructions instead
+/// of the raw HRESULT text. anyhow's downcast_ref walks the whole context
+/// chain, so the windows::core::Error root cause is reachable through any
+/// number of `.context(...)` layers (verified against anyhow 1.0.102).
+#[cfg(target_os = "windows")]
+fn winrt_start_error_message(e: &anyhow::Error) -> String {
+    const SPEECH_PRIVACY_NOT_ACCEPTED: u32 = 0x80045509;
+    let consent_missing = e
+        .downcast_ref::<windows::core::Error>()
+        .map(|we| we.code().0 as u32 == SPEECH_PRIVACY_NOT_ACCEPTED)
+        .unwrap_or(false);
+    if consent_missing {
+        "Windows 未开启「联机语音识别」：请打开 设置 → 隐私和安全性 → 语音，\
+         开启「联机语音识别」后重试"
+            .to_string()
+    } else {
+        format!("WinRT 语音识别启动失败: {e:#}")
+    }
+}
+
 #[cfg(target_os = "windows")]
 #[tauri::command]
 pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result<(), AppError> {
@@ -753,7 +778,8 @@ pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result
     if let Err(e) = asr.start_session().await {
         let mut inner = state.inner.lock().map_err(|e| format!("voice state poisoned: {e}"))?;
         inner.asr = std::sync::Arc::new(WinRtSpeechAsr::new(None));
-        return Err(format!("WinRT 语音识别启动失败: {e:#}").into());
+        log::error!("[voice] voice_start (windows) failed: {e:#}");
+        return Err(winrt_start_error_message(&e).into());
     }
 
     log::info!("[voice] WinRT recognition session started (windows)");
