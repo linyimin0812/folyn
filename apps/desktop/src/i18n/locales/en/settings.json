@@ -17,7 +17,6 @@
     "models": "Model Services",
     "voice": "Voice Input",
     "templates": "File Templates",
-    "skills": "Skills",
     "pet": "Pet",
     "notifications": "Notifications",
     "plugins": "Plugins",
@@ -506,43 +505,6 @@
     "save": "Save",
     "cancel": "Cancel",
     "extPlaceholder": "ext"
-  },
-  "skills": {
-    "title": "Skills",
-    "description": "Configure AI skill templates; custom prompts control the format and quality of AI-generated content",
-    "new": "New skill",
-    "import": "Import",
-    "export": "Export",
-    "empty": "No skills configured",
-    "capability": {
-      "title": "Capability binding",
-      "desc": "Assign a skill to each capability; Claude Code follows the corresponding skill's instructions to complete the task.",
-      "clip": "Web clips",
-      "githubAnalysis": "GitHub analysis"
-    },
-    "form": {
-      "newTitle": "New skill",
-      "idLabel": "ID",
-      "idHint": "Slug format; lowercase letters, digits, and hyphens only",
-      "nameLabel": "Name",
-      "descLabel": "Description",
-      "descPlaceholder": "Describe this skill's purpose",
-      "promptLabel": "Prompt template",
-      "promptPlaceholder": "Enter a prompt template; use {{variableName}} for variables...",
-      "create": "Create",
-      "cancel": "Cancel",
-      "editTitle": "Edit",
-      "contentLabel": "Skill content",
-      "save": "Save",
-      "reset": "Reset to default",
-      "delete": "Delete"
-    },
-    "confirmReset": "Reset to defaults? Unsaved changes will be lost.",
-    "confirmDelete": "Delete this skill? This cannot be undone.",
-    "errorRequired": "ID and name are required",
-    "errorCreate": "Failed to create",
-    "errorImport": "Failed to import",
-    "errorExport": "Failed to export"
   },
   "pet": {
     "title": "Pet",

@@ -17,7 +17,6 @@
     "models": "Services de modèles",
     "voice": "Saisie vocale",
     "templates": "Modèles de fichiers",
-    "skills": "Compétences",
     "pet": "Pet",
     "notifications": "Notifications",
     "plugins": "Plugins",
@@ -506,43 +505,6 @@
     "save": "Enregistrer",
     "cancel": "Annuler",
     "extPlaceholder": "ext"
-  },
-  "skills": {
-    "title": "Compétences",
-    "description": "Configurer les modèles de compétences IA ; les prompts contrôlent le format et la qualité de la sortie IA",
-    "new": "Nouvelle compétence",
-    "import": "Importer",
-    "export": "Exporter",
-    "empty": "Aucune compétence configurée",
-    "capability": {
-      "title": "Lien capacités",
-      "desc": "Affecter une compétence à chaque capacité ; Claude Code suit les instructions de la compétence correspondante.",
-      "clip": "Captures web",
-      "githubAnalysis": "Analyse GitHub"
-    },
-    "form": {
-      "newTitle": "Nouvelle compétence",
-      "idLabel": "ID",
-      "idHint": "Format slug ; minuscules, chiffres et tirets seulement",
-      "nameLabel": "Nom",
-      "descLabel": "Description",
-      "descPlaceholder": "Décrire le but de cette compétence",
-      "promptLabel": "Modèle de prompt",
-      "promptPlaceholder": "Saisir un modèle ; utiliser {{variableName}} pour les variables...",
-      "create": "Créer",
-      "cancel": "Annuler",
-      "editTitle": "Éditer",
-      "contentLabel": "Contenu de la compétence",
-      "save": "Enregistrer",
-      "reset": "Réinitialiser",
-      "delete": "Supprimer"
-    },
-    "confirmReset": "Réinitialiser ? Les modifications non enregistrées seront perdues.",
-    "confirmDelete": "Supprimer cette compétence ? Irréversible.",
-    "errorRequired": "ID et nom sont requis",
-    "errorCreate": "Échec de création",
-    "errorImport": "Échec d'import",
-    "errorExport": "Échec d'export"
   },
   "pet": {
     "title": "Pet",

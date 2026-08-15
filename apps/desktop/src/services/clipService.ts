@@ -2,7 +2,6 @@ import { createAdapter, type CliAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import * as editorIoService from '@/services/editorIoService';
 import { useAiConfigStore } from '@/store/aiConfigStore';
-import { useSkillStore } from '@/store/skillStore';
 import { collectTextFromStream, extractJsonObject, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { isHttpUrl } from '@/utils/urlUtils';
@@ -18,6 +17,46 @@ export type ClipLanguage = 'en' | 'zh' | 'auto';
 
 // Re-export infographic types so callers can import everything from clipService.
 export type { InfographicDoc, InfographicBlock };
+
+// ponytail: prompt previously lived in services/skillDefaults.ts and was
+// overridable via the Skills settings page. After removing that page the
+// template is inlined here. planMyDayService keeps its own copy to avoid
+// pulling clipParse (excalidraw / roughjs) into its test import graph.
+const CLIP_CARD_PROMPT = `# Web Clip Card Generation
+
+你是一个网页内容分析助手。请按照以下步骤分析网页内容并生成结构化知识卡片。
+
+## 重要规则
+- **不要使用 Write 或任何文件创建工具将结果保存到磁盘。** 应用会自动处理保存。
+- 只在回复文本中输出 JSON 结果。
+
+## 步骤
+
+1. **获取网页内容**：使用 WebFetch 工具获取用户提供的 URL 内容
+2. **分析内容**：阅读并理解网页的核心主题、关键信息
+3. **生成知识卡片**：按照下方 JSON 格式输出结构化卡片
+
+## 输出格式
+
+请以 JSON 格式回复（不要使用 markdown 代码块包裹）：
+{
+  "title": "网页标题",
+  "tags": ["tag1", "tag2", "tag3"],
+  "suggestedTags": ["tag4", "tag5", "tag6", "tag7", "tag8"],
+  "summary": "2-4句话概括核心内容",
+  "keyPoints": [
+    "要点1: 一句话描述关键信息",
+    "要点2: 一句话描述关键信息",
+    "要点3: 一句话描述关键信息"
+  ]
+}
+
+## 规则
+- tags 字段生成恰好 3-5 个简洁的关键词标签
+- suggestedTags 字段额外提供 5-8 个候选标签，供用户选择添加
+- 摘要概括核心内容，2-4句话
+- 要点提取3-8条最重要的信息，每条一句话
+- 所有输出内容使用与网页内容相同的语言`;
 
 interface ClipCard {
   title: string;
@@ -109,10 +148,7 @@ export async function generateClip(
     // content already converted to Markdown. The original URL is still conveyed for
     // title / source context.
     const mdUrl = 'https://curl.md/' + encodeURIComponent(url);
-    const skill = useSkillStore.getState().getSkillForCapability('clip');
-    const prompt = skill
-      ? `${skill.content}\n\n## Task\n请分析以下网页并生成知识卡片元数据。\n原始 URL（仅作来源/标题参考）：${url}\n用 WebFetch 抓取 curl.md 版本：${mdUrl}`
-      : `请分析以下网页并生成知识卡片元数据。\n原始 URL（仅作来源/标题参考）：${url}\n用 WebFetch 抓取 curl.md 版本：${mdUrl}`;
+    const prompt = `${CLIP_CARD_PROMPT}\n\n## Task\n请分析以下网页并生成知识卡片元数据。\n原始 URL（仅作来源/标题参考）：${url}\n用 WebFetch 抓取 curl.md 版本：${mdUrl}`;
 
     const textPromise = collectTextFromStream(adapter, onStream, onEvent);
     await adapter.send(prompt, await getFeatureAgentSendOptions('clips'));
@@ -130,7 +166,7 @@ export async function generateClip(
         pageContent: typeof parsed.pageContent === 'string' ? parsed.pageContent : '',
       };
     } catch {
-      throw new Error('AI 返回的内容无法解析为知识卡片，请检查 SKILL 配置');
+      throw new Error('AI 返回的内容无法解析为知识卡片');
     }
 
     // --- Phase 2: chained infographic-mode call -----------------------------

@@ -17,7 +17,6 @@
     "models": "Modelldienste",
     "voice": "Spracheingabe",
     "templates": "Dateivorlagen",
-    "skills": "Fähigkeiten",
     "pet": "Pet",
     "notifications": "Benachrichtigungen",
     "plugins": "Plugins",
@@ -506,43 +505,6 @@
     "save": "Speichern",
     "cancel": "Abbrechen",
     "extPlaceholder": "Erw."
-  },
-  "skills": {
-    "title": "Fähigkeiten",
-    "description": "KI-Fähigkeitsvorlagen konfigurieren; Custom Prompts steuern Format und Qualität der KI-Ausgabe",
-    "new": "Neue Fähigkeit",
-    "import": "Importieren",
-    "export": "Exportieren",
-    "empty": "Keine Fähigkeiten konfiguriert",
-    "capability": {
-      "title": "Fähigkeitsbindung",
-      "desc": "Jeder Fähigkeit eine Skill zuweisen; Claude Code folgt den Anweisungen der entsprechenden Skill.",
-      "clip": "Web-Clips",
-      "githubAnalysis": "GitHub-Analyse"
-    },
-    "form": {
-      "newTitle": "Neue Fähigkeit",
-      "idLabel": "ID",
-      "idHint": "Slug-Format; nur Kleinbuchstaben, Ziffern und Bindestriche",
-      "nameLabel": "Name",
-      "descLabel": "Beschreibung",
-      "descPlaceholder": "Zweck dieser Fähigkeit beschreiben",
-      "promptLabel": "Prompt-Vorlage",
-      "promptPlaceholder": "Prompt-Vorlage eingeben; Variablen als {{variableName}}...",
-      "create": "Erstellen",
-      "cancel": "Abbrechen",
-      "editTitle": "Bearbeiten",
-      "contentLabel": "Fähigkeitsinhalt",
-      "save": "Speichern",
-      "reset": "Auf Standard zurücksetzen",
-      "delete": "Löschen"
-    },
-    "confirmReset": "Auf Standards zurücksetzen? Ungespeicherte Änderungen gehen verloren.",
-    "confirmDelete": "Diese Fähigkeit löschen? Nicht rückgängig machbar.",
-    "errorRequired": "ID und Name sind erforderlich",
-    "errorCreate": "Erstellen fehlgeschlagen",
-    "errorImport": "Import fehlgeschlagen",
-    "errorExport": "Export fehlgeschlagen"
   },
   "pet": {
     "title": "Pet",

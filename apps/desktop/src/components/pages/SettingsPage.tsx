@@ -8,7 +8,6 @@ import { ModelServicesSettings } from '@/components/settings/ModelServicesSettin
 import { PluginsSettings } from '@/components/settings/PluginsSettings';
 import { VoiceSettings, VoiceHotkeyRecorder } from '@/components/settings/VoiceSettings';
 import { FileTemplatesSettings } from '@/components/settings/FileTemplatesSettings';
-import { SkillsSettings } from '@/components/settings/SkillsSettings';
 import { PetSettings } from '@/components/settings/PetSettings';
 import { NotificationsSettings } from '@/components/settings/NotificationsSettings';
 import { CspSettings } from '@/components/settings/CspSettings';
@@ -292,11 +291,6 @@ export function SettingsPage() {
 
         {settingsTab === 'templates' && (
           <FileTemplatesSettings />
-        )}
-
-        {/* -- Skills -- */}
-        {settingsTab === 'skills' && (
-          <SkillsSettings />
         )}
 
         {/* -- 桌宠 -- */}

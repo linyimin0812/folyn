@@ -17,7 +17,6 @@
     "models": "Servicios de modelos",
     "voice": "Entrada de voz",
     "templates": "Plantillas de archivo",
-    "skills": "Habilidades",
     "pet": "Mascota",
     "notifications": "Notificaciones",
     "plugins": "Plugins",
@@ -506,43 +505,6 @@
     "save": "Guardar",
     "cancel": "Cancelar",
     "extPlaceholder": "ext"
-  },
-  "skills": {
-    "title": "Habilidades",
-    "description": "Configura plantillas de habilidades IA; los prompts controlan el formato y calidad de la salida de IA",
-    "new": "Nueva habilidad",
-    "import": "Importar",
-    "export": "Exportar",
-    "empty": "Sin habilidades configuradas",
-    "capability": {
-      "title": "Asignación de capacidades",
-      "desc": "Asigna una habilidad a cada capacidad; Claude Code sigue las instrucciones de la habilidad correspondiente.",
-      "clip": "Recortes web",
-      "githubAnalysis": "Análisis GitHub"
-    },
-    "form": {
-      "newTitle": "Nueva habilidad",
-      "idLabel": "ID",
-      "idHint": "Formato slug; solo letras minúsculas, dígitos y guiones",
-      "nameLabel": "Nombre",
-      "descLabel": "Descripción",
-      "descPlaceholder": "Describe el propósito de esta habilidad",
-      "promptLabel": "Plantilla de prompt",
-      "promptPlaceholder": "Introduce una plantilla; usa {{variableName}} para variables...",
-      "create": "Crear",
-      "cancel": "Cancelar",
-      "editTitle": "Editar",
-      "contentLabel": "Contenido de la habilidad",
-      "save": "Guardar",
-      "reset": "Restablecer",
-      "delete": "Eliminar"
-    },
-    "confirmReset": "¿Restablecer a defaults? Se perderán cambios no guardados.",
-    "confirmDelete": "¿Eliminar esta habilidad? No se puede deshacer.",
-    "errorRequired": "ID y nombre son obligatorios",
-    "errorCreate": "Fallo al crear",
-    "errorImport": "Fallo al importar",
-    "errorExport": "Fallo al exportar"
   },
   "pet": {
     "title": "Mascota",

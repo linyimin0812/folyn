@@ -17,7 +17,6 @@
     "models": "模型服务",
     "voice": "语音输入",
     "templates": "文件模板",
-    "skills": "Skills",
     "pet": "桌宠",
     "notifications": "通知",
     "plugins": "插件",
@@ -506,43 +505,6 @@
     "save": "保存",
     "cancel": "取消",
     "extPlaceholder": "ext"
-  },
-  "skills": {
-    "title": "Skills",
-    "description": "配置 AI 技能模板，自定义 Prompt 以控制 AI 生成内容的格式和质量",
-    "new": "新建 Skill",
-    "import": "导入",
-    "export": "导出",
-    "empty": "暂无 Skill 配置",
-    "capability": {
-      "title": "功能绑定",
-      "desc": "为每个功能指定使用的 SKILL，Claude Code 将根据对应 SKILL 的指令完成任务",
-      "clip": "网页剪藏",
-      "githubAnalysis": "GitHub 分析"
-    },
-    "form": {
-      "newTitle": "新建 Skill",
-      "idLabel": "ID",
-      "idHint": "Slug 格式，仅小写字母、数字和连字符",
-      "nameLabel": "名称",
-      "descLabel": "描述",
-      "descPlaceholder": "描述此 Skill 的用途",
-      "promptLabel": "Prompt 模板",
-      "promptPlaceholder": "输入 Prompt 模板，使用 {{variableName}} 引用变量...",
-      "create": "创建",
-      "cancel": "取消",
-      "editTitle": "编辑",
-      "contentLabel": "Skill 内容",
-      "save": "保存",
-      "reset": "恢复默认",
-      "delete": "删除"
-    },
-    "confirmReset": "确定恢复默认设置？未保存的修改将丢失。",
-    "confirmDelete": "确定删除此 Skill？此操作不可撤销。",
-    "errorRequired": "ID 和名称为必填项",
-    "errorCreate": "创建失败",
-    "errorImport": "导入失败",
-    "errorExport": "导出失败"
   },
   "pet": {
     "title": "桌宠",

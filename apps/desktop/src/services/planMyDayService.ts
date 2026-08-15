@@ -15,11 +15,51 @@ import { createAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useScheduleStore } from '@/store/scheduleStore';
-import { useSkillStore } from '@/store/skillStore';
 import { collectTextFromStream, extractJsonObject, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { dateToString } from '@/features/schedule/dailyScan';
 import type { EventCategory, ScheduleEvent, ScheduleTask } from '@/features/schedule/types';
+
+// ponytail: prompt previously lived in services/skillDefaults.ts and was
+// overridable via the Skills settings page. After removing that page the
+// template is inlined here. Kept independent of clipService to avoid pulling
+// clipParse (excalidraw / roughjs) into this module's import graph — the test
+// suite breaks on open-color.json import in this pnpm+node environment.
+const CLIP_CARD_PROMPT = `# Web Clip Card Generation
+
+你是一个网页内容分析助手。请按照以下步骤分析网页内容并生成结构化知识卡片。
+
+## 重要规则
+- **不要使用 Write 或任何文件创建工具将结果保存到磁盘。** 应用会自动处理保存。
+- 只在回复文本中输出 JSON 结果。
+
+## 步骤
+
+1. **获取网页内容**：使用 WebFetch 工具获取用户提供的 URL 内容
+2. **分析内容**：阅读并理解网页的核心主题、关键信息
+3. **生成知识卡片**：按照下方 JSON 格式输出结构化卡片
+
+## 输出格式
+
+请以 JSON 格式回复（不要使用 markdown 代码块包裹）：
+{
+  "title": "网页标题",
+  "tags": ["tag1", "tag2", "tag3"],
+  "suggestedTags": ["tag4", "tag5", "tag6", "tag7", "tag8"],
+  "summary": "2-4句话概括核心内容",
+  "keyPoints": [
+    "要点1: 一句话描述关键信息",
+    "要点2: 一句话描述关键信息",
+    "要点3: 一句话描述关键信息"
+  ]
+}
+
+## 规则
+- tags 字段生成恰好 3-5 个简洁的关键词标签
+- suggestedTags 字段额外提供 5-8 个候选标签，供用户选择添加
+- 摘要概括核心内容，2-4句话
+- 要点提取3-8条最重要的信息，每条一句话
+- 所有输出内容使用与网页内容相同的语言`;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -318,12 +358,8 @@ export async function generatePlan(
   await adapter.start({ cliPath: aiConfig.cliPath, workingDir: basePath });
 
   try {
-    // plan-my-day is not a registered SkillCapability yet; use a built-in prompt
-    // (keeps scope minimal — no skill.ts / SkillCapability changes). When a
-    // 'plan-my-day' capability is added later, swap in getSkillForCapability.
-    const skill = useSkillStore.getState().getSkillForCapability('clip');
     const basePrompt = buildPlanPrompt(ctx);
-    const prompt = skill ? `${skill.content}\n\n## Task\n${basePrompt}` : basePrompt;
+    const prompt = `${CLIP_CARD_PROMPT}\n\n## Task\n${basePrompt}`;
 
     const textPromise = collectTextFromStream(adapter, onStream, onEvent);
     await adapter.send(prompt);

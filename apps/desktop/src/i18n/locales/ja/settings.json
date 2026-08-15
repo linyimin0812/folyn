@@ -17,7 +17,6 @@
     "models": "モデルサービス",
     "voice": "音声入力",
     "templates": "ファイルテンプレート",
-    "skills": "スキル",
     "pet": "桌宠",
     "notifications": "通知",
     "plugins": "プラグイン",
@@ -506,43 +505,6 @@
     "save": "保存",
     "cancel": "キャンセル",
     "extPlaceholder": "拡張子"
-  },
-  "skills": {
-    "title": "スキル",
-    "description": "AIスキルテンプレートを設定。カスタムプロンプトがAI生成コンテンツの形式と品質を制御",
-    "new": "新規スキル",
-    "import": "インポート",
-    "export": "エクスポート",
-    "empty": "スキル未設定",
-    "capability": {
-      "title": "能力バインディング",
-      "desc": "各能力にスキルを割り当て。Claude Codeは対応するスキルの指示に従ってタスクを完了。",
-      "clip": "Webクリップ",
-      "githubAnalysis": "GitHub分析"
-    },
-    "form": {
-      "newTitle": "新規スキル",
-      "idLabel": "ID",
-      "idHint": "スラッグ形式。小文字英字、数字、ハイフンのみ",
-      "nameLabel": "名前",
-      "descLabel": "説明",
-      "descPlaceholder": "このスキルの目的を説明",
-      "promptLabel": "プロンプトテンプレート",
-      "promptPlaceholder": "プロンプトテンプレートを入力。変数には{{variableName}}を使用...",
-      "create": "作成",
-      "cancel": "キャンセル",
-      "editTitle": "編集",
-      "contentLabel": "スキル内容",
-      "save": "保存",
-      "reset": "デフォルトに戻す",
-      "delete": "削除"
-    },
-    "confirmReset": "デフォルトに戻しますか？未保存の変更は失われます。",
-    "confirmDelete": "このスキルを削除しますか？元に戻せません。",
-    "errorRequired": "IDと名前は必須です",
-    "errorCreate": "作成失敗",
-    "errorImport": "インポート失敗",
-    "errorExport": "エクスポート失敗"
   },
   "pet": {
     "title": "桌宠",

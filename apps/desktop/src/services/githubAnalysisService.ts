@@ -2,12 +2,73 @@ import { createAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import * as editorIoService from '@/services/editorIoService';
 import { useAiConfigStore } from '@/store/aiConfigStore';
-import { useSkillStore } from '@/store/skillStore';
 import { collectTextFromStream, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { getFeatureAgentSendOptions } from './featureAgentService';
 
 export type ReportLanguage = 'zh' | 'en' | 'auto';
+
+// ponytail: prompt previously lived in services/skillDefaults.ts and was
+// overridable via the Skills settings page. After removing that page the
+// template is inlined here as the single source of truth.
+const GITHUB_ANALYSIS_PROMPT = `# GitHub Repository Analysis
+
+You are a senior software architect. Analyze a GitHub repository and generate a comprehensive HTML report.
+
+## Important Rules
+- **Do NOT use Write or any file creation tool to save the HTML report to disk.** The application will handle saving automatically.
+- Only output the report content in your response text (inside a code block as specified below).
+- Clone repos to \`/tmp/\` only, and clean up after analysis.
+
+## Steps
+
+1. **Clone the repository**: Use Bash to run \`git clone --depth 1 <repo_url> /tmp/quill-repo-<reponame>\` to clone the repo locally
+2. **Explore the project structure**:
+   - Use Bash to list the directory tree (depth 3, max 500 lines)
+   - Use Read to examine package manifests (package.json, Cargo.toml, go.mod, pyproject.toml, requirements.txt, etc.)
+   - Use Read to examine configuration files (tsconfig.json, .eslintrc, webpack.config, etc.)
+   - Use Read to examine the README file
+   - Use Read to examine main entry points and 3-5 core source files
+3. **Generate an HTML analysis report** with these sections:
+   - **Project Overview**: What the project does, its purpose, target audience
+   - **Tech Stack Analysis**: Languages, frameworks, key dependencies — with a visual language distribution bar
+   - **Code Structure Analysis**: Architecture pattern, directory organization, design decisions
+   - **Key Module Analysis**: Deep dive into 3-5 most important modules/components
+   - **Code Quality & Standards**: Code style, testing coverage, documentation quality, CI/CD
+   - **Pros & Cons**: Strengths and weaknesses assessment
+   - **Summary & Recommendations**: Overall rating, recommendations for improvement
+4. **Clean up**: Use Bash to remove the cloned repo directory \`rm -rf /tmp/quill-repo-<reponame>\`
+
+## HTML Report Requirements
+- Self-contained single HTML file with inline CSS (no external dependencies)
+- Professional, modern design with CSS custom properties for theming
+- Card-based layout for each section
+- Language distribution bar chart (pure CSS, colored segments)
+- Responsive design
+- Color scheme: light background (#f8f9fa), accent blue (#3b82f6), dark text (#1e293b)
+- Header with project name, GitHub link, and analysis date
+- Monospace font for code references
+
+## Output Format
+
+First output the tags block, then the HTML code block. No other text.
+
+Example:
+---TAGS---
+["react", "typescript", "frontend", "web-app"]
+---END---
+
+\`\`\`html
+<!DOCTYPE html>
+<html>
+...
+</html>
+\`\`\`
+
+## Language
+- Use the same language as the repository's README for the report content
+- If the README is in Chinese, write the report in Chinese
+- If the README is in English, write the report in English`;
 
 /**
  * Parse a GitHub URL into owner and repo components.
@@ -124,10 +185,7 @@ export async function generateReport(
 
   let aiResponse: string;
   try {
-    const skill = useSkillStore.getState().getSkillForCapability('github-analysis');
-    const prompt = skill
-      ? `${skill.content}\n\n## Task\n请分析以下 GitHub 仓库并生成 HTML 报告：\n${url}\n报告语言: ${language === 'auto' ? 'auto-detect from README' : language}`
-      : `You are a senior software architect. Analyze this GitHub repository and generate a comprehensive HTML analysis report.\n\nRepository: ${url}\nLanguage: ${language}\n\nClone the repo, explore the source code, and generate a self-contained HTML report with tags.\n\nOutput format:\n---TAGS---\n["tag1", "tag2"]\n---END---\n\n\`\`\`html\n<!DOCTYPE html>...\n\`\`\``;
+    const prompt = `${GITHUB_ANALYSIS_PROMPT}\n\n## Task\n请分析以下 GitHub 仓库并生成 HTML 报告：\n${url}\n报告语言: ${language === 'auto' ? 'auto-detect from README' : language}`;
 
     const textPromise = collectTextFromStream(adapter, onStream, onEvent);
     await adapter.send(prompt, await getFeatureAgentSendOptions('analyze'));

@@ -54,12 +54,6 @@ vi.mock('@/store/aiConfigStore', () => ({
   },
 }));
 
-vi.mock('@/store/skillStore', () => ({
-  useSkillStore: {
-    getState: () => ({ getSkillForCapability: () => undefined }),
-  },
-}));
-
 // Fake CLI adapter factory + adapter so generateClip never spawns a process.
 vi.mock('@quill/cli-adapter', () => ({
   createAdapter: () => fakeAdapter,
@@ -147,8 +141,7 @@ describe('generateClip — curl.md URL construction', () => {
     );
   });
 
-  it('uses the curl.md URL in both skill and fallback prompt branches', async () => {
-    // Fallback branch (no skill configured — the default mock returns undefined).
+  it('uses the curl.md URL in the prompt', async () => {
     enqueueCardThenInfographic(
       '{"title":"T","tags":[],"suggestedTags":[],"summary":"","keyPoints":[]}',
       '{"version":1,"blocks":[]}',

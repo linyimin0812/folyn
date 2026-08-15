@@ -116,12 +116,6 @@ vi.mock('@/store/aiConfigStore', () => ({
   },
 }));
 
-vi.mock('@/store/skillStore', () => ({
-  useSkillStore: {
-    getState: () => ({ getSkillForCapability: () => undefined }),
-  },
-}));
-
 vi.mock('@quill/cli-adapter', () => ({
   createAdapter: () => fakeAdapter,
 }));
