@@ -549,7 +549,7 @@
     "description": "Desktop-Pet-Icon und Anzeige konfigurieren",
     "showPet": {
       "title": "Pet anzeigen",
-      "desc": "Pet-Fenster auf dem Bildschirm anzeigen (macOS)"
+      "desc": "Pet-Fenster auf dem Bildschirm anzeigen"
     },
     "icon": {
       "title": "Icon",

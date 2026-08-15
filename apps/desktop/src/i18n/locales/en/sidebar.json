@@ -36,6 +36,7 @@
     "copyAbsolutePath": "Copy absolute path",
     "copyFileName": "Copy file name",
     "copyVaultPath": "Copy vault path",
+    "openInFileManager": "Open in File Manager",
     "unpin": "Unpin",
     "pin": "Pin",
     "addToChat": "Add file to chat",

@@ -549,7 +549,7 @@
     "description": "Configura el icono y visualización de la mascota de escritorio",
     "showPet": {
       "title": "Mostrar mascota",
-      "desc": "Mostrar la ventana de mascota en pantalla (macOS)"
+      "desc": "Mostrar la ventana de mascota en pantalla"
     },
     "icon": {
       "title": "Icono",

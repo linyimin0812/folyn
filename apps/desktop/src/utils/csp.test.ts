@@ -11,7 +11,7 @@ describe('buildCsp', () => {
     const p = buildCsp({ mode: 'custom', allowedUrls: [] }, { dev: false });
     expect(p).toContain("default-src 'self'");
     expect(p).toContain("script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: quill-plugin:");
-    expect(p).toContain("img-src 'self' data: blob: asset:");
+    expect(p).toContain("img-src 'self' data: blob: asset: http://asset.localhost");
     expect(p).toContain("connect-src 'self' ipc: http://ipc.localhost quill-plugin:");
     expect(p).toContain("frame-src 'self' blob: data: quill-plugin:");
   });

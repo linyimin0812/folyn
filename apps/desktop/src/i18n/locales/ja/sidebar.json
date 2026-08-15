@@ -36,6 +36,7 @@
     "copyAbsolutePath": "絶対パスをコピー",
     "copyFileName": "ファイル名をコピー",
     "copyVaultPath": "Vaultパスをコピー",
+    "openInFileManager": "ファイルマネージャーで開く",
     "unpin": "ピン解除",
     "pin": "ピン留め",
     "addToChat": "チャットにファイルを追加",

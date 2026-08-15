@@ -36,6 +36,7 @@
     "copyAbsolutePath": "Copiar ruta absoluta",
     "copyFileName": "Copiar nombre de archivo",
     "copyVaultPath": "Copiar ruta del vault",
+    "openInFileManager": "Abrir en el administrador de archivos",
     "unpin": "Desfijar",
     "pin": "Fijar",
     "addToChat": "Añadir archivo al chat",

@@ -549,7 +549,7 @@
     "description": "Configure the desktop pet icon and display",
     "showPet": {
       "title": "Show pet",
-      "desc": "Show the desktop pet window on screen (macOS)"
+      "desc": "Show the desktop pet window on screen"
     },
     "icon": {
       "title": "Icon",

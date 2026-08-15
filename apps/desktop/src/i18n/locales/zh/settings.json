@@ -549,7 +549,7 @@
     "description": "配置桌面宠物图标与显示",
     "showPet": {
       "title": "显示桌宠",
-      "desc": "在屏幕上显示桌面宠物窗口（macOS）"
+      "desc": "在屏幕上显示桌面宠物窗口"
     },
     "icon": {
       "title": "图标",
