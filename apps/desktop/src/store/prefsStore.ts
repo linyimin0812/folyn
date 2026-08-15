@@ -94,6 +94,7 @@ export const DEFAULT_FILE_TEMPLATES: Record<string, string> = {
   // flow seeds starter content for these types.
   puml: '@startuml\nAlice->Bob : Hello\nreturn ok\n@enduml',
   gv: 'digraph G {Hello->World}',
+  mermaid: 'graph TD\n  A[开始] --> B{判断}\n  B -->|是| C[结果1]\n  B -->|否| D[结果2]',
   dbml: '// {{title}}\nTable users {\n  id integer [pk, increment]\n  name varchar(255)\n  created_at timestamp\n}',
   mmap: '# {{title}}\n## Child\n### Grandchild\n',
 };

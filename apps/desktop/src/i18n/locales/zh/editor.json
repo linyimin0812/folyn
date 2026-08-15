@@ -9,6 +9,7 @@
       "mmap": { "label": "思维导图", "description": "导出 .mmap 源文件" },
       "plantuml": { "label": "PlantUML", "description": "导出 .puml 源文件" },
       "graphviz": { "label": "Graphviz", "description": "导出 .gv 源文件" },
+      "mermaid": { "label": "Mermaid", "description": "导出 .mermaid 源文件" },
       "default": { "label": "源文件", "description": "导出原始文件" }
     },
     "html": {

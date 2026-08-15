@@ -9,6 +9,7 @@
       "mmap": { "label": "Carte mentale", "description": "Exporter le fichier .mmap" },
       "plantuml": { "label": "PlantUML", "description": "Exporter le fichier .puml" },
       "graphviz": { "label": "Graphviz", "description": "Exporter le fichier .gv" },
+      "mermaid": { "label": "Mermaid", "description": "Exporter le fichier .mermaid" },
       "default": { "label": "Fichier source", "description": "Exporter le fichier brut" }
     },
     "html": {

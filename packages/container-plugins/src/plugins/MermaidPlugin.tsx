@@ -24,24 +24,24 @@ function useHtmlTheme(): string {
   );
 }
 
-export function MermaidBlock({ children }: { children?: React.ReactNode }) {
+interface MermaidState {
+  svg: string | null;
+  error: string | null;
+}
+
+/**
+ * Render Mermaid source to an SVG string. Shared by the inline markdown
+ * code-fence renderer (`MermaidBlock`) and the file-type preview
+ * (`MermaidPreview`) — mirrors `usePlantUmlSvg` / `useGraphvizSvg`.
+ */
+export function useMermaidSvg(source: string): MermaidState {
   const [svg, setSvg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const id = useId().replace(/:/g, '-');
 
-  const source = extractText(children);
-  const theme = useHtmlTheme();
-  const isDark = theme === 'dark';
-
   useEffect(() => {
     if (!source.trim()) return;
 
-    // In dark mode, render with the light 'default' theme, then invert the
-    // SVG via CSS filter. This sidesteps mermaid's 'dark' theme (which left
-    // edge labels / clusters on light defaults, making text unreadable) and
-    // any themeVariables coverage gaps. invert(0.92) keeps a small amount of
-    // original brightness; hue-rotate(180deg) restores approximate hues so
-    // colored nodes stay recognisable.
     mermaid.initialize({
       startOnLoad: false,
       theme: 'default',
@@ -49,7 +49,7 @@ export function MermaidBlock({ children }: { children?: React.ReactNode }) {
     });
 
     let cancelled = false;
-    mermaid.render(`mermaid-${id}-${theme}`, source.trim()).then(
+    mermaid.render(`mermaid-${id}`, source.trim()).then(
       ({ svg: rendered }) => {
         if (!cancelled) {
           setSvg(rendered);
@@ -65,7 +65,16 @@ export function MermaidBlock({ children }: { children?: React.ReactNode }) {
     );
 
     return () => { cancelled = true; };
-  }, [source, id, theme]);
+  }, [source, id]);
+
+  return { svg, error };
+}
+
+export function MermaidBlock({ children }: { children?: React.ReactNode }) {
+  const source = extractText(children);
+  const { svg, error } = useMermaidSvg(source);
+  const theme = useHtmlTheme();
+  const isDark = theme === 'dark';
 
   if (error) {
     return (

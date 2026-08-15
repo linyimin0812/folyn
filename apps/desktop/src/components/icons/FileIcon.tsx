@@ -89,6 +89,8 @@ const EXT_TO_THEME_ICON: Record<string, string> = {
   gv: 'graphviz',
   dot: 'graphviz',
   graphviz: 'graphviz',
+  mmd: 'mermaid',
+  mermaid: 'mermaid',
   rt: 'richtext',
 };
 
@@ -104,6 +106,7 @@ const HANDLER_TO_THEME_ICON: Record<string, string> = {
   drawio: 'drawio',
   plantuml: 'plantuml',
   graphviz: 'graphviz',
+  mermaid: 'mermaid',
   code: 'javaScript',
   'rich-text': 'richtext',
   svg: 'svg',

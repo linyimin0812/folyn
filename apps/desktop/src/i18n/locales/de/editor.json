@@ -9,6 +9,7 @@
       "mmap": { "label": "Mindmap", "description": ".mmap-Quelldatei exportieren" },
       "plantuml": { "label": "PlantUML", "description": ".puml-Quelldatei exportieren" },
       "graphviz": { "label": "Graphviz", "description": ".gv-Quelldatei exportieren" },
+      "mermaid": { "label": "Mermaid", "description": ".mermaid-Quelldatei exportieren" },
       "default": { "label": "Quelldatei", "description": "Rohdatei exportieren" }
     },
     "html": {

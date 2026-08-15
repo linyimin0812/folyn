@@ -24,6 +24,7 @@ import * as drawioExporter from './export/drawio';
 import * as mmapExporter from './export/mmap';
 import * as plantumlExporter from './export/plantuml';
 import * as graphvizExporter from './export/graphviz';
+import * as mermaidExporter from './export/mermaid';
 import { inlineContainerImages } from './export/shared';
 import type { EnhanceCtx } from './export/dbml';
 import { getEnhancer } from './plugin-host/exportEnhancerAdapter';
@@ -297,6 +298,8 @@ const REGISTRY: Record<string, EnhanceFn> = {
   graphviz: graphvizExporter.enhance,
   gv: graphvizExporter.enhance,
   dot: graphvizExporter.enhance,
+  mermaid: mermaidExporter.enhance,
+  mmd: mermaidExporter.enhance,
 };
 
 /**
