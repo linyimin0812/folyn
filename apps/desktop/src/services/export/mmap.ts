@@ -26,8 +26,8 @@ export async function enhance(body: HTMLElement, ctx: EnhanceCtx): Promise<void>
 
   const mm = Markmap.create(svg, { autoFit: true });
   const { root } = transformer.transform(src || '');
-  stripMathmlFromTree(root);
   resolveImagesInTree(root, assetBase);
+  stripMathmlFromTree(root);
   mm.setData(root);
   // ponytail: one rAF lets d3-flextree lay out + markmap apply the fit
   // transform; without it the captured SVG may still be at origin.

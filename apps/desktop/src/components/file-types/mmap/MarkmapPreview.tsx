@@ -45,8 +45,8 @@ export function MarkmapPreview({ content, filePath, vaultRoot }: PreviewProps) {
     const mm = mmRef.current;
     if (!mm) return;
     const { root } = transformer.transform(content || '');
-    stripMathmlFromTree(root);
     resolveImagesInTree(root, assetBase);
+    stripMathmlFromTree(root);
     mm.setData(root);
     mm.fit();
   }, [content, assetBase]);
