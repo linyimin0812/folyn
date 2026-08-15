@@ -136,7 +136,17 @@ async function insertImagesAt(
 
 const imagePluginKey = new PluginKey('rich-text-image-paste-drop');
 
-function imagePasteDropPlugin(): Plugin {
+/**
+ * Optional host hook for image-file paste/drop. When provided, the plugin
+ * hands the pasted/dropped files (and the insert position) to the host
+ * instead of persisting directly — lets RichTextEditor open ImagePasteDialog
+ * for target/format/size selection, mirroring the markdown editor flow.
+ * When absent (HTML export pipeline, tests), the legacy direct-persist path
+ * runs so generateHTML still has an image node to serialize.
+ */
+export type ImagePasteHandler = (files: File[], pos: number) => void;
+
+function imagePasteDropPlugin(onImagePaste?: ImagePasteHandler): Plugin {
   return new Plugin({
     key: imagePluginKey,
     props: {
@@ -154,7 +164,8 @@ function imagePasteDropPlugin(): Plugin {
         if (files.length > 0) {
           event.preventDefault();
           const pos = view.state.selection.from;
-          void insertImagesAt(view, files, pos);
+          if (onImagePaste) onImagePaste(files, pos);
+          else void insertImagesAt(view, files, pos);
           return true;
         }
         // ponytail: bare image-URL paste (http…/x.png) inserts an Image node
@@ -187,7 +198,8 @@ function imagePasteDropPlugin(): Plugin {
           pos = null;
         }
         if (pos == null) pos = view.state.selection.from;
-        void insertImagesAt(view, files, pos);
+        if (onImagePaste) onImagePaste(files, pos);
+        else void insertImagesAt(view, files, pos);
         return true;
       },
     },
@@ -584,6 +596,13 @@ function RichTextImageView({
  * `<img>` otherwise (backward compatible with existing docs).
  */
 export const RichTextImage = Image.extend({
+  addOptions() {
+    return {
+      ...this.parent?.(),
+      onImagePaste: undefined as undefined | ImagePasteHandler,
+    };
+  },
+
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -623,6 +642,6 @@ export const RichTextImage = Image.extend({
     return ReactNodeViewRenderer(RichTextImageView);
   },
   addProseMirrorPlugins() {
-    return [imagePasteDropPlugin()];
+    return [imagePasteDropPlugin(this.options.onImagePaste)];
   },
 });

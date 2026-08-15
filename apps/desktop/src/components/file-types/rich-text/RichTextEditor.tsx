@@ -20,7 +20,7 @@ import {
   shouldApplyExternalContent,
 } from './richTextContent';
 import { RichTextToolbar } from './RichTextToolbar';
-import { getRichTextExtensions, type MathEditHandler, type MathEditKind } from './richTextExtensions';
+import { getRichTextExtensions, type MathEditHandler, type MathEditKind, type ImagePasteHandler } from './richTextExtensions';
 import {
   computeSlashState,
   INITIAL_SLASH_STATE,
@@ -31,6 +31,14 @@ import { RichTextSlashMenu } from './RichTextSlashMenu';
 import { RichTextMathModal } from './RichTextMathModal';
 import { TableControlsOverlay, domCellToPos } from './TableControlsOverlay';
 import { TableMenu, type TableMenuItem } from './TableMenu';
+import { ImagePasteDialog, type ImageSaveConfig } from '@/components/editor/ImagePasteDialog';
+import { useVaultStore } from '@/store/vaultStore';
+import { resolveBasePath } from '@/utils/pathResolver';
+import {
+  getStrategy,
+  fileToBase64,
+  convertImageFormat,
+} from '@/utils/imageUploader';
 // KaTeX layout/font rules for rendered math nodes. Plain CSS import injects
 // into the app bundle (Vite); the standalone HTML export inlines the same
 // rules via services/export/richtext.ts.
@@ -54,7 +62,7 @@ import 'katex/dist/katex.min.css';
 // and remounts — also fine, the effect is a no-op on a fresh mount (ref
 // initialized from content).
 
-export function RichTextEditor({ content, onChange }: EditorProps) {
+export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
   const { t } = useTranslation();
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -79,9 +87,35 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
   // us — so the content-prop effect sees them equal and skips the reload.
   const loadedContentRef = useRef(content);
 
+  // ponytail: image paste/drop dialog state. The RichTextImage extension's
+  // ProseMirror plugin calls onImagePaste with the pasted files + insert
+  // position; we open the same ImagePasteDialog the markdown editor uses so
+  // target/format/size selection is consistent across file types. Confirm
+  // reuses imageUploader strategies (LocalFileStrategy → vault-relative
+  // `./<dir>/<name>.<fmt>`), and resolveVaultRelativePath strips the `./`
+  // at render so the NodeView loads via convertFileSrc — same mechanism
+  // MarkdownPreview uses for `![](pic.png)`.
+  const [imagePasteVisible, setImagePasteVisible] = useState(false);
+  const [imagePasteFile, setImagePasteFile] = useState<File | null>(null);
+  const [imagePastePreviewUrl, setImagePastePreviewUrl] = useState('');
+  const [imagePastePos, setImagePastePos] = useState(0);
+  const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
+  // ponytail: dialog UI is single-image; multi-file paste keeps only the
+  // first. Ceiling noted; add a queue loop if batch upload becomes common.
+  const onImagePasteRef = useRef<ImagePasteHandler>(() => {});
+  onImagePasteRef.current = (files, pos) => {
+    const f = files[0];
+    if (!f) return;
+    setImagePasteFile(f);
+    setImagePastePos(pos);
+    setImagePastePreviewUrl(URL.createObjectURL(f));
+    setImagePasteVisible(true);
+  };
+
   const editor = useEditor({
     extensions: getRichTextExtensions({
       onMathEdit: (node, pos, kind) => mathEditRef.current(node, pos, kind),
+      onImagePaste: (files, pos) => onImagePasteRef.current(files, pos),
     }),
     content: deserializeToContent(content) ?? emptyDoc(),
     onUpdate: ({ editor }) => {
@@ -97,6 +131,65 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
       }, 500);
     },
   });
+
+  const handleImageConfirm = async (config: ImageSaveConfig) => {
+    if (!imagePasteFile || !editor) return;
+    try {
+      const strategy = getStrategy(config.target);
+      const originalFormat = imagePasteFile.type.split('/')[1] as string;
+      const needsConversion = config.format !== originalFormat;
+      const base64 = needsConversion
+        ? await convertImageFormat(imagePasteFile, config.format)
+        : await fileToBase64(imagePasteFile);
+      const result = await strategy.upload(base64, config, vaultRoot, filePath);
+      // ponytail: LocalFileStrategy relativizes markdownUrl against the
+      // document's directory (markdown's VaultImage uses assetBase=docDir
+      // to load it). Rich-text's Image NodeView resolves src against the
+      // VAULT root, not the doc dir — so a doc-dir-relative `./<path>`
+      // mis-resolves when the .rt file lives in a vault subdirectory (the
+      // file is written at <vault>/notes/assets/x.png but NodeView loads
+      // <vault>/assets/x.png → broken-image icon). Compute the vault-
+      // relative src directly from the dialog config so NodeView's
+      // resolveVaultRelativePath lands on the file the strategy actually
+      // wrote. Non-local strategies (OSS/CDN, disabled today) return an
+      // http(s) markdownUrl that isLoadableUrlScheme passes through
+      // verbatim — fall back to result.markdownUrl for those.
+      let src = result.markdownUrl;
+      if (config.target === 'local') {
+        const fullPath = `${config.directory}/${config.fileName}.${config.format}`.replace(/^\.\//, '');
+        if (fullPath.startsWith('/')) {
+          // Absolute directory — strip the vault root to make vault-relative.
+          const resolvedRoot = await resolveBasePath(vaultRoot);
+          if (resolvedRoot && fullPath.startsWith(resolvedRoot + '/')) {
+            src = fullPath.slice(resolvedRoot.length + 1);
+          } else {
+            src = fullPath; // outside vault — convertFileSrc can't load it
+          }
+        } else {
+          src = fullPath; // vault-relative — use as-is
+        }
+      }
+      const attrs: Record<string, unknown> = { src, alt: config.fileName };
+      if (config.width && config.width > 0) attrs.width = config.width;
+      // ponytail: insertContentAt at the captured paste pos — dialog is
+      // modal so the doc is frozen while open, pos stays valid.
+      editor.chain().focus().insertContentAt(imagePastePos, { type: 'image', attrs }).run();
+    } catch (err) {
+      console.error('[rich-text] image upload failed:', err);
+    } finally {
+      URL.revokeObjectURL(imagePastePreviewUrl);
+      setImagePasteVisible(false);
+      setImagePasteFile(null);
+      setImagePastePreviewUrl('');
+    }
+  };
+
+  const handleImageCancel = () => {
+    URL.revokeObjectURL(imagePastePreviewUrl);
+    setImagePasteVisible(false);
+    setImagePasteFile(null);
+    setImagePastePreviewUrl('');
+  };
 
   // External content change (AI / file watcher / reject-revert): apply in
   // place without remounting. emitUpdate:false breaks the loop.
@@ -489,6 +582,14 @@ export function RichTextEditor({ content, onChange }: EditorProps) {
           onClose={() => setMathModal(null)}
         />
       )}
+      <ImagePasteDialog
+        visible={imagePasteVisible}
+        previewUrl={imagePastePreviewUrl}
+        currentFilePath={filePath}
+        vaultRoot={vaultRoot}
+        onConfirm={handleImageConfirm}
+        onCancel={handleImageCancel}
+      />
     </div>
   );
 }

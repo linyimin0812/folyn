@@ -12,13 +12,17 @@ import { Highlight } from '@tiptap/extension-highlight';
 import { Mathematics } from '@tiptap/extension-mathematics';
 import { RichTextIndent } from './RichTextIndent';
 import { RichTextTableCell, RichTextTableHeader } from './RichTextTableCell';
-import { RichTextImage } from './RichTextImage';
+import { RichTextImage, type ImagePasteHandler } from './RichTextImage';
 import { RichTextSlashExtension } from './RichTextSlashExtension';
 
 export type MathEditKind = 'inline' | 'block';
 
 /** Live-editor handler invoked when the user clicks an existing math node. */
 export type MathEditHandler = (node: PMNode, pos: number, kind: MathEditKind) => void;
+
+// Re-exported so RichTextEditor can type its onImagePaste ref without a
+// direct dep on RichTextImage (which pulls in the tiptap/pm/state Plugin).
+export type { ImagePasteHandler } from './RichTextImage';
 
 export interface RichTextExtensionsOptions {
   /**
@@ -28,6 +32,14 @@ export interface RichTextExtensionsOptions {
    * runs NodeViews, so the onClick wiring is purely an editor concern.
    */
   onMathEdit?: MathEditHandler;
+  /**
+   * When provided (live editor only), pasting/dropping image FILES routes
+   * here instead of being persisted directly to the vault. The host opens
+   * ImagePasteDialog for target/format/size selection, then inserts the
+   * resulting Image node. Mirrors the markdown editor's onImagePaste flow.
+   * Export pipeline omits it (no live editor, no paste).
+   */
+  onImagePaste?: ImagePasteHandler;
 }
 
 /**
@@ -43,7 +55,7 @@ export interface RichTextExtensionsOptions {
  * generateHTML only emits the node's static HTML, not NodeView output.
  */
 export function getRichTextExtensions(options: RichTextExtensionsOptions = {}): Extensions {
-  const { onMathEdit } = options;
+  const { onMathEdit, onImagePaste } = options;
   return [
     StarterKit.configure({ codeBlock: { enableTabIndentation: true, tabSize: 2 } }),
     TaskList,
@@ -68,7 +80,7 @@ export function getRichTextExtensions(options: RichTextExtensionsOptions = {}): 
     }),
     RichTextTableCell,
     RichTextTableHeader,
-    RichTextImage,
+    RichTextImage.configure({ onImagePaste }),
     RichTextSlashExtension,
   ];
 }

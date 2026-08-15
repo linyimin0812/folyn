@@ -183,7 +183,9 @@ export function RichTextToolbar({ editor, zoom, onZoomChange, onInsertMath }: Ri
 
   // ponytail: native file picker for image insertion. Reads the picked file's
   // bytes via @tauri-apps/plugin-fs, hash-names, writes to the vault, inserts
-  // a vault-relative-src Image node. Shares persistImageBytes with paste/drop.
+  // a vault-relative-src Image node. Paste/drop now route through
+  // ImagePasteDialog (RichTextEditor.tsx); this button keeps the hash-named
+  // direct-persist path (dedup-friendly, no rename prompt).
   // isTauri() gate: no-op outside Tauri (browser dev) — paste/drop still work.
   // Image-by-URL entry is covered by the paste plugin's bare-URL detection
   // (RichTextImage.tsx), so no separate URL modal here.
