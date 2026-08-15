@@ -24,6 +24,10 @@
       "label": "PNG",
       "description": "Export as raster image"
     },
+    "markmap": {
+      "label": "Markmap",
+      "description": "Export headings as a mind-map SVG"
+    },
     "xmind": {
       "label": "XMind",
       "description": "Export as .xmind mind map"

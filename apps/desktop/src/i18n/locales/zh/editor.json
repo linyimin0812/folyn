@@ -24,6 +24,10 @@
       "label": "PNG",
       "description": "导出为位图"
     },
+    "markmap": {
+      "label": "Markmap",
+      "description": "将标题导出为思维导图 SVG"
+    },
     "xmind": {
       "label": "XMind",
       "description": "导出为 .xmind 思维导图"
