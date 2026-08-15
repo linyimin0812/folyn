@@ -613,7 +613,7 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
               <polyline points="6 9 12 15 18 9" />
             </svg>
           </button>
-          {showSessionList && (
+          {showSessionList && sessions.length > 0 && (
             <div className="absolute top-full left-0 mt-1 min-w-[200px] max-w-[280px] max-h-[300px] overflow-y-auto bg-panel border border-brd rounded-lg shadow-[0_8px_24px_rgba(0,0,0,.14)] z-[100] p-1">
               {sessions.map((s) => (
                 <button

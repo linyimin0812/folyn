@@ -138,11 +138,19 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .prev-body::-webkit-scrollbar-thumb { background: var(--t4); border-radius: 3px; }
 .prev-body::-webkit-scrollbar-track { background: transparent; }
 
-.chat-msg-scroll { scrollbar-width: none; }
-.chat-msg-scroll:hover { scrollbar-width: thin; }
-.chat-msg-scroll::-webkit-scrollbar { width: 0; }
-.chat-msg-scroll:hover::-webkit-scrollbar { width: 6px; }
-.chat-msg-scroll::-webkit-scrollbar-thumb { background: var(--t4); border-radius: 3px; }
+.chat-msg-scroll {
+  /* Always reserve a thin 4px gutter so the message text width stays
+   * constant. The old `width: 0` → `6px` hover toggle made the content
+   * reflow 6px every time the mouse entered/left the scroll area, which
+   * flickered (闪动) once the chat overflowed and needed to scroll. The
+   * thumb is transparent when idle (looks hidden) and colors on hover.
+   * 4px matches the app-wide thin scrollbar; no `scrollbar-width` /
+   * `scrollbar-color` here — those standard props override the webkit
+   * pseudo-element width in Chromium and render a thicker bar. */
+}
+.chat-msg-scroll::-webkit-scrollbar { width: 4px; }
+.chat-msg-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 2px; }
+.chat-msg-scroll:hover::-webkit-scrollbar-thumb { background: var(--t4); }
 .chat-msg-scroll::-webkit-scrollbar-track { background: transparent; }
 
 /* ── Keyframes (consolidated) ── */

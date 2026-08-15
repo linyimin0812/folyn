@@ -448,16 +448,49 @@ export function ChatMessageList({
   onBatchSave,
   className,
 }: ChatMessageListProps) {
-  const msgsEndRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // True while the view is pinned to the bottom (auto-follow streaming). The
+  // user scrolling up flips it off so auto-scroll never yanks them back.
+  const pinnedRef = useRef(true);
+  const prevLenRef = useRef(0);
 
   useEffect(() => {
-    msgsEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    const el = scrollRef.current;
+    if (!el) return;
+    // A length increase means a NEW message was appended (user sent / session
+    // opened) — always follow it, even if the user had scrolled up to read
+    // history. Streaming tokens grow the LAST message in place (length
+    // unchanged) — only follow while pinned, so the user can scroll up freely.
+    if (messages.length > prevLenRef.current) {
+      pinnedRef.current = true;
+    }
+    prevLenRef.current = messages.length;
+    if (!pinnedRef.current) return;
+    // Direct scrollTop instead of scrollIntoView({ behavior: 'smooth' }):
+    // the smooth scroll was re-triggered on EVERY token, restarting the
+    // animation each time → the viewport jittered/flickered while streaming.
+    // Instant pinning is stable, and it scrolls only THIS container instead
+    // of every scrollable ancestor that scrollIntoView would also nudge.
+    el.scrollTop = el.scrollHeight;
   }, [messages, streaming]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    pinnedRef.current = distance < 60;
+  }, []);
 
   const showListDots = streaming && streamingIndicator === 'dots';
 
   return (
-    <div className={`flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto chat-msg-scroll ${className ?? ''}`} role="log" aria-live="polite">
+    <div
+      ref={scrollRef}
+      onScroll={handleScroll}
+      className={`flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto chat-msg-scroll ${className ?? ''}`}
+      role="log"
+      aria-live="polite"
+    >
       {messages.length === 0 && (emptyState ?? <DefaultEmptyHint />)}
 
       {messages.map((msg, idx) => {
@@ -497,8 +530,6 @@ export function ChatMessageList({
           <span className="text-[11px] text-acc font-medium">AI 正在处理...</span>
         </div>
       )}
-
-      <div ref={msgsEndRef} />
 
       {onClear && messages.length > 0 && !multiSelectMode && (
         <button

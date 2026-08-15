@@ -19,6 +19,7 @@ import {
 } from './PetPanelSearchResults';
 import { useVaultStore } from '@/store/vaultStore';
 import { useAiConfigStore } from '@/store/aiConfigStore';
+import { startPetChatMirror } from '@/store/petChatSessions';
 import { useModelRegistryStore } from '@/store/modelRegistryStore';
 import { useDisableAutoCapitalize } from '@/hooks/useDisableAutoCapitalize';
 import type {
@@ -216,6 +217,20 @@ export function PetPanelApp() {
     return () => {
       if (unlisten) unlisten();
     };
+  }, []);
+
+  // ── Pet chat session sync (pet-panel ↔ main window) ──
+  // The embedded AiPanel uses the shared `useAiStore`, but this window is a
+  // separate JS realm whose store starts empty and lacks the $HOME fs ACL to
+  // read/write session files. The main window hosts the pet chat's OWN
+  // sessions (stored separately from its main AI panel under
+  // ~/.quill/pet-chat/) and broadcasts them here; this window mirrors them and
+  // forwards its local mutations back so pet-chat sessions persist across
+  // restart WITHOUT sharing the main AI panel's sessions. Mirrors the
+  // file-tree / providers mirror pattern above.
+  useEffect(() => {
+    const stop = startPetChatMirror();
+    return () => stop();
   }, []);
 
   // ── Show-fade trigger (decoupled from focus) ──

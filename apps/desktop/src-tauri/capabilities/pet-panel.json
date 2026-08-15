@@ -55,6 +55,7 @@
     },
     "shell:allow-stdin-write",
     "shell:allow-kill",
+    "dialog:allow-confirm",
     "clipboard-manager:allow-write-text",
     "fs:allow-mkdir",
     "fs:allow-exists",

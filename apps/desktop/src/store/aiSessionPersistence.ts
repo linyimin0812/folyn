@@ -5,6 +5,7 @@ import { debounce } from '@/utils/debounce';
 import { sessionStorage } from '@/utils/sessionStorage';
 import { useAiStore, createEmptySession } from './aiStore';
 import type { AiSession } from './aiStore';
+import { isPetPanelWindow } from '@/utils/platform';
 
 // ── Persistence ──
 
@@ -85,6 +86,13 @@ export function setSuppressPersist(value: boolean) {
 
 export function persistAiState() {
   if (suppressPersist) return;
+  // ponytail: the pet-panel window lacks the $HOME fs ACL that sessionStorage
+  // needs (`~/.quill/vaults/…`), so its own saveAllSessions would reject.
+  // It forwards its session mutations to the MAIN window (see
+  // startPetChatMirror), which persists them to a separate pet-chat namespace
+  // on the panel's behalf — no local write here. Without this guard every
+  // pet-chat token would fire an unhandled fs rejection.
+  if (isPetPanelWindow()) return;
   const vaultId = useVaultStore.getState().activeVaultId;
   if (!vaultId) return;
   saveAllSessions(vaultId);

@@ -31,6 +31,7 @@ import { registerEditorFileChangeApplier } from './services/fileChangeApplier';
 import { useSearchStore } from './store/searchStore';
 import { useCommandPaletteStore } from './store/commandPaletteStore';
 import { loadAiSessionsForVault } from './store/aiStore';
+import { startPetChatSessionsHost } from './store/petChatSessions';
 import { registerBuiltinPlugins } from '@quill/container-plugins';
 import { registerBuiltinCommands } from './services/commandRegistry';
 import { registerBuiltinPanels } from './services/registerBuiltinPanels';
@@ -167,11 +168,13 @@ export default function App() {
   useEffect(() => {
     let stop: (() => void) | undefined;
     let stopProviders: (() => void) | undefined;
+    let stopPetChat: (() => void) | undefined;
     settingsLoadDone.then(() => {
       stop = startFileTreeBroadcast();
       stopProviders = startProvidersBroadcast();
+      stopPetChat = startPetChatSessionsHost();
     });
-    return () => { stop?.(); stopProviders?.(); };
+    return () => { stop?.(); stopProviders?.(); stopPetChat?.(); };
   }, []);
 
   // ── Vault initialization ──
