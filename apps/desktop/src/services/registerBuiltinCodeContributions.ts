@@ -14,6 +14,7 @@ import { MermaidBlock, mermaidLanguageFactory, PlantUmlBlock, GraphvizBlock, pla
 import type { MarkdownCodeRendererProps } from '@quill/plugin-host';
 import { registerMarkdownCodeRenderer } from './plugin-host/markdownCodeRendererAdapter';
 import { registerEditorLanguage } from './plugin-host/editorLanguageAdapter';
+import { MarkmapBlock } from '@/components/file-types/mmap/MarkmapBlock';
 
 /** Adapt MermaidBlock (children-based) to the renderer-props (source-based) shape. */
 function MermaidCodeRenderer({ source }: MarkdownCodeRendererProps) {
@@ -30,6 +31,11 @@ function PlantUmlCodeRenderer({ source }: MarkdownCodeRendererProps) {
 function GraphvizCodeRenderer({ source }: MarkdownCodeRendererProps) {
   const { t } = useTranslation();
   return createElement(GraphvizBlock, { source, loadingLabel: t('common.renderingDiagram') });
+}
+
+/** Markmap code-fence renderer — the fence body is markdown headings. */
+function MarkmapCodeRenderer({ source }: MarkdownCodeRendererProps) {
+  return createElement(MarkmapBlock, { source });
 }
 
 let registered = false;
@@ -61,4 +67,8 @@ export function registerBuiltinCodeContributions(): void {
   registerEditorLanguage('builtin', 'graphviz', 'graphviz', dotLanguageFactory, ['gv', 'dot', 'graphviz']);
   registerEditorLanguage('builtin', 'dot', 'graphviz', dotLanguageFactory, ['gv', 'dot', 'graphviz']);
   registerEditorLanguage('builtin', 'gv', 'graphviz', dotLanguageFactory, ['gv', 'dot', 'graphviz']);
+  // Markmap: fence body is markdown headings; `mmap` mirrors the .mmap file
+  // extension so both spellings hit the same renderer.
+  registerMarkdownCodeRenderer('builtin', 'markmap', 'markmap', MarkmapCodeRenderer);
+  registerMarkdownCodeRenderer('builtin', 'mmap', 'markmap', MarkmapCodeRenderer);
 }

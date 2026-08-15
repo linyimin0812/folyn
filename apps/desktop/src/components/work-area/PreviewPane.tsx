@@ -2,6 +2,8 @@ import { useRef, useState, useEffect, useCallback, forwardRef, type ComponentTyp
 import type { FileTab, ViewMode } from '@/store/editorStore';
 import type { PreviewProps } from '../file-types/types';
 import { extractHeadings } from '@/utils/markdownUtils';
+import { MarkmapCanvas } from '../file-types/mmap/MarkmapCanvas';
+import { resolveAssetBase } from '../file-types/previewPath';
 
 interface PreviewPaneProps {
   activeTab: FileTab;
@@ -24,6 +26,9 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
   ) {
     const [outlineVisible, setOutlineVisible] = useState(false);
     const [outlineWidth, setOutlineWidth] = useState(180);
+    // Markmap preview toggle (markdown only). Default false = normal preview.
+    const [markmapMode, setMarkmapMode] = useState(false);
+    const [markmapAssetBase, setMarkmapAssetBase] = useState<string | null>(null);
     const outlineDragging = useRef(false);
     const paneRef = useRef<HTMLDivElement>(null);
     const localBodyRef = useRef<HTMLDivElement | null>(null);
@@ -64,6 +69,19 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
       };
     }, []);
 
+    // Resolve the markdown file's asset base so markmap nodes can inline
+    // relative `![](img.png)` references (mirrors MarkdownPreview's own
+    // resolution). Only needed when the markmap toggle is on, but resolved
+    // eagerly so the switch renders without a flash.
+    useEffect(() => {
+      if (activeTab.fileType !== 'markdown') return;
+      let cancelled = false;
+      resolveAssetBase(activeTab.path, vaultRoot)
+        .then((base) => { if (!cancelled) setMarkmapAssetBase(base); })
+        .catch(() => { if (!cancelled) setMarkmapAssetBase(null); });
+      return () => { cancelled = true; };
+    }, [activeTab.fileType, activeTab.path, vaultRoot]);
+
     const handleHeadingClick = useCallback(
       (headingText: string) => {
         // Scroll preview to the heading element
@@ -92,6 +110,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     // every plugin file-type to either inherit markdown's 80vh bottom pad
     // (broken) or edit host source to be added to the list.
     const fullBleed = activeTab.fileType !== 'markdown';
+    const isMarkmap = activeTab.fileType === 'markdown' && markmapMode;
 
     return (
       <div
@@ -99,40 +118,69 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
         ref={paneRef}
         style={{ ...(viewMode === 'split' ? { flexGrow: previewFlex, flexBasis: 0 } : {}), position: 'relative' }}
       >
-        {/* Outline toggle -- markdown only */}
+        {/* Preview-mode toggle (markmap) + outline toggle -- markdown only */}
         {activeTab.fileType === 'markdown' && (
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-1.5">
             <button
-              className={`flex items-center justify-center w-7 h-7 rounded-[6px] cursor-pointer border transition-all duration-[140ms] shadow-[0_1px_4px_rgba(0,0,0,0.08)] ${outlineVisible ? 'bg-act text-acc border-acc' : 'bg-panel border-brd text-t3 hover:bg-hov hover:text-t1 hover:border-brd2'}`}
-              onClick={() => setOutlineVisible((v) => !v)}
-              title="大纲"
+              className={`flex items-center justify-center w-7 h-7 rounded-[6px] cursor-pointer border transition-all duration-[140ms] shadow-[0_1px_4px_rgba(0,0,0,0.08)] ${markmapMode ? 'bg-act text-acc border-acc' : 'bg-panel border-brd text-t3 hover:bg-hov hover:text-t1 hover:border-brd2'}`}
+              onClick={() => setMarkmapMode((v) => !v)}
+              title={markmapMode ? '正常预览' : '思维导图预览'}
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-                <line x1="2" y1="3.5" x2="14" y2="3.5" />
-                <line x1="4" y1="6.5" x2="14" y2="6.5" />
-                <line x1="4" y1="9.5" x2="14" y2="9.5" />
-                <line x1="2" y1="12.5" x2="14" y2="12.5" />
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+                <circle cx="8" cy="8" r="1.8" />
+                <circle cx="2.5" cy="3" r="1.4" />
+                <circle cx="13.5" cy="3" r="1.4" />
+                <circle cx="2.5" cy="13" r="1.4" />
+                <circle cx="13.5" cy="13" r="1.4" />
+                <line x1="7" y1="7" x2="3.2" y2="3.8" />
+                <line x1="9" y1="7" x2="12.8" y2="3.8" />
+                <line x1="7" y1="9" x2="3.2" y2="12.2" />
+                <line x1="9" y1="9" x2="12.8" y2="12.2" />
               </svg>
             </button>
+            {!markmapMode && (
+              <button
+                className={`flex items-center justify-center w-7 h-7 rounded-[6px] cursor-pointer border transition-all duration-[140ms] shadow-[0_1px_4px_rgba(0,0,0,0.08)] ${outlineVisible ? 'bg-act text-acc border-acc' : 'bg-panel border-brd text-t3 hover:bg-hov hover:text-t1 hover:border-brd2'}`}
+                onClick={() => setOutlineVisible((v) => !v)}
+                title="大纲"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+                  <line x1="2" y1="3.5" x2="14" y2="3.5" />
+                  <line x1="4" y1="6.5" x2="14" y2="6.5" />
+                  <line x1="4" y1="9.5" x2="14" y2="9.5" />
+                  <line x1="2" y1="12.5" x2="14" y2="12.5" />
+                </svg>
+              </button>
+            )}
           </div>
         )}
         <div className="flex-1 flex overflow-hidden">
           <div
             className={
-              fullBleed
-                ? 'prev-body flex-1 h-full overflow-auto'
-                : 'prev-body flex-1 overflow-auto pt-2 px-8 pb-[80vh]'
+              isMarkmap
+                ? 'prev-body flex-1 h-full overflow-hidden'
+                : fullBleed
+                  ? 'prev-body flex-1 h-full overflow-auto'
+                  : 'prev-body flex-1 overflow-auto pt-2 px-8 pb-[80vh]'
             }
             ref={setBodyRef}
           >
-            <Preview
-              content={activeTab.content}
-              filePath={activeTab.path}
-              vaultRoot={vaultRoot}
-              onChange={onChange}
-            />
+            {isMarkmap ? (
+              <MarkmapCanvas
+                content={activeTab.content}
+                assetBase={markmapAssetBase}
+                className="h-full w-full"
+              />
+            ) : (
+              <Preview
+                content={activeTab.content}
+                filePath={activeTab.path}
+                vaultRoot={vaultRoot}
+                onChange={onChange}
+              />
+            )}
           </div>
-          {activeTab.fileType === 'markdown' && outlineVisible && (
+          {activeTab.fileType === 'markdown' && outlineVisible && !isMarkmap && (
             <div className="shrink-0 overflow-y-auto border-l border-brd bg-panel relative flex flex-col" style={{ width: `${outlineWidth}px` }}>
               <div
                 className="absolute -left-[3px] top-0 bottom-0 w-1.5 cursor-col-resize z-[5]"

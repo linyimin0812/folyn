@@ -18,6 +18,8 @@ import {
   svgToPngBlob,
 } from '@/services/export/shared';
 import { richTextToHtmlBlob } from '@/services/export/richtext';
+import { renderMarkmapSvg } from '@/services/export/markmapShared';
+import { resolveAssetBase } from '@/components/file-types/previewPath';
 import { getHandlerById } from '@/components/file-types/registry';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { isExternalPath } from '@/utils/isExternalPath';
@@ -129,6 +131,20 @@ export async function exportActivePng(onBeforeDialog?: () => void): Promise<void
   await downloadBlob(png, `${baseName}.png`, ['png']);
 }
 
+/** Export the active markdown doc's headings as a markmap mind-map SVG. */
+export async function exportActiveMarkmapSvg(onBeforeDialog?: () => void): Promise<void> {
+  const { name, content, path, vaultRoot } = getActiveDocument();
+  const assetBase = path
+    ? await resolveAssetBase(path, vaultRoot).catch(() => null)
+    : null;
+  const svgEl = await renderMarkmapSvg(content, assetBase);
+  const svg = new XMLSerializer().serializeToString(svgEl);
+  const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+  onBeforeDialog?.();
+  const baseName = name.replace(/\.[^.]+$/, '');
+  await downloadBlob(blob, `${baseName}.svg`, ['svg']);
+}
+
 /** Export the active document as a standalone HTML file. Imperative. */
 export async function exportActiveHtml(onBeforeDialog?: () => void): Promise<void> {
   const { name, content, path, vaultRoot } = getActiveDocument();
@@ -182,6 +198,7 @@ export function useExport() {
   const exportRichTextHtml = useCallback((onBeforeDialog?: () => void) => exportActiveRichTextHtml(onBeforeDialog), []);
   const exportSvg = useCallback((onBeforeDialog?: () => void) => exportActiveSvg(onBeforeDialog), []);
   const exportPng = useCallback((onBeforeDialog?: () => void) => exportActivePng(onBeforeDialog), []);
+  const exportMarkmap = useCallback((onBeforeDialog?: () => void) => exportActiveMarkmapSvg(onBeforeDialog), []);
   const getActiveContent = useCallback(
     () => {
       const { name, content, path } = getActiveDocument();
@@ -189,5 +206,5 @@ export function useExport() {
     },
     [],
   );
-  return { exportMarkdown, exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, getActiveContent };
+  return { exportMarkdown, exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, getActiveContent };
 }

@@ -27,7 +27,7 @@ export function ExportMenu() {
   const [containerWarning, setContainerWarning] = useState(false);
   const [exporting, setExporting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, getActiveContent } = useExport();
+  const { exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, getActiveContent } = useExport();
 
   const fileType = useEditorStore((s) => {
     const tab = s.tabs.find((t) => t.id === s.activeTabId);
@@ -94,6 +94,10 @@ export function ExportMenu() {
     runWithOverlay(() => exportPng());
   }, [exportPng, runWithOverlay]);
 
+  const handleMarkmap = useCallback(() => {
+    runWithOverlay(() => exportMarkmap());
+  }, [exportMarkmap, runWithOverlay]);
+
   const sourceKey = KNOWN_SOURCE_TYPES.has(fileType) ? fileType : 'default';
   const items: Item[] = [
     {
@@ -111,6 +115,13 @@ export function ExportMenu() {
       label: t('editor:export.html.label'),
       description: t('editor:export.html.description'),
       run: handleHtml,
+    });
+    items.push({
+      key: 'markmap',
+      icon: <ImageDown size={16} className="w-6 flex justify-center shrink-0" />,
+      label: t('editor:export.markmap.label'),
+      description: t('editor:export.markmap.description'),
+      run: handleMarkmap,
     });
   } else if (fileType === 'rich-text') {
     items.push({

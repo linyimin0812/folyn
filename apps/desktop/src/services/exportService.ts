@@ -26,6 +26,8 @@ import * as plantumlExporter from './export/plantuml';
 import * as graphvizExporter from './export/graphviz';
 import * as mermaidExporter from './export/mermaid';
 import { inlineContainerImages } from './export/shared';
+import { renderMarkmapSvg } from './export/markmapShared';
+import { resolveAssetBase } from '@/components/file-types/previewPath';
 import type { EnhanceCtx } from './export/dbml';
 import { getEnhancer } from './plugin-host/exportEnhancerAdapter';
 import type { ExporterContext } from '@quill/plugin-host';
@@ -255,6 +257,11 @@ export async function renderMarkdownToHtmlViaDom(
     setTimeout(tick, POLL_MS);
   });
 
+  // Re-render ```markmap blocks into standalone SVGs (deterministic, images
+  // inlined) — the in-DOM preview render still runs d3 transitions, so capture
+  // it independently via renderMarkmapSvg (duration:0) like the .mmap enhancer.
+  await processMarkmapCodeBlocks(container, filePath, vaultRoot);
+
   // ponytail: post-process file-preview blocks AFTER stabilization — per
   // file type, render a self-contained SVG for export (excalidraw/drawio
   // can't be captured from the in-DOM canvas/iframe; x6 ER needs viewBox
@@ -301,6 +308,32 @@ const REGISTRY: Record<string, EnhanceFn> = {
   mermaid: mermaidExporter.enhance,
   mmd: mermaidExporter.enhance,
 };
+
+/**
+ * Walk each `[data-markmap-code]` block (an inline ```markmap fence) and
+ * re-render it as a standalone SVG. The fence source is stashed on
+ * `data-markmap-src` by MarkmapBlock; relative `![](img.png)` references
+ * resolve against the markdown file's directory (same as the .mmap enhancer).
+ */
+async function processMarkmapCodeBlocks(
+  container: HTMLElement,
+  filePath: string,
+  vaultRoot: string,
+): Promise<void> {
+  const blocks = container.querySelectorAll<HTMLElement>('[data-markmap-code]');
+  if (blocks.length === 0) return;
+  const assetBase = await resolveAssetBase(filePath, vaultRoot).catch(() => null);
+  await Promise.all(Array.from(blocks).map(async (block) => {
+    const source = block.getAttribute('data-markmap-src') || '';
+    const svg = await renderMarkmapSvg(source, assetBase);
+    block.removeAttribute('data-markmap-src');
+    block.innerHTML = '';
+    block.appendChild(svg);
+    block.style.height = '420px';
+    block.style.minHeight = '420px';
+    block.style.overflow = 'hidden';
+  }));
+}
 
 /**
  * Walk each `[data-file-preview]` block in the rendered DOM and produce an
