@@ -14,7 +14,6 @@ import { Markmap } from 'markmap-view';
 import type { PreviewProps } from '../types';
 import { resolveAssetBase } from '../previewPath';
 import { resolveImagesInTree } from './resolveImages';
-import { stripMathmlFromTree } from './stripMathml';
 import './initKatex';
 
 const transformer = new Transformer();
@@ -46,7 +45,6 @@ export function MarkmapPreview({ content, filePath, vaultRoot }: PreviewProps) {
     if (!mm) return;
     const { root } = transformer.transform(content || '');
     resolveImagesInTree(root, assetBase);
-    stripMathmlFromTree(root);
     mm.setData(root);
     mm.fit();
   }, [content, assetBase]);

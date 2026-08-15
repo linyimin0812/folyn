@@ -10,7 +10,6 @@ import { inlineSvgImages } from './shared';
 import type { EnhanceCtx } from './dbml';
 import { resolveAssetBase } from '@/components/file-types/previewPath';
 import { resolveImagesInTree } from '@/components/file-types/mmap/resolveImages';
-import { stripMathmlFromTree } from '@/components/file-types/mmap/stripMathml';
 import '@/components/file-types/mmap/initKatex';
 
 const transformer = new Transformer();
@@ -27,7 +26,6 @@ export async function enhance(body: HTMLElement, ctx: EnhanceCtx): Promise<void>
   const mm = Markmap.create(svg, { autoFit: true });
   const { root } = transformer.transform(src || '');
   resolveImagesInTree(root, assetBase);
-  stripMathmlFromTree(root);
   mm.setData(root);
   // ponytail: one rAF lets d3-flextree lay out + markmap apply the fit
   // transform; without it the captured SVG may still be at origin.
