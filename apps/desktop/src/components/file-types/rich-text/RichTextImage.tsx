@@ -97,10 +97,13 @@ export async function persistImageBytes(
   const relPath = `${imagePath}/${hash}.${safeExt}`;
   const vaultRoot = useVaultStore.getState().currentVault?.basePath ?? '';
   const resolvedRoot = await resolveBasePath(vaultRoot);
-  const { join } = await import('@tauri-apps/api/path');
+  const { join, dirname } = await import('@tauri-apps/api/path');
   const abs = await join(resolvedRoot, relPath);
   const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
-  const parent = abs.substring(0, abs.lastIndexOf('/'));
+  // ponytail: dirname() is separator-aware. lastIndexOf('/') on a Windows
+  // backslash path returns -1 → substring(0, -1) === '' → the mkdir guard is
+  // skipped and writeFile fails with "path not found" (os error 3).
+  const parent = await dirname(abs);
   if (parent && !(await exists(parent))) await mkdir(parent, { recursive: true });
   await writeFile(abs, bytes);
   return relPath;

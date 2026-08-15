@@ -9,6 +9,7 @@
       "mmap": { "label": "マインドマップ", "description": ".mmapソースファイルをエクスポート" },
       "plantuml": { "label": "PlantUML", "description": ".pumlソースファイルをエクスポート" },
       "graphviz": { "label": "Graphviz", "description": ".gvソースファイルをエクスポート" },
+      "mermaid": { "label": "Mermaid", "description": ".mermaidソースファイルをエクスポート" },
       "default": { "label": "ソースファイル", "description": "生ファイルをエクスポート" }
     },
     "html": {

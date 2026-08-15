@@ -9,7 +9,7 @@ import { getPluginExportersForFileType } from '@/services/plugin-host/exporterAd
 import { runCommand } from '@/services/commandRegistry';
 
 // File types that ship a canvas → SVG/PNG export. Markdown goes HTML instead.
-const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'mmap', 'plantuml', 'graphviz']);
+const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'mmap', 'plantuml', 'graphviz', 'mermaid']);
 // File types with a per-type source label. Others fall back to "default".
 const KNOWN_SOURCE_TYPES = new Set(['markdown', ...CANVAS_TYPES]);
 
@@ -136,7 +136,7 @@ export function ExportMenu() {
     // foreignObject. Skip PNG for mmap; SVG covers the gap.
     // plantuml + graphviz ship SVG-only for now — PNG can be added later via
     // the shared svgToPngBlob helper (no foreignObject in their server SVGs).
-    if (fileType !== 'mmap' && fileType !== 'plantuml' && fileType !== 'graphviz') {
+    if (fileType !== 'mmap' && fileType !== 'plantuml' && fileType !== 'graphviz' && fileType !== 'mermaid') {
       items.push({
         key: 'png',
         icon: <ImageDown size={16} className="w-6 flex justify-center shrink-0" />,

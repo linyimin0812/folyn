@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PetMascot } from './PetMascot';
 import { openPetContextMenu } from './PetContextMenu';
-import { clampPetPosition, computeDefaultPetPosition, computePanelPosition, computeCenteredPanelPosition, resolvePanelSize, PET_PANEL_SIZE_VERSION, petSizeToPx } from './petPosition';
+import { clampPetPosition, computeDefaultPetPosition, computePanelPosition, computeCenteredPanelPosition, resolvePanelSize, PET_PANEL_SIZE_VERSION, petSizeToPx, type PetSize } from './petPosition';
 import { keysToAccelerator } from '@/utils/shortcutAccelerator';
 import { isTauri } from '@/utils/platform';
 import { currentWindowScaleFactor } from '@/utils/windowScale';
@@ -156,6 +156,44 @@ async function hideIfVisible(): Promise<boolean> {
     return true;
   }
   return false;
+}
+
+/**
+ * Re-apply the pet window's size + re-clamp its position for a size level.
+ * Called when the pet window's store hydrates a persisted `petSize` AFTER the
+ * mount effect already ran: the mount effect sizes the window from the
+ * pre-hydration default (`100` → 96×96), so a persisted size > 100% would
+ * leave the sprite layer rendering at 120/144px inside a still-96×96 OS
+ * window — the window bounds then clip the mascot on relaunch. This
+ * re-invokes `set_pet_size` and shifts the window so the larger footprint
+ * stays fully on-screen (the same re-clamp the live `pet://size-changed`
+ * path performs).
+ */
+async function applyPetSizeAndClamp(size: PetSize): Promise<void> {
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('set_pet_size', { level: size });
+
+    const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
+    if (workArea.width <= 0 || workArea.height <= 0) return;
+
+    const sf = workArea.scale_factor || 1;
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    const pos = await getCurrentWindow().outerPosition();
+    const x = Math.round(pos.x / sf);
+    const y = Math.round(pos.y / sf);
+    const clamped = clampPetPosition(
+      { x, y },
+      { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height, scale_factor: sf },
+      petSizeToPx(size),
+    );
+    if (clamped.x !== x || clamped.y !== y) {
+      await invoke('set_pet_position', { x: Math.round(clamped.x * sf), y: Math.round(clamped.y * sf) });
+      usePetStore.getState().setPetPosition(clamped.x, clamped.y);
+    }
+  } catch (err) {
+    console.warn('[pet] applyPetSizeAndClamp failed:', err);
+  }
 }
 
 /**
@@ -796,7 +834,21 @@ export function PetApp() {
         unlisten = await listen<Record<string, unknown>>(
           'pet://settings-updated',
           (event) => {
-            if (event.payload) hydrateAllStores(event.payload);
+            if (!event.payload) return;
+            const prevSize = usePetStore.getState().petSize;
+            hydrateAllStores(event.payload);
+            const nextSize = usePetStore.getState().petSize;
+            // The pet window's store hydrates from this broadcast AFTER the
+            // mount effect already sized the Tauri window to the default
+            // (100%). A persisted non-default size must be re-applied here,
+            // otherwise the larger sprite renders inside the still-96×96
+            // window and the OS clips the mascot (size > 100% → occluded icon
+            // on relaunch). Gated on an actual change: the broadcast also
+            // fires for unrelated setting writes, and re-invoking
+            // set_pet_size + re-clamping on every one would jitter position.
+            if (nextSize !== prevSize) {
+              void applyPetSizeAndClamp(nextSize);
+            }
           },
         );
         await emit('pet://settings-request', {});

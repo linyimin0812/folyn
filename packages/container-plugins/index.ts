@@ -10,7 +10,7 @@ export type { VaultContextValue } from './src/VaultContext';
 // Built-in plugins
 export { calloutPlugin } from './src/plugins/CalloutPlugin';
 export { tabsPlugin, tabPlugin } from './src/plugins/TabsPlugin';
-export { mermaidPlugin, MermaidBlock } from './src/plugins/MermaidPlugin';
+export { mermaidPlugin, MermaidBlock, useMermaidSvg } from './src/plugins/MermaidPlugin';
 export { PlantUmlBlock, usePlantUmlSvg } from './src/plugins/PlantUmlPlugin';
 export { encodePlantUml } from './src/plantuml/encode';
 export { GraphvizBlock, useGraphvizSvg } from './src/plugins/GraphvizPlugin';
