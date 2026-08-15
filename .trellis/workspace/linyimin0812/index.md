@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 159
-- **Last Active**: 2026-08-12
+- **Total Sessions**: 160
+- **Last Active**: 2026-08-15
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1573 | Active |
+| `journal-3.md` | ~1607 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 160 | 2026-08-15 | Remove Skills settings page, inline builtin prompts | `586cd1aa` | `master` |
 | 159 | 2026-08-12 | CLI detect via user shell + detect button loading state | `4ad51b71`, `832afef7`, `3ae84c9e`, `ff26a70d`, `24b0d9cc` | `master` |
 | 158 | 2026-08-12 | Fix opener scope so external folder open works incl. hidden dirs | `4a32ef80` | `codex/slash-menu-cleanup` |
 | 157 | 2026-08-11 | Open external-file folder via tauri-opener (fix shell URL-only restriction) | `ee25d851` | `codex/slash-menu-cleanup` |
