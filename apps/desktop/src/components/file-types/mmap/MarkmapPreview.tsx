@@ -20,7 +20,7 @@ import { Markmap } from 'markmap-view';
 import type { PreviewProps } from '../types';
 import { resolveAssetBase } from '../previewPath';
 import { resolveImagesInTree } from './resolveImages';
-import './initKatex';
+import './initMath';
 
 const transformer = new Transformer();
 
