@@ -697,14 +697,14 @@
       "accessKeyId": "Access Key ID",
       "secretAccessKey": "Secret Access Key",
       "bucket": "Bucket",
-      "publicHint": "需要把 bucket 设为公开访问（R2 → Settings → Public Development URL，或绑定自定义域名）。否则上传成功但访问 403。"
+      "publicHint": "需要把 bucket 设为公开访问（R2 → Settings → Public Development URL，或绑定自定义域名）。否则上传成功但访问 403。另外 R2 图床域名不在 CSP 默认放行列表里——若预览不显示图片，到 设置 → 安全策略 把该域名加白名单。"
     },
     "qiniu": {
       "accessKey": "Access Key",
       "secretKey": "Secret Key",
       "bucket": "Bucket",
       "region": "区域",
-      "publicHint": "需要在七牛控制台绑定自定义域名并把 bucket 设为公开。否则上传成功但访问 403。"
+      "publicHint": "需要在七牛控制台绑定自定义域名并把 bucket 设为公开。否则上传成功但访问 403。默认 http://*.clouddn.com 测试域名已在 CSP 内置放行；绑定自定义域名后若预览不显示图片，到 设置 → 安全策略 把该域名加白名单。"
     },
     "publicBaseUrl": "公网访问域名",
     "imageKeyPrefix": "图片 key 前缀",

@@ -697,14 +697,14 @@
       "accessKeyId": "Access Key ID",
       "secretAccessKey": "Secret Access Key",
       "bucket": "Bucket",
-      "publicHint": "Make the bucket public-read (R2 → Settings → Public Development URL, or bind a custom domain). Uploaded objects return 403 until you do."
+      "publicHint": "Make the bucket public-read (R2 → Settings → Public Development URL, or bind a custom domain). Uploaded objects return 403 until you do. R2 image host domains are NOT in the CSP baseline — if image previews don't render, add the domain to Settings → Security Policy."
     },
     "qiniu": {
       "accessKey": "Access Key",
       "secretKey": "Secret Key",
       "bucket": "Bucket",
       "region": "Region",
-      "publicHint": "Bind a custom domain in Qiniu console and set bucket to public-read. Uploaded objects return 403 until you do."
+      "publicHint": "Bind a custom domain in Qiniu console and set bucket to public-read. Uploaded objects return 403 until you do. The default http://*.clouddn.com test domain is baseline-allowed; if you bind a custom domain and previews don't render, add it to Settings → Security Policy."
     },
     "publicBaseUrl": "Public base URL",
     "imageKeyPrefix": "Image key prefix",
