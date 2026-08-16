@@ -697,7 +697,7 @@
       "accessKeyId": "Access Key ID",
       "secretAccessKey": "Secret Access Key",
       "bucket": "Bucket",
-      "publicHint": "Make the bucket public-read (R2 → Settings → Public Development URL, or bind a custom domain). Uploaded objects return 403 until you do. R2 image host domains are NOT in the CSP baseline — if image previews don't render, add the domain to Settings → Security Policy."
+      "publicHint": "Make the bucket public-read (R2 → Settings → Public Development URL, or bind a custom domain). Uploaded objects return 403 until you do. R2 image host domains are NOT in the CSP baseline — if image previews don't render, add the domain to Settings → Security Policy. You also need a CORS rule on R2 → Settings → CORS Policy: AllowedOrigins must include tauri://localhost, http://tauri.localhost and http://localhost:1420; AllowedMethods must include PUT; AllowedHeaders must include authorization, x-amz-content-sha256, x-amz-date and content-type. Without it, browser uploads fail at preflight with 403."
     },
     "qiniu": {
       "accessKey": "Access Key",

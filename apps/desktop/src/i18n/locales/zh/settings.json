@@ -697,7 +697,7 @@
       "accessKeyId": "Access Key ID",
       "secretAccessKey": "Secret Access Key",
       "bucket": "Bucket",
-      "publicHint": "需要把 bucket 设为公开访问（R2 → Settings → Public Development URL，或绑定自定义域名）。否则上传成功但访问 403。另外 R2 图床域名不在 CSP 默认放行列表里——若预览不显示图片，到 设置 → 安全策略 把该域名加白名单。"
+      "publicHint": "需要把 bucket 设为公开访问（R2 → Settings → Public Development URL，或绑定自定义域名）。否则上传成功但访问 403。另外 R2 图床域名不在 CSP 默认放行列表里——若预览不显示图片，到 设置 → 安全策略 把该域名加白名单。最后还要在 R2 → Settings → CORS Policy 加一条规则，AllowedOrigins 含 tauri://localhost、http://tauri.localhost、http://localhost:1420，AllowedMethods 含 PUT，AllowedHeaders 含 authorization/x-amz-content-sha256/x-amz-date/content-type，否则浏览器跨域上传会被 preflight 拦截返回 403。"
     },
     "qiniu": {
       "accessKey": "Access Key",
