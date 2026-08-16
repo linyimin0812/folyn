@@ -8,7 +8,7 @@
 import { homeDir, join } from '@tauri-apps/api/path';
 import { exists, mkdir, readTextFile, writeTextFile, rename } from '@tauri-apps/plugin-fs';
 import { debounce } from '@/utils/debounce';
-import type { ProviderConfig, R2ProviderConfig, QiniuProviderConfig } from './types';
+import type { ProviderConfig, R2ProviderConfig, QiniuProviderConfig, OssProviderConfig } from './types';
 
 const FLUSH_DELAY = 300;
 
@@ -31,7 +31,7 @@ async function ensureLoaded(): Promise<void> {
   cache = {};
   // ponytail: one file per provider id. Read each eagerly; missing/empty
   // → skip. No glob needed — provider ids are known.
-  for (const id of ['r2', 'qiniu']) {
+  for (const id of ['r2', 'qiniu', 'oss']) {
     const path = await join(base, `${id}.json`);
     if (!(await exists(path))) continue;
     try {
@@ -136,6 +136,19 @@ export function defaultQiniuConfig(): QiniuProviderConfig {
     secretKey: '',
     bucket: '',
     region: 'z0',
+    publicBaseUrl: '',
+    imageKeyPrefix: 'images/',
+    htmlKeyPrefix: 'html/',
+  };
+}
+
+export function defaultOssConfig(): OssProviderConfig {
+  return {
+    provider: 'oss',
+    accessKeyId: '',
+    accessKeySecret: '',
+    bucket: '',
+    region: '',
     publicBaseUrl: '',
     imageKeyPrefix: 'images/',
     htmlKeyPrefix: 'html/',

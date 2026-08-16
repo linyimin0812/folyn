@@ -15,9 +15,10 @@ import {
   storageConfigStorage,
   defaultR2Config,
   defaultQiniuConfig,
+  defaultOssConfig,
 } from './storageConfigStorage';
-import type { ProviderConfig, R2ProviderConfig, QiniuProviderConfig } from './types';
-import { isR2Config, isQiniuConfig } from './types';
+import type { ProviderConfig, R2ProviderConfig, QiniuProviderConfig, OssProviderConfig } from './types';
+import { isR2Config, isQiniuConfig, isOssConfig } from './types';
 
 export type HtmlImageMode = 'inline' | 'upload';
 
@@ -39,6 +40,7 @@ export interface StorageConfigState {
 const initialConfigs: Partial<Record<string, ProviderConfig>> = {
   r2: defaultR2Config(),
   qiniu: defaultQiniuConfig(),
+  oss: defaultOssConfig(),
 };
 
 const persist = registerPersistSlice({
@@ -68,6 +70,7 @@ export const useStorageConfigStore = create<StorageConfigState>((set, get) => ({
     const next: Partial<Record<string, ProviderConfig>> = {
       r2: disk.r2 ?? defaultR2Config(),
       qiniu: disk.qiniu ?? defaultQiniuConfig(),
+      oss: disk.oss ?? defaultOssConfig(),
     };
     set({ configs: next });
   },
@@ -90,7 +93,10 @@ export const useStorageConfigStore = create<StorageConfigState>((set, get) => ({
   async removeProviderConfig(id) {
     await storageConfigStorage.remove(id);
     const next: Partial<Record<string, ProviderConfig>> = { ...get().configs };
-    next[id] = id === 'r2' ? defaultR2Config() : id === 'qiniu' ? defaultQiniuConfig() : undefined;
+    next[id] = id === 'r2' ? defaultR2Config()
+      : id === 'qiniu' ? defaultQiniuConfig()
+      : id === 'oss' ? defaultOssConfig()
+      : undefined;
     set({ configs: next });
   },
 
@@ -98,7 +104,7 @@ export const useStorageConfigStore = create<StorageConfigState>((set, get) => ({
     const { configs, activeProvider } = get();
     const cfg = configs[activeProvider] ?? null;
     if (!cfg) return null;
-    if (isR2Config(cfg) || isQiniuConfig(cfg)) return cfg;
+    if (isR2Config(cfg) || isQiniuConfig(cfg) || isOssConfig(cfg)) return cfg;
     return null;
   },
 }));

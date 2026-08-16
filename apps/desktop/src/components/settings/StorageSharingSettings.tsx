@@ -1,7 +1,7 @@
 /**
- * 存储与分享 settings tab. Configures R2 / 七牛云 storage provider
- * credentials (shared by image-hosting paste flow and markdown→HTML
- * share flow). Also houses the global htmlImageMode toggle.
+ * 存储与分享 settings tab. Configures R2 / 七牛云 / 阿里云 OSS storage
+ * provider credentials (shared by image-hosting paste flow and
+ * markdown→HTML share flow). Also houses the global htmlImageMode toggle.
  */
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -12,8 +12,9 @@ import type {
   ProviderConfig,
   R2ProviderConfig,
   QiniuProviderConfig,
+  OssProviderConfig,
 } from '@/services/storage/types';
-import { isR2Config, isQiniuConfig } from '@/services/storage/types';
+import { isR2Config, isQiniuConfig, isOssConfig } from '@/services/storage/types';
 import { Toggle } from './primitives';
 
 export function StorageSharingSettings() {
@@ -67,6 +68,14 @@ export function StorageSharingSettings() {
       )}
       {isQiniuConfig(activeCfg) && (
         <QiniuForm
+          cfg={activeCfg}
+          onSave={saveProviderConfig}
+          onRemove={removeProviderConfig}
+          t={t}
+        />
+      )}
+      {isOssConfig(activeCfg) && (
+        <OssForm
           cfg={activeCfg}
           onSave={saveProviderConfig}
           onRemove={removeProviderConfig}
@@ -303,6 +312,106 @@ function QiniuForm({ cfg, onSave, onRemove, t }: {
         )}
       </div>
       <div className="text-[11px] text-t3 mt-3 leading-relaxed">{t('settings:storage.qiniu.publicHint')}</div>
+    </div>
+  );
+}
+
+// ─── OSS form ──────────────────────────────────────────────────────────
+
+function OssForm({ cfg, onSave, onRemove, t }: {
+  cfg: OssProviderConfig;
+  onSave: (cfg: ProviderConfig) => Promise<void>;
+  onRemove: (id: string) => Promise<void>;
+  t: (k: string) => string;
+}) {
+  const [draft, setDraft] = useState<OssProviderConfig>(cfg);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [copiedCors, setCopiedCors] = useState(false);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const set = (patch: Partial<OssProviderConfig>) => setDraft((d) => ({ ...d, ...patch }));
+
+  useEffect(() => () => {
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+  }, []);
+
+  return (
+    <div className="p-4 border border-brd2 rounded-lg bg-surf">
+      <div className="text-[13px] font-semibold text-t1 mb-3">阿里云 OSS</div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label={t('settings:storage.oss.accessKeyId')} value={draft.accessKeyId} onChange={(v) => set({ accessKeyId: v })} />
+        <Field label={t('settings:storage.oss.accessKeySecret')} value={draft.accessKeySecret} onChange={(v) => set({ accessKeySecret: v })} type="password" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label={t('settings:storage.oss.bucket')} value={draft.bucket} onChange={(v) => set({ bucket: v })} />
+        <Field label={t('settings:storage.oss.region')} value={draft.region} onChange={(v) => set({ region: v })} placeholder="cn-hangzhou" />
+      </div>
+      <Field label={t('settings:storage.publicBaseUrl')} value={draft.publicBaseUrl} onChange={(v) => set({ publicBaseUrl: v })} placeholder="https://cdn.example.com or https://bucket.oss-cn-hangzhou.aliyuncs.com" />
+      <div className="grid grid-cols-2 gap-3">
+        <Field label={t('settings:storage.imageKeyPrefix')} value={draft.imageKeyPrefix} onChange={(v) => set({ imageKeyPrefix: v })} placeholder="images/" />
+        <Field label={t('settings:storage.htmlKeyPrefix')} value={draft.htmlKeyPrefix} onChange={(v) => set({ htmlKeyPrefix: v })} placeholder="html/" />
+      </div>
+      <div className="flex gap-2 mt-3">
+        <button
+          className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-acc text-white hover:brightness-110 disabled:opacity-50"
+          disabled={saving}
+          onClick={async () => {
+            setSaving(true);
+            try {
+              await onSave({
+                ...draft,
+                accessKeyId: draft.accessKeyId.trim(),
+                accessKeySecret: draft.accessKeySecret.trim(),
+                bucket: draft.bucket.trim(),
+                region: draft.region.trim(),
+                publicBaseUrl: draft.publicBaseUrl.trim(),
+              });
+              setSavedAt(Date.now());
+              if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+              savedTimerRef.current = setTimeout(() => setSavedAt(null), 2500);
+            } finally { setSaving(false); }
+          }}
+        >
+          <Save size={13} className="inline mr-1" />
+          {t('settings:storage.save')}
+        </button>
+        <button
+          className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-surf2 text-t2 hover:bg-brd"
+          onClick={() => onRemove('oss')}
+        >
+          <Trash2 size={13} className="inline mr-1" />
+          {t('settings:storage.clear')}
+        </button>
+        {savedAt !== null && (
+          <span className="self-center text-[11px] text-[var(--green,#22a863)]">✓ {t('settings:storage.toast.saved')}</span>
+        )}
+      </div>
+      <div className="text-[11px] text-t3 mt-3 leading-relaxed">{t('settings:storage.oss.publicHint')}</div>
+      <button
+        type="button"
+        className="mt-2 inline-flex items-center gap-1 h-[24px] px-2.5 rounded-md text-[11px] font-ui cursor-pointer border border-brd2 text-t3 hover:border-acc hover:text-acc transition-all duration-100 bg-transparent"
+        onClick={async () => {
+          const cors = JSON.stringify([
+            {
+              AllowedOrigin: ['tauri://localhost', 'http://tauri.localhost', 'http://localhost:1420'],
+              AllowedMethod: ['PUT', 'GET', 'HEAD'],
+              AllowedHeader: ['authorization', 'content-type', 'x-oss-date', 'x-oss-content-sha256'],
+              ExposeHeader: ['ETag'],
+              MaxAgeSeconds: 3600,
+            },
+          ], null, 2);
+          try {
+            await navigator.clipboard.writeText(cors);
+            setCopiedCors(true);
+            setTimeout(() => setCopiedCors(false), 1500);
+          } catch {
+            // Non-fatal — the JSON stays selectable for manual copy.
+          }
+        }}
+      >
+        <Copy size={12} />
+        {copiedCors ? `✓ ${t('settings:storage.cors.copied')}` : t('settings:storage.cors.ossCopyButton')}
+      </button>
     </div>
   );
 }

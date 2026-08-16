@@ -43,11 +43,14 @@ const BASE_DIRECTIVES: Record<string, string[]> = {
   // uploaded to it. HTTPS users with a custom domain still need to add it
   // themselves via the CSP settings UI. R2's default pub-*.r2.dev public
   // URL is also baseline-allowed; custom domains still need manual entry.
-  "img-src": ["'self'", 'data:', 'blob:', 'asset:', 'http://asset.localhost', 'http://*.clouddn.com', 'https://*.r2.dev'],
+  // OSS baseline is https://*.aliyuncs.com — covers both upload endpoint
+  // and bucket public URL.
+  "img-src": ["'self'", 'data:', 'blob:', 'asset:', 'http://asset.localhost', 'http://*.clouddn.com', 'https://*.r2.dev', 'https://*.aliyuncs.com'],
   "media-src": ["'self'", 'blob:', 'asset:', 'http://asset.localhost'],
-  // ponytail: Qiniu + R2 upload endpoints. R2's host is per-account
-  // (<accountId>.r2.cloudflarestorage.com) so wildcard the suffix.
-  "connect-src": ["'self'", 'ipc:', 'http://ipc.localhost', 'quill-plugin:', 'https://*.qiniup.com', 'https://*.r2.cloudflarestorage.com'],
+  // ponytail: Qiniu + R2 + OSS upload endpoints. R2's host is per-account
+  // (<accountId>.r2.cloudflarestorage.com); OSS is per-bucket+region
+  // (<bucket>.<region>.aliyuncs.com) — both wildcard the suffix.
+  "connect-src": ["'self'", 'ipc:', 'http://ipc.localhost', 'quill-plugin:', 'https://*.qiniup.com', 'https://*.r2.cloudflarestorage.com', 'https://*.aliyuncs.com'],
   "worker-src": ["'self'", 'blob:'],
   "frame-src": ["'self'", 'blob:', 'data:', 'quill-plugin:'],
 };

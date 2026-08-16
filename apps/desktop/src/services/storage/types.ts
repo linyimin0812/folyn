@@ -60,11 +60,26 @@ export interface QiniuProviderConfig {
   htmlKeyPrefix: string;
 }
 
+export interface OssProviderConfig {
+  provider: 'oss';
+  accessKeyId: string;
+  accessKeySecret: string;
+  bucket: string;
+  /** Bare OSS region without `oss-` prefix, e.g. `cn-hangzhou`. Endpoint
+   *  hostname is built as `https://<bucket>.oss-<region>.aliyuncs.com`;
+   *  V4 scope uses the bare form. User may enter either form in the UI
+   *  — we normalize on save. */
+  region: string;
+  publicBaseUrl: string;
+  imageKeyPrefix: string;
+  htmlKeyPrefix: string;
+}
+
 // ponytail: discriminated union by `provider`. Adding a new provider =
 // adding a new member here + a new file under providers/. TS narrows
 // in switch (cfg.provider) so each provider's upload gets its own
 // correctly-typed config without casts at the call site.
-export type ProviderConfig = R2ProviderConfig | QiniuProviderConfig;
+export type ProviderConfig = R2ProviderConfig | QiniuProviderConfig | OssProviderConfig;
 
 // ─── StorageProvider interface ─────────────────────────────────────────
 
@@ -104,4 +119,8 @@ export function isR2Config(c: ProviderConfig | null | undefined): c is R2Provide
 
 export function isQiniuConfig(c: ProviderConfig | null | undefined): c is QiniuProviderConfig {
   return !!c && c.provider === 'qiniu';
+}
+
+export function isOssConfig(c: ProviderConfig | null | undefined): c is OssProviderConfig {
+  return !!c && c.provider === 'oss';
 }

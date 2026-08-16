@@ -202,6 +202,111 @@ export async function buildSigV4PutRequest(input: SigV4Inputs): Promise<{
   };
 }
 
+// ─── Aliyun OSS V4 (HMAC-SHA256) ───────────────────────────────────────
+
+/**
+ * Build an OSS V4-signed PUT request. Sister to `buildSigV4PutRequest`;
+ * same body-sha256 / signed-header *concept*, but OSS V4 differs in three
+ * material ways (see `.trellis/tasks/08-17-add-aliyun-oss-as-a-storage-provider/research/oss-v4-signing.md`):
+ *
+ *  1. Secret-key prefix is `aliyun_v4` (not `AWS4`). Scope suffix is
+ *     `aliyun_v4_request` (not `aws4_request`).
+ *  2. No `SignedHeaders=` field in the Authorization header — only
+ *     `Credential=` and `Signature=`. Default signed set is all `x-oss-*`
+ *     headers + `content-type` (+ `content-md5` if set). `host` /
+ *     `content-length` are NOT signed.
+ *  3. Body hash defaults to the literal string `UNSIGNED-PAYLOAD` —
+ *     OSS V4 does not hash the request body unless the caller explicitly
+ *     sets `x-oss-content-sha256`. We set it to `UNSIGNED-PAYLOAD` to
+ *     match the SDK default.
+ *
+ * Reference: aliyun-oss-python-sdk `oss2/auth.py` `ProviderAuthV4`.
+ */
+export interface OssV4Inputs {
+  method: string;                // 'PUT'
+  endpoint: string;              // 'https://<bucket>.<region>.aliyuncs.com'
+  bucket: string;
+  objectKey: string;             // 'images/<sha1>.png' (no leading slash)
+  /** Bare OSS region, e.g. `cn-hangzhou` (no `oss-` prefix). */
+  region: string;
+  accessKeyId: string;
+  accessKeySecret: string;
+  contentType: string;
+  bodyBytes: Uint8Array;
+  /** ISO 8601 compact: '20260817T120000Z' */
+  amzDate: string;
+  /** Date-only: '20260817' */
+  dateStamp: string;
+}
+
+export async function buildOssV4PutRequest(input: OssV4Inputs): Promise<{
+  url: string;
+  headers: Record<string, string>;
+  body: Uint8Array;
+}> {
+  const host = input.endpoint.replace(/^https?:\/\//, '');
+  // Canonical URI is always path-style `/<bucket>/<key>` even with the
+  // virtual-hosted-style endpoint URL — OSS V4 normalizes this internally.
+  const canonicalUri = `/${input.bucket}/${input.objectKey}`;
+
+  // Headers we actually send on the request. `host` + `content-length`
+  // are auto-set by `fetch` and NOT signed (out of the default signed set).
+  const headerValues: Record<string, string> = {
+    'content-type': input.contentType,
+    'x-oss-content-sha256': 'UNSIGNED-PAYLOAD',
+    'x-oss-date': input.amzDate,
+  };
+
+  // Signed header names — only x-oss-* + content-type (no additional opt-in).
+  // Sorted lowercase, joined by `;` is NOT required for OSS V4 — there's
+  // no SignedHeaders field. The canonical headers block alone encodes them.
+  const signedHeaderNames = ['content-type', 'x-oss-content-sha256', 'x-oss-date'];
+  const canonicalHeaders = signedHeaderNames
+    .map((n) => `${n}:${headerValues[n]}\n`)
+    .join('');
+
+  // Canonical request: method / canonicalUri / canonicalQueryString (empty) /
+  // canonicalHeaders / canonicalAdditionalSignedHeaders (empty by default) /
+  // payload hash (the literal UNSIGNED-PAYLOAD — same value as x-oss-content-sha256).
+  const canonicalRequest = [
+    input.method,
+    canonicalUri,
+    '', // canonical query string
+    canonicalHeaders,
+    '', // additional signed headers (none)
+    'UNSIGNED-PAYLOAD',
+  ].join('\n');
+
+  const credentialScope = `${input.dateStamp}/${input.region}/oss/aliyun_v4_request`;
+  const stringToSign = [
+    'OSS4-HMAC-SHA256',
+    input.amzDate,
+    credentialScope,
+    await sha256Hex(canonicalRequest),
+  ].join('\n');
+
+  // Signing key chain: kDate → kRegion → kProduct → kSigning
+  // Secret-key prefix is the literal `aliyun_v4` (NOT `aliyun4`, NOT empty).
+  const kDate = await hmacSha256(strToBytes(`aliyun_v4${input.accessKeySecret}`), input.dateStamp);
+  const kRegion = await hmacSha256(kDate, input.region);
+  const kProduct = await hmacSha256(kRegion, 'oss');
+  const kSigning = await hmacSha256(kProduct, 'aliyun_v4_request');
+  const signature = bytesToHex(await hmacSha256(kSigning, stringToSign));
+
+  const authHeader =
+    `OSS4-HMAC-SHA256 Credential=${input.accessKeyId}/${credentialScope}, ` +
+    `Signature=${signature}`;
+
+  return {
+    url: `${input.endpoint}${canonicalUri}`,
+    headers: {
+      ...headerValues,
+      authorization: authHeader,
+    },
+    body: input.bodyBytes,
+  };
+}
+
 // ─── Qiniu upload token (HmacSHA1) ──────────────────────────────────────
 
 /**

@@ -6,8 +6,9 @@
 import type { StorageProvider, StorageProviderId } from './types';
 import { R2Provider } from './providers/r2';
 import { QiniuProvider } from './providers/qiniu';
+import { OssProvider } from './providers/oss';
 
-const providers: StorageProvider[] = [new R2Provider(), new QiniuProvider()];
+const providers: StorageProvider[] = [new R2Provider(), new QiniuProvider(), new OssProvider()];
 
 export function getAllProviders(): readonly StorageProvider[] {
   return providers;
