@@ -119,9 +119,7 @@ export function ExportMenu() {
           ? t('settings:storage.toast.notConfigured')
           : err.message === 'STORAGE_NO_HTML_CAPABILITY'
             ? t('settings:storage.toast.notConfigured')
-            : err.message.startsWith('R2 upload failed') || err.message.startsWith('Qiniu upload failed')
-              ? `${t('settings:storage.toast.bucketNotPublic')} (${err.message})`
-              : `${t('settings:storage.toast.uploadFailed')}: ${err.message}`;
+            : `${t('settings:storage.toast.uploadFailed')}: ${err.message}`;
         setShareError(msg);
       })
       .finally(() => setExporting(false));

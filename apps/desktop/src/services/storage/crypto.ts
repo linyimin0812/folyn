@@ -229,7 +229,7 @@ export async function buildQiniuUploadToken(
   const encodedPolicy = bytesToBase64Url(strToBytes(putPolicy));
   const sig = await hmacSha1(strToBytes(secretKey), encodedPolicy);
   const encodedSig = bytesToBase64Url(sig);
-  return `${accessKey}:${encodedPolicy}:${encodedSig}`;
+  return `${accessKey}:${encodedSig}:${encodedPolicy}`;
 }
 
 // ─── Self-checks (run once on import in dev) ────────────────────────────
