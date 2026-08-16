@@ -725,6 +725,7 @@
       "htmlShared": "分享链接已复制到剪贴板",
       "uploadFailed": "上传失败",
       "notConfigured": "未配置存储服务——前往 设置 → 存储与分享",
+      "saved": "已保存",
       "bucketNotPublic": "对象已上传，但 bucket 未开放公开访问——请到服务商控制台开启"
     },
     "share": {

@@ -725,6 +725,7 @@
       "htmlShared": "Share URL copied to clipboard",
       "uploadFailed": "Upload failed",
       "notConfigured": "Storage provider not configured — open Settings → Storage & Sharing",
+      "saved": "Saved",
       "bucketNotPublic": "Object uploaded but bucket is not public — open the provider console to enable public access"
     },
     "share": {

@@ -3,7 +3,7 @@
  * credentials (shared by image-hosting paste flow and markdown→HTML
  * share flow). Also houses the global htmlImageMode toggle.
  */
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CloudCog, Save, Trash2 } from 'lucide-react';
 import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
@@ -133,7 +133,13 @@ function R2Form({ cfg, onSave, onRemove, t }: {
 }) {
   const [draft, setDraft] = useState<R2ProviderConfig>(cfg);
   const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const set = (patch: Partial<R2ProviderConfig>) => setDraft((d) => ({ ...d, ...patch }));
+
+  useEffect(() => () => {
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+  }, []);
 
   return (
     <div className="p-4 border border-brd2 rounded-lg bg-surf">
@@ -155,7 +161,12 @@ function R2Form({ cfg, onSave, onRemove, t }: {
           disabled={saving}
           onClick={async () => {
             setSaving(true);
-            try { await onSave(draft); } finally { setSaving(false); }
+            try {
+              await onSave(draft);
+              setSavedAt(Date.now());
+              if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+              savedTimerRef.current = setTimeout(() => setSavedAt(null), 2500);
+            } finally { setSaving(false); }
           }}
         >
           <Save size={13} className="inline mr-1" />
@@ -168,6 +179,9 @@ function R2Form({ cfg, onSave, onRemove, t }: {
           <Trash2 size={13} className="inline mr-1" />
           {t('settings:storage.clear')}
         </button>
+        {savedAt !== null && (
+          <span className="self-center text-[11px] text-[var(--green,#22a863)]">✓ {t('settings:storage.toast.saved')}</span>
+        )}
       </div>
       <div className="text-[11px] text-t3 mt-3 leading-relaxed">{t('settings:storage.r2.publicHint')}</div>
     </div>
@@ -184,7 +198,13 @@ function QiniuForm({ cfg, onSave, onRemove, t }: {
 }) {
   const [draft, setDraft] = useState<QiniuProviderConfig>(cfg);
   const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const set = (patch: Partial<QiniuProviderConfig>) => setDraft((d) => ({ ...d, ...patch }));
+
+  useEffect(() => () => {
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+  }, []);
 
   return (
     <div className="p-4 border border-brd2 rounded-lg bg-surf">
@@ -221,7 +241,12 @@ function QiniuForm({ cfg, onSave, onRemove, t }: {
           disabled={saving}
           onClick={async () => {
             setSaving(true);
-            try { await onSave(draft); } finally { setSaving(false); }
+            try {
+              await onSave(draft);
+              setSavedAt(Date.now());
+              if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+              savedTimerRef.current = setTimeout(() => setSavedAt(null), 2500);
+            } finally { setSaving(false); }
           }}
         >
           <Save size={13} className="inline mr-1" />
@@ -234,6 +259,9 @@ function QiniuForm({ cfg, onSave, onRemove, t }: {
           <Trash2 size={13} className="inline mr-1" />
           {t('settings:storage.clear')}
         </button>
+        {savedAt !== null && (
+          <span className="self-center text-[11px] text-[var(--green,#22a863)]">✓ {t('settings:storage.toast.saved')}</span>
+        )}
       </div>
       <div className="text-[11px] text-t3 mt-3 leading-relaxed">{t('settings:storage.qiniu.publicHint')}</div>
     </div>
