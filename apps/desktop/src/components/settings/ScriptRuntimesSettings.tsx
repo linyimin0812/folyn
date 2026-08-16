@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import type { RuntimeConfig } from '@/services/scriptRunner/scriptRunnerService';
-import { buildShellSidecar } from '@/utils/shellSidecar';
+import { buildShellSidecar, isWindowsPlatform } from '@/utils/shellSidecar';
 
 type TestStatus = { testing: boolean; result?: { success: boolean; message: string } };
 
@@ -43,7 +43,7 @@ export function ScriptRuntimesSettings() {
               try {
                 const { Command } = await import('@tauri-apps/plugin-shell');
                 const [name, args] = buildShellSidecar(r.detectCommand);
-                const cmd = Command.create(name, args);
+                const cmd = Command.create(name, args, isWindowsPlatform() ? { encoding: 'gbk' } : undefined);
                 const output = await cmd.execute();
                 const detected = output.stdout.trim().split('\n')[0];
                 if (output.code === 0 && detected) {
@@ -74,7 +74,7 @@ export function ScriptRuntimesSettings() {
                 const { Command } = await import('@tauri-apps/plugin-shell');
                 const runCmd = `${r.binaryPath || r.defaultBinaryPath} ${r.versionArgs.join(' ')}`;
                 const [name, args] = buildShellSidecar(runCmd);
-                const cmd = Command.create(name, args);
+                const cmd = Command.create(name, args, isWindowsPlatform() ? { encoding: 'gbk' } : undefined);
                 const output = await cmd.execute();
                 if (output.code === 0) {
                   const version = output.stdout.trim().split('\n')[0];

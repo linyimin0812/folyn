@@ -115,7 +115,7 @@ export function CliSettings() {
                       const platform = isWindowsPlatform() ? 'win32' : /Mac/i.test(navigator.platform) ? 'darwin' : 'linux';
                       const detectCmd = buildAdapterDetectCommand(adapterCmd, platform);
                       const [sidecarName, sidecarArgs] = buildShellSidecar(detectCmd);
-                      const cmd = Command.create(sidecarName, sidecarArgs);
+                      const cmd = Command.create(sidecarName, sidecarArgs, isWindowsPlatform() ? { encoding: 'gbk' } : undefined);
                       const output = await cmd.execute();
                       const detected = output.stdout.trim().split('\n')[0];
                       if (output.code === 0 && detected) {
@@ -144,7 +144,7 @@ export function CliSettings() {
                       const platform = isWindowsPlatform() ? 'win32' : /Mac/i.test(navigator.platform) ? 'darwin' : 'linux';
                       const versionCmd = buildAdapterVersionCommand(a.id, p, platform);
                       const [sidecarName, sidecarArgs] = buildShellSidecar(versionCmd);
-                      const cmd = Command.create(sidecarName, sidecarArgs);
+                      const cmd = Command.create(sidecarName, sidecarArgs, isWindowsPlatform() ? { encoding: 'gbk' } : undefined);
                       const output = await cmd.execute();
                       if (output.code === 0) {
                         const version = output.stdout.trim().split('\n')[0];
