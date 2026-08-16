@@ -1639,3 +1639,38 @@ Rich-text editor's image paste/drop now opens the shared ImagePasteDialog (same 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 162: Fix desktop CI type errors (markmap + rich-text image)
+
+**Date**: 2026-08-16
+**Task**: Fix desktop CI type errors (markmap + rich-text image)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Local builds passed via stale tsconfig.tsbuildinfo; CI failed with TS2307 (markmap-common not hoisted), TS6133/TS7006 (unused m param), TS2353/TS2322/TS2339 (onImagePaste not in ImageOptions, inline widening from this.parent?.()). Fixed by local MmapNode shape, renaming m to _full, and module-augmenting @tiptap/extension-image ImageOptions + casting addOptions return as ImageOptions. Verified tsc -b --force clean locally.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `629b6b6f` | (see git log) |
+| `2fc2c8d4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
