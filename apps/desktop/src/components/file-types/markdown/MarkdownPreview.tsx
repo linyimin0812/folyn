@@ -480,7 +480,11 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
   const renderFile = useCallback((path: string, content: string) => {
     const ext = path.toLowerCase().match(/\.([^.]+)$/)?.[1] || '';
     const handler = ext ? getHandlerByExtension(ext) : undefined;
-    const Preview = handler?.Preview ?? getHandlerById('code')?.Preview;
+    // ponytail: only fall back to code viewer when no handler matched (unknown
+    // ext). A matched handler with no Preview (e.g. rich-text .rt) returns null
+    // so FilePreviewPlugin shows its "暂无预览" UI instead of dumping the raw
+    // disk JSON as code.
+    const Preview = handler?.Preview ?? (handler ? null : getHandlerById('code')?.Preview);
     if (!Preview) return null;
     // ponytail: no recursion-depth guard — a markdown file that embeds itself
     // via :::file-preview will stack-overflow. Add a depth counter if it bites.
