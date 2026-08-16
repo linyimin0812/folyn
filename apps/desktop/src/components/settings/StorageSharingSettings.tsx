@@ -5,7 +5,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CloudCog, Save, Trash2 } from 'lucide-react';
+import { CloudCog, Save, Trash2, Copy } from 'lucide-react';
 import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
 import { getAllProviders } from '@/services/storage/registry';
 import type {
@@ -134,6 +134,7 @@ function R2Form({ cfg, onSave, onRemove, t }: {
   const [draft, setDraft] = useState<R2ProviderConfig>(cfg);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [copiedCors, setCopiedCors] = useState(false);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const set = (patch: Partial<R2ProviderConfig>) => setDraft((d) => ({ ...d, ...patch }));
 
@@ -191,6 +192,31 @@ function R2Form({ cfg, onSave, onRemove, t }: {
         )}
       </div>
       <div className="text-[11px] text-t3 mt-3 leading-relaxed">{t('settings:storage.r2.publicHint')}</div>
+      <button
+        type="button"
+        className="mt-2 inline-flex items-center gap-1 h-[24px] px-2.5 rounded-md text-[11px] font-ui cursor-pointer border border-brd2 text-t3 hover:border-acc hover:text-acc transition-all duration-100 bg-transparent"
+        onClick={async () => {
+          const cors = JSON.stringify([
+            {
+              AllowedOrigins: ['tauri://localhost', 'http://tauri.localhost', 'http://localhost:1420'],
+              AllowedMethods: ['PUT', 'POST', 'GET', 'HEAD'],
+              AllowedHeaders: ['authorization', 'content-type', 'x-amz-content-sha256', 'x-amz-date'],
+              ExposeHeaders: ['ETag'],
+              MaxAgeSeconds: 3600,
+            },
+          ], null, 2);
+          try {
+            await navigator.clipboard.writeText(cors);
+            setCopiedCors(true);
+            setTimeout(() => setCopiedCors(false), 1500);
+          } catch {
+            // Non-fatal — the JSON stays selectable for manual copy.
+          }
+        }}
+      >
+        <Copy size={12} />
+        {copiedCors ? `✓ ${t('settings:storage.cors.copied')}` : t('settings:storage.cors.copyButton')}
+      </button>
     </div>
   );
 }

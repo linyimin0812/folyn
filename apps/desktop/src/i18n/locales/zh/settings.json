@@ -711,6 +711,10 @@
     "htmlKeyPrefix": "HTML key 前缀",
     "save": "保存",
     "clear": "清空",
+    "cors": {
+      "copyButton": "复制 R2 CORS 配置",
+      "copied": "已复制"
+    },
     "htmlImageMode": {
       "label": "HTML 内图片处理",
       "help": "分享 markdown 为 HTML 时，文档内的本地图片如何处理。",

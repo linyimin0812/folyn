@@ -711,6 +711,10 @@
     "htmlKeyPrefix": "HTML key prefix",
     "save": "Save",
     "clear": "Clear",
+    "cors": {
+      "copyButton": "Copy R2 CORS config",
+      "copied": "Copied"
+    },
     "htmlImageMode": {
       "label": "HTML image handling",
       "help": "When sharing a markdown doc as HTML, what happens to local images inside it.",
