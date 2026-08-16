@@ -1776,3 +1776,38 @@ renderFile in MarkdownPreview fell back to the code viewer for matched handlers 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 166: Settings detect UX: show not-installed, detected path, blank-by-default input
+
+**Date**: 2026-08-16
+**Task**: Settings detect UX: show not-installed, detected path, blank-by-default input
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Two-step fix to the Detect button in CLI adapter settings and Script Runtimes settings. (1) On detect failure show an explicit 'not installed' message (or the real error on sidecar throw) in the same red-text slot the Test button uses, with 6s auto-clear — replacing the previous silent no-op. (2) On detect success surface the detected path as a green message; inputs now start blank (CliSettings falls back to '' since adapters already fall back to id internally; RuntimeConfig gains a defaultBinaryPath field used as placeholder and run-time fallback so scripts still run without clicking Detect). Existing users whose persisted binaryPath equals the platform default are normalized to empty in mergeScriptRuntimes. macOS and Windows both covered via existing platform-branched detect commands. i18n updated for en/zh/ja.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7ab38349` | (see git log) |
+| `0505121a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
