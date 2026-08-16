@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Image, { type ImageOptions } from '@tiptap/extension-image';
+import Image from '@tiptap/extension-image';
 import { ReactNodeViewRenderer, NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
@@ -595,11 +595,7 @@ function RichTextImageView({
  * Captioned/aligned images serialize as `<figure><img><figcaption>`; bare
  * `<img>` otherwise (backward compatible with existing docs).
  */
-export interface RichTextImageOptions extends ImageOptions {
-  onImagePaste?: ImagePasteHandler;
-}
-
-export const RichTextImage = Image.extend<RichTextImageOptions>({
+export const RichTextImage = Image.extend({
   addOptions() {
     return {
       ...this.parent?.(),

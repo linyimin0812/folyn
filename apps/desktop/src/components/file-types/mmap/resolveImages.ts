@@ -6,13 +6,7 @@
 // VaultImage. Async because resolveAssetBase hits the Tauri path API.
 
 import { convertFileSrc } from '@tauri-apps/api/core';
-import type { ITransformResult } from 'markmap-lib';
-
-// markmap's pure node tree — the root of Transformer.transform(). Typed via
-// the direct markmap-lib dep instead of importing from the transitive
-// markmap-common package (which pnpm's strict layout doesn't resolve from
-// apps/desktop without declaring it a direct dependency).
-type IPureNode = ITransformResult['root'];
+import type { IPureNode } from 'markmap-common';
 
 function resolveImgSrc(src: string, assetBase: string | null): string {
   if (!src) return src;
@@ -30,7 +24,7 @@ export function resolveImagesInTree(
   if (node.content && node.content.includes('<img')) {
     node.content = node.content.replace(
       /<img\b([^>]*?)src="([^"]+)"([^>]*)>/g,
-      (_full: string, pre: string, src: string, post: string) => {
+      (m, pre: string, src: string, post: string) => {
         const resolved = resolveImgSrc(src, assetBase);
         // ponytail: cap image size so a fat screenshot doesn't blow the
         // node box; matches the old mind-elixir topicMarkdown sizing.
