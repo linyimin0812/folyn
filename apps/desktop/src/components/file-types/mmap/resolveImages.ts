@@ -6,7 +6,15 @@
 // VaultImage. Async because resolveAssetBase hits the Tauri path API.
 
 import { convertFileSrc } from '@tauri-apps/api/core';
-import type { IPureNode } from 'markmap-common';
+
+// ponytail: markmap-common is a transitive dep of markmap-lib that pnpm's
+// isolated node_modules doesn't hoist to apps/desktop, so importing the
+// type fails in CI. We only touch .content / .children, so a local
+// minimal shape suffices — no need to declare markmap-common as a dep.
+interface MmapNode {
+  content?: string;
+  children?: MmapNode[];
+}
 
 function resolveImgSrc(src: string, assetBase: string | null): string {
   if (!src) return src;
@@ -18,13 +26,13 @@ function resolveImgSrc(src: string, assetBase: string | null): string {
 }
 
 export function resolveImagesInTree(
-  node: IPureNode,
+  node: MmapNode,
   assetBase: string | null,
 ): void {
   if (node.content && node.content.includes('<img')) {
     node.content = node.content.replace(
       /<img\b([^>]*?)src="([^"]+)"([^>]*)>/g,
-      (m, pre: string, src: string, post: string) => {
+      (_full: string, pre: string, src: string, post: string) => {
         const resolved = resolveImgSrc(src, assetBase);
         // ponytail: cap image size so a fat screenshot doesn't blow the
         // node box; matches the old mind-elixir topicMarkdown sizing.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Image from '@tiptap/extension-image';
+import Image, { type ImageOptions } from '@tiptap/extension-image';
 import { ReactNodeViewRenderer, NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
@@ -26,6 +26,17 @@ import {
   IMAGE_MIN_WIDTH,
   IMAGE_KBD_STEP,
 } from './richTextContent';
+
+// ponytail: tiptap's ImageOptions doesn't ship an onImagePaste hook, but the
+// extension wires paste/drop through this option. Module augmentation makes
+// the option known to addOptions / this.options / configure across the file
+// without threading a separate generic through Image.extend (which is the
+// heavier pattern the prior fix used and reverted).
+declare module '@tiptap/extension-image' {
+  interface ImageOptions {
+    onImagePaste?: ImagePasteHandler;
+  }
+}
 
 // ponytail: image vault-asset persistence. The disk format stores a
 // vault-relative `src` (e.g. `assets/images/<sha1>.png`) so the doc is portable
@@ -597,10 +608,15 @@ function RichTextImageView({
  */
 export const RichTextImage = Image.extend({
   addOptions() {
+    // ponytail: this.parent?.() returns ImageOptions | undefined, so the
+    // spread widens every prop (e.g. inline: boolean → boolean | undefined)
+    // which is incompatible with ImageOptions.inline: boolean. Cast back to
+    // ImageOptions — safe at runtime (parent returns a complete options
+    // object), the cast only silences the structural widening.
     return {
       ...this.parent?.(),
       onImagePaste: undefined as undefined | ImagePasteHandler,
-    };
+    } as ImageOptions;
   },
 
   addAttributes() {
