@@ -51,3 +51,146 @@ pub async fn check_url(url: String) -> UrlCheckResult {
         Err(e) => UrlCheckResult { reachable: false, error: e.to_string() },
     }
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// OS "Open With" / file-association launch buffering.
+//
+// macOS `RunEvent::Opened` and the Windows single-instance handler push the
+// OS-provided paths here AND emit `app://open-external-file`. The frontend
+// drains once on mount (closing the cold-launch race where the emit fires
+// before the React listener registers) and then listens for warm-launch
+// emits. Windows cold launch pre-populates the buffer in `run()` from
+// `std::env::args_os()` BEFORE `Builder::build()` starts loading the
+// webview, so a mount-time drain can never race the argv read.
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Backend-side buffer of OS file-association launch paths (managed on the
+/// Builder chain like `PetSizeState` — see lib.rs). `Mutex` guards the Vec
+/// because pushes come from the main/event-loop thread (`RunEvent::Opened`,
+/// the Windows single-instance callback) while the drain invoke arrives from
+/// the webview's IPC thread.
+#[derive(Default)]
+pub struct PendingOpenFiles(pub std::sync::Mutex<Vec<String>>);
+
+impl PendingOpenFiles {
+    /// Windows cold-launch constructor: capture `std::env::args_os()` NOW
+    /// (before the Builder is built / webviews start loading) so a
+    /// mount-time drain can never miss the paths. argv[0] is the exe path
+    /// and `-`/`--` flags are dropped by `filter_argv_paths`.
+    #[cfg(target_os = "windows")]
+    pub fn from_process_args() -> Self {
+        let args: Vec<String> = std::env::args_os()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect();
+        let paths = filter_argv_paths(&args);
+        crate::startup_log(format!(
+            "[open-external] windows argv captured {} pending path(s)",
+            paths.len()
+        ));
+        Self(std::sync::Mutex::new(paths))
+    }
+
+    /// Append OS-launch paths to the buffer. Non-fatal on a poisoned lock —
+    /// a poisoned mutex must never drop a user's file open.
+    pub fn push(&self, paths: Vec<String>) {
+        if paths.is_empty() {
+            return;
+        }
+        if let Ok(mut buf) = self.0.lock() {
+            buf.extend(paths);
+        }
+    }
+
+    /// Drain (take-and-clear) the buffered paths. Returns an empty vec on a
+    /// poisoned lock so the frontend's mount-time drain never panics.
+    pub fn drain(&self) -> Vec<String> {
+        self.0
+            .lock()
+            .map(|mut buf| std::mem::take(&mut *buf))
+            .unwrap_or_default()
+    }
+}
+
+/// Keep only positional file paths from a process argv: drop `argv[0]` (the
+/// executable path) and any flag-looking argument (`-` / `--` prefix, e.g.
+/// `--single-instance` or `-psn_...` on macOS). Extracted as a pure function
+/// so the Windows argv parsing is unit-testable on every platform.
+/// `filter_argv_paths` is Windows-only in production (the macOS
+/// file-association path comes from `RunEvent::Opened` URLs, not argv), but
+/// the unit tests exercise it on every platform — so allow dead_code on
+/// non-Windows instead of gating the whole function behind a cfg.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+pub fn filter_argv_paths(args: &[String]) -> Vec<String> {
+    args.iter()
+        .enumerate()
+        .filter(|(i, arg)| *i > 0 && !arg.starts_with('-') && !arg.trim().is_empty())
+        .map(|(_, arg)| arg.clone())
+        .collect()
+}
+
+/// Return and clear any OS-launch file paths buffered before the frontend
+/// registered its `app://open-external-file` listener. Invoked once on App
+/// mount BEFORE the listener is registered, so the cold-launch race is
+/// closed: whatever the OS handed Quill before React mounted is returned
+/// here; everything after is delivered by the event listener.
+#[tauri::command]
+pub fn drain_pending_open_files(state: tauri::State<'_, PendingOpenFiles>) -> Vec<String> {
+    let drained = state.drain();
+    if !drained.is_empty() {
+        crate::startup_log(format!(
+            "[open-external] drained {} pending path(s): {drained:?}",
+            drained.len()
+        ));
+    }
+    drained
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Buffer round-trip: a single push → drain returns it AND clears it
+    /// (a second drain is empty).
+    #[test]
+    fn pending_open_files_push_drain_roundtrip() {
+        let buf = PendingOpenFiles::default();
+        buf.push(vec!["/tmp/a.md".to_string()]);
+        assert_eq!(buf.drain(), vec!["/tmp/a.md"]);
+        assert!(buf.drain().is_empty());
+    }
+
+    /// Multiple pushes accumulate; drain returns all in order and clears.
+    #[test]
+    fn pending_open_files_multiple_pushes_drain_all() {
+        let buf = PendingOpenFiles::default();
+        buf.push(vec!["C:\\a.md".to_string(), "C:\\b.md".to_string()]);
+        buf.push(vec!["/tmp/c.md".to_string()]);
+        assert_eq!(buf.drain(), vec!["C:\\a.md", "C:\\b.md", "/tmp/c.md"]);
+        assert!(buf.drain().is_empty());
+    }
+
+    /// argv filter: skips the exe path and `-`/`--` flags, keeps file paths
+    /// (including paths with spaces).
+    #[test]
+    fn filter_argv_paths_skips_exe_and_flags_keeps_files() {
+        let args = vec![
+            "C:\\Program Files\\Quill\\quill.exe".to_string(),
+            "C:\\docs\\a.md".to_string(),
+            "--single-instance".to_string(),
+            "C:\\docs\\b markdown.md".to_string(),
+            "-psn_0_12345".to_string(),
+        ];
+        assert_eq!(
+            filter_argv_paths(&args),
+            vec!["C:\\docs\\a.md", "C:\\docs\\b markdown.md"]
+        );
+    }
+
+    /// argv filter: a lone exe (normal launch, no associated file) yields
+    /// nothing, so a normal cold start never opens a spurious tab.
+    #[test]
+    fn filter_argv_paths_empty_when_only_exe() {
+        let args = vec!["/Applications/Quill.app/Contents/MacOS/quill".to_string()];
+        assert!(filter_argv_paths(&args).is_empty());
+    }
+}

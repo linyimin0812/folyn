@@ -570,29 +570,38 @@ export default function App() {
 
   // ── OS "Open With" / file-association launch ──
   // When the OS launches Quill to open a file (right-click → Open With →
-  // Quill, or double-click an associated file), the Rust `RunEvent::Opened`
-  // handler converts the `file://` URL to a path and emits it here. We open
-  // it as a vault-independent external tab. Safe to fire before
-  // `restoreOpenTabs` completes — `openFile` is idempotent on the tab id.
+  // Quill, or double-click an associated file), the Rust side buffers the
+  // paths in `PendingOpenFiles` AND emits `app://open-external-file`. We
+  // DRAIN the buffer first, then listen: on cold launch the emit can fire
+  // before this listener exists (React still mounting), and draining on
+  // mount recovers those paths; on warm launch the listener receives the
+  // emit. We open each as a vault-independent external tab. Safe to fire
+  // before `restoreOpenTabs` completes — `openFile` is idempotent on the
+  // tab id.
   useEffect(() => {
     if (!isTauri()) return;
     let unlisten: (() => void) | undefined;
     let cancelled = false;
+    const openPaths = (paths: string[]) => {
+      for (const p of paths) {
+        const name = p.includes('/') ? p.substring(p.lastIndexOf('/') + 1) : p;
+        void editorIoService.openFile(p, name);
+      }
+      if (paths.length > 0) {
+        useNavStore.getState().setCurrentPage('editor');
+      }
+    };
     (async () => {
       try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const pending = await invoke<string[]>('drain_pending_open_files');
+        openPaths(pending ?? []);
         const { listen } = await import('@tauri-apps/api/event');
         unlisten = await listen<string[]>('app://open-external-file', (e) => {
-          const paths = e.payload ?? [];
-          for (const p of paths) {
-            const name = p.includes('/') ? p.substring(p.lastIndexOf('/') + 1) : p;
-            void editorIoService.openFile(p, name);
-          }
-          if (paths.length > 0) {
-            useNavStore.getState().setCurrentPage('editor');
-          }
+          openPaths(e.payload ?? []);
         });
       } catch (err) {
-        console.warn('[App] open-external-file listener setup failed:', err);
+        console.warn('[App] open-external-file setup failed:', err);
       }
       if (cancelled) unlisten?.();
     })();

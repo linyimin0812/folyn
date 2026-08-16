@@ -19,6 +19,12 @@ tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = { version = "2", features = ["watch"] }
 tauri-plugin-clipboard-manager = "2"
+# Windows single-instance guard: forwards a second instance's argv (file
+# paths from "Open With") to the running instance, then exits the second
+# process. Cross-platform crate; init is cfg-gated to Windows in lib.rs
+# (macOS uses RunEvent::Opened, Linux wiring is deferred — see PRD
+# 08-16-fix-external-file-open-cold-launch-not-shown).
+tauri-plugin-single-instance = "2"
 tauri-plugin-global-shortcut = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

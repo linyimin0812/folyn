@@ -31,7 +31,7 @@ use tauri::{Emitter, WindowEvent};
 /// - macOS: `$TMPDIR/quill-startup.log` (usually `/var/folders/.../T/...`)
 /// - Windows: `%TEMP%\quill-startup.log` (usually
 ///   `C:\Users\<user>\AppData\Local\Temp\quill-startup.log`)
-fn startup_log(msg: impl AsRef<str>) {
+pub(crate) fn startup_log(msg: impl AsRef<str>) {
     let path = std::env::temp_dir().join("quill-startup.log");
     let line = msg.as_ref();
     if let Ok(mut f) = std::fs::OpenOptions::new()
@@ -317,7 +317,20 @@ pub fn run() {
     truncate_startup_log();
     startup_log("[run] starting — panic hook installed");
 
-    tauri::Builder::default()
+    // OS file-association launch paths are captured BEFORE the Builder is
+    // constructed. Tauri 2 starts loading structurally-declared webviews
+    // during `Builder::build()`, and the frontend's mount-time
+    // `drain_pending_open_files` invoke can fire before `.setup()` runs —
+    // so pushing argv paths inside `setup` would lose the cold-launch race
+    // (the same timing that forces managed state onto the Builder chain,
+    // see the flash-quit note below). Pre-populating here guarantees any
+    // drain that fires after the webview mounts sees the paths.
+    #[cfg(target_os = "windows")]
+    let pending_open_files = commands::PendingOpenFiles::from_process_args();
+    #[cfg(not(target_os = "windows"))]
+    let pending_open_files = commands::PendingOpenFiles::default();
+
+    let builder = tauri::Builder::default()
         // ── quill-plugin:// URI scheme ──
         // Registered ONCE at startup (register_uri_scheme_protocol is on
         // tauri::Builder and consumes self — cannot add schemes at runtime).
@@ -675,6 +688,10 @@ pub fn run() {
             startup_log("[builder] manage PetApiState");
             pet_api::PetApiState(std::sync::Mutex::new(None))
         })
+        .manage({
+            startup_log("[builder] manage PendingOpenFiles");
+            pending_open_files
+        })
         .setup({
             startup_log("[hook] setup closure");
             |app| {
@@ -770,6 +787,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::open_file,
+            commands::drain_pending_open_files,
             commands::save_file,
             commands::check_url,
             commands::create_webview,
@@ -858,7 +876,39 @@ pub fn run() {
             voice::voice_set_global_hotkey,
             voice::voice_orb_hide,
             voice::voice_debug_frontmost,
-        ])
+        ]);
+
+    // Windows single-instance guard (macOS file association already funnels
+    // through RunEvent::Opened; Linux wiring is deferred — see PRD
+    // 08-16-fix-external-file-open-cold-launch-not-shown). When a second
+    // instance is launched (double-click an associated file while Quill is
+    // running), the plugin forwards the second argv to the RUNNING
+    // instance's callback here, then exits the second process. The callback
+    // mirrors the macOS RunEvent::Opened path: buffer AND emit so a
+    // still-mounting webview drains on mount and a mounted one receives the
+    // event, and surface the main window (pet-mode close-to-hide keeps it
+    // alive but hidden). Gated to Windows: macOS keeps its native
+    // multi-instance + Launch Services behavior.
+    #[cfg(target_os = "windows")]
+    let builder = builder.plugin({
+        startup_log("[plugin] single_instance (windows)");
+        tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            let paths = commands::filter_argv_paths(&argv);
+            if paths.is_empty() {
+                return;
+            }
+            if let Some(pending) = app.try_state::<commands::PendingOpenFiles>() {
+                pending.push(paths.clone());
+            }
+            if let Some(main) = app.get_webview_window("main") {
+                let _ = main.show();
+                let _ = main.set_focus();
+            }
+            let _ = app.emit("app://open-external-file", paths);
+        })
+    });
+
+    builder
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         // Last logging opportunity before the GUI event loop takes over. If
@@ -890,6 +940,15 @@ pub fn run() {
                             if let Some(main) = app.get_webview_window("main") {
                                 let _ = main.show();
                                 let _ = main.set_focus();
+                            }
+                            // Buffer AND emit: a cold-launch webview that
+                            // hasn't mounted its listener yet drains the
+                            // paths on mount; a warm-launch webview receives
+                            // the event immediately. `try_state` (not
+                            // `state`) so a missing/poisoned state can never
+                            // crash the event loop.
+                            if let Some(pending) = app.try_state::<commands::PendingOpenFiles>() {
+                                pending.push(paths.clone());
                             }
                             let _ = app.emit("app://open-external-file", paths);
                         }
