@@ -18,8 +18,13 @@ export interface RuntimeConfig {
   id: string;
   /** Human label for settings UI. */
   label: string;
-  /** Binary name or absolute path to execute. */
+  /** Binary name or absolute path to execute. Empty string means "not yet
+   *  detected or set" — fall back to {@link defaultBinaryPath} at run time. */
   binaryPath: string;
+  /** Platform-default binary name used when {@link binaryPath} is empty
+   *  (e.g. 'node', 'python3', '/bin/sh' or 'powershell.exe'). Shown as the
+   *  input placeholder in settings so the field can stay empty by default. */
+  defaultBinaryPath: string;
   /** Markdown fence language aliases that map to this runtime.
    *  e.g. ['bash','sh','shell','zsh']. First entry is the canonical id. */
   languageAliases: string[];
@@ -36,13 +41,17 @@ export interface RuntimeConfig {
 // `/bin/sh` + `which`. The `versionArgs` for the shell runtime differs —
 // PowerShell prints its version via `$PSVersionTable` rather than `--version`.
 // node/python share the same `--version` flag on both platforms.
+// `binaryPath` starts empty so the settings input is blank by default;
+// `defaultBinaryPath` is the run-time fallback when the user hasn't
+// detected or typed a path yet.
 const isWin = isWindowsPlatform();
 
 export const DEFAULT_SCRIPT_RUNTIMES: RuntimeConfig[] = [
   {
     id: 'shell',
     label: 'Shell',
-    binaryPath: isWin ? 'powershell.exe' : '/bin/sh',
+    binaryPath: '',
+    defaultBinaryPath: isWin ? 'powershell.exe' : '/bin/sh',
     languageAliases: ['bash', 'sh', 'shell', 'zsh'],
     fileExt: 'sh',
     detectCommand: isWin ? 'where powershell.exe' : 'which sh',
@@ -51,7 +60,8 @@ export const DEFAULT_SCRIPT_RUNTIMES: RuntimeConfig[] = [
   {
     id: 'node',
     label: 'Node.js',
-    binaryPath: 'node',
+    binaryPath: '',
+    defaultBinaryPath: 'node',
     languageAliases: ['js', 'javascript', 'node'],
     fileExt: 'js',
     detectCommand: isWin ? 'where node' : 'which node',
@@ -60,7 +70,8 @@ export const DEFAULT_SCRIPT_RUNTIMES: RuntimeConfig[] = [
   {
     id: 'python',
     label: 'Python',
-    binaryPath: 'python3',
+    binaryPath: '',
+    defaultBinaryPath: 'python3',
     languageAliases: ['py', 'python', 'python3'],
     fileExt: 'py',
     detectCommand: isWin ? 'where python3' : 'which python3',
@@ -98,7 +109,10 @@ export function buildRunArgs(config: RuntimeConfig, tmpPath: string): [sidecar: 
   // ponytail: sidecar + args picked by buildShellSidecar based on platform —
   // Unix: claude-cli `/bin/sh -lc "<bin> <tmp>"` (login shell resolves PATH
   // for nvm/pyenv-installed runtimes); Windows: win-detect `cmd /c "<bin> <tmp>"`.
-  const cmd = `${config.binaryPath} ${escapeShellArg(tmpPath)}`;
+  // Fall back to defaultBinaryPath when binaryPath is empty so scripts still
+  // run for users who haven't clicked Detect.
+  const bin = config.binaryPath || config.defaultBinaryPath;
+  const cmd = `${bin} ${escapeShellArg(tmpPath)}`;
   return buildShellSidecar(cmd);
 }
 

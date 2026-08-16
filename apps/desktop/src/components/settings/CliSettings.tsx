@@ -79,7 +79,7 @@ export function CliSettings() {
       </div>
       <div className="flex flex-col gap-3">
         {listAdapters().map((a) => {
-          const path = cliPaths[a.id] ?? a.id;
+          const path = cliPaths[a.id] ?? '';
           const st = testStatus[a.id] ?? { testing: false };
           const sf = settingsFileState[a.id] ?? { kind: 'idle' };
           const detecting = detectingState[a.id] ?? false;
@@ -120,6 +120,7 @@ export function CliSettings() {
                       const detected = output.stdout.trim().split('\n')[0];
                       if (output.code === 0 && detected) {
                         setCliPathFor(a.id, detected);
+                        setTestStatus((s) => ({ ...s, [a.id]: { testing: false, result: { success: true, message: t('settings:cli.cliPath.detected', { path: detected }) } } }));
                       } else {
                         setTestStatus((s) => ({ ...s, [a.id]: { testing: false, result: { success: false, message: t('settings:cli.cliPath.notInstalled') } } }));
                       }

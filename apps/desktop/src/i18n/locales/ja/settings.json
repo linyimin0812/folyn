@@ -157,7 +157,8 @@
       "detectTitle": "パスを自動検出",
       "hint": "CLI実行可能ファイルのパスまたはコマンド名。「検出」をクリックで自動探索",
       "notInstalled": "インストールされていません",
-      "cannotRun": "検出できません: {{error}}"
+      "cannotRun": "検出できません: {{error}}",
+      "detected": "検出: {{path}}"
     },
     "settingsFile": {
       "title": "このアダプタの設定ファイルをQuillエディタで開く",
@@ -192,7 +193,8 @@
       "cannotRun": "実行できません: {{error}}"
     },
     "detectNotInstalled": "インストールされていません",
-    "detectCannotRun": "検出できません: {{error}}"
+    "detectCannotRun": "検出できません: {{error}}",
+    "detectDetected": "検出: {{path}}"
   },
   "models": {
     "title": "モデルサービス",

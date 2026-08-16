@@ -157,7 +157,8 @@
       "detectTitle": "自动检测路径",
       "hint": "CLI 可执行文件的路径或命令名，点击\"检测\"自动查找",
       "notInstalled": "未安装",
-      "cannotRun": "无法检测: {{error}}"
+      "cannotRun": "无法检测: {{error}}",
+      "detected": "已检测: {{path}}"
     },
     "settingsFile": {
       "title": "在 Quill 编辑器中打开此 Adapter 的配置文件",
@@ -192,7 +193,8 @@
       "cannotRun": "无法执行: {{error}}"
     },
     "detectNotInstalled": "未安装",
-    "detectCannotRun": "无法检测: {{error}}"
+    "detectCannotRun": "无法检测: {{error}}",
+    "detectDetected": "已检测: {{path}}"
   },
   "models": {
     "title": "模型服务",
