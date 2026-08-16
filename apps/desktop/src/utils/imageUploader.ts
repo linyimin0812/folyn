@@ -49,13 +49,13 @@ class LocalFileStrategy implements ImageUploadStrategy {
     const localConfig = config as LocalUploadConfig;
     const relativePath = `${localConfig.directory}/${localConfig.fileName}.${localConfig.format}`;
 
-    const { homeDir, join } = await import('@tauri-apps/api/path');
+    const { homeDir, join, dirname } = await import('@tauri-apps/api/path');
     const resolvedRoot = vaultRoot.startsWith('~')
       ? await join(await homeDir(), vaultRoot.slice(2))
       : vaultRoot;
     const absPath = await join(resolvedRoot, relativePath);
 
-    const parentDir = absPath.substring(0, absPath.lastIndexOf('/'));
+    const parentDir = await dirname(absPath);
     await mkdir(parentDir, { recursive: true });
 
     const bytes = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
