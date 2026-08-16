@@ -42,6 +42,9 @@
     "processing": {
       "title": "正在导出",
       "hint": "正在准备内容，请稍候…"
+    },
+    "share": {
+      "openExternal": "在浏览器中打开"
     }
   },
   "slashMenu": {

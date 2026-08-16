@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
-import { ImageDown, Cloud } from 'lucide-react';
+import { ImageDown, Cloud, Copy, ExternalLink, Check } from 'lucide-react';
 import { useExport, hasContainerSyntax } from '@/hooks/useExport';
 import { useEditorStore, detectFileType } from '@/store/editorStore';
 import { FileIcon } from '@/components/icons/FileIcon';
@@ -30,6 +30,7 @@ export function ExportMenu() {
   const [exporting, setExporting] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [urlCopied, setUrlCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, shareBytesToCloud, getActiveContent } = useExport();
   const activeProvider = useStorageConfigStore((s) => s.activeProvider);
@@ -346,12 +347,34 @@ export function ExportMenu() {
               <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)' }}>{t('settings:storage.toast.htmlShared')}</div>
             </div>
             <div style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 8 }}>{t('settings:storage.description')}</div>
-            <input
-              readOnly
-              value={shareUrl}
-              className="w-full py-2 px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[12px] font-mono outline-none"
-              onFocus={(e) => e.currentTarget.select()}
-            />
+            <div style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
+              <input
+                readOnly
+                value={shareUrl}
+                className="flex-1 min-w-0 py-2 px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[12px] font-mono outline-none"
+                onFocus={(e) => e.currentTarget.select()}
+              />
+              <button
+                className="tb-btn shrink-0 flex items-center justify-center w-9 rounded-md border border-brd2 text-t2 hover:bg-hov hover:text-t1 transition-colors"
+                onClick={() => {
+                  navigator.clipboard.writeText(shareUrl).catch(() => {});
+                  setUrlCopied(true);
+                  setTimeout(() => setUrlCopied(false), 1500);
+                }}
+                title={t('settings:storage.cors.copyButton')}
+              >
+                {urlCopied ? <Check size={14} className="text-acc" /> : <Copy size={14} />}
+              </button>
+              <button
+                className="tb-btn shrink-0 flex items-center justify-center w-9 rounded-md border border-brd2 text-t2 hover:bg-hov hover:text-t1 transition-colors"
+                onClick={() => {
+                  import('@tauri-apps/plugin-shell').then(({ open }) => open(shareUrl));
+                }}
+                title={t('editor:export.share.openExternal')}
+              >
+                <ExternalLink size={14} />
+              </button>
+            </div>
             <div className="dlg-ft" style={{ marginTop: 16 }}>
               <button className="btn btn-p btn-sm" onClick={() => setShareUrl(null)}>OK</button>
             </div>

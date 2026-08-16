@@ -42,6 +42,9 @@
     "processing": {
       "title": "Exporting",
       "hint": "Preparing content, please wait…"
+    },
+    "share": {
+      "openExternal": "Open in browser"
     }
   },
   "slashMenu": {
