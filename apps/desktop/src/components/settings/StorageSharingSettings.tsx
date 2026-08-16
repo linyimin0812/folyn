@@ -40,26 +40,20 @@ export function StorageSharingSettings() {
       {/* Provider selector */}
       <div className="mb-5">
         <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:storage.provider.label')}</div>
-        <div className="flex gap-2">
+        <select
+          className="w-full py-[7px] px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[13px] outline-none focus:border-acc focus:shadow-[0_0_0_2px_var(--accdim)]"
+          value={activeProvider}
+          onChange={(e) => setActiveProvider(e.target.value)}
+        >
           {providers.map((p) => {
             const cfg = configs[p.id] ?? null;
             const configured = p.isConfigured(cfg);
-            const active = activeProvider === p.id;
+            const suffix = configured ? '' : ` (${t('settings:storage.provider.notConfigured')})`;
             return (
-              <button
-                key={p.id}
-                className={`flex-1 flex flex-col items-center gap-0.5 py-2 px-1.5 border-[1.5px] rounded-lg cursor-pointer transition-all duration-150 ${active ? 'border-acc bg-accdim' : 'border-brd2 bg-surf hover:border-acc'} ${!configured ? 'opacity-70' : ''}`}
-                onClick={() => setActiveProvider(p.id)}
-              >
-                <span className="text-lg">{p.icon}</span>
-                <span className="text-[11px] text-t1 font-medium">{t(p.labelKey)}</span>
-                <span className={`text-[9px] px-[5px] py-px rounded ${configured ? 'bg-accdim text-acc' : 'bg-surf2 text-t3'}`}>
-                  {configured ? t('settings:storage.provider.configured') : t('settings:storage.provider.notConfigured')}
-                </span>
-              </button>
+              <option key={p.id} value={p.id}>{t(p.labelKey)}{suffix}</option>
             );
           })}
-        </div>
+        </select>
       </div>
 
       {/* Active provider form */}
