@@ -11,8 +11,8 @@ describe('buildCsp', () => {
     const p = buildCsp({ mode: 'custom', allowedUrls: [] }, { dev: false });
     expect(p).toContain("default-src 'self'");
     expect(p).toContain("script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: quill-plugin:");
-    expect(p).toContain("img-src 'self' data: blob: asset: http://asset.localhost http://*.clouddn.com");
-    expect(p).toContain("connect-src 'self' ipc: http://ipc.localhost quill-plugin: https://*.qiniup.com");
+    expect(p).toContain("img-src 'self' data: blob: asset: http://asset.localhost http://*.clouddn.com https://*.r2.dev");
+    expect(p).toContain("connect-src 'self' ipc: http://ipc.localhost quill-plugin: https://*.qiniup.com https://*.r2.cloudflarestorage.com");
     expect(p).toContain("frame-src 'self' blob: data: quill-plugin:");
   });
 

@@ -41,11 +41,13 @@ const BASE_DIRECTIVES: Record<string, string[]> = {
   // ponytail: Qiniu default test domain (clouddn.com) is HTTP-only on the
   // free tier; without this entry the markdown preview can't render images
   // uploaded to it. HTTPS users with a custom domain still need to add it
-  // themselves via the CSP settings UI.
-  "img-src": ["'self'", 'data:', 'blob:', 'asset:', 'http://asset.localhost', 'http://*.clouddn.com'],
+  // themselves via the CSP settings UI. R2's default pub-*.r2.dev public
+  // URL is also baseline-allowed; custom domains still need manual entry.
+  "img-src": ["'self'", 'data:', 'blob:', 'asset:', 'http://asset.localhost', 'http://*.clouddn.com', 'https://*.r2.dev'],
   "media-src": ["'self'", 'blob:', 'asset:', 'http://asset.localhost'],
-  // ponytail: Qiniu upload endpoint — POST target for form uploads.
-  "connect-src": ["'self'", 'ipc:', 'http://ipc.localhost', 'quill-plugin:', 'https://*.qiniup.com'],
+  // ponytail: Qiniu + R2 upload endpoints. R2's host is per-account
+  // (<accountId>.r2.cloudflarestorage.com) so wildcard the suffix.
+  "connect-src": ["'self'", 'ipc:', 'http://ipc.localhost', 'quill-plugin:', 'https://*.qiniup.com', 'https://*.r2.cloudflarestorage.com'],
   "worker-src": ["'self'", 'blob:'],
   "frame-src": ["'self'", 'blob:', 'data:', 'quill-plugin:'],
 };

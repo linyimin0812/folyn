@@ -675,7 +675,7 @@
       "description": "点击“应用并刷新”后，以下策略才会生效。"
     },
     "baseline": {
-      "note": "Tauri IPC、quill-plugin、asset、data: 与 blob: 始终允许，不可移除。另外默认放行七牛云图床域名 http://*.clouddn.com 与上传端点 https://*.qiniup.com。"
+      "note": "Tauri IPC、quill-plugin、asset、data: 与 blob: 始终允许，不可移除。另外默认放行七牛云图床域名 http://*.clouddn.com、上传端点 https://*.qiniup.com，以及 Cloudflare R2 上传端点 https://*.r2.cloudflarestorage.com、默认公开访问域名 https://*.r2.dev。"
     },
     "apply": {
       "button": "应用并刷新",
