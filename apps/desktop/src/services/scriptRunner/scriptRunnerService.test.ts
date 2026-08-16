@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock Tauri shell + fs so we don't actually spawn or write files.
 const mockSpawn = vi.fn();
@@ -73,18 +73,63 @@ describe('buildRunArgs', () => {
     expect(name).toBe('claude-cli');
     expect(args[0]).toBe('-l');
     expect(args[1]).toBe('-c');
-    expect(args[2]).toBe("node '/tmp/x.js'");
+    // Both the binary and the path are shell-escaped (safer for a binary path
+    // with spaces); a bare word like `node` is unaffected by single-quoting.
+    expect(args[2]).toBe("'node' '/tmp/x.js'");
   });
 
   it('shell-escapes paths with spaces', () => {
     const [_name, args] = buildRunArgs(DEFAULT_SCRIPT_RUNTIMES[0], '/tmp/my file.sh');
-    expect(args[2]).toBe("/bin/sh '/tmp/my file.sh'");
+    expect(args[2]).toBe("'/bin/sh' '/tmp/my file.sh'");
   });
 
   it('shell-escapes paths with single quotes', () => {
     const [_name, args] = buildRunArgs(DEFAULT_SCRIPT_RUNTIMES[1], "/tmp/a'b.js");
     // Single quote inside is escaped as '\''.
-    expect(args[2]).toBe("node '/tmp/a'\\''b.js'");
+    expect(args[2]).toBe("'node' '/tmp/a'\\''b.js'");
+  });
+});
+
+// Regression: on Windows, the temp path must be passed as a separate `cmd /c`
+// arg, NOT pre-wrapped in quotes inside a single command string. The old code
+// built `node "C:\path\file.js"` as one arg; Rust backslash-escaped the inner
+// `"` as `\"`, cmd.exe (no backslash escaping) passed the literal `"` through
+// to node, and node received a path with embedded quote characters — failing
+// with `Cannot find module '...\"C:\Users\...js"'` (MODULE_NOT_FOUND).
+describe('buildRunArgs (Windows)', () => {
+  const originalPlatform = navigator.platform;
+
+  beforeEach(() => {
+    Object.defineProperty(navigator, 'platform', { value: 'Win32', configurable: true });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(navigator, 'platform', { value: originalPlatform, configurable: true });
+  });
+
+  it('uses the win-detect sidecar with /c and a separate path arg (no embedded quotes)', () => {
+    const tmpPath = 'C:\\Users\\linyimin\\.quill\\scripts-tmp\\quill-run-abc.js';
+    const [name, args] = buildRunArgs(DEFAULT_SCRIPT_RUNTIMES[1], tmpPath);
+    expect(name).toBe('win-detect');
+    expect(args).toEqual(['/c', 'node', tmpPath]);
+    // The path arg must reach node verbatim — no surrounding quotes that would
+    // be backslash-escaped by Rust and then mishandled by cmd.exe.
+    expect(args.join(' ')).toBe(`/c node ${tmpPath}`);
+  });
+
+  it('keeps a path with spaces as a single separate arg (no manual quoting)', () => {
+    // Use the node runtime: its defaultBinaryPath ('node') is platform-
+    // independent, so it is stable regardless of the platform DEFAULT_SCRIPT_
+    // RUNTIMES was frozen at during module load (the shell runtime's default
+    // flips powershell.exe↔/bin/sh, which would couple this test to the
+    // module-load platform).
+    const tmpPath = 'C:\\Users\\My Name\\.quill\\scripts-tmp\\quill-run-def.js';
+    const [name, args] = buildRunArgs(DEFAULT_SCRIPT_RUNTIMES[1], tmpPath);
+    expect(name).toBe('win-detect');
+    // Three elements: /c, the binary, and the path. We pass the path raw —
+    // Rust's CreateProcess quoting wraps it in quotes only when it has spaces,
+    // with no internal `"` to backslash-escape, so cmd.exe handles it cleanly.
+    expect(args).toEqual(['/c', 'node', tmpPath]);
   });
 });
 

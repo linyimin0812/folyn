@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { escapeShellArg } from '@/utils/shellSidecar';
 import {
-  escapeShellArg,
   buildCloneUrl,
   buildCloneCommand,
   buildCheckoutBranchCommand,
@@ -9,7 +9,7 @@ import {
   buildCommitPushCommand,
 } from './gitService';
 
-describe('gitService: escapeShellArg', () => {
+describe('shellSidecar: escapeShellArg', () => {
   it('wraps a plain string in single quotes', () => {
     expect(escapeShellArg('path/with space')).toBe("'path/with space'");
   });

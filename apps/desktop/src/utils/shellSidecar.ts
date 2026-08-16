@@ -12,11 +12,38 @@
  * no node:detection needed). Used by CliSettings / ScriptRuntimesSettings /
  * gitService / scriptRunnerService — all 4 callers route through here so the
  * platform branch lives in one place.
+ *
+ * Accepts either a pre-built command string OR a pre-split argv array. The
+ * array form is required when an argument is a filesystem path on Windows:
+ * passing `node "C:\path\file.js"` as one string makes Rust (which builds the
+ * CreateProcess command line) backslash-escape the embedded `"` as `\"`, but
+ * cmd.exe does not understand `\"` — it passes the literal `"` through to the
+ * target program, whose CRT then decodes `\"` back to a literal `"`, so the
+ * path arrives with embedded quote characters (MODULE_NOT_FOUND). Splitting
+ * into separate args lets Rust quote each one independently, producing a clean
+ * quoted path with no `\"` for cmd.exe to mishandle.
  */
 import { isTauri } from '@/utils/platform';
 
-export function buildShellSidecar(cmd: string): [name: string, args: string[]] {
+/** Single-quote-escape one POSIX sh argument: wraps in `'...'` with embedded
+ *  `'` escaped as `'\''`. Sufficient for args we construct; not a security
+ *  boundary (inputs are ours). The canonical home for this helper — gitService
+ *  and scriptRunner both reach for it via buildShellSidecar's array form. */
+export function escapeShellArg(s: string): string {
+  return `'${s.replace(/'/g, `'\\''`)}'`;
+}
+
+export function buildShellSidecar(cmd: string | string[]): [name: string, args: string[]] {
   const isWin = typeof navigator !== 'undefined' && /Win/i.test(navigator.platform);
+  // Array form: pre-split argv. Windows passes each element as a separate
+  // `cmd /c` arg (Rust quotes per-arg, avoiding the `\"` + cmd.exe mismatch).
+  // Unix joins shell-escaped elements into the `sh -lc` string (sh -c takes
+  // a single string argument).
+  if (Array.isArray(cmd)) {
+    return isWin
+      ? ['win-detect', ['/c', ...cmd]]
+      : ['claude-cli', ['-l', '-c', cmd.map(escapeShellArg).join(' ')]];
+  }
   return isWin
     ? ['win-detect', ['/c', cmd]]
     : ['claude-cli', ['-l', '-c', cmd]];

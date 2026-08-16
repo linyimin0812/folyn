@@ -10,7 +10,7 @@
 
 import { resolveBasePath } from '@/utils/pathResolver';
 import { mergeGitignoreEntries } from '@/utils/excludePattern';
-import { buildShellSidecar } from '@/utils/shellSidecar';
+import { buildShellSidecar, escapeShellArg } from '@/utils/shellSidecar';
 
 export interface GitResult {
   stdout: string;
@@ -25,12 +25,6 @@ export type GitAuthMethod = 'https-public' | 'https-private' | 'ssh';
 export interface BranchStrategy {
   mode: 'default' | 'new-branch';
   branch?: string;
-}
-
-/** ponytail: single-quote-escape with '\'' for embedded quotes. Sufficient
- *  for git args we construct; not a security boundary (inputs are ours). */
-export function escapeShellArg(s: string): string {
-  return `'${s.replace(/'/g, `'\\''`)}'`;
 }
 
 /** Build the clone URL, injecting a PAT for private HTTPS repos.
