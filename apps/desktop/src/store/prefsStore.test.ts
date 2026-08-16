@@ -88,7 +88,27 @@ describe('usePrefsStore.hydrate', () => {
     persisted[boldIdx].keys = ['⌘', 'X'];
     usePrefsStore.getState().hydrate({ shortcuts: persisted });
     const bold = usePrefsStore.getState().shortcuts.find((s) => s.id === 'bold')!;
-    expect(bold.keys).toEqual(['⌘', 'X']);
+    // The non-modifier key (X) is preserved across the platform modifier
+    // translation: a `⌘`-prefixed combo persisted on macOS (or by the old
+    // hardcoded build) loads as a `Ctrl`-prefixed combo on Windows/Linux.
+    expect(bold.keys).toEqual(['Ctrl', 'X']);
+  });
+
+  it('translates the other platform\'s modifier glyphs to this platform\'s equivalent', () => {
+    // Mirrors the post-8fef97bf upgrade path: the pre-platform-aware build
+    // hardcoded `⌘` across all platforms, so a Windows user's persisted
+    // `prefs` file holds `['⌘','S']` etc. On a non-mac test env these must
+    // load as `Ctrl`-prefixed combos so the default togglePetPanel shortcut
+    // emits a bindable `Control+Shift+Q` accelerator instead of an unbindable
+    // `Cmd+Shift+Q` (Windows has no Command key).
+    const persisted = [
+      { id: 'save', name: '保存文档', keys: ['⌘', 'S'] },
+      { id: 'togglePetPanel', name: '唤起桌宠面板', keys: ['⌘', 'Shift', 'Q'] },
+    ];
+    usePrefsStore.getState().hydrate({ shortcuts: persisted });
+    const shortcuts = usePrefsStore.getState().shortcuts;
+    expect(shortcuts.find((s) => s.id === 'save')!.keys).toEqual(['Ctrl', 'S']);
+    expect(shortcuts.find((s) => s.id === 'togglePetPanel')!.keys).toEqual(['Ctrl', 'Shift', 'Q']);
   });
 
   it('backfills missing default file templates', () => {
@@ -152,6 +172,22 @@ describe('backfillDefaultShortcuts', () => {
   it('returns the input unchanged when no defaults are missing', () => {
     const persisted = DEFAULT_SHORTCUTS.map((s) => ({ ...s }));
     expect(backfillDefaultShortcuts(persisted)).toEqual(persisted);
+  });
+
+  it('translates the other platform\'s modifier glyphs to this platform\'s equivalent', () => {
+    // On a non-mac test env, a `⌘`-prefixed combo (persisted by macOS or the
+    // old hardcoded build) loads as a `Ctrl`-prefixed combo. The non-modifier
+    // key and Shift are preserved; only the invalid modifier symbol is
+    // translated. A combo already valid on this platform is unchanged.
+    const persisted = [
+      { id: 'save', name: '保存文档', keys: ['⌘', 'S'] },
+      { id: 'strikethrough', name: '删除线', keys: ['⌘', 'Shift', 'S'] },
+      { id: 'bold', name: '加粗', keys: ['Ctrl', 'B'] },
+    ];
+    const result = backfillDefaultShortcuts(persisted);
+    expect(result.find((s) => s.id === 'save')!.keys).toEqual(['Ctrl', 'S']);
+    expect(result.find((s) => s.id === 'strikethrough')!.keys).toEqual(['Ctrl', 'Shift', 'S']);
+    expect(result.find((s) => s.id === 'bold')!.keys).toEqual(['Ctrl', 'B']);
   });
 });
 
