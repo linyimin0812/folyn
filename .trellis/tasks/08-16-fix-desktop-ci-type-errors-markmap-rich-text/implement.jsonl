@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop 前端 TS 严格度约定，验证 resolveImages / RichTextImage 类型改动合规"}
