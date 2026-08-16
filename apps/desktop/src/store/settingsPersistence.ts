@@ -78,7 +78,7 @@ const scheduleBroadcast = debounce(broadcastSettingsImpl, BROADCAST_DELAY);
 // instead of silent data loss. New persisted store? Add its name here.
 const EXPECTED_SLICES = [
   'prefs', 'editorPrefs', 'pet', 'appearance', 'voice',
-  'vault', 'schedule', 'modelRegistry', 'aiConfig', 'csp',
+  'vault', 'schedule', 'modelRegistry', 'aiConfig', 'csp', 'storage',
 ] as const;
 
 /** Register a store's persisted slice. Called at module init by each
@@ -222,6 +222,17 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
     await useAiConfigStore.getState().loadFromDisk();
   } catch (err) {
     console.warn('[settingsPersistence] Provider config load failed:', err);
+  }
+
+  // ponytail: storage provider creds live in ~/.quill/image-hosts/ — load
+  // after the regular slices hydrate so activeProvider is restored before
+  // configs are read into the in-memory cache. Lazy import breaks the
+  // store→settingsPersistence→store cycle.
+  try {
+    const { useStorageConfigStore } = await import('@/services/storage/storageConfigStore');
+    await useStorageConfigStore.getState().loadFromDisk();
+  } catch (err) {
+    console.warn('[settingsPersistence] Storage config load failed:', err);
   }
 
   if (!any) return null;

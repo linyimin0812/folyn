@@ -1,1 +1,5 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "lint / typecheck / 测试要求"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "ProviderConfig union + isConfigured type guard 类型正确性"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "凭据存储安全：是否走 aiConfigStore 隔离范式"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "新增的 settings tab 标签 + toast 文案是否都走 i18n"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "未引入未抽象的接口 / 未重写已存在逻辑"}

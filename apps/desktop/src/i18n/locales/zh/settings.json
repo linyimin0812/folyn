@@ -21,6 +21,7 @@
     "notifications": "通知",
     "plugins": "插件",
     "csp": "安全策略",
+    "storage": "存储与分享",
     "about": "关于"
   },
   "appearance": {
@@ -679,6 +680,53 @@
     "apply": {
       "button": "应用并刷新",
       "note": "点击“应用”会刷新页面（界面会闪一下）。新添加的网址和“允许所有网址”在刷新后才会生效。"
+    }
+  },
+  "storage": {
+    "title": "存储与分享",
+    "description": "云对象存储——用于图床和 HTML 分享",
+    "provider": {
+      "label": "服务提供商",
+      "configured": "已配置",
+      "notConfigured": "未配置",
+      "r2": { "label": "Cloudflare R2" },
+      "qiniu": { "label": "七牛云 Kodo" }
+    },
+    "r2": {
+      "accountId": "Account ID",
+      "accessKeyId": "Access Key ID",
+      "secretAccessKey": "Secret Access Key",
+      "bucket": "Bucket",
+      "publicHint": "需要把 bucket 设为公开访问（R2 → Settings → Public Development URL，或绑定自定义域名）。否则上传成功但访问 403。"
+    },
+    "qiniu": {
+      "accessKey": "Access Key",
+      "secretKey": "Secret Key",
+      "bucket": "Bucket",
+      "region": "区域",
+      "publicHint": "需要在七牛控制台绑定自定义域名并把 bucket 设为公开。否则上传成功但访问 403。"
+    },
+    "publicBaseUrl": "公网访问域名",
+    "imageKeyPrefix": "图片 key 前缀",
+    "htmlKeyPrefix": "HTML key 前缀",
+    "save": "保存",
+    "clear": "清空",
+    "htmlImageMode": {
+      "label": "HTML 内图片处理",
+      "help": "分享 markdown 为 HTML 时，文档内的本地图片如何处理。",
+      "inline": "Inline 为 data URI（单文件自包含）",
+      "upload": "上传到图床并重写 src"
+    },
+    "toast": {
+      "uploading": "正在上传到云端…",
+      "imageUploaded": "图片已上传",
+      "htmlShared": "分享链接已复制到剪贴板",
+      "uploadFailed": "上传失败",
+      "notConfigured": "未配置存储服务——前往 设置 → 存储与分享",
+      "bucketNotPublic": "对象已上传，但 bucket 未开放公开访问——请到服务商控制台开启"
+    },
+    "share": {
+      "menu": "分享到云端"
     }
   }
 }

@@ -3,7 +3,7 @@
   "name": "integrate-cloudflare-r2-and-qiniu-image-hosting",
   "title": "integrate-cloudflare-r2-and-qiniu-image-hosting",
   "description": "",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "api",

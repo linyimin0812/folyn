@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
-import { ImageDown } from 'lucide-react';
+import { ImageDown, Cloud } from 'lucide-react';
 import { useExport, hasContainerSyntax } from '@/hooks/useExport';
 import { useEditorStore, detectFileType } from '@/store/editorStore';
 import { FileIcon } from '@/components/icons/FileIcon';
@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next';
 import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
 import { getPluginExportersForFileType } from '@/services/plugin-host/exporterAdapter';
 import { runCommand } from '@/services/commandRegistry';
+import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
+import { getProvider } from '@/services/storage/registry';
 
 // File types that ship a canvas → SVG/PNG export. Markdown goes HTML instead.
 const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'mmap', 'plantuml', 'graphviz', 'mermaid']);
@@ -26,8 +28,13 @@ export function ExportMenu() {
   const [open, setOpen] = useState(false);
   const [containerWarning, setContainerWarning] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, getActiveContent } = useExport();
+  const { exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, getActiveContent } = useExport();
+  const activeProvider = useStorageConfigStore((s) => s.activeProvider);
+  const activeCfg = useStorageConfigStore((s) => s.configs[s.activeProvider] ?? null);
+  const shareEnabled = activeCfg ? getProvider(activeProvider).isConfigured(activeCfg) : false;
 
   const fileType = useEditorStore((s) => {
     const tab = s.tabs.find((t) => t.id === s.activeTabId);
@@ -98,6 +105,28 @@ export function ExportMenu() {
     runWithOverlay(() => exportMarkmap());
   }, [exportMarkmap, runWithOverlay]);
 
+  const handleShareToCloud = useCallback(() => {
+    setOpen(false);
+    setShareError(null);
+    setExporting(true);
+    shareToCloud()
+      .then(async (url) => {
+        await navigator.clipboard.writeText(url).catch(() => {});
+        setShareUrl(url);
+      })
+      .catch((err: Error) => {
+        const msg = err.message === 'STORAGE_NOT_CONFIGURED'
+          ? t('settings:storage.toast.notConfigured')
+          : err.message === 'STORAGE_NO_HTML_CAPABILITY'
+            ? t('settings:storage.toast.notConfigured')
+            : err.message.startsWith('R2 upload failed') || err.message.startsWith('Qiniu upload failed')
+              ? `${t('settings:storage.toast.bucketNotPublic')} (${err.message})`
+              : `${t('settings:storage.toast.uploadFailed')}: ${err.message}`;
+        setShareError(msg);
+      })
+      .finally(() => setExporting(false));
+  }, [shareToCloud, t]);
+
   const sourceKey = KNOWN_SOURCE_TYPES.has(fileType) ? fileType : 'default';
   const items: Item[] = [
     {
@@ -123,6 +152,15 @@ export function ExportMenu() {
       description: t('editor:export.markmap.description'),
       run: handleMarkmap,
     });
+    if (shareEnabled) {
+      items.push({
+        key: 'share-cloud',
+        icon: <Cloud size={16} className="w-6 flex justify-center shrink-0" />,
+        label: t('settings:storage.share.menu'),
+        description: t('settings:storage.description'),
+        run: handleShareToCloud,
+      });
+    }
   } else if (fileType === 'rich-text') {
     items.push({
       key: 'html',
@@ -233,6 +271,45 @@ export function ExportMenu() {
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)' }}>{t('editor:export.processing.title')}</div>
               <div style={{ fontSize: 12, color: 'var(--t3)', marginTop: 4 }}>{t('editor:export.processing.hint')}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share success: URL copied to clipboard; show the URL + dismiss */}
+      {shareUrl && (
+        <div className="dlg-overlay" onClick={() => setShareUrl(null)}>
+          <div className="dlg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <Cloud size={18} className="text-acc" />
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)' }}>{t('settings:storage.toast.htmlShared')}</div>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 8 }}>{t('settings:storage.description')}</div>
+            <input
+              readOnly
+              value={shareUrl}
+              className="w-full py-2 px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[12px] font-mono outline-none"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+            <div className="dlg-ft" style={{ marginTop: 16 }}>
+              <button className="btn btn-p btn-sm" onClick={() => setShareUrl(null)}>OK</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share error: surface the cause; user closes */}
+      {shareError && (
+        <div className="dlg-overlay" onClick={() => setShareError(null)}>
+          <div className="dlg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, padding: 24 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)', marginBottom: 10 }}>
+              {t('settings:storage.toast.uploadFailed')}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--t3)', lineHeight: 1.6, wordBreak: 'break-word' }}>
+              {shareError}
+            </div>
+            <div className="dlg-ft" style={{ marginTop: 16 }}>
+              <button className="btn btn-p btn-sm" onClick={() => setShareError(null)}>OK</button>
             </div>
           </div>
         </div>

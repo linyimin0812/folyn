@@ -24,6 +24,10 @@ import { getHandlerById } from '@/components/file-types/registry';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { isExternalPath } from '@/utils/isExternalPath';
 import { WIKI_PREFIX } from '@/types/wiki';
+import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
+import { getProvider } from '@/services/storage/registry';
+import type { ProviderConfig } from '@/services/storage/types';
+import { readFile } from '@tauri-apps/plugin-fs';
 
 export type { ExportFormat };
 export { hasContainerSyntax };
@@ -186,6 +190,117 @@ export async function exportActiveRichTextHtml(onBeforeDialog?: () => void): Pro
 }
 
 /**
+ * Share the active markdown doc as HTML to the configured storage
+ * provider. Returns the public URL. Caller writes it to clipboard and
+ * surfaces a toast.
+ *
+ * ponytail: mirrors exportActiveHtml up to the HTML assembly, then
+ * swaps the final `downloadBlob` for `provider.uploadHtml`. Image
+ * handling follows the global `htmlImageMode` setting:
+ *   - 'inline' (default): existing `inlineImages()` → data URIs
+ *   - 'upload': walk vault-file:// <img> tags, upload each via the
+ *     active provider, rewrite src to the public URL
+ */
+export async function shareActiveToCloud(): Promise<string> {
+  const { name, content, path, vaultRoot } = getActiveDocument();
+  const store = useStorageConfigStore.getState();
+  const cfg = store.getActiveConfig();
+  if (!cfg) {
+    throw new Error('STORAGE_NOT_CONFIGURED');
+  }
+  const provider = getProvider(store.activeProvider);
+  if (!provider.capabilities.html) {
+    throw new Error('STORAGE_NO_HTML_CAPABILITY');
+  }
+
+  const theme: 'light' | 'dark' =
+    (document.documentElement.dataset.theme as 'light' | 'dark') === 'dark' ? 'dark' : 'light';
+  const themeVars = theme === 'dark' ? DARK_THEME_VARS : LIGHT_THEME_VARS;
+  const { html: renderedBody, css } = await renderMarkdownToHtmlViaDom(content, path, vaultRoot, theme);
+
+  let body: string;
+  if (store.htmlImageMode === 'inline') {
+    body = await inlineImages(renderedBody, vaultRoot, path);
+  } else {
+    body = await uploadImagesToProvider(renderedBody, vaultRoot, path, provider, cfg);
+  }
+
+  const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
+  const htmlContent = `<!DOCTYPE html>
+<html lang="zh-CN" data-theme="${theme}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(name.replace(/\.md$/, ''))}</title>
+  <style>${HTML_STYLES}\n${themeVars}\n${css}\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n</style>
+  <script>${CONTAINER_INTERACT_SCRIPT}</script>
+</head>
+<body>
+${body}
+</body>
+</html>`;
+
+  return provider.uploadHtml(htmlContent, cfg);
+}
+
+/**
+ * Walk all `vault-file://` <img> srcs in `html`, upload each to the
+ * active provider, and rewrite the src to the returned public URL.
+ * Mirrors `inlineImages` (services/export/shared.ts) but uploads
+ * instead of converting to data URI. Sister function on purpose — same
+ * regex, same path resolution, parallel structure keeps the diff
+ * readable.
+ *
+ * ponytail: dedupes unique paths so 10-IMG docs upload each image
+ * once. Ceiling: very large docs upload sequentially (no batching)
+ * — R2/Qiniu PUT uploads are independent so a Promise.all batch
+ * would scale, but introduces concurrency limits and retry
+ * semantics we don't need yet.
+ */
+async function uploadImagesToProvider(
+  html: string,
+  vaultRoot: string,
+  currentFilePath: string | undefined,
+  provider: ReturnType<typeof getProvider>,
+  cfg: ProviderConfig,
+): Promise<string> {
+  const imgRegex = /<img\s[^>]*?src="vault-file:\/\/([^"]+?)"[^>]*?\/?>/gi;
+  const matches = [...html.matchAll(imgRegex)];
+  if (matches.length === 0) return html;
+
+  const { resolveBasePath } = await import('@/utils/pathResolver');
+  const { join } = await import('@tauri-apps/api/path');
+  const resolvedRoot = await resolveBasePath(vaultRoot);
+  const fileDir = currentFilePath
+    ? currentFilePath.substring(0, currentFilePath.lastIndexOf('/'))
+    : '';
+  const uniquePaths = [...new Set(matches.map((m) => m[1]))];
+
+  const replacements = await Promise.all(
+    uniquePaths.map(async (relativePath) => {
+      const decoded = decodeURIComponent(relativePath.replace(/&amp;/g, '&'));
+      const basePath = fileDir ? await join(resolvedRoot, fileDir) : resolvedRoot;
+      const absPath = await join(basePath, decoded);
+      try {
+        const bytes = await readFile(absPath);
+        const ext = absPath.split('.').pop()?.toLowerCase() ?? 'png';
+        const url = await provider.uploadImage(new Uint8Array(bytes), ext, cfg);
+        return { original: `vault-file://${relativePath}`, url };
+      } catch {
+        // Leave the original src — broken img preferable to a failed share
+        return null;
+      }
+    }),
+  );
+
+  let result = html;
+  for (const r of replacements) {
+    if (r) result = result.replaceAll(r.original, r.url);
+  }
+  return result;
+}
+
+/**
  * React hook facade over the imperative export functions. Reads from stores at
  * call time so the returned callbacks always reflect the latest active tab and
  * vault without depending on render-captured state. Kept for component
@@ -199,6 +314,7 @@ export function useExport() {
   const exportSvg = useCallback((onBeforeDialog?: () => void) => exportActiveSvg(onBeforeDialog), []);
   const exportPng = useCallback((onBeforeDialog?: () => void) => exportActivePng(onBeforeDialog), []);
   const exportMarkmap = useCallback((onBeforeDialog?: () => void) => exportActiveMarkmapSvg(onBeforeDialog), []);
+  const shareToCloud = useCallback(() => shareActiveToCloud(), []);
   const getActiveContent = useCallback(
     () => {
       const { name, content, path } = getActiveDocument();
@@ -206,5 +322,5 @@ export function useExport() {
     },
     [],
   );
-  return { exportMarkdown, exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, getActiveContent };
+  return { exportMarkdown, exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, getActiveContent };
 }

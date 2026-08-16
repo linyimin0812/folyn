@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { SettingsTab } from '@/store/navStore';
-import { Monitor, SquarePen, Keyboard, FileText, PawPrint, Bell, Puzzle, ShieldCheck, Sparkles, Mic, Info, Terminal } from 'lucide-react';
+import { Monitor, SquarePen, Keyboard, FileText, PawPrint, Bell, Puzzle, ShieldCheck, Sparkles, Mic, Info, Terminal, Cloud } from 'lucide-react';
 
 /**
  * Shared presentational primitives used across the settings tabs
@@ -27,6 +27,7 @@ export const NAV_GROUPS: { labelKey: string; items: { id: SettingsTab; icon: Rea
     { id: 'notifications', icon: <Bell size={14} />, nameKey: 'settings:tabs.notifications' },
     { id: 'plugins', icon: <Puzzle size={14} />, nameKey: 'settings:tabs.plugins' },
     { id: 'csp', icon: <ShieldCheck size={14} />, nameKey: 'settings:tabs.csp' },
+    { id: 'storage', icon: <Cloud size={14} />, nameKey: 'settings:tabs.storage' },
   ]},
   { labelKey: 'settings:groups.ai', items: [
     { id: 'cli', icon: <Terminal size={14} />, nameKey: 'settings:tabs.cli' },

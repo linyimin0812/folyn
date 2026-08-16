@@ -11,6 +11,7 @@ import { FileTemplatesSettings } from '@/components/settings/FileTemplatesSettin
 import { PetSettings } from '@/components/settings/PetSettings';
 import { NotificationsSettings } from '@/components/settings/NotificationsSettings';
 import { CspSettings } from '@/components/settings/CspSettings';
+import { StorageSharingSettings } from '@/components/settings/StorageSharingSettings';
 import { ShortcutEditor } from '@/components/settings/ShortcutEditor';
 import { ScriptRuntimesSettings } from '@/components/settings/ScriptRuntimesSettings';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
@@ -311,6 +312,11 @@ export function SettingsPage() {
         {/* -- 安全策略 -- */}
         {settingsTab === 'csp' && (
           <CspSettings />
+        )}
+
+        {/* -- 存储与分享 -- */}
+        {settingsTab === 'storage' && (
+          <StorageSharingSettings />
         )}
 
         {/* -- 关于 -- */}

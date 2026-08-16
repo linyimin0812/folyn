@@ -1,5 +1,5 @@
 /** Upload target types */
-export type UploadTarget = 'local' | 'oss' | 'cdn';
+export type UploadTarget = 'local' | 'r2' | 'qiniu';
 
 /** Result returned after a successful upload */
 export interface ImageUploadResult {
@@ -78,29 +78,51 @@ class LocalFileStrategy implements ImageUploadStrategy {
   }
 }
 
-// ─── OSS Strategy (reserved) ────────────────────────────
+// ─── R2 Strategy (delegates to storage layer) ─────────────────────────
 
-class OssStrategy implements ImageUploadStrategy {
-  readonly name: UploadTarget = 'oss';
-  readonly label = 'OSS 云存储';
+import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
+import { getProvider } from '@/services/storage/registry';
+import { isR2Config } from '@/services/storage/types';
+
+class R2Strategy implements ImageUploadStrategy {
+  readonly name: UploadTarget = 'r2';
+  readonly label = 'Cloudflare R2';
   readonly icon = '☁️';
-  readonly enabled = false;
+  get enabled(): boolean {
+    const cfg = useStorageConfigStore.getState().configs.r2 ?? null;
+    return getProvider('r2').isConfigured(cfg);
+  }
 
-  async upload(): Promise<ImageUploadResult> {
-    throw new Error('OSS 上传暂未实现');
+  async upload(imageBase64: string, config: ImageUploadConfig, _vaultRoot: string, _currentFilePath?: string): Promise<ImageUploadResult> {
+    const cfg = useStorageConfigStore.getState().configs.r2 ?? null;
+    if (!isR2Config(cfg)) throw new Error('R2 not configured');
+    const bytes = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
+    const ext = config.format === 'jpeg' ? 'jpg' : config.format;
+    const url = await getProvider('r2').uploadImage(bytes, ext, cfg);
+    return { markdownUrl: url, previewUrl: url, fileSize: bytes.length };
   }
 }
 
-// ─── CDN Strategy (reserved) ────────────────────────────
+// ─── Qiniu Strategy (delegates to storage layer) ──────────────────────
 
-class CdnStrategy implements ImageUploadStrategy {
-  readonly name: UploadTarget = 'cdn';
-  readonly label = 'CDN';
-  readonly icon = '🔗';
-  readonly enabled = false;
+import { isQiniuConfig } from '@/services/storage/types';
 
-  async upload(): Promise<ImageUploadResult> {
-    throw new Error('CDN 上传暂未实现');
+class QiniuStrategy implements ImageUploadStrategy {
+  readonly name: UploadTarget = 'qiniu';
+  readonly label = '七牛云 Kodo';
+  readonly icon = '🐄';
+  get enabled(): boolean {
+    const cfg = useStorageConfigStore.getState().configs.qiniu ?? null;
+    return getProvider('qiniu').isConfigured(cfg);
+  }
+
+  async upload(imageBase64: string, config: ImageUploadConfig, _vaultRoot: string, _currentFilePath?: string): Promise<ImageUploadResult> {
+    const cfg = useStorageConfigStore.getState().configs.qiniu ?? null;
+    if (!isQiniuConfig(cfg)) throw new Error('Qiniu not configured');
+    const bytes = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
+    const ext = config.format === 'jpeg' ? 'jpg' : config.format;
+    const url = await getProvider('qiniu').uploadImage(bytes, ext, cfg);
+    return { markdownUrl: url, previewUrl: url, fileSize: bytes.length };
   }
 }
 
@@ -108,8 +130,8 @@ class CdnStrategy implements ImageUploadStrategy {
 
 const uploadStrategies: ImageUploadStrategy[] = [
   new LocalFileStrategy(),
-  new OssStrategy(),
-  new CdnStrategy(),
+  new R2Strategy(),
+  new QiniuStrategy(),
 ];
 
 export function getStrategy(name: UploadTarget): ImageUploadStrategy {

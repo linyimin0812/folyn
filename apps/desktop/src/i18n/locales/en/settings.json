@@ -21,6 +21,7 @@
     "notifications": "Notifications",
     "plugins": "Plugins",
     "csp": "Security Policy",
+    "storage": "Storage & Sharing",
     "about": "About"
   },
   "appearance": {
@@ -679,6 +680,53 @@
     "apply": {
       "button": "Apply & Reload",
       "note": "Clicking Apply reloads the page — it flashes briefly. Newly added URLs and “Allow all URLs” only take effect after the reload."
+    }
+  },
+  "storage": {
+    "title": "Storage & Sharing",
+    "description": "Cloud object storage — used for image hosting and HTML sharing",
+    "provider": {
+      "label": "Provider",
+      "configured": "Ready",
+      "notConfigured": "Not configured",
+      "r2": { "label": "Cloudflare R2" },
+      "qiniu": { "label": "Qiniu Kodo" }
+    },
+    "r2": {
+      "accountId": "Account ID",
+      "accessKeyId": "Access Key ID",
+      "secretAccessKey": "Secret Access Key",
+      "bucket": "Bucket",
+      "publicHint": "Make the bucket public-read (R2 → Settings → Public Development URL, or bind a custom domain). Uploaded objects return 403 until you do."
+    },
+    "qiniu": {
+      "accessKey": "Access Key",
+      "secretKey": "Secret Key",
+      "bucket": "Bucket",
+      "region": "Region",
+      "publicHint": "Bind a custom domain in Qiniu console and set bucket to public-read. Uploaded objects return 403 until you do."
+    },
+    "publicBaseUrl": "Public base URL",
+    "imageKeyPrefix": "Image key prefix",
+    "htmlKeyPrefix": "HTML key prefix",
+    "save": "Save",
+    "clear": "Clear",
+    "htmlImageMode": {
+      "label": "HTML image handling",
+      "help": "When sharing a markdown doc as HTML, what happens to local images inside it.",
+      "inline": "Inline as data URI (single file)",
+      "upload": "Upload to provider and rewrite src"
+    },
+    "toast": {
+      "uploading": "Uploading to cloud…",
+      "imageUploaded": "Image uploaded",
+      "htmlShared": "Share URL copied to clipboard",
+      "uploadFailed": "Upload failed",
+      "notConfigured": "Storage provider not configured — open Settings → Storage & Sharing",
+      "bucketNotPublic": "Object uploaded but bucket is not public — open the provider console to enable public access"
+    },
+    "share": {
+      "menu": "Share to Cloud"
     }
   }
 }

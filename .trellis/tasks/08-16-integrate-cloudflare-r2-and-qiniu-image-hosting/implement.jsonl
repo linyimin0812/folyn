@@ -1,1 +1,9 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "新增 services/storage/ 子目录结构需遵循 desktop 包的目录约定"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "StorageSharingSettings 表单组件按 desktop 组件规范写"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "storageConfigStore 走 zustand + 持久化 slice，遵循现有 store 范式"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "settings tab 标签 + toast 文案需走 i18n"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "ProviderConfig discriminated union + StorageProvider 接口需严格类型"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "签名 + 上传是非平凡逻辑，遵循测试要求"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop frontend 总览"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "复用 inlineContainerImages / aiConfigStore 范式 / ImageUploadStrategy 接口"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "storage 抽象层跨越 UI / store / crypto / services 多层"}
