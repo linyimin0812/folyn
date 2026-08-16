@@ -70,7 +70,7 @@ async function postForm(
 
 export class QiniuProvider implements StorageProvider {
   readonly id = 'qiniu';
-  readonly labelKey = 'settings:storage.providers.qiniu.label';
+  readonly labelKey = 'settings:storage.provider.qiniu.label';
   readonly icon = '🐄';
   readonly capabilities = { image: true, html: true };
 

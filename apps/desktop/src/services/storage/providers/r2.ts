@@ -69,7 +69,7 @@ async function putObject(
 
 export class R2Provider implements StorageProvider {
   readonly id = 'r2';
-  readonly labelKey = 'settings:storage.providers.r2.label';
+  readonly labelKey = 'settings:storage.provider.r2.label';
   readonly icon = '☁️';
   readonly capabilities = { image: true, html: true };
 
