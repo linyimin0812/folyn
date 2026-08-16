@@ -93,7 +93,13 @@ describe('mmap export enhancer', () => {
     // Blank-export regression: markmap must render synchronously (duration:0)
     // so d3 transitions (foreignObject opacity 0→1, node translate, fit zoom)
     // are all settled before the SVG is serialized.
-    expect(mocks.create.mock.calls[0][1]).toEqual({ autoFit: true, duration: 0 });
+    // Dark-theme vars are baked into the SVG's inlined <style> via the `style`
+    // option (a FUNCTION — markmap-view's getStyleContent discards strings) so
+    // the standalone export carries the right text color.
+    const opts = mocks.create.mock.calls[0][1] as { style?: () => string };
+    expect(opts).toMatchObject({ autoFit: true, duration: 0 });
+    expect(typeof opts.style).toBe('function');
+    expect(opts.style!()).toContain('--markmap-text-color');
   });
 
   it('stashes a well-formed XML SVG on data-raw-svg (void <img> self-closed)', async () => {

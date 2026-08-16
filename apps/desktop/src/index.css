@@ -1416,12 +1416,16 @@ mjx-container svg {
   will-change: transform;
 }
 
-/* ponytail: markmap text inherits from container; flip color in dark theme.
-   markmap-view's branch color comes from its built-in palette (unchanged),
-   only the topic text needs to invert. */
-.markmap-container {
-  color: var(--fg, #1f2328);
+/* ponytail: markmap-view sets `--markmap-text-color: #333` on its own
+   `.markmap` (the SVG), which beats inheriting `.markmap-container`'s vars.
+   Target `.markmap` from the container for sufficient specificity. */
+.markmap-container .markmap {
+  --markmap-text-color: #1f2328;
+  --markmap-circle-open-bg: #fff;
 }
-[data-theme='dark'] .markmap-container {
-  color: var(--fg, #e6edf3);
+[data-theme='dark'] .markmap-container .markmap {
+  --markmap-text-color: #e6edf3;
+  --markmap-circle-open-bg: #1f2030;
+  --markmap-code-bg: #1a1b26;
+  --markmap-code-color: #ddd;
 }

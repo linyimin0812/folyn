@@ -35,7 +35,20 @@ export async function renderMarkmapSvg(
   container.appendChild(svg);
   document.body.appendChild(container);
   try {
-    const mm = Markmap.create(svg, { autoFit: true, duration: 0 });
+    // ponytail: SVG carries markmap-view's inlined <style> (light defaults).
+    // The live doc's [data-theme] override from index.css doesn't serialize
+    // into the standalone SVG, so bake the dark vars here via the `style`
+    // option — must be a FUNCTION: getStyleContent does `typeof t == "function"
+    // ? t(i) : ""`, so a string gets discarded. Output is appended after
+    // globalCSS in the SVG's <style>, wins by cascade order. Include the
+    // panel background so a standalone SVG matches the in-app preview
+    // (otherwise the transparent SVG lands on the browser's white default).
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const style = () =>
+      isDark
+        ? '.markmap{--markmap-text-color:#e6edf3;--markmap-circle-open-bg:#1f2030;--markmap-code-bg:#1a1b26;--markmap-code-color:#ddd;background:#0b0d14}'
+        : '.markmap{--markmap-text-color:#1f2328;--markmap-circle-open-bg:#fff;background:#f0f2f8}';
+    const mm = Markmap.create(svg, { autoFit: true, duration: 0, style });
     const { root } = transformer.transform(content || '');
     resolveImagesInTree(root, assetBase);
     await mm.setData(root);
