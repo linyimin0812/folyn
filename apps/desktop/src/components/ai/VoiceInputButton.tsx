@@ -28,11 +28,12 @@ import { isWebGLAvailable } from './SiriGL';
 // orb's own VoiceOrbApp will surface a fallback (TODO). For the mic-button
 // path the CSS ring stays as the in-panel fallback when WebGL is missing.
 
-// ponytail: voice is supported on macOS + Windows (R15). `isVoiceSupportedPlatform`
-// gates the button; `isMacPlatform` gates the macOS-only SiriGL overlay path
-// (Windows has no orb window — R15 out of scope — so the CSS ring is the
-// Windows fallback indicator). Both helpers live in shellSidecar.ts so
-// VoiceInputButton / useVoiceInput / VoiceSettings share one source of truth.
+// ponytail: voice is macOS-only for now (Windows support temporarily hidden
+// in `isVoiceSupportedPlatform`; Rust voice module is still cfg-gated to
+// macOS). `isVoiceSupportedPlatform` gates the button; `isMacPlatform` gates
+// the macOS-only SiriGL overlay path (non-mac platforms fall back to the CSS
+// ring indicator). Both helpers live in shellSidecar.ts so VoiceInputButton /
+// useVoiceInput / VoiceSettings share one source of truth.
 
 export function VoiceInputButton({ disabled }: { disabled?: boolean }) {
   const { t } = useTranslation();

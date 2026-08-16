@@ -34,12 +34,15 @@ export function isMacPlatform(): boolean {
 
 /** Whether the voice module is supported on the current platform.
  *
- *  R15 widens voice from macOS-only to macOS + Windows. Linux / web stay
- *  unsupported. Centralized here so VoiceInputButton / useVoiceInput /
- *  VoiceSettings share one source of truth (PRD R15 frontend gating).
- *  `isTauri()` guard ensures the web build (no `navigator.platform` Tauri
- *  webview semantics) short-circuits to false. */
+ *  Voice input is macOS-only for now. Windows support was added in R15 but
+ *  is temporarily hidden (the Rust voice module is still cfg-gated to macOS).
+ *  Re-enable Windows by restoring: `return isMacPlatform() || isWindowsPlatform();`
+ *  Centralized here so VoiceInputButton / useVoiceInput / VoiceSettings share
+ *  one source of truth. `isTauri()` guard ensures the web build (no
+ *  `navigator.platform` Tauri webview semantics) short-circuits to false. */
 export function isVoiceSupportedPlatform(): boolean {
   if (!isTauri()) return false;
-  return isMacPlatform() || isWindowsPlatform();
+  // Windows 语音输入暂未支持，先隐藏（代码保留，后续再支持）。
+  return isMacPlatform();
+  // return isMacPlatform() || isWindowsPlatform();
 }

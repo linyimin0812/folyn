@@ -439,7 +439,7 @@
     "title": "音声入力",
     "description": "AIチャットで🎤をクリックするかグローバルホットキーを押して録音開始。音声は文字起こしされ、推敲され、フォーカス中の入力に挿入されます（アプリをまたぐ）。",
     "windowsUnsupported": "。このプラットフォームでは音声入力はサポートされていません",
-    "windowsUnsupportedBanner": "このプラットフォームでは音声入力はサポートされていません。macOSはApple Speech、WindowsはWinRT SpeechRecognitionを使用。",
+    "windowsUnsupportedBanner": "音声入力はmacOSのみ対応しています。Windows対応は近日公開予定です。",
     "permission": {
       "checking": "確認中…",
       "granted": "許可済み ✓",

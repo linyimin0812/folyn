@@ -439,7 +439,7 @@
     "title": "Entrada de voz",
     "description": "Haz clic en 🎤 en el chat de IA o pulsa el atajo global para empezar a grabar; la voz se transcribe, refina, e inserta en la entrada enfocada (entre apps).",
     "windowsUnsupported": ". La entrada de voz no se admite en esta plataforma",
-    "windowsUnsupportedBanner": "La entrada de voz no se admite en esta plataforma. macOS usa Apple Speech; Windows usa WinRT SpeechRecognition.",
+    "windowsUnsupportedBanner": "La entrada de voz solo se admite en macOS. El soporte para Windows llegará pronto.",
     "permission": {
       "checking": "Comprobando…",
       "granted": "Concedido ✓",

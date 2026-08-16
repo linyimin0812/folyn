@@ -439,7 +439,7 @@
     "title": "Spracheingabe",
     "description": "Im KI-Chat auf 🎤 klicken oder den globalen Hotkey drücken zum Aufnehmen; Sprache wird transkribiert, überarbeitet und in den fokussierten Input eingefügt (app-übergreifend).",
     "windowsUnsupported": ". Spracheingabe wird auf dieser Plattform nicht unterstützt",
-    "windowsUnsupportedBanner": "Spracheingabe wird auf dieser Plattform nicht unterstützt. macOS nutzt Apple Speech; Windows nutzt WinRT SpeechRecognition.",
+    "windowsUnsupportedBanner": "Spracheingabe wird nur unter macOS unterstützt. Windows-Unterstützung folgt in Kürze.",
     "permission": {
       "checking": "Prüfe…",
       "granted": "Gewährt ✓",

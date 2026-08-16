@@ -439,7 +439,7 @@
     "title": "Saisie vocale",
     "description": "Cliquer 🎤 dans le chat IA ou appuyer sur le raccourci global pour enregistrer ; la voix est transcrite, polie, puis insérée dans le champ focalisé (entre apps).",
     "windowsUnsupported": ". La saisie vocale n'est pas prise en charge sur cette plateforme",
-    "windowsUnsupportedBanner": "La saisie vocale n'est pas prise en charge sur cette plateforme. macOS utilise Apple Speech ; Windows utilise WinRT SpeechRecognition.",
+    "windowsUnsupportedBanner": "La saisie vocale n'est prise en charge que sous macOS. Le support Windows arrivera bientôt.",
     "permission": {
       "checking": "Vérification…",
       "granted": "Accordée ✓",

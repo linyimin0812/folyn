@@ -143,10 +143,11 @@ export function VoiceSettings() {
   const voicePair = useAiConfigStore((s) => s.voicePair);
   const setVoicePair = useAiConfigStore((s) => s.setVoicePair);
 
-  // ponytail: R15 widens voice from macOS-only to macOS + Windows. Split
-  // the old `onMac` into `isMac` (mac-only permission rows: mic / speech /
-  // accessibility — Windows has no equivalent concepts) and `voiceSupported`
-  // (banner gate — only Linux/web see the unsupported banner now).
+  // ponytail: voice is macOS-only for now (Windows support temporarily hidden
+  // in `isVoiceSupportedPlatform`; Rust voice module is still cfg-gated to
+  // macOS). `voiceSupported` gates the unsupported banner — Windows / Linux /
+  // web all see the banner now. `isMac` gates the mac-only permission rows
+  // (mic / speech / accessibility).
   const voiceSupported = isVoiceSupportedPlatform();
 
   // macOS permission affordances: each is an explicit "trigger the system prompt"

@@ -55,9 +55,10 @@ export interface VoiceInputState {
   clearError: () => void;
 }
 
-/** macOS + Windows check (R15 widened voice support). Mirrors the one in
- *  VoiceInputButton via the shared `isVoiceSupportedPlatform` helper. The
- *  hotkey path on an unsupported platform would call `start()` →
+/** macOS-only check for now (Windows support temporarily hidden in
+ *  `isVoiceSupportedPlatform`; Rust voice module is still cfg-gated to macOS).
+ *  Mirrors the one in VoiceInputButton via the shared `isVoiceSupportedPlatform`
+ *  helper. The hotkey path on an unsupported platform would call `start()` →
  *  `invoke('voice_start')` → platform-unsupported error; we short-circuit
  *  here so the button stays calm. */
 
