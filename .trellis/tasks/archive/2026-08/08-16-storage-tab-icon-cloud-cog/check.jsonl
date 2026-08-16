@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "icon swap 属于纯 UI 变更，需走基础质量校验"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "lucide 图标选型与使用规范"}
