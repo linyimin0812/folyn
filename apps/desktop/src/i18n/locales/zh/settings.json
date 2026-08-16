@@ -733,7 +733,9 @@
       "bucketNotPublic": "对象已上传，但 bucket 未开放公开访问——请到服务商控制台开启"
     },
     "share": {
-      "menu": "分享到云端"
+      "menu": "分享到云端",
+      "imageMenu": "上传图片到图床",
+      "imageMenuDesc": "把当前图片直接上传到云端图床，返回公开直链"
     }
   }
 }

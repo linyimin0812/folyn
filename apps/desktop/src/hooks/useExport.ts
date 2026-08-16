@@ -291,6 +291,40 @@ ${body}
 }
 
 /**
+ * Share the active image file (png/jpg/jpeg/gif/webp/bmp/ico/svg) directly
+ * to the configured storage provider's image host. Returns the public URL.
+ *
+ * Reads raw bytes from disk for binary image types (needsFileContent=false)
+ * and from `content` for svg (text). Then `provider.uploadImage(bytes, ext,
+ * cfg)` reuses the same path the paste-image flow uses, so the SHA1-based
+ * object key and content-type mapping are shared.
+ */
+export async function shareActiveImageToCloud(): Promise<string> {
+  const { name, content, path, fileType } = getActiveDocument();
+  const store = useStorageConfigStore.getState();
+  const cfg = store.getActiveConfig();
+  if (!cfg) {
+    throw new Error('STORAGE_NOT_CONFIGURED');
+  }
+  const provider = getProvider(store.activeProvider);
+  if (!provider.capabilities.image) {
+    throw new Error('STORAGE_NO_IMAGE_CAPABILITY');
+  }
+
+  const ext = (name.split('.').pop() ?? 'png').toLowerCase();
+
+  let bytes: Uint8Array;
+  if (fileType === 'svg' && content) {
+    bytes = new TextEncoder().encode(content);
+  } else {
+    if (!path) throw new Error('SHARE_NO_PATH');
+    bytes = await readActiveBytes(path);
+  }
+
+  return provider.uploadImage(bytes, ext, cfg);
+}
+
+/**
  * Walk all `vault-file://` <img> srcs in `html`, upload each to the
  * active provider, and rewrite the src to the returned public URL.
  * Mirrors `inlineImages` (services/export/shared.ts) but uploads
@@ -362,6 +396,7 @@ export function useExport() {
   const exportPng = useCallback((onBeforeDialog?: () => void) => exportActivePng(onBeforeDialog), []);
   const exportMarkmap = useCallback((onBeforeDialog?: () => void) => exportActiveMarkmapSvg(onBeforeDialog), []);
   const shareToCloud = useCallback(() => shareActiveToCloud(), []);
+  const shareImageToCloud = useCallback(() => shareActiveImageToCloud(), []);
   const getActiveContent = useCallback(
     () => {
       const { name, content, path } = getActiveDocument();
@@ -369,5 +404,5 @@ export function useExport() {
     },
     [],
   );
-  return { exportMarkdown, exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, getActiveContent };
+  return { exportMarkdown, exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, shareImageToCloud, getActiveContent };
 }

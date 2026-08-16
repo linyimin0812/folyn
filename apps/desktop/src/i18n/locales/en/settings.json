@@ -733,7 +733,9 @@
       "bucketNotPublic": "Object uploaded but bucket is not public — open the provider console to enable public access"
     },
     "share": {
-      "menu": "Share to Cloud"
+      "menu": "Share to Cloud",
+      "imageMenu": "Upload Image to Host",
+      "imageMenuDesc": "Upload the current image directly to the cloud image host and return a public direct link"
     }
   }
 }

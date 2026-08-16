@@ -31,7 +31,7 @@ export function ExportMenu() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, getActiveContent } = useExport();
+  const { exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, shareImageToCloud, getActiveContent } = useExport();
   const activeProvider = useStorageConfigStore((s) => s.activeProvider);
   const activeCfg = useStorageConfigStore((s) => s.configs[s.activeProvider] ?? null);
   const shareEnabled = activeCfg ? getProvider(activeProvider).isConfigured(activeCfg) : false;
@@ -119,11 +119,33 @@ export function ExportMenu() {
           ? t('settings:storage.toast.notConfigured')
           : err.message === 'STORAGE_NO_HTML_CAPABILITY'
             ? t('settings:storage.toast.notConfigured')
-            : `${t('settings:storage.toast.uploadFailed')}: ${err.message}`;
+            : err.message === 'STORAGE_NO_IMAGE_CAPABILITY'
+              ? t('settings:storage.toast.notConfigured')
+              : `${t('settings:storage.toast.uploadFailed')}: ${err.message}`;
         setShareError(msg);
       })
       .finally(() => setExporting(false));
   }, [shareToCloud, t]);
+
+  const handleShareImageToCloud = useCallback(() => {
+    setOpen(false);
+    setShareError(null);
+    setExporting(true);
+    shareImageToCloud()
+      .then(async (url) => {
+        await navigator.clipboard.writeText(url).catch(() => {});
+        setShareUrl(url);
+      })
+      .catch((err: Error) => {
+        const msg = err.message === 'STORAGE_NOT_CONFIGURED'
+          ? t('settings:storage.toast.notConfigured')
+          : err.message === 'STORAGE_NO_IMAGE_CAPABILITY'
+            ? t('settings:storage.toast.notConfigured')
+            : `${t('settings:storage.toast.uploadFailed')}: ${err.message}`;
+        setShareError(msg);
+      })
+      .finally(() => setExporting(false));
+  }, [shareImageToCloud, t]);
 
   const sourceKey = KNOWN_SOURCE_TYPES.has(fileType) ? fileType : 'default';
   const items: Item[] = [
@@ -208,6 +230,16 @@ export function ExportMenu() {
         label: t('settings:storage.share.menu'),
         description: t('settings:storage.description'),
         run: handleShareToCloud,
+      });
+    }
+  } else if (fileType === 'image' || fileType === 'svg') {
+    if (shareEnabled) {
+      items.push({
+        key: 'share-image-cloud',
+        icon: <Cloud size={16} className="w-6 flex justify-center shrink-0" />,
+        label: t('settings:storage.share.imageMenu'),
+        description: t('settings:storage.share.imageMenuDesc'),
+        run: handleShareImageToCloud,
       });
     }
   }
