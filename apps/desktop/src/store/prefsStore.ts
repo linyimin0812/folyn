@@ -44,22 +44,50 @@ export const DEFAULT_SHORTCUTS: ShortcutItem[] = buildDefaultShortcuts(
 );
 
 /**
+ * Map the other platform's modifier glyphs to this platform's equivalent so a
+ * persisted shortcut written elsewhere (or by a pre-platform-aware build that
+ * hardcoded `⌘` across all platforms) loads as a valid, bindable combo here.
+ *
+ *   ⌘  → Ctrl   (non-mac: Command has no key on Windows/Linux; Control is the
+ *                platform-primary modifier, mirroring ⌘ on macOS)
+ *   ⌥  → Alt    (non-mac: Option has no key on Windows/Linux; Alt is its twin)
+ *   Win → ⌘     (mac: the logo key is Command)
+ *
+ * Without this, a `⌘`-prefixed default persisted by the old hardcoded build
+ * renders a meaningless glyph in the settings UI and emits an unbindable
+ * `Cmd+…` accelerator to the OS-global shortcut layer (Windows has no Command
+ * key) — so the default togglePetPanel shortcut silently fails until the user
+ * re-records it. Combos already valid on this platform pass through unchanged,
+ * so platform-correct user customizations are preserved.
+ */
+function translateModifiers(keys: string[]): string[] {
+  const map: Record<string, string> = isMacPlatform()
+    ? { Win: '⌘' }
+    : { '⌘': 'Ctrl', '⌥': 'Alt' };
+  return keys.map((k) => map[k] ?? k);
+}
+
+/**
  * Backfill persisted `shortcuts` with any DEFAULT_SHORTCUTS entries that are
- * missing (by id). Existing entries' customized `keys` are preserved — only
- * missing ids are appended from the defaults. This runs at settings-load
- * time so a user who persisted a `shortcuts` array before a new default was
- * added (e.g. `togglePetPanel`) sees the new entry appear automatically
- * without resetting their other rebindings. Mirrors the
+ * missing (by id) AND translate the other platform's modifier glyphs to this
+ * platform's equivalent. Existing entries' customized non-modifier keys are
+ * preserved — only missing ids are appended and only invalid modifier symbols
+ * are translated. This runs at settings-load time so a user who persisted a
+ * `shortcuts` array before a new default was added (e.g. `togglePetPanel`) sees
+ * the new entry appear automatically without resetting their other rebindings,
+ * and so a config persisted on another OS (or by a pre-platform-aware build
+ * that hardcoded `⌘`) loads as bindable here. Mirrors the
  * `backfillBuiltinExcludePatterns` pattern.
  */
 export function backfillDefaultShortcuts(saved: ShortcutItem[]): ShortcutItem[] {
   if (!Array.isArray(saved) || saved.length === 0) {
     return [...DEFAULT_SHORTCUTS];
   }
-  const savedIds = new Set(saved.map((s) => s.id));
+  const translated = saved.map((s) => ({ ...s, keys: translateModifiers(s.keys) }));
+  const savedIds = new Set(translated.map((s) => s.id));
   const missing = DEFAULT_SHORTCUTS.filter((d) => !savedIds.has(d.id));
-  if (missing.length === 0) return saved;
-  return [...saved, ...missing];
+  if (missing.length === 0) return translated;
+  return [...translated, ...missing];
 }
 
 export const PERSIST_KEYS_PREFS = [

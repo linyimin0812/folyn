@@ -6,6 +6,7 @@ import { keysToAccelerator } from '@/utils/shortcutAccelerator';
 import { isTauri } from '@/utils/platform';
 import { currentWindowScaleFactor } from '@/utils/windowScale';
 import { usePetStore } from '@/store/petStore';
+import { usePrefsStore } from '@/store/prefsStore';
 import { hydrateAllStores } from '@/store/settingsPersistence';
 
 /**
@@ -311,6 +312,14 @@ export function PetApp() {
   // `PetMascot`'s `size` prop.
   const petSize = usePetStore((s) => s.petSize);
   const spriteSize = petSizeToPx(petSize);
+
+  // Persisted keys for the global pet-panel toggle shortcut. Subscribed (not
+  // getState) so this updates when the pet window's own store instance
+  // hydrates from the `pet://settings-updated` broadcast — which arrives
+  // AFTER mount (the main window answers `pet://settings-request` once its
+  // own loadSettings finishes) — and on every user rebind. The register
+  // effect below re-registers the OS accelerator on each change.
+  const toggleKeys = usePrefsStore((s) => s.shortcuts.find((x) => x.id === 'togglePetPanel')?.keys);
 
   // ── State machine: mouse event handlers ──
   // ponytail: the hand cursor on hover is now set by the Rust-side
@@ -773,39 +782,55 @@ export function PetApp() {
 
   // ── Global shortcut: toggle pet-panel from any app ──
   // Rust's `tauri_plugin_global_shortcut` handler emits `pet://shortcut-toggle`
-  // on every Pressed event (see lib.rs plugin build). This effect:
-  //   1. registers the persisted accelerator on mount (so the shortcut works
-  //      before the user visits Settings), and
-  //   2. listens for `pet://shortcut-toggle` and calls `openPetPanelCentered`.
+  // on every Pressed event (see lib.rs plugin build). Two effects:
   //
-  // Mounted in the `pet` window (always alive while pet mode is on) so the
-  // listener + registration survive across main-window hide/show. Wrapped in
-  // isTauri + try/catch so non-Tauri/test envs skip it. The unlisten callback
-  // is returned from `listen` for cleanup; the accelerator stays registered
-  // at the OS level after unmount (Tauri process exit unregisters it).
+  //   1. REGISTER the toggle accelerator with the OS, re-running whenever the
+  //      persisted `toggleKeys` change. This is crucial because the `pet`
+  //      window holds its own store instance that hydrates from the
+  //      cross-window `pet://settings-updated` broadcast AFTER mount. The
+  //      first run reads pre-hydration DEFAULTS; once the broadcast arrives
+  //      (and on every user rebind) the effect re-registers the persisted
+  //      combo. Without this, a Windows user whose persisted toggle is
+  //      `Win+Shift+Q` would have the DEFAULT `Ctrl+Shift+Q` registered at
+  //      startup → the shortcut silently fails until they re-record it.
+  //      macOS hides the bug: the default `⌘+Shift+Q` usually matches what
+  //      the user persisted, so the stale registration happens to bind the
+  //      right combo.
+  //
+  //   2. LISTEN for `pet://shortcut-toggle` and call `openPetPanelCentered`.
+  //      Runs once on mount — the listener is key-combo-agnostic, so it
+  //      needs no re-registration when keys change.
+  //
+  // Mounted in the `pet` window (always alive while pet mode is on) so both
+  // survive across main-window hide/show. Wrapped in isTauri + try/catch so
+  // non-Tauri/test envs skip them. The accelerator stays registered at the OS
+  // level after unmount (Tauri process exit unregisters it).
+  useEffect(() => {
+    if (!isTauri() || !toggleKeys) return;
+    (async () => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const accelerator = keysToAccelerator(toggleKeys);
+        await invoke('pet_panel_set_shortcut', { accelerator });
+        console.info('[pet] global shortcut registered:', accelerator);
+      } catch (err) {
+        console.warn('[pet] global shortcut register failed:', err);
+      }
+    })();
+  }, [toggleKeys]);
+
   useEffect(() => {
     if (!isTauri()) return;
     let unlisten: (() => void) | undefined;
     (async () => {
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
         const { listen } = await import('@tauri-apps/api/event');
-        const { usePrefsStore } = await import('@/store/prefsStore');
-        const { shortcuts } = usePrefsStore.getState();
-        const toggle = shortcuts.find((s) => s.id === 'togglePetPanel');
-        if (toggle) {
-          const accelerator = keysToAccelerator(toggle.keys);
-          await invoke('pet_panel_set_shortcut', { accelerator });
-          console.info('[pet] global shortcut registered:', accelerator);
-        } else {
-          console.warn('[pet] togglePetPanel shortcut not found in prefsStore; global shortcut not registered');
-        }
         unlisten = await listen('pet://shortcut-toggle', () => {
           console.info('[pet] pet://shortcut-toggle event received');
           void openPetPanelCentered();
         });
       } catch (err) {
-        console.warn('[pet] global shortcut setup failed:', err);
+        console.warn('[pet] shortcut-toggle listen failed:', err);
       }
     })();
     return () => {
