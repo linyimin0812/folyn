@@ -347,35 +347,37 @@ export function ExportMenu() {
               <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)' }}>{t('settings:storage.toast.htmlShared')}</div>
             </div>
             <div style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 8 }}>{t('settings:storage.description')}</div>
-            <div style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
+            <div style={{ position: 'relative' }}>
               <input
                 readOnly
                 value={shareUrl}
-                className="flex-1 min-w-0 py-2 px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[12px] font-mono outline-none"
+                className="w-full py-2 pl-2.5 pr-14 border border-brd2 rounded-md bg-surf text-t1 text-[12px] font-mono outline-none"
                 onFocus={(e) => e.currentTarget.select()}
               />
-              <button
-                className="tb-btn shrink-0 flex items-center justify-center w-9 rounded-md border border-brd2 text-t2 hover:bg-hov hover:text-t1 transition-colors"
-                onClick={() => {
-                  navigator.clipboard.writeText(shareUrl).catch(() => {});
-                  setUrlCopied(true);
-                  setTimeout(() => setUrlCopied(false), 1500);
-                }}
-                title={t('settings:storage.cors.copyButton')}
-              >
-                {urlCopied ? <Check size={14} className="text-acc" /> : <Copy size={14} />}
-              </button>
-              <button
-                className="tb-btn shrink-0 flex items-center justify-center w-9 rounded-md border border-brd2 text-t2 hover:bg-hov hover:text-t1 transition-colors"
-                onClick={() => {
-                  import('@tauri-apps/plugin-shell').then(({ open }) => open(shareUrl));
-                }}
-                title={t('editor:export.share.openExternal')}
-              >
-                <ExternalLink size={14} />
-              </button>
+              <div style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: 2 }}>
+                <button
+                  className="tb-btn flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 transition-colors"
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareUrl).catch(() => {});
+                    setUrlCopied(true);
+                    setTimeout(() => setUrlCopied(false), 1500);
+                  }}
+                  title={t('settings:storage.cors.copyButton')}
+                >
+                  {urlCopied ? <Check size={14} className="text-acc" /> : <Copy size={14} />}
+                </button>
+                <button
+                  className="tb-btn flex items-center justify-center w-7 h-7 rounded text-t2 hover:bg-hov hover:text-t1 transition-colors"
+                  onClick={() => {
+                    import('@tauri-apps/plugin-shell').then(({ open }) => open(shareUrl));
+                  }}
+                  title={t('editor:export.share.openExternal')}
+                >
+                  <ExternalLink size={14} />
+                </button>
+              </div>
             </div>
-            <div className="dlg-ft" style={{ marginTop: 16 }}>
+            <div className="dlg-ft" style={{ marginTop: 12, padding: '8px 0 0', borderTop: 'none' }}>
               <button className="btn btn-p btn-sm" onClick={() => setShareUrl(null)}>OK</button>
             </div>
           </div>
