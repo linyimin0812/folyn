@@ -36,11 +36,10 @@ export function bytesToBase64(bytes: Uint8Array): string {
 }
 
 export function bytesToBase64Url(bytes: Uint8Array): string {
-  // ponytail: btoa then swap +/, strip padding. Qiniu uses url-safe
-  // base64 for the upload token; S3 SigV4 uses base64 of the signing
-  // key only at the final signature step (also url-safe for query
-  // params). One helper covers both.
-  return bytesToBase64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  // ponytail: Qiniu's urlsafe base64 keeps the '=' padding — see
+  // qiniu/nodejs-sdk/qiniu/util.js: base64ToUrlSafe swaps +→- and /→_
+  // but does NOT strip padding. Stripping it here caused BadToken.
+  return bytesToBase64(bytes).replace(/\+/g, '-').replace(/\//g, '_');
 }
 
 // ─── String / bytes conversion ──────────────────────────────────────────
