@@ -202,7 +202,7 @@ export async function exportActiveRichTextHtml(onBeforeDialog?: () => void): Pro
  *     active provider, rewrite src to the public URL
  */
 export async function shareActiveToCloud(): Promise<string> {
-  const { name, content, path, vaultRoot } = getActiveDocument();
+  const { name, content, path, vaultRoot, fileType } = getActiveDocument();
   const store = useStorageConfigStore.getState();
   const cfg = store.getActiveConfig();
   if (!cfg) {
@@ -213,6 +213,55 @@ export async function shareActiveToCloud(): Promise<string> {
     throw new Error('STORAGE_NO_HTML_CAPABILITY');
   }
 
+  const htmlContent = await buildShareableHtml(name, content, path, vaultRoot, fileType, store, cfg, provider);
+  return provider.uploadHtml(htmlContent, cfg);
+}
+
+/**
+ * Build the shareable HTML payload for the active document, dispatching on
+ * fileType:
+ *  - markdown: render → inline/upload images → wrap in styled shell
+ *  - rich-text: richTextToHtmlBlob already returns a full HTML doc
+ *  - canvas types (dbml/excalidraw/drawio/mmap/plantuml/graphviz/mermaid):
+ *    render preview SVG, wrap in a minimal centered-HTML shell so the
+ *    shared URL serves a viewable web page.
+ */
+async function buildShareableHtml(
+  name: string,
+  content: string,
+  path: string,
+  vaultRoot: string,
+  fileType: string,
+  store: ReturnType<typeof useStorageConfigStore.getState>,
+  cfg: ProviderConfig,
+  provider: ReturnType<typeof getProvider>,
+): Promise<string> {
+  const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'mmap', 'plantuml', 'graphviz', 'mermaid']);
+
+  if (fileType === 'rich-text') {
+    const blob = await richTextToHtmlBlob(content, name, vaultRoot);
+    return blob.text();
+  }
+
+  if (CANVAS_TYPES.has(fileType)) {
+    const svg = await renderFilePreviewToSvg(path, vaultRoot);
+    if (!svg) throw new Error('SHARE_NO_SVG');
+    const baseName = escapeHtml(name.replace(/\.[^.]+$/, ''));
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${baseName}</title>
+  <style>html, body { margin: 0; padding: 24px; background: #fff; } body { display: flex; justify-content: center; } svg { max-width: 100%; height: auto; }</style>
+</head>
+<body>
+${svg}
+</body>
+</html>`;
+  }
+
+  // markdown (default)
   const theme: 'light' | 'dark' =
     (document.documentElement.dataset.theme as 'light' | 'dark') === 'dark' ? 'dark' : 'light';
   const themeVars = theme === 'dark' ? DARK_THEME_VARS : LIGHT_THEME_VARS;
@@ -226,7 +275,7 @@ export async function shareActiveToCloud(): Promise<string> {
   }
 
   const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
-  const htmlContent = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="zh-CN" data-theme="${theme}">
 <head>
   <meta charset="UTF-8">
@@ -239,8 +288,6 @@ export async function shareActiveToCloud(): Promise<string> {
 ${body}
 </body>
 </html>`;
-
-  return provider.uploadHtml(htmlContent, cfg);
 }
 
 /**

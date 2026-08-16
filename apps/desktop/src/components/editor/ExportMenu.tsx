@@ -167,6 +167,15 @@ export function ExportMenu() {
       description: t('editor:export.html.description'),
       run: handleRichTextHtml,
     });
+    if (shareEnabled) {
+      items.push({
+        key: 'share-cloud',
+        icon: <Cloud size={16} className="w-6 flex justify-center shrink-0" />,
+        label: t('settings:storage.share.menu'),
+        description: t('settings:storage.description'),
+        run: handleShareToCloud,
+      });
+    }
   } else if (CANVAS_TYPES.has(fileType)) {
     items.push(
       {
@@ -190,6 +199,15 @@ export function ExportMenu() {
         label: t('editor:export.png.label'),
         description: t('editor:export.png.description'),
         run: handlePng,
+      });
+    }
+    if (shareEnabled) {
+      items.push({
+        key: 'share-cloud',
+        icon: <Cloud size={16} className="w-6 flex justify-center shrink-0" />,
+        label: t('settings:storage.share.menu'),
+        description: t('settings:storage.description'),
+        run: handleShareToCloud,
       });
     }
   }
