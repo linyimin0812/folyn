@@ -25,7 +25,7 @@ export interface LocalUploadConfig extends ImageUploadConfig {
 /** Strategy interface – every upload backend implements this */
 export interface ImageUploadStrategy {
   readonly name: UploadTarget;
-  readonly label: string;
+  readonly labelKey: string;
   readonly icon: string;
   readonly enabled: boolean;
 
@@ -41,7 +41,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 
 class LocalFileStrategy implements ImageUploadStrategy {
   readonly name: UploadTarget = 'local';
-  readonly label = '本地文件';
+  readonly labelKey = 'editor:imagePaste.targets.local';
   readonly icon = '📁';
   readonly enabled = true;
 
@@ -86,7 +86,7 @@ import { isR2Config } from '@/services/storage/types';
 
 class R2Strategy implements ImageUploadStrategy {
   readonly name: UploadTarget = 'r2';
-  readonly label = 'Cloudflare R2';
+  readonly labelKey = 'editor:imagePaste.targets.r2';
   readonly icon = '☁️';
   get enabled(): boolean {
     const cfg = useStorageConfigStore.getState().configs.r2 ?? null;
@@ -109,7 +109,7 @@ import { isQiniuConfig } from '@/services/storage/types';
 
 class QiniuStrategy implements ImageUploadStrategy {
   readonly name: UploadTarget = 'qiniu';
-  readonly label = '七牛云 Kodo';
+  readonly labelKey = 'editor:imagePaste.targets.qiniu';
   readonly icon = '🐄';
   get enabled(): boolean {
     const cfg = useStorageConfigStore.getState().configs.qiniu ?? null;

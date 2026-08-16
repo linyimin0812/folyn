@@ -87,6 +87,11 @@
   "imagePaste": {
     "title": "📷 Bild einfügen",
     "uploadMethod": "Upload-Methode",
+    "targets": {
+      "local": "Lokale Datei",
+      "r2": "Cloudflare R2",
+      "qiniu": "Qiniu Kodo"
+    },
     "comingSoon": "Demnächst",
     "fileName": "Bildname",
     "fileNamePlaceholder": "Bildname eingeben",

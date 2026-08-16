@@ -150,23 +150,24 @@ export function ImagePasteDialog({
           <img src={previewUrl} alt="preview" className="max-h-[200px] max-w-full object-contain rounded-md border border-brd bg-surf" />
         </div>
 
-        {/* Upload target tabs */}
+        {/* Upload target selector */}
         <div className="py-1.5 px-[18px]">
           <label className="block text-xs text-t3 mb-1 font-medium">{t('editor:imagePaste.uploadMethod')}</label>
-          <div className="flex gap-2">
-            {strategies.map((strategy) => (
-              <button
-                key={strategy.name}
-                className={`img-paste-tab flex-1 flex flex-col items-center gap-0.5 py-2 px-1.5 border-[1.5px] rounded-lg cursor-pointer transition-all duration-150 ${selectedTarget === strategy.name ? 'border-acc bg-accdim' : 'border-brd2 bg-surf hover:border-acc'} ${!strategy.enabled ? 'opacity-45 cursor-not-allowed' : ''}`}
-                disabled={!strategy.enabled}
-                onClick={() => strategy.enabled && setSelectedTarget(strategy.name)}
-              >
-                <span className="text-lg">{strategy.icon}</span>
-                <span className="text-[11px] text-t1 font-medium">{strategy.label}</span>
-                {!strategy.enabled && <span className="text-[9px] text-t3 bg-surf2 px-[5px] py-px rounded mt-px">{t('editor:imagePaste.comingSoon')}</span>}
-              </button>
-            ))}
-          </div>
+          <select
+            className="settings-select w-full cursor-pointer"
+            value={selectedTarget}
+            onChange={(e) => setSelectedTarget(e.target.value as UploadTarget)}
+          >
+            {strategies.map((strategy) => {
+              const label = t(strategy.labelKey);
+              const suffix = strategy.enabled ? '' : ` (${t('editor:imagePaste.comingSoon')})`;
+              return (
+                <option key={strategy.name} value={strategy.name} disabled={!strategy.enabled}>
+                  {strategy.icon} {label}{suffix}
+                </option>
+              );
+            })}
+          </select>
         </div>
 
         {/* File name */}

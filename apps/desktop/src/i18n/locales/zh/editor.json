@@ -91,6 +91,11 @@
   "imagePaste": {
     "title": "📷 粘贴图片",
     "uploadMethod": "上传方式",
+    "targets": {
+      "local": "本地文件",
+      "r2": "Cloudflare R2",
+      "qiniu": "七牛云 Kodo"
+    },
     "comingSoon": "敬请期待",
     "fileName": "图片名称",
     "fileNamePlaceholder": "输入图片名称",

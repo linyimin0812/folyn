@@ -87,6 +87,11 @@
   "imagePaste": {
     "title": "📷 画像を貼り付け",
     "uploadMethod": "アップロード方法",
+    "targets": {
+      "local": "ローカルファイル",
+      "r2": "Cloudflare R2",
+      "qiniu": "Qiniu Kodo"
+    },
     "comingSoon": "近日対応",
     "fileName": "画像名",
     "fileNamePlaceholder": "画像名を入力",

@@ -87,6 +87,11 @@
   "imagePaste": {
     "title": "📷 Coller une image",
     "uploadMethod": "Méthode d'envoi",
+    "targets": {
+      "local": "Fichier local",
+      "r2": "Cloudflare R2",
+      "qiniu": "Qiniu Kodo"
+    },
     "comingSoon": "Bientôt disponible",
     "fileName": "Nom de l'image",
     "fileNamePlaceholder": "Saisir le nom de l'image",

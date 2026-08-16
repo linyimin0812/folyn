@@ -5,7 +5,7 @@
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Cloud, Save, Trash2 } from 'lucide-react';
+import { CloudCog, Save, Trash2 } from 'lucide-react';
 import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
 import { getAllProviders } from '@/services/storage/registry';
 import type {
@@ -32,7 +32,7 @@ export function StorageSharingSettings() {
   return (
     <div className="mb-8">
       <div className="pb-3 mb-5 border-b border-brd2 flex items-baseline gap-2">
-        <Cloud size={20} className="text-acc" />
+        <CloudCog size={20} className="text-acc" />
         <div className="text-[length:calc(var(--ui-font-size)+3px)] font-bold text-t1 tracking-[-0.01em]">{t('settings:storage.title')}</div>
         <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3">{t('settings:storage.description')}</div>
       </div>

@@ -91,6 +91,11 @@
   "imagePaste": {
     "title": "📷 Paste image",
     "uploadMethod": "Upload method",
+    "targets": {
+      "local": "Local file",
+      "r2": "Cloudflare R2",
+      "qiniu": "Qiniu Kodo"
+    },
     "comingSoon": "Coming soon",
     "fileName": "Image name",
     "fileNamePlaceholder": "Enter image name",
