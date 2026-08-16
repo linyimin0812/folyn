@@ -38,9 +38,14 @@ const BASE_DIRECTIVES: Record<string, string[]> = {
   "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "'wasm-unsafe-eval'", 'blob:', 'quill-plugin:'],
   "style-src": ["'self'", "'unsafe-inline'"],
   "font-src": ["'self'", 'data:'],
-  "img-src": ["'self'", 'data:', 'blob:', 'asset:', 'http://asset.localhost'],
+  // ponytail: Qiniu default test domain (clouddn.com) is HTTP-only on the
+  // free tier; without this entry the markdown preview can't render images
+  // uploaded to it. HTTPS users with a custom domain still need to add it
+  // themselves via the CSP settings UI.
+  "img-src": ["'self'", 'data:', 'blob:', 'asset:', 'http://asset.localhost', 'http://*.clouddn.com'],
   "media-src": ["'self'", 'blob:', 'asset:', 'http://asset.localhost'],
-  "connect-src": ["'self'", 'ipc:', 'http://ipc.localhost', 'quill-plugin:'],
+  // ponytail: Qiniu upload endpoint — POST target for form uploads.
+  "connect-src": ["'self'", 'ipc:', 'http://ipc.localhost', 'quill-plugin:', 'https://*.qiniup.com'],
   "worker-src": ["'self'", 'blob:'],
   "frame-src": ["'self'", 'blob:', 'data:', 'quill-plugin:'],
 };
