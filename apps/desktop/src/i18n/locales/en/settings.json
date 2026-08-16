@@ -735,7 +735,9 @@
     "share": {
       "menu": "Share to Cloud",
       "imageMenu": "Upload Image to Host",
-      "imageMenuDesc": "Upload the current image directly to the cloud image host and return a public direct link"
+      "imageMenuDesc": "Upload the current image directly to the cloud image host and return a public direct link",
+      "fileMenu": "Upload Source File to Cloud",
+      "fileMenuDesc": "Upload the current file directly to the cloud and return a public direct link"
     }
   }
 }

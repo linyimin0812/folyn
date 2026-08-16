@@ -31,7 +31,7 @@ export function ExportMenu() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, shareImageToCloud, getActiveContent } = useExport();
+  const { exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, shareBytesToCloud, getActiveContent } = useExport();
   const activeProvider = useStorageConfigStore((s) => s.activeProvider);
   const activeCfg = useStorageConfigStore((s) => s.configs[s.activeProvider] ?? null);
   const shareEnabled = activeCfg ? getProvider(activeProvider).isConfigured(activeCfg) : false;
@@ -127,11 +127,11 @@ export function ExportMenu() {
       .finally(() => setExporting(false));
   }, [shareToCloud, t]);
 
-  const handleShareImageToCloud = useCallback(() => {
+  const handleShareBytesToCloud = useCallback(() => {
     setOpen(false);
     setShareError(null);
     setExporting(true);
-    shareImageToCloud()
+    shareBytesToCloud()
       .then(async (url) => {
         await navigator.clipboard.writeText(url).catch(() => {});
         setShareUrl(url);
@@ -145,7 +145,7 @@ export function ExportMenu() {
         setShareError(msg);
       })
       .finally(() => setExporting(false));
-  }, [shareImageToCloud, t]);
+  }, [shareBytesToCloud, t]);
 
   const sourceKey = KNOWN_SOURCE_TYPES.has(fileType) ? fileType : 'default';
   const items: Item[] = [
@@ -239,7 +239,20 @@ export function ExportMenu() {
         icon: <Cloud size={16} className="w-6 flex justify-center shrink-0" />,
         label: t('settings:storage.share.imageMenu'),
         description: t('settings:storage.share.imageMenuDesc'),
-        run: handleShareImageToCloud,
+        run: handleShareBytesToCloud,
+      });
+    }
+  } else {
+    // Source-only file types (clip/code/csv/html/json/office/web/...) — no
+    // specialized rendering. Upload raw bytes; shares the paste-image upload
+    // path so SHA1 object key + content-type mapping are reused.
+    if (shareEnabled) {
+      items.push({
+        key: 'share-file-cloud',
+        icon: <Cloud size={16} className="w-6 flex justify-center shrink-0" />,
+        label: t('settings:storage.share.fileMenu'),
+        description: t('settings:storage.share.fileMenuDesc'),
+        run: handleShareBytesToCloud,
       });
     }
   }

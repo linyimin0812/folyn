@@ -735,7 +735,9 @@
     "share": {
       "menu": "分享到云端",
       "imageMenu": "上传图片到图床",
-      "imageMenuDesc": "把当前图片直接上传到云端图床，返回公开直链"
+      "imageMenuDesc": "把当前图片直接上传到云端图床，返回公开直链",
+      "fileMenu": "上传源文件到云端",
+      "fileMenuDesc": "把当前文件直接上传到云端，返回公开直链"
     }
   }
 }

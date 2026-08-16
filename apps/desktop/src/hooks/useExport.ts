@@ -291,16 +291,21 @@ ${body}
 }
 
 /**
- * Share the active image file (png/jpg/jpeg/gif/webp/bmp/ico/svg) directly
- * to the configured storage provider's image host. Returns the public URL.
+ * Upload the active file's raw bytes to the configured storage provider's
+ * image host. Returns the public URL.
  *
- * Reads raw bytes from disk for binary image types (needsFileContent=false)
- * and from `content` for svg (text). Then `provider.uploadImage(bytes, ext,
- * cfg)` reuses the same path the paste-image flow uses, so the SHA1-based
- * object key and content-type mapping are shared.
+ * Used by both the image-tab share menu (png/jpg/svg/...) and the
+ * source-tab share menu (code/csv/json/html/office/web — file types
+ * without specialized rendering). Reuses `provider.uploadImage(bytes, ext,
+ * cfg)` so the SHA1-based object key and content-type mapping are shared
+ * with the paste-image flow.
+ *
+ * Bytes source: prefer `tab.content` (already in memory for text types
+ * like code/json/html/svg), fall back to `readActiveBytes(path)` for
+ * binary types (image/office) where content is empty by design.
  */
-export async function shareActiveImageToCloud(): Promise<string> {
-  const { name, content, path, fileType } = getActiveDocument();
+export async function shareActiveBytesToCloud(): Promise<string> {
+  const { name, content, path } = getActiveDocument();
   const store = useStorageConfigStore.getState();
   const cfg = store.getActiveConfig();
   if (!cfg) {
@@ -311,14 +316,15 @@ export async function shareActiveImageToCloud(): Promise<string> {
     throw new Error('STORAGE_NO_IMAGE_CAPABILITY');
   }
 
-  const ext = (name.split('.').pop() ?? 'png').toLowerCase();
+  const ext = (name.split('.').pop() ?? 'bin').toLowerCase();
 
   let bytes: Uint8Array;
-  if (fileType === 'svg' && content) {
+  if (content) {
     bytes = new TextEncoder().encode(content);
-  } else {
-    if (!path) throw new Error('SHARE_NO_PATH');
+  } else if (path) {
     bytes = await readActiveBytes(path);
+  } else {
+    throw new Error('SHARE_NO_PATH');
   }
 
   return provider.uploadImage(bytes, ext, cfg);
@@ -396,7 +402,7 @@ export function useExport() {
   const exportPng = useCallback((onBeforeDialog?: () => void) => exportActivePng(onBeforeDialog), []);
   const exportMarkmap = useCallback((onBeforeDialog?: () => void) => exportActiveMarkmapSvg(onBeforeDialog), []);
   const shareToCloud = useCallback(() => shareActiveToCloud(), []);
-  const shareImageToCloud = useCallback(() => shareActiveImageToCloud(), []);
+  const shareBytesToCloud = useCallback(() => shareActiveBytesToCloud(), []);
   const getActiveContent = useCallback(
     () => {
       const { name, content, path } = getActiveDocument();
@@ -404,5 +410,5 @@ export function useExport() {
     },
     [],
   );
-  return { exportMarkdown, exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, shareImageToCloud, getActiveContent };
+  return { exportMarkdown, exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, shareBytesToCloud, getActiveContent };
 }
