@@ -675,7 +675,7 @@
       "description": "点击“应用并刷新”后，以下策略才会生效。"
     },
     "baseline": {
-      "note": "Tauri IPC、quill-plugin、asset、data: 与 blob: 始终允许，不可移除。"
+      "note": "Tauri IPC、quill-plugin、asset、data: 与 blob: 始终允许，不可移除。另外默认放行七牛云图床域名 http://*.clouddn.com 与上传端点 https://*.qiniup.com。"
     },
     "apply": {
       "button": "应用并刷新",
