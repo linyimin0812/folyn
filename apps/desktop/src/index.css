@@ -131,11 +131,15 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--brd2); border-radius: 2px; }
 
-.prev-body { scrollbar-width: none; }
-.prev-body:hover { scrollbar-width: thin; }
-.prev-body::-webkit-scrollbar { width: 0; height: 0; }
-.prev-body:hover::-webkit-scrollbar { width: 6px; height: 6px; }
-.prev-body::-webkit-scrollbar-thumb { background: var(--t4); border-radius: 3px; }
+/* Same stable-gutter fix as .cm-wrapper: constant scrollbar width (never a
+   0↔6 toggle on hover) + scrollbar-gutter: stable keeps the preview content
+   width constant when the scrollbar appears/disappears — fixes the hover
+   flicker. The thumb is transparent until hover to keep the preview clean. */
+.prev-body { scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.prev-body:hover { scrollbar-color: var(--t4) transparent; }
+.prev-body::-webkit-scrollbar { width: 6px; height: 6px; }
+.prev-body::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+.prev-body:hover::-webkit-scrollbar-thumb { background: var(--t4); }
 .prev-body::-webkit-scrollbar-track { background: transparent; }
 
 .chat-msg-scroll {
@@ -217,11 +221,15 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 /* ── CodeMirror ── */
 .cm-wrapper { flex: 1; overflow: hidden; position: relative; }
 .cm-wrapper .cm-editor { height: 100%; }
-.cm-wrapper .cm-scroller { overflow: auto; line-height: 1.7; scrollbar-width: none; }
-.cm-wrapper:hover .cm-scroller { scrollbar-width: thin; }
-.cm-wrapper .cm-scroller::-webkit-scrollbar { width: 0; height: 0; }
-.cm-wrapper:hover .cm-scroller::-webkit-scrollbar { width: 6px; height: 6px; }
-.cm-wrapper .cm-scroller::-webkit-scrollbar-thumb { background: var(--t4); border-radius: 3px; }
+/* Keep the scrollbar width constant (never 0↔6 toggle) and reserve its gutter
+   with scrollbar-gutter: stable so the content width never changes when the
+   scrollbar appears/disappears — fixes the hover flicker. Only the thumb
+   colour toggles (transparent until hover), preserving the clean look. */
+.cm-wrapper .cm-scroller { overflow: auto; line-height: 1.7; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.cm-wrapper:hover .cm-scroller { scrollbar-color: var(--t4) transparent; }
+.cm-wrapper .cm-scroller::-webkit-scrollbar { width: 6px; height: 6px; }
+.cm-wrapper .cm-scroller::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+.cm-wrapper:hover .cm-scroller::-webkit-scrollbar-thumb { background: var(--t4); }
 .cm-wrapper .cm-scroller::-webkit-scrollbar-track { background: transparent; }
 .cm-wrapper .cm-content { padding: 16px 16px 80vh 6px; }
 .cm-wrapper .cm-gutters { background: var(--surf); border-right: none !important; color: var(--t3); }
