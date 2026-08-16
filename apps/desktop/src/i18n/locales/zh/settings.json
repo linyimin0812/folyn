@@ -714,8 +714,10 @@
     "htmlImageMode": {
       "label": "HTML 内图片处理",
       "help": "分享 markdown 为 HTML 时，文档内的本地图片如何处理。",
-      "inline": "Inline 为 data URI（单文件自包含）",
-      "upload": "上传到图床并重写 src"
+      "inline": "Inline",
+      "inlineDesc": "图片内联为 data URI，HTML 单文件自包含。",
+      "upload": "上传",
+      "uploadDesc": "图片上传到图床，src 重写为公网 URL。"
     },
     "toast": {
       "uploading": "正在上传到云端…",

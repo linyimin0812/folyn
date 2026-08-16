@@ -41,7 +41,7 @@ export function StorageSharingSettings() {
       <div className="mb-5">
         <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:storage.provider.label')}</div>
         <select
-          className="w-full py-[7px] px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[13px] outline-none focus:border-acc focus:shadow-[0_0_0_2px_var(--accdim)]"
+          className="settings-select"
           value={activeProvider}
           onChange={(e) => setActiveProvider(e.target.value)}
         >
@@ -75,19 +75,23 @@ export function StorageSharingSettings() {
       )}
 
       {/* HTML image mode (global) */}
-      <div className="mt-7 pt-4 border-t border-brd2">
-        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:storage.htmlImageMode.label')}</div>
-        <div className="text-[11px] text-t3 mb-2">{t('settings:storage.htmlImageMode.help')}</div>
-        <div className="flex gap-2">
+      <div className="mt-7 pt-5 border-t border-brd2">
+        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-1">{t('settings:storage.htmlImageMode.label')}</div>
+        <div className="text-[11px] text-t3 mb-3">{t('settings:storage.htmlImageMode.help')}</div>
+        <div className="flex border border-brd2 rounded-md overflow-hidden">
           {(['inline', 'upload'] as const).map((m) => (
             <button
               key={m}
-              className={`flex-1 py-1.5 px-3.5 border-none text-xs font-medium cursor-pointer transition-all duration-150 border-r border-r-brd2 ${htmlImageMode === m ? 'bg-acc text-white font-semibold' : 'bg-surf text-t2 hover:bg-hov hover:text-t1'}`}
+              type="button"
+              className={`flex-1 py-1.5 px-3.5 text-xs font-medium cursor-pointer transition-all duration-150 border-r border-r-brd2 last:border-r-0 ${htmlImageMode === m ? 'bg-acc text-white font-semibold' : 'bg-surf text-t2 hover:bg-hov hover:text-t1'}`}
               onClick={() => setHtmlImageMode(m)}
             >
               {t(`settings:storage.htmlImageMode.${m}`)}
             </button>
           ))}
+        </div>
+        <div className="text-[11px] text-t3 mt-2 leading-relaxed">
+          {t(`settings:storage.htmlImageMode.${htmlImageMode}Desc`)}
         </div>
       </div>
     </div>
@@ -108,7 +112,7 @@ function Field({ label, value, onChange, placeholder, type = 'text' }: {
       <label className="block text-xs text-t3 mb-1 font-medium">{label}</label>
       <input
         type={type}
-        className="w-full py-[7px] px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[13px] outline-none focus:border-acc focus:shadow-[0_0_0_2px_var(--accdim)]"
+        className="w-full py-[6px] px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[13px] outline-none focus:border-acc focus:shadow-[0_0_0_2px_var(--accdim)]"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
@@ -194,7 +198,7 @@ function QiniuForm({ cfg, onSave, onRemove, t }: {
         <div className="mb-3">
           <label className="block text-xs text-t3 mb-1 font-medium">{t('settings:storage.qiniu.region')}</label>
           <select
-            className="w-full py-[7px] px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[13px] outline-none focus:border-acc"
+            className="settings-select"
             value={draft.region}
             onChange={(e) => set({ region: e.target.value as QiniuProviderConfig['region'] })}
           >

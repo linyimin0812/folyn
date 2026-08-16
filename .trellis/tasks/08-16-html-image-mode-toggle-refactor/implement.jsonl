@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "表单组件视觉对齐 / 沿用 segmented-control 模式"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "拆分 label/desc 新增 i18n key"}
