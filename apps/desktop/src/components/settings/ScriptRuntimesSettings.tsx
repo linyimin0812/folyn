@@ -48,6 +48,10 @@ export function ScriptRuntimesSettings() {
                 const detected = output.stdout.trim().split('\n')[0];
                 if (output.code === 0 && detected) {
                   setRuntimePath(r.id, detected);
+                  setTestStatus((s) => ({
+                    ...s,
+                    [r.id]: { testing: false, result: { success: true, message: t('settings:scriptRuntime.detectDetected', { path: detected }) } },
+                  }));
                 } else {
                   setTestStatus((s) => ({
                     ...s,
@@ -68,7 +72,7 @@ export function ScriptRuntimesSettings() {
               setTestStatus((s) => ({ ...s, [r.id]: { testing: true } }));
               try {
                 const { Command } = await import('@tauri-apps/plugin-shell');
-                const runCmd = `${r.binaryPath} ${r.versionArgs.join(' ')}`;
+                const runCmd = `${r.binaryPath || r.defaultBinaryPath} ${r.versionArgs.join(' ')}`;
                 const [name, args] = buildShellSidecar(runCmd);
                 const cmd = Command.create(name, args);
                 const output = await cmd.execute();
@@ -127,7 +131,7 @@ function RuntimeRow({
             className="fi2 py-[7px] px-2.5 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui transition-[border-color] duration-100 focus:border-acc w-[220px]"
             value={runtime.binaryPath}
             onChange={(e) => onPathChange(e.target.value)}
-            placeholder={runtime.id}
+            placeholder={runtime.defaultBinaryPath}
             autoCapitalize="off"
             spellCheck={false}
           />

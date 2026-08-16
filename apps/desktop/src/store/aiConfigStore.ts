@@ -695,7 +695,14 @@ function mergeScriptRuntimes(persisted: unknown): RuntimeConfig[] {
     if (typeof r.id !== 'string' || typeof r.binaryPath !== 'string') continue;
     const existing = byId.get(r.id);
     if (existing) {
-      existing.binaryPath = r.binaryPath;
+      // ponytail: treat persisted binaryPath equal to the platform default
+      // as "unset" so existing users (who had the old non-empty default
+      // persisted) also see an empty input by default after this change.
+      if (r.binaryPath && r.binaryPath !== existing.defaultBinaryPath) {
+        existing.binaryPath = r.binaryPath;
+      } else {
+        existing.binaryPath = '';
+      }
     }
   }
   return Array.from(byId.values());
