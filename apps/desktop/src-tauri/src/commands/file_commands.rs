@@ -55,13 +55,17 @@ pub async fn check_url(url: String) -> UrlCheckResult {
 // ────────────────────────────────────────────────────────────────────────────
 // OS "Open With" / file-association launch buffering.
 //
-// macOS `RunEvent::Opened` and the Windows single-instance handler push the
-// OS-provided paths here AND emit `app://open-external-file`. The frontend
-// drains once on mount (closing the cold-launch race where the emit fires
-// before the React listener registers) and then listens for warm-launch
-// emits. Windows cold launch pre-populates the buffer in `run()` from
-// `std::env::args_os()` BEFORE `Builder::build()` starts loading the
-// webview, so a mount-time drain can never race the argv read.
+// Sources push paths here AND emit `app://open-external-file`:
+//   - `RunEvent::Opened` (macOS Launch Services routing to the running app)
+//   - single-instance callback (macOS + Windows second-instance argv)
+//   - cold-launch argv capture in `run()` (macOS + Windows Launch
+//     Services / Explorer positional args) — populated BEFORE
+//     `Builder::build()` starts loading the webview so a mount-time drain
+//     can never race the argv read.
+// The frontend registers its listener FIRST, then drains once on mount
+// (closing the cold-launch race where the emit fires before the React
+// listener registers); `openFile` is idempotent on the tab id, so a path
+// delivered both ways just re-activates the tab.
 // ────────────────────────────────────────────────────────────────────────────
 
 /// Backend-side buffer of OS file-association launch paths (managed on the
@@ -73,18 +77,20 @@ pub async fn check_url(url: String) -> UrlCheckResult {
 pub struct PendingOpenFiles(pub std::sync::Mutex<Vec<String>>);
 
 impl PendingOpenFiles {
-    /// Windows cold-launch constructor: capture `std::env::args_os()` NOW
-    /// (before the Builder is built / webviews start loading) so a
-    /// mount-time drain can never miss the paths. argv[0] is the exe path
-    /// and `-`/`--` flags are dropped by `filter_argv_paths`.
-    #[cfg(target_os = "windows")]
+    /// Cold-launch constructor: capture `std::env::args_os()` NOW (before
+    /// the Builder is built / webviews start loading) so a mount-time drain
+    /// can never miss the paths. On both macOS and Windows, Launch Services
+    /// / Explorer passes the "Open With" file path(s) as positional argv —
+    /// this is the deterministic cold-launch channel, independent of
+    /// `RunEvent::Opened` timing. argv[0] is the exe path and `-`/`--`
+    /// flags are dropped by `filter_argv_paths`.
     pub fn from_process_args() -> Self {
         let args: Vec<String> = std::env::args_os()
             .map(|a| a.to_string_lossy().into_owned())
             .collect();
         let paths = filter_argv_paths(&args);
         crate::startup_log(format!(
-            "[open-external] windows argv captured {} pending path(s)",
+            "[open-external] argv captured {} pending path(s)",
             paths.len()
         ));
         Self(std::sync::Mutex::new(paths))
@@ -115,11 +121,6 @@ impl PendingOpenFiles {
 /// executable path) and any flag-looking argument (`-` / `--` prefix, e.g.
 /// `--single-instance` or `-psn_...` on macOS). Extracted as a pure function
 /// so the Windows argv parsing is unit-testable on every platform.
-/// `filter_argv_paths` is Windows-only in production (the macOS
-/// file-association path comes from `RunEvent::Opened` URLs, not argv), but
-/// the unit tests exercise it on every platform — so allow dead_code on
-/// non-Windows instead of gating the whole function behind a cfg.
-#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
 pub fn filter_argv_paths(args: &[String]) -> Vec<String> {
     args.iter()
         .enumerate()

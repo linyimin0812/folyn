@@ -108,6 +108,42 @@ When the OS launches Quill via "Open With" / file association on a file, Quill o
 * The single-instance plugin is registered via a `let builder = builder.plugin(...)` shadow gated to Windows (`#[cfg(target_os = "windows")]`), not an inline mid-chain `.plugin(...)` — a cfg attribute cannot be attached to a mid-chain method call (parses as a new statement, `expected ';'`). macOS keeps its native multi-instance + Launch Services behavior.
 * `startup_log` was widened to `pub(crate)` so `drain_pending_open_files` / `from_process_args` can write the required `quill-startup.log` drain record (single summary line per drain).
 
+### Follow-up (2026-08-16, warm-launch report)
+
+User reported the failure is NOT cold-launch-only: with Quill already running,
+"Open With" also fails to show the file. Root-cause analysis of the Tauri stack:
+
+* macOS warm launch depends ENTIRELY on `RunEvent::Opened` (tao 0.35.3
+  implements `application:openURLs:` → `Event::Opened`; it does NOT implement
+  `application:openFiles:`). If the running instance is not registered as the
+  document handler via Launch Services, macOS launches a SECOND process
+  instead of routing to the running one — and the original design had no
+  handler for that second process on macOS.
+* macOS cold launch also relied on `RunEvent::Opened` timing; but Launch
+  Services ALWAYS passes the opened file path(s) as positional argv on cold
+  launch — a deterministic channel the original plan only used for Windows.
+
+Revised design (this supersedes the earlier deviations):
+
+1. `PendingOpenFiles::from_process_args()` now runs on macOS AND Windows in
+   `run()` before `Builder::build()` — cold-launch drain is deterministic on
+   both platforms, independent of `RunEvent::Opened` timing. `-psn_...` /
+   `--flag` args are filtered out.
+2. `tauri-plugin-single-instance` is now registered on macOS AND Windows
+   (gated `#[cfg(not(target_os = "linux"))]`; Linux stays deferred per PRD).
+   The callback forwards the second instance's argv → buffer + emit +
+   show/focus main. This covers macOS warm launch whether macOS routes to
+   the running instance (`RunEvent::Opened`) or spawns a second process
+   (single-instance callback).
+3. Frontend order changed to LISTEN FIRST, THEN DRAIN, in two independent
+   async blocks: a warm-launch emit can never be missed (no drain↔listen
+   gap), and a `drain_pending_open_files` failure (e.g. stale backend) no
+   longer kills the warm-launch listener. `openFile` is idempotent on the
+   tab id, so a path delivered both ways just re-activates the tab.
+4. `startup_log` now records every delivery channel (`argv captured`,
+   `RunEvent::Opened`, `single-instance callback`, `drained N pending
+   path(s)`) so `quill-startup.log` shows which path a launch took.
+
 ### Verified
 
 * `cargo check -p quill` (macOS): clean for this diff (0 new warnings; the only remaining warnings are pre-existing unused re-exports).

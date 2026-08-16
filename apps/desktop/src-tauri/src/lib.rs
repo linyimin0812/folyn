@@ -323,12 +323,11 @@ pub fn run() {
     // `drain_pending_open_files` invoke can fire before `.setup()` runs —
     // so pushing argv paths inside `setup` would lose the cold-launch race
     // (the same timing that forces managed state onto the Builder chain,
-    // see the flash-quit note below). Pre-populating here guarantees any
-    // drain that fires after the webview mounts sees the paths.
-    #[cfg(target_os = "windows")]
+    // see the flash-quit note below). On macOS AND Windows, Launch Services
+    // / Explorer hands "Open With" files to the process as positional argv,
+    // so pre-populating here makes the cold-launch drain deterministic —
+    // independent of whether `RunEvent::Opened` fires in time.
     let pending_open_files = commands::PendingOpenFiles::from_process_args();
-    #[cfg(not(target_os = "windows"))]
-    let pending_open_files = commands::PendingOpenFiles::default();
 
     let builder = tauri::Builder::default()
         // ── quill-plugin:// URI scheme ──
@@ -878,25 +877,30 @@ pub fn run() {
             voice::voice_debug_frontmost,
         ]);
 
-    // Windows single-instance guard (macOS file association already funnels
-    // through RunEvent::Opened; Linux wiring is deferred — see PRD
-    // 08-16-fix-external-file-open-cold-launch-not-shown). When a second
-    // instance is launched (double-click an associated file while Quill is
-    // running), the plugin forwards the second argv to the RUNNING
-    // instance's callback here, then exits the second process. The callback
-    // mirrors the macOS RunEvent::Opened path: buffer AND emit so a
-    // still-mounting webview drains on mount and a mounted one receives the
-    // event, and surface the main window (pet-mode close-to-hide keeps it
-    // alive but hidden). Gated to Windows: macOS keeps its native
-    // multi-instance + Launch Services behavior.
-    #[cfg(target_os = "windows")]
+    // Single-instance guard (Windows + macOS). On Windows, "Open With" on an
+    // associated file while Quill is running launches a SECOND process; on
+    // macOS it normally routes to the running instance via RunEvent::Opened,
+    // but if the running instance isn't registered as the document handler
+    // macOS also spawns a second process instead. In both cases the plugin
+    // forwards the second argv to the RUNNING instance's callback here,
+    // then exits the second process. The callback mirrors the
+    // RunEvent::Opened path: buffer AND emit so a still-mounting webview
+    // drains on mount and a mounted one receives the event, and surface the
+    // main window (pet-mode close-to-hide keeps it alive but hidden). Linux
+    // wiring is deferred (no argv capture / single-instance yet) — see PRD
+    // 08-16-fix-external-file-open-cold-launch-not-shown.
+    #[cfg(not(target_os = "linux"))]
     let builder = builder.plugin({
-        startup_log("[plugin] single_instance (windows)");
+        startup_log("[plugin] single_instance");
         tauri_plugin_single_instance::init(|app, argv, _cwd| {
             let paths = commands::filter_argv_paths(&argv);
             if paths.is_empty() {
                 return;
             }
+            startup_log(format!(
+                "[open-external] single-instance callback: {} path(s)",
+                paths.len()
+            ));
             if let Some(pending) = app.try_state::<commands::PendingOpenFiles>() {
                 pending.push(paths.clone());
             }
@@ -937,6 +941,10 @@ pub fn run() {
                             })
                             .collect();
                         if !paths.is_empty() {
+                            startup_log(format!(
+                                "[open-external] RunEvent::Opened: {} path(s)",
+                                paths.len()
+                            ));
                             if let Some(main) = app.get_webview_window("main") {
                                 let _ = main.show();
                                 let _ = main.set_focus();
