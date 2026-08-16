@@ -503,13 +503,27 @@ mjx-container svg {
 .code-run-btn { position: absolute; top: 4px; right: 32px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 3px; line-height: 1; background: none; border: none; cursor: pointer; opacity: 0; transition: opacity .15s, background .12s; z-index: 3; }
 .code-block-wrapper:hover .code-run-btn { opacity: .9; }
 .code-run-btn:hover { opacity: 1 !important; background: var(--hov); }
-.code-run-output { position: relative; border-top: 1px solid var(--brd); background: var(--surf2, var(--surf)); padding: 8px 12px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; color: var(--t2); max-height: 240px; overflow: auto; }
+/* ponytail: the output panel itself no longer scrolls — only .code-run-output-
+   body does — so the absolutely-positioned sync icon (.code-sync-btn, top-right)
+   and the status row stay pinned while long output (e.g. dir listing) scrolls
+   under them. max-height caps the panel; flex column lets the body flex/shrink. */
+.code-run-output { position: relative; border-top: 1px solid var(--brd); background: var(--surf2, var(--surf)); padding: 8px 12px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; color: var(--t2); max-height: 240px; display: flex; flex-direction: column; }
+.code-run-output-body { overflow: auto; min-height: 0; }
 .code-run-output pre { margin: 0; white-space: pre-wrap; word-break: break-word; background: none; border: none; padding: 0; }
 .code-run-stderr { color: var(--red, #f06a6a); }
 .code-run-status { display: flex; align-items: center; gap: 6px; color: var(--t3); font-size: 11px; margin-top: 4px; }
-.code-sync-btn { position: absolute; top: 6px; right: 6px; padding: 2px; line-height: 1; background: none; border: none; cursor: pointer; color: var(--t3); opacity: .7; transition: opacity .12s, color .12s; z-index: 2; }
+/* ponytail: matching background + radius so the pinned sync chip stays a
+   clean opaque square while output scrolls under it (transparent bg would let
+   text bleed through the icon). Opacity still drives the dim→bright hover. */
+.code-sync-btn { position: absolute; top: 6px; right: 6px; padding: 2px; line-height: 1; background: var(--surf2, var(--surf)); border: none; border-radius: 3px; cursor: pointer; color: var(--t3); opacity: .7; transition: opacity .12s, color .12s; z-index: 2; }
 .code-sync-btn:hover { opacity: 1; color: var(--t1); }
 .md-preview blockquote { border-left: 3px solid var(--acc); padding: 4px 16px; margin: 12px 0; color: var(--t2); background: var(--surf); border-radius: 0 6px 6px 0; }
+/* ponytail: run output synced to the editor lands as a `> ` blockquote, but
+   blockquotes default to the proportional body font + collapsed spaces — so
+   dir's column alignment (and any monospace table) scrambles. rehypeMarkResult
+   Block tags the blockquote right after a `<!-- Result -->` comment with
+   .run-result; restore monospace + pre-wrap so spaces/columns survive. */
+.md-preview blockquote.run-result { font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; white-space: pre-wrap; color: var(--t2); font-style: normal; }
 .md-preview ul { padding-left: 24px; margin: 8px 0; list-style-type: disc; }
 .md-preview ol { padding-left: 24px; margin: 8px 0; list-style-type: decimal; }
 .md-preview li { margin: 4px 0; }

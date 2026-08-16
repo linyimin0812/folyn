@@ -56,6 +56,38 @@ function rehypeRemoveCodeBreaks() {
   return (tree: any) => walk(tree, false);
 }
 
+/**
+ * Rehype plugin: mark the blockquote that immediately follows a
+ * `<!-- Result -->` HTML comment with the `run-result` class, so the synced
+ * run output keeps its monospace alignment (dir table columns etc.) instead
+ * of falling back to the proportional body font every blockquote uses.
+ * Without this, saving a run result to the editor "loses" the alignment the
+ * live .code-run-output panel had. CSS targets blockquote.run-result.
+ *
+ * The comment survives into hast via remarkRehype({allowDangerousHtml}) +
+ * rehypeRaw as a `comment` node; the run result blockquote is the next
+ * non-whitespace sibling. Skip stray whitespace text nodes between them.
+ */
+function rehypeMarkResultBlock() {
+  return (tree: any) => {
+    const kids = Array.isArray(tree.children) ? tree.children : [];
+    for (let i = 0; i < kids.length; i++) {
+      const node = kids[i];
+      if (node?.type !== 'comment' || !/^\s*Result\s*$/.test(node.value ?? '')) continue;
+      // Find the next element sibling, tolerating whitespace text nodes.
+      let j = i + 1;
+      while (j < kids.length && kids[j].type === 'text' && /^\s*$/.test(kids[j].value ?? ' ')) j++;
+      const target = kids[j];
+      if (target?.type === 'element' && target.tagName === 'blockquote') {
+        const props = target.properties || (target.properties = {});
+        const cls = Array.isArray(props.className) ? props.className : (props.className ? [String(props.className)] : []);
+        if (!cls.includes('run-result')) cls.push('run-result');
+        props.className = cls;
+      }
+    }
+  };
+}
+
 // Ensure built-in plugins are registered once
 registerBuiltinPlugins();
 registerBuiltinCodeContributions();
@@ -277,11 +309,11 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
     try {
       const controller = await runScript(runtime, code, {
         onStdout: (line) => {
-          outBuf += line + '\n';
+          outBuf += line;
           setStdout(outBuf);
         },
         onStderr: (line) => {
-          errBuf += line + '\n';
+          errBuf += line;
           setStderr(errBuf);
         },
         onClose: (code) => {
@@ -417,8 +449,14 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
       )}
       {runtime && hasOutput && (
         <div className="code-run-output">
-          {stdout && <pre className="code-run-stdout">{stdout}</pre>}
-          {stderr && <pre className="code-run-stderr">{stderr}</pre>}
+          {/* ponytail: only the stdout/stderr body scrolls; the sync icon +
+              status row stay pinned at the .code-run-output level (not the
+              scroll container), so the "sync to editor" icon stays fixed at
+              the top-right while long output scrolls under it. */}
+          <div className="code-run-output-body">
+            {stdout && <pre className="code-run-stdout">{stdout}</pre>}
+            {stderr && <pre className="code-run-stderr">{stderr}</pre>}
+          </div>
           <div className="code-run-status">
             {stopped ? '[stopped]' : exitCode !== null ? `[exit ${exitCode}]` : null}
           </div>
@@ -619,6 +657,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
         .use(rehypeRaw)
         .use(rehypeHighlight, { ignoreMissing: true } as any)
         .use(rehypeRemoveCodeBreaks)
+        .use(rehypeMarkResultBlock)
         .use(rehypeMathjax)
         .use(rehypeSourceLine, { offset: frontmatterLineCount })
         .use(rehypeReact, {

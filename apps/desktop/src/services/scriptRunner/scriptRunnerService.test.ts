@@ -6,13 +6,18 @@ const mockKill = vi.fn();
 const mockOnClose = vi.fn();
 const stdoutOn = vi.fn();
 const stderrOn = vi.fn();
+// ponytail: capture Command.create(name, args, options) so a runScript test
+// can assert the runtime's console-codepage encoding reaches the shell plugin.
+const commandCalls: Array<{ name: string; args: string[]; options: unknown }> = [];
 
 vi.mock('@tauri-apps/plugin-shell', () => ({
   Command: Object.assign(
-    function Command() {
+    function Command(name: string, args: string[], options?: unknown) {
+      commandCalls.push({ name, args, options });
       return {
         stdout: { on: stdoutOn },
         stderr: { on: stderrOn },
+        on: mockOnClose,
         spawn: mockSpawn,
       };
     },
@@ -35,6 +40,7 @@ import {
   DEFAULT_SCRIPT_RUNTIMES,
   mapLanguageToRuntime,
   buildRunArgs,
+  runScript,
   formatResultBlock,
   replaceOrAppendResultBlock,
 } from './scriptRunnerService';
@@ -57,6 +63,31 @@ describe('mapLanguageToRuntime', () => {
   it('matches python aliases', () => {
     expect(mapLanguageToRuntime('py', configs)?.id).toBe('python');
     expect(mapLanguageToRuntime('python3', configs)?.id).toBe('python');
+  });
+
+  // Regression: ```powershell fences must map to the shell runtime on Windows
+  // so the preview Run button shows. DEFAULT_SCRIPT_RUNTIMES is frozen at
+  // module-load time on the test-runner's real platform, so we can't rely on
+  // its shell runtime carrying the Windows-only `powershell` alias. Build an
+  // inline config mirroring the Windows shell runtime and assert the alias
+  // match — this is what the preview's CodeBlockWrapper relies on.
+  it('matches powershell/ps1/pwsh to the shell runtime (Windows aliases)', () => {
+    const winShell: typeof configs[number] = {
+      id: 'shell',
+      label: 'Shell',
+      binaryPath: '',
+      defaultBinaryPath: 'powershell.exe',
+      languageAliases: ['bash', 'sh', 'shell', 'zsh', 'powershell', 'ps1', 'pwsh'],
+      fileExt: 'ps1',
+      detectCommand: 'where powershell.exe',
+      versionArgs: ['-NoLogo', '-Command', '$PSVersionTable.PSVersion'],
+      encoding: 'gbk',
+    };
+    expect(mapLanguageToRuntime('powershell', [winShell])?.id).toBe('shell');
+    expect(mapLanguageToRuntime('ps1', [winShell])?.id).toBe('shell');
+    expect(mapLanguageToRuntime('pwsh', [winShell])?.id).toBe('shell');
+    // case-insensitive, matching the bash/sh/zsh aliases above
+    expect(mapLanguageToRuntime('PowerShell', [winShell])?.id).toBe('shell');
   });
 
   it('returns null for unknown / empty', () => {
@@ -131,6 +162,77 @@ describe('buildRunArgs (Windows)', () => {
     // with no internal `"` to backslash-escape, so cmd.exe handles it cleanly.
     expect(args).toEqual(['/c', 'node', tmpPath]);
   });
+
+  // Regression: a ```powershell block writes a .ps1 temp file and runs it via
+  // `cmd /c powershell.exe <tmp.ps1>`. PowerShell silently no-ops a .sh temp
+  // file, so the .ps1 extension is required for the code to actually execute.
+  it('runs a powershell block as cmd /c powershell.exe <tmp.ps1>', () => {
+    // Inline the Windows shell runtime: DEFAULT_SCRIPT_RUNTIMES is frozen at
+    // module-load time on the runner's real platform, so the shell runtime's
+    // defaultBinaryPath/fileExt can't be read off it portably.
+    const winShell = {
+      id: 'shell',
+      label: 'Shell',
+      binaryPath: '',
+      defaultBinaryPath: 'powershell.exe',
+      languageAliases: ['bash', 'sh', 'shell', 'zsh', 'powershell', 'ps1', 'pwsh'],
+      fileExt: 'ps1',
+      detectCommand: 'where powershell.exe',
+      versionArgs: ['-NoLogo', '-Command', '$PSVersionTable.PSVersion'],
+      encoding: 'gbk',
+    };
+    const tmpPath = 'C:\\Users\\linyimin\\.quill\\scripts-tmp\\quill-run-abc.ps1';
+    const [name, args] = buildRunArgs(winShell, tmpPath);
+    expect(name).toBe('win-detect');
+    expect(args).toEqual(['/c', 'powershell.exe', tmpPath]);
+  });
+});
+
+// Regression: runScript must pass the runtime's `encoding` (e.g. 'gbk' for
+// PowerShell on Chinese Windows) to Command.create, else non-ASCII output is
+// mis-decoded as UTF-8 → mojibake (dir's "目录:" became "Ŀ¼:"). node has no
+// encoding field → undefined (UTF-8 default, correct for node).
+describe('runScript encoding', () => {
+  const noop = { onStdout: () => {}, onStderr: () => {}, onClose: () => {} };
+
+  beforeEach(() => {
+    commandCalls.length = 0;
+    mockSpawn.mockResolvedValue({ kill: vi.fn() } as never);
+  });
+
+  it('passes the shell runtime GBK encoding to Command.create', async () => {
+    const winShell = {
+      id: 'shell',
+      label: 'Shell',
+      binaryPath: '',
+      defaultBinaryPath: 'powershell.exe',
+      languageAliases: ['bash', 'sh', 'shell', 'zsh', 'powershell', 'ps1', 'pwsh'],
+      fileExt: 'ps1',
+      detectCommand: 'where powershell.exe',
+      versionArgs: ['-NoLogo', '-Command', '$PSVersionTable.PSVersion'],
+      encoding: 'gbk',
+    };
+    await runScript(winShell as never, 'Write-Output hi', noop);
+    expect(commandCalls).toHaveLength(1);
+    expect(commandCalls[0].options).toEqual({ encoding: 'gbk' });
+  });
+
+  it('passes undefined encoding for the node runtime (UTF-8 default)', async () => {
+    // node emits UTF-8 regardless of Windows codepage; no encoding field.
+    const nodeRuntime = {
+      id: 'node',
+      label: 'Node.js',
+      binaryPath: '',
+      defaultBinaryPath: 'node',
+      languageAliases: ['js', 'javascript', 'node'],
+      fileExt: 'js',
+      detectCommand: 'where node',
+      versionArgs: ['--version'],
+    };
+    await runScript(nodeRuntime as never, 'console.log("hi")', noop);
+    expect(commandCalls).toHaveLength(1);
+    expect(commandCalls[0].options).toBeUndefined();
+  });
 });
 
 describe('formatResultBlock', () => {
@@ -157,6 +259,16 @@ describe('formatResultBlock', () => {
   it('handles empty output', () => {
     const block = formatResultBlock('', '', 0, false);
     expect(block).toBe('<!-- Result -->\n> [exit 0]');
+  });
+
+  // Regression: the shell plugin emits Windows \r\n split across two payloads
+  // (row\r then \n), so the run buffer carries raw \r. Without normalization
+  // each `> ` line would trail a stray CR; this asserts CRLF/CR → LF collapse.
+  it('normalizes CRLF and bare CR to LF in the blockquote', () => {
+    const block = formatResultBlock('row1\r\nrow2\r\n', 'err\r\n', 0, false);
+    expect(block).toBe('<!-- Result -->\n> row1\n> row2\n> err\n> [exit 0]');
+    // no stray CR survives into any line
+    expect(block).not.toContain('\r');
   });
 });
 

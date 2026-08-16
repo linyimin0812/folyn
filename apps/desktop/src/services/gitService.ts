@@ -107,8 +107,13 @@ export async function runShell(shellCmd: string): Promise<GitResult> {
   const cmd = Command.create(sidecarName, sidecarArgs);
   let stdout = '';
   let stderr = '';
-  cmd.stdout.on('data', (line) => { stdout += line + '\n'; });
-  cmd.stderr.on('data', (line) => { stderr += line + '\n'; });
+  // ponytail: the shell plugin already includes the trailing newline in each
+  //  `data` payload (tauri::utils::io::read_line keeps the \n/\r byte), so
+  //  appending `+ '\n'` here doubled it — every output row gained a blank
+  //  line. On Windows \r\n also splits across two payloads (row\r then \n).
+  //  Append `line` raw; normalize stray CRs so the returned string is clean LF.
+  cmd.stdout.on('data', (line) => { stdout += line.replace(/\r\n?/g, '\n'); });
+  cmd.stderr.on('data', (line) => { stderr += line.replace(/\r\n?/g, '\n'); });
   // Register close listener before spawn (race-safe), then await it after
   // spawn so we don't return before the process exits.
   const closePromise = new Promise<number>((resolve) => {

@@ -39,6 +39,12 @@ export interface RuntimeConfig {
   detectCommand: string;
   /** Args to print version, appended to binaryPath. */
   versionArgs: string[];
+  /** stdout/stderr decoding for the spawned process, e.g. 'gbk'. Omitted/
+   *  undefined = the shell plugin's UTF-8 default. Set per-runtime because
+   *  each runtime emits a different console codepage on Windows: PowerShell
+   *  writes the OEM/ANSI codepage (GBK on Chinese Windows), while node writes
+   *  UTF-8 — so only the shell runtime opts into GBK. */
+  encoding?: string;
 }
 
 // ponytail: Windows defaults use `powershell.exe` + `where` instead of
@@ -48,6 +54,22 @@ export interface RuntimeConfig {
 // `binaryPath` starts empty so the settings input is blank by default;
 // `defaultBinaryPath` is the run-time fallback when the user hasn't
 // detected or typed a path yet.
+// Windows PowerShell ships at `%SystemRoot%\System32\WindowsPowerShell\v1.0`,
+// but that dir isn't guaranteed to be on PATH (nvm4w / trimmed dev shells drop
+// it), so `where powershell.exe` alone misses a binary that is, in fact,
+// built into Windows. The shell detectCommand falls back to that canonical
+// location with an `if exist` guard so detection still finds it when `where`
+// can't. node/python stay `where`-only (no canonical install path).
+// The canonical path is left UNQUOTED inside the cmd string: the path has no
+// spaces (SystemRoot never does), and embedding `"` would make Rust backslash-
+// escape it as `\"` which cmd.exe mishandles (see buildShellSidecar). It is
+// passed as one `/c` arg so Rust only wraps the whole string in quotes.
+// On Windows the shell runtime's language aliases + temp-file extension
+// also branch: `powershell`/`ps1`/`pwsh` fences map to it so a ```powershell
+// block gets a Run button, and the temp file is `.ps1` — PowerShell silently
+// no-ops a `.sh` temp file (only `.ps1` executes), matching powershell.exe.
+// bash/sh/zsh stay as Windows aliases only so the preexisting ```bash block
+// still shows a button (it runs under powershell.exe — wrong, but unchanged).
 const isWin = isWindowsPlatform();
 
 export const DEFAULT_SCRIPT_RUNTIMES: RuntimeConfig[] = [
@@ -56,10 +78,15 @@ export const DEFAULT_SCRIPT_RUNTIMES: RuntimeConfig[] = [
     label: 'Shell',
     binaryPath: '',
     defaultBinaryPath: isWin ? 'powershell.exe' : '/bin/sh',
-    languageAliases: ['bash', 'sh', 'shell', 'zsh'],
-    fileExt: 'sh',
-    detectCommand: isWin ? 'where powershell.exe' : 'which sh',
+    languageAliases: isWin
+      ? ['bash', 'sh', 'shell', 'zsh', 'powershell', 'ps1', 'pwsh']
+      : ['bash', 'sh', 'shell', 'zsh'],
+    fileExt: isWin ? 'ps1' : 'sh',
+    detectCommand: isWin
+      ? 'where powershell.exe 2>nul || (if exist %SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe echo %SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe)'
+      : 'which sh',
     versionArgs: isWin ? ['-NoLogo', '-Command', '$PSVersionTable.PSVersion'] : ['--version'],
+    encoding: isWin ? 'gbk' : undefined,
   },
   {
     id: 'node',
@@ -152,15 +179,26 @@ export async function runScript(
   await writeTextFile(tmpPath, code);
 
   const [sidecar, args] = buildRunArgs(config, tmpPath);
-  const cmd = Command.create(sidecar, args);
+  // ponytail: pass the runtime's console-codepage encoding (e.g. 'gbk' for
+  //  PowerShell on Chinese Windows) so non-ASCII output (dir's "目录:") isn't
+  //  mis-decoded as UTF-8 → mojibake ("Ŀ¼:"). node stays UTF-8 (no encoding
+  //  field) — node always emits UTF-8 regardless of Windows codepage. Mirrors
+  //  the { encoding: 'gbk' } the settings-page detect/test already pass.
+  const cmd = Command.create(sidecar, args, config.encoding ? { encoding: config.encoding } : undefined);
   let stdoutBuf = '';
   let stderrBuf = '';
+  // ponytail: the shell plugin already includes the trailing newline in each
+  //  `data` payload (tauri::utils::io::read_line keeps the \n/\r byte), so
+  //  appending `+ '\n'` here doubles it — every row gained a blank line
+  //  (dir's contiguous rows became row / blank / row / blank). On Windows
+  //  \r\n also splits across two payloads (row\r then \n); the bare-\n
+  //  payload + the extra '\n' was the blank line. Just append `line` raw.
   cmd.stdout.on('data', (line) => {
-    stdoutBuf += line + '\n';
+    stdoutBuf += line;
     handlers.onStdout(line);
   });
   cmd.stderr.on('data', (line) => {
-    stderrBuf += line + '\n';
+    stderrBuf += line;
     handlers.onStderr(line);
   });
   cmd.on('close', (info) => {
@@ -188,7 +226,10 @@ export function formatResultBlock(
 ): string {
   const lines: string[] = ['<!-- Result -->'];
   const pushChunk = (text: string) => {
-    const trimmed = text.replace(/\n+$/, '');
+    // ponytail: normalize CRLF/CR to LF — the shell plugin emits Windows
+    //  \r\n split across two payloads (row\r then \n), so the buffer carries
+    //  raw \r bytes that would otherwise trail each `> ` line as a stray CR.
+    const trimmed = text.replace(/\r\n?/g, '\n').replace(/\n+$/, '');
     if (!trimmed) return;
     for (const ln of trimmed.split('\n')) {
       lines.push(`> ${ln}`);
