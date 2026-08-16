@@ -10,7 +10,7 @@
  * EXPECTED_SLICES too.
  */
 import { create } from 'zustand';
-import { registerPersistSlice } from '../store/settingsPersistence';
+import { registerPersistSlice } from '../../store/settingsPersistence';
 import {
   storageConfigStorage,
   defaultR2Config,
