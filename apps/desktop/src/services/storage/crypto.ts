@@ -229,7 +229,20 @@ export async function buildQiniuUploadToken(
   const encodedPolicy = bytesToBase64Url(strToBytes(putPolicy));
   const sig = await hmacSha1(strToBytes(secretKey), encodedPolicy);
   const encodedSig = bytesToBase64Url(sig);
-  return `${accessKey}:${encodedSig}:${encodedPolicy}`;
+  const token = `${accessKey}:${encodedSig}:${encodedPolicy}`;
+  if (import.meta.env?.dev) {
+    // ponytail: dev-only diagnostic. Compare these against Qiniu's online
+    // token generator or the official SDK to localize BadToken errors.
+    console.debug('[storage/crypto] qiniu token', {
+      accessKey,
+      secretKeyLen: secretKey.length,
+      putPolicy,
+      encodedPolicy,
+      encodedSig,
+      token,
+    });
+  }
+  return token;
 }
 
 // ─── Self-checks (run once on import in dev) ────────────────────────────

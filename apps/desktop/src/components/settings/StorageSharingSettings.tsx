@@ -162,7 +162,14 @@ function R2Form({ cfg, onSave, onRemove, t }: {
           onClick={async () => {
             setSaving(true);
             try {
-              await onSave(draft);
+              await onSave({
+                ...draft,
+                accountId: draft.accountId.trim(),
+                accessKeyId: draft.accessKeyId.trim(),
+                secretAccessKey: draft.secretAccessKey.trim(),
+                bucket: draft.bucket.trim(),
+                publicBaseUrl: draft.publicBaseUrl.trim(),
+              });
               setSavedAt(Date.now());
               if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
               savedTimerRef.current = setTimeout(() => setSavedAt(null), 2500);
@@ -242,7 +249,13 @@ function QiniuForm({ cfg, onSave, onRemove, t }: {
           onClick={async () => {
             setSaving(true);
             try {
-              await onSave(draft);
+              await onSave({
+                ...draft,
+                accessKey: draft.accessKey.trim(),
+                secretKey: draft.secretKey.trim(),
+                bucket: draft.bucket.trim(),
+                publicBaseUrl: draft.publicBaseUrl.trim(),
+              });
               setSavedAt(Date.now());
               if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
               savedTimerRef.current = setTimeout(() => setSavedAt(null), 2500);
