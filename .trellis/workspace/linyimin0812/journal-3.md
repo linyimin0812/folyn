@@ -1742,3 +1742,37 @@ User reported external-file open broken on warm launch too. Root cause: macOS wa
 ### Next Steps
 
 - None - task complete
+
+
+## Session 165: Fix .rt file-preview showing raw JSON
+
+**Date**: 2026-08-16
+**Task**: Fix .rt file-preview showing raw JSON
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+renderFile in MarkdownPreview fell back to the code viewer for matched handlers without a Preview component, so :::file-preview directives on .rt files rendered the raw tiptap JSON as code. Restricted the code fallback to unknown extensions only; matched handlers without a Preview now return null so FilePreviewPlugin shows its existing '暂无预览' UI.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5aa9b9a7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

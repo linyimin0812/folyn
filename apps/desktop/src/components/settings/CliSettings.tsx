@@ -120,10 +120,15 @@ export function CliSettings() {
                       const detected = output.stdout.trim().split('\n')[0];
                       if (output.code === 0 && detected) {
                         setCliPathFor(a.id, detected);
+                      } else {
+                        setTestStatus((s) => ({ ...s, [a.id]: { testing: false, result: { success: false, message: t('settings:cli.cliPath.notInstalled') } } }));
                       }
-                    } catch {} finally {
+                    } catch (err) {
+                      setTestStatus((s) => ({ ...s, [a.id]: { testing: false, result: { success: false, message: t('settings:cli.cliPath.cannotRun', { error: String(err) }) } } }));
+                    } finally {
                       setDetectingState((s) => ({ ...s, [a.id]: false }));
                     }
+                    setTimeout(() => setTestStatus((s) => ({ ...s, [a.id]: { ...s[a.id], result: undefined } })), 6000);
                   }}
                 >{detecting ? <Loader2 size={13} className="animate-spin" /> : t('settings:cli.cliPath.detect')}</button>
                 <div className="w-px self-stretch bg-brd" />

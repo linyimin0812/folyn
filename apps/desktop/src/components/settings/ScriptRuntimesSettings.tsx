@@ -48,10 +48,21 @@ export function ScriptRuntimesSettings() {
                 const detected = output.stdout.trim().split('\n')[0];
                 if (output.code === 0 && detected) {
                   setRuntimePath(r.id, detected);
+                } else {
+                  setTestStatus((s) => ({
+                    ...s,
+                    [r.id]: { testing: false, result: { success: false, message: t('settings:scriptRuntime.detectNotInstalled') } },
+                  }));
                 }
-              } catch {} finally {
+              } catch (err) {
+                setTestStatus((s) => ({
+                  ...s,
+                  [r.id]: { testing: false, result: { success: false, message: t('settings:scriptRuntime.detectCannotRun', { error: String(err) }) } },
+                }));
+              } finally {
                 setDetecting((s) => ({ ...s, [r.id]: false }));
               }
+              setTimeout(() => setTestStatus((s) => ({ ...s, [r.id]: { ...s[r.id], result: undefined } })), 6000);
             }}
             onTest={async () => {
               setTestStatus((s) => ({ ...s, [r.id]: { testing: true } }));

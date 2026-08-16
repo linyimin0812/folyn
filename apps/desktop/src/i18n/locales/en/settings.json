@@ -155,7 +155,9 @@
       "label": "CLI path",
       "detect": "Detect",
       "detectTitle": "Auto-detect path",
-      "hint": "Path or command name of the CLI executable; click \"Detect\" to auto-find"
+      "hint": "Path or command name of the CLI executable; click \"Detect\" to auto-find",
+      "notInstalled": "Not installed",
+      "cannotRun": "Cannot detect: {{error}}"
     },
     "settingsFile": {
       "title": "Open this adapter's config file in the Quill editor",
@@ -188,7 +190,9 @@
       "success": "OK",
       "exitCode": "Exit code {{code}}",
       "cannotRun": "Cannot run: {{error}}"
-    }
+    },
+    "detectNotInstalled": "Not installed",
+    "detectCannotRun": "Cannot detect: {{error}}"
   },
   "models": {
     "title": "Model Services",
