@@ -1674,3 +1674,37 @@ Local builds passed via stale tsconfig.tsbuildinfo; CI failed with TS2307 (markm
 ### Next Steps
 
 - None - task complete
+
+
+## Session 163: fix external-file-open cold-launch (macOS race + Windows)
+
+**Date**: 2026-08-16
+**Task**: fix external-file-open cold-launch (macOS race + Windows)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Implemented PendingOpenFiles buffer + drain command; macOS RunEvent::Opened pushes+emits; Windows argv pre-populated before Builder::build; tauri-plugin-single-instance gated to Windows; App.tsx drains then listens. 4 new Rust unit tests pass; cargo check -p quill clean on macOS; editorIoService tests pass. Windows cross-check blocked by missing C toolchain (pre-existing, CI covers).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0cd97f24` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 162
+- **Total Sessions**: 163
 - **Last Active**: 2026-08-16
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1676 | Active |
+| `journal-3.md` | ~1710 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 163 | 2026-08-16 | fix external-file-open cold-launch (macOS race + Windows) | `0cd97f24` | `master` |
 | 162 | 2026-08-16 | Fix desktop CI type errors (markmap + rich-text image) | `629b6b6f`, `2fc2c8d4` | `master` |
 | 161 | 2026-08-16 | Rich-text image paste opens upload dialog | `1601246e` | `master` |
 | 160 | 2026-08-15 | Remove Skills settings page, inline builtin prompts | `586cd1aa` | `master` |
