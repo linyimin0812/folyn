@@ -1708,3 +1708,37 @@ Implemented PendingOpenFiles buffer + drain command; macOS RunEvent::Opened push
 ### Next Steps
 
 - None - task complete
+
+
+## Session 164: warm-launch external-file open fix (macOS + Windows)
+
+**Date**: 2026-08-16
+**Task**: warm-launch external-file open fix (macOS + Windows)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+User reported external-file open broken on warm launch too. Root cause: macOS warm launch depends solely on RunEvent::Opened (tao implements application:openURLs:, not openFiles:); if the running instance isn't the registered handler, macOS spawns a second process. Fix: argv pre-population on macOS+Windows for deterministic cold launch; single-instance plugin extended to macOS (non-Linux) so second-instance argv forwards to the running instance; frontend listens first then drains in independent blocks (no drain/listen gap, isolated failures); startup_log records every delivery channel. cargo check clean on macOS; 4 Rust unit tests + editorIoService tests pass.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cf03af7b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
