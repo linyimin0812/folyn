@@ -22,6 +22,7 @@
     "plugins": "Plugins",
     "csp": "Security Policy",
     "storage": "Storage & Sharing",
+    "wiki": "Wiki",
     "about": "About"
   },
   "appearance": {
@@ -745,5 +746,26 @@
       "fileMenu": "Upload Source File to Cloud",
       "fileMenuDesc": "Upload the current file directly to the cloud and return a public direct link"
     }
+  },
+  "wiki": {
+    "title": "Wiki",
+    "description": "Ingest, lint, and query behavior",
+    "autoAfterIngest": {
+      "label": "Auto-lint after ingest",
+      "description": "Run structural lint immediately after each ingest completes."
+    },
+    "semanticManualOnly": {
+      "label": "Semantic lint: manual only",
+      "description": "Skip automatic semantic lint; trigger only via the Lint button."
+    },
+    "archiveRetentionDays": {
+      "label": "Resolved review retention (days)",
+      "description": "Resolved/dismissed review items are archived after this many days."
+    },
+    "queryCacheTtlMinutes": {
+      "label": "Query cache TTL (minutes)",
+      "description": "Reuse prior query results within this window; 0 disables caching."
+    },
+    "noHotReload": "Changes apply on the next lint / ingest / restart — not hot reloaded."
   }
 }

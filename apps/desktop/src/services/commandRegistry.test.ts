@@ -175,6 +175,7 @@ describe('commandRegistry — registerBuiltinCommands', () => {
       'action.export-html',
       'action.open-global-search',
       'action.plan-my-day',
+      'wiki.ingestCurrentFile',
     ]);
   });
 
@@ -189,6 +190,7 @@ describe('commandRegistry — registerBuiltinCommands', () => {
       'panel.wiki',
       'panel.analyze',
       'panel.settings',
+      'wiki.newQuery',
       'mode.split',
       'mode.edit',
       'mode.preview',

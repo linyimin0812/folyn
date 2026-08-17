@@ -1,0 +1,18 @@
+{
+  "query": {
+    "input": {
+      "placeholder": "Ask the wiki…"
+    },
+    "submit": "Ask",
+    "newSession": "New session",
+    "saveAsSynthesis": "Save as synthesis",
+    "empty": "No turns yet. Ask a question to query the wiki.",
+    "userPrefix": "You: ",
+    "thinking": "Thinking…",
+    "progress": {
+      "lookingUp": "Looking up wiki pages…",
+      "saving": "Saving synthesis…",
+      "saved": "Saved to wiki://{{path}}"
+    }
+  }
+}

@@ -31,7 +31,9 @@ import enTerminal from './locales/en/terminal.json';
 import zhBrowser from './locales/zh/browser.json';
 import enBrowser from './locales/en/browser.json';
 import zhMmap from './locales/zh/mmap.json';
+import zhWiki from './locales/zh/wiki.json';
 import enMmap from './locales/en/mmap.json';
+import enWiki from './locales/en/wiki.json';
 import jaCommon from './locales/ja/common.json';
 import jaShell from './locales/ja/shell.json';
 import jaTopbar from './locales/ja/topbar.json';
@@ -48,6 +50,7 @@ import jaPet from './locales/ja/pet.json';
 import jaTerminal from './locales/ja/terminal.json';
 import jaBrowser from './locales/ja/browser.json';
 import jaMmap from './locales/ja/mmap.json';
+import jaWiki from './locales/ja/wiki.json';
 import esCommon from './locales/es/common.json';
 import esShell from './locales/es/shell.json';
 import esTopbar from './locales/es/topbar.json';
@@ -64,6 +67,11 @@ import esPet from './locales/es/pet.json';
 import esTerminal from './locales/es/terminal.json';
 import esBrowser from './locales/es/browser.json';
 import esMmap from './locales/es/mmap.json';
+// ponytail: wiki namespace shipped for en/zh/ja only; es/de/fr reuse enWiki as
+// fallback so the query tab isn't a missing-key warning wall for those locales.
+const esWiki = enWiki;
+const deWiki = enWiki;
+const frWiki = enWiki;
 import deCommon from './locales/de/common.json';
 import deShell from './locales/de/shell.json';
 import deTopbar from './locales/de/topbar.json';
@@ -149,6 +157,7 @@ export const NAMESPACES = [
   'terminal',
   'browser',
   'mmap',
+  'wiki',
 ] as const;
 
 void i18n.use(initReactI18next).init({
@@ -170,6 +179,7 @@ void i18n.use(initReactI18next).init({
       terminal: zhTerminal,
       browser: zhBrowser,
       mmap: zhMmap,
+      wiki: zhWiki,
     },
     en: {
       common: enCommon,
@@ -188,6 +198,7 @@ void i18n.use(initReactI18next).init({
       terminal: enTerminal,
       browser: enBrowser,
       mmap: enMmap,
+      wiki: enWiki,
     },
     ja: {
       common: jaCommon,
@@ -206,6 +217,7 @@ void i18n.use(initReactI18next).init({
       terminal: jaTerminal,
       browser: jaBrowser,
       mmap: jaMmap,
+      wiki: jaWiki,
     },
     es: {
       common: esCommon,
@@ -224,6 +236,7 @@ void i18n.use(initReactI18next).init({
       terminal: esTerminal,
       browser: esBrowser,
       mmap: esMmap,
+      wiki: esWiki,
     },
     de: {
       common: deCommon,
@@ -242,6 +255,7 @@ void i18n.use(initReactI18next).init({
       terminal: deTerminal,
       browser: deBrowser,
       mmap: deMmap,
+      wiki: deWiki,
     },
     fr: {
       common: frCommon,
@@ -260,6 +274,7 @@ void i18n.use(initReactI18next).init({
       terminal: frTerminal,
       browser: frBrowser,
       mmap: frMmap,
+      wiki: frWiki,
     },
   },
   lng: detectInitialLocale(),

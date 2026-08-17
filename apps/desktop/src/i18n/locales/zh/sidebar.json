@@ -84,7 +84,13 @@
     "hasNote": "{{date}} (有笔记)"
   },
   "wikiTree": {
-    "empty": "Wiki 为空。在 AI 面板中摄入文件开始构建知识库。"
+    "empty": "Wiki 为空。在 AI 面板中摄入文件开始构建知识库。",
+    "addSourceFiles": "添加源文件进行摄入",
+    "reviewsEmpty": "暂无待处理 review。",
+    "subTab": {
+      "files": "文件",
+      "reviews": "Review"
+    }
   },
   "clips": {
     "title": "Clips",

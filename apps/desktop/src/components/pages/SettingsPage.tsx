@@ -14,6 +14,7 @@ import { CspSettings } from '@/components/settings/CspSettings';
 import { StorageSharingSettings } from '@/components/settings/StorageSharingSettings';
 import { ShortcutEditor } from '@/components/settings/ShortcutEditor';
 import { ScriptRuntimesSettings } from '@/components/settings/ScriptRuntimesSettings';
+import { WikiSettings } from '@/components/settings/WikiSettings';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { Toggle, NAV_GROUPS } from '@/components/settings/primitives';
 import { Home, Unlock, Sparkles, ClipboardCopy, RefreshCw } from 'lucide-react';
@@ -305,6 +306,11 @@ export function SettingsPage() {
         {/* -- 存储与分享 -- */}
         {settingsTab === 'storage' && (
           <StorageSharingSettings />
+        )}
+
+        {/* -- Wiki -- */}
+        {settingsTab === 'wiki' && (
+          <WikiSettings />
         )}
 
         {/* -- 关于 -- */}

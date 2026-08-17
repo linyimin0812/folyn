@@ -22,6 +22,7 @@
     "plugins": "插件",
     "csp": "安全策略",
     "storage": "存储与分享",
+    "wiki": "Wiki",
     "about": "关于"
   },
   "appearance": {
@@ -745,5 +746,26 @@
       "fileMenu": "上传源文件到云端",
       "fileMenuDesc": "把当前文件直接上传到云端，返回公开直链"
     }
+  },
+  "wiki": {
+    "title": "Wiki",
+    "description": "摄入、Lint 与查询行为",
+    "autoAfterIngest": {
+      "label": "摄入后自动 Lint",
+      "description": "每次摄入完成后立即运行结构化 Lint。"
+    },
+    "semanticManualOnly": {
+      "label": "语义 Lint：仅手动触发",
+      "description": "跳过自动语义 Lint；仅通过 Lint 按钮触发。"
+    },
+    "archiveRetentionDays": {
+      "label": "已处理 review 保留（天）",
+      "description": "resolved/dismissed 的 review 项在此天数后归档。"
+    },
+    "queryCacheTtlMinutes": {
+      "label": "查询缓存 TTL（分钟）",
+      "description": "在此窗口内复用上次查询结果；0 表示禁用缓存。"
+    },
+    "noHotReload": "变更在下次 Lint / 摄入 / 重启时生效，不热重载。"
   }
 }

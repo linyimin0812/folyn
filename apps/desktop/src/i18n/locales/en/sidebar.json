@@ -84,7 +84,13 @@
     "hasNote": "{{date}} (has note)"
   },
   "wikiTree": {
-    "empty": "Wiki is empty. Ingest files from the AI panel to build the knowledge base."
+    "empty": "Wiki is empty. Ingest files from the AI panel to build the knowledge base.",
+    "addSourceFiles": "Add source files to ingest",
+    "reviewsEmpty": "No pending reviews.",
+    "subTab": {
+      "files": "Files",
+      "reviews": "Reviews"
+    }
   },
   "clips": {
     "title": "Clips",

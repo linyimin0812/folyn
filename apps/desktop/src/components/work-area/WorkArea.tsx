@@ -9,6 +9,7 @@ import type { QuillEditorHandle } from '@/editor/EditorView';
 import { EditorView } from '@codemirror/view';
 import { getHandlerById } from '../file-types/registry';
 import { WikiGraphView } from '../graph/WikiGraphView';
+import { WikiQueryView } from '../wiki/WikiQueryView';
 import { getWebviewLabels } from '../file-types/web/WebViewer';
 import { TabBar } from './TabBar';
 import { EditorPane } from './EditorPane';
@@ -168,6 +169,8 @@ export function WorkArea() {
 
       {activeTab && activeTab.path === 'wiki-graph' ? (
         <WikiGraphView />
+      ) : activeTab && activeTab.path === 'wiki-query' ? (
+        <WikiQueryView />
       ) : tabs.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-t3 text-[13px] select-none">
           {activePanel === 'clips' ? '暂无剪藏' : activePanel === 'wiki' ? '暂无 Wiki 页面' : activePanel === 'calendar' ? '暂无日记' : activePanel === 'analyze' ? '暂无分析报告' : '暂无打开的文件'}

@@ -76,7 +76,13 @@
     "hasNote": "{{date}}（ノートあり）"
   },
   "wikiTree": {
-    "empty": "Wikiは空です。AIパネルからファイルを取り込んでナレッジベースを構築してください。"
+    "empty": "Wikiは空です。AIパネルからファイルを取り込んでナレッジベースを構築してください。",
+    "addSourceFiles": "インジェストするソースファイルを追加",
+    "reviewsEmpty": "保留中の review はありません。",
+    "subTab": {
+      "files": "ファイル",
+      "reviews": "Review"
+    }
   },
   "clips": {
     "title": "クリップ",

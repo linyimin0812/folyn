@@ -21,6 +21,10 @@ import { usePetHostBridge } from './hooks/usePetHostBridge';
 import { installExternalLinkInterceptor } from './services/externalLinks';
 import { useNavStore } from './store/navStore';
 import { useAppearanceStore } from './store/appearanceStore';
+// ponytail: side-effect import — wikiSettingsStore calls registerPersistSlice
+// at module load. Without this, EXPECTED_SLICES warns and skips wiki settings
+// on first launch.
+import '@/store/wikiSettingsStore';
 import { useEditorViewStateStore } from './store/editorViewState';
 import { useVaultStore, startFileTreeBroadcast } from './store/vaultStore';
 import { startProvidersBroadcast } from './store/aiConfigStore';

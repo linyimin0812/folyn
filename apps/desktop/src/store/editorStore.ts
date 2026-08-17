@@ -46,7 +46,7 @@ export interface FileTab {
 
 /** Determine which activity panel a tab belongs to based on its path and file type */
 export function detectActivity(filePath: string, fileType: FileType): ActivityPanel {
-  if (filePath === 'wiki-graph') return 'wiki';
+  if (filePath === 'wiki-graph' || filePath === 'wiki-query') return 'wiki';
   if (fileType === 'clip' || filePath.startsWith('__clips__/')) return 'clips';
   if (filePath.startsWith(WIKI_PREFIX)) return 'wiki';
   if (filePath.startsWith('__reports__/')) return 'analyze';
