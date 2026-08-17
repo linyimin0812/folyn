@@ -167,7 +167,17 @@ export const EditorPane = forwardRef<QuillEditorHandle, EditorPaneProps>(
         if (view) {
           const pos = view.state.selection.main.head;
           const hasCustomSize = config.width || config.height;
-          const encodedUrl = result.markdownUrl.split('/').map(encodeURIComponent).join('/');
+          // ponytail: per-segment encodeURIComponent is for local paths
+          // whose segments may contain spaces / special chars. Applying it
+          // to an `https://` URL splits on `/` and runs encodeURIComponent
+          // on `https:` → `https%3A` (because `:` is not in encodeURIComponent's
+          // always-allowed set), breaking the protocol. Skip the encode pass
+          // for URLs that are already valid (http(s) / data / asset) — only
+          // local relative paths (`./foo/bar baz.png`) need it.
+          const raw = result.markdownUrl;
+          const encodedUrl = /^(?:https?:|data:|asset:)/i.test(raw)
+            ? raw
+            : raw.split('/').map(encodeURIComponent).join('/');
           const imageMarkdown = hasCustomSize
             ? `<img src="${encodedUrl}" alt="${config.fileName}"${config.width ? ` width="${config.width}"` : ''}${config.height ? ` height="${config.height}"` : ''} />`
             : `![${config.fileName}](${encodedUrl})`;
