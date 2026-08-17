@@ -221,14 +221,6 @@ export async function renderMarkdownToHtmlViaDom(
   // the first frame.
   root.render(createElement(MarkdownPreview, { content, filePath, vaultRoot }));
 
-  // Inline <img> srcs (Tauri asset URLs) as base64 data URLs so the exported
-  // file is self-contained. Done in-DOM before extracting innerHTML so we
-  // don't have to parse HTML strings later. Skipped in upload-share mode —
-  // the caller will walk the asset URLs itself and upload each image.
-  if (inlineImages) {
-    await inlineContainerImages(container);
-  }
-
   // Poll for stability: no loading markers visible AND any mmap file-preview
   // block has its markmap SVG mounted (a child <g> inside the container's
   // <svg>). markmap-view's Markmap.create is synchronous, but d3 layout
@@ -283,6 +275,18 @@ export async function renderMarkdownToHtmlViaDom(
   // Apply plugin-contributed export enhancers to [data-container] blocks
   // (post-process rendered container DOM into self-contained export form).
   await applyContainerEnhancers(container, { filePath, vaultRoot });
+
+  // Inline <img> srcs (Tauri asset URLs) as base64 data URLs so the exported
+  // file is self-contained. Done in-DOM AFTER React commits + async effects
+  // settle + per-type enhancers run, so the <img> elements actually exist
+  // when we walk them. (Earlier this ran right after `root.render`, before
+  // React 18's async commit — querySelectorAll('img') came back empty and
+  // asset:// srcs leaked into the exported HTML as broken images.)
+  // Skipped in upload-share mode — the caller will walk the asset URLs
+  // itself and upload each image.
+  if (inlineImages) {
+    await inlineContainerImages(container);
+  }
 
   const html = container.innerHTML;
   const css = collectAppCss();
