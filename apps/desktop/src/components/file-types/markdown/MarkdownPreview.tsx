@@ -550,23 +550,32 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
     // Custom anchor component: handle external links based on linkOpenMode setting
     map['a'] = function ExternalLink(props: any) {
       const { href, children, node, ...rest } = props;
-      const isExternal = href && (href.startsWith('http://') || href.startsWith('https://'));
+      // ponytail: markdown `[baidu](www.baidu.com)` (no scheme) parses as a
+      // relative path → href="www.baidu.com". Without normalization it bypasses
+      // the external-link branch and the Tauri webview tries to navigate to the
+      // path → looks like an app restart. Treat www.-prefixed hrefs as https
+      // URLs and route through the existing two-mode open logic. Bare-domain
+      // (baidu.com) and protocol-relative (//host) cases left for later.
+      const normalizedHref = href && typeof href === 'string' && href.startsWith('www.')
+        ? `https://${href}`
+        : href;
+      const isExternal = normalizedHref && (normalizedHref.startsWith('http://') || normalizedHref.startsWith('https://'));
       if (isExternal) {
         return createElement('a', {
           ...rest,
-          href,
+          href: normalizedHref,
           onClick: (e: React.MouseEvent) => {
             e.preventDefault();
             const linkOpenMode = useAppearanceStore.getState().linkOpenMode;
             if (linkOpenMode === 'internal') {
-              const linkText = typeof children === 'string' ? children : href;
-              useEditorStore.getState().openWebTab(href, linkText);
+              const linkText = typeof children === 'string' ? children : normalizedHref;
+              useEditorStore.getState().openWebTab(normalizedHref, linkText);
             } else if (isTauri()) {
               import('@tauri-apps/plugin-shell').then(({ open }) => {
-                open(href);
+                open(normalizedHref);
               });
             } else {
-              window.open(href, '_blank', 'noopener,noreferrer');
+              window.open(normalizedHref, '_blank', 'noopener,noreferrer');
             }
           },
         }, children);
