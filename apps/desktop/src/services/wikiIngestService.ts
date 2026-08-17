@@ -3,14 +3,15 @@
 import { useWikiStore } from '@/store/wikiStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { createAdapter } from '@quill/cli-adapter';
-import type { CliAdapter, CliStreamEvent } from '@quill/cli-adapter';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { wikiProvider } from './wikiProvider';
 import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';
-import type { IngestAnalysis, ReviewItem } from '@/types/wiki';
+import type { IngestAnalysis } from '@/types/wiki';
 import { collectTextFromStream, extractJsonObject } from './aiStreamUtils';
 import { getFeatureAgentSendOptions } from './featureAgentService';
 import { resolveBasePath } from '@/utils/pathResolver';
+import { toKebabCase } from '@/utils/wikiNaming';
+import { writeIngestPages, applyIndexAndLog } from './wikiPageWriter';
 
 async function computeSHA256(content: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -18,16 +19,6 @@ async function computeSHA256(content: string): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-function toKebabCase(str: string): string {
-  return str
-    .replace(/\.\w+$/, '')
-    .replace(/[/\\]/g, '-')
-    .replace(/[^a-zA-Z0-9一-鿿-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .toLowerCase();
 }
 
 /**
@@ -62,72 +53,35 @@ function buildIngestInstruction(
 }
 
 /**
- * 构造 generate action 的运行指令（动态部分）。静态输出契约由 canonical
- * `__wiki__/.claude/agents/wiki.md` 承载（action: generate → 直写 wiki 页面）。
+ * 构造 overview action 的运行指令（C3.b）。输入：当前 overview + purpose + index + 本次变更列表。
+ * 输出：仅 overview.md 正文。
  */
-function buildGenerateInstruction(
-  analysis: IngestAnalysis,
-  sourcePath: string,
-  schema: string,
-  existingPages: Record<string, string>,
+function buildOverviewInstruction(
+  overview: string,
+  purpose: string,
+  index: string,
+  batchChanges: { path: string; title: string; type: string; sources: string[] }[],
 ): string {
-  const existingPagesStr = Object.entries(existingPages)
-    .map(([path, content]) => `### ${path}\n${content}`)
-    .join('\n\n');
-
+  const changesJson = JSON.stringify(batchChanges, null, 2);
   return [
-    '动作：generate',
-    `源文档路径：${sourcePath}`,
+    '动作：overview',
     '',
-    '## Schema',
-    schema,
+    '## Current Overview',
+    overview,
     '',
-    '## Analysis Result (JSON)',
+    '## Purpose',
+    purpose,
+    '',
+    '## Current Index',
+    index,
+    '',
+    '## This Batch Changes',
     '```json',
-    JSON.stringify(analysis, null, 2),
+    changesJson,
     '```',
     '',
-    '## Existing Wiki Pages to Update',
-    existingPagesStr || '_No existing pages to update._',
-    '',
-    '请按 generate action 输出契约：',
-    `1. 在 sources/${toKebabCase(sourcePath)}.md 创建源摘要页（含 YAML frontmatter）`,
-    '2. 为每个 entity 在 entities/ 下创建/更新页面',
-    '3. 为每个 concept 在 concepts/ 下创建/更新页面',
-    '4. 页面间互引用 [[wiki://entities/name]]，引用源文件用 [[' + sourcePath + ']]',
-    '5. 每个页面必须含 frontmatter：title/type/sources/tags/created/updated/confidence/related',
-    '6. 更新 index.md（追加新页面）、log.md（追加变更条目）、overview.md（刷新摘要）',
+    '请按 overview action 输出契约：基于本次变更刷新知识库简短摘要（≤ 30 行），仅输出 overview.md 正文，不重复 index.md 的清单。',
   ].join('\n');
-}
-
-function collectFileChangesFromStream(
-  adapter: CliAdapter,
-  onProgress: (msg: string) => void,
-): Promise<{ path: string; content: string }[]> {
-  return new Promise((resolve, reject) => {
-    const changes: { path: string; content: string }[] = [];
-    const handler = (event: CliStreamEvent) => {
-      if (event.type === 'file_change' && event.fileChange) {
-        changes.push({
-          path: event.fileChange.path,
-          content: event.fileChange.newContent,
-        });
-        onProgress(`写入: ${event.fileChange.path}`);
-      }
-      if (event.type === 'text' && event.content) {
-        // stream progress text
-      }
-      if (event.type === 'error') {
-        adapter.offEvent(handler);
-        reject(new Error(event.content || 'LLM error'));
-      }
-      if (event.type === 'done') {
-        adapter.offEvent(handler);
-        resolve(changes);
-      }
-    };
-    adapter.onEvent(handler);
-  });
 }
 
 export async function runIngest(filePaths: string[]): Promise<void> {
@@ -159,6 +113,9 @@ export async function runIngest(filePaths: string[]): Promise<void> {
     // wiki feature agent 调用 options（agent 文件存在 → bare:false + --agent wiki）。
     const sendOpts = await getFeatureAgentSendOptions('wiki');
 
+    // C3.b: batch-level accumulator for overview refresh at end of batch.
+    const batchChanges: { path: string; title: string; type: string; sources: string[] }[] = [];
+
     for (const task of queue) {
       if (task.status !== 'pending') continue;
 
@@ -179,7 +136,8 @@ export async function runIngest(filePaths: string[]): Promise<void> {
         // Step 1: Analysis (ingest action)
         store.setIngesting(true, 1);
         store.pushActivity('step', `[Step 1/2] 分析 ${task.filePath} ...`);
-        const ingestInstruction = buildIngestInstruction(content, task.filePath, schema, purpose, index);
+        const currentIndex = await wikiProvider.readFile('index.md').catch(() => '');
+        const ingestInstruction = buildIngestInstruction(content, task.filePath, schema, purpose, currentIndex);
         const textPromise = collectTextFromStream(adapter);
         await adapter.send(ingestInstruction, sendOpts);
         const analysisText = await textPromise;
@@ -194,7 +152,7 @@ export async function runIngest(filePaths: string[]): Promise<void> {
           continue;
         }
 
-        // Step 2: Generation (generate action)
+        // Step 2: Code-driven page writes (C1.c, C2.b, C4.b, C5.a, C6.a)
         store.setIngestStatus(task.id, 'generating');
         store.setIngesting(true, 2);
         store.setIngestProgress(`生成 wiki 页面: ${task.filePath}`);
@@ -217,45 +175,46 @@ export async function runIngest(filePaths: string[]): Promise<void> {
           }
         }
 
-        const genInstruction = buildGenerateInstruction(analysis, task.filePath, schema, existingPages);
+        const plan = writeIngestPages(analysis, task.filePath, existingPages);
 
         pauseWatcher();
-        const changesPromise = collectFileChangesFromStream(adapter, (msg) => {
-          store.setIngestProgress(msg);
-        });
-        await adapter.send(genInstruction, sendOpts);
-        const changes = await changesPromise;
-
-        for (const change of changes) {
+        for (const change of plan.pages) {
           await wikiProvider.writeFile(change.path, change.content);
           store.pushActivity('success', `写入 ${change.path}`);
         }
+        // Append to index.md / log.md (C7 contract).
+        const indexContent = await wikiProvider.readFile('index.md').catch(() => '# Wiki Index\n');
+        const logContent = await wikiProvider.readFile('log.md').catch(() => '# Wiki Log\n');
+        const { index: newIndex, log: newLog } = applyIndexAndLog(indexContent, logContent, task.filePath, plan);
+        await wikiProvider.writeFile('index.md', newIndex);
+        await wikiProvider.writeFile('log.md', newLog);
         resumeWatcher();
+
+        // Push contradictions + collisions to D review queue.
+        if (plan.contradictions.length > 0 || plan.collisions.length > 0) {
+          store.addReviewItems([...plan.contradictions, ...plan.collisions]);
+          store.pushActivity(
+            'info',
+            `${plan.contradictions.length} 项矛盾, ${plan.collisions.length} 项命名碰撞已推入 review`,
+          );
+        }
+
+        // Accumulate for batch-end overview (C3.b).
+        for (const entry of plan.indexEntries) {
+          const type = entry.path.startsWith('entities/')
+            ? 'entity'
+            : entry.path.startsWith('concepts/')
+              ? 'concept'
+              : 'source';
+          batchChanges.push({ path: entry.path, title: entry.title, type, sources: [task.filePath] });
+        }
 
         hashCache[task.filePath] = hash;
         await wikiProvider.writeHashCache(hashCache);
 
-        if (analysis.contradictions.length > 0) {
-          const reviewItems: ReviewItem[] = analysis.contradictions.map((c) => ({
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            type: 'contradiction' as const,
-            title: `矛盾: ${c.claim}`,
-            description: `新说法: "${c.claim}" vs 已有: "${c.vs}" (来源: ${c.existingSource})`,
-            affectedPages: [c.existingSource],
-            suggestedActions: [
-              { label: '接受新说法', type: 'accept' as const },
-              { label: '保留旧说法', type: 'reject' as const },
-              { label: '搜索更多信息', type: 'research' as const },
-            ],
-            createdAt: Date.now(),
-            status: 'pending' as const,
-          }));
-          store.addReviewItems(reviewItems);
-        }
-
         store.setIngestStatus(task.id, 'done');
-        store.setIngestProgress(`完成: ${task.filePath} (${changes.length} 个文件变更)`);
-        store.pushActivity('success', `${task.filePath} 摄入完成，${changes.length} 个文件变更`);
+        store.setIngestProgress(`完成: ${task.filePath} (${plan.pages.length} 个文件变更)`);
+        store.pushActivity('success', `${task.filePath} 摄入完成，${plan.pages.length} 个文件变更`);
       } catch (err) {
         resumeWatcher();
         const msg = err instanceof Error
@@ -267,6 +226,29 @@ export async function runIngest(filePaths: string[]): Promise<void> {
               : JSON.stringify(err);
         store.setIngestStatus(task.id, 'error', msg);
         store.pushActivity('error', `${task.filePath} 失败: ${msg}`);
+      }
+    }
+
+    // C3.b: overview agent action at end of batch.
+    if (batchChanges.length > 0) {
+      store.setIngestProgress('刷新 overview...');
+      store.pushActivity('step', '[Step 3/3] 刷新 wiki overview ...');
+      try {
+        const overview = await wikiProvider.readFile('overview.md').catch(() => '');
+        const purposeContent = await wikiProvider.readFile('purpose.md').catch(() => '');
+        const indexContent = await wikiProvider.readFile('index.md').catch(() => '');
+        const instruction = buildOverviewInstruction(overview, purposeContent, indexContent, batchChanges);
+        const textPromise = collectTextFromStream(adapter);
+        await adapter.send(instruction, sendOpts);
+        const newOverview = await textPromise;
+        pauseWatcher();
+        await wikiProvider.writeFile('overview.md', newOverview);
+        resumeWatcher();
+        store.pushActivity('success', 'overview 已更新');
+      } catch (err) {
+        resumeWatcher();
+        const msg = err instanceof Error ? err.message : String(err);
+        store.pushActivity('error', `overview 更新失败: ${msg}`);
       }
     }
   } finally {

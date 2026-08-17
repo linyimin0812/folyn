@@ -1,6 +1,6 @@
 // wiki feature agent canonical 文件契约单测。
-// 验证 `apps/desktop/src/wiki/.claude/agents/wiki.md` 与 `CLAUDE.md` 承载
-// ingest / generate / lint / query 四 action 的输出契约。
+// 验证 `apps/desktop/src/features/wiki/.claude/agents/wiki.md` 与 `CLAUDE.md` 承载
+// ingest / overview / lint / query 四 action 的输出契约（ADR-0004 后 generate 已删除）。
 
 import { describe, it, expect } from 'vitest';
 import wikiAgentDoc from './.claude/agents/wiki.md?raw';
@@ -22,19 +22,25 @@ describe('canonical wiki.md agent 契约', () => {
     expect(wikiAgentDoc).toContain('"structureRecommendations"');
   });
 
-  it('包含 generate action 的直写 wiki 页面契约', () => {
-    expect(wikiAgentDoc).toContain('action: generate');
-    expect(wikiAgentDoc).toMatch(/entities\/|concepts\/|sources\//);
-    expect(wikiAgentDoc).toMatch(/\[\[wiki:\/\//);
-    expect(wikiAgentDoc).toMatch(/index\.md|log\.md|overview\.md/);
+  it('包含 overview action 的 Markdown 摘要契约', () => {
+    expect(wikiAgentDoc).toContain('action: overview');
+    expect(wikiAgentDoc).toMatch(/overview\.md/);
+    expect(wikiAgentDoc).toMatch(/≤ 30 行|不超过.*30/);
   });
 
-  it('包含 lint action 的 ReviewItem[] JSON 输出契约', () => {
+  it('不再包含已废弃的 generate action', () => {
+    expect(wikiAgentDoc).not.toContain('action: generate');
+  });
+
+  it('包含 lint action 的语义合并建议 JSON 输出契约', () => {
     expect(wikiAgentDoc).toContain('action: lint');
-    expect(wikiAgentDoc).toContain('structure_change');
-    expect(wikiAgentDoc).toContain('stale_content');
+    expect(wikiAgentDoc).toContain('merge_suggestion');
     expect(wikiAgentDoc).toContain('affectedPages');
     expect(wikiAgentDoc).toContain('suggestedActions');
+  });
+
+  it('lint 仅做语义检查，结构性检查由代码负责', () => {
+    expect(wikiAgentDoc).toMatch(/结构性检查.*由.*代码/);
   });
 
   it('包含 query action 的 Markdown + [[wiki://path]] 引用契约', () => {

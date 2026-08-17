@@ -1,6 +1,8 @@
 # Quill 知识库 Wiki（wiki feature）
 
-本目录是 wiki feature 的运行时上下文。Agent 调用时 cwd = `<vault>/__wiki__/`，自动发现 `.claude/agents/wiki.md`。单 agent 多 action（ingest / generate / lint / query）。
+本目录是 wiki feature 的运行时上下文。Agent 调用时 cwd = `<vault>/__wiki__/`，自动发现 `.claude/agents/wiki.md`。单 agent 多 action（ingest / overview / lint / query）。
+
+ADR-0004 后 agent 不再直接写 entity/concept/source/index/log —— 这些由调用方代码（`wikiPageWriter.ts`）基于 ingest JSON 输出 deterministic 写盘。Agent 唯一写盘职责是 `overview.md`。
 
 ## Vault 布局
 
@@ -52,8 +54,8 @@ related: []
 
 ## Feature 级约定
 
-- ingest action：分析源文档 → 输出 JSON（entities/concepts/connections/contradictions/structureRecommendations）。
-- generate action：基于 ingest 分析结果，用 Edit/Write 直写 `entities/` / `concepts/` / `sources/` 下 wiki 页面 + 更新 index.md/log.md/overview.md（ingest 流程的写盘步骤）。
-- lint action：扫描 wiki 页面，输出 ReviewItem[] JSON（缺失页面 / 孤立页面 / 过时内容等）。
+- ingest action：分析源文档 → 输出 JSON（entities/concepts/connections/contradictions/structureRecommendations）。写盘由调用方代码完成。
+- overview action：基于当前 overview + purpose + index + 本次变更列表，刷新 overview.md 简短摘要。agent 唯一写盘职责。
+- lint action：仅做语义检查（两个 entity/concept 页描述同一概念，建议合并）；输出 merge_suggestion ReviewItem[] JSON。结构性检查由调用方代码完成。
 - query action：基于 wiki 上下文回答用户问题，输出 Markdown，用 `[[wiki://path]]` 引用来源。
-- agent 不修改 vault 内 wiki 目录以外的文件。
+- agent 不修改 vault 内 wiki 目录以外的文件；不直接写 entity/concept/source/index/log。

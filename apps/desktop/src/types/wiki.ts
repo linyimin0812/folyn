@@ -28,12 +28,17 @@ export interface IngestTask {
 export interface ReviewItem {
   id: string;
   type: 'contradiction' | 'low_confidence' | 'merge_suggestion' | 'structure_change' | 'stale_content';
+  checkId?: string;          // D1.b: per-check identifier (e.g. 'kebab_collision'); absent on legacy items
+  dedupKey?: string;         // D2.a: checkId + affectedPages for dedup
   title: string;
   description: string;
   affectedPages: string[];
   suggestedActions: ReviewAction[];
   createdAt: number;
+  lastSeenAt?: number;       // D2: bumped when same dedupKey hits an already-pending item
   status: 'pending' | 'resolved' | 'dismissed';
+  resolvedAt?: number;       // D2: filled when accept/merge succeeded
+  dismissedAt?: number;      // D2: filled when reject clicked
 }
 
 export interface ReviewAction {
