@@ -122,7 +122,18 @@ function assetUrlToFilePath(src: string): string | null {
     /^asset:\/\/localhost\/(.+)$/i.exec(src) ||
     /^https?:\/\/asset\.localhost\/(.+)$/i.exec(src);
   if (!m) return null;
-  try { return decodeURIComponent(m[1]); } catch { return m[1]; }
+  // ponytail: Tauri's `convertFileSrc` on macOS/Linux yields
+  // `asset://localhost/<abs path>` with the leading `/` NOT URL-encoded
+  // (older behavior encoded it as `%2F`). The regex above consumes that
+  // slash, leaving a relative path that `readFile` rejects with a "forbidden
+  // path:" error → `readImageAsDataUrl` returns '' → img src stays as
+  // `asset://` in the exported HTML → broken image. Restore the slash for
+  // unix-style paths; Windows drive-letter paths arrive as `C:/...` after
+  // the consumed slash and need no prefix.
+  let captured: string;
+  try { captured = decodeURIComponent(m[1]); } catch { captured = m[1]; }
+  if (captured.startsWith('/') || /^[A-Za-z]:[\\/]/.test(captured)) return captured;
+  return `/${captured}`;
 }
 
 /**

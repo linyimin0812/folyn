@@ -107,6 +107,18 @@ describe('inlineContainerImages', () => {
     expect(container.querySelector('img')!.getAttribute('src')).toMatch(/^data:image\/png;base64,/);
   });
 
+  it('inlines asset URLs even when the leading slash is NOT url-encoded (current Tauri 2 behavior)', async () => {
+    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+    await writeFile('/mock/asset.png', bytes);
+    const container = document.createElement('div');
+    // Tauri 2.x on macOS/Linux: `asset://localhost/Users/.../asset.png` —
+    // the leading `/` of the absolute path is NOT encoded as %2F. The regex
+    // must restore it so readFile gets an absolute path.
+    container.innerHTML = '<img src="asset://localhost/mock/asset.png" alt="x">';
+    await inlineContainerImages(container);
+    expect(container.querySelector('img')!.getAttribute('src')).toMatch(/^data:image\/png;base64,/);
+  });
+
   it('inlines the Windows http://asset.localhost/ form too', async () => {
     const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
     await writeFile('/mock/win.png', bytes);
