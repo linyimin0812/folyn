@@ -57,6 +57,7 @@
     "shell:allow-kill",
     "dialog:allow-confirm",
     "clipboard-manager:allow-write-text",
+    "opener:default",
     "fs:allow-mkdir",
     "fs:allow-exists",
     "fs:allow-read-file",

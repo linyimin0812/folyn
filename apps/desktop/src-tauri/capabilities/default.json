@@ -20,6 +20,7 @@
     "core:webview:allow-set-webview-size",
     "core:webview:allow-webview-close",
     "shell:allow-open",
+    "opener:default",
     {
       "identifier": "opener:allow-open-path",
       "allow": [

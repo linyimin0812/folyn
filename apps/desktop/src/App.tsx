@@ -18,6 +18,7 @@ import { StudyWorkbenchPage } from './components/study/StudyWorkbenchPage';
 import { useTheme } from './hooks/useTheme';
 import { useDisableAutoCapitalize } from './hooks/useDisableAutoCapitalize';
 import { usePetHostBridge } from './hooks/usePetHostBridge';
+import { installExternalLinkInterceptor } from './services/externalLinks';
 import { useNavStore } from './store/navStore';
 import { useAppearanceStore } from './store/appearanceStore';
 import { useEditorViewStateStore } from './store/editorViewState';
@@ -87,6 +88,8 @@ export default function App() {
   useTheme();
   useDisableAutoCapitalize();
   usePetHostBridge();
+
+  useEffect(() => installExternalLinkInterceptor(), []);
 
   // ── Hydrate persisted settings on mount ──
   // loadSettings() reads every registered store's slice from disk and

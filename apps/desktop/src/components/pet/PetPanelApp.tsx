@@ -22,6 +22,7 @@ import { useAiConfigStore } from '@/store/aiConfigStore';
 import { startPetChatMirror } from '@/store/petChatSessions';
 import { useModelRegistryStore } from '@/store/modelRegistryStore';
 import { useDisableAutoCapitalize } from '@/hooks/useDisableAutoCapitalize';
+import { installExternalLinkInterceptor } from '@/services/externalLinks';
 import type {
   CustomProviderDef,
   ProviderSettings,
@@ -81,6 +82,11 @@ export function PetPanelApp() {
   // window's global auto-capitalize-off observer never reaches this realm,
   // so the search box / chat input here need their own.
   useDisableAutoCapitalize();
+
+  // ponytail: same reason as useDisableAutoCapitalize — the main window's
+  // external-link interceptor doesn't cross realms, so this window's AiPanel
+  // chat needs its own or external links hijack the panel webview.
+  useEffect(() => installExternalLinkInterceptor(), []);
 
   // Default tab is Chat — the panel opens on the embedded AI chat so a
   // single left-click on the pet drops the user into "ask" mode without an
