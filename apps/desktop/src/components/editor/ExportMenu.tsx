@@ -341,8 +341,8 @@ export function ExportMenu() {
       {/* Share success: URL copied to clipboard; show the URL + dismiss */}
       {shareUrl && (
         <div className="dlg-overlay" onClick={() => setShareUrl(null)}>
-          <div className="dlg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, padding: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <div className="dlg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, padding: '18px 20px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <Cloud size={18} className="text-acc" />
               <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)' }}>{t('settings:storage.toast.htmlShared')}</div>
             </div>
@@ -377,7 +377,7 @@ export function ExportMenu() {
                 </button>
               </div>
             </div>
-            <div className="dlg-ft" style={{ marginTop: 12, padding: '8px 0 0', borderTop: 'none' }}>
+            <div className="dlg-ft" style={{ marginTop: 14, padding: 0, borderTop: 'none' }}>
               <button className="btn btn-p btn-sm" onClick={() => setShareUrl(null)}>OK</button>
             </div>
           </div>
@@ -387,14 +387,14 @@ export function ExportMenu() {
       {/* Share error: surface the cause; user closes */}
       {shareError && (
         <div className="dlg-overlay" onClick={() => setShareError(null)}>
-          <div className="dlg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, padding: 24 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)', marginBottom: 10 }}>
+          <div className="dlg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, padding: '18px 20px 16px' }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)', marginBottom: 8 }}>
               {t('settings:storage.toast.uploadFailed')}
             </div>
             <div style={{ fontSize: 12, color: 'var(--t3)', lineHeight: 1.6, wordBreak: 'break-word' }}>
               {shareError}
             </div>
-            <div className="dlg-ft" style={{ marginTop: 16 }}>
+            <div className="dlg-ft" style={{ marginTop: 14, padding: 0, borderTop: 'none' }}>
               <button className="btn btn-p btn-sm" onClick={() => setShareError(null)}>OK</button>
             </div>
           </div>
