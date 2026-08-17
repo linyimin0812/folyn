@@ -49,6 +49,9 @@ interface FeaturePanelState {
   setActive: (id: string | null) => void;
   /** Toggle a panel's visibility (used by appearanceStore enable-flags in PR2). */
   setVisible: (id: string, visible: boolean) => void;
+  /** Update a panel's sort key. Used by registerBuiltinPanels to re-sort
+   *  Wiki/Clips/Analyze by enable timestamp when their flag flips on. */
+  setOrder: (id: string, order: number) => void;
 }
 
 export const useFeaturePanelStore = create<FeaturePanelState>((set, get) => ({
@@ -79,6 +82,11 @@ export const useFeaturePanelStore = create<FeaturePanelState>((set, get) => ({
   setVisible: (id, visible) =>
     set({
       panels: get().panels.map((p) => (p.id === id ? { ...p, visible } : p)),
+    }),
+
+  setOrder: (id, order) =>
+    set({
+      panels: get().panels.map((p) => (p.id === id ? { ...p, order } : p)),
     }),
 }));
 

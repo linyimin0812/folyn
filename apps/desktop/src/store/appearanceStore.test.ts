@@ -85,6 +85,22 @@ describe('useAppearanceStore setters', () => {
     expect(payload.showAiPanel).toBe(false);
     setSpy.mockRestore();
   });
+
+  it('setEnableWikiPanel stamps enabledAt on false→true, clears on true→false', () => {
+    vi.setSystemTime(new Date('2026-08-18T00:00:00Z'));
+    useAppearanceStore.setState({ enableWikiPanel: false, enabledAtWiki: undefined });
+    useAppearanceStore.getState().setEnableWikiPanel(true);
+    expect(useAppearanceStore.getState().enableWikiPanel).toBe(true);
+    expect(useAppearanceStore.getState().enabledAtWiki).toBe(Date.parse('2026-08-18T00:00:00Z'));
+    // Toggling true→true is idempotent (no timestamp refresh)
+    vi.setSystemTime(new Date('2026-08-18T01:00:00Z'));
+    useAppearanceStore.getState().setEnableWikiPanel(true);
+    expect(useAppearanceStore.getState().enabledAtWiki).toBe(Date.parse('2026-08-18T00:00:00Z'));
+    // Toggling true→false clears
+    useAppearanceStore.getState().setEnableWikiPanel(false);
+    expect(useAppearanceStore.getState().enableWikiPanel).toBe(false);
+    expect(useAppearanceStore.getState().enabledAtWiki).toBeUndefined();
+  });
 });
 
 describe('useAppearanceStore.hydrate', () => {

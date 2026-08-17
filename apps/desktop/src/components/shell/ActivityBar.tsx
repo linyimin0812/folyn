@@ -9,8 +9,9 @@
  * then mirrors the new id so the active button + Sidebar follow.
  *
  * The daily / study / settings page-nav buttons stay hardcoded (Decision Q3:
- * page-nav data-driving is out of scope). Settings is pinned to the bottom via
- * a `flex-1` spacer.
+ * page-nav data-driving is out of scope). Schedule + Study are pinned to the
+ * top of the bar (above the data-driven panel list) per the user's layout
+ * preference. Settings is pinned to the bottom via a `flex-1` spacer.
  *
  * Active-state rules:
  * - Panel button: `active` when `activePanel === id` AND not on a page-nav
@@ -64,6 +65,22 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
 
   return (
     <div className="activity-bar">
+      <button
+        className={`activity-icon ${onSchedule ? 'active' : ''}`}
+        onClick={() => setCurrentPage('schedule')}
+        title={t('shell:nav.schedule')}
+      >
+        <ScheduleIcon size={18} active={onSchedule} />
+      </button>
+
+      <button
+        className={`activity-icon ${onStudy ? 'active' : ''}`}
+        onClick={() => setCurrentPage('study')}
+        title={t('shell:nav.study')}
+      >
+        <StudyIcon size={18} active={onStudy} />
+      </button>
+
       {visiblePanels.map((p) => (
         <button
           key={p.id}
@@ -95,22 +112,6 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
           )}
         </button>
       ))}
-
-      <button
-        className={`activity-icon ${onSchedule ? 'active' : ''}`}
-        onClick={() => setCurrentPage('schedule')}
-        title={t('shell:nav.schedule')}
-      >
-        <ScheduleIcon size={18} active={onSchedule} />
-      </button>
-
-      <button
-        className={`activity-icon ${onStudy ? 'active' : ''}`}
-        onClick={() => setCurrentPage('study')}
-        title={t('shell:nav.study')}
-      >
-        <StudyIcon size={18} active={onStudy} />
-      </button>
 
       <div className="flex-1" />
 

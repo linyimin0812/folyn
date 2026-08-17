@@ -60,6 +60,16 @@ export function registerBuiltinPanels(): () => void {
   const fps = useFeaturePanelStore.getState();
   const ap = useAppearanceStore.getState();
 
+  // ponytail: order for Wiki/Clips/Analyze is their enabledAt timestamp
+  // (Date.now() of the false→true transition). Files stays at 0 so it's
+  // always first. When enabledAt is undefined (panel disabled, or pre-
+  // migration old user with no recorded timestamp), fall back to the
+  // base order 10/20/30 — sort still stable, just not time-ordered.
+  const orderFor = (id: 'wiki' | 'clips' | 'analyze', base: number) => {
+    const ts = id === 'wiki' ? ap.enabledAtWiki : id === 'clips' ? ap.enabledAtClips : ap.enabledAtAnalyze;
+    return ts ?? base;
+  };
+
   // ── Register the 5 built-ins ──
   // files is always visible; the other 4 bind visibility to their appearanceStore
   // enable flag (captured at registration time; the subscription below keeps
@@ -78,7 +88,7 @@ export function registerBuiltinPanels(): () => void {
     title: 'Wiki',
     icon: WikiIcon,
     component: WikiFileTree,
-    order: 10,
+    order: orderFor('wiki', 10),
     visible: ap.enableWikiPanel,
     builtin: true,
   });
@@ -87,7 +97,7 @@ export function registerBuiltinPanels(): () => void {
     title: 'Clips',
     icon: ClipsIcon,
     component: ClipsPanel,
-    order: 20,
+    order: orderFor('clips', 20),
     visible: ap.enableClipsPanel,
     builtin: true,
   });
@@ -96,25 +106,34 @@ export function registerBuiltinPanels(): () => void {
     title: '项目分析',
     icon: AnalyzeIcon,
     component: AnalysisPanel,
-    order: 30,
+    order: orderFor('analyze', 30),
     visible: ap.enableAnalyzePanel,
     builtin: true,
   });
 
-  // ── appearanceStore enable flags → featurePanelStore visibility ──
-  // On any appearanceStore change, for each of the 3 flag-bound panels: if the
-  // flag changed, push the new visibility to the store. If the just-hidden
-  // panel was the active one, re-route the active panel to 'files' (the
-  // editorStore→featurePanelStore mirror subscription below propagates it).
+  // ── appearanceStore enable flags → featurePanelStore visibility + order ──
+  // On any appearanceStore change, for each of the 3 flag-bound panels:
+  // - if the flag changed, push the new visibility to the store
+  // - if the flag flipped to true, also refresh the panel's order from the
+  //   (just-updated) enabledAt timestamp so it lands at the end of the
+  //   ActivityBar, matching the "I just turned this on" mental model
+  // - if the just-hidden panel was the active one, re-route to 'files'
+  //   (the editorStore→featurePanelStore mirror subscription below propagates it)
   const unsubAppearance = useAppearanceStore.subscribe((state, prev) => {
-    const checks: Array<[string, boolean, boolean]> = [
-      ['wiki', state.enableWikiPanel, prev.enableWikiPanel],
-      ['clips', state.enableClipsPanel, prev.enableClipsPanel],
-      ['analyze', state.enableAnalyzePanel, prev.enableAnalyzePanel],
+    const checks: Array<[string, boolean, boolean, number | undefined, number | undefined]> = [
+      ['wiki', state.enableWikiPanel, prev.enableWikiPanel, state.enabledAtWiki, prev.enabledAtWiki],
+      ['clips', state.enableClipsPanel, prev.enableClipsPanel, state.enabledAtClips, prev.enabledAtClips],
+      ['analyze', state.enableAnalyzePanel, prev.enableAnalyzePanel, state.enabledAtAnalyze, prev.enabledAtAnalyze],
     ];
-    for (const [id, cur, prevFlag] of checks) {
-      if (cur === prevFlag) continue;
-      useFeaturePanelStore.getState().setVisible(id, cur);
+    for (const [id, cur, prevFlag, curTs, prevTs] of checks) {
+      if (cur === prevFlag && curTs === prevTs) continue;
+      const store = useFeaturePanelStore.getState();
+      store.setVisible(id, cur);
+      if (cur) {
+        // order: enabledAt if we have one, else keep current (initial base)
+        const base = id === 'wiki' ? 10 : id === 'clips' ? 20 : 30;
+        store.setOrder(id, curTs ?? base);
+      }
       if (!cur && useEditorStore.getState().activePanel === id) {
         useEditorStore.getState().setActivePanel('files');
       }

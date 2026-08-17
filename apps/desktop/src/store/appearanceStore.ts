@@ -45,6 +45,9 @@ export const PERSIST_KEYS_APPEARANCE = [
   'enableWikiPanel',
   'enableClipsPanel',
   'enableAnalyzePanel',
+  'enabledAtWiki',
+  'enabledAtClips',
+  'enabledAtAnalyze',
   'excludePatterns',
   'linkOpenMode',
   'vaultName',
@@ -61,6 +64,14 @@ export interface AppearanceState {
   enableWikiPanel: boolean;
   enableClipsPanel: boolean;
   enableAnalyzePanel: boolean;
+  /** Timestamp (Date.now()) when the corresponding panel was first enabled.
+   * Used by registerBuiltinPanels to sort Wiki/Clips/Analyze by enable time
+   * ascending in the ActivityBar (Files always stays first via order=0).
+   * Undefined when the panel is disabled or was enabled before this field
+   * was introduced (old users fall back to base order 10/20/30). */
+  enabledAtWiki?: number;
+  enabledAtClips?: number;
+  enabledAtAnalyze?: number;
   excludePatterns: string;
   linkOpenMode: LinkOpenMode;
   vaultName: string;
@@ -92,9 +103,12 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   showAiPanel: true,
   showStatusBar: true,
   showHiddenFiles: true,
-  enableWikiPanel: true,
-  enableClipsPanel: true,
-  enableAnalyzePanel: true,
+  enableWikiPanel: false,
+  enableClipsPanel: false,
+  enableAnalyzePanel: false,
+  enabledAtWiki: undefined,
+  enabledAtClips: undefined,
+  enabledAtAnalyze: undefined,
   excludePatterns: DEFAULT_EXCLUDE_PATTERNS,
   linkOpenMode: 'external' as LinkOpenMode,
   vaultName: 'my-vault',
@@ -132,9 +146,32 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   setShowAiPanel: (v) => { set({ showAiPanel: v }); persist(); },
   setShowStatusBar: (v) => { set({ showStatusBar: v }); persist(); },
   setShowHiddenFiles: (v) => { set({ showHiddenFiles: v }); persist(); },
-  setEnableWikiPanel: (v) => { set({ enableWikiPanel: v }); persist(); },
-  setEnableClipsPanel: (v) => { set({ enableClipsPanel: v }); persist(); },
-  setEnableAnalyzePanel: (v) => { set({ enableAnalyzePanel: v }); persist(); },
+  setEnableWikiPanel: (v) => {
+    set((s) => ({
+      enableWikiPanel: v,
+      // ponytail: stamp enabledAt on the false→true transition; clear on
+      // true→false so re-enabling later produces a fresh timestamp (panel
+      // re-surfaces at the end of the ActivityBar, matching user mental model
+      // of "I just turned this back on"). Bypassed by hydrate / direct
+      // setState callers (tests / migration) — they own the timestamp.
+      enabledAtWiki: v ? (s.enableWikiPanel ? s.enabledAtWiki : Date.now()) : undefined,
+    }));
+    persist();
+  },
+  setEnableClipsPanel: (v) => {
+    set((s) => ({
+      enableClipsPanel: v,
+      enabledAtClips: v ? (s.enableClipsPanel ? s.enabledAtClips : Date.now()) : undefined,
+    }));
+    persist();
+  },
+  setEnableAnalyzePanel: (v) => {
+    set((s) => ({
+      enableAnalyzePanel: v,
+      enabledAtAnalyze: v ? (s.enableAnalyzePanel ? s.enabledAtAnalyze : Date.now()) : undefined,
+    }));
+    persist();
+  },
   setExcludePatterns: (v) => { set({ excludePatterns: v }); persist(); },
   setLinkOpenMode: (v) => { set({ linkOpenMode: v }); persist(); },
   setVaultName: (name) => { set({ vaultName: name }); persist(); },
@@ -151,6 +188,9 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
     if (blob.enableWikiPanel !== undefined) patch.enableWikiPanel = blob.enableWikiPanel as boolean;
     if (blob.enableClipsPanel !== undefined) patch.enableClipsPanel = blob.enableClipsPanel as boolean;
     if (blob.enableAnalyzePanel !== undefined) patch.enableAnalyzePanel = blob.enableAnalyzePanel as boolean;
+    if (blob.enabledAtWiki !== undefined) patch.enabledAtWiki = blob.enabledAtWiki as number;
+    if (blob.enabledAtClips !== undefined) patch.enabledAtClips = blob.enabledAtClips as number;
+    if (blob.enabledAtAnalyze !== undefined) patch.enabledAtAnalyze = blob.enabledAtAnalyze as number;
     if (blob.linkOpenMode !== undefined) patch.linkOpenMode = blob.linkOpenMode as LinkOpenMode;
     if (blob.vaultName !== undefined) patch.vaultName = blob.vaultName as string;
     if (blob.showTrayIcon !== undefined) patch.showTrayIcon = blob.showTrayIcon as boolean;
