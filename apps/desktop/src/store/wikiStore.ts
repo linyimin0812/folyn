@@ -41,6 +41,11 @@ interface WikiState {
   resolveReviewItem: (id: string) => void;
   dismissReviewItem: (id: string) => void;
   clearResolvedReviews: () => void;
+  executeReviewAction: (
+    id: string,
+    actionType: 'accept' | 'reject' | 'merge' | 'research',
+    options?: { keptPath?: string },
+  ) => Promise<{ applied: boolean; log: string }>;
 
   readWikiFile: (relativePath: string) => Promise<string>;
   writeWikiFile: (relativePath: string, content: string) => Promise<void>;
@@ -126,7 +131,35 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
 
   addReviewItems: (items) => {
     set((state) => {
-      const updated = [...state.reviewItems, ...items];
+      // D2.a dedup: drop new items whose dedupKey matches a resolved/dismissed item;
+      // bump lastSeenAt on existing pending items with same key; otherwise append.
+      const now = Date.now();
+      const existingIdxByDedup = new Map<string, number>();
+      state.reviewItems.forEach((r, idx) => {
+        if (r.dedupKey) existingIdxByDedup.set(r.dedupKey, idx);
+      });
+      const toAdd: ReviewItem[] = [];
+      const touchedIdx = new Set<number>();
+      for (const item of items) {
+        if (!item.dedupKey) {
+          toAdd.push(item);
+          continue;
+        }
+        const idx = existingIdxByDedup.get(item.dedupKey);
+        if (idx === undefined) {
+          toAdd.push(item);
+          continue;
+        }
+        const existing = state.reviewItems[idx]!;
+        if (existing.status === 'pending') {
+          touchedIdx.add(idx);
+        }
+        // resolved/dismissed: silently drop the new item.
+      }
+      const base = state.reviewItems.map((r, idx) =>
+        touchedIdx.has(idx) ? { ...r, lastSeenAt: now } : r,
+      );
+      const updated = [...base, ...toAdd];
       wikiProvider.writeReviews(updated);
       return { reviewItems: updated };
     });
@@ -135,7 +168,7 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
   resolveReviewItem: (id) => {
     set((state) => {
       const updated = state.reviewItems.map((r) =>
-        r.id === id ? { ...r, status: 'resolved' as const } : r,
+        r.id === id ? { ...r, status: 'resolved' as const, resolvedAt: Date.now() } : r,
       );
       wikiProvider.writeReviews(updated);
       return { reviewItems: updated };
@@ -145,7 +178,7 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
   dismissReviewItem: (id) => {
     set((state) => {
       const updated = state.reviewItems.map((r) =>
-        r.id === id ? { ...r, status: 'dismissed' as const } : r,
+        r.id === id ? { ...r, status: 'dismissed' as const, dismissedAt: Date.now() } : r,
       );
       wikiProvider.writeReviews(updated);
       return { reviewItems: updated };
@@ -158,6 +191,25 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
       wikiProvider.writeReviews(pending);
       return { reviewItems: pending };
     });
+  },
+
+  executeReviewAction: async (id, actionType, options) => {
+    const state = useWikiStore.getState();
+    const item = state.reviewItems.find((r) => r.id === id);
+    if (!item) return { applied: false, log: `review item ${id} not found` };
+    // Lazy import to avoid circular dependency at module init.
+    const { dispatchReviewAction } = await import('@/services/reviewActionHandlers');
+    const result = await dispatchReviewAction(item, actionType, options ?? {});
+    if (result.applied) {
+      if (actionType === 'accept' || actionType === 'merge') {
+        useWikiStore.getState().resolveReviewItem(id);
+      } else if (actionType === 'reject') {
+        useWikiStore.getState().dismissReviewItem(id);
+      }
+      // research: leave status pending, just inform.
+    }
+    useWikiStore.getState().pushActivity(result.applied ? 'success' : 'info', `${actionType} ${item.checkId ?? item.type}: ${result.log}`);
+    return result;
   },
 
   readWikiFile: (relativePath) => wikiProvider.readFile(relativePath),
