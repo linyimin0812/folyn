@@ -244,7 +244,6 @@ export async function buildOssV4PutRequest(input: OssV4Inputs): Promise<{
   headers: Record<string, string>;
   body: Uint8Array;
 }> {
-  const host = input.endpoint.replace(/^https?:\/\//, '');
   // Canonical URI is always path-style `/<bucket>/<key>` even with the
   // virtual-hosted-style endpoint URL — OSS V4 normalizes this internally.
   const canonicalUri = `/${input.bucket}/${input.objectKey}`;
@@ -298,7 +297,7 @@ export async function buildOssV4PutRequest(input: OssV4Inputs): Promise<{
     `Signature=${signature}`;
 
   return {
-    url: `${input.endpoint}${canonicalUri}`,
+    url: `${input.endpoint}/${input.objectKey}`,
     headers: {
       ...headerValues,
       authorization: authHeader,
