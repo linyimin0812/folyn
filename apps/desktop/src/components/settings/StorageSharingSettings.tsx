@@ -16,6 +16,7 @@ import type {
 } from '@/services/storage/types';
 import { isR2Config, isQiniuConfig, isOssConfig } from '@/services/storage/types';
 import { Toggle } from './primitives';
+import { ThemeIcon } from '@/components/icons/ThemeIcon';
 
 export function StorageSharingSettings() {
   const { t } = useTranslation();
@@ -153,7 +154,10 @@ function R2Form({ cfg, onSave, onRemove, t }: {
 
   return (
     <div className="p-4 border border-brd2 rounded-lg bg-surf">
-      <div className="text-[13px] font-semibold text-t1 mb-3">Cloudflare R2</div>
+      <div className="flex items-center gap-2 mb-3">
+        <ThemeIcon name="cloudflare" size={16} />
+        <div className="text-[13px] font-semibold text-t1">Cloudflare R2</div>
+      </div>
       <Field label={t('settings:storage.r2.accountId')} value={draft.accountId} onChange={(v) => set({ accountId: v })} placeholder="a1b2c3..." />
       <div className="grid grid-cols-2 gap-3">
         <Field label={t('settings:storage.r2.accessKeyId')} value={draft.accessKeyId} onChange={(v) => set({ accessKeyId: v })} />
@@ -250,7 +254,10 @@ function QiniuForm({ cfg, onSave, onRemove, t }: {
 
   return (
     <div className="p-4 border border-brd2 rounded-lg bg-surf">
-      <div className="text-[13px] font-semibold text-t1 mb-3">七牛云 Kodo</div>
+      <div className="flex items-center gap-2 mb-3">
+        <ThemeIcon name="qiniu" size={16} />
+        <div className="text-[13px] font-semibold text-t1">七牛云 Kodo</div>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <Field label={t('settings:storage.qiniu.accessKey')} value={draft.accessKey} onChange={(v) => set({ accessKey: v })} />
         <Field label={t('settings:storage.qiniu.secretKey')} value={draft.secretKey} onChange={(v) => set({ secretKey: v })} type="password" />
@@ -337,7 +344,10 @@ function OssForm({ cfg, onSave, onRemove, t }: {
 
   return (
     <div className="p-4 border border-brd2 rounded-lg bg-surf">
-      <div className="text-[13px] font-semibold text-t1 mb-3">阿里云 OSS</div>
+      <div className="flex items-center gap-2 mb-3">
+        <ThemeIcon name="aliyun" size={16} />
+        <div className="text-[13px] font-semibold text-t1">阿里云 OSS</div>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <Field label={t('settings:storage.oss.accessKeyId')} value={draft.accessKeyId} onChange={(v) => set({ accessKeyId: v })} />
         <Field label={t('settings:storage.oss.accessKeySecret')} value={draft.accessKeySecret} onChange={(v) => set({ accessKeySecret: v })} type="password" />
