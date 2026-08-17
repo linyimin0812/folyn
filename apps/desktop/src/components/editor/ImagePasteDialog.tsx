@@ -1,10 +1,19 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FolderOpen } from 'lucide-react';
 import {
   getAllStrategies,
   generateDefaultFileName,
   type UploadTarget,
 } from '@/utils/imageUploader';
+import { IconSelect } from '@/components/common/IconSelect';
+import { ThemeIcon } from '@/components/icons/ThemeIcon';
+
+const TARGET_ICON: Record<UploadTarget, React.ReactNode> = {
+  local: <FolderOpen size={14} />,
+  r2: <ThemeIcon name="cloudflare" size={14} />,
+  qiniu: <ThemeIcon name="qiniu" size={14} />,
+};
 
 export interface ImageSaveConfig {
   target: UploadTarget;
@@ -153,21 +162,21 @@ export function ImagePasteDialog({
         {/* Upload target selector */}
         <div className="py-1.5 px-[18px]">
           <label className="block text-xs text-t3 mb-1 font-medium">{t('editor:imagePaste.uploadMethod')}</label>
-          <select
-            className="settings-select w-full cursor-pointer"
+          <IconSelect
             value={selectedTarget}
-            onChange={(e) => setSelectedTarget(e.target.value as UploadTarget)}
-          >
-            {strategies.map((strategy) => {
-              const label = t(strategy.labelKey);
-              const suffix = strategy.enabled ? '' : ` (${t('editor:imagePaste.comingSoon')})`;
-              return (
-                <option key={strategy.name} value={strategy.name} disabled={!strategy.enabled}>
-                  {strategy.icon} {label}{suffix}
-                </option>
-              );
+            onChange={(v) => setSelectedTarget(v as UploadTarget)}
+            options={strategies.map((s) => {
+              const label = t(s.labelKey);
+              const suffix = s.enabled ? '' : ` (${t('editor:imagePaste.comingSoon')})`;
+              return {
+                value: s.name,
+                label,
+                icon: TARGET_ICON[s.name],
+                disabled: !s.enabled,
+                suffix,
+              };
             })}
-          </select>
+          />
         </div>
 
         {/* File name */}

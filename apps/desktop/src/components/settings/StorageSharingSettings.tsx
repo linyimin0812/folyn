@@ -17,6 +17,19 @@ import type {
 import { isR2Config, isQiniuConfig, isOssConfig } from '@/services/storage/types';
 import { Toggle } from './primitives';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
+import { IconSelect } from '@/components/common/IconSelect';
+
+const PROVIDER_ICON: Record<string, string> = {
+  r2: 'cloudflare',
+  qiniu: 'qiniu',
+  oss: 'aliyun',
+};
+
+function ProviderIcon({ id, size = 14 }: { id: string; size?: number }) {
+  const name = PROVIDER_ICON[id];
+  if (!name) return null;
+  return <ThemeIcon name={name} size={size} />;
+}
 
 export function StorageSharingSettings() {
   const { t } = useTranslation();
@@ -42,20 +55,21 @@ export function StorageSharingSettings() {
       {/* Provider selector */}
       <div className="mb-5">
         <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:storage.provider.label')}</div>
-        <select
-          className="settings-select"
+        <IconSelect
           value={activeProvider}
-          onChange={(e) => setActiveProvider(e.target.value)}
-        >
-          {providers.map((p) => {
+          onChange={setActiveProvider}
+          options={providers.map((p) => {
             const cfg = configs[p.id] ?? null;
             const configured = p.isConfigured(cfg);
             const suffix = configured ? '' : ` (${t('settings:storage.provider.notConfigured')})`;
-            return (
-              <option key={p.id} value={p.id}>{t(p.labelKey)}{suffix}</option>
-            );
+            return {
+              value: p.id,
+              label: t(p.labelKey),
+              icon: <ProviderIcon id={p.id} />,
+              suffix,
+            };
           })}
-        </select>
+        />
       </div>
 
       {/* Active provider form */}
