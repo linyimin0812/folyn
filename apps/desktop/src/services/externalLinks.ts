@@ -30,7 +30,19 @@ export function installExternalLinkInterceptor(): () => void {
       return;
     }
     // Only intercept external protocols — let anything else fall through.
-    if (!/^(https?:|mailto:|tel:|ftp:)/i.test(href)) return;
+    if (!/^(https?:|mailto:|tel:|ftp:)/i.test(href)) {
+      // ponytail: catch-all for unresolvable hrefs (e.g. [baidu](fadsfsdfsf),
+      // bare domains). Without this, returning early lets the webview try to
+      // navigate to the path → app refresh. Route to WebViewer; it shows its
+      // existing invalid_url error UI (new URL('fadsfsdfsf') throws) with an
+      // "open in external browser" escape hatch.
+      e.preventDefault();
+      e.stopPropagation();
+      const linkText = anchor.textContent || href;
+      useEditorStore.getState().openWebTab(href, linkText);
+      useEditorStore.setState({ activePanel: 'files' });
+      return;
+    }
 
     e.preventDefault();
     e.stopPropagation();
@@ -41,6 +53,7 @@ export function installExternalLinkInterceptor(): () => void {
     if (/^https?:/i.test(href) && useAppearanceStore.getState().linkOpenMode === 'internal') {
       const linkText = anchor.textContent || href;
       useEditorStore.getState().openWebTab(href, linkText);
+      useEditorStore.setState({ activePanel: 'files' });
       return;
     }
     void (async () => {
