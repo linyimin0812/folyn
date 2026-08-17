@@ -61,10 +61,48 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   // Visible panels sorted by (order, registration seq). The store selector
   // returns a useShallow-stabilized array — re-renders only on real content
   // change (no infinite loop on the empty path: EMPTY_PANELS constant).
+  // Files is the first entry (order=0); we slice it off and render it at the
+  // very top of the bar, then Schedule → Study, then the rest of the panels
+  // (Wiki/Clips/Analyze when enabled, plus any plugin panels).
   const visiblePanels = useVisiblePanels();
+  const [filesPanel, ...restPanels] = visiblePanels;
+
+  const renderPanelButton = (p: typeof filesPanel) => (
+    <button
+      key={p.id}
+      className={`activity-icon ${!onPage && activePanel === p.id ? 'active' : ''}`}
+      onClick={() => onPanelChange(p.id)}
+      title={p.title}
+    >
+      {p.icon}
+      {p.badge !== undefined && p.badge !== '' && (
+        <span
+          style={{
+            position: 'absolute',
+            top: 2,
+            right: 2,
+            minWidth: 12,
+            height: 12,
+            padding: '0 2px',
+            borderRadius: 6,
+            background: 'var(--acc, #6366f1)',
+            color: '#fff',
+            fontSize: 9,
+            lineHeight: '12px',
+            textAlign: 'center',
+            pointerEvents: 'none',
+          }}
+        >
+          {p.badge}
+        </span>
+      )}
+    </button>
+  );
 
   return (
     <div className="activity-bar">
+      {filesPanel && renderPanelButton(filesPanel)}
+
       <button
         className={`activity-icon ${onSchedule ? 'active' : ''}`}
         onClick={() => setCurrentPage('schedule')}
@@ -81,37 +119,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
         <StudyIcon size={18} active={onStudy} />
       </button>
 
-      {visiblePanels.map((p) => (
-        <button
-          key={p.id}
-          className={`activity-icon ${!onPage && activePanel === p.id ? 'active' : ''}`}
-          onClick={() => onPanelChange(p.id)}
-          title={p.title}
-        >
-          {p.icon}
-          {p.badge !== undefined && p.badge !== '' && (
-            <span
-              style={{
-                position: 'absolute',
-                top: 2,
-                right: 2,
-                minWidth: 12,
-                height: 12,
-                padding: '0 2px',
-                borderRadius: 6,
-                background: 'var(--acc, #6366f1)',
-                color: '#fff',
-                fontSize: 9,
-                lineHeight: '12px',
-                textAlign: 'center',
-                pointerEvents: 'none',
-              }}
-            >
-              {p.badge}
-            </span>
-          )}
-        </button>
-      ))}
+      {restPanels.map(renderPanelButton)}
 
       <div className="flex-1" />
 
