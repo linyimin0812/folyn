@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { buildQueryInstruction, saveToWiki, buildWikiContext } from './wikiQueryService';
+import { buildQueryInstruction, saveToWiki } from './wikiQueryService';
 import { useVaultStore } from '@/store/vaultStore';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 
@@ -60,53 +60,13 @@ describe('saveToWiki', () => {
     expect(written).toContain(`created: ${today}`);
     expect(written).toContain(`updated: ${today}`);
   });
-});
 
-describe('buildWikiContext', () => {
-  beforeEach(() => {
-    setVault(VAULT_BASE);
-  });
-
-  it('returns "no matching pages" when wiki has no index/overview/purpose', async () => {
-    const ctx = await buildWikiContext('anything');
-    expect(ctx).toContain('Wiki Overview');
-    expect(ctx).toContain('Wiki Purpose');
-    expect(ctx).toContain('_No matching pages found._');
-  });
-
-  it('matches index entries by keyword and embeds their page content', async () => {
-    const { writeTextFile } = await import('@tauri-apps/plugin-fs');
-    await writeTextFile(
-      `${WIKI_ROOT}/index.md`,
-      'Index:\n- [[wiki://entities/react.md]] React hooks and patterns\n',
-    );
-    await writeTextFile(
-      `${WIKI_ROOT}/entities/react.md`,
-      '---\ntitle: React\n---\n\nReact is a UI library.',
-    );
-    await writeTextFile(`${WIKI_ROOT}/overview.md`, 'Overview text');
-    await writeTextFile(`${WIKI_ROOT}/purpose.md`, 'Purpose text');
-
-    const ctx = await buildWikiContext('react hooks');
-    expect(ctx).toContain('Overview text');
-    expect(ctx).toContain('Purpose text');
-    expect(ctx).toContain('wiki://entities/react.md');
-    expect(ctx).toContain('React is a UI library.');
-    expect(ctx).toContain('Relevant Wiki Pages (1 matched)');
-  });
-
-  it('caps matched pages at 10', async () => {
-    const { writeTextFile } = await import('@tauri-apps/plugin-fs');
-    const lines: string[] = ['Index:'];
-    for (let i = 0; i < 15; i++) {
-      lines.push(`- [[wiki://entities/p${i}.md]] page ${i} keyword`);
-      await writeTextFile(`${WIKI_ROOT}/entities/p${i}.md`, `body ${i}`);
-    }
-    await writeTextFile(`${WIKI_ROOT}/index.md`, lines.join('\n'));
-    await writeTextFile(`${WIKI_ROOT}/overview.md`, 'ov');
-    await writeTextFile(`${WIKI_ROOT}/purpose.md`, 'pu');
-
-    const ctx = await buildWikiContext('keyword');
-    expect(ctx).toContain('(10 matched)');
+  it('A5: writes sourcePaths into frontmatter sources and relatedPages into related', async () => {
+    const path = await saveToWiki('Synth', 'body', 'q', ['entities/react', 'concepts/hooks.md'], ['entities/redux']);
+    const written = await readTextFile(`${WIKI_ROOT}/${path}`);
+    expect(written).toContain('confidence: low');
+    expect(written).toContain('"entities/react.md"');
+    expect(written).toContain('"concepts/hooks.md"');
+    expect(written).toContain('"entities/redux"');
   });
 });

@@ -7,49 +7,8 @@ import { createAdapter } from '@quill/cli-adapter';
 import { collectTextFromStream } from './aiStreamUtils';
 import { getFeatureAgentSendOptions } from './featureAgentService';
 import { resolveBasePath } from '@/utils/pathResolver';
-
-export async function buildWikiContext(query: string): Promise<string> {
-  const index = await wikiProvider.readFile('index.md').catch(() => '');
-  const overview = await wikiProvider.readFile('overview.md').catch(() => '');
-  const purpose = await wikiProvider.readFile('purpose.md').catch(() => '');
-
-  const keywords = query
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((w) => w.length > 1);
-
-  const relevantPaths: string[] = [];
-  const indexLines = index.split('\n');
-  for (const line of indexLines) {
-    const linkMatch = line.match(/\[\[wiki:\/\/(.+?)\]\]|\[.+?\]\((.+?\.md)\)/);
-    if (linkMatch) {
-      const path = linkMatch[1] || linkMatch[2];
-      const lineLC = line.toLowerCase();
-      if (keywords.some((k) => lineLC.includes(k))) {
-        relevantPaths.push(path);
-      }
-    }
-  }
-
-  const pages: string[] = [];
-  for (const path of relevantPaths.slice(0, 10)) {
-    try {
-      const content = await wikiProvider.readFile(path);
-      pages.push(`## wiki://${path}\n${content}`);
-    } catch {
-      // skip missing pages
-    }
-  }
-
-  return `## Wiki Overview
-${overview}
-
-## Wiki Purpose
-${purpose}
-
-## Relevant Wiki Pages (${pages.length} matched)
-${pages.join('\n\n---\n\n') || '_No matching pages found._'}`;
-}
+import { buildWikiContextV2 } from './wikiSearch';
+import { toKebabCase } from '@/utils/wikiNaming';
 
 /**
  * 构造 query action 的运行指令（动态部分）。静态输出契约由 canonical
@@ -74,18 +33,20 @@ export function buildQueryInstruction(query: string, wikiContext: string): strin
  *
  * agent 文件存在 → bare:false + --agent wiki（cwd=`<vault>/__wiki__/` 自动发现）；
  * 不存在 → --bare 回退（仍发送指令，但无 feature agent 上下文）。
+ *
+ * ponytail: A4.b multi-turn — 传入 sessionId 时透传 resumeSessionId，由 Claude CLI 按 id 持久化历史。
+ * 适配器仍每次 start/stop（无状态），但会话历史由 CLI 自身在磁盘上按 id 持久化。
  */
-export async function runWikiQuery(query: string): Promise<string> {
+export async function runWikiQuery(query: string, sessionId?: string): Promise<string> {
   const vault = useVaultStore.getState();
   const aiConfig = useAiConfigStore.getState();
   if (!vault.currentVault) throw new Error('No active vault');
 
-  const wikiContext = await buildWikiContext(query);
+  const { context: wikiContext } = await buildWikiContextV2(query);
   const instruction = buildQueryInstruction(query, wikiContext);
 
   const adapter = createAdapter(aiConfig.cliAdapter);
   const basePath = await resolveBasePath(vault.currentVault.basePath);
-  // wiki agent cwd = `<vault>/__wiki__/`。
   const workingDir = `${basePath}/__wiki__`;
 
   await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
@@ -93,7 +54,7 @@ export async function runWikiQuery(query: string): Promise<string> {
   try {
     const sendOpts = await getFeatureAgentSendOptions('wiki');
     const textPromise = collectTextFromStream(adapter);
-    await adapter.send(instruction, sendOpts);
+    await adapter.send(instruction, { ...sendOpts, resumeSessionId: sessionId });
     return await textPromise;
   } finally {
     await adapter.stop();
@@ -104,22 +65,23 @@ export async function saveToWiki(
   title: string,
   content: string,
   relatedQuery: string,
+  sourcePaths: string[] = [],
+  relatedPages: string[] = [],
 ): Promise<string> {
-  const kebab = title
-    .toLowerCase()
-    .replace(/[^a-zA-Z0-9一-鿿]+/g, '-')
-    .replace(/^-|-$/g, '');
+  // ponytail: A5 — syntheses 落库时回写 sources/related，confidence='low'（agent 生成未经多源交叉验证）。
+  const kebab = toKebabCase(title);
   const path = `syntheses/${kebab}.md`;
   const today = new Date().toISOString().split('T')[0];
+  const sources = sourcePaths.map((p) => (p.endsWith('.md') ? p : `${p}.md`));
   const page = `---
 title: "${title}"
 type: synthesis
-sources: []
+sources: [${sources.map((s) => `"${s}"`).join(', ')}]
 tags: []
 created: ${today}
 updated: ${today}
-confidence: medium
-related: []
+confidence: low
+related: [${relatedPages.map((p) => `"${p}"`).join(', ')}]
 ---
 
 # ${title}
