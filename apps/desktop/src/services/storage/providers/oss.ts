@@ -9,6 +9,7 @@
 import type { ProviderConfig, OssProviderConfig, StorageProvider } from '../types';
 import { buildOssV4PutRequest, sha1Hex } from '../crypto';
 import { isOssConfig } from '../types';
+import { contentTypeForExt } from '../contentType';
 
 function nowOssDate(): { amzDate: string; dateStamp: string } {
   const d = new Date();
@@ -89,12 +90,7 @@ export class OssProvider implements StorageProvider {
     const cfg = config as OssProviderConfig;
     const hash = await sha1Hex(bytes);
     const key = joinKey(cfg.imageKeyPrefix || 'images/', `${hash}.${ext}`);
-    const contentType = ext === 'png' ? 'image/png'
-      : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
-      : ext === 'webp' ? 'image/webp'
-      : ext === 'gif' ? 'image/gif'
-      : ext === 'svg' ? 'image/svg+xml'
-      : 'application/octet-stream';
+    const contentType = contentTypeForExt(ext);
     await putObject(cfg, key, bytes, contentType);
     return publicUrl(cfg, key);
   }

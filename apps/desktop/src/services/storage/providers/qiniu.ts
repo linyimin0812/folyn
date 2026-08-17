@@ -13,6 +13,7 @@
 import type { ProviderConfig, QiniuProviderConfig, StorageProvider } from '../types';
 import { buildQiniuUploadToken, sha1Hex } from '../crypto';
 import { isQiniuConfig } from '../types';
+import { contentTypeForExt } from '../contentType';
 
 // ponytail: region→upload host map. Region naming follows Qiniu docs.
 // na0 = North America, as0 = Southeast Asia / Oceania. z0=East China,
@@ -83,12 +84,7 @@ export class QiniuProvider implements StorageProvider {
     const cfg = config as QiniuProviderConfig;
     const hash = await sha1Hex(bytes);
     const key = joinKey(cfg.imageKeyPrefix || 'images/', `${hash}.${ext}`);
-    const contentType = ext === 'png' ? 'image/png'
-      : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
-      : ext === 'webp' ? 'image/webp'
-      : ext === 'gif' ? 'image/gif'
-      : ext === 'svg' ? 'image/svg+xml'
-      : 'application/octet-stream';
+    const contentType = contentTypeForExt(ext);
     await postForm(cfg, key, bytes, contentType);
     return publicUrl(cfg, key);
   }

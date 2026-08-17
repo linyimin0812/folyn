@@ -9,6 +9,7 @@
 import type { ProviderConfig, R2ProviderConfig, StorageProvider } from '../types';
 import { buildSigV4PutRequest, sha1Hex } from '../crypto';
 import { isR2Config } from '../types';
+import { contentTypeForExt } from '../contentType';
 
 function nowAmzDate(): { amzDate: string; dateStamp: string } {
   const d = new Date();
@@ -82,12 +83,7 @@ export class R2Provider implements StorageProvider {
     const cfg = config as R2ProviderConfig;
     const hash = await sha1Hex(bytes);
     const key = joinKey(cfg.imageKeyPrefix || 'images/', `${hash}.${ext}`);
-    const contentType = ext === 'png' ? 'image/png'
-      : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
-      : ext === 'webp' ? 'image/webp'
-      : ext === 'gif' ? 'image/gif'
-      : ext === 'svg' ? 'image/svg+xml'
-      : 'application/octet-stream';
+    const contentType = contentTypeForExt(ext);
     await putObject(cfg, key, bytes, contentType);
     return publicUrl(cfg, key);
   }
