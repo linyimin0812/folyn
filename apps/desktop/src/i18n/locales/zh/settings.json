@@ -698,21 +698,21 @@
       "accessKeyId": "Access Key ID",
       "secretAccessKey": "Secret Access Key",
       "bucket": "Bucket",
-      "publicHint": "需要把 bucket 设为公开访问（R2 → Settings → Public Development URL，或绑定自定义域名）。否则上传成功但访问 403。另外 R2 图床域名不在 CSP 默认放行列表里——若预览不显示图片，到 设置 → 安全策略 把该域名加白名单。最后还要在 R2 → Settings → CORS Policy 加一条规则，AllowedOrigins 含 tauri://localhost、http://tauri.localhost、http://localhost:1420，AllowedMethods 含 PUT，AllowedHeaders 含 authorization/x-amz-content-sha256/x-amz-date/content-type，否则浏览器跨域上传会被 preflight 拦截返回 403。"
+      "publicHint": "需要把 bucket 设为公开访问（R2 → Settings → Public Development URL，或绑定自定义域名）。否则上传成功但访问 403。\n另外 R2 图床域名不在 CSP 默认放行列表里——若预览不显示图片，到 设置 → 安全策略 把该域名加白名单。\n最后还要在 R2 → Settings → CORS Policy 加一条规则，AllowedOrigins 含 tauri://localhost、http://tauri.localhost、http://localhost:1420，AllowedMethods 含 PUT，AllowedHeaders 含 authorization/x-amz-content-sha256/x-amz-date/content-type，否则浏览器跨域上传会被 preflight 拦截返回 403。"
     },
     "qiniu": {
       "accessKey": "Access Key",
       "secretKey": "Secret Key",
       "bucket": "Bucket",
       "region": "区域",
-      "publicHint": "需要在七牛控制台绑定自定义域名并把 bucket 设为公开。否则上传成功但访问 403。默认 http://*.clouddn.com 测试域名已在 CSP 内置放行；绑定自定义域名后若预览不显示图片，到 设置 → 安全策略 把该域名加白名单。"
+      "publicHint": "需要在七牛控制台绑定自定义域名并把 bucket 设为公开。否则上传成功但访问 403。\n默认 http://*.clouddn.com 测试域名已在 CSP 内置放行；绑定自定义域名后若预览不显示图片，到 设置 → 安全策略 把该域名加白名单。"
     },
     "oss": {
       "accessKeyId": "Access Key ID",
       "accessKeySecret": "Access Key Secret",
       "bucket": "Bucket",
       "region": "区域",
-      "publicHint": "需要把 bucket 设为公开读（OSS → Bucket → 权限管理 → Bucket ACL = public-read），或在控制台绑定自定义域名。否则上传成功但访问 403。OSS 图床域名 *.aliyuncs.com 已在 CSP 默认放行；绑定自定义域名后若预览不显示图片，到 设置 → 安全策略 把该域名加白名单。还要在 OSS → Bucket → 数据安全 → 跨域设置 加一条 CORS 规则，AllowedOrigin 含 tauri://localhost、http://tauri.localhost、http://localhost:1420，AllowedMethod 含 PUT，AllowedHeader 含 authorization/x-oss-date/x-oss-content-sha256/content-type，否则浏览器跨域上传会被 preflight 拦截返回 403。"
+      "publicHint": "需要把 bucket 设为公开读（OSS → Bucket → 权限管理 → Bucket ACL = public-read），或在控制台绑定自定义域名。否则上传成功但访问 403。\nOSS 图床域名 *.aliyuncs.com 已在 CSP 默认放行；绑定自定义域名后若预览不显示图片，到 设置 → 安全策略 把该域名加白名单。\n还要在 OSS → Bucket → 数据安全 → 跨域设置 加一条 CORS 规则，AllowedOrigin 含 tauri://localhost、http://tauri.localhost、http://localhost:1420，AllowedMethod 含 PUT，AllowedHeader 含 authorization/x-oss-date/x-oss-content-sha256/content-type，否则浏览器跨域上传会被 preflight 拦截返回 403。"
     },
     "publicBaseUrl": "公网访问域名",
     "imageKeyPrefix": "图片 key 前缀",

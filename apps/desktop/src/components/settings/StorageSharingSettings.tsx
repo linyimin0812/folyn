@@ -124,6 +124,23 @@ export function StorageSharingSettings() {
 
 // ─── Field primitive ─────────────────────────────────────────────────────
 
+function Hint({ i18nKey }: { i18nKey: string }) {
+  const { t } = useTranslation();
+  const text = t(i18nKey);
+  const parts = text.split('\n').filter((s) => s.trim().length > 0);
+  if (parts.length === 0) return null;
+  return (
+    <ul className="text-[11px] text-t3 mt-3 leading-relaxed space-y-1.5">
+      {parts.map((p, i) => (
+        <li key={i} className="flex gap-1.5">
+          <span className="shrink-0 text-t3/70">•</span>
+          <span>{p}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function Field({ label, value, onChange, placeholder, type = 'text' }: {
   label: string;
   value: string;
@@ -218,7 +235,7 @@ function R2Form({ cfg, onSave, onRemove, t }: {
           <span className="self-center text-[11px] text-[var(--green,#22a863)]">✓ {t('settings:storage.toast.saved')}</span>
         )}
       </div>
-      <div className="text-[11px] text-t3 mt-3 leading-relaxed">{t('settings:storage.r2.publicHint')}</div>
+      <Hint i18nKey="settings:storage.r2.publicHint" />
       <button
         type="button"
         className="mt-2 inline-flex items-center gap-1 h-[24px] px-2.5 rounded-md text-[11px] font-ui cursor-pointer border border-brd2 text-t3 hover:border-acc hover:text-acc transition-all duration-100 bg-transparent"
@@ -332,7 +349,7 @@ function QiniuForm({ cfg, onSave, onRemove, t }: {
           <span className="self-center text-[11px] text-[var(--green,#22a863)]">✓ {t('settings:storage.toast.saved')}</span>
         )}
       </div>
-      <div className="text-[11px] text-t3 mt-3 leading-relaxed">{t('settings:storage.qiniu.publicHint')}</div>
+      <Hint i18nKey="settings:storage.qiniu.publicHint" />
     </div>
   );
 }
@@ -410,7 +427,7 @@ function OssForm({ cfg, onSave, onRemove, t }: {
           <span className="self-center text-[11px] text-[var(--green,#22a863)]">✓ {t('settings:storage.toast.saved')}</span>
         )}
       </div>
-      <div className="text-[11px] text-t3 mt-3 leading-relaxed">{t('settings:storage.oss.publicHint')}</div>
+      <Hint i18nKey="settings:storage.oss.publicHint" />
       <button
         type="button"
         className="mt-2 inline-flex items-center gap-1 h-[24px] px-2.5 rounded-md text-[11px] font-ui cursor-pointer border border-brd2 text-t3 hover:border-acc hover:text-acc transition-all duration-100 bg-transparent"
