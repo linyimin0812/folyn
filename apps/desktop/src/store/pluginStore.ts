@@ -20,6 +20,9 @@
 
 import { create } from 'zustand';
 import { isTauri } from '@/utils/platform';
+import analyzeSvgText from '@/assets/icons/project_analysis.svg?raw';
+import clipsSvgText from '@/assets/icons/clips.svg?raw';
+import wikiSvgText from '@/assets/icons/wiki.svg?raw';
 
 // ponytail: Tauri rejects with the serialized AppError {category, detail};
 // String(obj) yields "[object Object]" and hides the cause. Pull `detail`
@@ -66,7 +69,28 @@ export interface PluginRow {
   icon?: string;
   /** One-line description from the manifest. */
   description?: string;
+  /** True for built-in panels surfaced as plugins (Wiki/Clips/Analyze/Daily).
+   * These rows have no on-disk entry — the toggle binds to appearanceStore
+   * flags, and uninstall is hidden. */
+  builtin?: boolean;
+  /** i18n key for the display name (built-in rows). When present, the UI
+   * renders `t(nameKey)` instead of `entry.name`. */
+  nameKey?: string;
+  /** i18n key for the description (built-in rows). */
+  descKey?: string;
+  /** Dark-mode variant of `icon` (raw SVG text). When present and the
+   * resolved theme is dark, PluginIcon swaps to this instead of `icon`. */
+  iconDark?: string;
 }
+
+/** Static definitions for the 4 built-in panel "plugins". The flag/setter
+ * are bound in the UI via appearanceStore, not here, to keep the store
+ * decoupled from appearanceStore's hook shape. */
+export const BUILTIN_PANEL_DEFS = [
+  { id: 'builtin:wiki', nameKey: 'settings:appearance.panels.wiki.label', descKey: 'settings:appearance.panels.wiki.description', flag: 'enableWikiPanel' as const },
+  { id: 'builtin:clips', nameKey: 'settings:appearance.panels.clips.label', descKey: 'settings:appearance.panels.clips.description', flag: 'enableClipsPanel' as const },
+  { id: 'builtin:analyze', nameKey: 'settings:appearance.panels.analyze.label', descKey: 'settings:appearance.panels.analyze.description', flag: 'enableAnalyzePanel' as const },
+] as const;
 
 /** Consent-prompt modal state. */
 export interface ConsentPrompt {
@@ -174,6 +198,28 @@ async function fetchRows(): Promise<PluginRow[]> {
   const entries = await invoke<PluginEntry[]>('list_plugins');
   // Lazy-import the pluginHost so this store stays decoupled at module load.
   const { pluginHost } = await import('@quill/plugin-host');
+  // Lazy-import appearanceStore to read the built-in panel flags without
+  // creating a hard module-cycle (appearanceStore doesn't import pluginStore).
+  const { useAppearanceStore } = await import('@/store/appearanceStore');
+  const appearance = useAppearanceStore.getState();
+  const builtinRows: PluginRow[] = BUILTIN_PANEL_DEFS.map((def) => ({
+    entry: {
+      id: def.id,
+      name: def.id,
+      version: '—',
+      tier: 'sandbox',
+      trusted: true,
+      integrity: {},
+    },
+    state: appearance[def.flag] ? 'active' : 'inactive',
+    builtin: true,
+    nameKey: def.nameKey,
+    descKey: def.descKey,
+    icon: def.id === 'builtin:analyze' ? analyzeSvgText
+      : def.id === 'builtin:clips' ? clipsSvgText
+      : def.id === 'builtin:wiki' ? wikiSvgText
+      : undefined,
+  }));
   // Best-effort: fetch each plugin's manifest in parallel to surface
   // `icon` / `description` on the row. A failed read leaves the row with
   // both fields undefined (UI falls back to first-letter avatar + no
@@ -212,7 +258,7 @@ async function fetchRows(): Promise<PluginRow[]> {
       return { entry, state, error, icon, description };
     }),
   );
-  return rows;
+  return [...builtinRows, ...rows];
 }
 
 /** Parse a plugin's manifest permissions into human-readable summary lines. */

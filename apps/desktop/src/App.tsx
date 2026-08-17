@@ -450,14 +450,6 @@ export default function App() {
           openPanel();
         }
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
-        // Only trigger daily note when the feature is enabled; otherwise let the
-        // event pass through untouched so users (and the OS) keep default behavior.
-        if (useAppearanceStore.getState().enableDailyPanel) {
-          e.preventDefault();
-          useNavStore.getState().setCurrentPage('schedule');
-        }
-      }
       // Cmd/Ctrl+A selects all in native <input>/<textarea>. CodeMirror has
       // its own Mod-a keymap that preventDefaults, so it never reaches here.
       // Tauri's Edit menu lacks a Select All item on purpose — adding

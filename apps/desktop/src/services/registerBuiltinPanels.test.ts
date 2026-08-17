@@ -23,7 +23,6 @@ function resetStores() {
     enableWikiPanel: true,
     enableClipsPanel: true,
     enableAnalyzePanel: true,
-    enableDailyPanel: true,
   });
 }
 
@@ -72,7 +71,6 @@ describe('registerBuiltinPanels: built-in registration', () => {
       enableWikiPanel: false,
       enableClipsPanel: true,
       enableAnalyzePanel: false,
-      enableDailyPanel: true,
     });
     const dispose = registerBuiltinPanels();
     const visible = Object.fromEntries(

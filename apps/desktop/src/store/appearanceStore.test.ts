@@ -24,7 +24,6 @@ function resetAppearanceDefaults() {
     enableWikiPanel: true,
     enableClipsPanel: true,
     enableAnalyzePanel: true,
-    enableDailyPanel: true,
     excludePatterns:
       'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__study__\n__schedule__\n__analyze__',
     linkOpenMode: 'external',

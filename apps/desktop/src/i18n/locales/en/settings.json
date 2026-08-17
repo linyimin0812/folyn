@@ -64,10 +64,6 @@
         "label": "Project analysis panel",
         "description": "Show project-analysis entry in the sidebar"
       },
-      "daily": {
-        "label": "Daily notes panel",
-        "description": "Show calendar and daily notes entry in the sidebar (disabling also disables ⌘D)"
-      },
       "tray": {
         "label": "Show tray icon",
         "description": "Show the app icon in the system tray; click it for the same quick-action menu as the pet right-click menu"
@@ -415,6 +411,7 @@
       "sandbox": "Sandbox tier"
     },
     "approved": "Approved",
+    "builtin": "Built-in",
     "renderError": "Render error: {{label}}",
     "clearRenderError": "Clear",
     "approve": "Approve & authorize",

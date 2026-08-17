@@ -64,10 +64,6 @@
         "label": "项目分析面板",
         "description": "在侧栏显示项目分析入口"
       },
-      "daily": {
-        "label": "今日笔记面板",
-        "description": "在侧栏显示日历与今日笔记入口（禁用后 ⌘D 也不再打开）"
-      },
       "tray": {
         "label": "显示托盘图标",
         "description": "在系统托盘显示应用图标，点击弹出与桌宠右键菜单相同的快捷菜单"
@@ -415,6 +411,7 @@
       "sandbox": "沙箱层"
     },
     "approved": "已批准",
+    "builtin": "内置",
     "renderError": "渲染错误：{{label}}",
     "clearRenderError": "清除",
     "approve": "批准并授权",

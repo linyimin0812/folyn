@@ -26,6 +26,8 @@ import { useVaultStore } from '@/store/vaultStore';
 import { useTranslation } from 'react-i18next';
 import { GitPanel } from '@/components/git/GitPanel';
 import githubIcon from '@/assets/icons/github.svg';
+import { ScheduleIcon } from '@/components/icons/ScheduleIcon';
+import { StudyIcon } from '@/components/icons/StudyIcon';
 
 /**
  * Active panel id. Widened to `string` in PR2 — plugin panels contribute
@@ -99,12 +101,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
         onClick={() => setCurrentPage('schedule')}
         title={t('shell:nav.schedule')}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-          <line x1="16" y1="2" x2="16" y2="6" />
-          <line x1="8" y1="2" x2="8" y2="6" />
-          <line x1="3" y1="10" x2="21" y2="10" />
-        </svg>
+        <ScheduleIcon size={18} active={onSchedule} />
       </button>
 
       <button
@@ -112,10 +109,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
         onClick={() => setCurrentPage('study')}
         title={t('shell:nav.study')}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M22 10L12 5 2 10l10 5 10-5z" />
-          <path d="M6 12v5c0 1 2.5 3 6 3s6-2 6-3v-5" />
-        </svg>
+        <StudyIcon size={18} active={onStudy} />
       </button>
 
       <div className="flex-1" />

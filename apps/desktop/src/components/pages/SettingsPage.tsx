@@ -31,19 +31,11 @@ export function SettingsPage() {
   const showAiPanel = useAppearanceStore((s) => s.showAiPanel);
   const showStatusBar = useAppearanceStore((s) => s.showStatusBar);
   const showHiddenFiles = useAppearanceStore((s) => s.showHiddenFiles);
-  const enableWikiPanel = useAppearanceStore((s) => s.enableWikiPanel);
-  const enableClipsPanel = useAppearanceStore((s) => s.enableClipsPanel);
-  const enableAnalyzePanel = useAppearanceStore((s) => s.enableAnalyzePanel);
-  const enableDailyPanel = useAppearanceStore((s) => s.enableDailyPanel);
   const excludePatterns = useAppearanceStore((s) => s.excludePatterns);
   const setFontSize = useAppearanceStore((s) => s.setFontSize);
   const setShowAiPanel = useAppearanceStore((s) => s.setShowAiPanel);
   const setShowStatusBar = useAppearanceStore((s) => s.setShowStatusBar);
   const setShowHiddenFiles = useAppearanceStore((s) => s.setShowHiddenFiles);
-  const setEnableWikiPanel = useAppearanceStore((s) => s.setEnableWikiPanel);
-  const setEnableClipsPanel = useAppearanceStore((s) => s.setEnableClipsPanel);
-  const setEnableAnalyzePanel = useAppearanceStore((s) => s.setEnableAnalyzePanel);
-  const setEnableDailyPanel = useAppearanceStore((s) => s.setEnableDailyPanel);
   const setExcludePatterns = useAppearanceStore((s) => s.setExcludePatterns);
   const linkOpenMode = useAppearanceStore((s) => s.linkOpenMode);
   const setLinkOpenMode = useAppearanceStore((s) => s.setLinkOpenMode);
@@ -141,10 +133,6 @@ export function SettingsPage() {
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.ai.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.ai.description')}</p></div><Toggle value={showAiPanel} onChange={(v) => setShowAiPanel(v)} /></div>
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.statusBar.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.statusBar.description')}</p></div><Toggle value={showStatusBar} onChange={(v) => setShowStatusBar(v)} /></div>
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.hiddenFiles.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.hiddenFiles.description')}</p></div><Toggle value={showHiddenFiles} onChange={(v) => { setShowHiddenFiles(v); import('@/store/vaultStore').then(m => m.useVaultStore.getState().refreshFileTree()); }} /></div>
-            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.wiki.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.wiki.description')}</p></div><Toggle value={enableWikiPanel} onChange={(v) => setEnableWikiPanel(v)} /></div>
-            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.clips.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.clips.description')}</p></div><Toggle value={enableClipsPanel} onChange={(v) => setEnableClipsPanel(v)} /></div>
-            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.analyze.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.analyze.description')}</p></div><Toggle value={enableAnalyzePanel} onChange={(v) => setEnableAnalyzePanel(v)} /></div>
-            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.daily.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.daily.description')}</p></div><Toggle value={enableDailyPanel} onChange={(v) => setEnableDailyPanel(v)} /></div>
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.tray.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.tray.description')}</p></div><Toggle value={showTrayIcon} onChange={(v) => setShowTrayIcon(v)} /></div>
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
               <div className="tr-info">

@@ -32,7 +32,7 @@ function resetAllDefaults() {
   useAppearanceStore.setState({
     theme: 'light', fontSize: 14, lineHeight: 1.7, showAiPanel: true,
     showStatusBar: true, showHiddenFiles: true, enableWikiPanel: true,
-    enableClipsPanel: true, enableAnalyzePanel: true, enableDailyPanel: true,
+    enableClipsPanel: true, enableAnalyzePanel: true,
     excludePatterns:
       'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__study__\n__schedule__\n__analyze__',
     linkOpenMode: 'external', vaultName: 'my-vault',
@@ -132,7 +132,6 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
       enableWikiPanel: false,
       enableClipsPanel: false,
       enableAnalyzePanel: false,
-      enableDailyPanel: false,
       excludePatterns: 'node_modules\n__wiki__',
       linkOpenMode: 'internal',
       vaultName: 'legacy-vault',

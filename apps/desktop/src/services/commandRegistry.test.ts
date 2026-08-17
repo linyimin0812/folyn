@@ -54,7 +54,6 @@ vi.mock('@/store/appearanceStore', () => ({
       enableWikiPanel: true,
       enableClipsPanel: true,
       enableAnalyzePanel: true,
-      enableDailyPanel: true,
       showAiPanel: true,
     }),
   },

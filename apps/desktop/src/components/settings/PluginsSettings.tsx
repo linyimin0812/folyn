@@ -76,19 +76,27 @@ function tierLabel(tier: PluginRow['entry']['tier']): string {
  * icons keep a visible, theme-appropriate color. A host ThemeIcon name
  * (e.g. "folder") is rendered via ThemeIcon; emoji/short text is rendered
  * as text; absent icon falls back to the first letter of the plugin name. */
-function PluginIcon({ icon, name }: { icon: string | undefined; name: string }) {
+function PluginIcon({ icon, iconDark, name }: { icon: string | undefined; iconDark?: string; name: string }) {
   // Subscribed so --t2 is re-resolved (and the data URI rebuilt) on theme change.
   const theme = useAppearanceStore((s) => s.theme);
   const size = 20;
   const boxCls =
     'shrink-0 inline-flex items-center justify-center rounded bg-surf2 border border-brd2 text-t2 overflow-hidden';
 
+  // Pick the dark SVG text when a dark variant is provided AND the resolved
+  // theme is dark. `theme` from the store covers user-toggled light/dark;
+  // `dataset.theme` covers the 'system' → matchMedia path (set by setTheme).
+  const resolvedDark = typeof document !== 'undefined'
+    ? document.documentElement.dataset.theme === 'dark'
+    : theme === 'dark';
+  const effectiveIcon = resolvedDark && iconDark ? iconDark : icon;
+
   const dataUri = useMemo(() => {
-    if (!icon) return null;
+    if (!effectiveIcon) return null;
     // Strip the XML prologue / DOCTYPE that design-tool-exported SVGs often
     // carry — otherwise the startsWith('<svg') check misses and the raw SVG
     // source would end up rendered as text.
-    const svgText = icon
+    const svgText = effectiveIcon
       .trim()
       .replace(/^<\?xml[^?]*\?>\s*/, '')
       .replace(/^<!DOCTYPE[^>]*>\s*/i, '');
@@ -96,8 +104,8 @@ function PluginIcon({ icon, name }: { icon: string | undefined; name: string }) 
     const t2 = getComputedStyle(document.documentElement).getPropertyValue('--t2').trim();
     const colored = t2 ? svgText.replace(/currentColor/gi, t2) : svgText;
     return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(colored)))}`;
-    // theme in deps: re-resolve --t2 after a theme switch
-  }, [icon, theme]);
+    // theme + effectiveIcon in deps: re-resolve --t2 and swap dark/light on theme switch
+  }, [effectiveIcon, theme]);
 
   if (dataUri) {
     return <img src={dataUri} width={size} height={size} className="shrink-0" alt="" />;
@@ -106,7 +114,7 @@ function PluginIcon({ icon, name }: { icon: string | undefined; name: string }) 
   // .svg file path that wasn't inlined by the store (defensive fallback).
   // This shouldn't normally be reached — fetchRows() in the store resolves
   // .svg paths — but serves as a safety net.
-  if (icon && icon.trim().toLowerCase().endsWith('.svg') && !icon.trim().startsWith('<svg')) {
+  if (effectiveIcon && effectiveIcon.trim().toLowerCase().endsWith('.svg') && !effectiveIcon.trim().startsWith('<svg')) {
     return (
       <span
         className={boxCls}
@@ -151,12 +159,22 @@ function PluginIcon({ icon, name }: { icon: string | undefined; name: string }) 
 /** A single plugin row with its action buttons. */
 function PluginRowCard({ row }: { row: PluginRow }) {
   const { t } = useTranslation();
-  const { entry, state, error, icon, description } = row;
+  const { entry, state, error, icon, description, builtin, nameKey, descKey } = row;
   const busy = usePluginStore(useShallow((s) => s.busy));
   const activate = usePluginStore((s) => s.activate);
   const deactivate = usePluginStore((s) => s.deactivate);
   const uninstall = usePluginStore((s) => s.uninstall);
   const openConsent = usePluginStore((s) => s.openConsent);
+  // Built-in rows bind their enable toggle to appearanceStore flags (the
+  // source of truth for panel visibility), not to pluginHost.activate. Grab
+  // all 3 flag/setter pairs unconditionally — hooks can't be conditional,
+  // and these subscriptions are cheap (zustand shallow-equals primitives).
+  const enableWikiPanel = useAppearanceStore((s) => s.enableWikiPanel);
+  const enableClipsPanel = useAppearanceStore((s) => s.enableClipsPanel);
+  const enableAnalyzePanel = useAppearanceStore((s) => s.enableAnalyzePanel);
+  const setEnableWikiPanel = useAppearanceStore((s) => s.setEnableWikiPanel);
+  const setEnableClipsPanel = useAppearanceStore((s) => s.setEnableClipsPanel);
+  const setEnableAnalyzePanel = useAppearanceStore((s) => s.setEnableAnalyzePanel);
   // Render errors captured by PanelErrorBoundary for this plugin's surfaces.
   // A plugin that threw during render is isolated (never crashes the host),
   // but surfaced here so the user can see something went wrong + clear it.
@@ -173,8 +191,13 @@ function PluginRowCard({ row }: { row: PluginRow }) {
   // The Approve button opens the consent modal (which calls `approve_plugin`
   // on confirm). Sandbox plugins auto-activate on install — no approval
   // needed (their trust boundary is the iframe sandbox, not a pin).
-  const needsApproval = entry.tier === 'trusted' && !entry.trusted;
-  const isActive = state === 'active';
+  const needsApproval = !builtin && entry.tier === 'trusted' && !entry.trusted;
+  const isActive = builtin
+    ? (entry.id === 'builtin:wiki' ? enableWikiPanel
+        : entry.id === 'builtin:clips' ? enableClipsPanel
+        : entry.id === 'builtin:analyze' ? enableAnalyzePanel
+        : false)
+    : state === 'active';
   const toggleBusy = isActivateBusy || isDeactivateBusy;
   const toggleValue = isActive && !toggleBusy;
 
@@ -197,36 +220,47 @@ function PluginRowCard({ row }: { row: PluginRow }) {
     void uninstall(entry.id);
   }, [entry.id, uninstall, t]);
 
+  const displayName = builtin && nameKey ? t(nameKey) : entry.name;
+  const displayDesc = builtin && descKey ? t(descKey) : description;
+
   return (
     <div className="tr-info border border-brd rounded-lg p-3 mb-2 bg-surf">
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="flex items-start gap-2 min-w-0">
-          <PluginIcon icon={icon} name={entry.name} />
+          <PluginIcon icon={icon} iconDark={row.iconDark} name={displayName} />
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[length:calc(var(--ui-font-size)-1px)] font-semibold text-t1 truncate">
-                {entry.name}
+                {displayName}
               </span>
-              <span className="text-[10px] text-t3 font-mono">{entry.version}</span>
+              {!builtin && (
+                <span className="text-[10px] text-t3 font-mono">{entry.version}</span>
+              )}
               <span className={`text-[10px] px-1.5 py-0.5 rounded border ${stateBadgeClass(state)}`}>
                 {stateLabel(state)}
               </span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded border border-brd2 text-t2 bg-surf2">
-                {tierLabel(entry.tier)}
-              </span>
-              {entry.trusted && (
+              {builtin ? (
+                <span className="text-[10px] px-1.5 py-0.5 rounded border border-acc/30 text-acc bg-accdim">
+                  {t('settings:plugins.builtin')}
+                </span>
+              ) : (
+                <span className="text-[10px] px-1.5 py-0.5 rounded border border-brd2 text-t2 bg-surf2">
+                  {tierLabel(entry.tier)}
+                </span>
+              )}
+              {!builtin && entry.trusted && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded border border-acc/30 text-acc bg-accdim">
                   {t('settings:plugins.approved')}
                 </span>
               )}
             </div>
             <div className="text-[10.5px] text-t3 font-mono mt-0.5 truncate">{entry.id}</div>
-            {description && (
+            {displayDesc && (
               <div
                 className="text-[11px] text-t2 mt-0.5 truncate"
-                title={description}
+                title={displayDesc}
               >
-                {description}
+                {displayDesc}
               </div>
             )}
           </div>
@@ -241,23 +275,31 @@ function PluginRowCard({ row }: { row: PluginRow }) {
               {isApproveBusy ? t('settings:plugins.approving') : t('settings:plugins.approve')}
             </button>
           )}
-          {!needsApproval && (
+          {(!needsApproval || builtin) && (
             <Toggle
               value={toggleValue}
               onChange={(v) => {
+                if (builtin) {
+                  if (entry.id === 'builtin:wiki') setEnableWikiPanel(v);
+                  else if (entry.id === 'builtin:clips') setEnableClipsPanel(v);
+                  else if (entry.id === 'builtin:analyze') setEnableAnalyzePanel(v);
+                  return;
+                }
                 if (v && !isActive) void activate(entry.id);
                 else if (!v && isActive) void deactivate(entry.id);
               }}
             />
           )}
-          <button
-            className="btn btn-g btn-sm"
-            disabled={anyBusy}
-            onClick={handleUninstall}
-            title={t('settings:plugins.uninstallTitle')}
-          >
-            {isUninstallBusy ? t('settings:plugins.uninstalling') : t('settings:plugins.uninstall')}
-          </button>
+          {!builtin && (
+            <button
+              className="btn btn-g btn-sm"
+              disabled={anyBusy}
+              onClick={handleUninstall}
+              title={t('settings:plugins.uninstallTitle')}
+            >
+              {isUninstallBusy ? t('settings:plugins.uninstalling') : t('settings:plugins.uninstall')}
+            </button>
+          )}
         </div>
       </div>
       {error && (

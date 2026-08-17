@@ -28,7 +28,6 @@ export function buildDefaultShortcuts(primaryMod: '⌘' | 'Ctrl'): ShortcutItem[
     { id: 'strikethrough', name: '删除线', keys: [primaryMod, 'Shift', 'S'] },
     { id: 'code', name: '行内代码', keys: [primaryMod, 'E'] },
     { id: 'link', name: '插入链接', keys: [primaryMod, 'K'] },
-    { id: 'dailyNote', name: '今日笔记', keys: [primaryMod, 'D'] },
     // GLOBAL shortcut — registered with the OS via `pet_panel_set_shortcut` so
     // it fires even when Quill is not focused. The other entries above are
     // in-editor keybindings (consumed by EditorView's keymap, never registered

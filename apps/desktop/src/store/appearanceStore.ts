@@ -45,7 +45,6 @@ export const PERSIST_KEYS_APPEARANCE = [
   'enableWikiPanel',
   'enableClipsPanel',
   'enableAnalyzePanel',
-  'enableDailyPanel',
   'excludePatterns',
   'linkOpenMode',
   'vaultName',
@@ -62,7 +61,6 @@ export interface AppearanceState {
   enableWikiPanel: boolean;
   enableClipsPanel: boolean;
   enableAnalyzePanel: boolean;
-  enableDailyPanel: boolean;
   excludePatterns: string;
   linkOpenMode: LinkOpenMode;
   vaultName: string;
@@ -78,7 +76,6 @@ export interface AppearanceState {
   setEnableWikiPanel: (v: boolean) => void;
   setEnableClipsPanel: (v: boolean) => void;
   setEnableAnalyzePanel: (v: boolean) => void;
-  setEnableDailyPanel: (v: boolean) => void;
   setExcludePatterns: (v: string) => void;
   setLinkOpenMode: (v: LinkOpenMode) => void;
   setVaultName: (name: string) => void;
@@ -98,7 +95,6 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   enableWikiPanel: true,
   enableClipsPanel: true,
   enableAnalyzePanel: true,
-  enableDailyPanel: true,
   excludePatterns: DEFAULT_EXCLUDE_PATTERNS,
   linkOpenMode: 'external' as LinkOpenMode,
   vaultName: 'my-vault',
@@ -139,7 +135,6 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   setEnableWikiPanel: (v) => { set({ enableWikiPanel: v }); persist(); },
   setEnableClipsPanel: (v) => { set({ enableClipsPanel: v }); persist(); },
   setEnableAnalyzePanel: (v) => { set({ enableAnalyzePanel: v }); persist(); },
-  setEnableDailyPanel: (v) => { set({ enableDailyPanel: v }); persist(); },
   setExcludePatterns: (v) => { set({ excludePatterns: v }); persist(); },
   setLinkOpenMode: (v) => { set({ linkOpenMode: v }); persist(); },
   setVaultName: (name) => { set({ vaultName: name }); persist(); },
@@ -156,7 +151,6 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
     if (blob.enableWikiPanel !== undefined) patch.enableWikiPanel = blob.enableWikiPanel as boolean;
     if (blob.enableClipsPanel !== undefined) patch.enableClipsPanel = blob.enableClipsPanel as boolean;
     if (blob.enableAnalyzePanel !== undefined) patch.enableAnalyzePanel = blob.enableAnalyzePanel as boolean;
-    if (blob.enableDailyPanel !== undefined) patch.enableDailyPanel = blob.enableDailyPanel as boolean;
     if (blob.linkOpenMode !== undefined) patch.linkOpenMode = blob.linkOpenMode as LinkOpenMode;
     if (blob.vaultName !== undefined) patch.vaultName = blob.vaultName as string;
     if (blob.showTrayIcon !== undefined) patch.showTrayIcon = blob.showTrayIcon as boolean;

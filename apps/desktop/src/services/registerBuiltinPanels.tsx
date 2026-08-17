@@ -37,6 +37,9 @@ import { FilesPanel } from '@/components/sidebar/FilesPanel';
 import { WikiFileTree } from '@/components/sidebar/WikiFileTree';
 import { ClipsPanel } from '@/components/sidebar/ClipsPanel';
 import { AnalysisPanel } from '@/components/sidebar/AnalysisPanel';
+import { AnalyzeIcon as AnalyzeIconComponent } from '@/components/icons/AnalyzeIcon';
+import { ClipsIcon as ClipsIconComponent } from '@/components/icons/ClipsIcon';
+import { WikiIcon as WikiIconComponent } from '@/components/icons/WikiIcon';
 
 // ── Built-in icons (reuse the exact SVGs from the pre-PR2 ActivityBar) ──────────
 const FilesIcon: ReactNode = (
@@ -44,22 +47,9 @@ const FilesIcon: ReactNode = (
     <path d="M3 7V17a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
   </svg>
 );
-const WikiIcon: ReactNode = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-    <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-  </svg>
-);
-const ClipsIcon: ReactNode = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-    <path d="M5 3v18l7-4 7 4V3H5z" />
-  </svg>
-);
-const AnalyzeIcon: ReactNode = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-    <path d="M21 21H4.6c-.56 0-.84 0-1.054-.109a1 1 0 01-.437-.437C3 20.24 3 19.96 3 19.4V3" />
-    <path d="M7 14l4-4 4 4 6-6" />
-  </svg>
-);
+const WikiIcon: ReactNode = <WikiIconComponent size={18} />;
+const ClipsIcon: ReactNode = <ClipsIconComponent size={18} />;
+const AnalyzeIcon: ReactNode = <AnalyzeIconComponent size={18} />;
 
 let wired = false;
 

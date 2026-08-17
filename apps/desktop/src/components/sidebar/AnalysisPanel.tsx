@@ -6,6 +6,7 @@ import type { ReportLanguage } from '@/services/githubAnalysisService';
 import { parseGitHubUrl } from '@/services/githubAnalysisService';
 import type { StreamEvent } from '@/services/aiStreamUtils';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
+import { AnalyzeIcon } from '@/components/icons/AnalyzeIcon';
 
 // ── Stream Event List (structured AI output with labels) ──
 
@@ -552,10 +553,7 @@ function AnalysisDialog({
       >
         {/* Title */}
         <div className="flex items-center gap-2 mb-4">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-acc">
-            <path d="M21 21H4.6c-.56 0-.84 0-1.054-.109a1 1 0 01-.437-.437C3 20.24 3 19.96 3 19.4V3" />
-            <path d="M7 14l4-4 4 4 6-6" />
-          </svg>
+          <AnalyzeIcon size={16} />
           <span className="text-[15px] font-semibold text-t1">{t('sidebar:analysis.dialog.title')}</span>
         </div>
 
@@ -769,17 +767,7 @@ export function AnalysisPanel() {
     <div className="flex-1 overflow-y-auto flex flex-col">
       {/* Header */}
       <div className="py-2 px-3 text-[11px] font-semibold text-t3 uppercase tracking-[0.5px] flex items-center gap-1.5">
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        >
-          <path d="M21 21H4.6c-.56 0-.84 0-1.054-.109a1 1 0 01-.437-.437C3 20.24 3 19.96 3 19.4V3" />
-          <path d="M7 14l4-4 4 4 6-6" />
-        </svg>
+        <AnalyzeIcon size={12} />
         <span>{t('sidebar:analysis.title')}</span>
         {hasAnyReports && (
           <span className="text-t3 font-normal">({reports.length})</span>
