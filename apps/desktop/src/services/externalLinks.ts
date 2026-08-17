@@ -1,4 +1,6 @@
 import { isTauri } from '@/utils/platform';
+import { useAppearanceStore } from '@/store/appearanceStore';
+import { useEditorStore } from '@/store/editorStore';
 
 // ponytail: a single document-level capture listener beats injecting a custom
 // `a` component into the markdown pipeline — one listener covers every
@@ -32,6 +34,15 @@ export function installExternalLinkInterceptor(): () => void {
 
     e.preventDefault();
     e.stopPropagation();
+    // ponytail: respect linkOpenMode for http(s). Before this check the
+    // capture listener always won the race against MarkdownPreview's map['a']
+    // handler, so the in-app web tab setting was silently ignored. Non-web
+    // schemes (mailto/tel/ftp) always go to the system handler.
+    if (/^https?:/i.test(href) && useAppearanceStore.getState().linkOpenMode === 'internal') {
+      const linkText = anchor.textContent || href;
+      useEditorStore.getState().openWebTab(href, linkText);
+      return;
+    }
     void (async () => {
       try {
         const { openUrl } = await import('@tauri-apps/plugin-opener');
