@@ -1849,3 +1849,37 @@ Wired Aliyun OSS into the storage provider stack end-to-end: provider form heade
 ### Next Steps
 
 - None - task complete
+
+
+## Session 168: Fix chat external link hijacking WKWebView
+
+**Date**: 2026-08-17
+**Task**: Fix chat external link hijacking WKWebView
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Chat markdown 外链点击会让 WKWebView 导航到外链 URL、丢失 React 根树。在主窗口 App 和 PetPanelApp 各装一个 document 级 capture click listener，把外链路由到 opener 插件 openUrl；capabilities 改用 opener:default（含 allow-default-urls scope，单独 allow-open-url 无 scope 会导致每个 URL 被拒）。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `98186319` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
