@@ -38,6 +38,7 @@ export function IconSelect({ value, options, onChange, className, triggerClassNa
         type="button"
         aria-label={ariaLabel}
         className={`settings-select w-full flex items-center gap-2 cursor-pointer ${triggerClassName ?? ''}`}
+        style={{ backgroundImage: 'none', paddingRight: '10px' }}
         onClick={() => setOpen((o) => !o)}
       >
         {selected && <span className="flex items-center shrink-0">{selected.icon}</span>}
