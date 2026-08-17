@@ -251,6 +251,23 @@ export async function runIngest(filePaths: string[]): Promise<void> {
         store.pushActivity('error', `overview 更新失败: ${msg}`);
       }
     }
+
+    // B4: auto-run structural lint after ingest batch (semantic lint is manual per E5 settings).
+    if (batchChanges.length > 0) {
+      store.setIngestProgress('运行结构性 lint...');
+      store.pushActivity('step', '运行结构性 lint ...');
+      try {
+        const { runStructuralLintService } = await import('./wikiLintService');
+        const lintItems = await runStructuralLintService();
+        if (lintItems.length > 0) {
+          store.addReviewItems(lintItems);
+          store.pushActivity('info', `lint 发现 ${lintItems.length} 项结构性问题`);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        store.pushActivity('error', `lint 失败: ${msg}`);
+      }
+    }
   } finally {
     await adapter.stop();
     store.setIngesting(false);
