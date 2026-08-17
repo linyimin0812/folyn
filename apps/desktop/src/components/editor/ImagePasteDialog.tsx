@@ -13,6 +13,7 @@ const TARGET_ICON: Record<UploadTarget, React.ReactNode> = {
   local: <FolderOpen size={14} />,
   r2: <ThemeIcon name="cloudflare" size={14} />,
   qiniu: <ThemeIcon name="qiniu" size={14} />,
+  oss: <ThemeIcon name="aliyun" size={14} />,
 };
 
 export interface ImageSaveConfig {

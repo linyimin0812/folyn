@@ -97,7 +97,8 @@
     "targets": {
       "local": "Local file",
       "r2": "Cloudflare R2",
-      "qiniu": "Qiniu Kodo"
+      "qiniu": "Qiniu Kodo",
+      "oss": "Aliyun OSS"
     },
     "comingSoon": "Coming soon",
     "fileName": "Image name",

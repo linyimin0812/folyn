@@ -1,5 +1,5 @@
 /** Upload target types */
-export type UploadTarget = 'local' | 'r2' | 'qiniu';
+export type UploadTarget = 'local' | 'r2' | 'qiniu' | 'oss';
 
 /** Result returned after a successful upload */
 export interface ImageUploadResult {
@@ -126,12 +126,36 @@ class QiniuStrategy implements ImageUploadStrategy {
   }
 }
 
+// ─── OSS Strategy (delegates to storage layer) ────────────────────────
+
+import { isOssConfig } from '@/services/storage/types';
+
+class OssStrategy implements ImageUploadStrategy {
+  readonly name: UploadTarget = 'oss';
+  readonly labelKey = 'editor:imagePaste.targets.oss';
+  readonly icon = '🟧';
+  get enabled(): boolean {
+    const cfg = useStorageConfigStore.getState().configs.oss ?? null;
+    return getProvider('oss').isConfigured(cfg);
+  }
+
+  async upload(imageBase64: string, config: ImageUploadConfig, _vaultRoot: string, _currentFilePath?: string): Promise<ImageUploadResult> {
+    const cfg = useStorageConfigStore.getState().configs.oss ?? null;
+    if (!isOssConfig(cfg)) throw new Error('OSS not configured');
+    const bytes = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
+    const ext = config.format === 'jpeg' ? 'jpg' : config.format;
+    const url = await getProvider('oss').uploadImage(bytes, ext, cfg);
+    return { markdownUrl: url, previewUrl: url, fileSize: bytes.length };
+  }
+}
+
 // ─── Registry ───────────────────────────────────────────
 
 const uploadStrategies: ImageUploadStrategy[] = [
   new LocalFileStrategy(),
   new R2Strategy(),
   new QiniuStrategy(),
+  new OssStrategy(),
 ];
 
 export function getStrategy(name: UploadTarget): ImageUploadStrategy {

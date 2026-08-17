@@ -97,7 +97,8 @@
     "targets": {
       "local": "本地文件",
       "r2": "Cloudflare R2",
-      "qiniu": "七牛云 Kodo"
+      "qiniu": "七牛云 Kodo",
+      "oss": "阿里云 OSS"
     },
     "comingSoon": "敬请期待",
     "fileName": "图片名称",
