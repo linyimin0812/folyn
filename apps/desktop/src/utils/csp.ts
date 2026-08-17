@@ -35,8 +35,11 @@ export interface CspConfig {
 /** Fixed baseline sources — never user-editable. */
 const BASE_DIRECTIVES: Record<string, string[]> = {
   "default-src": ["'self'"],
-  "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "'wasm-unsafe-eval'", 'blob:', 'quill-plugin:'],
-  "style-src": ["'self'", "'unsafe-inline'"],
+  // ponytail: grapesjs-tui-image-editor (内置插件) 在用户打开图片编辑器时
+  // 从 uicdn.toast.com 运行时加载 tui-image-editor 的 JS+CSS（fabric.js 全家
+  // 桶不进 Vite bundle）。插件属 app 自身依赖，列为基线源而非用户可配项。
+  "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "'wasm-unsafe-eval'", 'blob:', 'quill-plugin:', 'https://uicdn.toast.com'],
+  "style-src": ["'self'", "'unsafe-inline'", 'https://uicdn.toast.com'],
   "font-src": ["'self'", 'data:'],
   // ponytail: Qiniu default test domain (clouddn.com) is HTTP-only on the
   // free tier; without this entry the markdown preview can't render images
