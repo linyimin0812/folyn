@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 166
-- **Last Active**: 2026-08-16
+- **Total Sessions**: 167
+- **Last Active**: 2026-08-17
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1813 | Active |
+| `journal-3.md` | ~1851 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 167 | 2026-08-17 | Aliyun OSS provider + storage/upload dropdown icons + publicHint split | `ee5d693f`, `f120298a`, `41b65596`, `5b8d3b5d`, `21d19aef` | `master` |
 | 166 | 2026-08-16 | Settings detect UX: show not-installed, detected path, blank-by-default input | `7ab38349`, `0505121a` | `master` |
 | 165 | 2026-08-16 | Fix .rt file-preview showing raw JSON | `5aa9b9a7` | `master` |
 | 164 | 2026-08-16 | warm-launch external-file open fix (macOS + Windows) | `cf03af7b` | `master` |
