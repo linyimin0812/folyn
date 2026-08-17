@@ -136,6 +136,15 @@ function assetUrlToFilePath(src: string): string | null {
   return `/${captured}`;
 }
 
+// ponytail: shared regex for the two img-src rewrite paths —
+// `inlineContainerImages` (DOM-walk, inline mode → data URI) and
+// `uploadImagesToProvider` (string-walk, upload mode → cloud URL).
+// One source of truth so they can't drift on what counts as a "local
+// asset URL we should rewrite". The first capture group is the src value.
+export const ASSET_URL_SRC_REGEX = /<img\s[^>]*?src="((?:asset:\/\/|https?:\/\/asset\.localhost\/)[^"]+)"[^>]*?\/?>/gi;
+
+export { assetUrlToFilePath };
+
 /**
  * Walk all <img> elements in a container and replace Tauri asset URLs with
  * base64 data URLs. Skips http(s) and data: URLs. Mutates the DOM in place.

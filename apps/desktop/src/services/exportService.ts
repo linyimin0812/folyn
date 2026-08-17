@@ -188,7 +188,15 @@ export async function renderMarkdownToHtmlViaDom(
   filePath: string,
   vaultRoot: string,
   theme: 'light' | 'dark' = 'light',
+  opts?: { inlineImages?: boolean },
 ): Promise<{ html: string; css: string }> {
+  // ponytail: `inlineImages: false` skips the DOM-walk that converts
+  // `asset://` <img> srcs to data URIs. Used by upload-mode sharing so
+  // `uploadImagesToProvider` can still see the local asset URLs, upload
+  // each, and rewrite src to the public cloud URL — instead of having the
+  // images already-baked-in as base64 (which would defeat the whole
+  // point of upload mode).
+  const inlineImages = opts?.inlineImages !== false;
   // Lazy import: MarkdownPreview pulls in Excalidraw + x6 which need a real
   // DOM (canvas getContext). Keeps this module importable in test (jsdom).
   const { MarkdownPreview } = await import('@/components/file-types/markdown/MarkdownPreview');
@@ -215,8 +223,11 @@ export async function renderMarkdownToHtmlViaDom(
 
   // Inline <img> srcs (Tauri asset URLs) as base64 data URLs so the exported
   // file is self-contained. Done in-DOM before extracting innerHTML so we
-  // don't have to parse HTML strings later.
-  await inlineContainerImages(container);
+  // don't have to parse HTML strings later. Skipped in upload-share mode —
+  // the caller will walk the asset URLs itself and upload each image.
+  if (inlineImages) {
+    await inlineContainerImages(container);
+  }
 
   // Poll for stability: no loading markers visible AND any mmap file-preview
   // block has its markmap SVG mounted (a child <g> inside the container's

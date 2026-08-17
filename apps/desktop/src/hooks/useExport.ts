@@ -16,6 +16,8 @@ import {
   escapeHtml,
   renderFilePreviewToSvg,
   svgToPngBlob,
+  ASSET_URL_SRC_REGEX,
+  assetUrlToFilePath,
 } from '@/services/export/shared';
 import { richTextToHtmlBlob } from '@/services/export/richtext';
 import { renderMarkmapSvg } from '@/services/export/markmapShared';
@@ -265,13 +267,20 @@ ${svg}
   const theme: 'light' | 'dark' =
     (document.documentElement.dataset.theme as 'light' | 'dark') === 'dark' ? 'dark' : 'light';
   const themeVars = theme === 'dark' ? DARK_THEME_VARS : LIGHT_THEME_VARS;
-  const { html: renderedBody, css } = await renderMarkdownToHtmlViaDom(content, path, vaultRoot, theme);
+  // ponytail: in upload mode, skip the inline-asset-URLs-as-data-URI pass
+  // so `uploadImagesToProvider` can still see `asset://` srcs, upload each
+  // image to the provider, and rewrite src to the public URL — instead of
+  // getting HTML back with already-base64 images and a no-op regex.
+  const { html: renderedBody, css } = await renderMarkdownToHtmlViaDom(
+    content, path, vaultRoot, theme,
+    { inlineImages: store.htmlImageMode !== 'upload' },
+  );
 
   let body: string;
   if (store.htmlImageMode === 'inline') {
     body = await inlineImages(renderedBody, vaultRoot, path);
   } else {
-    body = await uploadImagesToProvider(renderedBody, vaultRoot, path, provider, cfg);
+    body = await uploadImagesToProvider(renderedBody, provider, cfg);
   }
 
   const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
@@ -331,50 +340,44 @@ export async function shareActiveBytesToCloud(): Promise<string> {
 }
 
 /**
- * Walk all `vault-file://` <img> srcs in `html`, upload each to the
- * active provider, and rewrite the src to the returned public URL.
- * Mirrors `inlineImages` (services/export/shared.ts) but uploads
- * instead of converting to data URI. Sister function on purpose — same
- * regex, same path resolution, parallel structure keeps the diff
- * readable.
+ * Walk all `asset://localhost/<path>` (or `http(s)://asset.localhost/<path>`)
+ * `<img>` srcs in `html`, upload each referenced local file to the active
+ * provider, and rewrite the src to the returned public URL.
  *
- * ponytail: dedupes unique paths so 10-IMG docs upload each image
- * once. Ceiling: very large docs upload sequentially (no batching)
- * — R2/Qiniu PUT uploads are independent so a Promise.all batch
- * would scale, but introduces concurrency limits and retry
- * semantics we don't need yet.
+ * Sister to `inlineImages` / `inlineContainerImages` (services/export/shared.ts):
+ * same idea — find local-asset <img> srcs, upload instead of inlining. The
+ * caller must have rendered the markdown with `inlineImages: false` so the
+ * srcs are still `asset://...` (otherwise `inlineContainerImages` already
+ * replaced them with data URIs and this regex matches nothing).
+ *
+ * ponytail: dedupes unique srcs so a doc with 10 references to the same
+ * image uploads it once. Ceiling: sequential uploads, no batching — R2/OSS
+ * PUTs are independent so a Promise.all batch would scale, but we'd need
+ * retry + concurrency limits we don't need yet.
  */
 async function uploadImagesToProvider(
   html: string,
-  vaultRoot: string,
-  currentFilePath: string | undefined,
   provider: ReturnType<typeof getProvider>,
   cfg: ProviderConfig,
 ): Promise<string> {
-  const imgRegex = /<img\s[^>]*?src="vault-file:\/\/([^"]+?)"[^>]*?\/?>/gi;
-  const matches = [...html.matchAll(imgRegex)];
+  const matches = [...html.matchAll(ASSET_URL_SRC_REGEX)];
   if (matches.length === 0) return html;
 
-  const { resolveBasePath } = await import('@/utils/pathResolver');
-  const { join } = await import('@tauri-apps/api/path');
-  const resolvedRoot = await resolveBasePath(vaultRoot);
-  const fileDir = currentFilePath
-    ? currentFilePath.substring(0, currentFilePath.lastIndexOf('/'))
-    : '';
-  const uniquePaths = [...new Set(matches.map((m) => m[1]))];
+  const { readFile } = await import('@tauri-apps/plugin-fs');
+  const uniqueSrcs = [...new Set(matches.map((m) => m[1]))];
 
   const replacements = await Promise.all(
-    uniquePaths.map(async (relativePath) => {
-      const decoded = decodeURIComponent(relativePath.replace(/&amp;/g, '&'));
-      const basePath = fileDir ? await join(resolvedRoot, fileDir) : resolvedRoot;
-      const absPath = await join(basePath, decoded);
+    uniqueSrcs.map(async (src) => {
+      const absPath = assetUrlToFilePath(src);
+      if (!absPath) return null;
       try {
         const bytes = await readFile(absPath);
         const ext = absPath.split('.').pop()?.toLowerCase() ?? 'png';
         const url = await provider.uploadImage(new Uint8Array(bytes), ext, cfg);
-        return { original: `vault-file://${relativePath}`, url };
+        return { original: src, url };
       } catch {
-        // Leave the original src — broken img preferable to a failed share
+        // Leave the original asset:// src — a broken img (outside the app)
+        // is preferable to a failed share. Caller can surface a toast.
         return null;
       }
     }),
