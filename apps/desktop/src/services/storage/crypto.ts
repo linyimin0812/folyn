@@ -52,13 +52,13 @@ export function strToBytes(s: string): Uint8Array {
 
 export async function sha256Hex(data: Uint8Array | string): Promise<string> {
   const bytes = typeof data === 'string' ? strToBytes(data) : data;
-  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  const hash = await crypto.subtle.digest('SHA-256', bytes as BufferSource);
   return bytesToHex(new Uint8Array(hash));
 }
 
 export async function sha256Bytes(data: Uint8Array | string): Promise<Uint8Array> {
   const bytes = typeof data === 'string' ? strToBytes(data) : data;
-  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  const hash = await crypto.subtle.digest('SHA-256', bytes as BufferSource);
   return new Uint8Array(hash);
 }
 
@@ -97,7 +97,7 @@ export async function hmacSha1(key: Uint8Array, data: Uint8Array | string): Prom
 }
 
 export async function sha1Hex(data: Uint8Array): Promise<string> {
-  const hash = await crypto.subtle.digest('SHA-1', data);
+  const hash = await crypto.subtle.digest('SHA-1', data as BufferSource);
   return bytesToHex(new Uint8Array(hash));
 }
 

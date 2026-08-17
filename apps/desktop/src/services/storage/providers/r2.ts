@@ -55,7 +55,7 @@ async function putObject(
   const res = await fetch(req.url, {
     method: 'PUT',
     headers: req.headers,
-    body: req.body,
+    body: req.body as BodyInit,
   });
   if (!res.ok) {
     // ponytail: don't try to parse XML error body; surface status + key

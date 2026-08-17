@@ -17,7 +17,7 @@ import {
   defaultQiniuConfig,
   defaultOssConfig,
 } from './storageConfigStorage';
-import type { ProviderConfig, R2ProviderConfig, QiniuProviderConfig, OssProviderConfig } from './types';
+import type { ProviderConfig } from './types';
 import { isR2Config, isQiniuConfig, isOssConfig } from './types';
 
 export type HtmlImageMode = 'inline' | 'upload';

@@ -66,7 +66,7 @@ async function putObject(
   const res = await fetch(req.url, {
     method: 'PUT',
     headers: req.headers,
-    body: req.body,
+    body: req.body as BodyInit,
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');

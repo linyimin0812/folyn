@@ -15,7 +15,6 @@ import type {
   OssProviderConfig,
 } from '@/services/storage/types';
 import { isR2Config, isQiniuConfig, isOssConfig } from '@/services/storage/types';
-import { Toggle } from './primitives';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 import { IconSelect } from '@/components/common/IconSelect';
 

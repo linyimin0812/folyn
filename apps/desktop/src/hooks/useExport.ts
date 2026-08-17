@@ -29,7 +29,6 @@ import { WIKI_PREFIX } from '@/types/wiki';
 import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
 import { getProvider } from '@/services/storage/registry';
 import type { ProviderConfig } from '@/services/storage/types';
-import { readFile } from '@tauri-apps/plugin-fs';
 
 export type { ExportFormat };
 export { hasContainerSyntax };
