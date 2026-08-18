@@ -116,7 +116,6 @@ export async function runIngest(filePaths: string[]): Promise<void> {
   try {
     const schema = await wikiProvider.readFile('schema.md').catch(() => '');
     const purpose = await wikiProvider.readFile('purpose.md').catch(() => '');
-    const index = await wikiProvider.readFile('index.md').catch(() => '');
 
     const queue = useWikiStore.getState().ingestQueue;
     // wiki feature agent 调用 options（agent 文件存在 → bare:false + --agent wiki）。

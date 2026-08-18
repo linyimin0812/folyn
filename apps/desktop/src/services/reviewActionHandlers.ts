@@ -5,7 +5,7 @@ import type { ReviewItem, WikiFrontmatter } from '@/types/wiki';
 import { wikiProvider } from './wikiProvider';
 import { parsePage, serializePage } from './wikiPageWriter';
 import { applyAtomicBatch, type StagedWrite } from './wikiStagingWriter';
-import { appendIndexEntries, appendIngestLogEntry, appendMergeLogEntry, toKebabCase, type IndexEntry } from '@/utils/wikiNaming';
+import { appendIndexEntries, appendIngestLogEntry, toKebabCase, type IndexEntry } from '@/utils/wikiNaming';
 import i18n from '@/i18n';
 import * as editorIoService from './editorIoService';
 import { useWikiQueryStore } from '@/store/wikiQueryStore';
@@ -120,7 +120,6 @@ const relatedAsymmetricHandler: ActionHandler = {
     const aRaw = await readPage(aPath);
     const bRaw = await readPage(bPath);
     if (!aRaw || !bRaw) return { applied: false, log: 'page missing' };
-    const aParsed = parsePage(aRaw);
     const bParsed = parsePage(bRaw);
     const bRelated = [...new Set([...(bParsed.frontmatter.related ?? []), a.replace(/\.md$/, '')])];
     const bFm: WikiFrontmatter = {
@@ -179,20 +178,20 @@ const logMissingIngestHandler: ActionHandler = {
 
 const kebabCollisionHandler: ActionHandler = {
   // ponytail: full merge is D5 (agent-driven for body rewrite). For accept (rename), code can do it.
-  accept: async (item, _keptPath) => {
+  accept: async () => {
     // User must specify which path to keep via UI; for now, mark dismissed and let merge handle.
     return { applied: false, log: 'use merge action for kebab_collision' };
   },
   reject: async () => ({ applied: true, log: 'marked dismissed' }),
   // merge: see D5 — needs agent prompt `merge` action. Stub for now.
-  merge: async (item, _keptPath) => {
+  merge: async (_item, _keptPath) => {
     return { applied: false, log: 'D5 agent merge prompt not yet implemented' };
   },
 };
 
 const semanticDuplicateMergeHandler: ActionHandler = {
   // ponytail: D5 agent merge — not yet wired. Stub.
-  merge: async (item, _keptPath) => {
+  merge: async (_item, _keptPath) => {
     return { applied: false, log: 'D5 agent merge prompt not yet implemented' };
   },
   reject: async () => ({ applied: true, log: 'marked dismissed' }),

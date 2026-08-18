@@ -1,7 +1,6 @@
 // ponytail: B5.y transactional writes. Stage to <vault>/__wiki__/.staging/, atomic rename on same volume.
 // Tauri fs rename is atomic intra-volume; .staging/ lives inside __wiki__/ to guarantee same volume.
 
-import { wikiProvider } from './wikiProvider';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { useVaultStore } from '@/store/vaultStore';
 import { WIKI_DIR } from '@/types/wiki';

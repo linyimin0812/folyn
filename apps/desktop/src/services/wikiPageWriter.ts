@@ -112,10 +112,6 @@ export function writeIngestPages(
   const contradictions: ReviewItem[] = [];
   const collisions: ReviewItem[] = [];
 
-  const contradictionEntityNames = new Set(
-    analysis.contradictions.flatMap((c) => [c.claim, c.vs]).map((s) => s.toLowerCase()),
-  );
-
   // Track which entities/concepts had contradictions to force confidence=low.
   const forcedLow = new Set<string>();
   for (const c of analysis.contradictions) {
@@ -175,7 +171,7 @@ export function writeIngestPages(
     const isNew = !existing;
     if (isNew) newEntities++; else updatedEntities++;
 
-    const parsed = existing ? parsePage(existing) : { frontmatter: {}, body: '' };
+    const parsed = existing ? parsePage(existing) : ({ frontmatter: {} as Partial<WikiFrontmatter>, body: '' } as ParsedPage);
 
     // C5.a confidence rule.
     let newConfidence: WikiFrontmatter['confidence'];
@@ -247,7 +243,7 @@ export function writeIngestPages(
     const isNew = !existing;
     if (isNew) newConcepts++; else updatedConcepts++;
 
-    const parsed = existing ? parsePage(existing) : { frontmatter: {}, body: '' };
+    const parsed = existing ? parsePage(existing) : ({ frontmatter: {} as Partial<WikiFrontmatter>, body: '' } as ParsedPage);
 
     let newConfidence: WikiFrontmatter['confidence'];
     if (forcedLow.has(concept.name.toLowerCase()) || forcedLow.has(kebab)) {
@@ -281,7 +277,7 @@ export function writeIngestPages(
 
   // Source page (always written, even on empty ingest — C6.a)
   const existingSource = existingPages[sourcePagePath];
-  const parsedSource = existingSource ? parsePage(existingSource) : { frontmatter: {}, body: '' };
+  const parsedSource = existingSource ? parsePage(existingSource) : ({ frontmatter: {} as Partial<WikiFrontmatter>, body: '' } as ParsedPage);
   const hasContent = analysis.entities.length > 0 || analysis.concepts.length > 0;
   const sourceBody = hasContent
     ? `# ${sourcePath}\n\nEntities: ${analysis.entities.map((e) => e.name).join(', ') || '_none_'}\n\nConcepts: ${analysis.concepts.map((c) => c.name).join(', ') || '_none_'}\n\n${analysis.structureRecommendations.length > 0 ? '## 结构建议\n\n' + analysis.structureRecommendations.map((s) => `- ${s}`).join('\n') : ''}\n`

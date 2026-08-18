@@ -61,8 +61,6 @@ function* iterWikiLinks(body: string): Generator<string> {
   for (const m of body.matchAll(WIKILINK_RE)) yield m[1]!;
 }
 
-const ALLOWED_TOP_DIRS = new Set(['entities', 'concepts', 'sources', 'syntheses']);
-
 function normalizeWikiPath(p: string): string {
   return p.replace(/\.md$/, '');
 }
