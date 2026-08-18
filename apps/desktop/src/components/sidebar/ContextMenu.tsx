@@ -5,7 +5,9 @@ import { useVaultStore } from '@/store/vaultStore';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { useAiStore } from '@/store/aiStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
+import { useEditorStore } from '@/store/editorStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
+import injectAllIcon from '@/assets/icons/inject_all.svg';
 import { getAllHandlers } from '@/components/file-types/registry';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
@@ -264,10 +266,12 @@ export function ContextMenu({
                 <button
                   className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov"
                   onClick={() => {
+                    useEditorStore.getState().setActivePanel('wiki');
                     runIngest([menu.path]).catch(console.error);
                     onClose();
                   }}
                 >
+                  <img src={injectAllIcon} className="w-[11px] h-[11px] shrink-0" alt="" />
                   {t('sidebar:contextMenu.ingestToWiki')}
                 </button>
               )}
