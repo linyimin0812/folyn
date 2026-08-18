@@ -12,6 +12,10 @@ mod commands;
 pub mod errors;
 mod plugin_commands;
 mod plugin_security;
+mod plugin_install;
+mod plugin_lifecycle;
+mod plugin_fetch;
+mod plugin_rpc;
 mod chat;
 mod list_models;
 mod voice;
@@ -347,9 +351,9 @@ pub fn run() {
         // round-trip without blocking the webview thread.
         .register_asynchronous_uri_scheme_protocol("quill-plugin", |ctx, request, responder| {
             use plugin_commands::{
-                content_type_for, handle_plugin_rpc_request, next_rpc_request_id,
-                parse_plugin_uri, plugins_dir, PLUGIN_CSP,
+                content_type_for, parse_plugin_uri, plugins_dir, PLUGIN_CSP,
             };
+            use plugin_rpc::{handle_plugin_rpc_request, next_rpc_request_id};
 
             let uri_path = request.uri().path().to_string();
             let (id, file_path) = match parse_plugin_uri(&uri_path) {
@@ -854,18 +858,18 @@ pub fn run() {
             pet_api::open_external,
             chat::chat_stream,
             list_models::list_models,
-            plugin_commands::install_plugin,
-            plugin_commands::install_plugin_zip,
-            plugin_commands::list_plugins,
-            plugin_commands::uninstall_plugin,
-            plugin_commands::approve_plugin,
-            plugin_commands::get_plugin_record,
-            plugin_commands::read_plugin_file,
-            plugin_commands::grant_plugin_capabilities,
-            plugin_commands::verify_plugin_signature_cmd,
-            plugin_commands::plugin_http_fetch,
-            plugin_commands::fetch_url,
-            plugin_commands::plugin_rpc_respond,
+            plugin_install::install_plugin,
+            plugin_install::install_plugin_zip,
+            plugin_lifecycle::list_plugins,
+            plugin_lifecycle::uninstall_plugin,
+            plugin_lifecycle::approve_plugin,
+            plugin_lifecycle::get_plugin_record,
+            plugin_lifecycle::read_plugin_file,
+            plugin_lifecycle::grant_plugin_capabilities,
+            plugin_lifecycle::verify_plugin_signature_cmd,
+            plugin_fetch::plugin_http_fetch,
+            plugin_fetch::fetch_url,
+            plugin_rpc::plugin_rpc_respond,
             voice::voice_start,
             voice::voice_stop,
             voice::voice_cancel,

@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "确认拆分后职责边界清晰、依赖无环、无过度抽象"}
+{"file": "apps/desktop/src-tauri/src/plugin_commands.rs", "reason": "验证 core 只剩 URI+registry+is_valid_plugin_id,无 install/lifecycle/fetch/rpc 残留"}
+{"file": "apps/desktop/src-tauri/src/lib.rs", "reason": "验证 mod 声明与 generate_handler!/URI handler 前缀全部更新"}

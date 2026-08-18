@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "全拆为按职责分模块,参考代码复用/职责切分指引"}
+{"file": "apps/desktop/src-tauri/src/plugin_commands.rs", "reason": "被拆源文件,函数→模块映射的 ground truth"}
+{"file": "apps/desktop/src-tauri/src/lib.rs", "reason": "mod 声明与 generate_handler!/URI handler 需随拆分更新"}
