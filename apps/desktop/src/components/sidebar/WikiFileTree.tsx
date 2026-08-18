@@ -420,13 +420,7 @@ export function WikiFileTree() {
             title={t('sidebar:wikiTree.locateActive')}
             aria-label={t('sidebar:wikiTree.locateActive')}
           >
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-              <circle cx="8" cy="8" r="6.5"/>
-              <line x1="8" y1="1.5" x2="8" y2="6.5"/>
-              <line x1="8" y1="9.5" x2="8" y2="14.5"/>
-              <line x1="1.5" y1="8" x2="6.5" y2="8"/>
-              <line x1="9.5" y1="8" x2="14.5" y2="8"/>
-            </svg>
+          <img src={wikiGraphIcon} className="w-[13px] h-[13px]" alt="" />
           </button>
         </div>
       </div>
