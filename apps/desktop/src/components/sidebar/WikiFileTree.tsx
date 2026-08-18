@@ -804,6 +804,7 @@ function VaultFilePickerModal({
               size={12}
               className={isOpen ? 'rotate-90 transition-transform' : 'transition-transform'}
             />
+            <span className="shrink-0"><FileIcon filename={node.name} isDir /></span>
             <span className="font-mono truncate">{node.name}</span>
           </button>
           {isOpen && node.children!.map((c) => renderNode(c, depth + 1))}
@@ -821,6 +822,7 @@ function VaultFilePickerModal({
             checked={selected.has(node.path)}
             onChange={() => toggle(node.path)}
           />
+          <span className="shrink-0"><FileIcon filename={node.name} /></span>
           <span className="text-[13px] font-mono truncate text-t1">{node.name}</span>
         </label>
       );
@@ -873,6 +875,7 @@ function VaultFilePickerModal({
                       checked={selected.has(path)}
                       onChange={() => toggle(path)}
                     />
+                    <span className="shrink-0"><FileIcon filename={name} /></span>
                     <span className="text-[13px] font-mono truncate text-t1">{path}</span>
                   </label>
                 );
