@@ -375,7 +375,7 @@ export function WikiFileTree() {
         </button>
 
         {/* Right: stop (conditional) + locate + ingestAll + pickIngest */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {subTab === 'files' && isIngesting && (
             <button
               className={`transition-colors disabled:cursor-not-allowed ${
