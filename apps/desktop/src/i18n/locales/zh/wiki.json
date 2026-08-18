@@ -41,6 +41,7 @@
     "researchOpened": "已在 wiki 查询中打开: {{query}}",
     "contradictionAcceptNeedsAgent": "自动接受矛盾新说法需 merge 流程,请手动合并或编辑",
     "contradictionAccepted": "已在 {{path}} 中替换旧说法",
-    "contradictionAppended": "已在 {{path}} 追加新说法(需手动整合)"
+    "contradictionAppended": "已在 {{path}} 追加新说法(需手动整合)",
+    "contradictionPageNotFound": "无法定位受影响的 wiki 页面({{path}}); review 已关闭 — 需手动编辑"
   }
 }

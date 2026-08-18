@@ -41,6 +41,7 @@
     "researchOpened": "Opened in wiki query: {{query}}",
     "contradictionAcceptNeedsAgent": "Auto-accepting contradiction needs the merge flow — use merge or edit manually",
     "contradictionAccepted": "Replaced old claim with new in {{path}}",
-    "contradictionAppended": "Appended new claim to {{path}} (manual integration needed)"
+    "contradictionAppended": "Appended new claim to {{path}} (manual integration needed)",
+    "contradictionPageNotFound": "Couldn't locate the affected wiki page ({{path}}); review dismissed — manual edit needed"
   }
 }

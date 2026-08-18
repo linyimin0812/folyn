@@ -41,6 +41,7 @@
     "researchOpened": "wiki クエリで開きました: {{query}}",
     "contradictionAcceptNeedsAgent": "矛盾の自動承認は merge フローが必要です — 手動でマージまたは編集してください",
     "contradictionAccepted": "{{path}} で古い主張を置換しました",
-    "contradictionAppended": "{{path}} に新しい主張を追加しました(手動統合が必要)"
+    "contradictionAppended": "{{path}} に新しい主張を追加しました(手動統合が必要)",
+    "contradictionPageNotFound": "影響する wiki ページが見つかりません({{path}}); review を閉じました — 手動編集が必要です"
   }
 }

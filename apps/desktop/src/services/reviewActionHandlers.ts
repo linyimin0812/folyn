@@ -5,7 +5,7 @@ import type { ReviewItem, WikiFrontmatter } from '@/types/wiki';
 import { wikiProvider } from './wikiProvider';
 import { parsePage, serializePage } from './wikiPageWriter';
 import { applyAtomicBatch, type StagedWrite } from './wikiStagingWriter';
-import { appendIndexEntries, appendIngestLogEntry, appendMergeLogEntry, type IndexEntry } from '@/utils/wikiNaming';
+import { appendIndexEntries, appendIngestLogEntry, appendMergeLogEntry, toKebabCase, type IndexEntry } from '@/utils/wikiNaming';
 import i18n from '@/i18n';
 import * as editorIoService from './editorIoService';
 import { useWikiQueryStore } from '@/store/wikiQueryStore';
@@ -273,13 +273,54 @@ export function applyContradictionToBody(
   };
 }
 
+// ponytail: LLM ingest analysis returns `c.existingSource` as a vault source
+// path (e.g. `问题记录.md`), not the wiki page path the handler needs to
+// write. The auto-generated wiki source page lives at
+// `sources/<kebab>.md` (see wikiPageWriter.ts:109). Try the raw path first
+// (in case the LLM did return a wiki-qualified path), then the kebab source
+// fallback. Wiki-qualified paths skip the source fallback — the LLM already
+// pointed at a specific entity/concept/synthesis page.
+const WIKI_QUALIFIED_PREFIXES = ['entities/', 'concepts/', 'sources/', 'syntheses/'];
+
+async function resolveContradictionPagePath(pagePathRaw: string): Promise<string | null> {
+  const candidates: string[] = [];
+  const withMd = pagePathRaw.endsWith('.md') ? pagePathRaw : `${pagePathRaw}.md`;
+  candidates.push(pagePathRaw, withMd);
+
+  const isQualified = WIKI_QUALIFIED_PREFIXES.some((p) => pagePathRaw.startsWith(p));
+  if (!isQualified) {
+    const basename = pagePathRaw.split('/').pop()!.replace(/\.md$/, '');
+    candidates.push(`sources/${toKebabCase(basename)}.md`);
+  }
+
+  for (const candidate of candidates) {
+    if (await wikiProvider.exists(candidate)) return candidate;
+  }
+  return null;
+}
+
 const ingestContradictionHandler: ActionHandler = {
   accept: async (item) => {
     const pagePathRaw = item.affectedPages[0];
     if (!pagePathRaw) return { applied: false, log: 'no affected page' };
-    const pagePath = pagePathRaw.endsWith('.md') ? pagePathRaw : `${pagePathRaw}.md`;
+
+    const resolved = await resolveContradictionPagePath(pagePathRaw);
+    if (!resolved) {
+      // ponytail: closing the loop even when the wiki page can't be located —
+      // LLM returned a vault source path that has no generated wiki page yet.
+      return {
+        applied: true,
+        log: i18n.t('wiki:activity.contradictionPageNotFound', { path: pagePathRaw }),
+      };
+    }
+    const pagePath = resolved;
     const raw = await readPage(pagePath);
-    if (!raw) return { applied: false, log: `${pagePath} not found` };
+    if (!raw) {
+      return {
+        applied: true,
+        log: i18n.t('wiki:activity.contradictionPageNotFound', { path: pagePathRaw }),
+      };
+    }
 
     const { newClaim, oldClaim } = extractContradictionClaims(item.description, item.title);
     const parsed = parsePage(raw);
