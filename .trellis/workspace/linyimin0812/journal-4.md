@@ -112,3 +112,40 @@ Shrank activity bar panel icons: built-ins 18→14, plugin-contributed 16→12, 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 174: Plugin commands split + chat_stream extract
+
+**Date**: 2026-08-18
+**Task**: Plugin commands split + chat_stream extract
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Split plugin_commands.rs (2431 lines) into 5 modules: plugin_security (integrity/sig/zip-slip/origin), plugin_install, plugin_lifecycle, plugin_fetch, plugin_rpc; core stays as URI scheme + registry + is_valid_plugin_id. Separately extracted run_provider_stream (353 lines) from chat_stream's 18-arm provider dispatch in chat.rs. All moves pure; one followup commit fixed compile errors (extract_zip_filtered visibility, unused imports in plugin_lifecycle, base_url borrow in 13 run_provider_stream arms).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6b1408a0` | (see git log) |
+| `e0c12f7e` | (see git log) |
+| `81844a92` | (see git log) |
+| `782a432a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
