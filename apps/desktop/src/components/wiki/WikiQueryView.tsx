@@ -5,13 +5,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MarkdownPreview } from '@/components/file-types/markdown/MarkdownPreview';
-import { Share2, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { runWikiQuery } from '@/services/wikiQueryService';
 import * as editorIoService from '@/services/editorIoService';
 import { useVaultStore } from '@/store/vaultStore';
 import { useWikiQueryStore } from '@/store/wikiQueryStore';
 import { generateId } from '@/utils/idGenerator';
 import { WIKI_PREFIX } from '@/types/wiki';
+import wikiGraphIcon from '@/assets/icons/wiki_graph.svg';
 
 function extractCitations(markdown: string): string[] {
   const out = new Set<string>();
@@ -114,7 +115,7 @@ export function WikiQueryView() {
           onClick={() => editorIoService.openFile('wiki-graph', 'Wiki Graph')}
           title={t('wiki:query.openGraph')}
         >
-          <Share2 size={14} />
+          <img src={wikiGraphIcon} alt="" className="w-[13px] h-[13px]" />
         </button>
         <button
           className="btn btn-sm"
@@ -124,9 +125,11 @@ export function WikiQueryView() {
         >
           {t('wiki:query.newSession')}
         </button>
-        <div className="flex-1 flex items-center gap-1.5">
+        {/* ponytail: antd Space.Compact-style joined group — input border-r-0
+            + button border-l-0 share a single rounded edge, no gap. */}
+        <div className="flex-1 flex items-stretch">
           <input
-            className="flex-1 bg-inp border border-brd rounded-md px-2.5 py-1.5 text-[12px] font-ui text-t1 outline-none focus:border-acc"
+            className="flex-1 min-w-0 bg-inp border border-brd border-r-0 rounded-l-md px-2.5 py-1.5 text-[12px] font-ui text-t1 outline-none focus:border-acc"
             placeholder={placeholder}
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -134,7 +137,7 @@ export function WikiQueryView() {
             disabled={running}
           />
           <button
-            className="btn btn-g btn-sm"
+            className="btn btn-g btn-sm rounded-l-none border border-brd border-l-0"
             onClick={handleSubmit}
             disabled={running || !input.trim()}
           >
