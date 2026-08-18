@@ -137,7 +137,7 @@ export function WikiQueryView() {
             disabled={running}
           />
           <button
-            className="btn btn-g btn-sm rounded-l-none border border-brd border-l-0"
+            className="btn btn-p btn-sm rounded-l-none border border-brd border-l-0"
             onClick={handleSubmit}
             disabled={running || !input.trim()}
           >
