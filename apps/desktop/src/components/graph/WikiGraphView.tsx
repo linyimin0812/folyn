@@ -239,10 +239,43 @@ export function WikiGraphView() {
     return null;
   }, [zoom, panX, panY]);
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
+  // Zoom toward the cursor: keep the world coord under the cursor fixed as
+  // zoom changes. Reads fresh zoom/pan from stateRef (the same ref the render
+  // fn uses) so a stable useCallback identity doesn't trap stale state.
+  const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
-    setZoom((z) => Math.max(0.2, Math.min(5, z * (1 - e.deltaY * 0.001))));
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    // ctrlKey=true => trackpad pinch; same factor logic for both paths.
+    const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+    const { zoom, panX, panY } = stateRef.current;
+    if (zoom === 0) return;
+    const newZoom = Math.max(0.2, Math.min(5, zoom * factor));
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    // Render transform: ctx.translate(w/2 + panX, h/2 + panY); ctx.scale(zoom, zoom);
+    // worldX = (canvasX - w/2 - panX) / zoom. Solve newPanX so cursor world
+    // coord is invariant: newPanX = cx - w/2 - newZoom * (cx - w/2 - panX) / zoom.
+    const newPanX = cx - w / 2 - (newZoom * (cx - w / 2 - panX)) / zoom;
+    const newPanY = cy - h / 2 - (newZoom * (cy - h / 2 - panY)) / zoom;
+    setZoom(newZoom);
+    setPanX(newPanX);
+    setPanY(newPanY);
   }, []);
+
+  // ponytail: native non-passive wheel listener — React's synthetic onWheel
+  // is registered passive in modern React, so preventDefault() would be a no-op
+  // and the page/background would scroll under the cursor.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const handler = (e: WheelEvent) => handleWheel(e);
+    canvas.addEventListener('wheel', handler, { passive: false });
+    return () => canvas.removeEventListener('wheel', handler);
+  }, [handleWheel]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -343,7 +376,6 @@ export function WikiGraphView() {
         onMouseDown={handleMouseDown}
         onMouseMove={handleDragMove}
         onMouseUp={handleMouseUp}
-        onWheel={handleWheel}
         onMouseLeave={handleMouseLeave}
       />
       {tooltip && (
