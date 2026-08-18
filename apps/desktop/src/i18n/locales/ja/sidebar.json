@@ -79,6 +79,7 @@
     "empty": "Wikiは空です。AIパネルからファイルを取り込んでナレッジベースを構築してください。",
     "addSourceFiles": "インジェストするソースファイルを追加",
     "ingestAll": "全マークダウンを取り込む",
+    "stopIngest": "取り込みを中止",
     "reviewsEmpty": "保留中の review はありません。",
     "runLint": "lint を実行",
     "selectAll": "すべて選択",

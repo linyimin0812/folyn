@@ -87,6 +87,7 @@
     "empty": "Wiki is empty. Ingest files from the AI panel to build the knowledge base.",
     "addSourceFiles": "Add source files to ingest",
     "ingestAll": "Ingest all markdown",
+    "stopIngest": "Stop ingest",
     "reviewsEmpty": "No pending reviews.",
     "runLint": "Run lint",
     "selectAll": "Select all",

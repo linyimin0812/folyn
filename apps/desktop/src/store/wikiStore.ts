@@ -19,6 +19,10 @@ interface WikiState {
   reviewItems: ReviewItem[];
   ingestQueue: IngestTask[];
   isIngesting: boolean;
+  /** Cooperative cancel flag — set by Stop button, checked at ingest loop
+   * iteration boundaries. Auto-cleared by setIngesting(false) so a natural
+   * finish or an aborted finish both leave it clean for the next batch. */
+  cancelIngest: boolean;
   isLinting: boolean;
   currentIngestStep: 1 | 2 | 3 | null;
   ingestProgress: string;
@@ -32,6 +36,7 @@ interface WikiState {
   addToIngestQueue: (filePaths: string[]) => void;
   setIngestStatus: (taskId: string, status: IngestTask['status'], error?: string) => void;
   setIngesting: (ingesting: boolean, step?: 1 | 2 | 3 | null) => void;
+  setCancelIngest: (v: boolean) => void;
   setLinting: (linting: boolean) => void;
   setIngestProgress: (msg: string) => void;
   clearIngestQueue: () => void;
@@ -79,6 +84,7 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
   reviewItems: [],
   ingestQueue: [],
   isIngesting: false,
+  cancelIngest: false,
   isLinting: false,
   currentIngestStep: null,
   ingestProgress: '',
@@ -120,7 +126,15 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
   },
 
   setIngesting: (ingesting, step = null) => {
-    set({ isIngesting: ingesting, currentIngestStep: step });
+    // ponytail: auto-clear cancelIngest on finish (natural or aborted) so the
+    // next batch starts with a clean flag — callers don't have to remember.
+    set(ingesting
+      ? { isIngesting: true, currentIngestStep: step }
+      : { isIngesting: false, currentIngestStep: null, cancelIngest: false });
+  },
+
+  setCancelIngest: (v) => {
+    set({ cancelIngest: v });
   },
 
   setLinting: (linting) => {

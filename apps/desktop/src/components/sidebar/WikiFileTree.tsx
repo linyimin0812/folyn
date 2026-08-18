@@ -6,7 +6,7 @@ import * as editorIoService from '@/services/editorIoService';
 import type { ReviewItem, WikiEntry } from '@/types/wiki';
 import { WIKI_PREFIX } from '@/types/wiki';
 import { FileIcon } from '@/components/icons/FileIcon';
-import { Plus, FileText, AlertCircle, Share2, Library } from 'lucide-react';
+import { Plus, FileText, AlertCircle, Share2, Library, Square } from 'lucide-react';
 
 function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
   const openFile = editorIoService.openFile;
@@ -115,6 +115,10 @@ export function WikiFileTree() {
   const setSubTab = useWikiStore((s) => s.setWikiSubTab);
   const executeReviewAction = useWikiStore((s) => s.executeReviewAction);
   const dismissReviewItem = useWikiStore((s) => s.dismissReviewItem);
+  const isIngesting = useWikiStore((s) => s.isIngesting);
+  const cancelIngest = useWikiStore((s) => s.cancelIngest);
+  const setCancelIngest = useWikiStore((s) => s.setCancelIngest);
+  const pushActivity = useWikiStore((s) => s.pushActivity);
 
   // Batch selection + filter state — local to WikiFileTree; cleared when the
   // pending set changes shape (filter change doesn't clear, so user can toggle
@@ -261,6 +265,25 @@ export function WikiFileTree() {
         </div>
         {subTab === 'files' && (
           <div className="flex items-center gap-1">
+            {isIngesting && (
+              <button
+                className={`transition-colors disabled:cursor-not-allowed ${
+                  cancelIngest
+                    ? 'text-[#d04545] opacity-60'
+                    : 'text-[#f06a6a] hover:text-[#d04545]'
+                }`}
+                onClick={() => {
+                  if (cancelIngest) return;
+                  setCancelIngest(true);
+                  pushActivity('info', '正在终止...');
+                }}
+                disabled={cancelIngest}
+                title={cancelIngest ? '正在终止...' : t('sidebar:wikiTree.stopIngest')}
+                aria-label={t('sidebar:wikiTree.stopIngest')}
+              >
+                <Square size={13} />
+              </button>
+            )}
             <button
               className="text-t3 hover:text-acc transition-colors"
               onClick={handleIngestAll}

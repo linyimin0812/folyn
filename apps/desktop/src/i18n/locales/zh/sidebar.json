@@ -87,6 +87,7 @@
     "empty": "Wiki 为空。在 AI 面板中摄入文件开始构建知识库。",
     "addSourceFiles": "添加源文件进行摄入",
     "ingestAll": "摄入全部 markdown",
+    "stopIngest": "终止摄入",
     "reviewsEmpty": "暂无待处理 review。",
     "runLint": "运行 lint",
     "selectAll": "全选",

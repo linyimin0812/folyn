@@ -117,6 +117,9 @@ export async function runIngest(filePaths: string[]): Promise<void> {
     const batchChanges: { path: string; title: string; type: string; sources: string[] }[] = [];
 
     for (const task of queue) {
+      // Cooperative cancel — Stop button sets cancelIngest; we exit at the
+      // next iteration boundary (current file's LLM call finishes first).
+      if (useWikiStore.getState().cancelIngest) break;
       if (task.status !== 'pending') continue;
 
       store.setIngestStatus(task.id, 'analyzing');
@@ -230,7 +233,10 @@ export async function runIngest(filePaths: string[]): Promise<void> {
     }
 
     // C3.b: overview agent action at end of batch.
-    if (batchChanges.length > 0) {
+    // Skip overview + lint when the user aborted — partial batch shouldn't
+    // trigger a full overview refresh that takes another LLM round-trip.
+    const cancelled = useWikiStore.getState().cancelIngest;
+    if (!cancelled && batchChanges.length > 0) {
       store.setIngesting(true, 3);
       store.setIngestProgress('刷新 overview...');
       store.pushActivity('step', '[Step 3/3] 刷新 wiki overview ...');
@@ -254,7 +260,7 @@ export async function runIngest(filePaths: string[]): Promise<void> {
     }
 
     // B4: auto-run structural lint after ingest batch (semantic lint is manual per E5 settings).
-    if (batchChanges.length > 0) {
+    if (!cancelled && batchChanges.length > 0) {
       store.setIngestProgress('运行结构性 lint...');
       store.pushActivity('step', '运行结构性 lint ...');
       try {
@@ -272,9 +278,12 @@ export async function runIngest(filePaths: string[]): Promise<void> {
     }
   } finally {
     await adapter.stop();
+    // Capture cancel state BEFORE setIngesting(false) clears it — drives the
+    // final activity message ("已终止摄入" vs "摄入完成").
+    const wasCancelled = useWikiStore.getState().cancelIngest;
     store.setIngesting(false);
     store.setIngestProgress('');
-    store.pushActivity('success', '摄入完成');
+    store.pushActivity(wasCancelled ? 'info' : 'success', wasCancelled ? '已终止摄入' : '摄入完成');
     await store.refreshWikiFiles();
   }
 }
