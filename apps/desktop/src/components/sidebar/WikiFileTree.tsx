@@ -204,7 +204,11 @@ function WikiIngestProgressStrip() {
   const isIngesting = useWikiStore((s) => s.isIngesting);
   const currentIngestStep = useWikiStore((s) => s.currentIngestStep);
   const ingestProgress = useWikiStore((s) => s.ingestProgress);
-  const lastActivities = useWikiStore((s) => s.activityLog.slice(-5));
+  // ponytail: select the stable activityLog ref, slice in render. A selector
+  // returning `.slice(-5)` mints a new array each call → useSyncExternalStore
+  // sees a new ref every render → Maximum update depth exceeded loop.
+  const activityLog = useWikiStore((s) => s.activityLog);
+  const lastActivities = activityLog.slice(-5);
   const [show, setShow] = useState(false);
 
   useEffect(() => {
