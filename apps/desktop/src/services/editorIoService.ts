@@ -90,6 +90,9 @@ export async function openFile(filePath: string, name: string): Promise<void> {
   // it never collides with a vault tab (whose id is `${vaultId}:${relPath}`)
   // and so `switchVault`'s `tabs: []` clear can be narrowed to keep them.
   const isExternal = isExternalPath(filePath);
+  // ponytail: virtual paths route to in-app views (wiki-graph, wiki-query) via
+  // WorkArea's path check — no backing file, so skip readRawContent for them.
+  const isVirtualPath = filePath === 'wiki-graph' || filePath === 'wiki-query';
   const vaultId = isExternal ? 'ext' : (useVaultStore.getState().activeVaultId || '');
   const tabId = isExternal ? `ext:${filePath}` : `${vaultId}:${filePath}`;
 
@@ -106,7 +109,7 @@ export async function openFile(filePath: string, name: string): Promise<void> {
     const needsActivityUpdate = existing.activity !== correctActivity;
 
     // If existing tab has empty content but the file type needs content, reload it
-    if (!existing.content && getHandlerById(correctFileType)?.needsFileContent) {
+    if (!isVirtualPath && !existing.content && getHandlerById(correctFileType)?.needsFileContent) {
       try {
         const handler = getHandlerById(correctFileType);
         const raw = await readRawContent(filePath);
@@ -151,7 +154,7 @@ export async function openFile(filePath: string, name: string): Promise<void> {
     const fileType = detectFileType(filePath);
     const handler = getHandlerById(fileType);
     let content = '';
-    if (handler?.needsFileContent) {
+    if (!isVirtualPath && handler?.needsFileContent) {
       const raw = await readRawContent(filePath);
       content = handler.deserialize ? handler.deserialize(raw) : raw;
       console.log(`[EditorStore] openFile: ${filePath} type=${fileType} content=${content.length} chars`);
