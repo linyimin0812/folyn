@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "抽出 dispatch 为独立函数以职责分离,参考代码复用/职责切分指引"}
+{"file": "apps/desktop/src-tauri/src/chat.rs", "reason": "被重构的源文件,chat_stream 18 arm 的 ground truth"}

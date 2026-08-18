@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "确认抽出后职责边界清晰、未引入重复或过度抽象"}
+{"file": "apps/desktop/src-tauri/src/chat.rs", "reason": "验证 chat_stream 三段式 + run_provider_stream arm 与原文件逐一对应、api_key 借用改写正确"}
