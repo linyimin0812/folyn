@@ -374,9 +374,17 @@ export function WikiFileTree() {
           <img src={wikiGraphIcon} className="w-[13px] h-[13px]" alt="" />
         </button>
 
-        {/* Right: stop (conditional) + locate + ingestAll + pickIngest */}
+        {/* Right: locate + merged ingestAll/stop + pickIngest */}
         <div className="flex items-center gap-3">
-          {subTab === 'files' && isIngesting && (
+          <button
+            className="text-t3 hover:text-acc transition-colors"
+            onClick={handleLocateActive}
+            title={t('sidebar:wikiTree.locateActive')}
+            aria-label={t('sidebar:wikiTree.locateActive')}
+          >
+          <img src={locateActiveIcon} className="w-[13px] h-[13px]" alt="" />
+          </button>
+          {subTab === 'files' && isIngesting ? (
             <button
               className={`transition-colors disabled:cursor-not-allowed ${
                 cancelIngest
@@ -396,16 +404,7 @@ export function WikiFileTree() {
             >
               <Square size={13} />
             </button>
-          )}
-          <button
-            className="text-t3 hover:text-acc transition-colors"
-            onClick={handleLocateActive}
-            title={t('sidebar:wikiTree.locateActive')}
-            aria-label={t('sidebar:wikiTree.locateActive')}
-          >
-          <img src={locateActiveIcon} className="w-[13px] h-[13px]" alt="" />
-          </button>
-          {subTab === 'files' && (
+          ) : subTab === 'files' ? (
             <button
               className="text-t3 hover:text-acc transition-colors"
               onClick={handleIngestAll}
@@ -413,7 +412,7 @@ export function WikiFileTree() {
             >
               <img src={injectAllIcon} className="w-[11px] h-[11px]" alt="" />
             </button>
-          )}
+          ) : null}
           {subTab === 'files' && (
             <button
               className="text-t3 hover:text-acc transition-colors"
