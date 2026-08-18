@@ -7,8 +7,8 @@
 ## Current Status
 
 <!-- @@@auto:current-status -->
-- **Active File**: `journal-3.md`
-- **Total Sessions**: 170
+- **Active File**: `journal-4.md`
+- **Total Sessions**: 171
 - **Last Active**: 2026-08-18
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,8 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1962 | Active |
+| `journal-4.md` | ~46 | Active |
+| `journal-3.md` | ~1962 | Archived |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 171 | 2026-08-18 | Command palette UX polish: backdrop, border, position, height | `12be890f`, `f7d2248b`, `3d8ec00e`, `2f267247`, `c93fd230`, `998240a9` | `master` |
 | 170 | 2026-08-18 | Wiki sidebar header query button + ingest entry-point gating | `6677ab73`, `d6d78851`, `7e1868bb` | `master` |
 | 169 | 2026-08-18 | Wiki feature polish: graph shape, sidebar picker, vault modal | `fb043681`, `bffbdd32`, `b6a3ec7d`, `6e4f8c03`, `3d492dea`, `6124f4ee`, `e47dab46`, `c6ae34a3` | `master` |
 | 168 | 2026-08-17 | Fix chat external link hijacking WKWebView | `98186319` | `master` |
