@@ -164,13 +164,11 @@ export function WikiQueryView() {
         {turns.map((turn) => (
           <div key={turn.id} className="mb-6">
             <div className="text-[12px] text-t3 mb-1">{t('wiki:query.userPrefix')}{turn.query}</div>
-            <div className="border border-brd2 rounded-lg bg-surf2 p-3">
-              {turn.answer.trim() === '' ? (
-                <Loader2 size={14} className="animate-spin text-t3" />
-              ) : (
+            {turn.answer.trim() !== '' && (
+              <div className="border border-brd2 rounded-lg bg-surf2 p-3">
                 <MarkdownPreview content={turn.answer} filePath="" vaultRoot={vaultRoot} />
-              )}
-            </div>
+              </div>
+            )}
             {turn.hits.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {turn.hits.map((h) => {
