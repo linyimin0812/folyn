@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MarkdownPreview } from '@/components/file-types/markdown/MarkdownPreview';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { runWikiQuery } from '@/services/wikiQueryService';
 import * as editorIoService from '@/services/editorIoService';
 import { useVaultStore } from '@/store/vaultStore';
@@ -125,24 +125,16 @@ export function WikiQueryView() {
         >
           {t('wiki:query.newSession')}
         </button>
-        {/* ponytail: antd Space.Compact-style joined group — input border-r-0
-            + button border-l-0 share a single rounded edge, no gap. */}
-        <div className="flex-1 flex items-stretch">
+        <div className="flex-1 relative flex items-center">
+          <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-t3 pointer-events-none" />
           <input
-            className="flex-1 min-w-0 bg-inp border border-brd border-r-0 rounded-l-md px-2.5 py-1.5 text-[12px] font-ui text-t1 outline-none focus:border-acc"
+            className="flex-1 min-w-0 bg-inp border border-brd rounded-md pl-7 pr-2.5 py-1.5 text-[12px] font-ui text-t1 outline-none focus:border-acc"
             placeholder={placeholder}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSubmit(); } }}
             disabled={running}
           />
-          <button
-            className="btn btn-p btn-sm rounded-l-none"
-            onClick={handleSubmit}
-            disabled={running || !input.trim()}
-          >
-            {t('wiki:query.submit')}
-          </button>
         </div>
       </div>
 
