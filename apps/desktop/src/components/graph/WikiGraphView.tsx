@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LocateFixed, Plus, Minus } from 'lucide-react';
+import { LocateFixed, Plus, Minus, Loader2 } from 'lucide-react';
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceRadial } from 'd3-force';
 import { useWikiGraphStore } from '@/store/wikiGraphStore';
 import * as editorIoService from '@/services/editorIoService';
@@ -352,7 +352,13 @@ export function WikiGraphView() {
 
   return (
     <div className="relative w-full h-full bg-[var(--bg)]">
-      {isBuilding && <div className="absolute top-3 left-1/2 -translate-x-1/2 py-1 px-3 bg-[var(--surf)] border border-[var(--brd)] rounded-md text-xs text-[var(--t3)] z-10">构建图谱中...</div>}
+      {isBuilding && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-2 py-2 px-4 bg-[var(--surf2)] border border-[var(--brd)] rounded-md text-sm text-[var(--t2)] shadow-md z-10">
+          <Loader2 size={14} className="animate-spin text-[var(--t3)]" />
+          {/* ponytail: hardcoded zh — i18n key `wiki:graph.building` missing; add when graph namespace gains more strings */}
+          构建图谱中...
+        </div>
+      )}
       <div className="absolute top-3 right-3 flex items-center gap-1 py-1 px-1.5 bg-[var(--surf)] border border-[var(--brd)] rounded-md text-[var(--t3)] z-10">
         <button
           type="button"

@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MarkdownPreview } from '@/components/file-types/markdown/MarkdownPreview';
-import { Share2 } from 'lucide-react';
+import { Share2, Loader2 } from 'lucide-react';
 import { runWikiQuery, saveToWiki } from '@/services/wikiQueryService';
 import * as editorIoService from '@/services/editorIoService';
 import { useVaultStore } from '@/store/vaultStore';
@@ -161,9 +161,6 @@ export function WikiQueryView() {
 
       {/* Middle: answer + recall links */}
       <div ref={scrollRef} className="flex-1 min-w-0 overflow-y-auto px-6 py-4">
-        {turns.length === 0 && !running && (
-          <div className="text-center text-t3 text-[13px] mt-12">{t('wiki:query.empty')}</div>
-        )}
         {turns.map((turn) => (
           <div key={turn.id} className="mb-6">
             <div className="text-[12px] text-t3 mb-1">{t('wiki:query.userPrefix')}{turn.query}</div>
@@ -196,7 +193,10 @@ export function WikiQueryView() {
           </div>
         ))}
         {running && (
-          <div className="text-[12px] text-t3 italic">{t('wiki:query.thinking')}</div>
+          <div className="flex flex-col items-center justify-center gap-2 mt-12">
+            <Loader2 size={22} className="animate-spin text-t3" />
+            <div className="text-t2 text-[13px]">{t('wiki:query.thinking')}</div>
+          </div>
         )}
         {error && (
           <div className="text-[12px] text-[#f06a6a] mt-2">{error}</div>
