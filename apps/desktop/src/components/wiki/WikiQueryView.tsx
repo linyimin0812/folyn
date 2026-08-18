@@ -30,6 +30,7 @@ export function WikiQueryView() {
   const setSessionId = useWikiQueryStore((s) => s.setSessionId);
   const turns = useWikiQueryStore((s) => s.turns);
   const addTurn = useWikiQueryStore((s) => s.addTurn);
+  const updateTurn = useWikiQueryStore((s) => s.updateTurn);
   const running = useWikiQueryStore((s) => s.isRunning);
   const setRunning = useWikiQueryStore((s) => s.setRunning);
   const newSession = useWikiQueryStore((s) => s.newSession);
@@ -68,13 +69,23 @@ export function WikiQueryView() {
     // next call resumes correctly.
     const sid = sessionId ?? generateId();
     if (!sessionId) setSessionId(sid);
+    // ponytail: stream chunks into the turn as they arrive. onChunk fires per
+    // chunk (partial string), so accumulate in the closure and write the whole
+    // accumulated buffer each time — keeps store writes one-per-chunk without
+    // touching aiStreamUtils' signature.
+    const turnId = generateId();
+    let accumulated = '';
+    addTurn({ id: turnId, query: q, answer: '', hits: [] });
     try {
-      const { answer, sessionId: assignedId } = await runWikiQuery(q, sid);
+      const { answer, sessionId: assignedId } = await runWikiQuery(q, sid, (chunk) => {
+        accumulated += chunk;
+        updateTurn(turnId, { answer: accumulated });
+      });
       if (assignedId && assignedId !== sid) setSessionId(assignedId);
       // ponytail: parse hits from citations — avoids duplicating search call.
       const citations = extractCitations(answer);
       const hits = citations.map((path) => ({ path, score: 0, isNeighbor: false }));
-      addTurn({ id: generateId(), query: q, answer, hits });
+      updateTurn(turnId, { answer, hits });
       setInput('');
       setProgress('');
     } catch (err) {

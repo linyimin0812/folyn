@@ -48,6 +48,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export async function runWikiQuery(
   query: string,
   sessionId?: string,
+  onChunk?: (text: string) => void,
 ): Promise<{ answer: string; sessionId?: string }> {
   const vault = useVaultStore.getState();
   const aiConfig = useAiConfigStore.getState();
@@ -75,7 +76,7 @@ export async function runWikiQuery(
     const finalOpts = sessionId && UUID_RE.test(sessionId)
       ? { ...sendOpts, resumeSessionId: sessionId }
       : sendOpts;
-    const textPromise = collectTextFromStream(adapter);
+    const textPromise = collectTextFromStream(adapter, onChunk);
     await adapter.send(instruction, finalOpts);
     const answer = await textPromise;
     return { answer, sessionId: assignedSessionId };

@@ -50,6 +50,7 @@ export interface WikiQueryState {
 
   setRunning: (v: boolean) => void;
   addTurn: (turn: QueryTurn) => void;
+  updateTurn: (id: string, patch: Partial<QueryTurn>) => void;
   newSession: () => void;
   clearHistory: () => void;
   setSessionId: (id: string) => void;
@@ -71,6 +72,16 @@ export const useWikiQueryStore = create<WikiQueryState>((set, get) => ({
     const { vaultId, turns } = get();
     if (!vaultId) return;
     const next = [...turns, turn].slice(-MAX_TURNS);
+    set({ turns: next });
+    void debouncedSave(vaultId, { sessionId: get().sessionId, turns: next });
+  },
+
+  updateTurn: (id, patch) => {
+    const { vaultId, turns } = get();
+    if (!vaultId) return;
+    const idx = turns.findIndex((t) => t.id === id);
+    if (idx === -1) return;
+    const next = turns.map((t) => (t.id === id ? { ...t, ...patch } : t));
     set({ turns: next });
     void debouncedSave(vaultId, { sessionId: get().sessionId, turns: next });
   },
