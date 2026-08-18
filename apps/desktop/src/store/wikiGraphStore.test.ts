@@ -32,6 +32,32 @@ describe('useWikiGraphStore initial state', () => {
     expect(s.edges).toEqual([]);
     expect(s.isBuilding).toBe(false);
   });
+
+  it('starts with default view (zoom=1, pan=0,0)', () => {
+    const s = useWikiGraphStore.getState();
+    expect(s.zoom).toBe(1);
+    expect(s.panX).toBe(0);
+    expect(s.panY).toBe(0);
+  });
+});
+
+describe('useWikiGraphStore view setters', () => {
+  beforeEach(() => {
+    useWikiGraphStore.setState({ zoom: 1, panX: 0, panY: 0 });
+  });
+
+  it('accepts direct values and functional updaters', () => {
+    const s = useWikiGraphStore.getState();
+    s.setZoom(2);
+    s.setPanX(50);
+    s.setPanY(-30);
+    expect(useWikiGraphStore.getState().zoom).toBe(2);
+    expect(useWikiGraphStore.getState().panX).toBe(50);
+    expect(useWikiGraphStore.getState().panY).toBe(-30);
+
+    useWikiGraphStore.getState().setZoom((z) => Math.min(5, z * 1.2));
+    expect(useWikiGraphStore.getState().zoom).toBe(2.4);
+  });
 });
 
 describe('useWikiGraphStore.buildGraph', () => {

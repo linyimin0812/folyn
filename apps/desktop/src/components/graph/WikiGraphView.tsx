@@ -41,14 +41,19 @@ export function WikiGraphView() {
   const isBuilding = useWikiGraphStore((s) => s.isBuilding);
   const buildGraph = useWikiGraphStore((s) => s.buildGraph);
   const getNeighborIds = useWikiGraphStore((s) => s.getNeighborIds);
+  // ponytail: zoom/pan persisted in the store so they survive unmount; the
+  // setters still accept `(prev) => next` so the existing handlers work as-is.
+  const zoom = useWikiGraphStore((s) => s.zoom);
+  const panX = useWikiGraphStore((s) => s.panX);
+  const panY = useWikiGraphStore((s) => s.panY);
+  const setZoom = useWikiGraphStore((s) => s.setZoom);
+  const setPanX = useWikiGraphStore((s) => s.setPanX);
+  const setPanY = useWikiGraphStore((s) => s.setPanY);
   const openFile = editorIoService.openFile;
   const { t } = useTranslation();
 
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; node: WikiGraphNode } | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [panX, setPanX] = useState(0);
-  const [panY, setPanY] = useState(0);
 
   const dragRef = useRef<DragState | null>(null);
   const simRef = useRef<ReturnType<typeof forceSimulation> | null>(null);
@@ -58,6 +63,12 @@ export function WikiGraphView() {
   // stays stable across hover/zoom/pan changes — otherwise the sim effect
   // re-runs and reseeds node positions, causing the "jump on hover" bug.
   const stateRef = useRef({ hoveredNode, zoom, panX, panY });
+
+  // ponytail: snapshot persisted view at first render to decide whether
+  // auto-fit should run this mount. Only auto-fit when the user hasn't
+  // already positioned the graph (defaults) — otherwise the persisted
+  // zoom/pan would be clobbered on every remount.
+  const hasPersistedView = useRef(panX !== 0 || panY !== 0 || zoom !== 1);
 
   useEffect(() => {
     buildGraph();
@@ -174,6 +185,9 @@ export function WikiGraphView() {
   // Also reused by the Center button so it re-fits the current layout instead
   // of resetting to zoom 1, pan 0.
   const autoFit = useCallback(() => {
+    // ponytail: skip auto-fit when the user has a persisted view — otherwise
+    // the persisted zoom/pan is clobbered on every remount's sim 'end'.
+    if (hasPersistedView.current) return;
     const canvas = canvasRef.current;
     if (!canvas || nodesRef.current.length === 0) return;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
