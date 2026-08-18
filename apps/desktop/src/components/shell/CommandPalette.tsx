@@ -71,7 +71,7 @@ export function CommandPalette() {
       <div
         className="dlg"
         onMouseDown={(e) => e.stopPropagation()}
-        style={{ width: 560, maxHeight: '70vh', boxShadow: 'none', animation: 'none' }}
+        style={{ width: 560, maxHeight: '70vh', boxShadow: 'none', animation: 'none', overflow: 'hidden' }}
       >
         <div className="dlg-body" style={{ gap: 0, padding: 0 }}>
           <input
