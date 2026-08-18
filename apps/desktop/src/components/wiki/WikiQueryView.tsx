@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MarkdownPreview } from '@/components/file-types/markdown/MarkdownPreview';
+import { Share2 } from 'lucide-react';
 import { runWikiQuery, saveToWiki } from '@/services/wikiQueryService';
 import * as editorIoService from '@/services/editorIoService';
 import { useVaultStore } from '@/store/vaultStore';
@@ -94,6 +95,13 @@ export function WikiQueryView() {
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-surf">
       {/* Top: history + input */}
       <div className="shrink-0 px-4 py-2.5 border-b border-brd flex items-center gap-2">
+        <button
+          className="btn btn-sm"
+          onClick={() => editorIoService.openFile('wiki-graph', 'Wiki Graph')}
+          title={t('wiki:query.openGraph')}
+        >
+          <Share2 size={14} />
+        </button>
         <button
           className="btn btn-sm"
           onClick={handleNewSession}

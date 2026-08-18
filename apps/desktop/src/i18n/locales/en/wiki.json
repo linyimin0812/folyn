@@ -5,6 +5,7 @@
     },
     "submit": "Ask",
     "newSession": "New session",
+    "openGraph": "Open graph",
     "saveAsSynthesis": "Save as synthesis",
     "empty": "No turns yet. Ask a question to query the wiki.",
     "userPrefix": "You: ",

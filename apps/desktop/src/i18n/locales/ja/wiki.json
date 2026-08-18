@@ -5,6 +5,7 @@
     },
     "submit": "質問",
     "newSession": "新規セッション",
+    "openGraph": "グラフを開く",
     "saveAsSynthesis": "統合ページとして保存",
     "empty": "まだ会話がありません。質問してWikiを検索してください。",
     "userPrefix": "あなた：",

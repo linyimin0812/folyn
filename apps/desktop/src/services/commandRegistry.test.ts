@@ -191,6 +191,7 @@ describe('commandRegistry — registerBuiltinCommands', () => {
       'panel.analyze',
       'panel.settings',
       'wiki.newQuery',
+      'wiki.openGraph',
       'mode.split',
       'mode.edit',
       'mode.preview',

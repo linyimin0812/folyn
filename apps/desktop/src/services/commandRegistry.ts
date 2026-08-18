@@ -279,6 +279,17 @@ export function registerBuiltinCommands(): void {
         void editorIoService.openFile('wiki-query', 'Wiki Query');
       },
     },
+    {
+      id: 'wiki.openGraph',
+      title: 'Wiki: Open Graph',
+      category: 'panel-mode',
+      keywords: ['wiki', 'graph', 'network', 'visualize'],
+      enabled: () => appearance().enableWikiPanel,
+      run: () => {
+        useEditorStore.setState({ activePanel: 'wiki' });
+        void editorIoService.openFile('wiki-graph', 'Wiki Graph');
+      },
+    },
 
     // ── Editor view modes ──
     {

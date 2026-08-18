@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend conventions: zustand store pattern, settings persistence slice, React component structure"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse existing .sw-toast CSS, settingsPersistence pattern, aiStore.switchVaultSessions pattern; don't build parallel infra"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Cross-layer wiring: store (wikiStore/wikiQueryStore/toastStore) → service (wikiLintService) → UI (WikiFileTree/StatusBar/ToastHost)"}

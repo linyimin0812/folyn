@@ -6,7 +6,7 @@ import * as editorIoService from '@/services/editorIoService';
 import type { ReviewItem, WikiEntry } from '@/types/wiki';
 import { WIKI_PREFIX } from '@/types/wiki';
 import { FileIcon } from '@/components/icons/FileIcon';
-import { Plus, FileText, AlertCircle } from 'lucide-react';
+import { Plus, FileText, AlertCircle, Share2 } from 'lucide-react';
 
 function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
   const openFile = editorIoService.openFile;
@@ -212,7 +212,16 @@ export function WikiFileTree() {
   return (
     <div className="flex-1 overflow-y-auto flex flex-col">
       <div className="py-2 px-3 text-[11px] font-semibold text-t3 uppercase tracking-[0.5px] flex items-center justify-between">
-        <span>Wiki</span>
+        <div className="flex items-center gap-1">
+          <span>Wiki</span>
+          <button
+            className="text-t3 hover:text-acc transition-colors"
+            onClick={() => editorIoService.openFile('wiki-graph', 'Wiki Graph')}
+            title={t('wiki:query.openGraph')}
+          >
+            <Share2 size={13} />
+          </button>
+        </div>
         {subTab === 'files' && (
           <button
             className="text-t3 hover:text-acc transition-colors"

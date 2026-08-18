@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Verify store pattern, persistence slice registration, React wiring follow desktop conventions"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Verify no parallel infra: .sw-toast reused, settingsPersistence reused, aiStore pattern mirrored not reinvented"}
