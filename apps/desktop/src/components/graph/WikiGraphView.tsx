@@ -173,14 +173,18 @@ export function WikiGraphView() {
     edgesRef.current = simEdges;
 
     const sim = forceSimulation(simNodes as any)
-      .force('link', forceLink(simEdges as any).id((d: any) => d.id).distance(140))
+      .force('link', forceLink(simEdges as any).id((d: any) => d.id).distance(180))
       // ponytail: distanceMax caps charge range so disconnected components don't
       // shove each other to opposite corners; radial(0) pulls each node toward
       // origin individually (unlike forceCenter which only centers the mean).
-      .force('charge', forceManyBody().strength(-450).distanceMax(250))
+      // Strength 0.015 (down from 0.05) — enough to drift disconnected components
+      // inward over time, not enough to compress local layout against the charge.
+      .force('charge', forceManyBody().strength(-500).distanceMax(250))
       .force('center', forceCenter(0, 0))
-      .force('radial', forceRadial(0, 0).strength(0.05))
-      .force('collide', forceCollide((d: any) => Math.max(3, Math.sqrt((d.linkCount || 0) + 1) * 1.5) + 6))
+      .force('radial', forceRadial(0, 0).strength(0.015))
+      // ponytail: collide padding +12 (up from +6) — doubles empty space per node,
+      // the most direct density fix since collide physically prevents overlap.
+      .force('collide', forceCollide((d: any) => Math.max(3, Math.sqrt((d.linkCount || 0) + 1) * 1.5) + 12))
       .on('tick', render);
 
     simRef.current = sim;
