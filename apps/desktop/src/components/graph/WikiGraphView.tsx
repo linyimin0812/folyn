@@ -37,6 +37,10 @@ export function WikiGraphView() {
   const simRef = useRef<ReturnType<typeof forceSimulation> | null>(null);
   const nodesRef = useRef<WikiGraphNode[]>([]);
   const edgesRef = useRef<WikiGraphEdge[]>([]);
+  // ponytail: render reads latest hover/zoom/pan from this ref so its identity
+  // stays stable across hover/zoom/pan changes — otherwise the sim effect
+  // re-runs and reseeds node positions, causing the "jump on hover" bug.
+  const stateRef = useRef({ hoveredNode, zoom, panX, panY });
 
   useEffect(() => {
     buildGraph();
@@ -47,6 +51,7 @@ export function WikiGraphView() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    const { hoveredNode, zoom, panX, panY } = stateRef.current;
 
     const w = canvas.width;
     const h = canvas.height;
@@ -108,7 +113,16 @@ export function WikiGraphView() {
     }
 
     ctx.restore();
-  }, [hoveredNode, zoom, panX, panY, getNeighborIds]);
+  }, [getNeighborIds]);
+
+  // Sync stateRef + redraw on hover/zoom/pan changes. Replaces the old
+  // `useEffect(() => { render(); }, [render])` line — that one was a no-op
+  // (render identity was stable per its own deps) but also wouldn't have
+  // fired on hover/zoom/pan since render wasn't in their dep chain.
+  useEffect(() => {
+    stateRef.current = { hoveredNode, zoom, panX, panY };
+    render();
+  }, [hoveredNode, zoom, panX, panY, render]);
 
   useEffect(() => {
     if (nodes.length === 0) return;
@@ -128,9 +142,7 @@ export function WikiGraphView() {
     simRef.current = sim;
 
     return () => { sim.stop(); };
-  }, [nodes, edges, render]);
-
-  useEffect(() => { render(); }, [render]);
+  }, [nodes, edges]);
 
   const findNodeAtPos = useCallback((clientX: number, clientY: number): WikiGraphNode | null => {
     const canvas = canvasRef.current;
