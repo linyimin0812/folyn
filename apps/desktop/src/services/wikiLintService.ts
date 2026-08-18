@@ -13,8 +13,6 @@ import { runStructuralLint, type LintContext, type LintPage } from './wikiStruct
 import { parsePage } from './wikiPageWriter';
 import type { WikiEntry } from '@/types/wiki';
 import { useWikiStore } from '@/store/wikiStore';
-import { useToastStore } from '@/store/toastStore';
-import { useEditorStore } from '@/store/editorStore';
 
 export function extractFrontmatterSources(content: string): string[] {
   const fmMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
@@ -105,9 +103,8 @@ async function buildLintContext(): Promise<LintContext> {
 
 /**
  * Runs structural lint (B1.c code-driven). No LLM call. Fast. Adds the new
- * reviews to the wiki store and pushes a completion toast with a "View"
- * action that jumps to the Reviews sub-tab. Returns the reviews for caller
- * activity logging.
+ * reviews to the wiki store so the Reviews sub-tab count badge reflects
+ * them. Returns the reviews for caller activity logging.
  */
 export async function runStructuralLintService(): Promise<ReviewItem[]> {
   await wikiProvider.init();
@@ -115,19 +112,6 @@ export async function runStructuralLintService(): Promise<ReviewItem[]> {
   const reviews = await runStructuralLint(ctx);
   if (reviews.length > 0) {
     useWikiStore.getState().addReviewItems(reviews);
-    useToastStore.getState().push(
-      `${reviews.length} new wiki review${reviews.length === 1 ? '' : 's'}`,
-      {
-        label: 'View',
-        run: () => {
-          useEditorStore.getState().setActivePanel('wiki');
-          useWikiStore.getState().setWikiSubTab('reviews');
-        },
-      },
-      6000,
-    );
-  } else {
-    useToastStore.getState().push('Wiki lint complete: no new issues', undefined, 3000);
   }
   return reviews;
 }
