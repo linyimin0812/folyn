@@ -6,14 +6,11 @@
     "submit": "質問",
     "newSession": "新規セッション",
     "openGraph": "グラフを開く",
-    "saveAsSynthesis": "統合ページとして保存",
     "empty": "まだ会話がありません。質問してWikiを検索してください。",
     "userPrefix": "あなた：",
     "thinking": "考え中…",
     "progress": {
-      "lookingUp": "Wikiページを検索中…",
-      "saving": "統合ページを保存中…",
-      "saved": "wiki://{{path}} に保存しました"
+      "lookingUp": "Wikiページを検索中…"
     }
   },
   "graph": {

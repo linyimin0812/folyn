@@ -6,10 +6,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MarkdownPreview } from '@/components/file-types/markdown/MarkdownPreview';
 import { Share2, Loader2 } from 'lucide-react';
-import { runWikiQuery, saveToWiki } from '@/services/wikiQueryService';
+import { runWikiQuery } from '@/services/wikiQueryService';
 import * as editorIoService from '@/services/editorIoService';
 import { useVaultStore } from '@/store/vaultStore';
-import { useWikiQueryStore, type QueryTurn } from '@/store/wikiQueryStore';
+import { useWikiQueryStore } from '@/store/wikiQueryStore';
 import { generateId } from '@/utils/idGenerator';
 import { WIKI_PREFIX } from '@/types/wiki';
 
@@ -103,22 +103,6 @@ export function WikiQueryView() {
     setProgress('');
   };
 
-  const handleSaveSynthesis = async (turn: QueryTurn) => {
-    if (!turn.answer.trim()) return;
-    setProgress(t('wiki:query.progress.saving'));
-    try {
-      const title = turn.query.slice(0, 60);
-      const sourcePaths = turn.hits.map((h) => h.path);
-      const relatedPages: string[] = [];
-      const path = await saveToWiki(title, turn.answer, turn.query, sourcePaths, relatedPages);
-      setProgress(t('wiki:query.progress.saved', { path }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setTimeout(() => setProgress(''), 2000);
-    }
-  };
-
   const placeholder = useMemo(() => t('wiki:query.input.placeholder'), [t]);
 
   return (
@@ -187,11 +171,6 @@ export function WikiQueryView() {
                 })}
               </div>
             )}
-            <div className="mt-2 flex gap-2">
-              <button className="btn btn-sm" onClick={() => void handleSaveSynthesis(turn)} disabled={!turn.answer.trim()}>
-                {t('wiki:query.saveAsSynthesis')}
-              </button>
-            </div>
           </div>
         ))}
         {running && (

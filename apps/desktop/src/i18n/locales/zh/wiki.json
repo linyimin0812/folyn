@@ -6,14 +6,11 @@
     "submit": "提问",
     "newSession": "新建会话",
     "openGraph": "打开图谱",
-    "saveAsSynthesis": "保存为综合页",
     "empty": "尚无对话。提问以查询 Wiki。",
     "userPrefix": "你：",
     "thinking": "思考中…",
     "progress": {
-      "lookingUp": "查询 Wiki 页面中…",
-      "saving": "保存综合页…",
-      "saved": "已保存到 wiki://{{path}}"
+      "lookingUp": "查询 Wiki 页面中…"
     }
   },
   "graph": {
