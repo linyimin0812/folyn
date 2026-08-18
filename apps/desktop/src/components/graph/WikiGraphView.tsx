@@ -1,4 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { LocateFixed, Plus, Minus } from 'lucide-react';
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force';
 import { useWikiGraphStore } from '@/store/wikiGraphStore';
 import * as editorIoService from '@/services/editorIoService';
@@ -38,6 +40,7 @@ export function WikiGraphView() {
   const buildGraph = useWikiGraphStore((s) => s.buildGraph);
   const getNeighborIds = useWikiGraphStore((s) => s.getNeighborIds);
   const openFile = editorIoService.openFile;
+  const { t } = useTranslation();
 
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; node: WikiGraphNode } | null>(null);
@@ -264,6 +267,35 @@ export function WikiGraphView() {
   return (
     <div className="relative w-full h-full bg-[var(--bg)]">
       {isBuilding && <div className="absolute top-3 left-1/2 -translate-x-1/2 py-1 px-3 bg-[var(--surf)] border border-[var(--brd)] rounded-md text-xs text-[var(--t3)] z-10">构建图谱中...</div>}
+      <div className="absolute top-3 right-3 flex items-center gap-1 py-1 px-1.5 bg-[var(--surf)] border border-[var(--brd)] rounded-md text-[var(--t3)] z-10">
+        <button
+          type="button"
+          className="p-1 hover:bg-[var(--hov)] hover:text-[var(--t1)] rounded transition-colors"
+          aria-label={t('wiki:graph.controls.center')}
+          title={t('wiki:graph.controls.center')}
+          onClick={() => { setPanX(0); setPanY(0); setZoom(1); }}
+        >
+          <LocateFixed size={14} />
+        </button>
+        <button
+          type="button"
+          className="p-1 hover:bg-[var(--hov)] hover:text-[var(--t1)] rounded transition-colors"
+          aria-label={t('wiki:graph.controls.zoomIn')}
+          title={t('wiki:graph.controls.zoomIn')}
+          onClick={() => setZoom((z) => Math.min(5, z * 1.2))}
+        >
+          <Plus size={14} />
+        </button>
+        <button
+          type="button"
+          className="p-1 hover:bg-[var(--hov)] hover:text-[var(--t1)] rounded transition-colors"
+          aria-label={t('wiki:graph.controls.zoomOut')}
+          title={t('wiki:graph.controls.zoomOut')}
+          onClick={() => setZoom((z) => Math.max(0.2, z / 1.2))}
+        >
+          <Minus size={14} />
+        </button>
+      </div>
       <canvas
         ref={canvasRef}
         className="w-full h-full cursor-crosshair"

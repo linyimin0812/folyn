@@ -15,5 +15,12 @@
       "saving": "保存综合页…",
       "saved": "已保存到 wiki://{{path}}"
     }
+  },
+  "graph": {
+    "controls": {
+      "center": "居中",
+      "zoomIn": "放大",
+      "zoomOut": "缩小"
+    }
   }
 }

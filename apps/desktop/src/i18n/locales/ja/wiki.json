@@ -15,5 +15,12 @@
       "saving": "統合ページを保存中…",
       "saved": "wiki://{{path}} に保存しました"
     }
+  },
+  "graph": {
+    "controls": {
+      "center": "中央に",
+      "zoomIn": "拡大",
+      "zoomOut": "縮小"
+    }
   }
 }

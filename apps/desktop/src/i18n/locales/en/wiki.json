@@ -15,5 +15,12 @@
       "saving": "Saving synthesis…",
       "saved": "Saved to wiki://{{path}}"
     }
+  },
+  "graph": {
+    "controls": {
+      "center": "Center",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out"
+    }
   }
 }
