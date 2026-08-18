@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LocateFixed, Plus, Minus } from 'lucide-react';
-import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force';
+import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceRadial } from 'd3-force';
 import { useWikiGraphStore } from '@/store/wikiGraphStore';
 import * as editorIoService from '@/services/editorIoService';
 import type { WikiGraphNode, WikiGraphEdge } from '@/types/wiki';
@@ -174,8 +174,12 @@ export function WikiGraphView() {
 
     const sim = forceSimulation(simNodes as any)
       .force('link', forceLink(simEdges as any).id((d: any) => d.id).distance(140))
-      .force('charge', forceManyBody().strength(-450))
+      // ponytail: distanceMax caps charge range so disconnected components don't
+      // shove each other to opposite corners; radial(0) pulls each node toward
+      // origin individually (unlike forceCenter which only centers the mean).
+      .force('charge', forceManyBody().strength(-450).distanceMax(250))
       .force('center', forceCenter(0, 0))
+      .force('radial', forceRadial(0, 0).strength(0.05))
       .force('collide', forceCollide((d: any) => Math.max(3, Math.sqrt((d.linkCount || 0) + 1) * 1.5) + 6))
       .on('tick', render);
 
