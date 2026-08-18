@@ -374,7 +374,7 @@ export function WikiFileTree() {
           <img src={wikiGraphIcon} className="w-[13px] h-[13px]" alt="" />
         </button>
 
-        {/* Right: stop (conditional) + ingestAll + pickIngest + locate */}
+        {/* Right: stop (conditional) + locate + ingestAll + pickIngest */}
         <div className="flex items-center gap-1">
           {subTab === 'files' && isIngesting && (
             <button
@@ -397,6 +397,14 @@ export function WikiFileTree() {
               <Square size={13} />
             </button>
           )}
+          <button
+            className="text-t3 hover:text-acc transition-colors"
+            onClick={handleLocateActive}
+            title={t('sidebar:wikiTree.locateActive')}
+            aria-label={t('sidebar:wikiTree.locateActive')}
+          >
+          <img src={locateActiveIcon} className="w-[13px] h-[13px]" alt="" />
+          </button>
           {subTab === 'files' && (
             <button
               className="text-t3 hover:text-acc transition-colors"
@@ -415,14 +423,6 @@ export function WikiFileTree() {
               <Plus size={13} />
             </button>
           )}
-          <button
-            className="text-t3 hover:text-acc transition-colors"
-            onClick={handleLocateActive}
-            title={t('sidebar:wikiTree.locateActive')}
-            aria-label={t('sidebar:wikiTree.locateActive')}
-          >
-          <img src={locateActiveIcon} className="w-[13px] h-[13px]" alt="" />
-          </button>
         </div>
       </div>
       {/* Sub-tab toggle: Files | Reviews (with count badge) */}

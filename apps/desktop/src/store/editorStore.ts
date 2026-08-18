@@ -16,6 +16,9 @@ export type { ViewMode };
 export type FileType = string;
 
 export function detectFileType(filePath: string): FileType {
+  // Wiki virtual tabs use dedicated icons in the tab bar.
+  if (filePath === 'wiki-graph') return 'wiki-graph';
+  if (filePath === 'wiki-query') return 'wiki-query';
   // Detect clip files by path prefix
   if (filePath.startsWith('__clips__/') && filePath.endsWith('.md')) {
     return 'clip';
