@@ -8,16 +8,15 @@ import type { ReviewItem, WikiEntry } from '@/types/wiki';
 import { WIKI_PREFIX } from '@/types/wiki';
 import { FileIcon } from '@/components/icons/FileIcon';
 import injectAllIcon from '@/assets/icons/inject_all.svg';
+import wikiGraphIcon from '@/assets/icons/wiki_graph.svg';
 import {
   Plus,
   FileText,
   AlertCircle,
-  Share2,
   Square,
   X,
   Activity,
   ChevronRight,
-  Crosshair,
 } from 'lucide-react';
 
 function WikiEntryItem({
@@ -365,17 +364,16 @@ export function WikiFileTree() {
   return (
     <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
       <div className="py-2 px-3 flex items-center justify-between border-b border-brd">
-        {/* Left: locate — always visible */}
+        {/* Left: graph — always visible */}
         <button
           className="text-t3 hover:text-acc transition-colors"
-          onClick={handleLocateActive}
-          title={t('sidebar:wikiTree.locateActive')}
-          aria-label={t('sidebar:wikiTree.locateActive')}
+          onClick={() => editorIoService.openFile('wiki-graph', 'Wiki Graph')}
+          title={t('wiki:query.openGraph')}
         >
-          <Crosshair size={13} />
+          <img src={wikiGraphIcon} className="w-[13px] h-[13px]" alt="" />
         </button>
 
-        {/* Right: stop (conditional) + ingestAll + pickIngest (files-only) + graph (always) */}
+        {/* Right: stop (conditional) + ingestAll + pickIngest + locate */}
         <div className="flex items-center gap-1">
           {subTab === 'files' && isIngesting && (
             <button
@@ -418,30 +416,39 @@ export function WikiFileTree() {
           )}
           <button
             className="text-t3 hover:text-acc transition-colors"
-            onClick={() => editorIoService.openFile('wiki-graph', 'Wiki Graph')}
-            title={t('wiki:query.openGraph')}
+            onClick={handleLocateActive}
+            title={t('sidebar:wikiTree.locateActive')}
+            aria-label={t('sidebar:wikiTree.locateActive')}
           >
-            <Share2 size={13} />
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+              <circle cx="8" cy="8" r="6.5"/>
+              <line x1="8" y1="1.5" x2="8" y2="6.5"/>
+              <line x1="8" y1="9.5" x2="8" y2="14.5"/>
+              <line x1="1.5" y1="8" x2="6.5" y2="8"/>
+              <line x1="9.5" y1="8" x2="14.5" y2="8"/>
+            </svg>
           </button>
         </div>
       </div>
       {/* Sub-tab toggle: Files | Reviews (with count badge) */}
-      <div className="flex items-center gap-1 px-2 pb-2 border-b border-brd">
-        <button
-          className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded ${subTab === 'files' ? 'bg-accdim text-acc' : 'text-t3 hover:bg-hov'}`}
-          onClick={() => setSubTab('files')}
-        >
-          <FileText size={10} /> {t('sidebar:wikiTree.subTab.files')}
-        </button>
-        <button
-          className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded ${subTab === 'reviews' ? 'bg-accdim text-acc' : 'text-t3 hover:bg-hov'}`}
-          onClick={() => setSubTab('reviews')}
-        >
-          <AlertCircle size={10} /> {t('sidebar:wikiTree.subTab.reviews')}
-          {pendingReviews.length > 0 && (
-            <span className="text-[9px] px-1 rounded-full bg-acc text-white">{pendingReviews.length}</span>
-          )}
-        </button>
+      <div className="flex items-center justify-center py-2 border-b border-brd">
+        <div className="inline-flex items-center rounded-md border border-brd overflow-hidden">
+          <button
+            className={`flex items-center gap-1 px-3 py-1 text-[10px] ${subTab === 'files' ? 'bg-accdim text-acc' : 'bg-surf text-t3 hover:bg-hov'}`}
+            onClick={() => setSubTab('files')}
+          >
+            <FileText size={10} /> {t('sidebar:wikiTree.subTab.files')}
+          </button>
+          <button
+            className={`flex items-center gap-1 px-3 py-1 text-[10px] border-l border-brd ${subTab === 'reviews' ? 'bg-accdim text-acc' : 'bg-surf text-t3 hover:bg-hov'}`}
+            onClick={() => setSubTab('reviews')}
+          >
+            <AlertCircle size={10} /> {t('sidebar:wikiTree.subTab.reviews')}
+            {pendingReviews.length > 0 && (
+              <span className="text-[9px] px-1 rounded-full bg-acc text-white">{pendingReviews.length}</span>
+            )}
+          </button>
+        </div>
       </div>
 
       {subTab === 'files' ? (
