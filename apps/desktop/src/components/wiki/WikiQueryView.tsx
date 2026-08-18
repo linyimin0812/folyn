@@ -78,9 +78,6 @@ export function WikiQueryView() {
     addTurn({ id: turnId, query: q, answer: '', hits: [] });
     try {
       const { answer, sessionId: assignedId } = await runWikiQuery(q, sid, (chunk) => {
-        // ponytail: diagnostic log to confirm chunks are arriving at the UI
-        // layer. Remove once streaming is confirmed end-to-end.
-        console.log('[WikiQuery] chunk:', chunk.length, 'chars');
         accumulated += chunk;
         updateTurn(turnId, { answer: accumulated });
       });
