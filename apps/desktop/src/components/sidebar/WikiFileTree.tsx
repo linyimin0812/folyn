@@ -316,9 +316,19 @@ export function WikiFileTree() {
     });
     if (!picked) return;
     const paths = Array.isArray(picked) ? picked : [picked];
+    // ponytail: open() can't be hard-restricted to base — defaultPath only sets
+    // the start dir. Drop anything outside the vault so external picks don't
+    // get silently re-relativized into __wiki__ ingest.
     const rel = paths
-      .map((p) => p.replace(base, '').replace(/^[/\\]+/, ''))
-      .filter((p) => p && !p.startsWith('__wiki__'));
+      .map((p) => {
+        const norm = p.replace(/\\/g, '/');
+        const b = base.replace(/\\/g, '/').replace(/\/$/, '');
+        if (norm === b || norm.startsWith(`${b}/`)) {
+          return norm.slice(b.length).replace(/^\/+/, '');
+        }
+        return null;
+      })
+      .filter((p): p is string => Boolean(p) && !p.startsWith('__wiki__'));
     if (rel.length === 0) return;
     const { runIngest } = await import('@/services/wikiIngestService');
     runIngest(rel).catch(console.error);
