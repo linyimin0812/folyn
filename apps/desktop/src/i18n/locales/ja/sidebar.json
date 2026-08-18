@@ -87,6 +87,8 @@
     "dismissSelected": "選択を却下",
     "filterByCheck": "フィルター",
     "filterAll": "すべて",
+    "closeIngestPanel": "閉じる",
+    "showIngestPanel": "取り込み進捗を表示",
     "subTab": {
       "files": "ファイル",
       "reviews": "Review"

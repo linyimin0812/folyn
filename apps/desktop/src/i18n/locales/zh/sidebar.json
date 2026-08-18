@@ -95,6 +95,8 @@
     "dismissSelected": "批量忽略",
     "filterByCheck": "筛选",
     "filterAll": "全部",
+    "closeIngestPanel": "关闭",
+    "showIngestPanel": "显示摄入进度",
     "subTab": {
       "files": "文件",
       "reviews": "Review"

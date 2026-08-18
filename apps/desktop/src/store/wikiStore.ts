@@ -27,6 +27,9 @@ interface WikiState {
   currentIngestStep: 1 | 2 | 3 | null;
   ingestProgress: string;
   activityLog: ActivityLogEntry[];
+  /** User-collapsed the floating ingest popup. A new ingest batch (setIngesting(true,*))
+   * auto-clears this so the panel re-opens by default. */
+  ingestPanelHidden: boolean;
   /** WikiFileTree sub-tab — lifted so toast "View" action can jump to 'reviews'. */
   wikiSubTab: 'files' | 'reviews';
 
@@ -37,6 +40,7 @@ interface WikiState {
   setIngestStatus: (taskId: string, status: IngestTask['status'], error?: string) => void;
   setIngesting: (ingesting: boolean, step?: 1 | 2 | 3 | null) => void;
   setCancelIngest: (v: boolean) => void;
+  setIngestPanelHidden: (v: boolean) => void;
   setLinting: (linting: boolean) => void;
   setIngestProgress: (msg: string) => void;
   clearIngestQueue: () => void;
@@ -89,6 +93,7 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
   currentIngestStep: null,
   ingestProgress: '',
   activityLog: [],
+  ingestPanelHidden: false,
   wikiSubTab: 'files',
 
   initWiki: async () => {
@@ -128,13 +133,19 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
   setIngesting: (ingesting, step = null) => {
     // ponytail: auto-clear cancelIngest on finish (natural or aborted) so the
     // next batch starts with a clean flag — callers don't have to remember.
+    // A new ingest batch also re-opens the floating panel (clear ingestPanelHidden)
+    // so the user doesn't miss progress after collapsing the previous batch.
     set(ingesting
-      ? { isIngesting: true, currentIngestStep: step }
+      ? { isIngesting: true, currentIngestStep: step, ingestPanelHidden: false }
       : { isIngesting: false, currentIngestStep: null, cancelIngest: false });
   },
 
   setCancelIngest: (v) => {
     set({ cancelIngest: v });
+  },
+
+  setIngestPanelHidden: (v) => {
+    set({ ingestPanelHidden: v });
   },
 
   setLinting: (linting) => {

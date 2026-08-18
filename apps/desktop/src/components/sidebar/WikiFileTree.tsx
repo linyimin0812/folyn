@@ -6,7 +6,7 @@ import * as editorIoService from '@/services/editorIoService';
 import type { ReviewItem, WikiEntry } from '@/types/wiki';
 import { WIKI_PREFIX } from '@/types/wiki';
 import { FileIcon } from '@/components/icons/FileIcon';
-import { Plus, FileText, AlertCircle, Share2, Library, Square } from 'lucide-react';
+import { Plus, FileText, AlertCircle, Share2, Library, Square, X, Activity } from 'lucide-react';
 
 function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
   const openFile = editorIoService.openFile;
@@ -406,13 +406,23 @@ export function WikiFileTree() {
   );
 }
 
-// ponytail: ingest progress strip. Visible while isIngesting; lingers 2s after
-// ingest completes so the final success activity entry is readable. Reuses
+// ponytail: floating ingest popup. Lifted out of the sidebar flex flow via
+// `position: fixed bottom-right` so it overlays the editor pane instead of
+// squatting at the bottom of the sidebar. Visible while isIngesting; lingers
+// 2s after ingest completes so the final success entry is readable. Reuses
 // activityLog slice + ingestProgress from wikiStore — no new state.
+//
+// ponytail: chip fallback at the same fixed spot — when the user collapses
+// the popup mid-ingest, a small Activity icon button re-opens it. The panel
+// auto-re-opens on the next ingest batch (setIngesting(true,*) clears the
+// hidden flag) so users can't permanently lose ingest progress.
 function WikiIngestProgressStrip() {
+  const { t } = useTranslation();
   const isIngesting = useWikiStore((s) => s.isIngesting);
   const currentIngestStep = useWikiStore((s) => s.currentIngestStep);
   const ingestProgress = useWikiStore((s) => s.ingestProgress);
+  const ingestPanelHidden = useWikiStore((s) => s.ingestPanelHidden);
+  const setIngestPanelHidden = useWikiStore((s) => s.setIngestPanelHidden);
   // ponytail: select the stable activityLog ref, slice in render. A selector
   // returning `.slice(-5)` mints a new array each call → useSyncExternalStore
   // sees a new ref every render → Maximum update depth exceeded loop.
@@ -426,20 +436,43 @@ function WikiIngestProgressStrip() {
       return;
     }
     if (!show) return;
-    const t = setTimeout(() => setShow(false), 2000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setShow(false), 2000);
+    return () => clearTimeout(timer);
   }, [isIngesting, show]);
 
   if (!show) return null;
 
+  if (ingestPanelHidden) {
+    return (
+      <button
+        type="button"
+        className="fixed bottom-4 right-4 z-50 rounded-full bg-acc text-white shadow-lg w-9 h-9 flex items-center justify-center hover:scale-105 transition-transform"
+        onClick={() => setIngestPanelHidden(false)}
+        title={t('sidebar:wikiTree.showIngestPanel')}
+        aria-label={t('sidebar:wikiTree.showIngestPanel')}
+      >
+        <Activity size={16} />
+      </button>
+    );
+  }
+
   return (
-    <div className="shrink-0 border-t border-brd bg-panel px-2 py-1.5 text-[10px] text-t3 transition-opacity duration-200 opacity-100">
-      <div className="flex items-center gap-1.5 font-mono">
+    <div className="fixed bottom-4 right-4 z-50 w-80 max-h-72 rounded-lg border border-brd2 bg-surf shadow-lg overflow-hidden flex flex-col transition-opacity duration-200 opacity-100">
+      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-brd2 text-[10px] font-mono">
         <span className="text-acc">Step {currentIngestStep ?? '?'}/3</span>
-        {ingestProgress && <span className="truncate">{ingestProgress}</span>}
+        {ingestProgress && <span className="truncate flex-1 min-w-0 text-t2">{ingestProgress}</span>}
+        <button
+          type="button"
+          className="shrink-0 text-t3 hover:text-acc transition-colors"
+          onClick={() => setIngestPanelHidden(true)}
+          title={t('sidebar:wikiTree.closeIngestPanel')}
+          aria-label={t('sidebar:wikiTree.closeIngestPanel')}
+        >
+          <X size={12} />
+        </button>
       </div>
       {lastActivities.length > 0 && (
-        <div className="mt-1 space-y-0.5">
+        <div className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5 text-[10px] text-t3">
           {lastActivities.map((a) => (
             <div key={a.id} className="truncate overflow-hidden text-ellipsis whitespace-nowrap">
               {a.message}

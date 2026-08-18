@@ -95,6 +95,8 @@
     "dismissSelected": "Dismiss selected",
     "filterByCheck": "Filter",
     "filterAll": "All",
+    "closeIngestPanel": "Close",
+    "showIngestPanel": "Show ingest progress",
     "subTab": {
       "files": "Files",
       "reviews": "Reviews"
