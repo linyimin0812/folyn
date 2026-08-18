@@ -98,6 +98,7 @@
     "closeIngestPanel": "Close",
     "showIngestPanel": "Show ingest progress",
     "toggleDir": "Toggle directory",
+    "locateActive": "Locate active file",
     "subTab": {
       "files": "Files",
       "reviews": "Reviews"

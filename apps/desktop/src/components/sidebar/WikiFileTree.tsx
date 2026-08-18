@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWikiStore } from '@/store/wikiStore';
 import { useVaultStore } from '@/store/vaultStore';
+import { useEditorStore } from '@/store/editorStore';
 import * as editorIoService from '@/services/editorIoService';
 import type { ReviewItem, WikiEntry } from '@/types/wiki';
 import { WIKI_PREFIX } from '@/types/wiki';
@@ -16,15 +17,25 @@ import {
   X,
   Activity,
   ChevronRight,
+  Crosshair,
 } from 'lucide-react';
 
-function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
+function WikiEntryItem({
+  entry,
+  depth,
+  expandedPaths,
+  toggleDir,
+}: {
+  entry: WikiEntry;
+  depth: number;
+  expandedPaths: Set<string>;
+  toggleDir: (path: string) => void;
+}) {
   const openFile = editorIoService.openFile;
   const { t } = useTranslation();
-  // Item 5: per-dir collapse state, local to this row. Default: top-level
-  // (depth 0) dirs expanded, deeper dirs collapsed — depth heuristic. Not
-  // persisted — resets on remount.
-  const [expanded, setExpanded] = useState(depth < 1);
+  // ponytail: expand state lifted to parent so the "locate active file"
+  // handler can imperatively expand ancestors. Not persisted.
+  const expanded = expandedPaths.has(entry.path);
 
   if (entry.type === 'dir') {
     return (
@@ -32,11 +43,12 @@ function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
         <div
           className="flex items-center gap-1.5 py-1 px-2 font-medium cursor-pointer text-[calc(var(--ui-font-size)-2px)] text-t2 rounded mx-1 transition-colors duration-100 hover:bg-hov hover:text-t1"
           style={{ paddingLeft: `${depth * 14 + 8}px` }}
-          onClick={() => setExpanded((v) => !v)}
+          onClick={() => toggleDir(entry.path)}
           role="button"
           aria-expanded={expanded}
           aria-label={t('sidebar:wikiTree.toggleDir')}
           title={t('sidebar:wikiTree.toggleDir')}
+          data-path={entry.path}
         >
           <ChevronRight
             size={12}
@@ -49,7 +61,13 @@ function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
           )}
         </div>
         {expanded && entry.children?.map((child) => (
-          <WikiEntryItem key={child.path} entry={child} depth={depth + 1} />
+          <WikiEntryItem
+            key={child.path}
+            entry={child}
+            depth={depth + 1}
+            expandedPaths={expandedPaths}
+            toggleDir={toggleDir}
+          />
         ))}
       </div>
     );
@@ -61,6 +79,7 @@ function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
       style={{ paddingLeft: `${depth * 14 + 8}px` }}
       onClick={() => openFile(`${WIKI_PREFIX}${entry.path}`, entry.name)}
       title={entry.path}
+      data-path={entry.path}
     >
       <span className="shrink-0 text-xs"><FileIcon filename={entry.name} /></span>
       <span className="overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1">{entry.name.replace('.md', '')}</span>
@@ -160,6 +179,56 @@ export function WikiFileTree() {
 
   const topFiles = wikiFiles.filter((e) => e.type === 'file');
   const dirs = wikiFiles.filter((e) => e.type === 'dir');
+
+  // ponytail: lifted dir-expand set. Seeds top-level dirs once when wikiFiles
+  // first loads (mirrors the old `depth < 1` default). Not persisted.
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
+  const seededExpandRef = useRef(false);
+  // ponytail: useLayoutEffect so the seed runs before paint — otherwise the
+  // first render after wikiFiles populates paints all dirs collapsed, then
+  // snaps to top-level expanded (visible flicker the old per-row useState
+  // didn't have).
+  useLayoutEffect(() => {
+    if (!seededExpandRef.current && dirs.length > 0) {
+      seededExpandRef.current = true;
+      setExpandedPaths(new Set(dirs.map((d) => d.path)));
+    }
+  }, [dirs.length]);
+
+  const toggleDir = useCallback((path: string) => {
+    setExpandedPaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }, []);
+
+  const handleLocateActive = useCallback(() => {
+    const { tabs, activeTabId } = useEditorStore.getState();
+    const tab = tabs.find((t) => t.id === activeTabId);
+    if (!tab) return;
+    if (!tab.path.startsWith(WIKI_PREFIX)) return;
+    const relPath = tab.path.slice(WIKI_PREFIX.length);
+    const segments = relPath.split('/');
+    const ancestors: string[] = [];
+    for (let i = 1; i < segments.length; i++) {
+      ancestors.push(segments.slice(0, i).join('/'));
+    }
+    if (ancestors.length > 0) {
+      setExpandedPaths((prev) => {
+        const next = new Set(prev);
+        for (const a of ancestors) next.add(a);
+        return next;
+      });
+    }
+    // ponytail: rAF so the just-expanded rows paint before scrolling.
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-path="${CSS.escape(relPath)}"]`);
+      if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+  }, []);
+
   const pendingReviews = reviewItems.filter((r) => r.status === 'pending');
   const uniqueCheckIds = useMemo(
     () => Array.from(new Set(pendingReviews.map((r) => r.checkId).filter((v): v is string => Boolean(v)))),
@@ -326,6 +395,14 @@ export function WikiFileTree() {
             >
               <Plus size={13} />
             </button>
+            <button
+              className="text-t3 hover:text-acc transition-colors"
+              onClick={handleLocateActive}
+              title={t('sidebar:wikiTree.locateActive')}
+              aria-label={t('sidebar:wikiTree.locateActive')}
+            >
+              <Crosshair size={13} />
+            </button>
           </div>
         )}
       </div>
@@ -351,10 +428,22 @@ export function WikiFileTree() {
       {subTab === 'files' ? (
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {topFiles.map((entry) => (
-            <WikiEntryItem key={entry.path} entry={entry} depth={0} />
+            <WikiEntryItem
+              key={entry.path}
+              entry={entry}
+              depth={0}
+              expandedPaths={expandedPaths}
+              toggleDir={toggleDir}
+            />
           ))}
           {dirs.map((entry) => (
-            <WikiEntryItem key={entry.path} entry={entry} depth={0} />
+            <WikiEntryItem
+              key={entry.path}
+              entry={entry}
+              depth={0}
+              expandedPaths={expandedPaths}
+              toggleDir={toggleDir}
+            />
           ))}
           {wikiFiles.length === 0 && (
             <div className="p-4 text-center text-xs text-t3 leading-relaxed">
