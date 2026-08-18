@@ -277,8 +277,12 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
       // ponytail: surface non-applied results via toast — otherwise the only
       // feedback is an activity log entry buried in the ingest popup, which
       // reads as "nothing happened". 4s so the user can read the explanation.
-      useToastStore.getState().push(result.log, undefined, 4000);
+      // applied case toasts below with a shorter 3s success-confirm duration.
     }
+    // ponytail: every review action gets a toast — success (3s) and failure
+    // (4s). Previously only the non-applied branch toasted, so a successful
+    // accept silently made the item vanish from the pending list.
+    useToastStore.getState().push(result.log, undefined, result.applied ? 3000 : 4000);
     useWikiStore.getState().pushActivity(result.applied ? 'success' : 'info', `${actionType} ${item.checkId ?? item.type}: ${result.log}`);
     return result;
   },
