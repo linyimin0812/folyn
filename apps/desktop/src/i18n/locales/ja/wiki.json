@@ -39,6 +39,8 @@
     "skipped": "スキップ (変更なし): {{path}}",
     "queueSummary": "{{processed}}/{{total}} 件処理済み",
     "researchOpened": "wiki クエリで開きました: {{query}}",
-    "contradictionAcceptNeedsAgent": "矛盾の自動承認は merge フローが必要です — 手動でマージまたは編集してください"
+    "contradictionAcceptNeedsAgent": "矛盾の自動承認は merge フローが必要です — 手動でマージまたは編集してください",
+    "contradictionAccepted": "{{path}} で古い主張を置換しました",
+    "contradictionAppended": "{{path}} に新しい主張を追加しました(手動統合が必要)"
   }
 }

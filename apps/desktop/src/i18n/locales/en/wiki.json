@@ -39,6 +39,8 @@
     "skipped": "Skipped (unchanged): {{path}}",
     "queueSummary": "{{processed}}/{{total}} files processed",
     "researchOpened": "Opened in wiki query: {{query}}",
-    "contradictionAcceptNeedsAgent": "Auto-accepting contradiction needs the merge flow — use merge or edit manually"
+    "contradictionAcceptNeedsAgent": "Auto-accepting contradiction needs the merge flow — use merge or edit manually",
+    "contradictionAccepted": "Replaced old claim with new in {{path}}",
+    "contradictionAppended": "Appended new claim to {{path}} (manual integration needed)"
   }
 }

@@ -232,15 +232,76 @@ const noopHandler: ActionHandler = {
   reject: async () => ({ applied: true, log: 'marked dismissed' }),
 };
 
-// ponytail: contradiction needs agent-driven body rewrite — accept is stubbed
-// (surfaces a toast explaining the merge-flow requirement), reject dismisses,
-// research opens the wiki-query tab with the claim pre-filled. Real accept
+// ponytail: contradiction accept = regex-extract old/new claim from the
+// review item's localized description, replace first occurrence of the old
+// claim in the affected page body with the new claim (or append a
+// "新说法 (待整合)" section if the old claim text isn't found verbatim).
+// Real semantic rewrite (understanding where in the body the claim lives)
 // belongs to a later agent round.
+const CONTRADICTION_DESC_RE = /新说法: "(.+?)" vs 已有: "(.+?)"/;
+const CONTRADICTION_TITLE_PREFIX = '矛盾: ';
+const NEW_CLAIM_HEADING = '## 新说法 (待整合)';
+
+// ponytail: pure helpers extracted so the claim-extraction + body-rewrite
+// branching is unit-testable without mocking the wiki provider. The handler
+// is a thin shell over these.
+export function extractContradictionClaims(
+  description: string | undefined,
+  title: string,
+): { newClaim: string; oldClaim: string } {
+  const m = CONTRADICTION_DESC_RE.exec(description ?? '');
+  const newClaim = m?.[1]
+    ?? (title.startsWith(CONTRADICTION_TITLE_PREFIX)
+      ? title.slice(CONTRADICTION_TITLE_PREFIX.length)
+      : title);
+  const oldClaim = m?.[2] ?? '';
+  return { newClaim, oldClaim };
+}
+
+export function applyContradictionToBody(
+  body: string,
+  newClaim: string,
+  oldClaim: string,
+): { body: string; replaced: boolean } {
+  if (oldClaim && body.includes(oldClaim)) {
+    return { body: body.replace(oldClaim, newClaim), replaced: true };
+  }
+  const trailer = body.endsWith('\n') ? '' : '\n';
+  return {
+    body: `${body}${trailer}\n${NEW_CLAIM_HEADING}\n\n${newClaim}\n`,
+    replaced: false,
+  };
+}
+
 const ingestContradictionHandler: ActionHandler = {
-  accept: async () => ({
-    applied: false,
-    log: i18n.t('wiki:activity.contradictionAcceptNeedsAgent'),
-  }),
+  accept: async (item) => {
+    const pagePathRaw = item.affectedPages[0];
+    if (!pagePathRaw) return { applied: false, log: 'no affected page' };
+    const pagePath = pagePathRaw.endsWith('.md') ? pagePathRaw : `${pagePathRaw}.md`;
+    const raw = await readPage(pagePath);
+    if (!raw) return { applied: false, log: `${pagePath} not found` };
+
+    const { newClaim, oldClaim } = extractContradictionClaims(item.description, item.title);
+    const parsed = parsePage(raw);
+    const { body, replaced } = applyContradictionToBody(parsed.body, newClaim, oldClaim);
+
+    const fm: WikiFrontmatter = {
+      ...(parsed.frontmatter as Required<WikiFrontmatter>),
+      updated: TODAY(),
+    };
+    const content = serializePage(fm, body);
+    const res = await writePlanFromPages([{ path: pagePath, content }]);
+    if (!res.applied) return res;
+
+    const messageKey = replaced
+      ? 'wiki:activity.contradictionAccepted'
+      : 'wiki:activity.contradictionAppended';
+    return {
+      applied: true,
+      log: i18n.t(messageKey, { path: pagePath }),
+      writes: res.writes,
+    };
+  },
   reject: async () => ({ applied: true, log: 'marked dismissed' }),
   research: async (item) => {
     // Claim is encoded as `矛盾: <claim>` in item.title; fall back to description.

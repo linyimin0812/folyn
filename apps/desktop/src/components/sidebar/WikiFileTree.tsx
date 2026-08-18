@@ -275,7 +275,7 @@ export function WikiFileTree() {
   }, []);
 
   return (
-    <div className="flex-1 overflow-y-auto flex flex-col">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
       <div className="py-2 px-3 text-[11px] font-semibold text-t3 uppercase tracking-[0.5px] flex items-center justify-between">
         <div className="flex items-center gap-1">
           <span>Wiki</span>
@@ -347,7 +347,7 @@ export function WikiFileTree() {
       </div>
 
       {subTab === 'files' ? (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {topFiles.map((entry) => (
             <WikiEntryItem key={entry.path} entry={entry} depth={0} />
           ))}
@@ -361,7 +361,7 @@ export function WikiFileTree() {
           )}
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {pendingReviews.length === 0 ? (
             <div className="p-4 text-center text-xs text-t3 leading-relaxed flex flex-col items-center gap-2">
               <span>{t('sidebar:wikiTree.reviewsEmpty')}</span>
