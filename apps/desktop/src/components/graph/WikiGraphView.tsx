@@ -139,12 +139,7 @@ export function WikiGraphView() {
       ctx.globalAlpha = dimmed ? 0.15 : 1;
       ctx.fillStyle = color;
       ctx.beginPath();
-
-      if (node.type === 'concept') {
-        ctx.rect(node.x - radius, node.y - radius, radius * 2, radius * 2);
-      } else {
-        ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
-      }
+      ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
       ctx.fill();
 
       // ponytail: ring on hovered node — cheap visual feedback for the click target.
