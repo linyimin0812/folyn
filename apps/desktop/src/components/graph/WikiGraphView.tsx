@@ -141,8 +141,11 @@ export function WikiGraphView() {
         ctx.stroke();
       }
 
-      // Labels: only for the hovered node and its neighbors — declutters dense graphs.
-      if (isHovered || isNeighbor) {
+      // Labels: hovered node + its neighbors, plus core hubs (linkCount >= 3)
+      // so dense graphs still surface hubs without hovering. ponytail: threshold
+      // hardcoded 3 — extract to a constant if tuning becomes iterative.
+      const isCore = node.linkCount >= 3;
+      if (isHovered || isNeighbor || isCore) {
         ctx.globalAlpha = 1;
         ctx.fillStyle = isHovered ? t1Color : t2Color;
         ctx.font = isHovered ? 'bold 11px system-ui' : '10px system-ui';
@@ -202,13 +205,12 @@ export function WikiGraphView() {
 
     const sim = forceSimulation(simNodes as any)
       .force('link', forceLink(simEdges as any).id((d: any) => d.id).distance(220))
-      // ponytail: charge strength -700 (was -500) — stronger repulsion spreads
-      // dense clusters further. distanceMax removed: radial(0) at 0.015 keeps
-      // disconnected components from drifting to corners; distanceMax was
-      // compensating for too-strong radial before, no longer needed.
+      // ponytail: charge strength -700 spreads dense clusters. distanceMax removed:
+      // radial(0) pulls disconnected components inward; 0.04 is the middle ground
+      // (0.05 was too dense locally, 0.015 let disconnected components drift apart).
       .force('charge', forceManyBody().strength(-700))
       .force('center', forceCenter(0, 0))
-      .force('radial', forceRadial(0, 0).strength(0.015))
+      .force('radial', forceRadial(0, 0).strength(0.04))
       // ponytail: collide padding +18 (up from +12) — more physical space per node.
       .force('collide', forceCollide((d: any) => Math.max(3, Math.sqrt((d.linkCount || 0) + 1) * 1.5) + 18))
       .on('tick', render)
