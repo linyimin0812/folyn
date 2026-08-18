@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWikiStore } from '@/store/wikiStore';
 import { useVaultStore } from '@/store/vaultStore';
@@ -44,8 +44,15 @@ function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
   );
 }
 
-function ReviewItemRow({ item }: { item: ReviewItem }) {
-  const { t } = useTranslation();
+function ReviewItemRow({
+  item,
+  selected,
+  onToggleSelected,
+}: {
+  item: ReviewItem;
+  selected: boolean;
+  onToggleSelected: (id: string) => void;
+}) {
   const executeReviewAction = useWikiStore((s) => s.executeReviewAction);
   const [busy, setBusy] = useState(false);
 
@@ -61,6 +68,13 @@ function ReviewItemRow({ item }: { item: ReviewItem }) {
   return (
     <div className="mx-1 my-1 p-2 rounded border border-brd2 bg-surf2 text-[12px]">
       <div className="flex items-center gap-1.5 mb-1">
+        <input
+          type="checkbox"
+          className="shrink-0"
+          checked={selected}
+          onChange={() => onToggleSelected(item.id)}
+          aria-label={item.title}
+        />
         <AlertCircle size={11} className="shrink-0 text-[#f0a840]" />
         <span className="font-semibold text-t1 truncate">{item.title}</span>
       </div>
@@ -99,6 +113,14 @@ export function WikiFileTree() {
   const initWiki = useWikiStore((s) => s.initWiki);
   const subTab = useWikiStore((s) => s.wikiSubTab);
   const setSubTab = useWikiStore((s) => s.setWikiSubTab);
+  const executeReviewAction = useWikiStore((s) => s.executeReviewAction);
+  const dismissReviewItem = useWikiStore((s) => s.dismissReviewItem);
+
+  // Batch selection + filter state — local to WikiFileTree; cleared when the
+  // pending set changes shape (filter change doesn't clear, so user can toggle
+  // filters without losing selection).
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [filterCheckId, setFilterCheckId] = useState<string>('all');
 
   useEffect(() => {
     if (!isInitialized) {
@@ -109,6 +131,62 @@ export function WikiFileTree() {
   const topFiles = wikiFiles.filter((e) => e.type === 'file');
   const dirs = wikiFiles.filter((e) => e.type === 'dir');
   const pendingReviews = reviewItems.filter((r) => r.status === 'pending');
+  const uniqueCheckIds = useMemo(
+    () => Array.from(new Set(pendingReviews.map((r) => r.checkId).filter((v): v is string => Boolean(v)))),
+    [pendingReviews],
+  );
+  const filteredReviews = filterCheckId === 'all'
+    ? pendingReviews
+    : pendingReviews.filter((r) => r.checkId === filterCheckId);
+
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const allFilteredSelected = filteredReviews.length > 0 && filteredReviews.every((r) => selectedIds.has(r.id));
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      if (allFilteredSelected) {
+        const remove = new Set(filteredReviews.map((r) => r.id));
+        const next = new Set<string>();
+        for (const id of prev) if (!remove.has(id)) next.add(id);
+        return next;
+      }
+      const next = new Set(prev);
+      for (const r of filteredReviews) next.add(r.id);
+      return next;
+    });
+  }, [allFilteredSelected, filteredReviews]);
+
+  const runLint = useCallback(async () => {
+    try {
+      const { runStructuralLintService } = await import('@/services/wikiLintService');
+      await runStructuralLintService();
+    } catch (err) {
+      console.error('[WikiFileTree] run lint failed', err);
+    }
+  }, []);
+
+  const handleBatchAccept = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    for (const id of selectedIds) {
+      await executeReviewAction(id, 'accept');
+    }
+    setSelectedIds(new Set());
+  }, [selectedIds, executeReviewAction]);
+
+  const handleBatchDismiss = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    for (const id of selectedIds) {
+      dismissReviewItem(id);
+    }
+    setSelectedIds(new Set());
+  }, [selectedIds, dismissReviewItem]);
 
   const handlePickIngest = async () => {
     const vault = useVaultStore.getState().currentVault;
@@ -181,13 +259,66 @@ export function WikiFileTree() {
       ) : (
         <div className="flex-1 overflow-y-auto">
           {pendingReviews.length === 0 ? (
-            <div className="p-4 text-center text-xs text-t3 leading-relaxed">
-              {t('sidebar:wikiTree.reviewsEmpty')}
+            <div className="p-4 text-center text-xs text-t3 leading-relaxed flex flex-col items-center gap-2">
+              <span>{t('sidebar:wikiTree.reviewsEmpty')}</span>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => void runLint()}
+              >
+                {t('sidebar:wikiTree.runLint')}
+              </button>
             </div>
           ) : (
-            pendingReviews.map((item) => (
-              <ReviewItemRow key={item.id} item={item} />
-            ))
+            <>
+              <div className="px-2 py-1.5 border-b border-brd2 flex flex-wrap items-center gap-1.5 text-[10px]">
+                <label className="inline-flex items-center gap-1 text-t3">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={toggleSelectAll}
+                  />
+                  {t('sidebar:wikiTree.selectAll')}
+                </label>
+                <button
+                  type="button"
+                  className="px-1.5 py-0.5 rounded border border-brd bg-surf text-t2 hover:border-acc hover:text-acc disabled:opacity-50"
+                  disabled={selectedIds.size === 0}
+                  onClick={() => void handleBatchAccept()}
+                >
+                  {t('sidebar:wikiTree.acceptSelected')}
+                </button>
+                <button
+                  type="button"
+                  className="px-1.5 py-0.5 rounded border border-brd bg-surf text-t2 hover:border-acc hover:text-acc disabled:opacity-50"
+                  disabled={selectedIds.size === 0}
+                  onClick={() => void handleBatchDismiss()}
+                >
+                  {t('sidebar:wikiTree.dismissSelected')}
+                </button>
+                {uniqueCheckIds.length > 0 && (
+                  <select
+                    className="ml-auto bg-inp border border-brd rounded px-1 py-0.5 text-t2"
+                    value={filterCheckId}
+                    onChange={(e) => setFilterCheckId(e.target.value)}
+                    aria-label={t('sidebar:wikiTree.filterByCheck')}
+                  >
+                    <option value="all">{t('sidebar:wikiTree.filterAll')}</option>
+                    {uniqueCheckIds.map((cid) => (
+                      <option key={cid} value={cid}>{cid}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              {filteredReviews.map((item) => (
+                <ReviewItemRow
+                  key={item.id}
+                  item={item}
+                  selected={selectedIds.has(item.id)}
+                  onToggleSelected={toggleSelected}
+                />
+              ))}
+            </>
           )}
         </div>
       )}
@@ -226,7 +357,7 @@ function WikiIngestProgressStrip() {
   return (
     <div className="shrink-0 border-t border-brd bg-panel px-2 py-1.5 text-[10px] text-t3 transition-opacity duration-200 opacity-100">
       <div className="flex items-center gap-1.5 font-mono">
-        <span className="text-acc">Step {currentIngestStep ?? '?'}/2</span>
+        <span className="text-acc">Step {currentIngestStep ?? '?'}/3</span>
         {ingestProgress && <span className="truncate">{ingestProgress}</span>}
       </div>
       {lastActivities.length > 0 && (

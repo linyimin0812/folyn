@@ -1,0 +1,5 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": "/Users/yiminlin/project/quill/.trellis/spec/desktop/frontend/state-management.md", "reason": "wikiStore selector stable-ref pattern (render loop lesson); aiStore.switchVaultSessions pattern"}
+{"file": "/Users/yiminlin/project/quill/.trellis/spec/desktop/frontend/component-guidelines.md", "reason": "WikiFileTree ReviewItemRow layout, batch toolbar patterns"}
+{"file": "/Users/yiminlin/project/quill/.trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "new wiki/sidebar/shell keys across en/zh/ja; es/de/fr alias to en"}
+{"file": "/Users/yiminlin/project/quill/.trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "type-safety + test expectations"}

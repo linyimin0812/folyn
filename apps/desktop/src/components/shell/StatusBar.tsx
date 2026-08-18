@@ -40,19 +40,26 @@ function WikiStatusBarIndicator() {
   const isIngesting = useWikiStore((s) => s.isIngesting);
   const isLinting = useWikiStore((s) => s.isLinting);
   const isQuerying = useWikiQueryStore((s) => s.isRunning);
+  const currentIngestStep = useWikiStore((s) => s.currentIngestStep);
+  const ingestProgress = useWikiStore((s) => s.ingestProgress);
 
   if (!isIngesting && !isLinting && !isQuerying) return null;
 
-  const label = isIngesting
-    ? t('shell:statusBar.wiki.ingesting')
-    : isLinting
-      ? t('shell:statusBar.wiki.linting')
-      : t('shell:statusBar.wiki.querying');
+  let label: string;
+  if (isIngesting) {
+    const step = currentIngestStep ?? '?';
+    const tail = ingestProgress ? ` · ${ingestProgress.slice(0, 30)}` : '';
+    label = `${t('shell:statusBar.wiki.ingesting')} · Step ${step}/3${tail}`;
+  } else if (isLinting) {
+    label = t('shell:statusBar.wiki.linting');
+  } else {
+    label = t('shell:statusBar.wiki.querying');
+  }
 
   return (
     <span className="inline-flex items-center gap-1 text-acc">
       <BookOpen size={11} />
-      <span>{label}</span>
+      <span className="truncate">{label}</span>
     </span>
   );
 }

@@ -6,9 +6,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MarkdownPreview } from '@/components/file-types/markdown/MarkdownPreview';
 import { runWikiQuery, saveToWiki } from '@/services/wikiQueryService';
+import * as editorIoService from '@/services/editorIoService';
 import { useVaultStore } from '@/store/vaultStore';
 import { useWikiQueryStore, type QueryTurn } from '@/store/wikiQueryStore';
 import { generateId } from '@/utils/idGenerator';
+import { WIKI_PREFIX } from '@/types/wiki';
 
 function extractCitations(markdown: string): string[] {
   const out = new Set<string>();
@@ -120,7 +122,7 @@ export function WikiQueryView() {
       </div>
 
       {/* Middle: answer + recall links */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4">
+      <div ref={scrollRef} className="flex-1 min-w-0 overflow-y-auto px-6 py-4">
         {turns.length === 0 && !running && (
           <div className="text-center text-t3 text-[13px] mt-12">{t('wiki:query.empty')}</div>
         )}
@@ -132,11 +134,20 @@ export function WikiQueryView() {
             </div>
             {turn.hits.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {turn.hits.map((h) => (
-                  <span key={h.path} className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded bg-accdim text-t2 border border-brd2 font-mono">
-                    wiki://{h.path}
-                  </span>
-                ))}
+                {turn.hits.map((h) => {
+                  const name = h.path.split('/').pop()?.replace(/\.md$/, '') ?? h.path;
+                  return (
+                    <button
+                      key={h.path}
+                      type="button"
+                      className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded bg-accdim text-t2 border border-brd2 font-mono hover:border-acc hover:text-acc"
+                      onClick={() => void editorIoService.openFile(`${WIKI_PREFIX}${h.path}`, name)}
+                      title={`wiki://${h.path}`}
+                    >
+                      wiki://{h.path}
+                    </button>
+                  );
+                })}
               </div>
             )}
             <div className="mt-2 flex gap-2">

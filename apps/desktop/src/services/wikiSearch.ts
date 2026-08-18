@@ -9,6 +9,7 @@ import { parsePage } from './wikiPageWriter';
 const TOKEN_BUDGET = 6000;
 const SINGLE_PAGE_CHAR_CAP = 4000;
 const NEIGHBOR_WEIGHT = 0.5;
+const TITLE_BOOST = 1.5;
 
 const STOPWORDS_EN = new Set(['the', 'a', 'an', 'is', 'are', 'of', 'in', 'to', 'and', 'or', 'for', 'on', 'with', 'as', 'by', 'at', 'from', 'this', 'that', 'it', 'be', 'was', 'were', 'will', 'would', 'can', 'could', 'should', 'may', 'might', 'must', 'do', 'does', 'did', 'have', 'has', 'had']);
 const STOPWORDS_ZH = new Set(['的', '了', '是', '在', '和', '与', '或', '也', '都', '就', '这', '那', '有', '为', '以', '及']);
@@ -31,6 +32,8 @@ interface PageDoc {
   path: string;
   tokens: string[];
   termFreq: Map<string, number>;
+  titleTermFreq: Map<string, number>;
+  bodyTermFreq: Map<string, number>;
   length: number;
 }
 
@@ -50,11 +53,21 @@ async function loadAllPages(): Promise<PageDoc[]> {
     try {
       const content = await wikiProvider.readFile(path);
       const parsed = parsePage(content);
-      const text = `${parsed.frontmatter.title ?? ''} ${parsed.body}`;
-      const tokens = tokenize(text);
+      const titleTokens = tokenize(parsed.frontmatter.title ?? '');
+      const bodyTokens = tokenize(parsed.body);
+      const tokens = [...titleTokens, ...bodyTokens];
       const tf = new Map<string, number>();
-      for (const t of tokens) tf.set(t, (tf.get(t) ?? 0) + 1);
-      docs.push({ path, tokens, termFreq: tf, length: tokens.length });
+      const titleTf = new Map<string, number>();
+      const bodyTf = new Map<string, number>();
+      for (const t of titleTokens) {
+        tf.set(t, (tf.get(t) ?? 0) + 1);
+        titleTf.set(t, (titleTf.get(t) ?? 0) + 1);
+      }
+      for (const t of bodyTokens) {
+        tf.set(t, (tf.get(t) ?? 0) + 1);
+        bodyTf.set(t, (bodyTf.get(t) ?? 0) + 1);
+      }
+      docs.push({ path, tokens, termFreq: tf, titleTermFreq: titleTf, bodyTermFreq: bodyTf, length: tokens.length });
     } catch {
       // skip
     }
@@ -67,7 +80,12 @@ function bm25Score(queryTokens: string[], doc: PageDoc, avgDocLen: number, docFr
   const b = 0.75;
   let score = 0;
   for (const term of new Set(queryTokens)) {
-    const tf = doc.termFreq.get(term) ?? 0;
+    // Title-field TF with boost; body-field TF unweighted. A token appearing in
+    // both fields contributes from both streams (matches the old concatenated
+    // behavior, but title hits now outweigh body hits at equal IDF).
+    const titleTf = doc.titleTermFreq.get(term) ?? 0;
+    const bodyTf = doc.bodyTermFreq.get(term) ?? 0;
+    const tf = titleTf * TITLE_BOOST + bodyTf;
     if (tf === 0) continue;
     const df = docFreq.get(term) ?? 0;
     const idf = Math.log(1 + (totalDocs - df + 0.5) / (df + 0.5));

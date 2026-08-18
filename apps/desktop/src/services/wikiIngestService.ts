@@ -135,7 +135,7 @@ export async function runIngest(filePaths: string[]): Promise<void> {
 
         // Step 1: Analysis (ingest action)
         store.setIngesting(true, 1);
-        store.pushActivity('step', `[Step 1/2] 分析 ${task.filePath} ...`);
+        store.pushActivity('step', `[Step 1/3] 分析 ${task.filePath} ...`);
         const currentIndex = await wikiProvider.readFile('index.md').catch(() => '');
         const ingestInstruction = buildIngestInstruction(content, task.filePath, schema, purpose, currentIndex);
         const textPromise = collectTextFromStream(adapter);
@@ -156,7 +156,7 @@ export async function runIngest(filePaths: string[]): Promise<void> {
         store.setIngestStatus(task.id, 'generating');
         store.setIngesting(true, 2);
         store.setIngestProgress(`生成 wiki 页面: ${task.filePath}`);
-        store.pushActivity('step', `[Step 2/2] 生成 wiki 页面 ...`);
+        store.pushActivity('step', `[Step 2/3] 生成 wiki 页面 ...`);
         const entitiesCount = analysis.entities.length;
         const conceptsCount = analysis.concepts.length;
         store.pushActivity('info', `发现 ${entitiesCount} 个实体, ${conceptsCount} 个概念`);
@@ -231,6 +231,7 @@ export async function runIngest(filePaths: string[]): Promise<void> {
 
     // C3.b: overview agent action at end of batch.
     if (batchChanges.length > 0) {
+      store.setIngesting(true, 3);
       store.setIngestProgress('刷新 overview...');
       store.pushActivity('step', '[Step 3/3] 刷新 wiki overview ...');
       try {

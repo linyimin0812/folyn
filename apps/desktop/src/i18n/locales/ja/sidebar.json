@@ -79,6 +79,12 @@
     "empty": "Wikiは空です。AIパネルからファイルを取り込んでナレッジベースを構築してください。",
     "addSourceFiles": "インジェストするソースファイルを追加",
     "reviewsEmpty": "保留中の review はありません。",
+    "runLint": "lint を実行",
+    "selectAll": "すべて選択",
+    "acceptSelected": "選択を承認",
+    "dismissSelected": "選択を却下",
+    "filterByCheck": "フィルター",
+    "filterAll": "すべて",
     "subTab": {
       "files": "ファイル",
       "reviews": "Review"

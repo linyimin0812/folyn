@@ -87,6 +87,12 @@
     "empty": "Wiki is empty. Ingest files from the AI panel to build the knowledge base.",
     "addSourceFiles": "Add source files to ingest",
     "reviewsEmpty": "No pending reviews.",
+    "runLint": "Run lint",
+    "selectAll": "Select all",
+    "acceptSelected": "Accept selected",
+    "dismissSelected": "Dismiss selected",
+    "filterByCheck": "Filter",
+    "filterAll": "All",
     "subTab": {
       "files": "Files",
       "reviews": "Reviews"

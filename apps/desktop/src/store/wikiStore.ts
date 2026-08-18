@@ -20,7 +20,7 @@ interface WikiState {
   ingestQueue: IngestTask[];
   isIngesting: boolean;
   isLinting: boolean;
-  currentIngestStep: 1 | 2 | null;
+  currentIngestStep: 1 | 2 | 3 | null;
   ingestProgress: string;
   activityLog: ActivityLogEntry[];
   /** WikiFileTree sub-tab — lifted so toast "View" action can jump to 'reviews'. */
@@ -31,7 +31,7 @@ interface WikiState {
 
   addToIngestQueue: (filePaths: string[]) => void;
   setIngestStatus: (taskId: string, status: IngestTask['status'], error?: string) => void;
-  setIngesting: (ingesting: boolean, step?: 1 | 2 | null) => void;
+  setIngesting: (ingesting: boolean, step?: 1 | 2 | 3 | null) => void;
   setLinting: (linting: boolean) => void;
   setIngestProgress: (msg: string) => void;
   clearIngestQueue: () => void;
@@ -53,6 +53,23 @@ interface WikiState {
 
   readWikiFile: (relativePath: string) => Promise<string>;
   writeWikiFile: (relativePath: string, content: string) => Promise<void>;
+}
+
+// ponytail: module-level debounce timer for R4 auto-rerun-lint. Re-entry within
+// 1s resets — back-to-back accepts collapse to a single lint pass.
+let pendingLintTimer: ReturnType<typeof setTimeout> | null = null;
+
+function schedulePostReviewLint(): void {
+  if (pendingLintTimer) clearTimeout(pendingLintTimer);
+  pendingLintTimer = setTimeout(async () => {
+    pendingLintTimer = null;
+    try {
+      const { runStructuralLintService } = await import('@/services/wikiLintService');
+      await runStructuralLintService();
+    } catch (err) {
+      console.error('[WikiStore] post-review auto-lint failed', err);
+    }
+  }, 1000);
 }
 
 export const useWikiStore = create<WikiState>((set, _get) => ({
@@ -212,6 +229,10 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
     if (result.applied) {
       if (actionType === 'accept' || actionType === 'merge') {
         useWikiStore.getState().resolveReviewItem(id);
+        // R4: a content write happened — re-run structural lint so follow-up
+        // issues (broken links, kebab collisions introduced by the merge) are
+        // surfaced without the user having to click "Run lint" by hand.
+        schedulePostReviewLint();
       } else if (actionType === 'reject') {
         useWikiStore.getState().dismissReviewItem(id);
       }

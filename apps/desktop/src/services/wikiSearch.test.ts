@@ -33,6 +33,20 @@ describe('searchWiki', () => {
     await writeTextFile(`${WIKI_ROOT}/entities/x.md`, '---\ntitle: X\n---\n\nbody');
     expect(await searchWiki('the a an', { expandGraph: false })).toEqual([]);
   });
+
+  it('R1: title hits outrank body hits for the same token', async () => {
+    // Two pages with identical body content but different titles — the page whose
+    // title contains the query token must score higher.
+    await writeTextFile(`${WIKI_ROOT}/t/in-title.md`, '---\ntitle: alpha\n---\n\nshared body text only.');
+    await writeTextFile(`${WIKI_ROOT}/t/in-body.md`, '---\ntitle: other\n---\n\nalpha shared body text only.');
+    const hits = await searchWiki('alpha', { expandGraph: false });
+    expect(hits.length).toBe(2);
+    const titleHit = hits.find((h) => h.path === 't/in-title');
+    const bodyHit = hits.find((h) => h.path === 't/in-body');
+    expect(titleHit).toBeDefined();
+    expect(bodyHit).toBeDefined();
+    expect(titleHit!.score).toBeGreaterThan(bodyHit!.score);
+  });
 });
 
 describe('estimateTokens / truncateForContext', () => {
