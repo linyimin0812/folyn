@@ -91,6 +91,12 @@ export async function runIngest(filePaths: string[]): Promise<void> {
 
   if (!vault.currentVault) throw new Error('No active vault');
 
+  // ponytail: clear the queue at the start of a fresh batch so the popup's
+  // total reflects only this batch, not stale done/error tasks from prior
+  // runs. Skipped mid-ingest so a parallel caller can't wipe a running batch.
+  if (!store.isIngesting) {
+    store.clearIngestQueue();
+  }
   store.addToIngestQueue(filePaths);
   store.setIngesting(true, 1);
   store.pushActivity('info', `开始摄入 ${filePaths.length} 个文件...`, {
