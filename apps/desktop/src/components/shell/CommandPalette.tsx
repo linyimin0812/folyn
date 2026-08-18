@@ -63,11 +63,15 @@ export function CommandPalette() {
   let flatIndex = -1;
 
   return (
-    <div className="dlg-overlay" onMouseDown={close}>
+    <div
+      className="dlg-overlay"
+      onMouseDown={close}
+      style={{ background: 'transparent', backdropFilter: 'none', animation: 'none' }}
+    >
       <div
         className="dlg"
         onMouseDown={(e) => e.stopPropagation()}
-        style={{ width: 560, maxHeight: '70vh' }}
+        style={{ width: 560, maxHeight: '70vh', boxShadow: 'none', animation: 'none' }}
       >
         <div className="dlg-body" style={{ gap: 0, padding: 0 }}>
           <input
