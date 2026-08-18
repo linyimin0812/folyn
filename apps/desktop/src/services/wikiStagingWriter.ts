@@ -31,14 +31,14 @@ export async function applyAtomicBatch(
   const wikiRoot = `${base}/${WIKI_DIR}`;
   const stagingRoot = `${wikiRoot}/.staging`;
 
-  const { mkdir, writeFile, rename, remove, exists } = await import('@tauri-apps/plugin-fs');
+  const { mkdir, writeTextFile, rename, remove, exists } = await import('@tauri-apps/plugin-fs');
   await mkdir(stagingRoot, { recursive: true }).catch(() => {});
 
   // Phase 1: stage all writes.
   const stagedPaths: { staged: string; final: string }[] = [];
   for (const w of writes) {
     const stagedPath = `${stagingRoot}/${w.path.replace(/\//g, '__')}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.md`;
-    await writeFile(stagedPath, w.content);
+    await writeTextFile(stagedPath, w.content);
     const finalPath = `${wikiRoot}/${w.path}`;
     const dir = finalPath.substring(0, finalPath.lastIndexOf('/'));
     await mkdir(dir, { recursive: true }).catch(() => {});
