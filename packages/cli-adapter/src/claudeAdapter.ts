@@ -264,7 +264,19 @@ export class ClaudeAdapter extends BaseCliAdapter {
     if (event.type === 'result') {
       this.completeRunningTools();
       if (event.is_error) {
-        this.emit({ type: 'error', content: event.result || 'Unknown error' });
+        // ponytail: when result text is empty, surface the raw event JSON so the
+        // user can see what the CLI actually said (auth failure, missing agent,
+        // working dir, etc). Ugly in the UI, but the only window into the real
+        // failure when `result` is blank. Truncated to keep it readable.
+        if (event.result) {
+          this.emit({ type: 'error', content: event.result });
+        } else {
+          console.error('[claudeAdapter] result event:', event);
+          this.emit({
+            type: 'error',
+            content: `CLI result error (empty result). Raw event: ${JSON.stringify(event).slice(0, 500)}`,
+          });
+        }
       }
     }
   }

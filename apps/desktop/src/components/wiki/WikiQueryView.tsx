@@ -72,6 +72,7 @@ export function WikiQueryView() {
       setInput('');
       setProgress('');
     } catch (err) {
+      console.error('[WikiQuery] query failed:', err);
       setError(err instanceof Error ? err.message : String(err));
       setProgress('');
     } finally {
