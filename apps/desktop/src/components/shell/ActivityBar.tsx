@@ -148,7 +148,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
         onClick={() => setCurrentPage('settings')}
         title={t('shell:nav.settings')}
       >
-        <Settings size={14} />
+        <Settings size={16} />
       </button>
     </div>
   );
