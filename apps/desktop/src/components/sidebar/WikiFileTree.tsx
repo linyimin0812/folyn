@@ -9,6 +9,7 @@ import { WIKI_PREFIX } from '@/types/wiki';
 import { FileIcon } from '@/components/icons/FileIcon';
 import injectAllIcon from '@/assets/icons/inject_all.svg';
 import wikiGraphIcon from '@/assets/icons/wiki_graph.svg';
+import locateActiveIcon from '@/assets/icons/locate_active.svg';
 import {
   Plus,
   FileText,
@@ -420,21 +421,21 @@ export function WikiFileTree() {
             title={t('sidebar:wikiTree.locateActive')}
             aria-label={t('sidebar:wikiTree.locateActive')}
           >
-          <img src={wikiGraphIcon} className="w-[13px] h-[13px]" alt="" />
+          <img src={locateActiveIcon} className="w-[13px] h-[13px]" alt="" />
           </button>
         </div>
       </div>
       {/* Sub-tab toggle: Files | Reviews (with count badge) */}
-      <div className="flex items-center justify-center py-2 border-b border-brd">
-        <div className="inline-flex items-center rounded-md border border-brd overflow-hidden">
+      <div className="flex items-center px-2 py-2 border-b border-brd">
+        <div className="flex items-stretch w-full rounded-md border border-brd overflow-hidden">
           <button
-            className={`flex items-center gap-1 px-3 py-1 text-[10px] ${subTab === 'files' ? 'bg-accdim text-acc' : 'bg-surf text-t3 hover:bg-hov'}`}
+            className={`flex-1 flex items-center justify-center gap-1 px-3 py-1 text-[10px] ${subTab === 'files' ? 'bg-accdim text-acc' : 'bg-surf text-t3 hover:bg-hov'}`}
             onClick={() => setSubTab('files')}
           >
             <FileText size={10} /> {t('sidebar:wikiTree.subTab.files')}
           </button>
           <button
-            className={`flex items-center gap-1 px-3 py-1 text-[10px] border-l border-brd ${subTab === 'reviews' ? 'bg-accdim text-acc' : 'bg-surf text-t3 hover:bg-hov'}`}
+            className={`flex-1 flex items-center justify-center gap-1 px-3 py-1 text-[10px] border-l border-brd ${subTab === 'reviews' ? 'bg-accdim text-acc' : 'bg-surf text-t3 hover:bg-hov'}`}
             onClick={() => setSubTab('reviews')}
           >
             <AlertCircle size={10} /> {t('sidebar:wikiTree.subTab.reviews')}
