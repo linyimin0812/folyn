@@ -21,6 +21,12 @@ interface ClaudeStreamMessage {
   };
   result?: string;
   is_error?: boolean;
+  // ponytail: speculative streaming-delta shapes (stream_event/content_block_delta/
+  // message_delta). Claude Code CLI with stream-json may emit these for progressive
+  // token output instead of (or alongside) the final assistant message. Fields
+  // optional so existing event shapes still parse. Confirm with raw-event log.
+  delta?: { text?: string; type?: string };
+  event?: { type?: string; delta?: { text?: string; type?: string } };
 }
 
 export class ClaudeAdapter extends BaseCliAdapter {
@@ -199,11 +205,34 @@ export class ClaudeAdapter extends BaseCliAdapter {
   }
 
   private processEvent(event: ClaudeStreamMessage): void {
+    // ponytail: diagnostic log to discover which event shapes the CLI actually
+    // emits. Truncated to 300 chars to keep console readable. Remove once
+    // streaming shape is confirmed and handled.
+    console.log('[claudeAdapter] raw event:', JSON.stringify(event).slice(0, 300));
+
     if (event.type === 'system' && event.subtype === 'init' && event.session_id) {
       this.sessionId = event.session_id;
       this.emit({ type: 'session_id', sessionId: event.session_id });
       return;
     }
+
+    // ponytail: speculative streaming-delta branches. Claude Code stream-json
+    // may emit progressive text via these shapes rather than via the final
+    // assistant message. Pending confirmation from raw-event log — keep these
+    // branches narrow and emit as `text` so existing UI chain works unchanged.
+    if (event.type === 'stream_event' && event.event?.type === 'content_block_delta' && event.event?.delta?.text) {
+      this.emit({ type: 'text', content: event.event.delta.text });
+      return;
+    }
+    if (event.type === 'content_block_delta' && event.delta?.text) {
+      this.emit({ type: 'text', content: event.delta.text });
+      return;
+    }
+    if (event.type === 'message_delta' && event.delta?.text) {
+      this.emit({ type: 'text', content: event.delta.text });
+      return;
+    }
+    // ponytail: end speculative branches.
 
     if (event.type === 'assistant' && event.message?.content) {
       for (const block of event.message.content) {
