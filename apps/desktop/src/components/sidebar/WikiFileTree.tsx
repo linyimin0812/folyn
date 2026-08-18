@@ -9,6 +9,7 @@ import { WIKI_PREFIX } from '@/types/wiki';
 import { FileIcon } from '@/components/icons/FileIcon';
 import injectAllIcon from '@/assets/icons/inject_all.svg';
 import wikiGraphIcon from '@/assets/icons/wiki_graph.svg';
+import wikiQueryIcon from '@/assets/icons/wiki_query.svg';
 import locateActiveIcon from '@/assets/icons/locate_active.svg';
 import {
   Plus,
@@ -369,14 +370,23 @@ export function WikiFileTree() {
   return (
     <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
       <div className="py-2 px-3 flex items-center justify-between border-b border-brd">
-        {/* Left: graph — always visible */}
-        <button
-          className="text-t3 hover:text-acc transition-colors"
-          onClick={() => editorIoService.openFile('wiki-graph', 'Wiki Graph')}
-          title={t('wiki:query.openGraph')}
-        >
-          <img src={wikiGraphIcon} className="w-[13px] h-[13px]" alt="" />
-        </button>
+        {/* Left: graph + query — always visible */}
+        <div className="flex items-center gap-2">
+          <button
+            className="text-t3 hover:text-acc transition-colors"
+            onClick={() => editorIoService.openFile('wiki-graph', 'Wiki Graph')}
+            title={t('wiki:query.openGraph')}
+          >
+            <img src={wikiGraphIcon} className="w-[13px] h-[13px]" alt="" />
+          </button>
+          <button
+            className="text-t3 hover:text-acc transition-colors"
+            onClick={() => editorIoService.openFile('wiki-query', 'Wiki Query')}
+            title={t('wiki:query.openQuery')}
+          >
+            <img src={wikiQueryIcon} className="w-[13px] h-[13px]" alt="" />
+          </button>
+        </div>
 
         {/* Right: locate + merged ingestAll/stop + pickIngest */}
         <div className="flex items-center gap-3">

@@ -5,6 +5,7 @@
     },
     "newSession": "新建会话",
     "openGraph": "打开图谱",
+    "openQuery": "打开查询",
     "empty": "尚无对话。提问以查询 Wiki。",
     "userPrefix": "你：",
     "thinking": "思考中…",

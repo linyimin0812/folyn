@@ -5,6 +5,7 @@
     },
     "newSession": "New session",
     "openGraph": "Open graph",
+    "openQuery": "Open query",
     "empty": "No turns yet. Ask a question to query the wiki.",
     "userPrefix": "You: ",
     "thinking": "Thinking…",

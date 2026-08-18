@@ -5,6 +5,7 @@
     },
     "newSession": "新規セッション",
     "openGraph": "グラフを開く",
+    "openQuery": "クエリを開く",
     "empty": "まだ会話がありません。質問してWikiを検索してください。",
     "userPrefix": "あなた：",
     "thinking": "考え中…",
