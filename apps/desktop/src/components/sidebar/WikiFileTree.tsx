@@ -17,6 +17,7 @@ import {
   X,
   Activity,
   ChevronRight,
+  Loader2,
 } from 'lucide-react';
 
 function WikiEntryItem({
