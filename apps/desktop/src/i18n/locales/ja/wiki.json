@@ -37,6 +37,8 @@
     "completed": "取り込み完了",
     "stopping": "中止しています...",
     "skipped": "スキップ (変更なし): {{path}}",
-    "queueSummary": "{{processed}}/{{total}} 件処理済み"
+    "queueSummary": "{{processed}}/{{total}} 件処理済み",
+    "researchOpened": "wiki クエリで開きました: {{query}}",
+    "contradictionAcceptNeedsAgent": "矛盾の自動承認は merge フローが必要です — 手動でマージまたは編集してください"
   }
 }

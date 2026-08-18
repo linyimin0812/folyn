@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { wikiProvider } from '@/services/wikiProvider';
 import type { WikiEntry, ReviewItem, IngestTask } from '@/types/wiki';
 import { generateId } from '@/utils/idGenerator';
+import { useToastStore } from '@/store/toastStore';
 
 export interface ActivityLogEntry {
   id: string;
@@ -272,6 +273,11 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
         useWikiStore.getState().dismissReviewItem(id);
       }
       // research: leave status pending, just inform.
+    } else {
+      // ponytail: surface non-applied results via toast — otherwise the only
+      // feedback is an activity log entry buried in the ingest popup, which
+      // reads as "nothing happened". 4s so the user can read the explanation.
+      useToastStore.getState().push(result.log, undefined, 4000);
     }
     useWikiStore.getState().pushActivity(result.applied ? 'success' : 'info', `${actionType} ${item.checkId ?? item.type}: ${result.log}`);
     return result;

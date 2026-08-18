@@ -37,6 +37,8 @@
     "completed": "Ingest complete",
     "stopping": "Stopping...",
     "skipped": "Skipped (unchanged): {{path}}",
-    "queueSummary": "{{processed}}/{{total}} files processed"
+    "queueSummary": "{{processed}}/{{total}} files processed",
+    "researchOpened": "Opened in wiki query: {{query}}",
+    "contradictionAcceptNeedsAgent": "Auto-accepting contradiction needs the merge flow — use merge or edit manually"
   }
 }

@@ -43,12 +43,17 @@ export interface WikiQueryState {
   sessionId: string | null;
   turns: QueryTurn[];
   isRunning: boolean;
+  /** Transient pre-fill seed: a caller (e.g. contradiction "research" action)
+   * drops a query here; WikiQueryView consumes it once on mount/focus, then
+   * clears it. ponytail: null-state stable so selectors don't loop. */
+  prefilledQuery: string | null;
 
   setRunning: (v: boolean) => void;
   addTurn: (turn: QueryTurn) => void;
   newSession: () => void;
   clearHistory: () => void;
   setSessionId: (id: string) => void;
+  setPrefilledQuery: (q: string | null) => void;
   switchVaultSessions: (newVaultId: string) => Promise<void>;
   loadForCurrentVault: () => Promise<void>;
 }
@@ -58,6 +63,7 @@ export const useWikiQueryStore = create<WikiQueryState>((set, get) => ({
   sessionId: null,
   turns: [],
   isRunning: false,
+  prefilledQuery: null,
 
   setRunning: (v) => set({ isRunning: v }),
 
@@ -86,6 +92,8 @@ export const useWikiQueryStore = create<WikiQueryState>((set, get) => ({
     set({ sessionId: id });
     if (vaultId) void debouncedSave(vaultId, { sessionId: id, turns });
   },
+
+  setPrefilledQuery: (q) => set({ prefilledQuery: q }),
 
   switchVaultSessions: async (newVaultId) => {
     // Save current vault's session first

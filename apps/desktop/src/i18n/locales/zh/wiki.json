@@ -37,6 +37,8 @@
     "completed": "摄入完成",
     "stopping": "正在终止...",
     "skipped": "跳过 (未变化): {{path}}",
-    "queueSummary": "已处理 {{processed}}/{{total}} 个文件"
+    "queueSummary": "已处理 {{processed}}/{{total}} 个文件",
+    "researchOpened": "已在 wiki 查询中打开: {{query}}",
+    "contradictionAcceptNeedsAgent": "自动接受矛盾新说法需 merge 流程,请手动合并或编辑"
   }
 }

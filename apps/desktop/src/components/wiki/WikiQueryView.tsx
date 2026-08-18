@@ -33,6 +33,8 @@ export function WikiQueryView() {
   const running = useWikiQueryStore((s) => s.isRunning);
   const setRunning = useWikiQueryStore((s) => s.setRunning);
   const newSession = useWikiQueryStore((s) => s.newSession);
+  const prefilledQuery = useWikiQueryStore((s) => s.prefilledQuery);
+  const setPrefilledQuery = useWikiQueryStore((s) => s.setPrefilledQuery);
 
   const [input, setInput] = useState('');
   const [progress, setProgress] = useState<string>('');
@@ -42,6 +44,16 @@ export function WikiQueryView() {
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [turns, running]);
+
+  // ponytail: consume transient pre-fill seed once, then clear — lets external
+  // callers (contradiction "research") drop a query into the input box without
+  // coupling to internal state.
+  useEffect(() => {
+    if (prefilledQuery) {
+      setInput(prefilledQuery);
+      setPrefilledQuery(null);
+    }
+  }, [prefilledQuery, setPrefilledQuery]);
 
   const handleSubmit = async () => {
     const q = input.trim();

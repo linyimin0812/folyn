@@ -6,6 +6,9 @@ import { wikiProvider } from './wikiProvider';
 import { parsePage, serializePage } from './wikiPageWriter';
 import { applyAtomicBatch, type StagedWrite } from './wikiStagingWriter';
 import { appendIndexEntries, appendIngestLogEntry, appendMergeLogEntry, type IndexEntry } from '@/utils/wikiNaming';
+import i18n from '@/i18n';
+import * as editorIoService from './editorIoService';
+import { useWikiQueryStore } from '@/store/wikiQueryStore';
 
 const TODAY = () => new Date().toISOString().split('T')[0]!;
 
@@ -229,6 +232,32 @@ const noopHandler: ActionHandler = {
   reject: async () => ({ applied: true, log: 'marked dismissed' }),
 };
 
+// ponytail: contradiction needs agent-driven body rewrite — accept is stubbed
+// (surfaces a toast explaining the merge-flow requirement), reject dismisses,
+// research opens the wiki-query tab with the claim pre-filled. Real accept
+// belongs to a later agent round.
+const ingestContradictionHandler: ActionHandler = {
+  accept: async () => ({
+    applied: false,
+    log: i18n.t('wiki:activity.contradictionAcceptNeedsAgent'),
+  }),
+  reject: async () => ({ applied: true, log: 'marked dismissed' }),
+  research: async (item) => {
+    // Claim is encoded as `矛盾: <claim>` in item.title; fall back to description.
+    const CONTRADICTION_PREFIX = '矛盾: ';
+    let claim = item.title.startsWith(CONTRADICTION_PREFIX)
+      ? item.title.slice(CONTRADICTION_PREFIX.length)
+      : '';
+    if (!claim) claim = item.description ?? item.title;
+    await editorIoService.openFile('wiki-query', 'Wiki Query');
+    useWikiQueryStore.getState().setPrefilledQuery(claim);
+    return {
+      applied: true,
+      log: i18n.t('wiki:activity.researchOpened', { query: claim }),
+    };
+  },
+};
+
 export const reviewActionHandlers: Map<string, ActionHandler> = new Map([
   ['missing_page', missingPageHandler],
   ['orphan_page', noopHandler],
@@ -244,7 +273,7 @@ export const reviewActionHandlers: Map<string, ActionHandler> = new Map([
   ['index_missing_page', indexMissingPageHandler],
   ['log_missing_ingest', logMissingIngestHandler],
   ['semantic_duplicate_merge_suggestion', semanticDuplicateMergeHandler],
-  ['ingest_contradiction', noopHandler],
+  ['ingest_contradiction', ingestContradictionHandler],
 ]);
 
 export async function dispatchReviewAction(
