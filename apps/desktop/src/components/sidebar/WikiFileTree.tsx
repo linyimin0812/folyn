@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWikiStore } from '@/store/wikiStore';
 import { useVaultStore } from '@/store/vaultStore';
@@ -644,8 +644,48 @@ function WikiIngestProgressStrip() {
 
 // ponytail: in-app vault file picker. Tauri's plugin-dialog open() is OS-native
 // and can't be hard-restricted to the vault dir, so we walk the vault ourselves
-// and present a flat filtered checkbox list. No tree UI — search filter covers
-// navigation; dense vaults scale by filter, not by indentation.
+// and present the result as a tree mirroring the on-disk layout — users navigate
+// by expanding dirs, same mental model as the wiki file tree beside it.
+interface PickerNode {
+  name: string;
+  path: string;
+  isDir: boolean;
+  children?: PickerNode[];
+}
+
+function buildTree(files: string[]): PickerNode[] {
+  const root: PickerNode[] = [];
+  const dirMap = new Map<string, PickerNode>();
+  for (const f of files) {
+    const parts = f.split('/');
+    let parentList = root;
+    let cur = '';
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      cur = cur ? `${cur}/${part}` : part;
+      const isLast = i === parts.length - 1;
+      if (isLast) {
+        parentList.push({ name: part, path: f, isDir: false });
+      } else {
+        let dir = dirMap.get(cur);
+        if (!dir) {
+          dir = { name: part, path: cur, isDir: true, children: [] };
+          dirMap.set(cur, dir);
+          parentList.push(dir);
+        }
+        parentList = dir.children!;
+      }
+    }
+  }
+  // ponytail: dirs first, then files, both alpha — stable order on re-render.
+  const sortRec = (nodes: PickerNode[]) => {
+    nodes.sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1));
+    for (const n of nodes) if (n.children) sortRec(n.children);
+  };
+  sortRec(root);
+  return root;
+}
+
 function VaultFilePickerModal({
   onClose,
   onConfirm,
@@ -654,10 +694,11 @@ function VaultFilePickerModal({
   onConfirm: (paths: string[]) => void;
 }) {
   const { t } = useTranslation();
-  const [files, setFiles] = useState<string[]>([]);
+  const [tree, setTree] = useState<PickerNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState('');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -667,7 +708,7 @@ function VaultFilePickerModal({
       const { resolveBasePath } = await import('@/utils/pathResolver');
       const { readDir } = await import('@tauri-apps/plugin-fs');
       const base = await resolveBasePath(vault.basePath);
-      const out: string[] = [];
+      const files: string[] = [];
       const walk = async (dirAbs: string, relPrefix: string) => {
         let entries: { name?: string; isDirectory?: boolean }[];
         try {
@@ -682,23 +723,41 @@ function VaultFilePickerModal({
             if (!relPrefix && entry.name === '__wiki__') continue;
             await walk(`${dirAbs}/${entry.name}`, rel);
           } else if (entry.name.endsWith('.md')) {
-            out.push(rel);
+            files.push(rel);
           }
         }
       };
       await walk(base, '');
       if (cancelled) return;
-      out.sort((a, b) => a.localeCompare(b));
-      setFiles(out);
+      const built = buildTree(files);
+      setTree(built);
+      // ponytail: expand top-level dirs by default so the first level is visible.
+      setExpanded(new Set(built.filter((n) => n.isDir).map((n) => n.path)));
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, []);
 
-  const filtered = filter
-    ? files.filter((f) => f.toLowerCase().includes(filter.toLowerCase()))
-    : files;
-  const allSelected = filtered.length > 0 && filtered.every((f) => selected.has(f));
+  const q = filter.trim().toLowerCase();
+  // ponytail: when filtering, switch to a flat list — pruning the tree to
+  // matched files + their ancestor dirs is more confusing than a flat list
+  // when the user is searching by name. Switching UI based on filter keeps
+  // both modes simple.
+  const flatMatches = useMemo(
+    () => (q ? Array.from(new Set(
+      (function collect(nodes: PickerNode[]): string[] {
+        const out: string[] = [];
+        for (const n of nodes) {
+          if (n.isDir) out.push(...collect(n.children!));
+          else if (n.path.toLowerCase().includes(q)) out.push(n.path);
+        }
+        return out;
+      })(tree)
+    )) : []),
+    [tree, q],
+  );
+
+  const allSelected = flatMatches.length > 0 && flatMatches.every((p) => selected.has(p));
   const toggle = (path: string) => {
     setSelected((s) => {
       const next = new Set(s);
@@ -711,16 +770,60 @@ function VaultFilePickerModal({
     if (allSelected) {
       setSelected((s) => {
         const next = new Set(s);
-        for (const f of filtered) next.delete(f);
+        for (const f of flatMatches) next.delete(f);
         return next;
       });
     } else {
       setSelected((s) => {
         const next = new Set(s);
-        for (const f of filtered) next.add(f);
+        for (const f of flatMatches) next.add(f);
         return next;
       });
     }
+  };
+
+  const renderNode = (node: PickerNode, depth: number): ReactNode => {
+    if (node.isDir) {
+      const isOpen = expanded.has(node.path);
+      return (
+        <div key={`d:${node.path}`}>
+          <button
+            type="button"
+            className="flex items-center gap-1 w-full text-left px-2 py-0.5 hover:bg-hov text-[11px] text-t2"
+            style={{ paddingLeft: depth * 12 + 8 }}
+            onClick={() =>
+              setExpanded((s) => {
+                const next = new Set(s);
+                if (next.has(node.path)) next.delete(node.path);
+                else next.add(node.path);
+                return next;
+              })
+            }
+          >
+            <ChevronRight
+              size={10}
+              className={isOpen ? 'rotate-90 transition-transform' : 'transition-transform'}
+            />
+            <span className="font-mono truncate">{node.name}</span>
+          </button>
+          {isOpen && node.children!.map((c) => renderNode(c, depth + 1))}
+        </div>
+      );
+      }
+      return (
+        <label
+          key={`f:${node.path}`}
+          className="flex items-center gap-2 px-2 py-0.5 hover:bg-hov cursor-pointer"
+          style={{ paddingLeft: depth * 12 + 8 }}
+        >
+          <input
+            type="checkbox"
+            checked={selected.has(node.path)}
+            onChange={() => toggle(node.path)}
+          />
+          <span className="text-[11px] font-mono truncate text-t1">{node.name}</span>
+        </label>
+      );
   };
 
   return (
@@ -741,10 +844,12 @@ function VaultFilePickerModal({
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
-          <label className="flex items-center gap-1 text-[11px] text-t2 cursor-pointer">
-            <input type="checkbox" checked={allSelected} onChange={toggleAll} />
-            {t('sidebar:wikiTree.selectAll')}
-          </label>
+          {q && (
+            <label className="flex items-center gap-1 text-[11px] text-t2 cursor-pointer">
+              <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+              {t('sidebar:wikiTree.selectAll')}
+            </label>
+          )}
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto">
           {loading ? (
@@ -752,22 +857,31 @@ function VaultFilePickerModal({
               <Loader2 size={16} className="animate-spin text-t3" />
               <span className="ml-2 text-[11px] text-t3">{t('sidebar:wikiTree.pickLoading')}</span>
             </div>
-          ) : filtered.length === 0 ? (
+          ) : q ? (
+            flatMatches.length === 0 ? (
+              <div className="text-t3 text-[11px] text-center py-6">{t('sidebar:wikiTree.pickEmpty')}</div>
+            ) : (
+              flatMatches.map((path) => {
+                const name = path.split('/').pop() ?? path;
+                return (
+                  <label
+                    key={path}
+                    className="flex items-center gap-2 px-3 py-0.5 hover:bg-hov cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected.has(path)}
+                      onChange={() => toggle(path)}
+                    />
+                    <span className="text-[11px] font-mono truncate text-t1">{path}</span>
+                  </label>
+                );
+              })
+            )
+          ) : tree.length === 0 ? (
             <div className="text-t3 text-[11px] text-center py-6">{t('sidebar:wikiTree.pickEmpty')}</div>
           ) : (
-            filtered.map((path) => (
-              <label
-                key={path}
-                className="flex items-center gap-2 px-3 py-1 hover:bg-hov cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={selected.has(path)}
-                  onChange={() => toggle(path)}
-                />
-                <span className="text-[11px] font-mono truncate text-t1">{path}</span>
-              </label>
-            ))
+            tree.map((n) => renderNode(n, 0))
           )}
         </div>
         <div className="px-3 py-2 border-t border-brd flex justify-end gap-2">
