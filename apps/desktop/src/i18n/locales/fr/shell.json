@@ -17,7 +17,12 @@
       "preview": "Mode aperçu"
     },
     "lineCol": "Lig {{line}}, Col {{col}}",
-    "wordCount": "{{count}} mots"
+    "wordCount": "{{count}} mots",
+    "wiki": {
+      "ingesting": "Ingesting",
+      "linting": "Linting",
+      "querying": "Querying"
+    }
   },
   "commandPalette": {
     "placeholder": "Rechercher commandes ou fichiers…",

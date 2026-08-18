@@ -4,6 +4,7 @@ import { ActivityBar } from './components/shell/ActivityBar';
 import { Sidebar } from './components/sidebar/Sidebar';
 import { WorkArea } from './components/work-area/WorkArea';
 import { StatusBar } from './components/shell/StatusBar';
+import { ToastHost } from './components/shell/ToastHost';
 import { RightDock } from './components/ai/RightDock';
 import { TerminalPanel } from './components/terminal/TerminalPanel';
 import { useTerminalStore } from './store/terminalStore';
@@ -209,6 +210,9 @@ export default function App() {
       await useVaultStore.getState().initVault();
 
       await loadAiSessionsForVault();
+      // ponytail: load the active vault's saved wiki query session (mirror aiStore boot pattern)
+      const { useWikiQueryStore } = await import('./store/wikiQueryStore');
+      await useWikiQueryStore.getState().loadForCurrentVault();
       await editorIoService.restoreOpenTabs();
 
       useWikiStore.getState().initWiki().catch((err) => {
@@ -726,6 +730,7 @@ export default function App() {
       )}
 
       {showStatusBar && <StatusBar />}
+      <ToastHost />
       <GlobalSearchPanel />
       <CommandPalette />
     </div>

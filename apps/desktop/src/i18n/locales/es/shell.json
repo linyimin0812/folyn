@@ -17,7 +17,12 @@
       "preview": "Modo vista previa"
     },
     "lineCol": "Ln {{line}}, Col {{col}}",
-    "wordCount": "{{count}} palabras"
+    "wordCount": "{{count}} palabras",
+    "wiki": {
+      "ingesting": "Ingesting",
+      "linting": "Linting",
+      "querying": "Querying"
+    }
   },
   "commandPalette": {
     "placeholder": "Buscar comandos o archivos…",

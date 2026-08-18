@@ -1,19 +1,14 @@
 // ponytail: E2.b — three-section wiki query tab. Virtual path 'wiki-query' (no
-// file backing). sessionId is component-local; closing tab clears it.
+// file backing). sessionId/turns/isRunning sourced from useWikiQueryStore so
+// they persist per-vault across tab close/reopen (mirror aiStore pattern).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MarkdownPreview } from '@/components/file-types/markdown/MarkdownPreview';
 import { runWikiQuery, saveToWiki } from '@/services/wikiQueryService';
 import { useVaultStore } from '@/store/vaultStore';
+import { useWikiQueryStore, type QueryTurn } from '@/store/wikiQueryStore';
 import { generateId } from '@/utils/idGenerator';
-
-interface QueryTurn {
-  id: string;
-  query: string;
-  answer: string;
-  hits: { path: string; score: number; isNeighbor: boolean }[];
-}
 
 function extractCitations(markdown: string): string[] {
   const out = new Set<string>();
@@ -28,10 +23,15 @@ export function WikiQueryView() {
   const vault = useVaultStore.getState().currentVault;
   const vaultRoot = vault?.basePath ?? '';
 
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [turns, setTurns] = useState<QueryTurn[]>([]);
+  const sessionId = useWikiQueryStore((s) => s.sessionId);
+  const setSessionId = useWikiQueryStore((s) => s.setSessionId);
+  const turns = useWikiQueryStore((s) => s.turns);
+  const addTurn = useWikiQueryStore((s) => s.addTurn);
+  const running = useWikiQueryStore((s) => s.isRunning);
+  const setRunning = useWikiQueryStore((s) => s.setRunning);
+  const newSession = useWikiQueryStore((s) => s.newSession);
+
   const [input, setInput] = useState('');
-  const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -53,7 +53,7 @@ export function WikiQueryView() {
       // ponytail: parse hits from citations — avoids duplicating search call.
       const citations = extractCitations(answer);
       const hits = citations.map((path) => ({ path, score: 0, isNeighbor: false }));
-      setTurns((prev) => [...prev, { id: generateId(), query: q, answer, hits }]);
+      addTurn({ id: generateId(), query: q, answer, hits });
       setInput('');
       setProgress('');
     } catch (err) {
@@ -65,8 +65,7 @@ export function WikiQueryView() {
   };
 
   const handleNewSession = () => {
-    setSessionId(null);
-    setTurns([]);
+    newSession();
     setError(null);
     setProgress('');
   };

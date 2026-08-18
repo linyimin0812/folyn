@@ -23,6 +23,8 @@ interface WikiState {
   currentIngestStep: 1 | 2 | null;
   ingestProgress: string;
   activityLog: ActivityLogEntry[];
+  /** WikiFileTree sub-tab — lifted so toast "View" action can jump to 'reviews'. */
+  wikiSubTab: 'files' | 'reviews';
 
   initWiki: () => Promise<void>;
   refreshWikiFiles: () => Promise<void>;
@@ -33,6 +35,8 @@ interface WikiState {
   setLinting: (linting: boolean) => void;
   setIngestProgress: (msg: string) => void;
   clearIngestQueue: () => void;
+
+  setWikiSubTab: (tab: 'files' | 'reviews') => void;
 
   pushActivity: (type: ActivityLogEntry['type'], message: string) => void;
   clearActivityLog: () => void;
@@ -62,6 +66,7 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
   currentIngestStep: null,
   ingestProgress: '',
   activityLog: [],
+  wikiSubTab: 'files',
 
   initWiki: async () => {
     const root = await wikiProvider.init();
@@ -111,6 +116,10 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
 
   clearIngestQueue: () => {
     set({ ingestQueue: [] });
+  },
+
+  setWikiSubTab: (tab) => {
+    set({ wikiSubTab: tab });
   },
 
   pushActivity: (type, message) => {

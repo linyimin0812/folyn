@@ -91,15 +91,14 @@ function ReviewItemRow({ item }: { item: ReviewItem }) {
   );
 }
 
-type SubTab = 'files' | 'reviews';
-
 export function WikiFileTree() {
   const { t } = useTranslation();
   const wikiFiles = useWikiStore((s) => s.wikiFiles);
   const reviewItems = useWikiStore((s) => s.reviewItems);
   const isInitialized = useWikiStore((s) => s.isInitialized);
   const initWiki = useWikiStore((s) => s.initWiki);
-  const [subTab, setSubTab] = useState<SubTab>('files');
+  const subTab = useWikiStore((s) => s.wikiSubTab);
+  const setSubTab = useWikiStore((s) => s.setWikiSubTab);
 
   useEffect(() => {
     if (!isInitialized) {
@@ -190,6 +189,49 @@ export function WikiFileTree() {
               <ReviewItemRow key={item.id} item={item} />
             ))
           )}
+        </div>
+      )}
+
+      <WikiIngestProgressStrip />
+    </div>
+  );
+}
+
+// ponytail: ingest progress strip. Visible while isIngesting; lingers 2s after
+// ingest completes so the final success activity entry is readable. Reuses
+// activityLog slice + ingestProgress from wikiStore — no new state.
+function WikiIngestProgressStrip() {
+  const isIngesting = useWikiStore((s) => s.isIngesting);
+  const currentIngestStep = useWikiStore((s) => s.currentIngestStep);
+  const ingestProgress = useWikiStore((s) => s.ingestProgress);
+  const lastActivities = useWikiStore((s) => s.activityLog.slice(-5));
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (isIngesting) {
+      if (!show) setShow(true);
+      return;
+    }
+    if (!show) return;
+    const t = setTimeout(() => setShow(false), 2000);
+    return () => clearTimeout(t);
+  }, [isIngesting, show]);
+
+  if (!show) return null;
+
+  return (
+    <div className="shrink-0 border-t border-brd bg-panel px-2 py-1.5 text-[10px] text-t3 transition-opacity duration-200 opacity-100">
+      <div className="flex items-center gap-1.5 font-mono">
+        <span className="text-acc">Step {currentIngestStep ?? '?'}/2</span>
+        {ingestProgress && <span className="truncate">{ingestProgress}</span>}
+      </div>
+      {lastActivities.length > 0 && (
+        <div className="mt-1 space-y-0.5">
+          {lastActivities.map((a) => (
+            <div key={a.id} className="truncate overflow-hidden text-ellipsis whitespace-nowrap">
+              {a.message}
+            </div>
+          ))}
         </div>
       )}
     </div>

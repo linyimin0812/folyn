@@ -324,6 +324,9 @@ export const useVaultStore = create<VaultState>()(
             }
             // Save AI sessions for current vault before activeVaultId changes
             await useAiStore.getState().switchVaultSessions(config.id);
+            // ponytail: mirror aiStore pattern for wiki query session per-vault swap
+            const { useWikiQueryStore } = await import('./wikiQueryStore');
+            await useWikiQueryStore.getState().switchVaultSessions(config.id);
 
             await stopVaultWatcher();
             await get().manager.switchVault(config);

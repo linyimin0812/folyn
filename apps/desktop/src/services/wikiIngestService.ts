@@ -258,9 +258,10 @@ export async function runIngest(filePaths: string[]): Promise<void> {
       store.pushActivity('step', '运行结构性 lint ...');
       try {
         const { runStructuralLintService } = await import('./wikiLintService');
+        // ponytail: runStructuralLintService now adds reviews + pushes the
+        // completion toast itself; we only surface the count to the activity log.
         const lintItems = await runStructuralLintService();
         if (lintItems.length > 0) {
-          store.addReviewItems(lintItems);
           store.pushActivity('info', `lint 发现 ${lintItems.length} 项结构性问题`);
         }
       } catch (err) {

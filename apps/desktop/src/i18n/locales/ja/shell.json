@@ -17,7 +17,12 @@
       "preview": "プレビューモード"
     },
     "lineCol": "{{line}}行 {{col}}列",
-    "wordCount": "{{count}}語"
+    "wordCount": "{{count}}語",
+    "wiki": {
+      "ingesting": "インジェスト中",
+      "linting": "Lint中",
+      "querying": "クエリ中"
+    }
   },
   "commandPalette": {
     "placeholder": "コマンドやファイルを検索…",

@@ -17,7 +17,12 @@
       "preview": "预览模式"
     },
     "lineCol": "Ln {{line}}, Col {{col}}",
-    "wordCount": "{{count}} 字"
+    "wordCount": "{{count}} 字",
+    "wiki": {
+      "ingesting": "摄入中",
+      "linting": "Lint 中",
+      "querying": "查询中"
+    }
   },
   "commandPalette": {
     "placeholder": "搜索命令或文件…",
