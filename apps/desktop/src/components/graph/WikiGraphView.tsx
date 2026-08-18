@@ -19,6 +19,17 @@ const EDGE_COLORS: Record<string, string> = {
   typeAffinity: '#e5e7eb',
 };
 
+// ponytail: 4px slack — anything below this counts as a click, not a drag.
+const CLICK_SLACK_PX = 4;
+
+interface DragState {
+  startX: number;
+  startY: number;
+  panX0: number;
+  panY0: number;
+  nodeId: string | null;
+}
+
 export function WikiGraphView() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const nodes = useWikiGraphStore((s) => s.nodes);
@@ -29,11 +40,12 @@ export function WikiGraphView() {
   const openFile = editorIoService.openFile;
 
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; node: WikiGraphNode } | null>(null);
   const [zoom, setZoom] = useState(1);
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
 
-  const dragRef = useRef<{ startX: number; startY: number; panX0: number; panY0: number } | null>(null);
+  const dragRef = useRef<DragState | null>(null);
   const simRef = useRef<ReturnType<typeof forceSimulation> | null>(null);
   const nodesRef = useRef<WikiGraphNode[]>([]);
   const edgesRef = useRef<WikiGraphEdge[]>([]);
@@ -53,8 +65,22 @@ export function WikiGraphView() {
     if (!ctx) return;
     const { hoveredNode, zoom, panX, panY } = stateRef.current;
 
-    const w = canvas.width;
-    const h = canvas.height;
+    // ponytail: canvas fillStyle can't take CSS var names — resolve once per frame.
+    const cssVars = canvas.ownerDocument.defaultView?.getComputedStyle(canvas);
+    const t1Color = cssVars?.getPropertyValue('--t1')?.trim() || '#1e293b';
+    const t2Color = cssVars?.getPropertyValue('--t2')?.trim() || '#475569';
+
+    // ponytail: DPR-aware scaling so retina displays don't render a blurry graph.
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.clientWidth;
+    const cssH = canvas.clientHeight;
+    if (canvas.width !== Math.round(cssW * dpr) || canvas.height !== Math.round(cssH * dpr)) {
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const w = cssW;
+    const h = cssH;
     ctx.clearRect(0, 0, w, h);
 
     ctx.save();
@@ -88,7 +114,9 @@ export function WikiGraphView() {
 
     for (const node of nodesRef.current) {
       if (node.x === undefined || node.y === undefined) continue;
-      const dimmed = hoveredNode && node.id !== hoveredNode && !neighborIds?.has(node.id);
+      const isHovered = node.id === hoveredNode;
+      const isNeighbor = !!neighborIds?.has(node.id);
+      const dimmed = hoveredNode && !isHovered && !isNeighbor;
       const radius = Math.max(4, Math.sqrt(node.linkCount + 1) * 3);
       const color = NODE_COLORS[node.type] || '#94a3b8';
 
@@ -103,9 +131,18 @@ export function WikiGraphView() {
       }
       ctx.fill();
 
-      if (!dimmed || node.id === hoveredNode) {
-        ctx.fillStyle = dimmed ? 'rgba(100,100,100,0.3)' : '#1e293b';
-        ctx.font = node.id === hoveredNode ? 'bold 11px system-ui' : '10px system-ui';
+      // ponytail: ring on hovered node — cheap visual feedback for the click target.
+      if (isHovered) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Labels: only for the hovered node and its neighbors — declutters dense graphs.
+      if (isHovered || isNeighbor) {
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = isHovered ? t1Color : t2Color;
+        ctx.font = isHovered ? 'bold 11px system-ui' : '10px system-ui';
         ctx.textAlign = 'center';
         ctx.fillText(node.label, node.x, node.y + radius + 12);
       }
@@ -148,8 +185,8 @@ export function WikiGraphView() {
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
-    const x = (clientX - rect.left - canvas.width / 2 - panX) / zoom;
-    const y = (clientY - rect.top - canvas.height / 2 - panY) / zoom;
+    const x = (clientX - rect.left - canvas.clientWidth / 2 - panX) / zoom;
+    const y = (clientY - rect.top - canvas.clientHeight / 2 - panY) / zoom;
     for (const node of nodesRef.current) {
       if (node.x === undefined || node.y === undefined) continue;
       const dx = node.x - x;
@@ -160,11 +197,6 @@ export function WikiGraphView() {
     return null;
   }, [zoom, panX, panY]);
 
-  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
-    const node = findNodeAtPos(e.clientX, e.clientY);
-    if (node) openFile(node.id, node.label);
-  }, [findNodeAtPos, openFile]);
-
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     setZoom((z) => Math.max(0.2, Math.min(5, z * (1 - e.deltaY * 0.001))));
@@ -172,28 +204,57 @@ export function WikiGraphView() {
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
-    dragRef.current = { startX: e.clientX, startY: e.clientY, panX0: panX, panY0: panY };
-  }, [panX, panY]);
+    const node = findNodeAtPos(e.clientX, e.clientY);
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      panX0: panX,
+      panY0: panY,
+      nodeId: node?.id ?? null,
+    };
+  }, [panX, panY, findNodeAtPos]);
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    const drag = dragRef.current;
     dragRef.current = null;
-  }, []);
+    if (!drag) return;
+    const moved = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+    if (moved >= CLICK_SLACK_PX) return; // it was a pan, not a click
+    if (!drag.nodeId) return; // mousedown was on empty canvas
+    const node = findNodeAtPos(e.clientX, e.clientY);
+    if (node && node.id === drag.nodeId) {
+      openFile(node.id, node.label); // idempotent — double-click fires mouseup twice, second is a no-op (file already open)
+    }
+  }, [findNodeAtPos, openFile]);
 
   const handleDragMove = useCallback((e: React.MouseEvent) => {
     if (dragRef.current) {
-      setPanX(dragRef.current.panX0 + e.clientX - dragRef.current.startX);
-      setPanY(dragRef.current.panY0 + e.clientY - dragRef.current.startY);
+      const dx = e.clientX - dragRef.current.startX;
+      const dy = e.clientY - dragRef.current.startY;
+      if (Math.hypot(dx, dy) >= CLICK_SLACK_PX) {
+        setPanX(dragRef.current.panX0 + dx);
+        setPanY(dragRef.current.panY0 + dy);
+      }
     }
     const node = findNodeAtPos(e.clientX, e.clientY);
     setHoveredNode(node?.id ?? null);
+    if (node) {
+      setTooltip({ x: e.clientX, y: e.clientY, node });
+    } else {
+      setTooltip(null);
+    }
   }, [findNodeAtPos]);
+
+  const handleMouseLeave = useCallback(() => {
+    setHoveredNode(null);
+    setTooltip(null);
+    dragRef.current = null;
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const resizeObserver = new ResizeObserver(() => {
-      canvas.width = canvas.clientWidth;
-      canvas.height = canvas.clientHeight;
       render();
     });
     resizeObserver.observe(canvas);
@@ -209,19 +270,35 @@ export function WikiGraphView() {
         onMouseDown={handleMouseDown}
         onMouseMove={handleDragMove}
         onMouseUp={handleMouseUp}
-        onDoubleClick={handleDoubleClick}
         onWheel={handleWheel}
-        onMouseLeave={() => { setHoveredNode(null); dragRef.current = null; }}
+        onMouseLeave={handleMouseLeave}
       />
-      <div className="absolute bottom-3 left-3 flex gap-2.5 py-1 px-2.5 bg-[var(--bg)] border border-[var(--brd)] rounded-md text-[11px] text-[var(--t3)]">
+      {tooltip && (
+        <div
+          className="pointer-events-none fixed z-20 max-w-[240px] py-1.5 px-2.5 bg-[var(--surf)] border border-[var(--brd)] rounded-md text-[11px] text-[var(--t1)] shadow-sm"
+          style={{ left: tooltip.x + 12, top: tooltip.y + 12 }}
+        >
+          <div className="font-medium truncate">{tooltip.node.label}</div>
+          <div className="text-[var(--t3)] mt-0.5">
+            <span className="capitalize">{tooltip.node.type}</span> · {tooltip.node.linkCount} links
+          </div>
+          {tooltip.node.tags.length > 0 && (
+            <div className="text-[var(--t3)] mt-0.5 truncate">
+              {tooltip.node.tags.slice(0, 3).join(', ')}
+              {tooltip.node.tags.length > 3 ? '…' : ''}
+            </div>
+          )}
+        </div>
+      )}
+      <div className="absolute bottom-2 left-2 flex gap-2 py-0.5 px-2 bg-[var(--bg)] border border-[var(--brd)] rounded text-[10px] text-[var(--t3)]">
         {Object.entries(NODE_COLORS).map(([type, color]) => (
           <span key={type} className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full" style={{ background: color }} />
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
             {type}
           </span>
         ))}
       </div>
-      <div className="absolute bottom-3 right-3 py-1 px-2.5 bg-[var(--bg)] border border-[var(--brd)] rounded-md text-[11px] text-[var(--t4)]">
+      <div className="absolute bottom-2 right-2 py-0.5 px-2 bg-[var(--bg)] border border-[var(--brd)] rounded text-[10px] text-[var(--t3)]">
         {nodes.length} 节点 · {edges.length} 条边
       </div>
     </div>
