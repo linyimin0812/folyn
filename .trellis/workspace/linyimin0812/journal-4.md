@@ -78,3 +78,37 @@ Added independent CLI adapter override per feature agent (wiki/clips/analyze/sch
 ### Next Steps
 
 - None - task complete
+
+
+## Session 173: Activity bar icon sizing
+
+**Date**: 2026-08-18
+**Task**: Activity bar icon sizing
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Shrank activity bar panel icons: built-ins 18→14, plugin-contributed 16→12, Settings 16→13. Wiki icon tuned to 14 after iteration.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `068f4257` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

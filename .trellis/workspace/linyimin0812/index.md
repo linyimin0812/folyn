@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 172
+- **Total Sessions**: 173
 - **Last Active**: 2026-08-18
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~80 | Active |
+| `journal-4.md` | ~114 | Active |
 | `journal-3.md` | ~1962 | Archived |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 173 | 2026-08-18 | Activity bar icon sizing | `068f4257` | `master` |
 | 172 | 2026-08-18 | Per-feature CLI adapter switch on Plugins settings | `dc095f4e` | `master` |
 | 171 | 2026-08-18 | Command palette UX polish: backdrop, border, position, height | `12be890f`, `f7d2248b`, `3d8ec00e`, `2f267247`, `c93fd230`, `998240a9` | `master` |
 | 170 | 2026-08-18 | Wiki sidebar header query button + ingest entry-point gating | `6677ab73`, `d6d78851`, `7e1868bb` | `master` |
