@@ -12,7 +12,6 @@ import wikiGraphIcon from '@/assets/icons/wiki_graph.svg';
 import locateActiveIcon from '@/assets/icons/locate_active.svg';
 import {
   Plus,
-  FileText,
   AlertCircle,
   Square,
   X,
@@ -443,13 +442,13 @@ export function WikiFileTree() {
             className={`flex-1 flex items-center justify-center gap-1 px-3 py-1 text-[10px] ${subTab === 'files' ? 'bg-accdim text-acc' : 'bg-surf text-t3 hover:bg-hov'}`}
             onClick={() => setSubTab('files')}
           >
-            <FileText size={10} /> {t('sidebar:wikiTree.subTab.files')}
+            {t('sidebar:wikiTree.subTab.files')}
           </button>
           <button
             className={`flex-1 flex items-center justify-center gap-1 px-3 py-1 text-[10px] border-l border-brd ${subTab === 'reviews' ? 'bg-accdim text-acc' : 'bg-surf text-t3 hover:bg-hov'}`}
             onClick={() => setSubTab('reviews')}
           >
-            <AlertCircle size={10} /> {t('sidebar:wikiTree.subTab.reviews')}
+            {t('sidebar:wikiTree.subTab.reviews')}
             {pendingReviews.length > 0 && (
               <span className="text-[9px] px-1 rounded-full bg-acc text-white">{pendingReviews.length}</span>
             )}
