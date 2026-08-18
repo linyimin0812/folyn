@@ -61,15 +61,15 @@ export function WikiQueryView() {
     setRunning(true);
     setProgress(t('wiki:query.progress.lookingUp'));
     setError(null);
-    // ponytail: first call must NOT pass --resume — the local sid is fresh and
-    // not on disk yet. `wasStarted` tells runWikiQuery to omit resumeSessionId
-    // on the first call; the CLI assigns a session_id via its system/init event
-    // and we write it back below so subsequent calls resume against the real id.
-    const wasStarted = !!sessionId;
+    // ponytail: sid is a local-format id on the first call (or a stale local id
+    // from before commit 73ff3088 after reload) — runWikiQuery UUID-gates
+    // --resume so non-UUID ids are treated as fresh start; the CLI then emits a
+    // real UUID via system/init, we capture it, and write it back below so the
+    // next call resumes correctly.
     const sid = sessionId ?? generateId();
     if (!sessionId) setSessionId(sid);
     try {
-      const { answer, sessionId: assignedId } = await runWikiQuery(q, sid, wasStarted);
+      const { answer, sessionId: assignedId } = await runWikiQuery(q, sid);
       if (assignedId && assignedId !== sid) setSessionId(assignedId);
       // ponytail: parse hits from citations — avoids duplicating search call.
       const citations = extractCitations(answer);

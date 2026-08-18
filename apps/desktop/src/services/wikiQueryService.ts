@@ -34,20 +34,20 @@ export function buildQueryInstruction(query: string, wikiContext: string): strin
  * agent 文件存在 → bare:false + --agent wiki（cwd=`<vault>/__wiki__/` 自动发现）；
  * 不存在 → --bare 回退（仍发送指令，但无 feature agent 上下文）。
  *
- * ponytail: multi-turn resume — only pass `--resume <id>` when `resume && sessionId`
- * is truthy. On the first call the local sessionId is a freshly-generated ID that
- * does NOT exist on disk yet, so `claude --resume <id>` rejects immediately with
- * `subtype: "error_during_execution", num_turns: 0`. Omitting `resumeSessionId`
- * on the first call lets the CLI start fresh and emit a `session_id` in its
- * `system/init` event; we capture it via the side listener and return it so the
- * caller can write it back to the store — subsequent calls pass `resume=true`
- * with the real on-disk id. Upgrade path: capture session_id from the `result`
- * event too if `system/init` ever stops firing.
+ * ponytail: multi-turn resume — pass `--resume <id>` ONLY when `sessionId` is a
+ * UUID-shaped value. Stale local-format IDs (e.g. `1787025022836-qfslvz` from
+ * before commit 73ff3088's resume fix) are NOT UUIDs and the CLI rejects them
+ * (`--resume requires a valid session ID or session title`). Format-gating
+ * self-heals the store: a stale local id fails the check → fresh start → CLI
+ * assigns a real UUID → caller writes it back → next call passes the UUID and
+ * resumes correctly. Upgrade path: if CLI ever accepts non-UUID session titles
+ * as resume handles, tighten this check or capture-and-compare instead.
  */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function runWikiQuery(
   query: string,
   sessionId?: string,
-  resume = false,
 ): Promise<{ answer: string; sessionId?: string }> {
   const vault = useVaultStore.getState();
   const aiConfig = useAiConfigStore.getState();
@@ -72,7 +72,7 @@ export async function runWikiQuery(
 
   try {
     const sendOpts = await getFeatureAgentSendOptions('wiki');
-    const finalOpts = resume && sessionId
+    const finalOpts = sessionId && UUID_RE.test(sessionId)
       ? { ...sendOpts, resumeSessionId: sessionId }
       : sendOpts;
     const textPromise = collectTextFromStream(adapter);
