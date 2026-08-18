@@ -5,7 +5,6 @@ import { useVaultStore } from '@/store/vaultStore';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { useAiStore } from '@/store/aiStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
-import { useEditorStore } from '@/store/editorStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import injectAllIcon from '@/assets/icons/inject_all.svg';
 import { getAllHandlers } from '@/components/file-types/registry';
@@ -266,7 +265,6 @@ export function ContextMenu({
                 <button
                   className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov"
                   onClick={() => {
-                    useEditorStore.getState().setActivePanel('wiki');
                     runIngest([menu.path]).catch(console.error);
                     onClose();
                   }}
