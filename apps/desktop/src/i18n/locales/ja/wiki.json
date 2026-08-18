@@ -21,7 +21,8 @@
       "center": "中央に",
       "zoomIn": "拡大",
       "zoomOut": "縮小"
-    }
+    },
+    "backToGraph": "グラフに戻る"
   },
   "activity": {
     "stepLabel": "Step {{step}}/{{total}}",

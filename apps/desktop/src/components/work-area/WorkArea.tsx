@@ -1,4 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ArrowLeft } from 'lucide-react';
 import { useEditorStore } from '@/store/editorStore';
 import { useDiffReviewStore } from '@/store/diffReviewStore';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
@@ -17,10 +19,12 @@ import { PreviewPane } from './PreviewPane';
 import { DailyDigest } from '../editor/DailyDigest';
 import { VersionHistoryPanel, isVersionableTab } from './VersionHistoryPanel';
 import { VersionHistoryContentView } from './VersionHistoryContentView';
-import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
+import { closeTab as closeTabWithSnapshot, openFile } from '@/services/editorIoService';
+import { WIKI_PREFIX } from '@/types/wiki';
 
 
 export function WorkArea() {
+  const { t } = useTranslation();
   const viewMode = useEditorStore((state) => state.viewMode);
   const setViewMode = useEditorStore((state) => state.setViewMode);
   const activePanel = useEditorStore((state) => state.activePanel);
@@ -146,6 +150,16 @@ export function WorkArea() {
   const showVersionHistoryDiff = versionHistoryVisible
     && versionHistorySelectedKey !== null
     && isVersionableTab(activeTab);
+
+  // ponytail: floating "Back to graph" pill — shown only when the user has
+  // navigated from the wiki graph view into a wiki page (activeTab.path starts
+  // with WIKI_PREFIX) and a `wiki-graph` virtual tab still exists. Clicking it
+  // re-activates that tab via the idempotent openFile path. Skipped: full
+  // editor back/forward history stack — bigger feature, one-shot is enough.
+  const hasGraphTab = tabs.some((t) => t.path === 'wiki-graph');
+  const showBackToGraph = !!activeTab
+    && activeTab.path.startsWith(WIKI_PREFIX)
+    && hasGraphTab;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-bg relative">
@@ -295,6 +309,18 @@ export function WorkArea() {
           integration. Visibility gated by useEditorViewStateStore; the panel
           itself no-ops when the active tab is not a Versionable File. */}
       <VersionHistoryPanel activeTab={activeTab} />
+
+      {showBackToGraph && (
+        <button
+          type="button"
+          className="absolute top-11 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 py-1 px-2.5 rounded-md bg-panel border border-brd text-t2 text-[length:calc(var(--ui-font-size)-2px)] shadow-sm hover:bg-hov hover:text-t1 transition-colors"
+          onClick={() => { void openFile('wiki-graph', 'Wiki Graph'); }}
+          title={t('wiki:graph.backToGraph')}
+        >
+          <ArrowLeft size={13} className="shrink-0" />
+          {t('wiki:graph.backToGraph')}
+        </button>
+      )}
     </div>
   );
 }

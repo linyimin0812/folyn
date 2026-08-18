@@ -21,7 +21,8 @@
       "center": "居中",
       "zoomIn": "放大",
       "zoomOut": "缩小"
-    }
+    },
+    "backToGraph": "返回图谱"
   },
   "activity": {
     "stepLabel": "Step {{step}}/{{total}}",

@@ -21,7 +21,8 @@
       "center": "Center",
       "zoomIn": "Zoom in",
       "zoomOut": "Zoom out"
-    }
+    },
+    "backToGraph": "Back to graph"
   },
   "activity": {
     "stepLabel": "Step {{step}}/{{total}}",
