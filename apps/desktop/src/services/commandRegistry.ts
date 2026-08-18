@@ -255,6 +255,7 @@ export function registerBuiltinCommands(): void {
       category: 'action',
       keywords: ['wiki', 'ingest', 'import', 'knowledge'],
       enabled: () => {
+        if (!appearance().enableWikiPanel) return false;
         const s = useEditorStore.getState();
         if (!s.activeTabId) return false;
         const tab = s.tabs.find((t) => t.id === s.activeTabId);
