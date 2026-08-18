@@ -71,7 +71,7 @@ export function CommandPalette() {
       <div
         className="dlg"
         onMouseDown={(e) => e.stopPropagation()}
-        style={{ width: 560, maxHeight: '70vh', boxShadow: 'none', animation: 'none', overflow: 'hidden' }}
+        style={{ width: 560, maxHeight: '50vh', boxShadow: 'none', animation: 'none', overflow: 'hidden' }}
       >
         <div className="dlg-body" style={{ gap: 0, padding: 0 }}>
           <input
@@ -112,7 +112,7 @@ export function CommandPalette() {
           <div
             ref={listRef}
             className="overflow-y-auto scrollbar-thin"
-            style={{ maxHeight: 'calc(70vh - 48px)' }}
+            style={{ maxHeight: 'calc(50vh - 48px)' }}
           >
             {items.length === 0 ? (
               <div className="py-6 px-4 text-center text-t2 text-[13px]">{t('shell:commandPalette.noMatch')}</div>
