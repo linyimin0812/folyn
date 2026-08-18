@@ -310,7 +310,9 @@ export function WikiGraphView() {
           className="p-1 hover:bg-[var(--hov)] hover:text-[var(--t1)] rounded transition-colors"
           aria-label={t('wiki:graph.controls.center')}
           title={t('wiki:graph.controls.center')}
-          onClick={autoFit}
+          // ponytail: only recenter — forceCenter(0,0) puts the graph mean at origin,
+          // so pan=0,0 renders it at canvas center. Don't touch zoom.
+          onClick={() => { setPanX(0); setPanY(0); }}
         >
           <LocateFixed size={14} />
         </button>
