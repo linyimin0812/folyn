@@ -2,7 +2,7 @@
 
 import { wikiProvider } from './wikiProvider';
 import { useVaultStore } from '@/store/vaultStore';
-import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useAiConfigStore, getFeatureAdapter, getFeatureCliPath } from '@/store/aiConfigStore';
 import { createAdapter, type CliStreamEvent } from '@quill/cli-adapter';
 import { collectTextFromStream } from './aiStreamUtils';
 import { getFeatureAgentSendOptions } from './featureAgentService';
@@ -57,11 +57,11 @@ export async function runWikiQuery(
   const { context: wikiContext } = await buildWikiContextV2(query);
   const instruction = buildQueryInstruction(query, wikiContext);
 
-  const adapter = createAdapter(aiConfig.cliAdapter);
+  const adapter = createAdapter(getFeatureAdapter('wiki', aiConfig));
   const basePath = await resolveBasePath(vault.currentVault.basePath);
   const workingDir = `${basePath}/__wiki__`;
 
-  await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
+  await adapter.start({ cliPath: getFeatureCliPath('wiki', aiConfig), workingDir });
 
   let assignedSessionId: string | undefined;
   const captureSessionId = (event: CliStreamEvent) => {

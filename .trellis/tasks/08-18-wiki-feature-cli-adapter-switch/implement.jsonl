@@ -1,0 +1,6 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/feature-agents.md", "reason": "Feature agent service flow + adapter selection pattern"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "aiConfigStore/appearanceStore pattern for new fields"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "zh/en/ja/fr/es/de key requirements"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "PluginsSettings PluginRowCard render pattern"}
+{"file": ".trellis/spec/cli-adapter/frontend/index.md", "reason": "Adapter registry + createAdapter contract"}

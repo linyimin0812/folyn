@@ -64,6 +64,14 @@
         "label": "Project analysis panel",
         "description": "Show project-analysis entry in the sidebar"
       },
+      "schedule": {
+        "label": "Schedule panel",
+        "description": "Schedule (Plan My Day) feature entry"
+      },
+      "study": {
+        "label": "Study panel",
+        "description": "Study & research feature entry"
+      },
       "tray": {
         "label": "Show tray icon",
         "description": "Show the app icon in the system tray; click it for the same quick-action menu as the pet right-click menu"
@@ -412,6 +420,10 @@
     },
     "approved": "Approved",
     "builtin": "Built-in",
+    "cli": {
+      "overrideTooltip": "Using {{adapter}} (independent of global CLI)",
+      "fallbackTooltip": "Following global CLI: {{adapter}} (click to set independently)"
+    },
     "renderError": "Render error: {{label}}",
     "clearRenderError": "Clear",
     "approve": "Approve & authorize",

@@ -64,6 +64,14 @@
         "label": "プロジェクト分析パネル",
         "description": "サイドバーにプロジェクト分析エントリを表示"
       },
+      "schedule": {
+        "label": "スケジュールパネル",
+        "description": "スケジュール（Plan My Day）機能のエントリ"
+      },
+      "study": {
+        "label": "学習パネル",
+        "description": "学習・研究機能のエントリ"
+      },
       "daily": {
         "label": "デイリーノートパネル",
         "description": "サイドバーにカレンダーとデイリーノートエントリを表示（無効化すると⌘Dも無効）"
@@ -415,6 +423,10 @@
       "sandbox": "Sandbox階層"
     },
     "approved": "承認済み",
+    "cli": {
+      "overrideTooltip": "{{adapter}} を独立選択中（グローバル CLI 切り替えの影響なし）",
+      "fallbackTooltip": "グローバル CLI に追従：{{adapter}}（クリックで独立設定）"
+    },
     "renderError": "レンダリングエラー：{{label}}",
     "clearRenderError": "クリア",
     "approve": "承認して認可",

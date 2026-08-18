@@ -80,6 +80,10 @@ export const PERSIST_KEYS_AI_CONFIG = [
   'cliAdapter',
   'cliPath',
   'cliPaths',
+  // ponytail: per-feature adapter overrides. Empty {} → fall back to cliAdapter
+  // (global). Feature ids: 'wiki' | 'clips' | 'analyze' | 'schedule' | 'study'.
+  // Unspecified features keep following the global selector — see getFeatureAdapter.
+  'featureCliAdapter',
   'chatProvider',
   'chatModel',
   // ponytail: providerConfigs / customProviders / enabledProviders removed —
@@ -199,6 +203,12 @@ export interface AiConfigState {
   cliPath: string;
   /** Per-adapter binary path. `cliPath` mirrors `cliPaths[cliAdapter]`. */
   cliPaths: Record<string, string>;
+  /** Per-feature CLI adapter override. Keyed by feature id
+   *  ('wiki' | 'clips' | 'analyze' | 'schedule' | 'study'). When a feature's
+   *  entry is absent or empty, the feature falls back to `cliAdapter` (global).
+   *  This keeps existing users' behavior unchanged until they explicitly pick
+   *  a per-feature adapter in the Plugins settings page. */
+  featureCliAdapter: Record<string, string>;
   chatProvider: ChatProvider;
   chatModel: string;
   // Flat mirrors of providerSettings[chatProvider] — kept for caller
@@ -229,6 +239,10 @@ export interface AiConfigState {
   setCliPath: (v: string) => void;
   /** Set the binary path for a SPECIFIC adapter. */
   setCliPathFor: (adapterId: string, path: string) => void;
+  /** Set the CLI adapter for a SPECIFIC feature ('wiki' | 'clips' | ...).
+   *  Pass an empty string to clear the override and resume following the
+   *  global `cliAdapter`. */
+  setFeatureCliAdapter: (feature: string, adapterId: string) => void;
   setChatProvider: (v: ChatProvider) => void;
   setChatModel: (v: string) => void;
   setChatApiKey: (v: string) => void;
@@ -344,6 +358,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   cliAdapter: 'claude',
   cliPath: 'claude',
   cliPaths: {},
+  featureCliAdapter: {},
   chatProvider: 'anthropic',
   chatModel: 'claude-sonnet-4-6',
   chatApiKey: '',
@@ -385,6 +400,16 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
       const cliPaths = { ...s.cliPaths, [adapterId]: path };
       const cliPath = adapterId === s.cliAdapter ? path : s.cliPath;
       return { cliPaths, cliPath };
+    });
+    persist();
+  },
+  setFeatureCliAdapter: (feature, adapterId) => {
+    set((s) => {
+      if (!adapterId) {
+        const { [feature]: _omit, ...rest } = s.featureCliAdapter;
+        return { featureCliAdapter: rest };
+      }
+      return { featureCliAdapter: { ...s.featureCliAdapter, [feature]: adapterId } };
     });
     persist();
   },
@@ -617,6 +642,16 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
       if (!cliPaths.claude) cliPaths.claude = blob.cliPath;
     }
     patch.cliPaths = cliPaths;
+    // ponytail: featureCliAdapter is a free-form Record<featureId, adapterId>.
+    // Only string values survive hydration — non-string entries are dropped
+    // (legacy blobs or hand-edited storage). Missing key → {} (fall back to global).
+    const featureCliAdapter: Record<string, string> = {};
+    if (isRecord(blob.featureCliAdapter)) {
+      for (const [k, val] of Object.entries(blob.featureCliAdapter)) {
+        if (typeof val === 'string' && val) featureCliAdapter[k] = val;
+      }
+    }
+    patch.featureCliAdapter = featureCliAdapter;
     const providerId = isChatProvider(blob.chatProvider) ? blob.chatProvider : 'anthropic';
     patch.chatProvider = providerId;
     if (blob.chatModel !== undefined) patch.chatModel = blob.chatModel as string;
@@ -684,6 +719,34 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
 // ponytail: re-export getProviderEntry so callers needing catalog metadata
 // can grab it without a second import. One fewer file touched per caller.
 export { getProviderEntry };
+
+/** Resolve the CLI adapter id for a feature. Falls back to the global
+ *  `cliAdapter` when the feature has no override (or override is empty).
+ *  Feature ids: 'wiki' | 'clips' | 'analyze' | 'schedule' | 'study'. Callers
+ *  in feature services should always go through this — never read
+ *  `cliAdapter` directly — so per-feature overrides take effect without
+ *  further code changes. */
+export function getFeatureAdapter(
+  feature: string,
+  state: AiConfigState = useAiConfigStore.getState(),
+): string {
+  return state.featureCliAdapter[feature] || state.cliAdapter;
+}
+
+/** Resolve the CLI binary path for a feature. Mirrors the global resolution
+ *  in `setCliAdapter`: `cliPaths[adapterId] ?? adapterId`. When a feature
+ *  runs with a DIFFERENT adapter than the global one, the service must NOT
+ *  pass the global `cliPath` (configured for the global adapter) — it would
+ *  hand e.g. claude's path to pi, or vice versa, and the spawn fails with
+ *  "No such file or directory" on a path that doesn't exist for that
+ *  adapter. */
+export function getFeatureCliPath(
+  feature: string,
+  state: AiConfigState = useAiConfigStore.getState(),
+): string {
+  const id = getFeatureAdapter(feature, state);
+  return state.cliPaths[id] ?? id;
+}
 
 function mergeScriptRuntimes(persisted: unknown): RuntimeConfig[] {
   if (!Array.isArray(persisted)) return DEFAULT_SCRIPT_RUNTIMES;

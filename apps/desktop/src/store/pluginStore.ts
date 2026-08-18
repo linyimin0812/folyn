@@ -23,6 +23,8 @@ import { isTauri } from '@/utils/platform';
 import analyzeSvgText from '@/assets/icons/project_analysis.svg?raw';
 import clipsSvgText from '@/assets/icons/clips.svg?raw';
 import wikiSvgText from '@/assets/icons/wiki.svg?raw';
+import scheduleSvgText from '@/assets/icons/schedule.svg?raw';
+import studySvgText from '@/assets/icons/study.svg?raw';
 
 // ponytail: Tauri rejects with the serialized AppError {category, detail};
 // String(obj) yields "[object Object]" and hides the cause. Pull `detail`
@@ -83,10 +85,17 @@ export interface PluginRow {
   iconDark?: string;
 }
 
-/** Static definitions for the 4 built-in panel "plugins". The flag/setter
+/** Static definitions for the 5 built-in panel "plugins". The flag/setter
  * are bound in the UI via appearanceStore, not here, to keep the store
- * decoupled from appearanceStore's hook shape. */
+ * decoupled from appearanceStore's hook shape.
+ *
+ * ponytail: schedule + study listed FIRST so they surface at the top of
+ * the Plugins settings page — the user wants per-feature CLI switching to
+ * be the first thing visible, not buried under the older wiki/clips/analyze
+ * rows. Order is render-order, not feature-priority. */
 export const BUILTIN_PANEL_DEFS = [
+  { id: 'builtin:schedule', nameKey: 'settings:appearance.panels.schedule.label', descKey: 'settings:appearance.panels.schedule.description', flag: 'enableSchedulePanel' as const },
+  { id: 'builtin:study', nameKey: 'settings:appearance.panels.study.label', descKey: 'settings:appearance.panels.study.description', flag: 'enableStudyPanel' as const },
   { id: 'builtin:wiki', nameKey: 'settings:appearance.panels.wiki.label', descKey: 'settings:appearance.panels.wiki.description', flag: 'enableWikiPanel' as const },
   { id: 'builtin:clips', nameKey: 'settings:appearance.panels.clips.label', descKey: 'settings:appearance.panels.clips.description', flag: 'enableClipsPanel' as const },
   { id: 'builtin:analyze', nameKey: 'settings:appearance.panels.analyze.label', descKey: 'settings:appearance.panels.analyze.description', flag: 'enableAnalyzePanel' as const },
@@ -218,6 +227,8 @@ async function fetchRows(): Promise<PluginRow[]> {
     icon: def.id === 'builtin:analyze' ? analyzeSvgText
       : def.id === 'builtin:clips' ? clipsSvgText
       : def.id === 'builtin:wiki' ? wikiSvgText
+      : def.id === 'builtin:schedule' ? scheduleSvgText
+      : def.id === 'builtin:study' ? studySvgText
       : undefined,
   }));
   // Best-effort: fetch each plugin's manifest in parallel to surface

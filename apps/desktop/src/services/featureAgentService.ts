@@ -344,7 +344,7 @@ export async function runFeatureAgent(
   const { useAiStore } = await import('@/store/aiStore');
   const { useVaultStore } = await import('@/store/vaultStore');
   const editorIo = await import('@/services/editorIoService');
-  const { useAiConfigStore } = await import('@/store/aiConfigStore');
+  const { useAiConfigStore, getFeatureCliPath } = await import('@/store/aiConfigStore');
   const { getAdapterForSession } = await import('@/components/ai/adapterManager');
   const { pauseWatcher, resumeWatcher } = await import('@/utils/fileWatcher');
 
@@ -373,7 +373,7 @@ export async function runFeatureAgent(
     workingDir = `${workingDir.replace(/\/+$/, '')}/${featureDir(feature)}`;
   }
 
-  const adapter = getAdapterForSession(sid);
+  const adapter = getAdapterForSession(sid, 'study');
   const manager = useVaultStore.getState().manager;
 
   // 调用时懒播种兜底：确保 agent 文件已落盘（即使 switchVault 的 seeding 被跳过/失败）。
@@ -439,7 +439,7 @@ export async function runFeatureAgent(
   pauseWatcher();
 
   try {
-    await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
+    await adapter.start({ cliPath: getFeatureCliPath('study', aiConfig), workingDir });
     await adapter.send(instruction, sendOptions);
   } catch (err) {
     ai.appendToLastMessage(`\n\n[错误] ${String(err)}`, sid);

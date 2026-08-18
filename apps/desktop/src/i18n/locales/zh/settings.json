@@ -64,6 +64,14 @@
         "label": "项目分析面板",
         "description": "在侧栏显示项目分析入口"
       },
+      "schedule": {
+        "label": "日程面板",
+        "description": "日程（Plan My Day）相关功能入口"
+      },
+      "study": {
+        "label": "学习面板",
+        "description": "学习研究功能入口"
+      },
       "tray": {
         "label": "显示托盘图标",
         "description": "在系统托盘显示应用图标，点击弹出与桌宠右键菜单相同的快捷菜单"
@@ -412,6 +420,10 @@
     },
     "approved": "已批准",
     "builtin": "内置",
+    "cli": {
+      "overrideTooltip": "已独立选择 {{adapter}}（不随全局 CLI 切换）",
+      "fallbackTooltip": "跟随全局 CLI：{{adapter}}（点击切换为独立配置）"
+    },
     "renderError": "渲染错误：{{label}}",
     "clearRenderError": "清除",
     "approve": "批准并授权",

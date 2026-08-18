@@ -35,6 +35,7 @@ import { usePluginStore, type PluginRow } from '@/store/pluginStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { Toggle } from '@/components/settings/primitives';
 import { ThemeIcon, hasIcon } from '@/components/icons/ThemeIcon';
+import { FeatureAdapterDropdown } from '@/components/settings/FeatureAdapterDropdown';
 
 /** State badge color per runtime state. */
 function stateBadgeClass(state: PluginRow['state']): string {
@@ -172,9 +173,13 @@ function PluginRowCard({ row }: { row: PluginRow }) {
   const enableWikiPanel = useAppearanceStore((s) => s.enableWikiPanel);
   const enableClipsPanel = useAppearanceStore((s) => s.enableClipsPanel);
   const enableAnalyzePanel = useAppearanceStore((s) => s.enableAnalyzePanel);
+  const enableSchedulePanel = useAppearanceStore((s) => s.enableSchedulePanel);
+  const enableStudyPanel = useAppearanceStore((s) => s.enableStudyPanel);
   const setEnableWikiPanel = useAppearanceStore((s) => s.setEnableWikiPanel);
   const setEnableClipsPanel = useAppearanceStore((s) => s.setEnableClipsPanel);
   const setEnableAnalyzePanel = useAppearanceStore((s) => s.setEnableAnalyzePanel);
+  const setEnableSchedulePanel = useAppearanceStore((s) => s.setEnableSchedulePanel);
+  const setEnableStudyPanel = useAppearanceStore((s) => s.setEnableStudyPanel);
   // Render errors captured by PanelErrorBoundary for this plugin's surfaces.
   // A plugin that threw during render is isolated (never crashes the host),
   // but surfaced here so the user can see something went wrong + clear it.
@@ -196,6 +201,8 @@ function PluginRowCard({ row }: { row: PluginRow }) {
     ? (entry.id === 'builtin:wiki' ? enableWikiPanel
         : entry.id === 'builtin:clips' ? enableClipsPanel
         : entry.id === 'builtin:analyze' ? enableAnalyzePanel
+        : entry.id === 'builtin:schedule' ? enableSchedulePanel
+        : entry.id === 'builtin:study' ? enableStudyPanel
         : false)
     : state === 'active';
   const toggleBusy = isActivateBusy || isDeactivateBusy;
@@ -275,6 +282,7 @@ function PluginRowCard({ row }: { row: PluginRow }) {
               {isApproveBusy ? t('settings:plugins.approving') : t('settings:plugins.approve')}
             </button>
           )}
+          {builtin && <FeatureAdapterDropdown rowId={entry.id} />}
           {(!needsApproval || builtin) && (
             <Toggle
               value={toggleValue}
@@ -283,6 +291,8 @@ function PluginRowCard({ row }: { row: PluginRow }) {
                   if (entry.id === 'builtin:wiki') setEnableWikiPanel(v);
                   else if (entry.id === 'builtin:clips') setEnableClipsPanel(v);
                   else if (entry.id === 'builtin:analyze') setEnableAnalyzePanel(v);
+                  else if (entry.id === 'builtin:schedule') setEnableSchedulePanel(v);
+                  else if (entry.id === 'builtin:study') setEnableStudyPanel(v);
                   return;
                 }
                 if (v && !isActive) void activate(entry.id);

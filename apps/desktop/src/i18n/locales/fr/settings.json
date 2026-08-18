@@ -64,6 +64,14 @@
         "label": "Panneau d'analyse de projet",
         "description": "Afficher l'entrée Analyse de projet dans la barre latérale"
       },
+      "schedule": {
+        "label": "Panneau Schedule",
+        "description": "Entrée de la fonctionnalité Schedule (Plan My Day)"
+      },
+      "study": {
+        "label": "Panneau Étude",
+        "description": "Entrée de la fonctionnalité Étude & recherche"
+      },
       "daily": {
         "label": "Panneau Notes quotidiennes",
         "description": "Afficher l'entrée Calendrier et notes quotidiennes dans la barre latérale (désactiver désactive aussi ⌘D)"
@@ -409,6 +417,10 @@
       "sandbox": "Niveau Sandbox"
     },
     "approved": "Approuvé",
+    "cli": {
+      "overrideTooltip": "{{adapter}} sélectionné indépendamment (non lié au CLI global)",
+      "fallbackTooltip": "Suit le CLI global : {{adapter}} (cliquez pour configurer indépendamment)"
+    },
     "renderError": "Erreur de rendu : {{label}}",
     "clearRenderError": "Effacer",
     "approve": "Approuver et autoriser",

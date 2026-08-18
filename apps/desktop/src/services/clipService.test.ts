@@ -52,6 +52,8 @@ vi.mock('@/store/aiConfigStore', () => ({
   useAiConfigStore: {
     getState: () => ({ cliAdapter: 'claude', cliPath: '/mock/claude' }),
   },
+  getFeatureAdapter: () => 'claude',
+  getFeatureCliPath: () => '/mock/claude',
 }));
 
 // Fake CLI adapter factory + adapter so generateClip never spawns a process.

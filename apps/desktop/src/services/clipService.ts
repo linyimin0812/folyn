@@ -1,7 +1,7 @@
 import { createAdapter, type CliAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import * as editorIoService from '@/services/editorIoService';
-import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useAiConfigStore, getFeatureAdapter, getFeatureCliPath } from '@/store/aiConfigStore';
 import { collectTextFromStream, extractJsonObject, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { isHttpUrl } from '@/utils/urlUtils';
@@ -135,12 +135,12 @@ export async function generateClip(
   // clips agent cwd = `<vault>/__clips__/`：agent 自动发现 `.claude/agents/clips.md`。
   const workingDir = `${basePath.replace(/\/+$/, '')}/__clips__`;
 
-  const adapter = createAdapter(aiConfig.cliAdapter);
+  const adapter = createAdapter(getFeatureAdapter('clips', aiConfig));
 
   let card: ClipCard;
   let infographic: InfographicDoc | null = null;
   try {
-    await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
+    await adapter.start({ cliPath: getFeatureCliPath('clips', aiConfig), workingDir });
 
     // --- Phase 1: card metadata via curl.md ---------------------------------
     // curl.md service: GET https://curl.md/<encoded original URL> → optimized Markdown.

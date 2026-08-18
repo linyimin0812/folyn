@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { useAiConfigStore, PERSIST_KEYS_AI_CONFIG, resolvePairForSession, type ChatProvider } from './aiConfigStore';
+import { useAiConfigStore, PERSIST_KEYS_AI_CONFIG, resolvePairForSession, getFeatureAdapter, getFeatureCliPath, type ChatProvider } from './aiConfigStore';
 import { storageClient } from '@/utils/storageClient';
 import { markSettingsHydrated } from './settingsPersistence';
 import { providerConfigStorage } from '@/services/providers/providerConfigStorage';
@@ -69,6 +69,7 @@ beforeEach(() => {
     cliAdapter: 'claude',
     cliPath: 'claude',
     cliPaths: {},
+    featureCliAdapter: {},
     chatProvider: 'anthropic',
     chatModel: 'claude-sonnet-4-6',
     chatApiKey: '',
@@ -160,6 +161,63 @@ describe('useAiConfigStore setters', () => {
     expect(useAiConfigStore.getState().providerSettings.anthropic?.extra.thinkingBudget).toBe(2048);
     useAiConfigStore.getState().setChatThinkingBudget(null);
     expect(useAiConfigStore.getState().chatThinkingBudget).toBeNull();
+  });
+});
+
+describe('useAiConfigStore.featureCliAdapter', () => {
+  it('setFeatureCliAdapter sets a per-feature override and persists', () => {
+    vi.spyOn(storageClient, 'set');
+    useAiConfigStore.getState().setFeatureCliAdapter('wiki', 'pi');
+    expect(useAiConfigStore.getState().featureCliAdapter.wiki).toBe('pi');
+  });
+
+  it('setFeatureCliAdapter with empty string clears the override', () => {
+    useAiConfigStore.getState().setFeatureCliAdapter('wiki', 'pi');
+    useAiConfigStore.getState().setFeatureCliAdapter('wiki', '');
+    expect(useAiConfigStore.getState().featureCliAdapter.wiki).toBeUndefined();
+  });
+
+  it('getFeatureAdapter falls back to global cliAdapter when feature has no override', () => {
+    useAiConfigStore.setState({ cliAdapter: 'claude', featureCliAdapter: {} });
+    expect(getFeatureAdapter('wiki')).toBe('claude');
+  });
+
+  it('getFeatureAdapter returns the override when set', () => {
+    useAiConfigStore.setState({ cliAdapter: 'claude', featureCliAdapter: { wiki: 'pi' } });
+    expect(getFeatureAdapter('wiki')).toBe('pi');
+    expect(getFeatureAdapter('clips')).toBe('claude');
+  });
+
+  it('getFeatureCliPath resolves per-feature adapter binary path (not global cliPath)', () => {
+    useAiConfigStore.setState({
+      cliAdapter: 'claude',
+      cliPath: '/usr/local/bin/claude',
+      cliPaths: { claude: '/usr/local/bin/claude', pi: '/usr/local/bin/pi' },
+      featureCliAdapter: { wiki: 'pi' },
+    });
+    expect(getFeatureCliPath('wiki')).toBe('/usr/local/bin/pi');
+    expect(getFeatureCliPath('clips')).toBe('/usr/local/bin/claude');
+  });
+
+  it('getFeatureCliPath falls back to adapter id when cliPaths has no entry', () => {
+    useAiConfigStore.setState({
+      cliAdapter: 'claude',
+      cliPath: '/usr/local/bin/claude',
+      cliPaths: {},
+      featureCliAdapter: { wiki: 'pi' },
+    });
+    expect(getFeatureCliPath('wiki')).toBe('pi');
+  });
+
+  it('hydrate applies featureCliAdapter blob (string values only)', () => {
+    useAiConfigStore.getState().hydrate({
+      featureCliAdapter: { wiki: 'pi', clips: 'claude', study: 42, analyze: '' },
+    });
+    const map = useAiConfigStore.getState().featureCliAdapter;
+    expect(map.wiki).toBe('pi');
+    expect(map.clips).toBe('claude');
+    expect(map.study).toBeUndefined(); // non-string dropped
+    expect(map.analyze).toBeUndefined(); // empty string dropped
   });
 });
 

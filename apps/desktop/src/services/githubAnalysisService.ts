@@ -1,7 +1,7 @@
 import { createAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import * as editorIoService from '@/services/editorIoService';
-import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useAiConfigStore, getFeatureAdapter, getFeatureCliPath } from '@/store/aiConfigStore';
 import { collectTextFromStream, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { getFeatureAgentSendOptions } from './featureAgentService';
@@ -180,8 +180,8 @@ export async function generateReport(
   // analyze agent cwd = `<vault>/__analyze__/`：agent 自动发现 `.claude/agents/analyze.md`。
   const workingDir = `${basePath.replace(/\/+$/, '')}/__analyze__`;
 
-  const adapter = createAdapter(aiConfig.cliAdapter);
-  await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
+  const adapter = createAdapter(getFeatureAdapter('analyze', aiConfig));
+  await adapter.start({ cliPath: getFeatureCliPath('analyze', aiConfig), workingDir });
 
   let aiResponse: string;
   try {

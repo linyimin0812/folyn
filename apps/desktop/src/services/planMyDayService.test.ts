@@ -114,6 +114,8 @@ vi.mock('@/store/aiConfigStore', () => ({
   useAiConfigStore: {
     getState: () => ({ cliAdapter: 'claude', cliPath: '/mock/claude' }),
   },
+  getFeatureAdapter: () => 'claude',
+  getFeatureCliPath: () => '/mock/claude',
 }));
 
 vi.mock('@quill/cli-adapter', () => ({

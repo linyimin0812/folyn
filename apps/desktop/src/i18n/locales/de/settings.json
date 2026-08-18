@@ -64,6 +64,14 @@
         "label": "Projektanalyse-Panel",
         "description": "Projektanalyse-Eintrag in der Seitenleiste anzeigen"
       },
+      "schedule": {
+        "label": "Plan-Panel",
+        "description": "Eintrag der Schedule-Funktion (Plan My Day)"
+      },
+      "study": {
+        "label": "Lern-Panel",
+        "description": "Eintrag der Lern- & Recherchefunktion"
+      },
       "daily": {
         "label": "Tagesnotizen-Panel",
         "description": "Kalender- und Tagesnotiz-Eintrag in der Seitenleiste (Deaktivieren deaktiviert auch ⌘D)"
@@ -409,6 +417,10 @@
       "sandbox": "Sandbox-Tier"
     },
     "approved": "Genehmigt",
+    "cli": {
+      "overrideTooltip": "{{adapter}} unabhängig gewählt (folgt nicht dem globalen CLI)",
+      "fallbackTooltip": "Folgt dem globalen CLI: {{adapter}} (Klick für unabhängige Konfiguration)"
+    },
     "renderError": "Renderfehler: {{label}}",
     "clearRenderError": "Leeren",
     "approve": "Genehmigen und autorisieren",

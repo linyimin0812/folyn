@@ -13,7 +13,7 @@
 
 import { createAdapter } from '@quill/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
-import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useAiConfigStore, getFeatureAdapter, getFeatureCliPath } from '@/store/aiConfigStore';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { collectTextFromStream, extractJsonObject, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
@@ -354,8 +354,8 @@ export async function generatePlan(
   const aiConfig = useAiConfigStore.getState();
   const basePath = await resolveBasePath(vault.currentVault.basePath);
 
-  const adapter = createAdapter(aiConfig.cliAdapter);
-  await adapter.start({ cliPath: aiConfig.cliPath, workingDir: basePath });
+  const adapter = createAdapter(getFeatureAdapter('schedule', aiConfig));
+  await adapter.start({ cliPath: getFeatureCliPath('schedule', aiConfig), workingDir: basePath });
 
   try {
     const basePrompt = buildPlanPrompt(ctx);

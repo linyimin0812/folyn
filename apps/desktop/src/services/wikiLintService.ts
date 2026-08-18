@@ -2,7 +2,7 @@
 
 import { wikiProvider } from './wikiProvider';
 import { useVaultStore } from '@/store/vaultStore';
-import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useAiConfigStore, getFeatureAdapter, getFeatureCliPath } from '@/store/aiConfigStore';
 import { createAdapter } from '@quill/cli-adapter';
 import type { ReviewItem, WikiFrontmatter } from '@/types/wiki';
 import { collectTextFromStream } from './aiStreamUtils';
@@ -149,11 +149,11 @@ export async function runSemanticLint(): Promise<ReviewItem[]> {
 
   await wikiProvider.init();
 
-  const adapter = createAdapter(aiConfig.cliAdapter);
+  const adapter = createAdapter(getFeatureAdapter('wiki', aiConfig));
   const basePath = await resolveBasePath(vault.currentVault.basePath);
   const workingDir = `${basePath}/__wiki__`;
 
-  await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
+  await adapter.start({ cliPath: getFeatureCliPath('wiki', aiConfig), workingDir });
 
   let aiText: string;
   try {

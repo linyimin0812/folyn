@@ -3,7 +3,7 @@
 import { useWikiStore } from '@/store/wikiStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { createAdapter } from '@quill/cli-adapter';
-import { useAiConfigStore } from '@/store/aiConfigStore';
+import { useAiConfigStore, getFeatureAdapter, getFeatureCliPath } from '@/store/aiConfigStore';
 import { wikiProvider } from './wikiProvider';
 import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';
 import type { IngestAnalysis } from '@/types/wiki';
@@ -106,12 +106,12 @@ export async function runIngest(filePaths: string[]): Promise<void> {
 
   await wikiProvider.init();
   const hashCache = await wikiProvider.readHashCache();
-  const adapter = createAdapter(aiConfig.cliAdapter);
+  const adapter = createAdapter(getFeatureAdapter('wiki', aiConfig));
   const basePath = await resolveBasePath(vault.currentVault.basePath);
   // wiki agent cwd = `<vault>/__wiki__/`：agent 自动发现 `.claude/agents/wiki.md`。
   const workingDir = `${basePath}/__wiki__`;
 
-  await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
+  await adapter.start({ cliPath: getFeatureCliPath('wiki', aiConfig), workingDir });
 
   try {
     const schema = await wikiProvider.readFile('schema.md').catch(() => '');

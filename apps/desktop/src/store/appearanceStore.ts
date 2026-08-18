@@ -45,6 +45,12 @@ export const PERSIST_KEYS_APPEARANCE = [
   'enableWikiPanel',
   'enableClipsPanel',
   'enableAnalyzePanel',
+  // ponytail: placeholder flags for schedule/study builtin rows (task
+  // 08-18). Default true so the row's Toggle paints on without any panel
+  // to bind yet — the flags will be wired to sidebar panels in a future
+  // task; the CLI adapter dropdown on the row works regardless.
+  'enableSchedulePanel',
+  'enableStudyPanel',
   'enabledAtWiki',
   'enabledAtClips',
   'enabledAtAnalyze',
@@ -64,6 +70,8 @@ export interface AppearanceState {
   enableWikiPanel: boolean;
   enableClipsPanel: boolean;
   enableAnalyzePanel: boolean;
+  enableSchedulePanel: boolean;
+  enableStudyPanel: boolean;
   /** Timestamp (Date.now()) when the corresponding panel was first enabled.
    * Used by registerBuiltinPanels to sort Wiki/Clips/Analyze by enable time
    * ascending in the ActivityBar (Files always stays first via order=0).
@@ -87,6 +95,8 @@ export interface AppearanceState {
   setEnableWikiPanel: (v: boolean) => void;
   setEnableClipsPanel: (v: boolean) => void;
   setEnableAnalyzePanel: (v: boolean) => void;
+  setEnableSchedulePanel: (v: boolean) => void;
+  setEnableStudyPanel: (v: boolean) => void;
   setExcludePatterns: (v: string) => void;
   setLinkOpenMode: (v: LinkOpenMode) => void;
   setVaultName: (name: string) => void;
@@ -106,6 +116,8 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   enableWikiPanel: false,
   enableClipsPanel: false,
   enableAnalyzePanel: false,
+  enableSchedulePanel: true,
+  enableStudyPanel: true,
   enabledAtWiki: undefined,
   enabledAtClips: undefined,
   enabledAtAnalyze: undefined,
@@ -172,6 +184,11 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
     }));
     persist();
   },
+  // ponytail: schedule/study have no panel wiring yet; setters persist the
+  // flag so the row's Toggle state survives restarts, but the value has
+  // no side effect. Wire up in a future task.
+  setEnableSchedulePanel: (v) => { set({ enableSchedulePanel: v }); persist(); },
+  setEnableStudyPanel: (v) => { set({ enableStudyPanel: v }); persist(); },
   setExcludePatterns: (v) => { set({ excludePatterns: v }); persist(); },
   setLinkOpenMode: (v) => { set({ linkOpenMode: v }); persist(); },
   setVaultName: (name) => { set({ vaultName: name }); persist(); },
@@ -188,6 +205,8 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
     if (blob.enableWikiPanel !== undefined) patch.enableWikiPanel = blob.enableWikiPanel as boolean;
     if (blob.enableClipsPanel !== undefined) patch.enableClipsPanel = blob.enableClipsPanel as boolean;
     if (blob.enableAnalyzePanel !== undefined) patch.enableAnalyzePanel = blob.enableAnalyzePanel as boolean;
+    if (blob.enableSchedulePanel !== undefined) patch.enableSchedulePanel = blob.enableSchedulePanel as boolean;
+    if (blob.enableStudyPanel !== undefined) patch.enableStudyPanel = blob.enableStudyPanel as boolean;
     if (blob.enabledAtWiki !== undefined) patch.enabledAtWiki = blob.enabledAtWiki as number;
     if (blob.enabledAtClips !== undefined) patch.enabledAtClips = blob.enabledAtClips as number;
     if (blob.enabledAtAnalyze !== undefined) patch.enabledAtAnalyze = blob.enabledAtAnalyze as number;
