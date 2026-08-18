@@ -6,25 +6,52 @@ import * as editorIoService from '@/services/editorIoService';
 import type { ReviewItem, WikiEntry } from '@/types/wiki';
 import { WIKI_PREFIX } from '@/types/wiki';
 import { FileIcon } from '@/components/icons/FileIcon';
-import { Plus, FileText, AlertCircle, Share2, Library, Square, X, Activity } from 'lucide-react';
+import {
+  Plus,
+  FileText,
+  AlertCircle,
+  Share2,
+  Library,
+  Square,
+  X,
+  Activity,
+  ChevronRight,
+  Circle,
+  Loader,
+  Check,
+} from 'lucide-react';
 
 function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
   const openFile = editorIoService.openFile;
+  const { t } = useTranslation();
+  // Item 5: per-dir collapse state, local to this row. Default: top-level
+  // (depth 0) dirs expanded, deeper dirs collapsed — depth heuristic. Not
+  // persisted — resets on remount.
+  const [expanded, setExpanded] = useState(depth < 1);
 
   if (entry.type === 'dir') {
     return (
       <div>
         <div
-          className="flex items-center gap-1.5 py-1 px-2 font-medium cursor-default text-[calc(var(--ui-font-size)-2px)] text-t2 rounded mx-1 transition-colors duration-100 hover:bg-hov hover:text-t1"
+          className="flex items-center gap-1.5 py-1 px-2 font-medium cursor-pointer text-[calc(var(--ui-font-size)-2px)] text-t2 rounded mx-1 transition-colors duration-100 hover:bg-hov hover:text-t1"
           style={{ paddingLeft: `${depth * 14 + 8}px` }}
+          onClick={() => setExpanded((v) => !v)}
+          role="button"
+          aria-expanded={expanded}
+          aria-label={t('sidebar:wikiTree.toggleDir')}
+          title={t('sidebar:wikiTree.toggleDir')}
         >
+          <ChevronRight
+            size={12}
+            className={`shrink-0 text-t3 transition-transform duration-100 ${expanded ? 'rotate-90' : ''}`}
+          />
           <span className="shrink-0 text-xs"><FileIcon filename={entry.name} isDir /></span>
           <span className="overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1">{entry.name}</span>
           {entry.children && (
             <span className="shrink-0 text-[10px] text-t3 bg-hov px-[5px] rounded-lg">{entry.children.filter((c) => c.type === 'file').length}</span>
           )}
         </div>
-        {entry.children?.map((child) => (
+        {expanded && entry.children?.map((child) => (
           <WikiEntryItem key={child.path} entry={child} depth={depth + 1} />
         ))}
       </div>
@@ -275,10 +302,12 @@ export function WikiFileTree() {
                 onClick={() => {
                   if (cancelIngest) return;
                   setCancelIngest(true);
-                  pushActivity('info', '正在终止...');
+                  pushActivity('info', '正在终止...', {
+                    key: 'wiki:activity.stopping',
+                  });
                 }}
                 disabled={cancelIngest}
-                title={cancelIngest ? '正在终止...' : t('sidebar:wikiTree.stopIngest')}
+                title={cancelIngest ? t('wiki:activity.stopping') : t('sidebar:wikiTree.stopIngest')}
                 aria-label={t('sidebar:wikiTree.stopIngest')}
               >
                 <Square size={13} />
@@ -428,6 +457,11 @@ function WikiIngestProgressStrip() {
   // sees a new ref every render → Maximum update depth exceeded loop.
   const activityLog = useWikiStore((s) => s.activityLog);
   const lastActivities = activityLog.slice(-5);
+  // Item 1: ingest queue list. Select the stable array ref, slice/render in
+  // the body — same pattern as activityLog above.
+  const ingestQueue = useWikiStore((s) => s.ingestQueue);
+  const queueShown = ingestQueue.slice(0, 10);
+  const queueOverflow = ingestQueue.length - queueShown.length;
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -459,7 +493,7 @@ function WikiIngestProgressStrip() {
   return (
     <div className="fixed bottom-4 right-4 z-50 w-80 max-h-72 rounded-lg border border-brd2 bg-surf shadow-lg overflow-hidden flex flex-col transition-opacity duration-200 opacity-100">
       <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-brd2 text-[10px] font-mono">
-        <span className="text-acc">Step {currentIngestStep ?? '?'}/3</span>
+        <span className="text-acc">{t('wiki:activity.stepLabel', { step: currentIngestStep ?? '?', total: 3 })}</span>
         {ingestProgress && <span className="truncate flex-1 min-w-0 text-t2">{ingestProgress}</span>}
         <button
           type="button"
@@ -471,15 +505,44 @@ function WikiIngestProgressStrip() {
           <X size={12} />
         </button>
       </div>
-      {lastActivities.length > 0 && (
-        <div className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5 text-[10px] text-t3">
-          {lastActivities.map((a) => (
-            <div key={a.id} className="truncate overflow-hidden text-ellipsis whitespace-nowrap">
-              {a.message}
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="flex-1 overflow-y-auto">
+        {queueShown.length > 0 && (
+          <div className="px-2 py-1 border-b border-brd2 space-y-0.5">
+            {queueShown.map((task) => (
+              <div
+                key={task.id}
+                className="flex items-center gap-1.5 text-[10px] font-mono text-t3"
+                title={task.error ?? task.filePath}
+              >
+                <span className="shrink-0">
+                  {task.status === 'done' ? (
+                    <Check size={11} className="text-[#4caf50]" />
+                  ) : task.status === 'error' ? (
+                    <X size={11} className="text-[#d04545]" />
+                  ) : task.status === 'analyzing' || task.status === 'generating' ? (
+                    <Loader size={11} className="text-[#f0a840] animate-spin" />
+                  ) : (
+                    <Circle size={11} className="text-t3" />
+                  )}
+                </span>
+                <span className="truncate flex-1 min-w-0">{task.filePath}</span>
+              </div>
+            ))}
+            {queueOverflow > 0 && (
+              <div className="text-[10px] text-t3 pl-[18px]">+{queueOverflow} more</div>
+            )}
+          </div>
+        )}
+        {lastActivities.length > 0 && (
+          <div className="px-2 py-1 space-y-0.5 text-[10px] text-t3">
+            {lastActivities.map((a) => (
+              <div key={a.id} className="truncate overflow-hidden text-ellipsis whitespace-nowrap">
+                {a.messageKey ? t(a.messageKey, a.messageParams ?? {}) : a.message}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

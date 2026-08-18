@@ -93,7 +93,10 @@ export async function runIngest(filePaths: string[]): Promise<void> {
 
   store.addToIngestQueue(filePaths);
   store.setIngesting(true, 1);
-  store.pushActivity('info', `开始摄入 ${filePaths.length} 个文件...`);
+  store.pushActivity('info', `开始摄入 ${filePaths.length} 个文件...`, {
+    key: 'wiki:activity.started',
+    params: { count: filePaths.length },
+  });
 
   await wikiProvider.init();
   const hashCache = await wikiProvider.readHashCache();
@@ -132,13 +135,19 @@ export async function runIngest(filePaths: string[]): Promise<void> {
         if (hashCache[task.filePath] === hash) {
           store.setIngestStatus(task.id, 'done');
           store.setIngestProgress(`跳过 (未变化): ${task.filePath}`);
-          store.pushActivity('info', `跳过 ${task.filePath}（内容未变化）`);
+          store.pushActivity('info', `跳过 ${task.filePath}（内容未变化）`, {
+            key: 'wiki:activity.skipped',
+            params: { path: task.filePath },
+          });
           continue;
         }
 
         // Step 1: Analysis (ingest action)
         store.setIngesting(true, 1);
-        store.pushActivity('step', `[Step 1/3] 分析 ${task.filePath} ...`);
+        store.pushActivity('step', `[Step 1/3] 分析 ${task.filePath} ...`, {
+          key: 'wiki:activity.stepAnalyze',
+          params: { path: task.filePath },
+        });
         const currentIndex = await wikiProvider.readFile('index.md').catch(() => '');
         const ingestInstruction = buildIngestInstruction(content, task.filePath, schema, purpose, currentIndex);
         const textPromise = collectTextFromStream(adapter);
@@ -159,10 +168,15 @@ export async function runIngest(filePaths: string[]): Promise<void> {
         store.setIngestStatus(task.id, 'generating');
         store.setIngesting(true, 2);
         store.setIngestProgress(`生成 wiki 页面: ${task.filePath}`);
-        store.pushActivity('step', `[Step 2/3] 生成 wiki 页面 ...`);
+        store.pushActivity('step', `[Step 2/3] 生成 wiki 页面 ...`, {
+          key: 'wiki:activity.stepGenerate',
+        });
         const entitiesCount = analysis.entities.length;
         const conceptsCount = analysis.concepts.length;
-        store.pushActivity('info', `发现 ${entitiesCount} 个实体, ${conceptsCount} 个概念`);
+        store.pushActivity('info', `发现 ${entitiesCount} 个实体, ${conceptsCount} 个概念`, {
+          key: 'wiki:activity.discovered',
+          params: { entities: entitiesCount, concepts: conceptsCount },
+        });
 
         const existingPages: Record<string, string> = {};
         for (const entity of analysis.entities) {
@@ -183,7 +197,10 @@ export async function runIngest(filePaths: string[]): Promise<void> {
         pauseWatcher();
         for (const change of plan.pages) {
           await wikiProvider.writeFile(change.path, change.content);
-          store.pushActivity('success', `写入 ${change.path}`);
+          store.pushActivity('success', `写入 ${change.path}`, {
+            key: 'wiki:activity.written',
+            params: { path: change.path },
+          });
         }
         // Append to index.md / log.md (C7 contract).
         const indexContent = await wikiProvider.readFile('index.md').catch(() => '# Wiki Index\n');
@@ -192,6 +209,12 @@ export async function runIngest(filePaths: string[]): Promise<void> {
         await wikiProvider.writeFile('index.md', newIndex);
         await wikiProvider.writeFile('log.md', newLog);
         resumeWatcher();
+        // Item 2: live-refresh the wiki file tree once per iteration after
+        // the page batch + index/log writes commit — newly-written wiki
+        // pages appear in the Files tree as the batch progresses, not only
+        // at the end of the whole ingest. One refresh per task, not per
+        // writeFile (too chatty).
+        await store.refreshWikiFiles();
 
         // Push contradictions + collisions to D review queue.
         if (plan.contradictions.length > 0 || plan.collisions.length > 0) {
@@ -217,7 +240,10 @@ export async function runIngest(filePaths: string[]): Promise<void> {
 
         store.setIngestStatus(task.id, 'done');
         store.setIngestProgress(`完成: ${task.filePath} (${plan.pages.length} 个文件变更)`);
-        store.pushActivity('success', `${task.filePath} 摄入完成，${plan.pages.length} 个文件变更`);
+        store.pushActivity('success', `${task.filePath} 摄入完成，${plan.pages.length} 个文件变更`, {
+          key: 'wiki:activity.done',
+          params: { path: task.filePath, count: plan.pages.length },
+        });
       } catch (err) {
         resumeWatcher();
         const msg = err instanceof Error
@@ -239,7 +265,9 @@ export async function runIngest(filePaths: string[]): Promise<void> {
     if (!cancelled && batchChanges.length > 0) {
       store.setIngesting(true, 3);
       store.setIngestProgress('刷新 overview...');
-      store.pushActivity('step', '[Step 3/3] 刷新 wiki overview ...');
+      store.pushActivity('step', '[Step 3/3] 刷新 wiki overview ...', {
+        key: 'wiki:activity.stepOverview',
+      });
       try {
         const overview = await wikiProvider.readFile('overview.md').catch(() => '');
         const purposeContent = await wikiProvider.readFile('purpose.md').catch(() => '');
@@ -283,7 +311,9 @@ export async function runIngest(filePaths: string[]): Promise<void> {
     const wasCancelled = useWikiStore.getState().cancelIngest;
     store.setIngesting(false);
     store.setIngestProgress('');
-    store.pushActivity(wasCancelled ? 'info' : 'success', wasCancelled ? '已终止摄入' : '摄入完成');
+    store.pushActivity(wasCancelled ? 'info' : 'success', wasCancelled ? '已终止摄入' : '摄入完成', {
+      key: wasCancelled ? 'wiki:activity.cancelled' : 'wiki:activity.completed',
+    });
     await store.refreshWikiFiles();
   }
 }

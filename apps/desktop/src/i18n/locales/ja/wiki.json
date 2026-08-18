@@ -22,5 +22,19 @@
       "zoomIn": "拡大",
       "zoomOut": "縮小"
     }
+  },
+  "activity": {
+    "stepLabel": "Step {{step}}/{{total}}",
+    "started": "{{count}} 個のファイルを取り込んでいます...",
+    "stepAnalyze": "[ステップ 1/3] {{path}} を分析中...",
+    "stepGenerate": "[ステップ 2/3] wiki ページを生成中...",
+    "stepOverview": "[ステップ 3/3] overview を更新中...",
+    "written": "{{path}} を書き込みました",
+    "discovered": "{{entities}} 個のエンティティ、{{concepts}} 個の概念を発見",
+    "done": "完了: {{path}} ({{count}} 件のファイル変更)",
+    "cancelled": "取り込みを中止しました",
+    "completed": "取り込み完了",
+    "stopping": "中止しています...",
+    "skipped": "スキップ (変更なし): {{path}}"
   }
 }

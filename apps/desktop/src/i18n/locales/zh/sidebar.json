@@ -97,6 +97,7 @@
     "filterAll": "全部",
     "closeIngestPanel": "关闭",
     "showIngestPanel": "显示摄入进度",
+    "toggleDir": "展开/收起目录",
     "subTab": {
       "files": "文件",
       "reviews": "Review"

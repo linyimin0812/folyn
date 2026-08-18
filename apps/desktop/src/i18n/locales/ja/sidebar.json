@@ -89,6 +89,7 @@
     "filterAll": "すべて",
     "closeIngestPanel": "閉じる",
     "showIngestPanel": "取り込み進捗を表示",
+    "toggleDir": "ディレクトリを切り替え",
     "subTab": {
       "files": "ファイル",
       "reviews": "Review"

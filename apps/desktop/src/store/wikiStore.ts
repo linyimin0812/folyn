@@ -10,6 +10,10 @@ export interface ActivityLogEntry {
   timestamp: number;
   type: 'info' | 'success' | 'error' | 'step';
   message: string;
+  /** i18n key (e.g. 'wiki:activity.started') — when set, the popup renders
+   * `t(messageKey, messageParams)` instead of the raw `message` fallback. */
+  messageKey?: string;
+  messageParams?: Record<string, string | number>;
 }
 
 interface WikiState {
@@ -47,7 +51,11 @@ interface WikiState {
 
   setWikiSubTab: (tab: 'files' | 'reviews') => void;
 
-  pushActivity: (type: ActivityLogEntry['type'], message: string) => void;
+  pushActivity: (
+    type: ActivityLogEntry['type'],
+    message: string,
+    i18n?: { key: string; params?: Record<string, string | number> },
+  ) => void;
   clearActivityLog: () => void;
 
   addReviewItems: (items: ReviewItem[]) => void;
@@ -164,12 +172,14 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
     set({ wikiSubTab: tab });
   },
 
-  pushActivity: (type, message) => {
+  pushActivity: (type, message, i18n) => {
     const entry: ActivityLogEntry = {
       id: generateId(),
       timestamp: Date.now(),
       type,
       message,
+      messageKey: i18n?.key,
+      messageParams: i18n?.params,
     };
     set((state) => ({
       activityLog: [...state.activityLog.slice(-99), entry],

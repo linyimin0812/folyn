@@ -97,6 +97,7 @@
     "filterAll": "All",
     "closeIngestPanel": "Close",
     "showIngestPanel": "Show ingest progress",
+    "toggleDir": "Toggle directory",
     "subTab": {
       "files": "Files",
       "reviews": "Reviews"
