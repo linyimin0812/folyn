@@ -66,7 +66,7 @@ export function CommandPalette() {
     <div
       className="dlg-overlay"
       onMouseDown={close}
-      style={{ background: 'transparent', backdropFilter: 'none', animation: 'none' }}
+      style={{ background: 'transparent', backdropFilter: 'none', animation: 'none', alignItems: 'flex-start', paddingTop: '12vh' }}
     >
       <div
         className="dlg"
