@@ -86,6 +86,11 @@
   "wikiTree": {
     "empty": "Wiki 为空。在 AI 面板中摄入文件开始构建知识库。",
     "addSourceFiles": "添加源文件进行摄入",
+    "pickConfirm": "摄入",
+    "pickCancel": "取消",
+    "pickSearch": "搜索文件名",
+    "pickEmpty": "Vault 中没有 markdown 文件",
+    "pickLoading": "读取 vault…",
     "ingestAll": "摄入全部 markdown",
     "stopIngest": "终止摄入",
     "reviewsEmpty": "暂无待处理 review。",

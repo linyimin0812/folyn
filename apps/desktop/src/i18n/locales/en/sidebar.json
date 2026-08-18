@@ -86,6 +86,11 @@
   "wikiTree": {
     "empty": "Wiki is empty. Ingest files from the AI panel to build the knowledge base.",
     "addSourceFiles": "Add source files to ingest",
+    "pickConfirm": "Ingest",
+    "pickCancel": "Cancel",
+    "pickSearch": "Search filename",
+    "pickEmpty": "No markdown files in vault",
+    "pickLoading": "Reading vault…",
     "ingestAll": "Ingest all markdown",
     "stopIngest": "Stop ingest",
     "reviewsEmpty": "No pending reviews.",

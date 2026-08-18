@@ -303,35 +303,17 @@ export function WikiFileTree() {
     setSelectedIds(new Set());
   }, [selectedIds, dismissReviewItem]);
 
-  const handlePickIngest = async () => {
-    const vault = useVaultStore.getState().currentVault;
-    if (!vault) return;
-    const { open } = await import('@tauri-apps/plugin-dialog');
-    const base = vault.basePath;
-    const picked = await open({
-      multiple: true,
-      directory: false,
-      defaultPath: base,
-      filters: [{ name: 'Markdown', extensions: ['md'] }],
-    });
-    if (!picked) return;
-    const paths = Array.isArray(picked) ? picked : [picked];
-    // ponytail: open() can't be hard-restricted to base — defaultPath only sets
-    // the start dir. Drop anything outside the vault so external picks don't
-    // get silently re-relativized into __wiki__ ingest.
-    const rel = paths
-      .map((p) => {
-        const norm = p.replace(/\\/g, '/');
-        const b = base.replace(/\\/g, '/').replace(/\/$/, '');
-        if (norm === b || norm.startsWith(`${b}/`)) {
-          return norm.slice(b.length).replace(/^\/+/, '');
-        }
-        return null;
-      })
-      .filter((p): p is string => Boolean(p) && !p.startsWith('__wiki__'));
-    if (rel.length === 0) return;
-    const { runIngest } = await import('@/services/wikiIngestService');
-    runIngest(rel).catch(console.error);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const handlePickIngest = () => {
+    if (useWikiStore.getState().isIngesting) return;
+    setPickerOpen(true);
+  };
+
+  const handlePickerConfirm = (paths: string[]) => {
+    setPickerOpen(false);
+    if (paths.length === 0) return;
+    void import('@/services/wikiIngestService').then(({ runIngest }) => runIngest(paths)).catch(console.error);
   };
 
   // ponytail: sync re-entry guard. The handler awaits several dynamic imports
@@ -562,6 +544,9 @@ export function WikiFileTree() {
       )}
 
       <WikiIngestProgressStrip />
+      {pickerOpen && (
+        <VaultFilePickerModal onClose={() => setPickerOpen(false)} onConfirm={handlePickerConfirm} />
+      )}
     </div>
   );
 }
@@ -651,6 +636,151 @@ function WikiIngestProgressStrip() {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ponytail: in-app vault file picker. Tauri's plugin-dialog open() is OS-native
+// and can't be hard-restricted to the vault dir, so we walk the vault ourselves
+// and present a flat filtered checkbox list. No tree UI — search filter covers
+// navigation; dense vaults scale by filter, not by indentation.
+function VaultFilePickerModal({
+  onClose,
+  onConfirm,
+}: {
+  onClose: () => void;
+  onConfirm: (paths: string[]) => void;
+}) {
+  const { t } = useTranslation();
+  const [files, setFiles] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const vault = useVaultStore.getState().currentVault;
+      if (!vault) return;
+      const { resolveBasePath } = await import('@/utils/pathResolver');
+      const { readDir } = await import('@tauri-apps/plugin-fs');
+      const base = await resolveBasePath(vault.basePath);
+      const out: string[] = [];
+      const walk = async (dirAbs: string, relPrefix: string) => {
+        let entries: { name?: string; isDirectory?: boolean }[];
+        try {
+          entries = await readDir(dirAbs);
+        } catch {
+          return;
+        }
+        for (const entry of entries) {
+          if (!entry.name || entry.name.startsWith('.')) continue;
+          const rel = relPrefix ? `${relPrefix}/${entry.name}` : entry.name;
+          if (entry.isDirectory) {
+            if (!relPrefix && entry.name === '__wiki__') continue;
+            await walk(`${dirAbs}/${entry.name}`, rel);
+          } else if (entry.name.endsWith('.md')) {
+            out.push(rel);
+          }
+        }
+      };
+      await walk(base, '');
+      if (cancelled) return;
+      out.sort((a, b) => a.localeCompare(b));
+      setFiles(out);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const filtered = filter
+    ? files.filter((f) => f.toLowerCase().includes(filter.toLowerCase()))
+    : files;
+  const allSelected = filtered.length > 0 && filtered.every((f) => selected.has(f));
+  const toggle = (path: string) => {
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  };
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected((s) => {
+        const next = new Set(s);
+        for (const f of filtered) next.delete(f);
+        return next;
+      });
+    } else {
+      setSelected((s) => {
+        const next = new Set(s);
+        for (const f of filtered) next.add(f);
+        return next;
+      });
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center" onClick={onClose}>
+      <div
+        className="w-[520px] max-h-[70vh] bg-surf border border-brd rounded-lg flex flex-col shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-3 py-2 border-b border-brd text-[12px] font-medium flex items-center gap-2">
+          {t('sidebar:wikiTree.addSourceFiles')}
+          <span className="text-t3 text-[11px]">({selected.size})</span>
+        </div>
+        <div className="px-3 py-2 border-b border-brd flex items-center gap-2">
+          <input
+            autoFocus
+            className="flex-1 bg-inp border border-brd rounded-md px-2 py-1 text-[12px] outline-none focus:border-acc"
+            placeholder={t('sidebar:wikiTree.pickSearch')}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+          <label className="flex items-center gap-1 text-[11px] text-t2 cursor-pointer">
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+            {t('sidebar:wikiTree.selectAll')}
+          </label>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {loading ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 size={16} className="animate-spin text-t3" />
+              <span className="ml-2 text-[11px] text-t3">{t('sidebar:wikiTree.pickLoading')}</span>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-t3 text-[11px] text-center py-6">{t('sidebar:wikiTree.pickEmpty')}</div>
+          ) : (
+            filtered.map((path) => (
+              <label
+                key={path}
+                className="flex items-center gap-2 px-3 py-1 hover:bg-hov cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.has(path)}
+                  onChange={() => toggle(path)}
+                />
+                <span className="text-[11px] font-mono truncate text-t1">{path}</span>
+              </label>
+            ))
+          )}
+        </div>
+        <div className="px-3 py-2 border-t border-brd flex justify-end gap-2">
+          <button className="btn btn-sm" onClick={onClose}>
+            {t('sidebar:wikiTree.pickCancel')}
+          </button>
+          <button
+            className="btn btn-sm btn-p"
+            disabled={selected.size === 0}
+            onClick={() => onConfirm([...selected])}
+          >
+            {t('sidebar:wikiTree.pickConfirm')}
+          </button>
+        </div>
       </div>
     </div>
   );
