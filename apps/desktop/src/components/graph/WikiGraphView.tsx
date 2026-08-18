@@ -16,7 +16,7 @@ const NODE_COLORS: Record<string, string> = {
 
 const EDGE_COLORS: Record<string, string> = {
   directLink: '#475569',    // slate-600 — dark solid, primary structural edge
-  sourceOverlap: '#0f766e', // teal-700 — solid, hue distinct from any node
+  sourceOverlap: '#be123c', // rose-700 — solid, red family distinct from all node hues
   adamicAdar: '#94a3b8',    // slate-400 — light dashed, inferred
   typeAffinity: '#cbd5e1',  // slate-300 — lighter dashed, weakest signal
 };
