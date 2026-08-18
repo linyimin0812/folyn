@@ -1924,3 +1924,39 @@ Polish pass over the wiki UI: unified graph node shapes (concept no longer rende
 ### Next Steps
 
 - None - task complete
+
+
+## Session 170: Wiki sidebar header query button + ingest entry-point gating
+
+**Date**: 2026-08-18
+**Task**: Wiki sidebar header query button + ingest entry-point gating
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added a wiki-query icon button (wiki_query.svg) next to the open-graph button in the wiki sidebar header, plus wiki:query.openQuery i18n key (en/zh/ja). Then gated the FilesPanel context-menu 'ingest to wiki' entry and the command-palette 'Wiki: Ingest Current File' command on enableWikiPanel so they don't surface when the wiki panel is disabled (the other two wiki commands already gated). Finally moved 'ingest to wiki' above 'add to chat' in the file context menu per request.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6677ab73` | (see git log) |
+| `d6d78851` | (see git log) |
+| `7e1868bb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
