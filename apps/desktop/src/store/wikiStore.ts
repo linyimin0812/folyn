@@ -122,12 +122,13 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
   },
 
   addToIngestQueue: (filePaths) => {
-    const tasks: IngestTask[] = filePaths.map((fp) => ({
-      id: generateId(),
-      filePath: fp,
-      status: 'pending',
-    }));
-    set((state) => ({ ingestQueue: [...state.ingestQueue, ...tasks] }));
+    set((state) => {
+      const existing = new Set(state.ingestQueue.map((t) => t.filePath));
+      const tasks: IngestTask[] = filePaths
+        .filter((fp) => !existing.has(fp))
+        .map((fp) => ({ id: generateId(), filePath: fp, status: 'pending' as const }));
+      return { ingestQueue: [...state.ingestQueue, ...tasks] };
+    });
   },
 
   setIngestStatus: (taskId, status, error) => {

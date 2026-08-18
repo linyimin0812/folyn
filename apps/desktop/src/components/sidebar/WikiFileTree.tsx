@@ -325,41 +325,53 @@ export function WikiFileTree() {
     runIngest(rel).catch(console.error);
   };
 
+  // ponytail: sync re-entry guard. The handler awaits several dynamic imports
+  // before dispatching runIngest, so a second click in the same tick would
+  // otherwise pile up duplicate queue entries. isIngesting takes over once
+  // runIngest is dispatched; the ref covers the async pre-dispatch window.
+  const ingestLockRef = useRef(false);
+
   // ponytail: walk vault dir once via readDir, collect .md excluding __wiki__.
   // No mtime cache; runIngest already does hash-based skip for unchanged files.
   const handleIngestAll = useCallback(async () => {
-    const vault = useVaultStore.getState().currentVault;
-    if (!vault) return;
-    const { resolveBasePath } = await import('@/utils/pathResolver');
-    const { readDir } = await import('@tauri-apps/plugin-fs');
-    const base = await resolveBasePath(vault.basePath);
-    const out: string[] = [];
-    const walk = async (dirAbs: string, relPrefix: string) => {
-      let entries: { name?: string; isDirectory?: boolean }[];
-      try {
-        entries = await readDir(dirAbs);
-      } catch {
+    if (ingestLockRef.current || useWikiStore.getState().isIngesting) return;
+    ingestLockRef.current = true;
+    try {
+      const vault = useVaultStore.getState().currentVault;
+      if (!vault) return;
+      const { resolveBasePath } = await import('@/utils/pathResolver');
+      const { readDir } = await import('@tauri-apps/plugin-fs');
+      const base = await resolveBasePath(vault.basePath);
+      const out: string[] = [];
+      const walk = async (dirAbs: string, relPrefix: string) => {
+        let entries: { name?: string; isDirectory?: boolean }[];
+        try {
+          entries = await readDir(dirAbs);
+        } catch {
+          return;
+        }
+        for (const entry of entries) {
+          if (!entry.name || entry.name.startsWith('.')) continue;
+          const rel = relPrefix ? `${relPrefix}/${entry.name}` : entry.name;
+          if (entry.isDirectory) {
+            // ponytail: skip __wiki__ + common non-source dirs at the root
+            if (!relPrefix && entry.name === '__wiki__') continue;
+            await walk(`${dirAbs}/${entry.name}`, rel);
+          } else if (entry.name.endsWith('.md')) {
+            out.push(rel);
+          }
+        }
+      };
+      await walk(base, '');
+      if (out.length === 0) {
+        console.warn('[WikiFileTree] ingestAll: no .md files found outside __wiki__');
         return;
       }
-      for (const entry of entries) {
-        if (!entry.name || entry.name.startsWith('.')) continue;
-        const rel = relPrefix ? `${relPrefix}/${entry.name}` : entry.name;
-        if (entry.isDirectory) {
-          // ponytail: skip __wiki__ + common non-source dirs at the root
-          if (!relPrefix && entry.name === '__wiki__') continue;
-          await walk(`${dirAbs}/${entry.name}`, rel);
-        } else if (entry.name.endsWith('.md')) {
-          out.push(rel);
-        }
-      }
-    };
-    await walk(base, '');
-    if (out.length === 0) {
-      console.warn('[WikiFileTree] ingestAll: no .md files found outside __wiki__');
-      return;
+      const { runIngest } = await import('@/services/wikiIngestService');
+      runIngest(out).catch(console.error);
+    } finally {
+      ingestLockRef.current = false;
     }
-    const { runIngest } = await import('@/services/wikiIngestService');
-    runIngest(out).catch(console.error);
   }, []);
 
   return (
