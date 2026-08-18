@@ -1883,3 +1883,44 @@ Chat markdown 外链点击会让 WKWebView 导航到外链 URL、丢失 React �
 ### Next Steps
 
 - None - task complete
+
+
+## Session 169: Wiki feature polish: graph shape, sidebar picker, vault modal
+
+**Date**: 2026-08-18
+**Task**: Wiki feature polish: graph shape, sidebar picker, vault modal
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Polish pass over the wiki UI: unified graph node shapes (concept no longer renders as a square), dropped redundant icons next to Files/Reviews sub-tabs, restricted the ingest + button to the current vault, and replaced the OS-native file picker with an in-app VaultFilePickerModal that walks the vault and renders an expandable tree with search/select-all + file/folder icons. Also fixed a missing Loader2 import that crashed the modal on first open and bumped picker font sizes for legibility.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fb043681` | (see git log) |
+| `bffbdd32` | (see git log) |
+| `b6a3ec7d` | (see git log) |
+| `6e4f8c03` | (see git log) |
+| `3d492dea` | (see git log) |
+| `6124f4ee` | (see git log) |
+| `e47dab46` | (see git log) |
+| `c6ae34a3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

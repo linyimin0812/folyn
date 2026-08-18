@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-3.md`
-- **Total Sessions**: 168
-- **Last Active**: 2026-08-17
+- **Total Sessions**: 169
+- **Last Active**: 2026-08-18
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-3.md` | ~1885 | Active |
+| `journal-3.md` | ~1926 | Active |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
@@ -31,6 +31,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 169 | 2026-08-18 | Wiki feature polish: graph shape, sidebar picker, vault modal | `fb043681`, `bffbdd32`, `b6a3ec7d`, `6e4f8c03`, `3d492dea`, `6124f4ee`, `e47dab46`, `c6ae34a3` | `master` |
 | 168 | 2026-08-17 | Fix chat external link hijacking WKWebView | `98186319` | `master` |
 | 167 | 2026-08-17 | Aliyun OSS provider + storage/upload dropdown icons + publicHint split | `ee5d693f`, `f120298a`, `41b65596`, `5b8d3b5d`, `21d19aef` | `master` |
 | 166 | 2026-08-16 | Settings detect UX: show not-installed, detected path, blank-by-default input | `7ab38349`, `0505121a` | `master` |
