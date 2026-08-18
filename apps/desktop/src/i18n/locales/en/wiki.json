@@ -35,6 +35,7 @@
     "cancelled": "Ingest cancelled",
     "completed": "Ingest complete",
     "stopping": "Stopping...",
-    "skipped": "Skipped (unchanged): {{path}}"
+    "skipped": "Skipped (unchanged): {{path}}",
+    "queueSummary": "{{processed}}/{{total}} files processed"
   }
 }

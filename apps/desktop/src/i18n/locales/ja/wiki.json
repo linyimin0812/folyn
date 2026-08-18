@@ -35,6 +35,7 @@
     "cancelled": "取り込みを中止しました",
     "completed": "取り込み完了",
     "stopping": "中止しています...",
-    "skipped": "スキップ (変更なし): {{path}}"
+    "skipped": "スキップ (変更なし): {{path}}",
+    "queueSummary": "{{processed}}/{{total}} 件処理済み"
   }
 }

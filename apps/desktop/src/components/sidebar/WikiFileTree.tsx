@@ -16,9 +16,6 @@ import {
   X,
   Activity,
   ChevronRight,
-  Circle,
-  Loader,
-  Check,
 } from 'lucide-react';
 
 function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
@@ -457,11 +454,11 @@ function WikiIngestProgressStrip() {
   // sees a new ref every render → Maximum update depth exceeded loop.
   const activityLog = useWikiStore((s) => s.activityLog);
   const lastActivities = activityLog.slice(-5);
-  // Item 1: ingest queue list. Select the stable array ref, slice/render in
-  // the body — same pattern as activityLog above.
+  // Item 1: ingest queue summary line. Select the stable array ref, derive
+  // counts in render — same pattern as activityLog above.
   const ingestQueue = useWikiStore((s) => s.ingestQueue);
-  const queueShown = ingestQueue.slice(0, 10);
-  const queueOverflow = ingestQueue.length - queueShown.length;
+  const queueTotal = ingestQueue.length;
+  const queueProcessed = ingestQueue.filter((t) => t.status === 'done' || t.status === 'error').length;
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -506,31 +503,9 @@ function WikiIngestProgressStrip() {
         </button>
       </div>
       <div className="flex-1 overflow-y-auto">
-        {queueShown.length > 0 && (
-          <div className="px-2 py-1 border-b border-brd2 space-y-0.5">
-            {queueShown.map((task) => (
-              <div
-                key={task.id}
-                className="flex items-center gap-1.5 text-[10px] font-mono text-t3"
-                title={task.error ?? task.filePath}
-              >
-                <span className="shrink-0">
-                  {task.status === 'done' ? (
-                    <Check size={11} className="text-[#4caf50]" />
-                  ) : task.status === 'error' ? (
-                    <X size={11} className="text-[#d04545]" />
-                  ) : task.status === 'analyzing' || task.status === 'generating' ? (
-                    <Loader size={11} className="text-[#f0a840] animate-spin" />
-                  ) : (
-                    <Circle size={11} className="text-t3" />
-                  )}
-                </span>
-                <span className="truncate flex-1 min-w-0">{task.filePath}</span>
-              </div>
-            ))}
-            {queueOverflow > 0 && (
-              <div className="text-[10px] text-t3 pl-[18px]">+{queueOverflow} more</div>
-            )}
+        {queueTotal > 0 && (
+          <div className="px-2 py-1 border-b border-brd2 text-[10px] font-mono text-t3">
+            {t('wiki:activity.queueSummary', { processed: queueProcessed, total: queueTotal })}
           </div>
         )}
         {lastActivities.length > 0 && (
