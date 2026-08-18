@@ -25,11 +25,13 @@ function WikiEntryItem({
   depth,
   expandedPaths,
   toggleDir,
+  activeWikiPath,
 }: {
   entry: WikiEntry;
   depth: number;
   expandedPaths: Set<string>;
   toggleDir: (path: string) => void;
+  activeWikiPath: string | null;
 }) {
   const openFile = editorIoService.openFile;
   const { t } = useTranslation();
@@ -67,15 +69,22 @@ function WikiEntryItem({
             depth={depth + 1}
             expandedPaths={expandedPaths}
             toggleDir={toggleDir}
+            activeWikiPath={activeWikiPath}
           />
         ))}
       </div>
     );
   }
 
+  const isActive = entry.path === activeWikiPath;
+
   return (
     <div
-      className="flex items-center gap-1.5 py-1 px-2 cursor-pointer text-[calc(var(--ui-font-size)-2px)] text-t2 rounded mx-1 transition-colors duration-100 hover:bg-hov hover:text-t1"
+      className={`flex items-center gap-1.5 py-1 px-2 cursor-pointer text-[calc(var(--ui-font-size)-2px)] rounded mx-1 transition-colors duration-100 ${
+        isActive
+          ? 'bg-accdim text-acc'
+          : 'text-t2 hover:bg-hov hover:text-t1'
+      }`}
       style={{ paddingLeft: `${depth * 14 + 8}px` }}
       onClick={() => openFile(`${WIKI_PREFIX}${entry.path}`, entry.name)}
       title={entry.path}
@@ -164,6 +173,14 @@ export function WikiFileTree() {
   const cancelIngest = useWikiStore((s) => s.cancelIngest);
   const setCancelIngest = useWikiStore((s) => s.setCancelIngest);
   const pushActivity = useWikiStore((s) => s.pushActivity);
+
+  // ponytail: stable string-or-null return — re-renders only when the active
+  // wiki path actually changes, not on every non-wiki tab switch.
+  const activeWikiPath = useEditorStore((s) => {
+    const tab = s.tabs.find((t) => t.id === s.activeTabId);
+    if (!tab || !tab.path.startsWith(WIKI_PREFIX)) return null;
+    return tab.path.slice(WIKI_PREFIX.length);
+  });
 
   // Batch selection + filter state — local to WikiFileTree; cleared when the
   // pending set changes shape (filter change doesn't clear, so user can toggle
@@ -434,6 +451,7 @@ export function WikiFileTree() {
               depth={0}
               expandedPaths={expandedPaths}
               toggleDir={toggleDir}
+              activeWikiPath={activeWikiPath}
             />
           ))}
           {dirs.map((entry) => (
@@ -443,6 +461,7 @@ export function WikiFileTree() {
               depth={0}
               expandedPaths={expandedPaths}
               toggleDir={toggleDir}
+              activeWikiPath={activeWikiPath}
             />
           ))}
           {wikiFiles.length === 0 && (
