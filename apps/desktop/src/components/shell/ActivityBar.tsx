@@ -24,6 +24,7 @@ import { Settings } from 'lucide-react';
 import { useNavStore } from '@/store/navStore';
 import { useVisiblePanels } from '@/store/featurePanelStore';
 import { useVaultStore } from '@/store/vaultStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 import { useTranslation } from 'react-i18next';
 import { GitPanel } from '@/components/git/GitPanel';
 import githubIcon from '@/assets/icons/github.svg';
@@ -49,6 +50,8 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   const setCurrentPage = useNavStore((s) => s.setCurrentPage);
   const currentPage = useNavStore((s) => s.currentPage);
   const currentVault = useVaultStore((s) => s.currentVault);
+  const enableSchedulePanel = useAppearanceStore((s) => s.enableSchedulePanel);
+  const enableStudyPanel = useAppearanceStore((s) => s.enableStudyPanel);
   const [gitOpen, setGitOpen] = useState(false);
 
   // Git icon only for GitHub-type vaults (clone-backed local git repo).
@@ -103,21 +106,25 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
     <div className="activity-bar">
       {filesPanel && renderPanelButton(filesPanel)}
 
-      <button
-        className={`activity-icon ${onSchedule ? 'active' : ''}`}
-        onClick={() => setCurrentPage('schedule')}
-        title={t('shell:nav.schedule')}
-      >
-        <ScheduleIcon size={14} active={onSchedule} />
-      </button>
+      {enableSchedulePanel && (
+        <button
+          className={`activity-icon ${onSchedule ? 'active' : ''}`}
+          onClick={() => setCurrentPage('schedule')}
+          title={t('shell:nav.schedule')}
+        >
+          <ScheduleIcon size={14} active={onSchedule} />
+        </button>
+      )}
 
-      <button
-        className={`activity-icon ${onStudy ? 'active' : ''}`}
-        onClick={() => setCurrentPage('study')}
-        title={t('shell:nav.study')}
-      >
-        <StudyIcon size={14} active={onStudy} />
-      </button>
+      {enableStudyPanel && (
+        <button
+          className={`activity-icon ${onStudy ? 'active' : ''}`}
+          onClick={() => setCurrentPage('study')}
+          title={t('shell:nav.study')}
+        >
+          <StudyIcon size={14} active={onStudy} />
+        </button>
+      )}
 
       {restPanels.map(renderPanelButton)}
 
