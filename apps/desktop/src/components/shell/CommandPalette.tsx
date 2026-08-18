@@ -24,6 +24,9 @@ export function CommandPalette() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  // ponytail: source gate. 'keyboard' for ArrowUp/Down; 'mouse' otherwise.
+  // Suppresses the hover→scroll→mouseenter feedback loop and typing-driven scroll.
+  const selectionSourceRef = useRef<'keyboard' | 'mouse'>('mouse');
 
   // Focus + select input when the palette opens.
   useEffect(() => {
@@ -33,30 +36,29 @@ export function CommandPalette() {
     }
   }, [isOpen]);
 
-  // Scroll the selected row into view as the selection moves.
+  // Scroll the selected row into view as the selection moves — keyboard only.
   useEffect(() => {
     if (!isOpen) return;
+    if (selectionSourceRef.current !== 'keyboard') return;
     const container = listRef.current;
     if (!container) return;
     const row = container.querySelector<HTMLElement>(`[data-palette-idx="${selectedIndex}"]`);
-    if (row) {
-      const top = row.offsetTop;
-      const bottom = top + row.offsetHeight;
-      if (top < container.scrollTop) container.scrollTop = top;
-      else if (bottom > container.scrollTop + container.clientHeight) {
-        container.scrollTop = bottom - container.clientHeight;
-      }
-    }
+    row?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex, isOpen, items.length]);
 
   if (!isOpen) return null;
 
   const close = () => useCommandPaletteStore.getState().close();
   const setQuery = (q: string) => useCommandPaletteStore.getState().setQuery(q);
-  const moveSelection = (delta: number) =>
+  const moveSelection = (delta: number) => {
+    selectionSourceRef.current = 'keyboard';
     useCommandPaletteStore.getState().moveSelection(delta);
+  };
   const runSelected = () => useCommandPaletteStore.getState().runSelected();
-  const select = (index: number) => useCommandPaletteStore.getState().select(index);
+  const select = (index: number) => {
+    selectionSourceRef.current = 'mouse';
+    useCommandPaletteStore.getState().select(index);
+  };
   const runCommand = (id: string) => useCommandPaletteStore.getState().runCommand(id);
 
   // Track the flat index across groups so keyboard nav aligns with `selectedIndex`.
