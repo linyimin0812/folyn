@@ -3,7 +3,7 @@
 import { wikiProvider } from './wikiProvider';
 import { useVaultStore } from '@/store/vaultStore';
 import { useAiConfigStore } from '@/store/aiConfigStore';
-import { createAdapter } from '@quill/cli-adapter';
+import { createAdapter, type CliStreamEvent } from '@quill/cli-adapter';
 import { collectTextFromStream } from './aiStreamUtils';
 import { getFeatureAgentSendOptions } from './featureAgentService';
 import { resolveBasePath } from '@/utils/pathResolver';
@@ -34,10 +34,21 @@ export function buildQueryInstruction(query: string, wikiContext: string): strin
  * agent 文件存在 → bare:false + --agent wiki（cwd=`<vault>/__wiki__/` 自动发现）；
  * 不存在 → --bare 回退（仍发送指令，但无 feature agent 上下文）。
  *
- * ponytail: A4.b multi-turn — 传入 sessionId 时透传 resumeSessionId，由 Claude CLI 按 id 持久化历史。
- * 适配器仍每次 start/stop（无状态），但会话历史由 CLI 自身在磁盘上按 id 持久化。
+ * ponytail: multi-turn resume — only pass `--resume <id>` when `resume && sessionId`
+ * is truthy. On the first call the local sessionId is a freshly-generated ID that
+ * does NOT exist on disk yet, so `claude --resume <id>` rejects immediately with
+ * `subtype: "error_during_execution", num_turns: 0`. Omitting `resumeSessionId`
+ * on the first call lets the CLI start fresh and emit a `session_id` in its
+ * `system/init` event; we capture it via the side listener and return it so the
+ * caller can write it back to the store — subsequent calls pass `resume=true`
+ * with the real on-disk id. Upgrade path: capture session_id from the `result`
+ * event too if `system/init` ever stops firing.
  */
-export async function runWikiQuery(query: string, sessionId?: string): Promise<string> {
+export async function runWikiQuery(
+  query: string,
+  sessionId?: string,
+  resume = false,
+): Promise<{ answer: string; sessionId?: string }> {
   const vault = useVaultStore.getState();
   const aiConfig = useAiConfigStore.getState();
   if (!vault.currentVault) throw new Error('No active vault');
@@ -51,12 +62,25 @@ export async function runWikiQuery(query: string, sessionId?: string): Promise<s
 
   await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
 
+  let assignedSessionId: string | undefined;
+  const captureSessionId = (event: CliStreamEvent) => {
+    if (event.type === 'session_id' && event.sessionId) {
+      assignedSessionId = event.sessionId;
+    }
+  };
+  adapter.onEvent(captureSessionId);
+
   try {
     const sendOpts = await getFeatureAgentSendOptions('wiki');
+    const finalOpts = resume && sessionId
+      ? { ...sendOpts, resumeSessionId: sessionId }
+      : sendOpts;
     const textPromise = collectTextFromStream(adapter);
-    await adapter.send(instruction, { ...sendOpts, resumeSessionId: sessionId });
-    return await textPromise;
+    await adapter.send(instruction, finalOpts);
+    const answer = await textPromise;
+    return { answer, sessionId: assignedSessionId };
   } finally {
+    adapter.offEvent(captureSessionId);
     await adapter.stop();
   }
 }
