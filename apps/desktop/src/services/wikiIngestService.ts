@@ -293,24 +293,20 @@ export async function runIngest(filePaths: string[]): Promise<void> {
       }
     }
 
-    // B4: auto-run structural lint + semantic lint after ingest batch.
-    // Semantic lint is an LLM call — runs after structural so structural
-    // issues are surfaced first; both feed the Reviews queue.
+    // B4: auto-run structural lint after ingest batch. Semantic lint is an
+    // LLM call and stays a manual deep-check (wikiLintService.ts:213-218) —
+    // running it inline here held the await chain with the progress message
+    // stuck on "运行结构性 lint..." and made ingest look hung.
     if (!cancelled && batchChanges.length > 0) {
       store.setIngestProgress('运行结构性 lint...');
       store.pushActivity('step', '运行结构性 lint ...');
       try {
-        const { runStructuralLintService, runSemanticLint } = await import('./wikiLintService');
+        const { runStructuralLintService } = await import('./wikiLintService');
         // ponytail: runStructuralLintService now adds reviews + pushes the
         // completion toast itself; we only surface the count to the activity log.
         const lintItems = await runStructuralLintService();
         if (lintItems.length > 0) {
           store.pushActivity('info', `lint 发现 ${lintItems.length} 项结构性问题`);
-        }
-        const semanticItems = await runSemanticLint();
-        if (semanticItems.length > 0) {
-          store.addReviewItems(semanticItems);
-          store.pushActivity('info', `lint 发现 ${semanticItems.length} 项语义重复`);
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
