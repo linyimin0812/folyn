@@ -164,6 +164,34 @@ export function WikiGraphView() {
     render();
   }, [hoveredNode, zoom, panX, panY, render]);
 
+  // ponytail: auto-fit the graph bbox to the canvas viewport once the sim
+  // settles (d3-force `end` event) — small graphs were rendering tiny at zoom 1.
+  // Also reused by the Center button so it re-fits the current layout instead
+  // of resetting to zoom 1, pan 0.
+  const autoFit = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || nodesRef.current.length === 0) return;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const n of nodesRef.current) {
+      if (n.x === undefined || n.y === undefined) continue;
+      minX = Math.min(minX, n.x); minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x); maxY = Math.max(maxY, n.y);
+    }
+    if (!isFinite(minX)) return;
+    const bboxW = maxX - minX || 1;
+    const bboxH = maxY - minY || 1;
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    const scale = Math.min(
+      canvas.clientWidth / bboxW,
+      canvas.clientHeight / bboxH,
+    ) * 0.9;
+    const clamped = Math.max(0.2, Math.min(5, scale));
+    setZoom(clamped);
+    setPanX(-cx * clamped);
+    setPanY(-cy * clamped);
+  }, []);
+
   useEffect(() => {
     if (nodes.length === 0) return;
 
@@ -173,24 +201,23 @@ export function WikiGraphView() {
     edgesRef.current = simEdges;
 
     const sim = forceSimulation(simNodes as any)
-      .force('link', forceLink(simEdges as any).id((d: any) => d.id).distance(180))
-      // ponytail: distanceMax caps charge range so disconnected components don't
-      // shove each other to opposite corners; radial(0) pulls each node toward
-      // origin individually (unlike forceCenter which only centers the mean).
-      // Strength 0.015 (down from 0.05) — enough to drift disconnected components
-      // inward over time, not enough to compress local layout against the charge.
-      .force('charge', forceManyBody().strength(-500).distanceMax(250))
+      .force('link', forceLink(simEdges as any).id((d: any) => d.id).distance(220))
+      // ponytail: charge strength -700 (was -500) — stronger repulsion spreads
+      // dense clusters further. distanceMax removed: radial(0) at 0.015 keeps
+      // disconnected components from drifting to corners; distanceMax was
+      // compensating for too-strong radial before, no longer needed.
+      .force('charge', forceManyBody().strength(-700))
       .force('center', forceCenter(0, 0))
       .force('radial', forceRadial(0, 0).strength(0.015))
-      // ponytail: collide padding +12 (up from +6) — doubles empty space per node,
-      // the most direct density fix since collide physically prevents overlap.
-      .force('collide', forceCollide((d: any) => Math.max(3, Math.sqrt((d.linkCount || 0) + 1) * 1.5) + 12))
-      .on('tick', render);
+      // ponytail: collide padding +18 (up from +12) — more physical space per node.
+      .force('collide', forceCollide((d: any) => Math.max(3, Math.sqrt((d.linkCount || 0) + 1) * 1.5) + 18))
+      .on('tick', render)
+      .on('end', autoFit);
 
     simRef.current = sim;
 
     return () => { sim.stop(); };
-  }, [nodes, edges]);
+  }, [nodes, edges, render, autoFit]);
 
   const findNodeAtPos = useCallback((clientX: number, clientY: number): WikiGraphNode | null => {
     const canvas = canvasRef.current;
@@ -281,7 +308,7 @@ export function WikiGraphView() {
           className="p-1 hover:bg-[var(--hov)] hover:text-[var(--t1)] rounded transition-colors"
           aria-label={t('wiki:graph.controls.center')}
           title={t('wiki:graph.controls.center')}
-          onClick={() => { setPanX(0); setPanY(0); setZoom(1); }}
+          onClick={autoFit}
         >
           <LocateFixed size={14} />
         </button>
