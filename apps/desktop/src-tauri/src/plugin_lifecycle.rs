@@ -12,8 +12,7 @@ use tauri::{Emitter, Manager};
 
 use crate::errors::AppError;
 use crate::plugin_commands::{
-    PluginEntry, is_valid_plugin_id, plugins_dir, read_plugins_json, remove_record,
-    upsert_record, write_plugins_json,
+    PluginEntry, plugins_dir, read_plugins_json, remove_record, write_plugins_json,
 };
 use crate::plugin_security::verify_plugin_signature;
 

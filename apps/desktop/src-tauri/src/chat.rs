@@ -354,8 +354,8 @@ async fn run_provider_stream(
     let (full, assistant_images): (String, Vec<AssistantImage>) = match resolved {
         "anthropic" | "anthropic-compatible" => {
             let mut b = anthropic::Client::builder().api_key(params.api_key.clone());
-            if let Some(url) = params.base_url {
-                b = b.base_url(url);
+            if let Some(url) = &params.base_url {
+                b = b.base_url(url.clone());
             }
             // ponytail: Anthropic requires max_tokens (no default); 4096 fits most chat turns. Bump to 8192 if a user hits truncation on long responses.
             let agent = with_thinking(
@@ -374,8 +374,8 @@ async fn run_provider_stream(
         }
         "gemini" => {
             let mut b = gemini::Client::builder().api_key(params.api_key.clone());
-            if let Some(url) = params.base_url {
-                b = b.base_url(url);
+            if let Some(url) = &params.base_url {
+                b = b.base_url(url.clone());
             }
             let agent = with_thinking(
                 b.build()
@@ -397,8 +397,8 @@ async fn run_provider_stream(
             // base_url (catalog default is the China host without /v1, so
             // `ensure_v1_segment` adds it).
             let mut b = moonshot::Client::builder().api_key(params.api_key.clone());
-            if let Some(url) = params.base_url {
-                b = b.base_url(ensure_v1_segment(&url));
+            if let Some(url) = &params.base_url {
+                b = b.base_url(ensure_v1_segment(url));
             }
             let agent = with_thinking(
                 b.build()
@@ -420,7 +420,7 @@ async fn run_provider_stream(
         // `openai-completions` arm below.
         "deepseek" => {
             let mut b = deepseek::Client::builder().api_key(params.api_key.clone());
-            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
             let agent = with_thinking(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
@@ -432,7 +432,7 @@ async fn run_provider_stream(
         }
         "groq" => {
             let mut b = groq::Client::builder().api_key(params.api_key.clone());
-            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
             let agent = with_thinking(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
@@ -444,7 +444,7 @@ async fn run_provider_stream(
         }
         "hyperbolic" => {
             let mut b = hyperbolic::Client::builder().api_key(params.api_key.clone());
-            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
             let agent = with_thinking(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
@@ -456,7 +456,7 @@ async fn run_provider_stream(
         }
         "mira" => {
             let mut b = mira::Client::builder().api_key(params.api_key.clone());
-            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
             let agent = with_thinking(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
@@ -468,7 +468,7 @@ async fn run_provider_stream(
         }
         "openrouter" => {
             let mut b = openrouter::Client::builder().api_key(params.api_key.clone());
-            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
             let agent = with_thinking(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
@@ -480,7 +480,7 @@ async fn run_provider_stream(
         }
         "perplexity" => {
             let mut b = perplexity::Client::builder().api_key(params.api_key.clone());
-            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
             let agent = with_thinking(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
@@ -492,7 +492,7 @@ async fn run_provider_stream(
         }
         "together" => {
             let mut b = together::Client::builder().api_key(params.api_key.clone());
-            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
             let agent = with_thinking(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
@@ -504,7 +504,7 @@ async fn run_provider_stream(
         }
         "xai" => {
             let mut b = xai::Client::builder().api_key(params.api_key.clone());
-            if let Some(url) = params.base_url { b = b.base_url(ensure_v1_segment(&url)); }
+            if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
             let agent = with_thinking(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
@@ -549,8 +549,8 @@ async fn run_provider_stream(
         }
         "cohere" => {
             let mut b = cohere::Client::builder().api_key(params.api_key.clone());
-            if let Some(url) = params.base_url {
-                b = b.base_url(url);
+            if let Some(url) = &params.base_url {
+                b = b.base_url(url.clone());
             }
             // ponytail: cohere doesn't support reasoning — with_thinking is a
             // no-op (thinking_params returns None). Kept in the chain for
@@ -568,8 +568,8 @@ async fn run_provider_stream(
         }
         "huggingface" => {
             let mut b = huggingface::Client::builder().api_key(params.api_key.clone());
-            if let Some(url) = params.base_url {
-                b = b.base_url(url);
+            if let Some(url) = &params.base_url {
+                b = b.base_url(url.clone());
             }
             let agent = with_thinking(
                 b.build()

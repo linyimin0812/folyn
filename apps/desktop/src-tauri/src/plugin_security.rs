@@ -445,7 +445,7 @@ fn safe_zip_path(name: &str) -> Option<PathBuf> {
 /// result. Hard-fails (with cleanup by the caller) when a file exceeds the
 /// size/count caps. The blacklist + slip checks are collected, not abort-
 /// early, so the user sees ALL offenders in one error message.
-fn extract_zip_filtered(zip_path: &Path, staging: &Path) -> Result<(Vec<String>, Vec<String>, Vec<String>), AppError> {
+pub(crate) fn extract_zip_filtered(zip_path: &Path, staging: &Path) -> Result<(Vec<String>, Vec<String>, Vec<String>), AppError> {
     let file = fs::File::open(zip_path).map_err(|e| format!("failed to open zip: {e}"))?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("failed to read zip: {e}"))?;
 
