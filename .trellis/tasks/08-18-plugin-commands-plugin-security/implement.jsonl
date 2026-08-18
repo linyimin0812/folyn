@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "重构以职责分离为目的,参考代码复用/职责切分指引"}
+{"file": "apps/desktop/src-tauri/src/plugin_commands.rs", "reason": "被拆分的源文件,迁移函数清单与测试的 ground truth"}

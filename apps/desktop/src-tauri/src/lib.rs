@@ -11,6 +11,7 @@
 mod commands;
 pub mod errors;
 mod plugin_commands;
+mod plugin_security;
 mod chat;
 mod list_models;
 mod voice;
