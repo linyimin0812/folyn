@@ -6,19 +6,21 @@ import { useWikiGraphStore } from '@/store/wikiGraphStore';
 import * as editorIoService from '@/services/editorIoService';
 import type { WikiGraphNode, WikiGraphEdge } from '@/types/wiki';
 
+// ponytail: all node hues sit in tailwind-600 (L≈0.50-0.57) for equal perceived
+// vividness — prior mix of -500 lightness bands made amber glarish, blue recessive.
 const NODE_COLORS: Record<string, string> = {
-  'user-file': '#64748b',  // slate-500 — darker neutral, better contrast vs bg
-  entity: '#3b82f6',        // blue-500
-  concept: '#10b981',       // emerald-500
-  source: '#f59e0b',        // amber-500 — distinct warm hue, no longer gray-like
-  synthesis: '#a855f7',     // purple-500
+  'user-file': '#475569',  // slate-600 — neutral, raw vault file stays muted
+  entity: '#2563eb',       // blue-600 — was blue-500
+  concept: '#16a34a',      // green-600 — was emerald-500
+  source: '#d97706',       // amber-600 — was amber-500, no longer glares
+  synthesis: '#9333ea',    // purple-600 — was purple-500
 };
 
 const EDGE_COLORS: Record<string, string> = {
-  directLink: '#475569',    // slate-600 — dark solid, primary structural edge
-  sourceOverlap: '#be123c', // rose-700 — solid, red family distinct from all node hues
+  directLink: '#334155',    // slate-700 — was slate-600 (clashed with user-file node); one band darker
+  sourceOverlap: '#be123c', // rose-700 — only colored edge, distinct from all node hues
   adamicAdar: '#94a3b8',    // slate-400 — light dashed, inferred
-  typeAffinity: '#cbd5e1',  // slate-300 — lighter dashed, weakest signal
+  typeAffinity: '#cbd5e1',   // slate-300 — lighter dashed, weakest signal
 };
 
 // ponytail: 4px slack — anything below this counts as a click, not a drag.
