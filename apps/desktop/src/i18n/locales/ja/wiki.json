@@ -3,7 +3,6 @@
     "input": {
       "placeholder": "Wikiに質問する…"
     },
-    "submit": "質問",
     "newSession": "新規セッション",
     "openGraph": "グラフを開く",
     "empty": "まだ会話がありません。質問してWikiを検索してください。",

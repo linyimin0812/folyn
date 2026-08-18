@@ -3,7 +3,6 @@
     "input": {
       "placeholder": "向 Wiki 提问…"
     },
-    "submit": "提问",
     "newSession": "新建会话",
     "openGraph": "打开图谱",
     "empty": "尚无对话。提问以查询 Wiki。",

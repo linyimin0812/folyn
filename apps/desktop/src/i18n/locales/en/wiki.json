@@ -3,7 +3,6 @@
     "input": {
       "placeholder": "Ask the wiki…"
     },
-    "submit": "Ask",
     "newSession": "New session",
     "openGraph": "Open graph",
     "empty": "No turns yet. Ask a question to query the wiki.",

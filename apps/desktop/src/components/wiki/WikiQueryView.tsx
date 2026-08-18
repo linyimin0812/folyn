@@ -126,9 +126,9 @@ export function WikiQueryView() {
           {t('wiki:query.newSession')}
         </button>
         <div className="flex-1 relative flex items-center">
-          <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-t3 pointer-events-none" />
+          <Search size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-t3 pointer-events-none" />
           <input
-            className="flex-1 min-w-0 bg-inp border border-brd rounded-md pl-7 pr-2.5 py-1.5 text-[12px] font-ui text-t1 outline-none focus:border-acc"
+            className="flex-1 min-w-0 bg-inp border border-brd rounded-md pl-2.5 pr-7 py-1.5 text-[12px] font-ui text-t1 outline-none focus:border-acc"
             placeholder={placeholder}
             value={input}
             onChange={(e) => setInput(e.target.value)}
