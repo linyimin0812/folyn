@@ -43,13 +43,13 @@ import { WikiIcon as WikiIconComponent } from '@/components/icons/WikiIcon';
 
 // ── Built-in icons (reuse the exact SVGs from the pre-PR2 ActivityBar) ──────────
 const FilesIcon: ReactNode = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
     <path d="M3 7V17a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
   </svg>
 );
-const WikiIcon: ReactNode = <WikiIconComponent size={18} />;
-const ClipsIcon: ReactNode = <ClipsIconComponent size={18} />;
-const AnalyzeIcon: ReactNode = <AnalyzeIconComponent size={18} />;
+const WikiIcon: ReactNode = <WikiIconComponent size={14} />;
+const ClipsIcon: ReactNode = <ClipsIconComponent size={14} />;
+const AnalyzeIcon: ReactNode = <AnalyzeIconComponent size={14} />;
 
 let wired = false;
 

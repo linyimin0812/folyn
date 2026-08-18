@@ -46,9 +46,9 @@ function renderIcon(icon: string): ReactNode {
   // self-contained). A `ThemeIcon` name (e.g. "folder") is the convenience path
   // for built-in host icons. Both return ReactNode; the activity bar renders it.
   if (icon.trim().startsWith('<svg')) {
-    return <IconFromSvg svg={icon} size={16} />;
+    return <IconFromSvg svg={icon} size={12} />;
   }
-  return <ThemeIcon name={icon} size={16} />;
+  return <ThemeIcon name={icon} size={12} />;
 }
 
 export function registerPluginFeatures(

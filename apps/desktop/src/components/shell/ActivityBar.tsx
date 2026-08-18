@@ -108,7 +108,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
         onClick={() => setCurrentPage('schedule')}
         title={t('shell:nav.schedule')}
       >
-        <ScheduleIcon size={18} active={onSchedule} />
+        <ScheduleIcon size={14} active={onSchedule} />
       </button>
 
       <button
@@ -116,7 +116,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
         onClick={() => setCurrentPage('study')}
         title={t('shell:nav.study')}
       >
-        <StudyIcon size={18} active={onStudy} />
+        <StudyIcon size={14} active={onStudy} />
       </button>
 
       {restPanels.map(renderPanelButton)}
@@ -130,7 +130,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
             onClick={() => setGitOpen(true)}
             title={t('shell:nav.git')}
           >
-            <img src={githubIcon} alt="" width="18" height="18" />
+            <img src={githubIcon} alt="" width="14" height="14" />
           </button>
           {gitOpen && <GitPanel onClose={() => setGitOpen(false)} />}
         </>
@@ -141,7 +141,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
         onClick={() => setCurrentPage('settings')}
         title={t('shell:nav.settings')}
       >
-        <Settings size={16} />
+        <Settings size={13} />
       </button>
     </div>
   );
