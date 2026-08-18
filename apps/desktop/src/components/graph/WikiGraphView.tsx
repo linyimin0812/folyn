@@ -7,18 +7,18 @@ import * as editorIoService from '@/services/editorIoService';
 import type { WikiGraphNode, WikiGraphEdge } from '@/types/wiki';
 
 const NODE_COLORS: Record<string, string> = {
-  'user-file': '#94a3b8',
-  entity: '#3b82f6',
-  concept: '#22c55e',
-  source: '#a1a1aa',
-  synthesis: '#a855f7',
+  'user-file': '#64748b',  // slate-500 — darker neutral, better contrast vs bg
+  entity: '#3b82f6',        // blue-500
+  concept: '#10b981',       // emerald-500
+  source: '#f59e0b',        // amber-500 — distinct warm hue, no longer gray-like
+  synthesis: '#a855f7',     // purple-500
 };
 
 const EDGE_COLORS: Record<string, string> = {
-  directLink: '#3b82f6',
-  sourceOverlap: '#22c55e',
-  adamicAdar: '#d1d5db',
-  typeAffinity: '#e5e7eb',
+  directLink: '#475569',    // slate-600 — dark solid, primary structural edge
+  sourceOverlap: '#0f766e', // teal-700 — solid, hue distinct from any node
+  adamicAdar: '#94a3b8',    // slate-400 — light dashed, inferred
+  typeAffinity: '#cbd5e1',  // slate-300 — lighter dashed, weakest signal
 };
 
 // ponytail: 4px slack — anything below this counts as a click, not a drag.
