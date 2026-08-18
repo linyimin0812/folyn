@@ -6,7 +6,7 @@ import * as editorIoService from '@/services/editorIoService';
 import type { ReviewItem, WikiEntry } from '@/types/wiki';
 import { WIKI_PREFIX } from '@/types/wiki';
 import { FileIcon } from '@/components/icons/FileIcon';
-import { Plus, FileText, AlertCircle, Share2 } from 'lucide-react';
+import { Plus, FileText, AlertCircle, Share2, Library } from 'lucide-react';
 
 function WikiEntryItem({ entry, depth }: { entry: WikiEntry; depth: number }) {
   const openFile = editorIoService.openFile;
@@ -209,6 +209,43 @@ export function WikiFileTree() {
     runIngest(rel).catch(console.error);
   };
 
+  // ponytail: walk vault dir once via readDir, collect .md excluding __wiki__.
+  // No mtime cache; runIngest already does hash-based skip for unchanged files.
+  const handleIngestAll = useCallback(async () => {
+    const vault = useVaultStore.getState().currentVault;
+    if (!vault) return;
+    const { resolveBasePath } = await import('@/utils/pathResolver');
+    const { readDir } = await import('@tauri-apps/plugin-fs');
+    const base = await resolveBasePath(vault.basePath);
+    const out: string[] = [];
+    const walk = async (dirAbs: string, relPrefix: string) => {
+      let entries: { name?: string; isDirectory?: boolean }[];
+      try {
+        entries = await readDir(dirAbs);
+      } catch {
+        return;
+      }
+      for (const entry of entries) {
+        if (!entry.name || entry.name.startsWith('.')) continue;
+        const rel = relPrefix ? `${relPrefix}/${entry.name}` : entry.name;
+        if (entry.isDirectory) {
+          // ponytail: skip __wiki__ + common non-source dirs at the root
+          if (!relPrefix && entry.name === '__wiki__') continue;
+          await walk(`${dirAbs}/${entry.name}`, rel);
+        } else if (entry.name.endsWith('.md')) {
+          out.push(rel);
+        }
+      }
+    };
+    await walk(base, '');
+    if (out.length === 0) {
+      console.warn('[WikiFileTree] ingestAll: no .md files found outside __wiki__');
+      return;
+    }
+    const { runIngest } = await import('@/services/wikiIngestService');
+    runIngest(out).catch(console.error);
+  }, []);
+
   return (
     <div className="flex-1 overflow-y-auto flex flex-col">
       <div className="py-2 px-3 text-[11px] font-semibold text-t3 uppercase tracking-[0.5px] flex items-center justify-between">
@@ -223,13 +260,22 @@ export function WikiFileTree() {
           </button>
         </div>
         {subTab === 'files' && (
-          <button
-            className="text-t3 hover:text-acc transition-colors"
-            onClick={handlePickIngest}
-            title={t('sidebar:wikiTree.addSourceFiles')}
-          >
-            <Plus size={13} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              className="text-t3 hover:text-acc transition-colors"
+              onClick={handleIngestAll}
+              title={t('sidebar:wikiTree.ingestAll')}
+            >
+              <Library size={13} />
+            </button>
+            <button
+              className="text-t3 hover:text-acc transition-colors"
+              onClick={handlePickIngest}
+              title={t('sidebar:wikiTree.addSourceFiles')}
+            >
+              <Plus size={13} />
+            </button>
+          </div>
         )}
       </div>
       {/* Sub-tab toggle: Files | Reviews (with count badge) */}
