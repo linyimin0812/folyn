@@ -99,7 +99,7 @@ export function WikiGraphView() {
         : edge.signals.directLink ? EDGE_COLORS.directLink
         : edge.signals.sourceOverlap ? EDGE_COLORS.sourceOverlap
         : EDGE_COLORS.adamicAdar;
-      ctx.lineWidth = Math.min(edge.weight * 0.3, 3);
+      ctx.lineWidth = Math.min(edge.weight * 0.15, 1.5);
       if (!edge.signals.directLink && !edge.signals.sourceOverlap) {
         ctx.setLineDash([4, 4]);
       } else {
@@ -117,7 +117,7 @@ export function WikiGraphView() {
       const isHovered = node.id === hoveredNode;
       const isNeighbor = !!neighborIds?.has(node.id);
       const dimmed = hoveredNode && !isHovered && !isNeighbor;
-      const radius = Math.max(4, Math.sqrt(node.linkCount + 1) * 3);
+      const radius = Math.max(3, Math.sqrt(node.linkCount + 1) * 1.5);
       const color = NODE_COLORS[node.type] || '#94a3b8';
 
       ctx.globalAlpha = dimmed ? 0.15 : 1;
@@ -170,10 +170,10 @@ export function WikiGraphView() {
     edgesRef.current = simEdges;
 
     const sim = forceSimulation(simNodes as any)
-      .force('link', forceLink(simEdges as any).id((d: any) => d.id).distance(80))
-      .force('charge', forceManyBody().strength(-200))
+      .force('link', forceLink(simEdges as any).id((d: any) => d.id).distance(140))
+      .force('charge', forceManyBody().strength(-450))
       .force('center', forceCenter(0, 0))
-      .force('collide', forceCollide(20))
+      .force('collide', forceCollide((d: any) => Math.max(3, Math.sqrt((d.linkCount || 0) + 1) * 1.5) + 6))
       .on('tick', render);
 
     simRef.current = sim;
@@ -191,7 +191,7 @@ export function WikiGraphView() {
       if (node.x === undefined || node.y === undefined) continue;
       const dx = node.x - x;
       const dy = node.y - y;
-      const r = Math.max(6, Math.sqrt(node.linkCount + 1) * 3);
+      const r = Math.max(8, Math.sqrt(node.linkCount + 1) * 1.5 + 4);
       if (dx * dx + dy * dy < r * r) return node;
     }
     return null;
