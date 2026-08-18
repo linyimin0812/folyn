@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWikiStore } from '@/store/wikiStore';
 import { useVaultStore } from '@/store/vaultStore';
-import { useToastStore } from '@/store/toastStore';
 import * as editorIoService from '@/services/editorIoService';
 import type { ReviewItem, WikiEntry } from '@/types/wiki';
 import { WIKI_PREFIX } from '@/types/wiki';
@@ -86,8 +85,7 @@ function ReviewItemRow({
     try {
       await executeReviewAction(item.id, actionType);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      useToastStore.getState().push(msg, undefined, 4000);
+      console.error('[WikiFileTree] review action failed', err);
     } finally {
       setBusy(false);
     }
