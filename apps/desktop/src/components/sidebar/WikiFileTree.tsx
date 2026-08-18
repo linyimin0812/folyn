@@ -7,12 +7,12 @@ import * as editorIoService from '@/services/editorIoService';
 import type { ReviewItem, WikiEntry } from '@/types/wiki';
 import { WIKI_PREFIX } from '@/types/wiki';
 import { FileIcon } from '@/components/icons/FileIcon';
+import injectAllIcon from '@/assets/icons/inject_all.svg';
 import {
   Plus,
   FileText,
   AlertCircle,
   Share2,
-  Library,
   Square,
   X,
   Activity,
@@ -364,9 +364,58 @@ export function WikiFileTree() {
 
   return (
     <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col">
-      <div className="py-2 px-3 text-[11px] font-semibold text-t3 uppercase tracking-[0.5px] flex items-center justify-between">
+      <div className="py-2 px-3 flex items-center justify-between border-b border-brd">
+        {/* Left: locate — always visible */}
+        <button
+          className="text-t3 hover:text-acc transition-colors"
+          onClick={handleLocateActive}
+          title={t('sidebar:wikiTree.locateActive')}
+          aria-label={t('sidebar:wikiTree.locateActive')}
+        >
+          <Crosshair size={13} />
+        </button>
+
+        {/* Right: stop (conditional) + ingestAll + pickIngest (files-only) + graph (always) */}
         <div className="flex items-center gap-1">
-          <span>Wiki</span>
+          {subTab === 'files' && isIngesting && (
+            <button
+              className={`transition-colors disabled:cursor-not-allowed ${
+                cancelIngest
+                  ? 'text-[#d04545] opacity-60'
+                  : 'text-[#f06a6a] hover:text-[#d04545]'
+              }`}
+              onClick={() => {
+                if (cancelIngest) return;
+                setCancelIngest(true);
+                pushActivity('info', '正在终止...', {
+                  key: 'wiki:activity.stopping',
+                });
+              }}
+              disabled={cancelIngest}
+              title={cancelIngest ? t('wiki:activity.stopping') : t('sidebar:wikiTree.stopIngest')}
+              aria-label={t('sidebar:wikiTree.stopIngest')}
+            >
+              <Square size={13} />
+            </button>
+          )}
+          {subTab === 'files' && (
+            <button
+              className="text-t3 hover:text-acc transition-colors"
+              onClick={handleIngestAll}
+              title={t('sidebar:wikiTree.ingestAll')}
+            >
+              <img src={injectAllIcon} className="w-[11px] h-[11px]" alt="" />
+            </button>
+          )}
+          {subTab === 'files' && (
+            <button
+              className="text-t3 hover:text-acc transition-colors"
+              onClick={handlePickIngest}
+              title={t('sidebar:wikiTree.addSourceFiles')}
+            >
+              <Plus size={13} />
+            </button>
+          )}
           <button
             className="text-t3 hover:text-acc transition-colors"
             onClick={() => editorIoService.openFile('wiki-graph', 'Wiki Graph')}
@@ -375,53 +424,6 @@ export function WikiFileTree() {
             <Share2 size={13} />
           </button>
         </div>
-        {subTab === 'files' && (
-          <div className="flex items-center gap-1">
-            {isIngesting && (
-              <button
-                className={`transition-colors disabled:cursor-not-allowed ${
-                  cancelIngest
-                    ? 'text-[#d04545] opacity-60'
-                    : 'text-[#f06a6a] hover:text-[#d04545]'
-                }`}
-                onClick={() => {
-                  if (cancelIngest) return;
-                  setCancelIngest(true);
-                  pushActivity('info', '正在终止...', {
-                    key: 'wiki:activity.stopping',
-                  });
-                }}
-                disabled={cancelIngest}
-                title={cancelIngest ? t('wiki:activity.stopping') : t('sidebar:wikiTree.stopIngest')}
-                aria-label={t('sidebar:wikiTree.stopIngest')}
-              >
-                <Square size={13} />
-              </button>
-            )}
-            <button
-              className="text-t3 hover:text-acc transition-colors"
-              onClick={handleIngestAll}
-              title={t('sidebar:wikiTree.ingestAll')}
-            >
-              <Library size={13} />
-            </button>
-            <button
-              className="text-t3 hover:text-acc transition-colors"
-              onClick={handlePickIngest}
-              title={t('sidebar:wikiTree.addSourceFiles')}
-            >
-              <Plus size={13} />
-            </button>
-            <button
-              className="text-t3 hover:text-acc transition-colors"
-              onClick={handleLocateActive}
-              title={t('sidebar:wikiTree.locateActive')}
-              aria-label={t('sidebar:wikiTree.locateActive')}
-            >
-              <Crosshair size={13} />
-            </button>
-          </div>
-        )}
       </div>
       {/* Sub-tab toggle: Files | Reviews (with count badge) */}
       <div className="flex items-center gap-1 px-2 pb-2 border-b border-brd">
