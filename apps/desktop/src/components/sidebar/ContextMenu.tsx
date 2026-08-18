@@ -252,15 +252,6 @@ export function ContextMenu({
           {menu.type === 'file' && (
             <>
               <div className="h-px mx-2 my-1 bg-brd" />
-              <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => {
-                useAiStore.getState().addFileToChat(menu.name, menu.path);
-                useAppearanceStore.getState().setShowAiPanel(true);
-                useEditorViewStateStore.setState({ aiPanelVisible: true });
-                onClose();
-              }}>
-                <span className="font-bold text-[11px] tracking-[-0.5px] leading-none">AI</span>
-                {t('sidebar:contextMenu.addToChat')}
-              </button>
               {menu.path.endsWith('.md') && useAppearanceStore.getState().enableWikiPanel && (
                 <button
                   className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov"
@@ -273,6 +264,15 @@ export function ContextMenu({
                   {t('sidebar:contextMenu.ingestToWiki')}
                 </button>
               )}
+              <button className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none text-t1 hover:bg-hov" onClick={() => {
+                useAiStore.getState().addFileToChat(menu.name, menu.path);
+                useAppearanceStore.getState().setShowAiPanel(true);
+                useEditorViewStateStore.setState({ aiPanelVisible: true });
+                onClose();
+              }}>
+                <span className="font-bold text-[11px] tracking-[-0.5px] leading-none">AI</span>
+                {t('sidebar:contextMenu.addToChat')}
+              </button>
             </>
           )}
           <div className="h-px mx-2 my-1 bg-brd" />
