@@ -44,3 +44,37 @@ Six inline-style fixes on CommandPalette.tsx to make Cmd+P feel like a floating 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 172: Per-feature CLI adapter switch on Plugins settings
+
+**Date**: 2026-08-18
+**Task**: Per-feature CLI adapter switch on Plugins settings
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added independent CLI adapter override per feature agent (wiki/clips/analyze/schedule/study), surfaced as inline dropdown on each builtin row of Plugins settings. aiConfigStore gained featureCliAdapter field + getFeatureAdapter/getFeatureCliPath helpers; 6 service call sites + study path now resolve per-feature adapter id and binary path. appearanceStore gained enableSchedulePanel/enableStudyPanel placeholder flags; pluginStore BUILTIN_PANEL_DEFS prepended schedule+study rows. 9 new tests + 6-locale i18n.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dc095f4e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
