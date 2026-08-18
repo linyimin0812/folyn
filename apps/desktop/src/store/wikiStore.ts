@@ -76,6 +76,10 @@ interface WikiState {
 // 1s resets — back-to-back accepts collapse to a single lint pass.
 let pendingLintTimer: ReturnType<typeof setTimeout> | null = null;
 
+// ponytail: processed-review retention. Resolved/dismissed items older than this
+// are dropped on read in initWiki. 30d matches the deleted settings knob default.
+const REVIEW_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
 function schedulePostReviewLint(): void {
   if (pendingLintTimer) clearTimeout(pendingLintTimer);
   pendingLintTimer = setTimeout(async () => {
@@ -108,11 +112,23 @@ export const useWikiStore = create<WikiState>((set, _get) => ({
     const root = await wikiProvider.init();
     const files = await wikiProvider.listFiles();
     const reviews = await wikiProvider.readReviews();
+    // Drop resolved/dismissed reviews older than the retention window. Pending
+    // items are always kept. The pruned list is written back so the cache file
+    // doesn't grow unbounded.
+    const cutoff = Date.now() - REVIEW_RETENTION_MS;
+    const retained = reviews.filter((r) => {
+      if (r.status === 'pending') return true;
+      const ts = r.status === 'resolved' ? r.resolvedAt : r.dismissedAt;
+      return ts === undefined || ts >= cutoff;
+    });
+    if (retained.length !== reviews.length) {
+      await wikiProvider.writeReviews(retained);
+    }
     set({
       isInitialized: true,
       wikiRoot: root,
       wikiFiles: files,
-      reviewItems: reviews.filter((r) => r.status === 'pending'),
+      reviewItems: retained.filter((r) => r.status === 'pending'),
     });
   },
 

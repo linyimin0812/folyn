@@ -10,6 +10,11 @@ const TOKEN_BUDGET = 6000;
 const SINGLE_PAGE_CHAR_CAP = 4000;
 const NEIGHBOR_WEIGHT = 0.5;
 const TITLE_BOOST = 1.5;
+// ponytail: 30-min TTL on search results. searchWiki loads + tokenizes every
+// wiki page on each call; the cache short-circuits repeated queries within the
+// window. Invalidation is by elapsed time only — wiki writes during the window
+// can serve stale results until expiry. Upgrade path: drop cache on ingest/ lint.
+const SEARCH_CACHE_TTL_MS = 30 * 60 * 1000;
 
 const STOPWORDS_EN = new Set(['the', 'a', 'an', 'is', 'are', 'of', 'in', 'to', 'and', 'or', 'for', 'on', 'with', 'as', 'by', 'at', 'from', 'this', 'that', 'it', 'be', 'was', 'were', 'will', 'would', 'can', 'could', 'should', 'may', 'might', 'must', 'do', 'does', 'did', 'have', 'has', 'had']);
 const STOPWORDS_ZH = new Set(['的', '了', '是', '在', '和', '与', '或', '也', '都', '就', '这', '那', '有', '为', '以', '及']);
@@ -101,8 +106,15 @@ export interface SearchHit {
   isNeighbor: boolean;
 }
 
+const searchCache = new Map<string, { hits: SearchHit[]; ts: number }>();
+
 export async function searchWiki(query: string, opts: { topK?: number; expandGraph?: boolean } = {}): Promise<SearchHit[]> {
   const { topK = 20, expandGraph = true } = opts;
+  const cacheKey = `${query}\0${topK}\0${expandGraph}`;
+  const cached = searchCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < SEARCH_CACHE_TTL_MS) {
+    return cached.hits;
+  }
   const docs = await loadAllPages();
   const queryTokens = tokenize(query);
   if (queryTokens.length === 0 || docs.length === 0) return [];
@@ -147,8 +159,13 @@ export async function searchWiki(query: string, opts: { topK?: number; expandGra
       if (seedPaths.has(path)) continue;
       neighbors.push({ path, score, isNeighbor: true });
     }
-    return [...seeds, ...neighbors].sort((a, b) => b.score - a.score);
+    const finalHits = [...seeds, ...neighbors].sort((a, b) => b.score - a.score);
+    searchCache.set(cacheKey, { hits: finalHits, ts: Date.now() });
+    return finalHits;
   } catch {
+    // ponytail: don't cache on error — graph expansion is the kind of thing
+    // that fails transiently (lazy build, store race), and locking the cache
+    // to degraded seeds for 30 min would silently mask a recoverable error.
     return seeds;
   }
 }

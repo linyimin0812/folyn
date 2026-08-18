@@ -22,7 +22,6 @@
     "plugins": "プラグイン",
     "csp": "セキュリティポリシー",
     "storage": "ストレージと共有",
-    "wiki": "Wiki",
     "about": "情報"
   },
   "appearance": {
@@ -682,26 +681,5 @@
       "button": "適用して再読み込み",
       "note": "適用をクリックするとページが再読み込みされます — 一瞬点滅します。新規追加URLと「全てのURLを許可」は再読み込み後のみ有効化。"
     }
-  },
-  "wiki": {
-    "title": "Wiki",
-    "description": "インジェスト・Lint・クエリの挙動",
-    "autoAfterIngest": {
-      "label": "インジェスト後に自動 Lint",
-      "description": "各インジェスト完了後、構造 Lint を即時実行します。"
-    },
-    "semanticManualOnly": {
-      "label": "意味 Lint：手動のみ",
-      "description": "自動意味 Lint をスキップし、Lint ボタンでのみ実行します。"
-    },
-    "archiveRetentionDays": {
-      "label": "解決済み review 保持（日）",
-      "description": "resolved/dismissed の review 項目をこの日数後にアーカイブします。"
-    },
-    "queryCacheTtlMinutes": {
-      "label": "クエリキャッシュ TTL（分）",
-      "description": "この時間内は前回のクエリ結果を再利用します。0 でキャッシュ無効。"
-    },
-    "noHotReload": "変更は次回 Lint / インジェスト / 再起動時に適用されます（ホットリロードなし）。"
   }
 }
