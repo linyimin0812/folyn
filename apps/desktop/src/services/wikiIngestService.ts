@@ -293,10 +293,9 @@ export async function runIngest(filePaths: string[]): Promise<void> {
       }
     }
 
-    // B4: auto-run structural lint after ingest batch. Semantic lint is an
-    // LLM call and stays a manual deep-check (wikiLintService.ts:213-218) —
-    // running it inline here held the await chain with the progress message
-    // stuck on "运行结构性 lint..." and made ingest look hung.
+    // B4: auto-run lint after ingest batch. Structural lint is awaited (fast,
+    // code-driven). Semantic lint is an LLM call — fired fire-and-forget below
+    // so it doesn't block ingest completion (32422481 reverted the inline await).
     if (!cancelled && batchChanges.length > 0) {
       store.setIngestProgress('运行结构性 lint...');
       store.pushActivity('step', '运行结构性 lint ...');
@@ -312,6 +311,25 @@ export async function runIngest(filePaths: string[]): Promise<void> {
         const msg = err instanceof Error ? err.message : String(err);
         store.pushActivity('error', `lint 失败: ${msg}`);
       }
+
+      // Fire semantic lint in the background — it's an LLM call that would
+      // block ingest completion if awaited (revert in 32422481). Ingest popup
+      // has already moved to "摄入完成" by the time this resolves; the user
+      // sees results as a late activity-log entry + new items in Reviews.
+      // ponytail: no queue/state, just .then/.catch on the promise.
+      const { runSemanticLint } = await import('./wikiLintService');
+      store.pushActivity('info', '语义 lint 已在后台运行...');
+      runSemanticLint()
+        .then((items) => {
+          if (items.length > 0) {
+            useWikiStore.getState().addReviewItems(items);
+            useWikiStore.getState().pushActivity('info', `lint 发现 ${items.length} 项语义重复`);
+          }
+        })
+        .catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          useWikiStore.getState().pushActivity('error', `语义 lint 失败: ${msg}`);
+        });
     }
   } finally {
     await adapter.stop();
