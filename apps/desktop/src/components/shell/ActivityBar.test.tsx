@@ -17,7 +17,7 @@ function panel(id: string, overrides: Partial<PanelEntry> = {}): PanelEntry {
   return {
     id,
     // Use a unique title prefix to avoid colliding with the hardcoded
-    // daily/study/settings page-nav button titles.
+    // daily/settings page-nav button titles.
     title: `Panel-${id.toUpperCase()}`,
     icon: <svg />,
     component: () => null,
@@ -45,9 +45,9 @@ describe('ActivityBar (data-driven)', () => {
 
     render(<ActivityBar activePanel="a" onPanelChange={() => {}} />);
 
-    // Three panel buttons + 3 page-nav buttons (daily/study/settings) = 6.
+    // Three panel buttons + 2 page-nav buttons (schedule/settings) = 5.
     const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(6);
+    expect(buttons).toHaveLength(5);
     // First panel button (by DOM order) is the lowest-order panel: 'b'.
     expect(buttons[0].getAttribute('title')).toBe('Panel-B');
     expect(buttons[1].getAttribute('title')).toBe('Panel-C');
@@ -92,10 +92,9 @@ describe('ActivityBar (data-driven)', () => {
     expect(onPanelChange).toHaveBeenCalledWith('b');
   });
 
-  it('renders the daily/study/settings page-nav buttons regardless of panels', () => {
+  it('renders the schedule/settings page-nav buttons regardless of panels', () => {
     render(<ActivityBar activePanel="files" onPanelChange={() => {}} />);
     expect(screen.getByTitle('日程工作台 (⌘D)')).toBeTruthy();
-    expect(screen.getByTitle('学习工作台')).toBeTruthy();
     expect(screen.getByTitle('设置')).toBeTruthy();
   });
 

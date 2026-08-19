@@ -14,8 +14,6 @@
         "evening": "Good evening, I'm Quill AI. How can I help you?"
       }
     },
-    "studyStreaming": "study agent running…",
-    "studyIdle": "study agent session (manual input disabled)",
     "attachmentPlaceholder": "(attachment)",
     "deleteConfirmTitle": "Delete chat",
     "deleteConfirm": "Delete this chat? This cannot be undone.",

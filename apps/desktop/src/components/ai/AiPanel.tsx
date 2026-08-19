@@ -82,7 +82,6 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const isStreaming = activeSession?.isStreaming ?? false;
-  const isStudySession = activeSession?.kind === 'study';
   const messages = activeSession?.messages ?? [];
 
   // ponytail: the (provider, model) picker moved from the panel header into
@@ -670,34 +669,12 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
         className="p-3 gap-3"
       />
 
-      {isStudySession ? (
-        <div className="flex items-center justify-between gap-2 py-2.5 px-3 border-t border-brd shrink-0 bg-surf text-[12px] text-t2">
-          <span className="flex items-center gap-2 min-w-0">
-            {isStreaming && <span className="ai-session-streaming shrink-0" />}
-            <span className="truncate">
-              {isStreaming ? t('ai:panel.studyStreaming') : t('ai:panel.studyIdle')}
-            </span>
-          </span>
-          {isStreaming && (
-            <button
-              className="chat-stop-btn"
-              onClick={handleStop}
-              title={t('ai:panel.stop')}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="6" width="12" height="12" rx="2.5" />
-              </svg>
-            </button>
-          )}
-        </div>
-      ) : (
-        <ChatInput
-          onSend={handleSend}
-          onStop={handleStop}
-          isStreaming={isStreaming}
-          disabled={!hasPair}
-        />
-      )}
+      <ChatInput
+        onSend={handleSend}
+        onStop={handleStop}
+        isStreaming={isStreaming}
+        disabled={!hasPair}
+      />
 
       {pendingSave && (
         <SaveMessageDialog

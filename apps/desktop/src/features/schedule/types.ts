@@ -63,9 +63,9 @@ export interface ScheduleTask {
   /** 在源文件中的行号，用于写回定位 */
   lineIndex: number;
   /**
-   * 托管属性块中不被 ScheduleTask 固定字段覆盖的未知属性（如 `study:<slug>` /
+   * 托管属性块中不被 ScheduleTask 固定字段覆盖的未知属性（如 `topic:<slug>` /
    * `unit:<n>` 回链）。解析时收集、序列化时原样透传，保证 schedule 侧对任务行
-   * 的任何写回（勾选/移动/排程）不会丢弃学习工作台赖以回链的自由属性。
+   * 的任何写回（勾选/移动/排程）不会丢弃外部 feature 赖以回链的自由属性。
    */
   extraAttrs?: Record<string, string>;
 }
@@ -97,9 +97,9 @@ export const COLUMN_COLOR_PALETTE: string[] = [
 ];
 
 // ponytail: EVENT_CATEGORY_LABEL / TASK_CATEGORY_LABEL / DIFFICULTY_LABEL
-// are display-label maps retained for legacy callers (e.g. study/markdown.ts
+// are display-label maps retained for legacy callers (e.g. feature/markdown.ts
 // which bakes difficulty labels into persisted markdown data). UI display
-// sites now use t('schedule:category.<id>') / t('study:difficulty.<id>')
+// sites now use t('schedule:category.<id>') / t('schedule:difficulty.<id>')
 // directly. Lift the markdown.ts label to i18n when display-site refactor
 // (rendered label vs persisted data) is in scope.
 export const TASK_CATEGORY_LABEL: Record<TaskCategory, string> = {

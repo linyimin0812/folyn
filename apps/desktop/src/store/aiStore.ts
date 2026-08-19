@@ -32,10 +32,6 @@ export function getFileChangeApplier(): FileChangeApplier | null {
   return fileChangeApplier;
 }
 
-/** 会话类型：普通聊天会话 vs 专用 study agent 会话（PR9）。
- * study 会话由 runFeatureAgent('study') 自动驱动，输入框不可手动编辑。 */
-export type AiSessionKind = 'chat' | 'study';
-
 export interface AiSession {
   id: string;
   title: string;
@@ -45,8 +41,6 @@ export interface AiSession {
   isStreaming: boolean;
   createdAt: number;
   updatedAt: number;
-  /** 会话类型，缺省 'chat'。study 会话复用同一 cliSessionId 支持多轮 resume。 */
-  kind?: AiSessionKind;
   // ponytail: provider/model optional so legacy persisted sessions hydrate
   // without migration. Render-time falls back to pairs[0] from
   // useEnabledPairs in AiPanel when undefined. New sessions inherit a pair
@@ -62,15 +56,11 @@ export interface AiSession {
 interface AiState {
   sessions: AiSession[];
   activeSessionId: string | null;
-  /** 专用 study agent 会话 id（PR9）。复用同一会话以支持多轮 resume。 */
-  studySessionId: string | null;
 
   getActiveSession: () => AiSession | undefined;
-  /** 按 id 取会话（study 捕获/diff 横幅按 studySessionId 定位，不依赖 active）。 */
+  /** 按 id 取会话（diff 横幅按会话 id 定位，不依赖 active）。 */
   getSession: (id: string | null | undefined) => AiSession | undefined;
   createSession: () => string;
-  /** 创建或复用专用 study agent 会话，设为 active，返回其 id。 */
-  getOrCreateStudySession: () => string;
   switchSession: (id: string) => void;
   deleteSession: (id: string) => void;
 
@@ -130,7 +120,7 @@ interface AiState {
   pendingFileAttachments: { name: string; path: string }[];
   addFileToChat: (name: string, path: string) => void;
   consumePendingFiles: () => { name: string; path: string }[];
-  /** 预填到 ChatInput 输入框的提示词（学习工作台 AI 动作用，无新调用链）。 */
+  /** 预填到 ChatInput 输入框的提示词（外部动作用，无新调用链）。 */
   pendingPrompt: string;
   setPendingPrompt: (prompt: string) => void;
   consumePendingPrompt: () => string;
@@ -174,7 +164,6 @@ function updateSession(sessions: AiSession[], id: string, updater: (s: AiSession
 export const useAiStore = create<AiState>((set, get) => ({
   sessions: [],
   activeSessionId: null,
-  studySessionId: null,
 
   getActiveSession: () => {
     const { sessions, activeSessionId } = get();
@@ -192,37 +181,9 @@ export const useAiStore = create<AiState>((set, get) => ({
     return session.id;
   },
 
-  getOrCreateStudySession: () => {
-    const state = get();
-    // 先按记录的 studySessionId 定位；命中失败（如重启后 studySessionId 未持久化、
-    // 或会话被外部清空）则回退扫描 sessions 里任意 kind='study' 会话，避免创建重复
-    // study 会话导致旧的孤立。
-    const existing = state.studySessionId
-      ? state.sessions.find((s) => s.id === state.studySessionId && s.kind === 'study')
-      : undefined;
-    if (existing) {
-      if (state.activeSessionId !== existing.id) {
-        set({ activeSessionId: existing.id });
-      }
-      return existing.id;
-    }
-    const orphan = state.sessions.find((s) => s.kind === 'study');
-    if (orphan) {
-      set({ studySessionId: orphan.id, activeSessionId: orphan.id });
-      return orphan.id;
-    }
-    const session = createEmptySession();
-    session.title = '学习 agent';
-    session.kind = 'study';
-    set((s) => ({
-      sessions: [session, ...s.sessions],
-      activeSessionId: session.id,
-      studySessionId: session.id,
-    }));
-    return session.id;
+  switchSession: (id) => {
+    set({ activeSessionId: id });
   },
-
-  switchSession: (id) => set({ activeSessionId: id }),
 
   deleteSession: (id) => {
     const state = get();
@@ -233,8 +194,7 @@ export const useAiStore = create<AiState>((set, get) => ({
     if (state.activeSessionId === id) {
       nextActiveId = remaining.length > 0 ? remaining[0].id : null;
     }
-    const nextStudyId = state.studySessionId === id ? null : state.studySessionId;
-    set({ sessions: remaining, activeSessionId: nextActiveId, studySessionId: nextStudyId });
+    set({ sessions: remaining, activeSessionId: nextActiveId });
     const vaultId = useVaultStore.getState().activeVaultId;
     if (vaultId) sessionStorage.deleteSession(vaultId, id);
     persistAiState();

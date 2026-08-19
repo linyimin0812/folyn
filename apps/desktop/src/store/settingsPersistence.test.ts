@@ -34,7 +34,7 @@ function resetAllDefaults() {
     showStatusBar: true, showHiddenFiles: true, enableWikiPanel: true,
     enableClipsPanel: true, enableAnalyzePanel: true,
     excludePatterns:
-      'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__study__\n__schedule__\n__analyze__',
+      'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__schedule__\n__analyze__',
     linkOpenMode: 'external', vaultName: 'my-vault',
   }, false);
   useEditorPrefsStore.setState({
@@ -255,7 +255,6 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
 
     // appearanceStore: backfill appended every missing built-in dir.
     const excludeLines = useAppearanceStore.getState().excludePatterns.split('\n');
-    expect(excludeLines).toContain('__study__');
     expect(excludeLines).toContain('__schedule__');
     expect(excludeLines).toContain('__analyze__');
     expect(useAppearanceStore.getState().vaultName).toBe('old-vault');

@@ -1,6 +1,6 @@
-// Feature agent 框架：canonical agent 文件播种 + runFeatureAgent + getFeatureAgentSendOptions。
+// Feature agent 框架：canonical agent 文件播种 + getFeatureAgentSendOptions。
 //
-// 设计见 `.trellis/tasks/07-01-refactor-study-wiki-clips-schedule-project-analysis-to-per-vault-claude-agents/prd.md`：
+// 设计见 `.trellis/tasks/07-01-refactor-wiki-clips-schedule-project-analysis-to-per-vault-claude-agents/prd.md`：
 // - 每 feature 独立子目录 `<vault>/__{feature}__/.claude/`（含 CLAUDE.md + agents/<feature>.md）。
 // - canonical 源文件按功能就近放 `apps/desktop/src/<feature>/.claude/{CLAUDE.md,agents/<feature>.md}`，经 `?raw` import。
 // - vault 切换/启动/lazy-seed 时把 canonical 文件拷贝到 `<vault>/__{feature}__/.claude/`，**always-overwrite**（canonical 是 single source of truth，不保留 vault 副本的用户手改）。
@@ -8,10 +8,8 @@
 //   不存在 → 回退 `--bare` + `--agents` 内联交付 canonical agent 定义（contract 不丢，spec `feature-agents.md` Validation Matrix 承诺的 graceful degradation）。
 // - schedule feature 额外传 `--add-dir <vault>` 以便访问 `__daily__/` 日记与今日修改文档。
 
-import type { CliAgentDefinition, CliSendOptions, CliStreamEvent } from '@quill/cli-adapter';
+import type { CliAgentDefinition, CliSendOptions } from '@quill/cli-adapter';
 import type { VaultManager } from '@quill/vault-provider';
-import studyAgentDoc from '@/features/study/.claude/agents/study.md?raw';
-import studyClaudeDoc from '@/features/study/.claude/CLAUDE.md?raw';
 import analyzeAgentDoc from '@/features/analyze/.claude/agents/analyze.md?raw';
 import analyzeClaudeDoc from '@/features/analyze/.claude/CLAUDE.md?raw';
 import clipsAgentDoc from '@/features/clips/.claude/agents/clips.md?raw';
@@ -73,11 +71,9 @@ export interface FeatureAgentEntry {
 
 /**
  * Feature agent 注册表。新增 feature 时在此登记 canonical 文件。
- * - study 走 aiStore 会话（runFeatureAgent）。
  * - analyze/clips/schedule/wiki 走 bespoke 流程（getFeatureAgentSendOptions 仅给 adapter.send 提供 options）。
  */
 export const FEATURE_AGENTS: FeatureAgentEntry[] = [
-  { feature: 'study', file: 'study.md', doc: studyAgentDoc, claudeDoc: studyClaudeDoc },
   { feature: 'analyze', file: 'analyze.md', doc: analyzeAgentDoc, claudeDoc: analyzeClaudeDoc },
   { feature: 'clips', file: 'clips.md', doc: clipsAgentDoc, claudeDoc: clipsClaudeDoc },
   { feature: 'schedule', file: 'schedule.md', doc: scheduleAgentDoc, claudeDoc: scheduleClaudeDoc, addVaultDir: true },
@@ -160,7 +156,7 @@ export function piSeedTargets(entry: FeatureAgentEntry): { path: string; content
  * 调用时的懒播种兜底：即使启动时 switchVault 的 seeding 被跳过/失败，
  * 首次调用也会补播种。always-overwrite（重复写 canonical，安全）。
  *
- * 取 manager：动态 import vaultStore 避免循环依赖（runFeatureAgent 已有此模式）。
+ * 取 manager：动态 import vaultStore 避免循环依赖。
  * 失败静默（seedAgentFiles 内部已 catch）。
  */
 async function lazySeedAgentFiles(): Promise<void> {
@@ -293,146 +289,6 @@ async function writeSeedLog(manager: VaultManager, results: SeedAgentResult[]): 
     console.log(`[featureAgent] seed log written to ${SEED_LOG_PATH}`);
   } catch (err) {
     console.warn(`[featureAgent] failed to write seed log at ${SEED_LOG_PATH}:`, err);
-  }
-}
-
-// ── runFeatureAgent ──
-
-/** runFeatureAgent 额外选项。 */
-export interface RunFeatureAgentOpts {
-  /** 额外可读目录（`--add-dir`）。 */
-  addDir?: string[];
-  /** study 会话归属的学习主题 slug（每个主题一个专属会话，缺省 'default'）。 */
-  studySlug?: string;
-}
-
-/**
- * 运行 feature agent（cwd=`<vault>/__{feature}__/`）。
- *
- * 路径：
- * - `<vault>/__{feature}__/.claude/agents/<feature>.md` 存在 → `adapter.send(instruction, {agent: feature, bare: false, ...})`，
- *   cwd=`__{feature}__/` 自动发现 agent（去 `--bare`，加载 feature 级 CLAUDE.md/hooks）。
- * - 不存在 → 回退 `--bare` + `--agents` 内联交付 canonical agent 定义（contract 不丢，spec graceful degradation）。
- *
- * study feature 复用 aiStore 的专用 study 会话（getOrCreateStudySession）：事件路由到该会话，
- * 多轮复用 cliSessionId。其它 feature 走 bespoke 流程，应使用 getFeatureAgentSendOptions
- * 自行驱动 adapter（runFeatureAgent 仅支持 study）。
- */
-export async function runFeatureAgent(
-  feature: string,
-  instruction: string,
-  opts: RunFeatureAgentOpts = {},
-): Promise<void> {
-  if (feature !== 'study') {
-    throw new Error(`[featureAgent] feature "${feature}" not supported by runFeatureAgent (only study; others use bespoke flow via getFeatureAgentSendOptions)`);
-  }
-
-  const { useAiStore } = await import('@/store/aiStore');
-  const { useVaultStore } = await import('@/store/vaultStore');
-  const editorIo = await import('@/services/editorIoService');
-  const { useAiConfigStore, getFeatureCliPath } = await import('@/store/aiConfigStore');
-  const { getAdapterForSession } = await import('@/components/ai/adapterManager');
-  const { pauseWatcher, resumeWatcher } = await import('@/utils/fileWatcher');
-
-  const ai = useAiStore.getState();
-  const sid = ai.getOrCreateStudySession(opts.studySlug ?? 'default');
-  const session = useAiStore.getState().sessions.find((s) => s.id === sid);
-  const resumeSessionId = session?.cliSessionId ?? undefined;
-
-  ai.addMessage('user', instruction, sid);
-  ai.addMessage('assistant', '', sid);
-  ai.setSessionStreaming(sid, true);
-
-  const aiConfig = useAiConfigStore.getState();
-  const vault = useVaultStore.getState().currentVault;
-  let workingDir = vault?.basePath ?? '';
-  if (workingDir.startsWith('~')) {
-    try {
-      workingDir = await resolveBasePath(workingDir);
-    } catch {
-      // 路径解析失败时退回原始值
-    }
-  }
-  // cwd = `<vault>/__{feature}__/`：agent 自动发现 `.claude/agents/<feature>.md`。
-  const entry = getFeatureAgentEntry(feature);
-  if (entry) {
-    workingDir = `${workingDir.replace(/\/+$/, '')}/${featureDir(feature)}`;
-  }
-
-  const adapter = getAdapterForSession(sid, 'study');
-  const manager = useVaultStore.getState().manager;
-
-  // 调用时懒播种兜底：确保 agent 文件已落盘（即使 switchVault 的 seeding 被跳过/失败）。
-  // always-overwrite：每次都刷新为 canonical 最新，不保留 vault 副本的手改。
-  await lazySeedAgentFiles();
-
-  const available = await agentFileExists(manager, feature);
-
-  // agent 文件存在 → cwd 发现（bare:false + --agent）。
-  // 缺失 → --bare 回退 + `--agents` 内联交付 canonical agent 定义（contract 不丢，spec graceful degradation）。
-  let sendOptions: CliSendOptions;
-  if (available) {
-    sendOptions = { agent: feature, bare: false, resumeSessionId, ...(opts.addDir ? { addDir: opts.addDir } : {}) };
-  } else if (entry) {
-    const def = parseAgentDoc(entry.doc);
-    sendOptions = {
-      agent: feature,
-      bare: true,
-      agents: { [feature]: def },
-      resumeSessionId,
-      ...(opts.addDir ? { addDir: opts.addDir } : {}),
-    };
-  } else {
-    sendOptions = { bare: true, resumeSessionId, ...(opts.addDir ? { addDir: opts.addDir } : {}) };
-  }
-
-  const eventHandler = (event: CliStreamEvent) => {
-    switch (event.type) {
-      case 'text':
-        if (event.content) ai.appendToLastMessage(event.content, sid);
-        break;
-      case 'thinking':
-        if (event.content) ai.appendThinking(event.content, sid);
-        break;
-      case 'tool_start':
-        if (event.toolId && event.toolName) ai.addToolCall(event.toolId, event.toolName, event.toolInput, sid);
-        break;
-      case 'tool_end':
-        if (event.toolId) ai.completeToolCall(event.toolId, event.toolOutput, sid);
-        break;
-      case 'file_change':
-        if (event.fileChange) ai.addFileChange(event.fileChange, sid);
-        break;
-      case 'session_id':
-        if (event.sessionId) ai.setCliSessionId(event.sessionId, sid);
-        break;
-      case 'error':
-        if (event.content) ai.appendToLastMessage(`\n\n[错误] ${event.content}`, sid);
-        break;
-      case 'done':
-        useAiStore.getState().setSessionStreaming(sid, false);
-        adapter.offEvent(eventHandler);
-        useVaultStore.getState().refreshFileTree().catch(() => {});
-        editorIo.checkDiskChanges().finally(() => {
-          resumeWatcher();
-        });
-        break;
-    }
-  };
-
-  adapter.onEvent(eventHandler);
-  await editorIo.flushAutoSaves();
-  pauseWatcher();
-
-  try {
-    await adapter.start({ cliPath: getFeatureCliPath('study', aiConfig), workingDir });
-    await adapter.send(instruction, sendOptions);
-  } catch (err) {
-    ai.appendToLastMessage(`\n\n[错误] ${String(err)}`, sid);
-    useAiStore.getState().setSessionStreaming(sid, false);
-    resumeWatcher();
-  } finally {
-    adapter.offEvent(eventHandler);
   }
 }
 

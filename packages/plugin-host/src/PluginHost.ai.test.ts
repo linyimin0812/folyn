@@ -24,7 +24,7 @@ describe('PluginHost / permissions.ai validation', () => {
     await expect(
       host.install(
         manifest({
-          permissions: { ai: { chat: true, agents: ['study', 'wiki'] } },
+          permissions: { ai: { chat: true, agents: ['wiki', 'clips'] } },
         }),
       ),
     ).resolves.toBe('demo-plugin');
@@ -53,7 +53,7 @@ describe('PluginHost / permissions.ai validation', () => {
     await expect(
       host.install(
         manifest({
-          permissions: { ai: { agents: 'study' as unknown as string[] } },
+          permissions: { ai: { agents: 'wiki' as unknown as string[] } },
         }),
       ),
     ).rejects.toThrow(/agents must be a string\[\]/);
@@ -64,7 +64,7 @@ describe('PluginHost / permissions.ai validation', () => {
     await expect(
       host.install(
         manifest({
-          permissions: { ai: { agents: ['study', ''] } },
+          permissions: { ai: { agents: ['wiki', ''] } },
         }),
       ),
     ).rejects.toThrow(/agents must be a string\[\]/);
@@ -75,7 +75,7 @@ describe('PluginHost / permissions.ai validation', () => {
     await expect(
       host.install(
         manifest({
-          permissions: { ai: { agents: ['study', 42] as unknown as string[] } },
+          permissions: { ai: { agents: ['wiki', 42] as unknown as string[] } },
         }),
       ),
     ).rejects.toThrow(/agents must be a string\[\]/);

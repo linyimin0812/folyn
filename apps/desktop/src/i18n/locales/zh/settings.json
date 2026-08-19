@@ -68,10 +68,6 @@
         "label": "日程面板",
         "description": "日程（Plan My Day）相关功能入口"
       },
-      "study": {
-        "label": "学习面板",
-        "description": "学习研究功能入口"
-      },
       "tray": {
         "label": "显示托盘图标",
         "description": "在系统托盘显示应用图标，点击弹出与桌宠右键菜单相同的快捷菜单"
@@ -698,9 +694,15 @@
       "label": "服务提供商",
       "configured": "已配置",
       "notConfigured": "未配置",
-      "r2": { "label": "Cloudflare R2" },
-      "qiniu": { "label": "七牛云 Kodo" },
-      "oss": { "label": "阿里云 OSS" }
+      "r2": {
+        "label": "Cloudflare R2"
+      },
+      "qiniu": {
+        "label": "七牛云 Kodo"
+      },
+      "oss": {
+        "label": "阿里云 OSS"
+      }
     },
     "r2": {
       "accountId": "Account ID",

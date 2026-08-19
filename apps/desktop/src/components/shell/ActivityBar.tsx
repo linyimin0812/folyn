@@ -8,15 +8,15 @@
  * `registerBuiltinPanels`'s one-way editorStore→featurePanelStore subscription
  * then mirrors the new id so the active button + Sidebar follow.
  *
- * The daily / study / settings page-nav buttons stay hardcoded (Decision Q3:
- * page-nav data-driving is out of scope). Schedule + Study are pinned to the
- * top of the bar (above the data-driven panel list) per the user's layout
+ * The daily / settings page-nav buttons stay hardcoded (Decision Q3:
+ * page-nav data-driving is out of scope). Schedule is pinned to the top of
+ * the bar (above the data-driven panel list) per the user's layout
  * preference. Settings is pinned to the bottom via a `flex-1` spacer.
  *
  * Active-state rules:
  * - Panel button: `active` when `activePanel === id` AND not on a page-nav
- *   page (schedule/study) — mirrors the pre-PR2 `!onPage && ...` gate.
- * - Page-nav button: `active` when `currentPage === 'schedule'|'study'`.
+ *   page (schedule) — mirrors the pre-PR2 `!onPage && ...` gate.
+ * - Page-nav button: `active` when `currentPage === 'schedule'`.
  */
 
 import { useState } from 'react';
@@ -29,7 +29,6 @@ import { useTranslation } from 'react-i18next';
 import { GitPanel } from '@/components/git/GitPanel';
 import githubIcon from '@/assets/icons/github.svg';
 import { ScheduleIcon } from '@/components/icons/ScheduleIcon';
-import { StudyIcon } from '@/components/icons/StudyIcon';
 
 /**
  * Active panel id. Widened to `string` in PR2 — plugin panels contribute
@@ -51,21 +50,19 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   const currentPage = useNavStore((s) => s.currentPage);
   const currentVault = useVaultStore((s) => s.currentVault);
   const enableSchedulePanel = useAppearanceStore((s) => s.enableSchedulePanel);
-  const enableStudyPanel = useAppearanceStore((s) => s.enableStudyPanel);
   const [gitOpen, setGitOpen] = useState(false);
 
   // Git icon only for GitHub-type vaults (clone-backed local git repo).
   const isGithubVault = currentVault?.providerType === 'github';
 
   const onSchedule = currentPage === 'schedule';
-  const onStudy = currentPage === 'study';
-  const onPage = onSchedule || onStudy;
+  const onPage = onSchedule;
 
   // Visible panels sorted by (order, registration seq). The store selector
   // returns a useShallow-stabilized array — re-renders only on real content
   // change (no infinite loop on the empty path: EMPTY_PANELS constant).
   // Files is the first entry (order=0); we slice it off and render it at the
-  // very top of the bar, then Schedule → Study, then the rest of the panels
+  // very top of the bar, then Schedule, then the rest of the panels
   // (Wiki/Clips/Analyze when enabled, plus any plugin panels).
   const visiblePanels = useVisiblePanels();
   const [filesPanel, ...restPanels] = visiblePanels;
@@ -113,16 +110,6 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
           title={t('shell:nav.schedule')}
         >
           <ScheduleIcon size={14} active={onSchedule} />
-        </button>
-      )}
-
-      {enableStudyPanel && (
-        <button
-          className={`activity-icon ${onStudy ? 'active' : ''}`}
-          onClick={() => setCurrentPage('study')}
-          title={t('shell:nav.study')}
-        >
-          <StudyIcon size={14} active={onStudy} />
         </button>
       )}
 

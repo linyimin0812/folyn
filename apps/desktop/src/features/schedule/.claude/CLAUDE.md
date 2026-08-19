@@ -7,7 +7,7 @@
 - `__schedule__/` — schedule feature 的工作目录（兼作 agent cwd）。本目录不存放事件数据。
 - `__daily__/` — 每日日记根目录，schedule agent 通过 `--add-dir <vault>` 跨目录访问。
   - `<YYYY-MM-DD>.md` — 一日一文件，含 `## 任务` 段（看板任务行）与 `## 笔记` 段（散文 + AI 回顾 callout）。
-- 其它 feature 目录（`__study__/` / `__clips__/` / `__wiki__/` / `__reports__/` / `__analyze__/`）与 schedule 无直接交互。
+- 其它 feature 目录（`__clips__/` / `__wiki__/` / `__reports__/` / `__analyze__/`）与 schedule 无直接交互。
 
 ## 日记文档结构
 
@@ -26,7 +26,7 @@
 <散文式笔记，AI 回顾 callout 由 schedule agent 追加到本段段尾>
 ```
 
-- `## 任务` 段任务行属性块由 scheduleStore 托管；属性透传机制保留未知属性（如学习回链 `study:<slug>` / `unit:<n>`）。
+- `## 任务` 段任务行属性块由 scheduleStore 托管；属性透传机制保留未知属性（如 `unit:<n>`）。
 - `## 笔记` 段是散文式（不托管），schedule agent 在此段段尾追加回顾 callout。
 
 ## 文件命名规则

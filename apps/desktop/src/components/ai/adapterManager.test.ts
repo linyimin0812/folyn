@@ -38,21 +38,21 @@ describe('getAdapterForSession', () => {
   });
 
   it('uses feature-specific override when feature is provided', () => {
-    storeState.featureCliAdapter = { study: 'pi' };
-    const a = getAdapterForSession('s1', 'study');
+    storeState.featureCliAdapter = { wiki: 'pi' };
+    const a = getAdapterForSession('s1', 'wiki');
     expect(a.id).toBe('pi');
   });
 
   it('falls back to global when feature has no override', () => {
-    const a = getAdapterForSession('s1', 'study');
+    const a = getAdapterForSession('s1', 'wiki');
     expect(a.id).toBe('claude');
   });
 
   it('invalidates cached adapter when feature adapter changes', () => {
-    const first = getAdapterForSession('s1', 'study');
+    const first = getAdapterForSession('s1', 'wiki');
     expect(first.id).toBe('claude');
-    storeState.featureCliAdapter = { study: 'pi' };
-    const second = getAdapterForSession('s1', 'study');
+    storeState.featureCliAdapter = { wiki: 'pi' };
+    const second = getAdapterForSession('s1', 'wiki');
     expect(second.id).toBe('pi');
   });
 });

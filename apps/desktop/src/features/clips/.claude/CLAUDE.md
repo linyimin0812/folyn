@@ -6,7 +6,7 @@
 
 - `__clips__/` — 知识卡片根目录（本 feature 的内容目录，兼作 agent cwd）。
   - `<primary-tag>/<YYYY-MM-DD>-<slug>.md` — 一张知识卡片一个文件，按主标签分目录。
-- 其它 feature 目录（`__study__/` / `__wiki__/` / `__daily__/` / `__reports__/` / `__analyze__/`）与 clips 无直接交互。
+- 其它 feature 目录（`__wiki__/` / `__daily__/` / `__reports__/` / `__analyze__/`）与 clips 无直接交互。
 
 ## 卡片文档结构
 

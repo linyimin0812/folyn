@@ -8,7 +8,7 @@
 - `__reports__/` — 项目分析报告落盘目录（由调用方 githubAnalysisService.saveReport 写入，非 agent 直接写）。
   - `<YYYY-MM-DD>-<repo>.html` — 自包含 HTML 报告。
   - `<YYYY-MM-DD>-<repo>.tags.json` — 标签边车 JSON。
-- 其它 feature 目录（`__study__/` / `__clips__/` / `__wiki__/` / `__daily__/` / `__schedule__/`）与 analyze 无直接交互。
+- 其它 feature 目录（`__clips__/` / `__wiki__/` / `__daily__/` / `__schedule__/`）与 analyze 无直接交互。
 
 ## 报告文件命名规则
 

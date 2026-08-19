@@ -18,7 +18,7 @@ ADR-0004 后 agent 不再直接写 entity/concept/source/index/log —— 这些
   - `syntheses/<name>.md` — 综合页（高价值查询答案）。
   - `cache/hashes.json` — 源文件内容哈希缓存（摄入去重用）。
   - `cache/reviews.json` — review items 缓存。
-- 其它 feature 目录（`__study__/` / `__clips__/` / `__daily__/` / `__reports__/` / `__analyze__/` / `__schedule__/`）与 wiki 无直接交互。
+- 其它 feature 目录（`__clips__/` / `__daily__/` / `__reports__/` / `__analyze__/` / `__schedule__/`）与 wiki 无直接交互。
 
 ## 页面文档结构
 

@@ -68,10 +68,6 @@
         "label": "Plan-Panel",
         "description": "Eintrag der Schedule-Funktion (Plan My Day)"
       },
-      "study": {
-        "label": "Lern-Panel",
-        "description": "Eintrag der Lern- & Recherchefunktion"
-      },
       "daily": {
         "label": "Tagesnotizen-Panel",
         "description": "Kalender- und Tagesnotiz-Eintrag in der Seitenleiste (Deaktivieren deaktiviert auch ⌘D)"

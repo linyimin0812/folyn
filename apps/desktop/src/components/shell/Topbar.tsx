@@ -112,7 +112,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   ) as ViewMode[];
   const setCurrentPage = useNavStore((state) => state.setCurrentPage);
   const currentPage = useNavStore((state) => state.currentPage);
-  const showTerminalAction = currentPage === 'editor' || currentPage === 'study';
+  const showTerminalAction = currentPage === 'editor';
   const terminalOpen = terminalPanelVisible || terminalInRightDock;
 
   return (

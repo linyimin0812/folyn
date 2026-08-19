@@ -589,7 +589,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   },
 }));
 
-// subscribeToFileTree lives in vaultStore now (shared with studyStore).
+// subscribeToFileTree lives in vaultStore now (shared with workbench pages).
 export { subscribeToFileTree } from './vaultStore';
 
 // ponytail: boardColumns persistence slice. The hydrate mirrors the

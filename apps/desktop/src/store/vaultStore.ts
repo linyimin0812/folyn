@@ -566,7 +566,7 @@ export const useVaultStore = create<VaultState>()(
 
 /** Subscribe to vaultStore fileTree changes. The callback fires on each
  *  fileTree reference change (debounce by the caller if needed). Returns the
- *  unsubscribe fn. Shared by scheduleStore / studyStore workbench pages. */
+ *  unsubscribe fn. Shared by workbench pages. */
 export function subscribeToFileTree(cb: () => void): () => void {
   let prev = useVaultStore.getState().fileTree;
   return useVaultStore.subscribe((state) => {

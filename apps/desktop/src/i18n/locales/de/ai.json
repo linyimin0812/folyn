@@ -14,8 +14,6 @@
         "evening": "Guten Abend, ich bin Quill AI. Wie kann ich helfen?"
       }
     },
-    "studyStreaming": "Lern-Agent läuft…",
-    "studyIdle": "Lern-Agent-Sitzung (manuelle Eingabe deaktiviert)",
     "attachmentPlaceholder": "(Anhang)",
     "deleteConfirmTitle": "Chat löschen",
     "deleteConfirm": "Diesen Chat löschen? Kann nicht rückgängig gemacht werden.",

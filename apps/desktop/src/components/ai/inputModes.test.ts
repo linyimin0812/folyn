@@ -96,12 +96,12 @@ describe('resolveSendOptions', () => {
       permissionMode: 'plan',
       buildSendOptions: (merged) => {
         seen.push(merged);
-        return { ...merged, permissionMode: 'acceptEdits', agent: 'study' };
+        return { ...merged, permissionMode: 'acceptEdits', agent: 'wiki' };
       },
     });
     const out = resolveSendOptions('test-escape', base);
     expect(seen[0].permissionMode).toBe('plan'); // declarative merge happened first
     expect(out.permissionMode).toBe('acceptEdits'); // escape hatch overrode
-    expect(out.agent).toBe('study');
+    expect(out.agent).toBe('wiki');
   });
 });

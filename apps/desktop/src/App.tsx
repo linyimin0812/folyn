@@ -15,7 +15,6 @@ import { useWikiStore } from '@/store/wikiStore';
 import { SettingsPage } from './components/pages/SettingsPage';
 import { VaultPage } from './components/pages/VaultPage';
 import { ScheduleWorkbenchPage } from './components/schedule/ScheduleWorkbenchPage';
-import { StudyWorkbenchPage } from './components/study/StudyWorkbenchPage';
 import { useTheme } from './hooks/useTheme';
 import { useDisableAutoCapitalize } from './hooks/useDisableAutoCapitalize';
 import { usePetHostBridge } from './hooks/usePetHostBridge';
@@ -718,13 +717,6 @@ export default function App() {
         </div>
       )}
 
-      {currentPage === 'study' && (
-        <div className="body-row flex-1 flex overflow-hidden">
-          {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
-          <StudyContent />
-        </div>
-      )}
-
       {showStatusBar && <StatusBar />}
       <ToastHost />
       <GlobalSearchPanel />
@@ -745,16 +737,7 @@ function EditorContent() {
   );
 }
 
-function StudyContent() {
-  return (
-    <TerminalHost>
-      <StudyWorkbenchPage />
-      <RightDock />
-    </TerminalHost>
-  );
-}
-
-/** Shared terminal host used by editor and study layouts. */
+/** Shared terminal host used by editor and schedule layouts. */
 function TerminalHost({ children }: { children: ReactNode }) {
   const sessions = useTerminalStore((s) => s.sessions);
   const terminalPanelVisible = useEditorViewStateStore((s) => s.terminalPanelVisible);

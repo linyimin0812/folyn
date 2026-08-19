@@ -68,10 +68,6 @@
         "label": "Panel de Agenda",
         "description": "Entrada de la función Schedule (Plan My Day)"
       },
-      "study": {
-        "label": "Panel de Estudio",
-        "description": "Entrada de la función de Estudio e investigación"
-      },
       "daily": {
         "label": "Panel de notas diarias",
         "description": "Mostrar entrada de calendario y notas diarias en la barra lateral (desactivar también desactiva ⌘D)"

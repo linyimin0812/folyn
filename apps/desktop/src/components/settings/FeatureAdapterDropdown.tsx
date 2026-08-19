@@ -27,7 +27,6 @@ const BUILTIN_ROW_TO_FEATURE: Record<string, string> = {
   'builtin:clips': 'clips',
   'builtin:analyze': 'analyze',
   'builtin:schedule': 'schedule',
-  'builtin:study': 'study',
 };
 
 export function FeatureAdapterDropdown({ rowId }: { rowId: string }) {

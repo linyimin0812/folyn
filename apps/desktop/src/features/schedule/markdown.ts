@@ -107,7 +107,7 @@ export function parseDaily(content: string, noteDate: string): ParsedDaily {
             scheduledEnd = parseTime(sm[3]);
           }
         }
-        // 收集固定字段未覆盖的未知属性（如 study:/unit: 回链），原样透传写回。
+        // 收集固定字段未覆盖的未知属性（如 topic:/unit: 回链），原样透传写回。
         const KNOWN_KEYS = new Set([
           'col', 'cat', 'prio', 'due', 'sched', 'prog', 'sub', 'as',
         ]);
@@ -165,7 +165,7 @@ export function buildTaskLine(t: ScheduleTask): string {
   }
   attrs.push(`prog:${t.progress}`, `sub:${t.subtasks}`);
   if (t.assignees.length) attrs.push(`as:${t.assignees.join(',')}`);
-  // 透传未知属性（如 study:/unit: 回链），按键名字典序输出保证幂等。
+  // 透传未知属性（如 topic:/unit: 回链），按键名字典序输出保证幂等。
   if (t.extraAttrs) {
     const keys = Object.keys(t.extraAttrs).sort();
     for (const k of keys) attrs.push(`${k}:${t.extraAttrs[k]}`);

@@ -14,8 +14,6 @@
         "evening": "晚上好，我是Quill AI助手，有什么可以帮您"
       }
     },
-    "studyStreaming": "study agent 运行中…",
-    "studyIdle": "study agent 会话（不可手动输入）",
     "attachmentPlaceholder": "(附件)",
     "deleteConfirmTitle": "删除会话",
     "deleteConfirm": "确定要删除当前会话吗？删除后无法恢复。",

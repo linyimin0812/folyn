@@ -25,7 +25,7 @@ function resetAppearanceDefaults() {
     enableClipsPanel: true,
     enableAnalyzePanel: true,
     excludePatterns:
-      'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__study__\n__schedule__\n__analyze__',
+      'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__schedule__\n__analyze__',
     linkOpenMode: 'external',
     vaultName: 'my-vault',
   });
@@ -127,7 +127,7 @@ describe('useAppearanceStore.hydrate', () => {
     const lines = useAppearanceStore.getState().excludePatterns.split('\n');
     expect(lines).toContain('node_modules');
     expect(lines).toContain('__wiki__');
-    expect(lines).toContain('__study__');
+    expect(lines).toContain('__schedule__');
     expect(lines).toContain('__analyze__');
   });
 
@@ -149,7 +149,6 @@ describe('backfillBuiltinExcludePatterns', () => {
     '__clips__',
     '__reports__',
     '__daily__',
-    '__study__',
     '__schedule__',
     '__analyze__',
   ];

@@ -84,7 +84,7 @@ beforeEach(() => {
     voicePair: null,
     pluginPair: null,
   });
-  useAiStore.setState({ sessions: [], activeSessionId: null, studySessionId: null, inputMode: 'agent', pendingFileAttachments: [] });
+  useAiStore.setState({ sessions: [], activeSessionId: null, inputMode: 'agent', pendingFileAttachments: [] });
 });
 
 afterEach(() => {
@@ -211,12 +211,12 @@ describe('useAiConfigStore.featureCliAdapter', () => {
 
   it('hydrate applies featureCliAdapter blob (string values only)', () => {
     useAiConfigStore.getState().hydrate({
-      featureCliAdapter: { wiki: 'pi', clips: 'claude', study: 42, analyze: '' },
+      featureCliAdapter: { wiki: 'pi', clips: 'claude', bogus: 42, analyze: '' },
     });
     const map = useAiConfigStore.getState().featureCliAdapter;
     expect(map.wiki).toBe('pi');
     expect(map.clips).toBe('claude');
-    expect(map.study).toBeUndefined(); // non-string dropped
+    expect(map.bogus).toBeUndefined(); // non-string dropped
     expect(map.analyze).toBeUndefined(); // empty string dropped
   });
 });

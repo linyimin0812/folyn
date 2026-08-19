@@ -14,8 +14,6 @@
         "evening": "Bonsoir, je suis Quill AI. Comment puis-je vous aider ?"
       }
     },
-    "studyStreaming": "agent d'étude en cours…",
-    "studyIdle": "session d'agent d'étude (saisie manuelle désactivée)",
     "attachmentPlaceholder": "(pièce jointe)",
     "deleteConfirmTitle": "Supprimer le chat",
     "deleteConfirm": "Supprimer ce chat ? Irréversible.",

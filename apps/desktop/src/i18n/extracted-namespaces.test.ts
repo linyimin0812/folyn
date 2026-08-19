@@ -26,8 +26,6 @@ import zhAi from './locales/zh/ai.json';
 import enAi from './locales/en/ai.json';
 import zhSchedule from './locales/zh/schedule.json';
 import enSchedule from './locales/en/schedule.json';
-import zhStudy from './locales/zh/study.json';
-import enStudy from './locales/en/study.json';
 import zhRustErrors from './locales/zh/rustErrors.json';
 import enRustErrors from './locales/en/rustErrors.json';
 import zhPet from './locales/zh/pet.json';
@@ -46,7 +44,6 @@ const zhBundles = {
   search: zhSearch,
   ai: zhAi,
   schedule: zhSchedule,
-  study: zhStudy,
   rustErrors: zhRustErrors,
   pet: zhPet,
   mmap: zhMmap,
@@ -63,7 +60,6 @@ const enBundles = {
   search: enSearch,
   ai: enAi,
   schedule: enSchedule,
-  study: enStudy,
   rustErrors: enRustErrors,
   pet: enPet,
   mmap: enMmap,

@@ -4,7 +4,7 @@ import { useAiConfigStore, getFeatureAdapter } from '@/store/aiConfigStore';
 export const sessionAdapters = new Map<string, CliAdapter>();
 
 /** Resolve the adapter for a session. When `feature` is provided (e.g.
- *  `'study'`), the per-feature override `featureCliAdapter[feature]` takes
+ *  `'wiki'`), the per-feature override `featureCliAdapter[feature]` takes
  *  precedence over the global `cliAdapter` — see getFeatureAdapter. The
  *  cached adapter in `sessionAdapters` is keyed by sessionId alone; a
  *  mismatching adapter id invalidates the cache and re-creates the adapter

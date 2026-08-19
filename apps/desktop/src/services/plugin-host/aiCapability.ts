@@ -1,13 +1,14 @@
 /**
  * Host-mediated AI capability for trusted-tier plugins.
  *
- * Single chokepoint: `ai.chat` wraps {@link runRigChat}, `ai.agent` wraps
- * {@link runFeatureAgent}. Provider/model/apiKey come from {@link useAiConfigStore}
- * — never exposed to plugins. `permissions.ai` whitelist is enforced before
- * any AI call.
+ * Single chokepoint: `ai.chat` wraps {@link runRigChat}. Provider/model/apiKey
+ * come from {@link useAiConfigStore} — never exposed to plugins.
+ * `permissions.ai` whitelist is enforced before any AI call.
  *
- * ponytail: no new AI invocation path. Both methods funnel through the host's
- * existing services.
+ * ponytail: `ai.agent` was previously routed through `runFeatureAgent`, which
+ * supported only one feature (now removed). Other features use bespoke
+ * flows not exposed to plugins. The method now refuses clearly so the SDK
+ * contract stays intact while no stale caller silently no-ops.
  */
 
 import type {
@@ -21,7 +22,6 @@ import type {
 } from '@quill/plugin-host';
 import type { CliStreamEvent } from '@quill/cli-adapter';
 import { runRigChat } from '@/services/rigChat';
-import { runFeatureAgent } from '@/services/featureAgentService';
 
 function assertChatPermission(manifest: PluginManifest): void {
   if (!manifest.permissions?.ai?.chat) {
@@ -120,14 +120,12 @@ export function buildPluginAi(manifest: PluginManifest): PluginAiCapability {
 
     async agent(params: PluginAiAgentParams): Promise<void> {
       assertAgentPermission(manifest, params.feature);
-      try {
-        await runFeatureAgent(params.feature, params.instruction);
-        params.onEvent({ type: 'done' });
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        params.onEvent({ type: 'error', content: msg });
-        throw err;
-      }
+      // ponytail: runFeatureAgent was feature-specific and is gone; other
+      // features use bespoke flows not exposed to plugins. Refuse clearly so
+      // a stale caller fails loudly instead of silently no-oping.
+      throw new Error(
+        `feature "${params.feature}" agent is not exposed via the plugin host AI capability`,
+      );
     },
 
     // ponytail: AI edit/create reuse runRigChat with a file-aware system prompt

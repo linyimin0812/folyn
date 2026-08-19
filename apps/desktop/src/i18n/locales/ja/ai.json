@@ -14,8 +14,6 @@
         "evening": "こんばんは、Quill AIです。お手伝いしましょうか？"
       }
     },
-    "studyStreaming": "学習エージェント実行中…",
-    "studyIdle": "学習エージェントセッション（手動入力無効）",
     "attachmentPlaceholder": "（添付）",
     "deleteConfirmTitle": "チャットを削除",
     "deleteConfirm": "このチャットを削除しますか？元に戻せません。",

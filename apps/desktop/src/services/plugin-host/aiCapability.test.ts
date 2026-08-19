@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { runRigChatMock, runFeatureAgentMock, aiConfigGetMock, aiStoreMock, vaultStoreMock } = vi.hoisted(() => {
+const { runRigChatMock, aiConfigGetMock, aiStoreMock, vaultStoreMock } = vi.hoisted(() => {
   return {
     runRigChatMock: vi.fn(),
-    runFeatureAgentMock: vi.fn(),
     aiConfigGetMock: vi.fn(),
     aiStoreMock: {
       createSession: vi.fn(),
@@ -19,7 +18,6 @@ const { runRigChatMock, runFeatureAgentMock, aiConfigGetMock, aiStoreMock, vault
 });
 
 vi.mock('@/services/rigChat', () => ({ runRigChat: runRigChatMock }));
-vi.mock('@/services/featureAgentService', () => ({ runFeatureAgent: runFeatureAgentMock }));
 // PR5: aiCapability reads pluginPair + providerSettings[pluginPair.provider]
 // (NOT global chatProvider/chatModel/chatApiKey). The mock state is seeded
 // per-test via aiConfigGetMock.mockReturnValue({...}).
@@ -72,7 +70,6 @@ function configuredState() {
 
 beforeEach(() => {
   runRigChatMock.mockReset();
-  runFeatureAgentMock.mockReset();
   aiConfigGetMock.mockReset();
   aiConfigGetMock.mockReturnValue(configuredState());
   aiStoreMock.createSession.mockReset();
@@ -195,37 +192,26 @@ describe('buildPluginAi / ai.chat', () => {
 
 describe('buildPluginAi / ai.agent', () => {
   it('rejects when feature not in permissions.ai.agents', async () => {
-    const ai = buildPluginAi(manifest({ permissions: { ai: { agents: ['study'] } } }));
+    const ai = buildPluginAi(manifest({ permissions: { ai: { agents: ['wiki'] } } }));
     await expect(
-      ai.agent({ feature: 'wiki', instruction: 'do', onEvent: vi.fn() }),
-    ).rejects.toThrow(/not authorized for feature "wiki"/);
-    expect(runFeatureAgentMock).not.toHaveBeenCalled();
+      ai.agent({ feature: 'clips', instruction: 'do', onEvent: vi.fn() }),
+    ).rejects.toThrow(/not authorized for feature "clips"/);
   });
 
   it('rejects when permissions.ai.agents absent', async () => {
     const ai = buildPluginAi(manifest());
     await expect(
-      ai.agent({ feature: 'study', instruction: 'do', onEvent: vi.fn() }),
+      ai.agent({ feature: 'wiki', instruction: 'do', onEvent: vi.fn() }),
     ).rejects.toThrow(/permissions\.ai\.agents/);
   });
 
-  it('calls runFeatureAgent and emits done on success', async () => {
-    runFeatureAgentMock.mockResolvedValue(undefined);
+  it('refuses to run a feature agent via the plugin host (runFeatureAgent removed)', async () => {
     const seen: string[] = [];
-    const ai = buildPluginAi(manifest({ permissions: { ai: { agents: ['study'] } } }));
-    await ai.agent({ feature: 'study', instruction: 'read X', onEvent: (e) => seen.push(e.type) });
-    expect(runFeatureAgentMock).toHaveBeenCalledWith('study', 'read X');
-    expect(seen).toEqual(['done']);
-  });
-
-  it('emits error event and rethrows when runFeatureAgent rejects', async () => {
-    runFeatureAgentMock.mockRejectedValue(new Error('agent fail'));
-    const seen: string[] = [];
-    const ai = buildPluginAi(manifest({ permissions: { ai: { agents: ['study'] } } }));
+    const ai = buildPluginAi(manifest({ permissions: { ai: { agents: ['wiki'] } } }));
     await expect(
-      ai.agent({ feature: 'study', instruction: 'do', onEvent: (e) => seen.push(`${e.type}:${e.content ?? ''}`) }),
-    ).rejects.toThrow('agent fail');
-    expect(seen).toContain('error:agent fail');
+      ai.agent({ feature: 'wiki', instruction: 'read X', onEvent: (e) => seen.push(e.type) }),
+    ).rejects.toThrow(/not exposed via the plugin host/);
+    expect(seen).toEqual([]);
   });
 });
 

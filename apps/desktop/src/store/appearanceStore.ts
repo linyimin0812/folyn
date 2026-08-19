@@ -13,7 +13,6 @@ const BUILTIN_EXCLUDE_DIRS = [
   '__clips__',
   '__reports__',
   '__daily__',
-  '__study__',
   '__schedule__',
   '__analyze__',
 ];
@@ -33,7 +32,7 @@ export function backfillBuiltinExcludePatterns(raw: string): string {
 }
 
 const DEFAULT_EXCLUDE_PATTERNS =
-  'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__study__\n__schedule__\n__analyze__';
+  'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__schedule__\n__analyze__';
 
 export const PERSIST_KEYS_APPEARANCE = [
   'theme',
@@ -45,12 +44,11 @@ export const PERSIST_KEYS_APPEARANCE = [
   'enableWikiPanel',
   'enableClipsPanel',
   'enableAnalyzePanel',
-  // ponytail: placeholder flags for schedule/study builtin rows (task
-  // 08-18). Default true so the row's Toggle paints on without any panel
-  // to bind yet — the flags will be wired to sidebar panels in a future
-  // task; the CLI adapter dropdown on the row works regardless.
+  // ponytail: placeholder flag for schedule builtin row. Default true so the
+  // row's Toggle paints on without any panel to bind yet — the flag will be
+  // wired to a sidebar panel in a future task; the CLI adapter dropdown on the
+  // row works regardless.
   'enableSchedulePanel',
-  'enableStudyPanel',
   'enabledAtWiki',
   'enabledAtClips',
   'enabledAtAnalyze',
@@ -71,7 +69,6 @@ export interface AppearanceState {
   enableClipsPanel: boolean;
   enableAnalyzePanel: boolean;
   enableSchedulePanel: boolean;
-  enableStudyPanel: boolean;
   /** Timestamp (Date.now()) when the corresponding panel was first enabled.
    * Used by registerBuiltinPanels to sort Wiki/Clips/Analyze by enable time
    * ascending in the ActivityBar (Files always stays first via order=0).
@@ -96,7 +93,6 @@ export interface AppearanceState {
   setEnableClipsPanel: (v: boolean) => void;
   setEnableAnalyzePanel: (v: boolean) => void;
   setEnableSchedulePanel: (v: boolean) => void;
-  setEnableStudyPanel: (v: boolean) => void;
   setExcludePatterns: (v: string) => void;
   setLinkOpenMode: (v: LinkOpenMode) => void;
   setVaultName: (name: string) => void;
@@ -117,7 +113,6 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   enableClipsPanel: false,
   enableAnalyzePanel: false,
   enableSchedulePanel: true,
-  enableStudyPanel: true,
   enabledAtWiki: undefined,
   enabledAtClips: undefined,
   enabledAtAnalyze: undefined,
@@ -184,11 +179,10 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
     }));
     persist();
   },
-  // ponytail: schedule/study have no panel wiring yet; setters persist the
+  // ponytail: schedule has no panel wiring yet; the setter persists the
   // flag so the row's Toggle state survives restarts, but the value has
   // no side effect. Wire up in a future task.
   setEnableSchedulePanel: (v) => { set({ enableSchedulePanel: v }); persist(); },
-  setEnableStudyPanel: (v) => { set({ enableStudyPanel: v }); persist(); },
   setExcludePatterns: (v) => { set({ excludePatterns: v }); persist(); },
   setLinkOpenMode: (v) => { set({ linkOpenMode: v }); persist(); },
   setVaultName: (name) => { set({ vaultName: name }); persist(); },
@@ -206,7 +200,6 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
     if (blob.enableClipsPanel !== undefined) patch.enableClipsPanel = blob.enableClipsPanel as boolean;
     if (blob.enableAnalyzePanel !== undefined) patch.enableAnalyzePanel = blob.enableAnalyzePanel as boolean;
     if (blob.enableSchedulePanel !== undefined) patch.enableSchedulePanel = blob.enableSchedulePanel as boolean;
-    if (blob.enableStudyPanel !== undefined) patch.enableStudyPanel = blob.enableStudyPanel as boolean;
     if (blob.enabledAtWiki !== undefined) patch.enabledAtWiki = blob.enabledAtWiki as number;
     if (blob.enabledAtClips !== undefined) patch.enabledAtClips = blob.enabledAtClips as number;
     if (blob.enabledAtAnalyze !== undefined) patch.enabledAtAnalyze = blob.enabledAtAnalyze as number;

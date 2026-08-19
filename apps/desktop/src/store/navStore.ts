@@ -3,7 +3,7 @@ import { create } from 'zustand';
 // ponytail: navStore owns AppPage/SettingsTab type ownership (migrated
 // from legacy settingsStore). These are nav-domain discriminators.
 
-export type AppPage = 'editor' | 'vault' | 'settings' | 'schedule' | 'study';
+export type AppPage = 'editor' | 'vault' | 'settings' | 'schedule';
 export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'cli' | 'models' | 'voice' | 'templates' | 'pet' | 'plugins' | 'notifications' | 'csp' | 'storage' | 'about';
 
 export interface NavState {

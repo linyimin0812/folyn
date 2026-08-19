@@ -14,8 +14,6 @@
         "evening": "Buenas noches, soy Quill AI. ¿En qué puedo ayudarte?"
       }
     },
-    "studyStreaming": "agente de estudio ejecutándose…",
-    "studyIdle": "sesión de agente de estudio (entrada manual deshabilitada)",
     "attachmentPlaceholder": "(adjunto)",
     "deleteConfirmTitle": "Eliminar chat",
     "deleteConfirm": "¿Eliminar este chat? No se puede deshacer.",

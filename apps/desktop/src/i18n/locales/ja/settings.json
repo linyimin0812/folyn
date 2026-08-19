@@ -68,10 +68,6 @@
         "label": "スケジュールパネル",
         "description": "スケジュール（Plan My Day）機能のエントリ"
       },
-      "study": {
-        "label": "学習パネル",
-        "description": "学習・研究機能のエントリ"
-      },
       "daily": {
         "label": "デイリーノートパネル",
         "description": "サイドバーにカレンダーとデイリーノートエントリを表示（無効化すると⌘Dも無効）"

@@ -67,7 +67,7 @@ function seedSession(overrides: Partial<AiSession> = {}): AiSession {
 }
 
 beforeEach(() => {
-  useAiStore.setState({ sessions: [], activeSessionId: null, studySessionId: null, inputMode: 'agent', pendingFileAttachments: [] });
+  useAiStore.setState({ sessions: [], activeSessionId: null, inputMode: 'agent', pendingFileAttachments: [] });
   useVaultStore.setState({ activeVaultId: null, currentVault: null } as never);
   vi.clearAllMocks();
 });
@@ -372,75 +372,12 @@ describe('useAiStore.clearMessages + pending attachments', () => {
   });
 });
 
-describe('useAiStore study session (PR9)', () => {
-  it('getSession retrieves by id, undefined for null/missing', () => {
+describe('useAiStore.getSession', () => {
+  it('retrieves by id, undefined for null/missing', () => {
     expect(useAiStore.getState().getSession(null)).toBeUndefined();
     expect(useAiStore.getState().getSession('nope')).toBeUndefined();
     const id = useAiStore.getState().createSession();
     expect(useAiStore.getState().getSession(id)?.id).toBe(id);
-  });
-
-  it('getOrCreateStudySession creates a kind=study session and records studySessionId', () => {
-    const id = useAiStore.getState().getOrCreateStudySession();
-    const s = useAiStore.getState().sessions.find((x) => x.id === id)!;
-    expect(s.kind).toBe('study');
-    expect(s.title).toBe('学习 agent');
-    expect(useAiStore.getState().studySessionId).toBe(id);
-    expect(useAiStore.getState().activeSessionId).toBe(id);
-  });
-
-  it('getOrCreateStudySession reuses the existing study session (multi-turn resume)', () => {
-    const first = useAiStore.getState().getOrCreateStudySession();
-    // Simulate a prior run recording a cli session id.
-    useAiStore.getState().setCliSessionId('cli-1', first);
-    const second = useAiStore.getState().getOrCreateStudySession();
-    expect(second).toBe(first);
-    expect(useAiStore.getState().sessions).toHaveLength(1);
-    // cliSessionId preserved for resume.
-    expect(useAiStore.getState().getSession(second)?.cliSessionId).toBe('cli-1');
-  });
-
-  it('getOrCreateStudySession re-activates the existing study session without creating a new one', () => {
-    const studyId = useAiStore.getState().getOrCreateStudySession();
-    // User switches to a different chat session.
-    const chatId = useAiStore.getState().createSession();
-    expect(useAiStore.getState().activeSessionId).toBe(chatId);
-    const reused = useAiStore.getState().getOrCreateStudySession();
-    expect(reused).toBe(studyId);
-    expect(useAiStore.getState().activeSessionId).toBe(studyId);
-    expect(useAiStore.getState().sessions).toHaveLength(2);
-  });
-
-  it('deleteSession clears studySessionId when the study session is removed', () => {
-    const studyId = useAiStore.getState().getOrCreateStudySession();
-    useAiStore.getState().deleteSession(studyId);
-    expect(useAiStore.getState().studySessionId).toBeNull();
-    expect(useAiStore.getState().sessions).toEqual([]);
-  });
-
-  it('deleteSession leaves studySessionId intact when removing a different session', () => {
-    const studyId = useAiStore.getState().getOrCreateStudySession();
-    const chatId = useAiStore.getState().createSession();
-    useAiStore.getState().deleteSession(chatId);
-    expect(useAiStore.getState().studySessionId).toBe(studyId);
-  });
-
-  it('重启后 studySessionId 丢失时，回退扫描复用已持久化的 study 会话而非新建', () => {
-    const studyId = useAiStore.getState().getOrCreateStudySession();
-    useAiStore.getState().setCliSessionId('cli-9', studyId);
-    // 模拟重启：sessions 从磁盘恢复（kind 保留），但 studySessionId 未持久化 → null。
-    useAiStore.setState({
-      sessions: useAiStore.getState().sessions,
-      activeSessionId: null,
-      studySessionId: null,
-    });
-    const reused = useAiStore.getState().getOrCreateStudySession();
-    expect(reused).toBe(studyId);
-    expect(useAiStore.getState().studySessionId).toBe(studyId);
-    // 不应新建会话
-    expect(useAiStore.getState().sessions.filter((s) => s.kind === 'study')).toHaveLength(1);
-    // cliSessionId 仍保留供 resume
-    expect(useAiStore.getState().getSession(reused)?.cliSessionId).toBe('cli-9');
   });
 });
 

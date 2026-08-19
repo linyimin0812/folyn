@@ -68,10 +68,6 @@
         "label": "Panneau Schedule",
         "description": "Entrée de la fonctionnalité Schedule (Plan My Day)"
       },
-      "study": {
-        "label": "Panneau Étude",
-        "description": "Entrée de la fonctionnalité Étude & recherche"
-      },
       "daily": {
         "label": "Panneau Notes quotidiennes",
         "description": "Afficher l'entrée Calendrier et notes quotidiennes dans la barre latérale (désactiver désactive aussi ⌘D)"

@@ -144,10 +144,6 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
   const clearContext = useAiStore((s) => s.clearContext);
   const clearMessages = useAiStore((s) => s.clearMessages);
   const inputModes = useMemo(() => listInputModes(), []);
-  // Feature-agent sessions (kind='study') pick their own adapter at impl
-  // time and ignore the user-facing adapter selector; only general chat
-  // sessions show it.
-  const sessionKind = useAiStore((s) => s.sessions?.find((x) => x.id === s.activeSessionId)?.kind);
   // ponytail: read mode off the active session so it survives restart;
   // fall back to the global inputMode when no session is active (transient
   // state during creation) or for legacy sessions without a persisted mode.
@@ -826,7 +822,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
           onOpenSettings={handleOpenModelSettings}
         />
       ) : (
-        sessionKind !== 'study' && <AdapterSelector disabled={isStreaming || sessionStarted} />
+        <AdapterSelector disabled={isStreaming || sessionStarted} />
       )}
       <button className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed" onClick={handleFileSelect} disabled={isStreaming} title={t('ai:chat.attachFile')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
