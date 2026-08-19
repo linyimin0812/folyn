@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { appendToNotesSection, ELABORATION_TEMPLATE } from './studyDoc';
+import { appendToNotesSection, ELABORATION_TEMPLATE, sq3rSubdocPath, sq3rSubdocDir } from './studyDoc';
 
 const DOC_WITH_NOTES = `---
 title: agent 开发
@@ -75,5 +75,21 @@ describe('appendToNotesSection', () => {
     expect(lines[lines.indexOf('## 笔记') + 1]).toBe('- 新笔记');
     // 复习段标题仍在且位置不变
     expect(out).toContain('## 复习');
+  });
+});
+
+describe('sq3r subdoc path', () => {
+  it('derives per-material subdoc path under __study__/<slug>/', () => {
+    expect(sq3rSubdocPath('agent-dev', 'Transformer 论文')).toBe(
+      '__study__/agent-dev/sq3r-transformer-论文.md',
+    );
+  });
+
+  it('shares one file for materials with the same slugified title (orphan ceiling; same as callout-by-title)', () => {
+    expect(sq3rSubdocPath('s', 'A/B')).toBe(sq3rSubdocPath('s', 'A B'));
+  });
+
+  it('derives the parent dir path', () => {
+    expect(sq3rSubdocDir('agent-dev')).toBe('__study__/agent-dev');
   });
 });

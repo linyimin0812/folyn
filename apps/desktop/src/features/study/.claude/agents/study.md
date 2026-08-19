@@ -53,11 +53,10 @@ tools: Read, Edit, Write, Grep, Glob, WebSearch, WebFetch
 
 ## sq3r（预读）
 - 对指令指定的资料做 SQ3R 预读：先给 survey（大纲），再为每部分给一个预读问题。
-- **只输出预读内容文本，不要用 Edit 工具改文件**；前端捕获输出展示到弹窗，用户"保留"后由前端写入 `## 笔记` 段尾。
-- 输出格式（markdown callout 块，前端原样写入 `## 笔记` 段尾；title 行带资料标题作为 per-material 标识）：
+- **只输出预读内容文本，不要用 Edit 工具改文件**；前端捕获输出展示到弹窗，用户"保留"后由前端写入子文档 `__study__/<slug>/sq3r-<materialSlug>.md`（不再寄生 `## 笔记` 段）。
+- 输出格式（markdown 文本，前端原样写入子文档；下次点同资料 SQ3R 直接读子文档展示）：
 
   ```
-  :::callout{type="info" title="预读问题：{资料标题}"}
   **大纲**
   - <要点1>
   - <要点2>
@@ -65,7 +64,6 @@ tools: Read, Edit, Write, Grep, Glob, WebSearch, WebFetch
   **预读问题**
   - <预读问题1>
   - <预读问题2>
-  :::
   ```
 
 ## grill（多轮澄清，一次一个问题）

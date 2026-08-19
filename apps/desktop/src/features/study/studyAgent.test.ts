@@ -25,12 +25,25 @@ describe('getStudyAgentDef (canonical .claude/agents/study.md 解析)', () => {
     expect(prompt).toMatch(/不要.*Edit 工具改文件|绝不改文件/);
   });
 
-  it('system prompt body 承载 feynman/selftest/sq3r 的 callout 契约', () => {
+  it('system prompt body 承载 atoms/quiz 的行语法契约（自动写盘动作）', () => {
+    const { prompt } = getStudyAgentDef();
+    expect(prompt).toContain('atoms');
+    expect(prompt).toContain('- [ ] 费曼技巧三步 @{next:<今天日期> rep:0 ef:2.5 ivl:1 lapses:0}');
+    expect(prompt).toContain('quiz');
+    expect(prompt).toContain('- [ ] Q. 什么是费曼技巧？ | 用大白话向 5 岁小孩解释，暴露盲区 | 笔记');
+    // atoms/quiz 与 research/plan 一样不改文件
+    expect(prompt).toMatch(/atoms[\s\S]*不要\*\*用 Edit 工具改文件/);
+    expect(prompt).toMatch(/quiz[\s\S]*不要\*\*用 Edit 工具改文件/);
+  });
+
+  it('system prompt body 承载 feynman/selftest 的 callout 契约与 sq3r 的子文档契约', () => {
     const { prompt } = getStudyAgentDef();
     expect(prompt).toContain(':::callout{type="warning" title="盲区"}');
     expect(prompt).toContain(':::callout{type="tip" title="自测题"}');
     expect(prompt).toContain('<details>');
-    expect(prompt).toContain(':::callout{type="info" title="预读问题"}');
+    // sq3r 不再寄生 `## 笔记` 段 callout，改落子文档 `__study__/<slug>/sq3r-<materialSlug>.md`
+    expect(prompt).toContain('sq3r-<materialSlug>.md');
+    expect(prompt).not.toContain(':::callout{type="info" title="预读问题');
     // append-only 规则
     expect(prompt).toMatch(/append-only|只在段尾追加/);
   });

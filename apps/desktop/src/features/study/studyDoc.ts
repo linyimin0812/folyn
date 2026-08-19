@@ -108,124 +108,23 @@ export function appendToNotesSection(content: string, line: string): string {
 export const ELABORATION_TEMPLATE =
   '- **概念**: … | 因为: … | 例子: … | 类比: [[]]';
 
-// ── SQ3R 预读 callout 解析 / 写入 ──
+// ── SQ3R 预读子文档 ──
 //
-// callout 形态（agent 产出 → 前端原样写入 `## 笔记` 段尾）：
-//   :::callout{type="info" title="预读问题：{materialTitle}"}
-//   <body：大纲 + 预读问题>
-//   :::
-// title 中的 materialTitle 作为 per-material 标识——再次点同资料 SQ3R 时
-// 直接读对应 callout 展示，不必重新调 AI。
-
-const SQ3R_CALLOUT_OPEN_RE = /^:::callout\{[^}]*title="预读问题：([^"]+)"[^}]*\}\s*$/;
-const CALLOUT_CLOSE_RE = /^:::\s*$/;
+// 落盘约定：每资料一个独立子文档 `__study__/<slug>/sq3r-<materialSlug>.md`，
+// 符合 CLAUDE.md 的 `<slug>/<link>.md` 子文档约定。文件内容 = AI 产出的预读
+// markdown（大纲 + 预读问题）原样写入；再次点击同资料 SQ3R → 读子文档直接展示，
+// 不调 AI。"保留"覆盖写；"重新预读"清弹窗后重调 AI。
 
 /**
- * 扫 `## 笔记` 段（或全文）找指定资料的 SQ3R callout，返回其 body 文本。
- * 命中返回 { body }（body 不含 open/close 行）；未命中返回 null。
+ * 推导某资料 SQ3R 预读子文档在 vault 中的相对路径。
+ * materialSlug = slugifyTopic(material.title)；同标题资料会撞同一文件（与现状 callout
+ * 以 title 匹配同性质，可接受）。material 标题改了 → 旧文件成孤儿，新文件按新 slug 新建。
  */
-export function findSq3rCallout(content: string, materialTitle: string): { body: string } | null {
-  const lines = content.split('\n');
-  let i = 0;
-  // 限定在 `## 笔记` 段内（若段不存在，扫全文尾段兜底）。
-  let end = lines.length;
-  for (; i < lines.length; i++) {
-    const m = H2_RE.exec(lines[i]);
-    if (m && m[1].trim() === NOTES_HEADING) {
-      for (let j = i + 1; j < lines.length; j++) {
-        if (H2_RE.test(lines[j])) { end = j; break; }
-      }
-      i += 1; // 进入段体
-      break;
-    }
-  }
-  for (; i < end; i++) {
-    const m = SQ3R_CALLOUT_OPEN_RE.exec(lines[i]);
-    if (!m) continue;
-    if (m[1] !== materialTitle) {
-      // 跳过本 callout 块（直到 close），继续找下一个
-      for (i += 1; i < end; i++) {
-        if (CALLOUT_CLOSE_RE.test(lines[i])) break;
-      }
-      continue;
-    }
-    // 命中——收集 body 到下一个 ::: 行
-    const body: string[] = [];
-    for (i += 1; i < end; i++) {
-      if (CALLOUT_CLOSE_RE.test(lines[i])) break;
-      body.push(lines[i]);
-    }
-    // 去掉首尾空行，保持紧凑
-    while (body.length && body[0].trim() === '') body.shift();
-    while (body.length && body[body.length - 1].trim() === '') body.pop();
-    return { body: body.join('\n') };
-  }
-  return null;
+export function sq3rSubdocPath(slug: string, materialTitle: string): string {
+  return `${STUDY_DIR}/${slug}/sq3r-${slugifyTopic(materialTitle)}.md`;
 }
 
-/**
- * 把 SQ3R callout 写入 / 替换到 `## 笔记` 段尾。
- * 若该资料已有同 title callout → 替换 body；否则段尾追加新 callout 块。
- * 段不存在则在文件末尾新建。原样保留其它行（散文、其它 callout）。
- */
-export function upsertSq3rCallout(content: string, materialTitle: string, calloutBody: string): string {
-  const lines = content.split('\n');
-  let start = -1;
-  let end = lines.length;
-  for (let i = 0; i < lines.length; i++) {
-    const m = H2_RE.exec(lines[i]);
-    if (m && m[1].trim() === NOTES_HEADING) {
-      start = i;
-      for (let j = i + 1; j < lines.length; j++) {
-        if (H2_RE.test(lines[j])) { end = j; break; }
-      }
-      break;
-    }
-  }
-  // 段不存在：在文件末尾新建并写入
-  if (start < 0) {
-    if (lines.length && lines[lines.length - 1].trim() !== '') lines.push('');
-    lines.push(`## ${NOTES_HEADING}`);
-    lines.push('');
-    lines.push(...buildSq3rCalloutLines(materialTitle, calloutBody));
-    return lines.join('\n');
-  }
-
-  // 段内找已有同 title callout → 替换其 body
-  for (let i = start + 1; i < end; i++) {
-    const m = SQ3R_CALLOUT_OPEN_RE.exec(lines[i]);
-    if (!m || m[1] !== materialTitle) {
-      // 不是目标 callout——若它是任意 callout，跳到 close 行，避免误改
-      if (/^:::callout\{/.test(lines[i])) {
-        for (i += 1; i < end; i++) {
-          if (CALLOUT_CLOSE_RE.test(lines[i])) break;
-        }
-      }
-      continue;
-    }
-    // 命中——定位 close 行，splice 替换中间 body
-    let closeIdx = i + 1;
-    while (closeIdx < end && !CALLOUT_CLOSE_RE.test(lines[closeIdx])) closeIdx += 1;
-    const newBlock = buildSq3rCalloutLines(materialTitle, calloutBody);
-    // newBlock = [open, ...bodyLines, close]；open 与 close 行复用，只换中间 body
-    const newBody = newBlock.slice(1, -1);
-    lines.splice(i + 1, closeIdx - i - 1, ...newBody);
-    return lines.join('\n');
-  }
-
-  // 段内无目标 callout → 段尾追加新 callout 块（前后空行分隔）
-  let insertAt = end;
-  while (insertAt - 1 > start && lines[insertAt - 1].trim() === '') insertAt -= 1;
-  if (insertAt > start && lines[insertAt - 1].trim() !== '') lines.splice(insertAt, 0, '');
-  lines.splice(insertAt, 0, ...buildSq3rCalloutLines(materialTitle, calloutBody));
-  return lines.join('\n');
-}
-
-/** 构造 SQ3R callout 块的行数组（含 open / close 行，body 前后留空行）。 */
-function buildSq3rCalloutLines(materialTitle: string, calloutBody: string): string[] {
-  return [
-    `:::callout{type="info" title="预读问题：${materialTitle}"}`,
-    ...calloutBody.split('\n'),
-    ':::',
-  ];
+/** 构造子文档的父目录 vault 相对路径（`__study__/<slug>`）。 */
+export function sq3rSubdocDir(slug: string): string {
+  return `${STUDY_DIR}/${slug}`;
 }

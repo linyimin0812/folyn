@@ -15,7 +15,6 @@ import { StudyGrillCard } from './StudyGrillCard';
 import { TodayReviewQueue } from './TodayReviewQueue';
 import * as editorIoService from '@/services/editorIoService';
 import { collectScheduleLinks, isAiAvailable, openStudyAiAction, buildStudyInstruction, type ScheduleLink } from '@/features/study/scheduleLink';
-import { findSq3rCallout } from '@/features/study/studyDoc';
 import { computePlanProgress } from '@/features/study/progress';
 import type { StudyMaterial, StudyUnit, ReviewAtom, QuizItem } from '@/features/study/types';
 
@@ -69,6 +68,7 @@ export function StudyWorkbenchPage() {
   const clearGrill = useStudyStore((s) => s.clearGrill);
   const addGrillHistory = useStudyStore((s) => s.addGrillHistory);
   const setSq3rOutput = useStudyStore((s) => s.setSq3rOutput);
+  const findSq3rSubdoc = useStudyStore((s) => s.findSq3rSubdoc);
   const active = topics.find((t) => t.slug === activeSlug) ?? null;
 
   // 计划区回链状态：扫描 schedule 任务中带 study:<slug> 的条目（只读单向读回）。
@@ -276,14 +276,14 @@ export function StudyWorkbenchPage() {
     );
   };
 
-  // SQ3R：先查 `## 笔记` 段是否已有该资料的预读 callout——命中直接展示（不调 AI）；
-  // 未命中 → markSuggestionBaseline + beginSuggestion('sq3r', ...) + openStudyAiAction，
-  // consumeSuggestion 收到产出后填 sq3rOutput，弹窗展示。
-  const runSq3r = (m: StudyMaterial) => {
+  // SQ3R：先查子文档 `__study__/<slug>/sq3r-<materialSlug>.md` 是否已有该资料的预读内容——
+  // 命中直接展示（不调 AI）；未命中 → markSuggestionBaseline + beginSuggestion('sq3r', ...) +
+  // openStudyAiAction，consumeSuggestion 收到产出后填 sq3rOutput，弹窗展示。
+  const runSq3r = async (m: StudyMaterial) => {
     if (!active || !isAiAvailable()) return;
-    const found = findSq3rCallout(active.parsed.rawLines.join('\n'), m.title);
-    if (found) {
-      setSq3rOutput({ materialId: m.id, materialTitle: m.title, content: found.body });
+    const cached = await findSq3rSubdoc(active.slug, m.title);
+    if (cached) {
+      setSq3rOutput({ materialId: m.id, materialTitle: m.title, content: cached });
       return;
     }
     markSuggestionBaseline();

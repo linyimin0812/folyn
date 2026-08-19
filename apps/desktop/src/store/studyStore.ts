@@ -18,6 +18,8 @@ import {
   slugifyTopic,
   buildEmptyStudyDoc,
   studyDocPath,
+  sq3rSubdocPath,
+  sq3rSubdocDir,
   extractSlug,
   type StudyTopicEntry,
 } from '@/features/study/studyDoc';
@@ -46,7 +48,7 @@ export interface PendingSuggestion {
   slug: string;
   /** sq3r 专属：发起动作的目标资料 id（弹窗按此匹配展示）。 */
   materialId?: string;
-  /** sq3r 专属：资料标题，用于 upsertSq3rCallout 标识。 */
+  /** sq3r 专属：资料标题，用于子文档文件名（slugify 后）与"保留"写回定位。 */
   materialTitle?: string;
 }
 
@@ -115,7 +117,7 @@ interface StudyState {
   suggestedUnits: StudyUnit[];
   /** 当前等待 AI 产出文本建议的动作（research/plan/atoms/quiz/grill/sq3r）；扫描到产出后清零。 */
   pendingSuggestion: PendingSuggestion | null;
-  /** SQ3R 弹窗内容：AI 产出或从 `## 笔记` callout 读出，由资料区弹窗消费；null 时弹窗关闭。 */
+  /** SQ3R 弹窗内容：AI 产出或从子文档读出，由资料区弹窗消费；null 时弹窗关闭。 */
   sq3rOutput: { materialId: string; materialTitle: string; content: string } | null;
   /** grill 多轮澄清：当前待回答的问题（一次一个；用户回答后由下一轮/done 替换）。 */
   grillQuestion: GrillQuestion | null;
@@ -158,12 +160,16 @@ interface StudyState {
    * - atoms：解析复习原子后**自动追加**到主题 `## 复习` 段（去重）。
    * - quiz：解析检测题后**自动追加**到主题 `## 检测` 段（去重）。
    * - plan：解析为 `suggestedUnits` 建议卡片（计划仍需人工取舍）。
-   * - sq3r：把产出文本填入 `sq3rOutput`（弹窗按 materialId 匹配展示，保留时由前端写入 callout）。
+   * - sq3r：把产出文本填入 `sq3rOutput`（弹窗按 materialId 匹配展示，保留时由前端写子文档）。
    * 任一分支结束后清 pendingSuggestion（无产出也清零）。
    */
   consumeSuggestion: (text: string) => Promise<void>;
-  /** 直接置 sq3rOutput（从 `## 笔记` callout 读出已有内容时走此路径，不经 AI）。 */
+  /** 直接置 sq3rOutput（从子文档读出已有内容时走此路径，不经 AI）。 */
   setSq3rOutput: (out: { materialId: string; materialTitle: string; content: string } | null) => void;
+  /** 把 SQ3R 预读内容写入子文档 `__study__/<slug>/sq3r-<materialSlug>.md`（覆盖写，父目录幂等创建）。 */
+  saveSq3rCallout: (slug: string, materialTitle: string, calloutBody: string) => Promise<void>;
+  /** 读子文档返回 body；文件不存在（未保留过 / 标题改了）返回 null。 */
+  findSq3rSubdoc: (slug: string, materialTitle: string) => Promise<string | null>;
   /** 清空建议与 grill 状态（切换主题/取消时）。 */
   clearSuggestions: () => void;
   /** 清空 grill 状态（回答完毕/跳过/取消时）。 */
@@ -362,16 +368,18 @@ export const useStudyStore = create<StudyState>((set, get) => ({
     }));
   },
 
-  /** 把 SQ3R callout 写入 / 替换到指定主题 `## 笔记` 段尾（保留散文与其它 callout）。
-   *  SQ3R 改为前端写入后，agent 只产出文本 callout，弹窗"保留"调本方法落盘。 */
+  /** 把 SQ3R 预读内容写入子文档 `__study__/<slug>/sq3r-<materialSlug>.md`。
+   *  agent 只产出文本，弹窗"保留"调本方法落盘；覆盖写，父目录幂等创建。 */
   saveSq3rCallout: async (slug, materialTitle, calloutBody) => {
-    const target = get().topics.find((t) => t.slug === slug);
-    if (!target) return;
     const vault = useVaultStore.getState();
-    const content = await vault.readFile(target.path);
-    const next = upsertSq3rCallout(content, materialTitle, calloutBody);
-    await vault.writeFile(target.path, next);
+    try { await vault.createDir(sq3rSubdocDir(slug)); } catch { /* 已存在或不可写 */ }
+    await vault.writeFile(sq3rSubdocPath(slug, materialTitle), calloutBody);
     vault.refreshFileTree().catch(() => {});
+  },
+  /** 读子文档返回 body；文件不存在（标题改了 / 未保留过）返回 null。 */
+  findSq3rSubdoc: async (slug, materialTitle) => {
+    const vault = useVaultStore.getState();
+    try { return await vault.readFile(sq3rSubdocPath(slug, materialTitle)); } catch { return null; }
   },
 
   beginSuggestion: (kind, slug, ctx) =>

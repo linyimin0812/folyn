@@ -138,9 +138,9 @@ export function isAiAvailable(): boolean {
  * - research / atoms / quiz：agent 返回结构化文本行（不直编文件）→ studyStore
  *   捕获 effect 扫 study 会话最后 assistant 消息 → 自动写盘（资料/复习原子/检测题）。
  * - plan：agent 返回结构化文本行 → studyStore 捕获 → 建议卡片（人工取舍）。
- * - sq3r：agent 返回 callout 文本块（不直编文件）→ studyStore 捕获 → 弹窗展示 →
- *   用户"保留"后由前端 upsertSq3rCallout 写入 `## 笔记` 段尾 `[!note-sq3r]` callout
- *   （title 带资料标题作为 per-material 标识；下次点同资料 SQ3R 直接读 callout 展示）。
+ * - sq3r：agent 返回预读文本（不直编文件）→ studyStore 捕获 → 弹窗展示 →
+ *   用户"保留"后由前端 saveSq3rCallout 写入子文档 `__study__/<slug>/sq3r-<materialSlug>.md`
+ *   （文件名按资料标题 slugify；下次点同资料 SQ3R 直接读子文档展示，不调 AI）。
  * - feynman / selftest：agent 用 Edit 直编主题 .md 的 `## 笔记` 段，
  *   fileChange 经 aiStore.addFileChange → enterDiffReview 进 DiffView 审阅
  *   （PR5 机制不变）。
