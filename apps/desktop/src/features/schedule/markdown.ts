@@ -7,7 +7,6 @@ import type {
   ParsedDaily,
   ScheduleEvent,
   ScheduleTask,
-  EventCategory,
   TaskCategory,
   Priority,
 } from './types';
@@ -15,8 +14,8 @@ import type {
 const SECTION_EVENT = '日程';
 const SECTION_TASK = '任务';
 
-// - @event 09:00-10:00 | work | 标题 | 备注
-const EVENT_RE = /^- @event\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})\s*\|\s*(\w+)\s*\|\s*(.+?)(?:\s*\|\s*(.+))?$/;
+// - @event 09:00-10:00 | 标题 | 备注
+const EVENT_RE = /^- @event\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})\s*\|\s*(.+?)(?:\s*\|\s*(.+))?$/;
 // - [ ] 标题 @{col:todo cat:dev prio:med due:06-29 prog:0 sub:0 as:YL}
 const TASK_RE = /^- \[([ x])\] (.+?)\s+@\{([^}]*)\}\s*$/;
 const ATTR_RE = /(\w+):(\S+)/g;
@@ -81,9 +80,8 @@ export function parseDaily(content: string, noteDate: string): ParsedDaily {
           noteDate,
           start,
           end,
-          category: m[3] as EventCategory,
-          title: m[4].trim(),
-          note: m[5]?.trim() || undefined,
+          title: m[3].trim(),
+          note: m[4]?.trim() || undefined,
           lineIndex: i,
         });
       }
@@ -152,7 +150,7 @@ function clampInt(s: string, lo: number, hi: number): number {
 /** 序列化一个事件为规范行。 */
 export function buildEventLine(e: ScheduleEvent): string {
   const note = e.note ? ` | ${e.note}` : '';
-  return `- @event ${formatTime(e.start)}-${formatTime(e.end)} | ${e.category} | ${e.title}${note}`;
+  return `- @event ${formatTime(e.start)}-${formatTime(e.end)} | ${e.title}${note}`;
 }
 
 /** 序列化一个任务为规范行（含复选框 + 属性块）。 */

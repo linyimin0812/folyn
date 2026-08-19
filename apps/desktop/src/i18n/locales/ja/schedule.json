@@ -10,13 +10,6 @@
     "weekRange": "{{ms}}/{{ds}}/{{y}} – {{me}}/{{de}}",
     "dow": ["月", "火", "水", "木", "金", "土", "日"],
     "selectDay": "この日を選択",
-    "legend": {
-      "work": "仕事",
-      "personal": "個人",
-      "family": "家族",
-      "health": "健康",
-      "task": "タスク"
-    },
     "scheduledToast": "{{day}} {{time}}に予定しました"
   },
   "dayCal": {
@@ -44,13 +37,6 @@
     "incompleteTasks": "未完了タスク"
   },
   "category": {
-    "event": {
-      "work": "仕事",
-      "personal": "個人",
-      "family": "家族",
-      "health": "健康",
-      "task": "タスク"
-    },
     "task": {
       "design": "デザイン",
       "dev": "開発",

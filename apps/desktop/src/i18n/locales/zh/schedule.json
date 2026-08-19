@@ -10,13 +10,6 @@
     "weekRange": "{{y}} 年 {{ms}} 月 {{ds}} 日 – {{me}} 月 {{de}} 日",
     "dow": ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
     "selectDay": "选中此日",
-    "legend": {
-      "work": "工作",
-      "personal": "个人",
-      "family": "家庭",
-      "health": "健康",
-      "task": "任务"
-    },
     "scheduledToast": "已排程到 {{day}} {{time}}"
   },
   "dayCal": {
@@ -44,13 +37,6 @@
     "incompleteTasks": "未完成任务"
   },
   "category": {
-    "event": {
-      "work": "工作",
-      "personal": "个人",
-      "family": "家庭",
-      "health": "健康",
-      "task": "任务"
-    },
     "task": {
       "design": "设计",
       "dev": "研发",

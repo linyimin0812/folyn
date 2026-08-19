@@ -13,7 +13,6 @@ beforeEach(() => {
     tasks: [],
     loading: false,
     lastScan: 0,
-    calendarFilter: { work: true, personal: true, family: true, health: true, task: true },
     boardAnchorDate: '2026-07-16',
     boardColumns: DEFAULT_BOARD_COLUMNS.map((c) => ({ ...c })),
     pomo: { mode: 'work', remaining: 25 * 60, running: false, round: 1 },

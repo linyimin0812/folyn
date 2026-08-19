@@ -28,7 +28,6 @@ import type {
   PlannedNewTask,
   PlannedScheduledTask,
 } from '@/services/planMyDayService';
-import type { EventCategory } from '@/features/schedule/types';
 
 // ── Pure helpers (exported for unit tests) ───────────────────────────────────
 
@@ -385,7 +384,7 @@ export function PlanMyDayPreview({ plan, targetDate, onAccept, onReject }: PlanM
               return (
                 <div
                   key={e.id}
-                  className={`sw-event ${e.category} confirmed`}
+                  className="sw-event confirmed"
                   style={{
                     top: `calc(${e.start} * var(--hour-h))`,
                     height: `calc(${(e.end - e.start)} * var(--hour-h) - 2px)`,
@@ -479,4 +478,4 @@ export function PlanMyDayPreview({ plan, targetDate, onAccept, onReject }: PlanM
 }
 
 // Re-export types used by callers for convenience.
-export type { Plan, PlanAcceptance, PlannedScheduledTask, PlannedNewTask, PlannedEvent, EventCategory };
+export type { Plan, PlanAcceptance, PlannedScheduledTask, PlannedNewTask, PlannedEvent };

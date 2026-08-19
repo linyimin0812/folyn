@@ -23,7 +23,6 @@ export function WeekGrid({ cursor, onCursorChange, selectedDate, onSelectDate, o
 
   const events = useScheduleStore((s) => s.events);
   const tasks = useScheduleStore((s) => s.tasks);
-  const filter = useScheduleStore((s) => s.calendarFilter);
   const scheduleTask = useScheduleStore((s) => s.scheduleTask);
   const moveEvent = useScheduleStore((s) => s.moveEvent);
 
@@ -57,13 +56,6 @@ export function WeekGrid({ cursor, onCursorChange, selectedDate, onSelectDate, o
           <button className="sw-nav-btn" onClick={() => go(7)}>›</button>
           <div className="sw-range-label">{rangeLabel()}</div>
         </div>
-        <div className="sw-right">
-          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-work)' }} />{t('schedule:weekGrid.legend.work')}</span>
-          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-personal)' }} />{t('schedule:weekGrid.legend.personal')}</span>
-          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-family)' }} />{t('schedule:weekGrid.legend.family')}</span>
-          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-health)' }} />{t('schedule:weekGrid.legend.health')}</span>
-          <span><span className="sw-legend-dot" style={{ background: 'var(--cal-task)' }} />{t('schedule:weekGrid.legend.task')}</span>
-        </div>
       </div>
 
       <div className="sw-cal-scroll">
@@ -95,9 +87,9 @@ export function WeekGrid({ cursor, onCursorChange, selectedDate, onSelectDate, o
 
           {days.map((d, dayIdx) => {
             const dStr = dateToString(d);
-            const dayEvents = events.filter((e) => e.noteDate === dStr && filter[e.category]);
+            const dayEvents = events.filter((e) => e.noteDate === dStr);
             const dayTasks = tasks.filter(
-              (t) => t.scheduledDate === dStr && !t.done && filter.task,
+              (t) => t.scheduledDate === dStr && !t.done,
             );
             return (
               <div
@@ -164,7 +156,6 @@ export function WeekGrid({ cursor, onCursorChange, selectedDate, onSelectDate, o
                       {dayEvents.map((e) => (
                         <EventBlock
                           key={e.id}
-                          category={e.category}
                           title={e.title}
                           note={e.note}
                           start={e.start}
@@ -180,7 +171,6 @@ export function WeekGrid({ cursor, onCursorChange, selectedDate, onSelectDate, o
                         return (
                           <EventBlock
                             key={t.id}
-                            category="task"
                             title={t.title}
                             start={t.scheduledStart!}
                             end={t.scheduledEnd!}

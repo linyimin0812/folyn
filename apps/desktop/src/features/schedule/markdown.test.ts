@@ -13,8 +13,8 @@ tags: [daily]
 今天随便写点散文。
 
 ## 日程
-- @event 09:00-10:00 | work | 晨会同步 | Zoom · 团队频道
-- @event 18:00-19:00 | health | 健身房
+- @event 09:00-10:00 | 晨会同步 | Zoom · 团队频道
+- @event 18:00-19:00 | 健身房
 
 ## 任务
 - [ ] 设计日程工作台 v2 @{col:todo cat:design prio:high due:06-29 prog:0 sub:0 as:YL,Li}
@@ -45,7 +45,6 @@ describe('parseDaily', () => {
       noteDate: '2026-06-27',
       start: 9,
       end: 10,
-      category: 'work',
       title: '晨会同步',
       note: 'Zoom · 团队频道',
     });
@@ -82,16 +81,16 @@ describe('buildEventLine / buildTaskLine', () => {
   it('builds canonical event line', () => {
     const e: ScheduleEvent = {
       id: 'x', noteDate: '2026-06-27', start: 9, end: 10,
-      category: 'work', title: '晨会', note: '备注', lineIndex: -1,
+      title: '晨会', note: '备注', lineIndex: -1,
     };
-    expect(buildEventLine(e)).toBe('- @event 09:00-10:00 | work | 晨会 | 备注');
+    expect(buildEventLine(e)).toBe('- @event 09:00-10:00 | 晨会 | 备注');
   });
   it('omits note segment when absent', () => {
     const e: ScheduleEvent = {
       id: 'x', noteDate: '2026-06-27', start: 18, end: 19,
-      category: 'health', title: '健身房', lineIndex: -1,
+      title: '健身房', lineIndex: -1,
     };
-    expect(buildEventLine(e)).toBe('- @event 18:00-19:00 | health | 健身房');
+    expect(buildEventLine(e)).toBe('- @event 18:00-19:00 | 健身房');
   });
   it('builds canonical task line with sched', () => {
     const t: ScheduleTask = {
@@ -173,11 +172,11 @@ describe('serializeDaily', () => {
     const parsed = parseDaily(bare, '2026-06-27');
     const newEv: ScheduleEvent = {
       id: 'new', noteDate: '2026-06-27', start: 9, end: 10,
-      category: 'work', title: '晨会', lineIndex: -1,
+      title: '晨会', lineIndex: -1,
     };
     const out = serializeDaily(parsed, [newEv], []);
     expect(out).toContain('## 日程');
-    expect(out).toContain('- @event 09:00-10:00 | work | 晨会');
+    expect(out).toContain('- @event 09:00-10:00 | 晨会');
     expect(out).toContain('只有散文。');
   });
 

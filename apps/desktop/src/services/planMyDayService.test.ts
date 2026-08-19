@@ -160,7 +160,6 @@ describe('gatherPlanContext', () => {
       title: 'Standup',
       start: 9.5,
       end: 10.0,
-      category: 'work',
       lineIndex: 0,
     });
     // an event on another day (should be excluded)
@@ -170,7 +169,6 @@ describe('gatherPlanContext', () => {
       title: 'Old meeting',
       start: 14.0,
       end: 15.0,
-      category: 'work',
       lineIndex: 0,
     });
     // backlog: unfinished, within 7 days (3 days ago)
@@ -219,7 +217,7 @@ describe('gatherPlanContext', () => {
     const ctx = gatherPlanContext();
     expect(ctx.today).toBe('2026-03-04');
     expect(ctx.todayEvents).toHaveLength(1);
-    expect(ctx.todayEvents[0]).toMatchObject({ title: 'Standup', start: 9.5, end: 10.0, category: 'work' });
+    expect(ctx.todayEvents[0]).toMatchObject({ title: 'Standup', start: 9.5, end: 10.0 });
     expect(ctx.backlog).toHaveLength(1);
     expect(ctx.backlog[0]).toMatchObject({
       id: '2026-03-01#1',
@@ -260,7 +258,7 @@ describe('buildPlanPrompt', () => {
   it('contains S2/T2 instructions, the JSON schema, today events, and backlog', () => {
     const ctx = {
       today: '2026-03-04',
-      todayEvents: [{ title: 'Standup', start: 9.5, end: 10.0, category: 'work' as const }],
+      todayEvents: [{ title: 'Standup', start: 9.5, end: 10.0 }],
       backlog: [
         { id: '2026-03-01#1', title: 'Write tests', priority: 'high', sourceDate: '2026-03-01' },
       ],
@@ -293,14 +291,13 @@ describe('buildPlanPrompt', () => {
 describe('parsePlan', () => {
   it('parses a clean JSON plan', () => {
     const plan = parsePlan(
-      '{"scheduledTasks":[{"taskId":"2026-03-01#1","start":10.5,"end":12.0}],"newTasks":[{"title":"Break down X","start":14.0,"end":15.0}],"newEvents":[{"title":"休息","start":12.0,"end":13.0,"category":"health"}],"notes":"plan"}',
+      '{"scheduledTasks":[{"taskId":"2026-03-01#1","start":10.5,"end":12.0}],"newTasks":[{"title":"Break down X","start":14.0,"end":15.0}],"newEvents":[{"title":"休息","start":12.0,"end":13.0}],"notes":"plan"}',
     );
     expect(plan.scheduledTasks).toHaveLength(1);
     expect(plan.scheduledTasks[0]).toMatchObject({ taskId: '2026-03-01#1', start: 10.5, end: 12.0 });
     expect(plan.newTasks).toHaveLength(1);
     expect(plan.newTasks[0].title).toBe('Break down X');
     expect(plan.newEvents).toHaveLength(1);
-    expect(plan.newEvents[0].category).toBe('health');
     expect(plan.notes).toBe('plan');
   });
 
@@ -371,7 +368,7 @@ describe('applyPlan', () => {
         { taskId: '2026-03-01#1', start: 10.0, end: 11.0 },
       ],
       newTasks: [{ title: 'New subtask', start: 14.0, end: 15.0 }],
-      newEvents: [{ title: '休息', start: 12.0, end: 13.0, category: 'health' }],
+      newEvents: [{ title: '休息', start: 12.0, end: 13.0 }],
       notes: '',
     };
   }
@@ -414,7 +411,7 @@ describe('applyPlan', () => {
     // event added
     expect(addEvent).toHaveBeenCalledWith(
       '2026-03-04',
-      expect.objectContaining({ title: '休息', start: 12.0, end: 13.0, category: 'health' }),
+      expect.objectContaining({ title: '休息', start: 12.0, end: 13.0 }),
     );
   });
 

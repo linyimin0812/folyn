@@ -18,7 +18,7 @@ import { useScheduleStore } from '@/store/scheduleStore';
 import { collectTextFromStream, extractJsonObject, type StreamEvent } from './aiStreamUtils';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { dateToString } from '@/features/schedule/dailyScan';
-import type { EventCategory, ScheduleEvent, ScheduleTask } from '@/features/schedule/types';
+import type { ScheduleEvent, ScheduleTask } from '@/features/schedule/types';
 
 // ponytail: prompt previously lived in services/skillDefaults.ts and was
 // overridable via the Skills settings page. After removing that page the
@@ -70,7 +70,6 @@ export interface PlanContextEvent {
   start: number;
   /** hour floating */
   end: number;
-  category: EventCategory;
   note?: string;
 }
 
@@ -124,7 +123,6 @@ export interface PlannedEvent {
   start: number;
   /** hour floating */
   end: number;
-  category: string;
   note?: string;
 }
 
@@ -165,7 +163,6 @@ function eventToContext(e: ScheduleEvent): PlanContextEvent {
     title: e.title,
     start: e.start,
     end: e.end,
-    category: e.category,
     note: e.note,
   };
 }
@@ -228,7 +225,7 @@ export function buildPlanPrompt(ctx: PlanContext): string {
       ? ctx.todayEvents
           .map(
             (e) =>
-              `  - { title: ${JSON.stringify(e.title)}, start: ${e.start}, end: ${e.end}, category: "${e.category}"${e.note ? `, note: ${JSON.stringify(e.note)}` : ''} }`,
+              `  - { title: ${JSON.stringify(e.title)}, start: ${e.start}, end: ${e.end}${e.note ? `, note: ${JSON.stringify(e.note)}` : ''} }`,
           )
           .join('\n')
       : '  (none)';
@@ -270,7 +267,7 @@ export function buildPlanPrompt(ctx: PlanContext): string {
     '    { "title": "<新任务标题>", "start": <小时浮点>, "end": <小时浮点>, "priority": <1-5 数字, 可选> }',
     '  ],',
     '  "newEvents": [',
-    '    { "title": "<事件/休息标题>", "start": <小时浮点>, "end": <小时浮点>, "category": "<work|personal|family|health|task>", "note": "<可选备注>" }',
+    '    { "title": "<事件/休息标题>", "start": <小时浮点>, "end": <小时浮点>, "note": "<可选备注>" }',
     '  ],',
     '  "notes": "<对本次计划的简短说明>"',
     '}',
@@ -323,7 +320,6 @@ export function parsePlan(aiText: string): Plan {
       title: typeof it.title === 'string' ? it.title : '',
       start: typeof it.start === 'number' ? it.start : 0,
       end: typeof it.end === 'number' ? it.end : 0,
-      category: typeof it.category === 'string' ? it.category : 'task',
       note: typeof it.note === 'string' ? it.note : undefined,
     };
   });
@@ -489,7 +485,6 @@ export async function applyPlan(plan: Plan, accepted: PlanAcceptance): Promise<A
         title: p.title,
         start: p.start,
         end: p.end,
-        category: (p.category as EventCategory) ?? 'task',
         note: p.note,
       });
       applied.push(`${describeEvent(p)} → added`);

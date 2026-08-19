@@ -4,7 +4,7 @@ import { useScheduleStore } from '@/store/scheduleStore';
 import { dateToString } from '@/features/schedule/dailyScan';
 import { formatTime } from '@/features/schedule/markdown';
 import { useBoardColumns } from '@/features/schedule/columns';
-import type { EventCategory, Priority, TaskCategory, TaskColumn } from '@/features/schedule/types';
+import type { Priority, TaskCategory, TaskColumn } from '@/features/schedule/types';
 
 export type ModalIntent =
   | { kind: 'event'; day: string; hour: number }
@@ -17,7 +17,6 @@ interface Props {
   onClose: () => void;
 }
 
-const EVENT_CATS: EventCategory[] = ['work', 'personal', 'family', 'health'];
 const TASK_CATS: TaskCategory[] = ['design', 'dev', 'bug', 'growth', 'ops', 'learn'];
 const PRIOS: Priority[] = ['high', 'med', 'low'];
 
@@ -64,7 +63,6 @@ export function ScheduleModal({ intent, onClose }: Props) {
     if (editingTask?.scheduledEnd != null) return formatTime(editingTask.scheduledEnd);
     return '10:00';
   })();
-  const initialCal: EventCategory = editingEvent?.category ?? 'work';
   const initialCol: TaskColumn =
     intent.kind === 'task' ? intent.col : (editingTask?.column ?? 'todo');
   const initialCat: TaskCategory = editingTask?.category ?? 'design';
@@ -75,7 +73,6 @@ export function ScheduleModal({ intent, onClose }: Props) {
   const [desc, setDesc] = useState(initialDesc);
   const [start, setStart] = useState(initialStart);
   const [end, setEnd] = useState(initialEnd);
-  const [cal, setCal] = useState<EventCategory>(initialCal);
   const [col, setCol] = useState<TaskColumn>(initialCol);
   const [cat, setCat] = useState<TaskCategory>(initialCat);
   const [prio, setPrio] = useState<Priority>(initialPrio);
@@ -108,14 +105,12 @@ export function ScheduleModal({ intent, onClose }: Props) {
           title: title.trim(),
           start: s,
           end: e,
-          category: cal,
           note: desc.trim() || undefined,
         });
       } else {
         await addEvent(day, {
           start: s,
           end: e,
-          category: cal,
           title: title.trim(),
           note: desc.trim() || undefined,
         });
@@ -196,34 +191,16 @@ export function ScheduleModal({ intent, onClose }: Props) {
         </div>
 
         {type === 'event' && (
-          <>
-            <div className="sw-row2">
-              <div className="sw-field">
-                <label>{t('schedule:modal.start')}</label>
-                <input type="time" value={start} onChange={(e) => setStart(e.target.value)} />
-              </div>
-              <div className="sw-field">
-                <label>{t('schedule:modal.end')}</label>
-                <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
-              </div>
+          <div className="sw-row2">
+            <div className="sw-field">
+              <label>{t('schedule:modal.start')}</label>
+              <input type="time" value={start} onChange={(e) => setStart(e.target.value)} />
             </div>
             <div className="sw-field">
-              <label>{t('schedule:modal.calendar')}</label>
-              <div className="sw-seg-inline">
-                {EVENT_CATS.map((c) => (
-                  <label key={c}>
-                    <input
-                      type="radio"
-                      name="sw-cal"
-                      checked={cal === c}
-                      onChange={() => setCal(c)}
-                    />
-                    <span>{t(`schedule:category.event.${c}`)}</span>
-                  </label>
-                ))}
-              </div>
+              <label>{t('schedule:modal.end')}</label>
+              <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
             </div>
-          </>
+          </div>
         )}
 
         {type === 'task' && (

@@ -16,8 +16,8 @@ function makePlan(): Plan {
     ],
     newTasks: [{ title: 'New', start: 16, end: 17 }],
     newEvents: [
-      { title: '休息', start: 12, end: 13, category: 'health' },
-      { title: '缓冲', start: 9, end: 9.5, category: 'task' },
+      { title: '休息', start: 12, end: 13 },
+      { title: '缓冲', start: 9, end: 9.5 },
     ],
     notes: 'plan',
   };

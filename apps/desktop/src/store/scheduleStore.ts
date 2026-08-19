@@ -14,13 +14,12 @@ import {
   DEFAULT_BOARD_COLUMNS,
   COLUMN_COLOR_PALETTE,
   type BoardColumnDef,
-  type EventCategory,
   type ParsedDaily,
   type ScheduleEvent,
   type ScheduleTask,
   type TaskColumn,
 } from '@/features/schedule/types';
-export type { EventCategory, TaskColumn };
+export type { TaskColumn };
 export type { BoardColumnDef };
 
 // ponytail: boardColumns + its 4 setters live here (schedule domain owns the
@@ -42,7 +41,6 @@ interface ScheduleState {
   tasks: ScheduleTask[];
   loading: boolean;
   lastScan: number;
-  calendarFilter: Record<EventCategory, boolean>;
   boardAnchorDate: string; // YYYY-MM-DD
   /** 看板列定义（schedule 域自有；持久化切片 boardColumns）。 */
   boardColumns: BoardColumnDef[];
@@ -53,7 +51,6 @@ interface ScheduleState {
   _toastTimer: ReturnType<typeof setTimeout> | null;
 
   refresh: () => Promise<void>;
-  setCalendarFilter: (cat: EventCategory, on: boolean) => void;
   setBoardAnchorDate: (date: string) => void;
 
   // ── 看板列自定义 ──
@@ -64,7 +61,7 @@ interface ScheduleState {
 
   addEvent: (noteDate: string, e: Omit<ScheduleEvent, 'id' | 'noteDate' | 'lineIndex'>) => Promise<void>;
   moveEvent: (eventId: string, newNoteDate: string, newStart: number, newEnd: number) => Promise<void>;
-  updateEvent: (eventId: string, patch: Partial<Pick<ScheduleEvent, 'title' | 'start' | 'end' | 'category' | 'note'>>) => Promise<void>;
+  updateEvent: (eventId: string, patch: Partial<Pick<ScheduleEvent, 'title' | 'start' | 'end' | 'note'>>) => Promise<void>;
   deleteEvent: (eventId: string) => Promise<void>;
   addTask: (noteDate: string, t: Omit<ScheduleTask, 'id' | 'noteDate' | 'lineIndex' | 'done'>) => Promise<void>;
   quickAddTask: (title: string) => Promise<void>;
@@ -141,7 +138,6 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   tasks: [],
   loading: false,
   lastScan: 0,
-  calendarFilter: { work: true, personal: true, family: true, health: true, task: true },
   boardAnchorDate: dateToString(new Date()),
   boardColumns: DEFAULT_BOARD_COLUMNS.map((c) => ({ ...c })),
   pomo: defaultPomo(),
@@ -178,9 +174,6 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     }
     set({ events: allEvents, tasks: allTasks, loading: false, lastScan: Date.now() });
   },
-
-  setCalendarFilter: (cat, on) =>
-    set((s) => ({ calendarFilter: { ...s.calendarFilter, [cat]: on } })),
 
   setBoardAnchorDate: (date) => set({ boardAnchorDate: date }),
 

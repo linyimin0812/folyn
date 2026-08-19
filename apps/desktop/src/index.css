@@ -873,13 +873,9 @@ mjx-container svg {
 .sw-day-col.drop-target { background: var(--accent-soft) !important; box-shadow: inset 0 0 0 2px var(--accent); }
 .sw-day-col .sw-slot.drop-target { background: var(--accent-soft) !important; box-shadow: inset 0 0 0 2px var(--accent); }
 
-.sw-event { position: absolute; left: 4px; right: 4px; border-radius: var(--radius-sm); padding: 5px 8px; font-size: 11px; line-height: 1.3; color: var(--fg); border-left: 3px solid var(--cal-work); background: var(--surface-warm); overflow: hidden; cursor: pointer; transition: transform var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard); z-index: 1; }
+.sw-event { position: absolute; left: 4px; right: 4px; border-radius: var(--radius-sm); padding: 5px 8px; font-size: 11px; line-height: 1.3; color: var(--fg); border-left: 3px solid var(--t3); background: var(--surface-warm); overflow: hidden; cursor: pointer; transition: transform var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard); z-index: 1; }
 .sw-event:hover { transform: translateY(-1px); box-shadow: 0 1px 4px rgba(0,0,0,0.08); z-index: 3; }
-.sw-event.work { border-left-color: var(--cal-work); background: color-mix(in oklab, var(--cal-work), transparent 88%); }
-.sw-event.personal { border-left-color: var(--cal-personal); background: color-mix(in oklab, var(--cal-personal), transparent 88%); }
-.sw-event.family { border-left-color: var(--cal-family); background: color-mix(in oklab, var(--cal-family), transparent 88%); }
-.sw-event.health { border-left-color: var(--cal-health); background: color-mix(in oklab, var(--cal-health), transparent 88%); }
-.sw-event.task { border-left-color: var(--cal-task); background: color-mix(in oklab, var(--cal-task), transparent 88%); border-style: dashed; cursor: grab; }
+.sw-event--task { border-left-color: var(--cal-task); background: color-mix(in oklab, var(--cal-task), transparent 88%); border-style: dashed; cursor: grab; }
 .sw-event.dragging { opacity: 0.4; }
 .sw-event .sw-time { font-family: var(--font-mono); font-size: 10px; color: var(--muted); display: block; }
 .sw-event .sw-title { font-weight: 500; color: var(--fg); display: block; }

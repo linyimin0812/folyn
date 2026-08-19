@@ -10,13 +10,6 @@
     "weekRange": "{{ms}}/{{ds}}/{{y}} – {{me}}/{{de}}",
     "dow": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
     "selectDay": "Select this day",
-    "legend": {
-      "work": "Work",
-      "personal": "Personal",
-      "family": "Family",
-      "health": "Health",
-      "task": "Task"
-    },
     "scheduledToast": "Scheduled to {{day}} {{time}}"
   },
   "dayCal": {
@@ -44,13 +37,6 @@
     "incompleteTasks": "Incomplete tasks"
   },
   "category": {
-    "event": {
-      "work": "Work",
-      "personal": "Personal",
-      "family": "Family",
-      "health": "Health",
-      "task": "Task"
-    },
     "task": {
       "design": "Design",
       "dev": "Dev",

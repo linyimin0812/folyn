@@ -1,7 +1,6 @@
 // 日程工作台数据模型。事件与任务持久化在 daily notes 的 markdown 中
 // （见 markdown.ts 的解析/序列化约定）。
 
-export type EventCategory = 'work' | 'personal' | 'family' | 'health' | 'task';
 export type TaskCategory = 'design' | 'dev' | 'bug' | 'growth' | 'ops' | 'calendar' | 'learn';
 /** 看板列 id（自由字符串，由 settings.boardColumns 定义） */
 export type TaskColumn = string;
@@ -26,8 +25,6 @@ export interface ScheduleEvent {
   start: number;
   /** 结束时间（小时浮点） */
   end: number;
-  /** 类别；托管事件不含 'task'，'task' 仅用于已排程任务渲染成事件 */
-  category: EventCategory;
   title: string;
   note?: string;
   /** 在源文件中的行号，用于写回定位 */
@@ -78,7 +75,6 @@ export interface ParsedDaily {
   tasks: ScheduleTask[];
 }
 
-export const EVENT_CATEGORIES: EventCategory[] = ['work', 'personal', 'family', 'health', 'task'];
 export const TASK_CATEGORIES: TaskCategory[] = ['design', 'dev', 'bug', 'growth', 'ops', 'calendar', 'learn'];
 export const PRIORITIES: Priority[] = ['high', 'med', 'low'];
 
@@ -96,7 +92,7 @@ export const COLUMN_COLOR_PALETTE: string[] = [
   'var(--cyan)', 'var(--red)', 'var(--t3)',
 ];
 
-// ponytail: EVENT_CATEGORY_LABEL / TASK_CATEGORY_LABEL / DIFFICULTY_LABEL
+// ponytail: TASK_CATEGORY_LABEL / DIFFICULTY_LABEL
 // are display-label maps retained for legacy callers (e.g. feature/markdown.ts
 // which bakes difficulty labels into persisted markdown data). UI display
 // sites now use t('schedule:category.<id>') / t('schedule:difficulty.<id>')
@@ -110,11 +106,4 @@ export const TASK_CATEGORY_LABEL: Record<TaskCategory, string> = {
   ops: '运维',
   calendar: '日历',
   learn: '学习',
-};
-export const EVENT_CATEGORY_LABEL: Record<EventCategory, string> = {
-  work: '工作',
-  personal: '个人',
-  family: '家庭',
-  health: '健康',
-  task: '任务',
 };
