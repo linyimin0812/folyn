@@ -926,7 +926,6 @@ mjx-container svg {
 
 .sw-now-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--danger); z-index: 2; pointer-events: none; }
 .sw-now-line::before { content: ''; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); border: 2px solid var(--surface); }
-.sw-now-line .sw-now-label { position: absolute; left: -52px; top: -8px; width: 44px; text-align: center; font-family: var(--font-mono); font-size: 10px; color: var(--danger); background: var(--surface); padding: 1px 0; border-radius: 3px; border: 1px solid var(--danger); }
 
 /* right rail */
 .sw-quick-add { display: flex; gap: var(--space-2); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 3px 3px 3px 10px; margin-bottom: var(--space-5); }

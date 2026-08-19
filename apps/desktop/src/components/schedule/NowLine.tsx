@@ -1,8 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
-import { formatTime } from '@/features/schedule/markdown';
+import { useState, useEffect } from 'react';
 
 export function NowLine() {
-  const ref = useRef<HTMLDivElement>(null);
   const [hState, setH] = useState(() => {
     const now = new Date();
     return now.getHours() + now.getMinutes() / 60;
@@ -23,8 +21,6 @@ export function NowLine() {
   }, []);
 
   return (
-    <div ref={ref} className="sw-now-line" style={{ top: `calc(${hState} * var(--hour-h))` }}>
-      <span className="sw-now-label">{formatTime(hState)}</span>
-    </div>
+    <div className="sw-now-line" style={{ top: `calc(${hState} * var(--hour-h))` }} />
   );
 }
