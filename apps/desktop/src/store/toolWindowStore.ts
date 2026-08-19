@@ -38,58 +38,41 @@ interface ToolWindowState {
   remove: (label: string) => void;
 }
 
-let labelCounter = 0;
-
-function nextLabel(pluginId: string, toolId: string): string {
-  // ponytail: global counter — collisions only matter if counter wraps, which
-  // at 1-per-open would require billions of opens. Upgrade to UUID if a real
-  // user ever hits it.
-  labelCounter += 1;
-  return `plugin-tool-${pluginId}-${toolId}-${labelCounter}`;
-}
-
 export const useToolWindowStore = create<ToolWindowState>((set, get) => ({
   windows: [],
 
   open: async (pluginId, tool) => {
     if (!isTauri()) return;
-    const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
-    const label = nextLabel(pluginId, tool.id);
-    const url = `quill-plugin://localhost/${pluginId}/${tool.entry}`;
+    // ponytail: window creation is routed through the Rust
+    // `open_plugin_tool_window` command so the fullscreen close handling and
+    // the per-tool fullscreen memory stay in one place (Rust). The Rust side
+    // reopens a tool in the fullscreen state it was closed in, and the
+    // app-level on_window_event does the fullscreen-aware close (exit
+    // fullscreen → wait for the transition → destroy) that avoids the black
+    // fullscreen Space macOSPrivateApi leaves behind on a
+    // destroy-mid-transition.
+    // Creation is intentionally NOT done via the JS `WebviewWindow`
+    // constructor: a JS `once('tauri://close-requested')` listener on a
+    // cross-window handle registers an event target on the isolated plugin
+    // webview, which is exactly the "callback silently dropped" case — Tauri
+    // routes the window event to the source window's webview context, which
+    // for isolated plugin webviews has no Tauri APIs — so any close/cleanup
+    // logic hung off that listener never runs. Routing creation through Rust
+    // keeps the close handling where it can actually fire.
+    const { invoke } = await import('@tauri-apps/api/core');
     const title = tool.title ?? `${pluginId}/${tool.id}`;
-    const win = new WebviewWindow(label, {
-      url,
-      title,
-      width: 800,
-      height: 600,
-      // Pinned tool window: open centered, above normal windows, and take
-      // focus immediately. The pet-panel search path opens the popup while
-      // the app may not be frontmost (the panel just hid), so without these
-      // the window can appear without key focus — the user reads that as
-      // "弹窗失焦/被关闭". Fullscreen is entered manually via the Window menu
-      // "插件弹窗全屏" item (⌘⇧F); the Rust handler drops alwaysOnTop during
-      // fullscreen and restores it on exit (macOS blocks native fullscreen on
-      // always-on-top windows).
-      center: true,
-      focus: true,
-      alwaysOnTop: true,
-      resizable: true,
-      skipTaskbar: false,
-    });
-    win.once('tauri://created', async () => {
-      try {
-        await win.setFocus();
-      } catch (err) {
-        console.warn(`[plugin-host] tool window "${label}" focus failed:`, err);
-      }
-    });
-    win.once('tauri://close-requested', () => {
-      get().remove(label);
-    });
-    win.once('tauri://error', (e: unknown) => {
-      console.error(`[plugin-host] tool window "${label}" error:`, e);
-      get().remove(label);
-    });
+    let label: string;
+    try {
+      label = await invoke<string>('open_plugin_tool_window', {
+        pluginId,
+        toolId: tool.id,
+        entry: tool.entry,
+        title,
+      });
+    } catch (err) {
+      console.error(`[plugin-host] open_plugin_tool_window failed for ${pluginId}/${tool.id}:`, err);
+      return;
+    }
     set({
       windows: [
         ...get().windows,

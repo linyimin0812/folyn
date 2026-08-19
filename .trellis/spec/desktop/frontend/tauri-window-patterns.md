@@ -223,6 +223,41 @@ the secondary window is visible.
 or a frontend-driven hide/show can desync the close decision. Quitting via the app menu bypasses
 `CloseRequested`, so there is no stuck-window path.
 
+**Fullscreen-aware teardown** (macOS, `macOSPrivateApi`): hiding/destroying a window that is in
+NATIVE fullscreen leaves a black fullscreen Space behind — the Space belongs to the window and
+macOS does not tear it down when the window vanishes mid-transition. The exit-fullscreen step
+is therefore mandatory, but it can be hidden from the user: the window content is made
+invisible (`setAlphaValue:0`, main thread), the Space is dismissed via `exit_fullscreen_and_wait`,
+then the window is destroyed (plugin tool windows, `close_fullscreen_window_directly`) or hidden
+(main window pet-mode close-to-hide, `hide_fullscreen_window_directly`, which restores opacity to
+1.0 while hidden so the next show is never transparent). Caveat: the native Space dismissal
+animation briefly composites black while the window is invisible, so this path still flashes on
+the uncommon ⌃⌘F "Enter Full Screen" route.
+
+**Plugin tool windows use SIMPLE fullscreen (⌘⇧F "插件弹窗全屏")**: macOS blocks NATIVE fullscreen
+on `alwaysOnTop` windows, so the plugin-tool fullscreen item uses `set_simple_fullscreen` (the
+pre-Lion fullscreen: fills the screen, auto-hides dock/menu bar, **no separate Space**, pinned
+level kept). Because there is no Space, closing a simple-fullscreen tool is a plain teardown in
+the `CloseRequested` handler: make the window invisible (`setAlphaValue:0`), restore the
+app-global dock/menu-bar presentation options + the windowed frame synchronously
+(`set_simple_fullscreen(false)`, no animation), then let the default close destroy it — no
+shrink-back, no black flash. Simple-fullscreen state is tracked per window label in
+`PluginToolWindowState.simple_labels` because `is_fullscreen()` only reports native Space
+fullscreen and there is no public getter.
+
+**Main-window fullscreen restore**: the pet-mode close-to-hide path records whether the main
+window was fullscreen when hidden (`MainWindowFullscreenRestore`), and the same handler's
+`Focused(true)` branch restores fullscreen on the next show (dock reopen, pet "show-main",
+open-file, ...) — so closing a fullscreen editor and reopening it comes back fullscreen.
+
+**Per-tool fullscreen memory** (plugin tool windows): the close handler records, per
+`plugin-tool-<plugin>-<tool>` key, the mode the window was closed in
+(`ToolFullscreenMode::Native` for ⌃⌘F, `ToolFullscreenMode::Simple` for ⌘⇧F) in
+`PluginToolWindowState` (`commands/webview_commands.rs`), and `open_plugin_tool_window` restores
+it on the next open of the same tool (Native drops `alwaysOnTop` first — macOS blocks native
+fullscreen on always-on-top windows — while Simple keeps it). The key is derived from the label
+by stripping the trailing numeric instance counter.
+
 ---
 
 ## Scenario: Windows Custom Titlebar (undecorated main window + in-app window controls)

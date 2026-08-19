@@ -304,6 +304,128 @@ fn spawn_nspanel_reapply_thread(app: tauri::AppHandle) {
 #[allow(dead_code)]
 fn spawn_nspanel_reapply_thread(_app: tauri::AppHandle) {}
 
+/// Exit native fullscreen and wait for the macOS transition to finish before
+/// the caller hides/destroys the window.
+///
+/// Why: with `macOSPrivateApi` (tauri.conf.json `app.macOSPrivateApi`) a
+/// window destroyed — or hidden — while in native fullscreen leaves a black
+/// fullscreen Space behind. The Space belongs to the window; macOS does not
+/// tear it down when the window vanishes mid-transition. Exiting fullscreen
+/// first and letting the animation complete dismisses the Space, so the
+/// subsequent teardown is invisible and leaves nothing behind.
+///
+/// macOS flips `is_fullscreen()` to false at the START of the exit
+/// transition, so polling alone races the teardown. Poll until the flag
+/// flips, then wait a grace period for the animation (typically ~300-600ms)
+/// to actually complete. Hard-capped so a wedged transition can't hang the
+/// close forever.
+async fn exit_fullscreen_and_wait(win: &tauri::WebviewWindow) {
+    if !win.is_fullscreen().unwrap_or(false) {
+        return;
+    }
+    let _ = win.set_fullscreen(false);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+    while win.is_fullscreen().unwrap_or(false) {
+        if std::time::Instant::now() >= deadline {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+}
+
+/// Set the window's opacity. Used by the fullscreen close/hide helpers so the
+/// exit-fullscreen transition is invisible — native macOS apps close a
+/// fullscreen window "directly" (window disappears, Space dismisses) rather
+/// than shrinking back to a windowed frame first, and this replicates that.
+/// The main window's pet-mode close also restores opacity to 1.0 (while
+/// hidden) so the next show is never transparent.
+///
+/// Must run on the main thread (NSWindow API is main-thread-only).
+#[cfg(target_os = "macos")]
+fn set_window_alpha(win: &tauri::WebviewWindow, alpha: f64) {
+    use objc::{msg_send, sel, sel_impl};
+    use objc::runtime::Object;
+    if let Ok(ns_window) = win.ns_window() {
+        let ns_ptr = ns_window as *mut Object;
+        if !ns_ptr.is_null() {
+            unsafe {
+                let _: () = msg_send![ns_ptr, setAlphaValue: alpha];
+            }
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+#[allow(dead_code)]
+fn set_window_alpha(_win: &tauri::WebviewWindow, _alpha: f64) {}
+
+/// Make the window invisible on the main thread (setAlphaValue:0), waiting for
+/// it to apply before the caller starts the fullscreen exit so the transition
+/// never becomes visible. Bounded: a wedged main thread (e.g. mid-shutdown)
+/// must not hang the close forever — worst case the window stays visible
+/// through the exit transition, which is the previous behavior.
+#[cfg(target_os = "macos")]
+async fn make_window_invisible(app: &tauri::AppHandle, label: &str) {
+    let Some(w) = app.get_webview_window(label) else {
+        return;
+    };
+    let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+    let app2 = app.clone();
+    let label2 = label.to_string();
+    let _ = w.run_on_main_thread(move || {
+        if let Some(win) = app2.get_webview_window(&label2) {
+            set_window_alpha(&win, 0.0);
+        }
+        let _ = tx.send(());
+    });
+    let _ = tokio::time::timeout(std::time::Duration::from_millis(1000), rx).await;
+}
+
+#[cfg(not(target_os = "macos"))]
+async fn make_window_invisible(_app: &tauri::AppHandle, _label: &str) {}
+
+/// Close a fullscreen window the way native macOS apps do: the window content
+/// is made invisible immediately (setAlphaValue:0, scheduled on the main
+/// thread), then the fullscreen Space is dismissed via `exit_fullscreen_and_wait`
+/// (mandatory — destroying a fullscreen window under macOSPrivateApi leaves a
+/// black Space behind), then the window is destroyed. The user sees the window
+/// vanish on click with no shrink-back-to-windowed transition and no black
+/// screen.
+async fn close_fullscreen_window_directly(app: tauri::AppHandle, label: &str) {
+    let Some(w) = app.get_webview_window(label) else {
+        return; // window gone, nothing to do
+    };
+    make_window_invisible(&app, label).await;
+    exit_fullscreen_and_wait(&w).await;
+    let _ = w.destroy();
+}
+
+/// Same as `close_fullscreen_window_directly` but hides the window instead of
+/// destroying it (pet-mode main-window close-to-hide). Opacity is restored to
+/// 1.0 AFTER the hide so the next show of the window is never transparent;
+/// only the fullscreen restore is left to `MainWindowFullscreenRestore` (see
+/// the app-level on_window_event Focused handler).
+async fn hide_fullscreen_window_directly(app: tauri::AppHandle, label: &str) {
+    let Some(w) = app.get_webview_window(label) else {
+        return; // window gone, nothing to do
+    };
+    make_window_invisible(&app, label).await;
+    exit_fullscreen_and_wait(&w).await;
+    let _ = w.hide();
+    // Restore opacity while hidden so the next show is never transparent.
+    #[cfg(target_os = "macos")]
+    {
+        let app2 = app.clone();
+        let label2 = label.to_string();
+        let _ = w.run_on_main_thread(move || {
+            if let Some(win) = app2.get_webview_window(&label2) {
+                set_window_alpha(&win, 1.0);
+            }
+        });
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Install a panic hook BEFORE anything else so a panic anywhere in the
@@ -536,38 +658,40 @@ pub fn run() {
             let id = event.id().as_ref();
             // Manual fullscreen toggle for the focused plugin tool window
             // (Window menu → "插件弹窗全屏", ⌘⇧F). Tool windows are pinned
-            // (alwaysOnTop), which macOS blocks from entering native
-            // fullscreen — so drop the pinned level before entering and
-            // restore it once the user leaves fullscreen.
+            // (alwaysOnTop), which macOS blocks from entering NATIVE
+            // fullscreen — so this item uses simple fullscreen instead
+            // (`set_simple_fullscreen`, the pre-Lion fullscreen that fills
+            // the screen without creating a separate Space). Simple
+            // fullscreen accepts always-on-top windows, so the pinned level
+            // is kept the whole time (no drop + restore poll). Closing a
+            // simple-fullscreen window is also a plain teardown — no Space
+            // transition, so no black flash (see the CloseRequested branch
+            // below). Native fullscreen remains available via the standard
+            // Window menu "Enter Full Screen" (⌃⌘F) and is handled
+            // separately.
             if id == "plugin-tool-fullscreen" {
                 if let Some((label, win)) = app
                     .webview_windows()
                     .iter()
                     .find(|(l, w)| l.starts_with("plugin-tool-") && w.is_focused().unwrap_or(false))
                 {
-                    let already_fullscreen = win.is_fullscreen().unwrap_or(false);
-                    if already_fullscreen {
+                    let state = app.state::<commands::PluginToolWindowState>();
+                    let already_native = win.is_fullscreen().unwrap_or(false);
+                    let in_simple = state.is_simple_fullscreen(label);
+                    if already_native {
+                        // In native fullscreen (entered via ⌃⌘F): exit it.
                         let _ = win.set_fullscreen(false);
+                    } else if in_simple {
+                        // Exit simple fullscreen: restore the dock/menu bar
+                        // and the windowed frame, keep the pinned level.
+                        let _ = win.set_simple_fullscreen(false);
+                        state.mark_simple_fullscreen(label, false);
                     } else {
-                        let _ = win.set_always_on_top(false);
-                        let _ = win.set_fullscreen(true);
-                        let app2 = app.clone();
-                        let label2 = label.clone();
-                        // Restore the pinned level as soon as fullscreen
-                        // exits (poll — macOS native fullscreen transitions
-                        // don't surface a dedicated Tauri event).
-                        tauri::async_runtime::spawn(async move {
-                            loop {
-                                tokio::time::sleep(std::time::Duration::from_millis(300)).await;
-                                let Some(win) = app2.get_webview_window(&label2) else {
-                                    return;
-                                };
-                                if !win.is_fullscreen().unwrap_or(false) {
-                                    let _ = win.set_always_on_top(true);
-                                    return;
-                                }
-                            }
-                        });
+                        // Enter simple fullscreen (no separate Space). It
+                        // keeps the tool pinned and closes without a black
+                        // flash.
+                        let _ = win.set_simple_fullscreen(true);
+                        state.mark_simple_fullscreen(label, true);
                     }
                 }
                 return;
@@ -626,24 +750,139 @@ pub fn run() {
         // pet mode is off, default close behavior (app quit) is preserved.
         // The pet window's visibility is the source of truth for "pet mode
         // active right now", so we don't need a separate cached flag.
+        //
+        // Fullscreen-aware teardown: with macOSPrivateApi, hiding or
+        // destroying a window that is in native fullscreen leaves a black
+        // fullscreen Space behind (the Space belongs to the window and macOS
+        // doesn't tear it down when the window vanishes mid-transition). So
+        // when the window being closed is fullscreen we exit fullscreen +
+        // wait for the animation, then hide/close.
         .on_window_event({
             startup_log("[hook] on_window_event registered");
             |window, event| {
-            if window.label() != "main" {
+            let label = window.label();
+            let app = window.app_handle();
+
+            // Pet-mode close-to-hide restore: when the main window was hidden
+            // while fullscreen, bring it back fullscreen on its next
+            // show/focus (dock reopen, pet "show-main", open-file, ...).
+            if let WindowEvent::Focused(true) = event {
+                if label == "main" {
+                    let restore_fullscreen =
+                        app.state::<commands::MainWindowFullscreenRestore>().take();
+                    if restore_fullscreen {
+                        if let Some(main) = app.get_webview_window("main") {
+                            let _ = main.set_fullscreen(true);
+                        }
+                    }
+                }
                 return;
             }
+
             if let WindowEvent::CloseRequested { api, .. } = event {
-                let pet_on = window
-                    .app_handle()
-                    .get_webview_window("pet")
-                    .and_then(|p| p.is_visible().ok())
-                    .unwrap_or(false);
-                if pet_on {
-                    api.prevent_close();
-                    let _ = window.hide();
+                if label == "main" {
+                    let pet_on = app
+                        .get_webview_window("pet")
+                        .and_then(|p| p.is_visible().ok())
+                        .unwrap_or(false);
+                    if pet_on {
+                        api.prevent_close();
+                        let fullscreen = window.is_fullscreen().unwrap_or(false);
+                        // Remember whether to restore fullscreen on the next
+                        // show (see the Focused(true) branch above).
+                        app.state::<commands::MainWindowFullscreenRestore>()
+                            .set(fullscreen);
+                        if fullscreen {
+                            // Direct close (native-app feel): the window
+                            // vanishes immediately while the Space is
+                            // dismissed, then it hides (pet mode keeps the
+                            // app alive).
+                            let app2 = app.clone();
+                            tauri::async_runtime::spawn(async move {
+                                hide_fullscreen_window_directly(app2, "main").await;
+                            });
+                        } else {
+                            let _ = window.hide();
+                        }
+                    }
+                    // else: default close → app exits (cleanup of pet window
+                    // is automatic since it's a child of the app process).
+                    return;
                 }
-                // else: default close → app exits (cleanup of pet window is
-                // automatic since it's a child of the app process).
+
+                // Plugin tool windows (multi-instance WebviewWindows opened
+                // by the plugin host, see store/toolWindowStore.ts). Two
+                // fullscreen modes, each with its own teardown:
+                //
+                // 1. NATIVE fullscreen (standard Window menu "Enter Full
+                //    Screen" ⌃⌘F) — a macOS Space. Closing mid-Space under
+                //    macOSPrivateApi leaves a black Space behind, so close
+                //    "directly" like native apps: make the window invisible,
+                //    exit fullscreen + wait for the Space to dismiss, then
+                //    destroy. The exit transition briefly shows black (the
+                //    Space composites the invisible window), but this is the
+                //    uncommon ⌃⌘F path.
+                //
+                // 2. SIMPLE fullscreen (Window menu "插件弹窗全屏" ⌘⇧F,
+                //    `set_simple_fullscreen`) — pre-Lion style, NO separate
+                //    Space. There is no Space-dismissal animation at all, so
+                //    closing is a plain teardown: make the window vanish
+                //    instantly (alpha 0), restore the app-global dock/menu-bar
+                //    presentation options + the windowed frame synchronously
+                //    (no animation), then let the default close destroy it.
+                //    No black flash.
+                //
+                // Non-fullscreen closes proceed untouched (smooth, no black
+                // frame). destroy() emits no CloseRequested, so it can't
+                // re-enter this handler.
+                //
+                // NOTE: app-level on_window_event DOES fire for
+                // dynamically-created WebviewWindows in Tauri 2 —
+                // `WindowManager::attach_window` registers the global
+                // listeners for every window created via
+                // `WindowBuilder`/`WebviewWindowBuilder`.
+                if label.starts_with("plugin-tool-") {
+                    let state = app.state::<commands::PluginToolWindowState>();
+                    let fullscreen = window.is_fullscreen().unwrap_or(false);
+                    let simple_fullscreen = state.is_simple_fullscreen(label);
+                    // Remember the fullscreen mode this tool was closed in so
+                    // `open_plugin_tool_window` can restore it on the next
+                    // open of the same tool.
+                    let mode = if fullscreen {
+                        Some(commands::ToolFullscreenMode::Native)
+                    } else if simple_fullscreen {
+                        Some(commands::ToolFullscreenMode::Simple)
+                    } else {
+                        None
+                    };
+                    if let Some(tool_key) = commands::tool_key_from_label(label) {
+                        state.set_mode(tool_key, mode);
+                    }
+                    if fullscreen {
+                        api.prevent_close();
+                        let app2 = app.clone();
+                        let label2 = label.to_string();
+                        // Native fullscreen (Space) — direct close: make the
+                        // window invisible, dismiss the Space + wait for the
+                        // transition, then destroy — no visible
+                        // shrink-back-to-windowed transition, no black Space.
+                        tauri::async_runtime::spawn(async move {
+                            close_fullscreen_window_directly(app2, &label2).await;
+                        });
+                    } else if simple_fullscreen {
+                        // Simple fullscreen (⌘⇧F, no separate Space): restore
+                        // the app-global dock/menu-bar presentation options +
+                        // the windowed frame with the window already
+                        // invisible, then let the default close destroy it.
+                        #[cfg(target_os = "macos")]
+                        if let Some(w) = app.get_webview_window(label) {
+                            set_window_alpha(&w, 0.0);
+                        }
+                        let _ = window.set_simple_fullscreen(false);
+                        state.mark_simple_fullscreen(label, false);
+                    }
+                    // else: default close proceeds.
+                }
             }
         }
         })
@@ -658,6 +897,14 @@ pub fn run() {
         // commands would panic with "state() called before manage()" — the
         // Windows flash-quit crash. Builder-level `.manage(...)` makes the
         // state visible from t=0.
+        .manage({
+            startup_log("[builder] manage PluginToolWindowState");
+            commands::PluginToolWindowState::new()
+        })
+        .manage({
+            startup_log("[builder] manage MainWindowFullscreenRestore");
+            commands::MainWindowFullscreenRestore::new()
+        })
         .manage({
             startup_log("[builder] manage PetSizeState");
             commands::PetSizeState(std::sync::Mutex::new(
@@ -795,6 +1042,7 @@ pub fn run() {
             commands::save_file,
             commands::check_url,
             commands::create_webview,
+            commands::open_plugin_tool_window,
             commands::navigate_webview,
             commands::close_webview,
             commands::hide_webview,

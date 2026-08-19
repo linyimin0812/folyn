@@ -38,11 +38,12 @@ pub fn build_app_menu(app: &tauri::AppHandle, locale: &str) -> Result<(), AppErr
         .build()
         .map_err(|e| e.to_string())?;
 
-    // Manual fullscreen trigger for plugin tool windows. macOS blocks native
-    // fullscreen on always-on-top windows, so the popup stays pinned in
-    // normal use and the user enters fullscreen via this item / ⌘⇧F (the
-    // handler in lib.rs drops the pinned level, enters fullscreen, and
-    // restores the level on exit).
+    // Manual fullscreen trigger for plugin tool windows. macOS blocks NATIVE
+    // fullscreen (a separate Space) on always-on-top windows, so this item /
+    // ⌘⇧F uses SIMPLE fullscreen instead (`set_simple_fullscreen`, pre-Lion
+    // style: fills the screen, no separate Space, keeps the pinned level).
+    // Simple fullscreen also closes without the black-flash Space teardown
+    // (see the plugin-tool CloseRequested branch in lib.rs).
     let tool_fullscreen = tauri::menu::MenuItem::with_id(
         app,
         "plugin-tool-fullscreen",

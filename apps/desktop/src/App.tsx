@@ -647,17 +647,15 @@ export default function App() {
           } catch (err) {
             console.warn('[App] persistNow on close failed:', err);
           }
-          // ponytail: pet mode on → just hide (Rust on_window_event also
-          // prevent_close + hide for the same case; doing it here too avoids
-          // the hide-then-destroy race that left a black full-screen frame
-          // on macOS — destroy() tears down the webview while the NSWindow
-          // is still mid-orderOut, leaving a black artifact under
-          // macOSPrivateApi. Pet off → real close (app exits, pet window
-          // cleanup is automatic).
+          // ponytail: pet mode on → Rust's on_window_event owns the hide
+          // (prevent_close + hide, and fullscreen-aware on macOS: hiding a
+          // fullscreen window under macOSPrivateApi leaves a black fullscreen
+          // Space behind, so Rust exits fullscreen + waits for the transition
+          // before hiding). The webview stays alive after the window is
+          // hidden, so the persistNow() flush above is not cut short. Pet off
+          // → real close (app exits, pet window cleanup is automatic).
           const petOn = usePetStore.getState().petModeEnabled;
-          if (petOn) {
-            await getCurrentWindow().hide();
-          } else {
+          if (!petOn) {
             await getCurrentWindow().destroy();
           }
         });
