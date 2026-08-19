@@ -970,9 +970,9 @@ mjx-container svg {
 .sw-filter-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: var(--text-xs); color: var(--fg-2); transition: border-color var(--motion-fast) var(--ease-standard); }
 .sw-filter-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-.sw-board-scroll { overflow-x: auto; overflow-y: hidden; padding: 0; }
-.sw-board-layout { display: flex; gap: var(--space-2); height: 100%; min-width: min-content; align-items: stretch; }
-.sw-board-daycal { width: 240px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); position: sticky; left: 0; z-index: 1; }
+.sw-board-scroll { overflow-x: auto; overflow-y: hidden; padding: 0; flex: 1; min-width: 0; }
+.sw-board-layout { display: flex; gap: var(--space-2); height: 100%; align-items: stretch; }
+.sw-board-daycal { width: 240px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
 .sw-daycal-head { display: flex; align-items: center; justify-content: space-between; }
 .sw-daycal-month { font-size: var(--text-sm); font-weight: 600; color: var(--fg); letter-spacing: -0.01em; }
 .sw-daycal-nav { display: flex; gap: 2px; }

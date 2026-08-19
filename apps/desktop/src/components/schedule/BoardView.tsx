@@ -47,9 +47,9 @@ export function BoardView({ onOpenModal }: { onOpenModal: (intent: ModalIntent) 
 
   return (
     <section className="sw-view sw-view-board active">
-      <div className="sw-board-scroll">
-        <div className="sw-board-layout">
-          <DayCalAside anchorDate={anchor} onSelect={setAnchor} />
+      <div className="sw-board-layout">
+        <DayCalAside anchorDate={anchor} onSelect={setAnchor} />
+        <div className="sw-board-scroll">
           <div className="sw-board">
             {boardColumns.map((col) => (
               <BoardColumn
