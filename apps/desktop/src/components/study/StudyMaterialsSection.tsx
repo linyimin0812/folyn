@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { StudyMaterial } from '@/features/study/types';
-import * as editorIoService from '@/services/editorIoService';
+import { useStudyStore } from '@/store/studyStore';
 import { isTauri } from '@/utils/platform';
 import { isAiAvailable, openStudyAiAction, buildStudyInstruction } from '@/features/study/scheduleLink';
 
@@ -16,7 +16,7 @@ interface Props {
   onEdit: (m: StudyMaterial) => Promise<void>;
   /** 删除资料（按 id 过滤后回写，托管行移除）。 */
   onDelete: (id: string) => Promise<void>;
-  /** 发起 AI 找资料（research 后自动写入 `## 资料`，不再产建议卡片）。 */
+  /** 发起 AI 找资料：先让 AI 根据主题生成澄清问题（grill 式），回答后执行 research 并自动写入 `## 资料`。 */
   onResearch: () => void;
   /** 用选中的资料生成学习计划（plan 建议）。 */
   onGeneratePlanFromSelected: (selected: StudyMaterial[]) => void;
@@ -46,9 +46,8 @@ const STACK_ICON = (
 );
 /** 区段标题图标。 */
 const SECTION_ICON = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+  <svg viewBox="0 0 1026 1024" fill="#d4237a" aria-hidden="true">
+    <path d="M1015.808 790.528q5.12 30.72-12.8 55.296t-48.64 29.696l-122.88 19.456q-29.696 5.12-54.784-12.8t-30.208-48.64l-104.448-661.504q-2.048-15.36 1.536-29.184t11.776-25.6 20.992-19.456 28.16-10.752l121.856-19.456q30.72-5.12 55.296 13.312t29.696 49.152zM500.736 63.488q30.72 0 52.224 21.504t21.504 52.224l0 684.032q0 30.72-21.504 52.224t-52.224 21.504l-106.496 0q-30.72 0-52.224-21.504t-21.504-52.224l0-684.032q0-30.72 16.384-52.224t48.128-21.504l115.712 0zM500.736 579.584q10.24 0 17.408-9.728t7.168-23.04q0-14.336-7.168-23.552t-17.408-9.216l-106.496 0q-10.24 0-17.408 9.216t-7.168 23.552q0 13.312 7.168 23.04t17.408 9.728l106.496 0zM500.736 449.536q10.24 0 17.408-9.728t7.168-24.064-7.168-23.552-17.408-9.216l-106.496 0q-10.24 0-17.408 9.216t-7.168 23.552 7.168 24.064 17.408 9.728l106.496 0zM179.2 63.488q30.72 0 52.736 21.504t22.016 52.224l0 684.032q0 30.72-22.016 52.224t-52.736 21.504l-106.496 0q-30.72 0-52.736-21.504t-22.016-52.224l0-684.032q0-30.72 22.016-52.224t52.736-21.504l106.496 0zM76.8 319.488q-11.264 0-18.432 9.216t-7.168 23.552q0 13.312 7.168 23.04t18.432 9.728l98.304 0q11.264 0 17.92-9.728t6.656-23.04q0-14.336-6.656-23.552t-17.92-9.216l-98.304 0zM179.2 641.024q11.264 0 17.92-9.216t6.656-22.528q0-14.336-6.656-23.04t-17.92-8.704l-102.4 0q-11.264 0-18.432 8.704t-7.168 23.04q0 13.312 7.168 22.528t18.432 9.216l102.4 0zM179.2 515.072q11.264 0 17.92-9.216t6.656-23.552-6.656-23.552-17.92-9.216l-102.4 0q-11.264 0-18.432 9.216t-7.168 23.552 7.168 23.552 18.432 9.216l102.4 0z" />
   </svg>
 );
 
@@ -77,7 +76,14 @@ export function StudyMaterialsSection({
   const [adding, setAdding] = useState<false | 'book' | 'web'>(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const openFile = editorIoService.openFile;
+  // AI 正在确认（grill 阶段）或正在查找（research 阶段）——按钮显示等待态防重复点击。
+  const pendingKind = useStudyStore((s) => s.pendingSuggestion?.kind);
+  const clarifying = pendingKind === 'grill';
+  const researching = pendingKind === 'research';
+  // 首轮 grill（AI 尚未产出第一个问题）或资料查找中：整个资料栏置灰 + 居中加载图标。
+  const grillQuestion = useStudyStore((s) => s.grillQuestion);
+  const firstRoundLoading = clarifying && !grillQuestion;
+  const sectionLoading = firstRoundLoading || researching;
   const aiAvailable = isAiAvailable();
   const { t } = useTranslation();
 
@@ -118,7 +124,13 @@ export function StudyMaterialsSection({
   const editing = editingId ? materials.find((m) => m.id === editingId) ?? null : null;
 
   return (
-    <section className="sw-study-section">
+    <section className={`sw-study-section${sectionLoading ? ' loading' : ''}`}>
+      {sectionLoading && (
+        <div className="sw-study-loading" role="status">
+          <span className="sw-grill-spinner" aria-hidden="true" />
+          <span>{researching ? t('study:materials.researchRunning') : t('study:grillDialog.generatingFirst')}</span>
+        </div>
+      )}
       <header className="sw-study-sec-head">
         <h3><span className="sw-sec-icon" aria-hidden="true">{SECTION_ICON}</span>{t('study:materials.sectionTitle')}</h3>
         <div className="sw-study-sec-actions">
@@ -127,10 +139,13 @@ export function StudyMaterialsSection({
           <button
             className="primary"
             disabled={!aiAvailable}
+            disabled={!aiAvailable || clarifying || researching}
             title={aiAvailable ? t('study:materials.researchTitle') : t('study:materials.aiDisabled')}
             onClick={onResearch}
           >
-            {t('study:materials.research')}
+            {researching ? (
+              <><span className="sw-study-spinner" aria-hidden="true" />{t('study:materials.researchRunning')}</>
+            ) : clarifying ? t('study:materials.researchClarifying') : t('study:materials.research')}
           </button>
           {selectedIds.size > 0 && (
             <button
@@ -142,7 +157,6 @@ export function StudyMaterialsSection({
               {t('study:materials.planFromSelected', { count: selectedIds.size })}
             </button>
           )}
-          <button className="ghost" onClick={() => openFile(path, path.split('/').pop() ?? path)} title={t('study:materials.editTitle')}>{t('study:materials.edit')}</button>
         </div>
       </header>
 
@@ -176,8 +190,10 @@ export function StudyMaterialsSection({
           <span className="sw-empty-icon">{STACK_ICON}</span>
           <span className="sw-empty-text">{t('study:materials.empty')}</span>
           <span className="sw-empty-hint">{t('study:materials.emptyHint')}</span>
-          <button className="sw-empty-cta" disabled={!aiAvailable} onClick={onResearch} title={aiAvailable ? '' : t('study:materials.aiDisabled')}>
-            {t('study:materials.research')}
+          <button className="sw-empty-cta" disabled={!aiAvailable || clarifying || researching} onClick={onResearch} title={aiAvailable ? '' : t('study:materials.aiDisabled')}>
+            {researching ? (
+              <><span className="sw-study-spinner" aria-hidden="true" />{t('study:materials.researchRunning')}</>
+            ) : clarifying ? t('study:materials.researchClarifying') : t('study:materials.research')}
           </button>
         </div>
       ) : (
