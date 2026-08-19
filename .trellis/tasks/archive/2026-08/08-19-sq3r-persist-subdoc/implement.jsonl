@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "studyStore sq3rOutput/saveSq3rCallout 状态变更与 vaultStore 联动"}
+{"file": ".trellis/spec/desktop/frontend/feature-agents.md", "reason": "study agent 契约（sq3r 只输出文本）与子文档落盘的协作边界"}
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "子文档 front-matter + body 结构约定"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "代码质量基线（错误处理 / 幂等 createDir）"}
+{"file": "apps/desktop/src/features/study/.claude/CLAUDE.md", "reason": "study feature vault 布局与子文档 `<slug>/<link>.md` 约定，本次改动直接落地该约定"}
