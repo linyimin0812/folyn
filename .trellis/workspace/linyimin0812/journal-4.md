@@ -313,3 +313,41 @@ Diagnosed cross-vault session leak: persistAiState read activeVaultId, which lag
 ### Next Steps
 
 - None - task complete
+
+
+## Session 180: Schedule workbench: remove event categories + UX trim
+
+**Date**: 2026-08-19
+**Task**: Schedule workbench: remove event categories + UX trim
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Ripped EventCategory (work/personal/family/health/task) out of the schedule workbench entirely — type, store calendarFilter, markdown cat slot, UI picker, week-grid legend, side category list, AI plan-my-day category field. Hard cutover: old `- @event HH:MM-HH:MM | work | title` lines no longer parse. Task-rendered-as-event styling now keyed off taskId via .sw-event--task. Followed by four UX trims: dropped NowLine time label (kept red line), removed weekly stats block from sidebar, hid time in calendar event blocks (title only), and locked ScheduleModal Create/Cancel buttons during async save to stop a double-submit race that lost events via concurrent mutateNote read-modify-write on the same daily note.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fc6bc57c` | (see git log) |
+| `14d3446e` | (see git log) |
+| `3152f729` | (see git log) |
+| `14e41658` | (see git log) |
+| `8cba4259` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

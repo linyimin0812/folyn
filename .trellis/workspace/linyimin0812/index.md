@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 179
+- **Total Sessions**: 180
 - **Last Active**: 2026-08-19
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~315 | Active |
+| `journal-4.md` | ~353 | Active |
 | `journal-3.md` | ~1962 | Archived |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 180 | 2026-08-19 | Schedule workbench: remove event categories + UX trim | `fc6bc57c`, `14d3446e`, `3152f729`, `14e41658`, `8cba4259` | `master` |
 | 179 | 2026-08-19 | AI panel session vault isolation race fix | `36c2243f` | `master` |
 | 178 | 2026-08-19 | 删除整个 study feature | `11f5bf0d` | `master` |
 | 177 | 2026-08-19 | 08-19 sq3r modal delete action | - | `master` |
