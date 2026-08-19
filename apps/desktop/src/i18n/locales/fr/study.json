@@ -20,13 +20,16 @@
     "reviewCount": "{{count}} à réviser",
     "unitCount": "{{count}} unité(s)",
     "delete": "Supprimer le sujet",
-    "deleteConfirm": "Supprimer le sujet « {{title}} » ? Irréversible."
+    "deleteConfirm": "Supprimer le sujet « {{title}} » ? Irréversible.",
+    "quizCount": "{{count}} quiz",
+    "deleting": "Suppression…"
   },
   "addTopic": {
     "title": "Nouveau sujet d'étude",
     "placeholder": "Titre du sujet…",
     "cancel": "Annuler",
-    "create": "Créer"
+    "create": "Créer",
+    "creating": "Création…"
   },
   "plan": {
     "sectionTitle": "Plan",
@@ -55,7 +58,20 @@
     "scheduleDateAria": "Date de planification",
     "schedule": "Planifier",
     "cancel": "Annuler",
-    "scheduleTooltip": "Écrire cette unité dans la section des tâches de la note du jour ciblé (avec lien de retour d'étude)"
+    "scheduleTooltip": "Écrire cette unité dans la section des tâches de la note du jour ciblé (avec lien de retour d'étude)",
+    "startUnit": "Commencer",
+    "startUnitTitle": "Entrer dans une session d'apprentissage ciblée sur cette unité",
+    "sessionTitle": "Session d'apprentissage · Unité {{order}}",
+    "sessionEst": "Env. {{est}}",
+    "sessionHint": "Lire les matériaux → prendre des notes → auto-test → terminer",
+    "sessionOpenNotes": "Notes",
+    "sessionOpenNotesTitle": "Ouvrir le document du thème dans l'éditeur et prendre des notes",
+    "sessionQuiz": "Auto-test",
+    "sessionQuizTitle": "Générer des questions pour vérifier la maîtrise",
+    "sessionDone": "Terminer l'unité",
+    "sessionDoneTitle": "Marquer comme terminée et passer à l'unité suivante",
+    "sessionExit": "Quitter",
+    "sessionExitTitle": "Quitter la session d'apprentissage"
   },
   "materials": {
     "sectionTitle": "Matériaux",
@@ -66,9 +82,8 @@
     "research": "Rechercher avec l'IA",
     "researchTitle": "L'IA cherche sur le web et dans livres/articles classiques (écrit automatiquement dans la section matériaux)",
     "aiDisabled": "Adaptateur IA non configuré",
-    "planFromSelectedTitle": "Générer un plan d'étude à partir de {{count}} matériau(x) sélectionné(s)",
-    "planFromSelected": "Plan depuis sélection ({{count}})",
     "edit": "Modifier",
+    "delete": "Supprimer",
     "editTitle": "Modifier la section matériaux dans l'éditeur",
     "empty": "Aucun matériau pour le moment",
     "emptyHint": "Recherchez des matériaux avec l'IA, ou ajoutez un livre/page web manuellement",
@@ -77,25 +92,32 @@
     "kindWeb": "Web",
     "difficulty": "Difficulté",
     "author": "Auteur : {{name}}",
-    "openLink": "Ouvrir",
-    "openLinkAria": "Ouvrir le lien pour {{title}}",
     "editMaterial": "Modifier le matériau",
     "deleteMaterial": "Supprimer le matériau",
     "sq3r": "Pré-lecture SQ3R",
+    "sq3rRunning": "SQ3R en cours…",
     "sq3rTitle": "Pré-lecture SQ3R sur ce matériau (plan + questions de pré-lecture)",
+    "sq3rModalTitle": "Pré-lecture SQ3R : {{title}}",
+    "sq3rClose": "Fermer",
+    "sq3rReread": "Re-lire",
+    "sq3rRereadTitle": "Régénérer le contenu de pré-lecture",
+    "sq3rKeep": "Conserver",
+    "sq3rKeepTitle": "Enregistrer le contenu dans la section ## 笔记",
     "form": {
+      "titleEdit": "Modifier {{kind}}",
+      "titleNew": "Ajouter {{kind}}",
       "titleBook": "Titre du livre",
       "titleWeb": "Titre",
       "author": "Auteur",
       "url": "URL https://",
-      "difficultyEasy": "Facile",
-      "difficultyMedium": "Moyen",
-      "difficultyHard": "Difficile",
+      "difficultyLabel": "Difficulté",
       "summary": "Résumé",
       "save": "Enregistrer",
       "add": "Ajouter",
       "cancel": "Annuler"
-    }
+    },
+    "researchClarifying": "L'IA demande…",
+    "researchRunning": "L'IA cherche…"
   },
   "notes": {
     "sectionTitle": "Notes",
@@ -109,7 +131,9 @@
     "empty": "La section notes est vide",
     "emptyHint": "Cliquez sur « Modifier dans l'éditeur » pour écrire, ou insérez le modèle d'élaboration",
     "subwiki": "Base de connaissances · sous-documents (liens [[wiki]])",
-    "subwikiEmpty": "Aucun sous-document lié. Utilisez `[[sous-document]]` dans les notes pour lier des notes atomiques."
+    "subwikiEmpty": "Aucun sous-document lié. Utilisez `[[sous-document]]` dans les notes pour lier des notes atomiques.",
+    "atoms": "Créer des cartes de révision",
+    "atomsTitle": "L'IA extrait les points clés des notes vers la section révision (rappel actif)"
   },
   "review": {
     "sectionTitle": "Révision",
@@ -156,5 +180,50 @@
       "good": "Bien",
       "easy": "Facile"
     }
+  },
+  "quiz": {
+    "sectionTitle": "Quiz",
+    "aiGenerate": "Générer le quiz",
+    "aiTitle": "L'IA génère des questions depuis les notes/matériaux (écriture automatique)",
+    "inputPlaceholder": "Question…",
+    "answerPlaceholder": "Réponse…",
+    "add": "Ajouter",
+    "empty": "Aucune question pour l'instant",
+    "emptyHint": "Générer avec l'IA, ou ajouter une question manuellement",
+    "showAnswer": "Afficher la réponse",
+    "hideAnswer": "Masquer la réponse",
+    "correct": "Correct",
+    "correctTitle": "Marquer comme correcte (maîtrisée)",
+    "wrong": "Incorrect",
+    "wrongTitle": "Marquer comme incorrecte (crée automatiquement une carte de révision)",
+    "doneChip": "Maîtrisée",
+    "delete": "Supprimer la question",
+    "srcChip": "Source"
+  },
+  "reminder": {
+    "title": "Rappel d'étude",
+    "dueBody": "{{count}} révision(s) à faire aujourd'hui ({{topics}} thème(s)). Essaie-en une : {{sample}}",
+    "quizBody": "{{count}} question(s) de quiz à pratiquer.",
+    "scheduledBody": "{{count}} unité(s) d'étude planifiée(s) aujourd'hui."
+  },
+  "grillDialog": {
+    "title": "Recherche IA · étape par étape",
+    "roundLabel": "Question {{round}}",
+    "recommended": "Recommandé",
+    "confirm": "Confirmer",
+    "skip": "Rechercher maintenant",
+    "skipTitle": "Ignorer les questions et rechercher directement",
+    "cancelTitle": "Annuler la recherche",
+    "parseFailed": "L'IA n'a pas renvoyé de question au format attendu. Réessayez.",
+    "preparing": "Demande",
+    "generatingFirst": "Thinking...",
+    "nextQuestion": "Thinking...",
+    "done": "Terminé",
+    "research": "Rechercher des matériaux",
+    "continue": "Continuer à demander",
+    "customLabel": "Personnalisé",
+    "customPlaceholder": "Choix personnalisé…",
+    "next": "Next",
+    "continuing": "Thinking..."
   }
 }

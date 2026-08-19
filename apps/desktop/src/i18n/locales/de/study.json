@@ -20,13 +20,16 @@
     "reviewCount": "{{count}} fällig",
     "unitCount": "{{count}} Einheit(en)",
     "delete": "Thema löschen",
-    "deleteConfirm": "Thema \"{{title}}\" löschen? Nicht rückgängig machbar."
+    "deleteConfirm": "Thema \"{{title}}\" löschen? Nicht rückgängig machbar.",
+    "quizCount": "{{count}} Test",
+    "deleting": "Wird gelöscht…"
   },
   "addTopic": {
     "title": "Neues Lernthema",
     "placeholder": "Thementitel…",
     "cancel": "Abbrechen",
-    "create": "Erstellen"
+    "create": "Erstellen",
+    "creating": "Wird erstellt…"
   },
   "plan": {
     "sectionTitle": "Plan",
@@ -55,7 +58,20 @@
     "scheduleDateAria": "Termindatum",
     "schedule": "Terminieren",
     "cancel": "Abbrechen",
-    "scheduleTooltip": "Diese Einheit in den Aufgabenabschnitt der Tagesnotiz des Zieldatums schreiben (mit Lern-Rücklink)"
+    "scheduleTooltip": "Diese Einheit in den Aufgabenabschnitt der Tagesnotiz des Zieldatums schreiben (mit Lern-Rücklink)",
+    "startUnit": "Starten",
+    "startUnitTitle": "Eine fokussierte Lern-Sitzung für diese Einheit starten",
+    "sessionTitle": "Lern-Sitzung · Einheit {{order}}",
+    "sessionEst": "Geschätzt {{est}}",
+    "sessionHint": "Materialien lesen → Notizen machen → Selbsttest → abschließen",
+    "sessionOpenNotes": "Notizen",
+    "sessionOpenNotesTitle": "Themendokument im Editor öffnen und Notizen machen",
+    "sessionQuiz": "Selbsttest",
+    "sessionQuizTitle": "Testfragen zur Kontrolle des Lernstands generieren",
+    "sessionDone": "Einheit abschließen",
+    "sessionDoneTitle": "Als erledigt markieren und zur nächsten Einheit wechseln",
+    "sessionExit": "Beenden",
+    "sessionExitTitle": "Lern-Sitzung beenden"
   },
   "materials": {
     "sectionTitle": "Materialien",
@@ -66,9 +82,8 @@
     "research": "Mit KI suchen",
     "researchTitle": "KI durchsucht Web und klassische Bücher/Papers (schreibt automatisch in den Materialien-Abschnitt)",
     "aiDisabled": "KI-Adapter nicht konfiguriert",
-    "planFromSelectedTitle": "Lernplan aus {{count}} ausgewähltem(n) Material(ien) erstellen",
-    "planFromSelected": "Plan aus Auswahl ({{count}})",
     "edit": "Bearbeiten",
+    "delete": "Löschen",
     "editTitle": "Materialien-Abschnitt im Editor bearbeiten",
     "empty": "Noch keine Materialien",
     "emptyHint": "Materialien mit KI suchen oder Buch/Webseite manuell hinzufügen",
@@ -77,25 +92,32 @@
     "kindWeb": "Web",
     "difficulty": "Schwierigkeit",
     "author": "Autor: {{name}}",
-    "openLink": "Öffnen",
-    "openLinkAria": "Link für {{title}} öffnen",
     "editMaterial": "Material bearbeiten",
     "deleteMaterial": "Material löschen",
     "sq3r": "SQ3R-Vorlesen",
+    "sq3rRunning": "SQ3R läuft…",
     "sq3rTitle": "SQ3R-Vorlesen für dieses Material (Gliederung + Vorlese-Fragen)",
+    "sq3rModalTitle": "SQ3R-Vorlesen: {{title}}",
+    "sq3rClose": "Schließen",
+    "sq3rReread": "Neu vorlesen",
+    "sq3rRereadTitle": "Vorlese-Inhalt neu generieren",
+    "sq3rKeep": "Behalten",
+    "sq3rKeepTitle": "Vorlese-Inhalt in ## 笔记-Abschnitt schreiben",
     "form": {
+      "titleEdit": "{{kind}} bearbeiten",
+      "titleNew": "{{kind}} hinzufügen",
       "titleBook": "Buchtitel",
       "titleWeb": "Titel",
       "author": "Autor",
       "url": "URL https://",
-      "difficultyEasy": "Leicht",
-      "difficultyMedium": "Mittel",
-      "difficultyHard": "Schwer",
+      "difficultyLabel": "Schwierigkeit",
       "summary": "Zusammenfassung",
       "save": "Speichern",
       "add": "Hinzufügen",
       "cancel": "Abbrechen"
-    }
+    },
+    "researchClarifying": "KI fragt…",
+    "researchRunning": "KI sucht…"
   },
   "notes": {
     "sectionTitle": "Notizen",
@@ -109,7 +131,9 @@
     "empty": "Notizen-Abschnitt ist leer",
     "emptyHint": "Auf \"Im Editor bearbeiten\" klicken zum Schreiben oder Elaborationsvorlage einfügen",
     "subwiki": "Wissensbasis · Unterdokumente ([[wiki]]-Links)",
-    "subwikiEmpty": "Keine verknüpften Unterdokumente. Verwende `[[Unterdokument]]` in Notizen, um atomare Notizen zu verlinken."
+    "subwikiEmpty": "Keine verknüpften Unterdokumente. Verwende `[[Unterdokument]]` in Notizen, um atomare Notizen zu verlinken.",
+    "atoms": "Karteikarten erstellen",
+    "atomsTitle": "KI extrahiert Kernpunkte aus Notizen in den Wiederholungsbereich (aktives Abrufen)"
   },
   "review": {
     "sectionTitle": "Wiederholung",
@@ -156,5 +180,50 @@
       "good": "Gut",
       "easy": "Leicht"
     }
+  },
+  "quiz": {
+    "sectionTitle": "Test",
+    "aiGenerate": "Test generieren",
+    "aiTitle": "KI generiert Testfragen aus Notizen/Materialien (automatisch geschrieben)",
+    "inputPlaceholder": "Frage…",
+    "answerPlaceholder": "Antwort…",
+    "add": "Hinzufügen",
+    "empty": "Noch keine Testfragen",
+    "emptyHint": "Mit KI generieren oder manuell hinzufügen",
+    "showAnswer": "Antwort anzeigen",
+    "hideAnswer": "Antwort ausblenden",
+    "correct": "Richtig",
+    "correctTitle": "Als richtig markieren (gelernt)",
+    "wrong": "Falsch",
+    "wrongTitle": "Als falsch markieren (erstellt automatisch eine Karteikarte)",
+    "doneChip": "Gelernt",
+    "delete": "Frage löschen",
+    "srcChip": "Quelle"
+  },
+  "reminder": {
+    "title": "Lern-Erinnerung",
+    "dueBody": "{{count}} Wiederholung(en) heute fällig ({{topics}} Thema/Themen). Versuch eine: {{sample}}",
+    "quizBody": "{{count}} Testfrage(n) zu üben.",
+    "scheduledBody": "{{count}} Lern-Einheit(en) heute geplant."
+  },
+  "grillDialog": {
+    "title": "Mit KI suchen · Schritt für Schritt",
+    "roundLabel": "Frage {{round}}",
+    "recommended": "Empfohlen",
+    "confirm": "Bestätigen",
+    "skip": "Jetzt suchen",
+    "skipTitle": "Restliche Fragen überspringen und direkt suchen",
+    "cancelTitle": "Suche abbrechen",
+    "parseFailed": "Die KI hat die Frage nicht im erwarteten Format geliefert. Bitte erneut versuchen.",
+    "preparing": "Fragen",
+    "generatingFirst": "Thinking...",
+    "nextQuestion": "Thinking...",
+    "done": "Fertig",
+    "research": "Materialien suchen",
+    "continue": "Weiter fragen",
+    "customLabel": "Benutzerdefiniert",
+    "customPlaceholder": "Benutzerdefinierte Auswahl…",
+    "next": "Next",
+    "continuing": "Thinking..."
   }
 }

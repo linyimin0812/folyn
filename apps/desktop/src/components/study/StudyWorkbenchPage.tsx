@@ -9,10 +9,15 @@ import { StudyMaterialsSection } from './StudyMaterialsSection';
 import { StudyPlanSection } from './StudyPlanSection';
 import { StudyNotesSection } from './StudyNotesSection';
 import { StudyReviewSection } from './StudyReviewSection';
+import { StudyQuizSection } from './StudyQuizSection';
+import { StudyDeletingOverlay } from './StudyDeletingOverlay';
+import { StudyGrillCard } from './StudyGrillCard';
 import { TodayReviewQueue } from './TodayReviewQueue';
+import * as editorIoService from '@/services/editorIoService';
 import { collectScheduleLinks, isAiAvailable, openStudyAiAction, buildStudyInstruction, type ScheduleLink } from '@/features/study/scheduleLink';
+import { findSq3rCallout } from '@/features/study/studyDoc';
 import { computePlanProgress } from '@/features/study/progress';
-import type { StudyMaterial, StudyUnit, ReviewAtom } from '@/features/study/types';
+import type { StudyMaterial, StudyUnit, ReviewAtom, QuizItem } from '@/features/study/types';
 
 /** 学习工作台视图：主题主区四区，或跨主题今日复习队列（交错练习）。 */
 export type StudyView = 'topic' | 'today';
@@ -53,6 +58,17 @@ export function StudyWorkbenchPage() {
   const clearSuggestions = useStudyStore((s) => s.clearSuggestions);
   const acceptUnitSuggestion = useStudyStore((s) => s.acceptUnitSuggestion);
   const dismissUnitSuggestion = useStudyStore((s) => s.dismissUnitSuggestion);
+  const activeUnitOrder = useStudyStore((s) => s.activeUnitOrder);
+  const setActiveUnit = useStudyStore((s) => s.setActiveUnit);
+  const rateQuizItem = useStudyStore((s) => s.rateQuizItem);
+  const removingSlug = useStudyStore((s) => s.removingSlug);
+  const grillQuestion = useStudyStore((s) => s.grillQuestion);
+  const grillRound = useStudyStore((s) => s.grillRound);
+  const grillDone = useStudyStore((s) => s.grillDone);
+  const grillHistory = useStudyStore((s) => s.grillHistory);
+  const clearGrill = useStudyStore((s) => s.clearGrill);
+  const addGrillHistory = useStudyStore((s) => s.addGrillHistory);
+  const setSq3rOutput = useStudyStore((s) => s.setSq3rOutput);
   const active = topics.find((t) => t.slug === activeSlug) ?? null;
 
   // 计划区回链状态：扫描 schedule 任务中带 study:<slug> 的条目（只读单向读回）。
@@ -61,12 +77,15 @@ export function StudyWorkbenchPage() {
     ? collectScheduleLinks(scheduleTasks, active.slug)
     : new Map<number, ScheduleLink>();
 
-  // diff 审阅入口横幅：专用 study 会话中针对当前主题文档的待审阅编辑数。
+  // diff 审阅入口横幅：当前主题的专属 study 会话中针对主题文档的待审阅编辑数。
   // aiSessions/studySessionId 同时供下方 AI 建议文本捕获 effect 复用。
-  // PR9：study agent 在专用 study 会话（aiStore.studySessionId）里运行，
-  // 不再用活跃会话——避免用户切到其它会话时捕获/横幅失联。
+  // PR9：study agent 在每个主题的专属 study 会话（aiStore.studySessionIds[slug]）里运行，
+  // 上下文按主题隔离；不再用活跃会话——避免用户切到其它会话时捕获/横幅失联。
   const aiSessions = useAiStore((s) => s.sessions);
-  const studySessionId = useAiStore((s) => s.studySessionId);
+  const studySessionIds = useAiStore((s) => s.studySessionIds);
+  const studySessionId = active ? (studySessionIds[active.slug] ?? null) : null;
+  // grill 等待态：pendingSuggestion 为 grill 说明一轮问答在途，卡片显示 spinner 提示。
+  const grillPending = pendingSuggestion?.kind === 'grill';
   const setCurrentPage = useNavStore((s) => s.setCurrentPage);
   const pendingDiffCount = useMemo(() => {
     if (!active) return 0;
@@ -130,6 +149,11 @@ export function StudyWorkbenchPage() {
     if (!active) return;
     const units = active.parsed.units.map((u) => (u.id === unit.id ? unit : u));
     await saveTopicEdits(active.slug, { units });
+    // 勾选完成当前会话单元 → 自动推进到下一未完成单元（学习闭环的"计划推进"）。
+    if (unit.done && activeUnitOrder === unit.order) {
+      const next = [...units].filter((u) => !u.done).sort((a, b) => a.order - b.order)[0];
+      setActiveUnit(next ? next.order : null);
+    }
   };
   const addUnit = async (u: StudyUnit) => {
     if (!active) return;
@@ -152,16 +176,91 @@ export function StudyWorkbenchPage() {
   };
 
   // ── AI 动作入口（research 自动写盘 `## 资料`；plan 走建议卡片；feynman/selftest/sq3r 直编+diff）──
-  const runResearch = () => {
+  /** 第一步：开始 grill——AI 一次问一个问题，根据主题现场生成（问题+选项都由大模型决定）。 */
+  const runGrill = () => {
     if (!active || !isAiAvailable()) return;
+    markSuggestionBaseline();
+    beginSuggestion('grill', active.slug);
+    openStudyAiAction(
+      active.path,
+      buildStudyInstruction('grill', { topicName: active.parsed.frontmatter.title ?? active.slug, topicPath: active.path }),
+      { openFile: false },
+    );
+  };
+  /** grill 续轮：把用户对上一问的选择发给 agent，换取下一问或 done。 */
+  const runGrillTurn = (answer: string | string[]) => {
+    if (!active || !isAiAvailable()) return;
+    // 记录本轮问答（问题 → 答案），done 卡片按问题展示。
+    if (grillQuestion) {
+      addGrillHistory({ question: grillQuestion.question, answer });
+    }
+    markSuggestionBaseline();
+    beginSuggestion('grill', active.slug);
+    openStudyAiAction(
+      active.path,
+      buildStudyInstruction('grill', {
+        topicName: active.parsed.frontmatter.title ?? active.slug,
+        topicPath: active.path,
+        userAnswer: answer,
+      }),
+      { openFile: false },
+    );
+  };
+  /** grill done 后用户选择继续追问：让 AI 基于已有对话再问几轮。 */
+  const continueGrill = () => {
+    if (!active || !isAiAvailable()) return;
+    // 保留 done 内容（总结 + 按钮）与轮次/历史：等待下一问期间整体置灰 + 居中 Thinking，
+    // 和 Next 行为一致。下一问到达时 consumeSuggestion 会清掉 grillDone。
+    markSuggestionBaseline();
+    beginSuggestion('grill', active.slug);
+    openStudyAiAction(
+      active.path,
+      buildStudyInstruction('grill', {
+        topicName: active.parsed.frontmatter.title ?? active.slug,
+        topicPath: active.path,
+        continueGrill: true,
+      }),
+      { openFile: false },
+    );
+  };
+  /** 关闭 grill 弹窗：清空 grill 状态并撤销 in-flight 的 pending（避免卡片因 pendingSuggestion 残留而关不掉）。 */
+  const cancelGrill = () => {
+    clearSuggestions();
+  };
+  /** 跳过剩余问题：基于对话中已确认的信息直接开始找资料。 */
+  const skipGrill = () => {
+    if (!active || !isAiAvailable()) return;
+    clearGrill();
     markSuggestionBaseline();
     beginSuggestion('research', active.slug);
     openStudyAiAction(
       active.path,
-      buildStudyInstruction('research', { topicName: active.parsed.frontmatter.title ?? active.slug, topicPath: active.path }),
+      buildStudyInstruction('research', {
+        topicName: active.parsed.frontmatter.title ?? active.slug,
+        topicPath: active.path,
+        grillSummary: '', // 空串 → 指令不含总结行；agent 靠 resume 上下文记得对话
+      }),
       { openFile: false },
     );
   };
+  /** grill done：AI 确定学习目标总结 → 自动执行 research。 */
+  const runResearchFromGrill = (summary: string) => {
+    if (!active || !isAiAvailable()) return;
+    clearGrill();
+    markSuggestionBaseline();
+    beginSuggestion('research', active.slug);
+    openStudyAiAction(
+      active.path,
+      buildStudyInstruction('research', {
+        topicName: active.parsed.frontmatter.title ?? active.slug,
+        topicPath: active.path,
+        grillSummary: summary,
+      }),
+      { openFile: false },
+    );
+  };
+
+
   const runPlanFromSelected = (selected: StudyMaterial[]) => {
     if (!active || !isAiAvailable()) return;
     markSuggestionBaseline();
@@ -175,6 +274,81 @@ export function StudyWorkbenchPage() {
       }),
       { openFile: false },
     );
+  };
+
+  // SQ3R：先查 `## 笔记` 段是否已有该资料的预读 callout——命中直接展示（不调 AI）；
+  // 未命中 → markSuggestionBaseline + beginSuggestion('sq3r', ...) + openStudyAiAction，
+  // consumeSuggestion 收到产出后填 sq3rOutput，弹窗展示。
+  const runSq3r = (m: StudyMaterial) => {
+    if (!active || !isAiAvailable()) return;
+    const found = findSq3rCallout(active.parsed.rawLines.join('\n'), m.title);
+    if (found) {
+      setSq3rOutput({ materialId: m.id, materialTitle: m.title, content: found.body });
+      return;
+    }
+    markSuggestionBaseline();
+    beginSuggestion('sq3r', active.slug, { materialId: m.id, materialTitle: m.title });
+    openStudyAiAction(
+      active.path,
+      buildStudyInstruction('sq3r', {
+        topicName: active.parsed.frontmatter.title ?? active.slug,
+        topicPath: active.path,
+        materialTitle: m.title,
+        materialUrl: m.url,
+      }),
+      { openFile: false },
+    );
+  };
+
+  const runAtoms = () => {
+    if (!active || !isAiAvailable()) return;
+    markSuggestionBaseline();
+    beginSuggestion('atoms', active.slug);
+    openStudyAiAction(
+      active.path,
+      buildStudyInstruction('atoms', { topicName: active.parsed.frontmatter.title ?? active.slug, topicPath: active.path }),
+      { openFile: false },
+    );
+  };
+  const runQuiz = () => {
+    if (!active || !isAiAvailable()) return;
+    markSuggestionBaseline();
+    beginSuggestion('quiz', active.slug);
+    openStudyAiAction(
+      active.path,
+      buildStudyInstruction('quiz', { topicName: active.parsed.frontmatter.title ?? active.slug, topicPath: active.path }),
+      { openFile: false },
+    );
+  };
+
+  // ── 单元学习会话：进入/退出/完成（勾选 + 推进下一未完成单元）──
+  const openNotes = () => {
+    if (!active) return;
+    editorIoService.openFile(active.path, active.path.split('/').pop() ?? active.path);
+  };
+  const completeActiveUnit = async (unit: StudyUnit) => {
+    if (!active) return;
+    const units = active.parsed.units.map((u) =>
+      u.id === unit.id ? { ...u, done: true, prog: 100 } : u,
+    );
+    await saveTopicEdits(active.slug, { units });
+    const next = [...units].filter((u) => !u.done).sort((a, b) => a.order - b.order)[0];
+    setActiveUnit(next ? next.order : null);
+  };
+
+  // ── 检测区：增/删/自评（答错自动生成复习原子，回流间隔重复）──
+  const addQuiz = async (q: QuizItem) => {
+    if (!active) return;
+    await saveTopicEdits(active.slug, { quizItems: [...active.parsed.quizItems, q] });
+  };
+  const deleteQuiz = async (id: string) => {
+    if (!active) return;
+    const quizItems = active.parsed.quizItems.filter((x) => x.id !== id);
+    await saveTopicEdits(active.slug, { quizItems });
+  };
+  const rateQuiz = async (id: string, correct: boolean) => {
+    if (!active) return;
+    await rateQuizItem(active.slug, id, correct);
   };
 
   const planProgress = useMemo(
@@ -221,13 +395,12 @@ export function StudyWorkbenchPage() {
               <StudyMaterialsSection
                 slug={active.slug}
                 path={active.path}
-                topicName={active.parsed.frontmatter.title ?? active.slug}
                 materials={active.parsed.materials}
                 onAdd={addMaterial}
                 onEdit={editMaterial}
                 onDelete={deleteMaterial}
-                onResearch={runResearch}
-                onGeneratePlanFromSelected={runPlanFromSelected}
+                onResearch={runGrill}
+                onSq3r={runSq3r}
               />
               <StudyPlanSection
                 path={active.path}
@@ -241,9 +414,22 @@ export function StudyWorkbenchPage() {
                 onGeneratePlan={() => runPlanFromSelected([])}
                 onAcceptUnitSuggestion={(u) => acceptUnitSuggestion(active.slug, u)}
                 onDismissUnitSuggestion={dismissUnitSuggestion}
+                activeUnitOrder={activeUnitOrder}
+                onStartUnit={setActiveUnit}
+                onExitUnit={() => setActiveUnit(null)}
+                onOpenNotes={openNotes}
+                onGenerateQuiz={runQuiz}
+                onCompleteUnit={completeActiveUnit}
               />
-              <StudyNotesSection slug={active.slug} path={active.path} topicName={active.parsed.frontmatter.title ?? active.slug} parsed={active.parsed} />
+              <StudyNotesSection slug={active.slug} path={active.path} topicName={active.parsed.frontmatter.title ?? active.slug} parsed={active.parsed} onGenerateAtoms={runAtoms} />
               <StudyReviewSection slug={active.slug} path={active.path} topicName={active.parsed.frontmatter.title ?? active.slug} parsed={active.parsed} onRate={rateAtom} onAdd={addReviewAtom} />
+              <StudyQuizSection
+                quizItems={active.parsed.quizItems}
+                onAdd={addQuiz}
+                onDelete={deleteQuiz}
+                onRate={rateQuiz}
+                onGenerateQuiz={runQuiz}
+              />
             </div>
           ) : (
             <div className="sw-study-placeholder">
@@ -253,6 +439,25 @@ export function StudyWorkbenchPage() {
           )}
         </div>
       </main>
+      {removingSlug && <StudyDeletingOverlay />}
+      {/* 首轮（尚无问题）不在浮层显示，由资料栏置灰 + 居中加载；有问题/总结才弹卡。
+          key 随 question/轮次变化 → 强制重置卡片内部状态（选中/自定义），
+          避免上一题的选项残留导致 Next 不置灰。 */}
+      {(grillQuestion || grillDone != null) && (
+        <StudyGrillCard
+          key={`${grillQuestion?.id ?? 'grill-done'}-${grillRound}`}
+          question={grillQuestion}
+          round={grillRound}
+          waiting={grillPending}
+          doneSummary={grillDone}
+          history={grillHistory}
+          onAnswer={(answer) => runGrillTurn(answer)}
+          onSkip={skipGrill}
+          onCancel={cancelGrill}
+          onResearch={() => grillDone != null && runResearchFromGrill(grillDone)}
+          onContinue={continueGrill}
+        />
+      )}
     </div>
   );
 }

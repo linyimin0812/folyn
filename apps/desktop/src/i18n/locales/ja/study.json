@@ -20,13 +20,16 @@
     "reviewCount": "{{count}}件期限",
     "unitCount": "{{count}}ユニット",
     "delete": "トピックを削除",
-    "deleteConfirm": "トピック「{{title}}」を削除しますか？元に戻せません。"
+    "deleteConfirm": "トピック「{{title}}」を削除しますか？元に戻せません。",
+    "quizCount": "{{count}}問検定",
+    "deleting": "削除中…"
   },
   "addTopic": {
     "title": "新規学習トピック",
     "placeholder": "トピックタイトル…",
     "cancel": "キャンセル",
-    "create": "作成"
+    "create": "作成",
+    "creating": "作成中…"
   },
   "plan": {
     "sectionTitle": "プラン",
@@ -55,7 +58,20 @@
     "scheduleDateAria": "スケジュール日",
     "schedule": "スケジュール",
     "cancel": "キャンセル",
-    "scheduleTooltip": "このユニットを対象日のデイリーノートのタスクセクションに書き込み（学習バックリンク付き）"
+    "scheduleTooltip": "このユニットを対象日のデイリーノートのタスクセクションに書き込み（学習バックリンク付き）",
+    "startUnit": "学習開始",
+    "startUnitTitle": "このユニットの集中学習セッションに入る",
+    "sessionTitle": "学習セッション · ユニット{{order}}",
+    "sessionEst": "見積 {{est}}",
+    "sessionHint": "教材を読む → ノートを取る → 自己テスト → 完了",
+    "sessionOpenNotes": "ノート",
+    "sessionOpenNotesTitle": "エディタでトピック文書を開いてメモを取る",
+    "sessionQuiz": "自己テスト",
+    "sessionQuizTitle": "このユニットの理解度を確かめる検定問題を生成",
+    "sessionDone": "このユニットを完了",
+    "sessionDoneTitle": "完了にして次のユニットへ自動で進む",
+    "sessionExit": "退出",
+    "sessionExitTitle": "学習セッションを退出"
   },
   "materials": {
     "sectionTitle": "教材",
@@ -66,9 +82,8 @@
     "research": "AIで検索",
     "researchTitle": "AIがWebと古典書籍/論文を検索（教材セクションに自動書き込み）",
     "aiDisabled": "AIアダプタ未設定",
-    "planFromSelectedTitle": "{{count}}件の選択教材から学習プランを生成",
-    "planFromSelected": "選択からプラン生成 ({{count}})",
     "edit": "編集",
+    "delete": "削除",
     "editTitle": "エディタで教材セクションを編集",
     "empty": "教材はまだありません",
     "emptyHint": "AIで教材を検索、または書籍/Webページを手動で追加",
@@ -77,25 +92,32 @@
     "kindWeb": "Web",
     "difficulty": "難易度",
     "author": "著者: {{name}}",
-    "openLink": "開く",
-    "openLinkAria": "{{title}}のリンクを開く",
     "editMaterial": "教材を編集",
     "deleteMaterial": "教材を削除",
     "sq3r": "SQ3R予読",
+    "sq3rRunning": "SQ3R実行中…",
     "sq3rTitle": "この教材でSQ3R予読（アウトライン + 予読質問）",
+    "sq3rModalTitle": "SQ3R予読：{{title}}",
+    "sq3rClose": "閉じる",
+    "sq3rReread": "再予読",
+    "sq3rRereadTitle": "予読内容を再生成",
+    "sq3rKeep": "保留",
+    "sq3rKeepTitle": "予読内容を ## 笔记 段に書き込む",
     "form": {
+      "titleEdit": "{{kind}}を編集",
+      "titleNew": "{{kind}}を追加",
       "titleBook": "書籍タイトル",
       "titleWeb": "タイトル",
       "author": "著者",
       "url": "URL https://",
-      "difficultyEasy": "易しい",
-      "difficultyMedium": "普通",
-      "difficultyHard": "難しい",
+      "difficultyLabel": "難易度",
       "summary": "要約",
       "save": "保存",
       "add": "追加",
       "cancel": "キャンセル"
-    }
+    },
+    "researchClarifying": "AI確認中…",
+    "researchRunning": "AI検索中…"
   },
   "notes": {
     "sectionTitle": "ノート",
@@ -109,7 +131,9 @@
     "empty": "ノートセクションは空です",
     "emptyHint": "「エディタで編集」をクリックして書く、または精緻化テンプレートを挿入",
     "subwiki": "ナレッジベース · サブドキュメント（[[wiki]]リンク）",
-    "subwikiEmpty": "リンクされたサブドキュメントはありません。ノート内で `[[サブドキュメント]]` を使って原子的ノートにリンクしてください。"
+    "subwikiEmpty": "リンクされたサブドキュメントはありません。ノート内で `[[サブドキュメント]]` を使って原子的ノートにリンクしてください。",
+    "atoms": "復習カード生成",
+    "atomsTitle": "AIがノートから要点を抽出して復習セクションに自動書き込み（アクティブリコール）"
   },
   "review": {
     "sectionTitle": "復習",
@@ -156,5 +180,50 @@
       "good": "良い",
       "easy": "簡単"
     }
+  },
+  "quiz": {
+    "sectionTitle": "検定",
+    "aiGenerate": "検定問題生成",
+    "aiTitle": "AIがノート/教材から検定問題を生成（検定セクションに自動書き込み）",
+    "inputPlaceholder": "検定問題…",
+    "answerPlaceholder": "回答…",
+    "add": "追加",
+    "empty": "検定問題はまだありません",
+    "emptyHint": "AIで検定問題を生成、または手動で1問追加",
+    "showAnswer": "回答を表示",
+    "hideAnswer": "回答を隠す",
+    "correct": "正解",
+    "correctTitle": "正解とマーク（習得、チェック）",
+    "wrong": "不正解",
+    "wrongTitle": "不正解とマーク（復習アトムを自動生成して後で復習）",
+    "doneChip": "習得済み",
+    "delete": "検定問題を削除",
+    "srcChip": "出典"
+  },
+  "reminder": {
+    "title": "学習リマインダー",
+    "dueBody": "今日の復習が{{count}}件期限です（{{topics}}トピック）。まず1問：{{sample}}",
+    "quizBody": "検定問題が{{count}}問残っています。",
+    "scheduledBody": "今日は{{count}}ユニットが予定されています。"
+  },
+  "grillDialog": {
+    "title": "AIで検索 · 順に確認",
+    "roundLabel": "第{{round}}問",
+    "recommended": "おすすめ",
+    "confirm": "決定",
+    "skip": "すぐ検索",
+    "skipTitle": "残りの質問をスキップして検索",
+    "cancelTitle": "検索をキャンセル",
+    "parseFailed": "AIが期待した形式で質問を返しませんでした。もう一度お試しください。",
+    "preparing": "確認中",
+    "generatingFirst": "Thinking...",
+    "nextQuestion": "Thinking...",
+    "done": "完了",
+    "research": "資料を検索",
+    "continue": "続けて質問",
+    "customLabel": "カスタム",
+    "customPlaceholder": "カスタム選択…",
+    "next": "Next",
+    "continuing": "Thinking..."
   }
 }
