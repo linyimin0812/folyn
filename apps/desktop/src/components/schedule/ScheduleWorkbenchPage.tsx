@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useScheduleStore, subscribeToFileTree } from '@/store/scheduleStore';
 import { dateToString } from '@/features/schedule/dailyScan';
+import { useBoardColumns } from '@/features/schedule/columns';
 import { ScheduleSidebar } from './ScheduleSidebar';
 import { ScheduleView } from './ScheduleView';
 import { BoardView } from './BoardView';
@@ -34,6 +35,9 @@ export function ScheduleWorkbenchPage() {
   const [planStatus, setPlanStatus] = useState<PlanStatus>({ kind: 'idle' });
   const refresh = useScheduleStore((s) => s.refresh);
   const toast = useScheduleStore((s) => s.toast);
+  const { columns: boardColumns } = useBoardColumns();
+  // 用戶可能删掉了默認 todo 列；新建任務時取第一個非完成列作為初始列。
+  const newTaskCol = boardColumns.find((c) => !c.isDone)?.id ?? 'todo';
 
   // 进入页面时刷新数据；订阅 fileTree 变化（debounce 300ms）。
   useEffect(() => {
@@ -70,13 +74,13 @@ export function ScheduleWorkbenchPage() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault();
-        setModalIntent({ kind: view === 'board' ? 'task' : 'event', col: 'todo', day: dateToString(new Date()), hour: 9 });
+        setModalIntent({ kind: view === 'board' ? 'task' : 'event', col: newTaskCol, day: dateToString(new Date()), hour: 9 });
       }
       if (e.key === 'Escape') setModalIntent(null);
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [view]);
+  }, [view, newTaskCol]);
 
   // Run the plan-my-day flow: gather today's context → call the AI → preview.
   // Targets TODAY (gatherPlanContext is today-only; multi-day is out of scope).
@@ -129,7 +133,7 @@ export function ScheduleWorkbenchPage() {
       <ScheduleSidebar
         view={view}
         onSwitchView={setView}
-        onNew={() => setModalIntent({ kind: view === 'board' ? 'task' : 'event', col: 'todo', day: dateToString(new Date()), hour: 9 })}
+        onNew={() => setModalIntent({ kind: view === 'board' ? 'task' : 'event', col: newTaskCol, day: dateToString(new Date()), hour: 9 })}
       />
 
       <main className="sw-main">
