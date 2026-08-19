@@ -184,7 +184,6 @@ export function ScheduleModal({ intent, onClose }: Props) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder={t('schedule:modal.titlePlaceholder')}
-            onKeyDown={(e) => { if (e.key === 'Enter') save(); }}
           />
         </div>
 
