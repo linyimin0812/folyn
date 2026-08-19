@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/feature-agents.md", "reason": "seedAgentFiles 播种策略从 write-if-missing 改为 always-overwrite；spec 的 graceful degradation（agentFileExists 仍可用）承诺不破"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "错误处理（writeFile 失败静默降级）与幂等 createDir 不变"}

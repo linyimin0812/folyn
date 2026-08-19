@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "studyStore 与 aiStore 联动；deleteTopic 调 aiStore.deleteSession 清理孤儿 session"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "deleteSession 失败静默处理（topic 已删，session 留下不阻塞）；dynamic import 避免循环依赖"}

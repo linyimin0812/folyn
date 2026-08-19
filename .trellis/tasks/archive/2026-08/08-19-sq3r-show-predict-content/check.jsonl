@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "验证 deleteTopic 与 aiStore.deleteSession 联动正确，不破其他 study action 流"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "错误处理：aiStore dynamic import / deleteSession 失败不阻塞 topic 删除"}
+{"file": "apps/desktop/src/store/studyStore.test.ts", "reason": "加 deleteTopic 调 deleteSession 的断言"}
