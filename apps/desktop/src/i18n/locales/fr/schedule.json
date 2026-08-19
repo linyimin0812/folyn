@@ -64,7 +64,8 @@
     "label": "Focus Pomodoro",
     "pause": "Pause",
     "start": "Démarrer",
-    "reset": "Réinitialiser"
+    "reset": "Réinitialiser",
+    "notify": "Notifier le pet à la fin de la session"
   },
   "boardColumn": {
     "renameHint": "Double-cliquer pour renommer",
@@ -114,7 +115,10 @@
     "delete": "Supprimer",
     "unschedule": "Déplanifier",
     "toastTitleRequired": "Veuillez saisir le titre",
-    "toastEndAfterStart": "L'heure de fin doit être après l'heure de début"
+    "toastEndAfterStart": "L'heure de fin doit être après l'heure de début",
+    "notifyLabel": "Notifier le pet avant le début",
+    "notifyLeadPrefix": "",
+    "notifyLeadSuffix": "minutes avant"
   },
   "plan": {
     "loading": "L'IA planifie votre journée…",
@@ -153,5 +157,10 @@
     "columnDeleted": "Colonne « {{name}} » supprimée",
     "pomoWorkEnded": "Session de travail terminée, faites une pause de 5 minutes",
     "pomoRestEnded": "Pause terminée, tour {{round}}"
+  },
+  "notify": {
+    "pomoWorkEnded": "Session de focus terminée, faites une pause",
+    "pomoRestEnded": "Pause terminée, démarrez la prochaine session de focus",
+    "eventUpcoming": "L'événement \"{{title}}\" commence dans {{minutes}} minutes"
   }
 }

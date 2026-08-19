@@ -64,7 +64,8 @@
     "label": "Pomodoro focus",
     "pause": "Pause",
     "start": "Start",
-    "reset": "Reset"
+    "reset": "Reset",
+    "notify": "Notify pet on session end"
   },
   "boardColumn": {
     "renameHint": "Double-click to rename",
@@ -114,7 +115,10 @@
     "delete": "Delete",
     "unschedule": "Unschedule",
     "toastTitleRequired": "Please fill in the title",
-    "toastEndAfterStart": "End time must be after start time"
+    "toastEndAfterStart": "End time must be after start time",
+    "notifyLabel": "Notify pet before start",
+    "notifyLeadPrefix": "",
+    "notifyLeadSuffix": "minutes before"
   },
   "plan": {
     "loading": "AI is planning your day…",
@@ -153,5 +157,10 @@
     "columnDeleted": "Deleted column \"{{name}}\"",
     "pomoWorkEnded": "Work session ended, take a 5-minute break",
     "pomoRestEnded": "Break over, starting round {{round}}"
+  },
+  "notify": {
+    "pomoWorkEnded": "Focus session ended, take a break",
+    "pomoRestEnded": "Break over, start the next focus round",
+    "eventUpcoming": "Event \"{{title}}\" starts in {{minutes}} minutes"
   }
 }

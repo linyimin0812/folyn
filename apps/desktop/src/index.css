@@ -939,6 +939,14 @@ mjx-container svg {
 .sw-pomo .sw-ctrls button:hover { background: var(--act); }
 .sw-pomo .sw-ctrls button.primary { background: var(--accent); color: var(--accent-on); }
 .sw-pomo .sw-ctrls button.primary:hover { background: var(--accent-hover); }
+.sw-pomo .sw-pomo-notify { display: flex; align-items: center; gap: 6px; margin-top: var(--space-3); font-size: 11px; color: var(--t3); position: relative; cursor: pointer; }
+.sw-pomo .sw-pomo-notify input { width: auto; }
+
+.sw-modal .sw-notify-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-4); }
+.sw-modal .sw-notify-field > label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-2); cursor: pointer; }
+.sw-modal .sw-notify-field > label input { width: auto; }
+.sw-modal .sw-notify-lead { display: flex; align-items: center; gap: 6px; padding-left: 22px; font-size: 12px; color: var(--muted); }
+.sw-modal .sw-notify-lead input { width: 60px; padding: 4px 8px; }
 
 .sw-task-list { display: flex; flex-direction: column; gap: 2px; }
 .sw-task { display: grid; grid-template-columns: 18px 1fr auto; gap: var(--space-3); align-items: flex-start; padding: 8px; border-radius: var(--radius-sm); cursor: pointer; transition: background var(--motion-fast) var(--ease-standard); }

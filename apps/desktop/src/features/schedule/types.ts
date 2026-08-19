@@ -27,6 +27,10 @@ export interface ScheduleEvent {
   end: number;
   title: string;
   note?: string;
+  /** 是否在开始前发送桌宠通知 */
+  notify?: boolean;
+  /** 通知提前分钟数（默认 5） */
+  notifyLeadMin?: number;
   /** 在源文件中的行号，用于写回定位 */
   lineIndex: number;
 }

@@ -14,8 +14,8 @@ import type {
 const SECTION_EVENT = '日程';
 const SECTION_TASK = '任务';
 
-// - @event 09:00-10:00 | 标题 | 备注
-const EVENT_RE = /^- @event\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})\s*\|\s*(.+?)(?:\s*\|\s*(.+))?$/;
+// - @event 09:00-10:00 | 标题 | 备注 @{notify:1 lead:5}
+const EVENT_RE = /^- @event\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})\s*\|\s*(.+?)(?:\s*\|\s*(.+?))?(?:\s+@\{([^}]*)\})?\s*$/;
 // - [ ] 标题 @{col:todo cat:dev prio:med due:06-29 prog:0 sub:0 as:YL}
 const TASK_RE = /^- \[([ x])\] (.+?)\s+@\{([^}]*)\}\s*$/;
 const ATTR_RE = /(\w+):("[^"]*"|\S+)/g;
@@ -76,6 +76,8 @@ export function parseDaily(content: string, noteDate: string): ParsedDaily {
         const start = parseTime(m[1]);
         const end = parseTime(m[2]);
         if (Number.isNaN(start) || Number.isNaN(end)) continue;
+        const attrs = m[5] ? parseAttrBlock(m[5]) : {};
+        const leadMin = attrs.lead != null ? clampInt(attrs.lead, 0, 1440) : undefined;
         events.push({
           id: `${noteDate}#${i}`,
           noteDate,
@@ -83,6 +85,8 @@ export function parseDaily(content: string, noteDate: string): ParsedDaily {
           end,
           title: m[3].trim(),
           note: m[4]?.trim() || undefined,
+          notify: attrs.notify === '1' || attrs.notify === 'true',
+          notifyLeadMin: leadMin,
           lineIndex: i,
         });
       }
@@ -152,7 +156,13 @@ function clampInt(s: string, lo: number, hi: number): number {
 /** 序列化一个事件为规范行。 */
 export function buildEventLine(e: ScheduleEvent): string {
   const note = e.note ? ` | ${e.note}` : '';
-  return `- @event ${formatTime(e.start)}-${formatTime(e.end)} | ${e.title}${note}`;
+  const attrs: string[] = [];
+  if (e.notify) {
+    attrs.push('notify:1');
+    attrs.push(`lead:${e.notifyLeadMin ?? 5}`);
+  }
+  const attrBlock = attrs.length ? ` @{${attrs.join(' ')}}` : '';
+  return `- @event ${formatTime(e.start)}-${formatTime(e.end)} | ${e.title}${note}${attrBlock}`;
 }
 
 /** 序列化一个任务为规范行（含复选框 + 属性块）。 */

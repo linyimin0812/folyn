@@ -6,6 +6,7 @@ export function Pomodoro() {
   const pomo = useScheduleStore((s) => s.pomo);
   const toggle = useScheduleStore((s) => s.pomoToggle);
   const reset = useScheduleStore((s) => s.pomoReset);
+  const setNotify = useScheduleStore((s) => s.pomoSetNotify);
 
   const m = Math.floor(pomo.remaining / 60);
   const s = pomo.remaining % 60;
@@ -21,6 +22,10 @@ export function Pomodoro() {
         <button className="primary" onClick={toggle}>{pomo.running ? t('schedule:pomodoro.pause') : t('schedule:pomodoro.start')}</button>
         <button onClick={reset}>{t('schedule:pomodoro.reset')}</button>
       </div>
+      <label className="sw-pomo-notify">
+        <input type="checkbox" checked={pomo.notify} onChange={(e) => setNotify(e.target.checked)} />
+        {t('schedule:pomodoro.notify')}
+      </label>
     </div>
   );
 }

@@ -68,6 +68,8 @@ export function ScheduleModal({ intent, onClose }: Props) {
     intent.kind === 'task' ? intent.col : (editingTask?.column ?? 'todo');
   const initialCat: TaskCategory = editingTask?.category ?? 'design';
   const initialPrio: Priority = editingTask?.priority ?? 'med';
+  const initialNotify = editingEvent?.notify ?? false;
+  const initialLeadMin = editingEvent?.notifyLeadMin ?? 5;
 
   const [type, setType] = useState<'event' | 'task'>(initialType);
   const [title, setTitle] = useState(initialTitle);
@@ -77,6 +79,8 @@ export function ScheduleModal({ intent, onClose }: Props) {
   const [col, setCol] = useState<TaskColumn>(initialCol);
   const [cat, setCat] = useState<TaskCategory>(initialCat);
   const [prio, setPrio] = useState<Priority>(initialPrio);
+  const [notify, setNotify] = useState(initialNotify);
+  const [leadMin, setLeadMin] = useState(initialLeadMin);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -111,6 +115,8 @@ export function ScheduleModal({ intent, onClose }: Props) {
           start: s,
           end: e,
           note: desc.trim() || undefined,
+          notify,
+          notifyLeadMin: leadMin,
         });
       } else {
         await addEvent(day, {
@@ -118,6 +124,8 @@ export function ScheduleModal({ intent, onClose }: Props) {
           end: e,
           title: title.trim(),
           note: desc.trim() || undefined,
+          notify,
+          notifyLeadMin: leadMin,
         });
       }
       } else {
@@ -209,6 +217,25 @@ export function ScheduleModal({ intent, onClose }: Props) {
               <label>{t('schedule:modal.end')}</label>
               <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
             </div>
+          </div>
+          <div className="sw-field sw-notify-field">
+            <label>
+              <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
+              {t('schedule:modal.notifyLabel')}
+            </label>
+            {notify && (
+              <div className="sw-notify-lead">
+                <span>{t('schedule:modal.notifyLeadPrefix')}</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={leadMin}
+                  onChange={(e) => setLeadMin(Math.max(1, Math.min(120, Number(e.target.value) || 5)))}
+                />
+                <span>{t('schedule:modal.notifyLeadSuffix')}</span>
+              </div>
+            )}
           </div>
         )}
 

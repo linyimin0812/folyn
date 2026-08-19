@@ -42,6 +42,7 @@ export function ScheduleWorkbenchPage() {
   // 进入页面时刷新数据；订阅 fileTree 变化（debounce 300ms）。
   useEffect(() => {
     refresh();
+    checkEventNotifications();
     let timer: ReturnType<typeof setTimeout> | null = null;
     const unsub = subscribeToFileTree(() => {
       if (timer) clearTimeout(timer);
@@ -51,7 +52,7 @@ export function ScheduleWorkbenchPage() {
       unsub();
       if (timer) clearTimeout(timer);
     };
-  }, [refresh]);
+  }, [refresh, checkEventNotifications]);
 
   // 番茄钟计时
   const pomoRunning = useScheduleStore((s) => s.pomo.running);
@@ -62,12 +63,16 @@ export function ScheduleWorkbenchPage() {
     return () => clearInterval(id);
   }, [pomoRunning, tickPomo]);
 
-  // now-line 每分钟刷新（通过 key 重渲染 WeekGrid）
+  // now-line 每分钟刷新（通过 key 重渲染 WeekGrid）；同时检查事件提醒
+  const checkEventNotifications = useScheduleStore((s) => s.checkEventNotifications);
   const [, setNowTick] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setNowTick((n) => n + 1), 60_000);
+    const id = setInterval(() => {
+      setNowTick((n) => n + 1);
+      checkEventNotifications();
+    }, 60_000);
     return () => clearInterval(id);
-  }, []);
+  }, [checkEventNotifications]);
 
   // 快捷键：⌘N 新建，Esc 关闭模态
   useEffect(() => {

@@ -64,7 +64,8 @@
     "label": "专注番茄",
     "pause": "暂停",
     "start": "开始",
-    "reset": "重置"
+    "reset": "重置",
+    "notify": "结束发送桌宠通知"
   },
   "boardColumn": {
     "renameHint": "双击重命名",
@@ -114,7 +115,10 @@
     "delete": "删除",
     "unschedule": "取消排程",
     "toastTitleRequired": "请填写标题",
-    "toastEndAfterStart": "结束时间需晚于开始"
+    "toastEndAfterStart": "结束时间需晚于开始",
+    "notifyLabel": "开始前发送桌宠通知",
+    "notifyLeadPrefix": "提前",
+    "notifyLeadSuffix": "分钟"
   },
   "plan": {
     "loading": "AI 正在规划今日…",
@@ -153,5 +157,10 @@
     "columnDeleted": "已删除列「{{name}}」",
     "pomoWorkEnded": "工作时段结束，休息 5 分钟",
     "pomoRestEnded": "休息结束，开始第 {{round}} 轮"
+  },
+  "notify": {
+    "pomoWorkEnded": "专注番茄结束，休息一下",
+    "pomoRestEnded": "休息结束，开始下一轮专注",
+    "eventUpcoming": "事件「{{title}}」将在 {{minutes}} 分钟后开始"
   }
 }

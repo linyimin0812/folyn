@@ -64,7 +64,8 @@
     "label": "ポモドーロ集中",
     "pause": "一時停止",
     "start": "開始",
-    "reset": "リセット"
+    "reset": "リセット",
+    "notify": "終了時にペットに通知"
   },
   "boardColumn": {
     "renameHint": "ダブルクリックで名前変更",
@@ -114,7 +115,10 @@
     "delete": "削除",
     "unschedule": "予定解除",
     "toastTitleRequired": "タイトルを入力してください",
-    "toastEndAfterStart": "終了時間は開始時間より後にしてください"
+    "toastEndAfterStart": "終了時間は開始時間より後にしてください",
+    "notifyLabel": "開始前にペットに通知",
+    "notifyLeadPrefix": "",
+    "notifyLeadSuffix": "分前"
   },
   "plan": {
     "loading": "AIが今日の予定を立てています…",
@@ -153,5 +157,10 @@
     "columnDeleted": "列「{{name}}」を削除",
     "pomoWorkEnded": "作業セッション終了、5分休憩してください",
     "pomoRestEnded": "休憩終了、ラウンド{{round}}を開始"
+  },
+  "notify": {
+    "pomoWorkEnded": "集中タイム終了、休憩しましょう",
+    "pomoRestEnded": "休憩終了、次の集中タイムを開始",
+    "eventUpcoming": "イベント「{{title}}」は{{minutes}}分後に開始します"
   }
 }

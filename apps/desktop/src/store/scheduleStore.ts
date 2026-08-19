@@ -3,6 +3,7 @@ import i18n from '@/i18n';
 import { useVaultStore } from './vaultStore';
 import { usePrefsStore } from './prefsStore';
 import { registerPersistSlice } from './settingsPersistence';
+import { dispatchNotification } from '@/services/petNotifyDispatcher';
 import {
   parseDaily,
   serializeDaily,
@@ -27,13 +28,15 @@ export type { BoardColumnDef };
 // these pre-split; PR2 retargeted columns.ts / SettingsPage /
 // removeBoardColumn onto this store, and PR3 deleted the legacy
 // settingsStore — this slice is now the sole live source.
-export const PERSIST_KEYS_BOARD_COLUMNS = ['boardColumns'] as const;
+export const PERSIST_KEYS_BOARD_COLUMNS = ['boardColumns', 'pomo'] as const;
 
 interface PomoState {
   mode: 'work' | 'break';
   remaining: number; // seconds
   running: boolean;
   round: number;
+  /** 工作和休息结束时是否发送桌宠通知（持久化） */
+  notify: boolean;
 }
 
 interface ScheduleState {
@@ -49,6 +52,8 @@ interface ScheduleState {
   toastMsg: string;
   toastAction: { label: string; run: () => void } | null;
   _toastTimer: ReturnType<typeof setTimeout> | null;
+  /** 已发送事件提醒 key（eventId#leadMin），会话级去重 */
+  _firedEventNotifKeys: Set<string>;
 
   refresh: () => Promise<void>;
   setBoardAnchorDate: (date: string) => void;
@@ -59,9 +64,8 @@ interface ScheduleState {
   reorderBoardColumns: (fromId: string, toId: string) => void;
   setBoardColumns: (columns: BoardColumnDef[]) => void;
 
-  addEvent: (noteDate: string, e: Omit<ScheduleEvent, 'id' | 'noteDate' | 'lineIndex'>) => Promise<void>;
-  moveEvent: (eventId: string, newNoteDate: string, newStart: number, newEnd: number) => Promise<void>;
-  updateEvent: (eventId: string, patch: Partial<Pick<ScheduleEvent, 'title' | 'start' | 'end' | 'note'>>) => Promise<void>;
+  addEvent: (noteDate: string, e: Omit<ScheduleEvent, 'id' | 'noteDate' | 'lineIndex'>) => Promise<void>;  moveEvent: (eventId: string, newNoteDate: string, newStart: number, newEnd: number) => Promise<void>;
+  updateEvent: (eventId: string, patch: Partial<Pick<ScheduleEvent, 'title' | 'start' | 'end' | 'note' | 'notify' | 'notifyLeadMin'>>) => Promise<void>;
   deleteEvent: (eventId: string) => Promise<void>;
   addTask: (noteDate: string, t: Omit<ScheduleTask, 'id' | 'noteDate' | 'lineIndex' | 'done'>) => Promise<void>;
   quickAddTask: (title: string) => Promise<void>;
@@ -76,7 +80,10 @@ interface ScheduleState {
 
   pomoToggle: () => void;
   pomoReset: () => void;
+  pomoSetNotify: (notify: boolean) => void;
   tickPomo: () => void;
+  /** 每分钟检查即将开始的事件，根据 notify 配置发送桌宠通知。 */
+  checkEventNotifications: () => void;
   toast: (msg: string, action?: { label: string; run: () => void }) => void;
 }
 
@@ -84,7 +91,7 @@ const POMO_WORK = 25 * 60;
 const POMO_BREAK = 5 * 60;
 
 function defaultPomo(): PomoState {
-  return { mode: 'work', remaining: POMO_WORK, running: false, round: 1 };
+  return { mode: 'work', remaining: POMO_WORK, running: false, round: 1, notify: false };
 }
 
 /** 读取 noteDate 对应 daily note；不存在则用最小模板新建（不打开 tab）。 */
@@ -140,6 +147,8 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   lastScan: 0,
   boardAnchorDate: dateToString(new Date()),
   boardColumns: DEFAULT_BOARD_COLUMNS.map((c) => ({ ...c })),
+  // 已发送的事件提醒 key（eventId#leadMin），避免同一事件同一 lead 重复通知。会话级，重启清空。
+  _firedEventNotifKeys: new Set<string>(),
   pomo: defaultPomo(),
   toastMsg: '',
   toastAction: null,
@@ -553,7 +562,12 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   pomoToggle: () =>
     set((s) => ({ pomo: { ...s.pomo, running: !s.pomo.running } })),
 
-  pomoReset: () => set({ pomo: defaultPomo() }),
+  pomoReset: () => set((s) => ({ pomo: { ...defaultPomo(), notify: s.pomo.notify } })),
+
+  pomoSetNotify: (notify) => {
+    set((s) => ({ pomo: { ...s.pomo, notify } }));
+    persist();
+  },
 
   tickPomo: () => {
     const p = get().pomo;
@@ -567,10 +581,47 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     if (p.mode === 'work') {
       set({ pomo: { ...p, mode: 'break', remaining: POMO_BREAK, running: true } });
       get().toast(i18n.t('schedule:toast.pomoWorkEnded'));
+      if (p.notify) {
+        void dispatchNotification({ text: i18n.t('schedule:notify.pomoWorkEnded'), source: 'schedule.pomo' });
+      }
     } else {
       set({ pomo: { ...p, mode: 'work', remaining: POMO_WORK, round: p.round + 1, running: true } });
       get().toast(i18n.t('schedule:toast.pomoRestEnded', { round: p.round + 1 }));
+      if (p.notify) {
+        void dispatchNotification({ text: i18n.t('schedule:notify.pomoRestEnded'), source: 'schedule.pomo' });
+      }
     }
+  },
+
+  checkEventNotifications: () => {
+    const now = new Date();
+    const events = get().events;
+    const fired = get()._firedEventNotifKeys;
+    let firedChanged = false;
+    for (const ev of events) {
+      if (!ev.notify) continue;
+      const leadMin = ev.notifyLeadMin ?? 5;
+      if (leadMin <= 0) continue;
+      const startMin = ev.start; // 小时浮点
+      // 计算 ev 当天的 "现在 + leadMin 分钟" 是否对齐 start
+      const todayYyyyMmDd = dateToString(now);
+      if (ev.noteDate !== todayYyyyMmDd) continue;
+      const nowH = now.getHours() + now.getMinutes() / 60;
+      const leadH = leadMin / 60;
+      const diff = startMin - nowH;
+      // 触发窗口：diff 在 [leadH - 1/60, leadH] 之间（即"现在 + leadMin"分钟内将开始）
+      if (diff > leadH || diff <= leadH - 1 / 60) continue;
+      const key = `${ev.id}#${leadMin}`;
+      if (fired.has(key)) continue;
+      fired.add(key);
+      firedChanged = true;
+      void dispatchNotification({
+        text: i18n.t('schedule:notify.eventUpcoming', { title: ev.title, minutes: leadMin }),
+        title: ev.title,
+        source: 'schedule.event',
+      });
+    }
+    if (firedChanged) set({ _firedEventNotifKeys: new Set(fired) });
   },
 
   toast: (msg, action) => {
@@ -599,6 +650,11 @@ const persist = registerPersistSlice({
       useScheduleStore.setState({ boardColumns: DEFAULT_BOARD_COLUMNS.map((c) => ({ ...c })) });
     } else {
       useScheduleStore.setState({ boardColumns: raw as BoardColumnDef[] });
+    }
+    // pomo 持久化：只取 notify 标记，其他字段重置为 defaultPomo。
+    const rawPomo = blob.pomo;
+    if (rawPomo && typeof rawPomo === 'object' && typeof (rawPomo as { notify?: unknown }).notify === 'boolean') {
+      useScheduleStore.setState((s) => ({ pomo: { ...defaultPomo(), notify: (rawPomo as { notify: boolean }).notify } }));
     }
   },
 });

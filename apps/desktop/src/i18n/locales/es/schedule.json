@@ -64,7 +64,8 @@
     "label": "Enfoque Pomodoro",
     "pause": "Pausar",
     "start": "Iniciar",
-    "reset": "Reiniciar"
+    "reset": "Reiniciar",
+    "notify": "Notificar a la mascota al finalizar"
   },
   "boardColumn": {
     "renameHint": "Doble clic para renombrar",
@@ -114,7 +115,10 @@
     "delete": "Eliminar",
     "unschedule": "Desprogramar",
     "toastTitleRequired": "Introduce el título",
-    "toastEndAfterStart": "La hora de fin debe ser posterior a la de inicio"
+    "toastEndAfterStart": "La hora de fin debe ser posterior a la de inicio",
+    "notifyLabel": "Notificar a la mascota antes de empezar",
+    "notifyLeadPrefix": "",
+    "notifyLeadSuffix": "minutos antes"
   },
   "plan": {
     "loading": "La IA está planificando tu día…",
@@ -153,5 +157,10 @@
     "columnDeleted": "Eliminada columna \"{{name}}\"",
     "pomoWorkEnded": "Sesión de trabajo terminada, toma un descanso de 5 minutos",
     "pomoRestEnded": "Descanso terminado, comenzando ronda {{round}}"
+  },
+  "notify": {
+    "pomoWorkEnded": "Sesión de enfoque terminada, toma un descanso",
+    "pomoRestEnded": "Descanso terminado, inicia la próxima ronda de enfoque",
+    "eventUpcoming": "El evento \"{{title}}\" comienza en {{minutes}} minutos"
   }
 }
