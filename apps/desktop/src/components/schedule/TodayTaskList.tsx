@@ -31,11 +31,11 @@ export function TodayTaskList() {
           >
             <span className="sw-check">✓</span>
             <span>
-              <span className="sw-body">
-                {task.title}
+              <span className="sw-body">{task.title}</span>
+              <span className="sw-meta">
                 <span className="sw-src">{t(`schedule:category.task.${task.category}`)}</span>
+                {task.due ? t('schedule:todayTaskList.duePrefix', { due: task.due }) : ''}{labelOf(task.column)}
               </span>
-              <span className="sw-meta">{task.due ? t('schedule:todayTaskList.duePrefix', { due: task.due }) : ''}{labelOf(task.column)}</span>
             </span>
             <span className={`sw-prio ${task.priority}`} />
           </li>

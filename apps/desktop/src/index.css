@@ -949,7 +949,7 @@ mjx-container svg {
 .sw-task.done .sw-body { color: var(--muted); text-decoration: line-through; }
 .sw-task .sw-meta { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 2px; }
 .sw-task .sw-prio { width: 6px; height: 6px; border-radius: 50%; margin-top: 7px; }
-.sw-task .sw-src { font-family: var(--font-mono); font-size: 9px; padding: 1px 5px; border-radius: 3px; background: var(--border-soft); color: var(--muted); margin-left: 6px; vertical-align: middle; }
+.sw-task .sw-src { font-family: var(--font-mono); font-size: 9px; padding: 1px 5px; border-radius: 3px; background: var(--border-soft); color: var(--muted); margin-right: 6px; vertical-align: middle; }
 
 .sw-reminder { display: flex; gap: var(--space-3); padding: 8px 0; border-bottom: 1px solid var(--border-soft); font-size: var(--text-sm); }
 .sw-reminder:last-child { border-bottom: 0; }
