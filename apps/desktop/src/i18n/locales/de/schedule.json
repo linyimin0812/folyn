@@ -82,7 +82,8 @@
   },
   "taskCard": {
     "priorityTitle": "Priorität",
-    "scheduled": "Terminiert"
+    "scheduled": "Terminiert",
+    "delete": "Aufgabe löschen"
   },
   "modal": {
     "titleEdit": "{{kind}} bearbeiten",

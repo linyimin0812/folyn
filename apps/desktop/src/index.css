@@ -807,8 +807,9 @@ mjx-container svg {
 .sw-view-schedule { grid-template-columns: 220px 1fr 280px; }
 .sw-rail { background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: var(--space-5); }
 .sw-rail.right { border-right: 0; border-left: 1px solid var(--border); }
-.sw-section-label { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin: 0 0 var(--space-3); }
-.sw-rail-block { margin-bottom: var(--space-6); }
+.sw-section-label { font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--fg); margin: 0 0 var(--space-3); letter-spacing: -0.005em; }
+.sw-rail-block { margin-bottom: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--border-soft); }
+.sw-rail-block:first-child { padding-top: 0; border-top: 0; }
 
 .sw-view-switch { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 3px; margin-bottom: var(--space-5); }
 .sw-view-switch button { padding: 5px 0; border-radius: var(--radius-sm); font-size: var(--text-xs); font-weight: 500; color: var(--muted); transition: all var(--motion-fast) var(--ease-standard); }
@@ -1015,6 +1016,10 @@ mjx-container svg {
 .sw-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4); cursor: grab; transition: box-shadow var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard); position: relative; }
 .sw-card:hover { box-shadow: 0 1px 4px rgba(0,0,0,0.08); transform: translateY(-1px); }
 .sw-card.dragging { opacity: 0.4; cursor: grabbing; }
+.sw-card .sw-card-del { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 4px; display: grid; place-items: center; color: var(--t3); font-size: 11px; line-height: 1; background: transparent; opacity: 0; transition: opacity var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); z-index: 2; }
+.sw-card:hover .sw-card-del { opacity: 1; }
+.sw-card .sw-card-del:hover { background: color-mix(in oklab, var(--red), transparent 88%); color: var(--red); }
+.sw-card.dragging .sw-card-del { display: none; }
 .sw-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
 .sw-card-top .sw-card-tags { display: inline-flex; align-items: center; gap: var(--space-1); margin-inline-start: auto; }
 .sw-tag { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border-radius: 4px; font-family: var(--font-mono); font-size: 10px; font-weight: 500; }
@@ -1074,6 +1079,7 @@ mjx-container svg {
 .sw-modal .sw-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-4); }
 .sw-modal .sw-field label { font-size: 12px; color: var(--muted); }
 .sw-modal input, .sw-modal textarea, .sw-modal select { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; font-size: var(--text-sm); background: var(--surface); width: 100%; color: var(--fg); }
+.sw-modal input[type=text], .sw-modal input[type=time], .sw-modal select { height: 38px; box-sizing: border-box; }
 .sw-modal input:focus, .sw-modal textarea:focus, .sw-modal select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
 .sw-modal textarea { min-height: 72px; resize: vertical; }
 .sw-modal .sw-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }

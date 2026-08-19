@@ -82,7 +82,8 @@
   },
   "taskCard": {
     "priorityTitle": "优先级",
-    "scheduled": "已排程"
+    "scheduled": "已排程",
+    "delete": "删除任务"
   },
   "modal": {
     "titleEdit": "编辑{{kind}}",

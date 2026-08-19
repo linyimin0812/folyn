@@ -8,6 +8,7 @@ export function TaskCard({ task }: { task: ScheduleTask }) {
   const { t } = useTranslation();
   const [dragging, setDragging] = useState(false);
   const toast = useScheduleStore((s) => s.toast);
+  const deleteTask = useScheduleStore((s) => s.deleteTask);
 
   const ds = dueState(task.due);
   const dueClass = ds === 'over' ? 'due-over' : ds === 'soon' ? 'due-soon' : '';
@@ -30,6 +31,11 @@ export function TaskCard({ task }: { task: ScheduleTask }) {
       }}
       onClick={() => { if (!dragging) toast(`「${task.title}」`); }}
     >
+      <button
+        className="sw-card-del"
+        title={t('schedule:taskCard.delete')}
+        onClick={(e) => { e.stopPropagation(); void deleteTask(task.id); }}
+      >✕</button>
       <div className="sw-card-top">
         <span className={`sw-tag ${task.category}`}>{t(`schedule:category.task.${task.category}`)}</span>
         <span className={`sw-prio ${task.priority}`} title={t('schedule:taskCard.priorityTitle')} />

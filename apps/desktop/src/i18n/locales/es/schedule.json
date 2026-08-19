@@ -82,7 +82,8 @@
   },
   "taskCard": {
     "priorityTitle": "Prioridad",
-    "scheduled": "Programado"
+    "scheduled": "Programado",
+    "delete": "Eliminar tarea"
   },
   "modal": {
     "titleEdit": "Editar {{kind}}",

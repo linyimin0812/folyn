@@ -82,7 +82,8 @@
   },
   "taskCard": {
     "priorityTitle": "優先度",
-    "scheduled": "予定済み"
+    "scheduled": "予定済み",
+    "delete": "タスクを削除"
   },
   "modal": {
     "titleEdit": "{{kind}}を編集",
