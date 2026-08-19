@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ScheduleTask } from '@/features/schedule/types';
 import { TaskCard } from './TaskCard';
+import type { ModalIntent } from './ScheduleModal';
 
 // Tauri WKWebView quirk: getData('text/plain') during onDrop may return empty
 // even when setData was called during onDragStart. Module-level fallback.
@@ -17,13 +18,14 @@ interface Props {
   onRename: (name: string) => void;
   onReorderColumns: (fromId: string, toId: string) => void;
   onDelete: () => void;
+  onOpenModal: (intent: ModalIntent) => void;
 }
 
 const EMPTY_ICON_SVG = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
 );
 
-export function BoardColumn({ id, name, color, isDone, tasks, onDropTask, onRename, onReorderColumns, onDelete }: Props) {
+export function BoardColumn({ id, name, color, isDone, tasks, onDropTask, onRename, onReorderColumns, onDelete, onOpenModal }: Props) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
@@ -116,7 +118,7 @@ export function BoardColumn({ id, name, color, isDone, tasks, onDropTask, onRena
           if (taskId) onDropTask(taskId);
         }}
       >
-        {tasks.map((t) => <TaskCard key={t.id} task={t} />)}
+        {tasks.map((t) => <TaskCard key={t.id} task={t} onOpenModal={onOpenModal} />)}
         {tasks.length === 0 && (
           <div className="sw-empty-state">
             <span className="sw-empty-icon">{EMPTY_ICON_SVG}</span>

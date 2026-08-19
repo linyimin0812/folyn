@@ -68,7 +68,7 @@ interface ScheduleState {
   toggleTask: (taskId: string) => Promise<void>;
   moveTaskStatus: (taskId: string, col: TaskColumn) => Promise<void>;
   scheduleTask: (taskId: string, date: string, start: number, end: number) => Promise<void>;
-  updateTask: (taskId: string, patch: Partial<Pick<ScheduleTask, 'title' | 'scheduledStart' | 'scheduledEnd' | 'category' | 'column' | 'priority'>>) => Promise<void>;
+  updateTask: (taskId: string, patch: Partial<Pick<ScheduleTask, 'title' | 'desc' | 'scheduledStart' | 'scheduledEnd' | 'category' | 'column' | 'priority'>>) => Promise<void>;
   unscheduleTask: (taskId: string) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   setTaskDue: (taskId: string, dueMmDd: string) => Promise<void>;

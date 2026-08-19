@@ -140,7 +140,7 @@ export function ScheduleWorkbenchPage() {
         {view === 'schedule' ? (
           <ScheduleView onOpenModal={setModalIntent} />
         ) : (
-          <BoardView />
+          <BoardView onOpenModal={setModalIntent} />
         )}
       </main>
 

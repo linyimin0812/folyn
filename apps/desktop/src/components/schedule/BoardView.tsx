@@ -5,8 +5,9 @@ import { dueState } from '@/features/schedule/markdown';
 import { useBoardColumns } from '@/features/schedule/columns';
 import { DayCalAside } from './DayCalAside';
 import { BoardColumn } from './BoardColumn';
+import type { ModalIntent } from './ScheduleModal';
 
-export function BoardView() {
+export function BoardView({ onOpenModal }: { onOpenModal: (intent: ModalIntent) => void }) {
   const { t } = useTranslation();
   const tasks = useScheduleStore((s) => s.tasks);
   const moveTaskStatus = useScheduleStore((s) => s.moveTaskStatus);
@@ -62,6 +63,7 @@ export function BoardView() {
                 onRename={(name) => renameBoardColumn(col.id, name)}
                 onReorderColumns={reorderBoardColumns}
                 onDelete={() => removeBoardColumn(col.id)}
+                onOpenModal={onOpenModal}
               />
             ))}
             <div className="sw-col sw-col-add">

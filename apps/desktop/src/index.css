@@ -1035,7 +1035,7 @@ mjx-container svg {
 .sw-prio.med { background: var(--warn); }
 .sw-prio.low { background: var(--muted); }
 .sw-card h4 { font-size: var(--text-sm); font-weight: 600; color: var(--fg); line-height: 1.4; margin-bottom: var(--space-2); letter-spacing: -0.005em; }
-.sw-card p { margin: 0; font-size: var(--text-xs); color: var(--muted); line-height: 1.5; }
+.sw-card p { margin: 0; font-size: var(--text-xs); color: var(--muted); line-height: 1.5; margin-bottom: var(--space-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .sw-card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border-soft); }
 .sw-card-meta { display: flex; align-items: center; gap: var(--space-3); color: var(--muted); font-family: var(--font-mono); font-size: 11px; flex-wrap: wrap; }
 .sw-card-meta .sw-chip { display: inline-flex; align-items: center; gap: 4px; }

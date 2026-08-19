@@ -3,11 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { useScheduleStore } from '@/store/scheduleStore';
 import { dueState } from '@/features/schedule/markdown';
 import type { ScheduleTask } from '@/features/schedule/types';
+import type { ModalIntent } from './ScheduleModal';
 
-export function TaskCard({ task }: { task: ScheduleTask }) {
+export function TaskCard({ task, onOpenModal }: { task: ScheduleTask; onOpenModal: (intent: ModalIntent) => void }) {
   const { t } = useTranslation();
   const [dragging, setDragging] = useState(false);
-  const toast = useScheduleStore((s) => s.toast);
   const deleteTask = useScheduleStore((s) => s.deleteTask);
 
   const ds = dueState(task.due);
@@ -30,7 +30,7 @@ export function TaskCard({ task }: { task: ScheduleTask }) {
         document.querySelectorAll('.sw-col-body').forEach((b) => b.classList.remove('drop-target'));
         document.querySelectorAll('.sw-daycal-grid .sw-d').forEach((b) => b.classList.remove('cal-drop-target'));
       }}
-      onClick={() => { if (!dragging) toast(`「${task.title}」`); }}
+      onClick={() => { if (!dragging) onOpenModal({ kind: 'taskDetail', taskId: task.id }); }}
     >
       <button
         className="sw-card-del"
@@ -42,6 +42,7 @@ export function TaskCard({ task }: { task: ScheduleTask }) {
         <span className={`sw-tag ${task.category}`}>{t(`schedule:category.task.${task.category}`)}</span>
       </div>
       <h4>{task.title}</h4>
+      {task.desc && <p>{task.desc}</p>}
       {(hasMeta || showProgress) && (
         <div className="sw-card-foot">
           <div className="sw-card-meta">

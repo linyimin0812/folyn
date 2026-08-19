@@ -33,6 +33,7 @@ export function ScheduleModal({ intent, onClose }: Props) {
   const updateEvent = useScheduleStore((s) => s.updateEvent);
   const updateTask = useScheduleStore((s) => s.updateTask);
   const deleteEvent = useScheduleStore((s) => s.deleteEvent);
+  const deleteTask = useScheduleStore((s) => s.deleteTask);
   const unscheduleTask = useScheduleStore((s) => s.unscheduleTask);
   const { columns: boardColumns, doneId } = useBoardColumns();
 
@@ -50,7 +51,7 @@ export function ScheduleModal({ intent, onClose }: Props) {
   const initialType: 'event' | 'task' =
     intent.kind === 'event' || intent.kind === 'eventDetail' ? 'event' : 'task';
   const initialTitle = editingEvent?.title ?? editingTask?.title ?? '';
-  const initialDesc = editingEvent?.note ?? '';
+  const initialDesc = editingEvent?.note ?? editingTask?.desc ?? '';
   const initialStart = (() => {
     if (intent.kind === 'event') return formatTime(intent.hour);
     if (editingEvent?.start != null) return formatTime(editingEvent.start);
@@ -129,6 +130,7 @@ export function ScheduleModal({ intent, onClose }: Props) {
         }
         await updateTask(editingTask.id, {
           title: title.trim(),
+          desc: desc.trim() || undefined,
           scheduledStart: s,
           scheduledEnd: e,
           category: cat,
@@ -138,6 +140,7 @@ export function ScheduleModal({ intent, onClose }: Props) {
       } else {
         await addTask(day, {
           title: title.trim(),
+          desc: desc.trim() || undefined,
           column: col,
           category: cat,
           priority: prio,
@@ -269,12 +272,19 @@ export function ScheduleModal({ intent, onClose }: Props) {
               >
                 {t('schedule:modal.delete')}
               </button>
-            ) : (
+            ) : editingTask?.scheduledDate ? (
               <button
                 className="sw-btn sw-btn-danger"
                 onClick={async () => { if (editingTask) await unscheduleTask(editingTask.id); onClose(); }}
               >
                 {t('schedule:modal.unschedule')}
+              </button>
+            ) : (
+              <button
+                className="sw-btn sw-btn-danger"
+                onClick={async () => { if (editingTask) await deleteTask(editingTask.id); onClose(); }}
+              >
+                {t('schedule:modal.delete')}
               </button>
             )
           )}

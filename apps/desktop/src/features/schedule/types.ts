@@ -38,6 +38,8 @@ export interface ScheduleTask {
   /** 所属 daily note 的日期 YYYY-MM-DD（创建日） */
   noteDate: string;
   title: string;
+  /** 描述（可选，存为 `desc:"..."` 属性）。不支持内嵌双引号。 */
+  desc?: string;
   column: TaskColumn;
   category: TaskCategory;
   priority: Priority;

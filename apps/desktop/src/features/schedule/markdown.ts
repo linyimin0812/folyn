@@ -18,7 +18,7 @@ const SECTION_TASK = '任务';
 const EVENT_RE = /^- @event\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})\s*\|\s*(.+?)(?:\s*\|\s*(.+))?$/;
 // - [ ] 标题 @{col:todo cat:dev prio:med due:06-29 prog:0 sub:0 as:YL}
 const TASK_RE = /^- \[([ x])\] (.+?)\s+@\{([^}]*)\}\s*$/;
-const ATTR_RE = /(\w+):(\S+)/g;
+const ATTR_RE = /(\w+):("[^"]*"|\S+)/g;
 const H2_RE = /^##\s+(.+?)\s*#*\s*$/;
 
 /** HH:MM → 小时浮点（9.5 = 09:30）。非法返回 NaN。 */
@@ -43,7 +43,8 @@ function parseAttrBlock(block: string): Record<string, string> {
   ATTR_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = ATTR_RE.exec(block)) !== null) {
-    out[m[1]] = m[2];
+    const v = m[2];
+    out[m[1]] = v.startsWith('"') && v.endsWith('"') ? v.slice(1, -1) : v;
   }
   return out;
 }
@@ -107,7 +108,7 @@ export function parseDaily(content: string, noteDate: string): ParsedDaily {
         }
         // 收集固定字段未覆盖的未知属性（如 topic:/unit: 回链），原样透传写回。
         const KNOWN_KEYS = new Set([
-          'col', 'cat', 'prio', 'due', 'sched', 'prog', 'sub', 'as',
+          'col', 'cat', 'prio', 'due', 'sched', 'prog', 'sub', 'as', 'desc',
         ]);
         let extraAttrs: Record<string, string> | undefined;
         for (const [k, v] of Object.entries(attrs)) {
@@ -120,6 +121,7 @@ export function parseDaily(content: string, noteDate: string): ParsedDaily {
           id: `${noteDate}#${i}`,
           noteDate,
           title,
+          desc: attrs.desc,
           column: col,
           category: (attrs.cat as TaskCategory) || 'dev',
           priority: (attrs.prio as Priority) || 'med',
@@ -163,6 +165,7 @@ export function buildTaskLine(t: ScheduleTask): string {
   }
   attrs.push(`prog:${t.progress}`, `sub:${t.subtasks}`);
   if (t.assignees.length) attrs.push(`as:${t.assignees.join(',')}`);
+  if (t.desc) attrs.push(`desc:"${t.desc}"`);
   // 透传未知属性（如 topic:/unit: 回链），按键名字典序输出保证幂等。
   if (t.extraAttrs) {
     const keys = Object.keys(t.extraAttrs).sort();
