@@ -76,6 +76,7 @@ export function ScheduleModal({ intent, onClose }: Props) {
   const [col, setCol] = useState<TaskColumn>(initialCol);
   const [cat, setCat] = useState<TaskCategory>(initialCat);
   const [prio, setPrio] = useState<Priority>(initialPrio);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -89,11 +90,14 @@ export function ScheduleModal({ intent, onClose }: Props) {
   const day = intent.kind === 'event' ? intent.day : dateToString(new Date());
 
   const save = async () => {
+    if (saving) return;
     if (!title.trim()) {
       useScheduleStore.getState().toast(t('schedule:modal.toastTitleRequired'));
       return;
     }
-    if (type === 'event') {
+    setSaving(true);
+    try {
+      if (type === 'event') {
       const s = toH(start);
       const e = toH(end);
       if (e <= s) {
@@ -115,7 +119,7 @@ export function ScheduleModal({ intent, onClose }: Props) {
           note: desc.trim() || undefined,
         });
       }
-    } else {
+      } else {
       if (isEdit && editingTask) {
         const s = toH(start);
         const e = toH(end);
@@ -143,8 +147,11 @@ export function ScheduleModal({ intent, onClose }: Props) {
           assignees: ['YL'],
         });
       }
+      }
+      onClose();
+    } finally {
+      setSaving(false);
     }
-    onClose();
   };
 
   return (
@@ -253,8 +260,8 @@ export function ScheduleModal({ intent, onClose }: Props) {
         </div>
 
         <div className="sw-actions">
-          <button className="sw-btn sw-btn-ghost" onClick={onClose}>{isEdit ? t('schedule:modal.close') : t('schedule:modal.cancel')}</button>
-          <button className="sw-btn sw-btn-primary" onClick={save}>{isEdit ? t('schedule:modal.save') : t('schedule:modal.create')}</button>
+          <button className="sw-btn sw-btn-ghost" onClick={onClose} disabled={saving}>{isEdit ? t('schedule:modal.close') : t('schedule:modal.cancel')}</button>
+          <button className="sw-btn sw-btn-primary" onClick={save} disabled={saving}>{isEdit ? t('schedule:modal.save') : t('schedule:modal.create')}</button>
           {isEdit && (
             type === 'event' ? (
               <button
