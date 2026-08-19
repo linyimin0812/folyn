@@ -972,7 +972,7 @@ mjx-container svg {
 
 .sw-board-scroll { overflow-x: auto; overflow-y: hidden; padding: 0; }
 .sw-board-layout { display: flex; gap: var(--space-2); height: 100%; min-width: min-content; align-items: stretch; }
-.sw-board-daycal { width: 240px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); position: sticky; left: 0; }
+.sw-board-daycal { width: 240px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); position: sticky; left: 0; z-index: 1; }
 .sw-daycal-head { display: flex; align-items: center; justify-content: space-between; }
 .sw-daycal-month { font-size: var(--text-sm); font-weight: 600; color: var(--fg); letter-spacing: -0.01em; }
 .sw-daycal-nav { display: flex; gap: 2px; }
