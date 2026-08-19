@@ -208,6 +208,7 @@ export function ScheduleModal({ intent, onClose }: Props) {
         </div>
 
         {type === 'event' && (
+          <>
           <div className="sw-row2">
             <div className="sw-field">
               <label>{t('schedule:modal.start')}</label>
@@ -237,6 +238,7 @@ export function ScheduleModal({ intent, onClose }: Props) {
               </div>
             )}
           </div>
+          </>
         )}
 
         {type === 'task' && (
