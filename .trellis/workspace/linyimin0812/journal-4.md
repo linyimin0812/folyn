@@ -351,3 +351,42 @@ Ripped EventCategory (work/personal/family/health/task) out of the schedule work
 ### Next Steps
 
 - None - task complete
+
+
+## Session 181: Schedule module: pet notifications + UI polish
+
+**Date**: 2026-08-19
+**Task**: Schedule module: pet notifications + UI polish
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added pet notification integration for schedule module: pomodoro work/break end sends pet bubble when notify toggle on; event start sends pet notification X minutes before with notify config in event modal. Polished TaskCard UI (removed YL avatars, added desc + click-to-edit + hover delete), TodayTaskList layout (column/category on own line), board horizontal scroll fix (DayCalAside pulled out, min-width:0), schedule modal Enter-to-save removed. Fixed event notification trigger window bug: widened from 1-min to full lead period so events set after the boundary still fire.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `85d5c147` | (see git log) |
+| `9c8aa48c` | (see git log) |
+| `333fdef9` | (see git log) |
+| `ead5c31e` | (see git log) |
+| `f574c398` | (see git log) |
+| `7419e836` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
