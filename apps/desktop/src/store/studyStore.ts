@@ -315,6 +315,11 @@ export const useStudyStore = create<StudyState>((set, get) => ({
     } catch {
       // 文件可能已被外部删除
     }
+    // 同步清理 aiStore 里的 study session，避免孤儿 session 被 orphan scan 复用污染下次同 slug 主题。
+    const { useAiStore } = await import('@/store/aiStore');
+    const ai = useAiStore.getState();
+    const sid = ai.getStudySessionId(slug);
+    if (sid) ai.deleteSession(sid);
     useVaultStore.getState().refreshFileTree().catch(() => {});
     await get().refresh();
   },

@@ -200,6 +200,21 @@ describe('useStudyStore.deleteTopic', () => {
     await useStudyStore.getState().deleteTopic('nope');
     expect(manager.deleteFile).not.toHaveBeenCalled();
   });
+
+  it('clears the aiStore study session for the slug (避免孤儿 session 被 orphan scan 复用)', async () => {
+    const { useAiStore } = await import('@/store/aiStore');
+    useAiStore.setState({ sessions: [], studySessionIds: {}, activeSessionId: null });
+    await useStudyStore.getState().createTopic('Reflexion 主题');
+    const slug = useStudyStore.getState().activeSlug!;
+    const sid = useAiStore.getState().getOrCreateStudySession(slug);
+    expect(sid).toBeTruthy();
+    expect(useAiStore.getState().getStudySessionId(slug)).toBe(sid);
+
+    await useStudyStore.getState().deleteTopic(slug);
+
+    expect(useAiStore.getState().getStudySessionId(slug)).toBeNull();
+    expect(useAiStore.getState().sessions.find((s) => s.id === sid)).toBeUndefined();
+  });
 });
 
 describe('useStudyStore.saveTopic', () => {
