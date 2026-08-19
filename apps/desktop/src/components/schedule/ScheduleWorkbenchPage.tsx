@@ -35,6 +35,7 @@ export function ScheduleWorkbenchPage() {
   const [planStatus, setPlanStatus] = useState<PlanStatus>({ kind: 'idle' });
   const refresh = useScheduleStore((s) => s.refresh);
   const toast = useScheduleStore((s) => s.toast);
+  const checkEventNotifications = useScheduleStore((s) => s.checkEventNotifications);
   const { columns: boardColumns } = useBoardColumns();
   // 用戶可能删掉了默認 todo 列；新建任務時取第一個非完成列作為初始列。
   const newTaskCol = boardColumns.find((c) => !c.isDone)?.id ?? 'todo';
@@ -64,7 +65,6 @@ export function ScheduleWorkbenchPage() {
   }, [pomoRunning, tickPomo]);
 
   // now-line 每分钟刷新（通过 key 重渲染 WeekGrid）；同时检查事件提醒
-  const checkEventNotifications = useScheduleStore((s) => s.checkEventNotifications);
   const [, setNowTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => {
