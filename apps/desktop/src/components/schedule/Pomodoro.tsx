@@ -15,17 +15,19 @@ export function Pomodoro() {
 
   return (
     <div className="sw-pomo">
-      <div className="sw-label">{t('schedule:pomodoro.label')}</div>
+      <div className="sw-pomo-head">
+        <div className="sw-label">{t('schedule:pomodoro.label')}</div>
+        <label className="sw-pomo-notify" title={t('schedule:pomodoro.notify')}>
+          <input type="checkbox" checked={pomo.notify} onChange={(e) => setNotify(e.target.checked)} />
+          {t('schedule:pomodoro.notify')}
+        </label>
+      </div>
       <div className="sw-timer">{timer}</div>
       <div className="sw-mode">{mode}</div>
       <div className="sw-ctrls">
         <button className="primary" onClick={toggle}>{pomo.running ? t('schedule:pomodoro.pause') : t('schedule:pomodoro.start')}</button>
         <button onClick={reset}>{t('schedule:pomodoro.reset')}</button>
       </div>
-      <label className="sw-pomo-notify">
-        <input type="checkbox" checked={pomo.notify} onChange={(e) => setNotify(e.target.checked)} />
-        {t('schedule:pomodoro.notify')}
-      </label>
     </div>
   );
 }

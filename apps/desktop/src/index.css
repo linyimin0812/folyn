@@ -929,7 +929,7 @@ mjx-container svg {
 .sw-quick-add button { padding: 4px 10px; border-radius: var(--radius-sm); background: var(--accent); color: var(--accent-on); font-size: 11px; font-weight: 500; }
 .sw-quick-add button:hover { background: var(--accent-hover); }
 
-.sw-pomo { background: var(--surf2); color: var(--t1); border-radius: var(--radius-md); padding: var(--space-5); margin-bottom: var(--space-5); position: relative; overflow: hidden; }
+.sw-pomo { background: var(--surf2); color: var(--t1); border-radius: var(--radius-md); padding: var(--space-3) var(--space-5) var(--space-5); margin-bottom: var(--space-5); position: relative; overflow: hidden; }
 .sw-pomo::before { content: ''; position: absolute; top: -40px; right: -40px; width: 140px; height: 140px; border-radius: 50%; background: radial-gradient(circle, var(--accglow), transparent 70%); }
 .sw-pomo .sw-label { font-family: var(--font-mono); font-size: 10px; color: var(--t3); position: relative; }
 .sw-pomo .sw-timer { font-family: var(--font-display); font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; margin: var(--space-2) 0 var(--space-3); font-variant-numeric: tabular-nums; position: relative; }
@@ -939,13 +939,13 @@ mjx-container svg {
 .sw-pomo .sw-ctrls button:hover { background: var(--act); }
 .sw-pomo .sw-ctrls button.primary { background: var(--accent); color: var(--accent-on); }
 .sw-pomo .sw-ctrls button.primary:hover { background: var(--accent-hover); }
-.sw-pomo .sw-pomo-notify { display: flex; align-items: center; gap: 6px; margin-top: var(--space-3); font-size: 11px; color: var(--t3); position: relative; cursor: pointer; }
+.sw-pomo .sw-pomo-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); position: relative; }
+.sw-pomo .sw-pomo-notify { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--t3); cursor: pointer; }
 .sw-pomo .sw-pomo-notify input { width: auto; }
 
-.sw-modal .sw-notify-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-4); }
 .sw-modal .sw-notify-field > label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-2); cursor: pointer; }
 .sw-modal .sw-notify-field > label input { width: auto; }
-.sw-modal .sw-notify-lead { display: flex; align-items: center; gap: 6px; padding-left: 22px; font-size: 12px; color: var(--muted); }
+.sw-modal .sw-notify-lead { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
 .sw-modal .sw-notify-lead input { width: 60px; padding: 4px 8px; }
 
 .sw-task-list { display: flex; flex-direction: column; gap: 2px; }
@@ -1083,6 +1083,7 @@ mjx-container svg {
 .sw-modal h3 { font-size: var(--text-xl); margin-bottom: var(--space-5); }
 .sw-modal .sw-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-4); }
 .sw-modal .sw-field label { font-size: 12px; color: var(--muted); }
+.sw-modal .sw-field.sw-notify-field { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
 .sw-modal input, .sw-modal textarea, .sw-modal select { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; font-size: var(--text-sm); background: var(--surface); width: 100%; color: var(--fg); }
 .sw-modal input[type=text], .sw-modal input[type=time], .sw-modal select { height: 38px; box-sizing: border-box; }
 .sw-modal input:focus, .sw-modal textarea:focus, .sw-modal select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }

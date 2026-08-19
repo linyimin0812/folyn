@@ -609,8 +609,8 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       const nowH = now.getHours() + now.getMinutes() / 60;
       const leadH = leadMin / 60;
       const diff = startMin - nowH;
-      // 触发窗口：diff 在 [leadH - 1/60, leadH] 之间（即"现在 + leadMin"分钟内将开始）
-      if (diff > leadH || diff <= leadH - 1 / 60) continue;
+      // 触发窗口：now 在 [start - leadMin, start] 之间；dedup 保证只触发一次
+      if (diff < 0 || diff > leadH) continue;
       const key = `${ev.id}#${leadMin}`;
       if (fired.has(key)) continue;
       fired.add(key);
