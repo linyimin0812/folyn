@@ -51,7 +51,7 @@ export async function loadSessionsFromDisk(vaultId: string) {
 
   if (ids.length === 0) {
     const session = createEmptySession();
-    useAiStore.setState({ sessions: [session], activeSessionId: session.id });
+    useAiStore.setState({ sessions: [session], activeSessionId: session.id, loadedVaultId: vaultId });
     return;
   }
 
@@ -65,7 +65,7 @@ export async function loadSessionsFromDisk(vaultId: string) {
 
   if (sessions.length === 0) {
     const session = createEmptySession();
-    useAiStore.setState({ sessions: [session], activeSessionId: session.id });
+    useAiStore.setState({ sessions: [session], activeSessionId: session.id, loadedVaultId: vaultId });
     return;
   }
 
@@ -75,7 +75,7 @@ export async function loadSessionsFromDisk(vaultId: string) {
   const activeId = meta?.activeSessionId && sessions.some((s) => s.id === meta.activeSessionId)
     ? meta.activeSessionId
     : sessions[0].id;
-  useAiStore.setState({ sessions, activeSessionId: activeId });
+  useAiStore.setState({ sessions, activeSessionId: activeId, loadedVaultId: vaultId });
 }
 
 let suppressPersist = false;
@@ -93,7 +93,11 @@ export function persistAiState() {
   // on the panel's behalf — no local write here. Without this guard every
   // pet-chat token would fire an unhandled fs rejection.
   if (isPetPanelWindow()) return;
-  const vaultId = useVaultStore.getState().activeVaultId;
+  // Read the vault id the in-memory sessions belong to — NOT activeVaultId,
+  // which lags the session swap inside vaultStore.switchVault and would
+  // leak the new vault's sessions into the old vault's directory when the
+  // 500ms trailing debounce lands in that gap.
+  const vaultId = useAiStore.getState().loadedVaultId;
   if (!vaultId) return;
   saveAllSessions(vaultId);
 }
@@ -166,7 +170,7 @@ export async function loadAiSessionsForVault() {
       await loadSessionsFromDisk(vaultId);
     } else {
       const session = createEmptySession();
-      useAiStore.setState({ sessions: [session], activeSessionId: session.id });
+      useAiStore.setState({ sessions: [session], activeSessionId: session.id, loadedVaultId: vaultId });
     }
   }
 }

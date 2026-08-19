@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "verify minimal diff, no unrequested abstraction, no leftover suppressPersist churn"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "verify loadedVaultId is set in every setState that swaps sessions; verify persistAiState reads it"}

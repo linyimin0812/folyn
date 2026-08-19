@@ -56,6 +56,13 @@ export interface AiSession {
 interface AiState {
   sessions: AiSession[];
   activeSessionId: string | null;
+  // ponytail: vault id the in-memory sessions belong to. Set atomically with
+  // every session swap (loadSessionsFromDisk / loadAiSessionsForVault) so
+  // persistAiState can route writes to the correct vault directory regardless
+  // of when the 500ms trailing debounce fires — activeVaultId lags the swap
+  // inside vaultStore.switchVault, which previously let B's sessions leak into
+  // A's dir. Mirrors wikiQueryStore.vaultId.
+  loadedVaultId: string | null;
 
   getActiveSession: () => AiSession | undefined;
   /** 按 id 取会话（diff 横幅按会话 id 定位，不依赖 active）。 */
@@ -164,6 +171,7 @@ function updateSession(sessions: AiSession[], id: string, updater: (s: AiSession
 export const useAiStore = create<AiState>((set, get) => ({
   sessions: [],
   activeSessionId: null,
+  loadedVaultId: null,
 
   getActiveSession: () => {
     const { sessions, activeSessionId } = get();
