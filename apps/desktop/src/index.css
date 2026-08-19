@@ -945,9 +945,9 @@ mjx-container svg {
 .sw-task:hover { background: var(--border-soft); }
 .sw-task .sw-check { width: 18px; height: 18px; border: 1.5px solid var(--border); border-radius: 5px; display: grid; place-items: center; color: transparent; transition: all var(--motion-fast) var(--ease-standard); margin-top: 1px; font-size: 11px; }
 .sw-task.done .sw-check { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
-.sw-task .sw-body { font-size: var(--text-sm); color: var(--fg); line-height: 1.4; }
+.sw-task .sw-body { display: block; font-size: var(--text-sm); color: var(--fg); line-height: 1.4; }
 .sw-task.done .sw-body { color: var(--muted); text-decoration: line-through; }
-.sw-task .sw-meta { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 2px; }
+.sw-task .sw-meta { display: block; font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 2px; }
 .sw-task .sw-prio { width: 6px; height: 6px; border-radius: 50%; margin-top: 7px; }
 .sw-task .sw-src { font-family: var(--font-mono); font-size: 9px; padding: 1px 5px; border-radius: 3px; background: var(--border-soft); color: var(--muted); margin-right: 6px; vertical-align: middle; }
 
