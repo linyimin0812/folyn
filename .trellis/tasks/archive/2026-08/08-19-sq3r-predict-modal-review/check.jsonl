@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "代码质量基线"}
+{"file": ".trellis/spec/desktop/frontend/feature-agents.md", "reason": "SQ3R agent 契约变更后回归 feynman/selftest 不受影响"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "studyStore 状态变更验证"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "6 locale 键完整性"}

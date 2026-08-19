@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/feature-agents.md", "reason": "SQ3R 改为输出文本，触及 study feature agent 契约"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "新增 SQ3R 弹窗组件，沿用 sw-overlay/sw-modal 模式"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "studyStore 加 sq3r 输出捕获 / 弹窗状态"}
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "解析 / 写入 ## 笔记 段的 [!note-sq3r] callout 块"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "新增弹窗 i18n 键覆盖 6 个 locale"}
