@@ -279,3 +279,37 @@ SQ3R 弹窗新增删除：已保存内容（source=cache）显示删除按钮（
 ### Next Steps
 
 - None - task complete
+
+
+## Session 179: AI panel session vault isolation race fix
+
+**Date**: 2026-08-19
+**Task**: AI panel session vault isolation race fix
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Diagnosed cross-vault session leak: persistAiState read activeVaultId, which lags the in-memory session swap inside switchVault — when the 500ms trailing debounce landed in that gap, it wrote the new vault's sessions into the old vault's directory. Fixed by tracking loadedVaultId on aiStore (mirrors wikiQueryStore.vaultId precedent) so persist always writes to the vault whose sessions are in memory. 4-line state-binding fix, no new files/deps/abstractions.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `36c2243f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
