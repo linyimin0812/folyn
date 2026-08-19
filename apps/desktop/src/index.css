@@ -1020,7 +1020,7 @@ mjx-container svg {
 .sw-card:hover .sw-card-del { opacity: 1; }
 .sw-card .sw-card-del:hover { background: color-mix(in oklab, var(--red), transparent 88%); color: var(--red); }
 .sw-card.dragging .sw-card-del { display: none; }
-.sw-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
+.sw-card-top { display: flex; align-items: center; gap: 6px; margin-bottom: var(--space-3); padding-right: 24px; }
 .sw-card-top .sw-card-tags { display: inline-flex; align-items: center; gap: var(--space-1); margin-inline-start: auto; }
 .sw-tag { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border-radius: 4px; font-family: var(--font-mono); font-size: 10px; font-weight: 500; }
 .sw-tag.design { background: color-mix(in oklab, var(--purple), transparent 88%); color: var(--purple); }
@@ -1046,9 +1046,6 @@ mjx-container svg {
 .sw-progress .sw-bar { width: 60px; height: 4px; background: var(--border); border-radius: var(--radius-pill); overflow: hidden; }
 .sw-progress .sw-bar > i { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
 .sw-progress .sw-pct { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
-.sw-card-av { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 600; color: #fff; background: var(--accent); }
-.sw-sub-avatars { display: flex; }
-.sw-sub-avatars .sw-card-av { margin-left: -6px; border: 1.5px solid var(--surface); }
 
 .sw-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: var(--space-6) var(--space-4); color: var(--muted); text-align: center; }
 .sw-empty-state .sw-empty-icon { width: 28px; height: 28px; border-radius: 50%; border: 1.5px dashed var(--border); display: grid; place-items: center; color: var(--muted); opacity: 0.7; }
