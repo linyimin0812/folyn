@@ -3,7 +3,7 @@
 // 设计见 `.trellis/tasks/07-01-refactor-study-wiki-clips-schedule-project-analysis-to-per-vault-claude-agents/prd.md`：
 // - 每 feature 独立子目录 `<vault>/__{feature}__/.claude/`（含 CLAUDE.md + agents/<feature>.md）。
 // - canonical 源文件按功能就近放 `apps/desktop/src/<feature>/.claude/{CLAUDE.md,agents/<feature>.md}`，经 `?raw` import。
-// - vault 切换/启动时把 canonical 文件拷贝到 `<vault>/__{feature}__/.claude/`，**write-if-missing**（不覆盖用户修改）。
+// - vault 切换/启动/lazy-seed 时把 canonical 文件拷贝到 `<vault>/__{feature}__/.claude/`，**always-overwrite**（canonical 是 single source of truth，不保留 vault 副本的用户手改）。
 // - feature agent 调用：agent 文件存在 → `adapter.send(instruction, {agent, bare:false})`（cwd=`__{feature}__/` 自动发现）；
 //   不存在 → 回退 `--bare` + `--agents` 内联交付 canonical agent 定义（contract 不丢，spec `feature-agents.md` Validation Matrix 承诺的 graceful degradation）。
 // - schedule feature 额外传 `--add-dir <vault>` 以便访问 `__daily__/` 日记与今日修改文档。
@@ -158,7 +158,7 @@ export function piSeedTargets(entry: FeatureAgentEntry): { path: string; content
 
 /**
  * 调用时的懒播种兜底：即使启动时 switchVault 的 seeding 被跳过/失败，
- * 首次调用也会补播种。幂等（write-if-missing，安全）。
+ * 首次调用也会补播种。always-overwrite（重复写 canonical，安全）。
  *
  * 取 manager：动态 import vaultStore 避免循环依赖（runFeatureAgent 已有此模式）。
  * 失败静默（seedAgentFiles 内部已 catch）。
@@ -194,7 +194,7 @@ export async function agentFileExists(manager: VaultManager, feature: string): P
 export interface SeedAgentResult {
   feature: string;
   path: string;
-  /** 'seeded' (新写) | 'exists' (已存在未覆盖) | 'failed' (写失败)。 */
+  /** 'seeded' (写了) | 'failed' (写失败)。'exists' 历史保留，always-overwrite 下不再触发。 */
   status: 'seeded' | 'exists' | 'failed';
   /** status==='failed' 时的错误信息。 */
   error?: string;
@@ -202,7 +202,7 @@ export interface SeedAgentResult {
 
 /**
  * 把所有已注册的 canonical 文件（agent .md + CLAUDE.md）播种到 `<vault>/__{feature}__/.claude/`。
- * **write-if-missing**：已存在的文件不覆盖（保留用户修改）。缺父目录会自动创建。
+ * **always-overwrite**：canonical 是 single source of truth，不保留 vault 副本的用户手改。缺父目录会自动创建。
  *
  * 播种失败（vault 只读等）静默降级——调用时 `agentFileExists` 返回 false → `--bare` 回退。
  * 不抛错，不阻塞 vault 切换。返回每个文件路径的播种结果（用于诊断）。
@@ -220,55 +220,39 @@ export async function seedAgentFiles(manager: VaultManager): Promise<SeedAgentRe
   }
 
   for (const entry of FEATURE_AGENTS) {
-    // CLAUDE.md
+    // CLAUDE.md（always-overwrite：canonical 是 single source of truth，vault 副本不保留用户手改）
     const claudePath = claudeMdPath(entry.feature);
     try {
-      await manager.readFile(claudePath);
-      results.push({ feature: entry.feature, path: claudePath, status: 'exists' });
-    } catch {
-      try {
-        await manager.writeFile(claudePath, entry.claudeDoc);
-        results.push({ feature: entry.feature, path: claudePath, status: 'seeded' });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`[featureAgent] seed CLAUDE.md failed for "${entry.feature}" at ${claudePath}:`, err);
-        results.push({ feature: entry.feature, path: claudePath, status: 'failed', error: msg });
-      }
+      await manager.writeFile(claudePath, entry.claudeDoc);
+      results.push({ feature: entry.feature, path: claudePath, status: 'seeded' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[featureAgent] seed CLAUDE.md failed for "${entry.feature}" at ${claudePath}:`, err);
+      results.push({ feature: entry.feature, path: claudePath, status: 'failed', error: msg });
     }
 
-    // agent .md
+    // agent .md（同 always-overwrite 策略）
     const agentPath = agentFilePath(entry.feature, entry.file);
     try {
-      await manager.readFile(agentPath);
-      // 已存在（canonical 或用户修改）——不覆盖。
-      results.push({ feature: entry.feature, path: agentPath, status: 'exists' });
-    } catch {
-      try {
-        await manager.writeFile(agentPath, entry.doc);
-        results.push({ feature: entry.feature, path: agentPath, status: 'seeded' });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`[featureAgent] seed agent failed for "${entry.feature}" at ${agentPath}:`, err);
-        results.push({ feature: entry.feature, path: agentPath, status: 'failed', error: msg });
-      }
+      await manager.writeFile(agentPath, entry.doc);
+      results.push({ feature: entry.feature, path: agentPath, status: 'seeded' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[featureAgent] seed agent failed for "${entry.feature}" at ${agentPath}:`, err);
+      results.push({ feature: entry.feature, path: agentPath, status: 'failed', error: msg });
     }
 
     // pi feature-agent 上下文：adapterId='pi' 时额外写 `<vault>/__{feature}__/AGENTS.md`
-    // （pi 在 cwd 自动发现 AGENTS.md）。write-if-missing，与 claude 路径同策略。
+    // （pi 在 cwd 自动发现 AGENTS.md）。同 always-overwrite 策略。
     // scope A：无 entry 设 adapterId='pi' → piSeedTargets 返 []，本块为 no-op。
     for (const target of piSeedTargets(entry)) {
       try {
-        await manager.readFile(target.path);
-        results.push({ feature: entry.feature, path: target.path, status: 'exists' });
-      } catch {
-        try {
-          await manager.writeFile(target.path, target.content);
-          results.push({ feature: entry.feature, path: target.path, status: 'seeded' });
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          console.warn(`[featureAgent] seed pi context failed for "${entry.feature}" at ${target.path}:`, err);
-          results.push({ feature: entry.feature, path: target.path, status: 'failed', error: msg });
-        }
+        await manager.writeFile(target.path, target.content);
+        results.push({ feature: entry.feature, path: target.path, status: 'seeded' });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[featureAgent] seed pi context failed for "${entry.feature}" at ${target.path}:`, err);
+        results.push({ feature: entry.feature, path: target.path, status: 'failed', error: msg });
       }
     }
   }
@@ -318,6 +302,8 @@ async function writeSeedLog(manager: VaultManager, results: SeedAgentResult[]): 
 export interface RunFeatureAgentOpts {
   /** 额外可读目录（`--add-dir`）。 */
   addDir?: string[];
+  /** study 会话归属的学习主题 slug（每个主题一个专属会话，缺省 'default'）。 */
+  studySlug?: string;
 }
 
 /**
@@ -349,7 +335,7 @@ export async function runFeatureAgent(
   const { pauseWatcher, resumeWatcher } = await import('@/utils/fileWatcher');
 
   const ai = useAiStore.getState();
-  const sid = ai.getOrCreateStudySession();
+  const sid = ai.getOrCreateStudySession(opts.studySlug ?? 'default');
   const session = useAiStore.getState().sessions.find((s) => s.id === sid);
   const resumeSessionId = session?.cliSessionId ?? undefined;
 
@@ -377,7 +363,7 @@ export async function runFeatureAgent(
   const manager = useVaultStore.getState().manager;
 
   // 调用时懒播种兜底：确保 agent 文件已落盘（即使 switchVault 的 seeding 被跳过/失败）。
-  // 幂等（write-if-missing），不会覆盖用户修改。
+  // always-overwrite：每次都刷新为 canonical 最新，不保留 vault 副本的手改。
   await lazySeedAgentFiles();
 
   const available = await agentFileExists(manager, feature);
