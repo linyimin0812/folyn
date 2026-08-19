@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 174
-- **Last Active**: 2026-08-18
+- **Total Sessions**: 178
+- **Last Active**: 2026-08-19
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~151 | Active |
+| `journal-4.md` | ~281 | Active |
 | `journal-3.md` | ~1962 | Archived |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
@@ -32,6 +32,10 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 178 | 2026-08-19 | 删除整个 study feature | `11f5bf0d` | `master` |
+| 177 | 2026-08-19 | 08-19 sq3r modal delete action | - | `master` |
+| 176 | 2026-08-19 | 08-19 sq3r modal split/preview view modes | - | `master` |
+| 175 | 2026-08-19 | 08-19-sq3r modal readability polish | - | `master` |
 | 174 | 2026-08-18 | Plugin commands split + chat_stream extract | `6b1408a0`, `e0c12f7e`, `81844a92`, `782a432a` | `master` |
 | 173 | 2026-08-18 | Activity bar icon sizing | `068f4257` | `master` |
 | 172 | 2026-08-18 | Per-feature CLI adapter switch on Plugins settings | `dc095f4e` | `master` |
