@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { startOfWeek } from '@/features/schedule/dailyScan';
 import { MiniCalendar } from './MiniCalendar';
-import { WeeklyStats } from './CalendarCategoryList';
 import { WeekGrid } from './WeekGrid';
 import { QuickAdd } from './QuickAdd';
 import { Pomodoro } from './Pomodoro';
@@ -34,7 +33,6 @@ export function ScheduleView({ onOpenModal }: Props) {
     <section className="sw-view sw-view-schedule active">
       <aside className="sw-rail">
         <MiniCalendar selectedDate={selectedDate} onSelect={selectDay} />
-        <WeeklyStats />
       </aside>
 
       <WeekGrid cursor={cursor} onCursorChange={setCursor} selectedDate={selectedDate} onSelectDate={selectDay} onOpenModal={onOpenModal} />

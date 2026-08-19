@@ -30,12 +30,6 @@
     "nextMonth": "翌月",
     "dow": ["月", "火", "水", "木", "金", "土", "日"]
   },
-  "calendarCategory": {
-    "calendar": "カレンダー",
-    "week": "今週",
-    "totalEvents": "総イベント数",
-    "incompleteTasks": "未完了タスク"
-  },
   "category": {
     "task": {
       "design": "デザイン",

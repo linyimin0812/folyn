@@ -835,11 +835,6 @@ mjx-container svg {
 .sw-cal-swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 .sw-cal-item .sw-count { margin-left: auto; color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
 
-.sw-stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
-.sw-stat-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
-.sw-stat-card .sw-v { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--fg); }
-.sw-stat-card .sw-l { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.sw-stat-card.accent .sw-v { color: var(--accent); }
 
 .sw-cal-main { display: flex; flex-direction: column; background: var(--surface); min-width: 0; overflow: hidden; }
 .sw-cal-toolbar { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border); }

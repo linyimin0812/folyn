@@ -30,12 +30,6 @@
     "nextMonth": "Mes siguiente",
     "dow": ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
   },
-  "calendarCategory": {
-    "calendar": "Calendario",
-    "week": "Esta semana",
-    "totalEvents": "Total de eventos",
-    "incompleteTasks": "Tareas incompletas"
-  },
   "category": {
     "task": {
       "design": "Diseño",
