@@ -52,7 +52,6 @@ export function EventBlock({ title, start, end, note, taskId, eventId, colCount 
         else if (taskId) onOpenModal({ kind: 'taskDetail', taskId });
       }}
     >
-      {!short && <span className="sw-time">{formatTime(start)} – {formatTime(end)}</span>}
       <span className="sw-title">{title}</span>
     </div>
   );
