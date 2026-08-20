@@ -180,6 +180,40 @@ describe('buildAdapterVersionCommand (settings self-test: --version via sibling 
   it('unknown adapter: falls back to <cliPath> --version', () => {
     expect(buildAdapterVersionCommand('nope', 'x')).toBe("exec 'x' '--version'");
   });
+
+  it('gemini + absolute cliPath: --version via sibling node (same dir)', () => {
+    const cmd = buildAdapterVersionCommand('gemini', '/Users/x/.nvm/versions/node/v25.9.0/bin/gemini');
+    expect(cmd).toContain("'/Users/x/.nvm/versions/node/v25.9.0/bin/node'");
+    expect(cmd).toContain("'/Users/x/.nvm/versions/node/v25.9.0/bin/gemini'");
+    expect(cmd).toContain('--version');
+    expect(cmd.startsWith('exec ')).toBe(true);
+  });
+
+  it('gemini + bare cliPath on darwin: wrap with dscl-resolved user shell + -ilc', () => {
+    const cmd = buildAdapterVersionCommand('gemini', 'gemini', 'darwin');
+    // Resolves user shell via dscl, runs with -ilc to load .zshrc → nvm.
+    // Drops exec (need | tail -1 to extract version from under banner).
+    expect(cmd).toContain('$(dscl . -read /Users/$(whoami) UserShell | awk');
+    expect(cmd).toContain("-ilc 'gemini --version'");
+    expect(cmd).toContain('2>/dev/null');
+    expect(cmd).toContain('| tail -1');
+    expect(cmd).not.toContain('exec ');
+  });
+
+  it('gemini + bare cliPath on linux: wrap with getent-resolved user shell + -ilc', () => {
+    const cmd = buildAdapterVersionCommand('gemini', 'gemini', 'linux');
+    expect(cmd).toContain('$(getent passwd $(whoami) | cut -d: -f7)');
+    expect(cmd).toContain("-ilc 'gemini --version'");
+    expect(cmd).toContain('| tail -1');
+  });
+
+  it('gemini + bare cliPath on win32: keeps the Windows "<cli>" --version shape', () => {
+    expect(buildAdapterVersionCommand('gemini', 'gemini', 'win32')).toBe('"gemini" --version');
+  });
+
+  it('gemini + bare cliPath on unknown platform: falls back to bare exec', () => {
+    expect(buildAdapterVersionCommand('gemini', 'gemini', 'aix')).toBe("exec 'gemini' '--version'");
+  });
 });
 
 describe('buildAdapterDetectCommand (settings detect: which via user default shell)', () => {

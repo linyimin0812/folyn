@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/cli-adapter/frontend/component-guidelines.md", "reason": "buildAdapterVersionCommand pattern — required for the new gemini branch"}
+{"file": ".trellis/spec/cli-adapter/frontend/quality-guidelines.md", "reason": "Test coverage + cleanup checklist"}
+{"file": ".trellis/tasks/archive/2026-08/08-20-gemini-cli-adapter-node-version-fix/prd.md", "reason": "Root-cause family — confirms /bin/sh -lc doesn't load nvm, sibling-node + $SHELL -lic are the two valid fixes"}

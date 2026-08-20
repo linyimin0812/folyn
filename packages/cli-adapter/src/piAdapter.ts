@@ -130,6 +130,40 @@ export function buildAdapterVersionCommand(
   if (adapterId === 'pi') {
     return buildPiShellCommand(cliPath, '', ['--version']);
   }
+  if (adapterId === 'gemini') {
+    // ponytail: gemini is a JS script with #!/usr/bin/env node shebang.
+    // /bin/sh -lc (the sidecar) doesn't load nvm (bash login sources
+    // .bash_profile, not .bashrc where nvm lives), so the shebang
+    // resolves to /usr/local/bin/node v14.16.0 — too old for ||= (Node
+    // 16+) → SyntaxError before --version even runs. Same root cause as
+    // buildGeminiShellCommand (commit 369428da), different code path
+    // (settings page test-probe, not the adapter's send()).
+    //
+    // Two fixes, switched by cliPath (mirror the pi case's shape):
+    // - absolute (contains /): use sibling node from the same dir — no
+    //   nvm-loading overhead. Detect button already resolves to absolute
+    //   nvm paths, so this is the common case.
+    // - bare (e.g. "gemini"): wrap with the user's login shell + -ilc
+    //   (mirrors buildAdapterDetectCommand) so .zshrc/.bashrc loads nvm.
+    //   Drop exec — `| tail -1` extracts the version line from under
+    //   the sdkman/nvm banner noise -ilc prints to stdout first; 2>/dev/null
+    //   silences zsh/bash non-TTY job-control warnings.
+    if (cliPath.includes('/')) {
+      const dir = cliPath.slice(0, cliPath.lastIndexOf('/'));
+      return `exec ${quoteShellArg(`${dir}/node`)} ${quoteShellArg(cliPath)} ${quoteShellArg('--version')}`;
+    }
+    const userShell = platform === 'darwin'
+      ? `$(dscl . -read /Users/$(whoami) UserShell | awk '{print $2}')`
+      : platform === 'linux'
+        ? `$(getent passwd $(whoami) | cut -d: -f7)`
+        : '';
+    if (!userShell) {
+      // Unknown platform — fall back to bare exec (matches pre-fix
+      // behavior; user can fix by setting absolute cliPath via detect).
+      return `exec ${quoteShellArg(cliPath)} ${quoteShellArg('--version')}`;
+    }
+    return `"${userShell}" -ilc ${quoteShellArg(`${cliPath} --version`)} 2>/dev/null | tail -1`;
+  }
   return `exec ${quoteShellArg(cliPath)} ${quoteShellArg('--version')}`;
 }
 

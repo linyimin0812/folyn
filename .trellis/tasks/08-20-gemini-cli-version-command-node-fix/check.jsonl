@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/cli-adapter/frontend/quality-guidelines.md", "reason": "Verify the gemini branch doesn't regress pi/claude/unknown behavior"}
+{"file": ".trellis/spec/cli-adapter/frontend/type-safety.md", "reason": "Verify the sibling-node + user-shell-wrapper branches match the existing string-literal-union conventions"}
