@@ -229,7 +229,6 @@ const PET_API_FIELDS: Array<{ field: string; desc: string; depth: 0 | 1 }> = [
   { field: 'actions', desc: '可选, 按钮数组 (最多 2 个)', depth: 0 },
   { field: 'id', desc: 'string, 按钮标识 (点击时回传)', depth: 1 },
   { field: 'label', desc: 'string, 按钮显示文字', depth: 1 },
-  { field: 'launch', desc: '可选, 同下方 launch, 点击该按钮时触发跳转', depth: 1 },
   { field: 'launch', desc: '可选, 气泡主体点击跳转', depth: 0 },
   { field: 'type', desc: '"url" | "app"', depth: 1 },
   { field: 'value', desc: 'url: http(s) 链接; app: 应用名 [A-Za-z0-9 .-]+ (≤512 字符)', depth: 1 },
