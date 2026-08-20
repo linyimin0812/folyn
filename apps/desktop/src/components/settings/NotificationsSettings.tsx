@@ -243,7 +243,7 @@ function PetApiDocModal({ port, onClose }: { port: number; onClose: () => void }
       onClick={onClose}
     >
       <div
-        className="bg-panel border border-brd rounded-lg p-4 max-w-lg w-[90vw] shadow-xl"
+        className="bg-panel border border-brd rounded-lg p-4 max-w-2xl w-[90vw] shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-2">
