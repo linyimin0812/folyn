@@ -138,8 +138,10 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
         </div>
       </div>
 
-      {/* Right: View mode + Action buttons */}
+      {/* Right: View mode + Action buttons — hidden on settings page */}
       <div className="tb-right flex items-center gap-0.5 shrink-0">
+        {currentPage !== 'settings' && (
+        <>
         {/* View mode segment -- shown only for multi-mode file types */}
         {showViewMode && (
         <div className="view-seg flex items-center gap-px shrink-0">
@@ -245,7 +247,9 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
         {/* Windows-only window controls (minimize / maximize / close) — the
             main window drops its native titlebar on Windows, so these buttons
             replace the OS window controls. Renders nothing elsewhere. */}
-        <div className="top-div w-px h-[18px] bg-brd2 mx-[3px] shrink-0" />
+        </>
+
+        )}
         <WindowControls />
 
       </div>

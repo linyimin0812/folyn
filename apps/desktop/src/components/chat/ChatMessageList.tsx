@@ -98,7 +98,7 @@ function DefaultEmptyHint() {
   return (
     <div className="chat-empty">
       <div className="chat-empty-badge">
-        <span className="chat-empty-badge-glyph">✦</span>
+        <span>✦</span>
       </div>
       <div className="text-[13px] font-semibold text-t1">{greeting}</div>
     </div>
