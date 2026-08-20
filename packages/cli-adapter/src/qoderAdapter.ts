@@ -103,6 +103,23 @@ export function buildQoderArgs(prompt: string, options?: CliSendOptions): string
   return [...flags, prompt];
 }
 
+/** Resolve the binary path to exec. The aiConfigStore's `defaultFor = id => id`
+ *  fallback only works when adapter id === binary name (claude/codex/pi all
+ *  satisfy this by coincidence). For qoder the id (`qoder`/`qoder-cn`) differs
+ *  from the binary name (`qodercli`/`qoderclicn`), so a `cliPath` that equals
+ *  the adapter id is the store's "unset" sentinel — treat it as unset and fall
+ *  back to the real default.
+ *  ponytail: upgrade path is to plumb `cliPathDefault` through registry →
+ *  store, killing the `id => id` heuristic at the source. */
+export function resolveQoderCliPath(
+  cliPath: string | undefined,
+  adapterId: string,
+  cliPathDefault: string,
+): string {
+  if (!cliPath || cliPath === adapterId) return cliPathDefault;
+  return cliPath;
+}
+
 /** Compose the full shell command: optionally `cd` into the working dir,
  *  then `exec qodercli … < /dev/null`. Mirrors `buildCodexShellCommand` —
  *  qodercli is a standalone binary, no sibling-node workaround needed (unlike
@@ -203,7 +220,7 @@ export class QoderAdapter extends BaseCliAdapter {
     this.lineBuffer = '';
 
     const resumeId = options?.resumeSessionId || this.sessionId || undefined;
-    const cliPath = this.config.cliPath || this.cliPathDefault;
+    const cliPath = resolveQoderCliPath(this.config.cliPath, this.id, this.cliPathDefault);
     const args = buildQoderArgs(prompt, { ...options, resumeSessionId: resumeId });
     const shellCmd = buildQoderShellCommand(cliPath, this.config.workingDir, args);
 

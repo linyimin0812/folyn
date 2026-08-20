@@ -3,6 +3,7 @@ import {
   translateQoderEvent,
   buildQoderArgs,
   buildQoderShellCommand,
+  resolveQoderCliPath,
   QoderAdapter,
   type QoderAdapterOptions,
 } from './qoderAdapter';
@@ -259,6 +260,27 @@ describe('QoderAdapter (parameterized for intl + cn)', () => {
   it('send throws if not started', async () => {
     const a = new QoderAdapter(INTL_OPTS);
     await expect(a.send('hi')).rejects.toThrow(/not started/i);
+  });
+});
+
+describe('resolveQoderCliPath (store cliPath → binary name)', () => {
+  it('returns cliPathDefault when cliPath is the adapter id (store "unset" sentinel)', () => {
+    expect(resolveQoderCliPath('qoder', 'qoder', 'qodercli')).toBe('qodercli');
+    expect(resolveQoderCliPath('qoder-cn', 'qoder-cn', 'qoderclicn')).toBe('qoderclicn');
+  });
+
+  it('returns cliPathDefault when cliPath is empty/undefined', () => {
+    expect(resolveQoderCliPath(undefined, 'qoder', 'qodercli')).toBe('qodercli');
+    expect(resolveQoderCliPath('', 'qoder-cn', 'qoderclicn')).toBe('qoderclicn');
+  });
+
+  it('returns user-set absolute path unchanged (not treated as sentinel)', () => {
+    expect(resolveQoderCliPath('/usr/local/bin/qodercli', 'qoder', 'qodercli'))
+      .toBe('/usr/local/bin/qodercli');
+  });
+
+  it('returns user-set bare binary name unchanged', () => {
+    expect(resolveQoderCliPath('qodercli', 'qoder', 'qodercli')).toBe('qodercli');
   });
 });
 
