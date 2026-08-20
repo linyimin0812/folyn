@@ -17,11 +17,14 @@ import { listAdapters } from '@quill/cli-adapter';
 import claudeIcon from '@/assets/agents/claude_code.svg';
 import codexIcon from '@/assets/agents/codex.svg';
 import piIcon from '@/assets/agents/pi.svg';
+import qoderIcon from '@/assets/agents/qoder.svg';
 
 const ADAPTER_ICON: Record<string, string> = {
   claude: claudeIcon,
   codex: codexIcon,
   pi: piIcon,
+  qoder: qoderIcon,
+  'qoder-cn': qoderIcon,
 };
 
 const BUILTIN_ROW_TO_FEATURE: Record<string, string> = {
