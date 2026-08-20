@@ -390,3 +390,37 @@ Added pet notification integration for schedule module: pomodoro work/break end 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 182: Add Codex CLI adapter
+
+**Date**: 2026-08-20
+**Task**: Add Codex CLI adapter
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added CodexAdapter to @quill/cli-adapter: one-shot codex exec --json per send, pure translateCodexEvent seam, resume via codex exec resume <thread_id>, no on-disk skills/commands (Codex has no discovery surface). Registered codex-cli sidecar in Tauri capabilities + added codex icon to AdapterSelector/AgentCliTag/FeatureAdapterDropdown.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `70ec7283` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
