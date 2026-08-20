@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createAdapter, listAdapters } from './registry';
 import { ClaudeAdapter } from './claudeAdapter';
+import { GeminiAdapter } from './geminiAdapter';
 import { OpencodeAdapter } from './opencodeAdapter';
 import { PiAdapter } from './piAdapter';
 import { QoderAdapter } from './qoderAdapter';
@@ -41,6 +42,18 @@ describe('listAdapters', () => {
     // ponytail: template carries the $schema line so editors validate the
     // user's config out of the box (opencode boots fine with just this).
     expect(oc?.settingsFileTemplate).toContain('"$schema": "https://opencode.ai/config.json"');
+  });
+
+  it('includes "gemini" with json settings path + auth-selectedType template', () => {
+    const g = listAdapters().find((a) => a.id === 'gemini');
+    expect(g).toBeDefined();
+    expect(g?.displayName).toBe('Gemini');
+    expect(g?.settingsFilePath).toBe('~/.gemini/settings.json');
+    // ponytail: template pins security.auth.selectedType so the CLI picks
+    // up GEMINI_API_KEY from env out of the box (no `auth` subcommand
+    // exists, unlike opencode's `providers login`).
+    const parsed = JSON.parse(g!.settingsFileTemplate);
+    expect(parsed.security.auth.selectedType).toBe('gemini-api-key');
   });
 
   it('exposes a home-relative settingsFilePath + settingsFileTemplate per adapter', () => {
@@ -88,6 +101,12 @@ describe('createAdapter', () => {
     const adapter = createAdapter('opencode');
     expect(adapter).toBeInstanceOf(OpencodeAdapter);
     expect(adapter.id).toBe('opencode');
+  });
+
+  it('returns a GeminiAdapter for "gemini"', () => {
+    const adapter = createAdapter('gemini');
+    expect(adapter).toBeInstanceOf(GeminiAdapter);
+    expect(adapter.id).toBe('gemini');
   });
 
   it('throws for an unknown id', () => {

@@ -1,6 +1,7 @@
 import type { CliAdapter } from './types';
 import { ClaudeAdapter } from './claudeAdapter';
 import { CodexAdapter } from './codexAdapter';
+import { GeminiAdapter } from './geminiAdapter';
 import { OpencodeAdapter } from './opencodeAdapter';
 import { PiAdapter } from './piAdapter';
 import { QoderAdapter } from './qoderAdapter';
@@ -34,6 +35,13 @@ const QODER_SETTINGS_TEMPLATE = '{}\n';
 // the user config). $schema helps editors validate the file.
 const OPENCODE_SETTINGS_TEMPLATE =
   '{\n  "$schema": "https://opencode.ai/config.json"\n}\n';
+
+// ponytail: empty JSON — gemini boots with defaults; auth is configured via
+// settings.json's security.auth.selectedType + GEMINI_API_KEY env var (no
+// `auth` subcommand exists, unlike opencode's `providers login`). Minimal
+// template pins the auth type so the CLI picks up the API key from env.
+const GEMINI_SETTINGS_TEMPLATE =
+  '{\n  "security": {\n    "auth": {\n      "selectedType": "gemini-api-key"\n    }\n  }\n}\n';
 
 const ADAPTERS: Record<string, AdapterDescriptor> = {
   claude: {
@@ -92,6 +100,13 @@ const ADAPTERS: Record<string, AdapterDescriptor> = {
     factory: () => new OpencodeAdapter(),
     settingsFilePath: '~/.config/opencode/opencode.jsonc',
     settingsFileTemplate: OPENCODE_SETTINGS_TEMPLATE,
+  },
+  gemini: {
+    displayName: 'Gemini',
+    description: 'Gemini CLI（gemini -p -o stream-json -y --skip-trust），一发一进程，NDJSON 事件流，shell + tool 工具',
+    factory: () => new GeminiAdapter(),
+    settingsFilePath: '~/.gemini/settings.json',
+    settingsFileTemplate: GEMINI_SETTINGS_TEMPLATE,
   },
 };
 

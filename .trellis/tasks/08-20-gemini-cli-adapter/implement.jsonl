@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/cli-adapter/frontend/component-guidelines.md", "reason": "BaseCliAdapter pattern, stream events, NDJSON parsing — required for new adapter class"}
+{"file": ".trellis/spec/cli-adapter/frontend/directory-structure.md", "reason": "Flat src layout + types centralized — where to place geminiAdapter.ts"}
+{"file": ".trellis/spec/cli-adapter/frontend/type-safety.md", "reason": "Stream event types, status unions — for the CliStreamEvent shape"}
+{"file": ".trellis/spec/cli-adapter/frontend/quality-guidelines.md", "reason": "Required patterns, cleanup, checklist — required patterns"}
+{"file": ".trellis/tasks/08-20-gemini-cli-adapter/research/gemini-cli-shape.md", "reason": "Captured Gemini wire shape — the load-bearing reference for translateGeminiEvent (six event types), buildGeminiArgs, buildGeminiShellCommand, sidecar name, settings path"}

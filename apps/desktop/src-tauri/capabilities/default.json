@@ -64,6 +64,11 @@
           "args": true
         },
         {
+          "name": "gemini-cli",
+          "cmd": "/bin/sh",
+          "args": true
+        },
+        {
           "name": "pi-cli",
           "cmd": "/bin/sh",
           "args": true
@@ -100,6 +105,11 @@
         },
         {
           "name": "opencode-cli",
+          "cmd": "/bin/sh",
+          "args": true
+        },
+        {
+          "name": "gemini-cli",
           "cmd": "/bin/sh",
           "args": true
         },

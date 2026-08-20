@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/cli-adapter/frontend/quality-guidelines.md", "reason": "Quality checklist for the new adapter + tests"}
+{"file": ".trellis/spec/cli-adapter/frontend/type-safety.md", "reason": "Verify CliStreamEvent status unions are respected"}
+{"file": ".trellis/tasks/08-20-gemini-cli-adapter/research/gemini-cli-shape.md", "reason": "Verify translator matches captured wire shape — esp. six event types, explicit terminal result event, separate tool_use+tool_result events, --skip-trust requirement, < /dev/null latency load-bearing"}

@@ -18,6 +18,7 @@ export type {
 
 export { ClaudeAdapter } from './src/claudeAdapter';
 export { CodexAdapter, translateCodexEvent, buildCodexArgs, buildCodexShellCommand } from './src/codexAdapter';
+export { GeminiAdapter, translateGeminiEvent, buildGeminiArgs, buildGeminiShellCommand, resolveGeminiCliPath } from './src/geminiAdapter';
 export { OpencodeAdapter, translateOpencodeEvent, buildOpencodeArgs, buildOpencodeShellCommand, resolveOpencodeCliPath } from './src/opencodeAdapter';
 export { PiAdapter, translatePiEvent, mapClaudeToolsToPi, buildPiSpawnArgs, buildPromptCommand, buildPiShellCommand, buildAdapterVersionCommand, buildAdapterDetectCommand, splitJsonlLines } from './src/piAdapter';
 export { QoderAdapter, translateQoderEvent, buildQoderArgs, buildQoderShellCommand, resolveQoderCliPath } from './src/qoderAdapter';
