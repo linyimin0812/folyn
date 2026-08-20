@@ -462,3 +462,38 @@ Added QoderAdapter to cli-adapter package: single parameterized class backs intl
 ### Next Steps
 
 - None - task complete
+
+
+## Session 184: opencode CLI adapter
+
+**Date**: 2026-08-20
+**Task**: opencode CLI adapter
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added opencode CLI adapter end-to-end: opencodeAdapter.ts (fresh translator for opencode's NDJSON {type, sessionID, part} envelope, fused tool_use event → tool_start+tool_end, command.on('close') as done signal), registry entry, 28 unit tests + 2 registry tests (190 total green), desktop sidecar opencode-cli in default.json + pet-panel.json (spawn + execute), opencode.svg brand icon, 3 UI components (AdapterSelector / AgentCliTag / FeatureAdapterDropdown). Settings path ~/.config/opencode/opencode.jsonc with $schema template. Skipped China variant (none), skills subcommands, i18n entry (codex/qoder precedent).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7963667a` | (see git log) |
+| `580ec369` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
