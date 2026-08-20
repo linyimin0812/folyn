@@ -216,14 +216,23 @@ function PetExternalApiBlock() {
 // ponytail: doc modal mirrors ConsentModal's overlay pattern. Field table is
 // inline zh prose — this is API documentation, not UI chrome, so per-line
 // i18n would be churn. Add an en variant only if a non-zh user asks.
-const PET_API_FIELDS: Array<{ field: string; desc: string }> = [
-  { field: 'action', desc: 'notify (必填; show/hide 保留未实现)' },
-  { field: 'kind', desc: 'info | reminder | message | event (默认 info)' },
-  { field: 'title', desc: '可选, 标题' },
-  { field: 'source', desc: '可选, 来源标识 (≤128 字符)' },
-  { field: 'text', desc: '必填, 正文 (≤4096 字符)' },
-  { field: 'actions', desc: '可选, [{id, label, launch?}] — 按钮点击触发 per-action launch' },
-  { field: 'launch', desc: '可选, 气泡主体点击跳转 {type:url|app, value}' },
+// `depth` controls indentation: 0 = top-level field, 1 = sub-field of parent.
+const PET_API_FIELDS: Array<{ field: string; desc: string; depth: 0 | 1 }> = [
+  { field: 'action', desc: '"notify" (必填; show/hide 保留未实现)', depth: 0 },
+  { field: 'kind', desc: 'info | reminder | message | event (默认 info)', depth: 0 },
+  { field: 'title', desc: '可选, 非空, 标题文字', depth: 0 },
+  { field: 'source', desc: '可选, 非空, 来源标识 (≤128 字符)', depth: 0 },
+  { field: 'text', desc: '必填, 非空, 正文 (≤4096 字符)', depth: 0 },
+  { field: 'target', desc: '可选, 内部实体跳转 (与 launch 互斥用途: 跳到 schedule/chat/task/file)', depth: 0 },
+  { field: 'kind', desc: 'schedule | chat | task | file', depth: 1 },
+  { field: 'id', desc: 'string, 实体 id (路径 / sessionId 等)', depth: 1 },
+  { field: 'actions', desc: '可选, 按钮数组 (最多 2 个)', depth: 0 },
+  { field: 'id', desc: 'string, 按钮标识 (点击时回传)', depth: 1 },
+  { field: 'label', desc: 'string, 按钮显示文字', depth: 1 },
+  { field: 'launch', desc: '可选, 同下方 launch, 点击该按钮时触发跳转', depth: 1 },
+  { field: 'launch', desc: '可选, 气泡主体点击跳转', depth: 0 },
+  { field: 'type', desc: '"url" | "app"', depth: 1 },
+  { field: 'value', desc: 'url: http(s) 链接; app: 应用名 [A-Za-z0-9 .-]+ (≤512 字符)', depth: 1 },
 ];
 
 function PetApiDocModal({ port, onClose }: { port: number; onClose: () => void }) {
@@ -247,9 +256,9 @@ function PetApiDocModal({ port, onClose }: { port: number; onClose: () => void }
         <div className="bg-surf2 border border-brd2 rounded-md p-2 mb-3">
           <table className="text-[11px] text-t2 w-full">
             <tbody>
-              {PET_API_FIELDS.map((f) => (
-                <tr key={f.field}>
-                  <td className="align-top py-0.5 pr-2 font-mono text-t1 whitespace-nowrap">{f.field}</td>
+              {PET_API_FIELDS.map((f, i) => (
+                <tr key={i}>
+                  <td className={`align-top py-0.5 pr-2 font-mono text-t1 whitespace-nowrap ${f.depth === 1 ? 'pl-4 text-t2' : ''}`}>{f.field}</td>
                   <td className="align-top py-0.5 leading-relaxed">{f.desc}</td>
                 </tr>
               ))}
