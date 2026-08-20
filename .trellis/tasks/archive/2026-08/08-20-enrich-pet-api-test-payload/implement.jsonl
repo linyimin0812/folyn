@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Frontend guidelines index — component / i18n patterns for the desktop app"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component / hook patterns for PetExternalApiBlock"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "i18n namespace / key conventions if any new keys needed"}
