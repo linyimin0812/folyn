@@ -164,19 +164,59 @@ export function resolveGeminiCliPath(
 }
 
 /** Compose the full shell command: optionally `cd` into the working dir,
- *  then `exec gemini … < /dev/null`. Mirrors `buildQoderShellCommand` /
- *  `buildOpencodeShellCommand` verbatim. `< /dev/null` is load-bearing
- *  for latency — Gemini's 500ms stdin-wait timer adds a per-send delay
- *  otherwise (research §6). */
+ *  then `exec gemini … < /dev/null`.
+ *
+ *  Unlike qoder/opencode (compiled Mach-O binaries that ignore PATH to
+ *  `node`), gemini is a JS script with `#!/usr/bin/env node` shebang. On
+ *  this machine `/bin/sh -lc` does NOT load nvm (bash login sources
+ *  `.bash_profile`, not `.bashrc` where nvm lives), so the shebang
+ *  resolves to the system `/usr/local/bin/node` (v14.16.0) — too old for
+ *  `||=` logical assignment (Node 16+), throwing SyntaxError before any
+ *  event is emitted.
+ *
+ *  Fix: invoke the user's `$SHELL` with `-lic` (login + interactive) so
+ *  `.zshrc`/`.bashrc` loads nvm → PATH has the v25 node → shebang resolves
+ *  correctly. Falls back to `/bin/sh -lc` if `$SHELL` is unset (defensive —
+ *  matches the original behavior for environments without `$SHELL`).
+ *
+ *  `< /dev/null` remains load-bearing for latency — Gemini's 500ms
+ *  stdin-wait timer adds a per-send delay otherwise (research §6). */
 export function buildGeminiShellCommand(
   cliPath: string,
   workingDir: string,
   args: string[],
+  shell: string = process.env.SHELL || '',
 ): string {
   const cliCmd = [cliPath, ...args].map(quoteShellArg).join(' ') + ' < /dev/null';
-  return workingDir
+  const innerCmd = workingDir
     ? `cd ${quoteShellArg(workingDir)} && exec ${cliCmd}`
     : `exec ${cliCmd}`;
+  // ponytail: $SHELL -lic loads nvm; /bin/sh -lc fallback matches the
+  // pre-fix behavior when $SHELL is unset (no nvm, but at least no
+  // regression for non-nvm setups). Upgrade path: plumb an absolute
+  // node+cli path through registry → kill shell-choice entirely.
+  const shellBin = shell || '/bin/sh';
+  const shellFlags = shell ? '-lic' : '-lc';
+  return `${quoteShellArg(shellBin)} ${shellFlags} ${quoteShellArg(innerCmd)}`;
+}
+
+/** Filter stderr noise lines so version-manager banners don't emit as
+ *  `error` events. Interactive shells (zsh -ic, bash -ic) print banners
+ *  from sdkman/ensa/rtx/asdf/conda at startup — those are not gemini
+ *  errors. Real gemini errors start with `[ERROR]`, `Error:`, stack
+ *  trace lines, or contain `SyntaxError`/`TypeError`/etc. */
+export function isGeminiStderrNoise(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed) return true;
+  // sdkman: "Using java version 8.0.382-zulu in this shell."
+  // ensa/rtx: similar "Using the ..." banner shape.
+  if (/^Using (java|gradle|maven|scala|kotlin|clojure|groovy|the )/i.test(trimmed)) return true;
+  // zsh job-control warnings on non-TTY interactive shells.
+  if (/^zsh: (job control|no tty|can't set)/i.test(trimmed)) return true;
+  if (/job control/i.test(trimmed) && /tty/i.test(trimmed)) return true;
+  // ASCII-art banners (e.g. conda activate's activation banner).
+  if (/^[_*=\-+~`|#<>]{3,}/.test(trimmed)) return true;
+  return false;
 }
 
 /** Tauri shell plugin child shape (subset we use). */
@@ -248,9 +288,10 @@ export class GeminiAdapter extends BaseCliAdapter {
     const shellCmd = buildGeminiShellCommand(cliPath, this.config.workingDir, args);
 
     try {
-      const command = Command.create('gemini-cli', ['-l', '-c', shellCmd]);
+      const command = Command.create('gemini-cli', ['-c', shellCmd]);
       command.stdout.on('data', (chunk: string) => this.handleStdoutChunk(chunk));
       command.stderr.on('data', (line: string) => {
+        if (isGeminiStderrNoise(line)) return;
         const trimmed = line.trim();
         if (!trimmed) return;
         this.emit({ type: 'error', content: trimmed });

@@ -4,6 +4,7 @@ import {
   buildGeminiArgs,
   buildGeminiShellCommand,
   resolveGeminiCliPath,
+  isGeminiStderrNoise,
   GeminiAdapter,
 } from './geminiAdapter';
 import { quoteShellArg } from './claudeAdapter';
@@ -251,29 +252,86 @@ describe('buildGeminiArgs (gemini arg vector)', () => {
   });
 });
 
-describe('buildGeminiShellCommand (cd + exec, stdin closed for latency)', () => {
-  it('absolute cliPath + workingDir: cd <dir> && exec <cliPath> … < /dev/null', () => {
+describe('buildGeminiShellCommand ($SHELL -lic for nvm, stdin closed for latency)', () => {
+  // ponytail: the inner command (cd + exec + cli args + < /dev/null) is
+  // single-quote-wrapped for the outer `$SHELL -lic` arg. Single quotes
+  // inside the inner command are escaped as `'\''` by `quoteShellArg`,
+  // so assertions check the escaped form (or parse the inner out).
+
+  it('uses $SHELL -lic when shell is provided (loads nvm → correct node)', () => {
     const args = buildGeminiArgs('say hi');
-    const cmd = buildGeminiShellCommand('gemini', '/vault', args);
-    expect(cmd.startsWith(`cd ${quoteShellArg('/vault')} && exec `)).toBe(true);
-    expect(cmd).toContain(quoteShellArg('gemini'));
-    expect(cmd).toContain(quoteShellArg('say hi'));
-    expect(cmd.endsWith(' < /dev/null')).toBe(true);
+    const cmd = buildGeminiShellCommand('gemini', '/vault', args, '/bin/zsh');
+    // Outer: $SHELL -lic '<inner>'.
+    expect(cmd.startsWith(`${quoteShellArg('/bin/zsh')} -lic `)).toBe(true);
+    // Inner is single-quote-wrapped; the literal `cd '/vault' && exec ` from
+    // quoteShellArg('/vault') is escaped as `cd '\''/vault'\'' && exec `
+    // (each `'` becomes `'\''` inside the outer single quotes).
+    expect(cmd).toContain(`cd '\\''/vault'\\'' && exec `);
+    expect(cmd).toContain('< /dev/null');
+    // Verify the prompt arg (`'say hi'`) survived — escaped as `'\''say hi'\''`.
+    expect(cmd).toContain(`'\\''say hi'\\''`);
   });
 
-  it('no workingDir: just exec (no cd)', () => {
-    const cmd = buildGeminiShellCommand('gemini', '', buildGeminiArgs('hi'));
-    expect(cmd.startsWith('exec ')).toBe(true);
-    expect(cmd).not.toContain('cd ');
-    expect(cmd.endsWith(' < /dev/null')).toBe(true);
+  it('falls back to /bin/sh -lc when shell is empty (no $SHELL env)', () => {
+    const cmd = buildGeminiShellCommand('gemini', '/vault', buildGeminiArgs('hi'), '');
+    expect(cmd.startsWith(`${quoteShellArg('/bin/sh')} -lc `)).toBe(true);
+    expect(cmd).toContain('< /dev/null');
   });
 
-  it('resume still gets < /dev/null', () => {
+  it('no workingDir: inner starts with exec (no cd)', () => {
+    const cmd = buildGeminiShellCommand('gemini', '', buildGeminiArgs('hi'), '/bin/zsh');
+    // Extract the inner command (between the outer -lic's opening `'` and
+    // the final closing `'`). After unescaping, it should start with exec.
+    const innerMatch = cmd.match(/-lic '(.+)'$/);
+    expect(innerMatch).not.toBeNull();
+    const inner = innerMatch![1].replace(/'\\''/g, "'");
+    expect(inner.startsWith('exec ')).toBe(true);
+    expect(inner).not.toContain('cd ');
+    expect(inner.endsWith(' < /dev/null')).toBe(true);
+  });
+
+  it('resume still carries -r <id> + < /dev/null in the inner command', () => {
     const args = buildGeminiArgs('p', { resumeSessionId: 'fcd131a3-r1' });
-    const cmd = buildGeminiShellCommand('gemini', '/vault', args);
-    expect(cmd).toContain('-r');
-    expect(cmd).toContain(quoteShellArg('fcd131a3-r1'));
-    expect(cmd.endsWith(' < /dev/null')).toBe(true);
+    const cmd = buildGeminiShellCommand('gemini', '/vault', args, '/bin/zsh');
+    const innerMatch = cmd.match(/-lic '(.+)'$/);
+    expect(innerMatch).not.toBeNull();
+    const inner = innerMatch![1].replace(/'\\''/g, "'");
+    expect(inner).toContain('-r');
+    expect(inner).toContain(quoteShellArg('fcd131a3-r1'));
+    expect(inner.endsWith(' < /dev/null')).toBe(true);
+  });
+});
+
+describe('isGeminiStderrNoise (version-manager banner filter)', () => {
+  it('filters sdkman java version banner', () => {
+    expect(isGeminiStderrNoise('Using java version 8.0.382-zulu in this shell.')).toBe(true);
+  });
+
+  it('filters ensa/rtx "Using the" banner', () => {
+    expect(isGeminiStderrNoise('Using the node version 25.9.0')).toBe(true);
+  });
+
+  it('filters zsh job-control warnings on non-TTY interactive shell', () => {
+    expect(isGeminiStderrNoise('zsh: job control disabled in this shell')).toBe(true);
+    expect(isGeminiStderrNoise('no tty; cannot set job control')).toBe(true);
+  });
+
+  it('filters ASCII-art banners', () => {
+    expect(isGeminiStderrNoise('__________')).toBe(true);
+    expect(isGeminiStderrNoise('====')).toBe(true);
+  });
+
+  it('filters empty/whitespace lines', () => {
+    expect(isGeminiStderrNoise('')).toBe(true);
+    expect(isGeminiStderrNoise('   \t  ')).toBe(true);
+  });
+
+  it('does NOT filter real gemini errors', () => {
+    expect(isGeminiStderrNoise('Error: stream corrupted')).toBe(false);
+    expect(isGeminiStderrNoise('[ERROR] MaxSessionTurns exceeded')).toBe(false);
+    expect(isGeminiStderrNoise('SyntaxError: Unexpected token')).toBe(false);
+    expect(isGeminiStderrNoise('TypeError: fetch failed')).toBe(false);
+    expect(isGeminiStderrNoise('Attempt 1 failed. Retrying with backoff...')).toBe(false);
   });
 });
 

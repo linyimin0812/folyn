@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/cli-adapter/frontend/quality-guidelines.md", "reason": "Verify shell wrapper change + stderr filter don't break adapter cleanup invariants"}
+{"file": ".trellis/tasks/archive/2026-08/08-20-gemini-cli-adapter/research/gemini-cli-shape.md", "reason": "Verify shell layer change doesn't regress the < /dev/null latency load-bearing requirement"}
