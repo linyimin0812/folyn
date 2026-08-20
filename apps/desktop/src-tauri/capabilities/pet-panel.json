@@ -37,6 +37,11 @@
           "args": true
         },
         {
+          "name": "opencode-cli",
+          "cmd": "/bin/sh",
+          "args": true
+        },
+        {
           "name": "pi-cli",
           "cmd": "/bin/sh",
           "args": true
@@ -68,6 +73,11 @@
         },
         {
           "name": "qoder-cli-cn",
+          "cmd": "/bin/sh",
+          "args": true
+        },
+        {
+          "name": "opencode-cli",
           "cmd": "/bin/sh",
           "args": true
         },

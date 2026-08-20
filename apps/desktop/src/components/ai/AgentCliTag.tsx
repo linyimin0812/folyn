@@ -16,12 +16,14 @@ import { listAdapters } from '@quill/cli-adapter';
 import { getInputModeDef } from './inputModes';
 import claudeIcon from '@/assets/agents/claude_code.svg';
 import codexIcon from '@/assets/agents/codex.svg';
+import opencodeIcon from '@/assets/agents/opencode.svg';
 import piIcon from '@/assets/agents/pi.svg';
 import qoderIcon from '@/assets/agents/qoder.svg';
 
 const ADAPTER_ICON: Record<string, string> = {
   claude: claudeIcon,
   codex: codexIcon,
+  opencode: opencodeIcon,
   pi: piIcon,
   qoder: qoderIcon,
   'qoder-cn': qoderIcon,

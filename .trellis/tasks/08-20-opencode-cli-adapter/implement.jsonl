@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/cli-adapter/frontend/component-guidelines.md", "reason": "BaseCliAdapter pattern, stream events, NDJSON parsing — required for new adapter class"}
+{"file": ".trellis/spec/cli-adapter/frontend/directory-structure.md", "reason": "Flat src layout + types centralized — where to place opencodeAdapter.ts"}
+{"file": ".trellis/spec/cli-adapter/frontend/type-safety.md", "reason": "Stream event types, status unions — for the CliStreamEvent shape"}
+{"file": ".trellis/spec/cli-adapter/frontend/quality-guidelines.md", "reason": "Required patterns, cleanup, checklist — required patterns"}
+{"file": ".trellis/tasks/08-20-opencode-cli-adapter/research/opencode-cli-shape.md", "reason": "Captured opencode wire shape — the load-bearing reference for translateOpencodeEvent, buildOpencodeArgs, sidecar name, settings path"}

@@ -1,6 +1,7 @@
 import type { CliAdapter } from './types';
 import { ClaudeAdapter } from './claudeAdapter';
 import { CodexAdapter } from './codexAdapter';
+import { OpencodeAdapter } from './opencodeAdapter';
 import { PiAdapter } from './piAdapter';
 import { QoderAdapter } from './qoderAdapter';
 
@@ -27,6 +28,12 @@ const CODEX_SETTINGS_TEMPLATE = '# Codex config (TOML). Empty is valid — Codex
 // ponytail: empty JSON — qodercli boots with defaults; `qodercli login` sets
 // up auth under ~/.qoder/.auth/ (separate from settings.json).
 const QODER_SETTINGS_TEMPLATE = '{}\n';
+
+// ponytail: empty JSONC — opencode boots with defaults; `opencode providers
+// login` sets up auth at ~/.local/share/opencode/auth.json (separate from
+// the user config). $schema helps editors validate the file.
+const OPENCODE_SETTINGS_TEMPLATE =
+  '{\n  "$schema": "https://opencode.ai/config.json"\n}\n';
 
 const ADAPTERS: Record<string, AdapterDescriptor> = {
   claude: {
@@ -78,6 +85,13 @@ const ADAPTERS: Record<string, AdapterDescriptor> = {
     }),
     settingsFilePath: '~/.qodercn/settings.json',
     settingsFileTemplate: QODER_SETTINGS_TEMPLATE,
+  },
+  opencode: {
+    displayName: 'opencode',
+    description: 'opencode CLI（opencode run --format json --auto），一发一进程，NDJSON 事件流，shell + tool 工具',
+    factory: () => new OpencodeAdapter(),
+    settingsFilePath: '~/.config/opencode/opencode.jsonc',
+    settingsFileTemplate: OPENCODE_SETTINGS_TEMPLATE,
   },
 };
 

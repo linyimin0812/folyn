@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createAdapter, listAdapters } from './registry';
 import { ClaudeAdapter } from './claudeAdapter';
+import { OpencodeAdapter } from './opencodeAdapter';
 import { PiAdapter } from './piAdapter';
 import { QoderAdapter } from './qoderAdapter';
 
@@ -30,6 +31,16 @@ describe('listAdapters', () => {
     expect(cn?.displayName).toBe('Qoder (China)');
     expect(intl?.settingsFilePath).toBe('~/.qoder/settings.json');
     expect(cn?.settingsFilePath).toBe('~/.qodercn/settings.json');
+  });
+
+  it('includes "opencode" with jsonc settings path + schema template', () => {
+    const oc = listAdapters().find((a) => a.id === 'opencode');
+    expect(oc).toBeDefined();
+    expect(oc?.displayName).toBe('opencode');
+    expect(oc?.settingsFilePath).toBe('~/.config/opencode/opencode.jsonc');
+    // ponytail: template carries the $schema line so editors validate the
+    // user's config out of the box (opencode boots fine with just this).
+    expect(oc?.settingsFileTemplate).toContain('"$schema": "https://opencode.ai/config.json"');
   });
 
   it('exposes a home-relative settingsFilePath + settingsFileTemplate per adapter', () => {
@@ -71,6 +82,12 @@ describe('createAdapter', () => {
     const cn = createAdapter('qoder-cn');
     expect(cn).toBeInstanceOf(QoderAdapter);
     expect(cn.id).toBe('qoder-cn');
+  });
+
+  it('returns an OpencodeAdapter for "opencode"', () => {
+    const adapter = createAdapter('opencode');
+    expect(adapter).toBeInstanceOf(OpencodeAdapter);
+    expect(adapter.id).toBe('opencode');
   });
 
   it('throws for an unknown id', () => {
